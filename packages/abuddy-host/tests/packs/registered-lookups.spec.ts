@@ -13,7 +13,7 @@ import { blockRegistry } from '@abuddy/sdk/blocks';
 import { _seedHookRegistry } from '@abuddy/sdk/seed';
 import { getPackCommands, getPackSettingsDefaults, onPackSettingsDefaultsChanged, type PackRegistration } from '@abuddy/sdk/framework';
 import { seedData, type Seeder } from '@abuddy/sdk/utils';
-import { createPackRegistry } from '../../src/packs/pack-registration.ts';
+import { createPackRegistry } from '../../src/packs/registry.ts';
 import { PLUGIN_EVENT_TYPES } from '@abuddy/sdk/events';
 
 /** The events a pack's plugin receives: what its pack declares, and what the app sends every plugin */

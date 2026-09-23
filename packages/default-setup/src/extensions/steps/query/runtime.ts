@@ -7,6 +7,7 @@ import { WRITE_HELPER_NAMES } from '@abuddy/sdk/database-console';
 import { DEFAULT_MODEL } from '../llm/model';
 import { DEFAULT_RESULT_KEY } from './result-key';
 import type { QueryNode } from './types';
+import { errorMessage } from '@abuddy/sdk/utils/pure';
 
 const brainLogger = createLogger('brain', { debug: true });
 
@@ -49,7 +50,7 @@ export async function handler(t: TNodeEntity, node: unknown, ctx: ExecutionConte
     try {
       reply = (await services.inference.generateText({ model, instructions, prompt: n.prompt })).text;
     } catch (error) {
-      throw new Error(`Query step "${n.label}" couldn't generate its query with ${model}: ${error instanceof Error ? error.message : String(error)}`);
+      throw new Error(`Query step "${n.label}" couldn't generate its query with ${model}: ${errorMessage(error)}`);
     }
 
     const query = stripCodeFence(reply);
@@ -61,7 +62,7 @@ export async function handler(t: TNodeEntity, node: unknown, ctx: ExecutionConte
     try {
       rows = await executeQuery(query);
     } catch (error) {
-      const message = error instanceof Error ? error.message : String(error);
+      const message = errorMessage(error);
       const missing = /^(\w+) is not defined$/.exec(message)?.[1];
       if (missing && WRITE_HELPERS.has(missing)) {
         throw new Error(`Query step "${n.label}" generated a query that writes (${missing}); query steps only read. Query:\n${query}`);

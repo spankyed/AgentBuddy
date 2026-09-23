@@ -1,6 +1,6 @@
-// The library plugin's actor, for the library's own reference items (references.ts). The library offers nothing else
+// The library plugin's ref, for the library's own reference items (references.ts). The library offers nothing else
 // to other features.
-import { pluginHandle } from '@/features/plugin-handle'
+import { ref as featureRef } from '@/__generated__/ref'
 
-/** The library plugin's actor, which its machine binds as it starts */
-export const libraryPlugin = pluginHandle('library')
+/** The ref the library plugin runs at */
+export const LIBRARY = featureRef('library')

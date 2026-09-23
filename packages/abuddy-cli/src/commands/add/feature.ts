@@ -16,8 +16,8 @@ const SETTINGS = (id: string) => `export default {
 
 const SYSTEM = (name: string, camel: string, pascal: string) => `import { setup } from 'xstate';
 import { defineSystem, type SystemEntry } from '@abuddy/sdk/framework';
-// sendToPlugin is typed with the events each of this pack's plugins receives
-import { sendToPlugin } from '#generated/events';
+// broadcastToPlugin is typed with the events each of this pack's plugins receives
+import { broadcastToPlugin } from '#generated/events';
 
 type Incoming${pascal}Events =
   | { type: 'CLIENT_CONNECTED' };
@@ -31,7 +31,7 @@ export const ${camel}System = setup({
   types: ${camel}Spec.types,
   actions: {
     sendConnectedData: () => {
-      sendToPlugin('${name}', {
+      broadcastToPlugin('${name}', {
         type: '${name.toUpperCase().replace(/-/g, '_')}_CONNECTED',
         data: {},
       });
@@ -83,18 +83,22 @@ export const ${camel}Queries = {};
 export const ${camel}Commands = {};
 `;
 
-const PLUGIN = (camel: string, label: string, icon: string) => `import type { PluginDefinition } from '@abuddy/sdk/fe';
+const PLUGIN = (camel: string, label: string, icon: string) => `import { definePlugin } from '@abuddy/sdk/fe';
 import { ${icon} } from 'lucide-vue-next';
 import state from './state';
 import canvas from './canvas/list.vue';
 
+// What another feature may send this plugin goes beside it, and only then:
+//   export const accepts = pluginAccepts<{ type: 'SOMETHING'; id: string }>();
+// Its own feature's system needs no declaration — codegen reads that system's outgoing events.
+
 // Registered at the feature's address by the host, so the module carries no id
-const ${camel}Plugin: PluginDefinition = {
+const ${camel}Plugin = definePlugin({
   label: '${label}',
   icon: ${icon},
   state,
   canvas,
-};
+});
 
 export default ${camel}Plugin;
 `;

@@ -172,7 +172,7 @@ export const CLAUDE_CODE_TAG = 'claude-code';
 
 /** Set the global project directory used by Claude Code sessions. */
 export function setProjectDirectory(services: Services, directory: string): void {
-  services.settings.updatePluginSetting('default-setup/code', ['defaultBaseDirectory'], directory);
+  services.settings.setForFeature('default-setup/code', ['defaultBaseDirectory'], directory);
 }
 
 /** Read the Claude Code state stashed on a thread. Returns `undefined` if none. */
@@ -221,7 +221,7 @@ export function persistClaudeState(
   });
 
   // Notify frontend so thread context is always in sync.
-  services.emitter.sendToPlugin('default-setup/threads', {
+  services.emitter.broadcastToPlugin('default-setup/threads', {
     type: 'THREAD_UPDATED',
     threadId,
     updates: {
@@ -462,7 +462,7 @@ export function clearClaudeState(services: Services, threadId: string): void {
 
   // Notify frontend so tag filters update without a page refresh
   if (tagRemoved) {
-    services.emitter.sendToPlugin('default-setup/threads', {
+    services.emitter.broadcastToPlugin('default-setup/threads', {
       type: 'THREAD_UPDATED',
       threadId,
       updates: { tags: nextTags },

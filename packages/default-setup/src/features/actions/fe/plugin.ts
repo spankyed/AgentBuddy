@@ -1,10 +1,14 @@
-import type { PluginDefinition } from "@abuddy/sdk/fe";
+import { definePlugin, pluginAccepts } from '@abuddy/sdk/fe';
+import type { ActionsListEvent } from './public';
 import { Play } from 'lucide-vue-next';
 import state from './state.ts';
 import canvas from './canvas.vue';
 import settings from './settings.vue';
 
-const actionsPlugin: PluginDefinition = {
+/** Paging and editing, which the code plugin's actions panel asks of it */
+export const accepts = pluginAccepts<ActionsListEvent>();
+
+const actionsPlugin = definePlugin({
   label: 'Actions',
   icon: Play,
   state,
@@ -14,6 +18,6 @@ const actionsPlugin: PluginDefinition = {
   options: {
     // headerClass: 'bg-neutral-900 border-b border-neutral-600'
   }
-};
+});
 
 export default actionsPlugin; 

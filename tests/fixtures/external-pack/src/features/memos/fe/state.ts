@@ -8,13 +8,15 @@ import type { MemoDTO } from '../be/types';
 export const id = 'memos' as const;
 
 type UIEvents = { type: 'MEMOS.ADD'; text: string } | { type: 'MEMOS.ADD_NOTE'; text: string };
-export type MemosEvents = UIEvents | OutgoingMemosEvents;
+/** What another feature may send this plugin, which `fe/plugin.ts` declares as its inbox */
+export type MemosInbox = { type: 'MEMO.HIGHLIGHT'; memoId: string };
+export type MemosEvents = UIEvents | MemosInbox | OutgoingMemosEvents;
 
 const typeOf = safeEvents<MemosEvents>();
 
 const memosState = setup({
   types: {
-    context: {} as { memos: MemoDTO[]; notes: Array<{ text: string; note: MemoNoteDTO | null }> },
+    context: {} as { memos: MemoDTO[]; notes: Array<{ text: string; note: MemoNoteDTO | null }>; highlighted: string | null },
     events: {} as MemosEvents,
   },
   actions: {
@@ -39,16 +41,20 @@ const memosState = setup({
     sendAddNote: ({ event }) => {
       sendToSystem('memos', { type: 'ADD_MEMO_NOTE', text: typeOf('MEMOS.ADD_NOTE', event).text });
     },
+    highlight: assign({
+      highlighted: ({ event }) => typeOf('MEMO.HIGHLIGHT', event).memoId,
+    }),
   },
 }).createMachine({
   id,
-  context: { memos: [], notes: [] },
+  context: { memos: [], notes: [], highlighted: null },
   on: {
     MEMOS_CONNECTED: { actions: 'setMemos' },
     MEMO_ADDED: { actions: 'addMemo' },
     'MEMOS.ADD': { actions: 'sendAdd' },
     MEMO_NOTE_ADDED: { actions: 'addNote' },
     'MEMOS.ADD_NOTE': { actions: 'sendAddNote' },
+    'MEMO.HIGHLIGHT': { actions: 'highlight' },
   },
 });
 

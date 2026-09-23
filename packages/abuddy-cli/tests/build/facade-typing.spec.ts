@@ -28,7 +28,7 @@ const BASE_PACK = {
       services: { search: 'src/search.ts#searchService' },
       repositories: { tagQueries: 'src/repository.ts#tagQueries' },
     }, {
-      // A second plugin of the dependency, which no sendsTo of the dependent names
+      // A second plugin of the dependency, which declares no inbox: nothing may send it
       id: 'inbox',
       system: { entry: 'src/inbox.ts' },
       plugin: { entry: 'src/inbox-plugin.ts' },
@@ -43,7 +43,11 @@ const BASE_PACK = {
     'const entry = { spec: threadsSpec, machine: setup({ types: threadsSpec.types }).createMachine({ id: "threads" }) } satisfies SystemEntry;',
     'export default entry;',
   ].join('\n'),
-  'src/plugin.ts': "import type { Plugin } from '@abuddy/sdk/fe';\nexport default { id: 'threads' } as unknown as Plugin;\n",
+  'src/plugin.ts': [
+    "import { pluginAccepts, type Plugin } from '@abuddy/sdk/fe';",
+    "export const accepts = pluginAccepts<{ type: 'TAG_ADDED'; name: string }>();",
+    "export default { id: 'threads' } as unknown as Plugin;",
+  ].join('\n') + '\n',
   'src/inbox.ts': [
     "import { setup } from 'xstate';",
     "import { defineSystem, type SystemEntry } from '@abuddy/sdk/framework';",
@@ -69,7 +73,7 @@ const APP_PACK = {
     entities: { Memo: 'Memo' },
     // Same type name as the dependency's Item shape
     entityShapes: { Memo: { source: 'src/types.ts', type: 'ItemEntity' } },
-    features: [{ id: 'memos', system: { entry: 'src/system.ts', sendsTo: ['base-pack/threads', 'host/application'] }, plugin: { entry: 'src/plugin.ts' } }],
+    features: [{ id: 'memos', system: { entry: 'src/system.ts' }, plugin: { entry: 'src/plugin.ts' } }],
   }),
   'src/types.ts': 'export interface ItemEntity { text: string; pinned: boolean }\n',
   'src/plugin.ts': "import type { Plugin } from '@abuddy/sdk/fe';\nexport default { id: 'memos' } as unknown as Plugin;\n",
@@ -85,7 +89,7 @@ const APP_PACK = {
 
 const CONSUMER = `
 import { EARS as PackEARS, qx, tx, findById, findAll, createEntity, type EntityShape, type EntityName } from '#generated/ears.js';
-import { sendToPlugin, sendToSystem } from '#generated/events.js';
+import { broadcastToPlugin, sendToSystem } from '#generated/events.js';
 import { services } from '#generated/services.js';
 import { repository } from '#generated/repository.js';
 import type { EARS } from '@abuddy/sdk';
@@ -114,19 +118,19 @@ export type RepositoryService = Expect<Equal<typeof services.repository, typeof 
 // @ts-expect-error not a service of this pack or its dependency
 services.nope;
 
-// The memos system declares sendsTo: ['base-pack/threads', 'host/application']: a plugin of the dependency and the host's
-sendToPlugin('base-pack/threads', { type: 'TAG_ADDED', name: 'x' });
-sendToPlugin('memos', { type: 'MEMO_ADDED', text: 'x' });
-sendToPlugin('host/application', { type: 'PLUGIN_VISIBILITY_UPDATED', pluginVisibility: { 'demo-pack/memos': false } });
-// A plugin someone else owns keeps the events its owner declares it receives: sendsTo opens the channel, it doesn't widen them
+// A plugin of the dependency, and the host's: each takes what its own owner declares it accepts
+broadcastToPlugin('base-pack/threads', { type: 'TAG_ADDED', name: 'x' });
+broadcastToPlugin('memos', { type: 'MEMO_ADDED', text: 'x' });
+broadcastToPlugin('host/application', { type: 'PLUGIN_VISIBILITY_UPDATED', pluginVisibility: { 'demo-pack/memos': false } });
+// A plugin someone else owns keeps the events its owner declares it receives; a pack widens only its own
 // @ts-expect-error the threads plugin doesn't receive this event
-sendToPlugin('base-pack/threads', { type: 'MEMO_ADDED', text: 'x' });
+broadcastToPlugin('base-pack/threads', { type: 'MEMO_ADDED', text: 'x' });
 // @ts-expect-error a dependency's plugin is named <dependency>/<feature>
-sendToPlugin('threads', { type: 'TAG_ADDED', name: 'x' });
+broadcastToPlugin('threads', { type: 'TAG_ADDED', name: 'x' });
 // @ts-expect-error the host declares what its application plugin receives
-sendToPlugin('host/application', { type: 'MEMO_ADDED', text: 'x' });
-// @ts-expect-error no sendsTo names the dependency's inbox plugin
-sendToPlugin('base-pack/inbox', { type: 'MAIL_ARRIVED', from: 'x' });
+broadcastToPlugin('host/application', { type: 'MEMO_ADDED', text: 'x' });
+// @ts-expect-error the dependency's inbox plugin declares no inbox, so nothing may be sent to it
+broadcastToPlugin('base-pack/inbox', { type: 'MAIL_ARRIVED', from: 'x' });
 
 // Systems: this pack's by feature id, the dependency's as <dependency>/<feature>
 sendToSystem('memos', { type: 'ADD_MEMO', text: 'x' });
@@ -146,11 +150,11 @@ sendToSystem(systemId, { type: 'ADD_TAG', name: 'x' });
 // Actions get services.emitter, which names every system and plugin <pack>/<feature>, this pack's own too
 services.emitter.sendToSystem('app-pack/memos', { type: 'ADD_MEMO', text: 'x' });
 services.emitter.sendToSystem('base-pack/threads', { type: 'ADD_TAG', name: 'x' });
-services.emitter.sendToPlugin('base-pack/threads', { type: 'TAG_ADDED', name: 'x' });
+services.emitter.broadcastToPlugin('base-pack/threads', { type: 'TAG_ADDED', name: 'x' });
 // @ts-expect-error actions run outside any pack, so this pack's systems are named too
 services.emitter.sendToSystem('memos', { type: 'ADD_MEMO', text: 'x' });
 // @ts-expect-error and its plugins, so a bare feature id isn't one of them either
-services.emitter.sendToPlugin('threads', { type: 'TAG_ADDED', name: 'x' });
+services.emitter.broadcastToPlugin('threads', { type: 'TAG_ADDED', name: 'x' });
 // @ts-expect-error ADD_MEMO needs its text
 services.emitter.sendToSystem('app-pack/memos', { type: 'ADD_MEMO' });
 

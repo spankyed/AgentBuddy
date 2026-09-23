@@ -227,7 +227,7 @@ interface ContextReference {
 }
 
 const props = defineProps<{
-  currentThread: AgentThreadData
+  currentThread: AgentThreadData | null
   currentMode: string
   currentPhase?: string
   modes: AgentMode[]

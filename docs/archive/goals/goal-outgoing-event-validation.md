@@ -35,7 +35,7 @@ which looks the event's `systemId` up in `registry.getEventValidationMap()` and 
 `UnknownClientEventError` when the type isn't one that system accepts. The map is built in
 `pack-registration.ts`'s `buildEventValidationMap()` from what each registered system declares.
 
-Outgoing: `emit(pluginId, event)` and `sendToPlugin` go to the bus as `OUTGOING` and straight to the
+Outgoing: `emit(pluginId, event)` and `broadcastToPlugin` go to the bus as `OUTGOING` and straight to the
 client sink. Nothing looks at them. A system can send a plugin an event the plugin has no case for, an
 event type that was renamed, or an event whose payload is missing fields the receiving machine assumes.
 
@@ -86,7 +86,7 @@ goal is to make the class safe rather than to visit its members.
 
 ## Decisions
 
-- **Validate where the bus handles `OUTGOING`**, not inside `emit`/`sendToPlugin`. That is the one place
+- **Validate where the bus handles `OUTGOING`**, not inside `emit`/`broadcastToPlugin`. That is the one place
   every send passes through, whether it came from a system's action or from `services.emitter`, and it
   mirrors `receiveClientEvent` sitting at the other boundary rather than inside each caller.
 - **Report and drop; never throw.** `receiveClientEvent` throws because it answers an API call. Here the

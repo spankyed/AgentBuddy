@@ -1,15 +1,16 @@
 // What the notes plugin offers other features: the notes as it holds them.
 // Other features import this module, never the plugin's machine.
-import { useSelector } from '@xstate/vue'
-import { pluginHandle } from '@/features/plugin-handle'
+import type { SnapshotFrom } from 'xstate'
+import { usePluginState } from '@abuddy/sdk/fe'
+import { ref as featureRef } from '@/__generated__/ref'
 import type { NotesState } from './state'
 
-/** The notes plugin's actor, which its machine binds as it starts */
-export const notesPlugin = pluginHandle<NotesState>('notes')
+/** The ref the notes plugin runs at */
+export const NOTES = featureRef('notes')
 
 /** Every note the notes plugin holds */
 export function useNotes() {
-  return useSelector(notesPlugin.get(), (state) => state.context.notes)
+  return usePluginState(NOTES, (s: SnapshotFrom<NotesState>) => s.context.notes)
 }
 
 /** The reference type a note links as, by its note type */

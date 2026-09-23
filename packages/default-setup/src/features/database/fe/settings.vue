@@ -70,6 +70,7 @@ import CollapsibleSection from '@abuddy/ui/design/CollapsibleSection'
 import { HardDriveDownload } from 'lucide-vue-next'
 import type { DatabaseSettings } from '@/__generated__/types'
 import { navigateToPlugin } from '@/__generated__/fe'
+import type { DatabaseState } from './state'
 
 interface Props {
   settings?: DatabaseSettings
@@ -105,7 +106,7 @@ const openBackupRestore = () => {
 }
 
 // Resolved during setup: usePlugin reads the PluginScope this settings panel renders in, which a click handler can't reach
-const databaseActor = usePlugin()
+const databaseActor: DatabaseState = usePlugin()
 
 // Reset database function
 const handleResetDatabase = () => {

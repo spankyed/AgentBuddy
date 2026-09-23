@@ -15,7 +15,7 @@ export interface RootEvents {
   /** A message for a backend system, which the bus routes */
   emitIncoming(message: Message): void;
   onIncoming(callback: (message: Message) => void): () => void;
-  /** A message for a frontend plugin sent outside a system (`sendToPlugin`), which the bus delivers while a client is connected */
+  /** A message for a frontend plugin sent outside a system (`broadcastToPlugin`), which the bus delivers while a client is connected */
   emitPluginSend(message: Message): void;
   onPluginSend(callback: (message: Message) => void): () => void;
   /** A message the clients receive */

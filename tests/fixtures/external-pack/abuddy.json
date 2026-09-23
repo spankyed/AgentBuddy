@@ -19,10 +19,7 @@
       "id": "memos",
       "settings": "src/features/memos/settings.ts",
       "system": {
-        "entry": "src/features/memos/be/system.ts",
-        "sendsTo": [
-          "default-setup/logs"
-        ]
+        "entry": "src/features/memos/be/system.ts"
       },
       "plugin": {
         "entry": "src/features/memos/fe/plugin.ts"

@@ -14,6 +14,7 @@ import os from 'node:os';
 import {getMediaBasePath} from '../media-protocol/paths.js';
 import {logRenderer, logRendererFatal} from '../api-server/logger.js';
 import {splitRef} from '@abuddy/sdk/ids';
+import {openExternalUrl, openFilePath} from '../shell-access.js';
 
 class WindowManager implements AppModule {
   readonly #preload: {path: string};
@@ -243,11 +244,7 @@ class WindowManager implements AppModule {
     });
 
     // Handle opening external URLs in default browser
-    ipcMain.handle('shell:openExternal', async (_event, url: string) => {
-      if (/^https?:\/\//.test(url)) {
-        await shell.openExternal(url);
-      }
-    });
+    ipcMain.handle('shell:openExternal', (_event, url: string) => openExternalUrl(url));
 
     // Handle revealing files in OS file explorer
     ipcMain.handle('shell:showItemInFolder', async (_event, filePath: string) => {
@@ -255,10 +252,7 @@ class WindowManager implements AppModule {
     });
 
     // Handle opening files with the OS default application
-    ipcMain.handle('shell:openPath', async (_event, filePath: string) => {
-      const result = await shell.openPath(filePath);
-      if (result) throw new Error(result);
-    });
+    ipcMain.handle('shell:openPath', (_event, filePath: string) => openFilePath(filePath));
 
     // Handle opening an image in the default image app
     ipcMain.handle('shell:openImageExternal', async (_event, url: string) => {
@@ -288,7 +282,7 @@ class WindowManager implements AppModule {
 
       const tmpPath = join(os.tmpdir(), `agentbuddy-${crypto.randomUUID()}${ext}`);
       await fs.writeFile(tmpPath, buffer);
-      await shell.openPath(tmpPath);
+      await openFilePath(tmpPath);
     });
 
     // Media upload handler

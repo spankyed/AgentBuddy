@@ -8,7 +8,7 @@ import { afterAll, describe, expect, it } from 'vitest';
 const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'api-bound-runtime-'));
 process.env.ABUDDY_ENV = 'test';
 process.env.ABUDDY_USER_DATA_DIR = dataDir;
-const { openAppStore } = await import('@/setup/backend');
+const { openAppStore } = await import('@/runtime');
 const { store, engine, packs } = openAppStore();
 const { boundHost } = await import('@abuddy/sdk/runtime/internals');
 const { getAppVersion } = await import('@abuddy/sdk/env');
@@ -16,7 +16,7 @@ const { services } = await import('@abuddy/sdk/services');
 const { sendToSystem } = await import('@abuddy/sdk/events');
 const { installedEngine, repository } = await import('@abuddy/ears');
 const { registerPack, unregisterPack } = packs;
-const { rootEvents } = await import('@/core/router/bus-emitter');
+const { rootEvents } = await import('@/transport/emitter');
 /** The app version the composition binds: the root package.json's */
 const APP_VERSION: string = JSON.parse(fs.readFileSync(path.resolve(__dirname, '..', '..', '..', '..', 'package.json'), 'utf8')).version;
 

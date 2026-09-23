@@ -7,7 +7,7 @@ import type { PackMigration } from '@abuddy/sdk/framework';
 import type { PackManifest } from '@abuddy/sdk/build';
 import { appState } from '../app-state/index.ts';
 import { appMigrations } from './app/index.ts';
-import type { PackRegistry } from '../packs/pack-registration.ts';
+import type { PackRegistry } from '../packs/registry.ts';
 
 /** A version without its prerelease part: a beta (`0.3.15-beta.2`) runs its release's (`0.3.15`) migrations */
 const releaseOf = (version: string): string => version.replace(/[-+].*$/, '');

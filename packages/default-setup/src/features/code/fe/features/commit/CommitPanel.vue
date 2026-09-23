@@ -628,10 +628,10 @@
 </template>
 
 <script setup lang="ts">
-import { codeChild } from '@/features/code/fe/utils/parent-communication'
+
 import { computed, ref, nextTick, watch } from 'vue'
 import { useSelector } from '@xstate/vue'
-import { useApplicationActor, usePlugin } from '@abuddy/sdk/fe'
+import { usePlugin, useShell } from '@abuddy/sdk/fe'
 import type { CodeState } from '@/features/code/fe/state'
 import type { GitStatusFile } from '@/features/code/fe/features/commit/state'
 import { GitBranch, GitBranchPlus, GitCommit, GitFork, GitMerge, RefreshCw, Plus, Minus, RotateCcw, File, ChevronDown, ChevronRight, CheckCircle, Check, X, Sparkles, Loader2, ArrowDownToLine, ArrowUpFromLine, MoreVertical, Trash2, Copy, Search, FolderSync, Lock } from 'lucide-vue-next'
@@ -647,9 +647,10 @@ import ToastNotification from '@abuddy/ui/design/ToastNotification'
 import ContextMenuPopup from '@abuddy/ui/design/ContextMenuPopup'
 import PanelResizer from '@abuddy/ui/layout/panel-resizer'
 import { useSectionVisibilityMenu } from '@/features/code/fe/composables/useSectionVisibilityMenu'
+import { codeChild } from '../children';
 
 // Get actors
-const appActor = useApplicationActor()
+const shell = useShell()
 const codeActor: CodeState = usePlugin()
 const commitActor = codeChild(codeActor, 'commit')!
 
@@ -660,26 +661,26 @@ const codeSettings = useSelector(codeActor, (state) => state.context.settings)
 const { showMenu, menuPos, sectionMenuItems, onSectionContextMenu } = useSectionVisibilityMenu(codeSettings)
 
 // State selectors from commit actor
-const gitStatus = useSelector(commitActor, (state: any) => state.context.gitStatus)
-const gitBranch = useSelector(commitActor, (state: any) => state.context.gitBranch)
-const gitError = useSelector(commitActor, (state: any) => state.context.gitError)
-const isGitLoading = useSelector(commitActor, (state: any) => state.context.isGitLoading)
-const selectedGitFile = useSelector(commitActor, (state: any) => state.context.selectedGitFile)
-const commitMessage = useSelector(commitActor, (state: any) => state.context.commitMessage)
-const revertDialogFile = useSelector(commitActor, (state: any) => state.context.revertDialogFile)
-const availableBranches = useSelector(commitActor, (state: any) => state.context.availableBranches)
-const branchInput = useSelector(commitActor, (state: any) => state.context.branchInput)
-const isCheckingOutBranch = useSelector(commitActor, (state: any) => state.context.isCheckingOutBranch)
-const hasUpstream = useSelector(commitActor, (state: any) => state.context.hasUpstream)
-const commitsAhead = useSelector(commitActor, (state: any) => state.context.commitsAhead)
-const commitsBehind = useSelector(commitActor, (state: any) => state.context.commitsBehind)
-const isPushing = useSelector(commitActor, (state: any) => state.context.isPushing)
-const isPulling = useSelector(commitActor, (state: any) => state.context.isPulling)
-const isGeneratingMessage = useSelector(commitActor, (state: any) => state.context.isGeneratingMessage)
-const stashList = useSelector(commitActor, (state: any) => state.context.stashList)
-const isStashing = useSelector(commitActor, (state: any) => state.context.isStashing)
-const worktreeList = useSelector(commitActor, (state: any) => state.context.worktreeList)
-const isWorktreeLoading = useSelector(commitActor, (state: any) => state.context.isWorktreeLoading)
+const gitStatus = useSelector(commitActor, (state) => state.context.gitStatus)
+const gitBranch = useSelector(commitActor, (state) => state.context.gitBranch)
+const gitError = useSelector(commitActor, (state) => state.context.gitError)
+const isGitLoading = useSelector(commitActor, (state) => state.context.isGitLoading)
+const selectedGitFile = useSelector(commitActor, (state) => state.context.selectedGitFile)
+const commitMessage = useSelector(commitActor, (state) => state.context.commitMessage)
+const revertDialogFile = useSelector(commitActor, (state) => state.context.revertDialogFile)
+const availableBranches = useSelector(commitActor, (state) => state.context.availableBranches)
+const branchInput = useSelector(commitActor, (state) => state.context.branchInput)
+const isCheckingOutBranch = useSelector(commitActor, (state) => state.context.isCheckingOutBranch)
+const hasUpstream = useSelector(commitActor, (state) => state.context.hasUpstream)
+const commitsAhead = useSelector(commitActor, (state) => state.context.commitsAhead)
+const commitsBehind = useSelector(commitActor, (state) => state.context.commitsBehind)
+const isPushing = useSelector(commitActor, (state) => state.context.isPushing)
+const isPulling = useSelector(commitActor, (state) => state.context.isPulling)
+const isGeneratingMessage = useSelector(commitActor, (state) => state.context.isGeneratingMessage)
+const stashList = useSelector(commitActor, (state) => state.context.stashList)
+const isStashing = useSelector(commitActor, (state) => state.context.isStashing)
+const worktreeList = useSelector(commitActor, (state) => state.context.worktreeList)
+const isWorktreeLoading = useSelector(commitActor, (state) => state.context.isWorktreeLoading)
 const baseDirectory = useSelector(codeActor, (state) => state.context.baseDirectory)
 
 // Local state
@@ -846,7 +847,7 @@ const refreshStatus = () => {
 }
 
 const selectFile = (file: GitStatusFile) => {
-  appActor.send({ type: 'RESTORE_CHAT' })
+  shell.restoreChat()
   commitActor?.send({ type: 'commit.SELECT_FILE', file })
   commitActor?.send({ type: 'commit.VIEW_DIFF', path: file.path, staged: file.staged })
 }
@@ -939,7 +940,7 @@ const cancelRevert = () => {
 }
 
 const openFile = (file: GitStatusFile) => {
-  appActor.send({ type: 'RESTORE_CHAT' })
+  shell.restoreChat()
   commitActor?.send({ type: 'commit.OPEN_FILE', file })
 }
 

@@ -15,11 +15,11 @@ describe('resetting settings', () => {
   it("keeps the app's own state", () => {
     services.appData.completeOnboarding();
     tx(APP_STATE_ID).update('packVersions', { 'memo-pack': '1.2.0' }).update('packSeedHashes', { 'memo-pack': 'hash-1' });
-    repository.settingsCommands.updateSettings('plugin', ref('threads'), ['sort'], 'oldest');
+    services.settings.setForFeature(ref('threads'), ['sort'], 'oldest');
 
-    repository.settingsCommands.resetSettings();
+    services.settings.reset();
 
-    expect(repository.settingsQueries.getPluginSettings(ref('threads'))).not.toMatchObject({ sort: 'oldest' });
+    expect(services.settings.forFeature(ref('threads'))).not.toMatchObject({ sort: 'oldest' });
     expect(appState()).toMatchObject({
       hasOnboarded: true,
       packVersions: { 'memo-pack': '1.2.0' },

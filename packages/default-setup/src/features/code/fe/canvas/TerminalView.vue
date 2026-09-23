@@ -45,7 +45,7 @@
 
 <script setup lang="ts">
 import { usePlugin } from '@abuddy/sdk/fe'
-import { codeChild } from '@/features/code/fe/utils/parent-communication'
+
 import { ref, onMounted, onBeforeUnmount, computed } from 'vue'
 import ScrollToBottomFob from '@abuddy/ui/design/ScrollToBottomFob'
 import TrackedContextMenuRoot from '@abuddy/ui/design/TrackedContextMenuRoot'
@@ -63,6 +63,7 @@ import type { FitAddon } from '@xterm/addon-fit'
 import { id, type CodeState } from '@/features/code/fe/state'
 import type { TerminalInfo } from '@/features/code/fe/features/terminal/state'
 import { terminalPool } from '@/features/code/fe/utils/terminal-pool'
+import { codeChild } from '../features/children';
 
 /* --------------------------------------------------------------------------
  * Props & actor -------------------------------------------------------------------------- */

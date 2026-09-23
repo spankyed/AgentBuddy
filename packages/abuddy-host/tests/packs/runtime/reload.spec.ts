@@ -17,7 +17,7 @@ const { resolveAppContext } = await import('@abuddy/sdk/env');
 // The test host's logger reports through its root event bus, so a test can read what the code under test logged
 const { testRootEvents: rootEvents, resetTestData, testPacks } = await import('@abuddy/sdk/testing');
 const { appState } = await import('../../../src/app-state/index.ts');
-const { readInstalledPacks } = await import('../../../src/packs/installed-packs.ts');
+const { readInstalledPacks } = await import('../../../src/packs/installed.ts');
 
 const PACK_ID = 'reload-pack';
 

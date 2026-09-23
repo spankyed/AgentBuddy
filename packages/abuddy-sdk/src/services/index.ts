@@ -1,6 +1,6 @@
 import type { repository } from '@abuddy/ears';
 import { boundHost, type HostRuntimeServices } from '../runtime/host-runtime.ts';
-import { sendToPlugin, sendToSystem } from '../events/index.ts';
+import { broadcastToPlugin, sendToSystem } from '../events/index.ts';
 import { resolveRegistered } from '../ids/refs.ts';
 import { createLogger, type Logger } from '../logger/logger.ts';
 import type { AppDataService } from './app-data.ts';
@@ -8,12 +8,14 @@ import type { TraceStore } from './trace-store.ts';
 import type { InferenceService } from './inference.ts';
 import type { SecretsService } from './secrets.ts';
 import type { FilesystemService } from './filesystem.ts';
+import type { SettingsService } from './settings.ts';
 
 export type { AppDataService, BackupDatabase, BackupInfo } from './app-data.ts';
 export { UnknownBackupDatabasesError } from './app-data.ts';
 export type { TraceStore, TraceEntityMeta, TraceRelation } from './trace-store.ts';
 export { _createInferenceService, type _InferenceModels, type InferenceService, type OutputSchema, type OutputSpec, type _ResolveModel } from './inference.ts';
 export type { FileEntry, FileStat, FilesystemService } from './filesystem.ts';
+export type { SettingsChange, SettingsFeatureName, SettingsService } from './settings.ts';
 export type { SecretInfo, SecretProvider, SecretsProtection, SecretsService, SecretsSnapshot, SecretsStatus } from './secrets.ts';
 export { _secretRules, _secretProviderLabel, _toSecretInfo } from './secrets-rules.ts';
 export type { ModelId, ProviderName } from './models.ts';
@@ -35,7 +37,7 @@ export interface HostServices {
    * types them with its own and its dependencies' events.
    */
   emitter: {
-    sendToPlugin: typeof sendToPlugin;
+    broadcastToPlugin: typeof broadcastToPlugin;
     sendToSystem: typeof sendToSystem;
   };
   repository: typeof repository;
@@ -49,6 +51,8 @@ export interface HostServices {
   secrets: SecretsService;
   /** Files and folders on the user's disk */
   filesystem: FilesystemService;
+  /** The app's settings: a feature's own, and each registered section */
+  settings: SettingsService;
 }
 
 /** Actions run outside any pack, so they name every feature by its ref, which must be a registered one */
@@ -56,7 +60,7 @@ const actionRef = (kind: 'system' | 'plugin', name: string, registered: readonly
   resolveRegistered(kind, name, { registered, form: `actions name a ${kind} "<packId>/<featureId>"` });
 
 const emitter: HostServices['emitter'] = {
-  sendToPlugin: (name, event) => sendToPlugin(actionRef('plugin', name, boundHost().packs.pluginIds()), event),
+  broadcastToPlugin: (name, event) => broadcastToPlugin(actionRef('plugin', name, boundHost().packs.pluginIds()), event),
   sendToSystem: (to, event) => sendToSystem(typeof to === 'string' ? actionRef('system', to, boundHost().packs.systemIds()) : to, event),
 };
 
@@ -110,9 +114,23 @@ const filesystem: FilesystemService = {
   stat: (filePath) => app('filesystem').stat(filePath),
 };
 
+const settings: SettingsService = {
+  getAll: () => app('settings').getAll(),
+  getStored: () => app('settings').getStored(),
+  getSection: (section) => app('settings').getSection(section),
+  forFeature: (name) => app('settings').forFeature(name),
+  setForFeature: (name, path, value) => app('settings').setForFeature(name, path, value),
+  setInSection: (section, path, value) => app('settings').setInSection(section, path, value),
+  replaceAll: (next) => app('settings').replaceAll(next),
+  removeStored: (path) => app('settings').removeStored(path),
+  reset: () => app('settings').reset(),
+  whileReplacingData: (replace) => app('settings').whileReplacingData(replace),
+  onChange: (listener) => app('settings').onChange(listener),
+};
+
 /**
- * The services the SDK builds (logger, emitter, repository from the bound engine), the app's five, and every
- * registered pack's. Reading them needs a bound app; the app's five are delegates that read it on each call.
+ * The services the SDK builds (logger, emitter, repository from the bound engine), the app's six, and every
+ * registered pack's. Reading them needs a bound app; the app's six are delegates that read it on each call.
  */
 function resolveServices(): HostServices & Record<string, unknown> {
   const runtime = boundHost();
@@ -125,6 +143,7 @@ function resolveServices(): HostServices & Record<string, unknown> {
     inference,
     secrets,
     filesystem,
+    settings,
     ...runtime.packs.getRegisteredServices(),
   };
 }

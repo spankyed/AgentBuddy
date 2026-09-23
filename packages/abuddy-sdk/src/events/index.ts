@@ -13,7 +13,7 @@ export { eventTypes, type TypeOfEvent } from './event-types.ts';
 /**
  * A message on the bus: the ref of the system or plugin it goes to, and the event exactly as the sender wrote it.
  * Where it goes is never a field of the event, so an event may carry any field (a `pluginId` of its own included).
- * Messages sent in (`sendToSystem`) go to systems, and messages sent out (`sendToPlugin`) to plugins.
+ * Messages sent in (`sendToSystem`) go to systems, and messages sent out (`broadcastToPlugin`) to plugins.
  */
 export interface Message {
   to: string;
@@ -83,8 +83,8 @@ export function specEvents<S extends { _incoming: unknown; _outgoing: unknown }>
 }
 
 /**
- * Events the host app's own plugins receive from pack systems. A pack system declares a send to one
- * with `features[].system.sendsTo` in abuddy.json; `#generated/events` includes this map.
+ * Events the host app's own plugins receive from packs. The host declares them here, as a pack's plugin declares
+ * its own with `pluginAccepts()`; `#generated/events` includes this map, so any pack may send them.
  */
 export type HostPluginEvents = {
   'host/application':
@@ -95,7 +95,16 @@ export type HostPluginEvents = {
     // The app's own send when a plugin's tab is shown or hidden, or a pack's defaults change
     | { type: 'PLUGIN_VISIBILITY_UPDATED'; pluginVisibility: Record<string, boolean> }
     // The user finished onboarding: the shell leaves its onboarding layout
-    | { type: 'ONBOARDING_COMPLETE' };
+    | { type: 'ONBOARDING_COMPLETE' }
+    // Opens a plugin, by its ref, in the app's main windows (a popout keeps the plugin it shows) and hands its actor
+    // `events`; the shell waits for a plugin whose pack's frontend is still loading
+    | { type: 'OPEN_PLUGIN'; plugin: string; events?: Array<{ type: string; [key: string]: unknown }> };
+  /**
+   * The app's Settings view. A pack sends it what only that pack can find out about its own things, for the view to
+   * show — the code feature's CLI resolution, for one. The settings themselves are the app's.
+   */
+  'host/settings':
+    | { type: 'CLI_TEST_RESULT'; provider: string; success: boolean; error?: string; resolvedPath?: string };
 };
 
 /** Events the host app's own systems receive from pack code, which names them `host/<feature>` */
@@ -117,7 +126,8 @@ export const HOST_SYSTEM_EVENT_TYPES = {
  * read the host's plugins from. A pack's own plugins get this generated from their systems' specs.
  */
 export const HOST_PLUGIN_EVENT_TYPES = {
-  'host/application': eventTypes<HostPluginEvents['host/application']>()('CLIENT_CONNECTED', 'APPLICATION_HOTKEYS', 'PLUGIN_VISIBILITY_UPDATED', 'ONBOARDING_COMPLETE'),
+  'host/application': eventTypes<HostPluginEvents['host/application']>()('CLIENT_CONNECTED', 'APPLICATION_HOTKEYS', 'PLUGIN_VISIBILITY_UPDATED', 'ONBOARDING_COMPLETE', 'OPEN_PLUGIN'),
+  'host/settings': eventTypes<HostPluginEvents['host/settings']>()('CLI_TEST_RESULT'),
 } satisfies Record<keyof HostPluginEvents, readonly string[]>;
 
 /**
@@ -125,17 +135,49 @@ export const HOST_PLUGIN_EVENT_TYPES = {
  * A bound frontend wins, as it does for the registered packs' lookups (`_boundPackExtensions`).
  */
 function sendIncoming(message: Message): void {
-  if (_isFeHostBound()) boundFeHost().transport.sendIncoming(message);
+  if (_isFeHostBound()) boundFeHost().client.send(message);
   else if (_isHostBound()) boundHost().transport.rootEvents.emitIncoming(message);
   else throw new Error('No host is bound to send events through: call bindHost(runtime) (backend) or bindFeHost(runtime) (frontend) from @abuddy/sdk/runtime first');
 }
 
 /**
- * Sends an event to a frontend plugin through the bus, which delivers it once a client is connected. Backend only.
- * Untyped: packs use the `sendToPlugin` from their `#generated/events`.
+ * Sends an event to a plugin through the bus, which delivers it once a client is connected — and to **every**
+ * window showing that plugin, since a plugin runs once per window. Backend only.
+ *
+ * That reach is the reason for the name. `sendToPlugin` beside it is the renderer's, and goes to one window's actor.
+ * A backend send that only one window should act on says so in the event, as the host's `OPEN_PLUGIN` does.
+ *
+ * Untyped: packs use the `broadcastToPlugin` from their `#generated/events`.
  */
-export function sendToPlugin(to: string, event: { type: string; [key: string]: unknown }): void {
+export function broadcastToPlugin(to: string, event: { type: string; [key: string]: unknown }): void {
+  // The two sends share a signature, so the compiler can't tell a caller it picked the wrong one: say which it is.
+  // Reaching for the other from here is the likely mistake, not a missing bindHost.
+  if (!_isHostBound() && _isFeHostBound()) {
+    throw new Error(`broadcastToPlugin("${to}") is the backend's, over the bus to every window. In the renderer, send to this window's plugin with sendToPlugin from #generated/events`);
+  }
   boundHost().transport.rootEvents.emitPluginSend({ to, event });
+}
+
+/**
+ * @internal Sends an event to the plugin at `ref` in **this window**, straight to its actor — no bus, no other
+ * window. The renderer half of `sendToPlugin`, which `defineEvents` types per receiving plugin.
+ *
+ * A plugin runs once per window, so this is what UI coordination wants: the artifact opens where the user clicked.
+ *
+ * A send to a plugin that isn't running throws, where the bus's half reports a `diagnostic` and drops
+ * (`createBusMachine`'s `notify`). The asymmetry is the channel, not a choice: `reportError` sends its
+ * `SYSTEM_ERROR` over the backend bus, which no window has, so there is nothing here to report on. Throwing is
+ * what the renderer's other reads do (`pluginActor`, `usePluginState`). A ref that may legitimately be absent —
+ * another pack's, which may not be installed — is checked with `hasDesignation` before sending.
+ */
+export function _sendToLocalPlugin(ref: string, event: { type: string; [key: string]: unknown }): void {
+  // The two sends share a signature, so the compiler can't tell a caller it picked the wrong one: say which it is.
+  if (!_isFeHostBound() && _isHostBound()) {
+    throw new Error(`sendToPlugin("${ref}") is the renderer's, to this window's plugin. On the backend, send over the bus with broadcastToPlugin from #generated/events`);
+  }
+  const actor = boundFeHost().application.system.get(ref);
+  if (!actor) throw new Error(`No plugin is running at "${ref}" to send ${event.type} to`);
+  actor.send(event);
 }
 
 /** A system: its ref, or the role a system plays (`{ role: 'brain' }`), found when the message is sent */
@@ -177,6 +219,9 @@ export type TypedSendToSystem<S extends SystemEventMap> = (<Id extends keyof S &
 
 /** A pack's typed sends */
 export interface TypedEvents<P extends PluginEvents, S extends SystemEventMap> {
+  /** Backend: over the bus, to every window showing that plugin */
+  broadcastToPlugin: TypedSendToPlugin<P>;
+  /** Renderer: straight to this window's actor for that plugin */
   sendToPlugin: TypedSendToPlugin<P>;
   sendToSystem: TypedSendToSystem<S>;
 }
@@ -189,7 +234,8 @@ export interface TypedEvents<P extends PluginEvents, S extends SystemEventMap> {
 export function defineEvents<P extends PluginEvents, S extends SystemEventMap>(packId: string): TypedEvents<P, S> {
   const refOf = (name: string): string => resolveName(name, packId);
   return {
-    sendToPlugin: (name: string, event: { type: string }) => sendToPlugin(refOf(name), event),
+    broadcastToPlugin: (name: string, event: { type: string }) => broadcastToPlugin(refOf(name), event),
+    sendToPlugin: (name: string, event: { type: string }) => _sendToLocalPlugin(refOf(name), event),
     sendToSystem: (to: SystemTarget, event: { type: string }) => sendToSystem(typeof to === 'string' ? refOf(to) : to, event),
   } as unknown as TypedEvents<P, S>;
 }

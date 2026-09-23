@@ -217,9 +217,9 @@ import { librarySystem } from '../../state'
 import { FileText, Search, Hash, Copy, ChevronRight } from 'lucide-vue-next'
 import Button from '@abuddy/ui/design/button'
 import type { IndexSearchResult, SearchIndex } from '@/__generated__/types'
+import type { LibraryActor } from '../../state'
 
-type LibraryActor = ActorRefFrom<typeof librarySystem>
-const actor = usePlugin() as LibraryActor
+const actor = usePlugin<LibraryActor>()
 
 const testingIndex = useSelector(actor, (state) => state.context.testingIndex) as Ref<SearchIndex | null>
 const testQuery = useSelector(actor, (state) => state.context.testQuery) as Ref<string>

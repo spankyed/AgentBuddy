@@ -1,4 +1,5 @@
 import { boundHost } from '../runtime/host-runtime.ts';
+import type { FeatureRef } from '../ids/index.ts';
 import { isPlainObject } from '../utils/shared.ts';
 
 /**
@@ -16,7 +17,8 @@ export interface FeatureSettings {
  */
 export interface PackSettingsDefaults {
   revision: number;
-  settings: { plugins: Record<string, unknown> };
+  /** The default settings document: each feature's slice under `plugins`, and each section a pack registered */
+  settings: { plugins: Record<string, unknown>; [section: string]: unknown };
   visibility: Record<string, boolean>;
 }
 
@@ -47,4 +49,13 @@ export function getPackSettingsDefaults(): PackSettingsDefaults {
 /** Calls `listener` whenever a pack's feature settings are registered or unregistered; returns the unsubscribe */
 export function onPackSettingsDefaultsChanged(listener: () => void): () => void {
   return boundHost().packs.onSettingsDefaultsChanged(listener);
+}
+
+/**
+ * The refs of every installed feature that can have settings, a disabled pack's included (the bound app's): it declares
+ * defaults, or has a plugin, whose settings form writes them. A plugin's settings may be written only under one of
+ * them; the settings of a pack since uninstalled stay while nothing changes them.
+ */
+export function getFeaturesWithSettings(): readonly FeatureRef[] {
+  return boundHost().packs.featuresWithSettings();
 }

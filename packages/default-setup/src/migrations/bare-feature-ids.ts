@@ -1,6 +1,7 @@
-// Before 0.3.15 every plugin and system ran under its bare feature id, and data written then names them that way:
-// link blocks in messages, and the calls in code users wrote. These rewrite such a name onto its ref (this pack's, or
-// the host's for the app shell), which the 0.3.15 migration applies to stored data.
+// Before 0.3.15 every plugin and system ran under its bare feature id, and data written then names them that way, as
+// the link blocks in messages do. These rewrite such a name onto this pack's ref, which the 0.3.15 migration applies
+// to stored data. Code users wrote is left as they wrote it: a bare name there fails when the code runs, and the
+// services' error names the ref it meant.
 import { ref, type FeatureName } from '@/__generated__/ref';
 
 /**
@@ -9,7 +10,7 @@ import { ref, type FeatureName } from '@/__generated__/ref';
  * `REMOVED_SINCE_0314`.
  */
 const FEATURES_0314 = [
-  'threads', 'code', 'notes', 'browser', 'library', 'flows', 'actions', 'prompts', 'brain', 'database', 'logs', 'settings',
+  'threads', 'code', 'notes', 'browser', 'library', 'flows', 'actions', 'prompts', 'brain', 'database', 'logs',
 ] as const satisfies readonly FeatureName[];
 
 /**
@@ -19,15 +20,17 @@ const FEATURES_0314 = [
 const REMOVED_SINCE_0314: readonly string[] = ['calendar'];
 
 /**
- * The app shell's plugin id in 0.3.14. Action code sent it events with `services.emitter.sendToPlugin('application',
- * …)`; the shell is the host's plugin now.
+ * The 0.3.14 features that are no longer this pack's but still exist, with the ref they run under now. `settings`
+ * became the app's own feature when the settings store moved to @abuddy/host, so a link written then still opens
+ * the same view — at the app's ref rather than this pack's.
  */
-const APPLICATION_0314 = 'application';
-const APPLICATION_REF = 'host/application';
+const MOVED_SINCE_0314: Readonly<Record<string, string>> = { settings: 'host/settings' };
 
 /** This pack's ref for a bare feature id it had in 0.3.14, or undefined for any other name */
 export function refOf0314Feature(name: unknown): string | undefined {
-  return typeof name === 'string' && (FEATURES_0314 as readonly string[]).includes(name) ? ref(name as FeatureName) : undefined;
+  if (typeof name !== 'string') return undefined;
+  if (name in MOVED_SINCE_0314) return MOVED_SINCE_0314[name];
+  return (FEATURES_0314 as readonly string[]).includes(name) ? ref(name as FeatureName) : undefined;
 }
 
 /** A link as a message's link block stores it */
@@ -68,23 +71,4 @@ export function addressLinkBlocks<T>(blocks: T): T {
     return kept.length > 0 ? [{ ...block, props: { ...block.props, links: kept } }] : [];
   });
   return (changed ? next : blocks) as T;
-}
-
-/**
- * The service calls that name a plugin or system first, as 0.3.14's action services took them and today's still do,
- * with that name written as a string literal. Only a literal is matched: a name built at run time can't be read here.
- */
-const NAMED_SERVICE_CALL =
-  /\b(emitter\s*\.\s*sendTo(?:Plugin|System)|settings\s*\.\s*(?:getPluginSettings|updatePluginSetting))(\s*\(\s*)(['"`])([A-Za-z0-9]+)\3/g;
-
-/**
- * Code with each of those calls naming one of this pack's 0.3.14 features by bare id rewritten to its ref, and each
- * `emitter.sendToPlugin` to the 0.3.14 app shell (`application`) to the host's
- */
-export function addressServiceCalls(code: string): string {
-  return code.replace(NAMED_SERVICE_CALL, (call, method: string, open: string, quote: string, name: string) => {
-    const toShell = name === APPLICATION_0314 && /^emitter\s*\.\s*sendToPlugin$/.test(method);
-    const moved = toShell ? APPLICATION_REF : refOf0314Feature(name);
-    return moved ? `${method}${open}${quote}${moved}${quote}` : call;
-  });
 }

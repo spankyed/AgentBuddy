@@ -1,3 +1,4 @@
+import { hasOwn } from './shared.ts';
 export type DiffResult<T> =
   | null
   | { renames: Array<{ from: string; to: string }>; added: T[]; removed: T[] };
@@ -53,9 +54,9 @@ const detectArrayChanges = (prev: DiffItem[], next: DiffItem[]): DiffResult<Diff
   if (!prev.length || !next.length) return null;
   if (typeof prev[0] !== 'object' || typeof next[0] !== 'object') return null;
   const idFields = ['id', 'label', 'name', 'key', 'code'];
-  const idField = idFields.find(f => Object.prototype.hasOwnProperty.call(prev[0], f));
+  const idField = idFields.find(f => hasOwn(prev[0], f));
   if (!idField) return null;
   const matchFields = ['color', 'value', 'icon'];
-  const matchField = matchFields.find(f => Object.prototype.hasOwnProperty.call(prev[0], f)) || idField;
+  const matchField = matchFields.find(f => hasOwn(prev[0], f)) || idField;
   return detectChanges(prev, next, item => String(item[idField]), item => String(item[matchField]));
 };

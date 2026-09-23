@@ -71,7 +71,7 @@ async function ensureServer(services: Services): Promise<any> {
 
 function effectiveCwd(services: Services, threadId?: string, cwdOverride?: string): string | undefined {
   const prior = threadId ? getCodexState(services, threadId) : undefined;
-  const codeSettings = services.repository.settingsQueries.getPluginSettings('default-setup/code') as any;
+  const codeSettings = services.settings.forFeature('default-setup/code') as any;
   return cwdOverride
     || prior?.cwdOverride
     || prior?.cwd
@@ -252,7 +252,7 @@ async function handleResume(
   }
 
   const threadData = services.repository.chatQueries.threadData(targetThreadId as EntityId);
-  if (threadData) services.emitter.sendToPlugin('default-setup/threads', { type: 'LOAD_CHAT_THREAD', data: threadData });
+  if (threadData) services.emitter.broadcastToPlugin('default-setup/threads', { type: 'LOAD_CHAT_THREAD', data: threadData });
 
   return { text: confirmText };
 }

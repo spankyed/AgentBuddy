@@ -47,25 +47,45 @@ export function resolveName(name: string, packId?: string): FeatureRef {
   return ref as FeatureRef;
 }
 
+/** Where a name is looked up: which refs it may resolve to, and how a mistake's message names them */
+export interface RefLookup {
+  /** The refs the name may resolve to */
+  registered: readonly string[];
+  /** The pack the name is written in, whose own features it names by id; with none, only a ref resolves */
+  packId?: string;
+  /** How the message says what the refs are among: `registered` (the default), or e.g. `installed` */
+  among?: string;
+  /** How to write a name, for the message; by default a ref, or the pack's own features by id when `packId` is given */
+  form?: string;
+}
+
 /**
- * The registered system or plugin a name stands for: the name resolved in pack `packId` (with none, only a ref
- * resolves), which must be among `registered`. Throws naming the form to write, the one registered feature it
- * probably meant, and what is registered.
+ * Why `name` doesn't stand for one of `registered` in pack `packId`, or undefined when it does. `kind` is the noun
+ * the message names them by (`plugin`, `system`, `feature with settings`). Names the form to write, the ref it would
+ * be, the one of `registered` it probably meant, and what there is.
  */
-export function resolveRegistered(
-  kind: 'system' | 'plugin',
-  name: string,
-  { packId, registered: refs, form }: { packId?: string; registered: readonly string[]; form?: string },
-): FeatureRef {
-  const ref = packId || splitRef(name) ? resolveName(name, packId) : undefined;
-  if (ref && refs.includes(ref)) return ref;
+export function refProblem(kind: string, name: string, { registered: refs, packId, among = 'registered', form }: RefLookup): string | undefined {
+  let ref: string | undefined;
+  try {
+    ref = packId || splitRef(name) ? resolveName(name, packId) : undefined;
+  } catch (error) {
+    return (error as Error).message;
+  }
+  if (ref && refs.includes(ref)) return undefined;
   const featureId = splitRef(name)?.featureId ?? name;
   const meant = refs.filter((candidate) => candidate !== ref && splitRef(candidate)?.featureId === featureId);
-  throw new Error([
-    `No registered ${kind} is named "${name}"`,
+  return [
+    `No ${among} ${kind} is named "${name}"`,
     ref && ref !== name ? ` (it would be "${ref}")` : '',
     `: ${form ?? `name ${packId ? `this pack's own ${kind}s by feature id and another pack's` : `a ${kind}`} as "<packId>/<featureId>"`}`,
     meant.length === 1 ? ` — did you mean "${meant[0]}"?` : '',
-    ` Registered: ${refs.join(', ') || 'none'}`,
-  ].join(''));
+    ` ${among[0].toUpperCase()}${among.slice(1)}: ${refs.join(', ') || 'none'}`,
+  ].join('');
+}
+
+/** The one of `registered` a name stands for (`refProblem`), or a throw saying why none is */
+export function resolveRegistered(kind: string, name: string, lookup: RefLookup): FeatureRef {
+  const problem = refProblem(kind, name, lookup);
+  if (problem) throw new Error(problem);
+  return (splitRef(name) ? name : resolveName(name, lookup.packId)) as FeatureRef;
 }

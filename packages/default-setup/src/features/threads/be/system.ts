@@ -1,12 +1,15 @@
-import { sendToSystem, sendToPlugin } from '@/__generated__/events';
+import type { ThreadsSettings } from '@/__generated__/types'
+import type { AssistantSettings } from '@/app-settings/types';
+import { sendToSystem, broadcastToPlugin } from '@/__generated__/events';
 import { services } from '@/__generated__/services';
+import { REQUIRED_PROVIDERS } from '@/app-settings/providers';
 import { assign, cancel, fromPromise, log, raise, sendTo, setup, type ErrorActorEvent } from 'xstate';
 import { defineSystem, type SystemEntry } from '@abuddy/sdk/framework';
 
 import { tx, EARS } from '@/__generated__/ears';
 import { repository } from '@/__generated__/repository';
 import type { ThreadEditFields, ThreadEntity, ThreadLinkItem, ThreadConnectedData, MessageEntity, BlockConfig, AgentThreadData, AgentConnectedData, RecentThreadRefreshData } from './types';
-import type { AgentSettings, CommandItem } from '../../settings/be/types';
+import type { AgentSettings, CommandItem } from './types';
 import { type ThreadExtendedData, type BlockResponse } from './types';
 import { type ChangeBlock, toMap, toIdentifierSet, mapScalar, mapArray } from '@abuddy/sdk/utils';
 import { exportThreads } from './export-threads';
@@ -15,6 +18,7 @@ import { runThreadTeardown } from './thread-teardown';
 import { generateAsideText } from './services/chat';
 import { createLogger, reportError } from '@abuddy/sdk/logger';
 import { ref } from '@/__generated__/ref';
+import { errorMessage } from '@abuddy/sdk/utils/pure';
 
 const logger = createLogger('threads');
 let birthFlowStarted = false;
@@ -50,6 +54,8 @@ type IncomingThreadsEvents =
 
   | { type: 'CLIENT_CONNECTED' }
   | { type: 'BIRTH_FLOW_START' }
+  /** The user's stored API keys changed (no values). The assistant's first flow waits on one it can call a model with */
+  | { type: 'SECRETS_CHANGED' }
   | { type: 'THREAD_DELETED'; threadId: string }
   /** The library's commands folder changed (sent by the library system) */
   | { type: 'COMMANDS_CHANGED' }
@@ -124,9 +130,9 @@ export const threadsSystem = setup({
     // ---- Thread management actions ----
     sendThreadsConnectedData: ({ system }) => {
       const connectedData = repository.threadQueries.connectedData();
-      const threadsSettings = repository.settingsQueries.getPluginSettings(ref('threads'));
+      const threadsSettings = services.settings.forFeature<ThreadsSettings>(ref('threads'));
 
-      sendToPlugin('threads', {
+      broadcastToPlugin('threads', {
         type: 'THREAD_CONNECTED',
         data: {
           ...connectedData,
@@ -135,7 +141,7 @@ export const threadsSystem = setup({
       });
     },
     sendArchivedThreads: ({ system }) => {
-      sendToPlugin('threads', {
+      broadcastToPlugin('threads', {
         type: 'ARCHIVED_THREADS_DATA',
         threads: repository.threadQueries.archivedThreads(),
       });
@@ -162,7 +168,7 @@ export const threadsSystem = setup({
         );
       }
 
-      sendToPlugin('threads', {
+      broadcastToPlugin('threads', {
         type: 'THREAD_CREATED',
         id: newThreadId,
         entityType: EARS.Entity.Thread,
@@ -174,7 +180,7 @@ export const threadsSystem = setup({
 
       repository.threadCommands.markAsVisited(threadId);
 
-      sendToPlugin('threads', {
+      broadcastToPlugin('threads', {
         type: 'SET_VIEW_DATA',
         id: threadId,
         data: repository.threadQueries.extendedData(threadId),
@@ -196,7 +202,7 @@ export const threadsSystem = setup({
       }
 
       if (key === 'status') {
-        sendToPlugin('threads', {
+        broadcastToPlugin('threads', {
           type: 'THREAD_UPDATED',
           threadId,
           updates: { status: value as string },
@@ -205,15 +211,15 @@ export const threadsSystem = setup({
 
       if (key === 'archived') {
         // Refresh thread list and recent threads since thread visibility changed
-        sendToPlugin('threads', {
+        broadcastToPlugin('threads', {
           type: 'THREAD_CONNECTED',
           data: {
             ...repository.threadQueries.connectedData(),
-            settings: repository.settingsQueries.getPluginSettings(ref('threads')) ?? null,
+            settings: services.settings.forFeature<ThreadsSettings>(ref('threads')) ?? null,
           },
         });
         // Also refresh archived threads list so the change is visible immediately
-        sendToPlugin('threads', {
+        broadcastToPlugin('threads', {
           type: 'ARCHIVED_THREADS_DATA',
           threads: repository.threadQueries.archivedThreads(),
         });
@@ -221,7 +227,7 @@ export const threadsSystem = setup({
       }
 
       if (key === 'pinned') {
-        sendToPlugin('threads', {
+        broadcastToPlugin('threads', {
           type: 'THREAD_UPDATED',
           threadId,
           updates: { pinned: value as boolean },
@@ -244,7 +250,7 @@ export const threadsSystem = setup({
         return;
       }
 
-      sendToPlugin('threads', {
+      broadcastToPlugin('threads', {
         type: 'THREAD_UPDATED',
         threadId,
         updates: { status },
@@ -259,7 +265,7 @@ export const threadsSystem = setup({
     },
     handleSettingsUpdate: ({ system, event }) => {
       const firstStatusLabel = (): string | undefined =>
-        repository.settingsQueries.getPluginSettings(ref('threads'))?.statuses?.[0]?.label;
+        services.settings.forFeature<ThreadsSettings>(ref('threads'))?.statuses?.[0]?.label;
 
       const { changes } = threadsSpec.typeOf('FEATURE_SETTINGS_UPDATED', event);
 
@@ -299,17 +305,17 @@ export const threadsSystem = setup({
 
             if (Object.keys(patch).length) {
               repository.threadCommands.update(th.id, patch);
-              sendToPlugin('threads', { type: 'THREAD_UPDATED', threadId: th.id, updates: patch });
+              broadcastToPlugin('threads', { type: 'THREAD_UPDATED', threadId: th.id, updates: patch });
               touched = true;
             }
           }
 
           if (touched) {
-            sendToPlugin('threads', {
+            broadcastToPlugin('threads', {
                 type: 'THREAD_CONNECTED',
                 data: {
                   ...repository.threadQueries.connectedData(),
-                  settings: repository.settingsQueries.getPluginSettings(ref('threads')) ?? null,
+                  settings: services.settings.forFeature<ThreadsSettings>(ref('threads')) ?? null,
                 },
               });
           }
@@ -334,11 +340,11 @@ export const threadsSystem = setup({
       }
 
       // Refresh all thread data on the frontend
-      sendToPlugin('threads', {
+      broadcastToPlugin('threads', {
         type: 'THREAD_CONNECTED',
         data: {
           ...repository.threadQueries.connectedData(),
-          settings: repository.settingsQueries.getPluginSettings(ref('threads')) ?? null,
+          settings: services.settings.forFeature<ThreadsSettings>(ref('threads')) ?? null,
         },
       });
     },
@@ -356,7 +362,7 @@ export const threadsSystem = setup({
         return;
       }
 
-      sendToPlugin('threads', {
+      broadcastToPlugin('threads', {
         type: 'THREAD_DELETED',
         threadId,
       });
@@ -370,14 +376,14 @@ export const threadsSystem = setup({
       try {
         const { filePath, threadCount } = exportThreads(ev.directory);
 
-        sendToPlugin('threads', {
+        broadcastToPlugin('threads', {
           type: 'THREADS_EXPORTED',
           filePath,
           threadCount,
         });
       } catch (err) {
-        const message = err instanceof Error ? err.message : String(err);
-        sendToPlugin('threads', {
+        const message = errorMessage(err);
+        broadcastToPlugin('threads', {
           type: 'THREADS_EXPORT_FAILED',
           errors: [message],
         });
@@ -390,23 +396,23 @@ export const threadsSystem = setup({
         const result = importThreads(ev.directory);
 
         if (result.created === 0 && result.errors.length > 0) {
-          sendToPlugin('threads', {
+          broadcastToPlugin('threads', {
             type: 'THREADS_IMPORT_FAILED',
             errors: result.errors,
           });
           return;
         }
 
-        sendToPlugin('threads', {
+        broadcastToPlugin('threads', {
           type: 'THREADS_IMPORTED',
           count: result.created,
           ...(result.errors.length > 0 ? { errors: result.errors } : {}),
         });
 
         const connectedData = repository.threadQueries.connectedData();
-        const threadsSettings = repository.settingsQueries.getPluginSettings(ref('threads'));
+        const threadsSettings = services.settings.forFeature<ThreadsSettings>(ref('threads'));
 
-        sendToPlugin('threads', {
+        broadcastToPlugin('threads', {
           type: 'THREAD_CONNECTED',
           data: {
             ...connectedData,
@@ -414,8 +420,8 @@ export const threadsSystem = setup({
           },
         });
       } catch (err) {
-        const message = err instanceof Error ? err.message : String(err);
-        sendToPlugin('threads', {
+        const message = errorMessage(err);
+        broadcastToPlugin('threads', {
           type: 'THREADS_IMPORT_FAILED',
           errors: [message],
         });
@@ -426,10 +432,10 @@ export const threadsSystem = setup({
     checkOnboarding: ({ system }) => {
       if (!services.appData.hasOnboarded() && !birthFlowStarted) {
         birthFlowStarted = true;
-        const assistantSettings = repository.settingsQueries.getAssistantSettings();
+        const assistantSettings = services.settings.getSection<AssistantSettings>('assistant');
         if (!assistantSettings.birthdate) {
           const birthdate = new Date().toISOString();
-          repository.settingsCommands.updateSettings('assistant', null, ['birthdate'], birthdate);
+          services.settings.setInSection('assistant', ['birthdate'], birthdate);
           logger.info('Assistant birthdate set', { birthdate });
         }
         sendToSystem('brain', {
@@ -439,12 +445,24 @@ export const threadsSystem = setup({
         });
       }
     },
+    /**
+     * The assistant's first flow runs once it can call a model, so the keys changing is what may start it. It waits
+     * here rather than with the settings view because the birth flow, the assistant and its birthdate are this
+     * feature's; the app only says that the user's keys changed.
+     */
+    startBirthFlowOnceKeyed: () => {
+      const keyed = services.secrets.list().some((secret) => secret.selected && (REQUIRED_PROVIDERS as readonly string[]).includes(secret.provider));
+      if (keyed && !services.settings.getSection<AssistantSettings>('assistant').birthdate) {
+        sendToSystem('threads', { type: 'BIRTH_FLOW_START' });
+      }
+    },
+
     startBirthFlow: ({ system }) => {
-      const assistantSettings = repository.settingsQueries.getAssistantSettings();
+      const assistantSettings = services.settings.getSection<AssistantSettings>('assistant');
 
       if (!assistantSettings.birthdate) {
         const birthdate = new Date().toISOString();
-        repository.settingsCommands.updateSettings('assistant', null, ['birthdate'], birthdate);
+        services.settings.setInSection('assistant', ['birthdate'], birthdate);
         logger.info('Assistant birthdate set', { birthdate });
       }
 
@@ -459,12 +477,12 @@ export const threadsSystem = setup({
       const commands = services.library.commands();
       const sent = JSON.stringify(commands);
       if (sent === context.sentCommands) return {};
-      sendToPlugin('threads', { type: 'COMMANDS_UPDATED', commands });
+      broadcastToPlugin('threads', { type: 'COMMANDS_UPDATED', commands });
       return { sentCommands: sent };
     }),
     sendChatConnectedData: ({ system }) => {
       const data = repository.chatQueries.connectedData();
-      sendToPlugin('threads', {
+      broadcastToPlugin('threads', {
         type: 'AGENT_CONNECTED',
         data: { ...data, commands: services.library.commands() },
       });
@@ -476,17 +494,17 @@ export const threadsSystem = setup({
         services.chat.openThreadChatAndRefreshRecent(threadId as EARS.EntityId, restore);
       } catch (err) {
         logger.warn('Thread not found for chat open, skipping', { threadId });
-        sendToPlugin('threads', {
+        broadcastToPlugin('threads', {
           type: 'THREAD_CHAT_ERROR',
           threadId: threadId as string,
-          error: err instanceof Error ? err.message : String(err),
+          error: errorMessage(err),
         });
       }
     },
     loadMoreMessages: ({ system, event }) => {
       const { threadId, cursor } = threadsSpec.typeOf('LOAD_MORE_MESSAGES', event);
       const result = repository.chatQueries.paginatedMessages(threadId as EARS.EntityId, cursor);
-      sendToPlugin('threads', {
+      broadcastToPlugin('threads', {
         type: 'OLDER_MESSAGES_LOADED',
         threadId,
         ...result,
@@ -498,10 +516,10 @@ export const threadsSystem = setup({
         services.chat.openThreadTabAndRefresh(threadId as EARS.EntityId);
       } catch (err) {
         logger.warn('Thread not found for tab open, skipping', { threadId });
-        sendToPlugin('threads', {
+        broadcastToPlugin('threads', {
           type: 'THREAD_CHAT_ERROR',
           threadId: threadId as string,
-          error: err instanceof Error ? err.message : String(err),
+          error: errorMessage(err),
         });
       }
     },
@@ -545,7 +563,7 @@ export const threadsSystem = setup({
         if (threadData) {
           const fullThreadData = repository.threadQueries.byId(threadData.id);
 
-          sendToPlugin('threads', {
+          broadcastToPlugin('threads', {
             type: 'THREAD_CREATED',
             id: threadData.id,
             shortCode: threadData.shortCode,
@@ -556,7 +574,7 @@ export const threadsSystem = setup({
             status: fullThreadData?.status
           });
 
-          sendToPlugin('threads', {
+          broadcastToPlugin('threads', {
             type: 'LOAD_CHAT_THREAD',
             data: repository.chatQueries.threadData(threadId)!
           });
@@ -572,7 +590,7 @@ export const threadsSystem = setup({
             ...(sanitizedRefs && { references: sanitizedRefs }),
           };
 
-          sendToPlugin('threads', {
+          broadcastToPlugin('threads', {
             type: 'MESSAGE_ADDED',
             threadId: threadId as string,
             message: userMessage
@@ -597,10 +615,10 @@ export const threadsSystem = setup({
         });
       } catch (err) {
         logger.error('forwardUserMessage failed', { error: err });
-        sendToPlugin('threads', {
+        broadcastToPlugin('threads', {
           type: 'THREAD_CHAT_ERROR',
           threadId: 'threadId' in event && typeof event.threadId === 'string' ? event.threadId : '',
-          error: err instanceof Error ? err.message : String(err),
+          error: errorMessage(err),
         });
       }
     },
@@ -648,7 +666,7 @@ export const threadsSystem = setup({
       if (threadData) {
         const fullThreadData = repository.threadQueries.byId(threadData.id);
 
-        sendToPlugin('threads', {
+        broadcastToPlugin('threads', {
           type: 'THREAD_CREATED',
           id: threadData.id,
           shortCode: threadData.shortCode,
@@ -659,7 +677,7 @@ export const threadsSystem = setup({
           status: fullThreadData?.status
         });
 
-        sendToPlugin('threads', {
+        broadcastToPlugin('threads', {
           type: 'LOAD_CHAT_THREAD',
           data: repository.chatQueries.threadData(threadId)!
         });
@@ -677,7 +695,7 @@ export const threadsSystem = setup({
           command,
         };
 
-        sendToPlugin('threads', {
+        broadcastToPlugin('threads', {
           type: 'MESSAGE_ADDED',
           threadId: threadId as string,
           message: userMessage
@@ -901,7 +919,7 @@ export const threadsSystem = setup({
         payload: { messageId, threadId, response }
       });
 
-      sendToPlugin('threads', {
+      broadcastToPlugin('threads', {
         type: 'UPDATE_MESSAGE_STATE',
         messageId,
         responseTimestamp: result.responseTimestamp,
@@ -925,7 +943,7 @@ export const threadsSystem = setup({
         compacted,
       );
       for (const msgId of messageIds) {
-        sendToPlugin('threads', {
+        broadcastToPlugin('threads', {
           type: 'UPDATE_MESSAGE_STATE',
           messageId: msgId as string,
           compacted,
@@ -957,6 +975,9 @@ export const threadsSystem = setup({
       },
       BIRTH_FLOW_START: {
         actions: 'startBirthFlow',
+      },
+      SECRETS_CHANGED: {
+        actions: 'startBirthFlowOnceKeyed',
       },
       COMMANDS_CHANGED: {
         actions: 'sendCommands',

@@ -1,4 +1,4 @@
-import { setup, assign, enqueueActions } from 'xstate';
+import { setup, assign, enqueueActions , type ActorRefFrom } from 'xstate';
 import { sendToSystem } from '@/__generated__/events';
 import { updateParentState, getParentContext, addTabToParent, sendEventToParent } from '../../utils/parent-communication';
 
@@ -724,3 +724,6 @@ export const commitState = setup({
     }
   }
 });
+
+/** The commit child's actor, named by whoever reads its context (`codeChild(…)`) */
+export type CommitActor = ActorRefFrom<typeof commitState>;

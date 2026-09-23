@@ -59,15 +59,15 @@ await setupPackTests({
 });`);
   // A system that sends to its plugin as it starts (before a client connects) and on NOTIFY, and reports an
   // error on SAVE. Hand-written, so it has no generated name map and names its plugin by the id it runs
-  // under; a built pack writes `sendToPlugin('memos', …)` and its `#generated/events` resolves it.
+  // under; a built pack writes `broadcastToPlugin('memos', …)` and its `#generated/events` resolves it.
   write(root, 'tests/memos-system.ts', `
 import { setup } from 'xstate';
-import { sendToPlugin } from '@abuddy/sdk/events';
+import { broadcastToPlugin } from '@abuddy/sdk/events';
 import { reportError } from '@abuddy/sdk/logger';
 export const memos = setup({}).createMachine({
-  entry: () => sendToPlugin('dependent-pack/memos', { type: 'MEMOS_STARTED' }),
+  entry: () => broadcastToPlugin('dependent-pack/memos', { type: 'MEMOS_STARTED' }),
   on: {
-    NOTIFY: { actions: () => sendToPlugin('dependent-pack/memos', { type: 'MEMOS_NOTIFIED' }) },
+    NOTIFY: { actions: () => broadcastToPlugin('dependent-pack/memos', { type: 'MEMOS_NOTIFIED' }) },
     SAVE: { actions: () => reportError({ error: new Error('lost memo'), source: 'memos' }) },
   },
 });`);
@@ -82,25 +82,27 @@ function vitest(root: string) {
 }
 
 describe.skipIf(!built)("a dependent pack's unit tests on the harness runtime tier", () => {
-  it("runs default-setup's settings system and receives its startup data", () => {
+  it("runs default-setup's systems and the app's settings beside them", () => {
     const root = dependentPack(`
 import { expect, it } from 'vitest';
 import { repository } from '@abuddy/ears';
 import { services } from '@abuddy/sdk/services';
 import { startApp } from '@abuddy/testing/harness';
-it('connects to default-setup settings', async () => {
-  const app = await startApp({ systems: ['default-setup/settings'] });
+it("connects to default-setup's notes and the app's settings", async () => {
+  const app = await startApp({ systems: ['default-setup/notes', 'host/settings'] });
   await app.connect();
-  const loaded = await app.nextEmit('default-setup/settings', 'SETTINGS_LOADED');
+  const connected = await app.nextEmit('default-setup/notes', 'NOTES_CONNECTED');
+  expect(connected.data).toBeDefined();
+  const loaded = await app.nextEmit('host/settings', 'SETTINGS_LOADED');
   expect(loaded.data).toMatchObject({ general: expect.any(Object), plugins: expect.any(Object) });
   expect(app.emitted('host/application').map((e) => e.type)).toContain('APPLICATION_HOTKEYS');
-  // One SDK and one engine: this pack's feature settings (registered by the harness) reach default-setup's
+  // One SDK and one engine: this pack's feature settings (registered by the harness) reach the app's
   // settings, and the repositories default-setup's runtime registered are the test's, through
   // @abuddy/ears and services.repository alike
   expect((loaded.data as { plugins: Record<string, unknown> }).plugins['dependent-pack/widgets']).toEqual({ size: 3 });
-  const settingsQueries = Reflect.get(repository, 'settingsQueries');
-  expect(settingsQueries).toBeDefined();
-  expect(Reflect.get(services.repository, 'settingsQueries')).toBe(settingsQueries);
+  const noteQueries = Reflect.get(repository, 'noteQueries');
+  expect(noteQueries).toBeDefined();
+  expect(Reflect.get(services.repository, 'noteQueries')).toBe(noteQueries);
 });`);
     const result = vitest(root);
     expect(result.stdout + result.stderr, 'the dependent pack test run').toMatch(/Tests\s+1 passed/);

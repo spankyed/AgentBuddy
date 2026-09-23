@@ -14,6 +14,7 @@
  * `mode === 'Claude Code'`.
  */
 
+import type { GeneralSettings } from '@/app-settings/types';
 import type { ActionMeta } from '@abuddy/sdk/build';
 import type { Services, Z, EntityId } from '@/__generated__/services';
 import { createStreamWriter } from './_helpers/stream-writer';
@@ -225,10 +226,10 @@ export async function action(
   const cwdOverride = params.cwdOverride as string | undefined;
   const forceDirectoryPicker = params.forceDirectoryPicker as boolean | undefined;
 
-  const codeSettings = services.repository.settingsQueries.getPluginSettings('default-setup/code') as any;
+  const codeSettings = services.settings.forFeature('default-setup/code') as any;
   const hasCwd = codeSettings?.defaultBaseDirectory || codeSettings?.baseDirectory || prior?.cwd;
   if (forceDirectoryPicker || (!hasCwd && !cwdOverride)) {
-    const projects = (services.repository.settingsQueries.getGeneralSettings('projects') as any[]) || [];
+    const projects = services.settings.getSection<GeneralSettings>('general').projects;
     const blocks: any[] = [
       { type: 'prompt', props: { content: 'Select a project directory' } },
     ];
@@ -478,7 +479,7 @@ export async function action(
       (services.cli as any).claudeCode.clearHandle(threadId);
       setRunning(services, threadId, false);
       updateChatState(services, threadId, 'idle');
-      services.emitter.sendToPlugin('default-setup/threads', {
+      services.emitter.broadcastToPlugin('default-setup/threads', {
         type: 'FLASH_CHAT_STATE', threadId, stateId: 'error', durationMs: 3000,
       });
     });
@@ -505,7 +506,7 @@ export async function action(
 
     // ─── Generic error ───────────────────────────────────────────────────
     updateChatState(services, threadId, 'idle');
-    services.emitter.sendToPlugin('default-setup/threads', {
+    services.emitter.broadcastToPlugin('default-setup/threads', {
       type: 'FLASH_CHAT_STATE', threadId, stateId: 'error', durationMs: 3000,
     });
     writer.finalize(`⚠️ ${message}`);

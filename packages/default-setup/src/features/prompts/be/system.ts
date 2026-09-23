@@ -1,4 +1,6 @@
-import { sendToPlugin } from '@/__generated__/events';
+import type { PromptsSettings } from '@/__generated__/types';
+import { services } from '@/__generated__/services';
+import { broadcastToPlugin } from '@/__generated__/events';
 import { setup } from 'xstate';
 import { defineSystem, type SystemEntry } from '@abuddy/sdk/framework';
 
@@ -10,6 +12,7 @@ import { toMap, toIdentifierSet, mapScalar } from '@abuddy/sdk/utils';
 import { exportPrompts } from './repository/export-prompts';
 import type { PromptEntity } from '@abuddy/sdk';
 import { ref } from '@/__generated__/ref';
+import { errorMessage } from '@abuddy/sdk/utils/pure';
 
 const logger = createLogger('prompts');
 
@@ -43,9 +46,9 @@ export const promptsSystem = setup({
   actions: {
     sendPromptsConnectedData: ({ system }) => {
       const connectedData = repository.promptQueries.connectedData();
-      const promptsSettings = repository.settingsQueries.getPluginSettings(ref('prompts'));
+      const promptsSettings = services.settings.forFeature<PromptsSettings>(ref('prompts'));
       
-      sendToPlugin('prompts', { 
+      broadcastToPlugin('prompts', { 
         type: 'PROMPTS_CONNECTED',
         data: {
           ...connectedData,
@@ -58,7 +61,7 @@ export const promptsSystem = setup({
       const prompt = repository.promptQueries.byId(ev.promptId as EARS.EntityId);
       
       if (prompt) {
-        sendToPlugin('prompts', {
+        broadcastToPlugin('prompts', {
           type: 'PROMPT_SELECTED',
           promptId: ev.promptId as EARS.EntityId,
           data: prompt
@@ -76,7 +79,7 @@ export const promptsSystem = setup({
         category: ev.category
       });
 
-      sendToPlugin('prompts', {
+      broadcastToPlugin('prompts', {
         type: 'PROMPT_CREATED',
         prompt: prompt,
         promptId: prompt.id,
@@ -97,7 +100,7 @@ export const promptsSystem = setup({
 
       const updatedPrompt = repository.promptQueries.byId(ev.promptId as EARS.EntityId);
       if (updatedPrompt) {
-        sendToPlugin('prompts', {
+        broadcastToPlugin('prompts', {
           type: 'PROMPT_UPDATED',
           prompt: updatedPrompt,
           promptId: updatedPrompt.id,
@@ -108,7 +111,7 @@ export const promptsSystem = setup({
       const ev = promptsSpec.typeOf('DELETE_PROMPT', event);
       repository.promptCommands.delete(ev.promptId as EARS.EntityId);
       
-      sendToPlugin('prompts', {
+      broadcastToPlugin('prompts', {
         type: 'PROMPT_DELETED',
         promptId: ev.promptId as EARS.EntityId,
       });
@@ -117,7 +120,7 @@ export const promptsSystem = setup({
       const ev = promptsSpec.typeOf('FETCH_PROMPTS_PAGE', event);
       const data = repository.promptQueries.connectedData(ev.page || 1);
 
-      sendToPlugin('prompts', {
+      broadcastToPlugin('prompts', {
         type: 'PROMPTS_PAGE_LOADED',
         data: {
           prompts: data.prompts,
@@ -128,7 +131,7 @@ export const promptsSystem = setup({
     },
     fetchAllPrompts: ({ system }) => {
       const allPrompts = repository.promptQueries.all();
-      sendToPlugin('prompts', {
+      broadcastToPlugin('prompts', {
         type: 'PROMPTS_ALL_LOADED',
         data: { prompts: allPrompts }
       });
@@ -140,7 +143,7 @@ export const promptsSystem = setup({
       logger.info('Importing prompts', { count: Array.isArray(importData) ? importData.length : 0 });
 
       if (!Array.isArray(importData)) {
-        sendToPlugin(pluginId, {
+        broadcastToPlugin(pluginId, {
           type: 'PROMPTS_IMPORT_FAILED',
           errors: ['Invalid import data: expected an array of prompts'],
         });
@@ -167,7 +170,7 @@ export const promptsSystem = setup({
             category: item.category,
           });
 
-          sendToPlugin(pluginId, {
+          broadcastToPlugin(pluginId, {
             type: 'PROMPT_CREATED',
             prompt,
             promptId: prompt.id,
@@ -175,20 +178,20 @@ export const promptsSystem = setup({
 
           count++;
         } catch (err) {
-          const message = err instanceof Error ? err.message : String(err);
+          const message = errorMessage(err);
           errors.push(`Failed to create prompt "${item.label}": ${message}`);
         }
       }
 
       if (count === 0 && errors.length > 0) {
-        sendToPlugin(pluginId, {
+        broadcastToPlugin(pluginId, {
           type: 'PROMPTS_IMPORT_FAILED',
           errors,
         });
         return;
       }
 
-      sendToPlugin(pluginId, {
+      broadcastToPlugin(pluginId, {
         type: 'PROMPTS_IMPORTED',
         count,
         ...(errors.length > 0 ? { errors } : {}),
@@ -196,8 +199,8 @@ export const promptsSystem = setup({
 
       // Refresh the full prompts list
       const connectedData = repository.promptQueries.connectedData();
-      const promptsSettings = repository.settingsQueries.getPluginSettings(ref('prompts'));
-      sendToPlugin(pluginId, {
+      const promptsSettings = services.settings.forFeature<PromptsSettings>(ref('prompts'));
+      broadcastToPlugin(pluginId, {
         type: 'PROMPTS_CONNECTED',
         data: {
           ...connectedData,
@@ -217,7 +220,7 @@ export const promptsSystem = setup({
       try {
         const { filePath, promptCount } = exportPrompts(directory);
 
-        sendToPlugin(pluginId, {
+        broadcastToPlugin(pluginId, {
           type: 'PROMPTS_EXPORTED',
           filePath,
           promptCount,
@@ -225,10 +228,10 @@ export const promptsSystem = setup({
 
         logger.info('Prompts export complete', { filePath, promptCount });
       } catch (error) {
-        const message = error instanceof Error ? error.message : String(error);
+        const message = errorMessage(error);
         logger.error('Prompts export failed', { error: message });
 
-        sendToPlugin(pluginId, {
+        broadcastToPlugin(pluginId, {
           type: 'PROMPTS_EXPORT_FAILED',
           errors: [message],
         });
@@ -258,7 +261,7 @@ export const promptsSystem = setup({
           repository.promptCommands.update(p.id, { category: nextCategory });
           const updated = repository.promptQueries.byId(p.id);
           if (updated) {
-            sendToPlugin('prompts', {
+            broadcastToPlugin('prompts', {
               type: 'PROMPT_UPDATED', 
               prompt: updated, 
               promptId: updated.id

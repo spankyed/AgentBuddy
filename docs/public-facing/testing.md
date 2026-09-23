@@ -93,7 +93,7 @@ it('stores a memo a client adds and sends it back', async () => {
 | `startApp({ systems })` | Starts the named systems in registration order; `'*'` starts all. A bare id is tried as given, then as your pack's `<packId>/<featureId>`: use your feature ids, a built-in dependency's feature ids (default-setup's `settings`), or an external dependency's full bus id (`<depId>.<featureId>`) |
 | `connect()` | Sends `CLIENT_CONNECTED`, which reaches every running app, as a client connecting does. Every running system gets it (the harness has no client that loads pack frontends later), and sends to frontend plugins are delivered from then on. Events for systems don't wait for it: client events, and the events systems, steps and schedules send (`sendToSystem`, `fire`, schedule ticks), reach them from `startApp`, as in the app |
 | `send(systemId, event)` | Sends a system an event, connected or not |
-| `emitted(pluginId?)` | Events sent to frontend plugins (`sendToPlugin`). Both go through the bus, as in the app, so one sent before `connect()` is dropped and never appears here (systems send their startup data once a client connects, so `connect()` first) |
+| `emitted(pluginId?)` | Events sent to frontend plugins (`broadcastToPlugin`). Both go through the bus, as in the app, so one sent before `connect()` is dropped and never appears here (systems send their startup data once a client connects, so `connect()` first) |
 | `nextEmit(pluginId, type, { timeoutMs? })` | The next such event no earlier call returned, waiting for it (default 5000 ms) |
 | `settle()` | Resolves once the systems have no work left |
 | `system(systemId)` | A running system's actor |
@@ -102,6 +102,45 @@ it('stores a memo a client adds and sends it back', async () => {
 **Boot hooks run around a test's apps.** The first app a test starts runs each registered pack's `boot.onInit` (your dependencies' first) before its systems start, as the app does at boot, and the last one to stop runs `boot.onShutdown`. A pack that opens something in `onInit` and closes it in `onShutdown` gets that pair for every test that starts an app.
 
 `abuddy add feature` scaffolds a system test like this for each feature.
+
+## Frontend
+
+`startShell` runs the app's own shell with your plugins registered, so plugin code that navigates, reads the shell's
+state or sends to its system is tested as the app runs it. Pass each plugin's state machine rather than its plugin
+module: the module imports `.vue` components, which a unit test doesn't load.
+
+```typescript
+import { startApp, startShell } from '@abuddy/testing/harness';
+import { navigateToPlugin } from '#generated/fe';
+import memosState from '../../src/features/memos/fe/state';
+import notesState from '../../src/features/notes/fe/state';
+
+it('opens memos with an event', async () => {
+  const shell = await startShell({ plugins: { notes: { state: notesState }, memos: { state: memosState } } });
+  navigateToPlugin('memos', { type: 'MEMOS_CONNECTED', memos: [] });
+  expect(shell.opened()).toBe('my-pack/memos');
+});
+
+it('reaches its system and hears back', async () => {
+  const app = await startApp({ systems: ['memos'] });
+  await app.connect();
+  const shell = await startShell({ plugins: { memos: { state: memosState } } });
+  shell.plugin('memos').send({ type: 'MEMOS.ADD', text: 'hello' });
+  await app.settle();
+  expect(shell.plugin('memos').getSnapshot().context.memos).toHaveLength(1);
+});
+```
+
+| Member | What it does |
+|---|---|
+| `startShell({ plugins, defaultPlugin?, designations? })` | Starts the shell with `plugins` (by feature id: each one's `state`, and anything else of its definition the test needs) registered as your pack's, opens `defaultPlugin` (the first listed when unset), and binds the frontend host, so `navigateToPlugin`, `openPlugin` and `useShell()` reach it. Its client is the harness's bus: what plugins send reaches a `startApp` app's systems, and what those systems send plugins reaches your plugins' actors. It resolves once the shell is connected |
+| `opened()` | The ref of the plugin open |
+| `plugin(name)` | A plugin's running actor, named as your pack names it |
+| `notices` | What the shell told the user went wrong (a plugin it couldn't open, say), in order |
+| `actor` | The shell's actor |
+| `stop()` | Stops the shell and unbinds the frontend host; the harness stops shells after each test |
+
+Start one shell per test, in place of `startFeTestRuntime`: it binds the frontend host itself, and refuses when one is already bound. Your systems' lookups (roles, steps) still see everything your pack registered while it runs. `useShell()` runs in a component's setup or an effect scope (`effectScope().run(() => useShell())` in a test).
 
 ## Services
 
@@ -185,6 +224,7 @@ it('summarizes a note', async () => {
 `@abuddy/testing/harness`:
 
 - **Setup and data:** `setupPackTests` (`PackTestOptions`), `seedPack` (`SeedPackOptions`), `importFlows`, `resetTestData`, `testMediaPath`, `SeedRuntime`, and `registerPack`/`unregisterPack` (another pack in the test file's registry).
+- **Frontend:** `startShell` (`StartShellOptions`, `TestShell`, `TestPlugin`).
 - **Apps:** `startApp` and its types `StartAppOptions`, `TestApp`, `FlowRun`, `FlowStepTrace`, `RunFlowOptions` and `PluginEvent` (what `emitted` and `nextEmit` return: the event exactly as sent) and `Message` (`{ to, event }`, what the test bus carries).
 - **Mocks and host state:** `mockService`, `mockInference`, `addTestSecret`, `takeSystemErrors`.
 
@@ -192,7 +232,7 @@ it('summarizes a note', async () => {
 
 `@abuddy/sdk/testing`, for the two cases the harness doesn't cover:
 
-- **`startFeTestRuntime(options?)` / `stopFeTestRuntime()`** — a frontend host for a test file that exercises plugin code, a tiptap plugin or a DSL type, which read the bound frontend the way a pack's backend reads the bound app. Bind it once per file and unbind at the end; nothing is registered unless the test passes it, so an extension that registers itself on import is one this returns.
+- **`startFeTestRuntime(options?)` / `stopFeTestRuntime()`** — a frontend host for a test file that exercises plugin code, a tiptap plugin or a DSL type, which read the bound frontend the way a pack's backend reads the bound app. Bind it once per file and unbind at the end; nothing is registered unless the test passes it, so an extension that registers itself on import is one this returns. It has no app shell: code that reaches the shell fails naming `startShell`, which binds a frontend host with the real one.
 
   ```typescript
   import { startFeTestRuntime } from '@abuddy/sdk/testing';

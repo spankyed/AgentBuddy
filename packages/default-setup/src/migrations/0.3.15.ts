@@ -1,3 +1,5 @@
+import type { LogsSettings } from '@/__generated__/types';
+import { services } from '@/__generated__/services';
 import { tx, untypedQx } from '@abuddy/ears';
 import { markSeededRowUnedited } from '@abuddy/sdk/seed';
 import { EARS } from '@/__generated__/ears';
@@ -5,10 +7,10 @@ import { repository } from '@/__generated__/repository';
 import type { PackMigration } from '@abuddy/sdk/framework';
 import { createLogger } from '@abuddy/sdk/logger';
 import { ref, type FeatureName } from '@/__generated__/ref';
-import { addressLinkBlocks, addressServiceCalls, refOf0314Feature } from './bare-feature-ids';
+import { addressLinkBlocks, refOf0314Feature } from './bare-feature-ids';
 import { DEFAULT_SETTINGS_0314 } from './defaults-0.3.14';
 import { isDeepStrictEqual } from 'node:util';
-import { isPlainObject } from '@abuddy/sdk/utils/pure';
+import { hasOwn, isPlainObject } from '@abuddy/sdk/utils/pure';
 
 const logger = createLogger('migrations');
 
@@ -17,11 +19,11 @@ const PACK_ID = 'default-setup';
 
 export const migration: PackMigration = {
   target: '0.3.15',
-  description: "Drop the app's state, the root flow copies and 0.3.14's stored copies of its defaults from the settings, mark rows seeded before the seeder tracked what it wrote as unedited, keep action logs hidden for whoever hid log-service, drop the keys 0.3.14 moved but left behind, and point stored link blocks and the service calls in users' code at plugins' refs",
+  description: "Drop the app's state, the root flow copies and 0.3.14's stored copies of its defaults from the settings, mark rows seeded before the seeder tracked what it wrote as unedited, keep action logs hidden for whoever hid log-service, drop the keys 0.3.14 moved but left behind, and point stored link blocks at plugins' refs",
   up: () => {
     // ── The app's state (onboarding, versions, seed hashes) is the host's AppState now ──
     // The host's own 0.3.15 migration, which runs first, moved it out of `internal` (no pack migration runs when it fails).
-    repository.settingsCommands.removeStored(['internal']);
+    services.settings.removeStored(['internal']);
 
     // ── A plugin's ref is `<packId>/<featureId>` ──
     // The host's own 0.3.15 migration, which runs before any pack's, moved every stored key onto its plugin's ref.
@@ -46,21 +48,19 @@ export const migration: PackMigration = {
 
     // ── Action logs moved from the shared `log-service` source to `action:<label>` ──
     // Whoever hid `log-service` hid action logs: keep hiding them.
-    const excludedSources = repository.settingsQueries.getPluginSettings(ref('logs'))?.excludedSources;
+    const excludedSources = services.settings.forFeature<LogsSettings>(ref('logs'))?.excludedSources;
     if (Array.isArray(excludedSources) && excludedSources.includes('log-service') && !excludedSources.includes('action:*')) {
-      repository.settingsCommands.updateSettings('plugin', ref('logs'), ['excludedSources'], [...excludedSources, 'action:*']);
+      services.settings.setForFeature(ref('logs'), ['excludedSources'], [...excludedSources, 'action:*']);
     }
 
     // ── The root flow is the flow with the root role, and the brain says which one it runs ──
     // Copies of both kept in the settings are no longer read or written.
-    repository.settingsCommands.removeStored(['plugins', `${PACK_ID}/flows`, 'rootFlowId']);
-    repository.settingsCommands.removeStored(['plugins', `${PACK_ID}/brain`, 'runningRootFlowId']);
+    services.settings.removeStored(['plugins', `${PACK_ID}/flows`, 'rootFlowId']);
+    services.settings.removeStored(['plugins', `${PACK_ID}/brain`, 'runningRootFlowId']);
 
-    // ── Link blocks and actions name a plugin or system by its ref ──
+    // ── Link blocks name a plugin by its ref ──
     const relinked = addressStoredLinkBlocks();
     if (relinked > 0) logger.info(`[migration 0.3.15] pointed ${relinked} message(s)' link blocks at plugins' refs`);
-    const readdressed = addressUserCode();
-    if (readdressed > 0) logger.info(`[migration 0.3.15] pointed the service calls in ${readdressed} action(s) and step(s) at plugins' refs`);
 
     // ── 0.3.14 stored every default as if the user had chosen it ──
     // Last, once the steps above moved and dropped keys: pruning first would drop a value the user set under a moved
@@ -78,7 +78,7 @@ export const migration: PackMigration = {
  * can't tell the two apart. Another pack's slices are left alone; 0.3.14 stored no defaults for them.
  */
 function dropDefaultsOf0314(): void {
-  const stored = repository.settingsQueries.getStoredSettings() as Record<string, unknown>;
+  const stored = services.settings.getStored() as Record<string, unknown>;
   // 0.3.14's slices are keyed by bare feature id; the host's 0.3.15 migration moved the stored ones onto refs
   const plugins: Record<string, unknown> = {};
   for (const [id, slice] of Object.entries(DEFAULT_SETTINGS_0314.plugins)) {
@@ -98,7 +98,7 @@ function dropDefaultsOf0314(): void {
   // that today's defaults don't, so a value equal to today's default goes too, as the settings drop it on any write.
   if (isDeepStrictEqual(next, stored)) return;
   try {
-    repository.settingsCommands.replaceSettings(next);
+    services.settings.replaceAll(next);
   } catch (err) {
     // The row as it is still reads correctly, only with 0.3.14's defaults pinned; a thrown migration would instead
     // stop every later migration and the seeds, on every boot, until the settings were fixed by hand
@@ -112,7 +112,7 @@ function withoutDefaults(stored: unknown, defaults: unknown): unknown {
   if (!isPlainObject(stored) || !isPlainObject(defaults)) return stored;
   const kept: Record<string, unknown> = {};
   for (const [key, value] of Object.entries(stored)) {
-    const rest = Object.prototype.hasOwnProperty.call(defaults, key) ? withoutDefaults(value, defaults[key]) : value;
+    const rest = hasOwn(defaults, key) ? withoutDefaults(value, defaults[key]) : value;
     if (rest !== undefined) kept[key] = rest;
   }
   return Object.keys(kept).length > 0 ? kept : undefined;
@@ -132,55 +132,31 @@ function addressStoredLinkBlocks(): number {
 }
 
 /**
- * The service calls in code the user wrote, pointed at this pack's refs (`addressServiceCalls`): actions without a
- * source hash, and the code an action step (in code mode) or a transform step runs. A seeded action is left to the
- * seeder, whose source names refs and which replaces every action an older version seeded.
- */
-function addressUserCode(): number {
-  let changed = 0;
-  const rewrite = (id: EARS.EntityId, field: string, code: unknown) => {
-    if (typeof code !== 'string') return;
-    const next = addressServiceCalls(code);
-    if (next === code) return;
-    tx(id).put(field as never, next as never);
-    changed++;
-  };
-  // Untyped: the code is read and written as the rows store it
-  for (const action of untypedQx(EARS.Entity.Action as never).pickAll() as Array<{ id: EARS.EntityId; actionFn?: unknown; sourceHash?: unknown }>) {
-    if (!action.sourceHash) rewrite(action.id, 'actionFn', action.actionFn);
-  }
-  for (const node of untypedQx(EARS.Entity.Node as never).pickAll() as Array<{ id: EARS.EntityId; nodeType?: unknown; actionFn?: unknown; script?: unknown }>) {
-    if (node.nodeType === 'action') rewrite(node.id, 'actionFn', node.actionFn);
-    if (node.nodeType === 'transform') rewrite(node.id, 'script', node.script);
-  }
-  return changed;
-}
-
-/**
  * 0.3.14 copied the code plugin's `lastDirectoryOpened` to `baseDirectory` and the app's `openLinksInApp` to the
  * browser plugin, but left the old keys stored, where nothing reads them. Each is dropped, copied first when the
  * user has nothing stored under the new key and the old one holds something other than 0.3.14's default. The host's
  * 0.3.15 migration ran first, so only the refs hold plugin settings.
  */
 function dropKeysMovedBy0314(): void {
-  const stored = repository.settingsQueries.getStoredSettings();
+  const stored = services.settings.getStored();
   const slice = (feature: FeatureName) => (stored.plugins?.[ref(feature)] ?? {}) as Record<string, unknown>;
 
   const code = slice('code');
   if (code.lastDirectoryOpened !== undefined) {
     if (code.baseDirectory === undefined) {
-      repository.settingsCommands.updateSettings('plugin', ref('code'), ['baseDirectory'], code.lastDirectoryOpened);
+      services.settings.setForFeature(ref('code'), ['baseDirectory'], code.lastDirectoryOpened);
     }
-    repository.settingsCommands.removeStored(['plugins', ref('code'), 'lastDirectoryOpened']);
+    services.settings.removeStored(['plugins', ref('code'), 'lastDirectoryOpened']);
   }
 
-  const openLinksInApp = (stored.general?.application as Record<string, unknown> | undefined)?.openLinksInApp;
+  const storedGeneral = stored.general as { application?: Record<string, unknown> } | undefined;
+  const openLinksInApp = storedGeneral?.application?.openLinksInApp;
   if (openLinksInApp !== undefined) {
     // 0.3.14's default is no choice of the user's (`dropDefaultsOf0314`): copied, it would pin that default for good
     const default0314 = (DEFAULT_SETTINGS_0314.general.application as Record<string, unknown>).openLinksInApp;
     if (slice('browser').openLinksInApp === undefined && openLinksInApp !== default0314) {
-      repository.settingsCommands.updateSettings('plugin', ref('browser'), ['openLinksInApp'], openLinksInApp);
+      services.settings.setForFeature(ref('browser'), ['openLinksInApp'], openLinksInApp);
     }
-    repository.settingsCommands.removeStored(['general', 'application', 'openLinksInApp']);
+    services.settings.removeStored(['general', 'application', 'openLinksInApp']);
   }
 }

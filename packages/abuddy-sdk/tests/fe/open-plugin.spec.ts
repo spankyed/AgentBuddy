@@ -1,47 +1,43 @@
-// A plugin named by data opens only when it names a registered plugin: the runtime half of what the generated
-// `navigateToPlugin` checks at compile time.
+// openPlugin asks the shell to open a plugin (OPEN_PLUGIN), since only the shell knows whether a pack's frontend
+// that could provide it is still loading; the host's shell specs cover what it does with the request. What openPlugin
+// refuses itself is a string that isn't a ref at all.
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { openPlugin } from '../../src/fe/navigation.ts';
 import { bindFeHost, unbindFeHost } from '../../src/runtime/fe-host.ts';
 
 let sent: unknown[];
-/** What the memos plugin's actor received */
-let received: unknown[];
 
 beforeEach(() => {
   sent = [];
-  received = [];
   const application = {
-    getSnapshot: () => ({
-      context: { plugins: [{ id: 'memo-pack/memos' }], activePlugin: { id: 'default-setup/threads' }, defaultToggles: { canvas: false } },
-    }),
+    getSnapshot: () => ({ context: {}, hasTag: () => false }),
     send: (event: unknown) => sent.push(event),
-    system: { get: (id: string) => (id === 'memo-pack/memos' ? { send: (event: unknown) => received.push(event) } : undefined) },
+    system: { get: () => undefined },
     subscribe: () => ({ unsubscribe() {} }),
   };
-  bindFeHost({ application: application as never, secrets: {} as never, transport: { sendIncoming() {} }, packs: {} as never });
+  bindFeHost({ application: application as never, secrets: {} as never,
+    settings: {} as never, client: { send() {} }, packs: {} as never });
 });
 
 afterEach(() => unbindFeHost());
 
 describe('openPlugin', () => {
-  it('opens a registered plugin by its ref', () => {
+  it('asks the shell to open the plugin at a ref', () => {
     openPlugin('memo-pack/memos');
-    expect(sent).toEqual([{ type: 'SELECT_PLUGIN', plugin: 'memo-pack/memos' }]);
+    expect(sent).toEqual([{ type: 'OPEN_PLUGIN', plugin: 'memo-pack/memos', events: [] }]);
   });
 
-  it("hands the plugin's actor the events, in order", () => {
+  it('hands the shell the events for the plugin, in order, one or several', () => {
+    openPlugin('memo-pack/memos', { type: 'OPEN_MEMO', id: 'm1' });
     openPlugin('memo-pack/memos', [{ type: 'OPEN_MEMO', id: 'm1' }, { type: 'FOCUS' }]);
-    expect(received).toEqual([{ type: 'OPEN_MEMO', id: 'm1' }, { type: 'FOCUS' }]);
-  });
-
-  it('refuses a ref no plugin is registered at', () => {
-    expect(() => openPlugin('memo-pack/memoz')).toThrow('No plugin is registered at "memo-pack/memoz"');
-    expect(sent).toEqual([]);
+    expect(sent).toEqual([
+      { type: 'OPEN_PLUGIN', plugin: 'memo-pack/memos', events: [{ type: 'OPEN_MEMO', id: 'm1' }] },
+      { type: 'OPEN_PLUGIN', plugin: 'memo-pack/memos', events: [{ type: 'OPEN_MEMO', id: 'm1' }, { type: 'FOCUS' }] },
+    ]);
   });
 
   it('refuses a name that is not a ref, rather than resolving it against some pack', () => {
-    expect(() => openPlugin('memos')).toThrow('No plugin is registered at "memos"');
+    expect(() => openPlugin('memos')).toThrow(`"memos" doesn't name a plugin`);
     expect(sent).toEqual([]);
   });
 });

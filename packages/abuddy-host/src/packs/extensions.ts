@@ -2,6 +2,7 @@
 // owned by the registry that creates it (createPackRegistry, createFePackRegistry)
 import { splitRef, type FeatureRef } from '@abuddy/sdk/ids';
 import { _mergeStepDefinitions, type StepDefinition } from '@abuddy/sdk/steps';
+import { errorMessage } from '@abuddy/sdk/utils/pure';
 
 /**
  * Values packs contribute per key, folded in registration order.
@@ -107,7 +108,7 @@ export function createUndoLog() {
         try {
           undo();
         } catch (err) {
-          failures.push(err instanceof Error ? err.message : String(err));
+          failures.push(errorMessage(err));
         }
       }
       return failures;

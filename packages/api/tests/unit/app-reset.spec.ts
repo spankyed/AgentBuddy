@@ -10,20 +10,19 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'api-app-reset-'));
 process.env.ABUDDY_ENV = 'test';
 process.env.ABUDDY_USER_DATA_DIR = dataDir;
-const { openAppStore } = await import('@/setup/backend');
+const { openAppStore } = await import('@/runtime');
 const { store, packs } = openAppStore();
 const { loadBuiltInPacks, startPacks } = await import('@abuddy/host/packs/runtime');
 const { appState } = await import('@abuddy/host/app-state');
 const { getAppVersion } = await import('@abuddy/sdk/env');
 const { services } = await import('@abuddy/sdk/services');
 const { flowRepository } = await import('@abuddy/sdk/repositories');
-const { tx, untypedQx } = await import('@abuddy/ears');
+const { untypedQx } = await import('@abuddy/ears');
 
 const PACKAGES_DIR = path.resolve(__dirname, '..', '..', '..');
 
-/** The settings the built-in pack stores (its own data, read untyped here) */
-const SETTINGS_ID = 'Settings-app' as never;
-const storedSettings = () => (untypedQx(SETTINGS_ID).pickOne(['data']) as { data: Record<string, unknown> }).data;
+/** What the user changed from the defaults — the whole of what a reset has to undo */
+const storedSettings = () => services.settings.getStored();
 
 /** The flows' ids and labels, sorted */
 const flows = () => (untypedQx('Flow' as never).pickAll() as Array<{ id: string; label?: string }>)
@@ -54,7 +53,7 @@ describe('services.appData.reset()', () => {
     // The user onboards, changes settings and deletes a flow; the data records an older version
     services.appData.completeOnboarding();
     appState.update({ version: '0.0.1' });
-    tx(SETTINGS_ID).update('data', { ...storedSettings(), general: { application: { openLinksInApp: false } } });
+    services.settings.setInSection('general', ['application', 'openLinksInApp'], false);
     expect(storedSettings()).not.toEqual(fresh.settings);
     const [deleted] = fresh.flows;
     flowRepository.deleteFlow(deleted.id as never, { allowRoot: true });

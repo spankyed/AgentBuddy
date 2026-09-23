@@ -1,4 +1,5 @@
 import type { EntityId, Services } from '@/__generated__/services';
+import type { ThreadsSettings } from '@/__generated__/types';
 
 export interface OnboardingState {
   step: 'welcome' | 'projects' | 'import-threads' | 'pick-thread' | 'choose-mode' | 'complete';
@@ -24,7 +25,7 @@ export function persistOnboardingState(services: Services, threadId: EntityId, s
  */
 export function flashState(services: Services, threadId: EntityId, stateId: string = 'working', nextState: 'paused' | 'idle' = 'paused') {
   services.threads.updateChatState(threadId, nextState);
-  services.emitter.sendToPlugin('default-setup/threads', {
+  services.emitter.broadcastToPlugin('default-setup/threads', {
     type: 'FLASH_CHAT_STATE',
     threadId: threadId as string,
     stateId,
@@ -124,19 +125,19 @@ export function finishOnboarding(
   // Use the mode the user chose, or auto-detect from available CLIs
   const defaultMode = state.data.chosenMode
     || ((!state.data.cliFound && state.data.codexFound) ? 'Codex' : 'Claude Code');
-  services.settings.updatePluginSetting('default-setup/threads', ['chat', 'defaultMode'], defaultMode);
+  services.settings.setForFeature('default-setup/threads', ['chat', 'defaultMode'], defaultMode);
   // Push the updated chat settings to the frontend so resolveDefaultModePhase picks up the new default
-  const chatSettings = services.repository.settingsQueries.getPluginSettings('default-setup/threads')?.chat;
+  const chatSettings = services.settings.forFeature<ThreadsSettings>('default-setup/threads')?.chat;
   if (chatSettings) {
-    services.emitter.sendToPlugin('default-setup/threads', {
+    services.emitter.broadcastToPlugin('default-setup/threads', {
       type: 'AGENT_SETTINGS_UPDATED',
       settings: chatSettings,
     });
   }
-  services.emitter.sendToPlugin('default-setup/threads', {
+  services.emitter.broadcastToPlugin('default-setup/threads', {
     type: 'SET_MODE',
     mode: defaultMode,
   });
 
-  services.emitter.sendToPlugin('host/application', { type: 'ONBOARDING_COMPLETE' });
+  services.emitter.broadcastToPlugin('host/application', { type: 'ONBOARDING_COMPLETE' });
 }

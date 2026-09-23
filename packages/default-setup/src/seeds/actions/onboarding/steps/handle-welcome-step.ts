@@ -1,3 +1,4 @@
+import type { GeneralSettings } from '@/app-settings/types';
 import type { ActionMeta } from '@abuddy/sdk/build';
 import type { EntityId, Services } from '@/__generated__/services';
 import { getOnboardingState, persistOnboardingState, flashState } from '../onboarding-helpers';
@@ -99,7 +100,7 @@ export async function action(
     state.pendingMessageId = messageId;
   } else {
     // No sessions found — show file-picker as fallback
-    const projects = (services.repository.settingsQueries.getGeneralSettings('projects') as any[]) || [];
+    const projects = services.settings.getSection<GeneralSettings>('general').projects;
     const { messageId } = services.chat.sendBlockMessage({
       threadId,
       text: 'No existing sessions found. Pick a project directory to get started, or skip to set one up later.',

@@ -201,6 +201,7 @@ import CollapsibleSection from '@abuddy/ui/design/CollapsibleSection'
 import ColorPicker, { DEFAULT_COLORS } from '@abuddy/ui/design/ColorPicker'
 import { useDebounce } from '@abuddy/ui/composables/useDebounce'
 import { useSelector } from '@xstate/vue'
+import type { LibraryActor } from './state'
 
 interface LibraryTagOption {
   name: string
@@ -262,22 +263,22 @@ const removeTag = (index: number) => {
 }
 
 // Get library actor and state via selectors
-const libraryActor = usePlugin()
+const libraryActor: LibraryActor = usePlugin()
 
 // Import state
-const isImporting = useSelector(libraryActor, (state: any) => state.context.libraryImport.status === 'importing')
-const importStatus = useSelector(libraryActor, (state: any) => state.context.libraryImport.status)
-const importErrors = useSelector(libraryActor, (state: any) => state.context.libraryImport.errors)
-const importedCount = useSelector(libraryActor, (state: any) => state.context.libraryImport.importedCount)
+const isImporting = useSelector(libraryActor, (state) => state.context.libraryImport.status === 'importing')
+const importStatus = useSelector(libraryActor, (state) => state.context.libraryImport.status)
+const importErrors = useSelector(libraryActor, (state) => state.context.libraryImport.errors)
+const importedCount = useSelector(libraryActor, (state) => state.context.libraryImport.importedCount)
 
 // Export state
 const exportFormat = ref<'markdown' | 'json'>('markdown')
 const exportDirectory = ref<string>('')
-const isExporting = useSelector(libraryActor, (state: any) => state.context.libraryExport.status === 'exporting')
-const exportStatus = useSelector(libraryActor, (state: any) => state.context.libraryExport.status)
-const exportErrors = useSelector(libraryActor, (state: any) => state.context.libraryExport.errors)
-const exportedFilePath = useSelector(libraryActor, (state: any) => state.context.libraryExport.filePath)
-const exportedItemCount = useSelector(libraryActor, (state: any) => state.context.libraryExport.itemCount)
+const isExporting = useSelector(libraryActor, (state) => state.context.libraryExport.status === 'exporting')
+const exportStatus = useSelector(libraryActor, (state) => state.context.libraryExport.status)
+const exportErrors = useSelector(libraryActor, (state) => state.context.libraryExport.errors)
+const exportedFilePath = useSelector(libraryActor, (state) => state.context.libraryExport.filePath)
+const exportedItemCount = useSelector(libraryActor, (state) => state.context.libraryExport.itemCount)
 
 // Import - directory picker and send to state machine
 const selectAndImportLibrary = async () => {

@@ -17,6 +17,7 @@ import { hasIdCollision } from '@abuddy/ears';
 import { restoreJsonMediaRefs, restoreMarkdownMediaRefs, toDisplayName } from '@abuddy/sdk/utils'
 import { parseFrontmatter, parseMarkdownSections } from './utils'
 import type { ContentSection } from '@/features/library/be/types';
+import { errorMessage } from '@abuddy/sdk/utils/pure';
 
 interface ImportResult {
   created: number
@@ -126,7 +127,7 @@ function importSymlink(item: any, parentId: EARS.EntityId | undefined, result: I
     )
     result.created++
   } catch (err) {
-    const message = err instanceof Error ? err.message : String(err)
+    const message = errorMessage(err)
     result.errors.push(`Failed to create symlink "${item.name}": ${message}`)
     result.skipped++
   }
@@ -165,7 +166,7 @@ function importCollection(
       processItems(item.children, collection.id as EARS.EntityId, result, importDir, hasMedia)
     }
   } catch (err) {
-    const message = err instanceof Error ? err.message : String(err)
+    const message = errorMessage(err)
     result.errors.push(`Failed to create collection "${item.name}": ${message}`)
     result.skipped++
   }
@@ -228,7 +229,7 @@ function importDocument(
       )
     }
   } catch (err) {
-    const message = err instanceof Error ? err.message : String(err)
+    const message = errorMessage(err)
     result.errors.push(`Failed to create document "${item.name}": ${message}`)
     result.skipped++
   }
@@ -284,7 +285,7 @@ function importMarkdownDir(
         result.created++
         importMarkdownDir(fullPath, collection.id as EARS.EntityId, result, rootImportDir, hasMedia)
       } catch (err) {
-        const message = err instanceof Error ? err.message : String(err)
+        const message = errorMessage(err)
         result.errors.push(`Failed to create collection "${name}": ${message}`)
         result.skipped++
       }
@@ -340,7 +341,7 @@ function importMarkdownDir(
           )
         }
       } catch (err) {
-        const message = err instanceof Error ? err.message : String(err)
+        const message = errorMessage(err)
         result.errors.push(`Failed to import "${basename}": ${message}`)
         result.skipped++
       }

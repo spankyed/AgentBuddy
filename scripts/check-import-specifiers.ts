@@ -178,7 +178,7 @@ function findInFiles(files: string[], root: string, rule: Rule): string[] {
 }
 
 /** Ref-taking sends packs get as name-taking ones from #generated/events, whichever SDK module exports them */
-const EVENT_SENDS = ['sendToPlugin', 'sendToSystem'];
+const EVENT_SENDS = ['broadcastToPlugin', 'sendToPlugin', 'sendToSystem'];
 
 /** Imports and re-exports of the untyped sends (and the engine's repository registration), or all of @abuddy/sdk/events */
 const rawPackHelper: Rule = (node) => {
@@ -451,8 +451,15 @@ const SKIPPED_DIRS = /^(?:node_modules|dist|out|coverage|\..+)$/;
 /** Files a config compiles or bundles. Declarations included: tsc resolves their imports too */
 const CODE_FILE = /\.(?:[cm]?[jt]sx?|vue)$/;
 /** The extensions a relative config import may leave out */
-/** The pack sources whose features keep their frontends to themselves */
-const PACK_SRC_ROOTS = ['packages/default-setup/src', 'tests/fixtures/external-pack/src', 'tests/fixtures/bundled-ui-pack/src'];
+/**
+ * The pack sources whose features keep their frontends to themselves. `@abuddy/host` is one of them: the app is the
+ * pack `host`, its features are laid out as a pack's (`features/<id>/{be,fe}`), so its frontends answer to the same
+ * rule — the shell and the Packs feature reach each other through `fe/public.ts`, as a pack's features do.
+ */
+const PACK_SRC_ROOTS = [
+  'packages/default-setup/src', 'packages/abuddy-host/src',
+  'tests/fixtures/external-pack/src', 'tests/fixtures/bundled-ui-pack/src',
+];
 
 /** `export … from '…'`: a module passing another's exports on */
 const EXPORT_FROM = /\bexport\s+(?:type\s+)?(?:\*(?:\s+as\s+\w+)?|\{[^}]*\})\s*from\s*['"][^'"]+['"]/g;
@@ -1058,9 +1065,9 @@ export function findCrossCheckoutResolution(root = repoRoot): string[] {
 if (process.argv[1] && import.meta.filename === fs.realpathSync(process.argv[1])) {
   const checks: [find: () => string[], rule: string][] = [
     [findJsSpecifiers, 'Relative imports must name the TypeScript source (tsc and tsdown emit .js)'],
-    [findRawPackHelpers, 'Pack code uses the typed facades: sendToPlugin and sendToSystem from #generated/events, repositories declared in abuddy.json'],
+    [findRawPackHelpers, 'Pack code uses the typed facades: broadcastToPlugin, sendToPlugin and sendToSystem from #generated/events, repositories declared in abuddy.json'],
     [findInternalPackageImports, "Pack code imports only the @abuddy packages' public API: an export named `_x` is @internal, the app's alone, and a pack that needs one asks for it to be made public"],
-    [findRawTransport, 'Pack code sends with sendToPlugin and sendToSystem from #generated/events, and subscribes with onConnected and onIncoming from @abuddy/sdk/events'],
+    [findRawTransport, 'Pack code sends with broadcastToPlugin, sendToPlugin and sendToSystem from #generated/events, and subscribes with onConnected and onIncoming from @abuddy/sdk/events'],
     [findPackBackendConsole, 'Pack backend code logs with createLogger from @abuddy/sdk/logger'],
     [findHostImports, "Pack code doesn't import the host's private @abuddy/host package; use @abuddy/sdk"],
     [findAppImportsInPackTests, 'Pack unit tests run on the harness (@abuddy/testing) without the app; test host, API and CLI code in its own package'],

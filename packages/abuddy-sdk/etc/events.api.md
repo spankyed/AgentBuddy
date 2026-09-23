@@ -5,6 +5,12 @@
 ```ts
 
 // @public
+export function broadcastToPlugin(to: string, event: {
+    type: string;
+    [key: string]: unknown;
+}): void;
+
+// @public
 export function defineEvents<P extends PluginEvents, S extends SystemEventMap>(packId: string): TypedEvents<P, S>;
 
 // @public
@@ -22,7 +28,8 @@ export type FeatureSettingsUpdated = {
 
 // @public
 export const HOST_PLUGIN_EVENT_TYPES: {
-    'host/application': readonly ["CLIENT_CONNECTED", "APPLICATION_HOTKEYS", "PLUGIN_VISIBILITY_UPDATED", "ONBOARDING_COMPLETE"];
+    'host/application': readonly ["CLIENT_CONNECTED", "APPLICATION_HOTKEYS", "PLUGIN_VISIBILITY_UPDATED", "ONBOARDING_COMPLETE", "OPEN_PLUGIN"];
+    'host/settings': readonly ["CLI_TEST_RESULT"];
 };
 
 // @public
@@ -45,6 +52,20 @@ export type HostPluginEvents = {
         pluginVisibility: Record<string, boolean>;
     } | {
         type: 'ONBOARDING_COMPLETE';
+    } | {
+        type: 'OPEN_PLUGIN';
+        plugin: string;
+        events?: Array<{
+            type: string;
+            [key: string]: unknown;
+        }>;
+    };
+    'host/settings': {
+        type: 'CLI_TEST_RESULT';
+        provider: string;
+        success: boolean;
+        error?: string;
+        resolvedPath?: string;
     };
 };
 
@@ -94,8 +115,8 @@ export type Qualified<PackId extends string, M> = {
     [K in keyof M & string as `${PackId}/${K}`]: M[K];
 };
 
-// @public
-export function sendToPlugin(to: string, event: {
+// @internal
+export function _sendToLocalPlugin(ref: string, event: {
     type: string;
     [key: string]: unknown;
 }): void;
@@ -129,7 +150,7 @@ export type SystemTarget = string | {
 
 // @public
 export interface TypedEvents<P extends PluginEvents, S extends SystemEventMap> {
-    // (undocumented)
+    broadcastToPlugin: TypedSendToPlugin<P>;
     sendToPlugin: TypedSendToPlugin<P>;
     // (undocumented)
     sendToSystem: TypedSendToSystem<S>;

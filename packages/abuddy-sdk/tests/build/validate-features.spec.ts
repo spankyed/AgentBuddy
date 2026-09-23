@@ -64,3 +64,25 @@ describe('validateFeatures', () => {
     }).errors).toEqual([]);
   });
 });
+
+// A feature's types module reaches the rest of the pack through `#generated/types`. A path that isn't there
+// contributes nothing and says nothing, so validate is where a typo in it surfaces.
+describe('typesEntry', () => {
+  it('accepts one whose module exists, written with or without its extension', () => {
+    const root = pack([...notesFiles, 'src/features/notes/be/types.ts']);
+    for (const typesEntry of ['src/features/notes/be/types', 'src/features/notes/be/types.ts']) {
+      expect(validateFeatures(root, { features: [{ ...notes, typesEntry }] })).toEqual({ errors: [], warnings: [] });
+    }
+  });
+
+  it('reports one whose module is not there', () => {
+    const root = pack(notesFiles);
+    expect(validateFeatures(root, { features: [{ ...notes, typesEntry: 'src/features/notes/be/typos' }] }).errors)
+      .toEqual(['Feature "notes": typesEntry file "src/features/notes/be/typos.ts" not found']);
+  });
+
+  it('says nothing about a feature that declares none', () => {
+    const root = pack(notesFiles);
+    expect(validateFeatures(root, { features: [notes] })).toEqual({ errors: [], warnings: [] });
+  });
+});

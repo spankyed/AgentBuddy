@@ -42,10 +42,26 @@ export interface FeatureSettings {
 }
 
 // @public
+export function getFeaturesWithSettings(): readonly FeatureRef[];
+
+// @public
 export function getPackCommands(): PackCommand[];
 
 // @public
+export function getPackHelp(): HelpEntry[];
+
+// @public
 export function getPackSettingsDefaults(): PackSettingsDefaults;
+
+// @public
+export interface HelpEntry {
+    // (undocumented)
+    answer: string;
+    // (undocumented)
+    id: string;
+    // (undocumented)
+    question: string;
+}
 
 // @public
 export function onPackSettingsDefaultsChanged(listener: () => void): () => void;
@@ -127,6 +143,7 @@ export interface PackRegistration {
     // (undocumented)
     ears?: PackEARS;
     features?: Record<string, PackFeature>;
+    help?: () => HelpEntry[];
     // (undocumented)
     id: string;
     // (undocumented)
@@ -136,6 +153,7 @@ export interface PackRegistration {
     seedHooks?: Record<string, SeedHooks>;
     // (undocumented)
     services?: Record<string, unknown>;
+    settingsSections?: () => Record<string, unknown>;
     // (undocumented)
     steps?: StepDefinition[];
 }
@@ -156,9 +174,9 @@ export interface PackSeedManifest {
 export interface PackSettingsDefaults {
     // (undocumented)
     revision: number;
-    // (undocumented)
     settings: {
         plugins: Record<string, unknown>;
+        [section: string]: unknown;
     };
     // (undocumented)
     visibility: Record<string, boolean>;

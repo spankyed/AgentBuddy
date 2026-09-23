@@ -3,10 +3,10 @@
 // test harness runs the same machine with a recording sink.
 import { enqueueActions, fromCallback, setup, spawnChild, type AnyActorRef, type AnyStateMachine } from 'xstate';
 import { reportError } from '@abuddy/sdk/logger';
-import { HOST } from '../host-refs.ts';
+import { HOST } from '../refs.ts';
 import { SYSTEM_EVENT_TYPES } from '@abuddy/sdk/framework';
 import { PLUGIN_EVENT_TYPES, type Message } from '@abuddy/sdk/events';
-import type { PackRegistry } from '../packs/pack-registration.ts';
+import type { PackRegistry } from '../packs/registry.ts';
 
 
 /** A message in for a system (INCOMING) or out for a plugin (OUTGOING) */
@@ -39,7 +39,7 @@ export type BackendEvents =
   | PackChangedEvent
   | SystemsSpawnedEvent;
 
-/** The events a bus source can feed it: OUTGOING for sends to plugins from outside a system (`sendToPlugin`) */
+/** The events a bus source can feed it: OUTGOING for sends to plugins from outside a system (`broadcastToPlugin`) */
 export type BusSourceEvent = Extract<BackendEvents, { type: 'INCOMING' | 'OUTGOING' | 'CLIENT_CONNECTED' | 'PACK_CLIENT_CONNECTED' }>;
 
 export interface BusOptions {
@@ -158,7 +158,7 @@ export function createBusMachine(options: BusOptions) {
           // `diagnostic`: logged, recorded, and failing any pack test that leaves one — but no toast.
           // Whoever is using the app can do nothing about a send to a plugin nobody declares, and the
           // message already reaches the Logs plugin, where the person who can is looking.
-          reportError({ source: 'bus', operation: 'sendToPlugin', severity: 'diagnostic', error: new Error(message) });
+          reportError({ source: 'bus', operation: 'broadcastToPlugin', severity: 'diagnostic', error: new Error(message) });
         };
         if (accepted === undefined) {
           // An event every plugin takes (a feature's settings changing) is the feature's plugin's if it has one

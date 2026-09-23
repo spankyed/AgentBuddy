@@ -1,4 +1,4 @@
-import { sendToPlugin } from '@/__generated__/events';
+import { broadcastToPlugin } from '@/__generated__/events';
 import { repository } from '@/__generated__/repository';
 import { setup } from 'xstate';
 import { defineSystem, type SystemEntry } from '@abuddy/sdk/framework';
@@ -32,7 +32,7 @@ export const browserSystem = setup({
         savedTabCount: savedTabs.length,
         savedBookmarkCount: savedBookmarks.length,
       });
-      sendToPlugin('browser', {
+      broadcastToPlugin('browser', {
         type: 'BROWSER_CONNECTED',
         savedTabs,
         savedBookmarks,

@@ -64,6 +64,7 @@ import NodeInfoPanel from './components/NodeInfoPanel.vue';
 import GraphLegend from './components/GraphLegend.vue';
 import GraphToolbar from './components/GraphToolbar.vue';
 import { id } from '../../../state';
+import type { DatabaseState } from '../../../state'
 
 // Props & Emits
 interface Props {
@@ -75,8 +76,8 @@ const props = withDefaults(defineProps<Props>(), {
 });
 
 // State Management
-const actor = usePlugin();
-const queryResult = useSelector(actor, (state: any) => state.context.queryResult);
+const actor: DatabaseState = usePlugin();
+const queryResult = useSelector(actor, (state) => state.context.queryResult);
 
 // Component State
 const graphContainer = ref<HTMLElement>();

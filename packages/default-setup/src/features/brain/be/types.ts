@@ -90,3 +90,9 @@ export interface EventReceived {
   eventType: string;
   payload?: unknown;
 }
+
+// ── This feature's settings ───────────────────────────────────────────────
+// Its own shape, which the app stores without knowing: the app owns the document, each feature its slice.
+export interface BrainSettings {
+  inspectEnabled?: boolean; // Whether the brain inspection panel is enabled
+}

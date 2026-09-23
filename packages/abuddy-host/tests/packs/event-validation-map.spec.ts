@@ -2,8 +2,8 @@
 import { describe, expect, it } from 'vitest';
 import { setup } from 'xstate';
 import type { PackFeature } from '@abuddy/sdk/framework';
-import { createPackRegistry } from '../../src/packs/pack-registration.ts';
-import { hostRegistration, PACKS_PLUGIN_EVENT_TYPES } from '../../src/packs/host-pack.ts';
+import { createPackRegistry } from '../../src/packs/registry.ts';
+import { hostRegistration, PACKS_PLUGIN_EVENT_TYPES } from '../../src/features/registration.ts';
 import { PLUGIN_EVENT_TYPES } from '@abuddy/sdk/events';
 
 /** The events a pack's plugin receives: what its pack declares, and what the app sends every plugin */
@@ -146,7 +146,7 @@ describe('a host plugin', () => {
     const registry = createPackRegistry();
     registry.registerPack(hostRegistration());
     expect(registry.getPluginEventValidationMap().get('host/packs')).toEqual(receives(...PACKS_PLUGIN_EVENT_TYPES));
-    expect(registry.getPluginEventValidationMap().get('host/application')).toEqual(receives('CLIENT_CONNECTED', 'APPLICATION_HOTKEYS', 'PLUGIN_VISIBILITY_UPDATED', 'ONBOARDING_COMPLETE'));
+    expect(registry.getPluginEventValidationMap().get('host/application')).toEqual(receives('CLIENT_CONNECTED', 'APPLICATION_HOTKEYS', 'PLUGIN_VISIBILITY_UPDATED', 'ONBOARDING_COMPLETE', 'OPEN_PLUGIN'));
   });
 
   // The host is the pack `host`, so a pack with a `packs` feature of its own is not a contest

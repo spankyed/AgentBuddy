@@ -187,13 +187,6 @@
                 "type": "string",
                 "description": "Path to the backend system module."
               },
-              "sendsTo": {
-                "type": "array",
-                "items": {
-                  "type": "string"
-                },
-                "description": "Plugins this system sends events to besides its own feature's, named as code names them: other features of this pack that have a plugin (by feature id), a dependency's plugins (\"<packId>/<featureId>\"), or host plugins (\"host/application\"). Another feature of this pack gains this system's outgoing events; a dependency's plugin or a host plugin keeps the events its own owner declares it receives, and naming it here is what makes it sendable at all."
-              },
               "events": {
                 "type": "object",
                 "properties": {
@@ -277,6 +270,16 @@
         "pattern": "^[A-Za-z_$][\\w$]*$"
       },
       "description": "Pack-level services not tied to a specific feature. Keys are service names on `services`, values are \"path#exportName\" of the service object (an object literal or a class instance, not a factory) in a source file."
+    },
+    "help": {
+      "type": "string",
+      "pattern": "^[^#]+#[A-Za-z_$][\\w$]*$",
+      "description": "Help entries this pack answers with, listed under Help in the app's Settings view. \"path#exportName\" of a function returning them; it is called the first time the list is read, so a pack may read its compiled seeds then."
+    },
+    "settingsSections": {
+      "type": "string",
+      "pattern": "^[^#]+#[A-Za-z_$][\\w$]*$",
+      "description": "Sections of the app settings this pack owns, with their defaults, beside the \"plugins\" section the app keeps itself. \"path#exportName\" of a function returning them; it is called the first time the defaults are read, so a pack can read its compiled seeds then."
     },
     "commands": {
       "type": "array",

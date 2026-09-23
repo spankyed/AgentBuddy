@@ -188,7 +188,7 @@
 
 <script setup lang="ts">
 import { usePlugin } from '@abuddy/sdk/fe'
-import { codeChild } from '@/features/code/fe/utils/parent-communication'
+
 import { computed, ref, watch, onMounted, onUnmounted, nextTick } from 'vue'
 import { useSelector } from '@xstate/vue'
 import type { CodeState } from '@/features/code/fe/state'
@@ -196,6 +196,7 @@ import { ChevronRight, ChevronsDownUp, Search } from 'lucide-vue-next'
 import CodePanelHeader from '@/features/code/fe/features/CodePanelHeader.vue'
 import NoDirectoryState from '@/features/code/fe/features/NoDirectoryState.vue'
 import EmptyState from '@/features/code/fe/features/EmptyState.vue'
+import { codeChild } from '../children';
 
 // Get actors
 const codeActor: CodeState = usePlugin()
@@ -203,11 +204,11 @@ const searchActor = codeChild(codeActor, 'search')!
 
 // State selectors
 const searchQuery = ref('')
-const searchResults = useSelector(searchActor, (state: any) => state.context.searchResults)
-const isSearching = useSelector(searchActor, (state: any) => state.context.isSearching)
-const searchError = useSelector(searchActor, (state: any) => state.context.searchError)
-const searchProgress = useSelector(searchActor, (state: any) => state.context.searchProgress)
-const searchOptions = useSelector(searchActor, (state: any) => state.context.searchOptions)
+const searchResults = useSelector(searchActor, (state) => state.context.searchResults)
+const isSearching = useSelector(searchActor, (state) => state.context.isSearching)
+const searchError = useSelector(searchActor, (state) => state.context.searchError)
+const searchProgress = useSelector(searchActor, (state) => state.context.searchProgress)
+const searchOptions = useSelector(searchActor, (state) => state.context.searchOptions)
 const baseDirectory = useSelector(codeActor, (state) => state.context.baseDirectory)
 const searchFocusTrigger = useSelector(codeActor, (state) => state.context.searchFocusTrigger)
 const searchPrefillText = useSelector(codeActor, (state) => state.context.searchPrefillText)

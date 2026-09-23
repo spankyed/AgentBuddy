@@ -1,28 +1,25 @@
-// What the prompts plugin offers other features: its list of prompts as it pages them, and the edits it takes.
-// Other features import this module, never the plugin's machine.
-import { useSelector } from '@xstate/vue'
-import { pluginHandle } from '@/features/plugin-handle'
+// What the prompts plugin offers other features: its list of prompts as it pages them. The edits it takes are its
+// own `accepts` declaration, beside the plugin.
+import type { SnapshotFrom } from 'xstate'
+import { usePluginState } from '@abuddy/sdk/fe'
+import { ref as featureRef } from '@/__generated__/ref'
 import type { PromptsEvents, PromptsState } from './state'
 
-/** The prompts plugin's actor, which its machine binds as it starts */
-export const promptsPlugin = pluginHandle<PromptsState>('prompts')
+/** The ref the prompts plugin runs at */
+export const PROMPTS = featureRef('prompts')
 
 /** The prompts as the prompts plugin has loaded them, and its paging */
 export function usePromptsList() {
-  const actor = promptsPlugin.get()
   return {
-    prompts: useSelector(actor, (state) => state.context.prompts),
-    page: useSelector(actor, (state) => state.context.page),
-    totalPages: useSelector(actor, (state) => state.context.totalPages),
-    loadingMore: useSelector(actor, (state) => state.context.loadingMore),
+    prompts: usePluginState(PROMPTS, (s: SnapshotFrom<PromptsState>) => s.context.prompts),
+    page: usePluginState(PROMPTS, (s: SnapshotFrom<PromptsState>) => s.context.page),
+    totalPages: usePluginState(PROMPTS, (s: SnapshotFrom<PromptsState>) => s.context.totalPages),
+    loadingMore: usePluginState(PROMPTS, (s: SnapshotFrom<PromptsState>) => s.context.loadingMore),
   }
 }
 
 /** The events another feature may send the prompts plugin: paging, and editing a prompt */
 export type PromptsListEvent = Extract<PromptsEvents, {
-  type: 'PROMPTS.LOAD_ALL' | 'PROMPTS.LOAD_MORE' | 'PROMPT.UPDATE_INPUTS' | 'PROMPT.UPDATE_LABEL' | 'PROMPT.DELETE' | 'PROMPT.CREATE_INLINE'
+  type: 'PROMPTS.LOAD_ALL' | 'PROMPTS.LOAD_MORE' | 'PROMPT.UPDATE_INPUTS' | 'PROMPT.UPDATE_LABEL' | 'PROMPT.DELETE' | 'PROMPT.CREATE_INLINE' | 'PROMPT.SELECT'
 }>
 
-export function sendToPromptsPlugin(event: PromptsListEvent): void {
-  promptsPlugin.get().send(event)
-}

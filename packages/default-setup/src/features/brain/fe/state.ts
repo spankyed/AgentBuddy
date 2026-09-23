@@ -14,7 +14,6 @@ import {
   normalizeTNodeTree,
   type NormalizedTNodeTree,
 } from './trace-tree';
-import { brainPlugin } from './public'
 
 export const id = 'brain' as const;
 export type BrainState = ActorRefFrom<typeof brainState>
@@ -366,7 +365,6 @@ const brainState = setup({
   },
 }).createMachine({
   id,
-  entry: ({ self }) => brainPlugin.bind(self),
   context: {
     possibleEvents: [],
     flowHierarchy: [],

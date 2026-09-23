@@ -9,6 +9,7 @@ import { restoreJsonMediaRefs, restoreMarkdownMediaRefs } from '@abuddy/sdk/util
 import { toDisplayName } from '@abuddy/sdk/utils'
 import type { ExportedNote } from '@/features/notes/be/export-types';
 import type { NoteEntity } from '@/features/notes/be/types';
+import { errorMessage } from '@abuddy/sdk/utils/pure';
 
 interface ImportResult {
   created: number
@@ -123,7 +124,7 @@ function importNoteNodes(
           importNoteNodes(node.children, existing.id as string, result, importDir, hasMedia)
         }
       } catch (err) {
-        const message = err instanceof Error ? err.message : String(err)
+        const message = errorMessage(err)
         result.errors.push(`Failed to update note "${node.title}": ${message}`)
         result.skipped++
       }
@@ -171,7 +172,7 @@ function importNoteNodes(
         importNoteNodes(node.children, note.id, result, importDir, hasMedia)
       }
     } catch (err) {
-      const message = err instanceof Error ? err.message : String(err)
+      const message = errorMessage(err)
       result.errors.push(`Failed to create note "${node.title}": ${message}`)
       result.skipped++
     }
@@ -314,7 +315,7 @@ function importMarkdownDir(
         // Recurse for children (skip index.md)
         importMarkdownDir(fullPath, note.id, result, rootImportDir, hasMedia)
       } catch (err) {
-        const message = err instanceof Error ? err.message : String(err)
+        const message = errorMessage(err)
         result.errors.push(`Failed to create note "${name}": ${message}`)
         result.skipped++
       }
@@ -361,7 +362,7 @@ function importMarkdownDir(
           repository.noteCommands.update(note.id as EARS.EntityId, { savedDisplayOrder: parsed.savedDisplayOrder })
         }
       } catch (err) {
-        const message = err instanceof Error ? err.message : String(err)
+        const message = errorMessage(err)
         result.errors.push(`Failed to import "${name}": ${message}`)
         result.skipped++
       }

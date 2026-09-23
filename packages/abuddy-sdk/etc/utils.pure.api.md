@@ -76,10 +76,16 @@ export type DiffResult<T> = null | {
 export const entries: <T extends Record<string, unknown>>(obj: T) => Array<[keyof T, T[keyof T]]>;
 
 // @public
+export function errorMessage(error: unknown): string;
+
+// @public
 export function escapeHtml(text: string): string;
 
 // @public (undocumented)
 export function extractValueByPath(source: unknown, path: string): unknown;
+
+// @public
+export function hasOwn(object: object, key: PropertyKey): boolean;
 
 // @public
 export const isPlainObject: (val: unknown) => val is Record<string, unknown>;

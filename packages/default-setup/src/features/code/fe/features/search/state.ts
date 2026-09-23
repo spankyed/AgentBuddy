@@ -1,4 +1,4 @@
-import { setup, assign } from 'xstate';
+import { setup, assign , type ActorRefFrom } from 'xstate';
 import { sendToSystem } from '@/__generated__/events';
 import { getParentContext } from '../../utils/parent-communication';
 
@@ -206,3 +206,6 @@ export const searchState = setup({
     }
   }
 });
+
+/** The search child's actor, named by whoever reads its context (`codeChild(…)`) */
+export type SearchActor = ActorRefFrom<typeof searchState>;

@@ -6,7 +6,7 @@ import { action, entry, fire, keepAlive, on, subflow, transform } from '@/__gene
 import { repository } from '@/__generated__/repository'
 import { listen, type BrainEventPayload } from '@/features/brain/be/services/brain'
 
-const startBrain = () => startApp({ systems: ['brain', 'settings'] })
+const startBrain = () => startApp({ systems: ['brain'] })
 const step = (label: string) => transform('return true', { label })
 
 /** An action whose result is `result`, and one that returns its params */

@@ -3,6 +3,7 @@ import { _TYPES_UNRESOLVED, generatePackFiles, validateManifest, validateFeature
 import { resolveDep } from './fetch-deps';
 import { resolveDeps } from './generate';
 import { findPackRoot, readManifest } from '../utils';
+import { errorMessage } from '@abuddy/sdk/utils/pure';
 
 /**
  * Warnings only: an unresolved dependency is fixable with "abuddy fetch-deps", and `abuddy build`
@@ -25,7 +26,7 @@ async function validateDeps(root: string): Promise<string[]> {
       if (!resolved) warnings.push(`Dependency "${depId}" could not be resolved — run "abuddy fetch-deps"`);
     } catch (err) {
       // Found only in builds this CLI can't use: the message names each one and why
-      warnings.push(err instanceof Error ? err.message : String(err));
+      warnings.push(errorMessage(err));
     }
   }
   return warnings;
@@ -49,7 +50,7 @@ async function validateCodegen(root: string): Promise<{ errors: string[]; warnin
     generatePackFiles(manifest, { packRoot: root, ...resolved });
     return { errors: [], warnings: [] };
   } catch (err) {
-    const message = err instanceof Error ? err.message : String(err);
+    const message = errorMessage(err);
     // A pack whose dependencies aren't installed yet: nothing to fix in the pack, and the checks after it didn't run
     if ((err as { code?: string }).code === _TYPES_UNRESOLVED) return { errors: [], warnings: [`${message}; the checks code generation makes stopped there — run "npm install"`] };
     return { errors: [message], warnings: [] };

@@ -127,7 +127,6 @@ export const BootConfigSchema = z.object({
 
 const SystemSchema = z.object({
   entry: z.string().describe('Path to the backend system module.'),
-  sendsTo: z.array(z.string()).describe('Plugins this system sends events to besides its own feature\'s, named as code names them: other features of this pack that have a plugin (by feature id), a dependency\'s plugins ("<packId>/<featureId>"), or host plugins ("host/application"). Another feature of this pack gains this system\'s outgoing events; a dependency\'s plugin or a host plugin keeps the events its own owner declares it receives, and naming it here is what makes it sendable at all.').optional(),
   events: z.object({
     incoming: z.array(z.string()).describe('Event types this system listens for.').optional(),
   }).strict().describe('Event routing declarations.').optional(),
@@ -235,6 +234,10 @@ export const ManifestSchema = z.object({
     .describe('Feature definitions. Each feature bundles a backend system, frontend plugin, services, and settings.').optional(),
   packServices: ServicesSchema
     .describe('Pack-level services not tied to a specific feature. Keys are service names on `services`, values are "path#exportName" of the service object (an object literal or a class instance, not a factory) in a source file.').optional(),
+  help: ExportTargetSchema
+    .describe('Help entries this pack answers with, listed under Help in the app\'s Settings view. "path#exportName" of a function returning them; it is called the first time the list is read, so a pack may read its compiled seeds then.').optional(),
+  settingsSections: ExportTargetSchema
+    .describe('Sections of the app settings this pack owns, with their defaults, beside the "plugins" section the app keeps itself. "path#exportName" of a function returning them; it is called the first time the defaults are read, so a pack can read its compiled seeds then.').optional(),
   commands: z.array(CommandEntrySchema)
     .describe('Slash commands this pack adds to the chat. Sending one fires a `user.command` event the pack\'s flows handle; a name must be unique across the app.').optional(),
   boot: BootConfigSchema.optional(),
@@ -265,21 +268,6 @@ export const ManifestSchema = z.object({
     });
   }
 
-  // A send to one of this pack's own features can only arrive at a plugin; a dependency's or a host
-  // plugin isn't in this manifest, so codegen checks those against the dependencies' snapshots
-  const ownFeatureIds = new Set((manifest.features ?? []).map((feature) => feature.id));
-  const ownPluginIds = new Set((manifest.features ?? []).filter((feature) => feature.plugin).map((feature) => feature.id));
-  manifest.features?.forEach((feature, index) => {
-    feature.system?.sendsTo?.forEach((target, targetIndex) => {
-      if (ownFeatureIds.has(target) && !ownPluginIds.has(target)) {
-        ctx.addIssue({
-          code: 'custom',
-          path: ['features', index, 'system', 'sendsTo', targetIndex],
-          message: `Feature "${feature.id}": system.sendsTo names "${target}", a feature of this pack with no plugin, so nothing can receive the events: give "${target}" a plugin or remove it from sendsTo`,
-        });
-      }
-    });
-  });
   for (const [key, entry] of Object.entries(manifest.boot?.seed ?? {})) {
     if (typeof entry !== 'object' || !entry.format) continue;
     const [, pack, name] = SEED_FORMAT_REF.exec(entry.format) ?? [];

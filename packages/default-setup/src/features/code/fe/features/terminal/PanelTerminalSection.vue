@@ -191,9 +191,10 @@
 
 <script setup lang="ts">
 import { usePlugin } from '@abuddy/sdk/fe'
-import { codeChild } from '@/features/code/fe/utils/parent-communication'
+
 import type { CodeSettings } from '@/__generated__/types'
-import { updatePluginSettings, usePluginSettings } from '@/features/settings/fe/public'
+import { updateSettings, useFeatureSettings } from '@abuddy/sdk/fe'
+import { ref as featureRef } from '@/__generated__/ref'
 import { ref, computed, watch, onMounted, onBeforeUnmount, nextTick } from 'vue'
 import { useSelector } from '@xstate/vue'
 import { ChevronRight, ChevronDown, Plus, X, Edit, Trash2, PanelTop, PanelBottom, Terminal as TerminalIcon, Ellipsis, Square, Copy, ClipboardPaste, TextSelect, Eraser, RotateCcw } from 'lucide-vue-next'
@@ -223,6 +224,7 @@ import type { TerminalScript } from '@/__generated__/types'
 import type { Terminal } from '@xterm/xterm'
 import type { FitAddon } from '@xterm/addon-fit'
 import type { IDisposable } from '@xterm/xterm'
+import { codeChild } from '../children';
 
 const props = withDefaults(defineProps<{ height?: number }>(), { height: 256 })
 
@@ -233,9 +235,9 @@ const terminalActor = codeChild(codeActor, 'terminal')!
 // State selectors
 const panelTerminalId = useSelector(codeActor, (state) => state.context.panelTerminalId)
 const openFiles = useSelector(codeActor, (state) => state.context.openFiles)
-const terminals = useSelector(terminalActor, (state: any) => state.context.terminals as TerminalInfo[])
+const terminals = useSelector(terminalActor, (state) => state.context.terminals)
 
-const storedCodeSettings = usePluginSettings<CodeSettings>('code')
+const storedCodeSettings = useFeatureSettings<CodeSettings>(featureRef('code'))
 const confirmTerminalClose = computed(() => storedCodeSettings.value?.confirmTerminalClose ?? true)
 const closeTerminalOnTabClose = computed(() => storedCodeSettings.value?.closeTerminalOnTabClose ?? true)
 const terminalScripts = computed(() => (storedCodeSettings.value?.terminalScripts ?? []) as TerminalScript[])
@@ -374,9 +376,11 @@ const killPanelTerminal = () => {
 const restartPanelTerminal = () => {
   const info = activeTerminalInfo.value
   if (!info || !panelTerminalId.value) return
-  const { cwd, shell } = info
+  // `terminal.CREATE` carries no shell — the event the child sends the system has only title and cwd — so the
+  // restarted terminal takes the default shell, as it always has. Passing `info.shell` here only looked otherwise.
+  const { cwd } = info
   terminalActor.send({ type: 'terminal.CLOSE', terminalId: panelTerminalId.value })
-  terminalActor.send({ type: 'terminal.CREATE', cwd, shell })
+  terminalActor.send({ type: 'terminal.CREATE', cwd })
 }
 
 // Actions
@@ -414,7 +418,7 @@ const runScriptInNewTerminal = (script: TerminalScript) => {
 }
 
 const updateScripts = (scripts: TerminalScript[]) => {
-  updatePluginSettings('code', ['terminalScripts'], scripts)
+  updateSettings({ feature: featureRef('code') }, ['terminalScripts'], scripts)
 }
 
 const killAllTerminals = () => {

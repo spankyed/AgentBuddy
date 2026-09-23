@@ -142,6 +142,9 @@ export function createHotkeyProcessor<const TMap extends Record<string, string>,
 // @public (undocumented)
 export function createNavHistory<T>(initial: T): NavHistory<T>;
 
+// @public
+export function definePlugin(definition: PluginDefinition): PluginDefinition;
+
 // @public (undocumented)
 export interface DslTypeConfig {
     // (undocumented)
@@ -187,6 +190,65 @@ export function goForward<T>(history: NavHistory<T>): {
 
 // @public (undocumented)
 export function hasDesignation(role: string): boolean;
+
+// @public
+export interface HostShell {
+    // (undocumented)
+    getSnapshot(): HostShellSnapshot;
+    // (undocumented)
+    send(event: HostShellEvent): void;
+    // (undocumented)
+    subscribe(observer: (snapshot: HostShellSnapshot) => void): {
+        unsubscribe(): void;
+    };
+    system: {
+        get(id: string): AnyActorRef | undefined;
+    };
+}
+
+// @public
+export type HostShellEvent =
+/**
+* Opens the plugin at a ref and hands its actor `events`. The shell waits for a plugin whose pack's frontend is
+* still loading, and reports a ref no pack provides once loading has settled.
+*/
+    {
+    type: 'OPEN_PLUGIN';
+    plugin: string;
+    events: PluginEvent[];
+} | {
+    type: 'RESIZE_PANEL';
+    panel: 'canvas' | 'inspection';
+    size: number;
+} | {
+    type: 'RESTORE_CHAT';
+} | {
+    type: 'SET_PLUGIN_VISIBILITY';
+    plugin: string;
+    visible: boolean;
+} | {
+    type: 'CLOSE_DEV_LETTER';
+} | {
+    type: 'HOTKEYS_RECORDING_START';
+} | {
+    type: 'HOTKEYS_RECORDING_END';
+};
+
+// @public
+export interface HostShellSnapshot {
+    // (undocumented)
+    context: HostShellState;
+    hasTag(tag: string): boolean;
+}
+
+// @public
+export interface HostShellState {
+    activePlugin: Plugin_2;
+    // (undocumented)
+    panelSizes: ShellPanelSizes;
+    plugins: readonly Plugin_2[];
+    pluginVisibility: Readonly<Record<string, boolean>>;
+}
 
 // @public (undocumented)
 export interface HotkeyEvent {
@@ -313,6 +375,18 @@ interface Plugin_2 {
 export { Plugin_2 as Plugin }
 
 // @public
+export interface PluginAccepts<TAccepts extends {
+    type: string;
+} = never> {
+    _accepts: TAccepts;
+}
+
+// @public
+export function pluginAccepts<TAccepts extends {
+    type: string;
+} = never>(): PluginAccepts<TAccepts>;
+
+// @public
 export type PluginDefinition = Omit<Plugin_2, 'id'>;
 
 // @public
@@ -349,6 +423,9 @@ export function processHotkeys<const T extends Record<string, string>, H = unkno
 
 // @public (undocumented)
 export function pushNavHistory<T>(history: NavHistory<T>, entry: T): NavHistory<T>;
+
+// @public
+export function readPluginState<TSnapshot, TSelected>(ref: string, selector: (snapshot: TSnapshot) => TSelected): TSelected;
 
 // @public (undocumented)
 export type RouteComponents = Record<RouteName, Component>;
@@ -389,6 +466,59 @@ export interface SecretsSnapshot {
     secrets: SecretInfo[];
     // (undocumented)
     status: SecretsStatus;
+}
+
+// @public
+export interface SettingsPort {
+    feature<T = unknown>(ref: FeatureRef): T | undefined;
+    saveStatus(): SettingsSaveStatus;
+    section<T = unknown>(name: string): T | undefined;
+    subscribe(listener: () => void): () => void;
+    update(target: SettingsTarget, path: readonly string[], value: unknown): void;
+}
+
+// @public
+export interface SettingsSaveStatus {
+    // (undocumented)
+    problems: string[];
+    // (undocumented)
+    status: 'idle' | 'saving' | 'saved' | 'refused';
+}
+
+// @public
+export type SettingsTarget = {
+    section: string;
+} | {
+    feature: FeatureRef;
+};
+
+// @public
+export interface Shell {
+    // (undocumented)
+    activePlugin: Readonly<Ref<Plugin_2>>;
+    closeDevLetter(): void;
+    // (undocumented)
+    endHotkeyRecording(): void;
+    // (undocumented)
+    isOnboarding: Readonly<Ref<boolean>>;
+    // (undocumented)
+    panelSizes: Readonly<Ref<ShellPanelSizes>>;
+    // (undocumented)
+    plugins: Readonly<Ref<readonly Plugin_2[]>>;
+    // (undocumented)
+    pluginVisibility: Readonly<Ref<Readonly<Record<string, boolean>>>>;
+    resizeCanvas(size: number): void;
+    restoreChat(): void;
+    setPluginVisible(ref: string, visible: boolean): void;
+    startHotkeyRecording(): void;
+}
+
+// @public
+export interface ShellPanelSizes {
+    canvasHeight: number;
+    chatMaximized?: boolean;
+    inspectionWidth: number;
+    previousInspectionWidth?: number;
 }
 
 // @public (undocumented)
@@ -471,10 +601,28 @@ export type TrailClickEvent<TInfo = unknown> = {
 };
 
 // @public
-export function useApplicationActor(): AnyActorRef;
+export function updateSettings(target: SettingsTarget, path: readonly string[], value: unknown): void;
 
 // @public
-export function usePlugin<T = AnyActorRef>(): T;
+export function useFeatureSettings<T = unknown>(feature: FeatureRef): Readonly<Ref<T | undefined>>;
+
+// @public
+export function usePlugin<T>(): T;
+
+// @public
+export function usePluginState<TSnapshot, TSelected>(ref: string, selector: (snapshot: TSnapshot) => TSelected): Readonly<Ref<TSelected>>;
+
+// @public
+export function useSettingsSave(): {
+    save: Readonly<Ref<SettingsSaveStatus>>;
+    update: SettingsPort['update'];
+};
+
+// @public
+export function useSettingsSection<T = unknown>(name: string): Readonly<Ref<T | undefined>>;
+
+// @public
+export function useShell(): Shell;
 
 // @public (undocumented)
 export function useTrackedMenuOpen(menuOpen: Ref<boolean>): void;

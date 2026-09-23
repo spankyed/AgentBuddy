@@ -76,13 +76,14 @@
 </template>
 
 <script setup lang="ts">
-import { codeChild } from '@/features/code/fe/utils/parent-communication'
+
 import type { Component } from 'vue'
 import { computed } from 'vue'
 import { useSelector } from '@xstate/vue'
 import { id, type CodeState } from '@/features/code/fe/state'
 import { isAnyMenuOpen, usePlugin } from '@abuddy/sdk/fe'
 import BaseDirectoryMenu from '@/features/code/fe/features/explorer/components/BaseDirectoryMenu.vue'
+import { codeChild } from './children';
 import {
   FolderOpen,
   Search,
@@ -107,7 +108,7 @@ const explorerActor = codeChild(actor, 'explorer')!
 const terminalActor = codeChild(actor, 'terminal')!
 const commitActor = codeChild(actor, 'commit')!
 
-const changeCount = useSelector(commitActor, (state: any) => state.context.gitStatus?.length ?? 0)
+const changeCount = useSelector(commitActor, (state) => state.context.gitStatus?.length ?? 0)
 
 const selectedPanel = useSelector(actor, (state) => state.context.selectedPanel)
 const baseDirectory = useSelector(actor, (state) => state.context.baseDirectory)

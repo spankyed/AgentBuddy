@@ -542,19 +542,26 @@ at all, gating it is then a one-line follow-up with the evidence already gathere
 Paths outside a feature (seed data, extension registers, migrations) stay relative to the pack root.
 
 **8. A capability key appears only when there is more to say than "it exists".** `provides` says the
-feature has a system; a sibling `system` key annotates it, carrying the `outgoingEventsType`,
-`sendsTo` and `events` that `system.entry`'s wrapper object carries today, and an `entry` when the
+feature has a system; a sibling `system` or `plugin` key annotates it, carrying the `events` that
+`system.entry`'s wrapper object carries today, the plugin's `default` claim, and an `entry` when the
 file is not at the conventional path.
 
 ```jsonc
-{ "id": "actions", "about": "…",
-  "provides": ["system", "plugin", "settings"],
-  "system": { "sendsTo": ["flows"], "outgoingEventsType": "OutgoingActionEvents" } }
+{ "id": "threads", "about": "…",
+  "provides": ["system", "plugin"],
+  "plugin": { "default": true } }
 
 { "id": "weird", "about": "…",
   "provides": ["system"],
   "system": { "entry": "src/backend/main.ts" } }
 ```
+
+> **Updated 2026-09-22.** This decision named two more annotations when it was written, and neither
+> survives. `outgoingEventsType` no longer exists in `manifest-schema.ts` — it was removed after this
+> doc was written, and no pack in the repo carries one. `sendsTo` is deleted by
+> [`goal-plugin-inbox.md`](../archive/goals/goal-plugin-inbox.md) (its Decision 2), which has **landed**:
+> a plugin declares the events it accepts, so the inverse index `sendsTo` supplied is gone from every
+> manifest, from `SystemSchema` and from `abuddy.schema.json`. Nothing here has to remove it.
 
 This is a list with annotations, not two homes for one fact: `validate` requires every capability key
 to be named in `provides`, so a `system` block on a feature that does not provide one is an error
@@ -567,10 +574,13 @@ scaffolds against no plugin. It becomes `f.provides?.includes('plugin')`. Togeth
 `ProvenanceManifest` and `packs-system.ts`, that is **every loosely-typed manifest read in the repo**:
 `abuddy-cli/src/utils.ts:34` returns a real `PackManifest`, and `@abuddy/testing`'s
 `harness.ts:228` casts to one, so both fail to compile like everything else. Three, and the compiler
-names none of them. Measured, the annotations are rare — of default-setup's 24
-`system` and `plugin` declarations, **three carry anything beyond the entry** — `actions.system`
-(`sendsTo` and `outgoingEventsType`), `prompts.system` (`outgoingEventsType`) and `settings.system`
-(`sendsTo`) — and **none** overrides the path. The `entry` override exists for an external pack with a different layout, not because
+names none of them. Measured again on 2026-09-22, the annotations are rarer still — of default-setup's
+24 `system` and `plugin` declarations, **three carry anything beyond the entry**: `threads.plugin`
+(`default: true`), `actions.system` (`sendsTo: ["flows"]`) and `settings.system`
+(`sendsTo: ["host/application"]`) — and **none** overrode the path. Re-measured on 2026-09-23, after
+[`goal-plugin-inbox.md`](../archive/goals/goal-plugin-inbox.md) deleted `sendsTo`,
+**`threads.plugin.default` is the only annotation left in the pack**; `events` and the `entry` override
+exist for external packs rather than for anything here. The `entry` override exists for an external pack with a different layout, not because
 anything here needs it.
 
 **9. Every extension point moves under `extensions`**: `steps`, `artifacts`, `blocks`, `commands`,
@@ -877,9 +887,10 @@ byte-identical (`dist/*.seed.json`, `dist/seeds.json`); `tests/unit/seed-parity`
 - Replace the per-capability keys with one `provides` list, each name resolving through
   `FEATURE_LAYOUT`, and make every path a feature does spell out relative to `src/features/<id>/`
   (Decision 7).
-- Keep `system`/`plugin` as optional sibling annotations carrying `sendsTo`, `outgoingEventsType`,
-  `events` and an `entry` override, and make `validate` reject one whose name is absent from
-  `provides` (Decision 8).
+- Keep `system`/`plugin` as optional sibling annotations carrying `events`, the plugin's `default`
+  claim and an `entry` override, and make `validate` reject one whose name is absent from
+  `provides` (Decision 8). `sendsTo` is not among them:
+  [`goal-plugin-inbox.md`](../archive/goals/goal-plugin-inbox.md) already deleted it.
 - ~~Move `defaultPlugin` onto the feature's plugin as `{ "default": true }` (Decision 12).~~ **Done ahead of this goal**, on its own: the root field is gone, `PluginSchema` takes `default`, `validate` rejects two features of one pack claiming it, and codegen reads the claim. Nothing else in the redesign was touched.
 - Widen `validateFeatures` (`validate.ts:47`, moved by Decision 6) to check **every** name in
   `provides`, not the three

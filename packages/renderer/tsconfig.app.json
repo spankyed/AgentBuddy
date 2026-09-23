@@ -1,7 +1,7 @@
 {
   "extends": "@vue/tsconfig/tsconfig.dom.json",
   "include": ["env.d.ts", "src/**/*", "src/**/*.vue", "../abuddy-sdk/src/fe/**/*"],
-  "exclude": ["src/**/__tests__/*", "src/core/types/generated/*"],
+  "exclude": [],
   "compilerOptions": {
     // Workspace @abuddy/* packages resolve to source (see their package.json exports)
     "customConditions": ["@abuddy/source"],

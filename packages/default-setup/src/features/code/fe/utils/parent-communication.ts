@@ -1,5 +1,3 @@
-import type { AnyActorRef } from 'xstate'
-
 export const updateParentState = (self: any, updates: any) => {
   try {
     if (self._parent) {
@@ -56,7 +54,3 @@ export const getParentContext = (self: any) => {
     return null
   }
 }
-
-/** One of the code plugin's children, by the id it was spawned under */
-export const codeChild = (code: AnyActorRef, id: string): AnyActorRef | undefined =>
-  code.getSnapshot().children[id]

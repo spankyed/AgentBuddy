@@ -6,7 +6,7 @@ import { exportDatabase, getBackupInfo, importDatabase } from '../backup/index.t
 import { secretsStore } from '../secrets/index.ts';
 import { _getMediaPath } from '@abuddy/sdk/utils';
 import { getAppVersion } from '@abuddy/sdk/env';
-import type { PackRegistry } from '../packs/pack-registration.ts';
+import type { PackRegistry } from '../packs/registry.ts';
 import { startPacks } from '../packs/runtime/start.ts';
 import { runAppMigrations, runPackMigrations } from '../migrations/index.ts';
 import { appState } from '../app-state/index.ts';

@@ -2,9 +2,9 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { createLogger } from '@abuddy/sdk/logger';
 import { resolveAppContext } from '@abuddy/sdk/env';
-import { packSystemIds, type PackRegistry } from '../pack-registration.ts';
-import { publishHostPackOutput } from '../pack-layout.ts';
-import type { PackManifest } from '../pack-discovery.ts';
+import { packSystemIds, type PackRegistry } from '../registry.ts';
+import { publishHostPackOutput } from '../layout.ts';
+import type { PackManifest } from '../discovery.ts';
 import {
   loadSingleExternalPack,
   clearPackRequireCache,

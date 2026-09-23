@@ -72,7 +72,7 @@ const dependentPackCommands = (documentName: string, command: string) =>
 async function seededApp(): Promise<TestApp> {
   seedData({ compiledDir: DIST, include: { library: new Set(['internal']) } })
   // threads checks onboarding with the brain when a client connects
-  const app = await startApp({ systems: ['library', 'threads', 'brain', 'settings'] })
+  const app = await startApp({ systems: ['library', 'threads', 'brain', 'host/settings'] })
   await app.connect()
   return app
 }
@@ -130,14 +130,14 @@ describe('slash commands from the library commands folder', () => {
     dependentDirs.push(dir)
     fs.writeFileSync(path.join(dir, 'seeds.json'), JSON.stringify({ version: 1, seeds: [] }))
     const nothing = Object.fromEntries(Object.keys(manifest.boot.seed).map((key) => [key, []]))
-    const app = await startApp({ systems: ['library', 'threads', 'brain', 'settings'] })
+    const app = await startApp({ systems: ['library', 'threads', 'brain', 'host/settings'] })
     await app.connect()
 
-    await app.send('settings', { type: 'IMPORT_PACK_SEEDS', directory: dir, include: nothing, mode: 'replace-on-collision', restartBrain: false })
-    const failed = await app.nextEmit('settings', 'PACK_SEEDS_IMPORT_FAILED') as unknown as { error: string }
+    await app.send('host/settings', { type: 'IMPORT_PACK_SEEDS', directory: dir, include: nothing, mode: 'replace-on-collision', restartBrain: false })
+    const failed = await app.nextEmit('host/settings', 'PACK_SEEDS_IMPORT_FAILED') as unknown as { error: string }
 
     expect(failed.error).toContain("doesn't name the pack that compiled these seeds")
-    expect(app.emitted('settings').map((event) => event.type)).not.toContain('PACK_SEEDS_IMPORTED')
+    expect(app.emitted('host/settings').map((event) => event.type)).not.toContain('PACK_SEEDS_IMPORTED')
   })
 
   it("reports the records an import from Settings couldn't seed, with the counts of the rest", async () => {
@@ -146,11 +146,11 @@ describe('slash commands from the library commands folder', () => {
     fs.writeFileSync(path.join(dir, 'seeds.json'), JSON.stringify({ version: 1, packId: manifest.id, seeds: [] }))
     const note = (title: string) => ({ entity: 'Note', title, noteType: 'document', content: 'x', sourceHash: `hash-${title}` })
     fs.writeFileSync(path.join(dir, 'notes.seed.json'), JSON.stringify({ records: [note(''), note('kept')] }))
-    const app = await startApp({ systems: ['library', 'threads', 'brain', 'settings'] })
+    const app = await startApp({ systems: ['library', 'threads', 'brain', 'host/settings'] })
     await app.connect()
 
-    await app.send('settings', { type: 'IMPORT_PACK_SEEDS', directory: dir, include: { notes: null }, mode: 'replace-on-collision', restartBrain: false })
-    const imported = await app.nextEmit('settings', 'PACK_SEEDS_IMPORTED') as unknown as { result: Record<string, { created: number }>; errors: string[] }
+    await app.send('host/settings', { type: 'IMPORT_PACK_SEEDS', directory: dir, include: { notes: null }, mode: 'replace-on-collision', restartBrain: false })
+    const imported = await app.nextEmit('host/settings', 'PACK_SEEDS_IMPORTED') as unknown as { result: Record<string, { created: number }>; errors: string[] }
 
     expect(imported.result.notes.created).toBe(1)
     expect(imported.errors).toHaveLength(1)
@@ -158,9 +158,9 @@ describe('slash commands from the library commands folder', () => {
   })
 
   it('sends the chat the commands pack seeds imported from Settings bring', async () => {
-    const app = await startApp({ systems: ['library', 'threads', 'brain', 'settings'] })
+    const app = await startApp({ systems: ['library', 'threads', 'brain', 'host/settings'] })
     await app.connect()
-    await app.send('settings', { type: 'IMPORT_PACK_SEEDS', directory: DIST, include: { library: ['internal'] }, mode: 'replace-on-collision', restartBrain: false })
+    await app.send('host/settings', { type: 'IMPORT_PACK_SEEDS', directory: DIST, include: { library: ['internal'] }, mode: 'replace-on-collision', restartBrain: false })
     expect(commandNames(await app.nextEmit('threads', 'COMMANDS_UPDATED'))).toContain('cdx-goal')
   })
 

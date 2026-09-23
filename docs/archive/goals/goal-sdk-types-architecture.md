@@ -78,7 +78,7 @@ Final. Breaking changes are acceptable: nothing is published yet, so choose the 
      - Codegen emits `export const { qx, findById, … } = /*#__PURE__*/ defineEars<PackShapes>();`. The factory returns the SDK's singleton functions (no runtime cost, no SDK bridge change), and the `__PURE__` annotation lets FE bundles that only use the `EARS` constants drop it.
      - The raw helpers move to host-internal `@abuddy/sdk/ears/internals` (later `@abuddy/host`), with `unknown` generic defaults instead of `Record<string, any>`.
    - No `any` fallback: an entity type the shape map doesn't declare reads as `BaseEntity & Record<string, unknown>` (id, entityType and createdAt are typed; other fields need narrowing).
-   - Events use the same pattern: `defineEvents<PackEvents>()` returns typed `emit` and `sendToPlugin`. The raw `emit` / `sendToPlugin` stay available for host code but are strict (`P extends string`, `E extends { type: string }`), never `any`.
+   - Events use the same pattern: `defineEvents<PackEvents>()` returns typed `emit` and `broadcastToPlugin`. The raw `emit` / `broadcastToPlugin` stay available for host code but are strict (`P extends string`, `E extends { type: string }`), never `any`.
    - The global registries (`EntityShapeRegistry`, `PluginEventRegistry`, `ServiceRegistry`, `NodeEntityRegistry`) and every `declare module '@abuddy/sdk/…'` augmentation are removed.
    - Why: explicit instead of ambient type state (no program-inclusion or merge-order effects, no cross-pack collisions when the host compiles built-in packs together), dependencies compose visibly, independent of declaration layout, and consistent with the codegen-first model (Prisma/Drizzle/tRPC style).
 2. **Host package split: in scope, before the first publish.**
@@ -97,7 +97,7 @@ Final. Breaking changes are acceptable: nothing is published yet, so choose the 
 - **Codegen** (`packages/abuddy-sdk/src/build/generate-entries.ts`, run by `abuddy generate-entries`):
   - `#generated/ears` exports `PackShapes` (including the SDK-owned `SdkEntityShapes`, e.g. `TNode`), `EntityShape<E>`, and `qx`, `findById`, `findByIdRaw`, `findAll`, `findWhere`, `findFirst`, `createEntity` from `/*#__PURE__*/ defineEars<PackShapes>()`.
   - `PackShapes` = this pack's entity shapes plus each dependency's entity shapes. The dependency snapshot (`.abuddy/deps/<id>/snapshot.json`, the `defs` / `.abuddy/generated/types.ts`) must carry what's needed to reference the dependency's entity types. Extend the snapshot if it doesn't.
-  - `#generated/events` exports `PackEvents` and typed `emit` and `sendToPlugin` from `/*#__PURE__*/ defineEvents<PackEvents>()` (replacing `PluginEventRegistry`).
+  - `#generated/events` exports `PackEvents` and typed `emit` and `broadcastToPlugin` from `/*#__PURE__*/ defineEvents<PackEvents>()` (replacing `PluginEventRegistry`).
   - `#generated/services` exports `services` typed with the pack's feature services (replacing `ServiceRegistry`). A pack's own service modules can't import it (it imports them), so they use the SDK's `services`, which is typed as the host services only.
   - `#generated/types` exports `NodeEntity`, the union of the pack's step node interfaces (`interface XNode extends NodeBase` in each step's `types.ts`), replacing `NodeEntityRegistry`.
   - Remove the generated `entity-shapes.ts`, `event-channels.ts` and `service-types.ts` augmentation files, or turn them into plain type modules the facades import.

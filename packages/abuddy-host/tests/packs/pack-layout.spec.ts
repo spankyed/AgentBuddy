@@ -12,8 +12,8 @@ import {
   packFrontendFiles,
   stagePack,
   verifyPack,
-} from '../../src/packs/pack-layout.ts';
-import { installPackFromGitHub, installPackFromLocal, installPackFromUrl, uninstallPack } from '../../src/packs/pack-installer.ts';
+} from '../../src/packs/layout.ts';
+import { installPackFromGitHub, installPackFromLocal, installPackFromUrl, uninstallPack } from '../../src/packs/installer.ts';
 import { PACK_SNAPSHOT_FORMAT } from '@abuddy/sdk/build';
 
 let tmp: string;

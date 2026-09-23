@@ -5,18 +5,19 @@
 ```ts
 import * as _abuddy_ears from '@abuddy/ears';
 import * as _abuddy_sdk from '@abuddy/sdk';
-import { ActionEntity, EARS as EARS$1, FlowEntity, NodeBase, PromptEntity, SdkEntityShapes } from '@abuddy/sdk';
+import { ActionEntity, ActionParameter, EARS as EARS$1, FlowEntity, NodeBase, PromptEntity, SdkEntityShapes, TemplateInput } from '@abuddy/sdk';
 import { ArtifactItem } from '@abuddy/sdk/artifacts';
 import * as _abuddy_sdk_build from '@abuddy/sdk/build';
-import { HostPluginEvents, HostSystemEvents, IncomingEventsOf, OutgoingEventsOf, Qualified, TypedSendToPlugin, TypedSendToSystem, WithOwnNames } from '@abuddy/sdk/events';
+import { HostPluginEvents, HostSystemEvents, IncomingEventsOf, OutgoingEventsOf, Qualified, TypedSendToPlugin, TypedSendToSystem } from '@abuddy/sdk/events';
+import * as _abuddy_sdk_fe from '@abuddy/sdk/fe';
+import { HotkeysMap, NavHistory, TabGroup, TrailClickEvent } from '@abuddy/sdk/fe';
 import { ModelCatalogEntry, ModelId } from '@abuddy/sdk/models';
 import * as _abuddy_sdk_repositories from '@abuddy/sdk/repositories';
 import { FlowEdge } from '@abuddy/sdk/repositories';
-import { PackSeedsPreview } from '@abuddy/sdk/seed';
-import { HostServices, SecretInfo, SecretsStatus } from '@abuddy/sdk/services';
+import { HostServices } from '@abuddy/sdk/services';
 import { ExecutionContext, StepRuntimeError, TNodeEntity, TrackTree } from '@abuddy/sdk/steps';
-import { ApplicationHotkeys, KeyboardShortcut } from '@abuddy/sdk/types';
-import { BinaryOperator, SeedCounts } from '@abuddy/sdk/utils';
+import { KeyboardShortcut } from '@abuddy/sdk/types';
+import { BinaryOperator } from '@abuddy/sdk/utils';
 import { z } from 'zod';
 
 interface ActionNode extends NodeBase {
@@ -41,6 +42,32 @@ declare class ActionService {
     getAndExecute(label: string, params?: Record<string, any>): Promise<any | undefined>;
 }
 
+interface ActionTab {
+    path: string;
+    content: string;
+    modified: boolean;
+    isAction: true;
+    actionEntity: ActionEntity;
+    isDiff?: boolean;
+    externallyModified?: boolean;
+    externalModificationTime?: Date;
+    pendingSaveConflict?: boolean;
+    isPinned?: boolean;
+    groupId?: string;
+    isPreview?: boolean;
+}
+
+type ActionsEvents = UIEvent$1 | SystemEvent$1 | TrailClickEvent;
+
+/** The events another feature may send the actions plugin: paging, and editing an action */
+type ActionsListEvent = Extract<ActionsEvents, {
+    type: 'ACTION.CREATE' | 'ACTION.CREATE_INLINE' | 'ACTION.DELETE' | 'ACTION.SELECT' | 'ACTION.UPDATE_INPUT' | 'ACTION.UPDATE_LABEL' | 'ACTIONS.LOAD_ALL' | 'ACTIONS.LOAD_MORE';
+}>;
+
+interface ActionsSettings {
+    categories: Category[];
+}
+
 interface ActionsStartupData {
     actions: ActionEntity[];
     page: number;
@@ -53,15 +80,6 @@ interface ActiveTokenInfo {
     source: TokenSource;
     kind: TokenKind;
     prefix: string;
-}
-
-interface Address {
-    street: string;
-    street2?: string;
-    city: string;
-    state: string;
-    postalCode: string;
-    country: string;
 }
 
 type AgentConnectedData = {
@@ -120,10 +138,6 @@ type AgentThreadData = {
     nextCursor?: string | null;
 };
 
-interface AppSettings {
-    hotkeys: ApplicationHotkeys;
-}
-
 type ApprovalDecision = 'accept' | 'acceptForSession' | 'cancel' | 'decline';
 
 interface ArtifactEntity extends BaseEntity {
@@ -136,11 +150,6 @@ interface ArtifactEntity extends BaseEntity {
 }
 
 type ArtifactType = string;
-
-interface AssistantSettings {
-    name: string;
-    birthdate: string | null;
-}
 
 type AssistantStreamLine = z.infer<typeof AssistantStreamLineSchema>;
 
@@ -390,7 +399,7 @@ interface ChatStateConfig {
 interface CliServiceType {
     git: {
         commit(message: string): Promise<void>;
-        getStatus(): Promise<GitStatusFile[]>;
+        getStatus(): Promise<GitStatusFile$1[]>;
         getCurrentBranch(): Promise<string>;
         getWorkingDir(): string;
         /**
@@ -661,6 +670,47 @@ interface ConsumerHandlers {
 /** A section of a document's content, as the library compiler parses it from markdown */
 type ContentSection = FieldContent | ListContent | MarkdownContent | TextContent | CodeContent;
 
+type Context = {
+    baseDirectory: string;
+    openFiles: (OpenFile | TerminalTab | ActionTab | PromptTab)[];
+    activeFilePath: string | null;
+    isLoading: boolean;
+    error: string | null;
+    selectedPanel: PanelType;
+    tabsRestored?: boolean;
+    pendingTabOrder?: Array<{
+        path: string;
+        order: number;
+    }>;
+    pendingPersistedMetadata?: Map<string, {
+        groupId?: string;
+        isPinned?: boolean;
+        isPreview?: boolean;
+    }>;
+    tabGroups: TabGroup[];
+    isQuickOpenVisible: boolean;
+    quickOpenQuery: string;
+    quickOpenResults: QuickOpenResult[];
+    quickOpenSelectedIndex: number;
+    quickOpenLoading: boolean;
+    recentlyOpenedFiles: string[];
+    tabViewHistory: string[];
+    hotkeys: HotkeysMap;
+    settings?: CodeSettings;
+    pendingRevealLine: {
+        filePath: string;
+        line: number;
+        column: number;
+        lineText?: string;
+    } | null;
+    searchFocusTrigger: number;
+    searchPrefillText: string;
+    panelTerminalId: string | null;
+    panelTerminalExpanded: boolean;
+    pendingTerminalTabIds?: string[];
+    panelNavHistory: NavHistory<PanelType>;
+};
+
 interface ContextReference {
     refType: ContextReferenceType;
     refId: string;
@@ -881,8 +931,6 @@ declare namespace EARS {
         type Collection = typeof Collection;
         const Note = "Note";
         type Note = typeof Note;
-        const Settings = "Settings";
-        type Settings = typeof Settings;
         const Relation = "Relation";
         type Relation = typeof Relation;
         const Flow = "Flow";
@@ -896,7 +944,7 @@ declare namespace EARS {
         const Prompt = "Prompt";
         type Prompt = typeof Prompt;
     }
-    type Entity = Entity.Thread | Entity.Message | Entity.Artifact | Entity.SearchIndex | Entity.IndexedDoc | Entity.Terminal | Entity.BrowserTab | Entity.BrowserBookmark | Entity.Document | Entity.Collection | Entity.Note | Entity.Settings | Entity.Relation | Entity.Flow | Entity.Node | Entity.TNode | Entity.Action | Entity.Prompt;
+    type Entity = Entity.Thread | Entity.Message | Entity.Artifact | Entity.SearchIndex | Entity.IndexedDoc | Entity.Terminal | Entity.BrowserTab | Entity.BrowserBookmark | Entity.Document | Entity.Collection | Entity.Note | Entity.Relation | Entity.Flow | Entity.Node | Entity.TNode | Entity.Action | Entity.Prompt;
     type EntityId<E extends string = string> = _abuddy_ears.EARS.EntityId<E>;
     namespace RelKind {
         const PARENT_OF = "parent_of";
@@ -1001,15 +1049,6 @@ interface ExecOnceResult {
     stdout: string;
     stderr: string;
     exitCode: number;
-}
-
-/** A Help tab FAQ: the first `# heading` of a src/seeds/faqs file, and the rest as its answer */
-interface FAQItem {
-    id: string;
-    question: string;
-    answer: string;
-    category?: string;
-    order?: number;
 }
 
 interface FieldContent {
@@ -1126,12 +1165,6 @@ interface FolderItem {
     isBroken?: boolean;
 }
 
-interface GeneralSettings {
-    personal: PersonalInfo;
-    application: AppSettings;
-    projects: Project[];
-}
-
 interface GhPRComment {
     id: string;
     body: string;
@@ -1215,7 +1248,24 @@ interface GitDiff {
     isImage?: boolean;
 }
 
+interface GitDiff$1 {
+    path: string;
+    diff: string;
+    staged: boolean;
+    originalContent?: string;
+    modifiedContent?: string;
+    isImage?: boolean;
+}
+
 interface GitStatusFile {
+    path: string;
+    status: 'added' | 'copied' | 'deleted' | 'modified' | 'renamed' | 'typechange' | 'unmerged' | 'untracked';
+    staged: boolean;
+    originalPath?: string;
+    score?: number;
+}
+
+interface GitStatusFile$1 {
     path: string;
     status: 'added' | 'copied' | 'deleted' | 'modified' | 'renamed' | 'typechange' | 'unmerged' | 'untracked';
     staged: boolean;
@@ -1748,6 +1798,28 @@ interface NotesSettings {
     showCollapseIcon: boolean;
 }
 
+interface OpenFile {
+    path: string;
+    content: string;
+    originalContent: string;
+    modified: boolean;
+    isDiff?: boolean;
+    gitDiff?: GitDiff;
+    gitFile?: GitStatusFile;
+    externallyModified?: boolean;
+    externalModificationTime?: Date;
+    pendingSaveConflict?: boolean;
+    isImage?: boolean;
+    isVideo?: boolean;
+    isBinary?: boolean;
+    isRichText?: boolean;
+    _richTextBaselineSet?: boolean;
+    isPrDiff?: boolean;
+    isPinned?: boolean;
+    groupId?: string;
+    isPreview?: boolean;
+}
+
 type OutgoingActionEvents = {
     type: 'ACTIONS_LISTED';
     data: ActionsStartupData;
@@ -1859,12 +1931,20 @@ type OutgoingBrainEvents = {
 type OutgoingCodeEvents = OutgoingExplorerEvents | OutgoingSearchEvents | OutgoingCommitEvents | OutgoingPullRequestEvents | OutgoingTerminalEvents | OutgoingActionsEvents | OutgoingPromptsEvents | {
     type: 'CODE_CONNECTED';
     data: CodeConnectedData;
+}
+/** What testing a CLI found, for the Settings view that asked (the host declares its plugin takes it) */
+ | {
+    type: 'CLI_TEST_RESULT';
+    provider: string;
+    success: boolean;
+    error?: string;
+    resolvedPath?: string;
 };
 
 type OutgoingCommitEvents = {
     type: 'commit.STATUS_RECEIVED';
     data: {
-        files: GitStatusFile[];
+        files: GitStatusFile$1[];
         branch: string;
         hasUpstream: boolean;
         commitsAhead: number;
@@ -1872,7 +1952,7 @@ type OutgoingCommitEvents = {
     };
 } | {
     type: 'commit.DIFF_RECEIVED';
-    data: GitDiff;
+    data: GitDiff$1;
 } | {
     type: 'commit.FILES_STAGED';
     data: {
@@ -2091,7 +2171,7 @@ type OutgoingExplorerEvents = {
     data: FileChangeInfo;
 } | {
     type: 'explorer.QUICK_OPEN_RESULTS';
-    data: QuickOpenResult[];
+    data: QuickOpenResult$1[];
 } | {
     type: 'explorer.FILES_MOVED';
     data: {
@@ -2414,13 +2494,13 @@ type OutgoingPullRequestEvents = {
 } | {
     type: 'pr.BRANCH_DIFF_RECEIVED';
     data: {
-        files: GitStatusFile[];
+        files: GitStatusFile$1[];
         baseBranch: string;
         headBranch?: string;
     };
 } | {
     type: 'pr.FILE_DIFF_RECEIVED';
-    data: GitDiff & {
+    data: GitDiff$1 & {
         baseBranch: string;
         headBranch?: string;
     };
@@ -2578,65 +2658,9 @@ type OutgoingSearchEvents = {
     };
 };
 
-type OutgoingSettingsEvents = {
-    type: 'SETTINGS_LOADED';
-    data: SettingsData;
-    faqs: FAQItem[];
-} | {
-    type: 'SETTINGS_UPDATED';
-    data: SettingsData;
-}
-/** A replacement (`REPLACE_SETTINGS`) was stored */
- | {
-    type: 'SETTINGS_SAVED';
-}
-/** A replacement was refused, and stored nothing */
- | {
-    type: 'SETTINGS_REFUSED';
-    problems: string[];
-} | {
-    type: 'SETTINGS_RESET';
-    data: SettingsData;
-} | {
-    type: 'APPLICATION_HOTKEYS';
-    hotkeys: SettingsData['general']['application']['hotkeys'];
-} | {
-    type: 'CLI_TEST_RESULT';
-    provider: string;
-    success: boolean;
-    error?: string;
-    resolvedPath?: string;
-}
-/** `errors` lists the records that couldn't be seeded (`<key>: <error>`); the rest were imported */
- | {
-    type: 'PACK_SEEDS_IMPORTED';
-    result: Record<string, SeedCounts>;
-    errors: string[];
-} | {
-    type: 'PACK_SEEDS_IMPORT_FAILED';
-    error: string;
-} | {
-    type: 'PACK_SEEDS_PREVIEW';
-    preview: PackSeedsPreview;
-} | {
-    type: 'PACK_SEEDS_PREVIEW_FAILED';
-    error: string;
-} | {
-    type: 'APP_RESET_COMPLETE';
-} | {
-    type: 'APP_RESET_FAILED';
-    error: string;
-}
-/** The stored API keys, without values, and how they're protected */
- | {
-    type: 'SECRETS_UPDATED';
-    secrets: SecretInfo[];
-    status: SecretsStatus;
-};
-
 type OutgoingTerminalEvents = {
     type: 'terminal.CREATED';
-    data: TerminalInfo;
+    data: TerminalInfo$1;
 } | {
     type: 'terminal.OUTPUT';
     data: {
@@ -2675,10 +2699,10 @@ type OutgoingTerminalEvents = {
     };
 } | {
     type: 'terminal.TERMINALS_LISTED';
-    data: TerminalInfo[];
+    data: TerminalInfo$1[];
 } | {
     type: 'terminal.TERMINAL_TAB_OPENED';
-    data: TerminalInfo;
+    data: TerminalInfo$1;
 };
 
 type OutgoingThreadsEvents = {
@@ -2811,23 +2835,21 @@ type OwnEntityShapes = {
     'Document': DocumentEntity;
     'Collection': CollectionEntity;
     'Note': NoteEntity;
-    'Settings': SettingsEntity;
 };
 
-/** Plugin id → the events this pack's systems send to that plugin (their own, and each `sendsTo`). */
+/** Plugin id → the events that plugin receives: its own feature's system's, and the inbox it declares. */
 type OwnPluginEvents = {
-    'threads': __events_threads;
-    'code': __events_code;
-    'notes': __events_notes;
-    'browser': __events_browser;
-    'library': __events_library;
-    'flows': __events_flows | __events_actions;
-    'actions': __events_actions;
-    'prompts': __events_prompts;
-    'brain': __events_brain;
-    'database': __events_database;
-    'logs': __events_logs;
-    'settings': __events_settings;
+    'threads': __events_threads | __accepts_threads;
+    'code': __events_code | __accepts_code;
+    'notes': __events_notes | __accepts_notes;
+    'browser': __events_browser | __accepts_browser;
+    'library': __events_library | __accepts_library;
+    'flows': __events_flows | __accepts_flows;
+    'actions': __events_actions | __accepts_actions;
+    'prompts': __events_prompts | __accepts_prompts;
+    'brain': __events_brain | __accepts_brain;
+    'database': __events_database | __accepts_database;
+    'logs': __events_logs | __accepts_logs;
 };
 
 /** The repositories this pack declares (abuddy.json features[].repositories) */
@@ -2852,17 +2874,34 @@ type OwnRepositories = {
     promptCommands: typeof promptCommands;
     brainQueries: typeof brainQueries;
     brainCommands: typeof brainCommands;
-    settingsQueries: typeof settingsQueries;
-    settingsCommands: typeof settingsCommands;
 };
 
 /**
  * `services.emitter`, typed with this pack's events. Actions run outside any pack, so a system and a
  * plugin are both named `<pack>/<feature>`, this pack's own and the host's too; a system may also be a role.
  */
-type PackEmitter = Omit<HostServices['emitter'], 'sendToPlugin' | 'sendToSystem'> & {
-    sendToPlugin: TypedSendToPlugin<QualifiedPluginEvents>;
+type PackEmitter = Omit<HostServices['emitter'], 'broadcastToPlugin' | 'sendToSystem'> & {
+    broadcastToPlugin: TypedSendToPlugin<QualifiedPluginEvents>;
     sendToSystem: TypedSendToSystem<QualifiedSystemEvents>;
+};
+
+/**
+ * Feature id → the inbox this pack's plugin for that feature declares (dependents name it `default-setup/<feature>`).
+ * Its own system's events aren't here: they are between the two halves of one feature, not a contract anyone else
+ * may send. This is what a dependent pack may send it, and it mirrors `PackSystemEvents`.
+ */
+type PackPluginEvents = {
+    'threads': __accepts_threads;
+    'code': __accepts_code;
+    'notes': __accepts_notes;
+    'browser': __accepts_browser;
+    'library': __accepts_library;
+    'flows': __accepts_flows;
+    'actions': __accepts_actions;
+    'prompts': __accepts_prompts;
+    'brain': __accepts_brain;
+    'database': __accepts_database;
+    'logs': __accepts_logs;
 };
 
 /**
@@ -2889,8 +2928,9 @@ type PackSystemEvents = {
     'brain': IncomingEventsOf<(typeof specs)['brain']>;
     'database': IncomingEventsOf<(typeof specs)['database']>;
     'logs': IncomingEventsOf<(typeof specs)['logs']>;
-    'settings': IncomingEventsOf<(typeof specs)['settings']>;
 };
+
+type PanelType = 'actions' | 'commit' | 'explorer' | 'pr' | 'prompts' | 'search';
 
 /**
  * Every line type we explicitly recognise. Each variant has a literal
@@ -2967,28 +3007,11 @@ type PermissionMode = z.infer<typeof PermissionModeSchema>;
  */
 declare const PermissionModeSchema: z.ZodEnum<["default", "acceptEdits", "plan", "bypassPermissions", "dontAsk", "auto"]>;
 
-interface PersonalInfo {
-    name?: string;
-    phoneNumber?: string;
-    address?: Address;
-}
-
-/** Each plugin's settings, by the plugin's ref (`<packId>/<featureId>`) */
-interface PluginSettings {
-    [pluginRef: string]: any;
-}
-
 type Predicate = {
     key: string;
     operator: BinaryOperator;
     value?: any;
 } | ((context: any) => boolean);
-
-interface Project {
-    name: string;
-    directories: string[];
-    color: string;
-}
 
 declare class PromptService {
     getByLabel(label: string): PromptEntity | undefined;
@@ -3006,6 +3029,21 @@ declare class PromptService {
     usePrompt(label: string, templateParams: Record<string, any>): string | undefined;
 }
 
+interface PromptTab {
+    path: string;
+    content: string;
+    modified: boolean;
+    isPrompt: true;
+    promptEntity: PromptEntity;
+    isDiff?: boolean;
+    externallyModified?: boolean;
+    externalModificationTime?: Date;
+    pendingSaveConflict?: boolean;
+    isPinned?: boolean;
+    groupId?: string;
+    isPreview?: boolean;
+}
+
 /**
  * Prompt template types and definitions
  */
@@ -3021,12 +3059,23 @@ interface PromptsConnectedData {
     categories?: Category[];
 }
 
+type PromptsEvents = UIEvent | SystemEvent | TrailClickEvent;
+
+/** The events another feature may send the prompts plugin: paging, and editing a prompt */
+type PromptsListEvent = Extract<PromptsEvents, {
+    type: 'PROMPT.CREATE_INLINE' | 'PROMPT.DELETE' | 'PROMPT.SELECT' | 'PROMPT.UPDATE_INPUTS' | 'PROMPT.UPDATE_LABEL' | 'PROMPTS.LOAD_ALL' | 'PROMPTS.LOAD_MORE';
+}>;
+
+interface PromptsSettings {
+    categories: Category[];
+}
+
 /**
- * Every plugin this pack's systems can send to, by ref: its own, and the dependency and host plugins a `sendsTo`
- * names. Those keep the events their owner declares they receive — a pack widens only its own plugins. Actions
- * (`services.emitter`) send with it.
+ * Every plugin this pack's code can send to, by ref: its own, its dependencies' and the host's. A plugin owned
+ * elsewhere takes the inbox its own pack declares — a pack widens only its own. Actions (`services.emitter`)
+ * send with it.
  */
-type QualifiedPluginEvents = Qualified<'default-setup', OwnPluginEvents> & Pick<HostPluginEvents, 'host/application'>;
+type QualifiedPluginEvents = Qualified<'default-setup', OwnPluginEvents> & HostPluginEvents;
 
 /** Every system this pack's code can send to, by ref: its own, its dependencies' and the host's. */
 type QualifiedSystemEvents = Qualified<'default-setup', PackSystemEvents> & HostSystemEvents;
@@ -3192,6 +3241,16 @@ interface QuickOpenResult {
     type: 'directory' | 'file';
     extension?: string;
     score?: number;
+    matchRanges?: Array<[number, number]>;
+}
+
+interface QuickOpenResult$1 {
+    path: string;
+    relativePath: string;
+    name: string;
+    type: 'directory' | 'file';
+    extension?: string;
+    score?: number;
 }
 
 interface QuickPrompt {
@@ -3330,9 +3389,6 @@ interface SearchResult {
     fileSize?: number;
 }
 
-/** The plugins this pack's code sends to: `QualifiedPluginEvents`, with its own named by feature id instead of ref */
-type SendablePluginEvents = WithOwnNames<'default-setup', QualifiedPluginEvents>;
-
 /**
  * Type definitions for the Codex app-server integration.
  *
@@ -3387,54 +3443,6 @@ interface SessionViewOptions {
 type SettingScope = z.infer<typeof SettingScopeSchema>;
 
 declare const SettingScopeSchema: z.ZodEnum<["user", "project", "local"]>;
-
-interface SettingsData {
-    general: GeneralSettings;
-    plugins: PluginSettings;
-    assistant: AssistantSettings;
-}
-
-/** The one Settings row: the user's changes to the default settings (`SettingsData`), and nothing else */
-interface SettingsEntity extends BaseEntity {
-    entityType: typeof EARS.Entity.Settings;
-    /** Only what differs from the defaults */
-    data: Partial<SettingsData>;
-    updatedAt?: number;
-}
-
-/** The sections of the stored settings other than the plugins' slices, each keyed as the data holds it */
-type SettingsSection = 'assistant' | 'general' | 'plugins';
-
-/**
- * Settings Service
- *
- * Provides convenient access to application settings with type-safe methods
- * for common operations on general and plugin settings.
- */
-
-declare class SettingsService {
-    /**
-     * Get all settings: general, plugins and assistant
-     */
-    getAll(): SettingsData;
-    /**
-     * A plugin's settings in effect
-     * @param plugin - The plugin's ref, `<packId>/<featureId>` (`'default-setup/threads'`): whoever calls, a bare
-     * name would be read as this pack's, so it throws
-     */
-    getPluginSettings<T = any>(plugin: `${string}/${string}`): T;
-    /**
-     * Get all general settings
-     */
-    getGeneralSettings(): SettingsData['general'];
-    /**
-     * Update a plugin setting
-     * @param plugin - The plugin's ref, `<packId>/<featureId>`; a bare name throws
-     * @param path - Path to the setting property (e.g., ['hotkeys', 'openTerminal'])
-     * @param value - The new value
-     */
-    updatePluginSetting(plugin: `${string}/${string}`, path: string[], value: any): void;
-}
 
 type Simplify<T> = {
     [K in keyof T]: T[K];
@@ -3504,6 +3512,62 @@ interface SwitchNode extends NodeBase {
     elseLabel?: string;
 }
 
+type SystemEvent = OutgoingPromptEvents | {
+    type: 'PROMPTS_PAGE_LOADED';
+    data: {
+        prompts: PromptEntity[];
+        page: number;
+        totalPages: number;
+    };
+} | {
+    type: 'PROMPTS_ALL_LOADED';
+    data: {
+        prompts: PromptEntity[];
+    };
+} | {
+    type: 'PROMPTS_IMPORTED';
+    count: number;
+    errors?: string[];
+} | {
+    type: 'PROMPTS_IMPORT_FAILED';
+    errors: string[];
+} | {
+    type: 'PROMPTS_EXPORTED';
+    filePath: string;
+    promptCount: number;
+} | {
+    type: 'PROMPTS_EXPORT_FAILED';
+    errors: string[];
+};
+
+type SystemEvent$1 = OutgoingActionEvents | {
+    type: 'ACTIONS_PAGE_LOADED';
+    data: {
+        actions: ActionEntity[];
+        page: number;
+        totalPages: number;
+    };
+} | {
+    type: 'ACTIONS_ALL_LOADED';
+    data: {
+        actions: ActionEntity[];
+    };
+} | {
+    type: 'ACTIONS_IMPORTED';
+    count: number;
+    errors?: string[];
+} | {
+    type: 'ACTIONS_IMPORT_FAILED';
+    errors: string[];
+} | {
+    type: 'ACTIONS_EXPORTED';
+    filePath: string;
+    actionCount: number;
+} | {
+    type: 'ACTIONS_EXPORT_FAILED';
+    errors: string[];
+};
+
 type SystemLine = z.infer<typeof SystemLineSchema>;
 
 /** System lines — many subtypes, all passthrough. */
@@ -3559,6 +3623,18 @@ interface TerminalEntity {
 }
 
 interface TerminalInfo {
+    id: string;
+    title: string;
+    customTitle?: string;
+    pid: number;
+    shell?: string;
+    cwd: string;
+    active: boolean;
+    cols: number;
+    rows: number;
+}
+
+interface TerminalInfo$1 {
     id: EARS.EntityId;
     title: string;
     customTitle?: string;
@@ -3574,6 +3650,11 @@ interface TerminalScript {
     id: string;
     label: string;
     command: string;
+}
+
+interface TerminalTab extends OpenFile {
+    isTerminal: true;
+    terminalInfo: TerminalInfo;
 }
 
 interface TextContent {
@@ -3829,6 +3910,158 @@ interface TurnStartParams {
     model?: string;
 }
 
+type UIEvent = {
+    type: 'PROMPT.SELECT';
+    promptId: EARS$1.EntityId;
+} | {
+    type: 'PROMPT.CREATE';
+} | {
+    type: 'PROMPT.SAVE';
+} | {
+    type: 'PROMPT.DELETE';
+    promptId: EARS$1.EntityId;
+} | {
+    type: 'PROMPT.UPDATE_INPUTS';
+    promptId: string;
+    inputs: Record<string, any>;
+} | {
+    type: 'PROMPT.CREATE_INLINE';
+    label: string;
+    templateFn: string;
+    inputs: Record<string, any>;
+} | {
+    type: 'PROMPT.UPDATE_LABEL';
+    promptId: string;
+    label: string;
+} | {
+    type: 'FORM.UPDATE_CATEGORY';
+    category: string;
+} | {
+    type: 'FORM.UPDATE_LABEL';
+    label: string;
+} | {
+    type: 'FORM.UPDATE_DESCRIPTION';
+    description: string;
+} | {
+    type: 'FORM.UPDATE_INPUTS';
+    inputs: Record<string, TemplateInput>;
+} | {
+    type: 'FORM.UPDATE_TEMPLATE';
+    templateFn: string;
+} | {
+    type: 'FORM.UPDATE_OUTPUT_SCHEMA';
+    outputSchema: any;
+} | {
+    type: 'VIEW_LIST';
+} | {
+    type: 'TOGGLE_INPUTS_SECTION';
+    show: boolean;
+} | {
+    type: 'TOGGLE_OUTPUT_SECTION';
+    show: boolean;
+} | {
+    type: 'TOGGLE_METADATA_SECTION';
+    show: boolean;
+} | {
+    type: 'FEATURE_SETTINGS_UPDATED';
+    settings: PromptsSettings;
+} | {
+    type: 'PROMPTS.LOAD_MORE';
+} | {
+    type: 'PROMPTS.LOAD_ALL';
+} | {
+    type: 'FILTER.TOGGLE_CATEGORY';
+    categoryName: string;
+} | {
+    type: 'FILTER.CLEAR';
+} | {
+    type: 'PROMPTS.IMPORT';
+    prompts: any[];
+} | {
+    type: 'PROMPTS.RESET_IMPORT_STATUS';
+} | {
+    type: 'PROMPTS.EXPORT';
+    directory: string;
+} | {
+    type: 'PROMPTS.RESET_EXPORT_STATUS';
+};
+
+type UIEvent$1 = {
+    type: 'ACTION.SELECT';
+    actionId: EARS$1.EntityId;
+} | {
+    type: 'ACTION.CREATE';
+} | {
+    type: 'ACTION.SAVE';
+} | {
+    type: 'ACTION.DELETE';
+    actionId: EARS$1.EntityId;
+} | {
+    type: 'ACTION.UPDATE_INPUT';
+    actionId: string;
+    input: Record<string, any>;
+} | {
+    type: 'ACTION.CREATE_INLINE';
+    label: string;
+    actionFn: string;
+    input: Record<string, any>;
+} | {
+    type: 'ACTION.UPDATE_LABEL';
+    actionId: string;
+    label: string;
+} | {
+    type: 'FORM.UPDATE_LABEL';
+    label: string;
+} | {
+    type: 'FORM.UPDATE_DESCRIPTION';
+    description: string;
+} | {
+    type: 'FORM.UPDATE_PARAMETERS';
+    input: Record<string, ActionParameter>;
+} | {
+    type: 'FORM.UPDATE_ACTION';
+    actionFn: string;
+} | {
+    type: 'FORM.UPDATE_OUTPUT';
+    output: any;
+} | {
+    type: 'FORM.UPDATE_CATEGORY';
+    category: string;
+} | {
+    type: 'VIEW_LIST';
+} | {
+    type: 'TOGGLE_PARAMETERS_SECTION';
+    show: boolean;
+} | {
+    type: 'TOGGLE_OUTPUT_SECTION';
+    show: boolean;
+} | {
+    type: 'TOGGLE_METADATA_SECTION';
+    show: boolean;
+} | {
+    type: 'FEATURE_SETTINGS_UPDATED';
+    settings: ActionsSettings;
+} | {
+    type: 'ACTIONS.LOAD_MORE';
+} | {
+    type: 'ACTIONS.LOAD_ALL';
+} | {
+    type: 'FILTER.TOGGLE_CATEGORY';
+    categoryName: string;
+} | {
+    type: 'FILTER.CLEAR';
+} | {
+    type: 'ACTIONS.IMPORT';
+    actions: any[];
+} | {
+    type: 'ACTIONS.RESET_IMPORT_STATUS';
+} | {
+    type: 'ACTIONS.EXPORT';
+    directory: string;
+} | {
+    type: 'ACTIONS.RESET_EXPORT_STATUS';
+};
+
 type UnknownLine = z.infer<typeof UnknownLineSchema>;
 
 /** Fallthrough catch-all: the CLI adds new top-level types regularly. */
@@ -3943,6 +4176,28 @@ interface WorktreeEntry {
     lockedReason?: string;
 }
 
+type __accepts_actions = (typeof accepts$3)['_accepts'];
+
+type __accepts_brain = never;
+
+type __accepts_browser = (typeof accepts$6)['_accepts'];
+
+type __accepts_code = (typeof accepts$8)['_accepts'];
+
+type __accepts_database = (typeof accepts$1)['_accepts'];
+
+type __accepts_flows = (typeof accepts$4)['_accepts'];
+
+type __accepts_library = (typeof accepts$5)['_accepts'];
+
+type __accepts_logs = (typeof accepts)['_accepts'];
+
+type __accepts_notes = (typeof accepts$7)['_accepts'];
+
+type __accepts_prompts = (typeof accepts$2)['_accepts'];
+
+type __accepts_threads = (typeof accepts$9)['_accepts'];
+
 type __events_actions = OutgoingEventsOf<(typeof specs)['actions']>;
 
 type __events_brain = OutgoingEventsOf<(typeof specs)['brain']>;
@@ -3963,9 +4218,103 @@ type __events_notes = OutgoingEventsOf<(typeof specs)['notes']>;
 
 type __events_prompts = OutgoingEventsOf<(typeof specs)['prompts']>;
 
-type __events_settings = OutgoingEventsOf<(typeof specs)['settings']>;
-
 type __events_threads = OutgoingEventsOf<(typeof specs)['threads']>;
+
+/** Any pack may add a line to the app's log, and the Logs plugin is where that arrives */
+declare const accepts: _abuddy_sdk_fe.PluginAccepts<{
+    type: "LOG_ADDED";
+    log: LogEntry;
+}>;
+
+/** The pages the Database settings open */
+declare const accepts$1: _abuddy_sdk_fe.PluginAccepts<{
+    type: "VIEW_BACKUP";
+}>;
+
+/** Paging and editing, which the code plugin's prompts panel asks of it */
+declare const accepts$2: _abuddy_sdk_fe.PluginAccepts<PromptsListEvent>;
+
+/** Paging and editing, which the code plugin's actions panel asks of it */
+declare const accepts$3: _abuddy_sdk_fe.PluginAccepts<ActionsListEvent>;
+
+/** The actions system keeps the flows editor's action list current; the receiver declares what it takes */
+declare const accepts$4: _abuddy_sdk_fe.PluginAccepts<OutgoingActionEvents | {
+    type: "FLOW.SELECT";
+    flowId: EARS.EntityId;
+} | {
+    type: "NODE.DOUBLE_CLICK";
+    nodeId: EARS.EntityId;
+}>;
+
+/** Where an editor link into the library lands */
+declare const accepts$5: _abuddy_sdk_fe.PluginAccepts<{
+    type: "EDIT_DOCUMENT";
+    documentId: string;
+} | {
+    type: "NAVIGATE_TO_FOLDER";
+    folderId: string | null;
+}>;
+
+/** A link the user chose to open in the app rather than the OS browser */
+declare const accepts$6: _abuddy_sdk_fe.PluginAccepts<{
+    type: "TAB.CREATE";
+    url: string;
+}>;
+
+/** Where an editor link to a note, task or task list lands */
+declare const accepts$7: _abuddy_sdk_fe.PluginAccepts<{
+    type: "NOTE.OPEN";
+    noteId: string;
+}>;
+
+/**
+ * What other features ask of the code plugin: which panel to show, and a job for one of its children.
+ *
+ * The `<child>.*` events aren't in this machine's own union — it routes them to its child actors by prefix — so
+ * they are spelled out rather than extracted, and each names the child that handles it.
+ */
+declare const accepts$8: _abuddy_sdk_fe.PluginAccepts<{
+    type: "UPDATE_STATE";
+    updates: Partial<Context>;
+} | {
+    type: "terminal.CREATE";
+    target: string;
+    command: string;
+    cwd?: string;
+} | {
+    type: "explorer.SET_BASE_DIRECTORY";
+    path: string;
+} | {
+    type: "codeActions.OPEN_ACTION";
+    actionId: EARS.EntityId;
+} | {
+    type: "codePrompts.OPEN_PROMPT";
+    promptId: EARS.EntityId;
+}>;
+
+/** What a thread's own views ask of it: showing an artifact, and answering a to-do list */
+declare const accepts$9: _abuddy_sdk_fe.PluginAccepts<{
+    type: "SELECT_ARTIFACT";
+    artifactId: string;
+} | {
+    type: "APPROVE_TODO_LIST";
+    artifactId: string;
+    tasks: unknown[];
+} | {
+    type: "REJECT_TODO_LIST";
+    artifactId: string;
+} | {
+    type: "OPEN_THREAD_CHAT";
+    threadId: string;
+} | {
+    type: "VIEW_THREAD";
+    threadId: string;
+} | {
+    type: "SELECT_THREAD";
+    id: string;
+} | {
+    type: "VIEW_DASHBOARD";
+}>;
 
 declare const actionCommands: {
     readonly create: (data: _abuddy_sdk_repositories.ActionInput) => ActionEntity;
@@ -4365,7 +4714,6 @@ declare const featureServices: {
     database: {
         buildQueryContext: typeof buildQueryContext;
     };
-    settings: SettingsService;
 };
 
 /**
@@ -4683,31 +5031,6 @@ declare function sendSystemMessage(options: {
     messageId: EARS.EntityId;
 };
 
-declare const settingsCommands: {
-    updateSettings: typeof updateSettings;
-    /**
-     * Makes `settings` the settings in effect: stores what they set that the defaults don't. A default they leave out
-     * keeps applying, since stored settings only set values.
-     */
-    replaceSettings(settings: unknown): void;
-    /** Removes a stored value (its path in the stored data), so its default applies again */
-    removeStored(path: string[]): void;
-    resetSettings: () => void;
-};
-
-declare const settingsQueries: {
-    getSettings: () => SettingsData;
-    /**
-     * Only what the user changed, without the defaults merged in — what a migration has to rewrite, since
-     * writing a merged copy back would freeze today's defaults into the user's stored settings.
-     */
-    getStoredSettings: () => Partial<SettingsData>;
-    getGeneralSettings: (label?: string) => any;
-    getAssistantSettings: () => AssistantSettings;
-    /** A plugin's settings in effect, by its ref; a bare name throws, naming the ref it likely meant */
-    getPluginSettings: (plugin: string) => any;
-};
-
 declare const specs: {
     threads: {
         _incoming: {
@@ -4860,6 +5183,8 @@ declare const specs: {
         } | {
             type: "BIRTH_FLOW_START";
         } | {
+            type: "SECRETS_CHANGED";
+        } | {
             type: "THREAD_DELETED";
             threadId: string;
         } | {
@@ -4872,6 +5197,9 @@ declare const specs: {
             type: "SET_BASE_DIRECTORY";
             path: string;
             fromUserNavigation?: boolean;
+        } | {
+            type: "TEST_CLI_PROVIDER";
+            provider: string;
         };
         _outgoing: OutgoingCodeEvents;
     };
@@ -5282,53 +5610,12 @@ declare const specs: {
         };
         _outgoing: OutgoingLogsEvents;
     };
-    settings: {
-        _incoming: ({
-            type: "GET_SETTINGS";
-        } | {
-            type: "UPDATE_SETTINGS";
-            entityType: "general" | "plugin";
-            label: string;
-            path: string[];
-            value: any;
-        } | {
-            type: "RESET_SETTINGS";
-        } | {
-            type: "TEST_CLI_PROVIDER";
-            provider: string;
-        } | {
-            type: "PREVIEW_PACK_SEEDS";
-            directory: string;
-        } | {
-            type: "IMPORT_PACK_SEEDS";
-            directory: string;
-            include?: Record<string, string[] | null>;
-            mode?: "keep-existing" | "replace-on-collision" | "wipe-and-replace";
-            restartBrain?: boolean;
-        } | {
-            type: "REPLACE_SETTINGS";
-            data: unknown;
-        } | {
-            type: "RESET_APP";
-        } | {
-            type: "DATA_REPLACING";
-        } | {
-            type: "DATA_REPLACED";
-        }) | ({
-            type: "PACK_SETTINGS_CHANGED";
-        } | {
-            type: "SECRETS_CHANGED";
-        } | {
-            type: "SETTINGS_WRITTEN";
-        });
-        _outgoing: OutgoingSettingsEvents;
-    };
 };
 
 declare function storeHandle(key: string, handle: CodexTurnHandle): void;
 
 declare const terminalCommands: {
-    create: (terminalInfo: Partial<TerminalInfo> & {
+    create: (terminalInfo: Partial<TerminalInfo$1> & {
         id: EARS.EntityId;
     }) => EARS.EntityId;
     resize: (id: EARS.EntityId, cols: number, rows: number) => void;
@@ -5472,17 +5759,11 @@ declare function updateChatState(threadId: EARS.EntityId, chatState: string): vo
  */
 declare function updateMessageState(messageId: EARS.EntityId, updates: Partial<Pick<MessageEntity, 'blockResponse' | 'blocks' | 'compacted' | 'context' | 'forkable' | 'responseTimestamp' | 'status' | 'text'>>): void;
 
-/**
- * Sets `value` at `path` in a section: a general setting under its label (`general.application`), a plugin's under its
- * ref (`plugins['default-setup/flows']`), an assistant setting under no label
- */
-declare function updateSettings(type: SettingsSection | 'plugin', label: string | null, path: string[], value: unknown): void;
-
 /** Parse a Codex JSONL file into an array of entries. */
 declare function viewByFile(filePath: string, opts?: {
     limit?: number;
     offset?: number;
 }): Promise<any[]>;
 
-export type { PackShapes as PackEntityShapes, PackStepNodes, PackSystemEvents, Repositories, SendablePluginEvents, Services };
+export type { PackShapes as PackEntityShapes, PackPluginEvents, PackStepNodes, PackSystemEvents, Repositories, Services };
 ```

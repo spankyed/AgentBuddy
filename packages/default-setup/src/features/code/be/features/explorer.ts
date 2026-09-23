@@ -1,4 +1,4 @@
-import { sendToPlugin } from '@/__generated__/events';
+import { broadcastToPlugin } from '@/__generated__/events';
 import { assign, setup } from 'xstate'
 
 import { FileSystemRepository } from '../services/filesystem'
@@ -10,7 +10,7 @@ const pluginId = 'code' as const
 
 function requireRepository(context: Context, path: string): context is Context & { repository: FileSystemRepository } {
   if (!context.repository) {
-    sendToPlugin(pluginId, {
+    broadcastToPlugin(pluginId, {
       type: 'explorer.CODE_ERROR',
       data: {
         code: 'INVALID_PATH',
@@ -97,7 +97,7 @@ export const explorerSystem = setup({
     handleFileChange: ({ event }) => {
       const ev = event as { type: 'explorer.FILE_CHANGE_CALLBACK'; change: FileChangeInfo }
       
-      sendToPlugin(pluginId, {
+      broadcastToPlugin(pluginId, {
         type: 'explorer.FILE_CHANGED_EXTERNALLY',
         data: ev.change
       })
@@ -107,7 +107,7 @@ export const explorerSystem = setup({
       // Send base directory listing on connect
       if (context.baseDirectory && context.repository) {
         context.repository.listDirectory(context.baseDirectory).then(content => {
-          sendToPlugin(pluginId, {
+          broadcastToPlugin(pluginId, {
             type: 'explorer.FILES_LISTED',
             data: content,
           })
@@ -125,12 +125,12 @@ export const explorerSystem = setup({
       try {
         const path = ev.path || context.baseDirectory || ''
         const content = await context.repository.listDirectory(path)
-        sendToPlugin(pluginId, {
+        broadcastToPlugin(pluginId, {
           type: 'explorer.FILES_LISTED',
           data: content,
         })
       } catch (error: any) {
-        sendToPlugin(pluginId, {
+        broadcastToPlugin(pluginId, {
           type: 'explorer.CODE_ERROR',
           data: {
             code: error.code || 'IO_ERROR',
@@ -148,7 +148,7 @@ export const explorerSystem = setup({
       
       try {
         const content = await context.repository.readFile(ev.path)
-        sendToPlugin(pluginId, {
+        broadcastToPlugin(pluginId, {
           type: 'explorer.FILE_CONTENT',
           data: content,
         })
@@ -158,7 +158,7 @@ export const explorerSystem = setup({
           context.gitWatcher.registerOpenFile(ev.path)
         }
       } catch (error: any) {
-        sendToPlugin(pluginId, {
+        broadcastToPlugin(pluginId, {
           type: 'explorer.CODE_ERROR',
           data: {
             code: error.code || 'IO_ERROR',
@@ -176,12 +176,12 @@ export const explorerSystem = setup({
       
       try {
         await context.repository.writeFile(ev.path, ev.content)
-        sendToPlugin(pluginId, {
+        broadcastToPlugin(pluginId, {
           type: 'explorer.FILE_SAVED',
           data: { path: ev.path },
         })
       } catch (error: any) {
-        sendToPlugin(pluginId, {
+        broadcastToPlugin(pluginId, {
           type: 'explorer.CODE_ERROR',
           data: {
             code: error.code || 'IO_ERROR',
@@ -199,12 +199,12 @@ export const explorerSystem = setup({
       
       try {
         await context.repository.writeFile(ev.path, ev.content || '')
-        sendToPlugin(pluginId, {
+        broadcastToPlugin(pluginId, {
           type: 'explorer.FILE_CREATED',
           data: { path: ev.path },
         })
       } catch (error: any) {
-        sendToPlugin(pluginId, {
+        broadcastToPlugin(pluginId, {
           type: 'explorer.CODE_ERROR',
           data: {
             code: error.code || 'IO_ERROR',
@@ -222,12 +222,12 @@ export const explorerSystem = setup({
       
       try {
         await context.repository.deleteFile(ev.path)
-        sendToPlugin(pluginId, {
+        broadcastToPlugin(pluginId, {
           type: 'explorer.FILE_DELETED',
           data: { path: ev.path },
         })
       } catch (error: any) {
-        sendToPlugin(pluginId, {
+        broadcastToPlugin(pluginId, {
           type: 'explorer.CODE_ERROR',
           data: {
             code: error.code || 'IO_ERROR',
@@ -245,12 +245,12 @@ export const explorerSystem = setup({
       
       try {
         await context.repository.renameFile(ev.oldPath, ev.newPath)
-        sendToPlugin(pluginId, {
+        broadcastToPlugin(pluginId, {
           type: 'explorer.FILE_RENAMED',
           data: { oldPath: ev.oldPath, newPath: ev.newPath },
         })
       } catch (error: any) {
-        sendToPlugin(pluginId, {
+        broadcastToPlugin(pluginId, {
           type: 'explorer.CODE_ERROR',
           data: {
             code: error.code || 'IO_ERROR',
@@ -268,12 +268,12 @@ export const explorerSystem = setup({
       
       try {
         await context.repository.createDirectory(ev.path)
-        sendToPlugin(pluginId, {
+        broadcastToPlugin(pluginId, {
           type: 'explorer.DIRECTORY_CREATED',
           data: { path: ev.path },
         })
       } catch (error: any) {
-        sendToPlugin(pluginId, {
+        broadcastToPlugin(pluginId, {
           type: 'explorer.CODE_ERROR',
           data: {
             code: error.code || 'IO_ERROR',
@@ -291,12 +291,12 @@ export const explorerSystem = setup({
       
       try {
         const info = await context.repository.getFileInfo(ev.path)
-        sendToPlugin(pluginId, {
+        broadcastToPlugin(pluginId, {
           type: 'explorer.FILE_INFO',
           data: info,
         })
       } catch (error: any) {
-        sendToPlugin(pluginId, {
+        broadcastToPlugin(pluginId, {
           type: 'explorer.CODE_ERROR',
           data: {
             code: error.code || 'IO_ERROR',
@@ -352,12 +352,12 @@ export const explorerSystem = setup({
       
       try {
         const files = await context.repository.getAllFiles(ev.baseDirectory)
-        sendToPlugin(pluginId, {
+        broadcastToPlugin(pluginId, {
           type: 'explorer.QUICK_OPEN_RESULTS',
           data: files,
         })
       } catch (error: any) {
-        sendToPlugin(pluginId, {
+        broadcastToPlugin(pluginId, {
           type: 'explorer.CODE_ERROR',
           data: {
             code: error.code || 'IO_ERROR',
@@ -384,12 +384,12 @@ export const explorerSystem = setup({
           }
         }
 
-        sendToPlugin(pluginId, {
+        broadcastToPlugin(pluginId, {
           type: 'explorer.FILES_MOVED',
           data: { sourcePaths: ev.sourcePaths, targetDir: ev.targetDir, movedPaths },
         })
       } catch (error: any) {
-        sendToPlugin(pluginId, {
+        broadcastToPlugin(pluginId, {
           type: 'explorer.CODE_ERROR',
           data: {
             code: error.code || 'IO_ERROR',
@@ -412,12 +412,12 @@ export const explorerSystem = setup({
           copiedPaths.push(destPath)
         }
 
-        sendToPlugin(pluginId, {
+        broadcastToPlugin(pluginId, {
           type: 'explorer.FILES_COPIED',
           data: { targetDir: ev.targetDir, copiedPaths },
         })
       } catch (error: any) {
-        sendToPlugin(pluginId, {
+        broadcastToPlugin(pluginId, {
           type: 'explorer.CODE_ERROR',
           data: {
             code: error.code || 'IO_ERROR',
@@ -434,12 +434,12 @@ export const explorerSystem = setup({
       try {
         const path = context.baseDirectory || ''
         const content = await context.repository.listDirectory(path)
-        sendToPlugin(pluginId, {
+        broadcastToPlugin(pluginId, {
           type: 'explorer.FILES_LISTED',
           data: content,
         })
       } catch (error: any) {
-        sendToPlugin(pluginId, {
+        broadcastToPlugin(pluginId, {
           type: 'explorer.CODE_ERROR',
           data: {
             code: error.code || 'IO_ERROR',

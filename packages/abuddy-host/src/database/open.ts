@@ -6,6 +6,7 @@ import { resolveAppContext, type AppEnv } from '@abuddy/sdk/env';
 import type { _AppDataPaths } from '@abuddy/sdk/utils';
 import { findAppDataPaths } from './layout.ts';
 import { readInstalledSchema, type DatabaseSchema, type InstalledSchema } from './schema.ts';
+import { errorMessage } from '@abuddy/sdk/utils/pure';
 
 export interface DatabaseStoreOptions {
   /** Each partition's database directory */
@@ -101,7 +102,7 @@ export async function openAppDatabase({ env, userDataDir, readOnly = false, incl
       const { errorCount, lastError } = store.close();
       if (errorCount > 0) {
         const cause = (lastError as { error?: unknown } | null)?.error ?? lastError;
-        throw new Error(`${errorCount} write(s) didn't reach the database in ${userDataDir}: ${cause instanceof Error ? cause.message : String(cause)}`, { cause });
+        throw new Error(`${errorCount} write(s) didn't reach the database in ${userDataDir}: ${errorMessage(cause)}`, { cause });
       }
     },
   };

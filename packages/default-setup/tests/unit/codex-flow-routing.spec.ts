@@ -14,7 +14,7 @@ beforeEach(async () => {
   mockService<Services, 'codex'>('codex', { status: 'ready', getHandle: vi.fn(), respondToApproval: vi.fn(), start: vi.fn() } as never)
   mockService<Services, 'chat'>('chat', { updateMessageState: vi.fn(), sendBlockMessage: vi.fn() } as never)
   mockService<Services, 'threads'>('threads', { updateChatState: vi.fn() } as never)
-  app = await startApp({ systems: ['brain', 'settings'] })
+  app = await startApp({ systems: ['brain'] })
 })
 
 describe('codex flow routing', () => {

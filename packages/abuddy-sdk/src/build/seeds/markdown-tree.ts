@@ -2,6 +2,7 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { parse as parseYaml } from 'yaml';
 import { toDisplayName } from '../../utils/shared.ts';
+import { errorMessage } from '../../utils/shared.ts';
 
 /** A markdown file or directory, as `compileMarkdownTree` reads it */
 export interface MarkdownItem {
@@ -43,7 +44,7 @@ export function parseMarkdownFile(text: string, file = '<markdown>'): { frontmat
   try {
     parsed = parseYaml(match[1]);
   } catch (err) {
-    throw new Error(`${file}: invalid frontmatter: ${err instanceof Error ? err.message : String(err)}`);
+    throw new Error(`${file}: invalid frontmatter: ${errorMessage(err)}`);
   }
   if (parsed !== null && (typeof parsed !== 'object' || Array.isArray(parsed))) {
     throw new Error(`${file}: frontmatter must be a YAML mapping`);

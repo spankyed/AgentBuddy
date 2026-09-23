@@ -244,10 +244,10 @@
 </template>
 
 <script setup lang="ts">
-import { codeChild } from '@/features/code/fe/utils/parent-communication'
+
 import { computed } from 'vue'
 import { useSelector } from '@xstate/vue'
-import { useApplicationActor, usePlugin } from '@abuddy/sdk/fe'
+import { usePlugin, useShell } from '@abuddy/sdk/fe'
 import type { CodeState } from '@/features/code/fe/state'
 import {
   AlertCircle, AlertTriangle, GitBranch, GitPullRequest, RefreshCw,
@@ -264,47 +264,48 @@ import PRComments from '@/features/code/fe/features/pull-request/PRComments.vue'
 import PRActionBar from '@/features/code/fe/features/pull-request/PRActionBar.vue'
 import type { GitStatusFile } from '@/features/code/fe/features/commit/state'
 import type { TreeNode } from './types'
+import { codeChild } from '../children';
 
 // Get actors
-const appActor = useApplicationActor()
+const shell = useShell()
 const codeActor: CodeState = usePlugin()
 const prActor = codeChild(codeActor, 'pr')!
 const commitActor = codeChild(codeActor, 'commit')!
 
 // State selectors
-const prFiles = useSelector(prActor, (state: any) => state.context.prFiles)
-const prBaseBranch = useSelector(prActor, (state: any) => state.context.prBaseBranch)
-const prError = useSelector(prActor, (state: any) => state.context.prError)
-const isPrLoading = useSelector(prActor, (state: any) => state.context.isPrLoading)
+const prFiles = useSelector(prActor, (state) => state.context.prFiles)
+const prBaseBranch = useSelector(prActor, (state) => state.context.prBaseBranch)
+const prError = useSelector(prActor, (state) => state.context.prError)
+const isPrLoading = useSelector(prActor, (state) => state.context.isPrLoading)
 const baseDirectory = useSelector(codeActor, (state) => state.context.baseDirectory)
-const openPRs = useSelector(prActor, (state: any) => state.context.openPRs)
-const selectedPR = useSelector(prActor, (state: any) => state.context.selectedPR)
-const prComments = useSelector(prActor, (state: any) => state.context.prComments)
-const reviewThreads = useSelector(prActor, (state: any) => state.context.reviewThreads)
-const commentTab = useSelector(prActor, (state: any) => state.context.commentTab)
-const isSubmittingComment = useSelector(prActor, (state: any) => state.context.inflightMutations > 0)
-const viewMode = useSelector(prActor, (state: any) => state.context.viewMode)
-const isGhAvailable = useSelector(prActor, (state: any) => state.context.isGhAvailable)
-const prAccess = useSelector(prActor, (state: any) => state.context.prAccess)
-const activeToken = useSelector(prActor, (state: any) => state.context.activeToken)
-const isGhChecking = useSelector(prActor, (state: any) => state.context.isGhChecking)
-const authCheckCompleted = useSelector(prActor, (state: any) => state.context.authCheckCompleted)
-const branchPRCheckFailed = useSelector(prActor, (state: any) => state.context.branchPRCheckFailed)
-const createTitle = useSelector(prActor, (state: any) => state.context.createTitle)
-const createBody = useSelector(prActor, (state: any) => state.context.createBody)
-const createBaseBranch = useSelector(prActor, (state: any) => state.context.createBaseBranch)
+const openPRs = useSelector(prActor, (state) => state.context.openPRs)
+const selectedPR = useSelector(prActor, (state) => state.context.selectedPR)
+const prComments = useSelector(prActor, (state) => state.context.prComments)
+const reviewThreads = useSelector(prActor, (state) => state.context.reviewThreads)
+const commentTab = useSelector(prActor, (state) => state.context.commentTab)
+const isSubmittingComment = useSelector(prActor, (state) => state.context.inflightMutations > 0)
+const viewMode = useSelector(prActor, (state) => state.context.viewMode)
+const isGhAvailable = useSelector(prActor, (state) => state.context.isGhAvailable)
+const prAccess = useSelector(prActor, (state) => state.context.prAccess)
+const activeToken = useSelector(prActor, (state) => state.context.activeToken)
+const isGhChecking = useSelector(prActor, (state) => state.context.isGhChecking)
+const authCheckCompleted = useSelector(prActor, (state) => state.context.authCheckCompleted)
+const branchPRCheckFailed = useSelector(prActor, (state) => state.context.branchPRCheckFailed)
+const createTitle = useSelector(prActor, (state) => state.context.createTitle)
+const createBody = useSelector(prActor, (state) => state.context.createBody)
+const createBaseBranch = useSelector(prActor, (state) => state.context.createBaseBranch)
 
-const isCreating = useSelector(prActor, (state: any) => state.context.isCreating)
-const isMerging = useSelector(prActor, (state: any) => state.context.isMerging)
-const isClosing = useSelector(prActor, (state: any) => state.context.isClosing)
-const isTogglingDraft = useSelector(prActor, (state: any) => state.context.isTogglingDraft)
-const isDeletingBranch = useSelector(prActor, (state: any) => state.context.isDeletingBranch)
-const isUpdatingPR = useSelector(prActor, (state: any) => state.context.isUpdatingPR)
-const isLoadingDetails = useSelector(prActor, (state: any) => state.context.isLoadingDetails)
-const hasUpstream = useSelector(commitActor, (state: any) => state.context.hasUpstream)
-const isPushing = useSelector(commitActor, (state: any) => state.context.isPushing)
-const currentBranch = useSelector(commitActor, (state: any) => state.context.gitBranch)
-const availableBranches = useSelector(commitActor, (state: any) => state.context.availableBranches)
+const isCreating = useSelector(prActor, (state) => state.context.isCreating)
+const isMerging = useSelector(prActor, (state) => state.context.isMerging)
+const isClosing = useSelector(prActor, (state) => state.context.isClosing)
+const isTogglingDraft = useSelector(prActor, (state) => state.context.isTogglingDraft)
+const isDeletingBranch = useSelector(prActor, (state) => state.context.isDeletingBranch)
+const isUpdatingPR = useSelector(prActor, (state) => state.context.isUpdatingPR)
+const isLoadingDetails = useSelector(prActor, (state) => state.context.isLoadingDetails)
+const hasUpstream = useSelector(commitActor, (state) => state.context.hasUpstream)
+const isPushing = useSelector(commitActor, (state) => state.context.isPushing)
+const currentBranch = useSelector(commitActor, (state) => state.context.gitBranch)
+const availableBranches = useSelector(commitActor, (state) => state.context.availableBranches)
 
 // Computed
 const prPermissionHint = computed(() => {
@@ -370,7 +371,7 @@ const refreshStatus = () => {
 
 const handleOpenFile = (file: TreeNode) => {
   if (file.type !== 'file' || !file.status) return
-  appActor.send({ type: 'RESTORE_CHAT' })
+  shell.restoreChat()
   prActor?.send({
     type: 'pr.OPEN_FILE',
     file: { path: file.path, status: file.status, staged: false }
@@ -379,7 +380,7 @@ const handleOpenFile = (file: TreeNode) => {
 
 const handleFileSelect = (file: TreeNode) => {
   if (file.type !== 'file' || !file.status) return
-  appActor.send({ type: 'RESTORE_CHAT' })
+  shell.restoreChat()
   const gitFile: GitStatusFile = { path: file.path, status: file.status, staged: false }
   prActor?.send({ type: 'pr.SELECT_FILE', file: gitFile })
   prActor?.send({ type: 'pr.VIEW_DIFF', path: file.path })

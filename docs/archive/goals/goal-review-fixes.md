@@ -114,7 +114,7 @@ Final.
     - Manifest `features[].system.sendsTo?: string[]` lists plugin ids the system sends to besides its own: own feature ids, dependency plugin ids, or host plugins.
     - `PackEvents[p]` = the union of `Outgoing` events of p's own system and of every system whose `sendsTo` includes p; dependency plugins' unions come from the dependency's `PackEvents`; host plugins come from an SDK `HostPluginEvents` type (starting with `application`).
     - Features with a plugin but no system get an entry when something sends to them.
-    - default-setup declares its cross-plugin sends and uses only the generated `emit`/`sendToPlugin`. Raw `emit`/`sendToPlugin` stay public for host code (Decision 1 of `goal-sdk-types-architecture.md`), but default-setup, the fixture and example packs and the scaffold templates don't import them (`npm run check:specifiers` gains a check for raw event helper imports under pack sources).
+    - default-setup declares its cross-plugin sends and uses only the generated `emit`/`broadcastToPlugin`. Raw `emit`/`broadcastToPlugin` stay public for host code (Decision 1 of `goal-sdk-types-architecture.md`), but default-setup, the fixture and example packs and the scaffold templates don't import them (`npm run check:specifiers` gains a check for raw event helper imports under pack sources).
 16. **Repositories are declared like services.**
     - Manifest `features[].repositories?: Record<string, string>` maps a repository name to `path#exportName`.
     - Codegen generates `#generated/repository` exporting `repository` typed as this pack's repositories plus its dependencies' (`Repositories` from their `pack-types.d.ts`), and the generated pack entry registers them (replacing `registerRepository(...)` side effects in feature code).
@@ -170,9 +170,9 @@ Final.
 - Migrate default-setup (declare `sendsTo` and `repositories`; replace raw `emit`, `registerRepository` side effects and the moved helpers), the fixture pack, the example pack and the scaffold/`abuddy add` templates. Regenerate schemas and API reports.
 - `tsconfig.defs.json` host path (T7). Rewrite the `services-and-data.md` paragraphs (T8). Add `.js` to the side-effect imports and include every generated facade file in `facade-typing.spec.ts` under node16 and bundler (T9). Codegen fixes (T10).
 - Rewrite the default-setup type specs with `Equal`/`IsAny`/`@ts-expect-error` (T4).
-- Tests: a real `abuddy build` of a scratch dependency pack, `fetch-deps`, and a dependent pack whose `findAll('<DepEntity>')[0].<field>` is exactly typed and whose `services.<depService>` and `repository.<depRepo>` typecheck; own/dependency type-name collision compiles; `emit('flows', <action event>)` from a system with `sendsTo: ['flows']` typechecks and without it fails; `sendToPlugin('application', …)` is typed; the published-SDK `any` walk passes; `registerPack` rejects a duplicate service name; codegen fails on an unfindable own shape.
+- Tests: a real `abuddy build` of a scratch dependency pack, `fetch-deps`, and a dependent pack whose `findAll('<DepEntity>')[0].<field>` is exactly typed and whose `services.<depService>` and `repository.<depRepo>` typecheck; own/dependency type-name collision compiles; `emit('flows', <action event>)` from a system with `sendsTo: ['flows']` typechecks and without it fails; `broadcastToPlugin('application', …)` is typed; the published-SDK `any` walk passes; `registerPack` rejects a duplicate service name; codegen fails on an unfindable own shape.
 
-**Done when:** those tests pass and are mutation-checked; default-setup, fixture and example packs contain no raw `emit`/`sendToPlugin` or `registerRepository` calls; `grep` of pack-facing declarations for `any` returns only allowlisted entries.
+**Done when:** those tests pass and are mutation-checked; default-setup, fixture and example packs contain no raw `emit`/`broadcastToPlugin` or `registerRepository` calls; `grep` of pack-facing declarations for `any` returns only allowlisted entries.
 
 ### Phase 5 — Pack lifecycle (L1–L6, Decision 19)
 

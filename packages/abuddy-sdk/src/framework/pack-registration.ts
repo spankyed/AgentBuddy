@@ -48,7 +48,7 @@ export interface PackFeatureSystem {
 
 /** What the backend knows of a feature's plugin: the event types it receives, which the app checks a send against */
 export interface PackFeaturePlugin {
-  /** Generated from the outgoing events of the systems that send to it: its own feature's, and each `sendsTo` naming it */
+  /** Generated from its own feature's system's outgoing events and the inbox the plugin declares (`pluginAccepts()`) */
   receives: readonly string[];
 }
 
@@ -85,4 +85,19 @@ export interface PackRegistration {
   seeders?: import('../utils/seed.ts').Seeder[];
   /** The slash commands this pack adds to the chat (abuddy.json `commands`) */
   commands?: import('./pack-commands.ts').PackCommand[];
+  /**
+   * Help entries this pack answers with, listed under Help in the app's Settings view (abuddy.json `help`).
+   * Called the first time the list is read, so a pack whose help is compiled with its seeds can read them then.
+   */
+  help?: () => import('./pack-help.ts').HelpEntry[];
+  /**
+   * Sections of the app's settings this pack owns, with their defaults, beside the `plugins` section the app keeps
+   * itself (abuddy.json `settingsSections`). A feature declares only its own slice (`features[].settings`); a
+   * section is the pack's, and whoever registers one owns its shape — the app stores, merges and diffs it without
+   * knowing what is in it.
+   *
+   * Called the first time the defaults are read, so a pack whose defaults come from its compiled seeds can read
+   * them then rather than at registration.
+   */
+  settingsSections?: () => Record<string, unknown>;
 }

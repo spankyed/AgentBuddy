@@ -60,7 +60,7 @@ describe('abuddy add feature', () => {
     const sources = ['fe/state.ts', 'fe/plugin.ts', 'be/system.ts'].map((file) => fs.readFileSync(path.join(feature, file), 'utf-8')).join('\n');
     expect(sources).not.toMatch(/busId|system-ids|demo-pack\./);
     expect(fs.readFileSync(path.join(feature, 'fe', 'state.ts'), 'utf-8')).toContain("export const id = 'notes';");
-    expect(fs.readFileSync(path.join(feature, 'fe', 'plugin.ts'), 'utf-8')).toMatch(/: PluginDefinition = \{\n  label:/);
+    expect(fs.readFileSync(path.join(feature, 'fe', 'plugin.ts'), 'utf-8')).toMatch(/= definePlugin\(\{\n  label:/);
   });
 
   // Its system's events are read through the pack's @abuddy/sdk, which a pack just scaffolded may not have yet

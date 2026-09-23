@@ -6,11 +6,11 @@ import { findPackRoot, readManifest } from '../utils';
 import { findFEEntry, packExternalsPlugin } from '../build/fe-bundler';
 import { resolveAppContext } from '@abuddy/sdk/env';
 import { readApiEndpoint } from '@abuddy/host/process-liveness';
-import { API_HOST, API_TOKEN_HEADER } from '@abuddy/sdk/utils/pure';
+import { API_HOST, API_TOKEN_HEADER, errorMessage } from '@abuddy/sdk/utils/pure';
 import { installPackFromLocal, readHostInfo } from '@abuddy/host/packs';
 import { removeDevServerMarker, writeDevServerMarker } from '@abuddy/host/packs/dev-server';
 
-const reason = (err: unknown) => (err instanceof Error ? err.message : String(err));
+const reason = (err: unknown) => (errorMessage(err));
 
 /** The running development app's API: its URL and the token it requires, from the files the API writes */
 function findDevApi(): { api: { url: string; token: string } } | { problem: string } {

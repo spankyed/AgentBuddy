@@ -10,7 +10,7 @@ export default defineConfig(async () => {
     // No resolve.conditions: default-setup is a pack, so it resolves the @abuddy packages' built dist
     // like every other pack. npm run typecheck:pack and test:external-pack refresh that dist first.
     plugins: [
-      tsconfigPaths({ projects: ['./tsconfig.test.json'] }),
+      tsconfigPaths({ projects: ['./tsconfig.json'] }),
     ],
 
     test: {

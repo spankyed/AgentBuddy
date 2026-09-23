@@ -21,7 +21,7 @@ describe('a flow’s spawned children', () => {
     importFlows({
       Outer: { root: true, tracks: [entry([keepAlive()]), on('go', [[step('one'), step('two'), step('three')]])] },
     })
-    const app = await startApp({ systems: ['brain', 'settings'] })
+    const app = await startApp({ systems: ['brain'] })
 
     await app.runFlow('Outer', { event: 'go' })
     await app.settle()

@@ -116,7 +116,7 @@ async function handleSessions(
   // Resolve effective cwd from thread context so sessions are scoped to the
   // correct project directory (e.g. thread created via "+ new thread" menu).
   const prior = threadId ? getClaudeState(services, threadId) : undefined;
-  const codeSettings = services.repository.settingsQueries.getPluginSettings('default-setup/code') as any;
+  const codeSettings = services.settings.forFeature('default-setup/code') as any;
   const effectiveCwd = prior?.cwdOverride
     || prior?.cwd
     || codeSettings?.defaultBaseDirectory
@@ -274,7 +274,7 @@ async function handleRename(
   });
 
   services.repository.threadCommands.update(threadId as any, { topic: newTitle });
-  services.emitter.sendToPlugin('default-setup/threads', {
+  services.emitter.broadcastToPlugin('default-setup/threads', {
     type: 'THREAD_UPDATED',
     threadId,
     updates: { topic: newTitle },

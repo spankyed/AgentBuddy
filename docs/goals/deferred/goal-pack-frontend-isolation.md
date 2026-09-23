@@ -41,10 +41,10 @@ Never:
 ## Background (2026-09-17, at 5f1642a6b)
 
 **How external pack frontends run today.**
-- The renderer loads an installed pack's frontend with a dynamic `import()` of `pack://<packId>/runtime/fe.js` (`packages/renderer/src/packs/pack-loader.ts:35`).
+- The renderer loads an installed pack's frontend with a dynamic `import()` of `pack://<packId>/runtime/fe.js` (`packages/abuddy-host/src/features/packs/fe/frontends.ts`, over the window's `importModule` in `packages/renderer/src/adapters/pack-frontends.ts`).
   - The code runs in the app window's own JavaScript realm, with the same globals as the host.
   - It shares the host's `@abuddy/sdk` and `@abuddy/ui` through `window.__abuddy`, and renders its plugins (Vue components) into the app's DOM.
-- A pack's plugins are XState machines the application actor spawns. They talk to the backend through `@abuddy/sdk/events`: `sendToSystem` goes over the frontend port's transport (the host's tRPC client, `bus.send`).
+- A pack's plugins are XState machines the app shell spawns (`packages/abuddy-host/src/features/application/fe/`). They talk to the backend through `@abuddy/sdk/events`: `sendToSystem` goes over the frontend port's transport (the host's tRPC client, `bus.send`).
 
 **What that code can reach.** Anything the app window can, because the host and the pack share one realm:
 - **`window.electronAPI`**, the whole preload surface (`packages/preload/src/index.ts`):
@@ -53,19 +53,19 @@ Never:
   - the `browser.*` tab controls;
   - `media.*` writes;
   - `apiToken`.
-- **The API token.** `electronAPI.apiToken` lets code open its own WebSocket to the API with full access (`bus.send` to any system, `secrets.add`/`replaceValue`/`delete`/`allowUnprotected`, `packages/api/src/core/router/secrets-router.ts`). Branch `AS/api-token-req` removed `apiToken` from the SDK's published `Window.electronAPI` type (`packages/abuddy-sdk/src/fe/electron-api.ts`) so pack authors aren't pointed at it, but the preload still exposes it at runtime. The renderer reads it through its own type (`packages/renderer/src/core/trpc.ts`).
+- **The API token.** `electronAPI.apiToken` lets code open its own WebSocket to the API with full access (`bus.send` to any system, `secrets.add`/`replaceValue`/`delete`/`allowUnprotected`, `packages/api/src/transport/secrets.ts`). Branch `AS/api-token-req` removed `apiToken` from the SDK's published `Window.electronAPI` type (`packages/abuddy-sdk/src/fe/electron-api.ts`) so pack authors aren't pointed at it, but the preload still exposes it at runtime. The renderer reads it through its own type (`packages/renderer/src/transport/index.ts`).
 - **The app window itself:** the DOM, the host's actors (`window.applicationState`), other packs' plugins, and anything the user types.
 
 **Where the boundary already holds.**
 - Web pages in the in-app browser (`BrowserTabManager`, `WebContentsView` with `sandbox: true` and no preload) can't reach any of this.
 - App windows deny `window.open` (`packages/main/src/modules/ExternalUrls.ts`) and block navigation to other origins (`BlockNotAllowdOrigins.ts`).
-- The API listens on loopback only and requires the run's token (`packages/api/src/setup/websocket.ts`).
+- The API listens on loopback only and requires the run's token (`packages/api/src/transport/websocket.ts`).
 
 So installing an external pack today means trusting it as much as the app itself. The token work closed the API to web pages and other local processes, but not to pack frontends.
 
 **What depends on the shared realm.**
 - `@abuddy/ui` components render inside the host's DOM and styles; with `fe.bundleUi` a pack bundles its own copy.
-- Host-shared frontend state lives in `@abuddy/sdk/fe`: `usePlugin`/`PluginScope` and `useApplicationActor`, menu state, the tiptap plugin and DSL type lookups (`FePackRegistryView`).
+- Host-shared frontend state lives in `@abuddy/sdk/fe`: `usePlugin`/`PluginScope` and `useShell`, menu state, the tiptap plugin and DSL type lookups (`FePackRegistryView`).
 - Pack extensions the host renders directly: app extensions (`getAppExtension`), tiptap plugins, blocks and artifact viewers (`fe` facets of `BlockDefinition` / `ArtifactDefinition`), step forms.
 - The E2E fixture (`@abuddy/testing`) finds pack plugins through `window.applicationState` and matches the `pack://` URL.
 
@@ -100,7 +100,7 @@ So installing an external pack today means trusting it as much as the app itself
 ### Phase 1 — the isolated host for one pack
 
 - Build the chosen mechanism (Open decision 2) for a single external pack. The pack's `runtime/fe.js` loads there instead of through `import()` in the app window.
-- The host side starts, embeds and stops the isolated context with the pack's lifecycle: activate, teardown, reload, and `packClientReady` (`packages/renderer/src/packs/pack-loader.ts`, the application actor).
+- The host side starts, embeds and stops the isolated context with the pack's lifecycle: activate, teardown, reload, and `packClientReady` (`packages/abuddy-host/src/features/packs/fe/frontends.ts`, driven by the app shell in `packages/abuddy-host/src/features/application/fe/`).
 - No `window.electronAPI`, `window.__abuddy` host objects or `window.applicationState` exist in the isolated context.
 
 **Done when:** the `tests/fixtures/external-pack` fixture renders its plugin through the isolated host. A renderer unit spec shows the isolated context has no `electronAPI`. Mutation: loading the pack with `import()` again fails that spec.

@@ -35,7 +35,7 @@ describe('a real schedule', () => {
   const startEverySecond = async () => {
     repository.actionCommands.create({ label: 'Tick', actionFn: 'return { ticked: true }' })
     importFlows({ 'Every Second': { root: true, tracks: [schedule(EVERY_SECOND, [[action('Tick', { label: 'tick' })]])] } })
-    const app = await startApp({ systems: ['brain', 'settings'] })
+    const app = await startApp({ systems: ['brain'] })
     await app.connect()
     return app
   }

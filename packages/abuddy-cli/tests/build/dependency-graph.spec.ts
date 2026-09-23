@@ -27,7 +27,7 @@ function pack(id: string, entities: Record<string, string>, dependencies: Record
   };
 }
 
-/** A feature with a system and a plugin, so dependents have something a `sendsTo` can name */
+/** A feature with a system and a plugin, so dependents have something to send to */
 const NOTIFIER = {
   features: [{ id: 'notifier', system: { entry: 'src/system.ts' }, plugin: { entry: 'src/plugin.ts' } }],
 };

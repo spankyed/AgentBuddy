@@ -1,5 +1,5 @@
 
-import { sendToPlugin } from '@/__generated__/events';
+import { broadcastToPlugin } from '@/__generated__/events';
 import { GitRepository } from '../services/git'
 
 const pluginId = 'code' as const
@@ -14,9 +14,9 @@ export function requireGitRepository<T extends { gitRepository: GitRepository | 
     const message = 'No directory selected. Please select a directory first.'
     
     if (errorEventType === 'pr.ERROR') {
-      sendToPlugin(pluginId, { type: 'pr.ERROR', message })
+      broadcastToPlugin(pluginId, { type: 'pr.ERROR', message })
     } else {
-      sendToPlugin(pluginId, { type: 'commit.ERROR_RECEIVED', data: { message } })
+      broadcastToPlugin(pluginId, { type: 'commit.ERROR_RECEIVED', data: { message } })
     }
     return false
   }

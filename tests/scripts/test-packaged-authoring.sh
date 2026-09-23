@@ -264,7 +264,7 @@ describe('notes summary flow', () => {
     const inference = mockInference('Buy milk');
     // A root flow hosting the pack's flow, as the app's root flow hosts long-running flows
     importFlows({ 'Root Flow': { root: true, tracks: [entry([subflow('Notes Summary')], [keepAlive()])] } });
-    const app = await startApp({ systems: ['default-setup/brain', 'default-setup/settings'] });
+    const app = await startApp({ systems: ['default-setup/brain', 'host/settings'] });
 
     const run = await app.runFlow('Notes Summary', { event: 'notes.summarize', data: { text: 'Remember to buy milk' } });
 

@@ -4,8 +4,8 @@ import * as os from 'node:os';
 import * as path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { prepareHostDataDirs, recoverStagingDirs, stagingDirName } from '../../src/packs/staging.ts';
-import { discoverPacks, enabledExternalPacks } from '../../src/packs/pack-discovery.ts';
-import { readInstalledPacks, writeInstalledPacks } from '../../src/packs/installed-packs.ts';
+import { discoverPacks, enabledExternalPacks } from '../../src/packs/discovery.ts';
+import { readInstalledPacks, writeInstalledPacks } from '../../src/packs/installed.ts';
 
 const recordedPacks = () => readInstalledPacks();
 

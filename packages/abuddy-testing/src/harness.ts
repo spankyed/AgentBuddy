@@ -20,11 +20,15 @@ import { resetTestData as resetSdkTestData, startTestRuntime, takeSystemErrors, 
 import type { PackRegistryView } from '@abuddy/sdk/runtime';
 import type { FeatureRef } from '@abuddy/sdk/ids';
 import type { PackRegistration } from '@abuddy/sdk/framework';
-import { createPackRegistry, hostRegistration, type PackOrigin } from '@abuddy/host/packs';
+import { createPackRegistry, type PackOrigin } from '@abuddy/host/packs';
+import { createSettingsSystem, hostRegistration, settingsEvents } from '@abuddy/host/features';
 import { appState, HOST_ENTITY_TYPES } from '@abuddy/host/app-state';
+import { createSettingsService, createSettingsStore, type SettingsDocument } from '@abuddy/host/settings';
+import { getPackSettingsDefaults } from '@abuddy/sdk/framework';
 import { loadDependencyRuntime } from './dependency-runtime.ts';
 import { assertSharedEars } from './shared-ears.ts';
 import { setAppPacks, stopRunningApps } from './app.ts';
+import { startShell as startShellFor, stopRunningShells, type StartShellOptions, type TestShell } from './shell.ts';
 import { PROJECT_ROOT_KEY } from './vitest-teardown.ts';
 import { compileFlowDSL, compilePack, resolveSeeds, SEED_INDEX_FILE, _snapshotFormatMismatch, _cliFormatMismatchMessage, type FlowDSL, type PackManifest, type PackSnapshot, type SeedDependency, type SeedIndex } from '@abuddy/sdk/build';
 import { actionRepository, flowRepository, promptRepository } from '@abuddy/sdk/repositories';
@@ -62,9 +66,12 @@ let inTest = false;
 
 /** The test file's registered packs: the pack under test and its dependencies, and any other pack a test registers */
 const registry = createPackRegistry();
-// The app's own plugins (the shell, the Packs tab), which a pack's systems may send to; the harness runs none of the
-// host's systems
-registry.registerPack(hostRegistration());
+// The app's own plugins (the shell, the Packs tab, Settings), which a pack's systems may send to. The harness runs
+// one of the host's systems: settings, because a feature's own settings are the app's to store and hand back, and a
+// pack's code reads them in almost every test.
+registry.registerPack(hostRegistration({
+  settings: { machine: createSettingsSystem(), receives: [...settingsEvents] },
+}));
 setAppPacks(registry);
 
 /**
@@ -262,6 +269,10 @@ export async function setupPackTests(options: PackTestOptions): Promise<void> {
       hasOnboarded: () => appState.get().hasOnboarded,
       completeOnboarding: () => appState.update({ hasOnboarded: true }),
     },
+    // The app's own settings store, so a test writes and reads settings the way the app does rather than a fake
+    settings: createSettingsService(createSettingsStore({
+      defaults: () => getPackSettingsDefaults().settings as SettingsDocument,
+    })),
   });
   if (options.registration) {
     await registerRuntimes(packDir, manifest, dependencies, options.registration);
@@ -294,10 +305,12 @@ export async function setupPackTests(options: PackTestOptions): Promise<void> {
     inTest = false;
     // Every cleanup runs, whichever fails
     const failures: unknown[] = [];
-    try {
-      stopRunningApps();
-    } catch (error) {
-      failures.push(error);
+    for (const stop of [stopRunningShells, stopRunningApps]) {
+      try {
+        stop();
+      } catch (error) {
+        failures.push(error);
+      }
     }
     serviceMocks.clear();
     const errors = takeSystemErrors();
@@ -307,6 +320,18 @@ export async function setupPackTests(options: PackTestOptions): Promise<void> {
     }
     if (failures.length > 0) throw failures.length === 1 ? failures[0] : new AggregateError(failures, 'Cleaning up after the test failed');
   });
+}
+
+export type { StartShellOptions, TestShell, TestPlugin } from './shell.ts';
+
+/**
+ * Starts the app shell, the host's own, with `options.plugins` registered as this pack's, and binds the frontend host
+ * to it: `navigateToPlugin`, `openPlugin` and `useShell()` reach it, and a test app's systems (`startApp`) and the
+ * plugins reach each other over the harness's bus. It stops after the test.
+ */
+export async function startShell(options: StartShellOptions): Promise<TestShell> {
+  if (!context) throw new Error('startShell() runs in a test: call setupPackTests() from a vitest setup file first');
+  return startShellFor(context.manifest.id, options, packsWithMocks);
 }
 
 /** Registers the pack's runtime and its dependencies' (loaded from their cached runtime/index.cjs), as the app does */

@@ -5,12 +5,12 @@ import { tx, untypedQx } from '@abuddy/ears';
 import type { EARS } from '@abuddy/sdk';
 import type { PackMigration } from '@abuddy/sdk/framework';
 import { HOST_PACK_ID, splitRef, type FeatureRef } from '@abuddy/sdk/ids';
-import { HOST } from '../../host-refs.ts';
+import { HOST } from '../../refs.ts';
 import { resolveAppContext } from '@abuddy/sdk/env';
 import type { PackManifest } from '@abuddy/sdk/build';
 import { appState, type AppState } from '../../app-state/index.ts';
-import type { PackRegistry } from '../../packs/pack-registration.ts';
-import { discoverPacks } from '../../packs/pack-discovery.ts';
+import type { PackRegistry } from '../../packs/registry.ts';
+import { discoverPacks } from '../../packs/discovery.ts';
 import { deepMerge, isPlainObject } from '@abuddy/sdk/utils/pure';
 
 /** The settings row: where the app's state was stored before 0.3.15, and where the plugin settings still are */

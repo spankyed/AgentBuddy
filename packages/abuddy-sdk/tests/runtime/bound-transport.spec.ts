@@ -4,7 +4,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { startTestRuntime, takeSystemErrors, testRootEvents } from '../../src/testing/index.ts';
 import { testPacksView } from '../../src/testing/packs.ts';
 import { resolveName } from '../../src/ids/index.ts';
-import { onIncoming, sendToPlugin, sendToSystem } from '../../src/events/index.ts';
+import { onIncoming, broadcastToPlugin, sendToSystem } from '../../src/events/index.ts';
 import { bindFeHost, unbindFeHost } from '../../src/runtime/fe-host.ts';
 import { createLogger, onLog, reportError, type LogEvent } from '../../src/logger/index.ts';
 import { services } from '../../src/services/index.ts';
@@ -42,11 +42,11 @@ function onBus(run: () => void) {
 }
 
 describe('on the bound bus', () => {
-  it('sendToPlugin and services.emitter.sendToPlugin go to the bus, which delivers them, not to the clients directly', () => {
+  it('broadcastToPlugin and services.emitter.broadcastToPlugin go to the bus, which delivers them, not to the clients directly', () => {
     const sent = onBus(() => {
       // The untyped send takes the id a plugin runs under; the emitter takes the name an action writes
-      sendToPlugin('memo-pack/memos', { type: 'MEMO_ADDED' });
-      services.emitter.sendToPlugin('memo-pack/memos', { type: 'MEMO_REMOVED' });
+      broadcastToPlugin('memo-pack/memos', { type: 'MEMO_ADDED' });
+      services.emitter.broadcastToPlugin('memo-pack/memos', { type: 'MEMO_REMOVED' });
     });
     expect(sent.toPlugins).toEqual([
       { to: 'memo-pack/memos', event: { type: 'MEMO_ADDED' } },
@@ -58,7 +58,7 @@ describe('on the bound bus', () => {
   // Where a message goes is never a field of its event, so an event may carry any field of its own
   it('delivers an event exactly as it was sent, a field named pluginId or systemId included', () => {
     const sent = onBus(() => {
-      sendToPlugin('memo-pack/memos', { type: 'PLUGIN_PICKED', pluginId: 'default-setup/notes' });
+      broadcastToPlugin('memo-pack/memos', { type: 'PLUGIN_PICKED', pluginId: 'default-setup/notes' });
       sendToSystem('memo-pack/memos', { type: 'OPEN', systemId: 'kept', pluginId: 'also-kept' });
     });
     expect(sent.toPlugins).toEqual([{ to: 'memo-pack/memos', event: { type: 'PLUGIN_PICKED', pluginId: 'default-setup/notes' } }]);
@@ -128,7 +128,8 @@ describe('with a frontend bound too', () => {
     bindFeHost({
       application: {} as never,
       secrets: {} as never,
-      transport: { sendIncoming: (message) => sentByFrontend.push(message) },
+    settings: {} as never,
+      client: { send: (message) => sentByFrontend.push(message) },
       packs: { designation: (role: string) => (role === 'brain' ? 'brain-plugin' : undefined) } as never,
     });
     try {
