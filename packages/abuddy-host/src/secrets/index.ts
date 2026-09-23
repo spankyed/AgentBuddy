@@ -56,10 +56,15 @@ export function secretsSnapshot(): SecretsSnapshot {
  * refreshes its plugin and key checks. The app calls it once at boot. Before a settings system is registered there's
  * none to tell (in `registry`): once it runs, it sends the current keys on CLIENT_CONNECTED. Returns the unsubscribe.
  */
-export function forwardSecretsChanges(registry: Pick<PackRegistry, 'getRegisteredSystems'>): () => void {
+export function forwardSecretsChanges(registry: Pick<PackRegistry, 'getPluginEventValidationMap' | 'getEventValidationMap'>): () => void {
   return secretsStore.onChange(() => {
-    if (!hasDesignation('settings')) return;
-    const to = getDesignated('settings');
-    if (registry.getRegisteredSystems().has(to)) _rootEvents.emitIncoming({ to, event: { type: 'SECRETS_CHANGED' } });
+    // Every system that says it takes the event, not one designated feature: which keys the user has is the app's
+    // news, and more than the settings view acts on it — starting the assistant's first flow once it can call a
+    // model, for one. Never the values, which leave the store only through the API's own procedures.
+    for (const [to, accepted] of registry.getEventValidationMap()) {
+      if (accepted.has('*') || accepted.has('SECRETS_CHANGED')) {
+        _rootEvents.emitIncoming({ to, event: { type: 'SECRETS_CHANGED' } });
+      }
+    }
   });
 }

@@ -14,7 +14,6 @@ import { previewPackSeeds, type PackSeedsPreview } from '@abuddy/sdk/seed';
 import { services } from '@/__generated__/services';
 import type { FAQItem } from '@/features/settings/be/types';
 import type { SecretInfo, SecretsStatus } from '@abuddy/sdk/services';
-import { REQUIRED_PROVIDERS } from '../constants';
 import { createLogger, reportError } from '@abuddy/sdk/logger';
 import { splitRef, type FeatureRef } from '@abuddy/sdk/ids';
 import { ref } from '@/__generated__/ref';
@@ -226,14 +225,8 @@ export const settingsSystem = setup({
       broadcastSettings('SETTINGS_RESET');
     },
     
-    // The stored keys changed: refresh the plugin, and start the birth flow once a required provider has a key
-    secretsChanged: () => {
-      sendSecrets();
-      const hasRequiredKey = services.secrets.list().some((secret) => secret.selected && (REQUIRED_PROVIDERS as readonly string[]).includes(secret.provider));
-      if (hasRequiredKey && !settingsQueries.getAssistantSettings().birthdate) {
-        sendToSystem('threads', { type: 'BIRTH_FLOW_START' });
-      }
-    },
+    // The stored keys changed: the view shows what there is now. What else acts on it hears the same event.
+    secretsChanged: () => sendSecrets(),
 
     previewPackSeeds: ({ event }) => {
       const ev = settingsSpec.typeOf('PREVIEW_PACK_SEEDS', event);

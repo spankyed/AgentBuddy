@@ -4,6 +4,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import { addTestSecret, startApp, takeSystemErrors } from '@abuddy/testing/harness';
 import { repository } from '@/__generated__/repository';
+import { services } from '@/__generated__/services';
 import { ref } from '@/__generated__/ref';
 
 describe('settings and stored API keys', () => {
@@ -20,23 +21,31 @@ describe('settings and stored API keys', () => {
     expect(JSON.stringify(updated)).not.toContain('value');
   });
 
+  // The assistant's first flow is the threads feature's, so its trigger is too: the app only says the keys changed,
+  // and every system that takes `SECRETS_CHANGED` hears it
   it("starts the birth flow once a required provider has a selected key, and not after the assistant's birth", async () => {
-    const app = await startApp({ systems: ['settings', 'threads'] });
+    const app = await startApp({ systems: ['threads'] });
     // Only the events reaching threads matter here: what threads does with them (the birth flow) runs on the brain
-    const threads = vi.spyOn(app.system('threads'), 'send').mockImplementation(() => {});
+    const threads = vi.spyOn(app.system('threads'), 'send');
     await app.connect();
+    // Connecting births the assistant on its own; this covers the other way in, a key arriving later
+    services.settings.setInSection('assistant', ['birthdate'], null);
+    threads.mockClear();
     const births = () => threads.mock.calls.filter(([event]) => (event as { type: string }).type === 'BIRTH_FLOW_START').length;
 
     addTestSecret('google', 'Work');
-    await app.send('settings', { type: 'SECRETS_CHANGED' });
-    expect(births()).toBe(0);
+    await app.send('threads', { type: 'SECRETS_CHANGED' });
+    await app.settle();
+    expect(births(), 'a provider the assistant cannot call a model with is not enough').toBe(0);
 
     addTestSecret('anthropic', 'Work');
-    await app.send('settings', { type: 'SECRETS_CHANGED' });
+    await app.send('threads', { type: 'SECRETS_CHANGED' });
+    await app.settle();
     expect(births()).toBe(1);
 
-    repository.settingsCommands.updateSettings('assistant', null, ['birthdate'], new Date().toISOString());
-    await app.send('settings', { type: 'SECRETS_CHANGED' });
+    services.settings.setInSection('assistant', ['birthdate'], new Date().toISOString());
+    await app.send('threads', { type: 'SECRETS_CHANGED' });
+    await app.settle();
     expect(births()).toBe(1);
   });
 

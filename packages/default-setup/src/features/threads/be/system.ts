@@ -1,6 +1,7 @@
 import type {AssistantSettings, ThreadsSettings} from '@/__generated__/types';
 import { sendToSystem, sendToPlugin } from '@/__generated__/events';
 import { services } from '@/__generated__/services';
+import { REQUIRED_PROVIDERS } from '@/features/settings/constants';
 import { assign, cancel, fromPromise, log, raise, sendTo, setup, type ErrorActorEvent } from 'xstate';
 import { defineSystem, type SystemEntry } from '@abuddy/sdk/framework';
 
@@ -52,6 +53,8 @@ type IncomingThreadsEvents =
 
   | { type: 'CLIENT_CONNECTED' }
   | { type: 'BIRTH_FLOW_START' }
+  /** The user's stored API keys changed (no values). The assistant's first flow waits on one it can call a model with */
+  | { type: 'SECRETS_CHANGED' }
   | { type: 'THREAD_DELETED'; threadId: string }
   /** The library's commands folder changed (sent by the library system) */
   | { type: 'COMMANDS_CHANGED' }
@@ -441,6 +444,18 @@ export const threadsSystem = setup({
         });
       }
     },
+    /**
+     * The assistant's first flow runs once it can call a model, so the keys changing is what may start it. It waits
+     * here rather than with the settings view because the birth flow, the assistant and its birthdate are this
+     * feature's; the app only says that the user's keys changed.
+     */
+    startBirthFlowOnceKeyed: () => {
+      const keyed = services.secrets.list().some((secret) => secret.selected && (REQUIRED_PROVIDERS as readonly string[]).includes(secret.provider));
+      if (keyed && !services.settings.getSection<AssistantSettings>('assistant').birthdate) {
+        sendToSystem('threads', { type: 'BIRTH_FLOW_START' });
+      }
+    },
+
     startBirthFlow: ({ system }) => {
       const assistantSettings = services.settings.getSection<AssistantSettings>('assistant');
 
@@ -959,6 +974,9 @@ export const threadsSystem = setup({
       },
       BIRTH_FLOW_START: {
         actions: 'startBirthFlow',
+      },
+      SECRETS_CHANGED: {
+        actions: 'startBirthFlowOnceKeyed',
       },
       COMMANDS_CHANGED: {
         actions: 'sendCommands',
