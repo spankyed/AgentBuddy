@@ -187,6 +187,10 @@
                 "type": "string",
                 "description": "Path to the backend system module."
               },
+              "contract": {
+                "type": "string",
+                "description": "\"path#exportName\" of this system's contract: a declared type holding its context and its incoming, internal and outgoing events (SystemContract, @abuddy/sdk/framework). It lives in the feature's be/types.ts, so codegen reads it without running anything. Omit it for a system that sends no events."
+              },
               "events": {
                 "type": "object",
                 "properties": {

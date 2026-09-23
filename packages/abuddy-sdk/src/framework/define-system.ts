@@ -22,45 +22,77 @@ export type SystemEvents =
  */
 export const SYSTEM_EVENT_TYPES = eventTypes<SystemEvents>()('CLIENT_CONNECTED', 'PACK_CHANGED', 'FEATURE_SETTINGS_UPDATED');
 
+/**
+ * What a system's contract declares. A feature exports one as `Contract` from its `be/types.ts`, and `abuddy.json`
+ * names it at `features[].system.contract`:
+ *
+ * ```ts
+ * export type Contract = {
+ *   context: LogsContext
+ *   incoming: IncomingLogEvents
+ *   internal: LogsInternalEvents
+ *   outgoing: OutgoingLogsEvents
+ * }
+ * ```
+ *
+ * Fields, not positions. `internal` is what the system's own children send it — a `fromCallback` child telling its
+ * parent — and it reaches the machine's event union and nothing a dependent pack can see; as a fourth positional
+ * type parameter it would have been a slot every call had to skip past, which is why the split waited for this.
+ * `incoming`, `internal` and `context` may each be omitted.
+ */
+export interface SystemContract {
+  context?: unknown;
+  incoming?: { type: string };
+  internal?: { type: string };
+  outgoing: { type: string };
+}
+
+// Each reads a field that may be absent, so each is a conditional: an indexed access would answer from
+// `SystemContract`'s own optional members and widen an omitted `internal` to `{ type: string }` rather than
+// narrowing it to nothing.
+
+/** The events a contract says the system receives from outside itself — what a sender may write */
+export type ContractIncoming<C> = C extends { incoming: infer Events } ? Events : never;
+/** The events a contract says the system's own children send it; nobody else's to send */
+export type ContractInternal<C> = C extends { internal: infer Events } ? Events : never;
+/** The events a contract says the system sends its plugin, which codegen reads that plugin's inbox from */
+export type ContractOutgoing<C> = C extends { outgoing: infer Events } ? Events : never;
+/** A contract's context, `{}` when it declares none */
+export type ContractContext<C> = C extends { context: infer Context } ? Context : {};
+
+/**
+ * Everything the machine handles: what others send it, what its own children send it, and the app's. `Extract`
+ * rather than a bare union because the conditionals above defer, and `safeEvents` needs a parameter it can see
+ * is an event.
+ */
+type MachineEvents<C> = Extract<ContractIncoming<C> | ContractInternal<C> | SystemEvents, { type: string }>;
+
 /** The definition object returned by `defineSystem()`. */
-export interface SystemSpec<
-  TEvents extends { type: string },
-  TOutgoing extends { type: string },
-  TContext = {},
-> {
-  types: { context: TContext; events: TEvents | SystemEvents };
-  typeOf: ReturnType<typeof safeEvents<TEvents | SystemEvents>>;
-  /** Phantom: the events the system receives, as a sender writes them */
-  _incoming: TEvents;
-  /** Phantom: the events the system sends, which codegen reads its own plugin's inbox from */
-  _outgoing: TOutgoing;
+export interface SystemSpec<C extends SystemContract> {
+  types: { context: ContractContext<C>; events: MachineEvents<C> };
+  typeOf: ReturnType<typeof safeEvents<MachineEvents<C>>>;
 }
 
 /**
- * Define a backend system's event types: those it receives, those it sends to plugins, and its context. Its
- * identity is its feature's: the manifest names the system module under the feature, which runs it at
- * `<packId>/<featureId>`, and the pack's code names it by the feature id.
+ * Define a backend system from its feature's contract: the events it receives, those its own children send it,
+ * those it sends to plugins, and its context. Its identity is its feature's: the manifest names the system module
+ * under the feature, which runs it at `<packId>/<featureId>`, and the pack's code names it by the feature id.
  *
  * ```ts
- * export const logsSpec = defineSystem<
- *   IncomingLogEvents | LogsInternalEvents,
- *   OutgoingLogsEvents,
- *   LogsContext
- * >();
+ * import type { Contract } from './types.ts';
+ * export const logsSpec = defineSystem<Contract>();
  * ```
+ *
+ * It carries no phantom properties. Codegen reads the events from the contract the manifest names — a declared
+ * type, read without running anything — rather than from this value's type, which is what made an annotation on
+ * the system's default export silently drop them.
  */
-export function defineSystem<
-  TEvents extends { type: string },
-  TOutgoing extends { type: string },
-  TContext = {},
->(): SystemSpec<TEvents, TOutgoing, TContext> {
+export function defineSystem<C extends SystemContract>(): SystemSpec<C> {
   return {
     types: {
-      context: {} as TContext,
-      events: {} as TEvents | SystemEvents,
+      context: {} as ContractContext<C>,
+      events: {} as MachineEvents<C>,
     },
-    typeOf: safeEvents<TEvents | SystemEvents>(),
-    _incoming: undefined as any,
-    _outgoing: undefined as any,
+    typeOf: safeEvents<MachineEvents<C>>(),
   };
 }

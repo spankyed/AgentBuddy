@@ -58,7 +58,6 @@ export {
   _depTypesFile, _depTypesVersion,
 } from './generate-entries.ts';
 export type { GenerateEntriesOptions } from './generate-entries.ts';
-export { _TYPES_UNRESOLVED } from './module-exports.ts';
 
 // Resolve conditions for building pack code against a linked checkout
 

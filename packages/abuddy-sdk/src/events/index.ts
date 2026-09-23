@@ -6,7 +6,7 @@ import { getDesignated } from '../designations/index.ts';
 import { resolveName, splitRef, type FeatureRef } from '../ids/refs.ts';
 import type { ApplicationHotkeys } from '../types/index.ts';
 import { eventTypes } from './event-types.ts';
-import type { SystemEvents } from '../framework/define-system.ts';
+import type { ContractIncoming, ContractOutgoing, SystemEvents } from '../framework/define-system.ts';
 
 export { eventTypes, type TypeOfEvent } from './event-types.ts';
 
@@ -58,21 +58,14 @@ type EventsOfType<E, Type> = E extends { type: infer T } ? (Type extends T ? E :
 /** Each member of `E` without `type`, keeping named fields beside an index signature (which `Omit` drops) */
 type WithoutType<E> = E extends unknown ? { [K in keyof E as K extends 'type' ? never : K]: E[K] } : never;
 
-/** The events under `Key` of a system's spec (`defineSystem`), or of its entry's spec (`satisfies SystemEntry`) */
-type SpecEvents<T, Key extends '_incoming' | '_outgoing'> = T extends { [K in Key]: infer Events }
-  ? Events
-  : T extends { spec: { [K in Key]: infer Events } }
-    ? Events
-    : never;
-
 /**
- * The events a system receives, from its spec (`defineSystem`) or its entry (a system module's default
- * export, declared with `satisfies SystemEntry` so the spec keeps its events).
+ * The events a system receives, from its feature's `Contract` — what a sender may write. Its `internal` half isn't
+ * here: those are what the system's own children send it, and no other feature's to send.
  */
-export type IncomingEventsOf<T> = SpecEvents<T, '_incoming'>;
+export type IncomingEventsOf<C> = ContractIncoming<C>;
 
-/** The events a system sends to plugins, from its spec or its entry */
-export type OutgoingEventsOf<T> = SpecEvents<T, '_outgoing'>;
+/** The events a system sends to plugins, from its feature's `Contract` */
+export type OutgoingEventsOf<C> = ContractOutgoing<C>;
 
 /**
  * Every event a plugin's `Contract` says another plugin may send it, across audiences. Generated code builds each
@@ -94,14 +87,6 @@ export type PluginInboxOf<C> = C extends { inbox: infer Audiences }
 export type PublicPluginInboxOf<C> = C extends { inbox: { public: infer Events } }
   ? Extract<Events, { type: string }>
   : never;
-
-/**
- * A system spec reduced to the events the system receives and sends. Generated code declares each system's spec
- * with it, so the facade types dependents compile against carry no system context or internals.
- */
-export function specEvents<S extends { _incoming: unknown; _outgoing: unknown }>(spec: S): { _incoming: S['_incoming']; _outgoing: S['_outgoing'] } {
-  return spec;
-}
 
 /**
  * Events the host app's own plugins receive from packs. The host declares them here, as a pack's plugin declares

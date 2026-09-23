@@ -231,21 +231,21 @@ describe('generated events', () => {
   it('refuses a contract the module exports only as a value', () => {
     const entry = writePluginEntry('src/features/sidebar/fe/index.ts');
     write('src/features/sidebar/fe/types.ts', 'export const Contract = { state: {} };\n');
-    expect(() => generate({ features: [system('notes'), { id: 'sidebar', plugin: { entry, contract: 'src/features/sidebar/fe/types.ts#Contract' } }] }))
+    expect(() => generate({ features: [system('notes'), { id: 'sidebar', plugin: { entry, contract: 'src/features/sidebar/fe/contract.ts#Contract' } }] }))
       .toThrow(/only as a value, not a type/);
   });
 
   it('refuses a contract the module does not declare, naming the type it looked for', () => {
     const entry = writePluginEntry('src/features/sidebar/fe/index.ts');
     write('src/features/sidebar/fe/types.ts', 'export type Other = { state: {} };\n');
-    expect(() => generate({ features: [system('notes'), { id: 'sidebar', plugin: { entry, contract: 'src/features/sidebar/fe/types.ts#Contract' } }] }))
+    expect(() => generate({ features: [system('notes'), { id: 'sidebar', plugin: { entry, contract: 'src/features/sidebar/fe/contract.ts#Contract' } }] }))
       .toThrow(/doesn't export "Contract"/);
   });
 
   it('refuses an inbox opened to an audience that does not exist', () => {
     const entry = writePluginEntry('src/features/sidebar/fe/index.ts');
     write('src/features/sidebar/fe/types.ts', "export type Contract = { state: {}; inbox: { publik: { type: 'X' } } };\n");
-    expect(() => generate({ features: [system('notes'), { id: 'sidebar', plugin: { entry, contract: 'src/features/sidebar/fe/types.ts#Contract' } }] }))
+    expect(() => generate({ features: [system('notes'), { id: 'sidebar', plugin: { entry, contract: 'src/features/sidebar/fe/contract.ts#Contract' } }] }))
       .toThrow(/is not an audience/);
   });
 
@@ -1125,7 +1125,7 @@ describe('the snapshot format', () => {
     designation: true, earlySystem: true, id: true, plugin: true, references: true, repositories: true, services: true,
     settings: true, system: true, typesEntry: true,
   };
-    const MANIFEST_SYSTEM_FIELDS: Record<keyof PackSystemEntry, true> = { entry: true, events: true };
+    const MANIFEST_SYSTEM_FIELDS: Record<keyof PackSystemEntry, true> = { contract: true, entry: true, events: true };
   const MANIFEST_SYSTEM_EVENTS_FIELDS: Record<keyof NonNullable<PackSystemEntry['events']>, true> = { incoming: true };
   const MANIFEST_PLUGIN_FIELDS: Record<keyof PackPluginEntry, true> = { contract: true, default: true, entry: true };
   /** A dependency's seed formats, which a dependent's `boot.seed` compiles its own sources with */
@@ -1185,7 +1185,7 @@ describe('the snapshot format', () => {
           'partitionPolicy', 'permissions', 'relKinds', 'seedFormats', 'seedHooks', 'settingsSections', 'steps', 'version',
         ],
         feature: ['designation', 'earlySystem', 'id', 'plugin', 'references', 'repositories', 'services', 'settings', 'system', 'typesEntry'],
-        system: ['entry', 'events'],
+        system: ['contract', 'entry', 'events'],
         systemEvents: ['incoming'],
         plugin: ['contract', 'default', 'entry'],
         seedFormat: ['compiler', 'entity', 'fields', 'format', 'identity', 'media', 'tree'],

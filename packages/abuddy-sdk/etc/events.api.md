@@ -78,7 +78,7 @@ export type HostSystemEvents = {
 };
 
 // @public
-export type IncomingEventsOf<T> = SpecEvents<T, '_incoming'>;
+export type IncomingEventsOf<C> = ContractIncoming<C>;
 
 // @public
 export interface Message {
@@ -98,7 +98,7 @@ export function onConnected(callback: () => void): () => void;
 export function onIncoming(callback: (message: Message) => void): () => void;
 
 // @public
-export type OutgoingEventsOf<T> = SpecEvents<T, '_outgoing'>;
+export type OutgoingEventsOf<C> = ContractOutgoing<C>;
 
 // @public
 export const PLUGIN_EVENT_TYPES: readonly ["FEATURE_SETTINGS_UPDATED"];
@@ -142,15 +142,6 @@ export function sendToSystem(to: SystemTarget, event: {
     type: string;
     [key: string]: unknown;
 }): void;
-
-// @public
-export function specEvents<S extends {
-    _incoming: unknown;
-    _outgoing: unknown;
-}>(spec: S): {
-    _incoming: S['_incoming'];
-    _outgoing: S['_outgoing'];
-};
 
 // @public
 export type SystemEventMap = {

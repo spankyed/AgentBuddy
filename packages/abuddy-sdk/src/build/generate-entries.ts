@@ -422,6 +422,7 @@ export function generatePackFiles(
       // which lives in a module the plugin's own machine never imports
       ...features.flatMap((f) => (f.plugin ? [f.plugin.entry] : [])),
       ...features.flatMap((f) => (f.plugin?.contract ? [f.plugin.contract.split('#')[0]!] : [])),
+      ...features.flatMap((f) => (f.system?.contract ? [f.system.contract.split('#')[0]!] : [])),
     ];
     return [...new Set(sources.map(sourceFileOf).filter((file): file is string => file !== undefined))];
   }
@@ -432,9 +433,9 @@ export function generatePackFiles(
     return moduleExports.exportOf(file, name);
   }
 
-  function outgoingEventTypesOf(file: string): string[] {
+  function outgoingEventTypesOf(file: string, name: string): string[] {
     moduleExports ??= createModuleExports(root, exportedFromFiles());
-    return moduleExports.outgoingEventTypesOf(file);
+    return moduleExports.outgoingEventTypesOf(file, name);
   }
 
   function inboxEventTypesOf(file: string, name: string): string[] {
@@ -442,14 +443,27 @@ export function generatePackFiles(
     return moduleExports.inboxEventTypesOf(file, name);
   }
 
-  /** The event types a feature's system sends, read from its spec */
+  /**
+   * A feature's system contract, as `abuddy.json` names it at `features[].system.contract`. A system that names
+   * none sends nothing its plugin can receive, which is a real shape: a system with no plugin of its own.
+   */
+  function systemContractOf(feature: PackFeatureEntry): { source: string; exportName: string; file: string } | undefined {
+    if (!feature.system?.contract) return undefined;
+    const label = `Feature "${feature.id}": system.contract`;
+    const target = exportTarget(label, feature.system.contract);
+    const info = exportOf(target.file, target.exportName);
+    if (!info) throw new Error(`${label}: ${target.source} doesn't export "${target.exportName}"`);
+    if (!info.type) throw new Error(`${label}: ${target.source} exports "${target.exportName}" only as a value, not a type. A system's contract is a declared type codegen reads without running anything`);
+    return target;
+  }
+
+  /** The event types a feature's system sends, read from its contract */
   function sentEventTypes(feature: PackFeatureEntry): string[] {
-    const file = sourceFileOf(feature.system!.entry);
-    if (!file) throw new Error(`Feature "${feature.id}": no system entry found at ${feature.system!.entry} (.ts or /index.ts)`);
+    const contract = systemContractOf(feature);
+    if (!contract) return [];
     try {
-      return outgoingEventTypesOf(file);
+      return outgoingEventTypesOf(contract.file, contract.exportName);
     } catch (err) {
-      // The same error, so its code still says what kind of failure it is
       (err as Error).message = `Feature "${feature.id}": ${(err as Error).message}`;
       throw err;
     }
@@ -929,7 +943,7 @@ export function readPluginState(name: PluginName, selector: (state: never) => un
 
     // Each system's sent events, read from its spec: the one place they are declared
     const outgoingAliases = systemFeatures
-      .map(f => `type __events_${f.id} = OutgoingEventsOf<(typeof __specs)['${f.id}']>;`)
+      .map(f => `type __events_${f.id} = OutgoingEventsOf<__SystemContracts['${f.id}']>;`)
       .join('\n');
     // Each plugin's declared contract, from the leaf module abuddy.json names — never the plugin module itself,
     // whose machine imports cycle back through this file
@@ -948,7 +962,7 @@ export function readPluginState(name: PluginName, selector: (state: never) => un
       const ownSystem = systemFeatures.some(s => s.id === f.id) ? [`__events_${f.id}`] : [];
       return `  '${f.id}': ${[...ownSystem, `__accepts_${f.id}`].join(' | ')};`;
     }).join('\n');
-    const systemEntries = systemFeatures.map(f => `  '${f.id}': IncomingEventsOf<(typeof __specs)['${f.id}']>;`).join('\n');
+    const systemEntries = systemFeatures.map(f => `  '${f.id}': IncomingEventsOf<__SystemContracts['${f.id}']>;`).join('\n');
     const pack = `'${manifest.id}'`;
     const depPlugins = depTypeImports('PackPluginEvents');
     const depSystems = depTypeImports('PackSystemEvents');
@@ -965,7 +979,7 @@ export function readPluginState(name: PluginName, selector: (state: never) => un
     ].join(' & ');
     return `${HEADER}
 import { defineEvents, type HostPluginEvents, type HostSystemEvents, type IncomingEventsOf${hasSystems ? ', type OutgoingEventsOf' : ''}${declaring.length > 0 ? ', type PluginInboxOf, type PublicPluginInboxOf' : ''}, type Qualified, type WithOwnNames } from '@abuddy/sdk/events';
-${hasSystems ? `import type { specs as __specs } from './system-specs.js';\n` : ''}${acceptsImports ? `${acceptsImports}\n` : ''}${[...depPlugins.imports, ...depSystems.imports].join('\n')}
+${hasSystems ? `import type { SystemContracts as __SystemContracts } from './system-specs.js';\n` : ''}${acceptsImports ? `${acceptsImports}\n` : ''}${[...depPlugins.imports, ...depSystems.imports].join('\n')}
 ${[outgoingAliases, acceptsAliases].filter(Boolean).join('\n')}
 
 /**
@@ -1015,15 +1029,22 @@ export const { broadcastToPlugin, sendToPlugin, sendToSystem } = /*#__PURE__*/ d
   function generateSystemSpecs(): string {
     const systemFeatures = (manifest.features ?? []).filter(f => f.system);
     if (!systemFeatures.length) return '';
-    const imports = systemFeatures.map(f => `import ${systemBinding(f.id)} from '${toImportPath(root, f.system!.entry)}';`).join('\n');
-    const specs = systemFeatures.map(f => `  '${f.id}': specEvents(${systemBinding(f.id)}.spec),`).join('\n');
+    const declaring = systemFeatures.map(f => ({ feature: f, contract: systemContractOf(f) })).filter(c => c.contract);
+    const imports = declaring
+      .map(({ feature, contract }) => `import type { ${contract!.exportName} as __system_contract_${feature.id} } from '${toImportPath(root, contract!.source)}';`)
+      .join('\n');
+    const declaredIds = new Set(declaring.map(c => c.feature.id));
+    const entries = systemFeatures
+      .map(f => `  '${f.id}': ${declaredIds.has(f.id) ? `__system_contract_${f.id}` : 'never'};`)
+      .join('\n');
     return `${HEADER}
-// Type-only: #generated/events reads the events each system receives and sends from these, by feature id
-import { specEvents } from '@abuddy/sdk/events';
+// Type-only: #generated/events reads each system's incoming and outgoing events from its feature's contract, by
+// feature id. It imports the contracts and never the system modules — those import #generated/events themselves,
+// so reading them here would put the machine in front of the file that describes it.
 ${imports}
 
-export const specs = {
-${specs}
+export type SystemContracts = {
+${entries}
 };
 `;
   }

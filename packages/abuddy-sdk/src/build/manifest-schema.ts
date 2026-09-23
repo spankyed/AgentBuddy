@@ -127,6 +127,7 @@ export const BootConfigSchema = z.object({
 
 const SystemSchema = z.object({
   entry: z.string().describe('Path to the backend system module.'),
+  contract: z.string().describe('"path#exportName" of this system\'s contract: a declared type holding its context and its incoming, internal and outgoing events (SystemContract, @abuddy/sdk/framework). It lives in the feature\'s be/types.ts, so codegen reads it without running anything. Omit it for a system that sends no events.').optional(),
   events: z.object({
     incoming: z.array(z.string()).describe('Event types this system listens for.').optional(),
   }).strict().describe('Event routing declarations.').optional(),

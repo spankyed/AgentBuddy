@@ -310,6 +310,7 @@ export const FeatureEntrySchema: z.ZodObject<{
     earlySystem: z.ZodOptional<z.ZodBoolean>;
     system: z.ZodOptional<z.ZodObject<{
         entry: z.ZodString;
+        contract: z.ZodOptional<z.ZodString>;
         events: z.ZodOptional<z.ZodObject<{
             incoming: z.ZodOptional<z.ZodArray<z.ZodString, "many">>;
         }, "strict", z.ZodTypeAny, {
@@ -322,11 +323,13 @@ export const FeatureEntrySchema: z.ZodObject<{
         events?: {
             incoming?: string[] | undefined;
         } | undefined;
+        contract?: string | undefined;
     }, {
         entry: string;
         events?: {
             incoming?: string[] | undefined;
         } | undefined;
+        contract?: string | undefined;
     }>>;
     plugin: z.ZodOptional<z.ZodObject<{
         entry: z.ZodString;
@@ -360,6 +363,7 @@ export const FeatureEntrySchema: z.ZodObject<{
         events?: {
             incoming?: string[] | undefined;
         } | undefined;
+        contract?: string | undefined;
     } | undefined;
     services?: Record<string, string> | undefined;
     repositories?: Record<string, string> | undefined;
@@ -380,6 +384,7 @@ export const FeatureEntrySchema: z.ZodObject<{
         events?: {
             incoming?: string[] | undefined;
         } | undefined;
+        contract?: string | undefined;
     } | undefined;
     services?: Record<string, string> | undefined;
     repositories?: Record<string, string> | undefined;
@@ -471,6 +476,7 @@ export const ManifestSchema: z.ZodEffects<z.ZodObject<{
         earlySystem: z.ZodOptional<z.ZodBoolean>;
         system: z.ZodOptional<z.ZodObject<{
             entry: z.ZodString;
+            contract: z.ZodOptional<z.ZodString>;
             events: z.ZodOptional<z.ZodObject<{
                 incoming: z.ZodOptional<z.ZodArray<z.ZodString, "many">>;
             }, "strict", z.ZodTypeAny, {
@@ -483,11 +489,13 @@ export const ManifestSchema: z.ZodEffects<z.ZodObject<{
             events?: {
                 incoming?: string[] | undefined;
             } | undefined;
+            contract?: string | undefined;
         }, {
             entry: string;
             events?: {
                 incoming?: string[] | undefined;
             } | undefined;
+            contract?: string | undefined;
         }>>;
         plugin: z.ZodOptional<z.ZodObject<{
             entry: z.ZodString;
@@ -521,6 +529,7 @@ export const ManifestSchema: z.ZodEffects<z.ZodObject<{
             events?: {
                 incoming?: string[] | undefined;
             } | undefined;
+            contract?: string | undefined;
         } | undefined;
         services?: Record<string, string> | undefined;
         repositories?: Record<string, string> | undefined;
@@ -541,6 +550,7 @@ export const ManifestSchema: z.ZodEffects<z.ZodObject<{
             events?: {
                 incoming?: string[] | undefined;
             } | undefined;
+            contract?: string | undefined;
         } | undefined;
         services?: Record<string, string> | undefined;
         repositories?: Record<string, string> | undefined;
@@ -858,6 +868,7 @@ export const ManifestSchema: z.ZodEffects<z.ZodObject<{
             events?: {
                 incoming?: string[] | undefined;
             } | undefined;
+            contract?: string | undefined;
         } | undefined;
         services?: Record<string, string> | undefined;
         repositories?: Record<string, string> | undefined;
@@ -966,6 +977,7 @@ export const ManifestSchema: z.ZodEffects<z.ZodObject<{
             events?: {
                 incoming?: string[] | undefined;
             } | undefined;
+            contract?: string | undefined;
         } | undefined;
         services?: Record<string, string> | undefined;
         repositories?: Record<string, string> | undefined;
@@ -1074,6 +1086,7 @@ export const ManifestSchema: z.ZodEffects<z.ZodObject<{
             events?: {
                 incoming?: string[] | undefined;
             } | undefined;
+            contract?: string | undefined;
         } | undefined;
         services?: Record<string, string> | undefined;
         repositories?: Record<string, string> | undefined;
@@ -1182,6 +1195,7 @@ export const ManifestSchema: z.ZodEffects<z.ZodObject<{
             events?: {
                 incoming?: string[] | undefined;
             } | undefined;
+            contract?: string | undefined;
         } | undefined;
         services?: Record<string, string> | undefined;
         repositories?: Record<string, string> | undefined;
@@ -1794,9 +1808,6 @@ export interface Track {
     // (undocumented)
     schedule?: string;
 }
-
-// @internal
-export const _TYPES_UNRESOLVED = "ABUDDY_TYPES_UNRESOLVED";
 
 // @public
 export function validateFeatures(packRoot: string, manifest: Pick<PackManifest, 'features'>): ManifestValidation;

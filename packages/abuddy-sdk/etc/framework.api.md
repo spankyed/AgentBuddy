@@ -17,11 +17,7 @@ export type ArrayChanges = Record<string, DiffResult<DiffItem>>;
 export function checkFeatureSettings(featureId: string, settings: unknown): string[];
 
 // @public
-export function defineSystem<TEvents extends {
-    type: string;
-}, TOutgoing extends {
-    type: string;
-}, TContext = {}>(): SystemSpec<TEvents, TOutgoing, TContext>;
+export function defineSystem<C extends SystemContract>(): SystemSpec<C>;
 
 // @public (undocumented)
 export type DiffResult<T> = null | {
@@ -195,11 +191,10 @@ export const SYSTEM_EVENT_TYPES: readonly ["CLIENT_CONNECTED", "PACK_CHANGED", "
 export interface SystemEntry {
     // (undocumented)
     machine: AnyStateMachine;
-    spec: Pick<SystemSpec<{
-        type: string;
-    }, {
-        type: string;
-    }>, '_incoming' | '_outgoing'>;
+    spec: {
+        types: unknown;
+        typeOf: unknown;
+    };
 }
 
 // @public
@@ -225,19 +220,13 @@ export type SystemEvents = {
 };
 
 // @public
-export interface SystemSpec<TEvents extends {
-    type: string;
-}, TOutgoing extends {
-    type: string;
-}, TContext = {}> {
-    _incoming: TEvents;
-    _outgoing: TOutgoing;
+export interface SystemSpec<C extends SystemContract> {
     // (undocumented)
-    typeOf: ReturnType<typeof safeEvents<TEvents | SystemEvents>>;
+    typeOf: ReturnType<typeof safeEvents<MachineEvents<C>>>;
     // (undocumented)
     types: {
-        context: TContext;
-        events: TEvents | SystemEvents;
+        context: ContractContext<C>;
+        events: MachineEvents<C>;
     };
 }
 

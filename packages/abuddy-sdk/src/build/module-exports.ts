@@ -15,13 +15,15 @@ export interface ModuleExports {
   /** The export `name` of `file` (an absolute path the reader was created with); undefined when it has none */
   exportOf(file: string, name: string): ExportInfo | undefined;
   /**
-   * The `type` literals of the events a system module's default export (its `SystemEntry`) declares it sends:
-   * its spec's outgoing union, so `{ type: 'A' } | { type: 'B' }` reads as `['A', 'B']`. Throws when the entry's
-   * spec has lost that union (an entry annotated `: SystemEntry` rather than declared with `satisfies`), or when a
-   * member has no literal `type` (a union widened to `string`, or a shape that isn't an event), because a map built
-   * from it would be silently short and the check over it would reject real events.
+   * The `type` literals of the events a system's contract says it sends its plugin, read from the type `name` that
+   * `file` declares (`abuddy.json`'s `features[].system.contract`) — its `outgoing`.
+   *
+   * A declared type, as the plugin reader takes one. Reading a value's type instead is what made an annotation on
+   * the system's default export (`: SystemEntry` rather than `satisfies`) silently drop every outgoing event, and
+   * what left the reader unable to tell a broken install from a mistake, since a failed import reads as `any`.
    */
-  outgoingEventTypesOf(file: string): string[];
+  outgoingEventTypesOf(file: string, name: string): string[];
+
   /**
    * The `type` literals of the events a plugin's contract says *other* plugins may send it, read from the type
    * `name` that `file` declares (`abuddy.json`'s `features[].plugin.contract`) — its `inbox`, across audiences.
@@ -35,15 +37,8 @@ export interface ModuleExports {
    * through the generated events module this feeds.
    */
   inboxEventTypesOf(file: string, name: string): string[];
-}
 
-/**
- * The `code` of the error codegen throws when a system's types don't resolve, which a pack whose dependencies
- * aren't installed yet gets: the CLI tells that apart from a mistake in the pack.
- *
- * @internal Host-only: abuddy CLI build tooling.
- */
-export const _TYPES_UNRESOLVED = 'ABUDDY_TYPES_UNRESOLVED';
+}
 
 /** The audiences a plugin's inbox may open to, in the order an error lists them (`PluginInbox`, @abuddy/sdk/fe) */
 const INBOX_AUDIENCES = ['pack', 'public'];
@@ -157,20 +152,16 @@ export function createModuleExports(packRoot: string, files: string[]): ModuleEx
       return { value: callable ? 'function' : 'object', type };
     },
 
-    outgoingEventTypesOf(file) {
-      const entry = exportedValueType(file, 'default');
-      const spec = entry && !(entry.flags & ts.TypeFlags.Any) ? propertyType(entry, 'spec') : entry;
-      if (spec && spec.flags & ts.TypeFlags.Any) {
-        throw Object.assign(
-          new Error(`${path.basename(file)}: the events its system sends are read from its default export's spec, whose type doesn't resolve: check that its \`defineSystem\` import does, and that the pack's dependencies are installed`),
-          { code: _TYPES_UNRESOLVED },
-        );
+    outgoingEventTypesOf(file, name) {
+      const contract = declaredTypeOf(file, name);
+      if (!contract) {
+        throw new Error(`${path.basename(file)}: it declares no type "${name}". A system's contract is a declared type — \`export type ${name} = { context?: …; incoming?: …; internal?: …; outgoing: … }\` — named in abuddy.json at features[].system.contract`);
       }
-      const declared = spec && propertyType(spec, '_outgoing');
+      const declared = propertyType(contract, 'outgoing');
       if (!declared) {
-        throw new Error(`${path.basename(file)}: the events its system sends are read from its default export's spec, and ${entry ? 'that spec carries none' : 'it has no default export'}: default-export the system entry declared with \`satisfies SystemEntry\` (an annotation \`: SystemEntry\` drops the spec's events)`);
+        throw new Error(`${path.basename(file)}: ${name} declares no \`outgoing\` events. A system with none omits features[].system.contract rather than declaring an empty one`);
       }
-      return eventTypeLiterals(declared, path.basename(file), "its system's outgoing events", ' (an entry annotated `: SystemEntry` has these: default-export it declared with `satisfies SystemEntry`)');
+      return eventTypeLiterals(declared, path.basename(file), "its system's outgoing events");
     },
     inboxEventTypesOf(file, name) {
       const contract = declaredTypeOf(file, name);
@@ -187,13 +178,13 @@ export function createModuleExports(packRoot: string, files: string[]): ModuleEx
       }
       return audiences.flatMap((audience) => {
         const declared = propertyType(inbox, audience.name);
-        return declared ? eventTypeLiterals(declared, path.basename(file), `the events it accepts from \`${audience.name}\``, '') : [];
+        return declared ? eventTypeLiterals(declared, path.basename(file), `the events it accepts from \`${audience.name}\``) : [];
       });
     },
   };
 
   /** The `type` literals of an event union a phantom carries; `never` is none, and a lone event is its own type. */
-  function eventTypeLiterals(declared: TS.Type, file: string, what: string, annotated: string): string[] {
+  function eventTypeLiterals(declared: TS.Type, file: string, what: string): string[] {
     if (declared.flags & ts.TypeFlags.Never) return [];
     const members = declared.isUnion() ? declared.types : [declared];
     return members.flatMap((member) => {
@@ -203,9 +194,7 @@ export function createModuleExports(packRoot: string, files: string[]): ModuleEx
       // the union is expanded here and every constituent still has to be a literal.
       const literals = declaredType?.isUnion() ? declaredType.types : declaredType ? [declaredType] : [];
       if (literals.length === 0 || !literals.every((t) => t.isStringLiteral())) {
-        // What an entry annotated with its contract leaves: the contract's own `{ type: string }`
-        const widened = declaredType !== undefined && (declaredType.flags & ts.TypeFlags.String) !== 0 ? annotated : '';
-        throw new Error(`${file}: ${what} have a member whose \`type\` is ${declaredType ? checker.typeToString(declaredType) : 'missing'}, not a string literal or a union of them: the event maps are read from these, and a member without one would leave them short${widened}`);
+        throw new Error(`${file}: ${what} have a member whose \`type\` is ${declaredType ? checker.typeToString(declaredType) : 'missing'}, not a string literal or a union of them: the event maps are read from these, and a member without one would leave them short`);
       }
       return literals.map((t) => (t as TS.StringLiteralType).value);
     });
