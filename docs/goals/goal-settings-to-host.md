@@ -287,20 +287,24 @@ Final.
 
 ## Open decisions
 
+Both were settled while implementing; see the section above. This section is kept only so the record of what
+was open, and what it was weighed against, survives with the answer.
+
 1. **Where the Help tab's FAQs live** (settle before Phase 5). `be/faqs.ts` reads default-setup's compiled
    `faqs.seed.json`, and the Help tab is part of the settings canvas. The renderer must not read a pack's
    seed.
    - **A pack contribution.** FAQs become something a pack registers (like commands or blocks), the host
-     collects, and the settings view renders. Any pack can then contribute help. — *open*
+     collects, and the settings view renders. Any pack can then contribute help. — *chosen, as `help`*
    - **An app-extension slot.** The Help tab becomes a slot default-setup fills through
-     `fe.appExtensions`, keeping the FAQ reading entirely in the pack. — *open*
+     `fe.appExtensions`, keeping the FAQ reading entirely in the pack. — *rejected: a pack's Help component
+     would render inside the host's settings plugin, with no scope from which to reach its own backend*
 
 2. **Whether `general` keeps its shape** (settle before Phase 3). Decision 2 makes sections opaque to the
    host, but `general.application.hotkeys` is read by the host's own shell for application hotkeys.
    - **Leave it.** The host reads that one path opaquely, as it does today through the system's
-     `APPLICATION_HOTKEYS` event. — *open*
+     `APPLICATION_HOTKEYS` event. — *chosen; no migration needed*
    - **Promote hotkeys to a host section** of its own, leaving `general` purely default-setup's. Cleaner
-     ownership, one more migration. — *open*
+     ownership, one more migration. — *rejected: the host already reads it without knowing the shape*
 
 ## Phases
 
@@ -423,3 +427,34 @@ opens Settings with the General, Plugins and Help tabs working, and every featur
   `settings.ts` defaults, and `test:external-pack` and `test:packaged-authoring` keep passing.
 - This goal and [`goal-plugin-inbox.md`](goal-plugin-inbox.md) both touch what a feature may reach. They
   are independent, but whichever lands second re-checks the other's call sites.
+
+## Outcome (2026-09-22)
+
+Done, in eight commits on `AS/shell-owned-plugins`, ending with the atomic move
+`refactor(settings): the settings are the app's, and the view that draws them is the app's too`.
+
+| Phase | Result |
+|---|---|
+| 1 — `document.ts` to the host | `packages/abuddy-host/src/features/settings/be/document.ts`, with sections a `SettingsCheck` parameter rather than a fixed list |
+| 2 — the store and the entity | `be/store.ts`: `createSettingsStore({ defaults })`, one `write()`, `whileReplacingData`. `Settings` joins `AppState` in `HOST_ENTITY_TYPES` |
+| 3 — `services.settings` as a host service | `@abuddy/sdk/services/settings.ts` + `@abuddy/host/services/settings.ts`, in `HOST_SERVICE_NAMES`; `PackRegistration.settingsSections` and the manifest field for a pack's own sections |
+| 4 — the system | `features/settings/be/system.ts` at `host/settings`. Its three non-settings jobs left first: CLI testing to `code`, the assistant's birth flow to `threads`, and the FAQ tab to the `help` contribution any pack can make |
+| 5 — the plugin and its views | `features/settings/fe/machine.ts` in the host, `packages/renderer/src/views/settings/` in the renderer, registered through `hostFrontend`. Frontend code reaches the settings through the SDK's `SettingsPort`, never the view's actor |
+| 6 — delete the feature | `packages/default-setup/src/features/settings/` is gone; its 28 per-feature settings types went to the features that own them, and its `general`/`assistant` sections to `src/app-settings/` |
+
+Checks, all green at the final commit: `typecheck`, `schema:check`, `api:check`, `facade:check`,
+`packages:build` + `packages:check`, `test:unit` (2914 tests across eight workspaces), `compile`, `build`,
+`npm test` (20 E2E), `test:external-pack`, `test:packaged-authoring`.
+
+Conventional choices made where the plan didn't say:
+
+- **`useSettingsSection`/`useFeatureSettings`/`useSettingsSave` throw outside an effect scope**, as
+  `useShell` does — they follow the settings until the scope is disposed. Three call sites that had called
+  the old composable *inside* a `computed` getter were hoisted to setup; the E2E navigation spec is what
+  caught them.
+- **The Settings row is written on the first change**, not created by a boot hook. default-setup's
+  `onInit` no longer creates it: the row holds only what the user changed, so an app at its defaults has
+  nothing to store. `packages/api/tests/unit/app-reset.spec.ts` reads it through `services.settings`
+  rather than the raw row.
+- **The fixture packs' "reach a dependency's system" specs point at `default-setup/library`**, since
+  `settings` is no longer a dependency's system to reach.

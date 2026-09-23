@@ -13,7 +13,7 @@ found in one is looked for in the same place in the other (`tests/source-layout.
 | `runtime/` | this window's resources and the frontend port binding | `runtime/` |
 | `transport/` | the wire to the API: the tRPC client, the `ShellClient`, the secrets client | `transport/` (the routers) |
 | `adapters/` | this window's implementations of ports the host defines (`ShellStorage`, `ShellNotify`, `PackFrontendIO`) | `adapters/` |
-| `views/` | Vue: the app's roots, the layout, the Packs view | — the API renders nothing |
+| `views/` | Vue: the app's roots, the layout, the Packs and Settings views | — the API renders nothing |
 
 `main.ts`, `types.ts` and the ambient declarations sit at the root. There is no `core/`, `shared/`, `lib/` or
 `utils/`: a folder named for a layer rather than a job takes whatever nobody placed, and the guard rejects one.
@@ -31,6 +31,7 @@ Its static imports are evaluated first: `virtual:built-in-packs` loads every bui
 5. Binds the SDK's frontend port, `bindRendererHost(applicationState)` (`src/runtime/index.ts`: `bindFeHost({ application, secrets, client: feClient, packs: fePacks })`), then starts the actor, so the binding is in place before any plugin runs or any external pack frontend loads:
    - `application` backs `@abuddy/sdk/fe`'s `navigateToPlugin` and its neighbours;
    - `secrets` is `src/transport/secrets.ts`, the API's secrets procedures behind `secretsClient` (the only ones pack frontends call directly);
+   - `settings` is `src/runtime/settings.ts`, the `SettingsPort` behind `@abuddy/sdk/fe`'s settings composables. It reads the running Settings view's actor, found by the `settings` role rather than by name, so what a feature reads of its own settings doesn't name the view that draws them;
    - `client` is `feClient` (`src/transport/client.ts`), the window's one client to the API: the `ShellClient` from `@abuddy/host/fe`. Its `send` is how `@abuddy/sdk/events`' `sendToSystem` sends here, over `bus.send`, reporting a rejected send to the console, the app's log (`fe-client` source) and a toast, without the payload. The shell (`createAppShell()`) subscribes through it, and reads the loaded packs and asks for packs' startup data through it; it follows the API across a restart on a new port (Electron's API status). No other renderer module calls `trpc.bus` or `trpc.packs`. Plugin sends and subscriptions throw (no backend app is bound in the renderer).
 6. Sets the globals:
    - `window.applicationState` is the actor. The E2E fixture (`@abuddy/testing`) finds the main window by it and drives it.
@@ -95,7 +96,18 @@ frontend and drops its plugins — it loads them, so it takes them out.
 The Packs tab's components, and the one module that composes them: `plugin.ts` pairs the host's `packsMachine`
 (`@abuddy/host/fe`) with the view (`index.vue`, the list, and `PackDetail.vue`) and registers it as the `host` pack's frontend.
 Nothing here decides anything about packs: what would is the host's, and `tests/source-layout.spec.ts` keeps the
-view and its one composition module the only things here.
+view and its one composition module the only things here. `plugin.ts` is where `hostFrontend` lives, so the Settings
+view registers there too.
+
+## Settings view (`src/views/settings/`)
+
+The Settings tab, laid out as the Packs view is: the canvas, its three tabs (General, Plugins, Help) and the General
+components, over the host's `createSettingsMachine` (`@abuddy/host/fe`). The settings themselves are the app's
+(`packages/abuddy-host/src/features/settings/`) — this is only what draws them. Two sections a pack contributes,
+`general` and `assistant`, are default-setup's content; the components read them as data and the host stores them
+opaquely. `plugin-settings.ts` reads a slice by name from settings in hand, `save.ts` is the composable the forms
+use for a change and whether the store stored it, and the Plugins tab renders each plugin's own `settings` component
+in a `PluginScope` for that plugin, so a form's `usePlugin()` reaches the plugin it configures.
 
 ## Tests and checks
 
