@@ -19,7 +19,8 @@ Finished when:
 - Phases 1–5 are implemented and each meets its "Done when"; every new guard, helper or test is
   mutation-checked.
 - No `features/*/fe/public.ts` remains; each feature frontend has an `fe/types.ts` leaf holding its
-  context, its `contract`, and any plain data, importing nothing from `#generated/*` but `types` and `ears`.
+  context, its `Contract` type and any plain data, importing nothing from `#generated/*` but `types` and
+  `ears`. `pluginAccepts` and `PluginAccepts` no longer exist, and nothing replaces them.
 - `#generated/events` imports the leaf, never `fe/plugin.ts`.
 - The 17 intra-pack UI commands (terminal.CREATE, NOTE.OPEN, TAB.CREATE, NODE.DOUBLE_CLICK and the rest)
   are gone from tests/fixtures/external-pack/src/__generated__/deps/default-setup.d.ts, and
@@ -46,8 +47,9 @@ Never:
 - run bare tsc on packages/preload, `npm install` in the example pack, or edit version/release metadata.
 - change the typed EARS types' behaviour (packages/abuddy-sdk/TYPED-EARS.md) to make a call site compile.
 - add backward-compat shims or loosen a failing assertion instead of investigating.
-- make the contract a type alias, or read it from `fe/plugin.ts` — the first is unreadable by codegen and
-  the second restores the cycle (Spike results).
+- give the contract a runtime value (a `pluginContract()`-style call carrying phantoms), or read it from
+  `fe/plugin.ts` — the first is ceremony a type alias makes unnecessary, the second restores the cycle
+  (Spike results).
 - split `defineSystem`'s audiences or add an FE runtime validation map — both Deferred, with triggers.
 ```
 
@@ -87,15 +89,31 @@ feature has an `fe/types.ts`; the backend has `be/types.ts` and the frontend nev
 
 Both probes ran on this branch and were reverted; the tree was clean afterwards.
 
-**A leaf is readable — and only as a value.** `acceptedEventTypesOf` over an `fe/types.ts` holding
-`export declare const accepts: { _accepts: … }` returned `['NOTE.OPEN']`, with the program also holding five
-other features' system and plugin entries. So the leaf works.
+**A leaf is readable.** `acceptedEventTypesOf` over an `fe/types.ts` returned `['NOTE.OPEN']`, with the
+program also holding five other features' system and plugin entries. So pointing codegen at the leaf works.
 
-But `exportOf`'s `ExportInfo.type` is a **boolean** — it says whether a name is usable as a type, it does not
-hand back the type — and `exportedValueType` resolves values only. **A contract written as a type alias is
-unreadable by codegen.** It has to be a value: a no-argument call whose return type carries the phantoms,
-exactly as `pluginAccepts()` does today. This killed an earlier plan to put the contract on `definePlugin`'s
-type parameters, twice over — unreadable there, and reading it from `plugin.ts` restores the cycle.
+**And a type alias is readable too — our reader just couldn't.** The first run of this probe concluded the
+contract had to be a runtime value, because `exportOf`'s `ExportInfo.type` is a **boolean** (it says whether
+a name is usable as a type, not what the type is) and `exportedValueType` resolves values only. Both are
+ours, in `module-exports.ts`, shaped for the only two questions codegen used to ask. TypeScript's own
+`checker.getDeclaredTypeOfSymbol` reads a type alias fine:
+
+```ts
+export type Contract = { state: NotesContext; inbox: { pack: { type: 'NOTE.OPEN'; noteId: string } } }
+// → Contract members: [ 'state', 'inbox' ]      NotesContext members: [ 'notes', 'currentNoteId' ]
+```
+
+So the contract is a **pure type** and needs no value at all: nothing at runtime, nothing in a pack's bundle,
+and `pluginAccepts` deleted rather than renamed. Reading it costs a `declaredTypeOf(file, name)` beside
+`exportedValueType` — about ten lines — after which the existing `propertyType` and `eventTypeLiterals`
+walk `inbox.pack` and `inbox.public` unchanged.
+
+**The recorded mistake, because it is the kind that repeats:** a limit was hit in our own tooling and read as
+a limit of the language. The question that dissolved it was whose limitation it was.
+
+What stays true regardless: the contract cannot sit on `definePlugin`'s type parameters. Recovering them
+means reading the call's return type, so codegen would import `fe/plugin.ts`, which imports the machine —
+and the cycle returns.
 
 **Ten contexts pass the facade gate, at +9%.** Exporting all ten from `pack-types.ts` and running
 `abuddy build` produced no facade problems. `dist/types/pack-types.d.ts` grew **5522 → 6018 lines
@@ -114,10 +132,23 @@ Final.
    The leaf imports nothing from `#generated/*` but `types` and `ears` — contexts need both (`NoteDTO`,
    `EARS.EntityId`) and neither reaches `#generated/events`. It imports no other feature.
 
-2. **The contract is one value export in the leaf:** `export const contract = pluginContract<State, Inbox>()`.
-   `pluginAccepts` is renamed and widened, not deleted; `definePlugin` is untouched. A value because a type
-   alias is unreadable, and in the leaf because `plugin.ts` imports the machine (Spike results). Codegen reads
-   `contract` from `fe/types.ts` and nowhere else — **that one rule is what closes the cycle.**
+2. **The contract is one exported type in the leaf.**
+
+   ```ts
+   export type Contract = {
+     state: NotesContext
+     inbox: { pack: { type: 'NOTE.OPEN'; noteId: string } }
+   }
+   ```
+
+   A type, not a value: it is erased, so nothing reaches a pack's bundle, and `pluginAccepts` and
+   `PluginAccepts` are **deleted with nothing in their place** — they existed only to carry phantoms past a
+   reader that couldn't read types. `definePlugin` is untouched.
+
+   Codegen reads `Contract` from `fe/types.ts` and nowhere else — **that one rule is what closes the
+   cycle** — through a new `declaredTypeOf(file, name)` in `module-exports.ts` over
+   `checker.getDeclaredTypeOfSymbol`, beside the existing `exportedValueType`. `ExportInfo` does not change;
+   this is a new reader, not a different answer from an old one.
 
 3. **Sends declare by audience; `pack` is the default.**
 
@@ -165,13 +196,15 @@ The change everything else rests on, and the only one that closes the cycle.
 
 - `fe/public.ts` → `fe/types.ts` per feature (Decision 1); move each context out of `state.ts`, and export
   `BrowserContext` and `ThreadsContext`, which are private today.
-- `pluginContract<State, Inbox>()` in `@abuddy/sdk/fe`, replacing `pluginAccepts`; codegen reads `contract`
-  from the leaf.
+- `declaredTypeOf(file, name)` in `module-exports.ts` (Decision 2); codegen reads each plugin's `Contract`
+  type from its leaf. Delete `pluginAccepts` and `PluginAccepts` — nothing replaces them.
+- `PluginInbox` stays a type helper in `@abuddy/sdk/fe`, constraining the `inbox` half's audiences.
 - `state.ts` imports its context from the leaf. Nothing else moves; the machine keeps its generated sends.
 - The selectors stay for now on the SDK's untyped `usePluginState`; Phase 3 deletes them.
 
 **Done when:** `npm run typecheck`, `compile`, `npm test -w @abuddy/sdk`, `npm test -w @app/default-setup`
-pass; `git grep pluginAccepts` returns nothing; `#generated/events` imports no `fe/plugin.ts`; a guard in
+pass; `git grep pluginAccepts` returns nothing and no SDK export replaced it; `#generated/events` imports
+no `fe/plugin.ts`; a `declaredTypeOf` spec covers a type alias, an interface and a missing name; a guard in
 `scripts/check-import-specifiers.ts` rejects a leaf importing `#generated/events`, `#generated/fe` or another
 feature. Mutation: pointing codegen at `fe/plugin.ts` restores the cycle and fails the build — the check that
 Decision 2's rule is what holds.
