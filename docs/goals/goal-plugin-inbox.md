@@ -29,6 +29,9 @@ Finished when:
   abuddy.schema.json, in any abuddy.json in the repo, or in generate-entries.ts.
 - `receivedEventTypes` and the `sendsTo` target loop are gone from generate-entries.ts; a plugin's
   `receives` comes from its own declaration.
+- Plugins and systems both declare in two parts (`Public`, `Internal`), and a declared-internal event no
+  longer reaches a dependent's facade: `ADD_LOG` is gone from
+  tests/fixtures/external-pack/src/__generated__/deps/default-setup.d.ts.
 - A generated `events.ts` spells its dependency plugins `Qualified<'<dep>', __dep_<dep>_PackPluginEvents>`
   with no `Pick<>`, matching the systems line; `SendablePluginEvents` is gone from the facade barrel.
 - `broadcastToPlugin` is the backend send and `sendToPlugin` the renderer one; no module exports both
@@ -71,9 +74,23 @@ Never:
   there are no external packs and no users; a clean `npm start` is the acceptance test).
 - migrate the host's hand-written `plugin: { receives: … }` to `definePlugin` (Decision 14: the host has
   no manifest and no codegen to read one).
+- build `useMySettings`/`updateMySettings` or any settings composable — that work landed in
+  goal-settings-to-host and Phase 2 only verifies it (Decision 8).
+- fix `FeatureSettingsUpdated.settings` being `unknown` — it is goal-settings-to-host's Decision 7, and
+  belongs to that goal (Decision 8); record it, don't do it.
+- leave `defineSystem` collapsed while splitting plugins (Decision 19: that ships the asymmetry this goal
+  exists to remove).
+- make a validation map audience-aware — `Message` has no sender, so it cannot be (Decision 18).
 ```
 
-## Background (2026-09-22, at 6d0633ad4 on AS/frontend-host-boundary)
+## Background (surveyed 2026-09-22 at 6d0633ad4; re-verified at bec339ea7, the goal-settings-to-host merge)
+
+> **Re-verified after `goal-settings-to-host.md` merged (#199).** Six counts in the first survey were stale
+> and are corrected below: `sendsTo` has four users, not two, and two of them target host plugins;
+> `sendsTo` reaches 26 files, not 20; `fe/public.ts` is 7 files, not 8; the cross-feature edge graph is 16
+> edges, not ~27, and feature→feature is 4, not 13; 14 plugin entries are in the annotation form, not 15.
+> `sendToPlugin`'s ~534 occurrences are unchanged. What that goal did and didn't do for this one is
+> Decision 8.
 
 > Line numbers in `features/application/fe/machine.ts` were re-checked at `c947ed32b`, which changed that file
 > after this was surveyed. Every other citation here still points where it says.
@@ -216,6 +233,50 @@ The 13 feature→feature edges, sorted by what they want:
 
 `settings` is 8 of the 13 and mostly is not communication at all.
 
+### An inbox has two audiences, and the type system collapses them
+
+A feature's other half sends it one set of events; every other pack may send it a much smaller one. Authors
+already separate those by hand:
+
+```ts
+// features/logs/be/system.ts:40
+export const logsSpec = defineSystem<IncomingLogEvents | LogsInternalEvents, OutgoingLogsEvents, LogsContext>();
+```
+
+`defineSystem` then uses that first type parameter in three places
+(`packages/abuddy-sdk/src/framework/define-system.ts`):
+
+```ts
+types:     { context: TContext; events: TEvents | SystemEvents },   // the machine
+typeOf:    safeEvents<TEvents | SystemEvents>(),                    // the guard helper
+_incoming: TEvents,                                                 // → PackSystemEvents → the facade
+```
+
+The first two need the union — the machine handles incoming *and* internal. The third is the **published
+contract** and gets the same union, so internal events ship to every dependent pack:
+
+```
+tests/fixtures/external-pack/src/__generated__/deps/default-setup.d.ts:3629
+            type: "ADD_LOG";
+```
+
+`ADD_LOG` is one of `LogsInternalEvents`, and it reaches that facade through
+`IncomingEventsOf<(typeof specs)['logs']>` (`:3673`). Nothing outside the machine can legitimately send it
+— it comes from the system's own child actor, `sendBack` inside a `fromCallback` (`logs/be/system.ts:45`) —
+so the facade advertises surface area with no use.
+
+The host is the one place that keeps the two apart, by hand
+(`packages/abuddy-host/src/features/registration.ts:55`):
+
+```ts
+[featureIdOf(HOST.settings)]: { …, plugin: { receives: [...SETTINGS_PLUGIN_EVENT_TYPES, ...HOST_PLUGIN_EVENT_TYPES['host/settings']] } },
+```
+
+with `HostPluginEvents` documented as *"what a pack may name"* and `PACKS_PLUGIN_EVENT_TYPES` marked *"Not
+part of `HostPluginEvents`"* (`:26`). The **distinction** is right and is the precedent for Decision 1; the
+**mechanism** is not something to copy — three hand-maintained lists per host feature, joined by a manual
+spread that nothing checks, and a runtime `receives` that is the flat union anyway.
+
 ### What is actually enforced, and what isn't
 
 | path | typed | checked at runtime |
@@ -228,6 +289,17 @@ The middle row is XState's own API, not a hole this goal opens: `system` is a pr
 and a member of `UnifiedArg`, which `ActionArgs` extends, so it is reachable from any action and from
 anything `usePlugin()` returns. `useShell().plugins` enumerates every registered plugin's ref. Neither the
 old `sendsTo` nor the new declaration changes that; see Decision 2.
+
+**And a runtime check can never tell one audience from the other**, because the envelope has no sender
+(`packages/abuddy-sdk/src/events/index.ts:18`):
+
+```ts
+export interface Message { to: string; event: { type: string; [key: string]: unknown } }
+```
+
+So the two-audience split of Decision 1 is enforceable in types only, and the validation maps stay one flat
+union per plugin. Their job is "does this plugin handle this event at all", not "is this sender allowed to
+send it" — Decision 18 says so where it specifies the check.
 
 ### Checked before planning (2026-09-22)
 
@@ -242,9 +314,27 @@ old `sendsTo` nor the new declaration changes that; see Decision 2.
   delivery exactly rather than changing it. `spawnPluginActors` loops `context.plugins`
   (`features/application/fe/machine.ts:377`), so a popout spawns every registered plugin and there is no
   "target not spawned" hole; `ownsLastActivePlugin` only decides who records and acts on navigation.
-- **Every `usePluginSettings`/`currentPluginSettings` call site targets its own feature** — three call
-  sites, all self. See Decision 8.
-- **`sendsTo` has two users**: `actions.system` (`["flows"]`) and `settings.system` (`["host/application"]`).
+- **`sendsTo` has four users**, and two target host plugins — so the `hostTargets` branch Phase 3 deletes
+  is live code, not a hypothetical:
+  ```
+  default-setup  threads → host/application
+  default-setup  code    → host/settings
+  default-setup  actions → flows
+  external-pack  memos   → default-setup/logs
+  ```
+- **`sendsTo` appears in 26 files** (packages, tests and docs, excluding `docs/archive/`). Phase 3 lists them.
+- **The cross-feature read graph is 16 edges, and 12 of them are extensions:**
+  ```
+  extensions → threads 6,  flows 4,  notes 2          (12)
+  flows → brain,  brain → flows,  code → prompts,  code → actions   (4)
+  ```
+  Feature→feature is down to 4 from 13, because every settings edge went with
+  `goal-settings-to-host`. So the residue Open decision 1 is about is **mostly an extensions problem** —
+  which is the original reason `pluginHandle` exists: `src/extensions/**` renders outside any
+  `PluginScope`, where `usePlugin()` is unavailable.
+- **`fe/public.ts` is 7 files** (`actions`, `brain`, `flows`, `library`, `notes`, `prompts`, `threads`), each
+  still declaring a `pluginHandle`.
+- **14 plugin entries are in the annotation form**, and `definePlugin` is a free name (0 occurrences).
 - **`outgoingEventsType` does not exist** in `manifest-schema.ts` or codegen, despite being named in
   `goal-manifest-redesign.md` — that doc was corrected on 2026-09-22.
 
@@ -275,11 +365,27 @@ old `sendsTo` nor the new declaration changes that; see Decision 2.
 
 Final.
 
-1. **A plugin declares its inbox.** `definePlugin<Incoming>()` on the plugin entry, read by codegen the way
-   `defineSystem`'s spec already is. With no type parameter the inbox defaults to its own feature's system's
-   outgoing union — today's behaviour for the common case, so no feature gains work it didn't have.
+1. **A plugin declares its inbox, in two parts.** `definePlugin<Public, Internal>()` on the plugin entry,
+   read by codegen the way `defineSystem`'s spec already is (a phantom property off the default export's
+   type). `Public` is what any pack may send it; `Internal` is what its own feature's system sends it and
+   never leaves the pack. With no type parameters the inbox defaults to its own feature's system's outgoing
+   union as `Internal` — today's behaviour for the common case, so no feature gains work it didn't have.
    `receivedEventTypes` and `sentEventTypes`-for-receivers are deleted; `plugin: { receives: [...] }` comes
    from the declaration.
+
+   The split is what stops a declaration from publishing every internal event as cross-pack API — the leak
+   that exists on the system side today (Background, "An inbox has two audiences"). It falls out of codegen
+   rather than being maintained by hand:
+
+   | map | contents | who may send |
+   |---|---|---|
+   | `OwnPluginEvents` → the pack's own sends | `Public \| Internal` | the pack owns both halves, so nothing that compiles today stops compiling |
+   | `PackPluginEvents` → the facade | `Public` only | a dependent gets the contract, not the internals |
+
+   Codegen must tell **"declared nothing"** from **"declared `never`"**: the system side already collapses
+   an empty declaration (`if (declared.flags & ts.TypeFlags.Never) return []`), so a `never` default on the
+   type parameter would make "inherit my system's outgoing" and "accept nothing" identical. Use the absence
+   of the phantom property as the signal, not its value.
 
 2. **`sendsTo` is deleted from the manifest**, both jobs with it. No widening: a plugin's inbox is its own.
    No grant: the declaration takes over what `sendsTo` governed, exactly as it already does for systems,
@@ -341,15 +447,32 @@ Final.
    both functions and into `packages/abuddy-sdk`'s docs, and pinned by a spec that fails if a backend send
    stops reaching every window or a renderer send starts crossing windows.
 
-8. **A feature reads and writes its own settings through the SDK**, not through the settings plugin:
-   `useMySettings()` / `updateMySettings(path, value)`, over the `FEATURE_SETTINGS_UPDATED` its own plugin
-   already receives, typed from the feature's own settings type.
+8. **A feature reads its own settings from its own machine. Done by `goal-settings-to-host.md`; no SDK API.**
 
-   Every `usePluginSettings` and `currentPluginSettings` call site in the repo names its **own** feature
-   (`usePluginSettings<CodeSettings>('code')` in two `features/code/...` files,
-   `usePluginSettings<{ showBookmarksBar?: boolean }>('browser')` and `currentPluginSettings` in
-   `features/browser/...`). So both functions lose every consumer and are **deleted** from
-   `features/settings/fe/public.ts`, not kept and guarded. The guard is that the symbols no longer exist.
+   This decision first proposed `useMySettings()` / `updateMySettings()`. **That was wrong** and is not to be
+   built. A composable cannot serve a machine action — `currentPluginSettings('browser')` was called inside
+   `actions: ({ event }) => …`, where there is no Vue scope — and no API was needed: the feature already has
+   the data in its own context. `goal-settings-to-host` settled it, and its result is the shape to keep:
+
+   ```ts
+   // features/browser/fe/state.ts:323 — was currentPluginSettings<…>('browser')?.openLinksInApp
+   actions: ({ context, event }) => { if (context.settings.openLinksInApp ?? true) { … } }
+   ```
+
+   `usePluginSettings` and `currentPluginSettings` no longer exist as pack API; `browser` handles
+   `FEATURE_SETTINGS_UPDATED` like the other nine features; writes go through `services.settings`.
+
+   **One residue, which Phase 2 verifies rather than fixes.** That goal's Decision 7 — typing
+   `FeatureSettingsUpdated.settings` per feature — did **not** land. It is still
+   `{ type: 'FEATURE_SETTINGS_UPDATED'; settings: unknown }` (`abuddy-sdk/src/events/index.ts:30`), so every
+   feature that handles it casts:
+
+   ```ts
+   // features/browser/fe/state.ts:314
+   FEATURE_SETTINGS_UPDATED: { actions: assign({ settings: ({ event }) => (event as { settings: BrowserSettings }).settings }) },
+   ```
+
+   That cast belongs to the settings goal, not this one. Record it in the Outcome and leave it.
 
 9. **`fe/public.ts` stays hand-written, and shrinks.** A selector is the contract and cannot be generated;
    the plumbing around it can. What leaves: the handle, the `bind` action, the `Extract<>` event unions and
@@ -358,9 +481,11 @@ Final.
 10. **`plugin-handle.ts` is deleted as a consequence, not as a goal.** It goes when nothing binds it. If
     something still does after Phase 5, the Outcome records what and why rather than forcing it.
 
-11. **Order: reduce the demand before building supply.** Phase 2 (own settings) removes ~5 edges and needs
-    none of the rest. Building the general read channel first would cement the own-settings and entity-list
-    patterns as cross-pack API.
+11. **Order: reduce the demand before building supply — and it already happened.**
+    `goal-settings-to-host` removed the 9 settings edges before this goal starts, which is why the read
+    channel is the last question rather than the first: building it earlier would have cemented the
+    own-settings pattern as cross-pack API. What remains (Open decision 1) is measured against 16 edges, not
+    27, and 12 of those 16 are extensions.
 
 12. **The plugin entry is declared with `satisfies`, never annotated.** `outgoingEventTypesOf`
     (`packages/abuddy-sdk/src/build/module-exports.ts`) already throws a specific error when a system entry
@@ -392,6 +517,15 @@ Final.
     The host has no `abuddy.json` and no codegen, so there is nothing for `definePlugin` to be read by. It
     is the precedent this goal generalises, not a call site to migrate — leave it, and say so in the code
     so it isn't "fixed" later. `PACKS_PLUGIN_EVENT_TYPES` beside it stays as it is.
+
+    All three host features declare this way now, and `host/settings` (`:55`) declares **both halves**
+    explicitly — `[...SETTINGS_PLUGIN_EVENT_TYPES, ...HOST_PLUGIN_EVENT_TYPES['host/settings']]`, internal
+    then public. That is the precedent for Decision 1's split. Its *mechanism* is not: three hand-maintained
+    lists per feature joined by a spread nothing checks. The host keeps it because it has no codegen; packs
+    get the split derived from one declaration instead.
+
+    `HOST_PLUGIN_EVENT_TYPES` already carries a `'host/settings'` entry (`CLI_TEST_RESULT`), which is what
+    `code`'s `sendsTo: ["host/settings"]` sends it. Phase 3 must keep that send working without `sendsTo`.
 
 15. **No pack format bump, and no compatibility work.** Removing `sendsTo` from a `.strict()` schema makes
     an older pack's `abuddy.json` fail `parseManifest` on install (`packages/abuddy-host/src/packs/installer.ts:104`;
@@ -433,18 +567,56 @@ Final.
     Match the bus's behaviour rather than inventing another — report and drop, never throw, since the
     caller is a running plugin.
 
+    **The check cannot be audience-aware**, because `Message` carries no sender (Background, "What is
+    actually enforced"). So `receives` stays one flat union of `Public | Internal` and the map answers only
+    "does this plugin handle this event at all". Say that in the doc comment, so nobody later reads a
+    passing check as "this sender was allowed".
+
+19. **`defineSystem` gets the same split, in this goal.** Leaving it collapsed would ship the exact
+    asymmetry this goal exists to remove — and it is where the leak actually is today, since plugins have
+    no declaration to leak from yet. `defineSystem<Public, Internal, Outgoing, Context>()`:
+
+    ```ts
+    types.events = Public | Internal | SystemEvents   // the machine, unchanged
+    typeOf       = safeEvents<Public | Internal | SystemEvents>()
+    _incoming    = Public                             // the facade's PackSystemEvents
+    _internal    = Internal                           // never published
+    ```
+
+    The union stays where the machine needs it; only the published half narrows. As on the plugin side, a
+    pack's sends to its **own** systems keep `Public | Internal`, so nothing that compiles today stops
+    compiling — only `deps/<id>.d.ts` gets smaller.
+
+    Two call sites: `features/logs/be/system.ts:40` and `features/database/be/system.ts:58` are the only
+    specs that union an `*Internal*` type into the incoming slot. `ADD_LOG` leaving the fixture's facade is
+    the check that it worked.
+
 ## Open decisions (settle with the user before Phase 6)
 
-1. **Whether to build a declared read channel at all.** After Phases 2–5 the residue is the reads that are
-   genuinely another plugin's live state. Measure it first, then choose:
+1. **Whether to build a declared read channel at all.** The residue is the reads that are genuinely another
+   plugin's live state. It is already much smaller than when this goal was written — 16 edges, not ~27,
+   since `goal-settings-to-host` took all 9 settings edges with it — and its shape changed:
+
+   ```
+   extensions → threads 6,  flows 4,  notes 2          (12)
+   flows → brain,  brain → flows,  code → prompts,  code → actions   (4)
+   ```
+
+   **Three quarters of it is `src/extensions/**`, not features.** That matters for the choice: extension
+   components are host-rendered outside any `PluginScope`, which is the reason `pluginHandle` exists at all.
+   A read channel for them is not a cross-pack API question, it is a "how does a component with no plugin
+   scope read a plugin" question — and `PluginScope` already answers it for the rendering case.
+
    - **Leave `fe/public.ts` selectors as they are.** No new manifest or codegen surface. Cross-pack reads
-     stay impossible; no pack needs them today. — *open*
+     stay impossible; no pack needs them today, and the fixtures do none. — *open*
    - **Add a declared `publishes()` view**, read by codegen like the plugin inbox, with a narrow view type
      in the facade. Types cross packs; entity-list internals (`page`, `loadingMore`) stop leaking because
      the declaration is narrow. Costs new manifest/codegen surface and a second facade export. — *open*
+   - **Give the extension case its own answer** and leave the 4 feature→feature edges alone: the extensions
+     are the volume, and `PluginScope` or a scoped read may cover them without a published contract. — *open*
 
-   Phase 1's facade probe informs this: if a declared view type cannot pass `facadeProblems` without
-   bloating the facade, the second option is intra-pack only and worth much less.
+   Phase 1's facade probe informs the second: if a declared view type cannot pass `facadeProblems` without
+   bloating the facade, it is intra-pack only and worth much less.
 
 ## Phases
 
@@ -464,36 +636,43 @@ Two questions decide the shape of Phases 3–6. Neither writes production code; 
 **Done when:** both results are recorded in this doc with the commands used; no source file outside the
 probe is changed; the probe changes are reverted (`git status` clean apart from this doc).
 
-### Phase 2 — A feature's own settings
+### Phase 2 — A feature's own settings: verify, don't build
 
-Independent of Phases 3–5; it can land first or alone.
+**This work landed in `goal-settings-to-host.md` (merged, `bec339ea7`). Build nothing here.** The phase
+exists so its absence is a checked fact rather than an assumption, and so the one residue is recorded
+(Decision 8).
 
-- `useMySettings()` / `updateMySettings(path, value)` in `@abuddy/sdk/fe`, over the plugin's own
-  `FEATURE_SETTINGS_UPDATED` (Decision 8).
-- Migrate all four self-targeting call sites: `features/code/fe/features/explorer/ExplorerPanel.vue:201`,
-  `features/code/fe/features/terminal/PanelTerminalSection.vue:238` (and its
-  `updatePluginSettings('code', …)` at :417), `features/browser/fe/canvas.vue:81`,
-  `features/browser/fe/state.ts:5`. Also `features/logs/fe/canvas.vue`'s `updatePluginSettings` write.
-- **Delete `usePluginSettings` and `currentPluginSettings`** from `features/settings/fe/public.ts` — they
-  have no remaining consumers (Decision 8). `useGeneralSettings`, `updateGeneralSettings` and
-  `useSettingsSaveStatus` stay.
-- The hand-supplied type parameters (`usePluginSettings<CodeSettings>`) go with them.
+Verify, in one pass:
 
-**Done when:** `npm run typecheck:fe` and `npm run typecheck:sdk` pass; `npm test -w @app/default-setup`
-passes; `npm run api:update` run in `packages/abuddy-sdk` and `etc/` committed; `git grep
-usePluginSettings\\|currentPluginSettings` returns nothing. Mutation: reintroducing either symbol and a
-call to it fails the typecheck, since the settings machine no longer exposes that path.
+- `git grep usePluginSettings` and `currentPluginSettings` find no pack API — the only hit is an unrelated
+  local `computed` in `packages/renderer/src/views/settings/canvas/tabs/PluginsTab.vue`.
+- `features/browser/fe/state.ts` handles `FEATURE_SETTINGS_UPDATED` and reads `context.settings` (`:323`).
+- `packages/default-setup/src/features/settings/` does not exist; `packages/abuddy-host/src/features/settings/` does.
+
+Then record, without fixing: `FeatureSettingsUpdated.settings` is still `unknown`
+(`abuddy-sdk/src/events/index.ts:30`), so each feature casts the event
+(`browser/fe/state.ts:314`). That is `goal-settings-to-host`'s Decision 7, unlanded, and belongs to that
+goal — note it in the Outcome's "Open items" and move on.
+
+**Done when:** the three checks above hold, and the residue is in the Outcome. No source file changes in
+this phase; if one seems necessary, the base is not what this doc was surveyed at — stop and say so.
 
 ### Phase 3 — The plugin inbox, and `sendsTo` deleted
 
 The root change. After Phase 1.
 
-- `definePlugin<Incoming>()` in `packages/abuddy-sdk/src/fe/plugin.ts`, with the default of Decision 1,
-  the `satisfies` guard of Decision 12 and the SDK-wide union of Decision 13.
-- Rewrite **all 15 plugin entries** out of the `const x: PluginDefinition = {…}` annotation form into
-  `definePlugin(…)` (Decision 12) — 12 in `packages/default-setup/src/features/*/fe/plugin.ts`, 3 in
-  `tests/fixtures/*/src/features/*/fe/plugin.ts`. Only the ones other plugins send to take a type
-  argument; the rest change shape alone. Update `abuddy add feature`'s scaffold
+- `definePlugin<Public, Internal>()` in `packages/abuddy-sdk/src/fe/plugin.ts`, with the two-part split and
+  the absent-vs-`never` rule of Decision 1, the `satisfies` guard of Decision 12 and the SDK-wide union of
+  Decision 13.
+- `defineSystem<Public, Internal, Outgoing, Context>()` in
+  `packages/abuddy-sdk/src/framework/define-system.ts` (Decision 19): add the `_internal` phantom, narrow
+  `_incoming` to `Public`, keep `types.events` and `typeOf` on the full union, and split `IncomingEventsOf`
+  into the own-pack and published variants. Two call sites carry an internal type today —
+  `features/logs/be/system.ts:40` and `features/database/be/system.ts:58`.
+- Rewrite **all 14 plugin entries** out of the `const x: PluginDefinition = {…}` annotation form into
+  `definePlugin(…)` (Decision 12) — 11 in `packages/default-setup/src/features/*/fe/plugin.ts`, 3 in
+  `tests/fixtures/*/src/features/*/fe/plugin.ts`. Only the ones other plugins send to take type
+  arguments; the rest change shape alone. Update `abuddy add feature`'s scaffold
   (`packages/abuddy-cli/src/commands/add/feature.ts`) and `docs/public-facing/features.md`, which emit the
   annotation form today.
 - `generate-entries.ts`: read the declaration the way `sentEventTypes` reads a system spec; delete
@@ -502,17 +681,27 @@ The root change. After Phase 1.
   `generatePackTypes()` (Decision 4).
 - `manifest-schema.ts`: delete `sendsTo` from `SystemSchema` and its `superRefine` checks; regenerate
   `abuddy.schema.json` (`npm run generate:schema -w @abuddy/sdk`). No format bump (Decision 15).
-- Remove `sendsTo` from its two users — `actions` and `settings` in `packages/default-setup/abuddy.json` —
-  and from `tests/fixtures/external-pack/abuddy.json`; declare the inbox on the plugins that needed one.
-- `sendsTo` reaches further than codegen; all of these change in this phase (Decision 16's "10 minutes"
-  applies to each, but none may be missed):
-  - SDK source: `src/events/index.ts`, `src/framework/define-system.ts`, `src/framework/pack-registration.ts`
+- Remove `sendsTo` from its **four** users and declare the inbox on the plugins that needed one. Two of the
+  four target host plugins, so the `hostTargets` branch is live code:
+  ```
+  default-setup  threads → host/application      (HOST_PLUGIN_EVENT_TYPES['host/application'])
+  default-setup  code    → host/settings         (CLI_TEST_RESULT — must keep working, Decision 14)
+  default-setup  actions → flows
+  external-pack  memos   → default-setup/logs
+  ```
+- `sendsTo` reaches 26 files; all of these change in this phase (Decision 16's "10 minutes" applies to each,
+  but none may be missed):
+  - SDK source: `src/events/index.ts`, `src/framework/define-system.ts`, `src/framework/pack-registration.ts`,
+    `src/build/generate-entries.ts`, `src/build/manifest-schema.ts`
   - host: `src/features/registration.ts`
   - specs: `abuddy-sdk/tests/build/manifest-schema.spec.ts`, `abuddy-sdk/tests/build/generate-entries.spec.ts`,
-    `default-setup/tests/unit/typed-event-channels.spec.ts`, `abuddy-cli/tests/build/facade-typing.spec.ts`,
-    `abuddy-cli/tests/build/dependency-graph.spec.ts`
+    `default-setup/tests/unit/typed-event-channels.spec.ts`, `default-setup/tests/unit/code-cli-test.spec.ts`,
+    `abuddy-cli/tests/build/facade-typing.spec.ts`, `abuddy-cli/tests/build/dependency-graph.spec.ts`
   - pack sources: `default-setup/src/features/actions/be/system.ts`,
+    `default-setup/src/features/code/be/system.ts`,
     `tests/fixtures/external-pack/src/features/memos/be/system.ts`
+  - manifests: `default-setup/abuddy.json`, `tests/fixtures/external-pack/abuddy.json`,
+    `abuddy-sdk/abuddy.schema.json`
   - reports: `abuddy-sdk/etc/build.api.md`, `default-setup/etc/pack-types.api.md`
   - docs: `docs/public-facing/manifest.md`, `docs/public-facing/features.md`,
     `packages/abuddy-sdk/CLAUDE.md`, `packages/default-setup/CLAUDE.md`
@@ -524,9 +713,15 @@ The root change. After Phase 1.
 for the fixture pack spells its dependency plugins with no `Pick<>`; `facade:check -w @app/default-setup`
 and `api:check` updated and committed; `git grep sendsTo` returns nothing outside `docs/archive/` and
 `docs/goals/goal-manifest-redesign.md`'s dated note; `npm start` boots the dev app clean (Decision 15's
-acceptance test). Mutation: narrowing a plugin's declared inbox makes a send that was valid fail to
-compile, and the bus drops it with a `diagnostic` report; annotating a plugin entry `: PluginDefinition`
-instead of `satisfies` fails the build with the Decision 12 error.
+acceptance test).
+
+The split is checked, not assumed: **`ADD_LOG` no longer appears in
+`tests/fixtures/external-pack/src/__generated__/deps/default-setup.d.ts`** (it is at `:3629` today), and a
+spec asserts that a dependent pack cannot send a declared-internal event to a dependency's system or
+plugin. Mutations: narrowing a plugin's declared inbox makes a send that was valid fail to compile, and the
+bus drops it with a `diagnostic` report; moving an event from `Internal` to `Public` puts it back in the
+facade; annotating a plugin entry `: PluginDefinition` instead of `satisfies` fails the build with the
+Decision 12 error.
 
 ### Phase 4 — `broadcastToPlugin`, and the renderer send
 
@@ -586,8 +781,8 @@ pluginHandle` returns nothing, or the Outcome records what still binds one.
 
 ### Phase 6 — Re-measure the reads, then decide (Open decision 1)
 
-- Recount the cross-feature and extension consumers of each `fe/public.ts` after Phases 2 and 5, and put
-  the table in this doc.
+- Recount the cross-feature and extension consumers of each `fe/public.ts` after Phase 5, and put the table
+  in this doc beside the Background's 16-edge count, so the change Phases 3–5 made is visible.
 - Settle Open decision 1 with the user. Implement only what is chosen.
 
 **Done when:** the table is in the doc and Open decision 1 has moved into Decisions.
