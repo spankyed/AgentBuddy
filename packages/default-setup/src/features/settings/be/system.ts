@@ -11,7 +11,6 @@ import { repository } from '@/__generated__/repository';
 import { detectAllArrayChanges, errorMessage } from '@abuddy/sdk/utils/pure';
 import { seedData, type SeedCounts, type SeedIncludeSet } from '@/__generated__/seeders';
 import { previewPackSeeds, type PackSeedsPreview } from '@abuddy/sdk/seed';
-import { testCli, isCliName, clearCliPathCache } from '@/features/code/be/utils/resolve-cli';
 import { services } from '@/__generated__/services';
 import type { FAQItem } from '@/features/settings/be/types';
 import type { SecretInfo, SecretsStatus } from '@abuddy/sdk/services';
@@ -35,7 +34,6 @@ type IncomingSettingsEvents =
   | { type: 'GET_SETTINGS' }
   | { type: 'UPDATE_SETTINGS'; entityType: 'general' | 'plugin'; label: string; path: string[]; value: any }
   | { type: 'RESET_SETTINGS' }
-  | { type: 'TEST_CLI_PROVIDER'; provider: string }
   | { type: 'PREVIEW_PACK_SEEDS'; directory: string }
   | { type: 'IMPORT_PACK_SEEDS'; directory: string; include?: Record<string, string[] | null>; mode?: 'keep-existing' | 'replace-on-collision' | 'wipe-and-replace'; restartBrain?: boolean }
   | { type: 'REPLACE_SETTINGS'; data: unknown }
@@ -59,7 +57,6 @@ export type OutgoingSettingsEvents =
   | { type: 'SETTINGS_REFUSED'; problems: string[] }
   | { type: 'SETTINGS_RESET'; data: SettingsData }
   | { type: 'APPLICATION_HOTKEYS'; hotkeys: SettingsData['general']['application']['hotkeys'] }
-  | { type: 'CLI_TEST_RESULT'; provider: string; success: boolean; error?: string; resolvedPath?: string }
   /** `errors` lists the records that couldn't be seeded (`<key>: <error>`); the rest were imported */
   | { type: 'PACK_SEEDS_IMPORTED'; result: Record<string, SeedCounts>; errors: string[] }
   | { type: 'PACK_SEEDS_IMPORT_FAILED'; error: string }
@@ -113,9 +110,6 @@ function broadcastSettings(type: 'SETTINGS_LOADED' | 'SETTINGS_UPDATED' | 'SETTI
 }
 
 /** CLI path overrides, in the code plugin's settings */
-const cliPaths = (): Record<string, string | undefined> =>
-  (settingsQueries.getPluginSettings(ref('code')) as { cliPaths?: Record<string, string | undefined> } | null)?.cliPaths ?? {};
-
 /** Sends the settings plugin the stored API keys (no values) and how they're protected */
 function sendSecrets(): void {
   sendToPlugin('settings', { type: 'SECRETS_UPDATED', secrets: services.secrets.list(), status: services.secrets.status() });
@@ -210,9 +204,6 @@ export const settingsSystem = setup({
         return;
       }
 
-      if (ev.entityType === 'plugin' && ev.label === ref('code') && ev.path[0] === 'cliPaths') {
-        clearCliPathCache();
-      }
 
       broadcastSettings('SETTINGS_UPDATED');
       sendToPlugin('settings', { type: 'SETTINGS_SAVED' });
@@ -242,38 +233,6 @@ export const settingsSystem = setup({
       if (hasRequiredKey && !settingsQueries.getAssistantSettings().birthdate) {
         sendToSystem('threads', { type: 'BIRTH_FLOW_START' });
       }
-    },
-
-    testCliProvider: ({ event }) => {
-      const ev = settingsSpec.typeOf('TEST_CLI_PROVIDER', event);
-      const provider = ev.provider;
-
-      if (!isCliName(provider)) {
-        sendToPlugin('settings', {
-          type: 'CLI_TEST_RESULT',
-          provider,
-          success: false,
-          error: `Unknown CLI provider: ${provider}`,
-        });
-        return;
-      }
-
-      const storedPath = cliPaths()[provider];
-
-      testCli(provider, storedPath).then((result: any) => {
-        if (result.success) {
-          settingsCommands.updatePluginSetting(ref('code'), ['cliPaths'], { ...cliPaths(), [provider]: result.resolvedPath });
-          broadcastSettings('SETTINGS_UPDATED');
-        } else {
-          logger.error(`CLI test failed for "${provider}"`, { error: result.error });
-        }
-
-        sendToPlugin('settings', {
-          type: 'CLI_TEST_RESULT',
-          provider,
-          ...result,
-        });
-      });
     },
 
     previewPackSeeds: ({ event }) => {
@@ -354,9 +313,6 @@ export const settingsSystem = setup({
         },
         RESET_SETTINGS: {
           actions: 'resetSettings',
-        },
-        TEST_CLI_PROVIDER: {
-          actions: 'testCliProvider',
         },
         PREVIEW_PACK_SEEDS: {
           actions: 'previewPackSeeds',

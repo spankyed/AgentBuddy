@@ -58,7 +58,10 @@
       "id": "code",
       "settings": "src/features/code/settings.ts",
       "system": {
-        "entry": "src/features/code/be/system.ts"
+        "entry": "src/features/code/be/system.ts",
+        "sendsTo": [
+          "settings"
+        ]
       },
       "plugin": {
         "entry": "src/features/code/fe/plugin.ts"

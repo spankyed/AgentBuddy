@@ -213,7 +213,8 @@ const settingsState = setup({
 
     testCliProvider: assign(({ context, event }) => {
       const ev = typeOf('CLI.TEST', event);
-      sendToSystem(id, {
+      // The code feature resolves CLIs: `resolve-cli` and the stored paths are its own
+      sendToSystem('code', {
         type: 'TEST_CLI_PROVIDER',
         provider: ev.provider,
       });
