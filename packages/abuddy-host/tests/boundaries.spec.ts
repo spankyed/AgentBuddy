@@ -58,7 +58,7 @@ function runtimeClosure(entry: string): Set<string> {
 }
 
 /** The services the app implements, each in `src/services/<kebab-case key>.ts`; the type checks the list is complete */
-const HOST_SERVICE_KEYS = ['appData', 'traceStore', 'inference', 'secrets', 'filesystem'] as const satisfies readonly (keyof HostRuntime['services'])[];
+const HOST_SERVICE_KEYS = ['appData', 'traceStore', 'inference', 'secrets', 'filesystem', 'settings'] as const satisfies readonly (keyof HostRuntime['services'])[];
 type MissingServiceKey = Exclude<keyof HostRuntime['services'], (typeof HOST_SERVICE_KEYS)[number]>;
 const serviceKeysComplete: [MissingServiceKey] extends [never] ? true : MissingServiceKey = true;
 const kebab = (key: string) => key.replace(/[A-Z]/g, (c) => `-${c.toLowerCase()}`);
@@ -114,7 +114,7 @@ describe('host package boundaries', () => {
     const features = fs.readdirSync(path.join(SRC, 'features'), { withFileTypes: true }).filter((e) => e.isDirectory());
     const halves = features.flatMap((f) => fs.readdirSync(path.join(SRC, 'features', f.name)).map((half) => `${f.name}/${half}`));
 
-    expect(features.map((f) => f.name).sort()).toEqual(['application', 'packs']);
+    expect(features.map((f) => f.name).sort()).toEqual(['application', 'packs', 'settings']);
     expect(halves.filter((h) => !/\/(be|fe)$/.test(h)), "a feature holds be/ and fe/, as a pack's does").toEqual([]);
   });
 

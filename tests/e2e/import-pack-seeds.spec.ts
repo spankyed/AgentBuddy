@@ -64,14 +64,14 @@ test('previews a compiled seeds directory by its seeds.json and imports the sele
   const work = fs.mkdtempSync(path.join(os.tmpdir(), 'abuddy-import-seeds-'));
   try {
     const directory = await compileSeeds(work);
-    await app.navigate('default-setup/settings');
+    await app.navigate('host/settings');
 
     const send = (event: Record<string, unknown>) => appPage.evaluate((e) => {
-      (window as any).applicationState.system.get('default-setup/settings').send(e);
+      (window as any).applicationState.system.get('host/settings').send(e);
     }, event);
-    const importState = () => appPage.evaluate(() => (window as any).applicationState.system.get('default-setup/settings').getSnapshot().context.packSeedsImport) as Promise<PackSeedsImport>;
+    const importState = () => appPage.evaluate(() => (window as any).applicationState.system.get('host/settings').getSnapshot().context.packSeedsImport) as Promise<PackSeedsImport>;
     const waitForStatus = (status: string) => appPage.waitForFunction(
-      (s) => ['error', s].includes((window as any).applicationState.system.get('default-setup/settings').getSnapshot().context.packSeedsImport.status),
+      (s) => ['error', s].includes((window as any).applicationState.system.get('host/settings').getSnapshot().context.packSeedsImport.status),
       status,
       { timeout: 20_000 },
     );

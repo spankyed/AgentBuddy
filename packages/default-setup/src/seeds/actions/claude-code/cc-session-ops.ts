@@ -7,6 +7,7 @@
 
 import type { ActionMeta } from '@abuddy/sdk/build';
 import type { Services, Z } from '@/__generated__/services';
+import type { ThreadsSettings } from '@/__generated__/types';
 import { getClaudeState, persistClaudeState, ensureSessionMarker, updateChatState } from './_helpers/thread-context';
 
 export const meta: ActionMeta = {
@@ -145,7 +146,7 @@ async function handleResume(
   // project directory (e.g. when the thread was created via "+ new thread"
   // on a specific project in the sidebar).
   const prior = threadId ? getClaudeState(services, threadId) : undefined;
-  const codeSettings = services.settings.getPluginSettings('default-setup/code') as any;
+  const codeSettings = services.settings.forFeature('default-setup/code') as any;
   const effectiveCwd = cwdOverride
     || prior?.cwdOverride
     || prior?.cwd
@@ -367,7 +368,7 @@ async function handleImport(
   // Full refresh: update the entire thread list, tags, and chat states.
   // sendRecentThreadsRefresh() only updates the sidebar (recent 7 threads).
   const connectedData = services.repository.threadQueries.connectedData();
-  const threadsSettings = services.settings.getPluginSettings('default-setup/threads');
+  const threadsSettings = services.settings.forFeature<ThreadsSettings>('default-setup/threads');
   services.emitter.sendToPlugin('default-setup/threads', {
     type: 'THREAD_CONNECTED',
     data: { ...connectedData, settings: threadsSettings || null },

@@ -1,12 +1,15 @@
+import type { ThreadsSettings } from '@/__generated__/types'
+import type { AssistantSettings } from '@/app-settings/types';
 import { sendToSystem, sendToPlugin } from '@/__generated__/events';
 import { services } from '@/__generated__/services';
+import { REQUIRED_PROVIDERS } from '@/app-settings/providers';
 import { assign, cancel, fromPromise, log, raise, sendTo, setup, type ErrorActorEvent } from 'xstate';
 import { defineSystem, type SystemEntry } from '@abuddy/sdk/framework';
 
 import { tx, EARS } from '@/__generated__/ears';
 import { repository } from '@/__generated__/repository';
 import type { ThreadEditFields, ThreadEntity, ThreadLinkItem, ThreadConnectedData, MessageEntity, BlockConfig, AgentThreadData, AgentConnectedData, RecentThreadRefreshData } from './types';
-import type { AgentSettings, CommandItem } from '../../settings/be/types';
+import type { AgentSettings, CommandItem } from './types';
 import { type ThreadExtendedData, type BlockResponse } from './types';
 import { type ChangeBlock, toMap, toIdentifierSet, mapScalar, mapArray } from '@abuddy/sdk/utils';
 import { exportThreads } from './export-threads';
@@ -51,6 +54,8 @@ type IncomingThreadsEvents =
 
   | { type: 'CLIENT_CONNECTED' }
   | { type: 'BIRTH_FLOW_START' }
+  /** The user's stored API keys changed (no values). The assistant's first flow waits on one it can call a model with */
+  | { type: 'SECRETS_CHANGED' }
   | { type: 'THREAD_DELETED'; threadId: string }
   /** The library's commands folder changed (sent by the library system) */
   | { type: 'COMMANDS_CHANGED' }
@@ -125,7 +130,7 @@ export const threadsSystem = setup({
     // ---- Thread management actions ----
     sendThreadsConnectedData: ({ system }) => {
       const connectedData = repository.threadQueries.connectedData();
-      const threadsSettings = repository.settingsQueries.getPluginSettings(ref('threads'));
+      const threadsSettings = services.settings.forFeature<ThreadsSettings>(ref('threads'));
 
       sendToPlugin('threads', {
         type: 'THREAD_CONNECTED',
@@ -210,7 +215,7 @@ export const threadsSystem = setup({
           type: 'THREAD_CONNECTED',
           data: {
             ...repository.threadQueries.connectedData(),
-            settings: repository.settingsQueries.getPluginSettings(ref('threads')) ?? null,
+            settings: services.settings.forFeature<ThreadsSettings>(ref('threads')) ?? null,
           },
         });
         // Also refresh archived threads list so the change is visible immediately
@@ -260,7 +265,7 @@ export const threadsSystem = setup({
     },
     handleSettingsUpdate: ({ system, event }) => {
       const firstStatusLabel = (): string | undefined =>
-        repository.settingsQueries.getPluginSettings(ref('threads'))?.statuses?.[0]?.label;
+        services.settings.forFeature<ThreadsSettings>(ref('threads'))?.statuses?.[0]?.label;
 
       const { changes } = threadsSpec.typeOf('FEATURE_SETTINGS_UPDATED', event);
 
@@ -310,7 +315,7 @@ export const threadsSystem = setup({
                 type: 'THREAD_CONNECTED',
                 data: {
                   ...repository.threadQueries.connectedData(),
-                  settings: repository.settingsQueries.getPluginSettings(ref('threads')) ?? null,
+                  settings: services.settings.forFeature<ThreadsSettings>(ref('threads')) ?? null,
                 },
               });
           }
@@ -339,7 +344,7 @@ export const threadsSystem = setup({
         type: 'THREAD_CONNECTED',
         data: {
           ...repository.threadQueries.connectedData(),
-          settings: repository.settingsQueries.getPluginSettings(ref('threads')) ?? null,
+          settings: services.settings.forFeature<ThreadsSettings>(ref('threads')) ?? null,
         },
       });
     },
@@ -405,7 +410,7 @@ export const threadsSystem = setup({
         });
 
         const connectedData = repository.threadQueries.connectedData();
-        const threadsSettings = repository.settingsQueries.getPluginSettings(ref('threads'));
+        const threadsSettings = services.settings.forFeature<ThreadsSettings>(ref('threads'));
 
         sendToPlugin('threads', {
           type: 'THREAD_CONNECTED',
@@ -427,10 +432,10 @@ export const threadsSystem = setup({
     checkOnboarding: ({ system }) => {
       if (!services.appData.hasOnboarded() && !birthFlowStarted) {
         birthFlowStarted = true;
-        const assistantSettings = repository.settingsQueries.getAssistantSettings();
+        const assistantSettings = services.settings.getSection<AssistantSettings>('assistant');
         if (!assistantSettings.birthdate) {
           const birthdate = new Date().toISOString();
-          repository.settingsCommands.updateSettings('assistant', null, ['birthdate'], birthdate);
+          services.settings.setInSection('assistant', ['birthdate'], birthdate);
           logger.info('Assistant birthdate set', { birthdate });
         }
         sendToSystem('brain', {
@@ -440,12 +445,24 @@ export const threadsSystem = setup({
         });
       }
     },
+    /**
+     * The assistant's first flow runs once it can call a model, so the keys changing is what may start it. It waits
+     * here rather than with the settings view because the birth flow, the assistant and its birthdate are this
+     * feature's; the app only says that the user's keys changed.
+     */
+    startBirthFlowOnceKeyed: () => {
+      const keyed = services.secrets.list().some((secret) => secret.selected && (REQUIRED_PROVIDERS as readonly string[]).includes(secret.provider));
+      if (keyed && !services.settings.getSection<AssistantSettings>('assistant').birthdate) {
+        sendToSystem('threads', { type: 'BIRTH_FLOW_START' });
+      }
+    },
+
     startBirthFlow: ({ system }) => {
-      const assistantSettings = repository.settingsQueries.getAssistantSettings();
+      const assistantSettings = services.settings.getSection<AssistantSettings>('assistant');
 
       if (!assistantSettings.birthdate) {
         const birthdate = new Date().toISOString();
-        repository.settingsCommands.updateSettings('assistant', null, ['birthdate'], birthdate);
+        services.settings.setInSection('assistant', ['birthdate'], birthdate);
         logger.info('Assistant birthdate set', { birthdate });
       }
 
@@ -958,6 +975,9 @@ export const threadsSystem = setup({
       },
       BIRTH_FLOW_START: {
         actions: 'startBirthFlow',
+      },
+      SECRETS_CHANGED: {
+        actions: 'startBirthFlowOnceKeyed',
       },
       COMMANDS_CHANGED: {
         actions: 'sendCommands',

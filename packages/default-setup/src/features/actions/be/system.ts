@@ -1,3 +1,5 @@
+import type { ActionsSettings } from '@/__generated__/types';
+import { services } from '@/__generated__/services';
 import { sendToPlugin } from '@/__generated__/events';
 // Cross-plugin send: the flows plugin also receives action events
 import { assign, createMachine, setup } from 'xstate';
@@ -51,7 +53,7 @@ export const actionsSystem = setup({
   actions: {
     sendActionsStartupData: ({ system }) => {
       const connectedData = repository.actionQueries.connectedData();
-      const actionsSettings = repository.settingsQueries.getPluginSettings(ref('actions'));
+      const actionsSettings = services.settings.forFeature<ActionsSettings>(ref('actions'));
       
       sendToPlugin('actions', { 
         type: 'ACTIONS_LISTED',
@@ -202,7 +204,7 @@ export const actionsSystem = setup({
 
       // Refresh the full actions list
       const connectedData = repository.actionQueries.connectedData();
-      const actionsSettings = repository.settingsQueries.getPluginSettings(ref('actions'));
+      const actionsSettings = services.settings.forFeature<ActionsSettings>(ref('actions'));
       sendToPlugin(pluginId, {
         type: 'ACTIONS_LISTED',
         data: {
@@ -255,7 +257,7 @@ export const actionsSystem = setup({
       
       // Fallback to first available category or 'Utility'
       const firstCategoryName = (): string | undefined =>
-        repository.settingsQueries.getPluginSettings(ref('actions'))?.categories?.[0]?.name || 'Utility';
+        services.settings.forFeature<ActionsSettings>(ref('actions'))?.categories?.[0]?.name || 'Utility';
 
       for (const a of repository.actionQueries.all()) {
         const nextCategory = mapScalar(a.category, renames, removed, firstCategoryName);

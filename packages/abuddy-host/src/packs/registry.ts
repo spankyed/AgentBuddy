@@ -21,13 +21,13 @@ import { makePolicy, registerRepository, unregisterRepository, type PartitionPol
 import { HOST_ENTITY_TYPES } from '../app-state/index.ts';
 import { discoverPacks, packSeedOrder } from './discovery.ts';
 import { addContributions, createDefinitionStore, createDesignationStore, createStepStore, definitions, type Contribution, type UndoLog } from './extensions.ts';
-import { createCommandStore, createSeedHookStore, createSeederStore, createSettingsDefaultsStore, createShutdownHooks } from './backend-extensions.ts';
+import { createCommandStore, createHelpStore, createSeedHookStore, createSeederStore, createSettingsDefaultsStore, createShutdownHooks } from './backend-extensions.ts';
 import { checkFeatureIds } from './feature-ids.ts';
 
 export type { PackRegistration, PackBootHooks, PackEARS, PackMigration };
 
 /** Services the host supplies itself; a pack service with one of these names would replace it */
-const HOST_SERVICE_NAMES = ['logger', 'emitter', 'repository', 'appData', 'traceStore', 'inference', 'secrets', 'filesystem'] as const satisfies readonly (keyof HostServices)[];
+const HOST_SERVICE_NAMES = ['logger', 'emitter', 'repository', 'appData', 'traceStore', 'inference', 'secrets', 'filesystem', 'settings'] as const satisfies readonly (keyof HostServices)[];
 // Fails to compile when HostServices gains a service this list doesn't name
 const _allHostServicesNamed: Exclude<keyof HostServices, (typeof HOST_SERVICE_NAMES)[number]> extends never ? true : never = true;
 void _allHostServicesNamed;
@@ -275,6 +275,7 @@ export function createPackRegistry({ installedPacksDir }: PackRegistryOptions = 
   const seedHooks = createSeedHookStore();
   const seeders = createSeederStore();
   const settingsDefaults = createSettingsDefaultsStore();
+  const help = createHelpStore();
   const commands = createCommandStore();
   const shutdownHooks = createShutdownHooks();
 
@@ -376,8 +377,10 @@ export function createPackRegistry({ installedPacksDir }: PackRegistryOptions = 
     (reg, undo) => { undo(() => seeders.unregister(reg.id)); seeders.register(reg.id, reg.seeders ?? []); },
     (reg, undo) => { undo(() => commands.unregister(reg.id)); commands.register(reg.id, reg.commands ?? []); },
     (reg, undo) => {
+      undo(() => help.unregister(reg.id));
+      help.register(reg.id, reg.help);
       undo(() => settingsDefaults.unregister(reg.id));
-      settingsDefaults.register(reg.id, featuresOf(reg).map(({ featureId, feature }) => ({ id: featureId, settings: feature.settings })));
+      settingsDefaults.register(reg.id, featuresOf(reg).map(({ featureId, feature }) => ({ id: featureId, settings: feature.settings })), reg.settingsSections);
     },
   ];
 
@@ -641,5 +644,6 @@ export function createPackRegistry({ installedPacksDir }: PackRegistryOptions = 
     onSettingsDefaultsChanged: settingsDefaults.onChanged,
     featuresWithSettings,
     commands: commands.all,
+    help: help.all,
   };
 }

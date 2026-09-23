@@ -21,8 +21,10 @@ import type { PackRegistryView } from '@abuddy/sdk/runtime';
 import type { FeatureRef } from '@abuddy/sdk/ids';
 import type { PackRegistration } from '@abuddy/sdk/framework';
 import { createPackRegistry, type PackOrigin } from '@abuddy/host/packs';
-import { hostRegistration } from '@abuddy/host/features';
+import { createSettingsSystem, hostRegistration, settingsEvents } from '@abuddy/host/features';
 import { appState, HOST_ENTITY_TYPES } from '@abuddy/host/app-state';
+import { createSettingsService, createSettingsStore, type SettingsDocument } from '@abuddy/host/settings';
+import { getPackSettingsDefaults } from '@abuddy/sdk/framework';
 import { loadDependencyRuntime } from './dependency-runtime.ts';
 import { assertSharedEars } from './shared-ears.ts';
 import { setAppPacks, stopRunningApps } from './app.ts';
@@ -64,9 +66,12 @@ let inTest = false;
 
 /** The test file's registered packs: the pack under test and its dependencies, and any other pack a test registers */
 const registry = createPackRegistry();
-// The app's own plugins (the shell, the Packs tab), which a pack's systems may send to; the harness runs none of the
-// host's systems
-registry.registerPack(hostRegistration());
+// The app's own plugins (the shell, the Packs tab, Settings), which a pack's systems may send to. The harness runs
+// one of the host's systems: settings, because a feature's own settings are the app's to store and hand back, and a
+// pack's code reads them in almost every test.
+registry.registerPack(hostRegistration({
+  settings: { machine: createSettingsSystem(), receives: [...settingsEvents] },
+}));
 setAppPacks(registry);
 
 /**
@@ -264,6 +269,10 @@ export async function setupPackTests(options: PackTestOptions): Promise<void> {
       hasOnboarded: () => appState.get().hasOnboarded,
       completeOnboarding: () => appState.update({ hasOnboarded: true }),
     },
+    // The app's own settings store, so a test writes and reads settings the way the app does rather than a fake
+    settings: createSettingsService(createSettingsStore({
+      defaults: () => getPackSettingsDefaults().settings as SettingsDocument,
+    })),
   });
   if (options.registration) {
     await registerRuntimes(packDir, manifest, dependencies, options.registration);

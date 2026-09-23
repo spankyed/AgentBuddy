@@ -42,3 +42,11 @@ export interface SavedBookmark {
   favicon: string;
   displayOrder: number;
 }
+
+// ── This feature's settings ───────────────────────────────────────────────
+// Its own shape, which the app stores without knowing: the app owns the document, each feature its slice.
+export interface BrowserSettings {
+  showBookmarksBar: boolean;
+  /** Whether a link opens in the browser plugin rather than the user's own browser; defaults to true */
+  openLinksInApp?: boolean;
+}

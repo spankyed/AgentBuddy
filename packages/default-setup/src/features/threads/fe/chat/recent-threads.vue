@@ -265,7 +265,8 @@
 
 <script setup lang="ts">
 import { usePlugin } from '@abuddy/sdk/fe'
-import { useGeneralSettings } from '@/features/settings/fe/public'
+import { useSettingsSection } from '@abuddy/sdk/fe'
+import type { GeneralSettings } from '@/app-settings/types'
 import { ref, onMounted, onUnmounted, computed, watch, nextTick, type CSSProperties } from 'vue'
 import { Archive, History, ChevronUp, ChevronRight, Plus, PanelLeft, FileText, Pin, Trash2, FolderOpen, GitBranchPlus, Pencil } from 'lucide-vue-next'
 import type { ThreadEntity } from '@/__generated__/types';
@@ -423,7 +424,8 @@ const emit = defineEmits<{
 }>()
 
 // Read projects from settings for the "New Thread in Project" submenu
-const storedProjects = useGeneralSettings('projects')
+const general = useSettingsSection<GeneralSettings>('general')
+const storedProjects = computed(() => general.value?.projects ?? [])
 const projects = computed(() => storedProjects.value ?? [])
 
 const dirName = (dir: string) => dir.split('/').filter(Boolean).pop() || dir

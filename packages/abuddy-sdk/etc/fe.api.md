@@ -451,6 +451,30 @@ export interface SecretsSnapshot {
 }
 
 // @public
+export interface SettingsPort {
+    feature<T = unknown>(ref: FeatureRef): T | undefined;
+    saveStatus(): SettingsSaveStatus;
+    section<T = unknown>(name: string): T | undefined;
+    subscribe(listener: () => void): () => void;
+    update(target: SettingsTarget, path: readonly string[], value: unknown): void;
+}
+
+// @public
+export interface SettingsSaveStatus {
+    // (undocumented)
+    problems: string[];
+    // (undocumented)
+    status: 'idle' | 'saving' | 'saved' | 'refused';
+}
+
+// @public
+export type SettingsTarget = {
+    section: string;
+} | {
+    feature: FeatureRef;
+};
+
+// @public
 export interface Shell {
     // (undocumented)
     activePlugin: Readonly<Ref<Plugin_2>>;
@@ -559,7 +583,22 @@ export type TrailClickEvent<TInfo = unknown> = {
 };
 
 // @public
+export function updateSettings(target: SettingsTarget, path: readonly string[], value: unknown): void;
+
+// @public
+export function useFeatureSettings<T = unknown>(feature: FeatureRef): Readonly<Ref<T | undefined>>;
+
+// @public
 export function usePlugin<T = AnyActorRef>(): T;
+
+// @public
+export function useSettingsSave(): {
+    save: Readonly<Ref<SettingsSaveStatus>>;
+    update: SettingsPort['update'];
+};
+
+// @public
+export function useSettingsSection<T = unknown>(name: string): Readonly<Ref<T | undefined>>;
 
 // @public
 export function useShell(): Shell;

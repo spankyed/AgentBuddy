@@ -235,6 +235,10 @@ export const ManifestSchema = z.object({
     .describe('Feature definitions. Each feature bundles a backend system, frontend plugin, services, and settings.').optional(),
   packServices: ServicesSchema
     .describe('Pack-level services not tied to a specific feature. Keys are service names on `services`, values are "path#exportName" of the service object (an object literal or a class instance, not a factory) in a source file.').optional(),
+  help: ExportTargetSchema
+    .describe('Help entries this pack answers with, listed under Help in the app\'s Settings view. "path#exportName" of a function returning them; it is called the first time the list is read, so a pack may read its compiled seeds then.').optional(),
+  settingsSections: ExportTargetSchema
+    .describe('Sections of the app settings this pack owns, with their defaults, beside the "plugins" section the app keeps itself. "path#exportName" of a function returning them; it is called the first time the defaults are read, so a pack can read its compiled seeds then.').optional(),
   commands: z.array(CommandEntrySchema)
     .describe('Slash commands this pack adds to the chat. Sending one fires a `user.command` event the pack\'s flows handle; a name must be unique across the app.').optional(),
   boot: BootConfigSchema.optional(),

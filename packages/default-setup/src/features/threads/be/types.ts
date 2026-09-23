@@ -1,7 +1,8 @@
+import type { KeyboardShortcut } from '@abuddy/sdk/types';
 import { type BaseEntity, EARS } from '@/__generated__/ears';
 type Simplify<T> = { [K in keyof T]: T[K] } & {};
 import type { PermissionMode } from "@/features/code/be/services/claude-code/types";
-import type { AgentSettings, CommandItem, ThreadsSettings, ThreadTagOption } from '@/__generated__/types';
+
 import type { ArtifactItem } from '@abuddy/sdk/artifacts';
 
 // Block-based interaction system (composable architecture)
@@ -418,3 +419,78 @@ export interface PlanArtifactContent {
   prNumber?: string;
 }
 
+// ── This feature's settings ───────────────────────────────────────────────
+// Its own shape, which the app stores without knowing: the app owns the document, each feature its slice.
+export interface AgentPhase {
+  id: string;
+  name: string;
+  description: string;
+  color?: string; // optional hex (e.g. '#3B82F6') — tints the chat phase selector
+}
+
+export interface AgentMode {
+  id: string;
+  name: string;
+  description: string;
+  phases?: AgentPhase[];
+  hidden?: boolean;
+  disabled?: boolean;
+}
+
+export interface QuickPrompt {
+  id: string;
+  text: string;
+}
+
+export interface CommandItem {
+  name: string;
+  placeholder: string;
+}
+
+// ── Settings types ────────────────────────────────────────────────────────
+
+export interface ThreadStatusOption {
+  label: string;
+  color: string; // Hex color value
+}
+
+export interface ThreadTagOption {
+  name: string;
+  color?: string; // Optional hex color value
+}
+
+export interface ChatStateConfig {
+  id: string;
+  label: string;
+  color: string;
+  busy: boolean;
+}
+
+export interface ThreadsSettings {
+  statuses: ThreadStatusOption[];
+  tags: ThreadTagOption[];
+  chatStates: ChatStateConfig[];
+  showOnlyRootThreads: boolean;
+  clickToChat: boolean;
+  recentThreadsLimit: number;
+  recentThreadsSortOrder: 'created' | 'visited' | 'message';
+  recordingLimitMinutes: number;
+  skipArchiveConfirm?: boolean;
+  chat?: AgentSettings;
+}
+
+export interface AgentSettings {
+  modes: AgentMode[];
+  hotkeys: {
+    textToSpeech?: KeyboardShortcut | null;
+    switchMode?: KeyboardShortcut | null;
+    [key: string]: KeyboardShortcut | null | undefined;
+  };
+  quickPrompts?: QuickPrompt[];
+  quickPromptNumberKeyInserts?: boolean;
+  skipRevertConfirm?: boolean;
+  defaultMode?: string;
+  defaultPhase?: string;
+}
+
+// System-private entity type

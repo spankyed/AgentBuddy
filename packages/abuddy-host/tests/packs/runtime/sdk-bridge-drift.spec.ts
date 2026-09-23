@@ -37,6 +37,9 @@ const UNBRIDGED_BY_POLICY = new Map<string, string>([
   // Redaction's host side: only the secrets store registers the values logs must mask, and a pack must not
   // The bound runtimes and unbinding: a pack could otherwise unbind the app or reach its raw services
   ['@abuddy/sdk/runtime/internals', 'host-only — a pack could otherwise unbind the app or take over its services'],
+  // The app's settings store: one row with one writer, reached by packs through `services.settings`. A pack
+  // loading the store would be a second writer, past the checks and the listeners the first one tells.
+  ['@abuddy/host/settings', 'host-only — packs reach the settings through services.settings, which is the one writer'],
   // Build-time only: consumed by vite configs and the abuddy CLI, never by a
   // loaded pack's runtime code.
   ['@abuddy/host/build/shared-deps', 'build-time only'],

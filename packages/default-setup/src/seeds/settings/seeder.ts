@@ -1,6 +1,7 @@
 // Seeds the `settings` entry (compiled by ../_compilers/settings.ts): importing it resets the user's settings to the
 // defaults it holds. Keeping the existing data leaves them. The app's own state (AppState) isn't settings, so a reset
 // leaves it alone.
+import { services } from '@/__generated__/services';
 import * as fs from 'node:fs';
 import { seedPath } from '@abuddy/sdk/build';
 import type { SeedCounts, SeederContext } from '@abuddy/sdk/utils';
@@ -16,7 +17,7 @@ export function seed(ctx: SeederContext): SeedCounts {
     ctx.log('  settings skipped (existing)');
     counts.skipped = 1;
   } else {
-    repository.settingsCommands.resetSettings();
+    services.settings.reset();
     ctx.log('  settings reset to defaults');
     counts.updated = 1;
   }

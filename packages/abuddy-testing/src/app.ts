@@ -375,9 +375,8 @@ export async function startApp(options: StartAppOptions): Promise<TestApp> {
     settle: () => call(() => settle()),
     runFlow: (label, { event, data, timeoutMs = 10_000 } = {}) => call(async () => {
       const brainId = hasDesignation('brain') ? getDesignated('brain') : undefined;
-      const settingsId = hasDesignation('settings') ? getDesignated('settings') : undefined;
-      if (!brainId || !settingsId || !systems.has(brainId) || !systems.has(settingsId)) {
-        throw new Error("runFlow runs flows on the brain: start the app with the brain and settings systems, startApp({ systems: ['brain', 'settings', …] })");
+      if (!brainId || !systems.has(brainId)) {
+        throw new Error("runFlow runs flows on the brain: start the app with the brain system, startApp({ systems: ['brain', …] })");
       }
       const flows = untypedQx('Flow' as never).pickAll() as Array<{ label?: string }>;
       if (!flows.some((flow) => flow.label === label)) {

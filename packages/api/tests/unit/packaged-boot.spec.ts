@@ -72,7 +72,7 @@ it('loads the built-in packs from the bundle, with their systems and plugins', a
 
     expect(builtIn.map(({ id }) => id)).toContain('default-setup');
     expect(app.packs.systemIds()).toContain('default-setup/threads');
-    expect(app.packs.pluginIds()).toContain('default-setup/settings');
+    expect(app.packs.pluginIds()).toContain('default-setup/threads');
   });
 });
 

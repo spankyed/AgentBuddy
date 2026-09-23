@@ -6,4 +6,5 @@ export { describeFailure, type ShellClient, type ShellConnection, type ShellFail
 export type { LoadedPackEntry } from '../packs/layout.ts';
 export { runFrontendMigrations, type FrontendMigration, type WindowStorage } from './migrations/index.ts';
 export * from '../features/packs/fe/public.ts';
+export * from '../features/settings/fe/public.ts';
 export * from '../features/application/fe/public.ts';

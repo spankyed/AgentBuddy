@@ -107,6 +107,7 @@ export interface HostServices {
     // (undocumented)
     repository: typeof repository;
     secrets: SecretsService;
+    settings: SettingsService;
     traceStore: TraceStore;
 }
 
@@ -231,6 +232,27 @@ export interface SecretsStatus {
 
 // @public
 export const services: HostServices & Record<string, unknown>;
+
+// @public
+export type SettingsChange = 'written' | 'replacing' | 'replaced';
+
+// @public
+export type SettingsFeatureName = FeatureRef | `${string}/${string}`;
+
+// @public (undocumented)
+export interface SettingsService {
+    forFeature<T = unknown>(name: SettingsFeatureName): T;
+    getAll<T = Record<string, unknown>>(): T;
+    getSection<T = unknown>(section: string): T;
+    getStored<T = Record<string, unknown>>(): T;
+    onChange(listener: (change: SettingsChange) => void): () => void;
+    removeStored(path: readonly string[]): void;
+    replaceAll(settings: unknown): void;
+    reset(): void;
+    setForFeature(name: SettingsFeatureName, path: readonly string[], value: unknown): void;
+    setInSection(section: string, path: readonly string[], value: unknown): void;
+    whileReplacingData<T>(replace: () => Promise<T>): Promise<T>;
+}
 
 // @internal
 export const _toSecretInfo: (input: SecretInfo) => SecretInfo;

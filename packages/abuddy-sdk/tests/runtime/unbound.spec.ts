@@ -38,6 +38,11 @@ const runtime: HostRuntime = {
     },
     secrets: { status: unused, list: unused, select: unused, rename: unused, delete: unused },
     filesystem: { writeFile: unused, readFile: unused, exists: unused, mkdir: unused, readDir: unused, remove: unused, rename: unused, stat: unused },
+    settings: {
+      getAll: unused, getStored: unused, getSection: unused, forFeature: unused, setForFeature: unused,
+      setInSection: unused, replaceAll: unused, removeStored: unused, reset: unused, whileReplacingData: unused,
+      onChange: unused,
+    },
   },
 };
 

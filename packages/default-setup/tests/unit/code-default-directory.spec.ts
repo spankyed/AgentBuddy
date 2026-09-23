@@ -22,12 +22,12 @@ afterEach(() => {
 });
 
 const setCodeSetting = (key: string, value: unknown) =>
-  app!.send('settings', { type: 'UPDATE_SETTINGS', entityType: 'plugin', label: 'default-setup/code', path: [key], value });
+  app!.send('host/settings', { type: 'UPDATE_SETTINGS', entityType: 'plugin', label: 'default-setup/code', path: [key], value });
 const explorerDirectory = () => (app!.system('code').getSnapshot().context as { baseDirectory: string | null }).baseDirectory;
 
 describe("the code explorer's directory", () => {
   it('moves when defaultBaseDirectory changes', async () => {
-    app = await startApp({ systems: ['settings', 'code'] });
+    app = await startApp({ systems: ['code', 'host/settings'] });
     await app.connect();
     const defaultDir = tempDir();
 
@@ -38,7 +38,7 @@ describe("the code explorer's directory", () => {
   });
 
   it('stays where the user browsed when baseDirectory or another setting changes', async () => {
-    app = await startApp({ systems: ['settings', 'code'] });
+    app = await startApp({ systems: ['code', 'host/settings'] });
     await app.connect();
     const [defaultDir, browsed, elsewhere] = [tempDir(), tempDir(), tempDir()];
     await setCodeSetting('defaultBaseDirectory', defaultDir);

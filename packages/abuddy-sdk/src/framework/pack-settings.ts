@@ -17,7 +17,8 @@ export interface FeatureSettings {
  */
 export interface PackSettingsDefaults {
   revision: number;
-  settings: { plugins: Record<string, unknown> };
+  /** The default settings document: each feature's slice under `plugins`, and each section a pack registered */
+  settings: { plugins: Record<string, unknown>; [section: string]: unknown };
   visibility: Record<string, boolean>;
 }
 

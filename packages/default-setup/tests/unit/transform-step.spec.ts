@@ -61,7 +61,7 @@ describe('transform step', () => {
         ],
       },
     });
-    const app = await startApp({ systems: ['brain', 'settings'] });
+    const app = await startApp({ systems: ['brain'] });
 
     const run = await app.runFlow('Shaping', { event: 'go', data: { text: 'one two three' } });
 

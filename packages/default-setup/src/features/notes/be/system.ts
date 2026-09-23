@@ -1,3 +1,5 @@
+import type { NotesSettings } from '@/__generated__/types';
+import { services } from '@/__generated__/services';
 import { qx } from '@/__generated__/ears';
 import { sendToPlugin } from '@/__generated__/events';
 import { setup } from 'xstate';
@@ -62,7 +64,7 @@ export const notesSystem = setup({
   actions: {
     sendNotesConnectedData: ({ system }) => {
       const connectedData = repository.noteQueries.connectedData();
-      const settings = repository.settingsQueries.getPluginSettings(ref('notes'));
+      const settings = services.settings.forFeature<NotesSettings>(ref('notes'));
       sendToPlugin('notes', {
         type: 'NOTES_CONNECTED',
         data: { ...connectedData, settings },
@@ -405,7 +407,7 @@ export const notesSystem = setup({
 
         // Refresh notes data
         const connectedData = repository.noteQueries.connectedData();
-        const settings = repository.settingsQueries.getPluginSettings(ref('notes'));
+        const settings = services.settings.forFeature<NotesSettings>(ref('notes'));
         sendToPlugin('notes', {
           type: 'NOTES_CONNECTED',
           data: { ...connectedData, settings },

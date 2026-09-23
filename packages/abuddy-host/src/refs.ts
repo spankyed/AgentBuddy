@@ -9,4 +9,6 @@ export const HOST = {
   application: resolveName('application', HOST_PACK_ID),
   /** Installing, updating and toggling packs: its system, and the renderer's Packs plugin */
   packs: resolveName('packs', HOST_PACK_ID),
+  /** The app's settings: the store's system, and the renderer's Settings plugin */
+  settings: resolveName('settings', HOST_PACK_ID),
 } as const;

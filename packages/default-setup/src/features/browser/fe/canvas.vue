@@ -68,7 +68,6 @@
 </template>
 
 <script setup lang="ts">
-import { usePluginSettings } from '@/features/settings/fe/public'
 import { ref, computed, watch, onMounted, onUnmounted } from 'vue';
 import { isAnyMenuOpen, usePlugin } from '@abuddy/sdk/fe';
 import { useSelector } from '@xstate/vue';
@@ -78,8 +77,9 @@ import BrowserNavBar from './components/BrowserNavBar.vue';
 import BrowserBookmarkBar from './components/BrowserBookmarkBar.vue';
 
 const actor: BrowserState = usePlugin();
-const browserSettings = usePluginSettings<{ showBookmarksBar?: boolean }>('browser');
-const showBookmarksBar = computed(() => browserSettings.value?.showBookmarksBar ?? true);
+// This feature's own settings, from its own machine — the app sends them to it (`FEATURE_SETTINGS_UPDATED`)
+const settings = useSelector(actor, s => s.context.settings);
+const showBookmarksBar = computed(() => settings.value?.showBookmarksBar ?? true);
 
 const tabs = useSelector(actor, s => s.context.tabs);
 const activeTabId = useSelector(actor, s => s.context.activeTabId);

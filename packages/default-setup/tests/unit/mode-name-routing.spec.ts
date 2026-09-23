@@ -28,7 +28,7 @@ describe('mode name routing', () => {
       mockService<Services, 'cli'>('cli', { claudeCode: {} } as never)
       mockService<Services, 'chat'>('chat', { updateMessageState: vi.fn(), sendBlockMessage: vi.fn() } as never)
       mockService<Services, 'threads'>('threads', { updateChatState: vi.fn() } as never)
-      app = await startApp({ systems: ['brain', 'settings'] })
+      app = await startApp({ systems: ['brain'] })
     })
 
     it('routes by mode name', async () => {

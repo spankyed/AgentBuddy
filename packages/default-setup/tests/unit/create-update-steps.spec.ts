@@ -7,7 +7,7 @@ import { createEntityWithDefaults, findAll, findById, type EARS } from '@/__gene
 import { createStepBuild } from '@/extensions/steps/create/build'
 import { updateStepBuild } from '@/extensions/steps/update/build'
 
-const startBrain = () => startApp({ systems: ['brain', 'settings'] })
+const startBrain = () => startApp({ systems: ['brain'] })
 const result = (step: { nodeAttributes: Record<string, unknown> }) => step.nodeAttributes.result as Record<string, unknown>
 const errorMessage = (step: { nodeAttributes: Record<string, unknown> }) => (result(step).error as { message: string }).message
 

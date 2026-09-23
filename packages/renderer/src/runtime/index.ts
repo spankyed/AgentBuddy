@@ -1,10 +1,11 @@
-// The renderer's side of the SDK's frontend port (bindFeHost): the app shell, the secrets client, the window's client
-// to the API, and the window's registered pack frontends
+// The renderer's side of the SDK's frontend port (bindFeHost): the app shell, the secrets client, the app's
+// settings, the window's client to the API, and the window's registered pack frontends
 import { bindFeHost } from '@abuddy/sdk/runtime';
 import type { HostShell } from '@abuddy/sdk/fe';
 import { feClient } from '@/transport/client';
 import { fePacks } from '@/runtime/packs';
 import { secretsClient } from '@/transport/secrets';
+import { settingsPort } from '@/runtime/settings';
 
 /**
  * Binds the SDK's frontend port to this window's app, before the application actor is created (creating it already
@@ -18,6 +19,7 @@ export function bindRendererHost(application: () => HostShell | undefined): void
       return actor;
     },
     secrets: secretsClient,
+    settings: settingsPort,
     client: feClient,
     packs: fePacks,
   });

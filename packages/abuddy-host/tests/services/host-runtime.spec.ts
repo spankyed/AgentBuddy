@@ -55,7 +55,7 @@ describe('createHostRuntime', () => {
     expect(runtime.appVersion).toBe('1.2.3');
     expect(runtime.ears).toBe(engine.query);
     expect(runtime.packs).toBe(packs);
-    expect(Object.keys(runtime.services).sort()).toEqual(['appData', 'filesystem', 'inference', 'secrets', 'traceStore']);
+    expect(Object.keys(runtime.services).sort()).toEqual(['appData', 'filesystem', 'inference', 'secrets', 'settings', 'traceStore']);
     expect(runtime.services.inference).toBe(inference);
     expect(runtime.services.secrets).toBe(secrets);
     expect(runtime.services.filesystem).toBe(filesystem);

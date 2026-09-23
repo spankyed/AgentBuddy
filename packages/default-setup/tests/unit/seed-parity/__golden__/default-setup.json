@@ -58,8 +58,8 @@
       "Action:CC: Dir Ops": {
         "label": "CC: Dir Ops",
         "description": "Dispatcher for directory cc- commands (add-dir, set-dir)",
-        "sourceHash": "85fc09372932e9b6",
-        "rowSha256": "393ffdb33387010b2387464fa9256aa31a1226fd4eeea9be8330572af82bdbf2"
+        "sourceHash": "4142bd3d66a91ce4",
+        "rowSha256": "150e1e716c848afc5295464588b38869f221053d82e5c874773d72e17829bf50"
       },
       "Action:CC: Fork": {
         "label": "CC: Fork",
@@ -76,8 +76,8 @@
       "Action:CC: Handle Directory Select": {
         "label": "CC: Handle Directory Select",
         "description": "Saves the user-selected project directory and retries the blocked chat query.",
-        "sourceHash": "cf0a51da7a460393",
-        "rowSha256": "0b14deada99d1b4e4fc568b0cda4b2498ee23cf97273088f782da6c9ceff014a"
+        "sourceHash": "ea329916279cc448",
+        "rowSha256": "77304574d753a40c087d4bcfc5e041e86dd0d4956a8e70843150534b5b5f3376"
       },
       "Action:CC: Handle Fork": {
         "label": "CC: Handle Fork",
@@ -130,14 +130,14 @@
       "Action:CC: Run Command": {
         "label": "CC: Run Command",
         "description": "Unified dispatcher for cc- prefixed chat commands",
-        "sourceHash": "aed9e98554d1be8c",
-        "rowSha256": "32df310278f4eef34cab2081d69e98bd22a22bef763360ded61aa39fa22113a4"
+        "sourceHash": "003b5dedf60ac1eb",
+        "rowSha256": "60cd047cd184f389176b2ebd057dba745d7fe4fb108519a6a136a95495dcd18d"
       },
       "Action:CC: Session Ops": {
         "label": "CC: Session Ops",
         "description": "Dispatcher for session-heavy cc- commands (resume, import)",
-        "sourceHash": "813ad8eefd9fa312",
-        "rowSha256": "f9bc134bf17a62184ed2979694b2ac49413f4c54652be2fd95607528404429b9"
+        "sourceHash": "d93347e8814aade3",
+        "rowSha256": "4d6f793eea9628da4387459e048d92cca5b85ea6014bd29d85bbc3da81c62e37"
       },
       "Action:CC: Stream Paused": {
         "label": "CC: Stream Paused",
@@ -226,8 +226,8 @@
       "Action:CDX: Handle Directory Select": {
         "label": "CDX: Handle Directory Select",
         "description": "Saves the selected project directory and retries the blocked Codex query.",
-        "sourceHash": "8d6bbb486d0df91b",
-        "rowSha256": "65ea6833e5710b1f39ad1af5474efb54c4e8479925073423d1962022ccfdf278"
+        "sourceHash": "fd0a91fa692ce845",
+        "rowSha256": "7fe5f709168e0a426c27aa0dda4bd72244516a842f490d4436199bab581bb553"
       },
       "Action:CDX: Handle Fork": {
         "label": "CDX: Handle Fork",
@@ -280,14 +280,14 @@
       "Action:CDX: Run Command": {
         "label": "CDX: Run Command",
         "description": "Unified dispatcher for cdx- prefixed chat commands.",
-        "sourceHash": "06fa0a4f11f048c3",
-        "rowSha256": "158527585acc234dd31e7eb2aaf2f351d61ffcbb1d36a7ec226b8b051a2a078e"
+        "sourceHash": "32a22e1ed2f090e4",
+        "rowSha256": "4b398d20d16285f131f8bf775a0480d916158eba892e805082c5dd6cab1009bf"
       },
       "Action:CDX: Session Ops": {
         "label": "CDX: Session Ops",
         "description": "Dispatcher for session-heavy cdx- commands.",
-        "sourceHash": "79e25f52e912f3a4",
-        "rowSha256": "386c5de4a8ebd79e8148254da12217e9d483f14d57c353dc47642a1ab31cbf58"
+        "sourceHash": "1cf0288c8d6ac5b4",
+        "rowSha256": "76fecf026b62b53e56a8d9c23955fe9b2c2d16c07b558a0dd6ed1027a604d6cc"
       },
       "Action:CDX: Start Server": {
         "label": "CDX: Start Server",
@@ -328,8 +328,8 @@
       "Action:Claude Code Chat": {
         "label": "Claude Code Chat",
         "description": "Drives Claude Code in streaming mode for the current thread, resuming prior sessions and prompting the user for tool permissions.",
-        "sourceHash": "f07510eacbece8ea",
-        "rowSha256": "ec097ff6c8f1b7a3d1715bd687707c187e31931198adaada97efb02795fcfe5a"
+        "sourceHash": "e556404ed5a9dc8b",
+        "rowSha256": "71a08ac894bf3c117ad1d2d3ebf8d9e6dd8fd93a46fdb189239edee1f2806bd4"
       },
       "Action:Claude Code List Sessions": {
         "label": "Claude Code List Sessions",
@@ -352,20 +352,20 @@
       "Action:Codex Chat": {
         "label": "Codex Chat",
         "description": "Drives Codex via app-server for the current thread.",
-        "sourceHash": "4fcde398fad65536",
-        "rowSha256": "2b4bcea0fbf62dc7245f4d97d88509586510d9cb95fb15244907ba99706d85f7"
+        "sourceHash": "cb264f3885b1588f",
+        "rowSha256": "b010443f3c3b5c84f49de14da55ceba7bd003c6aadaa28ade28863075608dcc4"
       },
       "Action:Handle Choose Mode Step": {
         "label": "Handle Choose Mode Step",
         "description": "Sets the default mode based on user choice and finishes onboarding",
-        "sourceHash": "08e9d594262adfb9",
-        "rowSha256": "6e062d8aac844c9d436bb58f5d5789c54109dae5f8d1940198952f6ad8bceb35"
+        "sourceHash": "ff811fe1bd7df5d6",
+        "rowSha256": "f8ca95a72091662326f5e91470d0d7c162fd6627a269bcbda55f58600b110d06"
       },
       "Action:Handle Import Threads Step": {
         "label": "Handle Import Threads Step",
         "description": "Imports sessions from Claude Code and Codex as threads",
-        "sourceHash": "250c4508e5c0a90b",
-        "rowSha256": "a5514e255db0410d1a9c70fac0b35ca1d9e52ffd1b1372b3e579a04ba3455edc"
+        "sourceHash": "b1d700b1fc07121e",
+        "rowSha256": "443712bbff06e4d7a48e49198b7e41fb2401ab4e871a97c322a40403595a7477"
       },
       "Action:Handle Onboarding Response": {
         "label": "Handle Onboarding Response",
@@ -376,20 +376,20 @@
       "Action:Handle Pick Thread Step": {
         "label": "Handle Pick Thread Step",
         "description": "Opens a selected thread, then advances to mode chooser or finishes",
-        "sourceHash": "ca0d82f71376e982",
-        "rowSha256": "b59bf7a5a86840b9502d3f815ef878c3252c8df0abf1a4acb2cb1dcd3bcd8c4d"
+        "sourceHash": "eb7d7905a73aace9",
+        "rowSha256": "002e6536319dce218f046adaa2a218aa16ab58a31c9e806cbdc144834c1c73d0"
       },
       "Action:Handle Projects Step": {
         "label": "Handle Projects Step",
         "description": "Saves selected project directories and offers per-provider import",
-        "sourceHash": "8f4e34cce2f41145",
-        "rowSha256": "af254ddb26287941eed4262f786722942cea4bf5b1b86605fb22ccf3fc9e060d"
+        "sourceHash": "50e494e86a73fb37",
+        "rowSha256": "fadd31e21da530baab6b4d5be512791602c47fd72163d6dd520091232b6cc565"
       },
       "Action:Handle Welcome Step": {
         "label": "Handle Welcome Step",
         "description": "Detects CLIs, discovers sessions, and presents project directory selection",
-        "sourceHash": "25369ca46131b6ea",
-        "rowSha256": "e6034e4327ee58ac017e75c3a6dcd3dd7d882263198b297d8431d5c56ddd6b1f"
+        "sourceHash": "834024bf28c02945",
+        "rowSha256": "16fbf5ecd728ee5c1f545b13e7f0984f633a3af40f6ce4c05ce2e6a443e97d62"
       },
       "Action:Ignore Onboarding Message": {
         "label": "Ignore Onboarding Message",

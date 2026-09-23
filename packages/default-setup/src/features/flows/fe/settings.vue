@@ -195,7 +195,10 @@
 
 <script setup lang="ts">
 import { usePlugin } from '@abuddy/sdk/fe'
-import { navigateToPlugin } from '@/__generated__/fe'
+import { openPlugin } from '@abuddy/sdk/fe'
+import { resolveName } from '@abuddy/sdk/ids'
+
+const HOST_SETTINGS = resolveName('settings', 'host')
 import { useRunningRootFlowId } from '@/features/brain/fe/public'
 import { ref, computed, watch } from 'vue'
 import CollapsibleSection from '@abuddy/ui/design/CollapsibleSection'
@@ -288,7 +291,7 @@ const handleRootFlowChange = () => {
 
 const goToBrainSettings = () => {
   // Show the brain's settings beside these, in the settings plugin
-  navigateToPlugin('settings', { type: 'PLUGIN.SELECT', pluginId: featureRef('brain') })
+  openPlugin(HOST_SETTINGS, { type: 'PLUGIN.SELECT', pluginId: featureRef('brain') })
 }
 
 // DSL Import - file picker and emit to state machine

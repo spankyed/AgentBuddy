@@ -1,3 +1,4 @@
+import type { SettingsService } from '../services/settings.ts';
 // The runtime a pack's unit tests run against: the EARS engine in memory, without the app.
 // @abuddy/testing's harness drives it; it lives in the SDK so tests share the pack's SDK instance
 // (its query, repository and seed-hook registries) instead of a copy.
@@ -16,6 +17,7 @@ export { fakeInference, type FakeInference, type FakeInferenceCall, type FakeInf
 // A pack's own tests bind a frontend host for the file and forget it again; bindFeHost is the renderer's,
 // bound once at boot, and its unbind is host-only
 export { startFeTestRuntime, stopFeTestRuntime, type FeTestRuntimeOptions } from './fe-runtime.ts';
+export { fakeSettings, type FakeSettings, type FakeSettingsUpdate } from './fake-settings.ts';
 
 /**
  * What a pack's seeding needs outside the app: its entity types and relation kinds, its repositories
@@ -47,10 +49,15 @@ export interface TestRuntimeStartOptions {
    * in memory by default. First call only
    */
   onboarding?: TestOnboarding;
+  /**
+   * Backs `services.settings` (the harness passes the host's settings store, so a test writes settings the way the
+   * app does); without one, reading or writing settings says to run on the harness. First call only
+   */
+  settings?: SettingsService;
 }
 
 const entityTypes = new Set<string>(Object.values(SDK_ENTITIES));
-let started: Pick<TestRuntimeStartOptions, 'packs' | 'appVersion' | 'onboarding'> | undefined;
+let started: Pick<TestRuntimeStartOptions, 'packs' | 'appVersion' | 'onboarding' | 'settings'> | undefined;
 let engine: EarsEngine | undefined;
 
 /** A new in-memory engine checking entity types against the test runtime's, and installed */
@@ -87,7 +94,7 @@ export function startTestRuntime(options: TestRuntimeStartOptions = {}): void {
     // Still bound: nothing to start. Unbound since (a test unbound the host): bound again, as first started
     if (_isHostBound()) return;
   } else {
-    started = { packs: options.packs, appVersion: options.appVersion, onboarding: options.onboarding };
+    started = { packs: options.packs, appVersion: options.appVersion, onboarding: options.onboarding, settings: options.settings };
   }
   installFreshEngine();
   bindTestRuntime({ engine: testEngine, resetData: resetTestData, ...started });

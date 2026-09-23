@@ -4,12 +4,13 @@
 // app (appData.reset()) empties it with everything else.
 import { tx, untypedQx } from '@abuddy/ears';
 import type { EARS } from '@abuddy/sdk';
+import { SETTINGS_ENTITY } from '../features/settings/be/store.ts';
 
 /** The entity type the host declares, next to the SDK's */
 export const APP_STATE_ENTITY = 'AppState';
 
-/** The entity types the host declares; no pack may declare them */
-export const HOST_ENTITY_TYPES: readonly string[] = [APP_STATE_ENTITY];
+/** The entity types the host declares — its state and the settings row; no pack may declare them */
+export const HOST_ENTITY_TYPES: readonly string[] = [APP_STATE_ENTITY, SETTINGS_ENTITY];
 
 const APP_STATE_ID = `${APP_STATE_ENTITY}-app` as EARS.EntityId;
 

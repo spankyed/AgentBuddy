@@ -146,7 +146,7 @@ import { sendToSystem } from '#generated/events';
 
 // Plugin -> System: this pack's systems by feature id, a dependency's as <dependency>/<feature>
 sendToSystem('bookmarks', { type: 'CREATE_BOOKMARK', url, title });
-sendToSystem('default-setup/settings', { type: 'GET_SETTINGS' });
+sendToSystem('default-setup/notes', { type: 'GET_TRASHED_NOTES' });
 ```
 
 `sendToSystem` accepts only systems of your pack and its dependencies, and only the events each one declares (`defineSystem<Incoming>()`); a missing field is reported against the event its `type` names. Each send names one system and one event type: a `systemId` or `type` typed as a union is rejected. A bare name is your own feature (`'bookmarks'` is `my-pack/bookmarks`). A dependency's system is always named with the dependency's id, so a feature of yours may share its name: `'notes'` is your own, `'default-setup/notes'` default-setup's. The app rejects an unknown `systemId`, and an event `type` none of the machine's transitions names unless the feature lists it in `system.events.incoming`.
@@ -254,7 +254,7 @@ export default {
 - Feature-specific settings go under the plugin ID key.
 - A feature sets only its own slice, `plugins.<feature id>`, and `visible`. `abuddy build` fails on anything else (the app's `general` settings, another plugin's), and the app refuses to register such a pack.
 - The settings are defaults: when your pack is enabled they join the app's defaults, and what the user changes is stored over them. Disabling the pack removes its defaults; a new version's defaults apply to every key the user didn't change.
-- Read them at runtime with default-setup's settings service, `services.settings.getPluginSettings('<packId>/<feature id>')`, which returns the user's values over the defaults; `updatePluginSetting('<packId>/<feature id>', path, value)` changes one. Both take the plugin's ref and throw for a bare name, which would name default-setup's plugin.
+- Read them at runtime with the app's settings service, `services.settings.forFeature('<packId>/<feature id>')`, which returns the user's values over the defaults; `setForFeature('<packId>/<feature id>', path, value)` changes one. Both take the feature's ref and throw for a bare name, naming the ref they likely meant. In a component, `useFeatureSettings(ref('<feature id>'))` from `@abuddy/sdk/fe` follows them, and `useSettingsSave()` gives the same change with whether the store stored it.
 - When a feature's settings change, however they changed (a setting, the settings replaced or reset, a pack's defaults coming or going), its system gets `FEATURE_SETTINGS_UPDATED { settings, changes }` (`changes`: what changed in each list, by its key) and its plugin `FEATURE_SETTINGS_UPDATED { settings }`. Every system and plugin receives it, like `CLIENT_CONNECTED`: nothing declares it, and a feature without a system or a plugin just doesn't get that half.
 
 ## Manifest entry

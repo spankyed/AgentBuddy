@@ -416,7 +416,7 @@ describe('generated ref', () => {
       { 'base-pack': dependency({ features: [{ id: 'threads', plugin: { entry: 'x' } }, { id: 'worker', system: { entry: 'y' } }] }) },
     );
     expect(files['src/__generated__/ref.ts']).toContain(
-      "export type FeatureName = 'notes' | 'jobs' | 'base-pack/threads' | 'base-pack/worker' | 'host/application' | 'host/bus';",
+      "export type FeatureName = 'notes' | 'jobs' | 'base-pack/threads' | 'base-pack/worker' | 'host/application' | 'host/settings' | 'host/bus';",
     );
     expect(files['src/__generated__/ref.ts']).toContain('export const ref = (name: FeatureName): FeatureRef');
   });
@@ -977,20 +977,20 @@ describe('generated seeders', () => {
       entities: { Memo: 'Memo' },
       seedFormats: {
         memos: { format: 'markdown-tree', entity: 'Memo', identity: ['title', 'parent'], tree: { relKind: 'has_memo' }, media: 'media' },
-        faqs: { compiler: 'src/seeds/compilers/faqs.ts' },
+        help: { compiler: 'src/seeds/compilers/help.ts' },
       },
       boot: { seed: {
         actions: 'src/seeds/actions',
         flows: { path: 'src/seeds/flows' },
         memos: { path: 'src/seeds/memos', format: 'memos' },
-        faqs: { path: 'src/seeds/faqs', format: 'faqs' },
+        help: { path: 'src/seeds/help', format: 'help' },
       } },
     });
     const seeders = files['src/__generated__/seeders.ts'];
     expect(seeders).toContain(`export const seeders: Seeder[] = [\n  createSeeder({ key: 'actions', entities: ['Action'], identity: ['label'] }),`);
     expect(seeders).toContain('  createFlowSeeder(),');
     expect(seeders).toContain('  createSeeder({"key":"memos","entities":["Memo"],"identity":["title","parent"],"relKind":"has_memo","media":true}),');
-    expect(seeders).not.toContain('faqs');
+    expect(seeders).not.toContain('help');
     expect(files['src/__generated__/pack-entry.ts']).toContain('seedKeys: ["actions", "flows", "memos"],');
   });
 
@@ -1123,9 +1123,9 @@ describe('the snapshot format', () => {
   /** The snapshot's manifest, which a dependent's codegen reads (features, services, seed formats, version…) */
   const MANIFEST_FIELDS: Record<keyof PackManifest, true> = {
     $manifestVersion: true, $schema: true, artifacts: true, blocks: true, boot: true, builtIn: true, commands: true,
-    dependencies: true, description: true, dsl: true, entities: true, entityShapes: true, fe: true, features: true,
+    dependencies: true, description: true, dsl: true, entities: true, entityShapes: true, help: true, fe: true, features: true,
     hostVersion: true, id: true, license: true, migrations: true, name: true, packServices: true, partitionPolicy: true,
-    permissions: true, relKinds: true, seedFormats: true, seedHooks: true, steps: true, version: true,
+    permissions: true, relKinds: true, seedFormats: true, seedHooks: true, settingsSections: true, steps: true, version: true,
   };
   const MANIFEST_FEATURE_FIELDS: Record<keyof PackFeatureEntry, true> = {
     designation: true, earlySystem: true, id: true, plugin: true, references: true, repositories: true, services: true,
@@ -1144,7 +1144,7 @@ describe('the snapshot format', () => {
   /** The registration the runtime bundle exports, which the app loads */
   const REGISTRATION_FIELDS: Record<keyof PackRegistration, true> = {
     id: true, features: true, services: true, ears: true, repositories: true, boot: true, migrations: true, steps: true,
-    artifacts: true, blocks: true, seedHooks: true, seeders: true, commands: true,
+    artifacts: true, blocks: true, seedHooks: true, seeders: true, commands: true, help: true, settingsSections: true,
   };
   const REGISTRATION_FEATURE_FIELDS: Record<keyof PackFeature, true> = {
     designation: true, system: true, plugin: true, services: true, settings: true,
@@ -1188,8 +1188,8 @@ describe('the snapshot format', () => {
       manifest: {
         fields: [
           '$manifestVersion', '$schema', 'artifacts', 'blocks', 'boot', 'builtIn', 'commands', 'dependencies', 'description', 'dsl',
-          'entities', 'entityShapes', 'fe', 'features', 'hostVersion', 'id', 'license', 'migrations', 'name', 'packServices',
-          'partitionPolicy', 'permissions', 'relKinds', 'seedFormats', 'seedHooks', 'steps', 'version',
+          'entities', 'entityShapes', 'fe', 'features', 'help', 'hostVersion', 'id', 'license', 'migrations', 'name', 'packServices',
+          'partitionPolicy', 'permissions', 'relKinds', 'seedFormats', 'seedHooks', 'settingsSections', 'steps', 'version',
         ],
         feature: ['designation', 'earlySystem', 'id', 'plugin', 'references', 'repositories', 'services', 'settings', 'system', 'typesEntry'],
         system: ['entry', 'events', 'sendsTo'],
@@ -1200,7 +1200,7 @@ describe('the snapshot format', () => {
         seedField: ['default', 'from', 'type'],
       },
       registration: {
-        fields: ['artifacts', 'blocks', 'boot', 'commands', 'ears', 'features', 'id', 'migrations', 'repositories', 'seedHooks', 'seeders', 'services', 'steps'],
+        fields: ['artifacts', 'blocks', 'boot', 'commands', 'ears', 'features', 'help', 'id', 'migrations', 'repositories', 'seedHooks', 'seeders', 'services', 'settingsSections', 'steps'],
         feature: ['designation', 'plugin', 'services', 'settings', 'system'],
         system: ['early', 'machine', 'receives'],
         plugin: ['receives'],

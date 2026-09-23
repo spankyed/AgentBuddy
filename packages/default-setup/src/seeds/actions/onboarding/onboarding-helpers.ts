@@ -1,4 +1,5 @@
 import type { EntityId, Services } from '@/__generated__/services';
+import type { ThreadsSettings } from '@/__generated__/types';
 
 export interface OnboardingState {
   step: 'welcome' | 'projects' | 'import-threads' | 'pick-thread' | 'choose-mode' | 'complete';
@@ -124,9 +125,9 @@ export function finishOnboarding(
   // Use the mode the user chose, or auto-detect from available CLIs
   const defaultMode = state.data.chosenMode
     || ((!state.data.cliFound && state.data.codexFound) ? 'Codex' : 'Claude Code');
-  services.settings.updatePluginSetting('default-setup/threads', ['chat', 'defaultMode'], defaultMode);
+  services.settings.setForFeature('default-setup/threads', ['chat', 'defaultMode'], defaultMode);
   // Push the updated chat settings to the frontend so resolveDefaultModePhase picks up the new default
-  const chatSettings = services.settings.getPluginSettings('default-setup/threads')?.chat;
+  const chatSettings = services.settings.forFeature<ThreadsSettings>('default-setup/threads')?.chat;
   if (chatSettings) {
     services.emitter.sendToPlugin('default-setup/threads', {
       type: 'AGENT_SETTINGS_UPDATED',

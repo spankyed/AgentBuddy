@@ -23,6 +23,7 @@ export type FeatureSettingsUpdated = {
 // @public
 export const HOST_PLUGIN_EVENT_TYPES: {
     'host/application': readonly ["CLIENT_CONNECTED", "APPLICATION_HOTKEYS", "PLUGIN_VISIBILITY_UPDATED", "ONBOARDING_COMPLETE", "OPEN_PLUGIN"];
+    'host/settings': readonly ["CLI_TEST_RESULT"];
 };
 
 // @public
@@ -52,6 +53,13 @@ export type HostPluginEvents = {
             type: string;
             [key: string]: unknown;
         }>;
+    };
+    'host/settings': {
+        type: 'CLI_TEST_RESULT';
+        provider: string;
+        success: boolean;
+        error?: string;
+        resolvedPath?: string;
     };
 };
 

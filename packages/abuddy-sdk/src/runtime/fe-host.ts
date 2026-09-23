@@ -1,6 +1,7 @@
 // The frontend's port: what the SDK's frontend code reaches in the renderer, bound once per window
 import type { Message } from '../events/index.ts';
 import type { SecretsClient } from '../fe/secrets-client.ts';
+import type { SettingsPort } from '../fe/settings.ts';
 import type { Component } from 'vue';
 import type { Plugin } from '../fe/plugin.ts';
 import type { HostShell } from '../fe/shell.ts';
@@ -36,6 +37,8 @@ export interface FeHostRuntime {
   application: HostShell;
   /** The API's secrets procedures */
   secrets: SecretsClient;
+  /** The app's settings, as frontend code reads and changes them */
+  settings: SettingsPort;
   /** The window's client to the API */
   client: FeClient;
   /** The packs whose frontends the renderer registered */

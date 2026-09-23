@@ -1,3 +1,4 @@
+import type { ThreadsSettings } from '@/__generated__/types';
 import { sendToSystem, sendToPlugin } from '@/__generated__/events';
 import { setup } from 'xstate';
 import { performance } from 'node:perf_hooks';
@@ -128,7 +129,7 @@ export const databaseSystem = setup({
         return;
       }
 
-      const threadsSettings = repository.settingsQueries.getPluginSettings(ref('threads')) as any;
+      const threadsSettings = services.settings.forFeature<ThreadsSettings>(ref('threads')) as any;
       const provider = threadsSettings?.chat?.defaultMode || 'Claude Code';
 
       sendToSystem('brain', {
@@ -220,7 +221,7 @@ export const databaseSystem = setup({
       // Replaces stored data and reloads memory from it; on failure the previous data is restored and reloaded. The
       // settings come in with the rest, and the import's migrations write them: run through the settings' writer, it
       // tells the settings system a replacement is running, so nothing is told a change until it ends
-      repository.settingsCommands.whileReplacingData(() => services.appData.importBackup(path, { skipUnknownDatabases })).then(
+      services.settings.whileReplacingData(() => services.appData.importBackup(path, { skipUnknownDatabases })).then(
         ({ missingDatabases, unknownEntityTypes }) => {
           // Stop brain and notify success
           sendToSystem('brain', { type: 'KILL_BRAIN' });

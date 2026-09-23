@@ -16,7 +16,8 @@
       "@/__generated__/*": ["./src/__generated__/*"],
       "#generated/*": ["./src/__generated__/*"],
       "@/features/*": ["./src/features/*"],
-      "@/extensions/*": ["./src/extensions/*"]
+      "@/extensions/*": ["./src/extensions/*"],
+      "@/app-settings/*": ["./src/app-settings/*"]
     }
   },
   // .vue files are checked by vue-tsc (npm run typecheck). src/defs/ (the Monaco DSL surfaces) is

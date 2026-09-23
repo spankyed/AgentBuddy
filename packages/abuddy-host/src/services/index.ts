@@ -7,6 +7,10 @@ import type { LmdbStore } from '@abuddy/ears/lmdb';
 import type { PackRegistry } from '../packs/registry.ts';
 import { createAppData } from './app-data.ts';
 import { filesystem } from './filesystem.ts';
+import { createSettingsService } from './settings.ts';
+import { createSettingsStore, type SettingsDocument } from '../features/settings/be/store.ts';
+
+import { getPackSettingsDefaults } from '@abuddy/sdk/framework';
 import { inference } from './inference.ts';
 import { secrets } from './secrets.ts';
 import { createTraceStore } from './trace-store.ts';
@@ -37,6 +41,11 @@ export function createHostRuntime({ transport, appVersion, store, engine, packs 
       inference,
       secrets,
       filesystem,
+      // The settings in effect before the user changed anything: each installed feature's own and each section a
+      // pack registered, both from the packs' registrations, read afresh so a pack coming or going applies at once
+      settings: createSettingsService(createSettingsStore({
+        defaults: () => getPackSettingsDefaults().settings as SettingsDocument,
+      })),
     },
   };
 }

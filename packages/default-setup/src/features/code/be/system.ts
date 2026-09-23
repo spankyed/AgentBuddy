@@ -14,7 +14,13 @@
  * Priority on startup:
  *   baseDirectory > defaultBaseDirectory > first workspace project > null
  */
+import type { GeneralSettings } from '@/app-settings/types';
+import { services } from '@/__generated__/services';
 import { sendToPlugin } from '@/__generated__/events';
+import { clearCliPathCache, isCliName, testCli } from './utils/resolve-cli';
+import { createLogger } from '@abuddy/sdk/logger';
+
+const cliLogger = createLogger('code');
 import { setup, enqueueActions, assign, type AnyActorRef } from 'xstate'
 
 import { defineSystem, type SystemEntry } from '@abuddy/sdk/framework'
@@ -46,6 +52,8 @@ type IncomingCodeEvents =
   | IncomingActionsEvents
   | IncomingPromptsEvents
   | { type: 'SET_BASE_DIRECTORY'; path: string; fromUserNavigation?: boolean }
+  /** Settings → Providers: resolve a CLI and store where it was found, in this feature's own settings */
+  | { type: 'TEST_CLI_PROVIDER'; provider: string }
 
 // Union all outgoing events from child systems  
 export type OutgoingCodeEvents =
@@ -58,6 +66,8 @@ export type OutgoingCodeEvents =
   | OutgoingPromptsEvents
   // Broadcast events (sent to all child systems)
   | { type: 'CODE_CONNECTED'; data: CodeConnectedData }
+  /** What testing a CLI found, for the Settings view that asked (abuddy.json `sendsTo`) */
+  | { type: 'CLI_TEST_RESULT'; provider: string; success: boolean; error?: string; resolvedPath?: string }
 
 // Import only the type needed for broadcast event
 import type { TerminalInfo, CodeConnectedData, CodeSettings } from './types'
@@ -173,7 +183,7 @@ export const systemMachine = setup({
         // Save to navigation history only when triggered by user navigation
         // (not when applying settings like defaultBaseDirectory)
         if (ev.fromUserNavigation !== false) {
-          repository.settingsCommands.updatePluginSetting(ref('code'), ['baseDirectory'], ev.path)
+          services.settings.setForFeature(ref('code'), ['baseDirectory'], ev.path)
         }
         return ev.path
       },
@@ -184,7 +194,7 @@ export const systemMachine = setup({
           context.gitRepository.clearCache()
         }
         const repo = new GitRepository(ev.path)
-        const codeSettings = repository.settingsQueries.getPluginSettings(ref('code')) as CodeSettings
+        const codeSettings = services.settings.forFeature(ref('code')) as CodeSettings
         repo.setFetchConfig(
           codeSettings?.autoFetchRemote ?? false,
           codeSettings?.autoFetchIntervalSeconds ?? 180
@@ -229,8 +239,30 @@ export const systemMachine = setup({
       child(self, 'terminal')?.send({ type: 'terminal.UPDATE_BASE_DIRECTORY', path: newPath });
     },
 
+    /**
+     * Resolves a CLI and records where it was found, in this feature's own settings. It lives here because
+     * `resolve-cli` and the stored paths are this feature's; the Settings view asks for it and is told the result.
+     */
+    testCliProvider: ({ event }) => {
+      const { provider } = event as { type: 'TEST_CLI_PROVIDER'; provider: string };
+      const answer = (result: { success: boolean; error?: string; resolvedPath?: string }) =>
+        sendToPlugin('host/settings', { type: 'CLI_TEST_RESULT', provider, ...result });
+
+      if (!isCliName(provider)) return answer({ success: false, error: `Unknown CLI provider: ${provider}` });
+
+      const paths = (services.settings.forFeature<CodeSettings>(ref('code'))?.cliPaths ?? {}) as Record<string, string | undefined>;
+      void testCli(provider, paths[provider]).then((result) => {
+        if (result.success) services.settings.setForFeature(ref('code'), ['cliPaths'], { ...paths, [provider]: result.resolvedPath });
+        else cliLogger.error(`CLI test failed for "${provider}"`, { error: result.error });
+        answer(result);
+      });
+    },
+
     updateSettings: ({ event, context, self }) => {
       const ev = event as { type: 'FEATURE_SETTINGS_UPDATED'; settings: CodeSettings }
+
+      // The resolved paths are cached, so a change to this feature's settings is where the cache is dropped
+      clearCliPathCache();
 
       // A new default moves the explorer there at once; the same default arriving again leaves the user's browsing alone
       if (ev.settings.defaultBaseDirectory &&
@@ -263,7 +295,7 @@ export const systemMachine = setup({
       child(self, 'codePrompts')?.send({ type: 'CODE_CONNECTED' });
 
       // Get code settings - this will create default settings if they don't exist
-      const codeSettings = repository.settingsQueries.getPluginSettings(ref('code')) as CodeSettings;
+      const codeSettings = services.settings.forFeature(ref('code')) as CodeSettings;
 
       // Send initial directory state to frontend
       const connectedData: CodeConnectedData = {
@@ -324,8 +356,8 @@ export const systemMachine = setup({
   id: 'code',
   initial: 'idle',
   context: () => {
-    const codeSettings = repository.settingsQueries.getPluginSettings(ref('code')) as CodeSettings
-    const projects = repository.settingsQueries.getGeneralSettings('projects')
+    const codeSettings = services.settings.forFeature(ref('code')) as CodeSettings
+    const projects = services.settings.getSection<GeneralSettings>('general').projects
 
     // Resolve initial directory using priority chain
     const baseDir = resolveInitialDirectory(codeSettings, projects)
@@ -353,6 +385,7 @@ export const systemMachine = setup({
           actions: 'broadcastConnected',
         },
         // Handle settings updates
+        TEST_CLI_PROVIDER: { actions: 'testCliProvider' },
         FEATURE_SETTINGS_UPDATED: {
           actions: [
             'updateSettings',

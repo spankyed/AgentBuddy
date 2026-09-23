@@ -1,3 +1,5 @@
+import type { FlowsSettings } from '@/__generated__/types';
+import { services } from '@/__generated__/services';
 import { sendToPlugin } from '@/__generated__/events';
 import { assign, cancel, createMachine, fromPromise, log, raise, sendTo, setup, type ErrorActorEvent } from 'xstate';
 import { defineSystem, type SystemEntry } from '@abuddy/sdk/framework';
@@ -104,7 +106,7 @@ function sendConnectedData(): void {
     type: 'FLOWS_CONNECTED',
     data: {
       ...repository.flowsQueries.connectedData(),
-      settings: repository.settingsQueries.getPluginSettings(ref('flows')) || {},
+      settings: services.settings.forFeature<FlowsSettings>(ref('flows')) || {},
     },
   });
 }

@@ -7,15 +7,15 @@ import { startApp } from '@abuddy/testing/harness';
 import { sendToSystem } from '#generated/events';
 
 describe('typed sends to systems', () => {
-  it("reaches default-setup's settings system", async () => {
-    const app = await startApp({ systems: ['default-setup/settings'] });
+  it("reaches default-setup's library system", async () => {
+    const app = await startApp({ systems: ['default-setup/library'] });
     await app.connect();
-    await app.nextEmit('default-setup/settings', 'SETTINGS_LOADED');
+    await app.nextEmit('default-setup/library', 'LIBRARY_CONNECTED');
 
-    sendToSystem('default-setup/settings', { type: 'GET_SETTINGS' });
+    sendToSystem('default-setup/library', { type: 'GET_LIBRARY_INDEX' });
 
-    expect(await app.nextEmit('default-setup/settings', 'SETTINGS_LOADED'))
-      .toMatchObject({ type: 'SETTINGS_LOADED' });
+    expect(await app.nextEmit('default-setup/library', 'LIBRARY_INDEX_LOADED'))
+      .toMatchObject({ type: 'LIBRARY_INDEX_LOADED' });
   });
 
   it('reaches its own system by feature id', async () => {
@@ -42,10 +42,10 @@ describe('typed sends to systems', () => {
   it('rejects a wrong send at compile time', () => {
     // Never called: tsc checks these lines when it runs over the pack's tests
     const wrongSends = () => {
-      // @ts-expect-error the settings system doesn't receive memo events
-      sendToSystem('default-setup/settings', { type: 'ADD_MEMO', text: 'x' });
+      // @ts-expect-error the library system doesn't receive memo events
+      sendToSystem('default-setup/library', { type: 'ADD_MEMO', text: 'x' });
       // @ts-expect-error a dependency's system is named <dependency>/<feature>
-      sendToSystem('settings', { type: 'GET_SETTINGS' });
+      sendToSystem('library', { type: 'GET_LIBRARY_INDEX' });
       // @ts-expect-error ADD_MEMO needs its text
       sendToSystem('memos', { type: 'ADD_MEMO' });
       // @ts-expect-error pack code names its own features by feature id; `<pack>/<feature>` is for another pack

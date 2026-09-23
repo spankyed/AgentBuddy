@@ -1,4 +1,5 @@
 // [SEARCH_INDEX_FF] The search index is dormant: ./search-index/README.md lists its call sites and how to turn it on
+import { services } from '@/__generated__/services';
 import { setup } from 'xstate'
 import { defineSystem, type SystemEntry } from '@abuddy/sdk/framework'
 import type { EARS } from '@/__generated__/ears'
@@ -16,7 +17,7 @@ import { toMap, toIdentifierSet, mapArray } from '@abuddy/sdk/utils'
 import { exportLibrary } from './export-library'
 import { importLibrary } from './import-library'
 import type { ContentSection } from '@/features/library/be/types';
-import type { CommandItem } from '@/features/settings/be/types';
+import type { CommandItem } from '@/__generated__/types';
 import { ref } from '@/__generated__/ref';
 import { errorMessage } from '@abuddy/sdk/utils/pure';
 
@@ -215,7 +216,7 @@ export const librarySystem = setup({
       repository.libraryCommands.migrateDocumentShortCodes()
       repository.libraryCommands.migrateDisplayOrders()
 
-      const librarySettings = repository.settingsQueries.getPluginSettings(ref('library'))
+      const librarySettings = services.settings.forFeature(ref('library'))
 
       sendToPlugin('library', {
           type: 'LIBRARY_CONNECTED' as const,
@@ -397,7 +398,7 @@ export const librarySystem = setup({
           })
 
         // Refresh library data
-        const librarySettings = repository.settingsQueries.getPluginSettings(ref('library'))
+        const librarySettings = services.settings.forFeature(ref('library'))
 
         sendToPlugin('library', {
             type: 'LIBRARY_CONNECTED' as const,

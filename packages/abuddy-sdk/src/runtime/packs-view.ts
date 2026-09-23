@@ -9,6 +9,7 @@ import type { SeedHooks } from '../seed/hooks.ts';
 import type { Seeder } from '../utils/seed.ts';
 import type { PackSettingsDefaults } from '../framework/pack-settings.ts';
 import type { PackCommand } from '../framework/pack-commands.ts';
+import type { HelpEntry } from '../framework/pack-help.ts';
 
 /** Entity types and relation kinds by the name they're declared under (`abuddy.json` `entities`, `relKinds`) */
 export interface EarsNames {
@@ -55,6 +56,8 @@ export interface PackRegistryView extends PackExtensionsView {
   featuresWithSettings(): readonly FeatureRef[];
   /** Every registered pack's declared commands, in the order the packs were first registered */
   commands(): PackCommand[];
+  /** Every registered pack's help entries, for the Settings view's Help list */
+  help(): HelpEntry[];
   /** The app's own entity types and relation kinds and every registered pack's, by the name each declares them under */
   earsNames(): EarsNames;
 }

@@ -1,3 +1,4 @@
+import { services } from '@/__generated__/services';
 import { GitRepository } from '@/features/code/be/services/git'
 import * as ghCli from '@/features/code/be/services/gh-cli'
 import { repository } from '@/__generated__/repository';
@@ -103,7 +104,7 @@ function createCliService(): CliServiceType {
   let lastCwd: string | null = null
 
   function resolveCwd(): string {
-    const codeSettings = repository.settingsQueries.getPluginSettings(ref('code')) as CodeSettings | undefined
+    const codeSettings = services.settings.forFeature(ref('code')) as CodeSettings | undefined
     let cwd = codeSettings?.defaultBaseDirectory || codeSettings?.baseDirectory || null
     if (!cwd) {
       throw new Error('No project directory configured. Open a directory in the Code panel first.')
@@ -130,7 +131,7 @@ function createCliService(): CliServiceType {
       if (!isCliName(provider)) {
         return Promise.resolve({ success: false as const, error: `Unknown CLI provider: ${provider}` });
       }
-      const storedPath = (repository.settingsQueries.getPluginSettings(ref('code')) as { cliPaths?: Record<string, string> } | null)?.cliPaths?.[provider];
+      const storedPath = (services.settings.forFeature(ref('code')) as { cliPaths?: Record<string, string> } | null)?.cliPaths?.[provider];
       return testCli(provider, storedPath);
     },
     git: {

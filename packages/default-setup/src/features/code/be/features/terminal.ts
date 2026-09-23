@@ -1,3 +1,4 @@
+import { services } from '@/__generated__/services';
 import { sendToPlugin } from '@/__generated__/events';
 import { setup, assign, fromPromise } from 'xstate'
 
@@ -107,7 +108,7 @@ export const terminalSystem = setup({
   },
   actors: {
     restoreTerminalsActor: fromPromise(async () => {
-      const codeSettings = repository.settingsQueries.getPluginSettings(ref('code')) as CodeSettings
+      const codeSettings = services.settings.forFeature(ref('code')) as CodeSettings
       if (codeSettings?.restoreTerminals === false) {
         logger.info('Terminal restoration disabled by settings')
         return

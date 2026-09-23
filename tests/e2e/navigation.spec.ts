@@ -16,7 +16,7 @@ test('opens every plugin, and every plugin\'s settings, without a renderer error
     await app.screenshot(`nav-${pluginId.replace('/', '-')}`);
   }
 
-  const settings = 'default-setup/settings';
+  const settings = 'host/settings';
   await app.navigate(settings);
   const withSettings: string[] = await appPage.evaluate(() =>
     (window as any).applicationState.getSnapshot().context.plugins.filter((p: any) => p.settings).map((p: any) => p.id));

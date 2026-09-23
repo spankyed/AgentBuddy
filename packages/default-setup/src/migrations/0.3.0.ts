@@ -1,3 +1,4 @@
+import { services } from '@/__generated__/services';
 import { repository } from '@/__generated__/repository';
 import type { PackMigration } from '@abuddy/sdk/framework';
 import { ref } from '@/__generated__/ref';
@@ -9,7 +10,7 @@ export const migration: PackMigration = {
     // The user's own modes, if they stored any: the defaults already have Codex, and patching a merged copy would
     // write every default mode into the user's stored settings. The host's 0.3.15 migration, which runs before every
     // pack migration, has moved them onto the threads plugin's ref, and dropped Hermes's settings, which no plugin owns.
-    const stored = (repository.settingsQueries.getStoredSettings().plugins ?? {}) as Record<string, any>;
+    const stored = (services.settings.getStored().plugins ?? {}) as Record<string, any>;
     const storedModes = stored[ref('threads')]?.chat?.modes;
     const modes: Array<{ id: string; name?: string; description?: string; [k: string]: any }> | undefined =
       storedModes && structuredClone(storedModes);
@@ -43,5 +44,5 @@ function patchModes(modes: Array<{ id: string; name?: string; description?: stri
   }
 
   const nextModes = modes.filter(mode => mode.id !== 'hermes');
-  repository.settingsCommands.updatePluginSetting(ref('threads'), ['chat', 'modes'], nextModes);
+  services.settings.setForFeature(ref('threads'), ['chat', 'modes'], nextModes);
 }

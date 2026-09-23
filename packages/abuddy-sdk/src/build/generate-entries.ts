@@ -428,6 +428,8 @@ export function generatePackFiles(
       ...features.flatMap((f) => [...Object.values(f.services ?? {}), ...Object.values(f.repositories ?? {})]),
       ...Object.values(manifest.packServices ?? {}),
       ...Object.values(manifest.seedHooks ?? {}),
+      ...(manifest.settingsSections ? [manifest.settingsSections] : []),
+      ...(manifest.help ? [manifest.help] : []),
     ].map((target) => target.split('#')[0]);
     const sources = [
       ...targets,
@@ -554,6 +556,12 @@ export function generatePackFiles(
 
     const seedKeysList = seededKeys().map(k => JSON.stringify(k)).join(', ');
     const hookEntries = seedHookEntries();
+    // The pack's settings sections: a function returning them, called the first time the defaults are read
+    const sections = manifest.settingsSections
+      ? valueExport('settingsSections', manifest.settingsSections)
+      : undefined;
+    // The pack's help entries, called the first time the Settings view's Help list is read
+    const help = manifest.help ? valueExport('help', manifest.help) : undefined;
     const seedPolicy = manifest.boot?.seedPolicy;
     const seedPolicyLine = seedPolicy ? `\n      seedPolicy: ${JSON.stringify(seedPolicy)},` : '';
 
@@ -572,6 +580,8 @@ ${manifest.artifacts ? `import { artifacts } from '${toImportPath(root, manifest
 ${manifest.blocks ? `import { blocks } from '${toImportPath(root, manifest.blocks)}';` : ''}
 import { getCompiledDir, seeders } from './seeders.js';
 export { setCompiledDir } from './seeders.js';
+${sections ? `import { ${sections.exportName} as __settingsSections } from '${toImportPath(root, sections.source)}';` : ''}
+${help ? `import { ${help.exportName} as __help } from '${toImportPath(root, help.source)}';` : ''}
 
 export const registration: PackRegistration = {
   id: '${manifest.id}',
@@ -584,6 +594,8 @@ ${manifest.blocks ? '  blocks,' : ''}
 ${hookEntries.length > 0 ? `  seedHooks: { ${hookEntries.map(([entity], i) => `${JSON.stringify(entity)}: __seedHooks_${i}`).join(', ')} },` : ''}
   seeders,
 ${commands.length ? `  commands: ${JSON.stringify(commands)},` : ''}
+${sections ? '  settingsSections: __settingsSections,' : ''}
+${help ? '  help: __help,' : ''}
   ears: {
     // Only this pack's own: EARS also names its dependencies' and the SDK's, which they register
     entities: ${JSON.stringify(manifest.entities ?? {})},
@@ -953,9 +965,11 @@ ${specs}
 
   function generateTypes(): string {
     const features = manifest.features ?? [];
-    const systemFeatures = features.filter(f => f.system);
+    // A system's types by convention, and any feature that names a `typesEntry` — which is what that field is for,
+    // and the only way a feature with no system of its own contributes types the pack's code shares
+    const typed = features.filter(f => f.system || f.typesEntry);
 
-    const perFeature = systemFeatures.map(f => {
+    const perFeature = typed.map(f => {
       const lines: string[] = [];
       const tPath = typesEntry(f);
       const fullTypesPath = join(root, tPath) + (tPath.endsWith('.ts') ? '' : '.ts');

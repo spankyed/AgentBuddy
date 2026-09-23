@@ -1,11 +1,11 @@
 // 0.3.0 adds the Codex mode to the chat modes a user stored and drops Hermes. It reads the stored settings, not the
 // merged ones: the defaults already have Codex, and a user who never changed the modes must keep getting the defaults.
+import { services } from '@/__generated__/services';
 import { describe, expect, it } from 'vitest'
 import { tx, untypedQx } from '@abuddy/ears'
 import type { EARS as SdkEARS } from '@abuddy/sdk'
 import { migrations } from '../../../src/migrations/index'
 import { repository } from '@/__generated__/repository'
-import { createDefaultSettings } from '@/features/settings/be/repository'
 import threadsSettings from '@/features/threads/settings'
 import { ref } from '@/__generated__/ref'
 
@@ -15,11 +15,10 @@ const migration = migrations.find((m) => m.target === '0.3.0')!
 /** The settings row as the repository stores it: only what differs from the defaults */
 const stored = () => untypedQx('Settings-app' as SdkEARS.EntityId).pickOne(['data'])?.data as Record<string, unknown>
 const storeAsBefore = (data: Record<string, unknown>) => tx('Settings-app' as SdkEARS.EntityId).update('data', data)
-const modeIds = () => (repository.settingsQueries.getPluginSettings(ref('threads')) as any).chat.modes.map((m: { id: string }) => m.id)
+const modeIds = () => (services.settings.forFeature(ref('threads')) as any).chat.modes.map((m: { id: string }) => m.id)
 
 describe('the 0.3.0 migration', () => {
   it('leaves the default chat modes to a user who never changed them, and stores nothing', () => {
-    createDefaultSettings()
     storeAsBefore({ general: { application: { openLinksInApp: false } } })
 
     migration.up()
@@ -30,7 +29,6 @@ describe('the 0.3.0 migration', () => {
   })
 
   it("adds Codex to the modes a user stored, after Hermes, and drops Hermes", () => {
-    createDefaultSettings()
     // As a pre-0.3.0 user stored them, once the host's 0.3.15 migration, which runs before any pack's, moved them onto
     // the plugins' refs and dropped `hermes`, which no pack has
     storeAsBefore({

@@ -15,6 +15,7 @@ beforeEach(() => {
   bindFeHost({
     application: { system: { get: (ref: string) => running[ref] } } as never,
     secrets: {} as never,
+    settings: {} as never,
     client: { send() {} },
     packs: {} as never,
   });

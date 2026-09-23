@@ -67,8 +67,12 @@ import { Layers } from 'lucide-vue-next'
 import type { ArtifactItem } from '@abuddy/sdk/artifacts'
 import { truncatePath } from '@abuddy/ui/utils/path-truncation'
 import { computed } from 'vue'
-import { navigateToPlugin } from '@/__generated__/fe'
-import { useGeneralSettings } from '@/features/settings/fe/public'
+import { openPlugin } from '@abuddy/sdk/fe'
+import { resolveName } from '@abuddy/sdk/ids'
+
+const HOST_SETTINGS = resolveName('settings', 'host')
+import { useSettingsSection } from '@abuddy/sdk/fe'
+import type { GeneralSettings } from '@/app-settings/types'
 
 interface Project {
   name: string
@@ -81,7 +85,8 @@ const props = defineProps<{
 }>()
 
 // The user's projects, from the settings
-const storedProjects = useGeneralSettings('projects')
+const general = useSettingsSection<GeneralSettings>('general')
+const storedProjects = computed(() => general.value?.projects ?? [])
 const projects = computed(() => storedProjects.value ?? [])
 
 const getTruncatedPath = (path: string) => {
@@ -89,7 +94,7 @@ const getTruncatedPath = (path: string) => {
 }
 
 const goToProjects = () => {
-  navigateToPlugin('settings', [
+  openPlugin(HOST_SETTINGS, [
     { type: 'TAB.SELECT', tab: 'general' },
     { type: 'GENERAL_NAV.SELECT', item: 'projects' }
   ])
