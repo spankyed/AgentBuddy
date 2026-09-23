@@ -428,6 +428,7 @@ export function generatePackFiles(
       ...features.flatMap((f) => [...Object.values(f.services ?? {}), ...Object.values(f.repositories ?? {})]),
       ...Object.values(manifest.packServices ?? {}),
       ...Object.values(manifest.seedHooks ?? {}),
+      ...(manifest.settingsSections ? [manifest.settingsSections] : []),
     ].map((target) => target.split('#')[0]);
     const sources = [
       ...targets,
@@ -554,6 +555,10 @@ export function generatePackFiles(
 
     const seedKeysList = seededKeys().map(k => JSON.stringify(k)).join(', ');
     const hookEntries = seedHookEntries();
+    // The pack's settings sections: a function returning them, called the first time the defaults are read
+    const sections = manifest.settingsSections
+      ? valueExport('settingsSections', manifest.settingsSections)
+      : undefined;
     const seedPolicy = manifest.boot?.seedPolicy;
     const seedPolicyLine = seedPolicy ? `\n      seedPolicy: ${JSON.stringify(seedPolicy)},` : '';
 
@@ -572,6 +577,7 @@ ${manifest.artifacts ? `import { artifacts } from '${toImportPath(root, manifest
 ${manifest.blocks ? `import { blocks } from '${toImportPath(root, manifest.blocks)}';` : ''}
 import { getCompiledDir, seeders } from './seeders.js';
 export { setCompiledDir } from './seeders.js';
+${sections ? `import { ${sections.exportName} as __settingsSections } from '${toImportPath(root, sections.source)}';` : ''}
 
 export const registration: PackRegistration = {
   id: '${manifest.id}',
@@ -584,6 +590,7 @@ ${manifest.blocks ? '  blocks,' : ''}
 ${hookEntries.length > 0 ? `  seedHooks: { ${hookEntries.map(([entity], i) => `${JSON.stringify(entity)}: __seedHooks_${i}`).join(', ')} },` : ''}
   seeders,
 ${commands.length ? `  commands: ${JSON.stringify(commands)},` : ''}
+${sections ? '  settingsSections: __settingsSections,' : ''}
   ears: {
     // Only this pack's own: EARS also names its dependencies' and the SDK's, which they register
     entities: ${JSON.stringify(manifest.entities ?? {})},

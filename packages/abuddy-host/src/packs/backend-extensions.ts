@@ -50,6 +50,8 @@ export function createSeederStore() {
  */
 export function createSettingsDefaultsStore() {
   const byPack = new Map<string, Array<{ id: string; settings: FeatureSettings }>>();
+  /** Each pack's settings sections, read the first time the defaults are, then kept until the pack changes */
+  const sectionsByPack = new Map<string, () => Record<string, unknown>>();
   const listeners = new Set<() => void>();
   let current: PackSettingsDefaults = { revision: 0, settings: { plugins: {} }, visibility: {} };
 
@@ -64,22 +66,32 @@ export function createSettingsDefaultsStore() {
         if (settings.visible !== undefined) visibility[pluginId] = settings.visible;
       }
     }
-    current = { revision: current.revision + 1, settings: { plugins }, visibility };
+    const sections: Record<string, unknown> = {};
+    for (const [packId, read] of sectionsByPack) {
+      try {
+        for (const [name, value] of Object.entries(read())) sections[name] = value;
+      } catch (error) {
+        throw new Error(`Pack "${packId}" could not read its settings sections: ${(error as Error).message}`);
+      }
+    }
+    current = { revision: current.revision + 1, settings: { ...sections, plugins }, visibility };
     for (const listener of listeners) listener();
   }
 
   return {
     /** Throws when a feature sets anything but its own plugin's settings, registering none of the pack's */
-    register(packId: string, features: ReadonlyArray<{ id: string; settings?: FeatureSettings }>): void {
+    register(packId: string, features: ReadonlyArray<{ id: string; settings?: FeatureSettings }>, sections?: () => Record<string, unknown>): void {
       const withSettings = features.filter((feature): feature is { id: string; settings: FeatureSettings } => feature.settings !== undefined);
       const problems = withSettings.flatMap(({ id, settings }) => checkFeatureSettings(id, settings));
       if (problems.length > 0) throw new Error(`Pack "${packId}" has invalid feature settings:\n  ${problems.join('\n  ')}`);
-      if (withSettings.length === 0 && !byPack.has(packId)) return;
+      if (sections) sectionsByPack.set(packId, sections);
+      if (withSettings.length === 0 && !sections && !byPack.has(packId)) return;
       byPack.set(packId, withSettings);
       rebuild();
     },
     unregister(packId: string): void {
-      if (byPack.delete(packId)) rebuild();
+      const had = byPack.delete(packId);
+      if (sectionsByPack.delete(packId) || had) rebuild();
     },
     get: (): PackSettingsDefaults => current,
     onChanged(listener: () => void): () => void {

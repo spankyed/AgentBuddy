@@ -1,3 +1,5 @@
+import type { ThreadsSettings } from '@/__generated__/types';
+import { services } from '@/__generated__/services';
 import { tx } from '@/__generated__/ears';
 /**
  * Thread Import
@@ -57,7 +59,7 @@ export function importThreads(importDir: string): ImportResult {
   const hasMedia = fs.existsSync(path.join(importDir, 'media'))
 
   // Get valid statuses and tags from settings
-  const threadsSettings = repository.settingsQueries.getPluginSettings(ref('threads'))
+  const threadsSettings = services.settings.forFeature<ThreadsSettings>(ref('threads'))
   const validStatuses = new Set(threadsSettings?.statuses?.map((s: any) => s.label) || [])
   const validTags = new Set(threadsSettings?.tags?.map((t: any) => t.name) || [])
   const fallbackStatus = threadsSettings?.statuses?.[0]?.label || 'Backlog'

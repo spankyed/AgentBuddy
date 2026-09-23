@@ -188,6 +188,7 @@ export interface TestRuntimeStartOptions {
     entityTypes?: readonly string[];
     onboarding?: TestOnboarding;
     packs?: PackRegistryView;
+    settings?: SettingsService;
 }
 
 // (No @packageDocumentation comment for this package)

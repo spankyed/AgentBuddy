@@ -1,5 +1,7 @@
 // Finds the CLIs the code feature runs (Claude Code, Codex, Copilot, gh): a path the user set in the code
 // plugin's settings (`cliPaths`), known install locations, then PATH.
+import type { CodeSettings } from '@/features/code/be/types';
+import { services } from '@/__generated__/services';
 import { execFile } from 'child_process'
 import { promisify } from 'util'
 import * as fs from 'fs'
@@ -179,6 +181,6 @@ export async function testCli(
 
 /** Convenience: read stored path from settings and resolve. Used by CLI service modules. */
 export async function resolveForService(cli: CliName): Promise<string> {
-  const storedPath = repository.settingsQueries.getPluginSettings(ref('code'))?.cliPaths?.[cli]
+  const storedPath = services.settings.forFeature<CodeSettings>(ref('code'))?.cliPaths?.[cli]
   return resolveCliPath(cli, storedPath)
 }

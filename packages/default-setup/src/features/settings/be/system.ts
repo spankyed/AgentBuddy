@@ -125,9 +125,16 @@ export const settingsSystem = setup({
   types: settingsSpec.types,
   actors: {
     packSettingsListener: fromCallback(({ sendBack }) => onPackSettingsDefaultsChanged(() => sendBack({ type: 'PACK_SETTINGS_CHANGED' }))),
-    settingsWriteListener: fromCallback(({ sendBack }) => onSettingsChange((change) => sendBack({
-      type: change === 'written' ? 'SETTINGS_WRITTEN' : change === 'replacing' ? 'DATA_REPLACING' : 'DATA_REPLACED',
-    }))),
+    // Two stores write the settings row while the app's is taking over from this pack's: this feature's repository,
+    // and the host's through `services.settings` (what an action reaches). Both are heard, so a feature is told its
+    // settings changed whichever wrote them; when the store here goes, so does its half.
+    settingsWriteListener: fromCallback(({ sendBack }) => {
+      const tell = (change: 'written' | 'replacing' | 'replaced') => sendBack({
+        type: change === 'written' ? 'SETTINGS_WRITTEN' : change === 'replacing' ? 'DATA_REPLACING' : 'DATA_REPLACED',
+      });
+      const unsubscribe = [onSettingsChange(tell), services.settings.onChange(tell)];
+      return () => { for (const off of unsubscribe) off(); };
+    }),
     // The host resets the whole app: stores, each pack's onInit and boot seed, migrations
     resetAppActor: fromPromise(() => services.appData.reset()),
   },

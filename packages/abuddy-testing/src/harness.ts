@@ -23,6 +23,8 @@ import type { PackRegistration } from '@abuddy/sdk/framework';
 import { createPackRegistry, type PackOrigin } from '@abuddy/host/packs';
 import { hostRegistration } from '@abuddy/host/features';
 import { appState, HOST_ENTITY_TYPES } from '@abuddy/host/app-state';
+import { createSettingsService, createSettingsStore, type SettingsDocument } from '@abuddy/host/settings';
+import { getPackSettingsDefaults } from '@abuddy/sdk/framework';
 import { loadDependencyRuntime } from './dependency-runtime.ts';
 import { assertSharedEars } from './shared-ears.ts';
 import { setAppPacks, stopRunningApps } from './app.ts';
@@ -264,6 +266,10 @@ export async function setupPackTests(options: PackTestOptions): Promise<void> {
       hasOnboarded: () => appState.get().hasOnboarded,
       completeOnboarding: () => appState.update({ hasOnboarded: true }),
     },
+    // The app's own settings store, so a test writes and reads settings the way the app does rather than a fake
+    settings: createSettingsService(createSettingsStore({
+      defaults: () => getPackSettingsDefaults().settings as SettingsDocument,
+    })),
   });
   if (options.registration) {
     await registerRuntimes(packDir, manifest, dependencies, options.registration);

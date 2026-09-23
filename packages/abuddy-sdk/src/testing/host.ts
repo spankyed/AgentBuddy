@@ -1,6 +1,7 @@
 // The app a pack's systems, services and steps reach in unit tests, in memory: what the app binds at boot
 // (openAppStore() in api/src/setup/backend.ts), minus persistence, clients and the filesystem.
 import { EventEmitter } from 'node:events';
+import type { SettingsService } from '../services/settings.ts';
 import { bindHost, type HostRuntime } from '../runtime/host-runtime.ts';
 import type { PackRegistryView } from '../runtime/packs-view.ts';
 import { testPacksView } from './packs.ts';
@@ -103,6 +104,25 @@ const unmockedFilesystem = () => Promise.reject(new Error(
   "No disk access through services in unit tests: mock it with mockService('filesystem', { ... }) from @abuddy/testing/harness",
 ));
 
+/**
+ * The app's settings need the host's store, which the SDK doesn't have: `@abuddy/testing/harness` supplies the real
+ * one (it inlines @abuddy/host), so a test running on the SDK's runtime alone says so rather than reading a fake
+ * document that behaves almost like the app's.
+ */
+const unmockedSettings = () => {
+  throw new Error(
+    "The app's settings aren't available on the SDK's test runtime: run the test on @abuddy/testing/harness, which " +
+    "binds the host's settings store, or mock it with mockService('settings', { ... })",
+  );
+};
+
+const memorylessSettings: SettingsService = {
+  getAll: unmockedSettings, getStored: unmockedSettings, getSection: unmockedSettings, forFeature: unmockedSettings,
+  setForFeature: unmockedSettings, setInSection: unmockedSettings, replaceAll: unmockedSettings,
+  removeStored: unmockedSettings, reset: unmockedSettings, whileReplacingData: unmockedSettings,
+  onChange: unmockedSettings,
+};
+
 const unsupported = (name: string) => () => Promise.reject(new Error(`appData.${name} isn't supported in unit tests: there is no stored data to back up`));
 
 /** Reads the in-memory database: unit tests keep flow execution records (TNodes) there */
@@ -138,13 +158,15 @@ export interface TestRuntimeOptions {
   appVersion?: string;
   /** Backs `appData.hasOnboarded` and `completeOnboarding`; in memory by default, emptied with the database */
   onboarding?: TestOnboarding;
+  /** Backs `services.settings`; without one, reading or writing settings says to run on the harness */
+  settings?: SettingsService;
 }
 
 /**
  * Binds the in-memory app: `testRootEvents` as its bus, the in-memory engine, `testPacks` over `packs`, and the app's
  * services in memory.
  */
-export function bindTestRuntime({ engine, resetData, packs, appVersion = '0.0.0-test', onboarding = memoryOnboarding }: TestRuntimeOptions): HostRuntime {
+export function bindTestRuntime({ engine, resetData, packs, appVersion = '0.0.0-test', onboarding = memoryOnboarding, settings = memorylessSettings }: TestRuntimeOptions): HostRuntime {
   const runtime: HostRuntime = {
     transport: { rootEvents: testRootEvents },
     // The current engine: a reset replaces it
@@ -173,6 +195,7 @@ export function bindTestRuntime({ engine, resetData, packs, appVersion = '0.0.0-
         writeFile: unmockedFilesystem, readFile: unmockedFilesystem, exists: unmockedFilesystem, mkdir: unmockedFilesystem,
         readDir: unmockedFilesystem, remove: unmockedFilesystem, rename: unmockedFilesystem, stat: unmockedFilesystem,
       },
+      settings,
     },
   };
   bindHost(runtime);

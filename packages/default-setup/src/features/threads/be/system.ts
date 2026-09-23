@@ -1,3 +1,4 @@
+import type {AssistantSettings, ThreadsSettings} from '@/__generated__/types';
 import { sendToSystem, sendToPlugin } from '@/__generated__/events';
 import { services } from '@/__generated__/services';
 import { assign, cancel, fromPromise, log, raise, sendTo, setup, type ErrorActorEvent } from 'xstate';
@@ -125,7 +126,7 @@ export const threadsSystem = setup({
     // ---- Thread management actions ----
     sendThreadsConnectedData: ({ system }) => {
       const connectedData = repository.threadQueries.connectedData();
-      const threadsSettings = repository.settingsQueries.getPluginSettings(ref('threads'));
+      const threadsSettings = services.settings.forFeature<ThreadsSettings>(ref('threads'));
 
       sendToPlugin('threads', {
         type: 'THREAD_CONNECTED',
@@ -210,7 +211,7 @@ export const threadsSystem = setup({
           type: 'THREAD_CONNECTED',
           data: {
             ...repository.threadQueries.connectedData(),
-            settings: repository.settingsQueries.getPluginSettings(ref('threads')) ?? null,
+            settings: services.settings.forFeature<ThreadsSettings>(ref('threads')) ?? null,
           },
         });
         // Also refresh archived threads list so the change is visible immediately
@@ -260,7 +261,7 @@ export const threadsSystem = setup({
     },
     handleSettingsUpdate: ({ system, event }) => {
       const firstStatusLabel = (): string | undefined =>
-        repository.settingsQueries.getPluginSettings(ref('threads'))?.statuses?.[0]?.label;
+        services.settings.forFeature<ThreadsSettings>(ref('threads'))?.statuses?.[0]?.label;
 
       const { changes } = threadsSpec.typeOf('FEATURE_SETTINGS_UPDATED', event);
 
@@ -310,7 +311,7 @@ export const threadsSystem = setup({
                 type: 'THREAD_CONNECTED',
                 data: {
                   ...repository.threadQueries.connectedData(),
-                  settings: repository.settingsQueries.getPluginSettings(ref('threads')) ?? null,
+                  settings: services.settings.forFeature<ThreadsSettings>(ref('threads')) ?? null,
                 },
               });
           }
@@ -339,7 +340,7 @@ export const threadsSystem = setup({
         type: 'THREAD_CONNECTED',
         data: {
           ...repository.threadQueries.connectedData(),
-          settings: repository.settingsQueries.getPluginSettings(ref('threads')) ?? null,
+          settings: services.settings.forFeature<ThreadsSettings>(ref('threads')) ?? null,
         },
       });
     },
@@ -405,7 +406,7 @@ export const threadsSystem = setup({
         });
 
         const connectedData = repository.threadQueries.connectedData();
-        const threadsSettings = repository.settingsQueries.getPluginSettings(ref('threads'));
+        const threadsSettings = services.settings.forFeature<ThreadsSettings>(ref('threads'));
 
         sendToPlugin('threads', {
           type: 'THREAD_CONNECTED',
@@ -427,10 +428,10 @@ export const threadsSystem = setup({
     checkOnboarding: ({ system }) => {
       if (!services.appData.hasOnboarded() && !birthFlowStarted) {
         birthFlowStarted = true;
-        const assistantSettings = repository.settingsQueries.getAssistantSettings();
+        const assistantSettings = services.settings.getSection<AssistantSettings>('assistant');
         if (!assistantSettings.birthdate) {
           const birthdate = new Date().toISOString();
-          repository.settingsCommands.updateSettings('assistant', null, ['birthdate'], birthdate);
+          services.settings.setInSection('assistant', ['birthdate'], birthdate);
           logger.info('Assistant birthdate set', { birthdate });
         }
         sendToSystem('brain', {
@@ -441,11 +442,11 @@ export const threadsSystem = setup({
       }
     },
     startBirthFlow: ({ system }) => {
-      const assistantSettings = repository.settingsQueries.getAssistantSettings();
+      const assistantSettings = services.settings.getSection<AssistantSettings>('assistant');
 
       if (!assistantSettings.birthdate) {
         const birthdate = new Date().toISOString();
-        repository.settingsCommands.updateSettings('assistant', null, ['birthdate'], birthdate);
+        services.settings.setInSection('assistant', ['birthdate'], birthdate);
         logger.info('Assistant birthdate set', { birthdate });
       }
 

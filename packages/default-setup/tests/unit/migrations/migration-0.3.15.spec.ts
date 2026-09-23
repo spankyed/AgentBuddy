@@ -4,6 +4,7 @@
 // settings' copies of the root flow and of the flow the brain runs are dropped: the role and the brain own them. Link
 // blocks, which named this pack's plugins by bare id, name their refs, and a link to a plugin since removed is dropped. And 0.3.14 stored every default as if the user had chosen it:
 // what still equals 0.3.14's default is dropped, so today's defaults apply.
+import { services } from '@/__generated__/services';
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { tx, untypedQx } from '@abuddy/ears'
 import type { EARS as SdkEARS } from '@abuddy/sdk'
@@ -95,8 +96,8 @@ describe('the 0.3.15 migration', () => {
     expect(attrs(row.id).seededFields).toEqual({ fields: ['title'], hash: 'kept' })
   })
 
-  const excludedSources = () => (repository.settingsQueries.getPluginSettings(ref('logs')) as any).excludedSources
-  const setExcludedSources = (value: string[]) => repository.settingsCommands.updatePluginSetting(ref('logs'), ['excludedSources'], value)
+  const excludedSources = () => (services.settings.forFeature(ref('logs')) as any).excludedSources
+  const setExcludedSources = (value: string[]) => services.settings.setForFeature(ref('logs'), ['excludedSources'], value)
 
   it('hides action logs for a user who hid log-service', () => {
     createDefaultSettings()
@@ -173,7 +174,7 @@ describe('the 0.3.15 migration', () => {
       migration.up()
       expect(stored()).toEqual(USER_CHANGES)
 
-      const replace = vi.spyOn(repository.settingsCommands, 'replaceSettings')
+      const replace = vi.spyOn(services.settings, 'replaceAll')
       migration.up()
       expect(stored()).toEqual(USER_CHANGES)
       // Not even a write of the same settings, which would tell every feature its settings changed
@@ -183,7 +184,7 @@ describe('the 0.3.15 migration', () => {
     // A thrown migration would stop every later migration and the seeds on every boot
     it('leaves the row as it was when the settings refuse the pruned copy', () => {
       rowOf0314(withUserChanges)
-      const replace = vi.spyOn(repository.settingsCommands, 'replaceSettings').mockImplementation(() => {
+      const replace = vi.spyOn(services.settings, 'replaceAll').mockImplementation(() => {
         throw new Error('refused')
       })
 
@@ -196,7 +197,7 @@ describe('the 0.3.15 migration', () => {
       rowOf0314(() => {})
       // What the migration itself keeps, before the settings drop what equals today's defaults too: nothing, not even
       // a 0.3.14 default copied to the key it moved to
-      const replace = vi.spyOn(repository.settingsCommands, 'replaceSettings')
+      const replace = vi.spyOn(services.settings, 'replaceAll')
 
       migration.up()
 
@@ -215,7 +216,7 @@ describe('the 0.3.15 migration', () => {
       })
 
       // What the migration itself keeps, before the settings drop what equals today's defaults too
-      const replace = vi.spyOn(repository.settingsCommands, 'replaceSettings')
+      const replace = vi.spyOn(services.settings, 'replaceAll')
       migration.up()
 
       const kept = { plugins: { 'default-setup/code': { hotkeys: { openTerminalTab: { modifiers: ['shift', 'ctrl'] } } } } }
@@ -265,7 +266,7 @@ describe('the 0.3.15 migration', () => {
       migration.up()
 
       // The user's `true` is today's default, so the settings keep it as the default rather than storing it
-      expect((repository.settingsQueries.getPluginSettings(ref('browser')) as any).openLinksInApp).toBe(true)
+      expect((services.settings.forFeature(ref('browser')) as any).openLinksInApp).toBe(true)
       expect(stored()).toEqual({})
     })
   })

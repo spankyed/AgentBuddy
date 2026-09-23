@@ -83,8 +83,8 @@ describe('a feature whose settings change', () => {
     const app = await startApp({ systems: ['settings', 'memo-pack/memos'] });
     await app.connect();
 
-    (services.settings as { updatePluginSetting(plugin: string, path: string[], value: unknown): void })
-      .updatePluginSetting('memo-pack/memos', ['tags'], [{ name: 'd' }]);
+    (services.settings as { setForFeature(plugin: string, path: string[], value: unknown): void })
+      .setForFeature('memo-pack/memos', ['tags'], [{ name: 'd' }]);
     await app.settle();
 
     expect(heardBy(app).map((e) => e.settings)).toEqual([{ tags: [{ name: 'd' }] }]);

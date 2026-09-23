@@ -1,3 +1,4 @@
+import type { GeneralSettings } from '@/__generated__/types';
 import type { ActionMeta } from '@abuddy/sdk/build';
 import type { EntityId, Services } from '@/__generated__/services';
 import { getOnboardingState, persistOnboardingState, showChooseModeOrFinish, flashState, getRecentImportedThreads } from '../onboarding-helpers';
@@ -68,7 +69,7 @@ export async function action(
 
 async function importSelectedSessions(services: Services, providers: { cc: boolean; codex: boolean }) {
   try {
-    const projects = services.repository.settingsQueries.getSettings().general.projects ?? [];
+    const projects = services.settings.getSection<GeneralSettings>('general').projects ?? [];
     const selectedDirs = new Set((projects as any[]).flatMap((p: any) => p.directories ?? []));
 
     // Build dedup sets from existing threads

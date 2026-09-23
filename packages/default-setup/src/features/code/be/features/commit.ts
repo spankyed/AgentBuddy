@@ -1,3 +1,5 @@
+import type { ThreadsSettings } from '@/__generated__/types';
+import { services } from '@/__generated__/services';
 import { sendToPlugin, sendToSystem } from '@/__generated__/events';
 import { assign, setup, type AnyActorRef } from 'xstate'
 
@@ -537,7 +539,7 @@ export const commitSystem = setup({
         const repoDir = context.gitRepository!.getWorkingDir()
         const repoName = repoDir.split('/').pop() || ''
 
-        const threadsSettings = repository.settingsQueries.getPluginSettings(ref('threads')) as any
+        const threadsSettings = services.settings.forFeature<ThreadsSettings>(ref('threads')) as any
         const provider = threadsSettings?.chat?.defaultMode || 'Claude Code'
 
         sendToSystem({ role: 'brain' }, { type: 'TRIGGER_BRAIN_EVENT', 

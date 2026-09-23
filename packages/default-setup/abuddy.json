@@ -232,9 +232,6 @@
       "plugin": {
         "entry": "src/features/settings/fe/plugin.ts"
       },
-      "services": {
-        "settings": "src/features/settings/be/services/settings.ts#settingsService"
-      },
       "repositories": {
         "settingsQueries": "src/features/settings/be/repository/index.ts#settingsQueries",
         "settingsCommands": "src/features/settings/be/repository/index.ts#settingsCommands"
@@ -242,8 +239,14 @@
     }
   ],
   "commands": [
-    { "name": "pr2md", "placeholder": "PR number or GitHub URL (optional)" },
-    { "name": "instructions", "placeholder": "Thread instructions text" }
+    {
+      "name": "pr2md",
+      "placeholder": "PR number or GitHub URL (optional)"
+    },
+    {
+      "name": "instructions",
+      "placeholder": "Thread instructions text"
+    }
   ],
   "boot": {
     "hooks": "src/features/hooks.ts",
@@ -546,5 +549,6 @@
         "revokeRole": "typeof _dsl.revokeRole"
       }
     }
-  }
+  },
+  "settingsSections": "src/features/settings/sections.ts#settingsSections"
 }

@@ -21,7 +21,7 @@ export function getDefaultSettings(): SettingsData {
   return _resolved.data;
 }
 
-function getBaseSettings(): SettingsData {
+export function getBaseSettings(): SettingsData {
   if (!_base) {
     const settingsPath = seedPath(getCompiledDir(), 'settings');
     let record: SettingsSeedRecord | undefined;

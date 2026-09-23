@@ -26,7 +26,7 @@ describe('registries/services — feature services assembly', () => {
 
     const expectedKeys = [
       'database', 'prompt', 'action', 'library',
-      'settings', 'chat', 'artifact', 'brain',
+      'chat', 'artifact', 'brain',
       'cli', 'threads', 'codex',
     ];
 

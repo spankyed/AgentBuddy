@@ -63,19 +63,19 @@ describe('services.settings', () => {
     onTestFinished(() => unregisterPack('memo-pack'));
     await startApp({ systems: [] });
 
-    services.settings.updatePluginSetting('memo-pack/memos', ['sort'], 'oldest');
+    services.settings.setForFeature('memo-pack/memos', ['sort'], 'oldest');
 
     expect(stored()).toEqual({ 'memo-pack/memos': { sort: 'oldest' } });
-    expect(services.settings.getPluginSettings('memo-pack/memos')).toEqual({ sort: 'oldest' });
+    expect(services.settings.forFeature('memo-pack/memos')).toEqual({ sort: 'oldest' });
   });
 
   it('refuses a bare name, and writes nothing', async () => {
     await startApp({ systems: [] });
 
     // @ts-expect-error a plugin's settings are keyed by its ref
-    expect(() => services.settings.updatePluginSetting('threads', ['sort'], 'oldest')).toThrow('did you mean "default-setup/threads"?');
+    expect(() => services.settings.setForFeature('threads', ['sort'], 'oldest')).toThrow('did you mean "default-setup/threads"?');
     // @ts-expect-error a plugin's settings are keyed by its ref
-    expect(() => services.settings.getPluginSettings('threads')).toThrow('did you mean "default-setup/threads"?');
+    expect(() => services.settings.forFeature('threads')).toThrow('did you mean "default-setup/threads"?');
     expect(stored()).toBeUndefined();
   });
 });

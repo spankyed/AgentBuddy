@@ -139,6 +139,7 @@ export interface PackRegistration {
     seedHooks?: Record<string, SeedHooks>;
     // (undocumented)
     services?: Record<string, unknown>;
+    settingsSections?: () => Record<string, unknown>;
     // (undocumented)
     steps?: StepDefinition[];
 }
@@ -159,9 +160,9 @@ export interface PackSeedManifest {
 export interface PackSettingsDefaults {
     // (undocumented)
     revision: number;
-    // (undocumented)
     settings: {
         plugins: Record<string, unknown>;
+        [section: string]: unknown;
     };
     // (undocumented)
     visibility: Record<string, boolean>;

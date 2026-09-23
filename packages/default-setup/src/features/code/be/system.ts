@@ -14,6 +14,8 @@
  * Priority on startup:
  *   baseDirectory > defaultBaseDirectory > first workspace project > null
  */
+import type { GeneralSettings } from '@/__generated__/types';
+import { services } from '@/__generated__/services';
 import { sendToPlugin } from '@/__generated__/events';
 import { setup, enqueueActions, assign, type AnyActorRef } from 'xstate'
 
@@ -173,7 +175,7 @@ export const systemMachine = setup({
         // Save to navigation history only when triggered by user navigation
         // (not when applying settings like defaultBaseDirectory)
         if (ev.fromUserNavigation !== false) {
-          repository.settingsCommands.updatePluginSetting(ref('code'), ['baseDirectory'], ev.path)
+          services.settings.setForFeature(ref('code'), ['baseDirectory'], ev.path)
         }
         return ev.path
       },
@@ -184,7 +186,7 @@ export const systemMachine = setup({
           context.gitRepository.clearCache()
         }
         const repo = new GitRepository(ev.path)
-        const codeSettings = repository.settingsQueries.getPluginSettings(ref('code')) as CodeSettings
+        const codeSettings = services.settings.forFeature(ref('code')) as CodeSettings
         repo.setFetchConfig(
           codeSettings?.autoFetchRemote ?? false,
           codeSettings?.autoFetchIntervalSeconds ?? 180
@@ -263,7 +265,7 @@ export const systemMachine = setup({
       child(self, 'codePrompts')?.send({ type: 'CODE_CONNECTED' });
 
       // Get code settings - this will create default settings if they don't exist
-      const codeSettings = repository.settingsQueries.getPluginSettings(ref('code')) as CodeSettings;
+      const codeSettings = services.settings.forFeature(ref('code')) as CodeSettings;
 
       // Send initial directory state to frontend
       const connectedData: CodeConnectedData = {
@@ -324,8 +326,8 @@ export const systemMachine = setup({
   id: 'code',
   initial: 'idle',
   context: () => {
-    const codeSettings = repository.settingsQueries.getPluginSettings(ref('code')) as CodeSettings
-    const projects = repository.settingsQueries.getGeneralSettings('projects')
+    const codeSettings = services.settings.forFeature(ref('code')) as CodeSettings
+    const projects = services.settings.getSection<GeneralSettings>('general').projects
 
     // Resolve initial directory using priority chain
     const baseDir = resolveInitialDirectory(codeSettings, projects)

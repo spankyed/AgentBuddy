@@ -1,4 +1,5 @@
 // [SEARCH_INDEX_FF] The search index is dormant: ./search-index/README.md lists its call sites and how to turn it on
+import { services } from '@/__generated__/services';
 import { setup } from 'xstate'
 import { defineSystem, type SystemEntry } from '@abuddy/sdk/framework'
 import type { EARS } from '@/__generated__/ears'
@@ -215,7 +216,7 @@ export const librarySystem = setup({
       repository.libraryCommands.migrateDocumentShortCodes()
       repository.libraryCommands.migrateDisplayOrders()
 
-      const librarySettings = repository.settingsQueries.getPluginSettings(ref('library'))
+      const librarySettings = services.settings.forFeature(ref('library'))
 
       sendToPlugin('library', {
           type: 'LIBRARY_CONNECTED' as const,
@@ -397,7 +398,7 @@ export const librarySystem = setup({
           })
 
         // Refresh library data
-        const librarySettings = repository.settingsQueries.getPluginSettings(ref('library'))
+        const librarySettings = services.settings.forFeature(ref('library'))
 
         sendToPlugin('library', {
             type: 'LIBRARY_CONNECTED' as const,

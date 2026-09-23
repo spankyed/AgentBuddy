@@ -1,3 +1,4 @@
+import type { BrainSettings } from '@/__generated__/types';
 import { sendToPlugin } from '@/__generated__/events';
 import { assign, setup, enqueueActions, raise } from 'xstate';
 import { defineSystem, type SystemEntry } from '@abuddy/sdk/framework';
@@ -324,7 +325,7 @@ export const brainSystem = setup({
       // Restore inspect state from persisted settings. Default ON in dev so
       // switch/action/flow transitions are visible out of the box; the
       // persisted setting wins once the user has toggled it.
-      const brainSettings = repository.settingsQueries.getPluginSettings(ref('brain'));
+      const brainSettings = services.settings.forFeature<BrainSettings>(ref('brain'));
       const inspectEnabled = brainSettings?.inspectEnabled ?? (process.env.NODE_ENV !== 'production');
       setDebugEnabled('brain', inspectEnabled);
       sendToPlugin('brain', { type: 'INSPECT_TOGGLED', enabled: inspectEnabled });
@@ -382,7 +383,7 @@ export const brainSystem = setup({
       setDebugEnabled('brain', newState);
 
       // Persist to settings DB
-      repository.settingsCommands.updatePluginSetting(ref('brain'), ['inspectEnabled'], newState);
+      services.settings.setForFeature(ref('brain'), ['inspectEnabled'], newState);
 
       // Send confirmation back to frontend
       sendToPlugin('brain', {

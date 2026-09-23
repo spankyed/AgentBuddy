@@ -84,6 +84,7 @@ export interface HostRuntimeServices {
     filesystem: FilesystemService;
     inference: InferenceService;
     secrets: SecretsService;
+    settings: SettingsService;
     traceStore: TraceStore;
 }
 

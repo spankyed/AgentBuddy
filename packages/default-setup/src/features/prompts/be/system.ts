@@ -1,3 +1,5 @@
+import type { PromptsSettings } from '@/__generated__/types';
+import { services } from '@/__generated__/services';
 import { sendToPlugin } from '@/__generated__/events';
 import { setup } from 'xstate';
 import { defineSystem, type SystemEntry } from '@abuddy/sdk/framework';
@@ -44,7 +46,7 @@ export const promptsSystem = setup({
   actions: {
     sendPromptsConnectedData: ({ system }) => {
       const connectedData = repository.promptQueries.connectedData();
-      const promptsSettings = repository.settingsQueries.getPluginSettings(ref('prompts'));
+      const promptsSettings = services.settings.forFeature<PromptsSettings>(ref('prompts'));
       
       sendToPlugin('prompts', { 
         type: 'PROMPTS_CONNECTED',
@@ -197,7 +199,7 @@ export const promptsSystem = setup({
 
       // Refresh the full prompts list
       const connectedData = repository.promptQueries.connectedData();
-      const promptsSettings = repository.settingsQueries.getPluginSettings(ref('prompts'));
+      const promptsSettings = services.settings.forFeature<PromptsSettings>(ref('prompts'));
       sendToPlugin(pluginId, {
         type: 'PROMPTS_CONNECTED',
         data: {
