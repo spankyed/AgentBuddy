@@ -17,7 +17,7 @@ it("pauses a running Claude Code turn: CC: Pause Turn's event, log entry and thr
   vi.spyOn(console, 'info').mockImplementation(() => {})
   const { id } = repository.threadCommands.create({ topic: 'A running turn', instructions: '' })
   const threadId = id as EARS.EntityId
-  const app = await startApp({ systems: ['brain', 'settings'] })
+  const app = await startApp({ systems: ['brain'] })
   await app.connect()
   // The Claude Code flow's entry track clears run state left over from a previous process: the turn starts after it
   await app.runFlow('Claude Code')

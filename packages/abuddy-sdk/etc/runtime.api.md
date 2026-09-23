@@ -54,6 +54,7 @@ export interface FeHostRuntime {
     client: FeClient;
     packs: FePackRegistryView;
     secrets: SecretsClient;
+    settings: SettingsPort;
 }
 
 // @public

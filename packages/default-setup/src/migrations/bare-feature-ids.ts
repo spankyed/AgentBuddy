@@ -10,7 +10,7 @@ import { ref, type FeatureName } from '@/__generated__/ref';
  * `REMOVED_SINCE_0314`.
  */
 const FEATURES_0314 = [
-  'threads', 'code', 'notes', 'browser', 'library', 'flows', 'actions', 'prompts', 'brain', 'database', 'logs', 'settings',
+  'threads', 'code', 'notes', 'browser', 'library', 'flows', 'actions', 'prompts', 'brain', 'database', 'logs',
 ] as const satisfies readonly FeatureName[];
 
 /**
@@ -19,9 +19,18 @@ const FEATURES_0314 = [
  */
 const REMOVED_SINCE_0314: readonly string[] = ['calendar'];
 
+/**
+ * The 0.3.14 features that are no longer this pack's but still exist, with the ref they run under now. `settings`
+ * became the app's own feature when the settings store moved to @abuddy/host, so a link written then still opens
+ * the same view — at the app's ref rather than this pack's.
+ */
+const MOVED_SINCE_0314: Readonly<Record<string, string>> = { settings: 'host/settings' };
+
 /** This pack's ref for a bare feature id it had in 0.3.14, or undefined for any other name */
 export function refOf0314Feature(name: unknown): string | undefined {
-  return typeof name === 'string' && (FEATURES_0314 as readonly string[]).includes(name) ? ref(name as FeatureName) : undefined;
+  if (typeof name !== 'string') return undefined;
+  if (name in MOVED_SINCE_0314) return MOVED_SINCE_0314[name];
+  return (FEATURES_0314 as readonly string[]).includes(name) ? ref(name as FeatureName) : undefined;
 }
 
 /** A link as a message's link block stores it */

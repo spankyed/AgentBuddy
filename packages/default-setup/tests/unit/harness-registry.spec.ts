@@ -31,7 +31,7 @@ describe("the test file's registry", () => {
 // for its events timing out
 describe('a test app given a plugin name', () => {
   it('refuses one no plugin is registered under', async () => {
-    const app = await startApp({ systems: ['settings'] });
+    const app = await startApp({ systems: [] });
     expect(() => app.emitted('setings')).toThrow('No registered plugin is named "setings" (it would be "default-setup/setings")');
     const started = Date.now();
     await expect(app.nextEmit('setings', 'SETTINGS_LOADED')).rejects.toThrow('No registered plugin is named "setings"');

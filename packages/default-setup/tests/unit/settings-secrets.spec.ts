@@ -9,14 +9,14 @@ import { ref } from '@/__generated__/ref';
 
 describe('settings and stored API keys', () => {
   it('sends its plugin the keys without values when the stored keys change', async () => {
-    const app = await startApp({ systems: ['settings'] });
+    const app = await startApp({ systems: ['host/settings'] });
     await app.connect();
-    expect(app.emitted('settings').filter((e) => e.type === 'SECRETS_UPDATED').at(-1)).toMatchObject({ secrets: [] });
+    expect(app.emitted('host/settings').filter((e) => e.type === 'SECRETS_UPDATED').at(-1)).toMatchObject({ secrets: [] });
 
     const work = addTestSecret('anthropic', 'Work');
-    await app.send('settings', { type: 'SECRETS_CHANGED' });
+    await app.send('host/settings', { type: 'SECRETS_CHANGED' });
 
-    const updated = app.emitted('settings').filter((e) => e.type === 'SECRETS_UPDATED').at(-1)!;
+    const updated = app.emitted('host/settings').filter((e) => e.type === 'SECRETS_UPDATED').at(-1)!;
     expect(updated).toMatchObject({ secrets: [{ id: work.id, provider: 'anthropic', label: 'Work', selected: true }], status: { protection: 'os-keystore' } });
     expect(JSON.stringify(updated)).not.toContain('value');
   });
@@ -24,7 +24,7 @@ describe('settings and stored API keys', () => {
   // The assistant's first flow is the threads feature's, so its trigger is too: the app only says the keys changed,
   // and every system that takes `SECRETS_CHANGED` hears it
   it("starts the birth flow once a required provider has a selected key, and not after the assistant's birth", async () => {
-    const app = await startApp({ systems: ['threads'] });
+    const app = await startApp({ systems: ['threads', 'host/settings'] });
     // Only the events reaching threads matter here: what threads does with them (the birth flow) runs on the brain
     const threads = vi.spyOn(app.system('threads'), 'send');
     await app.connect();
@@ -50,17 +50,17 @@ describe('settings and stored API keys', () => {
   });
 
   it('keeps CLI path overrides in the code plugin settings, cleared from the cache when they change', async () => {
-    const app = await startApp({ systems: ['settings'] });
+    const app = await startApp({ systems: ['host/settings'] });
     await app.connect();
-    await app.send('settings', { type: 'UPDATE_SETTINGS', entityType: 'plugin', label: 'default-setup/code', path: ['cliPaths'], value: { gh: '/opt/bin/gh' } });
-    expect(repository.settingsQueries.getPluginSettings(ref('code'))).toMatchObject({ cliPaths: { gh: '/opt/bin/gh' } });
+    await app.send('host/settings', { type: 'UPDATE_SETTINGS', entityType: 'plugin', label: 'default-setup/code', path: ['cliPaths'], value: { gh: '/opt/bin/gh' } });
+    expect(services.settings.forFeature(ref('code'))).toMatchObject({ cliPaths: { gh: '/opt/bin/gh' } });
   });
 
   // A plugin's settings change reaches that plugin, at the ref the label names
   it('tells the plugin whose settings changed', async () => {
-    const app = await startApp({ systems: ['settings'] });
+    const app = await startApp({ systems: ['host/settings'] });
     await app.connect();
-    await app.send('settings', { type: 'UPDATE_SETTINGS', entityType: 'plugin', label: 'default-setup/code', path: ['mdEditorDefault'], value: false });
+    await app.send('host/settings', { type: 'UPDATE_SETTINGS', entityType: 'plugin', label: 'default-setup/code', path: ['mdEditorDefault'], value: false });
     const updated = await app.nextEmit('code', 'FEATURE_SETTINGS_UPDATED');
     expect(updated).toMatchObject({ type: 'FEATURE_SETTINGS_UPDATED', settings: { mdEditorDefault: false } });
   });
@@ -68,15 +68,15 @@ describe('settings and stored API keys', () => {
   // The frontend resolves a plugin's name to its address before sending; a bare label reaching the system
   // would be written under a key no plugin reads, so it is reported and nothing is saved
   it('refuses plugin settings labelled with a bare name, saving nothing', async () => {
-    const app = await startApp({ systems: ['settings'] });
+    const app = await startApp({ systems: ['host/settings'] });
     await app.connect();
-    await app.send('settings', { type: 'UPDATE_SETTINGS', entityType: 'plugin', label: 'code', path: ['cliPaths'], value: { gh: '/elsewhere/gh' } });
+    await app.send('host/settings', { type: 'UPDATE_SETTINGS', entityType: 'plugin', label: 'code', path: ['cliPaths'], value: { gh: '/elsewhere/gh' } });
     // The sender's mistake to fix, which its form shows: not a system error
-    expect(app.emitted('default-setup/settings')).toContainEqual({
+    expect(app.emitted('host/settings')).toContainEqual({
       type: 'SETTINGS_REFUSED',
       problems: [expect.stringContaining('did you mean "default-setup/code"?')],
     });
     expect(takeSystemErrors()).toEqual([]);
-    expect(repository.settingsQueries.getPluginSettings(ref('code'))).not.toMatchObject({ cliPaths: { gh: '/elsewhere/gh' } });
+    expect(services.settings.forFeature(ref('code'))).not.toMatchObject({ cliPaths: { gh: '/elsewhere/gh' } });
   });
 });

@@ -416,7 +416,7 @@ describe('generated ref', () => {
       { 'base-pack': dependency({ features: [{ id: 'threads', plugin: { entry: 'x' } }, { id: 'worker', system: { entry: 'y' } }] }) },
     );
     expect(files['src/__generated__/ref.ts']).toContain(
-      "export type FeatureName = 'notes' | 'jobs' | 'base-pack/threads' | 'base-pack/worker' | 'host/application' | 'host/bus';",
+      "export type FeatureName = 'notes' | 'jobs' | 'base-pack/threads' | 'base-pack/worker' | 'host/application' | 'host/settings' | 'host/bus';",
     );
     expect(files['src/__generated__/ref.ts']).toContain('export const ref = (name: FeatureName): FeatureRef');
   });

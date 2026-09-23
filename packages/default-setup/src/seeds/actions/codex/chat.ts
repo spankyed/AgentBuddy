@@ -5,7 +5,7 @@
  * The action returns immediately; notifications stream via callbacks.
  */
 
-import type { GeneralSettings } from '@/__generated__/types';
+import type { GeneralSettings } from '@/app-settings/types';
 import type { ActionMeta } from '@abuddy/sdk/build';
 import type { Services, Z, EntityId } from '@/__generated__/services';
 import { createStreamWriter } from '../claude-code/_helpers/stream-writer';

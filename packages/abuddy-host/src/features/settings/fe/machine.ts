@@ -1,3 +1,4 @@
+import { HOST } from '../../../refs.ts';
 import { assign, enqueueActions, setup, type ActorRefFrom } from 'xstate'
 import breadcrumb, { breadcrumbWithParams } from '@abuddy/sdk/fe'
 import { safeEvents } from '@abuddy/sdk/fe'
@@ -6,23 +7,22 @@ import {
   TRAIL_CLICK,
   type TrailClickEvent,
 } from '@abuddy/sdk/fe'
-import type { SettingsData, GeneralSettings, PersonalInfo, PluginSettings } from '@/__generated__/types'
-import type { OutgoingSettingsEvents } from '@/features/settings/be/system'
+import type { SettingsDocument } from '../be/store.ts'
+import type { OutgoingSettingsEvents } from '../be/system.ts'
 import type { SecretInfo, SecretsStatus } from '@abuddy/sdk/services'
-import { sendToSystem } from '@/__generated__/events'
+import { sendToSystem } from '@abuddy/sdk/events'
 import type { ApplicationHotkeys } from '@abuddy/sdk/types'
 import type { EARS } from '@abuddy/sdk'
 import type { PackSeedsPreview } from '@abuddy/sdk/build'
-import type { FAQItem } from '@/features/settings/be/types';
+import type { HelpEntry } from '@abuddy/sdk/framework';
 import type { FeatureRef } from '@abuddy/sdk/ids';
-import { settingsPlugin } from './public';
+
 import { splitRef } from '@abuddy/sdk/ids';
 
 /* ─────────────────────────────────────────────────────────── */
 /* Machine Types                                               */
 /* ─────────────────────────────────────────────────────────── */
 export const id = 'settings' as const;
-export type SettingsState = ActorRefFrom<typeof settingsState>
 
 // Use backend types directly
 
@@ -67,8 +67,8 @@ export interface SettingsSave {
 }
 
 export interface SettingsContext {
-  settings: SettingsData | null;
-  faqs: FAQItem[];
+  settings: SettingsDocument | null;
+  help: HelpEntry[];
   /** The stored API keys, without values */
   secrets: SecretInfo[];
   secretsStatus: SecretsStatus | null;
@@ -117,7 +117,16 @@ export type SettingsEvents = UIEvent | OutgoingSettingsEvents | TrailClickEvent
   | { type: 'CLI_TEST_RESULT'; provider: string; success: boolean; error?: string; resolvedPath?: string }
 const typeOf = safeEvents<SettingsEvents>()
 
-const settingsState = setup({
+/** The two acts only a window can do, which this machine asks for rather than reaching a browser global */
+export interface SettingsIO {
+  /** Start the app over, once a reset has finished */
+  restart(): void;
+  /** Tell the user something went wrong */
+  report(message: string): void;
+}
+
+function buildSettingsMachine(io: SettingsIO) {
+  return setup({
   types: {
     context: {} as SettingsContext,
     events: {} as SettingsEvents,
@@ -125,7 +134,7 @@ const settingsState = setup({
   actions: {
     /* ── bootstrap ─────────────────────────────────────── */
     loadSettings: () => {
-      sendToSystem(id, {
+      sendToSystem(HOST.settings, {
         type: 'GET_SETTINGS',
       });
     },
@@ -134,7 +143,7 @@ const settingsState = setup({
       const ev = typeOf('SETTINGS_LOADED', event);
       return {
         settings: ev.data,
-        faqs: ev.faqs ?? [],
+        help: ev.help ?? [],
         isLoading: false,
       };
     }),
@@ -184,7 +193,7 @@ const settingsState = setup({
 
     sendUpdate: ({ event }) => {
       const ev = typeOf('SETTINGS.UPDATE', event);
-      sendToSystem(id, {
+      sendToSystem(HOST.settings, {
         type: 'UPDATE_SETTINGS',
         entityType: ev.entityType,
         label: ev.label,
@@ -196,7 +205,7 @@ const settingsState = setup({
     replaceSettings: enqueueActions(({ event, enqueue }) => {
       const { data } = typeOf('SETTINGS.REPLACE', event)
       enqueue.assign({ save: { status: 'saving', problems: [] } })
-      enqueue(() => sendToSystem(id, { type: 'REPLACE_SETTINGS', data }))
+      enqueue(() => sendToSystem(HOST.settings, { type: 'REPLACE_SETTINGS', data }))
     }),
 
     settingsSaved: assign({ save: { status: 'saved', problems: [] } }),
@@ -206,7 +215,7 @@ const settingsState = setup({
     })),
 
     resetSettings: () => {
-      sendToSystem(id, {
+      sendToSystem(HOST.settings, {
         type: 'RESET_SETTINGS',
       });
     },
@@ -214,7 +223,7 @@ const settingsState = setup({
     testCliProvider: assign(({ context, event }) => {
       const ev = typeOf('CLI.TEST', event);
       // The code feature resolves CLIs: `resolve-cli` and the stored paths are its own
-      sendToSystem('code', {
+      sendToSystem({ role: 'code' }, {
         type: 'TEST_CLI_PROVIDER',
         provider: ev.provider,
       });
@@ -239,7 +248,7 @@ const settingsState = setup({
 
     previewPackSeeds: assign(({ context, event }) => {
       const ev = event as { type: 'PACK_SEEDS.PREVIEW'; directory: string };
-      sendToSystem(id, {
+      sendToSystem(HOST.settings, {
         type: 'PREVIEW_PACK_SEEDS',
         directory: ev.directory,
       });
@@ -350,7 +359,7 @@ const settingsState = setup({
         return selected.length === total ? null : selected;
       };
 
-      sendToSystem(id, {
+      sendToSystem(HOST.settings, {
         type: 'IMPORT_PACK_SEEDS',
         directory,
         include: Object.fromEntries(Object.keys(preview.seeds).map((key) => [key, toIncludeField(key)])),
@@ -403,13 +412,13 @@ const settingsState = setup({
       packSeedsImport: freshPackSeeds(),
     })),
   },
-}).createMachine({
+  }).createMachine({
   id,
-  entry: ({ self }) => settingsPlugin.bind(self),
+  
   initial: 'loading',
   context: () => ({
     settings: null,
-    faqs: [],
+    help: [],
     secrets: [],
     secretsStatus: null,
     cliTestResults: {},
@@ -530,30 +539,30 @@ const settingsState = setup({
           actions: [
             assign({ resetting: true }),
             () => {
-              sendToSystem(id, { type: 'RESET_APP' });
+              sendToSystem(HOST.settings, { type: 'RESET_APP' });
             },
           ],
         },
         APP_RESET_COMPLETE: {
-          actions: () => {
-            if (window.electronAPI?.apiStatus?.relaunch) {
-              window.electronAPI.apiStatus.relaunch();
-            } else {
-              window.location.reload(); // Fallback for dev/browser
-            }
-          },
+          // Starting over is the window's act, not this machine's
+          actions: () => io.restart(),
         },
         APP_RESET_FAILED: {
           actions: [
             assign({ resetting: false }),
-            ({ event }: { event: any }) => {
-              window.alert(`Reset failed: ${event.error}`);
-            },
+            ({ event }: { event: any }) => io.report(`Reset failed: ${event.error}`),
           ],
         },
       },
     },
-  },
-});
+    },
+  });
+}
 
-export default settingsState;
+/**
+ * The Settings plugin's machine, over the two acts only a window can do: starting the app over once a reset has
+ * finished, and telling the user a reset failed. The renderer passes the window's; a test passes fakes.
+ */
+export const createSettingsMachine = buildSettingsMachine;
+
+export type SettingsState = ActorRefFrom<ReturnType<typeof createSettingsMachine>>;

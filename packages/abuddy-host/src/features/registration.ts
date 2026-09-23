@@ -6,6 +6,7 @@ import type { PackFeatureSystem, PackRegistration } from '@abuddy/sdk/framework'
 import { HOST_PACK_ID, splitRef, type FeatureRef } from '@abuddy/sdk/ids';
 import { HOST } from '../refs.ts';
 import type { PackInfo } from '../packs/registry.ts';
+import { SETTINGS_PLUGIN_EVENT_TYPES } from './settings/be/system.ts';
 
 /** What the host `packs` system sends its plugin */
 export type OutgoingPacksEvents =
@@ -43,12 +44,15 @@ export const PACKS_PLUGIN_EVENT_TYPES = eventTypes<OutgoingPacksEvents>()(
 const featureIdOf = (ref: FeatureRef) => splitRef(ref)!.featureId;
 
 /** The host's registration: its plugins, and the systems in `systems` */
-export function hostRegistration(systems: { application?: PackFeatureSystem; packs?: PackFeatureSystem } = {}): PackRegistration {
+export function hostRegistration(systems: { application?: PackFeatureSystem; packs?: PackFeatureSystem; settings?: PackFeatureSystem } = {}): PackRegistration {
   return {
     id: HOST_PACK_ID,
     features: {
       [featureIdOf(HOST.application)]: { ...(systems.application && { system: systems.application }), plugin: { receives: HOST_PLUGIN_EVENT_TYPES['host/application'] } },
       [featureIdOf(HOST.packs)]: { ...(systems.packs && { system: systems.packs }), plugin: { receives: PACKS_PLUGIN_EVENT_TYPES } },
+      // The app's settings: the store's system, and the Settings view the renderer draws. It takes what its own
+      // system sends, and what a pack may send it (`HOST_PLUGIN_EVENT_TYPES`): only that pack can find those out.
+      [featureIdOf(HOST.settings)]: { ...(systems.settings && { system: systems.settings }), designation: 'settings', plugin: { receives: [...SETTINGS_PLUGIN_EVENT_TYPES, ...HOST_PLUGIN_EVENT_TYPES['host/settings']] } },
     },
   };
 }

@@ -1,7 +1,7 @@
 import { computed, type Ref } from 'vue'
 import { GitCommitHorizontal, Archive, GitFork } from 'lucide-vue-next'
 import { useContextMenu, type MenuItem } from '@abuddy/ui/composables/useContextMenu'
-import { useSettingsSaveStatus } from '@/features/settings/fe/public'
+import { useSettingsSave } from '@abuddy/sdk/fe'
 import type { CodeSettings } from '@/__generated__/types'
 import { ref } from '@/__generated__/ref'
 
@@ -9,13 +9,13 @@ type SectionKey = 'showCommits' | 'showStashes' | 'showWorktrees'
 
 export function useSectionVisibilityMenu(codeSettings: Ref<CodeSettings | undefined>) {
   const { showMenu, menuPos, open } = useContextMenu()
-  const { updateSettings } = useSettingsSaveStatus()
+  const { update: updateSettings } = useSettingsSave()
 
   const isVisible = (key: SectionKey) =>
     key === 'showCommits' ? codeSettings.value?.showCommits !== false : !!codeSettings.value?.[key]
 
   const toggle = (key: SectionKey) => {
-    updateSettings({ entityType: 'plugin', label: ref('code'), path: [key], value: !isVisible(key) })
+    updateSettings({ feature: ref('code') }, [key], !isVisible(key))
   }
 
   const sectionMenuItems = computed<MenuItem[]>(() =>

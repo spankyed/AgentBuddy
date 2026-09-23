@@ -15,7 +15,8 @@ beforeEach(() => {
     system: { get: () => undefined },
     subscribe: () => ({ unsubscribe() {} }),
   };
-  bindFeHost({ application: application as never, secrets: {} as never, client: { send() {} }, packs: {} as never });
+  bindFeHost({ application: application as never, secrets: {} as never,
+    settings: {} as never, client: { send() {} }, packs: {} as never });
 });
 
 afterEach(() => unbindFeHost());

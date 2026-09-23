@@ -26,7 +26,7 @@ function switchFlow(label: string, switchStep: DSLStepNode): string {
 
 /** Starts the app, whose brain runs the root flow, and sends it a `command` */
 async function runCommand(flow: string, data: Record<string, unknown>): Promise<FlowRun> {
-  const app = await startApp({ systems: ['brain', 'settings'] })
+  const app = await startApp({ systems: ['brain'] })
   return app.runFlow(flow, { event: 'command', data })
 }
 

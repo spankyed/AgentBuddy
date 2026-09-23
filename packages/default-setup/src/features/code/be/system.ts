@@ -14,7 +14,7 @@
  * Priority on startup:
  *   baseDirectory > defaultBaseDirectory > first workspace project > null
  */
-import type { GeneralSettings } from '@/__generated__/types';
+import type { GeneralSettings } from '@/app-settings/types';
 import { services } from '@/__generated__/services';
 import { sendToPlugin } from '@/__generated__/events';
 import { clearCliPathCache, isCliName, testCli } from './utils/resolve-cli';
@@ -246,7 +246,7 @@ export const systemMachine = setup({
     testCliProvider: ({ event }) => {
       const { provider } = event as { type: 'TEST_CLI_PROVIDER'; provider: string };
       const answer = (result: { success: boolean; error?: string; resolvedPath?: string }) =>
-        sendToPlugin('settings', { type: 'CLI_TEST_RESULT', provider, ...result });
+        sendToPlugin('host/settings', { type: 'CLI_TEST_RESULT', provider, ...result });
 
       if (!isCliName(provider)) return answer({ success: false, error: `Unknown CLI provider: ${provider}` });
 

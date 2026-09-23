@@ -18,7 +18,7 @@ describe("the pack's boot hooks", () => {
   it('run once for the apps a test runs together', async () => {
     const before = journal.timesOpened;
     const memosApp = await startApp({ systems: ['memos'] });
-    const settingsApp = await startApp({ systems: ['default-setup/settings'] });
+    const settingsApp = await startApp({ systems: ['host/settings'] });
     expect(journal.timesOpened).toBe(before + 1);
 
     memosApp.stop();

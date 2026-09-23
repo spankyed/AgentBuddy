@@ -57,9 +57,9 @@ import { ref } from 'vue'
 import { ChevronDown } from 'lucide-vue-next'
 import { useSelector } from '@xstate/vue'
 import TiptapEditor from '@abuddy/ui/components/tiptap/TiptapEditor'
-import { DISCORD_URL, MEMORIAL_URL } from '../../../constants'
+import { DISCORD_URL, MEMORIAL_URL } from '@/views/settings/constants'
 import { openLink, usePlugin } from '@abuddy/sdk/fe'
-import type { FAQItem } from '@/features/settings/be/types'
+import type { HelpEntry } from '@abuddy/sdk/framework'
 
 function openDiscordLink() {
   openLink(DISCORD_URL)
@@ -70,7 +70,7 @@ function openMemorialLink() {
 }
 
 const settingsActor = usePlugin()
-const faqItems = useSelector(settingsActor, (state: any): FAQItem[] => state.context.faqs ?? [])
+const faqItems = useSelector(settingsActor, (state: any): HelpEntry[] => state.context.faqs ?? [])
 
 const expandedItems = ref<number[]>([])
 

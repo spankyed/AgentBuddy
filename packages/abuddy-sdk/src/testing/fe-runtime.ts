@@ -46,6 +46,7 @@ export function startFeTestRuntime(options: FeTestRuntimeOptions = {}): () => vo
   bindFeHost({
     application: options.application ?? noShell,
     secrets: options.secrets ?? ({} as never),
+    settings: options.settings ?? ({} as never),
     client: options.client ?? ({} as never),
     packs: options.packs ?? noFrontends,
   });

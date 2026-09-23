@@ -95,7 +95,7 @@ import { computed, ref, onMounted, onUpdated } from 'vue'
 import { useSelector } from '@xstate/vue'
 import { getDesignated, openPlugin, PluginScope, usePlugin, useShell } from '@abuddy/sdk/fe'
 import { Package, CheckCircle, Eye, EyeOff, ExternalLink } from 'lucide-vue-next'
-import { useSettingsSaveStatus } from '../../public'
+import { useSettingsSaveStatus } from '@/views/settings/save'
 
 const shell = useShell()
 

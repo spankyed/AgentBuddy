@@ -39,7 +39,7 @@
 
 <script setup lang="ts">
 import { usePlugin } from '@abuddy/sdk/fe'
-import { settingsProblems } from '@/features/settings/document'
+import { settingsProblems } from '@abuddy/host/settings'
 import { ref, computed, onMounted, watch } from 'vue'
 import { useSelector } from '@xstate/vue'
 import SimpleMonacoEditor from '@abuddy/ui/components/SimpleMonacoEditor'
@@ -82,7 +82,9 @@ function problemsIn(text: string): string[] {
   } catch (e) {
     return [(e as Error).message]
   }
-  return settingsProblems(data, { before: settings.value })
+    // The sections a pack registered are whatever the stored document holds beside the plugins' slices
+  const sections = Object.keys((settings.value ?? {}) as Record<string, unknown>).filter((name) => name !== 'plugins')
+  return settingsProblems(data, { before: settings.value, sections })
 }
 
 function onEditorChange(value: string) {

@@ -1,4 +1,3 @@
-import type { SettingsData } from '@/__generated__/types';
 import type { ActionMeta } from '@abuddy/sdk/build';
 import type { EntityId, Services } from '@/__generated__/services';
 import { getOnboardingState, persistOnboardingState, showChooseModeOrFinish, flashState } from '../onboarding-helpers';
@@ -39,11 +38,6 @@ export async function action(
 
     // Set first directory as default CWD
     services.settings.setForFeature('default-setup/code', ['defaultBaseDirectory'], dirs[0]);
-
-    services.emitter.sendToPlugin('default-setup/settings', {
-      type: 'SETTINGS_UPDATED',
-      data: services.settings.getAll<SettingsData>(),
-    });
 
     services.chat.sendBlockMessage({
       threadId,

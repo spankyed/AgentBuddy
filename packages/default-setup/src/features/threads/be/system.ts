@@ -1,14 +1,15 @@
-import type {AssistantSettings, ThreadsSettings} from '@/__generated__/types';
+import type { ThreadsSettings } from '@/__generated__/types'
+import type { AssistantSettings } from '@/app-settings/types';
 import { sendToSystem, sendToPlugin } from '@/__generated__/events';
 import { services } from '@/__generated__/services';
-import { REQUIRED_PROVIDERS } from '@/features/settings/constants';
+import { REQUIRED_PROVIDERS } from '@/app-settings/providers';
 import { assign, cancel, fromPromise, log, raise, sendTo, setup, type ErrorActorEvent } from 'xstate';
 import { defineSystem, type SystemEntry } from '@abuddy/sdk/framework';
 
 import { tx, EARS } from '@/__generated__/ears';
 import { repository } from '@/__generated__/repository';
 import type { ThreadEditFields, ThreadEntity, ThreadLinkItem, ThreadConnectedData, MessageEntity, BlockConfig, AgentThreadData, AgentConnectedData, RecentThreadRefreshData } from './types';
-import type { AgentSettings, CommandItem } from '../../settings/be/types';
+import type { AgentSettings, CommandItem } from './types';
 import { type ThreadExtendedData, type BlockResponse } from './types';
 import { type ChangeBlock, toMap, toIdentifierSet, mapScalar, mapArray } from '@abuddy/sdk/utils';
 import { exportThreads } from './export-threads';

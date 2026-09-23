@@ -1,5 +1,7 @@
 // Compile-time checks, run by `vue-tsc` (npm run typecheck:pack). Exact type equality and expected
 // errors fail if the generated events regress to `any` or accept a wrong event.
+import { resolveName } from '@abuddy/sdk/ids';
+import { openPlugin } from '@abuddy/sdk/fe';
 import { describe, expectTypeOf, it } from 'vitest';
 import type { HostPluginEvents } from '@abuddy/sdk/events';
 import type { ApplicationHotkeys } from '@abuddy/sdk/types';
@@ -57,7 +59,6 @@ describe('sendToSystem', () => {
   // Wrapped in functions that never run: only their types are checked
   it('accepts an event the system receives', () => {
     expectTypeOf(() => {
-      sendToSystem('settings', { type: 'UPDATE_SETTINGS', entityType: 'plugin', label: 'notes', path: ['sort'], value: 'title' });
       sendToSystem('notes', { type: 'DELETE_NOTE', id: 'Note-1' });
       // System to system, as a backend system sends another: the same typed send
       sendToSystem('brain', { type: 'TRIGGER_BRAIN_EVENT', eventType: 'thread.fork' });
@@ -120,7 +121,7 @@ describe('navigateToPlugin', () => {
   it("takes this pack's plugins by feature id, and nothing it can't name", () => {
     expectTypeOf(() => {
       navigateToPlugin('notes');
-      navigateToPlugin('settings', { type: 'TAB.SELECT', tab: 'plugins' });
+      openPlugin(resolveName('settings', 'host'), { type: 'TAB.SELECT', tab: 'plugins' });
       // @ts-expect-error a misspelled ref names no plugin
       navigateToPlugin('default-setp/notes');
       // @ts-expect-error nor does a misspelled feature id

@@ -185,7 +185,7 @@ import PanelResizer from '@abuddy/ui/layout/panel-resizer'
 import ImageLightbox from '@abuddy/ui/design/ImageLightbox'
 import ConfirmationDialog from '@abuddy/ui/design/ConfirmationDialog'
 import ScrollToBottomFob from '@abuddy/ui/design/ScrollToBottomFob'
-import { usePlugin, useShell } from '@abuddy/sdk/fe'
+import { usePlugin, useShell, updateSettings } from '@abuddy/sdk/fe'
 import { navigateToPlugin } from '@/__generated__/fe'
 import { useSelector } from '@xstate/vue'
 import { id, threadsFromStore, type ThreadsState } from '@/features/threads/fe/state';
@@ -360,13 +360,7 @@ function onScroll() {
 }
 
 function updateThreadsSetting(path: string[], value: unknown) {
-  sendToSystem('settings', {
-    type: 'UPDATE_SETTINGS',
-    entityType: 'plugin',
-    label: featureRef('threads'),
-    path,
-    value,
-  })
+  updateSettings({ feature: featureRef('threads') }, path, value)
 }
 
 function openLightbox(src: string) {
@@ -484,13 +478,7 @@ function confirmRevert() {
     else doRevert(pendingRevertMessageId.value)
   }
   if (dontAskAgain.value) {
-    sendToSystem('settings', {
-      type: 'UPDATE_SETTINGS',
-      entityType: 'plugin',
-      label: featureRef('threads'),
-      path: ['chat', 'skipRevertConfirm'],
-      value: true,
-    })
+    updateSettings({ feature: featureRef('threads') }, ['chat', 'skipRevertConfirm'], true)
   }
   pendingRevertMessageId.value = null
   dontAskAgain.value = false

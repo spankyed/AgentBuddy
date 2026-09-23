@@ -2,6 +2,7 @@
 // its seeder resets the user's settings when the seed is imported. Features' settings come from the pack registry,
 // under each plugin's address, so the seed holds none: a copy under the bare feature id would be a default only a
 // stale reader finds.
+import { services } from '@/__generated__/services';
 import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
@@ -56,8 +57,8 @@ describe('settings compiler', () => {
 });
 
 describe('settings seeder', () => {
-  const changeASetting = () => repository.settingsCommands.updatePluginSetting(ref('threads'), ['sort'], 'oldest');
-  const changed = () => repository.settingsQueries.getPluginSettings(ref('threads'))?.sort === 'oldest';
+  const changeASetting = () => services.settings.setForFeature(ref('threads'), ['sort'], 'oldest');
+  const changed = () => services.settings.forFeature<{ sort?: string }>(ref('threads'))?.sort === 'oldest';
 
   it("resets the user's settings when the seed is imported, and keeps them when existing data is kept", () => {
     changeASetting();

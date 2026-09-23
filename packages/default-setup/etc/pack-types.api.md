@@ -9,15 +9,13 @@ import { ActionEntity, EARS as EARS$1, FlowEntity, NodeBase, PromptEntity, SdkEn
 import { ArtifactItem } from '@abuddy/sdk/artifacts';
 import * as _abuddy_sdk_build from '@abuddy/sdk/build';
 import { HostPluginEvents, HostSystemEvents, IncomingEventsOf, OutgoingEventsOf, Qualified, TypedSendToPlugin, TypedSendToSystem, WithOwnNames } from '@abuddy/sdk/events';
-import { FeatureRef } from '@abuddy/sdk/ids';
 import { ModelCatalogEntry, ModelId } from '@abuddy/sdk/models';
 import * as _abuddy_sdk_repositories from '@abuddy/sdk/repositories';
 import { FlowEdge } from '@abuddy/sdk/repositories';
-import { PackSeedsPreview } from '@abuddy/sdk/seed';
-import { HostServices, SecretInfo, SecretsStatus } from '@abuddy/sdk/services';
+import { HostServices } from '@abuddy/sdk/services';
 import { ExecutionContext, StepRuntimeError, TNodeEntity, TrackTree } from '@abuddy/sdk/steps';
-import { ApplicationHotkeys, KeyboardShortcut } from '@abuddy/sdk/types';
-import { BinaryOperator, SeedCounts } from '@abuddy/sdk/utils';
+import { KeyboardShortcut } from '@abuddy/sdk/types';
+import { BinaryOperator } from '@abuddy/sdk/utils';
 import { z } from 'zod';
 
 interface ActionNode extends NodeBase {
@@ -54,15 +52,6 @@ interface ActiveTokenInfo {
     source: TokenSource;
     kind: TokenKind;
     prefix: string;
-}
-
-interface Address {
-    street: string;
-    street2?: string;
-    city: string;
-    state: string;
-    postalCode: string;
-    country: string;
 }
 
 type AgentConnectedData = {
@@ -121,10 +110,6 @@ type AgentThreadData = {
     nextCursor?: string | null;
 };
 
-interface AppSettings {
-    hotkeys: ApplicationHotkeys;
-}
-
 type ApprovalDecision = 'accept' | 'acceptForSession' | 'cancel' | 'decline';
 
 interface ArtifactEntity extends BaseEntity {
@@ -137,11 +122,6 @@ interface ArtifactEntity extends BaseEntity {
 }
 
 type ArtifactType = string;
-
-interface AssistantSettings {
-    name: string;
-    birthdate: string | null;
-}
 
 type AssistantStreamLine = z.infer<typeof AssistantStreamLineSchema>;
 
@@ -882,8 +862,6 @@ declare namespace EARS {
         type Collection = typeof Collection;
         const Note = "Note";
         type Note = typeof Note;
-        const Settings = "Settings";
-        type Settings = typeof Settings;
         const Relation = "Relation";
         type Relation = typeof Relation;
         const Flow = "Flow";
@@ -897,7 +875,7 @@ declare namespace EARS {
         const Prompt = "Prompt";
         type Prompt = typeof Prompt;
     }
-    type Entity = Entity.Thread | Entity.Message | Entity.Artifact | Entity.SearchIndex | Entity.IndexedDoc | Entity.Terminal | Entity.BrowserTab | Entity.BrowserBookmark | Entity.Document | Entity.Collection | Entity.Note | Entity.Settings | Entity.Relation | Entity.Flow | Entity.Node | Entity.TNode | Entity.Action | Entity.Prompt;
+    type Entity = Entity.Thread | Entity.Message | Entity.Artifact | Entity.SearchIndex | Entity.IndexedDoc | Entity.Terminal | Entity.BrowserTab | Entity.BrowserBookmark | Entity.Document | Entity.Collection | Entity.Note | Entity.Relation | Entity.Flow | Entity.Node | Entity.TNode | Entity.Action | Entity.Prompt;
     type EntityId<E extends string = string> = _abuddy_ears.EARS.EntityId<E>;
     namespace RelKind {
         const PARENT_OF = "parent_of";
@@ -1002,15 +980,6 @@ interface ExecOnceResult {
     stdout: string;
     stderr: string;
     exitCode: number;
-}
-
-/** A Help tab FAQ: the first `# heading` of a src/seeds/faqs file, and the rest as its answer */
-interface FAQItem {
-    id: string;
-    question: string;
-    answer: string;
-    category?: string;
-    order?: number;
 }
 
 interface FieldContent {
@@ -1125,12 +1094,6 @@ interface FolderItem {
     symlinkPath?: string;
     isSymlinked?: boolean;
     isBroken?: boolean;
-}
-
-interface GeneralSettings {
-    personal: PersonalInfo;
-    application: AppSettings;
-    projects: Project[];
 }
 
 interface GhPRComment {
@@ -2587,56 +2550,6 @@ type OutgoingSearchEvents = {
     };
 };
 
-type OutgoingSettingsEvents = {
-    type: 'SETTINGS_LOADED';
-    data: SettingsData;
-    faqs: FAQItem[];
-} | {
-    type: 'SETTINGS_UPDATED';
-    data: SettingsData;
-}
-/** A change (`UPDATE_SETTINGS`, `REPLACE_SETTINGS`) was stored */
- | {
-    type: 'SETTINGS_SAVED';
-}
-/** A change was refused, and stored nothing */
- | {
-    type: 'SETTINGS_REFUSED';
-    problems: string[];
-} | {
-    type: 'SETTINGS_RESET';
-    data: SettingsData;
-} | {
-    type: 'APPLICATION_HOTKEYS';
-    hotkeys: SettingsData['general']['application']['hotkeys'];
-}
-/** `errors` lists the records that couldn't be seeded (`<key>: <error>`); the rest were imported */
- | {
-    type: 'PACK_SEEDS_IMPORTED';
-    result: Record<string, SeedCounts>;
-    errors: string[];
-} | {
-    type: 'PACK_SEEDS_IMPORT_FAILED';
-    error: string;
-} | {
-    type: 'PACK_SEEDS_PREVIEW';
-    preview: PackSeedsPreview;
-} | {
-    type: 'PACK_SEEDS_PREVIEW_FAILED';
-    error: string;
-} | {
-    type: 'APP_RESET_COMPLETE';
-} | {
-    type: 'APP_RESET_FAILED';
-    error: string;
-}
-/** The stored API keys, without values, and how they're protected */
- | {
-    type: 'SECRETS_UPDATED';
-    secrets: SecretInfo[];
-    status: SecretsStatus;
-};
-
 type OutgoingTerminalEvents = {
     type: 'terminal.CREATED';
     data: TerminalInfo;
@@ -2814,7 +2727,6 @@ type OwnEntityShapes = {
     'Document': DocumentEntity;
     'Collection': CollectionEntity;
     'Note': NoteEntity;
-    'Settings': SettingsEntity;
 };
 
 /** Plugin id → the events this pack's systems send to that plugin (their own, and each `sendsTo`). */
@@ -2830,7 +2742,6 @@ type OwnPluginEvents = {
     'brain': __events_brain;
     'database': __events_database;
     'logs': __events_logs;
-    'settings': __events_settings | __events_code;
 };
 
 /** The repositories this pack declares (abuddy.json features[].repositories) */
@@ -2855,8 +2766,6 @@ type OwnRepositories = {
     promptCommands: typeof promptCommands;
     brainQueries: typeof brainQueries;
     brainCommands: typeof brainCommands;
-    settingsQueries: typeof settingsQueries;
-    settingsCommands: typeof settingsCommands;
 };
 
 /**
@@ -2892,7 +2801,6 @@ type PackSystemEvents = {
     'brain': IncomingEventsOf<(typeof specs)['brain']>;
     'database': IncomingEventsOf<(typeof specs)['database']>;
     'logs': IncomingEventsOf<(typeof specs)['logs']>;
-    'settings': IncomingEventsOf<(typeof specs)['settings']>;
 };
 
 /**
@@ -2970,28 +2878,11 @@ type PermissionMode = z.infer<typeof PermissionModeSchema>;
  */
 declare const PermissionModeSchema: z.ZodEnum<["default", "acceptEdits", "plan", "bypassPermissions", "dontAsk", "auto"]>;
 
-interface PersonalInfo {
-    name?: string;
-    phoneNumber?: string;
-    address?: Address;
-}
-
-/** Each plugin's settings, by the plugin's ref (`<packId>/<featureId>`) */
-interface PluginSettings {
-    [pluginRef: string]: any;
-}
-
 type Predicate = {
     key: string;
     operator: BinaryOperator;
     value?: any;
 } | ((context: any) => boolean);
-
-interface Project {
-    name: string;
-    directories: string[];
-    color: string;
-}
 
 declare class PromptService {
     getByLabel(label: string): PromptEntity | undefined;
@@ -3029,7 +2920,7 @@ interface PromptsConnectedData {
  * names. Those keep the events their owner declares they receive — a pack widens only its own plugins. Actions
  * (`services.emitter`) send with it.
  */
-type QualifiedPluginEvents = Qualified<'default-setup', OwnPluginEvents> & Pick<HostPluginEvents, 'host/application'>;
+type QualifiedPluginEvents = Qualified<'default-setup', OwnPluginEvents> & Pick<HostPluginEvents, 'host/application' | 'host/settings'>;
 
 /** Every system this pack's code can send to, by ref: its own, its dependencies' and the host's. */
 type QualifiedSystemEvents = Qualified<'default-setup', PackSystemEvents> & HostSystemEvents;
@@ -3390,20 +3281,6 @@ interface SessionViewOptions {
 type SettingScope = z.infer<typeof SettingScopeSchema>;
 
 declare const SettingScopeSchema: z.ZodEnum<["user", "project", "local"]>;
-
-interface SettingsData {
-    general: GeneralSettings;
-    plugins: PluginSettings;
-    assistant: AssistantSettings;
-}
-
-/** The one Settings row: the user's changes to the default settings (`SettingsData`), and nothing else */
-interface SettingsEntity extends BaseEntity {
-    entityType: typeof EARS.Entity.Settings;
-    /** Only what differs from the defaults */
-    data: Partial<SettingsData>;
-    updatedAt?: number;
-}
 
 type Simplify<T> = {
     [K in keyof T]: T[K];
@@ -3932,8 +3809,6 @@ type __events_notes = OutgoingEventsOf<(typeof specs)['notes']>;
 
 type __events_prompts = OutgoingEventsOf<(typeof specs)['prompts']>;
 
-type __events_settings = OutgoingEventsOf<(typeof specs)['settings']>;
-
 type __events_threads = OutgoingEventsOf<(typeof specs)['threads']>;
 
 declare const actionCommands: {
@@ -4400,11 +4275,6 @@ declare const flowsQueries: {
     readonly connectedData: () => FlowsConnectedData;
 };
 
-/** The general settings in effect, or one section of them by its label (the defaults are merged in already) */
-declare function getGeneralSettings(): GeneralSettings;
-
-declare function getGeneralSettings<K extends keyof GeneralSettings>(label: K): GeneralSettings[K];
-
 declare function getHandle(key: string): CodexTurnHandle | undefined;
 
 declare const libraryCommands: {
@@ -4656,47 +4526,6 @@ declare function sendSystemMessage(options: {
     messageId: EARS.EntityId;
 };
 
-declare const settingsCommands: {
-    updateSettings: typeof updateSettings;
-    /** Sets `value` at `path` in a plugin's settings, by its ref */
-    updatePluginSetting(plugin: FeatureRef, path: string[], value: unknown): void;
-    /**
-     * Makes `settings` the settings in effect: stores what they set that the defaults don't. A default they leave out
-     * keeps applying, since stored settings only set values.
-     */
-    replaceSettings(settings: unknown): void;
-    /** Removes a stored value (its path in the stored data), so its default applies again */
-    removeStored(path: string[]): void;
-    resetSettings: () => void;
-    /**
-     * Runs `replace`, which replaces the stored data wholesale (a backup import), telling the listeners it is running
-     * and, once it settles, that it ended — done or failed, since a failed import may have migrated some of the data
-     * already. The settings arrive past this writer, and the migrations the import runs write through it, so the
-     * listeners know a write made in between from one of the user's. Said here, at the writer, they can't arrive out of
-     * order with the writes they bracket.
-     */
-    whileReplacingData<T>(replace: () => Promise<T>): Promise<T>;
-};
-
-declare const settingsQueries: {
-    getSettings: () => SettingsData;
-    /**
-     * Only what the user changed, without the defaults merged in — what a migration has to rewrite, since
-     * writing a merged copy back would freeze today's defaults into the user's stored settings.
-     */
-    getStoredSettings: () => Partial<SettingsData>;
-    getGeneralSettings: typeof getGeneralSettings;
-    getAssistantSettings: () => AssistantSettings;
-    /** A plugin's settings in effect, by its ref */
-    getPluginSettings: (plugin: FeatureRef) => any;
-    /**
-     * The ref of the installed feature with settings `name` stands for: where a plugin's name arrives as a string (a
-     * client's send, an action's `services.settings` call), it is parsed here once, and throws naming the ref it likely
-     * meant. What the store's commands and queries take is a `FeatureRef`.
-     */
-    pluginSettingsRef: (name: string) => FeatureRef;
-};
-
 declare const specs: {
     threads: {
         _incoming: {
@@ -4848,6 +4677,8 @@ declare const specs: {
             type: "CLIENT_CONNECTED";
         } | {
             type: "BIRTH_FLOW_START";
+        } | {
+            type: "SECRETS_CHANGED";
         } | {
             type: "THREAD_DELETED";
             threadId: string;
@@ -5274,44 +5105,6 @@ declare const specs: {
         };
         _outgoing: OutgoingLogsEvents;
     };
-    settings: {
-        _incoming: ({
-            type: "GET_SETTINGS";
-        } | {
-            type: "UPDATE_SETTINGS";
-            entityType: "general" | "plugin";
-            label: string;
-            path: string[];
-            value: any;
-        } | {
-            type: "RESET_SETTINGS";
-        } | {
-            type: "PREVIEW_PACK_SEEDS";
-            directory: string;
-        } | {
-            type: "IMPORT_PACK_SEEDS";
-            directory: string;
-            include?: Record<string, string[] | null>;
-            mode?: "keep-existing" | "replace-on-collision" | "wipe-and-replace";
-            restartBrain?: boolean;
-        } | {
-            type: "REPLACE_SETTINGS";
-            data: unknown;
-        } | {
-            type: "RESET_APP";
-        }) | ({
-            type: "PACK_SETTINGS_CHANGED";
-        } | {
-            type: "SECRETS_CHANGED";
-        } | {
-            type: "SETTINGS_WRITTEN";
-        } | {
-            type: "DATA_REPLACING";
-        } | {
-            type: "DATA_REPLACED";
-        });
-        _outgoing: OutgoingSettingsEvents;
-    };
 };
 
 declare function storeHandle(key: string, handle: CodexTurnHandle): void;
@@ -5460,12 +5253,6 @@ declare function updateChatState(threadId: EARS.EntityId, chatState: string): vo
  * });
  */
 declare function updateMessageState(messageId: EARS.EntityId, updates: Partial<Pick<MessageEntity, 'blockResponse' | 'blocks' | 'compacted' | 'context' | 'forkable' | 'responseTimestamp' | 'status' | 'text'>>): void;
-
-/**
- * Sets `value` at `path` in a section other than the plugins': a general setting under its label
- * (`general.application`), an assistant setting under none
- */
-declare function updateSettings(section: 'assistant' | 'general', label: string | null, path: string[], value: unknown): void;
 
 /** Parse a Codex JSONL file into an array of entries. */
 declare function viewByFile(filePath: string, opts?: {

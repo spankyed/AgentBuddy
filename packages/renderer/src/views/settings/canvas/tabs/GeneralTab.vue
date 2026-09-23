@@ -70,7 +70,7 @@ import App from '../components/GeneralSettings/App.vue'
 import Projects from '../components/GeneralSettings/Projects.vue'
 import SettingsJsonEditor from '../components/GeneralSettings/SettingsJsonEditor.vue'
 import { usePlugin } from '@abuddy/sdk/fe'
-import { useSettingsSaveStatus } from '../../public'
+import { useSettingsSaveStatus } from '@/views/settings/save'
 
 const actor = usePlugin()
 

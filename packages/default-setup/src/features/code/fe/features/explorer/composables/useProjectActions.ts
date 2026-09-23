@@ -1,6 +1,10 @@
 import { computed } from 'vue'
-import { navigateToPlugin } from '@/__generated__/fe'
-import { updateGeneralSettings, useGeneralSettings } from '@/features/settings/fe/public'
+import { openPlugin } from '@abuddy/sdk/fe'
+import { resolveName } from '@abuddy/sdk/ids'
+
+const HOST_SETTINGS = resolveName('settings', 'host')
+import { updateSettings, useSettingsSection } from '@abuddy/sdk/fe'
+import type { GeneralSettings } from '@/app-settings/types'
 export interface Project {
   name: string
   directories: string[]
@@ -8,7 +12,8 @@ export interface Project {
 }
 
 export function useProjectActions() {
-  const stored = useGeneralSettings('projects')
+  const general = useSettingsSection<GeneralSettings>('general')
+  const stored = computed(() => general.value?.projects ?? [])
   const projects = computed(() => stored.value ?? [])
 
   // Helper to check if a directory is in a project
@@ -45,7 +50,7 @@ export function useProjectActions() {
     }
 
     // Update settings
-    updateGeneralSettings('projects', [], updatedProjects)
+    updateSettings({ section: 'general' }, ['projects'], updatedProjects)
   }
 
   // Remove directory from project (and delete project if it's the last directory)
@@ -65,7 +70,7 @@ export function useProjectActions() {
     }
 
     // Update settings
-    updateGeneralSettings('projects', [], updatedProjects)
+    updateSettings({ section: 'general' }, ['projects'], updatedProjects)
   }
 
   // Add directory to existing project
@@ -82,7 +87,7 @@ export function useProjectActions() {
     project.directories.push(directoryPath)
 
     // Update settings
-    updateGeneralSettings('projects', [], updatedProjects)
+    updateSettings({ section: 'general' }, ['projects'], updatedProjects)
   }
 
   // Create new project with directory
@@ -106,12 +111,12 @@ export function useProjectActions() {
     updatedProjects.push(newProject)
 
     // Update settings
-    updateGeneralSettings('projects', [], updatedProjects)
+    updateSettings({ section: 'general' }, ['projects'], updatedProjects)
   }
 
   // Navigate to projects settings
   const navigateToProjects = () => {
-    navigateToPlugin('settings', [
+    openPlugin(HOST_SETTINGS, [
       { type: 'TAB.SELECT', tab: 'general' },
       { type: 'GENERAL_NAV.SELECT', item: 'projects' }
     ])

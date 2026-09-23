@@ -90,7 +90,8 @@
 import { usePlugin } from '@abuddy/sdk/fe'
 import { codeChild } from '@/features/code/fe/utils/parent-communication'
 import type { CodeSettings } from '@/__generated__/types'
-import { usePluginSettings } from '@/features/settings/fe/public'
+import { useFeatureSettings } from '@abuddy/sdk/fe'
+import { ref as featureRef } from '@/__generated__/ref'
 import { ref, computed, provide, nextTick } from 'vue'
 import { useSelector } from '@xstate/vue'
 import type { CodeState } from '@/features/code/fe/state'
@@ -198,7 +199,7 @@ provide('explorer-open-file', (path: string, editorMode?: 'richText' | 'plainTex
   explorerActor?.send({ type: 'explorer.OPEN_FILE', path, editorMode })
 })
 
-const storedCodeSettings = usePluginSettings<CodeSettings>('code')
+const storedCodeSettings = useFeatureSettings<CodeSettings>(featureRef('code'))
 const mdEditorDefault = computed(() => storedCodeSettings.value?.mdEditorDefault ?? false)
 provide('explorer-md-editor-default', () => mdEditorDefault.value)
 

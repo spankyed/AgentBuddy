@@ -17,7 +17,7 @@ import { toMap, toIdentifierSet, mapArray } from '@abuddy/sdk/utils'
 import { exportLibrary } from './export-library'
 import { importLibrary } from './import-library'
 import type { ContentSection } from '@/features/library/be/types';
-import type { CommandItem } from '@/features/settings/be/types';
+import type { CommandItem } from '@/__generated__/types';
 import { ref } from '@/__generated__/ref';
 import { errorMessage } from '@abuddy/sdk/utils/pure';
 

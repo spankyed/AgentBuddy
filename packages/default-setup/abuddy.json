@@ -18,8 +18,7 @@
     "BrowserBookmark": "BrowserBookmark",
     "Document": "Document",
     "Collection": "Collection",
-    "Note": "Note",
-    "Settings": "Settings"
+    "Note": "Note"
   },
   "relKinds": {
     "PARENT_OF": "parent_of",
@@ -35,7 +34,10 @@
       "designation": "threads",
       "settings": "src/features/threads/settings.ts",
       "system": {
-        "entry": "src/features/threads/be/system.ts"
+        "entry": "src/features/threads/be/system.ts",
+        "sendsTo": [
+          "host/application"
+        ]
       },
       "plugin": {
         "entry": "src/features/threads/fe/plugin.ts",
@@ -60,7 +62,7 @@
       "system": {
         "entry": "src/features/code/be/system.ts",
         "sendsTo": [
-          "settings"
+          "host/settings"
         ]
       },
       "plugin": {
@@ -221,24 +223,6 @@
       },
       "services": {},
       "earlySystem": true
-    },
-    {
-      "id": "settings",
-      "designation": "settings",
-      "settings": "src/features/settings/settings.ts",
-      "system": {
-        "entry": "src/features/settings/be/system.ts",
-        "sendsTo": [
-          "host/application"
-        ]
-      },
-      "plugin": {
-        "entry": "src/features/settings/fe/plugin.ts"
-      },
-      "repositories": {
-        "settingsQueries": "src/features/settings/be/repository/index.ts#settingsQueries",
-        "settingsCommands": "src/features/settings/be/repository/index.ts#settingsCommands"
-      }
     }
   ],
   "commands": [
@@ -320,10 +304,6 @@
     "Note": {
       "source": "src/features/notes/be/types.ts",
       "type": "NoteEntity"
-    },
-    "Settings": {
-      "source": "src/features/settings/be/types.ts",
-      "type": "SettingsEntity"
     }
   },
   "seedFormats": {
@@ -553,6 +533,6 @@
       }
     }
   },
-  "settingsSections": "src/features/settings/sections.ts#settingsSections",
-  "help": "src/features/settings/help.ts#helpEntries"
+  "settingsSections": "src/app-settings/index.ts#settingsSections",
+  "help": "src/app-settings/index.ts#helpEntries"
 }

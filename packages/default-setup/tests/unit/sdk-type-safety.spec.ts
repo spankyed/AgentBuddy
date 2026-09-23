@@ -34,7 +34,6 @@ import { services, type Services } from '@/__generated__/services';
 import type { HostServices } from '@abuddy/sdk/services';
 import type { flowRepository } from '@abuddy/sdk/repositories';
 import type { promptService } from '@/features/prompts/be/services/prompt';
-import type { settingsQueries } from '@/features/settings/be/repository';
 import { EARS } from '../../src/__generated__/ears';
 
 
@@ -183,7 +182,6 @@ describe('Generated services', () => {
     expectTypeOf(services.inference.generateText).toEqualTypeOf<HostServices['inference']['generateText']>();
     expectTypeOf(services.prompt.usePrompt).toEqualTypeOf<typeof promptService.usePrompt>();
     expectTypeOf(services.logger).toEqualTypeOf<Logger>();
-    expectTypeOf(services.repository.settingsQueries.getPluginSettings).toEqualTypeOf<typeof settingsQueries.getPluginSettings>();
     expectTypeOf<Services['repository']>().toEqualTypeOf<Repositories>();
   });
 

@@ -11,7 +11,7 @@ import * as path from 'path';
 import { loadAppPacks, startPacks } from '@abuddy/host/packs/runtime';
 // The app's own features: its registration, and the systems it runs for them
 import {
-  APPLICATION_SYSTEM_EVENTS, createApplicationSystem, createPacksSystem, hostRegistration, packsEvents,
+  APPLICATION_SYSTEM_EVENTS, createApplicationSystem, createPacksSystem, createSettingsSystem, hostRegistration, packsEvents, settingsEvents,
 } from '@abuddy/host/features';
 import { createAppBus, HOST, startEarlySystems } from '@abuddy/host/bus';
 import { createHostRuntime } from '@abuddy/host/services';
@@ -96,6 +96,8 @@ export async function setupBackend(): Promise<void> {
     // The app shell's own state (which tabs show, the last plugin open), which the application plugin reads
     application: { machine: createApplicationSystem(packs), receives: APPLICATION_SYSTEM_EVENTS },
     packs: { machine: createPacksSystem(packs), receives: [...packsEvents] },
+    // The app's settings: one row, one writer, and what every feature reads its own from
+    settings: { machine: createSettingsSystem(), receives: [...settingsEvents] },
   }));
 
   // Before discovery: a pack an interrupted install left only as its moved-aside copy is restored,

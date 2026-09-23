@@ -382,8 +382,8 @@
       "Action:Handle Projects Step": {
         "label": "Handle Projects Step",
         "description": "Saves selected project directories and offers per-provider import",
-        "sourceHash": "5414ac3b5716b452",
-        "rowSha256": "7fd6d0a11eb481e6f2c052fa7c0cff5c968f28d8b31f723a0ce0a2795ecda443"
+        "sourceHash": "50e494e86a73fb37",
+        "rowSha256": "fadd31e21da530baab6b4d5be512791602c47fd72163d6dd520091232b6cc565"
       },
       "Action:Handle Welcome Step": {
         "label": "Handle Welcome Step",

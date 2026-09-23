@@ -5,15 +5,15 @@ import { afterAll, beforeEach, expect, it, vi } from 'vitest'
 import { createActor } from 'xstate'
 import type { Message } from '@abuddy/sdk/events'
 import { startFeTestRuntime } from '@abuddy/sdk/testing'
-import settingsState from '@/features/settings/fe/state'
+import { createSettingsMachine } from '../../../../src/features/settings/fe/machine.ts'
 
 const sent = vi.fn<(message: Message) => void>()
 afterAll(startFeTestRuntime({ client: { send: sent } }))
 beforeEach(() => sent.mockClear())
 
 function readySettingsPlugin() {
-  const actor = createActor(settingsState).start()
-  actor.send({ type: 'SETTINGS_LOADED', data: { general: {}, plugins: {}, assistant: {} } as never, faqs: [] })
+  const actor = createActor(createSettingsMachine({ restart: () => {}, report: () => {} })).start()
+  actor.send({ type: 'SETTINGS_LOADED', data: { general: {}, plugins: {}, assistant: {} } as never, help: [] })
   return actor
 }
 
@@ -26,7 +26,7 @@ it('sends the replacement to the settings system, and is saving until the store 
   actor.send({ type: 'SETTINGS.REPLACE', data })
 
   expect(save(actor)).toEqual({ status: 'saving', problems: [] })
-  expect(sent).toHaveBeenCalledWith({ to: 'default-setup/settings', event: { type: 'REPLACE_SETTINGS', data } })
+  expect(sent).toHaveBeenCalledWith({ to: 'host/settings', event: { type: 'REPLACE_SETTINGS', data } })
 })
 
 it('is saved once the store says it stored the replacement', () => {
@@ -56,7 +56,7 @@ it("is saving while a plugin's settings change is with the store, and refused wi
 
   expect(save(actor)).toEqual({ status: 'saving', problems: [] })
   expect(sent).toHaveBeenCalledWith({
-    to: 'default-setup/settings',
+    to: 'host/settings',
     event: { type: 'UPDATE_SETTINGS', entityType: 'plugin', label: 'memo-pack/memos', path: ['sort'], value: 'oldest' },
   })
 

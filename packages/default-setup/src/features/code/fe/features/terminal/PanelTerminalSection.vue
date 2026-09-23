@@ -193,7 +193,8 @@
 import { usePlugin } from '@abuddy/sdk/fe'
 import { codeChild } from '@/features/code/fe/utils/parent-communication'
 import type { CodeSettings } from '@/__generated__/types'
-import { updatePluginSettings, usePluginSettings } from '@/features/settings/fe/public'
+import { updateSettings, useFeatureSettings } from '@abuddy/sdk/fe'
+import { ref as featureRef } from '@/__generated__/ref'
 import { ref, computed, watch, onMounted, onBeforeUnmount, nextTick } from 'vue'
 import { useSelector } from '@xstate/vue'
 import { ChevronRight, ChevronDown, Plus, X, Edit, Trash2, PanelTop, PanelBottom, Terminal as TerminalIcon, Ellipsis, Square, Copy, ClipboardPaste, TextSelect, Eraser, RotateCcw } from 'lucide-vue-next'
@@ -235,7 +236,7 @@ const panelTerminalId = useSelector(codeActor, (state) => state.context.panelTer
 const openFiles = useSelector(codeActor, (state) => state.context.openFiles)
 const terminals = useSelector(terminalActor, (state: any) => state.context.terminals as TerminalInfo[])
 
-const storedCodeSettings = usePluginSettings<CodeSettings>('code')
+const storedCodeSettings = useFeatureSettings<CodeSettings>(featureRef('code'))
 const confirmTerminalClose = computed(() => storedCodeSettings.value?.confirmTerminalClose ?? true)
 const closeTerminalOnTabClose = computed(() => storedCodeSettings.value?.closeTerminalOnTabClose ?? true)
 const terminalScripts = computed(() => (storedCodeSettings.value?.terminalScripts ?? []) as TerminalScript[])
@@ -414,7 +415,7 @@ const runScriptInNewTerminal = (script: TerminalScript) => {
 }
 
 const updateScripts = (scripts: TerminalScript[]) => {
-  updatePluginSettings('code', ['terminalScripts'], scripts)
+  updateSettings({ feature: featureRef('code') }, ['terminalScripts'], scripts)
 }
 
 const killAllTerminals = () => {

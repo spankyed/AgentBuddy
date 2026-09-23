@@ -166,8 +166,7 @@ describe('services.appData', () => {
     version.current = '0.3.15';
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'app-data-old-backup-'));
     dirs.push(dir);
-    // The built-in pack's settings, as 0.3.14 stored them: the app's state in `internal`, and no AppState
-    packs.registerPack({ id: 'settings-pack', ears: { entities: { Settings: 'Settings' }, relKinds: {} } });
+    // The settings as 0.3.14 stored them: the app's state in `internal`, and no AppState
     engine.admin.clear();
     tx('Settings-app' as never, true).put('entityType', 'Settings').put('data', { internal: { hasOnboarded: true, version: '0.3.14' } });
     await new Promise((resolve) => setTimeout(resolve, 0));
@@ -181,7 +180,6 @@ describe('services.appData', () => {
       expect(appState.get().version).toBe('0.3.15');
     } finally {
       version.current = undefined;
-      packs.unregisterPack('settings-pack');
     }
   });
 

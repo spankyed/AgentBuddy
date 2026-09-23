@@ -364,10 +364,13 @@ import { id } from './state';
 import type { LogsState, LogEntry } from './state';
 import { useSelector } from '@xstate/vue';
 import DataRenderer from '@abuddy/ui/components/DataRenderer';
-import { navigateToPlugin } from '@/__generated__/fe'
-import { updatePluginSettings } from '@/features/settings/fe/public'
+import { openPlugin } from '@abuddy/sdk/fe'
+import { resolveName } from '@abuddy/sdk/ids'
+
+const HOST_SETTINGS = resolveName('settings', 'host')
+import { updateSettings } from '@abuddy/sdk/fe'
+import { ref as featureRef } from '@/__generated__/ref'
 import { parseSearchTerm, searchLog, highlightSearchTerm } from './search';
-import { ref as featureRef } from '@/__generated__/ref';
 
 const logsContent = ref<HTMLElement>();
 
@@ -503,7 +506,7 @@ const copyLogs = async () => {
 };
 
 const goToExcludedSourcesSettings = () => {
-  navigateToPlugin('settings', [
+  openPlugin(HOST_SETTINGS, [
     { type: 'TAB.SELECT', tab: 'plugins' },
     { type: 'PLUGIN.SELECT', pluginId: featureRef('logs') }
   ]);
@@ -657,7 +660,7 @@ const toggleShowAppEvents = () => {
   });
 
   // Persist to settings (will round-trip back and trigger backend rebroadcast).
-  updatePluginSettings('logs', ['showAppEvents'], next);
+  updateSettings({ feature: featureRef('logs') }, ['showAppEvents'], next);
 };
 
 const excludeSource = (source: string) => {
@@ -678,7 +681,7 @@ const excludeSource = (source: string) => {
     });
 
     // Send update to settings (this will persist it and eventually send it back)
-    updatePluginSettings('logs', ['excludedSources'], updatedSources);
+    updateSettings({ feature: featureRef('logs') }, ['excludedSources'], updatedSources);
   }
 
   closeContextMenu();

@@ -47,3 +47,9 @@ export interface FlowExtendedData {
   nodes: NodeEntity[];
   edges: EdgeEntity[];
 }
+
+// ── This feature's settings ───────────────────────────────────────────────
+// Its own shape, which the app stores without knowing: the app owns the document, each feature its slice.
+export interface FlowsSettings {
+  enableFlowPreview?: boolean; // Enable flow preview on single click
+}

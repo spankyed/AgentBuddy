@@ -12,12 +12,6 @@ describe('boot exports — source modules', () => {
     expect(logsEntry).toBeDefined();
     expect(typeof logsEntry.machine.id).toBe('string');
   });
-
-  it('exports createDefaultSettings as a function', async () => {
-    const { createDefaultSettings } = await import('../../src/features/settings/be/repository');
-
-    expect(typeof createDefaultSettings).toBe('function');
-  });
 });
 
 describe('registries/services — feature services assembly', () => {

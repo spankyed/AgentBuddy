@@ -9,7 +9,7 @@ type SettingsUpdate = { entityType: 'plugin'; label: `${string}/${string}`; path
 /** Changes a setting the way the Settings UI does: through the settings plugin, naming the plugin by its ref */
 async function updateSetting(page: Page, update: SettingsUpdate): Promise<void> {
   await page.evaluate((u) => {
-    (window as any).applicationState.system.get('default-setup/settings').send({ type: 'SETTINGS.UPDATE', ...u });
+    (window as any).applicationState.system.get('host/settings').send({ type: 'SETTINGS.UPDATE', ...u });
   }, update);
 }
 
@@ -38,9 +38,9 @@ test("a plugin setting changed in Settings reaches the feature's plugin, once", 
 test('a plugin setting changed in Settings is what its canvas reads', async ({ app, appPage }) => {
   const override = `/e2e/addressing/${Date.now()}/claude`;
   await updateSetting(appPage, { entityType: 'plugin', label: 'default-setup/code', path: ['cliPaths'], value: { 'claude-code': override } });
-  await app.navigate('default-setup/settings');
+  await app.navigate('host/settings');
   await appPage.evaluate(() => {
-    const settings = (window as any).applicationState.system.get('default-setup/settings');
+    const settings = (window as any).applicationState.system.get('host/settings');
     settings.send({ type: 'TAB.SELECT', tab: 'general' });
     settings.send({ type: 'GENERAL_NAV.SELECT', item: 'secrets' });
   });
@@ -58,9 +58,9 @@ test('a link to another plugin opens it and hands it the events', async ({ app, 
   await appPage.getByTitle('Click to manage excluded sources').click();
 
   await expect.poll(() => appPage.evaluate(() => (window as any).applicationState.getSnapshot().context.activePlugin.id))
-    .toBe('default-setup/settings');
+    .toBe('host/settings');
   const settings = () => appPage.evaluate(() => {
-    const { activeTab, selectedPluginId } = (window as any).applicationState.system.get('default-setup/settings').getSnapshot().context;
+    const { activeTab, selectedPluginId } = (window as any).applicationState.system.get('host/settings').getSnapshot().context;
     return { activeTab, selectedPluginId };
   });
   await expect.poll(settings).toEqual({ activeTab: 'plugins', selectedPluginId: 'default-setup/logs' });

@@ -6,7 +6,7 @@ import { assign, setup } from 'xstate';
 import { mockService, registerPack, startApp, takeSystemErrors, unregisterPack } from '@abuddy/testing/harness';
 import { tx } from '@abuddy/ears';
 import type { EARS } from '@abuddy/sdk';
-import { settingsCommands, settingsQueries } from '@/features/settings/be/repository';
+
 import { services } from '@/__generated__/services';
 import { resolveName } from '@abuddy/sdk/ids';
 
@@ -35,10 +35,10 @@ const heardBy = (app: Awaited<ReturnType<typeof startApp>>) => (app.system('memo
 
 describe('a feature whose settings change', () => {
   it('tells its system, with what changed in its lists, and its plugin', async () => {
-    const app = await startApp({ systems: ['settings', 'memo-pack/memos'] });
+    const app = await startApp({ systems: ['memo-pack/memos', 'host/settings'] });
     await app.connect();
 
-    await app.send('settings', { type: 'UPDATE_SETTINGS', entityType: 'plugin', label: 'memo-pack/memos', path: ['tags'], value: [{ name: 'b' }] });
+    await app.send('host/settings', { type: 'UPDATE_SETTINGS', entityType: 'plugin', label: 'memo-pack/memos', path: ['tags'], value: [{ name: 'b' }] });
 
     expect(heardBy(app)).toEqual([{
       type: 'FEATURE_SETTINGS_UPDATED',
@@ -50,14 +50,14 @@ describe('a feature whose settings change', () => {
 
   it('tells only the features whose settings differ, when the settings are replaced or reset', async () => {
     const warned = vi.spyOn(console, 'warn');
-    const app = await startApp({ systems: ['settings', 'memo-pack/memos'] });
+    const app = await startApp({ systems: ['memo-pack/memos', 'host/settings'] });
     await app.connect();
 
-    await app.send('settings', { type: 'REPLACE_SETTINGS', data: { general: {}, plugins: { 'memo-pack/board': { columns: 3 } } } as never });
+    await app.send('host/settings', { type: 'REPLACE_SETTINGS', data: { general: {}, plugins: { 'memo-pack/board': { columns: 3 } } } as never });
     expect(heardBy(app)).toEqual([]);
     expect(app.emitted('memo-pack/board')).toContainEqual({ type: 'FEATURE_SETTINGS_UPDATED', settings: { columns: 3 } });
 
-    await app.send('settings', { type: 'RESET_SETTINGS' });
+    await app.send('host/settings', { type: 'RESET_SETTINGS' });
     expect(app.emitted('memo-pack/board')).toContainEqual({ type: 'FEATURE_SETTINGS_UPDATED', settings: { columns: 2 } });
     expect(heardBy(app)).toEqual([]);
     // The board runs no system: its half of the event is nobody's, and nothing warns of a missing system
@@ -68,19 +68,19 @@ describe('a feature whose settings change', () => {
   // straight to the repository. It reaches the feature once, and a later unrelated change doesn't send it again: told
   // late, a stale difference had the code explorer jump back to its default directory.
   it('tells the feature once when its settings are written outside the settings system, and not again later', async () => {
-    const app = await startApp({ systems: ['settings', 'memo-pack/memos'] });
+    const app = await startApp({ systems: ['memo-pack/memos', 'host/settings'] });
     await app.connect();
 
-    settingsCommands.updatePluginSetting(resolveName('memo-pack/memos'), ['tags'], [{ name: 'c' }]);
+    services.settings.setForFeature(resolveName('memo-pack/memos'), ['tags'], [{ name: 'c' }]);
     await app.settle();
     expect(heardBy(app).map((e) => e.settings)).toEqual([{ tags: [{ name: 'c' }] }]);
 
-    await app.send('settings', { type: 'UPDATE_SETTINGS', entityType: 'plugin', label: 'memo-pack/board', path: ['columns'], value: 4 });
+    await app.send('host/settings', { type: 'UPDATE_SETTINGS', entityType: 'plugin', label: 'memo-pack/board', path: ['columns'], value: 4 });
     expect(heardBy(app)).toHaveLength(1);
   });
 
   it("tells the feature when an action writes its settings through services.settings", async () => {
-    const app = await startApp({ systems: ['settings', 'memo-pack/memos'] });
+    const app = await startApp({ systems: ['memo-pack/memos', 'host/settings'] });
     await app.connect();
 
     (services.settings as { setForFeature(plugin: string, path: string[], value: unknown): void })
@@ -96,21 +96,21 @@ describe('a feature whose settings change', () => {
     /** A reset that writes the settings as the real one does, then succeeds or throws */
     const resetWriting = (tags: unknown[], outcome: 'succeeds' | 'fails') => mockService('appData', {
       reset: async () => {
-        settingsCommands.updatePluginSetting(resolveName('memo-pack/memos'), ['tags'], tags);
+        services.settings.setForFeature(resolveName('memo-pack/memos'), ['tags'], tags);
         if (outcome === 'fails') throw new Error('store could not reopen');
       },
     });
 
     it.each(['succeeds', 'fails'] as const)('tells each feature its settings with no changes once it %s', async (outcome) => {
       resetWriting([{ name: 'fresh' }], outcome);
-      const app = await startApp({ systems: ['settings', 'memo-pack/memos'] });
+      const app = await startApp({ systems: ['memo-pack/memos', 'host/settings'] });
       await app.connect();
 
-      await app.send('settings', { type: 'RESET_APP' });
+      await app.send('host/settings', { type: 'RESET_APP' });
       await app.settle();
 
       expect(heardBy(app)).toEqual([{ type: 'FEATURE_SETTINGS_UPDATED', settings: { tags: [{ name: 'fresh' }] }, changes: null }]);
-      await app.send('settings', { type: 'UPDATE_SETTINGS', entityType: 'plugin', label: 'memo-pack/board', path: ['columns'], value: 5 });
+      await app.send('host/settings', { type: 'UPDATE_SETTINGS', entityType: 'plugin', label: 'memo-pack/board', path: ['columns'], value: 5 });
       expect(heardBy(app)).toHaveLength(1);
       if (outcome === 'fails') takeSystemErrors();
     });
@@ -124,14 +124,14 @@ describe('a feature whose settings change', () => {
         return { databases: ['lmdb'], missingDatabases: [], unknownEntityTypes: [] }
       },
     });
-    const app = await startApp({ systems: ['settings', 'database', 'memo-pack/memos'] });
+    const app = await startApp({ systems: ['database', 'memo-pack/memos', 'host/settings'] });
     await app.connect();
 
     await app.send('database', { type: 'IMPORT_DATABASE', path: '/backups/1' } as never);
     await app.settle();
 
     expect(heardBy(app)).toEqual([{ type: 'FEATURE_SETTINGS_UPDATED', settings: { tags: [{ name: 'imported' }] }, changes: null }]);
-    await app.send('settings', { type: 'UPDATE_SETTINGS', entityType: 'plugin', label: 'memo-pack/board', path: ['columns'], value: 6 });
+    await app.send('host/settings', { type: 'UPDATE_SETTINGS', entityType: 'plugin', label: 'memo-pack/board', path: ['columns'], value: 6 });
     expect(heardBy(app)).toHaveLength(1);
   });
 
@@ -141,10 +141,10 @@ describe('a feature whose settings change', () => {
     const importWriting = (outcome: 'succeeds' | 'fails') => mockService('appData', {
       importBackup: async () => {
         // Before the import's first await, and after it: the writes tell nothing whenever they happen
-        settingsCommands.updatePluginSetting(resolveName('memo-pack/memos'), ['tags'], [{ name: 'early' }]);
+        services.settings.setForFeature(resolveName('memo-pack/memos'), ['tags'], [{ name: 'early' }]);
         await Promise.resolve();
         tx('Settings-app' as EARS.EntityId).put('data', { plugins: { 'memo-pack/memos': { tags: [{ name: 'imported' }] } } });
-        settingsCommands.updatePluginSetting(resolveName('memo-pack/memos'), ['tags'], [{ name: 'migrated' }]);
+        services.settings.setForFeature(resolveName('memo-pack/memos'), ['tags'], [{ name: 'migrated' }]);
         if (outcome === 'fails') throw new Error('backup unreadable');
         return { databases: ['lmdb'], missingDatabases: [], unknownEntityTypes: [] };
       },
@@ -152,28 +152,28 @@ describe('a feature whose settings change', () => {
 
     it.each(['succeeds', 'fails'] as const)('tells each feature no changes when it %s', async (outcome) => {
       importWriting(outcome);
-      const app = await startApp({ systems: ['settings', 'database', 'memo-pack/memos'] });
+      const app = await startApp({ systems: ['database', 'memo-pack/memos', 'host/settings'] });
       await app.connect();
 
       await app.send('database', { type: 'IMPORT_DATABASE', path: '/backups/1' } as never);
       await app.settle();
 
       expect(heardBy(app)).toEqual([{ type: 'FEATURE_SETTINGS_UPDATED', settings: { tags: [{ name: 'migrated' }] }, changes: null }]);
-      await app.send('settings', { type: 'UPDATE_SETTINGS', entityType: 'plugin', label: 'memo-pack/board', path: ['columns'], value: 7 });
+      await app.send('host/settings', { type: 'UPDATE_SETTINGS', entityType: 'plugin', label: 'memo-pack/board', path: ['columns'], value: 7 });
       expect(heardBy(app)).toHaveLength(1);
     });
   });
 
   // A settings form says "Saved" on the store's answer, so every change it sends gets one
   it('answers a change with what the store did: stored, or refused with its reasons', async () => {
-    const app = await startApp({ systems: ['settings', 'memo-pack/memos'] });
+    const app = await startApp({ systems: ['memo-pack/memos', 'host/settings'] });
     await app.connect();
 
-    await app.send('settings', { type: 'UPDATE_SETTINGS', entityType: 'plugin', label: 'memo-pack/memos', path: ['tags'], value: [] });
-    expect(app.emitted('default-setup/settings')).toContainEqual({ type: 'SETTINGS_SAVED' });
+    await app.send('host/settings', { type: 'UPDATE_SETTINGS', entityType: 'plugin', label: 'memo-pack/memos', path: ['tags'], value: [] });
+    expect(app.emitted('host/settings')).toContainEqual({ type: 'SETTINGS_SAVED' });
 
-    await app.send('settings', { type: 'UPDATE_SETTINGS', entityType: 'plugin', label: 'memos', path: ['tags'], value: [] });
-    expect(app.emitted('default-setup/settings')).toContainEqual({
+    await app.send('host/settings', { type: 'UPDATE_SETTINGS', entityType: 'plugin', label: 'memos', path: ['tags'], value: [] });
+    expect(app.emitted('host/settings')).toContainEqual({
       type: 'SETTINGS_REFUSED',
       problems: [expect.stringContaining('did you mean "memo-pack/memos"?')],
     });
@@ -192,27 +192,27 @@ describe('a feature whose settings change', () => {
     }
 
     it('refuses an app reset, which would race it over the same stores', async () => {
-      const app = await startApp({ systems: ['settings', 'database', 'memo-pack/memos'] });
+      const app = await startApp({ systems: ['database', 'memo-pack/memos', 'host/settings'] });
       await app.connect();
       const { finish } = await importing(app);
 
-      await app.send('settings', { type: 'RESET_APP' });
+      await app.send('host/settings', { type: 'RESET_APP' });
 
-      expect(app.emitted('default-setup/settings')).toContainEqual({ type: 'APP_RESET_FAILED', error: expect.stringContaining('backup is being imported') });
+      expect(app.emitted('host/settings')).toContainEqual({ type: 'APP_RESET_FAILED', error: expect.stringContaining('backup is being imported') });
       finish();
       await app.settle();
     });
 
     it("tells no feature a pack's settings changed until it ends", async () => {
-      const app = await startApp({ systems: ['settings', 'database', 'memo-pack/memos'] });
+      const app = await startApp({ systems: ['database', 'memo-pack/memos', 'host/settings'] });
       await app.connect();
-      settingsCommands.updatePluginSetting(resolveName('memo-pack/memos'), ['tags'], [{ name: 'before' }]);
+      services.settings.setForFeature(resolveName('memo-pack/memos'), ['tags'], [{ name: 'before' }]);
       await app.settle();
       const heardBefore = heardBy(app).length;
       const { finish } = await importing(app);
 
       tx('Settings-app' as EARS.EntityId).put('data', { plugins: { 'memo-pack/memos': { tags: [{ name: 'imported' }] } } });
-      await app.send('settings', { type: 'PACK_CHANGED', packId: 'memo-pack' } as never);
+      await app.send('host/settings', { type: 'PACK_CHANGED', packId: 'memo-pack' } as never);
       expect(heardBy(app)).toHaveLength(heardBefore);
 
       finish();
@@ -223,13 +223,13 @@ describe('a feature whose settings change', () => {
     // A settings form waits for the store's answer before it says "Saved", so a change taken and never answered
     // leaves it saying "Saving" for good
     it('refuses a change sent while it runs, rather than leaving the form waiting for an answer', async () => {
-      const app = await startApp({ systems: ['settings', 'database', 'memo-pack/memos'] });
+      const app = await startApp({ systems: ['database', 'memo-pack/memos', 'host/settings'] });
       await app.connect();
       const { finish } = await importing(app);
 
-      await app.send('settings', { type: 'UPDATE_SETTINGS', entityType: 'plugin', label: 'memo-pack/memos', path: ['tags'], value: [] } as never);
+      await app.send('host/settings', { type: 'UPDATE_SETTINGS', entityType: 'plugin', label: 'memo-pack/memos', path: ['tags'], value: [] } as never);
 
-      expect(app.emitted('default-setup/settings')).toContainEqual({
+      expect(app.emitted('host/settings')).toContainEqual({
         type: 'SETTINGS_REFUSED',
         problems: [expect.stringContaining('backup is being imported')],
       });
@@ -239,14 +239,14 @@ describe('a feature whose settings change', () => {
 
     // A read only reports what is stored, and the settings page waits for one before it renders
     it('serves a read, so opening the settings page while it runs still loads', async () => {
-      const app = await startApp({ systems: ['settings', 'database', 'memo-pack/memos'] });
+      const app = await startApp({ systems: ['database', 'memo-pack/memos', 'host/settings'] });
       await app.connect();
       const { finish } = await importing(app);
-      const before = app.emitted('default-setup/settings').length;
+      const before = app.emitted('host/settings').length;
 
-      await app.send('settings', { type: 'GET_SETTINGS' } as never);
+      await app.send('host/settings', { type: 'GET_SETTINGS' } as never);
 
-      expect(app.emitted('default-setup/settings').slice(before)).toContainEqual(
+      expect(app.emitted('host/settings').slice(before)).toContainEqual(
         expect.objectContaining({ type: 'SETTINGS_LOADED' }),
       );
       finish();
@@ -257,17 +257,17 @@ describe('a feature whose settings change', () => {
   // A bare key would be stored where nothing reads it, for good. A refusal is the user's to fix, not the system's
   // error: the settings plugin hears it with the reasons
   it('refuses replaced settings holding a plugin key that is not a ref, naming the ref it likely meant', async () => {
-    const app = await startApp({ systems: ['settings', 'memo-pack/memos'] });
+    const app = await startApp({ systems: ['memo-pack/memos', 'host/settings'] });
     await app.connect();
 
-    await app.send('settings', { type: 'REPLACE_SETTINGS', data: { general: {}, plugins: { memos: { tags: [] } } } });
+    await app.send('host/settings', { type: 'REPLACE_SETTINGS', data: { general: {}, plugins: { memos: { tags: [] } } } });
 
-    expect(app.emitted('default-setup/settings')).toContainEqual({
+    expect(app.emitted('host/settings')).toContainEqual({
       type: 'SETTINGS_REFUSED',
       problems: [expect.stringMatching(/^No installed feature with settings is named "memos": .* did you mean "memo-pack\/memos"\?/)],
     });
-    expect(app.emitted('default-setup/settings').map((e) => e.type)).not.toContain('SETTINGS_SAVED');
-    expect(settingsQueries.getStoredSettings()).toEqual({});
+    expect(app.emitted('host/settings').map((e) => e.type)).not.toContain('SETTINGS_SAVED');
+    expect(services.settings.getStored<Record<string, any>>()).toEqual({});
     expect(heardBy(app)).toEqual([]);
   });
 
@@ -277,41 +277,41 @@ describe('a feature whose settings change', () => {
     ['a section that is not an object', { general: {}, plugins: null }, '"plugins" must be an object'],
     ['a section the settings do not hold', { general: {}, extra: {} }, `"extra" isn't a settings section`],
   ])('refuses replaced settings that are %s, storing nothing', async (_, data, problem) => {
-    const app = await startApp({ systems: ['settings', 'memo-pack/memos'] });
+    const app = await startApp({ systems: ['memo-pack/memos', 'host/settings'] });
     await app.connect();
 
-    await app.send('settings', { type: 'REPLACE_SETTINGS', data });
+    await app.send('host/settings', { type: 'REPLACE_SETTINGS', data });
 
-    expect(app.emitted('default-setup/settings')).toContainEqual({ type: 'SETTINGS_REFUSED', problems: [expect.stringContaining(problem)] });
-    expect(settingsQueries.getStoredSettings()).toEqual({});
+    expect(app.emitted('host/settings')).toContainEqual({ type: 'SETTINGS_REFUSED', problems: [expect.stringContaining(problem)] });
+    expect(services.settings.getStored<Record<string, any>>()).toEqual({});
   });
 
   // The editor sends the settings in effect, defaults included: storing them as given would freeze today's defaults
   // into the user's settings, where a later default change never reaches them
   it('stores what replaced settings change from the defaults, and says it saved them', async () => {
-    const app = await startApp({ systems: ['settings', 'memo-pack/memos'] });
+    const app = await startApp({ systems: ['memo-pack/memos', 'host/settings'] });
     await app.connect();
-    const inEffect = settingsQueries.getSettings();
+    const inEffect = services.settings.getAll<Record<string, any>>();
 
-    await app.send('settings', {
+    await app.send('host/settings', {
       type: 'REPLACE_SETTINGS',
       data: { ...inEffect, plugins: { ...inEffect.plugins, 'memo-pack/board': { columns: 5 } } },
     });
 
-    expect(settingsQueries.getStoredSettings()).toEqual({ plugins: { 'memo-pack/board': { columns: 5 } } });
-    expect(app.emitted('default-setup/settings')).toContainEqual({ type: 'SETTINGS_SAVED' });
+    expect(services.settings.getStored<Record<string, any>>()).toEqual({ plugins: { 'memo-pack/board': { columns: 5 } } });
+    expect(app.emitted('host/settings')).toContainEqual({ type: 'SETTINGS_SAVED' });
   });
 
   // Its defaults leave with the pack, so the settings of its features change; their system and plugin are gone,
   // which is no mistake to report (the harness fails a test that leaves a reported drop)
   it('tells nobody, and reports nothing, when its pack leaves', async () => {
-    const app = await startApp({ systems: ['settings'] });
+    const app = await startApp({ systems: ['host/settings'] });
     await app.connect();
 
     unregisterPack('memo-pack');
     await app.settle();
 
-    expect(app.emitted('default-setup/settings').map((e) => e.type)).toContain('SETTINGS_UPDATED');
+    expect(app.emitted('host/settings').map((e) => e.type)).toContain('SETTINGS_UPDATED');
   });
 
   // A pack installed but not running (disabled) keeps its settings, which can change (the host's registry lists its
@@ -319,17 +319,17 @@ describe('a feature whose settings change', () => {
   // pack stays as it was, for its reinstall
   it('refuses changed settings of a feature no installed pack has, and keeps an uninstalled pack\'s unchanged', async () => {
     tx('Settings-app' as EARS.EntityId, true).put('entityType', 'Settings').put('data', { plugins: { 'gone-pack/journal': { font: 'serif' } } });
-    const app = await startApp({ systems: ['settings'] });
+    const app = await startApp({ systems: ['host/settings'] });
     await app.connect();
 
-    await app.send('settings', { type: 'REPLACE_SETTINGS', data: { plugins: { 'gone-pack/journal': { font: 'serif' }, 'memo-pack/memo': { tags: [] } } } });
-    expect(app.emitted('default-setup/settings')).toContainEqual({
+    await app.send('host/settings', { type: 'REPLACE_SETTINGS', data: { plugins: { 'gone-pack/journal': { font: 'serif' }, 'memo-pack/memo': { tags: [] } } } });
+    expect(app.emitted('host/settings')).toContainEqual({
       type: 'SETTINGS_REFUSED',
       problems: [expect.stringContaining('No installed feature with settings is named "memo-pack/memo"')],
     });
 
-    await app.send('settings', { type: 'REPLACE_SETTINGS', data: { plugins: { 'gone-pack/journal': { font: 'serif' }, 'memo-pack/board': { columns: 9 } } } });
-    expect(settingsQueries.getStoredSettings().plugins).toEqual({ 'gone-pack/journal': { font: 'serif' }, 'memo-pack/board': { columns: 9 } });
+    await app.send('host/settings', { type: 'REPLACE_SETTINGS', data: { plugins: { 'gone-pack/journal': { font: 'serif' }, 'memo-pack/board': { columns: 9 } } } });
+    expect(services.settings.getStored<Record<string, any>>().plugins).toEqual({ 'gone-pack/journal': { font: 'serif' }, 'memo-pack/board': { columns: 9 } });
   });
 });
 
@@ -344,24 +344,24 @@ describe('settings naming prototype machinery', () => {
     ['a constructor path', { entityType: 'general', label: 'application', path: ['constructor', 'prototype', 'polluted'] }],
     ["a plugin's path", { entityType: 'plugin', label: 'memo-pack/memos', path: ['__proto__', 'polluted'] }],
   ])('keeps %s as data, and pollutes nothing', async (_, update) => {
-    const app = await startApp({ systems: ['settings'] });
+    const app = await startApp({ systems: ['host/settings'] });
     await app.connect();
 
-    await app.send('settings', { type: 'UPDATE_SETTINGS', ...update, value: 'yes' } as never);
+    await app.send('host/settings', { type: 'UPDATE_SETTINGS', ...update, value: 'yes' } as never);
 
     expect(({} as Record<string, unknown>).polluted).toBeUndefined();
-    expect(Object.getPrototypeOf(settingsQueries.getSettings().general)).toBe(Object.prototype);
+    expect(Object.getPrototypeOf(services.settings.getAll().general)).toBe(Object.prototype);
   });
 
   it('keeps such a key in replaced settings as data, and pollutes nothing', async () => {
-    const app = await startApp({ systems: ['settings'] });
+    const app = await startApp({ systems: ['host/settings'] });
     await app.connect();
 
     // As a client's JSON arrives: "__proto__" an own key
     const data = JSON.parse('{ "general": {}, "plugins": { "memo-pack/memos": { "__proto__": { "polluted": "yes" } } } }');
-    await app.send('settings', { type: 'REPLACE_SETTINGS', data });
+    await app.send('host/settings', { type: 'REPLACE_SETTINGS', data });
 
-    const memos = settingsQueries.getPluginSettings(resolveName('memo-pack/memos')) as Record<string, unknown>;
+    const memos = services.settings.forFeature(resolveName('memo-pack/memos')) as Record<string, unknown>;
     expect(({} as Record<string, unknown>).polluted).toBeUndefined();
     expect(memos.polluted).toBeUndefined();
     expect(Object.getPrototypeOf(memos)).toBe(Object.prototype);

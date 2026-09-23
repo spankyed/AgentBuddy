@@ -4,15 +4,15 @@
 import { afterAll, afterEach, expect, it, vi } from 'vitest'
 import { createActor } from 'xstate'
 import { startFeTestRuntime } from '@abuddy/sdk/testing'
-import settingsState from '@/features/settings/fe/state'
+import { createSettingsMachine } from '../../../../src/features/settings/fe/machine.ts'
 import { resolveName } from '@abuddy/sdk/ids'
 
 afterAll(startFeTestRuntime({ client: { send() {} } }))
 afterEach(() => vi.restoreAllMocks())
 
 function readySettingsPlugin() {
-  const actor = createActor(settingsState).start()
-  actor.send({ type: 'SETTINGS_LOADED', data: { general: {}, plugins: {}, assistant: {} } as never, faqs: [] })
+  const actor = createActor(createSettingsMachine({ restart: () => {}, report: () => {} })).start()
+  actor.send({ type: 'SETTINGS_LOADED', data: { general: {}, plugins: {}, assistant: {} } as never, help: [] })
   return actor
 }
 

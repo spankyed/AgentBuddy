@@ -16,7 +16,7 @@ describe('secretsClient', () => {
       list: record('list'), add: record('add'), replaceValue: record('replaceValue'), select: record('select'),
       rename: record('rename'), delete: record('delete'), allowUnprotected: record('allowUnprotected'),
     };
-    bindFeHost({ application: {} as never, secrets: host, client: { send: () => {} }, packs: {} as never });
+    bindFeHost({ application: {} as never, secrets: host, settings: {} as never, client: { send: () => {} }, packs: {} as never });
 
     await expect(secretsClient.add('openai', 'Work', 'sk-value')).resolves.toBe(snapshot);
     await secretsClient.list();

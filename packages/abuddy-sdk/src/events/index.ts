@@ -99,6 +99,12 @@ export type HostPluginEvents = {
     // Opens a plugin, by its ref, in the app's main windows (a popout keeps the plugin it shows) and hands its actor
     // `events`; the shell waits for a plugin whose pack's frontend is still loading
     | { type: 'OPEN_PLUGIN'; plugin: string; events?: Array<{ type: string; [key: string]: unknown }> };
+  /**
+   * The app's Settings view. A pack sends it what only that pack can find out about its own things, for the view to
+   * show — the code feature's CLI resolution, for one. The settings themselves are the app's.
+   */
+  'host/settings':
+    | { type: 'CLI_TEST_RESULT'; provider: string; success: boolean; error?: string; resolvedPath?: string };
 };
 
 /** Events the host app's own systems receive from pack code, which names them `host/<feature>` */
@@ -121,6 +127,7 @@ export const HOST_SYSTEM_EVENT_TYPES = {
  */
 export const HOST_PLUGIN_EVENT_TYPES = {
   'host/application': eventTypes<HostPluginEvents['host/application']>()('CLIENT_CONNECTED', 'APPLICATION_HOTKEYS', 'PLUGIN_VISIBILITY_UPDATED', 'ONBOARDING_COMPLETE', 'OPEN_PLUGIN'),
+  'host/settings': eventTypes<HostPluginEvents['host/settings']>()('CLI_TEST_RESULT'),
 } satisfies Record<keyof HostPluginEvents, readonly string[]>;
 
 /**
