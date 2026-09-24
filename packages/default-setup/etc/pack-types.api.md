@@ -421,6 +421,23 @@ interface BrainContext {
     settings?: any;
 }
 
+interface BrainContext$1 {
+    brainActor?: any;
+    eventQueue: Array<{
+        eventType: string;
+        payload?: any;
+        targetFlowId?: string;
+    }>;
+    /** Why the brain last failed to start, while it stays stopped for that reason: part of each client's startup data */
+    startError?: Error;
+    /** Whether the start error was reported (a toast in every open window): once per failed start */
+    startErrorReported: boolean;
+    /** Whether a client has connected: before that, nothing receives what the brain sends */
+    clientConnected: boolean;
+    /** The root flow the running brain started with; undefined while it's stopped */
+    runningRootFlowId?: EARS.EntityId;
+}
+
 type BrainEventCallback = (event: BrainEventPayload) => void | Promise<void>;
 
 interface BrainEventPayload {
@@ -460,6 +477,9 @@ interface BrowserContext {
     bookmarks: Bookmark[];
     /** This feature's own settings, as the app sends them (`FEATURE_SETTINGS_UPDATED`) */
     settings: BrowserSettings;
+}
+
+interface BrowserContext$1 {
 }
 
 /** A link the user chose to open in the app rather than the OS browser */
@@ -870,6 +890,17 @@ interface ConsumerHandlers {
 /** A section of a document's content, as the library compiler parses it from markdown */
 type ContentSection = FieldContent | ListContent | MarkdownContent | TextContent | CodeContent;
 
+interface Context {
+    baseDirectory: string | null;
+    /**
+     * The default directory the settings named when this system last heard them. The settings arrive whenever any of
+     * the code settings change, the browsed `baseDirectory` included, so only a new default moves the explorer.
+     */
+    defaultBaseDirectory: string | null;
+    gitRepository: GitRepository | null;
+    gitWatcher: GitWatcherService | null;
+}
+
 interface ContextReference {
     refType: ContextReferenceType;
     refId: string;
@@ -951,6 +982,68 @@ type Contract$a = {
     inbox: PluginInbox<{
         pack: ThreadsInboxEvent;
     }>;
+};
+
+type Contract$b = {
+    context: LogsContext$1;
+    incoming: IncomingLogEvents;
+    internal: LogsInternalEvents;
+    outgoing: OutgoingLogsEvents;
+};
+
+type Contract$c = {
+    incoming: IncomingDatabaseEvents;
+    outgoing: OutgoingDatabaseEvents;
+};
+
+type Contract$d = {
+    context: BrainContext$1;
+    incoming: IncomingBrainEvents;
+    outgoing: OutgoingBrainEvents;
+};
+
+type Contract$e = {
+    incoming: IncomingPromptEvents;
+    outgoing: OutgoingPromptEvents;
+};
+
+type Contract$f = {
+    incoming: IncomingActionEvents;
+    outgoing: OutgoingActionEvents;
+};
+
+type Contract$g = {
+    incoming: IncomingFlowsEvents;
+    outgoing: OutgoingFlowsEvents;
+};
+
+type Contract$h = {
+    context: LibrarySystemContext;
+    incoming: IncomingLibraryEvents;
+    outgoing: OutgoingLibraryEvents;
+};
+
+type Contract$i = {
+    context: BrowserContext$1;
+    incoming: IncomingBrowserEvents;
+    outgoing: OutgoingBrowserEvents;
+};
+
+type Contract$j = {
+    incoming: IncomingNoteEvents;
+    outgoing: OutgoingNotesEvents;
+};
+
+type Contract$k = {
+    context: Context;
+    incoming: IncomingCodeEvents;
+    outgoing: OutgoingCodeEvents;
+};
+
+type Contract$l = {
+    context: ThreadsContext$1;
+    incoming: IncomingThreadsEvents;
+    outgoing: OutgoingThreadsEvents;
 };
 
 type ControlCancelLine = z.infer<typeof ControlCancelLineSchema>;
@@ -1612,6 +1705,129 @@ interface GitDiff {
     isImage?: boolean;
 }
 
+declare class GitRepository {
+    private workingDirectory;
+    private cache;
+    private readonly CACHE_TTL;
+    private readonly PARENT_BRANCH_SEARCH_DEPTH;
+    /** Serializes all git process invocations to prevent index.lock races. */
+    private commandQueue;
+    private _writeInProgress;
+    private _writeCompleteCallbacks;
+    private _lastFetchTimestamp;
+    private _autoFetchEnabled;
+    private _fetchThrottleMs;
+    constructor(workingDirectory: string);
+    getWorkingDir(): string;
+    setFetchConfig(enabled: boolean, intervalSeconds: number): void;
+    get isWriteInProgress(): boolean;
+    /** Register a one-shot callback that fires when all pending writes finish. */
+    onWriteComplete(callback: () => void): void;
+    /** Run fn serially on the command queue (used by executeGitCommand). */
+    private enqueueCommand;
+    /** Wrap a write operation to track write-in-progress for watcher suppression. */
+    private withWriteFlag;
+    private validateWorkingDirectory;
+    private ensureGitRepository;
+    private getCached;
+    private setCached;
+    clearCache(): void;
+    private isDirectory;
+    private getUntrackedFilesInDirectory;
+    invalidateCache(paths?: string[]): void;
+    private executeGitCommand;
+    getCurrentBranch(): Promise<string>;
+    getStatus(): Promise<GitStatusFile[]>;
+    private mapGitStatus;
+    private isBinaryFile;
+    getDiff(filePath?: string, staged?: boolean): Promise<string>;
+    /**
+     * Efficient multi-path diff: issues a single `git diff -- path1 path2 …`
+     * for tracked files and builds synthetic diffs for untracked ones, avoiding
+     * one git subprocess per file.
+     */
+    getDiffMulti(paths: string[]): Promise<string>;
+    /** Build a synthetic diff for an untracked file (new file / directory / binary). */
+    private buildSyntheticDiff;
+    /** Build a synthetic diff for a file outside the repository. */
+    private buildSyntheticDiffAbsolute;
+    getFileContent(filePath: string, version?: 'HEAD' | 'index' | 'working'): Promise<string>;
+    /**
+     * Read a file as a base64 data URL if it's an image, otherwise return text content.
+     * For git refs (HEAD/index), reads binary output from `git show`.
+     */
+    getFileContentAsDataUrl(filePath: string, version?: 'HEAD' | 'index' | 'working'): Promise<string>;
+    /**
+     * Read a file from a branch as a base64 data URL if it's an image.
+     */
+    getFileContentFromBranchAsDataUrl(filePath: string, branch: string): Promise<string>;
+    /** Check if a file path is an image based on extension. */
+    isImageFile(filePath: string): boolean;
+    /** Execute a git command and return raw binary buffer output. */
+    private executeGitCommandBinary;
+    stageFiles(filePaths: string[]): Promise<void>;
+    unstageFiles(filePaths: string[]): Promise<void>;
+    revertFile(filePath: string): Promise<void>;
+    revertFiles(filePaths: string[]): Promise<void>;
+    fileExistsInHead(filePath: string): Promise<boolean>;
+    resolveConflict(filePath: string, strategy: 'ours' | 'theirs'): Promise<void>;
+    commit(message: string): Promise<void>;
+    isGitRepository(): Promise<boolean>;
+    hasUncommittedChanges(): Promise<boolean>;
+    getStagedFiles(): Promise<GitStatusFile[]>;
+    getUpstreamBranch(): Promise<string | null>;
+    getBaseBranch(options?: {
+        preferUpstream?: boolean;
+    }): Promise<string>;
+    getPRBaseBranch(): Promise<string>;
+    /**
+     * Find the closest parent branch by comparing merge-base distances.
+     * When branching feature-B from feature-A, feature-A will have a much
+     * smaller commit distance than main/master.
+     */
+    private findClosestParentBranch;
+    private getCommitDistance;
+    private getNearbyMergedBranches;
+    getBranchDiff(baseBranch: string, targetBranch?: string): Promise<GitStatusFile[]>;
+    getFileDiffBetweenBranches(filePath: string, baseBranch: string, targetBranch?: string): Promise<string>;
+    getFileContentFromBranch(filePath: string, branch: string): Promise<string>;
+    fetchRemoteBranch(branch: string): Promise<void>;
+    deleteRemoteBranch(branch: string): Promise<void>;
+    getAllBranches(): Promise<string[]>;
+    checkoutBranch(branchName: string): Promise<void>;
+    isCurrentBranchPublished(): Promise<boolean>;
+    private _forceFetchNext;
+    /**
+     * Force a fetch on the next getCommitsAheadBehind() call,
+     * regardless of the auto-fetch toggle or throttle timer.
+     */
+    forceFetchOnce(): void;
+    private fetchIfStale;
+    getCommitsAheadBehind(): Promise<{
+        ahead: number;
+        behind: number;
+    }>;
+    pushBranch(): Promise<void>;
+    pullBranch(): Promise<void>;
+    stashPush(message?: string, stagedOnly?: boolean): Promise<string>;
+    stashList(): Promise<StashEntry[]>;
+    stashApply(index: number): Promise<void>;
+    stashPop(index: number): Promise<void>;
+    private isStashConflict;
+    stashDrop(index: number): Promise<void>;
+    stashClear(): Promise<void>;
+    worktreeList(): Promise<WorktreeEntry[]>;
+    worktreeAdd(wtPath: string, branch?: string, createBranch?: boolean): Promise<string>;
+    worktreeRemove(wtPath: string, force?: boolean): Promise<void>;
+    getCommitsBetweenBranches(baseBranch: string, targetBranch?: string): Promise<{
+        subject: string;
+        body: string;
+    }[]>;
+    gitLog(count?: number): Promise<CommitLogEntry[]>;
+    revertCommit(hash: string): Promise<void>;
+    resetToCommit(hash: string): Promise<void>;
+}
+
 interface GitStatusFile {
     path: string;
     status: 'added' | 'copied' | 'deleted' | 'modified' | 'renamed' | 'typechange' | 'unmerged' | 'untracked';
@@ -1620,10 +1836,71 @@ interface GitStatusFile {
     score?: number;
 }
 
+declare class GitWatcherService {
+    private workingDirectory;
+    private gitWatcher?;
+    private workingDirWatcher?;
+    private onGitChangeCallback?;
+    private onFileChangeCallback?;
+    private gitStatusDebounceTimeout?;
+    private fileChangeTimeouts;
+    private isWatching;
+    private openFiles;
+    private gitRepository?;
+    constructor(workingDirectory: string);
+    setGitRepository(repo: GitRepository): void;
+    setChangeCallback(callback: () => void): void;
+    setFileChangeCallback(callback: (change: FileChangeInfo) => void): void;
+    registerOpenFile(filePath: string): void;
+    unregisterOpenFile(filePath: string): void;
+    isFileOpen(filePath: string): boolean;
+    getOpenFiles(): string[];
+    startWatching(): Promise<void>;
+    private handleFileChange;
+    stopWatching(): Promise<void>;
+    isActive(): boolean;
+}
+
 interface ImageReference {
     url: string;
     name: string;
 }
+
+type IncomingActionEvents = {
+    type: 'ACTION_SELECT';
+    actionId: string;
+} | {
+    type: 'CREATE_ACTION';
+    label: string;
+    input: Record<string, any>;
+    actionFn: string;
+    output?: any;
+    description?: string;
+    category?: string;
+} | {
+    type: 'UPDATE_ACTION';
+    actionId: string;
+    label?: string;
+    input?: Record<string, any>;
+    actionFn?: string;
+    output?: any;
+    description?: string;
+    category?: string;
+} | {
+    type: 'DELETE_ACTION';
+    actionId: string;
+} | {
+    type: 'FETCH_ACTIONS_PAGE';
+    page?: number;
+} | {
+    type: 'FETCH_ALL_ACTIONS';
+} | {
+    type: 'IMPORT_ACTIONS';
+    actions: any;
+} | {
+    type: 'EXPORT_ACTIONS';
+    directory: string;
+};
 
 type IncomingActionsEvents = {
     type: 'codeActions.OPEN_ACTION';
@@ -1632,6 +1909,84 @@ type IncomingActionsEvents = {
     type: 'codeActions.SAVE_ACTION';
     actionId: string;
     actionFn: string;
+};
+
+type IncomingBrainEvents = {
+    type: 'OPEN_TNODE';
+    tNodeId: string;
+} | {
+    type: 'GO_BACK_TNODE';
+    currentFlowTNodeId?: string;
+} | {
+    type: 'REQUEST_PLUGIN_DATA';
+    flowTNodeId?: string;
+} | {
+    type: 'GET_TNODE_DETAILS';
+    tNodeId: string;
+} | {
+    type: 'TOGGLE_INSPECT';
+} | {
+    type: 'START_BRAIN';
+} | {
+    type: 'KILL_BRAIN';
+} | {
+    type: 'RESTART_BRAIN';
+} | {
+    type: 'PAUSE_BRAIN';
+} | {
+    type: 'RESUME_BRAIN';
+} | {
+    type: 'HANDLE_BRAIN_EVENT';
+    eventType: string;
+    payload?: any;
+    targetFlowId?: string;
+} | {
+    type: 'TRIGGER_BRAIN_EVENT';
+    eventType: string;
+    payload?: any;
+    targetFlowId?: string;
+} | {
+    type: 'TNODE_SPAWNED';
+    tNode: TNodeEntity;
+    parentId?: EARS.EntityId;
+    eventTNodeId?: EARS.EntityId;
+    flowTNodeId: EARS.EntityId;
+} | {
+    type: 'TNODE_UPDATED';
+    data: TNodeUpdate;
+} | {
+    type: 'HANDLE_BRAIN_EVENT';
+    eventType: string;
+    payload?: any;
+    targetFlowId?: string;
+} | {
+    type: 'CHILD_COMPLETED';
+    stepId?: EARS.EntityId;
+    tNodeId?: EARS.EntityId;
+    stepLabel?: string;
+    result?: any;
+    final?: boolean;
+    eventTNodeId?: EARS.EntityId;
+    isFlow?: boolean;
+};
+
+type IncomingBrowserEvents = {
+    type: 'SYNC_TABS';
+    tabs: SavedTab[];
+} | {
+    type: 'SYNC_BOOKMARKS';
+    bookmarks: SavedBookmark[];
+};
+
+type IncomingCodeEvents = IncomingExplorerEvents | IncomingSearchEvents | IncomingCommitEvents | IncomingPullRequestEvents | IncomingTerminalEvents | IncomingActionsEvents | IncomingPromptsEvents | {
+    type: 'SET_BASE_DIRECTORY';
+    path: string;
+    fromUserNavigation?: boolean;
+}
+/** Settings → Providers: resolve a CLI and store where it was found, in this feature's own settings */
+ | {
+    type: 'TEST_CLI_PROVIDER';
+    provider: string;
 };
 
 type IncomingCommitEvents = {
@@ -1719,6 +2074,44 @@ type IncomingCommitEvents = {
     hash: string;
 };
 
+type IncomingDatabaseEvents = {
+    type: 'EXECUTE_QUERY';
+    code: string;
+} | {
+    type: 'EXECUTE_TRANSACTION';
+    code: string;
+} | {
+    type: 'GENERATE_AI_QUERY';
+    prompt: string;
+    mode?: 'query' | 'transaction';
+} | {
+    type: 'REFRESH_SCHEMA';
+} | {
+    type: 'GET_TRACE_FLOWS';
+} | {
+    type: 'GET_FLOW_EVENTS';
+    flowId: string;
+    offset?: number;
+    limit?: number;
+} | {
+    type: 'GET_NODE_DETAILS';
+    nodeId: string;
+} | {
+    type: 'EXPORT_DATABASE';
+    path: string;
+    name?: string;
+    databases: ('lmdb' | 'volatileLmdb')[];
+} | {
+    type: 'IMPORT_DATABASE';
+    path: string;
+    skipUnknownDatabases?: boolean;
+} | {
+    type: 'GET_BACKUP_INFO';
+    path: string;
+} | {
+    type: 'RESET_DATABASE';
+};
+
 type IncomingExplorerEvents = {
     type: 'explorer.LIST_FILES';
     path: string;
@@ -1760,6 +2153,247 @@ type IncomingExplorerEvents = {
     type: 'explorer.COPY_FILES';
     sourcePaths: string[];
     targetDir: string;
+};
+
+type IncomingFlowsEvents = {
+    type: 'FLOW_SELECT';
+    flowId: string;
+} | {
+    type: 'CREATE_FLOW';
+} | {
+    type: 'DELETE_FLOW';
+    flowId: string;
+} | {
+    type: 'UPDATE_FLOW_LABEL';
+    flowId: string;
+    label: string;
+} | {
+    type: 'CREATE_NODE';
+    flowId: string;
+    tempId: string;
+    nodeData: any;
+} | {
+    type: 'UPDATE_NODE';
+    flowId: string;
+    nodeId: string;
+    nodeData: any;
+} | {
+    type: 'DELETE_NODE';
+    flowId: string;
+    nodeId: string;
+} | {
+    type: 'CREATE_EDGE';
+    flowId: string;
+    sourceId: string;
+    targetId: string;
+    sourceHandle?: string;
+    targetHandle?: string;
+} | {
+    type: 'DELETE_EDGE';
+    flowId: string;
+    edgeId: string;
+} | {
+    type: 'UPDATE_EDGE';
+    flowId: string;
+    edgeId: string;
+    source: string;
+    target: string;
+    sourceHandle?: string;
+    targetHandle?: string;
+} | {
+    type: 'IMPORT_DSL';
+    dsl: any;
+} | {
+    type: 'EXPORT_DSL';
+    directory: string;
+    flowId?: string;
+} | {
+    type: 'REINDEX_HANDLES';
+    flowId: string;
+    nodeId: string;
+    prefix: string;
+    index: number;
+    direction: -1 | 1;
+}
+/** Makes a flow the root flow the brain runs (its root role), or, with null, leaves no flow the root */
+ | {
+    type: 'SET_ROOT_FLOW';
+    flowId: string | null;
+};
+
+type IncomingLibraryEvents = {
+    type: 'CREATE_DOCUMENT';
+    name: string;
+    content: ContentSection[];
+    tags: string[];
+    collectionId?: string;
+} | {
+    type: 'UPDATE_DOCUMENT';
+    id: string;
+    name: string;
+    content: ContentSection[];
+    tags: string[];
+    collectionId?: string;
+} | {
+    type: 'DELETE_DOCUMENT';
+    id: string;
+} | {
+    type: 'GET_DOCUMENT';
+    id: string;
+} | {
+    type: 'GET_LIBRARY_INDEX';
+} | {
+    type: 'CREATE_COLLECTION';
+    name: string;
+    description?: string;
+    parentId?: string;
+} | {
+    type: 'UPDATE_COLLECTION';
+    id: string;
+    name: string;
+    description?: string;
+} | {
+    type: 'DELETE_COLLECTION';
+    id: string;
+} | {
+    type: 'MOVE_DOCUMENT';
+    documentId: string;
+    collectionId?: string;
+} | {
+    type: 'GET_FOLDER_CONTENTS';
+    folderId: string | null;
+} | {
+    type: 'NAVIGATE_TO_FOLDER';
+    folderId: string | null;
+} | {
+    type: 'RENAME_ITEM';
+    id: string;
+    name: string;
+    itemType: 'document' | 'folder';
+} | {
+    type: 'DELETE_ITEMS';
+    ids: string[];
+} | {
+    type: 'MOVE_ITEMS';
+    ids: string[];
+    targetFolderId: string | null;
+} | {
+    type: 'CREATE_SYMLINK_COLLECTION';
+    name: string;
+    symlinkPath: string;
+    parentId?: string;
+} | {
+    type: 'UPDATE_SYMLINK_PATH';
+    collectionId: string;
+    newPath: string;
+} | {
+    type: 'IMPORT_LIBRARY';
+    directory: string;
+} | {
+    type: 'EXPORT_LIBRARY';
+    directory: string;
+    format: 'json' | 'markdown';
+};
+
+type IncomingLogEvents = {
+    type: 'CLEAR_LOGS';
+} | {
+    type: 'REQUEST_LOGS_UPDATE';
+};
+
+type IncomingNoteEvents = {
+    type: 'CREATE_NOTE';
+    title: string;
+    content?: string;
+    icon?: string | null;
+    parentId?: string;
+    skipContentSync?: boolean;
+    noteType?: 'document' | 'task' | 'tasklist';
+    completed?: boolean;
+    displayOrder?: number;
+} | {
+    type: 'UPDATE_NOTE';
+    id: string;
+    title?: string;
+    content?: string;
+    icon?: string | null;
+    completed?: boolean;
+    hideCompletedChildren?: boolean;
+    favorite?: boolean;
+} | {
+    type: 'DELETE_NOTE';
+    id: string;
+} | {
+    type: 'SOFT_DELETE_NOTE';
+    id: string;
+} | {
+    type: 'RESTORE_NOTE';
+    id: string;
+} | {
+    type: 'MOVE_NOTE';
+    ids: string[];
+    newParentId: string | null;
+} | {
+    type: 'REORDER_NOTE';
+    id: string;
+    newParentId: string | null;
+    newIndex: number;
+} | {
+    type: 'VIEW_NOTE';
+    id: string;
+} | {
+    type: 'SEARCH_NOTES';
+    query: string;
+} | {
+    type: 'GET_TRASHED_NOTES';
+} | {
+    type: 'PERMANENTLY_DELETE_NOTE';
+    id: string;
+} | {
+    type: 'EMPTY_TRASH';
+} | {
+    type: 'IMPORT_NOTES';
+    directory: string;
+} | {
+    type: 'EXPORT_NOTES';
+    directory: string;
+    format: 'json' | 'markdown';
+};
+
+type IncomingPromptEvents = {
+    type: 'PROMPT_SELECT';
+    promptId: string;
+} | {
+    type: 'CREATE_PROMPT';
+    label: string;
+    inputs: Record<string, any>;
+    templateFn: string;
+    outputSchema?: any;
+    description?: string;
+    category?: string;
+} | {
+    type: 'UPDATE_PROMPT';
+    promptId: string;
+    label?: string;
+    inputs?: Record<string, any>;
+    templateFn?: string;
+    outputSchema?: any;
+    description?: string;
+    category?: string;
+} | {
+    type: 'DELETE_PROMPT';
+    promptId: string;
+} | {
+    type: 'FETCH_PROMPTS_PAGE';
+    page?: number;
+} | {
+    type: 'FETCH_ALL_PROMPTS';
+} | {
+    type: 'IMPORT_PROMPTS';
+    prompts: any;
+} | {
+    type: 'EXPORT_PROMPTS';
+    directory: string;
 };
 
 type IncomingPromptsEvents = {
@@ -1900,6 +2534,168 @@ type IncomingTerminalEvents = {
 } | {
     type: 'terminal.OPEN_TERMINAL_TAB';
     terminalId: string;
+};
+
+type IncomingThreadsEvents = {
+    type: 'CREATE_THREAD';
+    topic: string;
+    tags?: string[];
+    instructions: string;
+    linkedThreads?: {
+        id: string;
+        relation: 'blocked_by' | 'blocks' | 'duplicates' | 'parent_of';
+    }[];
+    parentThreadId?: string;
+} | {
+    type: 'VIEW_THREAD';
+    threadId: string;
+} | {
+    type: 'UPDATE_THREAD_STATUS';
+    threadId: string;
+    status: string;
+} | {
+    type: 'UPDATE_THREAD_FIELD';
+    threadId: string;
+    key: string;
+    value: any;
+} | {
+    type: 'DELETE_THREAD';
+    threadId: string;
+} | {
+    type: 'SET_THREAD_PARENT';
+    childIds: string[];
+    parentId: string;
+} | {
+    type: 'EXPORT_THREADS';
+    directory: string;
+} | {
+    type: 'IMPORT_THREADS';
+    directory: string;
+} | {
+    type: 'USER_MSG';
+    text: string;
+    mode?: string;
+    phase?: string;
+    threadId?: string;
+    references?: {
+        images?: {
+            url: string;
+            name: string;
+        }[];
+        files?: {
+            name: string;
+            path: string;
+            typeLabel: string;
+            isImage: boolean;
+        }[];
+        context?: {
+            refType: 'document' | 'folder' | 'note' | 'task' | 'tasklist' | 'thread';
+            refId: string;
+            shortCode: string;
+            label: string;
+        }[];
+    };
+    cwdOverride?: string;
+    forceDirectoryPicker?: boolean;
+} | {
+    type: 'OPEN_THREAD_CHAT';
+    threadId: string;
+    restore?: boolean;
+} | {
+    type: 'OPEN_THREAD_TAB';
+    threadId: string;
+    label: string;
+    pinned?: boolean;
+} | {
+    type: 'PAUSE_TURN';
+    threadId: string;
+} | {
+    type: 'APPROVE_TODO_LIST';
+    artifactId: string;
+    tasks: any[];
+} | {
+    type: 'REJECT_TODO_LIST';
+    artifactId: string;
+} | {
+    type: 'INTERACTIVE_MSG_RESPONSE';
+    messageId: string;
+    threadId: string;
+    response: any;
+} | {
+    type: 'FORK_THREAD';
+    messageId: string;
+    threadId?: string;
+    threadTopic?: string;
+} | {
+    type: 'REVERT_THREAD';
+    messageId: string;
+    threadId: string;
+    restoreFiles?: boolean;
+    userCliUuid?: string;
+} | {
+    type: 'SUMMARIZE_THREAD';
+    messageId: string;
+    threadId: string;
+} | {
+    type: 'USER_COMMAND';
+    command: string;
+    text: string;
+    mode?: string;
+    phase?: string;
+    threadId?: string;
+    references?: {
+        images?: {
+            url: string;
+            name: string;
+        }[];
+        files?: {
+            name: string;
+            path: string;
+            typeLabel: string;
+            isImage: boolean;
+        }[];
+        context?: {
+            refType: 'document' | 'folder' | 'note' | 'task' | 'tasklist' | 'thread';
+            refId: string;
+            shortCode: string;
+            label: string;
+        }[];
+    };
+    cwdOverride?: string;
+} | {
+    type: 'TOGGLE_COMPACTED';
+    markerId: string;
+    compacted: boolean;
+} | {
+    type: 'DELETE_MESSAGE';
+    messageId: string;
+} | {
+    type: 'FORWARD_BRAIN_EVENT';
+    eventType: string;
+    payload?: any;
+} | {
+    type: 'GET_ARCHIVED_THREADS';
+} | {
+    type: 'REFRESH_THREADS';
+} | {
+    type: 'LOAD_MORE_MESSAGES';
+    threadId: string;
+    cursor: string;
+} | {
+    type: 'CLIENT_CONNECTED';
+} | {
+    type: 'BIRTH_FLOW_START';
+}
+/** The user's stored API keys changed (no values). The assistant's first flow waits on one it can call a model with */
+ | {
+    type: 'SECRETS_CHANGED';
+} | {
+    type: 'THREAD_DELETED';
+    threadId: string;
+}
+/** The library's commands folder changed (sent by the library system) */
+ | {
+    type: 'COMMANDS_CHANGED';
 };
 
 type IndexMetric = 'cosine' | 'dot_product';
@@ -2063,6 +2859,16 @@ declare class LibraryService {
     rename(id: string, newName: string): Promise<void>;
 }
 
+interface LibrarySystemContext {
+    documents: DocumentDTO[];
+    collections: CollectionDTO[];
+    selectedDocumentId?: EARS.EntityId;
+    selectedCollectionId?: EARS.EntityId;
+    currentItems: LibraryItem[];
+    currentFolderId: EARS.EntityId | null;
+    currentPath: string[];
+}
+
 interface ListContent {
     type: 'list';
     items: string[];
@@ -2123,10 +2929,19 @@ interface LogsContext {
     };
 }
 
+interface LogsContext$1 {
+    logs: LogEntry[];
+}
+
 /** A log line any pack's system may hand the logs plugin */
 type LogsInboxEvent = {
     type: 'LOG_ADDED';
     log: LogEntry;
+};
+
+type LogsInternalEvents = {
+    type: 'ADD_LOG';
+    log: Omit<LogEntry, 'id' | 'timestamp'>;
 };
 
 interface LogsSettings {
@@ -2423,6 +3238,12 @@ type OutgoingBrainEvents = {
     type: 'BRAIN_PAUSED';
 } | {
     type: 'BRAIN_RESUMED';
+};
+
+type OutgoingBrowserEvents = {
+    type: 'BROWSER_CONNECTED';
+    savedTabs: SavedTab[];
+    savedBookmarks: SavedBookmark[];
 };
 
 type OutgoingCodeEvents = OutgoingExplorerEvents | OutgoingSearchEvents | OutgoingCommitEvents | OutgoingPullRequestEvents | OutgoingTerminalEvents | OutgoingActionsEvents | OutgoingPromptsEvents | {
@@ -3433,17 +4254,17 @@ type PackStepNodes = NodeEntity;
 
 /** Feature id → the events this pack's system for that feature receives (dependents name it `default-setup/<feature>`). */
 type PackSystemEvents = {
-    'threads': IncomingEventsOf<(typeof specs)['threads']>;
-    'code': IncomingEventsOf<(typeof specs)['code']>;
-    'notes': IncomingEventsOf<(typeof specs)['notes']>;
-    'browser': IncomingEventsOf<(typeof specs)['browser']>;
-    'library': IncomingEventsOf<(typeof specs)['library']>;
-    'flows': IncomingEventsOf<(typeof specs)['flows']>;
-    'actions': IncomingEventsOf<(typeof specs)['actions']>;
-    'prompts': IncomingEventsOf<(typeof specs)['prompts']>;
-    'brain': IncomingEventsOf<(typeof specs)['brain']>;
-    'database': IncomingEventsOf<(typeof specs)['database']>;
-    'logs': IncomingEventsOf<(typeof specs)['logs']>;
+    'threads': IncomingEventsOf<SystemContracts['threads']>;
+    'code': IncomingEventsOf<SystemContracts['code']>;
+    'notes': IncomingEventsOf<SystemContracts['notes']>;
+    'browser': IncomingEventsOf<SystemContracts['browser']>;
+    'library': IncomingEventsOf<SystemContracts['library']>;
+    'flows': IncomingEventsOf<SystemContracts['flows']>;
+    'actions': IncomingEventsOf<SystemContracts['actions']>;
+    'prompts': IncomingEventsOf<SystemContracts['prompts']>;
+    'brain': IncomingEventsOf<SystemContracts['brain']>;
+    'database': IncomingEventsOf<SystemContracts['database']>;
+    'logs': IncomingEventsOf<SystemContracts['logs']>;
 };
 
 type PanelType = 'actions' | 'commit' | 'explorer' | 'pr' | 'prompts' | 'search';
@@ -3559,10 +4380,6 @@ interface PromptTab {
     groupId?: string;
     isPreview?: boolean;
 }
-
-/**
- * Prompt template types and definitions
- */
 
 /**
  * Data sent on prompts system connection
@@ -4112,6 +4929,20 @@ interface SwitchNode extends NodeBase {
     elseLabel?: string;
 }
 
+type SystemContracts = {
+    'threads': Contract$l;
+    'code': Contract$k;
+    'notes': Contract$j;
+    'browser': Contract$i;
+    'library': Contract$h;
+    'flows': Contract$g;
+    'actions': Contract$f;
+    'prompts': Contract$e;
+    'brain': Contract$d;
+    'database': Contract$c;
+    'logs': Contract$b;
+};
+
 type SystemLine = z.infer<typeof SystemLineSchema>;
 
 /** System lines — many subtypes, all passthrough. */
@@ -4429,6 +5260,11 @@ interface ThreadsContext {
     sidebarArchivedThreads: ThreadListItem[];
 }
 
+interface ThreadsContext$1 {
+    /** The slash commands the chat was last sent, serialized, so an unchanged list isn't sent again */
+    sentCommands?: string;
+}
+
 /** What the artifact viewers, the dashboard and the tiptap command items ask of the threads plugin */
 type ThreadsInboxEvent = {
     type: 'SELECT_ARTIFACT';
@@ -4696,27 +5532,27 @@ type __accepts_prompts = PluginInboxOf<Contract$3>;
 
 type __accepts_threads = PluginInboxOf<Contract$a>;
 
-type __events_actions = OutgoingEventsOf<(typeof specs)['actions']>;
+type __events_actions = OutgoingEventsOf<SystemContracts['actions']>;
 
-type __events_brain = OutgoingEventsOf<(typeof specs)['brain']>;
+type __events_brain = OutgoingEventsOf<SystemContracts['brain']>;
 
-type __events_browser = OutgoingEventsOf<(typeof specs)['browser']>;
+type __events_browser = OutgoingEventsOf<SystemContracts['browser']>;
 
-type __events_code = OutgoingEventsOf<(typeof specs)['code']>;
+type __events_code = OutgoingEventsOf<SystemContracts['code']>;
 
-type __events_database = OutgoingEventsOf<(typeof specs)['database']>;
+type __events_database = OutgoingEventsOf<SystemContracts['database']>;
 
-type __events_flows = OutgoingEventsOf<(typeof specs)['flows']>;
+type __events_flows = OutgoingEventsOf<SystemContracts['flows']>;
 
-type __events_library = OutgoingEventsOf<(typeof specs)['library']>;
+type __events_library = OutgoingEventsOf<SystemContracts['library']>;
 
-type __events_logs = OutgoingEventsOf<(typeof specs)['logs']>;
+type __events_logs = OutgoingEventsOf<SystemContracts['logs']>;
 
-type __events_notes = OutgoingEventsOf<(typeof specs)['notes']>;
+type __events_notes = OutgoingEventsOf<SystemContracts['notes']>;
 
-type __events_prompts = OutgoingEventsOf<(typeof specs)['prompts']>;
+type __events_prompts = OutgoingEventsOf<SystemContracts['prompts']>;
 
-type __events_threads = OutgoingEventsOf<(typeof specs)['threads']>;
+type __events_threads = OutgoingEventsOf<SystemContracts['threads']>;
 
 type __public_actions = PublicPluginInboxOf<Contract$4>;
 
@@ -5453,587 +6289,6 @@ declare function sendSystemMessage(options: {
     text: string;
 }): {
     messageId: EARS.EntityId;
-};
-
-declare const specs: {
-    threads: {
-        _incoming: {
-            type: "CREATE_THREAD";
-            topic: string;
-            tags?: string[];
-            instructions: string;
-            linkedThreads?: {
-                id: string;
-                relation: "blocked_by" | "blocks" | "duplicates" | "parent_of";
-            }[];
-            parentThreadId?: string;
-        } | {
-            type: "VIEW_THREAD";
-            threadId: string;
-        } | {
-            type: "UPDATE_THREAD_STATUS";
-            threadId: string;
-            status: string;
-        } | {
-            type: "UPDATE_THREAD_FIELD";
-            threadId: string;
-            key: string;
-            value: any;
-        } | {
-            type: "DELETE_THREAD";
-            threadId: string;
-        } | {
-            type: "SET_THREAD_PARENT";
-            childIds: string[];
-            parentId: string;
-        } | {
-            type: "EXPORT_THREADS";
-            directory: string;
-        } | {
-            type: "IMPORT_THREADS";
-            directory: string;
-        } | {
-            type: "USER_MSG";
-            text: string;
-            mode?: string;
-            phase?: string;
-            threadId?: string;
-            references?: {
-                images?: {
-                    url: string;
-                    name: string;
-                }[];
-                files?: {
-                    name: string;
-                    path: string;
-                    typeLabel: string;
-                    isImage: boolean;
-                }[];
-                context?: {
-                    refType: "document" | "folder" | "note" | "task" | "tasklist" | "thread";
-                    refId: string;
-                    shortCode: string;
-                    label: string;
-                }[];
-            };
-            cwdOverride?: string;
-            forceDirectoryPicker?: boolean;
-        } | {
-            type: "OPEN_THREAD_CHAT";
-            threadId: string;
-            restore?: boolean;
-        } | {
-            type: "OPEN_THREAD_TAB";
-            threadId: string;
-            label: string;
-            pinned?: boolean;
-        } | {
-            type: "PAUSE_TURN";
-            threadId: string;
-        } | {
-            type: "APPROVE_TODO_LIST";
-            artifactId: string;
-            tasks: any[];
-        } | {
-            type: "REJECT_TODO_LIST";
-            artifactId: string;
-        } | {
-            type: "INTERACTIVE_MSG_RESPONSE";
-            messageId: string;
-            threadId: string;
-            response: any;
-        } | {
-            type: "FORK_THREAD";
-            messageId: string;
-            threadId?: string;
-            threadTopic?: string;
-        } | {
-            type: "REVERT_THREAD";
-            messageId: string;
-            threadId: string;
-            restoreFiles?: boolean;
-            userCliUuid?: string;
-        } | {
-            type: "SUMMARIZE_THREAD";
-            messageId: string;
-            threadId: string;
-        } | {
-            type: "USER_COMMAND";
-            command: string;
-            text: string;
-            mode?: string;
-            phase?: string;
-            threadId?: string;
-            references?: {
-                images?: {
-                    url: string;
-                    name: string;
-                }[];
-                files?: {
-                    name: string;
-                    path: string;
-                    typeLabel: string;
-                    isImage: boolean;
-                }[];
-                context?: {
-                    refType: "document" | "folder" | "note" | "task" | "tasklist" | "thread";
-                    refId: string;
-                    shortCode: string;
-                    label: string;
-                }[];
-            };
-            cwdOverride?: string;
-        } | {
-            type: "TOGGLE_COMPACTED";
-            markerId: string;
-            compacted: boolean;
-        } | {
-            type: "DELETE_MESSAGE";
-            messageId: string;
-        } | {
-            type: "FORWARD_BRAIN_EVENT";
-            eventType: string;
-            payload?: any;
-        } | {
-            type: "GET_ARCHIVED_THREADS";
-        } | {
-            type: "REFRESH_THREADS";
-        } | {
-            type: "LOAD_MORE_MESSAGES";
-            threadId: string;
-            cursor: string;
-        } | {
-            type: "CLIENT_CONNECTED";
-        } | {
-            type: "BIRTH_FLOW_START";
-        } | {
-            type: "SECRETS_CHANGED";
-        } | {
-            type: "THREAD_DELETED";
-            threadId: string;
-        } | {
-            type: "COMMANDS_CHANGED";
-        };
-        _outgoing: OutgoingThreadsEvents;
-    };
-    code: {
-        _incoming: IncomingExplorerEvents | IncomingSearchEvents | IncomingCommitEvents | IncomingPullRequestEvents | IncomingTerminalEvents | IncomingActionsEvents | IncomingPromptsEvents | {
-            type: "SET_BASE_DIRECTORY";
-            path: string;
-            fromUserNavigation?: boolean;
-        } | {
-            type: "TEST_CLI_PROVIDER";
-            provider: string;
-        };
-        _outgoing: OutgoingCodeEvents;
-    };
-    notes: {
-        _incoming: {
-            type: "CREATE_NOTE";
-            title: string;
-            content?: string;
-            icon?: string | null;
-            parentId?: string;
-            skipContentSync?: boolean;
-            noteType?: "document" | "task" | "tasklist";
-            completed?: boolean;
-            displayOrder?: number;
-        } | {
-            type: "UPDATE_NOTE";
-            id: string;
-            title?: string;
-            content?: string;
-            icon?: string | null;
-            completed?: boolean;
-            hideCompletedChildren?: boolean;
-            favorite?: boolean;
-        } | {
-            type: "DELETE_NOTE";
-            id: string;
-        } | {
-            type: "SOFT_DELETE_NOTE";
-            id: string;
-        } | {
-            type: "RESTORE_NOTE";
-            id: string;
-        } | {
-            type: "MOVE_NOTE";
-            ids: string[];
-            newParentId: string | null;
-        } | {
-            type: "REORDER_NOTE";
-            id: string;
-            newParentId: string | null;
-            newIndex: number;
-        } | {
-            type: "VIEW_NOTE";
-            id: string;
-        } | {
-            type: "SEARCH_NOTES";
-            query: string;
-        } | {
-            type: "GET_TRASHED_NOTES";
-        } | {
-            type: "PERMANENTLY_DELETE_NOTE";
-            id: string;
-        } | {
-            type: "EMPTY_TRASH";
-        } | {
-            type: "IMPORT_NOTES";
-            directory: string;
-        } | {
-            type: "EXPORT_NOTES";
-            directory: string;
-            format: "json" | "markdown";
-        };
-        _outgoing: OutgoingNotesEvents;
-    };
-    browser: {
-        _incoming: {
-            type: "SYNC_TABS";
-            tabs: SavedTab[];
-        } | {
-            type: "SYNC_BOOKMARKS";
-            bookmarks: SavedBookmark[];
-        };
-        _outgoing: {
-            type: "BROWSER_CONNECTED";
-            savedTabs: SavedTab[];
-            savedBookmarks: SavedBookmark[];
-        };
-    };
-    library: {
-        _incoming: {
-            type: "CREATE_DOCUMENT";
-            name: string;
-            content: ContentSection[];
-            tags: string[];
-            collectionId?: string;
-        } | {
-            type: "UPDATE_DOCUMENT";
-            id: string;
-            name: string;
-            content: ContentSection[];
-            tags: string[];
-            collectionId?: string;
-        } | {
-            type: "DELETE_DOCUMENT";
-            id: string;
-        } | {
-            type: "GET_DOCUMENT";
-            id: string;
-        } | {
-            type: "GET_LIBRARY_INDEX";
-        } | {
-            type: "CREATE_COLLECTION";
-            name: string;
-            description?: string;
-            parentId?: string;
-        } | {
-            type: "UPDATE_COLLECTION";
-            id: string;
-            name: string;
-            description?: string;
-        } | {
-            type: "DELETE_COLLECTION";
-            id: string;
-        } | {
-            type: "MOVE_DOCUMENT";
-            documentId: string;
-            collectionId?: string;
-        } | {
-            type: "GET_FOLDER_CONTENTS";
-            folderId: string | null;
-        } | {
-            type: "NAVIGATE_TO_FOLDER";
-            folderId: string | null;
-        } | {
-            type: "RENAME_ITEM";
-            id: string;
-            name: string;
-            itemType: "document" | "folder";
-        } | {
-            type: "DELETE_ITEMS";
-            ids: string[];
-        } | {
-            type: "MOVE_ITEMS";
-            ids: string[];
-            targetFolderId: string | null;
-        } | {
-            type: "CREATE_SYMLINK_COLLECTION";
-            name: string;
-            symlinkPath: string;
-            parentId?: string;
-        } | {
-            type: "UPDATE_SYMLINK_PATH";
-            collectionId: string;
-            newPath: string;
-        } | {
-            type: "IMPORT_LIBRARY";
-            directory: string;
-        } | {
-            type: "EXPORT_LIBRARY";
-            directory: string;
-            format: "json" | "markdown";
-        };
-        _outgoing: OutgoingLibraryEvents;
-    };
-    flows: {
-        _incoming: {
-            type: "FLOW_SELECT";
-            flowId: string;
-        } | {
-            type: "CREATE_FLOW";
-        } | {
-            type: "DELETE_FLOW";
-            flowId: string;
-        } | {
-            type: "UPDATE_FLOW_LABEL";
-            flowId: string;
-            label: string;
-        } | {
-            type: "CREATE_NODE";
-            flowId: string;
-            tempId: string;
-            nodeData: any;
-        } | {
-            type: "UPDATE_NODE";
-            flowId: string;
-            nodeId: string;
-            nodeData: any;
-        } | {
-            type: "DELETE_NODE";
-            flowId: string;
-            nodeId: string;
-        } | {
-            type: "CREATE_EDGE";
-            flowId: string;
-            sourceId: string;
-            targetId: string;
-            sourceHandle?: string;
-            targetHandle?: string;
-        } | {
-            type: "DELETE_EDGE";
-            flowId: string;
-            edgeId: string;
-        } | {
-            type: "UPDATE_EDGE";
-            flowId: string;
-            edgeId: string;
-            source: string;
-            target: string;
-            sourceHandle?: string;
-            targetHandle?: string;
-        } | {
-            type: "IMPORT_DSL";
-            dsl: any;
-        } | {
-            type: "EXPORT_DSL";
-            directory: string;
-            flowId?: string;
-        } | {
-            type: "REINDEX_HANDLES";
-            flowId: string;
-            nodeId: string;
-            prefix: string;
-            index: number;
-            direction: -1 | 1;
-        } | {
-            type: "SET_ROOT_FLOW";
-            flowId: string | null;
-        };
-        _outgoing: OutgoingFlowsEvents;
-    };
-    actions: {
-        _incoming: {
-            type: "ACTION_SELECT";
-            actionId: string;
-        } | {
-            type: "CREATE_ACTION";
-            label: string;
-            input: Record<string, any>;
-            actionFn: string;
-            output?: any;
-            description?: string;
-            category?: string;
-        } | {
-            type: "UPDATE_ACTION";
-            actionId: string;
-            label?: string;
-            input?: Record<string, any>;
-            actionFn?: string;
-            output?: any;
-            description?: string;
-            category?: string;
-        } | {
-            type: "DELETE_ACTION";
-            actionId: string;
-        } | {
-            type: "FETCH_ACTIONS_PAGE";
-            page?: number;
-        } | {
-            type: "FETCH_ALL_ACTIONS";
-        } | {
-            type: "IMPORT_ACTIONS";
-            actions: any;
-        } | {
-            type: "EXPORT_ACTIONS";
-            directory: string;
-        };
-        _outgoing: OutgoingActionEvents;
-    };
-    prompts: {
-        _incoming: {
-            type: "PROMPT_SELECT";
-            promptId: string;
-        } | {
-            type: "CREATE_PROMPT";
-            label: string;
-            inputs: Record<string, any>;
-            templateFn: string;
-            outputSchema?: any;
-            description?: string;
-            category?: string;
-        } | {
-            type: "UPDATE_PROMPT";
-            promptId: string;
-            label?: string;
-            inputs?: Record<string, any>;
-            templateFn?: string;
-            outputSchema?: any;
-            description?: string;
-            category?: string;
-        } | {
-            type: "DELETE_PROMPT";
-            promptId: string;
-        } | {
-            type: "FETCH_PROMPTS_PAGE";
-            page?: number;
-        } | {
-            type: "FETCH_ALL_PROMPTS";
-        } | {
-            type: "IMPORT_PROMPTS";
-            prompts: any;
-        } | {
-            type: "EXPORT_PROMPTS";
-            directory: string;
-        };
-        _outgoing: OutgoingPromptEvents;
-    };
-    brain: {
-        _incoming: {
-            type: "OPEN_TNODE";
-            tNodeId: string;
-        } | {
-            type: "GO_BACK_TNODE";
-            currentFlowTNodeId?: string;
-        } | {
-            type: "REQUEST_PLUGIN_DATA";
-            flowTNodeId?: string;
-        } | {
-            type: "GET_TNODE_DETAILS";
-            tNodeId: string;
-        } | {
-            type: "TOGGLE_INSPECT";
-        } | {
-            type: "START_BRAIN";
-        } | {
-            type: "KILL_BRAIN";
-        } | {
-            type: "RESTART_BRAIN";
-        } | {
-            type: "PAUSE_BRAIN";
-        } | {
-            type: "RESUME_BRAIN";
-        } | {
-            type: "HANDLE_BRAIN_EVENT";
-            eventType: string;
-            payload?: any;
-            targetFlowId?: string;
-        } | {
-            type: "TRIGGER_BRAIN_EVENT";
-            eventType: string;
-            payload?: any;
-            targetFlowId?: string;
-        } | {
-            type: "TNODE_SPAWNED";
-            tNode: _abuddy_sdk.TNodeEntity;
-            parentId?: EARS.EntityId;
-            eventTNodeId?: EARS.EntityId;
-            flowTNodeId: EARS.EntityId;
-        } | {
-            type: "TNODE_UPDATED";
-            data: TNodeUpdate;
-        } | {
-            type: "HANDLE_BRAIN_EVENT";
-            eventType: string;
-            payload?: any;
-            targetFlowId?: string;
-        } | {
-            type: "CHILD_COMPLETED";
-            stepId?: EARS.EntityId;
-            tNodeId?: EARS.EntityId;
-            stepLabel?: string;
-            result?: any;
-            final?: boolean;
-            eventTNodeId?: EARS.EntityId;
-            isFlow?: boolean;
-        };
-        _outgoing: OutgoingBrainEvents;
-    };
-    database: {
-        _incoming: ({
-            type: "EXECUTE_QUERY";
-            code: string;
-        } | {
-            type: "EXECUTE_TRANSACTION";
-            code: string;
-        } | {
-            type: "GENERATE_AI_QUERY";
-            prompt: string;
-            mode?: "query" | "transaction";
-        } | {
-            type: "REFRESH_SCHEMA";
-        } | {
-            type: "GET_TRACE_FLOWS";
-        } | {
-            type: "GET_FLOW_EVENTS";
-            flowId: string;
-            offset?: number;
-            limit?: number;
-        } | {
-            type: "GET_NODE_DETAILS";
-            nodeId: string;
-        } | {
-            type: "EXPORT_DATABASE";
-            path: string;
-            name?: string;
-            databases: ("lmdb" | "volatileLmdb")[];
-        } | {
-            type: "IMPORT_DATABASE";
-            path: string;
-            skipUnknownDatabases?: boolean;
-        } | {
-            type: "GET_BACKUP_INFO";
-            path: string;
-        } | {
-            type: "RESET_DATABASE";
-        }) | {
-            type: "CLIENT_CONNECTED";
-        };
-        _outgoing: OutgoingDatabaseEvents;
-    };
-    logs: {
-        _incoming: ({
-            type: "CLEAR_LOGS";
-        } | {
-            type: "REQUEST_LOGS_UPDATE";
-        }) | {
-            type: "ADD_LOG";
-            log: Omit<LogEntry, "id" | "timestamp">;
-        };
-        _outgoing: OutgoingLogsEvents;
-    };
 };
 
 declare function storeHandle(key: string, handle: CodexTurnHandle): void;

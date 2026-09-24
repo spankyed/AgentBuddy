@@ -54,9 +54,6 @@ export type IncomingDatabaseEvents =
   | { type: 'GET_BACKUP_INFO'; path: string }
   | { type: 'RESET_DATABASE' };
 
-export type DatabaseInternalEvents =
-  | { type: 'CLIENT_CONNECTED' };
-
 export type OutgoingDatabaseEvents = 
   | { type: 'DATABASE_REFRESH'; data: DatabaseStartupData }
   | { type: 'QUERY_RESULT'; result: any; executionTime: number }

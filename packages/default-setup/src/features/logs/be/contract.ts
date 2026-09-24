@@ -5,6 +5,7 @@ import type { IncomingLogEvents, LogsContext, LogsInternalEvents, OutgoingLogsEv
 
 export type Contract = {
   context: LogsContext
-  incoming: IncomingLogEvents | LogsInternalEvents
+  incoming: IncomingLogEvents
+  internal: LogsInternalEvents
   outgoing: OutgoingLogsEvents
 }
