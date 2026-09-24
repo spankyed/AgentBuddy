@@ -2,6 +2,24 @@
 
 Seeds are source files compiled to JSON at build time and written into the database when a pack is installed or updated. `abuddy.json` `boot.seed` names each one.
 
+## The four stages
+
+A seed passes through four, and each has its own vocabulary. **A seed is a noun — the content. The verb is
+`import`.**
+
+| Stage | What happens | Named |
+|---|---|---|
+| **author** | you write the sources | `src/seeds/`, `boot.seed`, `seedFormats`, `seedHooks`, `seedPolicy` |
+| **compile** | `abuddy build` turns them into records and hashes each one | `dist/*.seed.json`, `seeds.json`, `sourceHash` |
+| **import** | the app writes those records into the database | `importSeeds()`, `ImportMode`, `ImportCounts`, a `Seeder`'s `apply()` |
+| **record** | each row remembers where it came from, so your edits survive the next import | `seedKey`, `seededFields`, `seededGraph` |
+
+Two things follow from the split that are easy to conflate. Editing a seed source changes its `sourceHash` at
+**compile**, and that is what makes the next **import** rewrite the row — so a change with no visible effect on the
+content still reaches every user who has not edited that row. And this repo's `seed-parity` goldens record what an
+import *produces*: re-recording them (`npm run seed-parity:update -w @app/default-setup`) rewrites a test
+expectation and no user data.
+
 The SDK compiles three keys a pack seeds itself:
 
 - **Actions** — async functions that do work (call LLMs, query data, emit events)

@@ -32,7 +32,7 @@ edit — running it after every change costs minutes and finds nothing the narro
 | an npm script | the one path that runs it, end to end, once |
 | the renderer, the app's boot, or a pack's FE | `npm test -- <spec>` for the affected E2E, not the whole suite |
 | a public export of `@abuddy/ears`, `/sdk` or `/ui` | `npm run api:update`, and commit `etc/` — `typecheck` fails until you do |
-| a pack's seed source (`src/seeds/`) | that pack's `seed-parity` spec. When only `sourceHash`/`rowSha256` moved, re-record deliberately — `npm run seed-golden:update -w @app/default-setup` — and never edit a hash by hand |
+| a pack's seed source (`src/seeds/`) | that pack's `seed-parity` spec. When only `sourceHash`/`rowSha256` moved, re-record deliberately — `npm run seed-parity:update -w @app/default-setup` — and never edit a hash by hand. Re-recording rewrites a test expectation, not user data; what reaches users is the new `sourceHash` (`docs/public-facing/seeds.md`, "The four stages") |
 | anything, before you ask for a merge | the full chain, once |
 
 What that costs, measured on this machine (2026-09-22, M-series, warm): one spec file 1–3s, one
@@ -84,7 +84,7 @@ Three rules that pay for themselves:
 **Script names say whether they write.** Three shapes, and the second word tells them apart:
 
 - `<artifact>:check` / `<artifact>:update` — something recorded that can go stale, and the two halves
-  carry the *same* noun: `api:*`, `facade:*`, `schema:*`, `exports:*`, `seed-golden:*`. `check` and
+  carry the *same* noun: `api:*`, `facade:*`, `schema:*`, `exports:*`, `seed-parity:*`. `check` and
   `update` are reserved as suffixes, so a name ending in `update` is the only kind that rewrites a file
   you would commit.
 - `<action>:<scope>` — an action over part of the repo: `typecheck:fe`, `test:unit`, `build:be`. The
@@ -153,8 +153,8 @@ npm run schema:update    # Regenerate packages/abuddy-sdk/abuddy.schema.json fro
 npm run schema:check     # Fails if abuddy.schema.json is stale
 
 # Seed goldens (-w @app/default-setup)
-npm run seed-golden:check   # Compare seeded rows against tests/unit/seed-parity/__golden__
-npm run seed-golden:update  # Re-record them; deliberate, see "What to run after a change"
+npm run seed-parity:check   # Compare seeded rows against tests/unit/seed-parity/__golden__
+npm run seed-parity:update  # Re-record them; deliberate, see "What to run after a change"
 
 # Lint (root runs every workspace that has one; oxlint, plus eslint in the renderer)
 npm run lint:check       # Reports; the one a gate runs

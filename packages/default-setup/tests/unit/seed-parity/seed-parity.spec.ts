@@ -2,7 +2,7 @@
 // compared against golden snapshots first recorded from the pre-generic pipeline. The v1/v2 scenarios
 // seed fixture sources (tests/fixtures/seed-parity), so only a change in seeding moves their goldens;
 // default-setup.json follows the pack's own sources. Record them again only deliberately:
-// npm run seed-golden:update -w @app/default-setup   (seed-golden:check is the comparing half)
+// npm run seed-parity:update -w @app/default-setup   (seed-parity:check is the comparing half)
 //
 // Notes are the one intended difference (goal-generic-seed-compiler Decision 10): they now carry a
 // sourceHash and follow the same change-tracking rules as every other entry. Their sourceHash field

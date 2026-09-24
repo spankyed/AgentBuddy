@@ -97,7 +97,17 @@ Each directory is one `package.json` export (`./<dir>` → `src/<dir>/index.ts`)
 
 ## Seed engine (`src/seed/`, `@abuddy/sdk/seed`)
 
-The user-facing rules (change tracking, import modes, seed hooks) are in `docs/public-facing/seeds.md`. The code:
+The user-facing rules (change tracking, import modes, seed hooks) are in `docs/public-facing/seeds.md`, whose "four
+stages" section is the vocabulary: **a seed is a noun — the content, its identity, its shape and its configuration —
+and the verb is `import`.** So `seedKey`, `seedFormats`, `SeedRecord` and `SeedIndex` name content, while
+`importCompiledSeeds`, `ImportMode`, `ImportCounts` and a `Seeder`'s `apply()` name the act, what it needs and what it
+produces. `tests/utils/import-is-the-verb.spec.ts` holds the line: nothing returning `ImportCounts` may be named
+`seed*`.
+
+Three functions import, in a caller relationship, and each name says its scope: `importCompiledSeeds({ compiledDir })`
+here runs the registered seeders over one already-compiled directory; `@abuddy/host`'s `importPackSeeds(packs)`
+orchestrates that across packs at boot; and `@abuddy/testing`'s `importSeeds({ keys, mode })` compiles the pack's
+entries first, which is why it is the one pack authors call. The code:
 
 - **Driver** (`utils/seed.ts`): a pack's seeders arrive in its registration (`PackRegistration.seeders`), which the host's registry keeps per pack, so they come and go with the pack. `importCompiledSeeds({ compiledDir, include, mode, verbose })` reads the pack id from the directory's `seeds.json` (`seedPackId`, which throws when it names none) and runs only that registered pack's seeders (`boundHost().packs.seeders(packId)`); a key with an empty include set is skipped. `registeredSeedKeys(packId)` lists their keys. `ImportMode` is `keep-existing` | `replace-on-collision` | `wipe-and-replace`.
 - **`createSeeder(options)`** (`seeder.ts`) is the generic record seeder, used for `actions`/`prompts` (identity `label`) and every format entry.

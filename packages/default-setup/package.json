@@ -18,8 +18,8 @@
     "facade:update": "tsx ../../scripts/facade-report.ts . --local",
     "lint:check": "oxlint . -D correctness --ignore-path .gitignore",
     "lint:fix": "oxlint . -D correctness --ignore-path .gitignore --fix",
-    "seed-golden:check": "npm test -- tests/unit/seed-parity",
-    "seed-golden:update": "UPDATE_SEED_GOLDEN=1 npm test -- tests/unit/seed-parity"
+    "seed-parity:check": "npm test -- tests/unit/seed-parity",
+    "seed-parity:update": "UPDATE_SEED_GOLDEN=1 npm test -- tests/unit/seed-parity"
   },
   "dependencies": {
     "@abuddy/ears": "*",
