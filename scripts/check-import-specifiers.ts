@@ -454,6 +454,10 @@ const CODE_FILE = /\.(?:[cm]?[jt]sx?|vue)$/;
  * The host's own source. Its features keep `fe/public.ts`, because the host has no codegen: a pack's features reach
  * each other through the contracts `#generated/fe` and `#generated/events` are generated from, and nothing
  * generates those for the app itself. Give the host codegen and this exception goes with it.
+ *
+ * Named rather than derived from "has no abuddy.json": a pack tree a test builds has no manifest either, so that
+ * probe reads a fixture as the host and lets the rule through. `findContractLeafImports` can use it because a root
+ * with no manifest has no contracts to check; here the root still has to be checked.
  */
 const HOST_SRC_ROOT = 'packages/abuddy-host/src';
 
@@ -543,6 +547,12 @@ export function findCrossFeatureImports(srcRoots = PACK_SRC_ROOTS, root = repoRo
   });
 }
 
+/** The file a path without an extension names: itself, `<path>.ts`, or `<path>/index.ts` */
+function sourceFile(base: string): string | undefined {
+  return [base, `${base}.ts`, path.join(base, 'index.ts')]
+    .find((candidate) => fs.existsSync(candidate) && fs.statSync(candidate).isFile());
+}
+
 /**
  * `file:line: specifier` for each import a contract leaf makes that would put the machine back in front of codegen.
  *
@@ -566,21 +576,16 @@ export function findContractLeafImports(srcRoots = PACK_SRC_ROOTS, root = repoRo
     const leaves = (manifest.features ?? []).flatMap((feature) =>
       [feature.plugin?.contract, feature.system?.contract].flatMap((contract) => {
         const target = contract?.split('#')[0];
-        if (!target) return [];
-        return [target, `${target}.ts`, `${target}/index.ts`]
-          .map((candidate) => path.join(path.dirname(src), candidate))
-          .filter((file) => fs.existsSync(file) && fs.statSync(file).isFile())
-          .slice(0, 1);
+        const file = target && sourceFile(path.join(path.dirname(src), target));
+        return file ? [file] : [];
       }));
     const resolveFrom = (from: string, specifier: string): string | undefined => {
       const base = specifier.startsWith('@/') ? path.join(src, specifier.slice(2))
         : specifier.startsWith('.') ? path.resolve(path.dirname(from), specifier) : undefined;
-      if (base === undefined) return undefined;
-      return [base, `${base}.ts`, path.join(base, 'index.ts')]
-        .find((candidate) => fs.existsSync(candidate) && fs.statSync(candidate).isFile());
+      return base === undefined ? undefined : sourceFile(base);
     };
+    const relative = (target: string) => path.relative(src, target).split(path.sep).join('/');
     return leaves.flatMap((leaf) => {
-      const relative = (target: string) => path.relative(src, target).split(path.sep).join('/');
       const ownFeature = /^features\/([^/]+)\//.exec(relative(leaf))?.[1];
       const seen = new Set<string>();
       const found: string[] = [];
@@ -1144,26 +1149,32 @@ export function findCrossCheckoutResolution(root = repoRoot): string[] {
   return [...new Set(problems)];
 }
 
+/**
+ * Every rule this script enforces, with the sentence it reports. Exported so the runner below and the specs read
+ * the same list: `import-specifiers.spec.ts` asserts each entry has a case, which is what stops a check landing
+ * with nothing exercising it.
+ */
+export const CHECKS: ReadonlyArray<readonly [find: () => string[], rule: string]> = [
+  [findJsSpecifiers, 'Relative imports must name the TypeScript source (tsc and tsdown emit .js)'],
+  [findRawPackHelpers, 'Pack code uses the typed facades: broadcastToPlugin, sendToPlugin and sendToSystem from #generated/events, repositories declared in abuddy.json'],
+  [findInternalPackageImports, "Pack code imports only the @abuddy packages' public API: an export named `_x` is @internal, the app's alone, and a pack that needs one asks for it to be made public"],
+  [findRawTransport, 'Pack code sends with broadcastToPlugin, sendToPlugin and sendToSystem from #generated/events, and subscribes with onConnected and onIncoming from @abuddy/sdk/events'],
+  [findPackBackendConsole, 'Pack backend code logs with createLogger from @abuddy/sdk/logger'],
+  [findHostImports, "Pack code doesn't import the host's private @abuddy/host package; use @abuddy/sdk"],
+  [findAppImportsInPackTests, 'Pack unit tests run on the harness (@abuddy/testing) without the app; test host, API and CLI code in its own package'],
+  [findUpwardImports, "Packages import only downward (@abuddy/ears imports no @abuddy package, @abuddy/sdk only @abuddy/ears, @abuddy/host only those two and never the API, the API and the renderer only the packages below them), and list each @abuddy package they import in their package.json"],
+  [findLmdbImports, "Only @abuddy/ears/lmdb loads lmdb: the host and the API open the store through it, the engine's root and packs never load it"],
+  [findSharedPackageLists, 'Derive shared-instance packages from SHARED_INSTANCE_PACKAGES (@abuddy/host/build/shared-deps) instead of naming them'],
+  [findRepositoryCasts, "Call a package's repositories through its exports, not a cast of the repository registry"],
+  [findCrossFeatureImports, "A feature's frontend is its own: what it offers other features is its plugin's contract, read through #generated/fe and #generated/events, never a module of its own"],
+  [findContractLeafImports, "A contract leaf is a leaf: no ./state or ./system, no other feature, and nothing generated but types and ears — codegen reads a plugin's and a system's contract without resolving its actor, and an import that reaches one restores the cycle"],
+  [findCrossCheckoutResolution, 'Workspace packages resolve inside this checkout, so a worktree nested in the repository never typechecks against the parent checkout'],
+  [findMissingSourceConditions, "The repo's own configs declare the @abuddy/source condition when they compile or bundle code importing @abuddy/ears, @abuddy/sdk or @abuddy/ui, so they read TypeScript source instead of a stale dist; a pack's configs declare none, because a pack resolves the published dist"],
+];
+
 // Run as a script, also through a symlinked path (tests import findJsSpecifiers)
 if (process.argv[1] && import.meta.filename === fs.realpathSync(process.argv[1])) {
-  const checks: [find: () => string[], rule: string][] = [
-    [findJsSpecifiers, 'Relative imports must name the TypeScript source (tsc and tsdown emit .js)'],
-    [findRawPackHelpers, 'Pack code uses the typed facades: broadcastToPlugin, sendToPlugin and sendToSystem from #generated/events, repositories declared in abuddy.json'],
-    [findInternalPackageImports, "Pack code imports only the @abuddy packages' public API: an export named `_x` is @internal, the app's alone, and a pack that needs one asks for it to be made public"],
-    [findRawTransport, 'Pack code sends with broadcastToPlugin, sendToPlugin and sendToSystem from #generated/events, and subscribes with onConnected and onIncoming from @abuddy/sdk/events'],
-    [findPackBackendConsole, 'Pack backend code logs with createLogger from @abuddy/sdk/logger'],
-    [findHostImports, "Pack code doesn't import the host's private @abuddy/host package; use @abuddy/sdk"],
-    [findAppImportsInPackTests, 'Pack unit tests run on the harness (@abuddy/testing) without the app; test host, API and CLI code in its own package'],
-    [findUpwardImports, "Packages import only downward (@abuddy/ears imports no @abuddy package, @abuddy/sdk only @abuddy/ears, @abuddy/host only those two and never the API, the API and the renderer only the packages below them), and list each @abuddy package they import in their package.json"],
-    [findLmdbImports, "Only @abuddy/ears/lmdb loads lmdb: the host and the API open the store through it, the engine's root and packs never load it"],
-    [findSharedPackageLists, 'Derive shared-instance packages from SHARED_INSTANCE_PACKAGES (@abuddy/host/build/shared-deps) instead of naming them'],
-    [findRepositoryCasts, "Call a package's repositories through its exports, not a cast of the repository registry"],
-    [findCrossFeatureImports, "A feature's frontend is its own: what it offers other features is its plugin's contract, read through #generated/fe and #generated/events, never a module of its own"],
-    [findContractLeafImports, "A contract leaf is a leaf: no ./state or ./system, no other feature, and nothing generated but types and ears — codegen reads a plugin's and a system's contract without resolving its actor, and an import that reaches one restores the cycle"],
-    [findCrossCheckoutResolution, 'Workspace packages resolve inside this checkout, so a worktree nested in the repository never typechecks against the parent checkout'],
-    [findMissingSourceConditions, "The repo's own configs declare the @abuddy/source condition when they compile or bundle code importing @abuddy/ears, @abuddy/sdk or @abuddy/ui, so they read TypeScript source instead of a stale dist; a pack's configs declare none, because a pack resolves the published dist"],
-  ];
-  for (const [find, rule] of checks) {
+  for (const [find, rule] of CHECKS) {
     const problems = find();
     if (problems.length > 0) {
       console.error(`${rule}:\n  ${problems.join('\n  ')}`);
