@@ -629,6 +629,18 @@ describe('findCrossFeatureImports', () => {
     expect(findCrossFeatureImports([src], root)).toEqual([`${src}/fe/helpers.ts:1: ../features/notes/fe/state`]);
   });
 
+  /**
+   * Published *and* outside every feature. A package may publish one feature's own module — `@abuddy/host`
+   * publishes `./settings` from `features/settings/be/index.ts` — and a feature's barrel is not the package's
+   * assembly. Excepting it by visibility alone handed that one feature a licence to read another's frontend that
+   * no other feature had, silently, which is the hole this whole rule exists to close.
+   */
+  it('gives a published module inside a feature no licence, since it assembles nothing', () => {
+    writeAt('pack/package.json', JSON.stringify({ exports: { './notes': './src/features/notes/be/index.ts' } }));
+    writeAt(`${src}/features/notes/be/index.ts`, "export { codeMachine } from '../../code/fe/state';");
+    expect(findCrossFeatureImports([src], root)).toEqual([`${src}/features/notes/be/index.ts:1: ../../code/fe/state`]);
+  });
+
   // Fails closed: with no `exports` to read, every module gets the strict rule — the opposite of an exception
   // derived from a file being missing, which would widen the gate exactly when something had gone.
   it('excepts nothing when the package publishes nothing', () => {

@@ -502,6 +502,12 @@ function exportedLocalNames(code: string): Set<string> {
  * module's job rather than a crossing: `@abuddy/host`'s `./fe` barrel is exactly that, and a pack's generated
  * `pack-entry-fe.ts` is the same module written by codegen (excluded below with the rest of `__generated__`).
  *
+ * **Being published is not enough; the caller must also be outside every feature.** A package may publish a
+ * feature's own module — `@abuddy/host` publishes `./settings` from `features/settings/be/index.ts` — and that is
+ * a feature's barrel, not the package's assembly. Excepting it gave one feature a licence to read another's
+ * frontend that no other feature had, which is the hole this rule exists to close; the caller's position, not its
+ * visibility, is what says whether it is assembling the pack.
+ *
  * Derived, and it fails closed: a tree with no `package.json`, no `exports`, or an entry behind conditions excepts
  * nothing and gets the strict rule. That is the opposite of deriving an exception from a *missing* file, which
  * would widen the gate exactly when something had gone missing.
@@ -534,7 +540,9 @@ export function findCrossFeatureImports(srcRoots = PACK_SRC_ROOTS, root = repoRo
     const published = publishedEntryPoints(path.dirname(src));
     const relative = (file: string) => path.relative(src, file).split(path.sep).join('/');
     const featureOf = (file: string) => /^features\/([^/]+)\//.exec(relative(file))?.[1];
-    return packFiles([srcRoot], root).filter((file) => !relative(file).startsWith('__generated__') && !published.has(file)).flatMap((file) => {
+    /** What the package publishes, from outside every feature: the modules that assemble it (`publishedEntryPoints`) */
+    const assembles = (file: string) => published.has(file) && featureOf(file) === undefined;
+    return packFiles([srcRoot], root).filter((file) => !relative(file).startsWith('__generated__') && !assembles(file)).flatMap((file) => {
       const code = fs.readFileSync(file, 'utf-8');
       // Where each `from` of a re-export starts, which is where ANY_SPECIFIER's match for it starts
       const reExports = new Set([...code.matchAll(EXPORT_FROM)].map((m) => m.index + m[0].search(/from\s*['"][^'"]+['"]$/)));

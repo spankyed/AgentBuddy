@@ -233,7 +233,7 @@ Two things the plan did not predict, and one thing it deliberately left open:
 | The four diagnostics naming a sender word it the same, and show both fields | `abuddy-sdk/tests/events/sender-suffix.spec.ts`, plus a case each in `outgoing-events`, `client-events` and `send-scope` |
 | `reportError` stamps the source it was given and never a pack | `abuddy-sdk/tests/logger/report-error.spec.ts` |
 | No host feature imports another feature's `fe/` | `findCrossFeatureImports` (`check:specifiers`) — with no exception for the host |
-| Only what a package publishes may name its features' frontends | `findCrossFeatureImports`, and two cases in `abuddy-cli/tests/build/import-specifiers.spec.ts` |
+| Only a module a package publishes from outside every feature may name its features' frontends | `findCrossFeatureImports`, and three cases in `abuddy-cli/tests/build/import-specifiers.spec.ts`. As first landed the rule asked only whether a module was published, which excepted `./settings` (`features/settings/be/index.ts`); the "outside every feature" half was added straight after |
 
 Milestones, true when the work landed and not properties to hold: `git grep HOST_SRC_ROOT` returning nothing
 outside the docs that record the change, and `packages/abuddy-host/src/features/*/fe/public.ts` being gone. Both
