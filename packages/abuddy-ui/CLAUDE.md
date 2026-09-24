@@ -40,7 +40,7 @@ Workflow after adding, removing or renaming a public module:
 
 ```bash
 npm run exports:update -w @abuddy/ui   # rewrite package.json exports
-npm run exports:check               # (root; part of npm run typecheck) fails on a stale map
+npm run exports:check -w @abuddy/ui    # (part of the root's npm run typecheck) fails on a stale map
 npm run api:update -w @abuddy/ui       # regenerate etc/ reports, commit them
 ```
 
@@ -114,7 +114,7 @@ UI modules also read `stepRegistry` from `@abuddy/sdk/steps` (`node-styles.ts`, 
 
 ```bash
 npm run typecheck:ui                  # vue-tsc --noEmit (src, scripts, tsdown config)
-npm run exports:check              # exports map + component entries
+npm run exports:check -w @abuddy/ui   # exports map + component entries
 npm run api:check -w @abuddy/ui       # etc/ reports current
 npm run packages:build && npm run packages:check   # dist, publint, attw (esm-only)
 npm test -w @abuddy/cli               # the published-ui / ui-* / fe-bundler-*ui specs

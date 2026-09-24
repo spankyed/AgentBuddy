@@ -6,7 +6,7 @@
 // SFCs without one are internal.
 //
 //   npm run exports:update -w @abuddy/ui   (writes the exports map)
-//   npm run exports:check               (--check: fails on a stale map or a component without an entry)
+//   npm run exports:check -w @abuddy/ui    (--check: fails on a stale map or a component without an entry)
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { SOURCE_CONDITION, walk } from '../../../scripts/lib/published-imports.ts';

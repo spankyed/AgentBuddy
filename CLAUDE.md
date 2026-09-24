@@ -112,7 +112,7 @@ npm run typecheck:ui     # @abuddy/ui only
 npm run typecheck:cli    # @abuddy/cli + @abuddy/testing
 npm run typecheck:scripts # scripts/ and tests/
 npm run typecheck:pack   # @app/default-setup only
-npm run exports:check # Fails on a stale @abuddy/ui exports map or a component without an entry
+npm run exports:check -w @abuddy/ui  # Fails on a stale exports map or a component without an entry
 
 npm test                 # Playwright E2E tests
 npm run test:unit        # Vitest, every suite CI calls a unit test: @app/api, @app/default-setup, @abuddy/sdk,
