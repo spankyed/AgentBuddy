@@ -1172,7 +1172,7 @@ export class GitRepository {
     }
     
     // Validate branch name to prevent command injection
-    if (!/^[a-zA-Z0-9._\/-]+$/.test(branchName)) {
+    if (!/^[a-zA-Z0-9._/-]+$/.test(branchName)) {
       throw new Error('Invalid branch name. Branch names can only contain letters, numbers, dots, underscores, hyphens, and forward slashes.')
     }
     

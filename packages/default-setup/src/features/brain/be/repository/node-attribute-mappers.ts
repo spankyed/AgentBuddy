@@ -194,8 +194,8 @@ export function prepareNodeAttributes(
   // resolvedParams: only user-provided data (for execution)
   // Sources: 1) direct params from DSL  2) resolved field mappings
   const resolvedParams: Record<string, any> = {
-    ...((node as any).params || {}),
-    ...(mappedParams || {}),
+    ...(node as any).params,
+    ...mappedParams,
   };
 
   return {

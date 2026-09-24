@@ -44,7 +44,7 @@ const emitToFrontend = (event: OutgoingTerminalEvents) => {
 
 // Pre-compiled regex patterns for OSC sequence detection (hot path — runs on every terminal data event)
 const OSC_PATTERNS = [
-  /\x1b\]7;file:\/\/[^\/]*(\/.+?)(?:\x07|\x1b\\)/,       // OSC 7
+  /\x1b\]7;file:\/\/[^/]*(\/.+?)(?:\x07|\x1b\\)/,       // OSC 7
   /\x1b\]633;P;Cwd=(.+?)(?:\x07|\x1b\\)/,                 // OSC 633
   /\x1b\]1337;CurrentDir=(.+?)(?:\x07|\x1b\\)/,            // OSC 1337
 ] as const

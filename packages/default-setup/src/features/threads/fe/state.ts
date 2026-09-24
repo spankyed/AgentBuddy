@@ -257,7 +257,7 @@ function threadIdsFrom(threads: ThreadLike[]): string[] {
 function mergeThreadMap(threadMap: Record<string, ThreadListItem>, threads: ThreadLike[]): Record<string, ThreadListItem> {
   const next = { ...threadMap };
   for (const thread of threads) {
-    next[thread.id] = { ...(next[thread.id] || {}), ...thread } as ThreadListItem;
+    next[thread.id] = { ...next[thread.id], ...thread } as ThreadListItem;
   }
   return next;
 }
@@ -465,7 +465,7 @@ const threadsState = setup({
       (rest as any)[typedEvent.key] = typedEvent.value as any;
       const newThread = rest as ThreadListItem;
       return {
-        threadMap: { ...context.threadMap, [context.view.id]: { ...(context.threadMap[context.view.id] || {}), ...newThread } },
+        threadMap: { ...context.threadMap, [context.view.id]: { ...context.threadMap[context.view.id], ...newThread } },
       };
     }),
     updateCurrentThread: assign(({ event, context }) => {
@@ -891,7 +891,7 @@ const threadsState = setup({
         ...(thread.id ? {
           threadMap: {
             ...context.threadMap,
-            [thread.id]: { ...(context.threadMap[thread.id] || {}), ...thread } as ThreadListItem,
+            [thread.id]: { ...context.threadMap[thread.id], ...thread } as ThreadListItem,
           },
         } : {}),
         chatStates: { ...context.chatStates, [thread.id as string]: chatState },
@@ -1290,7 +1290,7 @@ const threadsState = setup({
               ...a,
               ...(patch.title !== undefined && { title: patch.title }),
               ...(patch.content !== undefined && { content: patch.content }),
-              metadata: { ...a.metadata, ...(patch.metadata || {}) },
+              metadata: { ...a.metadata, ...patch.metadata },
             };
           }),
         };
@@ -1370,7 +1370,7 @@ const threadsState = setup({
             // why `chat.vue:doRevert` was reading `undefined` and the
             // revert+rewind path was bailing with "no CLI UUID".
             ...('context' in typedEvent && typedEvent.context !== undefined && {
-              context: { ...((msg as any).context ?? {}), ...typedEvent.context },
+              context: { ...(msg as any).context, ...typedEvent.context },
             }),
           }
           : msg

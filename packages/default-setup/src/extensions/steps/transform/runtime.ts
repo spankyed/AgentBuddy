@@ -39,7 +39,7 @@ export async function handler(t: TNodeEntity, node: unknown, ctx: ExecutionConte
     const outputType = n.outputType ?? 'json';
     const params: Record<string, unknown> = {
       input: ctx.lastStep?.result,
-      ...(t.resolvedParams ?? {}),
+      ...t.resolvedParams,
     };
 
     brainLogger.debug(`Executing transform node: ${n.label}`, { outputType, paramKeys: Object.keys(params) });

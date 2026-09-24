@@ -694,7 +694,7 @@ export function createFlowNodeSystem(
             if (typedEvent.eventType) {
               self.send({
                 type: typedEvent.eventType,
-                ...(typedEvent.payload || {})
+                ...typedEvent.payload
               });
             }
           }]

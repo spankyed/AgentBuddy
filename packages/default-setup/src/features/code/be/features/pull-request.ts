@@ -57,7 +57,7 @@ export type Event =
 let prDetailsRequestId = 0
 
 function humanizeBranchName(branch: string): string {
-  const stripped = branch.replace(/^(feature|fix|bugfix|hotfix|chore|refactor|docs|test|ci|build|perf|style|revert|release|AS|as)[\/_]/i, '')
+  const stripped = branch.replace(/^(feature|fix|bugfix|hotfix|chore|refactor|docs|test|ci|build|perf|style|revert|release|AS|as)[/_]/i, '')
   return stripped
     .replace(/[-_/]/g, ' ')
     .replace(/^\w/, c => c.toUpperCase())

@@ -200,10 +200,10 @@ export const brainQueries = {
           eventType: `${def.type}.${n.id}`,
           label: n.label || def.fe?.nodeConfig.label || def.type,
           triggerType: def.type,
-          ...(def.trigger?.queryFields?.reduce((acc: any, field: string) => {
+          ...def.trigger?.queryFields?.reduce((acc: any, field: string) => {
             if (n[field] !== undefined) acc[field] = n[field];
             return acc;
-          }, {}) || {}),
+          }, {}),
         });
       }
     }
@@ -360,7 +360,7 @@ export const brainCommands = {
       startedAt: now,
       stepNodeType: 'subflow',
       nodeAttributes: {
-        ...(flowPrepared?.nodeAttributes || {}),
+        ...flowPrepared?.nodeAttributes,
         ...(executionContext?.flowTNodeId && { _parentFlowTNodeId: executionContext.flowTNodeId })
       },
       ...(flowPrepared && { resolvedParams: flowPrepared.resolvedParams }),

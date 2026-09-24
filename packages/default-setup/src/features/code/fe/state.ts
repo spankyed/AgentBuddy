@@ -404,7 +404,7 @@ const codeState = setup({
 
       return {
         ...context,
-        ...(ev.extraUpdates || {}),
+        ...ev.extraUpdates,
         openFiles,
         activeFilePath,
         pendingPersistedMetadata,

@@ -1120,7 +1120,7 @@ watch(newWorktreeBranch, (branch) => {
     newWorktreePath.value = ''
     return
   }
-  const sanitized = branch.trim().replace(/[\/\\]/g, '-')
+  const sanitized = branch.trim().replace(/[/\\]/g, '-')
   newWorktreePath.value = parent ? `${parent}/${sanitized}` : sanitized
 })
 
