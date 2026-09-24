@@ -101,6 +101,10 @@ Two things the steps below did not predict, both recorded where they were found:
   that one feature a licence no other feature had (found in review, fixed in `29620c935`'s successor).
 - **Step 3's `via` is not only an action's.** Stamping a source rather than specifically an action costs nothing
   and lets `reportError` — the one remaining sender with no pack to name — say where it came from.
+- **"The four sites that render a sender" below undercounts the shell.** It refuses a plugin at once *and* after
+  waiting for pack frontends, and the deferred one carried no sender at all, because `awaitingPlugin` kept a
+  hand-picked subset of the request. Review caught it; all of the shell's now come from one `refusal()`
+  (`931a4ce7c`). The count in Open Questions is left as written — it is the record of what was decided then.
 
 ### 1 — Delete the `settings` designation
 
