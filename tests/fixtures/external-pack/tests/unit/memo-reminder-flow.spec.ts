@@ -1,7 +1,7 @@
 // The pack's scheduled flow, built with default-setup's flow helpers (branch, schedule and the step helpers' typed options)
 import { describe, expect, it, vi } from 'vitest';
 import type { FlowDSL } from '@abuddy/sdk/build';
-import { importFlows, mockService, seedPack, startApp } from '@abuddy/testing/harness';
+import { importFlows, mockService, importSeeds, startApp } from '@abuddy/testing/harness';
 import { action, branch, entry, fire, keepAlive, on, schedule, subflow } from '#generated/flow-helpers';
 import { repository } from '#generated/repository';
 import type { Services } from '#generated/services';
@@ -17,7 +17,7 @@ describe('memo reminder flow', () => {
       unregisterByPrefix: vi.fn(),
       clearAllSchedules: vi.fn(),
     });
-    await seedPack({ keys: ['actions'] });
+    await importSeeds({ keys: ['actions'] });
     importFlows({ 'Memo Reminder Flow': { root: true, tracks: memoReminderFlow['Memo Reminder Flow'] } });
     const app = await startApp({ systems: ['default-setup/brain', 'host/settings'] });
     await app.connect();

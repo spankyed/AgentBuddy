@@ -12,7 +12,7 @@ import { artifactRegistry } from '@abuddy/sdk/artifacts';
 import { blockRegistry } from '@abuddy/sdk/blocks';
 import { _seedHookRegistry } from '@abuddy/sdk/seed';
 import { getPackCommands, getPackSettingsDefaults, onPackSettingsDefaultsChanged, type PackRegistration } from '@abuddy/sdk/framework';
-import { seedData, type Seeder } from '@abuddy/sdk/utils';
+import { importCompiledSeeds, type Seeder } from '@abuddy/sdk/utils';
 import { createPackRegistry } from '../../src/packs/registry.ts';
 import { PLUGIN_EVENT_TYPES } from '@abuddy/sdk/events';
 
@@ -179,29 +179,29 @@ describe('seeders', () => {
     fs.writeFileSync(path.join(dir, 'seeds.json'), JSON.stringify({ version: 1, packId, seeds: [] }));
     return dir;
   }
-  const seeder = (key: string, created: number): Seeder => ({ key, seed: () => ({ created, updated: 0, skipped: 0 }) });
+  const seeder = (key: string, created: number): Seeder => ({ key, apply: () => ({ created, updated: 0, skipped: 0 }) });
 
   it("run for their pack's compiled seeds while it's registered, each pack's apart", () => {
     add({ id: 'pack-a', seeders: [seeder('library', 1)] });
     add({ id: 'pack-b', seeders: [seeder('library', 2), seeder('notes', 3)] });
-    expect(seedData({ compiledDir: compiledDir('pack-a') })).toEqual({ library: { created: 1, updated: 0, skipped: 0 } });
-    expect(Object.keys(seedData({ compiledDir: compiledDir('pack-b') }))).toEqual(['library', 'notes']);
+    expect(importCompiledSeeds({ compiledDir: compiledDir('pack-a') })).toEqual({ library: { created: 1, updated: 0, skipped: 0 } });
+    expect(Object.keys(importCompiledSeeds({ compiledDir: compiledDir('pack-b') }))).toEqual(['library', 'notes']);
 
     remove('pack-a');
-    expect(seedData({ compiledDir: compiledDir('pack-a') })).toEqual({});
+    expect(importCompiledSeeds({ compiledDir: compiledDir('pack-a') })).toEqual({});
   });
 
   it("refuse two seeders for one key in a pack, registering none of the pack", () => {
     expect(() => add({ id: 'pack-a', steps: [noteStep], seeders: [seeder('notes', 1), seeder('notes', 2)] }))
       .toThrow('Pack "pack-a" registers two seeders for seed key "notes"');
-    expect(seedData({ compiledDir: compiledDir('pack-a') })).toEqual({});
+    expect(importCompiledSeeds({ compiledDir: compiledDir('pack-a') })).toEqual({});
     expect(stepRegistry.has('note')).toBe(false);
   });
 
   it("aren't run when their pack's registration is refused later on", () => {
     add({ id: 'first-pack', commands: [{ name: 'standup', placeholder: 'Topic' }] });
     expect(() => add({ id: 'pack-a', seeders: [seeder('notes', 1)], commands: [{ name: 'standup', placeholder: 'Theirs' }] })).toThrow('Command collision');
-    expect(seedData({ compiledDir: compiledDir('pack-a') })).toEqual({});
+    expect(importCompiledSeeds({ compiledDir: compiledDir('pack-a') })).toEqual({});
   });
 });
 
@@ -306,7 +306,7 @@ describe('a pack whose registration is refused', () => {
     fs.writeFileSync(path.join(dir, 'seeds.json'), JSON.stringify({ version: 1, packId, seeds: [] }));
     return dir;
   };
-  const aSeeder = (key: string): Seeder => ({ key, seed: () => ({ created: 1, updated: 0, skipped: 0 }) });
+  const aSeeder = (key: string): Seeder => ({ key, apply: () => ({ created: 1, updated: 0, skipped: 0 }) });
 
   it('takes back every kind it had registered, and leaves the pack it collided with whole', () => {
     add({
@@ -337,7 +337,7 @@ describe('a pack whose registration is refused', () => {
     expect(artifactRegistry.has('card-view')).toBe(false);
     expect(blockRegistry.has('card-block')).toBe(false);
     expect(_seedHookRegistry.get('Card')).toBeUndefined();
-    expect(seedData({ compiledDir: seedsOf('refused') })).toEqual({});
+    expect(importCompiledSeeds({ compiledDir: seedsOf('refused') })).toEqual({});
     expect(getPackSettingsDefaults().settings.plugins).not.toHaveProperty('refused/cards');
 
     // ...and nothing of the incumbent's was taken with it

@@ -39,7 +39,7 @@ Hidden `.<id>.installing-*`, `.<id>.previous-*` and `.<id>.publishing-*` dirs ar
 3. Loads each enabled pack with `loadSingleExternalPack()`:
    - `hostVersion` check (`isHostCompatible`), pack layout format check, warning on an SDK major version mismatch
    - `runtime/index.cjs` through `withHostResolution()`; the registration id must match the manifest. A directory without a `integrity.json` and a `runtime/index.cjs` isn't an installed pack: it's skipped with a warning pointing at `abuddy install` or `abuddy dev`
-   - drops early systems, and strips `boot.seedManifest` (external seeds go through `seedPackData`) and `ears.partitionPolicy`
+   - drops early systems, and strips `boot.seedManifest` (external seeds go through `importPackSeeds`) and `ears.partitionPolicy`
    - a pack it can't load comes back as `{ problem }`, which `loadExternalPacks` records in the registry it's given (`recordLoadProblem`), so the Packs view says why the pack isn't running
 
 `registerExternalPacks(registry, packs)` registers each pack (recording why as the pack's load problem when the registry refuses one), whose features the registry runs at `<packId>/<featureId>` (its seeders, commands and the rest of its registration with it), and returns the packs whose registration succeeded.
@@ -57,7 +57,7 @@ In this folder (all exported from `index.ts`):
 | `reload.ts` | `reloadExternalPack()` / `reloadBuiltInPack()` for the API's `POST /dev/reload` (`setup/websocket.ts`) |
 | `packs-system.ts` | Every action takes an in-flight lock (install on the slug, the rest on the pack id), so two of the same never interleave. The host `packs` XState system: `INSTALL_PACK`, `UNINSTALL_PACK`, `TOGGLE_PACK_ENABLED`, `UPDATE_PACK`, `CHECK_FOR_UPDATES`, `GET_INSTALLED_PACKS`, and `PACK_CHANGED`, on which it sends the list again like any other system that reads what packs register; emits `PACKS_LIST`, `PACK_ACTIVATED`/`PACK_DEACTIVATED` and install/update/uninstall results. It lists `installedPacks()`: the packs directory, joined with what the record says about each and the registry's load problem for it |
 | `activation-outcome.ts` | `activationProblem()`: why a just-installed or updated pack isn't working (failed to load, with the load problem the registry recorded, or the seed error recorded on its installed-packs entry) |
-| `seed.ts` | `computePackSeedHash` (the compiled seeds' contents *and* the files they are in: an install replaces the files whatever they hold, so reinstalling the version already installed is a reason to seed again, and the CLI gets that without reaching into the app's database), `seedPackData` (hash-checked external seeds, the hashes kept in `AppState.packSeedHashes`, which keeps a pack's hash while it's disabled; every seeder the pack registered runs; failures recorded as the installed-packs entry's `lastError`. A pack is seeded when its own compiled data changed, or when its last seed failed and a pack it depends on has seeded since — `AppState.packSeedDeps` holds what the failed attempt faced, so the retry happens when that changes rather than never, and a pack whose data and dependencies are both settled is still skipped), `orchestrateDeclarativeSeed` (built-in `boot.seed`, hash-checked per pack in `AppState`, `seedPolicy.skipAfterOnboarding` read from `AppState.hasOnboarded`; the hash covers every seeded key's compiled file, `settings.seed.json` included, so changing default settings re-runs the boot seed even though `seedPolicy.skipAtBoot` keeps settings from being reset) |
+| `seed.ts` | `computePackSeedHash` (the compiled seeds' contents *and* the files they are in: an install replaces the files whatever they hold, so reinstalling the version already installed is a reason to seed again, and the CLI gets that without reaching into the app's database), `importPackSeeds` (hash-checked external seeds, the hashes kept in `AppState.packSeedHashes`, which keeps a pack's hash while it's disabled; every seeder the pack registered runs; failures recorded as the installed-packs entry's `lastError`. A pack is seeded when its own compiled data changed, or when its last seed failed and a pack it depends on has seeded since — `AppState.packSeedDeps` holds what the failed attempt faced, so the retry happens when that changes rather than never, and a pack whose data and dependencies are both settled is still skipped), `orchestrateDeclarativeSeed` (built-in `boot.seed`, hash-checked per pack in `AppState`, `seedPolicy.skipAfterOnboarding` read from `AppState.hasOnboarded`; the hash covers every seeded key's compiled file, `settings.seed.json` included, so changing default settings re-runs the boot seed even though `seedPolicy.skipAtBoot` keeps settings from being reset) |
 
 In `packages/abuddy-host/src/packs/` (`@abuddy/host/packs`):
 
@@ -100,7 +100,7 @@ The API's `transport/packs.ts` serves `packs.loaded` from `getLoadedPackEntries(
    runAppMigrations()              — the host's app migrations, then built-in packs', against the app version (@abuddy/host/migrations); if one fails, nothing below runs
    runPackMigrations()             — external packs' migrations, each against its pack version
    runRegisteredBootSeeds()        — built-in packs' boot.seedManifest (orchestrateDeclarativeSeed)
-   seedPackData()                  — external pack compiled seeds (hash-checked, in dependency order)
+   importPackSeeds()                  — external pack compiled seeds (hash-checked, in dependency order)
 10. start the bus actor            — createAppBus(registry, early.refs) (@abuddy/host/bus) with systemId `HOST.bus`, leaving the early systems' messages to them
 ```
 
@@ -123,7 +123,7 @@ export const registration: PackRegistration = {
   artifacts?: ArtifactDefinition[];
   blocks?: BlockDefinition[];
   seedHooks?: Record<string, SeedHooks>;  // abuddy.json seedHooks
-  seeders?: Seeder[];                     // one per seeded key (abuddy.json boot.seed), run by seedData
+  seeders?: Seeder[];                     // one per seeded key (abuddy.json boot.seed), run by importCompiledSeeds
   commands?: PackCommand[];               // abuddy.json commands
 };
 ```
@@ -163,13 +163,13 @@ The resolver patch is restored in a `finally`; the bridged cache entries stay, s
 
 - **Early systems** (`system.early`, from `features[].earlySystem`) — Start before hydration, and before external packs register, at their feature's address like the pack's other systems: they run outside the bus and hear client sends through `onIncoming`, which the bus checks against their `receives`. The manifest schema rejects `features[].earlySystem` in a pack without `builtIn`, and the loader drops such a system with a warning log.
 - **`partitionPolicy`** (`excludedEntityTypes`) — Controls which entities go to the volatile store vs primary LMDB. Letting external packs route data to alternative stores without sandboxing could corrupt persistence. Stripped (with a warning when it lists types); all external pack data routes to the primary partition.
-- **`seedManifest`** — The declarative boot seed is only for built-in packs (hashes recorded per pack in `AppState.seedHashes`); external packs seed through `seedPackData()`, hash-checked per pack and in dependency order.
+- **`seedManifest`** — The declarative boot seed is only for built-in packs (hashes recorded per pack in `AppState.seedHashes`); external packs seed through `importPackSeeds()`, hash-checked per pack and in dependency order.
 
 ## Runtime lifecycle
 
 ### Activate and teardown (`lifecycle.ts`)
 
-`activatePack(registry, packId, bus)` — reads `packs/<id>/abuddy.json`, `loadSingleExternalPack()`, `registerExternalPacks()`, registers `onShutdown`, then starts it as a boot does: `onInit`, `runPackMigrations()`, `seedPackData()` (hash-checked, so enabling a pack whose seeds didn't change imports nothing), then `updateLoadedPack()`, sends the bus `PACK_CHANGED`, then `ACTIVATE_PACK` with the `<packId>/<featureId>` system ids. Returns `false` when the pack can't be read, loaded or registered, with why recorded as its load problem. The packs system then emits `PACK_ACTIVATED`, or, after install/update, `PACK_INSTALL_FAILED`/`PACK_UPDATE_FAILED` when `activationProblem()` reports one.
+`activatePack(registry, packId, bus)` — reads `packs/<id>/abuddy.json`, `loadSingleExternalPack()`, `registerExternalPacks()`, registers `onShutdown`, then starts it as a boot does: `onInit`, `runPackMigrations()`, `importPackSeeds()` (hash-checked, so enabling a pack whose seeds didn't change imports nothing), then `updateLoadedPack()`, sends the bus `PACK_CHANGED`, then `ACTIVATE_PACK` with the `<packId>/<featureId>` system ids. Returns `false` when the pack can't be read, loaded or registered, with why recorded as its load problem. The packs system then emits `PACK_ACTIVATED`, or, after install/update, `PACK_INSTALL_FAILED`/`PACK_UPDATE_FAILED` when `activationProblem()` reports one.
 
 `teardownPack(registry, packId, bus, { replacing? })` — runs the pack's shutdown hooks, clears its load problem, `unregisterPack()` (which drops everything the pack registered, its seeders included, and the cached event validation map and partition policy), clears the pack's require cache, `removeLoadedPack()`, sends the bus `TEARDOWN_PACK` to stop its systems, then `PACK_CHANGED` unless `replacing` is set. The packs system emits `PACK_DEACTIVATED`.
 

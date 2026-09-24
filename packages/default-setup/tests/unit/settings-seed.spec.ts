@@ -8,7 +8,7 @@ import * as os from 'node:os';
 import * as path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import type { SeedCompileContext } from '@abuddy/sdk/build';
-import { seedData } from '@abuddy/sdk/utils';
+import { importCompiledSeeds } from '@abuddy/sdk/utils';
 import compileSettings from '../../src/seeds/_compilers/settings';
 import { ref } from '@/__generated__/ref';
 
@@ -61,11 +61,11 @@ describe('settings seeder', () => {
 
   it("resets the user's settings when the seed is imported, and keeps them when existing data is kept", () => {
     changeASetting();
-    expect(seedData({ compiledDir: DIST, include: { settings: true }, mode: 'keep-existing' }).settings).toEqual({ created: 0, updated: 0, skipped: 1 });
+    expect(importCompiledSeeds({ compiledDir: DIST, include: { settings: true }, mode: 'keep-existing' }).settings).toEqual({ created: 0, updated: 0, skipped: 1 });
     expect(changed()).toBe(true);
 
     const only = { actions: new Set<string>(), prompts: new Set<string>(), flows: new Set<string>(), library: new Set<string>(), notes: new Set<string>() };
-    expect(seedData({ compiledDir: DIST, include: only, mode: 'replace-on-collision' }).settings).toEqual({ created: 0, updated: 1, skipped: 0 });
+    expect(importCompiledSeeds({ compiledDir: DIST, include: only, mode: 'replace-on-collision' }).settings).toEqual({ created: 0, updated: 1, skipped: 0 });
     expect(changed()).toBe(false);
   });
 });

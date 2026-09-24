@@ -14,7 +14,7 @@ import {
   refreshBuiltInPackInfo,
 } from './loader.ts';
 import { runPackMigrations } from '../../migrations/index.ts';
-import { orchestrateDeclarativeSeed, seedPackData } from './seed.ts';
+import { orchestrateDeclarativeSeed, importPackSeeds } from './seed.ts';
 
 const logger = createLogger('pack-reload');
 
@@ -124,7 +124,7 @@ export async function reloadExternalPack(
       afterRegister: () => {
         const targets = registry.externalPackTargets([packId]);
         runPackMigrations(targets);
-        seedPackData(targets);
+        importPackSeeds(targets);
       },
     };
   }, packDir);

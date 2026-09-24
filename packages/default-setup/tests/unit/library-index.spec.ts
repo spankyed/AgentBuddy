@@ -3,7 +3,7 @@
 import * as path from 'node:path'
 import { describe, expect, it } from 'vitest'
 import { startApp, type TestApp } from '@abuddy/testing/harness'
-import { seedData } from '@abuddy/sdk/utils'
+import { importCompiledSeeds } from '@abuddy/sdk/utils'
 import { repository } from '@/__generated__/repository'
 import type { LibraryIndex } from '@/features/library/be/types'
 
@@ -13,7 +13,7 @@ const indexOf = (event: unknown) => (event as { data: { index: LibraryIndex } })
 const folderNamed = (name: string) => repository.libraryQueries.getCollections().find((collection) => collection.name === name)!.id
 
 async function seededApp(): Promise<TestApp> {
-  seedData({ compiledDir: DIST, include: { library: new Set(['internal']) } })
+  importCompiledSeeds({ compiledDir: DIST, include: { library: new Set(['internal']) } })
   const app = await startApp({ systems: ['library'] })
   await app.connect()
   return app

@@ -7,7 +7,7 @@ import * as path from 'node:path';
 import { afterAll, beforeEach, describe, expect, it } from 'vitest';
 import { SEED_INDEX_FILE, seedFile } from '@abuddy/sdk/build';
 import { createFlowSeeder, createSeeder } from '@abuddy/sdk/seed';
-import { seedData } from '@abuddy/sdk/utils';
+import { importCompiledSeeds } from '@abuddy/sdk/utils';
 import { registerPack, unregisterPack } from '@abuddy/testing/harness';
 import { findWhere } from '@/__generated__/ears';
 import { dropAttribute } from '@abuddy/sdk/testing';
@@ -46,7 +46,7 @@ function compiled(changed: string[] = [], version = 'changed', { only, packId = 
   return dir;
 }
 
-const seedFlows = (dir: string) => seedData({ compiledDir: dir, mode: 'replace-on-collision' }).flows;
+const seedFlows = (dir: string) => importCompiledSeeds({ compiledDir: dir, mode: 'replace-on-collision' }).flows;
 
 beforeEach(() => {
   resetDatabase();

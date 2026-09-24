@@ -97,7 +97,7 @@ export const SeedEntryConfigSchema = z.object({
   path: z.string().describe('Source directory or file, relative to the pack root.').optional(),
   format: z.string().regex(SEED_FORMAT_REF, 'Must be a seedFormats name, or "<dependency id>:<name>"')
     .describe('The format compiling `path`: a name in this pack\'s seedFormats, or "<dependency id>:<name>" for a dependency\'s.').optional(),
-  seeder: z.string().describe('A pack module exporting seed(ctx), used instead of the generic seeder. Alone, the build compiles nothing for the entry and the module brings its own data; with "path" and "format", the module seeds the compiled records.').optional(),
+  seeder: z.string().describe('A pack module exporting apply(ctx), used instead of the generic seeder. Alone, the build compiles nothing for the entry and the module brings its own data; with "path" and "format", the module seeds the compiled records.').optional(),
 }).strict();
 
 // Seed keys name files and folders in the compiled output (<key>.seed.json, media/<key>) and generated identifiers

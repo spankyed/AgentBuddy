@@ -7,7 +7,7 @@ import { recordSeedOutcomes } from '../installed.ts';
 import type { PackSeedManifest } from '@abuddy/sdk/framework';
 import { seedPath, type PackManifest } from '@abuddy/sdk/build';
 import { appState } from '../../app-state/index.ts';
-import { seedData, type SeedIncludeSet } from '@abuddy/sdk/utils';
+import { importCompiledSeeds, type SeedIncludeSet } from '@abuddy/sdk/utils';
 import { errorMessage } from '@abuddy/sdk/utils/pure';
 
 const logger = createLogger('pack-seed');
@@ -46,12 +46,12 @@ export function computePackSeedHash(distDir: string): string {
   return hash.digest('hex').slice(0, 16);
 }
 
-export interface PackSeedFailure {
+export interface PackImportFailure {
   packId: string;
   errors: string[];
 }
 
-function seedErrors(result: Record<string, { errors?: string[] }> | undefined): string[] {
+function importErrors(result: Record<string, { errors?: string[] }> | undefined): string[] {
   return Object.entries(result ?? {}).flatMap(([key, counts]) => (counts?.errors ?? []).map(e => `${key}: ${e}`));
 }
 
@@ -91,8 +91,8 @@ function dependencyState(dependencies: Record<string, string> | undefined, seede
  * data isn't re-imported on every boot. What is stored alongside it is the state its dependencies were in,
  * so the retry happens when that changes rather than never.
  */
-export function seedPackData(packs: Iterable<PackSeedTarget>, seed: typeof seedData = seedData): PackSeedFailure[] {
-  const failures: PackSeedFailure[] = [];
+export function importPackSeeds(packs: Iterable<PackSeedTarget>, importSeeds: typeof importCompiledSeeds = importCompiledSeeds): PackImportFailure[] {
+  const failures: PackImportFailure[] = [];
   const outcomes = new Map<string, string | undefined>();
 
   for (const pack of packs) {
@@ -116,10 +116,10 @@ export function seedPackData(packs: Iterable<PackSeedTarget>, seed: typeof seedD
       continue;
     }
 
-    logger.info(`Seeding data for pack: ${packId}`);
+    logger.info(`Importing seeds for pack: ${packId}`);
     let errors: string[];
     try {
-      errors = seedErrors(seed({ compiledDir: distDir, mode: 'replace-on-collision' }));
+      errors = importErrors(importSeeds({ compiledDir: distDir, mode: 'replace-on-collision' }));
     } catch (err) {
       errors = [errorMessage(err)];
     }
@@ -197,11 +197,11 @@ export function orchestrateDeclarativeSeed(manifest: PackSeedManifest, packId: s
   }
 
   const include = evaluateSeedPolicy(seedPolicy);
-  const counts = seedData({ compiledDir, include });
+  const counts = importCompiledSeeds({ compiledDir, include });
   // Seeders report a record they couldn't seed (an invalid flow, say) in its counts rather than throwing
-  const errors = seedErrors(counts);
+  const errors = importErrors(counts);
 
-  // Stored even when records failed, as seedPackData does: the same failing data isn't re-imported on
+  // Stored even when records failed, as importPackSeeds does: the same failing data isn't re-imported on
   // every boot, and it's retried as soon as the compiled seeds change
   record('seedHashes', currentHash);
   record('seedStatFingerprints', fp);

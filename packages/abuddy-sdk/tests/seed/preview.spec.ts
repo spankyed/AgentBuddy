@@ -10,7 +10,7 @@ import { startTestRuntime, testPacks } from '../../src/testing/index.ts';
 // The registered packs' seeders: the stand-in's, which the specs fill
 startTestRuntime();
 
-const noopSeeder = (key: string): Seeder => ({ key, seed: () => ({ created: 0, updated: 0, skipped: 0 }) });
+const noopSeeder = (key: string): Seeder => ({ key, apply: () => ({ created: 0, updated: 0, skipped: 0 }) });
 
 let root: string | undefined;
 afterEach(() => {

@@ -151,7 +151,7 @@ Flows import via a compiled DSL JSON file. The DSL is validated against availabl
 
 ## Import Pack Seeds
 
-Settings → General → "Import Pack Seeds" imports a pack's compiled seeds from a directory (`dist/` of a built-in pack after `npm run compile`, or an external pack's `runtime/seeds/`). The settings system previews it with `previewPackSeeds(dir)` (`@abuddy/sdk/seed`), then calls `seedData({ compiledDir, include, mode })` (`@abuddy/sdk/utils`), which runs the pack's registered seeder for each `<key>.seed.json` listed in `seeds.json` (actions, prompts, flows, library, notes, …), with media from `media/`.
+Settings → General → "Import Pack Seeds" imports a pack's compiled seeds from a directory (`dist/` of a built-in pack after `npm run compile`, or an external pack's `runtime/seeds/`). The settings system previews it with `previewPackSeeds(dir)` (`@abuddy/sdk/seed`), then calls `importCompiledSeeds({ compiledDir, include, mode })` (`@abuddy/sdk/utils`), which runs the pack's registered seeder for each `<key>.seed.json` listed in `seeds.json` (actions, prompts, flows, library, notes, …), with media from `media/`.
 
 ## Seed pipeline
 
@@ -184,5 +184,5 @@ JSON exports preserve the entity-based structure: `media/{entityId}/{filename}`.
 | `parseFrontmatter(content)` | `library/be/utils.ts` | Extract `{ tags, name?, description?, body }` |
 | `parseMarkdownSections(body)` | `library/be/utils.ts` | Parse `<!-- section:TYPE -->` markers into `ContentSection[]` |
 | `serializeContentToMarkdown(sections)` | `library/be/utils.ts` | `ContentSection[]` → markdown with section markers |
-| `seedData(options)` | `@abuddy/sdk/utils` (`utils/seed.ts`) | Run the registered seeders over a compiled seeds directory |
+| `importCompiledSeeds(options)` | `@abuddy/sdk/utils` (`utils/seed.ts`) | Run the registered seeders over a compiled seeds directory |
 | `computeManifestSeedHash(dir, artifacts)` | `@abuddy/host/packs/runtime` (`seed.ts`, internal) | SHA-256 hash of a boot seed's compiled files |

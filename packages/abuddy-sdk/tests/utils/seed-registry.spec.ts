@@ -2,7 +2,7 @@ import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
-import { seedData, type Seeder, type SeederContext } from '../../src/utils/index.ts';
+import { importCompiledSeeds, type Seeder, type ImportContext } from '../../src/utils/index.ts';
 import { startTestRuntime, testPacks } from '../../src/testing/index.ts';
 
 // The registered packs' seeders (a registration's `seeders`): the stand-in's, which the specs fill. The host's
@@ -27,10 +27,10 @@ function compiledDir(packId?: string): string {
 /** A seeder that records which directories it seeded */
 function recording(key: string, created: number): Seeder & { seen: string[] } {
   const seen: string[] = [];
-  return { key, seen, seed: (ctx: SeederContext) => { seen.push(ctx.compiledDir); return { created, updated: 0, skipped: 0 }; } };
+  return { key, seen, apply: (ctx: ImportContext) => { seen.push(ctx.compiledDir); return { created, updated: 0, skipped: 0 }; } };
 }
 
-describe('seedData', () => {
+describe('importCompiledSeeds', () => {
   it("keeps each pack's seeders for the same key apart", () => {
     const a = recording('library', 1);
     const b = recording('library', 2);
@@ -38,9 +38,9 @@ describe('seedData', () => {
     registerSeeders('pack-b', [b]);
 
     const dirA = compiledDir('pack-a');
-    expect(seedData({ compiledDir: dirA })).toEqual({ library: { created: 1, updated: 0, skipped: 0 } });
+    expect(importCompiledSeeds({ compiledDir: dirA })).toEqual({ library: { created: 1, updated: 0, skipped: 0 } });
     const dirB = compiledDir('pack-b');
-    expect(seedData({ compiledDir: dirB })).toEqual({ library: { created: 2, updated: 0, skipped: 0 } });
+    expect(importCompiledSeeds({ compiledDir: dirB })).toEqual({ library: { created: 2, updated: 0, skipped: 0 } });
     expect(a.seen).toEqual([dirA]);
     expect(b.seen).toEqual([dirB]);
   });
@@ -51,12 +51,12 @@ describe('seedData', () => {
     registerSeeders('pack-a', [own]);
     registerSeeders('pack-b', [other]);
 
-    expect(Object.keys(seedData({ compiledDir: compiledDir('pack-a') }))).toEqual(['notes']);
+    expect(Object.keys(importCompiledSeeds({ compiledDir: compiledDir('pack-a') }))).toEqual(['notes']);
     expect(other.seen).toEqual([]);
-    expect(seedData({ compiledDir: compiledDir('pack-c') })).toEqual({});
+    expect(importCompiledSeeds({ compiledDir: compiledDir('pack-c') })).toEqual({});
   });
 
   it('refuses a directory that names no pack', () => {
-    expect(() => seedData({ compiledDir: compiledDir() })).toThrow("doesn't name the pack that compiled these seeds");
+    expect(() => importCompiledSeeds({ compiledDir: compiledDir() })).toThrow("doesn't name the pack that compiled these seeds");
   });
 });

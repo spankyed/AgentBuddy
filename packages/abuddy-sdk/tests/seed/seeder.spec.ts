@@ -45,7 +45,7 @@ function compiled(packId: string, records: Array<{ name: string; body: string; v
 }
 
 const seeder = createSeeder({ key: 'memos', entities: ['Memo', 'Folder'], identity: ['name'] });
-const seed = (dir: string) => seeder.seed({ compiledDir: dir, mode: 'replace-on-collision', log: () => {} });
+const seed = (dir: string) => seeder.apply({ compiledDir: dir, mode: 'replace-on-collision', log: () => {} });
 
 describe('a row whose seeded values were not recorded', () => {
   it("is left alone when its record changes: it can't be checked for edits", () => {
@@ -151,7 +151,7 @@ describe("a folder another pack seeded", () => {
     registerHooks('Folder', { container: true });
     seed(tree('pack-a', ['welcome.md']));
 
-    const counts = seeder.seed({ compiledDir: tree('pack-b', ['theirs.md']), mode: 'keep-existing', log: () => {} });
+    const counts = seeder.apply({ compiledDir: tree('pack-b', ['theirs.md']), mode: 'keep-existing', log: () => {} });
 
     expect(counts).toEqual({ created: 1, updated: 0, skipped: 1 });
     expect(contents(folders()[0])).toEqual(['theirs.md', 'welcome.md']);
@@ -162,7 +162,7 @@ describe("a folder another pack seeded", () => {
     const docs = createSeeder({ key: 'docs', entities: ['Memo', 'Folder'], identity: ['name'] });
     seed(tree('pack-a', ['welcome.md']));
 
-    expect(docs.seed({ compiledDir: tree('pack-a', ['guide.md'], 'docs'), mode: 'replace-on-collision', log: () => {} }))
+    expect(docs.apply({ compiledDir: tree('pack-a', ['guide.md'], 'docs'), mode: 'replace-on-collision', log: () => {} }))
       .toEqual({ created: 1, updated: 0, skipped: 1 });
 
     expect(folders()).toHaveLength(1);
@@ -197,7 +197,7 @@ describe("a folder another pack seeded", () => {
 });
 
 describe('wipe-and-replace', () => {
-  const wipeSeed = (dir: string) => seeder.seed({ compiledDir: dir, mode: 'wipe-and-replace', log: () => {} });
+  const wipeImport = (dir: string) => seeder.apply({ compiledDir: dir, mode: 'wipe-and-replace', log: () => {} });
   const folderNames = () => ears().qx('Folder' as EARS.Entity).pick(['name']).map((row) => row.name as string).sort();
 
   it("removes rows of every entity type the entry seeds, even types its records don't hold", () => {
@@ -205,7 +205,7 @@ describe('wipe-and-replace', () => {
     ears().createEntityWithDefaults('Memo' as EARS.Entity, { name: 'old memo', body: 'mine' });
 
     // Only top-level memos: no Folder record, yet the entry seeds folders too
-    expect(wipeSeed(compiled('pack-a', [{ name: 'Intro', body: 'Hello' }]))).toEqual({ created: 1, updated: 0, skipped: 0 });
+    expect(wipeImport(compiled('pack-a', [{ name: 'Intro', body: 'Hello' }]))).toEqual({ created: 1, updated: 0, skipped: 0 });
 
     expect(folderNames()).toEqual([]);
     expect(memos('old memo')).toEqual([]);
@@ -215,7 +215,7 @@ describe('wipe-and-replace', () => {
   it('wipes when the entry has no records', () => {
     ears().createEntityWithDefaults('Memo' as EARS.Entity, { name: 'old memo', body: 'mine' });
 
-    expect(wipeSeed(compiled('pack-a', []))).toEqual({ created: 0, updated: 0, skipped: 0 });
+    expect(wipeImport(compiled('pack-a', []))).toEqual({ created: 0, updated: 0, skipped: 0 });
 
     expect(memos('old memo')).toEqual([]);
   });
@@ -224,7 +224,7 @@ describe('wipe-and-replace', () => {
     const memosOnly = createSeeder({ key: 'memos', entities: ['Memo'], identity: ['name'] });
     ears().createEntityWithDefaults('Folder' as EARS.Entity, { name: 'kept folder' });
 
-    memosOnly.seed({ compiledDir: compiled('pack-a', [{ name: 'Intro', body: 'Hello' }]), mode: 'wipe-and-replace', log: () => {} });
+    memosOnly.apply({ compiledDir: compiled('pack-a', [{ name: 'Intro', body: 'Hello' }]), mode: 'wipe-and-replace', log: () => {} });
 
     expect(folderNames()).toEqual(['kept folder']);
   });
@@ -313,7 +313,7 @@ describe('a created row that fails before it is tracked', () => {
     const dir = compiled('demo', [{ name: 'Intro', body: 'See ![pic](media/pic.png)' }]);
     fs.mkdirSync(path.join(dir, 'media', 'memos'), { recursive: true });
     fs.writeFileSync(path.join(dir, 'media', 'memos', 'pic.png'), 'PNG');
-    const seedMedia = () => mediaSeeder.seed({ compiledDir: dir, mode: 'replace-on-collision', log: () => {} });
+    const seedMedia = () => mediaSeeder.apply({ compiledDir: dir, mode: 'replace-on-collision', log: () => {} });
 
     expect(seedMedia()).toMatchObject({ created: 0, errors: ['Memo "Intro": disk full'] });
     expect(memos('Intro')).toEqual([]);
@@ -339,7 +339,7 @@ describe('media links that point outside the media folders', () => {
     fs.writeFileSync(path.join(dir, 'secret.txt'), 'SECRET');
     fs.symlinkSync(path.join(dir, 'secret.txt'), path.join(mediaDir, 'linked.png'));
 
-    expect(mediaSeeder.seed({ compiledDir: dir, mode: 'replace-on-collision', log: () => {} })).toEqual({ created: 1, updated: 0, skipped: 0 });
+    expect(mediaSeeder.apply({ compiledDir: dir, mode: 'replace-on-collision', log: () => {} })).toEqual({ created: 1, updated: 0, skipped: 0 });
 
     const { id, body } = memo('Escape');
     expect(body).toBe(`A ![up](media/../../secret.txt) B ![link](media/linked.png) C ![side](media/../memos/pic.png) D ![ok](media://${id}/pic.png)`);

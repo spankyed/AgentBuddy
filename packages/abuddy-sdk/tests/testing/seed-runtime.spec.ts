@@ -44,7 +44,7 @@ describe.skipIf(!built)("a built pack's seed runtime", () => {
     fs.writeFileSync(path.join(compiled, 'notes.seed.json'), JSON.stringify({ records: compileBuiltinFormat('notes', manifest.seedFormats!.notes, source) }));
 
     const format = manifest.seedFormats!.notes;
-    const counts = createSeeder({ key: 'notes', entities: ['Note'], identity: format.identity, relKind: format.tree?.relKind }).seed({ compiledDir: compiled, log: () => {} });
+    const counts = createSeeder({ key: 'notes', entities: ['Note'], identity: format.identity, relKind: format.tree?.relKind }).apply({ compiledDir: compiled, log: () => {} });
     expect(counts).toEqual({ created: 3, updated: 0, skipped: 0 });
 
     const notes = ears().findWhere<Record<string, unknown> & { id: string }>('Note', 'title', 'Intro');

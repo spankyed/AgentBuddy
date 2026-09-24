@@ -1060,8 +1060,8 @@ describe('generated seeders', () => {
 
   it("registers a pack seeder module under a seed key that isn't an identifier", () => {
     const seeders = generate({ boot: { seed: { 'my-memos': { seeder: 'src/seeds/memos.ts' } } } })['src/__generated__/seeders.ts'];
-    expect(seeders).toContain("import { seed as __seeder_my_memos } from '../seeds/memos.js';");
-    expect(seeders).toContain('  { key: "my-memos", seed: __seeder_my_memos },');
+    expect(seeders).toContain("import { apply as __seeder_my_memos } from '../seeds/memos.js';");
+    expect(seeders).toContain('  { key: "my-memos", apply: __seeder_my_memos },');
   });
 
   it("registers a pack seeder module for a format entry naming one, and boot-seeds the compiled entry", () => {
@@ -1070,8 +1070,8 @@ describe('generated seeders', () => {
       boot: { seed: { settings: { path: 'src/seeds/settings.ts', format: 'settings', seeder: 'src/seeds/settings-seeder.ts' } } },
     });
     const seeders = files['src/__generated__/seeders.ts'];
-    expect(seeders).toContain("import { seed as __seeder_settings } from '../seeds/settings-seeder.js';");
-    expect(seeders).toContain('  { key: "settings", seed: __seeder_settings },');
+    expect(seeders).toContain("import { apply as __seeder_settings } from '../seeds/settings-seeder.js';");
+    expect(seeders).toContain('  { key: "settings", apply: __seeder_settings },');
     expect(seeders).not.toContain('createSeeder');
     expect(files['src/__generated__/pack-entry.ts']).toContain('seedKeys: ["settings"],');
   });

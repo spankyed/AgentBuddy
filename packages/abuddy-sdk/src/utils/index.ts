@@ -29,9 +29,9 @@ export {
 
 // --- Seed (direct) ---
 export {
-  seedData,
-  loadJSON, shouldSeedAll, filterByInclude,
+  importCompiledSeeds,
+  loadJSON, shouldImportAll, filterByInclude,
   registeredSeedKeys,
 } from './seed.ts';
-export type { SeedCounts, SeedIncludeSet, ImportMode, SeederContext, Seeder } from './seed.ts';
+export type { ImportCounts, SeedIncludeSet, ImportMode, ImportContext, Seeder } from './seed.ts';
 

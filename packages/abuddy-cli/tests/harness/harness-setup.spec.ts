@@ -58,9 +58,9 @@ describe("a pack's unit tests on the harness", () => {
   it('find the pack from the vitest project root when run from another directory (--root)', () => {
     const root = dataPack(`
 import { expect, it } from 'vitest';
-import { seedPack } from '@abuddy/testing/harness';
+import { importSeeds } from '@abuddy/testing/harness';
 it('seeds nothing', async () => {
-  expect(await seedPack()).toEqual({});
+  expect(await importSeeds()).toEqual({});
 });`);
     const result = run(process.execPath, [VITEST, 'run', '--root', root], tempDir('abuddy-elsewhere-'));
     expect(result.output).toMatch(/Tests\s+1 passed/);
@@ -83,9 +83,9 @@ it('sends to its own system and plugin', () => {
   it('fail naming why when test files share the harness (vitest isolate off)', () => {
     const spec = `
 import { expect, it } from 'vitest';
-import { seedPack } from '@abuddy/testing/harness';
+import { importSeeds } from '@abuddy/testing/harness';
 it('seeds nothing', async () => {
-  expect(await seedPack()).toEqual({});
+  expect(await importSeeds()).toEqual({});
 });`;
     const root = dataPack(spec);
     write(root, 'tests/other.spec.ts', spec);

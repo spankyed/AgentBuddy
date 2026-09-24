@@ -256,7 +256,7 @@ export function scaffoldUnitTestSetup(root: string): UnitTestSetup {
 const EXAMPLE_TEST_TEMPLATE = (name: string) => {
   const pascalName = name.split('-').map(w => w[0].toUpperCase() + w.slice(1)).join('');
   return `import { describe, it, expect } from 'vitest';
-import { seedPack } from '@abuddy/testing/harness';
+import { importSeeds } from '@abuddy/testing/harness';
 import { EARS, findAll } from '#generated/ears';
 
 describe('${name}', () => {
@@ -266,7 +266,7 @@ describe('${name}', () => {
   });
 
   it('seeds the examples entry', async () => {
-    expect(await seedPack({ keys: ['${SEED_ROWS_KEY}'] })).toEqual({ ${SEED_ROWS_KEY}: { created: 1, updated: 0, skipped: 0 } });
+    expect(await importSeeds({ keys: ['${SEED_ROWS_KEY}'] })).toEqual({ ${SEED_ROWS_KEY}: { created: 1, updated: 0, skipped: 0 } });
     expect(findAll(EARS.Entity.${pascalName}).map((row) => row.title)).toEqual(['Hello']);
   });
 });

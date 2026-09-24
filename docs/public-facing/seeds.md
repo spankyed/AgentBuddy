@@ -532,22 +532,22 @@ An entry with all three, `{ "path", "format", "seeder" }`, is compiled with the 
 
 ```typescript
 // src/seeds/custom.ts
-import type { SeederContext, SeedCounts } from '@abuddy/sdk/utils';
+import type { ImportContext, ImportCounts } from '@abuddy/sdk/utils';
 
-export function seed(ctx: SeederContext): SeedCounts {
+export function apply(ctx: ImportContext): ImportCounts {
   ctx.log('  custom seed');
   return { created: 0, updated: 0, skipped: 0 };
 }
 ```
 
-| `SeederContext` | Description |
+| `ImportContext` | Description |
 |---|---|
 | `compiledDir` | The pack's compiled seeds directory |
 | `include?` | This key's include set (see [Include sets](#include-sets)) |
 | `mode?` | `'keep-existing' \| 'replace-on-collision' \| 'wipe-and-replace'` (see [Change tracking](#change-tracking)) |
 | `log(...args)` | Logs when seeding is verbose |
 
-`seed` is synchronous and returns `SeedCounts`: `created`, `updated`, `skipped`, and `errors?: string[]`, where a non-empty list fails the seed.
+`seed` is synchronous and returns `ImportCounts`: `created`, `updated`, `skipped`, and `errors?: string[]`, where a non-empty list fails the seed.
 
 ### A dependency's formats
 

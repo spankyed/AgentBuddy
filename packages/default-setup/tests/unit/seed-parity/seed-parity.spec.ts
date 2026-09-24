@@ -12,7 +12,7 @@ import { createHash } from 'node:crypto';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { afterAll, describe, expect, it } from 'vitest';
-import type { ImportMode, SeedCounts, SeedIncludeSet } from '@abuddy/sdk/utils';
+import type { ImportMode, ImportCounts, SeedIncludeSet } from '@abuddy/sdk/utils';
 import { untypedQx } from '@abuddy/ears';
 import { dropAttribute, entityIds } from '@abuddy/sdk/testing';
 import { compileSeeds, resetDatabase, seed, snapshot, type Snapshot } from './harness';
@@ -30,7 +30,7 @@ export const NOTES_INTENDED_DIFFERENCES = new Set([
   'untracked/untracked',
 ]);
 
-type Step = { name: string; snapshot: Snapshot; counts: Record<string, SeedCounts> };
+type Step = { name: string; snapshot: Snapshot; counts: Record<string, ImportCounts> };
 
 const compiled = new Map<string, string>();
 async function compiledDir(sources: 'v1' | 'v2' | 'default-setup'): Promise<string> {

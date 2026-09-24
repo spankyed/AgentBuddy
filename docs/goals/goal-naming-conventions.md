@@ -90,7 +90,7 @@ records where that one landed.
 **`Context` names at least three unrelated concepts.** 36 exported `*Context` types. An XState machine's
 context (`FlowsContext`, `BrainContext`, `ThreadsContext`, …), a bundle of arguments passed to a function
 (`SeedCompileContext` `abuddy-sdk/src/build/seeds/records.ts:33`, `StepCompileContext` and
-`StepValidationContext` `abuddy-sdk/src/steps/types.ts:14,37`, `SeederContext`
+`StepValidationContext` `abuddy-sdk/src/steps/types.ts:14,37`, `ImportContext`
 `abuddy-sdk/src/utils/seed.ts:18`, `CompilationContext` `abuddy-sdk/src/build/seed-compiler.ts:20`,
 `ExecutionContext` `abuddy-sdk/src/steps/types.ts:142`, `DescriptorContext`
 `abuddy-ui/src/components/node-dimensions.ts:27`, `DbScriptContext`
@@ -162,7 +162,7 @@ Final.
    that already police shape, not in a new top-level guard.
 
 8. **Pack-facing types are renamed like everything else.** `StepCompileContext`, `StepValidationContext`,
-   `StepDecompileContext`, `ExecutionContext`, `SeedHookContext`, `SeederContext` and `CompilationContext`
+   `StepDecompileContext`, `ExecutionContext`, `SeedHookContext`, `ImportContext` and `CompilationContext`
    are exported from `@abuddy/sdk` and appear in `etc/*.api.md` and default-setup's facade. No release has
    shipped them to anyone, so there is no surface to preserve: rename them, run `api:update` and
    `facade:update`, and follow the rename into the CLI's scaffold templates and the fixture packs. Carving

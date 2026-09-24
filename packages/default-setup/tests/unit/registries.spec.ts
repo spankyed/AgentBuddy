@@ -39,8 +39,8 @@ describe('registries/services — feature services assembly', () => {
 });
 
 describe('core/seed — seeders', () => {
-  it("default-setup's registration carries all built-in seeders, which seedData runs for its compiled seeds", async () => {
-    const { seedData } = await import('@abuddy/sdk/utils');
+  it("default-setup's registration carries all built-in seeders, which importCompiledSeeds runs for its compiled seeds", async () => {
+    const { importCompiledSeeds } = await import('@abuddy/sdk/utils');
     const fs = await import('fs');
     const os = await import('os');
     const path = await import('path');
@@ -48,7 +48,7 @@ describe('core/seed — seeders', () => {
     // A compiled seeds directory of default-setup's with no seed files: every seeder runs and finds nothing
     const compiledDir = fs.mkdtempSync(path.join(os.tmpdir(), 'default-setup-seeds-'));
     fs.writeFileSync(path.join(compiledDir, 'seeds.json'), JSON.stringify({ version: 1, packId: 'default-setup', seeds: [] }));
-    const result = seedData({ compiledDir });
+    const result = importCompiledSeeds({ compiledDir });
     fs.rmSync(compiledDir, { recursive: true, force: true });
 
     const keys = Object.keys(result);

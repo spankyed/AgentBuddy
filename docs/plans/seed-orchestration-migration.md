@@ -6,11 +6,11 @@ Settings system (`features/settings/be/system.ts`) currently owns seed data impo
 
 Three seed-related concerns baked into the settings state machine:
 
-1. **`IMPORT_PACK_SEEDS`** — Calls `seedData()` with a user-chosen directory, include filters, and import mode, then syncs the root flow setting and sends the bus `PACK_CHANGED`. Emits `PACK_SEEDS_IMPORTED` / `PACK_SEEDS_IMPORT_FAILED`.
+1. **`IMPORT_PACK_SEEDS`** — Calls `importCompiledSeeds()` with a user-chosen directory, include filters, and import mode, then syncs the root flow setting and sends the bus `PACK_CHANGED`. Emits `PACK_SEEDS_IMPORTED` / `PACK_SEEDS_IMPORT_FAILED`.
 2. **`PREVIEW_PACK_SEEDS`** — Calls `previewPackSeeds()` (`@abuddy/sdk/seed`, generic over a compiled seeds directory) and reports what's available. Emits `PACK_SEEDS_PREVIEW` / `PACK_SEEDS_PREVIEW_FAILED`.
 3. **`toSeedInclude()`** — Converts the FE's JSON-safe include shape (`null | string[]`) into `SeedIncludeSet` (`true | Set<string>`).
 
-These depend on `seedData` (from `@/__generated__/seeders`) and `previewPackSeeds`.
+These depend on `importCompiledSeeds` (from `@/__generated__/seeders`) and `previewPackSeeds`.
 
 *Done since:* app reset left settings. `RESET_APP`'s `resetAppActor` only calls `services.appData.reset()`, which the host implements (`packages/abuddy-host/src/services/app-data.ts`): it empties the stores and keys, then runs each pack's `onInit` and boot seed and the app migrations. Settings still emits `APP_RESET_COMPLETE` / `APP_RESET_FAILED` and tells the brain to restart.
 
@@ -50,7 +50,7 @@ The settings FE plugin sends `PREVIEW_PACK_SEEDS` / `IMPORT_PACK_SEEDS` / `RESET
 
 2. **Move action implementations.** Lift `previewPackSeeds`, `importPackSeeds`, `resetAppActor`, and `onResetComplete`/`onResetFailed` from settings into the packs system. Move `toSeedInclude()` alongside or into SDK utils.
 
-3. **Wire packs system to seed infra.** The packs system is host code, not a pack — it needs access to `seedData`. Since it already imports from `@abuddy/sdk`, `seedData` from `@abuddy/sdk/utils` and `previewPackSeeds` from `@abuddy/sdk/seed` work; the reset calls `services.appData.reset()`.
+3. **Wire packs system to seed infra.** The packs system is host code, not a pack — it needs access to `importCompiledSeeds`. Since it already imports from `@abuddy/sdk`, `importCompiledSeeds` from `@abuddy/sdk/utils` and `previewPackSeeds` from `@abuddy/sdk/seed` work; the reset calls `services.appData.reset()`.
 
 4. **Update `packsEvents` set** with the new event types so the bus routes them to the packs system.
 
@@ -66,7 +66,7 @@ The settings FE plugin sends `PREVIEW_PACK_SEEDS` / `IMPORT_PACK_SEEDS` / `RESET
 
 ### Phase 3 — Clean up settings
 
-7. **Remove from settings system:** `PREVIEW_PACK_SEEDS`, `IMPORT_PACK_SEEDS`, `RESET_APP` event handlers and types. Remove the `seedData` and `previewPackSeeds` imports. Remove `toSeedInclude()`, `resetAppActor`, and the `resetting` state.
+7. **Remove from settings system:** `PREVIEW_PACK_SEEDS`, `IMPORT_PACK_SEEDS`, `RESET_APP` event handlers and types. Remove the `importCompiledSeeds` and `previewPackSeeds` imports. Remove `toSeedInclude()`, `resetAppActor`, and the `resetting` state.
 
 8. **Remove outgoing event types** from `OutgoingSettingsEvents`: `PACK_SEEDS_IMPORTED`, `PACK_SEEDS_IMPORT_FAILED`, `PACK_SEEDS_PREVIEW`, `PACK_SEEDS_PREVIEW_FAILED`, `APP_RESET_COMPLETE`, `APP_RESET_FAILED`.
 

@@ -153,6 +153,37 @@ export interface ImagePart {
     type: 'image';
 }
 
+// @public
+export function importCompiledSeeds(options: {
+    compiledDir: string;
+    include?: Record<string, SeedIncludeSet | undefined>;
+    mode?: ImportMode;
+    verbose?: boolean;
+}): Record<string, ImportCounts>;
+
+// @public (undocumented)
+export interface ImportContext {
+    // (undocumented)
+    compiledDir: string;
+    // (undocumented)
+    include?: SeedIncludeSet;
+    // (undocumented)
+    log: (...args: unknown[]) => void;
+    // (undocumented)
+    mode?: ImportMode;
+}
+
+// @public (undocumented)
+export interface ImportCounts {
+    // (undocumented)
+    created: number;
+    errors?: string[];
+    // (undocumented)
+    skipped: number;
+    // (undocumented)
+    updated: number;
+}
+
 // @public (undocumented)
 export type ImportMode = 'keep-existing' | 'replace-on-collision' | 'wipe-and-replace';
 
@@ -255,49 +286,18 @@ export function restoreMarkdownMediaRefs(content: string, newEntityId: string, r
 export function rewriteMediaUrls(markdown: string, mediaFilenameMap: Map<string, string>): string;
 
 // @public (undocumented)
-export interface SeedCounts {
-    // (undocumented)
-    created: number;
-    errors?: string[];
-    // (undocumented)
-    skipped: number;
-    // (undocumented)
-    updated: number;
-}
-
-// @public
-export function seedData(options: {
-    compiledDir: string;
-    include?: Record<string, SeedIncludeSet | undefined>;
-    mode?: ImportMode;
-    verbose?: boolean;
-}): Record<string, SeedCounts>;
-
-// @public (undocumented)
 export interface Seeder {
     // (undocumented)
+    apply(ctx: ImportContext): ImportCounts;
+    // (undocumented)
     key: string;
-    // (undocumented)
-    seed(ctx: SeederContext): SeedCounts;
-}
-
-// @public (undocumented)
-export interface SeederContext {
-    // (undocumented)
-    compiledDir: string;
-    // (undocumented)
-    include?: SeedIncludeSet;
-    // (undocumented)
-    log: (...args: unknown[]) => void;
-    // (undocumented)
-    mode?: ImportMode;
 }
 
 // @public (undocumented)
 export type SeedIncludeSet = true | ReadonlySet<string>;
 
 // @public (undocumented)
-export function shouldSeedAll(inc: SeedIncludeSet | undefined): boolean;
+export function shouldImportAll(inc: SeedIncludeSet | undefined): boolean;
 
 // @public
 export function stripInternalFields<T extends object>(items: T[]): Record<string, unknown>[];

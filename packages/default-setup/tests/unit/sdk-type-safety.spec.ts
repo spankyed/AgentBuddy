@@ -23,7 +23,7 @@ import {
   loadJSON,
   detectChanges,
   toIdentifierSet,
-  type SeedCounts, type DiffResult,
+  type ImportCounts, type DiffResult,
   type ChangeBlock,
 } from '@abuddy/sdk/utils';
 import {
@@ -154,8 +154,8 @@ describe('Type inference — Logger and utilities', () => {
     expectTypeOf<ChangeBlock<Action>['removed']>().toEqualTypeOf<Array<Action | string> | undefined>();
   });
 
-  it('SeedCounts fields are numbers', () => {
-    expectTypeOf<SeedCounts['created']>().toEqualTypeOf<number>();
+  it('ImportCounts fields are numbers', () => {
+    expectTypeOf<ImportCounts['created']>().toEqualTypeOf<number>();
   });
 });
 

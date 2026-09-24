@@ -40,7 +40,7 @@ afterEach(() => {
 });
 
 /** The pack source `abuddy build` would leave, at `version`; `seeds` gives it compiled data that won't seed */
-function packSource(version: string, { unseedable = false, id = PACK_ID } = {}): string {
+function packSource(version: string, { failsImport = false, id = PACK_ID } = {}): string {
   const dir = path.join(tmpDir, 'source');
   fs.rmSync(dir, { recursive: true, force: true });
   fs.mkdirSync(path.join(dir, 'dist', 'runtime'), { recursive: true });
@@ -48,7 +48,7 @@ function packSource(version: string, { unseedable = false, id = PACK_ID } = {}):
   fs.writeFileSync(path.join(dir, 'abuddy.json'), JSON.stringify({ id, name: 'Reinstall Pack', version }));
   fs.writeFileSync(path.join(dir, 'dist', 'runtime', 'index.cjs'), `module.exports = { registration: { id: ${JSON.stringify(id)} } };`);
   fs.writeFileSync(path.join(dir, 'dist', 'types', 'snapshot.json'), JSON.stringify({ format: PACK_SNAPSHOT_FORMAT }));
-  if (unseedable) {
+  if (failsImport) {
     // Compiled data with no seeds.json: the seeder can't tell whose records these are, so seeding fails
     fs.mkdirSync(path.join(dir, 'dist', 'runtime', 'seeds'), { recursive: true });
     fs.writeFileSync(path.join(dir, 'dist', 'runtime', 'seeds', 'flows.seed.json'), '[]');
@@ -411,7 +411,7 @@ describe('reinstalling a pack whose data did not seed', () => {
     emitted(sent).map(e => e.type).filter(t => t === 'PACK_INSTALL_COMPLETE' || t === 'PACK_INSTALL_FAILED');
 
   it('says so again, rather than reporting the reinstall as clean', async () => {
-    const source = packSource('1.0.0', { unseedable: true });
+    const source = packSource('1.0.0', { failsImport: true });
 
     const first = runPacksSystem();
     try {

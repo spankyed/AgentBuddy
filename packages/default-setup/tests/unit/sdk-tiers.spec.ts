@@ -217,8 +217,8 @@ describe('Tier 6 — Utility delegates', () => {
   });
 
   it('seed helpers are callable', async () => {
-    const { seedData, loadJSON } = await import('@abuddy/sdk/utils');
-    expect(typeof seedData).toBe('function');
+    const { importCompiledSeeds, loadJSON } = await import('@abuddy/sdk/utils');
+    expect(typeof importCompiledSeeds).toBe('function');
     expect(typeof loadJSON).toBe('function');
   });
 });

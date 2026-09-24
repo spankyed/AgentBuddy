@@ -14,7 +14,7 @@ const registered: PackRegistryView = {
   step: (type) => (type === 'note' ? registeredNote : undefined),
   steps: () => [registeredNote],
   getRegisteredServices: () => ({ memos: 'registered' }),
-  seeders: (packId) => (packId === 'memo-pack' ? [{ key: 'memos', seed: () => ({ created: 0, updated: 0, skipped: 0 }) }] : []),
+  seeders: (packId) => (packId === 'memo-pack' ? [{ key: 'memos', apply: () => ({ created: 0, updated: 0, skipped: 0 }) }] : []),
   commands: () => [{ name: 'standup', placeholder: 'Topic' }],
 };
 afterEach(() => testPacks.clear());

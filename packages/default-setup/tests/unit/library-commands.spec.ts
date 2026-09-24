@@ -6,7 +6,7 @@ import * as os from 'node:os'
 import * as path from 'node:path'
 import { afterAll, afterEach, describe, expect, it } from 'vitest'
 import { registerPack, startApp, unregisterPack, type TestApp } from '@abuddy/testing/harness'
-import { seedData } from '@abuddy/sdk/utils'
+import { importCompiledSeeds } from '@abuddy/sdk/utils'
 import { createSeeder } from '@abuddy/sdk/seed'
 import type { PackCommand } from '@abuddy/sdk/framework'
 import { repository } from '@/__generated__/repository'
@@ -70,7 +70,7 @@ const dependentPackCommands = (documentName: string, command: string) =>
   dependentPack([folder('internal', [folder('commands', [document(documentName, command)])])])
 
 async function seededApp(): Promise<TestApp> {
-  seedData({ compiledDir: DIST, include: { library: new Set(['internal']) } })
+  importCompiledSeeds({ compiledDir: DIST, include: { library: new Set(['internal']) } })
   // threads checks onboarding with the brain when a client connects
   const app = await startApp({ systems: ['library', 'threads', 'brain', 'host/settings'] })
   await app.connect()
@@ -184,7 +184,7 @@ describe('slash commands from the library commands folder', () => {
     await seededApp()
     const before = repository.libraryQueries.getCollections()
 
-    seedData({ compiledDir: dependentPackCommands('Team commands', 'team-standup') })
+    importCompiledSeeds({ compiledDir: dependentPackCommands('Team commands', 'team-standup') })
 
     const collections = repository.libraryQueries.getCollections()
     expect(collections.filter((collection) => collection.name === 'internal')).toHaveLength(1)
@@ -212,7 +212,7 @@ describe('slash commands from the library commands folder', () => {
   // The bus raises PACK_CHANGED when a pack is installed, updated or rebuilt while the app runs
   it('sends the chat the commands a pack seeded while the app runs brings', async () => {
     const app = await seededApp()
-    seedData({ compiledDir: dependentPackCommands('Team commands', 'team-standup') })
+    importCompiledSeeds({ compiledDir: dependentPackCommands('Team commands', 'team-standup') })
 
     await app.send('threads', { type: 'PACK_CHANGED', packId: 'team-notes' })
 
@@ -230,7 +230,7 @@ describe('slash commands from the library commands folder', () => {
 
   it("sends the library plugin its index again when a pack changes, with what the pack seeded", async () => {
     const app = await seededApp()
-    seedData({ compiledDir: dependentPackCommands('Team commands', 'team-standup') })
+    importCompiledSeeds({ compiledDir: dependentPackCommands('Team commands', 'team-standup') })
 
     const sentBefore = app.emitted('library').filter((event) => event.type === 'LIBRARY_CONNECTED').length
 
@@ -246,7 +246,7 @@ describe('slash commands from the library commands folder', () => {
     await seededApp()
 
     // The dependent pack's own root-level commands folder, not default-setup's internal/commands
-    seedData({ compiledDir: dependentPack([folder('commands', [document('Team commands', 'team-standup')])]) })
+    importCompiledSeeds({ compiledDir: dependentPack([folder('commands', [document('Team commands', 'team-standup')])]) })
 
     const named = repository.libraryQueries.getCollections()
     expect(named.filter((collection) => collection.name === 'commands')).toHaveLength(1)
@@ -258,7 +258,7 @@ describe('slash commands from the library commands folder', () => {
     await seededApp()
     const mine = repository.libraryCommands.createDocument('Team commands', field('mine', 'Untouched'), [], undefined)
 
-    seedData({ compiledDir: dependentPackCommands('Team commands', 'team-standup') })
+    importCompiledSeeds({ compiledDir: dependentPackCommands('Team commands', 'team-standup') })
 
     expect(commandDocuments().map((document) => document.name)).toContain('Team commands')
     expect(services.library.commands().map((command) => command.name)).toContain('team-standup')

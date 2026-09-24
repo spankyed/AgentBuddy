@@ -149,7 +149,7 @@ describe('reloading a built-in pack', () => {
     testPacks.seeders.set(BUILT_IN_ID, [{
       key: 'actions',
       // A seeder reports the records it couldn't seed in its counts; it doesn't throw
-      seed: ({ compiledDir }) => {
+      apply: ({ compiledDir }) => {
         if (seedFailure) throw seedFailure;
         seeded.push(compiledDir);
         return { created: 1, updated: 0, skipped: recordsThatFail.length, ...(recordsThatFail.length > 0 && { errors: recordsThatFail }) };
@@ -228,7 +228,7 @@ describe('reloading a built-in pack', () => {
 
     // The failure is reported, not swallowed behind "Boot seed completed"
     expect(loggedErrors.join('\n')).toContain('Flow "Broken": step 2 names no action');
-    // The hash is stored anyway, as seedPackData does: the same failing data isn't re-imported every boot
+    // The hash is stored anyway, as importPackSeeds does: the same failing data isn't re-imported every boot
     expect(appState.get().seedHashes[BUILT_IN_ID]).toBeTruthy();
 
     // ...and the next seed of unchanged data doesn't retry it
@@ -315,7 +315,7 @@ describe('reloading a pack', () => {
   it("records a first-time pack's seed failure", async () => {
     resetTestData();
     writeRebuild(runtime());
-    // Compiled seeds from a pack built by an older CLI: seedData refuses them, which is a failed seed
+    // Compiled seeds from a pack built by an older CLI: importCompiledSeeds refuses them, which is a failed seed
     fs.writeFileSync(
       path.join(tmpDir, 'packs', PACK_ID, 'runtime', 'seeds', 'seeds.json'),
       JSON.stringify({ version: 1, seeds: [] }),

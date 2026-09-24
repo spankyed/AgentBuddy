@@ -9,7 +9,7 @@ export type { PackSeedsPreview, PackSeedPreviewItem } from '../build/preview.ts'
 /**
  * What a compiled seeds directory would import: its seeded keys that the compiling pack registered
  * seeders for, and their items, from seeds.json. Throws when that pack registered no seeders (it
- * isn't installed), since seedData would import nothing.
+ * isn't installed), since importCompiledSeeds would import nothing.
  */
 export function previewPackSeeds(directory: string): PackSeedsPreview {
   const indexFile = path.join(directory, SEED_INDEX_FILE);

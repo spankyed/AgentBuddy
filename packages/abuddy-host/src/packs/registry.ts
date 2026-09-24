@@ -210,7 +210,7 @@ export interface PackRegistry extends PackRegistryView {
   externalPackTargets(packIds?: Iterable<string>): Array<{ manifest: PackManifest; dir: string; migrations?: PackMigration[] }>;
   /**
    * Seeds each registered pack's declarative boot seed (`boot.seedManifest`, built-in packs only: the
-   * loader strips it from external packs, which seed through `seedPackData`)
+   * loader strips it from external packs, which seed through `importPackSeeds`)
    */
   runRegisteredBootSeeds(orchestrateSeed: (manifest: PackSeedManifest, packId: string) => void): void;
   getPackExtensions(packId: string): PackExtensions | null;

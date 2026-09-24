@@ -1,7 +1,7 @@
 // The query step asks the model for a read-only EARS query from its prompt and the "DB Query System" prompt,
 // runs it with the database console's query executor and completes with { query, [as]: rows }
 import { beforeEach, describe, expect, it } from 'vitest';
-import { mockInference, mockService, seedPack } from '@abuddy/testing/harness';
+import { mockInference, mockService, importSeeds } from '@abuddy/testing/harness';
 import type { ExecutionContext, TNodeEntity } from '@abuddy/sdk/steps';
 import { repository } from '@/__generated__/repository';
 import { handler } from '../../src/extensions/steps/query/runtime';
@@ -23,7 +23,7 @@ const errorMessage = (sent: Sent[]) => {
 
 describe('query step', () => {
   beforeEach(async () => {
-    await seedPack({ keys: ['prompts'] });
+    await importSeeds({ keys: ['prompts'] });
     repository.actionCommands.create({ label: 'Alpha', actionFn: 'return 1' });
     repository.actionCommands.create({ label: 'Beta', actionFn: 'return 2' });
   });

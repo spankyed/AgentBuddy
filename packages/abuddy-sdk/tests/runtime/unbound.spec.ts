@@ -17,7 +17,7 @@ import { artifactRegistry } from '../../src/artifacts/registry.ts';
 import { blockRegistry } from '../../src/blocks/registry.ts';
 import { _seedHookRegistry } from '../../src/seed/hooks.ts';
 import { getPackCommands, getPackSettingsDefaults, onPackSettingsDefaultsChanged } from '../../src/framework/index.ts';
-import { seedData, registeredSeedKeys } from '../../src/utils/seed.ts';
+import { importCompiledSeeds, registeredSeedKeys } from '../../src/utils/seed.ts';
 import { getDslTypes } from '../../src/fe/dsl-types.ts';
 import { tiptapPluginRegistry } from '../../src/fe/tiptap-plugins.ts';
 import { testPacksView } from '../../src/testing/packs.ts';
@@ -119,7 +119,7 @@ describe('with no app bound', () => {
     }
     const backendLookups: Array<[string, () => unknown]> = [
       ['_seedHookRegistry.get', () => _seedHookRegistry.get('Memo')],
-      ['seedData', () => seedData({ compiledDir: seedsDir })],
+      ['importCompiledSeeds', () => importCompiledSeeds({ compiledDir: seedsDir })],
       ['registeredSeedKeys', () => registeredSeedKeys('memo-pack')],
       ['getPackSettingsDefaults', () => getPackSettingsDefaults()],
       ['onPackSettingsDefaultsChanged', () => onPackSettingsDefaultsChanged(() => {})],

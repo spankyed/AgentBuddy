@@ -5,8 +5,8 @@
 
 Implement docs/goals/goal-seed-vocabulary.md on master, at or after d0c811c2d — the base its
 Background was surveyed at.
-Before Phase 1, confirm the base: `seedData` in packages/abuddy-sdk/src/utils/seed.ts, `SeederContext`
-and `SeedCounts` beside it, and `seedHashes`/`packSeedHashes` in packages/abuddy-host/src/app-state/
+Before Phase 1, confirm the base: `importCompiledSeeds` in packages/abuddy-sdk/src/utils/seed.ts, `ImportContext`
+and `ImportCounts` beside it, and `seedHashes`/`packSeedHashes` in packages/abuddy-host/src/app-state/
 exist at HEAD. If they don't, stop and say so — the plan was surveyed somewhere else.
 Read Background, Decisions, Phases and Constraints first. Decisions are final: implement them, don't
 reopen them or stop to ask.
@@ -20,7 +20,7 @@ Finished when:
   mutation-checked.
 - No function or method that returns `ImportCounts` has a name beginning with `seed`, and a spec fails
   if one does.
-- `seedData`, `seedPack`, `seedPackData`, `shouldSeedAll`, `SeedCounts`, `SeederContext`, `seedingPackId` and
+- `importCompiledSeeds`, `importSeeds`, `importPackSeeds`, `shouldImportAll`, `ImportCounts`, `ImportContext`, `seedPackId` and
   `Seeder.seed` no longer exist anywhere outside docs/archive/.
 - `AppState` carries `builtInSeedHashes`, `externalSeedHashes`, `builtInSeedFingerprints` and
   `externalSeedDeps`, and a migration moves data written under the old names.
@@ -31,7 +31,7 @@ Finished when:
   npm run test:unit; npm run seed-golden:check -w @app/default-setup.
 - npm run build, npm test (E2E), npm run test:external-pack and npm run test:packaged-authoring, since
   codegen output, the pack manifest schema and the scaffolded test template all change.
-- `grep -rn "seedPack\|QxSeed\|seedData"` finds nothing outside docs/archive/.
+- `grep -rn "importSeeds\|QxSeed\|importCompiledSeeds"` finds nothing outside docs/archive/.
 - A final summary: phase → done/deferred, evidence, and the conventional choices made.
 
 Commit as you go:
@@ -77,7 +77,7 @@ identifiers carry it, and nothing in a name says which stage it belongs to:
 |---|---|
 | author | `boot.seed`, `seedFormats`, `seedHooks`, `seedPolicy`, `seedsDir`, `seedPath`, `SeedDependency` |
 | compile | `SeedCompileContext`, `seedFile`, `SeedIndex`, `*.seed.json`, `seeds.json` |
-| import | `seedData`, `seedPackData`, `shouldSeedAll`, `seedingPackId`, `Seeder.seed`, `packSeedsImport` |
+| import | `importCompiledSeeds`, `importPackSeeds`, `shouldImportAll`, `seedPackId`, `Seeder.seed`, `packSeedsImport` |
 | record | `seedKey`, `seededFields`, `sourceHash`, `seedHashes`, `packSeedHashes`, `seedStatFingerprints`, `packSeedDeps` |
 
 ### The collision
@@ -91,7 +91,7 @@ Three words for one operation in one clause.
 
 ### A second vocabulary is already half-adopted
 
-`seedData()` takes `mode?: ImportMode` (`utils/seed.ts:16,21`). The function is `seed*`, its mode is
+`importCompiledSeeds()` takes `mode?: ImportMode` (`utils/seed.ts:16,21`). The function is `seed*`, its mode is
 `Import*`, in the same signature. `packSeedsImport` is the event name. The verb already has a second
 name; the migration was started and left unfinished.
 
@@ -118,11 +118,11 @@ built-in only and `packSeedDeps` is external only, neither of which its name say
 - **Manifest keys:** `boot.seed`, `seedFormats`, `seedHooks`, `seedPolicy`, and an entry's `seeder`
   (`packages/abuddy-sdk/src/build/manifest-schema.ts:98,122,252,254`). `abuddy.schema.json` is generated
   from that file.
-- **Codegen:** `generate-entries.ts:1377` emits `import { seedData, type Seeder, type SeedCounts, type SeedIncludeSet }`
+- **Codegen:** `generate-entries.ts:1377` emits `import { importCompiledSeeds, type Seeder, type ImportCounts, type SeedIncludeSet }`
   into every pack's `src/__generated__/seeders.ts`, so the names reach generated pack code.
 - **Pack-author doc:** `docs/public-facing/seeds.md`, 72 mentions.
 - **Stored data:** the four `AppState` fields above are persisted, so renaming them needs a migration.
-- **Pack-author test API:** `seedPack({ keys?, mode? })` and `SeedPackOptions`
+- **Pack-author test API:** `importSeeds({ keys?, mode? })` and `ImportOptions`
   (`packages/abuddy-testing/src/harness.ts:354,364`) are the most visible verb in the vocabulary — the
   CLI scaffolds a call to it into every new pack (`abuddy-cli/src/commands/init.ts:259,269`) and
   `docs/public-facing/testing.md` uses it seven times.
@@ -232,8 +232,8 @@ the SDK and has no pack-seed concept. "It is a different package" is exactly the
 ### Phase 1 — Give the act its own word
 
 - Rename, across `packages/`, `scripts/`, `tests/` and `docs/` (not `docs/archive/`):
-  `seedData` → `importCompiledSeeds`, `seedPackData` → `importPackSeeds`, `shouldSeedAll` → `shouldImportAll`,
-  `SeedCounts` → `ImportCounts`, `SeederContext` → `ImportContext`, `seedingPackId` → `seedPackId`
+  `importCompiledSeeds` → `importCompiledSeeds`, `importPackSeeds` → `importPackSeeds`, `shouldImportAll` → `shouldImportAll`,
+  `ImportCounts` → `ImportCounts`, `ImportContext` → `ImportContext`, `seedPackId` → `seedPackId`
   (it reads a pack id *from* the seeds; the `-ing` was the verb leaking in).
 - `Seeder.seed(ctx)` → `Seeder.apply(ctx)` (Decision 4): the interface in `utils/seed.ts:27`, the two
   implementations (`seed/seeder.ts:109`, `seed/flow-seeder.ts:70`), the call site (`utils/seed.ts:73`),
@@ -243,11 +243,11 @@ the SDK and has no pack-seed concept. "It is a different package" is exactly the
   `npm run schema:update -w @abuddy/sdk`.
 - `generate-entries.ts:1377,1386-1388`: the emitted import and re-exports in `seeders.ts` follow the new
   names. Run `npm run compile` to regenerate default-setup.
-- `@abuddy/testing`: `seedPack()` → `importSeeds()` (Decision 1), `SeedPackOptions` → `ImportOptions`
+- `@abuddy/testing`: `importSeeds()` → `importSeeds()` (Decision 1), `ImportOptions` → `ImportOptions`
   (`src/harness.ts:354,364`), the CLI's `init` template (`commands/init.ts:259,269`),
   `docs/public-facing/testing.md` and `packages/abuddy-testing/CLAUDE.md`. This is the name pack authors
   see first, so it moves with the rest rather than later.
-- `@abuddy/host`: `PackSeedFailure` → `PackImportFailure` and `seedErrors()` → `importErrors()`
+- `@abuddy/host`: `PackImportFailure` → `PackImportFailure` and `importErrors()` → `importErrors()`
   (`src/packs/runtime/seed.ts:49,54`, re-exported from `runtime/index.ts:14`); the `seed` parameter of
   `importPackSeeds(packs, seed)` becomes `importCompiledSeeds`.
 - Test-local verb forms follow the rule rather than being left as the one place it does not hold:
@@ -268,7 +268,7 @@ renamed identifiers or `Seeder.seed` outside `docs/archive/`.
 - Give it a doc comment saying what property it holds and why — the noun/verb collision, not the old
   names.
 
-**Done when:** the spec passes. **Mutation:** renaming `importSeeds` back to `seedData` fails it; adding
+**Done when:** the spec passes. **Mutation:** renaming `importSeeds` back to `importCompiledSeeds` fails it; adding
 a new `seedFoo(): ImportCounts` fails it.
 
 ### Phase 3 — Name the axis in `AppState`

@@ -6,7 +6,7 @@ import { broadcastToPlugin, sendToSystem } from '../../../events.ts';
 import { assign, createMachine, setup, sendTo, enqueueActions, fromCallback, fromPromise, type ErrorActorEvent } from 'xstate';
 import { defineSystem, getPackHelp, onPackSettingsDefaultsChanged, type HelpEntry, type SystemEntry } from '@abuddy/sdk/framework';
 import { detectAllArrayChanges, errorMessage } from '@abuddy/sdk/utils/pure';
-import { seedData, type SeedCounts, type SeedIncludeSet } from '@abuddy/sdk/utils';
+import { importCompiledSeeds, type ImportCounts, type SeedIncludeSet } from '@abuddy/sdk/utils';
 import { previewPackSeeds, type PackSeedsPreview } from '@abuddy/sdk/seed';
 import { services } from '@abuddy/sdk/services';
 import type { SecretInfo, SecretsStatus } from '@abuddy/sdk/services';
@@ -43,7 +43,7 @@ const logger = createLogger('settings');
 /**
  * Convert the JSON-safe include shape from the frontend
  * (`null = all items, [] = skip, string[] = filter`) into the `SeedInclude`
- * structure consumed by `seedData`.
+ * structure consumed by `importCompiledSeeds`.
  */
 function toSeedInclude(include: Record<string, string[] | null>): Record<string, SeedIncludeSet | undefined> {
   return Object.fromEntries(Object.entries(include).map(([key, items]) => [key, items === null ? true : new Set(items)]));
@@ -224,7 +224,7 @@ export const settingsSystem = setup({
         const include = ev.include ? toSeedInclude(ev.include) : undefined;
         // Read first: a directory that can't name its pack fails before anything is imported
         const { packId } = previewPackSeeds(ev.directory);
-        const result = seedData({ compiledDir: ev.directory, include, mode: ev.mode, verbose: true });
+        const result = importCompiledSeeds({ compiledDir: ev.directory, include, mode: ev.mode, verbose: true });
         // Seeders report records they couldn't seed in their counts rather than throwing
         const errors = Object.entries(result).flatMap(([key, counts]) => (counts.errors ?? []).map((error) => `${key}: ${error}`));
         broadcastToPlugin('settings', { type: 'PACK_SEEDS_IMPORTED', result, errors });

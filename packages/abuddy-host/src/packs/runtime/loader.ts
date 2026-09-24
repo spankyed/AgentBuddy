@@ -244,7 +244,7 @@ export function loadSingleExternalPack(
   }
   if (registration.boot?.seedManifest) {
     registration.boot = { ...registration.boot };
-    // External pack seeds are hash-checked per pack by seedPackData(); the declarative
+    // External pack seeds are hash-checked per pack by importPackSeeds(); the declarative
     // boot seed path tracks a single global hash and is reserved for built-in packs
     delete registration.boot.seedManifest;
   }

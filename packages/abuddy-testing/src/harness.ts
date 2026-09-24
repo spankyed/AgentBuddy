@@ -33,7 +33,7 @@ import { PROJECT_ROOT_KEY } from './vitest-teardown.ts';
 import { compileFlowDSL, compilePack, resolveSeeds, SEED_INDEX_FILE, _snapshotFormatMismatch, _cliFormatMismatchMessage, type FlowDSL, type PackManifest, type PackSnapshot, type SeedDependency, type SeedIndex } from '@abuddy/sdk/build';
 import { actionRepository, flowRepository, promptRepository } from '@abuddy/sdk/repositories';
 import { untypedQx } from '@abuddy/ears';
-import { _getMediaPath, seedData, type ImportMode, type SeedCounts, type Seeder } from '@abuddy/sdk/utils';
+import { _getMediaPath, importCompiledSeeds, type ImportMode, type ImportCounts, type Seeder } from '@abuddy/sdk/utils';
 
 export { takeSystemErrors, addTestSecret, type SeedRuntime };
 
@@ -146,7 +146,7 @@ export interface PackTestOptions {
    */
   registration?: PackRegistration;
   /**
-   * Without `registration`, the pack's seeders, `import { seeders } from '#generated/seeders'`, which `seedPack` runs
+   * Without `registration`, the pack's seeders, `import { seeders } from '#generated/seeders'`, which `importSeeds` runs
    * (a registration carries its own)
    */
   seeders?: Seeder[];
@@ -351,7 +351,7 @@ async function registerRuntimes(packDir: string, manifest: PackManifest, depende
   setAppPacks(registry, manifest.id);
 }
 
-export interface SeedPackOptions {
+export interface ImportOptions {
   /** Seed entries to seed; defaults to every entry naming a format without a pack seeder (actions and flows need the app) */
   keys?: string[];
   mode?: ImportMode;
@@ -361,8 +361,8 @@ export interface SeedPackOptions {
  * Compiles the pack's seed entries (with its own and its dependencies' formats) and seeds them into
  * the in-memory database, through the registered seed hooks. Returns each key's counts.
  */
-export async function seedPack(options: SeedPackOptions = {}): Promise<Record<string, SeedCounts>> {
-  if (!context) throw new Error('Call setupPackTests() from a vitest setup file before seedPack()');
+export async function importSeeds(options: ImportOptions = {}): Promise<Record<string, ImportCounts>> {
+  if (!context) throw new Error('Call setupPackTests() from a vitest setup file before importSeeds()');
   const { packDir, manifest, dependencies } = context;
   const resolved = resolveSeeds(manifest, packDir, dependencies);
   const keys = options.keys ?? Object.entries(resolved).filter(([, seed]) => seed.kind === 'format' && !seed.seeder).map(([key]) => key);
@@ -386,7 +386,7 @@ export async function seedPack(options: SeedPackOptions = {}): Promise<Record<st
     // Registered seeders whose key wasn't compiled find no seed file and skip
     const index = JSON.parse(fs.readFileSync(path.join(outputDir, SEED_INDEX_FILE), 'utf-8')) as SeedIndex;
     const seeded = new Set(index.seeds.filter((seed) => seed.seeded).map((seed) => seed.key));
-    const result = seedData({ compiledDir: outputDir, mode: options.mode });
+    const result = importCompiledSeeds({ compiledDir: outputDir, mode: options.mode });
     return Object.fromEntries(Object.entries(result).filter(([key]) => seeded.has(key)));
   } finally {
     await unregister();

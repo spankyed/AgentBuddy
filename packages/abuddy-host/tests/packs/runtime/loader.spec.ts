@@ -5,7 +5,7 @@ import * as path from 'path';
 import * as os from 'os';
 import { loadAppPacks, loadBuiltInPacks, loadExternalPacks, type LoadedPack } from '../../../src/packs/runtime/loader.ts';
 import type { PackRegistration } from '@abuddy/sdk/framework';
-import { seedPackData, computePackSeedHash, type PackSeedTarget } from '../../../src/packs/runtime/seed.ts';
+import { importPackSeeds, computePackSeedHash, type PackSeedTarget } from '../../../src/packs/runtime/seed.ts';
 import { appState } from '../../../src/app-state/index.ts';
 import { getLoadedPackEntries } from '../../../src/packs/layout.ts';
 import { resetTestData, testRootEvents as rootEvents } from '@abuddy/sdk/testing';
@@ -373,7 +373,7 @@ describe('pack-loader: bundled runtime (runtime/index.cjs)', () => {
     expect(exported.ears?.partitionPolicy).toBeDefined();
   });
 
-  it("never calls a seed function an external pack's boot hooks export; seedPackData seeds it once", async () => {
+  it("never calls a seed function an external pack's boot hooks export; importPackSeeds seeds it once", async () => {
     const { registerExternalPacks } = await import('../../../src/packs/runtime/loader.ts');
     const dir = makeBundledPack('smuggle-pack', registration('smuggle-pack').replace(
       'onInit() {},',
@@ -390,10 +390,10 @@ describe('pack-loader: bundled runtime (runtime/index.cjs)', () => {
       expect(mod.bootSeedCalls).toBeUndefined();
       expect(orchestrate).not.toHaveBeenCalled();
 
-      const seedFn = vi.fn(() => ({}));
-      seedPackData(packs.map((p) => ({ manifest: p.origin, dir: p.origin.dir })), seedFn);
-      expect(seedFn).toHaveBeenCalledTimes(1);
-      expect(seedFn).toHaveBeenCalledWith(expect.objectContaining({ compiledDir: path.join(dir, 'runtime', 'seeds') }));
+      const applyFn = vi.fn(() => ({}));
+      importPackSeeds(packs.map((p) => ({ manifest: p.origin, dir: p.origin.dir })), applyFn);
+      expect(applyFn).toHaveBeenCalledTimes(1);
+      expect(applyFn).toHaveBeenCalledWith(expect.objectContaining({ compiledDir: path.join(dir, 'runtime', 'seeds') }));
     } finally {
       registry.unregisterPack('smuggle-pack');
     }
@@ -447,13 +447,13 @@ describe('pack-loader: bundled runtime (runtime/index.cjs)', () => {
     const dir = makeBundledPack('seed-bundle', registration('seed-bundle'));
     fs.writeFileSync(path.join(dir, 'runtime', 'seeds', 'actions.seed.json'), '[]');
     const packs = loadExternalPacks();
-    const seedFn = vi.fn(() => ({}));
-    seedPackData(packs.map((p) => ({ manifest: p.origin, dir: p.origin.dir })), seedFn);
-    expect(seedFn).toHaveBeenCalledWith(expect.objectContaining({ compiledDir: path.join(dir, 'runtime', 'seeds') }));
+    const applyFn = vi.fn(() => ({}));
+    importPackSeeds(packs.map((p) => ({ manifest: p.origin, dir: p.origin.dir })), applyFn);
+    expect(applyFn).toHaveBeenCalledWith(expect.objectContaining({ compiledDir: path.join(dir, 'runtime', 'seeds') }));
   });
 });
 
-describe('seedPackData: failures', () => {
+describe('importPackSeeds: failures', () => {
   function installedPack(id: string) {
     const dir = path.join(tmpDir, 'packs', id);
     fs.mkdirSync(path.join(dir, 'runtime', 'seeds'), { recursive: true });
@@ -477,7 +477,7 @@ describe('seedPackData: failures', () => {
     const pack = installedPack('bad-flows');
     writeRegistry(['bad-flows']);
 
-    const failures = seedPackData([pack], failingSeed);
+    const failures = importPackSeeds([pack], failingSeed);
 
     expect(failures).toEqual([{ packId: 'bad-flows', errors: ['flows: Flow "X" is invalid: missing event'] }]);
     expect(registryEntry('bad-flows').lastError).toBe('flows: Flow "X" is invalid: missing event');
@@ -486,12 +486,12 @@ describe('seedPackData: failures', () => {
   it("doesn't re-import unchanged failing seed data on every boot, and keeps its lastError", () => {
     const pack = installedPack('bad-flows');
     writeRegistry(['bad-flows']);
-    const seedFn = vi.fn(failingSeed);
+    const applyFn = vi.fn(failingSeed);
 
-    seedPackData([pack], seedFn);
-    seedPackData([pack], seedFn);
+    importPackSeeds([pack], applyFn);
+    importPackSeeds([pack], applyFn);
 
-    expect(seedFn).toHaveBeenCalledTimes(1);
+    expect(applyFn).toHaveBeenCalledTimes(1);
     expect(registryEntry('bad-flows').lastError).toBe('flows: Flow "X" is invalid: missing event');
   });
 
@@ -499,15 +499,15 @@ describe('seedPackData: failures', () => {
     const pack = installedPack('rollback');
     writeRegistry(['rollback']);
     const seedsDir = path.join(pack.dir, 'runtime', 'seeds');
-    const seedFn = vi.fn(() => ({}));
+    const applyFn = vi.fn(() => ({}));
 
-    seedPackData([pack], seedFn); // v1 seeds
+    importPackSeeds([pack], applyFn); // v1 seeds
     fs.writeFileSync(path.join(seedsDir, 'flows.seed.json'), '{"v2": {}}');
-    seedPackData([pack], failingSeed); // v2 fails
+    importPackSeeds([pack], failingSeed); // v2 fails
     fs.writeFileSync(path.join(seedsDir, 'flows.seed.json'), '{}');
-    seedPackData([pack], seedFn); // back to v1's data
+    importPackSeeds([pack], applyFn); // back to v1's data
 
-    expect(seedFn).toHaveBeenCalledTimes(2);
+    expect(applyFn).toHaveBeenCalledTimes(2);
     expect(registryEntry('rollback')).not.toHaveProperty('lastError');
   });
 
@@ -518,11 +518,11 @@ describe('seedPackData: failures', () => {
     const pack = { ...installedPack('records'), manifest: { id: 'records', dependencies: { provider: '^1.0.0' } } };
     writeRegistry(['records']);
 
-    seedPackData([pack], failingSeed);
+    importPackSeeds([pack], failingSeed);
     expect(appState.get().packSeedDeps).toEqual({ records: 'provider:' });
 
     fs.writeFileSync(path.join(pack.dir, 'runtime', 'seeds', 'flows.seed.json'), '{"fixed": {}}');
-    seedPackData([pack], () => ({}));
+    importPackSeeds([pack], () => ({}));
 
     expect(appState.get().packSeedDeps).toEqual({});
   });
@@ -533,20 +533,20 @@ describe('seedPackData: failures', () => {
     const dependency = installedPack('provider');
     const dependent = { ...installedPack('consumer'), manifest: { id: 'consumer', dependencies: { provider: '^1.0.0' } } };
     writeRegistry(['provider', 'consumer']);
-    const seedFn = vi.fn(() => ({}));
+    const applyFn = vi.fn(() => ({}));
 
     // The dependency isn't installed yet, so the dependent seeds against nothing and fails
-    seedPackData([dependent], failingSeed);
+    importPackSeeds([dependent], failingSeed);
     expect(registryEntry('consumer').lastError).toBeTruthy();
 
     // Its own data is unchanged, so on its own it is still skipped
-    seedPackData([dependent], seedFn);
-    expect(seedFn).not.toHaveBeenCalled();
+    importPackSeeds([dependent], applyFn);
+    expect(applyFn).not.toHaveBeenCalled();
 
     // ...until the pack it depends on seeds, which is the thing that could change the outcome
-    seedPackData([dependency, dependent], seedFn);
+    importPackSeeds([dependency, dependent], applyFn);
 
-    expect(seedFn).toHaveBeenCalledTimes(2);
+    expect(applyFn).toHaveBeenCalledTimes(2);
     expect(registryEntry('consumer')).not.toHaveProperty('lastError');
   });
 
@@ -554,26 +554,26 @@ describe('seedPackData: failures', () => {
     const dependency = installedPack('steady');
     const dependent = { ...installedPack('flaky'), manifest: { id: 'flaky', dependencies: { steady: '^1.0.0' } } };
     writeRegistry(['steady', 'flaky']);
-    const seedFn = vi.fn(failingSeed);
+    const applyFn = vi.fn(failingSeed);
 
-    seedPackData([dependency, dependent], seedFn);
-    const attempts = seedFn.mock.calls.length;
+    importPackSeeds([dependency, dependent], applyFn);
+    const attempts = applyFn.mock.calls.length;
 
     // Nothing has changed since: not the pack's data, and not what it failed against
-    seedPackData([dependency, dependent], seedFn);
+    importPackSeeds([dependency, dependent], applyFn);
 
-    expect(seedFn).toHaveBeenCalledTimes(attempts);
+    expect(applyFn).toHaveBeenCalledTimes(attempts);
     expect(registryEntry('flaky').lastError).toBeTruthy();
   });
 
   it('forgets what a failed seed faced once the pack has no seed data to retry', () => {
     const pack = { ...installedPack('withdrawn'), manifest: { id: 'withdrawn', dependencies: { provider: '^1.0.0' } } };
     writeRegistry(['withdrawn']);
-    seedPackData([pack], failingSeed);
+    importPackSeeds([pack], failingSeed);
     expect(appState.get().packSeedDeps).toHaveProperty('withdrawn');
 
     fs.rmSync(path.join(pack.dir, 'runtime', 'seeds'), { recursive: true });
-    seedPackData([pack], vi.fn());
+    importPackSeeds([pack], vi.fn());
 
     expect(appState.get().packSeedDeps).toEqual({});
   });
@@ -585,14 +585,14 @@ describe('seedPackData: failures', () => {
       packs: [{ id: 'no-more-seeds', name: 'n', version: '1.0.1', dir: '', enabled: true, installedAt: '', lastError: 'v1.0.0 failure' }],
     }));
 
-    seedPackData([pack], vi.fn());
+    importPackSeeds([pack], vi.fn());
 
     expect(registryEntry('no-more-seeds')).not.toHaveProperty('lastError');
   });
 
   // No seed key is the host's: a pack's `settings` seed is its own data, like any other key
   it('runs every seeder the pack registered, a settings seeder included', async () => {
-    const { seedData } = await import('@abuddy/sdk/utils');
+    const { importCompiledSeeds } = await import('@abuddy/sdk/utils');
     const { testPacks } = await import('@abuddy/sdk/testing');
     const pack = installedPack('with-settings');
     writeRegistry(['with-settings']);
@@ -601,10 +601,10 @@ describe('seedPackData: failures', () => {
     const actionsSeed = vi.fn(() => ({ created: 1, updated: 0, skipped: 0 }));
     fs.writeFileSync(path.join(pack.dir, 'runtime', 'seeds', 'seeds.json'), JSON.stringify({ version: 1, packId: 'with-settings', seeds: [] }));
     // The seeders its registration carries
-    testPacks.seeders.set('with-settings', [{ key: 'settings', seed: settingsSeed }, { key: 'actions', seed: actionsSeed }]);
+    testPacks.seeders.set('with-settings', [{ key: 'settings', apply: settingsSeed }, { key: 'actions', apply: actionsSeed }]);
 
     try {
-      seedPackData([pack], seedData);
+      importPackSeeds([pack], importCompiledSeeds);
     } finally {
       testPacks.seeders.delete('with-settings');
     }
@@ -616,7 +616,7 @@ describe('seedPackData: failures', () => {
   it('records a thrown seeder as a failure too', () => {
     const pack = installedPack('throws');
     writeRegistry(['throws']);
-    const failures = seedPackData([pack], () => { throw new Error('boom'); });
+    const failures = importPackSeeds([pack], () => { throw new Error('boom'); });
     expect(failures).toEqual([{ packId: 'throws', errors: ['boom'] }]);
     expect(registryEntry('throws').lastError).toBe('boom');
   });
@@ -626,13 +626,13 @@ describe('seedPackData: failures', () => {
     fs.writeFileSync(path.join(tmpDir, 'installed-packs.json'), JSON.stringify({
       packs: [{ id: 'recovered', name: 'r', version: '1.0.0', dir: '', enabled: true, installedAt: '', lastError: 'old failure' }],
     }));
-    const failures = seedPackData([pack], () => ({ flows: { created: 1, updated: 0, skipped: 0 } }));
+    const failures = importPackSeeds([pack], () => ({ flows: { created: 1, updated: 0, skipped: 0 } }));
     expect(failures).toEqual([]);
     expect(registryEntry('recovered')).not.toHaveProperty('lastError');
   });
 });
 
-describe('seedPackData', () => {
+describe('importPackSeeds', () => {
   function makePackWithSeeds(
     packsDir: string,
     id: string,
@@ -656,18 +656,18 @@ describe('seedPackData', () => {
     } as any;
   }
 
-  it('calls seedFn for packs with compiled seeds in runtime/seeds', () => {
+  it('calls applyFn for packs with compiled seeds in runtime/seeds', () => {
     const packsDir = path.join(tmpDir, 'packs');
     const pack = makePackWithSeeds(packsDir, 'data-pack', {
       [seedFile('actions')]: [{ label: 'test-action', actionFn: 'return true' }],
     });
 
-    const seedFn = vi.fn().mockReturnValue({});
+    const applyFn = vi.fn().mockReturnValue({});
 
-    seedPackData([pack], seedFn);
+    importPackSeeds([pack], applyFn);
 
-    expect(seedFn).toHaveBeenCalledOnce();
-    expect(seedFn).toHaveBeenCalledWith({
+    expect(applyFn).toHaveBeenCalledOnce();
+    expect(applyFn).toHaveBeenCalledWith({
       compiledDir: path.join(pack.dir, 'runtime', 'seeds'),
       mode: 'replace-on-collision',
     });
@@ -686,10 +686,10 @@ describe('seedPackData', () => {
       systems: new Map(),
     } as any;
 
-    const seedFn = vi.fn().mockReturnValue({});
-    seedPackData([pack], seedFn);
+    const applyFn = vi.fn().mockReturnValue({});
+    importPackSeeds([pack], applyFn);
 
-    expect(seedFn).not.toHaveBeenCalled();
+    expect(applyFn).not.toHaveBeenCalled();
   });
 
   it('skips packs whose seed hash has not changed', () => {
@@ -702,10 +702,10 @@ describe('seedPackData', () => {
     const hash = computePackSeedHash(distDir);
     appState.update({ packSeedHashes: { 'cached-pack': hash } });
 
-    const seedFn = vi.fn().mockReturnValue({});
-    seedPackData([pack], seedFn);
+    const applyFn = vi.fn().mockReturnValue({});
+    importPackSeeds([pack], applyFn);
 
-    expect(seedFn).not.toHaveBeenCalled();
+    expect(applyFn).not.toHaveBeenCalled();
   });
 
   it('re-seeds when pack content changes', () => {
@@ -715,11 +715,11 @@ describe('seedPackData', () => {
     });
 
     appState.update({ packSeedHashes: { 'updated-pack': 'old-hash', 'disabled-pack': 'its-hash' } });
-    const seedFn = vi.fn().mockReturnValue({});
+    const applyFn = vi.fn().mockReturnValue({});
 
-    seedPackData([pack], seedFn);
+    importPackSeeds([pack], applyFn);
 
-    expect(seedFn).toHaveBeenCalledOnce();
+    expect(applyFn).toHaveBeenCalledOnce();
     const { packSeedHashes } = appState.get();
     expect(packSeedHashes['updated-pack']).toBe(computePackSeedHash(path.join(pack.dir, 'runtime', 'seeds')));
     // A pack not loaded this boot (disabled) keeps its hash, so enabling it doesn't import its seeds again
@@ -736,15 +736,15 @@ describe('seedPackData', () => {
     });
 
     let callCount = 0;
-    const seedFn = vi.fn().mockImplementation(() => {
+    const applyFn = vi.fn().mockImplementation(() => {
       callCount++;
       if (callCount === 1) throw new Error('seed failed');
       return {};
     });
 
-    seedPackData([pack1, pack2], seedFn);
+    importPackSeeds([pack1, pack2], applyFn);
 
-    expect(seedFn).toHaveBeenCalledTimes(2);
+    expect(applyFn).toHaveBeenCalledTimes(2);
     // A failed seed's hash is stored too, so the same failing data isn't retried every boot
     expect(appState.get().packSeedHashes).toEqual({ 'fail-pack': expect.any(String), 'ok-pack': expect.any(String) });
   });

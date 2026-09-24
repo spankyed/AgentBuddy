@@ -34,11 +34,11 @@ async function compile(packDir: string, pack: PackManifest, deps?: ReadonlyMap<s
 }
 
 /** Seeds each compiled format key the way the generated seeders.ts registers it */
-function seedAll(compiledDir: string, pack: PackManifest, packDir: string, deps?: ReadonlyMap<string, SeedDependency>) {
+function importAll(compiledDir: string, pack: PackManifest, packDir: string, deps?: ReadonlyMap<string, SeedDependency>) {
   return Object.fromEntries(Object.entries(resolveSeeds(pack, packDir, deps)).flatMap(([key, seed]) => {
     if (seed.kind !== 'format') return [];
     const { identity, tree, media } = seed.format;
-    return [[key, createSeeder({ key, entities: formatEntities(seed.format), identity, relKind: tree?.relKind, media: !!media }).seed({ compiledDir, log: () => {} })]];
+    return [[key, createSeeder({ key, entities: formatEntities(seed.format), identity, relKind: tree?.relKind, media: !!media }).apply({ compiledDir, log: () => {} })]];
   }));
 }
 
@@ -58,7 +58,7 @@ describe('a pack depending on default-setup seeds with its formats', () => {
 
   it("gets NOTE and DOC shortCodes, order, nesting, sections, media and REFERENCES from default-setup's format and hooks", async () => {
     resetDatabase();
-    const counts = seedAll(await compile(FIXTURE, manifest, dependencies), manifest, FIXTURE, dependencies);
+    const counts = importAll(await compile(FIXTURE, manifest, dependencies), manifest, FIXTURE, dependencies);
     expect(counts).toEqual({
       'team-notes': { created: 4, updated: 0, skipped: 0 },
       'team-docs': { created: 2, updated: 0, skipped: 0 },
@@ -89,7 +89,7 @@ describe('a pack depending on default-setup seeds with its formats', () => {
 
   it("seeds the same rows as default-setup's own entries on the same sources", async () => {
     resetDatabase();
-    seedAll(await compile(FIXTURE, manifest, dependencies), manifest, FIXTURE, dependencies);
+    importAll(await compile(FIXTURE, manifest, dependencies), manifest, FIXTURE, dependencies);
     const dependent = snapshot();
 
     resetDatabase();
@@ -98,7 +98,7 @@ describe('a pack depending on default-setup seeds with its formats', () => {
       ...depSnapshot.manifest, steps: undefined, artifacts: undefined, blocks: undefined,
       boot: { seed: { 'team-notes': { path: source('team-notes'), format: 'notes' }, 'team-docs': { path: source('team-docs'), format: 'library' } } },
     } as PackManifest;
-    seedAll(await compile(PACK_DIR, own), own, PACK_DIR);
+    importAll(await compile(PACK_DIR, own), own, PACK_DIR);
 
     expect(dependent).toEqual(snapshot());
   });

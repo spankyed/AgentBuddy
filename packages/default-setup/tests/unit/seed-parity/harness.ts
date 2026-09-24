@@ -4,7 +4,7 @@ import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { buildPackConfigFromManifest, compilePack } from '@abuddy/sdk/build';
-import { seedData, type ImportMode, type SeedCounts, type SeedIncludeSet } from '@abuddy/sdk/utils';
+import { importCompiledSeeds, type ImportMode, type ImportCounts, type SeedIncludeSet } from '@abuddy/sdk/utils';
 import { untypedQx as qx } from '@abuddy/ears';
 import { entityIds } from '@abuddy/sdk/testing';
 import { resetTestData, testMediaPath } from '@abuddy/testing/harness';
@@ -48,8 +48,8 @@ export function resetDatabase(): void {
   resetTestData();
 }
 
-export function seed(compiledDir: string, options: { mode?: ImportMode; include?: Record<string, SeedIncludeSet> } = {}): Record<string, SeedCounts> {
-  const result = seedData({ compiledDir, mode: options.mode, include: options.include });
+export function seed(compiledDir: string, options: { mode?: ImportMode; include?: Record<string, SeedIncludeSet> } = {}): Record<string, ImportCounts> {
+  const result = importCompiledSeeds({ compiledDir, mode: options.mode, include: options.include });
   return Object.fromEntries(PARITY_KEYS.map((key) => [key, result[key]]));
 }
 

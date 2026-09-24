@@ -4,10 +4,10 @@
 import { services } from '@/__generated__/services';
 import * as fs from 'node:fs';
 import { seedPath } from '@abuddy/sdk/build';
-import type { SeedCounts, SeederContext } from '@abuddy/sdk/utils';
+import type { ImportCounts, ImportContext } from '@abuddy/sdk/utils';
 
-export function seed(ctx: SeederContext): SeedCounts {
-  const counts: SeedCounts = { created: 0, updated: 0, skipped: 0 };
+export function apply(ctx: ImportContext): ImportCounts {
+  const counts: ImportCounts = { created: 0, updated: 0, skipped: 0 };
   if (!fs.existsSync(seedPath(ctx.compiledDir, 'settings'))) {
     ctx.log('  settings artifact not found, skipping settings');
     return counts;

@@ -44,7 +44,7 @@ await setupPackTests({ seedRuntime, registration });
 ```
 
 - **What's registered:** your entity types, repositories, seed hooks and seeders, and, with `registration`, your systems, services, steps and feature settings. Each dependency's full backend runtime (its systems, services and steps, on your pack's `@abuddy/sdk`) is registered too.
-- **Without `registration`**, only data code runs: each dependency contributes its seed runtime (entity types, repositories, seed hooks). Pass your seeders (`import { seeders } from '#generated/seeders'`, `setupPackTests({ seedRuntime, seeders })`) for `seedPack`; a registration carries its own. These tests start faster and never load a dependency's runtime.
+- **Without `registration`**, only data code runs: each dependency contributes its seed runtime (entity types, repositories, seed hooks). Pass your seeders (`import { seeders } from '#generated/seeders'`, `setupPackTests({ seedRuntime, seeders })`) for `importSeeds`; a registration carries its own. These tests start faster and never load a dependency's runtime.
 - **The registered packs are the test file's own:** the harness registers your pack and its dependencies in a registry it creates for the file, which the SDK's lookups (`getDesignated`, `stepRegistry`, `getPackCommands`, `services`, …) read. To test how your pack reacts to another pack (its commands, feature settings or seeders), register one with `registerPack({ id, features: { … }, … })` from `@abuddy/testing/harness`, and `unregisterPack(id)` when done.
 - **A lookup filled directly:** for what no pack registers (a step type or designation only one test needs), fill `testPacks` from `@abuddy/sdk/testing` (`steps`, `designations`, `artifacts`, `blocks`, `services`, `seedHooks`, `seeders`, `commands`); its entries are found before the registered packs'. Empty it with `testPacks.clear()`.
 - **Run `abuddy build` once first**, so dependencies are fetched into `.abuddy/deps/`.
@@ -58,23 +58,23 @@ await setupPackTests({ seedRuntime, registration });
 ## Seeds
 
 ```typescript
-import { seedPack } from '@abuddy/testing/harness';
+import { importSeeds } from '@abuddy/testing/harness';
 import { findAll } from '#generated/ears';
 
 it('seeds notes', async () => {
-  expect(await seedPack({ keys: ['team-notes'] })).toEqual({ 'team-notes': { created: 1, updated: 0, skipped: 0 } });
+  expect(await importSeeds({ keys: ['team-notes'] })).toEqual({ 'team-notes': { created: 1, updated: 0, skipped: 0 } });
   expect(findAll('Note')[0].shortCode).toMatch(/^NOTE-/);
 });
 ```
 
-`seedPack({ keys?, mode? })` compiles your seed entries (your formats and your dependencies') and seeds them. Without `keys` it seeds every entry naming a format and no `seeder`. Name `actions`, `prompts` and `flows` to seed those, before running flows.
+`importSeeds({ keys?, mode? })` compiles your seed entries (your formats and your dependencies') and seeds them. Without `keys` it seeds every entry naming a format and no `seeder`. Name `actions`, `prompts` and `flows` to seed those, before running flows.
 
 ## Systems
 
 `startApp` runs registered systems under the same bus the app uses, and plays the client:
 
 ```typescript
-import { seedPack, startApp } from '@abuddy/testing/harness';
+import { importSeeds, startApp } from '@abuddy/testing/harness';
 import { repository } from '#generated/repository';
 
 it('stores a memo a client adds and sends it back', async () => {
@@ -190,11 +190,11 @@ mockInference('unused', { embedding: (value) => [value.length, 0], image: pngByt
 Flows run in unit tests as they do in the app. The brain runs the root flow, the one flow marked `root: true`, when the app starts, and every other flow runs as a subflow something spawned: default-setup's `Root Flow` spawns its long-running work modes, each kept alive by `entry([keepAlive()])`. An event reaches every running flow. Your pack or a dependency (default-setup) must provide the brain and settings systems:
 
 ```typescript
-import { importFlows, mockInference, seedPack, startApp } from '@abuddy/testing/harness';
+import { importFlows, mockInference, importSeeds, startApp } from '@abuddy/testing/harness';
 import { entry, keepAlive, subflow } from '#generated/flow-helpers';
 
 it('summarizes a note', async () => {
-  await seedPack({ keys: ['prompts', 'flows'] });
+  await importSeeds({ keys: ['prompts', 'flows'] });
   // The app's root flow is default-setup's: host your flow the way it hosts long-running flows
   importFlows({ 'Root Flow': { root: true, tracks: [entry([subflow('Notes Summary')], [keepAlive()])] } });
   mockInference('Buy milk');
@@ -223,7 +223,7 @@ it('summarizes a note', async () => {
 
 `@abuddy/testing/harness`:
 
-- **Setup and data:** `setupPackTests` (`PackTestOptions`), `seedPack` (`SeedPackOptions`), `importFlows`, `resetTestData`, `testMediaPath`, `SeedRuntime`, and `registerPack`/`unregisterPack` (another pack in the test file's registry).
+- **Setup and data:** `setupPackTests` (`PackTestOptions`), `importSeeds` (`ImportOptions`), `importFlows`, `resetTestData`, `testMediaPath`, `SeedRuntime`, and `registerPack`/`unregisterPack` (another pack in the test file's registry).
 - **Frontend:** `startShell` (`StartShellOptions`, `TestShell`, `TestPlugin`).
 - **Apps:** `startApp` and its types `StartAppOptions`, `TestApp`, `FlowRun`, `FlowStepTrace`, `RunFlowOptions` and `PluginEvent` (what `emitted` and `nextEmit` return: the event exactly as sent) and `Message` (`{ to, event }`, what the test bus carries).
 - **Mocks and host state:** `mockService`, `mockInference`, `addTestSecret`, `takeSystemErrors`.
@@ -241,4 +241,4 @@ it('summarizes a note', async () => {
   afterAll(stopFeTestRuntime);
   ```
 
-- **`registeredSeedKeys(packId)`** (`@abuddy/sdk/utils`) — the seed keys a registered pack has seeders for, which are the only keys an import of its seeds can seed. Assert against it when a test needs to know that a seeder is registered under the key its seed entry names, rather than inferring it from a `seedPack` count.
+- **`registeredSeedKeys(packId)`** (`@abuddy/sdk/utils`) — the seed keys a registered pack has seeders for, which are the only keys an import of its seeds can seed. Assert against it when a test needs to know that a seeder is registered under the key its seed entry names, rather than inferring it from a `importSeeds` count.

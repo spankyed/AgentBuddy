@@ -134,7 +134,7 @@ describe('activating and tearing down a pack at runtime', () => {
       sourceDir,
       PACK_ID,
       `{ main: { system: { machine: { id: 'activate-pack-system' }, receives: [] } } }, commands: [{ name: 'activate-memo', placeholder: 'Text' }], `
-        + "seeders: [{ key: 'memos', seed: () => { globalThis.activatePackRuns.push('seed'); return { created: 1, updated: 0, skipped: 0 }; } }], "
+        + "seeders: [{ key: 'memos', apply: () => { globalThis.activatePackRuns.push('seed'); return { created: 1, updated: 0, skipped: 0 }; } }], "
         + "migrations: [{ target: '1.0.0', description: 'memos', up: () => { globalThis.activatePackRuns.push('migration'); } }]",
       {
         'runtime/seeds/memos.seed.json': '[]',
@@ -187,18 +187,18 @@ describe('activating and tearing down a pack at runtime', () => {
     await install();
     const { activatePack, teardownPack } = await import('../../../src/packs/runtime/lifecycle.ts');
     const { getPackCommands } = await import('@abuddy/sdk/framework');
-    const { seedData } = await import('@abuddy/sdk/utils');
+    const { importCompiledSeeds } = await import('@abuddy/sdk/utils');
     activatePack(registry, PACK_ID, bus as never);
     const compiledDir = path.join(tmpDir, 'compiled-seeds');
     fs.mkdirSync(compiledDir);
     fs.writeFileSync(path.join(compiledDir, 'seeds.json'), JSON.stringify({ version: 1, packId: PACK_ID, seeds: [] }));
-    expect(Object.keys(seedData({ compiledDir }))).toEqual(['memos']);
+    expect(Object.keys(importCompiledSeeds({ compiledDir }))).toEqual(['memos']);
     bus.send.mockReset();
 
     teardownPack(registry, PACK_ID, bus as never);
 
     expect(getPackCommands()).toEqual([]);
-    expect(seedData({ compiledDir })).toEqual({});
+    expect(importCompiledSeeds({ compiledDir })).toEqual({});
     expect(bus.send.mock.calls.map(([event]) => event.type)).toEqual(['TEARDOWN_PACK', 'PACK_CHANGED']);
     expect(bus.send).toHaveBeenCalledWith({ type: 'PACK_CHANGED', packId: PACK_ID });
   });

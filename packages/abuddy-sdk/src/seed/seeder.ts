@@ -3,9 +3,9 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import type { EARS } from '../types/entities.ts';
 import { destroyEntity, installedEngine as ears, untypedTx, untypedQx as qx } from '@abuddy/ears';
-import { _getMediaPath, loadJSON, shouldSeedAll, type Seeder, type SeederContext, type SeedCounts } from '../utils/index.ts';
+import { _getMediaPath, loadJSON, shouldImportAll, type Seeder, type ImportContext, type ImportCounts } from '../utils/index.ts';
 import { seedPath } from '../build/manifest.ts';
-import { seedingPackId } from '../utils/seed.ts';
+import { seedPackId } from '../utils/seed.ts';
 import { RECORD_KEYS, recordLabel, type CompiledSeedFile, type SeedRecord } from '../build/seeds/records.ts';
 import { _seedHookRegistry, type SeedHookContext, type SeedHookMatch, type SeedHooks } from './hooks.ts';
 import { errorMessage } from '../utils/shared.ts';
@@ -106,18 +106,18 @@ export function createSeeder(options: SeederOptions): Seeder {
 
   return {
     key,
-    seed(ctx: SeederContext): SeedCounts {
-      const counts: SeedCounts = { created: 0, updated: 0, skipped: 0 };
+    apply(ctx: ImportContext): ImportCounts {
+      const counts: ImportCounts = { created: 0, updated: 0, skipped: 0 };
       const file = loadJSON<CompiledSeedFile>(seedPath(ctx.compiledDir, key));
       if (!file) {
         ctx.log(`  ${key} file not found, skipping`);
         return counts;
       }
-      const packId = seedingPackId(ctx.compiledDir);
-      const records = shouldSeedAll(ctx.include)
+      const packId = seedPackId(ctx.compiledDir);
+      const records = shouldImportAll(ctx.include)
         ? file.records
         : file.records.filter((record) => (ctx.include as ReadonlySet<string>).has(recordLabel(record, identity)));
-      if (records.length === 0 && !shouldSeedAll(ctx.include)) return counts;
+      if (records.length === 0 && !shouldImportAll(ctx.include)) return counts;
 
       if (ctx.mode === 'wipe-and-replace') {
         wipe(entities, file.records);

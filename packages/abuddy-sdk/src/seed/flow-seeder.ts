@@ -2,7 +2,7 @@ import * as crypto from 'node:crypto';
 import { flowRepository } from '../repositories/flow-repository.ts';
 import { promptRepository } from '../repositories/prompt-repository.ts';
 import { findRelations, installedEngine as ears, untypedTx } from '@abuddy/ears';
-import { loadJSON, shouldSeedAll, type Seeder, type SeederContext, type SeedCounts } from '../utils/index.ts';
+import { loadJSON, shouldImportAll, type Seeder, type ImportContext, type ImportCounts } from '../utils/index.ts';
 import { seedPath } from '../build/manifest.ts';
 import { compile as compileFlowDSL } from '../build/compilers/flow-compiler.ts';
 import { validate } from '../build/compilers/flow-dsl-validator.ts';
@@ -11,7 +11,7 @@ import { EARS } from '../types/entities.ts';
 import type { ActionEntity, FlowEntity } from '../types/sdk-entities.ts';
 import type { CompiledRows } from '../build/compilers/flow-compiler.ts';
 import { childSeedKey, SEED_KEY, seedKeyPrefix } from './seeder.ts';
-import { seedingPackId } from '../utils/seed.ts';
+import { seedPackId } from '../utils/seed.ts';
 
 /** What the seeder wrote for a flow: its row's fields, each node's fields, the relation kinds between them, and a hash of their stored state */
 interface SeededGraph {
@@ -67,15 +67,15 @@ function buildLabelMap(entities: Array<{ label: string; id: EARS.EntityId }>): M
 export function createFlowSeeder(): Seeder {
   return {
     key: 'flows',
-    seed(ctx: SeederContext): SeedCounts {
-      const counts: SeedCounts = { created: 0, updated: 0, skipped: 0 };
+    apply(ctx: ImportContext): ImportCounts {
+      const counts: ImportCounts = { created: 0, updated: 0, skipped: 0 };
       const flowsDSL: any = loadJSON(seedPath(ctx.compiledDir, 'flows'));
       if (!flowsDSL) {
         ctx.log('  flows artifact not found, skipping flows');
         return counts;
       }
 
-      const packId = seedingPackId(ctx.compiledDir);
+      const packId = seedPackId(ctx.compiledDir);
 
       if (ctx.mode === 'wipe-and-replace') {
         for (const flow of ears().findAll<FlowEntity>(EARS.Entity.Flow)) {
@@ -118,7 +118,7 @@ export function createFlowSeeder(): Seeder {
       const replacedLabels = new Set<string>();
 
       for (const [key, entry] of Object.entries(flowsDSL as Record<string, any>)) {
-        if (!shouldSeedAll(ctx.include) && !(ctx.include as ReadonlySet<string>).has(key)) {
+        if (!shouldImportAll(ctx.include) && !(ctx.include as ReadonlySet<string>).has(key)) {
           continue;
         }
 

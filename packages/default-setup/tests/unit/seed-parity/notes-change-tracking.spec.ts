@@ -9,7 +9,7 @@ import * as path from 'node:path';
 import { afterAll, describe, expect, it } from 'vitest';
 import { compileBuiltinFormat, type SeedFormatConfig, type SeedRecord } from '@abuddy/sdk/build';
 import { createSeeder } from '@abuddy/sdk/seed';
-import type { ImportMode, SeedCounts, SeedIncludeSet } from '@abuddy/sdk/utils';
+import type { ImportMode, ImportCounts, SeedIncludeSet } from '@abuddy/sdk/utils';
 import { untypedQx as qx } from '@abuddy/ears';
 import { dropAttribute, entityIds } from '@abuddy/sdk/testing';
 import { createEntityWithDefaults, type EARS } from '@/__generated__/ears';
@@ -44,8 +44,8 @@ afterAll(() => {
 });
 
 const seeder = createSeeder({ key: 'notes', entities: ['Note'], identity: NOTES_FORMAT.identity, relKind: NOTES_FORMAT.tree?.relKind });
-function seedNotes(sources: 'v1' | 'v2' | 'default-setup', options: { mode?: ImportMode; include?: SeedIncludeSet } = {}): SeedCounts {
-  return seeder.seed({ compiledDir: compile(sources).dir, mode: options.mode, include: options.include, log: () => {} });
+function seedNotes(sources: 'v1' | 'v2' | 'default-setup', options: { mode?: ImportMode; include?: SeedIncludeSet } = {}): ImportCounts {
+  return seeder.apply({ compiledDir: compile(sources).dir, mode: options.mode, include: options.include, log: () => {} });
 }
 
 /** The notes part of a snapshot, as the goldens record it */

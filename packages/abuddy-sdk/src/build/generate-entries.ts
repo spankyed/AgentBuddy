@@ -1324,11 +1324,11 @@ export type { ReferenceTypeConfig, CategoryConfig, CategoryItemsProvider } from 
       }
     }
 
-    /** A pack module's `seed`, registered under the entry key */
+    /** A pack module's `apply`, registered under the entry key */
     const packSeeder = (key: string, seeder: string) => {
       const importName = `__seeder_${toIdentifier(key)}`;
-      packImports.push(`import { seed as ${importName} } from '${toImportPath(root, seeder)}';`);
-      registrations.push(`{ key: ${JSON.stringify(key)}, seed: ${importName} }`);
+      packImports.push(`import { apply as ${importName} } from '${toImportPath(root, seeder)}';`);
+      registrations.push(`{ key: ${JSON.stringify(key)}, apply: ${importName} }`);
     };
 
     for (const [key, seed] of Object.entries(resolvedSeeds())) {
@@ -1374,7 +1374,7 @@ export type { ReferenceTypeConfig, CategoryConfig, CategoryItemsProvider } from 
 
     return `${HEADER}
 ${seedImports.size > 0 ? `import { ${Array.from(seedImports).join(', ')} } from '@abuddy/sdk/seed';` : ''}
-import { seedData, type Seeder, type SeedCounts, type SeedIncludeSet } from '@abuddy/sdk/utils';
+import { importCompiledSeeds, type Seeder, type ImportCounts, type SeedIncludeSet } from '@abuddy/sdk/utils';
 ${packImports.join('\n')}
 
 ${COMPILED_DIR_ACCESSORS}
@@ -1383,8 +1383,8 @@ export const seeders: Seeder[] = [
 ${registrations.map((registration) => `  ${registration},`).join('\n')}
 ];
 
-export { seedData };
-export type { SeedCounts, SeedIncludeSet };
+export { importCompiledSeeds };
+export type { ImportCounts, SeedIncludeSet };
 export type { ImportMode } from '@abuddy/sdk/utils';
 `;
   }

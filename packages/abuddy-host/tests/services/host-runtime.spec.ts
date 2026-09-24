@@ -26,7 +26,7 @@ vi.mock('../../src/migrations/index.ts', () => ({
 vi.mock('../../src/packs/runtime/seed.ts', async (importOriginal) => ({
   ...await importOriginal<typeof import('../../src/packs/runtime/seed.ts')>(),
   orchestrateDeclarativeSeed: (_manifest: unknown, packId: string) => { order.push(`boot seed (${packId})`); },
-  seedPackData: (packs: Array<{ manifest: { id: string } }>) => { order.push(`pack seeds (${packs.map((p) => p.manifest.id)})`); return []; },
+  importPackSeeds: (packs: Array<{ manifest: { id: string } }>) => { order.push(`pack seeds (${packs.map((p) => p.manifest.id)})`); return []; },
 }));
 
 const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'host-runtime-'));

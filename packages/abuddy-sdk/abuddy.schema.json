@@ -341,7 +341,7 @@
                   },
                   "seeder": {
                     "type": "string",
-                    "description": "A pack module exporting seed(ctx), used instead of the generic seeder. Alone, the build compiles nothing for the entry and the module brings its own data; with \"path\" and \"format\", the module seeds the compiled records."
+                    "description": "A pack module exporting apply(ctx), used instead of the generic seeder. Alone, the build compiles nothing for the entry and the module brings its own data; with \"path\" and \"format\", the module seeds the compiled records."
                   }
                 },
                 "additionalProperties": false
