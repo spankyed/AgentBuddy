@@ -106,7 +106,7 @@ Typed facades (no module augmentation):
 
 Logging and actions:
 - Log with `createLogger(source)` from `@abuddy/sdk/logger`. The brain and step runtimes use `createLogger('brain', { debug: true })`, whose debug messages follow the brain plugin's inspect switch (`setDebugEnabled('brain', …)`). Errors go through `reportError`, with `step` context in step runtimes. Backend code has no `console.*` (`check:specifiers`)
-- Action code runs through `runActionCode` (`extensions/steps/action/sandbox.ts`), for the action step and `services.action` alike: `params`, `services` (its `logger` named `action:<label>`), `z` and `flowId`
+- Action code runs through `runActionCode` (`extensions/steps/action/sandbox.ts`), for the action step and `services.action` alike: `params`, `services` (its `logger` named `action:<label>`, and its `emitter` stamping that same string as `Message.via` beside this pack's id as `Message.from`), `z` and `flowId`. The action names every feature `<packId>/<featureId>` all the same — the stamp says who sent a message, and changes nothing about what a name means
 
 ## Seeds
 

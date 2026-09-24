@@ -71,6 +71,19 @@ describe('how far each send reaches', () => {
     warn.mockRestore();
   });
 
+  // An action's send carries the action as well as its pack, and the subscription carries the whole message, so
+  // this warning names both
+  it('names the action too, for a send an action made', async () => {
+    await settle();
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+    main.shell.client.receive({ to: 'memo-pack/memoz', from: 'memo-pack', via: 'action:Add Memo', event: { type: 'MEMO_ADDED' } });
+    await settle();
+
+    expect(warn).toHaveBeenCalledWith(expect.stringContaining('sent by "memo-pack" (action:Add Memo)'));
+    warn.mockRestore();
+  });
+
   /**
    * `Message.from` is stamped by the sends `#generated/events` builds, and the in-window send carries it on the
    * shell's `SEND_TO_PLUGIN`. It is worth carrying only if something reads it: this is the one place the renderer
@@ -85,6 +98,19 @@ describe('how far each send reaches', () => {
     expect(main.shell.notify.error).toHaveBeenCalledWith(
       "Couldn't reach memo-pack/memoz",
       'No plugin is registered at "memo-pack/memoz". Sent by "memo-pack".',
+    );
+  });
+
+  // The in-window send carries `via` on `SEND_TO_PLUGIN` as it carries `from`, so this refusal names both too
+  it('names the action too, for a send an action made', async () => {
+    await settle();
+
+    main.app.send({ type: 'SEND_TO_PLUGIN', plugin: 'memo-pack/memoz', events: [{ type: 'ADD_MEMO' }], from: 'memo-pack', via: 'action:Add Memo' });
+    await settle();
+
+    expect(main.shell.notify.error).toHaveBeenCalledWith(
+      "Couldn't reach memo-pack/memoz",
+      'No plugin is registered at "memo-pack/memoz". Sent by "memo-pack" (action:Add Memo).',
     );
   });
 

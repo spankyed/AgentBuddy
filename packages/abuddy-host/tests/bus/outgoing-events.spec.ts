@@ -79,14 +79,25 @@ describe('an event a system sends to a plugin', () => {
   });
 
   /**
-   * `Message.from` is a label the generated sends stamp with their pack's id — the one place a sender is in
-   * scope. Nothing routes or refuses on it; it exists so a drop names who sent the event instead of leaving
-   * that to a grep. The host's own sends and an action's carry none, so the message reads the same minus the
-   * clue, and a drop that names no sender is not thereby suspicious.
+   * `Message.from` is a label the generated sends stamp with their pack's id — the one place a pack's own sends
+   * have a sender in scope. Nothing routes or refuses on it; it exists so a drop names who sent the event instead
+   * of leaving that to a grep. `reportError` sends for a caller that is neither a pack nor an action and carries
+   * none, so the message then reads the same minus the clue, and a drop that names no sender is not suspicious.
    */
   it('names the sending pack in the drop, when the send stamped one', async () => {
     await send({ to: 'memo-pack/memos', event: { type: 'MEMO_SHREDDED' }, from: 'other-pack' });
     expect(takeSystemErrors()[0]?.message).toContain('sent by "other-pack"');
+  });
+
+  /**
+   * An action stamps both: its pack in `from`, itself in `via`. The pack alone would be the less useful half —
+   * an action is content a user writes, and the pack running it is whichever pack's runtime ran the code. The
+   * `via` here is the string that also names the action's logger, so this drop and that action's own log lines
+   * are one grep apart.
+   */
+  it("names the action too, when an action's send is the one dropped", async () => {
+    await send({ to: 'memo-pack/memos', event: { type: 'MEMO_SHREDDED' }, from: 'other-pack', via: 'action:Shred Memo' });
+    expect(takeSystemErrors()[0]?.message).toContain('sent by "other-pack" (action:Shred Memo)');
   });
 
   it('reads the same without a sender, rather than saying one is missing', async () => {

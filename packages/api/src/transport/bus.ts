@@ -14,10 +14,12 @@ const logger = createLogger('app-events');
 
 export const systemBusRouter = router({
   send: procedure
-    // `from` is named rather than the object being made passthrough: the sender is the one field a client may
+    // `from` and `via` are named rather than the object being made passthrough: who sent it is what a client may
     // add, and everything else it invents still goes no further than this line. zod strips what it isn't told
-    // about, which silently cost every renderer send its sender.
-    .input(z.object({ to: z.string().min(1), from: z.string().min(1).optional(), event: z.object({ type: z.string().min(1) }).passthrough() }))
+    // about, which silently cost every renderer send its sender. Every field of `Message` beside `event` belongs
+    // here — a new one added to the envelope and not to this line arrives as `undefined`, and the diagnostics
+    // written to name it can't.
+    .input(z.object({ to: z.string().min(1), from: z.string().min(1).optional(), via: z.string().min(1).optional(), event: z.object({ type: z.string().min(1) }).passthrough() }))
     .mutation(({ input }) => {
       try {
         receiveClientEvent(appPacks, input);

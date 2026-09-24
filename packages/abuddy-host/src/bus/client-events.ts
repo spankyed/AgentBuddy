@@ -3,7 +3,7 @@
 import { _rootEvents } from '@abuddy/sdk/runtime';
 import { createLogger } from '@abuddy/sdk/logger';
 import type { PackRegistry } from '../packs/registry.ts';
-import type { Message } from '@abuddy/sdk/events';
+import { senderSuffix, type Message } from '@abuddy/sdk/events';
 
 const logger = createLogger('app-events');
 
@@ -39,8 +39,10 @@ function summarizeEventForLog(event: Message['event']) {
  */
 export function receiveClientEvent(registry: Pick<PackRegistry, 'getEventValidationMap'>, message: Message): void {
   const { to, from, event } = message;
-  // The sending pack, when the send stamped it (`defineEvents`). A window's own sends and the host's carry none.
-  const sender = from ? ` sent by "${from}"` : '';
+  // The sending pack and what within it made the send, when the send stamped them (`defineEvents`,
+  // `createActionEmitter`). A send that stamped neither carries none.
+  const suffix = senderSuffix(message);
+  const sender = suffix && ` sent${suffix}`;
   const validTypes = registry.getEventValidationMap().get(to);
   if (!validTypes) {
     throw new UnknownClientEventError(`Unknown system: "${to}"${sender}`);
@@ -49,6 +51,6 @@ export function receiveClientEvent(registry: Pick<PackRegistry, 'getEventValidat
     throw new UnknownClientEventError(`Unknown event "${event.type}" for system "${to}"${sender}`);
   }
 
-  logger.info(`→ Incoming: "${event.type}"`, { to, ...(from ? { from } : {}), event: summarizeEventForLog(event) });
+  logger.info(`→ Incoming: "${event.type}"`, { to, ...(from ? { from } : {}), ...(message.via ? { via: message.via } : {}), event: summarizeEventForLog(event) });
   _rootEvents.emitIncoming(message);
 }

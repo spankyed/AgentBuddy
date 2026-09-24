@@ -5,7 +5,7 @@ import { enqueueActions, fromCallback, setup, spawnChild, type AnyActorRef, type
 import { reportError } from '@abuddy/sdk/logger';
 import { HOST } from '../refs.ts';
 import { SYSTEM_EVENT_TYPES } from '@abuddy/sdk/framework';
-import { PLUGIN_EVENT_TYPES, type Message } from '@abuddy/sdk/events';
+import { PLUGIN_EVENT_TYPES, senderSuffix, type Message } from '@abuddy/sdk/events';
 import type { PackRegistry } from '../packs/registry.ts';
 
 
@@ -147,9 +147,10 @@ export function createBusMachine(options: BusOptions) {
         // than thrown — the caller is a running system, and a malformed message must not take it down.
         // takeSystemErrors fails any pack test that leaves one, so this is loud where it should be.
         const { to: pluginId, from, event: { type } } = event.message;
-        // Who sent it, when the send stamped it (`defineEvents`). The host's own sends and an action's don't,
-        // so a drop that names no sender is not thereby suspicious — it just has one fewer clue in it.
-        const sender = from ? ` by "${from}"` : '';
+        // Who sent it, when the send stamped it: the pack (`defineEvents`) and what within it (an action's
+        // `action:<label>`). `reportError` sends for a caller that is neither, so a drop that names no sender is
+        // not thereby suspicious — it just has one fewer clue in it.
+        const sender = senderSuffix(event.message);
         const accepted = options.registry.getPluginEventValidationMap().get(pluginId);
         const reportDrop = (message: string) => {
           // A pack mid-replacement has no systems running and no plugins registered until its

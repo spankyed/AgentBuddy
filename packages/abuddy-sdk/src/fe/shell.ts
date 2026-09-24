@@ -44,7 +44,7 @@ export type HostShellEvent =
    * frontend is still loading is waited for, and one no pack provides is reported once loading settles — but the
    * plugin the user has open doesn't change: a send is not a navigation.
    */
-  | { type: 'SEND_TO_PLUGIN'; plugin: string; events: PluginEvent[]; from?: string }
+  | { type: 'SEND_TO_PLUGIN'; plugin: string; events: PluginEvent[]; from?: string; via?: string }
   | { type: 'RESIZE_PANEL'; panel: 'canvas' | 'inspection'; size: number }
   | { type: 'RESTORE_CHAT' }
   | { type: 'SET_PLUGIN_VISIBILITY'; plugin: string; visible: boolean }

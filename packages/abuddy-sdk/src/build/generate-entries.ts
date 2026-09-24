@@ -828,8 +828,11 @@ import { resolveName, type FeatureRef } from '@abuddy/sdk/ids';
 /** A feature this pack's code can name: its own by feature id, its dependencies' and the host's as \`<packId>/<featureId>\` */
 export type FeatureName = ${names.map((name) => `'${name}'`).join(' | ')};
 
+/** This pack's id, as \`abuddy.json\` declares it: what its sends stamp as \`Message.from\` */
+export const packId = '${manifest.id}';
+
 /** The ref of a feature this pack's code names */
-export const ref = (name: FeatureName): FeatureRef => resolveName(name, '${manifest.id}');
+export const ref = (name: FeatureName): FeatureRef => resolveName(name, packId);
 `;
   }
 

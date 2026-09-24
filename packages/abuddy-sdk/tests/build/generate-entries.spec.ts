@@ -325,10 +325,13 @@ describe('generated system sends', () => {
     expect(files['src/__generated__/pack-types.ts']).toContain("export type { PackPluginEvents, PackSystemEvents } from './events.js';");
   });
 
-  // Pack code resolves a name with `ref`, which is bound to its pack as the sends are
+  // Pack code resolves a name with `ref`, which is bound to its pack as the sends are. `packId` is the same id as a
+  // value, for the one thing a name can't express: pack code that has to say which pack it is — the sandbox that
+  // runs an action stamps it on what the action sends. Writing the literal would be wrong on the copy.
   it('binds ref to the pack, so pack code never passes its own pack id', () => {
     const files = generate({ features: [{ id: 'sidebar', plugin: { entry: writePluginEntry('src/features/sidebar/fe/plugin.ts') } }] });
-    expect(files['src/__generated__/ref.ts']).toContain("export const ref = (name: FeatureName): FeatureRef => resolveName(name, 'demo-pack');");
+    expect(files['src/__generated__/ref.ts']).toContain("export const packId = 'demo-pack';");
+    expect(files['src/__generated__/ref.ts']).toContain('export const ref = (name: FeatureName): FeatureRef => resolveName(name, packId);');
     expect(files['src/__generated__/bus-ids.ts']).toBeUndefined();
   });
 

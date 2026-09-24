@@ -19,15 +19,42 @@ export interface Message {
   to: string;
   event: { type: string; [key: string]: unknown };
   /**
-   * The id of the pack that sent it, stamped by the sends `#generated/events` builds (`defineEvents`), which is
-   * the only place a sender's identity is in scope. Diagnostics name it: a dropped or unroutable message says who
-   * sent it instead of leaving that to a grep.
+   * The id of the pack that sent it, stamped by the sends `#generated/events` builds (`defineEvents`) and by the
+   * emitter an action runs with (`createActionEmitter`). Diagnostics name it: a dropped or unroutable message says
+   * who sent it instead of leaving that to a grep.
    *
-   * Absent on a send the host makes for itself and on one an action makes through `services.emitter`, which runs
-   * outside any pack. Nothing routes or refuses on it — treat it as a label, not a claim: a sender that doesn't
-   * stamp is not thereby untrusted, and one that does has not been checked.
+   * Absent on a send made for no pack in particular — `reportError`'s, which sends on behalf of whoever called it.
+   * Nothing routes or refuses on it — treat it as a label, not a claim: a sender that doesn't stamp is not thereby
+   * untrusted, and one that does has not been checked.
    */
   from?: string;
+  /**
+   * What within the sending pack made it, when the pack alone doesn't say: `action:<label>` for an action, the
+   * same string that names the action's logger, so a dropped send and that action's own log lines share something
+   * to grep for.
+   *
+   * An action is the reason this exists. It is the one sender a pack cannot point at in its own source — content
+   * a user writes, edits and exports — so `from` naming its pack leaves the useful half of "who sent this"
+   * unsaid. `from` keeps one meaning, the pack; `'<pack>/<action>'` would read as a `<packId>/<featureId>` ref
+   * and give anything parsing it a confident wrong answer.
+   *
+   * Absent for every other sender, and a label like `from`: nothing routes or refuses on it.
+   */
+  via?: string;
+}
+
+/**
+ * How a diagnostic names who sent a message, as a suffix to append: ` by "default-setup" (action:summarise)`,
+ * or `''` when the message says neither. One function so the four places that report an undeliverable message —
+ * the bus's two drops, `receiveClientEvent`, and the shell's two — word it the same, and so adding a field to the
+ * envelope reaches all of them at once. It says nothing about whether a sender may send: nothing routes on either
+ * field, and a drop that names no sender just has one fewer clue in it.
+ */
+export function senderSuffix({ from, via }: Pick<Message, 'from' | 'via'>): string {
+  if (from && via) return ` by "${from}" (${via})`;
+  if (from) return ` by "${from}"`;
+  if (via) return ` by ${via}`;
+  return '';
 }
 
 /** A plugin's name → the events that plugin receives. Each pack's `#generated/events` defines its `SendablePluginEvents`. */
@@ -167,10 +194,15 @@ export interface SendBinding {
   /** A name the caller writes → the ref it stands for. The unbound sends take refs already, so a name is its own ref. */
   resolve?: (name: string) => string;
   /**
-   * The pack these sends are made by, stamped on every message as `Message.from`. Absent for the unbound sends:
-   * the host uses those for itself, and an action reaches them through `services.emitter`, outside any pack.
+   * The pack these sends are made by, stamped on every message as `Message.from`. Absent for the unbound sends,
+   * which `reportError` uses to send on behalf of a caller that is a logger source rather than a pack.
    */
   from?: string;
+  /**
+   * What within that pack is making them, stamped as `Message.via`: `action:<label>` for the emitter an action
+   * runs with (`createActionEmitter`). Absent for every other sender.
+   */
+  via?: string;
 }
 
 /**
@@ -178,7 +210,10 @@ export interface SendBinding {
  * `from` today — is threaded here rather than added as a parameter to each of them, and to every caller that
  * has nothing to pass.
  */
-export function createSends({ resolve = (name: string) => name, from }: SendBinding = {}) {
+export function createSends({ resolve = (name: string) => name, from, via }: SendBinding = {}) {
+  // Only the fields this binding has. An envelope carrying `from: undefined` reads as a sender that was there and
+  // got lost, and adds a key to every log line and every message that crosses the wire.
+  const sender = { ...(from ? { from } : {}), ...(via ? { via } : {}) };
   return {
     broadcastToPlugin(name: string, event: { type: string; [key: string]: unknown }): void {
       // The two sends share a signature, so the compiler can't tell a caller it picked the wrong one: say which it
@@ -186,7 +221,7 @@ export function createSends({ resolve = (name: string) => name, from }: SendBind
       if (!_isHostBound() && _isFeHostBound()) {
         throw new Error(`broadcastToPlugin("${name}") is the backend's, over the bus to every window. In the renderer, send to this window's plugin with sendToPlugin from #generated/events`);
       }
-      boundHost().transport.rootEvents.emitPluginSend({ to: resolve(name), event, from });
+      boundHost().transport.rootEvents.emitPluginSend({ to: resolve(name), event, ...sender });
     },
 
     sendToPlugin(name: string, event: { type: string; [key: string]: unknown }): void {
@@ -196,16 +231,16 @@ export function createSends({ resolve = (name: string) => name, from }: SendBind
       }
       const ref = resolve(name);
       if (!splitRef(ref)) throw new Error(`"${ref}" doesn't name a plugin: a plugin is named "<packId>/<featureId>"`);
-      boundFeHost().application.send({ type: 'SEND_TO_PLUGIN', plugin: ref, events: [event], from });
+      boundFeHost().application.send({ type: 'SEND_TO_PLUGIN', plugin: ref, events: [event], ...sender });
     },
 
     sendToSystem(to: SystemTarget, event: { type: string; [key: string]: unknown }): void {
-      sendIncoming({ to: typeof to === 'string' ? resolve(to) : getDesignated(to.role), event, from });
+      sendIncoming({ to: typeof to === 'string' ? resolve(to) : getDesignated(to.role), event, ...sender });
     },
   };
 }
 
-/** The sends made by nobody in particular: the host's own, and an action's through `services.emitter`. */
+/** The sends made by nobody in particular: `reportError`'s, on behalf of a caller that is a source, not a pack. */
 const unboundSends = createSends();
 
 /**

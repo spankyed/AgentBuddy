@@ -1,6 +1,7 @@
 // A pack's typed sends go through the bound app's bus, each system under the id it runs under, and each stamped
-// with the pack that sent it. `defineEvents(packId)` is the only place a sender is in scope, which is why the
-// stamp lives here and not on the free sends the host and actions use — those carry no `from` at all.
+// with the pack that sent it. `defineEvents(packId)` is where a pack's own sends get their sender; an action's
+// come from `createActionEmitter` instead, which stamps the pack running it and the action. What is left sending
+// with no sender at all is the free sends, which `reportError` uses on behalf of a caller that is neither.
 // Nothing routes or refuses on it: it is what lets a dropped message name who sent it.
 import * as os from 'node:os';
 import { describe, expect, it } from 'vitest';
@@ -25,9 +26,9 @@ function incoming(send: () => void): unknown[] {
   return received;
 }
 
-// The free sends are what the host uses for itself and what an action reaches through `services.emitter`, both
-// of which run outside any pack. They stamp nothing, and the shape says so: `from` is optional, and absent is
-// the ordinary case rather than a fault.
+// The free sends are what `reportError` uses: it sends on behalf of whoever called it, which is a logger source
+// (`'bus'`, `'action:x'`) and not a pack. They stamp nothing, and the shape says so: `from` is optional, and
+// absent is a sender with nothing to declare rather than a fault.
 describe('a send made outside a pack', () => {
   it('carries no sender', () => {
     expect(incoming(() => untypedSendToSystem('memo-pack/memos', { type: 'ADD_MEMO', text: 'x' })))

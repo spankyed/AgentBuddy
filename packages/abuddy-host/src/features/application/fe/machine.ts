@@ -4,6 +4,7 @@
 import { assign, enqueueActions, setup, sendTo, spawnChild } from 'xstate';
 import { getDesignated, processHotkeys, safeEvents } from '@abuddy/sdk/fe';
 import { splitRef } from '@abuddy/sdk/ids';
+import { senderSuffix } from '@abuddy/sdk/events';
 import { isPlainObject } from '@abuddy/sdk/utils/pure';
 import type { HostShellEvent, HostShellState, PluginEvent, ShellPanelSizes } from '@abuddy/sdk/fe';
 import { HOST } from '../../../refs.ts';
@@ -280,13 +281,15 @@ export function createShellMachine({ packs, client, packFrontends, storage, noti
        * command a navigation.
        */
       sendToPlugin: enqueueActions(({ context, event, enqueue }) => {
-        const { plugin, events, from } = typeOf('SEND_TO_PLUGIN', event);
+        const { plugin, events, from, via } = typeOf('SEND_TO_PLUGIN', event);
         if (!context.plugins.some((p) => p.id === plugin)) {
           if (packFrontendsPending(context)) {
             enqueue.assign({ awaitingPlugin: [...context.awaitingPlugin, { plugin, events, select: false }] });
           } else {
-            // The sending pack, when the send stamped one (`defineEvents`); the host's own sends carry none
-            const sender = from ? ` Sent by "${from}".` : '';
+            // The sending pack and what within it, when the send stamped them (`defineEvents`,
+            // `createActionEmitter`); a send that stamped neither carries none
+            const suffix = senderSuffix({ from, via });
+            const sender = suffix && ` Sent${suffix}.`;
             enqueue(() => notify.error(`Couldn't reach ${plugin}`, `No plugin is registered at "${plugin}".${sender}`));
           }
           return;

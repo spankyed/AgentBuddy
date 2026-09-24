@@ -1,5 +1,5 @@
 // Action code runs in one sandbox (runActionCode) whether a flow's action step or services.action runs it:
-// `params`, `services` with a logger named after the action, `z`, and `flowId` from a flow step
+// `params`, `services` with a logger and an emitter named after the action, `z`, and `flowId` from a flow step
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { ExecutionContext, TNodeEntity } from '@abuddy/sdk/steps';
 import type { LogEvent } from '@abuddy/sdk/logger';
@@ -7,6 +7,7 @@ import type { ActionEntity } from '@abuddy/sdk';
 import { services } from '@abuddy/sdk/services';
 import { repository } from '@/__generated__/repository';
 import { testRootEvents } from '@abuddy/sdk/testing';
+import { packId } from '@/__generated__/ref';
 import { handler } from '../../src/extensions/steps/action/runtime';
 import { actionService } from '../../src/features/actions/be/services/action';
 
@@ -20,6 +21,12 @@ const ACTION = `
   };
   services.logger.info('ran', reached);
   return reached;
+`;
+
+// What an action sends, and who it says sent it
+const SENDING = `
+  services.emitter.broadcastToPlugin('default-setup/threads', { type: 'SET_PHASE', phase: 'Edit' });
+  return 'sent';
 `;
 
 const logs: LogEvent[] = [];
@@ -57,6 +64,29 @@ describe('the action sandbox', () => {
     expect(result).toEqual(reached);
     // A log event's meta is JSON: an undefined field shows as a marker
     expect(logs).toContainEqual({ level: 'info', message: 'ran', source: 'action:Say Hi', meta: { ...reached, flowId: '[Undefined]' } });
+  });
+
+  // The last sender that could not say who it was. An action's code is a string from the database, so only the run
+  // itself knows both halves: the pack whose runtime ran it, and which action it was. Both go on every message it
+  // sends, and `action:<label>` is the string its logger is named, so one grep finds the send and the log lines
+  // around it.
+  it('stamps the pack and the action on what the action sends', async () => {
+    vi.spyOn(repository.actionQueries, 'all').mockReturnValue([{ label: 'Summarise Thread', actionFn: SENDING } as ActionEntity]);
+    const sent: unknown[] = [];
+    const stop = testRootEvents.onPluginSend((message) => sent.push(message));
+
+    try {
+      expect(await actionService.getAndExecute('Summarise Thread', {})).toBe('sent');
+    } finally {
+      stop();
+    }
+
+    expect(sent).toEqual([{
+      to: 'default-setup/threads',
+      event: { type: 'SET_PHASE', phase: 'Edit' },
+      from: packId,
+      via: 'action:Summarise Thread',
+    }]);
   });
 
   it('runs code that declares its own z and flowId', async () => {

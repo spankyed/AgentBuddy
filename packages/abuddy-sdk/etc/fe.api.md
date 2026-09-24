@@ -227,6 +227,7 @@ export type HostShellEvent =
     plugin: string;
     events: PluginEvent[];
     from?: string;
+    via?: string;
 } | {
     type: 'RESIZE_PANEL';
     panel: 'canvas' | 'inspection';

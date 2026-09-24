@@ -100,6 +100,7 @@ export interface Message {
     from?: string;
     // (undocumented)
     to: string;
+    via?: string;
 }
 
 // @public
@@ -148,7 +149,11 @@ export type Qualified<PackId extends string, M> = {
 export interface SendBinding {
     from?: string;
     resolve?: (name: string) => string;
+    via?: string;
 }
+
+// @public
+export function senderSuffix(input: Pick<Message, 'from' | 'via'>): string;
 
 // @internal
 export function _sendToLocalPlugin(ref: string, event: {
