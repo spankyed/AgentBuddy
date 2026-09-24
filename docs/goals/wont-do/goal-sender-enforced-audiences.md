@@ -25,14 +25,16 @@ Half of `goal-plugin-contract.md`'s Deferred item 2 shipped, because it stands o
 - `Message.from?: string` — the id of the pack that sent it, stamped in `defineEvents(packId)` for all three
   sends. Optional, and at the time absent on the host's own sends and on an action's through `services.emitter`.
 - The bus's two drop diagnostics and `receiveClientEvent`'s two `UnknownClientEventError` messages name it, so a
-  dropped message says who sent it instead of leaving that to a grep. The drop dedupe is keyed
-  `pluginId/type/from`, so two packs making the same wrong send are two reports rather than one.
+  dropped message says who sent it instead of leaving that to a grep. The drop is reported once per plugin, event
+  type and sender, so two packs making the same wrong send are two reports rather than one.
 - Nothing routes or refuses on `from`. It is a label, not a claim: a sender that doesn't stamp is not thereby
   untrusted, and one that does has not been checked.
 
 Since, on `AS/plugin-contract` (`docs/plans/host-seams.md`), still all envelope and still no rejection:
 
 - The host stamps `from: 'host'` (`e5580d6b4`), so the call sites reason 2 counted now have a sender.
+- The dedupe key is now the sender as the report names it (`senderSuffix`), not a second reading of the envelope:
+  it was keyed `pluginId/type/from`, which silently stopped matching the message when `via` arrived.
 - `Message.via?: string` — what within the sender made the send, where the sender has a name for that
   (`576873cbe`): `action:<label>` from the emitter an action runs with, and its source from `reportError`. Every
   send now carries a pack, a source, or both, except `services.emitter` reached outside an action.
