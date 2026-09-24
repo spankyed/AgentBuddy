@@ -106,8 +106,9 @@ that note.
 Closes finding 3. Give `services.emitter` a pack identity, threaded through the action sandbox
 (`default-setup/src/extensions/steps/action/sandbox.ts`).
 
-Settle open question 2 first: it decides what the stamp holds, and discovering that mid-change means
-redoing it. The rest of the step is the same either way — the sandbox has to carry an identity at all.
+The stamp's shape is settled (open question 2): `from` stays the pack, and `via` carries `action:<label>`
+beside it. So `Message` gains `via?: string`, the sandbox passes the label it already has, and the four
+sites that render a sender append it when present.
 
 This is the only remaining step that reaches outside the host: `services/index.ts` in the SDK and
 default-setup's sandbox, so it takes `api:update` and the pack suites.
@@ -171,26 +172,28 @@ real. Lands after step 2, whose note it deletes.
   no third-party pack in existence — still stand, so this is a separate decision.
   - just update the doc, no need to reassess.
 
-2. **What does an action stamp — the pack, or the action?** `Message.from` is documented as "the id of the
-  pack that sent it", and every stamp today is one: `'host'`, `'default-setup'`. That grain is right for the
-  only consumer that might ever act on it, since audience enforcement is pack-tier and compares sending pack
-  to receiving pack.
+2. **What an action stamps** — settled: the pack in `from`, the action beside it.
 
-  It is weak for actions, though, and the field's real job is diagnostics. `from: 'host'` locates a send
-  because the host is one thing; `from: 'default-setup'` barely narrows it, and actions are seeded,
-  user-editable content — the likeliest wrong send and the hardest to find. Actions are also the one case
-  where finer is *available*: `runActionCode` already takes a `label` and builds
-  `createLogger('action:<label>')`, so the sandbox knows which action is running. A system's sends don't
-  know their calling feature, because `defineEvents(packId)` is built once per pack.
+  `Message.from` is documented as "the id of the pack that sent it", and every stamp today is one. For an
+  action that is nearly no information: default-setup is the largest pack in the repo, and actions are
+  seeded, user-editable content — the likeliest wrong send and the hardest to locate. Diagnostics are the
+  field's whole job, so the grain matters. Actions are also the one case where finer is *available*:
+  `runActionCode` already takes a `label` and builds `createLogger('action:<label>')`. A system's sends
+  can't name their calling feature, because `defineEvents(packId)` is built once per pack.
 
-  - `'default-setup'` — one meaning, one shape, matches the doc. Costs the diagnostic value where it is
-    needed most.
-  - `'default-setup/some-action'` — useful, but `from` then has two grains depending on the sender, and it
-    collides with `<packId>/<featureId>`: an action is not a feature, so anything reading `from` as a ref
-    gets a wrong answer.
-  - The pack id, with the action named separately — reusing the repo's own convention for an action as a
-    source (`action:<label>`), in a second field or a form the diagnostics know to read. Keeps `from` one
-    grain and puts the finer identity where it can't be mistaken for a ref.
+  `'default-setup/summarise-thread'` was the tempting shape and is the wrong one: it names the same two
+  things in a form that reads as `<packId>/<featureId>`, and an action is not a feature. Anything that ever
+  reads `from` as a ref would get a confident wrong answer.
 
-  Whichever, `Message.from`'s doc comment says what it holds, since "the id of the pack" stops being the
-  whole truth the moment an action stamps anything else.
+  So `from` keeps one meaning — the pack — and `via` carries what within it made the send, in the form the
+  repo already uses for an action as a source. `via` is absent for everything else, so nothing else changes:
+
+  ```
+  Dropped "MEMO_ADDED" sent by "default-setup" (action:summarise-thread) to the "memo-pack/memos" plugin, …
+  Dropped "MEMO_ADDED" sent by "default-setup" to the "memo-pack/memos" plugin, …
+  Dropped "MEMO_ADDED" sent to the "memo-pack/memos" plugin, …
+  ```
+
+  The four sites that render a sender (`bus/machine.ts:152`, `bus/client-events.ts:43`, and the shell's two
+  from step 2) take `via` the same way they took `from`: appended when present, nothing when not. `from`'s
+  doc comment stays true as written, and gains a line for `via`.
