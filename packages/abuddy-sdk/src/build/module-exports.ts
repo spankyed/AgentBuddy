@@ -90,12 +90,8 @@ export function createModuleExports(packRoot: string, files: string[]): ModuleEx
     const moduleSymbol = checker.getSymbolAtLocation(sourceFile);
     const exported = moduleSymbol && checker.getExportsOfModule(moduleSymbol).find((symbol) => symbol.name === name);
     if (!exported) return undefined;
-    let symbol = exported;
-    while (symbol.flags & ts.SymbolFlags.Alias) {
-      const target = checker.getImmediateAliasedSymbol(symbol);
-      if (!target) return undefined;
-      symbol = target;
-    }
+    const symbol = followAliases(exported);
+    if (!symbol) return undefined;
     return symbol.flags & ts.SymbolFlags.Value ? checker.getTypeOfSymbol(symbol) : undefined;
   }
 
@@ -104,18 +100,31 @@ export function createModuleExports(packRoot: string, files: string[]): ModuleEx
    * when it declares none. The counterpart of `exportedValueType`, which resolves values only: this is what lets
    * codegen read a contract that has no runtime value to hang a phantom property off.
    */
+  /**
+   * Follows `export { x } from` and import chains to the symbol that declares the name, or undefined when the
+   * chain doesn't resolve. A circular re-export (`a.ts` → `b.ts` → `a.ts`) ends the walk rather than spinning:
+   * the checker reports that as an error, and this reader queries the checker without reading its diagnostics.
+   */
+  function followAliases(symbol: TS.Symbol): TS.Symbol | undefined {
+    const seen = new Set<TS.Symbol>([symbol]);
+    let current = symbol;
+    while (current.flags & ts.SymbolFlags.Alias) {
+      const target = checker.getImmediateAliasedSymbol(current);
+      if (!target || seen.has(target)) return undefined;
+      seen.add(target);
+      current = target;
+    }
+    return current;
+  }
+
   function declaredTypeOf(file: string, name: string): TS.Type | undefined {
     const sourceFile = program.getSourceFile(file);
     if (!sourceFile) throw new Error(`${file} is not part of the program reading pack exports`);
     const moduleSymbol = checker.getSymbolAtLocation(sourceFile);
     const exported = moduleSymbol && checker.getExportsOfModule(moduleSymbol).find((symbol) => symbol.name === name);
     if (!exported) return undefined;
-    let symbol = exported;
-    while (symbol.flags & ts.SymbolFlags.Alias) {
-      const target = checker.getImmediateAliasedSymbol(symbol);
-      if (!target) return undefined;
-      symbol = target;
-    }
+    const symbol = followAliases(exported);
+    if (!symbol) return undefined;
     return symbol.flags & ts.SymbolFlags.Type ? checker.getDeclaredTypeOfSymbol(symbol) : undefined;
   }
 
@@ -134,14 +143,17 @@ export function createModuleExports(packRoot: string, files: string[]): ModuleEx
       const exported = moduleSymbol && checker.getExportsOfModule(moduleSymbol).find((symbol) => symbol.name === name);
       if (!exported) return undefined;
 
-      // Follow `export { x } from` and `import`/`export` chains, noting a type-only link on the way
+      // Follow `export { x } from` and `import`/`export` chains, noting a type-only link on the way. Bounded, as
+      // `followAliases` is: a circular re-export would otherwise spin here.
       let symbol = exported;
       let typeOnly = false;
+      const seen = new Set<TS.Symbol>([symbol]);
       while (symbol.flags & ts.SymbolFlags.Alias) {
         if (symbol.declarations?.some((declaration) => ts.isTypeOnlyImportOrExportDeclaration(declaration))) typeOnly = true;
         const target = checker.getImmediateAliasedSymbol(symbol);
-        // An alias to a module the program can't resolve
-        if (!target) return undefined;
+        // An alias to a module the program can't resolve, or one that leads back to where it started
+        if (!target || seen.has(target)) return undefined;
+        seen.add(target);
         symbol = target;
       }
 
