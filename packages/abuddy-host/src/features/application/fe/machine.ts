@@ -253,7 +253,7 @@ export function createShellMachine({ packs, client, packFrontends, storage, noti
        * Opens a plugin and hands it events. A plugin that isn't registered waits while pack frontends may still add
        * it, and is refused once loading has settled (onPackFrontendsSettled).
        */
-      openPlugin: enqueueActions(({ context, event, enqueue }) => {
+      doOpenPlugin: enqueueActions(({ context, event, enqueue }) => {
         const { plugin, events } = typeOf('OPEN_PLUGIN', event);
         if (!context.plugins.some((p) => p.id === plugin)) {
           if (packFrontendsPending(context)) {
@@ -271,7 +271,7 @@ export function createShellMachine({ packs, client, packFrontends, storage, noti
       }),
 
       /**
-       * Hands a plugin its events without opening it — the renderer's `sendToPlugin`. The same wait as `openPlugin`,
+       * Hands a plugin its events without opening it — the renderer's `sendToPlugin`. The same wait as `doOpenPlugin`,
        * and deliberately not the same ending: a send that stole the user's canvas would make every cross-feature
        * command a navigation.
        */
@@ -544,7 +544,7 @@ export function createShellMachine({ packs, client, packFrontends, storage, noti
       PACK_PLUGINS_UNLOADED: { actions: 'removePackPlugins' },
       PLUGIN_VISIBILITY_UPDATED: { actions: 'updatePluginVisibility' },
       SET_PLUGIN_VISIBILITY: { actions: 'setPluginVisibility' },
-      OPEN_PLUGIN: { actions: 'openPlugin' },
+      OPEN_PLUGIN: { actions: 'doOpenPlugin' },
       SEND_TO_PLUGIN: { actions: 'sendToPlugin' },
       // A backend's request: a main window opens the plugin, a popout keeps the one it shows
       OPEN_PLUGIN_FROM_APP: { guard: 'isMainWindow', actions: 'openPluginFromApp' },
