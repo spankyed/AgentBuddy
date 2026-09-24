@@ -167,7 +167,7 @@ async function importCcSessions(services: Services, toImport: any[]) {
 
       const thread = services.repository.threadQueries.byId(newThreadId) as any;
       services.repository.threadCommands.update(newThreadId, {
-        context: { ...(thread?.context || {}), claudeCode: { sessionId: session.id, cwd: cwd || undefined } },
+        context: { ...thread?.context, claudeCode: { sessionId: session.id, cwd: cwd || undefined } },
         tags: [...(thread?.tags || ['imported']), 'claude-code'],
       });
 
@@ -240,7 +240,7 @@ async function importCodexSessions(services: Services, toImport: any[]) {
       const thread = services.repository.threadQueries.byId(newThreadId) as any;
       services.repository.threadCommands.update(newThreadId, {
         context: {
-          ...(thread?.context || {}),
+          ...thread?.context,
           codex: {
             threadId: session.id,
             cwd: cwd || undefined,

@@ -16,7 +16,7 @@ export function getOnboardingState(services: Services, threadId: EntityId): Onbo
 export function persistOnboardingState(services: Services, threadId: EntityId, state: OnboardingState) {
   const thread = services.repository.threadQueries.byId(threadId) as any;
   services.repository.threadCommands.update(threadId, {
-    context: { ...(thread?.context || {}), onboarding: state },
+    context: { ...thread?.context, onboarding: state },
   });
 }
 

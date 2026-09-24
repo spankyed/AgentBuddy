@@ -53,7 +53,7 @@ export async function action(_params: Record<string, any>, services: Services) {
         queuedMessage: undefined,
         ...(!isPaused && { pendingControlRequest: undefined }),
       };
-      updates.context = { ...(thread.context || {}), claudeCode: nextCc };
+      updates.context = { ...thread.context, claudeCode: nextCc };
     }
 
     if (staleChatState) {

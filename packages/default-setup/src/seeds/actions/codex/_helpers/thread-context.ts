@@ -85,7 +85,7 @@ export function persistCodexState(services: Services, threadId: string, state: C
   if (!thread) return;
 
   const existing = (thread.context?.codex || {}) as CodexThreadState;
-  const nextContext = { ...(thread.context || {}), codex: { ...existing, ...state } };
+  const nextContext = { ...thread.context, codex: { ...existing, ...state } };
 
   const existingTags: string[] = Array.isArray(thread.tags) ? thread.tags : [];
   const tagAdded = !existingTags.includes(CODEX_TAG);

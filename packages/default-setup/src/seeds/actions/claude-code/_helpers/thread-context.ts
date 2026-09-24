@@ -204,7 +204,7 @@ export function persistClaudeState(
   }
 
   const nextContext = {
-    ...(thread.context || {}),
+    ...thread.context,
     claudeCode: { ...existing, ...state },
   };
 
@@ -447,7 +447,7 @@ export function clearClaudeState(services: Services, threadId: string): void {
   const thread = services.repository.threadQueries.byId(threadId as any) as any;
   if (!thread) return;
 
-  const nextContext = { ...(thread.context || {}) };
+  const nextContext = { ...thread.context };
   delete nextContext.claudeCode;
 
   const existingTags: string[] = Array.isArray(thread.tags) ? thread.tags : [];

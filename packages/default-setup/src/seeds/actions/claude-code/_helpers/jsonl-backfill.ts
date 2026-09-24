@@ -82,7 +82,7 @@ export async function backfillUserCliUuids(
     if (!msg.id) continue;
     if (msg.context && typeof (msg.context as any).cliUuid === 'string') continue;
     services.chat.updateMessageState(msg.id as EntityId, {
-      context: { ...(msg.context ?? {}), cliUuid: jsonlUserUuids[i] },
+      context: { ...msg.context, cliUuid: jsonlUserUuids[i] },
     } as any);
     written++;
   }

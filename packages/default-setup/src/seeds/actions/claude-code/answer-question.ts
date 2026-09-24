@@ -65,7 +65,7 @@ export async function action(
     answers = { [questionText]: answer };
   }
 
-  const updatedInput = { ...(originalInput ?? {}), answers };
+  const updatedInput = { ...originalInput, answers };
   handle.respond(requestId, { behavior: 'allow', updatedInput });
 
   persistClaudeState(services, threadId, { pendingControlRequest: undefined });

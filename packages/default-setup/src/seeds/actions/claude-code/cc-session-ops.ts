@@ -339,7 +339,7 @@ async function handleImport(
 
       // Write full session state to thread context (source of truth).
       services.repository.threadCommands.update(newThreadId, {
-        context: { ...(thread?.context || {}), claudeCode: ccState },
+        context: { ...thread?.context, claudeCode: ccState },
         tags: [...(thread?.tags || ['imported']), 'claude-code'],
       });
 

@@ -109,16 +109,14 @@ export async function action(
   }
 
   // ── 3. Set revert flag ────────────────────────────────────────────
-  persistClaudeState(services, threadId, {
-    ...(cliUuid ? { revertTo: { cliUuid }, forkFrom: undefined } : {
+  persistClaudeState(services, threadId, (cliUuid ? { revertTo: { cliUuid }, forkFrom: undefined } : {
       // No CLI UUID found (reverting to first message, no prior assistant,
       // or stale UUID from a compacted session). Clear sessionId and any
       // stale one-shot flags so the next turn starts fresh.
       sessionId: undefined,
       forkFrom: undefined,
       revertTo: undefined,
-    }),
-  });
+    }));
 
   // Flip the session artifact to idle.
   updateChatState(services, threadId as EntityId, 'idle');

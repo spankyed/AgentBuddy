@@ -44,7 +44,7 @@ export async function action(_params: Record<string, any>, services: Services) {
     };
 
     const updates: Record<string, any> = {
-      context: { ...(thread.context || {}), codex: nextCdx },
+      context: { ...thread.context, codex: nextCdx },
     };
 
     if (thread.chatState === 'working') {
