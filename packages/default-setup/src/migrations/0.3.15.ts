@@ -19,7 +19,7 @@ const PACK_ID = 'default-setup';
 
 export const migration: PackMigration = {
   target: '0.3.15',
-  description: "Drop the app's state, the root flow copies and 0.3.14's stored copies of its defaults from the settings, mark rows seeded before the seeder tracked what it wrote as unedited, keep action logs hidden for whoever hid log-service, drop the keys 0.3.14 moved but left behind, and point stored link blocks at plugins' refs",
+  description: "Drop the app's state, the root flow copies and 0.3.14's stored copies of its defaults from the settings, mark rows seeded before the seeder tracked what it wrote as unedited, keep action logs hidden for whoever hid log-service, drop the keys 0.3.14 moved but left behind, unwrap general.projects, and point stored link blocks at plugins' refs",
   up: () => {
     // ── The app's state (onboarding, versions, seed hashes) is the host's AppState now ──
     // The host's own 0.3.15 migration, which runs first, moved it out of `internal` (no pack migration runs when it fails).
@@ -58,6 +58,11 @@ export const migration: PackMigration = {
     services.settings.removeStored(['plugins', `${PACK_ID}/flows`, 'rootFlowId']);
     services.settings.removeStored(['plugins', `${PACK_ID}/brain`, 'runningRootFlowId']);
 
+    // ── `general.projects` is the array, not a wrapper around one ──
+    // It was `{ projects: [...] }` once, and the Settings view read both shapes on every render to cope. Moving
+    // the stored value is what lets that view read one shape.
+    unwrapStoredProjects();
+
     // ── Link blocks name a plugin by its ref ──
     const relinked = addressStoredLinkBlocks();
     if (relinked > 0) logger.info(`[migration 0.3.15] pointed ${relinked} message(s)' link blocks at plugins' refs`);
@@ -68,6 +73,19 @@ export const migration: PackMigration = {
     dropDefaultsOf0314();
   },
 };
+
+/**
+ * `general.projects` held `{ projects: [...] }` before it held the array itself. Only the Settings view ever read
+ * it, and it accepted both shapes; this moves the stored value so one shape is left to read.
+ */
+function unwrapStoredProjects(): void {
+  const general = (services.settings.getStored() as Record<string, unknown>).general;
+  if (!isPlainObject(general)) return;
+  const projects = general.projects;
+  if (Array.isArray(projects) || !isPlainObject(projects) || !Array.isArray(projects.projects)) return;
+  services.settings.setInSection('general', ['projects'], projects.projects);
+  logger.info(`[migration 0.3.15] unwrapped general.projects (${projects.projects.length} project(s))`);
+}
 
 /**
  * 0.3.14 stored the whole default settings with the user's changes merged in, so every upgraded row holds a copy of
