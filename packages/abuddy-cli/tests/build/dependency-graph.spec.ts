@@ -29,15 +29,19 @@ function pack(id: string, entities: Record<string, string>, dependencies: Record
 
 /** A feature with a system and a plugin, so dependents have something to send to */
 const NOTIFIER = {
-  features: [{ id: 'notifier', system: { entry: 'src/system.ts' }, plugin: { entry: 'src/plugin.ts' } }],
+  features: [{ id: 'notifier', system: { entry: 'src/system.ts', contract: 'src/system.contract.ts#Contract' }, plugin: { entry: 'src/plugin.ts' } }],
 };
 const NOTIFIER_SOURCES = {
+  'src/system.contract.ts': [
+    "export type OutgoingNotifierEvents = { type: 'NOTIFIED'; text: string };",
+    "export type Contract = { incoming: { type: 'NOTIFY' }; outgoing: OutgoingNotifierEvents };",
+  ].join('\n') + '\n',
   'src/system.ts': [
     "import { setup } from 'xstate';",
-    "import { defineSystem, type SystemEntry } from '@abuddy/sdk/framework';",
-    "export type OutgoingNotifierEvents = { type: 'NOTIFIED'; text: string };",
-    "export const notifierSpec = defineSystem<{ type: 'NOTIFY' }, OutgoingNotifierEvents>();",
-    'const entry = { spec: notifierSpec, machine: setup({ types: notifierSpec.types }).createMachine({ id: "notifier" }) } satisfies SystemEntry;',
+    "import { defineSystem } from '@abuddy/sdk/framework';",
+    "import type { Contract } from './system.contract.js';",
+    'export const notifierSpec = defineSystem<Contract>();',
+    'const entry = { spec: notifierSpec, machine: setup({ types: notifierSpec.types }).createMachine({ id: "notifier" }) };',
     'export default entry;',
   ].join('\n'),
   'src/plugin.ts': "import type { Plugin } from '@abuddy/sdk/fe';\nexport default { id: 'notifier' } as unknown as Plugin;\n",

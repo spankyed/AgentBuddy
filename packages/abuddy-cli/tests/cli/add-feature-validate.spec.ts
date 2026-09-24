@@ -63,14 +63,17 @@ describe('abuddy add feature', () => {
     expect(fs.readFileSync(path.join(feature, 'fe', 'plugin.ts'), 'utf-8')).toMatch(/= definePlugin\(\{\n  label:/);
   });
 
-  // Its system's events are read through the pack's @abuddy/sdk, which a pack just scaffolded may not have yet
-  it("keeps the scaffold of a pack whose dependencies aren't installed, and says npm install regenerates", async () => {
+  // A feature's contract is a declared type in a leaf that names only the feature's own types, so codegen reads it
+  // without resolving anything the pack depends on: the entries land with the scaffold rather than waiting for the
+  // pack's first `npm install`. Reading the system entry's inferred type used to need @abuddy/sdk resolved.
+  it("generates the entries for a pack whose dependencies aren't installed yet", async () => {
     await addFeature(['notes'], pack);
 
     expect(fs.existsSync(path.join(pack, 'src', 'features', 'notes', 'be', 'system.ts'))).toBe(true);
     const output = vi.mocked(console.log).mock.calls.map((args) => args.join(' ')).join('\n');
-    expect(output).toMatch(/src\/__generated__\/ not regenerated: .*that the pack's dependencies are installed\. Run: npm install/);
-    expect(output).not.toContain('__generated__/ regenerated');
+    expect(output).not.toContain('not regenerated');
+    // and it read the contract's event types, not an empty stand-in for a type it couldn't resolve
+    expect(fs.readFileSync(path.join(pack, 'src', '__generated__', 'pack-entry.ts'), 'utf-8')).toContain("receives: ['NOTES_CONNECTED']");
   });
 
   it('writes --designation into abuddy.json and no feature.config.ts', async () => {
