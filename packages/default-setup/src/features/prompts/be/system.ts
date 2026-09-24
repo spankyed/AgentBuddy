@@ -6,12 +6,10 @@ import { defineSystem } from '@abuddy/sdk/framework';
 
 import { EARS } from '@/__generated__/ears';
 import type { Contract } from './contract';
-import type { PromptsConnectedData } from './types';
 import { repository } from '@/__generated__/repository';
 import { createLogger } from '@abuddy/sdk/logger';
 import { toMap, toIdentifierSet, mapScalar } from '@abuddy/sdk/utils';
 import { exportPrompts } from './repository/export-prompts';
-import type { PromptEntity } from '@abuddy/sdk';
 import { ref } from '@/__generated__/ref';
 import { errorMessage } from '@abuddy/sdk/utils/pure';
 

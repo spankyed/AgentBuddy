@@ -24,7 +24,7 @@ import { createLogger } from '@abuddy/sdk/logger';
 const cliLogger = createLogger('code');
 import { setup, enqueueActions, assign, type AnyActorRef } from 'xstate'
 
-import { defineSystem, type SystemEntry } from '@abuddy/sdk/framework'
+import { defineSystem } from '@abuddy/sdk/framework'
 import { GitRepository } from './services/git'
 import { GitWatcherService } from './services/gitwatcher'
 import { repository } from '@/__generated__/repository';
@@ -55,9 +55,7 @@ function child(self: AnyActorRef, id: string): AnyActorRef | undefined {
 import type { TerminalInfo, CodeConnectedData, CodeSettings } from './types'
 import { ref } from '@/__generated__/ref';
 
-
 export const codeSpec = defineSystem<Contract>();
-
 
 /**
  * Resolves the initial base directory on system startup.

@@ -7,21 +7,19 @@ import {
   targetIs,
   type TrailClickEvent,
 } from '@abuddy/sdk/fe'
-import { type NavHistory, createNavHistory, pushNavHistory, goBack, goForward, canGoBack, canGoForward } from '@abuddy/sdk/fe'
+import { createNavHistory, pushNavHistory, goBack, goForward, canGoBack, canGoForward } from '@abuddy/sdk/fe'
 import type {
   NodeEntity,
   EdgeEntity,
 } from '@/__generated__/types'
 import type { FlowsContext, FlowsInboxEvent } from './contract'
 import type { OutgoingFlowsEvents } from '@/features/flows/be/types'
-import type { OutgoingBrainEvents } from '@/features/brain/be/types'
 import { sendToSystem } from '@/__generated__/events'
 import { getNodeConfig, isTriggerNode } from '@abuddy/ui/components/node-styles'
 import { stepRegistry } from '@abuddy/sdk/steps'
 import { calculateLayoutAsync, allNodesHavePositions, LAYOUT_CONFIG, layoutComponentAroundSource, type LayoutPositions } from './canvas/layout-utils'
 import { computeMaxBottom, type LayoutNodeData } from '@abuddy/ui/components/node-dimensions'
 import type { FlowEntity, PromptEntity, ActionEntity, EARS } from '@abuddy/sdk'
-import type { ModelCatalogEntry } from '@abuddy/sdk/models'
 import type { TNodeEntity, TrackTree } from '@abuddy/sdk/steps'
 
 const randId = () => Math.random().toString(36).slice(2, 8)
@@ -76,7 +74,6 @@ function reindexEdges(
   })
 }
 
-
 const HANDLE_OCCUPIED_ERROR = 'This step already has an outbound connection'
 
 function applyNodeTypeDefaults(nodeData: Record<string, any>): void {
@@ -92,7 +89,6 @@ function applyNodeTypeDefaults(nodeData: Record<string, any>): void {
 export const flowsId = 'flows' as const
 export const id = flowsId
 export type FlowsState = ActorRefFrom<typeof flowsState>
-
 
 type SystemEvent = OutgoingFlowsEvents
   | { type: 'FLOW_DELETED'; flowId: EARS.EntityId }
@@ -194,8 +190,6 @@ const flowsState = setup({
         settings: ev.settings || {},
       };
     }),
-
-
 
     /* ── flow interactions ────────────────────────────── */
     selectFlow: ({ event, context }) => {

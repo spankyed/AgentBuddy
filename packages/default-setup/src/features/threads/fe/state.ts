@@ -2,7 +2,7 @@ import breadcrumb, { breadcrumbWithParams } from '@abuddy/sdk/fe';
 import { targetIs, type TrailClickEvent } from '@abuddy/sdk/fe';
 import { safeEvents } from '@abuddy/sdk/fe';
 import { setup, assign, enqueueActions, fromCallback, spawnChild, stopChild, type AnyEventObject } from 'xstate';
-import { type NavHistory, createNavHistory, pushNavHistory, goBack, goForward, canGoBack, canGoForward } from '@abuddy/sdk/fe';
+import { createNavHistory, pushNavHistory, goBack, goForward, canGoBack, canGoForward } from '@abuddy/sdk/fe';
 import type { ActorRefFrom } from 'xstate';
 import type {
   ThreadEntity,
@@ -15,7 +15,6 @@ import type { OutgoingThreadsEvents } from '@/features/threads/be/types';
 import { sendToSystem } from '@/__generated__/events';
 import { Archive, Copy, Pin, Trash2 } from 'lucide-vue-next';
 import { contextMenuFn } from '@abuddy/sdk/fe';
-import type { Simplify } from '@abuddy/sdk/helpers';
 import { openPlugin } from '@abuddy/sdk/fe'
 import { resolveName } from '@abuddy/sdk/ids'
 
@@ -126,7 +125,6 @@ const defaultChatThread: AgentThreadData = {
   messages: [],
   artifacts: [],
 };
-
 
 // ---- Event types ----
 
@@ -247,9 +245,7 @@ const typeOf = safeEvents<ThreadEvents>();
 
 export type { ChatState, ThreadListItem } from './contract';
 
-
 // ---- Context ----
-
 
 // ---- Helpers ----
 

@@ -12,7 +12,6 @@ import { repository } from '@/__generated__/repository';
 import { createLogger } from '@abuddy/sdk/logger';
 import { toMap, toIdentifierSet, mapScalar } from '@abuddy/sdk/utils';
 import { exportActions } from './repository/export-actions';
-import type { ActionEntity } from '@abuddy/sdk';
 import { ref } from '@/__generated__/ref';
 import { errorMessage } from '@abuddy/sdk/utils/pure';
 

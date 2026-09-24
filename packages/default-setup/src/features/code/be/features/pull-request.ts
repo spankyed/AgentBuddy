@@ -6,7 +6,6 @@ import { createLogger } from '@abuddy/sdk/logger'
 import { GitRepository } from '../services/git'
 import type { GitStatusFile, GitDiff, GhPullRequest, GhPRComment, GhReviewThread } from '../types'
 import * as ghCli from '../services/gh-cli'
-import { type ActiveTokenInfo } from '../services/gh-cli'
 
 const logger = createLogger('pr')
 

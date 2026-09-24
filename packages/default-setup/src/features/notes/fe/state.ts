@@ -13,11 +13,10 @@ import type { OutgoingNotesEvents } from '@/features/notes/be/types'
 import { sendToSystem } from '@/__generated__/events'
 import { Trash2 } from 'lucide-vue-next'
 import { contextMenuFn } from '@abuddy/sdk/fe'
-import { type NavHistory, createNavHistory, pushNavHistory, goBack, goForward, canGoBack, canGoForward } from '@abuddy/sdk/fe'
+import { createNavHistory, pushNavHistory, goBack, goForward, canGoBack, canGoForward } from '@abuddy/sdk/fe'
 
 export const id = 'notes' as const;
 export type NotesState = ActorRefFrom<typeof notesState>
-
 
 type SystemEvent = OutgoingNotesEvents
   | { type: 'NOTES_IMPORTED'; count: number; errors?: string[] }

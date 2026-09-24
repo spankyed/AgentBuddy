@@ -13,7 +13,6 @@ import type { OutgoingDatabaseEvents } from '@/features/database/be/types'
 import { sendToSystem } from '@/__generated__/events'
 import { attributeQueryTemplate, entityQueryTemplate, exampleQuery, relationQueryTemplate, transactionExampleQuery } from './constants'
 import { History, HardDriveDownload } from 'lucide-vue-next'
-import type { TNodeEntity } from '@abuddy/sdk/steps'
 import type { EARS } from '@abuddy/sdk'
 
 /* ─────────────────────────────────────────────────────────── */
@@ -21,7 +20,6 @@ import type { EARS } from '@abuddy/sdk'
 /* ─────────────────────────────────────────────────────────── */
 export const id = 'database' as const;
 export type DatabaseState = ActorRefFrom<typeof databaseState>
-
 
 type SystemEvent = OutgoingDatabaseEvents |
   { type: 'DATABASE_REFRESH'; data: DatabaseStartupData } |
@@ -227,7 +225,6 @@ const databaseState = setup({
         isAiQueryLoading: false,
       };
     }),
-
 
     /* ── schema interactions ───────────────────────────────── */
     selectSchemaItem: assign(({ event, context }) => {

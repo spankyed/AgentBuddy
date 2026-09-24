@@ -7,8 +7,6 @@ import settings from './settings.vue';
 const canvas = defineAsyncComponent(() => import('./canvas/canvas.vue'));
 const panel = defineAsyncComponent(() => import('./features/panel.vue'));
 
-import type { EARS } from '@/__generated__/ears';
-
 const codePlugin = definePlugin({
   label: 'Code',
   icon: Code2,

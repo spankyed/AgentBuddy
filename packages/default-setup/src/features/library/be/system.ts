@@ -2,7 +2,7 @@
 import type { Contract } from './contract';
 import { services } from '@/__generated__/services';
 import { setup } from 'xstate'
-import { defineSystem, type SystemEntry } from '@abuddy/sdk/framework'
+import { defineSystem } from '@abuddy/sdk/framework'
 import type { EARS } from '@/__generated__/ears'
 import type { LibrarySystemContext, DocumentDTO, CollectionDTO, LibraryIndex, LibraryItem, FolderContents } from './types'
 // [SEARCH_INDEX_FF] import type { SearchIndex } from './search-index/types/search-index'
@@ -17,7 +17,6 @@ import * as symlink from './repository/symlink'
 import { toMap, toIdentifierSet, mapArray } from '@abuddy/sdk/utils'
 import { exportLibrary } from './export-library'
 import { importLibrary } from './import-library'
-import type { ContentSection } from '@/features/library/be/types';
 import type { CommandItem } from '@/__generated__/types';
 import { ref } from '@/__generated__/ref';
 import { errorMessage } from '@abuddy/sdk/utils/pure';

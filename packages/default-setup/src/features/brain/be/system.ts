@@ -82,7 +82,7 @@ export const brainSystem = setup({
 
       // Start new brain and assign to context
       enqueue.assign(({ spawn, self }) => {
-        const { machine, tNodeId } = createFlowNodeSystem(self)
+        const { machine } = createFlowNodeSystem(self)
         const actor = spawn(machine, {
           input: {}
         });
@@ -207,7 +207,7 @@ export const brainSystem = setup({
       
       // Start new brain and assign to context
       enqueue.assign(({ spawn, self }) => {
-        const { machine, tNodeId } = createFlowNodeSystem(self)
+        const { machine } = createFlowNodeSystem(self)
         const actor = spawn(machine, {
           input: {}
         });

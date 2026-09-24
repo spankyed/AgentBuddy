@@ -6,7 +6,7 @@ import { saveOpenTabs, loadPersistedTabs, sortTabsByPinned } from './utils/persi
 import { loadRecentFiles, addRecentFile } from './utils/recent-files';
 import { pushTabViewHistory, nextActiveFromHistory } from './utils/tab-management';
 import { saveTabGroups, loadTabGroups, getNextAvailableColor, ALL_COLORS, type TabGroupColor, type TabGroup } from '@abuddy/sdk/fe';
-import { type NavHistory, createNavHistory, pushNavHistory, goBack, goForward, canGoBack, canGoForward } from '@abuddy/sdk/fe';
+import { createNavHistory, pushNavHistory, goBack, goForward, canGoBack, canGoForward } from '@abuddy/sdk/fe';
 import type { CodeSettings } from '@/__generated__/types';
 import type { ActionTab, CodeContext as Context, CodeInboxEvent, OpenFile, PanelType, PromptTab, QuickOpenResult, TerminalTab } from './contract';
 export type { OpenFile, TerminalTab, QuickOpenResult, PanelType } from './contract';
@@ -17,7 +17,7 @@ import type { OutgoingCodeEvents } from '@/features/code/be/contract';
 // Import child state machines
 import { explorerState } from './features/explorer/state';
 import { searchState } from './features/search/state';
-import { commitState, type GitStatusFile, type GitDiff } from './features/commit/state';
+import { commitState } from './features/commit/state';
 import { pullRequestState } from './features/pull-request/state';
 import { terminalState, type TerminalInfo } from './features/terminal/state';
 import { actionsState } from './features/actions/state';
@@ -43,7 +43,6 @@ function getTabbedTerminalIds(openFiles: (OpenFile | TerminalTab | ActionTab | P
   )
 }
 
-
 /** Unstaged diff tabs are editable (right side = working tree). PR diffs are read-only. */
 export function isEditableDiff(file: OpenFile | { isDiff?: boolean; isPrDiff?: boolean; gitFile?: { staged: boolean } }): boolean {
   if ('isPrDiff' in file && file.isPrDiff) return false
@@ -51,9 +50,6 @@ export function isEditableDiff(file: OpenFile | { isDiff?: boolean; isPrDiff?: b
 }
 
 export type { TabGroupColor, TabGroup };
-
-
-
 
 export type Event =
   | OutgoingCodeEvents
@@ -112,7 +108,6 @@ export type Event =
   | { type: 'NAVIGATE_FORWARD' };
 
 export type CodeState = ActorRefFrom<typeof codeState>;
-
 
 // Shared tab removal logic (tab removal + group cleanup + explorer notify)
 function removeTabLogic(context: Context, self: AnyActorRef, path: string) {

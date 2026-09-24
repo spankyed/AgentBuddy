@@ -13,7 +13,7 @@ import {
   type TrailClickEvent,
 } from '@abuddy/sdk/fe'
 import { tagStorage } from './services/tagStorage'
-import { type NavHistory, createNavHistory, pushNavHistory, goBack, goForward, canGoBack, canGoForward } from '@abuddy/sdk/fe'
+import { createNavHistory, pushNavHistory, goBack, goForward, canGoBack, canGoForward } from '@abuddy/sdk/fe'
 
 // Helper function to convert DocumentItem to DocumentDTO
 function documentItemToDTO(item: DocumentItem): DocumentDTO {
@@ -56,7 +56,6 @@ import type { ContentSection } from '@/features/library/be/types';
 
 /** The library plugin's actor, as its own components reach it with `usePlugin<LibraryActor>()` */
 export type LibraryActor = ActorRefFrom<typeof librarySystem>
-
 
 export type LibraryEvents =
   | { type: 'PLUGIN_ACTIVATED' }
