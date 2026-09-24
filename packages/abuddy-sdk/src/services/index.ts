@@ -31,10 +31,16 @@ const logger = createLogger('log-service');
 export interface HostServices {
   logger: Logger;
   /**
-   * Sends to plugins and systems. Actions run outside any pack, so both name a feature `<packId>/<featureId>`, the
-   * host's included (`host/application`); `sendToSystem` also takes a role (`{ role: 'brain' }`), which reaches
+   * Sends to plugins and systems. Both name a feature `<packId>/<featureId>` — the action's own pack included,
+   * and the host's (`host/application`); `sendToSystem` also takes a role (`{ role: 'brain' }`), which reaches
    * whichever system plays it — a flow event goes to the brain as `TRIGGER_BRAIN_EVENT`. A pack's `Services`
    * types them with its own and its dependencies' events.
+   *
+   * Naming its own pack is the point, not a gap left by the action having no pack scope.
+   * An action is content, not source: a row a user can edit in the Actions plugin, read in the DB console,
+   * export to a seed file and copy into another pack. A bare name would rebind on that copy — `'threads'`
+   * quietly meaning the new pack's feature, or nothing — where a ref that no longer fits is wrong visibly, and
+   * is refused at the bus rather than doing something else.
    */
   emitter: {
     broadcastToPlugin: typeof untypedBroadcastToPlugin;
@@ -55,7 +61,7 @@ export interface HostServices {
   settings: SettingsService;
 }
 
-/** Actions run outside any pack, so they name every feature by its ref, which must be a registered one */
+/** An action names every feature by its ref, its own pack's included, and the ref must be a registered one */
 const actionRef = (kind: 'system' | 'plugin', name: string, registered: readonly string[]) =>
   resolveRegistered(kind, name, { registered, form: `actions name a ${kind} "<packId>/<featureId>"` });
 

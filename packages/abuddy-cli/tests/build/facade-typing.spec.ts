@@ -163,13 +163,15 @@ declare const systemId: 'memos' | 'base-pack/threads';
 // @ts-expect-error one system per send
 sendToSystem(systemId, { type: 'ADD_TAG', name: 'x' });
 
-// Actions get services.emitter, which names every system and plugin <pack>/<feature>, this pack's own too
+// Actions get services.emitter, which names every system and plugin <pack>/<feature>, this pack's own too.
+// Its own pack included is the point: an action is content, not source — a row a user edits, exports and copies
+// into another pack — and a bare name would rebind on that copy instead of staying visibly wrong.
 services.emitter.sendToSystem('app-pack/memos', { type: 'ADD_MEMO', text: 'x' });
 services.emitter.sendToSystem('base-pack/threads', { type: 'ADD_TAG', name: 'x' });
 services.emitter.broadcastToPlugin('base-pack/threads', { type: 'TAG_ADDED', name: 'x' });
-// @ts-expect-error actions run outside any pack, so this pack's systems are named too
+// @ts-expect-error a bare name would rebind if this action were copied to another pack
 services.emitter.sendToSystem('memos', { type: 'ADD_MEMO', text: 'x' });
-// @ts-expect-error and its plugins, so a bare feature id isn't one of them either
+// @ts-expect-error and its plugins, for the same reason
 services.emitter.broadcastToPlugin('threads', { type: 'TAG_ADDED', name: 'x' });
 // @ts-expect-error ADD_MEMO needs its text
 services.emitter.sendToSystem('app-pack/memos', { type: 'ADD_MEMO' });
