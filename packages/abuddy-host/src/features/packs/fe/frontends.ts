@@ -4,7 +4,7 @@
 import type { PackFERegistration, Plugin } from '@abuddy/sdk/fe';
 import type { LoadedPackEntry } from '../../../packs/layout.ts';
 import type { FePackRegistry } from '../../../fe/pack-store.ts';
-import type { ShellPackFrontends } from '../../application/fe/public.ts';
+import type { ShellPackFrontends } from '../../../fe/pack-frontends.ts';
 
 /** A window's stylesheets for a pack: added once per href, and taken out together when the pack goes */
 export interface PackFrontendStyles {

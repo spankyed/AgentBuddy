@@ -4,17 +4,9 @@ import type { ContextMenuItem, HotkeyEvent, Plugin, PluginEvent, ShellPanelSizes
 import type { HostPluginEvents } from '@abuddy/sdk/events';
 import type { ApplicationHotkeys } from '@abuddy/sdk/types';
 import type { ShellClient, ShellFailure } from '../../../fe/client.ts';
+import type { ShellPackFrontends } from '../../../fe/pack-frontends.ts';
 import type { FePackRegistry } from '../../../fe/pack-store.ts';
-import type { LoadedPackEntry } from '../../../packs/layout.ts';
 import type { BreadcrumbItem } from './trail.ts';
-
-/** Loads and unloads external packs' frontends (the renderer imports them from `pack://`) */
-export interface ShellPackFrontends {
-  /** Loads a pack's frontend: the plugins it exports, or null for a pack with no frontend code. Throws when it fails */
-  load(pack: LoadedPackEntry): Promise<Plugin[] | null>;
-  /** Takes out what a pack's frontend registered */
-  unload(packId: string): void;
-}
 
 /** Where the panel sizes the user sets are kept, so the next window opens with them */
 export interface ShellStorage {

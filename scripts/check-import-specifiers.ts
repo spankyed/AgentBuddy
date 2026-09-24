@@ -453,26 +453,12 @@ const SKIPPED_DIRS = /^(?:node_modules|dist|out|coverage|\..+)$/;
 /** Files a config compiles or bundles. Declarations included: tsc resolves their imports too */
 const CODE_FILE = /\.(?:[cm]?[jt]sx?|vue)$/;
 /**
- * The host's own source. Its features keep `fe/public.ts`, because the host has no codegen: a pack's features reach
- * each other through the contracts `#generated/fe` and `#generated/events` are generated from, and nothing
- * generates those for the app itself. Give the host codegen and this exception goes with it.
- *
- * Named, not derived. "Has no `abuddy.json`" describes the host exactly today, and deriving the exception from it
- * would retire it automatically — but it would also make this gate **fail open**: a root whose manifest is missing,
- * or a new one added without one, would silently stop being checked. An exception that widens when a file goes
- * missing is the wrong shape for a rule whose job is to refuse. Listed here, an unrecognised root gets the strict
- * rule and someone has to write a line to change that. `findContractLeafImports` may use the manifest instead,
- * because a root without one has no contract to check — it narrows there rather than widening.
- */
-const HOST_SRC_ROOT = 'packages/abuddy-host/src';
-
-/**
  * The pack sources whose features keep their frontends to themselves. `@abuddy/host` is one of them: the app is the
  * pack `host` and its features are laid out as a pack's (`features/<id>/{be,fe}`), so its frontends answer to the
- * same rule, with the one exception recorded above.
+ * same rule, with no exception of its own.
  */
 const PACK_SRC_ROOTS = [
-  'packages/default-setup/src', HOST_SRC_ROOT,
+  'packages/default-setup/src', 'packages/abuddy-host/src',
   'tests/fixtures/external-pack/src', 'tests/fixtures/bundled-ui-pack/src',
 ];
 
@@ -510,21 +496,45 @@ function exportedLocalNames(code: string): Set<string> {
 }
 
 /**
+ * The source files a package publishes, from its `package.json` `exports`.
+ *
+ * A package's entry is where it assembles what it offers, so naming its own features' frontends there is that
+ * module's job rather than a crossing: `@abuddy/host`'s `./fe` barrel is exactly that, and a pack's generated
+ * `pack-entry-fe.ts` is the same module written by codegen (excluded below with the rest of `__generated__`).
+ *
+ * Derived, and it fails closed: a tree with no `package.json`, no `exports`, or an entry behind conditions excepts
+ * nothing and gets the strict rule. That is the opposite of deriving an exception from a *missing* file, which
+ * would widen the gate exactly when something had gone missing.
+ */
+function publishedEntryPoints(packageDir: string): Set<string> {
+  const manifest = path.join(packageDir, 'package.json');
+  if (!fs.existsSync(manifest)) return new Set();
+  const { exports: entries } = JSON.parse(fs.readFileSync(manifest, 'utf-8')) as { exports?: Record<string, unknown> };
+  return new Set(Object.values(entries ?? {})
+    .filter((target): target is string => typeof target === 'string')
+    .map((target) => path.resolve(packageDir, target)));
+}
+
+/**
  * `file:line: specifier` for each import of another feature's frontend. A feature reaches into no other feature's
  * frontend at all: what one offers the rest is its plugin's contract — its published state, which `#generated/fe`
  * generates typed readers for, and the inbox `#generated/events` types the sends with. Neither needs a module of
  * the other feature's, so there is nothing left for an exception to bless.
  *
- * It used to except `fe/public`, a module per feature whose job was exactly this crossing; the readers replaced it.
- * A feature's modules outside its `fe/` may use its frontend but not pass it on (`export … from './fe/state'`),
- * which would be a second door. Generated code, which registers every feature's plugin, is exempt.
+ * It used to except `fe/public`, a module per feature whose job was exactly this crossing; the readers replaced it,
+ * and the host kept one a while longer for want of codegen. A feature's modules outside its `fe/` may use its
+ * frontend but not pass it on (`export … from './fe/state'`), which would be a second door.
+ *
+ * Two modules are exempt, and both are the pack's own assembly rather than one feature reaching another: generated
+ * code, which registers every feature's plugin, and what the package publishes (`publishedEntryPoints`).
  */
 export function findCrossFeatureImports(srcRoots = PACK_SRC_ROOTS, root = repoRoot): string[] {
   return srcRoots.flatMap((srcRoot) => {
     const src = path.join(root, srcRoot);
+    const published = publishedEntryPoints(path.dirname(src));
     const relative = (file: string) => path.relative(src, file).split(path.sep).join('/');
     const featureOf = (file: string) => /^features\/([^/]+)\//.exec(relative(file))?.[1];
-    return packFiles([srcRoot], root).filter((file) => !relative(file).startsWith('__generated__')).flatMap((file) => {
+    return packFiles([srcRoot], root).filter((file) => !relative(file).startsWith('__generated__') && !published.has(file)).flatMap((file) => {
       const code = fs.readFileSync(file, 'utf-8');
       // Where each `from` of a re-export starts, which is where ANY_SPECIFIER's match for it starts
       const reExports = new Set([...code.matchAll(EXPORT_FROM)].map((m) => m.index + m[0].search(/from\s*['"][^'"]+['"]$/)));
@@ -541,10 +551,8 @@ export function findCrossFeatureImports(srcRoots = PACK_SRC_ROOTS, root = repoRo
         const target = specifier.startsWith('@/') ? path.join(src, specifier.slice(2))
           : specifier.startsWith('.') ? path.resolve(path.dirname(file), specifier) : undefined;
         if (target === undefined) return [];
-        const into = /^features\/([^/]+)\/fe(?:\/(.+))?$/.exec(relative(target));
+        const into = /^features\/([^/]+)\/fe(?:\/.+)?$/.exec(relative(target));
         if (!into) return [];
-        // The host keeps `fe/public.ts` (HOST_SRC_ROOT); a pack's features have the generated readers instead
-        if (srcRoot === HOST_SRC_ROOT && (into[2] ?? '').replace(/\.(ts|js)$/, '').replace(/(?:^|\/)index$/, '') === 'public') return [];
         if (into[1] === featureOf(file) && (inOwnFrontend || (!reExports.has(match.index) && !passedOn(match)))) return [];
         return [`${path.relative(root, file)}:${code.slice(0, match.index).split('\n').length}: ${specifier}`];
       });

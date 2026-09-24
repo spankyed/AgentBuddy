@@ -599,8 +599,9 @@ describe('findCrossFeatureImports', () => {
     expect(findCrossFeatureImports([src], root)).toEqual([]);
   });
 
-  // `fe/public.ts` used to be excepted — a module per feature for exactly this crossing. The generated readers
-  // replaced it, so another feature's frontend is now out of bounds whatever the module is called.
+  // `fe/public.ts` used to be excepted — a module per feature for exactly this crossing, in packs and then, for a
+  // while longer, in the host. Nothing is excepted by name now, so another feature's frontend is out of bounds
+  // whatever the module is called.
   it("flags another feature's frontend, its old public module included, and a feature passing its frontend on", () => {
     writeAt(`${src}/features/code/fe/panel.ts`, "import notes from '@/features/notes/fe';\nimport { useNotes } from '@/features/notes/fe/public';");
     writeAt(`${src}/features/notes/index.ts`, "export { id, notesMachine } from './fe/state';\nexport * from './fe/public';");
@@ -615,13 +616,24 @@ describe('findCrossFeatureImports', () => {
       `${src}/features/threads/door.ts:2: ./fe/canvas`,
     ]);
   });
-  // The host's `fe/public.ts` exception is keyed on its path, so it cannot widen by accident: a tree that isn't
-  // the host gets the rule whether or not it looks like a pack. Deriving the exception from a missing manifest
-  // would have let any root without one through, which is the wrong way for a gate to fail.
-  it('excepts only the host, so an unrecognised root still gets the rule', () => {
-    writeAt(`${src}/features/code/fe/panel.ts`, "import { useNotes } from '@/features/notes/fe/public';");
-    writeAt(`${src}/features/notes/fe/public.ts`, 'export const useNotes = () => 1;');
-    expect(findCrossFeatureImports([src], root)).toEqual([`${src}/features/code/fe/panel.ts:1: @/features/notes/fe/public`]);
+  /**
+   * The one module that may name its features' frontends is what the package publishes — `@abuddy/host`'s `./fe`
+   * barrel, the hand-written counterpart of a pack's generated `pack-entry-fe.ts`. It is read from the package's
+   * `exports`, so nothing has to be listed here, and a module that merely sits outside every feature gets no
+   * licence from that: `extensions/viewer.ts` in the first case above is flagged exactly as a feature would be.
+   */
+  it("excepts the entry a package publishes, and nothing else outside a feature", () => {
+    writeAt('pack/package.json', JSON.stringify({ exports: { './fe': './src/fe/index.ts' } }));
+    writeAt(`${src}/fe/index.ts`, "export { notesMachine } from '../features/notes/fe/state';");
+    writeAt(`${src}/fe/helpers.ts`, "export { notesMachine } from '../features/notes/fe/state';");
+    expect(findCrossFeatureImports([src], root)).toEqual([`${src}/fe/helpers.ts:1: ../features/notes/fe/state`]);
+  });
+
+  // Fails closed: with no `exports` to read, every module gets the strict rule — the opposite of an exception
+  // derived from a file being missing, which would widen the gate exactly when something had gone.
+  it('excepts nothing when the package publishes nothing', () => {
+    writeAt(`${src}/fe/index.ts`, "export { notesMachine } from '../features/notes/fe/state';");
+    expect(findCrossFeatureImports([src], root)).toEqual([`${src}/fe/index.ts:1: ../features/notes/fe/state`]);
   });
 });
 
