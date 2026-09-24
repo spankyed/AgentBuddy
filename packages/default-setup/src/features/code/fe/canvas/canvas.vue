@@ -94,20 +94,21 @@
 </template>
 
 <script setup lang="ts">
-import { useActorSystem, useExternalFileDrag } from '@abuddy/sdk/fe'
+import { usePlugin } from '@abuddy/sdk/fe'
+
+import { useExternalFileDrag } from '@abuddy/ui/composables/useExternalFileDrag'
 import { useSelector } from '@xstate/vue'
-import { id, type CodeState, type OpenFile, setEditorSelectionGetter, isEditableDiff } from '../state'
+import { type CodeState, type OpenFile, setEditorSelectionGetter, isEditableDiff } from '../state'
 import { GitCompare, FileCode, Terminal } from 'lucide-vue-next'
 import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
 import FileEditor from '@/features/code/fe/canvas/FileEditor.vue'
 import QuickOpenPalette from '@/features/code/fe/canvas/QuickOpenPalette.vue'
 import { reorderTabs } from '../utils/tab-management'
+import { codeChild } from '../features/children';
 
-const actorSystem = useActorSystem()
-
-const actor: CodeState = actorSystem.get(id)
-const explorerActor = actor.system.get('explorer')
-const terminalActor = actor.system.get('terminal')
+const actor: CodeState = usePlugin()
+const explorerActor = codeChild(actor, 'explorer')
+const terminalActor = codeChild(actor, 'terminal')
 
 // State selectors
 const openFiles = useSelector(actor, (state) => state.context.openFiles)
@@ -276,9 +277,11 @@ const moveToPanel = (path: string) => actor.send({ type: 'MOVE_TERMINAL_TO_PANEL
 const restartTerminal = (path: string) => {
   const file = openFiles.value.find(f => f.path === path) as any
   if (!file?.isTerminal) return
-  const { cwd, shell } = file.terminalInfo
+  // `terminal.CREATE` carries no shell — the child forwards only title and cwd to the system — so reopening takes
+  // the default shell, as it always has
+  const { cwd } = file.terminalInfo
   actor.send({ type: 'KILL_TERMINAL', path })
-  terminalActor.send({ type: 'terminal.CREATE', cwd, shell, target: 'tab' })
+  terminalActor?.send({ type: 'terminal.CREATE', cwd, target: 'tab' })
 }
 
 const closeFile = (path: string) => actor.send({ type: 'CLOSE_TAB', path })
@@ -400,7 +403,7 @@ const renameGroup = (groupId: string, name: string) => {
 
 const renameTerminal = (path: string, customTitle: string) => {
   const terminalId = path.replace('terminal:', '')
-  terminalActor.send({ type: 'terminal.RENAME', terminalId, customTitle })
+  terminalActor?.send({ type: 'terminal.RENAME', terminalId, customTitle })
 }
 
 const changeGroupColor = (groupId: string, color: string) => {

@@ -107,8 +107,8 @@ export async function query(opts: QueryOptions): Promise<QueryHandle> {
   resultPromise.promise.catch(() => {})
 
   // Pump: single reader over the child's NDJSON stream. Runs until the
-  // generator completes (child exited). Pump no longer rejects on its own —
-  // the `stream.done()` handler below is the single source of truth for
+  // generator completes (child exited). It never rejects on its own: the
+  // `stream.done()` handler below is the single source of truth for
   // "what happened at child exit".
   const surfaceControlRequests = opts.surfaceControlRequests ?? false
   const pumpPromise = pump(stream, router, eventQueue, sessionId, resultPromise, surfaceControlRequests)
@@ -143,28 +143,23 @@ export async function query(opts: QueryOptions): Promise<QueryHandle> {
   })
   logger.debug('initialize control_request sent')
 
-  // Push the initial user turn, if any. Stdin lifecycle note: we used to
-  // call `stream.endInput()` synchronously right after `writeUserTurn` to
-  // prevent a deadlock where `--print` mode kept waiting for more stdin
-  // input after emitting its `result` line. That was correct for the
-  // deadlock but broke the stdio permission flow, which is inherently
-  // bidirectional: the CLI emits `can_use_tool` control_requests on stdout
-  // and expects our `control_response` back on stdin. With stdin already
-  // EOF'd, either (a) our response-writes silently no-op via the
-  // `if (!child.stdin.writable) return` guard in runner.ts and the CLI
-  // waits forever for a response, or — as seen in the latest live repro —
-  // (b) the CLI detects stdin EOF *before* attempting to emit the
-  // control_request and short-circuits to its non-interactive fallback
-  // (prose "please approve in your terminal"), never emitting
-  // `can_use_tool` at all. Either failure mode manifests as "tools stuck
-  // in running state, no approval block visible."
+  // Push the initial user turn, if any.
   //
-  // The correct lifecycle is: keep stdin open through the turn so the
-  // control-request round-trip can complete, and close it AFTER the result
-  // promise settles (which is when the pump sees the terminal `result`
-  // line and signals turn completion). The CLI then observes stdin EOF +
-  // its own already-emitted result and exits cleanly — same behaviour the
-  // original stdin-EOF fix was protecting, just timed correctly.
+  // Stdin lifecycle: stdin stays open through the turn and closes only once the result promise
+  // settles — which is when the pump has seen the terminal `result` line. Both halves matter.
+  //
+  // Closing it earlier, synchronously after `writeUserTurn`, breaks the stdio permission flow,
+  // which is bidirectional: the CLI emits `can_use_tool` control_requests on stdout and expects a
+  // `control_response` back on stdin. With stdin already EOF'd, either (a) the response-writes
+  // silently no-op through the `if (!child.stdin.writable) return` guard in runner.ts and the CLI
+  // waits forever for a response, or (b) the CLI detects stdin EOF *before* emitting the
+  // control_request and short-circuits to its non-interactive fallback (prose "please approve in
+  // your terminal"), never emitting `can_use_tool` at all. Either way the tools sit in a running
+  // state with no approval block visible.
+  //
+  // Not closing it at all deadlocks the other way: `--print` mode keeps waiting for more stdin
+  // after emitting its `result` line. Closing on settle gives the CLI stdin EOF alongside a result
+  // it has already emitted, and it exits cleanly.
   //
   // `.then(autoClose, autoClose)` is deliberate: we close stdin on both
   // resolve and reject so aborts, parse errors, and child-crash rejections
@@ -312,7 +307,7 @@ async function pump(
           // not a user-facing permission prompt.
           break // fall through to eventQueue.push below
         }
-        // Legacy callback path (one-shot / non-flow callers).
+        // The caller isn't surfacing control requests, so the router answers this one.
         const response = await router.handle(line)
         stream.write(response)
         continue

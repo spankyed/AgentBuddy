@@ -63,14 +63,14 @@
 </template>
 
 <script setup lang="ts">
+import { usePlugin } from '@abuddy/sdk/fe'
 import { reactive } from 'vue'
-import KeyboardShortcutInput from '@abuddy/sdk/fe/components/KeyboardShortcutInput.vue'
-import CollapsibleSection from '@abuddy/sdk/fe/design/CollapsibleSection.vue'
+import KeyboardShortcutInput from '@abuddy/ui/components/KeyboardShortcutInput'
+import CollapsibleSection from '@abuddy/ui/design/CollapsibleSection'
 import { HardDriveDownload } from 'lucide-vue-next'
 import type { DatabaseSettings } from '@/__generated__/types'
-import { useActorSystem, navigateToPlugin } from '@abuddy/sdk/fe'
-
-const actorSystem = useActorSystem()
+import { openPlugin } from '@/__generated__/fe'
+import type { DatabaseState } from './state'
 
 interface Props {
   settings?: DatabaseSettings
@@ -102,8 +102,11 @@ const saveHotkeys = () => {
 
 // Open backup & restore page
 const openBackupRestore = () => {
-  navigateToPlugin('database', { type: 'VIEW_BACKUP' })
+  openPlugin('database', { type: 'VIEW_BACKUP' })
 }
+
+// Resolved during setup: usePlugin reads the PluginScope this settings panel renders in, which a click handler can't reach
+const databaseActor: DatabaseState = usePlugin()
 
 // Reset database function
 const handleResetDatabase = () => {
@@ -111,9 +114,6 @@ const handleResetDatabase = () => {
     'Are you sure you want to reset the database? This will permanently delete all data and create a new root flow. This action cannot be undone.'
   )
 
-  if (confirmed) {
-    const databaseActor = actorSystem.get('database')
-    databaseActor.send({ type: 'DATABASE.RESET' })
-  }
+  if (confirmed) databaseActor.send({ type: 'DATABASE.RESET' })
 }
 </script>

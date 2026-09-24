@@ -77,14 +77,15 @@
 </template>
 
 <script setup lang="ts">
-import { useActorSystem } from '@abuddy/sdk/fe'
+import { usePlugin } from '@abuddy/sdk/fe'
+
 import { computed } from 'vue'
 import { useSelector } from '@xstate/vue'
-import { id as databaseId, type DatabaseState } from '../../state'
+import type { DatabaseState } from '../../state'
 import { GitBranch, Loader2, ArrowLeft } from 'lucide-vue-next'
-import type { TNodeEntity } from '@/__generated__/types'
+import type { TNodeEntity } from '@abuddy/sdk/steps'
 
-const databaseActor: DatabaseState = actorSystem.get(databaseId)
+const databaseActor: DatabaseState = usePlugin()
 
 // State selectors
 const traceFlows = useSelector(databaseActor, (state) => state.context.traceFlows)
@@ -153,8 +154,6 @@ function formatDuration(start: number, end: number): string {
 <script lang="ts">
 // Status Indicator Component (inline for simplicity)
 import { defineComponent, h } from 'vue'
-
-const actorSystem = useActorSystem()
 
 export const StatusIndicator = defineComponent({
   props: {

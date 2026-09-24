@@ -7,13 +7,14 @@ export interface ProviderErrorResult {
 }
 
 export function formatProviderError(
-  error: any,
+  error: unknown,
   currentProvider: string,
   alternatives?: Record<string, string>,
 ): ProviderErrorResult {
-  const raw: string = typeof error?.stderr === 'string' && error.stderr.trim()
-    ? error.stderr
-    : String(error?.message || 'Unknown error');
+  const { stderr, message: errorMessage } = (error ?? {}) as { stderr?: unknown; message?: unknown };
+  const raw: string = typeof stderr === 'string' && stderr.trim()
+    ? stderr
+    : String(errorMessage || 'Unknown error');
 
   const clean = raw.replace(ANSI_ESCAPE_PATTERN, '').trim();
 

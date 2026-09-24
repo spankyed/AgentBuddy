@@ -1,12 +1,16 @@
 export {
-  CONTRIBUTION_TYPES,
+  REFERENCE_TYPES,
   CATEGORIES,
   PROTOCOL_TO_TYPE,
   ALL_PROTOCOLS,
   categoryOfType,
-} from '@/__generated__/contributions'
-export { NOTE_TYPE_TO_CONTRIBUTION_TYPE } from '../../features/notes/fe/contributions'
-export type { ContributionTypeConfig, CategoryConfig } from '@abuddy/sdk/fe/contributions'
+} from '@/__generated__/references'
+/** The reference type a note links as, by its note type */
+export const NOTE_TYPE_TO_REFERENCE_TYPE: Record<string, string> = {
+  document: 'note',
+  task: 'task',
+  tasklist: 'tasklist',
+}
 
 export type ReferenceType = string
 export type ReferenceCategory = string

@@ -1,78 +1,27 @@
-import { assign, setup } from 'xstate'
-import { emit } from '@abuddy/sdk/helpers'
-import { rootEvents } from '@abuddy/sdk/rpc'
+import type { IncomingCommitEvents, OutgoingCommitEvents } from '../contract'
+import type { ThreadsSettings } from '@/__generated__/types';
+import { services } from '@/__generated__/services';
+import { broadcastToPlugin, sendToSystem } from '@/__generated__/events';
+import { assign, setup, type AnyActorRef } from 'xstate'
+
 import { GitRepository, StashConflictError } from '../services/git'
 import { GitWatcherService } from '../services/gitwatcher'
 import type { GitStatusFile, GitDiff, StashEntry, WorktreeEntry, CommitLogEntry } from '../types'
 import { requireGitRepository } from '../utils/git-helpers'
-import { sendToBrainSystem } from '@abuddy/sdk/services'
-import { repository } from '@abuddy/sdk/ears'
+import { repository } from '@/__generated__/repository';
+import { ref } from '@/__generated__/ref';
 
 const pluginId = 'code' as const
 
 // Incoming events from frontend
-export type IncomingCommitEvents =
-  | { type: 'commit.GET_GIT_STATUS' }
-  | { type: 'commit.GET_GIT_DIFF'; path?: string; staged?: boolean }
-  | { type: 'commit.STAGE_FILES'; paths: string[] }
-  | { type: 'commit.UNSTAGE_FILES'; paths: string[] }
-  | { type: 'commit.COMMIT'; message: string }
-  | { type: 'commit.GET_CURRENT_BRANCH' }
-  | { type: 'commit.REVERT_FILE'; path: string }
-  | { type: 'commit.REVERT_FILES'; paths: string[] }
-  | { type: 'commit.GET_ALL_BRANCHES' }
-  | { type: 'commit.CHECKOUT_BRANCH'; branchName: string }
-  | { type: 'commit.PUBLISH_BRANCH' }
-  | { type: 'commit.PULL_BRANCH' }
-  | { type: 'commit.GENERATE_MESSAGE' }
-  | { type: 'commit.STASH_PUSH'; message?: string; stagedOnly?: boolean }
-  | { type: 'commit.STASH_LIST' }
-  | { type: 'commit.STASH_APPLY'; index: number }
-  | { type: 'commit.STASH_POP'; index: number }
-  | { type: 'commit.STASH_DROP'; index: number }
-  | { type: 'commit.STASH_CLEAR' }
-  | { type: 'commit.WORKTREE_LIST' }
-  | { type: 'commit.WORKTREE_ADD'; path: string; branch?: string; createBranch?: boolean }
-  | { type: 'commit.WORKTREE_REMOVE'; path: string; force?: boolean }
-  | { type: 'commit.WORKTREE_SWITCH'; path: string }
-  | { type: 'commit.RESOLVE_CONFLICT'; path: string; strategy: 'ours' | 'theirs' }
-  | { type: 'commit.MARK_RESOLVED'; path: string }
-  | { type: 'commit.RESOLVE_ALL_CONFLICTS'; strategy: 'ours' | 'theirs' }
-  | { type: 'commit.LOG_LIST' }
-  | { type: 'commit.REVERT_COMMIT'; hash: string }
-  | { type: 'commit.RESET_TO_COMMIT'; hash: string }
 
 // Outgoing events to frontend
-export type OutgoingCommitEvents =
-  | { type: 'commit.STATUS_RECEIVED'; data: { files: GitStatusFile[]; branch: string; hasUpstream: boolean; commitsAhead: number; commitsBehind: number } }
-  | { type: 'commit.DIFF_RECEIVED'; data: GitDiff }
-  | { type: 'commit.FILES_STAGED'; data: { paths: string[] } }
-  | { type: 'commit.FILES_UNSTAGED'; data: { paths: string[] } }
-  | { type: 'commit.COMMIT_SUCCESS'; data: { message: string } }
-  | { type: 'commit.FILE_REVERTED'; data: { path: string } }
-  | { type: 'commit.FILES_REVERTED'; data: { paths: string[] } }
-  | { type: 'commit.ERROR_RECEIVED'; data: { message: string } }
-  | { type: 'commit.BRANCH_RETRIEVED'; data: { branch: string } }
-  | { type: 'commit.BRANCHES_RECEIVED'; data: { branches: string[] } }
-  | { type: 'commit.BRANCH_CHECKOUT_SUCCESS'; data: { branchName: string } }
-  | { type: 'commit.BRANCH_PUSHED'; data: { branchName: string } }
-  | { type: 'commit.BRANCH_PULLED'; data: { branchName: string } }
-  | { type: 'commit.GENERATING_MESSAGE' }
-  | { type: 'commit.MESSAGE_GENERATED'; data: { message: string } }
-  | { type: 'commit.STASH_LIST_RECEIVED'; data: { stashes: StashEntry[] } }
-  | { type: 'commit.STASH_SUCCESS'; data: { message: string } }
-  | { type: 'commit.WORKTREE_LIST_RECEIVED'; data: { worktrees: WorktreeEntry[] } }
-  | { type: 'commit.WORKTREE_ADDED'; data: { path: string; branch: string } }
-  | { type: 'commit.WORKTREE_REMOVED'; data: { path: string } }
-  | { type: 'commit.CONFLICT_RESOLVED'; data: { path: string } }
-  | { type: 'commit.ALL_CONFLICTS_RESOLVED' }
-  | { type: 'commit.LOG_LIST_RECEIVED'; data: { commits: CommitLogEntry[] } }
-  | { type: 'commit.REVERT_COMMIT_SUCCESS'; data: { hash: string } }
-  | { type: 'commit.RESET_COMMIT_SUCCESS'; data: { hash: string } }
 
 export interface Context {
   gitRepository: GitRepository | null
   gitWatcher: GitWatcherService | null
+  /** The code system, which routes a `pr.*` event to its pull request child */
+  code?: AnyActorRef
   _statusRefreshTimer?: ReturnType<typeof setTimeout>
 }
 
@@ -114,12 +63,10 @@ export const commitSystem = setup({
   types: {
     context: {} as Context,
     events: {} as Event,
-    input: {} as { baseDirectory: string | null; gitRepository?: GitRepository | null; gitWatcher?: GitWatcherService | null }
+    input: {} as { baseDirectory: string | null; gitRepository?: GitRepository | null; gitWatcher?: GitWatcherService | null; code?: AnyActorRef }
   },
   actions: {
-    // Git watcher is now managed by parent code system
-
-    handleGitStatusChanged: ({ context, self, system }) => {
+    handleGitStatusChanged: ({ context, self }) => {
       // Debounce: collapse rapid status-change notifications into one refresh.
       // This prevents double-refresh from write-action + watcher both triggering.
       if (context._statusRefreshTimer) {
@@ -131,11 +78,8 @@ export const commitSystem = setup({
         self.send({ type: 'commit.LOG_LIST' })
       }, 150)
 
-      // Also notify the PR system to refresh if it exists
-      const prSystem = system.get('pr')
-      if (prSystem) {
-        prSystem.send({ type: 'pr.GIT_STATUS_CHANGED' })
-      }
+      // Also notify the PR system to refresh
+      context.code?.send({ type: 'pr.GIT_STATUS_CHANGED' })
     },
 
     getGitStatus: ({ context }) => {
@@ -143,11 +87,10 @@ export const commitSystem = setup({
 
       context.gitRepository.isGitRepository().then((isGitRepo) => {
         if (!isGitRepo) {
-          const wrapped = emit(pluginId, {
+          broadcastToPlugin(pluginId, {
             type: 'commit.ERROR_RECEIVED',
             data: { message: 'Not a git repository' }
           })
-          rootEvents.emitOutgoing(wrapped.event)
           return
         }
 
@@ -157,11 +100,10 @@ export const commitSystem = setup({
           context.gitRepository!.isCurrentBranchPublished(),
           context.gitRepository!.getCommitsAheadBehind()
         ]).then(([status, branch, hasUpstream, commitsInfo]) => {
-          const wrapped = emit(pluginId, {
+          broadcastToPlugin(pluginId, {
             type: 'commit.STATUS_RECEIVED',
             data: { files: status, branch, hasUpstream, commitsAhead: commitsInfo.ahead, commitsBehind: commitsInfo.behind }
           })
-          rootEvents.emitOutgoing(wrapped.event)
         })
       }).catch((error: any) => {
         let errorMessage = error.message
@@ -171,11 +113,10 @@ export const commitSystem = setup({
           errorMessage = 'This directory is not a Git repository. Initialize with "git init" first.'
         }
 
-        const wrapped = emit(pluginId, {
+        broadcastToPlugin(pluginId, {
           type: 'commit.ERROR_RECEIVED',
           data: { message: errorMessage }
         })
-        rootEvents.emitOutgoing(wrapped.event)
       })
     },
 
@@ -232,7 +173,7 @@ export const commitSystem = setup({
           }
         }
 
-        const wrapped = emit(pluginId, {
+        broadcastToPlugin(pluginId, {
           type: 'commit.DIFF_RECEIVED',
           data: {
             path: ev.path || 'all',
@@ -243,13 +184,11 @@ export const commitSystem = setup({
             isImage
           }
         })
-        rootEvents.emitOutgoing(wrapped.event)
       }).catch((error: any) => {
-        const wrapped = emit(pluginId, {
+        broadcastToPlugin(pluginId, {
           type: 'commit.ERROR_RECEIVED',
           data: { message: error.message }
         })
-        rootEvents.emitOutgoing(wrapped.event)
       })
     },
 
@@ -259,18 +198,16 @@ export const commitSystem = setup({
       if (!requireGitRepository(context)) return
 
       context.gitRepository.stageFiles(ev.paths).then(() => {
-        const wrapped = emit(pluginId, {
+        broadcastToPlugin(pluginId, {
           type: 'commit.FILES_STAGED',
           data: { paths: ev.paths }
         })
-        rootEvents.emitOutgoing(wrapped.event)
         self.send({ type: 'commit.GIT_STATUS_CHANGED' })
       }).catch((error: any) => {
-        const wrapped = emit(pluginId, {
+        broadcastToPlugin(pluginId, {
           type: 'commit.ERROR_RECEIVED',
           data: { message: error.message }
         })
-        rootEvents.emitOutgoing(wrapped.event)
       })
     },
 
@@ -289,18 +226,16 @@ export const commitSystem = setup({
         }
         return context.gitRepository!.unstageFiles([...allPaths])
       }).then(() => {
-        const wrapped = emit(pluginId, {
+        broadcastToPlugin(pluginId, {
           type: 'commit.FILES_UNSTAGED',
           data: { paths: ev.paths }
         })
-        rootEvents.emitOutgoing(wrapped.event)
         self.send({ type: 'commit.GIT_STATUS_CHANGED' })
       }).catch((error: any) => {
-        const wrapped = emit(pluginId, {
+        broadcastToPlugin(pluginId, {
           type: 'commit.ERROR_RECEIVED',
           data: { message: error.message }
         })
-        rootEvents.emitOutgoing(wrapped.event)
       })
     },
 
@@ -310,13 +245,12 @@ export const commitSystem = setup({
       if (!requireGitRepository(context)) return
 
       context.gitRepository.revertFile(ev.path).then(() => {
-        const wrapped = emit(pluginId, {
+        broadcastToPlugin(pluginId, {
           type: 'commit.FILE_REVERTED',
           data: { path: ev.path }
         })
-        rootEvents.emitOutgoing(wrapped.event)
         self.send({ type: 'commit.GIT_STATUS_CHANGED' })
-        const fileChangeWrapped = emit(pluginId, {
+        broadcastToPlugin(pluginId, {
           type: 'explorer.FILE_CHANGED_EXTERNALLY',
           data: {
             path: ev.path,
@@ -324,13 +258,11 @@ export const commitSystem = setup({
             modifiedAt: new Date()
           }
         })
-        rootEvents.emitOutgoing(fileChangeWrapped.event)
       }).catch((error: any) => {
-        const wrapped = emit(pluginId, {
+        broadcastToPlugin(pluginId, {
           type: 'commit.ERROR_RECEIVED',
           data: { message: error.message }
         })
-        rootEvents.emitOutgoing(wrapped.event)
       })
     },
 
@@ -340,14 +272,13 @@ export const commitSystem = setup({
       if (!requireGitRepository(context)) return
 
       context.gitRepository.revertFiles(ev.paths).then(() => {
-        const wrapped = emit(pluginId, {
+        broadcastToPlugin(pluginId, {
           type: 'commit.FILES_REVERTED',
           data: { paths: ev.paths }
         })
-        rootEvents.emitOutgoing(wrapped.event)
         self.send({ type: 'commit.GIT_STATUS_CHANGED' })
         for (const path of ev.paths) {
-          const fileChangeWrapped = emit(pluginId, {
+          broadcastToPlugin(pluginId, {
             type: 'explorer.FILE_CHANGED_EXTERNALLY',
             data: {
               path,
@@ -355,14 +286,12 @@ export const commitSystem = setup({
               modifiedAt: new Date()
             }
           })
-          rootEvents.emitOutgoing(fileChangeWrapped.event)
         }
       }).catch((error: any) => {
-        const wrapped = emit(pluginId, {
+        broadcastToPlugin(pluginId, {
           type: 'commit.ERROR_RECEIVED',
           data: { message: error.message }
         })
-        rootEvents.emitOutgoing(wrapped.event)
       })
     },
 
@@ -371,18 +300,16 @@ export const commitSystem = setup({
       if (!requireGitRepository(context)) return
 
       context.gitRepository.resolveConflict(ev.path, ev.strategy).then(() => {
-        const wrapped = emit(pluginId, {
+        broadcastToPlugin(pluginId, {
           type: 'commit.CONFLICT_RESOLVED',
           data: { path: ev.path }
         })
-        rootEvents.emitOutgoing(wrapped.event)
         self.send({ type: 'commit.GIT_STATUS_CHANGED' })
       }).catch((error: any) => {
-        const wrapped = emit(pluginId, {
+        broadcastToPlugin(pluginId, {
           type: 'commit.ERROR_RECEIVED',
           data: { message: error.message }
         })
-        rootEvents.emitOutgoing(wrapped.event)
       })
     },
 
@@ -391,18 +318,16 @@ export const commitSystem = setup({
       if (!requireGitRepository(context)) return
 
       context.gitRepository.stageFiles([ev.path]).then(() => {
-        const wrapped = emit(pluginId, {
+        broadcastToPlugin(pluginId, {
           type: 'commit.CONFLICT_RESOLVED',
           data: { path: ev.path }
         })
-        rootEvents.emitOutgoing(wrapped.event)
         self.send({ type: 'commit.GIT_STATUS_CHANGED' })
       }).catch((error: any) => {
-        const wrapped = emit(pluginId, {
+        broadcastToPlugin(pluginId, {
           type: 'commit.ERROR_RECEIVED',
           data: { message: error.message }
         })
-        rootEvents.emitOutgoing(wrapped.event)
       })
     },
 
@@ -415,15 +340,13 @@ export const commitSystem = setup({
         for (const f of unmerged) {
           await context.gitRepository!.resolveConflict(f.path, ev.strategy)
         }
-        const wrapped = emit(pluginId, { type: 'commit.ALL_CONFLICTS_RESOLVED' })
-        rootEvents.emitOutgoing(wrapped.event)
+        broadcastToPlugin(pluginId, { type: 'commit.ALL_CONFLICTS_RESOLVED' })
         self.send({ type: 'commit.GIT_STATUS_CHANGED' })
       }).catch((error: any) => {
-        const wrapped = emit(pluginId, {
+        broadcastToPlugin(pluginId, {
           type: 'commit.ERROR_RECEIVED',
           data: { message: error.message }
         })
-        rootEvents.emitOutgoing(wrapped.event)
       })
     },
 
@@ -434,20 +357,18 @@ export const commitSystem = setup({
 
       context.gitRepository.getStagedFiles().then((stagedFiles) => {
         if (stagedFiles.length === 0) {
-          const wrapped = emit(pluginId, {
+          broadcastToPlugin(pluginId, {
             type: 'commit.ERROR_RECEIVED',
             data: { message: 'No files staged for commit. Please stage files before committing.' }
           })
-          rootEvents.emitOutgoing(wrapped.event)
           return
         }
 
         return context.gitRepository!.commit(ev.message).then(() => {
-          const wrapped = emit(pluginId, {
+          broadcastToPlugin(pluginId, {
             type: 'commit.COMMIT_SUCCESS',
             data: { message: ev.message }
           })
-          rootEvents.emitOutgoing(wrapped.event)
           self.send({ type: 'commit.GIT_STATUS_CHANGED' })
         })
       }).catch((error: any) => {
@@ -458,11 +379,10 @@ export const commitSystem = setup({
           errorMessage = 'Git user not configured. Run "git config --global user.email" and "git config --global user.name"'
         }
 
-        const wrapped = emit(pluginId, {
+        broadcastToPlugin(pluginId, {
           type: 'commit.ERROR_RECEIVED',
           data: { message: errorMessage }
         })
-        rootEvents.emitOutgoing(wrapped.event)
       })
     },
 
@@ -470,17 +390,15 @@ export const commitSystem = setup({
       if (!requireGitRepository(context)) return
 
       context.gitRepository.getCurrentBranch().then((branch) => {
-        const wrapped = emit(pluginId, {
+        broadcastToPlugin(pluginId, {
           type: 'commit.BRANCH_RETRIEVED',
           data: { branch }
         })
-        rootEvents.emitOutgoing(wrapped.event)
       }).catch((error: any) => {
-        const wrapped = emit(pluginId, {
+        broadcastToPlugin(pluginId, {
           type: 'commit.ERROR_RECEIVED',
           data: { message: error.message }
         })
-        rootEvents.emitOutgoing(wrapped.event)
       })
     },
 
@@ -488,17 +406,15 @@ export const commitSystem = setup({
       if (!requireGitRepository(context)) return
 
       context.gitRepository.getAllBranches().then((branches) => {
-        const wrapped = emit(pluginId, {
+        broadcastToPlugin(pluginId, {
           type: 'commit.BRANCHES_RECEIVED',
           data: { branches }
         })
-        rootEvents.emitOutgoing(wrapped.event)
       }).catch((error: any) => {
-        const wrapped = emit(pluginId, {
+        broadcastToPlugin(pluginId, {
           type: 'commit.ERROR_RECEIVED',
           data: { message: error.message }
         })
-        rootEvents.emitOutgoing(wrapped.event)
       })
     },
 
@@ -510,24 +426,19 @@ export const commitSystem = setup({
       context.gitRepository.checkoutBranch(ev.branchName).then(() => {
         context.gitRepository!.clearCache()
 
-        const wrapped = emit(pluginId, {
+        broadcastToPlugin(pluginId, {
           type: 'commit.BRANCH_CHECKOUT_SUCCESS',
           data: { branchName: ev.branchName }
         })
-        rootEvents.emitOutgoing(wrapped.event)
 
         self.send({ type: 'commit.GIT_STATUS_CHANGED' })
 
-        const prSystem = self.system.get('pr')
-        if (prSystem) {
-          prSystem.send({ type: 'pr.GIT_STATUS_CHANGED' })
-        }
+        context.code?.send({ type: 'pr.GIT_STATUS_CHANGED' })
       }).catch((error: any) => {
-        const wrapped = emit(pluginId, {
+        broadcastToPlugin(pluginId, {
           type: 'commit.ERROR_RECEIVED',
           data: { message: error.message }
         })
-        rootEvents.emitOutgoing(wrapped.event)
       })
     },
 
@@ -539,18 +450,16 @@ export const commitSystem = setup({
         branchName = currentBranch
         return context.gitRepository!.pushBranch()
       }).then(() => {
-        const wrapped = emit(pluginId, {
+        broadcastToPlugin(pluginId, {
           type: 'commit.BRANCH_PUSHED',
           data: { branchName }
         })
-        rootEvents.emitOutgoing(wrapped.event)
         self.send({ type: 'commit.GIT_STATUS_CHANGED' })
       }).catch((error: any) => {
-        const wrapped = emit(pluginId, {
+        broadcastToPlugin(pluginId, {
           type: 'commit.ERROR_RECEIVED',
           data: { message: error.message }
         })
-        rootEvents.emitOutgoing(wrapped.event)
       })
     },
 
@@ -562,11 +471,10 @@ export const commitSystem = setup({
         return context.gitRepository!.getDiff(undefined, staged)
       }).then(async (diff) => {
         if (!diff.trim()) {
-          const wrapped = emit(pluginId, {
+          broadcastToPlugin(pluginId, {
             type: 'commit.ERROR_RECEIVED',
             data: { message: 'No changes found to generate a commit message from.' }
           })
-          rootEvents.emitOutgoing(wrapped.event)
           return
         }
 
@@ -576,19 +484,18 @@ export const commitSystem = setup({
         const repoDir = context.gitRepository!.getWorkingDir()
         const repoName = repoDir.split('/').pop() || ''
 
-        const threadsSettings = repository.settingsQueries.getPluginSettings('threads') as any
+        const threadsSettings = services.settings.forFeature<ThreadsSettings>(ref('threads')) as any
         const provider = threadsSettings?.chat?.defaultMode || 'Claude Code'
 
-        sendToBrainSystem({
+        sendToSystem({ role: 'brain' }, { type: 'TRIGGER_BRAIN_EVENT', 
           eventType: 'commit.generate',
           payload: { diff: truncatedDiff, branch, repoName, provider },
         })
       }).catch((error: any) => {
-        const wrapped = emit(pluginId, {
+        broadcastToPlugin(pluginId, {
           type: 'commit.ERROR_RECEIVED',
           data: { message: error.message }
         })
-        rootEvents.emitOutgoing(wrapped.event)
       })
     },
 
@@ -602,18 +509,16 @@ export const commitSystem = setup({
       }).then(() => {
         context.gitRepository!.forceFetchOnce()
 
-        const wrapped = emit(pluginId, {
+        broadcastToPlugin(pluginId, {
           type: 'commit.BRANCH_PULLED',
           data: { branchName }
         })
-        rootEvents.emitOutgoing(wrapped.event)
         self.send({ type: 'commit.GIT_STATUS_CHANGED' })
       }).catch((error: any) => {
-        const wrapped = emit(pluginId, {
+        broadcastToPlugin(pluginId, {
           type: 'commit.ERROR_RECEIVED',
           data: { message: error.message }
         })
-        rootEvents.emitOutgoing(wrapped.event)
       })
     },
 
@@ -638,19 +543,17 @@ export const commitSystem = setup({
       if (!requireGitRepository(context)) return
 
       context.gitRepository.stashPush(ev.message, ev.stagedOnly).then((result) => {
-        const wrapped = emit(pluginId, {
+        broadcastToPlugin(pluginId, {
           type: 'commit.STASH_SUCCESS',
           data: { message: result }
         })
-        rootEvents.emitOutgoing(wrapped.event)
         self.send({ type: 'commit.GIT_STATUS_CHANGED' })
         self.send({ type: 'commit.STASH_LIST' })
       }).catch((error: any) => {
-        const wrapped = emit(pluginId, {
+        broadcastToPlugin(pluginId, {
           type: 'commit.ERROR_RECEIVED',
           data: { message: error.message }
         })
-        rootEvents.emitOutgoing(wrapped.event)
       })
     },
 
@@ -658,17 +561,15 @@ export const commitSystem = setup({
       if (!requireGitRepository(context)) return
 
       context.gitRepository.stashList().then((stashes) => {
-        const wrapped = emit(pluginId, {
+        broadcastToPlugin(pluginId, {
           type: 'commit.STASH_LIST_RECEIVED',
           data: { stashes }
         })
-        rootEvents.emitOutgoing(wrapped.event)
       }).catch((error: any) => {
-        const wrapped = emit(pluginId, {
+        broadcastToPlugin(pluginId, {
           type: 'commit.ERROR_RECEIVED',
           data: { message: error.message }
         })
-        rootEvents.emitOutgoing(wrapped.event)
       })
     },
 
@@ -678,27 +579,24 @@ export const commitSystem = setup({
       if (!requireGitRepository(context)) return
 
       context.gitRepository.stashApply(ev.index).then(() => {
-        const wrapped = emit(pluginId, {
+        broadcastToPlugin(pluginId, {
           type: 'commit.STASH_SUCCESS',
           data: { message: 'Stash applied successfully' }
         })
-        rootEvents.emitOutgoing(wrapped.event)
         self.send({ type: 'commit.GIT_STATUS_CHANGED' })
       }).catch((error: any) => {
         if (error instanceof StashConflictError) {
-          const wrapped = emit(pluginId, {
+          broadcastToPlugin(pluginId, {
             type: 'commit.STASH_SUCCESS',
             data: { message: error.message }
           })
-          rootEvents.emitOutgoing(wrapped.event)
           self.send({ type: 'commit.GIT_STATUS_CHANGED' })
           return
         }
-        const wrapped = emit(pluginId, {
+        broadcastToPlugin(pluginId, {
           type: 'commit.ERROR_RECEIVED',
           data: { message: error.message }
         })
-        rootEvents.emitOutgoing(wrapped.event)
       })
     },
 
@@ -708,29 +606,26 @@ export const commitSystem = setup({
       if (!requireGitRepository(context)) return
 
       context.gitRepository.stashPop(ev.index).then(() => {
-        const wrapped = emit(pluginId, {
+        broadcastToPlugin(pluginId, {
           type: 'commit.STASH_SUCCESS',
           data: { message: 'Stash popped successfully' }
         })
-        rootEvents.emitOutgoing(wrapped.event)
         self.send({ type: 'commit.GIT_STATUS_CHANGED' })
         self.send({ type: 'commit.STASH_LIST' })
       }).catch((error: any) => {
         if (error instanceof StashConflictError) {
-          const wrapped = emit(pluginId, {
+          broadcastToPlugin(pluginId, {
             type: 'commit.STASH_SUCCESS',
             data: { message: error.message }
           })
-          rootEvents.emitOutgoing(wrapped.event)
           self.send({ type: 'commit.GIT_STATUS_CHANGED' })
           self.send({ type: 'commit.STASH_LIST' })
           return
         }
-        const wrapped = emit(pluginId, {
+        broadcastToPlugin(pluginId, {
           type: 'commit.ERROR_RECEIVED',
           data: { message: error.message }
         })
-        rootEvents.emitOutgoing(wrapped.event)
       })
     },
 
@@ -742,11 +637,10 @@ export const commitSystem = setup({
       context.gitRepository.stashDrop(ev.index).then(() => {
         self.send({ type: 'commit.STASH_LIST' })
       }).catch((error: any) => {
-        const wrapped = emit(pluginId, {
+        broadcastToPlugin(pluginId, {
           type: 'commit.ERROR_RECEIVED',
           data: { message: error.message }
         })
-        rootEvents.emitOutgoing(wrapped.event)
       })
     },
 
@@ -756,11 +650,10 @@ export const commitSystem = setup({
       context.gitRepository.stashClear().then(() => {
         self.send({ type: 'commit.STASH_LIST' })
       }).catch((error: any) => {
-        const wrapped = emit(pluginId, {
+        broadcastToPlugin(pluginId, {
           type: 'commit.ERROR_RECEIVED',
           data: { message: error.message }
         })
-        rootEvents.emitOutgoing(wrapped.event)
       })
     },
 
@@ -768,17 +661,15 @@ export const commitSystem = setup({
       if (!requireGitRepository(context)) return
 
       context.gitRepository.gitLog().then((commits) => {
-        const wrapped = emit(pluginId, {
+        broadcastToPlugin(pluginId, {
           type: 'commit.LOG_LIST_RECEIVED',
           data: { commits }
         })
-        rootEvents.emitOutgoing(wrapped.event)
       }).catch((error: any) => {
-        const wrapped = emit(pluginId, {
+        broadcastToPlugin(pluginId, {
           type: 'commit.ERROR_RECEIVED',
           data: { message: error.message }
         })
-        rootEvents.emitOutgoing(wrapped.event)
       })
     },
 
@@ -788,19 +679,17 @@ export const commitSystem = setup({
       if (!requireGitRepository(context)) return
 
       context.gitRepository.revertCommit(ev.hash).then(() => {
-        const wrapped = emit(pluginId, {
+        broadcastToPlugin(pluginId, {
           type: 'commit.REVERT_COMMIT_SUCCESS',
           data: { hash: ev.hash }
         })
-        rootEvents.emitOutgoing(wrapped.event)
         self.send({ type: 'commit.GIT_STATUS_CHANGED' })
         self.send({ type: 'commit.LOG_LIST' })
       }).catch((error: any) => {
-        const wrapped = emit(pluginId, {
+        broadcastToPlugin(pluginId, {
           type: 'commit.ERROR_RECEIVED',
           data: { message: error.message }
         })
-        rootEvents.emitOutgoing(wrapped.event)
       })
     },
 
@@ -810,19 +699,17 @@ export const commitSystem = setup({
       if (!requireGitRepository(context)) return
 
       context.gitRepository.resetToCommit(ev.hash).then(() => {
-        const wrapped = emit(pluginId, {
+        broadcastToPlugin(pluginId, {
           type: 'commit.RESET_COMMIT_SUCCESS',
           data: { hash: ev.hash }
         })
-        rootEvents.emitOutgoing(wrapped.event)
         self.send({ type: 'commit.GIT_STATUS_CHANGED' })
         self.send({ type: 'commit.LOG_LIST' })
       }).catch((error: any) => {
-        const wrapped = emit(pluginId, {
+        broadcastToPlugin(pluginId, {
           type: 'commit.ERROR_RECEIVED',
           data: { message: error.message }
         })
-        rootEvents.emitOutgoing(wrapped.event)
       })
     },
 
@@ -830,17 +717,15 @@ export const commitSystem = setup({
       if (!requireGitRepository(context)) return
 
       context.gitRepository.worktreeList().then((worktrees) => {
-        const wrapped = emit(pluginId, {
+        broadcastToPlugin(pluginId, {
           type: 'commit.WORKTREE_LIST_RECEIVED',
           data: { worktrees }
         })
-        rootEvents.emitOutgoing(wrapped.event)
       }).catch((error: any) => {
-        const wrapped = emit(pluginId, {
+        broadcastToPlugin(pluginId, {
           type: 'commit.ERROR_RECEIVED',
           data: { message: error.message }
         })
-        rootEvents.emitOutgoing(wrapped.event)
       })
     },
 
@@ -849,18 +734,16 @@ export const commitSystem = setup({
       const ev = event as { type: 'commit.WORKTREE_ADD'; path: string; branch?: string; createBranch?: boolean }
 
       context.gitRepository.worktreeAdd(ev.path, ev.branch, ev.createBranch).then(() => {
-        const wrapped = emit(pluginId, {
+        broadcastToPlugin(pluginId, {
           type: 'commit.WORKTREE_ADDED',
           data: { path: ev.path, branch: ev.branch || '' }
         })
-        rootEvents.emitOutgoing(wrapped.event)
         self.send({ type: 'commit.WORKTREE_LIST' })
       }).catch((error: any) => {
-        const wrapped = emit(pluginId, {
+        broadcastToPlugin(pluginId, {
           type: 'commit.ERROR_RECEIVED',
           data: { message: error.message }
         })
-        rootEvents.emitOutgoing(wrapped.event)
       })
     },
 
@@ -869,18 +752,16 @@ export const commitSystem = setup({
       const ev = event as { type: 'commit.WORKTREE_REMOVE'; path: string; force?: boolean }
 
       context.gitRepository.worktreeRemove(ev.path, ev.force).then(() => {
-        const wrapped = emit(pluginId, {
+        broadcastToPlugin(pluginId, {
           type: 'commit.WORKTREE_REMOVED',
           data: { path: ev.path }
         })
-        rootEvents.emitOutgoing(wrapped.event)
         self.send({ type: 'commit.WORKTREE_LIST' })
       }).catch((error: any) => {
-        const wrapped = emit(pluginId, {
+        broadcastToPlugin(pluginId, {
           type: 'commit.ERROR_RECEIVED',
           data: { message: error.message }
         })
-        rootEvents.emitOutgoing(wrapped.event)
       })
     }
   }
@@ -891,7 +772,8 @@ export const commitSystem = setup({
     const baseDir = input?.baseDirectory
     return {
       gitRepository: input?.gitRepository || (baseDir ? new GitRepository(baseDir) : null),
-      gitWatcher: input?.gitWatcher || (baseDir ? new GitWatcherService(baseDir) : null)
+      gitWatcher: input?.gitWatcher || (baseDir ? new GitWatcherService(baseDir) : null),
+      code: input?.code
     }
   },
   states: {

@@ -1,8 +1,9 @@
+import { tx, qx } from '@/__generated__/ears';
 import { Index } from 'usearch'
-import { qx } from '@abuddy/sdk/ears'
-import { tx } from '@abuddy/sdk/ears'
+
 import { EARS } from '@/__generated__/ears'
 import { randomId } from '@abuddy/sdk/utils'
+import { getIndexFilePath } from './paths'
 import { createLogger } from '@abuddy/sdk/logger'
 import type {
   SearchIndex,
@@ -17,6 +18,7 @@ import type {
 import type { DocumentDTO } from '../types'
 import * as searchService from './service'
 import { libraryQueries, libraryCommands } from '../repository'
+import { errorMessage } from '@abuddy/sdk/utils/pure';
 
 const logger = createLogger('search-index')
 
@@ -161,11 +163,11 @@ async function indexDocumentsBatch(
     )
   } catch (error) {
     logger.error('Failed to generate embeddings for documents', {
-      error: error instanceof Error ? error.message : String(error),
+      error: errorMessage(error),
       modelId: searchIndex.embeddingModel,
       chunkCount: chunks.length
     })
-    throw new Error(`Failed to generate embeddings: ${error instanceof Error ? error.message : String(error)}`)
+    throw new Error(`Failed to generate embeddings: ${errorMessage(error)}`)
   }
 
   // Prepare batch insertion arrays
@@ -397,7 +399,7 @@ export async function indexDocumentsInFolder(
   // Get or create index
   let index = indexCache.get(indexId)
   if (!index) {
-    index = await searchService.loadIndex(searchService.getIndexPath(indexId), searchIndex)
+    index = await searchService.loadIndex(getIndexFilePath(indexId), searchIndex)
     indexCache.set(indexId, index)
   }
   
@@ -424,7 +426,7 @@ export async function indexDocumentsInFolder(
   tx(indexId).updateBatch({ ...searchIndex, type: 'SearchIndex', documentCount: mappings.size })
   
   if (mappings.size > 0) {
-    await searchService.saveIndex(index, searchService.getIndexPath(indexId))
+    await searchService.saveIndex(index, getIndexFilePath(indexId))
   }
   searchService.saveMappings(indexId, mappings)
   searchService.saveMetadata(indexId, searchIndex)
@@ -445,7 +447,7 @@ export async function indexDocument(
   // Get or load index
   let index = indexCache.get(indexId)
   if (!index) {
-    index = await searchService.loadIndex(searchService.getIndexPath(indexId), searchIndex)
+    index = await searchService.loadIndex(getIndexFilePath(indexId), searchIndex)
     indexCache.set(indexId, index)
   }
 
@@ -464,7 +466,7 @@ export async function indexDocument(
   searchIndex.documentCount = mappings.size
   tx(indexId).updateBatch({ ...searchIndex, type: 'SearchIndex', documentCount: mappings.size })
 
-  await searchService.saveIndex(index, searchService.getIndexPath(indexId))
+  await searchService.saveIndex(index, getIndexFilePath(indexId))
   searchService.saveMappings(indexId, mappings)
 }
 
@@ -477,14 +479,14 @@ export async function removeDocumentFromIndex(
   
   let index = indexCache.get(indexId)
   if (!index) {
-    index = await searchService.loadIndex(searchService.getIndexPath(indexId), searchIndex)
+    index = await searchService.loadIndex(getIndexFilePath(indexId), searchIndex)
     indexCache.set(indexId, index)
   }
   
   const mappings = searchService.loadMappings(indexId)
   
   if (removeDocumentChunks(documentId, indexId, index, mappings)) {
-    await searchService.saveIndex(index, searchService.getIndexPath(indexId))
+    await searchService.saveIndex(index, getIndexFilePath(indexId))
     searchService.saveMappings(indexId, mappings)
     
     searchIndex.documentCount = mappings.size
@@ -503,7 +505,7 @@ export async function searchInIndex(
   // Get or load the index
   let index = indexCache.get(indexId)
   if (!index) {
-    index = await searchService.loadIndex(searchService.getIndexPath(indexId), searchIndex)
+    index = await searchService.loadIndex(getIndexFilePath(indexId), searchIndex)
     indexCache.set(indexId, index)
   }
 
@@ -513,11 +515,11 @@ export async function searchInIndex(
     queryEmbedding = await searchService.embedText(query, searchIndex.embeddingModel)
   } catch (error) {
     logger.error('Failed to generate embedding for search query', {
-      error: error instanceof Error ? error.message : String(error),
+      error: errorMessage(error),
       modelId: searchIndex.embeddingModel,
       query
     })
-    throw new Error(`Failed to generate search query embedding: ${error instanceof Error ? error.message : String(error)}`)
+    throw new Error(`Failed to generate search query embedding: ${errorMessage(error)}`)
   }
 
   // Search

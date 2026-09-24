@@ -1,5 +1,6 @@
 import { Cron } from 'croner';
 import { createLogger } from '@abuddy/sdk/logger';
+import { errorMessage } from '@abuddy/sdk/utils/pure';
 
 const logger = createLogger('scheduler');
 
@@ -18,20 +19,20 @@ export function registerSchedule(key: string, cronExpression: string, callback: 
       try {
         callback();
       } catch (err) {
-        logger.error(`Schedule ${key} tick failed: ${err instanceof Error ? err.message : String(err)}`);
+        logger.error(`Schedule ${key} tick failed: ${errorMessage(err)}`);
       }
     });
     activeJobs.set(key, job);
     logger.info(`Registered schedule: ${key} (${cronExpression})`);
   } catch (err) {
-    logger.error(`Failed to register schedule ${key}: ${err instanceof Error ? err.message : String(err)}`);
+    logger.error(`Failed to register schedule ${key}: ${errorMessage(err)}`);
   }
 }
 
 /**
  * Stop and remove a single cron job by key.
  */
-export function unregisterSchedule(key: string): void {
+function unregisterSchedule(key: string): void {
   const job = activeJobs.get(key);
   if (job) {
     job.stop();
@@ -57,9 +58,17 @@ export function unregisterByPrefix(prefix: string): void {
  * Stop and remove all cron jobs. Called on brain kill/restart.
  */
 export function clearAllSchedules(): void {
+  if (activeJobs.size === 0) return;
   for (const job of activeJobs.values()) {
     job.stop();
   }
   activeJobs.clear();
   logger.info('Cleared all schedules');
 }
+
+/** `services.scheduler`: cron jobs for the schedule step and the brain systems */
+export const schedulerService = {
+  registerSchedule,
+  unregisterByPrefix,
+  clearAllSchedules,
+};

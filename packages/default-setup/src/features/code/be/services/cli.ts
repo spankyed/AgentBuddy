@@ -1,6 +1,7 @@
+import { services } from '@/__generated__/services';
 import { GitRepository } from '@/features/code/be/services/git'
 import * as ghCli from '@/features/code/be/services/gh-cli'
-import { repository } from '@abuddy/sdk/ears'
+import { repository } from '@/__generated__/repository';
 import type { GitStatusFile, GhPullRequest, GhPRComment, GhReviewThread } from '@/features/code/be/types'
 import { claudeCode } from './claude-code'
 import type { QueryOptions, QueryHandle, AuthStatus, SessionInfo, SessionListOptions, SessionTranscriptEntry, SessionViewOptions } from './claude-code'
@@ -8,11 +9,12 @@ import type { ExecOnceOptions, ExecOnceResult } from './claude-code/runner'
 import { storeHandle, getHandle, clearHandle } from './claude-code/handle-store'
 import { codexExec } from './codex/runner'
 import type { CodexExecOptions, CodexExecResult } from './codex/runner'
-import { testCli, isCliName } from '@abuddy/sdk/utils'
+import { testCli, isCliName } from '../utils/resolve-cli'
 import { configDir } from './claude-code/sessions'
 import fs from 'fs'
 import path from 'path'
 import os from 'os'
+import { ref } from '@/__generated__/ref';
 
 interface CodeSettings {
   defaultBaseDirectory?: string | null
@@ -102,7 +104,7 @@ function createCliService(): CliServiceType {
   let lastCwd: string | null = null
 
   function resolveCwd(): string {
-    const codeSettings = repository.settingsQueries.getPluginSettings('code') as CodeSettings | undefined
+    const codeSettings = services.settings.forFeature(ref('code')) as CodeSettings | undefined
     let cwd = codeSettings?.defaultBaseDirectory || codeSettings?.baseDirectory || null
     if (!cwd) {
       throw new Error('No project directory configured. Open a directory in the Code panel first.')
@@ -129,7 +131,7 @@ function createCliService(): CliServiceType {
       if (!isCliName(provider)) {
         return Promise.resolve({ success: false as const, error: `Unknown CLI provider: ${provider}` });
       }
-      const storedPath = repository.settingsQueries.getSettings().general.secrets.cliPaths?.[provider];
+      const storedPath = (services.settings.forFeature(ref('code')) as { cliPaths?: Record<string, string> } | null)?.cliPaths?.[provider];
       return testCli(provider, storedPath);
     },
     git: {

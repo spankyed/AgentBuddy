@@ -29,18 +29,15 @@
 </template>
 
 <script setup lang="ts">
-import { useActorSystem } from '@abuddy/sdk/fe'
 import { computed } from 'vue'
 import { StickyNote } from 'lucide-vue-next'
 import type { ArtifactItem } from '@abuddy/sdk/artifacts'
-import TiptapEditor from '@abuddy/sdk/fe/components/tiptap/TiptapEditor.vue'
-import CopyButton from '@abuddy/sdk/fe/design/CopyButton.vue'
-import { useSelector } from '@xstate/vue'
-
-const actorSystem = useActorSystem()
+import TiptapEditor from '@abuddy/ui/components/tiptap/TiptapEditor'
+import CopyButton from '@abuddy/ui/design/CopyButton'
+import { usePluginState } from '@/__generated__/fe'
 
 const props = defineProps<{
-  artifact: ArtifactItem
+  artifact: ArtifactItem<string | { noteId?: string }>
 }>()
 
 // The artifact content is a noteId string — look up the note from the notes system
@@ -50,8 +47,7 @@ const noteId = computed(() =>
     : props.artifact.content?.noteId ?? ''
 )
 
-const notesActor = actorSystem.get('notes')
-const allNotes = useSelector(notesActor, (s: any) => s.context.notes ?? [])
+const allNotes = usePluginState('notes', (s) => s.notes)
 
 const note = computed(() =>
   allNotes.value.find((n: any) => n.id === noteId.value)

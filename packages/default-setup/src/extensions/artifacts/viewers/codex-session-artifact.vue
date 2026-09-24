@@ -266,13 +266,12 @@
 
 <script setup lang="ts">
 import { computed, ref } from 'vue'
-import { useSelector } from '@xstate/vue'
 import { Bot, Check, Copy, Terminal } from 'lucide-vue-next'
 import type { ArtifactItem } from '@abuddy/sdk/artifacts'
-import { useActorSystem, navigateToPlugin, getDesignated } from '@abuddy/sdk/fe'
-import { trpc } from '@abuddy/sdk/rpc'
+import { usePluginState } from '@/__generated__/fe'
+import { openPlugin } from '@/__generated__/fe'
+import { sendToSystem } from '@/__generated__/events'
 
-const actorSystem = useActorSystem()
 
 type ApprovalMode = 'user' | 'auto_review'
 type SandboxMode = 'read-only' | 'workspace-write' | 'danger-full-access'
@@ -300,21 +299,17 @@ interface CodexThreadState {
 }
 
 defineProps<{
-  artifact: ArtifactItem & { content: CodexThreadState }
+  artifact: ArtifactItem<CodexThreadState>
 }>()
 
-const threadsActor = actorSystem.get(getDesignated('threads'))
-const currentThread = useSelector(
-  threadsActor,
-  (state: any) => state.context.currentThread,
-)
+const currentThread = usePluginState('threads', (s) => s.currentThread)
 
 const content = computed<CodexThreadState>(() =>
   currentThread.value?.context?.codex ?? ({} as CodexThreadState)
 )
 
-const settings = useSelector(threadsActor, (state: any) => state.context.settings)
-const overrides = useSelector(threadsActor, (state: any) => state.context.chatStateOverrides)
+const settings = usePluginState('threads', (s) => s.settings)
+const overrides = usePluginState('threads', (s) => s.chatStateOverrides)
 const stateConfig = computed(() => {
   const configs = settings.value?.chatStates
   const threadId = currentThread.value?.id ?? ''
@@ -449,23 +444,19 @@ async function copyThreadId() {
 }
 
 function openTerminalTab() {
-  const terminalActor = actorSystem.get('code')?.system.get('terminal') as any
-  if (!terminalActor) return
-
-  terminalActor.send({
+  // The code plugin routes a terminal.* event to its terminals
+  openPlugin('code', {
     type: 'terminal.CREATE',
     target: 'tab',
     command: `codex resume ${content.value.threadId}`,
     cwd: content.value.cwd || undefined,
   })
-  navigateToPlugin('code')
 }
 
 function updateSessionSettings(payload: { approvalMode?: ApprovalMode; sandbox?: SandboxMode; networkAccess?: boolean; webSearch?: 'live' | 'cached' | 'disabled' }) {
   const threadId = currentThread.value?.id
   if (!threadId) return
-  trpc.bus.send.mutate({
-    systemId: 'threads',
+  sendToSystem('threads', {
     type: 'FORWARD_BRAIN_EVENT',
     eventType: 'user.update.codexSessionSettings',
     payload: { threadId, ...payload },

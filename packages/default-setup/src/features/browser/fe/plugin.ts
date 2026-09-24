@@ -1,12 +1,11 @@
-import type { Plugin } from "@abuddy/sdk/fe";
+import { definePlugin } from '@abuddy/sdk/fe';
 
 import { Globe } from 'lucide-vue-next';
-import state, { id } from './state.ts';
+import state from './state';
 import canvas from './canvas.vue';
 import settings from './settings.vue';
 
-const browserPlugin: Plugin = {
-  id,
+const browserPlugin = definePlugin({
   label: 'Browser',
 
   icon: Globe,
@@ -15,6 +14,6 @@ const browserPlugin: Plugin = {
   settings,
   isPinned: false,
 
-};
+});
 
 export default browserPlugin;

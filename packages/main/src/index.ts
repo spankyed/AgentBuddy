@@ -48,36 +48,11 @@ export async function initApp(initConfig: AppInitConfig) {
     // Disable auto-updater until GitHub releases are configured
     // .init(autoUpdater())
 
-    // Install DevTools extension if needed
-    // .init(chromeDevToolsExtension({extension: 'VUEJS3_DEVTOOLS'}))
-
     // Security
     .init(allowInternalOrigins(
       new Set(initConfig.renderer instanceof URL ? [initConfig.renderer.origin] : []),
     ))
-    .init(allowExternalUrls(
-      new Set(
-        initConfig.renderer instanceof URL
-          ? [
-            'https://vite.dev',
-            'https://developer.mozilla.org',
-            'https://www.typescriptlang.org',
-            'https://vuejs.org',
-            'https://www.postandcourier.com',
-            'https://discord.gg',
-            // API provider URLs
-            'https://console.anthropic.com',
-            'https://platform.openai.com',
-            'https://aistudio.google.com',
-            'https://console.groq.com',
-            'https://console.mistral.ai',
-            'https://dashboard.cohere.com',
-            // XState visualization
-            // 'https://stately.ai',
-          ]
-          : [],
-      )),
-    );
+    .init(allowExternalUrls());
 
   await moduleRunner;
 }

@@ -184,7 +184,7 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
 import { Check, ChevronDown, Code, ExternalLink, Plus } from 'lucide-vue-next'
-import { useActorSystem, navigateToPlugin } from '@abuddy/sdk/fe'
+import { openPlugin } from '@/__generated__/fe'
 import {
   ComboboxAnchor,
   ComboboxContent,
@@ -198,13 +198,12 @@ import {
   ComboboxViewport,
   useFilter
 } from 'reka-ui'
-import BaseForm from '@abuddy/sdk/fe/components/BaseForm.vue'
-import TipSection from '@abuddy/sdk/fe/components/TipSection.vue'
-import SimpleMonacoEditor from '@abuddy/sdk/fe/components/SimpleMonacoEditor.vue'
-import type { ActionEntity, NodeEntity } from '@/__generated__/types'
-import type { FormResources } from '@/features/flows/fe/types/form-props'
-
-const actorSystem = useActorSystem()
+import BaseForm from '@abuddy/ui/components/BaseForm'
+import TipSection from '@abuddy/ui/components/TipSection'
+import SimpleMonacoEditor from '@abuddy/ui/components/SimpleMonacoEditor'
+import type { NodeEntity } from '@/__generated__/types'
+import type { FormResources } from '../form-props'
+import type { ActionEntity } from '@abuddy/sdk'
 
 const props = defineProps<{
   node: NodeEntity
@@ -325,12 +324,12 @@ const handleActionChange = (action: ActionEntity | null) => {
 }
 
 const createAction = () => {
-  navigateToPlugin('actions', { type: 'ACTION.CREATE' });
+  openPlugin('actions', { type: 'ACTION.CREATE' });
 }
 
 const viewAction = () => {
   if (selectedAction.value) {
-    navigateToPlugin('actions', { type: 'ACTION.SELECT', actionId: selectedAction.value.id });
+    openPlugin('actions', { type: 'ACTION.SELECT', actionId: selectedAction.value.id });
   }
 }
 </script>

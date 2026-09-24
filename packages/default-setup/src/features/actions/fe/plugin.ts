@@ -1,11 +1,10 @@
-import type { Plugin } from "@abuddy/sdk/fe";
+import { definePlugin } from '@abuddy/sdk/fe';
 import { Play } from 'lucide-vue-next';
-import state, { id } from './state.ts';
+import state from './state';
 import canvas from './canvas.vue';
 import settings from './settings.vue';
 
-const actionsPlugin: Plugin = {
-  id,
+const actionsPlugin = definePlugin({
   label: 'Actions',
   icon: Play,
   state,
@@ -15,6 +14,6 @@ const actionsPlugin: Plugin = {
   options: {
     // headerClass: 'bg-neutral-900 border-b border-neutral-600'
   }
-};
+});
 
 export default actionsPlugin; 

@@ -1,6 +1,7 @@
+import type { IncomingExplorerEvents, OutgoingExplorerEvents } from '../contract'
+import { broadcastToPlugin } from '@/__generated__/events';
 import { assign, setup } from 'xstate'
-import { emit } from '@abuddy/sdk/helpers'
-import { rootEvents } from '@abuddy/sdk/rpc'
+
 import { FileSystemRepository } from '../services/filesystem'
 import { GitWatcherService } from '../services/gitwatcher'
 import type { FileChangeInfo } from '../services/gitwatcher'
@@ -10,7 +11,7 @@ const pluginId = 'code' as const
 
 function requireRepository(context: Context, path: string): context is Context & { repository: FileSystemRepository } {
   if (!context.repository) {
-    const wrapped = emit(pluginId, {
+    broadcastToPlugin(pluginId, {
       type: 'explorer.CODE_ERROR',
       data: {
         code: 'INVALID_PATH',
@@ -18,42 +19,14 @@ function requireRepository(context: Context, path: string): context is Context &
         path,
       },
     })
-    rootEvents.emitOutgoing(wrapped.event)
     return false
   }
   return true
 }
 
 // Incoming events from frontend
-export type IncomingExplorerEvents =
-  | { type: 'explorer.LIST_FILES'; path: string }
-  | { type: 'explorer.READ_FILE'; path: string }
-  | { type: 'explorer.WRITE_FILE'; path: string; content: string }
-  | { type: 'explorer.CREATE_FILE'; path: string; content?: string }
-  | { type: 'explorer.DELETE_FILE'; path: string }
-  | { type: 'explorer.RENAME_FILE'; oldPath: string; newPath: string }
-  | { type: 'explorer.CREATE_DIRECTORY'; path: string }
-  | { type: 'explorer.GET_FILE_INFO'; path: string }
-  | { type: 'explorer.CLOSE_FILE'; path: string }
-  | { type: 'explorer.QUICK_OPEN_SEARCH'; baseDirectory: string }
-  | { type: 'explorer.MOVE_FILES'; sourcePaths: string[]; targetDir: string }
-  | { type: 'explorer.COPY_FILES'; sourcePaths: string[]; targetDir: string }
 
 // Outgoing events to frontend
-export type OutgoingExplorerEvents =
-  | { type: 'explorer.FILES_LISTED'; data: DirectoryContent }
-  | { type: 'explorer.FILE_CREATED'; data: { path: string } }
-  | { type: 'explorer.FILE_DELETED'; data: { path: string } }
-  | { type: 'explorer.FILE_RENAMED'; data: { oldPath: string; newPath: string } }
-  | { type: 'explorer.DIRECTORY_CREATED'; data: { path: string } }
-  | { type: 'explorer.FILE_INFO'; data: FileInfo }
-  | { type: 'explorer.FILE_CONTENT'; data: FileContent }
-  | { type: 'explorer.FILE_SAVED'; data: { path: string } }
-  | { type: 'explorer.CODE_ERROR'; data: CodeSystemError }
-  | { type: 'explorer.FILE_CHANGED_EXTERNALLY'; data: FileChangeInfo }
-  | { type: 'explorer.QUICK_OPEN_RESULTS'; data: QuickOpenResult[] }
-  | { type: 'explorer.FILES_MOVED'; data: { sourcePaths: string[]; targetDir: string; movedPaths: string[] } }
-  | { type: 'explorer.FILES_COPIED'; data: { targetDir: string; copiedPaths: string[] } }
 
 export interface Context {
   baseDirectory: string | null
@@ -98,22 +71,20 @@ export const explorerSystem = setup({
     handleFileChange: ({ event }) => {
       const ev = event as { type: 'explorer.FILE_CHANGE_CALLBACK'; change: FileChangeInfo }
       
-      const wrapped = emit(pluginId, {
+      broadcastToPlugin(pluginId, {
         type: 'explorer.FILE_CHANGED_EXTERNALLY',
         data: ev.change
       })
-      rootEvents.emitOutgoing(wrapped.event)
     },
 
     sendBaseDirectoryInfo: ({ context }) => {
       // Send base directory listing on connect
       if (context.baseDirectory && context.repository) {
         context.repository.listDirectory(context.baseDirectory).then(content => {
-          const wrapped = emit(pluginId, {
+          broadcastToPlugin(pluginId, {
             type: 'explorer.FILES_LISTED',
             data: content,
           })
-          rootEvents.emitOutgoing(wrapped.event)
         }).catch(() => {
           // Ignore errors on connect
         })
@@ -128,13 +99,12 @@ export const explorerSystem = setup({
       try {
         const path = ev.path || context.baseDirectory || ''
         const content = await context.repository.listDirectory(path)
-        const wrapped = emit(pluginId, {
+        broadcastToPlugin(pluginId, {
           type: 'explorer.FILES_LISTED',
           data: content,
         })
-        rootEvents.emitOutgoing(wrapped.event)
       } catch (error: any) {
-        const wrapped = emit(pluginId, {
+        broadcastToPlugin(pluginId, {
           type: 'explorer.CODE_ERROR',
           data: {
             code: error.code || 'IO_ERROR',
@@ -142,7 +112,6 @@ export const explorerSystem = setup({
             path: error.path,
           },
         })
-        rootEvents.emitOutgoing(wrapped.event)
       }
     },
 
@@ -153,18 +122,17 @@ export const explorerSystem = setup({
       
       try {
         const content = await context.repository.readFile(ev.path)
-        const wrapped = emit(pluginId, {
+        broadcastToPlugin(pluginId, {
           type: 'explorer.FILE_CONTENT',
           data: content,
         })
-        rootEvents.emitOutgoing(wrapped.event)
 
         // Register file with git watcher for external change detection
         if (context.gitWatcher) {
           context.gitWatcher.registerOpenFile(ev.path)
         }
       } catch (error: any) {
-        const wrapped = emit(pluginId, {
+        broadcastToPlugin(pluginId, {
           type: 'explorer.CODE_ERROR',
           data: {
             code: error.code || 'IO_ERROR',
@@ -172,7 +140,6 @@ export const explorerSystem = setup({
             path: error.path,
           },
         })
-        rootEvents.emitOutgoing(wrapped.event)
       }
     },
 
@@ -183,13 +150,12 @@ export const explorerSystem = setup({
       
       try {
         await context.repository.writeFile(ev.path, ev.content)
-        const wrapped = emit(pluginId, {
+        broadcastToPlugin(pluginId, {
           type: 'explorer.FILE_SAVED',
           data: { path: ev.path },
         })
-        rootEvents.emitOutgoing(wrapped.event)
       } catch (error: any) {
-        const wrapped = emit(pluginId, {
+        broadcastToPlugin(pluginId, {
           type: 'explorer.CODE_ERROR',
           data: {
             code: error.code || 'IO_ERROR',
@@ -197,7 +163,6 @@ export const explorerSystem = setup({
             path: error.path,
           },
         })
-        rootEvents.emitOutgoing(wrapped.event)
       }
     },
 
@@ -208,13 +173,12 @@ export const explorerSystem = setup({
       
       try {
         await context.repository.writeFile(ev.path, ev.content || '')
-        const wrapped = emit(pluginId, {
+        broadcastToPlugin(pluginId, {
           type: 'explorer.FILE_CREATED',
           data: { path: ev.path },
         })
-        rootEvents.emitOutgoing(wrapped.event)
       } catch (error: any) {
-        const wrapped = emit(pluginId, {
+        broadcastToPlugin(pluginId, {
           type: 'explorer.CODE_ERROR',
           data: {
             code: error.code || 'IO_ERROR',
@@ -222,7 +186,6 @@ export const explorerSystem = setup({
             path: error.path,
           },
         })
-        rootEvents.emitOutgoing(wrapped.event)
       }
     },
 
@@ -233,13 +196,12 @@ export const explorerSystem = setup({
       
       try {
         await context.repository.deleteFile(ev.path)
-        const wrapped = emit(pluginId, {
+        broadcastToPlugin(pluginId, {
           type: 'explorer.FILE_DELETED',
           data: { path: ev.path },
         })
-        rootEvents.emitOutgoing(wrapped.event)
       } catch (error: any) {
-        const wrapped = emit(pluginId, {
+        broadcastToPlugin(pluginId, {
           type: 'explorer.CODE_ERROR',
           data: {
             code: error.code || 'IO_ERROR',
@@ -247,7 +209,6 @@ export const explorerSystem = setup({
             path: error.path,
           },
         })
-        rootEvents.emitOutgoing(wrapped.event)
       }
     },
 
@@ -258,13 +219,12 @@ export const explorerSystem = setup({
       
       try {
         await context.repository.renameFile(ev.oldPath, ev.newPath)
-        const wrapped = emit(pluginId, {
+        broadcastToPlugin(pluginId, {
           type: 'explorer.FILE_RENAMED',
           data: { oldPath: ev.oldPath, newPath: ev.newPath },
         })
-        rootEvents.emitOutgoing(wrapped.event)
       } catch (error: any) {
-        const wrapped = emit(pluginId, {
+        broadcastToPlugin(pluginId, {
           type: 'explorer.CODE_ERROR',
           data: {
             code: error.code || 'IO_ERROR',
@@ -272,7 +232,6 @@ export const explorerSystem = setup({
             path: error.path,
           },
         })
-        rootEvents.emitOutgoing(wrapped.event)
       }
     },
 
@@ -283,13 +242,12 @@ export const explorerSystem = setup({
       
       try {
         await context.repository.createDirectory(ev.path)
-        const wrapped = emit(pluginId, {
+        broadcastToPlugin(pluginId, {
           type: 'explorer.DIRECTORY_CREATED',
           data: { path: ev.path },
         })
-        rootEvents.emitOutgoing(wrapped.event)
       } catch (error: any) {
-        const wrapped = emit(pluginId, {
+        broadcastToPlugin(pluginId, {
           type: 'explorer.CODE_ERROR',
           data: {
             code: error.code || 'IO_ERROR',
@@ -297,7 +255,6 @@ export const explorerSystem = setup({
             path: error.path,
           },
         })
-        rootEvents.emitOutgoing(wrapped.event)
       }
     },
 
@@ -308,13 +265,12 @@ export const explorerSystem = setup({
       
       try {
         const info = await context.repository.getFileInfo(ev.path)
-        const wrapped = emit(pluginId, {
+        broadcastToPlugin(pluginId, {
           type: 'explorer.FILE_INFO',
           data: info,
         })
-        rootEvents.emitOutgoing(wrapped.event)
       } catch (error: any) {
-        const wrapped = emit(pluginId, {
+        broadcastToPlugin(pluginId, {
           type: 'explorer.CODE_ERROR',
           data: {
             code: error.code || 'IO_ERROR',
@@ -322,10 +278,8 @@ export const explorerSystem = setup({
             path: error.path,
           },
         })
-        rootEvents.emitOutgoing(wrapped.event)
       }
     },
-
 
     setBaseDirectory: ({ event, context }) => {
       // No longer need to send active directory info
@@ -357,7 +311,6 @@ export const explorerSystem = setup({
       }
     }),
 
-
     closeFile: ({ event, context }) => {
       const ev = event as { type: 'explorer.CLOSE_FILE'; path: string }
       // Unregister file from git watcher when closed
@@ -373,13 +326,12 @@ export const explorerSystem = setup({
       
       try {
         const files = await context.repository.getAllFiles(ev.baseDirectory)
-        const wrapped = emit(pluginId, {
+        broadcastToPlugin(pluginId, {
           type: 'explorer.QUICK_OPEN_RESULTS',
           data: files,
         })
-        rootEvents.emitOutgoing(wrapped.event)
       } catch (error: any) {
-        const wrapped = emit(pluginId, {
+        broadcastToPlugin(pluginId, {
           type: 'explorer.CODE_ERROR',
           data: {
             code: error.code || 'IO_ERROR',
@@ -387,7 +339,6 @@ export const explorerSystem = setup({
             path: ev.baseDirectory,
           },
         })
-        rootEvents.emitOutgoing(wrapped.event)
       }
     },
 
@@ -407,13 +358,12 @@ export const explorerSystem = setup({
           }
         }
 
-        const wrapped = emit(pluginId, {
+        broadcastToPlugin(pluginId, {
           type: 'explorer.FILES_MOVED',
           data: { sourcePaths: ev.sourcePaths, targetDir: ev.targetDir, movedPaths },
         })
-        rootEvents.emitOutgoing(wrapped.event)
       } catch (error: any) {
-        const wrapped = emit(pluginId, {
+        broadcastToPlugin(pluginId, {
           type: 'explorer.CODE_ERROR',
           data: {
             code: error.code || 'IO_ERROR',
@@ -421,7 +371,6 @@ export const explorerSystem = setup({
             path: error.path,
           },
         })
-        rootEvents.emitOutgoing(wrapped.event)
       }
     },
 
@@ -437,13 +386,12 @@ export const explorerSystem = setup({
           copiedPaths.push(destPath)
         }
 
-        const wrapped = emit(pluginId, {
+        broadcastToPlugin(pluginId, {
           type: 'explorer.FILES_COPIED',
           data: { targetDir: ev.targetDir, copiedPaths },
         })
-        rootEvents.emitOutgoing(wrapped.event)
       } catch (error: any) {
-        const wrapped = emit(pluginId, {
+        broadcastToPlugin(pluginId, {
           type: 'explorer.CODE_ERROR',
           data: {
             code: error.code || 'IO_ERROR',
@@ -451,7 +399,6 @@ export const explorerSystem = setup({
             path: error.path,
           },
         })
-        rootEvents.emitOutgoing(wrapped.event)
       }
     },
 
@@ -461,13 +408,12 @@ export const explorerSystem = setup({
       try {
         const path = context.baseDirectory || ''
         const content = await context.repository.listDirectory(path)
-        const wrapped = emit(pluginId, {
+        broadcastToPlugin(pluginId, {
           type: 'explorer.FILES_LISTED',
           data: content,
         })
-        rootEvents.emitOutgoing(wrapped.event)
       } catch (error: any) {
-        const wrapped = emit(pluginId, {
+        broadcastToPlugin(pluginId, {
           type: 'explorer.CODE_ERROR',
           data: {
             code: error.code || 'IO_ERROR',
@@ -475,7 +421,6 @@ export const explorerSystem = setup({
             path: error.path,
           },
         })
-        rootEvents.emitOutgoing(wrapped.event)
       }
     },
   }

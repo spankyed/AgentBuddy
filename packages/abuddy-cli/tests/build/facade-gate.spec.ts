@@ -1,0 +1,101 @@
+import * as fs from 'node:fs';
+import * as os from 'node:os';
+import * as path from 'node:path';
+import { afterAll, describe, expect, it } from 'vitest';
+import { facadeProblems } from '../../src/build/facade-gate';
+import { bundlePackTypes } from '../../src/build/types-bundler';
+
+/**
+ * abuddy build bundles a pack's facade types and refuses a bundle its dependents couldn't use:
+ * one that doesn't type-check on its own, or that imports a package a dependent doesn't have.
+ */
+const REPO_ROOT = path.resolve(__dirname, '..', '..', '..', '..');
+const parent = fs.mkdtempSync(path.join(os.tmpdir(), 'facade-gate-'));
+afterAll(() => fs.rmSync(parent, { recursive: true, force: true }));
+
+/** A pack with `files` (its facade input at src/__generated__/pack-types.ts), bundled; the gate's problems */
+async function gate(name: string, files: Record<string, string>): Promise<{ problems: string[]; bundle: string }> {
+  const dir = path.join(parent, name);
+  const all = { 'package.json': JSON.stringify({ name, type: 'module' }), ...files };
+  for (const [rel, content] of Object.entries(all)) {
+    fs.mkdirSync(path.dirname(path.join(dir, rel)), { recursive: true });
+    fs.writeFileSync(path.join(dir, rel), content);
+  }
+  fs.symlinkSync(path.join(REPO_ROOT, 'node_modules'), path.join(dir, 'node_modules'), 'dir');
+  const outFile = path.join(dir, 'dist', 'types', 'pack-types.d.ts');
+  const bundled = await bundlePackTypes(dir, outFile);
+  if (!bundled.success) throw new Error(bundled.error);
+  return { problems: facadeProblems(dir, outFile), bundle: bundled.content };
+}
+
+describe('facade gate', () => {
+  it('passes a facade that imports only @abuddy/* and @abuddy/sdk peers', async () => {
+    const { problems } = await gate('clean', {
+      'src/search.ts': [
+        "import type { EARS } from '@abuddy/sdk';",
+        "import type { AnyActorLogic } from 'xstate';",
+        "import { z } from 'zod';",
+        'export const Query = z.object({ text: z.string() });',
+        'export const searchService = {',
+        '  parse: (input: unknown) => Query.parse(input),',
+        '  byId: (id: EARS.EntityId): EARS.EntityId => id,',
+        '  logic: (logic: AnyActorLogic): AnyActorLogic => logic,',
+        '};',
+      ].join('\n'),
+      'src/__generated__/pack-types.ts': "import type { searchService } from '../search.js';\nexport type Services = { search: typeof searchService };\n",
+    });
+    expect(problems).toEqual([]);
+  }, 60_000);
+
+  // rollup-plugin-dts turns a namespace's type-only re-export into `declare const x: typeof Type`
+  it('fails a facade that does not type-check: a type-only re-export through a namespace', async () => {
+    const { problems, bundle } = await gate('namespace-reexport', {
+      'src/types.ts': "export type { AnyActorLogic } from 'xstate';\n",
+      'src/search.ts': "import * as types from './types.js';\nexport { types };\n",
+      'src/__generated__/pack-types.ts': "import * as search from '../search.js';\nexport type Services = { search: typeof search };\n",
+    });
+    expect(bundle).toMatch(/declare const \w+: typeof AnyActorLogic;/);
+    expect(problems).toEqual([
+      expect.stringMatching(/^dist\/types\/pack-types\.d\.ts:\d+:\d+ error TS2693: 'AnyActorLogic' only refers to a type, but is being used as a value here\. \(in types_AnyActorLogic; reached from: Services\)$/),
+    ]);
+  }, 60_000);
+
+  it('fails a facade that imports a package outside the allowlist', async () => {
+    const { problems } = await gate('undeclared-package', {
+      'src/browser.ts': "import type { Browser } from 'playwright';\nexport const browserService = { current: (): Browser | null => null };\n",
+      'src/__generated__/pack-types.ts': "import type { browserService } from '../browser.js';\nexport type Services = { browser: typeof browserService };\n",
+    });
+    expect(problems).toEqual([
+      expect.stringMatching(/^dist\/types\/pack-types\.d\.ts:1:1 imports "playwright", which dependents don't have: facades may import only @abuddy\/\* packages, @abuddy\/sdk's peer dependencies \([^)]*\bxstate\b[^)]*\) and Node built-ins \(reached from: Services\)$/),
+    ]);
+  }, 60_000);
+
+  // Nothing resolves these now: a pack build compiles the published packages, so a source-only export
+  // fails the rule and fails to compile, and the rule's message is what names the reason
+  it('fails a facade that imports an @abuddy/* module no pack resolves', async () => {
+    const { problems } = await gate('source-only-export', {
+      'src/internals.ts': [
+        "import type { unbindHost } from '@abuddy/sdk/runtime/internals';",
+        "import type { PackInfo } from '@abuddy/host/packs';",
+        'export const internalsService = { unbind: (): typeof unbindHost | null => null, pack: (): PackInfo | null => null };',
+      ].join('\n'),
+      'src/__generated__/pack-types.ts': "import type { internalsService } from '../internals.js';\nexport type Services = { internals: typeof internalsService };\n",
+    });
+    expect(problems).toEqual([
+      expect.stringMatching(/imports "@abuddy\/sdk\/runtime\/internals", which @abuddy\/sdk exports only to a linked checkout \(the @abuddy\/source condition\), not to installed dependents \(reached from: Services\)$/),
+      expect.stringMatching(/imports "@abuddy\/host\/packs", a private package dependents can't install \(reached from: Services\)$/),
+      expect.stringContaining("error TS2307: Cannot find module '@abuddy/sdk/runtime/internals'"),
+    ]);
+  }, 60_000);
+
+  it('fails a facade whose import does not resolve', async () => {
+    const { problems } = await gate('unresolved', {
+      'src/thing.ts': "import type { Thing } from 'not-an-installed-package';\nexport const thingService = { get: (): Thing => null! };\n",
+      'src/__generated__/pack-types.ts': "import type { thingService } from '../thing.js';\nexport type Services = { thing: typeof thingService };\n",
+    });
+    expect(problems).toEqual([
+      expect.stringContaining('imports "not-an-installed-package", which dependents don\'t have'),
+      expect.stringMatching(/error TS2307: Cannot find module 'not-an-installed-package'/),
+    ]);
+  }, 60_000);
+});

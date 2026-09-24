@@ -1,16 +1,22 @@
+import type { NotesSettings } from '@/__generated__/types';
+import { services } from '@/__generated__/services';
+import { qx } from '@/__generated__/ears';
+import { broadcastToPlugin } from '@/__generated__/events';
 import { setup } from 'xstate';
-import { defineSystem, type SystemEntry } from '@abuddy/sdk/framework';
-import { bus } from '@abuddy/sdk/ids';
-import { emit } from '@abuddy/sdk/helpers';
+import { defineSystem } from '@abuddy/sdk/framework';
+
 import { EARS } from '@/__generated__/ears';
-import type { NoteDTO, NoteEntity, NotesConnectedData, OutgoingNotesSearchEvent } from './types';
-import { repository } from '@abuddy/sdk/ears';
-import { qx } from '@abuddy/sdk/ears';
-import './repository';
+import type { Contract } from './contract';
+import type { NoteDTO, NotesConnectedData, OutgoingNotesSearchEvent } from './types';
+import { repository } from '@/__generated__/repository';
+
 import { syncReferences } from './repository/link-utils';
 import { exportNotes } from './export-notes';
 import { importNotes } from './import-notes';
 import { createLogger } from '@abuddy/sdk/logger';
+import type { NoteEntity } from '@/features/notes/be/types';
+import { ref } from '@/__generated__/ref';
+import { errorMessage } from '@abuddy/sdk/utils/pure';
 
 const logger = createLogger('notes');
 
@@ -23,48 +29,18 @@ function isDescendantOf(noteId: EARS.EntityId, ancestorId: EARS.EntityId): boole
   return false;
 }
 
-type IncomingNoteEvents =
-  | { type: 'CREATE_NOTE'; title: string; content?: string; icon?: string | null; parentId?: string; skipContentSync?: boolean; noteType?: 'document' | 'tasklist' | 'task'; completed?: boolean; displayOrder?: number }
-  | { type: 'UPDATE_NOTE'; id: string; title?: string; content?: string; icon?: string | null; completed?: boolean; hideCompletedChildren?: boolean; favorite?: boolean }
-  | { type: 'DELETE_NOTE'; id: string }
-  | { type: 'SOFT_DELETE_NOTE'; id: string }
-  | { type: 'RESTORE_NOTE'; id: string }
-  | { type: 'MOVE_NOTE'; ids: string[]; newParentId: string | null }
-  | { type: 'REORDER_NOTE'; id: string; newParentId: string | null; newIndex: number }
-  | { type: 'VIEW_NOTE'; id: string }
-  | { type: 'SEARCH_NOTES'; query: string }
-  | { type: 'GET_TRASHED_NOTES' }
-  | { type: 'PERMANENTLY_DELETE_NOTE'; id: string }
-  | { type: 'EMPTY_TRASH' }
-  | { type: 'IMPORT_NOTES'; directory: string }
-  | { type: 'EXPORT_NOTES'; directory: string; format: 'markdown' | 'json' };
-
-export type OutgoingNotesEvents =
-  | { type: 'NOTES_CONNECTED'; data: NotesConnectedData }
-  | { type: 'NOTE_CREATED'; note: NoteDTO }
-  | { type: 'NOTE_UPDATED'; note: NoteDTO }
-  | { type: 'NOTE_DELETED'; noteId: string }
-  | { type: 'NOTE_RESTORED'; note: NoteDTO }
-  | { type: 'TRASHED_NOTES'; notes: NoteDTO[] }
-  | OutgoingNotesSearchEvent
-  | { type: 'NOTES_IMPORTED'; count: number; errors?: string[] }
-  | { type: 'NOTES_IMPORT_FAILED'; errors: string[] }
-  | { type: 'NOTES_EXPORTED'; filePath: string; itemCount: number }
-  | { type: 'NOTES_EXPORT_FAILED'; errors: string[] }
-
-export const notesSpec = defineSystem('notes')<IncomingNoteEvents, OutgoingNotesEvents>();
-export const notes = notesSpec.id;
+export const notesSpec = defineSystem<Contract>();
 
 export const notesSystem = setup({
   types: notesSpec.types,
   actions: {
     sendNotesConnectedData: ({ system }) => {
       const connectedData = repository.noteQueries.connectedData();
-      const settings = repository.settingsQueries.getPluginSettings('notes');
-      system.get(bus).send(emit(notes, {
+      const settings = services.settings.forFeature<NotesSettings>(ref('notes'));
+      broadcastToPlugin('notes', {
         type: 'NOTES_CONNECTED',
         data: { ...connectedData, settings },
-      }));
+      });
     },
 
     createNote: ({ system, event }) => {
@@ -81,10 +57,10 @@ export const notesSystem = setup({
 
       const noteDTO = repository.noteQueries.byIdDTO(note.id as EARS.EntityId);
       if (noteDTO) {
-        system.get(bus).send(emit(notes, {
+        broadcastToPlugin('notes', {
           type: 'NOTE_CREATED',
           note: noteDTO,
-        }));
+        });
 
         // If this note has a parent, append sub-document link to parent content
         if (ev.parentId && !ev.skipContentSync) {
@@ -100,10 +76,10 @@ export const notesSystem = setup({
         if (ev.parentId) {
           const parentDTO = repository.noteQueries.byIdDTO(ev.parentId as EARS.EntityId);
           if (parentDTO) {
-            system.get(bus).send(emit(notes, {
+            broadcastToPlugin('notes', {
               type: 'NOTE_UPDATED',
               note: parentDTO,
-            }));
+            });
           }
         }
       }
@@ -147,10 +123,10 @@ export const notesSystem = setup({
           if (affectedId !== noteId) {
             const affectedDTO = repository.noteQueries.byIdDTO(affectedId as EARS.EntityId);
             if (affectedDTO) {
-              system.get(bus).send(emit(notes, {
+              broadcastToPlugin('notes', {
                 type: 'NOTE_UPDATED',
                 note: affectedDTO,
-              }));
+              });
             }
           }
         }
@@ -158,10 +134,10 @@ export const notesSystem = setup({
 
       const updatedNote = repository.noteQueries.byIdDTO(noteId);
       if (updatedNote) {
-        system.get(bus).send(emit(notes, {
+        broadcastToPlugin('notes', {
           type: 'NOTE_UPDATED',
           note: updatedNote,
-        }));
+        });
 
         // Sync sub-document link title in parent note when child is renamed
         if (ev.title !== undefined && updatedNote.parentId) {
@@ -177,10 +153,10 @@ export const notesSystem = setup({
 
               const updatedParent = repository.noteQueries.byIdDTO(updatedNote.parentId as EARS.EntityId);
               if (updatedParent) {
-                system.get(bus).send(emit(notes, {
+                broadcastToPlugin('notes', {
                   type: 'NOTE_UPDATED',
                   note: updatedParent,
-                }));
+                });
               }
             }
           }
@@ -203,10 +179,10 @@ export const notesSystem = setup({
       const deletedIds = repository.noteCommands.softDelete(ev.id as EARS.EntityId);
 
       for (const deletedId of deletedIds) {
-        system.get(bus).send(emit(notes, {
+        broadcastToPlugin('notes', {
           type: 'NOTE_DELETED',
           noteId: deletedId,
-        }));
+        });
       }
 
       // Update parent's childCount
@@ -217,10 +193,10 @@ export const notesSystem = setup({
         if (parentIds.length > 0) {
           const parentDTO = repository.noteQueries.byIdDTO(parentIds[0]);
           if (parentDTO) {
-            system.get(bus).send(emit(notes, {
+            broadcastToPlugin('notes', {
               type: 'NOTE_UPDATED',
               note: parentDTO,
-            }));
+            });
           }
         }
       }
@@ -233,10 +209,10 @@ export const notesSystem = setup({
       for (const restoredId of restoredIds) {
         const noteDTO = repository.noteQueries.byIdDTO(restoredId as EARS.EntityId);
         if (noteDTO) {
-          system.get(bus).send(emit(notes, {
+          broadcastToPlugin('notes', {
             type: 'NOTE_RESTORED',
             note: noteDTO,
-          }));
+          });
         }
       }
 
@@ -245,10 +221,10 @@ export const notesSystem = setup({
       if (parentIds.length > 0) {
         const parentDTO = repository.noteQueries.byIdDTO(parentIds[0]);
         if (parentDTO) {
-          system.get(bus).send(emit(notes, {
+          broadcastToPlugin('notes', {
             type: 'NOTE_UPDATED',
             note: parentDTO,
-          }));
+          });
         }
       }
     },
@@ -293,10 +269,10 @@ export const notesSystem = setup({
         // Emit update for the moved note
         const movedDTO = repository.noteQueries.byIdDTO(id);
         if (movedDTO) {
-          system.get(bus).send(emit(notes, {
+          broadcastToPlugin('notes', {
             type: 'NOTE_UPDATED',
             note: movedDTO,
-          }));
+          });
         }
       }
 
@@ -304,10 +280,10 @@ export const notesSystem = setup({
       for (const parentId of affectedParentIds) {
         const parentDTO = repository.noteQueries.byIdDTO(parentId as EARS.EntityId);
         if (parentDTO) {
-          system.get(bus).send(emit(notes, {
+          broadcastToPlugin('notes', {
             type: 'NOTE_UPDATED',
             note: parentDTO,
-          }));
+          });
         }
       }
     },
@@ -328,10 +304,10 @@ export const notesSystem = setup({
       // Emit updates for the reordered note
       const reorderedDTO = repository.noteQueries.byIdDTO(noteId);
       if (reorderedDTO) {
-        system.get(bus).send(emit(notes, {
+        broadcastToPlugin('notes', {
           type: 'NOTE_UPDATED',
           note: reorderedDTO,
-        }));
+        });
       }
 
       // Emit updates for all affected siblings
@@ -339,10 +315,10 @@ export const notesSystem = setup({
         if (affectedId !== noteId) {
           const affectedDTO = repository.noteQueries.byIdDTO(affectedId as EARS.EntityId);
           if (affectedDTO) {
-            system.get(bus).send(emit(notes, {
+            broadcastToPlugin('notes', {
               type: 'NOTE_UPDATED',
               note: affectedDTO,
-            }));
+            });
           }
         }
       }
@@ -354,10 +330,10 @@ export const notesSystem = setup({
       for (const parentId of affectedParentIds) {
         const parentDTO = repository.noteQueries.byIdDTO(parentId as EARS.EntityId);
         if (parentDTO) {
-          system.get(bus).send(emit(notes, {
+          broadcastToPlugin('notes', {
             type: 'NOTE_UPDATED',
             note: parentDTO,
-          }));
+          });
         }
       }
     },
@@ -366,20 +342,20 @@ export const notesSystem = setup({
       const ev = notesSpec.typeOf('SEARCH_NOTES', event);
       const query = ev.query.trim().toLowerCase();
       if (!query) {
-        system.get(bus).send(emit(notes, {
+        broadcastToPlugin('notes', {
           type: 'NOTES_SEARCH_RESULTS',
           results: [],
-        }));
+        });
         return;
       }
       const allNotes = repository.noteQueries.allDTOs();
       const results = allNotes.filter((n: NoteDTO) =>
         (n.title || '').toLowerCase().includes(query)
       );
-      system.get(bus).send(emit(notes, {
+      broadcastToPlugin('notes', {
         type: 'NOTES_SEARCH_RESULTS',
         results,
-      }));
+      });
     },
 
     importNotesItems: ({ system, event }) => {
@@ -388,32 +364,32 @@ export const notesSystem = setup({
         const result = importNotes(ev.directory);
 
         if (result.created === 0 && result.errors.length > 0) {
-          system.get(bus).send(emit(notes, {
+          broadcastToPlugin('notes', {
             type: 'NOTES_IMPORT_FAILED',
             errors: result.errors,
-          }));
+          });
           return;
         }
 
-        system.get(bus).send(emit(notes, {
+        broadcastToPlugin('notes', {
           type: 'NOTES_IMPORTED',
           count: result.created,
           ...(result.errors.length > 0 ? { errors: result.errors } : {}),
-        }));
+        });
 
         // Refresh notes data
         const connectedData = repository.noteQueries.connectedData();
-        const settings = repository.settingsQueries.getPluginSettings('notes');
-        system.get(bus).send(emit(notes, {
+        const settings = services.settings.forFeature<NotesSettings>(ref('notes'));
+        broadcastToPlugin('notes', {
           type: 'NOTES_CONNECTED',
           data: { ...connectedData, settings },
-        }));
+        });
       } catch (err) {
-        const message = err instanceof Error ? err.message : String(err);
-        system.get(bus).send(emit(notes, {
+        const message = errorMessage(err);
+        broadcastToPlugin('notes', {
           type: 'NOTES_IMPORT_FAILED',
           errors: [message],
-        }));
+        });
       }
     },
 
@@ -422,17 +398,17 @@ export const notesSystem = setup({
       try {
         const { filePath, itemCount } = exportNotes(ev.directory, ev.format);
 
-        system.get(bus).send(emit(notes, {
+        broadcastToPlugin('notes', {
           type: 'NOTES_EXPORTED',
           filePath,
           itemCount,
-        }));
+        });
       } catch (err) {
-        const message = err instanceof Error ? err.message : String(err);
-        system.get(bus).send(emit(notes, {
+        const message = errorMessage(err);
+        broadcastToPlugin('notes', {
           type: 'NOTES_EXPORT_FAILED',
           errors: [message],
-        }));
+        });
       }
     },
 
@@ -442,10 +418,10 @@ export const notesSystem = setup({
       repository.noteCommands.update(ev.id as EARS.EntityId, { lastSeen: Date.now() }, true);
       const updatedNote = repository.noteQueries.byIdDTO(ev.id as EARS.EntityId);
       if (updatedNote) {
-        system.get(bus).send(emit(notes, {
+        broadcastToPlugin('notes', {
           type: 'NOTE_UPDATED',
           note: updatedNote,
-        }));
+        });
       }
     },
 
@@ -498,10 +474,10 @@ export const notesSystem = setup({
 
         const updatedRef = repository.noteQueries.byIdDTO(refId as EARS.EntityId);
         if (updatedRef) {
-          system.get(bus).send(emit(notes, {
+          broadcastToPlugin('notes', {
             type: 'NOTE_UPDATED',
             note: updatedRef,
-          }));
+          });
         }
       }
 
@@ -525,25 +501,25 @@ export const notesSystem = setup({
       repository.noteCommands.softDelete(ev.id as EARS.EntityId);
 
       // Notify about deleted note and all descendants
-      system.get(bus).send(emit(notes, {
+      broadcastToPlugin('notes', {
         type: 'NOTE_DELETED',
         noteId: ev.id,
-      }));
+      });
       for (const descId of descendantIds) {
-        system.get(bus).send(emit(notes, {
+        broadcastToPlugin('notes', {
           type: 'NOTE_DELETED',
           noteId: descId,
-        }));
+        });
       }
 
       // Update parent's childCount
       if (parentId) {
         const parentDTO = repository.noteQueries.byIdDTO(parentId as EARS.EntityId);
         if (parentDTO) {
-          system.get(bus).send(emit(notes, {
+          broadcastToPlugin('notes', {
             type: 'NOTE_UPDATED',
             note: parentDTO,
-          }));
+          });
         }
       }
     },
@@ -552,10 +528,10 @@ export const notesSystem = setup({
       const ev = notesSpec.typeOf('PERMANENTLY_DELETE_NOTE', event);
       try {
         repository.noteCommands.delete(ev.id as EARS.EntityId);
-        system.get(bus).send(emit(notes, {
+        broadcastToPlugin('notes', {
           type: 'NOTE_DELETED',
           noteId: ev.id,
-        }));
+        });
       } catch {
         // Already deleted or missing
       }
@@ -566,10 +542,10 @@ export const notesSystem = setup({
       for (const note of trashed) {
         try {
           repository.noteCommands.delete(note.id as EARS.EntityId);
-          system.get(bus).send(emit(notes, {
+          broadcastToPlugin('notes', {
             type: 'NOTE_DELETED',
             noteId: note.id,
-          }));
+          });
         } catch {
           // Already deleted or missing
         }
@@ -578,14 +554,14 @@ export const notesSystem = setup({
 
     sendTrashedNotes: ({ system }) => {
       const trashed = repository.noteQueries.trashedDTOs();
-      system.get(bus).send(emit(notes, {
+      broadcastToPlugin('notes', {
         type: 'TRASHED_NOTES',
         notes: trashed,
-      }));
+      });
     },
   },
 }).createMachine({
-  id: notes,
+  id: 'notes',
   initial: 'idle',
   context: ({}) => ({}),
   on: {
@@ -639,11 +615,15 @@ export const notesSystem = setup({
         CLIENT_CONNECTED: {
           actions: 'sendNotesConnectedData',
         },
+        // A pack's seeds can add or change notes
+        PACK_CHANGED: {
+          actions: 'sendNotesConnectedData',
+        },
       },
     },
   },
 });
 
-const notesEntry: SystemEntry = { spec: notesSpec, machine: notesSystem };
+const notesEntry = { spec: notesSpec, machine: notesSystem };
 
 export default notesEntry;

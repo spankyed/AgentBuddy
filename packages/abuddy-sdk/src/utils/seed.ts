@@ -1,11 +1,14 @@
 import * as fs from 'fs';
 import * as path from 'path';
-import type { EARS } from '../types';
+import type { EARS } from '../types/index.ts';
+import { boundHost } from '../runtime/host-runtime.ts';
 
 export interface SeedCounts {
   created: number;
   updated: number;
   skipped: number;
+  /** Items that could not be seeded (e.g. flows failing validation). Non-empty means the seed failed. */
+  errors?: string[];
 }
 
 export type SeedIncludeSet = true | ReadonlySet<string>;
@@ -16,7 +19,7 @@ export interface SeederContext {
   compiledDir: string;
   include?: SeedIncludeSet;
   mode?: ImportMode;
-  log: (...args: any[]) => void;
+  log: (...args: unknown[]) => void;
 }
 
 export interface Seeder {
@@ -24,17 +27,32 @@ export interface Seeder {
   seed(ctx: SeederContext): SeedCounts;
 }
 
-const seeders: Seeder[] = [];
-
-export function registerSeeder(seeder: Seeder): void {
-  const idx = seeders.findIndex(s => s.key === seeder.key);
-  if (idx !== -1) {
-    seeders[idx] = seeder;
-    return;
-  }
-  seeders.push(seeder);
+/** The seed keys a registered pack has seeders for (its registration's `seeders`): the only keys an import of its seeds can seed */
+export function registeredSeedKeys(packId: string): string[] {
+  return boundHost().packs.seeders(packId).map((seeder) => seeder.key);
 }
 
+/** The index compilePack writes next to a pack's compiled seeds */
+export const SEED_INDEX_FILE = 'seeds.json';
+
+/**
+ * The pack that compiled a seeds directory, from its seeds.json. Seed keys start with it, so two
+ * packs' records with the same entry key and identity seed a row each.
+ */
+export function seedingPackId(compiledDir: string): string {
+  const indexFile = path.join(compiledDir, SEED_INDEX_FILE);
+  return indexPackId(loadJSON<{ packId?: string }>(indexFile), indexFile);
+}
+
+/** The pack a parsed seeds index names; an index from before packs were recorded names none */
+export function indexPackId(index: { packId?: string } | null, indexFile: string): string {
+  if (!index?.packId) {
+    throw new Error(`${indexFile} doesn't name the pack that compiled these seeds: rebuild the pack with abuddy build`);
+  }
+  return index.packId;
+}
+
+/** Seeds a pack's compiled seeds directory with the seeders of the registered pack its seeds.json names */
 export function seedData(options: {
   compiledDir: string;
   include?: Record<string, SeedIncludeSet | undefined>;
@@ -43,8 +61,9 @@ export function seedData(options: {
 }): Record<string, SeedCounts> {
   const log = options.verbose ? console.log.bind(console) : () => {};
   const result: Record<string, SeedCounts> = {};
+  const packId = seedingPackId(options.compiledDir);
 
-  for (const seeder of seeders) {
+  for (const seeder of boundHost().packs.seeders(packId)) {
     const inc = options.include?.[seeder.key];
     if (inc instanceof Set && inc.size === 0) {
       log(`  ${seeder.key} section skipped by include filter`);
@@ -82,74 +101,4 @@ export function filterByInclude<T>(items: T[], getKey: (item: T) => string, inc:
   if (shouldSeedAll(inc)) return items;
   const set = inc as ReadonlySet<string>;
   return items.filter(item => set.has(getKey(item)));
-}
-
-function shouldSkipByHash(
-  existingHash: string | undefined,
-  compiledHash: string | undefined,
-): 'untracked' | 'unchanged' | null {
-  if (!existingHash) return 'untracked';
-  if (compiledHash && existingHash === compiledHash) return 'unchanged';
-  return null;
-}
-
-export function seedCollection<T>(opts: {
-  file: string;
-  label: string;
-  getKey: (item: T) => string;
-  findExisting: (item: T) => { id: EARS.EntityId } | undefined;
-  create: (item: T) => void;
-  update: (id: EARS.EntityId, item: T) => void;
-  log: (...args: any[]) => void;
-  include?: SeedIncludeSet;
-  mode?: ImportMode;
-  wipe?: () => void;
-  getSourceHash?: (item: T) => string | undefined;
-  getExistingSourceHash?: (existing: { id: EARS.EntityId }) => string | undefined;
-}): SeedCounts {
-  const counts: SeedCounts = { created: 0, updated: 0, skipped: 0 };
-  const raw = loadJSON<T[]>(opts.file);
-  if (!raw) {
-    opts.log(`  ${opts.label} file not found, skipping`);
-    return counts;
-  }
-  const data = filterByInclude(raw, opts.getKey, opts.include);
-  if (data.length === 0 && !shouldSeedAll(opts.include)) {
-    opts.log(`  ${opts.label} section skipped by include filter`);
-    return counts;
-  }
-  if (opts.mode === 'wipe-and-replace' && opts.wipe) {
-    opts.wipe();
-    opts.log(`  ${opts.label} wiped`);
-  }
-  const hashAware = opts.getSourceHash && opts.getExistingSourceHash;
-  for (const item of data) {
-    const key = opts.getKey(item);
-    const existing = opts.findExisting(item);
-    if (existing) {
-      if (opts.mode === 'keep-existing') {
-        opts.log(`  ${opts.label} skipped (existing): ${key}`);
-        counts.skipped++;
-      } else if (hashAware) {
-        const skip = shouldSkipByHash(opts.getExistingSourceHash!(existing), opts.getSourceHash!(item));
-        if (skip) {
-          opts.log(`  ${opts.label} ${skip}: ${key}`);
-          counts.skipped++;
-        } else {
-          opts.update(existing.id, item);
-          opts.log(`  ${opts.label} updated: ${key}`);
-          counts.updated++;
-        }
-      } else {
-        opts.update(existing.id, item);
-        opts.log(`  ${opts.label} updated: ${key}`);
-        counts.updated++;
-      }
-    } else {
-      opts.create(item);
-      opts.log(`  ${opts.label} created: ${key}`);
-      counts.created++;
-    }
-  }
-  return counts;
 }

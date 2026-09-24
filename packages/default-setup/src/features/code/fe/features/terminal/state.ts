@@ -1,5 +1,5 @@
-import { setup, assign, enqueueActions } from 'xstate';
-import { trpc } from '@abuddy/sdk/rpc';
+import { setup, assign, enqueueActions, type ActorRefFrom } from 'xstate';
+import { sendToSystem } from '@/__generated__/events';
 import { terminalEventBus } from '../../utils/terminal-events';
 import { terminalPool } from '../../utils/terminal-pool';
 import { updateParentState, getParentContext, addTabToParent, sendEventToParent } from '../../utils/parent-communication';
@@ -24,14 +24,6 @@ const createTerminalTab = (info: TerminalInfo) => ({
   isTerminal: true,
   terminalInfo: info
 })
-
-const sendToBackend = (type: string, data: any) => {
-  trpc.bus.send.mutate({
-    systemId: 'code' as any,
-    type: type as any,
-    ...data
-  } as any)
-}
 
 export interface Context {
   terminals: TerminalInfo[]
@@ -70,9 +62,10 @@ export const terminalState = setup({
       const parentContext = getParentContext(self)
       const baseDir = parentContext?.baseDirectory
 
-      sendToBackend('terminal.CREATE_TERMINAL', {
+      sendToSystem('code', {
+        type: 'terminal.CREATE_TERMINAL',
         title: ev.title,
-        cwd: ev.cwd || (baseDir && baseDir.trim() ? baseDir : undefined)
+        cwd: ev.cwd || (baseDir && baseDir.trim() ? baseDir : undefined),
       })
 
       return { pendingTarget: ev.target ?? null, pendingCommand: ev.command ?? null }
@@ -80,33 +73,35 @@ export const terminalState = setup({
 
     closeTerminal: ({ event }) => {
       const ev = event as { type: 'terminal.CLOSE'; terminalId: string }
-      sendToBackend('terminal.CLOSE_TERMINAL', { terminalId: ev.terminalId })
+      sendToSystem('code', { type: 'terminal.CLOSE_TERMINAL', terminalId: ev.terminalId })
     },
 
     sendTerminalInput: ({ event }) => {
       const ev = event as { type: 'terminal.INPUT'; terminalId: string; data: string }
-      sendToBackend('terminal.TERMINAL_INPUT', { terminalId: ev.terminalId, data: ev.data })
+      sendToSystem('code', { type: 'terminal.TERMINAL_INPUT', terminalId: ev.terminalId, data: ev.data })
     },
 
     resizeTerminal: ({ event }) => {
       const ev = event as { type: 'terminal.RESIZE'; terminalId: string; cols: number; rows: number }
-      sendToBackend('terminal.RESIZE_TERMINAL', {
+      sendToSystem('code', {
+        type: 'terminal.RESIZE_TERMINAL',
         terminalId: ev.terminalId,
         cols: ev.cols,
-        rows: ev.rows
+        rows: ev.rows,
       })
     },
 
     renameTerminal: ({ event }) => {
       const ev = event as { type: 'terminal.RENAME'; terminalId: string; customTitle: string }
-      sendToBackend('terminal.RENAME_TERMINAL', {
+      sendToSystem('code', {
+        type: 'terminal.RENAME_TERMINAL',
         terminalId: ev.terminalId,
-        customTitle: ev.customTitle
+        customTitle: ev.customTitle,
       })
     },
 
     listTerminals: () => {
-      sendToBackend('terminal.REFRESH_LIST', {})
+      sendToSystem('code', { type: 'terminal.REFRESH_LIST' })
     },
 
     assignTerminals: enqueueActions(({ enqueue, self, event }) => {
@@ -286,9 +281,10 @@ export const terminalState = setup({
 
         // Run pending command if set
         if (command) {
-          sendToBackend('terminal.TERMINAL_INPUT', {
+          sendToSystem('code', {
+            type: 'terminal.TERMINAL_INPUT',
             terminalId: terminalInfo.id,
-            data: command + '\n'
+            data: command + '\n',
           })
         }
       })
@@ -361,7 +357,7 @@ export const terminalState = setup({
       const ev = event as { type: 'terminal.OPEN_TABS'; terminalIds: string[] }
       // Send individual requests to backend for each terminal
       ev.terminalIds.forEach(terminalId => {
-        sendToBackend('terminal.OPEN_TERMINAL_TAB', { terminalId })
+        sendToSystem('code', { type: 'terminal.OPEN_TERMINAL_TAB', terminalId })
       })
     },
 
@@ -453,3 +449,6 @@ export const terminalState = setup({
     }
   }
 });
+
+/** The terminal child's actor, as the code plugin's components reach it with `codeChild()` */
+export type TerminalActor = ActorRefFrom<typeof terminalState>;

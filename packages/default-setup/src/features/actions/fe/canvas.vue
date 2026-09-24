@@ -36,17 +36,17 @@
 </template>
 
 <script setup lang="ts">
-import { useActorSystem } from '@abuddy/sdk/fe'
+import { usePlugin } from '@abuddy/sdk/fe'
+
 import { computed } from 'vue';
 import { useSelector } from '@xstate/vue';
-import { id, type ActionsState } from './state';
+import type { ActionsState } from './state';
 import ActionsList from './components/ActionsList.vue';
 import ActionDetail from './components/ActionDetail.vue';
-import type { EARS, ActionParameter } from '@/__generated__/types';
+import type { EARS } from '@abuddy/sdk';
+import type { ActionParameter } from '@abuddy/sdk';
 
-const actorSystem = useActorSystem()
-
-const actor: ActionsState = actorSystem.get(id);
+const actor: ActionsState = usePlugin();
 const state = useSelector(actor, (state) => state);
 const actions = useSelector(actor, (state) => state.context.actions);
 const selectedAction = useSelector(actor, (state) => state.context.selectedAction);

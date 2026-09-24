@@ -1,12 +1,12 @@
 import { defineAsyncComponent } from 'vue';
-import type { Plugin } from "@abuddy/sdk/fe";
+import { definePlugin } from '@abuddy/sdk/fe';
 import { Network } from 'lucide-vue-next';
-import state, { id } from './state.ts';
+import state from './state';
 import settings from './settings.vue';
 
 const canvas = defineAsyncComponent(() => import('./canvas/flow-canvas.vue'));
-const flowsPlugin: Plugin = {
-  id,
+
+const flowsPlugin = definePlugin({
   label: 'Flows',
   icon: Network,
   state,
@@ -16,6 +16,6 @@ const flowsPlugin: Plugin = {
   options: {
     // headerClass: 'bg-neutral-900 border-b border-neutral-600'
   }
-};
+});
 
 export default flowsPlugin;

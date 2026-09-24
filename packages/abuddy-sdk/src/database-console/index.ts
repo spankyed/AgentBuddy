@@ -1,0 +1,134 @@
+/**
+ * The Database console's code runners. Console code is the body of a function that returns its result; a query
+ * sees the read helpers, a transaction the read and write helpers, all acting on the installed engine. The
+ * Database plugin runs its console's code with them, and `abuddy db query`/`exec` run theirs, so the same code
+ * means the same thing in both.
+ *
+ * @packageDocumentation
+ */
+import { boundHost } from '../runtime/host-runtime.ts';
+import type { EarsNames } from '../runtime/packs-view.ts';
+import { EARS as EARS_NAMES } from '../types/index.ts';
+import {
+  defineEars, untypedQx, untypedTx, destroyEntity, getAll, getRoles, grantRole, revokeRole, prepareEntity,
+  createRelation, removeRelation, removeRelationById, getAllEntities, getEntitiesOfType, getAllEntityTypes,
+  getAllAttributeKinds, getAllRelationKinds, getAttributeStats, getRelationStats, findRelations,
+  queryEntitiesByAttribute, queryEntitiesByRelationTo, queryEntitiesInRelationTo, type EARS,
+} from '@abuddy/ears';
+import { errorMessage } from '../utils/shared.ts';
+
+/** Entities per type, and each attribute kind's and relation kind's use, over the whole database */
+export interface SchemaStats {
+  entities: Record<string, number>;
+  attributes: Record<string, { entityCount: number; totalValues: number }>;
+  relations: Record<string, { totalRelations: number; uniqueSources: number; uniqueTargets: number }>;
+}
+
+/** The installed engine's data, counted per entity type, attribute kind and relation kind */
+export function getSchemaStats(): SchemaStats {
+  const stats: SchemaStats = { entities: {}, attributes: {}, relations: {} };
+  for (const entityType of getAllEntityTypes()) {
+    stats.entities[entityType] = getEntitiesOfType(entityType).length;
+  }
+  for (const kind of getAllAttributeKinds()) {
+    stats.attributes[String(kind)] = getAttributeStats(kind);
+  }
+  for (const kind of getAllRelationKinds()) {
+    const { total, uniqueSources, uniqueTargets } = getRelationStats(kind as EARS.RelKind);
+    stats.relations[kind] = { totalRelations: total, uniqueSources, uniqueTargets };
+  }
+  return stats;
+}
+
+const { getAttr, getAttrs, createEntityWithDefaults, updateEntity } = /*#__PURE__*/ defineEars();
+
+const readHelpers = {
+  qx: untypedQx,
+  getAllEntities,
+  getAll,
+  queryEntitiesByRelationTo,
+  getAttr,
+  getAttrs,
+  getRoles,
+  getEntitiesOfType,
+  queryEntitiesByAttribute,
+  queryEntitiesInRelationTo,
+  findRelations,
+  getRelationStats,
+  getSchemaStats,
+};
+
+const writeHelpers = {
+  tx: untypedTx,
+  destroyEntity,
+  prepareEntity,
+  createEntityWithDefaults,
+  updateEntity,
+  createRelation,
+  removeRelation,
+  removeRelationById,
+  grantRole,
+  revokeRole,
+};
+
+/**
+ * What query code sees besides `EARS`. Nothing here may write: a `query` flow step's safety rests on it (the step
+ * refuses a generated query that names a write helper, which is undefined for a query).
+ */
+export const READ_HELPER_NAMES: readonly string[] = Object.keys(readHelpers);
+
+/** The helpers only a transaction sees: a query naming one fails with "<name> is not defined" */
+export const WRITE_HELPER_NAMES: readonly string[] = Object.keys(writeHelpers);
+
+/**
+ * The names console code sees besides the helpers: `EARS`, the entity types and relation kinds of the data it
+ * runs on (a pack's generated `EARS`, or one built from the installed packs' manifests)
+ */
+export interface ConsoleScope {
+  EARS: object;
+}
+
+/**
+ * `EARS` for console code: the SDK's, with the entity types and relation kinds `names` declares. Console code
+ * queries the whole database, so it names every installed pack's types, not only the pack running the console.
+ */
+export function consoleEars(names: EarsNames): ConsoleScope['EARS'] {
+  return { ...EARS_NAMES, Entity: { ...EARS_NAMES.Entity, ...names.entities }, RelKind: { ...EARS_NAMES.RelKind, ...names.relKinds } };
+}
+
+/** `EARS` for console code in a running app: every registered pack's, from the app's registry */
+export function installedEars(): ConsoleScope['EARS'] {
+  return consoleEars(boundHost().packs.earsNames());
+}
+
+function run(code: string, scope: ConsoleScope, helpers: Record<string, unknown>): Promise<unknown> {
+  // Blank code is nothing to run, not code that returns nothing: whitespace alone would otherwise build a function
+  // body and answer `undefined`, which reads as a query that found nothing
+  if (typeof code !== 'string' || code.trim() === '') throw new Error('No code to run');
+  const names = ['EARS', ...Object.keys(helpers)];
+  const body = new Function(...names, code);
+  return Promise.resolve(body(scope.EARS, ...Object.values(helpers)));
+}
+
+/** Runs query code with the read helpers; its error's message is the code's */
+export async function runQueryCode(code: string, scope: ConsoleScope): Promise<unknown> {
+  try {
+    return await run(code, scope, readHelpers);
+  } catch (error) {
+    throw new Error(errorMessage(error));
+  }
+}
+
+/**
+ * Runs transaction code with the read and write helpers; its error's message starts "Transaction failed:". The
+ * writes are not one transaction: each helper writes as the code runs, so what ran before a failure stands, which
+ * the message says.
+ */
+export async function runTransactionCode(code: string, scope: ConsoleScope): Promise<unknown> {
+  try {
+    return await run(code, scope, { ...readHelpers, ...writeHelpers });
+  } catch (error) {
+    const reason = errorMessage(error);
+    throw new Error(`Transaction failed: ${reason}\n  The writes it made before failing stand: nothing is rolled back.`);
+  }
+}

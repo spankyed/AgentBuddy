@@ -1,7 +1,9 @@
 import { setup, type ActorRefFrom, assign, log } from 'xstate';
 import { safeEvents } from '@abuddy/sdk/fe';
-import { trpc } from '@abuddy/sdk/rpc';
-import type { OutgoingLogsEvents } from '@/__generated__/types';
+import { sendToSystem } from '@/__generated__/events';
+import type { LogsSettings } from '@/__generated__/types';
+import type { LogsContext } from './contract';
+import type { OutgoingLogsEvents } from '@/features/logs/be/types';
 
 export const id = 'logs' as const;
 
@@ -15,24 +17,14 @@ export interface LogEntry {
   stack?: string;
 }
 
-export interface LogsContext {
-  logs: LogEntry[];
-  filter: {
-    level: 'all' | 'debug' | 'info' | 'warn' | 'error';
-    search: string;
-  };
-  settings: {
-    maxLogs: number;
-    excludedSources: string[];
-    showAppEvents?: boolean;
-  };
-}
 
 type LogsEvents =
   | { type: 'SET_FILTER_LEVEL'; level: 'all' | 'debug' | 'info' | 'warn' | 'error' }
   | { type: 'SET_SEARCH'; search: string }
   | { type: 'CLEAR_LOGS' }
-  | OutgoingLogsEvents;
+  | OutgoingLogsEvents
+  // The app's, when the logs plugin's settings change; the canvas sends one itself to show a change at once
+  | { type: 'FEATURE_SETTINGS_UPDATED'; settings: LogsSettings };
 
 const typeOf = safeEvents<LogsEvents>();
 
@@ -66,8 +58,7 @@ const logsState = setup({
       logs: () => [],
     }),
     sendClearLogsToBackend: () => {
-      trpc.bus.send.mutate({
-        systemId: id,
+      sendToSystem(id, {
         type: 'CLEAR_LOGS',
       });
     },
@@ -85,12 +76,11 @@ const logsState = setup({
     }),
     updateSettings: assign({
       settings: ({ event }) => {
-        trpc.bus.send.mutate({
+        sendToSystem(id, {
           type: 'REQUEST_LOGS_UPDATE',
-          systemId: id,
         });
 
-        return typeOf('LOGS_SETTINGS_UPDATED', event).settings
+        return typeOf('FEATURE_SETTINGS_UPDATED', event).settings
       },
     }),
   },
@@ -132,7 +122,7 @@ const logsState = setup({
         CLEAR_LOGS: {
           actions: ['clearLogs', 'sendClearLogsToBackend'],
         },
-        LOGS_SETTINGS_UPDATED: {
+        FEATURE_SETTINGS_UPDATED: {
           actions: 'updateSettings',
         },
       },

@@ -1,20 +1,15 @@
-import { setup, assign, enqueueActions } from 'xstate';
-import { trpc } from '@abuddy/sdk/rpc';
+import { setup, assign, enqueueActions , type ActorRefFrom } from 'xstate';
+import { sendToSystem } from '@/__generated__/events';
 import type { GitStatusFile, GitDiff } from '../commit/state';
 import type { GhPullRequest, GhPRComment, GhReviewThread } from '@/__generated__/types';
-import { updateParentState, getParentContext, addTabToParent } from '../../utils/parent-communication';
-import { navigateToPlugin } from '@abuddy/sdk/fe';
+import { updateParentState, getParentContext, addTabToParent, sendEventToParent } from '../../utils/parent-communication';
+import { untypedOpenPlugin } from '@abuddy/sdk/fe'
+import { resolveName } from '@abuddy/sdk/ids'
+
+const HOST_SETTINGS = resolveName('settings', 'host');
 import { getCommentDatabaseId } from './comment-id';
 
 export type { GhPullRequest, GhPRComment }
-
-const sendToBackend = (type: string, data: any) => {
-  trpc.bus.send.mutate({
-    systemId: 'code' as any,
-    type: type as any,
-    ...data
-  } as any)
-}
 
 let placeholderIdCounter = -1
 
@@ -209,8 +204,8 @@ export const pullRequestState = setup({
       if (!parentContext?.baseDirectory) {
         return
       }
-      sendToBackend('pr.LIST_OPEN_PRS', {})
-      sendToBackend('pr.CHECK_BRANCH_PR', {})
+      sendToSystem('code', { type: 'pr.LIST_OPEN_PRS' })
+      sendToSystem('code', { type: 'pr.CHECK_BRANCH_PR' })
     },
 
     selectPrFile: assign({
@@ -222,7 +217,8 @@ export const pullRequestState = setup({
 
     viewPrDiff: ({ event, context }) => {
       const ev = event as { type: 'pr.VIEW_DIFF'; path: string }
-      sendToBackend('pr.GET_BRANCH_FILE_DIFF', {
+      sendToSystem('code', {
+        type: 'pr.GET_BRANCH_FILE_DIFF',
         path: ev.path,
         baseBranch: context.prBaseBranch,
         headBranch: context.selectedPR?.headRefName,
@@ -258,7 +254,7 @@ export const pullRequestState = setup({
       const newBase = ev.data.branch
       enqueue.assign({ prBaseBranch: newBase })
       if (newBase !== context.prBaseBranch || context.prFiles.length === 0 || context.diffStale) {
-        sendToBackend('pr.GET_BRANCH_DIFF', { baseBranch: newBase })
+        sendToSystem('code', { type: 'pr.GET_BRANCH_DIFF', baseBranch: newBase })
       }
     }),
 
@@ -299,7 +295,7 @@ export const pullRequestState = setup({
       })
     }),
 
-    openFile: ({ event, self, system }) => {
+    openFile: ({ event, self }) => {
       const ev = event as { type: 'pr.OPEN_FILE'; file: GitStatusFile }
       const parentContext = getParentContext(self)
       const baseDirectory = parentContext?.baseDirectory || ''
@@ -309,7 +305,7 @@ export const pullRequestState = setup({
           ? baseDirectory + ev.file.path
           : baseDirectory + '/' + ev.file.path
       updateParentState(self, { selectedPanel: 'explorer' })
-      system.get('explorer')?.send({
+      sendEventToParent(self, {
         type: 'explorer.OPEN_FILE',
         path: fullPath
       })
@@ -318,7 +314,7 @@ export const pullRequestState = setup({
     handleCodeStartup: ({ self }) => {
       const parentContext = getParentContext(self)
       if (parentContext?.baseDirectory) {
-        sendToBackend('pr.CHECK_GH_AUTH', {})
+        sendToSystem('code', { type: 'pr.CHECK_GH_AUTH' })
         self.send({ type: 'pr.REFRESH_STATUS' })
       } else {
         self.send({ type: 'pr.ERROR', message: 'No directory selected. Please select a directory first.' })
@@ -344,7 +340,7 @@ export const pullRequestState = setup({
     }),
 
     navigateToHelp: () => {
-      navigateToPlugin('settings', [{ type: 'TAB.SELECT', tab: 'help' }]);
+      untypedOpenPlugin(HOST_SETTINGS, [{ type: 'TAB.SELECT', tab: 'help' }]);
     },
 
     handleOpenPRsReceived: assign({
@@ -407,13 +403,14 @@ export const pullRequestState = setup({
             || context.diffStale
           if (needsDiff) {
             enqueue.assign({ prBaseBranch: incoming.baseRefName })
-            sendToBackend('pr.GET_BRANCH_DIFF', {
+            sendToSystem('code', {
+              type: 'pr.GET_BRANCH_DIFF',
               baseBranch: incoming.baseRefName,
               headBranch: incoming.headRefName,
             })
           }
         } else {
-          sendToBackend('pr.GET_SMART_BASE_BRANCH', {})
+          sendToSystem('code', { type: 'pr.GET_SMART_BASE_BRANCH' })
         }
       }
     }),
@@ -467,7 +464,7 @@ export const pullRequestState = setup({
 
     requestUpdatePR: ({ event }) => {
       const ev = event as { type: 'pr.UPDATE_PR'; number: number; title?: string; body?: string; base?: string }
-      sendToBackend('pr.UPDATE_PR', { number: ev.number, title: ev.title, body: ev.body, base: ev.base })
+      sendToSystem('code', { type: 'pr.UPDATE_PR', number: ev.number, title: ev.title, body: ev.body, base: ev.base })
     },
 
     handlePRUpdated: assign({
@@ -490,14 +487,14 @@ export const pullRequestState = setup({
 
     requestDeleteBranch: ({ context }) => {
       if (context.selectedPR?.headRefName) {
-        sendToBackend('pr.DELETE_BRANCH', { branch: context.selectedPR.headRefName })
+        sendToSystem('code', { type: 'pr.DELETE_BRANCH', branch: context.selectedPR.headRefName })
       }
     },
 
     checkoutBase: ({ context, self }) => {
       if (!context.selectedPR?.baseRefName) return
       updateParentState(self, { selectedPanel: 'commit' })
-      sendToBackend('commit.CHECKOUT_BRANCH', { branchName: context.selectedPR.baseRefName })
+      sendToSystem('code', { type: 'commit.CHECKOUT_BRANCH', branchName: context.selectedPR.baseRefName })
     },
 
     handleBranchDeleted: assign({
@@ -508,12 +505,12 @@ export const pullRequestState = setup({
 
     // User-initiated actions
     requestListPRs: ({ }) => {
-      sendToBackend('pr.LIST_OPEN_PRS', {})
+      sendToSystem('code', { type: 'pr.LIST_OPEN_PRS' })
     },
 
     switchToPRBranch: ({ event }) => {
       const ev = event as { type: 'pr.SWITCH_TO_PR_BRANCH'; branchName: string }
-      sendToBackend('commit.CHECKOUT_BRANCH', { branchName: ev.branchName })
+      sendToSystem('code', { type: 'commit.CHECKOUT_BRANCH', branchName: ev.branchName })
     },
 
     setViewMode: assign({
@@ -538,7 +535,7 @@ export const pullRequestState = setup({
         pendingManualPRNumber: null,
       })
       enqueue(() => {
-        sendToBackend('pr.GET_PR_AUTOFILL', {})
+        sendToSystem('code', { type: 'pr.GET_PR_AUTOFILL' })
       })
     }),
 
@@ -573,7 +570,8 @@ export const pullRequestState = setup({
     }),
 
     submitCreate: ({ context }) => {
-      sendToBackend('pr.CREATE_PR', {
+      sendToSystem('code', {
+        type: 'pr.CREATE_PR',
         title: context.createTitle,
         body: context.createBody,
         base: context.createBaseBranch || context.prBaseBranch || undefined,
@@ -582,7 +580,8 @@ export const pullRequestState = setup({
     },
 
     submitCreateDraft: ({ context }) => {
-      sendToBackend('pr.CREATE_PR', {
+      sendToSystem('code', {
+        type: 'pr.CREATE_PR',
         title: context.createTitle,
         body: context.createBody,
         base: context.createBaseBranch || context.prBaseBranch || undefined,
@@ -593,7 +592,8 @@ export const pullRequestState = setup({
     requestMerge: ({ event, context }) => {
       if (!context.selectedPR) return
       const ev = event as { type: 'pr.MERGE'; method?: 'merge' | 'squash' | 'rebase' }
-      sendToBackend('pr.MERGE_PR', {
+      sendToSystem('code', {
+        type: 'pr.MERGE_PR',
         number: context.selectedPR.number,
         method: ev.method || 'merge',
       })
@@ -601,25 +601,26 @@ export const pullRequestState = setup({
 
     requestClose: ({ context }) => {
       if (!context.selectedPR) return
-      sendToBackend('pr.CLOSE_PR', { number: context.selectedPR.number })
+      sendToSystem('code', { type: 'pr.CLOSE_PR', number: context.selectedPR.number })
     },
 
     requestToggleDraft: ({ context }) => {
       if (!context.selectedPR) return
-      sendToBackend('pr.TOGGLE_DRAFT', {
+      sendToSystem('code', {
+        type: 'pr.TOGGLE_DRAFT',
         number: context.selectedPR.number,
         isDraft: context.selectedPR.isDraft,
       })
     },
 
     refreshPRList: () => {
-      sendToBackend('pr.LIST_OPEN_PRS', {})
-      sendToBackend('pr.CHECK_BRANCH_PR', {})
+      sendToSystem('code', { type: 'pr.LIST_OPEN_PRS' })
+      sendToSystem('code', { type: 'pr.CHECK_BRANCH_PR' })
     },
 
     refreshPRDetails: ({ event }) => {
       const ev = event as { type: 'pr.REFRESH_PR'; number: number }
-      sendToBackend('pr.SELECT_PR', { number: ev.number })
+      sendToSystem('code', { type: 'pr.SELECT_PR', number: ev.number })
     },
 
     selectPRAndLoadDiff: enqueueActions(({ enqueue, event }) => {
@@ -633,7 +634,7 @@ export const pullRequestState = setup({
         pendingManualPRNumber: ev.number,
       })
       enqueue(() => {
-        sendToBackend('pr.SELECT_PR', { number: ev.number })
+        sendToSystem('code', { type: 'pr.SELECT_PR', number: ev.number })
       })
     }),
 
@@ -648,7 +649,8 @@ export const pullRequestState = setup({
       if (ev.data.requestId < (context.latestPrDetailsRequestId[prNumber] ?? 0)) return
       const expected = context.pendingManualPRNumber ?? context.selectedPR?.number
       if (expected !== undefined && expected !== prNumber) return
-      sendToBackend('pr.GET_BRANCH_DIFF', {
+      sendToSystem('code', {
+        type: 'pr.GET_BRANCH_DIFF',
         baseBranch: ev.data.pr.baseRefName,
         headBranch: ev.data.pr.headRefName,
       })
@@ -672,7 +674,7 @@ export const pullRequestState = setup({
         prComments: [...context.prComments, placeholder],
         inflightMutations: context.inflightMutations + 1,
       })
-      enqueue(() => sendToBackend('pr.CREATE_COMMENT', { number: ev.number, body: ev.body }))
+      enqueue(() => sendToSystem('code', { type: 'pr.CREATE_COMMENT', number: ev.number, body: ev.body }))
     }),
 
     optimisticEditComment: enqueueActions(({ enqueue, event, context }) => {
@@ -684,7 +686,7 @@ export const pullRequestState = setup({
         ),
         inflightMutations: context.inflightMutations + 1,
       })
-      enqueue(() => sendToBackend('pr.EDIT_COMMENT', { commentId: ev.commentId, body: ev.body }))
+      enqueue(() => sendToSystem('code', { type: 'pr.EDIT_COMMENT', commentId: ev.commentId, body: ev.body }))
     }),
 
     optimisticDeleteComment: enqueueActions(({ enqueue, event, context }) => {
@@ -694,17 +696,17 @@ export const pullRequestState = setup({
         prComments: context.prComments.filter(c => getCommentDatabaseId(c) !== ev.commentId),
         inflightMutations: context.inflightMutations + 1,
       })
-      enqueue(() => sendToBackend('pr.DELETE_COMMENT', { commentId: ev.commentId }))
+      enqueue(() => sendToSystem('code', { type: 'pr.DELETE_COMMENT', commentId: ev.commentId }))
     }),
 
     handleCommentMutated: enqueueActions(({ enqueue, context }) => {
       enqueue.assign({ _commentSnapshot: null })
       if (context.selectedPR) {
-        // Narrow refresh — just the comments. Previously this was pr.SELECT_PR,
-        // which re-fetched the full PR details, diff, threads and ran through
-        // every asset-URL resolver on every click. pr.GET_COMMENTS keeps the UI
-        // snappy and avoids re-rendering unrelated panels on each mutation.
-        enqueue(() => sendToBackend('pr.GET_COMMENTS', { number: context.selectedPR!.number }))
+        // Narrow refresh — just the comments. pr.SELECT_PR would re-fetch the full
+        // PR details, diff and threads and run every asset-URL resolver on each
+        // click; pr.GET_COMMENTS keeps the UI snappy and leaves unrelated panels
+        // alone on each mutation.
+        enqueue(() => sendToSystem('code', { type: 'pr.GET_COMMENTS', number: context.selectedPR!.number }))
       }
     }),
 
@@ -740,7 +742,7 @@ export const pullRequestState = setup({
         }),
         inflightMutations: context.inflightMutations + 1,
       })
-      enqueue(() => sendToBackend('pr.REPLY_TO_THREAD', { prNumber: ev.prNumber, commentId: ev.commentId, body: ev.body }))
+      enqueue(() => sendToSystem('code', { type: 'pr.REPLY_TO_THREAD', prNumber: ev.prNumber, commentId: ev.commentId, body: ev.body }))
     }),
 
     optimisticResolveThread: enqueueActions(({ enqueue, event, context }) => {
@@ -752,7 +754,7 @@ export const pullRequestState = setup({
         ),
         inflightMutations: context.inflightMutations + 1,
       })
-      enqueue(() => sendToBackend('pr.RESOLVE_THREAD', { threadId: ev.threadId }))
+      enqueue(() => sendToSystem('code', { type: 'pr.RESOLVE_THREAD', threadId: ev.threadId }))
     }),
 
     optimisticUnresolveThread: enqueueActions(({ enqueue, event, context }) => {
@@ -764,7 +766,7 @@ export const pullRequestState = setup({
         ),
         inflightMutations: context.inflightMutations + 1,
       })
-      enqueue(() => sendToBackend('pr.UNRESOLVE_THREAD', { threadId: ev.threadId }))
+      enqueue(() => sendToSystem('code', { type: 'pr.UNRESOLVE_THREAD', threadId: ev.threadId }))
     }),
 
     optimisticEditReviewComment: enqueueActions(({ enqueue, event, context }) => {
@@ -779,7 +781,7 @@ export const pullRequestState = setup({
         })),
         inflightMutations: context.inflightMutations + 1,
       })
-      enqueue(() => sendToBackend('pr.EDIT_REVIEW_COMMENT', { commentId: ev.commentId, body: ev.body }))
+      enqueue(() => sendToSystem('code', { type: 'pr.EDIT_REVIEW_COMMENT', commentId: ev.commentId, body: ev.body }))
     }),
 
     optimisticDeleteReviewComment: enqueueActions(({ enqueue, event, context }) => {
@@ -792,7 +794,7 @@ export const pullRequestState = setup({
         })),
         inflightMutations: context.inflightMutations + 1,
       })
-      enqueue(() => sendToBackend('pr.DELETE_REVIEW_COMMENT', { commentId: ev.commentId }))
+      enqueue(() => sendToSystem('code', { type: 'pr.DELETE_REVIEW_COMMENT', commentId: ev.commentId }))
     }),
 
     handleReviewThreadsReceived: assign({
@@ -805,13 +807,13 @@ export const pullRequestState = setup({
     handleThreadMutated: enqueueActions(({ enqueue, context }) => {
       enqueue.assign({ _threadSnapshot: null })
       if (context.selectedPR) {
-        enqueue(() => sendToBackend('pr.GET_REVIEW_THREADS', { number: context.selectedPR!.number }))
+        enqueue(() => sendToSystem('code', { type: 'pr.GET_REVIEW_THREADS', number: context.selectedPR!.number }))
       }
     }),
 
     fetchReviewThreads: ({ context }) => {
       if (context.selectedPR) {
-        sendToBackend('pr.GET_REVIEW_THREADS', { number: context.selectedPR.number })
+        sendToSystem('code', { type: 'pr.GET_REVIEW_THREADS', number: context.selectedPR.number })
       }
     },
   }
@@ -976,3 +978,6 @@ export const pullRequestState = setup({
     }
   }
 });
+
+/** The pull-request child's actor, named by whoever reads its context (`codeChild(…)`) */
+export type PullRequestActor = ActorRefFrom<typeof pullRequestState>;

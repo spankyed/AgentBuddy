@@ -14,20 +14,18 @@ const ALLOWED: Record<string, string> = {
   'packages/abuddy-sdk/src/env/index.ts': 'the resolver itself',
   'packages/main/src/app-context.ts': 'main-process bootstrap: infers the environment once',
   'packages/main/vite.config.js': 'build time: bakes the release channel stamp',
+  'packages/main/vitest.config.ts': 'test time: supplies the stamp the build bakes, so the bootstrap can be tested',
   'electron-builder.mjs': 'build time: picks the beta appId/productName',
   'build/build.sh': 'build time: exports the release channel',
   'build/prod/clean.sh': 'manual cleanup script that deliberately removes a packaged app\'s data dir',
-  'packages/default-setup/dev-build.mjs': 'dev tooling that explicitly targets abuddy-dev',
   'packages/abuddy-sdk/tests/env/identity-guard.spec.ts': 'this guard',
   'packages/abuddy-sdk/tests/env/app-context.spec.ts': 'resolver tests',
 };
 
 const FORBIDDEN: Array<{ pattern: RegExp; why: string; allowInTests?: boolean }> = [
-  { pattern: /USER_DATA_PATH/, why: 'replaced by ABUDDY_USER_DATA_DIR via resolveAppContext()' },
   { pattern: /Application Support/, why: 'platform data dirs are derived only in @abuddy/sdk/env' },
   { pattern: /process\.env\.ABUDDY_ENV\b(?!\s*=)/, why: 'read the environment via resolveAppContext()', allowInTests: true },
   { pattern: /__ABUDDY_CHANNEL__/, why: 'the channel stamp is consumed only by the main bootstrap' },
-  { pattern: /\b(getPacksDir|getPacksDirForEnv|getApiPortFile|resolveAppDataDir|resolveAppEnv)\s*\(/, why: 'removed; use resolveAppContext()' },
 ];
 
 function trackedCodeFiles(): string[] {

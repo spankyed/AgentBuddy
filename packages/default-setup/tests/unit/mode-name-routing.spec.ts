@@ -1,5 +1,8 @@
+import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { mockService, startApp, type TestApp } from '@abuddy/testing/harness'
+import type { Services } from '@/__generated__/services'
 import threadSettings from '../../src/features/threads/settings'
-import claudeCodeFlow from '../../src/seeds/flows/claude-code-flow'
+import { actionLabel, seedDefaultFlows } from './helpers/flows'
 import { phaseTipPromptLabel } from '../../src/seeds/actions/claude-code/chat'
 
 const chat = threadSettings.plugins.threads.chat
@@ -17,11 +20,28 @@ describe('mode name routing', () => {
     expect(defaultPhase?.name).toBe('Default')
   })
 
-  it('routes Claude Code user messages by mode name', () => {
-    const userMessageTrack = claudeCodeFlow['Claude Code'].find((track: any) => track.event === 'user.message') as any
-    const condition = userMessageTrack.exits[0][0].conditions[0].if
+  describe('Claude Code user messages, run on the brain', () => {
+    let app: TestApp
+    beforeEach(async () => {
+      seedDefaultFlows()
+      // The chat action would drive the CLI: mocked, so it never starts
+      mockService<Services, 'cli'>('cli', { claudeCode: {} } as never)
+      mockService<Services, 'chat'>('chat', { updateMessageState: vi.fn(), sendBlockMessage: vi.fn() } as never)
+      mockService<Services, 'threads'>('threads', { updateChatState: vi.fn() } as never)
+      app = await startApp({ systems: ['brain'] })
+    })
 
-    expect(condition).toBe("$.event.data.payload.mode == 'Claude Code'")
+    it('routes by mode name', async () => {
+      const run = await app.runFlow('Claude Code', { event: 'user.message', data: { mode: 'Claude Code', threadId: 'Thread-1', text: 'hi' } })
+      expect(run.steps.map(actionLabel)).toContain('Claude Code Chat')
+    })
+
+    it("doesn't route another mode, or the mode's id", async () => {
+      for (const mode of ['Codex', 'claude-code']) {
+        const run = await app.runFlow('Claude Code', { event: 'user.message', data: { mode, threadId: 'Thread-1', text: 'hi' } })
+        expect(run.steps.map(actionLabel)).not.toContain('Claude Code Chat')
+      }
+    })
   })
 
   it('uses phase names for Claude Code phase tips', () => {

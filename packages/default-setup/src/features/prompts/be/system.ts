@@ -1,71 +1,47 @@
+import type { PromptsSettings } from '@/__generated__/types';
+import { services } from '@/__generated__/services';
+import { broadcastToPlugin } from '@/__generated__/events';
 import { setup } from 'xstate';
-import { defineSystem, type SystemEntry } from '@abuddy/sdk/framework';
-import { bus } from '@abuddy/sdk/ids';
-import { emit } from '@abuddy/sdk/helpers';
+import { defineSystem } from '@abuddy/sdk/framework';
+
 import { EARS } from '@/__generated__/ears';
-import type { PromptsConnectedData, PromptEntity } from './types';
-import { repository } from '@abuddy/sdk/ears';
+import type { Contract } from './contract';
+import { repository } from '@/__generated__/repository';
 import { createLogger } from '@abuddy/sdk/logger';
 import { toMap, toIdentifierSet, mapScalar } from '@abuddy/sdk/utils';
-import './repository';
 import { exportPrompts } from './repository/export-prompts';
+import { ref } from '@/__generated__/ref';
+import { errorMessage } from '@abuddy/sdk/utils/pure';
 
 const logger = createLogger('prompts');
 
-type IncomingPromptEvents =
-  | { type: 'PROMPT_SELECT'; promptId: string }
-  | { type: 'CREATE_PROMPT'; label: string; inputs: Record<string, any>; templateFn: string; outputSchema?: any; description?: string; category?: string }
-  | { type: 'UPDATE_PROMPT'; promptId: string; label?: string; inputs?: Record<string, any>; templateFn?: string; outputSchema?: any; description?: string; category?: string }
-  | { type: 'DELETE_PROMPT'; promptId: string }
-  | { type: 'FETCH_PROMPTS_PAGE'; page?: number }
-  | { type: 'FETCH_ALL_PROMPTS' }
-  | { type: 'IMPORT_PROMPTS'; prompts: any }
-  | { type: 'EXPORT_PROMPTS'; directory: string }
-
-type PromptsInternalEvents =
-  | { type: 'PROMPTS_SETTINGS_UPDATED'; settings: any; changes?: any }
-
-export type OutgoingPromptEvents =
-  | { type: 'PROMPTS_CONNECTED'; data: PromptsConnectedData }
-  | { type: 'PROMPT_SELECTED'; promptId: EARS.EntityId; data: PromptEntity }
-  | { type: 'PROMPT_CREATED'; prompt: PromptEntity; promptId: EARS.EntityId }
-  | { type: 'PROMPT_UPDATED'; prompt: PromptEntity; promptId: EARS.EntityId }
-  | { type: 'PROMPT_DELETED'; promptId: EARS.EntityId }
-  | { type: 'PROMPTS_PAGE_LOADED'; data: { prompts: PromptEntity[]; page: number; totalPages: number } }
-  | { type: 'PROMPTS_ALL_LOADED'; data: { prompts: PromptEntity[] } }
-  | { type: 'PROMPTS_IMPORTED'; count: number; errors?: string[] }
-  | { type: 'PROMPTS_IMPORT_FAILED'; errors: string[] }
-  | { type: 'PROMPTS_EXPORTED'; filePath: string; promptCount: number }
-  | { type: 'PROMPTS_EXPORT_FAILED'; errors: string[] }
-
-export const promptsSpec = defineSystem('prompts')<IncomingPromptEvents | PromptsInternalEvents, OutgoingPromptEvents>();
-export const prompts = promptsSpec.id;
+export const promptsSpec = defineSystem<Contract>();
 
 export const promptsSystem = setup({
   types: promptsSpec.types,
   actions: {
     sendPromptsConnectedData: ({ system }) => {
       const connectedData = repository.promptQueries.connectedData();
-      const promptsSettings = repository.settingsQueries.getPluginSettings('prompts');
+      const promptsSettings = services.settings.forFeature<PromptsSettings>(ref('prompts'));
       
-      system.get(bus).send(emit(prompts, { 
+      broadcastToPlugin('prompts', { 
         type: 'PROMPTS_CONNECTED',
         data: {
           ...connectedData,
           categories: promptsSettings?.categories || []
         }
-      }));
+      });
     },
     sendPromptData: ({ system, event }) => {
       const ev = promptsSpec.typeOf('PROMPT_SELECT', event);
       const prompt = repository.promptQueries.byId(ev.promptId as EARS.EntityId);
       
       if (prompt) {
-        system.get(bus).send(emit(prompts, {
+        broadcastToPlugin('prompts', {
           type: 'PROMPT_SELECTED',
           promptId: ev.promptId as EARS.EntityId,
           data: prompt
-        }));
+        });
       }
     },
     createPrompt: ({ system, event }) => {
@@ -74,15 +50,16 @@ export const promptsSystem = setup({
         label: ev.label,
         inputs: ev.inputs,
         templateFn: ev.templateFn,
+        outputSchema: ev.outputSchema,
         description: ev.description,
         category: ev.category
       });
 
-      system.get(bus).send(emit(prompts, {
+      broadcastToPlugin('prompts', {
         type: 'PROMPT_CREATED',
         prompt: prompt,
         promptId: prompt.id,
-      }));
+      });
     },
     updatePrompt: ({ system, event }) => {
       const ev = promptsSpec.typeOf('UPDATE_PROMPT', event);
@@ -91,6 +68,7 @@ export const promptsSystem = setup({
       if (ev.label !== undefined) updates.label = ev.label;
       if (ev.inputs !== undefined) updates.inputs = ev.inputs;
       if (ev.templateFn !== undefined) updates.templateFn = ev.templateFn;
+      if (ev.outputSchema !== undefined) updates.outputSchema = ev.outputSchema;
       if (ev.description !== undefined) updates.description = ev.description;
       if (ev.category !== undefined) updates.category = ev.category;
       
@@ -98,53 +76,53 @@ export const promptsSystem = setup({
 
       const updatedPrompt = repository.promptQueries.byId(ev.promptId as EARS.EntityId);
       if (updatedPrompt) {
-        system.get(bus).send(emit(prompts, {
+        broadcastToPlugin('prompts', {
           type: 'PROMPT_UPDATED',
           prompt: updatedPrompt,
           promptId: updatedPrompt.id,
-        }));
+        });
       }
     },
     deletePrompt: ({ system, event }) => {
       const ev = promptsSpec.typeOf('DELETE_PROMPT', event);
       repository.promptCommands.delete(ev.promptId as EARS.EntityId);
       
-      system.get(bus).send(emit(prompts, {
+      broadcastToPlugin('prompts', {
         type: 'PROMPT_DELETED',
         promptId: ev.promptId as EARS.EntityId,
-      }));
+      });
     },
     fetchPromptsPage: ({ system, event }) => {
       const ev = promptsSpec.typeOf('FETCH_PROMPTS_PAGE', event);
       const data = repository.promptQueries.connectedData(ev.page || 1);
 
-      system.get(bus).send(emit(prompts, {
+      broadcastToPlugin('prompts', {
         type: 'PROMPTS_PAGE_LOADED',
         data: {
           prompts: data.prompts,
           page: data.page,
           totalPages: data.totalPages
         }
-      }));
+      });
     },
     fetchAllPrompts: ({ system }) => {
       const allPrompts = repository.promptQueries.all();
-      system.get(bus).send(emit(prompts, {
+      broadcastToPlugin('prompts', {
         type: 'PROMPTS_ALL_LOADED',
         data: { prompts: allPrompts }
-      }));
+      });
     },
     importPrompts: ({ system, event }) => {
       const { prompts: importData } = promptsSpec.typeOf('IMPORT_PROMPTS', event);
-      const pluginId = prompts;
+      const pluginId = 'prompts' as const;
 
       logger.info('Importing prompts', { count: Array.isArray(importData) ? importData.length : 0 });
 
       if (!Array.isArray(importData)) {
-        system.get(bus).send(emit(pluginId, {
+        broadcastToPlugin(pluginId, {
           type: 'PROMPTS_IMPORT_FAILED',
           errors: ['Invalid import data: expected an array of prompts'],
-        }));
+        });
         return;
       }
 
@@ -166,80 +144,79 @@ export const promptsSystem = setup({
             outputSchema: item.outputSchema,
             description: item.description,
             category: item.category,
-          } as any);
+          });
 
-          system.get(bus).send(emit(pluginId, {
+          broadcastToPlugin(pluginId, {
             type: 'PROMPT_CREATED',
             prompt,
             promptId: prompt.id,
-          }));
+          });
 
           count++;
         } catch (err) {
-          const message = err instanceof Error ? err.message : String(err);
+          const message = errorMessage(err);
           errors.push(`Failed to create prompt "${item.label}": ${message}`);
         }
       }
 
       if (count === 0 && errors.length > 0) {
-        system.get(bus).send(emit(pluginId, {
+        broadcastToPlugin(pluginId, {
           type: 'PROMPTS_IMPORT_FAILED',
           errors,
-        }));
+        });
         return;
       }
 
-      system.get(bus).send(emit(pluginId, {
+      broadcastToPlugin(pluginId, {
         type: 'PROMPTS_IMPORTED',
         count,
         ...(errors.length > 0 ? { errors } : {}),
-      }));
+      });
 
       // Refresh the full prompts list
       const connectedData = repository.promptQueries.connectedData();
-      const promptsSettings = repository.settingsQueries.getPluginSettings('prompts');
-      system.get(bus).send(emit(pluginId, {
+      const promptsSettings = services.settings.forFeature<PromptsSettings>(ref('prompts'));
+      broadcastToPlugin(pluginId, {
         type: 'PROMPTS_CONNECTED',
         data: {
           ...connectedData,
           categories: promptsSettings?.categories || [],
         },
-      }));
+      });
 
       logger.info('Prompts import complete', { count, errors: errors.length });
     },
 
     exportPromptsToFile: ({ system, event }) => {
       const { directory } = promptsSpec.typeOf('EXPORT_PROMPTS', event);
-      const pluginId = prompts;
+      const pluginId = 'prompts' as const;
 
       logger.info('Exporting prompts', { directory });
 
       try {
         const { filePath, promptCount } = exportPrompts(directory);
 
-        system.get(bus).send(emit(pluginId, {
+        broadcastToPlugin(pluginId, {
           type: 'PROMPTS_EXPORTED',
           filePath,
           promptCount,
-        }));
+        });
 
         logger.info('Prompts export complete', { filePath, promptCount });
       } catch (error) {
-        const message = error instanceof Error ? error.message : String(error);
+        const message = errorMessage(error);
         logger.error('Prompts export failed', { error: message });
 
-        system.get(bus).send(emit(pluginId, {
+        broadcastToPlugin(pluginId, {
           type: 'PROMPTS_EXPORT_FAILED',
           errors: [message],
-        }));
+        });
       }
     },
 
     handleSettingsUpdate: ({ system, event }) => {
-      const { changes } = promptsSpec.typeOf('PROMPTS_SETTINGS_UPDATED', event);
-      // Handle nested changes format from detectAllArrayChanges
-      const categoryChanges = changes?.categories || changes;
+      const { changes } = promptsSpec.typeOf('FEATURE_SETTINGS_UPDATED', event);
+      const categoryChanges = changes?.categories;
       
       if (!categoryChanges) return;
       
@@ -252,7 +229,6 @@ export const promptsSystem = setup({
       // Fallback to first available category or 'General'
       const emptyCategoryName = (): string | undefined => '';
       
-      const busSvc = system.get(bus);
       
       for (const p of repository.promptQueries.all()) {
         const nextCategory = mapScalar(p.category, renames, removed, emptyCategoryName);
@@ -261,11 +237,11 @@ export const promptsSystem = setup({
           repository.promptCommands.update(p.id, { category: nextCategory });
           const updated = repository.promptQueries.byId(p.id);
           if (updated) {
-            busSvc.send(emit(prompts, {
+            broadcastToPlugin('prompts', {
               type: 'PROMPT_UPDATED', 
               prompt: updated, 
               promptId: updated.id
-            }));
+            });
           }
         }
       }
@@ -273,7 +249,7 @@ export const promptsSystem = setup({
   },
 }).createMachine(
   {
-    id: prompts,
+    id: 'prompts',
     initial: 'idle',
     context: ({ input }) => ({}),
     on: {
@@ -295,7 +271,7 @@ export const promptsSystem = setup({
       FETCH_ALL_PROMPTS: {
         actions: 'fetchAllPrompts',
       },
-      PROMPTS_SETTINGS_UPDATED: {
+      FEATURE_SETTINGS_UPDATED: {
         actions: 'handleSettingsUpdate',
       },
       IMPORT_PROMPTS: {
@@ -311,12 +287,16 @@ export const promptsSystem = setup({
           CLIENT_CONNECTED: {
             actions: 'sendPromptsConnectedData',
           },
+          // A pack's seeds can add or change prompts
+          PACK_CHANGED: {
+            actions: 'sendPromptsConnectedData',
+          },
         },
       },
     },
   }
 );
 
-const promptsEntry: SystemEntry = { spec: promptsSpec, machine: promptsSystem };
+const promptsEntry = { spec: promptsSpec, machine: promptsSystem };
 
 export default promptsEntry;

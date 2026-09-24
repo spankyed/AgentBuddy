@@ -1,6 +1,6 @@
 import type { QueryHandle } from './query'
 import { createLogger } from '@abuddy/sdk/logger'
-import { registerThreadTeardown } from '@abuddy/sdk/services'
+import { registerThreadTeardown } from '@/features/threads/be/thread-teardown'
 
 const logger = createLogger('claude-code-handle-store')
 const activeHandles = new Map<string, QueryHandle>()

@@ -13,28 +13,21 @@
     "allowImportingTsExtensions": true,
     "types": ["node", "vitest/globals"],
     "paths": {
-      "@abuddy/sdk": ["../abuddy-sdk/src/index.ts"],
-      "@abuddy/sdk/*": ["../abuddy-sdk/src/*/index.ts", "../abuddy-sdk/src/*"],
       "@/__generated__/*": ["./src/__generated__/*"],
       "#generated/*": ["./src/__generated__/*"],
-      "@/registries/*": ["./src/registries/*"],
       "@/features/*": ["./src/features/*"],
-      "@/extensions/*": ["./src/extensions/*"]
+      "@/extensions/*": ["./src/extensions/*"],
+      "@/app-settings/*": ["./src/app-settings/*"]
     }
   },
+  // .vue files are checked by vue-tsc (npm run typecheck). src/defs/ (the Monaco DSL surfaces) is
+  // checked here too; abuddy build bundles their declarations for the Monaco editors.
   "include": [
-    "src/**/*.ts", "tests/**/*.ts"
+    "src/**/*.ts", "src/**/*.vue", "tests/**/*.ts"
   ],
   "exclude": [
-    // Monaco DSL type surfaces. Built separately by rollup-defs.config.mjs
-    // under tsconfig.defs.json, which has its own compiler settings.
-    "src/defs/**",
-    // Search-index implementation is dormant behind the SEARCH_INDEX_FF flag —
-    // every call site in library/be/system.ts is commented out. These three
-    // files import usearch / fastembed / openai, which are not installed
-    // anywhere in the monorepo, so they cannot typecheck. Drop these entries
-    // when the flag is turned on and the deps are added. The sibling
-    // search-index/types/** is still live and stays included.
+    // [SEARCH_INDEX_FF] The dormant library search index: these import fastembed and usearch, which
+    // no workspace installs. src/features/library/be/search-index/README.md says how to turn it on.
     "src/features/library/be/search-index/repository.ts",
     "src/features/library/be/search-index/service.ts",
     "src/features/library/be/search-index/config/fastembed-mapping.ts"

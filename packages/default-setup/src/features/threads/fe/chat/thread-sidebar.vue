@@ -165,7 +165,8 @@
 </template>
 
 <script setup lang="ts">
-import { useActorSystem } from '@abuddy/sdk/fe'
+import { usePlugin } from '@abuddy/sdk/fe'
+
 import { computed, reactive, ref, watchEffect } from 'vue'
 import { X, ChevronDown, ChevronRight, ChevronLeft, Archive } from 'lucide-vue-next'
 import { useSelector } from '@xstate/vue'
@@ -174,9 +175,7 @@ import { getThreadDotColor, isThreadBusy } from './thread-status'
 import { ContextMenuRoot, ContextMenuTrigger } from 'reka-ui'
 import ThreadContextMenu from '@/features/threads/fe/canvas/components/thread-context-menu.vue'
 import SidebarThreadItem from './sidebar-thread-item.vue'
-import { trpc } from '@abuddy/sdk/rpc'
-
-const actorSystem = useActorSystem()
+import { sendToSystem } from '@/__generated__/events'
 
 const emit = defineEmits<{
   'select-thread': [threadId: string]
@@ -184,7 +183,7 @@ const emit = defineEmits<{
 }>()
 
 // State from threads actor
-const actor: ThreadsState = actorSystem.get(id)
+const actor: ThreadsState = usePlugin()
 const threadMap = useSelector(actor, (state) => state.context.threadMap)
 const tabs = useSelector(actor, (state) => state.context.tabs)
 const tabGroups = useSelector(actor, (state) => state.context.tabGroups)
@@ -389,7 +388,7 @@ function toggleArchive() {
   displayCount.value = BATCH_SIZE
   archiveDisplayCount.value = BATCH_SIZE
   if (showArchive.value) {
-    trpc.bus.send.mutate({ systemId: id, type: 'GET_ARCHIVED_THREADS' })
+    sendToSystem(id, { type: 'GET_ARCHIVED_THREADS' })
   }
 }
 </script>

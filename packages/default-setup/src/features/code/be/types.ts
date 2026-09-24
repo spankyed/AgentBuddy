@@ -1,5 +1,7 @@
+import type { GitRepository } from './services/git';
+import type { GitWatcherService } from './services/gitwatcher';
 import { EARS } from '@/__generated__/ears'
-import type { KeyboardShortcut } from '@/__generated__/types'
+import type { KeyboardShortcut } from '@abuddy/sdk/types'
 
 export interface FileInfo {
   name: string
@@ -148,7 +150,9 @@ export interface GhPullRequest {
     name?: string
     status?: string     // QUEUED | IN_PROGRESS | COMPLETED | PENDING
     conclusion?: string // SUCCESS | FAILURE | NEUTRAL | CANCELLED | SKIPPED | TIMED_OUT | ACTION_REQUIRED | STALE
-    state?: string      // legacy commit status: SUCCESS | PENDING | FAILURE | ERROR
+    // GitHub's commit-status API, which `gh` still returns beside the checks API: a check from a status-only
+    // integration has `state` and no `status`/`conclusion`. Not our legacy — theirs, and live (MergeButtonTooltip)
+    state?: string      // SUCCESS | PENDING | FAILURE | ERROR
   }>
 }
 
@@ -282,9 +286,22 @@ export interface CodeSettings {
   showStashes?: boolean;
   showCommits?: boolean;
   showWorktrees?: boolean;
+  /** Paths to the CLIs the app runs; blank or missing means auto-detect */
+  cliPaths?: Partial<Record<'copilot' | 'claude-code' | 'codex' | 'gh', string>>;
 }
 
 export type CodeConnectedData = {
   baseDirectory: string | null;
   settings?: CodeSettings;
 };
+
+export interface Context {
+  baseDirectory: string | null
+  /**
+   * The default directory the settings named when this system last heard them. The settings arrive whenever any of
+   * the code settings change, the browsed `baseDirectory` included, so only a new default moves the explorer.
+   */
+  defaultBaseDirectory: string | null
+  gitRepository: GitRepository | null
+  gitWatcher: GitWatcherService | null
+}

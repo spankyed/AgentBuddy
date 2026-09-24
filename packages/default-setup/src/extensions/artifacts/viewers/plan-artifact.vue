@@ -53,27 +53,18 @@
 import { computed } from 'vue'
 import { ClipboardList } from 'lucide-vue-next'
 import type { ArtifactItem } from '@abuddy/sdk/artifacts'
-import TiptapEditor from '@abuddy/sdk/fe/components/tiptap/TiptapEditor.vue'
-import CopyButton from '@abuddy/sdk/fe/design/CopyButton.vue'
+import type { PlanArtifactContent, PlanStatus } from '@/features/threads/be/types'
+import TiptapEditor from '@abuddy/ui/components/tiptap/TiptapEditor'
+import CopyButton from '@abuddy/ui/design/CopyButton'
 
-type PlanStatus = 'draft' | 'approved' | 'in-progress' | 'completed' | 'rejected'
-
-interface PlanContent {
-  notes: string
-  status: PlanStatus
-  steps: Array<{ id: string; title: string; description?: string; status: string }>
-}
 
 const props = defineProps<{
-  artifact: ArtifactItem & { content: PlanContent }
+  artifact: ArtifactItem<PlanArtifactContent>
 }>()
 
-// Read status directly from the artifact content. Previously this was
-// mirrored into a local ref so Approve/Reject clicks could feel instant,
-// but those local buttons were removed — the real approval flow now
-// round-trips through the chat approval block and the backend pushes
-// status updates via services.artifact.updateAndNotify, which hydrates
-// the prop directly. No local state needed.
+// Status comes straight from the artifact content, with no local mirror: approval
+// round-trips through the chat approval block, and the backend pushes the new status
+// with services.artifact.updateAndNotify, which hydrates this prop.
 const status = computed<PlanStatus>(() => props.artifact.content?.status ?? 'draft')
 
 const notes = computed(() => props.artifact.content?.notes ?? '')

@@ -1,22 +1,16 @@
+import type { IncomingActionsEvents, OutgoingActionsEvents } from '../contract'
+import { broadcastToPlugin } from '@/__generated__/events';
 import { setup } from 'xstate'
-import { emit } from '@abuddy/sdk/helpers'
-import { rootEvents } from '@abuddy/sdk/rpc'
-import { repository } from '@abuddy/sdk/ears'
+
+import { repository } from '@/__generated__/repository';
 import { EARS } from '@/__generated__/ears'
-import type { ActionEntity } from '@/__generated__/types'
+import type { ActionEntity } from '@abuddy/sdk'
 
 const pluginId = 'code' as const
 
 // Incoming events from frontend
-export type IncomingActionsEvents =
-  | { type: 'codeActions.OPEN_ACTION'; actionId: string }
-  | { type: 'codeActions.SAVE_ACTION'; actionId: string; actionFn: string }
 
 // Outgoing events to frontend
-export type OutgoingActionsEvents =
-  | { type: 'codeActions.ACTION_SELECTED'; actionId: string; data: ActionEntity & { actionFnContent?: string } }
-  | { type: 'codeActions.ACTION_UPDATED'; action: ActionEntity; actionId: string }
-  | { type: 'codeActions.CODE_ERROR'; data: { message: string } }
 
 export interface Context {
   // No local state needed for actions feature
@@ -43,20 +37,18 @@ export const actionsSystem = setup({
           actionFnContent: action.actionFn
         }
 
-        const wrapped = emit(pluginId, {
+        broadcastToPlugin(pluginId, {
           type: 'codeActions.ACTION_SELECTED',
           actionId: ev.actionId as EARS.EntityId,
           data: actionWithContent
         })
-        rootEvents.emitOutgoing(wrapped.event)
       } else {
-        const wrapped = emit(pluginId, {
+        broadcastToPlugin(pluginId, {
           type: 'codeActions.CODE_ERROR',
           data: {
             message: `Action ${ev.actionId} not found`
           }
         })
-        rootEvents.emitOutgoing(wrapped.event)
       }
     },
 
@@ -70,12 +62,11 @@ export const actionsSystem = setup({
 
       const updatedAction = repository.actionQueries.byId(ev.actionId as EARS.EntityId)
       if (updatedAction) {
-        const wrapped = emit(pluginId, {
+        broadcastToPlugin(pluginId, {
           type: 'codeActions.ACTION_UPDATED',
           action: updatedAction,
           actionId: updatedAction.id
         })
-        rootEvents.emitOutgoing(wrapped.event)
       }
     }
   }

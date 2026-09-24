@@ -6,52 +6,20 @@ import { targetIs, TRAIL_CLICK, type TrailClickEvent } from '@abuddy/sdk/fe'
 import type {
   DatabaseSchemaInfo,
   DatabaseStartupData,
-  OutgoingDatabaseEvents,
-  EARS,
-  TNodeEntity,
   DatabaseSettings,
 } from '@/__generated__/types'
-import { trpc } from '@abuddy/sdk/rpc'
+import type { DatabaseContext, DatabaseInboxEvent } from './contract'
+import type { OutgoingDatabaseEvents } from '@/features/database/be/types'
+import { sendToSystem } from '@/__generated__/events'
 import { attributeQueryTemplate, entityQueryTemplate, exampleQuery, relationQueryTemplate, transactionExampleQuery } from './constants'
 import { History, HardDriveDownload } from 'lucide-vue-next'
+import type { EARS } from '@abuddy/sdk'
 
 /* ─────────────────────────────────────────────────────────── */
 /* Machine Types                                               */
 /* ─────────────────────────────────────────────────────────── */
-export const id = 'database'
+export const id = 'database' as const;
 export type DatabaseState = ActorRefFrom<typeof databaseState>
-
-export interface DatabaseContext {
-  schema: DatabaseSchemaInfo;
-  currentQuery: string;
-  queryResult: any;
-  isLoading: boolean;
-  error: string | null;
-  executionTime: number | null;
-  selectedSchemaItem: {
-    type: 'entity' | 'attribute' | 'relation';
-    value: string;
-  } | null;
-  mode: 'query' | 'transaction';
-  isAiQueryLoading: boolean;
-  isRefreshing: boolean;
-  settings: DatabaseSettings | null;
-  // Trace viewer fields
-  viewMode: 'database' | 'trace';
-  traceFlows: TNodeEntity[];
-  currentFlowId: string | null;
-  flowEvents: TNodeEntity[];
-  expandedNodes: Set<string>;
-  nodeDetails: Map<string, TNodeEntity>;
-  isLoadingTrace: boolean;
-  tracePagination: {
-    offset: number;
-    limit: number;
-    hasMore: boolean;
-  };
-  // Backup fields
-  backupInfo: { timestamp: number; databases: string[]; size: number; hasMedia?: boolean } | null;
-}
 
 type SystemEvent = OutgoingDatabaseEvents |
   { type: 'DATABASE_REFRESH'; data: DatabaseStartupData } |
@@ -59,11 +27,11 @@ type SystemEvent = OutgoingDatabaseEvents |
   { type: 'TRANSACTION_ERROR'; error: string } |
   { type: 'AI_QUERY_LOADING' } |
   { type: 'AI_QUERY_GENERATED'; query: string } |
-  { type: 'DATABASE_SETTINGS_UPDATED'; settings: DatabaseSettings } |
+  { type: 'FEATURE_SETTINGS_UPDATED'; settings: DatabaseSettings } |
   { type: 'EXPORT_DATABASE_SUCCESS'; path: string } |
   { type: 'EXPORT_DATABASE_ERROR'; error: string } |
   { type: 'IMPORT_DATABASE_SUCCESS'; message?: string } |
-  { type: 'IMPORT_DATABASE_ERROR'; error: string } |
+  { type: 'IMPORT_DATABASE_ERROR'; error: string; unknownDatabases?: string[] } |
   { type: 'BACKUP_INFO_RESULT'; info: { timestamp: number; databases: string[]; size: number; hasMedia?: boolean } | null } |
   { type: 'RESET_DATABASE_SUCCESS'; message: string } |
   { type: 'RESET_DATABASE_ERROR'; error: string }
@@ -83,8 +51,10 @@ type UIEvent =
   | { type: 'TRACE.LOAD_MORE' }
   | { type: 'TRACE.REQUEST_FLOWS' }
   | { type: 'ENTITY.DELETE'; entityId: string }
-  | { type: 'VIEW_BACKUP' }
+  | DatabaseInboxEvent
   | { type: 'BACK_TO_EXPLORER' }
+  | { type: 'BACKUP.EXPORT'; path: string; name?: string; databases: Array<'lmdb' | 'volatileLmdb'> }
+  | { type: 'BACKUP.IMPORT'; path: string; skipUnknownDatabases?: boolean }
   | TrailClickEvent
 
 export type DatabaseEvents = UIEvent | SystemEvent
@@ -118,7 +88,7 @@ const databaseState = setup({
 
     /* ── settings ─────────────────────────────────────── */
     setDatabaseSettings: assign(({ event }) => {
-      const ev = typeOf('DATABASE_SETTINGS_UPDATED', event);
+      const ev = typeOf('FEATURE_SETTINGS_UPDATED', event);
       return {
         settings: ev.settings
       }
@@ -127,8 +97,7 @@ const databaseState = setup({
     /* ── query interactions ────────────────────────────── */
     executeQuery: ({ event, context }) => {
       const ev = typeOf('QUERY.EXECUTE', event);
-      trpc.bus.send.mutate({
-        systemId: id,
+      sendToSystem(id, {
         type: 'EXECUTE_QUERY',
         code: ev.code,
       });
@@ -136,8 +105,7 @@ const databaseState = setup({
 
     executeTransaction: ({ event, context }) => {
       const ev = typeOf('TRANSACTION.EXECUTE', event);
-      trpc.bus.send.mutate({
-        systemId: id,
+      sendToSystem(id, {
         type: 'EXECUTE_TRANSACTION',
         code: ev.code,
       });
@@ -147,8 +115,7 @@ const databaseState = setup({
       const ev = typeOf('ENTITY.DELETE', event);
       // Use tx() to delete the entity
       const deleteCode = `tx('${ev.entityId}').destroy(); return { deleted: '${ev.entityId}' };`;
-      trpc.bus.send.mutate({
-        systemId: id,
+      sendToSystem(id, {
         type: 'EXECUTE_TRANSACTION',
         code: deleteCode,
       });
@@ -157,8 +124,7 @@ const databaseState = setup({
     refreshAfterDelete: ({ context }) => {
       // Re-run the current query after successful deletion
       if (context.currentQuery) {
-        trpc.bus.send.mutate({
-          systemId: id,
+        sendToSystem(id, {
           type: 'EXECUTE_QUERY',
           code: context.currentQuery,
         });
@@ -241,8 +207,7 @@ const databaseState = setup({
         console.error('Invalid prompt provided for AI query generation');
         return;
       }
-      trpc.bus.send.mutate({
-        systemId: id,
+      sendToSystem(id, {
         type: 'GENERATE_AI_QUERY',
         prompt: ev.prompt.trim(),
         mode: ev.mode,
@@ -261,7 +226,6 @@ const databaseState = setup({
       };
     }),
 
-
     /* ── schema interactions ───────────────────────────────── */
     selectSchemaItem: assign(({ event, context }) => {
       const ev = typeOf('SCHEMA.SELECT', event);
@@ -277,8 +241,7 @@ const databaseState = setup({
     }),
 
     refreshSchema: () => {
-      trpc.bus.send.mutate({
-        systemId: id,
+      sendToSystem(id, {
         type: 'REFRESH_SCHEMA',
       });
     },
@@ -296,8 +259,7 @@ const databaseState = setup({
       const newMode = context.viewMode === 'database' ? 'trace' : 'database';
       if (newMode === 'trace' && context.traceFlows.length === 0) {
         // Request trace flows when switching to trace mode for the first time
-        trpc.bus.send.mutate({
-          systemId: id,
+        sendToSystem(id, {
           type: 'GET_TRACE_FLOWS',
         });
       }
@@ -308,8 +270,7 @@ const databaseState = setup({
     }),
 
     requestTraceFlows: () => {
-      trpc.bus.send.mutate({
-        systemId: id,
+      sendToSystem(id, {
         type: 'GET_TRACE_FLOWS',
       });
     },
@@ -334,8 +295,7 @@ const databaseState = setup({
       // Auto-select first flow if we have flows and no current selection
       if (sortedFlows.length > 0) {
         const firstFlow = sortedFlows[0];
-        trpc.bus.send.mutate({
-          systemId: id,
+        sendToSystem(id, {
           type: 'GET_FLOW_EVENTS',
           flowId: firstFlow.id,
           offset: 0,
@@ -357,8 +317,7 @@ const databaseState = setup({
 
     selectFlow: assign(({ event }) => {
       const ev = typeOf('TRACE.SELECT_FLOW', event);
-      trpc.bus.send.mutate({
-        systemId: id,
+      sendToSystem(id, {
         type: 'GET_FLOW_EVENTS',
         flowId: ev.flowId,
         offset: 0,
@@ -394,8 +353,7 @@ const databaseState = setup({
       if (!context.currentFlowId || !context.tracePagination.hasMore) return;
 
       const newOffset = context.tracePagination.offset + context.tracePagination.limit;
-      trpc.bus.send.mutate({
-        systemId: id,
+      sendToSystem(id, {
         type: 'GET_FLOW_EVENTS',
         flowId: context.currentFlowId,
         offset: newOffset,
@@ -420,8 +378,7 @@ const databaseState = setup({
         newExpanded.add(ev.nodeId);
         // Request node details if not already loaded
         if (!context.nodeDetails.has(ev.nodeId)) {
-          trpc.bus.send.mutate({
-            systemId: id,
+          sendToSystem(id, {
             type: 'GET_NODE_DETAILS',
             nodeId: ev.nodeId,
           });
@@ -453,10 +410,33 @@ const databaseState = setup({
       };
     }),
 
+    exportBackup: ({ event }) => {
+      const { path, name, databases } = typeOf('BACKUP.EXPORT', event);
+      sendToSystem(id, { type: 'EXPORT_DATABASE', path, name, databases });
+    },
+
+    importBackup: ({ event }) => {
+      const { path, skipUnknownDatabases } = typeOf('BACKUP.IMPORT', event);
+      sendToSystem(id, { type: 'IMPORT_DATABASE', path, skipUnknownDatabases });
+    },
+
+    exportFinished: assign(({ event }) => ({
+      exporting: false,
+      backupResult: { operation: 'export' as const, error: event.type === 'EXPORT_DATABASE_ERROR' ? event.error : undefined },
+    })),
+
+    importFinished: assign(({ event }) => ({
+      importing: false,
+      backupResult: {
+        operation: 'import' as const,
+        error: event.type === 'IMPORT_DATABASE_ERROR' ? event.error : undefined,
+        ...(event.type === 'IMPORT_DATABASE_ERROR' && event.unknownDatabases ? { unknownDatabases: event.unknownDatabases } : {}),
+      },
+    })),
+
     /* ── reset database actions ─────────────────────────── */
     resetDatabase: () => {
-      trpc.bus.send.mutate({
-        systemId: id,
+      sendToSystem(id, {
         type: 'RESET_DATABASE',
       });
     },
@@ -506,6 +486,9 @@ const databaseState = setup({
     },
     // Backup fields
     backupInfo: null,
+    exporting: false,
+    importing: false,
+    backupResult: null,
   },
   on: {
     ...TRAIL_CLICK([
@@ -518,14 +501,19 @@ const databaseState = setup({
     TRANSACTION_ERROR: { actions: 'setTransactionError' },
 AI_QUERY_LOADING: { actions: 'setAiQueryLoading' },
     AI_QUERY_GENERATED: { actions: 'setAiQueryResult' },
-    DATABASE_SETTINGS_UPDATED: { actions: 'setDatabaseSettings' },
+    FEATURE_SETTINGS_UPDATED: { actions: 'setDatabaseSettings' },
     // Trace viewer events
     TRACE_FLOWS_RESULT: { actions: 'setTraceFlows' },
     FLOW_EVENTS_RESULT: { actions: 'setFlowEvents' },
     NODE_DETAILS_RESULT: { actions: 'setNodeDetails' },
     // Backup events
     BACKUP_INFO_RESULT: { actions: 'setBackupInfo' },
-    // Reset database events
+    EXPORT_DATABASE_SUCCESS: { actions: 'exportFinished' },
+    EXPORT_DATABASE_ERROR: { actions: 'exportFinished' },
+    IMPORT_DATABASE_SUCCESS: { actions: 'importFinished' },
+    IMPORT_DATABASE_ERROR: { actions: 'importFinished' },
+    // Reset database events. The request comes from the plugin's settings, whatever view the plugin is in
+    'DATABASE.RESET': { actions: 'resetDatabase' },
     RESET_DATABASE_SUCCESS: { actions: 'handleResetSuccess' },
     RESET_DATABASE_ERROR: { actions: 'handleResetError' },
   },
@@ -564,9 +552,6 @@ AI_QUERY_LOADING: { actions: 'setAiQueryLoading' },
         'DATABASE.REFRESH_SCHEMA': {
           actions: ['setRefreshing', 'refreshSchema'],
         },
-        'DATABASE.RESET': {
-          actions: 'resetDatabase',
-        },
         'VIEW_MODE.TOGGLE': {
           actions: ['toggleViewMode', 'requestTraceFlows'],
         },
@@ -593,6 +578,8 @@ AI_QUERY_LOADING: { actions: 'setAiQueryLoading' },
         'BACK_TO_EXPLORER': {
           target: 'explorer',
         },
+        'BACKUP.EXPORT': { actions: ['exportBackup', assign({ exporting: true })] },
+        'BACKUP.IMPORT': { actions: ['importBackup', assign({ importing: true })] },
       },
     },
   },

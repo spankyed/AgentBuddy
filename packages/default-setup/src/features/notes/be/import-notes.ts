@@ -1,13 +1,15 @@
+import { findWhere, qx } from '@/__generated__/ears';
 import * as fs from 'node:fs'
 import * as path from 'node:path'
-import { repository } from '@abuddy/sdk/ears'
+import { repository } from '@/__generated__/repository';
 import { EARS } from '@/__generated__/ears'
-import { hasIdCollision, findWhere } from '@abuddy/sdk/ears'
-import { qx } from '@abuddy/sdk/ears'
+import { hasIdCollision } from '@abuddy/ears';
+
 import { restoreJsonMediaRefs, restoreMarkdownMediaRefs } from '@abuddy/sdk/utils'
 import { toDisplayName } from '@abuddy/sdk/utils'
-import type { ExportedNote, ExportedNotes } from './export-types'
-import type { NoteEntity } from './types'
+import type { ExportedNote } from '@/features/notes/be/export-types';
+import type { NoteEntity } from '@/features/notes/be/types';
+import { errorMessage } from '@abuddy/sdk/utils/pure';
 
 interface ImportResult {
   created: number
@@ -60,17 +62,6 @@ export function importNotes(importDir: string): ImportResult {
 }
 
 // ── JSON Import ──────────────────────────────────────────
-
-/** Import notes from an in-memory ExportedNotes object (no media restoration). */
-export function importNotesFromData(data: ExportedNotes): ImportResult {
-  const result: ImportResult = { created: 0, updated: 0, skipped: 0, mediaRestored: 0, errors: [] }
-  if (!data?.notes || !Array.isArray(data.notes)) {
-    result.errors.push('Invalid import data: expected object with "notes" array')
-    return result
-  }
-  importNoteNodes(data.notes, undefined, result, '', false)
-  return result
-}
 
 function importNotesJson(jsonPath: string): ImportResult {
   const result: ImportResult = { created: 0, updated: 0, skipped: 0, mediaRestored: 0, errors: [] }
@@ -133,7 +124,7 @@ function importNoteNodes(
           importNoteNodes(node.children, existing.id as string, result, importDir, hasMedia)
         }
       } catch (err) {
-        const message = err instanceof Error ? err.message : String(err)
+        const message = errorMessage(err)
         result.errors.push(`Failed to update note "${node.title}": ${message}`)
         result.skipped++
       }
@@ -181,7 +172,7 @@ function importNoteNodes(
         importNoteNodes(node.children, note.id, result, importDir, hasMedia)
       }
     } catch (err) {
-      const message = err instanceof Error ? err.message : String(err)
+      const message = errorMessage(err)
       result.errors.push(`Failed to create note "${node.title}": ${message}`)
       result.skipped++
     }
@@ -324,7 +315,7 @@ function importMarkdownDir(
         // Recurse for children (skip index.md)
         importMarkdownDir(fullPath, note.id, result, rootImportDir, hasMedia)
       } catch (err) {
-        const message = err instanceof Error ? err.message : String(err)
+        const message = errorMessage(err)
         result.errors.push(`Failed to create note "${name}": ${message}`)
         result.skipped++
       }
@@ -371,7 +362,7 @@ function importMarkdownDir(
           repository.noteCommands.update(note.id as EARS.EntityId, { savedDisplayOrder: parsed.savedDisplayOrder })
         }
       } catch (err) {
-        const message = err instanceof Error ? err.message : String(err)
+        const message = errorMessage(err)
         result.errors.push(`Failed to import "${name}": ${message}`)
         result.skipped++
       }

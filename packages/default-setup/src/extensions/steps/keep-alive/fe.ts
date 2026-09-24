@@ -13,7 +13,6 @@ export const keepAliveStepFE: StepDefinition = {
       bgColor: 'bg-emerald-500/10',
       hoverBgColor: 'group-hover:bg-emerald-500/15',
       connectionRules: { inputs: 1, outputs: 0 },
-      component: 'VariableNode',
       category: 'logic',
       isImplemented: true,
     },

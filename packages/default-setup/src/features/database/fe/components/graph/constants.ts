@@ -5,7 +5,7 @@ export const exampleQuery =
 return qx(EARS.Entity.Thread).pick(['id', 'topic', 'status', 'timestamp']).limit(10);
 
 // Or try these examples:
-// return qx(EARS.Entity.Agent).where('status', 'active').pickAll();
+// return qx(EARS.Entity.Note).where('archived', false).pickAll();
 // return qx().where('label').pick(['id', 'label']).limit(20);
 // return qx(EARS.Entity.Tag).pick(['id', 'name', 'color']).orderBy('name');`
 

@@ -1,22 +1,15 @@
+import type { IncomingSearchEvents, OutgoingSearchEvents } from '../contract'
+import { broadcastToPlugin } from '@/__generated__/events';
 import { assign, setup } from 'xstate'
-import { emit } from '@abuddy/sdk/helpers'
-import { rootEvents } from '@abuddy/sdk/rpc'
+
 import { FileSystemRepository } from '../services/filesystem'
 import type { SearchOptions, SearchResult, SearchProgress } from '../types'
 
 const pluginId = 'code' as const
 
 // Incoming events from frontend
-export type IncomingSearchEvents =
-  | { type: 'search.SEARCH_FILES'; query: string; path: string; includePattern?: string; excludePattern?: string; caseSensitive?: boolean; wholeWord?: boolean; useRegex?: boolean; maxResults?: number }
-  | { type: 'search.CANCEL_SEARCH' }
 
 // Outgoing events to frontend
-export type OutgoingSearchEvents =
-  | { type: 'search.RESULT'; data: SearchResult }
-  | { type: 'search.PROGRESS'; data: SearchProgress }
-  | { type: 'search.COMPLETE'; data: { results: SearchResult[]; totalMatches: number } }
-  | { type: 'search.ERROR'; data: { message: string } }
 
 export interface Context {
   repository: FileSystemRepository | null
@@ -60,11 +53,10 @@ export const searchSystem = setup({
       }
 
       if (!context.repository) {
-        const wrapped = emit(pluginId, {
+        broadcastToPlugin(pluginId, {
           type: 'search.ERROR',
           data: { message: 'No directory selected. Please select a directory first.' }
         })
-        rootEvents.emitOutgoing(wrapped.event)
         return
       }
 
@@ -96,40 +88,36 @@ export const searchSystem = setup({
           // Progress callback
           (filesSearched, totalFiles, currentFile) => {
             if (!controller.signal.aborted) {
-              const wrapped = emit(pluginId, {
+              broadcastToPlugin(pluginId, {
                 type: 'search.PROGRESS',
                 data: { filesSearched, totalFiles, currentFile }
               })
-              rootEvents.emitOutgoing(wrapped.event)
             }
           },
           // Result callback (incremental results)
           (result) => {
             if (!controller.signal.aborted) {
               totalMatches += result.matches.length
-              const wrapped = emit(pluginId, {
+              broadcastToPlugin(pluginId, {
                 type: 'search.RESULT',
                 data: result
               })
-              rootEvents.emitOutgoing(wrapped.event)
             }
           }
         )
 
         if (!controller.signal.aborted) {
-          const wrapped = emit(pluginId, {
+          broadcastToPlugin(pluginId, {
             type: 'search.COMPLETE',
             data: { results, totalMatches }
           })
-          rootEvents.emitOutgoing(wrapped.event)
         }
       } catch (error: any) {
         if (!controller.signal.aborted) {
-          const wrapped = emit(pluginId, {
+          broadcastToPlugin(pluginId, {
             type: 'search.ERROR',
             data: { message: error.message }
           })
-          rootEvents.emitOutgoing(wrapped.event)
         }
       } finally {
         self.send({ type: 'search.CLEAR_SEARCH_CONTROLLER' })

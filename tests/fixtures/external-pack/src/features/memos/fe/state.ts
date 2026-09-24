@@ -1,20 +1,23 @@
+import type { MemosContext, MemosInbox } from './contract';
 import { setup, assign, type ActorRefFrom } from 'xstate';
 import { safeEvents } from '@abuddy/sdk/fe';
-import { trpc } from '@abuddy/sdk/rpc';
-import { busId } from '#generated/bus-ids';
-import type { OutgoingMemosEvents } from '../be/system';
+import { sendToSystem } from '#generated/events';
+import type { OutgoingMemosEvents } from '../be/types';
+import type { MemoNoteDTO } from '../be/memo-notes';
 import type { MemoDTO } from '../be/types';
 
 export const id = 'memos' as const;
 
-type UIEvents = { type: 'MEMOS.ADD'; text: string };
-export type MemosEvents = UIEvents | OutgoingMemosEvents;
+type UIEvents = { type: 'MEMOS.ADD'; text: string } | { type: 'MEMOS.ADD_NOTE'; text: string };
+/** What another feature may send this plugin, which `fe/plugin.ts` declares as its inbox */
+export type { MemosInbox } from './contract';
+export type MemosEvents = UIEvents | MemosInbox | OutgoingMemosEvents;
 
 const typeOf = safeEvents<MemosEvents>();
 
 const memosState = setup({
   types: {
-    context: {} as { memos: MemoDTO[] },
+    context: {} as MemosContext,
     events: {} as MemosEvents,
   },
   actions: {
@@ -28,16 +31,31 @@ const memosState = setup({
       },
     }),
     sendAdd: ({ event }) => {
-      trpc.bus.send.mutate({ systemId: busId.memos, type: 'ADD_MEMO', text: typeOf('MEMOS.ADD', event).text });
+      sendToSystem('memos', { type: 'ADD_MEMO', text: typeOf('MEMOS.ADD', event).text });
     },
+    addNote: assign({
+      notes: ({ context, event }) => {
+        const { text, note } = typeOf('MEMO_NOTE_ADDED', event);
+        return [...context.notes, { text, note }];
+      },
+    }),
+    sendAddNote: ({ event }) => {
+      sendToSystem('memos', { type: 'ADD_MEMO_NOTE', text: typeOf('MEMOS.ADD_NOTE', event).text });
+    },
+    highlight: assign({
+      highlighted: ({ event }) => typeOf('MEMO.HIGHLIGHT', event).memoId,
+    }),
   },
 }).createMachine({
   id,
-  context: { memos: [] },
+  context: { memos: [], notes: [], highlighted: null },
   on: {
     MEMOS_CONNECTED: { actions: 'setMemos' },
     MEMO_ADDED: { actions: 'addMemo' },
     'MEMOS.ADD': { actions: 'sendAdd' },
+    MEMO_NOTE_ADDED: { actions: 'addNote' },
+    'MEMOS.ADD_NOTE': { actions: 'sendAddNote' },
+    'MEMO.HIGHLIGHT': { actions: 'highlight' },
   },
 });
 

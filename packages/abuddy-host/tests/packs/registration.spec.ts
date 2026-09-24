@@ -1,0 +1,328 @@
+import { afterEach, describe, expect, it, vi } from 'vitest';
+import { createEarsEngine, installEngine, installedEngine, repository } from '@abuddy/ears';
+import { getPackCommands, getPackSettingsDefaults, type PackFeatureSystem, type PackRegistration } from '@abuddy/sdk/framework';
+import { artifactRegistry } from '@abuddy/sdk/artifacts';
+import { _seedHookRegistry } from '@abuddy/sdk/seed';
+import { SDK_ENTITIES } from '@abuddy/sdk/types';
+import { HOST_ENTITY_TYPES } from '../../src/app-state/index.ts';
+import { getDesignated, hasDesignation } from '@abuddy/sdk/designations';
+import { startTestRuntime } from '@abuddy/sdk/testing';
+import { createPackRegistry } from '../../src/packs/registry.ts';
+import { hostRegistration } from '../../src/features/registration.ts';
+import { HOST } from '../../src/refs.ts';
+import { HOST_PACK_ID } from '@abuddy/sdk/ids';
+
+const registry = createPackRegistry();
+startTestRuntime({ packs: registry });
+const {
+  getPackExtensions, partitionPolicy, getRegisteredEntityTypes, getRegisteredServices,
+  registerPack, systemIds, pluginIds, runRegisteredBootSeeds, unregisterPack,
+} = registry;
+
+const registered: string[] = [];
+afterEach(() => {
+  for (const id of registered.splice(0)) unregisterPack(id);
+});
+
+function register(id: string, services: Record<string, unknown>): void {
+  registerPack({ id, services } as unknown as PackRegistration);
+  registered.push(id);
+}
+
+describe('registerPack services', () => {
+  it('rejects a service name another pack registered', () => {
+    register('first-pack', { llm: {} });
+    expect(() => register('second-pack', { llm: {} })).toThrow('Service collision: key "llm" — pack "second-pack" vs "first-pack"');
+  });
+
+  it.each(['logger', 'emitter', 'repository'])('rejects a pack service named like the host service %s', (name) => {
+    expect(() => register('shadowing-pack', { [name]: {} })).toThrow(`vs the host's own "${name}" service`);
+    expect(getRegisteredServices()).not.toHaveProperty(name);
+  });
+
+  it('registers distinct services', () => {
+    register('first-pack', { llm: 1 });
+    register('second-pack', { search: 2 });
+    expect(getRegisteredServices()).toEqual({ llm: 1, search: 2 });
+  });
+});
+
+describe('registerPack repositories', () => {
+  const testEngine = installedEngine();
+  afterEach(() => { installEngine(testEngine); });
+
+  it("registers a pack's repositories with the installed engine (the app's), where repository and services read them", () => {
+    const engine = createEarsEngine({ isEntityType: () => false });
+    installEngine(engine.query);
+    const noteQueries = { all: () => [] };
+    registerPack({ id: 'repo-pack', repositories: { noteQueries } });
+    registered.push('repo-pack');
+    expect(engine.query.repository.noteQueries).toBe(noteQueries);
+    expect(repository.noteQueries).toBe(noteQueries);
+    expect(engine.admin.repositories()).toEqual({ noteQueries });
+  });
+
+  it('removes them when the pack is unregistered', () => {
+    const engine = createEarsEngine({ isEntityType: () => false });
+    installEngine(engine.query);
+    registerPack({ id: 'repo-pack', repositories: { noteQueries: {} } });
+
+    unregisterPack('repo-pack');
+
+    expect(engine.admin.repositories()).toEqual({});
+  });
+
+  it('rejects a repository name another pack registered, keeping that pack\'s', () => {
+    const engine = createEarsEngine({ isEntityType: () => false });
+    installEngine(engine.query);
+    const theirs = { name: 'theirs' };
+    registerPack({ id: 'first-pack', repositories: { settingsQueries: theirs } });
+    registered.push('first-pack');
+
+    expect(() => registerPack({ id: 'second-pack', repositories: { memoQueries: {}, settingsQueries: {} } }))
+      .toThrow('Repository collision: "settingsQueries" — pack "second-pack" vs "first-pack"');
+    expect(engine.admin.repositories()).toEqual({ settingsQueries: theirs });
+  });
+
+  it("removes a pack's repositories when a later part of its registration is refused", () => {
+    const engine = createEarsEngine({ isEntityType: () => false });
+    installEngine(engine.query);
+    registerPack({ id: 'first-pack', commands: [{ name: 'standup', placeholder: 'Topic' }] } as unknown as PackRegistration);
+    registered.push('first-pack');
+
+    expect(() => registerPack({ id: 'second-pack', repositories: { memoQueries: {} }, commands: [{ name: 'standup', placeholder: 'Theirs' }] } as unknown as PackRegistration))
+      .toThrow('Command collision');
+    expect(engine.admin.repositories()).toEqual({});
+  });
+});
+
+/**
+ * The host's own features are addressed as `HOST.<feature>`, not by a role. Settings claimed the `settings`
+ * designation from when it was a default-setup feature, and every reader of that role turned out to be the app
+ * resolving its own plugin. The role is gone; the plugin is registered and reachable without it, and the name is
+ * free for a pack to take.
+ */
+describe('the host claims no designation', () => {
+  it('registers its features with no role, and the Settings view is still registered', () => {
+    registry.registerPack(hostRegistration());
+    registered.push(HOST_PACK_ID);
+
+    expect(pluginIds()).toContain(HOST.settings);
+    expect(hasDesignation('settings')).toBe(false);
+  });
+
+  // Nothing in the app looks the role up, so a pack may claim it without colliding with the app's own view
+  it('leaves the name free for a pack', () => {
+    registry.registerPack(hostRegistration());
+    registered.push(HOST_PACK_ID);
+    registerPack({ id: 'ext', features: { prefs: { designation: 'settings', plugin: { receives: [] } } } });
+    registered.push('ext');
+
+    expect(getDesignated('settings')).toBe('ext/prefs');
+    expect(pluginIds()).toContain(HOST.settings);
+  });
+});
+
+describe('registerPack designations', () => {
+  const system: PackFeatureSystem = { machine: {} as PackFeatureSystem['machine'], receives: [] };
+  const registerDesignated = (id: string, journal: { system?: PackFeatureSystem } = { system }, extra: Partial<PackRegistration> = {}) => {
+    registerPack({ id, features: { journal: { designation: 'journal', ...journal } }, ...extra });
+    registered.push(id);
+  };
+
+  // Its system and plugin share the feature's address, so the role resolves to it whether it has a system, runs
+  // it early, or has none
+  it.each([
+    ['with a system', { system }],
+    ['with an early system', { system: { ...system, early: true as const } }],
+    ['without one', {}],
+  ])("resolves a role to the feature's address, %s", (_case, journal) => {
+    registerDesignated('ext', journal);
+    expect(getDesignated('journal')).toBe('ext/journal');
+  });
+
+  it('rejects a role another pack holds, registering none of the pack', () => {
+    registerDesignated('first');
+    expect(() => registerDesignated('second', { system }, { services: { second: {} } }))
+      .toThrow('Designation collision: role "journal" — pack "second" vs "first"');
+    expect(getDesignated('journal')).toBe('first/journal');
+    expect(getRegisteredServices()).not.toHaveProperty('second');
+  });
+
+  it("drops a pack's roles when it unregisters", () => {
+    registerDesignated('ext');
+    unregisterPack(registered.pop()!);
+    expect(hasDesignation('journal')).toBe(false);
+  });
+});
+
+describe('registered addresses', () => {
+  it("lists every pack's systems and plugins at their refs", () => {
+    registerPack({ id: 'ext', features: { notes: { system: { machine: {} as PackFeatureSystem['machine'], receives: [] }, plugin: { receives: [] } } } });
+    registered.push('ext');
+    expect(systemIds()).toContain('ext/notes');
+    expect(pluginIds()).toContain('ext/notes');
+
+    unregisterPack(registered.pop()!);
+    expect(systemIds()).not.toContain('ext/notes');
+    expect(pluginIds()).not.toContain('ext/notes');
+  });
+});
+
+describe('registerPack entities', () => {
+  const registerEntities = (id: string, entities: Record<string, string>, relKinds: Record<string, string> = {}) => {
+    registerPack({ id, ears: { entities, relKinds } } as unknown as PackRegistration);
+    registered.push(id);
+  };
+
+  it('rejects an entity type another pack registered', () => {
+    registerEntities('first-pack', { Memo: 'Memo' });
+    expect(() => registerEntities('second-pack', { Memo: 'Memo' })).toThrow('EARS collision: entity type "Memo" — pack "second-pack" vs "first-pack"');
+  });
+
+  it("rejects a relation kind another pack registered, by its name or its value", () => {
+    registerEntities('first-pack', {}, { PINNED: 'pinned' });
+    expect(() => registerEntities('second-pack', {}, { PINNED: 'pinned' })).toThrow('EARS collision: relation kind "PINNED": "pinned" — pack "second-pack" vs "first-pack"');
+    expect(() => registerEntities('second-pack', {}, { STUCK: 'pinned' })).toThrow('EARS collision: relation kind "STUCK": "pinned" — pack "second-pack" vs "first-pack"');
+    expect(() => registerEntities('second-pack', {}, { PINNED: 'stuck' })).toThrow('EARS collision: relation kind "PINNED": "stuck" — pack "second-pack" vs "first-pack"');
+  });
+
+  it("rejects a pack built when its registration still listed its dependency's names", () => {
+    registerEntities('base-pack', { Thread: 'Thread' });
+    expect(() => registerEntities('older-pack', { Thread: 'Thread', Memo: 'Memo' })).toThrow('EARS collision: entity type "Thread" — pack "older-pack" vs "base-pack"');
+  });
+
+  it("has the SDK's and the host's entity types with no pack registered, and a pack's added", () => {
+    const appEntities = [...Object.values(SDK_ENTITIES), ...HOST_ENTITY_TYPES];
+    expect([...getRegisteredEntityTypes()].sort()).toEqual([...appEntities].sort());
+    registerEntities('first-pack', { Memo: 'Memo' }, { PINNED: 'pinned' });
+    expect([...getRegisteredEntityTypes()].sort()).toEqual([...appEntities, 'Memo'].sort());
+    expect(getPackExtensions('first-pack')?.relKinds).toEqual({ PINNED: 'pinned' });
+  });
+
+  it.each([
+    [{ AppState: 'AppState' }, {}, 'entity type "AppState"'],
+    [{ Flow: 'Flow' }, {}, 'entity type "Flow"'],
+    [{}, { CONTAINS: 'contains' }, 'relation kind "CONTAINS": "contains"'],
+    [{}, { HOLDS: 'contains' }, 'relation kind "HOLDS": "contains"'],
+    [{}, { CONTAINS: 'holds' }, 'relation kind "CONTAINS": "holds"'],
+  ])('rejects %o %o, which the app declares', (entities, relKinds, name) => {
+    expect(() => registerEntities('first-pack', entities, relKinds)).toThrow(`EARS collision: ${name} — pack "first-pack" vs the app's own`);
+    expect(getPackExtensions('first-pack')).toBeNull();
+  });
+
+  it('keeps TNode out of persistence without any pack asking', () => {
+    expect(partitionPolicy.routeEntity('TNode-1', 'TNode')).toBe('volatileBackup');
+    expect(partitionPolicy.routeEntity('Note-1', 'Note')).toBe('primary');
+  });
+});
+
+describe('registerPack feature settings', () => {
+  const memos = { settings: { visible: false, plugins: { memos: { sort: 'newest' } } } };
+
+  it("registers a pack's feature settings as defaults and drops them when it unregisters", () => {
+    registerPack({ id: 'memo-pack', features: { memos } });
+    expect(getPackSettingsDefaults().settings).toEqual({ plugins: { 'memo-pack/memos': { sort: 'newest' } } });
+    expect(getPackSettingsDefaults().visibility).toEqual({ 'memo-pack/memos': false });
+    unregisterPack('memo-pack');
+    expect(getPackSettingsDefaults().settings).toEqual({ plugins: {} });
+    expect(getPackSettingsDefaults().visibility).toEqual({});
+  });
+
+  it("rejects a pack whose feature settings change another plugin's, registering none of it", () => {
+    const hooks = { ears: { entities: { Memo: 'Memo' }, relKinds: {} }, seedHooks: { Memo: {} } };
+    const invalid = { ...memos, settings: { plugins: { threads: { hidden: true } } } };
+    expect(() => registerPack({ id: 'bad-pack', ...hooks, features: { memos: invalid } } as unknown as PackRegistration))
+      .toThrow('Feature "memos" settings set "plugins.threads"');
+    expect(getPackExtensions('bad-pack')).toBeNull();
+    expect(_seedHookRegistry.get('Memo')).toBeUndefined();
+    expect(getPackSettingsDefaults().settings).toEqual({ plugins: {} });
+  });
+});
+
+describe('registerPack seed hooks', () => {
+  const memoHooks = { find: () => undefined };
+
+  it('rejects hooks for an entity another pack owns, rolling back what the pack registered', () => {
+    registerPack({ id: 'memo-pack', ears: { entities: { Memo: 'Memo' }, relKinds: {} }, seedHooks: { Memo: memoHooks } } as unknown as PackRegistration);
+    registered.push('memo-pack');
+
+    const other = {
+      id: 'other-pack',
+      ears: { entities: { Card: 'Card' }, relKinds: {} },
+      artifacts: [{ type: 'card-view' }],
+      commands: [{ name: 'card', placeholder: 'Title' }],
+      seedHooks: { Card: {}, Memo: {} },
+    };
+    expect(() => registerPack(other as unknown as PackRegistration))
+      .toThrow('Seed hooks for "Memo" are already registered by pack "memo-pack"');
+
+    expect(getPackExtensions('other-pack')).toBeNull();
+    expect(_seedHookRegistry.get('Memo')).toBe(memoHooks);
+    expect(_seedHookRegistry.get('Card')).toBeUndefined();
+    expect(artifactRegistry.has('card-view')).toBe(false);
+    expect(getPackCommands()).toEqual([]);
+  });
+
+  it("drops a pack's hooks when it unregisters, freeing the entity for another pack", () => {
+    registerPack({ id: 'memo-pack', ears: { entities: { Memo: 'Memo' }, relKinds: {} }, seedHooks: { Memo: memoHooks } } as unknown as PackRegistration);
+    unregisterPack('memo-pack');
+    expect(_seedHookRegistry.get('Memo')).toBeUndefined();
+
+    const theirs = {};
+    registerPack({ id: 'other-pack', seedHooks: { Memo: theirs } } as unknown as PackRegistration);
+    registered.push('other-pack');
+    expect(_seedHookRegistry.get('Memo')).toBe(theirs);
+  });
+});
+
+describe('registerPack commands', () => {
+  const commands = [{ name: 'standup', placeholder: 'Topic' }];
+
+  it("registers a pack's declared commands and drops them when it unregisters", () => {
+    registerPack({ id: 'memo-pack', commands } as unknown as PackRegistration);
+    expect(getPackCommands()).toEqual(commands);
+    unregisterPack('memo-pack');
+    expect(getPackCommands()).toEqual([]);
+  });
+
+  it('rejects a command another pack declares, registering none of the pack', () => {
+    registerPack({ id: 'memo-pack', commands } as unknown as PackRegistration);
+    registered.push('memo-pack');
+
+    expect(() => registerPack({ id: 'other-pack', steps: [], commands: [{ name: 'standup', placeholder: 'Theirs' }] } as unknown as PackRegistration))
+      .toThrow('Command collision: "standup" — pack "other-pack" vs "memo-pack"');
+
+    expect(getPackExtensions('other-pack')).toBeNull();
+    expect(getPackCommands()).toEqual(commands);
+  });
+
+  it("rolls its commands back when a later part of the registration is refused", () => {
+    const invalid = { settings: { plugins: { threads: { hidden: true } } } };
+
+    expect(() => registerPack({ id: 'bad-pack', commands, features: { memos: invalid } } as unknown as PackRegistration)).toThrow();
+
+    expect(getPackCommands()).toEqual([]);
+    expect(getPackSettingsDefaults().settings).toEqual({ plugins: {} });
+  });
+});
+
+describe('runRegisteredBootSeeds', () => {
+  it("seeds a pack's declarative seedManifest and ignores any other boot key", () => {
+    const seedManifest = { seedKeys: ['actions'], compiledDir: '/compiled' };
+    const smuggled = vi.fn();
+    registerPack({ id: 'built-in-pack', boot: { seedManifest } } as unknown as PackRegistration);
+    registerPack({ id: 'hooks-pack', boot: { onInit() {}, seed: smuggled } } as unknown as PackRegistration);
+    registered.push('built-in-pack', 'hooks-pack');
+
+    const orchestrate = vi.fn();
+    runRegisteredBootSeeds(orchestrate);
+
+    expect(orchestrate).toHaveBeenCalledTimes(1);
+    // With the pack it belongs to, so each pack's boot seed is tracked under its own id
+    expect(orchestrate).toHaveBeenCalledWith(seedManifest, 'built-in-pack');
+    expect(smuggled).not.toHaveBeenCalled();
+    expect(getPackExtensions('built-in-pack')?.bootHooks).toEqual(['seedManifest']);
+    expect(getPackExtensions('hooks-pack')?.bootHooks).toEqual(['onInit']);
+  });
+});

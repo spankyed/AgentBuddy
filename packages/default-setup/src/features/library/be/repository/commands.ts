@@ -1,22 +1,21 @@
+import { tx, qx } from '@/__generated__/ears';
 import * as path from 'path'
-import { qx, tx } from '@abuddy/sdk/ears'
-import { edgeStore } from '@abuddy/sdk/ears/internals'
 import { EARS } from '@/__generated__/ears'
 import { createLogger } from '@abuddy/sdk/logger'
-import type { DocumentDTO, CollectionDTO, LibraryItem, DocumentShortCode, ContentSection, FolderItem } from '../types'
-// TODO: [SEARCH_INDEX_FF] import * as searchIndexRepo from '../search-index/repository'
+import type { DocumentDTO, CollectionDTO, LibraryItem, FolderItem } from '../types'
+// [SEARCH_INDEX_FF] import * as searchIndexRepo from '../search-index/repository' (dormant: ../search-index/README.md)
 import { libraryQueries } from './queries'
 import {
   findParentCollection,
   findDocumentCollection,
   getDisplayOrder,
   getNextDisplayOrder,
-  // createTagsForEntity, // Removed - tags are now stored as arrays
-  // removeAllTagsFromEntity, // Removed - tags are now in settings
   getCollectionPath,
   formatFileSize,
   getContentLength,
 } from './helpers'
+import type { ContentSection, DocumentShortCode } from '@/features/library/be/types';
+import { errorMessage } from '@abuddy/sdk/utils/pure';
 
 const logger = createLogger('library')
 
@@ -63,7 +62,7 @@ export const libraryCommands = {
     // searchIndexRepo.autoIndexNewDocument(documentId).catch(error => {
     //   logger.error('Failed to auto-index new document', {
     //     documentId,
-    //     error: error instanceof Error ? error.message : String(error)
+    //     error: errorMessage(error)
     //   })
     // })
 
@@ -88,7 +87,6 @@ export const libraryCommands = {
       updatedAt: now,
     })
       
-    // Tags are now stored as string array on documents
     tx(documentId).updateBatch({ tags })
 
     // Find collections that contain this document
@@ -107,11 +105,7 @@ export const libraryCommands = {
     // Only handle collection changes if a collectionId is explicitly provided
     if (collectionId !== undefined) {
       if (currentCollection && currentCollection.id !== collectionId) {
-        edgeStore.unlink({
-          sourceEntity: currentCollection.id as EARS.EntityId,
-          relationType: EARS.RelKind.CONTAINS,
-          targetEntity: documentId
-        })
+        tx(currentCollection.id as EARS.EntityId).unlinkIf(EARS.RelKind.CONTAINS, documentId)
       }
       
       if (collectionId) {
@@ -126,7 +120,7 @@ export const libraryCommands = {
     // searchIndexRepo.autoIndexNewDocument(documentId).catch(error => {
     //   logger.error('Failed to re-index updated document', {
     //     documentId,
-    //     error: error instanceof Error ? error.message : String(error)
+    //     error: errorMessage(error)
     //   })
     // })
 
@@ -136,18 +130,12 @@ export const libraryCommands = {
   deleteDocument(id: EARS.EntityId): void {
     const documentId = id
 
-    // Tags are now stored as string array on documents - no need to remove entity tags
-
     const collection = qx(EARS.Entity.Collection).pickAll().find(col => 
       qx(col.id as EARS.EntityId).linksTo(EARS.RelKind.CONTAINS, EARS.Entity.Document).ids().includes(documentId as EARS.EntityId)
     )
 
     if (collection) {
-      edgeStore.unlink({
-        sourceEntity: collection.id as EARS.EntityId,
-        relationType: EARS.RelKind.CONTAINS,
-        targetEntity: documentId
-      })
+      tx(collection.id as EARS.EntityId).unlinkIf(EARS.RelKind.CONTAINS, documentId)
     }
 
     // [SEARCH_INDEX_FF] Remove from all search indices (fire and forget)
@@ -270,21 +258,13 @@ export const libraryCommands = {
       .pickAll()
 
     for (const doc of documents) {
-      edgeStore.unlink({
-        sourceEntity: collectionId,
-        relationType: EARS.RelKind.CONTAINS,
-        targetEntity: doc.id as EARS.EntityId
-      })
+      tx(collectionId).unlinkIf(EARS.RelKind.CONTAINS, doc.id as EARS.EntityId)
     }
 
     const parent = findParentCollection(collectionId) ? qx(findParentCollection(collectionId)!).pickAll()[0] : null
 
     if (parent) {
-      edgeStore.unlink({
-        sourceEntity: parent.id as EARS.EntityId,
-        relationType: EARS.RelKind.PARENT_OF,
-        targetEntity: collectionId
-      })
+      tx(parent.id as EARS.EntityId).unlinkIf(EARS.RelKind.PARENT_OF, collectionId)
     }
 
     const children = qx(collectionId)
@@ -292,11 +272,7 @@ export const libraryCommands = {
       .pickAll()
 
     for (const child of children) {
-      edgeStore.unlink({
-        sourceEntity: collectionId,
-        relationType: EARS.RelKind.PARENT_OF,
-        targetEntity: child.id as EARS.EntityId
-      })
+      tx(collectionId).unlinkIf(EARS.RelKind.PARENT_OF, child.id as EARS.EntityId)
       if (parent) {
         tx(parent.id as EARS.EntityId).link(EARS.RelKind.PARENT_OF, child.id as EARS.EntityId)
       }
@@ -319,11 +295,7 @@ export const libraryCommands = {
     )
 
     if (currentCollection) {
-      edgeStore.unlink({
-        sourceEntity: currentCollection.id as EARS.EntityId,
-        relationType: EARS.RelKind.CONTAINS,
-        targetEntity: docId
-      })
+      tx(currentCollection.id as EARS.EntityId).unlinkIf(EARS.RelKind.CONTAINS, docId)
     }
 
     if (newCollectionId) {
@@ -410,11 +382,7 @@ export const libraryCommands = {
         
         // Remove from current parent if exists
         if (currentParent) {
-          edgeStore.unlink({
-            sourceEntity: currentParent,
-            relationType: EARS.RelKind.PARENT_OF,
-            targetEntity: collectionId
-          })
+          tx(currentParent).unlinkIf(EARS.RelKind.PARENT_OF, collectionId)
         }
         
         // Add to new parent if specified

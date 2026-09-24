@@ -1,22 +1,16 @@
+import type { IncomingPromptsEvents, OutgoingPromptsEvents } from '../contract'
+import { broadcastToPlugin } from '@/__generated__/events';
 import { setup } from 'xstate'
-import { emit } from '@abuddy/sdk/helpers'
-import { rootEvents } from '@abuddy/sdk/rpc'
-import { repository } from '@abuddy/sdk/ears'
+
+import { repository } from '@/__generated__/repository';
 import { EARS } from '@/__generated__/ears'
-import type { PromptEntity } from '@/__generated__/types'
+import type { PromptEntity } from '@abuddy/sdk'
 
 const pluginId = 'code' as const
 
 // Incoming events from frontend
-export type IncomingPromptsEvents =
-  | { type: 'codePrompts.OPEN_PROMPT'; promptId: string }
-  | { type: 'codePrompts.SAVE_PROMPT'; promptId: string; templateFn: string }
 
 // Outgoing events to frontend
-export type OutgoingPromptsEvents =
-  | { type: 'codePrompts.PROMPT_SELECTED'; promptId: string; data: PromptEntity & { templateFnContent?: string } }
-  | { type: 'codePrompts.PROMPT_UPDATED'; prompt: PromptEntity; promptId: string }
-  | { type: 'codePrompts.CODE_ERROR'; data: { message: string } }
 
 export interface Context {
   // No local state needed for prompts feature
@@ -25,7 +19,6 @@ export interface Context {
 export type Event =
   | { type: 'codePrompts.OPEN_PROMPT'; promptId: string }
   | { type: 'codePrompts.SAVE_PROMPT'; promptId: string; templateFn: string };
-
 
 export const promptsSystem = setup({
   types: {
@@ -44,20 +37,18 @@ export const promptsSystem = setup({
           templateFnContent: prompt.templateFn
         }
 
-        const wrapped = emit(pluginId, {
+        broadcastToPlugin(pluginId, {
           type: 'codePrompts.PROMPT_SELECTED',
           promptId: ev.promptId as EARS.EntityId,
           data: promptWithContent
-        } as any)
-        rootEvents.emitOutgoing(wrapped.event as any)
+        })
       } else {
-        const wrapped = emit(pluginId, {
+        broadcastToPlugin(pluginId, {
           type: 'codePrompts.CODE_ERROR',
           data: {
             message: `Prompt ${ev.promptId} not found`
           }
-        } as any)
-        rootEvents.emitOutgoing(wrapped.event as any)
+        })
       }
     },
 
@@ -71,12 +62,11 @@ export const promptsSystem = setup({
 
       const updatedPrompt = repository.promptQueries.byId(ev.promptId as EARS.EntityId)
       if (updatedPrompt) {
-        const wrapped = emit(pluginId, {
+        broadcastToPlugin(pluginId, {
           type: 'codePrompts.PROMPT_UPDATED',
           prompt: updatedPrompt,
           promptId: updatedPrompt.id
-        } as any)
-        rootEvents.emitOutgoing(wrapped.event as any)
+        })
       }
     }
   }

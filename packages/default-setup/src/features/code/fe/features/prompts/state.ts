@@ -1,31 +1,10 @@
-import { setup } from 'xstate';
-import { trpc } from '@abuddy/sdk/rpc';
+import type { PromptTab } from '../../contract';
+export type { PromptTab } from '../../contract';
+import { setup , type ActorRefFrom } from 'xstate';
+import { sendToSystem } from '@/__generated__/events';
 import { updateParentState, getParentContext, addTabToParent } from '../../utils/parent-communication';
-import type { PromptEntity } from '@/__generated__/types';
+import type { PromptEntity } from '@abuddy/sdk';
 
-const sendToBackend = (type: string, data: any) => {
-  trpc.bus.send.mutate({
-    systemId: 'code' as any,
-    type: type as any,
-    ...data
-  } as any)
-}
-
-export interface PromptTab {
-  path: string
-  content: string
-  modified: boolean
-  isPrompt: true
-  promptEntity: PromptEntity
-  // Include OpenFile properties to satisfy type constraints
-  isDiff?: boolean
-  externallyModified?: boolean
-  externalModificationTime?: Date
-  pendingSaveConflict?: boolean
-  isPinned?: boolean
-  groupId?: string
-  isPreview?: boolean
-}
 
 export type Event =
   | { type: 'codePrompts.OPEN_PROMPT'; promptId: string }
@@ -44,14 +23,15 @@ export const promptsState = setup({
   actions: {
     openPrompt: ({ event }) => {
       const ev = event as { type: 'codePrompts.OPEN_PROMPT'; promptId: string }
-      sendToBackend('codePrompts.OPEN_PROMPT', { promptId: ev.promptId })
+      sendToSystem('code', { type: 'codePrompts.OPEN_PROMPT', promptId: ev.promptId })
     },
 
     savePrompt: ({ event }) => {
       const ev = event as { type: 'codePrompts.SAVE_PROMPT'; promptId: string; content: string }
-      sendToBackend('codePrompts.SAVE_PROMPT', {
+      sendToSystem('code', {
+        type: 'codePrompts.SAVE_PROMPT',
         promptId: ev.promptId,
-        templateFn: ev.content
+        templateFn: ev.content,
       })
     },
 
@@ -107,7 +87,7 @@ export const promptsState = setup({
       const ev = event as { type: 'codePrompts.OPEN_TABS'; promptIds: string[] }
       // Open each prompt
       ev.promptIds.forEach(promptId => {
-        sendToBackend('codePrompts.OPEN_PROMPT', { promptId })
+        sendToSystem('code', { type: 'codePrompts.OPEN_PROMPT', promptId })
       })
     }
   }
@@ -137,3 +117,6 @@ export const promptsState = setup({
     idle: {}
   }
 })
+
+/** The prompts child's actor, named by whoever reads its context (`codeChild(…)`) */
+export type CodePromptsActor = ActorRefFrom<typeof promptsState>;

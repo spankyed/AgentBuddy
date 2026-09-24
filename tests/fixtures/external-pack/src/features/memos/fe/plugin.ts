@@ -1,14 +1,15 @@
-import type { Plugin } from '@abuddy/sdk/fe';
+import { definePlugin } from '@abuddy/sdk/fe';
 import { StickyNote } from 'lucide-vue-next';
-import state, { id } from './state';
+import state from './state';
 import canvas from './canvas/list.vue';
+import settings from './settings.vue';
 
-const memosPlugin: Plugin = {
-  id,
+const memosPlugin = definePlugin({
   label: 'Memos',
   icon: StickyNote,
   state,
   canvas,
-};
+  settings,
+});
 
 export default memosPlugin;

@@ -82,7 +82,8 @@
 <script setup lang="ts">
 import { ref, watch } from 'vue'
 import { Trash2 } from 'lucide-vue-next'
-import CollapsibleSection from '@abuddy/sdk/fe/design/CollapsibleSection.vue'
+import CollapsibleSection from '@abuddy/ui/design/CollapsibleSection'
+import { errorMessage } from '@abuddy/sdk/utils/pure';
 
 interface BrowserSettings {
   openLinksInApp: boolean
@@ -135,7 +136,7 @@ async function onClearBrowserCache() {
   } catch (error) {
     cacheStatus.value = {
       kind: 'error',
-      message: `Failed to clear browser cache: ${error instanceof Error ? error.message : String(error)}`
+      message: `Failed to clear browser cache: ${errorMessage(error)}`
     }
   } finally {
     confirmingClearCache.value = false

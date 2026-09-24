@@ -234,15 +234,18 @@
 </template>
 
 <script setup lang="ts">
+import { usePlugin } from '@abuddy/sdk/fe'
+
 import { ref, computed, watch, nextTick } from 'vue'
 import { useSelector } from '@xstate/vue'
-import { useActorSystem, navigateToPlugin } from '@abuddy/sdk/fe'
-import { id as codeId, type CodeState } from '@/features/code/fe/state'
-import { id as promptsPluginId } from '@/features/prompts/fe/state'
+import { openPlugin } from '@/__generated__/fe'
+import type { CodeState } from '@/features/code/fe/state'
+import { usePluginState } from '@/__generated__/fe'
+import { sendToPlugin } from '@/__generated__/events'
 import { ExternalLink, Plus, X, Pencil, Trash2, Sparkle, Search, ChevronDown, ChevronRight } from 'lucide-vue-next'
 import CodePanelHeader from '@/features/code/fe/features/CodePanelHeader.vue'
 import EmptyState from '@/features/code/fe/features/EmptyState.vue'
-import type { PromptEntity } from '@/__generated__/types'
+import type { PromptEntity } from '@abuddy/sdk'
 import {
   ContextMenuRoot,
   ContextMenuTrigger,
@@ -251,22 +254,20 @@ import {
   ContextMenuPortal,
 } from 'reka-ui'
 import { MENU_CONTENT_CLASS, MENU_ITEM_CLASS } from '../explorer/constants'
-import { useInfiniteScroll } from '@abuddy/sdk/fe'
-import Button from '@abuddy/sdk/fe/design/button.vue'
+import { useInfiniteScroll } from '@abuddy/ui/composables/useInfiniteScroll'
+import Button from '@abuddy/ui/design/button'
 import uFuzzy from '@leeoniya/ufuzzy'
-
-const actorSystem = useActorSystem()
+import { codeChild } from '../children';
 
 // Get actors - use main prompts plugin for state, codePrompts for tab management
-const codeActor: CodeState = actorSystem.get(codeId)
-const codePromptsActor = codeActor.system.get('codePrompts')!
-const promptsPluginActor = actorSystem.get(promptsPluginId)!
+const codeActor: CodeState = usePlugin()
+const codePromptsActor = codeChild(codeActor, 'codePrompts')!
 
-// State selectors - read from main prompts plugin (single source of truth)
-const prompts = useSelector(promptsPluginActor, (state: any) => state.context.prompts)
-const page = useSelector(promptsPluginActor, (state: any) => state.context.page)
-const totalPages = useSelector(promptsPluginActor, (state: any) => state.context.totalPages)
-const loadingMore = useSelector(promptsPluginActor, (state: any) => state.context.loadingMore)
+// State - the prompts plugin's list (single source of truth)
+const prompts = usePluginState('prompts', (s) => s.prompts)
+const page = usePluginState('prompts', (s) => s.page)
+const totalPages = usePluginState('prompts', (s) => s.totalPages)
+const loadingMore = usePluginState('prompts', (s) => s.loadingMore)
 const hasMore = computed(() => page.value < totalPages.value)
 const isLoading = ref(false)
 const error = ref<string | null>(null)
@@ -282,7 +283,7 @@ const fuzzy = new uFuzzy({ intraMode: 1, interLft: 2, intraSub: 1, intraTrn: 1, 
 const handleSearchClick = () => {
   isSearchMode.value = true
   if (hasMore.value) {
-    promptsPluginActor.send({ type: 'PROMPTS.LOAD_ALL' })
+    sendToPlugin('prompts', { type: 'PROMPTS.LOAD_ALL' })
   }
   nextTick(() => searchInput.value?.focus())
 }
@@ -351,7 +352,7 @@ function confirmAddParameter(prompt: PromptEntity) {
       [paramKey]: { name: paramKey, type: 'any' as const, required: false }
     }
     // Send through main prompts plugin state machine
-    promptsPluginActor.send({
+    sendToPlugin('prompts', {
       type: 'PROMPT.UPDATE_INPUTS',
       promptId: prompt.id,
       inputs: updatedInputs
@@ -398,7 +399,7 @@ function confirmEditParameter(prompt: PromptEntity) {
       }
       delete updatedInputs[oldKey]
       // Send through main prompts plugin state machine
-      promptsPluginActor.send({
+      sendToPlugin('prompts', {
         type: 'PROMPT.UPDATE_INPUTS',
         promptId: prompt.id,
         inputs: updatedInputs
@@ -418,7 +419,7 @@ function removeParameter(prompt: PromptEntity, key: string) {
   if (prompt.inputs) {
     const updatedInputs = { ...prompt.inputs }
     delete updatedInputs[key]
-    promptsPluginActor.send({
+    sendToPlugin('prompts', {
       type: 'PROMPT.UPDATE_INPUTS',
       promptId: prompt.id,
       inputs: updatedInputs
@@ -440,7 +441,7 @@ function confirmEditName(prompt: PromptEntity) {
   if (editingNameForPrompt.value && editedName.value.trim()) {
     const newName = editedName.value.trim()
     if (newName !== prompt.label) {
-      promptsPluginActor.send({
+      sendToPlugin('prompts', {
         type: 'PROMPT.UPDATE_LABEL',
         promptId: prompt.id,
         label: newName
@@ -457,7 +458,7 @@ function cancelEditName() {
 }
 
 function deletePrompt(prompt: PromptEntity) {
-  promptsPluginActor.send({
+  sendToPlugin('prompts', {
     type: 'PROMPT.DELETE',
     promptId: prompt.id
   })
@@ -466,7 +467,7 @@ function deletePrompt(prompt: PromptEntity) {
 const { onScroll } = useInfiniteScroll({
   hasMore,
   loading: loadingMore,
-  onLoadMore: () => promptsPluginActor.send({ type: 'PROMPTS.LOAD_MORE' }),
+  onLoadMore: () => sendToPlugin('prompts', { type: 'PROMPTS.LOAD_MORE' }),
 })
 
 // Event handlers
@@ -475,13 +476,13 @@ const selectPrompt = (prompt: PromptEntity) => {
 }
 
 const goToPrompt = (prompt: PromptEntity) => {
-  navigateToPlugin('prompts', { type: 'PROMPT.SELECT', promptId: prompt.id })
+  openPlugin('prompts', { type: 'PROMPT.SELECT', promptId: prompt.id })
 }
 
 const createPromptInline = () => {
   const defaultLabel = `Prompt ${prompts.value.length + 1}`
   pendingRename.value = true
-  promptsPluginActor.send({
+  sendToPlugin('prompts', {
     type: 'PROMPT.CREATE_INLINE',
     label: defaultLabel,
     templateFn: '// Your template function body here\nreturn `Your prompt template`;',

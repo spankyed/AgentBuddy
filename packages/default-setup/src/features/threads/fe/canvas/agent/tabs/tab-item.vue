@@ -101,7 +101,8 @@
 </template>
 
 <script setup lang="ts">
-import { useActorSystem } from '@abuddy/sdk/fe'
+import { usePlugin } from '@abuddy/sdk/fe'
+
 import { ref, computed } from 'vue';
 import { X, SquarePen, Pin } from 'lucide-vue-next';
 import {
@@ -112,9 +113,7 @@ import ThreadContextMenu from '@/features/threads/fe/canvas/components/thread-co
 import type { Tab } from '@/__generated__/types';
 import type { ThreadTabGroup } from './types';
 import { useSelector } from '@xstate/vue';
-import { id as threadsId, type ThreadsState } from '@/features/threads/fe/state';
-
-const actorSystem = useActorSystem()
+import type { ThreadsState } from '@/features/threads/fe/state';
 
 const props = defineProps<{
   tab: Tab;
@@ -140,7 +139,7 @@ defineEmits<{
   'create-group': [];
 }>();
 
-const threadsActor: ThreadsState = actorSystem.get(threadsId);
+const threadsActor: ThreadsState = usePlugin();
 const chatStates = useSelector(threadsActor, (state) => state.context.chatStates);
 const chatStateOverrides = useSelector(threadsActor, (state) => state.context.chatStateOverrides);
 const settings = useSelector(threadsActor, (state) => state.context.settings);

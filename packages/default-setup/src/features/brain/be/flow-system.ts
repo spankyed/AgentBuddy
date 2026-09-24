@@ -1,19 +1,21 @@
-import { setup, sendParent, enqueueActions, raise } from 'xstate';
+import { sendToSystem } from '@/__generated__/events';
+import { qx } from '@/__generated__/ears';
+import { untypedQx } from '@abuddy/ears';
+import { services as appServices } from '@/__generated__/services';
+import { setup, sendParent, enqueueActions, raise, type AnyActorRef, type AnyStateMachine } from 'xstate';
 import type { NodeEntity } from '@/__generated__/types';
-import { repository } from '@abuddy/sdk/ears';
-import { qx } from '@abuddy/sdk/ears';
+import { repository } from '@/__generated__/repository';
+
 import { stepRegistry } from '@abuddy/sdk/steps';
 import { createStepNodeSystem } from './step-system';
 import { EARS } from '@/__generated__/ears';
-import type { ExecutionContext } from './types';
+import type { ExecutionContext, TNodeEntity } from '@abuddy/sdk/steps';
 import { safeEvents } from '@abuddy/sdk/helpers';
-import { brain, brainRuntime } from './system';
-import { brainInspect, brainLogger } from './utils/brain-inspect';
+import { brainRuntime } from './system';
+import { brainLogger } from './utils/brain-inspect';
 import { isBrainPaused } from './utils/brain-pause';
-import { unregisterByPrefix } from './services/scheduler';
-import { sendToBrainSystem, services as appServices } from '@abuddy/sdk/services';
 import { isPersistentTriggerFlow, shouldCompleteFlow } from './flow-completion';
-import { reportStepRuntimeError } from '@abuddy/sdk/steps';
+import { createLogger, reportError } from '@abuddy/sdk/logger';
 import { dedupeTriggerNodes, type FlowTriggerNode, type TriggerDedupeWarning } from './trigger-dedupe';
 
 /**
@@ -80,6 +82,8 @@ type TNodeFlowMachineContext = {
   finalResult?: any;
   // Entry data for nested flows (resolved from field mappings)
   entryData?: any;
+  // The steps a subflow's entry track starts with: its parent's, when the subflow inherits its context
+  entrySteps: Pick<ExecutionContext, 'steps' | 'lastStep'>;
   // Whether this flow node itself is marked as final
   isFinalStep?: boolean;
   // Whether this flow should wait for future schedule events after a track drains
@@ -124,9 +128,10 @@ const typeOf = safeEvents<ChildCompletedEvent>();
  * @param stepOrFlowNode - The node entity to create
  * @param eventTNodeId - The event track node ID that spawned this node
  * @param executionContext - The execution context for the step
- * @returns Tuple of [machine, systemId, tNode]
+ * @returns Tuple of [machine, childId, tNode]
  */
 function createChildNode(
+  brain: AnyActorRef,
   stepOrFlowNode: NodeEntity,
   eventTNodeId: EARS.EntityId,
   executionContext?: ExecutionContext,
@@ -140,18 +145,59 @@ function createChildNode(
   const stepDef = stepRegistry.get(stepOrFlowNode.nodeType);
   const spawnsSubflow = stepDef?.runtime?.spawnsSubflow ?? false;
   const { machine, tNodeId, tNode } = spawnsSubflow
-    ? createFlowNodeSystem(stepOrFlowNode.id, eventTNodeId, executionContext, true, spawnParent)
-    : createStepNodeSystem(stepOrFlowNode.id, eventTNodeId, executionContext, spawnParent);
+    ? createFlowNodeSystem(brain, stepOrFlowNode.id, eventTNodeId, executionContext, true, spawnParent)
+    : createStepNodeSystem(brain, stepOrFlowNode.id, eventTNodeId, executionContext, spawnParent);
 
-  const systemId = `${spawnsSubflow ? 'flow' : 'step'}-tnode-${tNodeId}`;
+  const childId = `${spawnsSubflow ? 'flow' : 'step'}-tnode-${tNodeId}`;
 
-  return [machine, systemId, tNode] as const;
+  return [machine, childId, tNode] as const;
 }
 
 /**
- * Create a dynamic state machine for a flow that listens to its events
+ * Spawns a flow's child (a step or a subflow) under its own id, the key the parent tracks it by: without one
+ * every child shares a key, so stopping this flow stops only the last one spawned and the rest keep running.
+ * The child is the flow's own, so it has no system id.
+ *
+ * XState types `id` from a machine's declared children, and a flow's are dynamic — one per trace node —
+ * so the id is passed through this one cast rather than at each call site.
+ */
+function spawnFlowChild(
+  enqueue: unknown,
+  machine: AnyStateMachine,
+  childId: string,
+): void {
+  const spawner = enqueue as { spawnChild(logic: AnyStateMachine, options: { id: string; input: object }): void };
+  spawner.spawnChild(machine, { id: childId, input: {} });
+}
+
+/**
+ * What a subflow's `flow.entry` track starts with. Its event data holds the subflow step's mapped fields; when the
+ * step inherits (`inherit`, stored as `propagateCtx`, default true) they sit over the parent track's event data, and
+ * the track starts with the parent track's steps and last step.
+ */
+function subflowEntry(
+  flowTNode: TNodeEntity,
+  parent: ExecutionContext | undefined,
+): { data: Record<string, unknown>; steps: TNodeFlowMachineContext['entrySteps'] } {
+  const mapped = flowTNode.resolvedParams ?? {};
+  if (!parent || flowTNode.nodeAttributes?.propagateCtx === false) {
+    return { data: { ...mapped }, steps: { steps: [], lastStep: undefined } };
+  }
+  const parentData = parent.event?.data;
+  const inherited = parentData !== null && typeof parentData === 'object' && !Array.isArray(parentData) ? parentData : {};
+  return {
+    data: { ...inherited, ...mapped },
+    steps: { steps: parent.steps, lastStep: parent.lastStep },
+  };
+}
+
+/**
+ * Create a dynamic state machine for a flow that listens to its events. `brain` is the brain system that runs it,
+ * which its steps and subflows report to directly: a parent flow finishing on a child's report stops before a
+ * report routed through the bus would reach it.
  */
 export function createFlowNodeSystem(
+  brain: AnyActorRef,
   flowId?: EARS.EntityId,
   eventTNodeId?: EARS.EntityId,
   executionContext?: ExecutionContext,
@@ -184,12 +230,16 @@ export function createFlowNodeSystem(
     })();
 
   const { actualFlowId, flowTNodeId, flowTNode } = result;
+  const entry = isRootFlow
+    ? { data: flowTNode?.nodeAttributes, steps: { steps: [], lastStep: undefined } }
+    : subflowEntry(flowTNode, executionContext);
 
   // Query all registered trigger nodes (listeners, schedules, etc.)
   const rawTriggerNodes: FlowTriggerNode[] = [];
   for (const def of stepRegistry.triggers()) {
     const fields = ['id', 'nodeType', 'label', 'trackKey', ...(def.trigger?.queryFields || [])] as const;
-    const triggerNodes = qx(actualFlowId)
+    // Untyped: each trigger names its own fields, which only some step node types have
+    const triggerNodes = untypedQx(actualFlowId)
       .linksPick(EARS.RelKind.CONTAINS, fields, [EARS.Entity.Node])
       .filter((n: any) => n.nodeType === def.type);
     for (const n of triggerNodes as any[]) {
@@ -238,23 +288,23 @@ export function createFlowNodeSystem(
         registerFlowActor: ({ self }) => {
           // Register this flow actor in the registry for event routing
           flowActorRegistry.set(flowTNodeId, self);
-          brainInspect(`Registered flow actor: ${flowTNodeId} (registry size: ${flowActorRegistry.size})`);
+          brainLogger.debug(`Registered flow actor: ${flowTNodeId} (registry size: ${flowActorRegistry.size})`);
 
           // Register runtime hooks for registered trigger types (skip nodes with no downstream steps)
           for (const sn of allTriggerNodes) {
             const triggerFacet = stepRegistry.getTrigger(sn.triggerType);
             if (!triggerFacet?.register) continue;
-            const hasSteps = repository.brainQueries.eventAllSteps(sn.id!).length > 0;
+            const hasSteps = repository.brainQueries.eventAllSteps(sn.id as EARS.EntityId).length > 0;
             if (!hasSteps) continue;
-            triggerFacet.register(sn as any, { flowTNodeId, sendToBrainSystem });
+            triggerFacet.register(sn as any, { flowTNodeId, sendToSystem });
           }
         },
         unregisterFlowActor: () => {
           // Clean up this flow actor from the registry
           flowActorRegistry.delete(flowTNodeId);
           // Clean up all cron jobs for this flow actor
-          unregisterByPrefix(flowTNodeId);
-          brainInspect(`Unregistered flow actor: ${flowTNodeId}`);
+          appServices.scheduler.unregisterByPrefix(flowTNodeId);
+          brainLogger.debug(`Unregistered flow actor: ${flowTNodeId}`);
         },
         handleTrackEvent: enqueueActions(({ context, event, enqueue, system }) => {
           const typedEv = event as { type: string; [key: string]: any };
@@ -265,7 +315,7 @@ export function createFlowNodeSystem(
             enqueue.assign({
               pendingEvents: ({ context }) => [...context.pendingEvents, { ...typedEv }],
             });
-            brainInspect(`Flow ${flowTNodeId} deferring event "${eventType}" (brain paused)`);
+            brainLogger.debug(`Flow ${flowTNodeId} deferring event "${eventType}" (brain paused)`);
             return;
           }
 
@@ -274,10 +324,10 @@ export function createFlowNodeSystem(
           if (matchingEventNodes.length === 0) return;
 
           for (const eventNode of matchingEventNodes) {
-            const allSteps = repository.brainQueries.eventAllSteps(eventNode.id!);
+            const allSteps = repository.brainQueries.eventAllSteps(eventNode.id as EARS.EntityId);
 
             if (allSteps.length === 0) {
-              brainLogger.debug(`No steps found for event ${eventType} on node ${eventNode.id}, skipping`);
+              createLogger('brain').debug(`No steps found for event ${eventType} on node ${eventNode.id}, skipping`);
               continue; // Skip this event node but process others
             }
 
@@ -294,7 +344,7 @@ export function createFlowNodeSystem(
             repository.brainCommands.updateTNodeAttributes(eventTNode.id, payloadToStore);
 
             // Emit TNODE_SPAWNED event for UI to display event TNode
-            system.get(brain).send({
+            brain.send({
               type: 'TNODE_SPAWNED',
               tNode: eventTNode,
               parentId: flowTNodeId,
@@ -309,8 +359,7 @@ export function createFlowNodeSystem(
                 data: eventData,
                 timestamp: Date.now(),
               },
-              steps: [],
-              lastStep: undefined,
+              ...(eventType === 'flow.entry' ? context.entrySteps : { steps: [], lastStep: undefined }),
               runtime: {
                 getFlowActor,
                 getAppServices: () => appServices,
@@ -321,20 +370,18 @@ export function createFlowNodeSystem(
             let spawnedCount = 0;
             for (const step of allSteps) {
               try {
-                const [machine, systemId, childTNode] = createChildNode(
+                const [machine, childId, childTNode] = createChildNode(
+                  brain,
                   step,
                   eventTNode.id,
                   eventTrackContext
                 );
 
                 // Spawn child (both flows and steps)
-                enqueue.spawnChild(machine, {
-                  systemId,
-                  input: {} // Add empty input to satisfy TypeScript
-                });
+                spawnFlowChild(enqueue, machine, childId);
 
                 // Emit TNODE_SPAWNED event for the UI to display child node
-                system.get(brain).send({
+                brain.send({
                   type: 'TNODE_SPAWNED',
                   tNode: childTNode,
                   parentId: eventTNode.id,
@@ -344,16 +391,18 @@ export function createFlowNodeSystem(
 
                 spawnedCount++;
               } catch (err) {
-                reportStepRuntimeError({
+                reportError({
                   error: err,
                   source: 'brain-flow',
-                  phase: 'child.spawn',
-                  flowTNodeId,
-                  eventTNodeId: eventTNode.id,
-                  nodeId: step.id,
-                  nodeLabel: step.label,
-                  nodeType: step.nodeType,
-                  eventType,
+                  step: {
+                    phase: 'child.spawn',
+                    flowTNodeId,
+                    eventTNodeId: eventTNode.id,
+                    nodeId: step.id,
+                    nodeLabel: step.label,
+                    nodeType: step.nodeType,
+                    eventType,
+                  },
                 });
               }
             }
@@ -373,11 +422,11 @@ export function createFlowNodeSystem(
           }
         }),
         handleChildCompletion: enqueueActions(({ context, event, enqueue, system }) => {
-          brainInspect(`Child completed in flow - ${context.flowLabel}:`, { completion: event });
+          brainLogger.debug(`Child completed in flow - ${context.flowLabel}:`, { completion: event });
           const typedEv = typeOf('CHILD_COMPLETED', event as any);
 
           if (typedEv.final) {
-            brainInspect(`Flow ${flowTNodeId} received child completion with final=true from ${typedEv.stepId || typedEv.tNodeId}`);
+            brainLogger.debug(`Flow ${flowTNodeId} received child completion with final=true from ${typedEv.stepId || typedEv.tNodeId}`);
           }
           const childFailed = typedEv.failed === true || typedEv.result?.error !== undefined;
 
@@ -452,7 +501,7 @@ export function createFlowNodeSystem(
           // same TNODE_UPDATED pipeline that step/flow completions flow through.
           if (eventTrackCompleted) {
             repository.brainCommands.updateTNodeStatus(typedEv.eventTNodeId, 'completed');
-            system.get(brain).send({
+            brain.send({
               type: 'TNODE_UPDATED',
               data: {
                 tNodeId: typedEv.eventTNodeId,
@@ -466,7 +515,7 @@ export function createFlowNodeSystem(
             enqueue.raise({ type: 'FLOW_COMPLETE' });
           } else if (nextNode && isBrainPaused()) {
             // Brain is paused — defer spawning the next step
-            brainInspect(`Flow ${flowTNodeId} deferring next step (brain paused)`, { nextNodeId: nextNode.id });
+            brainLogger.debug(`Flow ${flowTNodeId} deferring next step (brain paused)`, { nextNodeId: nextNode.id });
             enqueue.assign({
               pendingNextSteps: ({ context }) => [
                 ...context.pendingNextSteps,
@@ -482,6 +531,7 @@ export function createFlowNodeSystem(
             // Spawn next node - already computed above, no duplicate query needed
             try {
               const [nextMachine, nextSystemId, nextTNode] = createChildNode(
+                brain,
                 nextNode,
                 typedEv.eventTNodeId,
                 updatedContext,
@@ -489,13 +539,10 @@ export function createFlowNodeSystem(
               );
 
               // Spawn next child (both flows and steps)
-              enqueue.spawnChild(nextMachine, {
-                systemId: nextSystemId,
-                input: {} // Add empty input to satisfy TypeScript
-              });
+              spawnFlowChild(enqueue, nextMachine, nextSystemId);
 
               // Emit TNODE_SPAWNED event for the next node
-              system.get(brain).send({
+              brain.send({
                 type: 'TNODE_SPAWNED',
                 tNode: nextTNode,
                 parentId: typedEv.tNodeId,
@@ -503,23 +550,25 @@ export function createFlowNodeSystem(
                 flowTNodeId: flowTNodeId
               });
             } catch (err) {
-              reportStepRuntimeError({
+              reportError({
                 error: err,
                 source: 'brain-flow',
-                phase: 'child.spawn-next',
-                flowTNodeId,
-                eventTNodeId: typedEv.eventTNodeId,
-                tNodeId: typedEv.tNodeId,
-                nodeId: nextNode.id,
-                nodeLabel: nextNode.label,
-                nodeType: nextNode.nodeType,
-                eventType: trackExecutionContext.event?.type,
+                step: {
+                  phase: 'child.spawn-next',
+                  flowTNodeId,
+                  eventTNodeId: typedEv.eventTNodeId,
+                  tNodeId: typedEv.tNodeId,
+                  nodeId: nextNode.id,
+                  nodeLabel: nextNode.label,
+                  nodeType: nextNode.nodeType,
+                  eventType: trackExecutionContext.event?.type,
+                },
               });
             }
           }
         }),
         markFlowCompleted: ({ system, context }) => {
-          brainInspect(`Flow ${flowTNodeId} completed (isFinalStep: ${context.isFinalStep})`);
+          brainLogger.debug(`Flow ${flowTNodeId} completed (isFinalStep: ${context.isFinalStep})`);
           repository.brainCommands.updateTNodeStatus(flowTNodeId, 'completed');
           
           // Save the flow's result to nodeAttributes so it appears in the details panel
@@ -528,7 +577,7 @@ export function createFlowNodeSystem(
           }
 
           // Emit TNODE_UPDATED event
-          system.get(brain).send({
+          brain.send({
             type: 'TNODE_UPDATED',
             data: {
               tNodeId: flowTNodeId,
@@ -553,24 +602,22 @@ export function createFlowNodeSystem(
         })),
         forwardTNodeUpdate: sendParent(({ event }) => event),
         resumeFlowSteps: enqueueActions(({ context, enqueue, system }) => {
-          brainInspect(`Flow ${flowTNodeId} resuming ${context.pendingNextSteps.length} deferred steps, ${context.pendingEvents.length} deferred events`);
+          brainLogger.debug(`Flow ${flowTNodeId} resuming ${context.pendingNextSteps.length} deferred steps, ${context.pendingEvents.length} deferred events`);
 
           // Resume deferred next-steps
           for (const pending of context.pendingNextSteps) {
             try {
-              const [machine, systemId, tNode] = createChildNode(
+              const [machine, childId, tNode] = createChildNode(
+                brain,
                 pending.nextNode,
                 pending.eventTNodeId,
                 pending.executionContext,
                 pending.parentTNodeId
               );
 
-              enqueue.spawnChild(machine, {
-                systemId,
-                input: {}
-              });
+              spawnFlowChild(enqueue, machine, childId);
 
-              system.get(brain).send({
+              brain.send({
                 type: 'TNODE_SPAWNED',
                 tNode,
                 parentId: pending.parentTNodeId ?? pending.eventTNodeId,
@@ -578,17 +625,19 @@ export function createFlowNodeSystem(
                 flowTNodeId: flowTNodeId
               });
             } catch (err) {
-              reportStepRuntimeError({
+              reportError({
                 error: err,
                 source: 'brain-flow',
-                phase: 'child.resume',
-                flowTNodeId,
-                eventTNodeId: pending.eventTNodeId,
-                tNodeId: pending.parentTNodeId,
-                nodeId: pending.nextNode.id,
-                nodeLabel: pending.nextNode.label,
-                nodeType: pending.nextNode.nodeType,
-                eventType: pending.executionContext.event?.type,
+                step: {
+                  phase: 'child.resume',
+                  flowTNodeId,
+                  eventTNodeId: pending.eventTNodeId,
+                  tNodeId: pending.parentTNodeId,
+                  nodeId: pending.nextNode.id,
+                  nodeLabel: pending.nextNode.label,
+                  nodeType: pending.nextNode.nodeType,
+                  eventType: pending.executionContext.event?.type,
+                },
               });
             }
           }
@@ -615,7 +664,8 @@ export function createFlowNodeSystem(
         eventTrackContexts: {},
         eventTrackChildCounts: {},
         finalResult: undefined,
-        entryData: flowTNode?.nodeAttributes,  // Use full nodeAttributes, not just params
+        entryData: entry.data,
+        entrySteps: entry.steps,
         isFinalStep: flowTNode?.final || false,
         hasPersistentTriggers,
         hasParent: hasParent,

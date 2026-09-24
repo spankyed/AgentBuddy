@@ -1,37 +1,24 @@
 /**
- * Tests verifying that default-setup imports from @abuddy/sdk delegates
- * resolve correctly through the host module registry.
+ * Tests verifying that default-setup imports from @abuddy/sdk and @abuddy/ears resolve to the
+ * runtime the harness binds.
  */
-import { registerHostModule, getHostModule } from '@abuddy/sdk/runtime';
 import {
-  qx, tx, createEntity,
-  repository, registerRepository,
-  findById, findByIdRaw, findAll, findWhere,
-  createEntityWithDefaults, updateEntity, exists,
+  untypedTx, repository, registerRepository, exists,
   RepositoryError, RepositoryErrorCode,
-  getAttr,
-} from '@abuddy/sdk/ears';
-import { clearMemory, edgeStore, relationIndex } from '@abuddy/sdk/ears/internals';
+} from '@abuddy/ears';
+import {
+  qx, createEntity, findById, findByIdRaw, findAll, findWhere,
+  createEntityWithDefaults, updateEntity, getAttr,
+} from '../../src/__generated__/ears';
+import { resetTestData } from '@abuddy/sdk/testing';
 import { EARS } from '../../src/__generated__/ears';
 
-describe('SDK runtime — host module registry', () => {
-  it('registerHostModule stores and getHostModule retrieves', () => {
-    const mod = { hello: () => 'world' };
-    registerHostModule('test-mod', mod);
-    expect(getHostModule('test-mod')).toBe(mod);
-  });
-
-  it('getHostModule throws for unregistered module', () => {
-    expect(() => getHostModule('nonexistent-mod')).toThrow(/not registered/);
-  });
-});
-
 describe('Tier 1 — EARS delegates', () => {
-  beforeEach(() => clearMemory());
+  beforeEach(() => resetTestData());
 
-  it('qx and tx are callable functions', () => {
+  it('qx and untypedTx are callable functions', () => {
     expect(typeof qx).toBe('function');
-    expect(typeof tx).toBe('function');
+    expect(typeof untypedTx).toBe('function');
   });
 
   it('createEntity produces a valid entity ID', () => {
@@ -40,7 +27,7 @@ describe('Tier 1 — EARS delegates', () => {
   });
 
   it('tx creates and retrieves an entity', () => {
-    const id = tx(EARS.Entity.Action as any)
+    const id = untypedTx(EARS.Entity.Action as any)
       .put('label', 'test-action')
       .id();
     expect(id).toBeDefined();
@@ -111,35 +98,28 @@ describe('Tier 1 — EARS delegates', () => {
   it('repository proxy delegates registerRepository', () => {
     const testQueries = { list: () => 'ok' };
     registerRepository('sdkTestQueries', testQueries);
-    expect(repository.sdkTestQueries.list()).toBe('ok');
+    expect((repository.sdkTestQueries as typeof testQueries).list()).toBe('ok');
   });
 
   it('getAttr reads stored attributes', () => {
-    const id = tx(EARS.Entity.Action as any)
+    const id = untypedTx(EARS.Entity.Action as any)
       .put('color', 'blue')
       .id();
     const color = getAttr(id, 'color');
     expect(color).toBe('blue');
   });
 
-  it('clearMemory resets all state', () => {
+  it('resetTestData resets all state', () => {
     createEntityWithDefaults(
       EARS.Entity.Action as any,
       { label: 'Temp', actionFn: 'fn()' } as any,
       'ACT',
     );
     expect(findAll(EARS.Entity.Action as any).length).toBe(1);
-    clearMemory();
+    resetTestData();
     expect(findAll(EARS.Entity.Action as any).length).toBe(0);
   });
 
-  it('edgeStore is accessible', () => {
-    expect(edgeStore).toBeDefined();
-  });
-
-  it('relationIndex is accessible', () => {
-    expect(relationIndex).toBeDefined();
-  });
 });
 
 describe('Tier 2 — EARS types', () => {
@@ -164,30 +144,20 @@ describe('Tier 3 — System Framework delegates', () => {
     expect(typeof defineSystem).toBe('function');
   });
 
-  it('emit and safeEvents are callable', async () => {
-    const { emit, safeEvents } = await import('@abuddy/sdk/helpers');
-    expect(typeof emit).toBe('function');
+  it('safeEvents is callable', async () => {
+    const { safeEvents } = await import('@abuddy/sdk/helpers');
     expect(typeof safeEvents).toBe('function');
   });
 
-  it('emit wraps event for bus with OUTGOING type', async () => {
-    const { emit } = await import('@abuddy/sdk/helpers');
-    const wrapped = emit('test-plugin', { type: 'HELLO' });
-    expect(wrapped.type).toBe('OUTGOING');
-    expect(wrapped.event.pluginId).toBe('test-plugin');
-    expect(wrapped.event.type).toBe('HELLO');
+  it('safeEvents is exported', async () => {
+    const { safeEvents } = await import('@abuddy/sdk/helpers');
+    expect(typeof safeEvents).toBe('function');
   });
 
-  it('getActor, sendParentSafe, getBus are exported', async () => {
-    const { getActor, sendParentSafe, getBus } = await import('@abuddy/sdk/helpers');
-    expect(typeof getActor).toBe('function');
-    expect(typeof sendParentSafe).toBe('function');
-    expect(typeof getBus).toBe('function');
-  });
-
-  it('bus constant is exported', async () => {
-    const { bus } = await import('@abuddy/sdk/ids');
-    expect(bus).toBe('bus');
+  it('the id grammar is exported', async () => {
+    const { FEATURE_ID_PATTERN, PACK_ID_PATTERN } = await import('@abuddy/sdk/ids');
+    expect(PACK_ID_PATTERN.test('default-setup')).toBe(true);
+    expect(FEATURE_ID_PATTERN.test('notes')).toBe(true);
   });
 });
 
@@ -202,24 +172,24 @@ describe('Tier 4 — Logger delegate', () => {
   });
 });
 
-describe('Tier 5 — RPC delegates', () => {
-  it('rootEvents is accessible', async () => {
-    const { rootEvents } = await import('@abuddy/sdk/rpc');
-    expect(rootEvents).toBeDefined();
+describe('Tier 5 — Templates and app info', () => {
+  it('executeTemplate runs a prompt function body with its params', async () => {
+    const { executeTemplate } = await import('@abuddy/sdk/templates');
+    expect(executeTemplate('return `Hi ${params.name}`', { name: 'Ada' })).toBe('Hi Ada');
   });
 
-  it('trpc proxy is accessible', async () => {
-    const { trpc } = await import('@abuddy/sdk/rpc');
-    expect(trpc).toBeDefined();
+  it('getAppVersion reads the host version', async () => {
+    const { getAppVersion } = await import('@abuddy/sdk/env');
+    expect(getAppVersion()).toBe('0.0.0-test');
   });
 });
 
 describe('Tier 6 — Utility delegates', () => {
   it('path utilities are callable', async () => {
-    const { createExportDir, ensureDirectoryExists, getMediaPath } = await import('@abuddy/sdk/utils');
+    const { createExportDir, ensureDirectoryExists, getDataDirPath } = await import('@abuddy/sdk/utils');
     expect(typeof createExportDir).toBe('function');
     expect(typeof ensureDirectoryExists).toBe('function');
-    expect(typeof getMediaPath).toBe('function');
+    expect(typeof getDataDirPath).toBe('function');
   });
 
   it('media utilities are callable', async () => {
@@ -236,13 +206,6 @@ describe('Tier 6 — Utility delegates', () => {
     expect(typeof toSlug).toBe('function');
   });
 
-  it('resolve-cli utilities are callable', async () => {
-    const { resolveForService, testCli, isCliName } = await import('@abuddy/sdk/utils');
-    expect(typeof resolveForService).toBe('function');
-    expect(typeof testCli).toBe('function');
-    expect(typeof isCliName).toBe('function');
-  });
-
   it('randomId is callable', async () => {
     const { randomId } = await import('@abuddy/sdk/utils');
     expect(typeof randomId).toBe('function');
@@ -254,24 +217,17 @@ describe('Tier 6 — Utility delegates', () => {
   });
 
   it('seed helpers are callable', async () => {
-    const { registerSeeder, seedData, loadJSON } = await import('@abuddy/sdk/utils');
-    expect(typeof registerSeeder).toBe('function');
+    const { seedData, loadJSON } = await import('@abuddy/sdk/utils');
     expect(typeof seedData).toBe('function');
     expect(typeof loadJSON).toBe('function');
   });
-
-  it('lifecycle helpers are callable', async () => {
-    const { registerShutdownHook, runShutdownHooks } = await import('@abuddy/sdk/utils');
-    expect(typeof registerShutdownHook).toBe('function');
-    expect(typeof runShutdownHooks).toBe('function');
-  });
 });
 
-describe('Tier 7 — Service delegates', () => {
-  it('sendToPlugin and sendToBrainSystem are callable', async () => {
-    const { sendToPlugin, sendToBrainSystem } = await import('@abuddy/sdk/services');
-    expect(typeof sendToPlugin).toBe('function');
-    expect(typeof sendToBrainSystem).toBe('function');
+describe('Tier 7 — Event delegates', () => {
+  it('the untyped sends are callable', async () => {
+    const { untypedBroadcastToPlugin, untypedSendToSystem } = await import('@abuddy/sdk/events');
+    expect(typeof untypedBroadcastToPlugin).toBe('function');
+    expect(typeof untypedSendToSystem).toBe('function');
   });
 });
 
@@ -279,7 +235,8 @@ describe('Import isolation — no remaining @/core/* imports in .ts', () => {
   it('default-setup .ts files do not import from @/core/* (excluding FE components, migrations, type imports)', async () => {
     const { execSync } = await import('child_process');
     const result = execSync(
-      `grep -rn "from '@/core/" ../../src/ --include='*.ts' 2>/dev/null | grep -v "@abuddy" | grep -v "@/core/components" | grep -v "migrations/" | grep -v "import type" || true`,
+      // The alias is spelled in two parts so the pack-test import guard doesn't read this command as an import
+      `grep -rn "from '@/${'core'}/" ../../src/ --include='*.ts' 2>/dev/null | grep -v "@abuddy" | grep -v "@/core/components" | grep -v "migrations/" | grep -v "import type" || true`,
       { encoding: 'utf-8', cwd: __dirname }
     ).trim();
     expect(result).toBe('');

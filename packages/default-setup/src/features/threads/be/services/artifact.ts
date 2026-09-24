@@ -5,9 +5,10 @@
  * Follows a pure vs side-effect pattern similar to chat service.
  */
 
+import { broadcastToPlugin } from '@/__generated__/events';
 import { EARS } from '@/__generated__/ears';
-import { sendToPlugin } from '@abuddy/sdk/services';
-import { repository } from '@abuddy/sdk/ears';
+
+import { repository } from '@/__generated__/repository';
 import type { ArtifactType } from '@/features/threads/be/types';
 
 export interface CreateArtifactOptions {
@@ -50,7 +51,7 @@ export function createAndNotify(options: CreateArtifactOptions): { artifactId: E
 
   // Send FE notification if linked to thread
   if (options.threadId) {
-    sendToPlugin('threads', {
+    broadcastToPlugin('threads', {
       type: 'ARTIFACT_ADDED',
       tabId: options.threadId,
       artifact: {
@@ -87,7 +88,7 @@ export function updateAndNotify(
   });
 
   if (options.threadId) {
-    sendToPlugin('threads', {
+    broadcastToPlugin('threads', {
       type: 'ARTIFACT_UPDATED',
       tabId: options.threadId,
       artifact: {
@@ -125,3 +126,10 @@ export function findOrCreateByType(
   });
   return { artifactId, created: true };
 }
+
+/** `services.artifact`: artifact writes with frontend notification */
+export const artifactService = {
+  createAndNotify,
+  updateAndNotify,
+  findOrCreateByType,
+};

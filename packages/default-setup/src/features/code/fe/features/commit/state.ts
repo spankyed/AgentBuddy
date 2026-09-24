@@ -1,6 +1,6 @@
-import { setup, assign, enqueueActions } from 'xstate';
-import { trpc } from '@abuddy/sdk/rpc';
-import { updateParentState, getParentContext, addTabToParent } from '../../utils/parent-communication';
+import { setup, assign, enqueueActions , type ActorRefFrom } from 'xstate';
+import { sendToSystem } from '@/__generated__/events';
+import { updateParentState, getParentContext, addTabToParent, sendEventToParent } from '../../utils/parent-communication';
 
 
 // Git types
@@ -19,14 +19,6 @@ export interface GitDiff {
   originalContent?: string
   modifiedContent?: string
   isImage?: boolean
-}
-
-const sendToBackend = (type: string, data: any) => {
-  trpc.bus.send.mutate({
-    systemId: 'code' as any,
-    type: type as any,
-    ...data
-  } as any)
 }
 
 export interface Context {
@@ -152,7 +144,7 @@ export const commitState = setup({
   },
   actions: {
     refreshGitStatus: () => {
-      sendToBackend('commit.GET_GIT_STATUS', {})
+      sendToSystem('code', { type: 'commit.GET_GIT_STATUS' })
     },
 
 
@@ -166,18 +158,18 @@ export const commitState = setup({
 
     stageFiles: ({ event }) => {
       const ev = event as { type: 'commit.STAGE_FILES'; paths: string[] }
-      sendToBackend('commit.STAGE_FILES', { paths: ev.paths })
+      sendToSystem('code', { type: 'commit.STAGE_FILES', paths: ev.paths })
     },
 
     unstageFiles: ({ event }) => {
       const ev = event as { type: 'commit.UNSTAGE_FILES'; paths: string[] }
-      sendToBackend('commit.UNSTAGE_FILES', { paths: ev.paths })
+      sendToSystem('code', { type: 'commit.UNSTAGE_FILES', paths: ev.paths })
     },
 
 
     viewDiff: ({ event }) => {
       const ev = event as { type: 'commit.VIEW_DIFF'; path: string; staged: boolean }
-      sendToBackend('commit.GET_GIT_DIFF', { path: ev.path, staged: ev.staged })
+      sendToSystem('code', { type: 'commit.GET_GIT_DIFF', path: ev.path, staged: ev.staged })
     },
 
     updateCommitMessage: assign({
@@ -190,7 +182,7 @@ export const commitState = setup({
     commit: ({ context }) => {
       const message = context.commitMessage.replace(/\n*Co-Authored-By:.*$/gim, '').trim()
       if (message) {
-        sendToBackend('commit.COMMIT', { message })
+        sendToSystem('code', { type: 'commit.COMMIT', message })
       }
     },
 
@@ -209,28 +201,28 @@ export const commitState = setup({
 
     revertFile: ({ context }) => {
       if (context.revertDialogFile) {
-        sendToBackend('commit.REVERT_FILE', { path: context.revertDialogFile.path })
+        sendToSystem('code', { type: 'commit.REVERT_FILE', path: context.revertDialogFile.path })
       }
     },
 
     revertFiles: ({ event }) => {
       const ev = event as { type: 'commit.REVERT_FILES'; paths: string[] }
-      sendToBackend('commit.REVERT_FILES', { paths: ev.paths })
+      sendToSystem('code', { type: 'commit.REVERT_FILES', paths: ev.paths })
     },
 
     resolveConflict: ({ event }) => {
       const ev = event as { type: 'commit.RESOLVE_CONFLICT'; path: string; strategy: 'ours' | 'theirs' }
-      sendToBackend('commit.RESOLVE_CONFLICT', { path: ev.path, strategy: ev.strategy })
+      sendToSystem('code', { type: 'commit.RESOLVE_CONFLICT', path: ev.path, strategy: ev.strategy })
     },
 
     markResolved: ({ event }) => {
       const ev = event as { type: 'commit.MARK_RESOLVED'; path: string }
-      sendToBackend('commit.MARK_RESOLVED', { path: ev.path })
+      sendToSystem('code', { type: 'commit.MARK_RESOLVED', path: ev.path })
     },
 
     resolveAllConflicts: ({ event }) => {
       const ev = event as { type: 'commit.RESOLVE_ALL_CONFLICTS'; strategy: 'ours' | 'theirs' }
-      sendToBackend('commit.RESOLVE_ALL_CONFLICTS', { strategy: ev.strategy })
+      sendToSystem('code', { type: 'commit.RESOLVE_ALL_CONFLICTS', strategy: ev.strategy })
     },
 
     handleFileReverted: assign({
@@ -244,7 +236,7 @@ export const commitState = setup({
       gitDiff: null
     }),
 
-    openFile: ({ event, self, system }) => {
+    openFile: ({ event, self }) => {
       const ev = event as { type: 'commit.OPEN_FILE'; file: GitStatusFile }
       const parentContext = getParentContext(self)
       const baseDirectory = parentContext?.baseDirectory || ''
@@ -276,7 +268,7 @@ export const commitState = setup({
       // Send events to parent to switch to explorer panel and open file
       updateParentState(self, { selectedPanel: 'explorer' })
 
-      system.get('explorer')?.send({
+      sendEventToParent(self, {
         type: 'explorer.OPEN_FILE',
         path: fullPath
       })
@@ -322,7 +314,7 @@ export const commitState = setup({
     dismissError: assign({ gitError: null }),
 
     requestGenerateMessage: () => {
-      sendToBackend('commit.GENERATE_MESSAGE', {})
+      sendToSystem('code', { type: 'commit.GENERATE_MESSAGE' })
     },
 
     setGeneratingMessage: assign({ isGeneratingMessage: true }),
@@ -360,7 +352,7 @@ export const commitState = setup({
     }),
 
     getAllBranches: () => {
-      sendToBackend('commit.GET_ALL_BRANCHES', {})
+      sendToSystem('code', { type: 'commit.GET_ALL_BRANCHES' })
     },
 
     updateBranchInput: assign({
@@ -372,7 +364,7 @@ export const commitState = setup({
 
     checkoutBranch: ({ context }) => {
       if (context.branchInput.trim()) {
-        sendToBackend('commit.CHECKOUT_BRANCH', { branchName: context.branchInput.trim() })
+        sendToSystem('code', { type: 'commit.CHECKOUT_BRANCH', branchName: context.branchInput.trim() })
       }
     },
 
@@ -391,7 +383,7 @@ export const commitState = setup({
     }),
 
     pushBranch: () => {
-      sendToBackend('commit.PUBLISH_BRANCH', {})
+      sendToSystem('code', { type: 'commit.PUBLISH_BRANCH' })
     },
 
     setPushing: assign({ isPushing: true }),
@@ -401,7 +393,7 @@ export const commitState = setup({
     }),
 
     pullBranch: () => {
-      sendToBackend('commit.PULL_BRANCH', {})
+      sendToSystem('code', { type: 'commit.PULL_BRANCH' })
     },
 
     setPulling: assign({ isPulling: true }),
@@ -416,21 +408,21 @@ export const commitState = setup({
       if (parentContext?.baseDirectory) {
         // Refresh git status when directory is available
         self.send({ type: 'commit.REFRESH_STATUS' })
-        sendToBackend('commit.STASH_LIST', {})
-        sendToBackend('commit.WORKTREE_LIST', {})
-        sendToBackend('commit.LOG_LIST', {})
+        sendToSystem('code', { type: 'commit.STASH_LIST' })
+        sendToSystem('code', { type: 'commit.WORKTREE_LIST' })
+        sendToSystem('code', { type: 'commit.LOG_LIST' })
       }
     },
 
     stashPush: ({ event, context }) => {
       const ev = event as { type: 'commit.STASH_PUSH'; message?: string; stagedOnly?: boolean }
-      sendToBackend('commit.STASH_PUSH', { message: ev.message, stagedOnly: ev.stagedOnly })
+      sendToSystem('code', { type: 'commit.STASH_PUSH', message: ev.message, stagedOnly: ev.stagedOnly })
     },
 
     setStashing: assign({ isStashing: true }),
 
     requestStashList: () => {
-      sendToBackend('commit.STASH_LIST', {})
+      sendToSystem('code', { type: 'commit.STASH_LIST' })
     },
 
     handleStashListReceived: assign({
@@ -447,25 +439,25 @@ export const commitState = setup({
 
     stashApply: ({ event }) => {
       const ev = event as { type: 'commit.STASH_APPLY'; index: number }
-      sendToBackend('commit.STASH_APPLY', { index: ev.index })
+      sendToSystem('code', { type: 'commit.STASH_APPLY', index: ev.index })
     },
 
     stashPop: ({ event }) => {
       const ev = event as { type: 'commit.STASH_POP'; index: number }
-      sendToBackend('commit.STASH_POP', { index: ev.index })
+      sendToSystem('code', { type: 'commit.STASH_POP', index: ev.index })
     },
 
     stashDrop: ({ event }) => {
       const ev = event as { type: 'commit.STASH_DROP'; index: number }
-      sendToBackend('commit.STASH_DROP', { index: ev.index })
+      sendToSystem('code', { type: 'commit.STASH_DROP', index: ev.index })
     },
 
     stashClear: () => {
-      sendToBackend('commit.STASH_CLEAR', {})
+      sendToSystem('code', { type: 'commit.STASH_CLEAR' })
     },
 
     requestWorktreeList: () => {
-      sendToBackend('commit.WORKTREE_LIST', {})
+      sendToSystem('code', { type: 'commit.WORKTREE_LIST' })
     },
 
     handleWorktreeListReceived: assign({
@@ -478,17 +470,17 @@ export const commitState = setup({
 
     worktreeAdd: ({ event }) => {
       const ev = event as { type: 'commit.WORKTREE_ADD'; path: string; branch?: string; createBranch?: boolean }
-      sendToBackend('commit.WORKTREE_ADD', { path: ev.path, branch: ev.branch, createBranch: ev.createBranch })
+      sendToSystem('code', { type: 'commit.WORKTREE_ADD', path: ev.path, branch: ev.branch, createBranch: ev.createBranch })
     },
 
     worktreeRemove: ({ event }) => {
       const ev = event as { type: 'commit.WORKTREE_REMOVE'; path: string; force?: boolean }
-      sendToBackend('commit.WORKTREE_REMOVE', { path: ev.path, force: ev.force })
+      sendToSystem('code', { type: 'commit.WORKTREE_REMOVE', path: ev.path, force: ev.force })
     },
 
     worktreeSwitch: ({ event }) => {
       const ev = event as { type: 'commit.WORKTREE_SWITCH'; path: string }
-      sendToBackend('commit.WORKTREE_SWITCH', { path: ev.path })
+      sendToSystem('code', { type: 'commit.WORKTREE_SWITCH', path: ev.path })
     },
 
     setWorktreeLoading: assign({ isWorktreeLoading: true }),
@@ -498,7 +490,7 @@ export const commitState = setup({
     handleWorktreeRemoved: assign({ isWorktreeLoading: false }),
 
     requestLogList: () => {
-      sendToBackend('commit.LOG_LIST', {})
+      sendToSystem('code', { type: 'commit.LOG_LIST' })
     },
 
     handleLogListReceived: assign({
@@ -510,12 +502,12 @@ export const commitState = setup({
 
     revertCommit: ({ event }) => {
       const ev = event as { type: 'commit.REVERT_COMMIT'; hash: string }
-      sendToBackend('commit.REVERT_COMMIT', { hash: ev.hash })
+      sendToSystem('code', { type: 'commit.REVERT_COMMIT', hash: ev.hash })
     },
 
     resetToCommit: ({ event }) => {
       const ev = event as { type: 'commit.RESET_TO_COMMIT'; hash: string }
-      sendToBackend('commit.RESET_TO_COMMIT', { hash: ev.hash })
+      sendToSystem('code', { type: 'commit.RESET_TO_COMMIT', hash: ev.hash })
     }
   }
 }).createMachine({
@@ -732,3 +724,6 @@ export const commitState = setup({
     }
   }
 });
+
+/** The commit child's actor, named by whoever reads its context (`codeChild(…)`) */
+export type CommitActor = ActorRefFrom<typeof commitState>;

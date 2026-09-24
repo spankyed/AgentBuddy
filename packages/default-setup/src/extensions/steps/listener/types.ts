@@ -1,8 +1,4 @@
-import type { NodeBase } from '@abuddy/sdk/build';
-
-declare module '@abuddy/sdk/types' {
-  interface NodeEntityRegistry { listener: ListenerNode }
-}
+import type { NodeBase } from '@abuddy/sdk';
 
 export interface ListenerNode extends NodeBase {
   nodeType: 'listener';

@@ -1,6 +1,6 @@
 export default {
+  visible: true,
   plugins: {
-    _meta: { visibility: { code: true } },
     code: {
       hotkeys: {
         openTerminal: { key: '`', modifiers: ['ctrl'] },
@@ -32,6 +32,7 @@ export default {
       showStashes: true,
       showCommits: true,
       showWorktrees: false,
+      cliPaths: {},
     }
   }
 }

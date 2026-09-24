@@ -1,5 +1,5 @@
 export type Rename = { from: string; to: string };
-export type ChangeBlock<T = any> = {
+export type ChangeBlock<T = unknown> = {
   renames?: Rename[];
   removed?: Array<T | string>;
 };
@@ -7,7 +7,7 @@ export type ChangeBlock<T = any> = {
 export const toMap = (r?: Rename[]) =>
   new Map<string, string>(r?.map(({ from, to }) => [from, to]) ?? []);
 
-export const toIdentifierSet = <T = any>(
+export const toIdentifierSet = <T = unknown>(
   removed?: Array<T | string>,
   keyExtractor: (item: T) => string = (item: any) => item.name,
 ) =>

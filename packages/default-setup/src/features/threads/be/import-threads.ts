@@ -1,3 +1,6 @@
+import type { ThreadsSettings } from '@/__generated__/types';
+import { services } from '@/__generated__/services';
+import { tx } from '@/__generated__/ears';
 /**
  * Thread Import
  *
@@ -9,11 +12,12 @@
 import * as fs from 'node:fs'
 import * as path from 'node:path'
 import { EARS } from '@/__generated__/ears'
-import { tx } from '@abuddy/sdk/ears'
-import { hasIdCollision } from '@abuddy/sdk/ears'
+import { hasIdCollision } from '@abuddy/ears';
 import { restoreJsonMediaRefs } from '@abuddy/sdk/utils'
-import { repository } from '@abuddy/sdk/ears'
+import { repository } from '@/__generated__/repository';
 import type { ExportedThreadsData } from './export-types'
+import { ref } from '@/__generated__/ref';
+import { errorMessage } from '@abuddy/sdk/utils/pure';
 
 interface ImportResult {
   created: number
@@ -55,7 +59,7 @@ export function importThreads(importDir: string): ImportResult {
   const hasMedia = fs.existsSync(path.join(importDir, 'media'))
 
   // Get valid statuses and tags from settings
-  const threadsSettings = repository.settingsQueries.getPluginSettings('threads')
+  const threadsSettings = services.settings.forFeature<ThreadsSettings>(ref('threads'))
   const validStatuses = new Set(threadsSettings?.statuses?.map((s: any) => s.label) || [])
   const validTags = new Set(threadsSettings?.tags?.map((t: any) => t.name) || [])
   const fallbackStatus = threadsSettings?.statuses?.[0]?.label || 'Backlog'
@@ -190,7 +194,7 @@ export function importThreads(importDir: string): ImportResult {
             })
             result.artifactsCreated++
           } catch (err) {
-            const message = err instanceof Error ? err.message : String(err)
+            const message = errorMessage(err)
             result.errors.push(`Failed to create artifact "${artifact.title}" for thread "${thread.topic}": ${message}`)
           }
         }
@@ -198,7 +202,7 @@ export function importThreads(importDir: string): ImportResult {
 
       result.created++
     } catch (err) {
-      const message = err instanceof Error ? err.message : String(err)
+      const message = errorMessage(err)
       result.errors.push(`Failed to create thread "${thread.topic}": ${message}`)
       result.skipped++
     }
@@ -227,7 +231,7 @@ export function importThreads(importDir: string): ImportResult {
       try {
         repository.threadCommands.update(sourceId, { linkedThreads })
       } catch (err) {
-        const message = err instanceof Error ? err.message : String(err)
+        const message = errorMessage(err)
         result.errors.push(`Failed to restore relations for "${thread.topic}": ${message}`)
       }
     }
@@ -247,7 +251,7 @@ export function importThreads(importDir: string): ImportResult {
         repository.threadCommands.linkFork(sourceId, forkedId)
         result.relationsCreated++
       } catch (err) {
-        const message = err instanceof Error ? err.message : String(err)
+        const message = errorMessage(err)
         result.errors.push(`Failed to restore fork relation for "${thread.topic}": ${message}`)
       }
     }

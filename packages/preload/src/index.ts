@@ -1,11 +1,5 @@
-import {sha256sum} from './nodeCrypto.js';
-import {versions} from './versions.js';
 import {ipcRenderer, contextBridge, webFrame, webUtils} from 'electron';
 import type {SpeechEvent} from '../../../types/speech.js';
-
-function send(channel: string, message: string) {
-  return ipcRenderer.invoke(channel, message);
-}
 
 // Parse API port from command line arguments
 function getApiPort(): number {
@@ -46,8 +40,9 @@ const fileUtils = {
   getPathForFile: (file: File) => webUtils.getPathForFile(file),
 };
 
-// Get the API port
+// Get the API port, and the token the API requires (from main, never on the command line)
 const apiPort = getApiPort();
+const apiToken = ipcRenderer.sendSync('api:token') as string;
 const startupId = getStartupId();
 
 // Shell utilities
@@ -101,7 +96,7 @@ const apiStatus = {
   relaunch: () => ipcRenderer.invoke('app:relaunch'),
   reload: () => ipcRenderer.invoke('app:reload'),
   openLogFile: () => ipcRenderer.invoke('api:open-log-file'),
-  onEvent: (callback: (event: { type: string; error?: string; attempt?: number; maxAttempts?: number }) => void) => {
+  onEvent: (callback: (event: { type: string; error?: string; attempt?: number; maxAttempts?: number; port?: number }) => void) => {
     const channels = ['api:stopped', 'api:error', 'api:restarting', 'api:started', 'api:fatal'];
     const handlers = channels.map(channel => {
       const handler = (_: Electron.IpcRendererEvent, data?: any) => {
@@ -228,11 +223,9 @@ contextBridge.exposeInMainWorld('electronAPI', {
   apiStatus,
   rendererLog,
   apiPort,
+  apiToken,
   startupId,
   browser,
   protocolAction,
   rendererReady: () => ipcRenderer.send('renderer:ready'),
 });
-
-// Export the tRPC client and connection status
-export {sha256sum, versions, send };

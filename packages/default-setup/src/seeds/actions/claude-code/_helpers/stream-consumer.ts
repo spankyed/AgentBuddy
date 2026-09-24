@@ -174,7 +174,7 @@ export async function consumeStream(
             sessionWorktree: ctx.useWorktree ?? false,
           });
         }
-        services.emitter.sendToBrainSystem({
+        services.emitter.sendToSystem({ role: 'brain' }, { type: 'TRIGGER_BRAIN_EVENT', 
           eventType: 'cc.stream.started',
           payload: {
             threadId,
@@ -426,7 +426,7 @@ export async function consumeStream(
           // Guard: if the CLI sends an AskUserQuestion with no parseable questions,
           // auto-approve rather than rendering an empty block.
           if (questions.length > 0) {
-            const questionMsg = (services.chat as any).sendQuestionBlock({
+            const questionMsg = services.chat.sendQuestionBlock({
               threadId,
               text: questions[0].header || 'Select an option',
               prompt: questions[0].header || 'Select an option',
@@ -483,7 +483,7 @@ export async function consumeStream(
         // After plan approval, the agent transitions to the edit phase.
         if (req.tool_name === 'ExitPlanMode') phase = 'Edit';
         // Emit to flow → CC: Stream Paused action updates artifact status.
-        services.emitter.sendToBrainSystem({
+        services.emitter.sendToSystem({ role: 'brain' }, { type: 'TRIGGER_BRAIN_EVENT', 
           eventType: 'cc.stream.paused',
           payload: { threadId, toolName: req.tool_name ?? 'unknown' },
         });
@@ -639,7 +639,7 @@ export async function consumeStream(
 
     // Emit to flow → CC: Turn Completed action handles:
     //   updateClaudeState, diff artifact
-    services.emitter.sendToBrainSystem({
+    services.emitter.sendToSystem({ role: 'brain' }, { type: 'TRIGGER_BRAIN_EVENT', 
       eventType: 'cc.stream.completed',
       payload: {
         threadId,
@@ -708,7 +708,7 @@ export async function consumeStream(
       // (turn count, tool call count, cost). Cost is best-effort: resultFromLine
       // is only set if the CLI's terminal `result` event arrived before the kill
       // signal took effect — typically it hasn't, so cost will be 0.
-      services.emitter.sendToBrainSystem({
+      services.emitter.sendToSystem({ role: 'brain' }, { type: 'TRIGGER_BRAIN_EVENT', 
         eventType: 'cc.stream.completed',
         payload: {
           threadId,
@@ -746,7 +746,7 @@ export async function consumeStream(
 
     // Emit to flow → CC: Turn Completed action handles:
     //   updateChatState(services, threadId, 'idle')
-    services.emitter.sendToBrainSystem({
+    services.emitter.sendToSystem({ role: 'brain' }, { type: 'TRIGGER_BRAIN_EVENT', 
       eventType: 'cc.stream.completed',
       payload: { threadId, hadErrors: true, error: message },
     });

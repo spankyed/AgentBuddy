@@ -184,7 +184,8 @@
 </template>
 
 <script setup lang="ts">
-import { useActorSystem } from '@abuddy/sdk/fe'
+import { usePlugin } from '@abuddy/sdk/fe'
+
 import { computed, ref, watch, nextTick } from 'vue';
 import TabItem from './tab-item.vue';
 import GroupLabel from './group-label.vue';
@@ -194,9 +195,7 @@ import { categorizeThreadTabs } from './tab-utils';
 import { useTabDragDrop } from './useTabDragDrop';
 import { id, type ThreadsState } from '@/features/threads/fe/state';
 
-const actorSystem = useActorSystem()
-
-const actor: ThreadsState = actorSystem.get(id);
+const actor: ThreadsState = usePlugin();
 
 const props = defineProps<{
   tabs: Tab[];

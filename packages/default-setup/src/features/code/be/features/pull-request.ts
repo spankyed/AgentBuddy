@@ -1,77 +1,24 @@
-import { setup, assign } from 'xstate'
-import { emit } from '@abuddy/sdk/helpers'
-import { rootEvents } from '@abuddy/sdk/rpc'
+import type { IncomingPullRequestEvents, OutgoingPullRequestEvents } from '../contract'
+import { broadcastToPlugin } from '@/__generated__/events';
+import { setup, assign, type AnyActorRef } from 'xstate'
+
 import { createLogger } from '@abuddy/sdk/logger'
 import { GitRepository } from '../services/git'
 import type { GitStatusFile, GitDiff, GhPullRequest, GhPRComment, GhReviewThread } from '../types'
 import * as ghCli from '../services/gh-cli'
-import { type ActiveTokenInfo } from '../services/gh-cli'
 
 const logger = createLogger('pr')
 
 const pluginId = 'code' as const
 
 // Incoming events from frontend
-export type IncomingPullRequestEvents =
-  | { type: 'pr.GET_BASE_BRANCH' }
-  | { type: 'pr.GET_BRANCH_DIFF'; baseBranch?: string; headBranch?: string }
-  | { type: 'pr.GET_BRANCH_FILE_DIFF'; path: string; baseBranch: string; headBranch?: string }
-  | { type: 'pr.LIST_OPEN_PRS' }
-  | { type: 'pr.SELECT_PR'; number: number }
-  | { type: 'pr.CREATE_PR'; title: string; body: string; base?: string; draft?: boolean }
-  | { type: 'pr.MERGE_PR'; number: number; method?: 'merge' | 'squash' | 'rebase' }
-  | { type: 'pr.CLOSE_PR'; number: number }
-  | { type: 'pr.TOGGLE_DRAFT'; number: number; isDraft: boolean }
-  | { type: 'pr.CHECK_BRANCH_PR' }
-  | { type: 'pr.CHECK_GH_AUTH' }
-  | { type: 'pr.GET_PR_AUTOFILL' }
-  | { type: 'pr.GET_SMART_BASE_BRANCH' }
-  | { type: 'pr.DELETE_BRANCH'; branch: string }
-  | { type: 'pr.UPDATE_PR'; number: number; title?: string; body?: string; base?: string }
-  | { type: 'pr.CREATE_COMMENT'; number: number; body: string }
-  | { type: 'pr.EDIT_COMMENT'; commentId: number; body: string }
-  | { type: 'pr.DELETE_COMMENT'; commentId: number }
-  | { type: 'pr.GET_COMMENTS'; number: number }
-  | { type: 'pr.GET_REVIEW_THREADS'; number: number }
-  | { type: 'pr.REPLY_TO_THREAD'; prNumber: number; commentId: number; body: string }
-  | { type: 'pr.RESOLVE_THREAD'; threadId: string }
-  | { type: 'pr.UNRESOLVE_THREAD'; threadId: string }
-  | { type: 'pr.EDIT_REVIEW_COMMENT'; commentId: number; body: string }
-  | { type: 'pr.DELETE_REVIEW_COMMENT'; commentId: number }
 
 // Outgoing events to frontend
-export type OutgoingPullRequestEvents =
-  | { type: 'pr.BASE_BRANCH_RECEIVED'; data: { branch: string } }
-  | { type: 'pr.BRANCH_DIFF_RECEIVED'; data: { files: GitStatusFile[]; baseBranch: string; headBranch?: string } }
-  | { type: 'pr.FILE_DIFF_RECEIVED'; data: GitDiff & { baseBranch: string; headBranch?: string } }
-  | { type: 'pr.ERROR'; message: string }
-  | { type: 'pr.STATUS_CHANGED'; data: { timestamp: Date } }
-  | { type: 'pr.GIT_STATUS_REFRESHED'; data: { timestamp: Date } }
-  | { type: 'pr.OPEN_PRS_RECEIVED'; data: { prs: GhPullRequest[] } }
-  | { type: 'pr.PR_DETAILS_RECEIVED'; data: { pr: GhPullRequest; comments: GhPRComment[]; requestId: number } }
-  | { type: 'pr.PR_CREATED'; data: { pr: GhPullRequest } }
-  | { type: 'pr.PR_MERGED'; data: { number: number } }
-  | { type: 'pr.PR_CLOSED'; data: { number: number } }
-  | { type: 'pr.PR_DRAFT_TOGGLED'; data: { number: number; isDraft: boolean } }
-  | { type: 'pr.BRANCH_PR_CHECKED'; data: { pr: GhPullRequest | null } }
-  | { type: 'pr.GH_AUTH_CHECKED'; data: { available: boolean; prAccess: boolean; activeToken: ActiveTokenInfo | null } }
-  | { type: 'pr.AUTOFILL_RECEIVED'; data: { title: string; body: string } }
-  | { type: 'pr.SMART_BASE_BRANCH_RECEIVED'; data: { branch: string } }
-  | { type: 'pr.BRANCH_DELETED'; data: { branch: string } }
-  | { type: 'pr.PR_UPDATED'; data: { number: number; title?: string; body?: string; base?: string } }
-  | { type: 'pr.COMMENT_CREATED'; data: { number: number } }
-  | { type: 'pr.COMMENT_EDITED'; data: { commentId: number } }
-  | { type: 'pr.COMMENT_DELETED'; data: { commentId: number } }
-  | { type: 'pr.COMMENTS_RECEIVED'; data: { number: number; comments: GhPRComment[] } }
-  | { type: 'pr.REVIEW_THREADS_RECEIVED'; data: { threads: GhReviewThread[] } }
-  | { type: 'pr.THREAD_REPLIED'; data: { prNumber: number } }
-  | { type: 'pr.THREAD_RESOLVED'; data: { threadId: string } }
-  | { type: 'pr.THREAD_UNRESOLVED'; data: { threadId: string } }
-  | { type: 'pr.REVIEW_COMMENT_EDITED'; data: { commentId: number } }
-  | { type: 'pr.REVIEW_COMMENT_DELETED'; data: { commentId: number } }
 
 export interface Context {
   gitRepository: GitRepository | null
+  /** The code system, which routes a `commit.*` event to its commit child */
+  code?: AnyActorRef
 }
 
 export type Event =
@@ -119,8 +66,7 @@ function humanizeBranchName(branch: string): string {
 }
 
 function emitToFrontend(event: OutgoingPullRequestEvents) {
-  const wrapped = emit(pluginId, event)
-  rootEvents.emitOutgoing(wrapped.event)
+  broadcastToPlugin(pluginId, event)
 }
 
 function emitError(message: string) {
@@ -142,7 +88,7 @@ export const pullRequestSystem = setup({
   types: {
     context: {} as Context,
     events: {} as Event,
-    input: {} as { baseDirectory: string | null; gitRepository?: GitRepository | null }
+    input: {} as { baseDirectory: string | null; gitRepository?: GitRepository | null; code?: AnyActorRef }
   },
   actions: {
     getBaseBranch: ({ context }) => {
@@ -254,13 +200,13 @@ export const pullRequestSystem = setup({
       )
     },
 
-    mergePR: ({ event, context, system }) => {
+    mergePR: ({ event, context }) => {
       const ev = event as { type: 'pr.MERGE_PR'; number: number; method?: 'merge' | 'squash' | 'rebase' }
       withRepo(context,
         repo => ghCli.mergePR(repo.getWorkingDir(), ev.number, ev.method),
         () => {
           emitToFrontend({ type: 'pr.PR_MERGED', data: { number: ev.number } })
-          system.get('commit')?.send({ type: 'commit.GET_ALL_BRANCHES' })
+          context.code?.send({ type: 'commit.GET_ALL_BRANCHES' })
         },
         async err => {
           // Merge was rejected server-side — refresh PR data so the UI reflects the
@@ -517,7 +463,8 @@ export const pullRequestSystem = setup({
   id: 'pull-request',
   initial: 'idle',
   context: ({ input }) => ({
-    gitRepository: input?.gitRepository || (input?.baseDirectory ? new GitRepository(input.baseDirectory) : null)
+    gitRepository: input?.gitRepository || (input?.baseDirectory ? new GitRepository(input.baseDirectory) : null),
+    code: input?.code
   }),
   states: {
     idle: {

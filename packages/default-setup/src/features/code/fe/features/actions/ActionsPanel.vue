@@ -234,15 +234,18 @@
 </template>
 
 <script setup lang="ts">
+import { usePlugin } from '@abuddy/sdk/fe'
+
 import { ref, computed, watch, nextTick } from 'vue'
 import { useSelector } from '@xstate/vue'
-import { useActorSystem, navigateToPlugin } from '@abuddy/sdk/fe'
-import { id as codeId, type CodeState } from '@/features/code/fe/state'
-import { id as actionsPluginId } from '@/features/actions/fe/state'
+import { openPlugin } from '@/__generated__/fe'
+import type { CodeState } from '@/features/code/fe/state'
+import { usePluginState } from '@/__generated__/fe'
+import { sendToPlugin } from '@/__generated__/events'
 import { ExternalLink, Plus, X, Pencil, Trash2, Play, Search, ChevronDown, ChevronRight } from 'lucide-vue-next'
 import CodePanelHeader from '@/features/code/fe/features/CodePanelHeader.vue'
 import EmptyState from '@/features/code/fe/features/EmptyState.vue'
-import type { ActionEntity } from '@/__generated__/types'
+import type { ActionEntity } from '@abuddy/sdk'
 import {
   ContextMenuRoot,
   ContextMenuTrigger,
@@ -251,22 +254,20 @@ import {
   ContextMenuPortal,
 } from 'reka-ui'
 import { MENU_CONTENT_CLASS, MENU_ITEM_CLASS } from '../explorer/constants'
-import { useInfiniteScroll } from '@abuddy/sdk/fe'
-import Button from '@abuddy/sdk/fe/design/button.vue'
+import { useInfiniteScroll } from '@abuddy/ui/composables/useInfiniteScroll'
+import Button from '@abuddy/ui/design/button'
 import uFuzzy from '@leeoniya/ufuzzy'
-
-const actorSystem = useActorSystem()
+import { codeChild } from '../children';
 
 // Get actors - use main actions plugin for state, codeActions for tab management
-const codeActor: CodeState = actorSystem.get(codeId)
-const codeActionsActor = codeActor.system.get('codeActions')!
-const actionsPluginActor = actorSystem.get(actionsPluginId)!
+const codeActor: CodeState = usePlugin()
+const codeActionsActor = codeChild(codeActor, 'codeActions')!
 
-// State selectors - read from main actions plugin (single source of truth)
-const actions = useSelector(actionsPluginActor, (state: any) => state.context.actions)
-const page = useSelector(actionsPluginActor, (state: any) => state.context.page)
-const totalPages = useSelector(actionsPluginActor, (state: any) => state.context.totalPages)
-const loadingMore = useSelector(actionsPluginActor, (state: any) => state.context.loadingMore)
+// State - the actions plugin's list (single source of truth)
+const actions = usePluginState('actions', (s) => s.actions)
+const page = usePluginState('actions', (s) => s.page)
+const totalPages = usePluginState('actions', (s) => s.totalPages)
+const loadingMore = usePluginState('actions', (s) => s.loadingMore)
 const hasMore = computed(() => page.value < totalPages.value)
 const isLoading = ref(false)
 const error = ref<string | null>(null)
@@ -282,7 +283,7 @@ const fuzzy = new uFuzzy({ intraMode: 1, interLft: 2, intraSub: 1, intraTrn: 1, 
 const handleSearchClick = () => {
   isSearchMode.value = true
   if (hasMore.value) {
-    actionsPluginActor.send({ type: 'ACTIONS.LOAD_ALL' })
+    sendToPlugin('actions', { type: 'ACTIONS.LOAD_ALL' })
   }
   nextTick(() => searchInput.value?.focus())
 }
@@ -351,7 +352,7 @@ function confirmAddParameter(action: ActionEntity) {
       [paramKey]: { type: 'any' as const, required: false }
     }
     // Send through main actions plugin state machine
-    actionsPluginActor.send({
+    sendToPlugin('actions', {
       type: 'ACTION.UPDATE_INPUT',
       actionId: action.id,
       input: updatedInput
@@ -391,7 +392,7 @@ function confirmEditParameter(action: ActionEntity) {
       }
       delete updatedInput[oldKey]
       // Send through main actions plugin state machine
-      actionsPluginActor.send({
+      sendToPlugin('actions', {
         type: 'ACTION.UPDATE_INPUT',
         actionId: action.id,
         input: updatedInput
@@ -411,7 +412,7 @@ function removeParameter(action: ActionEntity, key: string) {
   if (action.input) {
     const updatedInput = { ...action.input }
     delete updatedInput[key]
-    actionsPluginActor.send({
+    sendToPlugin('actions', {
       type: 'ACTION.UPDATE_INPUT',
       actionId: action.id,
       input: updatedInput
@@ -433,7 +434,7 @@ function confirmEditName(action: ActionEntity) {
   if (editingNameForAction.value && editedName.value.trim()) {
     const newName = editedName.value.trim()
     if (newName !== action.label) {
-      actionsPluginActor.send({
+      sendToPlugin('actions', {
         type: 'ACTION.UPDATE_LABEL',
         actionId: action.id,
         label: newName
@@ -450,7 +451,7 @@ function cancelEditName() {
 }
 
 function deleteAction(action: ActionEntity) {
-  actionsPluginActor.send({
+  sendToPlugin('actions', {
     type: 'ACTION.DELETE',
     actionId: action.id
   })
@@ -459,7 +460,7 @@ function deleteAction(action: ActionEntity) {
 const { onScroll } = useInfiniteScroll({
   hasMore,
   loading: loadingMore,
-  onLoadMore: () => actionsPluginActor.send({ type: 'ACTIONS.LOAD_MORE' }),
+  onLoadMore: () => sendToPlugin('actions', { type: 'ACTIONS.LOAD_MORE' }),
 })
 
 // Event handlers
@@ -468,13 +469,13 @@ const selectAction = (action: ActionEntity) => {
 }
 
 const goToAction = (action: ActionEntity) => {
-  navigateToPlugin('actions', { type: 'ACTION.SELECT', actionId: action.id })
+  openPlugin('actions', { type: 'ACTION.SELECT', actionId: action.id })
 }
 
 const createActionInline = () => {
   const defaultLabel = `Action ${actions.value.length + 1}`
   pendingRename.value = true
-  actionsPluginActor.send({
+  sendToPlugin('actions', {
     type: 'ACTION.CREATE_INLINE',
     label: defaultLabel,
     actionFn: '// Your action function body here\nreturn { success: true };',

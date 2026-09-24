@@ -104,20 +104,21 @@
 </template>
 
 <script setup lang="ts">
+import { usePlugin } from '@abuddy/sdk/fe'
 import { computed } from 'vue';
 import { ExternalLink } from 'lucide-vue-next';
-import NameSaveHeader from '@abuddy/sdk/fe/design/NameSaveHeader.vue';
-import CollapsibleSection from '@abuddy/sdk/fe/design/CollapsibleSection.vue';
-import type { PromptEntity, TemplateInput, Category } from '@/__generated__/types';
+import NameSaveHeader from '@abuddy/ui/design/NameSaveHeader';
+import CollapsibleSection from '@abuddy/ui/design/CollapsibleSection';
+import type { Category } from '@/__generated__/types';
 import PromptInputsEditor from './PromptInputsEditor.vue';
 import PromptTemplateEditor from './PromptTemplateEditor.vue';
 import PromptTemplateViewer from './PromptTemplateViewer.vue';
-import JsonSchemaEditor from '@abuddy/sdk/fe/components/JsonSchemaEditor.vue';
-import { useActorSystem, useCollapsibleState } from '@abuddy/sdk/fe';
-import { navigateToPlugin } from '@abuddy/sdk/fe';
-import { id as promptsId, type PromptsState } from '@/features/prompts/fe/state';
-
-const actorSystem = useActorSystem()
+import JsonSchemaEditor from '@abuddy/ui/components/JsonSchemaEditor';
+import { useCollapsibleState } from '@abuddy/ui/composables/useCollapsibleState';
+import { openPlugin } from '@/__generated__/fe'
+import type { PromptsState } from '@/features/prompts/fe/state';
+import type { PromptEntity } from '@abuddy/sdk';
+import type { TemplateInput } from '@abuddy/sdk';
 
 const props = defineProps<{
   prompt?: PromptEntity;
@@ -144,7 +145,7 @@ const emit = defineEmits<{
 }>();
 
 // Get the prompts state machine actor
-const actor: PromptsState = actorSystem.get(promptsId);
+const actor: PromptsState = usePlugin();
 
 // Use the composable for managing collapsible section states
 const inputsExpanded = useCollapsibleState(actor, ['formData', 'inputsExpanded'], 'TOGGLE_INPUTS_SECTION');
@@ -189,14 +190,10 @@ function formatDate(timestamp?: number) {
 function openInEditor() {
   if (!props.prompt) return;
 
-  navigateToPlugin('code', { type: 'UPDATE_STATE', updates: { selectedPanel: 'prompts' } });
-
-  // Child actor needs time to initialize after plugin activation
-  setTimeout(() => {
-    const promptsActor = actorSystem.get('code')?.system.get('codePrompts');
-    if (promptsActor) {
-      promptsActor.send({ type: 'codePrompts.OPEN_PROMPT', promptId: props.prompt!.id });
-    }
-  }, 10);
+  // The code plugin routes a codePrompts.* event to its prompts panel
+  openPlugin('code', [
+    { type: 'UPDATE_STATE', updates: { selectedPanel: 'prompts' } },
+    { type: 'codePrompts.OPEN_PROMPT', promptId: props.prompt.id },
+  ]);
 }
 </script>

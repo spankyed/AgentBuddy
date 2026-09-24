@@ -1,11 +1,17 @@
+import type { CodeSettings } from '@/features/code/be/types';
+import { services } from '@/__generated__/services';
+import { tx } from '@/__generated__/ears';
 import * as pty from 'node-pty'
-import { tx } from '@abuddy/sdk/ears'
 import * as os from 'os'
 import * as path from 'path'
 import * as fs from 'fs'
 import type { TerminalInfo, TerminalCreate } from '../types'
 import { EARS } from '@/__generated__/ears'
-import { repository } from '@abuddy/sdk/ears'
+import { repository } from '@/__generated__/repository';
+import { createLogger } from '@abuddy/sdk/logger';
+import { ref } from '@/__generated__/ref';
+
+const logger = createLogger('terminal');
 
 interface Terminal {
   info: TerminalInfo
@@ -50,7 +56,7 @@ class TerminalService {
 
   create(options: TerminalCreate): TerminalInfo {
     // Check terminal limit (0 = no limit)
-    const codeSettings = repository.settingsQueries.getPluginSettings('code')
+    const codeSettings = services.settings.forFeature<CodeSettings>(ref('code'))
     const maxTerminals = codeSettings?.maxTerminals ?? 0
     if (maxTerminals > 0 && this.terminals.size >= maxTerminals) {
       throw new Error(`Maximum number of terminals (${maxTerminals}) reached`)
@@ -87,7 +93,7 @@ class TerminalService {
       })
 
       // Send shell integration setup commands based on shell type (if enabled)
-      const codeSettings = repository.settingsQueries.getPluginSettings('code')
+      const codeSettings = services.settings.forFeature<CodeSettings>(ref('code'))
       if (codeSettings?.enableShellIntegration !== false) {
         this.injectShellIntegration(ptyProcess, shell)
       }
@@ -215,7 +221,7 @@ class TerminalService {
 
       return true
     } catch (error) {
-      console.error('Error killing terminal:', error)
+      logger.error('Error killing terminal', { error })
       // Ensure cleanup even on error so terminals don't leak
       this.terminals.delete(id)
       try { repository.terminalCommands.markClosed(id as EARS.EntityId) } catch { /* already logged */ }
@@ -232,7 +238,7 @@ class TerminalService {
         this.killProcessGroup(terminal.pty.pid)
         terminal.pty.kill()
       } catch (error) {
-        console.error(`Error killing terminal ${id}:`, error)
+        logger.error(`Error killing terminal ${id}`, { error })
       }
     }
     this.terminals.clear()
@@ -262,7 +268,7 @@ class TerminalService {
         repository.terminalCommands.markClosed(id as EARS.EntityId)
         callback(exitCode, signal)
       } catch (error) {
-        console.error(`[Terminal] Error in exit handler for ${id}:`, error)
+        logger.error(`Error in exit handler for ${id}`, { error })
       }
     })
   }
@@ -279,7 +285,7 @@ class TerminalService {
       return shell
     }
     
-    console.warn(`Invalid shell requested: ${shell}, defaulting to ${this.defaultShell}`)
+    logger.warn(`Invalid shell requested: ${shell}, defaulting to ${this.defaultShell}`)
     return this.defaultShell
   }
 
@@ -296,7 +302,7 @@ class TerminalService {
         return cwd
       }
     } catch (error) {
-      console.warn(`Invalid cwd: ${cwd}, defaulting to home directory`, error)
+      logger.warn(`Invalid cwd: ${cwd}, defaulting to home directory`, { error })
     }
     // Fall back to home directory if provided path is invalid
     return os.homedir()
@@ -341,7 +347,7 @@ class TerminalService {
     const persistedTerminals = repository.terminalQueries.active()
 
     // Check if shell integration is enabled
-    const codeSettings = repository.settingsQueries.getPluginSettings('code')
+    const codeSettings = services.settings.forFeature<CodeSettings>(ref('code'))
     const shellIntegrationEnabled = codeSettings?.enableShellIntegration !== false
 
     for (const persistedTerminal of persistedTerminals) {
@@ -358,7 +364,7 @@ class TerminalService {
             process.kill(oldPid, 0) // Check if still alive
             this.killProcessGroup(oldPid)
             try { process.kill(oldPid, 'SIGKILL') } catch {}
-            console.log(`[Terminal] Killed orphaned process ${oldPid} for terminal ${persistedTerminal.id}`)
+            logger.info(`Killed orphaned process ${oldPid} for terminal ${persistedTerminal.id}`)
           } catch {
             // Process doesn't exist — expected after clean shutdown
           }
@@ -406,9 +412,9 @@ class TerminalService {
         // Set up handlers for this terminal
         setupHandlers(terminalInfo)
         
-        console.log(`Restored terminal: ${persistedTerminal.title} (${persistedTerminal.id})`)
+        logger.info(`Restored terminal: ${persistedTerminal.title} (${persistedTerminal.id})`)
       } catch (error) {
-        console.error(`Failed to restore terminal ${persistedTerminal.id}:`, error)
+        logger.error(`Failed to restore terminal ${persistedTerminal.id}`, { error })
         // Mark as closed if restoration fails
         repository.terminalCommands.markClosed(persistedTerminal.id)
       }

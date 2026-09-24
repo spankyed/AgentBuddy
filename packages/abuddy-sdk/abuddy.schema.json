@@ -65,16 +65,58 @@
     "entities": {
       "type": "object",
       "additionalProperties": {
-        "type": "string"
+        "type": "string",
+        "not": {
+          "enum": [
+            "Relation",
+            "Flow",
+            "Node",
+            "TNode",
+            "Action",
+            "Prompt"
+          ]
+        }
       },
-      "description": "EARS entity types this pack registers. Keys are enum names, values are string identifiers."
+      "description": "EARS entity types this pack registers, each key equal to its value, the type name ({ \"Memo\": \"Memo\" }). The SDK defines Relation, Flow, Node, TNode, Action, Prompt.",
+      "propertyNames": {
+        "not": {
+          "enum": [
+            "Relation",
+            "Flow",
+            "Node",
+            "TNode",
+            "Action",
+            "Prompt"
+          ]
+        }
+      }
     },
     "relKinds": {
       "type": "object",
       "additionalProperties": {
-        "type": "string"
+        "type": "string",
+        "not": {
+          "enum": [
+            "contains",
+            "transitions_to",
+            "instance_of",
+            "spawned",
+            "tracked"
+          ]
+        }
       },
-      "description": "EARS relation kinds this pack registers. Keys are enum names, values are string identifiers."
+      "description": "EARS relation kinds this pack registers. Keys are enum names, values are string identifiers. The SDK defines CONTAINS, TRANSITIONS_TO, INSTANCE_OF, SPAWNED, TRACKED.",
+      "propertyNames": {
+        "not": {
+          "enum": [
+            "CONTAINS",
+            "TRANSITIONS_TO",
+            "INSTANCE_OF",
+            "SPAWNED",
+            "TRACKED"
+          ]
+        }
+      }
     },
     "partitionPolicy": {
       "type": "object",
@@ -85,13 +127,6 @@
             "type": "string"
           },
           "description": "Entity types excluded from persistence (in-memory only)."
-        },
-        "secretEntityTypes": {
-          "type": "array",
-          "items": {
-            "type": "string"
-          },
-          "description": "Entity types routed to the secrets store."
         }
       },
       "additionalProperties": false,
@@ -126,7 +161,8 @@
         "properties": {
           "id": {
             "type": "string",
-            "description": "Unique feature identifier."
+            "pattern": "^[a-z][a-zA-Z0-9]*$",
+            "description": "Unique feature identifier. A lowercase-first identifier (letters and digits), used as a name in generated code; not a reserved word."
           },
           "designation": {
             "type": "string",
@@ -142,7 +178,7 @@
           },
           "earlySystem": {
             "type": "boolean",
-            "description": "Built-in packs only. Ignored for external packs."
+            "description": "Start this feature's system before EARS hydration. Built-in packs only."
           },
           "system": {
             "type": "object",
@@ -151,9 +187,9 @@
                 "type": "string",
                 "description": "Path to the backend system module."
               },
-              "outgoingEventsType": {
+              "contract": {
                 "type": "string",
-                "description": "TypeScript type name for outgoing events (used by codegen)."
+                "description": "\"path#exportName\" of this system's contract: a declared type holding its context and its incoming, internal and outgoing events (SystemContract, @abuddy/sdk/framework). It lives in a leaf module of its own (be/contract.ts), so codegen reads it without running anything. Omit it for a system that sends no events."
               },
               "events": {
                 "type": "object",
@@ -164,13 +200,6 @@
                       "type": "string"
                     },
                     "description": "Event types this system listens for."
-                  },
-                  "outgoing": {
-                    "type": "array",
-                    "items": {
-                      "type": "string"
-                    },
-                    "description": "Event types this system emits."
                   }
                 },
                 "additionalProperties": false,
@@ -188,25 +217,19 @@
             "properties": {
               "entry": {
                 "type": "string",
-                "description": "Path to the frontend plugin module."
+                "description": "Path to the frontend plugin module, which default-exports the Plugin (its id, label, icon and isPinned)."
               },
-              "label": {
+              "contract": {
                 "type": "string",
-                "description": "Display name shown in the sidebar."
+                "description": "\"path#exportName\" of this plugin's contract: a declared type holding the state it publishes and the inbox other plugins may send to (PluginInbox, @abuddy/sdk/fe). It lives in a leaf module of its own (fe/contract.ts), which the plugin's machine does not import, so codegen can read it without resolving the machine. Omit it for a plugin that publishes nothing: it still receives its own feature's system events."
               },
-              "icon": {
-                "type": "string",
-                "description": "Icon name from the icon library."
-              },
-              "isPinned": {
+              "default": {
                 "type": "boolean",
-                "description": "Whether this plugin is pinned in the sidebar by default."
+                "description": "Show this plugin when the app starts. At most one of a pack's features may claim it; the first pack to register one across the app wins."
               }
             },
             "required": [
-              "entry",
-              "label",
-              "icon"
+              "entry"
             ],
             "additionalProperties": false,
             "description": "Frontend plugin definition."
@@ -214,13 +237,28 @@
           "services": {
             "type": "object",
             "additionalProperties": {
-              "type": "string"
+              "type": "string",
+              "pattern": "^[^#]+#[A-Za-z_$][\\w$]*$"
             },
-            "description": "Service modules. Keys are service names, values are source file paths."
+            "propertyNames": {
+              "pattern": "^[A-Za-z_$][\\w$]*$"
+            },
+            "description": "Services. Keys are service names on `services`, values are \"path#exportName\" of the service object (an object literal or a class instance, not a factory) in a source file."
           },
-          "contributions": {
+          "repositories": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string",
+              "pattern": "^[^#]+#[A-Za-z_$][\\w$]*$"
+            },
+            "propertyNames": {
+              "pattern": "^[A-Za-z_$][\\w$]*$"
+            },
+            "description": "Repository objects. Keys are repository names on `repository` (from #generated/repository), values are \"path#exportName\" of the object in a source file."
+          },
+          "references": {
             "type": "string",
-            "description": "Built-in packs only. Ignored for external packs."
+            "description": "Path to a module declaring which of this feature's things are linkable from an editor (protocol, category, icon, navigate). Built-in packs only. Ignored for external packs."
           }
         },
         "required": [
@@ -230,31 +268,57 @@
       },
       "description": "Feature definitions. Each feature bundles a backend system, frontend plugin, services, and settings."
     },
-    "defaultPlugin": {
-      "type": "string",
-      "description": "ID of the feature to show by default when the app starts."
-    },
     "packServices": {
       "type": "object",
       "additionalProperties": {
-        "type": "string"
+        "type": "string",
+        "pattern": "^[^#]+#[A-Za-z_$][\\w$]*$"
       },
-      "description": "Pack-level services not tied to a specific feature. Keys are service names, values are source file paths."
+      "propertyNames": {
+        "pattern": "^[A-Za-z_$][\\w$]*$"
+      },
+      "description": "Pack-level services not tied to a specific feature. Keys are service names on `services`, values are \"path#exportName\" of the service object (an object literal or a class instance, not a factory) in a source file."
+    },
+    "help": {
+      "type": "string",
+      "pattern": "^[^#]+#[A-Za-z_$][\\w$]*$",
+      "description": "Help entries this pack answers with, listed under Help in the app's Settings view. \"path#exportName\" of a function returning them; it is called the first time the list is read, so a pack may read its compiled seeds then."
+    },
+    "settingsSections": {
+      "type": "string",
+      "pattern": "^[^#]+#[A-Za-z_$][\\w$]*$",
+      "description": "Sections of the app settings this pack owns, with their defaults, beside the \"plugins\" section the app keeps itself. \"path#exportName\" of a function returning them; it is called the first time the defaults are read, so a pack can read its compiled seeds then."
+    },
+    "commands": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9-]*$",
+            "description": "The command as typed after the \"/\", without it."
+          },
+          "placeholder": {
+            "type": "string",
+            "minLength": 1,
+            "description": "What the chat shows after the command: the argument it takes, or what it does."
+          }
+        },
+        "required": [
+          "name",
+          "placeholder"
+        ],
+        "additionalProperties": false
+      },
+      "description": "Slash commands this pack adds to the chat. Sending one fires a `user.command` event the pack's flows handle; a name must be unique across the app."
     },
     "boot": {
       "type": "object",
       "properties": {
-        "earlySystem": {
-          "type": "string",
-          "description": "Built-in packs only. Ignored for external packs."
-        },
-        "createDefaultSettings": {
-          "type": "string",
-          "description": "Module that ensures default settings exist."
-        },
         "hooks": {
           "type": "string",
-          "description": "Module providing lifecycle hooks (e.g. shutdown)."
+          "description": "Module exporting lifecycle hooks: onInit (after EARS hydration, before migrations and seeds) and onShutdown (when the pack's backend stops)."
         },
         "seed": {
           "type": "object",
@@ -268,26 +332,26 @@
                 "properties": {
                   "path": {
                     "type": "string",
-                    "description": "Directory containing seed source files."
+                    "description": "Source directory or file, relative to the pack root."
+                  },
+                  "format": {
+                    "type": "string",
+                    "pattern": "^(?:([a-z][a-z0-9-]*):)?([a-z][a-z0-9-]*)$",
+                    "description": "The format compiling `path`: a name in this pack's seedFormats, or \"<dependency id>:<name>\" for a dependency's."
                   },
                   "seeder": {
                     "type": "string",
-                    "description": "Custom seeder module path."
-                  },
-                  "entityType": {
-                    "type": "string",
-                    "description": "EARS entity type for collection seeders."
-                  },
-                  "lookupField": {
-                    "type": "string",
-                    "description": "Field used to deduplicate seeded entities."
+                    "description": "A pack module exporting seed(ctx), used instead of the generic seeder. Alone, the build compiles nothing for the entry and the module brings its own data; with \"path\" and \"format\", the module seeds the compiled records."
                   }
                 },
                 "additionalProperties": false
               }
             ]
           },
-          "description": "Seed data sources. Keys are seed type names, values are paths or config objects."
+          "propertyNames": {
+            "pattern": "^[a-z][a-z0-9-]*$"
+          },
+          "description": "Seed data sources. Keys are seed names; the specialty keys (actions, prompts, flows) take a path, other keys an entry object."
         },
         "seedPolicy": {
           "type": "object",
@@ -320,6 +384,10 @@
         "register": {
           "type": "string",
           "description": "Path to the step registration barrel file."
+        },
+        "build": {
+          "type": "string",
+          "description": "Path to a module exporting build-time step definitions only (validate/compile/decompile, trigger facets; no runtime or FE imports). Bundled to build/steps.build.mjs for dependent packs."
         },
         "definitions": {
           "type": "array",
@@ -394,10 +462,6 @@
     "fe": {
       "type": "object",
       "properties": {
-        "entry": {
-          "type": "string",
-          "description": "Path to the frontend entry module."
-        },
         "tiptapPlugins": {
           "type": "string",
           "description": "Path to tiptap plugin registration module."
@@ -407,11 +471,14 @@
           "additionalProperties": {
             "type": "string"
           },
-          "description": "Named app extensions. Keys are extension names, values are paths to Vue components."
+          "propertyNames": {
+            "pattern": "^[A-Za-z_$][\\w$]*$"
+          },
+          "description": "Named app extensions. Keys are extension names (identifiers), values are paths to Vue components."
         },
-        "styles": {
-          "type": "string",
-          "description": "Path to a CSS file to include in the frontend bundle."
+        "bundleUi": {
+          "type": "boolean",
+          "description": "Bundle a copy of @abuddy/ui into the pack instead of using the host app's. All of @abuddy/ui is bundled, so the pack never mixes the two."
         }
       },
       "additionalProperties": false,
@@ -446,6 +513,13 @@
               "type": "string"
             },
             "description": "Global type mappings injected into the DSL scope."
+          },
+          "inline": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Packages whose declarations are bundled into the editor definitions, besides @abuddy/* and the pack's own modules. The editor loads no node_modules, so a type it needs from another package belongs here."
           }
         },
         "required": [
@@ -455,6 +529,112 @@
         "additionalProperties": false
       },
       "description": "DSL type definitions for Monaco editor intellisense."
+    },
+    "seedFormats": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "format": {
+            "type": "string",
+            "enum": [
+              "markdown-tree",
+              "json"
+            ],
+            "description": "A built-in format: a directory of markdown, or a JSON array of records."
+          },
+          "compiler": {
+            "type": "string",
+            "description": "A module in this pack whose default export compiles an entry's path into records. Used instead of \"format\"."
+          },
+          "entity": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "minItems": 1
+              }
+            ],
+            "description": "The entity types the format's records seed. Omitted, entries using it are compiled but not seeded."
+          },
+          "identity": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "minItems": 1,
+            "description": "Fields matched to find an existing row (\"parent\" = the tree parent). Ignored for entity types whose owning pack registers a find seed hook."
+          },
+          "tree": {
+            "type": "object",
+            "properties": {
+              "branch": {
+                "type": "string",
+                "description": "A directory's own markdown file (e.g. \"index.md\"), giving the directory's frontmatter and body."
+              },
+              "branchEntity": {
+                "type": "string",
+                "description": "The entity type directories seed. Defaults to `entity`."
+              },
+              "relKind": {
+                "type": "string",
+                "description": "The relation from a parent row to each child row. Defaults to \"contains\"."
+              }
+            },
+            "additionalProperties": false,
+            "description": "Walk subdirectories as parent rows."
+          },
+          "fields": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "object",
+              "properties": {
+                "from": {
+                  "type": "string",
+                  "pattern": "^(body|filename|path|frontmatter\\.[\\w-]+)$",
+                  "description": "Where the value comes from: the markdown body, the display name of the file or directory, its relative path, or a frontmatter field."
+                },
+                "default": {
+                  "description": "Used when the source is absent. The string \"filename\" means the display name."
+                },
+                "type": {
+                  "type": "string",
+                  "const": "string",
+                  "description": "Coerce a present value to a string (YAML reads an unquoted 2024 as a number)."
+                }
+              },
+              "required": [
+                "from"
+              ],
+              "additionalProperties": false
+            },
+            "description": "Record fields for markdown-tree: field name → where its value comes from."
+          },
+          "media": {
+            "type": "string",
+            "pattern": "^(?!\\.{1,2}(?:\\/|$))(?!.*\\/\\.{1,2}(?:\\/|$))[^/\\\\:]+(?:\\/[^/\\\\:]+)*$",
+            "description": "A directory under an entry's path copied with the seeds; media/<file> links become media://<id>/<file>."
+          }
+        },
+        "additionalProperties": false
+      },
+      "propertyNames": {
+        "pattern": "^[a-z][a-z0-9-]*$"
+      },
+      "description": "Named seed formats: how a source becomes records. boot.seed entries name one; dependents name them as \"<pack id>:<name>\"."
+    },
+    "seedHooks": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "string",
+        "pattern": "^[^#]+#[A-Za-z_$][\\w$]*$"
+      },
+      "description": "Seed hooks for entity types this pack declares: entity type → \"path#exportName\" of a SeedHooks object. Any pack seeding the type uses them."
     }
   },
   "required": [

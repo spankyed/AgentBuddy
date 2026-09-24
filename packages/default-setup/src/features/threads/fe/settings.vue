@@ -683,15 +683,18 @@
 </template>
 
 <script setup lang="ts">
+import { usePlugin } from '@abuddy/sdk/fe'
+
 import { ref, reactive, computed, nextTick, type Directive } from 'vue'
 import { Plus, X, Upload, Download, FolderOpen, CheckCircle, XCircle, Eye, EyeOff } from 'lucide-vue-next'
-import CollapsibleSection from '@abuddy/sdk/fe/design/CollapsibleSection.vue'
-import KeyboardShortcutInput from '@abuddy/sdk/fe/components/KeyboardShortcutInput.vue'
-import ColorPicker, { DEFAULT_COLORS } from '@abuddy/sdk/fe/design/ColorPicker.vue'
+import CollapsibleSection from '@abuddy/ui/design/CollapsibleSection'
+import KeyboardShortcutInput from '@abuddy/ui/components/KeyboardShortcutInput'
+import ColorPicker, { DEFAULT_COLORS } from '@abuddy/ui/design/ColorPicker'
 import { TooltipProvider, TooltipRoot, TooltipTrigger, TooltipPortal, TooltipContent } from 'reka-ui'
-import { useActorSystem, useDebounce } from '@abuddy/sdk/fe'
+import { useDebounce } from '@abuddy/ui/composables/useDebounce'
 import { useSelector } from '@xstate/vue'
 import { id } from './state'
+import type { ThreadsState } from './state'
 import type {
   ThreadsSettings,
   ThreadStatusOption,
@@ -702,8 +705,6 @@ import type {
   AgentPhase,
   QuickPrompt,
 } from '@/__generated__/types'
-
-const actorSystem = useActorSystem()
 
 interface Props {
   settings?: ThreadsSettings
@@ -1030,21 +1031,21 @@ const removeTag = (index: number) => {
 }
 
 // Get threads actor for import/export state
-const threadsActor = actorSystem.get(id)
+const threadsActor: ThreadsState = usePlugin()
 
 // Import state
-const isImporting = useSelector(threadsActor, (state: any) => state.context.threadsImport.status === 'importing')
-const importStatus = useSelector(threadsActor, (state: any) => state.context.threadsImport.status)
-const importErrors = useSelector(threadsActor, (state: any) => state.context.threadsImport.errors)
-const importedCount = useSelector(threadsActor, (state: any) => state.context.threadsImport.importedCount)
+const isImporting = useSelector(threadsActor, (state) => state.context.threadsImport.status === 'importing')
+const importStatus = useSelector(threadsActor, (state) => state.context.threadsImport.status)
+const importErrors = useSelector(threadsActor, (state) => state.context.threadsImport.errors)
+const importedCount = useSelector(threadsActor, (state) => state.context.threadsImport.importedCount)
 
 // Export state
 const exportDirectory = ref<string>('')
-const isExporting = useSelector(threadsActor, (state: any) => state.context.threadsExport.status === 'exporting')
-const exportStatus = useSelector(threadsActor, (state: any) => state.context.threadsExport.status)
-const exportErrors = useSelector(threadsActor, (state: any) => state.context.threadsExport.errors)
-const exportedFilePath = useSelector(threadsActor, (state: any) => state.context.threadsExport.filePath)
-const exportedThreadCount = useSelector(threadsActor, (state: any) => state.context.threadsExport.threadCount)
+const isExporting = useSelector(threadsActor, (state) => state.context.threadsExport.status === 'exporting')
+const exportStatus = useSelector(threadsActor, (state) => state.context.threadsExport.status)
+const exportErrors = useSelector(threadsActor, (state) => state.context.threadsExport.errors)
+const exportedFilePath = useSelector(threadsActor, (state) => state.context.threadsExport.filePath)
+const exportedThreadCount = useSelector(threadsActor, (state) => state.context.threadsExport.threadCount)
 
 // Import - directory picker and send to state machine
 const selectAndImportThreads = async () => {

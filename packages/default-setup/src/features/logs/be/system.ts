@@ -1,15 +1,16 @@
+import { services } from '@/__generated__/services';
+import { broadcastToPlugin } from '@/__generated__/events';
 import { assign, setup, sendParent, enqueueActions, fromCallback, spawnChild } from 'xstate';
-import { defineSystem, type SystemEntry } from '@abuddy/sdk/framework';
+import { defineSystem } from '@abuddy/sdk/framework';
 
-import { emit, getActor } from '@abuddy/sdk/helpers';
-import type { LogsState, LogEntry } from './types';
+import type { Contract } from './contract';
+import type { LogEntry, LogsState } from './types';
 import { randomId } from '@abuddy/sdk/utils';
-import { rootEvents } from '@abuddy/sdk/rpc';
-import type { LogEvent } from '@abuddy/sdk/logger';
-import type { IncomingSystemEvents } from '@abuddy/sdk/rpc';
-import { repository } from '@abuddy/sdk/ears';
+import { onLog, type LogEvent } from '@abuddy/sdk/logger';
+import { repository } from '@/__generated__/repository';
 import type { LogsSettings } from '@/__generated__/types';
 import { isSourceExcluded, filterLogsByExcludedSources } from './utils';
+import { ref } from '@/__generated__/ref';
 
 // Resolve the effective exclusion list: when showAppEvents is falsy, treat 'app-events' as excluded.
 function effectiveExcludedSources(settings: LogsSettings | undefined): string[] {
@@ -17,32 +18,8 @@ function effectiveExcludedSources(settings: LogsSettings | undefined): string[] 
   return settings?.showAppEvents ? base : [...base, 'app-events'];
 }
 
-type IncomingLogEvents =
-  | { type: 'EMPTY'; empty: string }
-  | { type: 'CLEAR_LOGS' }
-  | { type: 'REQUEST_LOGS_UPDATE' };
 
-type LogsInternalEvents =
-  | { type: 'REQUEST_LOGS_UPDATE' }
-  | {
-    type: 'ADD_LOG';
-    log: Omit<LogEntry, 'id' | 'timestamp'>;
-  }
-  | { type: 'LOGS_SETTINGS_UPDATED'; settings: LogsSettings; changes?: any };
-
-export type OutgoingLogsEvents =
-  | { type: 'LOGS_CONNECTED'; logs: LogEntry[]; settings?: LogsSettings }
-  | { type: 'LOGS_UPDATE'; logs: LogEntry[] }
-  | { type: 'LOG_ADDED'; log: LogEntry }
-  | { type: 'LOGS_CLEARED' }
-  | { type: 'LOGS_SETTINGS_UPDATED'; settings: LogsSettings };
-
-export interface LogsContext {
-  logs: LogEntry[];
-}
-
-export const logsSpec = defineSystem('logs')<IncomingLogEvents | LogsInternalEvents, OutgoingLogsEvents, LogsContext>();
-export const logs = logsSpec.id;
+export const logsSpec = defineSystem<Contract>();
 
 export const logsSystem = setup({
   types: logsSpec.types,
@@ -55,26 +32,8 @@ export const logsSystem = setup({
         });
       };
 
-      const incomingHandler = (event: IncomingSystemEvents) => {
-        if (event.systemId === 'logs') {
-          const { systemId, ...actualEvent } = event;
-          sendBack(actualEvent);
-        }
-      };
-
-      const connectedHandler = () => {
-        sendBack({ type: 'CLIENT_CONNECTED' });
-      };
-
-      const onLogUnsub = rootEvents.onLog(logHandler)
-      const onIncomingUnsub = rootEvents.onIncoming(incomingHandler)
-      const onConnectedUnsub = rootEvents.onConnected(connectedHandler)
-
-      return () => {
-        onLogUnsub();
-        onIncomingUnsub();
-        onConnectedUnsub();
-      };
+      // The app delivers this early system its messages and client connections as the bus does the others'
+      return onLog(logHandler);
     }),
   },
   actions: {
@@ -93,7 +52,7 @@ export const logsSystem = setup({
         const updatedLogs = [newLog, ...context.logs];
         
         // Keep only the last maxLogs entries
-        const settings = repository.settingsQueries.getPluginSettings('logs') as LogsSettings | undefined;
+        const settings = services.settings.forFeature<LogsSettings>(ref('logs')) as LogsSettings | undefined;
 
         if (updatedLogs.length > (settings?.maxLogs || 1000)) {
           return updatedLogs.slice(0, settings?.maxLogs || 1000);
@@ -104,24 +63,23 @@ export const logsSystem = setup({
     }),
     sendLogsConnected: ({ context }) => {
       // Get current settings
-      const settings = repository.settingsQueries.getPluginSettings('logs') as LogsSettings | undefined;
+      const settings = services.settings.forFeature<LogsSettings>(ref('logs')) as LogsSettings | undefined;
       const excludedSources = effectiveExcludedSources(settings);
 
       // Filter logs by excluded sources before sending
       const filteredLogs = filterLogsByExcludedSources(context.logs, excludedSources);
 
-      const wrapped = emit(logs, {
+      broadcastToPlugin('logs', {
         type: 'LOGS_CONNECTED',
         logs: filteredLogs,
         settings: settings ?? { maxLogs: 1000, excludedSources: [], showAppEvents: false }
       });
-      rootEvents.emitOutgoing(wrapped.event);
     },
     broadcastNewLog: ({ context }) => {
       const newLog = context.logs[0];
 
       // Get current settings from repository
-      const settings = repository.settingsQueries.getPluginSettings('logs') as LogsSettings | undefined;
+      const settings = services.settings.forFeature<LogsSettings>(ref('logs')) as LogsSettings | undefined;
       const excludedSources = effectiveExcludedSources(settings);
 
       // Check if new log should be excluded
@@ -129,36 +87,33 @@ export const logsSystem = setup({
         return; // Don't broadcast excluded logs
       }
 
-      const wrapped = emit(logs, {
+      broadcastToPlugin('logs', {
         type: 'LOG_ADDED',
         log: newLog,
       });
-      rootEvents.emitOutgoing(wrapped.event);
     },
     broadcastLogsUpdate: ({ context }) => {
       // Get current settings from repository
-      const settings = repository.settingsQueries.getPluginSettings('logs') as LogsSettings | undefined;
+      const settings = services.settings.forFeature<LogsSettings>(ref('logs')) as LogsSettings | undefined;
       const excludedSources = effectiveExcludedSources(settings);
 
       // Filter logs by excluded sources before sending
       const filteredLogs = filterLogsByExcludedSources(context.logs, excludedSources);
 
-      const wrapped = emit(logs, {
+      broadcastToPlugin('logs', {
         type: 'LOGS_UPDATE',
         logs: filteredLogs,
       });
-      rootEvents.emitOutgoing(wrapped.event);
     },
     broadcastLogsCleared: () => {
-      const wrapped = emit(logs, {
+      broadcastToPlugin('logs', {
         type: 'LOGS_CLEARED',
-      });
-      rootEvents.emitOutgoing(wrapped.event)
+      })
     },
     truncateLogsIfNeeded: assign({
       logs: ({ context }) => {
         // If logs exceed new maxLogs, truncate
-        const settings = repository.settingsQueries.getPluginSettings('logs') as LogsSettings | undefined;
+        const settings = services.settings.forFeature<LogsSettings>(ref('logs')) as LogsSettings | undefined;
         if (context.logs.length > (settings?.maxLogs || 1000)) {
           return context.logs.slice(context.logs.length - (settings?.maxLogs || 1000));
         }
@@ -167,7 +122,7 @@ export const logsSystem = setup({
     }),
   },
 }).createMachine({
-  id: logs,
+  id: 'logs',
   initial: 'active',
   context: () => {
     return {
@@ -179,7 +134,7 @@ export const logsSystem = setup({
     CLIENT_CONNECTED: {
       actions: ['sendLogsConnected'],
     },
-    LOGS_SETTINGS_UPDATED: {
+    FEATURE_SETTINGS_UPDATED: {
       actions: ['truncateLogsIfNeeded', 'broadcastLogsUpdate'],
     },
   },
@@ -200,6 +155,6 @@ export const logsSystem = setup({
   },
 });
 
-const logsEntry: SystemEntry = { spec: logsSpec, machine: logsSystem };
+const logsEntry = { spec: logsSpec, machine: logsSystem };
 
 export default logsEntry;

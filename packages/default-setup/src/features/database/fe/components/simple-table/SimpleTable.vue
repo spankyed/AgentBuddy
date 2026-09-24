@@ -51,10 +51,10 @@
 </template>
 
 <script setup lang="ts">
-import { useActorSystem } from '@abuddy/sdk/fe'
+import { usePlugin } from '@abuddy/sdk/fe'
+
 import { computed } from 'vue';
 import { useSelector } from '@xstate/vue';
-import { id } from '../../state';
 import { useResultAnalysis } from './composables/useResultAnalysis';
 import ResultsInfoBar from './components/ResultsInfoBar.vue';
 import ResultStates from './components/ResultStates.vue';
@@ -62,15 +62,14 @@ import PrimitivesTable from './components/PrimitivesTable.vue';
 import ObjectsTable from './components/ObjectsTable.vue';
 import JsonDisplay from './components/JsonDisplay.vue';
 import PrimitiveDisplay from './components/PrimitiveDisplay.vue';
-
-const actorSystem = useActorSystem()
+import type { DatabaseState } from '../../state'
 
 // State Management
-const actor = actorSystem.get(id);
-const queryResult = useSelector(actor, (state: any) => state.context.queryResult);
-const isLoading = useSelector(actor, (state: any) => state.context.isLoading);
-const error = useSelector(actor, (state: any) => state.context.error);
-const executionTime = useSelector(actor, (state: any) => state.context.executionTime);
+const actor: DatabaseState = usePlugin();
+const queryResult = useSelector(actor, (state) => state.context.queryResult);
+const isLoading = useSelector(actor, (state) => state.context.isLoading);
+const error = useSelector(actor, (state) => state.context.error);
+const executionTime = useSelector(actor, (state) => state.context.executionTime);
 
 // Result Analysis
 const { 

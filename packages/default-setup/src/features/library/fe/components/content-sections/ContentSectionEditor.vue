@@ -71,12 +71,12 @@
 <script setup lang="ts">
 import { ref, computed, nextTick } from 'vue'
 import { X, ChevronRight } from 'lucide-vue-next'
-import type { ContentSection, ContentType, CodeContent } from '@/__generated__/types'
 import FieldEditor from './FieldEditor.vue'
 import ListEditor from './ListEditor.vue'
 import MarkdownEditor from './MarkdownEditor.vue'
 import TextEditor from './TextEditor.vue'
 import CodeEditor from './CodeEditor.vue'
+import type { CodeContent, ContentSection, ContentType } from '@/features/library/be/types'
 
 const props = defineProps<{
   section?: ContentSection

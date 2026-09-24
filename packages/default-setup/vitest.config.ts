@@ -1,17 +1,16 @@
-import * as fs from 'node:fs';
-import * as os from 'node:os';
-import * as path from 'node:path';
 import { defineConfig } from 'vitest/config';
-
-// Test imports open LMDB via @abuddy/sdk/env, which requires an explicit environment.
-// Each run gets its own throwaway data dir (removed in tests/global-teardown.ts).
-const userDataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'default-setup-tests-'));
+import { isolatedDataDir } from '@abuddy/testing/vitest';
+// The harness requires an explicit environment and data dir (the media store). Each run gets a
+// throwaway data dir, split per worker and removed when the run ends.
+const dataDir = isolatedDataDir('default-setup-tests-');
 
 export default defineConfig(async () => {
   const { default: tsconfigPaths } = await import('vite-tsconfig-paths');
   return {
+    // No resolve.conditions: default-setup is a pack, so it resolves the @abuddy packages' built dist
+    // like every other pack. npm run typecheck:pack and test:external-pack refresh that dist first.
     plugins: [
-      tsconfigPaths({ projects: ['./tsconfig.test.json', '../api/tsconfig.test.json'] }),
+      tsconfigPaths({ projects: ['./tsconfig.json'] }),
     ],
 
     test: {
@@ -26,9 +25,11 @@ export default defineConfig(async () => {
         'src/**/*.spec.ts',
       ],
       testTimeout: 120_000,
-      env: { ABUDDY_ENV: 'test', ABUDDY_USER_DATA_DIR: userDataDir },
-      globalSetup: ['./tests/global-teardown.ts'],
-      setupFiles: ['./tests/setup.ts'],
+      // Test files run in parallel: each worker's tests create their own EARS engines
+      fileParallelism: true,
+      env: dataDir.env,
+      globalSetup: dataDir.globalSetup,
+      setupFiles: [...dataDir.setupFiles, './tests/setup.ts'],
     },
   };
 });

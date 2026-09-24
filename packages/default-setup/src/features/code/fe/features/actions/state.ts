@@ -1,31 +1,10 @@
-import { setup } from 'xstate';
-import { trpc } from '@abuddy/sdk/rpc';
+import type { ActionTab } from '../../contract';
+export type { ActionTab } from '../../contract';
+import { setup , type ActorRefFrom } from 'xstate';
+import { sendToSystem } from '@/__generated__/events';
 import { updateParentState, getParentContext, addTabToParent } from '../../utils/parent-communication';
-import type { ActionEntity } from '@/__generated__/types';
+import type { ActionEntity } from '@abuddy/sdk';
 
-const sendToBackend = (type: string, data: any) => {
-  trpc.bus.send.mutate({
-    systemId: 'code',
-    type: type,
-    ...data
-  })
-}
-
-export interface ActionTab {
-  path: string
-  content: string
-  modified: boolean
-  isAction: true
-  actionEntity: ActionEntity
-  // Include OpenFile properties to satisfy type constraints
-  isDiff?: boolean
-  externallyModified?: boolean
-  externalModificationTime?: Date
-  pendingSaveConflict?: boolean
-  isPinned?: boolean
-  groupId?: string
-  isPreview?: boolean
-}
 
 export type Event =
   | { type: 'codeActions.OPEN_ACTION'; actionId: string }
@@ -44,14 +23,15 @@ export const actionsState = setup({
   actions: {
     openAction: ({ event }) => {
       const ev = event as { type: 'codeActions.OPEN_ACTION'; actionId: string }
-      sendToBackend('codeActions.OPEN_ACTION', { actionId: ev.actionId })
+      sendToSystem('code', { type: 'codeActions.OPEN_ACTION', actionId: ev.actionId })
     },
 
     saveAction: ({ event }) => {
       const ev = event as { type: 'codeActions.SAVE_ACTION'; actionId: string; content: string }
-      sendToBackend('codeActions.SAVE_ACTION', {
+      sendToSystem('code', {
+        type: 'codeActions.SAVE_ACTION',
         actionId: ev.actionId,
-        actionFn: ev.content
+        actionFn: ev.content,
       })
     },
 
@@ -107,7 +87,7 @@ export const actionsState = setup({
       const ev = event as { type: 'codeActions.OPEN_TABS'; actionIds: string[] }
       // Open each action
       ev.actionIds.forEach(actionId => {
-        sendToBackend('codeActions.OPEN_ACTION', { actionId })
+        sendToSystem('code', { type: 'codeActions.OPEN_ACTION', actionId })
       })
     }
   }
@@ -137,3 +117,6 @@ export const actionsState = setup({
     idle: {}
   }
 })
+
+/** The actions child's actor, named by whoever reads its context (`codeChild(…)`) */
+export type CodeActionsActor = ActorRefFrom<typeof actionsState>;

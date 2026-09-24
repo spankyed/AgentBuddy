@@ -2,13 +2,15 @@
  * App environment resolution — the only place that decides which environment a process
  * belongs to and where its data lives.
  *
- * The Electron main process infers the environment once (inferElectronAppEnv) and hands
+ * The Electron main process infers the environment once (_inferElectronAppEnv) and hands
  * ABUDDY_ENV + ABUDDY_USER_DATA_DIR to everything it spawns. Every other process either
  * receives those or passes { env } explicitly (CLI commands). Nothing falls back to
  * production: an unknown environment is an error, not a guess.
  */
+import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
+import { boundHost } from '../runtime/host-runtime.ts';
 
 export type AppEnv = 'production' | 'beta' | 'development' | 'test';
 
@@ -30,8 +32,13 @@ export interface AppContext {
   appName: string;
   userDataDir: string;
   packsDir: string;
-  registryFile: string;
+  /** Build-time artifacts (types/, build/) of the app's built-in packs, for pack authors' dependency resolution. */
+  hostPacksDir: string;
+  installedPacksFile: string;
+  /** Where a running API publishes its port and process id, so local tools find it (`@abuddy/host/process-liveness`) */
   apiPortFile: string;
+  /** A development app's API token, for local tools calling its API (written by the API, readable only by the user) */
+  apiTokenFile: string;
   urlScheme: string;
 }
 
@@ -57,6 +64,14 @@ function platformDataDir(appName: string): string {
  * Resolve environment and data paths. Explicit input wins, then ABUDDY_ENV /
  * ABUDDY_USER_DATA_DIR. Throws when the environment can't be determined.
  */
+/**
+ * Where an environment's app keeps its data on this machine, whatever `ABUDDY_USER_DATA_DIR` says: the dir a tool
+ * means when it names an app (`abuddy db -d`), rather than the one a shell happens to point at.
+ */
+export function appDataDirFor(env: AppEnv): string {
+  return platformDataDir(APP_NAMES[env]);
+}
+
 export function resolveAppContext(input: { env?: AppEnv; userDataDir?: string } = {}): AppContext {
   const env = input.env ?? parseAppEnv(process.env.ABUDDY_ENV);
   if (!env) {
@@ -72,8 +87,10 @@ export function resolveAppContext(input: { env?: AppEnv; userDataDir?: string } 
     appName,
     userDataDir,
     packsDir: path.join(userDataDir, 'packs'),
-    registryFile: path.join(userDataDir, 'pack-registry.json'),
+    hostPacksDir: path.join(userDataDir, 'host-packs'),
+    installedPacksFile: path.join(userDataDir, 'installed-packs.json'),
     apiPortFile: path.join(userDataDir, 'api-port'),
+    apiTokenFile: path.join(userDataDir, 'api-token'),
     urlScheme: env === 'beta' ? 'abuddy-beta' : 'abuddy',
   };
 }
@@ -83,8 +100,10 @@ export function resolveAppContext(input: { env?: AppEnv; userDataDir?: string } 
  * 1. Playwright → test
  * 2. Packaged → the channel stamped at build time (a missing stamp is a broken build)
  * 3. Unpackaged → ABUDDY_ENV if set, otherwise development
+ *
+ * @internal Host-only: the Electron main process infers its environment.
  */
-export function inferElectronAppEnv(input: {
+export function _inferElectronAppEnv(input: {
   playwrightTest: boolean;
   isPackaged: boolean;
   channel: string;
@@ -103,4 +122,9 @@ export function inferElectronAppEnv(input: {
   }
 
   return parseAppEnv(input.envVar) ?? 'development';
+}
+
+/** The running app's version (the test host's is `0.0.0-test`); throws, naming bindHost, when no app is bound */
+export function getAppVersion(): string {
+  return boundHost().appVersion;
 }

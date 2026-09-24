@@ -22,6 +22,7 @@ import type {
   ApprovalDecision,
   ConsumerHandlers,
   CodexTurnHandle,
+  ListMcpServersParams,
 } from './types'
 
 export type { ServerStatus, ThreadStartParams, ThreadReadParams, ThreadForkParams, ThreadRollbackParams, ThreadListParams, ConfigReadParams, ConfigValueWriteParams, TurnStartParams, ApprovalDecision, ConsumerHandlers, CodexTurnHandle }
@@ -33,7 +34,6 @@ export const codexService = {
   // Lifecycle
   start: () => server.start(),
   stop: () => server.stop(),
-  restart: () => server.restart(),
   get status(): ServerStatus { return server.status },
 
   // Thread management
@@ -52,7 +52,7 @@ export const codexService = {
   listModels: (params?: { cursor?: string | null; limit?: number | null; includeHidden?: boolean }) => server.listModels(params),
   readAccount: (params?: { refreshToken: boolean }) => server.readAccount(params),
   listSkills: (params?: { cwds?: string[]; forceReload?: boolean }) => server.listSkills(params),
-  listMcpServers: (params?: { cursor?: string | null; limit?: number | null; detail?: 'full' | 'toolsAndAuthOnly' | null }) => server.listMcpServers(params),
+  listMcpServers: (params?: ListMcpServersParams) => server.listMcpServers(params),
 
   // Turn management
   startTurn: (params: TurnStartParams) => server.startTurn(params),

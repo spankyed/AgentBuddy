@@ -67,17 +67,16 @@
 </template>
 
 <script setup lang="ts">
-import { useActorSystem } from '@abuddy/sdk/fe'
+import { usePlugin } from '@abuddy/sdk/fe'
+
 import { ref, computed } from 'vue'
 import { useSelector } from '@xstate/vue'
-import { id as databaseId, type DatabaseState } from '../../state'
+import type { DatabaseState } from '../../state'
 import { RefreshCw, History } from 'lucide-vue-next'
 import TraceFlowSelector from './TraceFlowSelector.vue'
 import TraceEventList from './TraceEventList.vue'
 
-const actorSystem = useActorSystem()
-
-const databaseActor: DatabaseState = actorSystem.get(databaseId)
+const databaseActor: DatabaseState = usePlugin()
 
 // State selectors
 const currentFlowId = useSelector(databaseActor, (state) => state.context.currentFlowId)

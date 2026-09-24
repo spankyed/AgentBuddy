@@ -37,17 +37,17 @@
 </template>
 
 <script setup lang="ts">
-import { useActorSystem } from '@abuddy/sdk/fe'
+import { usePlugin } from '@abuddy/sdk/fe'
+
 import { computed } from 'vue';
 import { useSelector } from '@xstate/vue';
-import { id, type PromptsState } from './state';
+import type { PromptsState } from './state';
 import PromptsList from './components/PromptsList.vue';
 import PromptDetail from './components/PromptDetail.vue';
-import type { EARS, TemplateInput } from '@/__generated__/types';
+import type { EARS } from '@abuddy/sdk';
+import type { TemplateInput } from '@abuddy/sdk';
 
-const actorSystem = useActorSystem()
-
-const actor: PromptsState = actorSystem.get(id);
+const actor: PromptsState = usePlugin();
 const state = useSelector(actor, (state) => state);
 const prompts = useSelector(actor, (state) => state.context.prompts);
 const selectedPrompt = useSelector(actor, (state) => state.context.selectedPrompt);

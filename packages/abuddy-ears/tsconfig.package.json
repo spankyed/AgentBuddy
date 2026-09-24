@@ -1,0 +1,14 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "noEmit": false,
+    // A type error must not leave a half-written dist that looks like a build
+    "noEmitOnError": true,
+    "declaration": true,
+    "rootDir": "src",
+    "outDir": "dist",
+    // The engine runs in Node and in the renderer: no Node types in the published source
+    "types": []
+  },
+  "include": ["src/**/*.ts"]
+}

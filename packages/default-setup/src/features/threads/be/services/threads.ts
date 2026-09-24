@@ -5,9 +5,10 @@
  * frontend notification, following the same pattern as artifact service.
  */
 
+import { broadcastToPlugin } from '@/__generated__/events';
 import { EARS } from '@/__generated__/ears';
-import { sendToPlugin } from '@abuddy/sdk/services';
-import { repository } from '@abuddy/sdk/ears';
+
+import { repository } from '@/__generated__/repository';
 
 /**
  * Update a thread's chatState and notify the frontend.
@@ -24,9 +25,14 @@ export function updateChatState(
     repository.threadCommands.update(threadId, { chatState });
   } catch { /* thread may have been deleted */ }
 
-  sendToPlugin('threads', {
+  broadcastToPlugin('threads', {
     type: 'SET_CHAT_STATE',
     threadId: threadId as string,
     chatState,
   });
 }
+
+/** `services.threads`: thread-level state writes with frontend notification */
+export const threadsService = {
+  updateChatState,
+};

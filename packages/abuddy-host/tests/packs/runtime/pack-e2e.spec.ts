@@ -1,0 +1,167 @@
+/**
+ * E2E test: exercises the real pack loading pipeline against an isolated
+ * test data directory (resolved through @abuddy/sdk/env, never the user's
+ * real app data). The test installs a fresh test pack, runs the full
+ * boot-sequence functions, and verifies the system loads, registers, and
+ * could serve plugins to the FE (the packs.loaded entries).
+ *
+ * Cleans up after itself.
+ */
+import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import './test-host.ts';
+import * as fs from 'fs';
+import * as path from 'path';
+import * as os from 'os';
+import { loadExternalPacks } from '../../../src/packs/runtime/loader.ts';
+import { getPacksWithClientLoadedFrontends } from '../../../src/packs/layout.ts';
+import type { LoadedPack } from '../../../src/packs/runtime/loader.ts';
+import { PACK_SNAPSHOT_FORMAT } from '@abuddy/sdk/build';
+
+/** A loaded pack's system, by feature id */
+const systemOf = (pack: LoadedPack, featureId: string) => pack.registration.features?.[featureId]?.system;
+
+
+const USER_DATA_DIR = fs.mkdtempSync(path.join(os.tmpdir(), 'pack-e2e-'));
+const TEST_PACK_ID = 'e2e-test-pack';
+const TEST_PACK_DIR = path.join(USER_DATA_DIR, 'packs', TEST_PACK_ID);
+
+function installTestPack() {
+  fs.mkdirSync(path.join(TEST_PACK_DIR, 'runtime'), { recursive: true });
+
+  fs.writeFileSync(path.join(TEST_PACK_DIR, 'abuddy.json'), JSON.stringify({
+    id: TEST_PACK_ID,
+    name: 'E2E Test Pack',
+    version: '1.0.0',
+    features: [
+      {
+        id: 'hello',
+        system: {
+          entry: 'src/features/hello/be/system.ts',
+          events: { incoming: ['HELLO_PING'] },
+        },
+        plugin: { entry: 'src/features/hello/fe/plugin.ts' },
+      },
+      {
+        id: 'dataOnly',
+        // No system — plugin only
+        plugin: { entry: 'src/features/dataOnly/fe/plugin.ts' },
+      },
+    ],
+  }, null, 2));
+
+  fs.writeFileSync(path.join(TEST_PACK_DIR, 'integrity.json'), JSON.stringify({
+    formatVersion: 1, id: TEST_PACK_ID, version: '1.0.0', files: {},
+  }));
+  fs.mkdirSync(path.join(TEST_PACK_DIR, 'types'), { recursive: true });
+  fs.writeFileSync(path.join(TEST_PACK_DIR, 'types', 'snapshot.json'), JSON.stringify({ format: PACK_SNAPSHOT_FORMAT }));
+
+  // The pack's frontend, which the renderer loads from the installed pack
+  fs.writeFileSync(path.join(TEST_PACK_DIR, 'runtime', 'fe.js'), 'export default { plugins: [] };');
+
+  // A real runtime registration whose system machine requires xstate from the host
+  fs.writeFileSync(path.join(TEST_PACK_DIR, 'runtime', 'index.cjs'), `
+    'use strict';
+    const { setup } = require('xstate');
+
+    const helloMachine = setup({
+      types: {
+        events: {},
+      },
+    }).createMachine({
+      id: 'e2e-hello',
+      initial: 'idle',
+      states: {
+        idle: {
+          on: {
+            CLIENT_CONNECTED: {
+              actions: () => {},
+            },
+            HELLO_PING: {
+              actions: () => {},
+            },
+          },
+        },
+      },
+    });
+
+    module.exports = {
+      registration: {
+        id: '${TEST_PACK_ID}',
+        features: {
+          // As abuddy build writes it: the machine's events and the manifest's incoming ones
+          hello: { system: { machine: helloMachine, receives: ['CLIENT_CONNECTED', 'HELLO_PING'] }, plugin: { receives: [] } },
+          dataOnly: { plugin: { receives: [] } },
+        },
+      },
+    };
+  `);
+}
+
+function cleanupTestPack() {
+  if (fs.existsSync(TEST_PACK_DIR)) {
+    fs.rmSync(TEST_PACK_DIR, { recursive: true, force: true });
+  }
+}
+
+let origEnv: { env?: string; userDataDir?: string };
+
+beforeAll(() => {
+  origEnv = { env: process.env.ABUDDY_ENV, userDataDir: process.env.ABUDDY_USER_DATA_DIR };
+  process.env.ABUDDY_ENV = 'test';
+  process.env.ABUDDY_USER_DATA_DIR = USER_DATA_DIR;
+  installTestPack();
+});
+
+afterAll(() => {
+  cleanupTestPack();
+  fs.rmSync(USER_DATA_DIR, { recursive: true, force: true });
+  for (const [key, value] of [['ABUDDY_ENV', origEnv.env], ['ABUDDY_USER_DATA_DIR', origEnv.userDataDir]] as const) {
+    if (value === undefined) delete process.env[key];
+    else process.env[key] = value;
+  }
+});
+
+describe('E2E: pack loading pipeline', () => {
+  let packs: LoadedPack[];
+
+  it('discovers the test pack from the resolved packs directory', () => {
+    packs = loadExternalPacks();
+    const testPack = packs.find(p => p.origin.id === TEST_PACK_ID);
+    expect(testPack).toBeDefined();
+    expect(testPack!.origin.name).toBe('E2E Test Pack');
+    expect(testPack!.origin.version).toBe('1.0.0');
+    expect(testPack!.origin.dir).toBe(TEST_PACK_DIR);
+  });
+
+  it('loads the runtime registration via Module._resolveFilename override', () => {
+    const testPack = packs.find(p => p.origin.id === TEST_PACK_ID)!;
+    expect(systemOf(testPack, 'hello')).toBeDefined();
+
+    const system = systemOf(testPack, 'hello');
+    expect(system?.machine).toBeDefined();
+    expect(system?.machine.id).toBe('e2e-hello');
+  });
+
+  it('registers no system for a feature that has only a plugin', () => {
+    const testPack = packs.find(p => p.origin.id === TEST_PACK_ID)!;
+    expect(systemOf(testPack, 'dataOnly')).toBeUndefined();
+  });
+
+  it('lists the pack as one whose frontend a client loads', () => {
+    const testPack = packs.find(p => p.origin.id === TEST_PACK_ID)!;
+    const loaded = { externalPacks: () => [{ id: TEST_PACK_ID, name: TEST_PACK_ID, version: '1.0.0', dir: testPack.origin.dir, builtIn: false }] };
+
+    expect(getPacksWithClientLoadedFrontends(loaded)).toEqual([TEST_PACK_ID]);
+  });
+
+  it('xstate machine from pack is functional (can create states)', () => {
+    const testPack = packs.find(p => p.origin.id === TEST_PACK_ID)!;
+    const machine = systemOf(testPack, 'hello')!.machine;
+
+    // Verify the machine has the expected structure
+    expect(machine.config.initial).toBe('idle');
+    expect(machine.config.states).toHaveProperty('idle');
+    expect(machine.config.states!.idle.on).toHaveProperty('CLIENT_CONNECTED');
+    expect(machine.config.states!.idle.on).toHaveProperty('HELLO_PING');
+  });
+});

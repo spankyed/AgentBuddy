@@ -1,410 +1,127 @@
-import { test as base, _electron, type ElectronApplication, type Page } from '@playwright/test';
-export { expect } from '@playwright/test';
-import * as path from 'path';
-import * as fs from 'fs';
-import { execSync } from 'child_process';
-import { createRequire } from 'module';
-import { resolveAppContext } from '../env';
+import type { SettingsService } from '../services/settings.ts';
+// The runtime a pack's unit tests run against: the EARS engine in memory, without the app.
+// @abuddy/testing's harness drives it; it lives in the SDK so tests share the pack's SDK instance
+// (its query, repository and seed-hook registries) instead of a copy.
+import { createEarsEngine, installEngine, type EarsEngine } from '@abuddy/ears';
+import type { SeedHooks } from '../seed/hooks.ts';
+import { SDK_ENTITIES } from '../types/sdk-entities.ts';
+import type { EARS } from '../types/entities.ts';
+import type { PackRegistryView } from '../runtime/packs-view.ts';
+import { _isHostBound } from '../runtime/host-runtime.ts';
+import { testPacks } from './packs.ts';
+import { bindTestRuntime, resetTestHostState, type TestOnboarding } from './host.ts';
 
-export interface AppHelper {
-  sendEvent: (event: Record<string, unknown>) => Promise<void>;
-  getState: () => Promise<unknown>;
-  getContext: () => Promise<{ activePluginId: string; pluginIds: string[] }>;
-  screenshot: (name: string) => Promise<Buffer>;
-  navigate: (pluginId: string) => Promise<void>;
-  waitForState: (check: string, timeout?: number) => Promise<void>;
-  waitForPlugin: (pluginId: string, timeout?: number) => Promise<void>;
+export { testRootEvents, takeSystemErrors, addTestSecret, type TestRootEvents, type TestOnboarding } from './host.ts';
+export { testPacks, type TestPacks } from './packs.ts';
+export { fakeInference, type FakeInference, type FakeInferenceCall, type FakeInferenceReplies, type FakeInferenceReply, type FakeTextCall } from './fake-inference.ts';
+// A pack's own tests bind a frontend host for the file and forget it again; bindFeHost is the renderer's,
+// bound once at boot, and its unbind is host-only
+export { startFeTestRuntime, stopFeTestRuntime, type FeTestRuntimeOptions } from './fe-runtime.ts';
+export { fakeSettings, type FakeSettings, type FakeSettingsUpdate } from './fake-settings.ts';
+
+/**
+ * What a pack's seeding needs outside the app: its entity types and relation kinds, its repositories
+ * and its seed hooks. `abuddy generate-entries` writes it as `seedRuntime` in
+ * `src/__generated__/seed-runtime.ts`; `abuddy build` bundles it into `build/seed-runtime.mjs` for
+ * packs that depend on this one.
+ */
+export interface SeedRuntime {
+  id: string;
+  entities: Record<string, string>;
+  relKinds: Record<string, string>;
+  repositories: Record<string, unknown>;
+  seedHooks: Record<string, SeedHooks>;
 }
 
-export interface CreateTestOptions {
-  appRoot?: string;
-  screenshotDir?: string;
+/** What `startTestRuntime` starts the in-memory app with */
+export interface TestRuntimeStartOptions {
+  /** Entity types beyond the SDK's; later calls add theirs */
+  entityTypes?: readonly string[];
+  /**
+   * The registered packs the SDK's lookups read (the harness passes the registry it creates), under `testPacks`, which
+   * tests fill directly; none by default. First call only
+   */
+  packs?: PackRegistryView;
+  /** What `getAppVersion()` returns; `0.0.0-test` by default. First call only */
+  appVersion?: string;
+  /**
+   * Where `appData.hasOnboarded` and `completeOnboarding` keep their state (the harness passes the host's app state);
+   * in memory by default. First call only
+   */
+  onboarding?: TestOnboarding;
+  /**
+   * Backs `services.settings` (the harness passes the host's settings store, so a test writes settings the way the
+   * app does); without one, reading or writing settings says to run on the harness. First call only
+   */
+  settings?: SettingsService;
 }
 
-function isValidAppRoot(dir: string): boolean {
-  return fs.existsSync(path.join(dir, 'packages', 'entry-point.mjs'));
+const entityTypes = new Set<string>(Object.values(SDK_ENTITIES));
+let started: Pick<TestRuntimeStartOptions, 'packs' | 'appVersion' | 'onboarding' | 'settings'> | undefined;
+let engine: EarsEngine | undefined;
+
+/** A new in-memory engine checking entity types against the test runtime's, and installed */
+function installFreshEngine(repositories: Record<string, unknown> = {}): EarsEngine {
+  engine = createEarsEngine({ isEntityType: (value: string) => entityTypes.has(value) });
+  for (const [name, repo] of Object.entries(repositories)) engine.query.registerRepository(name, repo);
+  installEngine(engine.query);
+  return engine;
 }
 
-function validateAppRoot(dir: string): void {
-  const missing: string[] = [];
-  if (!isValidAppRoot(dir)) missing.push('packages/entry-point.mjs');
-  if (!fs.existsSync(path.join(dir, 'node_modules', 'electron'))) missing.push('node_modules/electron (run npm install)');
-  if (!fs.existsSync(path.join(dir, 'packages', 'main', 'dist'))) missing.push('packages/main/dist (run npm run build)');
-  if (!fs.existsSync(path.join(dir, 'packages', 'renderer', 'dist'))) missing.push('packages/renderer/dist (run npm run build)');
-  if (missing.length > 0) {
-    throw new Error(
-      `ABUDDY_ROOT (${dir}) is missing required files:\n` +
-      missing.map(m => `  - ${m}`).join('\n') +
-      '\n\nThe AgentBuddy monorepo must be cloned, installed, and built before E2E tests can run.',
-    );
-  }
+/** The test runtime's engine (both faces); throws before `startTestRuntime` */
+function testEngine(): EarsEngine {
+  if (!engine) throw new Error('No test engine: call startTestRuntime() from @abuddy/sdk/testing first');
+  return engine;
 }
 
-function resolveAppRoot(override?: string): string {
-  if (override) {
-    const resolved = path.resolve(override);
-    validateAppRoot(resolved);
-    return resolved;
-  }
-  if (process.env.ABUDDY_ROOT) {
-    const resolved = path.resolve(process.env.ABUDDY_ROOT);
-    validateAppRoot(resolved);
-    return resolved;
-  }
-
-  // Auto-detect: walk up from SDK package looking for packages/entry-point.mjs
-  let dir = path.resolve(import.meta.dirname, '..', '..');
-  for (let i = 0; i < 10; i++) {
-    if (isValidAppRoot(dir)) {
-      validateAppRoot(dir);
-      return dir;
-    }
-    const parent = path.dirname(dir);
-    if (parent === dir) break;
-    dir = parent;
-  }
-
-  throw new Error(
-    'Could not find AgentBuddy root. Set ABUDDY_ROOT env var to the AgentBuddy monorepo directory.\n\n' +
-    'E2E tests require a local clone of the AgentBuddy repo with dependencies installed and packages built:\n' +
-    '  git clone <agentbuddy-repo> && cd AgentBuddy && npm install && npm run build',
-  );
-}
-
-function resolveScreenshotDir(override?: string): string {
-  if (override) return path.resolve(override);
-  if (process.env.PACK_DIR) return path.join(path.resolve(process.env.PACK_DIR), 'tests', 'screenshots');
-  return path.join(process.cwd(), 'tests', 'screenshots');
-}
-
-function resolveAbuddyBin(appRoot: string): string {
-  const localBin = path.join(process.cwd(), 'node_modules', '.bin', 'abuddy');
-  if (fs.existsSync(localBin)) return localBin;
-  const appBin = path.join(appRoot, 'node_modules', '.bin', 'abuddy');
-  if (fs.existsSync(appBin)) return appBin;
-  return 'abuddy';
-}
-
-function syncPackToDevDir(src: string, dest: string): void {
-  if (fs.existsSync(dest)) fs.rmSync(dest, { recursive: true, force: true });
-  fs.mkdirSync(dest, { recursive: true });
-  for (const entry of fs.readdirSync(src, { withFileTypes: true })) {
-    if (entry.isSymbolicLink()) continue;
-    if (entry.name === 'node_modules' || entry.name === '.git') continue;
-    const srcPath = path.join(src, entry.name);
-    const destPath = path.join(dest, entry.name);
-    if (entry.isDirectory()) {
-      syncPackToDevDir(srcPath, destPath);
-    } else {
-      fs.copyFileSync(srcPath, destPath);
-    }
-  }
-}
-
-let _packManifest: { id: string; pluginIds: string[] } | null | undefined;
-function getPackManifest(): { id: string; pluginIds: string[] } | null {
-  if (_packManifest !== undefined) return _packManifest;
-  if (!process.env.PACK_DIR) { _packManifest = null; return null; }
-  const manifestPath = path.join(path.resolve(process.env.PACK_DIR), 'abuddy.json');
-  if (!fs.existsSync(manifestPath)) { _packManifest = null; return null; }
-  const manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf-8'));
-  _packManifest = {
-    id: manifest.id,
-    pluginIds: (manifest.features ?? [])
-      .filter((f: any) => f.plugin)
-      .map((f: any) => f.plugin?.id ?? f.id),
-  };
-  return _packManifest;
-}
-
-const E2E_VIEWPORT = { width: 1400, height: 900 };
-
-// Recent Electron stdout/stderr per app, so fixture failures can report the root
-// cause (loader errors, crashes) without re-running under DEBUG_E2E.
-const OUTPUT_TAIL_LINES = 200;
-const outputTails = new WeakMap<ElectronApplication, string[]>();
-
-function captureOutput(app: ElectronApplication): void {
-  const tail: string[] = [];
-  outputTails.set(app, tail);
-  const onData = (data: Buffer) => {
-    for (const line of data.toString().split('\n')) {
-      if (!line.trim()) continue;
-      tail.push(line);
-      if (tail.length > OUTPUT_TAIL_LINES) tail.shift();
-    }
-  };
-  app.process().stdout?.on('data', onData);
-  app.process().stderr?.on('data', onData);
-}
-
-const ERROR_LINE = /error|exception|failed|cannot|not found|no machine export/i;
-
-function describeFailure(message: string, app: ElectronApplication, rendererErrors: string[] = []): Error {
-  const sections = [message];
-  if (rendererErrors.length > 0) {
-    sections.push('Renderer errors:\n' + rendererErrors.map(e => `  ${e}`).join('\n'));
-  }
-  const errorLines = (outputTails.get(app) ?? []).filter(l => ERROR_LINE.test(l)).slice(-30);
-  if (errorLines.length > 0) {
-    sections.push('Electron/API output (error lines):\n' + errorLines.map(l => `  ${l}`).join('\n'));
-  }
-  sections.push('Re-run with DEBUG_E2E=1 for full Electron output.');
-  return new Error(sections.join('\n\n'));
-}
-
-async function findMainWindow(electronApp: ElectronApplication): Promise<Page> {
-  const deadline = Date.now() + 45_000;
-
-  for (const w of electronApp.windows()) {
-    const has = await w.evaluate(() => !!(window as any).applicationState).catch(() => false);
-    if (has) return w;
-  }
-
-  while (Date.now() < deadline) {
-    const remaining = deadline - Date.now();
-    if (remaining <= 0) break;
-
-    try {
-      const newPage = await electronApp.waitForEvent('window', { timeout: Math.min(remaining, 5000) });
-      await (newPage as Page).waitForLoadState('domcontentloaded').catch(() => {});
-      const has = await (newPage as Page).evaluate(() => !!(window as any).applicationState).catch(() => false);
-      if (has) return newPage as Page;
-    } catch {
-      // Timeout on waitForEvent — check all existing windows again
-    }
-
-    for (const w of electronApp.windows()) {
-      const has = await w.evaluate(() => !!(window as any).applicationState).catch(() => false);
-      if (has) return w;
-    }
-  }
-
-  throw describeFailure('Main window with applicationState did not appear within timeout', electronApp);
-}
-
-export function createTest(options: CreateTestOptions = {}) {
-  const appRoot = resolveAppRoot(options.appRoot);
-  const screenshotDir = resolveScreenshotDir(options.screenshotDir);
-
-  const test = base.extend<
-    { appPage: Page; app: AppHelper },
-    { electronApp: ElectronApplication }
-  >({
-    electronApp: [async ({}, use) => {
-      if (process.env.PACK_DIR) {
-        const packDir = path.resolve(process.env.PACK_DIR);
-        const manifest = getPackManifest();
-        if (!manifest) throw new Error(`No abuddy.json found in PACK_DIR: ${packDir}`);
-        const testPacksDir = resolveAppContext({ env: 'test' }).packsDir;
-        const devPacksDir = resolveAppContext({ env: 'development' }).packsDir;
-        const devSignal = path.join(devPacksDir, manifest.id, '.dev');
-        if (!fs.existsSync(devSignal)) {
-          // Always rebuild: syncing an existing dist would silently test stale code
-          const abuddyBin = resolveAbuddyBin(appRoot);
-          console.log(`[pack] Building ${manifest.id} from ${packDir}...`);
-          try {
-            execSync(`${abuddyBin} build`, { cwd: packDir, stdio: 'pipe' });
-          } catch (e: any) {
-            const output = [e.stdout?.toString(), e.stderr?.toString()].filter(Boolean).join('\n') || e.message;
-            throw new Error(`Pack build failed for ${manifest.id}:\n${output}`);
-          }
-          console.log(`[pack] Syncing ${manifest.id} to test packs directory...`);
-          syncPackToDevDir(packDir, path.join(testPacksDir, manifest.id));
-        } else {
-          console.log(`[pack] abuddy dev is running for ${manifest.id}, skipping build/sync`);
-        }
+/**
+ * Starts the in-memory runtime: an EARS engine (created and installed) with the SDK's entity types plus `entityTypes`,
+ * writes not persisted, and binds
+ * an in-memory app (`bindHost`): `testRootEvents` as its bus (so `broadcastToPlugin`, `sendToSystem`, `onIncoming` and
+ * log events go there; its log events are printed and its SYSTEM_ERROR events recorded for `takeSystemErrors`),
+ * `testPacks` over `packs`, `appVersion`, an `appData` that resets the database and keeps onboarding in `onboarding`, a trace store
+ * over it, `secrets` in memory, and an `inference` that fails until a test mocks it. Safe to call again; entity types
+ * accumulate, and `packs`, `appVersion` and `onboarding` must be given on the first call.
+ */
+export function startTestRuntime(options: TestRuntimeStartOptions = {}): void {
+  for (const type of options.entityTypes ?? []) entityTypes.add(type);
+  if (started) {
+    for (const key of ['packs', 'appVersion', 'onboarding'] as const) {
+      if (options[key] !== undefined && options[key] !== started[key]) {
+        throw new Error(`startTestRuntime already bound the test app without this ${key}: pass ${key} on its first call`);
       }
-
-      // Resolve electron binary from the monorepo so external packs don't need electron installed locally
-      const appRequire = createRequire(path.join(appRoot, 'package.json'));
-      const electronPath = appRequire('electron') as unknown as string;
-
-      const app = await _electron.launch({
-        executablePath: electronPath,
-        args: [path.join(appRoot, '.')],
-        cwd: appRoot,
-        env: {
-          ...process.env,
-          PLAYWRIGHT_TEST: 'true',
-        },
-      });
-
-      captureOutput(app);
-      if (process.env.DEBUG_E2E) {
-        app.process().stdout?.on('data', (data: Buffer) => {
-          process.stdout.write(`[electron] ${data}`);
-        });
-        app.process().stderr?.on('data', (data: Buffer) => {
-          process.stderr.write(`[electron] ${data}`);
-        });
-      }
-
-      await use(app);
-      await app.close();
-    }, { scope: 'worker' }],
-
-    appPage: async ({ electronApp }, use) => {
-      const page = await findMainWindow(electronApp);
-      // The main window's default size depends on how main was built (dev vs production mode);
-      // pin the viewport so layout and screenshot baselines are the same everywhere
-      await page.setViewportSize(E2E_VIEWPORT);
-
-      const rendererErrors: string[] = [];
-      let rejectPackFeFailed: (err: Error) => void = () => {};
-      const packFeFailed = new Promise<never>((_, reject) => { rejectPackFeFailed = reject; });
-      packFeFailed.catch(() => {}); // only observed while waiting for pack plugins
-      const onPageError = (error: Error) => {
-        console.error('[page error]', error);
-        rendererErrors.push(`[page error] ${error.stack ?? error.message}`);
-      };
-      const onConsole = (msg: import('@playwright/test').ConsoleMessage) => {
-        if (msg.type() === 'error') {
-          console.error(`[console.error] ${msg.text()}`);
-          rendererErrors.push(`[console.error] ${msg.text()}`);
-          // Only the pack under test fails fast; other installed packs' errors are just reported
-          const packId = getPackManifest()?.id;
-          if (packId && msg.text().includes(`[pack-loader] Failed to load FE entry pack://${packId}/`)) {
-            rejectPackFeFailed(describeFailure('Pack FE failed to load', electronApp, rendererErrors));
-          }
-        }
-      };
-      page.on('pageerror', onPageError);
-      page.on('console', onConsole);
-
-      const waitOrDescribe = async (what: string, wait: Promise<unknown>) => {
-        try {
-          await wait;
-        } catch (err) {
-          if (err instanceof Error && err.message.startsWith('Pack FE failed to load')) throw err;
-          throw describeFailure(`${what}: ${(err as Error).message.split('\n')[0]}`, electronApp, rendererErrors);
-        }
-      };
-
-      await waitOrDescribe('App did not reach connected state', page.waitForFunction(() => {
-        const snap = (window as any).applicationState?.getSnapshot();
-        if (!snap) return false;
-        const val = snap.value;
-        if (typeof val === 'object' && val !== null) {
-          if ('running' in val) return val.running === 'connected';
-          if ('onboarding' in val) return true;
-        }
-        return false;
-      }, null, { timeout: 45_000 }));
-
-      const inOnboarding = await page.evaluate(() => {
-        const snap = (window as any).applicationState?.getSnapshot();
-        return snap && typeof snap.value === 'object' && 'onboarding' in snap.value;
-      });
-      if (inOnboarding) {
-        await page.evaluate(() => (window as any).__disableOnboardingUI?.());
-        await page.waitForFunction(() => {
-          const snap = (window as any).applicationState?.getSnapshot();
-          return snap?.value?.running === 'connected';
-        }, null, { timeout: 10_000 });
-      }
-
-      if (process.env.PACK_DIR) {
-        const manifest = getPackManifest();
-        if (manifest && manifest.pluginIds.length > 0) {
-          for (const pluginId of manifest.pluginIds) {
-            // Fail on the captured loader error as soon as it appears instead of timing out later
-            await waitOrDescribe(`Pack plugin "${pluginId}" did not load within 30s`, Promise.race([
-              packFeFailed,
-              page.waitForFunction((id) => {
-                const snap = (window as any).applicationState?.getSnapshot();
-                return snap?.context?.plugins?.some((p: any) => p.id === id);
-              }, pluginId, { timeout: 30_000 }),
-            ]));
-          }
-        }
-      }
-
-      await use(page);
-
-      page.removeListener('pageerror', onPageError);
-      page.removeListener('console', onConsole);
-    },
-
-    app: async ({ appPage: page }, use) => {
-      fs.mkdirSync(screenshotDir, { recursive: true });
-
-      const app: AppHelper = {
-        sendEvent: async (event) => {
-          await page.evaluate((e) => {
-            (window as any).applicationState.send(e);
-          }, event);
-        },
-
-        getState: async () => {
-          return page.evaluate(() => {
-            return (window as any).applicationState?.getSnapshot()?.value;
-          });
-        },
-
-        getContext: async () => {
-          return page.evaluate(() => {
-            const snap = (window as any).applicationState?.getSnapshot();
-            return {
-              activePluginId: snap?.context?.activePlugin?.id ?? '',
-              pluginIds: (snap?.context?.plugins ?? []).map((p: any) => p.id),
-            };
-          });
-        },
-
-        screenshot: async (name) => {
-          const filePath = path.join(screenshotDir, `${name}.png`);
-          return page.screenshot({ path: filePath });
-        },
-
-        navigate: async (pluginId) => {
-          await page.evaluate((id) => {
-            (window as any).applicationState.send({ type: 'SELECT_PLUGIN', pluginId: id });
-          }, pluginId);
-          await page.waitForFunction((id) => {
-            const snap = (window as any).applicationState?.getSnapshot();
-            return snap?.context?.activePlugin?.id === id;
-          }, pluginId, { timeout: 10_000 });
-          await page.waitForTimeout(500);
-        },
-
-        waitForPlugin: async (pluginId, timeout = 30_000) => {
-          await page.waitForFunction((id) => {
-            const snap = (window as any).applicationState?.getSnapshot();
-            return snap?.context?.plugins?.some((p: any) => p.id === id);
-          }, pluginId, { timeout });
-        },
-
-        waitForState: async (check, timeout = 10_000) => {
-          await page.waitForFunction((c) => {
-            const snap = (window as any).applicationState?.getSnapshot();
-            const val = snap?.value;
-            if (typeof val === 'object' && val !== null) {
-              const parts = c.split('.');
-              let current: any = val;
-              for (const part of parts) {
-                if (typeof current === 'object' && current !== null && part in current) {
-                  current = current[part];
-                } else if (current === part) {
-                  return true;
-                } else {
-                  return false;
-                }
-              }
-              return true;
-            }
-            return val === c;
-          }, check, { timeout });
-        },
-      };
-
-      await use(app);
-    },
-  });
-
-  return { test, expect: base.expect };
+    }
+    // Still bound: nothing to start. Unbound since (a test unbound the host): bound again, as first started
+    if (_isHostBound()) return;
+  } else {
+    started = { packs: options.packs, appVersion: options.appVersion, onboarding: options.onboarding, settings: options.settings };
+  }
+  installFreshEngine();
+  bindTestRuntime({ engine: testEngine, resetData: resetTestData, ...started });
 }
 
-// Direct exports — auto-resolve appRoot from ABUDDY_ROOT env var or by walking up from SDK location
-const _default = createTest();
-export const test = _default.test;
+/** Registers a pack's seed runtime: its entity types, its repositories (with the engine) and its seed hooks (in `testPacks`) */
+export function registerSeedRuntime(runtime: SeedRuntime): void {
+  startTestRuntime({ entityTypes: Object.values(runtime.entities) });
+  for (const [name, repo] of Object.entries(runtime.repositories)) testEngine().query.registerRepository(name, repo);
+  for (const [entity, hooks] of Object.entries(runtime.seedHooks)) testPacks.seedHooks.set(entity, hooks);
+}
+
+/**
+ * Replaces the in-memory database with a fresh engine (keeping the registered repositories), and empties the
+ * stored keys and the onboarding state (registrations stay)
+ */
+export function resetTestData(): void {
+  installFreshEngine(testEngine().admin.repositories());
+  resetTestHostState();
+}
+
+/** Every entity id in the in-memory database, relation rows included */
+export function entityIds(): EARS.EntityId[] {
+  return testEngine().query.getAllEntities();
+}
+
+/** Removes an attribute from a row, as data written before the attribute existed would lack it */
+export function dropAttribute(id: EARS.EntityId, kind: string): void {
+  testEngine().admin.dropAttr(id, kind as EARS.AttrKind);
+}

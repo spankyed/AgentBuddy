@@ -1,7 +1,11 @@
+import { findAll, qx } from '@/__generated__/ears';
 import { EARS } from '../__generated__/ears';
-import { findAll, qx, tx } from '@abuddy/sdk/ears';
+import { untypedTx } from '@abuddy/ears';
 import type { ArtifactEntity, ThreadEntity } from '../features/threads/be/types';
 import type { PackMigration } from '@abuddy/sdk/framework';
+import { createLogger } from '@abuddy/sdk/logger';
+
+const logger = createLogger('migrations');
 
 /**
  * Convert imported Codex session markers that were accidentally stored as
@@ -30,7 +34,7 @@ export const migration: PackMigration = {
       });
       if (!mislabeled?.id) continue;
 
-      tx(mislabeled.id as any)
+      untypedTx(mislabeled.id as any)
         .put('artifactType', 'codex-session')
         .put('title', 'Codex session')
         .put('content', {})
@@ -40,7 +44,7 @@ export const migration: PackMigration = {
     }
 
     if (converted > 0) {
-      console.log(`[migration:0.3.1] Converted ${converted} Codex session artifact marker(s)`);
+      logger.info(`[migration:0.3.1] Converted ${converted} Codex session artifact marker(s)`);
     }
   },
 };

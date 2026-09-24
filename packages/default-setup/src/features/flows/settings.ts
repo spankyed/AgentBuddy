@@ -1,8 +1,7 @@
 export default {
+  visible: false,
   plugins: {
-    _meta: { visibility: { flows: false } },
     flows: {
-      rootFlowId: undefined,
       enableFlowPreview: true
     }
   }

@@ -1,3 +1,7 @@
-export { defineSystem, type SystemSpec, type SystemEvents } from './define-system';
-export { toPackSystemDefs, type SystemEntry } from './system-utils';
-export type { PackRegistration, PackSystemDef, PackBootHooks, PackSeedManifest, PackEARS, PackMigration, PackFeatureDef } from './pack-registration';
+export { defineSystem, SYSTEM_EVENT_TYPES, type SystemSpec, type SystemEvents, type SystemContract, type MachineMatchesContract } from './define-system.ts';
+export type { ArrayChanges, DiffResult } from '../utils/change-detection.ts';
+export { packSystem, type SystemEntry } from './system-utils.ts';
+export type { PackRegistration, PackFeature, PackFeatureSystem, PackFeaturePlugin, PackBootHooks, PackSeedManifest, PackEARS, PackMigration } from './pack-registration.ts';
+export { getPackHelp, type HelpEntry } from './pack-help.ts';
+export { checkFeatureSettings, getFeaturesWithSettings, getPackSettingsDefaults, onPackSettingsDefaultsChanged, type FeatureSettings, type PackSettingsDefaults } from './pack-settings.ts';
+export { getPackCommands, type PackCommand } from './pack-commands.ts';

@@ -1,7 +1,8 @@
+import { qx } from '@/__generated__/ears';
 import * as fs from 'fs/promises'
-import { qx } from '@abuddy/sdk/ears'
+
 import { EARS } from '@/__generated__/ears'
-import type { DocumentDTO, CollectionDTO, LibraryItem, FolderItem, DocumentItem, FolderContents, BreadcrumbItem, DocumentShortCode, ContentSection } from '../types'
+import type { DocumentDTO, CollectionDTO, LibraryIndex, LibraryItem, FolderItem, DocumentItem, FolderContents, BreadcrumbItem } from '../types'
 import {
   findParentCollection,
   isRootCollection,
@@ -12,6 +13,7 @@ import {
   getContentLength
 } from './helpers'
 import { isSymlinkId, isSymlinkCollection, getSymlinkFolderContents, resolveSymlinkPath } from './symlink'
+import type { ContentSection, DocumentShortCode } from '@/features/library/be/types';
 
 export const libraryQueries = {
   getDocuments(collectionId?: string): DocumentDTO[] {
@@ -32,7 +34,6 @@ export const libraryQueries = {
     const documents = query.pick(['name', 'content', 'shortCode', 'createdAt', 'updatedAt', 'tags', 'displayOrder'])
 
     const documentsWithDetails = documents.map((doc) => {
-      // Tags are now stored as string array on documents
       const tags = doc.tags || []
 
       // Find collection that contains this document
@@ -67,7 +68,6 @@ export const libraryQueries = {
 
     if (!document) return null
 
-    // Tags are now stored as string array on documents
     const tags = document.tags || []
 
     const collection = qx(EARS.Entity.Collection).pickAll().find(col => 
@@ -102,6 +102,22 @@ export const libraryQueries = {
     }
     
     return this.getDocument(documents[0].id as EARS.EntityId)
+  },
+
+  /** Every document and folder by name, for the reference picker and the panel's stats */
+  getIndex(): LibraryIndex {
+    return {
+      documents: qx(EARS.Entity.Document).pick(['name', 'shortCode', 'tags']).map((doc) => ({
+        id: doc.id,
+        name: doc.name as string,
+        shortCode: doc.shortCode as DocumentShortCode,
+        tags: (doc.tags as string[] | undefined) ?? [],
+      })),
+      folders: qx(EARS.Entity.Collection).pick(['name']).map((col) => ({
+        id: col.id,
+        name: col.name as string,
+      })),
+    }
   },
 
   getCollections(): CollectionDTO[] {
@@ -217,8 +233,6 @@ export const libraryQueries = {
       const contentLength = getContentLength(contentSections)
       const size = formatFileSize(contentLength)
       
-      // Get tags
-      // Tags are now stored as string array on documents
       const tags = doc.tags || []
       
       items.push({
@@ -290,38 +304,6 @@ export const libraryQueries = {
     return findParentCollection(folderId)
   },
 
-  getCollectionByName(name: string): CollectionDTO | null {
-    const collections = qx(EARS.Entity.Collection)
-      .where('name', name)
-      .pickAll()
-    
-    if (collections.length === 0) {
-      return null
-    }
-    
-    const collection = collections[0]
-    const documentCount = qx(collection.id as EARS.EntityId)
-      .linksTo(EARS.RelKind.CONTAINS, EARS.Entity.Document)
-      .ids().length
-    
-    const childCollections = qx(collection.id as EARS.EntityId)
-      .linksTo(EARS.RelKind.PARENT_OF, EARS.Entity.Collection)
-      .pickAll()
-    
-    const path = getCollectionPath(collection.id as EARS.EntityId)
-    
-    return {
-      id: collection.id as EARS.EntityId,
-      name: collection.name as string,
-      description: collection.description as string | undefined,
-      path,
-      documentCount,
-      childCollections: childCollections as unknown as CollectionDTO[],
-      displayOrder: getDisplayOrder(collection),
-      createdAt: new Date(collection.createdAt as number).toISOString(),
-      updatedAt: new Date(collection.updatedAt as number || collection.createdAt as number).toISOString(),
-    }
-  },
 
   getDocumentsInCollection(collectionId: EARS.EntityId): DocumentDTO[] {
     const documentIds = qx(collectionId)
@@ -355,7 +337,6 @@ export const libraryQueries = {
       .pick(['name', 'content', 'shortCode', 'createdAt', 'updatedAt', 'tags', 'displayOrder'])
 
     const documentsWithDetails = documents.map((doc) => {
-      // Tags are now stored as string array on documents
       const tags = doc.tags || []
 
       // Find collection that contains this document

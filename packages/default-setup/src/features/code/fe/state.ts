@@ -1,22 +1,29 @@
-import { setup, type ActorRefFrom, assign, enqueueActions } from 'xstate';
+import { setup, type ActorRefFrom, type AnyActorRef, assign, enqueueActions } from 'xstate';
+
 import breadcrumb from '@abuddy/sdk/fe';
-import { trpc } from '@abuddy/sdk/rpc';
 import { type HotkeyEvent, type HotkeysMap, createHotkeyProcessor } from '@abuddy/sdk/fe';
 import { saveOpenTabs, loadPersistedTabs, sortTabsByPinned } from './utils/persisted-tabs';
 import { loadRecentFiles, addRecentFile } from './utils/recent-files';
 import { pushTabViewHistory, nextActiveFromHistory } from './utils/tab-management';
 import { saveTabGroups, loadTabGroups, getNextAvailableColor, ALL_COLORS, type TabGroupColor, type TabGroup } from '@abuddy/sdk/fe';
-import { type NavHistory, createNavHistory, pushNavHistory, goBack, goForward, canGoBack, canGoForward } from '@abuddy/sdk/fe';
-import type { OutgoingCodeEvents, CodeSettings, KeyboardShortcut } from '@/__generated__/types';
+import { createNavHistory, pushNavHistory, goBack, goForward, canGoBack, canGoForward } from '@abuddy/sdk/fe';
+import type { CodeSettings } from '@/__generated__/types';
+import type { ActionTab, CodeContext as Context, CodeInboxEvent, OpenFile, PanelType, PromptTab, QuickOpenResult, TerminalTab } from './contract';
+export type { OpenFile, TerminalTab, QuickOpenResult, PanelType } from './contract';
+export type { CodeContext as Context } from './contract';
+import type {  } from '@/features/code/be/types'
+import type { OutgoingCodeEvents } from '@/features/code/be/contract';
 
 // Import child state machines
 import { explorerState } from './features/explorer/state';
 import { searchState } from './features/search/state';
-import { commitState, type GitStatusFile, type GitDiff } from './features/commit/state';
+import { commitState } from './features/commit/state';
 import { pullRequestState } from './features/pull-request/state';
 import { terminalState, type TerminalInfo } from './features/terminal/state';
-import { actionsState, type ActionTab } from './features/actions/state';
-import { promptsState, type PromptTab } from './features/prompts/state';
+import { actionsState } from './features/actions/state';
+import { promptsState } from './features/prompts/state';
+import type { KeyboardShortcut } from '@abuddy/sdk/types';
+import { codeChild, routeToCodeChild, CODE_CHILD_IDS } from './features/children';
 
 export const id = 'code' as const;
 
@@ -36,28 +43,6 @@ function getTabbedTerminalIds(openFiles: (OpenFile | TerminalTab | ActionTab | P
   )
 }
 
-export interface OpenFile {
-  path: string
-  content: string
-  originalContent: string  // Content when file was opened or last saved
-  modified: boolean
-  isDiff?: boolean
-  gitDiff?: GitDiff
-  gitFile?: GitStatusFile
-  externallyModified?: boolean
-  externalModificationTime?: Date
-  pendingSaveConflict?: boolean
-  isImage?: boolean
-  isVideo?: boolean
-  isBinary?: boolean
-  isRichText?: boolean
-  _richTextBaselineSet?: boolean
-  isPrDiff?: boolean
-  isPinned?: boolean
-  groupId?: string
-  isPreview?: boolean
-}
-
 /** Unstaged diff tabs are editable (right side = working tree). PR diffs are read-only. */
 export function isEditableDiff(file: OpenFile | { isDiff?: boolean; isPrDiff?: boolean; gitFile?: { staged: boolean } }): boolean {
   if ('isPrDiff' in file && file.isPrDiff) return false
@@ -66,56 +51,12 @@ export function isEditableDiff(file: OpenFile | { isDiff?: boolean; isPrDiff?: b
 
 export type { TabGroupColor, TabGroup };
 
-export interface TerminalTab extends OpenFile {
-  isTerminal: true
-  terminalInfo: TerminalInfo
-}
-
-export type Context = {
-  baseDirectory: string
-  openFiles: (OpenFile | TerminalTab | ActionTab | PromptTab)[]
-  activeFilePath: string | null
-  isLoading: boolean
-  error: string | null
-  selectedPanel: PanelType
-  tabsRestored?: boolean
-  pendingTabOrder?: Array<{ path: string; order: number }>  // Track desired tab order during restoration
-  pendingPersistedMetadata?: Map<string, { groupId?: string; isPinned?: boolean; isPreview?: boolean }>  // Track metadata to apply after restoration
-  // Tab groups state
-  tabGroups: TabGroup[]
-  // Quick open state
-  isQuickOpenVisible: boolean
-  quickOpenQuery: string
-  quickOpenResults: QuickOpenResult[]
-  quickOpenSelectedIndex: number
-  quickOpenLoading: boolean
-  recentlyOpenedFiles: string[]
-  tabViewHistory: string[]
-  hotkeys: HotkeysMap
-  settings?: CodeSettings
-  pendingRevealLine: { filePath: string; line: number; column: number; lineText?: string } | null
-  searchFocusTrigger: number
-  searchPrefillText: string
-  panelTerminalId: string | null
-  panelTerminalExpanded: boolean
-  pendingTerminalTabIds?: string[]
-  panelNavHistory: NavHistory<PanelType>
-}
-
-export interface QuickOpenResult {
-  path: string
-  relativePath: string
-  name: string
-  type: 'file' | 'directory'
-  extension?: string
-  score?: number
-  matchRanges?: Array<[number, number]> // For highlighting matches
-}
-
 export type Event =
   | OutgoingCodeEvents
+  // The app's, when the code plugin's settings change
+  | { type: 'FEATURE_SETTINGS_UPDATED'; settings: CodeSettings }
   // Generic update event for child actors to update parent state
-  | { type: 'UPDATE_STATE'; updates: Partial<Context> }
+  | CodeInboxEvent
   | { type: 'ADD_TAB'; tab: any; replacePreview?: boolean; extraUpdates?: Partial<Context> }
   | { type: 'PLUGIN_ACTIVATED' }
   | { type: 'SELECT_PANEL'; panel: PanelType }
@@ -168,10 +109,8 @@ export type Event =
 
 export type CodeState = ActorRefFrom<typeof codeState>;
 
-type PanelType = 'explorer' | 'search' | 'commit' | 'pr' | 'actions' | 'prompts';
-
 // Shared tab removal logic (tab removal + group cleanup + explorer notify)
-function removeTabLogic(context: Context, system: any, path: string) {
+function removeTabLogic(context: Context, self: AnyActorRef, path: string) {
   const file = context.openFiles.find(f => f.path === path)
   const newOpenFiles = context.openFiles.filter(f => f.path !== path)
   const newActiveFilePath = context.activeFilePath === path
@@ -194,7 +133,7 @@ function removeTabLogic(context: Context, system: any, path: string) {
     pendingPersistedMetadata = next.size > 0 ? next : undefined
   }
 
-  system.get('explorer').send({ type: 'explorer.CLOSE_FILE', path })
+  codeChild(self, 'explorer')?.send({ type: 'explorer.CLOSE_FILE', path })
 
   return {
     openFiles: newOpenFiles,
@@ -206,7 +145,7 @@ function removeTabLogic(context: Context, system: any, path: string) {
 }
 
 // Close tab with terminal confirmation, then remove
-function closeTabWithConfirmation(context: Context, system: any, path: string) {
+function closeTabWithConfirmation(context: Context, self: AnyActorRef, path: string) {
   const file = context.openFiles.find(f => f.path === path)
 
   if (file && 'isTerminal' in file && (file as any).isTerminal) {
@@ -217,11 +156,11 @@ function closeTabWithConfirmation(context: Context, system: any, path: string) {
       if (!confirm(`Close terminal "${name}"?`)) return {}
     }
     if (context.settings?.closeTerminalOnTabClose ?? true) {
-      system.get('terminal').send({ type: 'terminal.CLOSE', terminalId: (file as any).terminalInfo.id })
+      codeChild(self, 'terminal')?.send({ type: 'terminal.CLOSE', terminalId: (file as any).terminalInfo.id })
     }
   }
 
-  return removeTabLogic(context, system, path)
+  return removeTabLogic(context, self, path)
 }
 
 // Directory will be loaded from backend EARS store
@@ -344,23 +283,29 @@ const codeState = setup({
   actions: {
     spawnFeatureActors: enqueueActions(({ enqueue, context }) => {
       // Only spawn if not already
-        enqueue.spawnChild('explorerState', { systemId: 'explorer' });
-        enqueue.spawnChild('terminalState', { systemId: 'terminal' });
-        enqueue.spawnChild('searchState', { systemId: 'search' });
-        enqueue.spawnChild('commitState', { systemId: 'commit' });
-        enqueue.spawnChild('pullRequestState', { systemId: 'pr' });
-        enqueue.spawnChild('actionsState', { systemId: 'codeActions' });
-        enqueue.spawnChild('promptsState', { systemId: 'codePrompts' });
+        enqueue.spawnChild('explorerState', { id: 'explorer' });
+        enqueue.spawnChild('terminalState', { id: 'terminal' });
+        enqueue.spawnChild('searchState', { id: 'search' });
+        enqueue.spawnChild('commitState', { id: 'commit' });
+        enqueue.spawnChild('pullRequestState', { id: 'pr' });
+        enqueue.spawnChild('actionsState', { id: 'codeActions' });
+        enqueue.spawnChild('promptsState', { id: 'codePrompts' });
     }),
 
-    notifyDirectoryChange: ({ event, context, system }) => {
+    notifyDirectoryChange: ({ event, context, self }) => {
       const ev = event as { type: 'UPDATE_STATE'; updates: Partial<Context> }
       if (ev.updates.baseDirectory && ev.updates.baseDirectory !== context.baseDirectory) {
+        // Swap in the new project's recent files, so Quick Open ranks its files and not
+        // the previous project's. Sent as its own event: this action runs before
+        // updateState, so assigning here would be overwritten by the same UPDATE_STATE.
+        const recentlyOpenedFiles = loadRecentFiles(ev.updates.baseDirectory)
+        self.send({ type: 'UPDATE_STATE', updates: { recentlyOpenedFiles } })
+
         // Don't send commit.REFRESH_STATUS or pr.REFRESH_STATUS here.
         // The backend handles refresh via notifyChildSystemsOfBaseChange after
         // SET_BASE_DIRECTORY is processed, avoiding a race condition where these
         // frontend-initiated refreshes hit the backend before the directory update.
-        system.get('search')?.send({ type: 'search.DIRECTORY_CHANGED', baseDirectory: ev.updates.baseDirectory });
+        codeChild(self, 'search')?.send({ type: 'search.DIRECTORY_CHANGED', baseDirectory: ev.updates.baseDirectory });
       }
     },
     saveTabsAction: ({ context }) => {
@@ -439,8 +384,7 @@ const codeState = setup({
       }
 
       // During restore, don't bounce activeFilePath as tabs stream in — leave
-      // the previously-active tab focused. For user-initiated opens, focus the
-      // new tab as before.
+      // the previously-active tab focused. A user-initiated open focuses the new tab.
       let activeFilePath = isRestoring
         ? context.activeFilePath
         : (ev.extraUpdates?.activeFilePath ?? incomingTab.path)
@@ -502,9 +446,9 @@ const codeState = setup({
       isLoading: false,
       error: null
     }),
-    initializePlugin: ({ system }) => {
+    initializePlugin: ({ self }) => {
       // Explorer is initialized via the CODE_CONNECTED broadcast — no re-init needed here.
-      system.get('terminal')?.send({ type: 'terminal.REFRESH_LIST' });
+      codeChild(self, 'terminal')?.send({ type: 'terminal.REFRESH_LIST' });
     },
 
     restorePersistedTabs: enqueueActions(({ enqueue, self }) => {
@@ -531,7 +475,7 @@ const codeState = setup({
 
       // Seed activeFilePath from persistence so addTab's "preserve context.activeFilePath
       // during restore" branch keeps the previously-active tab focused. If the persisted
-      // active path no longer matches a tab (corrupt/stale storage, legacy shape),
+      // active path no longer matches a tab (corrupt or stale storage),
       // fall back to the first persisted tab so the editor isn't blank on load.
       const persistedPaths = new Set(persistedTabs.map(t => t.path))
       const seededActive = persistedActive && persistedPaths.has(persistedActive)
@@ -562,10 +506,10 @@ const codeState = setup({
       }
 
       // Restore tabs
-      enqueue(({ system }) => {
-        const explorerActor = system.get('explorer')
-        const actionsActor = system.get('codeActions')
-        const promptsActor = system.get('codePrompts')
+      enqueue(() => {
+        const explorerActor = codeChild(self, 'explorer')
+        const actionsActor = codeChild(self, 'codeActions')
+        const promptsActor = codeChild(self, 'codePrompts')
 
         // Filter tabs by type
         const fileTabs = persistedTabs.filter(tab => tab.type === 'file')
@@ -619,30 +563,29 @@ const codeState = setup({
         }, 2500)
       })
     }),
-    broadcastToAllFeatures: ({ event, system }) => {
-      system.get('explorer')?.send(event);
-      system.get('search')?.send(event);
-      system.get('commit')?.send(event);
-      system.get('pr')?.send(event);
-      system.get('terminal')?.send(event);
-      system.get('codeActions')?.send(event);
-      system.get('codePrompts')?.send(event);
+    // Hands every child whatever arrived and lets each ignore what it doesn't handle. That is routing rather than
+    // addressing one child, so there is no single event union to check against and the children stay untyped here —
+    // as in `routeEvent`. Every call that names one child names its type.
+    broadcastToAllFeatures: ({ event, self }) => {
+      for (const id of CODE_CHILD_IDS) routeToCodeChild(self, id, event);
     },
 
-    routeEvent: ({ event, system }) => {
+    routeEvent: ({ event, self }) => {
       const eventType = event.type;
 
-      // Route based on prefix - prefix matches system ID
+      // An event's prefix names the child that handles it. The one call whose child isn't known here: which
+      // machine `prefix` stands for is the event's to say at runtime, so this is the routing itself and there is
+      // no actor type to name — every other call names one.
       if (eventType.includes('.')) {
         const [prefix] = eventType.split('.');
-        system.get(prefix)?.send(event);
+        routeToCodeChild(self, prefix, event);
       }
     },
 
     selectPanel: assign(({
       event,
       context,
-      system
+      self
     }) => {
       const ev = event as { type: 'SELECT_PANEL'; panel: PanelType };
 
@@ -653,9 +596,9 @@ const codeState = setup({
 
       // Notify child machines if needed
       if (ev.panel === 'commit') {
-        system.get('commit')?.send({ type: 'commit.REFRESH_STATUS' });
+        codeChild(self, 'commit')?.send({ type: 'commit.REFRESH_STATUS' });
       } else if (ev.panel === 'pr') {
-        system.get('pr')?.send({ type: 'pr.REFRESH_STATUS' });
+        codeChild(self, 'pr')?.send({ type: 'pr.REFRESH_STATUS' });
       }
       // Actions and prompts are loaded by their respective main plugin actors
       return {
@@ -707,25 +650,25 @@ const codeState = setup({
       };
     }),
 
-    openQuickOpenResult: ({ context, system, self, event }) => {
+    openQuickOpenResult: ({ context, self, event }) => {
       const ev = event as { type: 'OPEN_QUICK_OPEN_RESULT'; path: string };
 
       // Track the file as recently opened
-      const updatedRecentFiles = addRecentFile(context.recentlyOpenedFiles, ev.path);
+      const updatedRecentFiles = addRecentFile(context.recentlyOpenedFiles, ev.path, context.baseDirectory);
       self.send({
         type: 'UPDATE_STATE',
         updates: { recentlyOpenedFiles: updatedRecentFiles }
       });
 
       // Open file through explorer
-      system.get('explorer')?.send({
+      codeChild(self, 'explorer')?.send({
         type: 'explorer.OPEN_FILE',
         path: ev.path
       });
     },
 
-    requestQuickOpenFiles: ({ context, system }) => {
-      system.get('explorer')?.send({
+    requestQuickOpenFiles: ({ context, self }) => {
+      codeChild(self, 'explorer')?.send({
         type: 'explorer.QUICK_OPEN_SEARCH',
         baseDirectory: context.baseDirectory
       });
@@ -746,16 +689,19 @@ const codeState = setup({
 
       // Update directory state from backend
       // Explorer child will receive CODE_CONNECTED via broadcastToAllFeatures and initialize itself
+      const baseDirectory = ev.data.baseDirectory || ''
+
       return {
         ...context,
-        baseDirectory: ev.data.baseDirectory || '',
+        baseDirectory,
+        recentlyOpenedFiles: loadRecentFiles(baseDirectory),
         settings: ev.data.settings,
         hotkeys: Object.keys(hotkeys).length > 0 ? hotkeys : context.hotkeys
       }
     }),
 
     handleSettingsUpdate: assign(({ event, context }) => {
-      const ev = event as { type: 'CODE_SETTINGS_UPDATED'; settings: CodeSettings }
+      const ev = event as { type: 'FEATURE_SETTINGS_UPDATED'; settings: CodeSettings }
 
       // Extract hotkeys from settings - filter out undefined values
       const hotkeys: HotkeysMap = {};
@@ -785,52 +731,52 @@ const codeState = setup({
       closeTab: 'CLOSE_ACTIVE_TAB',
     }),
 
-    saveActiveFile: ({ context, system }) => {
+    saveActiveFile: ({ context, self }) => {
       const activeFile = context.openFiles.find(f => f.path === context.activeFilePath)
       if (!activeFile) return
 
       if (activeFile.isDiff) {
         const file = activeFile as OpenFile
         if (!isEditableDiff(file)) return
-        system.get('explorer').send({ type: 'explorer.WRITE_FILE', path: file.gitFile!.path, content: file.content })
+        codeChild(self, 'explorer')?.send({ type: 'explorer.WRITE_FILE', path: file.gitFile!.path, content: file.content })
         return
       }
 
       if ('isAction' in activeFile && (activeFile as any).isAction) {
         const actionId = activeFile.path.replace('action:', '')
-        system.get('codeActions').send({ type: 'codeActions.SAVE_ACTION', actionId, content: activeFile.content })
+        codeChild(self, 'codeActions')?.send({ type: 'codeActions.SAVE_ACTION', actionId, content: activeFile.content })
       } else if ('isPrompt' in activeFile && (activeFile as any).isPrompt) {
         const promptId = activeFile.path.replace('prompt:', '')
-        system.get('codePrompts').send({ type: 'codePrompts.SAVE_PROMPT', promptId, content: activeFile.content })
+        codeChild(self, 'codePrompts')?.send({ type: 'codePrompts.SAVE_PROMPT', promptId, content: activeFile.content })
       } else {
-        system.get('explorer').send({ type: 'explorer.WRITE_FILE', path: activeFile.path, content: activeFile.content })
+        codeChild(self, 'explorer')?.send({ type: 'explorer.WRITE_FILE', path: activeFile.path, content: activeFile.content })
       }
     },
-    closeActiveTab: assign(({ context, system }) => {
+    closeActiveTab: assign(({ context, self }) => {
       if (!context.activeFilePath) return {}
-      return closeTabWithConfirmation(context, system, context.activeFilePath)
+      return closeTabWithConfirmation(context, self, context.activeFilePath)
     }),
-    closeTab: assign(({ context, system, event }) => {
+    closeTab: assign(({ context, self, event }) => {
       const { path } = event as { type: 'CLOSE_TAB'; path: string }
-      return closeTabWithConfirmation(context, system, path)
+      return closeTabWithConfirmation(context, self, path)
     }),
-    killTerminal: enqueueActions(({ enqueue, context, system, event }) => {
+    killTerminal: enqueueActions(({ enqueue, context, self, event }) => {
       const { path } = event as { type: 'KILL_TERMINAL'; path: string }
       const file = context.openFiles.find(f => f.path === path)
       if (!file || !('isTerminal' in file)) return
       enqueue(() => {
-        system.get('terminal').send({ type: 'terminal.CLOSE', terminalId: (file as any).terminalInfo.id })
+        codeChild(self, 'terminal')?.send({ type: 'terminal.CLOSE', terminalId: (file as any).terminalInfo.id })
       })
-      enqueue(assign(() => removeTabLogic(context, system, path)))
+      enqueue(assign(() => removeTabLogic(context, self, path)))
     }),
-    openTerminal: enqueueActions(({ enqueue, context, system }) => {
-      const terminals: TerminalInfo[] = system.get('terminal')?.getSnapshot()?.context?.terminals || []
+    openTerminal: enqueueActions(({ enqueue, context, self }) => {
+      const terminals: TerminalInfo[] = codeChild(self, 'terminal')?.getSnapshot()?.context?.terminals || []
       const tabbedIds = getTabbedTerminalIds(context.openFiles)
 
       if (terminals.length === 0) {
         // No terminals — create one (will be routed to panel by child actor)
         enqueue(() => {
-          system.get('terminal')?.send({ type: 'terminal.CREATE', cwd: context.baseDirectory })
+          codeChild(self, 'terminal')?.send({ type: 'terminal.CREATE', cwd: context.baseDirectory })
         })
         enqueue(assign({ panelTerminalExpanded: true }))
         return
@@ -845,7 +791,7 @@ const codeState = setup({
         }
         // All terminals are in tabs — create a new one
         enqueue(() => {
-          system.get('terminal')?.send({ type: 'terminal.CREATE', cwd: context.baseDirectory })
+          codeChild(self, 'terminal')?.send({ type: 'terminal.CREATE', cwd: context.baseDirectory })
         })
         enqueue(assign({ panelTerminalExpanded: true }))
         return
@@ -855,9 +801,9 @@ const codeState = setup({
       enqueue(assign({ panelTerminalExpanded: !context.panelTerminalExpanded }))
     }),
 
-    openTerminalTab: enqueueActions(({ enqueue, context, system }) => {
+    openTerminalTab: enqueueActions(({ enqueue, context, self }) => {
       enqueue(() => {
-        system.get('terminal')?.send({ type: 'terminal.CREATE', cwd: context.baseDirectory, target: 'tab' })
+        codeChild(self, 'terminal')?.send({ type: 'terminal.CREATE', cwd: context.baseDirectory, target: 'tab' })
       })
     }),
 
@@ -866,13 +812,11 @@ const codeState = setup({
       return { panelTerminalId: ev.terminalId };
     }),
 
-    closePanelTerminal: enqueueActions(({ enqueue, context, system }) => {
-      if (context.panelTerminalId) {
+    closePanelTerminal: enqueueActions(({ enqueue, context, self }) => {
+      const terminalId = context.panelTerminalId;
+      if (terminalId) {
         enqueue(() => {
-          system.get('terminal')?.send({
-            type: 'terminal.CLOSE',
-            terminalId: context.panelTerminalId
-          })
+          codeChild(self, 'terminal')?.send({ type: 'terminal.CLOSE', terminalId })
         })
       }
       enqueue(assign({ panelTerminalId: null, panelTerminalExpanded: false }))
@@ -899,16 +843,16 @@ const codeState = setup({
       return changed ? { openFiles: updatedOpenFiles } : {}
     }),
 
-    openTerminalInTab: enqueueActions(({ enqueue, context, event, system }) => {
+    openTerminalInTab: enqueueActions(({ enqueue, context, event, self }) => {
       const ev = event as { type: 'OPEN_TERMINAL_IN_TAB'; terminalId: string }
-      const terminals: TerminalInfo[] = system.get('terminal')?.getSnapshot()?.context?.terminals || []
+      const terminals: TerminalInfo[] = codeChild(self, 'terminal')?.getSnapshot()?.context?.terminals || []
       const terminalInfo = terminals.find(t => t.id === ev.terminalId)
 
       if (!terminalInfo) return
 
       // Open as canvas tab
       enqueue(() => {
-        system.get('terminal')?.send({ type: 'terminal.OPEN_TAB', terminalInfo })
+        codeChild(self, 'terminal')?.send({ type: 'terminal.OPEN_TAB', terminalInfo })
       })
 
       // If this was the panel terminal, auto-select next available
@@ -962,13 +906,13 @@ const codeState = setup({
       };
     }),
 
-    searchInFolder: ({ event, context, self, system }) => {
+    searchInFolder: ({ event, context, self }) => {
       const ev = event as { type: 'SEARCH_IN_FOLDER'; folder: string }
       // Compute relative path and set as include pattern glob
       const relativePath = ev.folder.startsWith(context.baseDirectory)
         ? ev.folder.slice(context.baseDirectory.length + 1)
         : ev.folder
-      system.get('search')?.send({
+      codeChild(self, 'search')?.send({
         type: 'search.UPDATE_OPTIONS',
         options: { includePattern: `${relativePath}/**` }
       })
@@ -1311,7 +1255,7 @@ const codeState = setup({
     quickOpenResults: [],
     quickOpenSelectedIndex: 0,
     quickOpenLoading: false,
-    recentlyOpenedFiles: loadRecentFiles(),
+    recentlyOpenedFiles: [], // loaded per project once the backend reports baseDirectory
     tabViewHistory: [],
     // Default hotkeys for code plugin (will be overridden by settings)
     hotkeys: {},
@@ -1331,7 +1275,7 @@ const codeState = setup({
           actions: ['handleCodeConnected', 'broadcastToAllFeatures']
         },
         // Handle settings updates
-        CODE_SETTINGS_UPDATED: {
+        FEATURE_SETTINGS_UPDATED: {
           actions: ['handleSettingsUpdate']
         },
         // Route events to child machines
@@ -1356,19 +1300,19 @@ const codeState = setup({
         },
         NAVIGATE_BACK: {
           guard: ({ context }) => canGoBack(context.panelNavHistory),
-          actions: assign(({ context, system }) => {
+          actions: assign(({ context, self }) => {
             const result = goBack(context.panelNavHistory)!;
-            if (result.entry === 'commit') system.get('commit')?.send({ type: 'commit.REFRESH_STATUS' });
-            else if (result.entry === 'pr') system.get('pr')?.send({ type: 'pr.REFRESH_STATUS' });
+            if (result.entry === 'commit') codeChild(self, 'commit')?.send({ type: 'commit.REFRESH_STATUS' });
+            else if (result.entry === 'pr') codeChild(self, 'pr')?.send({ type: 'pr.REFRESH_STATUS' });
             return { panelNavHistory: result.history, selectedPanel: result.entry };
           }),
         },
         NAVIGATE_FORWARD: {
           guard: ({ context }) => canGoForward(context.panelNavHistory),
-          actions: assign(({ context, system }) => {
+          actions: assign(({ context, self }) => {
             const result = goForward(context.panelNavHistory)!;
-            if (result.entry === 'commit') system.get('commit')?.send({ type: 'commit.REFRESH_STATUS' });
-            else if (result.entry === 'pr') system.get('pr')?.send({ type: 'pr.REFRESH_STATUS' });
+            if (result.entry === 'commit') codeChild(self, 'commit')?.send({ type: 'commit.REFRESH_STATUS' });
+            else if (result.entry === 'pr') codeChild(self, 'pr')?.send({ type: 'pr.REFRESH_STATUS' });
             return { panelNavHistory: result.history, selectedPanel: result.entry };
           }),
         },

@@ -19,7 +19,6 @@ import * as fs from 'fs'
 import * as path from 'path'
 import * as os from 'os'
 import * as readline from 'readline'
-import { randomUUID } from 'crypto'
 
 import { createLogger } from '@abuddy/sdk/logger'
 
@@ -38,7 +37,7 @@ export function configDir(): string {
  * The CLI stores each project's sessions under
  * `$CLAUDE_CONFIG_DIR/projects/<encoded-cwd>/<session-id>.jsonl`.
  */
-export function projectBucket(cwd: string): string {
+function projectBucket(cwd: string): string {
   return path.join(configDir(), 'projects', encodeProjectPath(cwd))
 }
 
@@ -343,64 +342,6 @@ export async function _experimental_rename(
   warnExperimental('_experimental_rename')
   await appendMetadata(id, { type: 'metadata', customTitle: title, updatedAt: new Date().toISOString() }, opts)
 }
-
-/** Add/remove a session tag by appending a metadata entry. @experimental */
-export async function _experimental_tag(
-  id: string,
-  tag: string | null,
-  opts: { cwd?: string } = {},
-): Promise<void> {
-  assertSafeId(id)
-  warnExperimental('_experimental_tag')
-  await appendMetadata(id, { type: 'metadata', tag, updatedAt: new Date().toISOString() }, opts)
-}
-
-/**
- * Fork a session at a specific message UUID. Copies the JSONL (optionally
- * truncated) and returns the new session id. @experimental
- */
-export async function _experimental_fork(
-  id: string,
-  opts: { upToMessageId?: string; title?: string; cwd?: string } = {},
-): Promise<{ sessionId: string; file: string }> {
-  assertSafeId(id)
-  warnExperimental('_experimental_fork')
-  const cwd = opts.cwd ?? process.cwd()
-  const bucket = projectBucket(cwd)
-  const source = path.join(bucket, `${id}.jsonl`)
-  const newId = randomUUID()
-  const target = path.join(bucket, `${newId}.jsonl`)
-
-  const raw = await fs.promises.readFile(source, 'utf8')
-  const lines = raw.split('\n').filter(l => l.length > 0)
-
-  let keptLines = lines
-  if (opts.upToMessageId) {
-    const cutIdx = lines.findIndex(line => {
-      try { return (JSON.parse(line) as { uuid?: string }).uuid === opts.upToMessageId }
-      catch { return false }
-    })
-    if (cutIdx !== -1) keptLines = lines.slice(0, cutIdx + 1)
-  }
-
-  await fs.promises.writeFile(target, keptLines.join('\n') + '\n')
-  if (opts.title) {
-    await appendMetadata(newId, { type: 'metadata', customTitle: opts.title, updatedAt: new Date().toISOString() }, { cwd })
-  }
-
-  return { sessionId: newId, file: target }
-}
-
-// ─── Deprecated aliases ──────────────────────────────────────────────────────
-// Kept for source compatibility with the original Phase 1 API. Forward to
-// the _experimental_ versions — same runtime behaviour, same warning.
-
-/** @deprecated Use `_experimental_rename` to acknowledge the risk. */
-export const rename = _experimental_rename
-/** @deprecated Use `_experimental_tag` to acknowledge the risk. */
-export const tag = _experimental_tag
-/** @deprecated Use `_experimental_fork` to acknowledge the risk. */
-export const fork = _experimental_fork
 
 // ─── Internals ───────────────────────────────────────────────────────────────
 

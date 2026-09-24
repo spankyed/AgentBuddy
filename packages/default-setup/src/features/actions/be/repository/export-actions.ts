@@ -5,7 +5,7 @@
  * stripping internal fields (id, entityType, timestamps, etc.).
  */
 
-import { repository } from '@abuddy/sdk/ears';
+import { repository } from '@/__generated__/repository';
 import { createExportDir } from '@abuddy/sdk/utils';
 import { stripInternalFields, writeExportJson } from '@abuddy/sdk/utils';
 

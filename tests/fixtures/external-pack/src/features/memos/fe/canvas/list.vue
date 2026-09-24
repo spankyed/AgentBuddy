@@ -1,10 +1,12 @@
 <script setup lang="ts">
 import { ref } from 'vue';
 import { useSelector } from '@xstate/vue';
-import { useActorSystem } from '@abuddy/sdk/fe';
+import { usePlugin } from '@abuddy/sdk/fe';
+// Comes from the host app at runtime, not bundled into the pack
+import TiptapEditor from '@abuddy/ui/components/tiptap/TiptapEditor';
 import { id, type MemosState } from '../state';
 
-const actor: MemosState = useActorSystem().get(id);
+const actor: MemosState = usePlugin();
 const memos = useSelector(actor, (state) => state.context.memos);
 const draft = ref('');
 
@@ -31,6 +33,9 @@ function add() {
         Add
       </button>
     </form>
+    <div data-testid="memo-preview">
+      <TiptapEditor mode="viewer" :model-value="draft || 'Memo preview'" />
+    </div>
     <ul data-testid="memo-list" class="flex flex-col gap-1">
       <li v-for="memo in memos" :key="memo.id" class="text-sm">{{ memo.text }}</li>
     </ul>

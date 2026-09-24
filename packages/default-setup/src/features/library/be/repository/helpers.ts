@@ -1,7 +1,6 @@
-import { qx, tx } from '@abuddy/sdk/ears'
-import { edgeStore } from '@abuddy/sdk/ears/internals'
+import { tx, qx } from '@/__generated__/ears';
 import { EARS } from '@/__generated__/ears'
-import type { ContentSection } from '../types'
+import type { ContentSection } from '@/features/library/be/types';
 
 // ================ Helper Functions ================
 
@@ -22,7 +21,7 @@ export const getDisplayOrder = (item: any): number => {
   return Array.isArray(d) ? d[0] || 0 : (d as number) || 0
 }
 
-export const getItemsForReordering = (folderId: EARS.EntityId | null) => {
+const getItemsForReordering = (folderId: EARS.EntityId | null) => {
   if (folderId === null) {
     return [
       ...qx(EARS.Entity.Collection).pickAll()
@@ -40,22 +39,6 @@ export const getItemsForReordering = (folderId: EARS.EntityId | null) => {
       .map(d => ({ id: d.id as EARS.EntityId, displayOrder: getDisplayOrder(d), type: 'document' as const }))
   ]
 }
-
-// Tags are now stored as string arrays on entities, not as separate entities
-// This function is no longer needed but kept for reference
-// export const createTagsForEntity = (entityId: EARS.EntityId, tagNames: string[]) =>
-//   tagNames.forEach(name => {
-//     const tagId = `Tag-${uuid()}` as EARS.EntityId
-//     tx(tagId).put('name', name)
-//     tx(entityId).link(EARS.RelKind.HAS, tagId)
-//   })
-
-// Tags are now managed in settings, not as entities
-// export const removeAllTagsFromEntity = (entityId: EARS.EntityId) =>
-//   qx(entityId).linksTo(EARS.RelKind.HAS, EARS.Entity.Tag).pickAll().forEach(tag => {
-//     edgeStore.unlink({ sourceEntity: entityId, relationType: EARS.RelKind.HAS, targetEntity: tag.id as EARS.EntityId })
-//     tx(tag.id as EARS.EntityId).destroy()
-//   })
 
 export function getNextDisplayOrder(parentId: EARS.EntityId | null): number {
   const items = getItemsForReordering(parentId)

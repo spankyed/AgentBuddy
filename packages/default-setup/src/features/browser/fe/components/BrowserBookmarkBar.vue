@@ -1,5 +1,5 @@
 <template>
-  <div class="flex items-center gap-0.5 px-2 py-1 bg-neutral-900 border-b border-neutral-800 overflow-x-auto scrollbar-hide">
+  <div data-testid="browser-bookmark-bar" class="flex items-center gap-0.5 px-2 py-1 bg-neutral-900 border-b border-neutral-800 overflow-x-auto scrollbar-hide">
     <ContextMenuRoot v-for="bookmark in bookmarks" :key="bookmark.url">
       <ContextMenuTrigger as-child>
         <button
@@ -33,7 +33,7 @@
 import { reactive } from 'vue';
 import { X } from 'lucide-vue-next';
 import { ContextMenuRoot, ContextMenuTrigger, ContextMenuContent, ContextMenuItem, ContextMenuPortal } from 'reka-ui';
-import type { Bookmark } from '../state.ts';
+import type { Bookmark } from '../state';
 
 defineProps<{
   bookmarks: Bookmark[];

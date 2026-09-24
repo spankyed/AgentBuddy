@@ -1,6 +1,7 @@
 import type { StepDefinition } from '@abuddy/sdk/steps';
 import { defineAsyncComponent } from 'vue';
 import { Sparkle } from 'lucide-vue-next';
+import { DEFAULT_MODEL } from './model';
 
 export const llmStepFE: StepDefinition = {
   type: 'llm',
@@ -15,11 +16,11 @@ export const llmStepFE: StepDefinition = {
       bgColor: 'bg-indigo-500/10',
       hoverBgColor: 'group-hover:bg-indigo-500/15',
       connectionRules: { inputs: 1, outputs: 1 },
-      component: 'VariableNode',
       category: 'ai',
       isImplemented: true,
       isDisabled: true,
     },
-    defaults: { model: 'gpt-4', temperature: 0.7, maxTokens: 1000 },
+    // No temperature: the model's own applies, and reasoning models (the default among them) don't take one
+    defaults: { model: DEFAULT_MODEL, maxTokens: 1000 },
   },
 };

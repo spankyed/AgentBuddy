@@ -190,7 +190,11 @@
 </template>
 
 <script setup lang="ts">
-import { useActorSystem } from '@abuddy/sdk/fe'
+import { usePlugin } from '@abuddy/sdk/fe'
+
+import type { CodeSettings } from '@/__generated__/types'
+import { updateSettings, useFeatureSettings } from '@abuddy/sdk/fe'
+import { ref as featureRef } from '@/__generated__/ref'
 import { ref, computed, watch, onMounted, onBeforeUnmount, nextTick } from 'vue'
 import { useSelector } from '@xstate/vue'
 import { ChevronRight, ChevronDown, Plus, X, Edit, Trash2, PanelTop, PanelBottom, Terminal as TerminalIcon, Ellipsis, Square, Copy, ClipboardPaste, TextSelect, Eraser, RotateCcw } from 'lucide-vue-next'
@@ -207,39 +211,36 @@ import {
   DropdownMenuItem,
   DropdownMenuPortal,
 } from 'reka-ui'
-import TrackedContextMenuRoot from '@abuddy/sdk/fe/design/TrackedContextMenuRoot.vue'
+import TrackedContextMenuRoot from '@abuddy/ui/design/TrackedContextMenuRoot'
 import { MENU_ITEM_CLASS, MENU_ITEM_DANGER_CLASS, MENU_CONTENT_CLASS, MENU_SEPARATOR_CLASS } from '@/features/code/fe/features/explorer/constants'
-import { id as codeId, type CodeState } from '@/features/code/fe/state'
+import type { CodeState } from '@/features/code/fe/state'
 import type { TerminalInfo } from './state'
 import { terminalPool } from '@/features/code/fe/utils/terminal-pool'
 import { useTerminalActions } from '@/features/code/fe/composables/useTerminalActions'
 import RunScriptPopover from './RunScriptPopover.vue'
-import ContextMenuPopup from '@abuddy/sdk/fe/design/ContextMenuPopup.vue'
+import ContextMenuPopup from '@abuddy/ui/design/ContextMenuPopup'
 import { useSectionVisibilityMenu } from '@/features/code/fe/composables/useSectionVisibilityMenu'
 import type { TerminalScript } from '@/__generated__/types'
 import type { Terminal } from '@xterm/xterm'
 import type { FitAddon } from '@xterm/addon-fit'
 import type { IDisposable } from '@xterm/xterm'
-
-const actorSystem = useActorSystem()
+import { codeChild } from '../children';
 
 const props = withDefaults(defineProps<{ height?: number }>(), { height: 256 })
 
 // Actors
-const codeActor: CodeState = actorSystem.get(codeId)
-const terminalActor = codeActor.system.get('terminal')!
-const settingsActor = actorSystem.get('settings')
+const codeActor: CodeState = usePlugin()
+const terminalActor = codeChild(codeActor, 'terminal')!
 
 // State selectors
 const panelTerminalId = useSelector(codeActor, (state) => state.context.panelTerminalId)
 const openFiles = useSelector(codeActor, (state) => state.context.openFiles)
-const terminals = useSelector(terminalActor, (state: any) => state.context.terminals as TerminalInfo[])
+const terminals = useSelector(terminalActor, (state) => state.context.terminals)
 
-const confirmTerminalClose = useSelector(settingsActor, (state: any) => state.context.settings?.plugins?.code?.confirmTerminalClose ?? true)
-const closeTerminalOnTabClose = useSelector(settingsActor, (state: any) => state.context.settings?.plugins?.code?.closeTerminalOnTabClose ?? true)
-const terminalScripts = useSelector(settingsActor, (state: any) =>
-  (state.context.settings?.plugins?.code?.terminalScripts ?? []) as TerminalScript[]
-)
+const storedCodeSettings = useFeatureSettings<CodeSettings>(featureRef('code'))
+const confirmTerminalClose = computed(() => storedCodeSettings.value?.confirmTerminalClose ?? true)
+const closeTerminalOnTabClose = computed(() => storedCodeSettings.value?.closeTerminalOnTabClose ?? true)
+const terminalScripts = computed(() => (storedCodeSettings.value?.terminalScripts ?? []) as TerminalScript[])
 
 const { getTerminalDisplayName, closeTerminal: closeTerminalWithConfirm } = useTerminalActions(terminalActor, confirmTerminalClose, closeTerminalOnTabClose)
 
@@ -375,9 +376,11 @@ const killPanelTerminal = () => {
 const restartPanelTerminal = () => {
   const info = activeTerminalInfo.value
   if (!info || !panelTerminalId.value) return
-  const { cwd, shell } = info
+  // `terminal.CREATE` carries no shell — the event the child sends the system has only title and cwd — so the
+  // restarted terminal takes the default shell, as it always has. Passing `info.shell` here only looked otherwise.
+  const { cwd } = info
   terminalActor.send({ type: 'terminal.CLOSE', terminalId: panelTerminalId.value })
-  terminalActor.send({ type: 'terminal.CREATE', cwd, shell })
+  terminalActor.send({ type: 'terminal.CREATE', cwd })
 }
 
 // Actions
@@ -415,13 +418,7 @@ const runScriptInNewTerminal = (script: TerminalScript) => {
 }
 
 const updateScripts = (scripts: TerminalScript[]) => {
-  settingsActor.send({
-    type: 'SETTINGS.UPDATE',
-    entityType: 'plugin',
-    label: 'code',
-    path: ['terminalScripts'],
-    value: scripts
-  } as any)
+  updateSettings({ feature: featureRef('code') }, ['terminalScripts'], scripts)
 }
 
 const killAllTerminals = () => {

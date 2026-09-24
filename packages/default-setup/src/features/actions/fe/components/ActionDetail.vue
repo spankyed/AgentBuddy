@@ -111,20 +111,21 @@
 </template>
 
 <script setup lang="ts">
+import { usePlugin } from '@abuddy/sdk/fe'
 import { computed } from 'vue';
-import type { ActionEntity, ActionParameter, Category } from '@/__generated__/types';
+import type { Category } from '@/__generated__/types';
 import { ExternalLink } from 'lucide-vue-next';
-import NameSaveHeader from '@abuddy/sdk/fe/design/NameSaveHeader.vue';
-import CollapsibleSection from '@abuddy/sdk/fe/design/CollapsibleSection.vue';
+import NameSaveHeader from '@abuddy/ui/design/NameSaveHeader';
+import CollapsibleSection from '@abuddy/ui/design/CollapsibleSection';
 import ActionParametersEditor from './ActionParametersEditor.vue';
 import ActionFunctionEditor from './ActionFunctionEditor.vue';
 import ActionFunctionViewer from './ActionFunctionViewer.vue';
-import JsonSchemaEditor from '@abuddy/sdk/fe/components/JsonSchemaEditor.vue';
-import { useActorSystem, navigateToPlugin } from '@abuddy/sdk/fe';
-import { useCollapsibleState } from '@abuddy/sdk/fe';
-import { id as actionsId, type ActionsState } from '@/features/actions/fe/state';
-
-const actorSystem = useActorSystem()
+import JsonSchemaEditor from '@abuddy/ui/components/JsonSchemaEditor';
+import { openPlugin } from '@/__generated__/fe'
+import { useCollapsibleState } from '@abuddy/ui/composables/useCollapsibleState';
+import type { ActionsState } from '@/features/actions/fe/state';
+import type { ActionEntity } from '@abuddy/sdk';
+import type { ActionParameter } from '@abuddy/sdk';
 
 const props = defineProps<{
   action?: ActionEntity;
@@ -151,7 +152,7 @@ const emit = defineEmits<{
 }>();
 
 // Get the actions state machine actor
-const actor: ActionsState = actorSystem.get(actionsId);
+const actor: ActionsState = usePlugin();
 
 // Use the composable for managing collapsible section states
 const parametersExpanded = useCollapsibleState(actor, ['formData', 'parametersExpanded'], 'TOGGLE_PARAMETERS_SECTION');
@@ -178,15 +179,11 @@ function handleKeydown(event: KeyboardEvent) {
 function openInEditor() {
   if (!props.action) return;
 
-  navigateToPlugin('code', { type: 'UPDATE_STATE', updates: { selectedPanel: 'actions' } });
-
-  // Child actor needs time to initialize after plugin activation
-  setTimeout(() => {
-    const actionsActor = actorSystem.get('code')?.system.get('codeActions');
-    if (actionsActor) {
-      actionsActor.send({ type: 'codeActions.OPEN_ACTION', actionId: props.action!.id });
-    }
-  }, 10);
+  // The code plugin routes a codeActions.* event to its actions panel
+  openPlugin('code', [
+    { type: 'UPDATE_STATE', updates: { selectedPanel: 'actions' } },
+    { type: 'codeActions.OPEN_ACTION', actionId: props.action.id },
+  ]);
 }
 
 function formatDate(timestamp?: number) {

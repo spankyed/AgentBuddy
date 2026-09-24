@@ -1,7 +1,7 @@
 /**
  * Codex session listing — reads JSONL files from `~/.codex/sessions/`.
  *
- * Mirrors `packages/api/src/services/claude-code/sessions.ts` but for
+ * Mirrors `../claude-code/sessions.ts` but for
  * Codex's date-based directory layout (YYYY/MM/DD/*.jsonl).
  *
  * Each JSONL file starts with a `session_meta` line containing `id`, `cwd`,
@@ -20,7 +20,7 @@ export function configDir(): string {
   return process.env.CODEX_HOME || path.join(os.homedir(), '.codex')
 }
 
-export function sessionsDir(): string {
+function sessionsDir(): string {
   return path.join(configDir(), 'sessions')
 }
 

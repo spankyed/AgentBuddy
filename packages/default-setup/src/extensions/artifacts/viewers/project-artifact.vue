@@ -65,11 +65,14 @@
 <script setup lang="ts">
 import { Layers } from 'lucide-vue-next'
 import type { ArtifactItem } from '@abuddy/sdk/artifacts'
-import { truncatePath } from '@abuddy/sdk/fe/utils/path-truncation'
-import { useActorSystem, navigateToPlugin } from '@abuddy/sdk/fe'
-import { useSelector } from '@xstate/vue'
+import { truncatePath } from '@abuddy/ui/utils/path-truncation'
+import { computed } from 'vue'
+import { untypedOpenPlugin } from '@abuddy/sdk/fe'
+import { resolveName } from '@abuddy/sdk/ids'
 
-const actorSystem = useActorSystem()
+const HOST_SETTINGS = resolveName('settings', 'host')
+import { useSettingsSection } from '@abuddy/sdk/fe'
+import type { GeneralSettings } from '@/app-settings/types'
 
 interface Project {
   name: string
@@ -81,19 +84,17 @@ const props = defineProps<{
   artifact: ArtifactItem
 }>()
 
-// Read projects directly from settings state (single source of truth)
-const settingsActor = actorSystem.get('settings')
-const projects = useSelector(
-  settingsActor,
-  (state: any) => state.context.settings?.general?.projects || []
-)
+// The user's projects, from the settings
+const general = useSettingsSection<GeneralSettings>('general')
+const storedProjects = computed(() => general.value?.projects ?? [])
+const projects = computed(() => storedProjects.value ?? [])
 
 const getTruncatedPath = (path: string) => {
   return truncatePath(path, 4)
 }
 
 const goToProjects = () => {
-  navigateToPlugin('settings', [
+  untypedOpenPlugin(HOST_SETTINGS, [
     { type: 'TAB.SELECT', tab: 'general' },
     { type: 'GENERAL_NAV.SELECT', item: 'projects' }
   ])

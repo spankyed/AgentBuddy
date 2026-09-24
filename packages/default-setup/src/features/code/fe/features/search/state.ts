@@ -1,5 +1,5 @@
-import { setup, assign } from 'xstate';
-import { trpc } from '@abuddy/sdk/rpc';
+import { setup, assign , type ActorRefFrom } from 'xstate';
+import { sendToSystem } from '@/__generated__/events';
 import { getParentContext } from '../../utils/parent-communication';
 
 // Search types
@@ -21,14 +21,6 @@ export interface SearchProgress {
   filesSearched: number
   totalFiles: number
   currentFile?: string
-}
-
-const sendToBackend = (type: string, data: any) => {
-  trpc.bus.send.mutate({
-    systemId: 'code' as any,
-    type: type as any,
-    ...data
-  } as any)
 }
 
 export interface Context {
@@ -69,19 +61,20 @@ export const searchState = setup({
       const ev = event as { type: 'search.START'; query: string }
       const parentContext = getParentContext(self)
 
-      sendToBackend('search.SEARCH_FILES', {
+      sendToSystem('code', {
+        type: 'search.SEARCH_FILES',
         query: ev.query,
         path: parentContext?.baseDirectory,
         includePattern: context.searchOptions.includePattern || undefined,
         excludePattern: context.searchOptions.excludePattern || undefined,
         caseSensitive: context.searchOptions.caseSensitive,
         wholeWord: context.searchOptions.wholeWord,
-        useRegex: context.searchOptions.useRegex
+        useRegex: context.searchOptions.useRegex,
       })
     },
 
     cancelSearch: () => {
-      sendToBackend('search.CANCEL_SEARCH', {})
+      sendToSystem('code', { type: 'search.CANCEL_SEARCH' })
     },
 
     assignSearchQuery: assign({
@@ -213,3 +206,6 @@ export const searchState = setup({
     }
   }
 });
+
+/** The search child's actor, named by whoever reads its context (`codeChild(…)`) */
+export type SearchActor = ActorRefFrom<typeof searchState>;

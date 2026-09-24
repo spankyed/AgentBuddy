@@ -340,6 +340,7 @@
 </template>
 
 <script setup lang="ts">
+import { usePlugin } from '@abuddy/sdk/fe'
 import { computed, ref, reactive, watch, onMounted, onUnmounted } from 'vue';
 import {
   Search,
@@ -362,11 +363,14 @@ import {
 import { id } from './state';
 import type { LogsState, LogEntry } from './state';
 import { useSelector } from '@xstate/vue';
-import DataRenderer from '@abuddy/sdk/fe/components/DataRenderer.vue';
-import { useActorSystem, navigateToPlugin } from '@abuddy/sdk/fe';
-import { parseSearchTerm, searchLog, highlightSearchTerm } from './search';
+import DataRenderer from '@abuddy/ui/components/DataRenderer';
+import { untypedOpenPlugin } from '@abuddy/sdk/fe'
+import { resolveName } from '@abuddy/sdk/ids'
 
-const actorSystem = useActorSystem()
+const HOST_SETTINGS = resolveName('settings', 'host')
+import { updateSettings } from '@abuddy/sdk/fe'
+import { ref as featureRef } from '@/__generated__/ref'
+import { parseSearchTerm, searchLog, highlightSearchTerm } from './search';
 
 const logsContent = ref<HTMLElement>();
 
@@ -412,7 +416,7 @@ const contextMenu = reactive({
   source: ''
 });
 
-const actor: LogsState = actorSystem.get(id)
+const actor: LogsState = usePlugin()
 const logs = useSelector(actor, (s) => (s as any).context.logs);
 const filterLevel = useSelector(actor, (s) => (s as any).context.filter.level);
 const searchTerm = useSelector(actor, (s) => (s as any).context.filter.search);
@@ -502,9 +506,9 @@ const copyLogs = async () => {
 };
 
 const goToExcludedSourcesSettings = () => {
-  navigateToPlugin('settings', [
+  untypedOpenPlugin(HOST_SETTINGS, [
     { type: 'TAB.SELECT', tab: 'plugins' },
-    { type: 'PLUGIN.SELECT', pluginId: 'logs' }
+    { type: 'PLUGIN.SELECT', pluginId: featureRef('logs') }
   ]);
 };
 
@@ -651,19 +655,12 @@ const toggleShowAppEvents = () => {
 
   // Optimistic local update so the toggle state flips immediately.
   actor.send({
-    type: 'LOGS_SETTINGS_UPDATED',
+    type: 'FEATURE_SETTINGS_UPDATED',
     settings: { ...settings.value, showAppEvents: next }
   });
 
   // Persist to settings (will round-trip back and trigger backend rebroadcast).
-  const settingsActor = actorSystem.get('settings');
-  settingsActor.send({
-    type: 'SETTINGS.UPDATE',
-    entityType: 'plugin',
-    label: 'logs',
-    path: ['showAppEvents'],
-    value: next
-  });
+  updateSettings({ feature: featureRef('logs') }, ['showAppEvents'], next);
 };
 
 const excludeSource = (source: string) => {
@@ -676,7 +673,7 @@ const excludeSource = (source: string) => {
 
     // Optimistically update the local logs state
     actor.send({
-      type: 'LOGS_SETTINGS_UPDATED',
+      type: 'FEATURE_SETTINGS_UPDATED',
       settings: {
         ...settings.value,
         excludedSources: updatedSources
@@ -684,14 +681,7 @@ const excludeSource = (source: string) => {
     });
 
     // Send update to settings (this will persist it and eventually send it back)
-    const settingsActor = actorSystem.get('settings');
-    settingsActor.send({
-      type: 'SETTINGS.UPDATE',
-      entityType: 'plugin',
-      label: 'logs',
-      path: ['excludedSources'],
-      value: updatedSources
-    });
+    updateSettings({ feature: featureRef('logs') }, ['excludedSources'], updatedSources);
   }
 
   closeContextMenu();

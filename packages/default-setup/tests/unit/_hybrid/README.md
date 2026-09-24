@@ -1,32 +1,12 @@
-# Hybrid Tests
+# Repository-level tests
 
-Tests that import from both `@/features/*` (default-setup) and `@/core/*` or `@/repository` (api).
-They live here so they're clearly separated from pure feature tests.
+Tests that call default-setup's repositories and backend modules directly, without `startApp`. They import only default-setup (`@/…`), `@abuddy/sdk` and `@abuddy/ears`, never the API or `@abuddy/host`, and run on the harness from `tests/setup.ts` like the rest of the unit suite. The export and flows specs also empty the database in their own `beforeEach` with `resetTestData()` from `@abuddy/sdk/testing` (a fresh engine, keeping the repositories the harness registered from the pack's registration). The directory's name is historical: these specs once imported the API's EARS and repository modules too.
 
-## API Core Dependencies
-
-| Test | API deps | Why |
+| Spec | Covers | Imports |
 |---|---|---|
-| `actions-export.spec.ts` | `@/core/ears/attribute-storage`, `@/repository` | Tests export-actions repository function — needs EARS memory + repository proxy |
-| `prompts-export.spec.ts` | `@/core/ears/attribute-storage`, `@/repository` | Tests export-prompts repository function — same as above |
-| `flows-repository.spec.ts` | `@/core/ears/attribute-storage`, `@/core/shared/repository/errors`, `@/repository` | Tests flows CRUD + validation — needs EARS + repository proxy + error types |
-| `dsl-compiler.spec.ts` | `@/core/types` (EARS enum only) | Compiler output references entity types |
-| `dsl-round-trip.spec.ts` | (indirect via `helpers/round-trip.ts`) | Round-trip helper uses EARS transaction layer |
-| `brain-trigger-dedupe.spec.ts` | `@/core/types` (EARS enum only) | References entity type constants |
+| `actions-export.spec.ts` | `exportActions`: exported fields and metadata, directory creation, an empty export, export → re-import round trip | `repository` (`@/__generated__/repository`), `@/features/actions/be/repository` (a side-effect import that registers nothing: the repositories come from the pack's registration), `@/features/actions/be/repository/export-actions`, `helpers/action-fixtures.ts` |
+| `prompts-export.spec.ts` | `exportPrompts`: the same cases for prompts | `repository`, `@/features/prompts/be/repository`, `@/features/prompts/be/repository/export-prompts`, `helpers/prompt-fixtures.ts` |
+| `flows-repository.spec.ts` | Flow node validation: schedule cron expressions on create and update, draft nodes of other types | `RepositoryErrorCode` (`@abuddy/ears`), `repository`, `@/features/flows/be/repository` |
+| `brain-trigger-dedupe.spec.ts` | `dedupeMatchingTriggerNodes`: duplicate track keys dropped with a warning, nodes without a track key and parallel tracks kept | `@/features/brain/be/trigger-dedupe`, `EARS` (`@/__generated__/ears`) |
 
-### Integration
-| `claude-code-permission-flow.integration.spec.ts` | `@/core/shared/resolve-cli` | Needs CLI path resolution |
-
-## Separation Plan
-
-To make these pure default-setup tests:
-
-1. **`@/core/types` (EARS enum)** — Already migrated to `@/registries/ears`. Once the `@/core/types` re-export is dropped, `dsl-compiler` and `brain-trigger-dedupe` become pure feature tests.
-
-2. **`@/repository` (proxy + registerRepository)** — The repository proxy lives in api but serves features. Moving it to `@abuddy/sdk` would let feature tests import it without crossing into api core.
-
-3. **`@/core/ears/*` (attribute-storage, transaction)** — EARS runtime is api infrastructure. The SDK's `initEARSRuntime` pattern (Phase 0 of the plan) would expose test-friendly EARS helpers via `@abuddy/sdk`, decoupling feature tests from api internals.
-
-4. **`@/core/shared/repository/errors`** — Small error types module. Can move to SDK alongside the repository proxy.
-
-5. **`@/core/shared/resolve-cli`** — CLI resolution utility. Can move to SDK or become a feature-local helper.
+`helpers/action-fixtures.ts` and `helpers/prompt-fixtures.ts` hold the seeded action and prompt definitions.

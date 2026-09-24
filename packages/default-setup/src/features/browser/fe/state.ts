@@ -1,35 +1,20 @@
 import { setup, assign, fromCallback, type ActorRefFrom } from 'xstate';
-import { autocomplete, recordVisit, updateHistoryMeta, displayUrl, type AutocompleteSuggestion } from './history.ts';
-import { trpc } from '@abuddy/sdk/rpc';
+import type { BrowserSettings } from '@/__generated__/types';
+import type { Bookmark, BrowserContext, BrowserInboxEvent, BrowserTab, BrowserTabPersistedId } from './contract';
+import { autocomplete, recordVisit, updateHistoryMeta, displayUrl, type AutocompleteSuggestion } from './history';
+import { sendToSystem } from '@/__generated__/events';
+import { openPlugin } from '@/__generated__/fe';
 import { getNextAvailableColor, saveTabGroups, loadTabGroups, type TabGroup, type TabGroupColor } from '@abuddy/sdk/fe';
 
 export type { TabGroup, TabGroupColor };
+export type { Bookmark, BrowserTab, BrowserTabPersistedId } from './contract';
 
 export const id = 'browser' as const;
 
-type BrowserTabPersistedId = `BrowserTab-${string}`;
 
-export interface BrowserTab {
-  id: number;
-  persistedId?: BrowserTabPersistedId;
-  url: string;
-  title: string;
-  favicon: string;
-  isLoading: boolean;
-  canGoBack: boolean;
-  canGoForward: boolean;
-  isMuted: boolean;
-  groupId?: string;
-}
 
 export type { AutocompleteSuggestion };
 
-export interface Bookmark {
-  url: string;
-  title: string;
-  favicon: string;
-  displayOrder: number;
-}
 
 interface SavedTab {
   id: BrowserTabPersistedId;
@@ -46,26 +31,14 @@ interface NormalizeTabsResult {
   invalidCount: number;
 }
 
-interface BrowserContext {
-  tabs: BrowserTab[];
-  activeTabId: number | null;
-  addressBarValue: string;
-  isAddressBarFocused: boolean;
-  // Tab groups
-  tabGroups: TabGroup[];
-  // Autocomplete
-  suggestions: AutocompleteSuggestion[];
-  selectedSuggestionIndex: number; // -1 = user's own input
-  inlineCompletion: string | null;
-  preAutocompleteValue: string;
-  _lastNavWasTyped: boolean;
-  // Bookmarks
-  bookmarks: Bookmark[];
-}
 
 type BrowserEvents =
   // UI events
-  | { type: 'TAB.CREATE'; url?: string }
+  | BrowserInboxEvent
+  // A link to open, from anywhere in the app (`openLink` from @abuddy/sdk/fe): here or in the system's browser
+  | { type: 'LINK.OPEN'; url: string }
+  // The app's, when this feature's settings change
+  | { type: 'FEATURE_SETTINGS_UPDATED'; settings: BrowserSettings }
   | { type: 'TAB.CLOSE'; tabId: number }
   | { type: 'TAB.SELECT'; tabId: number }
   | { type: 'TAB.DUPLICATE'; tabId: number }
@@ -131,7 +104,7 @@ function syncTabsToBackend(tabs: BrowserTab[], options?: { immediate?: boolean }
         isMuted: t.isMuted,
         groupId: t.groupId,
       }));
-    trpc.bus.send.mutate({ systemId: id, type: 'SYNC_TABS', tabs: persistable });
+    sendToSystem(id, { type: 'SYNC_TABS', tabs: persistable });
   };
 
   if (options?.immediate) {
@@ -196,7 +169,7 @@ function syncBookmarksToBackend(bookmarks: Bookmark[]) {
       favicon: bm.favicon,
       displayOrder: i,
     }));
-    trpc.bus.send.mutate({ systemId: id, type: 'SYNC_BOOKMARKS', bookmarks: persistable });
+    sendToSystem(id, { type: 'SYNC_BOOKMARKS', bookmarks: persistable });
   }, 2000);
 }
 
@@ -287,6 +260,7 @@ const browserState = setup({
   initial: 'active',
   context: {
     tabs: [],
+    settings: {} as BrowserSettings,
     activeTabId: null,
     addressBarValue: '',
     isAddressBarFocused: false,
@@ -302,9 +276,20 @@ const browserState = setup({
   states: {
     active: {
       on: {
+        FEATURE_SETTINGS_UPDATED: { actions: assign({ settings: ({ event }) => (event as { settings: BrowserSettings }).settings }) },
         'TAB.CREATE': {
           actions: ({ event }) => {
             window.electronAPI?.browser.createTab(event.url);
+          },
+        },
+        'LINK.OPEN': {
+          // The user's choice, in this feature's own settings
+          actions: ({ context, event }) => {
+            if (context.settings.openLinksInApp ?? true) {
+              openPlugin('browser', { type: 'TAB.CREATE', url: event.url });
+            } else {
+              window.electronAPI?.shell?.openExternal(event.url);
+            }
           },
         },
         'TAB.CLOSE': {

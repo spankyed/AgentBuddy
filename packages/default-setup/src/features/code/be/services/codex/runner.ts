@@ -6,7 +6,7 @@
  */
 
 import { spawn, type ChildProcess } from 'child_process'
-import { resolveForService } from '@abuddy/sdk/utils'
+import { resolveForService } from '../../utils/resolve-cli'
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -27,7 +27,7 @@ export interface CodexExecResult {
 
 // ─── Errors ──────────────────────────────────────────────────────────────────
 
-export class CodexExitError extends Error {
+class CodexExitError extends Error {
   readonly code = 'EXIT_NONZERO'
   constructor(
     readonly exitCode: number | null,
@@ -43,7 +43,7 @@ export class CodexExitError extends Error {
   }
 }
 
-export class CodexTimeoutError extends Error {
+class CodexTimeoutError extends Error {
   readonly code = 'TIMEOUT'
   constructor(readonly timeoutMs: number, readonly args: readonly string[]) {
     super(`codex ${args.join(' ')} timed out after ${timeoutMs}ms`)
@@ -51,7 +51,7 @@ export class CodexTimeoutError extends Error {
   }
 }
 
-export class CodexCliNotFoundError extends Error {
+class CodexCliNotFoundError extends Error {
   readonly code = 'CLI_NOT_FOUND'
   constructor(readonly attemptedPath: string, cause?: unknown) {
     super(

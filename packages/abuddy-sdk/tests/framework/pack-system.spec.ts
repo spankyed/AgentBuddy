@@ -1,0 +1,19 @@
+// A feature's system as its pack registers it: it accepts its machine's events and those the manifest adds.
+import { describe, expect, it } from 'vitest';
+import { setup } from 'xstate';
+import { defineSystem, packSystem } from '../../src/framework/index.ts';
+
+const spec = defineSystem<{ incoming: { type: 'ADD_MEMO' }; outgoing: { type: 'MEMO_ADDED' } }>();
+const machine = setup({ types: spec.types }).createMachine({ on: { ADD_MEMO: { actions: () => {} } } });
+
+describe('packSystem', () => {
+  it("accepts its machine's events and the ones the manifest adds, once each", () => {
+    expect(packSystem({ spec, machine }, { incoming: ['SYNC', 'ADD_MEMO'] }))
+      .toEqual({ machine, receives: ['ADD_MEMO', 'SYNC'] });
+  });
+
+  it('marks an early system', () => {
+    expect(packSystem({ spec, machine }, { early: true }).early).toBe(true);
+    expect(packSystem({ spec, machine })).not.toHaveProperty('early');
+  });
+});

@@ -1,7 +1,9 @@
 import { setup, assign, type ActorRefFrom } from 'xstate'
-import type { DocumentDTO, CollectionDTO, OutgoingLibraryEvents, LibraryItem, DocumentItem, FolderContents, BreadcrumbItem, ContentSection, SearchIndex } from '@/__generated__/types'
+import type { DocumentDTO, CollectionDTO, LibraryIndex, LibraryItem, DocumentItem, FolderContents, BreadcrumbItem, SearchIndex } from '@/__generated__/types'
+import type { LibraryContext, LibraryInboxEvent } from './contract'
+import type { OutgoingLibraryEvents } from '@/features/library/be/types'
 import type { SearchIndexFormData } from './types/search-index'
-import { trpc } from '@abuddy/sdk/rpc'
+import { sendToSystem } from '@/__generated__/events'
 import { Trash2 } from 'lucide-vue-next'
 import { contextMenuFn } from '@abuddy/sdk/fe'
 import breadcrumb, { breadcrumbWithParams } from '@abuddy/sdk/fe'
@@ -11,7 +13,7 @@ import {
   type TrailClickEvent,
 } from '@abuddy/sdk/fe'
 import { tagStorage } from './services/tagStorage'
-import { type NavHistory, createNavHistory, pushNavHistory, goBack, goForward, canGoBack, canGoForward } from '@abuddy/sdk/fe'
+import { createNavHistory, pushNavHistory, goBack, goForward, canGoBack, canGoForward } from '@abuddy/sdk/fe'
 
 // Helper function to convert DocumentItem to DocumentDTO
 function documentItemToDTO(item: DocumentItem): DocumentDTO {
@@ -48,76 +50,21 @@ function findItemById(context: LibraryContext, id: string): LibraryItem | undefi
   return undefined
 }
 
-export const id = 'library' as const
+export const id = 'library' as const;
 import type { SnapshotFrom } from 'xstate'
+import type { ContentSection } from '@/features/library/be/types';
 
-export type LibraryState = SnapshotFrom<typeof librarySystem>
-
-export interface LibraryContext {
-  // Core view state
-  currentView: 'browser' | 'create' | 'edit' | 'create-index' | 'edit-index' | 'test-index'
-  editingDocument?: DocumentDTO
-
-  // File browser fields
-  items: LibraryItem[]
-  currentFolderId: string | null
-  currentPath: string[]
-  selectedItems: string[]
-  selectedDocument: DocumentDTO | null
-  sortBy: 'name' | 'modified' | 'size' | 'kind'
-  sortDirection: 'asc' | 'desc'
-  breadcrumbs: BreadcrumbItem[]
-  editingItem?: LibraryItem
-  itemToEdit?: string | null
-  newItemId?: string | null
-
-  // Tree view fields
-  expandedFolderIds: string[]
-  expandedFolderChildren: Record<string, LibraryItem[]>
-  loadingFolderIds: string[]
-
-  // Legacy fields (used by CreateView/EditView for compatibility)
-  documents: DocumentDTO[]
-  collections: CollectionDTO[]
-  selectedCollectionId?: string
-
-  // Search index fields
-  searchIndices: SearchIndex[]
-  editingIndexId?: string
-  editingIndex?: SearchIndex
-
-  // Search test fields
-  testingIndexId?: string
-  testingIndex?: SearchIndex
-  testQuery: string
-  testResults: any[]
-  isSearching: boolean
-
-  // Symlink context
-  isInSymlinkContext: boolean
-  currentSymlinkRootId: string | null
-  symlinkBasePath: string | null
-  isBroken: boolean
-  lastKnownPath: string | null
-
-  // Settings
-  settings?: any
-
-  // Import/Export
-  libraryImport: { status: 'idle' | 'importing' | 'success' | 'error'; errors: string[]; importedCount: number }
-  libraryExport: { status: 'idle' | 'exporting' | 'success' | 'error'; errors: string[]; filePath: string; itemCount: number }
-
-  navHistory: NavHistory<string | null>
-}
+/** The library plugin's actor, as its own components reach it with `usePlugin<LibraryActor>()` */
+export type LibraryActor = ActorRefFrom<typeof librarySystem>
 
 export type LibraryEvents =
   | { type: 'PLUGIN_ACTIVATED' }
   | { type: 'TRAIL_CLICK'; trail: string[] }
   | { type: 'VIEW_BROWSER' }
 
-  // Legacy document events
+  // Document events
   | { type: 'CREATE_DOCUMENT' }
-  | { type: 'EDIT_DOCUMENT'; documentId: string }
+  | LibraryInboxEvent
   | { type: 'DELETE_DOCUMENT'; documentId: string }
   | { type: 'SAVE_DOCUMENT'; name: string; content: ContentSection[]; tags: string[]; collectionId?: string }
   | { type: 'CANCEL_EDIT' }
@@ -138,7 +85,7 @@ export type LibraryEvents =
   | { type: 'EXECUTE_TEST_SEARCH' }
   | { type: 'CANCEL_TEST_SEARCH' }
 
-  // Legacy collection events (kept for CreateView/EditView compatibility)
+  // Collection events
   | { type: 'CREATE_COLLECTION'; name: string; description?: string; parentId?: string }
 
   // Tree view events
@@ -146,7 +93,6 @@ export type LibraryEvents =
   | { type: 'COLLAPSE_FOLDER'; folderId: string }
 
   // File browser events
-  | { type: 'NAVIGATE_TO_FOLDER'; folderId: string | null }
   | { type: 'DOUBLE_CLICK_ITEM'; item: LibraryItem }
   | { type: 'SELECT_ITEMS'; itemIds: string[] }
   | { type: 'RENAME_ITEM'; itemId: string; name: string }
@@ -185,16 +131,14 @@ export const librarySystem = setup({
   actions: {
     // File browser actions
     requestFolderContents: ({ context }) => {
-      trpc.bus.send.mutate({
-        systemId: id,
+      sendToSystem(id, {
         type: 'GET_FOLDER_CONTENTS',
         folderId: context.currentFolderId,
       })
     },
     navigateToFolder: ({ event }) => {
       if (event.type === 'NAVIGATE_TO_FOLDER' || event.type === 'BREADCRUMB_CLICK') {
-        trpc.bus.send.mutate({
-          systemId: id,
+        sendToSystem(id, {
           type: 'NAVIGATE_TO_FOLDER',
           folderId: event.folderId,
         })
@@ -203,8 +147,7 @@ export const librarySystem = setup({
     handleDoubleClick: ({ context, event, self }) => {
       if (event.type === 'DOUBLE_CLICK_ITEM') {
         if (event.item.type === 'folder') {
-          trpc.bus.send.mutate({
-            systemId: id,
+          sendToSystem(id, {
             type: 'NAVIGATE_TO_FOLDER',
             folderId: event.item.id,
           })
@@ -212,8 +155,7 @@ export const librarySystem = setup({
           const docItem = event.item as DocumentItem
           // Symlink documents: fetch from backend (routes to filesystem)
           if (docItem.isSymlinked || event.item.id.startsWith('symlink:')) {
-            trpc.bus.send.mutate({
-              systemId: id,
+            sendToSystem(id, {
               type: 'GET_DOCUMENT',
               id: event.item.id,
             })
@@ -230,8 +172,7 @@ export const librarySystem = setup({
 
         if (event.tags?.length) tagStorage.addTags(event.tags)
 
-        trpc.bus.send.mutate({
-          systemId: id,
+        sendToSystem(id, {
           type: 'CREATE_DOCUMENT',
           name: event.name,
           content: event.content,
@@ -242,8 +183,7 @@ export const librarySystem = setup({
     },
     createFolder: ({ context, event }) => {
       if (event.type === 'CREATE_FOLDER') {
-        trpc.bus.send.mutate({
-          systemId: id,
+        sendToSystem(id, {
           type: 'CREATE_COLLECTION',
           name: event.name,
           parentId: context.currentFolderId || undefined,
@@ -252,8 +192,7 @@ export const librarySystem = setup({
     },
     deleteSelectedItems: ({ context }) => {
       if (context.selectedItems.length > 0) {
-        trpc.bus.send.mutate({
-          systemId: id,
+        sendToSystem(id, {
           type: 'DELETE_ITEMS',
           ids: context.selectedItems,
         })
@@ -261,8 +200,7 @@ export const librarySystem = setup({
     },
     moveItems: ({ event }) => {
       if (event.type === 'MOVE_ITEMS') {
-        trpc.bus.send.mutate({
-          systemId: id,
+        sendToSystem(id, {
           type: 'MOVE_ITEMS',
           ids: event.itemIds,
           targetFolderId: event.targetFolderId,
@@ -285,8 +223,7 @@ export const librarySystem = setup({
     requestTreeChildren: ({ context, event }) => {
       const folderId = (event as any).folderId as string
       if (folderId in context.expandedFolderChildren) return
-      trpc.bus.send.mutate({
-        systemId: id,
+      sendToSystem(id, {
         type: 'GET_FOLDER_CONTENTS',
         folderId,
       })
@@ -309,8 +246,7 @@ export const librarySystem = setup({
     })),
     refetchExpandedFolders: ({ context }) => {
       for (const folderId of context.expandedFolderIds) {
-        trpc.bus.send.mutate({
-          systemId: id,
+        sendToSystem(id, {
           type: 'GET_FOLDER_CONTENTS',
           folderId,
         })
@@ -322,8 +258,7 @@ export const librarySystem = setup({
         const item = context.items.find(i => i.id === event.itemId)
         const itemType = item?.type === 'folder' ? 'folder' : 'document'
 
-        trpc.bus.send.mutate({
-          systemId: id,
+        sendToSystem(id, {
           type: 'RENAME_ITEM',
           id: event.itemId,
           name: event.name,
@@ -443,10 +378,9 @@ export const librarySystem = setup({
       selectedDocument: null,
     }),
 
-    requestCollections: () => {
-      trpc.bus.send.mutate({
-        systemId: id,
-        type: 'LIST_COLLECTIONS',
+    requestIndex: () => {
+      sendToSystem(id, {
+        type: 'GET_LIBRARY_INDEX',
       })
     },
     updateDocument: ({ context, event }) => {
@@ -461,8 +395,7 @@ export const librarySystem = setup({
         if (removed.length) tagStorage.removeTags(removed)
         if (added.length) tagStorage.addTags(added)
 
-        trpc.bus.send.mutate({
-          systemId: id,
+        sendToSystem(id, {
           type: 'UPDATE_DOCUMENT',
           id: context.editingDocument.id,
           name: event.name,
@@ -476,16 +409,10 @@ export const librarySystem = setup({
     setEditingDocument: assign({
       editingDocument: ({ context, event }) => {
         if (event.type === 'EDIT_DOCUMENT') {
-          // First try to find in legacy documents array
-          const legacyDoc = context.documents.find((doc) => doc.id === event.documentId)
-          if (legacyDoc) {
-            return legacyDoc
-          }
-
-          // Otherwise, look in the new items array and convert to DocumentDTO format
+          // The open folder's items carry the document's content; `requestEditingDocument`
+          // fetches it from the backend when the document is somewhere else in the library
           const item = findItemById(context, event.documentId)
           if (item && item.type === 'document') {
-            // Convert DocumentItem to DocumentDTO format for compatibility with EditView
             return {
               id: item.id,
               name: item.name,
@@ -501,13 +428,22 @@ export const librarySystem = setup({
         return undefined
       },
     }),
+    /** Fetches the document the edit view needs when the open folder doesn't hold it; DOCUMENT_LOADED fills it in */
+    requestEditingDocument: ({ context, event }) => {
+      if (event.type !== 'EDIT_DOCUMENT') return
+      const item = findItemById(context, event.documentId)
+      if (item?.type === 'document') return
+      sendToSystem(id, {
+        type: 'GET_DOCUMENT',
+        id: event.documentId,
+      })
+    },
     clearEditingDocument: assign({
       editingDocument: undefined,
     }),
     sendDeleteDocument: ({ event }) => {
       const ev = event as { type: 'DELETE_DOCUMENT'; documentId: string };
-      trpc.bus.send.mutate({
-        systemId: id,
+      sendToSystem(id, {
         type: 'DELETE_ITEMS',
         ids: [ev.documentId],
       });
@@ -520,30 +456,10 @@ export const librarySystem = setup({
         return context.editingDocument
       },
     }),
-    setDocuments: assign({
-      documents: ({ event }) => {
-        if (event.type === 'DOCUMENTS_LOADED') {
-          const documents = event.data.documents
-          // Sync tags to localStorage
-          tagStorage.updateTagsFromDocuments(documents)
-          return documents
-        }
-        return []
-      },
-    }),
-    setCollections: assign({
-      collections: ({ event }) => {
-        if (event.type === 'COLLECTIONS_LOADED') {
-          return event.data.collections
-        }
-        return []
-      },
-    }),
 
     // [SEARCH_INDEX_FF] Search index actions — commented out
     // requestSearchIndices: ({ context }) => {
-    //   trpc.bus.send.mutate({
-    //     systemId: id,
+    //   sendToSystem(id, {
     //     type: 'LIST_SEARCH_INDICES',
     //     folderId: context.currentFolderId,
     //   })
@@ -558,8 +474,7 @@ export const librarySystem = setup({
     // }),
     // saveSearchIndex: ({ context, event }) => {
     //   if (event.type === 'SAVE_SEARCH_INDEX') {
-    //     trpc.bus.send.mutate({
-    //       systemId: id,
+    //     sendToSystem(id, {
     //       type: 'CREATE_SEARCH_INDEX',
     //       config: event.config,
     //       folderId: context.currentFolderId,
@@ -568,8 +483,7 @@ export const librarySystem = setup({
     // },
     // updateSearchIndex: ({ event }) => {
     //   if (event.type === 'UPDATE_SEARCH_INDEX') {
-    //     trpc.bus.send.mutate({
-    //       systemId: id,
+    //     sendToSystem(id, {
     //       type: 'UPDATE_SEARCH_INDEX',
     //       id: event.indexId,
     //       config: event.config,
@@ -578,8 +492,7 @@ export const librarySystem = setup({
     // },
     // deleteSearchIndex: ({ event }) => {
     //   if (event.type === 'DELETE_SEARCH_INDEX') {
-    //     trpc.bus.send.mutate({
-    //       systemId: id,
+    //     sendToSystem(id, {
     //       type: 'DELETE_SEARCH_INDEX',
     //       id: event.indexId,
     //     })
@@ -632,8 +545,7 @@ export const librarySystem = setup({
     // }),
     // executeTestSearch: ({ context }) => {
     //   if (context.testingIndexId && context.testQuery) {
-    //     trpc.bus.send.mutate({
-    //       systemId: id,
+    //     sendToSystem(id, {
     //       type: 'SEARCH_IN_INDEX',
     //       indexId: context.testingIndexId,
     //       query: context.testQuery,
@@ -671,8 +583,7 @@ export const librarySystem = setup({
     }),
     requestRefreshFolder: ({ event }) => {
       const folderId = (event as any).folderId as string
-      trpc.bus.send.mutate({
-        systemId: id,
+      sendToSystem(id, {
         type: 'GET_FOLDER_CONTENTS',
         folderId,
       })
@@ -683,8 +594,7 @@ export const librarySystem = setup({
       if (event.type === 'CREATE_SYMLINK') {
         const pathParts = event.symlinkPath.split(/[/\\]/).filter(Boolean)
         const folderName = pathParts[pathParts.length - 1] || 'Symlink'
-        trpc.bus.send.mutate({
-          systemId: id,
+        sendToSystem(id, {
           type: 'CREATE_SYMLINK_COLLECTION',
           name: folderName,
           symlinkPath: event.symlinkPath,
@@ -694,21 +604,19 @@ export const librarySystem = setup({
     },
     relinkSymlink: ({ event }) => {
       if (event.type === 'RELINK_SYMLINK') {
-        trpc.bus.send.mutate({
-          systemId: id,
+        sendToSystem(id, {
           type: 'UPDATE_SYMLINK_PATH',
           collectionId: event.collectionId,
           newPath: event.newPath,
-        } as any)
+        })
       }
     },
     removeBrokenSymlink: ({ event }) => {
       if (event.type === 'REMOVE_BROKEN_SYMLINK') {
-        trpc.bus.send.mutate({
-          systemId: id,
+        sendToSystem(id, {
           type: 'DELETE_ITEMS',
           ids: [event.collectionId],
-        } as any)
+        })
       }
     },
     /* ── Library Import actions ────────────────────────────── */
@@ -721,11 +629,10 @@ export const librarySystem = setup({
 
     sendImportLibrary: ({ event }) => {
       if (event.type === 'LIBRARY.IMPORT') {
-        trpc.bus.send.mutate({
-          systemId: id,
+        sendToSystem(id, {
           type: 'IMPORT_LIBRARY',
           directory: event.directory,
-        } as any)
+        })
       }
     },
 
@@ -769,12 +676,11 @@ export const librarySystem = setup({
 
     sendExportLibrary: ({ event }) => {
       if (event.type === 'LIBRARY.EXPORT') {
-        trpc.bus.send.mutate({
-          systemId: id,
+        sendToSystem(id, {
           type: 'EXPORT_LIBRARY',
           directory: event.directory,
           format: event.format,
-        } as any)
+        })
       }
     },
 
@@ -810,22 +716,23 @@ export const librarySystem = setup({
       libraryExport: { status: 'idle' as const, errors: [] as string[], filePath: '', itemCount: 0 },
     }),
 
-    // ? think we're sending duplicate documents data on startup
-    setConnectedData: assign({
-      documents: ({ event }) => {
-        if (event.type === 'LIBRARY_CONNECTED') {
-          const documents = event.data.documents
-          // Sync tags to localStorage for backward compatibility
-          tagStorage.updateTagsFromDocuments(documents)
-          return documents
+    setIndex: assign({
+      index: ({ context, event }) => {
+        if (event.type === 'LIBRARY_INDEX_LOADED') {
+          tagStorage.updateTagsFromDocuments(event.data.index.documents)
+          return event.data.index
         }
-        return []
+        return context.index
       },
-      collections: ({ event }) => {
+    }),
+
+    setConnectedData: assign({
+      index: ({ context, event }) => {
         if (event.type === 'LIBRARY_CONNECTED') {
-          return event.data.collections
+          tagStorage.updateTagsFromDocuments(event.data.index.documents)
+          return event.data.index
         }
-        return []
+        return context.index
       },
       settings: ({ event }) => {
         if (event.type === 'LIBRARY_CONNECTED') {
@@ -864,10 +771,7 @@ export const librarySystem = setup({
     expandedFolderChildren: {},
     loadingFolderIds: [],
 
-    // Legacy fields (for CreateView/EditView compatibility)
-    documents: [],
-    collections: [],
-    selectedCollectionId: undefined,
+    index: { documents: [], folders: [] },
 
     // Search index fields
     searchIndices: [],
@@ -898,7 +802,7 @@ export const librarySystem = setup({
   },
   on: {
     PLUGIN_ACTIVATED: {
-      actions: ['requestFolderContents', 'requestCollections'],
+      actions: ['requestFolderContents', 'requestIndex'],
     },
     LIBRARY_CONNECTED: {
       actions: ['setConnectedData'],
@@ -935,7 +839,7 @@ export const librarySystem = setup({
           return { navHistory: result.history, currentFolderId: result.entry };
         }),
         ({ context }) => {
-          trpc.bus.send.mutate({ systemId: id, type: 'NAVIGATE_TO_FOLDER', folderId: context.currentFolderId });
+          sendToSystem(id, { type: 'NAVIGATE_TO_FOLDER', folderId: context.currentFolderId });
         },
         'clearSelection',
       ],
@@ -948,7 +852,7 @@ export const librarySystem = setup({
           return { navHistory: result.history, currentFolderId: result.entry };
         }),
         ({ context }) => {
-          trpc.bus.send.mutate({ systemId: id, type: 'NAVIGATE_TO_FOLDER', folderId: context.currentFolderId });
+          sendToSystem(id, { type: 'NAVIGATE_TO_FOLDER', folderId: context.currentFolderId });
         },
         'clearSelection',
       ],
@@ -1001,7 +905,7 @@ export const librarySystem = setup({
       actions: ['removeBrokenSymlink', assign({ isBroken: false, lastKnownPath: null })],
     },
     SYMLINK_UPDATED: {
-      actions: ['requestFolderContents', 'requestCollections'],
+      actions: ['requestFolderContents', 'requestIndex'],
     },
 
     // Import/Export events
@@ -1012,7 +916,7 @@ export const librarySystem = setup({
       actions: 'resetImportLibraryStatus',
     },
     LIBRARY_IMPORTED: {
-      actions: ['handleLibraryImported', 'requestFolderContents', 'requestCollections'],
+      actions: ['handleLibraryImported', 'requestFolderContents', 'requestIndex'],
     },
     LIBRARY_IMPORT_FAILED: {
       actions: 'handleLibraryImportFailed',
@@ -1039,15 +943,16 @@ export const librarySystem = setup({
       }),
     },
     DOCUMENT_CREATED: {
-      actions: ['requestFolderContents', 'invalidateTreeCache', 'refetchExpandedFolders'],
+      actions: ['requestFolderContents', 'requestIndex', 'invalidateTreeCache', 'refetchExpandedFolders'],
     },
     DOCUMENT_UPDATED: {
-      actions: ['requestFolderContents', 'updateEditingDocument'],
+      // A save can change the document's name and tags, both of which the index carries
+      actions: ['requestFolderContents', 'requestIndex', 'updateEditingDocument'],
     },
     COLLECTION_CREATED: {
       actions: [
         'requestFolderContents',
-        'requestCollections',
+        'requestIndex',
         'invalidateTreeCache',
         'refetchExpandedFolders',
         assign({
@@ -1064,20 +969,16 @@ export const librarySystem = setup({
       ],
     },
     ITEM_RENAMED: {
-      actions: ['requestFolderContents', 'invalidateTreeCache', 'refetchExpandedFolders'],
+      actions: ['requestFolderContents', 'requestIndex', 'invalidateTreeCache', 'refetchExpandedFolders'],
     },
     ITEMS_DELETED: {
-      actions: ['requestFolderContents', 'requestCollections', 'invalidateTreeCache', 'refetchExpandedFolders'],
+      actions: ['requestFolderContents', 'requestIndex', 'invalidateTreeCache', 'refetchExpandedFolders'],
     },
     ITEMS_MOVED: {
-      actions: ['requestFolderContents', 'requestCollections', 'invalidateTreeCache', 'refetchExpandedFolders'],
+      actions: ['requestFolderContents', 'requestIndex', 'invalidateTreeCache', 'refetchExpandedFolders'],
     },
-    // Legacy events for backward compatibility
-    DOCUMENTS_LOADED: {
-      actions: 'setDocuments',
-    },
-    COLLECTIONS_LOADED: {
-      actions: 'setCollections',
+    LIBRARY_INDEX_LOADED: {
+      actions: 'setIndex',
     },
 
     // [SEARCH_INDEX_FF] Search index events — commented out
@@ -1106,8 +1007,7 @@ export const librarySystem = setup({
             // Stay in browser, create file inline via unified event
             actions: ({ context }) => {
               if (context.currentFolderId) {
-                trpc.bus.send.mutate({
-                  systemId: id,
+                sendToSystem(id, {
                   type: 'CREATE_DOCUMENT',
                   name: 'New Document.txt',
                   content: [],
@@ -1121,7 +1021,7 @@ export const librarySystem = setup({
         ],
         EDIT_DOCUMENT: {
           target: 'edit',
-          actions: ['setEditingDocument', 'clearSelection'],
+          actions: ['setEditingDocument', 'requestEditingDocument', 'clearSelection'],
         },
         // [SEARCH_INDEX_FF] Search index transitions — commented out
         // CREATE_SEARCH_INDEX: 'createIndex',

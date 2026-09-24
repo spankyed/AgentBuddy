@@ -10,7 +10,7 @@
           </svg>
         </div>
         <p class="text-sm font-medium text-neutral-400">Brain Stopped</p>
-        <p class="mt-1 text-xs text-neutral-500 mb-4">The brain is currently inactive</p>
+        <p class="mt-1 text-xs text-neutral-500 mb-4">{{ startError ?? 'The brain is currently inactive' }}</p>
         <button
           @click="startBrain"
           class="px-3 py-1.5 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-sm font-medium"
@@ -80,19 +80,19 @@
 </template>
 
 <script setup lang="ts">
-import { useActorSystem } from '@abuddy/sdk/fe'
+import { usePlugin } from '@abuddy/sdk/fe'
+
 import { computed, ref, watch } from 'vue'
 import { useSelector } from '@xstate/vue'
-import { id as brainId, type BrainState } from '@/features/brain/fe/state'
-import TNodeListItem from '@abuddy/sdk/fe/components/TNodeListItem.vue'
-import type { TrackTree } from '@/__generated__/types'
-import { trpc } from '@abuddy/sdk/rpc'
+import type { BrainState } from '@/features/brain/fe/state'
+import TNodeListItem from '@abuddy/ui/components/TNodeListItem'
+import type { TrackTree } from '@abuddy/sdk/steps'
+import { sendToSystem } from '@/__generated__/events'
 
-const actorSystem = useActorSystem()
-
-const brainActor: BrainState = actorSystem.get(brainId);
+const brainActor: BrainState = usePlugin();
 const normalizedTree = useSelector(brainActor, (state) => state.context.normalizedTree);
 const brainIsDead = useSelector(brainActor, (state) => state.context.brainIsDead);
+const startError = useSelector(brainActor, (state) => state.context.startError);
 const flowTNodeId = useSelector(brainActor, (state) => state.context.flowTNodeId);
 
 // Infinite scroll: show 50 items at a time
@@ -139,9 +139,8 @@ const onScroll = (e: Event) => {
 
 // Start brain method
 const startBrain = () => {
-  trpc.bus.send.mutate({
-    systemId: 'brain',
-    type: 'START_BRAIN'
+  sendToSystem('brain', {
+    type: 'START_BRAIN',
   });
 };
 

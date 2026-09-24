@@ -1,24 +1,29 @@
 import breadcrumb, { breadcrumbWithParams } from '@abuddy/sdk/fe';
 import { targetIs, type TrailClickEvent } from '@abuddy/sdk/fe';
 import { safeEvents } from '@abuddy/sdk/fe';
-import { setup, assign, enqueueActions, fromPromise, spawnChild } from 'xstate';
-import { type NavHistory, createNavHistory, pushNavHistory, goBack, goForward, canGoBack, canGoForward } from '@abuddy/sdk/fe';
+import { setup, assign, enqueueActions, fromCallback, spawnChild, stopChild, type AnyEventObject } from 'xstate';
+import { createNavHistory, pushNavHistory, goBack, goForward, canGoBack, canGoForward } from '@abuddy/sdk/fe';
 import type { ActorRefFrom } from 'xstate';
 import type {
-  ThreadEntity, OutgoingThreadsEvents,
-  ThreadCreateData, ThreadViewData, ThreadTagOption, ThreadEditFields, ThreadsSettings, EARS,
+  ThreadEntity,
+  ThreadCreateData, ThreadViewData, ThreadTagOption, ThreadEditFields, ThreadsSettings,
   MessageEntity, AgentThreadData, Tab,
   AgentSettings, AgentMode as AgentModeConfig, MessageReferences, CommandItem, BlockResponse,
 } from '@/__generated__/types';
-import { trpc } from '@abuddy/sdk/rpc';
+import type { ChatState, ThreadListItem, ThreadsContext } from './contract';
+import type { OutgoingThreadsEvents } from '@/features/threads/be/types';
+import { sendToSystem } from '@/__generated__/events';
 import { Archive, Copy, Pin, Trash2 } from 'lucide-vue-next';
 import { contextMenuFn } from '@abuddy/sdk/fe';
-import type { Simplify } from '@abuddy/sdk/helpers';
-import { navigateToPlugin } from '@abuddy/sdk/fe';
+import { untypedOpenPlugin } from '@abuddy/sdk/fe'
+import { resolveName } from '@abuddy/sdk/ids'
+
+const HOST_SETTINGS = resolveName('settings', 'host');
 import { type HotkeyEvent, type HotkeysMap, createHotkeyProcessor } from '@abuddy/sdk/fe';
 import type { ThreadTabGroup, TabGroupColor } from '@/features/threads/fe/canvas/agent/tabs/types';
 import { getNextAvailableColor } from '@/features/threads/fe/canvas/agent/tabs/types';
 import { saveThreadTabGroups, loadThreadTabGroups } from '@/features/threads/fe/canvas/agent/tabs/tab-groups';
+import type { EARS } from '@abuddy/sdk';
 
 export const id = 'threads' as const;
 
@@ -58,15 +63,7 @@ function loadTabsFromStorage(): StoredTabData | null {
   try {
     const raw = localStorage.getItem(THREADS_TABS_KEY);
     if (!raw) return null;
-    const parsed = JSON.parse(raw);
-    // Backward compat: old format stored tabIds as string[]
-    if (parsed.tabIds && !parsed.tabs) {
-      return {
-        tabs: parsed.tabIds.map((id: string) => ({ id, label: '' })),
-        activeTabId: parsed.activeTabId || '',
-      };
-    }
-    return parsed;
+    return JSON.parse(raw);
   } catch { return null; }
 }
 
@@ -129,14 +126,12 @@ const defaultChatThread: AgentThreadData = {
   artifacts: [],
 };
 
-type ChatState = 'idle' | 'working' | 'paused' | 'error' | 'success';
-
 // ---- Event types ----
 
 type SystemEvent =
   | OutgoingThreadsEvents
   | { type: 'THREAD_UPDATED'; threadId: string; updates: Partial<Pick<ThreadEntity, 'status' | 'tags' | 'context' | 'pinned' | 'topic' | 'instructions'>> }
-  | { type: 'THREADS_SETTINGS_UPDATED'; settings: ThreadsSettings }
+  | { type: 'FEATURE_SETTINGS_UPDATED'; settings: ThreadsSettings }
   | { type: 'THREAD_DELETED'; threadId: string }
   | { type: 'THREADS_EXPORTED'; filePath: string; threadCount: number }
   | { type: 'THREADS_EXPORT_FAILED'; errors: string[] }
@@ -207,12 +202,10 @@ type UIEvent =
   | { type: 'UPDATE_MESSAGE_STATE'; messageId: string; responseTimestamp?: number; blockResponse?: BlockResponse; asideText?: string; context?: Record<string, unknown>; compacted?: boolean }
   | { type: 'MESSAGE_ADDED'; threadId: string; message: MessageEntity }
   | { type: 'HOTKEY_PRESSED'; } & HotkeyEvent
-  | { type: 'TEXT_TO_SPEECH' }
   | { type: 'OPEN_QUICK_PROMPTS' }
   | { type: 'CLOSE_QUICK_PROMPTS' }
   | { type: 'TOGGLE_QUICK_PROMPTS' }
   | { type: 'NAVIGATE_TO_SECRETS' }
-  | { type: 'API_KEYS_STATUS'; hasRequiredApiKeys: boolean }
   | { type: 'COMMANDS_UPDATED'; commands: CommandItem[] }
   | { type: 'FORK_THREAD'; messageId: string; threadId?: string; threadTopic?: string }
   | { type: 'REVERT_THREAD'; messageId: string; threadId: string; restoreFiles?: boolean; userCliUuid?: string }
@@ -250,64 +243,9 @@ type ThreadEvents =
 
 const typeOf = safeEvents<ThreadEvents>();
 
-export type ThreadListItem = Simplify<ThreadEntity & {
-  tags?: string[];
-  isNew?: boolean;
-  parentId?: string;
-}>;
+export type { ChatState, ThreadListItem } from './contract';
 
 // ---- Context ----
-
-interface ThreadsContext {
-  // Thread management (normalized)
-  threadMap: Record<string, ThreadListItem>;
-  threadIds: string[];
-  selectedThreadIds: string[];
-  selectedThreadCode?: string;
-  view: ThreadViewData;
-  create: ThreadCreateData & {
-    parentThreadId?: string;
-    parentThread?: ThreadListItem;
-    tagsExpanded?: boolean;
-    linkedExpanded?: boolean;
-  };
-  availableTags: ThreadTagOption[];
-  settings: ThreadsSettings | null;
-  showArchived: boolean;
-  filters: {
-    statuses: string[];
-    tags: string[];
-    chatStates: string[];
-    search: string;
-    showRootOnly: boolean;
-  };
-  threadsImport: { status: 'idle' | 'importing' | 'success' | 'error'; errors: string[]; importedCount: number };
-  threadsExport: { status: 'idle' | 'exporting' | 'success' | 'error'; errors: string[]; filePath: string; threadCount: number };
-  // Chat/agent
-  currentThread: AgentThreadData | null;
-  recentThreadIds: string[];
-  messageInput: string;
-  pendingActionId?: string;
-  chatStates: Record<string, ChatState>;
-  chatStateOverrides: Record<string, { id: string; expiresAt: number }>;
-  tabs: Tab[];
-  activeTabId: string;
-  tabGroups: ThreadTabGroup[];
-  mode: string;
-  phase: string;
-  phaseByModeName: Record<string, string | undefined>;
-  modes: AgentModeConfig[];
-  hotkeys: HotkeysMap;
-  chatSettings: AgentSettings;
-  hasRequiredApiKeys: boolean;
-  commands: CommandItem[];
-  quickPromptCursor: { x: number; y: number } | null;
-  pendingThreadCwd?: string;
-  pendingForceDirectoryPicker?: boolean;
-  navHistory: NavHistory<string>;
-  messagePagination: { hasMore: boolean; nextCursor: string | null; isLoading: boolean };
-  sidebarArchivedThreads: ThreadListItem[];
-}
 
 // ---- Helpers ----
 
@@ -368,7 +306,7 @@ function removeThread(ctx: ThreadsContext, threadId: string) {
 }
 
 function optimisticFieldUpdate(context: ThreadsContext, threadId: string, key: string, value: unknown) {
-  trpc.bus.send.mutate({ systemId: id, type: 'UPDATE_THREAD_FIELD', threadId, key, value });
+  sendToSystem(id, { type: 'UPDATE_THREAD_FIELD', threadId, key, value });
   return {
     ...patchThread(context, threadId, { [key]: value } as any),
     tabs: context.tabs.map(t => t.id === threadId ? { ...t, [key]: value, ...(key === 'topic' ? { label: value as string } : {}) } : t),
@@ -379,17 +317,26 @@ function optimisticFieldUpdate(context: ThreadsContext, threadId: string, key: s
 
 // ---- State machine ----
 
+/*
+ * The timers below are callback actors, which never finish on their own: the handler of the event a timer sends
+ * stops it, or it would stay among the plugin's children for the session. Spawning one stops the thread's
+ * earlier timer first, since a spawn under an id already taken replaces the entry without stopping the actor,
+ * which would then fire early.
+ */
+const newThreadFlagTimer = (threadId: string) => `clear-new-thread-flag-${threadId}`;
+const chatStateOverrideTimer = (threadId: string) => `clear-expired-override-${threadId}`;
+
 const threadsState = setup({
   types: { context: {} as ThreadsContext, events: {} as ThreadEvents },
   actors: {
-    clearNewThreadFlag: fromPromise<void, { id: string }>(async ({ input, system }) => {
+    clearNewThreadFlag: fromCallback<AnyEventObject, { id: string }>(({ input, sendBack }) => {
       const ANIMATION_DURATION = 1000;
-      await new Promise(resolve => setTimeout(resolve, ANIMATION_DURATION));
-      system.get(id).send({ type: 'CLEAR_NEW_THREAD_FLAG', id: input.id });
+      const timer = setTimeout(() => sendBack({ type: 'CLEAR_NEW_THREAD_FLAG', id: input.id }), ANIMATION_DURATION);
+      return () => clearTimeout(timer);
     }),
-    clearExpiredOverride: fromPromise<void, { threadId: string; durationMs: number }>(async ({ input, system }) => {
-      await new Promise(resolve => setTimeout(resolve, input.durationMs));
-      system.get(id).send({ type: 'CLEAR_CHAT_STATE_OVERRIDE', threadId: input.threadId });
+    clearExpiredOverride: fromCallback<AnyEventObject, { threadId: string; durationMs: number }>(({ input, sendBack }) => {
+      const timer = setTimeout(() => sendBack({ type: 'CLEAR_CHAT_STATE_OVERRIDE', threadId: input.threadId }), input.durationMs);
+      return () => clearTimeout(timer);
     }),
   },
   actions: {
@@ -397,8 +344,7 @@ const threadsState = setup({
     openThreadChat: ({ self, event }) => {
       const { threadId, restore } = typeOf('OPEN_THREAD_CHAT', event);
       self.send({ type: 'VIEW_DASHBOARD' });
-      trpc.bus.send.mutate({
-        systemId: id,
+      sendToSystem(id, {
         type: 'OPEN_THREAD_CHAT',
         threadId,
         ...(restore && { restore }),
@@ -452,17 +398,15 @@ const threadsState = setup({
     }),
     sendCreateThread: ({ context }) => {
       const { parentThread, ...createData } = context.create;
-      trpc.bus.send.mutate({
-        systemId: id,
+      sendToSystem(id, {
         type: 'CREATE_THREAD',
         ...createData,
-        parentThreadId: context.create.parentThreadId
+        parentThreadId: context.create.parentThreadId,
       });
     },
     sendViewThread: ({ event }) => {
       const threadId = typeOf('SELECT_THREAD', event).id;
-      trpc.bus.send.mutate({
-        systemId: id,
+      sendToSystem(id, {
         type: 'VIEW_THREAD',
         threadId,
       });
@@ -545,8 +489,7 @@ const threadsState = setup({
     }),
     updateThreadStatus: ({ event }) => {
       const typedEvent = typeOf('UPDATE_THREAD_STATUS', event);
-      trpc.bus.send.mutate({
-        systemId: id,
+      sendToSystem(id, {
         type: 'UPDATE_THREAD_STATUS',
         threadId: typedEvent.id,
         status: typedEvent.status,
@@ -571,8 +514,7 @@ const threadsState = setup({
     }),
     sendUpdateThreadField: ({ event, context }) => {
       const { key, value } = typeOf('UPDATE_THREAD_FIELD', event);
-      trpc.bus.send.mutate({
-        systemId: id,
+      sendToSystem(id, {
         type: 'UPDATE_THREAD_FIELD',
         threadId: context.view.id,
         key,
@@ -584,7 +526,7 @@ const threadsState = setup({
       return optimisticFieldUpdate(context, threadId, 'topic', topic);
     }),
     setThreadsSettings: assign(({ event }) => {
-      const ev = typeOf('THREADS_SETTINGS_UPDATED', event);
+      const ev = typeOf('FEATURE_SETTINGS_UPDATED', event);
       const chat = (ev.settings as any)?.chat as AgentSettings | undefined;
       return {
         settings: ev.settings,
@@ -594,16 +536,14 @@ const threadsState = setup({
     }),
     deleteThread: ({ event }) => {
       const { threadId } = typeOf('DELETE_THREAD', event);
-      trpc.bus.send.mutate({
-        systemId: id,
+      sendToSystem(id, {
         type: 'DELETE_THREAD',
         threadId,
       });
     },
     archiveThread: ({ event }) => {
       const { threadId } = typeOf('ARCHIVE_THREAD', event);
-      trpc.bus.send.mutate({
-        systemId: id,
+      sendToSystem(id, {
         type: 'UPDATE_THREAD_FIELD',
         threadId,
         key: 'archived',
@@ -621,9 +561,9 @@ const threadsState = setup({
     toggleViewArchive: assign(({ context }) => {
       const newShowArchived = !context.showArchived;
       if (newShowArchived) {
-        trpc.bus.send.mutate({ systemId: id, type: 'GET_ARCHIVED_THREADS' });
+        sendToSystem(id, { type: 'GET_ARCHIVED_THREADS' });
       } else {
-        trpc.bus.send.mutate({ systemId: id, type: 'REFRESH_THREADS' });
+        sendToSystem(id, { type: 'REFRESH_THREADS' });
       }
       return {
         showArchived: newShowArchived,
@@ -639,8 +579,7 @@ const threadsState = setup({
     }),
     unarchiveThread: ({ event }) => {
       const { threadId } = typeOf('UNARCHIVE_THREAD', event);
-      trpc.bus.send.mutate({
-        systemId: id,
+      sendToSystem(id, {
         type: 'UPDATE_THREAD_FIELD',
         threadId,
         key: 'archived',
@@ -687,7 +626,7 @@ const threadsState = setup({
     })),
     sendImportThreads: ({ event }) => {
       if (event.type === 'THREADS.IMPORT') {
-        trpc.bus.send.mutate({ systemId: id, type: 'IMPORT_THREADS', directory: event.directory } as any)
+        sendToSystem(id, { type: 'IMPORT_THREADS', directory: event.directory })
       }
     },
     handleThreadsImported: assign(({ event }) => {
@@ -712,7 +651,7 @@ const threadsState = setup({
     })),
     sendExportThreads: ({ event }) => {
       if (event.type === 'THREADS.EXPORT') {
-        trpc.bus.send.mutate({ systemId: id, type: 'EXPORT_THREADS', directory: event.directory } as any)
+        sendToSystem(id, { type: 'EXPORT_THREADS', directory: event.directory })
       }
     },
     handleThreadsExported: assign(({ event }) => {
@@ -763,8 +702,7 @@ const threadsState = setup({
     refreshViewIfActive: ({ context }) => {
       // After a THREAD_CONNECTED refresh, re-fetch view data if we're viewing a thread
       if (context.view?.id) {
-        trpc.bus.send.mutate({
-          systemId: id,
+        sendToSystem(id, {
           type: 'VIEW_THREAD',
           threadId: context.view.id,
         });
@@ -780,8 +718,7 @@ const threadsState = setup({
     })),
     sendSetThreadParent: ({ event }) => {
       const { childIds, parentId } = typeOf('SET_THREAD_PARENT', event);
-      trpc.bus.send.mutate({
-        systemId: id,
+      sendToSystem(id, {
         type: 'SET_THREAD_PARENT',
         childIds,
         parentId,
@@ -791,8 +728,7 @@ const threadsState = setup({
     // ---- Chat/agent actions ----
     requestThreadChatData: ({ event }) => {
       const threadId = typeOf('OPEN_THREAD_CHAT', event).threadId;
-      trpc.bus.send.mutate({
-        systemId: id,
+      sendToSystem(id, {
         type: 'OPEN_THREAD_CHAT',
         threadId,
       });
@@ -825,18 +761,14 @@ const threadsState = setup({
       };
     }),
     navigateToSecrets: () => {
-      navigateToPlugin('settings', [
+      untypedOpenPlugin(HOST_SETTINGS, [
         { type: 'TAB.SELECT', tab: 'general' },
         { type: 'GENERAL_NAV.SELECT', item: 'secrets' }
       ]);
     },
-    updateApiKeyStatus: assign(({ event }) => ({
-      hasRequiredApiKeys: typeOf('API_KEYS_STATUS', event).hasRequiredApiKeys
-    })),
     sendMessage: enqueueActions(({ enqueue, context, event }) => {
       const { text, references } = typeOf('SEND_MESSAGE', event);
-      trpc.bus.send.mutate({
-        systemId: id,
+      sendToSystem(id, {
         type: 'USER_MSG',
         text,
         mode: context.mode,
@@ -852,8 +784,7 @@ const threadsState = setup({
     }),
     sendCommand: enqueueActions(({ enqueue, context, event }) => {
       const { command, text, references } = typeOf('SEND_COMMAND', event);
-      trpc.bus.send.mutate({
-        systemId: id,
+      sendToSystem(id, {
         type: 'USER_COMMAND',
         command,
         text,
@@ -946,8 +877,7 @@ const threadsState = setup({
       const label = thread.topic || `Thread ${thread.shortCode || ''}`;
 
       if (thread.id && !restore) {
-        trpc.bus.send.mutate({
-          systemId: id,
+        sendToSystem(id, {
           type: 'OPEN_THREAD_TAB',
           threadId: thread.id,
           label,
@@ -1085,7 +1015,6 @@ const threadsState = setup({
         activeTabId,
         tabGroups: restoredTabGroups,
         ...extracted,
-        hasRequiredApiKeys: typedEvent.data.hasRequiredApiKeys ?? true,
         commands: typedEvent.data.commands || [],
         ...modeUpdate,
         ...(currentThread?.id ? { chatStates: { ...context.chatStates, [currentThread.id as string]: startupChatState } } : {}),
@@ -1379,10 +1308,11 @@ const threadsState = setup({
         ...tab,
         artifacts: tab.artifacts.map(artifact => {
           if (artifact.id === artifactId && artifact.type === 'todo') {
-            const tasks = artifact.content.tasks.map((task: any) =>
+            const content = artifact.content as { tasks: Array<{ id: string; completed?: boolean }> };
+            const tasks = content.tasks.map(task =>
               task.id === taskId ? { ...task, completed } : task
             );
-            return { ...artifact, content: { ...artifact.content, tasks } };
+            return { ...artifact, content: { ...content, tasks } };
           }
           return artifact;
         })
@@ -1391,11 +1321,11 @@ const threadsState = setup({
     }),
     approveTodoList: async ({ event }) => {
       const { artifactId, tasks } = typeOf('APPROVE_TODO_LIST', event);
-      trpc.bus.send.mutate({ systemId: id, type: 'APPROVE_TODO_LIST', artifactId, tasks });
+      sendToSystem(id, { type: 'APPROVE_TODO_LIST', artifactId, tasks });
     },
     rejectTodoList: async ({ event }) => {
       const { artifactId } = typeOf('REJECT_TODO_LIST', event);
-      trpc.bus.send.mutate({ systemId: id, type: 'REJECT_TODO_LIST', artifactId });
+      sendToSystem(id, { type: 'REJECT_TODO_LIST', artifactId });
     },
     handleHotkey: createHotkeyProcessor({
       quickPrompts: 'TOGGLE_QUICK_PROMPTS',
@@ -1413,8 +1343,7 @@ const threadsState = setup({
         return;
       }
 
-      trpc.bus.send.mutate({
-        systemId: id,
+      sendToSystem(id, {
         type: 'INTERACTIVE_MSG_RESPONSE',
         messageId,
         threadId: context.currentThread.id,
@@ -1503,8 +1432,7 @@ const threadsState = setup({
     requestOlderMessages: ({ context }) => {
       const { hasMore, nextCursor, isLoading } = context.messagePagination;
       if (!context.currentThread?.id || !hasMore || !nextCursor || isLoading) return;
-      trpc.bus.send.mutate({
-        systemId: id,
+      sendToSystem(id, {
         type: 'LOAD_MORE_MESSAGES',
         threadId: context.currentThread.id,
         cursor: nextCursor,
@@ -1526,12 +1454,11 @@ const threadsState = setup({
     }),
     forkThread: ({ event }) => {
       const { messageId, threadId, threadTopic } = typeOf('FORK_THREAD', event);
-      trpc.bus.send.mutate({ systemId: id, type: 'FORK_THREAD', messageId, threadId, threadTopic });
+      sendToSystem(id, { type: 'FORK_THREAD', messageId, threadId, threadTopic });
     },
     revertThread: ({ event }) => {
       const { messageId, threadId, restoreFiles, userCliUuid } = typeOf('REVERT_THREAD', event);
-      trpc.bus.send.mutate({
-        systemId: id,
+      sendToSystem(id, {
         type: 'REVERT_THREAD',
         messageId,
         threadId,
@@ -1541,19 +1468,19 @@ const threadsState = setup({
     },
     summarizeThread: ({ event }) => {
       const { messageId, threadId } = typeOf('SUMMARIZE_THREAD', event);
-      trpc.bus.send.mutate({ systemId: id, type: 'SUMMARIZE_THREAD', messageId, threadId });
+      sendToSystem(id, { type: 'SUMMARIZE_THREAD', messageId, threadId });
     },
     pauseTurn: ({ event }) => {
       const { threadId } = typeOf('PAUSE_TURN', event);
-      trpc.bus.send.mutate({ systemId: id, type: 'PAUSE_TURN', threadId });
+      sendToSystem(id, { type: 'PAUSE_TURN', threadId });
     },
     unqueueMessage: ({ event }) => {
       const { threadId, messageId } = typeOf('UNQUEUE_MESSAGE', event);
-      trpc.bus.send.mutate({ systemId: id, type: 'FORWARD_BRAIN_EVENT', eventType: 'user.thread.unqueue', payload: { threadId, messageId } });
+      sendToSystem(id, { type: 'FORWARD_BRAIN_EVENT', eventType: 'user.thread.unqueue', payload: { threadId, messageId } });
     },
     persistDismissMessage: ({ event }) => {
       const { messageId } = typeOf('DISMISS_MESSAGE', event);
-      trpc.bus.send.mutate({ systemId: id, type: 'DELETE_MESSAGE', messageId });
+      sendToSystem(id, { type: 'DELETE_MESSAGE', messageId });
     },
   },
   guards: {
@@ -1599,7 +1526,6 @@ const threadsState = setup({
     modes: [],
     hotkeys: {},
     chatSettings: { modes: [], hotkeys: {} },
-    hasRequiredApiKeys: true,
     commands: [],
     quickPromptCursor: null,
     navHistory: createNavHistory(getInitialView()),
@@ -1625,13 +1551,14 @@ const threadsState = setup({
       actions: 'openThreadChat'
     },
     CLEAR_NEW_THREAD_FLAG: {
-      actions: 'clearNewThreadFlag'
+      actions: ['clearNewThreadFlag', stopChild(({ event }) => newThreadFlagTimer(typeOf('CLEAR_NEW_THREAD_FLAG', event).id))]
     },
     THREAD_CREATED: {
       actions: [
         'addThenResetCreateForm',
+        stopChild(({ event }) => newThreadFlagTimer(typeOf('THREAD_CREATED', event).id)),
         spawnChild('clearNewThreadFlag', {
-          id: ({ event }) => `clear-new-thread-flag-${typeOf('THREAD_CREATED', event).id}`,
+          id: ({ event }) => newThreadFlagTimer(typeOf('THREAD_CREATED', event).id),
           input: ({ event }) => ({ id: typeOf('THREAD_CREATED', event).id })
         })
       ]
@@ -1651,7 +1578,7 @@ const threadsState = setup({
     RENAME_THREAD: {
       actions: 'renameThread',
     },
-    THREADS_SETTINGS_UPDATED: {
+    FEATURE_SETTINGS_UPDATED: {
       actions: 'setThreadsSettings',
     },
     DELETE_THREAD: {
@@ -1737,7 +1664,7 @@ const threadsState = setup({
             } as any;
           }),
           ({ context }) => {
-            trpc.bus.send.mutate({ systemId: id, type: 'VIEW_THREAD', threadId: context.view.id });
+            sendToSystem(id, { type: 'VIEW_THREAD', threadId: context.view.id });
           },
         ],
       },
@@ -1779,7 +1706,7 @@ const threadsState = setup({
             } as any;
           }),
           ({ context }) => {
-            trpc.bus.send.mutate({ systemId: id, type: 'VIEW_THREAD', threadId: context.view.id });
+            sendToSystem(id, { type: 'VIEW_THREAD', threadId: context.view.id });
           },
         ],
       },
@@ -1856,7 +1783,6 @@ const threadsState = setup({
     AGENT_CONNECTED: { actions: 'setStartupData' },
     AGENT_SETTINGS_UPDATED: { actions: 'handleChatSettingsUpdate' },
     NAVIGATE_TO_SECRETS: { actions: 'navigateToSecrets' },
-    API_KEYS_STATUS: { actions: 'updateApiKeyStatus' },
     COMMANDS_UPDATED: {
       actions: assign(({ event }) => ({
         commands: typeOf('COMMANDS_UPDATED', event).commands
@@ -1880,7 +1806,10 @@ const threadsState = setup({
     FLASH_CHAT_STATE: {
       actions: [
         'flashChatState',
+        stopChild(({ event }) => chatStateOverrideTimer(typeOf('FLASH_CHAT_STATE', event).threadId)),
         spawnChild('clearExpiredOverride', {
+          // Per thread: without an id two flashes at once share a key and the first is left untracked
+          id: ({ event }: any) => chatStateOverrideTimer(event.threadId),
           input: ({ event }: any) => ({
             threadId: event.threadId,
             durationMs: event.durationMs ?? 3000,
@@ -1889,11 +1818,14 @@ const threadsState = setup({
       ],
     },
     CLEAR_CHAT_STATE_OVERRIDE: {
-      actions: assign(({ context, event }) => {
-        const { threadId } = typeOf('CLEAR_CHAT_STATE_OVERRIDE', event);
-        const { [threadId]: _, ...rest } = context.chatStateOverrides;
-        return { chatStateOverrides: rest };
-      }),
+      actions: [
+        assign(({ context, event }) => {
+          const { threadId } = typeOf('CLEAR_CHAT_STATE_OVERRIDE', event);
+          const { [threadId]: _, ...rest } = context.chatStateOverrides;
+          return { chatStateOverrides: rest };
+        }),
+        stopChild(({ event }) => chatStateOverrideTimer(typeOf('CLEAR_CHAT_STATE_OVERRIDE', event).threadId)),
+      ],
     },
     SET_MODE: { actions: 'setMode' },
     SET_PHASE: { actions: 'setPhase' },

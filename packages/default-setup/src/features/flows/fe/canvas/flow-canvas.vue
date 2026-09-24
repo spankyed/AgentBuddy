@@ -94,13 +94,14 @@
 </template>
 
 <script setup lang="ts">
-import { useActorSystem } from '@abuddy/sdk/fe'
+import { usePlugin } from '@abuddy/sdk/fe'
+
 import { computed, type Ref, ref, nextTick, watch, onMounted, onUnmounted } from 'vue'
 import { useVueFlow } from '@vue-flow/core'
 import type { Connection, NodeMouseEvent, Node as VueFlowNode, Edge, EdgeUpdateEvent, EdgeMouseEvent } from '@vue-flow/core'
 import { calculateLayoutAsync, type LayoutDirection } from '@/features/flows/fe/canvas/layout-utils'
-import type { FlowEntity, NodeEntity, EARS } from '@/__generated__/types'
-import { isTriggerNode } from '@abuddy/sdk/fe/components/node-styles'
+import type { NodeEntity } from '@/__generated__/types'
+import { isTriggerNode } from '@abuddy/ui/components/node-styles'
 
 import '@vue-flow/core/dist/style.css'
 import '@vue-flow/core/dist/theme-default.css'
@@ -117,10 +118,9 @@ import NodePalette from './components/NodePalette.vue'
 import FlowEditor from './components/FlowEditor.vue'
 import NodeForm from './components/NodeForm.vue'
 import FlowLabelDialog from './components/FlowLabelDialog.vue'
-import ConfirmationDialog from '@abuddy/sdk/fe/design/ConfirmationDialog.vue'
-import ToastNotification from '@abuddy/sdk/fe/design/ToastNotification.vue'
-
-const actorSystem = useActorSystem()
+import ConfirmationDialog from '@abuddy/ui/design/ConfirmationDialog'
+import ToastNotification from '@abuddy/ui/design/ToastNotification'
+import type { FlowEntity, EARS } from '@abuddy/sdk'
 
 const { project, fitView, addSelectedEdges, getEdges } = useVueFlow()
 
@@ -132,7 +132,7 @@ const targetFlow = ref<Partial<FlowEntity> | null>(null)
 /* ------------------------------------------------------------ */
 /*  reactive state from the actor                               */
 /* ------------------------------------------------------------ */
-const actor: FlowsState = actorSystem.get(id)
+const actor: FlowsState = usePlugin()
 
 const inListState = useSelector(actor, (s) => s.hasTag('list-flows'))
 const inViewState = useSelector(actor, (s) => s.hasTag('view-flow'))
@@ -141,14 +141,14 @@ const edges   = useSelector(actor, (s) => s.context.graph.edges)
 const settings = useSelector(actor, (s) => s.context.settings)
 const allFlows = useSelector(actor, (s) => s.context.flows)
 const flows   = useSelector(actor, (s) => {
-  const rootId = s.context.settings?.rootFlowId
+  const rootId = s.context.rootFlowId
   const all = s.context.flows
   if (!rootId) return all
   const root = all.find(f => f.id === rootId)
   const rest = all.filter(f => f.id !== rootId)
   return root ? [root, ...rest] : rest
 })
-const rootFlowId = useSelector(actor, (s) => s.context.settings?.rootFlowId)
+const rootFlowId = useSelector(actor, (s) => s.context.rootFlowId)
 const positions = useSelector(actor, (s) => s.context.graph.positions)
 const selectedFlowId = useSelector(actor, (s) => s.context.selectedFlowId)
 const selectedNodeId = useSelector(actor, (s) => s.context.selectedNodeId)
@@ -583,14 +583,17 @@ function handleEdgesRemove(edges: { id: string }[]) {
 function handleEdgeUpdate(event: EdgeUpdateEvent) {
   const { edge, connection } = event
 
-  if (edge.source !== connection.source || edge.target !== connection.target) {
+  const moved = edge.source !== connection.source || edge.target !== connection.target
+    || (edge.sourceHandle ?? null) !== (connection.sourceHandle ?? null)
+    || (edge.targetHandle ?? null) !== (connection.targetHandle ?? null)
+  if (moved) {
     actor.send({
       type: 'EDGE.RECONNECT',
       edgeId: edge.id,
-      oldSource: edge.source,
-      oldTarget: edge.target,
-      newSource: connection.source!,
-      newTarget: connection.target!,
+      source: connection.source,
+      target: connection.target,
+      sourceHandle: connection.sourceHandle ?? undefined,
+      targetHandle: connection.targetHandle ?? undefined,
     })
   }
 }

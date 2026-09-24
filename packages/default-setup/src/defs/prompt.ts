@@ -4,7 +4,7 @@
  * Stubs throw at runtime — they exist only for their type signatures.
  */
 
-export type { PromptEntity } from '@/__generated__/types';
+export type { PromptEntity } from '@abuddy/sdk';
 
 export type PromptParams = Record<string, any>;
 

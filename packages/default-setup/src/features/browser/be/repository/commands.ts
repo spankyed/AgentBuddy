@@ -1,5 +1,5 @@
-import { tx } from '@abuddy/sdk/ears';
-import { qx } from '@abuddy/sdk/ears';
+import { tx, qx } from '@/__generated__/ears';
+
 import { EARS } from '@/__generated__/ears';
 import type { BrowserTabId, SavedTab, SavedBookmark } from '../types';
 import { normalizeSavedTabs } from './normalize-tabs';

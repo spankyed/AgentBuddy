@@ -1,9 +1,11 @@
+import { qx } from '@/__generated__/ears';
 import * as fs from 'fs/promises'
 import * as path from 'path'
-import { qx } from '@abuddy/sdk/ears'
+
 import { EARS } from '@/__generated__/ears'
-import type { LibraryItem, FolderItem, DocumentItem, DocumentShortCode, FolderContents, BreadcrumbItem } from '../types'
+import type { LibraryItem, FolderItem, DocumentItem, FolderContents, BreadcrumbItem } from '../types'
 import { formatFileSize, findParentCollection } from './helpers'
+import type { DocumentShortCode } from '@/features/library/be/types';
 
 const SYMLINK_PREFIX = 'symlink:'
 

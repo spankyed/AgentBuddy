@@ -143,11 +143,6 @@ export function loadPersistedTabs(): PersistedTabState {
 
     const parsed = JSON.parse(stored)
 
-    // Legacy shape: top-level array of tabs (no persisted active path).
-    if (Array.isArray(parsed)) {
-      return { tabs: normalizeTabs(parsed), activeFilePath: null, panelTerminalId: null, panelTerminalExpanded: false }
-    }
-
     if (typeof parsed !== 'object' || parsed === null || !Array.isArray(parsed.tabs)) {
       return { tabs: [], activeFilePath: null, panelTerminalId: null, panelTerminalExpanded: false }
     }
@@ -167,14 +162,6 @@ export function loadPersistedTabs(): PersistedTabState {
   } catch (error) {
     console.error('Failed to load persisted tabs:', error)
     return { tabs: [], activeFilePath: null, panelTerminalId: null, panelTerminalExpanded: false }
-  }
-}
-
-export function clearPersistedTabs(): void {
-  try {
-    localStorage.removeItem(STORAGE_KEY)
-  } catch (error) {
-    console.error('Failed to clear persisted tabs:', error)
   }
 }
 

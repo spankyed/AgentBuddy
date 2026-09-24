@@ -1,6 +1,6 @@
 export default {
+  visible: false,
   plugins: {
-    _meta: { visibility: { memos: true } },
-    memos: {}
+    memos: { listTitle: 'Memos' }
   }
 }

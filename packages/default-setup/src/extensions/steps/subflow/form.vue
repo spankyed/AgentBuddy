@@ -123,7 +123,6 @@
 </template>
 
 <script setup lang="ts">
-import { useActorSystem } from '@abuddy/sdk/fe'
 import { ref, computed } from 'vue'
 import { Check, ChevronDown, ExternalLink } from 'lucide-vue-next'
 import {
@@ -139,13 +138,12 @@ import {
   ComboboxViewport,
   useFilter
 } from 'reka-ui'
-import BaseForm from '@abuddy/sdk/fe/components/BaseForm.vue'
-import TipSection from '@abuddy/sdk/fe/components/TipSection.vue'
-import type { FlowEntity, NodeEntity } from '@/__generated__/types'
-import type { FormResources } from '@/features/flows/fe/types/form-props'
-import { flowsId } from '@/features/flows/fe/state'
-
-const actorSystem = useActorSystem()
+import BaseForm from '@abuddy/ui/components/BaseForm'
+import TipSection from '@abuddy/ui/components/TipSection'
+import type { NodeEntity } from '@/__generated__/types'
+import type { FormResources } from '../form-props'
+import { sendToPlugin } from '@/__generated__/events'
+import type { FlowEntity } from '@abuddy/sdk'
 
 const props = defineProps<{
   node: NodeEntity
@@ -219,8 +217,7 @@ const updateEntryPayload = (source: string) => {
 const openFlow = () => {
   if (selectedFlow.value) {
     // Navigate to the flow in flows plugin
-    const flowsActor = actorSystem.get(flowsId);
-    flowsActor.send({ type: 'FLOW.SELECT', flowId: selectedFlow.value.id });
+    sendToPlugin('flows', { type: 'FLOW.SELECT', flowId: selectedFlow.value.id });
   }
 }
 </script>

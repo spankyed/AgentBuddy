@@ -7,60 +7,23 @@ import {
   type TrailClickEvent,
 } from '@abuddy/sdk/fe'
 import type {
-  ActionEntity,
-  OutgoingActionEvents,
-  EARS,
   Category,
   ActionsSettings,
 } from '@/__generated__/types'
-import type { ActionParameter } from '@abuddy/sdk/build'
-import { trpc } from '@abuddy/sdk/rpc'
+import type { ActionsContext, ActionsInboxEvent } from './contract'
+import type { OutgoingActionEvents } from '@/features/actions/be/types'
+import type { ActionParameter } from '@abuddy/sdk'
+import { sendToSystem } from '@/__generated__/events'
 import { Trash2 } from 'lucide-vue-next'
 import { contextMenuFn } from '@abuddy/sdk/fe'
+import type { ActionEntity, EARS } from '@abuddy/sdk'
 
 /* ─────────────────────────────────────────────────────────── */
 /* Machine Types                                               */
 /* ─────────────────────────────────────────────────────────── */
-export const id = 'actions'
+export const id = 'actions' as const;
 export type ActionsState = ActorRefFrom<typeof actionsState>
 
-export interface ActionsContext {
-  selectedActionId?: EARS.EntityId;
-  actions: ActionEntity[];
-  selectedAction?: ActionEntity;
-  totalCount: number;
-  page: number;
-  totalPages: number;
-  loadingMore: boolean;
-  categories: Category[]; // Categories from settings
-  selectedCategories: string[]; // Filter state
-
-  // Import/Export state
-  actionsImport: {
-    status: 'idle' | 'importing' | 'success' | 'error';
-    errors: string[];
-    importedCount: number;
-  };
-  actionsExport: {
-    status: 'idle' | 'exporting' | 'success' | 'error';
-    errors: string[];
-    filePath: string;
-    actionCount: number;
-  };
-
-  // Form data for create/edit
-  formData: {
-    label: string;
-    description?: string;
-    category?: string;
-    input: Record<string, ActionParameter>;
-    actionFn: string;
-    output?: any;
-    parametersExpanded?: boolean;
-    outputExpanded?: boolean;
-    metadataExpanded?: boolean;
-  };
-}
 
 type SystemEvent = OutgoingActionEvents
   | { type: 'ACTIONS_PAGE_LOADED'; data: { actions: ActionEntity[]; page: number; totalPages: number } }
@@ -71,13 +34,8 @@ type SystemEvent = OutgoingActionEvents
   | { type: 'ACTIONS_EXPORT_FAILED'; errors: string[] }
 
 type UIEvent =
-  | { type: 'ACTION.SELECT'; actionId: EARS.EntityId }
-  | { type: 'ACTION.CREATE' }
+  | ActionsInboxEvent
   | { type: 'ACTION.SAVE' }
-  | { type: 'ACTION.DELETE'; actionId: EARS.EntityId }
-  | { type: 'ACTION.UPDATE_INPUT'; actionId: string; input: Record<string, any> }
-  | { type: 'ACTION.CREATE_INLINE'; label: string; actionFn: string; input: Record<string, any> }
-  | { type: 'ACTION.UPDATE_LABEL'; actionId: string; label: string }
   | { type: 'FORM.UPDATE_LABEL'; label: string }
   | { type: 'FORM.UPDATE_DESCRIPTION'; description: string }
   | { type: 'FORM.UPDATE_PARAMETERS'; input: Record<string, ActionParameter> }
@@ -88,9 +46,7 @@ type UIEvent =
   | { type: 'TOGGLE_PARAMETERS_SECTION'; show: boolean }
   | { type: 'TOGGLE_OUTPUT_SECTION'; show: boolean }
   | { type: 'TOGGLE_METADATA_SECTION'; show: boolean }
-  | { type: 'ACTIONS_SETTINGS_UPDATED'; settings: ActionsSettings }
-  | { type: 'ACTIONS.LOAD_MORE' }
-  | { type: 'ACTIONS.LOAD_ALL' }
+  | { type: 'FEATURE_SETTINGS_UPDATED'; settings: ActionsSettings }
   | { type: 'FILTER.TOGGLE_CATEGORY'; categoryName: string }
   | { type: 'FILTER.CLEAR' }
   // Import/Export events
@@ -127,8 +83,7 @@ const actionsState = setup({
         return
       }
       // Send event to backend to get action data
-      trpc.bus.send.mutate({
-        systemId: id,
+      sendToSystem(id, {
         type: 'ACTION_SELECT',
         actionId: ev.actionId,
       });
@@ -169,15 +124,13 @@ const actionsState = setup({
       
       if (isCreating) {
         // Create new action
-        trpc.bus.send.mutate({
-          systemId: id,
+        sendToSystem(id, {
           type: 'CREATE_ACTION',
           ...context.formData,
         })
       } else {
         // Update existing action
-        trpc.bus.send.mutate({
-          systemId: id,
+        sendToSystem(id, {
           type: 'UPDATE_ACTION',
           actionId: context.selectedActionId!,
           ...context.formData,
@@ -187,8 +140,7 @@ const actionsState = setup({
 
     sendDeleteAction: ({ event }) => {
       const ev = typeOf('ACTION.DELETE', event);
-      trpc.bus.send.mutate({
-        systemId: id,
+      sendToSystem(id, {
         type: 'DELETE_ACTION',
         actionId: ev.actionId,
       });
@@ -196,8 +148,7 @@ const actionsState = setup({
 
     updateActionInput: ({ event }) => {
       const ev = typeOf('ACTION.UPDATE_INPUT', event);
-      trpc.bus.send.mutate({
-        systemId: id,
+      sendToSystem(id, {
         type: 'UPDATE_ACTION',
         actionId: ev.actionId,
         input: ev.input,
@@ -206,8 +157,7 @@ const actionsState = setup({
 
     createActionInline: ({ event }) => {
       const ev = typeOf('ACTION.CREATE_INLINE', event);
-      trpc.bus.send.mutate({
-        systemId: id,
+      sendToSystem(id, {
         type: 'CREATE_ACTION',
         label: ev.label,
         actionFn: ev.actionFn,
@@ -217,8 +167,7 @@ const actionsState = setup({
 
     updateActionLabel: ({ event }) => {
       const ev = typeOf('ACTION.UPDATE_LABEL', event);
-      trpc.bus.send.mutate({
-        systemId: id,
+      sendToSystem(id, {
         type: 'UPDATE_ACTION',
         actionId: ev.actionId,
         label: ev.label,
@@ -315,7 +264,7 @@ const actionsState = setup({
     }),
     
     handleSettingsUpdate: assign(({ event }) => {
-      const ev = typeOf('ACTIONS_SETTINGS_UPDATED', event);
+      const ev = typeOf('FEATURE_SETTINGS_UPDATED', event);
       return {
         categories: ev.settings?.categories || [],
       };
@@ -353,8 +302,7 @@ const actionsState = setup({
 
     /* ── pagination ────────────────────────────────────────── */
     requestNextPage: assign(({ context }) => {
-      trpc.bus.send.mutate({
-        systemId: id,
+      sendToSystem(id, {
         type: 'FETCH_ACTIONS_PAGE',
         page: context.page + 1,
       });
@@ -372,8 +320,7 @@ const actionsState = setup({
     }),
 
     requestAllItems: assign(() => {
-      trpc.bus.send.mutate({
-        systemId: id,
+      sendToSystem(id, {
         type: 'FETCH_ALL_ACTIONS',
       });
       return { loadingMore: true };
@@ -416,11 +363,10 @@ const actionsState = setup({
 
     sendImportActions: ({ event }) => {
       const ev = typeOf('ACTIONS.IMPORT', event);
-      trpc.bus.send.mutate({
-        systemId: id,
+      sendToSystem(id, {
         type: 'IMPORT_ACTIONS',
         actions: ev.actions,
-      } as any);
+      });
     },
 
     handleActionsImported: assign(({ event }) => {
@@ -459,11 +405,10 @@ const actionsState = setup({
 
     sendExportActions: ({ event }) => {
       const ev = typeOf('ACTIONS.EXPORT', event);
-      trpc.bus.send.mutate({
-        systemId: id,
+      sendToSystem(id, {
         type: 'EXPORT_ACTIONS',
         directory: ev.directory,
-      } as any);
+      });
     },
 
     handleActionsExported: assign(({ event }) => {
@@ -531,7 +476,7 @@ const actionsState = setup({
   on: {
     ACTIONS_LISTED: { actions: 'setPluginData' },
     ACTION_SELECTED: { actions: 'loadActionData' },
-    ACTIONS_SETTINGS_UPDATED: { actions: 'handleSettingsUpdate' },
+    FEATURE_SETTINGS_UPDATED: { actions: 'handleSettingsUpdate' },
     ACTION_CREATED: {
       actions: 'addCreatedAction'
     },

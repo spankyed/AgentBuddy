@@ -126,18 +126,17 @@
 </template>
 
 <script setup lang="ts">
-import { useActorSystem } from '@abuddy/sdk/fe'
+import { usePlugin } from '@abuddy/sdk/fe'
+
 import { useSelector } from '@xstate/vue'
 import { onMounted, onUnmounted } from 'vue'
 import { id, type BrainState } from '@/features/brain/fe/state.ts';
 import TNodeGraph from './components/TNodeGraph.vue';
 import EventsList from './components/EventsList.vue';
 import StepNodeDetails from './components/StepNodeDetails.vue';
-import { trpc } from '@abuddy/sdk/rpc';
+import { sendToSystem } from '@/__generated__/events';
 
-const actorSystem = useActorSystem()
-
-const actor: BrainState = actorSystem.get(id);
+const actor: BrainState = usePlugin();
 
 // Selectors for state
 const tNodeTree = useSelector(actor, (state) => state.context.tNodeTree);
@@ -172,9 +171,8 @@ const handleBackClick = () => {
 };
 
 const handleStart = () => {
-  trpc.bus.send.mutate({
-    systemId: 'brain',
-    type: 'START_BRAIN'
+  sendToSystem('brain', {
+    type: 'START_BRAIN',
   });
 };
 

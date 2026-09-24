@@ -1,7 +1,8 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest'
-import { stepRegistry } from '@abuddy/sdk/steps'
-import { NODE_DIMENSIONS, getDescriptor } from '@abuddy/sdk/fe/components/node-dimensions'
-import type { LayoutNodeData } from '@abuddy/sdk/fe/components/node-dimensions'
+import { testPacks } from '@abuddy/sdk/testing'
+import { stepRegistry, type StepDefinition } from '@abuddy/sdk/steps'
+import { NODE_DIMENSIONS, getDescriptor } from '@abuddy/ui/components/node-dimensions'
+import type { LayoutNodeData } from '@abuddy/ui/components/node-dimensions'
 import {
   parseHandleIndex,
   buildPortId,
@@ -11,8 +12,11 @@ import {
 
 const SWITCH_DIMS = NODE_DIMENSIONS.switch
 
+// The steps these lay out: in the test runtime's stand-in for the registered packs, which the test fills
+const register = (step: StepDefinition) => testPacks.steps.set(step.type, step)
+
 beforeAll(() => {
-  stepRegistry.register({
+  register({
     type: 'switch',
     fe: {
       nodeConfig: { label: 'Switch', connectionRules: { inputs: 1, outputs: -1 } },
@@ -39,7 +43,7 @@ beforeAll(() => {
     },
   } as any);
 
-  stepRegistry.register({
+  register({
     type: 'fire',
     fe: {
       nodeConfig: { label: 'Fire', connectionRules: { inputs: 1, outputs: 0 } },
@@ -52,7 +56,7 @@ beforeAll(() => {
     },
   } as any);
 
-  stepRegistry.register({
+  register({
     type: 'listener',
     kind: 'trigger',
     fe: {
@@ -62,8 +66,15 @@ beforeAll(() => {
 });
 
 afterAll(() => {
-  stepRegistry.clear();
+  testPacks.steps.clear();
 });
+
+it('lays out with the steps the test registered', () => {
+  expect(stepRegistry.getFE('listener')?.nodeConfig).toEqual({ label: 'Listener', connectionRules: { inputs: 0, outputs: -1 } })
+  // The test's frontend facet over the registered switch step, whose other facets stay
+  expect(stepRegistry.getFE('switch')).toBe(testPacks.steps.get('switch')!.fe)
+  expect(stepRegistry.getBuild('switch')).toBeDefined()
+})
 
 // --- parseHandleIndex ---
 

@@ -1,4 +1,4 @@
-import type { TiptapPlugin } from '@abuddy/sdk/fe/components/tiptap/injection-keys'
+import type { TiptapPlugin } from '@abuddy/sdk/fe'
 import { commandSuggestionPluginKey } from './command-suggestion-plugin'
 import { referenceSuggestionPluginKey } from './reference-plugin-key'
 import { CommandViewerDecoration } from './command-viewer-decoration'
