@@ -1,5 +1,5 @@
 > **Done in part** (`3b793b5a4`..`f8f0c4708` on `AS/plugin-inbox`), **superseded in part** by
-> [`goal-plugin-contract.md`](../../goals/goal-plugin-contract.md), which carries what is left and the
+> [`goal-plugin-contract.md`](goal-plugin-contract.md), which carries what is left and the
 > finding that came out of the work. The text below is the plan as written, with the trims it took while
 > open; see the Outcome for what landed, what changed shape and what moved on.
 

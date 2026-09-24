@@ -1,3 +1,5 @@
+> **Done** (branch `AS/plugin-contract`, commits `3d79fed34`…`682b1be90`). The text below is the plan as written; the contract leaf was later renamed `fe/contract.ts` and the system side generalised by [`goal-contracts-as-types.md`](goal-contracts-as-types.md). For the current layout, see [`docs/public-facing/features.md`](../../public-facing/features.md).
+
 > **Written in session** `a1dd708e-4765-423c-a618-93ab4b9131fb` (Claude Code, 2026-09-23). Resume it with `claude -r a1dd708e-4765-423c-a618-93ab4b9131fb`.
 
 ```
@@ -393,6 +395,38 @@ an absent plugin returns `undefined` instead of throwing; and the scope spec the
 passes — `broadcastToPlugin` reaches **every** window, the renderer's `sendToPlugin` only its own (two windows
 in one E2E, or the shell fakes), the half that produced `OPEN_PLUGIN_FROM_APP`. Mutation: dropping the queue
 fails the first spec; routing the renderer send through the bus fails the scope spec.
+
+## Outcome (2026-09-23)
+
+Landed on `AS/plugin-contract`. All four phases are implemented; the plan's shape held, with one correction
+recorded below. Phases 1–4 went in as `3d79fed34`, with `5a3442700` fixing a review finding in the read channel.
+
+### Per phase
+| Phase | Status | Evidence |
+|---|---|---|
+| 1 — The leaf and the contract | done | `fe/contract.ts` per feature, named at `features[].plugin.contract`; `findContractLeafImports` (`scripts/check-import-specifiers.ts`) walks the closure. Mutation: importing `./state` from a leaf is reported |
+| 2 — The `pack` audience | done | `PluginInbox`/`PluginInboxAudiences` (`abuddy-sdk/src/fe/plugin.ts`); `INBOX_AUDIENCES` in `module-exports.ts` rejects an audience that isn't one; `PackPluginEvents` carries only the `public` half |
+| 3 — The read channel | done | `usePluginState`/`readPluginState` generated per pack from each contract; `useUntypedPluginState`/`readUntypedPluginState`/`pluginIsRunning` are the untyped escape hatch (`abuddy-sdk/src/fe/plugin-state.ts`, `tests/fe/plugin-state.spec.ts`) |
+| 4 — The shell owns the send paths | done | `openPlugin` (`fe/navigation.ts`), `navigateToPlugin` from `#generated/fe`; `fe/public.ts` is gone from pack features, kept only by the host (`HOST_SRC_ROOT`) |
+
+### Corrections to the Decisions
+- **The contract had to be a declared type in a leaf, not a typed `definePlugin<E>({…})` call.** Typing the call
+  makes TypeScript check its argument, which pulls in the machine, which imports `#generated/events`, which
+  imports the contract. The leaf module is what breaks that cycle, and it is why `features[].plugin.contract`
+  names a `path#Export` rather than the plugin entry.
+- **`usePluginState` kept its name; the SDK's untyped pair was renamed.** The plan left the collision open. The
+  generated readers are what pack code should reach for, so they keep the plain name and the SDK's became
+  `useUntypedPluginState`/`readUntypedPluginState`, matching `untypedQx`/`untypedTx` in `@abuddy/ears`.
+
+### Open items
+- A system's `internal` events are fenced in the type system only: `packSystem` builds a system's runtime
+  `receives` from `entry.machine.events`, so the bus still routes an internal event that reaches it another way.
+- Two `Deferred` items below are untouched: the sender on `Message`, and `pluginAccepts` for a plugin with no
+  system of its own.
+
+### Final verification
+`npm run typecheck`, `compile`, `test:unit`, `api:check`, `build`, `test:external-pack`, E2E and
+`test:packaged-authoring` all pass on the branch.
 
 ## Deferred
 

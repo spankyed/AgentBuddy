@@ -1,3 +1,5 @@
+> **Done** (branch `AS/plugin-contract`, commits `85a673913`…`682b1be90`). The text below is the plan as written; it names `be/types.ts` as the contract's home, which became `be/contract.ts` — see Outcome. For the current layout, see [`docs/public-facing/features.md`](../../public-facing/features.md).
+
 > **Written in session** `a1dd708e-4765-423c-a618-93ab4b9131fb` (Claude Code, 2026-09-23). Resume it with `claude -r a1dd708e-4765-423c-a618-93ab4b9131fb`.
 
 ```
@@ -300,6 +302,39 @@ the facade is smaller than before the phase (record both line counts). Mutation:
 
 **Done when:** the full chain passes; `abuddy add feature` in a scratch pack produces a feature that builds
 with no hand edits; no doc outside `docs/archive/` mentions `satisfies SystemEntry` or `_outgoing`.
+
+## Outcome (2026-09-23)
+
+Landed on `AS/plugin-contract`, after `goal-plugin-contract.md` as planned. All three phases are implemented.
+The contract moved to `be/contract.ts` rather than the `be/types.ts` the plan named — see Corrections.
+
+### Per phase
+| Phase | Status | Evidence |
+|---|---|---|
+| 1 — The contract type, and the reader that reads it | done | `SystemContract` + `defineSystem<Contract>()` (`abuddy-sdk/src/framework/define-system.ts`); `declaredTypeOf`/`outgoingEventTypesOf` read it without resolving the machine; `features[].system.contract` in the manifest schema (`85a673913`, `cadf8a952`) |
+| 2 — The internal audience | done | `internal` is a contract field feeding the machine's event union and nothing a dependent sees; `ADD_LOG` moved to it and left `PackSystemEvents` (`dc9500896`) |
+| 3 — Close the pattern | done | `satisfies SystemEntry` is gone from every system and from every doc outside this archive; the scaffold writes `be/contract.ts`; `facade-gate-system-contract.spec.ts` asserts an annotated entry and a bare one publish identical facades (`dfde6bb99`, `682b1be90`) |
+
+### Corrections to the Decisions
+- **The contract lives in `be/contract.ts`, not `be/types.ts`.** The generated type barrel star-exports every
+  feature's `be/types.ts`, so one `Contract` per feature collided there (TS2308 × 11). The first fix — having
+  codegen read each module's exported type names to emit explicit re-exports — cost a ~1000× codegen regression
+  (2s → 32min), measured. Moving the contract to its own module returns the barrel to `export type *` and costs
+  nothing. The frontend's leaf was renamed `fe/contract.ts` to match.
+- **Nothing ties `defineSystem<C>()` to the contract the manifest names, so the goal added a guard.** Reading the
+  contract instead of the entry closed one silent-divergence hole and opened another: a machine built from a
+  different contract compiled. `MachineMatchesContract` (asserted per feature in the generated pack entry)
+  closes it (`b2838eb5f`).
+
+### Open items
+- The `internal` fence is type-level only; see `goal-plugin-contract.md`'s Open items.
+- `_TYPES_UNRESOLVED` was removed rather than kept, because it claimed to tell an uninstalled dependency from a
+  mistake and could not. What it was reaching for is now `checkResolved` in `module-exports.ts`, which refuses a
+  contract whose type collapsed to `any` without claiming to know why it did.
+
+### Final verification
+`npm run typecheck`, `compile`, `test:unit`, `api:check`, `build`, `test:external-pack`, E2E and
+`test:packaged-authoring` all pass on the branch.
 
 ## Deferred
 
