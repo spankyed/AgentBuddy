@@ -230,10 +230,12 @@ Two things the plan did not predict, and one thing it deliberately left open:
 | A send made with no action carries no `via` | `abuddy-sdk/tests/services/emitter.spec.ts` |
 | An action names every feature `<packId>/<featureId>`; a bare name does not compile and does not resolve | `abuddy-cli/tests/build/facade-typing.spec.ts` (`@ts-expect-error`), `abuddy-sdk/tests/services/emitter.spec.ts` |
 | Every field of `Message` beside `event` crosses `bus.send` | `api/tests/unit/bus-send-sender.spec.ts` — a case per field. Its "drops a field nothing declares" case is *not* the guard: it passes while the dropped field is one the envelope declares |
-| The four diagnostics naming a sender word it the same, and show both fields | `abuddy-sdk/tests/events/sender-suffix.spec.ts`, plus a case each in `outgoing-events`, `client-events` and `send-scope` |
+| Every diagnostic naming a sender words it the same, and shows both fields | `abuddy-sdk/tests/events/sender-suffix.spec.ts`, plus a case each in `outgoing-events`, `client-events` and `send-scope`. Review found a fifth rendering this missed — the shell refuses after a wait as well as at once, and that one carried no sender and no full stop; all three of the shell's now come from one `refusal()`, pinned by a case asserting the two branches say exactly the same thing |
 | `reportError` stamps the source it was given and never a pack | `abuddy-sdk/tests/logger/report-error.spec.ts` |
 | No host feature imports another feature's `fe/` | `findCrossFeatureImports` (`check:specifiers`) — with no exception for the host |
 | Only a module a package publishes from outside every feature may name its features' frontends | `findCrossFeatureImports`, and three cases in `abuddy-cli/tests/build/import-specifiers.spec.ts`. As first landed the rule asked only whether a module was published, which excepted `./settings` (`features/settings/be/index.ts`); the "outside every feature" half was added straight after |
+| A drop is reported once per plugin, event type **and sender** | `outgoing-events.spec.ts` — the key is `senderSuffix`'s output, so it distinguishes whatever the report distinguishes. It was `pluginId/type/from`, which stopped matching the message when `via` arrived |
+| A field added to `Message` cannot be silently dropped at the tRPC boundary | `abuddy-sdk/tests/events/envelope.spec.ts` — an exhaustiveness assertion over `keyof Message` that fails `typecheck` naming the new field. It lives in the SDK because nothing typechecks `packages/api/tests` |
 
 Milestones, true when the work landed and not properties to hold: `git grep HOST_SRC_ROOT` returning nothing
 outside the docs that record the change, and `packages/abuddy-host/src/features/*/fe/public.ts` being gone. Both
