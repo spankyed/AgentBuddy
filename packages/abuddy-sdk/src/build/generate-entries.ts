@@ -599,9 +599,24 @@ export function generatePackFiles(
     const seedPolicy = manifest.boot?.seedPolicy;
     const seedPolicyLine = seedPolicy ? `\n      seedPolicy: ${JSON.stringify(seedPolicy)},` : '';
 
+    // The machine each system was built from is typed by the contract the manifest names for its feature, and
+    // nothing in either file says so: this asserts it where both are in scope.
+    const contracted = systemFeatures.filter(f => systemContractOf(f));
+    const contractCheck = contracted.length === 0 ? '' : `
+// Each system's machine is typed by the contract abuddy.json names for its feature — the one its facade publishes.
+// A machine built from some other contract compiles on its own, so a mismatch reads here as a sentence where
+// \`true\` belongs.
+const __machineContracts: {
+${contracted.map(f => `  '${f.id}': MachineMatchesContract<typeof ${systemBinding(f.id)}, __SystemContracts['${f.id}']>;`).join('\n')}
+} = {
+${contracted.map(f => `  '${f.id}': true,`).join('\n')}
+};
+void __machineContracts;
+`;
+
     return `${HEADER}
 import type { PackRegistration } from '@abuddy/sdk/framework';
-${systemFeatures.length ? "import { packSystem } from '@abuddy/sdk/framework';\n" : ''}${hasRepositories() ? "import { repositories } from './repositories.js';\n" : ''}
+${contracted.length ? "import type { MachineMatchesContract } from '@abuddy/sdk/framework';\nimport type { SystemContracts as __SystemContracts } from './system-specs.js';\n" : ''}${systemFeatures.length ? "import { packSystem } from '@abuddy/sdk/framework';\n" : ''}${hasRepositories() ? "import { repositories } from './repositories.js';\n" : ''}
 ${systemImports}
 import { featureServices } from './services.js';
 import { EARS } from './ears.js';
@@ -647,7 +662,7 @@ ${manifest.boot?.hooks ? '    ..._hooks,' : ''}
   },
 ${manifest.migrations ? '  migrations,' : ''}
 };
-`;
+${contractCheck}`;
   }
 
   // ── Frontend entry ─────────────────────────────────────────────

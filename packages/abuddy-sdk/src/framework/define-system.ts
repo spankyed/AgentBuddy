@@ -23,7 +23,7 @@ export type SystemEvents =
 export const SYSTEM_EVENT_TYPES = eventTypes<SystemEvents>()('CLIENT_CONNECTED', 'PACK_CHANGED', 'FEATURE_SETTINGS_UPDATED');
 
 /**
- * What a system's contract declares. A feature exports one as `Contract` from its `be/types.ts`, and `abuddy.json`
+ * What a system's contract declares. A feature exports one as `Contract` from its `be/contract.ts`, and `abuddy.json`
  * names it at `features[].system.contract`:
  *
  * ```ts
@@ -79,7 +79,7 @@ export interface SystemSpec<C extends SystemContract> {
  * under the feature, which runs it at `<packId>/<featureId>`, and the pack's code names it by the feature id.
  *
  * ```ts
- * import type { Contract } from './types.ts';
+ * import type { Contract } from './contract';
  * export const logsSpec = defineSystem<Contract>();
  * ```
  *
@@ -96,3 +96,24 @@ export function defineSystem<C extends SystemContract>(): SystemSpec<C> {
     typeOf: safeEvents<MachineEvents<C>>(),
   };
 }
+
+/**
+ * Whether a system entry's machine was built from the contract given: `true`, or a sentence saying how they differ.
+ *
+ * `abuddy.json` names the contract the feature's facade publishes, and `defineSystem<Contract>()` types the machine.
+ * They are two references to one type, and nothing in either place makes them the same one — a machine built from
+ * some other contract compiles, and its feature then publishes events it never handles and handles events its
+ * dependents can't send. Codegen asserts one of these per feature in the pack entry, so the pack's own typecheck
+ * says so.
+ *
+ * It compares the specs rather than the contracts, since `SystemSpec` is what carries a contract into the machine:
+ * its context and its event union. A contract's `outgoing` is deliberately outside that comparison — the machine
+ * never types a send from its spec, so a difference there is the facade's business and this check's blind spot.
+ */
+export type MachineMatchesContract<Entry, C extends SystemContract> =
+  // One tuple rather than two nested conditionals: it is element-wise assignability both ways, and it defers
+  Entry extends { spec: infer Spec }
+    ? [Spec, SystemSpec<C>] extends [SystemSpec<C>, Spec]
+      ? true
+      : 'this system\'s defineSystem<…> declares a contract that is not the one abuddy.json names for its feature'
+    : 'this system\'s default export has no `spec` from defineSystem<…>';

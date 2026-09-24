@@ -60,6 +60,11 @@ export interface HelpEntry {
 }
 
 // @public
+export type MachineMatchesContract<Entry, C extends SystemContract> = Entry extends {
+    spec: infer Spec;
+} ? [Spec, SystemSpec<C>] extends [SystemSpec<C>, Spec] ? true : 'this system\'s defineSystem<…> declares a contract that is not the one abuddy.json names for its feature' : 'this system\'s default export has no `spec` from defineSystem<…>';
+
+// @public
 export function onPackSettingsDefaultsChanged(listener: () => void): () => void;
 
 // @public (undocumented)
@@ -186,6 +191,24 @@ export function packSystem(entry: SystemEntry, options?: {
 
 // @public
 export const SYSTEM_EVENT_TYPES: readonly ["CLIENT_CONNECTED", "PACK_CHANGED", "FEATURE_SETTINGS_UPDATED"];
+
+// @public
+export interface SystemContract {
+    // (undocumented)
+    context?: unknown;
+    // (undocumented)
+    incoming?: {
+        type: string;
+    };
+    // (undocumented)
+    internal?: {
+        type: string;
+    };
+    // (undocumented)
+    outgoing: {
+        type: string;
+    };
+}
 
 // @public (undocumented)
 export interface SystemEntry {

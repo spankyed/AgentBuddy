@@ -86,11 +86,24 @@ const pluginWithContract = (entry: string, inbox?: string) => ({
 
 function writeSystemEntry(id: string, outgoing: string, incoming = `{ type: '${id.toUpperCase()}_RUN' }`): string {
   const entry = `src/features/${id}/be/system.ts`;
+  // A real spec: the generated pack entry asserts the machine was built from the contract abuddy.json names
   write(entry, [
-    `declare const spec: { _incoming: ${incoming}; _outgoing: ${outgoing} };`,
-    'export default { spec, machine: undefined as never };',
+    "import { defineSystem } from '@abuddy/sdk/framework';",
+    "import type { Contract } from './contract.js';",
+    'export default { spec: defineSystem<Contract>(), machine: undefined as never };',
   ].join('\n') + '\n');
+  writeSystemContract(id, outgoing, incoming);
   return entry;
+}
+
+/**
+ * A system's contract, as `abuddy.json` names it. A plain declared type: these fixtures are bare temp dirs with no
+ * `@abuddy/sdk` to resolve, and a declared type needs no import to read — which is the point of reading one rather
+ * than a value's phantom property, and why the system module above can be empty.
+ */
+function writeSystemContract(id: string, outgoing: string, incoming = `{ type: '${id.toUpperCase()}_RUN' }`): string {
+  write(`src/features/${id}/be/contract.ts`, `export type Contract = { incoming: ${incoming}; outgoing: ${outgoing} };\n`);
+  return `src/features/${id}/be/contract.ts#Contract`;
 }
 
 /**
@@ -104,7 +117,10 @@ const system = (id: string, extra: Record<string, unknown> = {}) => {
   if (!fs.existsSync(path.join(root, entry))) {
     writeSystemEntry(id, `{ type: '${id.toUpperCase()}_CONNECTED' } | { type: '${id.toUpperCase()}_UPDATED' }`);
   }
-  return { id, system: { entry, ...extra } };
+  const contract = fs.existsSync(path.join(root, `src/features/${id}/be/contract.ts`))
+    ? { contract: `src/features/${id}/be/contract.ts#Contract` }
+    : {};
+  return { id, system: { entry, ...contract, ...extra } };
 };
 const withPlugin = (feature: Record<string, unknown>, inbox?: string) => ({ ...feature, plugin: pluginWithContract(`src/features/${feature.id}/fe/index.ts`, inbox) });
 
@@ -165,35 +181,40 @@ describe('generated events', () => {
     expect(receives(generate({ features: [withPlugin(system('quiet'))] }), 'quiet')).toEqual([]);
   });
 
-  // An annotation `: SystemEntry` types the spec as the contract's, which carries no events
-  it('refuses an entry whose spec has lost its events, naming the fix', () => {
-    write('src/features/typed/be/system.ts', [
-      "const entry: { spec: { id: string }; machine: unknown } = { spec: { id: 'typed' }, machine: undefined };",
-      'export default entry;',
-    ].join('\n'));
-    expect(() => generate({ features: [withPlugin(system('typed'))] }))
-      .toThrow(/Feature "typed": system\.ts: .*that spec carries none: default-export the system entry declared with `satisfies SystemEntry`/);
+  // These four replace the defences the phantom read needed: an entry annotated `: SystemEntry`, an entry whose
+  // spec lost its events, a spec whose import didn't resolve, and an entry with no default export. Codegen no
+  // longer reads the default export at all, so none of those is a failure any more — what can go wrong now is
+  // that the contract the manifest names isn't there, or isn't a type.
+  it('refuses a system contract the module does not declare, naming the type it looked for', () => {
+    const entry = 'src/features/typed/be/system.ts';
+    write(entry, 'export default { spec: undefined as never, machine: undefined as never };\n');
+    write('src/features/typed/be/contract.ts', 'export type Other = { outgoing: { type: \'X\' } };\n');
+    expect(() => generate({ features: [withPlugin({ id: 'typed', system: { entry, contract: 'src/features/typed/be/contract.ts#Contract' } })] }))
+      .toThrow(/Feature "typed": system\.contract: .*doesn't export "Contract"/);
   });
 
-  // `: SystemEntry` types the spec as the contract's own, `{ type: string }` both ways, which a pack's facade would
-  // publish as its system's events: a system with no plugin is read too, so it fails the same way
-  it('refuses an entry annotated `: SystemEntry`, a system without a plugin too, naming the fix', () => {
-    writeSystemEntry('worker', '{ type: string }', '{ type: string }');
-    expect(() => generate({ features: [system('worker')] }))
-      .toThrow(/Feature "worker": .*`type` is string.*an entry annotated `: SystemEntry` has these: default-export it declared with `satisfies SystemEntry`/);
+  it('refuses a system contract the module exports only as a value', () => {
+    const entry = 'src/features/valued/be/system.ts';
+    write(entry, 'export default { spec: undefined as never, machine: undefined as never };\n');
+    write('src/features/valued/be/contract.ts', 'export const Contract = { outgoing: {} };\n');
+    expect(() => generate({ features: [withPlugin({ id: 'valued', system: { entry, contract: 'src/features/valued/be/contract.ts#Contract' } })] }))
+      .toThrow(/only as a value, not a type/);
   });
 
-  it("says so when the spec's type doesn't resolve, rather than blaming the declaration", () => {
-    write('src/features/unresolved/be/system.ts', [
-      "import { defineSystem } from '@abuddy/not-installed';",
-      "export default { spec: defineSystem<{ type: 'RUN' }, { type: 'DONE' }>(), machine: undefined };",
-    ].join('\n'));
-    expect(() => generate({ features: [withPlugin(system('unresolved'))] })).toThrow(/whose type doesn't resolve: check that its `defineSystem` import does/);
+  it('refuses a contract that declares no outgoing events, rather than publishing an empty system', () => {
+    const entry = 'src/features/mute/be/system.ts';
+    write(entry, 'export default { spec: undefined as never, machine: undefined as never };\n');
+    write('src/features/mute/be/contract.ts', "export type Contract = { incoming: { type: 'GO' } };\n");
+    expect(() => generate({ features: [withPlugin({ id: 'mute', system: { entry, contract: 'src/features/mute/be/contract.ts#Contract' } })] }))
+      .toThrow(/declares no `outgoing` events/);
   });
 
-  it('refuses an entry with no default export', () => {
-    write('src/features/bare/be/system.ts', "export const spec = { id: 'bare' };\n");
-    expect(() => generate({ features: [withPlugin(system('bare'))] })).toThrow(/Feature "bare": system\.ts: .*it has no default export/);
+  // A system that sends nothing names no contract at all; its plugin then receives only what it declares itself
+  it('reads a system with no contract as sending nothing', () => {
+    const entry = 'src/features/quiet2/be/system.ts';
+    write(entry, 'export default { spec: undefined as never, machine: undefined as never };\n');
+    const files = generate({ features: [withPlugin({ id: 'quiet2', system: { entry } }, "{ type: 'POKE' }")] });
+    expect(receives(files, 'quiet2')).toEqual(['POKE']);
   });
 
   it('records nothing for a plugin no system sends to, so a send there is rejected', () => {
@@ -230,21 +251,21 @@ describe('generated events', () => {
   // old reader's opposite check — an `accepts` exported only as a type — went with the phantom it read.
   it('refuses a contract the module exports only as a value', () => {
     const entry = writePluginEntry('src/features/sidebar/fe/index.ts');
-    write('src/features/sidebar/fe/types.ts', 'export const Contract = { state: {} };\n');
+    write('src/features/sidebar/fe/contract.ts', 'export const Contract = { state: {} };\n');
     expect(() => generate({ features: [system('notes'), { id: 'sidebar', plugin: { entry, contract: 'src/features/sidebar/fe/contract.ts#Contract' } }] }))
       .toThrow(/only as a value, not a type/);
   });
 
   it('refuses a contract the module does not declare, naming the type it looked for', () => {
     const entry = writePluginEntry('src/features/sidebar/fe/index.ts');
-    write('src/features/sidebar/fe/types.ts', 'export type Other = { state: {} };\n');
+    write('src/features/sidebar/fe/contract.ts', 'export type Other = { state: {} };\n');
     expect(() => generate({ features: [system('notes'), { id: 'sidebar', plugin: { entry, contract: 'src/features/sidebar/fe/contract.ts#Contract' } }] }))
       .toThrow(/doesn't export "Contract"/);
   });
 
   it('refuses an inbox opened to an audience that does not exist', () => {
     const entry = writePluginEntry('src/features/sidebar/fe/index.ts');
-    write('src/features/sidebar/fe/types.ts', "export type Contract = { state: {}; inbox: { publik: { type: 'X' } } };\n");
+    write('src/features/sidebar/fe/contract.ts', "export type Contract = { state: {}; inbox: { publik: { type: 'X' } } };\n");
     expect(() => generate({ features: [system('notes'), { id: 'sidebar', plugin: { entry, contract: 'src/features/sidebar/fe/contract.ts#Contract' } }] }))
       .toThrow(/is not an audience/);
   });
@@ -252,7 +273,7 @@ describe('generated events', () => {
   // A plugin may publish state and take nothing: its own system's events still reach it
   it('reads a contract with no inbox as receiving only its own system events', () => {
     const entry = writePluginEntry('src/features/sidebar/fe/index.ts');
-    const contract = writeContract('src/features/sidebar/fe/types.ts');
+    const contract = writeContract('src/features/sidebar/fe/contract.ts');
     const files = generate({ features: [{ ...system('sidebar'), plugin: { entry, contract } }] });
     expect(receives(files, 'sidebar')).toEqual(['SIDEBAR_CONNECTED', 'SIDEBAR_UPDATED']);
   });
@@ -284,13 +305,16 @@ describe('generated system sends', () => {
       'default-setup': dependency({ id: 'default-setup', builtIn: true, features: [system('memos')] }),
     });
     const events = files['src/__generated__/events.ts'];
-    expect(events).toContain("export type PackSystemEvents = {\n  'memos': IncomingEventsOf<(typeof __specs)['memos']>;\n};");
+    expect(events).toContain("export type PackSystemEvents = {\n  'memos': IncomingEventsOf<__SystemContracts['memos']>;\n};");
     expect(events).toContain("export type QualifiedSystemEvents = Qualified<'demo-pack', PackSystemEvents> & Qualified<'base-pack', __dep_base_pack_PackSystemEvents> & ");
     expect(events).toContain("export type SendableSystemEvents = WithOwnNames<'demo-pack', QualifiedSystemEvents>;");
     // No table of names: the sends derive every address from the pack id (@abuddy/sdk/ids)
     expect(events).toContain("defineEvents<SendablePluginEvents, SendableSystemEvents>('demo-pack');");
     expect(events).not.toContain('systemIds');
-    expect(files['src/__generated__/system-specs.ts']).toContain("export const specs = {\n  'memos': specEvents(__system_memos.spec),\n};");
+    // Type-only, and over the contracts: it imports no system module, because those import the generated events
+    // module this one feeds — reading them here would put the machine in front of the file that describes it
+    expect(files['src/__generated__/system-specs.ts']).toContain("export type SystemContracts = {\n  'memos': __system_contract_memos;\n};");
+    expect(files['src/__generated__/system-specs.ts']).not.toContain('be/system');
     // Pack code names systems; it gets no module of addresses
     expect(files['src/__generated__/system-ids.ts']).toBeUndefined();
     expect(files['src/__generated__/pack-types.ts']).toContain("export type { PackPluginEvents, PackSystemEvents } from './events.js';");
