@@ -581,14 +581,20 @@ export function findContractLeafImports(srcRoots = PACK_SRC_ROOTS, root = repoRo
     const manifestPath = path.join(path.dirname(src), 'abuddy.json');
     if (!fs.existsSync(manifestPath)) return [];
     const manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf-8')) as {
-      features?: Array<{ plugin?: { contract?: string }; system?: { contract?: string } }>;
+      features?: Array<{ plugin?: { contract?: string; entry?: string }; system?: { contract?: string; entry?: string } }>;
     };
-    const leaves = (manifest.features ?? []).flatMap((feature) =>
-      [feature.plugin?.contract, feature.system?.contract].flatMap((contract) => {
-        const target = contract?.split('#')[0];
-        const file = target && sourceFile(path.join(path.dirname(src), target));
-        return file ? [file] : [];
-      }));
+    /** A `"path"` or `"path#Export"` the manifest names, as a file in the pack */
+    const named = (target: string | undefined): string | undefined =>
+      target ? sourceFile(path.join(path.dirname(src), target.split('#')[0]!)) : undefined;
+    const files = (pick: (f: NonNullable<typeof manifest.features>[number]) => Array<string | undefined>) =>
+      (manifest.features ?? []).flatMap((feature) => pick(feature).flatMap((t) => { const f = named(t); return f ? [f] : []; }));
+
+    const leaves = files((f) => [f.plugin?.contract, f.system?.contract]);
+    /**
+     * The actor modules `abuddy.json` names. Exact, where the machine rule below is a guess at a filename: these
+     * are the two paths the manifest states outright, so a leaf reaching one is reported whatever it is called.
+     */
+    const actorEntries = new Set(files((f) => [f.plugin?.entry, f.system?.entry]));
     const resolveFrom = (from: string, specifier: string): string | undefined => {
       const base = specifier.startsWith('@/') ? path.join(src, specifier.slice(2))
         : specifier.startsWith('.') ? path.resolve(path.dirname(from), specifier) : undefined;
@@ -623,6 +629,13 @@ export function findContractLeafImports(srcRoots = PACK_SRC_ROOTS, root = repoRo
           if (target === undefined) continue;
           const into = /^features\/([^/]+)\//.exec(relative(target));
           if (viaLeaf && into && into[1] !== ownFeature) { found.push(at); continue; }
+          // The plugin and the system definitions, which the manifest names: reaching either puts the actor in
+          // front of the contract, at any depth — a leaf's own types module has no business importing one either.
+          if (actorEntries.has(target)) { found.push(at); continue; }
+          // The machines themselves, by the filenames the scaffold writes. A guess, deliberately: `Plugin.state`
+          // is a value, so no manifest field names the machine, and this is what makes the report say "your leaf
+          // imports ./state" instead of naming a module three hops away that happens to reach #generated/events.
+          // A machine called something else still fails, on the closure rule above — just less precisely.
           if (viaLeaf && /(?:^|\/)(?:state|system)(?:\.ts)?$/.test(relative(target))) { found.push(at); continue; }
           walk(target, false);
         }

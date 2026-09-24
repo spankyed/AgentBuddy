@@ -470,6 +470,34 @@ describe('findContractLeafImports', () => {
     expect(findContractLeafImports([src], root)).toEqual([]);
   });
 
+  /**
+   * The plugin and system definitions, which the manifest names outright. The machine rule beside this one is a
+   * guess at a filename — no manifest field names the machine, since `Plugin.state` is a value — so `./plugin`
+   * matched nothing before this, and a leaf importing it was reported only as whatever its closure reached.
+   */
+  it("flags a leaf that imports an entry abuddy.json names, whatever the file is called", () => {
+    pack({
+      'features/notes/fe/contract.ts': "import type { P } from './plugin';",
+      'features/notes/be/contract.ts': 'export type Contract = { outgoing: { type: "A" } };',
+      'features/notes/fe/plugin.ts': 'export type P = { id: string };',
+    });
+    expect(findContractLeafImports([src], root)).toEqual([`${src}/features/notes/fe/contract.ts:1: ./plugin`]);
+  });
+
+  // It is the entry's path that matters, not its name: a pack whose machine is `machine.ts` is caught the same way
+  it('flags an entry the manifest names under an unconventional filename', () => {
+    writeAt('pack/abuddy.json', JSON.stringify({
+      id: 'demo-pack', name: 'Demo', version: '1.0.0',
+      features: [{
+        id: 'notes',
+        plugin: { entry: 'src/features/notes/fe/machine.ts', contract: 'src/features/notes/fe/contract.ts#Contract' },
+      }],
+    }));
+    writeAt(`${src}/features/notes/fe/contract.ts`, "import type { M } from './machine';");
+    writeAt(`${src}/features/notes/fe/machine.ts`, 'export type M = { id: string };');
+    expect(findContractLeafImports([src], root)).toEqual([`${src}/features/notes/fe/contract.ts:1: ./machine`]);
+  });
+
   // Each side's machine: a plugin's is fe/state, a system's is be/system, and both import #generated/events.
   // The rule resolves what it reads, so the machines have to exist for the import to be one.
   it("flags a leaf that reaches its own feature's machine", () => {
