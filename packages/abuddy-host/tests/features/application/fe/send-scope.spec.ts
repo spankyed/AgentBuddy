@@ -5,7 +5,7 @@
 // `broadcastToPlugin` (backend, over the bus) reaches **every** window showing that plugin, because a plugin runs
 // once per window. The renderer's `sendToPlugin` reaches this window's only. Two shells over one backend is the
 // cheapest faithful way to say that: each shell is a window, and the bus delivers to both subscriptions.
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createActor, setup, type Actor } from 'xstate';
 import type { Plugin } from '@abuddy/sdk/fe';
 import { createShellMachine, type ShellMachine } from '../../../../src/fe/index.ts';
@@ -53,6 +53,52 @@ describe('how far each send reaches', () => {
       { window: 'main', type: 'SELECT_ARTIFACT' },
       { window: 'popout', type: 'SELECT_ARTIFACT' },
     ]);
+  });
+
+  /**
+   * A backend send reaches the window whole — the subscription carries the message, not just its event — so the
+   * one warning the shell has for an undeliverable one can name the sender too. This is the third of the three
+   * places a sender is worth saying; the bus covers its own drops and `notify.error` covers the in-window send.
+   */
+  it('names the sending pack when a backend send reaches no running plugin', async () => {
+    await settle();
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+    main.shell.client.receive({ to: 'memo-pack/memoz', from: 'memo-pack', event: { type: 'MEMO_ADDED' } });
+    await settle();
+
+    expect(warn).toHaveBeenCalledWith(expect.stringContaining('No plugin is running at memo-pack/memoz for MEMO_ADDED sent by "memo-pack"'));
+    warn.mockRestore();
+  });
+
+  /**
+   * `Message.from` is stamped by the sends `#generated/events` builds, and the in-window send carries it on the
+   * shell's `SEND_TO_PLUGIN`. It is worth carrying only if something reads it: this is the one place the renderer
+   * can say who sent an event it couldn't deliver, and the backend's bus already does the same for its drops.
+   */
+  it('names the sending pack when the send reaches no plugin', async () => {
+    await settle();
+
+    main.app.send({ type: 'SEND_TO_PLUGIN', plugin: 'memo-pack/memoz', events: [{ type: 'ADD_MEMO' }], from: 'memo-pack' });
+    await settle();
+
+    expect(main.shell.notify.error).toHaveBeenCalledWith(
+      "Couldn't reach memo-pack/memoz",
+      'No plugin is registered at "memo-pack/memoz". Sent by "memo-pack".',
+    );
+  });
+
+  // The host's own sends stamp nothing, so the message reads the same minus the clue rather than saying one is missing
+  it('reads the same when the send carries no sender', async () => {
+    await settle();
+
+    main.app.send({ type: 'SEND_TO_PLUGIN', plugin: 'memo-pack/memoz', events: [{ type: 'ADD_MEMO' }] });
+    await settle();
+
+    expect(main.shell.notify.error).toHaveBeenCalledWith(
+      "Couldn't reach memo-pack/memoz",
+      'No plugin is registered at "memo-pack/memoz".',
+    );
   });
 
   it("delivers the renderer's send to the window it was made in, and to no other", async () => {

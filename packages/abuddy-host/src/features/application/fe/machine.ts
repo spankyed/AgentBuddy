@@ -275,12 +275,14 @@ export function createShellMachine({ packs, client, packFrontends, storage, noti
        * command a navigation.
        */
       sendToPlugin: enqueueActions(({ context, event, enqueue }) => {
-        const { plugin, events } = typeOf('SEND_TO_PLUGIN', event);
+        const { plugin, events, from } = typeOf('SEND_TO_PLUGIN', event);
         if (!context.plugins.some((p) => p.id === plugin)) {
           if (packFrontendsPending(context)) {
             enqueue.assign({ awaitingPlugin: [...context.awaitingPlugin, { plugin, events, select: false }] });
           } else {
-            enqueue(() => notify.error(`Couldn't reach ${plugin}`, `No plugin is registered at "${plugin}"`));
+            // The sending pack, when the send stamped one (`defineEvents`); the host's own sends carry none
+            const sender = from ? ` Sent by "${from}".` : '';
+            enqueue(() => notify.error(`Couldn't reach ${plugin}`, `No plugin is registered at "${plugin}".${sender}`));
           }
           return;
         }

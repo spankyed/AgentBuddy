@@ -11,7 +11,7 @@ export function connectionListener(client: ShellClient) {
     onDisconnected: () => sendBack({ type: 'BUS_CONNECTION_LOST' }),
     onFailed: (error) => sendBack({ type: 'BACKEND_ERROR', error }),
     // The event arrives exactly as the system sent it
-    onMessage: ({ to, event }) => {
+    onMessage: ({ to, event, from }) => {
       if (to === HOST.application) {
         // Every window hears it; the shell tells a backend's request to open a plugin from its own window's
         sendBack((event.type === 'OPEN_PLUGIN' ? { ...event, type: 'OPEN_PLUGIN_FROM_APP' } : event) as ShellEvent);
@@ -19,7 +19,8 @@ export function connectionListener(client: ShellClient) {
       }
       const plugin = system.get(to);
       if (plugin) plugin.send(event);
-      else console.warn(`[shell] No plugin is running at ${to} for ${event.type}`);
+      // `from` survives the subscription, which carries the message whole: name the sending pack when it stamped one
+      else console.warn(`[shell] No plugin is running at ${to} for ${event.type}${from ? ` sent by "${from}"` : ''}`);
     },
   }));
 }
