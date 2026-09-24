@@ -218,20 +218,20 @@ node -e '
 step "4. Unit tests through the harness, with default-setup's runtime"
 cat > tests/unit/demo-notes.spec.ts <<'TS'
 import { describe, expect, it } from 'vitest';
-import { seedPack } from '@abuddy/testing/harness';
+import { importSeeds } from '@abuddy/testing/harness';
 import { findAll } from '#generated/ears';
 import { findRelations } from '@abuddy/ears';
 
 describe('demo notes', () => {
   it("seeds notes with default-setup's format and hooks", async () => {
-    expect(await seedPack({ keys: ['demo-notes'] })).toEqual({ 'demo-notes': { created: 1, updated: 0, skipped: 0 } });
+    expect(await importSeeds({ keys: ['demo-notes'] })).toEqual({ 'demo-notes': { created: 1, updated: 0, skipped: 0 } });
     const [note] = findAll('Note');
     expect(note).toMatchObject({ title: 'Demo notes', noteType: 'document', lastSeen: 0 });
     expect(note.shortCode).toMatch(/^NOTE-\d+$/);
   });
 
   it("seeds a library with default-setup's bundled compiler module and hooks", async () => {
-    expect(await seedPack({ keys: ['demo-library'] })).toEqual({ 'demo-library': { created: 2, updated: 0, skipped: 0 } });
+    expect(await importSeeds({ keys: ['demo-library'] })).toEqual({ 'demo-library': { created: 2, updated: 0, skipped: 0 } });
     const [guides] = findAll('Collection');
     const [doc] = findAll('Document');
     expect(guides).toMatchObject({ name: 'Demo guides' });
@@ -255,12 +255,12 @@ describe('digest service', () => {
 TS
 cat > tests/unit/notes-summary.spec.ts <<'TS'
 import { describe, expect, it } from 'vitest';
-import { importFlows, mockInference, seedPack, startApp } from '@abuddy/testing/harness';
+import { importFlows, mockInference, importSeeds, startApp } from '@abuddy/testing/harness';
 import { entry, keepAlive, subflow } from '#generated/flow-helpers';
 
 describe('notes summary flow', () => {
   it("runs on default-setup's brain and llm step with inference mocked", async () => {
-    await seedPack({ keys: ['prompts', 'flows'] });
+    await importSeeds({ keys: ['prompts', 'flows'] });
     const inference = mockInference('Buy milk');
     // A root flow hosting the pack's flow, as the app's root flow hosts long-running flows
     importFlows({ 'Root Flow': { root: true, tracks: [entry([subflow('Notes Summary')], [keepAlive()])] } });
