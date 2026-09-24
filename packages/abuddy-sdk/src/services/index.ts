@@ -32,7 +32,7 @@ export interface HostServices {
   logger: Logger;
   /**
    * Sends to plugins and systems. Actions run outside any pack, so both name a feature `<packId>/<featureId>`, the
-   * host's included (`host/application`); `untypedSendToSystem` also takes a role (`{ role: 'brain' }`), which reaches
+   * host's included (`host/application`); `sendToSystem` also takes a role (`{ role: 'brain' }`), which reaches
    * whichever system plays it — a flow event goes to the brain as `TRIGGER_BRAIN_EVENT`. A pack's `Services`
    * types them with its own and its dependencies' events.
    */
