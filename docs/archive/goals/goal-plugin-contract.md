@@ -419,8 +419,19 @@ recorded below. Phases 1–4 went in as `3d79fed34`, with `5a3442700` fixing a r
   `useUntypedPluginState`/`readUntypedPluginState`, matching `untypedQx`/`untypedTx` in `@abuddy/ears`.
 
 ### Open items
-- Two `Deferred` items below are untouched: the sender on `Message`, and `pluginAccepts` for a plugin with no
-  system of its own.
+Neither `Deferred` item is still open; both were settled after this was archived.
+
+- **Item 1, `defineSystem`'s audiences**, is done: [`goal-contracts-as-types.md`](goal-contracts-as-types.md)
+  made the contract a declared type with `internal` as a field, which is the work it named.
+- **Item 2, the sender on the envelope**, is half done and half declined. `Message.from` shipped — the sends
+  `#generated/events` builds stamp the pack that sent it, and the four diagnostics that report an undeliverable
+  message name it — while nothing routes or refuses on it. The enforcement the item asked for (audience-split
+  `receives`, the bus refusing a cross-pack send of a `pack`-tier event) is recorded as won't-do in
+  [`goal-sender-enforced-audiences.md`](../../goals/wont-do/goal-sender-enforced-audiences.md), with its reopen
+  triggers. That item's own reason for deferring was wrong too; the dated note beside it says why.
+
+An earlier version of this section named a third open item, `pluginAccepts` "for a plugin with no system of its
+own". There is no such item: `pluginAccepts` is the API this goal deleted, and nothing replaced it.
 
 ### Final verification
 `npm run typecheck`, `compile`, `test:unit`, `api:check`, `build`, `test:external-pack`, E2E and
