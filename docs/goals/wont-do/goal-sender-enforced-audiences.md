@@ -72,7 +72,7 @@ What did **not** land: any change to `PackFeaturePlugin.receives` or `PackFEFeat
    That threading is now done: `createActionEmitter({ from, via })` binds the pack running the action and the
    action itself, and `runActionCode` builds one per run. The observation under the objection survives it and is
    worth keeping: an action is still the path with the least compile-time checking, because Decision 2 of
-   `goal-actions-and-seams.md` deliberately keeps its names refs — an action is content that can be copied into
+   [`goal-actions-and-seams.md`](../../archive/goals/goal-actions-and-seams.md) deliberately keeps its names refs — an action is content that can be copied into
    another pack, so a bare name must not resolve. An identity for the stamp bought no typing, on purpose.
 
 2. **An unstamped message has no good meaning.** Half answered; the half that matters stands.

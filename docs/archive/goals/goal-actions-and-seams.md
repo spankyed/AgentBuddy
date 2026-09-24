@@ -1,3 +1,8 @@
+> **Done** (`AS/plugin-contract`: `576873cbe`, `9d80d94ff`, `2e51651da`). The text below is the plan as written;
+> two things it did not predict are in the Outcome, and `via` ended up naming any source rather than only an
+> action. For the current shape, see the root `CLAUDE.md` ("Addressing is an envelope") and
+> `docs/plans/host-seams.md`.
+
 > **Written in session** `8b92798a-1d8e-4b9d-bb17-daa98bec9f93` (Claude Code, 2026-09-24). Resume it with `claude -r 8b92798a-1d8e-4b9d-bb17-daa98bec9f93`.
 
 ```
@@ -192,6 +197,48 @@ import in the host is reported, with no exception left to excuse it.
 
 **Done when:** the full chain passes; no doc or comment says an action's sends carry no sender; if the spec
 was built, a mutation adding an unbound send to a module not in the set fails it.
+
+## Outcome
+
+All three phases landed: `576873cbe` (actions send as their pack), `9d80d94ff` (the port moves, the exception
+goes), `2e51651da` (`via` widens, and the docs). The full chain passes.
+
+Two things the plan did not predict, and one thing it deliberately left open:
+
+- **Phase 2's exception was load-bearing for the package barrel, not only for one import.** `HOST_SRC_ROOT`
+  excused four imports: `features/packs/fe/frontends.ts` reaching the shell's types, *and* the three
+  `fe/public.ts` re-exports in `fe/index.ts`. So folding the barrels in — which Decision 5 required — would have
+  broken the gate rather than freed it. Decision 4 still holds as written: nothing was registered. What replaced
+  the exception is a corrected predicate, not a list — a package may name its own features' frontends from the
+  module it publishes (`package.json` `exports`), which is the hand-written counterpart of a pack's generated
+  `pack-entry-fe.ts`. It fails closed: a tree with no `exports` excepts nothing, which is the opposite of the
+  fail-open shape the deleted comment warned against.
+- **`via` names a source, not specifically an action.** Phase 3 offered this as a decision to take or leave; it
+  was taken. `reportError` is handed a source and no pack, and a source is the same kind of string
+  `action:<label>` is, so it stamps `via` and the field means "what within the sender made it". The invariant is
+  then **every send carries a pack, a source, or both**, except `services.emitter` reached outside an action.
+- **The spec enumerating unbound senders was not built**, which Phase 3 explicitly permitted. After the widening
+  the set is one entry with one reason; a spec asserting it would be a list to maintain rather than an invariant
+  to check. What each sender stamps is pinned where that sender is tested (`define-events.spec.ts`,
+  `emitter.spec.ts`, `report-error.spec.ts`, `action-sandbox.spec.ts`).
+
+### Invariants, and what guards each
+
+| Invariant | Guard |
+|---|---|
+| A message an action sends carries its pack in `from` and `action:<label>` in `via` | `default-setup/tests/unit/action-sandbox.spec.ts` |
+| A send made with no action carries no `via` | `abuddy-sdk/tests/services/emitter.spec.ts` |
+| An action names every feature `<packId>/<featureId>`; a bare name does not compile and does not resolve | `abuddy-cli/tests/build/facade-typing.spec.ts` (`@ts-expect-error`), `abuddy-sdk/tests/services/emitter.spec.ts` |
+| Every field of `Message` beside `event` crosses `bus.send` | `api/tests/unit/bus-send-sender.spec.ts` — a case per field. Its "drops a field nothing declares" case is *not* the guard: it passes while the dropped field is one the envelope declares |
+| The four diagnostics naming a sender word it the same, and show both fields | `abuddy-sdk/tests/events/sender-suffix.spec.ts`, plus a case each in `outgoing-events`, `client-events` and `send-scope` |
+| `reportError` stamps the source it was given and never a pack | `abuddy-sdk/tests/logger/report-error.spec.ts` |
+| No host feature imports another feature's `fe/` | `findCrossFeatureImports` (`check:specifiers`) — with no exception for the host |
+| Only what a package publishes may name its features' frontends | `findCrossFeatureImports`, and two cases in `abuddy-cli/tests/build/import-specifiers.spec.ts` |
+
+Milestones, true when the work landed and not properties to hold: `git grep HOST_SRC_ROOT` returning nothing
+outside the docs that record the change, and `packages/abuddy-host/src/features/*/fe/public.ts` being gone. Both
+are the deleted-identifier kind the README says not to guard — the property that made the old shape wrong is the
+cross-feature rule above, and that is guarded.
 
 ## Deferred
 
