@@ -186,7 +186,7 @@ export function openLmdbStore({ paths, policy, engine, readOnly = false, log = c
     onUpdateRelation: (...args) => write((s) => s.onUpdateRelation(...args)),
     onRemoveRelation: (...args) => write((s) => s.onRemoveRelation(...args)),
     // Hydration filling the sink's relation cache, not a write
-    seedRelationMetadata: (...args) => forward((s) => s.seedRelationMetadata(...args)),
+    hydrateRelationMetadata: (...args) => forward((s) => s.hydrateRelationMetadata(...args)),
     getRelMeta: () => current?.getRelMeta() ?? new Map(),
     getErrorStats: () => current?.getErrorStats?.() ?? { errorCount: 0, lastError: null },
     close,

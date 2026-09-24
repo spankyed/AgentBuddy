@@ -2,9 +2,9 @@ import { EARS } from '../entities.ts';
 import type { PersistenceSink } from '../runtime.ts';
 import type { PartitionPolicy, Partition } from './policy.ts';
 
-/** A sink routing each write to the sink of its partition, with the relation metadata hydration seeds */
+/** A sink routing each write to the sink of its partition, and the routing caches hydration fills */
 export interface ShardedPersistence extends PersistenceSink {
-  seedRelationMetadata(relId: string, kind: string, src: string, tgt: string): void;
+  hydrateRelationMetadata(relId: string, kind: string, src: string, tgt: string): void;
   getRelMeta(): Map<string, { kind: string; src: string; tgt: string }>;
 }
 
@@ -218,15 +218,15 @@ export function makeShardedPersistence(
       return { errorCount, lastError };
     },
 
-    // Utility function for hydration to seed the caches
-    seedRelationMetadata(relId: string, kind: string, src: string, tgt: string) {
+    // What hydration read off disk, recorded so a relation routes to the partition it is already in
+    hydrateRelationMetadata(relId: string, kind: string, src: string, tgt: string) {
       // Validate inputs to prevent entTypeOf from throwing
       if (!src || typeof src !== 'string' || src.length === 0) {
-        console.warn(`[Sharded] Invalid src in seedRelationMetadata: relId=${relId}, src=${src}`);
+        console.warn(`[Sharded] Invalid src in hydrateRelationMetadata: relId=${relId}, src=${src}`);
         return;
       }
       if (!tgt || typeof tgt !== 'string' || tgt.length === 0) {
-        console.warn(`[Sharded] Invalid tgt in seedRelationMetadata: relId=${relId}, tgt=${tgt}`);
+        console.warn(`[Sharded] Invalid tgt in hydrateRelationMetadata: relId=${relId}, tgt=${tgt}`);
         return;
       }
 

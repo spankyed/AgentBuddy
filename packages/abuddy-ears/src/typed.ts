@@ -29,7 +29,7 @@ export interface TypedQx<S extends EntityShapes, N extends string = string> {
   <E extends string>(start: readonly Name<N, E>[]): QueryBuilder<string, S, N>;
   <E extends string>(start: EARS.EntityId<E>): QueryBuilder<E, S, N>;
   <E extends string>(start: readonly EARS.EntityId<E>[]): QueryBuilder<E, S, N>;
-  // Seeds that may be undefined at the call site
+  // Starts that may be undefined at the call site
   <E extends string>(start: Name<N, E> | readonly Name<N, E>[] | EARS.EntityId | readonly EARS.EntityId[] | undefined): QueryBuilder<string, S, N>;
 }
 

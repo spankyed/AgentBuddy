@@ -54,7 +54,7 @@ export function createQx({ storage, relations, isEntityType }: { storage: Attrib
   // checked against it when the step ran
   const qxImpl = (start?: QxStart, known?: EARS.EntityId[]) => {
     const resolvedAt = removals();
-    const resolveSeed = (): EARS.EntityId[] => {
+    const resolveStart = (): EARS.EntityId[] => {
       if (start === undefined) return [...getAllEntities()];
       if (Array.isArray(start)) {
         if ((start as readonly unknown[]).every(isEntity)) {
@@ -68,7 +68,7 @@ export function createQx({ storage, relations, isEntityType }: { storage: Attrib
       return hasEntity(id) ? [id] : [];
     };
 
-    const ids: EARS.EntityId[] = known ?? resolveSeed();
+    const ids: EARS.EntityId[] = known ?? resolveStart();
 
     // A builder may be kept across writes: a step after an entity left the engine drops the ids no longer in it
     const setIds = (next: EARS.EntityId[]) =>
@@ -280,7 +280,7 @@ export function createQx({ storage, relations, isEntityType }: { storage: Attrib
  * Query entry point: the entities it starts from.
  *
  * Overloads exist so an entity type threads its name into `QueryBuilder<E>`
- * (and from there into the shape registry), while id seeds stay untyped. The
+ * (and from there into the shape registry), while id starts stay untyped. The
  * id overload precedes the entity-type one because `EntityId` is a template
  * literal and `EARS.Entity` is an open string.
  */
@@ -291,7 +291,7 @@ export function qx<E extends string>(start: EARS.EntityId<E>): QueryBuilder<E>;
 export function qx<E extends string>(start: readonly EARS.EntityId<E>[]): QueryBuilder<E>;
 export function qx<E extends EARS.Entity>(start: E): QueryBuilder<E>;
 export function qx(start: readonly EARS.Entity[]): QueryBuilder<string>;
-// Catch-all for seeds that may be undefined at the call site.
+// Catch-all for starts that may be undefined at the call site.
 export function qx(start?: QxStart): QueryBuilder<string>;
 export function qx(start?: QxStart): QueryBuilder<string> {
   return installedEngine().qx(start);

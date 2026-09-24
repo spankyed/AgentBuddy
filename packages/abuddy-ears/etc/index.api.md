@@ -708,7 +708,7 @@ export interface ShardedPersistence extends PersistenceSink {
         tgt: string;
     }>;
     // (undocumented)
-    seedRelationMetadata(relId: string, kind: string, src: string, tgt: string): void;
+    hydrateRelationMetadata(relId: string, kind: string, src: string, tgt: string): void;
 }
 
 // @public (undocumented)

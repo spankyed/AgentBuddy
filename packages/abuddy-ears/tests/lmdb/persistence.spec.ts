@@ -220,9 +220,9 @@ describe('Sharded Router', () => {
     { src: 'Document-1', tgt: '', label: 'empty tgt' },
     { src: 'Document-1', tgt: undefined as any, label: 'undefined tgt' },
     { src: 123 as any, tgt: 'Document-1', label: 'non-string src' },
-  ])('seedRelationMetadata warns on invalid input: $label', ({ src, tgt }) => {
+  ])('hydrateRelationMetadata warns on invalid input: $label', ({ src, tgt }) => {
     const spy = vi.spyOn(console, 'warn').mockImplementation(() => {});
-    sharded.seedRelationMetadata('Relation-seed', 'TEST', src, tgt);
+    sharded.hydrateRelationMetadata('Relation-seed', 'TEST', src, tgt);
     expect(spy).toHaveBeenCalledWith(expect.stringContaining('[Sharded] Invalid'));
     spy.mockRestore();
   });
@@ -276,7 +276,7 @@ describe('Sharded Router', () => {
   it('system continues working after encountering invalid data', () => {
     const spy = vi.spyOn(console, 'warn').mockImplementation(() => {});
     // Feed bad data
-    sharded.seedRelationMetadata('Relation-bad1', 'TEST', '', 'Document-1');
+    sharded.hydrateRelationMetadata('Relation-bad1', 'TEST', '', 'Document-1');
     spy.mockRestore();
 
     // Valid operations should still work

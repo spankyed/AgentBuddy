@@ -14,7 +14,7 @@ function dec(e: { t: string; v: unknown }): unknown {
 
 /**
  * Loads the partitions `policy` hydrates (and `volatileBackup` with `includeVolatile`) into `engine`,
- * seeding `shardedPersistence`'s relation metadata.
+ * filling `shardedPersistence`'s relation metadata.
  */
 export async function hydrateSharded(params: {
   engine: EarsAdmin;
@@ -73,7 +73,7 @@ export async function hydrateSharded(params: {
       }
 
       if (shardedPersistence) {
-        shardedPersistence.seedRelationMetadata(relIdStr, r.kind, r.src, r.tgt);
+        shardedPersistence.hydrateRelationMetadata(relIdStr, r.kind, r.src, r.tgt);
       }
 
       engine.bulkLoadAttr(
