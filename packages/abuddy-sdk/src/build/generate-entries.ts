@@ -308,11 +308,15 @@ export function generatePackFiles(
   }
 
   /**
-   * The dependencies whose facade publishes `PackPluginState`. `generatePackTypes` re-exports it only for a pack
-   * that has plugins, so importing it from every dependency left a dependent of a plugin-less pack unable to
-   * resolve its own `fe.ts`. Same rule, read from the dependency's manifest rather than applied to our own.
+   * Whether a pack publishes `PackPluginState` — it has at least one feature with a plugin. Three outputs turn on
+   * this one fact and must agree: whether `fe.ts` is emitted, whether `pack-types.ts` re-exports the type, and
+   * whether a dependent imports it. Spelling it three ways is what left a dependent of a plugin-less pack with an
+   * import nothing resolved.
    */
-  const depsWithPlugins = depIds.filter((depId) => PROVENANCE_KINDS.plugins(depSnapshots.get(depId)!.manifest, depId).length > 0);
+  const publishesPluginState = (forManifest: PackManifest, packId: string) => PROVENANCE_KINDS.plugins(forManifest, packId).length > 0;
+
+  /** The dependencies whose facade publishes `PackPluginState`, by the same rule applied to their manifests */
+  const depsWithPlugins = depIds.filter((depId) => publishesPluginState(depSnapshots.get(depId)!.manifest, depId));
 
   /**
    * The slash commands the pack declares. A name a dependency declares too fails the build: the app would
@@ -423,11 +427,10 @@ export function generatePackFiles(
       ...targets,
       ...Object.values(manifest.entityShapes ?? {}).map((shape) => shape.source),
       ...features.flatMap((f) => (f.settings ? [f.settings] : [])),
-      // The systems' entries: their outgoing unions are one of the two sources of a plugin's inbox
-      ...features.flatMap((f) => (f.system ? [f.system.entry] : [])),
-      // The plugins' entries, and the contract leaves beside them: a plugin's inbox is read from its contract,
-      // which lives in a module the plugin's own machine never imports
-      ...features.flatMap((f) => (f.plugin ? [f.plugin.entry] : [])),
+      // The contract leaves, and not the system and plugin entries beside them: a feature's events are read from
+      // its contract now, so putting the machines in the program would parse and bind every one of them — and
+      // their whole closure, XState and Vue included — for nothing. Their paths still reach the generated
+      // imports; only membership of this program is what they don't need.
       ...features.flatMap((f) => (f.plugin?.contract ? [f.plugin.contract.split('#')[0]!] : [])),
       ...features.flatMap((f) => (f.system?.contract ? [f.system.contract.split('#')[0]!] : [])),
     ];
@@ -450,60 +453,56 @@ export function generatePackFiles(
     return moduleExports.inboxEventTypesOf(file, name);
   }
 
-  /**
-   * A feature's system contract, as `abuddy.json` names it at `features[].system.contract`. A system that names
-   * none sends nothing its plugin can receive, which is a real shape: a system with no plugin of its own.
-   */
-  function systemContractOf(feature: PackFeatureEntry): { source: string; exportName: string; file: string } | undefined {
-    if (!feature.system?.contract) return undefined;
-    const label = `Feature "${feature.id}": system.contract`;
-    const target = exportTarget(label, feature.system.contract);
-    const info = exportOf(target.file, target.exportName);
-    if (!info) throw new Error(`${label}: ${target.source} doesn't export "${target.exportName}"`);
-    if (!info.type) throw new Error(`${label}: ${target.source} exports "${target.exportName}" only as a value, not a type. A system's contract is a declared type codegen reads without running anything`);
-    return target;
-  }
-
-  /** The event types a feature's system sends, read from its contract */
-  function sentEventTypes(feature: PackFeatureEntry): string[] {
-    const contract = systemContractOf(feature);
-    if (!contract) return [];
-    try {
-      return outgoingEventTypesOf(contract.file, contract.exportName);
-    } catch (err) {
-      (err as Error).message = `Feature "${feature.id}": ${(err as Error).message}`;
-      throw err;
-    }
-  }
+  /** Where a contract lives: the module as the manifest spells it, the resolved file, and the type's name */
+  type ContractTarget = { source: string; exportName: string; file: string };
 
   /**
-   * A feature's declared contract, as `abuddy.json` names it at `features[].plugin.contract` — the module and the
-   * type in it. A feature that names none publishes nothing: its plugin still receives its own system's events.
+   * A feature's contract, as `abuddy.json` names it at `features[].<kind>.contract` — the module and the type in
+   * it. A feature that names none publishes nothing: a system with no plugin of its own sends nothing anyone
+   * receives, and a plugin without one still receives its own system's events.
    *
    * The contract is a *type*, so the check is that the module declares one: a name that is only a value is the
    * mistake worth catching, since reading it would silently yield an empty inbox.
    */
-  function contractOf(feature: PackFeatureEntry): { source: string; exportName: string; file: string } | undefined {
-    if (!feature.plugin?.contract) return undefined;
-    const label = `Feature "${feature.id}": plugin.contract`;
-    const target = exportTarget(label, feature.plugin.contract);
+  function contractTarget(feature: PackFeatureEntry, kind: 'system' | 'plugin'): ContractTarget | undefined {
+    const declared = kind === 'system' ? feature.system?.contract : feature.plugin?.contract;
+    if (!declared) return undefined;
+    const label = `Feature "${feature.id}": ${kind}.contract`;
+    const target = exportTarget(label, declared);
     const info = exportOf(target.file, target.exportName);
     if (!info) throw new Error(`${label}: ${target.source} doesn't export "${target.exportName}"`);
-    if (!info.type) throw new Error(`${label}: ${target.source} exports "${target.exportName}" only as a value, not a type. A plugin's contract is a declared type codegen reads without running anything`);
+    if (!info.type) throw new Error(`${label}: ${target.source} exports "${target.exportName}" only as a value, not a type. A ${kind}'s contract is a declared type codegen reads without running anything`);
     return target;
+  }
+
+  /** The contract each of `features` declares for `kind`, by feature id; a feature that declares none is absent */
+  function contractsOf(features: PackFeatureEntry[], kind: 'system' | 'plugin'): Map<string, ContractTarget> {
+    return new Map(features.flatMap((feature) => {
+      const target = contractTarget(feature, kind);
+      return target ? [[feature.id, target] as const] : [];
+    }));
+  }
+
+  /** The event types a contract declares, with the feature named on anything the reader throws */
+  function contractEventTypes(feature: PackFeatureEntry, kind: 'system' | 'plugin', read: (file: string, name: string) => string[]): string[] {
+    const contract = contractTarget(feature, kind);
+    if (!contract) return [];
+    try {
+      return read(contract.file, contract.exportName);
+    } catch (err) {
+      (err as Error).message = `Feature "${feature.id}": ${(err as Error).message}`;
+      throw err;
+    }
+  }
+
+  /** The event types a feature's system sends, read from its contract */
+  function sentEventTypes(feature: PackFeatureEntry): string[] {
+    return contractEventTypes(feature, 'system', outgoingEventTypesOf);
   }
 
   /** The event types a plugin's contract declares that any other plugin or system may send it */
   function acceptedEventTypes(feature: PackFeatureEntry): string[] {
-    const contract = contractOf(feature);
-    if (!contract) return [];
-    try {
-      return inboxEventTypesOf(contract.file, contract.exportName);
-    } catch (err) {
-      // The same error, so its code still says what kind of failure it is
-      (err as Error).message = `Feature "${feature.id}": ${(err as Error).message}`;
-      throw err;
-    }
+    return contractEventTypes(feature, 'plugin', inboxEventTypesOf);
   }
 
   /**
@@ -511,9 +510,8 @@ export function generatePackFiles(
    * of the inbox its contract declares. The bus checks each send against this (`getPluginEventValidationMap`).
    *
    * One flat list, deliberately: the audiences are a type-level split, and a passing check here means the event's
-   * **shape** was accepted, not that this sender was allowed to send it. `Message` carries no sender today, so the
-   * bus has nothing to compare an audience against — see the goal's Deferred item, which has the trigger for
-   * stamping one.
+   * **shape** was accepted, not that this sender was allowed to send it. `Message.from` is a label the generated
+   * sends stamp, not a claim the bus checks — `docs/goals/wont-do/goal-sender-enforced-audiences.md` says why.
    */
   function receivedEventTypes(feature: PackFeatureEntry): string[] {
     const own = feature.system ? sentEventTypes(feature) : [];
@@ -608,17 +606,14 @@ export function generatePackFiles(
 
     // The machine each system was built from is typed by the contract the manifest names for its feature, and
     // nothing in either file says so: this asserts it where both are in scope.
-    const contracted = systemFeatures.filter(f => systemContractOf(f));
+    const contracted = systemFeatures.filter(f => contractTarget(f, 'system'));
     const contractCheck = contracted.length === 0 ? '' : `
 // Each system's machine is typed by the contract abuddy.json names for its feature — the one its facade publishes.
-// A machine built from some other contract compiles on its own, so a mismatch reads here as a sentence where
-// \`true\` belongs.
-const __machineContracts: {
-${contracted.map(f => `  '${f.id}': MachineMatchesContract<typeof ${systemBinding(f.id)}, __SystemContracts['${f.id}']>;`).join('\n')}
-} = {
-${contracted.map(f => `  '${f.id}': true,`).join('\n')}
-};
-void __machineContracts;
+// A machine built from some other contract compiles on its own, so a mismatch reads here as the sentence
+// \`MachineMatchesContract\` returns, in place of the \`true\` the constraint asks for. Type-only: it leaves
+// nothing behind in the pack's bundle.
+type __ContractMatches<T extends true> = T;
+${contracted.map(f => `type __contract_check_${f.id} = __ContractMatches<MachineMatchesContract<typeof ${systemBinding(f.id)}, __SystemContracts['${f.id}']>>;`).join('\n')}
 `;
 
     return `${HEADER}
@@ -844,19 +839,18 @@ export const ref = (name: FeatureName): FeatureRef => resolveName(name, '${manif
   function generateFe(): string {
     const features = manifest.features ?? [];
     const pluginFeatures = features.filter(f => f.plugin);
+    if (!publishesPluginState(manifest, manifest.id)) return '';
     const own = pluginFeatures.map(f => f.id);
-    if (!own.length) return '';
     const plugins = [...own, ...Object.keys(_mergeProvenance('plugins', [...depSnapshots])).sort()].map(name => `'${name}'`);
 
     // Each own plugin's published state, from the same contract the inbox is read from. A feature that declares no
     // contract publishes nothing, and `never` is what a selector for it gets.
-    const declaring = pluginFeatures.map(f => ({ feature: f, contract: contractOf(f) })).filter(c => c.contract);
-    const stateImports = declaring
-      .map(({ feature, contract }) => `import type { ${contract!.exportName} as __state_contract_${feature.id} } from '${toImportPath(root, contract!.source)}';`)
+    const contracts = contractsOf(pluginFeatures, 'plugin');
+    const stateImports = [...contracts]
+      .map(([id, contract]) => `import type { ${contract.exportName} as __state_contract_${id} } from '${toImportPath(root, contract.source)}';`)
       .join('\n');
-    const declaredIds = new Set(declaring.map(c => c.feature.id));
     const ownState = pluginFeatures
-      .map(f => `  '${f.id}': ${declaredIds.has(f.id) ? `PluginStateOf<__state_contract_${f.id}>` : 'never'};`)
+      .map(f => `  '${f.id}': ${contracts.has(f.id) ? `PluginStateOf<__state_contract_${f.id}>` : 'never'};`)
       .join('\n');
     const depState = depTypeImports('PackPluginState', depsWithPlugins);
     const qualifiedState = depsWithPlugins.map((depId) => `Qualified<'${depId}', ${depAlias(depId, 'PackPluginState')}>`);
@@ -969,13 +963,12 @@ export function readPluginState(name: PluginName, selector: (state: never) => un
       .join('\n');
     // Each plugin's declared contract, from the leaf module abuddy.json names — never the plugin module itself,
     // whose machine imports cycle back through this file
-    const declaring = pluginFeatures.map(f => ({ feature: f, contract: contractOf(f) })).filter(c => c.contract);
-    const acceptsImports = declaring
-      .map(({ feature, contract }) => `import type { ${contract!.exportName} as __contract_${feature.id} } from '${toImportPath(root, contract!.source)}';`)
+    const contracts = contractsOf(pluginFeatures, 'plugin');
+    const acceptsImports = [...contracts]
+      .map(([id, contract]) => `import type { ${contract.exportName} as __contract_${id} } from '${toImportPath(root, contract.source)}';`)
       .join('\n');
-    const declaredIds = new Set(declaring.map(c => c.feature.id));
     const acceptsAliases = pluginFeatures
-      .flatMap(f => declaredIds.has(f.id)
+      .flatMap(f => contracts.has(f.id)
         ? [`type __accepts_${f.id} = PluginInboxOf<__contract_${f.id}>;`, `type __public_${f.id} = PublicPluginInboxOf<__contract_${f.id}>;`]
         : [`type __accepts_${f.id} = never;`, `type __public_${f.id} = never;`])
       .join('\n');
@@ -1000,7 +993,7 @@ export function readPluginState(name: PluginName, selector: (state: never) => un
       'HostSystemEvents',
     ].join(' & ');
     return `${HEADER}
-import { defineEvents, type HostPluginEvents, type HostSystemEvents, type IncomingEventsOf${hasSystems ? ', type OutgoingEventsOf' : ''}${declaring.length > 0 ? ', type PluginInboxOf, type PublicPluginInboxOf' : ''}, type Qualified, type WithOwnNames } from '@abuddy/sdk/events';
+import { defineEvents, type HostPluginEvents, type HostSystemEvents, type IncomingEventsOf${hasSystems ? ', type OutgoingEventsOf' : ''}${contracts.size > 0 ? ', type PluginInboxOf, type PublicPluginInboxOf' : ''}, type Qualified, type WithOwnNames } from '@abuddy/sdk/events';
 ${hasSystems ? `import type { SystemContracts as __SystemContracts } from './system-specs.js';\n` : ''}${acceptsImports ? `${acceptsImports}\n` : ''}${[...depPlugins.imports, ...depSystems.imports].join('\n')}
 ${[outgoingAliases, acceptsAliases].filter(Boolean).join('\n')}
 
@@ -1051,13 +1044,12 @@ export const { broadcastToPlugin, sendToPlugin, sendToSystem } = /*#__PURE__*/ d
   function generateSystemSpecs(): string {
     const systemFeatures = (manifest.features ?? []).filter(f => f.system);
     if (!systemFeatures.length) return '';
-    const declaring = systemFeatures.map(f => ({ feature: f, contract: systemContractOf(f) })).filter(c => c.contract);
-    const imports = declaring
-      .map(({ feature, contract }) => `import type { ${contract!.exportName} as __system_contract_${feature.id} } from '${toImportPath(root, contract!.source)}';`)
+    const contracts = contractsOf(systemFeatures, 'system');
+    const imports = [...contracts]
+      .map(([id, contract]) => `import type { ${contract.exportName} as __system_contract_${id} } from '${toImportPath(root, contract.source)}';`)
       .join('\n');
-    const declaredIds = new Set(declaring.map(c => c.feature.id));
     const entries = systemFeatures
-      .map(f => `  '${f.id}': ${declaredIds.has(f.id) ? `__system_contract_${f.id}` : 'never'};`)
+      .map(f => `  '${f.id}': ${contracts.has(f.id) ? `__system_contract_${f.id}` : 'never'};`)
       .join('\n');
     return `${HEADER}
 // Type-only: #generated/events reads each system's incoming and outgoing events from its feature's contract, by
@@ -1256,7 +1248,7 @@ export const seedRuntime: SeedRuntime = {
   function generatePackTypes(): string {
     // `fe.ts` is generated only for a pack with plugins, and `PackPluginState` lives there: a pack with none has no
     // plugin state to publish, and naming the module anyway leaves the facade bundle unable to resolve it.
-    const hasPlugins = (manifest.features ?? []).some(f => f.plugin);
+    const hasPlugins = publishesPluginState(manifest, manifest.id);
     return `${HEADER}
 export type { PackShapes as PackEntityShapes, PackStepNodes } from './ears.js';
 export type { PackPluginEvents, PackSystemEvents } from './events.js';
