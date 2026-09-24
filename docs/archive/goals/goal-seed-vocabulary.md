@@ -1,3 +1,7 @@
+> **Done** (master, `d3ff1a950`..`5a7717ff2`). The text below is the plan as written; the Outcome records where
+> it went further — the packaged-authoring template and the last of `@abuddy/ears`'s third sense of the word.
+> For the vocabulary as it now stands, see `docs/public-facing/seeds.md`, "The four stages".
+
 > **Written in session** `bc6d43e0-1c60-4cad-8237-15508a9e6649` (Claude Code, 2026-09-24). Resume it with `claude -r bc6d43e0-1c60-4cad-8237-15508a9e6649`.
 
 ```
@@ -317,15 +321,85 @@ Lands independently of Phases 1–4: it is a different package and shares no fil
 clean; `grep -rn QxSeed` finds nothing outside `docs/archive/`; the typed-EARS completions checklist in
 `packages/abuddy-sdk/TYPED-EARS.md` is run, since `runtime.ts` and `typed.ts` were touched.
 
+## Outcome (2026-09-24)
+
+All five phases landed on master as nine commits, `d3ff1a950`..`5a7717ff2`. No phase was dropped and no decision had
+to be corrected. Two things came up that the plan did not list, both found by sweeping rather than by a failing
+check, and both are folded in below. The Deferred section's two remaining items are still open and still out of
+scope; a third bullet there, deferring the `seed-golden` rename, was stale when this was archived — Decision 7 was
+rewritten mid-plan to do that rename and Phase 4 did it — so it was removed rather than left to contradict them.
+
+### Per phase
+
+| Phase | Status | Evidence |
+|---|---|---|
+| 1 — give the act its own word | done `9ce986ad0` | 68 files; `importCompiledSeeds`/`importPackSeeds`/`importSeeds`, `ImportCounts`, `ImportContext`, `ImportOptions`, `PackImportFailure`, `Seeder.apply`; `schema:update`, `compile`, `api:update` |
+| 2 — make the split checkable | done `27573c9e9` | `abuddy-sdk/tests/utils/import-is-the-verb.spec.ts`; finds 5 importers; both mutations fail it |
+| 3 — name the axis in `AppState` | done `bfe2a34e1` | four fields renamed, move added to `migrations/app/0.3.15.ts`; 39 migration specs; idempotence mutation-checked |
+| 4 — write the stages down | done `847fa0799` | "The four stages" in `seeds.md`; the split in `abuddy-sdk/CLAUDE.md` and the root table; `seed-parity:check`/`:update` |
+| 5 — the query seed in `@abuddy/ears` | done `74654df72`, `5a7717ff2` | `QxSeed` → `QxStart`, `qx(start)`; TYPED-EARS checklist run |
+
+### Conventional choices
+
+- **Phase 1** — `Seeder.apply` over `Seeder.import`: `import` is legal as a method name but is a keyword elsewhere and
+  confuses some tooling. The guard is worded so either passes, since what it forbids is `seed*`.
+- **Phase 1** — `seedingPackId` became `seedPackId`: it reads a pack id *from* the seeds, so the `-ing` was the verb
+  leaking into a noun.
+- **Phase 3** — the migration addresses the `AppState` row by the literal `'AppState-app'`, as the file already does
+  for `SETTINGS_ID`. Importing `APP_STATE_ENTITY` instead broke an api spec that mocks `@abuddy/host/app-state`.
+- **Phase 5** — the three "Seeded …" doc comments read "Started from …".
+
+### What the plan did not list
+
+- **The packaged-authoring template** (`1a8f0e856`). `tests/scripts/test-packaged-authoring.sh` writes the example
+  pack's specs itself, so they were the last callers of `seedPack`, and `test:packaged-authoring` was the check that
+  found them. They are what a pack author copies, which is the reason the harness took the plain name.
+- **`seedRelationMetadata`** (`5a7717ff2`). A third sense of the word, in `@abuddy/ears`'s sharded router: not content
+  and not a query's start, but what hydration tells the router about a relation it has just read off disk. Renamed
+  `hydrateRelationMetadata`, the word this repo already uses for loading persisted data into memory, and the last
+  `seed` mentions in `query.ts` and `typed.ts` prose went with it. `@abuddy/ears/src` now holds one occurrence of the
+  word, `index.ts:33`'s "a seeder", which is the pack-seeder noun and correct.
+
+### Invariants and milestones
+
+One invariant, and it has a guard:
+
+- **Nothing that performs an import is named `seed*`** — `abuddy-sdk/tests/utils/import-is-the-verb.spec.ts`, which
+  reads the declared return type rather than a list of names, so a `seedFoo(): ImportCounts` written next year fails
+  it. Mutation-checked both ways.
+
+The rest of the "Finished when" list is milestones: the identifiers that no longer exist, the `AppState` fields, the
+docs. They were true when this landed, and a later rename making one false is not a regression. Per
+[the README](README.md#invariants-and-milestones), no guard names a deleted identifier — the guard holds the property
+that made the old shape wrong.
+
+### Two things worth knowing if you touch this again
+
+- **Codegen names the seeder method on both sides.** The emitted `{ key, apply: … }` literal and the matching
+  `import { apply as __seeder_x }` are written in different places in `generate-entries.ts`; changing one alone fails
+  `compile` with an esbuild "No matching export" error.
+- **`untypedTx(...).drop(k)` clears an attribute rather than removing the key** — it reads back as `null`, not
+  `undefined`. The migration's "already moved" check is `== null` for that reason, and getting it wrong made the
+  migration non-idempotent.
+
+### Final verification
+
+`typecheck` ✅ · `schema:check` ✅ · `api:check` (2 + 28 + 101 reports) ✅ · `compile` ✅ · `test:unit` 3,025 tests
+across 8 suites ✅ · `seed-parity:check` ✅ · `build` ✅ · `npm test` (E2E) 21 ✅ · `test:external-pack` ✅ ·
+`test:packaged-authoring` ✅
+
+`seedData`, `seedPack`, `seedPackData`, `shouldSeedAll`, `SeedCounts`, `SeederContext`, `seedingPackId`, `QxSeed` and
+`Seeder.seed` appear nowhere outside `docs/archive/` and `CHANGELOG.md`, which is release-owned history.
+
 ## Deferred
 
 - **Merging `builtInSeedHashes` and `externalSeedHashes` into one field.** They have identical type and
   purpose and differ only in retention — the external one is kept when a pack is uninstalled. Merging
   needs that retention rule re-expressed and is a data change, not a naming one. Out of scope.
-- **Renaming `seed-parity`/`seed-golden`** (Decision 7).
 - **`sourceHash`'s scope.** It hashes the compiled bundle, which is why editing an inlined `_helpers/`
   file re-hashed 47 of 62 golden rows in this session. Whether the golden should assert hash *values* at
-  all is a test-design question, tracked separately, not a vocabulary one.
+  all is a test-design question, not a vocabulary one; [`goal-test-cleanup.md`](../../goals/goal-test-cleanup.md)
+  already holds what the goldens should cover (its item 6).
 
 ## Constraints
 
