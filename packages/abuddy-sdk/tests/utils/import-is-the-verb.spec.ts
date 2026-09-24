@@ -6,8 +6,8 @@
 // says so in its name. A function's return type is what identifies it — a name can be anything, but a signature
 // that hands back `ImportCounts` is doing the importing — so that is what this reads.
 //
-// It guards the property, not any particular old name: a new `seedFoo(): ImportCounts` fails here just as the
-// original `seedData` would, which is the point.
+// It guards the property, not any particular name: a new `seedFoo(): ImportCounts` fails here whether or not
+// anything was ever called that, which is the point.
 import { describe, expect, it } from 'vitest';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
