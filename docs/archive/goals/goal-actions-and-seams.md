@@ -198,29 +198,65 @@ import in the host is reported, with no exception left to excuse it.
 **Done when:** the full chain passes; no doc or comment says an action's sends carry no sender; if the spec
 was built, a mutation adding an unbound send to a module not in the set fails it.
 
-## Outcome
+## Outcome (2026-09-24)
 
-All three phases landed: `576873cbe` (actions send as their pack), `9d80d94ff` (the port moves, the exception
-goes), `2e51651da` (`via` widens, and the docs). The full chain passes.
+All three phases landed on `AS/plugin-contract` and the full chain passed. Two of the doc's own premises turned
+out to be wrong where it counted — the exception Phase 2 deletes guarded four imports rather than one, and the
+"four sites that render a sender" were five — and a review afterwards found three defects in the work, all since
+fixed. `via` ended up wider than Decision 1 settled, which Phase 3 had invited as an explicit choice.
 
-Two things the plan did not predict, and one thing it deliberately left open:
+### Per phase
 
-- **Phase 2's exception was load-bearing for the package barrel, not only for one import.** `HOST_SRC_ROOT`
-  excused four imports: `features/packs/fe/frontends.ts` reaching the shell's types, *and* the three
-  `fe/public.ts` re-exports in `fe/index.ts`. So folding the barrels in — which Decision 5 required — would have
-  broken the gate rather than freed it. Decision 4 still holds as written: nothing was registered. What replaced
-  the exception is a corrected predicate, not a list — a package may name its own features' frontends from the
-  module it publishes (`package.json` `exports`), which is the hand-written counterpart of a pack's generated
-  `pack-entry-fe.ts`. It fails closed: a tree with no `exports` excepts nothing, which is the opposite of the
-  fail-open shape the deleted comment warned against.
-- **`via` names a source, not specifically an action.** Phase 3 offered this as a decision to take or leave; it
-  was taken. `reportError` is handed a source and no pack, and a source is the same kind of string
-  `action:<label>` is, so it stamps `via` and the field means "what within the sender made it". The invariant is
-  then **every send carries a pack, a source, or both**, except `services.emitter` reached outside an action.
-- **The spec enumerating unbound senders was not built**, which Phase 3 explicitly permitted. After the widening
-  the set is one entry with one reason; a spec asserting it would be a list to maintain rather than an invariant
-  to check. What each sender stamps is pinned where that sender is tested (`define-events.spec.ts`,
-  `emitter.spec.ts`, `report-error.spec.ts`, `action-sandbox.spec.ts`).
+| Phase | Status | Evidence |
+|---|---|---|
+| 1 — Actions send as their pack | done | `576873cbe`. `default-setup/tests/unit/action-sandbox.spec.ts`, `abuddy-sdk/tests/services/emitter.spec.ts`, `api/tests/unit/bus-send-sender.spec.ts`. Four mutations: the sandbox's label, `senderSuffix`'s `via`, the shell's notify, the tRPC schema |
+| 2 — Move the port, delete the exception | done | `9d80d94ff`. `abuddy-cli/tests/build/import-specifiers.spec.ts`. Two mutations: re-pointing `frontends.ts` at the shell's types, and dropping the published-entry exception |
+| 3 — The invariant, and the docs | done; its optional spec deliberately not built | `2e51651da`. `abuddy-sdk/tests/logger/report-error.spec.ts`. Two mutations, one per `reportError` send |
+
+### Conventional choices
+
+Details the doc left open, decided while implementing:
+
+- **`from` on an action's send is the pack whose runtime ran it**, not the pack that seeded the Action row. An
+  `ActionEntity` records no owner the sandbox is given, and a flow's inline `mode: 'code'` action has no row at
+  all, so the running pack is the only identity available on both paths.
+- **The pack id reaches the sandbox from codegen**, as a new `packId` export in `#generated/ref`, rather than a
+  literal in default-setup — a literal would be wrong the moment the file is copied.
+- **One `senderSuffix` rather than a conditional at each rendering site**, so the wording cannot drift and a new
+  sender field reaches every diagnostic at once.
+- **`createSends` omits `from`/`via` when unbound** instead of stamping them `undefined`, which read as a sender
+  that had been lost and put a key in every serialized message.
+- **`createActionEmitter` is public, not `_`-prefixed.** Its only caller is pack code, and `check:specifiers`
+  bars a pack from importing an underscored export.
+- **Phase 2's replacement rule is derived, not listed:** a package may name its features' frontends from a module
+  it publishes and that sits outside every feature, read from `package.json` `exports`. It fails closed.
+- **`OPEN_PLUGIN` was left without a sender** when the shell's refusals were unified. Giving it one is a change to
+  a published event type, so it stayed a separate decision rather than riding along.
+
+### Corrections to the Decisions
+
+- **Decision 1 was widened, deliberately.** It settled `via` as `action:<label>` and "absent for every other
+  sender". Phase 3 offered the widening as an explicit choice and it was taken: `via` now means *what within the
+  sender made it*, of which an action is one case, and `reportError` stamps the source it was handed. The
+  invariant that replaces "one module stamps nothing" is **every send carries a pack, a source, or both** —
+  except `services.emitter` reached outside an action, where neither is in scope.
+- **Decision 4 held, but Phase 2's premise did not.** The Background says the exception exists "for that single
+  import". It excused four: `features/packs/fe/frontends.ts` reaching the shell's types, *and* the three
+  `fe/public.ts` re-exports in `fe/index.ts`. Folding the barrels in — which Decision 5 required — would have
+  broken the gate rather than freed it. Nothing was registered in its place, as Decision 4 required.
+- **"The four sites that render a sender" were five.** The shell refuses a plugin at once *and* after waiting for
+  pack frontends, and the deferred one carried no sender at all.
+
+### Open items
+
+- **A review after this goal found three defects in it**, all fixed: the bus drop dedupe was keyed on `from`
+  alone, so two actions of one pack collapsed into one report naming the wrong one (`29620c935`); the new gate
+  excepted a published module *inside* a feature, which handed `host/settings` a licence no other feature had
+  (`a8074ef93`); and the shell's deferred refusal named no sender (`931a4ce7c`).
+- **`_sendToLocalPlugin` has no caller.** Nothing in any package's source calls it — only its own definition and
+  `check:specifiers`' name list — while `packages/abuddy-host/CLAUDE.md` still describes it as the path the
+  renderer's `sendToPlugin` takes. The behaviour that doc describes is right; the function it credits is not
+  involved. Removing an `@internal` export was left as a separate decision.
 
 ### Invariants, and what guards each
 
@@ -229,18 +265,25 @@ Two things the plan did not predict, and one thing it deliberately left open:
 | A message an action sends carries its pack in `from` and `action:<label>` in `via` | `default-setup/tests/unit/action-sandbox.spec.ts` |
 | A send made with no action carries no `via` | `abuddy-sdk/tests/services/emitter.spec.ts` |
 | An action names every feature `<packId>/<featureId>`; a bare name does not compile and does not resolve | `abuddy-cli/tests/build/facade-typing.spec.ts` (`@ts-expect-error`), `abuddy-sdk/tests/services/emitter.spec.ts` |
-| Every field of `Message` beside `event` crosses `bus.send` | `api/tests/unit/bus-send-sender.spec.ts` — a case per field. Its "drops a field nothing declares" case is *not* the guard: it passes while the dropped field is one the envelope declares |
-| Every diagnostic naming a sender words it the same, and shows both fields | `abuddy-sdk/tests/events/sender-suffix.spec.ts`, plus a case each in `outgoing-events`, `client-events` and `send-scope`. Review found a fifth rendering this missed — the shell refuses after a wait as well as at once, and that one carried no sender and no full stop; all three of the shell's now come from one `refusal()`, pinned by a case asserting the two branches say exactly the same thing |
+| Every diagnostic naming a sender words it the same, and shows both fields | `abuddy-sdk/tests/events/envelope.spec.ts`, plus a case each in `outgoing-events`, `client-events` and `send-scope`, and one in `open-plugin` asserting the shell's two refusal branches say exactly the same thing |
 | `reportError` stamps the source it was given and never a pack | `abuddy-sdk/tests/logger/report-error.spec.ts` |
 | No host feature imports another feature's `fe/` | `findCrossFeatureImports` (`check:specifiers`) — with no exception for the host |
-| Only a module a package publishes from outside every feature may name its features' frontends | `findCrossFeatureImports`, and three cases in `abuddy-cli/tests/build/import-specifiers.spec.ts`. As first landed the rule asked only whether a module was published, which excepted `./settings` (`features/settings/be/index.ts`); the "outside every feature" half was added straight after |
-| A drop is reported once per plugin, event type **and sender** | `outgoing-events.spec.ts` — the key is `senderSuffix`'s output, so it distinguishes whatever the report distinguishes. It was `pluginId/type/from`, which stopped matching the message when `via` arrived |
-| A field added to `Message` cannot be silently dropped at the tRPC boundary | `abuddy-sdk/tests/events/envelope.spec.ts` — an exhaustiveness assertion over `keyof Message` that fails `typecheck` naming the new field. It lives in the SDK because nothing typechecks `packages/api/tests` |
+| Only a module a package publishes from outside every feature may name its features' frontends | `findCrossFeatureImports`, and three cases in `abuddy-cli/tests/build/import-specifiers.spec.ts` |
+| A drop is reported once per plugin, event type **and sender** | `abuddy-host/tests/bus/outgoing-events.spec.ts` — the key is `senderSuffix`'s output, so it distinguishes whatever the report distinguishes |
+| A field added to `Message` cannot be silently dropped at the tRPC boundary | the `Required<Message>` sample in `api/tests/unit/bus-send-sender.spec.ts`, which stops compiling until the new field is named. It sat in the SDK's tests until `ca8e7897d` made `npm run typecheck:be` cover this package's specs |
 
 Milestones, true when the work landed and not properties to hold: `git grep HOST_SRC_ROOT` returning nothing
 outside the docs that record the change, and `packages/abuddy-host/src/features/*/fe/public.ts` being gone. Both
 are the deleted-identifier kind the README says not to guard — the property that made the old shape wrong is the
 cross-feature rule above, and that is guarded.
+
+### Final verification
+
+`npm run typecheck`, `npm run test:unit` (9 suites), `npm run api:check`, `npm run build`,
+`npm run facade:check -w @app/default-setup`, `npm run test:external-pack`, `npm test` (21 E2E) and
+`npm run test:packaged-authoring` all pass. The unit and E2E suites were re-run after the review's fixes with no
+other session building concurrently, since a contended run had produced four failures that each passed alone —
+the build lock and build stamps are shared, as the root `CLAUDE.md` warns.
 
 ## Deferred
 
