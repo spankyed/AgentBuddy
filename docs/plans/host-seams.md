@@ -38,6 +38,25 @@ and `features/packs/fe/frontends.ts:7` imports the type `ShellPackFrontends` fro
 feature implements it. The exception in `scripts/check-import-specifiers.ts` (`HOST_SRC_ROOT`, and the
 `public` branch in `findCrossFeatureImports`) exists for that single import.
 
+**5. The host addresses features unlike every pack.** A pack sends by bare feature id, typed per receiving
+plugin: `broadcastToPlugin('notes', …)`. The host passes branded refs to untyped sends —
+`broadcastToPlugin(HOST.settings, …)` — so nothing checks the target or the event. It has no maps to check
+against: `HostPluginEvents` is its *published* inbox, what a pack may send it, so `host/settings` there is
+`CLI_TEST_RESULT` alone while `SETTINGS_LOADED` and the rest live in the feature's contract.
+
+The maps are assemblable from what exists, and are line-for-line the three `receives` expressions in
+`registration.ts:52,53,61` — today hand-maintained runtime lists with no type beside them. Compiled against
+the real types, with bare names, all six assertions hold: the right event accepted for `packs` and `bus`, a
+role send still unchecked by design, and rejected — another plugin's event, a missing field, an unknown
+feature.
+
+The `FeatureRef` branding is not in the way: after this, host code writes the name, so a ref is never passed
+to a typed send and the two never meet. Nor is anything lost by writing one. The brand proves a ref came
+from `resolveName`, not that it names a feature that exists — `resolveName('settngs', 'host')` returns a
+valid `FeatureRef` and compiles, and the message is dropped at run time. A keyed map checks existence and
+the event with it, so on this path it is strictly the stronger check. The brand goes on guarding the untyped
+sends, which keep only that provenance check; moving 57 sites off them is the other half of the win.
+
 ## What We're Not Doing
 
 **1. No `abuddy.json` for the host.** The manifest schema refuses `host` as a pack id
@@ -73,9 +92,14 @@ rather than only stamped.
 
 Closes finding 2. Add `createSends({ resolve?, from? })` returning the three sends. The untyped exports become
 `createSends({})`, `defineEvents` becomes `createSends({ resolve: refOf, from: packId })`, and the host
-binds `createSends({ from: HOST_PACK_ID })`, typed against `HostPluginEvents`/`HostSystemEvents`. Drops
-the `from?` third parameter from `untypedBroadcastToPlugin`, `untypedSendToSystem` and
-`_sendToLocalPlugin`.
+binds `createSends({ from: HOST_PACK_ID })`. Drops the `from?` third parameter from
+`untypedBroadcastToPlugin`, `untypedSendToSystem` and `_sendToLocalPlugin`.
+
+**Stamping only.** This step was written expecting to type the sends too, against
+`HostPluginEvents`/`HostSystemEvents`. Those are the published maps, not the host's own, so that was never
+the right target — it is finding 5, and step 5 closes it. Stamping is what the deferred enforcement goal
+was blocked on, so it lands alone; `packages/abuddy-host/src/events.ts` records why, and step 5 deletes
+that note.
 
 ### 3 — Actions send as their pack
 
@@ -89,10 +113,29 @@ into `abuddy-host/src/fe/`, which both features already import from. Point `feat
 at it. Then delete `HOST_SRC_ROOT`, the `public` branch in `findCrossFeatureImports`, and the spec case
 pinning the exception.
 
-Fold the three `fe/public.ts` barrels into `abuddy-host/src/fe/index.ts`, or rename them for what they
-are. Not `contract.ts` — a contract is type-only, and these hold runtime exports.
+Fold the three `fe/public.ts` barrels into `abuddy-host/src/fe/index.ts`.
 
 Independent of 1–3; can land in any order relative to them.
+
+### 5 — The host sends by name, typed
+
+Closes finding 5. Export `SettingsPluginEvents` (one word), then define the host's two maps in
+`abuddy-host/src/events.ts` and bind `defineEvents<HostPlugins, HostSystems>(HOST_PACK_ID)` in place of the
+`createSends({ from })` binding:
+
+```ts
+type HostPlugins = WithOwnNames<'host', {
+  'host/application': HostPluginEvents['host/application'];
+  'host/packs':       OutgoingPacksEvents;
+  'host/settings':    SettingsPluginEvents | HostPluginEvents['host/settings'];
+}>;
+```
+
+Then move the 39 broadcasts and 18 system sends from `HOST.*` to bare feature ids. `HOST.*` stays for the
+untyped paths and for addressing, where the brand is still the only check.
+
+Expect mismatches between what the host sends and what the maps say. Reading them is the work; some may be
+real. Lands after step 2, whose note it deletes.
 
 ## Files Changed
 
@@ -106,6 +149,9 @@ Independent of 1–3; can land in any order relative to them.
 | `packages/abuddy-host/src/**` (39 broadcast sites) | Send through the host's bound sends |
 | `packages/abuddy-sdk/src/services/index.ts` | `emitter` carries a pack identity |
 | `packages/default-setup/src/extensions/steps/action/sandbox.ts` | Thread the pack id to the emitter |
+| `packages/abuddy-host/src/features/settings/be/system.ts` | Export `SettingsPluginEvents` for the map |
+| `packages/abuddy-host/src/events.ts` | The host's two maps; bind `defineEvents`, dropping the `createSends` note |
+| `packages/abuddy-host/src/**` (39 broadcasts, 18 system sends) | `HOST.*` → bare feature ids |
 | `packages/abuddy-host/src/features/application/fe/types.ts` → `src/fe/` | Move `ShellPackFrontends` to the seam |
 | `packages/abuddy-host/src/features/packs/fe/frontends.ts` | Import the port from `src/fe/` |
 | `scripts/check-import-specifiers.ts` | Delete `HOST_SRC_ROOT` and the `public` branch |
