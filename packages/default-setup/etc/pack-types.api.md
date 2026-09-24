@@ -4196,8 +4196,14 @@ type OwnRepositories = {
 };
 
 /**
- * `services.emitter`, typed with this pack's events. Actions run outside any pack, so a system and a
- * plugin are both named `<pack>/<feature>`, this pack's own and the host's too; a system may also be a role.
+ * `services.emitter`, typed with this pack's events. A system and a plugin are both named
+ * `<pack>/<feature>`, this pack's own and the host's too; a system may also be a role.
+ *
+ * Naming its own pack is the point, not a gap left by the action having no pack scope. An action is content,
+ * not source: a row a user can edit in the Actions plugin, read in the DB console, export to a seed file and
+ * copy into another pack. A bare name would rebind on that copy — `'threads'` quietly meaning the new pack's
+ * feature, or nothing — where a ref that no longer fits is wrong visibly, and is refused at the bus rather
+ * than doing something else.
  */
 type PackEmitter = Omit<HostServices['emitter'], 'broadcastToPlugin' | 'sendToSystem'> & {
     broadcastToPlugin: TypedSendToPlugin<QualifiedPluginEvents>;
