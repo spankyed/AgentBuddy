@@ -12,7 +12,7 @@ import type {
   NodeEntity,
   EdgeEntity,
 } from '@/__generated__/types'
-import type { FlowsContext, FlowsInboxEvent } from './contract.ts'
+import type { FlowsContext, FlowsInboxEvent } from './contract'
 import type { OutgoingFlowsEvents } from '@/features/flows/be/types'
 import type { OutgoingBrainEvents } from '@/features/brain/be/types'
 import { sendToSystem } from '@/__generated__/events'

@@ -6,7 +6,7 @@ import { defineSystem } from '@abuddy/sdk/framework';
 // import { addMessageToLatestThread, getLatestMessage } from './accessors';
 import { EARS } from '@/__generated__/ears';
 import { repository } from '@/__generated__/repository';
-import type { Contract } from './contract.ts';
+import type { Contract } from './contract';
 import type { FlowsConnectedData, NodeEntity } from './types.ts';
 import { FLOW_ROLES } from './repository';
 import { createLogger } from '@abuddy/sdk/logger';

@@ -8,9 +8,9 @@ import { pushTabViewHistory, nextActiveFromHistory } from './utils/tab-managemen
 import { saveTabGroups, loadTabGroups, getNextAvailableColor, ALL_COLORS, type TabGroupColor, type TabGroup } from '@abuddy/sdk/fe';
 import { type NavHistory, createNavHistory, pushNavHistory, goBack, goForward, canGoBack, canGoForward } from '@abuddy/sdk/fe';
 import type { CodeSettings } from '@/__generated__/types';
-import type { ActionTab, CodeContext as Context, CodeInboxEvent, OpenFile, PanelType, PromptTab, QuickOpenResult, TerminalTab } from './contract.ts';
-export type { OpenFile, TerminalTab, QuickOpenResult, PanelType } from './contract.ts';
-export type { CodeContext as Context } from './contract.ts';
+import type { ActionTab, CodeContext as Context, CodeInboxEvent, OpenFile, PanelType, PromptTab, QuickOpenResult, TerminalTab } from './contract';
+export type { OpenFile, TerminalTab, QuickOpenResult, PanelType } from './contract';
+export type { CodeContext as Context } from './contract';
 import type {  } from '@/features/code/be/types'
 import type { OutgoingCodeEvents } from '@/features/code/be/contract';
 

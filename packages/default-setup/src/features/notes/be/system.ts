@@ -6,7 +6,7 @@ import { setup } from 'xstate';
 import { defineSystem } from '@abuddy/sdk/framework';
 
 import { EARS } from '@/__generated__/ears';
-import type { Contract } from './contract.ts';
+import type { Contract } from './contract';
 import type { NoteDTO, NotesConnectedData, OutgoingNotesSearchEvent } from './types.ts';
 import { repository } from '@/__generated__/repository';
 

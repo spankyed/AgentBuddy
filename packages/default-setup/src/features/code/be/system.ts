@@ -14,7 +14,7 @@
  * Priority on startup:
  *   baseDirectory > defaultBaseDirectory > first workspace project > null
  */
-import type { Contract } from './contract.ts';
+import type { Contract } from './contract';
 import type { GeneralSettings } from '@/app-settings/types';
 import { services } from '@/__generated__/services';
 import { broadcastToPlugin } from '@/__generated__/events';

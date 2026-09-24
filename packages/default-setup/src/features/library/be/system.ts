@@ -1,5 +1,5 @@
 // [SEARCH_INDEX_FF] The search index is dormant: ./search-index/README.md lists its call sites and how to turn it on
-import type { Contract } from './contract.ts';
+import type { Contract } from './contract';
 import { services } from '@/__generated__/services';
 import { setup } from 'xstate'
 import { defineSystem, type SystemEntry } from '@abuddy/sdk/framework'

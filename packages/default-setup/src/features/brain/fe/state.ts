@@ -4,7 +4,7 @@ import breadcrumb, { breadcrumbList } from '@abuddy/sdk/fe';
 import { contextMenuFn } from '@abuddy/sdk/fe';
 import { Activity, Terminal, Play, RefreshCw, Power, PlayCircle, Pause } from 'lucide-vue-next';
 import { targetIs, TRAIL_CLICK, type TrailClickEvent } from '@abuddy/sdk/fe';
-import type { BrainContext } from './contract.ts';
+import type { BrainContext } from './contract';
 import type { OutgoingBrainEvents } from '@/features/brain/be/types'
 import type { EventListenerEntity, FlowTNodeData } from '@/__generated__/types';
 import { sendToSystem } from '@/__generated__/events';

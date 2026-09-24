@@ -1,5 +1,5 @@
-import type { ActionTab } from '../../contract.ts';
-export type { ActionTab } from '../../contract.ts';
+import type { ActionTab } from '../../contract';
+export type { ActionTab } from '../../contract';
 import { setup , type ActorRefFrom } from 'xstate';
 import { sendToSystem } from '@/__generated__/events';
 import { updateParentState, getParentContext, addTabToParent } from '../../utils/parent-communication';

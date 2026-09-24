@@ -4,7 +4,7 @@ import { assign, setup, enqueueActions, raise } from 'xstate';
 import { defineSystem } from '@abuddy/sdk/framework';
 
 import { EARS } from '@/__generated__/ears';
-import type { Contract } from './contract.ts';
+import type { Contract } from './contract';
 import type { BrainContext, FlowTNodeData, TNodeUpdate } from './types.ts';
 import { repository } from '@/__generated__/repository';
 import { createLogger, reportError, setDebugEnabled, isDebugEnabled } from '@abuddy/sdk/logger';

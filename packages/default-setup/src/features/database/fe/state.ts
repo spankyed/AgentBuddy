@@ -8,7 +8,7 @@ import type {
   DatabaseStartupData,
   DatabaseSettings,
 } from '@/__generated__/types'
-import type { DatabaseContext, DatabaseInboxEvent } from './contract.ts'
+import type { DatabaseContext, DatabaseInboxEvent } from './contract'
 import type { OutgoingDatabaseEvents } from '@/features/database/be/types'
 import { sendToSystem } from '@/__generated__/events'
 import { attributeQueryTemplate, entityQueryTemplate, exampleQuery, relationQueryTemplate, transactionExampleQuery } from './constants'

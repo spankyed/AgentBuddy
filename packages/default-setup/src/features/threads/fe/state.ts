@@ -10,7 +10,7 @@ import type {
   MessageEntity, AgentThreadData, Tab,
   AgentSettings, AgentMode as AgentModeConfig, MessageReferences, CommandItem, BlockResponse,
 } from '@/__generated__/types';
-import type { ChatState, ThreadListItem, ThreadsContext } from './contract.ts';
+import type { ChatState, ThreadListItem, ThreadsContext } from './contract';
 import type { OutgoingThreadsEvents } from '@/features/threads/be/types';
 import { sendToSystem } from '@/__generated__/events';
 import { Archive, Copy, Pin, Trash2 } from 'lucide-vue-next';
@@ -245,7 +245,7 @@ type ThreadEvents =
 
 const typeOf = safeEvents<ThreadEvents>();
 
-export type { ChatState, ThreadListItem } from './contract.ts';
+export type { ChatState, ThreadListItem } from './contract';
 
 
 // ---- Context ----

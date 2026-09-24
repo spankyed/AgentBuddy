@@ -2,7 +2,7 @@ import { broadcastToPlugin } from '@/__generated__/events';
 import { repository } from '@/__generated__/repository';
 import { setup } from 'xstate';
 import { defineSystem } from '@abuddy/sdk/framework';
-import type { Contract } from './contract.ts';
+import type { Contract } from './contract';
 import type { SavedBookmark, SavedTab } from './types.ts';
 import { createLogger } from '@abuddy/sdk/logger';
 

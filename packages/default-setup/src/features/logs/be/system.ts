@@ -3,7 +3,7 @@ import { broadcastToPlugin } from '@/__generated__/events';
 import { assign, setup, sendParent, enqueueActions, fromCallback, spawnChild } from 'xstate';
 import { defineSystem } from '@abuddy/sdk/framework';
 
-import type { Contract } from './contract.ts';
+import type { Contract } from './contract';
 import type { LogEntry, LogsState } from './types.ts';
 import { randomId } from '@abuddy/sdk/utils';
 import { onLog, type LogEvent } from '@abuddy/sdk/logger';
