@@ -140,7 +140,8 @@ export function createShellMachine({ packs, client, packFrontends, storage, noti
           enqueue.assign({ packLoadRunning: false });
           // Loading has settled: a plugin still asked for is one no loaded pack provides
           if (context.awaitingPlugin.length > 0) {
-            const refused = context.awaitingPlugin.map(({ plugin, select }) => ({ plugin, select }));
+            // `assign` replaces the array rather than mutating it, so the reference stays valid in the deferred enqueue
+        const refused = context.awaitingPlugin;
             enqueue.assign({ awaitingPlugin: [] });
             enqueue(() => {
               for (const { plugin, select } of refused) {

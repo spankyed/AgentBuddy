@@ -98,7 +98,7 @@ export async function generateEntries(
   // One writer per pack. Two runs over one pack interleave their writes into `src/__generated__/`, and the loser
   // is invisible: every file is written, the last writer wins each one, and the result reads as a stale build
   // nobody can reproduce. It happened here — concurrent runs left the type barrel describing a fix that was
-  // already compiled. The build takes this too, through this function, and a nested take is a no-op.
+  // already compiled. The build takes this through this function too, and never around it: `holdExclusiveLock` has no re-entrancy, so a nested take would refuse itself, naming this pid.
   const lock = holdExclusiveLock({
     file: path.join(outDir, GENERATE_LOCK),
     what: 'abuddy generate-entries',

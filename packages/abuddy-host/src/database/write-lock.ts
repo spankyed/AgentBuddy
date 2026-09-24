@@ -5,9 +5,8 @@
 // The mechanism is `../exclusive-lock.ts`, shared with the CLI's code generation. What is this module's own is the
 // policy: where the file lives, what the refusal says, and that the app asserts on it before opening a store.
 import * as path from 'node:path';
-import { findLockHolder, holdExclusiveLock, INTERRUPTS } from '../exclusive-lock.ts';
+import { findLockHolder, holdExclusiveLock } from '../exclusive-lock.ts';
 
-export { INTERRUPTS };
 
 const lockFile = (userDataDir: string) => path.join(userDataDir, 'db-write.lock');
 
