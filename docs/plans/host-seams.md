@@ -106,6 +106,12 @@ that note.
 Closes finding 3. Give `services.emitter` a pack identity, threaded through the action sandbox
 (`default-setup/src/extensions/steps/action/sandbox.ts`).
 
+Settle open question 2 first: it decides what the stamp holds, and discovering that mid-change means
+redoing it. The rest of the step is the same either way — the sandbox has to carry an identity at all.
+
+This is the only remaining step that reaches outside the host: `services/index.ts` in the SDK and
+default-setup's sandbox, so it takes `api:update` and the pack suites.
+
 ### 4 — Move the port, delete the exception
 
 Closes finding 4. Move `ShellPackFrontends` (and any sibling on `application/fe/public.ts:6` the packs feature implements)
@@ -164,3 +170,27 @@ real. Lands after step 2, whose note it deletes.
   load-bearing objections. Its other reasons — the snapshot-format break, and designing the policy with
   no third-party pack in existence — still stand, so this is a separate decision.
   - just update the doc, no need to reassess.
+
+2. **What does an action stamp — the pack, or the action?** `Message.from` is documented as "the id of the
+  pack that sent it", and every stamp today is one: `'host'`, `'default-setup'`. That grain is right for the
+  only consumer that might ever act on it, since audience enforcement is pack-tier and compares sending pack
+  to receiving pack.
+
+  It is weak for actions, though, and the field's real job is diagnostics. `from: 'host'` locates a send
+  because the host is one thing; `from: 'default-setup'` barely narrows it, and actions are seeded,
+  user-editable content — the likeliest wrong send and the hardest to find. Actions are also the one case
+  where finer is *available*: `runActionCode` already takes a `label` and builds
+  `createLogger('action:<label>')`, so the sandbox knows which action is running. A system's sends don't
+  know their calling feature, because `defineEvents(packId)` is built once per pack.
+
+  - `'default-setup'` — one meaning, one shape, matches the doc. Costs the diagnostic value where it is
+    needed most.
+  - `'default-setup/some-action'` — useful, but `from` then has two grains depending on the sender, and it
+    collides with `<packId>/<featureId>`: an action is not a feature, so anything reading `from` as a ref
+    gets a wrong answer.
+  - The pack id, with the action named separately — reusing the repo's own convention for an action as a
+    source (`action:<label>`), in a second field or a form the diagnostics know to read. Keeps `from` one
+    grain and puts the finer identity where it can't be mistaken for a ref.
+
+  Whichever, `Message.from`'s doc comment says what it holds, since "the id of the pack" stops being the
+  whole truth the moment an action stamps anything else.
