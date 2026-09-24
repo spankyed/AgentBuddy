@@ -163,9 +163,9 @@ export async function regenerateAfterScaffold(root: string): Promise<boolean> {
     await generateEntries([], root);
     return true;
   } catch (err) {
-    // A pack scaffolded before `npm install` can't resolve what its contracts name. Nothing distinguishes that
-    // from a mistake in the pack — the old `_TYPES_UNRESOLVED` code claimed to, from a value reading as `any` —
-    // so say what happened and let `npm install`, which regenerates, be the next step either way.
+    // A pack scaffolded before `npm install` can't resolve what its contracts name, and nothing here can tell
+    // that from a mistake in the pack: both reach the reader as a type that didn't resolve. So say what happened
+    // and let `npm install`, which regenerates, be the next step either way.
     console.log(`\n  src/__generated__/ not regenerated: ${(err as Error).message}. Run: npm install (it regenerates them)`);
     return false;
   }
