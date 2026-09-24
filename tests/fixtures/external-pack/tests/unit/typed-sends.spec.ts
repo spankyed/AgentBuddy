@@ -18,6 +18,17 @@ describe('typed sends to systems', () => {
       .toMatchObject({ type: 'LIBRARY_INDEX_LOADED' });
   });
 
+  // A dependency's *internal* events are not ours to send: they are what that system's own children send it
+  // (`ADD_LOG` comes from the logs system's `onLog` callback), so its contract puts them in `internal` and they
+  // never reach `PackSystemEvents`. Nothing runs here — the assertion is that this does not compile.
+  it("cannot send a default-setup system's internal event", () => {
+    const send = () => {
+      // @ts-expect-error ADD_LOG is internal to default-setup/logs, so a dependent may not send it
+      sendToSystem('default-setup/logs', { type: 'ADD_LOG', log: { level: 'info', message: 'nope' } });
+    };
+    expect(typeof send).toBe('function');
+  });
+
   it('reaches its own system by feature id', async () => {
     const app = await startApp({ systems: ['memos'] });
     await app.connect();

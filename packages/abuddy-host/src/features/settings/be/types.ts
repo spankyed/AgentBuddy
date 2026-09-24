@@ -15,9 +15,14 @@ export type IncomingSettingsEvents =
   | { type: 'REPLACE_SETTINGS'; data: unknown }
   | { type: 'RESET_APP' }
 
+// The host's secrets store sends this over the bus (`secrets/index.ts`, `forwardSecretsChanges`), so it arrives
+// from outside the feature like any other incoming event, not from a child of this system
+export type IncomingSecretsEvents =
+  | { type: 'SECRETS_CHANGED' } // The host's stored keys or their protection changed (no values)
+
+// What this system's own `fromCallback` children send it. Nothing else sends these.
 export type SettingsInternalEvents =
   | { type: 'PACK_SETTINGS_CHANGED' } // A pack's feature settings (defaults) registered or unregistered
-  | { type: 'SECRETS_CHANGED' } // The host's stored keys or their protection changed (no values)
   | { type: 'SETTINGS_WRITTEN' } // Something wrote the stored settings: this system, a feature's system, an action or a seed
   // The stored data is being replaced wholesale (a backup import), and has been: what each feature was told is then
   // stale either way, since a failed import may have migrated some of the data already

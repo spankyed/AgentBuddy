@@ -446,6 +446,26 @@ interface BrainEventPayload {
     targetFlowId?: string;
 }
 
+type BrainInternalEvents = {
+    type: 'TNODE_SPAWNED';
+    tNode: TNodeEntity;
+    parentId?: EARS.EntityId;
+    eventTNodeId?: EARS.EntityId;
+    flowTNodeId: EARS.EntityId;
+} | {
+    type: 'TNODE_UPDATED';
+    data: TNodeUpdate;
+} | {
+    type: 'CHILD_COMPLETED';
+    stepId?: EARS.EntityId;
+    tNodeId?: EARS.EntityId;
+    stepLabel?: string;
+    result?: any;
+    final?: boolean;
+    eventTNodeId?: EARS.EntityId;
+    isFlow?: boolean;
+};
+
 interface BreadcrumbItem {
     id: EARS.EntityId | null;
     name: string;
@@ -999,6 +1019,7 @@ type Contract$c = {
 type Contract$d = {
     context: BrainContext$1;
     incoming: IncomingBrainEvents;
+    internal: BrainInternalEvents;
     outgoing: OutgoingBrainEvents;
 };
 
@@ -1945,29 +1966,6 @@ type IncomingBrainEvents = {
     eventType: string;
     payload?: any;
     targetFlowId?: string;
-} | {
-    type: 'TNODE_SPAWNED';
-    tNode: TNodeEntity;
-    parentId?: EARS.EntityId;
-    eventTNodeId?: EARS.EntityId;
-    flowTNodeId: EARS.EntityId;
-} | {
-    type: 'TNODE_UPDATED';
-    data: TNodeUpdate;
-} | {
-    type: 'HANDLE_BRAIN_EVENT';
-    eventType: string;
-    payload?: any;
-    targetFlowId?: string;
-} | {
-    type: 'CHILD_COMPLETED';
-    stepId?: EARS.EntityId;
-    tNodeId?: EARS.EntityId;
-    stepLabel?: string;
-    result?: any;
-    final?: boolean;
-    eventTNodeId?: EARS.EntityId;
-    isFlow?: boolean;
 };
 
 type IncomingBrowserEvents = {

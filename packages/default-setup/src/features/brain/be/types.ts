@@ -112,10 +112,13 @@ export type IncomingBrainEvents =
   | { type: 'HANDLE_BRAIN_EVENT'; eventType: string; payload?: any; targetFlowId?: string }
   | { type: 'TRIGGER_BRAIN_EVENT'; eventType: string; payload?: any; targetFlowId?: string }
 
-  // | { type: 'TRACE_EVENT_RECEIVED'; data: EventReceived }
+// What the brain's own children send it: the flow and step machines it spawns, reporting what they did. Nothing
+// outside the feature sends these, so they reach the machine's event union and no dependent pack's facade.
+// `HANDLE_BRAIN_EVENT` is not one of them despite being raised here too — the database system sends it
+// (`features/database/be/system.ts`), which makes it incoming.
+export type BrainInternalEvents =
   | { type: 'TNODE_SPAWNED'; tNode: TNodeEntity; parentId?: EARS.EntityId; eventTNodeId?: EARS.EntityId; flowTNodeId: EARS.EntityId }
   | { type: 'TNODE_UPDATED'; data: TNodeUpdate }
-  | { type: 'HANDLE_BRAIN_EVENT'; eventType: string; payload?: any; targetFlowId?: string }
   | { type: 'CHILD_COMPLETED'; stepId?: EARS.EntityId; tNodeId?: EARS.EntityId; stepLabel?: string; result?: any; final?: boolean; eventTNodeId?: EARS.EntityId; isFlow?: boolean }
 
 export type OutgoingBrainEvents =
