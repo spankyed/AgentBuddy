@@ -32,6 +32,7 @@ edit — running it after every change costs minutes and finds nothing the narro
 | an npm script | the one path that runs it, end to end, once |
 | the renderer, the app's boot, or a pack's FE | `npm test -- <spec>` for the affected E2E, not the whole suite |
 | a public export of `@abuddy/ears`, `/sdk` or `/ui` | `npm run api:update`, and commit `etc/` — `typecheck` fails until you do |
+| a pack's seed source (`src/seeds/`) | that pack's `seed-parity` spec. When only `sourceHash`/`rowSha256` moved, re-record deliberately — `UPDATE_SEED_GOLDEN=1 npx vitest run tests/unit/seed-parity` — and never edit a hash by hand |
 | anything, before you ask for a merge | the full chain, once |
 
 What that costs, measured on this machine (2026-09-22, M-series, warm): one spec file 1–3s, one
