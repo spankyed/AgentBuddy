@@ -29,7 +29,7 @@ describe('installFromProtocol', () => {
   it('asks the Packs system to install what the link names', () => {
     installFromProtocol({ pack: 'my-pack', source: 'github' });
 
-    expect(sent).toHaveBeenCalledWith({ to: 'host/packs', event: { type: 'INSTALL_PACK', packSlug: 'my-pack', source: 'github' } });
+    expect(sent).toHaveBeenCalledWith({ to: 'host/packs', from: 'host', event: { type: 'INSTALL_PACK', packSlug: 'my-pack', source: 'github' } });
   });
 
   it('asks for nothing when the link names no pack', () => {

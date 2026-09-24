@@ -10,7 +10,7 @@ import {
 import type { SettingsDocument } from '../be/store.ts'
 import type { OutgoingSettingsEvents } from '../be/types.ts'
 import type { SecretInfo, SecretsStatus } from '@abuddy/sdk/services'
-import { untypedSendToSystem } from '@abuddy/sdk/events'
+import { sendToSystem } from '../../../events.ts'
 import type { ApplicationHotkeys } from '@abuddy/sdk/types'
 import type { EARS } from '@abuddy/sdk'
 import type { PackSeedsPreview } from '@abuddy/sdk/build'
@@ -139,7 +139,7 @@ export function createSettingsMachine(io: SettingsIO) {
   actions: {
     /* ── bootstrap ─────────────────────────────────────── */
     loadSettings: () => {
-      untypedSendToSystem(HOST.settings, {
+      sendToSystem(HOST.settings, {
         type: 'GET_SETTINGS',
       });
     },
@@ -201,7 +201,7 @@ export function createSettingsMachine(io: SettingsIO) {
 
     sendUpdate: ({ event }) => {
       const ev = typeOf('SETTINGS.UPDATE', event);
-      untypedSendToSystem(HOST.settings, {
+      sendToSystem(HOST.settings, {
         type: 'UPDATE_SETTINGS',
         entityType: ev.entityType,
         label: ev.label,
@@ -213,7 +213,7 @@ export function createSettingsMachine(io: SettingsIO) {
     replaceSettings: enqueueActions(({ event, enqueue }) => {
       const { data } = typeOf('SETTINGS.REPLACE', event)
       enqueue.assign({ save: { status: 'saving', problems: [] } })
-      enqueue(() => untypedSendToSystem(HOST.settings, { type: 'REPLACE_SETTINGS', data }))
+      enqueue(() => sendToSystem(HOST.settings, { type: 'REPLACE_SETTINGS', data }))
     }),
 
     settingsSaved: assign({ save: { status: 'saved', problems: [] } }),
@@ -223,7 +223,7 @@ export function createSettingsMachine(io: SettingsIO) {
     })),
 
     resetSettings: () => {
-      untypedSendToSystem(HOST.settings, {
+      sendToSystem(HOST.settings, {
         type: 'RESET_SETTINGS',
       });
     },
@@ -231,7 +231,7 @@ export function createSettingsMachine(io: SettingsIO) {
     testCliProvider: assign(({ context, event }) => {
       const ev = typeOf('CLI.TEST', event);
       // The code feature resolves CLIs: `resolve-cli` and the stored paths are its own
-      untypedSendToSystem({ role: 'code' }, {
+      sendToSystem({ role: 'code' }, {
         type: 'TEST_CLI_PROVIDER',
         provider: ev.provider,
       });
@@ -256,7 +256,7 @@ export function createSettingsMachine(io: SettingsIO) {
 
     previewPackSeeds: assign(({ context, event }) => {
       const ev = event as { type: 'PACK_SEEDS.PREVIEW'; directory: string };
-      untypedSendToSystem(HOST.settings, {
+      sendToSystem(HOST.settings, {
         type: 'PREVIEW_PACK_SEEDS',
         directory: ev.directory,
       });
@@ -367,7 +367,7 @@ export function createSettingsMachine(io: SettingsIO) {
         return selected.length === total ? null : selected;
       };
 
-      untypedSendToSystem(HOST.settings, {
+      sendToSystem(HOST.settings, {
         type: 'IMPORT_PACK_SEEDS',
         directory,
         include: Object.fromEntries(Object.keys(preview.seeds).map((key) => [key, toIncludeField(key)])),
@@ -550,7 +550,7 @@ export function createSettingsMachine(io: SettingsIO) {
           actions: [
             assign({ resetting: true }),
             () => {
-              untypedSendToSystem(HOST.settings, { type: 'RESET_APP' });
+              sendToSystem(HOST.settings, { type: 'RESET_APP' });
             },
           ],
         },

@@ -5,6 +5,22 @@
 ```ts
 
 // @public
+export function createSends(input?: SendBinding): {
+    broadcastToPlugin(name: string, event: {
+        type: string;
+        [key: string]: unknown;
+    }): void;
+    sendToPlugin(name: string, event: {
+        type: string;
+        [key: string]: unknown;
+    }): void;
+    sendToSystem(to: SystemTarget, event: {
+        type: string;
+        [key: string]: unknown;
+    }): void;
+};
+
+// @public
 export function defineEvents<P extends PluginEvents, S extends SystemEventMap>(packId: string): TypedEvents<P, S>;
 
 // @public
@@ -128,11 +144,17 @@ export type Qualified<PackId extends string, M> = {
     [K in keyof M & string as `${PackId}/${K}`]: M[K];
 };
 
+// @public
+export interface SendBinding {
+    from?: string;
+    resolve?: (name: string) => string;
+}
+
 // @internal
 export function _sendToLocalPlugin(ref: string, event: {
     type: string;
     [key: string]: unknown;
-}, from?: string): void;
+}): void;
 
 // @public
 export type SystemEventMap = {
@@ -176,13 +198,13 @@ export type TypeOfEvent<E> = E extends {
 export function untypedBroadcastToPlugin(to: string, event: {
     type: string;
     [key: string]: unknown;
-}, from?: string): void;
+}): void;
 
 // @public
 export function untypedSendToSystem(to: SystemTarget, event: {
     type: string;
     [key: string]: unknown;
-}, from?: string): void;
+}): void;
 
 // @public
 export type WithOwnNames<PackId extends string, M> = {

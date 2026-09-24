@@ -1,7 +1,7 @@
 // An install asked for from outside the app: `abuddy://install?pack=<slug>&source=<url>`, which the platform hands
 // the window as parameters. Reading them and asking the Packs system is the app's, so a window only subscribes to
 // the protocol and passes on what it was given.
-import { untypedSendToSystem } from '@abuddy/sdk/events';
+import { sendToSystem } from '../../../events.ts';
 import { HOST } from '../../../refs.ts';
 
 export interface PackInstallRequest {
@@ -21,7 +21,7 @@ export function packInstallRequest(params: Record<string, string>): PackInstallR
 
 /** Asks the Packs system to install a pack; a send that fails is reported by the window's client */
 export function requestPackInstall(request: PackInstallRequest): void {
-  untypedSendToSystem(HOST.packs, { type: 'INSTALL_PACK', packSlug: request.packSlug, source: request.source });
+  sendToSystem(HOST.packs, { type: 'INSTALL_PACK', packSlug: request.packSlug, source: request.source });
 }
 
 /** What a deep link asks for, installed: the one call a window makes when the platform hands it an install URL */

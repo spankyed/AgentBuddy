@@ -156,6 +156,52 @@ function sendIncoming(message: Message): void {
   else throw new Error('No host is bound to send events through: call bindHost(runtime) (backend) or bindFeHost(runtime) (frontend) from @abuddy/sdk/runtime first');
 }
 
+/** What binds a set of sends: how a name becomes a ref, and the pack making them. */
+export interface SendBinding {
+  /** A name the caller writes → the ref it stands for. The unbound sends take refs already, so a name is its own ref. */
+  resolve?: (name: string) => string;
+  /**
+   * The pack these sends are made by, stamped on every message as `Message.from`. Absent for the unbound sends:
+   * the host uses those for itself, and an action reaches them through `services.emitter`, outside any pack.
+   */
+  from?: string;
+}
+
+/**
+ * The three sends, bound to whoever is making them. One place builds a send, so what travels beside the event —
+ * `from` today — is threaded here rather than added as a parameter to each of them, and to every caller that
+ * has nothing to pass.
+ */
+export function createSends({ resolve = (name: string) => name, from }: SendBinding = {}) {
+  return {
+    broadcastToPlugin(name: string, event: { type: string; [key: string]: unknown }): void {
+      // The two sends share a signature, so the compiler can't tell a caller it picked the wrong one: say which it
+      // is. Reaching for the other from here is the likely mistake, not a missing bindHost.
+      if (!_isHostBound() && _isFeHostBound()) {
+        throw new Error(`broadcastToPlugin("${name}") is the backend's, over the bus to every window. In the renderer, send to this window's plugin with sendToPlugin from #generated/events`);
+      }
+      boundHost().transport.rootEvents.emitPluginSend({ to: resolve(name), event, from });
+    },
+
+    sendToPlugin(name: string, event: { type: string; [key: string]: unknown }): void {
+      // The two sends share a signature, so the compiler can't tell a caller it picked the wrong one: say which it is.
+      if (!_isFeHostBound() && _isHostBound()) {
+        throw new Error(`sendToPlugin("${name}") is the renderer's, to this window's plugin. On the backend, send over the bus with broadcastToPlugin from #generated/events`);
+      }
+      const ref = resolve(name);
+      if (!splitRef(ref)) throw new Error(`"${ref}" doesn't name a plugin: a plugin is named "<packId>/<featureId>"`);
+      boundFeHost().application.send({ type: 'SEND_TO_PLUGIN', plugin: ref, events: [event], from });
+    },
+
+    sendToSystem(to: SystemTarget, event: { type: string; [key: string]: unknown }): void {
+      sendIncoming({ to: typeof to === 'string' ? resolve(to) : getDesignated(to.role), event, from });
+    },
+  };
+}
+
+/** The sends made by nobody in particular: the host's own, and an action's through `services.emitter`. */
+const unboundSends = createSends();
+
 /**
  * Sends an event to a plugin through the bus, which delivers it once a client is connected — and to **every**
  * window showing that plugin, since a plugin runs once per window. Backend only.
@@ -165,13 +211,8 @@ function sendIncoming(message: Message): void {
  *
  * Untyped: packs use the `broadcastToPlugin` from their `#generated/events`.
  */
-export function untypedBroadcastToPlugin(to: string, event: { type: string; [key: string]: unknown }, from?: string): void {
-  // The two sends share a signature, so the compiler can't tell a caller it picked the wrong one: say which it is.
-  // Reaching for the other from here is the likely mistake, not a missing bindHost.
-  if (!_isHostBound() && _isFeHostBound()) {
-    throw new Error(`broadcastToPlugin("${to}") is the backend's, over the bus to every window. In the renderer, send to this window's plugin with sendToPlugin from #generated/events`);
-  }
-  boundHost().transport.rootEvents.emitPluginSend({ to, event, from });
+export function untypedBroadcastToPlugin(to: string, event: { type: string; [key: string]: unknown }): void {
+  unboundSends.broadcastToPlugin(to, event);
 }
 
 /**
@@ -186,13 +227,8 @@ export function untypedBroadcastToPlugin(to: string, event: { type: string; [key
  * owners of that question giving different answers — this one threw. It is a send, not a navigation, so the plugin
  * the user has open doesn't change.
  */
-export function _sendToLocalPlugin(ref: string, event: { type: string; [key: string]: unknown }, from?: string): void {
-  // The two sends share a signature, so the compiler can't tell a caller it picked the wrong one: say which it is.
-  if (!_isFeHostBound() && _isHostBound()) {
-    throw new Error(`sendToPlugin("${ref}") is the renderer's, to this window's plugin. On the backend, send over the bus with broadcastToPlugin from #generated/events`);
-  }
-  if (!splitRef(ref)) throw new Error(`"${ref}" doesn't name a plugin: a plugin is named "<packId>/<featureId>"`);
-  boundFeHost().application.send({ type: 'SEND_TO_PLUGIN', plugin: ref, events: [event], from });
+export function _sendToLocalPlugin(ref: string, event: { type: string; [key: string]: unknown }): void {
+  unboundSends.sendToPlugin(ref, event);
 }
 
 /** A system: its ref, or the role a system plays (`{ role: 'brain' }`), found when the message is sent */
@@ -202,8 +238,8 @@ export type SystemTarget = string | { role: string };
  * Sends an event to a backend system, by ref or by the role it plays. Untyped: packs use the `sendToSystem` from
  * their `#generated/events`, which takes names and checks the event against what the system declares.
  */
-export function untypedSendToSystem(to: SystemTarget, event: { type: string; [key: string]: unknown }, from?: string): void {
-  sendIncoming({ to: typeof to === 'string' ? to : getDesignated(to.role), event, from });
+export function untypedSendToSystem(to: SystemTarget, event: { type: string; [key: string]: unknown }): void {
+  unboundSends.sendToSystem(to, event);
 }
 
 /** Calls `callback` each time a client connects; returns the unsubscribe (backend only) */
@@ -247,10 +283,5 @@ export interface TypedEvents<P extends PluginEvents, S extends SystemEventMap> {
  * send it has no receiver for.
  */
 export function defineEvents<P extends PluginEvents, S extends SystemEventMap>(packId: string): TypedEvents<P, S> {
-  const refOf = (name: string): string => resolveName(name, packId);
-  return {
-    broadcastToPlugin: (name: string, event: { type: string }) => untypedBroadcastToPlugin(refOf(name), event, packId),
-    sendToPlugin: (name: string, event: { type: string }) => _sendToLocalPlugin(refOf(name), event, packId),
-    sendToSystem: (to: SystemTarget, event: { type: string }) => untypedSendToSystem(typeof to === 'string' ? refOf(to) : to, event, packId),
-  } as unknown as TypedEvents<P, S>;
+  return createSends({ resolve: (name) => resolveName(name, packId), from: packId }) as unknown as TypedEvents<P, S>;
 }

@@ -1,6 +1,7 @@
 import type { Contract } from './contract.ts';
 import type { OutgoingSettingsEvents } from './types.ts';
-import { eventTypes, untypedSendToSystem, untypedBroadcastToPlugin } from '@abuddy/sdk/events';
+import { eventTypes } from '@abuddy/sdk/events';
+import { broadcastToPlugin, sendToSystem } from '../../../events.ts';
 import { assign, createMachine, setup, sendTo, enqueueActions, fromCallback, fromPromise, type ErrorActorEvent } from 'xstate';
 import { defineSystem, getPackHelp, onPackSettingsDefaultsChanged, type HelpEntry, type SystemEntry } from '@abuddy/sdk/framework';
 import { detectAllArrayChanges, errorMessage } from '@abuddy/sdk/utils/pure';
@@ -45,7 +46,7 @@ function toSeedInclude(include: Record<string, string[] | null>): Record<string,
  */
 function refuseSettings(error: unknown, what: string): void {
   if (!(error instanceof SettingsRefusedError)) reportError({ error: new Error(`${what}: ${(error as Error).message}`), source: 'settings' });
-  untypedBroadcastToPlugin(HOST.settings, { type: 'SETTINGS_REFUSED', problems: error instanceof SettingsRefusedError ? error.problems : [(error as Error).message] });
+  broadcastToPlugin(HOST.settings, { type: 'SETTINGS_REFUSED', problems: error instanceof SettingsRefusedError ? error.problems : [(error as Error).message] });
 }
 
 /** Each plugin's settings as they apply: what features were last told */
@@ -74,15 +75,15 @@ export const settingsSpec = defineSystem<Contract>();
  */
 function broadcastSettings(type: 'SETTINGS_LOADED' | 'SETTINGS_UPDATED' | 'SETTINGS_RESET'): void {
   const data = services.settings.getAll<SettingsDocument>();
-  if (type === 'SETTINGS_LOADED') untypedBroadcastToPlugin(HOST.settings, { type, data, help: getPackHelp() });
-  else untypedBroadcastToPlugin(HOST.settings, { type, data });
-  untypedBroadcastToPlugin(HOST.application, { type: 'APPLICATION_HOTKEYS', hotkeys: at(data, APP_HOTKEYS_PATH) });
+  if (type === 'SETTINGS_LOADED') broadcastToPlugin(HOST.settings, { type, data, help: getPackHelp() });
+  else broadcastToPlugin(HOST.settings, { type, data });
+  broadcastToPlugin(HOST.application, { type: 'APPLICATION_HOTKEYS', hotkeys: at(data, APP_HOTKEYS_PATH) });
 }
 
 /** CLI path overrides, in the code plugin's settings */
 /** Sends the settings plugin the stored API keys (no values) and how they're protected */
 function sendSecrets(): void {
-  untypedBroadcastToPlugin(HOST.settings, { type: 'SECRETS_UPDATED', secrets: services.secrets.list(), status: services.secrets.status() });
+  broadcastToPlugin(HOST.settings, { type: 'SECRETS_UPDATED', secrets: services.secrets.list(), status: services.secrets.status() });
 }
 
 export const settingsSystem = setup({
@@ -119,8 +120,8 @@ export const settingsSystem = setup({
           // Any pack's feature has settings: its system gets the changes too, and one it doesn't run is nobody's
           const settings = after ?? {};
           const to = feature as FeatureRef;
-          untypedSendToSystem(to, { type: 'FEATURE_SETTINGS_UPDATED', settings, changes: detectAllArrayChanges(before ?? {}, settings) });
-          untypedBroadcastToPlugin(to, { type: 'FEATURE_SETTINGS_UPDATED', settings });
+          sendToSystem(to, { type: 'FEATURE_SETTINGS_UPDATED', settings, changes: detectAllArrayChanges(before ?? {}, settings) });
+          broadcastToPlugin(to, { type: 'FEATURE_SETTINGS_UPDATED', settings });
         }
         return now;
       },
@@ -137,8 +138,8 @@ export const settingsSystem = setup({
         for (const [feature, settings] of Object.entries(now)) {
           if (!splitRef(feature)) continue;
           const to = feature as FeatureRef;
-          untypedSendToSystem(to, { type: 'FEATURE_SETTINGS_UPDATED', settings: settings ?? {}, changes: null });
-          untypedBroadcastToPlugin(to, { type: 'FEATURE_SETTINGS_UPDATED', settings: settings ?? {} });
+          sendToSystem(to, { type: 'FEATURE_SETTINGS_UPDATED', settings: settings ?? {}, changes: null });
+          broadcastToPlugin(to, { type: 'FEATURE_SETTINGS_UPDATED', settings: settings ?? {} });
         }
         return now;
       },
@@ -148,16 +149,16 @@ export const settingsSystem = setup({
     sendSettingsUpdate: () => broadcastSettings('SETTINGS_UPDATED'),
 
     // Help is a pack contribution, so the packs changing changes it; the settings ride along on PACK_CHANGED
-    sendHelp: () => untypedBroadcastToPlugin(HOST.settings, { type: 'HELP_UPDATED', help: getPackHelp() }),
+    sendHelp: () => broadcastToPlugin(HOST.settings, { type: 'HELP_UPDATED', help: getPackHelp() }),
 
-    refuseResetWhileReplacing: () => untypedBroadcastToPlugin(HOST.settings, {
+    refuseResetWhileReplacing: () => broadcastToPlugin(HOST.settings, {
       type: 'APP_RESET_FAILED',
       error: 'A backup is being imported. Reset the app once it has finished.',
     }),
 
     // A change the store can't take now (`whileBusy`), with the reason the state gives
     refuseChange: (_: unknown, { reason }: { reason: string }) =>
-      untypedBroadcastToPlugin(HOST.settings, { type: 'SETTINGS_REFUSED', problems: [reason] }),
+      broadcastToPlugin(HOST.settings, { type: 'SETTINGS_REFUSED', problems: [reason] }),
 
     getSettings: () => broadcastSettings('SETTINGS_LOADED'),
     
@@ -174,7 +175,7 @@ export const settingsSystem = setup({
       }
 
       broadcastSettings('SETTINGS_UPDATED');
-      untypedBroadcastToPlugin(HOST.settings, { type: 'SETTINGS_SAVED' });
+      broadcastToPlugin(HOST.settings, { type: 'SETTINGS_SAVED' });
     },
 
     replaceSettings: ({ event }) => {
@@ -186,7 +187,7 @@ export const settingsSystem = setup({
         return;
       }
       broadcastSettings('SETTINGS_UPDATED');
-      untypedBroadcastToPlugin(HOST.settings, { type: 'SETTINGS_SAVED' });
+      broadcastToPlugin(HOST.settings, { type: 'SETTINGS_SAVED' });
     },
 
     resetSettings: () => {
@@ -201,10 +202,10 @@ export const settingsSystem = setup({
       const ev = settingsSpec.typeOf('PREVIEW_PACK_SEEDS', event);
       try {
         const preview = previewPackSeeds(ev.directory);
-        untypedBroadcastToPlugin(HOST.settings, { type: 'PACK_SEEDS_PREVIEW', preview });
+        broadcastToPlugin(HOST.settings, { type: 'PACK_SEEDS_PREVIEW', preview });
       } catch (err) {
         const message = errorMessage(err);
-        untypedBroadcastToPlugin(HOST.settings, { type: 'PACK_SEEDS_PREVIEW_FAILED', error: message });
+        broadcastToPlugin(HOST.settings, { type: 'PACK_SEEDS_PREVIEW_FAILED', error: message });
       }
     },
 
@@ -217,29 +218,29 @@ export const settingsSystem = setup({
         const result = seedData({ compiledDir: ev.directory, include, mode: ev.mode, verbose: true });
         // Seeders report records they couldn't seed in their counts rather than throwing
         const errors = Object.entries(result).flatMap(([key, counts]) => (counts.errors ?? []).map((error) => `${key}: ${error}`));
-        untypedBroadcastToPlugin(HOST.settings, { type: 'PACK_SEEDS_IMPORTED', result, errors });
+        broadcastToPlugin(HOST.settings, { type: 'PACK_SEEDS_IMPORTED', result, errors });
         // The running systems read what the seeds changed (the chat's slash commands, the library's documents)
-        untypedSendToSystem(HOST.bus, { type: 'PACK_CHANGED', packId });
+        sendToSystem(HOST.bus, { type: 'PACK_CHANGED', packId });
         if (ev.restartBrain) {
-          untypedSendToSystem({ role: 'brain' }, { type: 'RESTART_BRAIN' });
+          sendToSystem({ role: 'brain' }, { type: 'RESTART_BRAIN' });
         }
       } catch (err) {
         const message = errorMessage(err);
-        untypedBroadcastToPlugin(HOST.settings, { type: 'PACK_SEEDS_IMPORT_FAILED', error: message });
+        broadcastToPlugin(HOST.settings, { type: 'PACK_SEEDS_IMPORT_FAILED', error: message });
       }
     },
 
     onResetComplete: () => {
-      untypedSendToSystem({ role: 'brain' }, { type: 'RESTART_BRAIN' });
-      untypedSendToSystem({ role: 'threads' }, { type: 'COMMANDS_CHANGED' });
-      untypedBroadcastToPlugin(HOST.settings, { type: 'APP_RESET_COMPLETE' });
+      sendToSystem({ role: 'brain' }, { type: 'RESTART_BRAIN' });
+      sendToSystem({ role: 'threads' }, { type: 'COMMANDS_CHANGED' });
+      broadcastToPlugin(HOST.settings, { type: 'APP_RESET_COMPLETE' });
     },
 
     onResetFailed: ({ event }) => {
       const err = (event as unknown as ErrorActorEvent).error;
       const message = errorMessage(err);
       logger.error('Reset app failed', { error: err });
-      untypedBroadcastToPlugin(HOST.settings, { type: 'APP_RESET_FAILED', error: message });
+      broadcastToPlugin(HOST.settings, { type: 'APP_RESET_FAILED', error: message });
     },
 
   },
