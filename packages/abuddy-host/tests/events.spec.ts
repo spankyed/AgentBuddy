@@ -26,20 +26,29 @@ function emitted(send: () => void, listen: 'plugin' | 'system'): Message[] {
 }
 
 describe('the host sends as itself', () => {
-  it('stamps a send to one of its own plugins', () => {
-    expect(emitted(() => broadcastToPlugin(HOST.settings, { type: 'SETTINGS_LOADED' }), 'plugin'))
-      .toEqual([{ to: HOST.settings, from: 'host', event: { type: 'SETTINGS_LOADED' } }]);
+  it('stamps a send to one of its own plugins, named as a pack names its own', () => {
+    expect(emitted(() => broadcastToPlugin('settings', { type: 'SETTINGS_LOADED', data: { plugins: {} }, help: [] }), 'plugin'))
+      .toEqual([{ to: HOST.settings, from: 'host', event: { type: 'SETTINGS_LOADED', data: { plugins: {} }, help: [] } }]);
   });
 
   it('stamps a send to one of its own systems', () => {
-    expect(emitted(() => sendToSystem(HOST.packs, { type: 'GET_PACKS' }), 'system'))
-      .toEqual([{ to: HOST.packs, from: 'host', event: { type: 'GET_PACKS' } }]);
+    expect(emitted(() => sendToSystem('packs', { type: 'GET_INSTALLED_PACKS' }), 'system'))
+      .toEqual([{ to: HOST.packs, from: 'host', event: { type: 'GET_INSTALLED_PACKS' } }]);
   });
 
-  it('leaves a send made outside a pack unstamped', () => {
+  // The unbound sends take a ref and check nothing: they are what an action reaches through `services.emitter`
+  it('leaves a send made outside a pack unstamped, and unchecked', () => {
     expect(emitted(() => untypedBroadcastToPlugin(HOST.settings, { type: 'SETTINGS_LOADED' }), 'plugin'))
       .toEqual([{ to: HOST.settings, event: { type: 'SETTINGS_LOADED' } }]);
     expect(emitted(() => untypedSendToSystem(HOST.packs, { type: 'GET_PACKS' }), 'system'))
       .toEqual([{ to: HOST.packs, event: { type: 'GET_PACKS' } }]);
+  });
+
+  /** The map is the check: a name nothing declares, and an event that plugin doesn't take, are both compile errors */
+  it('refuses a feature it has none of, and an event that feature does not take', () => {
+    // @ts-expect-error the host has no `nope` feature
+    expect(() => broadcastToPlugin('nope', { type: 'SETTINGS_LOADED', data: { plugins: {} }, help: [] })).toBeDefined();
+    // @ts-expect-error the packs view doesn't take a settings event
+    expect(() => broadcastToPlugin('packs', { type: 'SETTINGS_LOADED', data: { plugins: {} }, help: [] })).toBeDefined();
   });
 });

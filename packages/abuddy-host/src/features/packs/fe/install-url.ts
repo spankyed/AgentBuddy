@@ -21,7 +21,7 @@ export function packInstallRequest(params: Record<string, string>): PackInstallR
 
 /** Asks the Packs system to install a pack; a send that fails is reported by the window's client */
 export function requestPackInstall(request: PackInstallRequest): void {
-  sendToSystem(HOST.packs, { type: 'INSTALL_PACK', packSlug: request.packSlug, source: request.source });
+  sendToSystem('packs', { type: 'INSTALL_PACK', packSlug: request.packSlug, source: request.source });
 }
 
 /** What a deep link asks for, installed: the one call a window makes when the platform hands it an install URL */

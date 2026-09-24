@@ -34,7 +34,7 @@ export function createApplicationSystem(registry: Pick<PackRegistry, 'settingsDe
     types: { events: {} as ApplicationEvent },
     actions: {
       sendVisibility: () => {
-        broadcastToPlugin(HOST.application, { type: 'PLUGIN_VISIBILITY_UPDATED', pluginVisibility: pluginVisibility(registry) });
+        broadcastToPlugin('application', { type: 'PLUGIN_VISIBILITY_UPDATED', pluginVisibility: pluginVisibility(registry) });
       },
     },
   }).createMachine({

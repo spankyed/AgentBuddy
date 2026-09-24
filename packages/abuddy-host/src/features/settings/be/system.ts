@@ -1,6 +1,7 @@
 import type { Contract } from './contract.ts';
 import type { OutgoingSettingsEvents } from './types.ts';
 import { eventTypes } from '@abuddy/sdk/events';
+import type { ApplicationHotkeys } from '@abuddy/sdk/types';
 import { broadcastToPlugin, sendToSystem } from '../../../events.ts';
 import { assign, createMachine, setup, sendTo, enqueueActions, fromCallback, fromPromise, type ErrorActorEvent } from 'xstate';
 import { defineSystem, getPackHelp, onPackSettingsDefaultsChanged, type HelpEntry, type SystemEntry } from '@abuddy/sdk/framework';
@@ -26,6 +27,14 @@ const APP_HOTKEYS_PATH = ['general', 'application', 'hotkeys'] as const;
  * still a pack's, so it is addressed by the role it plays rather than by a name the host would have to know.
  */
 
+/**
+ * The application hotkeys, from the `general` section a pack contributes. Every section but `plugins` is a pack's
+ * and opaque to the host, so `unknown` is what it can read and this is where it takes the pack's word for the
+ * shape. Absent reads as none, rather than as `undefined` wearing the type the shell's context declares.
+ */
+const appHotkeys = (document: SettingsDocument): ApplicationHotkeys =>
+  (at(document, APP_HOTKEYS_PATH) ?? {}) as ApplicationHotkeys;
+
 const at = (document: SettingsDocument, path: readonly string[]): unknown =>
   path.reduce<unknown>((node, key) => (node && typeof node === 'object' ? (node as Record<string, unknown>)[key] : undefined), document);
 
@@ -46,7 +55,7 @@ function toSeedInclude(include: Record<string, string[] | null>): Record<string,
  */
 function refuseSettings(error: unknown, what: string): void {
   if (!(error instanceof SettingsRefusedError)) reportError({ error: new Error(`${what}: ${(error as Error).message}`), source: 'settings' });
-  broadcastToPlugin(HOST.settings, { type: 'SETTINGS_REFUSED', problems: error instanceof SettingsRefusedError ? error.problems : [(error as Error).message] });
+  broadcastToPlugin('settings', { type: 'SETTINGS_REFUSED', problems: error instanceof SettingsRefusedError ? error.problems : [(error as Error).message] });
 }
 
 /** Each plugin's settings as they apply: what features were last told */
@@ -75,15 +84,15 @@ export const settingsSpec = defineSystem<Contract>();
  */
 function broadcastSettings(type: 'SETTINGS_LOADED' | 'SETTINGS_UPDATED' | 'SETTINGS_RESET'): void {
   const data = services.settings.getAll<SettingsDocument>();
-  if (type === 'SETTINGS_LOADED') broadcastToPlugin(HOST.settings, { type, data, help: getPackHelp() });
-  else broadcastToPlugin(HOST.settings, { type, data });
-  broadcastToPlugin(HOST.application, { type: 'APPLICATION_HOTKEYS', hotkeys: at(data, APP_HOTKEYS_PATH) });
+  if (type === 'SETTINGS_LOADED') broadcastToPlugin('settings', { type, data, help: getPackHelp() });
+  else broadcastToPlugin('settings', { type, data });
+  broadcastToPlugin('application', { type: 'APPLICATION_HOTKEYS', hotkeys: appHotkeys(data) });
 }
 
 /** CLI path overrides, in the code plugin's settings */
 /** Sends the settings plugin the stored API keys (no values) and how they're protected */
 function sendSecrets(): void {
-  broadcastToPlugin(HOST.settings, { type: 'SECRETS_UPDATED', secrets: services.secrets.list(), status: services.secrets.status() });
+  broadcastToPlugin('settings', { type: 'SECRETS_UPDATED', secrets: services.secrets.list(), status: services.secrets.status() });
 }
 
 export const settingsSystem = setup({
@@ -149,16 +158,16 @@ export const settingsSystem = setup({
     sendSettingsUpdate: () => broadcastSettings('SETTINGS_UPDATED'),
 
     // Help is a pack contribution, so the packs changing changes it; the settings ride along on PACK_CHANGED
-    sendHelp: () => broadcastToPlugin(HOST.settings, { type: 'HELP_UPDATED', help: getPackHelp() }),
+    sendHelp: () => broadcastToPlugin('settings', { type: 'HELP_UPDATED', help: getPackHelp() }),
 
-    refuseResetWhileReplacing: () => broadcastToPlugin(HOST.settings, {
+    refuseResetWhileReplacing: () => broadcastToPlugin('settings', {
       type: 'APP_RESET_FAILED',
       error: 'A backup is being imported. Reset the app once it has finished.',
     }),
 
     // A change the store can't take now (`whileBusy`), with the reason the state gives
     refuseChange: (_: unknown, { reason }: { reason: string }) =>
-      broadcastToPlugin(HOST.settings, { type: 'SETTINGS_REFUSED', problems: [reason] }),
+      broadcastToPlugin('settings', { type: 'SETTINGS_REFUSED', problems: [reason] }),
 
     getSettings: () => broadcastSettings('SETTINGS_LOADED'),
     
@@ -175,7 +184,7 @@ export const settingsSystem = setup({
       }
 
       broadcastSettings('SETTINGS_UPDATED');
-      broadcastToPlugin(HOST.settings, { type: 'SETTINGS_SAVED' });
+      broadcastToPlugin('settings', { type: 'SETTINGS_SAVED' });
     },
 
     replaceSettings: ({ event }) => {
@@ -187,7 +196,7 @@ export const settingsSystem = setup({
         return;
       }
       broadcastSettings('SETTINGS_UPDATED');
-      broadcastToPlugin(HOST.settings, { type: 'SETTINGS_SAVED' });
+      broadcastToPlugin('settings', { type: 'SETTINGS_SAVED' });
     },
 
     resetSettings: () => {
@@ -202,10 +211,10 @@ export const settingsSystem = setup({
       const ev = settingsSpec.typeOf('PREVIEW_PACK_SEEDS', event);
       try {
         const preview = previewPackSeeds(ev.directory);
-        broadcastToPlugin(HOST.settings, { type: 'PACK_SEEDS_PREVIEW', preview });
+        broadcastToPlugin('settings', { type: 'PACK_SEEDS_PREVIEW', preview });
       } catch (err) {
         const message = errorMessage(err);
-        broadcastToPlugin(HOST.settings, { type: 'PACK_SEEDS_PREVIEW_FAILED', error: message });
+        broadcastToPlugin('settings', { type: 'PACK_SEEDS_PREVIEW_FAILED', error: message });
       }
     },
 
@@ -218,29 +227,29 @@ export const settingsSystem = setup({
         const result = seedData({ compiledDir: ev.directory, include, mode: ev.mode, verbose: true });
         // Seeders report records they couldn't seed in their counts rather than throwing
         const errors = Object.entries(result).flatMap(([key, counts]) => (counts.errors ?? []).map((error) => `${key}: ${error}`));
-        broadcastToPlugin(HOST.settings, { type: 'PACK_SEEDS_IMPORTED', result, errors });
+        broadcastToPlugin('settings', { type: 'PACK_SEEDS_IMPORTED', result, errors });
         // The running systems read what the seeds changed (the chat's slash commands, the library's documents)
-        sendToSystem(HOST.bus, { type: 'PACK_CHANGED', packId });
+        sendToSystem('bus', { type: 'PACK_CHANGED', packId });
         if (ev.restartBrain) {
           sendToSystem({ role: 'brain' }, { type: 'RESTART_BRAIN' });
         }
       } catch (err) {
         const message = errorMessage(err);
-        broadcastToPlugin(HOST.settings, { type: 'PACK_SEEDS_IMPORT_FAILED', error: message });
+        broadcastToPlugin('settings', { type: 'PACK_SEEDS_IMPORT_FAILED', error: message });
       }
     },
 
     onResetComplete: () => {
       sendToSystem({ role: 'brain' }, { type: 'RESTART_BRAIN' });
       sendToSystem({ role: 'threads' }, { type: 'COMMANDS_CHANGED' });
-      broadcastToPlugin(HOST.settings, { type: 'APP_RESET_COMPLETE' });
+      broadcastToPlugin('settings', { type: 'APP_RESET_COMPLETE' });
     },
 
     onResetFailed: ({ event }) => {
       const err = (event as unknown as ErrorActorEvent).error;
       const message = errorMessage(err);
       logger.error('Reset app failed', { error: err });
-      broadcastToPlugin(HOST.settings, { type: 'APP_RESET_FAILED', error: message });
+      broadcastToPlugin('settings', { type: 'APP_RESET_FAILED', error: message });
     },
 
   },
@@ -344,7 +353,7 @@ export const settingsEvents = new Set([
 ]);
 
 /** What the settings system sends its own plugin: everything outgoing but the shell's hotkeys */
-type SettingsPluginEvents = Exclude<OutgoingSettingsEvents, { type: 'APPLICATION_HOTKEYS' }>;
+export type SettingsPluginEvents = Exclude<OutgoingSettingsEvents, { type: 'APPLICATION_HOTKEYS' }>;
 
 /** The event types the `settings` plugin receives; the host's to send, and no pack's */
 export const SETTINGS_PLUGIN_EVENT_TYPES = eventTypes<SettingsPluginEvents>()(

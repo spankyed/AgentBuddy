@@ -97,7 +97,7 @@ const packsState = setup({
 
     sendInstall: ({ event }) => {
       const ev = typeOf('UI.INSTALL', event);
-      sendToSystem(HOST.packs, { type: 'INSTALL_PACK', packSlug: ev.packSlug, source: ev.source });
+      sendToSystem('packs', { type: 'INSTALL_PACK', packSlug: ev.packSlug, source: ev.source });
     },
 
     promptUninstall: assign({
@@ -110,7 +110,7 @@ const packsState = setup({
 
     sendUninstall: ({ event }) => {
       const ev = typeOf('UI.UNINSTALL', event);
-      sendToSystem(HOST.packs, { type: 'UNINSTALL_PACK', packId: ev.packId });
+      sendToSystem('packs', { type: 'UNINSTALL_PACK', packId: ev.packId });
     },
 
     clearUninstallPrompt: assign({
@@ -119,7 +119,7 @@ const packsState = setup({
 
     sendToggleEnabled: ({ event }) => {
       const ev = typeOf('UI.TOGGLE_ENABLED', event);
-      sendToSystem(HOST.packs, { type: 'TOGGLE_PACK_ENABLED', packId: ev.packId });
+      sendToSystem('packs', { type: 'TOGGLE_PACK_ENABLED', packId: ev.packId });
     },
 
     selectPack: assign({
@@ -149,15 +149,15 @@ const packsState = setup({
 
     sendUpdate: ({ event }) => {
       const ev = typeOf('UI.UPDATE', event);
-      sendToSystem(HOST.packs, { type: 'UPDATE_PACK', packId: ev.packId });
+      sendToSystem('packs', { type: 'UPDATE_PACK', packId: ev.packId });
     },
 
     sendCheckUpdates: () => {
-      sendToSystem(HOST.packs, { type: 'CHECK_FOR_UPDATES' });
+      sendToSystem('packs', { type: 'CHECK_FOR_UPDATES' });
     },
 
     sendRefresh: () => {
-      sendToSystem(HOST.packs, { type: 'GET_INSTALLED_PACKS' });
+      sendToSystem('packs', { type: 'GET_INSTALLED_PACKS' });
     },
   },
 }).createMachine({

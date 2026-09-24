@@ -1,3 +1,4 @@
+import type { ApplicationHotkeys } from '@abuddy/sdk/types';
 import type { HelpEntry } from '@abuddy/sdk/framework';
 import type { SeedCounts } from '@abuddy/sdk/utils';
 import type { PackSeedsPreview } from '@abuddy/sdk/seed';
@@ -39,7 +40,7 @@ export type OutgoingSettingsEvents =
   /** A change was refused, and stored nothing */
   | { type: 'SETTINGS_REFUSED'; problems: string[] }
   | { type: 'SETTINGS_RESET'; data: SettingsDocument }
-  | { type: 'APPLICATION_HOTKEYS'; hotkeys: unknown }
+  | { type: 'APPLICATION_HOTKEYS'; hotkeys: ApplicationHotkeys }
   /** `errors` lists the records that couldn't be seeded (`<key>: <error>`); the rest were imported */
   | { type: 'PACK_SEEDS_IMPORTED'; result: Record<string, SeedCounts>; errors: string[] }
   | { type: 'PACK_SEEDS_IMPORT_FAILED'; error: string }
