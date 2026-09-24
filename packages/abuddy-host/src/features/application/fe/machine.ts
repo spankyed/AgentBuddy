@@ -252,6 +252,10 @@ export function createShellMachine({ packs, client, packFrontends, storage, noti
       /**
        * Opens a plugin and hands it events. A plugin that isn't registered waits while pack frontends may still add
        * it, and is refused once loading has settled (onPackFrontendsSettled).
+       *
+       * `do` because `openPlugin` is also the SDK function that sends this action's event (`@abuddy/sdk/fe`), so a
+       * mention of it in this file would read as either. Its neighbours don't carry the prefix and don't need it:
+       * nothing else is named `sendToPlugin` or `openPluginFromApp`.
        */
       doOpenPlugin: enqueueActions(({ context, event, enqueue }) => {
         const { plugin, events } = typeOf('OPEN_PLUGIN', event);

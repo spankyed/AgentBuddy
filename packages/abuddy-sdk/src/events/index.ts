@@ -74,7 +74,13 @@ type WithoutType<E> = E extends unknown ? { [K in keyof E as K extends 'type' ? 
  */
 export type IncomingEventsOf<C> = ContractIncoming<C>;
 
-/** The events a system sends to plugins, from its feature's `Contract` */
+/**
+ * The events a system sends to plugins, from its feature's `Contract`.
+ *
+ * Written out where `IncomingEventsOf` above aliases `ContractIncoming`: that one is read twice, here and by
+ * `MachineEvents` in `define-system.ts`, so it is worth a name of its own. The outgoing half has only this
+ * reader, and a name whose whole definition was another name read as one concept too many.
+ */
 export type OutgoingEventsOf<C> = C extends { outgoing: infer Events } ? Events : never;
 
 /**
