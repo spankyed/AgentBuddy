@@ -84,7 +84,7 @@
     "db:export": "abuddy db export -d",
     "db:import": "abuddy db import -d",
     "db:reset": "abuddy db reset -d",
-    "db:clear-settings": "abuddy db clear-settings -d",
+    "db:clear-settings": "abuddy db clear-settings -d"
   },
   "devDependencies": {
     "@arethetypeswrong/cli": "^0.18.5",
