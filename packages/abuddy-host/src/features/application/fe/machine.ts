@@ -86,11 +86,9 @@ export function createShellMachine({ packs, client, packFrontends, storage, noti
       packFrontendLoader: packFrontendLoader(client, packFrontends),
       pluginTrailer,
     },
-    // An action is named for what it does to the shell, never for the event or the API call that triggered it.
-    // Four actions used to be named the other way and each needed a patch — a `do` prefix, a `FromApp` suffix, an
-    // `on` — because a name taken from the trigger collides with whatever does the triggering. An effect name also
-    // survives a second caller, which a trigger name can't: `restoreChat` and `applyShellState` each serve three
-    // transitions, `switchPluginByDirection` and `forwardNavToPlugin` two.
+    // An action is named for what it does to the shell, never for the event or the API call that triggered it: a
+    // trigger name collides with whatever does the triggering, and it can't survive a second caller — several of
+    // these serve more than one transition, so there is no single event to name them after.
     actions: {
       updateHotkeys: assign(({ event }) => ({ hotkeys: typeOf('APPLICATION_HOTKEYS', event).hotkeys })),
 

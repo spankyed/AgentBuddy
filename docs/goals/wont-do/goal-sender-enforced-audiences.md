@@ -47,8 +47,8 @@ What did **not** land: any change to `PackFeaturePlugin.receives` or `PackFEFeat
   (`framework/pack-registration.ts:53`): *"a passing check means the event's shape was accepted, not that this
   sender was allowed to send it."* The bus checks the event's type against it and cannot check audience.
 - `PackFEFeature` (`fe/pack-fe-registration.ts:13`) has no `receives` at all. The renderer's in-window path is
-  `SEND_TO_PLUGIN: { actions: 'sendToPlugin' }` (`features/application/fe/machine.ts:545`) — no guard, nothing
-  validated.
+  `SEND_TO_PLUGIN: { actions: 'deliverWithoutSelecting' }` (`features/application/fe/machine.ts:565`) — no guard,
+  nothing validated.
 - The bus's drop path is well-behaved and is what enforcement would reuse: `reportDrop`
   (`bus/machine.ts:154`) reports a `diagnostic` — logged, recorded, failing any pack test that leaves one, no
   user toast — dedupes per pair, and stays quiet while a pack is mid-replacement (`isPluginReplacing`), so
