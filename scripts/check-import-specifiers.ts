@@ -455,9 +455,12 @@ const CODE_FILE = /\.(?:[cm]?[jt]sx?|vue)$/;
  * each other through the contracts `#generated/fe` and `#generated/events` are generated from, and nothing
  * generates those for the app itself. Give the host codegen and this exception goes with it.
  *
- * Named rather than derived from "has no abuddy.json": a pack tree a test builds has no manifest either, so that
- * probe reads a fixture as the host and lets the rule through. `findContractLeafImports` can use it because a root
- * with no manifest has no contracts to check; here the root still has to be checked.
+ * Named, not derived. "Has no `abuddy.json`" describes the host exactly today, and deriving the exception from it
+ * would retire it automatically — but it would also make this gate **fail open**: a root whose manifest is missing,
+ * or a new one added without one, would silently stop being checked. An exception that widens when a file goes
+ * missing is the wrong shape for a rule whose job is to refuse. Listed here, an unrecognised root gets the strict
+ * rule and someone has to write a line to change that. `findContractLeafImports` may use the manifest instead,
+ * because a root without one has no contract to check — it narrows there rather than widening.
  */
 const HOST_SRC_ROOT = 'packages/abuddy-host/src';
 
