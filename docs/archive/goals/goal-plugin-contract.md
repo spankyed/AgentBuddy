@@ -445,6 +445,12 @@ recorded below. Phases 1–4 went in as `3d79fed34`, with `5a3442700` fixing a r
    **Reopen when** a pack ships compiled against a facade older than the plugin it sends to, or when the
    renderer send acquires a sender to stamp.
 
+   > **Settled 2026-09-24, and this paragraph's reason was wrong.** The renderer's send does have a sender
+   > in scope: `defineEvents(packId)` builds all three sends and closes over the pack id. The envelope half
+   > shipped on that basis — `Message.from`, stamped by the generated sends and named in the bus and client
+   > diagnostics. The enforcement half is won't-do, for reasons that survive the correction:
+   > [`goal-sender-enforced-audiences.md`](../../goals/wont-do/goal-sender-enforced-audiences.md).
+
 ## Constraints
 
 - Commit each phase as it finishes, no attribution lines, `git commit -- <paths>`; check `git diff --cached`
