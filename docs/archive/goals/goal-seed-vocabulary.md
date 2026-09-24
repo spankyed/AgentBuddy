@@ -398,8 +398,10 @@ across 8 suites ✅ · `seed-parity:check` ✅ · `build` ✅ · `npm test` (E2E
   needs that retention rule re-expressed and is a data change, not a naming one. Out of scope.
 - **`sourceHash`'s scope.** It hashes the compiled bundle, which is why editing an inlined `_helpers/`
   file re-hashed 47 of 62 golden rows in this session. Whether the golden should assert hash *values* at
-  all is a test-design question, not a vocabulary one; [`goal-test-cleanup.md`](../../goals/goal-test-cleanup.md)
-  already holds what the goldens should cover (its item 6).
+  all is a test-design question, not a vocabulary one. **Nothing tracks it.**
+  [`goal-test-cleanup.md`](../../goals/goal-test-cleanup.md) item 6 is the nearest thing and is not it: that one
+  asks whether to re-record the goldens with notes included, to retire `NOTES_INTENDED_DIFFERENCES`, and is
+  deferred there too.
 
 ## Constraints
 
