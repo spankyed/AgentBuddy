@@ -16,7 +16,7 @@ import {
 import { announcePackClientReady, PACK_FRONTEND_LOADER_ID, packFrontendLoader } from './pack-frontends.ts';
 import { historyAfter, neighbourOf, spawnPluginActor, withHostLast } from './plugins.ts';
 import { computeCrumbs, pluginTrailer } from './trail.ts';
-import type { ShellContext, ShellEvent, ShellOptions, ShellParams } from './types.ts';
+import type { MessageSender, ShellContext, ShellEvent, ShellOptions, ShellParams } from './types.ts';
 
 const typeOf = safeEvents<ShellEvent>();
 
@@ -33,6 +33,19 @@ satisfiesHostShell<[
 /** Whether external packs' frontends may still add plugins: the loaded packs not read yet, or a load running or queued */
 function packFrontendsPending(context: ShellContext): boolean {
   return !context.loadedPacksRead || context.packLoadRunning || context.packLoadQueued;
+}
+
+/**
+ * What the user is told when a plugin isn't here: the title and the detail, for `notify.error`.
+ *
+ * One function because there are three call sites — opening and sending, each refusable at once or after waiting
+ * for pack frontends — and three copies had already drifted: only the immediate send named the sender, and only
+ * it ended in a full stop. A wording that differs by which branch the app happened to take tells the reader
+ * something about the app's internals and nothing about their problem.
+ */
+function refusal(plugin: string, select: boolean, sender: MessageSender): [string, string] {
+  const suffix = senderSuffix(sender);
+  return [`Couldn't ${select ? 'open' : 'reach'} ${plugin}`, `No plugin is registered at "${plugin}".${suffix && ` Sent${suffix}.`}`];
 }
 
 /** The app shell over `options`, the I/O it's given */
@@ -101,7 +114,9 @@ export function createShellMachine({ packs, client, packFrontends, storage, noti
           if (arrived.length > 0) {
             enqueue.assign({ awaitingPlugin: context.awaitingPlugin.filter((work) => !added.has(work.plugin)) });
             // `select` is what the wait was for: an open selects the plugin, a send only hands it its events
-            for (const { plugin, events, select } of arrived) enqueue.raise({ type: select ? 'OPEN_PLUGIN' : 'SEND_TO_PLUGIN', plugin, events });
+            for (const { plugin, events, select, sender } of arrived) {
+              enqueue.raise(select ? { type: 'OPEN_PLUGIN', plugin, events } : { type: 'SEND_TO_PLUGIN', plugin, events, ...sender });
+            }
           }
         }
         // The pack's plugin actors, if any, now exist: its systems send their startup data. Before this window's
@@ -142,12 +157,10 @@ export function createShellMachine({ packs, client, packFrontends, storage, noti
           // Loading has settled: a plugin still asked for is one no loaded pack provides
           if (context.awaitingPlugin.length > 0) {
             // `assign` replaces the array rather than mutating it, so the reference stays valid in the deferred enqueue
-        const refused = context.awaitingPlugin;
+            const refused = context.awaitingPlugin;
             enqueue.assign({ awaitingPlugin: [] });
             enqueue(() => {
-              for (const { plugin, select } of refused) {
-                notify.error(`Couldn't ${select ? 'open' : 'reach'} ${plugin}`, `No plugin is registered at "${plugin}"`);
-              }
+              for (const { plugin, select, sender } of refused) notify.error(...refusal(plugin, select, sender));
             });
           }
         }
@@ -262,9 +275,9 @@ export function createShellMachine({ packs, client, packFrontends, storage, noti
         const { plugin, events } = typeOf('OPEN_PLUGIN', event);
         if (!context.plugins.some((p) => p.id === plugin)) {
           if (packFrontendsPending(context)) {
-            enqueue.assign({ awaitingPlugin: [...context.awaitingPlugin, { plugin, events, select: true }] });
+            enqueue.assign({ awaitingPlugin: [...context.awaitingPlugin, { plugin, events, select: true, sender: {} }] });
           } else {
-            enqueue(() => notify.error(`Couldn't open ${plugin}`, `No plugin is registered at "${plugin}"`));
+            enqueue(() => notify.error(...refusal(plugin, true, {})));
           }
           return;
         }
@@ -284,13 +297,10 @@ export function createShellMachine({ packs, client, packFrontends, storage, noti
         const { plugin, events, from, via } = typeOf('SEND_TO_PLUGIN', event);
         if (!context.plugins.some((p) => p.id === plugin)) {
           if (packFrontendsPending(context)) {
-            enqueue.assign({ awaitingPlugin: [...context.awaitingPlugin, { plugin, events, select: false }] });
+            // The sender travels with the request, so a refusal after the wait names it as one at once does
+            enqueue.assign({ awaitingPlugin: [...context.awaitingPlugin, { plugin, events, select: false, sender: { from, via } }] });
           } else {
-            // The sending pack and what within it, when the send stamped them (`defineEvents`,
-            // `createActionEmitter`); a send that stamped neither carries none
-            const suffix = senderSuffix({ from, via });
-            const sender = suffix && ` Sent${suffix}.`;
-            enqueue(() => notify.error(`Couldn't reach ${plugin}`, `No plugin is registered at "${plugin}".${sender}`));
+            enqueue(() => notify.error(...refusal(plugin, false, { from, via })));
           }
           return;
         }

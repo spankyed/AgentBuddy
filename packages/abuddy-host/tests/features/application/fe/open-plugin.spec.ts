@@ -1,10 +1,11 @@
 // Opening a plugin is the shell's command (OPEN_PLUGIN), because only the shell knows which pack frontends are still
 // loading: a plugin asked for while its pack loads opens once it arrives, one no pack provides is refused once
 // loading settles, and one whose pack goes away meanwhile is dropped.
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createActor, setup, type Actor } from 'xstate';
 import type { Plugin } from '@abuddy/sdk/fe';
 import { createShellMachine, type ShellMachine } from '../../../../src/fe/index.ts';
+import type { ShellEvent } from '../../../../src/features/application/fe/types.ts';
 import { fakeShell, settle } from './fakes.ts';
 
 /** What reached each plugin, in order, and whether it was open then */
@@ -84,7 +85,7 @@ it('refuses a plugin no pack provides once loading settles, naming it', async ()
   await settle();
 
   expect(opened()).toBe('default-setup/notes');
-  expect(shell.notify.error).toHaveBeenCalledWith("Couldn't open memo-pack/memoz", 'No plugin is registered at "memo-pack/memoz"');
+  expect(shell.notify.error).toHaveBeenCalledWith("Couldn't open memo-pack/memoz", 'No plugin is registered at "memo-pack/memoz".');
 });
 
 it('refuses at once a plugin no pack provides when no pack frontend is loading', async () => {
@@ -93,7 +94,7 @@ it('refuses at once a plugin no pack provides when no pack frontend is loading',
 
   app.send({ type: 'OPEN_PLUGIN', plugin: 'memo-pack/memos', events: [] });
 
-  expect(shell.notify.error).toHaveBeenCalledWith("Couldn't open memo-pack/memos", 'No plugin is registered at "memo-pack/memos"');
+  expect(shell.notify.error).toHaveBeenCalledWith("Couldn't open memo-pack/memos", 'No plugin is registered at "memo-pack/memos".');
 });
 
 it('drops a request whose pack is unloaded while it waits', async () => {
@@ -142,6 +143,49 @@ it("waits for a plugin whose pack's frontend is still loading, and delivers once
   expect(shell.notify.error).not.toHaveBeenCalled();
 });
 
+/**
+ * The case where naming the sender is worth most, and the case that named nobody until the queue carried it: the
+ * plugin's pack never loaded, so the send waited and was refused at the end of loading rather than at once.
+ */
+it('names the sender of a send that waited for a pack that never provided the plugin', async () => {
+  let loaded!: () => void;
+  const release = new Promise<void>((resolve) => { loaded = resolve; });
+  await connectLoading([{ id: 'memo-pack', plugins: [recording('memo-pack/memos')] }], release);
+
+  app.send({ type: 'SEND_TO_PLUGIN', plugin: 'memo-pack/memoz', events: [{ type: 'X' }], from: 'other-pack', via: 'action:Add Memo' });
+  loaded();
+  await settle();
+
+  expect(shell.notify.error).toHaveBeenCalledWith(
+    "Couldn't reach memo-pack/memoz",
+    'No plugin is registered at "memo-pack/memoz". Sent by "other-pack" (action:Add Memo).',
+  );
+});
+
+/**
+ * The guard for the class rather than for one field. Refusing at once and refusing after a wait are two branches
+ * of the same answer, so they have to say the same thing; they did not, and the difference was the sender and a
+ * full stop. One renderer makes divergence impossible, and this fails if anyone reintroduces a second.
+ */
+it('says exactly the same thing whether it refuses at once or after waiting', async () => {
+  const send: ShellEvent = { type: 'SEND_TO_PLUGIN', plugin: 'memo-pack/memoz', events: [{ type: 'X' }], from: 'other-pack', via: 'action:Add Memo' };
+
+  let loaded!: () => void;
+  const release = new Promise<void>((resolve) => { loaded = resolve; });
+  await connectLoading([{ id: 'memo-pack', plugins: [recording('memo-pack/memos')] }], release);
+  app.send({ ...send });
+  loaded();
+  await settle();
+  const afterWaiting = (shell.notify.error as ReturnType<typeof vi.fn>).mock.calls.at(-1);
+
+  // Loading has settled, so the same send is now refused on the other branch
+  app.send({ ...send });
+  await settle();
+  const atOnce = (shell.notify.error as ReturnType<typeof vi.fn>).mock.calls.at(-1);
+
+  expect(atOnce).toEqual(afterWaiting);
+});
+
 it('reports a send to a plugin no pack provides once loading settles, saying it could not reach it', async () => {
   let loaded!: () => void;
   const release = new Promise<void>((resolve) => { loaded = resolve; });
@@ -151,7 +195,7 @@ it('reports a send to a plugin no pack provides once loading settles, saying it 
   loaded();
   await settle();
 
-  expect(shell.notify.error).toHaveBeenCalledWith("Couldn't reach memo-pack/memoz", 'No plugin is registered at "memo-pack/memoz"');
+  expect(shell.notify.error).toHaveBeenCalledWith("Couldn't reach memo-pack/memoz", 'No plugin is registered at "memo-pack/memoz".');
 });
 
 // A pack's system or action asks the app to open a plugin with broadcastToPlugin('host/application', …); every window

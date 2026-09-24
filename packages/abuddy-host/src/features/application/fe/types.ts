@@ -1,7 +1,7 @@
 // The app shell's state, events and the I/O it's given. Its machine (machine.ts) reads the rest of the app only
 // through these ports, so it runs the same in the renderer, over the API and the window, and in a pack's tests.
 import type { ContextMenuItem, HotkeyEvent, Plugin, PluginEvent, ShellPanelSizes } from '@abuddy/sdk/fe';
-import type { HostPluginEvents } from '@abuddy/sdk/events';
+import type { HostPluginEvents, Message } from '@abuddy/sdk/events';
 import type { ApplicationHotkeys } from '@abuddy/sdk/types';
 import type { ShellClient, ShellFailure } from '../../../fe/client.ts';
 import type { ShellPackFrontends } from '../../../fe/pack-frontends.ts';
@@ -42,6 +42,13 @@ export interface ShellParams {
   ownsLastActivePlugin?: boolean;
 }
 
+/**
+ * Who a message says made it, kept whole while a send waits for its pack's frontend. A refusal that comes after
+ * the wait can then name the sender exactly as one refused at once does — the wait used to drop it, so the case
+ * where naming the sender helps most (the plugin's pack never loaded) was the case that named nobody.
+ */
+export type MessageSender = Pick<Message, 'from' | 'via'>;
+
 export interface ShellContext {
   defaultToggles: {
     canvas: boolean;
@@ -73,7 +80,7 @@ export interface ShellContext {
    * (`select: true`) or a `SEND_TO_PLUGIN`. One queue, because the wait is the same question — has that pack's
    * frontend arrived — and `select` is the only thing that differs once it has.
    */
-  awaitingPlugin: Array<{ plugin: string; events: PluginEvent[]; select: boolean }>;
+  awaitingPlugin: Array<{ plugin: string; events: PluginEvent[]; select: boolean; sender: MessageSender }>;
   /** Whether this window's bus subscription is established; it reconnects after the connection drops */
   busSubscribed: boolean;
   /** Whether the pack frontend loader is running: one run at a time, so a pack is never loaded twice */
