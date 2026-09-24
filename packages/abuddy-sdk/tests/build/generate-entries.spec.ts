@@ -49,6 +49,11 @@ function facade(overrides: Partial<Record<keyof typeof FACADE_DEFAULTS, string>>
   return { [PACK_TYPES_DEF]: body };
 }
 
+/** A dependency facade that also publishes `PackPluginState`, as one built from a pack with plugins does */
+function withPluginState(defs: Record<string, string>): Record<string, string> {
+  return { ...defs, [PACK_TYPES_DEF]: `${defs[PACK_TYPES_DEF]}\nexport type PackPluginState = {};` };
+}
+
 function dependency(fields: Record<string, unknown>, defs: Record<string, string> = facade()): PackSnapshot {
   return { types: { entities: {}, relKinds: {} }, defs, manifest: manifest({ id: 'base-pack', ...fields }), format: PACK_SNAPSHOT_FORMAT };
 }
@@ -371,6 +376,36 @@ function typedDependency(systems: Record<string, string>): PackSnapshot {
   const events = Object.entries(systems).map(([id, type]) => `'${id}': { type: '${type}'; n: number }`).join('; ');
   return dependency({ features: Object.keys(systems).map((id) => system(id)) }, facade({ PackSystemEvents: `{ ${events} }` }));
 }
+
+/**
+ * `pack-types.ts` re-exports `PackPluginState` only for a pack that has plugins, so a dependency without any
+ * publishes no such type. `fe.ts` imported it from every dependency regardless, which left the dependent's own
+ * typecheck unable to resolve the import.
+ */
+describe("a dependency that registers no plugin", () => {
+  it("is left out of fe.ts's state imports, and kept in everything else", () => {
+    const deps = {
+      'headless-pack': dependency({ id: 'headless-pack', features: [{ id: 'jobs', system: { entry: 'x' } }] }, facade()),
+    };
+    const files = generate({ dependencies: { 'headless-pack': '1.0.0' }, features: [withPlugin(system('actions'))] }, deps);
+
+    expect(files['src/__generated__/fe.ts']).not.toContain("from './deps/headless-pack.js'");
+    // its systems are still sendable, so the other facades keep naming it
+    expect(files['src/__generated__/events.ts']).toContain("from './deps/headless-pack.js'");
+  });
+
+  it("keeps a dependency that does register one", () => {
+    const deps = {
+      // A pack with plugins publishes PackPluginState; `facade()`'s defaults can't, since pack-types.ts
+      // re-exports it only for such a pack
+      'base-pack': dependency({ features: [{ id: 'memos', system: { entry: 'x' }, plugin: { entry: 'y' } }] }, withPluginState(facade())),
+    };
+    const files = generate({ dependencies: { 'base-pack': '1.0.0' }, features: [withPlugin(system('actions'))] }, deps);
+
+    expect(files['src/__generated__/fe.ts']).toContain("import type { PackPluginState as");
+    expect(files['src/__generated__/fe.ts']).toContain("from './deps/base-pack.js'");
+  });
+});
 
 describe('generated sends compile', () => {
   it('for feature ids that match generated names, beside a dependency with the same feature ids', () => {

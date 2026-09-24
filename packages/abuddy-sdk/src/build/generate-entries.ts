@@ -1,7 +1,7 @@
 import { readFileSync, existsSync, statSync } from 'fs';
 import { HOST_PLUGIN_EVENT_TYPES, HOST_SYSTEM_EVENT_TYPES } from '../events/index.ts';
 import { extname, join } from 'path';
-import { _mergeProvenance, type PackManifest, type PackFeatureEntry, type PackProvenance, type PackTypeManifest, type PackSnapshot, type ProvenanceKind, type StepEntry } from './manifest.ts';
+import { _mergeProvenance, PROVENANCE_KINDS, type PackManifest, type PackFeatureEntry, type PackProvenance, type PackTypeManifest, type PackSnapshot, type ProvenanceKind, type StepEntry } from './manifest.ts';
 import { SDK_ENTITIES, SDK_REL_KINDS, SDK_SHAPED_ENTITIES } from '../types/sdk-entities.ts';
 import { _reservedEntries } from '../types/reserved-names.ts';
 import { formatEntities } from './seeds/records.ts';
@@ -300,12 +300,19 @@ export function generatePackFiles(
   const depSnapshots = opts.depSnapshots ?? new Map<string, PackSnapshot>();
   const depIds = [...depSnapshots.keys()];
   /** `import type { name as alias }` from each dependency's facade, and the aliases */
-  function depTypeImports(name: string): { imports: string[]; aliases: string[] } {
+  function depTypeImports(name: string, from: readonly string[] = depIds): { imports: string[]; aliases: string[] } {
     return {
-      imports: depIds.map((depId) => `import type { ${name} as ${depAlias(depId, name)} } from './deps/${depId}.js';`),
-      aliases: depIds.map((depId) => depAlias(depId, name)),
+      imports: from.map((depId) => `import type { ${name} as ${depAlias(depId, name)} } from './deps/${depId}.js';`),
+      aliases: from.map((depId) => depAlias(depId, name)),
     };
   }
+
+  /**
+   * The dependencies whose facade publishes `PackPluginState`. `generatePackTypes` re-exports it only for a pack
+   * that has plugins, so importing it from every dependency left a dependent of a plugin-less pack unable to
+   * resolve its own `fe.ts`. Same rule, read from the dependency's manifest rather than applied to our own.
+   */
+  const depsWithPlugins = depIds.filter((depId) => PROVENANCE_KINDS.plugins(depSnapshots.get(depId)!.manifest, depId).length > 0);
 
   /**
    * The slash commands the pack declares. A name a dependency declares too fails the build: the app would
@@ -851,8 +858,8 @@ export const ref = (name: FeatureName): FeatureRef => resolveName(name, '${manif
     const ownState = pluginFeatures
       .map(f => `  '${f.id}': ${declaredIds.has(f.id) ? `PluginStateOf<__state_contract_${f.id}>` : 'never'};`)
       .join('\n');
-    const depState = depTypeImports('PackPluginState');
-    const qualifiedState = depIds.map((depId) => `Qualified<'${depId}', ${depAlias(depId, 'PackPluginState')}>`);
+    const depState = depTypeImports('PackPluginState', depsWithPlugins);
+    const qualifiedState = depsWithPlugins.map((depId) => `Qualified<'${depId}', ${depAlias(depId, 'PackPluginState')}>`);
 
     return `${HEADER}
 import { openPlugin, pluginIsRunning, readUntypedPluginState, useUntypedPluginState, type PluginStateOf } from '@abuddy/sdk/fe';
