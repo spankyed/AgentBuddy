@@ -34,7 +34,7 @@ There is no barrel: every public module is its own export subpath.
   export * from './button.vue';
   ```
   TypeScript can't resolve an exports target that is a `.vue` file, so the entry is what consumers import. An SFC without an entry is internal (`components/JsonViewerDialog.vue`, the tiptap menus, `bubble-menu/*`); other files in this package import it by relative path.
-- `computeExports()` gives each public module `{ "@abuddy/source": "./src/<m>.ts", "types": "./dist/<m>.d.ts", "default": "./dist/<m>.js" }`. There are no wildcards, and the map is checked into `package.json`.
+- `computeExports()` gives each public module `{ "@abuddy/source": "./src/<m>.ts", "types": "./dist/<m>.d.ts", "default": "./dist/<m>.js" }`. There are no wildcards, and the map is checked into `package.json`. This package is the only one of the three published ones whose map is computed rather than written — `@abuddy/ears` and `@abuddy/sdk` list theirs by hand, where the map *is* the definition of public and cannot fall behind `src/`. Deriving it buys a component being public by default, and costs the two copies being able to disagree, which is what `exports:check` exists for and why no sibling package has one.
 
 Workflow after adding, removing or renaming a public module:
 
