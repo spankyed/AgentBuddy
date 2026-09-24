@@ -2,6 +2,7 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { createRequire } from 'node:module';
 import type * as TS from 'typescript';
+import type { PluginInboxAudiences } from '../fe/plugin.ts';
 
 /** What a module exports under a name, as the TypeScript compiler resolves it */
 export interface ExportInfo {
@@ -40,8 +41,12 @@ export interface ModuleExports {
 
 }
 
-/** The audiences a plugin's inbox may open to, in the order an error lists them (`PluginInbox`, @abuddy/sdk/fe) */
-const INBOX_AUDIENCES = ['pack', 'public'];
+/**
+ * The audiences a plugin's inbox may open to, in the order an error lists them. Constrained by the type packs
+ * write against (`PluginInboxAudiences`, `@abuddy/sdk/fe`), so a new audience there is a compile error here
+ * rather than a contract codegen rejects as "not an audience".
+ */
+const INBOX_AUDIENCES = ['pack', 'public'] as const satisfies readonly (keyof PluginInboxAudiences)[];
 
 function loadTypeScript(): typeof TS {
   try {
@@ -83,49 +88,48 @@ export function createModuleExports(packRoot: string, files: string[]): ModuleEx
   });
   const checker = program.getTypeChecker();
 
-  /** The type of the value exported under `name`, following aliases, or undefined when there is none */
-  function exportedValueType(file: string, name: string): TS.Type | undefined {
+  /** The symbol `file` exports as `name`, before any alias is followed */
+  function exportedSymbol(file: string, name: string): TS.Symbol | undefined {
     const sourceFile = program.getSourceFile(file);
     if (!sourceFile) throw new Error(`${file} is not part of the program reading pack exports`);
     const moduleSymbol = checker.getSymbolAtLocation(sourceFile);
-    const exported = moduleSymbol && checker.getExportsOfModule(moduleSymbol).find((symbol) => symbol.name === name);
-    if (!exported) return undefined;
-    const symbol = followAliases(exported);
-    if (!symbol) return undefined;
-    return symbol.flags & ts.SymbolFlags.Value ? checker.getTypeOfSymbol(symbol) : undefined;
+    return moduleSymbol && checker.getExportsOfModule(moduleSymbol).find((symbol) => symbol.name === name);
   }
 
   /**
-   * The type a module *declares* under `name` — a type alias or an interface — following aliases, or undefined
-   * when it declares none. The counterpart of `exportedValueType`, which resolves values only: this is what lets
-   * codegen read a contract that has no runtime value to hang a phantom property off.
+   * Follows `export { x } from` and import chains to the symbol that declares the name, noting a type-only link on
+   * the way, or undefined when the chain doesn't resolve. A circular re-export (`a.ts` → `b.ts` → `a.ts`) ends the
+   * walk rather than spinning: the checker reports that as an error, and this reader queries the checker without
+   * reading its diagnostics. Every reader goes through here, so the bound is written once.
    */
-  /**
-   * Follows `export { x } from` and import chains to the symbol that declares the name, or undefined when the
-   * chain doesn't resolve. A circular re-export (`a.ts` → `b.ts` → `a.ts`) ends the walk rather than spinning:
-   * the checker reports that as an error, and this reader queries the checker without reading its diagnostics.
-   */
-  function followAliases(symbol: TS.Symbol): TS.Symbol | undefined {
+  function followAliases(symbol: TS.Symbol): { symbol: TS.Symbol; typeOnly: boolean } | undefined {
     const seen = new Set<TS.Symbol>([symbol]);
     let current = symbol;
+    let typeOnly = false;
     while (current.flags & ts.SymbolFlags.Alias) {
+      if (current.declarations?.some((declaration) => ts.isTypeOnlyImportOrExportDeclaration(declaration))) typeOnly = true;
       const target = checker.getImmediateAliasedSymbol(current);
       if (!target || seen.has(target)) return undefined;
       seen.add(target);
       current = target;
     }
-    return current;
+    return { symbol: current, typeOnly };
   }
 
+  /**
+   * The type a module *declares* under `name` — a type alias or an interface — following aliases, or undefined
+   * when it declares none. This is what lets codegen read a contract, which has no runtime value to read from.
+   *
+   * A type that didn't resolve is refused here rather than at each call site: `any` has no properties, so every
+   * reader below would otherwise answer "no events" for a contract whose import is missing.
+   */
   function declaredTypeOf(file: string, name: string): TS.Type | undefined {
-    const sourceFile = program.getSourceFile(file);
-    if (!sourceFile) throw new Error(`${file} is not part of the program reading pack exports`);
-    const moduleSymbol = checker.getSymbolAtLocation(sourceFile);
-    const exported = moduleSymbol && checker.getExportsOfModule(moduleSymbol).find((symbol) => symbol.name === name);
-    if (!exported) return undefined;
-    const symbol = followAliases(exported);
-    if (!symbol) return undefined;
-    return symbol.flags & ts.SymbolFlags.Type ? checker.getDeclaredTypeOfSymbol(symbol) : undefined;
+    const exported = exportedSymbol(file, name);
+    const resolved = exported && followAliases(exported);
+    if (!resolved || !(resolved.symbol.flags & ts.SymbolFlags.Type)) return undefined;
+    const declared = checker.getDeclaredTypeOfSymbol(resolved.symbol);
+    checkResolved(declared, path.basename(file), name);
+    return declared;
   }
 
   /** The type of property `name` of `type`, or undefined when it has none */
@@ -156,25 +160,10 @@ export function createModuleExports(packRoot: string, files: string[]): ModuleEx
 
   return {
     exportOf(file, name) {
-      const sourceFile = program.getSourceFile(file);
-      if (!sourceFile) throw new Error(`${file} is not part of the program reading pack exports`);
-      const moduleSymbol = checker.getSymbolAtLocation(sourceFile);
-      const exported = moduleSymbol && checker.getExportsOfModule(moduleSymbol).find((symbol) => symbol.name === name);
-      if (!exported) return undefined;
-
-      // Follow `export { x } from` and `import`/`export` chains, noting a type-only link on the way. Bounded, as
-      // `followAliases` is: a circular re-export would otherwise spin here.
-      let symbol = exported;
-      let typeOnly = false;
-      const seen = new Set<TS.Symbol>([symbol]);
-      while (symbol.flags & ts.SymbolFlags.Alias) {
-        if (symbol.declarations?.some((declaration) => ts.isTypeOnlyImportOrExportDeclaration(declaration))) typeOnly = true;
-        const target = checker.getImmediateAliasedSymbol(symbol);
-        // An alias to a module the program can't resolve, or one that leads back to where it started
-        if (!target || seen.has(target)) return undefined;
-        seen.add(target);
-        symbol = target;
-      }
+      const exported = exportedSymbol(file, name);
+      const resolved = exported && followAliases(exported);
+      if (!resolved) return undefined;
+      const { symbol, typeOnly } = resolved;
 
       const type = (symbol.flags & ts.SymbolFlags.Type) !== 0;
       if (typeOnly || !(symbol.flags & ts.SymbolFlags.Value)) return { type };
@@ -188,7 +177,6 @@ export function createModuleExports(packRoot: string, files: string[]): ModuleEx
       if (!contract) {
         throw new Error(`${path.basename(file)}: it declares no type "${name}". A system's contract is a declared type — \`export type ${name} = { context?: …; incoming?: …; internal?: …; outgoing: … }\` — named in abuddy.json at features[].system.contract`);
       }
-      checkResolved(contract, path.basename(file), name);
       const declared = propertyType(contract, 'outgoing');
       if (!declared) {
         throw new Error(`${path.basename(file)}: ${name} declares no \`outgoing\` events. A system with none omits features[].system.contract rather than declaring an empty one`);
@@ -201,13 +189,12 @@ export function createModuleExports(packRoot: string, files: string[]): ModuleEx
       if (!contract) {
         throw new Error(`${path.basename(file)}: it declares no type "${name}". A plugin's contract is a declared type — \`export type ${name} = { state: …; inbox: … }\` — named in abuddy.json at features[].plugin.contract`);
       }
-      checkResolved(contract, path.basename(file), name);
       const inbox = propertyType(contract, 'inbox');
       // A contract may publish state alone; its own system's events still reach it
       if (!inbox) return [];
       checkResolved(inbox, path.basename(file), `${name}'s inbox`);
       const audiences = inbox.getProperties();
-      const unknown = audiences.filter((audience) => !INBOX_AUDIENCES.includes(audience.name));
+      const unknown = audiences.filter((audience) => !(INBOX_AUDIENCES as readonly string[]).includes(audience.name));
       if (unknown.length > 0) {
         throw new Error(`${path.basename(file)}: ${name}'s inbox names ${unknown.map((a) => `"${a.name}"`).join(', ')}, which ${unknown.length > 1 ? 'are not audiences' : 'is not an audience'}: an inbox opens to ${INBOX_AUDIENCES.map((a) => `\`${a}\``).join(' or ')}. Declaring it with \`PluginInbox<…>\` would have caught this at the declaration`);
       }
@@ -218,7 +205,7 @@ export function createModuleExports(packRoot: string, files: string[]): ModuleEx
     },
   };
 
-  /** The `type` literals of an event union a phantom carries; `never` is none, and a lone event is its own type. */
+  /** The `type` literals of a contract's event union; `never` is none, and a lone event is its own type. */
   function eventTypeLiterals(declared: TS.Type, file: string, what: string): string[] {
     if (declared.flags & ts.TypeFlags.Never) return [];
     const members = declared.isUnion() ? declared.types : [declared];
