@@ -42,12 +42,18 @@ export interface ShellParams {
   ownsLastActivePlugin?: boolean;
 }
 
-/**
- * Who a message says made it, kept whole while a send waits for its pack's frontend. A refusal that comes after
- * the wait can then name the sender exactly as one refused at once does — the wait used to drop it, so the case
- * where naming the sender helps most (the plugin's pack never loaded) was the case that named nobody.
- */
+/** Who a message says made it */
 export type MessageSender = Pick<Message, 'from' | 'via'>;
+
+/**
+ * Asking for a plugin: which one, whether to open it or only hand it its events, and who asked. The sender
+ * travels with the request so that a refusal names it however long the request waited for its pack's frontend.
+ */
+export interface PluginRequest {
+  plugin: string;
+  select: boolean;
+  sender: MessageSender;
+}
 
 export interface ShellContext {
   defaultToggles: {
@@ -80,7 +86,7 @@ export interface ShellContext {
    * (`select: true`) or a `SEND_TO_PLUGIN`. One queue, because the wait is the same question — has that pack's
    * frontend arrived — and `select` is the only thing that differs once it has.
    */
-  awaitingPlugin: Array<{ plugin: string; events: PluginEvent[]; select: boolean; sender: MessageSender }>;
+  awaitingPlugin: Array<PluginRequest & { events: PluginEvent[] }>;
   /** Whether this window's bus subscription is established; it reconnects after the connection drops */
   busSubscribed: boolean;
   /** Whether the pack frontend loader is running: one run at a time, so a pack is never loaded twice */

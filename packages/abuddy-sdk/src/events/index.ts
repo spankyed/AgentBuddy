@@ -46,10 +46,9 @@ export interface Message {
 
 /**
  * How a diagnostic names who sent a message, as a suffix to append: ` by "default-setup" (action:summarise)`,
- * or `''` when the message says neither. One function so the four places that report an undeliverable message —
- * the bus's two drops, `receiveClientEvent`, and the shell's two — word it the same, and so adding a field to the
- * envelope reaches all of them at once. It says nothing about whether a sender may send: nothing routes on either
- * field, and a drop that names no sender just has one fewer clue in it.
+ * or `''` when the message says neither. Every place that reports an undeliverable message appends this, so they
+ * word it the same and a field added to the sender reaches all of them at once. It says nothing about whether a
+ * sender may send: nothing routes on either field, and a drop that names no sender just has one fewer clue.
  */
 export function senderSuffix({ from, via }: Pick<Message, 'from' | 'via'>): string {
   if (from && via) return ` by "${from}" (${via})`;

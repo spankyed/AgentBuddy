@@ -115,7 +115,7 @@ export function createBusMachine(options: BusOptions) {
   const systems = options.systems ?? registry.getRegisteredSystems;
   const clientLoadedPacks = () => new Set(options.clientLoadedPacks?.() ?? []);
   /**
-   * The `<plugin>/<type>` pairs whose drop has already been reported, so each is reported once per bus.
+   * The drops already reported, keyed by plugin, event type and sender, so each is reported once per bus.
    *
    * Reporting a drop logs it, and a log event becomes a send to the logs plugin (default-setup's logs
    * system forwards it as LOG_ADDED). When the plugin being dropped is that one, reporting a drop
@@ -156,10 +156,9 @@ export function createBusMachine(options: BusOptions) {
           // A pack mid-replacement has no systems running and no plugins registered until its
           // replacement lands. Dropping is right; saying something went wrong is not.
           if (options.registry.isPluginReplacing(pluginId)) return;
-          // Keyed on what the report *says*, not on a second reading of the envelope: two sends that produce the
-          // same sentence are the same report, and two that don't are two. Keying on `from` alone read the
-          // envelope a second time and silently stopped matching the message when `via` was added — one report
-          // for two actions of a pack, naming whichever ran first.
+          // Keyed on what the report says rather than on a second reading of the envelope, so whatever the
+          // message distinguishes the dedupe distinguishes, and a suppressed drop is never one the report names
+          // differently
           const pair = `${pluginId}/${type}/${sender}`;
           if (reportedDrops.has(pair)) return;
           reportedDrops.add(pair);

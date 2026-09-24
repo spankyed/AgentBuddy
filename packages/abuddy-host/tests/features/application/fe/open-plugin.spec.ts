@@ -144,28 +144,8 @@ it("waits for a plugin whose pack's frontend is still loading, and delivers once
 });
 
 /**
- * The case where naming the sender is worth most, and the case that named nobody until the queue carried it: the
- * plugin's pack never loaded, so the send waited and was refused at the end of loading rather than at once.
- */
-it('names the sender of a send that waited for a pack that never provided the plugin', async () => {
-  let loaded!: () => void;
-  const release = new Promise<void>((resolve) => { loaded = resolve; });
-  await connectLoading([{ id: 'memo-pack', plugins: [recording('memo-pack/memos')] }], release);
-
-  app.send({ type: 'SEND_TO_PLUGIN', plugin: 'memo-pack/memoz', events: [{ type: 'X' }], from: 'other-pack', via: 'action:Add Memo' });
-  loaded();
-  await settle();
-
-  expect(shell.notify.error).toHaveBeenCalledWith(
-    "Couldn't reach memo-pack/memoz",
-    'No plugin is registered at "memo-pack/memoz". Sent by "other-pack" (action:Add Memo).',
-  );
-});
-
-/**
- * The guard for the class rather than for one field. Refusing at once and refusing after a wait are two branches
- * of the same answer, so they have to say the same thing; they did not, and the difference was the sender and a
- * full stop. One renderer makes divergence impossible, and this fails if anyone reintroduces a second.
+ * Refusing at once and refusing after a wait are two branches of the same answer, so they say the same thing.
+ * One renderer makes divergence impossible; this is what fails if a second is ever written.
  */
 it('says exactly the same thing whether it refuses at once or after waiting', async () => {
   const send: ShellEvent = { type: 'SEND_TO_PLUGIN', plugin: 'memo-pack/memoz', events: [{ type: 'X' }], from: 'other-pack', via: 'action:Add Memo' };
@@ -186,16 +166,21 @@ it('says exactly the same thing whether it refuses at once or after waiting', as
   expect(atOnce).toEqual(afterWaiting);
 });
 
-it('reports a send to a plugin no pack provides once loading settles, saying it could not reach it', async () => {
+// Waiting is where naming the sender helps most: the send waited precisely because the plugin's pack was still
+// loading, and it is refused because that pack never provided it
+it('reports a send to a plugin no pack provides once loading settles, naming who sent it', async () => {
   let loaded!: () => void;
   const release = new Promise<void>((resolve) => { loaded = resolve; });
   await connectLoading([{ id: 'memo-pack', plugins: [recording('memo-pack/memos')] }], release);
 
-  app.send({ type: 'SEND_TO_PLUGIN', plugin: 'memo-pack/memoz', events: [{ type: 'X' }] });
+  app.send({ type: 'SEND_TO_PLUGIN', plugin: 'memo-pack/memoz', events: [{ type: 'X' }], from: 'other-pack', via: 'action:Add Memo' });
   loaded();
   await settle();
 
-  expect(shell.notify.error).toHaveBeenCalledWith("Couldn't reach memo-pack/memoz", 'No plugin is registered at "memo-pack/memoz".');
+  expect(shell.notify.error).toHaveBeenCalledWith(
+    "Couldn't reach memo-pack/memoz",
+    'No plugin is registered at "memo-pack/memoz". Sent by "other-pack" (action:Add Memo).',
+  );
 });
 
 // A pack's system or action asks the app to open a plugin with broadcastToPlugin('host/application', …); every window

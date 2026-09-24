@@ -1,44 +1,45 @@
-// The envelope's fields are named in four places, three of them outside this package: `senderSuffix` here, the
-// `bus.send` input schema (`packages/api/src/transport/bus.ts`), which strips what it isn't told about, the drop
-// dedupe in the bus, and the `Required<Message>` sample in the schema's spec.
+// What the envelope carries, and how a diagnostic names who sent it.
 //
-// Two of those have been missed already, both silently, because adding a field to `Message` made nothing
-// anywhere fail: `from` never reached the schema, so every renderer send arrived with no sender (9333f87f2), and
-// `via` never reached the dedupe key, so two actions of one pack collapsed into one report naming the wrong one.
-// This file is the thing that fails. It is here rather than beside the schema it guards because nothing
-// typechecks `packages/api/tests` — 29 pre-existing errors there as of 2026-09-24 — while this package's tests
-// are in its `tsconfig.json`, so the assertion below is checked by `npm run typecheck`.
+// `senderSuffix` is the one format, so every place that reports an undeliverable message reads the same and a
+// field added to the sender reaches all of them at once. The cases below are the four shapes an envelope can be
+// in, so a rendering site is never where a combination is first thought about.
 import { describe, expect, it } from 'vitest';
 import { senderSuffix, type Message } from '../../src/events/index.ts';
 
-/** Every field of the envelope, as of now */
+/** Every field of the envelope */
 type NamedField = 'to' | 'event' | 'from' | 'via';
 
-/** Whichever fields `Message` has that `NamedField` doesn't — `never` while the two agree */
-type UnnamedField = Exclude<keyof Message, NamedField>;
-
 /**
- * Fails to compile when `Message` gains a field, and the error names it.
- *
- * When it does: carry the field wherever a message is passed on, then work through the four places above — add it
- * to `senderSuffix` if it says who sent the message, to the `bus.send` input schema so it survives the boundary,
- * to the `Required<Message>` sample in `packages/api/tests/unit/bus-send-sender.spec.ts`, and last to
- * `NamedField`. The dedupe key needs nothing: it is `senderSuffix`'s output.
+ * Fails to compile when `Message` gains a field, and the error names it: the envelope is read by hand in places
+ * a type cannot reach — `bus.send`'s input schema strips what it isn't told about — so growing it has to be loud
+ * somewhere. When this fires, carry the field wherever a message is passed on, add it to `senderSuffix` if it
+ * says who sent the message and to the `bus.send` schema and its spec's `Required<Message>` sample, then name it
+ * here. This lives in the SDK because `npm run typecheck` covers these tests and covers no test of the API's.
  */
-const _everyFieldIsNamed: [UnnamedField] extends [never] ? true : ['Message gained a field nothing names:', UnnamedField] = true;
+const _everyFieldIsNamed: [Exclude<keyof Message, NamedField>] extends [never] ? true
+  : ['Message gained a field nothing names:', Exclude<keyof Message, NamedField>] = true;
 
-describe('the envelope', () => {
-  // The compile-time assertion above is the test; this keeps it honest about being reached, and states the
-  // property in a form a reader who skips types still sees.
-  it('has no field that nothing names', () => {
-    expect(_everyFieldIsNamed).toBe(true);
+describe('senderSuffix', () => {
+  // An action: the pack that ran it, and which action it was
+  it('names the pack and what within it made the send', () => {
+    expect(senderSuffix({ from: 'default-setup', via: 'action:Summarise Thread' }))
+      .toBe(' by "default-setup" (action:Summarise Thread)');
   });
 
-  // The fields that say who sent a message all reach the one renderer. A new one that doesn't would leave the
-  // diagnostics naming less than the envelope carries, which is how `via` sat unrendered in the dedupe key.
-  it('renders every sender field it carries', () => {
-    const sender: Required<Pick<Message, 'from' | 'via'>> = { from: 'memo-pack', via: 'action:Add Memo' };
-    const rendered = senderSuffix(sender);
-    for (const value of Object.values(sender)) expect(rendered).toContain(value);
+  // A pack's own code, sending through its `#generated/events`
+  it('names the pack alone when that is all there is', () => {
+    expect(senderSuffix({ from: 'memo-pack' })).toBe(' by "memo-pack"');
+  });
+
+  // `reportError` sends for a caller that is a source rather than a pack, so this shape is reachable
+  it('names the source alone, unquoted, when there is no pack', () => {
+    expect(senderSuffix({ via: 'action:Summarise Thread' })).toBe(' by action:Summarise Thread');
+  });
+
+  // A drop then reads the same minus the clue: it does not say a sender is missing, because no sender is
+  // ordinary rather than a fault
+  it('is empty when the message says neither', () => {
+    expect(senderSuffix({})).toBe('');
+    expect(senderSuffix({ from: '', via: '' })).toBe('');
   });
 });

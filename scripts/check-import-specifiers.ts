@@ -504,9 +504,8 @@ function exportedLocalNames(code: string): Set<string> {
  *
  * **Being published is not enough; the caller must also be outside every feature.** A package may publish a
  * feature's own module — `@abuddy/host` publishes `./settings` from `features/settings/be/index.ts` — and that is
- * a feature's barrel, not the package's assembly. Excepting it gave one feature a licence to read another's
- * frontend that no other feature had, which is the hole this rule exists to close; the caller's position, not its
- * visibility, is what says whether it is assembling the pack.
+ * a feature's barrel, not the package's assembly. What says a module is assembling the pack is where it sits,
+ * not whether anyone can see it; excepting it by visibility alone hands that one feature a licence no other has.
  *
  * Derived, and it fails closed: a tree with no `package.json`, no `exports`, or an entry behind conditions excepts
  * nothing and gets the strict rule. That is the opposite of deriving an exception from a *missing* file, which
@@ -527,9 +526,8 @@ function publishedEntryPoints(packageDir: string): Set<string> {
  * generates typed readers for, and the inbox `#generated/events` types the sends with. Neither needs a module of
  * the other feature's, so there is nothing left for an exception to bless.
  *
- * It used to except `fe/public`, a module per feature whose job was exactly this crossing; the readers replaced it,
- * and the host kept one a while longer for want of codegen. A feature's modules outside its `fe/` may use its
- * frontend but not pass it on (`export … from './fe/state'`), which would be a second door.
+ * A feature's modules outside its `fe/` may use its frontend but not pass it on (`export … from './fe/state'`),
+ * which would be a second door.
  *
  * Two modules are exempt, and both are the pack's own assembly rather than one feature reaching another: generated
  * code, which registers every feature's plugin, and what the package publishes (`publishedEntryPoints`).
