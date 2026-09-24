@@ -37,7 +37,7 @@ function recorder(label: string) {
   return setup({}).createMachine({
     on: {
       CLIENT_CONNECTED: { actions: () => received.push(label) },
-      PACK_CHANGED: { actions: ({ event }) => received.push(`${label}: changed ${(event as { packId: string }).packId}`) },
+      PACK_CHANGED: { actions: ({ event }) => received.push(`${label}: changed ${(event as unknown as { packId: string }).packId}`) },
     },
   });
 }

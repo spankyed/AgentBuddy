@@ -1,23 +1,13 @@
-// What the envelope carries, and how a diagnostic names who sent it.
+// How a diagnostic names who sent a message.
 //
 // `senderSuffix` is the one format, so every place that reports an undeliverable message reads the same and a
 // field added to the sender reaches all of them at once. The cases below are the four shapes an envelope can be
 // in, so a rendering site is never where a combination is first thought about.
+//
+// That a field added to `Message` is noticed at all is guarded where it can be lost — the `Required<Message>`
+// sample in `api/tests/unit/bus-send-sender.spec.ts`, which stops compiling until the new field is named.
 import { describe, expect, it } from 'vitest';
-import { senderSuffix, type Message } from '../../src/events/index.ts';
-
-/** Every field of the envelope */
-type NamedField = 'to' | 'event' | 'from' | 'via';
-
-/**
- * Fails to compile when `Message` gains a field, and the error names it: the envelope is read by hand in places
- * a type cannot reach — `bus.send`'s input schema strips what it isn't told about — so growing it has to be loud
- * somewhere. When this fires, carry the field wherever a message is passed on, add it to `senderSuffix` if it
- * says who sent the message and to the `bus.send` schema and its spec's `Required<Message>` sample, then name it
- * here. This lives in the SDK because `npm run typecheck` covers these tests and covers no test of the API's.
- */
-const _everyFieldIsNamed: [Exclude<keyof Message, NamedField>] extends [never] ? true
-  : ['Message gained a field nothing names:', Exclude<keyof Message, NamedField>] = true;
+import { senderSuffix } from '../../src/events/index.ts';
 
 describe('senderSuffix', () => {
   // An action: the pack that ran it, and which action it was

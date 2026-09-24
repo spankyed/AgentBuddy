@@ -1,11 +1,12 @@
+// Typechecks this package's specs, which `tsconfig.json` leaves out (it includes `src` alone).
+// `vitest.config.ts` reads it for `paths`; `npm run typecheck:be` runs `tsc -p` over it, so a spec
+// that drifts from the types it asserts against fails the typecheck rather than only at run time.
 {
   "extends": "./tsconfig.json",
   "compilerOptions": {
-    "outDir": "dist",
-    "rootDir": ".",
-    "declaration": true,          // ← emit types
-    "declarationMap": true,
-    "emitDeclarationOnly": true,   // build‑time type pack
+    "noEmit": true,
+    // `globals: true` in vitest.config.ts, so `describe`/`it`/`expect` are ambient here and nowhere else
+    "types": ["vitest/globals"],
     "baseUrl": ".",
     "paths": {
       "@/*": ["src/*"]

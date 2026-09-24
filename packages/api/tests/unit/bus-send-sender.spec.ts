@@ -21,9 +21,9 @@ const caller = systemBusRouter.createCaller({} as never);
 describe('bus.send carries the sender across the boundary', () => {
   /**
    * `Required<Message>` cannot be satisfied without naming every field of the envelope, so this is one case
-   * rather than one per field: a field added to `Message` fails the assertion until `bus.send`'s schema names it
-   * too. (Its *compile* is not checked — nothing typechecks this package's tests — so the assertion that a new
-   * field is noticed at all lives in `abuddy-sdk/tests/events/envelope.spec.ts`.)
+   * rather than one per field, and it guards both halves: a field added to `Message` stops this file compiling
+   * until it is named here (`npm run typecheck:be` covers these tests), and then fails the assertion until
+   * `bus.send`'s schema names it too.
    */
   it('carries every field of the envelope, whatever the envelope grows', async () => {
     received.length = 0;

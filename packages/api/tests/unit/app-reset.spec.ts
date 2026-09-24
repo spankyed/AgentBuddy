@@ -35,7 +35,7 @@ beforeAll(async () => {
   // The API's boot (setup/backend.ts), for the built-in packs
   await loadBuiltInPacks(packs, PACKAGES_DIR, { runtimeEntry: 'only' });
   await store.hydrate();
-  startPacks(packs, []);
+  startPacks(packs);
   fresh = { settings: storedSettings(), flows: flows() };
 });
 
