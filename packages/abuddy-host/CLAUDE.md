@@ -17,7 +17,7 @@ laid out as any pack is; everything beside it is the runtime those features, and
 
 | | |
 |---|---|
-| `features/` | the pack `host`: `application/{be,fe}` (the app shell), `packs/{be,fe}` (installing and loading packs), `settings/{be,fe}` (the app's settings: the row, its one writer, and the system and machine behind the Settings view the renderer draws), `registration.ts` (what it registers) and `index.ts`, the `./features` export the API composes its registration from. Each feature's frontend is its own, reached through its `fe/public.ts` as a pack's features are (`check:specifiers`) |
+| `features/` | the pack `host`: `application/{be,fe}` (the app shell), `packs/{be,fe}` (installing and loading packs), `settings/{be,fe}` (the app's settings: the row, its one writer, and the system and machine behind the Settings view the renderer draws), `registration.ts` (what it registers) and `index.ts`, the `./features` export the API composes its registration from. Each feature's frontend is its own, reached through its `fe/public.ts` — the host's exception to the rule `check:specifiers` applies to packs, whose features reach each other through their plugin contracts instead; the host has no codegen to generate those from |
 | `packs/`, `bus/`, `services/`, `secrets/`, `app-state/`, `database/`, `migrations/`, `backup/` | the runtime: running *other* packs, routing events, the services, the app's keys and stored data |
 | `fe/` | what a frontend needs that isn't a feature: the registered pack frontends, the API client's contract, app extensions, a window's migrations |
 | `build/` | what tooling needs before anything runs |

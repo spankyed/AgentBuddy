@@ -53,13 +53,18 @@ export const ${camel}System = setup({
   states: {
     idle: {
       on: {
+        // Every system gets CLIENT_CONNECTED, and answers it with the data its plugin starts from
         CLIENT_CONNECTED: { actions: 'sendConnectedData' },
+        // A contract's \`incoming\` says what may be sent; the bus routes an event to a system only if its
+        // machine names it, so an event declared and never handled here is dropped
+        REFRESH_${name.toUpperCase().replace(/-/g, '_')}: { actions: 'sendConnectedData' },
       },
     },
   },
 });
 
-// No \`satisfies SystemEntry\`: codegen reads the events from the contract, so there is no inference here to protect
+// The manifest loads this default export. Nothing to annotate: the events come from the contract above, and the
+// generated pack entry checks that this spec was built from the one abuddy.json names.
 export default { spec: ${camel}Spec, machine: ${camel}System };
 `;
 
@@ -83,8 +88,10 @@ const TYPES = (pascal: string, name: string) => `export interface ${pascal}Conne
   // Define connected data shape
 }
 
+// What anything outside this system may send it. CLIENT_CONNECTED, PACK_CHANGED and FEATURE_SETTINGS_UPDATED are
+// the app's, which every system receives, so no contract declares them.
 export type Incoming${pascal}Events =
-  | { type: 'CLIENT_CONNECTED' };
+  | { type: 'REFRESH_${name.toUpperCase().replace(/-/g, '_')}' };
 
 export type Outgoing${pascal}Events =
   | { type: '${name.toUpperCase().replace(/-/g, '_')}_CONNECTED'; data: Record<string, unknown> };
