@@ -55,8 +55,6 @@ export interface SystemContract {
 export type ContractIncoming<C> = C extends { incoming: infer Events } ? Events : never;
 /** The events a contract says the system's own children send it; nobody else's to send */
 export type ContractInternal<C> = C extends { internal: infer Events } ? Events : never;
-/** The events a contract says the system sends its plugin, which codegen reads that plugin's inbox from */
-export type ContractOutgoing<C> = C extends { outgoing: infer Events } ? Events : never;
 /** A contract's context, `{}` when it declares none */
 export type ContractContext<C> = C extends { context: infer Context } ? Context : {};
 

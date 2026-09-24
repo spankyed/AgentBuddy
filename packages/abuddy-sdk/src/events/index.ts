@@ -6,7 +6,7 @@ import { getDesignated } from '../designations/index.ts';
 import { resolveName, splitRef, type FeatureRef } from '../ids/refs.ts';
 import type { ApplicationHotkeys } from '../types/index.ts';
 import { eventTypes } from './event-types.ts';
-import type { ContractIncoming, ContractOutgoing, SystemEvents } from '../framework/define-system.ts';
+import type { ContractIncoming, SystemEvents } from '../framework/define-system.ts';
 
 export { eventTypes, type TypeOfEvent } from './event-types.ts';
 
@@ -75,7 +75,7 @@ type WithoutType<E> = E extends unknown ? { [K in keyof E as K extends 'type' ? 
 export type IncomingEventsOf<C> = ContractIncoming<C>;
 
 /** The events a system sends to plugins, from its feature's `Contract` */
-export type OutgoingEventsOf<C> = ContractOutgoing<C>;
+export type OutgoingEventsOf<C> = C extends { outgoing: infer Events } ? Events : never;
 
 /**
  * Every event a plugin's `Contract` says another plugin may send it, across audiences. Generated code builds each
@@ -171,7 +171,7 @@ export function broadcastToPlugin(to: string, event: { type: string; [key: strin
   if (!_isHostBound() && _isFeHostBound()) {
     throw new Error(`broadcastToPlugin("${to}") is the backend's, over the bus to every window. In the renderer, send to this window's plugin with sendToPlugin from #generated/events`);
   }
-  boundHost().transport.rootEvents.emitPluginSend({ to, event, ...(from ? { from } : {}) });
+  boundHost().transport.rootEvents.emitPluginSend({ to, event, from });
 }
 
 /**
@@ -192,7 +192,7 @@ export function _sendToLocalPlugin(ref: string, event: { type: string; [key: str
     throw new Error(`sendToPlugin("${ref}") is the renderer's, to this window's plugin. On the backend, send over the bus with broadcastToPlugin from #generated/events`);
   }
   if (!splitRef(ref)) throw new Error(`"${ref}" doesn't name a plugin: a plugin is named "<packId>/<featureId>"`);
-  boundFeHost().application.send({ type: 'SEND_TO_PLUGIN', plugin: ref, events: [event], ...(from ? { from } : {}) });
+  boundFeHost().application.send({ type: 'SEND_TO_PLUGIN', plugin: ref, events: [event], from });
 }
 
 /** A system: its ref, or the role a system plays (`{ role: 'brain' }`), found when the message is sent */
@@ -203,7 +203,7 @@ export type SystemTarget = string | { role: string };
  * their `#generated/events`, which takes names and checks the event against what the system declares.
  */
 export function sendToSystem(to: SystemTarget, event: { type: string; [key: string]: unknown }, from?: string): void {
-  sendIncoming({ to: typeof to === 'string' ? to : getDesignated(to.role), event, ...(from ? { from } : {}) });
+  sendIncoming({ to: typeof to === 'string' ? to : getDesignated(to.role), event, from });
 }
 
 /** Calls `callback` each time a client connects; returns the unsubscribe (backend only) */

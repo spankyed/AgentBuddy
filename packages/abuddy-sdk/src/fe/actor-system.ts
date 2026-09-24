@@ -29,8 +29,7 @@ export function usePlugin<T>(): T {
  * sends to one through the generated sends, so no pack holds another plugin's actor.
  */
 export function pluginActor(ref: string): AnyActorRef {
-  if (!splitRef(ref)) throw new Error(`"${ref}" doesn't name a plugin: a plugin is named "<packId>/<featureId>"`)
-  const actor = boundFeHost().application.system.get(ref)
+  const actor = pluginActorIfRunning(ref)
   if (!actor) throw new Error(`No plugin is running at "${ref}"`)
   return actor
 }
