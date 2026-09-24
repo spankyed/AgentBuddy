@@ -134,6 +134,13 @@ Final.
   `abuddy-host/src/bus/machine.ts` (two drops), `abuddy-host/src/bus/client-events.ts`, and the shell's
   `features/application/fe/machine.ts` and `fe/connection.ts`. The lines read:
   `Dropped "MEMO_ADDED" sent by "default-setup" (action:summarise-thread) to the "memo-pack/memos" plugin, …`
+- **Add `via` to the `bus.send` input schema** beside `from`
+  (`packages/api/src/transport/bus.ts:20`), and a case to `packages/api/tests/unit/bus-send-sender.spec.ts`.
+  This is not optional and it is easy to miss: that schema names its fields, and `.passthrough()` is only on
+  the inner `event`, so a field it doesn't name is **silently stripped**. `from` was added to `Message`
+  without it once already, which severed every renderer send's sender and left the diagnostics written to
+  name one unable to (fixed in 9333f87f2). Worse, the spec's existing third case — "still drops a field
+  nothing declares" — *passes* while `via` is the field being dropped, so the guard reassures you.
 - Update `Message.from`'s comment and the root `CLAUDE.md` envelope bullet, and `via`'s own doc.
 
 **Done when:** `npm run typecheck`, `npm run test:unit`, `npm run test:external-pack` pass; `api:update` run
@@ -145,8 +152,9 @@ from the sandbox's binding fails a named spec; dropping `via` from a rendering s
 ### Phase 2 — Move the port, delete the exception
 
 - Move `ShellPackFrontends` (Decision 3) into `abuddy-host/src/fe/`; point `features/packs/fe/frontends.ts`
-  at it. Check the other names on `application/fe/public.ts:6` — move the ones the packs feature implements,
-  leave the shell's own.
+  at it. Only that one moves: of the four names on `application/fe/public.ts:6`, `ShellNotify` and
+  `ShellStorage` are used by the renderer and `ShellOptions` by neither feature, so they are the shell's own
+  contract reaching its composer through the package barrel — which is not a crossing.
 - Delete `HOST_SRC_ROOT` and the `public` branch in `findCrossFeatureImports`, and the spec case that pins
   the exception (Decision 4). Read that file fresh: it was being edited by hand in a different function.
 - Fold the three `fe/public.ts` barrels into `abuddy-host/src/fe/index.ts` (Decision 5).
@@ -170,6 +178,17 @@ import in the host is reported, with no exception left to excuse it.
   small set with one real reason. If it starts wanting a table of excuses with a row per caller, it has
   become the thing this work has twice rejected — say so in the summary and leave it out. The docs above
   are the part of this phase that is not optional.
+
+- **Consider letting `report-error.ts` stamp `via`.** It can't name a pack — it sends for whoever called
+  `reportError` — but it is handed a `source` (`report-error.ts:24`), and a source is the same kind of
+  string `via` holds: `'bus'`, or `action:<label>` from `createLogger`. Stamping `via: source` would make
+  the one sender that carries no `from` still say where it came from, and the invariant becomes the
+  stronger **every send carries a pack, a source, or both** rather than "one module stamps nothing".
+
+  This widens `via` beyond what Decision 1 settled — the user chose it to name the action; this makes it
+  name the source, of which an action is one. That is the same shape and a better definition, but it is a
+  widening, so decide it explicitly and record it rather than letting it happen. If taken, `via`'s doc says
+  "what within the sender made it" and the guard in this phase asserts the stronger invariant.
 
 **Done when:** the full chain passes; no doc or comment says an action's sends carry no sender; if the spec
 was built, a mutation adding an unbound send to a module not in the set fails it.
