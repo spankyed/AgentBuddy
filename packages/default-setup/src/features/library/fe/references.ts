@@ -1,7 +1,6 @@
 import { Library, Folder } from 'lucide-vue-next'
-import { usePluginState } from '@abuddy/sdk/fe'
-import { navigateToPlugin } from '@/__generated__/fe'
-import { LIBRARY } from './public'
+
+import { openPlugin, usePluginState } from '@/__generated__/fe'
 import { id as library } from './state'
 import type { ReferenceTypeConfig, CategoryConfig, CategoryItemsProvider, ReferenceItem } from '@abuddy/sdk/fe/references'
 
@@ -18,7 +17,7 @@ export const referenceTypes: Record<string, ReferenceTypeConfig> = {
       ['path', { d: 'M4 4v16' }],
     ],
     navigate: (refId: string) => {
-      navigateToPlugin(library, { type: 'EDIT_DOCUMENT', documentId: refId })
+      openPlugin(library, { type: 'EDIT_DOCUMENT', documentId: refId })
     },
   },
   folder: {
@@ -30,7 +29,7 @@ export const referenceTypes: Record<string, ReferenceTypeConfig> = {
       ['path', { d: 'M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z' }],
     ],
     navigate: (refId: string) => {
-      navigateToPlugin(library, { type: 'NAVIGATE_TO_FOLDER', folderId: refId })
+      openPlugin(library, { type: 'NAVIGATE_TO_FOLDER', folderId: refId })
     },
   },
 }
@@ -42,8 +41,8 @@ export const categories: CategoryConfig[] = [
 export const itemsProvider: CategoryItemsProvider = {
   category: 'documents',
   // The plugin's state, as it changes
-  useItems: () => usePluginState(LIBRARY, (actorState: any): ReferenceItem[] => {
-    const index = actorState?.context?.index ?? { documents: [], folders: [] }
+  useItems: () => usePluginState('library', (state): ReferenceItem[] => {
+    const index = state.index
 
     const docItems: ReferenceItem[] = index.documents.map((d: any) => ({
       id: d.id,

@@ -31,6 +31,12 @@ import type { transcribe } from 'ai';
 import type { TranscriptionModel } from 'ai';
 
 // @public
+export interface ActionSender {
+    from: string;
+    via: string;
+}
+
+// @public
 export interface AppDataService {
     backupInfo(backupPath: string): Promise<BackupInfo | null>;
     completeOnboarding(): void;
@@ -60,6 +66,9 @@ export interface BackupInfo {
     // (undocumented)
     timestamp: number;
 }
+
+// @public
+export function createActionEmitter(sender?: ActionSender): HostServices['emitter'];
 
 // @internal
 export function _createInferenceService(resolveModel: _ResolveModel): InferenceService;
@@ -97,8 +106,8 @@ export interface FilesystemService {
 export interface HostServices {
     appData: AppDataService;
     emitter: {
-        broadcastToPlugin: typeof broadcastToPlugin;
-        sendToSystem: typeof sendToSystem;
+        broadcastToPlugin: typeof untypedBroadcastToPlugin;
+        sendToSystem: typeof untypedSendToSystem;
     };
     filesystem: FilesystemService;
     inference: InferenceService;

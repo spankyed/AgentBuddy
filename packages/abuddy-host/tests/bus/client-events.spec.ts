@@ -56,6 +56,20 @@ describe('receiveClientEvent', () => {
     expect(logs[0].meta).toEqual({ to: 'host/ping', event: { type: 'PING', items: { count: 7, sample: [1, 2, 3, 4, 5] } } });
   });
 
+  /**
+   * The fourth place a sender is worth saying. A client's send is refused here by name, and a pack whose frontend
+   * sends the wrong thing — or an action, which stamps the action beside its pack — is named in the refusal
+   * rather than left to be found by grepping for the event type.
+   */
+  it.each([
+    [{ from: 'memo-pack' }, 'Unknown system: "client-events.missing" sent by "memo-pack"'],
+    [{ from: 'memo-pack', via: 'action:Add Memo' }, 'Unknown system: "client-events.missing" sent by "memo-pack" (action:Add Memo)'],
+    [{}, 'Unknown system: "client-events.missing"'],
+  ])('names the sender in the refusal (%o)', (sender, message) => {
+    expect(() => receiveClientEvent(registry, { to: 'client-events.missing', event: { type: 'PING' }, ...sender }))
+      .toThrow(new UnknownClientEventError(message));
+  });
+
   it.each([
     [{ to: 'client-events.missing', event: { type: 'PING' } }, 'Unknown system: "client-events.missing"'],
     [{ to: 'host/ping', event: { type: 'PONG' } }, 'Unknown event "PONG" for system "host/ping"'],

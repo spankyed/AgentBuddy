@@ -1,10 +1,11 @@
 import type { BrainSettings } from '@/__generated__/types';
 import { broadcastToPlugin } from '@/__generated__/events';
 import { assign, setup, enqueueActions, raise } from 'xstate';
-import { defineSystem, type SystemEntry } from '@abuddy/sdk/framework';
+import { defineSystem } from '@abuddy/sdk/framework';
 
 import { EARS } from '@/__generated__/ears';
-import type { FlowTNodeData, TNodeUpdate } from './types';
+import type { Contract } from './contract';
+import type { BrainContext, FlowTNodeData, TNodeUpdate } from './types';
 import { repository } from '@/__generated__/repository';
 import { createLogger, reportError, setDebugEnabled, isDebugEnabled } from '@abuddy/sdk/logger';
 import { createFlowNodeSystem, getFlowActor, getAllFlowActors, getAllFlowActorIds, clearFlowActorRegistry } from './flow-system';
@@ -14,57 +15,8 @@ import { services } from '@/__generated__/services';
 import type { StepRuntimeError, TNodeEntity } from '@abuddy/sdk/steps';
 import { ref } from '@/__generated__/ref';
 
-type IncomingBrainEvents =
-  | { type: 'OPEN_TNODE'; tNodeId: string }
-  | { type: 'GO_BACK_TNODE'; currentFlowTNodeId?: string }
-  | { type: 'REQUEST_PLUGIN_DATA'; flowTNodeId?: string }
-  | { type: 'GET_TNODE_DETAILS'; tNodeId: string }
-  | { type: 'TOGGLE_INSPECT' }
-  | { type: 'START_BRAIN' }
-  | { type: 'KILL_BRAIN' }
-  | { type: 'RESTART_BRAIN' }
-  | { type: 'PAUSE_BRAIN' }
-  | { type: 'RESUME_BRAIN' }
-  | { type: 'HANDLE_BRAIN_EVENT'; eventType: string; payload?: any; targetFlowId?: string }
-  | { type: 'TRIGGER_BRAIN_EVENT'; eventType: string; payload?: any; targetFlowId?: string }
 
-  // | { type: 'TRACE_EVENT_RECEIVED'; data: EventReceived }
-  | { type: 'TNODE_SPAWNED'; tNode: TNodeEntity; parentId?: EARS.EntityId; eventTNodeId?: EARS.EntityId; flowTNodeId: EARS.EntityId }
-  | { type: 'TNODE_UPDATED'; data: TNodeUpdate }
-  | { type: 'HANDLE_BRAIN_EVENT'; eventType: string; payload?: any; targetFlowId?: string }
-  | { type: 'CHILD_COMPLETED'; stepId?: EARS.EntityId; tNodeId?: EARS.EntityId; stepLabel?: string; result?: any; final?: boolean; eventTNodeId?: EARS.EntityId; isFlow?: boolean }
-
-export type OutgoingBrainEvents =
-  | { type: 'RECEIVE_PLUGIN_DATA'; data: FlowTNodeData }
-  // | { type: 'BRAIN_CONNECTED'; data: FlowTNodeData }
-  | { type: 'TNODE_OPENED'; tNodeId: EARS.EntityId; data: FlowTNodeData }
-  | { type: 'TNODE_SPAWNED'; tNode: TNodeEntity; parentId?: EARS.EntityId; eventTNodeId?: EARS.EntityId; flowTNodeId: EARS.EntityId }
-  | { type: 'TNODE_UPDATED'; data: TNodeUpdate }
-  | { type: 'EVENT_PULSE'; eventType: string }
-  | { type: 'TNODE_DETAILS'; tNodeId: EARS.EntityId; details: TNodeEntity | null }
-  | { type: 'BRAIN_RUNTIME_ERROR'; error: StepRuntimeError }
-  | { type: 'INSPECT_TOGGLED'; enabled: boolean }
-  /** The brain stopped; `startError` says why it couldn't start, while it stays stopped for that reason */
-  | { type: 'BRAIN_KILLED'; startError?: string }
-  /** The brain is running `rootFlowId`, the root flow it started with (a root flow changed since takes a restart) */
-  | { type: 'BRAIN_STARTED'; rootFlowId: EARS.EntityId }
-  | { type: 'BRAIN_PAUSED' }
-  | { type: 'BRAIN_RESUMED' }
-
-export interface BrainContext {
-  brainActor?: any;
-  eventQueue: Array<{ eventType: string; payload?: any; targetFlowId?: string }>;
-  /** Why the brain last failed to start, while it stays stopped for that reason: part of each client's startup data */
-  startError?: Error;
-  /** Whether the start error was reported (a toast in every open window): once per failed start */
-  startErrorReported: boolean;
-  /** Whether a client has connected: before that, nothing receives what the brain sends */
-  clientConnected: boolean;
-  /** The root flow the running brain started with; undefined while it's stopped */
-  runningRootFlowId?: EARS.EntityId;
-}
-
-export const brainSpec = defineSystem<IncomingBrainEvents, OutgoingBrainEvents, BrainContext>();
+export const brainSpec = defineSystem<Contract>();
 export const brainRuntime = 'brain-runtime' as const;
 
 const logger = createLogger('brain');
@@ -130,7 +82,7 @@ export const brainSystem = setup({
 
       // Start new brain and assign to context
       enqueue.assign(({ spawn, self }) => {
-        const { machine, tNodeId } = createFlowNodeSystem(self)
+        const { machine } = createFlowNodeSystem(self)
         const actor = spawn(machine, {
           input: {}
         });
@@ -255,7 +207,7 @@ export const brainSystem = setup({
       
       // Start new brain and assign to context
       enqueue.assign(({ spawn, self }) => {
-        const { machine, tNodeId } = createFlowNodeSystem(self)
+        const { machine } = createFlowNodeSystem(self)
         const actor = spawn(machine, {
           input: {}
         });
@@ -594,6 +546,6 @@ export const brainSystem = setup({
   }
 );
 
-const brainEntry = { spec: brainSpec, machine: brainSystem } satisfies SystemEntry;
+const brainEntry = { spec: brainSpec, machine: brainSystem };
 
 export default brainEntry;

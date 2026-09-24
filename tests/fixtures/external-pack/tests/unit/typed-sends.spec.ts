@@ -4,7 +4,7 @@
 // dependency's as default-setup/<feature>, and reports the id the plugin runs under.
 import { describe, expect, it } from 'vitest';
 import { startApp } from '@abuddy/testing/harness';
-import { sendToSystem } from '#generated/events';
+import { broadcastToPlugin, sendToSystem } from '#generated/events';
 
 describe('typed sends to systems', () => {
   it("reaches default-setup's library system", async () => {
@@ -16,6 +16,17 @@ describe('typed sends to systems', () => {
 
     expect(await app.nextEmit('default-setup/library', 'LIBRARY_INDEX_LOADED'))
       .toMatchObject({ type: 'LIBRARY_INDEX_LOADED' });
+  });
+
+  // A dependency's *internal* events are not ours to send: they are what that system's own children send it
+  // (`ADD_LOG` comes from the logs system's `onLog` callback), so its contract puts them in `internal` and they
+  // never reach `PackSystemEvents`. Nothing runs here — the assertion is that this does not compile.
+  it("cannot send a default-setup system's internal event", () => {
+    const send = () => {
+      // @ts-expect-error ADD_LOG is internal to default-setup/logs, so a dependent may not send it
+      sendToSystem('default-setup/logs', { type: 'ADD_LOG', log: { level: 'info', message: 'nope' } });
+    };
+    expect(typeof send).toBe('function');
   });
 
   it('reaches its own system by feature id', async () => {
@@ -37,6 +48,23 @@ describe('typed sends to systems', () => {
 
     expect(await app.nextEmit('default-setup/logs', 'LOG_ADDED'))
       .toMatchObject({ type: 'LOG_ADDED', log: { message: 'hello', source: 'memos' } });
+  });
+
+  // A dependency's plugin publishes only the `public` half of its contract. Its `pack` half is what default-setup's
+  // own features send each other, and nothing here can send it — this is the only place that split is exercised
+  // from outside the pack that declared it.
+  it("sends a dependency's plugin what it publishes, and nothing it keeps to its own pack", () => {
+    const sends = () => {
+      // `public`: any pack may add a line to the app's log
+      broadcastToPlugin('default-setup/logs', { type: 'LOG_ADDED', log: { id: '1', timestamp: 0, level: 'info', source: 'memos', message: 'hi' } });
+      // @ts-expect-error `pack`: opening a note is default-setup's own features' to ask for, not a dependent's
+      broadcastToPlugin('default-setup/notes', { type: 'NOTE.OPEN', noteId: 'Note-1' });
+      // @ts-expect-error `pack`: so is writing the code plugin's state
+      broadcastToPlugin('default-setup/code', { type: 'UPDATE_STATE', updates: { baseDirectory: '/tmp' } });
+      // @ts-expect-error and so is opening one of its terminals
+      broadcastToPlugin('default-setup/code', { type: 'terminal.CREATE', target: 'x', command: 'ls' });
+    };
+    expect(sends).toBeTypeOf('function');
   });
 
   it('rejects a wrong send at compile time', () => {

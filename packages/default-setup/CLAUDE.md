@@ -13,10 +13,10 @@ src/
     pack-entry-fe.ts       # FE entry — the PackFERegistration: plugins, steps, tiptap + app extensions, DSL types
     ears.ts                # EARS entity/relation registry, generated from abuddy.json
     ref.ts                 # ref(name): the ref a name in this pack's code stands for, bound to the pack
-    fe.ts                  # navigateToPlugin(name, event?), PluginName: the plugins this pack's code can name
+    fe.ts                  # openPlugin(name, event?), PluginName: the plugins this pack's code can name
     events.ts              # SendablePluginEvents/PackSystemEvents + typed broadcastToPlugin/sendToPlugin/sendToSystem
     system-specs.ts        # Type-only: the events each system receives and sends, read by events.ts and types.ts
-    types.ts               # Type barrel (per-feature types; a plugin imports its system's events from be/system.ts)
+    types.ts               # Type barrel (per-feature types; a plugin imports its system's events from be/contract.ts)
     services.ts            # Service aggregation (featureServices object) and the typed services proxy
     repository.ts          # repository, typed with the repositories declared in abuddy.json
     repositories.ts        # Those repositories by name, carried by pack-entry.ts's registration
@@ -45,15 +45,16 @@ src/
 
 Each feature lives in `src/features/<name>/` with this layout:
 
-- `be/system.ts` — XState backend system machine + event types
+- `be/system.ts` — XState backend system machine
+- `be/contract.ts` — the feature's backend leaf: its system's `Contract` (`context`, `incoming`, `internal`, `outgoing`), which `abuddy.json` names at `features[].system.contract`. Its own module rather than the types barrel, since `#generated/types` star-exports that and one `Contract` per feature would collide there; codegen reads it as a declared type, without resolving the machine
 - `be/repository/` — EARS read/write layer: `xQueries`/`xCommands` objects declared in `abuddy.json` `features[].repositories`, carried by the generated pack entry's registration and registered by the host with the app's engine; use them through `repository` from `@/__generated__/repository`
 - `be/services/` — Service modules, each exporting the `<key>Service` object exposed to systems and actions (see Services)
 - `be/types.ts` — Shared types
 - `fe/plugin.ts` — Frontend plugin definition (id, label, icon, state machine, canvas/panel components)
 - `fe/state.ts` — XState frontend state machine
+- `fe/contract.ts` — the feature's frontend leaf: its plugin's published state, the events its `Contract` opens an inbox to, and the `Contract` itself. It imports no machine, no other feature and nothing from `#generated/*` but `types` and `ears`, which is what lets codegen read the contract without resolving the machine (`check:specifiers`); `abuddy.json` names it at `features[].plugin.contract`
 - `fe/canvas/` — Main view components
 - `fe/references.ts` — which of the feature's things are linkable from an editor, and how (if applicable)
-- `fe/public.ts` — what the feature's frontend offers other features and extensions: its state as composables over `usePluginState`/`readPluginState` (`@abuddy/sdk/fe`), which read the plugin at a ref from the shell's registry of running plugins and hand back a value, never the actor. Its own components reach its actor with `usePlugin()`; nothing outside the feature imports its frontend except through this module (`check:specifiers`). What other features may *send* it isn't here: that is the `accepts` export beside the plugin (`fe/plugin.ts`, `pluginAccepts()`), which codegen reads to type `sendToPlugin`
 - `settings.ts` — Per-feature default settings
 
 The 11 features: **threads**, **code**, **notes**, **browser**, **library**, **flows**, **actions**, **prompts**, **brain**, **database**, **logs**.
@@ -99,13 +100,13 @@ Import `EARS` from `@/__generated__/ears` by default. The SDK's `EARS` (`@abuddy
 
 Typed facades (no module augmentation):
 - `__generated__/ears.ts` — `PackShapes` (entity type → attribute interface), `EntityName`, and the typed `qx`/`tx`/`find*`/`createEntity`/`createEntityWithDefaults`/`updateEntity`/`getAttr` helpers built with `defineEars`. Feature code imports `tx` from here; migrations write with the unchecked `untypedTx` from `@abuddy/ears`, as does the Database console's transaction code (which exposes it to console code under the name `tx`), which runs through `@abuddy/sdk/database-console` (`features/database/be/execute/`)
-- `__generated__/events.ts` — `SendablePluginEvents` (receiving plugin ID → the events it gets: its own system's, plus the inbox that plugin declares with `pluginAccepts()` beside it — the flows plugin accepts the actions system's events, the logs plugin accepts `LOG_ADDED` from any pack), `PackSystemEvents` (system → the events it receives), and typed `broadcastToPlugin`/`sendToPlugin`/`sendToSystem` built with `defineEvents`. Frontend state machines and systems send to systems with `sendToSystem` (to the brain's role with `{ role: 'brain' }`); backend code sends to plugins with `broadcastToPlugin`, which reaches every window, and frontend code with `sendToPlugin`, which reaches this window's actor. Don't import these from `@abuddy/sdk/events`; a plugin that takes events from anywhere but its own system declares them with `pluginAccepts()` in its `fe/plugin.ts`. Subscriptions (`onConnected`, `onIncoming`) come from `@abuddy/sdk/events`, `onLog` from `@abuddy/sdk/logger`
+- `__generated__/events.ts` — `SendablePluginEvents` (receiving plugin ID → the events it gets: its own system's, plus the inbox that plugin's `Contract` declares — the flows plugin takes the three action events it handles, the logs plugin `LOG_ADDED` from any pack), `PackSystemEvents` (system → the events it receives), and typed `broadcastToPlugin`/`sendToPlugin`/`sendToSystem` built with `defineEvents`. Frontend state machines and systems send to systems with `sendToSystem` (to the brain's role with `{ role: 'brain' }`); backend code sends to plugins with `broadcastToPlugin`, which reaches every window, and frontend code with `sendToPlugin`, which reaches this window's actor. Don't import these from `@abuddy/sdk/events`; a plugin that takes events from anywhere but its own system declares them in its `Contract`'s `inbox` (`fe/contract.ts`). Subscriptions (`onConnected`, `onIncoming`) come from `@abuddy/sdk/events`, `onLog` from `@abuddy/sdk/logger`
 - `__generated__/services.ts` — the `services` proxy typed as `Services` (with `services.repository` typed as `Repositories`, and `services.emitter`'s sends typed with the pack's events; actions name systems `default-setup/<feature>`)
 - `__generated__/repository.ts` — `repository`, typed with every repository in `features[].repositories`
 
 Logging and actions:
 - Log with `createLogger(source)` from `@abuddy/sdk/logger`. The brain and step runtimes use `createLogger('brain', { debug: true })`, whose debug messages follow the brain plugin's inspect switch (`setDebugEnabled('brain', …)`). Errors go through `reportError`, with `step` context in step runtimes. Backend code has no `console.*` (`check:specifiers`)
-- Action code runs through `runActionCode` (`extensions/steps/action/sandbox.ts`), for the action step and `services.action` alike: `params`, `services` (its `logger` named `action:<label>`), `z` and `flowId`
+- Action code runs through `runActionCode` (`extensions/steps/action/sandbox.ts`), for the action step and `services.action` alike: `params`, `services` (its `logger` named `action:<label>`, and its `emitter` stamping that same string as `Message.via` beside this pack's id as `Message.from`), `z` and `flowId`. The action names every feature `<packId>/<featureId>` all the same — the stamp says who sent a message, and changes nothing about what a name means
 
 ## Seeds
 

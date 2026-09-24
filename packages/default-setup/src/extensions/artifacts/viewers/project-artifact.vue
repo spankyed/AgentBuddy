@@ -67,7 +67,7 @@ import { Layers } from 'lucide-vue-next'
 import type { ArtifactItem } from '@abuddy/sdk/artifacts'
 import { truncatePath } from '@abuddy/ui/utils/path-truncation'
 import { computed } from 'vue'
-import { openPlugin } from '@abuddy/sdk/fe'
+import { untypedOpenPlugin } from '@abuddy/sdk/fe'
 import { resolveName } from '@abuddy/sdk/ids'
 
 const HOST_SETTINGS = resolveName('settings', 'host')
@@ -94,7 +94,7 @@ const getTruncatedPath = (path: string) => {
 }
 
 const goToProjects = () => {
-  openPlugin(HOST_SETTINGS, [
+  untypedOpenPlugin(HOST_SETTINGS, [
     { type: 'TAB.SELECT', tab: 'general' },
     { type: 'GENERAL_NAV.SELECT', item: 'projects' }
   ])

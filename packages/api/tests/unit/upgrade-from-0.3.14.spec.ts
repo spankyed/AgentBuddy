@@ -26,7 +26,7 @@ const { untypedTx, untypedQx } = await import('@abuddy/ears');
 
 const PACKAGES_DIR = path.resolve(__dirname, '..', '..', '..');
 const SETTINGS_ID = 'Settings-app' as never;
-const storedSettings = () => (untypedQx(SETTINGS_ID).pickOne(['data']) as { data: Record<string, unknown> }).data;
+const storedSettings = () => (untypedQx(SETTINGS_ID).pickOne(['data']) as unknown as { data: Record<string, unknown> }).data;
 
 const APPLICATION_HOTKEYS = {
   switchPluginUp: { key: 'ArrowUp', modifiers: ['cmd', 'option'] },

@@ -182,6 +182,38 @@ When the work is done, move the doc to `docs/archive/goals/` and add a status bl
 
 Fix links in other docs to the moved file. Docs outside the archive must describe the code as it is; the archived doc keeps the old names.
 
+### Invariants and milestones
+
+A goal's "Finished when" list mixes two kinds of statement, and archiving is the moment to separate them:
+
+- A **milestone** was true when the work landed. *"`navigateToPlugin` still compiles at every in-repo caller"* is
+  one: a later rename makes it false, and that is fine — it did its job at the time.
+- An **invariant** has to stay true afterwards. *"no feature imports another feature's `fe/`"*, *"`#generated/events`
+  imports the leaf, never the machine"*.
+
+**For each invariant, name the guard that holds it — or say it has none.** A guard is a spec, a `check:specifiers`
+rule, a schema, a type: something that fails when the invariant does. Prose in an archived doc is not one, because
+the archive describes the past; a reader is told to read it as history, so an invariant recorded only there is an
+assertion about the present living in the one place marked "this is not about the present".
+
+Writing "no guard" is a valid and useful answer. It is worth more than silence: it is visible at the moment someone
+can still act on it, and it stops the next reader mistaking a satisfied criterion for open work.
+
+What this does *not* license is a guard whose only job is to name a deleted thing — "`oldApi` must not come back"
+is legacy handling, and it belongs nowhere. Guard the property that made the old shape wrong (nothing reads a
+phantom off a value), not the identifier that used to carry it.
+
+The archive was swept once, on 2026-09-24, against the 31 goals then in it. Every criterion that is an invariant
+had a guard — `findCrossFeatureImports`, `findContractLeafImports`, `findRepositoryCasts`, `findUpwardImports`,
+`no-pack-seed-specifics.spec.ts`, `no-phantom-contract.spec.ts`, the host's `HOST_ENTITY_TYPES`, the fixture packs'
+`@ts-expect-error` cases. The criteria with no guard were all of the deleted-identifier kind above
+(`registerHostModule`, `sendsTo`, `usePluginSettings`, `pluginAccepts`), and stay that way on purpose: the property
+each protected is guarded, the name is not.
+
+That sweep also turned up the clearest example of the distinction. `goal-plugin-inbox.md` finished when
+"`receivedEventTypes` … [is] gone from generate-entries.ts". That function is back, added by later work for a
+different reason, and nothing is wrong: it was a milestone describing one step, never a property to hold.
+
 ### The Outcome section
 
 An archived doc carries an Outcome section, before Deferred and Constraints. **Write it at archive time if it isn't there already, and never hold up the move for it.** Nobody writes one as they go, so requiring it first is how finished goals sit in `docs/goals/` describing code that has changed — which costs more than a thin Outcome does.

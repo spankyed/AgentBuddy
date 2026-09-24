@@ -7,20 +7,19 @@ import {
   targetIs,
   type TrailClickEvent,
 } from '@abuddy/sdk/fe'
-import { type NavHistory, createNavHistory, pushNavHistory, goBack, goForward, canGoBack, canGoForward } from '@abuddy/sdk/fe'
+import { createNavHistory, pushNavHistory, goBack, goForward, canGoBack, canGoForward } from '@abuddy/sdk/fe'
 import type {
   NodeEntity,
   EdgeEntity,
 } from '@/__generated__/types'
-import type { OutgoingFlowsEvents } from '@/features/flows/be/system'
-import type { OutgoingBrainEvents } from '@/features/brain/be/system'
+import type { FlowsContext, FlowsInboxEvent } from './contract'
+import type { OutgoingFlowsEvents } from '@/features/flows/be/types'
 import { sendToSystem } from '@/__generated__/events'
 import { getNodeConfig, isTriggerNode } from '@abuddy/ui/components/node-styles'
 import { stepRegistry } from '@abuddy/sdk/steps'
 import { calculateLayoutAsync, allNodesHavePositions, LAYOUT_CONFIG, layoutComponentAroundSource, type LayoutPositions } from './canvas/layout-utils'
 import { computeMaxBottom, type LayoutNodeData } from '@abuddy/ui/components/node-dimensions'
 import type { FlowEntity, PromptEntity, ActionEntity, EARS } from '@abuddy/sdk'
-import type { ModelCatalogEntry } from '@abuddy/sdk/models'
 import type { TNodeEntity, TrackTree } from '@abuddy/sdk/steps'
 
 const randId = () => Math.random().toString(36).slice(2, 8)
@@ -75,7 +74,6 @@ function reindexEdges(
   })
 }
 
-
 const HANDLE_OCCUPIED_ERROR = 'This step already has an outbound connection'
 
 function applyNodeTypeDefaults(nodeData: Record<string, any>): void {
@@ -92,57 +90,9 @@ export const flowsId = 'flows' as const
 export const id = flowsId
 export type FlowsState = ActorRefFrom<typeof flowsState>
 
-export interface FlowsContext {
-  selectedNodeId?: EARS.EntityId;
-  editingNodeId?: EARS.EntityId; // Node currently being edited
-  selectedFlowId?: EARS.EntityId;
-  // Handle selection for click-to-connect workflow
-  selectedHandle?: {
-    nodeId: string;
-    handleId?: string;
-  };
-  graph: {
-    nodes: NodeEntity[];
-    edges: EdgeEntity[];
-    // Store positions separately from node data
-    positions: Record<string, { x: number; y: number }>;
-  };
-  flows: FlowEntity[];
-  // Resources available for node configuration
-  prompts: PromptEntity[];
-  models: ModelCatalogEntry[];
-  actions: ActionEntity[];
-  // Track temporary IDs during async creation
-  tempIdMap: Record<string, string>; // tempId -> permanentId
-  /** The root flow the brain runs (the flow with the root role), as the flows system last sent it */
-  rootFlowId?: string;
-  // Settings
-  settings?: any; // FlowsSettings
-  // Dialog bridge flags (set by context menu, consumed by watchers in flow-canvas.vue)
-  showEditLabelDialog?: boolean;
-  showDeleteFlowDialog?: boolean;
-  canvasError?: string;
-  // DSL Import state
-  dslImport: {
-    status: 'idle' | 'importing' | 'success' | 'error';
-    errors: string[];
-    importedFlowNames: string[];
-  };
-  // DSL Export state
-  dslExport: {
-    status: 'idle' | 'exporting' | 'success' | 'error';
-    errors: string[];
-    filePath: string;
-    flowCount: number;
-  };
-  navHistory: NavHistory<string | null>;
-}
-
 type SystemEvent = OutgoingFlowsEvents
   | { type: 'FLOW_DELETED'; flowId: EARS.EntityId }
-  | { type: 'ACTION_CREATED'; action: ActionEntity; actionId: EARS.EntityId }
-  | { type: 'ACTION_UPDATED'; action: ActionEntity; actionId: EARS.EntityId }
-  | { type: 'ACTION_DELETED'; actionId: EARS.EntityId }
+  | FlowsInboxEvent
   // DSL Import backend responses
   | { type: 'DSL_IMPORTED'; flowIds: string[] }
   | { type: 'DSL_IMPORT_FAILED'; errors: string[] }
@@ -152,7 +102,6 @@ type SystemEvent = OutgoingFlowsEvents
 
 type UIEvent =
   | { type: 'NODE.CLICK'; nodeId: string }
-  | { type: 'NODE.DOUBLE_CLICK'; nodeId: string }
   | { type: 'HANDLE.SELECT'; nodeId: string; handleId?: string }
   | { type: 'HANDLE.DESELECT' }
   | { type: 'HANDLE.REINDEX'; nodeId: string; prefix: string; index: number; direction: 1 | -1 }
@@ -167,7 +116,6 @@ type UIEvent =
   | { type: 'NODE.UPDATE'; nodeId: EARS.EntityId; updates: Partial<NodeEntity> }
   | { type: 'NODE.UPDATE_POSITION'; nodeId: string; position: { x: number; y: number } }
   | { type: 'FLOW.PREVIEW'; flowId: EARS.EntityId }
-  | { type: 'FLOW.SELECT'; flowId: EARS.EntityId }
   | { type: 'SELECT_ROOT_FLOW' }
   /** Makes a flow the root flow, or, with null, leaves no flow the root */
   | { type: 'ROOT_FLOW.SET'; flowId: string | null }
@@ -242,8 +190,6 @@ const flowsState = setup({
         settings: ev.settings || {},
       };
     }),
-
-
 
     /* ── flow interactions ────────────────────────────── */
     selectFlow: ({ event, context }) => {

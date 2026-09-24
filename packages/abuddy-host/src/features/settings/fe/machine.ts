@@ -8,9 +8,9 @@ import {
   type TrailClickEvent,
 } from '@abuddy/sdk/fe'
 import type { SettingsDocument } from '../be/store.ts'
-import type { OutgoingSettingsEvents } from '../be/system.ts'
+import type { OutgoingSettingsEvents } from '../be/types.ts'
 import type { SecretInfo, SecretsStatus } from '@abuddy/sdk/services'
-import { sendToSystem } from '@abuddy/sdk/events'
+import { sendToSystem } from '../../../events.ts'
 import type { ApplicationHotkeys } from '@abuddy/sdk/types'
 import type { EARS } from '@abuddy/sdk'
 import type { PackSeedsPreview } from '@abuddy/sdk/build'
@@ -139,7 +139,7 @@ export function createSettingsMachine(io: SettingsIO) {
   actions: {
     /* ── bootstrap ─────────────────────────────────────── */
     loadSettings: () => {
-      sendToSystem(HOST.settings, {
+      sendToSystem('settings', {
         type: 'GET_SETTINGS',
       });
     },
@@ -201,7 +201,7 @@ export function createSettingsMachine(io: SettingsIO) {
 
     sendUpdate: ({ event }) => {
       const ev = typeOf('SETTINGS.UPDATE', event);
-      sendToSystem(HOST.settings, {
+      sendToSystem('settings', {
         type: 'UPDATE_SETTINGS',
         entityType: ev.entityType,
         label: ev.label,
@@ -213,7 +213,7 @@ export function createSettingsMachine(io: SettingsIO) {
     replaceSettings: enqueueActions(({ event, enqueue }) => {
       const { data } = typeOf('SETTINGS.REPLACE', event)
       enqueue.assign({ save: { status: 'saving', problems: [] } })
-      enqueue(() => sendToSystem(HOST.settings, { type: 'REPLACE_SETTINGS', data }))
+      enqueue(() => sendToSystem('settings', { type: 'REPLACE_SETTINGS', data }))
     }),
 
     settingsSaved: assign({ save: { status: 'saved', problems: [] } }),
@@ -223,7 +223,7 @@ export function createSettingsMachine(io: SettingsIO) {
     })),
 
     resetSettings: () => {
-      sendToSystem(HOST.settings, {
+      sendToSystem('settings', {
         type: 'RESET_SETTINGS',
       });
     },
@@ -256,7 +256,7 @@ export function createSettingsMachine(io: SettingsIO) {
 
     previewPackSeeds: assign(({ context, event }) => {
       const ev = event as { type: 'PACK_SEEDS.PREVIEW'; directory: string };
-      sendToSystem(HOST.settings, {
+      sendToSystem('settings', {
         type: 'PREVIEW_PACK_SEEDS',
         directory: ev.directory,
       });
@@ -367,7 +367,7 @@ export function createSettingsMachine(io: SettingsIO) {
         return selected.length === total ? null : selected;
       };
 
-      sendToSystem(HOST.settings, {
+      sendToSystem('settings', {
         type: 'IMPORT_PACK_SEEDS',
         directory,
         include: Object.fromEntries(Object.keys(preview.seeds).map((key) => [key, toIncludeField(key)])),
@@ -550,7 +550,7 @@ export function createSettingsMachine(io: SettingsIO) {
           actions: [
             assign({ resetting: true }),
             () => {
-              sendToSystem(HOST.settings, { type: 'RESET_APP' });
+              sendToSystem('settings', { type: 'RESET_APP' });
             },
           ],
         },

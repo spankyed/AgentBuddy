@@ -121,7 +121,7 @@ import ActionParametersEditor from './ActionParametersEditor.vue';
 import ActionFunctionEditor from './ActionFunctionEditor.vue';
 import ActionFunctionViewer from './ActionFunctionViewer.vue';
 import JsonSchemaEditor from '@abuddy/ui/components/JsonSchemaEditor';
-import { navigateToPlugin } from '@/__generated__/fe'
+import { openPlugin } from '@/__generated__/fe'
 import { useCollapsibleState } from '@abuddy/ui/composables/useCollapsibleState';
 import type { ActionsState } from '@/features/actions/fe/state';
 import type { ActionEntity } from '@abuddy/sdk';
@@ -180,7 +180,7 @@ function openInEditor() {
   if (!props.action) return;
 
   // The code plugin routes a codeActions.* event to its actions panel
-  navigateToPlugin('code', [
+  openPlugin('code', [
     { type: 'UPDATE_STATE', updates: { selectedPanel: 'actions' } },
     { type: 'codeActions.OPEN_ACTION', actionId: props.action.id },
   ]);

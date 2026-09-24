@@ -3,9 +3,10 @@ import { services } from '@/__generated__/services';
 import { qx } from '@/__generated__/ears';
 import { broadcastToPlugin } from '@/__generated__/events';
 import { setup } from 'xstate';
-import { defineSystem, type SystemEntry } from '@abuddy/sdk/framework';
+import { defineSystem } from '@abuddy/sdk/framework';
 
 import { EARS } from '@/__generated__/ears';
+import type { Contract } from './contract';
 import type { NoteDTO, NotesConnectedData, OutgoingNotesSearchEvent } from './types';
 import { repository } from '@/__generated__/repository';
 
@@ -28,36 +29,7 @@ function isDescendantOf(noteId: EARS.EntityId, ancestorId: EARS.EntityId): boole
   return false;
 }
 
-type IncomingNoteEvents =
-  | { type: 'CREATE_NOTE'; title: string; content?: string; icon?: string | null; parentId?: string; skipContentSync?: boolean; noteType?: 'document' | 'tasklist' | 'task'; completed?: boolean; displayOrder?: number }
-  | { type: 'UPDATE_NOTE'; id: string; title?: string; content?: string; icon?: string | null; completed?: boolean; hideCompletedChildren?: boolean; favorite?: boolean }
-  | { type: 'DELETE_NOTE'; id: string }
-  | { type: 'SOFT_DELETE_NOTE'; id: string }
-  | { type: 'RESTORE_NOTE'; id: string }
-  | { type: 'MOVE_NOTE'; ids: string[]; newParentId: string | null }
-  | { type: 'REORDER_NOTE'; id: string; newParentId: string | null; newIndex: number }
-  | { type: 'VIEW_NOTE'; id: string }
-  | { type: 'SEARCH_NOTES'; query: string }
-  | { type: 'GET_TRASHED_NOTES' }
-  | { type: 'PERMANENTLY_DELETE_NOTE'; id: string }
-  | { type: 'EMPTY_TRASH' }
-  | { type: 'IMPORT_NOTES'; directory: string }
-  | { type: 'EXPORT_NOTES'; directory: string; format: 'markdown' | 'json' };
-
-export type OutgoingNotesEvents =
-  | { type: 'NOTES_CONNECTED'; data: NotesConnectedData }
-  | { type: 'NOTE_CREATED'; note: NoteDTO }
-  | { type: 'NOTE_UPDATED'; note: NoteDTO }
-  | { type: 'NOTE_DELETED'; noteId: string }
-  | { type: 'NOTE_RESTORED'; note: NoteDTO }
-  | { type: 'TRASHED_NOTES'; notes: NoteDTO[] }
-  | OutgoingNotesSearchEvent
-  | { type: 'NOTES_IMPORTED'; count: number; errors?: string[] }
-  | { type: 'NOTES_IMPORT_FAILED'; errors: string[] }
-  | { type: 'NOTES_EXPORTED'; filePath: string; itemCount: number }
-  | { type: 'NOTES_EXPORT_FAILED'; errors: string[] }
-
-export const notesSpec = defineSystem<IncomingNoteEvents, OutgoingNotesEvents>();
+export const notesSpec = defineSystem<Contract>();
 
 export const notesSystem = setup({
   types: notesSpec.types,
@@ -652,6 +624,6 @@ export const notesSystem = setup({
   },
 });
 
-const notesEntry = { spec: notesSpec, machine: notesSystem } satisfies SystemEntry;
+const notesEntry = { spec: notesSpec, machine: notesSystem };
 
 export default notesEntry;

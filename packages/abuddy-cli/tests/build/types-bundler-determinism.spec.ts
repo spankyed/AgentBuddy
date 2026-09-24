@@ -29,18 +29,22 @@ const PACK: Record<string, string> = {
     entityShapes: { Tag: { source: 'src/types.ts', type: 'TagEntity' } },
     features: [{
       id: 'tags',
-      system: { entry: 'src/system.ts' },
+      system: { entry: 'src/system.ts', contract: 'src/system.contract.ts#Contract' },
       services: { tags: 'src/tags.ts#tagsService' },
       repositories: { tagQueries: 'src/repository.ts#tagQueries' },
     }],
   }),
   'src/types.ts': "import type { EARS } from '@abuddy/sdk';\nexport interface TagEntity { name: string; parent?: EARS.EntityId<'Tag'> }\n",
+  'src/system.contract.ts': [
+    "export type OutgoingTagsEvents = { type: 'TAG_ADDED'; name: string };",
+    "export type Contract = { incoming: { type: 'ADD_TAG' }; outgoing: OutgoingTagsEvents };",
+  ].join('\n') + '\n',
   'src/system.ts': [
     "import { setup } from 'xstate';",
-    "import { defineSystem, type SystemEntry } from '@abuddy/sdk/framework';",
-    "export type OutgoingTagsEvents = { type: 'TAG_ADDED'; name: string };",
-    "export const tagsSpec = defineSystem<{ type: 'ADD_TAG' }, OutgoingTagsEvents>();",
-    'const entry = { spec: tagsSpec, machine: setup({ types: tagsSpec.types }).createMachine({ id: "tags" }) } satisfies SystemEntry;',
+    "import { defineSystem } from '@abuddy/sdk/framework';",
+    "import type { Contract } from './system.contract.js';",
+    'export const tagsSpec = defineSystem<Contract>();',
+    'const entry = { spec: tagsSpec, machine: setup({ types: tagsSpec.types }).createMachine({ id: "tags" }) };',
     'export default entry;',
   ].join('\n'),
   // Inferred types that name SDK declarations: the declaration emit prints them from whichever copy resolved

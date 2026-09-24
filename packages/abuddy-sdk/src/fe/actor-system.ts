@@ -8,7 +8,7 @@ const PLUGIN: InjectionKey<ComputedRef<AnyActorRef>> = Symbol('plugin')
 /**
  * The actor of the plugin this component belongs to. The host provides it where it renders a plugin's canvas,
  * panel and chat, and `PluginScope` where a plugin's component is rendered elsewhere (its settings, in the settings
- * plugin). Another plugin's state is read with `usePluginState`/`readPluginState`, which name it by ref and hand
+ * plugin). Another plugin's state is read with `useUntypedPluginState`/`readUntypedPluginState`, which name it by ref and hand
  * back a value rather than its actor.
  *
  * Which plugin a component belongs to is where it is rendered, not anything at the call site, so the type is the
@@ -25,14 +25,24 @@ export function usePlugin<T>(): T {
 /**
  * The running actor of the plugin at `ref`, a registered plugin's `<packId>/<featureId>`.
  *
- * Not exported from `@abuddy/sdk/fe`: pack code reads a plugin through `usePluginState`/`readPluginState` and
+ * Not exported from `@abuddy/sdk/fe`: pack code reads a plugin through `useUntypedPluginState`/`readUntypedPluginState` and
  * sends to one through the generated sends, so no pack holds another plugin's actor.
  */
 export function pluginActor(ref: string): AnyActorRef {
-  if (!splitRef(ref)) throw new Error(`"${ref}" doesn't name a plugin: a plugin is named "<packId>/<featureId>"`)
-  const actor = boundFeHost().application.system.get(ref)
+  const actor = pluginActorIfRunning(ref)
   if (!actor) throw new Error(`No plugin is running at "${ref}"`)
   return actor
+}
+
+/**
+ * The same, or undefined when nothing is running at `ref` yet. A pack's own plugins are all spawned in the step
+ * that registers them, so absence means another pack whose frontend is still loading — a state to render, not a
+ * bug. The readers in `plugin-state.ts` use this; `PluginScope` uses `pluginActor`, where a missing plugin means
+ * the component was mounted for one that doesn't exist.
+ */
+export function pluginActorIfRunning(ref: string): AnyActorRef | undefined {
+  if (!splitRef(ref)) throw new Error(`"${ref}" doesn't name a plugin: a plugin is named "<packId>/<featureId>"`)
+  return boundFeHost().application.system.get(ref)
 }
 
 /**

@@ -68,7 +68,7 @@ A failing bundle or gate is reported and the build continues, so every failure s
 - no `@abuddy/*` import that installed dependents can't resolve: a `private` package (`@abuddy/host`) or an export only under `@abuddy/source` (`unpublishedReason`);
 - every import resolves to declarations.
 
-Each problem names the facade exports that reach it (`exportsReaching`). Specs: `tests/build/facade-gate.spec.ts`, `facade-gate-system-entry.spec.ts` (an annotated `SystemEntry` fails the gate, `satisfies` passes), `facade-typing.spec.ts`, `types-bundler-determinism.spec.ts`.
+Each problem names the facade exports that reach it (`exportsReaching`). Specs: `tests/build/facade-gate.spec.ts`, `facade-gate-system-contract.spec.ts` (the contract's events reach the facade however the entry is declared), `facade-typing.spec.ts`, `types-bundler-determinism.spec.ts`.
 
 The committed report is separate: `npm run facade:check` / `facade:update` in `packages/default-setup` run `scripts/facade-report.ts`. It normalizes the built bundle (sorted imports, declarations and literal unions) and compares it with `etc/pack-types.api.md`. Run `abuddy build` first; a changed facade needs `facade:update`.
 

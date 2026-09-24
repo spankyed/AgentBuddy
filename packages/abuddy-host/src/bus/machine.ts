@@ -5,7 +5,7 @@ import { enqueueActions, fromCallback, setup, spawnChild, type AnyActorRef, type
 import { reportError } from '@abuddy/sdk/logger';
 import { HOST } from '../refs.ts';
 import { SYSTEM_EVENT_TYPES } from '@abuddy/sdk/framework';
-import { PLUGIN_EVENT_TYPES, type Message } from '@abuddy/sdk/events';
+import { PLUGIN_EVENT_TYPES, senderSuffix, type Message } from '@abuddy/sdk/events';
 import type { PackRegistry } from '../packs/registry.ts';
 
 
@@ -115,7 +115,7 @@ export function createBusMachine(options: BusOptions) {
   const systems = options.systems ?? registry.getRegisteredSystems;
   const clientLoadedPacks = () => new Set(options.clientLoadedPacks?.() ?? []);
   /**
-   * The `<plugin>/<type>` pairs whose drop has already been reported, so each is reported once per bus.
+   * The drops already reported, keyed by plugin, event type and sender, so each is reported once per bus.
    *
    * Reporting a drop logs it, and a log event becomes a send to the logs plugin (default-setup's logs
    * system forwards it as LOG_ADDED). When the plugin being dropped is that one, reporting a drop
@@ -147,12 +147,19 @@ export function createBusMachine(options: BusOptions) {
         // than thrown — the caller is a running system, and a malformed message must not take it down.
         // takeSystemErrors fails any pack test that leaves one, so this is loud where it should be.
         const { to: pluginId, event: { type } } = event.message;
+        // Who sent it, when the send stamped it: the pack (`defineEvents`) and what within it (an action's
+        // `action:<label>`). `reportError` sends for a caller that is neither, so a drop that names no sender is
+        // not thereby suspicious — it just has one fewer clue in it.
+        const sender = senderSuffix(event.message);
         const accepted = options.registry.getPluginEventValidationMap().get(pluginId);
         const reportDrop = (message: string) => {
           // A pack mid-replacement has no systems running and no plugins registered until its
           // replacement lands. Dropping is right; saying something went wrong is not.
           if (options.registry.isPluginReplacing(pluginId)) return;
-          const pair = `${pluginId}/${type}`;
+          // Keyed on what the report says rather than on a second reading of the envelope, so whatever the
+          // message distinguishes the dedupe distinguishes, and a suppressed drop is never one the report names
+          // differently
+          const pair = `${pluginId}/${type}/${sender}`;
           if (reportedDrops.has(pair)) return;
           reportedDrops.add(pair);
           // `diagnostic`: logged, recorded, and failing any pack test that leaves one — but no toast.
@@ -163,11 +170,11 @@ export function createBusMachine(options: BusOptions) {
         if (accepted === undefined) {
           // An event every plugin takes (a feature's settings changing) is the feature's plugin's if it has one
           if ((PLUGIN_EVENT_TYPES as readonly string[]).includes(type)) return;
-          reportDrop(`Dropped "${type}" sent to "${pluginId}", which no registered pack declares as a plugin that receives events. Check the id, or give the plugin's own pack a system that declares what it sends there.`);
+          reportDrop(`Dropped "${type}" sent${sender} to "${pluginId}", which no registered pack declares as a plugin that receives events. Check the id, or give the plugin's own pack a system that declares what it sends there.`);
           return;
         }
         if (!accepted.has(type)) {
-          reportDrop(`Dropped "${type}" sent to the "${pluginId}" plugin, which declares no such event. A plugin receives what its own pack's systems declare they emit: add it to that system's outgoing events, or send an event the plugin handles.`);
+          reportDrop(`Dropped "${type}" sent${sender} to the "${pluginId}" plugin, which declares no such event. A plugin receives what its own pack's systems declare they emit: add it to that system's outgoing events, or send an event the plugin handles.`);
           return;
         }
         options.onOutgoing(event.message);

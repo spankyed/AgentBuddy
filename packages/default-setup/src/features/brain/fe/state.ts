@@ -4,7 +4,8 @@ import breadcrumb, { breadcrumbList } from '@abuddy/sdk/fe';
 import { contextMenuFn } from '@abuddy/sdk/fe';
 import { Activity, Terminal, Play, RefreshCw, Power, PlayCircle, Pause } from 'lucide-vue-next';
 import { targetIs, TRAIL_CLICK, type TrailClickEvent } from '@abuddy/sdk/fe';
-import type { OutgoingBrainEvents } from '@/features/brain/be/system'
+import type { BrainContext } from './contract';
+import type { OutgoingBrainEvents } from '@/features/brain/be/types'
 import type { EventListenerEntity, FlowTNodeData } from '@/__generated__/types';
 import { sendToSystem } from '@/__generated__/events';
 import type { StepRuntimeError, TNodeEntity, TrackTree } from '@abuddy/sdk/steps';
@@ -18,29 +19,6 @@ import {
 export const id = 'brain' as const;
 export type BrainState = ActorRefFrom<typeof brainState>
 
-export interface BrainContext {
-  flowTNodeId?: string;
-  tNodeTree?: TrackTree[];
-  normalizedTree?: NormalizedTNodeTree;
-  possibleEvents: EventListenerEntity[];
-  flowHierarchy: Array<{ flowTNodeId: string; label: string }>;
-  pulsingEventType?: string;
-  // UI state
-  showLeftPanel: boolean;
-  selectedStepNode?: TNodeEntity;
-  inspectEnabled: boolean;
-  animationsEnabled: boolean;
-  brainIsDead: boolean;
-  /** Why the brain couldn't start, while it stays stopped for that reason */
-  startError?: string;
-  /** The root flow the running brain started with; the flows plugin's root flow differing from it takes a restart */
-  runningRootFlowId?: string;
-  brainIsPaused: boolean;
-  latestRuntimeError?: StepRuntimeError;
-  runtimeErrors: StepRuntimeError[];
-  // Settings
-  settings?: any; // BrainSettings
-}
 
 type SystemEvent = OutgoingBrainEvents
   | { type: 'TNODE_DETAILS'; tNodeId: string; details: TNodeEntity | null }

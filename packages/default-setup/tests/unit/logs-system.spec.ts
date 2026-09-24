@@ -28,6 +28,8 @@ describe('logs system', () => {
 
     expect(toPlugin).toEqual([{
       to: 'default-setup/logs',
+      // The pack that sent it, stamped by this pack's generated broadcastToPlugin
+      from: 'default-setup',
       event: expect.objectContaining({
         type: 'LOG_ADDED',
         log: expect.objectContaining({ level: 'warn', source: 'notes', message: 'Note sync is slow', meta: { noteId: 'Note-1' } }),

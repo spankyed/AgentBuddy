@@ -1,23 +1,13 @@
+import type { Contract } from './contract.ts';
 import { broadcastToPlugin } from '#generated/events';
 import { setup } from 'xstate';
-import { defineSystem, type SystemEntry } from '@abuddy/sdk/framework';
+import { defineSystem } from '@abuddy/sdk/framework';
 
 import { repository } from '#generated/repository';
 import { addMemoNote, type MemoNoteDTO } from './memo-notes';
 import type { MemoDTO } from './types';
 
-type IncomingMemosEvents =
-  | { type: 'ADD_MEMO'; text: string }
-  | { type: 'ADD_MEMO_NOTE'; text: string }
-  | { type: 'ANNOUNCE_MEMO'; text: string };
-
-export type OutgoingMemosEvents =
-  | { type: 'MEMOS_CONNECTED'; memos: MemoDTO[] }
-  | { type: 'MEMO_ADDED'; memo: MemoDTO }
-  /** `note` is null when the note written through @abuddy/ears isn't found through the SDK */
-  | { type: 'MEMO_NOTE_ADDED'; text: string; note: MemoNoteDTO | null };
-
-export const memosSpec = defineSystem<IncomingMemosEvents, OutgoingMemosEvents>();
+export const memosSpec = defineSystem<Contract>();
 
 export const memosSystem = setup({
   types: memosSpec.types,
@@ -59,6 +49,6 @@ export const memosSystem = setup({
   },
 });
 
-const memosEntry = { spec: memosSpec, machine: memosSystem } satisfies SystemEntry;
+const memosEntry = { spec: memosSpec, machine: memosSystem };
 
 export default memosEntry;

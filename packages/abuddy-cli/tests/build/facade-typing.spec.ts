@@ -23,37 +23,48 @@ const BASE_PACK = {
     entityShapes: { Tag: { source: 'src/types.ts', type: 'TagEntity' }, Item: { source: 'src/types.ts', type: 'ItemEntity' } },
     features: [{
       id: 'threads',
-      system: { entry: 'src/system.ts' },
-      plugin: { entry: 'src/plugin.ts' },
+      system: { entry: 'src/system.ts', contract: 'src/system.contract.ts#Contract' },
+      plugin: { entry: 'src/plugin.ts', contract: 'src/plugin.types.ts#Contract' },
       services: { search: 'src/search.ts#searchService' },
       repositories: { tagQueries: 'src/repository.ts#tagQueries' },
     }, {
       // A second plugin of the dependency, which declares no inbox: nothing may send it
       id: 'inbox',
-      system: { entry: 'src/inbox.ts' },
+      system: { entry: 'src/inbox.ts', contract: 'src/inbox.contract.ts#Contract' },
       plugin: { entry: 'src/inbox-plugin.ts' },
     }],
   }),
   'src/types.ts': 'export interface TagEntity { name: string }\nexport interface ItemEntity { title: string }\n',
+  // The system's contract: a declared type the manifest names, which is what the facade publishes
+  'src/system.contract.ts': [
+    "export type OutgoingThreadsEvents = { type: 'TAG_ADDED'; name: string };",
+    "export type Contract = { incoming: { type: 'ADD_TAG'; name: string }; outgoing: OutgoingThreadsEvents };",
+  ].join('\n') + '\n',
   'src/system.ts': [
     "import { setup } from 'xstate';",
-    "import { defineSystem, type SystemEntry } from '@abuddy/sdk/framework';",
-    "export type OutgoingThreadsEvents = { type: 'TAG_ADDED'; name: string };",
-    "export const threadsSpec = defineSystem<{ type: 'ADD_TAG'; name: string }, OutgoingThreadsEvents>();",
-    'const entry = { spec: threadsSpec, machine: setup({ types: threadsSpec.types }).createMachine({ id: "threads" }) } satisfies SystemEntry;',
+    "import { defineSystem } from '@abuddy/sdk/framework';",
+    "import type { Contract } from './system.contract.js';",
+    'export const threadsSpec = defineSystem<Contract>();',
+    'const entry = { spec: threadsSpec, machine: setup({ types: threadsSpec.types }).createMachine({ id: "threads" }) };',
     'export default entry;',
   ].join('\n'),
   'src/plugin.ts': [
-    "import { pluginAccepts, type Plugin } from '@abuddy/sdk/fe';",
-    "export const accepts = pluginAccepts<{ type: 'TAG_ADDED'; name: string }>();",
+    "import type { Plugin } from '@abuddy/sdk/fe';",
     "export default { id: 'threads' } as unknown as Plugin;",
+  ].join('\n') + '\n',
+  // The plugin's contract: a declared type in a leaf the plugin's own module never imports, which is what the
+  // dependent's facade carries as this plugin's published inbox
+  'src/plugin.types.ts': "export type Contract = { state: { tags: string[] }; inbox: { public: { type: 'TAG_ADDED'; name: string } } };\n",
+  'src/inbox.contract.ts': [
+    "export type OutgoingInboxEvents = { type: 'MAIL_ARRIVED'; from: string };",
+    "export type Contract = { incoming: { type: 'FETCH_MAIL' }; outgoing: OutgoingInboxEvents };",
   ].join('\n') + '\n',
   'src/inbox.ts': [
     "import { setup } from 'xstate';",
-    "import { defineSystem, type SystemEntry } from '@abuddy/sdk/framework';",
-    "export type OutgoingInboxEvents = { type: 'MAIL_ARRIVED'; from: string };",
-    "export const inboxSpec = defineSystem<{ type: 'FETCH_MAIL' }, OutgoingInboxEvents>();",
-    'const entry = { spec: inboxSpec, machine: setup({ types: inboxSpec.types }).createMachine({ id: "inbox" }) } satisfies SystemEntry;',
+    "import { defineSystem } from '@abuddy/sdk/framework';",
+    "import type { Contract } from './inbox.contract.js';",
+    'export const inboxSpec = defineSystem<Contract>();',
+    'const entry = { spec: inboxSpec, machine: setup({ types: inboxSpec.types }).createMachine({ id: "inbox" }) };',
     'export default entry;',
   ].join('\n'),
   'src/inbox-plugin.ts': "import type { Plugin } from '@abuddy/sdk/fe';\nexport default { id: 'inbox' } as unknown as Plugin;\n",
@@ -73,16 +84,21 @@ const APP_PACK = {
     entities: { Memo: 'Memo' },
     // Same type name as the dependency's Item shape
     entityShapes: { Memo: { source: 'src/types.ts', type: 'ItemEntity' } },
-    features: [{ id: 'memos', system: { entry: 'src/system.ts' }, plugin: { entry: 'src/plugin.ts' } }],
+    features: [{ id: 'memos', system: { entry: 'src/system.ts', contract: 'src/system.contract.ts#Contract' }, plugin: { entry: 'src/plugin.ts' } }],
   }),
   'src/types.ts': 'export interface ItemEntity { text: string; pinned: boolean }\n',
   'src/plugin.ts': "import type { Plugin } from '@abuddy/sdk/fe';\nexport default { id: 'memos' } as unknown as Plugin;\n",
+  'src/system.contract.ts': [
+    "export type OutgoingMemosEvents = { type: 'MEMO_ADDED'; text: string };",
+    "export type IncomingMemosEvents = { type: 'ADD_MEMO'; text: string } | { type: 'CLEAR_MEMOS' } | { type: 'PIN_MEMO' | 'UNPIN_MEMO'; id: string };",
+    'export type Contract = { incoming: IncomingMemosEvents; outgoing: OutgoingMemosEvents };',
+  ].join('\n') + '\n',
   'src/system.ts': [
     "import { setup } from 'xstate';",
-    "import { defineSystem, type SystemEntry } from '@abuddy/sdk/framework';",
-    "export type OutgoingMemosEvents = { type: 'MEMO_ADDED'; text: string };",
-    "export const memosSpec = defineSystem<{ type: 'ADD_MEMO'; text: string } | { type: 'CLEAR_MEMOS' } | { type: 'PIN_MEMO' | 'UNPIN_MEMO'; id: string }, OutgoingMemosEvents>();",
-    'const entry = { spec: memosSpec, machine: setup({ types: memosSpec.types }).createMachine({ id: "memos" }) } satisfies SystemEntry;',
+    "import { defineSystem } from '@abuddy/sdk/framework';",
+    "import type { Contract } from './system.contract.js';",
+    'export const memosSpec = defineSystem<Contract>();',
+    'const entry = { spec: memosSpec, machine: setup({ types: memosSpec.types }).createMachine({ id: "memos" }) };',
     'export default entry;',
   ].join('\n'),
 };
@@ -147,13 +163,15 @@ declare const systemId: 'memos' | 'base-pack/threads';
 // @ts-expect-error one system per send
 sendToSystem(systemId, { type: 'ADD_TAG', name: 'x' });
 
-// Actions get services.emitter, which names every system and plugin <pack>/<feature>, this pack's own too
+// Actions get services.emitter, which names every system and plugin <pack>/<feature>, this pack's own too.
+// Its own pack included is the point: an action is content, not source — a row a user edits, exports and copies
+// into another pack — and a bare name would rebind on that copy instead of staying visibly wrong.
 services.emitter.sendToSystem('app-pack/memos', { type: 'ADD_MEMO', text: 'x' });
 services.emitter.sendToSystem('base-pack/threads', { type: 'ADD_TAG', name: 'x' });
 services.emitter.broadcastToPlugin('base-pack/threads', { type: 'TAG_ADDED', name: 'x' });
-// @ts-expect-error actions run outside any pack, so this pack's systems are named too
+// @ts-expect-error a bare name would rebind if this action were copied to another pack
 services.emitter.sendToSystem('memos', { type: 'ADD_MEMO', text: 'x' });
-// @ts-expect-error and its plugins, so a bare feature id isn't one of them either
+// @ts-expect-error and its plugins, for the same reason
 services.emitter.broadcastToPlugin('threads', { type: 'TAG_ADDED', name: 'x' });
 // @ts-expect-error ADD_MEMO needs its text
 services.emitter.sendToSystem('app-pack/memos', { type: 'ADD_MEMO' });

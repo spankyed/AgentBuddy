@@ -69,7 +69,7 @@ import KeyboardShortcutInput from '@abuddy/ui/components/KeyboardShortcutInput'
 import CollapsibleSection from '@abuddy/ui/design/CollapsibleSection'
 import { HardDriveDownload } from 'lucide-vue-next'
 import type { DatabaseSettings } from '@/__generated__/types'
-import { navigateToPlugin } from '@/__generated__/fe'
+import { openPlugin } from '@/__generated__/fe'
 import type { DatabaseState } from './state'
 
 interface Props {
@@ -102,7 +102,7 @@ const saveHotkeys = () => {
 
 // Open backup & restore page
 const openBackupRestore = () => {
-  navigateToPlugin('database', { type: 'VIEW_BACKUP' })
+  openPlugin('database', { type: 'VIEW_BACKUP' })
 }
 
 // Resolved during setup: usePlugin reads the PluginScope this settings panel renders in, which a click handler can't reach

@@ -14,6 +14,7 @@
  * Priority on startup:
  *   baseDirectory > defaultBaseDirectory > first workspace project > null
  */
+import type { Contract } from './contract';
 import type { GeneralSettings } from '@/app-settings/types';
 import { services } from '@/__generated__/services';
 import { broadcastToPlugin } from '@/__generated__/events';
@@ -23,19 +24,25 @@ import { createLogger } from '@abuddy/sdk/logger';
 const cliLogger = createLogger('code');
 import { setup, enqueueActions, assign, type AnyActorRef } from 'xstate'
 
-import { defineSystem, type SystemEntry } from '@abuddy/sdk/framework'
+import { defineSystem } from '@abuddy/sdk/framework'
 import { GitRepository } from './services/git'
 import { GitWatcherService } from './services/gitwatcher'
 import { repository } from '@/__generated__/repository';
 
-// child systems
-import { explorerSystem, type IncomingExplorerEvents, type OutgoingExplorerEvents } from './features/explorer'
-import { searchSystem, type IncomingSearchEvents, type OutgoingSearchEvents } from './features/search'
-import { commitSystem, type IncomingCommitEvents, type OutgoingCommitEvents } from './features/commit'
-import { pullRequestSystem, type IncomingPullRequestEvents, type OutgoingPullRequestEvents } from './features/pull-request'
-import { terminalSystem, type IncomingTerminalEvents, type OutgoingTerminalEvents } from './features/terminal'
-import { actionsSystem, type IncomingActionsEvents, type OutgoingActionsEvents } from './features/actions'
-import { promptsSystem, type IncomingPromptsEvents, type OutgoingPromptsEvents } from './features/prompts'
+// child systems; their events come from the contract, which is where every child's now live
+import { explorerSystem } from './features/explorer'
+import { searchSystem } from './features/search'
+import { commitSystem } from './features/commit'
+import { pullRequestSystem } from './features/pull-request'
+import { terminalSystem } from './features/terminal'
+import { actionsSystem } from './features/actions'
+import { promptsSystem } from './features/prompts'
+import type {
+  IncomingActionsEvents, IncomingCommitEvents, IncomingExplorerEvents, IncomingPromptsEvents,
+  IncomingPullRequestEvents, IncomingSearchEvents, IncomingTerminalEvents,
+  OutgoingActionsEvents, OutgoingCommitEvents, OutgoingExplorerEvents, OutgoingPromptsEvents,
+  OutgoingPullRequestEvents, OutgoingSearchEvents, OutgoingTerminalEvents,
+} from './contract'
 
 /** One of this system's children, by the id it was spawned under */
 function child(self: AnyActorRef, id: string): AnyActorRef | undefined {
@@ -43,49 +50,12 @@ function child(self: AnyActorRef, id: string): AnyActorRef | undefined {
 }
 
 // Union all incoming events from child systems
-type IncomingCodeEvents =
-  | IncomingExplorerEvents
-  | IncomingSearchEvents
-  | IncomingCommitEvents
-  | IncomingPullRequestEvents
-  | IncomingTerminalEvents
-  | IncomingActionsEvents
-  | IncomingPromptsEvents
-  | { type: 'SET_BASE_DIRECTORY'; path: string; fromUserNavigation?: boolean }
-  /** Settings → Providers: resolve a CLI and store where it was found, in this feature's own settings */
-  | { type: 'TEST_CLI_PROVIDER'; provider: string }
-
 // Union all outgoing events from child systems  
-export type OutgoingCodeEvents =
-  | OutgoingExplorerEvents
-  | OutgoingSearchEvents
-  | OutgoingCommitEvents
-  | OutgoingPullRequestEvents
-  | OutgoingTerminalEvents
-  | OutgoingActionsEvents
-  | OutgoingPromptsEvents
-  // Broadcast events (sent to all child systems)
-  | { type: 'CODE_CONNECTED'; data: CodeConnectedData }
-  /** What testing a CLI found, for the Settings view that asked (the host declares its plugin takes it) */
-  | { type: 'CLI_TEST_RESULT'; provider: string; success: boolean; error?: string; resolvedPath?: string }
-
 // Import only the type needed for broadcast event
 import type { TerminalInfo, CodeConnectedData, CodeSettings } from './types'
 import { ref } from '@/__generated__/ref';
 
-
-export const codeSpec = defineSystem<IncomingCodeEvents, OutgoingCodeEvents, Context>();
-
-export interface Context {
-  baseDirectory: string | null
-  /**
-   * The default directory the settings named when this system last heard them. The settings arrive whenever any of
-   * the code settings change, the browsed `baseDirectory` included, so only a new default moves the explorer.
-   */
-  defaultBaseDirectory: string | null
-  gitRepository: GitRepository | null
-  gitWatcher: GitWatcherService | null
-}
+export const codeSpec = defineSystem<Contract>();
 
 /**
  * Resolves the initial base directory on system startup.
@@ -412,6 +382,6 @@ export const systemMachine = setup({
   }
 })
 
-const codeEntry = { spec: codeSpec, machine: systemMachine } satisfies SystemEntry;
+const codeEntry = { spec: codeSpec, machine: systemMachine };
 
 export default codeEntry;

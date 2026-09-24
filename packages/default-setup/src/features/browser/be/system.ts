@@ -1,26 +1,15 @@
 import { broadcastToPlugin } from '@/__generated__/events';
 import { repository } from '@/__generated__/repository';
 import { setup } from 'xstate';
-import { defineSystem, type SystemEntry } from '@abuddy/sdk/framework';
-import type { SavedTab, SavedBookmark } from './types';
+import { defineSystem } from '@abuddy/sdk/framework';
+import type { Contract } from './contract';
+import type { SavedBookmark, SavedTab } from './types';
 import { createLogger } from '@abuddy/sdk/logger';
 
 const logger = createLogger('browser');
 
-type IncomingBrowserEvents =
-  | { type: 'SYNC_TABS'; tabs: SavedTab[] }
-  | { type: 'SYNC_BOOKMARKS'; bookmarks: SavedBookmark[] };
 
-export type OutgoingBrowserEvents =
-  | { type: 'BROWSER_CONNECTED'; savedTabs: SavedTab[]; savedBookmarks: SavedBookmark[] };
-
-export interface BrowserContext {}
-
-export const browserSpec = defineSystem<
-  IncomingBrowserEvents,
-  OutgoingBrowserEvents,
-  BrowserContext
->();
+export const browserSpec = defineSystem<Contract>();
 
 export const browserSystem = setup({
   types: browserSpec.types,
@@ -67,6 +56,6 @@ export const browserSystem = setup({
   },
 });
 
-const browserEntry = { spec: browserSpec, machine: browserSystem } satisfies SystemEntry;
+const browserEntry = { spec: browserSpec, machine: browserSystem };
 
 export default browserEntry;

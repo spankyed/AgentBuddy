@@ -1,38 +1,35 @@
+> **Done** (branch `AS/plugin-contract`, commits `3d79fed34`…`682b1be90`). The text below is the plan as written; the contract leaf was later renamed `fe/contract.ts` and the system side generalised by [`goal-contracts-as-types.md`](goal-contracts-as-types.md). For the current layout, see [`docs/public-facing/features.md`](../../public-facing/features.md).
+
 > **Written in session** `a1dd708e-4765-423c-a618-93ab4b9131fb` (Claude Code, 2026-09-23). Resume it with `claude -r a1dd708e-4765-423c-a618-93ab4b9131fb`.
 
 ```
 # Goal: a plugin declares one contract — what may be read of it, and what may be sent to it
 
-Implement docs/goals/goal-plugin-contract.md, at or after 8126ae364 on AS/plugin-inbox — the base its
-Background and Spike results were taken at.
-Before Phase 1, confirm the base: packages/abuddy-sdk/src/fe/plugin.ts exports `pluginAccepts`,
-packages/abuddy-sdk/src/build/module-exports.ts exports `acceptedEventTypesOf`, and every
-packages/default-setup/src/features/*/fe/public.ts still exists. If any of that is wrong, stop and say so.
-docs/archive/goals/goal-plugin-inbox.md is the work this builds on; read its Outcome first.
-Read Background, Spike results, Decisions, Phases and Constraints. Decisions are final: implement them,
-don't reopen them or stop to ask.
-Where a detail isn't specified, pick the conventional option, note it in the final summary, and keep
-going. No backward compatibility in code: change signatures, move modules, migrate every in-repo caller,
-test, fixture, template and doc in the same change, and fix forward.
+Implement docs/goals/goal-plugin-contract.md on the current branch. Background's figures were re-verified on
+2026-09-23; the checks below are the authority, not a commit.
+Before Phase 1, confirm: packages/abuddy-sdk/src/fe/plugin.ts exports `pluginAccepts`,
+packages/abuddy-sdk/src/build/module-exports.ts exports `acceptedEventTypesOf`, and the seven
+packages/default-setup/src/features/*/fe/public.ts exist. If any is wrong, stop and say so.
+Read docs/archive/goals/goal-plugin-inbox.md's Outcome first, then this doc's Background, Spike results,
+Decisions, Phases and Constraints. Decisions are final: implement them, don't reopen or ask.
+Where a detail isn't specified, pick the conventional option, note it in the final summary, and continue.
+No backward compatibility: change signatures, move modules, migrate every in-repo caller, test, fixture,
+template and doc in one change, and fix forward.
 
 Finished when:
-- Phases 1–4 are implemented and each meets its "Done when"; every new guard, helper or test is
-  mutation-checked.
-- No `packages/default-setup/src/features/*/fe/public.ts` remains. The host's three — application, packs
-  and settings — are out of scope and stay: check-import-specifiers.ts records that arrangement as
-  deliberate.
-- Each default-setup feature frontend that needs one has an `fe/types.ts` leaf holding its context, its
-  `Contract` type and any plain data, importing nothing from `#generated/*` but `types` and `ears`, and
-  nothing from `./state`. `pluginAccepts` and `PluginAccepts` no longer exist, and nothing replaces them.
-- `#generated/events` imports the leaf, never `fe/plugin.ts` and never a module that reaches `./state`.
-- The intra-pack UI commands are gone from
-  tests/fixtures/external-pack/src/__generated__/deps/default-setup.d.ts: no `accepts` block there names
-  UPDATE_STATE, terminal.CREATE, NOTE.OPEN, TAB.CREATE, NODE.DOUBLE_CLICK, EDIT_DOCUMENT or FLOW.SELECT,
-  and `navigateToPlugin` still compiles at every in-repo caller.
-- An external pack reads a dependency's plugin state with types, proved in tests/fixtures/external-pack, and
-  that read is typed `T | undefined` because the dependency's frontend may still be loading.
-- `usePluginState` and `readPluginState` name only the generated readers; the SDK's untyped pair is
-  `useUntypedPluginState`/`readUntypedPluginState`, and `abuddy.json` names each contract at
+- Phases 1–4 each meet their "Done when"; every new guard, helper or test is mutation-checked.
+- No packages/default-setup/src/features/*/fe/public.ts remains. The host's three (application, packs,
+  settings) stay: check-import-specifiers.ts records that as deliberate.
+- Each default-setup feature that needs one has an `fe/types.ts` leaf holding its context, its `Contract`
+  and any plain data, importing nothing from `#generated/*` but `types` and `ears`, nothing from `./state`. `pluginAccepts`/`PluginAccepts` are gone, with nothing in their place.
+- `#generated/events` imports the leaf, never `fe/plugin.ts` nor a module reaching `./state`.
+- In tests/fixtures/external-pack/src/__generated__/deps/default-setup.d.ts no `accepts` block names
+  UPDATE_STATE, terminal.CREATE, NOTE.OPEN, TAB.CREATE, NODE.DOUBLE_CLICK, EDIT_DOCUMENT or FLOW.SELECT;
+  `navigateToPlugin` still compiles at every in-repo caller.
+- An external pack reads a dependency's plugin state with types (proved in tests/fixtures/external-pack),
+  typed `T | undefined` — that frontend may still be loading.
+- `usePluginState`/`readPluginState` name only the generated readers; the SDK's untyped pair is
+  `useUntypedPluginState`/`readUntypedPluginState`; `abuddy.json` names each contract at
   `features[].plugin.contract`.
 - `findCrossFeatureImports` no longer excepts `fe/public`: no feature imports another feature's `fe/`.
 - npm run typecheck, schema:check, api:check (sdk, ui), facade:check -w @app/default-setup,
@@ -40,27 +37,22 @@ Finished when:
 - npm run test:unit, compile, build, npm test (E2E), test:external-pack; npm start boots clean.
 - A final summary: phase → done/deferred, evidence, and the conventional choices made.
 
-Commit as you go:
-- Commit each phase when its "Done when" holds and the checks are green. Conventional message, no
-  Co-Authored-By or session lines, `git commit -- <paths>` naming only that phase's files. Check
-  `git diff --cached` first.
-- Don't push, tag, or open a PR unless the user asks.
+Commit each phase once its "Done when" holds and checks are green: conventional message, no Co-Authored-By
+or session lines, `git commit -- <paths>` for that phase's files only, `git diff --cached` checked first.
 
 Never:
-- push, tag or open a PR unless the user asks in this session.
-- npm publish, create GitHub releases, or trigger workflows (dry runs only).
+- push, tag, open a PR, npm publish, create releases or trigger workflows (dry runs only) unless asked.
 - open, copy or modify ~/Library/Application Support/abuddy* or any real data dir.
 - pkill/killall Electron or node; launch the app outside the test env without an isolated
   ABUDDY_USER_DATA_DIR.
 - run bare tsc on packages/preload, `npm install` in the example pack, or edit version/release metadata.
 - change the typed EARS types' behaviour (packages/abuddy-sdk/TYPED-EARS.md) to make a call site compile.
 - add backward-compat shims or loosen a failing assertion instead of investigating.
-- give the contract a runtime value (a `pluginContract()`-style call carrying phantoms), or read it from
-  `fe/plugin.ts` — the first is ceremony a type alias makes unnecessary, the second restores the cycle
-  (Spike results).
-- split `defineSystem`'s audiences, add a `from` to `Message`, or add an FE runtime validation map — all
-  Deferred, with triggers. Of the self-imposed constraints, 2, 5 and 6 are in scope, and 3 only for the
-  plugin contract (Decision 2); 1, 4 and 7 are not.
+- give the contract a runtime value (a `pluginContract()`-style call) or read it from `fe/plugin.ts`: the
+  first is needless ceremony, the second restores the cycle (Spike results).
+- split `defineSystem`'s audiences, add a `from` to `Message`, or add an FE runtime validation map: all
+  Deferred, with triggers. Of the self-imposed constraints 2, 5 and 6 are in scope, 3 only for the plugin
+  contract (Decision 2); 1, 4 and 7 are not.
 ```
 
 ## Background (2026-09-23, at 8126ae364 on AS/plugin-inbox)
@@ -270,12 +262,19 @@ Final.
 
    **The SDK's untyped pair is renamed: `useUntypedPluginState` and `readUntypedPluginState`**, staying
    public in `@abuddy/sdk/fe`. The plain name goes to the generated reader, because the plain name belongs on
-   the path people should take — the convention this repo already follows twice:
+   the path people should take — the convention this repo already follows three times:
 
    | typed, `#generated/*` | untyped, `@abuddy/sdk` |
    |---|---|
    | `qx` | `untypedQx` |
+   | `tx` | `untypedTx` |
    | `navigateToPlugin` | `openPlugin` |
+
+   `tx`/`untypedTx` is the most recent and was applied for this reason: the untyped write had been exported
+   under the same name as the typed one, so `import { tx, untypedQx } from '@abuddy/ears'` read as a matched
+   pair when only one half was qualified. The one exception is instructive — the Database console keeps `tx`
+   as its REPL global (`database-console/index.ts`, `defs/database.ts`), because that name is a different,
+   user-facing API and the two lists must agree.
 
    `untypedQx` is the closer analogue: what changes is only what the compiler knows, since a dependency's
    `PluginName` *is* its ref string. So the qualifier goes on the reader that gives the types up, and the two
@@ -367,14 +366,23 @@ After Phases 1 and 2.
   re-exports `NOTE_TYPE_TO_REFERENCE_TYPE` across that boundary and needs a home — the tiptap extension, or
   `#generated/references`, which already aggregates reference config.
 
-**Done when:** the full chain passes; no `fe/public.ts` remains; `git grep -w usePluginState` finds it only in `#generated/fe`
-and its generator, and `git grep -w useUntypedPluginState` only in `@abuddy/sdk/fe` and its specs; a fixture-pack spec reads a default-setup plugin's state with types, and
+**Done when:** the full chain passes; no `fe/public.ts` remains; `git grep -w usePluginState` finds it only in
+`#generated/fe` and its generator, and `git grep -w useUntypedPluginState` only in `@abuddy/sdk/fe` and its
+specs. **Grep the four forms a static-import sweep misses**, all four of which bit the `tx`/`untypedTx` rename
+that landed this convention: a multi-line `import {` block, a module that *re-exports* the name (its consumers
+then import it from there, not from the SDK), `await import('@abuddy/sdk/fe')` destructuring, and the name
+inside a string or a test label. The third is the one to take seriously — **`npm run typecheck` did not catch
+a dynamic-import case**, and ten api specs failed at runtime instead. a fixture-pack spec reads a default-setup plugin's state with types, and
 a `@ts-expect-error` pins that the dependency read is `T | undefined`. Mutation: re-adding `fe/public` to the exception and importing one cross-feature
 makes `check:specifiers` pass again, proving the rule is what rejects it.
 
 ### Phase 4 — The shell owns the send paths
 
-- `SEND_TO_PLUGIN` on `HostShell`, answered by the same `pendingOpens` path as `OPEN_PLUGIN` (Decision 6).
+- `SEND_TO_PLUGIN` on `HostShell`, answered by the `pendingOpens` path `OPEN_PLUGIN` already uses
+  (Decision 6). **Reuse it rather than building a second queue**: `pendingOpens` is already
+  `Array<{ plugin: string; events: PluginEvent[] }>` (`application/fe/types.ts:80`) and already delivers on
+  arrival and refuses through `notify.error` once loading settles (`machine.ts:252-262`). What it lacks is a
+  way in that doesn't also select the plugin — a send must not steal focus, which `OPEN_PLUGIN` does.
 - The scope spec the archived goal left open lands here rather than in a phase of its own: it pins the same
   send paths this phase re-owns.
 - The read half: a `pluginActor` sibling returning `undefined`, and the `hasDesignation` pre-checks deleted
@@ -387,6 +395,47 @@ an absent plugin returns `undefined` instead of throwing; and the scope spec the
 passes — `broadcastToPlugin` reaches **every** window, the renderer's `sendToPlugin` only its own (two windows
 in one E2E, or the shell fakes), the half that produced `OPEN_PLUGIN_FROM_APP`. Mutation: dropping the queue
 fails the first spec; routing the renderer send through the bus fails the scope spec.
+
+## Outcome (2026-09-23)
+
+Landed on `AS/plugin-contract`. All four phases are implemented; the plan's shape held, with one correction
+recorded below. Phases 1–4 went in as `3d79fed34`, with `5a3442700` fixing a review finding in the read channel.
+
+### Per phase
+| Phase | Status | Evidence |
+|---|---|---|
+| 1 — The leaf and the contract | done | `fe/contract.ts` per feature, named at `features[].plugin.contract`; `findContractLeafImports` (`scripts/check-import-specifiers.ts`) walks the closure. Mutation: importing `./state` from a leaf is reported |
+| 2 — The `pack` audience | done | `PluginInbox`/`PluginInboxAudiences` (`abuddy-sdk/src/fe/plugin.ts`); `INBOX_AUDIENCES` in `module-exports.ts` rejects an audience that isn't one; `PackPluginEvents` carries only the `public` half |
+| 3 — The read channel | done | `usePluginState`/`readPluginState` generated per pack from each contract; `useUntypedPluginState`/`readUntypedPluginState`/`pluginIsRunning` are the untyped escape hatch (`abuddy-sdk/src/fe/plugin-state.ts`, `tests/fe/plugin-state.spec.ts`) |
+| 4 — The shell owns the send paths | done | `openPlugin` (`fe/navigation.ts`), `navigateToPlugin` from `#generated/fe`; `fe/public.ts` is gone from pack features, kept only by the host (`HOST_SRC_ROOT`) |
+
+### Corrections to the Decisions
+- **The contract had to be a declared type in a leaf, not a typed `definePlugin<E>({…})` call.** Typing the call
+  makes TypeScript check its argument, which pulls in the machine, which imports `#generated/events`, which
+  imports the contract. The leaf module is what breaks that cycle, and it is why `features[].plugin.contract`
+  names a `path#Export` rather than the plugin entry.
+- **`usePluginState` kept its name; the SDK's untyped pair was renamed.** The plan left the collision open. The
+  generated readers are what pack code should reach for, so they keep the plain name and the SDK's became
+  `useUntypedPluginState`/`readUntypedPluginState`, matching `untypedQx`/`untypedTx` in `@abuddy/ears`.
+
+### Open items
+Neither `Deferred` item is still open; both were settled after this was archived.
+
+- **Item 1, `defineSystem`'s audiences**, is done: [`goal-contracts-as-types.md`](goal-contracts-as-types.md)
+  made the contract a declared type with `internal` as a field, which is the work it named.
+- **Item 2, the sender on the envelope**, is half done and half declined. `Message.from` shipped — the sends
+  `#generated/events` builds stamp the pack that sent it, and the four diagnostics that report an undeliverable
+  message name it — while nothing routes or refuses on it. The enforcement the item asked for (audience-split
+  `receives`, the bus refusing a cross-pack send of a `pack`-tier event) is recorded as won't-do in
+  [`goal-sender-enforced-audiences.md`](../../goals/wont-do/goal-sender-enforced-audiences.md), with its reopen
+  triggers. That item's own reason for deferring was wrong too; the dated note beside it says why.
+
+An earlier version of this section named a third open item, `pluginAccepts` "for a plugin with no system of its
+own". There is no such item: `pluginAccepts` is the API this goal deleted, and nothing replaced it.
+
+### Final verification
+`npm run typecheck`, `compile`, `test:unit`, `api:check`, `build`, `test:external-pack`, E2E and
+`test:packaged-authoring` all pass on the branch.
 
 ## Deferred
 
@@ -406,6 +455,12 @@ fails the first spec; routing the renderer send through the bus fails the scope 
    and not the other is worse than one enforced on neither. Types cover every in-repo case meanwhile.
    **Reopen when** a pack ships compiled against a facade older than the plugin it sends to, or when the
    renderer send acquires a sender to stamp.
+
+   > **Settled 2026-09-24, and this paragraph's reason was wrong.** The renderer's send does have a sender
+   > in scope: `defineEvents(packId)` builds all three sends and closes over the pack id. The envelope half
+   > shipped on that basis — `Message.from`, stamped by the generated sends and named in the bus and client
+   > diagnostics. The enforcement half is won't-do, for reasons that survive the correction:
+   > [`goal-sender-enforced-audiences.md`](../../goals/wont-do/goal-sender-enforced-audiences.md).
 
 ## Constraints
 

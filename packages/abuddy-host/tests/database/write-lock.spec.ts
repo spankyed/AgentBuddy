@@ -6,7 +6,8 @@ import { spawn, spawnSync } from 'node:child_process';
 import { createRequire } from 'node:module';
 import { pathToFileURL } from 'node:url';
 import { afterEach, describe, expect, it } from 'vitest';
-import { assertNoDatabaseWriter, findDatabaseWriter, holdDatabaseWriteLock, INTERRUPTS } from '../../src/database/write-lock.ts';
+import { assertNoDatabaseWriter, findDatabaseWriter, holdDatabaseWriteLock } from '../../src/database/write-lock.ts';
+import { INTERRUPTS } from '../../src/exclusive-lock.ts';
 
 /**
  * The interrupts this platform can actually send. `SIGBREAK` is Windows' Ctrl-Break: the lock listens for

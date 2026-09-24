@@ -98,10 +98,9 @@ import ChatArea from '@/views/layout/ChatArea.vue'
 import InspectionPanel from '@/views/layout/InspectionPanel.vue'
 import PanelResizer from '@abuddy/ui/layout/panel-resizer'
 import { applicationState } from '@/main'
-import { visiblePluginsOf } from '@abuddy/host/fe'
-import { openPlugin, PluginScope } from '@abuddy/sdk/fe'
+import { HOST, visiblePluginsOf } from '@abuddy/host/fe'
+import { untypedOpenPlugin, PluginScope } from '@abuddy/sdk/fe'
 import Router from '@/views/layout/PluginRouter.vue'
-import { getDesignated, hasDesignation } from '@abuddy/sdk/fe'
 import type { ContextMenuItem } from '@abuddy/sdk/fe'
 import ToastNotification from '@abuddy/ui/design/ToastNotification'
 import { registerGlobalToast } from '@/adapters/toast'
@@ -198,9 +197,7 @@ const handleMenuAction = (event: { type: string; [key: string]: any }) => {
   }
 
   if (event.type === 'APP_OPEN_PLUGIN_SETTINGS') {
-    // The settings live with whichever plugin plays the role, if any does
-    if (!hasDesignation('settings')) return
-    openPlugin(getDesignated('settings'), [
+    untypedOpenPlugin(HOST.settings, [
       { type: 'TAB.SELECT', tab: 'plugins' },
       { type: 'PLUGIN.SELECT', pluginId: event.pluginId }
     ])

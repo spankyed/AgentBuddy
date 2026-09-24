@@ -4,7 +4,8 @@ import * as os from 'node:os';
 import * as path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import {
-  findAppImportsInPackTests, findCrossCheckoutResolution, findCrossFeatureImports, findHostImports, findJsSpecifiers, findMissingSourceConditions, findPackBackendConsole, findRawPackHelpers,
+  CHECKS,
+  findAppImportsInPackTests, findContractLeafImports, findCrossCheckoutResolution, findCrossFeatureImports, findHostImports, findJsSpecifiers, findMissingSourceConditions, findPackBackendConsole, findRawPackHelpers,
   findRawTransport, findInternalPackageImports, findLmdbImports, findRepositoryCasts, findSharedPackageLists, findUpwardImports, LAYERS, LMDB_RULES, packageSourceDirs,
   DECLARES_SOURCE_BY_DESIGN, RESOLVES_DIST_BY_DESIGN, SHARED_LIST_CONSUMERS, sourceConditionPackages, SOURCE_CONDITION,
 } from '../../../../scripts/check-import-specifiers.ts';
@@ -97,12 +98,12 @@ function writeTemplateSource(content: string): string {
 
 /** Code none of the pack rules flag: comments, string text and the allowed imports */
 const ALLOWED = [
-  "// import { broadcastToPlugin } from '@abuddy/sdk/events'; _rootEvents; trpc.bus; console.log('x')",
+  "// import { untypedBroadcastToPlugin } from '@abuddy/sdk/events'; _rootEvents; trpc.bus; console.log('x')",
   "/* import * as events from '@abuddy/sdk/events'; console.log('x') */",
   "const url = 'https://console.anthropic.com/settings/keys';",
   "const prompt = `_rootEvents.emitOutgoing(event); console.log(ev.type)`;",
-  "import { broadcastToPlugin, sendToSystem } from '#generated/events';",
-  "import { broadcastToPlugin } from '@/__generated__/events';",
+  "import { untypedBroadcastToPlugin, untypedSendToSystem } from '#generated/events';",
+  "import { untypedBroadcastToPlugin } from '@/__generated__/events';",
   "import { onConnected, onIncoming } from '@abuddy/sdk/events';",
   "import { emit as emitEvent } from 'xstate';",
   "import * as ears from '@abuddy/ears';",
@@ -145,12 +146,12 @@ describe('findInternalPackageImports', () => {
 
 describe('findRawPackHelpers', () => {
   it.each([
-    ["import { broadcastToPlugin as toPlugin } from '@abuddy/sdk/events';", 'broadcastToPlugin from @abuddy/sdk/events'],
-    ["import onConnected, { sendToSystem } from '@abuddy/sdk/events';", 'sendToSystem from @abuddy/sdk/events'],
-    ["import { broadcastToPlugin, services } from '@abuddy/sdk/services';", 'broadcastToPlugin from @abuddy/sdk/services'],
+    ["import { untypedBroadcastToPlugin as toPlugin } from '@abuddy/sdk/events';", 'untypedBroadcastToPlugin from @abuddy/sdk/events'],
+    ["import onConnected, { untypedSendToSystem } from '@abuddy/sdk/events';", 'untypedSendToSystem from @abuddy/sdk/events'],
+    ["import { untypedBroadcastToPlugin, services } from '@abuddy/sdk/services';", 'untypedBroadcastToPlugin from @abuddy/sdk/services'],
     ["import { registerRepository, untypedTx } from '@abuddy/ears';", 'registerRepository from @abuddy/ears'],
     ["import { unregisterRepository } from '@abuddy/ears';", 'unregisterRepository from @abuddy/ears'],
-    ["export type { broadcastToPlugin } from '@abuddy/sdk/events';", 'broadcastToPlugin from @abuddy/sdk/events'],
+    ["export type { untypedBroadcastToPlugin } from '@abuddy/sdk/events';", 'untypedBroadcastToPlugin from @abuddy/sdk/events'],
     ["import * as events from '@abuddy/sdk/events';", '* from @abuddy/sdk/events (import the names)'],
     ["export * from '@abuddy/sdk/events';", '* from @abuddy/sdk/events (import the names)'],
   ])('flags %s', (code, problem) => {
@@ -165,13 +166,13 @@ describe('findRawPackHelpers', () => {
   });
 
   it('checks .vue script blocks with their line numbers', () => {
-    write('pack/Widget.vue', "<template><pre>import { broadcastToPlugin } from '@abuddy/sdk/events'</pre></template>\n<script setup lang=\"ts\">\n\nimport { broadcastToPlugin } from '@abuddy/sdk/events';\n</script>\n");
-    expect(findRawPackHelpers(['src/pack'], root)).toEqual(['src/pack/Widget.vue:4: broadcastToPlugin from @abuddy/sdk/events']);
+    write('pack/Widget.vue', "<template><pre>import { untypedBroadcastToPlugin } from '@abuddy/sdk/events'</pre></template>\n<script setup lang=\"ts\">\n\nimport { untypedBroadcastToPlugin } from '@abuddy/sdk/events';\n</script>\n");
+    expect(findRawPackHelpers(['src/pack'], root)).toEqual(['src/pack/Widget.vue:4: untypedBroadcastToPlugin from @abuddy/sdk/events']);
   });
 
   it("checks the pack code in the CLI's templates, with its line", () => {
-    const dir = writeTemplateSource("const name = 'x';\nexport const SYSTEM = `// ${name}\nconst label = \\`${name}\\`;\nimport { ${name}, broadcastToPlugin } from '@abuddy/sdk/events';\n`;\n");
-    expect(findRawPackHelpers([dir], root)).toEqual([`${dir}/feature.ts:4: broadcastToPlugin from @abuddy/sdk/events`]);
+    const dir = writeTemplateSource("const name = 'x';\nexport const SYSTEM = `// ${name}\nconst label = \\`${name}\\`;\nimport { ${name}, untypedBroadcastToPlugin } from '@abuddy/sdk/events';\n`;\n");
+    expect(findRawPackHelpers([dir], root)).toEqual([`${dir}/feature.ts:4: untypedBroadcastToPlugin from @abuddy/sdk/events`]);
   });
 });
 
@@ -426,6 +427,152 @@ describe('findSharedPackageLists', () => {
   });
 });
 
+/**
+ * Every rule in `CHECKS` is a gate that fails the build, so every one needs a case that proves it bites. Fourteen
+ * of the fifteen had one and the fifteenth didn't, which nothing noticed: the convention was held up by whoever
+ * remembered it. This is the same shape as `step-build-barrel.spec.ts` — a table and its uses, kept in step by a
+ * test rather than by attention.
+ */
+/**
+ * A contract leaf is what codegen reads a feature's events and state from, as a declared type, without resolving
+ * the actor they describe. `#generated/events` imports both contracts and both actors import `#generated/events`,
+ * so a leaf that can reach its actor closes that cycle — which is why the rule is a closure walk and not a check
+ * of the leaf's own imports.
+ *
+ * The fixture is a pack, `abuddy.json` included: that file is what makes a tree a pack, and a fixture without one
+ * isn't testing the thing the rule runs on.
+ */
+describe('findContractLeafImports', () => {
+  const src = 'pack/src';
+  /** A pack whose `notes` feature names both contracts, as a real manifest does */
+  function pack(files: Record<string, string>): void {
+    writeAt('pack/abuddy.json', JSON.stringify({
+      id: 'demo-pack', name: 'Demo', version: '1.0.0',
+      features: [{
+        id: 'notes',
+        system: { entry: 'src/features/notes/be/system.ts', contract: 'src/features/notes/be/contract.ts#Contract' },
+        plugin: { entry: 'src/features/notes/fe/plugin.ts', contract: 'src/features/notes/fe/contract.ts#Contract' },
+      }],
+    }));
+    for (const [file, content] of Object.entries(files)) writeAt(`${src}/${file}`, content);
+  }
+
+  it('allows a leaf that names only its own types and the generated leaves', () => {
+    pack({
+      'features/notes/fe/contract.ts': [
+        "import type { NoteDTO } from '../be/types';",
+        "import type { EARS } from '@/__generated__/ears';",
+        "import type { X } from '@/__generated__/types';",
+      ].join('\n'),
+      'features/notes/be/contract.ts': "import type { Incoming } from './types';",
+      'features/notes/be/types.ts': 'export type Incoming = { type: "A" };',
+    });
+    expect(findContractLeafImports([src], root)).toEqual([]);
+  });
+
+  /**
+   * The plugin and system definitions, which the manifest names outright. The machine rule beside this one is a
+   * guess at a filename — no manifest field names the machine, since `Plugin.state` is a value — so `./plugin`
+   * matched nothing before this, and a leaf importing it was reported only as whatever its closure reached.
+   */
+  it("flags a leaf that imports an entry abuddy.json names, whatever the file is called", () => {
+    pack({
+      'features/notes/fe/contract.ts': "import type { P } from './plugin';",
+      'features/notes/be/contract.ts': 'export type Contract = { outgoing: { type: "A" } };',
+      'features/notes/fe/plugin.ts': 'export type P = { id: string };',
+    });
+    expect(findContractLeafImports([src], root)).toEqual([`${src}/features/notes/fe/contract.ts:1: ./plugin`]);
+  });
+
+  // It is the entry's path that matters, not its name: a pack whose machine is `machine.ts` is caught the same way
+  it('flags an entry the manifest names under an unconventional filename', () => {
+    writeAt('pack/abuddy.json', JSON.stringify({
+      id: 'demo-pack', name: 'Demo', version: '1.0.0',
+      features: [{
+        id: 'notes',
+        plugin: { entry: 'src/features/notes/fe/machine.ts', contract: 'src/features/notes/fe/contract.ts#Contract' },
+      }],
+    }));
+    writeAt(`${src}/features/notes/fe/contract.ts`, "import type { M } from './machine';");
+    writeAt(`${src}/features/notes/fe/machine.ts`, 'export type M = { id: string };');
+    expect(findContractLeafImports([src], root)).toEqual([`${src}/features/notes/fe/contract.ts:1: ./machine`]);
+  });
+
+  // Each side's machine: a plugin's is fe/state, a system's is be/system, and both import #generated/events.
+  // The rule resolves what it reads, so the machines have to exist for the import to be one.
+  it("flags a leaf that reaches its own feature's machine", () => {
+    pack({
+      'features/notes/fe/contract.ts': "import type { Ctx } from './state';",
+      'features/notes/fe/state.ts': "import { sendToPlugin } from '@/__generated__/events';",
+      'features/notes/be/contract.ts': "import type { Ev } from './system';",
+      'features/notes/be/system.ts': "import { untypedBroadcastToPlugin } from '@/__generated__/events';",
+    });
+    expect(findContractLeafImports([src], root).sort()).toEqual([
+      `${src}/features/notes/be/contract.ts:1: ./system`,
+      `${src}/features/notes/fe/contract.ts:1: ./state`,
+    ]);
+  });
+
+  it('flags a leaf that names another feature', () => {
+    pack({
+      'features/notes/fe/contract.ts': "import type { T } from '@/features/threads/be/types';",
+      'features/threads/be/types.ts': 'export type T = { id: string };',
+      'features/notes/be/contract.ts': 'export type Contract = { outgoing: { type: "A" } };',
+    });
+    expect(findContractLeafImports([src], root)).toEqual([`${src}/features/notes/fe/contract.ts:1: @/features/threads/be/types`]);
+  });
+
+  it('flags a generated module that is not a leaf itself', () => {
+    pack({
+      'features/notes/fe/contract.ts': "import type { P } from '@/__generated__/fe';",
+      'features/notes/be/contract.ts': "import { untypedBroadcastToPlugin } from '@/__generated__/events';",
+    });
+    expect(findContractLeafImports([src], root).sort()).toEqual([
+      `${src}/features/notes/be/contract.ts:1: @/__generated__/events`,
+      `${src}/features/notes/fe/contract.ts:1: @/__generated__/fe`,
+    ]);
+  });
+
+  /**
+   * The rule that matters, and the one a check of the leaf's own imports would miss: the cycle returns just as
+   * surely through two hops. This is the shape that was live in default-setup's code feature — its contract
+   * imported its child modules, and those import `#generated/events` for `untypedBroadcastToPlugin`.
+   */
+  it('flags #generated/events reached through the closure, naming the leaf it came from', () => {
+    pack({
+      'features/notes/be/contract.ts': "import type { Ev } from './children/list';",
+      'features/notes/be/children/list.ts': "import { untypedBroadcastToPlugin } from '@/__generated__/events';",
+      'features/notes/fe/contract.ts': 'export type Contract = { state: {} };',
+    });
+    expect(findContractLeafImports([src], root)).toEqual([
+      `${src}/features/notes/be/children/list.ts:1: @/__generated__/events (reached from ${src}/features/notes/be/contract.ts)`,
+    ]);
+  });
+
+  // Deeper in the closure only the cycle matters: a module the leaf reaches may use the rest of the generated code
+  it('allows a generated module other than events and fe deeper in the closure', () => {
+    pack({
+      'features/notes/be/contract.ts': "import type { Ev } from './children/list';",
+      'features/notes/be/children/list.ts': "import { repository } from '@/__generated__/repository';",
+      'features/notes/fe/contract.ts': 'export type Contract = { state: {} };',
+    });
+    expect(findContractLeafImports([src], root)).toEqual([]);
+  });
+
+  it('checks nothing in a tree with no manifest, there being no contract to find', () => {
+    writeAt(`${src}/features/notes/fe/contract.ts`, "import type { Ctx } from './state';");
+    expect(findContractLeafImports([src], root)).toEqual([]);
+  });
+});
+
+describe('the checks this script runs', () => {
+  it('has a case for every rule in CHECKS', () => {
+    const spec = fs.readFileSync(import.meta.filename, 'utf-8');
+    const covered = new Set([...spec.matchAll(/describe\('(find\w+)'/g)].map((m) => m[1]));
+    expect(CHECKS.map(([find]) => find.name).filter((name) => !covered.has(name))).toEqual([]);
+  });
+});
+
 describe('findCrossFeatureImports', () => {
   const src = 'pack/src';
 
@@ -438,33 +585,67 @@ describe('findCrossFeatureImports', () => {
     ]);
   });
 
-  it("allows a feature's own frontend, another's public module, backend and shared modules, and generated code", () => {
+  it("allows a feature's own frontend, another's backend and shared modules, and generated code", () => {
     writeAt(`${src}/features/code/fe/panel.ts`, [
       "import { codeChild } from '@/features/code/fe/utils/parent-communication';",
-      "import { useActionsList } from '@/features/actions/fe/public';",
+      "import { usePluginState } from '@/__generated__/fe';",
       "import { pluginSettings } from '@/features/settings/plugin-settings';",
       "import type { ActionEntity } from '@/features/actions/be/types';",
     ].join('\n'));
     writeAt(`${src}/features/code/fe/features/list.ts`, "import state from '../state';");
     writeAt(`${src}/__generated__/pack-entry-fe.ts`, "import plugin from '../features/notes/fe/plugin.js';");
-    // `public` as a folder, by the folder or its index
-    writeAt(`${src}/features/threads/fe/chat.ts`, "import { a } from '@/features/actions/fe/public';\nimport { b } from '@/features/notes/fe/public/index';");
     // A feature's own modules outside fe/ may use its frontend, exporting what they make of it
     writeAt(`${src}/features/code/settings.ts`, "import { id } from './fe/state';\nconst label = `${id}!`;\nexport { label };");
     expect(findCrossFeatureImports([src], root)).toEqual([]);
   });
 
-  it("flags another feature's fe folder itself, and a feature passing its frontend on from outside fe/", () => {
-    writeAt(`${src}/features/code/fe/panel.ts`, "import notes from '@/features/notes/fe';");
+  // `fe/public.ts` used to be excepted — a module per feature for exactly this crossing, in packs and then, for a
+  // while longer, in the host. Nothing is excepted by name now, so another feature's frontend is out of bounds
+  // whatever the module is called.
+  it("flags another feature's frontend, its old public module included, and a feature passing its frontend on", () => {
+    writeAt(`${src}/features/code/fe/panel.ts`, "import notes from '@/features/notes/fe';\nimport { useNotes } from '@/features/notes/fe/public';");
     writeAt(`${src}/features/notes/index.ts`, "export { id, notesMachine } from './fe/state';\nexport * from './fe/public';");
     // In two steps: imported, then exported
     writeAt(`${src}/features/threads/door.ts`, "import { threadsMachine as machine } from './fe/state';\nimport * as ui from './fe/canvas';\nexport { machine };\nexport default ui;");
     expect(findCrossFeatureImports([src], root)).toEqual([
       `${src}/features/code/fe/panel.ts:1: @/features/notes/fe`,
+      `${src}/features/code/fe/panel.ts:2: @/features/notes/fe/public`,
       `${src}/features/notes/index.ts:1: ./fe/state`,
+      `${src}/features/notes/index.ts:2: ./fe/public`,
       `${src}/features/threads/door.ts:1: ./fe/state`,
       `${src}/features/threads/door.ts:2: ./fe/canvas`,
     ]);
+  });
+  /**
+   * The one module that may name its features' frontends is what the package publishes — `@abuddy/host`'s `./fe`
+   * barrel, the hand-written counterpart of a pack's generated `pack-entry-fe.ts`. It is read from the package's
+   * `exports`, so nothing has to be listed here, and a module that merely sits outside every feature gets no
+   * licence from that: `extensions/viewer.ts` in the first case above is flagged exactly as a feature would be.
+   */
+  it("excepts the entry a package publishes, and nothing else outside a feature", () => {
+    writeAt('pack/package.json', JSON.stringify({ exports: { './fe': './src/fe/index.ts' } }));
+    writeAt(`${src}/fe/index.ts`, "export { notesMachine } from '../features/notes/fe/state';");
+    writeAt(`${src}/fe/helpers.ts`, "export { notesMachine } from '../features/notes/fe/state';");
+    expect(findCrossFeatureImports([src], root)).toEqual([`${src}/fe/helpers.ts:1: ../features/notes/fe/state`]);
+  });
+
+  /**
+   * Published *and* outside every feature. A package may publish one feature's own module — `@abuddy/host`
+   * publishes `./settings` from `features/settings/be/index.ts` — and a feature's barrel is not the package's
+   * assembly. Excepting it by visibility alone handed that one feature a licence to read another's frontend that
+   * no other feature had, silently, which is the hole this whole rule exists to close.
+   */
+  it('gives a published module inside a feature no licence, since it assembles nothing', () => {
+    writeAt('pack/package.json', JSON.stringify({ exports: { './notes': './src/features/notes/be/index.ts' } }));
+    writeAt(`${src}/features/notes/be/index.ts`, "export { codeMachine } from '../../code/fe/state';");
+    expect(findCrossFeatureImports([src], root)).toEqual([`${src}/features/notes/be/index.ts:1: ../../code/fe/state`]);
+  });
+
+  // Fails closed: with no `exports` to read, every module gets the strict rule — the opposite of an exception
+  // derived from a file being missing, which would widen the gate exactly when something had gone.
+  it('excepts nothing when the package publishes nothing', () => {
+    writeAt(`${src}/fe/index.ts`, "export { notesMachine } from '../features/notes/fe/state';");
+    expect(findCrossFeatureImports([src], root)).toEqual([`${src}/fe/index.ts:1: ../features/notes/fe/state`]);
   });
 });
 

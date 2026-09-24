@@ -364,7 +364,7 @@ import { id } from './state';
 import type { LogsState, LogEntry } from './state';
 import { useSelector } from '@xstate/vue';
 import DataRenderer from '@abuddy/ui/components/DataRenderer';
-import { openPlugin } from '@abuddy/sdk/fe'
+import { untypedOpenPlugin } from '@abuddy/sdk/fe'
 import { resolveName } from '@abuddy/sdk/ids'
 
 const HOST_SETTINGS = resolveName('settings', 'host')
@@ -506,7 +506,7 @@ const copyLogs = async () => {
 };
 
 const goToExcludedSourcesSettings = () => {
-  openPlugin(HOST_SETTINGS, [
+  untypedOpenPlugin(HOST_SETTINGS, [
     { type: 'TAB.SELECT', tab: 'plugins' },
     { type: 'PLUGIN.SELECT', pluginId: featureRef('logs') }
   ]);

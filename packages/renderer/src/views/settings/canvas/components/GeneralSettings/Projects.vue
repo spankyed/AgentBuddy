@@ -140,20 +140,7 @@ const emit = defineEmits<{
   }]
 }>()
 
-// Migration: handle both old wrapper format and new flat format
-const migrateData = (settings: any): Project[] => {
-  // New format: settings is directly an array of Project
-  if (Array.isArray(settings)) {
-    return settings
-  }
-  // Old format: settings is a wrapper with .projects array
-  if (Array.isArray(settings?.projects)) {
-    return settings.projects
-  }
-  return []
-}
-
-const projects = ref<Project[]>(migrateData(props.settings))
+const projects = ref<Project[]>(props.settings ?? [])
 
 // Reorder
 const reorderGroup = Symbol('settings-projects')
@@ -170,7 +157,7 @@ watch(() => props.settings, (val) => {
     droppingItem = false
     return
   }
-  projects.value = migrateData(val)
+  projects.value = val ?? []
 }, { deep: true })
 
 function reorderProject(moving: MovingItem<Project>) {

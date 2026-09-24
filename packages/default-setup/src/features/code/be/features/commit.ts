@@ -1,3 +1,4 @@
+import type { IncomingCommitEvents, OutgoingCommitEvents } from '../contract'
 import type { ThreadsSettings } from '@/__generated__/types';
 import { services } from '@/__generated__/services';
 import { broadcastToPlugin, sendToSystem } from '@/__generated__/events';
@@ -13,64 +14,8 @@ import { ref } from '@/__generated__/ref';
 const pluginId = 'code' as const
 
 // Incoming events from frontend
-export type IncomingCommitEvents =
-  | { type: 'commit.GET_GIT_STATUS' }
-  | { type: 'commit.GET_GIT_DIFF'; path?: string; staged?: boolean }
-  | { type: 'commit.STAGE_FILES'; paths: string[] }
-  | { type: 'commit.UNSTAGE_FILES'; paths: string[] }
-  | { type: 'commit.COMMIT'; message: string }
-  | { type: 'commit.GET_CURRENT_BRANCH' }
-  | { type: 'commit.REVERT_FILE'; path: string }
-  | { type: 'commit.REVERT_FILES'; paths: string[] }
-  | { type: 'commit.GET_ALL_BRANCHES' }
-  | { type: 'commit.CHECKOUT_BRANCH'; branchName: string }
-  | { type: 'commit.PUBLISH_BRANCH' }
-  | { type: 'commit.PULL_BRANCH' }
-  | { type: 'commit.GENERATE_MESSAGE' }
-  | { type: 'commit.STASH_PUSH'; message?: string; stagedOnly?: boolean }
-  | { type: 'commit.STASH_LIST' }
-  | { type: 'commit.STASH_APPLY'; index: number }
-  | { type: 'commit.STASH_POP'; index: number }
-  | { type: 'commit.STASH_DROP'; index: number }
-  | { type: 'commit.STASH_CLEAR' }
-  | { type: 'commit.WORKTREE_LIST' }
-  | { type: 'commit.WORKTREE_ADD'; path: string; branch?: string; createBranch?: boolean }
-  | { type: 'commit.WORKTREE_REMOVE'; path: string; force?: boolean }
-  | { type: 'commit.WORKTREE_SWITCH'; path: string }
-  | { type: 'commit.RESOLVE_CONFLICT'; path: string; strategy: 'ours' | 'theirs' }
-  | { type: 'commit.MARK_RESOLVED'; path: string }
-  | { type: 'commit.RESOLVE_ALL_CONFLICTS'; strategy: 'ours' | 'theirs' }
-  | { type: 'commit.LOG_LIST' }
-  | { type: 'commit.REVERT_COMMIT'; hash: string }
-  | { type: 'commit.RESET_TO_COMMIT'; hash: string }
 
 // Outgoing events to frontend
-export type OutgoingCommitEvents =
-  | { type: 'commit.STATUS_RECEIVED'; data: { files: GitStatusFile[]; branch: string; hasUpstream: boolean; commitsAhead: number; commitsBehind: number } }
-  | { type: 'commit.DIFF_RECEIVED'; data: GitDiff }
-  | { type: 'commit.FILES_STAGED'; data: { paths: string[] } }
-  | { type: 'commit.FILES_UNSTAGED'; data: { paths: string[] } }
-  | { type: 'commit.COMMIT_SUCCESS'; data: { message: string } }
-  | { type: 'commit.FILE_REVERTED'; data: { path: string } }
-  | { type: 'commit.FILES_REVERTED'; data: { paths: string[] } }
-  | { type: 'commit.ERROR_RECEIVED'; data: { message: string } }
-  | { type: 'commit.BRANCH_RETRIEVED'; data: { branch: string } }
-  | { type: 'commit.BRANCHES_RECEIVED'; data: { branches: string[] } }
-  | { type: 'commit.BRANCH_CHECKOUT_SUCCESS'; data: { branchName: string } }
-  | { type: 'commit.BRANCH_PUSHED'; data: { branchName: string } }
-  | { type: 'commit.BRANCH_PULLED'; data: { branchName: string } }
-  | { type: 'commit.GENERATING_MESSAGE' }
-  | { type: 'commit.MESSAGE_GENERATED'; data: { message: string } }
-  | { type: 'commit.STASH_LIST_RECEIVED'; data: { stashes: StashEntry[] } }
-  | { type: 'commit.STASH_SUCCESS'; data: { message: string } }
-  | { type: 'commit.WORKTREE_LIST_RECEIVED'; data: { worktrees: WorktreeEntry[] } }
-  | { type: 'commit.WORKTREE_ADDED'; data: { path: string; branch: string } }
-  | { type: 'commit.WORKTREE_REMOVED'; data: { path: string } }
-  | { type: 'commit.CONFLICT_RESOLVED'; data: { path: string } }
-  | { type: 'commit.ALL_CONFLICTS_RESOLVED' }
-  | { type: 'commit.LOG_LIST_RECEIVED'; data: { commits: CommitLogEntry[] } }
-  | { type: 'commit.REVERT_COMMIT_SUCCESS'; data: { hash: string } }
-  | { type: 'commit.RESET_COMMIT_SUCCESS'; data: { hash: string } }
 
 export interface Context {
   gitRepository: GitRepository | null

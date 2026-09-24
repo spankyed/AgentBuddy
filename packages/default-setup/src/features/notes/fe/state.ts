@@ -8,37 +8,15 @@ import {
 import type {
   NoteDTO,
 } from '@/__generated__/types'
-import type { OutgoingNotesEvents } from '@/features/notes/be/system'
+import type { NotesContext, NotesInboxEvent } from './contract'
+import type { OutgoingNotesEvents } from '@/features/notes/be/types'
 import { sendToSystem } from '@/__generated__/events'
 import { Trash2 } from 'lucide-vue-next'
 import { contextMenuFn } from '@abuddy/sdk/fe'
-import { type NavHistory, createNavHistory, pushNavHistory, goBack, goForward, canGoBack, canGoForward } from '@abuddy/sdk/fe'
+import { createNavHistory, pushNavHistory, goBack, goForward, canGoBack, canGoForward } from '@abuddy/sdk/fe'
 
 export const id = 'notes' as const;
 export type NotesState = ActorRefFrom<typeof notesState>
-
-export interface NotesContext {
-  notes: NoteDTO[]
-  currentNoteId: string | null
-  currentNote: NoteDTO | null
-  expandedNodeIds: string[]
-  taskExpandedNodeIds: string[]
-  pendingSubDocumentInsert: { cursorPos: number } | null
-  lastSubDocumentInsertChildId: string | null
-  searchResults: NoteDTO[]
-  selectedNoteIds: string[]
-  selectedTaskId: string | null
-  selectedTask: NoteDTO | null
-  settings: { tasklistPanelPosition: 'left' | 'right'; showCollapseIcon: boolean }
-  notesImport: { status: 'idle' | 'importing' | 'success' | 'error'; errors: string[]; importedCount: number }
-  notesExport: { status: 'idle' | 'exporting' | 'success' | 'error'; errors: string[]; filePath: string; itemCount: number }
-  showTrash: boolean
-  trashedNotes: NoteDTO[]
-  noteScrollPositions: Record<string, number>
-  panelSearchActive: boolean
-  navHistory: NavHistory<string | null>
-  viewedNoteId: string | null
-}
 
 type SystemEvent = OutgoingNotesEvents
   | { type: 'NOTES_IMPORTED'; count: number; errors?: string[] }
@@ -48,7 +26,7 @@ type SystemEvent = OutgoingNotesEvents
 
 type UIEvent =
   | { type: 'NOTE.SELECT'; noteId: string }
-  | { type: 'NOTE.OPEN'; noteId: string }
+  | NotesInboxEvent
   | { type: 'NOTE.CREATE'; parentId?: string; title?: string; content?: string; displayOrder?: number }
   | { type: 'NOTE.CREATE_TASKLIST'; parentId?: string }
   | { type: 'NOTE.DELETE'; noteId: string }

@@ -1,5 +1,5 @@
 import * as path from 'node:path';
-import { _TYPES_UNRESOLVED, generatePackFiles, validateManifest, validateFeatures } from '@abuddy/sdk/build';
+import { generatePackFiles, validateManifest, validateFeatures } from '@abuddy/sdk/build';
 import { resolveDep } from './fetch-deps';
 import { resolveDeps } from './generate';
 import { findPackRoot, readManifest } from '../utils';
@@ -50,10 +50,10 @@ async function validateCodegen(root: string): Promise<{ errors: string[]; warnin
     generatePackFiles(manifest, { packRoot: root, ...resolved });
     return { errors: [], warnings: [] };
   } catch (err) {
-    const message = errorMessage(err);
-    // A pack whose dependencies aren't installed yet: nothing to fix in the pack, and the checks after it didn't run
-    if ((err as { code?: string }).code === _TYPES_UNRESOLVED) return { errors: [], warnings: [`${message}; the checks code generation makes stopped there — run "npm install"`] };
-    return { errors: [message], warnings: [] };
+    // Whatever stopped code generation stopped the checks after it too. A pack whose dependencies aren't
+    // installed reads the same as one with a mistake, and always did — the code that claimed otherwise was
+    // reading a value that resolves to `any` when an import fails.
+    return { errors: [errorMessage(err)], warnings: [] };
   }
 }
 

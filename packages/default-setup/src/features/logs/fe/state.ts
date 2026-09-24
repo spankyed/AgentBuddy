@@ -2,7 +2,8 @@ import { setup, type ActorRefFrom, assign, log } from 'xstate';
 import { safeEvents } from '@abuddy/sdk/fe';
 import { sendToSystem } from '@/__generated__/events';
 import type { LogsSettings } from '@/__generated__/types';
-import type { OutgoingLogsEvents } from '@/features/logs/be/system';
+import type { LogsContext } from './contract';
+import type { OutgoingLogsEvents } from '@/features/logs/be/types';
 
 export const id = 'logs' as const;
 
@@ -16,18 +17,6 @@ export interface LogEntry {
   stack?: string;
 }
 
-export interface LogsContext {
-  logs: LogEntry[];
-  filter: {
-    level: 'all' | 'debug' | 'info' | 'warn' | 'error';
-    search: string;
-  };
-  settings: {
-    maxLogs: number;
-    excludedSources: string[];
-    showAppEvents?: boolean;
-  };
-}
 
 type LogsEvents =
   | { type: 'SET_FILTER_LEVEL'; level: 'all' | 'debug' | 'info' | 'warn' | 'error' }

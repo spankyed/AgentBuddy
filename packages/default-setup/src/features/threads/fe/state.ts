@@ -2,7 +2,7 @@ import breadcrumb, { breadcrumbWithParams } from '@abuddy/sdk/fe';
 import { targetIs, type TrailClickEvent } from '@abuddy/sdk/fe';
 import { safeEvents } from '@abuddy/sdk/fe';
 import { setup, assign, enqueueActions, fromCallback, spawnChild, stopChild, type AnyEventObject } from 'xstate';
-import { type NavHistory, createNavHistory, pushNavHistory, goBack, goForward, canGoBack, canGoForward } from '@abuddy/sdk/fe';
+import { createNavHistory, pushNavHistory, goBack, goForward, canGoBack, canGoForward } from '@abuddy/sdk/fe';
 import type { ActorRefFrom } from 'xstate';
 import type {
   ThreadEntity,
@@ -10,12 +10,12 @@ import type {
   MessageEntity, AgentThreadData, Tab,
   AgentSettings, AgentMode as AgentModeConfig, MessageReferences, CommandItem, BlockResponse,
 } from '@/__generated__/types';
-import type { OutgoingThreadsEvents } from '@/features/threads/be/system';
+import type { ChatState, ThreadListItem, ThreadsContext } from './contract';
+import type { OutgoingThreadsEvents } from '@/features/threads/be/types';
 import { sendToSystem } from '@/__generated__/events';
 import { Archive, Copy, Pin, Trash2 } from 'lucide-vue-next';
 import { contextMenuFn } from '@abuddy/sdk/fe';
-import type { Simplify } from '@abuddy/sdk/helpers';
-import { openPlugin } from '@abuddy/sdk/fe'
+import { untypedOpenPlugin } from '@abuddy/sdk/fe'
 import { resolveName } from '@abuddy/sdk/ids'
 
 const HOST_SETTINGS = resolveName('settings', 'host');
@@ -125,8 +125,6 @@ const defaultChatThread: AgentThreadData = {
   messages: [],
   artifacts: [],
 };
-
-type ChatState = 'idle' | 'working' | 'paused' | 'error' | 'success';
 
 // ---- Event types ----
 
@@ -245,63 +243,9 @@ type ThreadEvents =
 
 const typeOf = safeEvents<ThreadEvents>();
 
-export type ThreadListItem = Simplify<ThreadEntity & {
-  tags?: string[];
-  isNew?: boolean;
-  parentId?: string;
-}>;
+export type { ChatState, ThreadListItem } from './contract';
 
 // ---- Context ----
-
-interface ThreadsContext {
-  // Thread management (normalized)
-  threadMap: Record<string, ThreadListItem>;
-  threadIds: string[];
-  selectedThreadIds: string[];
-  selectedThreadCode?: string;
-  view: ThreadViewData;
-  create: ThreadCreateData & {
-    parentThreadId?: string;
-    parentThread?: ThreadListItem;
-    tagsExpanded?: boolean;
-    linkedExpanded?: boolean;
-  };
-  availableTags: ThreadTagOption[];
-  settings: ThreadsSettings | null;
-  showArchived: boolean;
-  filters: {
-    statuses: string[];
-    tags: string[];
-    chatStates: string[];
-    search: string;
-    showRootOnly: boolean;
-  };
-  threadsImport: { status: 'idle' | 'importing' | 'success' | 'error'; errors: string[]; importedCount: number };
-  threadsExport: { status: 'idle' | 'exporting' | 'success' | 'error'; errors: string[]; filePath: string; threadCount: number };
-  // Chat/agent
-  currentThread: AgentThreadData | null;
-  recentThreadIds: string[];
-  messageInput: string;
-  pendingActionId?: string;
-  chatStates: Record<string, ChatState>;
-  chatStateOverrides: Record<string, { id: string; expiresAt: number }>;
-  tabs: Tab[];
-  activeTabId: string;
-  tabGroups: ThreadTabGroup[];
-  mode: string;
-  phase: string;
-  phaseByModeName: Record<string, string | undefined>;
-  modes: AgentModeConfig[];
-  hotkeys: HotkeysMap;
-  chatSettings: AgentSettings;
-  commands: CommandItem[];
-  quickPromptCursor: { x: number; y: number } | null;
-  pendingThreadCwd?: string;
-  pendingForceDirectoryPicker?: boolean;
-  navHistory: NavHistory<string>;
-  messagePagination: { hasMore: boolean; nextCursor: string | null; isLoading: boolean };
-  sidebarArchivedThreads: ThreadListItem[];
-}
 
 // ---- Helpers ----
 
@@ -817,7 +761,7 @@ const threadsState = setup({
       };
     }),
     navigateToSecrets: () => {
-      openPlugin(HOST_SETTINGS, [
+      untypedOpenPlugin(HOST_SETTINGS, [
         { type: 'TAB.SELECT', tab: 'general' },
         { type: 'GENERAL_NAV.SELECT', item: 'secrets' }
       ]);

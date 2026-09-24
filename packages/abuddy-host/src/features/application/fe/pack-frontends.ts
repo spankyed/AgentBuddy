@@ -2,7 +2,8 @@
 // window hasn't loaded, reporting each one as it finishes and the run as a whole when it's done.
 import { fromCallback } from 'xstate';
 import type { ShellClient } from '../../../fe/client.ts';
-import type { ShellEvent, ShellPackFrontends } from './types.ts';
+import type { ShellEvent } from './types.ts';
+import type { ShellPackFrontends } from '../../../fe/pack-frontends.ts';
 import { errorMessage } from '@abuddy/sdk/utils/pure';
 
 export const PACK_FRONTEND_LOADER_ID = 'packFrontendLoader';

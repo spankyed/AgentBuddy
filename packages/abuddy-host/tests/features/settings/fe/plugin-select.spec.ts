@@ -1,5 +1,5 @@
 // The settings plugin shows the settings of the plugin PLUGIN.SELECT names. Any pack can send it (with
-// navigateToPlugin), so it takes a plugin's ref: a bare name would be read as this pack's plugin. A bad one is reported
+// openPlugin), so it takes a plugin's ref: a bare name would be read as this pack's plugin. A bad one is reported
 // and ignored, rather than stopping the settings plugin.
 import { afterAll, afterEach, expect, it, vi } from 'vitest'
 import { createActor } from 'xstate'

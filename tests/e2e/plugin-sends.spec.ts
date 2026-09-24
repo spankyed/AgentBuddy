@@ -13,7 +13,7 @@ interface Received { plugin: string; type: string; data?: unknown; savedBookmark
 
 type RecordingWindow = {
   __received?: Received[];
-  __abuddy: { sdkEvents: { sendToSystem(systemId: string, event: Record<string, unknown>): void } };
+  __abuddy: { sdkEvents: { untypedSendToSystem(systemId: string, event: Record<string, unknown>): void } };
   applicationState: { system: { inspect(observer: (event: { type: string; actorRef: { id: string }; event: Received }) => void): void } };
 };
 
@@ -43,10 +43,14 @@ async function received(appPage: Page, feature: string, type: string): Promise<R
     .filter((event) => event.plugin === plugin && event.type === type), { plugin: builtIn(feature), type });
 }
 
-/** Sends a backend system an event as a plugin does (`sendToSystem` from @abuddy/sdk/events) */
+/**
+ * Sends a backend system an event as a plugin does. It reaches the SDK through `window.__abuddy.sdkEvents`, the
+ * renderer's global for pack frontends, so it names the export there: `untypedSendToSystem`. A pack writes the
+ * typed `sendToSystem` its `#generated/events` builds, which `defineEvents` wraps around this one.
+ */
 async function sendToSystem(appPage: Page, feature: string, event: Record<string, unknown>): Promise<void> {
   await appPage.evaluate(({ systemId, event }) => {
-    (window as unknown as RecordingWindow).__abuddy.sdkEvents.sendToSystem(systemId, event);
+    (window as unknown as RecordingWindow).__abuddy.sdkEvents.untypedSendToSystem(systemId, event);
   }, { systemId: builtIn(feature), event });
 }
 

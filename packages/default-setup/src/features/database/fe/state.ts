@@ -8,11 +8,11 @@ import type {
   DatabaseStartupData,
   DatabaseSettings,
 } from '@/__generated__/types'
-import type { OutgoingDatabaseEvents } from '@/features/database/be/system'
+import type { DatabaseContext, DatabaseInboxEvent } from './contract'
+import type { OutgoingDatabaseEvents } from '@/features/database/be/types'
 import { sendToSystem } from '@/__generated__/events'
 import { attributeQueryTemplate, entityQueryTemplate, exampleQuery, relationQueryTemplate, transactionExampleQuery } from './constants'
 import { History, HardDriveDownload } from 'lucide-vue-next'
-import type { TNodeEntity } from '@abuddy/sdk/steps'
 import type { EARS } from '@abuddy/sdk'
 
 /* ─────────────────────────────────────────────────────────── */
@@ -20,47 +20,6 @@ import type { EARS } from '@abuddy/sdk'
 /* ─────────────────────────────────────────────────────────── */
 export const id = 'database' as const;
 export type DatabaseState = ActorRefFrom<typeof databaseState>
-
-export interface DatabaseContext {
-  schema: DatabaseSchemaInfo;
-  currentQuery: string;
-  queryResult: any;
-  isLoading: boolean;
-  error: string | null;
-  executionTime: number | null;
-  selectedSchemaItem: {
-    type: 'entity' | 'attribute' | 'relation';
-    value: string;
-  } | null;
-  mode: 'query' | 'transaction';
-  isAiQueryLoading: boolean;
-  isRefreshing: boolean;
-  settings: DatabaseSettings | null;
-  // Trace viewer fields
-  viewMode: 'database' | 'trace';
-  traceFlows: TNodeEntity[];
-  currentFlowId: string | null;
-  flowEvents: TNodeEntity[];
-  expandedNodes: Set<string>;
-  nodeDetails: Map<string, TNodeEntity>;
-  isLoadingTrace: boolean;
-  tracePagination: {
-    offset: number;
-    limit: number;
-    hasMore: boolean;
-  };
-  // Backup fields
-  backupInfo: { timestamp: number; databases: string[]; size: number; hasMedia?: boolean } | null;
-  exporting: boolean;
-  importing: boolean;
-  /** The last export or import to finish, a new object each time */
-  backupResult: {
-    operation: 'export' | 'import';
-    error?: string;
-    /** The backup holds these stores, which this AgentBuddy doesn't have: importing it leaves them out */
-    unknownDatabases?: string[];
-  } | null;
-}
 
 type SystemEvent = OutgoingDatabaseEvents |
   { type: 'DATABASE_REFRESH'; data: DatabaseStartupData } |
@@ -92,7 +51,7 @@ type UIEvent =
   | { type: 'TRACE.LOAD_MORE' }
   | { type: 'TRACE.REQUEST_FLOWS' }
   | { type: 'ENTITY.DELETE'; entityId: string }
-  | { type: 'VIEW_BACKUP' }
+  | DatabaseInboxEvent
   | { type: 'BACK_TO_EXPLORER' }
   | { type: 'BACKUP.EXPORT'; path: string; name?: string; databases: Array<'lmdb' | 'volatileLmdb'> }
   | { type: 'BACKUP.IMPORT'; path: string; skipUnknownDatabases?: boolean }
@@ -266,7 +225,6 @@ const databaseState = setup({
         isAiQueryLoading: false,
       };
     }),
-
 
     /* ── schema interactions ───────────────────────────────── */
     selectSchemaItem: assign(({ event, context }) => {

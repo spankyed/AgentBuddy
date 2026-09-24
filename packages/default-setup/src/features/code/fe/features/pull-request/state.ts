@@ -3,7 +3,7 @@ import { sendToSystem } from '@/__generated__/events';
 import type { GitStatusFile, GitDiff } from '../commit/state';
 import type { GhPullRequest, GhPRComment, GhReviewThread } from '@/__generated__/types';
 import { updateParentState, getParentContext, addTabToParent, sendEventToParent } from '../../utils/parent-communication';
-import { openPlugin } from '@abuddy/sdk/fe'
+import { untypedOpenPlugin } from '@abuddy/sdk/fe'
 import { resolveName } from '@abuddy/sdk/ids'
 
 const HOST_SETTINGS = resolveName('settings', 'host');
@@ -340,7 +340,7 @@ export const pullRequestState = setup({
     }),
 
     navigateToHelp: () => {
-      openPlugin(HOST_SETTINGS, [{ type: 'TAB.SELECT', tab: 'help' }]);
+      untypedOpenPlugin(HOST_SETTINGS, [{ type: 'TAB.SELECT', tab: 'help' }]);
     },
 
     handleOpenPRsReceived: assign({

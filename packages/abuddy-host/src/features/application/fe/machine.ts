@@ -4,6 +4,7 @@
 import { assign, enqueueActions, setup, sendTo, spawnChild } from 'xstate';
 import { getDesignated, processHotkeys, safeEvents } from '@abuddy/sdk/fe';
 import { splitRef } from '@abuddy/sdk/ids';
+import { senderSuffix } from '@abuddy/sdk/events';
 import { isPlainObject } from '@abuddy/sdk/utils/pure';
 import type { HostShellEvent, HostShellState, PluginEvent, ShellPanelSizes } from '@abuddy/sdk/fe';
 import { HOST } from '../../../refs.ts';
@@ -15,7 +16,7 @@ import {
 import { announcePackClientReady, PACK_FRONTEND_LOADER_ID, packFrontendLoader } from './pack-frontends.ts';
 import { historyAfter, neighbourOf, spawnPluginActor, withHostLast } from './plugins.ts';
 import { computeCrumbs, pluginTrailer } from './trail.ts';
-import type { ShellContext, ShellEvent, ShellOptions, ShellParams } from './types.ts';
+import type { PluginRequest, ShellContext, ShellEvent, ShellOptions, ShellParams } from './types.ts';
 
 const typeOf = safeEvents<ShellEvent>();
 
@@ -34,12 +35,42 @@ function packFrontendsPending(context: ShellContext): boolean {
   return !context.loadedPacksRead || context.packLoadRunning || context.packLoadQueued;
 }
 
+/**
+ * What the user is told when a plugin isn't here: the title and the detail, for `notify.error`.
+ *
+ * Opening and sending can each be refused at once or after waiting for pack frontends, and one function writes
+ * every one of those so the wording can't differ by which branch the app happened to take — which would tell the
+ * reader about the app's internals and nothing about their problem.
+ */
+function refusal({ plugin, select, sender }: PluginRequest): [string, string] {
+  const suffix = senderSuffix(sender);
+  return [`Couldn't ${select ? 'open' : 'reach'} ${plugin}`, `No plugin is registered at "${plugin}".${suffix && ` Sent${suffix}.`}`];
+}
+
+/** The part of `enqueueActions`' `enqueue` that `readyFor` needs, so it can be a function rather than a third action */
+type Enqueue = {
+  (action: () => void): void;
+  assign: (values: Partial<ShellContext>) => void;
+};
+
 /** The app shell over `options`, the I/O it's given */
 export function createShellMachine({ packs, client, packFrontends, storage, notify, target }: ShellOptions) {
   /** Sizes the user chose, which the next window opens with; sizes set for the moment are assigned without it */
   const saved = (sizes: ShellPanelSizes): ShellPanelSizes => {
     storage.savePanelSizes(sizes);
     return sizes;
+  };
+
+  /**
+   * Whether the plugin is here to take the request, and what to do when it isn't: wait, while pack frontends may
+   * still add it (finishPackFrontendLoad refuses whatever is still waiting), or refuse it now. Both requests ask
+   * the same question and answer it the same way, so `false` means the caller has nothing left to do but return.
+   */
+  const readyFor = (context: ShellContext, request: PluginRequest & { events: PluginEvent[] }, enqueue: Enqueue): boolean => {
+    if (context.plugins.some((p) => p.id === request.plugin)) return true;
+    if (packFrontendsPending(context)) enqueue.assign({ awaitingPlugin: [...context.awaitingPlugin, request] });
+    else enqueue(() => notify.error(...refusal(request)));
+    return false;
   };
 
   return setup({
@@ -55,6 +86,9 @@ export function createShellMachine({ packs, client, packFrontends, storage, noti
       packFrontendLoader: packFrontendLoader(client, packFrontends),
       pluginTrailer,
     },
+    // An action is named for what it does to the shell, never for the event or the API call that triggered it: a
+    // trigger name collides with whatever does the triggering, and it can't survive a second caller — several of
+    // these serve more than one transition, so there is no single event to name them after.
     actions: {
       updateHotkeys: assign(({ event }) => ({ hotkeys: typeOf('APPLICATION_HOTKEYS', event).hotkeys })),
 
@@ -96,10 +130,13 @@ export function createShellMachine({ packs, client, packFrontends, storage, noti
           const pending = context.pendingPluginId;
           if (pending && added.has(pending)) enqueue.raise({ type: 'SELECT_PLUGIN', plugin: pending });
           // Plugins asked to open while their pack loaded open now, with their events
-          const arrived = context.pendingOpens.filter((open) => added.has(open.plugin));
+          const arrived = context.awaitingPlugin.filter((work) => added.has(work.plugin));
           if (arrived.length > 0) {
-            enqueue.assign({ pendingOpens: context.pendingOpens.filter((open) => !added.has(open.plugin)) });
-            for (const open of arrived) enqueue.raise({ type: 'OPEN_PLUGIN', ...open });
+            enqueue.assign({ awaitingPlugin: context.awaitingPlugin.filter((work) => !added.has(work.plugin)) });
+            // `select` is what the wait was for: an open selects the plugin, a send only hands it its events
+            for (const { plugin, events, select, sender } of arrived) {
+              enqueue.raise(select ? { type: 'OPEN_PLUGIN', plugin, events } : { type: 'SEND_TO_PLUGIN', plugin, events, ...sender });
+            }
           }
         }
         // The pack's plugin actors, if any, now exist: its systems send their startup data. Before this window's
@@ -124,7 +161,7 @@ export function createShellMachine({ packs, client, packFrontends, storage, noti
       }),
 
       /** The loader finished: run it again when a load was asked for meanwhile, and report what failed */
-      onPackFrontendsSettled: enqueueActions(({ context, event, enqueue }) => {
+      finishPackFrontendLoad: enqueueActions(({ context, event, enqueue }) => {
         const { loadedPacksError, failedPacks } = typeOf('PACK_FRONTENDS_SETTLED', event);
         enqueue.stopChild(PACK_FRONTEND_LOADER_ID);
 
@@ -138,11 +175,12 @@ export function createShellMachine({ packs, client, packFrontends, storage, noti
         } else {
           enqueue.assign({ packLoadRunning: false });
           // Loading has settled: a plugin still asked for is one no loaded pack provides
-          if (context.pendingOpens.length > 0) {
-            const refused = context.pendingOpens.map((open) => open.plugin);
-            enqueue.assign({ pendingOpens: [] });
+          if (context.awaitingPlugin.length > 0) {
+            // `assign` replaces the array rather than mutating it, so the reference stays valid in the deferred enqueue
+            const refused = context.awaitingPlugin;
+            enqueue.assign({ awaitingPlugin: [] });
             enqueue(() => {
-              for (const plugin of refused) notify.error(`Couldn't open ${plugin}`, `No plugin is registered at "${plugin}"`);
+              for (const request of refused) notify.error(...refusal(request));
             });
           }
         }
@@ -193,8 +231,8 @@ export function createShellMachine({ packs, client, packFrontends, storage, noti
           enqueue.assign({ packsUnloadedWhileLoading: [...context.packsUnloadedWhileLoading, packId] });
         }
         // A plugin asked to open from a pack that's gone won't arrive
-        if (context.pendingOpens.some((open) => splitRef(open.plugin)?.packId === packId)) {
-          enqueue.assign({ pendingOpens: context.pendingOpens.filter((open) => splitRef(open.plugin)?.packId !== packId) });
+        if (context.awaitingPlugin.some((work) => splitRef(work.plugin)?.packId === packId)) {
+          enqueue.assign({ awaitingPlugin: context.awaitingPlugin.filter((work) => splitRef(work.plugin)?.packId !== packId) });
         }
 
         if (pluginIds.length === 0) return;
@@ -246,19 +284,13 @@ export function createShellMachine({ packs, client, packFrontends, storage, noti
       }),
 
       /**
-       * Opens a plugin and hands it events. A plugin that isn't registered waits while pack frontends may still add
-       * it, and is refused once loading has settled (onPackFrontendsSettled).
+       * Selects the plugin, opens the canvas, then hands it its events — what `OPEN_PLUGIN` asks for. The selecting
+       * half of the pair, and the reason the pair exists: a send that stole the user's canvas would make every
+       * cross-feature command a navigation.
        */
-      openPlugin: enqueueActions(({ context, event, enqueue }) => {
+      selectAndDeliver: enqueueActions(({ context, event, enqueue }) => {
         const { plugin, events } = typeOf('OPEN_PLUGIN', event);
-        if (!context.plugins.some((p) => p.id === plugin)) {
-          if (packFrontendsPending(context)) {
-            enqueue.assign({ pendingOpens: [...context.pendingOpens, { plugin, events }] });
-          } else {
-            enqueue(() => notify.error(`Couldn't open ${plugin}`, `No plugin is registered at "${plugin}"`));
-          }
-          return;
-        }
+        if (!readyFor(context, { plugin, events, select: true, sender: {} }, enqueue)) return;
         if (context.activePlugin.id !== plugin) enqueue.raise({ type: 'SELECT_PLUGIN', plugin });
         if (context.defaultToggles.canvas) enqueue.raise({ type: 'DEFAULT_TOGGLE', area: 'canvas' });
         // Sent, not raised: it's handled after this step settles, so the plugin is open, as the shell's state reads,
@@ -266,9 +298,16 @@ export function createShellMachine({ packs, client, packFrontends, storage, noti
         if (events.length > 0) enqueue(({ self }) => self.send({ type: 'DELIVER_PLUGIN_EVENTS', plugin, events }));
       }),
 
+      /** Hands a plugin its events and leaves the view where it is — what `SEND_TO_PLUGIN` asks for */
+      deliverWithoutSelecting: enqueueActions(({ context, event, enqueue }) => {
+        const { plugin, events, from, via } = typeOf('SEND_TO_PLUGIN', event);
+        if (!readyFor(context, { plugin, events, select: false, sender: { from, via } }, enqueue)) return;
+        if (events.length > 0) enqueue(({ self }) => self.send({ type: 'DELIVER_PLUGIN_EVENTS', plugin, events }));
+      }),
+
       // A backend's request carries whatever the sending pack built: a payload that isn't a plugin and its events
       // would crash the plugin's actor, or this one, so it is refused here rather than delivered
-      openPluginFromApp: enqueueActions(({ event, enqueue }) => {
+      checkBackendOpenRequest: enqueueActions(({ event, enqueue }) => {
         const { plugin, events = [] } = typeOf('OPEN_PLUGIN_FROM_APP', event);
         const deliverable = Array.isArray(events) && events.every((e) => isPlainObject(e) && typeof e.type === 'string');
         if (typeof plugin !== 'string' || !deliverable) {
@@ -420,7 +459,7 @@ export function createShellMachine({ packs, client, packFrontends, storage, noti
         hotkeys: {},
         ownsLastActivePlugin: input.ownsLastActivePlugin ?? true,
         pendingPluginId: initialPlugin ? null : input.initialPluginId ?? null,
-        pendingOpens: [],
+        awaitingPlugin: [],
         busSubscribed: false,
         packLoadRunning: false,
         packLoadQueued: false,
@@ -515,14 +554,15 @@ export function createShellMachine({ packs, client, packFrontends, storage, noti
       BUS_SUBSCRIBED: { actions: [assign({ busSubscribed: true }), 'announceLoadedPacks', 'loadPackFrontends'] },
       BUS_CONNECTION_LOST: { actions: assign({ busSubscribed: false }) },
       LOAD_PACK_FRONTENDS: { actions: 'loadPackFrontends' },
-      PACK_FRONTENDS_SETTLED: { actions: 'onPackFrontendsSettled' },
+      PACK_FRONTENDS_SETTLED: { actions: 'finishPackFrontendLoad' },
       PACK_FRONTEND_LOADED: { actions: 'mergePackPlugins' },
       PACK_PLUGINS_UNLOADED: { actions: 'removePackPlugins' },
       PLUGIN_VISIBILITY_UPDATED: { actions: 'updatePluginVisibility' },
       SET_PLUGIN_VISIBILITY: { actions: 'setPluginVisibility' },
-      OPEN_PLUGIN: { actions: 'openPlugin' },
+      OPEN_PLUGIN: { actions: 'selectAndDeliver' },
+      SEND_TO_PLUGIN: { actions: 'deliverWithoutSelecting' },
       // A backend's request: a main window opens the plugin, a popout keeps the one it shows
-      OPEN_PLUGIN_FROM_APP: { guard: 'isMainWindow', actions: 'openPluginFromApp' },
+      OPEN_PLUGIN_FROM_APP: { guard: 'isMainWindow', actions: 'checkBackendOpenRequest' },
       DELIVER_PLUGIN_EVENTS: { actions: 'deliverPluginEvents' },
       TRAIL_UPDATE: { actions: ['setBreadcrumbs', 'setTargetView'] },
       TRAIL_CLICK: { actions: ['setTargetView', 'sendRouteClick'] },

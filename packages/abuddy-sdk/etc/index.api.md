@@ -48,11 +48,7 @@ export interface ActionParameter {
 }
 
 // @public
-export function defineSystem<TEvents extends {
-    type: string;
-}, TOutgoing extends {
-    type: string;
-}, TContext = {}>(): SystemSpec<TEvents, TOutgoing, TContext>;
+export function defineSystem<C extends SystemContract>(): SystemSpec<C>;
 
 // @public (undocumented)
 export namespace EARS {
@@ -231,19 +227,13 @@ export type SystemEvents = {
 };
 
 // @public
-export interface SystemSpec<TEvents extends {
-    type: string;
-}, TOutgoing extends {
-    type: string;
-}, TContext = {}> {
-    _incoming: TEvents;
-    _outgoing: TOutgoing;
+export interface SystemSpec<C extends SystemContract> {
     // (undocumented)
-    typeOf: ReturnType<typeof safeEvents<TEvents | SystemEvents>>;
+    typeOf: ReturnType<typeof safeEvents<MachineEvents<C>>>;
     // (undocumented)
     types: {
-        context: TContext;
-        events: TEvents | SystemEvents;
+        context: ContractContext<C>;
+        events: MachineEvents<C>;
     };
 }
 

@@ -5,10 +5,20 @@
 ```ts
 
 // @public
-export function broadcastToPlugin(to: string, event: {
-    type: string;
-    [key: string]: unknown;
-}): void;
+export function createSends(input?: SendBinding): {
+    broadcastToPlugin(name: string, event: {
+        type: string;
+        [key: string]: unknown;
+    }): void;
+    sendToPlugin(name: string, event: {
+        type: string;
+        [key: string]: unknown;
+    }): void;
+    sendToSystem(to: SystemTarget, event: {
+        type: string;
+        [key: string]: unknown;
+    }): void;
+};
 
 // @public
 export function defineEvents<P extends PluginEvents, S extends SystemEventMap>(packId: string): TypedEvents<P, S>;
@@ -78,7 +88,7 @@ export type HostSystemEvents = {
 };
 
 // @public
-export type IncomingEventsOf<T> = SpecEvents<T, '_incoming'>;
+export type IncomingEventsOf<C> = ContractIncoming<C>;
 
 // @public
 export interface Message {
@@ -87,8 +97,10 @@ export interface Message {
         type: string;
         [key: string]: unknown;
     };
+    from?: string;
     // (undocumented)
     to: string;
+    via?: string;
 }
 
 // @public
@@ -98,7 +110,9 @@ export function onConnected(callback: () => void): () => void;
 export function onIncoming(callback: (message: Message) => void): () => void;
 
 // @public
-export type OutgoingEventsOf<T> = SpecEvents<T, '_outgoing'>;
+export type OutgoingEventsOf<C> = C extends {
+    outgoing: infer Events;
+} ? Events : never;
 
 // @public
 export const PLUGIN_EVENT_TYPES: readonly ["FEATURE_SETTINGS_UPDATED"];
@@ -111,30 +125,41 @@ export type PluginEvents = {
 };
 
 // @public
+export type PluginInboxOf<C> = C extends {
+    inbox: infer Audiences;
+} ? Extract<Audiences[keyof Audiences], {
+    type: string;
+}> : never;
+
+// @public
+export type PublicPluginInboxOf<C> = C extends {
+    inbox: {
+        public: infer Events;
+    };
+} ? Extract<Events, {
+    type: string;
+}> : never;
+
+// @public
 export type Qualified<PackId extends string, M> = {
     [K in keyof M & string as `${PackId}/${K}`]: M[K];
 };
+
+// @public
+export interface SendBinding {
+    from?: string;
+    resolve?: (name: string) => string;
+    via?: string;
+}
+
+// @public
+export function senderSuffix(input: Pick<Message, 'from' | 'via'>): string;
 
 // @internal
 export function _sendToLocalPlugin(ref: string, event: {
     type: string;
     [key: string]: unknown;
 }): void;
-
-// @public
-export function sendToSystem(to: SystemTarget, event: {
-    type: string;
-    [key: string]: unknown;
-}): void;
-
-// @public
-export function specEvents<S extends {
-    _incoming: unknown;
-    _outgoing: unknown;
-}>(spec: S): {
-    _incoming: S['_incoming'];
-    _outgoing: S['_outgoing'];
-};
 
 // @public
 export type SystemEventMap = {
@@ -173,6 +198,18 @@ export type TypedSendToSystem<S extends SystemEventMap> = (<Id extends keyof S &
 export type TypeOfEvent<E> = E extends {
     type: infer K extends string;
 } ? K : never;
+
+// @public
+export function untypedBroadcastToPlugin(to: string, event: {
+    type: string;
+    [key: string]: unknown;
+}): void;
+
+// @public
+export function untypedSendToSystem(to: SystemTarget, event: {
+    type: string;
+    [key: string]: unknown;
+}): void;
 
 // @public
 export type WithOwnNames<PackId extends string, M> = {

@@ -3,7 +3,7 @@
 import { _rootEvents } from '@abuddy/sdk/runtime';
 import { createLogger } from '@abuddy/sdk/logger';
 import type { PackRegistry } from '../packs/registry.ts';
-import type { Message } from '@abuddy/sdk/events';
+import { senderSuffix, type Message } from '@abuddy/sdk/events';
 
 const logger = createLogger('app-events');
 
@@ -38,15 +38,19 @@ function summarizeEventForLog(event: Message['event']) {
  * logs it and emits it on the root event bus. Throws `UnknownClientEventError` for an unknown system or event type.
  */
 export function receiveClientEvent(registry: Pick<PackRegistry, 'getEventValidationMap'>, message: Message): void {
-  const { to, event } = message;
+  const { to, from, event } = message;
+  // The sending pack and what within it made the send, when the send stamped them (`defineEvents`,
+  // `createActionEmitter`). A send that stamped neither carries none.
+  const suffix = senderSuffix(message);
+  const sender = suffix && ` sent${suffix}`;
   const validTypes = registry.getEventValidationMap().get(to);
   if (!validTypes) {
-    throw new UnknownClientEventError(`Unknown system: "${to}"`);
+    throw new UnknownClientEventError(`Unknown system: "${to}"${sender}`);
   }
   if (!validTypes.has('*') && !validTypes.has(event.type)) {
-    throw new UnknownClientEventError(`Unknown event "${event.type}" for system "${to}"`);
+    throw new UnknownClientEventError(`Unknown event "${event.type}" for system "${to}"${sender}`);
   }
 
-  logger.info(`→ Incoming: "${event.type}"`, { to, event: summarizeEventForLog(event) });
+  logger.info(`→ Incoming: "${event.type}"`, { to, ...(from ? { from } : {}), ...(message.via ? { via: message.via } : {}), event: summarizeEventForLog(event) });
   _rootEvents.emitIncoming(message);
 }

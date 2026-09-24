@@ -1,7 +1,8 @@
+import type { MemosContext, MemosInbox } from './contract';
 import { setup, assign, type ActorRefFrom } from 'xstate';
 import { safeEvents } from '@abuddy/sdk/fe';
 import { sendToSystem } from '#generated/events';
-import type { OutgoingMemosEvents } from '../be/system';
+import type { OutgoingMemosEvents } from '../be/types';
 import type { MemoNoteDTO } from '../be/memo-notes';
 import type { MemoDTO } from '../be/types';
 
@@ -9,14 +10,14 @@ export const id = 'memos' as const;
 
 type UIEvents = { type: 'MEMOS.ADD'; text: string } | { type: 'MEMOS.ADD_NOTE'; text: string };
 /** What another feature may send this plugin, which `fe/plugin.ts` declares as its inbox */
-export type MemosInbox = { type: 'MEMO.HIGHLIGHT'; memoId: string };
+export type { MemosInbox } from './contract';
 export type MemosEvents = UIEvents | MemosInbox | OutgoingMemosEvents;
 
 const typeOf = safeEvents<MemosEvents>();
 
 const memosState = setup({
   types: {
-    context: {} as { memos: MemoDTO[]; notes: Array<{ text: string; note: MemoNoteDTO | null }>; highlighted: string | null },
+    context: {} as MemosContext,
     events: {} as MemosEvents,
   },
   actions: {

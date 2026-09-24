@@ -80,7 +80,7 @@ export function serializeContentToMarkdown(sections: ContentSection[]): string {
 const SECTION_MARKER_RE = /<!-- section:(\w+)(?::(\w+))? -->\n?/
 
 export function parseMarkdownSections(body: string): ContentSection[] {
-  // Backward compat: no markers → single markdown section
+  // A body with no markers is one markdown section: what a plain document holds, not an older shape
   if (!SECTION_MARKER_RE.test(body)) {
     return [{ type: 'markdown', text: body }]
   }

@@ -4,6 +4,7 @@ import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { afterAll, beforeEach, describe, expect, it, vi } from 'vitest';
+import type { Message } from '@abuddy/sdk/events';
 
 // The test environment keeps the data key in a file vault; `vaultDown` swaps it for an OS credential store that fails,
 // the way a system without one (or a locked keyring) does
@@ -45,8 +46,8 @@ const registerSettingsSystem = () => {
 };
 
 /** The incoming events `run` sends */
-async function incomingDuring(run: () => Promise<unknown> | unknown): Promise<Array<Record<string, unknown>>> {
-  const incoming: Array<Record<string, unknown>> = [];
+async function incomingDuring(run: () => Promise<unknown> | unknown): Promise<Message[]> {
+  const incoming: Message[] = [];
   const stop = rootEvents.onIncoming((event) => { incoming.push(event); });
   try {
     await run();
@@ -252,7 +253,7 @@ describe('logs and error reports', () => {
     expect(secretsStore.keyFor('mistral')).toBe(MISTRAL);
 
     const logged: Array<Record<string, unknown>> = [];
-    const outgoing: Array<Record<string, unknown>> = [];
+    const outgoing: Message[] = [];
     const stopLog = rootEvents.onLog((event) => { logged.push(event as never); });
     const stopOutgoing = rootEvents.onOutgoing((event) => { outgoing.push(event); });
     const printedError = vi.spyOn(originalConsole, 'error').mockImplementation(() => {});
@@ -273,7 +274,7 @@ describe('logs and error reports', () => {
   });
 
   it('redact keys from system error reports', () => {
-    const outgoing: Array<Record<string, unknown>> = [];
+    const outgoing: Message[] = [];
     const stop = rootEvents.onOutgoing((event) => { outgoing.push(event); });
     reportError({ error: new Error(`Incorrect API key provided: ${KEY}`), source: 'spec' });
     stop();

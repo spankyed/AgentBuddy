@@ -1,5 +1,5 @@
 import { computed } from 'vue'
-import { openPlugin } from '@abuddy/sdk/fe'
+import { untypedOpenPlugin } from '@abuddy/sdk/fe'
 import { resolveName } from '@abuddy/sdk/ids'
 
 const HOST_SETTINGS = resolveName('settings', 'host')
@@ -116,7 +116,7 @@ export function useProjectActions() {
 
   // Navigate to projects settings
   const navigateToProjects = () => {
-    openPlugin(HOST_SETTINGS, [
+    untypedOpenPlugin(HOST_SETTINGS, [
       { type: 'TAB.SELECT', tab: 'general' },
       { type: 'GENERAL_NAV.SELECT', item: 'projects' }
     ])

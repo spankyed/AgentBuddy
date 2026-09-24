@@ -1,5 +1,9 @@
 // reportError and createLogger on the test host: what a system or step reports reaches the log, the
-// user and, for a step, its TNode
+// user and, for a step, its TNode.
+//
+// Its sends carry `via` and no `from`. A report is made on behalf of whoever called `reportError`, and what it is
+// told about that caller is a source (`'brain-llm'`, `'notes'`) — the same string its logger is named, and never a
+// pack. So `via` names it and `from` stays the pack's alone, which is the whole of why the envelope has two fields.
 import * as os from 'node:os';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { createLogger, reportError, setDebugEnabled, type LogEvent } from '../../src/logger/index.ts';
@@ -59,8 +63,9 @@ describe('reportError', () => {
     expect(logs).toEqual([expect.objectContaining({ level: 'error', source: 'step-runtime', message: 'model failed', stack })]);
     // A log event, printed once as every log event is; the flow shows it, so there's no system error
     expect(printed).toHaveBeenCalledTimes(1);
-    // The plugin's ref: a bare name is no plugin's, and the bus would drop it
-    expect(toPlugins).toEqual([{ to: 'default-setup/brain', event: { type: 'BRAIN_RUNTIME_ERROR', error: returned! } }]);
+    // The plugin's ref: a bare name is no plugin's, and the bus would drop it. `via` is the step that reported it,
+    // so a drop names the step rather than nothing; there is no pack here to put in `from`.
+    expect(toPlugins).toEqual([{ to: 'default-setup/brain', event: { type: 'BRAIN_RUNTIME_ERROR', error: returned! }, via: 'brain-llm' }]);
     expect(outgoing).toEqual([]);
     expect(untypedQx(tNodeId).pickOne(['nodeAttributes'])?.nodeAttributes).toEqual({
       input: 'hello',
@@ -98,10 +103,18 @@ describe('reportError', () => {
       message: 'boom', source: 'notes', operation: 'save', entityId: undefined, severity: 'error', stack: error.stack,
       timestamp: expect.any(Number),
     };
-    expect(outgoing).toEqual([{ to: 'host/application', event }]);
+    expect(outgoing).toEqual([{ to: 'host/application', event, via: 'notes' }]);
     expect(takeSystemErrors()).toEqual([event]);
     expect(logs).toEqual([expect.objectContaining({ level: 'error', source: 'notes', message: 'boom', stack: error.stack })]);
     expect(toPlugins).toEqual([]);
+  });
+
+  // A report with no source still says where it came from, rather than falling back to nothing
+  it('names the source it was given, or a plain default, and never a pack', () => {
+    vi.spyOn(console, 'error').mockImplementation(() => {});
+    const { outgoing } = capture(() => reportError({ error: new Error('boom') }));
+    expect(outgoing[0]).toMatchObject({ via: 'system' });
+    expect(outgoing[0]).not.toHaveProperty('from');
   });
 
   it("shows a user-safe message for a missing entity, and the report's own message over the error's", () => {

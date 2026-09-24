@@ -2,16 +2,17 @@ import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
-import { declarationInputs, declarationPackages, declarationStamp, staleReason, stampFile } from '../../../../scripts/api-report-stamp.ts';
+import { apiSurfaceOf, declarationInputs, declarationPackages, declarationStamp, staleReason, stampFile } from '../../../../scripts/api-report-stamp.ts';
 
 /**
  * The cheap staleness gate for the committed API reports (scripts/api-report-stamp.ts), which runs in
  * `npm run typecheck` because the real `api:check` takes 46s. It answers "could the reports have
  * changed?" by fingerprinting the declarations they are generated from.
  *
- * The two properties it is worthless without are about which files it reads, so that is what these
- * pin: declarations move the fingerprint, compiled JavaScript does not. Everything runs on temporary
- * fixtures — a spec must never rebuild the repo's packages.
+ * The properties it is worthless without are about what it reads, so that is what these pin:
+ * declarations move the fingerprint, compiled JavaScript does not, and within a declaration a doc
+ * comment's prose does not while its tags and its presence do. Everything runs on temporary fixtures —
+ * a spec must never rebuild the repo's packages.
  */
 
 const temps: string[] = [];
@@ -83,6 +84,49 @@ describe('the API report staleness gate', () => {
     const a = pkg(root, '@abuddy/a', { 'index.d.ts': 'export {};' }, ['@abuddy/b']);
     pkg(root, '@abuddy/b', { 'index.d.ts': 'export {};' }, ['@abuddy/a']);
     expect(declarationPackages(a).map((d) => path.basename(d))).toEqual(['abuddy-a', 'abuddy-b']);
+  });
+
+  /**
+   * What a report is made of, measured against API Extractor rather than assumed: prose cannot change
+   * one, a release tag can, and so can a comment appearing or going. Hashing prose made every comment
+   * edit in this repo ask for a 46s `api:update` that rewrote nothing but the stamp.
+   */
+  describe('a doc comment', () => {
+    // One package, rewritten between readings: a file's path is part of its fingerprint, so two fixtures
+    // in two temp directories would differ whatever their contents
+    const fingerprint = (...comments: string[]) => {
+      const dir = pkg(tempDir(), '@abuddy/thing', { 'index.d.ts': '' });
+      return comments.map((comment) => {
+        fs.writeFileSync(path.join(dir, 'dist', 'index.d.ts'), `${comment}\nexport declare function f(): void;\n`);
+        return declarationStamp(dir);
+      });
+    };
+
+    it('does not move the fingerprint when only its prose changes', () => {
+      const [before, after] = fingerprint(
+        '/**\n * One description.\n * @public\n */',
+        '/**\n * A completely different description, longer than the first.\n * @public\n */',
+      );
+      expect(after).toBe(before);
+    });
+
+    it('moves it when a release tag changes, which a report carries', () => {
+      const [before, after] = fingerprint('/**\n * Same prose.\n * @public\n */', '/**\n * Same prose.\n * @internal\n */');
+      expect(after).not.toBe(before);
+    });
+
+    it('moves it when the comment goes, since a report marks an undocumented export', () => {
+      const [before, after] = fingerprint('/**\n * Some prose.\n */', '');
+      expect(after).not.toBe(before);
+    });
+
+    // The normaliser is the one place this gate stops being byte-exact, so what it keeps is spelled out
+    it('keeps its tag lines and its markers, and drops the rest', () => {
+      expect(apiSurfaceOf('/**\n * Prose here.\n * @public\n * @deprecated - use g instead\n */\nexport declare const a: number;'))
+        .toBe('/**@public\n@deprecated - use g instead*/\nexport declare const a: number;');
+      expect(apiSurfaceOf('/** Prose only. */\nexport declare const a: number;')).toBe('/***/\nexport declare const a: number;');
+      expect(apiSurfaceOf('export declare const a: number;')).toBe('export declare const a: number;');
+    });
   });
 
   describe('staleReason', () => {

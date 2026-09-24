@@ -268,8 +268,8 @@
 import { computed, ref } from 'vue'
 import { Bot, Check, Copy, Terminal } from 'lucide-vue-next'
 import type { ArtifactItem } from '@abuddy/sdk/artifacts'
-import { useChatStateOverrides, useCurrentThread, useThreadsSettings } from '@/features/threads/fe/public'
-import { navigateToPlugin } from '@/__generated__/fe'
+import { usePluginState } from '@/__generated__/fe'
+import { openPlugin } from '@/__generated__/fe'
 import { sendToSystem } from '@/__generated__/events'
 
 
@@ -302,14 +302,14 @@ defineProps<{
   artifact: ArtifactItem<CodexThreadState>
 }>()
 
-const currentThread = useCurrentThread()
+const currentThread = usePluginState('threads', (s) => s.currentThread)
 
 const content = computed<CodexThreadState>(() =>
   currentThread.value?.context?.codex ?? ({} as CodexThreadState)
 )
 
-const settings = useThreadsSettings()
-const overrides = useChatStateOverrides()
+const settings = usePluginState('threads', (s) => s.settings)
+const overrides = usePluginState('threads', (s) => s.chatStateOverrides)
 const stateConfig = computed(() => {
   const configs = settings.value?.chatStates
   const threadId = currentThread.value?.id ?? ''
@@ -445,7 +445,7 @@ async function copyThreadId() {
 
 function openTerminalTab() {
   // The code plugin routes a terminal.* event to its terminals
-  navigateToPlugin('code', {
+  openPlugin('code', {
     type: 'terminal.CREATE',
     target: 'tab',
     command: `codex resume ${content.value.threadId}`,

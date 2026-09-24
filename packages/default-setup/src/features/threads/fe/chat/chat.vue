@@ -186,7 +186,7 @@ import ImageLightbox from '@abuddy/ui/design/ImageLightbox'
 import ConfirmationDialog from '@abuddy/ui/design/ConfirmationDialog'
 import ScrollToBottomFob from '@abuddy/ui/design/ScrollToBottomFob'
 import { usePlugin, useShell, updateSettings } from '@abuddy/sdk/fe'
-import { navigateToPlugin } from '@/__generated__/fe'
+import { openPlugin } from '@/__generated__/fe'
 import { useSelector } from '@xstate/vue'
 import { id, threadsFromStore, type ThreadsState } from '@/features/threads/fe/state';
 import type { AgentThreadData, MessageEntity, ThreadEntity, MessageReferences, QuickPrompt, AgentSettings } from '@/__generated__/types'
@@ -323,7 +323,7 @@ function handleStatuslineClick() {
   const cwd = statusLineCwd.value
   if (!cwd) return
   // The code plugin routes an explorer.* event to its explorer
-  navigateToPlugin('code', { type: 'explorer.SET_BASE_DIRECTORY', path: cwd })
+  openPlugin('code', { type: 'explorer.SET_BASE_DIRECTORY', path: cwd })
 }
 
 function handleSendMessage(text: string, references?: MessageReferences) {
@@ -410,17 +410,17 @@ function handleToggleThreadSidebar() {
 }
 
 function handleViewDashboard() {
-  navigateToPlugin('threads', { type: 'VIEW_DASHBOARD' });
+  openPlugin('threads', { type: 'VIEW_DASHBOARD' });
   // If canvas is collapsed (chat dominant), give it room to show the dashboard
   if (shell.panelSizes.value.canvasHeight < 20) shell.resizeCanvas(50);
 }
 
 function handleViewArtifacts(threadId: string) {
-  navigateToPlugin('threads', { type: 'OPEN_THREAD_CHAT', threadId });
+  openPlugin('threads', { type: 'OPEN_THREAD_CHAT', threadId });
 }
 
 function handleViewDetails(threadId: string) {
-  navigateToPlugin('threads', { type: 'VIEW_THREAD', threadId });
+  openPlugin('threads', { type: 'VIEW_THREAD', threadId });
 }
 
 let pendingRestoreFiles = false

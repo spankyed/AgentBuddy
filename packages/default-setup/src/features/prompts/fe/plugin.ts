@@ -1,12 +1,8 @@
-import { definePlugin, pluginAccepts } from '@abuddy/sdk/fe';
-import type { PromptsListEvent } from './public';
+import { definePlugin } from '@abuddy/sdk/fe';
 import { Sparkle } from 'lucide-vue-next';
-import state from './state.ts';
+import state from './state';
 import canvas from './canvas.vue';
 import settings from './settings.vue';
-
-/** Paging and editing, which the code plugin's prompts panel asks of it */
-export const accepts = pluginAccepts<PromptsListEvent>();
 
 const promptsPlugin = definePlugin({
   label: 'Prompts',

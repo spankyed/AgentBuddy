@@ -14,9 +14,9 @@ const logWrite = vi.hoisted(() => vi.fn(() => Promise.resolve()));
 const { bindRendererHost } = await import('@/runtime');
 const { fePacks } = await import('@/runtime/packs');
 const { resolveName } = await import('@abuddy/sdk/ids');
-const { secretsClient, openPlugin, getDslTypes, getDesignated, tiptapPluginRegistry } = await import('@abuddy/sdk/fe');
+const { secretsClient, untypedOpenPlugin, getDslTypes, getDesignated, tiptapPluginRegistry } = await import('@abuddy/sdk/fe');
 const { stepRegistry } = await import('@abuddy/sdk/steps');
-const { sendToSystem } = await import('@abuddy/sdk/events');
+const { untypedSendToSystem } = await import('@abuddy/sdk/events');
 const { unbindFeHost } = await import('@abuddy/sdk/runtime/internals');
 
 const application = {
@@ -38,8 +38,8 @@ const settingsAddress = resolveName('default-setup/settings');
 
 it('throws, naming bindFeHost, before the renderer binds it', () => {
   expect(() => secretsClient.list()).toThrow('bindFeHost');
-  expect(() => openPlugin(settingsAddress)).toThrow('bindFeHost');
-  expect(() => sendToSystem('notes', { type: 'SAVE_NOTE' })).toThrow('bindFeHost');
+  expect(() => untypedOpenPlugin(settingsAddress)).toThrow('bindFeHost');
+  expect(() => untypedSendToSystem('notes', { type: 'SAVE_NOTE' })).toThrow('bindFeHost');
 });
 
 it("gives the SDK's frontend lookups the window's registered pack frontends, and throws, naming bindFeHost, before", () => {
@@ -71,17 +71,17 @@ it("gives the SDK's frontend lookups the window's registered pack frontends, and
 it('binds before the application actor exists, naming it when SDK code reaches the actor too early', () => {
   let created: typeof application | undefined;
   bindRendererHost(() => created as never);
-  expect(() => openPlugin(settingsAddress)).toThrow("The application actor isn't created yet");
+  expect(() => untypedOpenPlugin(settingsAddress)).toThrow("The application actor isn't created yet");
   created = application;
-  openPlugin(settingsAddress);
+  untypedOpenPlugin(settingsAddress);
   expect(application.send).toHaveBeenCalledWith({ type: 'OPEN_PLUGIN', plugin: 'default-setup/settings', events: [] });
 });
 
-it('gives secretsClient the API client and openPlugin the application actor', async () => {
+it('gives secretsClient the API client and untypedOpenPlugin the application actor', async () => {
   bindRendererHost(() => application as never);
   await expect(secretsClient.list()).resolves.toMatchObject({ secrets: [] });
   expect(secretsList).toHaveBeenCalledTimes(1);
-  openPlugin(settingsAddress);
+  untypedOpenPlugin(settingsAddress);
   expect(application.send).toHaveBeenCalledWith({ type: 'OPEN_PLUGIN', plugin: 'default-setup/settings', events: [] });
 });
 
@@ -89,7 +89,7 @@ it('gives secretsClient the API client and openPlugin the application actor', as
 // isn't a ref at all never reaches it
 it('refuses a string that is not a ref, rather than asking the shell to open it', () => {
   bindRendererHost(() => application as never);
-  expect(() => openPlugin('code')).toThrow(`"code" doesn't name a plugin`);
+  expect(() => untypedOpenPlugin('code')).toThrow(`"code" doesn't name a plugin`);
   expect(application.send).not.toHaveBeenCalled();
 });
 
@@ -99,7 +99,7 @@ it("sends to systems over the API client, reporting a rejected send to the conso
   const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {});
   mutate.mockRejectedValue(new Error('socket closed'));
 
-  sendToSystem('notes', { type: 'SAVE_NOTE', body: 'secret text' });
+  untypedSendToSystem('notes', { type: 'SAVE_NOTE', body: 'secret text' });
   await new Promise(resolve => setTimeout(resolve, 0));
 
   expect(mutate).toHaveBeenCalledWith({ to: 'notes', event: { type: 'SAVE_NOTE', body: 'secret text' } });

@@ -17,11 +17,7 @@ export type ArrayChanges = Record<string, DiffResult<DiffItem>>;
 export function checkFeatureSettings(featureId: string, settings: unknown): string[];
 
 // @public
-export function defineSystem<TEvents extends {
-    type: string;
-}, TOutgoing extends {
-    type: string;
-}, TContext = {}>(): SystemSpec<TEvents, TOutgoing, TContext>;
+export function defineSystem<C extends SystemContract>(): SystemSpec<C>;
 
 // @public (undocumented)
 export type DiffResult<T> = null | {
@@ -62,6 +58,11 @@ export interface HelpEntry {
     // (undocumented)
     question: string;
 }
+
+// @public
+export type MachineMatchesContract<Entry, C extends SystemContract> = Entry extends {
+    spec: infer Spec;
+} ? [Spec, SystemSpec<C>] extends [SystemSpec<C>, Spec] ? true : 'this system\'s defineSystem<…> declares a contract that is not the one abuddy.json names for its feature' : 'this system\'s default export has no `spec` from defineSystem<…>';
 
 // @public
 export function onPackSettingsDefaultsChanged(listener: () => void): () => void;
@@ -191,15 +192,32 @@ export function packSystem(entry: SystemEntry, options?: {
 // @public
 export const SYSTEM_EVENT_TYPES: readonly ["CLIENT_CONNECTED", "PACK_CHANGED", "FEATURE_SETTINGS_UPDATED"];
 
+// @public
+export interface SystemContract {
+    // (undocumented)
+    context?: unknown;
+    // (undocumented)
+    incoming?: {
+        type: string;
+    };
+    // (undocumented)
+    internal?: {
+        type: string;
+    };
+    // (undocumented)
+    outgoing: {
+        type: string;
+    };
+}
+
 // @public (undocumented)
 export interface SystemEntry {
     // (undocumented)
     machine: AnyStateMachine;
-    spec: Pick<SystemSpec<{
-        type: string;
-    }, {
-        type: string;
-    }>, '_incoming' | '_outgoing'>;
+    spec: {
+        types: unknown;
+        typeOf: unknown;
+    };
 }
 
 // @public
@@ -225,19 +243,13 @@ export type SystemEvents = {
 };
 
 // @public
-export interface SystemSpec<TEvents extends {
-    type: string;
-}, TOutgoing extends {
-    type: string;
-}, TContext = {}> {
-    _incoming: TEvents;
-    _outgoing: TOutgoing;
+export interface SystemSpec<C extends SystemContract> {
     // (undocumented)
-    typeOf: ReturnType<typeof safeEvents<TEvents | SystemEvents>>;
+    typeOf: ReturnType<typeof safeEvents<MachineEvents<C>>>;
     // (undocumented)
     types: {
-        context: TContext;
-        events: TEvents | SystemEvents;
+        context: ContractContext<C>;
+        events: MachineEvents<C>;
     };
 }
 

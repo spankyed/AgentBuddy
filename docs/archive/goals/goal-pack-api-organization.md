@@ -1,4 +1,4 @@
-> **Done** (merged in #187). The text below is the plan as written; [`goal-package-boundaries.md`](../../goals/goal-package-boundaries.md) followed it and replaced several of its interim pieces (the host module registry, `runMigrations` in the SDK). For the current layout, see the root `CLAUDE.md`.
+> **Done** (merged in #187). The text below is the plan as written; [`goal-package-boundaries.md`](goal-package-boundaries.md) followed it and replaced several of its interim pieces (the host module registry, `runMigrations` in the SDK). For the current layout, see the root `CLAUDE.md`.
 
 ```
 # Goal: organize the pack-facing API — one typed way to send, log and run actions

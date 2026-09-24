@@ -8,37 +8,52 @@ export type RouteComponents = Record<RouteName, Component>;
 
 /**
  * A pack's plugin module, as its author writes it. It has no id: the plugin is registered at its
- * feature's ref, `<packId>/<featureId>`; pack code opens it by name (`navigateToPlugin` from `#generated/fe`),
+ * feature's ref, `<packId>/<featureId>`; pack code opens it by name (`openPlugin` from `#generated/fe`),
  * and its components reach its actor with `usePlugin()`.
  */
 export type PluginDefinition = Omit<Plugin, 'id'>;
 
-/** What a plugin's `accepts` export carries: the events another plugin may send it, as a phantom type. */
-export interface PluginAccepts<TAccepts extends { type: string } = never> {
-  /** Phantom: the events *another* plugin may send this one, which codegen reads them from */
-  _accepts: TAccepts;
+/** The audiences a plugin's contract may open its inbox to, and what each one means. */
+export interface PluginInboxAudiences {
+  /** What this pack's own features may send it */
+  pack?: { type: string };
+  /** What a dependent pack may send it: the half that reaches the facade */
+  public?: { type: string };
 }
 
 /**
- * Declare the events other plugins may send this one, as a named `accepts` export beside the plugin:
+ * Constrains the `inbox` half of a plugin's `Contract`, so a misspelled audience fails to compile rather than
+ * declaring an inbox nobody can reach:
  *
  * ```ts
- * export const accepts = pluginAccepts<ActionsListEvent>();
- * export default definePlugin({ label: 'Actions', icon, state, canvas });
+ * // features/notes/fe/types.ts
+ * export type Contract = {
+ *   state: NotesContext
+ *   inbox: PluginInbox<{ public: { type: 'NOTE.OPEN'; noteId: string } }>
+ * }
  * ```
  *
- * Its own feature's system needs no declaration: what that system sends is already its outgoing union, and codegen
- * adds it. This is for the rest — what another feature's or another pack's frontend sends it, which nothing else
- * says — and it is the plugin's published contract, the only events a dependent pack may send.
+ * A feature's own system needs no declaration: what that system sends is already its outgoing union, and codegen
+ * adds it. This is for the rest — what another feature's or another pack's frontend sends — which nothing else says.
  *
- * It takes no arguments on purpose, as `defineSystem()` does: codegen reads its type from this declaration alone,
- * without resolving the plugin's machine, whose own imports would cycle back through `#generated/events`.
+ * Codegen reads the contract as a *declared type* from the module `abuddy.json` names at
+ * `features[].plugin.contract`, and from nowhere else: reading it from `fe/plugin.ts` would pull in the machine,
+ * whose own imports cycle back through `#generated/events`. Nothing here exists at runtime.
  */
-export function pluginAccepts<TAccepts extends { type: string } = never>(): PluginAccepts<TAccepts> {
-  return {} as PluginAccepts<TAccepts>;
-}
+export type PluginInbox<T extends PluginInboxAudiences> = T;
 
-/** Define a pack's plugin. Its inbox is declared beside it, with `pluginAccepts()`. */
+/**
+ * The state a plugin's `Contract` publishes — the whole of its context unless the contract narrows it with
+ * `Pick<>`. Generated code builds each pack's `PackPluginState` with it, and the typed readers in `#generated/fe`
+ * hand a selector this rather than an XState snapshot.
+ *
+ * Reads are public where sends are declared by audience, and the asymmetry is deliberate: a send changes the
+ * plugin's behaviour, a read does not, and a dependent pack that could read nothing by default would have no way
+ * to render what the user has open in someone else's plugin.
+ */
+export type PluginStateOf<C> = C extends { state: infer State } ? State : never;
+
+/** Define a pack's plugin. What it publishes — its state and its inbox — is its `Contract` (`PluginInbox`). */
 export function definePlugin(definition: PluginDefinition): PluginDefinition {
   return definition;
 }

@@ -6,18 +6,22 @@ import { saveOpenTabs, loadPersistedTabs, sortTabsByPinned } from './utils/persi
 import { loadRecentFiles, addRecentFile } from './utils/recent-files';
 import { pushTabViewHistory, nextActiveFromHistory } from './utils/tab-management';
 import { saveTabGroups, loadTabGroups, getNextAvailableColor, ALL_COLORS, type TabGroupColor, type TabGroup } from '@abuddy/sdk/fe';
-import { type NavHistory, createNavHistory, pushNavHistory, goBack, goForward, canGoBack, canGoForward } from '@abuddy/sdk/fe';
+import { createNavHistory, pushNavHistory, goBack, goForward, canGoBack, canGoForward } from '@abuddy/sdk/fe';
 import type { CodeSettings } from '@/__generated__/types';
-import type { OutgoingCodeEvents } from '@/features/code/be/system';
+import type { ActionTab, CodeContext as Context, CodeInboxEvent, OpenFile, PanelType, PromptTab, QuickOpenResult, TerminalTab } from './contract';
+export type { OpenFile, TerminalTab, QuickOpenResult, PanelType } from './contract';
+export type { CodeContext as Context } from './contract';
+import type {  } from '@/features/code/be/types'
+import type { OutgoingCodeEvents } from '@/features/code/be/contract';
 
 // Import child state machines
 import { explorerState } from './features/explorer/state';
 import { searchState } from './features/search/state';
-import { commitState, type GitStatusFile, type GitDiff } from './features/commit/state';
+import { commitState } from './features/commit/state';
 import { pullRequestState } from './features/pull-request/state';
 import { terminalState, type TerminalInfo } from './features/terminal/state';
-import { actionsState, type ActionTab } from './features/actions/state';
-import { promptsState, type PromptTab } from './features/prompts/state';
+import { actionsState } from './features/actions/state';
+import { promptsState } from './features/prompts/state';
 import type { KeyboardShortcut } from '@abuddy/sdk/types';
 import { codeChild, routeToCodeChild, CODE_CHILD_IDS } from './features/children';
 
@@ -39,28 +43,6 @@ function getTabbedTerminalIds(openFiles: (OpenFile | TerminalTab | ActionTab | P
   )
 }
 
-export interface OpenFile {
-  path: string
-  content: string
-  originalContent: string  // Content when file was opened or last saved
-  modified: boolean
-  isDiff?: boolean
-  gitDiff?: GitDiff
-  gitFile?: GitStatusFile
-  externallyModified?: boolean
-  externalModificationTime?: Date
-  pendingSaveConflict?: boolean
-  isImage?: boolean
-  isVideo?: boolean
-  isBinary?: boolean
-  isRichText?: boolean
-  _richTextBaselineSet?: boolean
-  isPrDiff?: boolean
-  isPinned?: boolean
-  groupId?: string
-  isPreview?: boolean
-}
-
 /** Unstaged diff tabs are editable (right side = working tree). PR diffs are read-only. */
 export function isEditableDiff(file: OpenFile | { isDiff?: boolean; isPrDiff?: boolean; gitFile?: { staged: boolean } }): boolean {
   if ('isPrDiff' in file && file.isPrDiff) return false
@@ -69,58 +51,12 @@ export function isEditableDiff(file: OpenFile | { isDiff?: boolean; isPrDiff?: b
 
 export type { TabGroupColor, TabGroup };
 
-export interface TerminalTab extends OpenFile {
-  isTerminal: true
-  terminalInfo: TerminalInfo
-}
-
-export type Context = {
-  baseDirectory: string
-  openFiles: (OpenFile | TerminalTab | ActionTab | PromptTab)[]
-  activeFilePath: string | null
-  isLoading: boolean
-  error: string | null
-  selectedPanel: PanelType
-  tabsRestored?: boolean
-  pendingTabOrder?: Array<{ path: string; order: number }>  // Track desired tab order during restoration
-  pendingPersistedMetadata?: Map<string, { groupId?: string; isPinned?: boolean; isPreview?: boolean }>  // Track metadata to apply after restoration
-  // Tab groups state
-  tabGroups: TabGroup[]
-  // Quick open state
-  isQuickOpenVisible: boolean
-  quickOpenQuery: string
-  quickOpenResults: QuickOpenResult[]
-  quickOpenSelectedIndex: number
-  quickOpenLoading: boolean
-  recentlyOpenedFiles: string[]
-  tabViewHistory: string[]
-  hotkeys: HotkeysMap
-  settings?: CodeSettings
-  pendingRevealLine: { filePath: string; line: number; column: number; lineText?: string } | null
-  searchFocusTrigger: number
-  searchPrefillText: string
-  panelTerminalId: string | null
-  panelTerminalExpanded: boolean
-  pendingTerminalTabIds?: string[]
-  panelNavHistory: NavHistory<PanelType>
-}
-
-export interface QuickOpenResult {
-  path: string
-  relativePath: string
-  name: string
-  type: 'file' | 'directory'
-  extension?: string
-  score?: number
-  matchRanges?: Array<[number, number]> // For highlighting matches
-}
-
 export type Event =
   | OutgoingCodeEvents
   // The app's, when the code plugin's settings change
   | { type: 'FEATURE_SETTINGS_UPDATED'; settings: CodeSettings }
   // Generic update event for child actors to update parent state
-  | { type: 'UPDATE_STATE'; updates: Partial<Context> }
+  | CodeInboxEvent
   | { type: 'ADD_TAB'; tab: any; replacePreview?: boolean; extraUpdates?: Partial<Context> }
   | { type: 'PLUGIN_ACTIVATED' }
   | { type: 'SELECT_PANEL'; panel: PanelType }
@@ -172,8 +108,6 @@ export type Event =
   | { type: 'NAVIGATE_FORWARD' };
 
 export type CodeState = ActorRefFrom<typeof codeState>;
-
-type PanelType = 'explorer' | 'search' | 'commit' | 'pr' | 'actions' | 'prompts';
 
 // Shared tab removal logic (tab removal + group cleanup + explorer notify)
 function removeTabLogic(context: Context, self: AnyActorRef, path: string) {

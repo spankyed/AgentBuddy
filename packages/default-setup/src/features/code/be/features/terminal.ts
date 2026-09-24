@@ -1,3 +1,4 @@
+import type { IncomingTerminalEvents, OutgoingTerminalEvents } from '../contract'
 import { services } from '@/__generated__/services';
 import { broadcastToPlugin } from '@/__generated__/events';
 import { setup, assign, fromPromise } from 'xstate'
@@ -13,26 +14,8 @@ const logger = createLogger('terminal');
 const pluginId = 'code' as const
 
 // Incoming events from frontend
-export type IncomingTerminalEvents =
-  | { type: 'terminal.CREATE_TERMINAL'; title?: string; cwd?: string; shell?: string; cols?: number; rows?: number }
-  | { type: 'terminal.CLOSE_TERMINAL'; terminalId: string }
-  | { type: 'terminal.TERMINAL_INPUT'; terminalId: string; data: string }
-  | { type: 'terminal.RESIZE_TERMINAL'; terminalId: string; cols: number; rows: number }
-  | { type: 'terminal.RENAME_TERMINAL'; terminalId: string; customTitle: string }
-  | { type: 'terminal.REFRESH_LIST' }
-  | { type: 'terminal.OPEN_TERMINAL_TAB'; terminalId: string }
 
 // Outgoing events to frontend
-export type OutgoingTerminalEvents =
-  | { type: 'terminal.CREATED'; data: TerminalInfo }
-  | { type: 'terminal.OUTPUT'; data: { terminalId: string; data: string } }
-  | { type: 'terminal.INITIAL_OUTPUT'; data: { terminalId: string; data: string } }
-  | { type: 'terminal.CLOSED'; data: { terminalId: string } }
-  | { type: 'terminal.RENAMED'; data: { terminalId: string; customTitle: string } }
-  | { type: 'terminal.CWD_CHANGED'; data: { terminalId: string; cwd: string; title?: string } }
-  | { type: 'terminal.ERROR'; data: { message: string; terminalId?: string } }
-  | { type: 'terminal.TERMINALS_LISTED'; data: TerminalInfo[] }
-  | { type: 'terminal.TERMINAL_TAB_OPENED'; data: TerminalInfo }
 
 export interface Context {
   baseDirectory: string | null

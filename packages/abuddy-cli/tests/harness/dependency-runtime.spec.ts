@@ -59,15 +59,15 @@ await setupPackTests({
 });`);
   // A system that sends to its plugin as it starts (before a client connects) and on NOTIFY, and reports an
   // error on SAVE. Hand-written, so it has no generated name map and names its plugin by the id it runs
-  // under; a built pack writes `broadcastToPlugin('memos', …)` and its `#generated/events` resolves it.
+  // under; a built pack writes `untypedBroadcastToPlugin('memos', …)` and its `#generated/events` resolves it.
   write(root, 'tests/memos-system.ts', `
 import { setup } from 'xstate';
-import { broadcastToPlugin } from '@abuddy/sdk/events';
+import { untypedBroadcastToPlugin } from '@abuddy/sdk/events';
 import { reportError } from '@abuddy/sdk/logger';
 export const memos = setup({}).createMachine({
-  entry: () => broadcastToPlugin('dependent-pack/memos', { type: 'MEMOS_STARTED' }),
+  entry: () => untypedBroadcastToPlugin('dependent-pack/memos', { type: 'MEMOS_STARTED' }),
   on: {
-    NOTIFY: { actions: () => broadcastToPlugin('dependent-pack/memos', { type: 'MEMOS_NOTIFIED' }) },
+    NOTIFY: { actions: () => untypedBroadcastToPlugin('dependent-pack/memos', { type: 'MEMOS_NOTIFIED' }) },
     SAVE: { actions: () => reportError({ error: new Error('lost memo'), source: 'memos' }) },
   },
 });`);

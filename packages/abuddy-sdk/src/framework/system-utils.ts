@@ -1,10 +1,13 @@
 import type { AnyStateMachine } from 'xstate';
-import type { SystemSpec } from './define-system.ts';
 import type { PackFeatureSystem } from './pack-registration.ts';
 
 export interface SystemEntry {
-  /** The system's events, from `defineSystem`, which the build reads the types it generates from */
-  spec: Pick<SystemSpec<{ type: string }, { type: string }>, '_incoming' | '_outgoing'>;
+  /**
+   * The spec `defineSystem` returned, so a system module's default export is one thing. Nothing reads the events
+   * from it: codegen reads them from the feature's contract (`features[].system.contract`), which is why the entry
+   * no longer needs `satisfies` to keep them — there is no inference left to widen.
+   */
+  spec: { types: unknown; typeOf: unknown };
   machine: AnyStateMachine;
 }
 

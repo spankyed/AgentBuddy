@@ -1,10 +1,10 @@
 import { Extension } from '@tiptap/core'
 import { commandSuggestionPlugin } from './command-suggestion-plugin'
-import { slashCommands } from '@/features/threads/fe/public'
+import { readPluginState } from '@/__generated__/fe'
 
 export const CommandSuggestion = Extension.create({
   name: 'commandSuggestion',
   addProseMirrorPlugins() {
-    return [commandSuggestionPlugin(this.editor, slashCommands)]
+    return [commandSuggestionPlugin(this.editor, () => readPluginState('threads', (s) => s.commands))]
   },
 })

@@ -1,23 +1,10 @@
+import type { ActionTab } from '../../contract';
+export type { ActionTab } from '../../contract';
 import { setup , type ActorRefFrom } from 'xstate';
 import { sendToSystem } from '@/__generated__/events';
 import { updateParentState, getParentContext, addTabToParent } from '../../utils/parent-communication';
 import type { ActionEntity } from '@abuddy/sdk';
 
-export interface ActionTab {
-  path: string
-  content: string
-  modified: boolean
-  isAction: true
-  actionEntity: ActionEntity
-  // Include OpenFile properties to satisfy type constraints
-  isDiff?: boolean
-  externallyModified?: boolean
-  externalModificationTime?: Date
-  pendingSaveConflict?: boolean
-  isPinned?: boolean
-  groupId?: string
-  isPreview?: boolean
-}
 
 export type Event =
   | { type: 'codeActions.OPEN_ACTION'; actionId: string }

@@ -216,6 +216,18 @@ export type HostShellEvent =
     type: 'OPEN_PLUGIN';
     plugin: string;
     events: PluginEvent[];
+}
+/**
+* Hands a plugin's actor `events` without opening it. The same wait as `OPEN_PLUGIN` — a plugin whose pack's
+* frontend is still loading is waited for, and one no pack provides is reported once loading settles — but the
+* plugin the user has open doesn't change: a send is not a navigation.
+*/
+| {
+    type: 'SEND_TO_PLUGIN';
+    plugin: string;
+    events: PluginEvent[];
+    from?: string;
+    via?: string;
 } | {
     type: 'RESIZE_PANEL';
     panel: 'canvas' | 'inspection';
@@ -309,9 +321,6 @@ export function onMenuOpenChange(open: boolean): void;
 export function openLink(url: string): void;
 
 // @public
-export function openPlugin(ref: string, event?: PluginEvent | PluginEvent[]): void;
-
-// @public
 export interface PackFEFeature {
     default?: true;
     designation?: string;
@@ -375,18 +384,6 @@ interface Plugin_2 {
 export { Plugin_2 as Plugin }
 
 // @public
-export interface PluginAccepts<TAccepts extends {
-    type: string;
-} = never> {
-    _accepts: TAccepts;
-}
-
-// @public
-export function pluginAccepts<TAccepts extends {
-    type: string;
-} = never>(): PluginAccepts<TAccepts>;
-
-// @public
 export type PluginDefinition = Omit<Plugin_2, 'id'>;
 
 // @public
@@ -404,6 +401,22 @@ export interface PluginHotkeyDefinition {
 }
 
 // @public
+export type PluginInbox<T extends PluginInboxAudiences> = T;
+
+// @public
+export interface PluginInboxAudiences {
+    pack?: {
+        type: string;
+    };
+    public?: {
+        type: string;
+    };
+}
+
+// @public
+export function pluginIsRunning(ref: string): boolean;
+
+// @public
 export const PluginScope: DefineComponent<ExtractPropTypes<    {
 plugin: {
 type: StringConstructor;
@@ -418,6 +431,11 @@ required: true;
 };
 }>> & Readonly<{}>, {}, {}, {}, {}, string, ComponentProvideOptions, true, {}, any>;
 
+// @public
+export type PluginStateOf<C> = C extends {
+    state: infer State;
+} ? State : never;
+
 // @public (undocumented)
 export function processHotkeys<const T extends Record<string, string>, H = unknown>(event: HotkeyEvent, hotkeys: H | undefined, actionMap: T): T[keyof T] | undefined;
 
@@ -425,7 +443,7 @@ export function processHotkeys<const T extends Record<string, string>, H = unkno
 export function pushNavHistory<T>(history: NavHistory<T>, entry: T): NavHistory<T>;
 
 // @public
-export function readPluginState<TSnapshot, TSelected>(ref: string, selector: (snapshot: TSnapshot) => TSelected): TSelected;
+export function readUntypedPluginState<TSnapshot, TSelected>(ref: string, selector: (snapshot: TSnapshot) => TSelected): TSelected | undefined;
 
 // @public (undocumented)
 export type RouteComponents = Record<RouteName, Component>;
@@ -601,6 +619,9 @@ export type TrailClickEvent<TInfo = unknown> = {
 };
 
 // @public
+export function untypedOpenPlugin(ref: string, event?: PluginEvent | PluginEvent[]): void;
+
+// @public
 export function updateSettings(target: SettingsTarget, path: readonly string[], value: unknown): void;
 
 // @public
@@ -608,9 +629,6 @@ export function useFeatureSettings<T = unknown>(feature: FeatureRef): Readonly<R
 
 // @public
 export function usePlugin<T>(): T;
-
-// @public
-export function usePluginState<TSnapshot, TSelected>(ref: string, selector: (snapshot: TSnapshot) => TSelected): Readonly<Ref<TSelected>>;
 
 // @public
 export function useSettingsSave(): {
@@ -626,6 +644,9 @@ export function useShell(): Shell;
 
 // @public (undocumented)
 export function useTrackedMenuOpen(menuOpen: Ref<boolean>): void;
+
+// @public
+export function useUntypedPluginState<TSnapshot, TSelected>(ref: string, selector: (snapshot: TSnapshot) => TSelected): Readonly<Ref<TSelected | undefined>>;
 
 // (No @packageDocumentation comment for this package)
 

@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { setup } from 'xstate';
 import { defineSystem, packSystem } from '../../src/framework/index.ts';
 
-const spec = defineSystem<{ type: 'ADD_MEMO' }, { type: 'MEMO_ADDED' }>();
+const spec = defineSystem<{ incoming: { type: 'ADD_MEMO' }; outgoing: { type: 'MEMO_ADDED' } }>();
 const machine = setup({ types: spec.types }).createMachine({ on: { ADD_MEMO: { actions: () => {} } } });
 
 describe('packSystem', () => {

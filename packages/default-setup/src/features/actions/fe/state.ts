@@ -10,7 +10,8 @@ import type {
   Category,
   ActionsSettings,
 } from '@/__generated__/types'
-import type { OutgoingActionEvents } from '@/features/actions/be/system'
+import type { ActionsContext, ActionsInboxEvent } from './contract'
+import type { OutgoingActionEvents } from '@/features/actions/be/types'
 import type { ActionParameter } from '@abuddy/sdk'
 import { sendToSystem } from '@/__generated__/events'
 import { Trash2 } from 'lucide-vue-next'
@@ -23,43 +24,6 @@ import type { ActionEntity, EARS } from '@abuddy/sdk'
 export const id = 'actions' as const;
 export type ActionsState = ActorRefFrom<typeof actionsState>
 
-export interface ActionsContext {
-  selectedActionId?: EARS.EntityId;
-  actions: ActionEntity[];
-  selectedAction?: ActionEntity;
-  totalCount: number;
-  page: number;
-  totalPages: number;
-  loadingMore: boolean;
-  categories: Category[]; // Categories from settings
-  selectedCategories: string[]; // Filter state
-
-  // Import/Export state
-  actionsImport: {
-    status: 'idle' | 'importing' | 'success' | 'error';
-    errors: string[];
-    importedCount: number;
-  };
-  actionsExport: {
-    status: 'idle' | 'exporting' | 'success' | 'error';
-    errors: string[];
-    filePath: string;
-    actionCount: number;
-  };
-
-  // Form data for create/edit
-  formData: {
-    label: string;
-    description?: string;
-    category?: string;
-    input: Record<string, ActionParameter>;
-    actionFn: string;
-    output?: any;
-    parametersExpanded?: boolean;
-    outputExpanded?: boolean;
-    metadataExpanded?: boolean;
-  };
-}
 
 type SystemEvent = OutgoingActionEvents
   | { type: 'ACTIONS_PAGE_LOADED'; data: { actions: ActionEntity[]; page: number; totalPages: number } }
@@ -70,13 +34,8 @@ type SystemEvent = OutgoingActionEvents
   | { type: 'ACTIONS_EXPORT_FAILED'; errors: string[] }
 
 type UIEvent =
-  | { type: 'ACTION.SELECT'; actionId: EARS.EntityId }
-  | { type: 'ACTION.CREATE' }
+  | ActionsInboxEvent
   | { type: 'ACTION.SAVE' }
-  | { type: 'ACTION.DELETE'; actionId: EARS.EntityId }
-  | { type: 'ACTION.UPDATE_INPUT'; actionId: string; input: Record<string, any> }
-  | { type: 'ACTION.CREATE_INLINE'; label: string; actionFn: string; input: Record<string, any> }
-  | { type: 'ACTION.UPDATE_LABEL'; actionId: string; label: string }
   | { type: 'FORM.UPDATE_LABEL'; label: string }
   | { type: 'FORM.UPDATE_DESCRIPTION'; description: string }
   | { type: 'FORM.UPDATE_PARAMETERS'; input: Record<string, ActionParameter> }
@@ -88,8 +47,6 @@ type UIEvent =
   | { type: 'TOGGLE_OUTPUT_SECTION'; show: boolean }
   | { type: 'TOGGLE_METADATA_SECTION'; show: boolean }
   | { type: 'FEATURE_SETTINGS_UPDATED'; settings: ActionsSettings }
-  | { type: 'ACTIONS.LOAD_MORE' }
-  | { type: 'ACTIONS.LOAD_ALL' }
   | { type: 'FILTER.TOGGLE_CATEGORY'; categoryName: string }
   | { type: 'FILTER.CLEAR' }
   // Import/Export events

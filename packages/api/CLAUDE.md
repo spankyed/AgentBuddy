@@ -92,7 +92,15 @@ Loggers and error reports are SDK code (`@abuddy/sdk/logger`): a bound `createLo
 - Run: `npm test -w @app/api` (`vitest run`), `npm run test:watch -w @app/api`, a single file with `npm test -w @app/api -- secrets`. Root `npm run test:unit` runs this package first, then default-setup and `@abuddy/host`.
 - Config: `globals: true`, `environment: 'node'`, `testTimeout: 120_000`, `@abuddy/source` plus Vite's server conditions (without `module`) for `resolve` and `ssr.resolve`, `.env` loaded with dotenv. There's no global env or data dir setup: specs that touch stores set `ABUDDY_ENV=test` and `ABUDDY_USER_DATA_DIR` to an `fs.mkdtempSync` dir, then call `openAppStore()` from `@/runtime` (see `secrets.spec.ts`). `app-reset.spec.ts`, `upgrade-from-0.3.14.spec.ts` and `packaged-boot.spec.ts` load the built-in packs' built runtimes, so run `npm run compile` first.
 - Coverage by file: the files `src/` may hold (`source-layout`), the app bus's `CLIENT_CONNECTED` handling and `broadcastToPlugin` dropped until a client connects, on this package's transport (`bus-client-connected`), the bound app's members (`bound-runtime`), each log event printed once (`log-capture`), data persisted across a restart through `openAppStore()` (`restart-persistence`), host data services, an app reset on the built-in packs leaving default settings, seeded flows and the app version (`app-reset`), 0.3.15's host and built-in pack migrations over a 0.3.14 user's settings row leaving only the user's changes, each plugin's under its ref, and the app's state in `AppState` (`upgrade-from-0.3.14`), secrets procedures and redaction, the API's boot and `openAppDatabase` hydrating a data dir to the same entities, relations, roles and partition routes (`app-database-parity`), the branch a packaged app boots through — the built-in packs loaded from the bundle's loaders rather than their built runtimes, which is where an installed pack once took a built-in pack's role (`packaged-boot`) — and one spec for code outside this package (`claude-code-permission-shape`, a standalone Zod mirror of the Claude Code CLI's permission response). `app-reset` also shows the reset empties the app's state (`AppState`: onboarding and version).
-- Typecheck: root `npm run typecheck:be` runs `tsc -p .` and `tsc -p tsconfig.scripts.json` here.
+- Typecheck: root `npm run typecheck:be` runs three projects here — `tsc -p .` (`src`), `tsc -p tsconfig.test.json`
+  (`src` and `tests`, with `vitest/globals` so `describe`/`it`/`expect` are ambient in specs and nowhere else) and
+  `tsc -p tsconfig.scripts.json` (`scripts/`). `tsconfig.test.json` is also what `vitest.config.ts` reads for its
+  path aliases. The specs went unchecked until 2026-09-24, which had let seven of them drift — two called
+  `startPacks` with an argument it dropped long ago, three collected `Message`s into `Record<string, unknown>`
+  arrays, two cast through types that no longer overlap — none of which a run could catch, since extra arguments
+  and structural mismatches are invisible at runtime. A compile-time assertion about this package's own boundary
+  can therefore live with it: the `Required<Message>` sample in `tests/unit/bus-send-sender.spec.ts` stops
+  compiling when the message envelope grows a field.
 
 ## Scripts (`package.json`)
 

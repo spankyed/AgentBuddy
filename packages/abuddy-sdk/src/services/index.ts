@@ -1,6 +1,6 @@
 import type { repository } from '@abuddy/ears';
 import { boundHost, type HostRuntimeServices } from '../runtime/host-runtime.ts';
-import { broadcastToPlugin, sendToSystem } from '../events/index.ts';
+import { createSends, untypedBroadcastToPlugin, untypedSendToSystem } from '../events/index.ts';
 import { resolveRegistered } from '../ids/refs.ts';
 import { createLogger, type Logger } from '../logger/logger.ts';
 import type { AppDataService } from './app-data.ts';
@@ -31,14 +31,24 @@ const logger = createLogger('log-service');
 export interface HostServices {
   logger: Logger;
   /**
-   * Sends to plugins and systems. Actions run outside any pack, so both name a feature `<packId>/<featureId>`, the
-   * host's included (`host/application`); `sendToSystem` also takes a role (`{ role: 'brain' }`), which reaches
+   * Sends to plugins and systems. Both name a feature `<packId>/<featureId>` — the action's own pack included,
+   * and the host's (`host/application`); `sendToSystem` also takes a role (`{ role: 'brain' }`), which reaches
    * whichever system plays it — a flow event goes to the brain as `TRIGGER_BRAIN_EVENT`. A pack's `Services`
    * types them with its own and its dependencies' events.
+   *
+   * Naming its own pack is the point, not a gap left by the action having no pack scope.
+   * An action is content, not source: a row a user can edit in the Actions plugin, read in the DB console,
+   * export to a seed file and copy into another pack. A bare name would rebind on that copy — `'threads'`
+   * quietly meaning the new pack's feature, or nothing — where a ref that no longer fits is wrong visibly, and
+   * is refused at the bus rather than doing something else.
+   *
+   * What an action sends does say where it came from: the pack running it in `Message.from` and the action in
+   * `Message.via` (`createActionEmitter`). Saying so and resolving names are separate — the first is a label on
+   * the message, the second would change what a name means.
    */
   emitter: {
-    broadcastToPlugin: typeof broadcastToPlugin;
-    sendToSystem: typeof sendToSystem;
+    broadcastToPlugin: typeof untypedBroadcastToPlugin;
+    sendToSystem: typeof untypedSendToSystem;
   };
   repository: typeof repository;
   /** Reset, back up and restore the app's stored data; whether the user finished onboarding */
@@ -55,14 +65,42 @@ export interface HostServices {
   settings: SettingsService;
 }
 
-/** Actions run outside any pack, so they name every feature by its ref, which must be a registered one */
+/** An action names every feature by its ref, its own pack's included, and the ref must be a registered one */
 const actionRef = (kind: 'system' | 'plugin', name: string, registered: readonly string[]) =>
   resolveRegistered(kind, name, { registered, form: `actions name a ${kind} "<packId>/<featureId>"` });
 
-const emitter: HostServices['emitter'] = {
-  broadcastToPlugin: (name, event) => broadcastToPlugin(actionRef('plugin', name, boundHost().packs.pluginIds()), event),
-  sendToSystem: (to, event) => sendToSystem(typeof to === 'string' ? actionRef('system', to, boundHost().packs.systemIds()) : to, event),
-};
+/** Who an action's sends say they are. Both fields are labels: nothing routes or refuses on either. */
+export interface ActionSender {
+  /** The pack whose code is running the action, stamped as `Message.from` */
+  from: string;
+  /**
+   * The running action, as `action:<label>` — the same string that names its logger, so a dropped send and that
+   * action's own log lines share something to grep for. Stamped as `Message.via`.
+   */
+  via: string;
+}
+
+/**
+ * The emitter an action runs with: the sends of `HostServices`, stamped with the pack running the action and the
+ * action itself. A pack that runs user-authored code builds one per run — default-setup's `runActionCode` does —
+ * so the last sender that could not say who it was now can.
+ *
+ * Without a `sender` it is `services.emitter`: the sends any pack code reaches through `services`, stamping
+ * nothing, since only the pack that ran the action knows which action it was.
+ *
+ * Its names stay refs either way. Binding an identity for the stamp must not make a bare name resolve: an action
+ * is content, not source — a row a user edits, exports and copies into another pack, where `'threads'` would
+ * quietly mean the new pack's feature, or nothing.
+ */
+export function createActionEmitter(sender?: ActionSender): HostServices['emitter'] {
+  const sends = createSends(sender);
+  return {
+    broadcastToPlugin: (name, event) => sends.broadcastToPlugin(actionRef('plugin', name, boundHost().packs.pluginIds()), event),
+    sendToSystem: (to, event) => sends.sendToSystem(typeof to === 'string' ? actionRef('system', to, boundHost().packs.systemIds()) : to, event),
+  };
+}
+
+const emitter: HostServices['emitter'] = createActionEmitter();
 
 /** The bound app's implementation of a service; each call reads the binding */
 const app = <K extends keyof HostRuntimeServices>(name: K): HostRuntimeServices[K] => boundHost().services[name];

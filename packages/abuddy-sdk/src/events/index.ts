@@ -3,10 +3,10 @@
 import { boundHost, _isHostBound } from '../runtime/host-runtime.ts';
 import { _isFeHostBound, boundFeHost } from '../runtime/fe-host.ts';
 import { getDesignated } from '../designations/index.ts';
-import { resolveName, type FeatureRef } from '../ids/refs.ts';
+import { resolveName, splitRef, type FeatureRef } from '../ids/refs.ts';
 import type { ApplicationHotkeys } from '../types/index.ts';
 import { eventTypes } from './event-types.ts';
-import type { SystemEvents } from '../framework/define-system.ts';
+import type { ContractIncoming, SystemEvents } from '../framework/define-system.ts';
 
 export { eventTypes, type TypeOfEvent } from './event-types.ts';
 
@@ -18,6 +18,43 @@ export { eventTypes, type TypeOfEvent } from './event-types.ts';
 export interface Message {
   to: string;
   event: { type: string; [key: string]: unknown };
+  /**
+   * The id of the pack that sent it, stamped by the sends `#generated/events` builds (`defineEvents`) and by the
+   * emitter an action runs with (`createActionEmitter`). Diagnostics name it: a dropped or unroutable message says
+   * who sent it instead of leaving that to a grep.
+   *
+   * Absent on a send made for no pack in particular — `reportError`'s, which sends on behalf of whoever called it
+   * and is told a source rather than a pack. Nothing routes or refuses on it — treat it as a label, not a claim:
+   * a sender that doesn't stamp is not thereby untrusted, and one that does has not been checked.
+   */
+  from?: string;
+  /**
+   * What within the sender made it, where the sender has a name for that: `action:<label>` for an action, and for
+   * a `reportError` the source it was given (`'bus'`, `'step-runtime'`). Each is the string that also names the
+   * corresponding logger, so a dropped send and the log lines around it are one grep apart.
+   *
+   * An action is why this exists. It is the one sender a pack cannot point at in its own source — content a user
+   * writes, edits and exports — so `from` naming its pack leaves the useful half of "who sent this" unsaid. `from`
+   * keeps one meaning, the pack; `'<pack>/<action>'` would read as a `<packId>/<featureId>` ref and give anything
+   * parsing it a confident wrong answer.
+   *
+   * Between the two, every send carries a pack, a source, or both — except `services.emitter` reached outside an
+   * action, where neither is in scope. A label like `from`: nothing routes or refuses on it.
+   */
+  via?: string;
+}
+
+/**
+ * How a diagnostic names who sent a message, as a suffix to append: ` by "default-setup" (action:summarise)`,
+ * or `''` when the message says neither. Every place that reports an undeliverable message appends this, so they
+ * word it the same and a field added to the sender reaches all of them at once. It says nothing about whether a
+ * sender may send: nothing routes on either field, and a drop that names no sender just has one fewer clue.
+ */
+export function senderSuffix({ from, via }: Pick<Message, 'from' | 'via'>): string {
+  if (from && via) return ` by "${from}" (${via})`;
+  if (from) return ` by "${from}"`;
+  if (via) return ` by ${via}`;
+  return '';
 }
 
 /** A plugin's name → the events that plugin receives. Each pack's `#generated/events` defines its `SendablePluginEvents`. */
@@ -58,33 +95,45 @@ type EventsOfType<E, Type> = E extends { type: infer T } ? (Type extends T ? E :
 /** Each member of `E` without `type`, keeping named fields beside an index signature (which `Omit` drops) */
 type WithoutType<E> = E extends unknown ? { [K in keyof E as K extends 'type' ? never : K]: E[K] } : never;
 
-/** The events under `Key` of a system's spec (`defineSystem`), or of its entry's spec (`satisfies SystemEntry`) */
-type SpecEvents<T, Key extends '_incoming' | '_outgoing'> = T extends { [K in Key]: infer Events }
-  ? Events
-  : T extends { spec: { [K in Key]: infer Events } }
-    ? Events
-    : never;
+/**
+ * The events a system receives, from its feature's `Contract` — what a sender may write. Its `internal` half isn't
+ * here: those are what the system's own children send it, and no other feature's to send.
+ */
+export type IncomingEventsOf<C> = ContractIncoming<C>;
 
 /**
- * The events a system receives, from its spec (`defineSystem`) or its entry (a system module's default
- * export, declared with `satisfies SystemEntry` so the spec keeps its events).
+ * The events a system sends to plugins, from its feature's `Contract`.
+ *
+ * Written out where `IncomingEventsOf` above aliases `ContractIncoming`: that one is read twice, here and by
+ * `MachineEvents` in `define-system.ts`, so it is worth a name of its own. The outgoing half has only this
+ * reader, and a name whose whole definition was another name read as one concept too many.
  */
-export type IncomingEventsOf<T> = SpecEvents<T, '_incoming'>;
-
-/** The events a system sends to plugins, from its spec or its entry */
-export type OutgoingEventsOf<T> = SpecEvents<T, '_outgoing'>;
+export type OutgoingEventsOf<C> = C extends { outgoing: infer Events } ? Events : never;
 
 /**
- * A system spec reduced to the events the system receives and sends. Generated code declares each system's spec
- * with it, so the facade types dependents compile against carry no system context or internals.
+ * Every event a plugin's `Contract` says another plugin may send it, across audiences. Generated code builds each
+ * plugin's inbox with it, as it builds a system's with `OutgoingEventsOf`. A contract with no `inbox` publishes
+ * state only and receives nothing but its own system's events.
  */
-export function specEvents<S extends { _incoming: unknown; _outgoing: unknown }>(spec: S): { _incoming: S['_incoming']; _outgoing: S['_outgoing'] } {
-  return spec;
-}
+export type PluginInboxOf<C> = C extends { inbox: infer Audiences }
+  ? Extract<Audiences[keyof Audiences], { type: string }>
+  : never;
+
+/**
+ * The half of a plugin's inbox a *dependent pack* may send: its `public` audience alone. The `pack` audience is
+ * what this pack's own features send it — a sibling asking for a panel, a link opening a note — and publishing it
+ * would make every dependent's completions carry commands only the owning pack can meaningfully send.
+ *
+ * Generated code builds `PackPluginEvents` with this and `OwnPluginEvents` with `PluginInboxOf`, which is the
+ * whole of the split: one contract, two readers.
+ */
+export type PublicPluginInboxOf<C> = C extends { inbox: { public: infer Events } }
+  ? Extract<Events, { type: string }>
+  : never;
 
 /**
  * Events the host app's own plugins receive from packs. The host declares them here, as a pack's plugin declares
- * its own with `pluginAccepts()`; `#generated/events` includes this map, so any pack may send them.
+ * its own in its `Contract`; `#generated/events` includes this map, so any pack may send them.
  */
 export type HostPluginEvents = {
   'host/application':
@@ -140,6 +189,60 @@ function sendIncoming(message: Message): void {
   else throw new Error('No host is bound to send events through: call bindHost(runtime) (backend) or bindFeHost(runtime) (frontend) from @abuddy/sdk/runtime first');
 }
 
+/** What binds a set of sends: how a name becomes a ref, and the pack making them. */
+export interface SendBinding {
+  /** A name the caller writes → the ref it stands for. The unbound sends take refs already, so a name is its own ref. */
+  resolve?: (name: string) => string;
+  /**
+   * The pack these sends are made by, stamped on every message as `Message.from`. Absent where there is no pack to
+   * name: `reportError` sends for a caller that is a logger source, and binds only `via`.
+   */
+  from?: string;
+  /**
+   * What within the sender is making them, stamped as `Message.via`: `action:<label>` for the emitter an action
+   * runs with (`createActionEmitter`), and its source for `reportError`, which has no pack to name.
+   */
+  via?: string;
+}
+
+/**
+ * The three sends, bound to whoever is making them. One place builds a send, so what travels beside the event —
+ * `from` today — is threaded here rather than added as a parameter to each of them, and to every caller that
+ * has nothing to pass.
+ */
+export function createSends({ resolve = (name: string) => name, from, via }: SendBinding = {}) {
+  // Only the fields this binding has. An envelope carrying `from: undefined` reads as a sender that was there and
+  // got lost, and adds a key to every log line and every message that crosses the wire.
+  const sender = { ...(from ? { from } : {}), ...(via ? { via } : {}) };
+  return {
+    broadcastToPlugin(name: string, event: { type: string; [key: string]: unknown }): void {
+      // The two sends share a signature, so the compiler can't tell a caller it picked the wrong one: say which it
+      // is. Reaching for the other from here is the likely mistake, not a missing bindHost.
+      if (!_isHostBound() && _isFeHostBound()) {
+        throw new Error(`broadcastToPlugin("${name}") is the backend's, over the bus to every window. In the renderer, send to this window's plugin with sendToPlugin from #generated/events`);
+      }
+      boundHost().transport.rootEvents.emitPluginSend({ to: resolve(name), event, ...sender });
+    },
+
+    sendToPlugin(name: string, event: { type: string; [key: string]: unknown }): void {
+      // The two sends share a signature, so the compiler can't tell a caller it picked the wrong one: say which it is.
+      if (!_isFeHostBound() && _isHostBound()) {
+        throw new Error(`sendToPlugin("${name}") is the renderer's, to this window's plugin. On the backend, send over the bus with broadcastToPlugin from #generated/events`);
+      }
+      const ref = resolve(name);
+      if (!splitRef(ref)) throw new Error(`"${ref}" doesn't name a plugin: a plugin is named "<packId>/<featureId>"`);
+      boundFeHost().application.send({ type: 'SEND_TO_PLUGIN', plugin: ref, events: [event], ...sender });
+    },
+
+    sendToSystem(to: SystemTarget, event: { type: string; [key: string]: unknown }): void {
+      sendIncoming({ to: typeof to === 'string' ? resolve(to) : getDesignated(to.role), event, ...sender });
+    },
+  };
+}
+
+/** The sends made by nobody in particular: the untyped ones below, which packs and tooling use directly. */
+const unboundSends = createSends();
+
 /**
  * Sends an event to a plugin through the bus, which delivers it once a client is connected — and to **every**
  * window showing that plugin, since a plugin runs once per window. Backend only.
@@ -149,35 +252,24 @@ function sendIncoming(message: Message): void {
  *
  * Untyped: packs use the `broadcastToPlugin` from their `#generated/events`.
  */
-export function broadcastToPlugin(to: string, event: { type: string; [key: string]: unknown }): void {
-  // The two sends share a signature, so the compiler can't tell a caller it picked the wrong one: say which it is.
-  // Reaching for the other from here is the likely mistake, not a missing bindHost.
-  if (!_isHostBound() && _isFeHostBound()) {
-    throw new Error(`broadcastToPlugin("${to}") is the backend's, over the bus to every window. In the renderer, send to this window's plugin with sendToPlugin from #generated/events`);
-  }
-  boundHost().transport.rootEvents.emitPluginSend({ to, event });
+export function untypedBroadcastToPlugin(to: string, event: { type: string; [key: string]: unknown }): void {
+  unboundSends.broadcastToPlugin(to, event);
 }
 
 /**
- * @internal Sends an event to the plugin at `ref` in **this window**, straight to its actor — no bus, no other
- * window. The renderer half of `sendToPlugin`, which `defineEvents` types per receiving plugin.
+ * @internal Sends an event to the plugin at `ref` in **this window**, through the shell — no bus, no other window.
+ * The renderer half of `sendToPlugin`, which `defineEvents` types per receiving plugin.
  *
  * A plugin runs once per window, so this is what UI coordination wants: the artifact opens where the user clicked.
  *
- * A send to a plugin that isn't running throws, where the bus's half reports a `diagnostic` and drops
- * (`createBusMachine`'s `notify`). The asymmetry is the channel, not a choice: `reportError` sends its
- * `SYSTEM_ERROR` over the backend bus, which no window has, so there is nothing here to report on. Throwing is
- * what the renderer's other reads do (`pluginActor`, `usePluginState`). A ref that may legitimately be absent —
- * another pack's, which may not be installed — is checked with `hasDesignation` before sending.
+ * It goes through the shell rather than to the actor directly, because "is that plugin here yet" is the shell's
+ * question and it already answers it for `OPEN_PLUGIN`: a plugin whose pack's frontend is still loading is waited
+ * for, and one no pack provides is reported to the user once loading settles. Reaching past the shell meant two
+ * owners of that question giving different answers — this one threw. It is a send, not a navigation, so the plugin
+ * the user has open doesn't change.
  */
 export function _sendToLocalPlugin(ref: string, event: { type: string; [key: string]: unknown }): void {
-  // The two sends share a signature, so the compiler can't tell a caller it picked the wrong one: say which it is.
-  if (!_isFeHostBound() && _isHostBound()) {
-    throw new Error(`sendToPlugin("${ref}") is the renderer's, to this window's plugin. On the backend, send over the bus with broadcastToPlugin from #generated/events`);
-  }
-  const actor = boundFeHost().application.system.get(ref);
-  if (!actor) throw new Error(`No plugin is running at "${ref}" to send ${event.type} to`);
-  actor.send(event);
+  unboundSends.sendToPlugin(ref, event);
 }
 
 /** A system: its ref, or the role a system plays (`{ role: 'brain' }`), found when the message is sent */
@@ -187,8 +279,8 @@ export type SystemTarget = string | { role: string };
  * Sends an event to a backend system, by ref or by the role it plays. Untyped: packs use the `sendToSystem` from
  * their `#generated/events`, which takes names and checks the event against what the system declares.
  */
-export function sendToSystem(to: SystemTarget, event: { type: string; [key: string]: unknown }): void {
-  sendIncoming({ to: typeof to === 'string' ? to : getDesignated(to.role), event });
+export function untypedSendToSystem(to: SystemTarget, event: { type: string; [key: string]: unknown }): void {
+  unboundSends.sendToSystem(to, event);
 }
 
 /** Calls `callback` each time a client connects; returns the unsubscribe (backend only) */
@@ -232,10 +324,5 @@ export interface TypedEvents<P extends PluginEvents, S extends SystemEventMap> {
  * send it has no receiver for.
  */
 export function defineEvents<P extends PluginEvents, S extends SystemEventMap>(packId: string): TypedEvents<P, S> {
-  const refOf = (name: string): string => resolveName(name, packId);
-  return {
-    broadcastToPlugin: (name: string, event: { type: string }) => broadcastToPlugin(refOf(name), event),
-    sendToPlugin: (name: string, event: { type: string }) => _sendToLocalPlugin(refOf(name), event),
-    sendToSystem: (to: SystemTarget, event: { type: string }) => sendToSystem(typeof to === 'string' ? refOf(to) : to, event),
-  } as unknown as TypedEvents<P, S>;
+  return createSends({ resolve: (name) => resolveName(name, packId), from: packId }) as unknown as TypedEvents<P, S>;
 }

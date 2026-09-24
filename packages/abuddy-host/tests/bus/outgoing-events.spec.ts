@@ -79,6 +79,50 @@ describe('an event a system sends to a plugin', () => {
   });
 
   /**
+   * `Message.from` is a label the generated sends stamp with their pack's id — the one place a pack's own sends
+   * have a sender in scope. Nothing routes or refuses on it; it exists so a drop names who sent the event instead
+   * of leaving that to a grep. `reportError` sends for a caller that is neither a pack nor an action and carries
+   * none, so the message then reads the same minus the clue, and a drop that names no sender is not suspicious.
+   */
+  it('names the sending pack in the drop, when the send stamped one', async () => {
+    await send({ to: 'memo-pack/memos', event: { type: 'MEMO_SHREDDED' }, from: 'other-pack' });
+    expect(takeSystemErrors()[0]?.message).toContain('sent by "other-pack"');
+  });
+
+  /**
+   * An action stamps both: its pack in `from`, itself in `via`. The pack alone would be the less useful half —
+   * an action is content a user writes, and the pack running it is whichever pack's runtime ran the code. The
+   * `via` here is the string that also names the action's logger, so this drop and that action's own log lines
+   * are one grep apart.
+   */
+  it("names the action too, when an action's send is the one dropped", async () => {
+    await send({ to: 'memo-pack/memos', event: { type: 'MEMO_SHREDDED' }, from: 'other-pack', via: 'action:Shred Memo' });
+    expect(takeSystemErrors()[0]?.message).toContain('sent by "other-pack" (action:Shred Memo)');
+  });
+
+  it('reads the same without a sender, rather than saying one is missing', async () => {
+    await send({ to: 'memo-pack/memos', event: { type: 'MEMO_SHREDDED' } });
+    const [error] = takeSystemErrors();
+    expect(error?.message).toContain('Dropped "MEMO_SHREDDED" sent to');
+    expect(error?.message).not.toMatch(/sent by|undefined/);
+  });
+
+  // The drop is reported once per plugin/event pair, and two packs sending the same wrong event are two reports
+  it('reports each sending pack, not just the first', async () => {
+    await send({ to: 'memo-pack/memos', event: { type: 'MEMO_SHREDDED' }, from: 'one-pack' });
+    await send({ to: 'memo-pack/memos', event: { type: 'MEMO_SHREDDED' }, from: 'two-pack' });
+    expect(takeSystemErrors()).toHaveLength(2);
+  });
+
+  // And each sending action, since the dedupe is keyed on the sentence: one report naming the first action would
+  // tell whoever was debugging the second that it was the first
+  it('reports each sending action of one pack, not just the first', async () => {
+    await send({ to: 'memo-pack/memos', event: { type: 'MEMO_SHREDDED' }, from: 'one-pack', via: 'action:A' });
+    await send({ to: 'memo-pack/memos', event: { type: 'MEMO_SHREDDED' }, from: 'one-pack', via: 'action:B' });
+    expect(takeSystemErrors().map((e) => e.message.match(/\(action:\w\)/)?.[0])).toEqual(['(action:A)', '(action:B)']);
+  });
+
+  /**
    * Still a SYSTEM_ERROR, so takeSystemErrors fails the pack test that left it — and `diagnostic`, so
    * the app doesn't raise a toast over it. The reader is whoever wrote the send, the message is already
    * in the Logs plugin where they are looking, and the person using the app can do nothing about it.

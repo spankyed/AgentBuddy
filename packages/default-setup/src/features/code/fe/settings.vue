@@ -459,7 +459,7 @@ import KeyboardShortcutInput from '@abuddy/ui/components/KeyboardShortcutInput'
 import CollapsibleSection from '@abuddy/ui/design/CollapsibleSection'
 import DirectorySelect from '@abuddy/ui/design/DirectorySelect'
 import { X, Plus } from 'lucide-vue-next'
-import { openPlugin } from '@abuddy/sdk/fe'
+import { untypedOpenPlugin } from '@abuddy/sdk/fe'
 import { resolveName } from '@abuddy/sdk/ids'
 
 const HOST_SETTINGS = resolveName('settings', 'host')
@@ -661,7 +661,7 @@ const deleteScript = (index: number) => {
 }
 
 const goToProjects = () => {
-  openPlugin(HOST_SETTINGS, [
+  untypedOpenPlugin(HOST_SETTINGS, [
     { type: 'TAB.SELECT', tab: 'general' },
     { type: 'GENERAL_NAV.SELECT', item: 'projects' }
   ])

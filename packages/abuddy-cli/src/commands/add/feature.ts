@@ -14,18 +14,28 @@ const SETTINGS = (id: string) => `export default {
 }
 `;
 
+/** The system's contract: what it receives, what its own children send it, and what it sends its plugin. */
+const BE_CONTRACT = (name: string, pascal: string) => `import type { Incoming${pascal}Events, Outgoing${pascal}Events } from './types';
+
+// This system's contract, which abuddy.json names at features[].system.contract. Codegen reads it as a declared
+// type, without running anything, so it lives here rather than on the spec: a type has no declared-versus-inferred
+// gap, and nothing an annotation can widen away.
+//
+// Add \`internal\` for what this system's own children send it (a \`fromCallback\` child telling its parent). Those
+// reach the machine's event union and nothing a pack depending on yours can see.
+export type Contract = {
+  incoming: Incoming${pascal}Events;
+  outgoing: Outgoing${pascal}Events;
+};
+`;
+
 const SYSTEM = (name: string, camel: string, pascal: string) => `import { setup } from 'xstate';
-import { defineSystem, type SystemEntry } from '@abuddy/sdk/framework';
+import { defineSystem } from '@abuddy/sdk/framework';
 // broadcastToPlugin is typed with the events each of this pack's plugins receives
 import { broadcastToPlugin } from '#generated/events';
+import type { Contract } from './contract';
 
-type Incoming${pascal}Events =
-  | { type: 'CLIENT_CONNECTED' };
-
-export type Outgoing${pascal}Events =
-  | { type: '${name.toUpperCase().replace(/-/g, '_')}_CONNECTED'; data: Record<string, unknown> };
-
-export const ${camel}Spec = defineSystem<Incoming${pascal}Events, Outgoing${pascal}Events>();
+export const ${camel}Spec = defineSystem<Contract>();
 
 export const ${camel}System = setup({
   types: ${camel}Spec.types,
@@ -43,15 +53,19 @@ export const ${camel}System = setup({
   states: {
     idle: {
       on: {
+        // Every system gets CLIENT_CONNECTED, and answers it with the data its plugin starts from
         CLIENT_CONNECTED: { actions: 'sendConnectedData' },
+        // A contract's \`incoming\` says what may be sent; the bus routes an event to a system only if its
+        // machine names it, so an event declared and never handled here is dropped
+        REFRESH_${name.toUpperCase().replace(/-/g, '_')}: { actions: 'sendConnectedData' },
       },
     },
   },
 });
 
-const ${camel}Entry = { spec: ${camel}Spec, machine: ${camel}System } satisfies SystemEntry;
-
-export default ${camel}Entry;
+// The manifest loads this default export. Nothing to annotate: the events come from the contract above, and the
+// generated pack entry checks that this spec was built from the one abuddy.json names.
+export default { spec: ${camel}Spec, machine: ${camel}System };
 `;
 
 const SYSTEM_SPEC = (name: string) => {
@@ -70,9 +84,17 @@ describe('${name} system', () => {
 `;
 };
 
-const TYPES = (pascal: string) => `export interface ${pascal}ConnectedData {
+const TYPES = (pascal: string, name: string) => `export interface ${pascal}ConnectedData {
   // Define connected data shape
 }
+
+// What anything outside this system may send it. CLIENT_CONNECTED, PACK_CHANGED and FEATURE_SETTINGS_UPDATED are
+// the app's, which every system receives, so no contract declares them.
+export type Incoming${pascal}Events =
+  | { type: 'REFRESH_${name.toUpperCase().replace(/-/g, '_')}' };
+
+export type Outgoing${pascal}Events =
+  | { type: '${name.toUpperCase().replace(/-/g, '_')}_CONNECTED'; data: Record<string, unknown> };
 `;
 
 const REPOSITORY = (camel: string) => `// EARS reads and writes for this feature. Declared in abuddy.json (features[].repositories) and
@@ -88,9 +110,7 @@ import { ${icon} } from 'lucide-vue-next';
 import state from './state';
 import canvas from './canvas/list.vue';
 
-// What another feature may send this plugin goes beside it, and only then:
-//   export const accepts = pluginAccepts<{ type: 'SOMETHING'; id: string }>();
-// Its own feature's system needs no declaration — codegen reads that system's outgoing events.
+// What this plugin publishes is its contract, in fe/contract.ts beside it
 
 // Registered at the feature's address by the host, so the module carries no id
 const ${camel}Plugin = definePlugin({
@@ -103,21 +123,46 @@ const ${camel}Plugin = definePlugin({
 export default ${camel}Plugin;
 `;
 
-const STATE = (name: string) => `import { setup, type ActorRefFrom } from 'xstate';
+const FE_CONTRACT = (pascal: string) => `import type { PluginInbox } from '@abuddy/sdk/fe';
 
-// The feature's name, which this pack's code sends to and opens the plugin by (\`navigateToPlugin\` from #generated/fe)
+// This plugin's contract: the state it publishes, and what another plugin may send it. A leaf — it imports no
+// machine, no other feature and nothing from #generated/* but \`types\` and \`ears\`, which is what lets codegen read
+// the contract without resolving the machine, whose own imports cycle back through #generated/events.
+// abuddy.json names it at features[].plugin.contract.
+
+export interface ${pascal}Context {
+  ready: boolean;
+}
+
+/**
+ * What another feature may send this plugin, by audience: \`pack\` is your own pack's features, \`public\` is what a
+ * pack depending on yours may send. Its own feature's system needs no declaration — codegen reads that system's
+ * outgoing events. Delete \`inbox\` for a plugin nothing else sends to.
+ */
+export type ${pascal}Inbox = { type: 'SOMETHING'; id: string };
+
+export type Contract = {
+  state: ${pascal}Context;
+  inbox: PluginInbox<{ pack: ${pascal}Inbox }>;
+};
+`;
+
+const STATE = (name: string) => `import { setup, type ActorRefFrom } from 'xstate';
+import type { ${toPascalCase(name)}Context, ${toPascalCase(name)}Inbox } from './contract';
+
+// The feature's name, which this pack's code sends to and opens the plugin by (\`openPlugin\` from #generated/fe)
 export const id = '${name}';
 export type ${toPascalCase(name)}State = ActorRefFrom<typeof ${toCamelCase(name)}State>;
 
 const ${toCamelCase(name)}State = setup({
   types: {
-    context: {} as Record<string, unknown>,
-    events: {} as { type: string },
+    context: {} as ${toPascalCase(name)}Context,
+    events: {} as ${toPascalCase(name)}Inbox | { type: string },
   },
 }).createMachine({
   id,
   initial: 'idle',
-  context: {},
+  context: { ready: false },
   states: {
     idle: {},
   },
@@ -183,9 +228,11 @@ export async function addFeature(args: string[], root: string) {
   const files: [string, string][] = [
     [path.join(featureDir, 'settings.ts'), SETTINGS(name)],
     [path.join(featureDir, 'be', 'system.ts'), SYSTEM(name, camel, pascal)],
-    [path.join(featureDir, 'be', 'types.ts'), TYPES(pascal)],
+    [path.join(featureDir, 'be', 'types.ts'), TYPES(pascal, name)],
+    [path.join(featureDir, 'be', 'contract.ts'), BE_CONTRACT(name, pascal)],
     [path.join(featureDir, 'be', 'repository', 'index.ts'), REPOSITORY(camel)],
     [path.join(featureDir, 'fe', 'plugin.ts'), PLUGIN(camel, label, icon)],
+    [path.join(featureDir, 'fe', 'contract.ts'), FE_CONTRACT(pascal)],
     [path.join(featureDir, 'fe', 'state.ts'), STATE(name)],
     [path.join(featureDir, 'fe', 'canvas', 'list.vue'), LIST_VUE(label)],
     [path.join(featureDir, 'fe', 'settings.vue'), SETTINGS_VUE()],
@@ -201,8 +248,8 @@ export async function addFeature(args: string[], root: string) {
     id: name,
     ...(designation !== undefined && { designation }),
     settings: `src/features/${name}/settings.ts`,
-    system: { entry: `src/features/${name}/be/system.ts` },
-    plugin: { entry: `src/features/${name}/fe/plugin.ts` },
+    system: { entry: `src/features/${name}/be/system.ts`, contract: `src/features/${name}/be/contract.ts#Contract` },
+    plugin: { entry: `src/features/${name}/fe/plugin.ts`, contract: `src/features/${name}/fe/contract.ts#Contract` },
     services: {},
     repositories: {
       [`${camel}Queries`]: `src/features/${name}/be/repository/index.ts#${camel}Queries`,

@@ -93,7 +93,7 @@
 
 <script setup lang="ts">
 import { ref, watch, nextTick } from 'vue';
-import type { AutocompleteSuggestion, Bookmark } from '../state.ts';
+import type { AutocompleteSuggestion, Bookmark } from '../state';
 import BrowserAutocomplete from './BrowserAutocomplete.vue';
 import BrowserBookmarkDropdown from './BrowserBookmarkDropdown.vue';
 

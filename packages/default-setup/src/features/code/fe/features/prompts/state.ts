@@ -1,23 +1,10 @@
+import type { PromptTab } from '../../contract';
+export type { PromptTab } from '../../contract';
 import { setup , type ActorRefFrom } from 'xstate';
 import { sendToSystem } from '@/__generated__/events';
 import { updateParentState, getParentContext, addTabToParent } from '../../utils/parent-communication';
 import type { PromptEntity } from '@abuddy/sdk';
 
-export interface PromptTab {
-  path: string
-  content: string
-  modified: boolean
-  isPrompt: true
-  promptEntity: PromptEntity
-  // Include OpenFile properties to satisfy type constraints
-  isDiff?: boolean
-  externallyModified?: boolean
-  externalModificationTime?: Date
-  pendingSaveConflict?: boolean
-  isPinned?: boolean
-  groupId?: string
-  isPreview?: boolean
-}
 
 export type Event =
   | { type: 'codePrompts.OPEN_PROMPT'; promptId: string }

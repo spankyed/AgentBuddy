@@ -261,8 +261,8 @@
 import { computed, ref } from 'vue'
 import { Wrench, Copy, Check, Terminal } from 'lucide-vue-next'
 import type { ArtifactItem } from '@abuddy/sdk/artifacts'
-import { useChatStateOverrides, useCurrentThread, useThreadsSettings } from '@/features/threads/fe/public'
-import { navigateToPlugin } from '@/__generated__/fe'
+import { usePluginState } from '@/__generated__/fe'
+import { openPlugin } from '@/__generated__/fe'
 import { sendToSystem } from '@/__generated__/events'
 
 
@@ -319,7 +319,7 @@ const props = defineProps<{
   artifact: ArtifactItem<SessionContent>
 }>()
 
-const currentThread = useCurrentThread()
+const currentThread = usePluginState('threads', (s) => s.currentThread)
 const currentThreadId = computed(() => currentThread.value?.id as string | undefined)
 
 // The thread context is the source of truth for session data.
@@ -362,8 +362,8 @@ function fmt(n: number): string {
   return String(n)
 }
 
-const settings = useThreadsSettings()
-const overrides = useChatStateOverrides()
+const settings = usePluginState('threads', (s) => s.settings)
+const overrides = usePluginState('threads', (s) => s.chatStateOverrides)
 const stateConfig = computed(() => {
   const configs = settings.value?.chatStates;
   const threadId = currentThreadId.value ?? '';
@@ -406,7 +406,7 @@ async function copySessionId() {
 
 function openTerminalTab() {
   // The code plugin routes a terminal.* event to its terminals
-  navigateToPlugin('code', {
+  openPlugin('code', {
     type: 'terminal.CREATE',
     target: 'tab',
     command: `claude --resume ${content.value.sessionId}`,

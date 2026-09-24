@@ -19,6 +19,6 @@ export const hostFrontend: PackFERegistration = {
   features: {
     packs: { plugin: packsPlugin },
     // The app's settings: the host's machine, this window's views
-    settings: { plugin: settingsPlugin, designation: 'settings' },
+    settings: { plugin: settingsPlugin },
   },
 };

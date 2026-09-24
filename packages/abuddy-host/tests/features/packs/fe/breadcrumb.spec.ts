@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { createActor } from 'xstate';
-import { computeCrumbs } from '../../../../src/features/application/fe/public.ts';
+import { computeCrumbs } from '../../../../src/features/application/fe/trail.ts';
 import packsState from '../../../../src/features/packs/fe/machine.ts';
 
 // Without a breadcrumb of its own, the trail falls back to the machine's id, which is the ref `host/packs`

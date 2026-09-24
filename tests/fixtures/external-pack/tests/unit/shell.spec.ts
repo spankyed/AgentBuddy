@@ -4,7 +4,7 @@ import { effectScope } from 'vue';
 import { expect, it } from 'vitest';
 import { startApp, startShell } from '@abuddy/testing/harness';
 import { useShell } from '@abuddy/sdk/fe';
-import { navigateToPlugin } from '#generated/fe';
+import { openPlugin } from '#generated/fe';
 import { sendToPlugin } from '#generated/events';
 import memosState from '../../src/features/memos/fe/state';
 import notesState from '../../src/features/notes/fe/state';
@@ -17,7 +17,7 @@ it('opens its plugin by name, hands it the events, and the shell reads it as ope
   const state = scope.run(() => useShell())!;
   expect(shell.opened()).toBe('e2e-fixture/notes');
 
-  navigateToPlugin('memos', { type: 'MEMOS_CONNECTED', memos: [memo] });
+  openPlugin('memos', { type: 'MEMOS_CONNECTED', memos: [memo] });
 
   expect(shell.opened()).toBe('e2e-fixture/memos');
   expect(state.activePlugin.value.id).toBe('e2e-fixture/memos');
@@ -27,7 +27,7 @@ it('opens its plugin by name, hands it the events, and the shell reads it as ope
 });
 
 // `sendToPlugin` is the renderer's half: it reaches this window's actor directly, without opening the plugin.
-// What it may carry is the inbox `fe/plugin.ts` declares with `pluginAccepts()` — this is the only place an
+// What it may carry is the inbox the plugin's `Contract` declares (`fe/types.ts`) — this is the only place an
 // external pack's declared inbox is exercised, the app's own packs being built by the same codegen.
 it('sends a declared event to a plugin in this window without opening it', async () => {
   const shell = await startShell({ plugins: { notes: { state: notesState }, memos: { state: memosState } } });
@@ -44,10 +44,11 @@ it('sends a declared event to a plugin in this window without opening it', async
 it('tells the user about a plugin no pack provides, once loading has settled', async () => {
   const shell = await startShell({ plugins: { memos: { state: memosState } } });
 
-  navigateToPlugin('default-setup/logs');
+  openPlugin('default-setup/logs');
 
   expect(shell.opened()).toBe('e2e-fixture/memos');
-  expect(shell.notices).toEqual([{ title: "Couldn't open default-setup/logs", detail: 'No plugin is registered at "default-setup/logs"' }]);
+  // One function writes every refusal the shell makes, so a pack sees the same sentence whichever branch refused
+  expect(shell.notices).toEqual([{ title: "Couldn't open default-setup/logs", detail: 'No plugin is registered at "default-setup/logs".' }]);
 });
 
 it("reaches its system and hears back over the harness's bus", async () => {

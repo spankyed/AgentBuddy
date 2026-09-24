@@ -1,5 +1,5 @@
 > **Done in part** (`3b793b5a4`..`f8f0c4708` on `AS/plugin-inbox`), **superseded in part** by
-> [`goal-plugin-contract.md`](../../goals/goal-plugin-contract.md), which carries what is left and the
+> [`goal-plugin-contract.md`](goal-plugin-contract.md), which carries what is left and the
 > finding that came out of the work. The text below is the plan as written, with the trims it took while
 > open; see the Outcome for what landed, what changed shape and what moved on.
 
@@ -359,7 +359,7 @@ send it" — Decision 18 says so where it specifies the check.
 - Related but separate: `docs/goals/deferred/goal-pack-frontend-isolation.md` covers keeping a pack's
   frontend away from `window.electronAPI`, the host API client and the app DOM. It does not overlap this
   goal's typed-messaging work, but both touch what a pack frontend may reach, so read it before Phase 4.
-- **This goal runs before [`goal-manifest-redesign.md`](goal-manifest-redesign.md)**, which reshapes
+- **This goal runs before [`goal-manifest-redesign.md`](../../goals/goal-manifest-redesign.md)**, which reshapes
   `abuddy.json` into `provides` plus sibling annotations. Its Decision 8 named `sendsTo` as one of those
   annotations; it was updated on 2026-09-22 to drop it and to point here. Deleting `sendsTo` first means
   that goal's schema work is written once. Nothing else in the two overlaps.

@@ -8,6 +8,9 @@ import { HOST_ENTITY_TYPES } from '../../src/app-state/index.ts';
 import { getDesignated, hasDesignation } from '@abuddy/sdk/designations';
 import { startTestRuntime } from '@abuddy/sdk/testing';
 import { createPackRegistry } from '../../src/packs/registry.ts';
+import { hostRegistration } from '../../src/features/registration.ts';
+import { HOST } from '../../src/refs.ts';
+import { HOST_PACK_ID } from '@abuddy/sdk/ids';
 
 const registry = createPackRegistry();
 startTestRuntime({ packs: registry });
@@ -90,6 +93,33 @@ describe('registerPack repositories', () => {
     expect(() => registerPack({ id: 'second-pack', repositories: { memoQueries: {} }, commands: [{ name: 'standup', placeholder: 'Theirs' }] } as unknown as PackRegistration))
       .toThrow('Command collision');
     expect(engine.admin.repositories()).toEqual({});
+  });
+});
+
+/**
+ * The host's own features are addressed as `HOST.<feature>`, not by a role. Settings claimed the `settings`
+ * designation from when it was a default-setup feature, and every reader of that role turned out to be the app
+ * resolving its own plugin. The role is gone; the plugin is registered and reachable without it, and the name is
+ * free for a pack to take.
+ */
+describe('the host claims no designation', () => {
+  it('registers its features with no role, and the Settings view is still registered', () => {
+    registry.registerPack(hostRegistration());
+    registered.push(HOST_PACK_ID);
+
+    expect(pluginIds()).toContain(HOST.settings);
+    expect(hasDesignation('settings')).toBe(false);
+  });
+
+  // Nothing in the app looks the role up, so a pack may claim it without colliding with the app's own view
+  it('leaves the name free for a pack', () => {
+    registry.registerPack(hostRegistration());
+    registered.push(HOST_PACK_ID);
+    registerPack({ id: 'ext', features: { prefs: { designation: 'settings', plugin: { receives: [] } } } });
+    registered.push('ext');
+
+    expect(getDesignated('settings')).toBe('ext/prefs');
+    expect(pluginIds()).toContain(HOST.settings);
   });
 });
 

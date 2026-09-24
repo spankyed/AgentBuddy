@@ -1,20 +1,12 @@
 // The app shell's state, events and the I/O it's given. Its machine (machine.ts) reads the rest of the app only
 // through these ports, so it runs the same in the renderer, over the API and the window, and in a pack's tests.
 import type { ContextMenuItem, HotkeyEvent, Plugin, PluginEvent, ShellPanelSizes } from '@abuddy/sdk/fe';
-import type { HostPluginEvents } from '@abuddy/sdk/events';
+import type { HostPluginEvents, Message } from '@abuddy/sdk/events';
 import type { ApplicationHotkeys } from '@abuddy/sdk/types';
 import type { ShellClient, ShellFailure } from '../../../fe/client.ts';
+import type { ShellPackFrontends } from '../../../fe/pack-frontends.ts';
 import type { FePackRegistry } from '../../../fe/pack-store.ts';
-import type { LoadedPackEntry } from '../../../packs/layout.ts';
 import type { BreadcrumbItem } from './trail.ts';
-
-/** Loads and unloads external packs' frontends (the renderer imports them from `pack://`) */
-export interface ShellPackFrontends {
-  /** Loads a pack's frontend: the plugins it exports, or null for a pack with no frontend code. Throws when it fails */
-  load(pack: LoadedPackEntry): Promise<Plugin[] | null>;
-  /** Takes out what a pack's frontend registered */
-  unload(packId: string): void;
-}
 
 /** Where the panel sizes the user sets are kept, so the next window opens with them */
 export interface ShellStorage {
@@ -50,6 +42,19 @@ export interface ShellParams {
   ownsLastActivePlugin?: boolean;
 }
 
+/** Who a message says made it */
+export type MessageSender = Pick<Message, 'from' | 'via'>;
+
+/**
+ * Asking for a plugin: which one, whether to open it or only hand it its events, and who asked. The sender
+ * travels with the request so that a refusal names it however long the request waited for its pack's frontend.
+ */
+export interface PluginRequest {
+  plugin: string;
+  select: boolean;
+  sender: MessageSender;
+}
+
 export interface ShellContext {
   defaultToggles: {
     canvas: boolean;
@@ -76,8 +81,12 @@ export interface ShellContext {
    * opened another plugin by then.
    */
   pendingPluginId: string | null;
-  /** Plugins asked to open (OPEN_PLUGIN) that aren't registered while pack frontends are still loading */
-  pendingOpens: Array<{ plugin: string; events: PluginEvent[] }>;
+  /**
+   * Work waiting on a plugin that isn't registered while pack frontends are still loading: an `OPEN_PLUGIN`
+   * (`select: true`) or a `SEND_TO_PLUGIN`. One queue, because the wait is the same question — has that pack's
+   * frontend arrived — and `select` is the only thing that differs once it has.
+   */
+  awaitingPlugin: Array<PluginRequest & { events: PluginEvent[] }>;
   /** Whether this window's bus subscription is established; it reconnects after the connection drops */
   busSubscribed: boolean;
   /** Whether the pack frontend loader is running: one run at a time, so a pack is never loaded twice */
@@ -107,6 +116,7 @@ export interface ShellContext {
 export type ShellEvent =
   | { type: 'SELECT_PLUGIN'; plugin: string; historyIndex?: number }
   | { type: 'OPEN_PLUGIN'; plugin: string; events: PluginEvent[] }
+  | { type: 'SEND_TO_PLUGIN'; plugin: string; events: PluginEvent[]; from?: string; via?: string }
   /** Hands an opened plugin its events, once the shell has selected it */
   | { type: 'DELIVER_PLUGIN_EVENTS'; plugin: string; events: PluginEvent[] }
   | { type: 'DEFAULT_TOGGLE'; area: 'canvas' }

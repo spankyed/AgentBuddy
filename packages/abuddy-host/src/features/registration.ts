@@ -24,7 +24,7 @@ export type OutgoingPacksEvents =
 
 /**
  * The event types the `packs` plugin receives. Not part of `HostPluginEvents`, which is the host's published
- * inbox — what any pack may send it, as a pack's plugin publishes its own with `pluginAccepts()`. These are the
+ * inbox — what any pack may send it, as a pack's plugin publishes its own in its `Contract`. These are the
  * host's to send itself, and no pack's.
  */
 export const PACKS_PLUGIN_EVENT_TYPES = eventTypes<OutgoingPacksEvents>()(
@@ -53,7 +53,12 @@ export function hostRegistration(systems: { application?: PackFeatureSystem; pac
       [featureIdOf(HOST.packs)]: { ...(systems.packs && { system: systems.packs }), plugin: { receives: PACKS_PLUGIN_EVENT_TYPES } },
       // The app's settings: the store's system, and the Settings view the renderer draws. It takes what its own
       // system sends, and what a pack may send it (`HOST_PLUGIN_EVENT_TYPES`): only that pack can find those out.
-      [featureIdOf(HOST.settings)]: { ...(systems.settings && { system: systems.settings }), designation: 'settings', plugin: { receives: [...SETTINGS_PLUGIN_EVENT_TYPES, ...HOST_PLUGIN_EVENT_TYPES['host/settings']] } },
+      //
+      // No designation. A designation is a role a *pack* plays, found with `getDesignated`; the host's own
+      // features are addressed directly, as `HOST.settings`. This one claimed `settings` from when Settings was
+      // a default-setup feature, and every reader of that role was the app resolving its own plugin. The name is
+      // free for a pack to claim, and nothing in the app looks it up.
+      [featureIdOf(HOST.settings)]: { ...(systems.settings && { system: systems.settings }), plugin: { receives: [...SETTINGS_PLUGIN_EVENT_TYPES, ...HOST_PLUGIN_EVENT_TYPES['host/settings']] } },
     },
   };
 }

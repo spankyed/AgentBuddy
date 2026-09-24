@@ -68,7 +68,7 @@ describe('a data dir opened by the API and by openAppDatabase', () => {
     // A first run seeds the app's data; the user adds a note with a role and a relation, and a run leaves a trace in
     // the volatile partition, which neither hydrates
     const first = await bootApi();
-    startPacks(first.packs, []);
+    startPacks(first.packs);
     untypedTx('Note-parity' as never, true).put('entityType', 'Note').put('title', 'mine').grant('pinned').link('parent_of', 'Note-child' as never);
     untypedTx('TNode-parity' as never, true).put('entityType', 'TNode').put('status', 'done');
     first.store.close();

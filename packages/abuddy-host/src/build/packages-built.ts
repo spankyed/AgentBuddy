@@ -147,8 +147,12 @@ function inputFiles(target: string, out: string[] = []): string[] {
  * deciding whether *output* is current, where a failed build leaves a complete-looking tree that reads
  * as fresh forever. Here they would be a cache key over *inputs*, which is sound in principle — the
  * reason not to is the arithmetic above, not the same objection.
+ *
+ * `normalise` hashes each file through a transform instead of as it is read, for a caller asking a
+ * narrower question than "did these bytes change" — the API report stamp asks "could these declarations
+ * have changed a report", and a doc comment's prose cannot.
  */
-export function fingerprintInputs(inputs: readonly string[]): string {
+export function fingerprintInputs(inputs: readonly string[], normalise?: (contents: Buffer, file: string) => Buffer | string): string {
   const hash = createHash('sha256');
   for (const file of [...new Set(inputs.flatMap((target) => inputFiles(target)))].sort()) {
     // A file that goes between the walk and the read hashes as absent, never as empty
@@ -158,8 +162,10 @@ export function fingerprintInputs(inputs: readonly string[]): string {
     } catch (err) {
       if ((err as NodeJS.ErrnoException).code !== 'ENOENT') throw err;
     }
-    hash.update(`${file}\0${contents === null ? 'absent' : contents.length}\0`);
-    if (contents !== null) hash.update(contents);
+    // Without a normaliser the bytes are hashed as read — no copy on the path that runs per command
+    const hashed = contents !== null && normalise ? Buffer.from(normalise(contents, file)) : contents;
+    hash.update(`${file}\0${hashed === null ? 'absent' : hashed.length}\0`);
+    if (hashed !== null) hash.update(hashed);
   }
   return hash.digest('hex');
 }
