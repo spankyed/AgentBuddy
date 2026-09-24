@@ -4,8 +4,7 @@
       "Action:Set Instructions": {
         "label": "Set Instructions",
         "description": "Create a thread from instructions",
-        "sourceHash": "ed3d21bb8aed3524",
-        "rowSha256": "c12b953dcdc9f3e0902a509e199deeec55f302799fd03e061bff4ff7e899e7e1"
+        "hasSourceHash": true
       },
       "Collection:advanced": {
         "displayOrder": 1000,

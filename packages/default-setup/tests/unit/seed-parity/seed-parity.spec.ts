@@ -54,8 +54,14 @@ function forGolden(step: Step, withNotes: boolean) {
     Object.entries(step.snapshot.rows)
       .filter(([alias]) => withNotes || !alias.startsWith('Note:'))
       .map(([alias, row]) => {
+        // An action's `sourceHash` hashes its compiled bundle, and a digest of the whole row holds that bundle
+        // too, so pinning either makes any edit to the source move the golden — a cosmetic one included, and a
+        // bundler or tsc change with no edit at all. An action also inlines its `_helpers/`, so two helper edits
+        // once moved 75 of these rows at once. What parity means for an action is that seeding produced it, under
+        // its label, with its description, carrying a hash; which hash is the compiler's business, and the rules
+        // the hash drives are covered by edited-rows.spec.ts and notes-change-tracking.spec.ts.
         if (alias.startsWith('Action:') || alias.startsWith('Prompt:')) {
-          return [alias, { label: row.label, description: row.description, sourceHash: row.sourceHash, rowSha256: digest(row) }];
+          return [alias, { label: row.label, description: row.description, hasSourceHash: typeof row.sourceHash === 'string' }];
         }
         if (!alias.startsWith('Note:')) return [alias, row];
         const { sourceHash: _omitted, ...rest } = row;

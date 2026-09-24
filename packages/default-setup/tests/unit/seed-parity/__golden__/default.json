@@ -4,14 +4,12 @@
       "Action:Echo": {
         "label": "Echo",
         "description": "Return the input text",
-        "sourceHash": "61afe6a6da8056ff",
-        "rowSha256": "43aad91396dac0e20993e320b7c4fc0e6778072749aa7390d35ce695263e3114"
+        "hasSourceHash": true
       },
       "Action:Set Instructions": {
         "label": "Set Instructions",
         "description": "Create a thread from instructions",
-        "sourceHash": "ed3d21bb8aed3524",
-        "rowSha256": "d29462ccdd376db9ceaec34dd12b409136c8d3834d280da960e0a41e1ad2ef8c"
+        "hasSourceHash": true
       },
       "Collection:advanced": {
         "displayOrder": 1000,
@@ -184,14 +182,12 @@
       "Prompt:Greeting": {
         "label": "Greeting",
         "description": "Greet someone by name",
-        "sourceHash": "eb00734c31d0a8ef",
-        "rowSha256": "f4e104b7919f4a3abf358d24ca803cca2078d81418005d3b5615543ef0934927"
+        "hasSourceHash": true
       },
       "Prompt:Summary": {
         "label": "Summary",
         "description": "Summarize a text",
-        "sourceHash": "c9b61d7496fcd0a1",
-        "rowSha256": "e68fb193c930d11ccc3323f6c789d157be2c37375dae7638ff0ae5cffa148e90"
+        "hasSourceHash": true
       }
     },
     "relations": [
@@ -231,14 +227,12 @@
       "Action:Echo": {
         "label": "Echo",
         "description": "Return the input text",
-        "sourceHash": "61afe6a6da8056ff",
-        "rowSha256": "43aad91396dac0e20993e320b7c4fc0e6778072749aa7390d35ce695263e3114"
+        "hasSourceHash": true
       },
       "Action:Set Instructions": {
         "label": "Set Instructions",
         "description": "Create a thread from instructions",
-        "sourceHash": "ed3d21bb8aed3524",
-        "rowSha256": "d29462ccdd376db9ceaec34dd12b409136c8d3834d280da960e0a41e1ad2ef8c"
+        "hasSourceHash": true
       },
       "Collection:advanced": {
         "displayOrder": 1000,
@@ -325,14 +319,12 @@
       "Prompt:Greeting": {
         "label": "Greeting",
         "description": "Greet someone by name",
-        "sourceHash": "eb00734c31d0a8ef",
-        "rowSha256": "f4e104b7919f4a3abf358d24ca803cca2078d81418005d3b5615543ef0934927"
+        "hasSourceHash": true
       },
       "Prompt:Summary": {
         "label": "Summary",
         "description": "Summarize a text",
-        "sourceHash": "c9b61d7496fcd0a1",
-        "rowSha256": "e68fb193c930d11ccc3323f6c789d157be2c37375dae7638ff0ae5cffa148e90"
+        "hasSourceHash": true
       }
     },
     "relations": [
@@ -366,14 +358,12 @@
       "Action:Echo": {
         "label": "Echo",
         "description": "Return the input text",
-        "sourceHash": "61afe6a6da8056ff",
-        "rowSha256": "43aad91396dac0e20993e320b7c4fc0e6778072749aa7390d35ce695263e3114"
+        "hasSourceHash": true
       },
       "Action:Set Instructions": {
         "label": "Set Instructions",
         "description": "Create a thread from instructions, titled by their first line",
-        "sourceHash": "1d1b5575ebc3e9c1",
-        "rowSha256": "6696c56d535c2946c56016b12ee1f41aacbdeb14c166c1b6838bed0db38f580b"
+        "hasSourceHash": true
       },
       "Collection:advanced": {
         "displayOrder": 1000,
@@ -451,14 +441,12 @@
       "Prompt:Greeting": {
         "label": "Greeting",
         "description": "Greet someone by name, warmly",
-        "sourceHash": "535a495bb024e169",
-        "rowSha256": "e905b1ed8bc313a383be6d91a5dd39410dcecfe27d7865945f87ab2cb9fcd067"
+        "hasSourceHash": true
       },
       "Prompt:Summary": {
         "label": "Summary",
         "description": "Summarize a text",
-        "sourceHash": "c9b61d7496fcd0a1",
-        "rowSha256": "e68fb193c930d11ccc3323f6c789d157be2c37375dae7638ff0ae5cffa148e90"
+        "hasSourceHash": true
       }
     },
     "relations": [
