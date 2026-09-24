@@ -135,6 +135,25 @@ export function createModuleExports(packRoot: string, files: string[]): ModuleEx
     return property && (declaration ? checker.getTypeOfSymbolAtLocation(property, declaration) : checker.getTypeOfSymbol(property));
   }
 
+  /**
+   * Throws when part of a contract reads as `any` or `unknown` — what an import that didn't resolve leaves behind.
+   *
+   * Without this the readers below answer "no events" rather than failing: `getProperties()` on `any` is empty, so
+   * a plugin whose inbox didn't resolve publishes an inbox nothing may send to, and the pack builds. Where it did
+   * fail, it failed as "this member's `type` is missing" or "declares no `outgoing`" — both of which point the
+   * author at their own contract, and the second of which advises deleting the manifest entry that is correct.
+   *
+   * It doesn't say why the type didn't resolve. A pack whose dependencies aren't installed reads exactly like one
+   * with a misspelled import, which is why the code that claimed to tell them apart was removed.
+   */
+  function checkResolved(type: TS.Type, file: string, what: string): void {
+    if (!(type.flags & (ts.TypeFlags.Any | ts.TypeFlags.Unknown))) return;
+    // `typeToString` prints the alias as written (`PluginInbox<{ pack: NotesInbox }>`), which reads as though it
+    // resolved, so name what it collapsed to first and show the written form as corroboration
+    const collapsed = type.flags & ts.TypeFlags.Any ? 'any' : 'unknown';
+    throw new Error(`${file}: ${what} resolves to \`${collapsed}\` — written as \`${checker.typeToString(type)}\` — so a type it names didn't resolve: an uninstalled dependency, or a name its module doesn't export. Read as it stands, it would contribute no events at all`);
+  }
+
   return {
     exportOf(file, name) {
       const sourceFile = program.getSourceFile(file);
@@ -169,10 +188,12 @@ export function createModuleExports(packRoot: string, files: string[]): ModuleEx
       if (!contract) {
         throw new Error(`${path.basename(file)}: it declares no type "${name}". A system's contract is a declared type — \`export type ${name} = { context?: …; incoming?: …; internal?: …; outgoing: … }\` — named in abuddy.json at features[].system.contract`);
       }
+      checkResolved(contract, path.basename(file), name);
       const declared = propertyType(contract, 'outgoing');
       if (!declared) {
         throw new Error(`${path.basename(file)}: ${name} declares no \`outgoing\` events. A system with none omits features[].system.contract rather than declaring an empty one`);
       }
+      checkResolved(declared, path.basename(file), `${name}'s \`outgoing\` events`);
       return eventTypeLiterals(declared, path.basename(file), "its system's outgoing events");
     },
     inboxEventTypesOf(file, name) {
@@ -180,9 +201,11 @@ export function createModuleExports(packRoot: string, files: string[]): ModuleEx
       if (!contract) {
         throw new Error(`${path.basename(file)}: it declares no type "${name}". A plugin's contract is a declared type — \`export type ${name} = { state: …; inbox: … }\` — named in abuddy.json at features[].plugin.contract`);
       }
+      checkResolved(contract, path.basename(file), name);
       const inbox = propertyType(contract, 'inbox');
       // A contract may publish state alone; its own system's events still reach it
       if (!inbox) return [];
+      checkResolved(inbox, path.basename(file), `${name}'s inbox`);
       const audiences = inbox.getProperties();
       const unknown = audiences.filter((audience) => !INBOX_AUDIENCES.includes(audience.name));
       if (unknown.length > 0) {
@@ -200,6 +223,7 @@ export function createModuleExports(packRoot: string, files: string[]): ModuleEx
     if (declared.flags & ts.TypeFlags.Never) return [];
     const members = declared.isUnion() ? declared.types : [declared];
     return members.flatMap((member) => {
+      checkResolved(member, file, what);
       const declaredType = propertyType(member, 'type');
       // `{ type: 'A' | 'B' }` is one member covering two event types, which is a legal way to write
       // an event whose payload is the same either way. Reading only single literals rejected it, so

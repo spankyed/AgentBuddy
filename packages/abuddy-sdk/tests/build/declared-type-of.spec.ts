@@ -21,6 +21,43 @@ function reader(source: string) {
   return { read: createModuleExports(root, [file]), file };
 }
 
+/**
+ * A type that didn't resolve is `any`, and `any` has no properties — so every reader here would answer "no events"
+ * for a contract whose import is missing, and the pack would build with an inbox nothing may send to. These are the
+ * four shapes that reach the readers, since the failure is silent in two of them and misleading in the other two.
+ */
+describe('a contract whose type did not resolve', () => {
+  const unresolved = /resolves to `any`.*didn't resolve: an uninstalled dependency, or a name its module doesn't export/;
+
+  it('refuses a contract that is itself unresolved, rather than reading no inbox', () => {
+    const { read, file } = reader("import type { Theirs } from '@not/installed';\nexport type Contract = Theirs;\n");
+    expect(() => read.inboxEventTypesOf(file, 'Contract')).toThrow(unresolved);
+  });
+
+  // This one used to say the contract "declares no `outgoing` events", advising the author to delete the manifest
+  // entry that was right
+  it("refuses an unresolved contract on the system's side too", () => {
+    const { read, file } = reader("import type { Theirs } from '@not/installed';\nexport type Contract = Theirs;\n");
+    expect(() => read.outgoingEventTypesOf(file, 'Contract')).toThrow(unresolved);
+  });
+
+  it('refuses an unresolved inbox, rather than reading it as no audiences', () => {
+    const { read, file } = reader("import type { Theirs } from '@not/installed';\nexport type Contract = { state: {}; inbox: Theirs };\n");
+    expect(() => read.inboxEventTypesOf(file, 'Contract')).toThrow(unresolved);
+  });
+
+  // This threw already, but as "a member whose `type` is missing" — the author's own union looked malformed
+  it('names the unresolved type when one audience of the inbox is the one that did not resolve', () => {
+    const { read, file } = reader("import type { Theirs } from '@not/installed';\nexport type Contract = { state: {}; inbox: { public: Theirs } };\n");
+    expect(() => read.inboxEventTypesOf(file, 'Contract')).toThrow(unresolved);
+  });
+
+  it('still reads a contract that resolves', () => {
+    const { read, file } = reader("export type Contract = { state: {}; inbox: { public: { type: 'A' } } };\n");
+    expect(read.inboxEventTypesOf(file, 'Contract')).toEqual(['A']);
+  });
+});
+
 describe('declaredTypeOf, through inboxEventTypesOf', () => {
   it('reads a contract declared as a type alias', () => {
     const { read, file } = reader("export type Contract = { state: { ready: boolean }; inbox: { public: { type: 'NOTE.OPEN'; noteId: string } } };\n");

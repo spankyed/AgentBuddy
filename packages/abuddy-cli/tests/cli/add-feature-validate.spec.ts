@@ -32,6 +32,15 @@ afterEach(() => {
 
 const readManifest = () => JSON.parse(fs.readFileSync(path.join(pack, 'abuddy.json'), 'utf-8'));
 
+/**
+ * The workspace's modules, so the pack resolves `@abuddy/sdk` as an installed one does. A plugin's contract names
+ * `PluginInbox`, and validation runs code generation, which can't read an inbox whose type didn't resolve.
+ */
+function installDependencies() {
+  const link = path.join(pack, 'node_modules');
+  if (!fs.existsSync(link)) fs.symlinkSync(path.resolve(import.meta.dirname, '../../../../node_modules'), link, 'dir');
+}
+
 async function runValidate(): Promise<{ exitCode: number | undefined; output: string }> {
   const log = vi.mocked(console.log);
   log.mockClear();
@@ -63,20 +72,21 @@ describe('abuddy add feature', () => {
     expect(fs.readFileSync(path.join(feature, 'fe', 'plugin.ts'), 'utf-8')).toMatch(/= definePlugin\(\{\n  label:/);
   });
 
-  // A feature's contract is a declared type in a leaf that names only the feature's own types, so codegen reads it
-  // without resolving anything the pack depends on: the entries land with the scaffold rather than waiting for the
-  // pack's first `npm install`. Reading the system entry's inferred type used to need @abuddy/sdk resolved.
-  it("generates the entries for a pack whose dependencies aren't installed yet", async () => {
+  // A plugin's contract declares its inbox with `PluginInbox`, so reading one takes the pack's @abuddy/sdk. Without
+  // it the type collapses to `any`, which has no properties — codegen used to read that as an inbox open to nothing
+  // and generate a pack whose plugin silently received none of what it declares. It stops and says so now, and
+  // `init` puts `npm install` before `abuddy add feature` for exactly this reason.
+  it("keeps the scaffold of a pack whose dependencies aren't installed, and says npm install regenerates", async () => {
     await addFeature(['notes'], pack);
 
     expect(fs.existsSync(path.join(pack, 'src', 'features', 'notes', 'be', 'system.ts'))).toBe(true);
     const output = vi.mocked(console.log).mock.calls.map((args) => args.join(' ')).join('\n');
-    expect(output).not.toContain('not regenerated');
-    // and it read the contract's event types, not an empty stand-in for a type it couldn't resolve
-    expect(fs.readFileSync(path.join(pack, 'src', '__generated__', 'pack-entry.ts'), 'utf-8')).toContain("receives: ['NOTES_CONNECTED']");
+    expect(output).toMatch(/src\/__generated__\/ not regenerated: .*resolves to `any`.*Run: npm install/);
+    expect(output).not.toContain('__generated__/ regenerated');
   });
 
   it('writes --designation into abuddy.json and no feature.config.ts', async () => {
+    installDependencies();
     await addFeature(['notes', '--designation', 'notes'], pack);
 
     expect(readManifest().features).toEqual([expect.objectContaining({ id: 'notes', designation: 'notes' })]);
@@ -87,6 +97,7 @@ describe('abuddy add feature', () => {
   // A designation is a role, not a name. The CLI refused one that differed from the feature name, which
   // `validate` has always accepted and the manifest schema has always allowed.
   it('writes a designation that differs from the feature name', async () => {
+    installDependencies();
     await addFeature(['notes', '--designation', 'inbox'], pack);
 
     expect(readManifest().features).toEqual([expect.objectContaining({ id: 'notes', designation: 'inbox' })]);
