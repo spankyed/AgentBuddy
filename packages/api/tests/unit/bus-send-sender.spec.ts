@@ -45,6 +45,20 @@ describe('bus.send carries the sender across the boundary', () => {
     expect(received[0]).not.toHaveProperty('via');
   });
 
+  /**
+   * The guard for the whole class, rather than for one field. `Required<Message>` cannot be satisfied without
+   * naming every field of the envelope, so a field added to `Message` stops this spec **compiling** until it is
+   * named here — and then fails the assertion until `bus.send`'s schema names it too. Neither of the two times
+   * this went wrong had anything that would have noticed; the cases above are each one field's memory, and this
+   * is the one that doesn't need to be remembered.
+   */
+  it('carries every field of the envelope, whatever the envelope grows', async () => {
+    received.length = 0;
+    const whole: Required<Message> = { to: 'memo-pack/memos', event: { type: 'ADD_MEMO' }, from: 'default-setup', via: 'action:Summarise' };
+    await caller.send(whole);
+    expect(received).toEqual([whole]);
+  });
+
   // The field is named rather than the object made passthrough, so the boundary stays closed to the rest
   it('still drops a field nothing declares', async () => {
     received.length = 0;

@@ -115,6 +115,24 @@ describe('an event a system sends to a plugin', () => {
   });
 
   /**
+   * And each sending *action*, for the same reason. The dedupe is keyed on the sentence the report makes, so
+   * whatever the message distinguishes, the dedupe distinguishes. Keyed on `from` alone these were one report
+   * naming `action:A` — which is worse than a vague report, because whoever was debugging B was told it was A.
+   */
+  it("reports each sending action of one pack, not just the first", async () => {
+    await send({ to: 'memo-pack/memos', event: { type: 'MEMO_SHREDDED' }, from: 'one-pack', via: 'action:A' });
+    await send({ to: 'memo-pack/memos', event: { type: 'MEMO_SHREDDED' }, from: 'one-pack', via: 'action:B' });
+    expect(takeSystemErrors().map((e) => e.message.match(/\(action:\w\)/)?.[0])).toEqual(['(action:A)', '(action:B)']);
+  });
+
+  // The same send twice is still one report: the dedupe didn't become per-message
+  it('reports one drop once, however many times the same send is made', async () => {
+    await send({ to: 'memo-pack/memos', event: { type: 'MEMO_SHREDDED' }, from: 'one-pack', via: 'action:A' });
+    await send({ to: 'memo-pack/memos', event: { type: 'MEMO_SHREDDED' }, from: 'one-pack', via: 'action:A' });
+    expect(takeSystemErrors()).toHaveLength(1);
+  });
+
+  /**
    * Still a SYSTEM_ERROR, so takeSystemErrors fails the pack test that left it — and `diagnostic`, so
    * the app doesn't raise a toast over it. The reader is whoever wrote the send, the message is already
    * in the Logs plugin where they are looking, and the person using the app can do nothing about it.

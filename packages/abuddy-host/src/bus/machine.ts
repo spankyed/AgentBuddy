@@ -146,7 +146,7 @@ export function createBusMachine(options: BusOptions) {
         // accepts, and a system's event against what the plugin receives. Reported and dropped rather
         // than thrown — the caller is a running system, and a malformed message must not take it down.
         // takeSystemErrors fails any pack test that leaves one, so this is loud where it should be.
-        const { to: pluginId, from, event: { type } } = event.message;
+        const { to: pluginId, event: { type } } = event.message;
         // Who sent it, when the send stamped it: the pack (`defineEvents`) and what within it (an action's
         // `action:<label>`). `reportError` sends for a caller that is neither, so a drop that names no sender is
         // not thereby suspicious — it just has one fewer clue in it.
@@ -156,7 +156,11 @@ export function createBusMachine(options: BusOptions) {
           // A pack mid-replacement has no systems running and no plugins registered until its
           // replacement lands. Dropping is right; saying something went wrong is not.
           if (options.registry.isPluginReplacing(pluginId)) return;
-          const pair = `${pluginId}/${type}/${from ?? ''}`;
+          // Keyed on what the report *says*, not on a second reading of the envelope: two sends that produce the
+          // same sentence are the same report, and two that don't are two. Keying on `from` alone read the
+          // envelope a second time and silently stopped matching the message when `via` was added — one report
+          // for two actions of a pack, naming whichever ran first.
+          const pair = `${pluginId}/${type}/${sender}`;
           if (reportedDrops.has(pair)) return;
           reportedDrops.add(pair);
           // `diagnostic`: logged, recorded, and failing any pack test that leaves one — but no toast.
