@@ -1,5 +1,5 @@
 import { _rootEvents } from '../runtime/root-events.ts';
-import { untypedBroadcastToPlugin } from '../events/index.ts';
+import { createSends } from '../events/index.ts';
 import { getDesignated, hasDesignation } from '../designations/index.ts';
 // Import directly — not from '../utils' barrel which pulls in Node-only modules (fs, child_process)
 import { randomId } from '../utils/random-id.ts';
@@ -119,7 +119,9 @@ function reportSystemError(input: ReportSystemErrorInput): void {
     stack: normalized.stack,
     meta: { errorId: event.errorId, operation: input.operation, entityId: input.entityId, severity, error: normalized },
   });
-  _rootEvents.emitOutgoing({ to: 'host/application', event });
+  // `via`, not `from`: a report is sent on behalf of whoever called `reportError`, and that is a source
+  // (`'bus'`, `'action:Summarise'`) rather than a pack — the one thing this function is never told.
+  _rootEvents.emitOutgoing({ to: 'host/application', event, via: input.source ?? 'system' });
 }
 
 function reportStepError(input: ReportSystemErrorInput, step: StepErrorContext): StepRuntimeError {
@@ -160,7 +162,8 @@ function reportStepError(input: ReportSystemErrorInput, step: StepErrorContext):
     }
   }
 
-  // The flow shows it in the plugin playing the brain role, if any does
-  if (hasDesignation('brain')) untypedBroadcastToPlugin(getDesignated('brain'), { type: 'BRAIN_RUNTIME_ERROR', error: runtimeError });
+  // The flow shows it in the plugin playing the brain role, if any does — sent as the step that reported it, so a
+  // drop names the step rather than nothing
+  if (hasDesignation('brain')) createSends({ via: source }).broadcastToPlugin(getDesignated('brain'), { type: 'BRAIN_RUNTIME_ERROR', error: runtimeError });
   return runtimeError;
 }

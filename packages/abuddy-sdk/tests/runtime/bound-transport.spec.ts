@@ -90,7 +90,8 @@ describe('on the bound bus', () => {
   it('reportError logs a system error and sends it to the clients', () => {
     vi.spyOn(console, 'error').mockImplementation(() => {});
     const sent = onBus(() => reportError({ error: new Error('boom'), source: 'memos', operation: 'save' }));
-    expect(sent.outgoing).toEqual([{ to: 'host/application', event: expect.objectContaining({ type: 'SYSTEM_ERROR', source: 'memos', message: 'boom' }) }]);
+    // `via` is the source, the only thing a report knows about its caller — there is no pack here to put in `from`
+    expect(sent.outgoing).toEqual([{ to: 'host/application', via: 'memos', event: expect.objectContaining({ type: 'SYSTEM_ERROR', source: 'memos', message: 'boom' }) }]);
     expect(sent.logs).toEqual([expect.objectContaining({ level: 'error', source: 'memos', message: 'boom' })]);
     expect(takeSystemErrors()).toHaveLength(1);
   });

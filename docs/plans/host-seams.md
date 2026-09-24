@@ -79,6 +79,27 @@ removing its cause, which is one misplaced interface.
 
 ## Steps
 
+All five have landed, on `AS/plugin-contract`:
+
+| Step | Commit | Note |
+|---|---|---|
+| 1 — Delete the `settings` designation | `a07b5c095` | |
+| 2 — `createSends`, and the host sends as itself | `e5580d6b4` | |
+| 5 — The host sends by name, typed | `4d649fc0b` | Landed before 3 and 4; its claim that step 1 would unblock the typing was wrong, and the commit says why |
+| 3 — Actions send as their pack | `576873cbe` | `via` widened past the action to name any source: `reportError` stamps the source it was given, so the invariant is "a pack, a source, or both" rather than "one module stamps nothing" |
+| 4 — Move the port, delete the exception | `9d80d94ff` | The exception excused four imports, not one — see below |
+
+Two things the steps below did not predict, both recorded where they were found:
+
+- **Step 4's exception was load-bearing for the package barrel too.** `HOST_SRC_ROOT` excused
+  `features/packs/fe/frontends.ts` *and* the three `fe/index.ts` re-exports, so folding the barrels in (as this
+  plan says to) would have broken the gate rather than freed it. What replaced it is a derived rule — a package
+  may name its features' frontends from what its `package.json` publishes, which is the hand-written counterpart
+  of a pack's generated `pack-entry-fe.ts` — so nothing is blessed by path or by filename, and a tree with no
+  `exports` excepts nothing.
+- **Step 3's `via` is not only an action's.** Stamping a source rather than specifically an action costs nothing
+  and lets `reportError` — the one remaining sender with no pack to name — say where it came from.
+
 ### 1 — Delete the `settings` designation
 
 Remove `designation: 'settings'` from `hostRegistration` and the renderer's FE registration. Replace every
@@ -171,6 +192,9 @@ real. Lands after step 2, whose note it deletes.
   load-bearing objections. Its other reasons — the snapshot-format break, and designing the policy with
   no third-party pack in existence — still stand, so this is a separate decision.
   - just update the doc, no need to reassess.
+  - Done. Reason 1 is answered outright; reason 2 in its factual half only — the host's call sites stamp now,
+    but a sender can still opt out of the rule by reaching for the untyped sends, which is a decision about the
+    public API rather than about audiences. The doc stays won't-do and says which reopening condition is left.
 
 2. **What an action stamps** — settled: the pack in `from`, the action beside it.
 

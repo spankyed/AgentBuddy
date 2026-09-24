@@ -1,6 +1,8 @@
-// services.emitter names systems and plugins `<packId>/<featureId>`, since actions run outside any pack; a bare
-// name is the host's. Both sends resolve against what the bound registry has registered, and a name nothing is
-// registered under throws at the call, naming the form to write — rather than being dropped by the bus.
+// services.emitter names systems and plugins `<packId>/<featureId>`: an action is content, so a bare name would
+// rebind on a copy into another pack. Both sends resolve against what the bound registry has registered, and a
+// name nothing is registered under throws at the call, naming the form to write — rather than being dropped by
+// the bus. `createActionEmitter` below is the same sends with a sender bound; what changes is the stamp on the
+// message, never what a name means.
 import * as os from 'node:os';
 import { describe, expect, it } from 'vitest';
 import { createActionEmitter, services } from '../../src/services/index.ts';

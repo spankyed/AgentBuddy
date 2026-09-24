@@ -23,22 +23,23 @@ export interface Message {
    * emitter an action runs with (`createActionEmitter`). Diagnostics name it: a dropped or unroutable message says
    * who sent it instead of leaving that to a grep.
    *
-   * Absent on a send made for no pack in particular — `reportError`'s, which sends on behalf of whoever called it.
-   * Nothing routes or refuses on it — treat it as a label, not a claim: a sender that doesn't stamp is not thereby
-   * untrusted, and one that does has not been checked.
+   * Absent on a send made for no pack in particular — `reportError`'s, which sends on behalf of whoever called it
+   * and is told a source rather than a pack. Nothing routes or refuses on it — treat it as a label, not a claim:
+   * a sender that doesn't stamp is not thereby untrusted, and one that does has not been checked.
    */
   from?: string;
   /**
-   * What within the sending pack made it, when the pack alone doesn't say: `action:<label>` for an action, the
-   * same string that names the action's logger, so a dropped send and that action's own log lines share something
-   * to grep for.
+   * What within the sender made it, where the sender has a name for that: `action:<label>` for an action, and for
+   * a `reportError` the source it was given (`'bus'`, `'step-runtime'`). Each is the string that also names the
+   * corresponding logger, so a dropped send and the log lines around it are one grep apart.
    *
-   * An action is the reason this exists. It is the one sender a pack cannot point at in its own source — content
-   * a user writes, edits and exports — so `from` naming its pack leaves the useful half of "who sent this"
-   * unsaid. `from` keeps one meaning, the pack; `'<pack>/<action>'` would read as a `<packId>/<featureId>` ref
-   * and give anything parsing it a confident wrong answer.
+   * An action is why this exists. It is the one sender a pack cannot point at in its own source — content a user
+   * writes, edits and exports — so `from` naming its pack leaves the useful half of "who sent this" unsaid. `from`
+   * keeps one meaning, the pack; `'<pack>/<action>'` would read as a `<packId>/<featureId>` ref and give anything
+   * parsing it a confident wrong answer.
    *
-   * Absent for every other sender, and a label like `from`: nothing routes or refuses on it.
+   * Between the two, every send carries a pack, a source, or both — except `services.emitter` reached outside an
+   * action, where neither is in scope. A label like `from`: nothing routes or refuses on it.
    */
   via?: string;
 }
@@ -194,13 +195,13 @@ export interface SendBinding {
   /** A name the caller writes → the ref it stands for. The unbound sends take refs already, so a name is its own ref. */
   resolve?: (name: string) => string;
   /**
-   * The pack these sends are made by, stamped on every message as `Message.from`. Absent for the unbound sends,
-   * which `reportError` uses to send on behalf of a caller that is a logger source rather than a pack.
+   * The pack these sends are made by, stamped on every message as `Message.from`. Absent where there is no pack to
+   * name: `reportError` sends for a caller that is a logger source, and binds only `via`.
    */
   from?: string;
   /**
-   * What within that pack is making them, stamped as `Message.via`: `action:<label>` for the emitter an action
-   * runs with (`createActionEmitter`). Absent for every other sender.
+   * What within the sender is making them, stamped as `Message.via`: `action:<label>` for the emitter an action
+   * runs with (`createActionEmitter`), and its source for `reportError`, which has no pack to name.
    */
   via?: string;
 }
@@ -240,7 +241,7 @@ export function createSends({ resolve = (name: string) => name, from, via }: Sen
   };
 }
 
-/** The sends made by nobody in particular: `reportError`'s, on behalf of a caller that is a source, not a pack. */
+/** The sends made by nobody in particular: the untyped ones below, which packs and tooling use directly. */
 const unboundSends = createSends();
 
 /**

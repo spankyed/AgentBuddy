@@ -1,6 +1,6 @@
 // The app is the pack `host`, so its messages say so: a drop or an unroutable send names who made it instead of
-// leaving that to a grep. The unbound sends stamp nothing — they are what an action reaches through
-// `services.emitter`, outside any pack — so absent is the ordinary case rather than a fault.
+// leaving that to a grep. The untyped sends below stamp nothing — a caller reaches for them deliberately, and
+// nothing routes or refuses on the stamp — so absent is a sender with nothing to declare rather than a fault.
 import { describe, expect, it } from 'vitest';
 import type { Message } from '@abuddy/sdk/events';
 import { untypedBroadcastToPlugin, untypedSendToSystem } from '@abuddy/sdk/events';

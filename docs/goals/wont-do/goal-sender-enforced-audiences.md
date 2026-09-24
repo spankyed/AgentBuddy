@@ -2,8 +2,13 @@
 > `#generated/events` builds, and the bus and `receiveClientEvent` name the sender in their diagnostics. The
 > enforcement half — audience-split `receives` on both registrations, and the bus refusing a cross-pack send of a
 > `pack`-tier event — is not being built, and the reasons are below rather than in a conversation. They are about
-> the shape of the check, not its difficulty. **Reopen when** a third-party pack can actually be installed from a
-> registry, or when `services.emitter` acquires a pack identity; either one removes a load-bearing objection.
+> the shape of the check, not its difficulty.
+>
+> **Updated 2026-09-24.** One of the two reopening conditions has since fired: `services.emitter` now carries a
+> pack identity, so an action's sends stamp `from` and `via` (`576873cbe`). Reason 1 is answered and reason 2 is
+> answered in its factual half. That was reviewed and the goal is **still won't-do** — reasons 3, 4 and 5 were
+> never about the sender, and reason 2's structural half stands. **Reopen when** a third-party pack can actually
+> be installed from a registry, which is the condition that has not fired and the one reasons 3 and 4 turn on.
 
 > **Written in session** `8b92798a-1d8e-4b9d-bb17-daa98bec9f93` (Claude Code, 2026-09-24). Resume it with `claude -r 8b92798a-1d8e-4b9d-bb17-daa98bec9f93`.
 
@@ -18,12 +23,19 @@ runtime as well. It is recorded as won't-do, with what it would take if that cha
 Half of `goal-plugin-contract.md`'s Deferred item 2 shipped, because it stands on its own:
 
 - `Message.from?: string` — the id of the pack that sent it, stamped in `defineEvents(packId)` for all three
-  sends. Optional, and absent on the host's own sends and on an action's through `services.emitter`.
+  sends. Optional, and at the time absent on the host's own sends and on an action's through `services.emitter`.
 - The bus's two drop diagnostics and `receiveClientEvent`'s two `UnknownClientEventError` messages name it, so a
   dropped message says who sent it instead of leaving that to a grep. The drop dedupe is keyed
   `pluginId/type/from`, so two packs making the same wrong send are two reports rather than one.
 - Nothing routes or refuses on `from`. It is a label, not a claim: a sender that doesn't stamp is not thereby
   untrusted, and one that does has not been checked.
+
+Since, on `AS/plugin-contract` (`docs/plans/host-seams.md`), still all envelope and still no rejection:
+
+- The host stamps `from: 'host'` (`e5580d6b4`), so the call sites reason 2 counted now have a sender.
+- `Message.via?: string` — what within the sender made the send, where the sender has a name for that
+  (`576873cbe`): `action:<label>` from the emitter an action runs with, and its source from `reportError`. Every
+  send now carries a pack, a source, or both, except `services.emitter` reached outside an action.
 
 What did **not** land: any change to `PackFeaturePlugin.receives` or `PackFEFeature`, and any rejection.
 
@@ -52,19 +64,28 @@ What did **not** land: any change to `PackFeaturePlugin.receives` or `PackFEFeat
 
 ## Why not
 
-1. **The sends that most need a sender can't easily get one.** `services.emitter.broadcastToPlugin` is declared
-   `typeof broadcastToPlugin` (`services/index.ts:40`) — the raw SDK function, not one built by `defineEvents`.
-   That is the emitter **actions** use, and actions run outside any pack scope. So the code path with the least
-   compile-time checking is the one that cannot stamp `from` without threading a pack identity through the action
-   sandbox. Sends from a pack's systems and plugins are the easy case, and they are also the case types already
-   cover.
+1. ~~**The sends that most need a sender can't easily get one.**~~ **Answered (2026-09-24, `576873cbe`.)** It
+   read: `services.emitter.broadcastToPlugin` is declared `typeof broadcastToPlugin` (`services/index.ts:40`) —
+   the raw SDK function, not one built by `defineEvents` — so the code path with the least compile-time checking
+   is the one that cannot stamp `from` without threading a pack identity through the action sandbox.
 
-2. **An unstamped message has no good meaning.** There are 61 raw `broadcastToPlugin`/`sendToSystem`/`sendToPlugin`
-   call sites across host, api and renderer, none with a pack id in scope. Reject unstamped messages and the host
-   breaks. Trust them and the rule is advisory — anything that wants around it simply doesn't stamp, including the
-   untyped SDK sends that `check:specifiers` only blocks *in pack sources*. An enforcement the enforcer can opt out
-   of by omission isn't much of one, and it is the same "enforced on one path but not the other" objection the
-   original doc raised, relocated rather than solved.
+   That threading is now done: `createActionEmitter({ from, via })` binds the pack running the action and the
+   action itself, and `runActionCode` builds one per run. The observation under the objection survives it and is
+   worth keeping: an action is still the path with the least compile-time checking, because Decision 2 of
+   `goal-actions-and-seams.md` deliberately keeps its names refs — an action is content that can be copied into
+   another pack, so a bare name must not resolve. An identity for the stamp bought no typing, on purpose.
+
+2. **An unstamped message has no good meaning.** Half answered; the half that matters stands.
+
+   It read: there are 61 raw `broadcastToPlugin`/`sendToSystem`/`sendToPlugin` call sites across host, api and
+   renderer, none with a pack id in scope, so rejecting unstamped messages breaks the host. That is no longer
+   true — those sends go through `@abuddy/host/src/events.ts` and stamp `from: 'host'` (`e5580d6b4`).
+
+   Its second half is untouched: trust unstamped messages and the rule is advisory, because anything that wants
+   around it simply doesn't stamp, including the untyped SDK sends that `check:specifiers` only blocks *in pack
+   sources*. An enforcement the enforcer can opt out of by omission isn't much of one. Closing that would mean
+   making the untyped sends unreachable or refusing an unstamped message outright — a decision about the public
+   API, not about audiences, and not one to take on the way to this goal.
 
 3. **It breaks two published contracts at once, and `receives` is in the snapshot.** `Message` is public API;
    `PackFeaturePlugin.receives` and `PackFEFeature` are the pack registration contract. `receives` reaches
@@ -108,10 +129,11 @@ settled.
 
 ## If this is reopened
 
-1. Give `services.emitter` a pack identity, threaded through the action sandbox (`extensions/steps/action/sandbox.ts`),
-   so an action's sends stamp `from`. Until this holds, reasons 1 and 2 stand and the rest is not worth starting.
+1. ~~Give `services.emitter` a pack identity, threaded through the action sandbox.~~ Done (`576873cbe`); this is
+   no longer a prerequisite.
 2. Decide the unstamped policy explicitly, and write it down: which senders are exempt, and why that list cannot
-   grow silently.
+   grow silently. The set is now small enough to state — only `services.emitter` reached outside an action, and
+   the untyped sends a caller picks deliberately — which is what makes this step writable rather than a survey.
 3. Split `receives` by audience in `PackFeaturePlugin` and add it to `PackFEFeature`; bump
    `PACK_SNAPSHOT_FORMAT`; land it at a release boundary.
 4. Enforce in the bus, the shell and the test harness in one change — not one path at a time.
