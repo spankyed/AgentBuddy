@@ -1,3 +1,4 @@
+import type { IncomingExplorerEvents, OutgoingExplorerEvents } from '../contract'
 import { broadcastToPlugin } from '@/__generated__/events';
 import { assign, setup } from 'xstate'
 
@@ -24,35 +25,8 @@ function requireRepository(context: Context, path: string): context is Context &
 }
 
 // Incoming events from frontend
-export type IncomingExplorerEvents =
-  | { type: 'explorer.LIST_FILES'; path: string }
-  | { type: 'explorer.READ_FILE'; path: string }
-  | { type: 'explorer.WRITE_FILE'; path: string; content: string }
-  | { type: 'explorer.CREATE_FILE'; path: string; content?: string }
-  | { type: 'explorer.DELETE_FILE'; path: string }
-  | { type: 'explorer.RENAME_FILE'; oldPath: string; newPath: string }
-  | { type: 'explorer.CREATE_DIRECTORY'; path: string }
-  | { type: 'explorer.GET_FILE_INFO'; path: string }
-  | { type: 'explorer.CLOSE_FILE'; path: string }
-  | { type: 'explorer.QUICK_OPEN_SEARCH'; baseDirectory: string }
-  | { type: 'explorer.MOVE_FILES'; sourcePaths: string[]; targetDir: string }
-  | { type: 'explorer.COPY_FILES'; sourcePaths: string[]; targetDir: string }
 
 // Outgoing events to frontend
-export type OutgoingExplorerEvents =
-  | { type: 'explorer.FILES_LISTED'; data: DirectoryContent }
-  | { type: 'explorer.FILE_CREATED'; data: { path: string } }
-  | { type: 'explorer.FILE_DELETED'; data: { path: string } }
-  | { type: 'explorer.FILE_RENAMED'; data: { oldPath: string; newPath: string } }
-  | { type: 'explorer.DIRECTORY_CREATED'; data: { path: string } }
-  | { type: 'explorer.FILE_INFO'; data: FileInfo }
-  | { type: 'explorer.FILE_CONTENT'; data: FileContent }
-  | { type: 'explorer.FILE_SAVED'; data: { path: string } }
-  | { type: 'explorer.CODE_ERROR'; data: CodeSystemError }
-  | { type: 'explorer.FILE_CHANGED_EXTERNALLY'; data: FileChangeInfo }
-  | { type: 'explorer.QUICK_OPEN_RESULTS'; data: QuickOpenResult[] }
-  | { type: 'explorer.FILES_MOVED'; data: { sourcePaths: string[]; targetDir: string; movedPaths: string[] } }
-  | { type: 'explorer.FILES_COPIED'; data: { targetDir: string; copiedPaths: string[] } }
 
 export interface Context {
   baseDirectory: string | null

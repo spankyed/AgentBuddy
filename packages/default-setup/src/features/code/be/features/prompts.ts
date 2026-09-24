@@ -1,3 +1,4 @@
+import type { IncomingPromptsEvents, OutgoingPromptsEvents } from '../contract'
 import { broadcastToPlugin } from '@/__generated__/events';
 import { setup } from 'xstate'
 
@@ -8,15 +9,8 @@ import type { PromptEntity } from '@abuddy/sdk'
 const pluginId = 'code' as const
 
 // Incoming events from frontend
-export type IncomingPromptsEvents =
-  | { type: 'codePrompts.OPEN_PROMPT'; promptId: string }
-  | { type: 'codePrompts.SAVE_PROMPT'; promptId: string; templateFn: string }
 
 // Outgoing events to frontend
-export type OutgoingPromptsEvents =
-  | { type: 'codePrompts.PROMPT_SELECTED'; promptId: string; data: PromptEntity & { templateFnContent?: string } }
-  | { type: 'codePrompts.PROMPT_UPDATED'; prompt: PromptEntity; promptId: string }
-  | { type: 'codePrompts.CODE_ERROR'; data: { message: string } }
 
 export interface Context {
   // No local state needed for prompts feature

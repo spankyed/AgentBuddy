@@ -450,12 +450,6 @@ const CONFIG_FILE = /^(?:tsconfig(?:[.-][\w.-]+)?\.json|(?:vite|vitest|tsup|tsdo
 const SKIPPED_DIRS = /^(?:node_modules|dist|out|coverage|\..+)$/;
 /** Files a config compiles or bundles. Declarations included: tsc resolves their imports too */
 const CODE_FILE = /\.(?:[cm]?[jt]sx?|vue)$/;
-/** The extensions a relative config import may leave out */
-/**
- * The pack sources whose features keep their frontends to themselves. `@abuddy/host` is one of them: the app is the
- * pack `host`, its features are laid out as a pack's (`features/<id>/{be,fe}`), so its frontends answer to the same
- * rule — except that the shell and the Packs feature still reach each other through `fe/public.ts` (HOST_SRC_ROOT).
- */
 /**
  * The host's own source. Its features keep `fe/public.ts`, because the host has no codegen: a pack's features reach
  * each other through the contracts `#generated/fe` and `#generated/events` are generated from, and nothing
@@ -463,6 +457,11 @@ const CODE_FILE = /\.(?:[cm]?[jt]sx?|vue)$/;
  */
 const HOST_SRC_ROOT = 'packages/abuddy-host/src';
 
+/**
+ * The pack sources whose features keep their frontends to themselves. `@abuddy/host` is one of them: the app is the
+ * pack `host` and its features are laid out as a pack's (`features/<id>/{be,fe}`), so its frontends answer to the
+ * same rule, with the one exception recorded above.
+ */
 const PACK_SRC_ROOTS = [
   'packages/default-setup/src', HOST_SRC_ROOT,
   'tests/fixtures/external-pack/src', 'tests/fixtures/bundled-ui-pack/src',
@@ -545,12 +544,15 @@ export function findCrossFeatureImports(srcRoots = PACK_SRC_ROOTS, root = repoRo
 }
 
 /**
- * `file:line: specifier` for each import a plugin's contract leaf makes that would put the machine back in front of
- * codegen. The leaf is the module `abuddy.json` names at `features[].plugin.contract`, and codegen reads the
- * contract from it as a declared type — without resolving the plugin, whose machine imports `#generated/events`,
- * which imports the contract. Reading it anywhere the machine is reachable closes that loop again.
+ * `file:line: specifier` for each import a contract leaf makes that would put the machine back in front of codegen.
  *
- * So a leaf imports no `./state`, no other feature, and nothing generated but `types` and `ears`, which are
+ * A leaf is a module `abuddy.json` names at `features[].plugin.contract` or `features[].system.contract`, and
+ * codegen reads the contract from it as a declared type — without resolving the actor it describes. Both actors
+ * import `#generated/events`, and `#generated/events` imports both contracts, so reading a contract anywhere its
+ * actor is reachable closes that loop again. The two sides are one rule with one machine module each: `fe/state`
+ * for a plugin, `be/system` for a system.
+ *
+ * So a leaf imports neither machine, no other feature, and nothing generated but `types` and `ears`, which are
  * themselves leaves: a context needs both (`NoteDTO`, `EARS.EntityId`) and neither reaches `#generated/events`.
  */
 export function findContractLeafImports(srcRoots = PACK_SRC_ROOTS, root = repoRoot): string[] {
@@ -558,15 +560,18 @@ export function findContractLeafImports(srcRoots = PACK_SRC_ROOTS, root = repoRo
     const src = path.join(root, srcRoot);
     const manifestPath = path.join(path.dirname(src), 'abuddy.json');
     if (!fs.existsSync(manifestPath)) return [];
-    const manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf-8')) as { features?: Array<{ plugin?: { contract?: string } }> };
-    const leaves = (manifest.features ?? []).flatMap((feature) => {
-      const target = feature.plugin?.contract?.split('#')[0];
-      if (!target) return [];
-      return [target, `${target}.ts`, `${target}/index.ts`]
-        .map((candidate) => path.join(path.dirname(src), candidate))
-        .filter((file) => fs.existsSync(file) && fs.statSync(file).isFile())
-        .slice(0, 1);
-    });
+    const manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf-8')) as {
+      features?: Array<{ plugin?: { contract?: string }; system?: { contract?: string } }>;
+    };
+    const leaves = (manifest.features ?? []).flatMap((feature) =>
+      [feature.plugin?.contract, feature.system?.contract].flatMap((contract) => {
+        const target = contract?.split('#')[0];
+        if (!target) return [];
+        return [target, `${target}.ts`, `${target}/index.ts`]
+          .map((candidate) => path.join(path.dirname(src), candidate))
+          .filter((file) => fs.existsSync(file) && fs.statSync(file).isFile())
+          .slice(0, 1);
+      }));
     const resolveFrom = (from: string, specifier: string): string | undefined => {
       const base = specifier.startsWith('@/') ? path.join(src, specifier.slice(2))
         : specifier.startsWith('.') ? path.resolve(path.dirname(from), specifier) : undefined;
@@ -603,7 +608,7 @@ export function findContractLeafImports(srcRoots = PACK_SRC_ROOTS, root = repoRo
           if (target === undefined) continue;
           const into = /^features\/([^/]+)\//.exec(relative(target));
           if (viaLeaf && into && into[1] !== ownFeature) { found.push(at); continue; }
-          if (viaLeaf && /(?:^|\/)state(?:\.ts)?$/.test(relative(target))) { found.push(at); continue; }
+          if (viaLeaf && /(?:^|\/)(?:state|system)(?:\.ts)?$/.test(relative(target))) { found.push(at); continue; }
           walk(target, false);
         }
       };
@@ -1154,7 +1159,7 @@ if (process.argv[1] && import.meta.filename === fs.realpathSync(process.argv[1])
     [findSharedPackageLists, 'Derive shared-instance packages from SHARED_INSTANCE_PACKAGES (@abuddy/host/build/shared-deps) instead of naming them'],
     [findRepositoryCasts, "Call a package's repositories through its exports, not a cast of the repository registry"],
     [findCrossFeatureImports, "A feature's frontend is its own: what it offers other features is its plugin's contract, read through #generated/fe and #generated/events, never a module of its own"],
-    [findContractLeafImports, "A plugin's contract leaf is a leaf: no ./state, no other feature, and nothing generated but types and ears — codegen reads the contract without resolving the machine, and an import that reaches it restores the cycle"],
+    [findContractLeafImports, "A contract leaf is a leaf: no ./state or ./system, no other feature, and nothing generated but types and ears — codegen reads a plugin's and a system's contract without resolving its actor, and an import that reaches one restores the cycle"],
     [findCrossCheckoutResolution, 'Workspace packages resolve inside this checkout, so a worktree nested in the repository never typechecks against the parent checkout'],
     [findMissingSourceConditions, "The repo's own configs declare the @abuddy/source condition when they compile or bundle code importing @abuddy/ears, @abuddy/sdk or @abuddy/ui, so they read TypeScript source instead of a stale dist; a pack's configs declare none, because a pack resolves the published dist"],
   ];

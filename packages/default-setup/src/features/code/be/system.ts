@@ -29,14 +29,20 @@ import { GitRepository } from './services/git'
 import { GitWatcherService } from './services/gitwatcher'
 import { repository } from '@/__generated__/repository';
 
-// child systems
-import { explorerSystem, type IncomingExplorerEvents, type OutgoingExplorerEvents } from './features/explorer'
-import { searchSystem, type IncomingSearchEvents, type OutgoingSearchEvents } from './features/search'
-import { commitSystem, type IncomingCommitEvents, type OutgoingCommitEvents } from './features/commit'
-import { pullRequestSystem, type IncomingPullRequestEvents, type OutgoingPullRequestEvents } from './features/pull-request'
-import { terminalSystem, type IncomingTerminalEvents, type OutgoingTerminalEvents } from './features/terminal'
-import { actionsSystem, type IncomingActionsEvents, type OutgoingActionsEvents } from './features/actions'
-import { promptsSystem, type IncomingPromptsEvents, type OutgoingPromptsEvents } from './features/prompts'
+// child systems; their events come from the contract, which is where every child's now live
+import { explorerSystem } from './features/explorer'
+import { searchSystem } from './features/search'
+import { commitSystem } from './features/commit'
+import { pullRequestSystem } from './features/pull-request'
+import { terminalSystem } from './features/terminal'
+import { actionsSystem } from './features/actions'
+import { promptsSystem } from './features/prompts'
+import type {
+  IncomingActionsEvents, IncomingCommitEvents, IncomingExplorerEvents, IncomingPromptsEvents,
+  IncomingPullRequestEvents, IncomingSearchEvents, IncomingTerminalEvents,
+  OutgoingActionsEvents, OutgoingCommitEvents, OutgoingExplorerEvents, OutgoingPromptsEvents,
+  OutgoingPullRequestEvents, OutgoingSearchEvents, OutgoingTerminalEvents,
+} from './contract'
 
 /** One of this system's children, by the id it was spawned under */
 function child(self: AnyActorRef, id: string): AnyActorRef | undefined {

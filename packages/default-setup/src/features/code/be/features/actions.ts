@@ -1,3 +1,4 @@
+import type { IncomingActionsEvents, OutgoingActionsEvents } from '../contract'
 import { broadcastToPlugin } from '@/__generated__/events';
 import { setup } from 'xstate'
 
@@ -8,15 +9,8 @@ import type { ActionEntity } from '@abuddy/sdk'
 const pluginId = 'code' as const
 
 // Incoming events from frontend
-export type IncomingActionsEvents =
-  | { type: 'codeActions.OPEN_ACTION'; actionId: string }
-  | { type: 'codeActions.SAVE_ACTION'; actionId: string; actionFn: string }
 
 // Outgoing events to frontend
-export type OutgoingActionsEvents =
-  | { type: 'codeActions.ACTION_SELECTED'; actionId: string; data: ActionEntity & { actionFnContent?: string } }
-  | { type: 'codeActions.ACTION_UPDATED'; action: ActionEntity; actionId: string }
-  | { type: 'codeActions.CODE_ERROR'; data: { message: string } }
 
 export interface Context {
   // No local state needed for actions feature
