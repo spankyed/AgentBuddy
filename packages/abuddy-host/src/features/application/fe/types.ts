@@ -111,7 +111,7 @@ export interface ShellContext {
 export type ShellEvent =
   | { type: 'SELECT_PLUGIN'; plugin: string; historyIndex?: number }
   | { type: 'OPEN_PLUGIN'; plugin: string; events: PluginEvent[] }
-  | { type: 'SEND_TO_PLUGIN'; plugin: string; events: PluginEvent[] }
+  | { type: 'SEND_TO_PLUGIN'; plugin: string; events: PluginEvent[]; from?: string }
   /** Hands an opened plugin its events, once the shell has selected it */
   | { type: 'DELIVER_PLUGIN_EVENTS'; plugin: string; events: PluginEvent[] }
   | { type: 'DEFAULT_TOGGLE'; area: 'canvas' }

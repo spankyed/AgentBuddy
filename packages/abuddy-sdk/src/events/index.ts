@@ -18,6 +18,16 @@ export { eventTypes, type TypeOfEvent } from './event-types.ts';
 export interface Message {
   to: string;
   event: { type: string; [key: string]: unknown };
+  /**
+   * The id of the pack that sent it, stamped by the sends `#generated/events` builds (`defineEvents`), which is
+   * the only place a sender's identity is in scope. Diagnostics name it: a dropped or unroutable message says who
+   * sent it instead of leaving that to a grep.
+   *
+   * Absent on a send the host makes for itself and on one an action makes through `services.emitter`, which runs
+   * outside any pack. Nothing routes or refuses on it — treat it as a label, not a claim: a sender that doesn't
+   * stamp is not thereby untrusted, and one that does has not been checked.
+   */
+  from?: string;
 }
 
 /** A plugin's name → the events that plugin receives. Each pack's `#generated/events` defines its `SendablePluginEvents`. */
@@ -155,13 +165,13 @@ function sendIncoming(message: Message): void {
  *
  * Untyped: packs use the `broadcastToPlugin` from their `#generated/events`.
  */
-export function broadcastToPlugin(to: string, event: { type: string; [key: string]: unknown }): void {
+export function broadcastToPlugin(to: string, event: { type: string; [key: string]: unknown }, from?: string): void {
   // The two sends share a signature, so the compiler can't tell a caller it picked the wrong one: say which it is.
   // Reaching for the other from here is the likely mistake, not a missing bindHost.
   if (!_isHostBound() && _isFeHostBound()) {
     throw new Error(`broadcastToPlugin("${to}") is the backend's, over the bus to every window. In the renderer, send to this window's plugin with sendToPlugin from #generated/events`);
   }
-  boundHost().transport.rootEvents.emitPluginSend({ to, event });
+  boundHost().transport.rootEvents.emitPluginSend({ to, event, ...(from ? { from } : {}) });
 }
 
 /**
@@ -176,13 +186,13 @@ export function broadcastToPlugin(to: string, event: { type: string; [key: strin
  * owners of that question giving different answers — this one threw. It is a send, not a navigation, so the plugin
  * the user has open doesn't change.
  */
-export function _sendToLocalPlugin(ref: string, event: { type: string; [key: string]: unknown }): void {
+export function _sendToLocalPlugin(ref: string, event: { type: string; [key: string]: unknown }, from?: string): void {
   // The two sends share a signature, so the compiler can't tell a caller it picked the wrong one: say which it is.
   if (!_isFeHostBound() && _isHostBound()) {
     throw new Error(`sendToPlugin("${ref}") is the renderer's, to this window's plugin. On the backend, send over the bus with broadcastToPlugin from #generated/events`);
   }
   if (!splitRef(ref)) throw new Error(`"${ref}" doesn't name a plugin: a plugin is named "<packId>/<featureId>"`);
-  boundFeHost().application.send({ type: 'SEND_TO_PLUGIN', plugin: ref, events: [event] });
+  boundFeHost().application.send({ type: 'SEND_TO_PLUGIN', plugin: ref, events: [event], ...(from ? { from } : {}) });
 }
 
 /** A system: its ref, or the role a system plays (`{ role: 'brain' }`), found when the message is sent */
@@ -192,8 +202,8 @@ export type SystemTarget = string | { role: string };
  * Sends an event to a backend system, by ref or by the role it plays. Untyped: packs use the `sendToSystem` from
  * their `#generated/events`, which takes names and checks the event against what the system declares.
  */
-export function sendToSystem(to: SystemTarget, event: { type: string; [key: string]: unknown }): void {
-  sendIncoming({ to: typeof to === 'string' ? to : getDesignated(to.role), event });
+export function sendToSystem(to: SystemTarget, event: { type: string; [key: string]: unknown }, from?: string): void {
+  sendIncoming({ to: typeof to === 'string' ? to : getDesignated(to.role), event, ...(from ? { from } : {}) });
 }
 
 /** Calls `callback` each time a client connects; returns the unsubscribe (backend only) */
@@ -239,8 +249,8 @@ export interface TypedEvents<P extends PluginEvents, S extends SystemEventMap> {
 export function defineEvents<P extends PluginEvents, S extends SystemEventMap>(packId: string): TypedEvents<P, S> {
   const refOf = (name: string): string => resolveName(name, packId);
   return {
-    broadcastToPlugin: (name: string, event: { type: string }) => broadcastToPlugin(refOf(name), event),
-    sendToPlugin: (name: string, event: { type: string }) => _sendToLocalPlugin(refOf(name), event),
-    sendToSystem: (to: SystemTarget, event: { type: string }) => sendToSystem(typeof to === 'string' ? refOf(to) : to, event),
+    broadcastToPlugin: (name: string, event: { type: string }) => broadcastToPlugin(refOf(name), event, packId),
+    sendToPlugin: (name: string, event: { type: string }) => _sendToLocalPlugin(refOf(name), event, packId),
+    sendToSystem: (to: SystemTarget, event: { type: string }) => sendToSystem(typeof to === 'string' ? refOf(to) : to, event, packId),
   } as unknown as TypedEvents<P, S>;
 }

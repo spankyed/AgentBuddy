@@ -38,15 +38,17 @@ function summarizeEventForLog(event: Message['event']) {
  * logs it and emits it on the root event bus. Throws `UnknownClientEventError` for an unknown system or event type.
  */
 export function receiveClientEvent(registry: Pick<PackRegistry, 'getEventValidationMap'>, message: Message): void {
-  const { to, event } = message;
+  const { to, from, event } = message;
+  // The sending pack, when the send stamped it (`defineEvents`). A window's own sends and the host's carry none.
+  const sender = from ? ` sent by "${from}"` : '';
   const validTypes = registry.getEventValidationMap().get(to);
   if (!validTypes) {
-    throw new UnknownClientEventError(`Unknown system: "${to}"`);
+    throw new UnknownClientEventError(`Unknown system: "${to}"${sender}`);
   }
   if (!validTypes.has('*') && !validTypes.has(event.type)) {
-    throw new UnknownClientEventError(`Unknown event "${event.type}" for system "${to}"`);
+    throw new UnknownClientEventError(`Unknown event "${event.type}" for system "${to}"${sender}`);
   }
 
-  logger.info(`→ Incoming: "${event.type}"`, { to, event: summarizeEventForLog(event) });
+  logger.info(`→ Incoming: "${event.type}"`, { to, ...(from ? { from } : {}), event: summarizeEventForLog(event) });
   _rootEvents.emitIncoming(message);
 }

@@ -79,6 +79,31 @@ describe('an event a system sends to a plugin', () => {
   });
 
   /**
+   * `Message.from` is a label the generated sends stamp with their pack's id — the one place a sender is in
+   * scope. Nothing routes or refuses on it; it exists so a drop names who sent the event instead of leaving
+   * that to a grep. The host's own sends and an action's carry none, so the message reads the same minus the
+   * clue, and a drop that names no sender is not thereby suspicious.
+   */
+  it('names the sending pack in the drop, when the send stamped one', async () => {
+    await send({ to: 'memo-pack/memos', event: { type: 'MEMO_SHREDDED' }, from: 'other-pack' });
+    expect(takeSystemErrors()[0]?.message).toContain('sent by "other-pack"');
+  });
+
+  it('reads the same without a sender, rather than saying one is missing', async () => {
+    await send({ to: 'memo-pack/memos', event: { type: 'MEMO_SHREDDED' } });
+    const [error] = takeSystemErrors();
+    expect(error?.message).toContain('Dropped "MEMO_SHREDDED" sent to');
+    expect(error?.message).not.toMatch(/sent by|undefined/);
+  });
+
+  // The drop is reported once per plugin/event pair, and two packs sending the same wrong event are two reports
+  it('reports each sending pack, not just the first', async () => {
+    await send({ to: 'memo-pack/memos', event: { type: 'MEMO_SHREDDED' }, from: 'one-pack' });
+    await send({ to: 'memo-pack/memos', event: { type: 'MEMO_SHREDDED' }, from: 'two-pack' });
+    expect(takeSystemErrors()).toHaveLength(2);
+  });
+
+  /**
    * Still a SYSTEM_ERROR, so takeSystemErrors fails the pack test that left it — and `diagnostic`, so
    * the app doesn't raise a toast over it. The reader is whoever wrote the send, the message is already
    * in the Logs plugin where they are looking, and the person using the app can do nothing about it.

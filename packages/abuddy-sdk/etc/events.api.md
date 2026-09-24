@@ -8,7 +8,7 @@
 export function broadcastToPlugin(to: string, event: {
     type: string;
     [key: string]: unknown;
-}): void;
+}, from?: string): void;
 
 // @public
 export function defineEvents<P extends PluginEvents, S extends SystemEventMap>(packId: string): TypedEvents<P, S>;
@@ -87,6 +87,7 @@ export interface Message {
         type: string;
         [key: string]: unknown;
     };
+    from?: string;
     // (undocumented)
     to: string;
 }
@@ -135,13 +136,13 @@ export type Qualified<PackId extends string, M> = {
 export function _sendToLocalPlugin(ref: string, event: {
     type: string;
     [key: string]: unknown;
-}): void;
+}, from?: string): void;
 
 // @public
 export function sendToSystem(to: SystemTarget, event: {
     type: string;
     [key: string]: unknown;
-}): void;
+}, from?: string): void;
 
 // @public
 export type SystemEventMap = {

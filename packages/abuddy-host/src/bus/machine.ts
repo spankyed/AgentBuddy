@@ -146,13 +146,16 @@ export function createBusMachine(options: BusOptions) {
         // accepts, and a system's event against what the plugin receives. Reported and dropped rather
         // than thrown — the caller is a running system, and a malformed message must not take it down.
         // takeSystemErrors fails any pack test that leaves one, so this is loud where it should be.
-        const { to: pluginId, event: { type } } = event.message;
+        const { to: pluginId, from, event: { type } } = event.message;
+        // Who sent it, when the send stamped it (`defineEvents`). The host's own sends and an action's don't,
+        // so a drop that names no sender is not thereby suspicious — it just has one fewer clue in it.
+        const sender = from ? ` by "${from}"` : '';
         const accepted = options.registry.getPluginEventValidationMap().get(pluginId);
         const reportDrop = (message: string) => {
           // A pack mid-replacement has no systems running and no plugins registered until its
           // replacement lands. Dropping is right; saying something went wrong is not.
           if (options.registry.isPluginReplacing(pluginId)) return;
-          const pair = `${pluginId}/${type}`;
+          const pair = `${pluginId}/${type}/${from ?? ''}`;
           if (reportedDrops.has(pair)) return;
           reportedDrops.add(pair);
           // `diagnostic`: logged, recorded, and failing any pack test that leaves one — but no toast.
@@ -163,11 +166,11 @@ export function createBusMachine(options: BusOptions) {
         if (accepted === undefined) {
           // An event every plugin takes (a feature's settings changing) is the feature's plugin's if it has one
           if ((PLUGIN_EVENT_TYPES as readonly string[]).includes(type)) return;
-          reportDrop(`Dropped "${type}" sent to "${pluginId}", which no registered pack declares as a plugin that receives events. Check the id, or give the plugin's own pack a system that declares what it sends there.`);
+          reportDrop(`Dropped "${type}" sent${sender} to "${pluginId}", which no registered pack declares as a plugin that receives events. Check the id, or give the plugin's own pack a system that declares what it sends there.`);
           return;
         }
         if (!accepted.has(type)) {
-          reportDrop(`Dropped "${type}" sent to the "${pluginId}" plugin, which declares no such event. A plugin receives what its own pack's systems declare they emit: add it to that system's outgoing events, or send an event the plugin handles.`);
+          reportDrop(`Dropped "${type}" sent${sender} to the "${pluginId}" plugin, which declares no such event. A plugin receives what its own pack's systems declare they emit: add it to that system's outgoing events, or send an event the plugin handles.`);
           return;
         }
         options.onOutgoing(event.message);
