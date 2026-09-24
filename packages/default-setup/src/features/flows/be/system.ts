@@ -7,7 +7,7 @@ import { defineSystem } from '@abuddy/sdk/framework';
 import { EARS } from '@/__generated__/ears';
 import { repository } from '@/__generated__/repository';
 import type { Contract } from './contract';
-import type { FlowsConnectedData, NodeEntity } from './types.ts';
+import type { FlowsConnectedData, NodeEntity } from './types';
 import { FLOW_ROLES } from './repository';
 import { createLogger } from '@abuddy/sdk/logger';
 import type { FlowEntity, ActionEntity, PromptEntity } from '@abuddy/sdk';

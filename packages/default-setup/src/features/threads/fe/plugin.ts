@@ -1,7 +1,7 @@
 import { definePlugin } from '@abuddy/sdk/fe';
 
 import { BotMessageSquare } from 'lucide-vue-next';
-import state from './state.ts';
+import state from './state';
 import list from './canvas/list.vue';
 import kanban from './canvas/kanban.vue';
 import ThreadDetail from './canvas/ThreadDetail.vue';

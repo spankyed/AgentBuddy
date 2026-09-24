@@ -6,7 +6,7 @@
 import type { PluginInbox } from '@abuddy/sdk/fe'
 import type { TabGroup } from '@abuddy/sdk/fe'
 import type { BrowserSettings } from '@/__generated__/types'
-import type { AutocompleteSuggestion } from './history.ts'
+import type { AutocompleteSuggestion } from './history'
 
 export type BrowserTabPersistedId = `BrowserTab-${string}`;
 

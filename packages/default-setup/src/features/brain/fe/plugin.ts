@@ -2,7 +2,7 @@ import { defineAsyncComponent } from 'vue';
 import { definePlugin } from '@abuddy/sdk/fe';
 
 import { Brain } from 'lucide-vue-next';
-import state from './state.ts';
+import state from './state';
 import type { BrainContext } from './contract';
 import settings from './settings.vue';
 

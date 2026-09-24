@@ -1,7 +1,7 @@
 import { defineAsyncComponent } from 'vue';
 import { definePlugin } from '@abuddy/sdk/fe';
 import { Network } from 'lucide-vue-next';
-import state from './state.ts';
+import state from './state';
 import settings from './settings.vue';
 
 const canvas = defineAsyncComponent(() => import('./canvas/flow-canvas.vue'));

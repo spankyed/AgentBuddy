@@ -4,7 +4,7 @@
 // codegen read the contract without resolving the machine, whose imports cycle back through `#generated/events`.
 // `abuddy.json` names it at `features[].plugin.contract`.
 import type { PluginInbox } from '@abuddy/sdk/fe'
-import type { LogEntry } from '../be/types.ts'
+import type { LogEntry } from '../be/types'
 
 export interface LogsContext {
   logs: LogEntry[];

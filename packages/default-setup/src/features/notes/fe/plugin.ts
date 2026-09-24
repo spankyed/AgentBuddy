@@ -1,6 +1,6 @@
 import { definePlugin } from '@abuddy/sdk/fe';
 import { NotebookText } from 'lucide-vue-next';
-import state from './state.ts';
+import state from './state';
 import canvas from './canvas.vue';
 import panel from './panel.vue';
 import settings from './settings.vue';

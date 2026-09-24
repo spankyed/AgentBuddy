@@ -5,7 +5,7 @@ import { performance } from 'node:perf_hooks';
 import { defineSystem } from '@abuddy/sdk/framework';
 import { UnknownBackupDatabasesError } from '@abuddy/sdk/services';
 import type { Contract } from './contract';
-import type { DatabaseStartupData } from './types.ts';
+import type { DatabaseStartupData } from './types';
 import { executeQuery } from './execute/query';
 import { executeTransaction } from './execute/transaction';
 import { generateSchemaInfo } from './repository/schema';

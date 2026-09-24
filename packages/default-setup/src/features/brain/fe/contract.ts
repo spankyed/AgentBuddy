@@ -5,7 +5,7 @@
 // `abuddy.json` names it at `features[].plugin.contract`.
 import type { EventListenerEntity } from '@/__generated__/types'
 import type { StepRuntimeError, TNodeEntity, TrackTree } from '@abuddy/sdk/steps'
-import type { NormalizedTNodeTree } from './trace-tree.ts'
+import type { NormalizedTNodeTree } from './trace-tree'
 
 export interface BrainContext {
   flowTNodeId?: string;

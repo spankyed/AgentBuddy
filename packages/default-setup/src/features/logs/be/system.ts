@@ -4,7 +4,7 @@ import { assign, setup, sendParent, enqueueActions, fromCallback, spawnChild } f
 import { defineSystem } from '@abuddy/sdk/framework';
 
 import type { Contract } from './contract';
-import type { LogEntry, LogsState } from './types.ts';
+import type { LogEntry, LogsState } from './types';
 import { randomId } from '@abuddy/sdk/utils';
 import { onLog, type LogEvent } from '@abuddy/sdk/logger';
 import { repository } from '@/__generated__/repository';

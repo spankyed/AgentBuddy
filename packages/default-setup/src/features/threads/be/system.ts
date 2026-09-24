@@ -9,7 +9,7 @@ import { defineSystem } from '@abuddy/sdk/framework';
 import { tx, EARS } from '@/__generated__/ears';
 import { repository } from '@/__generated__/repository';
 import type { Contract } from './contract';
-import type { AgentConnectedData, AgentThreadData, BlockConfig, MessageEntity, RecentThreadRefreshData, ThreadConnectedData, ThreadEditFields, ThreadEntity, ThreadLinkItem } from './types.ts';
+import type { AgentConnectedData, AgentThreadData, BlockConfig, MessageEntity, RecentThreadRefreshData, ThreadConnectedData, ThreadEditFields, ThreadEntity, ThreadLinkItem } from './types';
 import type { AgentSettings, CommandItem } from './types';
 import { type ThreadExtendedData, type BlockResponse } from './types';
 import { type ChangeBlock, toMap, toIdentifierSet, mapScalar, mapArray } from '@abuddy/sdk/utils';

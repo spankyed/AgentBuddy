@@ -33,7 +33,7 @@
 import { reactive } from 'vue';
 import { X } from 'lucide-vue-next';
 import { ContextMenuRoot, ContextMenuTrigger, ContextMenuContent, ContextMenuItem, ContextMenuPortal } from 'reka-ui';
-import type { Bookmark } from '../state.ts';
+import type { Bookmark } from '../state';
 
 defineProps<{
   bookmarks: Bookmark[];

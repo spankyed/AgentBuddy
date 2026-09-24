@@ -1,6 +1,6 @@
 import { definePlugin } from '@abuddy/sdk/fe';
 import { Sparkle } from 'lucide-vue-next';
-import state from './state.ts';
+import state from './state';
 import canvas from './canvas.vue';
 import settings from './settings.vue';
 

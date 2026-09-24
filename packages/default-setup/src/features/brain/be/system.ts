@@ -5,7 +5,7 @@ import { defineSystem } from '@abuddy/sdk/framework';
 
 import { EARS } from '@/__generated__/ears';
 import type { Contract } from './contract';
-import type { BrainContext, FlowTNodeData, TNodeUpdate } from './types.ts';
+import type { BrainContext, FlowTNodeData, TNodeUpdate } from './types';
 import { repository } from '@/__generated__/repository';
 import { createLogger, reportError, setDebugEnabled, isDebugEnabled } from '@abuddy/sdk/logger';
 import { createFlowNodeSystem, getFlowActor, getAllFlowActors, getAllFlowActorIds, clearFlowActorRegistry } from './flow-system';

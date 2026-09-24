@@ -6,7 +6,7 @@
 import type { PluginInbox } from '@abuddy/sdk/fe'
 import type { TNodeEntity } from '@abuddy/sdk'
 import type { DatabaseSettings } from '@/__generated__/types'
-import type { DatabaseSchemaInfo } from '../be/types.ts'
+import type { DatabaseSchemaInfo } from '../be/types'
 
 export interface DatabaseContext {
   schema: DatabaseSchemaInfo;

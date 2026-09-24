@@ -8,7 +8,7 @@ import type { IncomingPullRequestEvents, OutgoingPullRequestEvents } from './fea
 import type { IncomingTerminalEvents, OutgoingTerminalEvents } from './features/terminal';
 import type { IncomingActionsEvents, OutgoingActionsEvents } from './features/actions';
 import type { IncomingPromptsEvents, OutgoingPromptsEvents } from './features/prompts';
-import type { CodeConnectedData, Context } from './types.ts';
+import type { CodeConnectedData, Context } from './types';
 
 export type IncomingCodeEvents =
   | IncomingExplorerEvents

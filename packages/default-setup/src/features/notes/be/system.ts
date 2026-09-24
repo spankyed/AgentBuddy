@@ -7,7 +7,7 @@ import { defineSystem } from '@abuddy/sdk/framework';
 
 import { EARS } from '@/__generated__/ears';
 import type { Contract } from './contract';
-import type { NoteDTO, NotesConnectedData, OutgoingNotesSearchEvent } from './types.ts';
+import type { NoteDTO, NotesConnectedData, OutgoingNotesSearchEvent } from './types';
 import { repository } from '@/__generated__/repository';
 
 import { syncReferences } from './repository/link-utils';

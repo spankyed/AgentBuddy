@@ -7,7 +7,7 @@ import { defineSystem } from '@abuddy/sdk/framework';
 
 import { EARS } from '@/__generated__/ears';
 import type { Contract } from './contract';
-import type { ActionsStartupData, OutgoingActionEvents } from './types.ts';
+import type { ActionsStartupData, OutgoingActionEvents } from './types';
 import { repository } from '@/__generated__/repository';
 import { createLogger } from '@abuddy/sdk/logger';
 import { toMap, toIdentifierSet, mapScalar } from '@abuddy/sdk/utils';
