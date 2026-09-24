@@ -2,15 +2,14 @@
 //
 // It resolves the view by the `settings` role rather than by name, so it works wherever that view lives: the app
 // draws it (`views/settings/`), and a pack that replaced it would answer the same way.
-import { getDesignated, hasDesignation } from '@abuddy/sdk/fe';
 import type { SettingsPort, SettingsSaveStatus, SettingsTarget } from '@abuddy/sdk/fe';
 import type { FeatureRef } from '@abuddy/sdk/ids';
 import { boundFeHost } from '@abuddy/sdk/runtime/internals';
+import { HOST } from '@abuddy/host/fe';
 
 /** The settings view's actor, or undefined before its plugin is spawned (the window is still starting) */
 function view() {
-  if (!hasDesignation('settings')) return undefined;
-  return boundFeHost().application.system.get(getDesignated('settings'));
+  return boundFeHost().application.system.get(HOST.settings);
 }
 
 /** The settings in effect, as the view holds them; an empty document until it has them */

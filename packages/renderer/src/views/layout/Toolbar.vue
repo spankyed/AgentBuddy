@@ -68,7 +68,7 @@ import { useSelector } from '@xstate/vue';
 import WindowControls from './WindowControls.vue';
 import ToolbarPluginContextMenu from './ToolbarPluginContextMenu.vue';
 import ContextMenuPopup from '@abuddy/ui/design/ContextMenuPopup';
-import { getDesignated } from '@abuddy/sdk/fe';
+import { HOST } from '@abuddy/host/fe';
 import { useContextMenu, type MenuItem } from '@abuddy/ui/composables/useContextMenu';
 import { applicationState } from '@/main';
 
@@ -93,7 +93,7 @@ const pluginVisibility = useSelector(
 const isVisible = (id: string) => pluginVisibility.value?.[id] !== false;
 
 const togglePluginVisibility = (id: string) => {
-  if (id === getDesignated('settings')) return;
+  if (id === HOST.settings) return;
   applicationState.send({ type: 'SET_PLUGIN_VISIBILITY', plugin: id, visible: !isVisible(id) });
 };
 
@@ -107,7 +107,7 @@ const sortedPlugins = computed(() => {
 
 const visibilityMenuItems = computed<MenuItem[]>(() =>
   sortedPlugins.value.sorted.map((plugin) => {
-    const locked = plugin.id === getDesignated('settings');
+    const locked = plugin.id === HOST.settings;
     const visible = isVisible(plugin.id);
     const textClass = locked
       ? 'text-neutral-600 cursor-not-allowed'

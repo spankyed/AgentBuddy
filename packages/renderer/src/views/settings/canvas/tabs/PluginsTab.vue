@@ -96,7 +96,7 @@ import { useSelector } from '@xstate/vue'
 import { getDesignated, untypedOpenPlugin, PluginScope, usePlugin, useShell } from '@abuddy/sdk/fe'
 import { Package, CheckCircle, Eye, EyeOff, ExternalLink } from 'lucide-vue-next'
 import { useSettingsSaveStatus } from '@/views/settings/save'
-import type { SettingsState } from '@abuddy/host/fe'
+import { HOST, type SettingsState } from '@abuddy/host/fe'
 import type { FeatureRef } from '@abuddy/sdk/ids'
 
 const shell = useShell()
@@ -147,7 +147,7 @@ const isPluginVisible = (pluginId: string) => {
 }
 
 // Toggle plugin visibility
-const settingsPluginId = getDesignated('settings')
+const settingsPluginId = HOST.settings
 
 const togglePluginVisibility = (pluginId: string) => {
   if (pluginId === settingsPluginId) return
