@@ -4,7 +4,8 @@ import * as os from 'node:os';
 import * as path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import {
-  findAppImportsInPackTests, findCrossCheckoutResolution, findCrossFeatureImports, findHostImports, findJsSpecifiers, findMissingSourceConditions, findPackBackendConsole, findRawPackHelpers,
+  CHECKS,
+  findAppImportsInPackTests, findContractLeafImports, findCrossCheckoutResolution, findCrossFeatureImports, findHostImports, findJsSpecifiers, findMissingSourceConditions, findPackBackendConsole, findRawPackHelpers,
   findRawTransport, findInternalPackageImports, findLmdbImports, findRepositoryCasts, findSharedPackageLists, findUpwardImports, LAYERS, LMDB_RULES, packageSourceDirs,
   DECLARES_SOURCE_BY_DESIGN, RESOLVES_DIST_BY_DESIGN, SHARED_LIST_CONSUMERS, sourceConditionPackages, SOURCE_CONDITION,
 } from '../../../../scripts/check-import-specifiers.ts';
@@ -426,6 +427,124 @@ describe('findSharedPackageLists', () => {
   });
 });
 
+/**
+ * Every rule in `CHECKS` is a gate that fails the build, so every one needs a case that proves it bites. Fourteen
+ * of the fifteen had one and the fifteenth didn't, which nothing noticed: the convention was held up by whoever
+ * remembered it. This is the same shape as `step-build-barrel.spec.ts` — a table and its uses, kept in step by a
+ * test rather than by attention.
+ */
+/**
+ * A contract leaf is what codegen reads a feature's events and state from, as a declared type, without resolving
+ * the actor they describe. `#generated/events` imports both contracts and both actors import `#generated/events`,
+ * so a leaf that can reach its actor closes that cycle — which is why the rule is a closure walk and not a check
+ * of the leaf's own imports.
+ *
+ * The fixture is a pack, `abuddy.json` included: that file is what makes a tree a pack, and a fixture without one
+ * isn't testing the thing the rule runs on.
+ */
+describe('findContractLeafImports', () => {
+  const src = 'pack/src';
+  /** A pack whose `notes` feature names both contracts, as a real manifest does */
+  function pack(files: Record<string, string>): void {
+    writeAt('pack/abuddy.json', JSON.stringify({
+      id: 'demo-pack', name: 'Demo', version: '1.0.0',
+      features: [{
+        id: 'notes',
+        system: { entry: 'src/features/notes/be/system.ts', contract: 'src/features/notes/be/contract.ts#Contract' },
+        plugin: { entry: 'src/features/notes/fe/plugin.ts', contract: 'src/features/notes/fe/contract.ts#Contract' },
+      }],
+    }));
+    for (const [file, content] of Object.entries(files)) writeAt(`${src}/${file}`, content);
+  }
+
+  it('allows a leaf that names only its own types and the generated leaves', () => {
+    pack({
+      'features/notes/fe/contract.ts': [
+        "import type { NoteDTO } from '../be/types';",
+        "import type { EARS } from '@/__generated__/ears';",
+        "import type { X } from '@/__generated__/types';",
+      ].join('\n'),
+      'features/notes/be/contract.ts': "import type { Incoming } from './types';",
+      'features/notes/be/types.ts': 'export type Incoming = { type: "A" };',
+    });
+    expect(findContractLeafImports([src], root)).toEqual([]);
+  });
+
+  // Each side's machine: a plugin's is fe/state, a system's is be/system, and both import #generated/events.
+  // The rule resolves what it reads, so the machines have to exist for the import to be one.
+  it("flags a leaf that reaches its own feature's machine", () => {
+    pack({
+      'features/notes/fe/contract.ts': "import type { Ctx } from './state';",
+      'features/notes/fe/state.ts': "import { sendToPlugin } from '@/__generated__/events';",
+      'features/notes/be/contract.ts': "import type { Ev } from './system';",
+      'features/notes/be/system.ts': "import { broadcastToPlugin } from '@/__generated__/events';",
+    });
+    expect(findContractLeafImports([src], root).sort()).toEqual([
+      `${src}/features/notes/be/contract.ts:1: ./system`,
+      `${src}/features/notes/fe/contract.ts:1: ./state`,
+    ]);
+  });
+
+  it('flags a leaf that names another feature', () => {
+    pack({
+      'features/notes/fe/contract.ts': "import type { T } from '@/features/threads/be/types';",
+      'features/threads/be/types.ts': 'export type T = { id: string };',
+      'features/notes/be/contract.ts': 'export type Contract = { outgoing: { type: "A" } };',
+    });
+    expect(findContractLeafImports([src], root)).toEqual([`${src}/features/notes/fe/contract.ts:1: @/features/threads/be/types`]);
+  });
+
+  it('flags a generated module that is not a leaf itself', () => {
+    pack({
+      'features/notes/fe/contract.ts': "import type { P } from '@/__generated__/fe';",
+      'features/notes/be/contract.ts': "import { broadcastToPlugin } from '@/__generated__/events';",
+    });
+    expect(findContractLeafImports([src], root).sort()).toEqual([
+      `${src}/features/notes/be/contract.ts:1: @/__generated__/events`,
+      `${src}/features/notes/fe/contract.ts:1: @/__generated__/fe`,
+    ]);
+  });
+
+  /**
+   * The rule that matters, and the one a check of the leaf's own imports would miss: the cycle returns just as
+   * surely through two hops. This is the shape that was live in default-setup's code feature — its contract
+   * imported its child modules, and those import `#generated/events` for `broadcastToPlugin`.
+   */
+  it('flags #generated/events reached through the closure, naming the leaf it came from', () => {
+    pack({
+      'features/notes/be/contract.ts': "import type { Ev } from './children/list';",
+      'features/notes/be/children/list.ts': "import { broadcastToPlugin } from '@/__generated__/events';",
+      'features/notes/fe/contract.ts': 'export type Contract = { state: {} };',
+    });
+    expect(findContractLeafImports([src], root)).toEqual([
+      `${src}/features/notes/be/children/list.ts:1: @/__generated__/events (reached from ${src}/features/notes/be/contract.ts)`,
+    ]);
+  });
+
+  // Deeper in the closure only the cycle matters: a module the leaf reaches may use the rest of the generated code
+  it('allows a generated module other than events and fe deeper in the closure', () => {
+    pack({
+      'features/notes/be/contract.ts': "import type { Ev } from './children/list';",
+      'features/notes/be/children/list.ts': "import { repository } from '@/__generated__/repository';",
+      'features/notes/fe/contract.ts': 'export type Contract = { state: {} };',
+    });
+    expect(findContractLeafImports([src], root)).toEqual([]);
+  });
+
+  it('checks nothing in a tree with no manifest, there being no contract to find', () => {
+    writeAt(`${src}/features/notes/fe/contract.ts`, "import type { Ctx } from './state';");
+    expect(findContractLeafImports([src], root)).toEqual([]);
+  });
+});
+
+describe('the checks this script runs', () => {
+  it('has a case for every rule in CHECKS', () => {
+    const spec = fs.readFileSync(import.meta.filename, 'utf-8');
+    const covered = new Set([...spec.matchAll(/describe\('(find\w+)'/g)].map((m) => m[1]));
+    expect(CHECKS.map(([find]) => find.name).filter((name) => !covered.has(name))).toEqual([]);
+  });
+});
+
 describe('findCrossFeatureImports', () => {
   const src = 'pack/src';
 
@@ -467,6 +586,14 @@ describe('findCrossFeatureImports', () => {
       `${src}/features/threads/door.ts:1: ./fe/state`,
       `${src}/features/threads/door.ts:2: ./fe/canvas`,
     ]);
+  });
+  // The host's `fe/public.ts` exception is keyed on its path, so it cannot widen by accident: a tree that isn't
+  // the host gets the rule whether or not it looks like a pack. Deriving the exception from a missing manifest
+  // would have let any root without one through, which is the wrong way for a gate to fail.
+  it('excepts only the host, so an unrecognised root still gets the rule', () => {
+    writeAt(`${src}/features/code/fe/panel.ts`, "import { useNotes } from '@/features/notes/fe/public';");
+    writeAt(`${src}/features/notes/fe/public.ts`, 'export const useNotes = () => 1;');
+    expect(findCrossFeatureImports([src], root)).toEqual([`${src}/features/code/fe/panel.ts:1: @/features/notes/fe/public`]);
   });
 });
 
