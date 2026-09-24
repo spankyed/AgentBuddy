@@ -102,16 +102,16 @@ export function importPackSeeds(packs: Iterable<PackSeedTarget>, importSeeds: ty
     if (!currentHash) {
       // Nothing to seed: an earlier version's error no longer applies, and neither does what it faced
       outcomes.set(packId, undefined);
-      appState.updatePackEntry('packSeedDeps', packId, undefined);
+      appState.updatePackEntry('externalSeedDeps', packId, undefined);
       continue;
     }
 
     // Read per pack, not once: a pack earlier in this run may be one this pack depends on
     const state = appState.get();
     // Built-in packs' hashes too — a dependency may be one of them, and they seed before any of these
-    const deps = dependencyState(pack.manifest.dependencies, { ...state.seedHashes, ...state.packSeedHashes });
-    const failedAgainst = state.packSeedDeps[packId];
-    if (state.packSeedHashes[packId] === currentHash && (failedAgainst === undefined || failedAgainst === deps)) {
+    const deps = dependencyState(pack.manifest.dependencies, { ...state.builtInSeedHashes, ...state.externalSeedHashes });
+    const failedAgainst = state.externalSeedDeps[packId];
+    if (state.externalSeedHashes[packId] === currentHash && (failedAgainst === undefined || failedAgainst === deps)) {
       logger.info(`Pack seed skipped (unchanged): ${packId}`);
       continue;
     }
@@ -123,15 +123,15 @@ export function importPackSeeds(packs: Iterable<PackSeedTarget>, importSeeds: ty
     } catch (err) {
       errors = [errorMessage(err)];
     }
-    appState.updatePackEntry('packSeedHashes', packId, currentHash);
+    appState.updatePackEntry('externalSeedHashes', packId, currentHash);
     if (errors.length > 0) {
       logger.error(`Failed to seed pack ${packId}:\n  ${errors.join('\n  ')}`);
-      appState.updatePackEntry('packSeedDeps', packId, deps);
+      appState.updatePackEntry('externalSeedDeps', packId, deps);
       failures.push({ packId, errors });
       outcomes.set(packId, errors.join('\n'));
       continue;
     }
-    appState.updatePackEntry('packSeedDeps', packId, undefined);
+    appState.updatePackEntry('externalSeedDeps', packId, undefined);
     outcomes.set(packId, undefined);
     logger.info(`Pack seeded: ${packId}`);
   }
@@ -176,22 +176,22 @@ function evaluateSeedPolicy(policy?: PackSeedManifest['seedPolicy']): Record<str
 export function orchestrateDeclarativeSeed(manifest: PackSeedManifest, packId: string): void {
   const { seedKeys, compiledDir, seedPolicy } = manifest;
   const stored = appState.get();
-  const storedHash = stored.seedHashes[packId];
+  const storedHash = stored.builtInSeedHashes[packId];
 
   // Fast path: if file mtimes/sizes haven't changed, the hash is the same
   const seedFiles = seedKeys.map(name => ({ path: seedPath(compiledDir, name) }));
   const fp = statFingerprint(seedFiles);
-  const storedFp = stored.seedStatFingerprints[packId];
+  const storedFp = stored.builtInSeedFingerprints[packId];
   if (storedHash && storedFp === fp) {
     logger.info(`Boot seed skipped for ${packId}: files unchanged (mtime)`);
     return;
   }
 
-  const record = (field: 'seedHashes' | 'seedStatFingerprints', value: string) => appState.updatePackEntry(field, packId, value);
+  const record = (field: 'builtInSeedHashes' | 'builtInSeedFingerprints', value: string) => appState.updatePackEntry(field, packId, value);
 
   const currentHash = computeManifestSeedHash(compiledDir, seedKeys);
   if (storedHash === currentHash) {
-    record('seedStatFingerprints', fp);
+    record('builtInSeedFingerprints', fp);
     logger.info(`Boot seed skipped for ${packId}: data unchanged`);
     return;
   }
@@ -203,8 +203,8 @@ export function orchestrateDeclarativeSeed(manifest: PackSeedManifest, packId: s
 
   // Stored even when records failed, as importPackSeeds does: the same failing data isn't re-imported on
   // every boot, and it's retried as soon as the compiled seeds change
-  record('seedHashes', currentHash);
-  record('seedStatFingerprints', fp);
+  record('builtInSeedHashes', currentHash);
+  record('builtInSeedFingerprints', fp);
 
   if (errors.length > 0) {
     logger.error(`Boot seed for ${packId} finished with errors; those records were not seeded and won't be retried until the compiled seeds change:\n  ${errors.join('\n  ')}`);

@@ -96,7 +96,7 @@ describe("0.3.15's migrations over 0.3.14's data", () => {
     expect(appState.get()).toMatchObject({
       hasOnboarded: true,
       version: '0.3.15',
-      seedHashes: { 'default-setup': 'boot-hash' },
+      builtInSeedHashes: { 'default-setup': 'boot-hash' },
       lastActivePlugin: 'default-setup/code',
     });
     // Only the tab the user changed from 0.3.14's defaults

@@ -155,7 +155,7 @@ Settings → General → "Import Pack Seeds" imports a pack's compiled seeds fro
 
 ## Seed pipeline
 
-At boot, the host seeds each built-in pack's declared `boot.seed` (`orchestrateDeclarativeSeed`, `@abuddy/host/packs/runtime`) from its compiled `dist/`. A SHA-256 hash of the compiled seed files (and a stat fingerprint for a fast path) is stored per pack in the app's state (`AppState.seedHashes`, `AppState.seedStatFingerprints`). If they match on the next startup, seeding is skipped; changed data triggers a re-seed. External packs' seeds are hashed per pack in `AppState.packSeedHashes`.
+At boot, the host seeds each built-in pack's declared `boot.seed` (`orchestrateDeclarativeSeed`, `@abuddy/host/packs/runtime`) from its compiled `dist/`. A SHA-256 hash of the compiled seed files (and a stat fingerprint for a fast path) is stored per pack in the app's state (`AppState.builtInSeedHashes`, `AppState.builtInSeedFingerprints`). If they match on the next startup, seeding is skipped; changed data triggers a re-seed. External packs' seeds are hashed per pack in `AppState.externalSeedHashes`.
 
 ## Media handling
 

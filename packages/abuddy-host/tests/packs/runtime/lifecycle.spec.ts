@@ -175,7 +175,7 @@ describe('activating and tearing down a pack at runtime', () => {
 
     expect(activatePack(registry, PACK_ID, bus as never)).toBe(true);
     expect(runs).toEqual(['migration', 'seed']);
-    expect(appState.get()).toMatchObject({ packVersions: { [PACK_ID]: '1.0.0' }, packSeedHashes: { [PACK_ID]: expect.any(String) } });
+    expect(appState.get()).toMatchObject({ packVersions: { [PACK_ID]: '1.0.0' }, externalSeedHashes: { [PACK_ID]: expect.any(String) } });
 
     // Disabled, then enabled again
     teardownPack(registry, PACK_ID, bus as never);

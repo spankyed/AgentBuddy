@@ -384,7 +384,7 @@ describe('installing over a pack that is already running', () => {
 describe('what a reinstall does not redo', () => {
   it('leaves the seed hash and migrated version an uninstall did not invalidate', async () => {
     resetTestData();
-    appState.update({ packSeedHashes: { [PACK_ID]: 'the-hash' }, packVersions: { [PACK_ID]: '1.0.0' } });
+    appState.update({ externalSeedHashes: { [PACK_ID]: 'the-hash' }, packVersions: { [PACK_ID]: '1.0.0' } });
     await installPackFromLocal(packSource('1.0.0'));
 
     const system = runPacksSystem();
@@ -394,7 +394,7 @@ describe('what a reinstall does not redo', () => {
         expect(emitted(system.sent).map(e => e.type)).toContain('PACK_UNINSTALL_COMPLETE');
       });
 
-      expect(appState.get().packSeedHashes[PACK_ID]).toBe('the-hash');
+      expect(appState.get().externalSeedHashes[PACK_ID]).toBe('the-hash');
       expect(appState.get().packVersions[PACK_ID]).toBe('1.0.0');
     } finally {
       system.stop();

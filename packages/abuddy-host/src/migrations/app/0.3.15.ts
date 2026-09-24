@@ -16,6 +16,9 @@ import { deepMerge, isPlainObject } from '@abuddy/sdk/utils/pure';
 /** The settings row: where the app's state was stored before 0.3.15, and where the plugin settings still are */
 const SETTINGS_ID = 'Settings-app' as EARS.EntityId;
 
+/** The app's state row, addressed here because the rename below reads fields `appState` no longer knows */
+const APP_STATE_ID = 'AppState-app' as EARS.EntityId;
+
 /** The settings' `internal` section, as versions before 0.3.15 stored it */
 interface LegacyInternal {
   hasOnboarded?: boolean;
@@ -61,6 +64,7 @@ export const migration = (registry: MigrationRegistry, installed: InstalledManif
   target: '0.3.15',
   description: "Move the app's state (onboarding, versions, seed hashes) from the settings' internal section to AppState, the app shell's state from the settings' _meta to AppState, and every pack's plugin settings onto their plugins' refs",
   up: () => {
+    renameSeedRecords();
     moveAppState(registry);
     const owners = ownersIn(registry, installed());
     moveShellState(owners);
@@ -68,6 +72,42 @@ export const migration = (registry: MigrationRegistry, installed: InstalledManif
     movePluginSettings(owners);
   },
 });
+
+/**
+ * AppState's four per-pack seed records, renamed for the axis that tells them apart. They were `packSeedHashes` and
+ * `packSeedDeps` for external packs against `seedHashes` and `seedStatFingerprints` for built-in ones — told apart by
+ * the word `pack`, which cannot tell them apart, since built-in packs are packs. `appState` reads only the names it
+ * knows, so data written under the old ones is invisible to it and the app would re-import every seed once.
+ */
+const RENAMED_SEED_RECORDS = {
+  packSeedHashes: 'externalSeedHashes',
+  packSeedDeps: 'externalSeedDeps',
+  seedHashes: 'builtInSeedHashes',
+  seedStatFingerprints: 'builtInSeedFingerprints',
+} as const satisfies Record<string, keyof AppState>;
+
+/** Moves each old-named record onto its new field, keeping what the new one already holds. Idempotent: the old names
+ *  are removed as they move, so a second run finds nothing. */
+function renameSeedRecords(): void {
+  const old = Object.keys(RENAMED_SEED_RECORDS);
+  const row = untypedQx(APP_STATE_ID).pickOne(old) as Record<string, Record<string, string> | null | undefined> | undefined;
+  if (!row) return;
+
+  const current = appState.get();
+  const moved: Partial<AppState> = {};
+  const tx = untypedTx(APP_STATE_ID);
+  let any = false;
+  for (const [from, to] of Object.entries(RENAMED_SEED_RECORDS)) {
+    const value = row[from];
+    // `drop` leaves the attribute as null rather than removing the key, so null is "already moved"
+    if (value == null) continue;
+    moved[to] = withMissing(current[to], value);
+    tx.drop(from);
+    any = true;
+  }
+  if (!any) return;
+  appState.update(moved);
+}
 
 function moveAppState(registry: MigrationRegistry): void {
   const internal = legacyInternal();
@@ -85,9 +125,9 @@ function moveAppState(registry: MigrationRegistry): void {
 
   const moved: Partial<AppState> = {
     packVersions: withMissing(current.packVersions, internal.packVersions),
-    packSeedHashes: withMissing(current.packSeedHashes, internal.packSeedHashes),
-    seedHashes: withMissing(current.seedHashes, seedHashes),
-    seedStatFingerprints: withMissing(current.seedStatFingerprints, seedStatFingerprints),
+    externalSeedHashes: withMissing(current.externalSeedHashes, internal.packSeedHashes),
+    builtInSeedHashes: withMissing(current.builtInSeedHashes, seedHashes),
+    builtInSeedFingerprints: withMissing(current.builtInSeedFingerprints, seedStatFingerprints),
     // Onboarding, once finished, stays finished
     ...(internal.hasOnboarded && !current.hasOnboarded && { hasOnboarded: true }),
     // The version the data was migrated to decides which migrations still run: kept unless one is recorded

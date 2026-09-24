@@ -519,12 +519,12 @@ describe('importPackSeeds: failures', () => {
     writeRegistry(['records']);
 
     importPackSeeds([pack], failingSeed);
-    expect(appState.get().packSeedDeps).toEqual({ records: 'provider:' });
+    expect(appState.get().externalSeedDeps).toEqual({ records: 'provider:' });
 
     fs.writeFileSync(path.join(pack.dir, 'runtime', 'seeds', 'flows.seed.json'), '{"fixed": {}}');
     importPackSeeds([pack], () => ({}));
 
-    expect(appState.get().packSeedDeps).toEqual({});
+    expect(appState.get().externalSeedDeps).toEqual({});
   });
 
   // The failure this is all for: pack B's seeds reference what pack A seeds, B seeded first and failed, and
@@ -570,12 +570,12 @@ describe('importPackSeeds: failures', () => {
     const pack = { ...installedPack('withdrawn'), manifest: { id: 'withdrawn', dependencies: { provider: '^1.0.0' } } };
     writeRegistry(['withdrawn']);
     importPackSeeds([pack], failingSeed);
-    expect(appState.get().packSeedDeps).toHaveProperty('withdrawn');
+    expect(appState.get().externalSeedDeps).toHaveProperty('withdrawn');
 
     fs.rmSync(path.join(pack.dir, 'runtime', 'seeds'), { recursive: true });
     importPackSeeds([pack], vi.fn());
 
-    expect(appState.get().packSeedDeps).toEqual({});
+    expect(appState.get().externalSeedDeps).toEqual({});
   });
 
   it("clears an earlier version's lastError when the pack no longer has seed data", () => {
@@ -700,7 +700,7 @@ describe('importPackSeeds', () => {
 
     const distDir = path.join(pack.dir, 'runtime', 'seeds');
     const hash = computePackSeedHash(distDir);
-    appState.update({ packSeedHashes: { 'cached-pack': hash } });
+    appState.update({ externalSeedHashes: { 'cached-pack': hash } });
 
     const applyFn = vi.fn().mockReturnValue({});
     importPackSeeds([pack], applyFn);
@@ -714,16 +714,16 @@ describe('importPackSeeds', () => {
       [seedFile('actions')]: [{ label: 'v1' }],
     });
 
-    appState.update({ packSeedHashes: { 'updated-pack': 'old-hash', 'disabled-pack': 'its-hash' } });
+    appState.update({ externalSeedHashes: { 'updated-pack': 'old-hash', 'disabled-pack': 'its-hash' } });
     const applyFn = vi.fn().mockReturnValue({});
 
     importPackSeeds([pack], applyFn);
 
     expect(applyFn).toHaveBeenCalledOnce();
-    const { packSeedHashes } = appState.get();
-    expect(packSeedHashes['updated-pack']).toBe(computePackSeedHash(path.join(pack.dir, 'runtime', 'seeds')));
+    const { externalSeedHashes } = appState.get();
+    expect(externalSeedHashes['updated-pack']).toBe(computePackSeedHash(path.join(pack.dir, 'runtime', 'seeds')));
     // A pack not loaded this boot (disabled) keeps its hash, so enabling it doesn't import its seeds again
-    expect(packSeedHashes['disabled-pack']).toBe('its-hash');
+    expect(externalSeedHashes['disabled-pack']).toBe('its-hash');
   });
 
   it('continues seeding other packs when one fails', () => {
@@ -746,7 +746,7 @@ describe('importPackSeeds', () => {
 
     expect(applyFn).toHaveBeenCalledTimes(2);
     // A failed seed's hash is stored too, so the same failing data isn't retried every boot
-    expect(appState.get().packSeedHashes).toEqual({ 'fail-pack': expect.any(String), 'ok-pack': expect.any(String) });
+    expect(appState.get().externalSeedHashes).toEqual({ 'fail-pack': expect.any(String), 'ok-pack': expect.any(String) });
   });
 });
 

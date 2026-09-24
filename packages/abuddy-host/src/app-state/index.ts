@@ -22,7 +22,7 @@ export interface AppState {
   /**
    * Each external pack's version its migrations last ran to, by pack id.
    *
-   * Kept when the pack is uninstalled, along with `packSeedHashes`: these say what has been done to the
+   * Kept when the pack is uninstalled, along with `externalSeedHashes`: these say what has been done to the
    * data, and uninstalling a pack deletes its directory, not its rows. Forgetting them would run a
    * reinstalled pack's migrations again over data they have already moved. A pack reinstalled at the
    * version it was therefore neither migrates nor re-seeds — `services.appData` re-imports its seeds if
@@ -30,7 +30,7 @@ export interface AppState {
    */
   packVersions: Record<string, string>;
   /** Each external pack's compiled seed data last seeded, by pack id. Kept on uninstall; see above */
-  packSeedHashes: Record<string, string>;
+  externalSeedHashes: Record<string, string>;
   /**
    * For each external pack whose last seed failed, the seed state of the packs it depends on at that
    * moment. A pack that seeded cleanly has no entry.
@@ -39,11 +39,11 @@ export interface AppState {
    * says its data hasn't changed, and this says whether anything it depends on has seeded since — the
    * other thing that could change the outcome.
    */
-  packSeedDeps: Record<string, string>;
+  externalSeedDeps: Record<string, string>;
   /** Each built-in pack's boot seed last seeded, by pack id: the hash of its compiled data */
-  seedHashes: Record<string, string>;
+  builtInSeedHashes: Record<string, string>;
   /** The file mtimes and sizes each built-in pack's seed hash was computed from (the fast path that skips re-hashing) */
-  seedStatFingerprints: Record<string, string>;
+  builtInSeedFingerprints: Record<string, string>;
   /**
    * The plugins whose sidebar tab the user showed or hid, by ref. A plugin not here shows as its feature declares
    * (`features[].settings`' `visible`), so a pack's default reaches everyone who never touched its tab.
@@ -54,7 +54,7 @@ export interface AppState {
 }
 
 const FIELDS = [
-  'hasOnboarded', 'version', 'packVersions', 'packSeedHashes', 'packSeedDeps', 'seedHashes', 'seedStatFingerprints',
+  'hasOnboarded', 'version', 'packVersions', 'externalSeedHashes', 'externalSeedDeps', 'builtInSeedHashes', 'builtInSeedFingerprints',
   'pluginVisibility', 'lastActivePlugin',
 ] as const satisfies readonly (keyof AppState)[];
 
@@ -87,10 +87,10 @@ export const appState = {
       hasOnboarded: row.hasOnboarded ?? false,
       ...(row.version !== undefined && { version: row.version }),
       packVersions: row.packVersions ?? {},
-      packSeedHashes: row.packSeedHashes ?? {},
-      packSeedDeps: row.packSeedDeps ?? {},
-      seedHashes: row.seedHashes ?? {},
-      seedStatFingerprints: row.seedStatFingerprints ?? {},
+      externalSeedHashes: row.externalSeedHashes ?? {},
+      externalSeedDeps: row.externalSeedDeps ?? {},
+      builtInSeedHashes: row.builtInSeedHashes ?? {},
+      builtInSeedFingerprints: row.builtInSeedFingerprints ?? {},
       pluginVisibility: row.pluginVisibility ?? {},
       ...(row.lastActivePlugin != null && { lastActivePlugin: row.lastActivePlugin }),
     };

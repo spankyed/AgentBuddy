@@ -6,7 +6,7 @@
 Implement docs/goals/goal-seed-vocabulary.md on master, at or after d0c811c2d — the base its
 Background was surveyed at.
 Before Phase 1, confirm the base: `importCompiledSeeds` in packages/abuddy-sdk/src/utils/seed.ts, `ImportContext`
-and `ImportCounts` beside it, and `seedHashes`/`packSeedHashes` in packages/abuddy-host/src/app-state/
+and `ImportCounts` beside it, and `builtInSeedHashes`/`externalSeedHashes` in packages/abuddy-host/src/app-state/
 exist at HEAD. If they don't, stop and say so — the plan was surveyed somewhere else.
 Read Background, Decisions, Phases and Constraints first. Decisions are final: implement them, don't
 reopen them or stop to ask.
@@ -78,7 +78,7 @@ identifiers carry it, and nothing in a name says which stage it belongs to:
 | author | `boot.seed`, `seedFormats`, `seedHooks`, `seedPolicy`, `seedsDir`, `seedPath`, `SeedDependency` |
 | compile | `SeedCompileContext`, `seedFile`, `SeedIndex`, `*.seed.json`, `seeds.json` |
 | import | `importCompiledSeeds`, `importPackSeeds`, `shouldImportAll`, `seedPackId`, `Seeder.seed`, `packSeedsImport` |
-| record | `seedKey`, `seededFields`, `sourceHash`, `seedHashes`, `packSeedHashes`, `seedStatFingerprints`, `packSeedDeps` |
+| record | `seedKey`, `seededFields`, `sourceHash`, `builtInSeedHashes`, `externalSeedHashes`, `builtInSeedFingerprints`, `externalSeedDeps` |
 
 ### The collision
 
@@ -101,16 +101,16 @@ name; the migration was started and left unfinished.
 
 ```ts
 /** Each external pack's compiled seed data last seeded, by pack id. Kept on uninstall */
-packSeedHashes: Record<string, string>;
+externalSeedHashes: Record<string, string>;
 
 /** Each built-in pack's boot seed last seeded, by pack id: the hash of its compiled data */
-seedHashes: Record<string, string>;
+builtInSeedHashes: Record<string, string>;
 ```
 
 Same type, same key, same purpose. The distinguishing axis is **external vs built-in**, encoded as the
 presence of the word `pack` — but built-in packs are packs, which the root `CLAUDE.md` insists on
-("built-in packs included — the app itself is the pack `host`"). Beside them, `seedStatFingerprints` is
-built-in only and `packSeedDeps` is external only, neither of which its name says.
+("built-in packs included — the app itself is the pack `host`"). Beside them, `builtInSeedFingerprints` is
+built-in only and `externalSeedDeps` is external only, neither of which its name says.
 
 ### Surface
 
@@ -192,8 +192,8 @@ method name but is a keyword elsewhere and confuses some tooling; `apply` is the
 running a mechanism and satisfies Decision 3.
 
 **5. Name the axis that distinguishes.**
-`seedHashes` → `builtInSeedHashes`, `packSeedHashes` → `externalSeedHashes`,
-`seedStatFingerprints` → `builtInSeedFingerprints`, `packSeedDeps` → `externalSeedDeps`. These are
+`builtInSeedHashes` → `builtInSeedHashes`, `externalSeedHashes` → `externalSeedHashes`,
+`builtInSeedFingerprints` → `builtInSeedFingerprints`, `externalSeedDeps` → `externalSeedDeps`. These are
 persisted, so the rename travels with a migration.
 
 **6. The stages are documented where pack authors and agents read.**

@@ -210,7 +210,7 @@ describe('reloading a built-in pack', () => {
     // Another built-in pack seeds its own data, recorded in the same AppState row
     seeded.length = 0;
     orchestrateDeclarativeSeed(seedManifest!, 'other-pack');
-    expect(Object.keys(appState.get().seedHashes).sort()).toEqual([BUILT_IN_ID, 'other-pack']);
+    expect(Object.keys(appState.get().builtInSeedHashes).sort()).toEqual([BUILT_IN_ID, 'other-pack']);
 
     // ...and this pack's own seed is still recorded, so it isn't seeded again
     seeded.length = 0;
@@ -229,7 +229,7 @@ describe('reloading a built-in pack', () => {
     // The failure is reported, not swallowed behind "Boot seed completed"
     expect(loggedErrors.join('\n')).toContain('Flow "Broken": step 2 names no action');
     // The hash is stored anyway, as importPackSeeds does: the same failing data isn't re-imported every boot
-    expect(appState.get().seedHashes[BUILT_IN_ID]).toBeTruthy();
+    expect(appState.get().builtInSeedHashes[BUILT_IN_ID]).toBeTruthy();
 
     // ...and the next seed of unchanged data doesn't retry it
     seeded.length = 0;

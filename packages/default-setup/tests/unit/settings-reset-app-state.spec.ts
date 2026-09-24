@@ -8,12 +8,12 @@ import { services } from '@/__generated__/services';
 import { ref } from '@/__generated__/ref';
 
 const APP_STATE_ID = 'AppState-app' as EARS.EntityId;
-const appState = () => untypedQx(APP_STATE_ID).pickOne(['hasOnboarded', 'packVersions', 'packSeedHashes']);
+const appState = () => untypedQx(APP_STATE_ID).pickOne(['hasOnboarded', 'packVersions', 'externalSeedHashes']);
 
 describe('resetting settings', () => {
   it("keeps the app's own state", () => {
     services.appData.completeOnboarding();
-    untypedTx(APP_STATE_ID).update('packVersions', { 'memo-pack': '1.2.0' }).update('packSeedHashes', { 'memo-pack': 'hash-1' });
+    untypedTx(APP_STATE_ID).update('packVersions', { 'memo-pack': '1.2.0' }).update('externalSeedHashes', { 'memo-pack': 'hash-1' });
     services.settings.setForFeature(ref('threads'), ['sort'], 'oldest');
 
     services.settings.reset();
@@ -22,7 +22,7 @@ describe('resetting settings', () => {
     expect(appState()).toMatchObject({
       hasOnboarded: true,
       packVersions: { 'memo-pack': '1.2.0' },
-      packSeedHashes: { 'memo-pack': 'hash-1' },
+      externalSeedHashes: { 'memo-pack': 'hash-1' },
     });
     expect(services.appData.hasOnboarded()).toBe(true);
   });
