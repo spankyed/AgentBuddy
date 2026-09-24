@@ -312,7 +312,7 @@ The contract moved to `be/contract.ts` rather than the `be/types.ts` the plan na
 | Phase | Status | Evidence |
 |---|---|---|
 | 1 — The contract type, and the reader that reads it | done | `SystemContract` + `defineSystem<Contract>()` (`abuddy-sdk/src/framework/define-system.ts`); `declaredTypeOf`/`outgoingEventTypesOf` read it without resolving the machine; `features[].system.contract` in the manifest schema (`85a673913`, `cadf8a952`) |
-| 2 — The internal audience | done | `internal` is a contract field feeding the machine's event union and nothing a dependent sees; `ADD_LOG` moved to it and left `PackSystemEvents` (`dc9500896`) |
+| 2 — The internal audience | done | `internal` is a contract field feeding the machine's event union and nothing a dependent sees. Three systems had events to move, not the twelve the phase estimated: `logs` (`ADD_LOG`), `brain` (`TNODE_SPAWNED`, `TNODE_UPDATED`, `CHILD_COMPLETED`) and the host's `settings`. Sendable surface 205 → 200 union members. Mutation: folding `internal` back into `incoming` makes `ADD_LOG` sendable and the fixture's `@ts-expect-error` unused (TS2578) |
 | 3 — Close the pattern | done | `satisfies SystemEntry` is gone from every system and from every doc outside this archive; the scaffold writes `be/contract.ts`; `facade-gate-system-contract.spec.ts` asserts an annotated entry and a bare one publish identical facades (`dfde6bb99`, `682b1be90`) |
 
 ### Corrections to the Decisions
@@ -325,12 +325,28 @@ The contract moved to `be/contract.ts` rather than the `be/types.ts` the plan na
   contract instead of the entry closed one silent-divergence hole and opened another: a machine built from a
   different contract compiled. `MachineMatchesContract` (asserted per feature in the generated pack entry)
   closes it (`b2838eb5f`).
+- **Phase 2's "the other twelve need the split made" was an overestimate: three systems had internal events.**
+  `logs` and the host's `settings` already named theirs and only needed the union split; `brain` had four members
+  to move and one duplicate to drop. Every other system's `incoming` is genuinely incoming. `HANDLE_BRAIN_EVENT`
+  looks internal — `brain/be/system.ts` raises it — but `features/database/be/system.ts` sends it across features,
+  so it stays. The signal that finds these is `sendParent`/`sendBack`/`raise`, not the event's name.
+- **Two of Phase 2's checks measured the wrong thing, and are recorded here rather than forced.**
+  - *"`ADD_LOG` is gone from the fixture's `deps/default-setup.d.ts`."* It is not, and cannot be: the facade
+    bundles each feature's whole `Contract`, so its `internal` member comes with it as a module-local
+    declaration. What Decision 4 actually asks for does hold — the facade exports seven names, `SystemContracts`
+    is not among them, and `PackSystemEvents` is `IncomingEventsOf<…>`, so a dependent can neither send an
+    internal event nor name its type. Emitting a second, trimmed contract type purely to empty a text search
+    would be machinery with no reader.
+  - *"the facade is smaller than before the phase (record both line counts)."* It is larger: 6114 → 6116 lines,
+    because splitting a union into two named types adds a declaration. The measure that moves is the sendable
+    surface — the union members reachable through `PackSystemEvents` — which went 205 → 200.
 
 ### Open items
-- The `internal` fence is type-level only; see `goal-plugin-contract.md`'s Open items.
 - `_TYPES_UNRESOLVED` was removed rather than kept, because it claimed to tell an uninstalled dependency from a
   mistake and could not. What it was reaching for is now `checkResolved` in `module-exports.ts`, which refuses a
   contract whose type collapsed to `any` without claiming to know why it did.
+- Phase 1's "generated event maps byte-identical to before the phase" check was never run, and cannot be now:
+  the phantom reader it would have been compared against is gone. The mutations in its place did run.
 
 ### Final verification
 `npm run typecheck`, `compile`, `test:unit`, `api:check`, `build`, `test:external-pack`, E2E and

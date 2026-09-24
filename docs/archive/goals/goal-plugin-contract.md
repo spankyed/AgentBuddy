@@ -419,8 +419,6 @@ recorded below. Phases 1–4 went in as `3d79fed34`, with `5a3442700` fixing a r
   `useUntypedPluginState`/`readUntypedPluginState`, matching `untypedQx`/`untypedTx` in `@abuddy/ears`.
 
 ### Open items
-- A system's `internal` events are fenced in the type system only: `packSystem` builds a system's runtime
-  `receives` from `entry.machine.events`, so the bus still routes an internal event that reaches it another way.
 - Two `Deferred` items below are untouched: the sender on `Message`, and `pluginAccepts` for a plugin with no
   system of its own.
 
