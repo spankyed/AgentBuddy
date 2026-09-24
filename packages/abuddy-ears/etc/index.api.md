@@ -599,7 +599,7 @@ export const queryEntitiesByRelationTo: (relKind: string, id: EARS.EntityId, asS
 export const queryEntitiesInRelationTo: (target: EARS.EntityId) => `${string}-${string}`[];
 
 // @public (undocumented)
-export type QxSeed = EARS.EntityId | EARS.Entity | readonly EARS.Entity[] | readonly EARS.EntityId[];
+export type QxStart = EARS.EntityId | EARS.Entity | readonly EARS.Entity[] | readonly EARS.EntityId[];
 
 // @public
 export function registerRepository(name: string, value: unknown): void;
@@ -891,15 +891,15 @@ export interface TypedQx<S extends EntityShapes, N extends string = string> {
     // (undocumented)
     (): QueryBuilder<string, S, N>;
     // (undocumented)
-    <E extends string>(seed: Name<N, E>): QueryBuilder<E, S, N>;
+    <E extends string>(start: Name<N, E>): QueryBuilder<E, S, N>;
     // (undocumented)
-    <E extends string>(seed: readonly Name<N, E>[]): QueryBuilder<string, S, N>;
+    <E extends string>(start: readonly Name<N, E>[]): QueryBuilder<string, S, N>;
     // (undocumented)
-    <E extends string>(seed: EARS.EntityId<E>): QueryBuilder<E, S, N>;
+    <E extends string>(start: EARS.EntityId<E>): QueryBuilder<E, S, N>;
     // (undocumented)
-    <E extends string>(seed: readonly EARS.EntityId<E>[]): QueryBuilder<E, S, N>;
+    <E extends string>(start: readonly EARS.EntityId<E>[]): QueryBuilder<E, S, N>;
     // (undocumented)
-    <E extends string>(seed: Name<N, E> | readonly Name<N, E>[] | EARS.EntityId | readonly EARS.EntityId[] | undefined): QueryBuilder<string, S, N>;
+    <E extends string>(start: Name<N, E> | readonly Name<N, E>[] | EARS.EntityId | readonly EARS.EntityId[] | undefined): QueryBuilder<string, S, N>;
 }
 
 // @public
@@ -925,19 +925,19 @@ export function unregisterRepository(name: string): void;
 export function untypedQx(): QueryBuilder<string>;
 
 // @public (undocumented)
-export function untypedQx<E extends string>(seed: EARS.EntityId<E>): QueryBuilder<E>;
+export function untypedQx<E extends string>(start: EARS.EntityId<E>): QueryBuilder<E>;
 
 // @public (undocumented)
-export function untypedQx<E extends string>(seed: readonly EARS.EntityId<E>[]): QueryBuilder<E>;
+export function untypedQx<E extends string>(start: readonly EARS.EntityId<E>[]): QueryBuilder<E>;
 
 // @public (undocumented)
-export function untypedQx<E extends EARS.Entity>(seed: E): QueryBuilder<E>;
+export function untypedQx<E extends EARS.Entity>(start: E): QueryBuilder<E>;
 
 // @public (undocumented)
-export function untypedQx(seed: readonly EARS.Entity[]): QueryBuilder<string>;
+export function untypedQx(start: readonly EARS.Entity[]): QueryBuilder<string>;
 
 // @public (undocumented)
-export function untypedQx(seed?: QxSeed): QueryBuilder<string>;
+export function untypedQx(start?: QxStart): QueryBuilder<string>;
 
 // @public (undocumented)
 export function untypedTx(typeOrId: EARS.Entity | EARS.EntityId, useProvidedId?: boolean): TransactionBuilder;

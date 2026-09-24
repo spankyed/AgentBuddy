@@ -23,7 +23,7 @@ export const b64Decode = (s: string) => {
 const liftOne = <F extends (...args: any[]) => any>(many: F) =>
   (...a: Parameters<F>) => (many as any)(...a)[0] ?? null;
 
-export type QxSeed =
+export type QxStart =
   | EARS.EntityId
   | EARS.Entity
   | readonly EARS.Entity[]
@@ -50,21 +50,21 @@ export function createQx({ storage, relations, isEntityType }: { storage: Attrib
     return fn;
   };
 
-  // A seed from the caller is resolved against the engine; `known` ids (a chained step's result) were
+  // A start from the caller is resolved against the engine; `known` ids (a chained step's result) were
   // checked against it when the step ran
-  const qxImpl = (seed?: QxSeed, known?: EARS.EntityId[]) => {
+  const qxImpl = (start?: QxStart, known?: EARS.EntityId[]) => {
     const resolvedAt = removals();
     const resolveSeed = (): EARS.EntityId[] => {
-      if (seed === undefined) return [...getAllEntities()];
-      if (Array.isArray(seed)) {
-        if ((seed as readonly unknown[]).every(isEntity)) {
-          return (seed as readonly EARS.Entity[]).flatMap(t => getEntitiesOfType(t));
+      if (start === undefined) return [...getAllEntities()];
+      if (Array.isArray(start)) {
+        if ((start as readonly unknown[]).every(isEntity)) {
+          return (start as readonly EARS.Entity[]).flatMap(t => getEntitiesOfType(t));
         }
-        return (seed as readonly EARS.EntityId[]).filter(hasEntity);
+        return (start as readonly EARS.EntityId[]).filter(hasEntity);
       }
-      if (typeof seed !== 'string') return [];
-      if (isEntity(seed)) return [...getEntitiesOfType(seed)];
-      const id = seed as EARS.EntityId;
+      if (typeof start !== 'string') return [];
+      if (isEntity(start)) return [...getEntitiesOfType(start)];
+      const id = start as EARS.EntityId;
       return hasEntity(id) ? [id] : [];
     };
 
@@ -273,11 +273,11 @@ export function createQx({ storage, relations, isEntityType }: { storage: Attrib
     return self;
   };
 
-  return ((seed?: QxSeed) => qxImpl(seed)) as unknown as typeof qx;
+  return ((start?: QxStart) => qxImpl(start)) as unknown as typeof qx;
 }
 
 /**
- * Seeded query entry point.
+ * Query entry point: the entities it starts from.
  *
  * Overloads exist so an entity type threads its name into `QueryBuilder<E>`
  * (and from there into the shape registry), while id seeds stay untyped. The
@@ -285,14 +285,14 @@ export function createQx({ storage, relations, isEntityType }: { storage: Attrib
  * literal and `EARS.Entity` is an open string.
  */
 export function qx(): QueryBuilder<string>;
-// A branded id carries its entity type, so it threads through like a type seed.
+// A branded id carries its entity type, so it threads through like an entity-type start.
 // An unbranded `EARS.EntityId` is `EntityId<string>`, which yields QueryBuilder<string>.
-export function qx<E extends string>(seed: EARS.EntityId<E>): QueryBuilder<E>;
-export function qx<E extends string>(seed: readonly EARS.EntityId<E>[]): QueryBuilder<E>;
-export function qx<E extends EARS.Entity>(seed: E): QueryBuilder<E>;
-export function qx(seed: readonly EARS.Entity[]): QueryBuilder<string>;
+export function qx<E extends string>(start: EARS.EntityId<E>): QueryBuilder<E>;
+export function qx<E extends string>(start: readonly EARS.EntityId<E>[]): QueryBuilder<E>;
+export function qx<E extends EARS.Entity>(start: E): QueryBuilder<E>;
+export function qx(start: readonly EARS.Entity[]): QueryBuilder<string>;
 // Catch-all for seeds that may be undefined at the call site.
-export function qx(seed?: QxSeed): QueryBuilder<string>;
-export function qx(seed?: QxSeed): QueryBuilder<string> {
-  return installedEngine().qx(seed);
+export function qx(start?: QxStart): QueryBuilder<string>;
+export function qx(start?: QxStart): QueryBuilder<string> {
+  return installedEngine().qx(start);
 }

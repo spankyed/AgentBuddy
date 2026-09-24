@@ -162,8 +162,8 @@ export type FieldValues<S extends EntityShapes, E extends string> =
   [E] extends [keyof S] ? { [K in keyof ShapeOf<S, E>]?: ShapeOf<S, E>[K] } & Record<string, unknown> : Record<string, unknown>;
 
 /**
- * `E` and `S` type the writes: `tx` from a pack's `#generated/ears`, seeded with a declared entity
- * type or an id tagged with one, checks the values of declared fields. Seeded with a plain id (or
+ * `E` and `S` type the writes: `tx` from a pack's `#generated/ears`, started from a declared entity
+ * type or an id tagged with one, checks the values of declared fields. Started from a plain id (or
  * from `@abuddy/ears`) every write is unchecked.
  */
 export interface TransactionBuilder<E extends string = string, S extends EntityShapes = {}> {
