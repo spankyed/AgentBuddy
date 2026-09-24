@@ -15,7 +15,9 @@
     "build": "abuddy build && node --import tsx --conditions=@abuddy/source dev-build.mjs",
     "build:dev": "abuddy build --skip-fe",
     "facade:check": "tsx ../../scripts/facade-report.ts .",
-    "facade:update": "tsx ../../scripts/facade-report.ts . --local"
+    "facade:update": "tsx ../../scripts/facade-report.ts . --local",
+    "lint": "oxlint . -D correctness --ignore-path .gitignore --fix",
+    "lint:check": "oxlint . -D correctness --ignore-path .gitignore"
   },
   "dependencies": {
     "@abuddy/ears": "*",

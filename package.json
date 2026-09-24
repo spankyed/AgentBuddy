@@ -83,7 +83,9 @@
     "db:reset": "abuddy db reset -d",
     "db:clear-settings": "abuddy db clear-settings -d",
     "compile": "npm run packages:ensure && npm run build -w @app/default-setup",
-    "build:speech-macos": "cd native/speech/macos && bash build.sh"
+    "build:speech-macos": "cd native/speech/macos && bash build.sh",
+    "lint": "npm run lint -ws --if-present",
+    "lint:check": "npm run lint:check -ws --if-present"
   },
   "devDependencies": {
     "@arethetypeswrong/cli": "^0.18.5",
