@@ -1,7 +1,7 @@
 import { findAll, qx } from '@/__generated__/ears';
 import { EARS } from '../__generated__/ears';
 import { untypedTx } from '@abuddy/ears';
-import type { ArtifactEntity, ThreadEntity } from '../features/threads/be/types';
+import type { ThreadEntity } from '../features/threads/be/types';
 import type { PackMigration } from '@abuddy/sdk/framework';
 import { createLogger } from '@abuddy/sdk/logger';
 

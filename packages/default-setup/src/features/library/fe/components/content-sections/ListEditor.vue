@@ -93,7 +93,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref, watch, nextTick } from 'vue'
+import { computed, ref, nextTick } from 'vue'
 import { X, Plus } from 'lucide-vue-next'
 import type { ListContent } from '@/features/library/be/types'
 

@@ -4,7 +4,7 @@ import { usePlugin } from '@abuddy/sdk/fe'
 import { ref, reactive, computed, watch } from 'vue'
 import { ArrangeableList, type MovingItem } from 'vue-arrange'
 import { useSelector } from '@xstate/vue'
-import { id, threadsFromStore, type ThreadsState, type ThreadListItem } from '@/features/threads/fe/state'
+import { threadsFromStore, type ThreadsState, type ThreadListItem } from '@/features/threads/fe/state'
 import ThreadsHeader from './components/ThreadsHeader.vue'
 import { SquarePen } from 'lucide-vue-next'
 

@@ -1,5 +1,4 @@
 import { services } from '@/__generated__/services';
-import { repository } from '@/__generated__/repository';
 import type { PackMigration } from '@abuddy/sdk/framework';
 import { ref } from '@/__generated__/ref';
 

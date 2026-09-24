@@ -1,5 +1,4 @@
 import { ref, computed, type Ref } from 'vue'
-import type { FileInfo } from '../state'
 
 interface SelectionOptions {
   selectedPaths: Ref<string[]>

@@ -79,7 +79,6 @@
 <script setup lang="ts">
 import { usePlugin } from '@abuddy/sdk/fe'
 
-import { computed } from 'vue'
 import { useSelector } from '@xstate/vue'
 import type { DatabaseState } from '../../state'
 import { GitBranch, Loader2, ArrowLeft } from 'lucide-vue-next'

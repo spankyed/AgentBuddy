@@ -3,7 +3,6 @@
 // the code plugin.
 import { describe, expect, it, vi } from 'vitest';
 import { addTestSecret, startApp, takeSystemErrors } from '@abuddy/testing/harness';
-import { repository } from '@/__generated__/repository';
 import { services } from '@/__generated__/services';
 import { ref } from '@/__generated__/ref';
 

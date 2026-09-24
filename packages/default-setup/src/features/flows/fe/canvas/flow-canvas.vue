@@ -98,7 +98,7 @@ import { usePlugin } from '@abuddy/sdk/fe'
 
 import { computed, type Ref, ref, nextTick, watch, onMounted, onUnmounted } from 'vue'
 import { useVueFlow } from '@vue-flow/core'
-import type { Connection, NodeMouseEvent, Node as VueFlowNode, Edge, EdgeUpdateEvent, EdgeMouseEvent } from '@vue-flow/core'
+import type { Connection, NodeMouseEvent, Node as VueFlowNode, EdgeUpdateEvent, EdgeMouseEvent } from '@vue-flow/core'
 import { calculateLayoutAsync, type LayoutDirection } from '@/features/flows/fe/canvas/layout-utils'
 import type { NodeEntity } from '@/__generated__/types'
 import { isTriggerNode } from '@abuddy/ui/components/node-styles'
@@ -106,10 +106,7 @@ import { isTriggerNode } from '@abuddy/ui/components/node-styles'
 import '@vue-flow/core/dist/style.css'
 import '@vue-flow/core/dist/theme-default.css'
 
-import {
-  id,
-  type FlowsState,
-} from '@/features/flows/fe/state'
+import { type FlowsState } from '@/features/flows/fe/state'
 import { useSelector } from '@xstate/vue'
 
 // Import sub-components

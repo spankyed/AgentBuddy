@@ -1,4 +1,3 @@
-import type { IncomingCommitEvents, OutgoingCommitEvents } from '../contract'
 import type { ThreadsSettings } from '@/__generated__/types';
 import { services } from '@/__generated__/services';
 import { broadcastToPlugin, sendToSystem } from '@/__generated__/events';
@@ -6,9 +5,7 @@ import { assign, setup, type AnyActorRef } from 'xstate'
 
 import { GitRepository, StashConflictError } from '../services/git'
 import { GitWatcherService } from '../services/gitwatcher'
-import type { GitStatusFile, GitDiff, StashEntry, WorktreeEntry, CommitLogEntry } from '../types'
 import { requireGitRepository } from '../utils/git-helpers'
-import { repository } from '@/__generated__/repository';
 import { ref } from '@/__generated__/ref';
 
 const pluginId = 'code' as const

@@ -4,7 +4,6 @@ import type { ExecutionContext, TNodeEntity } from '@abuddy/sdk/steps';
 import type { NodeEntity } from '@/__generated__/types';
 import { executeNode } from './node-handlers';
 import { repository } from '@/__generated__/repository';
-import { brainLogger } from './utils/brain-inspect';
 import { errorMessage } from '@abuddy/sdk/utils/pure';
 
 type StepMachineContext = {

@@ -237,7 +237,6 @@
 import { usePlugin } from '@abuddy/sdk/fe'
 
 import { ref, computed, watch, nextTick } from 'vue'
-import { useSelector } from '@xstate/vue'
 import { openPlugin } from '@/__generated__/fe'
 import type { CodeState } from '@/features/code/fe/state'
 import { usePluginState } from '@/__generated__/fe'

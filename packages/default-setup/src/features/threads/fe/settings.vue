@@ -693,7 +693,6 @@ import ColorPicker, { DEFAULT_COLORS } from '@abuddy/ui/design/ColorPicker'
 import { TooltipProvider, TooltipRoot, TooltipTrigger, TooltipPortal, TooltipContent } from 'reka-ui'
 import { useDebounce } from '@abuddy/ui/composables/useDebounce'
 import { useSelector } from '@xstate/vue'
-import { id } from './state'
 import type { ThreadsState } from './state'
 import type {
   ThreadsSettings,

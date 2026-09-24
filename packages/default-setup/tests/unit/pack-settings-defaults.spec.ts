@@ -5,7 +5,6 @@ import { services } from '@/__generated__/services';
 import { afterEach, describe, expect, it } from 'vitest';
 import { getPackSettingsDefaults } from '@abuddy/sdk/framework';
 import { registerPack, resetTestData, unregisterPack } from '@abuddy/testing/harness';
-import { repository } from '@/__generated__/repository';
 import { resolveName } from '@abuddy/sdk/ids';
 
 /** A feature with a plugin and the given settings */

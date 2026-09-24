@@ -1,10 +1,9 @@
-import type { IncomingPullRequestEvents, OutgoingPullRequestEvents } from '../contract'
+import type { OutgoingPullRequestEvents } from '../contract'
 import { broadcastToPlugin } from '@/__generated__/events';
 import { setup, assign, type AnyActorRef } from 'xstate'
 
 import { createLogger } from '@abuddy/sdk/logger'
 import { GitRepository } from '../services/git'
-import type { GitStatusFile, GitDiff, GhPullRequest, GhPRComment, GhReviewThread } from '../types'
 import * as ghCli from '../services/gh-cli'
 
 const logger = createLogger('pr')

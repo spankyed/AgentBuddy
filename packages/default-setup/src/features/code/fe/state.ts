@@ -5,10 +5,10 @@ import { type HotkeyEvent, type HotkeysMap, createHotkeyProcessor } from '@abudd
 import { saveOpenTabs, loadPersistedTabs, sortTabsByPinned } from './utils/persisted-tabs';
 import { loadRecentFiles, addRecentFile } from './utils/recent-files';
 import { pushTabViewHistory, nextActiveFromHistory } from './utils/tab-management';
-import { saveTabGroups, loadTabGroups, getNextAvailableColor, ALL_COLORS, type TabGroupColor, type TabGroup } from '@abuddy/sdk/fe';
+import { saveTabGroups, loadTabGroups, getNextAvailableColor, type TabGroupColor, type TabGroup } from '@abuddy/sdk/fe';
 import { createNavHistory, pushNavHistory, goBack, goForward, canGoBack, canGoForward } from '@abuddy/sdk/fe';
 import type { CodeSettings } from '@/__generated__/types';
-import type { ActionTab, CodeContext as Context, CodeInboxEvent, OpenFile, PanelType, PromptTab, QuickOpenResult, TerminalTab } from './contract';
+import type { ActionTab, CodeContext as Context, CodeInboxEvent, OpenFile, PanelType, PromptTab, TerminalTab } from './contract';
 export type { OpenFile, TerminalTab, QuickOpenResult, PanelType } from './contract';
 export type { CodeContext as Context } from './contract';
 import type {  } from '@/features/code/be/types'

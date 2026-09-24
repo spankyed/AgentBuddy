@@ -6,17 +6,14 @@ import {
   TRAIL_CLICK,
   type TrailClickEvent,
 } from '@abuddy/sdk/fe'
-import type {
-  Category,
-  PromptsSettings,
-} from '@/__generated__/types'
+import type { PromptsSettings } from '@/__generated__/types'
 import type { PromptsContext, PromptsInboxEvent } from './contract'
 import type { OutgoingPromptEvents } from '@/features/prompts/be/types'
 import type { TemplateInput } from '@abuddy/sdk'
 import { sendToSystem } from '@/__generated__/events'
 import { Trash2 } from 'lucide-vue-next'
 import { contextMenuFn } from '@abuddy/sdk/fe'
-import type { PromptEntity, EARS } from '@abuddy/sdk'
+import type { PromptEntity } from '@abuddy/sdk'
 
 /* ─────────────────────────────────────────────────────────── */
 /* Machine Types                                               */

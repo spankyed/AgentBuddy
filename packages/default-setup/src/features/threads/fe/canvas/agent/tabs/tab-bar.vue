@@ -193,7 +193,7 @@ import type { Tab } from '@/__generated__/types';
 import type { ThreadTabGroup, TabGroupColor } from './types';
 import { categorizeThreadTabs } from './tab-utils';
 import { useTabDragDrop } from './useTabDragDrop';
-import { id, type ThreadsState } from '@/features/threads/fe/state';
+import { type ThreadsState } from '@/features/threads/fe/state';
 
 const actor: ThreadsState = usePlugin();
 

@@ -163,7 +163,7 @@ import {
   RefreshCw 
 } from 'lucide-vue-next';
 import { useSelector } from '@xstate/vue';
-import { id, type DatabaseState } from '../state';
+import { type DatabaseState } from '../state';
 
 const actor: DatabaseState = usePlugin()
 const schema = useSelector(actor, (state) => state.context.schema);

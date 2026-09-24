@@ -180,7 +180,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, inject, ref, reactive, nextTick } from 'vue'
+import { computed, inject, ref, reactive } from 'vue'
 import { ChevronRight, Folder, FileText, Edit2, Trash2, Link2, Link2Off, Unlink, RefreshCw, Copy, FolderOpen } from 'lucide-vue-next'
 import Button from '@abuddy/ui/design/button'
 import {

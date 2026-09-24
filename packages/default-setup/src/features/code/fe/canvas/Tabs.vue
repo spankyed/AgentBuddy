@@ -358,7 +358,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, nextTick, watch } from 'vue'
+import { ref, computed, watch } from 'vue'
 import {
   X,
   GitCompare,

@@ -9,7 +9,7 @@ import { qx } from '@/__generated__/ears';
 import { EARS } from '@/__generated__/ears'
 import { isRootCollection, findDocumentCollection } from './repository/helpers'
 import { extractMediaRefs, copyMediaByRef } from '@abuddy/sdk/utils'
-import { ensureDirectoryExists, createExportDir } from '@abuddy/sdk/utils'
+import { createExportDir } from '@abuddy/sdk/utils'
 import type { ExportFormat } from './export-types'
 import { exportLibraryMarkdown } from './export-markdown'
 import { countExportedItems } from './utils'

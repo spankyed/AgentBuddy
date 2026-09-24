@@ -1,16 +1,15 @@
 import type { FlowsSettings } from '@/__generated__/types';
 import { services } from '@/__generated__/services';
 import { broadcastToPlugin } from '@/__generated__/events';
-import { assign, cancel, createMachine, fromPromise, log, raise, sendTo, setup, type ErrorActorEvent } from 'xstate';
+import { setup } from 'xstate';
 import { defineSystem } from '@abuddy/sdk/framework';
 // import { addMessageToLatestThread, getLatestMessage } from './accessors';
 import { EARS } from '@/__generated__/ears';
 import { repository } from '@/__generated__/repository';
 import type { Contract } from './contract';
-import type { FlowsConnectedData, NodeEntity } from './types';
 import { FLOW_ROLES } from './repository';
 import { createLogger } from '@abuddy/sdk/logger';
-import type { FlowEntity, ActionEntity, PromptEntity } from '@abuddy/sdk';
+import type { ActionEntity, PromptEntity } from '@abuddy/sdk';
 import { compileFlowDSL, validateFlowDSL, exportFlowsToDSL, type FlowDSL, type ValidationError } from '@abuddy/sdk/build';
 import { ref } from '@/__generated__/ref';
 import { errorMessage } from '@abuddy/sdk/utils/pure';

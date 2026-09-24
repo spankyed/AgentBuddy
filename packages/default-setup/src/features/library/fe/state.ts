@@ -1,5 +1,5 @@
 import { setup, assign, type ActorRefFrom } from 'xstate'
-import type { DocumentDTO, CollectionDTO, LibraryIndex, LibraryItem, DocumentItem, FolderContents, BreadcrumbItem, SearchIndex } from '@/__generated__/types'
+import type { DocumentDTO, CollectionDTO, LibraryItem, DocumentItem } from '@/__generated__/types'
 import type { LibraryContext, LibraryInboxEvent } from './contract'
 import type { OutgoingLibraryEvents } from '@/features/library/be/types'
 import type { SearchIndexFormData } from './types/search-index'
@@ -7,11 +7,7 @@ import { sendToSystem } from '@/__generated__/events'
 import { Trash2 } from 'lucide-vue-next'
 import { contextMenuFn } from '@abuddy/sdk/fe'
 import breadcrumb, { breadcrumbWithParams } from '@abuddy/sdk/fe'
-import {
-  targetIs,
-  TRAIL_CLICK,
-  type TrailClickEvent,
-} from '@abuddy/sdk/fe'
+import { targetIs, TRAIL_CLICK } from '@abuddy/sdk/fe'
 import { tagStorage } from './services/tagStorage'
 import { createNavHistory, pushNavHistory, goBack, goForward, canGoBack, canGoForward } from '@abuddy/sdk/fe'
 
@@ -51,7 +47,6 @@ function findItemById(context: LibraryContext, id: string): LibraryItem | undefi
 }
 
 export const id = 'library' as const;
-import type { SnapshotFrom } from 'xstate'
 import type { ContentSection } from '@/features/library/be/types';
 
 /** The library plugin's actor, as its own components reach it with `usePlugin<LibraryActor>()` */

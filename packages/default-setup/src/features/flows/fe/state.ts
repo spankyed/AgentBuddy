@@ -1,4 +1,4 @@
-import { assign, log, setup, type ActorRefFrom } from 'xstate'
+import { assign, setup, type ActorRefFrom } from 'xstate'
 import breadcrumb, { breadcrumbWithParams } from '@abuddy/sdk/fe'
 import { contextMenuFn } from '@abuddy/sdk/fe'
 import { Edit, Trash2 } from 'lucide-vue-next'
@@ -17,10 +17,9 @@ import type { OutgoingFlowsEvents } from '@/features/flows/be/types'
 import { sendToSystem } from '@/__generated__/events'
 import { getNodeConfig, isTriggerNode } from '@abuddy/ui/components/node-styles'
 import { stepRegistry } from '@abuddy/sdk/steps'
-import { calculateLayoutAsync, allNodesHavePositions, LAYOUT_CONFIG, layoutComponentAroundSource, type LayoutPositions } from './canvas/layout-utils'
+import { calculateLayoutAsync, allNodesHavePositions, LAYOUT_CONFIG, layoutComponentAroundSource } from './canvas/layout-utils'
 import { computeMaxBottom, type LayoutNodeData } from '@abuddy/ui/components/node-dimensions'
-import type { FlowEntity, PromptEntity, ActionEntity, EARS } from '@abuddy/sdk'
-import type { TNodeEntity, TrackTree } from '@abuddy/sdk/steps'
+import type { FlowEntity, EARS } from '@abuddy/sdk'
 
 const randId = () => Math.random().toString(36).slice(2, 8)
 

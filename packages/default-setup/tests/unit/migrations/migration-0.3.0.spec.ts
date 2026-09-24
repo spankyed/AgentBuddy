@@ -5,7 +5,6 @@ import { describe, expect, it } from 'vitest'
 import { untypedTx, untypedQx } from '@abuddy/ears'
 import type { EARS as SdkEARS } from '@abuddy/sdk'
 import { migrations } from '../../../src/migrations/index'
-import { repository } from '@/__generated__/repository'
 import threadsSettings from '@/features/threads/settings'
 import { ref } from '@/__generated__/ref'
 

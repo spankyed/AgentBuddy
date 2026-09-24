@@ -1,4 +1,3 @@
-import type { IncomingPromptsEvents, OutgoingPromptsEvents } from '../contract'
 import { broadcastToPlugin } from '@/__generated__/events';
 import { setup } from 'xstate'
 

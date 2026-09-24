@@ -1,9 +1,8 @@
-import type { IncomingSearchEvents, OutgoingSearchEvents } from '../contract'
 import { broadcastToPlugin } from '@/__generated__/events';
 import { assign, setup } from 'xstate'
 
 import { FileSystemRepository } from '../services/filesystem'
-import type { SearchOptions, SearchResult, SearchProgress } from '../types'
+import type { SearchOptions } from '../types'
 
 const pluginId = 'code' as const
 

@@ -121,7 +121,6 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue';
 import { Trash2, Sparkle, Plus } from 'lucide-vue-next';
 import Button from '@abuddy/ui/design/button';
 import CategoryFilter from '@abuddy/ui/design/CategoryFilter';

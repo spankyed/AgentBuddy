@@ -10,7 +10,6 @@ import { afterEach, describe, expect, it } from 'vitest';
 import type { SeedCompileContext } from '@abuddy/sdk/build';
 import { seedData } from '@abuddy/sdk/utils';
 import compileSettings from '../../src/seeds/_compilers/settings';
-import { repository } from '@/__generated__/repository';
 import { ref } from '@/__generated__/ref';
 
 const PACK_DIR = path.resolve(import.meta.dirname, '../..');

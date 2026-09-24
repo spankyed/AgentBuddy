@@ -1,11 +1,7 @@
 import { tx, qx, findById } from '@/__generated__/ears';
 import { EARS } from '@/__generated__/ears';
 import { findRelations, untypedQx } from '@abuddy/ears';
-import type {
-  FlowTNodeData,
-  EventListenerEntity,
-  TNodeUpdate,
-} from '../types';
+import type { FlowTNodeData, EventListenerEntity } from '../types';
 import type { NodeEntity } from '@/__generated__/types';
 import type { FlowNode } from '@/extensions/steps/subflow/types';
 import { stepRegistry } from '@abuddy/sdk/steps';

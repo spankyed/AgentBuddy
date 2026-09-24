@@ -205,7 +205,7 @@ import CollapsibleSection from '@abuddy/ui/design/CollapsibleSection'
 import { AlertTriangle, Brain, Upload, Download, FolderOpen, CheckCircle, XCircle } from 'lucide-vue-next'
 import type { FlowsSettings } from '@/__generated__/types'
 import { useSelector } from '@xstate/vue'
-import { id, type FlowsState } from './state'
+import { type FlowsState } from './state'
 import { ref as featureRef } from '@/__generated__/ref'
 
 interface Props {

@@ -7,7 +7,6 @@ import { promisify } from 'util'
 import * as fs from 'fs'
 import * as os from 'os'
 import * as path from 'path'
-import { repository } from '@/__generated__/repository'
 import { ref } from '@/__generated__/ref'
 
 const execFileAsync = promisify(execFile)

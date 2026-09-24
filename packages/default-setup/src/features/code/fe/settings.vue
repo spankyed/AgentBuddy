@@ -454,7 +454,6 @@
 
 <script setup lang="ts">
 import { reactive, ref, computed } from 'vue'
-import { useSelector } from '@xstate/vue'
 import KeyboardShortcutInput from '@abuddy/ui/components/KeyboardShortcutInput'
 import CollapsibleSection from '@abuddy/ui/design/CollapsibleSection'
 import DirectorySelect from '@abuddy/ui/design/DirectorySelect'

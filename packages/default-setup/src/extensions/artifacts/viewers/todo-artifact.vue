@@ -100,7 +100,7 @@
 <script setup lang="ts">
 import { sendToPlugin } from '@/__generated__/events'
 import { ref, computed, watch } from 'vue';
-import { ListTodo, Check, X } from 'lucide-vue-next';
+import { ListTodo, Check } from 'lucide-vue-next';
 import type { ArtifactItem } from '@abuddy/sdk/artifacts';
 
 interface TodoTask {

@@ -6,17 +6,14 @@ import {
   TRAIL_CLICK,
   type TrailClickEvent,
 } from '@abuddy/sdk/fe'
-import type {
-  Category,
-  ActionsSettings,
-} from '@/__generated__/types'
+import type { ActionsSettings } from '@/__generated__/types'
 import type { ActionsContext, ActionsInboxEvent } from './contract'
 import type { OutgoingActionEvents } from '@/features/actions/be/types'
 import type { ActionParameter } from '@abuddy/sdk'
 import { sendToSystem } from '@/__generated__/events'
 import { Trash2 } from 'lucide-vue-next'
 import { contextMenuFn } from '@abuddy/sdk/fe'
-import type { ActionEntity, EARS } from '@abuddy/sdk'
+import type { ActionEntity } from '@abuddy/sdk'
 
 /* ─────────────────────────────────────────────────────────── */
 /* Machine Types                                               */

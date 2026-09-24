@@ -14,7 +14,7 @@ import { usePlugin } from '@abuddy/sdk/fe'
 
 import { computed } from 'vue'
 import { useSelector } from '@xstate/vue'
-import type { librarySystem, LibraryEvents } from './state'
+import type { LibraryEvents } from './state'
 import DocumentEditor from './components/DocumentEditor.vue'
 // [SEARCH_INDEX_FF] import CreateIndexView from './components/search-index/CreateIndexView.vue'
 // [SEARCH_INDEX_FF] import TestIndexView from './components/search-index/TestIndexView.vue'

@@ -25,7 +25,7 @@ import { usePlugin } from '@abuddy/sdk/fe'
 
 import { computed } from 'vue';
 import { useSelector } from '@xstate/vue';
-import { id, type ThreadsState } from '@/features/threads/fe/state';
+import { type ThreadsState } from '@/features/threads/fe/state';
 import TabBar from '@/features/threads/fe/canvas/agent/tabs/tab-bar.vue';
 import ContentViewer from '@/features/threads/fe/canvas/agent/content-viewer.vue';
 import ThreadsHeader from '@/features/threads/fe/canvas/components/ThreadsHeader.vue';

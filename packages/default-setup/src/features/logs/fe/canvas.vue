@@ -342,25 +342,7 @@
 <script setup lang="ts">
 import { usePlugin } from '@abuddy/sdk/fe'
 import { computed, ref, reactive, watch, onMounted, onUnmounted } from 'vue';
-import {
-  Search,
-  ChevronRight,
-  ChevronDown,
-  AlertCircle,
-  Info,
-  AlertTriangle,
-  Bug,
-  FileX,
-  Code2,
-  FileWarning,
-  Terminal,
-  X,
-  Trash,
-  Radio,
-  Copy,
-  Check
-} from 'lucide-vue-next';
-import { id } from './state';
+import { Search, ChevronRight, AlertCircle, Info, AlertTriangle, Bug, FileWarning, Terminal, X, Trash, Radio, Copy, Check } from 'lucide-vue-next';
 import type { LogsState, LogEntry } from './state';
 import { useSelector } from '@xstate/vue';
 import DataRenderer from '@abuddy/ui/components/DataRenderer';

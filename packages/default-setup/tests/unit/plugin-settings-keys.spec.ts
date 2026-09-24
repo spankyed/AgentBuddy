@@ -5,7 +5,6 @@
 import { describe, expect, it, onTestFinished } from 'vitest';
 import { registerPack, startApp, takeSystemErrors, unregisterPack } from '@abuddy/testing/harness';
 import type { FeatureRef } from '@abuddy/sdk/ids';
-import { repository } from '@/__generated__/repository';
 import { services } from '@/__generated__/services';
 import { ref } from '@/__generated__/ref';
 

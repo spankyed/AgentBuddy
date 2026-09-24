@@ -258,7 +258,7 @@
 <script setup lang="ts">
 import { computed, ref, nextTick, watch } from 'vue'
 import { useSelector } from '@xstate/vue'
-import { id, type NotesState } from './state'
+import { type NotesState } from './state'
 import NoteTreeItem from './components/NoteTreeItem.vue'
 import { Plus, ListChecks, MoreVertical, Star, ChevronRight, Trash2, ArrowLeft, Undo2, Search, X, FileText, CircleCheck } from 'lucide-vue-next'
 import {

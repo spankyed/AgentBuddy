@@ -3,15 +3,13 @@ import type { AssistantSettings } from '@/app-settings/types';
 import { sendToSystem, broadcastToPlugin } from '@/__generated__/events';
 import { services } from '@/__generated__/services';
 import { REQUIRED_PROVIDERS } from '@/app-settings/providers';
-import { assign, cancel, fromPromise, log, raise, sendTo, setup, type ErrorActorEvent } from 'xstate';
+import { assign, setup } from 'xstate';
 import { defineSystem } from '@abuddy/sdk/framework';
 
 import { tx, EARS } from '@/__generated__/ears';
 import { repository } from '@/__generated__/repository';
 import type { Contract } from './contract';
-import type { AgentConnectedData, AgentThreadData, BlockConfig, MessageEntity, RecentThreadRefreshData, ThreadConnectedData, ThreadEditFields, ThreadEntity, ThreadLinkItem } from './types';
-import type { AgentSettings, CommandItem } from './types';
-import { type ThreadExtendedData, type BlockResponse } from './types';
+import type { MessageEntity, ThreadLinkItem } from './types';
 import { type ChangeBlock, toMap, toIdentifierSet, mapScalar, mapArray } from '@abuddy/sdk/utils';
 import { exportThreads } from './export-threads';
 import { importThreads } from './import-threads';

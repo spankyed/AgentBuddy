@@ -3,7 +3,6 @@ import { repository } from '@/__generated__/repository';
 import { setup } from 'xstate';
 import { defineSystem } from '@abuddy/sdk/framework';
 import type { Contract } from './contract';
-import type { SavedBookmark, SavedTab } from './types';
 import { createLogger } from '@abuddy/sdk/logger';
 
 const logger = createLogger('browser');

@@ -71,7 +71,7 @@
 import { ref, computed, watch, onMounted, onUnmounted } from 'vue';
 import { isAnyMenuOpen, usePlugin } from '@abuddy/sdk/fe';
 import { useSelector } from '@xstate/vue';
-import { id, type BrowserState } from './state';
+import { type BrowserState } from './state';
 import BrowserTabBar from './components/BrowserTabBar.vue';
 import BrowserNavBar from './components/BrowserNavBar.vue';
 import BrowserBookmarkBar from './components/BrowserBookmarkBar.vue';

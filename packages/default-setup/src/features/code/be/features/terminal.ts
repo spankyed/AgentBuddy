@@ -1,11 +1,10 @@
-import type { IncomingTerminalEvents, OutgoingTerminalEvents } from '../contract'
+import type { OutgoingTerminalEvents } from '../contract'
 import { services } from '@/__generated__/services';
 import { broadcastToPlugin } from '@/__generated__/events';
 import { setup, assign, fromPromise } from 'xstate'
 
 import { terminalService } from '../services/terminal'
 import type { TerminalInfo, CodeSettings } from '../types'
-import { repository } from '@/__generated__/repository';
 import { createLogger } from '@abuddy/sdk/logger';
 import { ref } from '@/__generated__/ref';
 

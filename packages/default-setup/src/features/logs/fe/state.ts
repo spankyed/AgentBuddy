@@ -1,4 +1,4 @@
-import { setup, type ActorRefFrom, assign, log } from 'xstate';
+import { setup, type ActorRefFrom, assign } from 'xstate';
 import { safeEvents } from '@abuddy/sdk/fe';
 import { sendToSystem } from '@/__generated__/events';
 import type { LogsSettings } from '@/__generated__/types';

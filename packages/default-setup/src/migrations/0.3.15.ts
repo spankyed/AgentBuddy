@@ -3,7 +3,6 @@ import { services } from '@/__generated__/services';
 import { untypedTx, untypedQx } from '@abuddy/ears';
 import { markSeededRowUnedited } from '@abuddy/sdk/seed';
 import { EARS } from '@/__generated__/ears';
-import { repository } from '@/__generated__/repository';
 import type { PackMigration } from '@abuddy/sdk/framework';
 import { createLogger } from '@abuddy/sdk/logger';
 import { ref, type FeatureName } from '@/__generated__/ref';

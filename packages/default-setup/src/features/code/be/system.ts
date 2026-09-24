@@ -27,7 +27,6 @@ import { setup, enqueueActions, assign, type AnyActorRef } from 'xstate'
 import { defineSystem } from '@abuddy/sdk/framework'
 import { GitRepository } from './services/git'
 import { GitWatcherService } from './services/gitwatcher'
-import { repository } from '@/__generated__/repository';
 
 // child systems; their events come from the contract, which is where every child's now live
 import { explorerSystem } from './features/explorer'
@@ -37,12 +36,6 @@ import { pullRequestSystem } from './features/pull-request'
 import { terminalSystem } from './features/terminal'
 import { actionsSystem } from './features/actions'
 import { promptsSystem } from './features/prompts'
-import type {
-  IncomingActionsEvents, IncomingCommitEvents, IncomingExplorerEvents, IncomingPromptsEvents,
-  IncomingPullRequestEvents, IncomingSearchEvents, IncomingTerminalEvents,
-  OutgoingActionsEvents, OutgoingCommitEvents, OutgoingExplorerEvents, OutgoingPromptsEvents,
-  OutgoingPullRequestEvents, OutgoingSearchEvents, OutgoingTerminalEvents,
-} from './contract'
 
 /** One of this system's children, by the id it was spawned under */
 function child(self: AnyActorRef, id: string): AnyActorRef | undefined {
@@ -52,7 +45,7 @@ function child(self: AnyActorRef, id: string): AnyActorRef | undefined {
 // Union all incoming events from child systems
 // Union all outgoing events from child systems  
 // Import only the type needed for broadcast event
-import type { TerminalInfo, CodeConnectedData, CodeSettings } from './types'
+import type { CodeConnectedData, CodeSettings } from './types'
 import { ref } from '@/__generated__/ref';
 
 export const codeSpec = defineSystem<Contract>();

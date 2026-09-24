@@ -16,7 +16,6 @@ import type {
   AgentThreadData, RecentThreadRefreshData, AgentConnectedData, Tab, ArtifactType,
 } from '../types';
 import type { ThreadsSettings, ThreadTagOption } from '@/__generated__/types';
-import { repository } from '@/__generated__/repository';
 import type { ArtifactItem } from '@abuddy/sdk/artifacts';
 import { ref } from '@/__generated__/ref';
 

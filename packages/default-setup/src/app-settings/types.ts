@@ -1,7 +1,7 @@
 // The settings sections this pack registers with the app (`general` and `assistant`), and the shape of the whole
 // document as this pack's code reads it. The app stores and merges these without knowing their shape; what is in
 // them is this pack's, so it is declared here rather than in @abuddy/host.
-import type { KeyboardShortcut, ApplicationHotkeys } from '@abuddy/sdk/types';
+import type { ApplicationHotkeys } from '@abuddy/sdk/types';
 
 export interface SettingsData {
   general: GeneralSettings;

@@ -1,11 +1,9 @@
-import type { IncomingExplorerEvents, OutgoingExplorerEvents } from '../contract'
 import { broadcastToPlugin } from '@/__generated__/events';
 import { assign, setup } from 'xstate'
 
 import { FileSystemRepository } from '../services/filesystem'
 import { GitWatcherService } from '../services/gitwatcher'
 import type { FileChangeInfo } from '../services/gitwatcher'
-import type { DirectoryContent, FileContent, FileInfo, CodeSystemError, QuickOpenResult } from '../types'
 
 const pluginId = 'code' as const
 

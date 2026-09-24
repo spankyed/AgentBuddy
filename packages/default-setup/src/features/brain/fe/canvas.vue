@@ -130,7 +130,7 @@ import { usePlugin } from '@abuddy/sdk/fe'
 
 import { useSelector } from '@xstate/vue'
 import { onMounted, onUnmounted } from 'vue'
-import { id, type BrainState } from '@/features/brain/fe/state.ts';
+import { type BrainState } from '@/features/brain/fe/state.ts';
 import TNodeGraph from './components/TNodeGraph.vue';
 import EventsList from './components/EventsList.vue';
 import StepNodeDetails from './components/StepNodeDetails.vue';

@@ -4,7 +4,6 @@
 import { describe, expect, it } from 'vitest';
 import { untypedTx, untypedQx } from '@abuddy/ears';
 import type { EARS } from '@abuddy/sdk';
-import { repository } from '@/__generated__/repository';
 import { services } from '@/__generated__/services';
 import { ref } from '@/__generated__/ref';
 

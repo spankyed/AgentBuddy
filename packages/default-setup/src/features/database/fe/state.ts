@@ -3,17 +3,12 @@ import breadcrumb from '@abuddy/sdk/fe'
 import { contextMenu } from '@abuddy/sdk/fe'
 import { safeEvents } from '@abuddy/sdk/fe'
 import { targetIs, TRAIL_CLICK, type TrailClickEvent } from '@abuddy/sdk/fe'
-import type {
-  DatabaseSchemaInfo,
-  DatabaseStartupData,
-  DatabaseSettings,
-} from '@/__generated__/types'
+import type { DatabaseStartupData, DatabaseSettings } from '@/__generated__/types'
 import type { DatabaseContext, DatabaseInboxEvent } from './contract'
 import type { OutgoingDatabaseEvents } from '@/features/database/be/types'
 import { sendToSystem } from '@/__generated__/events'
-import { attributeQueryTemplate, entityQueryTemplate, exampleQuery, relationQueryTemplate, transactionExampleQuery } from './constants'
+import { attributeQueryTemplate, entityQueryTemplate, exampleQuery, relationQueryTemplate } from './constants'
 import { History, HardDriveDownload } from 'lucide-vue-next'
-import type { EARS } from '@abuddy/sdk'
 
 /* ─────────────────────────────────────────────────────────── */
 /* Machine Types                                               */

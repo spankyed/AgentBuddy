@@ -4,7 +4,6 @@ import { services } from '@/__generated__/services';
 import { setup } from 'xstate'
 import { defineSystem } from '@abuddy/sdk/framework'
 import type { EARS } from '@/__generated__/ears'
-import type { LibrarySystemContext, DocumentDTO, CollectionDTO, LibraryIndex, LibraryItem, FolderContents } from './types'
 // [SEARCH_INDEX_FF] import type { SearchIndex } from './search-index/types/search-index'
 import { sendToSystem, broadcastToPlugin } from '@/__generated__/events'
 import { repository } from '@/__generated__/repository';

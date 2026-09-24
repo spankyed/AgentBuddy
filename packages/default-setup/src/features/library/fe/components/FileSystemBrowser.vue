@@ -287,22 +287,8 @@
 
 <script setup lang="ts">
 import { ref, computed, reactive, watch, provide, onMounted, onUnmounted, nextTick } from 'vue'
-import {
-  FolderPlus,
-  FileText,
-  ChevronLeft,
-  ChevronDown,
-  Home,
-  Trash2,
-  // Search, // [SEARCH_INDEX_FF]
-  ArrowUp,
-  FolderOpen,
-  Link,
-  X,
-  Edit2,
-  RefreshCw,
-  Copy,
-} from 'lucide-vue-next'
+import { FolderPlus, FileText, ChevronLeft, ChevronDown, Home, Trash2, // Search, // [SEARCH_INDEX_FF]
+  ArrowUp, FolderOpen, X, Edit2, RefreshCw, Copy } from 'lucide-vue-next'
 import {
   ContextMenuRoot,
   ContextMenuTrigger,
@@ -320,7 +306,7 @@ import type { LibraryItem, BreadcrumbItem } from '@/__generated__/types'
 import { useSelection } from '../composables/useSelection'
 import { useInlineEdit } from '../composables/useInlineEdit'
 import { useDragDrop } from '../composables/useDragDrop'
-import { generateUniqueFolderName, formatDate } from '../utils/naming'
+import { generateUniqueFolderName } from '../utils/naming'
 
 const props = defineProps<{
   items: LibraryItem[]

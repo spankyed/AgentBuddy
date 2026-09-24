@@ -2,7 +2,7 @@ import { qx } from '@/__generated__/ears';
 import * as fs from 'fs/promises'
 
 import { EARS } from '@/__generated__/ears'
-import type { DocumentDTO, CollectionDTO, LibraryIndex, LibraryItem, FolderItem, DocumentItem, FolderContents, BreadcrumbItem } from '../types'
+import type { DocumentDTO, CollectionDTO, LibraryIndex, LibraryItem, FolderItem, FolderContents, BreadcrumbItem } from '../types'
 import {
   findParentCollection,
   isRootCollection,

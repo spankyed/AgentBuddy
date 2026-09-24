@@ -188,8 +188,8 @@ import ScrollToBottomFob from '@abuddy/ui/design/ScrollToBottomFob'
 import { usePlugin, useShell, updateSettings } from '@abuddy/sdk/fe'
 import { openPlugin } from '@/__generated__/fe'
 import { useSelector } from '@xstate/vue'
-import { id, threadsFromStore, type ThreadsState } from '@/features/threads/fe/state';
-import type { AgentThreadData, MessageEntity, ThreadEntity, MessageReferences, QuickPrompt, AgentSettings } from '@/__generated__/types'
+import { threadsFromStore, type ThreadsState } from '@/features/threads/fe/state';
+import type { MessageEntity, ThreadEntity, MessageReferences, QuickPrompt } from '@/__generated__/types'
 import { sendToSystem } from '@/__generated__/events'
 import { ref as featureRef } from '@/__generated__/ref';
 

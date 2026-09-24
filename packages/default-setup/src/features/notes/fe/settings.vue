@@ -198,7 +198,6 @@ import { ref, watch } from 'vue'
 import { Upload, Download, FolderOpen, CheckCircle, XCircle } from 'lucide-vue-next'
 import CollapsibleSection from '@abuddy/ui/design/CollapsibleSection'
 import { useSelector } from '@xstate/vue'
-import { id } from './state'
 import type { NotesState } from './state'
 
 interface NotesSettings {
