@@ -22,10 +22,16 @@
 // deliberately excluded — it changes when a function body changes, which is exactly the false alarm
 // this is built to avoid. `.map` files are excluded too: they embed absolute paths.
 //
-// Two measured properties of this repo, without which the gate is worthless:
+// The declarations are hashed through `apiSurfaceOf`, which drops doc prose, for the same reason `.js`
+// is excluded: prose reaches a `.d.ts` but cannot reach a report, so hashing it asked for an
+// `api:update` that rewrote nothing. That trade is the one place this is not byte-exact — see the
+// function's own comment for what was measured and what it gives up.
+//
+// Three measured properties of this repo, without which the gate is worthless:
 //
 //   - emit is deterministic: rebuilding a package with no source change gives the same fingerprint
 //   - a body-only edit (a local added inside `randomId`) leaves the fingerprint byte-identical
+//   - a doc comment's release tags and its presence do reach the report, so both are kept
 //
 // A package's own declarations are not enough: its reports name types from its @abuddy dependencies,
 // which is why `tsconfig.api-extractor.json` resolves those to their built declarations. So a
@@ -100,6 +106,36 @@ function packageName(dir: string): string {
   return (JSON.parse(fs.readFileSync(path.join(dir, 'package.json'), 'utf-8')) as { name: string }).name;
 }
 
+/** A TSDoc block comment, non-greedy so each is matched separately */
+const DOC_COMMENT = /\/\*\*[\s\S]*?\*\//g;
+
+/**
+ * A declaration file as its API report sees it: doc comments reduced to their tag lines.
+ *
+ * Measured against API Extractor on `@abuddy/sdk` (2026-09-24): editing a doc comment's prose leaves
+ * every report byte-identical, while changing a release tag (`@public` → `@internal`) and deleting a
+ * comment altogether each change one — a report carries the tags and marks an undocumented export
+ * `(undocumented)`. Prose is therefore the one part of a declaration that cannot move a report, and
+ * hashing it made every comment edit in this comment-heavy repo demand a 46s `api:update` that rewrote
+ * nothing but this stamp.
+ *
+ * So each comment becomes `/**` + its `@`-tag lines + `*\/`: the tags are kept verbatim, and an empty
+ * pair of markers still distinguishes a documented export from an undocumented one. Keeping whole tag
+ * lines rather than tag names is deliberate — it is the conservative side of a guess about what a
+ * report renders, and a false "run api:update" costs a minute where a false "nothing changed" costs a
+ * wrong report.
+ *
+ * What this gives up: the gate is no longer byte-exact, so a change hidden inside a `/** … *\/`
+ * sequence within a string literal type would not be seen here. `api:check` is still the authority and
+ * still runs in the full chain before a merge.
+ */
+export function apiSurfaceOf(declarations: string): string {
+  return declarations.replace(DOC_COMMENT, (comment) => {
+    const lines = comment.split('\n').map((line) => line.trim().replace(/^\*+\s?/, '').replace(/\s*\*\/$/, '').trim());
+    return `/**${lines.filter((line) => /@\w/.test(line)).join('\n')}*/`;
+  });
+}
+
 /**
  * One fingerprint per contributing package, nearest first: `<name> <hash of its own declarations>`.
  *
@@ -112,7 +148,7 @@ function packageName(dir: string): string {
 export function declarationFingerprints(pkgDir: string): Array<{ name: string; hash: string }> {
   return declarationPackages(pkgDir).map((dir) => ({
     name: packageName(dir),
-    hash: fingerprintInputs(declarationFiles(path.join(dir, 'dist'))),
+    hash: fingerprintInputs(declarationFiles(path.join(dir, 'dist')), (contents) => apiSurfaceOf(contents.toString('utf-8'))),
   }));
 }
 

@@ -31,6 +31,8 @@ const reportName = (key: string) => `${key === '.' ? 'index' : key.slice(2).repl
 
 fs.mkdirSync(reportFolder, { recursive: true });
 let failed = 0;
+/** Reports this run changed: written in --local, or found stale otherwise */
+let changed = 0;
 const expected = new Set<string>();
 for (const [key, declaration] of entries()) {
   const reportFileName = reportName(key);
@@ -75,6 +77,7 @@ for (const [key, declaration] of entries()) {
     packageJsonFullPath: path.join(pkgDir, 'package.json'),
   });
   const result = Extractor.invoke(config, { localBuild: local, showVerboseMessages: false });
+  if (result.apiReportChanged) changed++;
   if (!result.succeeded) {
     failed++;
     console.error(`${pkg.name}${key.slice(1)}: ${result.errorCount} error(s), ${result.warningCount} warning(s)${result.apiReportChanged ? ', report changed' : ''}`);
@@ -108,15 +111,23 @@ for (const [key, contract] of contracts) {
   expected.add(file);
   const current = fs.existsSync(path.join(reportFolder, file)) ? fs.readFileSync(path.join(reportFolder, file), 'utf-8') : undefined;
   if (current === contract) continue;
+  changed++;
   if (local) fs.writeFileSync(path.join(reportFolder, file), contract);
   else { failed++; console.error(`etc/${file} is out of date; run api:update`); }
 }
 
 // Reports for exports that no longer exist
 for (const file of fs.readdirSync(reportFolder).filter((f) => /\.(api|component)\.md$/.test(f) && !expected.has(f))) {
+  changed++;
   if (local) fs.rmSync(path.join(reportFolder, file));
   else { failed++; console.error(`etc/${file} has no matching export; run with --local to remove it`); }
 }
 
 if (failed > 0) process.exit(1);
-console.log(`${pkg.name}: ${expected.size} API reports ${local ? 'updated' : 'up to date'}`);
+// How many reports the run *changed*, not how many it looked at. `api:update` said "101 API reports
+// updated" whether or not any had moved, which is the one question its reader has — a doc edit that
+// reaches the declarations but no report is a routine reason to run this, and the old line left no way
+// to tell that from a signature having changed.
+console.log(local
+  ? `${pkg.name}: ${changed} of ${expected.size} API reports updated`
+  : `${pkg.name}: ${expected.size} API reports up to date`);

@@ -122,10 +122,12 @@ npm run api:update       # Dev: regenerate etc/<entry>.api.md (and etc/<entry>.c
                          # and CI check rather than a per-edit one
 npm run check:api-stamp  # The cheap half, run by npm run typecheck: compares the built declarations with
                          # etc/declarations.sha256 in ~0.6s and says "run npm run api:update" when they
-                         # differ. The reports are a pure function of those declarations, so unchanged
-                         # declarations mean unchanged reports. It hashes only dist/**/*.ts (.d.ts and
-                         # UI's .d.vue.ts) — never the compiled .js, which changes when a function body
-                         # does. api:check stays the authority; this only says when to run it
+                         # differ. It hashes only dist/**/*.ts (.d.ts and UI's .d.vue.ts) — never the
+                         # compiled .js, which changes when a function body does — and hashes each
+                         # through `apiSurfaceOf`, which drops doc prose and keeps TSDoc tags and
+                         # whether a comment is there at all: measured, those are what a report carries,
+                         # so prose is the other thing that cannot make one stale. api:check stays the
+                         # authority; this only says when to run it
 
 # Built-in pack facade types (after `abuddy build`; from packages/default-setup or with -w @app/default-setup)
 npm run facade:check     # CI: fails if dist/types/pack-types.d.ts changed without updating etc/pack-types.api.md
