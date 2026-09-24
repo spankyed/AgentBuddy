@@ -21,7 +21,7 @@ for (const [field, reserved] of [['entities', SDK_ENTITIES], ['relKinds', SDK_RE
 Object.assign(jsonSchema, {
   $schema: 'https://json-schema.org/draft/2020-12/schema',
   $id: 'https://agentbuddy.dev/schemas/abuddy.json',
-  $comment: 'Auto-generated from manifest-schema.ts — do not edit by hand. Run: npm run generate:schema',
+  $comment: 'Auto-generated from manifest-schema.ts — do not edit by hand. Run: npm run schema:update',
   title: 'AgentBuddy Pack Manifest',
   description: 'Configuration manifest for an AgentBuddy pack. Declares metadata, features, entities, services, extensions, seeds, and build-time codegen inputs.',
 });
@@ -32,7 +32,7 @@ const generated = JSON.stringify(jsonSchema, null, 2) + '\n';
 if (process.argv.includes('--check')) {
   const existing = fs.existsSync(outPath) ? fs.readFileSync(outPath, 'utf-8') : '';
   if (existing !== generated) {
-    console.error('abuddy.schema.json is out of date. Run: npm run generate:schema');
+    console.error('abuddy.schema.json is out of date. Run: npm run schema:update');
     process.exit(1);
   }
   console.log('abuddy.schema.json is up to date.');

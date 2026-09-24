@@ -16,8 +16,10 @@
     "build:dev": "abuddy build --skip-fe",
     "facade:check": "tsx ../../scripts/facade-report.ts .",
     "facade:update": "tsx ../../scripts/facade-report.ts . --local",
-    "lint": "oxlint . -D correctness --ignore-path .gitignore --fix",
-    "lint:check": "oxlint . -D correctness --ignore-path .gitignore"
+    "lint:check": "oxlint . -D correctness --ignore-path .gitignore",
+    "lint:fix": "oxlint . -D correctness --ignore-path .gitignore --fix",
+    "seed-golden:check": "npm test -- tests/unit/seed-parity",
+    "seed-golden:update": "UPDATE_SEED_GOLDEN=1 npm test -- tests/unit/seed-parity"
   },
   "dependencies": {
     "@abuddy/ears": "*",

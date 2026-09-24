@@ -52,7 +52,7 @@ Each directory is one `package.json` export (`./<dir>` → `src/<dir>/index.ts`)
     - `entities`/`relKinds` may not use a name the SDK owns, as a key or a value (`_reservedEntries`, `types/reserved-names.ts`, the rule the generator and the host's registry apply too), and an entity's key must equal its value.
   - A feature id may not be a JavaScript reserved word (`RESERVED_FEATURE_IDS`), and `fe.appExtensions` keys must be identifiers: both become names in generated code.
   - `SPECIALTY_SEED_KEYS` (`actions`, `prompts`, `flows`) take a path. Every other seed key takes `{ path, format }` (optionally with `seeder`: the pack module seeds the compiled records instead of the generic seeder, as default-setup's `settings` entry does) or `{ seeder }` alone.
-  - `abuddy.schema.json` is generated from the schema by `scripts/generate-schema.ts` (`zod-to-json-schema`). Run `generate:schema` after changing the schema; CI runs `schema:check`.
+  - `abuddy.schema.json` is generated from the schema by `scripts/generate-schema.ts` (`zod-to-json-schema`). Run `schema:update` after changing the schema; CI runs `schema:check`.
 - **Validation** (`validate.ts`): `parseManifest`/`validateManifest` run the schema. `validateFeatures` checks that each feature's `settings`, `system.entry` and `plugin.entry` files exist, and that no two features in the pack claim the same designation. A designation is a role, so it need not equal the feature id.
 - **Codegen** (`generate-entries.ts`): `generatePackFiles(manifest, { packRoot, depTypes?, depSnapshots? })` returns `{ path: content }` for `src/__generated__/`. The CLI's `generate-entries` command writes the files; empty contents are dropped.
 
@@ -152,7 +152,7 @@ Run these from `packages/abuddy-sdk`, or from the repo root with `-w @abuddy/sdk
 - `npm run typecheck`: `tsc --noEmit`. `npm run build` is the same `tsconfig.json`, which sets `noEmit`, so it emits nothing.
 - `npm run build:package`: the repo's `scripts/build-package.ts`, shared with `@abuddy/ears`, which builds the same way. It compiles `dist/` with `tsconfig.package.json`, copies hand-written `.d.ts` files, and checks that every bare import in `dist` is declared and every export target was built. The root `packages:build` runs it; `npm run attw` (excluding the source-only `./runtime/internals`) runs in the root `packages:check`.
 - `npm run api:check` / `api:update`: `api:build` emits declarations to `.temp/api-types`, then `scripts/api-reports.ts` compares or rewrites `etc/<entry>.api.md`, one per export with `types`.
-- `npm run generate:schema` / `schema:check`: regenerate or verify `abuddy.schema.json`.
+- `npm run schema:update` / `schema:check`: regenerate or verify `abuddy.schema.json`.
 
 ## Gotchas
 

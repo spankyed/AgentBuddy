@@ -91,7 +91,7 @@ own entity volatile (Decision 5), and a feature's designation need no longer equ
 `packages/default-setup/abuddy.json` is 552 lines and 23 top-level keys (24 at the survey; Decision 12
 has since taken `defaultPlugin` off the root). The schema is
 `packages/abuddy-sdk/src/build/manifest-schema.ts` (299 lines), which generates
-`packages/abuddy-sdk/abuddy.schema.json` (`npm run generate:schema`, checked by `npm run schema:check`).
+`packages/abuddy-sdk/abuddy.schema.json` (`npm run schema:update`, checked by `npm run schema:check`).
 
 Manifest consumers: `abuddy-sdk/src/build/generate-entries.ts` (most of it), `manifest.ts`
 (`PROVENANCE_KINDS`, over the hand-written `ProvenanceManifest`), `manifest-schema.ts`'s own
@@ -628,7 +628,7 @@ container. `seed` remains a section because it genuinely is one: formats, hooks,
 four keys that change together whenever a seeded format changes.
 
 **11. The schema is the specification and the docs follow it.** `manifest-schema.ts` gains a
-`.describe()` on every field, `npm run generate:schema` regenerates `abuddy.schema.json`, and
+`.describe()` on every field, `npm run schema:update` regenerates `abuddy.schema.json`, and
 `docs/public-facing/manifest.md` is rewritten from the new shape rather than edited.
 
 **12. `defaultPlugin` moves onto the plugin it names.** — **Landed** in `b8d66af4e`, ahead of this goal
@@ -827,7 +827,7 @@ it, then leaves the full chain green. They are ordered so the largest mechanical
   (`external-pack`, `bundled-ui-pack`, `dependent-pack`), the `abuddy init` scaffold, and the pack
   `tests/scripts/test-packaged-authoring.sh` writes.
 
-**Done when:** `npm run generate:schema` is clean and `abuddy.schema.json` is committed; `abuddy build`
+**Done when:** `npm run schema:update` is clean and `abuddy.schema.json` is committed; `abuddy build`
 for default-setup produces a `src/__generated__/ears.ts` byte-identical to the one before the change
 (diff it, and record that in the phase's commit); `partitionPolicy` appears in no manifest and in no schema, and
 `loader.ts` no longer mentions it; every reader of a manifest's entities calls `packEntities` and a
@@ -1021,7 +1021,7 @@ does writing the fourteen keys in a different order.
   `etc/*.api.md` with the rest of the phase.** `PackManifest` is `z.infer<typeof ManifestSchema>`, a
   published export of `@abuddy/sdk/build`, so the report inlines the whole manifest type —
   `packages/abuddy-sdk/etc/build.api.md` names the keys this goal retires 35 times. `npm run typecheck`
-  runs `check:api-stamp` and fails on a stale report, so a phase that skips this cannot meet its own
+  runs `api:stamp` and fails on a stale report, so a phase that skips this cannot meet its own
   "Done when". Budget ~46s for the three reports.
 - Generated output is the proof for Phases 1–4: compare `src/__generated__/` and `dist/` before and
   after, and treat any diff as a regression unless the phase says otherwise.

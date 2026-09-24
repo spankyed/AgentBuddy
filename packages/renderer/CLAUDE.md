@@ -114,4 +114,4 @@ in a `PluginScope` for that plugin, so a form's `usePlugin()` reaches the plugin
 - `npm run test:unit -w @app/renderer -- --run` runs vitest in jsdom over `tests/` (`vitest.config.ts` merges `vite.config.ts`); without `--run` it starts watch mode. Root `npm run test:unit` runs it too, as CI does.
   - `tests/source-layout.spec.ts` keeps each folder to its job; `tests/views/packs/pack-detail.spec.ts` covers the Packs detail component.
   - The shell's specs, the Packs machine's and the pack-frontend loader's live with them, in `packages/abuddy-host/tests/fe/`.
-- `npm run typecheck:fe` (root) runs `vue-tsc --build`. `npm run build -w @app/renderer` type-checks and runs `vite build` in parallel. `lint` runs oxlint and then eslint, both with `--fix`.
+- `npm run typecheck:fe` (root) runs `vue-tsc --build`. `npm run build -w @app/renderer` type-checks and runs `vite build` in parallel. `lint:check` runs oxlint and then eslint; `lint:fix` runs both with `--fix`. The bare-named one is the safe one, so nothing rewrites the tree unless you asked it to.

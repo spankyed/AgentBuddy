@@ -32,7 +32,7 @@ edit — running it after every change costs minutes and finds nothing the narro
 | an npm script | the one path that runs it, end to end, once |
 | the renderer, the app's boot, or a pack's FE | `npm test -- <spec>` for the affected E2E, not the whole suite |
 | a public export of `@abuddy/ears`, `/sdk` or `/ui` | `npm run api:update`, and commit `etc/` — `typecheck` fails until you do |
-| a pack's seed source (`src/seeds/`) | that pack's `seed-parity` spec. When only `sourceHash`/`rowSha256` moved, re-record deliberately — `UPDATE_SEED_GOLDEN=1 npx vitest run tests/unit/seed-parity` — and never edit a hash by hand |
+| a pack's seed source (`src/seeds/`) | that pack's `seed-parity` spec. When only `sourceHash`/`rowSha256` moved, re-record deliberately — `npm run seed-golden:update -w @app/default-setup` — and never edit a hash by hand |
 | anything, before you ask for a merge | the full chain, once |
 
 What that costs, measured on this machine (2026-09-22, M-series, warm): one spec file 1–3s, one
@@ -81,6 +81,20 @@ Three rules that pay for themselves:
 
 ## Commands
 
+**Script names say whether they write.** Three shapes, and the second word tells them apart:
+
+- `<artifact>:check` / `<artifact>:update` — something recorded that can go stale, and the two halves
+  carry the *same* noun: `api:*`, `facade:*`, `schema:*`, `exports:*`, `seed-golden:*`. `check` and
+  `update` are reserved as suffixes, so a name ending in `update` is the only kind that rewrites a file
+  you would commit.
+- `<action>:<scope>` — an action over part of the repo: `typecheck:fe`, `test:unit`, `build:be`. The
+  second word is a place, and nothing here writes a tracked file.
+- `<action>:<variant>` — a variant of one action: `build:dev`, `test:watch`, `lint:fix`.
+
+The point is that the name is derivable: knowing an artifact tells you both its scripts, without a grep.
+Put a new recorded artifact in the first shape and give it both halves, even when one half is trivial —
+an artifact with only an update is one nothing will notice has gone stale.
+
 ```bash
 npm start                # Dev mode (builds the built-in pack without its FE bundle)
 npm run start:gen        # Full built-in pack build (npm run compile), then dev mode
@@ -98,7 +112,7 @@ npm run typecheck:ui     # @abuddy/ui only
 npm run typecheck:cli    # @abuddy/cli + @abuddy/testing
 npm run typecheck:scripts # scripts/ and tests/
 npm run typecheck:pack   # @app/default-setup only
-npm run check:ui-entries # Fails on a stale @abuddy/ui exports map or a component without an entry
+npm run exports:check # Fails on a stale @abuddy/ui exports map or a component without an entry
 
 npm test                 # Playwright E2E tests
 npm run test:unit        # Vitest, every suite CI calls a unit test: @app/api, @app/default-setup, @abuddy/sdk,
@@ -121,7 +135,7 @@ npm run api:update       # Dev: regenerate etc/<entry>.api.md (and etc/<entry>.c
                          # Both read an @abuddy dependency's built declarations: npm run packages:build first
                          # All three take ~46s (ui is 33s of it), which is why api:check is a before-merge
                          # and CI check rather than a per-edit one
-npm run check:api-stamp  # The cheap half, run by npm run typecheck: compares the built declarations with
+npm run api:stamp  # The cheap half, run by npm run typecheck: compares the built declarations with
                          # etc/declarations.sha256 in ~0.6s and says "run npm run api:update" when they
                          # differ. It hashes only dist/**/*.ts (.d.ts and UI's .d.vue.ts) — never the
                          # compiled .js, which changes when a function body does — and hashes each
@@ -135,8 +149,16 @@ npm run facade:check     # CI: fails if dist/types/pack-types.d.ts changed witho
 npm run facade:update    # Dev: regenerate etc/pack-types.api.md
 
 # Manifest JSON schema (-w @abuddy/sdk)
-npm run generate:schema  # Regenerate packages/abuddy-sdk/abuddy.schema.json from manifest-schema.ts
+npm run schema:update    # Regenerate packages/abuddy-sdk/abuddy.schema.json from manifest-schema.ts
 npm run schema:check     # Fails if abuddy.schema.json is stale
+
+# Seed goldens (-w @app/default-setup)
+npm run seed-golden:check   # Compare seeded rows against tests/unit/seed-parity/__golden__
+npm run seed-golden:update  # Re-record them; deliberate, see "What to run after a change"
+
+# Lint (root runs every workspace that has one; oxlint, plus eslint in the renderer)
+npm run lint:check       # Reports; the one a gate runs
+npm run lint:fix         # Rewrites what it can
 
 npm run packages:build   # Build dist/ for @abuddy/ears, @abuddy/sdk and @abuddy/ui, bundle @abuddy/cli and @abuddy/testing
 npm run packages:check   # publint + arethetypeswrong on the packed packages (after packages:build)

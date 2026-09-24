@@ -40,11 +40,11 @@ Workflow after adding, removing or renaming a public module:
 
 ```bash
 npm run exports:update -w @abuddy/ui   # rewrite package.json exports
-npm run check:ui-entries               # (root; part of npm run typecheck) fails on a stale map
+npm run exports:check               # (root; part of npm run typecheck) fails on a stale map
 npm run api:update -w @abuddy/ui       # regenerate etc/ reports, commit them
 ```
 
-`findComponentsWithoutEntry()` scans every other `packages/*` and `tests/` for `@abuddy/ui/<path>` imports that name a `.vue` without a public entry. `exports:update`, `check:ui-entries` and `build:package` all fail on those and print the entry to add (`missingEntriesMessage`).
+`findComponentsWithoutEntry()` scans every other `packages/*` and `tests/` for `@abuddy/ui/<path>` imports that name a `.vue` without a public entry. `exports:update`, `exports:check` and `build:package` all fail on those and print the entry to add (`missingEntriesMessage`).
 
 ## API reports (`etc/`)
 
@@ -114,7 +114,7 @@ UI modules also read `stepRegistry` from `@abuddy/sdk/steps` (`node-styles.ts`, 
 
 ```bash
 npm run typecheck:ui                  # vue-tsc --noEmit (src, scripts, tsdown config)
-npm run check:ui-entries              # exports map + component entries
+npm run exports:check              # exports map + component entries
 npm run api:check -w @abuddy/ui       # etc/ reports current
 npm run packages:build && npm run packages:check   # dist, publint, attw (esm-only)
 npm test -w @abuddy/cli               # the published-ui / ui-* / fe-bundler-*ui specs

@@ -95,7 +95,7 @@ For an installed pack there is no checkout above it, every one of these is a no-
 delivered is what there is.
 
 One thing that is *not* a door here, though it looks like one: `scripts/api-report-stamp.ts`
-(`npm run check:api-stamp`, run by `npm run typecheck`) also fingerprints files with
+(`npm run api:stamp`, run by `npm run typecheck`) also fingerprints files with
 `fingerprintInputs`. It answers a different question — whether the committed API reports still match
 the declarations they were generated from — and it reads the built `dist`, which the doors above are
 what keep current. Reusing the hashing primitive is not the same as being another entry point to this

@@ -13,10 +13,8 @@
     "test:unit": "vitest",
     "build-only": "vite build",
     "type-check": "vue-tsc --build",
-    "lint:oxlint": "oxlint . --fix -D correctness --ignore-path .gitignore",
-    "lint:eslint": "eslint . --fix",
-    "lint": "run-s lint:*",
-    "lint:check": "oxlint . -D correctness --ignore-path .gitignore"
+    "lint:check": "oxlint . -D correctness --ignore-path .gitignore && eslint .",
+    "lint:fix": "oxlint . -D correctness --ignore-path .gitignore --fix && eslint . --fix"
   },
   "dependencies": {
     "@abuddy/host": "*",
