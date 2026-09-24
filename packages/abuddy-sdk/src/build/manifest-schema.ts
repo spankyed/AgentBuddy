@@ -127,7 +127,7 @@ export const BootConfigSchema = z.object({
 
 const SystemSchema = z.object({
   entry: z.string().describe('Path to the backend system module.'),
-  contract: z.string().describe('"path#exportName" of this system\'s contract: a declared type holding its context and its incoming, internal and outgoing events (SystemContract, @abuddy/sdk/framework). It lives in the feature\'s be/types.ts, so codegen reads it without running anything. Omit it for a system that sends no events.').optional(),
+  contract: z.string().describe('"path#exportName" of this system\'s contract: a declared type holding its context and its incoming, internal and outgoing events (SystemContract, @abuddy/sdk/framework). It lives in a leaf module of its own (be/contract.ts), so codegen reads it without running anything. Omit it for a system that sends no events.').optional(),
   events: z.object({
     incoming: z.array(z.string()).describe('Event types this system listens for.').optional(),
   }).strict().describe('Event routing declarations.').optional(),
@@ -135,7 +135,7 @@ const SystemSchema = z.object({
 
 const PluginSchema = z.object({
   entry: z.string().describe('Path to the frontend plugin module, which default-exports the Plugin (its id, label, icon and isPinned).'),
-  contract: z.string().describe('"path#exportName" of this plugin\'s contract: a declared type holding the state it publishes and the inbox other plugins may send to (PluginInbox, @abuddy/sdk/fe). It lives in a leaf module the plugin\'s machine does not import, so codegen can read it without resolving the machine. Omit it for a plugin that publishes nothing: it still receives its own feature\'s system events.').optional(),
+  contract: z.string().describe('"path#exportName" of this plugin\'s contract: a declared type holding the state it publishes and the inbox other plugins may send to (PluginInbox, @abuddy/sdk/fe). It lives in a leaf module of its own (fe/contract.ts), which the plugin\'s machine does not import, so codegen can read it without resolving the machine. Omit it for a plugin that publishes nothing: it still receives its own feature\'s system events.').optional(),
   default: z.boolean().describe('Show this plugin when the app starts. At most one of a pack\'s features may claim it; the first pack to register one across the app wins.').optional(),
 }).strict();
 
