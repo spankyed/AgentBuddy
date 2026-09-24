@@ -856,7 +856,7 @@ export const ref = (name: FeatureName): FeatureRef => resolveName(name, '${manif
     const qualifiedState = depsWithPlugins.map((depId) => `Qualified<'${depId}', ${depAlias(depId, 'PackPluginState')}>`);
 
     return `${HEADER}
-import { openPlugin, pluginIsRunning, readUntypedPluginState, useUntypedPluginState, type PluginStateOf } from '@abuddy/sdk/fe';
+import { pluginIsRunning, readUntypedPluginState, untypedOpenPlugin, useUntypedPluginState, type PluginStateOf } from '@abuddy/sdk/fe';
 import type { Qualified } from '@abuddy/sdk/events';
 import type { Ref } from 'vue';
 import type { SendablePluginEvents } from './events.js';
@@ -866,7 +866,7 @@ ${depState.imports.join('\n')}
 
 /**
  * A plugin as this pack's code names it: its own by feature id, a dependency's as \`<packId>/<featureId>\`.
- * A plugin named by data (a link's target, a registered plugin's \`id\`) opens through \`openPlugin\`
+ * A plugin named by data (a link's target, a registered plugin's \`id\`) opens through \`untypedOpenPlugin\`
  * from \`@abuddy/sdk/fe\`, which checks it at runtime instead.
  */
 export type PluginName = ${plugins.join(' | ')};
@@ -891,11 +891,11 @@ export type DependencyPluginName = keyof DependencyPluginState & string;
  * plugins take their own feature's system's events as well, so a UI command a machine handles
  * (\`FLOW.SELECT\`, \`TAB.CREATE\`) needs declaring only where another pack sends it.
  */
-export function navigateToPlugin<Name extends PluginName>(
+export function openPlugin<Name extends PluginName>(
   name: Name,
   event?: SendablePluginEvents[Name] | SendablePluginEvents[Name][],
 ): void {
-  openPlugin(ref(name), event);
+  untypedOpenPlugin(ref(name), event);
 }
 
 const OWN_PLUGINS = new Set<string>([${own.map(id => `'${id}'`).join(', ')}]);

@@ -4,7 +4,7 @@
 // Nothing routes or refuses on it: it is what lets a dropped message name who sent it.
 import * as os from 'node:os';
 import { describe, expect, it } from 'vitest';
-import { defineEvents, sendToSystem, type PluginEvents, type SystemEventMap } from '../../src/events/index.ts';
+import { defineEvents, untypedSendToSystem, type PluginEvents, type SystemEventMap } from '../../src/events/index.ts';
 import { startTestRuntime, testRootEvents } from '../../src/testing/index.ts';
 
 process.env.ABUDDY_ENV ??= 'test';
@@ -30,7 +30,7 @@ function incoming(send: () => void): unknown[] {
 // the ordinary case rather than a fault.
 describe('a send made outside a pack', () => {
   it('carries no sender', () => {
-    expect(incoming(() => sendToSystem('memo-pack/memos', { type: 'ADD_MEMO', text: 'x' })))
+    expect(incoming(() => untypedSendToSystem('memo-pack/memos', { type: 'ADD_MEMO', text: 'x' })))
       .toEqual([{ to: 'memo-pack/memos', event: { type: 'ADD_MEMO', text: 'x' } }]);
   });
 });

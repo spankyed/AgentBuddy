@@ -25,7 +25,7 @@ type LoadedPack = import('@abuddy/host/packs/runtime').LoadedPack;
 const { bindHost } = await import('@abuddy/sdk/runtime');
 const { createHostRuntime } = await import('@abuddy/host/services');
 const { createEarsEngine } = await import('@abuddy/ears');
-const { broadcastToPlugin } = await import('@abuddy/sdk/events');
+const { untypedBroadcastToPlugin } = await import('@abuddy/sdk/events');
 type LmdbStore = import('@abuddy/ears/lmdb').LmdbStore;
 bindHost(createHostRuntime({ store: {} as LmdbStore, engine: createEarsEngine({ isEntityType: () => false }), transport: { rootEvents }, appVersion: '1.0.0', packs: registry }));
 const backendSystem = createAppBus(registry);
@@ -201,8 +201,8 @@ describe('CLIENT_CONNECTED on the bus', () => {
   });
 });
 
-// broadcastToPlugin goes through the bus, as a system's emit does: nothing reaches a client before one connects
-describe('broadcastToPlugin on the bus', () => {
+// untypedBroadcastToPlugin goes through the bus, as a system's emit does: nothing reaches a client before one connects
+describe('untypedBroadcastToPlugin on the bus', () => {
   // The plugin's own pack declares what it receives, as in the app: a send to a plugin no pack owns is
   // dropped, which is the check's job and not what this test is about
   beforeEach(() => {
@@ -216,13 +216,13 @@ describe('broadcastToPlugin on the bus', () => {
     const outgoing: Message[] = [];
     const stop = rootEvents.onOutgoing((message) => { outgoing.push(message); });
     try {
-      broadcastToPlugin('notes-pack/notes', { type: 'BEFORE_CONNECT' });
+      untypedBroadcastToPlugin('notes-pack/notes', { type: 'BEFORE_CONNECT' });
       await flush();
       expect(outgoing).toEqual([]);
 
       rootEvents.emitConnected();
       await flush();
-      broadcastToPlugin('notes-pack/notes', { type: 'AFTER_CONNECT' });
+      untypedBroadcastToPlugin('notes-pack/notes', { type: 'AFTER_CONNECT' });
       await flush();
       expect(outgoing.filter(({ event }) => event.type !== 'CLIENT_CONNECTED')).toEqual([{ to: 'notes-pack/notes', event: { type: 'AFTER_CONNECT' } }]);
     } finally {

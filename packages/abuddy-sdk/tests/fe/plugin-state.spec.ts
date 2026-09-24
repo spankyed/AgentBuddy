@@ -4,7 +4,7 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { effectScope, watchSyncEffect, type Ref } from 'vue';
 import type { AnyActorRef } from 'xstate';
-import { _sendToLocalPlugin, broadcastToPlugin } from '../../src/events/index.ts';
+import { _sendToLocalPlugin, untypedBroadcastToPlugin } from '../../src/events/index.ts';
 import { readUntypedPluginState, useUntypedPluginState } from '../../src/fe/plugin-state.ts';
 import { bindFeHost, unbindFeHost } from '../../src/runtime/fe-host.ts';
 import { bindHost, unbindHost } from '../../src/runtime/host-runtime.ts';
@@ -119,7 +119,7 @@ describe('readUntypedPluginState', () => {
   });
 });
 
-// The renderer half of sending: straight to this window's actor, with no bus between. A backend `broadcastToPlugin`
+// The renderer half of sending: straight to this window's actor, with no bus between. A backend `untypedBroadcastToPlugin`
 // reaches every window showing the plugin, which is why the two have different names.
 // A read made while another pack's frontend is still loading has nothing to read yet. Resolving the actor once
 // left it `undefined` for the life of the scope, which made the cross-pack read — the reason the value is typed
@@ -219,7 +219,7 @@ describe('_sendToLocalPlugin', () => {
   });
 
   it("says broadcastToPlugin is the backend's when only a window is bound", () => {
-    expect(() => broadcastToPlugin('default-setup/notes', { type: 'X' }))
+    expect(() => untypedBroadcastToPlugin('default-setup/notes', { type: 'X' }))
       .toThrow(/broadcastToPlugin.*is the backend's.*sendToPlugin/s);
   });
 

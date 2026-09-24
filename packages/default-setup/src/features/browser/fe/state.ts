@@ -3,7 +3,7 @@ import type { BrowserSettings } from '@/__generated__/types';
 import type { Bookmark, BrowserContext, BrowserInboxEvent, BrowserTab, BrowserTabPersistedId } from './contract';
 import { autocomplete, recordVisit, updateHistoryMeta, displayUrl, type AutocompleteSuggestion } from './history';
 import { sendToSystem } from '@/__generated__/events';
-import { navigateToPlugin } from '@/__generated__/fe';
+import { openPlugin } from '@/__generated__/fe';
 import { getNextAvailableColor, saveTabGroups, loadTabGroups, type TabGroup, type TabGroupColor } from '@abuddy/sdk/fe';
 
 export type { TabGroup, TabGroupColor };
@@ -286,7 +286,7 @@ const browserState = setup({
           // The user's choice, in this feature's own settings
           actions: ({ context, event }) => {
             if (context.settings.openLinksInApp ?? true) {
-              navigateToPlugin('browser', { type: 'TAB.CREATE', url: event.url });
+              openPlugin('browser', { type: 'TAB.CREATE', url: event.url });
             } else {
               window.electronAPI?.shell?.openExternal(event.url);
             }

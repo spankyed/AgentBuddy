@@ -238,7 +238,7 @@ import { usePlugin } from '@abuddy/sdk/fe'
 
 import { ref, computed, watch, nextTick } from 'vue'
 import { useSelector } from '@xstate/vue'
-import { navigateToPlugin } from '@/__generated__/fe'
+import { openPlugin } from '@/__generated__/fe'
 import type { CodeState } from '@/features/code/fe/state'
 import { usePluginState } from '@/__generated__/fe'
 import { sendToPlugin } from '@/__generated__/events'
@@ -476,7 +476,7 @@ const selectPrompt = (prompt: PromptEntity) => {
 }
 
 const goToPrompt = (prompt: PromptEntity) => {
-  navigateToPlugin('prompts', { type: 'PROMPT.SELECT', promptId: prompt.id })
+  openPlugin('prompts', { type: 'PROMPT.SELECT', promptId: prompt.id })
 }
 
 const createPromptInline = () => {

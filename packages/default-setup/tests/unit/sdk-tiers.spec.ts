@@ -224,10 +224,10 @@ describe('Tier 6 — Utility delegates', () => {
 });
 
 describe('Tier 7 — Event delegates', () => {
-  it('broadcastToPlugin and sendToSystem are callable', async () => {
-    const { broadcastToPlugin, sendToSystem } = await import('@abuddy/sdk/events');
-    expect(typeof broadcastToPlugin).toBe('function');
-    expect(typeof sendToSystem).toBe('function');
+  it('the untyped sends are callable', async () => {
+    const { untypedBroadcastToPlugin, untypedSendToSystem } = await import('@abuddy/sdk/events');
+    expect(typeof untypedBroadcastToPlugin).toBe('function');
+    expect(typeof untypedSendToSystem).toBe('function');
   });
 });
 

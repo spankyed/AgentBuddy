@@ -5,12 +5,6 @@
 ```ts
 
 // @public
-export function broadcastToPlugin(to: string, event: {
-    type: string;
-    [key: string]: unknown;
-}, from?: string): void;
-
-// @public
 export function defineEvents<P extends PluginEvents, S extends SystemEventMap>(packId: string): TypedEvents<P, S>;
 
 // @public
@@ -141,12 +135,6 @@ export function _sendToLocalPlugin(ref: string, event: {
 }, from?: string): void;
 
 // @public
-export function sendToSystem(to: SystemTarget, event: {
-    type: string;
-    [key: string]: unknown;
-}, from?: string): void;
-
-// @public
 export type SystemEventMap = {
     [system: string]: {
         type: string;
@@ -183,6 +171,18 @@ export type TypedSendToSystem<S extends SystemEventMap> = (<Id extends keyof S &
 export type TypeOfEvent<E> = E extends {
     type: infer K extends string;
 } ? K : never;
+
+// @public
+export function untypedBroadcastToPlugin(to: string, event: {
+    type: string;
+    [key: string]: unknown;
+}, from?: string): void;
+
+// @public
+export function untypedSendToSystem(to: SystemTarget, event: {
+    type: string;
+    [key: string]: unknown;
+}, from?: string): void;
 
 // @public
 export type WithOwnNames<PackId extends string, M> = {

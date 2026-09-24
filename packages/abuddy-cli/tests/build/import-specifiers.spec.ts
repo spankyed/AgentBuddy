@@ -98,12 +98,12 @@ function writeTemplateSource(content: string): string {
 
 /** Code none of the pack rules flag: comments, string text and the allowed imports */
 const ALLOWED = [
-  "// import { broadcastToPlugin } from '@abuddy/sdk/events'; _rootEvents; trpc.bus; console.log('x')",
+  "// import { untypedBroadcastToPlugin } from '@abuddy/sdk/events'; _rootEvents; trpc.bus; console.log('x')",
   "/* import * as events from '@abuddy/sdk/events'; console.log('x') */",
   "const url = 'https://console.anthropic.com/settings/keys';",
   "const prompt = `_rootEvents.emitOutgoing(event); console.log(ev.type)`;",
-  "import { broadcastToPlugin, sendToSystem } from '#generated/events';",
-  "import { broadcastToPlugin } from '@/__generated__/events';",
+  "import { untypedBroadcastToPlugin, untypedSendToSystem } from '#generated/events';",
+  "import { untypedBroadcastToPlugin } from '@/__generated__/events';",
   "import { onConnected, onIncoming } from '@abuddy/sdk/events';",
   "import { emit as emitEvent } from 'xstate';",
   "import * as ears from '@abuddy/ears';",
@@ -146,12 +146,12 @@ describe('findInternalPackageImports', () => {
 
 describe('findRawPackHelpers', () => {
   it.each([
-    ["import { broadcastToPlugin as toPlugin } from '@abuddy/sdk/events';", 'broadcastToPlugin from @abuddy/sdk/events'],
-    ["import onConnected, { sendToSystem } from '@abuddy/sdk/events';", 'sendToSystem from @abuddy/sdk/events'],
-    ["import { broadcastToPlugin, services } from '@abuddy/sdk/services';", 'broadcastToPlugin from @abuddy/sdk/services'],
+    ["import { untypedBroadcastToPlugin as toPlugin } from '@abuddy/sdk/events';", 'untypedBroadcastToPlugin from @abuddy/sdk/events'],
+    ["import onConnected, { untypedSendToSystem } from '@abuddy/sdk/events';", 'untypedSendToSystem from @abuddy/sdk/events'],
+    ["import { untypedBroadcastToPlugin, services } from '@abuddy/sdk/services';", 'untypedBroadcastToPlugin from @abuddy/sdk/services'],
     ["import { registerRepository, untypedTx } from '@abuddy/ears';", 'registerRepository from @abuddy/ears'],
     ["import { unregisterRepository } from '@abuddy/ears';", 'unregisterRepository from @abuddy/ears'],
-    ["export type { broadcastToPlugin } from '@abuddy/sdk/events';", 'broadcastToPlugin from @abuddy/sdk/events'],
+    ["export type { untypedBroadcastToPlugin } from '@abuddy/sdk/events';", 'untypedBroadcastToPlugin from @abuddy/sdk/events'],
     ["import * as events from '@abuddy/sdk/events';", '* from @abuddy/sdk/events (import the names)'],
     ["export * from '@abuddy/sdk/events';", '* from @abuddy/sdk/events (import the names)'],
   ])('flags %s', (code, problem) => {
@@ -166,13 +166,13 @@ describe('findRawPackHelpers', () => {
   });
 
   it('checks .vue script blocks with their line numbers', () => {
-    write('pack/Widget.vue', "<template><pre>import { broadcastToPlugin } from '@abuddy/sdk/events'</pre></template>\n<script setup lang=\"ts\">\n\nimport { broadcastToPlugin } from '@abuddy/sdk/events';\n</script>\n");
-    expect(findRawPackHelpers(['src/pack'], root)).toEqual(['src/pack/Widget.vue:4: broadcastToPlugin from @abuddy/sdk/events']);
+    write('pack/Widget.vue', "<template><pre>import { untypedBroadcastToPlugin } from '@abuddy/sdk/events'</pre></template>\n<script setup lang=\"ts\">\n\nimport { untypedBroadcastToPlugin } from '@abuddy/sdk/events';\n</script>\n");
+    expect(findRawPackHelpers(['src/pack'], root)).toEqual(['src/pack/Widget.vue:4: untypedBroadcastToPlugin from @abuddy/sdk/events']);
   });
 
   it("checks the pack code in the CLI's templates, with its line", () => {
-    const dir = writeTemplateSource("const name = 'x';\nexport const SYSTEM = `// ${name}\nconst label = \\`${name}\\`;\nimport { ${name}, broadcastToPlugin } from '@abuddy/sdk/events';\n`;\n");
-    expect(findRawPackHelpers([dir], root)).toEqual([`${dir}/feature.ts:4: broadcastToPlugin from @abuddy/sdk/events`]);
+    const dir = writeTemplateSource("const name = 'x';\nexport const SYSTEM = `// ${name}\nconst label = \\`${name}\\`;\nimport { ${name}, untypedBroadcastToPlugin } from '@abuddy/sdk/events';\n`;\n");
+    expect(findRawPackHelpers([dir], root)).toEqual([`${dir}/feature.ts:4: untypedBroadcastToPlugin from @abuddy/sdk/events`]);
   });
 });
 
@@ -477,7 +477,7 @@ describe('findContractLeafImports', () => {
       'features/notes/fe/contract.ts': "import type { Ctx } from './state';",
       'features/notes/fe/state.ts': "import { sendToPlugin } from '@/__generated__/events';",
       'features/notes/be/contract.ts': "import type { Ev } from './system';",
-      'features/notes/be/system.ts': "import { broadcastToPlugin } from '@/__generated__/events';",
+      'features/notes/be/system.ts': "import { untypedBroadcastToPlugin } from '@/__generated__/events';",
     });
     expect(findContractLeafImports([src], root).sort()).toEqual([
       `${src}/features/notes/be/contract.ts:1: ./system`,
@@ -497,7 +497,7 @@ describe('findContractLeafImports', () => {
   it('flags a generated module that is not a leaf itself', () => {
     pack({
       'features/notes/fe/contract.ts': "import type { P } from '@/__generated__/fe';",
-      'features/notes/be/contract.ts': "import { broadcastToPlugin } from '@/__generated__/events';",
+      'features/notes/be/contract.ts': "import { untypedBroadcastToPlugin } from '@/__generated__/events';",
     });
     expect(findContractLeafImports([src], root).sort()).toEqual([
       `${src}/features/notes/be/contract.ts:1: @/__generated__/events`,
@@ -508,12 +508,12 @@ describe('findContractLeafImports', () => {
   /**
    * The rule that matters, and the one a check of the leaf's own imports would miss: the cycle returns just as
    * surely through two hops. This is the shape that was live in default-setup's code feature — its contract
-   * imported its child modules, and those import `#generated/events` for `broadcastToPlugin`.
+   * imported its child modules, and those import `#generated/events` for `untypedBroadcastToPlugin`.
    */
   it('flags #generated/events reached through the closure, naming the leaf it came from', () => {
     pack({
       'features/notes/be/contract.ts': "import type { Ev } from './children/list';",
-      'features/notes/be/children/list.ts': "import { broadcastToPlugin } from '@/__generated__/events';",
+      'features/notes/be/children/list.ts': "import { untypedBroadcastToPlugin } from '@/__generated__/events';",
       'features/notes/fe/contract.ts': 'export type Contract = { state: {} };',
     });
     expect(findContractLeafImports([src], root)).toEqual([

@@ -15,7 +15,7 @@ import type { OutgoingThreadsEvents } from '@/features/threads/be/types';
 import { sendToSystem } from '@/__generated__/events';
 import { Archive, Copy, Pin, Trash2 } from 'lucide-vue-next';
 import { contextMenuFn } from '@abuddy/sdk/fe';
-import { openPlugin } from '@abuddy/sdk/fe'
+import { untypedOpenPlugin } from '@abuddy/sdk/fe'
 import { resolveName } from '@abuddy/sdk/ids'
 
 const HOST_SETTINGS = resolveName('settings', 'host');
@@ -761,7 +761,7 @@ const threadsState = setup({
       };
     }),
     navigateToSecrets: () => {
-      openPlugin(HOST_SETTINGS, [
+      untypedOpenPlugin(HOST_SETTINGS, [
         { type: 'TAB.SELECT', tab: 'general' },
         { type: 'GENERAL_NAV.SELECT', item: 'secrets' }
       ]);

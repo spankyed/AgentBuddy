@@ -1,5 +1,5 @@
 import { _rootEvents } from '../runtime/root-events.ts';
-import { broadcastToPlugin } from '../events/index.ts';
+import { untypedBroadcastToPlugin } from '../events/index.ts';
 import { getDesignated, hasDesignation } from '../designations/index.ts';
 // Import directly — not from '../utils' barrel which pulls in Node-only modules (fs, child_process)
 import { randomId } from '../utils/random-id.ts';
@@ -161,6 +161,6 @@ function reportStepError(input: ReportSystemErrorInput, step: StepErrorContext):
   }
 
   // The flow shows it in the plugin playing the brain role, if any does
-  if (hasDesignation('brain')) broadcastToPlugin(getDesignated('brain'), { type: 'BRAIN_RUNTIME_ERROR', error: runtimeError });
+  if (hasDesignation('brain')) untypedBroadcastToPlugin(getDesignated('brain'), { type: 'BRAIN_RUNTIME_ERROR', error: runtimeError });
   return runtimeError;
 }

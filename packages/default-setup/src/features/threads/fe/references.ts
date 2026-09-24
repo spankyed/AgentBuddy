@@ -1,6 +1,6 @@
 import { History } from 'lucide-vue-next'
 
-import { navigateToPlugin, usePluginState } from '@/__generated__/fe'
+import { openPlugin, usePluginState } from '@/__generated__/fe'
 import { id as threads, threadsFromStore } from './state'
 import type { ReferenceTypeConfig, CategoryConfig, CategoryItemsProvider, ReferenceItem } from '@abuddy/sdk/fe/references'
 
@@ -16,7 +16,7 @@ export const referenceTypes: Record<string, ReferenceTypeConfig> = {
       ['path', { d: 'M12 7v5l4 2' }],
     ],
     navigate: (refId: string) => {
-      navigateToPlugin(threads, { type: 'SELECT_THREAD', id: refId })
+      openPlugin(threads, { type: 'SELECT_THREAD', id: refId })
     },
   },
 }

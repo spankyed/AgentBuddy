@@ -115,7 +115,7 @@ import PromptTemplateEditor from './PromptTemplateEditor.vue';
 import PromptTemplateViewer from './PromptTemplateViewer.vue';
 import JsonSchemaEditor from '@abuddy/ui/components/JsonSchemaEditor';
 import { useCollapsibleState } from '@abuddy/ui/composables/useCollapsibleState';
-import { navigateToPlugin } from '@/__generated__/fe'
+import { openPlugin } from '@/__generated__/fe'
 import type { PromptsState } from '@/features/prompts/fe/state';
 import type { PromptEntity } from '@abuddy/sdk';
 import type { TemplateInput } from '@abuddy/sdk';
@@ -191,7 +191,7 @@ function openInEditor() {
   if (!props.prompt) return;
 
   // The code plugin routes a codePrompts.* event to its prompts panel
-  navigateToPlugin('code', [
+  openPlugin('code', [
     { type: 'UPDATE_STATE', updates: { selectedPanel: 'prompts' } },
     { type: 'codePrompts.OPEN_PROMPT', promptId: props.prompt.id },
   ]);

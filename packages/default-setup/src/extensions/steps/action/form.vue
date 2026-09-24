@@ -184,7 +184,7 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
 import { Check, ChevronDown, Code, ExternalLink, Plus } from 'lucide-vue-next'
-import { navigateToPlugin } from '@/__generated__/fe'
+import { openPlugin } from '@/__generated__/fe'
 import {
   ComboboxAnchor,
   ComboboxContent,
@@ -324,12 +324,12 @@ const handleActionChange = (action: ActionEntity | null) => {
 }
 
 const createAction = () => {
-  navigateToPlugin('actions', { type: 'ACTION.CREATE' });
+  openPlugin('actions', { type: 'ACTION.CREATE' });
 }
 
 const viewAction = () => {
   if (selectedAction.value) {
-    navigateToPlugin('actions', { type: 'ACTION.SELECT', actionId: selectedAction.value.id });
+    openPlugin('actions', { type: 'ACTION.SELECT', actionId: selectedAction.value.id });
   }
 }
 </script>

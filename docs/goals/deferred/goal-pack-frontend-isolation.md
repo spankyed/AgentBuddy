@@ -87,7 +87,7 @@ So installing an external pack today means trusting it as much as the app itself
      - **Cons:** ShadowRealm isn't shipped in Electron's Chromium, a compartment needs a hardened runtime for every dependency, and DOM access would still have to be mediated. Highest risk.
 
 3. **What crosses the boundary.** — *open*
-   - **A. The pack-facing SDK only:** events (`sendToSystem`, incoming events), the lookups packs may read, `navigateToPlugin`, `secretsClient` (metadata only), and nothing from `electronAPI`. Anything a pack needs from the preload becomes an SDK call the host mediates (for example "pick a file" instead of "read any path").
+   - **A. The pack-facing SDK only:** events (`sendToSystem`, incoming events), the lookups packs may read, `untypedOpenPlugin`, `secretsClient` (metadata only), and nothing from `electronAPI`. Anything a pack needs from the preload becomes an SDK call the host mediates (for example "pick a file" instead of "read any path").
    - **B. The SDK plus a per-pack, permissioned `electronAPI` subset**, declared in `abuddy.json` and shown to the user at install time.
 
 4. **How extensions the host renders work** (tiptap plugins, blocks, artifact viewers, step forms, app extensions) for isolated packs. — *open*

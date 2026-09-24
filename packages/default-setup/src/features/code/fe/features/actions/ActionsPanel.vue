@@ -238,7 +238,7 @@ import { usePlugin } from '@abuddy/sdk/fe'
 
 import { ref, computed, watch, nextTick } from 'vue'
 import { useSelector } from '@xstate/vue'
-import { navigateToPlugin } from '@/__generated__/fe'
+import { openPlugin } from '@/__generated__/fe'
 import type { CodeState } from '@/features/code/fe/state'
 import { usePluginState } from '@/__generated__/fe'
 import { sendToPlugin } from '@/__generated__/events'
@@ -469,7 +469,7 @@ const selectAction = (action: ActionEntity) => {
 }
 
 const goToAction = (action: ActionEntity) => {
-  navigateToPlugin('actions', { type: 'ACTION.SELECT', actionId: action.id })
+  openPlugin('actions', { type: 'ACTION.SELECT', actionId: action.id })
 }
 
 const createActionInline = () => {

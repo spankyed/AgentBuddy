@@ -8,7 +8,7 @@ export type RouteComponents = Record<RouteName, Component>;
 
 /**
  * A pack's plugin module, as its author writes it. It has no id: the plugin is registered at its
- * feature's ref, `<packId>/<featureId>`; pack code opens it by name (`navigateToPlugin` from `#generated/fe`),
+ * feature's ref, `<packId>/<featureId>`; pack code opens it by name (`openPlugin` from `#generated/fe`),
  * and its components reach its actor with `usePlugin()`.
  */
 export type PluginDefinition = Omit<Plugin, 'id'>;

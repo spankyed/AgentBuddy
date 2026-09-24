@@ -13,7 +13,7 @@ const { store, engine, packs } = openAppStore();
 const { boundHost } = await import('@abuddy/sdk/runtime/internals');
 const { getAppVersion } = await import('@abuddy/sdk/env');
 const { services } = await import('@abuddy/sdk/services');
-const { sendToSystem } = await import('@abuddy/sdk/events');
+const { untypedSendToSystem } = await import('@abuddy/sdk/events');
 const { installedEngine, repository } = await import('@abuddy/ears');
 const { registerPack, unregisterPack } = packs;
 const { rootEvents } = await import('@/transport/emitter');
@@ -54,7 +54,7 @@ describe('the bound app', () => {
     try {
       expect(services.memoService).toBe(memoService);
       services.emitter.sendToSystem('bound-pack/memos', { type: 'PING' });
-      sendToSystem('bound-pack/memos', { type: 'PING' });
+      untypedSendToSystem('bound-pack/memos', { type: 'PING' });
     } finally {
       stop();
       unregisterPack('bound-pack');

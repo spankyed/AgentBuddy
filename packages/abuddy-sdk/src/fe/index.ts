@@ -30,7 +30,7 @@ export {
 } from './settings.ts'
 
 export {
-  openPlugin,
+  untypedOpenPlugin,
   openLink,
   type PluginEvent,
 } from './navigation.ts'

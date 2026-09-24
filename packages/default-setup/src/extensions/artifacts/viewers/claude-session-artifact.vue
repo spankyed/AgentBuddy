@@ -262,7 +262,7 @@ import { computed, ref } from 'vue'
 import { Wrench, Copy, Check, Terminal } from 'lucide-vue-next'
 import type { ArtifactItem } from '@abuddy/sdk/artifacts'
 import { usePluginState } from '@/__generated__/fe'
-import { navigateToPlugin } from '@/__generated__/fe'
+import { openPlugin } from '@/__generated__/fe'
 import { sendToSystem } from '@/__generated__/events'
 
 
@@ -406,7 +406,7 @@ async function copySessionId() {
 
 function openTerminalTab() {
   // The code plugin routes a terminal.* event to its terminals
-  navigateToPlugin('code', {
+  openPlugin('code', {
     type: 'terminal.CREATE',
     target: 'tab',
     command: `claude --resume ${content.value.sessionId}`,

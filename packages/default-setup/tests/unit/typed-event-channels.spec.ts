@@ -1,7 +1,7 @@
 // Compile-time checks, run by `vue-tsc` (npm run typecheck:pack). Exact type equality and expected
 // errors fail if the generated events regress to `any` or accept a wrong event.
 import { resolveName } from '@abuddy/sdk/ids';
-import { openPlugin } from '@abuddy/sdk/fe';
+import { untypedOpenPlugin } from '@abuddy/sdk/fe';
 import { describe, expectTypeOf, it } from 'vitest';
 import type { HostPluginEvents } from '@abuddy/sdk/events';
 import type { ApplicationHotkeys } from '@abuddy/sdk/types';
@@ -9,7 +9,7 @@ import type { EARS } from '@/__generated__/ears';
 import type { Services } from '@/__generated__/services';
 import type { PluginInboxOf } from '@abuddy/sdk/events';
 import { broadcastToPlugin, sendToSystem, type SendablePluginEvents } from '@/__generated__/events';
-import { navigateToPlugin } from '@/__generated__/fe';
+import { openPlugin } from '@/__generated__/fe';
 import type { OutgoingActionEvents } from '@/features/actions/be/types';
 import type { OutgoingFlowsEvents } from '@/features/flows/be/types';
 import type { OutgoingThreadsEvents } from '@/features/threads/be/types';
@@ -123,18 +123,18 @@ describe('services.emitter in actions', () => {
   });
 });
 
-describe('navigateToPlugin', () => {
+describe('openPlugin', () => {
   // Wrapped in functions that never run: only their types are checked
   it("takes this pack's plugins by feature id, and nothing it can't name", () => {
     expectTypeOf(() => {
-      navigateToPlugin('notes');
-      openPlugin(resolveName('settings', 'host'), { type: 'TAB.SELECT', tab: 'plugins' });
+      openPlugin('notes');
+      untypedOpenPlugin(resolveName('settings', 'host'), { type: 'TAB.SELECT', tab: 'plugins' });
       // @ts-expect-error a misspelled ref names no plugin
-      navigateToPlugin('default-setp/notes');
+      openPlugin('default-setp/notes');
       // @ts-expect-error nor does a misspelled feature id
-      navigateToPlugin('noets');
-      // @ts-expect-error a plugin named by data opens through openPlugin, which checks it at run time
-      navigateToPlugin('whatever.anything');
+      openPlugin('noets');
+      // @ts-expect-error a plugin named by data opens through untypedOpenPlugin, which checks it at run time
+      openPlugin('whatever.anything');
     }).toBeFunction();
   });
 });

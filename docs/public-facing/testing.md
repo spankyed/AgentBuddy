@@ -111,13 +111,13 @@ module: the module imports `.vue` components, which a unit test doesn't load.
 
 ```typescript
 import { startApp, startShell } from '@abuddy/testing/harness';
-import { navigateToPlugin } from '#generated/fe';
+import { openPlugin } from '#generated/fe';
 import memosState from '../../src/features/memos/fe/state';
 import notesState from '../../src/features/notes/fe/state';
 
 it('opens memos with an event', async () => {
   const shell = await startShell({ plugins: { notes: { state: notesState }, memos: { state: memosState } } });
-  navigateToPlugin('memos', { type: 'MEMOS_CONNECTED', memos: [] });
+  openPlugin('memos', { type: 'MEMOS_CONNECTED', memos: [] });
   expect(shell.opened()).toBe('my-pack/memos');
 });
 
@@ -133,7 +133,7 @@ it('reaches its system and hears back', async () => {
 
 | Member | What it does |
 |---|---|
-| `startShell({ plugins, defaultPlugin?, designations? })` | Starts the shell with `plugins` (by feature id: each one's `state`, and anything else of its definition the test needs) registered as your pack's, opens `defaultPlugin` (the first listed when unset), and binds the frontend host, so `navigateToPlugin`, `openPlugin` and `useShell()` reach it. Its client is the harness's bus: what plugins send reaches a `startApp` app's systems, and what those systems send plugins reaches your plugins' actors. It resolves once the shell is connected |
+| `startShell({ plugins, defaultPlugin?, designations? })` | Starts the shell with `plugins` (by feature id: each one's `state`, and anything else of its definition the test needs) registered as your pack's, opens `defaultPlugin` (the first listed when unset), and binds the frontend host, so `openPlugin`, `openPlugin` and `useShell()` reach it. Its client is the harness's bus: what plugins send reaches a `startApp` app's systems, and what those systems send plugins reaches your plugins' actors. It resolves once the shell is connected |
 | `opened()` | The ref of the plugin open |
 | `plugin(name)` | A plugin's running actor, named as your pack names it |
 | `notices` | What the shell told the user went wrong (a plugin it couldn't open, say), in order |

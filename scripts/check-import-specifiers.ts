@@ -177,8 +177,15 @@ function findInFiles(files: string[], root: string, rule: Rule): string[] {
   });
 }
 
-/** Ref-taking sends packs get as name-taking ones from #generated/events, whichever SDK module exports them */
-const EVENT_SENDS = ['broadcastToPlugin', 'sendToPlugin', 'sendToSystem'];
+/**
+ * Ref-taking sends packs get as name-taking ones from #generated/events, whichever SDK module exports them. The
+ * `untyped` names are the SDK's own (`untypedQx`'s convention); the bare ones are kept so a pack that reaches for
+ * the name it knows still gets told, rather than failing to resolve with no explanation.
+ */
+const EVENT_SENDS = [
+  'untypedBroadcastToPlugin', 'untypedSendToSystem', '_sendToLocalPlugin',
+  'broadcastToPlugin', 'sendToPlugin', 'sendToSystem',
+];
 
 /** Imports and re-exports of the untyped sends (and the engine's repository registration), or all of @abuddy/sdk/events */
 const rawPackHelper: Rule = (node) => {

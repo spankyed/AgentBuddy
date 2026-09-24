@@ -326,7 +326,7 @@ export type { StartShellOptions, TestShell, TestPlugin } from './shell.ts';
 
 /**
  * Starts the app shell, the host's own, with `options.plugins` registered as this pack's, and binds the frontend host
- * to it: `navigateToPlugin`, `openPlugin` and `useShell()` reach it, and a test app's systems (`startApp`) and the
+ * to it: `openPlugin`, `openPlugin` and `useShell()` reach it, and a test app's systems (`startApp`) and the
  * plugins reach each other over the harness's bus. It stops after the test.
  */
 export async function startShell(options: StartShellOptions): Promise<TestShell> {

@@ -1,6 +1,6 @@
 import { NotebookText, CircleCheck, ListChecks } from 'lucide-vue-next'
 
-import { navigateToPlugin, usePluginState } from '@/__generated__/fe'
+import { openPlugin, usePluginState } from '@/__generated__/fe'
 import { NOTE_TYPE_TO_REFERENCE_TYPE } from '@/extensions/tiptap/reference-config'
 import { id as notes } from './state'
 import type { ReferenceTypeConfig, CategoryConfig, CategoryItemsProvider, ReferenceItem } from '@abuddy/sdk/fe/references'
@@ -23,7 +23,7 @@ export const referenceTypes: Record<string, ReferenceTypeConfig> = {
       ['path', { d: 'M9.5 16H14' }],
     ],
     navigate: (refId: string) => {
-      navigateToPlugin(notes, { type: 'NOTE.OPEN', noteId: refId })
+      openPlugin(notes, { type: 'NOTE.OPEN', noteId: refId })
     },
   },
   task: {
@@ -36,7 +36,7 @@ export const referenceTypes: Record<string, ReferenceTypeConfig> = {
       ['path', { d: 'm9 12 2 2 4-4' }],
     ],
     navigate: (refId: string) => {
-      navigateToPlugin(notes, { type: 'NOTE.OPEN', noteId: refId })
+      openPlugin(notes, { type: 'NOTE.OPEN', noteId: refId })
     },
   },
   tasklist: {
@@ -52,7 +52,7 @@ export const referenceTypes: Record<string, ReferenceTypeConfig> = {
       ['path', { d: 'M13 18h8' }],
     ],
     navigate: (refId: string) => {
-      navigateToPlugin(notes, { type: 'NOTE.OPEN', noteId: refId })
+      openPlugin(notes, { type: 'NOTE.OPEN', noteId: refId })
     },
   },
 }

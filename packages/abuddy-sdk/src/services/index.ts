@@ -1,6 +1,6 @@
 import type { repository } from '@abuddy/ears';
 import { boundHost, type HostRuntimeServices } from '../runtime/host-runtime.ts';
-import { broadcastToPlugin, sendToSystem } from '../events/index.ts';
+import { untypedBroadcastToPlugin, untypedSendToSystem } from '../events/index.ts';
 import { resolveRegistered } from '../ids/refs.ts';
 import { createLogger, type Logger } from '../logger/logger.ts';
 import type { AppDataService } from './app-data.ts';
@@ -32,13 +32,13 @@ export interface HostServices {
   logger: Logger;
   /**
    * Sends to plugins and systems. Actions run outside any pack, so both name a feature `<packId>/<featureId>`, the
-   * host's included (`host/application`); `sendToSystem` also takes a role (`{ role: 'brain' }`), which reaches
+   * host's included (`host/application`); `untypedSendToSystem` also takes a role (`{ role: 'brain' }`), which reaches
    * whichever system plays it — a flow event goes to the brain as `TRIGGER_BRAIN_EVENT`. A pack's `Services`
    * types them with its own and its dependencies' events.
    */
   emitter: {
-    broadcastToPlugin: typeof broadcastToPlugin;
-    sendToSystem: typeof sendToSystem;
+    broadcastToPlugin: typeof untypedBroadcastToPlugin;
+    sendToSystem: typeof untypedSendToSystem;
   };
   repository: typeof repository;
   /** Reset, back up and restore the app's stored data; whether the user finished onboarding */
@@ -60,8 +60,8 @@ const actionRef = (kind: 'system' | 'plugin', name: string, registered: readonly
   resolveRegistered(kind, name, { registered, form: `actions name a ${kind} "<packId>/<featureId>"` });
 
 const emitter: HostServices['emitter'] = {
-  broadcastToPlugin: (name, event) => broadcastToPlugin(actionRef('plugin', name, boundHost().packs.pluginIds()), event),
-  sendToSystem: (to, event) => sendToSystem(typeof to === 'string' ? actionRef('system', to, boundHost().packs.systemIds()) : to, event),
+  broadcastToPlugin: (name, event) => untypedBroadcastToPlugin(actionRef('plugin', name, boundHost().packs.pluginIds()), event),
+  sendToSystem: (to, event) => untypedSendToSystem(typeof to === 'string' ? actionRef('system', to, boundHost().packs.systemIds()) : to, event),
 };
 
 /** The bound app's implementation of a service; each call reads the binding */

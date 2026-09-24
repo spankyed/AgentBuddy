@@ -320,9 +320,6 @@ export function onMenuOpenChange(open: boolean): void;
 export function openLink(url: string): void;
 
 // @public
-export function openPlugin(ref: string, event?: PluginEvent | PluginEvent[]): void;
-
-// @public
 export interface PackFEFeature {
     default?: true;
     designation?: string;
@@ -619,6 +616,9 @@ export type TrailClickEvent<TInfo = unknown> = {
     target: string;
     info?: TInfo;
 };
+
+// @public
+export function untypedOpenPlugin(ref: string, event?: PluginEvent | PluginEvent[]): void;
 
 // @public
 export function updateSettings(target: SettingsTarget, path: readonly string[], value: unknown): void;

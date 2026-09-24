@@ -150,7 +150,7 @@ export type Contract = {
 const STATE = (name: string) => `import { setup, type ActorRefFrom } from 'xstate';
 import type { ${toPascalCase(name)}Context, ${toPascalCase(name)}Inbox } from './contract';
 
-// The feature's name, which this pack's code sends to and opens the plugin by (\`navigateToPlugin\` from #generated/fe)
+// The feature's name, which this pack's code sends to and opens the plugin by (\`openPlugin\` from #generated/fe)
 export const id = '${name}';
 export type ${toPascalCase(name)}State = ActorRefFrom<typeof ${toCamelCase(name)}State>;
 

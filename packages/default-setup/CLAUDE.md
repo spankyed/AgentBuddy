@@ -13,7 +13,7 @@ src/
     pack-entry-fe.ts       # FE entry — the PackFERegistration: plugins, steps, tiptap + app extensions, DSL types
     ears.ts                # EARS entity/relation registry, generated from abuddy.json
     ref.ts                 # ref(name): the ref a name in this pack's code stands for, bound to the pack
-    fe.ts                  # navigateToPlugin(name, event?), PluginName: the plugins this pack's code can name
+    fe.ts                  # openPlugin(name, event?), PluginName: the plugins this pack's code can name
     events.ts              # SendablePluginEvents/PackSystemEvents + typed broadcastToPlugin/sendToPlugin/sendToSystem
     system-specs.ts        # Type-only: the events each system receives and sends, read by events.ts and types.ts
     types.ts               # Type barrel (per-feature types; a plugin imports its system's events from be/contract.ts)

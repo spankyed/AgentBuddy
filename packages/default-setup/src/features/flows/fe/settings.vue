@@ -195,7 +195,7 @@
 
 <script setup lang="ts">
 import { usePlugin } from '@abuddy/sdk/fe'
-import { openPlugin } from '@abuddy/sdk/fe'
+import { untypedOpenPlugin } from '@abuddy/sdk/fe'
 import { resolveName } from '@abuddy/sdk/ids'
 
 const HOST_SETTINGS = resolveName('settings', 'host')
@@ -291,7 +291,7 @@ const handleRootFlowChange = () => {
 
 const goToBrainSettings = () => {
   // Show the brain's settings beside these, in the settings plugin
-  openPlugin(HOST_SETTINGS, { type: 'PLUGIN.SELECT', pluginId: featureRef('brain') })
+  untypedOpenPlugin(HOST_SETTINGS, { type: 'PLUGIN.SELECT', pluginId: featureRef('brain') })
 }
 
 // DSL Import - file picker and emit to state machine

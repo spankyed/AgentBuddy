@@ -93,7 +93,7 @@
 <script setup lang="ts">
 import { computed, ref, onMounted, onUpdated } from 'vue'
 import { useSelector } from '@xstate/vue'
-import { getDesignated, openPlugin, PluginScope, usePlugin, useShell } from '@abuddy/sdk/fe'
+import { getDesignated, untypedOpenPlugin, PluginScope, usePlugin, useShell } from '@abuddy/sdk/fe'
 import { Package, CheckCircle, Eye, EyeOff, ExternalLink } from 'lucide-vue-next'
 import { useSettingsSaveStatus } from '@/views/settings/save'
 import type { SettingsState } from '@abuddy/host/fe'
@@ -138,7 +138,7 @@ const selectPlugin = (pluginId: FeatureRef) => {
 
 // `pluginId` is a registered plugin's id: data, so it opens through the checked door
 const goToPlugin = (pluginId: string) => {
-  openPlugin(pluginId)
+  untypedOpenPlugin(pluginId)
 }
 
 // Whether a plugin's tab shows: the app shell's state

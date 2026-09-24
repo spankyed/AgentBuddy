@@ -165,7 +165,7 @@ function sendIncoming(message: Message): void {
  *
  * Untyped: packs use the `broadcastToPlugin` from their `#generated/events`.
  */
-export function broadcastToPlugin(to: string, event: { type: string; [key: string]: unknown }, from?: string): void {
+export function untypedBroadcastToPlugin(to: string, event: { type: string; [key: string]: unknown }, from?: string): void {
   // The two sends share a signature, so the compiler can't tell a caller it picked the wrong one: say which it is.
   // Reaching for the other from here is the likely mistake, not a missing bindHost.
   if (!_isHostBound() && _isFeHostBound()) {
@@ -202,7 +202,7 @@ export type SystemTarget = string | { role: string };
  * Sends an event to a backend system, by ref or by the role it plays. Untyped: packs use the `sendToSystem` from
  * their `#generated/events`, which takes names and checks the event against what the system declares.
  */
-export function sendToSystem(to: SystemTarget, event: { type: string; [key: string]: unknown }, from?: string): void {
+export function untypedSendToSystem(to: SystemTarget, event: { type: string; [key: string]: unknown }, from?: string): void {
   sendIncoming({ to: typeof to === 'string' ? to : getDesignated(to.role), event, from });
 }
 
@@ -249,8 +249,8 @@ export interface TypedEvents<P extends PluginEvents, S extends SystemEventMap> {
 export function defineEvents<P extends PluginEvents, S extends SystemEventMap>(packId: string): TypedEvents<P, S> {
   const refOf = (name: string): string => resolveName(name, packId);
   return {
-    broadcastToPlugin: (name: string, event: { type: string }) => broadcastToPlugin(refOf(name), event, packId),
+    broadcastToPlugin: (name: string, event: { type: string }) => untypedBroadcastToPlugin(refOf(name), event, packId),
     sendToPlugin: (name: string, event: { type: string }) => _sendToLocalPlugin(refOf(name), event, packId),
-    sendToSystem: (to: SystemTarget, event: { type: string }) => sendToSystem(typeof to === 'string' ? refOf(to) : to, event, packId),
+    sendToSystem: (to: SystemTarget, event: { type: string }) => untypedSendToSystem(typeof to === 'string' ? refOf(to) : to, event, packId),
   } as unknown as TypedEvents<P, S>;
 }

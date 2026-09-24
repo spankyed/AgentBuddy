@@ -3,7 +3,7 @@
 // harness's bus, so this is the whole path the link takes short of drawing the window.
 import { expect, it } from 'vitest';
 import { startApp, startShell } from '@abuddy/testing/harness';
-import { openPlugin } from '@abuddy/sdk/fe';
+import { untypedOpenPlugin } from '@abuddy/sdk/fe';
 import { resolveName } from '@abuddy/sdk/ids';
 import { ref } from '@/__generated__/ref';
 import logsState from '@/features/logs/fe/state';
@@ -16,7 +16,7 @@ it('opens Settings on the Logs plugin from the Logs link', async () => {
   await app.settle();
 
   // What the Logs toolbar's link does (features/logs/fe/canvas.vue, goToExcludedSourcesSettings)
-  openPlugin(resolveName('settings', 'host'), [
+  untypedOpenPlugin(resolveName('settings', 'host'), [
     { type: 'TAB.SELECT', tab: 'plugins' },
     { type: 'PLUGIN.SELECT', pluginId: ref('logs') },
   ]);

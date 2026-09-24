@@ -7,7 +7,7 @@ import { afterEach, describe, expect, it, onTestFinished, vi } from 'vitest';
 import { createEarsEngine, untypedQx, untypedTx } from '@abuddy/ears';
 import { bindHost, unbindHost, type HostRuntime } from '../../src/runtime/host-runtime.ts';
 import { _rootEvents } from '../../src/runtime/root-events.ts';
-import { onConnected, onIncoming, broadcastToPlugin, sendToSystem } from '../../src/events/index.ts';
+import { onConnected, onIncoming, untypedBroadcastToPlugin, untypedSendToSystem } from '../../src/events/index.ts';
 import { createLogger, onLog, reportError } from '../../src/logger/index.ts';
 import { services } from '../../src/services/index.ts';
 import { getAppVersion } from '../../src/env/index.ts';
@@ -78,8 +78,8 @@ afterEach(() => {
 describe('with no app bound', () => {
   it('throws, naming bindHost, for what needs the app', async () => {
     const needsApp: Array<[string, () => unknown]> = [
-      ['broadcastToPlugin', () => broadcastToPlugin('memos', { type: 'MEMO_ADDED' })],
-      ['sendToSystem', () => sendToSystem('memos', { type: 'ADD_MEMO' })],
+      ['untypedBroadcastToPlugin', () => untypedBroadcastToPlugin('memos', { type: 'MEMO_ADDED' })],
+      ['untypedSendToSystem', () => untypedSendToSystem('memos', { type: 'ADD_MEMO' })],
       ['onConnected', () => onConnected(() => {})],
       ['onIncoming', () => onIncoming(() => {})],
       ['onLog', () => onLog(() => {})],
