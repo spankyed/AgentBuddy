@@ -110,9 +110,7 @@ export function onConnected(callback: () => void): () => void;
 export function onIncoming(callback: (message: Message) => void): () => void;
 
 // @public
-export type OutgoingEventsOf<C> = C extends {
-    outgoing: infer Events;
-} ? Events : never;
+export type OutgoingEventsOf<C> = ContractOutgoing<C>;
 
 // @public
 export const PLUGIN_EVENT_TYPES: readonly ["FEATURE_SETTINGS_UPDATED"];

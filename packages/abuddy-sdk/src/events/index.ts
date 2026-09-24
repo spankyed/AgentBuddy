@@ -6,7 +6,7 @@ import { getDesignated } from '../designations/index.ts';
 import { resolveName, splitRef, type FeatureRef } from '../ids/refs.ts';
 import type { ApplicationHotkeys } from '../types/index.ts';
 import { eventTypes } from './event-types.ts';
-import type { ContractIncoming, SystemEvents } from '../framework/define-system.ts';
+import type { ContractIncoming, ContractOutgoing, SystemEvents } from '../framework/define-system.ts';
 
 export { eventTypes, type TypeOfEvent } from './event-types.ts';
 
@@ -95,20 +95,22 @@ type EventsOfType<E, Type> = E extends { type: infer T } ? (Type extends T ? E :
 /** Each member of `E` without `type`, keeping named fields beside an index signature (which `Omit` drops) */
 type WithoutType<E> = E extends unknown ? { [K in keyof E as K extends 'type' ? never : K]: E[K] } : never;
 
+/*
+ * The `*Of` names below, with `PluginStateOf` (`fe/plugin.ts`), are the vocabulary generated code is written in:
+ * `generate-entries` emits them into every pack's `#generated/events`. That is what they are for, and why a system
+ * contract's two published halves get one each even though `ContractIncoming` and `ContractOutgoing` already read
+ * those fields — the layer that packs depend on stays a surface this package can keep still while the readers
+ * under it change. They span both contract kinds, where `Contract*` covers `SystemContract` alone.
+ */
+
 /**
  * The events a system receives, from its feature's `Contract` — what a sender may write. Its `internal` half isn't
  * here: those are what the system's own children send it, and no other feature's to send.
  */
 export type IncomingEventsOf<C> = ContractIncoming<C>;
 
-/**
- * The events a system sends to plugins, from its feature's `Contract`.
- *
- * Written out where `IncomingEventsOf` above aliases `ContractIncoming`: that one is read twice, here and by
- * `MachineEvents` in `define-system.ts`, so it is worth a name of its own. The outgoing half has only this
- * reader, and a name whose whole definition was another name read as one concept too many.
- */
-export type OutgoingEventsOf<C> = C extends { outgoing: infer Events } ? Events : never;
+/** The events a system sends to plugins, from its feature's `Contract` */
+export type OutgoingEventsOf<C> = ContractOutgoing<C>;
 
 /**
  * Every event a plugin's `Contract` says another plugin may send it, across audiences. Generated code builds each

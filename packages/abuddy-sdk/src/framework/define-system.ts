@@ -47,6 +47,11 @@ export interface SystemContract {
   outgoing: { type: string };
 }
 
+// One `Contract*` per field of `SystemContract` above, whether or not the SDK reads it yet: a field and its reader
+// are added together, so neither a count of the readers nor a search decides where the next one goes. The names
+// generated code is written in are a separate layer (`IncomingEventsOf` and its neighbours, `events/index.ts`),
+// built on these.
+//
 // Each reads a field that may be absent, so each is a conditional: an indexed access would answer from
 // `SystemContract`'s own optional members and widen an omitted `internal` to `{ type: string }` rather than
 // narrowing it to nothing.
@@ -55,6 +60,8 @@ export interface SystemContract {
 export type ContractIncoming<C> = C extends { incoming: infer Events } ? Events : never;
 /** The events a contract says the system's own children send it; nobody else's to send */
 export type ContractInternal<C> = C extends { internal: infer Events } ? Events : never;
+/** The events a contract says the system sends to plugins */
+export type ContractOutgoing<C> = C extends { outgoing: infer Events } ? Events : never;
 /** A contract's context, `{}` when it declares none */
 export type ContractContext<C> = C extends { context: infer Context } ? Context : {};
 
