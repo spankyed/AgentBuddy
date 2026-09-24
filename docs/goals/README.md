@@ -57,6 +57,8 @@ Finished when:
   the goal touches>
 - <npm run build, E2E, test:external-pack, test:packaged-authoring, the example pack, as relevant>
 - A final summary: phase → done/deferred, evidence, and the conventional choices made.
+- The doc is in `docs/archive/goals/`, with its status blockquote and an Outcome section, committed
+  (see [Finishing a goal](#finishing-a-goal)).
 
 Commit as you go:
 - Commit each phase when its "Done when" holds and the checks are green — not once at the end. A
@@ -81,7 +83,7 @@ Never:
 ````
 
 Rules for the prompt block:
-- **"Finished when" is the stop condition.** A `/goal` hook checks it, so every item must be checkable from the transcript: a spec passes, a command succeeds, a name no longer exists.
+- **"Finished when" is the stop condition.** A `/goal` hook checks it, so every item must be checkable from the transcript: a spec passes, a command succeeds, a name no longer exists. **Archiving is one of those items**, which is why the template ends with it: without it a goal can meet every check and still sit in `docs/goals/`, and the Outcome — which nobody writes as they go — never gets written. Thirteen of the archive's first thirty-three goals have no Outcome section for that reason.
 - **Keep the "Never" list.** It's the standing list (git, publishing, real data, processes, preload, example pack, release metadata, typed EARS, shims, assertions) plus the goal's own. Don't list an item in "Never" that a phase requires: if the goal needs something the list normally forbids, say so in the phase and leave it out of the list. A goal once required a step its own "Never" forbade, and the run could not finish.
 - **Name the base the survey was made at, not the default branch.** Give the branch *and* the commit from the Background header, and check that the names the plan acts on exist there before writing the line. "A branch cut from master" is the reflex answer and is wrong whenever the survey was made on a feature branch: five of the first seven goal docs said it, and at least two described code that has never existed on master, so an agent starting there would have found no Background and no targets. A branch name alone doesn't pin a tree either — branches move, and the commit is what the survey was true at. The confirm-the-base line above turns a wrong base into an immediate stop instead of a confusing run.
 - **Don't instruct a branch to be created.** Where the work lands is the user's call, and a goal doc is read long after the conversation that could have asked. Name the base; leave the branching out.
