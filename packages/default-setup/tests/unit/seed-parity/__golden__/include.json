@@ -13,8 +13,7 @@
           }
         },
         "label": "Set Instructions",
-        "shortCode": "ACT-1",
-        "hasSourceHash": true
+        "shortCode": "ACT-1"
       },
       "Collection:advanced": {
         "displayOrder": 1000,

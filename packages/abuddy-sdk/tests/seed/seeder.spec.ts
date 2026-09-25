@@ -47,6 +47,28 @@ function compiled(packId: string, records: Array<{ name: string; body: string; v
 const seeder = createSeeder({ key: 'memos', entities: ['Memo', 'Folder'], identity: ['name'] });
 const seed = (dir: string) => seeder.apply({ compiledDir: dir, mode: 'replace-on-collision', log: () => {} });
 
+describe('a row with no stored sourceHash', () => {
+  // The seeder's user-owned rule (`seeder.ts`: "skipped (untracked)"), which every entity type runs through. It is
+  // what makes a row the user's for good, so it is tested here once rather than per entity type: notes have their
+  // own case in default-setup, and actions and prompts had only a boolean in the seed-parity golden.
+  it('is left alone, and stays so however its record changes', () => {
+    seed(compiled('pack-a', [{ name: 'Intro', body: 'Hello' }]));
+    dropAttribute(memo('Intro').id, 'sourceHash');
+
+    expect(seed(compiled('pack-a', [{ name: 'Intro', body: 'Hello again', version: 'v2' }])))
+      .toEqual({ created: 0, updated: 0, skipped: 1 });
+    expect(memo('Intro').body).toBe('Hello');
+  });
+
+  it('is not given one by a later seed, which would take it back from the user', () => {
+    seed(compiled('pack-a', [{ name: 'Intro', body: 'Hello' }]));
+    dropAttribute(memo('Intro').id, 'sourceHash');
+
+    seed(compiled('pack-a', [{ name: 'Intro', body: 'Hello again', version: 'v2' }]));
+    expect(memo('Intro').sourceHash).toBeUndefined();
+  });
+});
+
 describe('a row whose seeded values were not recorded', () => {
   it("is left alone when its record changes: it can't be checked for edits", () => {
     seed(compiled('pack-a', [{ name: 'Intro', body: 'Hello' }]));

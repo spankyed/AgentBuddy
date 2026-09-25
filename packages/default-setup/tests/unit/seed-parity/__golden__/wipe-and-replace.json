@@ -13,8 +13,7 @@
           }
         },
         "label": "Echo",
-        "shortCode": "ACT-1",
-        "hasSourceHash": true
+        "shortCode": "ACT-1"
       },
       "Action:Set Instructions": {
         "category": "commands",
@@ -28,8 +27,7 @@
           }
         },
         "label": "Set Instructions",
-        "shortCode": "ACT-2",
-        "hasSourceHash": true
+        "shortCode": "ACT-2"
       },
       "Collection:advanced": {
         "displayOrder": 1000,
@@ -212,8 +210,7 @@
           }
         },
         "label": "Greeting",
-        "shortCode": "PRO-1",
-        "hasSourceHash": true
+        "shortCode": "PRO-1"
       },
       "Prompt:Summary": {
         "category": "general",
@@ -228,8 +225,7 @@
           }
         },
         "label": "Summary",
-        "shortCode": "PRO-2",
-        "hasSourceHash": true
+        "shortCode": "PRO-2"
       }
     },
     "relations": [
@@ -278,8 +274,7 @@
           }
         },
         "label": "Echo",
-        "shortCode": "ACT-1",
-        "hasSourceHash": true
+        "shortCode": "ACT-1"
       },
       "Action:Set Instructions": {
         "category": "commands",
@@ -293,8 +288,7 @@
           }
         },
         "label": "Set Instructions",
-        "shortCode": "ACT-2",
-        "hasSourceHash": true
+        "shortCode": "ACT-2"
       },
       "Collection:advanced": {
         "displayOrder": 1000,
@@ -477,8 +471,7 @@
           }
         },
         "label": "Greeting",
-        "shortCode": "PRO-1",
-        "hasSourceHash": true
+        "shortCode": "PRO-1"
       },
       "Prompt:Summary": {
         "category": "general",
@@ -493,8 +486,7 @@
           }
         },
         "label": "Summary",
-        "shortCode": "PRO-2",
-        "hasSourceHash": true
+        "shortCode": "PRO-2"
       }
     },
     "relations": [
@@ -544,8 +536,7 @@
           }
         },
         "label": "Echo",
-        "shortCode": "ACT-1",
-        "hasSourceHash": true
+        "shortCode": "ACT-1"
       },
       "Action:Set Instructions": {
         "category": "commands",
@@ -559,8 +550,7 @@
           }
         },
         "label": "Set Instructions",
-        "shortCode": "ACT-2",
-        "hasSourceHash": true
+        "shortCode": "ACT-2"
       },
       "Collection:advanced": {
         "displayOrder": 1000,
@@ -734,8 +724,7 @@
           }
         },
         "label": "Greeting",
-        "shortCode": "PRO-1",
-        "hasSourceHash": true
+        "shortCode": "PRO-1"
       },
       "Prompt:Summary": {
         "category": "general",
@@ -750,8 +739,7 @@
           }
         },
         "label": "Summary",
-        "shortCode": "PRO-2",
-        "hasSourceHash": true
+        "shortCode": "PRO-2"
       }
     },
     "relations": [

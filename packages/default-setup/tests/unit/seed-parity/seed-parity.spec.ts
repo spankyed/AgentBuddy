@@ -60,21 +60,18 @@ function forGolden(step: Step, withNotes: boolean) {
     Object.entries(step.snapshot.rows)
       .filter(([alias]) => withNotes || !alias.startsWith('Note:'))
       .map(([alias, row]) => {
-        // An action's `sourceHash` hashes its compiled bundle, and a digest of the whole row holds that bundle
-        // too, so pinning either makes any edit to the source move the golden — a cosmetic one included, and a
-        // bundler or tsc change with no edit at all. An action also inlines its `_helpers/`, so two helper edits
-        // once moved 75 of these rows at once. What parity means for an action is that seeding produced it, under
-        // its label, with its description, carrying a hash; which hash is the compiler's business, and the rules
-        // the hash drives are covered by edited-rows.spec.ts and notes-change-tracking.spec.ts.
+        // Actions and prompts drop the compiled body and its hash, as notes drop theirs below: both move on any
+        // edit to any source — a cosmetic one included — and on a bundler or tsc change with none, because an
+        // action inlines its `_helpers/`. Two helper edits once moved 75 of these rows. What is left is what a
+        // deliberate change moves: the label, description, category and the input schema.
         //
-        // Whether a hash is there at all does belong here, though, which is what `hasSourceHash` keeps: a row
-        // without one is the user's for good, since the seeder skips an existing row with no `sourceHash` as
-        // user-owned. The `untracked` scenario is the one row recording `false`, and without the field a
-        // regression that stamped hashes onto untracked rows — taking a user's data back — would pass.
+        // What the hash used to cover by accident is covered on purpose now: compiled-bodies.spec.ts asserts every
+        // record has a body that parses and a hash of the compiler's shape, and the user-owned rule a missing hash
+        // triggers is the seeder's, tested once in @abuddy/sdk's seeder.spec.ts.
         if (alias.startsWith('Action:') || alias.startsWith('Prompt:')) {
           const { actionFn, templateFn, sourceHash, ...stable } = row;
-          void actionFn; void templateFn;
-          return [alias, { ...stable, hasSourceHash: typeof sourceHash === 'string' }];
+          void actionFn; void templateFn; void sourceHash;
+          return [alias, stable];
         }
         if (!alias.startsWith('Note:')) return [alias, row];
         const { sourceHash: _omitted, ...rest } = row;

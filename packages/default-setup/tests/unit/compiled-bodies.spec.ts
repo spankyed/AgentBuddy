@@ -33,6 +33,14 @@ describe.each([
     expect(empty.map((r) => r.label)).toEqual([]);
   });
 
+  // The other half of what the seed-parity golden used to cover by digesting the row: that every record carries a
+  // hash for change tracking to run on. notes-change-tracking.spec.ts asserts the same of every seeded note; the
+  // rule a missing hash triggers is the seeder's, covered once in @abuddy/sdk's seeder.spec.ts.
+  it('each carry a sourceHash of the compiler\'s shape', () => {
+    const wrong = all.filter((r) => typeof r.sourceHash !== 'string' || !/^[0-9a-f]{16}$/.test(r.sourceHash as string));
+    expect(wrong.map((r) => `${r.label as string}: ${String(r.sourceHash)}`)).toEqual([]);
+  });
+
   it('each parse', () => {
     const broken = all.flatMap((r) => {
       try {

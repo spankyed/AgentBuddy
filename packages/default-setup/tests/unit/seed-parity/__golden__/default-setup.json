@@ -28,8 +28,7 @@
           }
         },
         "label": "CC: Answer Question",
-        "shortCode": "ACT-1",
-        "hasSourceHash": true
+        "shortCode": "ACT-1"
       },
       "Action:CC: Approve Plan Clear Context": {
         "category": "claude-code",
@@ -48,8 +47,7 @@
           }
         },
         "label": "CC: Approve Plan Clear Context",
-        "shortCode": "ACT-2",
-        "hasSourceHash": true
+        "shortCode": "ACT-2"
       },
       "Action:CC: Approve Tool": {
         "category": "claude-code",
@@ -83,8 +81,7 @@
           }
         },
         "label": "CC: Approve Tool",
-        "shortCode": "ACT-3",
-        "hasSourceHash": true
+        "shortCode": "ACT-3"
       },
       "Action:CC: Commit Message": {
         "category": "claude-code",
@@ -108,8 +105,7 @@
           }
         },
         "label": "CC: Commit Message",
-        "shortCode": "ACT-14",
-        "hasSourceHash": true
+        "shortCode": "ACT-14"
       },
       "Action:CC: Compact": {
         "category": "claude-code",
@@ -134,8 +130,7 @@
           }
         },
         "label": "CC: Compact",
-        "shortCode": "ACT-6",
-        "hasSourceHash": true
+        "shortCode": "ACT-6"
       },
       "Action:CC: Context": {
         "category": "claude-code",
@@ -160,8 +155,7 @@
           }
         },
         "label": "CC: Context",
-        "shortCode": "ACT-7",
-        "hasSourceHash": true
+        "shortCode": "ACT-7"
       },
       "Action:CC: DB Query": {
         "category": "claude-code",
@@ -175,8 +169,7 @@
           }
         },
         "label": "CC: DB Query",
-        "shortCode": "ACT-15",
-        "hasSourceHash": true
+        "shortCode": "ACT-15"
       },
       "Action:CC: DB Transaction": {
         "category": "claude-code",
@@ -190,8 +183,7 @@
           }
         },
         "label": "CC: DB Transaction",
-        "shortCode": "ACT-16",
-        "hasSourceHash": true
+        "shortCode": "ACT-16"
       },
       "Action:CC: Deny Tool": {
         "category": "claude-code",
@@ -205,8 +197,7 @@
           }
         },
         "label": "CC: Deny Tool",
-        "shortCode": "ACT-17",
-        "hasSourceHash": true
+        "shortCode": "ACT-17"
       },
       "Action:CC: Dir Ops": {
         "category": "claude-code",
@@ -231,8 +222,7 @@
           }
         },
         "label": "CC: Dir Ops",
-        "shortCode": "ACT-8",
-        "hasSourceHash": true
+        "shortCode": "ACT-8"
       },
       "Action:CC: Fork": {
         "category": "claude-code",
@@ -257,8 +247,7 @@
           }
         },
         "label": "CC: Fork",
-        "shortCode": "ACT-9",
-        "hasSourceHash": true
+        "shortCode": "ACT-9"
       },
       "Action:CC: Goal": {
         "category": "claude-code",
@@ -283,8 +272,7 @@
           }
         },
         "label": "CC: Goal",
-        "shortCode": "ACT-10",
-        "hasSourceHash": true
+        "shortCode": "ACT-10"
       },
       "Action:CC: Handle Directory Select": {
         "category": "claude-code",
@@ -308,8 +296,7 @@
           }
         },
         "label": "CC: Handle Directory Select",
-        "shortCode": "ACT-18",
-        "hasSourceHash": true
+        "shortCode": "ACT-18"
       },
       "Action:CC: Handle Fork": {
         "category": "claude-code",
@@ -333,8 +320,7 @@
           }
         },
         "label": "CC: Handle Fork",
-        "shortCode": "ACT-19",
-        "hasSourceHash": true
+        "shortCode": "ACT-19"
       },
       "Action:CC: Handle Revert": {
         "category": "claude-code",
@@ -353,8 +339,7 @@
           }
         },
         "label": "CC: Handle Revert",
-        "shortCode": "ACT-20",
-        "hasSourceHash": true
+        "shortCode": "ACT-20"
       },
       "Action:CC: Handle Rewind": {
         "category": "claude-code",
@@ -378,8 +363,7 @@
           }
         },
         "label": "CC: Handle Rewind",
-        "shortCode": "ACT-21",
-        "hasSourceHash": true
+        "shortCode": "ACT-21"
       },
       "Action:CC: Handle Summarize": {
         "category": "claude-code",
@@ -398,8 +382,7 @@
           }
         },
         "label": "CC: Handle Summarize",
-        "shortCode": "ACT-22",
-        "hasSourceHash": true
+        "shortCode": "ACT-22"
       },
       "Action:CC: Pause Turn": {
         "category": "claude-code",
@@ -413,8 +396,7 @@
           }
         },
         "label": "CC: Pause Turn",
-        "shortCode": "ACT-25",
-        "hasSourceHash": true
+        "shortCode": "ACT-25"
       },
       "Action:CC: Recap": {
         "category": "claude-code",
@@ -435,8 +417,7 @@
           }
         },
         "label": "CC: Recap",
-        "shortCode": "ACT-11",
-        "hasSourceHash": true
+        "shortCode": "ACT-11"
       },
       "Action:CC: Reconcile State": {
         "category": "claude-code",
@@ -444,8 +425,7 @@
         "entityType": "Action",
         "input": {},
         "label": "CC: Reconcile State",
-        "shortCode": "ACT-26",
-        "hasSourceHash": true
+        "shortCode": "ACT-26"
       },
       "Action:CC: Route Response": {
         "category": "claude-code",
@@ -469,8 +449,7 @@
           }
         },
         "label": "CC: Route Response",
-        "shortCode": "ACT-28",
-        "hasSourceHash": true
+        "shortCode": "ACT-28"
       },
       "Action:CC: Run Command": {
         "category": "claude-code",
@@ -499,8 +478,7 @@
           }
         },
         "label": "CC: Run Command",
-        "shortCode": "ACT-5",
-        "hasSourceHash": true
+        "shortCode": "ACT-5"
       },
       "Action:CC: Session Ops": {
         "category": "claude-code",
@@ -529,8 +507,7 @@
           }
         },
         "label": "CC: Session Ops",
-        "shortCode": "ACT-12",
-        "hasSourceHash": true
+        "shortCode": "ACT-12"
       },
       "Action:CC: Stream Paused": {
         "category": "claude-code",
@@ -549,8 +526,7 @@
           }
         },
         "label": "CC: Stream Paused",
-        "shortCode": "ACT-29",
-        "hasSourceHash": true
+        "shortCode": "ACT-29"
       },
       "Action:CC: Stream Started": {
         "category": "claude-code",
@@ -579,8 +555,7 @@
           }
         },
         "label": "CC: Stream Started",
-        "shortCode": "ACT-30",
-        "hasSourceHash": true
+        "shortCode": "ACT-30"
       },
       "Action:CC: Turn Completed": {
         "category": "claude-code",
@@ -639,8 +614,7 @@
           }
         },
         "label": "CC: Turn Completed",
-        "shortCode": "ACT-31",
-        "hasSourceHash": true
+        "shortCode": "ACT-31"
       },
       "Action:CC: Unqueue Message": {
         "category": "claude-code",
@@ -659,8 +633,7 @@
           }
         },
         "label": "CC: Unqueue Message",
-        "shortCode": "ACT-32",
-        "hasSourceHash": true
+        "shortCode": "ACT-32"
       },
       "Action:CC: Update Permission Mode": {
         "category": "claude-code",
@@ -679,8 +652,7 @@
           }
         },
         "label": "CC: Update Permission Mode",
-        "shortCode": "ACT-33",
-        "hasSourceHash": true
+        "shortCode": "ACT-33"
       },
       "Action:CC: Update Worktree": {
         "category": "claude-code",
@@ -699,8 +671,7 @@
           }
         },
         "label": "CC: Update Worktree",
-        "shortCode": "ACT-34",
-        "hasSourceHash": true
+        "shortCode": "ACT-34"
       },
       "Action:CDX: Approve Tool": {
         "category": "codex",
@@ -725,8 +696,7 @@
           }
         },
         "label": "CDX: Approve Tool",
-        "shortCode": "ACT-35",
-        "hasSourceHash": true
+        "shortCode": "ACT-35"
       },
       "Action:CDX: Commit Message": {
         "category": "codex",
@@ -750,8 +720,7 @@
           }
         },
         "label": "CDX: Commit Message",
-        "shortCode": "ACT-41",
-        "hasSourceHash": true
+        "shortCode": "ACT-41"
       },
       "Action:CDX: Compact": {
         "category": "codex",
@@ -776,8 +745,7 @@
           }
         },
         "label": "CDX: Compact",
-        "shortCode": "ACT-37",
-        "hasSourceHash": true
+        "shortCode": "ACT-37"
       },
       "Action:CDX: DB Query": {
         "category": "codex",
@@ -791,8 +759,7 @@
           }
         },
         "label": "CDX: DB Query",
-        "shortCode": "ACT-42",
-        "hasSourceHash": true
+        "shortCode": "ACT-42"
       },
       "Action:CDX: DB Transaction": {
         "category": "codex",
@@ -806,8 +773,7 @@
           }
         },
         "label": "CDX: DB Transaction",
-        "shortCode": "ACT-43",
-        "hasSourceHash": true
+        "shortCode": "ACT-43"
       },
       "Action:CDX: Deny Tool": {
         "category": "codex",
@@ -820,8 +786,7 @@
           }
         },
         "label": "CDX: Deny Tool",
-        "shortCode": "ACT-44",
-        "hasSourceHash": true
+        "shortCode": "ACT-44"
       },
       "Action:CDX: Fork": {
         "category": "codex",
@@ -846,8 +811,7 @@
           }
         },
         "label": "CDX: Fork",
-        "shortCode": "ACT-38",
-        "hasSourceHash": true
+        "shortCode": "ACT-38"
       },
       "Action:CDX: Goal Continue": {
         "category": "codex",
@@ -860,8 +824,7 @@
           }
         },
         "label": "CDX: Goal Continue",
-        "shortCode": "ACT-45",
-        "hasSourceHash": true
+        "shortCode": "ACT-45"
       },
       "Action:CDX: Handle Directory Select": {
         "category": "codex",
@@ -882,8 +845,7 @@
           }
         },
         "label": "CDX: Handle Directory Select",
-        "shortCode": "ACT-46",
-        "hasSourceHash": true
+        "shortCode": "ACT-46"
       },
       "Action:CDX: Handle Fork": {
         "category": "codex",
@@ -908,8 +870,7 @@
           }
         },
         "label": "CDX: Handle Fork",
-        "shortCode": "ACT-47",
-        "hasSourceHash": true
+        "shortCode": "ACT-47"
       },
       "Action:CDX: Handle Revert": {
         "category": "codex",
@@ -930,8 +891,7 @@
           }
         },
         "label": "CDX: Handle Revert",
-        "shortCode": "ACT-48",
-        "hasSourceHash": true
+        "shortCode": "ACT-48"
       },
       "Action:CDX: Handle Rewind Unsupported": {
         "category": "codex",
@@ -952,8 +912,7 @@
           }
         },
         "label": "CDX: Handle Rewind Unsupported",
-        "shortCode": "ACT-49",
-        "hasSourceHash": true
+        "shortCode": "ACT-49"
       },
       "Action:CDX: Handle Summarize": {
         "category": "codex",
@@ -974,8 +933,7 @@
           }
         },
         "label": "CDX: Handle Summarize",
-        "shortCode": "ACT-50",
-        "hasSourceHash": true
+        "shortCode": "ACT-50"
       },
       "Action:CDX: Pause Turn": {
         "category": "codex",
@@ -988,8 +946,7 @@
           }
         },
         "label": "CDX: Pause Turn",
-        "shortCode": "ACT-51",
-        "hasSourceHash": true
+        "shortCode": "ACT-51"
       },
       "Action:CDX: Reconcile State": {
         "category": "codex",
@@ -997,8 +954,7 @@
         "entityType": "Action",
         "input": {},
         "label": "CDX: Reconcile State",
-        "shortCode": "ACT-52",
-        "hasSourceHash": true
+        "shortCode": "ACT-52"
       },
       "Action:CDX: Refine Plan": {
         "category": "codex",
@@ -1015,8 +971,7 @@
           }
         },
         "label": "CDX: Refine Plan",
-        "shortCode": "ACT-53",
-        "hasSourceHash": true
+        "shortCode": "ACT-53"
       },
       "Action:CDX: Route Response": {
         "category": "codex",
@@ -1037,8 +992,7 @@
           }
         },
         "label": "CDX: Route Response",
-        "shortCode": "ACT-54",
-        "hasSourceHash": true
+        "shortCode": "ACT-54"
       },
       "Action:CDX: Run Command": {
         "category": "codex",
@@ -1067,8 +1021,7 @@
           }
         },
         "label": "CDX: Run Command",
-        "shortCode": "ACT-36",
-        "hasSourceHash": true
+        "shortCode": "ACT-36"
       },
       "Action:CDX: Session Ops": {
         "category": "codex",
@@ -1102,8 +1055,7 @@
           }
         },
         "label": "CDX: Session Ops",
-        "shortCode": "ACT-39",
-        "hasSourceHash": true
+        "shortCode": "ACT-39"
       },
       "Action:CDX: Start Server": {
         "category": "codex",
@@ -1111,8 +1063,7 @@
         "entityType": "Action",
         "input": {},
         "label": "CDX: Start Server",
-        "shortCode": "ACT-55",
-        "hasSourceHash": true
+        "shortCode": "ACT-55"
       },
       "Action:CDX: Stream Paused": {
         "category": "codex",
@@ -1125,8 +1076,7 @@
           }
         },
         "label": "CDX: Stream Paused",
-        "shortCode": "ACT-56",
-        "hasSourceHash": true
+        "shortCode": "ACT-56"
       },
       "Action:CDX: Turn Completed": {
         "category": "codex",
@@ -1159,8 +1109,7 @@
           }
         },
         "label": "CDX: Turn Completed",
-        "shortCode": "ACT-57",
-        "hasSourceHash": true
+        "shortCode": "ACT-57"
       },
       "Action:CDX: Unqueue Message": {
         "category": "codex",
@@ -1177,8 +1126,7 @@
           }
         },
         "label": "CDX: Unqueue Message",
-        "shortCode": "ACT-58",
-        "hasSourceHash": true
+        "shortCode": "ACT-58"
       },
       "Action:CDX: Update Session Settings": {
         "category": "codex",
@@ -1212,8 +1160,7 @@
           }
         },
         "label": "CDX: Update Session Settings",
-        "shortCode": "ACT-59",
-        "hasSourceHash": true
+        "shortCode": "ACT-59"
       },
       "Action:Claude Code Auth Status": {
         "category": "claude-code",
@@ -1221,8 +1168,7 @@
         "entityType": "Action",
         "input": {},
         "label": "Claude Code Auth Status",
-        "shortCode": "ACT-4",
-        "hasSourceHash": true
+        "shortCode": "ACT-4"
       },
       "Action:Claude Code Chat": {
         "category": "claude-code",
@@ -1276,8 +1222,7 @@
           }
         },
         "label": "Claude Code Chat",
-        "shortCode": "ACT-13",
-        "hasSourceHash": true
+        "shortCode": "ACT-13"
       },
       "Action:Claude Code List Sessions": {
         "category": "claude-code",
@@ -1301,8 +1246,7 @@
           }
         },
         "label": "Claude Code List Sessions",
-        "shortCode": "ACT-23",
-        "hasSourceHash": true
+        "shortCode": "ACT-23"
       },
       "Action:Claude Code One-Shot": {
         "category": "claude-code",
@@ -1341,8 +1285,7 @@
           }
         },
         "label": "Claude Code One-Shot",
-        "shortCode": "ACT-24",
-        "hasSourceHash": true
+        "shortCode": "ACT-24"
       },
       "Action:Claude Code Reset Session": {
         "category": "claude-code",
@@ -1356,8 +1299,7 @@
           }
         },
         "label": "Claude Code Reset Session",
-        "shortCode": "ACT-27",
-        "hasSourceHash": true
+        "shortCode": "ACT-27"
       },
       "Action:Codex Chat": {
         "category": "codex",
@@ -1393,8 +1335,7 @@
           }
         },
         "label": "Codex Chat",
-        "shortCode": "ACT-40",
-        "hasSourceHash": true
+        "shortCode": "ACT-40"
       },
       "Action:Handle Choose Mode Step": {
         "category": "onboarding",
@@ -1411,8 +1352,7 @@
           }
         },
         "label": "Handle Choose Mode Step",
-        "shortCode": "ACT-66",
-        "hasSourceHash": true
+        "shortCode": "ACT-66"
       },
       "Action:Handle Import Threads Step": {
         "category": "onboarding",
@@ -1429,8 +1369,7 @@
           }
         },
         "label": "Handle Import Threads Step",
-        "shortCode": "ACT-65",
-        "hasSourceHash": true
+        "shortCode": "ACT-65"
       },
       "Action:Handle Onboarding Response": {
         "category": "onboarding",
@@ -1454,8 +1393,7 @@
           }
         },
         "label": "Handle Onboarding Response",
-        "shortCode": "ACT-62",
-        "hasSourceHash": true
+        "shortCode": "ACT-62"
       },
       "Action:Handle Pick Thread Step": {
         "category": "onboarding",
@@ -1472,8 +1410,7 @@
           }
         },
         "label": "Handle Pick Thread Step",
-        "shortCode": "ACT-67",
-        "hasSourceHash": true
+        "shortCode": "ACT-67"
       },
       "Action:Handle Projects Step": {
         "category": "onboarding",
@@ -1490,8 +1427,7 @@
           }
         },
         "label": "Handle Projects Step",
-        "shortCode": "ACT-68",
-        "hasSourceHash": true
+        "shortCode": "ACT-68"
       },
       "Action:Handle Welcome Step": {
         "category": "onboarding",
@@ -1508,8 +1444,7 @@
           }
         },
         "label": "Handle Welcome Step",
-        "shortCode": "ACT-69",
-        "hasSourceHash": true
+        "shortCode": "ACT-69"
       },
       "Action:Ignore Onboarding Message": {
         "category": "onboarding",
@@ -1528,8 +1463,7 @@
           }
         },
         "label": "Ignore Onboarding Message",
-        "shortCode": "ACT-63",
-        "hasSourceHash": true
+        "shortCode": "ACT-63"
       },
       "Action:Init Onboarding": {
         "category": "onboarding",
@@ -1537,8 +1471,7 @@
         "entityType": "Action",
         "input": {},
         "label": "Init Onboarding",
-        "shortCode": "ACT-64",
-        "hasSourceHash": true
+        "shortCode": "ACT-64"
       },
       "Action:PR to Markdown": {
         "category": "commands",
@@ -1562,8 +1495,7 @@
           }
         },
         "label": "PR to Markdown",
-        "shortCode": "ACT-61",
-        "hasSourceHash": true
+        "shortCode": "ACT-61"
       },
       "Action:Set Instructions": {
         "category": "commands",
@@ -1582,8 +1514,7 @@
           }
         },
         "label": "Set Instructions",
-        "shortCode": "ACT-60",
-        "hasSourceHash": true
+        "shortCode": "ACT-60"
       },
       "Collection:commands": {
         "displayOrder": 1000,
@@ -1804,8 +1735,7 @@
           }
         },
         "label": "Commit Message",
-        "shortCode": "PRO-1",
-        "hasSourceHash": true
+        "shortCode": "PRO-1"
       },
       "Prompt:DB Query System": {
         "category": "database",
@@ -1826,8 +1756,7 @@
           }
         },
         "label": "DB Query System",
-        "shortCode": "PRO-2",
-        "hasSourceHash": true
+        "shortCode": "PRO-2"
       },
       "Prompt:DB Transaction System": {
         "category": "database",
@@ -1848,8 +1777,7 @@
           }
         },
         "label": "DB Transaction System",
-        "shortCode": "PRO-3",
-        "hasSourceHash": true
+        "shortCode": "PRO-3"
       },
       "Prompt:Edit Phase Tips System": {
         "category": "claude-code",
@@ -1857,8 +1785,7 @@
         "entityType": "Prompt",
         "inputs": {},
         "label": "Edit Phase Tips System",
-        "shortCode": "PRO-4",
-        "hasSourceHash": true
+        "shortCode": "PRO-4"
       },
       "Prompt:Plan Phase Tips System": {
         "category": "claude-code",
@@ -1866,8 +1793,7 @@
         "entityType": "Prompt",
         "inputs": {},
         "label": "Plan Phase Tips System",
-        "shortCode": "PRO-5",
-        "hasSourceHash": true
+        "shortCode": "PRO-5"
       },
       "Prompt:Recap System": {
         "category": "claude-code",
@@ -1875,8 +1801,7 @@
         "entityType": "Prompt",
         "inputs": {},
         "label": "Recap System",
-        "shortCode": "PRO-6",
-        "hasSourceHash": true
+        "shortCode": "PRO-6"
       }
     },
     "relations": [
