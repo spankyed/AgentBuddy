@@ -433,8 +433,8 @@ hang fails at its tier budget rather than at two minutes.
   both levers — the TypeScript API in-process, and one shared fixture per `beforeAll` — already exist in that
   suite and are applied unevenly. Its 249s figure here was measured under contention; idle it is 182.6s. **It
   can run in a worktree alongside this goal** — the two share only `abuddy-cli/tests/build/`, and different
-  files there — provided the worktree gets its own `node_modules` rather than a symlink, since the build stamps
-  and lock live under it. That goal's "Doing this in a worktree" has the reasoning.
+  files there. A symlinked `node_modules` is fine while neither checkout changes a build input, which
+  `packages/*/tests` is not; that goal's "Doing this in a worktree" says when it stops being fine.
 - **`test:packaged-authoring` at 65s**, mostly npm installs from packed tarballs. A warm `node_modules` cache
   is the lever, and the non-hermetic npm cache it already relies on is the precedent to be careful about.
 - **Turning CI on.** Off deliberately for one contributor; the workflow header says when it returns. A cached

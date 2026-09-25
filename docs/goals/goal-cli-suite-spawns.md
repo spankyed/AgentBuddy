@@ -11,9 +11,9 @@ tests/helpers/pack-builds.ts exports `run` over execFileSync, and `npm test -w @
 where the time goes, and a stale count invalidates it.
 Read Background, Decisions, Phases and Constraints first. Decisions are final: implement them, don't reopen
 them or stop to ask.
-This can run in a worktree beside goal-test-tiers.md — see "Doing this in a worktree". If you do, `npm install`
-inside it rather than symlinking node_modules, or its build stamps and lock are the other checkout's, and take
-every measurement with nothing else running.
+This can run in a worktree beside goal-test-tiers.md — see "Doing this in a worktree". A symlinked node_modules
+is fine until Phase 2 touches abuddy-cli/src, which is a build input; give the worktree its own before that.
+Take every measurement with nothing else running.
 Where a detail isn't specified, pick the conventional option, note it in the final summary, and keep going.
 No backward compatibility in code: change signatures, move modules, migrate every in-repo caller, test,
 fixture, template and doc in the same change, and fix forward.
@@ -154,14 +154,25 @@ This goal is a good candidate to run in parallel with that one, and the two bare
 `abuddy-cli/tests/build/`, where the tiers goal adds specs and this one edits others — different files, which
 merge.
 
-**Give the worktree its own `node_modules`.** This is the part that will bite otherwise. The build stamps and
-the build lock live under it — `STAMP_DIR = repoFile('node_modules', '.cache', 'abuddy-packages-build')`
-(`packages-built.ts:107-108`) — while `packages/*/dist` is per-checkout. A worktree created with a symlinked
-`node_modules`, which is how `.claude/worktrees/` has done it, therefore shares a stamp that describes the
-*other* checkout's sources: the worktree builds and stamps its own fingerprint, the main checkout reads that
-stamp, finds it does not match its sources, rebuilds and overwrites, and both race the one lock. That is
-mutual invalidation, not a slowdown. `npm install` inside the worktree gives it its own stamps and lock, and
-`findCheckoutRoot()` already resolves to the worktree's root (`:40-45`), so nothing else needs configuring.
+**The symlinked `node_modules` is fine for most of this, and not for one part.** `.claude/worktrees/` creates
+`node_modules` as a symlink to the main checkout, which puts the build stamps and the lock there too
+(`STAMP_DIR = repoFile('node_modules', '.cache', 'abuddy-packages-build')`, `packages-built.ts:107-108`) while
+`packages/*/dist` stays per-checkout. That only matters when the two checkouts disagree about a *build input*,
+because `unitStaleReason` (`:190-205`) compares a stamp against the inputs, and
+`packages/abuddy-cli/tests` is not one — the `@abuddy/cli` unit's inputs are the root manifests,
+`scripts/bundle-package.ts`, `abuddy-cli/{bin,src,package.json,tsconfig.json}` and `abuddy-host/{src,package.json}`.
+
+So Phase 1, and every edit confined to `tests/`, leave the fingerprint identical to master's and the shared
+stamp stays valid for both checkouts. Two things do need care:
+
+- **Phase 2 touches `abuddy-cli/src`** if calling a command in-process means exporting one, and `src` *is* an
+  input. From that commit on the two checkouts' fingerprints differ, they invalidate each other's shared stamp,
+  and each `packages:ensure` rebuilds what the other just built. Give the worktree its own `node_modules`
+  (`npm install` inside it) before that phase, not before Phase 1. `findCheckoutRoot()` already resolves to the
+  worktree's root (`:40-45`), so nothing else needs configuring.
+- **A fresh worktree has no `packages/*/dist`**, so its first `packages:ensure` finds the outputs missing and
+  builds — taking the lock that, under a symlink, is the main checkout's. Do that build once, alone, before
+  starting parallel work rather than discovering it as a race.
 
 **Edit in parallel, measure alone.** Every suite here uses all the cores. Two measured runs at once are not
 two measurements: total work went from 348s to 567s when the chain's steps were run in lanes, and a CLI-suite
