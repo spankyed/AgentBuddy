@@ -41,10 +41,16 @@ export interface ChainStep {
   /** A step whose pass is not reproducible, so it always runs. Only the E2E suite, with its reason. */
   readonly cache?: false;
   /**
-   * What this step costs when it is healthy, in seconds, measured on this machine. `chain.ts` turns it into
-   * a wall-clock budget and kills the step's process group if it overruns — a run that can hang cannot fail.
-   * It is a measurement, so re-measure it rather than raising it when a step legitimately grows. A step
-   * without one still gets a bound, just a loose one.
+   * What this step costs **when it does its work**, in seconds, measured on this machine under the chain's
+   * default two lanes. Not what it costs when it is cached: `packages:ensure` returns in 0.3s with nothing
+   * stale and takes 14s when it builds, and recording the 0.3 gave a step that builds a budget sized for a
+   * step that does not, and a timeout message claiming it "costs 1s healthy".
+   *
+   * It feeds two things — `budgetFor` turns it into a kill deadline at four times, and it is the weight on
+   * the critical path — so a stale value both mis-sizes the bound and misreports the floor. It is a
+   * measurement, so re-measure rather than raise it when a step legitimately grows; the chain compares
+   * every run against it and prints the value to record when one has drifted past half or double
+   * (`driftedSteps`), which is what keeps this table honest without anyone remembering to check.
    */
   readonly seconds?: number;
 }
@@ -158,8 +164,21 @@ const APP_OUTPUTS = ['packages/renderer/dist', 'packages/api/dist', 'packages/ma
 const APP_ENTRY = ['packages/entry-point.mjs', 'packages/dev-mode.js'];
 /** The wrapper a shell-script step runs through, and the module that bounds it */
 const BOUNDED_RUNNER = ['scripts/bounded.ts', 'scripts/lib/bounded-spawn.ts'];
-/** What `compile` writes: the built-in pack every later step reads */
-const PACK_OUTPUTS = ['packages/default-setup/dist'];
+/**
+ * What `compile` writes. `src/__generated__` is under the `src` it also reads, so it has to be declared:
+ * `fingerprintUnit` excludes a unit's own output from its own fingerprint, and that is what stops the step
+ * invalidating itself the first time codegen stops being byte-identical.
+ */
+const PACK_OUTPUTS = ['packages/default-setup/dist', 'packages/default-setup/src/__generated__'];
+
+/**
+ * What building the fixture packs writes, derived from the fixtures themselves. These sit *inside*
+ * `tests/fixtures`, which the same step declares as an input, for the same reason as above.
+ */
+const FIXTURE_OUTPUTS = fs.readdirSync(path.join(REPO_ROOT, 'tests', 'fixtures'), { withFileTypes: true })
+  .filter((entry) => entry.isDirectory() && fs.existsSync(path.join(REPO_ROOT, 'tests', 'fixtures', entry.name, 'abuddy.json')))
+  .flatMap((entry) => [`tests/fixtures/${entry.name}/dist`, `tests/fixtures/${entry.name}/src/__generated__`])
+  .sort();
 
 /** Every workspace package's npm name and where it lives, so a declared dependency can become an input path */
 const DIR_BY_PACKAGE = new Map<string, string>(PACKAGES.map((dir) => [
@@ -232,8 +251,8 @@ export const SUITE_READS: Record<string, { packages?: true; pack?: true }> = {
  * two-lane runner (`scripts/test-unit.ts`), which is what the chain will run them under.
  */
 const UNIT_SECONDS: Record<string, number> = {
-  'abuddy-sdk': 25, 'default-setup': 20, 'abuddy-cli': 15, 'abuddy-host': 12,
-  api: 6, 'abuddy-ears': 5, renderer: 3, main: 2,
+  'abuddy-sdk': 14, 'default-setup': 17, 'abuddy-cli': 10, 'abuddy-host': 11,
+  api: 7, 'abuddy-ears': 4, renderer: 3, main: 1,
 };
 
 const UNIT_STEPS: readonly ChainStep[] = UNIT_SUITES.map((suite) => {
@@ -255,22 +274,22 @@ const UNIT_STEPS: readonly ChainStep[] = UNIT_SUITES.map((suite) => {
 
 export const CHAIN_STEPS: readonly ChainStep[] = [
   // Takes the package build lock, so it cannot share a lane with anything else that builds
-  { name: 'packages:ensure', tier: 2, needs: [], seconds: 1, exclusive: true,
+  { name: 'packages:ensure', tier: 2, needs: [], seconds: 14, exclusive: true,
     inputs: [...PACKAGE_BUILD_INPUTS, 'scripts/ensure-packages-built.ts'], outputs: PACKAGE_BUILD_OUTPUTS },
   // Ahead of build and not redundant with it: build -ws gives no ordering guarantee, since no workspace
   // declares a dependency on @app/default-setup, and the renderer's build reads the pack entry this writes
-  { name: 'compile', tier: 2, needs: ['packages:ensure'], seconds: 11, outputs: PACK_OUTPUTS,
+  { name: 'compile', tier: 2, needs: ['packages:ensure'], seconds: 13, outputs: PACK_OUTPUTS,
     // Its sources and its manifest, not its tests: `abuddy build` never reads those
     inputs: [...ROOT, 'packages/default-setup/src', 'packages/default-setup/abuddy.json',
       'packages/default-setup/package.json', 'packages/default-setup/tsconfig.json',
       'packages/default-setup/dev-build.mjs', ...PACKAGE_BUILD_OUTPUTS] },
   // The fixture packs depend on default-setup, so they need its snapshot from compile
-  { name: 'test:external-pack:contract', tier: 2, needs: ['compile'], seconds: 17,
+  { name: 'test:external-pack:contract', tier: 2, needs: ['compile'], seconds: 20, outputs: FIXTURE_OUTPUTS,
     inputs: [...ROOT, ...BOUNDED_RUNNER, 'tests/fixtures', 'tests/scripts/test-external-pack-contract.sh',
       'tests/scripts/lib', ...PACKAGE_BUILD_OUTPUTS, ...PACK_OUTPUTS] },
   // The widest inputs in the table, and honestly so: it compiles every workspace, the scripts and the
   // tests, and lints them. A change anywhere in the repo's TypeScript is a change to what it checks.
-  { name: 'typecheck', tier: 1, needs: ['compile'], seconds: 30,
+  { name: 'typecheck', tier: 1, needs: ['compile'], seconds: 45,
     inputs: [...ROOT, ...EVERY_WORKSPACE, 'scripts', 'tests', 'types', ...PACKAGE_BUILD_OUTPUTS, ...PACK_OUTPUTS] },
   ...UNIT_STEPS,
   // The CLI specs that run a real build, install or child process. Tier 2: they need the built packages,
@@ -278,25 +297,25 @@ export const CHAIN_STEPS: readonly ChainStep[] = [
   // Needs `compile` and not just `packages:ensure`, because `dependency-runtime` builds a pack that depends
   // on default-setup and so reads its `dist`. It used to run after `compile` only because of where it sat
   // in this table, which `orderedSteps` never promised.
-  { name: 'test:integration', tier: 2, needs: ['compile'], seconds: 43,
+  { name: 'test:integration', tier: 2, needs: ['compile'], seconds: 52,
     inputs: [...ROOT, ...workspace('abuddy-cli'), ...PACKAGE_BUILD_OUTPUTS, ...PACK_OUTPUTS] },
   // `build:app`, not `build`. Root `build` is `-ws`, which includes `@app/default-setup`, whose own build is
   // the very command `compile` runs — so a `build` step rebuilt the pack every run, rewriting the `dist`
   // it declares as an input. It invalidated itself, and the five steps that read that tree, on every run:
   // measured, a warm chain cached 7 of 17 steps instead of 16. `npm run build` still builds everything, for
   // CI and `build/build.sh`; the chain does not need it to, because `compile` is a declared `need`.
-  { name: 'build:app', tier: 3, needs: ['compile'], seconds: 37, outputs: APP_OUTPUTS,
+  { name: 'build:app', tier: 3, needs: ['compile'], seconds: 39, outputs: APP_OUTPUTS,
     inputs: [...ROOT, ...['renderer', 'api', 'main', 'preload'].flatMap(workspace),
       'packages/api/tsup.config.ts', ...APP_ENTRY,
       ...PACKAGE_BUILD_OUTPUTS, ...PACK_OUTPUTS] },
-  { name: 'test:external-pack:app', tier: 3, needs: ['build:app', 'test:external-pack:contract'], seconds: 20,
+  { name: 'test:external-pack:app', tier: 3, needs: ['build:app', 'test:external-pack:contract'], seconds: 24,
     inputs: [...ROOT, ...BOUNDED_RUNNER, 'tests/fixtures', 'tests/scripts/test-external-pack-app.sh',
       'tests/scripts/lib', 'playwright.config.ts', ...APP_OUTPUTS] },
   // Never cached: it drives real Electron with real timing and is the likeliest step to be flaky, and a
   // flaky pass cached green hides an intermittent failure indefinitely. 28s is cheap enough to always pay.
   { name: 'test', tier: 3, needs: ['build:app'], cache: false, seconds: 26, // the E2E suite
     inputs: [...ROOT, 'tests/e2e', 'playwright.config.ts', 'scripts/with-source.mjs', ...APP_ENTRY, ...APP_OUTPUTS] },
-  { name: 'test:packaged-authoring', tier: 3, needs: ['build:app'], seconds: 60,
+  { name: 'test:packaged-authoring', tier: 3, needs: ['build:app'], seconds: 59,
     inputs: [...ROOT, ...BOUNDED_RUNNER, 'tests/scripts/test-packaged-authoring.sh', 'tests/scripts/lib',
       ...PACKAGE_BUILD_OUTPUTS, ...APP_OUTPUTS] },
 ];

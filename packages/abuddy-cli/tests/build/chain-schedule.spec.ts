@@ -2,7 +2,7 @@
 // it can leak a lane, keep dispatching after a failure, run an exclusive step beside another, or simply
 // never return. Each of those is a case here, and none of them is visible from a green `npm run chain`.
 import { describe, expect, it } from 'vitest';
-import { criticalPath, schedule, type SchedulableStep } from '../../../../scripts/lib/chain-schedule.ts';
+import { schedule, type SchedulableStep } from '../../../../scripts/lib/chain-schedule.ts';
 
 const step = (name: string, needs: string[] = [], extra: Partial<SchedulableStep> = {}): SchedulableStep =>
   ({ name, needs, ...extra });
@@ -113,6 +113,39 @@ describe('schedule', () => {
     await expect(done).resolves.toMatchObject({ failed: 'a' });
   });
 
+  // A rejected `run` used to escape the loop at once: the sibling lane was abandoned, its step finished
+  // unobserved, and the caller died on an unhandled rejection with child processes still alive.
+  it('treats a thrown step as a failed one, and still drains the other lane', async () => {
+    const order: string[] = [];
+    let siblingFinished = false;
+    const done = schedule({
+      steps: [step('boom'), step('sibling')],
+      lanes: 2,
+      skip: never,
+      run: async (s) => {
+        order.push(s.name);
+        if (s.name === 'boom') throw new Error('the runner threw');
+        await new Promise((r) => setTimeout(r, 5));
+        siblingFinished = true;
+        return true;
+      },
+    });
+    const outcome = await done;
+    expect(outcome.failed).toBe('boom');
+    expect(outcome.threw).toHaveLength(1);
+    expect((outcome.threw[0].error as Error).message).toBe('the runner threw');
+    expect(outcome.threw[0].step).toBe('boom');
+    expect(siblingFinished, 'the other lane was awaited, not abandoned').toBe(true);
+    expect(order).toEqual(['boom', 'sibling']);
+  });
+
+  it('reports no throws when every step merely passes or fails', async () => {
+    const r = runner(['a']);
+    const done = schedule({ steps: [step('a')], lanes: 1, skip: never, run: r.run });
+    await r.drain();
+    expect((await done).threw).toEqual([]);
+  });
+
   it('costs a skipped step no lane, and unblocks what needed it', async () => {
     const r = runner();
     const steps = [step('a'), step('b', ['a']), step('c', ['b'])];
@@ -121,27 +154,5 @@ describe('schedule', () => {
     const outcome = await done;
     expect(outcome.skipped).toEqual(['a', 'b']);
     expect(r.order).toEqual(['c']);
-  });
-});
-
-describe('criticalPath', () => {
-  it('is the longest path by seconds, not the longest by step count', () => {
-    const steps = [
-      step('a', [], { seconds: 1 }),
-      step('short', ['a'], { seconds: 50 }),
-      step('one', ['a'], { seconds: 2 }),
-      step('two', ['one'], { seconds: 2 }),
-      step('three', ['two'], { seconds: 2 }),
-    ];
-    expect(criticalPath(steps)).toEqual({ names: ['a', 'short'], seconds: 51 });
-  });
-
-  it('ignores a need that is not in the set, so a cached step costs nothing', () => {
-    // `b` needs `a`, but only `b` ran — the answer is b alone, not a crash
-    expect(criticalPath([step('b', ['a'], { seconds: 4 })])).toEqual({ names: ['b'], seconds: 4 });
-  });
-
-  it('counts a step with no measurement as free rather than dropping the path', () => {
-    expect(criticalPath([step('a', [], {}), step('b', ['a'], { seconds: 3 })])).toEqual({ names: ['a', 'b'], seconds: 3 });
   });
 });

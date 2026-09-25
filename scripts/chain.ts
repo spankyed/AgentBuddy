@@ -33,8 +33,13 @@
 import * as path from 'node:path';
 import { REPO_ROOT, stampedRun, unitStaleReason, type BuildUnit } from '@abuddy/host/build/packages-built';
 import { CHAIN_STEPS, orderedSteps, type ChainStep, type Tier } from './lib/chain-steps.ts';
-import { criticalPath, schedule } from './lib/chain-schedule.ts';
+import { schedule } from './lib/chain-schedule.ts';
+import { criticalPath, driftedSteps } from './lib/step-timing.ts';
 import { slowestTests } from './lib/slow-tests.ts';
+import { exitOnEpipe } from './lib/exit-on-epipe.ts';
+
+exitOnEpipe();
+
 import { boundedSpawn, budgetFor } from './lib/bounded-spawn.ts';
 
 /**
@@ -151,8 +156,11 @@ async function main(): Promise<void> {
 
   if (dry) {
     for (const step of steps) {
+      // `--all` runs everything, so a dry run given `--all` must say so rather than reporting the cache it
+      // would ignore. A plan that does not answer for the flags it was given is worse than no plan.
       const why = staleReason(step);
-      console.log(`${(why === null ? 'cached' : 'run').padStart(7)} t${step.tier} ${step.name.padEnd(26)} ${why ?? ''}`);
+      const willRun = all || why !== null;
+      console.log(`${(willRun ? 'run' : 'cached').padStart(7)} t${step.tier} ${step.name.padEnd(26)} ${all ? '--all' : (why ?? '')}`);
     }
     return;
   }
@@ -185,6 +193,12 @@ async function main(): Promise<void> {
     },
   });
 
+  // A step whose runner threw never produced a Result, so it is reported from the throw itself
+  for (const { step, error } of outcome.threw) {
+    console.log(`${'ERROR'.padStart(7)} t${steps.find((s) => s.name === step)?.tier ?? '?'} ${step.padEnd(26)}         the chain could not run it`);
+    console.log(`\n${'='.repeat(72)}\n${step}: the runner threw, which is a bug in the chain rather than a failing check\n${'='.repeat(72)}\n${error instanceof Error ? (error.stack ?? error.message) : String(error)}`);
+  }
+
   const failed = outcome.failed === undefined ? undefined : results.find((r) => r.step === outcome.failed);
   if (failed) {
     const step = steps.find((s) => s.name === failed.step)!;
@@ -202,11 +216,33 @@ async function main(): Promise<void> {
   }).join('  ');
 
   const skipped = cached ? `, ${cached} of ${steps.length} cached` : '';
-  const ran = steps.filter((step) => results.some((r) => r.step === step.name));
+  // Measured, not declared. Reporting the floor from `seconds` made it wrong by the amount the table had
+  // drifted — 109s against the 125.8s those same four steps actually took in that run.
+  const measuredMs = new Map(results.map((r) => [r.step, r.ms]));
+  const ran = steps.filter((step) => measuredMs.has(step.name))
+    .map((step) => ({ ...step, seconds: Math.round((measuredMs.get(step.name) ?? 0) / 1000) }));
   const path = criticalPath(ran);
   const floor = lanes > 1 && path.names.length > 1 ? `, critical path ${path.seconds}s (${path.names.join(' -> ')})` : '';
-  console.log(`\n${failed ? `chain FAILED at ${failed.step}` : 'chain passed'} — ${secs(Date.now() - started)}  (${byTier})${skipped}${lanes > 1 ? `, ${lanes} lanes` : ''}${floor}`);
-  process.exit(failed ? 1 : 0);
+  const verdict = failed ? `chain FAILED at ${failed.step}` : outcome.failed ? `chain FAILED at ${outcome.failed}` : 'chain passed';
+  // The table feeds the kill budget and the floor above, so a number a run has contradicted is worth more
+  // than a note in a doc nobody re-reads
+  const drifted = driftedSteps(steps, measuredMs);
+  if (drifted.length > 0) {
+    console.log(`\n${drifted.length} step${drifted.length === 1 ? '' : 's'} cost something other than chain-steps.ts says — re-measure, or record:`);
+    for (const { name, declared, measured } of drifted) console.log(`  ${name.padEnd(26)} seconds: ${declared} -> ${measured}`);
+  }
+
+  console.log(`\n${verdict} — ${secs(Date.now() - started)}  (${byTier})${skipped}${lanes > 1 ? `, ${lanes} lanes` : ''}${floor}`);
+  // Not process.exit(): it drops whatever stdout has still to flush, and the failing step's captured output
+  // printed just above is the one thing here worth reading. Measured: piped, process.exit() delivers 64KB
+  // of a 500KB write, and @app/default-setup's suite output alone is 654KB.
+  process.exitCode = outcome.failed ? 1 : 0;
 }
 
-await main();
+// A throw here is a bug in the chain, not a failing check, and the two must not look alike
+try {
+  await main();
+} catch (err) {
+  console.error(`\nthe chain itself failed: ${err instanceof Error ? (err.stack ?? err.message) : String(err)}`);
+  process.exitCode = 1;
+}

@@ -1,5 +1,5 @@
 /**
- * Running a step graph with a lane limit, and the longest path through it.
+ * Running a step graph with a lane limit.
  *
  * Separate from `scripts/chain.ts` for the same reason `chain-steps.ts` is: that module runs the chain when
  * imported, so nothing there can be tested. This is the riskiest logic the chain has — a scheduler can
@@ -34,8 +34,13 @@ export interface ScheduleResult {
   readonly started: readonly string[];
   /** The steps `skip` answered true for */
   readonly skipped: readonly string[];
-  /** The first step to fail, if one did */
+  /** The first step to fail, if one did — whether it returned false or threw */
   readonly failed?: string;
+  /**
+   * What `run` threw, per step. A throw is a bug in the runner rather than a failing check, so it is
+   * reported separately instead of being folded into `failed` alone.
+   */
+  readonly threw: ReadonlyArray<{ readonly step: string; readonly error: unknown }>;
 }
 
 /**
@@ -43,6 +48,11 @@ export interface ScheduleResult {
  * is running. After a failure nothing new is dispatched and whatever is running is awaited, so the run ends
  * with no orphaned work — and steps that needed the failed one never run, which is why this returns rather
  * than throwing: the caller reports, and the caller decides.
+ *
+ * **This never throws, including when `run` does.** A rejected `run` used to escape the loop immediately,
+ * which abandoned every other lane: its step kept running, finished unobserved, and the caller died on an
+ * unhandled rejection with child processes still alive. A throw is now that step failing, so the same
+ * draining path applies to it as to a step that returned false.
  */
 export async function schedule<S extends SchedulableStep>({ steps, lanes, skip, run }: ScheduleOptions<S>): Promise<ScheduleResult> {
   const waiting = new Set(steps.map((step) => step.name));
@@ -52,6 +62,7 @@ export async function schedule<S extends SchedulableStep>({ steps, lanes, skip, 
   const skipped: string[] = [];
   let exclusiveRunning = false;
   let failed: string | undefined;
+  const threw: { step: string; error: unknown }[] = [];
 
   while (waiting.size > 0 || running.size > 0) {
     if (failed === undefined) {
@@ -69,11 +80,24 @@ export async function schedule<S extends SchedulableStep>({ steps, lanes, skip, 
         }
         started.push(step.name);
         if (step.exclusive) exclusiveRunning = true;
-        running.set(step.name, run(step).then((passed) => {
-          if (passed) done.add(step.name);
-          else failed ??= step.name;
+        running.set(step.name, run(step).then(
+          (passed) => {
+            if (passed) done.add(step.name);
+            else failed ??= step.name;
+            return step.name;
+          },
+          (error: unknown) => {
+            threw.push({ step: step.name, error });
+            failed ??= step.name;
+            return step.name;
+          },
+        ).finally(() => {
+          // In `finally` rather than on the success path, so the lane is released however the step ended.
+          // Not observable today — a throw sets `failed`, and nothing is dispatched after that, so no step
+          // ever waits on this flag again — and deliberately not covered by a test for that reason. It
+          // becomes load-bearing the moment the chain gains a keep-going mode that dispatches past a
+          // failure, which is exactly when a leaked exclusive flag would deadlock the rest.
           if (step.exclusive) exclusiveRunning = false;
-          return step.name;
         }));
       }
     }
@@ -83,35 +107,5 @@ export async function schedule<S extends SchedulableStep>({ steps, lanes, skip, 
     running.delete(await Promise.race(running.values()));
   }
 
-  return { started, skipped, ...(failed === undefined ? {} : { failed }) };
-}
-
-/**
- * The longest chain of steps by `seconds`: the floor on wall time however many lanes there are. Reported so
- * a disappointing parallel run is legible — if the critical path is most of the serial total, lanes were
- * never going to help, which is an answer rather than a tuning problem.
- */
-export function criticalPath<S extends SchedulableStep>(steps: readonly S[]): { names: string[]; seconds: number } {
-  const byName = new Map(steps.map((step) => [step.name, step]));
-  const memo = new Map<string, { names: string[]; seconds: number }>();
-  const walk = (step: S): { names: string[]; seconds: number } => {
-    const seen = memo.get(step.name);
-    if (seen) return seen;
-    // Undefined rather than a zero, so a need that costs nothing still lands on the path. Seeding this with
-    // `{ seconds: 0 }` drops every unmeasured step from the report, since nothing is greater than zero.
-    let longest: { names: string[]; seconds: number } | undefined;
-    for (const need of step.needs) {
-      // A need outside `steps` contributes nothing: this is called with the steps that actually ran, and one
-      // that was cached cost no time, so it is on no path worth reporting
-      const needed = byName.get(need);
-      if (!needed) continue;
-      const path = walk(needed);
-      if (!longest || path.seconds > longest.seconds) longest = path;
-    }
-    const before = longest ?? { names: [], seconds: 0 };
-    const here = { names: [...before.names, step.name], seconds: before.seconds + (step.seconds ?? 0) };
-    memo.set(step.name, here);
-    return here;
-  };
-  return steps.map(walk).reduce((best, path) => (path.seconds > best.seconds ? path : best), { names: [] as string[], seconds: 0 });
+  return { started, skipped, threw, ...(failed === undefined ? {} : { failed }) };
 }
