@@ -1,6 +1,11 @@
 {
   "extends": "./tsconfig.json",
   "compilerOptions": {
+    // `incremental` must not reach an emit: the build clears dist first (scripts/build-package.ts) and tsc
+    // trusts its buildinfo over the filesystem, so a second build with nothing changed finds every file
+    // already emitted and writes none of them. It exits 0; `assertExportTargetsBuilt` is what fails. A
+    // cleared dist leaves an incremental emit nothing to reuse, so turning it off costs nothing.
+    "incremental": false,
     "noEmit": false,
     // A type error must not leave a half-written dist that looks like a build
     "noEmitOnError": true,
