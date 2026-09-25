@@ -16,7 +16,7 @@ import { execFileSync } from 'node:child_process';
 import { stampedRunAll, unitStaleReason } from '@abuddy/host/build/packages-built';
 import { UNIT_SUITES } from './lib/unit-suites.ts';
 import { POOL_SECONDS } from './lib/chain-steps.ts';
-import { poolStampFor, poolUnitFor } from './lib/unit-pool.ts';
+import { poolStampFor, poolUnitFor, projectsThatDidNotRun } from './lib/unit-pool.ts';
 import { boundedSpawn, budgetFor } from './lib/bounded-spawn.ts';
 import { exitOnEpipe } from './lib/exit-on-epipe.ts';
 
@@ -58,6 +58,12 @@ async function main(): Promise<void> {
         const { code, output, timedOut } = await boundedSpawn(command, [...args], budgetFor(POOL_SECONDS[kind]));
         process.stdout.write(output);
         if (code !== 0) throw new Error(`${kind} pool ${timedOut ? 'timed out' : `failed (exit ${code})`}`);
+        // Only what the run reported may be stamped: a `--project` filter matching nothing is dropped
+        // silently while the others run, so exiting 0 is not evidence that every project was covered.
+        const absent = projectsThatDidNotRun(covered.map((suite) => suite.workspace), output);
+        if (absent.length > 0) {
+          throw new Error(`${kind} pool asked vitest for ${covered.length} projects and ${absent.join(', ')} never reported — a --project filter matched nothing, so their names and vitest's project names have diverged`);
+        }
       },
     );
   }

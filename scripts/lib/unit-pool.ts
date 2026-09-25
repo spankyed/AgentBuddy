@@ -36,3 +36,38 @@ export const poolUnitFor = (suite: UnitSuite): BuildUnit => ({
   inputs: suiteInputs(suite).map((input) => path.join(REPO_ROOT, input)),
   outputs: [],
 });
+
+// eslint-disable-next-line no-control-regex -- vitest colours its output and this reads it back
+const ANSI = /\u001B\[[0-9;]*m/g;
+
+/**
+ * The projects a vitest run reported, from its own output.
+ *
+ * vitest labels every file with its project when a run covers more than one — `✓ |@abuddy/ears| tests/x.spec.ts`
+ * — which is the only thing that says what a `--project` filter actually selected.
+ */
+export function projectsThatRan(output: string): Set<string> {
+  return new Set([...output.replace(ANSI, '').matchAll(/^\s*[✓×↓]\s*\|([^|]+)\|/gm)].map(([, name]) => name));
+}
+
+/**
+ * The projects a run was asked for and did not report.
+ *
+ * **A `--project` filter that matches nothing is silently dropped**, as long as one other filter matched:
+ * measured, `--project @abuddy/ears --project @abuddy/no-such-project` runs ears, ignores the second and
+ * exits 0 with no warning. Only a filter matching *nothing at all* is an error. So a suite whose workspace
+ * stopped matching its vitest project name would be stamped as having passed a run it was excluded from,
+ * and would then stay cached — the same "recorded fresh having never run" this pool was already fixed for
+ * once, through a different door.
+ *
+ * Checked rather than adapted to. Stamping only what reported would make the run "correct" while quietly
+ * testing less, which is the failure being prevented, just smaller.
+ *
+ * Only meaningful when a run covers more than one project: with a single project vitest prints no labels,
+ * and the process exiting 0 is itself the evidence.
+ */
+export function projectsThatDidNotRun(asked: readonly string[], output: string): string[] {
+  if (asked.length < 2) return [];
+  const ran = projectsThatRan(output);
+  return asked.filter((project) => !ran.has(project));
+}

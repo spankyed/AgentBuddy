@@ -1,21 +1,21 @@
 {
-  "measuredAt": "2026-09-25T20:49:01.659Z",
+  "measuredAt": "2026-09-25T22:55:42.274Z",
   "costs": {
-    "tests/unit/app-database-parity.spec.ts": 821,
-    "tests/unit/app-reset.spec.ts": 984,
-    "tests/unit/boot-recovery.spec.ts": 316,
-    "tests/unit/bound-runtime.spec.ts": 81,
-    "tests/unit/bus-client-connected.spec.ts": 65,
-    "tests/unit/bus-send-sender.spec.ts": 4,
-    "tests/unit/db-write-lock.spec.ts": 13,
-    "tests/unit/dev-reload-access.spec.ts": 64,
-    "tests/unit/host-data-services.spec.ts": 733,
-    "tests/unit/log-capture.spec.ts": 47,
-    "tests/unit/packaged-boot.spec.ts": 483,
-    "tests/unit/restart-persistence.spec.ts": 260,
-    "tests/unit/secrets.spec.ts": 1057,
+    "tests/unit/app-database-parity.spec.ts": 906,
+    "tests/unit/app-reset.spec.ts": 1020,
+    "tests/unit/boot-recovery.spec.ts": 423,
+    "tests/unit/bound-runtime.spec.ts": 100,
+    "tests/unit/bus-client-connected.spec.ts": 107,
+    "tests/unit/bus-send-sender.spec.ts": 5,
+    "tests/unit/db-write-lock.spec.ts": 4,
+    "tests/unit/dev-reload-access.spec.ts": 22,
+    "tests/unit/host-data-services.spec.ts": 794,
+    "tests/unit/log-capture.spec.ts": 9,
+    "tests/unit/packaged-boot.spec.ts": 575,
+    "tests/unit/restart-persistence.spec.ts": 339,
+    "tests/unit/secrets.spec.ts": 1120,
     "tests/unit/source-layout.spec.ts": 4,
-    "tests/unit/upgrade-from-0.3.14.spec.ts": 153
+    "tests/unit/upgrade-from-0.3.14.spec.ts": 152
   },
   "skipped": []
 }
