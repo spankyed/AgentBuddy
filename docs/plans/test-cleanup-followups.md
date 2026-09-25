@@ -147,13 +147,14 @@ step was established by reading the specs, not by the guard.
 
 Belongs with the pipeline work, not here.
 
-## 5. Correct one row in the goal's *Do not remove*
+## 5. Correct one row in the goal's *Do not remove* — **done, 2026-09-25**
 
 `abuddy-cli/tests/build/published-sdk-types` is credited with catching "subpaths resolving that should
 not… widening the surface by accident". It does not: Phase 7 removed its four negative-resolve assertions on
 the plan's instruction, because each named a path an earlier refactor removed. What it catches, demonstrated
 by removing `./repositories` from the map, is a published entry that stops resolving, the package shipping
-anything but `dist`/`package.json`/the schema, and source maps leaking. One line.
+anything but `dist`/`package.json`/the schema, and source maps leaking. The row now says that, and names
+`api:check` as what catches the widening — which item 2 is about, since the chain does not run it.
 
 ## Blocked on you
 
