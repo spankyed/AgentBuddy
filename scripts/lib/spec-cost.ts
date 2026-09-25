@@ -137,6 +137,19 @@ export function misplaced(costs: Record<string, number>, files: readonly string[
 export const unrecorded = (record: SpecCost, files: readonly string[]): string[] =>
   files.filter((file) => record.costs[file] === undefined && !record.skipped.includes(file));
 
+/**
+ * Specs whose cost says they belong in a slower half, in a package that has none.
+ *
+ * Decision 4: this is a finding, not an exception and not a reason to raise a budget. A package whose specs
+ * keep landing here is a package that wants a split, and the list of them is the evidence for that — which
+ * is why they are recorded with a reason rather than silently tolerated.
+ */
+export const outgrown = (costs: Record<string, number>, files: readonly string[]): Misplaced[] =>
+  files.flatMap((file) => {
+    const ms = costs[file];
+    return ms !== undefined && ms > INTEGRATION_ABOVE_MS ? [{ file, ms, belongs: 'integration' as Half }] : [];
+  });
+
 /** A spec recorded as skipped that has since started running, so its cost is now measurable */
 export const nowRunning = (record: SpecCost, measured: Record<string, number>): string[] =>
   record.skipped.filter((file) => measured[file] !== undefined);

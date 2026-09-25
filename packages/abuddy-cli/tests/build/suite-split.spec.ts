@@ -13,7 +13,8 @@ import * as path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { REPO_ROOT } from '@abuddy/host/build/packages-built';
 import {
-  FAST_BELOW_MS, INTEGRATION_ABOVE_MS, halfOfPath, hasSplit, misplaced, readSpecCost, specFiles, stale, unrecorded,
+  FAST_BELOW_MS, INTEGRATION_ABOVE_MS, halfOfPath, hasSplit, misplaced, outgrown, readSpecCost, specFiles,
+  stale, unrecorded,
 } from '../../../../scripts/lib/spec-cost.ts';
 import { UNIT_SUITES } from '../../../../scripts/lib/unit-suites.ts';
 
@@ -56,5 +57,52 @@ describe('a spec runs in the half its cost puts it in', () => {
     const fast = cli.files.filter((file) => halfOfPath(file) === 'fast');
     const total = fast.reduce((sum, file) => sum + (cli.record?.costs[file] ?? 0), 0);
     expect(total, `the fast half is ${(total / 1000).toFixed(1)}s of file time across ${fast.length} specs`).toBeLessThan(30_000);
+  });
+});
+
+/**
+ * Specs that cost more than a fast half should, in a package with no slower half to put them in.
+ *
+ * Decision 4 of `goal-measured-placement.md`: a finding, not an exception. Each entry says why that spec is
+ * expensive and what would have to change; a package collecting entries here is a package that wants a
+ * split, and this is the evidence for it. The check fails on one that is not listed **and** on a listed one
+ * that has since become cheap, so the list cannot quietly outlive its reasons.
+ */
+const EXPENSIVE_WITHOUT_A_SPLIT: Record<string, string> = {
+  // Two TypeScript programs, built through `createModuleExports` and shared by 13 tests. The cost is the
+  // compiler, not the assertions; it would drop if the reader could answer from one program.
+  'abuddy-sdk/tests/build/declared-type-of.spec.ts': 'builds two TypeScript programs to read declared types',
+  // 94 tests: 91 call `generatePackFiles` with a different manifest each (~7.2s, different work every time
+  // and so not cacheable), and 3 build TypeScript programs (2.5s since they share a compiler host).
+  // Measured in goal-one-job-pool.md Phase 5, which also records why the split it proposed was not done.
+  'abuddy-sdk/tests/build/generate-entries.spec.ts': 'runs codegen 91 times and the compiler 3 times',
+  // Holds the repo's slowest single test at 4.1s. It spawns real processes and waits on real lock
+  // timeouts, so its cost is elapsed time rather than work, and no amount of cores shortens it.
+  'abuddy-host/tests/database/write-lock.spec.ts': 'waits on real cross-process lock timeouts',
+  // Starts and stops real pack backends and then waits to prove a cron schedule does *not* tick into the
+  // next test. The wait is the assertion, so shortening it removes what the test checks.
+  'default-setup/tests/unit/harness-app-stop.spec.ts': 'waits to prove a stopped schedule does not tick',
+  // Builds a TypeScript program over the pack to check a diagnostic names the event a send is for.
+  'default-setup/tests/unit/send-to-system-diagnostics.spec.ts': 'builds a TypeScript program over the pack',
+};
+
+describe('a spec too expensive for its half, where there is no other half', () => {
+  const found = () => suites
+    .filter(({ split, record }) => !split && record)
+    .flatMap(({ suite, record, files }) => outgrown(record!.costs, files)
+      .map(({ file, ms }) => ({ key: `${suite.dir}/${file}`, ms })));
+
+  it('is listed, with what makes it expensive', () => {
+    const unlisted = found()
+      .filter(({ key }) => !(key in EXPENSIVE_WITHOUT_A_SPLIT))
+      .map(({ key, ms }) => `${key} costs ${(ms / 1000).toFixed(1)}s, over the ${INTEGRATION_ABOVE_MS / 1000}s a fast half allows`);
+    expect(unlisted, 'move it, or add it to EXPENSIVE_WITHOUT_A_SPLIT with what makes it expensive').toEqual([]);
+  });
+
+  // The other direction: an entry that has become cheap is one the list should stop carrying
+  it('lists nothing that has since become cheap', () => {
+    const live = new Set(found().map(({ key }) => key));
+    expect(Object.keys(EXPENSIVE_WITHOUT_A_SPLIT).filter((key) => !live.has(key)),
+      'these are no longer expensive; drop them from EXPENSIVE_WITHOUT_A_SPLIT').toEqual([]);
   });
 });
