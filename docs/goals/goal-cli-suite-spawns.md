@@ -5,10 +5,12 @@
 
 Implement docs/goals/goal-cli-suite-spawns.md on master, at or after ee0611269 — the base its Background was
 surveyed at.
-Before Phase 1, confirm the base: packages/abuddy-cli/tests names `CLI` about 70 times and `TSC` 5 times,
-tests/helpers/pack-builds.ts exports `run` over execFileSync, and `npm test -w @abuddy/cli` reports around
-770 tests. If the counts are far off, re-measure before planning against them — this goal is arithmetic about
-where the time goes, and a stale count invalidates it.
+Before Phase 1, confirm the base: packages/abuddy-cli/tests/helpers/pack-builds.ts exists and exports `run`
+and `TSC`, packages/abuddy-cli/src/commands/build.ts exports `buildCommand`, and
+packages/abuddy-cli/tests/cli/scaffold.spec.ts and tests/build/facade-typing.spec.ts exist. If they don't, stop
+and say so — the plan was surveyed somewhere else.
+Then re-measure with Decision 6's recipe before sizing anything: the numbers below are from 2026-09-24, this
+goal is arithmetic about where the time goes, and a stale table invalidates it.
 Read Background, Decisions, Phases and Constraints first. Decisions are final: implement them, don't reopen
 them or stop to ask.
 This can run in a worktree beside goal-test-tiers.md — see "Doing this in a worktree". A symlinked node_modules
@@ -131,6 +133,13 @@ recorded as such rather than removed.
 parses argv and exits. A test producing a built pack should call the build command directly, which skips node
 startup and the bundle load. Nothing about the command's behaviour changes, which is the point.
 
+This needs no new seam and no public API change: the commands are already exported functions
+(`src/commands/build.ts` exports `buildCommand(args)` and `build(args)`), and these tests already import from
+`../../src/…` — `app/app-target`, `app/beta-app`, `app/playwright`, `build/be-bundler`, `build/dsl-defs` and
+others. So Phase 2 is reaching for a door that is open, and `packages/abuddy-cli/src` should not need to
+change. If a command turns out to swallow something a test needs, say so in the summary rather than widening
+the published surface for a test's convenience.
+
 **4. Prefer the TypeScript API over a `tsc` spawn**, as `facade-typing.spec.ts` and the SDK's
 `module-exports.ts` already do. A program built in-process also reuses its lib files across calls within a
 file, which a spawn cannot.
@@ -140,7 +149,25 @@ shape: one `beforeAll`, many `it`s. Where two tests need different pack sources 
 a shared fixture that has to be parameterised is a spawn with extra steps.
 
 **6. Measure per file, not per test.** The slowest individual tests are a flat 1–1.6s and say nothing; the
-file totals say everything. Any claim of improvement in this goal is a file-total table before and after.
+file totals say everything. Any claim of improvement in this goal is a file-total table before and after, and
+this is how the table in Background was produced — the reporter gives per-test lines, and the totals have to be
+summed:
+
+```bash
+npx vitest run --root packages/abuddy-cli --reporter=verbose 2>&1 \
+  | grep -oE "✓ tests/[^ ]+\.spec\.ts.*[0-9]+ms$" > /tmp/cli-all.txt
+python3 - <<'EOF'
+import re, collections
+tot, cnt = collections.Counter(), collections.Counter()
+for l in open('/tmp/cli-all.txt'):
+    m = re.match(r'✓ (tests/\S+\.spec\.ts).*?(\d+)ms$', l.strip())
+    if m: tot[m.group(1)] += int(m.group(2)); cnt[m.group(1)] += 1
+for f, ms in tot.most_common(12): print(f'{f:52} {cnt[f]:5} {ms/1000:7.1f}s')
+print(f'{sum(cnt.values())} tests, {sum(tot.values())/1000:.1f}s in {len(tot)} files')
+EOF
+```
+
+It counts only passing tests, which is what you want while comparing two green runs.
 
 **7. Nothing here is a reason to cache the suite.** Making it cheaper is independent of skipping it, and
 `goal-test-tiers.md`'s Phase 5 caches `test:unit` per package on its inputs. This goal reduces the cost when
@@ -165,11 +192,11 @@ because `unitStaleReason` (`:190-205`) compares a stamp against the inputs, and
 So Phase 1, and every edit confined to `tests/`, leave the fingerprint identical to master's and the shared
 stamp stays valid for both checkouts. Two things do need care:
 
-- **Phase 2 touches `abuddy-cli/src`** if calling a command in-process means exporting one, and `src` *is* an
-  input. From that commit on the two checkouts' fingerprints differ, they invalidate each other's shared stamp,
-  and each `packages:ensure` rebuilds what the other just built. Give the worktree its own `node_modules`
-  (`npm install` inside it) before that phase, not before Phase 1. `findCheckoutRoot()` already resolves to the
-  worktree's root (`:40-45`), so nothing else needs configuring.
+- **Only if a phase changes `abuddy-cli/src`**, which Decision 3 says it should not need to: the commands are
+  already exported and the tests already import them. Should that change, `src` *is* an input, the two
+  checkouts' fingerprints diverge from that commit, and each `packages:ensure` rebuilds what the other just
+  built — so give the worktree its own `node_modules` (`npm install` inside it) at that point.
+  `findCheckoutRoot()` already resolves to the worktree's root (`:40-45`), so nothing else needs configuring.
 - **A fresh worktree has no `packages/*/dist`**, so its first `packages:ensure` finds the outputs missing and
   builds — taking the lock that, under a symlink, is the main checkout's. Do that build once, alone, before
   starting parallel work rather than discovering it as a race.
