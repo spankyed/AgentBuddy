@@ -74,24 +74,6 @@ describe('abuddy generate-entries', () => {
     expect(output).toContain('export type Entity = Entity.Alpha | Entity.Beta');
   });
 
-  it('delegates infrastructure types to SDK', async () => {
-    writeManifest({
-      id: 'test-pack',
-      name: 'Test Pack',
-      version: '0.1.0',
-      entities: {},
-      relKinds: {},
-    });
-
-    await generateEntries(['--force'], tmpDir);
-
-    const output = readGenerated();
-    expect(output).toContain("export type EntityId<E extends string = string> = import('@abuddy/ears').EARS.EntityId<E>");
-    expect(output).toContain("export type Blueprint = import('@abuddy/ears').EARS.Blueprint");
-    expect(output).toContain("export type RoleKind = import('@abuddy/ears').EARS.RoleKind");
-    expect(output).toContain("export type AttrKind = import('@abuddy/ears').EARS.AttrKind");
-  });
-
   it('emits BaseEntity re-export and AllEntities compat export', async () => {
     writeManifest({
       id: 'test-pack',

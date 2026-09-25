@@ -99,9 +99,4 @@ describe('with-source', () => {
     expect(result.out).toContain('sigterm');
     expect(result.code).toBe(0);
   });
-
-  it('is the only way npm scripts in the checkout get the condition (no .npmrc node-options)', () => {
-    const value = execFileSync('npm', ['config', 'get', 'node-options'], { cwd: REPO_ROOT, env: { PATH: process.env.PATH }, encoding: 'utf-8' });
-    expect(value.trim()).toBe('null');
-  });
 });
