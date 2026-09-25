@@ -2,13 +2,33 @@
   "fresh": {
     "rows": {
       "Action:Echo": {
-        "label": "Echo",
+        "category": "utility",
         "description": "Return the input text",
+        "entityType": "Action",
+        "input": {
+          "text": {
+            "type": "string",
+            "description": "Text to return",
+            "required": true
+          }
+        },
+        "label": "Echo",
+        "shortCode": "ACT-1",
         "hasSourceHash": true
       },
       "Action:Set Instructions": {
-        "label": "Set Instructions",
+        "category": "commands",
         "description": "Create a thread from instructions",
+        "entityType": "Action",
+        "input": {
+          "text": {
+            "type": "string",
+            "description": "Instructions text",
+            "required": true
+          }
+        },
+        "label": "Set Instructions",
+        "shortCode": "ACT-2",
         "hasSourceHash": true
       },
       "Collection:advanced": {
@@ -180,13 +200,35 @@
         "title": "Welcome"
       },
       "Prompt:Greeting": {
-        "label": "Greeting",
+        "category": "general",
         "description": "Greet someone by name",
+        "entityType": "Prompt",
+        "inputs": {
+          "name": {
+            "name": "name",
+            "type": "string",
+            "description": "Who to greet",
+            "required": true
+          }
+        },
+        "label": "Greeting",
+        "shortCode": "PRO-1",
         "hasSourceHash": true
       },
       "Prompt:Summary": {
-        "label": "Summary",
+        "category": "general",
         "description": "Summarize a text",
+        "entityType": "Prompt",
+        "inputs": {
+          "text": {
+            "name": "text",
+            "type": "string",
+            "description": "Text to summarize",
+            "required": true
+          }
+        },
+        "label": "Summary",
+        "shortCode": "PRO-2",
         "hasSourceHash": true
       }
     },
@@ -225,13 +267,33 @@
   "untracked": {
     "rows": {
       "Action:Echo": {
-        "label": "Echo",
+        "category": "utility",
         "description": "Return the input text",
+        "entityType": "Action",
+        "input": {
+          "text": {
+            "type": "string",
+            "description": "Text to return",
+            "required": true
+          }
+        },
+        "label": "Echo",
+        "shortCode": "ACT-1",
         "hasSourceHash": true
       },
       "Action:Set Instructions": {
-        "label": "Set Instructions",
+        "category": "commands",
         "description": "Create a thread from instructions",
+        "entityType": "Action",
+        "input": {
+          "text": {
+            "type": "string",
+            "description": "Instructions text",
+            "required": true
+          }
+        },
+        "label": "Set Instructions",
+        "shortCode": "ACT-2",
         "hasSourceHash": false
       },
       "Collection:advanced": {
@@ -331,13 +393,35 @@
         ]
       },
       "Prompt:Greeting": {
-        "label": "Greeting",
+        "category": "general",
         "description": "Greet someone by name, warmly",
+        "entityType": "Prompt",
+        "inputs": {
+          "name": {
+            "name": "name",
+            "type": "string",
+            "description": "Who to greet",
+            "required": true
+          }
+        },
+        "label": "Greeting",
+        "shortCode": "PRO-1",
         "hasSourceHash": true
       },
       "Prompt:Summary": {
-        "label": "Summary",
+        "category": "general",
         "description": "Summarize a text",
+        "entityType": "Prompt",
+        "inputs": {
+          "text": {
+            "name": "text",
+            "type": "string",
+            "description": "Text to summarize",
+            "required": true
+          }
+        },
+        "label": "Summary",
+        "shortCode": "PRO-2",
         "hasSourceHash": true
       }
     },

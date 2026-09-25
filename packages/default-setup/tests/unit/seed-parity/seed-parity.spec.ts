@@ -66,7 +66,9 @@ function forGolden(step: Step, withNotes: boolean) {
         // user-owned. The `untracked` scenario is the one row recording `false`, and without the field a
         // regression that stamped hashes onto untracked rows — taking a user's data back — would pass.
         if (alias.startsWith('Action:') || alias.startsWith('Prompt:')) {
-          return [alias, { label: row.label, description: row.description, hasSourceHash: typeof row.sourceHash === 'string' }];
+          const { actionFn, templateFn, sourceHash, ...stable } = row;
+          void actionFn; void templateFn;
+          return [alias, { ...stable, hasSourceHash: typeof sourceHash === 'string' }];
         }
         if (!alias.startsWith('Note:')) return [alias, row];
         const { sourceHash: _omitted, ...rest } = row;

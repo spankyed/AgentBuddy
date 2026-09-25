@@ -2,348 +2,1587 @@
   "fresh": {
     "rows": {
       "Action:CC: Answer Question": {
-        "label": "CC: Answer Question",
+        "category": "claude-code",
         "description": "Sends AskUserQuestion answers to the CLI and resumes streaming.",
+        "entityType": "Action",
+        "input": {
+          "threadId": {
+            "type": "string",
+            "description": "Thread ID",
+            "required": true
+          },
+          "requestId": {
+            "type": "string",
+            "description": "CLI control_request ID",
+            "required": true
+          },
+          "originalInput": {
+            "type": "object",
+            "description": "Original tool input from the control_request",
+            "required": false
+          },
+          "response": {
+            "type": "object",
+            "description": "User response (string, string[], or Record)",
+            "required": true
+          }
+        },
+        "label": "CC: Answer Question",
+        "shortCode": "ACT-1",
         "hasSourceHash": true
       },
       "Action:CC: Approve Plan Clear Context": {
-        "label": "CC: Approve Plan Clear Context",
+        "category": "claude-code",
         "description": "Approves the plan, kills the session, creates a fresh thread, and re-invokes with the plan.",
+        "entityType": "Action",
+        "input": {
+          "threadId": {
+            "type": "string",
+            "description": "Current thread ID",
+            "required": true
+          },
+          "response": {
+            "type": "object",
+            "description": "User response from the approval block",
+            "required": false
+          }
+        },
+        "label": "CC: Approve Plan Clear Context",
+        "shortCode": "ACT-2",
         "hasSourceHash": true
       },
       "Action:CC: Approve Tool": {
-        "label": "CC: Approve Tool",
+        "category": "claude-code",
         "description": "Sends tool approval to the CLI and resumes streaming.",
+        "entityType": "Action",
+        "input": {
+          "threadId": {
+            "type": "string",
+            "description": "Thread ID",
+            "required": true
+          },
+          "requestId": {
+            "type": "string",
+            "description": "CLI control_request ID",
+            "required": true
+          },
+          "toolName": {
+            "type": "string",
+            "description": "Tool being approved",
+            "required": false
+          },
+          "originalInput": {
+            "type": "object",
+            "description": "Original tool input from the control_request",
+            "required": false
+          },
+          "response": {
+            "type": "object",
+            "description": "User response from the approval block",
+            "required": false
+          }
+        },
+        "label": "CC: Approve Tool",
+        "shortCode": "ACT-3",
         "hasSourceHash": true
       },
       "Action:CC: Commit Message": {
-        "label": "CC: Commit Message",
+        "category": "claude-code",
         "description": "Generate a git commit message from a diff using Claude CLI",
+        "entityType": "Action",
+        "input": {
+          "diff": {
+            "type": "string",
+            "description": "Git diff to generate a commit message from",
+            "required": true
+          },
+          "branch": {
+            "type": "string",
+            "description": "Current branch name",
+            "required": false
+          },
+          "repoName": {
+            "type": "string",
+            "description": "Repository name",
+            "required": false
+          }
+        },
+        "label": "CC: Commit Message",
+        "shortCode": "ACT-14",
         "hasSourceHash": true
       },
       "Action:CC: Compact": {
-        "label": "CC: Compact",
+        "category": "claude-code",
         "description": "Compact a Claude Code session context",
+        "entityType": "Action",
+        "input": {
+          "command": {
+            "type": "string",
+            "required": true
+          },
+          "text": {
+            "type": "string",
+            "required": false
+          },
+          "threadId": {
+            "type": "string",
+            "required": false
+          },
+          "references": {
+            "type": "object",
+            "required": false
+          }
+        },
+        "label": "CC: Compact",
+        "shortCode": "ACT-6",
         "hasSourceHash": true
       },
       "Action:CC: Context": {
-        "label": "CC: Context",
+        "category": "claude-code",
         "description": "Show context window usage breakdown",
+        "entityType": "Action",
+        "input": {
+          "command": {
+            "type": "string",
+            "required": true
+          },
+          "text": {
+            "type": "string",
+            "required": false
+          },
+          "threadId": {
+            "type": "string",
+            "required": false
+          },
+          "references": {
+            "type": "object",
+            "required": false
+          }
+        },
+        "label": "CC: Context",
+        "shortCode": "ACT-7",
         "hasSourceHash": true
       },
       "Action:CC: DB Query": {
-        "label": "CC: DB Query",
+        "category": "claude-code",
         "description": "Generate a read-only EARS database query using Claude CLI",
+        "entityType": "Action",
+        "input": {
+          "prompt": {
+            "type": "string",
+            "description": "Natural language query request from the user",
+            "required": true
+          }
+        },
+        "label": "CC: DB Query",
+        "shortCode": "ACT-15",
         "hasSourceHash": true
       },
       "Action:CC: DB Transaction": {
-        "label": "CC: DB Transaction",
+        "category": "claude-code",
         "description": "Generate an EARS database transaction using Claude CLI",
+        "entityType": "Action",
+        "input": {
+          "prompt": {
+            "type": "string",
+            "description": "Natural language transaction request from the user",
+            "required": true
+          }
+        },
+        "label": "CC: DB Transaction",
+        "shortCode": "ACT-16",
         "hasSourceHash": true
       },
       "Action:CC: Deny Tool": {
-        "label": "CC: Deny Tool",
+        "category": "claude-code",
         "description": "Kills the CLI subprocess and stops the turn on denial.",
+        "entityType": "Action",
+        "input": {
+          "threadId": {
+            "type": "string",
+            "description": "Thread ID",
+            "required": true
+          }
+        },
+        "label": "CC: Deny Tool",
+        "shortCode": "ACT-17",
         "hasSourceHash": true
       },
       "Action:CC: Dir Ops": {
-        "label": "CC: Dir Ops",
+        "category": "claude-code",
         "description": "Dispatcher for directory cc- commands (add-dir, set-dir)",
+        "entityType": "Action",
+        "input": {
+          "command": {
+            "type": "string",
+            "required": true
+          },
+          "text": {
+            "type": "string",
+            "required": false
+          },
+          "threadId": {
+            "type": "string",
+            "required": false
+          },
+          "references": {
+            "type": "object",
+            "required": false
+          }
+        },
+        "label": "CC: Dir Ops",
+        "shortCode": "ACT-8",
         "hasSourceHash": true
       },
       "Action:CC: Fork": {
-        "label": "CC: Fork",
+        "category": "claude-code",
         "description": "Fork thread from last assistant message",
+        "entityType": "Action",
+        "input": {
+          "command": {
+            "type": "string",
+            "required": true
+          },
+          "text": {
+            "type": "string",
+            "required": false
+          },
+          "threadId": {
+            "type": "string",
+            "required": false
+          },
+          "references": {
+            "type": "object",
+            "required": false
+          }
+        },
+        "label": "CC: Fork",
+        "shortCode": "ACT-9",
         "hasSourceHash": true
       },
       "Action:CC: Goal": {
-        "label": "CC: Goal",
+        "category": "claude-code",
         "description": "Set, query, or clear a goal condition on a Claude Code session",
+        "entityType": "Action",
+        "input": {
+          "command": {
+            "type": "string",
+            "required": true
+          },
+          "text": {
+            "type": "string",
+            "required": false
+          },
+          "threadId": {
+            "type": "string",
+            "required": false
+          },
+          "references": {
+            "type": "object",
+            "required": false
+          }
+        },
+        "label": "CC: Goal",
+        "shortCode": "ACT-10",
         "hasSourceHash": true
       },
       "Action:CC: Handle Directory Select": {
-        "label": "CC: Handle Directory Select",
+        "category": "claude-code",
         "description": "Saves the user-selected project directory and retries the blocked chat query.",
+        "entityType": "Action",
+        "input": {
+          "threadId": {
+            "type": "string",
+            "description": "Thread ID",
+            "required": true
+          },
+          "response": {
+            "type": "any",
+            "description": "File-picker response ({ path, toggles })",
+            "required": true
+          },
+          "pendingDirectorySelect": {
+            "type": "object",
+            "description": "Stored original message params",
+            "required": true
+          }
+        },
+        "label": "CC: Handle Directory Select",
+        "shortCode": "ACT-18",
         "hasSourceHash": true
       },
       "Action:CC: Handle Fork": {
-        "label": "CC: Handle Fork",
+        "category": "claude-code",
         "description": "Copies Claude Code session state to a forked thread with CLI-level truncation at the fork point.",
+        "entityType": "Action",
+        "input": {
+          "sourceThreadId": {
+            "type": "string",
+            "description": "Original thread ID",
+            "required": true
+          },
+          "newThreadId": {
+            "type": "string",
+            "description": "Forked thread ID",
+            "required": true
+          },
+          "sourceMessageId": {
+            "type": "string",
+            "description": "Message ID at the fork point",
+            "required": false
+          }
+        },
+        "label": "CC: Handle Fork",
+        "shortCode": "ACT-19",
         "hasSourceHash": true
       },
       "Action:CC: Handle Revert": {
-        "label": "CC: Handle Revert",
+        "category": "claude-code",
         "description": "Cleans up Claude Code state and sets up CLI session truncation on revert.",
+        "entityType": "Action",
+        "input": {
+          "threadId": {
+            "type": "string",
+            "description": "Thread ID",
+            "required": true
+          },
+          "messageId": {
+            "type": "string",
+            "description": "Message ID being reverted to",
+            "required": true
+          }
+        },
+        "label": "CC: Handle Revert",
+        "shortCode": "ACT-20",
         "hasSourceHash": true
       },
       "Action:CC: Handle Rewind": {
-        "label": "CC: Handle Rewind",
+        "category": "claude-code",
         "description": "Revert plus restoring files to their state at the reverted message via `claude --rewind-files`.",
+        "entityType": "Action",
+        "input": {
+          "threadId": {
+            "type": "string",
+            "description": "Thread ID",
+            "required": true
+          },
+          "messageId": {
+            "type": "string",
+            "description": "Message ID being reverted to",
+            "required": true
+          },
+          "userCliUuid": {
+            "type": "string",
+            "description": "CLI UUID of the reverted user message",
+            "required": false
+          }
+        },
+        "label": "CC: Handle Rewind",
+        "shortCode": "ACT-21",
         "hasSourceHash": true
       },
       "Action:CC: Handle Summarize": {
-        "label": "CC: Handle Summarize",
+        "category": "claude-code",
         "description": "Truncate the Claude session at a pivot message and run /compact to summarize prior context.",
+        "entityType": "Action",
+        "input": {
+          "threadId": {
+            "type": "string",
+            "description": "Thread ID",
+            "required": true
+          },
+          "messageId": {
+            "type": "string",
+            "description": "Pivot message ID",
+            "required": true
+          }
+        },
+        "label": "CC: Handle Summarize",
+        "shortCode": "ACT-22",
         "hasSourceHash": true
       },
       "Action:CC: Pause Turn": {
-        "label": "CC: Pause Turn",
+        "category": "claude-code",
         "description": "Kills the CLI subprocess and ends the turn on user pause.",
+        "entityType": "Action",
+        "input": {
+          "threadId": {
+            "type": "string",
+            "description": "Thread ID",
+            "required": true
+          }
+        },
+        "label": "CC: Pause Turn",
+        "shortCode": "ACT-25",
         "hasSourceHash": true
       },
       "Action:CC: Recap": {
-        "label": "CC: Recap",
+        "category": "claude-code",
         "description": "Summarize the current conversation thread",
+        "entityType": "Action",
+        "input": {
+          "command": {
+            "type": "string",
+            "required": true
+          },
+          "text": {
+            "type": "string",
+            "required": false
+          },
+          "threadId": {
+            "type": "string",
+            "required": false
+          }
+        },
+        "label": "CC: Recap",
+        "shortCode": "ACT-11",
         "hasSourceHash": true
       },
       "Action:CC: Reconcile State": {
-        "label": "CC: Reconcile State",
+        "category": "claude-code",
         "description": "Clears stale Claude Code run-state left over from a previous process.",
+        "entityType": "Action",
+        "input": {},
+        "label": "CC: Reconcile State",
+        "shortCode": "ACT-26",
         "hasSourceHash": true
       },
       "Action:CC: Route Response": {
-        "label": "CC: Route Response",
+        "category": "claude-code",
         "description": "Classifies an interactive block response for downstream routing.",
+        "entityType": "Action",
+        "input": {
+          "messageId": {
+            "type": "string",
+            "description": "The interactive block message that was responded to",
+            "required": true
+          },
+          "threadId": {
+            "type": "string",
+            "description": "Thread ID (from event payload)",
+            "required": true
+          },
+          "response": {
+            "type": "any",
+            "description": "The user response (shape depends on block type)",
+            "required": true
+          }
+        },
+        "label": "CC: Route Response",
+        "shortCode": "ACT-28",
         "hasSourceHash": true
       },
       "Action:CC: Run Command": {
-        "label": "CC: Run Command",
+        "category": "claude-code",
         "description": "Unified dispatcher for cc- prefixed chat commands",
+        "entityType": "Action",
+        "input": {
+          "command": {
+            "type": "string",
+            "description": "Full command name (e.g. cc-sessions)",
+            "required": true
+          },
+          "text": {
+            "type": "string",
+            "description": "Arguments after the command",
+            "required": false
+          },
+          "threadId": {
+            "type": "string",
+            "description": "Thread ID for response",
+            "required": false
+          },
+          "references": {
+            "type": "object",
+            "description": "Attached references (images, files, context)",
+            "required": false
+          }
+        },
+        "label": "CC: Run Command",
+        "shortCode": "ACT-5",
         "hasSourceHash": true
       },
       "Action:CC: Session Ops": {
-        "label": "CC: Session Ops",
+        "category": "claude-code",
         "description": "Dispatcher for session-heavy cc- commands (resume, import)",
+        "entityType": "Action",
+        "input": {
+          "command": {
+            "type": "string",
+            "description": "Full command name (e.g. cc-resume)",
+            "required": true
+          },
+          "text": {
+            "type": "string",
+            "description": "Arguments after the command",
+            "required": false
+          },
+          "threadId": {
+            "type": "string",
+            "description": "Thread ID for response",
+            "required": false
+          },
+          "references": {
+            "type": "object",
+            "description": "Attached references",
+            "required": false
+          }
+        },
+        "label": "CC: Session Ops",
+        "shortCode": "ACT-12",
         "hasSourceHash": true
       },
       "Action:CC: Stream Paused": {
-        "label": "CC: Stream Paused",
+        "category": "claude-code",
         "description": "Updates session artifact status to awaiting-input when the CLI pauses for user input.",
+        "entityType": "Action",
+        "input": {
+          "threadId": {
+            "type": "string",
+            "description": "Thread ID",
+            "required": true
+          },
+          "toolName": {
+            "type": "string",
+            "description": "Tool requesting permission",
+            "required": false
+          }
+        },
+        "label": "CC: Stream Paused",
+        "shortCode": "ACT-29",
         "hasSourceHash": true
       },
       "Action:CC: Stream Started": {
-        "label": "CC: Stream Started",
+        "category": "claude-code",
         "description": "Updates the session artifact with CLI session details when streaming begins.",
+        "entityType": "Action",
+        "input": {
+          "threadId": {
+            "type": "string",
+            "description": "Thread ID",
+            "required": true
+          },
+          "sessionId": {
+            "type": "string",
+            "description": "CLI session ID",
+            "required": false
+          },
+          "model": {
+            "type": "string",
+            "description": "Model used",
+            "required": false
+          },
+          "cwd": {
+            "type": "string",
+            "description": "Working directory",
+            "required": false
+          }
+        },
+        "label": "CC: Stream Started",
+        "shortCode": "ACT-30",
         "hasSourceHash": true
       },
       "Action:CC: Turn Completed": {
-        "label": "CC: Turn Completed",
+        "category": "claude-code",
         "description": "Finalizes session stats and creates diff artifact after a turn.",
+        "entityType": "Action",
+        "input": {
+          "threadId": {
+            "type": "string",
+            "description": "Thread ID",
+            "required": true
+          },
+          "sessionId": {
+            "type": "string",
+            "description": "CLI session ID",
+            "required": false
+          },
+          "costUsd": {
+            "type": "number",
+            "description": "Total cost in USD",
+            "required": false
+          },
+          "durationMs": {
+            "type": "number",
+            "description": "Turn duration in ms",
+            "required": false
+          },
+          "toolCallCount": {
+            "type": "number",
+            "description": "Number of tool calls",
+            "required": false
+          },
+          "mutatedFileCount": {
+            "type": "number",
+            "description": "Files mutated",
+            "required": false
+          },
+          "mutatedPaths": {
+            "type": "array",
+            "description": "File paths that were mutated",
+            "required": false
+          },
+          "hadErrors": {
+            "type": "boolean",
+            "description": "Whether errors occurred",
+            "required": false
+          },
+          "error": {
+            "type": "string",
+            "description": "Error message if failed",
+            "required": false
+          },
+          "userText": {
+            "type": "string",
+            "description": "Original user message",
+            "required": false
+          }
+        },
+        "label": "CC: Turn Completed",
+        "shortCode": "ACT-31",
         "hasSourceHash": true
       },
       "Action:CC: Unqueue Message": {
-        "label": "CC: Unqueue Message",
+        "category": "claude-code",
         "description": "Removes a queued message without affecting the running turn.",
+        "entityType": "Action",
+        "input": {
+          "threadId": {
+            "type": "string",
+            "description": "Thread ID",
+            "required": true
+          },
+          "messageId": {
+            "type": "string",
+            "description": "Message entity ID of the queued message",
+            "required": true
+          }
+        },
+        "label": "CC: Unqueue Message",
+        "shortCode": "ACT-32",
         "hasSourceHash": true
       },
       "Action:CC: Update Permission Mode": {
-        "label": "CC: Update Permission Mode",
+        "category": "claude-code",
         "description": "Persists the permission mode toggle and auto-approves pending requests on bypass.",
+        "entityType": "Action",
+        "input": {
+          "threadId": {
+            "type": "string",
+            "description": "Thread ID",
+            "required": true
+          },
+          "mode": {
+            "type": "string",
+            "description": "Permission mode to set",
+            "required": true
+          }
+        },
+        "label": "CC: Update Permission Mode",
+        "shortCode": "ACT-33",
         "hasSourceHash": true
       },
       "Action:CC: Update Worktree": {
-        "label": "CC: Update Worktree",
+        "category": "claude-code",
         "description": "Persists the worktree toggle to thread context.",
+        "entityType": "Action",
+        "input": {
+          "threadId": {
+            "type": "string",
+            "description": "Thread ID",
+            "required": true
+          },
+          "useWorktree": {
+            "type": "boolean",
+            "description": "Whether to use a worktree",
+            "required": true
+          }
+        },
+        "label": "CC: Update Worktree",
+        "shortCode": "ACT-34",
         "hasSourceHash": true
       },
       "Action:CDX: Approve Tool": {
-        "label": "CDX: Approve Tool",
+        "category": "codex",
         "description": "Sends approval decision to the Codex app-server for a pending tool request.",
+        "entityType": "Action",
+        "input": {
+          "threadId": {
+            "type": "string",
+            "required": true
+          },
+          "requestId": {
+            "type": "number",
+            "required": true
+          },
+          "decision": {
+            "type": "string",
+            "required": false
+          },
+          "response": {
+            "type": "any",
+            "required": false
+          }
+        },
+        "label": "CDX: Approve Tool",
+        "shortCode": "ACT-35",
         "hasSourceHash": true
       },
       "Action:CDX: Commit Message": {
-        "label": "CDX: Commit Message",
+        "category": "codex",
         "description": "Generate a git commit message from a diff using Codex CLI",
+        "entityType": "Action",
+        "input": {
+          "diff": {
+            "type": "string",
+            "description": "Git diff to generate a commit message from",
+            "required": true
+          },
+          "branch": {
+            "type": "string",
+            "description": "Current branch name",
+            "required": false
+          },
+          "repoName": {
+            "type": "string",
+            "description": "Repository name",
+            "required": false
+          }
+        },
+        "label": "CDX: Commit Message",
+        "shortCode": "ACT-41",
         "hasSourceHash": true
       },
       "Action:CDX: Compact": {
-        "label": "CDX: Compact",
+        "category": "codex",
         "description": "Compact the active Codex thread.",
+        "entityType": "Action",
+        "input": {
+          "command": {
+            "type": "string",
+            "required": true
+          },
+          "text": {
+            "type": "string",
+            "required": false
+          },
+          "threadId": {
+            "type": "string",
+            "required": false
+          },
+          "references": {
+            "type": "object",
+            "required": false
+          }
+        },
+        "label": "CDX: Compact",
+        "shortCode": "ACT-37",
         "hasSourceHash": true
       },
       "Action:CDX: DB Query": {
-        "label": "CDX: DB Query",
+        "category": "codex",
         "description": "Generate a read-only EARS database query using Codex CLI",
+        "entityType": "Action",
+        "input": {
+          "prompt": {
+            "type": "string",
+            "description": "Natural language query request from the user",
+            "required": true
+          }
+        },
+        "label": "CDX: DB Query",
+        "shortCode": "ACT-42",
         "hasSourceHash": true
       },
       "Action:CDX: DB Transaction": {
-        "label": "CDX: DB Transaction",
+        "category": "codex",
         "description": "Generate an EARS database transaction using Codex CLI",
+        "entityType": "Action",
+        "input": {
+          "prompt": {
+            "type": "string",
+            "description": "Natural language transaction request from the user",
+            "required": true
+          }
+        },
+        "label": "CDX: DB Transaction",
+        "shortCode": "ACT-43",
         "hasSourceHash": true
       },
       "Action:CDX: Deny Tool": {
-        "label": "CDX: Deny Tool",
+        "category": "codex",
         "description": "Declines a pending Codex approval request.",
+        "entityType": "Action",
+        "input": {
+          "threadId": {
+            "type": "string",
+            "required": true
+          }
+        },
+        "label": "CDX: Deny Tool",
+        "shortCode": "ACT-44",
         "hasSourceHash": true
       },
       "Action:CDX: Fork": {
-        "label": "CDX: Fork",
+        "category": "codex",
         "description": "Fork Codex thread from the last assistant message.",
+        "entityType": "Action",
+        "input": {
+          "command": {
+            "type": "string",
+            "required": true
+          },
+          "text": {
+            "type": "string",
+            "required": false
+          },
+          "threadId": {
+            "type": "string",
+            "required": false
+          },
+          "references": {
+            "type": "object",
+            "required": false
+          }
+        },
+        "label": "CDX: Fork",
+        "shortCode": "ACT-38",
         "hasSourceHash": true
       },
       "Action:CDX: Goal Continue": {
-        "label": "CDX: Goal Continue",
+        "category": "codex",
         "description": "Auto-continues a Codex turn when the thread goal is active.",
+        "entityType": "Action",
+        "input": {
+          "threadId": {
+            "type": "string",
+            "required": true
+          }
+        },
+        "label": "CDX: Goal Continue",
+        "shortCode": "ACT-45",
         "hasSourceHash": true
       },
       "Action:CDX: Handle Directory Select": {
-        "label": "CDX: Handle Directory Select",
+        "category": "codex",
         "description": "Saves the selected project directory and retries the blocked Codex query.",
+        "entityType": "Action",
+        "input": {
+          "threadId": {
+            "type": "string",
+            "required": true
+          },
+          "response": {
+            "type": "any",
+            "required": true
+          },
+          "pendingDirectorySelect": {
+            "type": "object",
+            "required": true
+          }
+        },
+        "label": "CDX: Handle Directory Select",
+        "shortCode": "ACT-46",
         "hasSourceHash": true
       },
       "Action:CDX: Handle Fork": {
-        "label": "CDX: Handle Fork",
+        "category": "codex",
         "description": "Copies Codex thread state to an AgentBuddy fork using Codex app-server thread/fork.",
+        "entityType": "Action",
+        "input": {
+          "sourceThreadId": {
+            "type": "string",
+            "required": true
+          },
+          "sourceMessageId": {
+            "type": "string",
+            "required": false
+          },
+          "newThreadId": {
+            "type": "string",
+            "required": true
+          },
+          "sourceUserMessagesAfterFork": {
+            "type": "number",
+            "required": false
+          }
+        },
+        "label": "CDX: Handle Fork",
+        "shortCode": "ACT-47",
         "hasSourceHash": true
       },
       "Action:CDX: Handle Revert": {
-        "label": "CDX: Handle Revert",
+        "category": "codex",
         "description": "Rolls back Codex thread history after visible messages are reverted.",
+        "entityType": "Action",
+        "input": {
+          "threadId": {
+            "type": "string",
+            "required": true
+          },
+          "messageId": {
+            "type": "string",
+            "required": true
+          },
+          "deletedUserMessageCount": {
+            "type": "number",
+            "required": false
+          }
+        },
+        "label": "CDX: Handle Revert",
+        "shortCode": "ACT-48",
         "hasSourceHash": true
       },
       "Action:CDX: Handle Rewind Unsupported": {
-        "label": "CDX: Handle Rewind Unsupported",
+        "category": "codex",
         "description": "Performs Codex conversation rollback and explains that file rewind is unsupported.",
+        "entityType": "Action",
+        "input": {
+          "threadId": {
+            "type": "string",
+            "required": true
+          },
+          "messageId": {
+            "type": "string",
+            "required": true
+          },
+          "deletedUserMessageCount": {
+            "type": "number",
+            "required": false
+          }
+        },
+        "label": "CDX: Handle Rewind Unsupported",
+        "shortCode": "ACT-49",
         "hasSourceHash": true
       },
       "Action:CDX: Handle Summarize": {
-        "label": "CDX: Handle Summarize",
+        "category": "codex",
         "description": "Rolls back Codex history and starts Codex app-server compaction.",
+        "entityType": "Action",
+        "input": {
+          "threadId": {
+            "type": "string",
+            "required": true
+          },
+          "messageId": {
+            "type": "string",
+            "required": true
+          },
+          "deletedUserMessageCount": {
+            "type": "number",
+            "required": false
+          }
+        },
+        "label": "CDX: Handle Summarize",
+        "shortCode": "ACT-50",
         "hasSourceHash": true
       },
       "Action:CDX: Pause Turn": {
-        "label": "CDX: Pause Turn",
+        "category": "codex",
         "description": "Interrupts the running Codex turn.",
+        "entityType": "Action",
+        "input": {
+          "threadId": {
+            "type": "string",
+            "required": true
+          }
+        },
+        "label": "CDX: Pause Turn",
+        "shortCode": "ACT-51",
         "hasSourceHash": true
       },
       "Action:CDX: Reconcile State": {
-        "label": "CDX: Reconcile State",
+        "category": "codex",
         "description": "Clears stale Codex run-state left over from a previous process.",
+        "entityType": "Action",
+        "input": {},
+        "label": "CDX: Reconcile State",
+        "shortCode": "ACT-52",
         "hasSourceHash": true
       },
       "Action:CDX: Refine Plan": {
-        "label": "CDX: Refine Plan",
+        "category": "codex",
         "description": "Starts a new plan turn with user feedback to refine the plan.",
+        "entityType": "Action",
+        "input": {
+          "threadId": {
+            "type": "string",
+            "required": true
+          },
+          "feedbackText": {
+            "type": "string",
+            "required": true
+          }
+        },
+        "label": "CDX: Refine Plan",
+        "shortCode": "ACT-53",
         "hasSourceHash": true
       },
       "Action:CDX: Route Response": {
-        "label": "CDX: Route Response",
+        "category": "codex",
         "description": "Routes interactive block responses to the appropriate Codex handler.",
+        "entityType": "Action",
+        "input": {
+          "messageId": {
+            "type": "string",
+            "required": true
+          },
+          "threadId": {
+            "type": "string",
+            "required": true
+          },
+          "response": {
+            "type": "any",
+            "required": true
+          }
+        },
+        "label": "CDX: Route Response",
+        "shortCode": "ACT-54",
         "hasSourceHash": true
       },
       "Action:CDX: Run Command": {
-        "label": "CDX: Run Command",
+        "category": "codex",
         "description": "Unified dispatcher for cdx- prefixed chat commands.",
+        "entityType": "Action",
+        "input": {
+          "command": {
+            "type": "string",
+            "description": "Full command name (e.g. cdx-status)",
+            "required": true
+          },
+          "text": {
+            "type": "string",
+            "description": "Arguments after the command",
+            "required": false
+          },
+          "threadId": {
+            "type": "string",
+            "description": "Thread ID for response",
+            "required": false
+          },
+          "references": {
+            "type": "object",
+            "description": "Attached references",
+            "required": false
+          }
+        },
+        "label": "CDX: Run Command",
+        "shortCode": "ACT-36",
         "hasSourceHash": true
       },
       "Action:CDX: Session Ops": {
-        "label": "CDX: Session Ops",
+        "category": "codex",
         "description": "Dispatcher for session-heavy cdx- commands.",
+        "entityType": "Action",
+        "input": {
+          "command": {
+            "type": "string",
+            "description": "Full command name (e.g. cdx-resume)",
+            "required": true
+          },
+          "text": {
+            "type": "string",
+            "description": "Arguments after the command",
+            "required": false
+          },
+          "threadId": {
+            "type": "string",
+            "description": "Thread ID for response",
+            "required": false
+          },
+          "references": {
+            "type": "object",
+            "description": "Attached references",
+            "required": false
+          },
+          "cwdOverride": {
+            "type": "string",
+            "description": "Optional project directory override",
+            "required": false
+          }
+        },
+        "label": "CDX: Session Ops",
+        "shortCode": "ACT-39",
         "hasSourceHash": true
       },
       "Action:CDX: Start Server": {
-        "label": "CDX: Start Server",
+        "category": "codex",
         "description": "Starts the Codex app-server subprocess if not already running.",
+        "entityType": "Action",
+        "input": {},
+        "label": "CDX: Start Server",
+        "shortCode": "ACT-55",
         "hasSourceHash": true
       },
       "Action:CDX: Stream Paused": {
-        "label": "CDX: Stream Paused",
+        "category": "codex",
         "description": "Updates chat state to paused when Codex requests approval.",
+        "entityType": "Action",
+        "input": {
+          "threadId": {
+            "type": "string",
+            "required": true
+          }
+        },
+        "label": "CDX: Stream Paused",
+        "shortCode": "ACT-56",
         "hasSourceHash": true
       },
       "Action:CDX: Turn Completed": {
-        "label": "CDX: Turn Completed",
+        "category": "codex",
         "description": "Finalizes session stats and creates diff artifact after a Codex turn.",
+        "entityType": "Action",
+        "input": {
+          "threadId": {
+            "type": "string",
+            "required": true
+          },
+          "usage": {
+            "type": "object",
+            "required": false
+          },
+          "toolCallCount": {
+            "type": "number",
+            "required": false
+          },
+          "recentTools": {
+            "type": "array",
+            "required": false
+          },
+          "mutatedPaths": {
+            "type": "array",
+            "required": false
+          },
+          "hadErrors": {
+            "type": "boolean",
+            "required": false
+          }
+        },
+        "label": "CDX: Turn Completed",
+        "shortCode": "ACT-57",
         "hasSourceHash": true
       },
       "Action:CDX: Unqueue Message": {
-        "label": "CDX: Unqueue Message",
+        "category": "codex",
         "description": "Removes a queued message without affecting the running turn.",
+        "entityType": "Action",
+        "input": {
+          "threadId": {
+            "type": "string",
+            "required": true
+          },
+          "messageId": {
+            "type": "string",
+            "required": true
+          }
+        },
+        "label": "CDX: Unqueue Message",
+        "shortCode": "ACT-58",
         "hasSourceHash": true
       },
       "Action:CDX: Update Session Settings": {
-        "label": "CDX: Update Session Settings",
+        "category": "codex",
         "description": "Persists Codex session settings to thread context.",
+        "entityType": "Action",
+        "input": {
+          "threadId": {
+            "type": "string",
+            "description": "Thread ID",
+            "required": true
+          },
+          "approvalMode": {
+            "type": "string",
+            "description": "Codex approval review mode",
+            "required": false
+          },
+          "sandbox": {
+            "type": "string",
+            "description": "Codex sandbox mode",
+            "required": false
+          },
+          "networkAccess": {
+            "type": "boolean",
+            "description": "Enable network in workspace-write sandbox",
+            "required": false
+          },
+          "webSearch": {
+            "type": "string",
+            "description": "Web search mode: live, cached, disabled",
+            "required": false
+          }
+        },
+        "label": "CDX: Update Session Settings",
+        "shortCode": "ACT-59",
         "hasSourceHash": true
       },
       "Action:Claude Code Auth Status": {
-        "label": "Claude Code Auth Status",
+        "category": "claude-code",
         "description": "Report whether the Claude Code CLI is currently authenticated.",
+        "entityType": "Action",
+        "input": {},
+        "label": "Claude Code Auth Status",
+        "shortCode": "ACT-4",
         "hasSourceHash": true
       },
       "Action:Claude Code Chat": {
-        "label": "Claude Code Chat",
+        "category": "claude-code",
         "description": "Drives Claude Code in streaming mode for the current thread, resuming prior sessions and prompting the user for tool permissions.",
+        "entityType": "Action",
+        "input": {
+          "threadId": {
+            "type": "string",
+            "description": "Target thread",
+            "required": true
+          },
+          "text": {
+            "type": "string",
+            "description": "User message text",
+            "required": true
+          },
+          "mode": {
+            "type": "string",
+            "description": "Agent mode (passed through from user.message)",
+            "required": false
+          },
+          "phase": {
+            "type": "string",
+            "description": "Sub-phase within mode (Plan/Edit/review)",
+            "required": false
+          },
+          "model": {
+            "type": "string",
+            "description": "Override Claude model (alias or full id)",
+            "required": false
+          },
+          "allowedTools": {
+            "type": "array",
+            "description": "Tools allowed without prompting",
+            "required": false
+          },
+          "disallowedTools": {
+            "type": "array",
+            "description": "Tools always denied",
+            "required": false
+          },
+          "systemPrompt": {
+            "type": "string",
+            "description": "Extra system prompt to append",
+            "required": false
+          },
+          "messageId": {
+            "type": "string",
+            "description": "User message entity ID (for queued-state UI)",
+            "required": false
+          }
+        },
+        "label": "Claude Code Chat",
+        "shortCode": "ACT-13",
         "hasSourceHash": true
       },
       "Action:Claude Code List Sessions": {
-        "label": "Claude Code List Sessions",
+        "category": "claude-code",
         "description": "List saved Claude Code sessions for a working directory.",
+        "entityType": "Action",
+        "input": {
+          "cwd": {
+            "type": "string",
+            "description": "Working directory whose sessions to list",
+            "required": false
+          },
+          "limit": {
+            "type": "number",
+            "description": "Max sessions to return",
+            "required": false
+          },
+          "offset": {
+            "type": "number",
+            "description": "Pagination offset",
+            "required": false
+          }
+        },
+        "label": "Claude Code List Sessions",
+        "shortCode": "ACT-23",
         "hasSourceHash": true
       },
       "Action:Claude Code One-Shot": {
-        "label": "Claude Code One-Shot",
+        "category": "claude-code",
         "description": "Run a single Claude Code prompt without touching any thread. Returns the final text and optional structured output.",
+        "entityType": "Action",
+        "input": {
+          "prompt": {
+            "type": "string",
+            "description": "The user prompt",
+            "required": true
+          },
+          "cwd": {
+            "type": "string",
+            "description": "Working directory override",
+            "required": false
+          },
+          "model": {
+            "type": "string",
+            "description": "Claude model (alias or full id)",
+            "required": false
+          },
+          "allowedTools": {
+            "type": "array",
+            "description": "Tools allowed without prompting",
+            "required": false
+          },
+          "systemPrompt": {
+            "type": "string",
+            "description": "System prompt override",
+            "required": false
+          },
+          "jsonSchema": {
+            "type": "string",
+            "description": "JSON Schema for structured output (stringified)",
+            "required": false
+          }
+        },
+        "label": "Claude Code One-Shot",
+        "shortCode": "ACT-24",
         "hasSourceHash": true
       },
       "Action:Claude Code Reset Session": {
-        "label": "Claude Code Reset Session",
+        "category": "claude-code",
         "description": "Disconnect a thread from its Claude Code session. The next work-mode turn starts fresh.",
+        "entityType": "Action",
+        "input": {
+          "threadId": {
+            "type": "string",
+            "description": "Target thread",
+            "required": true
+          }
+        },
+        "label": "Claude Code Reset Session",
+        "shortCode": "ACT-27",
         "hasSourceHash": true
       },
       "Action:Codex Chat": {
-        "label": "Codex Chat",
+        "category": "codex",
         "description": "Drives Codex via app-server for the current thread.",
+        "entityType": "Action",
+        "input": {
+          "threadId": {
+            "type": "string",
+            "description": "Target thread",
+            "required": true
+          },
+          "text": {
+            "type": "string",
+            "description": "User message text",
+            "required": true
+          },
+          "mode": {
+            "type": "string",
+            "required": false
+          },
+          "phase": {
+            "type": "string",
+            "description": "plan or edit",
+            "required": false
+          },
+          "model": {
+            "type": "string",
+            "required": false
+          },
+          "messageId": {
+            "type": "string",
+            "required": false
+          }
+        },
+        "label": "Codex Chat",
+        "shortCode": "ACT-40",
         "hasSourceHash": true
       },
       "Action:Handle Choose Mode Step": {
-        "label": "Handle Choose Mode Step",
+        "category": "onboarding",
         "description": "Sets the default mode based on user choice and finishes onboarding",
+        "entityType": "Action",
+        "input": {
+          "threadId": {
+            "type": "string",
+            "required": true
+          },
+          "response": {
+            "type": "any",
+            "required": true
+          }
+        },
+        "label": "Handle Choose Mode Step",
+        "shortCode": "ACT-66",
         "hasSourceHash": true
       },
       "Action:Handle Import Threads Step": {
-        "label": "Handle Import Threads Step",
+        "category": "onboarding",
         "description": "Imports sessions from Claude Code and Codex as threads",
+        "entityType": "Action",
+        "input": {
+          "threadId": {
+            "type": "string",
+            "required": true
+          },
+          "response": {
+            "type": "any",
+            "required": true
+          }
+        },
+        "label": "Handle Import Threads Step",
+        "shortCode": "ACT-65",
         "hasSourceHash": true
       },
       "Action:Handle Onboarding Response": {
-        "label": "Handle Onboarding Response",
+        "category": "onboarding",
         "description": "Validates an interactive block response and returns step + response for flow-level branching",
+        "entityType": "Action",
+        "input": {
+          "messageId": {
+            "type": "string",
+            "description": "The message ID that was responded to",
+            "required": true
+          },
+          "threadId": {
+            "type": "string",
+            "description": "The thread ID",
+            "required": true
+          },
+          "response": {
+            "type": "any",
+            "description": "The block response data",
+            "required": true
+          }
+        },
+        "label": "Handle Onboarding Response",
+        "shortCode": "ACT-62",
         "hasSourceHash": true
       },
       "Action:Handle Pick Thread Step": {
-        "label": "Handle Pick Thread Step",
+        "category": "onboarding",
         "description": "Opens a selected thread, then advances to mode chooser or finishes",
+        "entityType": "Action",
+        "input": {
+          "threadId": {
+            "type": "string",
+            "required": true
+          },
+          "response": {
+            "type": "any",
+            "required": true
+          }
+        },
+        "label": "Handle Pick Thread Step",
+        "shortCode": "ACT-67",
         "hasSourceHash": true
       },
       "Action:Handle Projects Step": {
-        "label": "Handle Projects Step",
+        "category": "onboarding",
         "description": "Saves selected project directories and offers per-provider import",
+        "entityType": "Action",
+        "input": {
+          "threadId": {
+            "type": "string",
+            "required": true
+          },
+          "response": {
+            "type": "any",
+            "required": true
+          }
+        },
+        "label": "Handle Projects Step",
+        "shortCode": "ACT-68",
         "hasSourceHash": true
       },
       "Action:Handle Welcome Step": {
-        "label": "Handle Welcome Step",
+        "category": "onboarding",
         "description": "Detects CLIs, discovers sessions, and presents project directory selection",
+        "entityType": "Action",
+        "input": {
+          "threadId": {
+            "type": "string",
+            "required": true
+          },
+          "response": {
+            "type": "any",
+            "required": false
+          }
+        },
+        "label": "Handle Welcome Step",
+        "shortCode": "ACT-69",
         "hasSourceHash": true
       },
       "Action:Ignore Onboarding Message": {
-        "label": "Ignore Onboarding Message",
+        "category": "onboarding",
         "description": "Marks a user message as cancelled when sent during onboarding",
+        "entityType": "Action",
+        "input": {
+          "threadId": {
+            "type": "string",
+            "description": "The thread ID",
+            "required": true
+          },
+          "messageId": {
+            "type": "string",
+            "description": "The message ID to cancel",
+            "required": true
+          }
+        },
+        "label": "Ignore Onboarding Message",
+        "shortCode": "ACT-63",
         "hasSourceHash": true
       },
       "Action:Init Onboarding": {
-        "label": "Init Onboarding",
+        "category": "onboarding",
         "description": "Creates the birth thread and sends the welcome artifact for onboarding",
+        "entityType": "Action",
+        "input": {},
+        "label": "Init Onboarding",
+        "shortCode": "ACT-64",
         "hasSourceHash": true
       },
       "Action:PR to Markdown": {
-        "label": "PR to Markdown",
+        "category": "commands",
         "description": "Renders PR comments and review threads to a local markdown file",
+        "entityType": "Action",
+        "input": {
+          "text": {
+            "type": "string",
+            "description": "PR number or GitHub PR URL",
+            "required": false
+          },
+          "threadId": {
+            "type": "string",
+            "description": "Thread ID for feedback",
+            "required": false
+          },
+          "references": {
+            "type": "object",
+            "description": "Attached references (images, files, context)",
+            "required": false
+          }
+        },
+        "label": "PR to Markdown",
+        "shortCode": "ACT-61",
         "hasSourceHash": true
       },
       "Action:Set Instructions": {
-        "label": "Set Instructions",
+        "category": "commands",
         "description": "Create a new thread with instructions, using the first part as the title",
+        "entityType": "Action",
+        "input": {
+          "text": {
+            "type": "string",
+            "description": "Instructions text",
+            "required": true
+          },
+          "threadId": {
+            "type": "string",
+            "description": "Thread ID for feedback",
+            "required": false
+          }
+        },
+        "label": "Set Instructions",
+        "shortCode": "ACT-60",
         "hasSourceHash": true
       },
       "Collection:commands": {
@@ -541,33 +1780,102 @@
         "title": "welcome"
       },
       "Prompt:Commit Message": {
-        "label": "Commit Message",
+        "category": "git",
         "description": "Generate a conventional commit message from a git diff",
+        "entityType": "Prompt",
+        "inputs": {
+          "diff": {
+            "name": "diff",
+            "type": "string",
+            "description": "Git diff output",
+            "required": true
+          },
+          "branch": {
+            "name": "branch",
+            "type": "string",
+            "description": "Current branch name",
+            "required": false
+          },
+          "repoName": {
+            "name": "repoName",
+            "type": "string",
+            "description": "Repository name",
+            "required": false
+          }
+        },
+        "label": "Commit Message",
+        "shortCode": "PRO-1",
         "hasSourceHash": true
       },
       "Prompt:DB Query System": {
-        "label": "DB Query System",
+        "category": "database",
         "description": "Generate a read-only EARS database query from a natural language request",
+        "entityType": "Prompt",
+        "inputs": {
+          "schema": {
+            "name": "schema",
+            "type": "string",
+            "description": "Entity types with fields and sample data",
+            "required": true
+          },
+          "topology": {
+            "name": "topology",
+            "type": "string",
+            "description": "Relationship graph between entity types",
+            "required": true
+          }
+        },
+        "label": "DB Query System",
+        "shortCode": "PRO-2",
         "hasSourceHash": true
       },
       "Prompt:DB Transaction System": {
-        "label": "DB Transaction System",
+        "category": "database",
         "description": "Generate an EARS database transaction from a natural language request",
+        "entityType": "Prompt",
+        "inputs": {
+          "schema": {
+            "name": "schema",
+            "type": "string",
+            "description": "Entity types with fields and sample data",
+            "required": true
+          },
+          "topology": {
+            "name": "topology",
+            "type": "string",
+            "description": "Relationship graph between entity types",
+            "required": true
+          }
+        },
+        "label": "DB Transaction System",
+        "shortCode": "PRO-3",
         "hasSourceHash": true
       },
       "Prompt:Edit Phase Tips System": {
-        "label": "Edit Phase Tips System",
+        "category": "claude-code",
         "description": "Behavioral tips injected during edit mode to supplement the CLI system prompt",
+        "entityType": "Prompt",
+        "inputs": {},
+        "label": "Edit Phase Tips System",
+        "shortCode": "PRO-4",
         "hasSourceHash": true
       },
       "Prompt:Plan Phase Tips System": {
-        "label": "Plan Phase Tips System",
+        "category": "claude-code",
         "description": "Behavioral tips injected during plan mode to supplement the CLI system prompt",
+        "entityType": "Prompt",
+        "inputs": {},
+        "label": "Plan Phase Tips System",
+        "shortCode": "PRO-5",
         "hasSourceHash": true
       },
       "Prompt:Recap System": {
-        "label": "Recap System",
+        "category": "claude-code",
         "description": "System prompt for conversation recap — instructs the model how to summarize",
+        "entityType": "Prompt",
+        "inputs": {},
+        "label": "Recap System",
+        "shortCode": "PRO-6",
         "hasSourceHash": true
       }
     },

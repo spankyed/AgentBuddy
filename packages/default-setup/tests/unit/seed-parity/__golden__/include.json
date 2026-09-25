@@ -2,8 +2,18 @@
   "fresh": {
     "rows": {
       "Action:Set Instructions": {
-        "label": "Set Instructions",
+        "category": "commands",
         "description": "Create a thread from instructions",
+        "entityType": "Action",
+        "input": {
+          "text": {
+            "type": "string",
+            "description": "Instructions text",
+            "required": true
+          }
+        },
+        "label": "Set Instructions",
+        "shortCode": "ACT-1",
         "hasSourceHash": true
       },
       "Collection:advanced": {
