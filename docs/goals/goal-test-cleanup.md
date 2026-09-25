@@ -273,7 +273,7 @@ for a moved name, an unbridged-leaf case. The file stays; those individual tests
 | `abuddy-sdk/tests/env/identity-guard.spec.ts` | hand-rolled environment and data-dir resolution | a literal `Application Support` path or a raw `ABUDDY_ENV` read is a natural shortcut |
 | `api/tests/unit/source-layout.spec.ts` | any file under `api/src` outside its list | an allowlist (Decision 9): it catches files nobody predicted |
 | `abuddy-host/tests/packs/runtime/sdk-bridge-drift.spec.ts` | the bridge list drifting from the exports map | both sides change independently, and neither fails the other |
-| `abuddy-cli/tests/build/published-sdk-types.spec.ts` | subpaths resolving that should not | it reads the published exports map, where widening the surface by accident is live on every edit |
+| `abuddy-cli/tests/build/published-sdk-types.integration.spec.ts` | a published entry that stops resolving, the package shipping anything but `dist`, `package.json` and the schema, and source maps leaking | it resolves the packed package the way a pack does, which nothing else here does. It does **not** catch a *widened* exports map — `api:check` does, by wanting a report per entry (see the Outcome) |
 
 `no-engine-state-access.spec.ts` is **not** here: tsc rejects its subject at the import site, so it is a
 second opinion, not a guard (Decision 4, and *A second test, found after the audit*).
