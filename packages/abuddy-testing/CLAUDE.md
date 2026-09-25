@@ -61,7 +61,7 @@ carries no comments.
 
 | # | Door | Covers | Where |
 |---|---|---|---|
-| 1 | `npm run packages:ensure &&` in a root script | a repo command: `test`, `test:smoke`, `test:e2e`, `test:external-pack`, `typecheck`, `typecheck:pack`, `compile`, `prebuild` | root `package.json` |
+| 1 | `npm run packages:ensure &&` in a root script | a repo command: `test`, `test:visible`, `test:ui`, `test:external-pack`, `typecheck`, `typecheck:pack`, `compile`, `prebuild` | root `package.json` |
 | 2 | that workspace's `pretest` | `npm test -w @abuddy/cli` and `npm test -w @app/default-setup` run directly, which no root script wraps | each package's `package.json` |
 | 3 | `ensureCheckoutPackages(packRoot)` | `abuddy build`, `abuddy test`, `abuddy dev` — from any directory, for a pack whose packages are a checkout's | `abuddy-cli/src/build/checkout-packages.ts`, called from `commands/{build,test,dev}.ts` |
 | 4 | the `Build publishable packages` step | CI, whose typecheck step already built them through `typecheck:pack` | `.github/workflows/ci.yml` |
