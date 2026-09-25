@@ -245,7 +245,6 @@ import { usePlugin } from '@abuddy/sdk/fe'
 
 import { computed, ref } from 'vue'
 import { useSelector } from '@xstate/vue'
-import { type LibraryEvents } from './state'
 import type { FieldContent, ListContent, MarkdownContent, TextContent } from '@/features/library/be/types'
 import type { LibraryActor } from './state'
 // [SEARCH_INDEX_FF] import { getModelConfig } from '../embedding-models'
@@ -256,7 +255,6 @@ const actor = usePlugin<LibraryActor>()
 const index = useSelector(actor, (state) => state.context.index)
 const selectedDocument = useSelector(actor, (state) => state.context.selectedDocument)
 // [SEARCH_INDEX_FF] const searchIndices = useSelector(actor, (state) => state.context.searchIndices)
-const currentFolderId = useSelector(actor, (state) => state.context.currentFolderId)
 const items = useSelector(actor, (state) => state.context.items)
 const selectedItems = useSelector(actor, (state) => state.context.selectedItems)
 const expandedFolderChildren = useSelector(actor, (state) => state.context.expandedFolderChildren)
@@ -285,7 +283,6 @@ const selectedItemFullPath = computed(() => {
   return null
 })
 
-const send = (event: LibraryEvents) => actor.send(event)
 
 const totalCollections = computed(() => {
   // Count folders in the current view (items array)

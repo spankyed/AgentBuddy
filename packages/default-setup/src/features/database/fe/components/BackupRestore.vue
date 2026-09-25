@@ -302,8 +302,6 @@ import {
   // Search, // [SEARCH_INDEX_FF]
   Activity,
   Check,
-  CheckCircle,
-  AlertCircle,
   Calendar,
   HardDrive,
   Image as ImageIcon

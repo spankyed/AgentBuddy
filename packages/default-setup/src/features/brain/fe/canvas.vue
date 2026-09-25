@@ -151,7 +151,6 @@ const latestRuntimeError = useSelector(actor, (state) => state.context.latestRun
 // UI state selectors
 const showLeftPanel = useSelector(actor, (state) => state.context.showLeftPanel);
 const selectedStepNode = useSelector(actor, (state) => state.context.selectedStepNode);
-const inspectEnabled = useSelector(actor, (state) => state.context.inspectEnabled);
 const animationsEnabled = useSelector(actor, (state) => state.context.animationsEnabled);
 
 // Event handlers

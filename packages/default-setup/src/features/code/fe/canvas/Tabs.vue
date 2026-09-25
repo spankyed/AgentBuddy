@@ -43,7 +43,7 @@
 
         <!-- Tabs in this pinned group (when expanded) -->
         <template v-if="!group.isCollapsed">
-          <ContextMenuRoot v-for="(tab, tabIndex) in groupTabs" :key="tab.path">
+          <ContextMenuRoot v-for="tab in groupTabs" :key="tab.path">
             <ContextMenuTrigger as-child>
               <div
                 class="relative flex items-center min-h-[2.5rem] border-r tab-item group border-neutral-800"
@@ -225,7 +225,7 @@
 
       <!-- Tabs in this group (when expanded) -->
       <template v-if="!group.isCollapsed">
-        <ContextMenuRoot v-for="(tab, tabIndex) in getTabsForGroup(group.id)" :key="tab.path">
+        <ContextMenuRoot v-for="tab in getTabsForGroup(group.id)" :key="tab.path">
           <ContextMenuTrigger as-child>
             <div
               class="relative flex items-center min-h-[2.5rem] border-r tab-item group border-neutral-800"

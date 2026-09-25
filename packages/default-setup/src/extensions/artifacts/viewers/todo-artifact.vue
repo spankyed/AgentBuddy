@@ -40,7 +40,7 @@
       <!-- Todo Tasks -->
       <div class="space-y-0">
         <div 
-          v-for="(task, index) in todoData.tasks" 
+          v-for="task in todoData.tasks" 
           :key="task.id"
           :class="[
             'flex items-center gap-3 px-3 py-2.5 border-t border-neutral-700/30 transition-colors',

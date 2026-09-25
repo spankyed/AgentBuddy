@@ -355,14 +355,13 @@ const emit = defineEmits<{
 // Composables
 const containerRef = ref<HTMLElement | null>(null)
 const { editingItemId, editingName, startEditingItem, confirmEdit, cancelEdit } = useInlineEdit(emit)
-const { lastSelectedItemId, allItemsSelected, selectItem: selectItemBase, toggleSelectAll, clearSelection } = useSelection(
+const { selectItem: selectItemBase, toggleSelectAll, clearSelection } = useSelection(
   () => props.items,
   () => props.selectedItems,
   emit
 )
 
 const {
-  isDragging,
   draggedOverId,
   handleDragStart,
   handleDragOver,
@@ -546,7 +545,7 @@ function doubleClickItem(item: LibraryItem) {
 
 const sort = (column: 'name' | 'modified' | 'size' | 'kind') => emit('SORT_BY', { column })
 const createDocument = () => emit('CREATE_DOCUMENT')
-const createSearchIndex = () => emit('CREATE_SEARCH_INDEX')
+// const createSearchIndex = () => emit('CREATE_SEARCH_INDEX')
 const navigateToFolder = (folderId: string | null) => emit('NAVIGATE_TO_FOLDER', { folderId })
 const navigateToBreadcrumb = (crumb: BreadcrumbItem) => emit('BREADCRUMB_CLICK', { folderId: crumb.id })
 

@@ -74,11 +74,6 @@ const HOST_SETTINGS = resolveName('settings', 'host')
 import { useSettingsSection } from '@abuddy/sdk/fe'
 import type { GeneralSettings } from '@/app-settings/types'
 
-interface Project {
-  name: string
-  directories: string[]
-  color: string
-}
 
 const props = defineProps<{
   artifact: ArtifactItem

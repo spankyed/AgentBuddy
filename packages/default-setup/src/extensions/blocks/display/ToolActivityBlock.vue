@@ -90,7 +90,7 @@ import { sendToPlugin } from '@/__generated__/events'
 import { ref, computed, watch, nextTick } from 'vue'
 import { ChevronRight, Wrench, Check, Loader2, X, AlertCircle, ArrowRight } from 'lucide-vue-next'
 import JsonHoverPopup from '@abuddy/ui/components/JsonHoverPopup'
-import { computeLabel, computeBadge } from './tool-activity-label'
+import { computeLabel } from './tool-activity-label'
 
 interface ToolActivityEntry {
   id: string
@@ -171,7 +171,6 @@ function onListScroll(e: Event) {
 // from props is the source of truth; we only override if it's missing.
 const label = computed(() => props.label || computeLabel(props.entries, props.state, props.phase))
 
-const badge = computed(() => computeBadge(props.entries, props.state))
 
 // While streaming: last running entry. When done: last entry overall.
 const previewEntry = computed(() => {

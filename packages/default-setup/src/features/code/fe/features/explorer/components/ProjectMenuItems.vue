@@ -20,7 +20,6 @@ const props = withDefaults(defineProps<{
 })
 
 const {
-  projects,
   allProjects,
   isDirectoryInProject,
   addDirectoryToProject,

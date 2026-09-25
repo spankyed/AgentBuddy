@@ -216,7 +216,7 @@ const filteredFlows = computed(() => {
     return []
   }
   
-  const [matchedIndexes, info, order] = idxs
+  const [matchedIndexes,, order] = idxs
   
   if (!order || !matchedIndexes) {
     return []

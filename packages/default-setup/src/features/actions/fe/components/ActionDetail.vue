@@ -119,7 +119,6 @@ import NameSaveHeader from '@abuddy/ui/design/NameSaveHeader';
 import CollapsibleSection from '@abuddy/ui/design/CollapsibleSection';
 import ActionParametersEditor from './ActionParametersEditor.vue';
 import ActionFunctionEditor from './ActionFunctionEditor.vue';
-import ActionFunctionViewer from './ActionFunctionViewer.vue';
 import JsonSchemaEditor from '@abuddy/ui/components/JsonSchemaEditor';
 import { openPlugin } from '@/__generated__/fe'
 import { useCollapsibleState } from '@abuddy/ui/composables/useCollapsibleState';
@@ -191,14 +190,4 @@ function formatDate(timestamp?: number) {
   return new Date(timestamp).toLocaleString();
 }
 
-function categoryStyle(category?: string) {
-  const styles: Record<string, string> = {
-    'database': 'bg-blue-900/30 text-blue-400 border border-blue-800/50',
-    'communication': 'bg-green-900/30 text-green-400 border border-green-800/50',
-    'integration': 'bg-yellow-900/30 text-yellow-400 border border-yellow-800/50',
-    'utility': 'bg-purple-900/30 text-purple-400 border border-purple-800/50',
-    'storage': 'bg-indigo-900/30 text-indigo-400 border border-indigo-800/50',
-  }
-  return styles[category || ''] || 'bg-neutral-800 text-neutral-400 border border-neutral-700'
-}
 </script>

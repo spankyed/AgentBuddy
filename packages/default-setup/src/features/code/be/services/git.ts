@@ -125,17 +125,6 @@ export class GitRepository {
     // We'll validate .git existence asynchronously on first command
   }
   
-  private async ensureGitRepository(): Promise<void> {
-    const cacheKey = 'gitRepoValidated'
-    if (this.getCached<boolean>(cacheKey)) return
-    
-    try {
-      await fs.access(path.join(this.workingDirectory, '.git'))
-      this.setCached(cacheKey, true)
-    } catch {
-      throw new Error(`Not a git repository: ${this.workingDirectory}`)
-    }
-  }
   
   private getCached<T>(key: string): T | null {
     const cached = this.cache.get(key)

@@ -242,7 +242,7 @@ const confirmTerminalClose = computed(() => storedCodeSettings.value?.confirmTer
 const closeTerminalOnTabClose = computed(() => storedCodeSettings.value?.closeTerminalOnTabClose ?? true)
 const terminalScripts = computed(() => (storedCodeSettings.value?.terminalScripts ?? []) as TerminalScript[])
 
-const { getTerminalDisplayName, closeTerminal: closeTerminalWithConfirm } = useTerminalActions(terminalActor, confirmTerminalClose, closeTerminalOnTabClose)
+const { getTerminalDisplayName, } = useTerminalActions(terminalActor, confirmTerminalClose, closeTerminalOnTabClose)
 
 // Section visibility context menu
 const codeSettings = useSelector(codeActor, (state) => state.context.settings)
@@ -251,9 +251,6 @@ const { showMenu, menuPos, sectionMenuItems, onSectionContextMenu } = useSection
 // Derived
 const activeTerminalInfo = computed(() =>
   terminals.value.find((t: TerminalInfo) => t.id === panelTerminalId.value)
-)
-const activeDisplayName = computed(() =>
-  activeTerminalInfo.value ? getTerminalDisplayName(activeTerminalInfo.value) : ''
 )
 const isInTab = (terminalId: string) =>
   openFiles.value.some((f: any) => f.path === `terminal:${terminalId}` && f.isTerminal)

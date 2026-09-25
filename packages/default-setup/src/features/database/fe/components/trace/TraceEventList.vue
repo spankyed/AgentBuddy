@@ -54,7 +54,6 @@ const databaseActor: DatabaseState = usePlugin()
 
 // State selectors
 const flowEvents = useSelector(databaseActor, (state) => state.context.flowEvents)
-const expandedNodes = useSelector(databaseActor, (state) => state.context.expandedNodes)
 const nodeDetails = useSelector(databaseActor, (state) => state.context.nodeDetails)
 const isLoadingTrace = useSelector(databaseActor, (state) => state.context.isLoadingTrace)
 const tracePagination = useSelector(databaseActor, (state) => state.context.tracePagination)

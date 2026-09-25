@@ -112,7 +112,6 @@ import CollapsibleSection from '@abuddy/ui/design/CollapsibleSection';
 import type { Category } from '@/__generated__/types';
 import PromptInputsEditor from './PromptInputsEditor.vue';
 import PromptTemplateEditor from './PromptTemplateEditor.vue';
-import PromptTemplateViewer from './PromptTemplateViewer.vue';
 import JsonSchemaEditor from '@abuddy/ui/components/JsonSchemaEditor';
 import { useCollapsibleState } from '@abuddy/ui/composables/useCollapsibleState';
 import { openPlugin } from '@/__generated__/fe'
@@ -170,17 +169,6 @@ function handleKeydown(event: KeyboardEvent) {
 }
 
 
-function categoryStyle(category?: string) {
-  const styles: Record<string, string> = {
-    'text-processing': 'bg-blue-900/30 text-blue-400 border border-blue-800/50',
-    'development': 'bg-green-900/30 text-green-400 border border-green-800/50',
-    'assistant': 'bg-purple-900/30 text-purple-400 border border-purple-800/50',
-    'analysis': 'bg-orange-900/30 text-orange-400 border border-orange-800/50',
-    'creative': 'bg-pink-900/30 text-pink-400 border border-pink-800/50',
-    'formatting': 'bg-cyan-900/30 text-cyan-400 border border-cyan-800/50',
-  }
-  return styles[category || ''] || 'bg-neutral-800 text-neutral-400 border border-neutral-700'
-}
 
 function formatDate(timestamp?: number) {
   if (!timestamp) return 'N/A';

@@ -275,9 +275,6 @@ const totalMatches = computed(() => {
   return searchResults.value.reduce((sum: number, result: any) => sum + result.matches.length, 0)
 })
 
-const isNoDirectoryError = computed(() => {
-  return searchError.value?.includes('No directory selected')
-})
 
 const searchPlaceholder = computed(() => {
   return baseDirectory.value
@@ -309,9 +306,6 @@ const performSearch = () => {
   }, 300)
 }
 
-const cancelSearch = () => {
-  searchActor?.send({ type: 'search.CANCEL' })
-}
 
 const toggleOption = (option: 'caseSensitive' | 'wholeWord' | 'useRegex') => {
   searchActor?.send({
@@ -382,14 +376,6 @@ const getFileDirectory = (path: string) => {
   return parts.slice(0, -1).join('/')
 }
 
-const optionButtonClass = (active: boolean) => {
-  return [
-    'px-2 py-1 text-xs rounded transition-colors',
-    active
-      ? 'bg-blue-600 text-white'
-      : 'bg-neutral-800 text-neutral-400 hover:bg-neutral-700'
-  ]
-}
 
 // Watch for option changes from state
 watch(searchOptions, (newOptions) => {

@@ -109,7 +109,6 @@ import {
   VueFlow,
   ConnectionLineType,
   MarkerType,
-  useVueFlow,
 } from '@vue-flow/core'
 import type { Connection, NodeMouseEvent, Node as VueFlowNode, Edge, EdgeMouseEvent, EdgeUpdateEvent, GraphEdge, GraphNode } from '@vue-flow/core'
 import { Background } from '@vue-flow/background'
@@ -141,7 +140,6 @@ interface Props {
 
 const props = defineProps<Props>()
 const { centerNodeInView } = useNodeViewport()
-const { getConnectedEdges, getNodes } = useVueFlow()
 
 // Build a set of connected source handles: "nodeId" or "nodeId:handleId"
 const connectedHandles = computed(() => {

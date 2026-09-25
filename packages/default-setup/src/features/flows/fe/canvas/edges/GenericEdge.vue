@@ -39,7 +39,7 @@ const edgeStyle = computed(() => ({
 }))
 
 const edgePath = computed(() => {
-  const { sourceX, sourceY, targetX, targetY, id, target } = props
+  const { sourceX, sourceY, targetX, targetY, target } = props
   const { edge } = LAYOUT_CONFIG
 
   // Find sibling edges - sort by sourceY for geometric consistency (prevents crossing)

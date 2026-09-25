@@ -297,22 +297,6 @@ const cancelDelete = () => {
   fileToDelete.value = null
 }
 
-const handleDirectorySelect = async () => {
-  if (!window.electronAPI?.fileUtils.selectDirectory) {
-    console.error('Directory selection API not available')
-    return
-  }
-
-  try {
-    const directoryPath = await window.electronAPI.fileUtils.selectDirectory()
-
-    if (directoryPath && directoryPath !== baseDirectory.value) {
-      explorerActor?.send({ type: 'explorer.SET_BASE_DIRECTORY', path: directoryPath })
-    }
-  } catch (error) {
-    console.error('Error selecting directory:', error)
-  }
-}
 
 const handleCreateNewFolder = () => {
   // Determine target directory: first selected directory, or baseDirectory

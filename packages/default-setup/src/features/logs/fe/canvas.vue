@@ -438,10 +438,6 @@ const warnCount = computed(() => logs.value.filter((log: LogEntry) => log.level 
 const infoCount = computed(() => logs.value.filter((log: LogEntry) => log.level === 'info').length);
 const debugCount = computed(() => logs.value.filter((log: LogEntry) => log.level === 'debug').length);
 
-const setFilterLevel = (e: Event) => {
-  const target = e.target as HTMLSelectElement;
-  actor.send({ type: 'SET_FILTER_LEVEL', level: target.value as any });
-};
 
 const setFilterLevelDirect = (level: 'all' | 'debug' | 'info' | 'warn' | 'error') => {
   actor.send({ type: 'SET_FILTER_LEVEL', level });

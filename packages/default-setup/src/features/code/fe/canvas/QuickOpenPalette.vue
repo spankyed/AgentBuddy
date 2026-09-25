@@ -191,8 +191,6 @@ const filteredResults = computed<EnhancedSearchResult[]>(() => {
   if (!searchQuery.value.trim()) {
     // When no query, show recent files first
     const openFilePaths = openFiles.value.map(f => f.path)
-    const recentResults: any[] = []
-    const otherResults: any[] = []
     
     // First, add currently open files ordered by recency
     const openFileResults: EnhancedSearchResult[] = []
