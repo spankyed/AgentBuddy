@@ -47,25 +47,25 @@ async function main(): Promise<void> {
   }
   console.log(`${kind} pool: ${stale.length} of ${suites.length} project(s) to run — ${stale.map((s) => s.workspace).join(', ')}`);
 
-  // One command for the whole pool, whichever projects are in it
-  const [command, args] = kind === 'host'
+  // What each run covers. The host suites are projects of one root config, so one vitest run takes them all
+  // with `--project`. A pack suite is its own config resolving the published dist, so it cannot share that
+  // run — or another pack suite's. One run each, and a suite is stamped only by the run that included it.
+  const runs = kind === 'host'
     // with-source supplies the @abuddy/source condition the host suites resolve under
-    ? ['node', ['scripts/with-source.mjs', 'npx', 'vitest', 'run', ...stale.flatMap((suite) => ['--project', suite.workspace])]] as const
-    : ['npm', ['test', '-w', stale[0]!.workspace]] as const;
+    ? [{ suites: stale, command: 'node', args: ['scripts/with-source.mjs', 'npx', 'vitest', 'run', ...stale.flatMap((suite) => ['--project', suite.workspace])] }]
+    : stale.map((suite) => ({ suites: [suite], command: 'npm', args: ['test', '-w', suite.workspace] }));
 
-  // Shared, so every project's stamp wraps the same single run: `stampedRun` takes each fingerprint before
-  // it starts and writes each stamp only if it returns, so a failure leaves every project unstamped.
-  let started: Promise<void> | undefined;
-  const runOnce = (): Promise<void> => (started ??= (async () => {
-    const { code, output, timedOut } = await boundedSpawn(command, [...args], budgetFor(75));
-    if (code !== 0) {
+  for (const { suites: covered, command, args } of runs) {
+    // Shared across the suites one run covers: `stampedRun` takes each fingerprint before it starts and
+    // writes each stamp only where it returned, so a failure leaves every suite in that run unstamped.
+    let started: Promise<void> | undefined;
+    const runOnce = (): Promise<void> => (started ??= (async () => {
+      const { code, output, timedOut } = await boundedSpawn(command, [...args], budgetFor(75));
       process.stdout.write(output);
-      throw new Error(`${kind} pool ${timedOut ? 'timed out' : `failed (exit ${code})`}`);
-    }
-    process.stdout.write(output);
-  })());
-
-  await Promise.all(stale.map((suite) => stampedRun(suite.dir, unitFor(suite), stampFor(suite), runOnce)));
+      if (code !== 0) throw new Error(`${kind} pool ${timedOut ? 'timed out' : `failed (exit ${code})`}`);
+    })());
+    await Promise.all(covered.map((suite) => stampedRun(suite.dir, unitFor(suite), stampFor(suite), runOnce)));
+  }
 }
 
 await main();

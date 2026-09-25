@@ -267,10 +267,8 @@ export const SUITE_READS: Record<string, { packages?: true; pack?: true }> = {
  * One step per unit suite, so a one-package change re-runs one suite rather than eight. Measured under the
  * two-lane runner (`scripts/test-unit.ts`), which is what the chain will run them under.
  */
-const UNIT_SECONDS: Record<string, number> = {
-  'abuddy-sdk': 14, 'default-setup': 17, 'abuddy-cli': 10, 'abuddy-host': 11,
-  api: 7, 'abuddy-ears': 4, renderer: 3, main: 1,
-};
+/** Measured per pool under the chain's own lanes, which is what `seconds` means (`driftedSteps` keeps it honest) */
+const POOL_SECONDS: Record<'host' | 'pack', number> = { host: 20, pack: 21 };
 
 /**
  * What one unit suite reads: its own workspace, its dependencies' source, and whatever build output it
@@ -307,7 +305,10 @@ const POOL_STEPS: readonly ChainStep[] = (['host', 'pack'] as const).map((kind) 
     name: `test:unit:${kind}`,
     tier: 1,
     needs: ['compile'],
-    seconds: suites.reduce((total, suite) => total + (UNIT_SECONDS[suite.dir] ?? 0), 0),
+    // Measured on the pool, not summed from its suites. Summing gave the host pool 50s for a step that
+    // takes 20s, because the suites overlap inside one vitest run — which is the entire point of pooling
+    // them. `driftedSteps` reported it on every run.
+    seconds: POOL_SECONDS[kind],
     inputs: [...new Set([
       ...suites.flatMap(suiteInputs),
       // The runner itself: it decides which projects a pool runs, so a change to it changes the step
@@ -328,7 +329,10 @@ export const CHAIN_STEPS: readonly ChainStep[] = [
       'packages/default-setup/package.json', 'packages/default-setup/tsconfig.json',
       'packages/default-setup/dev-build.mjs', ...PACKAGE_BUILD_OUTPUTS] },
   // The fixture packs depend on default-setup, so they need its snapshot from compile
-  { name: 'test:external-pack:contract', tier: 2, needs: ['compile'], seconds: 20, outputs: FIXTURE_OUTPUTS,
+  // 38s, not the 20s it takes alone: `seconds` is what a step costs under the chain's own default lanes,
+  // because that is what `budgetFor` has to cover. Raising the default from two to three moved this one and
+  // nothing else past the drift band, which is `driftedSteps` doing its job.
+  { name: 'test:external-pack:contract', tier: 2, needs: ['compile'], seconds: 38, outputs: FIXTURE_OUTPUTS,
     // It declares `tests/fixtures` for the pack sources; the Playwright output under each pack is written
     // by `:app`, changes every run, and is read by nothing
     excludes: FIXTURE_TEST_OUTPUT,

@@ -51,7 +51,7 @@ Measured on an idle machine, 2026-09-25, each one a real run rather than a sum o
 |---|---|---|
 | nothing tracked | the E2E suite, which is never cached | **26.8s** |
 | a doc, a comment, a CLAUDE.md | nothing but that — no step declares `docs/` | **26.8s** |
-| one package's source (the renderer) | its suite, `test:unit:main` which depends on it, `typecheck`, then `build:app` and all of tier 3, because rebuilding the app moves what tier 3 reads | **115.1s** |
+| one package's source (the renderer) | `test:unit:host`, which runs only the renderer's project and `@app/main`'s (it depends on the renderer), `typecheck`, then `build:app` and all of tier 3, because rebuilding the app moves what tier 3 reads | **115.1s** |
 | nothing is cached (a cold tree) | all 17 steps, two at a time | **190.1s** |
 
 The one-package row is the one worth reading twice: editing a package that the *app* is built from costs four times editing one it is not, because `build:app` rewrites `packages/*/dist` and every tier-3 step reads it. A change under `@abuddy/ears` or a pack's tests does not pay that.
