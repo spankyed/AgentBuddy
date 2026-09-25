@@ -21,6 +21,7 @@ for PACK in "${FIXTURE_PACKS[@]}"; do
   "$ABUDDY" validate
   "$ABUDDY" build
   "$ROOT/node_modules/.bin/tsc" --noEmit -p "$PACK"
-  # Harness specs, where the pack has them
-  if [ -f "$PACK/vitest.config.ts" ]; then "$ROOT/node_modules/.bin/vitest" run --root "$PACK"; fi
+  # Harness specs, where the pack has them. Through the CLI, so this runs what a pack author runs:
+  # `abuddy test --contract` is a no-op with a message when a pack has no vitest config.
+  "$ABUDDY" test --contract
 done

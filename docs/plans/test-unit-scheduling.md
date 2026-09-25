@@ -121,6 +121,12 @@ for `node:child_process` imports. This is a **pre-existing** second instance of 
 `cli-suite-spawns-rebase.md` §3.1, not one that branch creates, and it argues for making the predicate
 cost-based rather than mechanism-based.
 
+A third instance, from `goal-test-tiers.md` Phase 7: `tests/cli/test-contract.integration.spec.ts` injects a
+fake runner and spawns nothing, in about 20ms, but imports `contractTest`, whose *default* runner is
+`spawnSync`. The guard asks what an export's implementation reaches, which is true of the export and false
+of every test in that file. Mechanism over cost again, and the same fix covers all three: ask what a spec
+costs, not what its imports could do.
+
 ## What `goal-test-tiers.md` landed first, and what it means here
 
 Phases 4 to 6 of that goal landed on `AS/chain-inputs` before this plan starts. Three of its results are

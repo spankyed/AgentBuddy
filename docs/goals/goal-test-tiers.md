@@ -309,6 +309,30 @@ reason `chain-steps.ts` is already separate: that module runs the chain when imp
 be tested. A scheduler can leak a lane, run an exclusive step beside another, keep going after a failure or
 simply never return, and a green timing run shows none of it.
 
+### What Phase 7 landed
+
+`abuddy test --contract` runs the pack's vitest and starts no app, so a pack author can check compiled
+output, generated types and the harness specs without an AgentBuddy to run them in. It is the tier split
+this repo makes for itself, offered to packs rather than kept here.
+`tests/scripts/test-external-pack-contract.sh` calls it instead of invoking `vitest` by path, so the fixtures
+exercise the command a pack author actually runs; a pack with no vitest config is a no-op with a message
+rather than an error, which is why the bundled-UI fixture needs no special case in that script.
+`abuddy init-tests` scaffolds both halves, having previously scaffolded only Playwright — which left an
+author with a `vitest.config.ts` only if they had run `abuddy init` or `abuddy add feature`.
+
+**One deviation from the "Done when", and it is forced.** That clause asks for `npm test -w @abuddy/cli` —
+the fast half — to cover the flag. No spec of this flag can live there: `suite-split.spec.ts` asks whether an
+export's implementation reaches a child process, and `contractTest`'s default runner is `spawnSync`. That is
+true of the export and false of all nine tests, which inject a recorder and run in ~20ms. The coverage is in
+`@abuddy/cli`'s suite, in the integration half, rather than weakening a guard to suit one spec.
+`docs/plans/test-unit-scheduling.md` records this as a third instance of that predicate being mechanism-based
+rather than cost-based.
+
+Wiring the two scaffolders together surfaced a pre-existing inconsistency worth knowing about: `init-tests`
+derives `@abuddy/testing`'s range from `cliVersion()` while `scaffoldUnitTestSetup` checks it against the
+pack's `@abuddy/sdk` range, so in this checkout it adds `^0.1.0` and immediately reports it as too old for
+`@abuddy/sdk ^0.3.14`. Left alone here: those are version ranges, which the release process owns.
+
 ### Industry practices this repo does not follow
 
 Each of these was found in this survey, not taken from a list.
