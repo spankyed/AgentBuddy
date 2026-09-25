@@ -109,26 +109,26 @@ async function runAndStamp(step: ChainStep): Promise<Result> {
 
 
 /**
- * How many steps may run at once. **Two, measured cold on an idle machine (2026-09-25):**
+ * How many steps may run at once. **Three, re-measured 2026-09-25 against the pooled step shape:**
  *
- *     lanes 1   306.9s wall   306.9s of step time   passed
- *     lanes 2   194.0s        339.5s (+11%)         passed, and again at 198.7s and 196.5s, 17 of 17 each
- *     lanes 3   202.7s        477s   (+55%)         one run of two FAILED
+ *     lanes 1   261.2s                    0 failures
+ *     lanes 2   207.6s, 192.3s            0 failures
+ *     lanes 3   157.8s, 161.8s, 156.1s    0 failures
+ *     lanes 4   159.6s                    0 failures
  *
- * Three is slower than two *and* not reproducible: the failing run timed out in `findLmdbImports > holds for
- * the repo` at 5220ms against vitest's 5s default, a whole-repo scan that takes ~2s alone. That is the thin
- * margin `scripts/test-unit.ts` already records, where raising one suite's timeout moved the failure to
- * another suite rather than fixing it.
+ * This reverses what `goal-test-tiers.md` settled, and the cause is known rather than guessed. That
+ * measurement had three lanes slower than two *and* failing, and what failed was a test timing out at
+ * vitest's 5s default — `findLmdbImports > holds for the repo` at 5220ms, a whole-repo scan that takes ~2s
+ * alone. The cap was the timeout, not the cores. `goal-one-job-pool.md` Phase 5 replaced that default with
+ * the tier budgets, 15s and 60s, and the third lane became both faster and green.
  *
- * Unlimited lanes were measured twice before this and were worse than serial (348s to 567s of work), which
- * is why there is a limit at all rather than a ready queue.
- *
- * **Re-measure this when `test:unit` becomes one root vitest run** (`docs/plans/test-unit-scheduling.md`):
- * two lanes is tuned against eight suite steps, and one step using every core is a different problem.
+ * Four is not better than three: the critical path is 106-112s, so three lanes at ~157s is already close to
+ * the floor and more lanes have nothing left to overlap. Re-measure this when the step shape changes again
+ * — it is tuned to eleven steps, two of which are the unit pools, and it was tuned to seventeen before.
  */
 function laneCount(): number {
   const flag = process.argv.indexOf('--lanes');
-  const value = flag === -1 ? 2 : Number(process.argv[flag + 1]);
+  const value = flag === -1 ? 3 : Number(process.argv[flag + 1]);
   if (!Number.isInteger(value) || value < 1) throw new Error(`--lanes takes a positive integer, not ${String(process.argv[flag + 1])}`);
   return value;
 }

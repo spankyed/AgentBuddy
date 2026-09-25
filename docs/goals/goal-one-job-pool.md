@@ -504,6 +504,47 @@ slowest single test is about 5s. The budget belongs to the tier: `testTimeout` a
 that closes a call. The same greedy match had also reported "keeping" a deliberate 300ms timeout that was
 never a timeout at all — it was inside that same fixture.
 
+### Phase 6 — the third lane, which Phase 5 unlocked
+
+#### The lane scheduler is gone
+
+`scripts/test-unit.ts` runs the two pools one after another and lets each one's vitest own the cores, so
+`--maxWorkers` is the single budget: Decision 6 of `goal-test-tiers.md` satisfied by construction rather
+than by a script. Running the two pools at once was measured and is not worth it — 34.3s against 35.2s
+serial for 66.0s of pool time against 35.2s, with one run failing a test.
+
+#### Three lanes, and why that is not reopening a settled question
+
+    lanes 1   261.2s                    0 failures
+    lanes 2   207.6s, 192.3s            0 failures
+    lanes 3   157.8s, 161.8s, 156.1s    0 failures
+    lanes 4   159.6s                    0 failures
+
+`goal-test-tiers.md` settled that "a third lane is not worth unlocking", measuring it slower than two *and*
+failing. **That cap was vitest's 5s default, not the cores.** What failed there was
+`findLmdbImports > holds for the repo` at 5220ms — a whole-repo scan that takes ~2s alone — and Phase 5
+replaced that default with the tier budgets, 15s and 60s. The third lane is now the fastest thing measured
+and green three times out of three. This phase exists to re-measure the default ("two is tuned against
+eight suite steps"), so the finding is the phase working rather than a settled decision being reopened.
+
+Four lanes is not better than three: the critical path is 106-112s, so three at ~157s is near the floor and
+a fourth has nothing left to overlap.
+
+#### Decision 5 was already satisfied, and half of it rests on a premise that does not hold
+
+`bounded-spawn.ts` carries `liveGroups` and `reapOnExit`, which kill each spawned process group when the
+parent dies — landed in `59dec5165` with its own spec (`orchestrator-exit.spec.ts`), and nothing else in
+`scripts/` spawns asynchronously without a bound. The synchronous `execFileSync` callers cannot orphan,
+because the parent blocks.
+
+The other half — "an `abuddy doctor` that reaps what `@abuddy/host/process-liveness` can already identify" —
+was not built, because that is not what `process-liveness` does. `lockIsHeld`, `recordIsStale` and
+`readApiEndpoint` identify **records left behind**, not live processes, and `withBuildLock` already takes
+over a stale lock on its own. A `doctor` check there would report something that is already self-healing and
+would not have found the 34-hour orphan that motivated the decision. What remains genuinely uncovered is an
+`abuddy` a person or an agent starts in a shell that later dies, which is not reachable from inside this
+repo.
+
 ## Constraints
 
 `goal-test-tiers.md`'s standing rules carry over unchanged: no push, tag or PR; no publish or release; no

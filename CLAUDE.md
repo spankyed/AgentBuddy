@@ -210,10 +210,12 @@ npm run chain            # Before a merge: every check in dependency order, cold
                          # package's suite. The E2E suite is never cached, with its reason on the step.
                          #   --dry     the plan and why each step is or is not cached, running nothing
                          #   --all     run every step regardless of its stamp
-                         #   --lanes N how many steps run at once. Two by default, measured: serial 307s,
-                         #             two 194s, three 203s with one of two runs failing. Re-measure it
-                         #             when test:unit becomes one root vitest run (docs/plans/
-                         #             test-unit-scheduling.md), since two is tuned against eight suites
+                         #   --lanes N how many steps run at once. Three by default, re-measured against
+                         #             the pooled step shape: 1 lane 261s, 2 lanes 208/192s, 3 lanes
+                         #             158/162/156s, 4 lanes 160s, none failing. Three reverses the
+                         #             earlier cap, which was vitest's 5s default failing the third lane
+                         #             rather than the cores; per-tier timeouts removed it. Re-measure
+                         #             when the step shape changes: this is tuned to eleven steps
 npm test                 # Playwright E2E tests
 npm run test:unit        # Vitest, as two pools: the host suites as one root run under the
                          # @abuddy/source condition, and the pack suite on its own resolving the published

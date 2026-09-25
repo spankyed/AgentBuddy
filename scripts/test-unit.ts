@@ -1,5 +1,5 @@
 /**
- * The unit suites, as two pools.
+ * The unit suites, as two pools, one after another.
  *
  * It used to run the eight suites as eight `npm test -w` invocations, two at a time. That is two schedulers
  * with no shared budget — this one over suites, vitest's over the files inside each — so a third lane
@@ -46,18 +46,17 @@ const POOLS: Pool[] = [
 ];
 
 const cpus = os.availableParallelism?.() ?? os.cpus().length;
+
 /**
- * How many pools run at once. **One, measured** on a 10-core machine:
+ * **There is no lane scheduler here any more.** This used to schedule suites while vitest scheduled the
+ * files inside each, which is the two-pools-of-budget problem that pooling removed; what is left runs the
+ * pools one after another and lets each one's vitest own the cores. `--maxWorkers` is the single budget,
+ * which is Decision 6 of `goal-test-tiers.md` satisfied by construction rather than by a script.
  *
- *     lanes 1: 35.4s, 35.2s wall   35.2s of pool time   passed, passed
- *     lanes 2: 34.3s, 34.4s wall   66.0s of pool time   passed, and one run failed a test
- *
- * A second lane buys about a second, 3%, for 87% more total work and a flake — the host pool alone is
- * 21.1s and 33.6s beside the pack pool. Each pool already spreads itself across the cores, which is the
- * same saturation that capped the old suite-level scheduler at two lanes, arrived at from the other side.
- * `ABUDDY_TEST_LANES=2` is there to re-measure with, not because it is faster.
+ * Running the two pools at once was measured and is not worth it: 34.3s against 35.2s serial, for 66.0s of
+ * pool time against 35.2s, and one of those runs failed a test. The host pool alone is 21.1s and 33.6s
+ * beside the pack pool, because each already spreads across the cores.
  */
-const lanes = Math.max(1, Number(process.env.ABUDDY_TEST_LANES || 1));
 
 interface Result { pool: string; code: number; ms: number; output: string; timedOut?: true }
 
@@ -68,34 +67,21 @@ async function run(pool: Pool): Promise<Result> {
 }
 
 async function main(): Promise<void> {
-  console.log(`${POOLS.length} pools over ${UNIT_SUITES.length} suites, ${lanes} at a time (${cpus} cpus)`);
+  console.log(`${POOLS.length} pools over ${UNIT_SUITES.length} suites, one at a time (${cpus} cpus)`);
   execFileSync('npm', ['run', 'packages:ensure'], { stdio: 'inherit' });
 
   const started = Date.now();
-  const queue = [...POOLS];
   const results: Result[] = [];
-  await Promise.all(Array.from({ length: lanes }, async () => {
-    for (let pool = queue.shift(); pool; pool = queue.shift()) {
-      const result = await run(pool);
-      results.push(result);
-      console.log(`  ${(result.code === 0 ? 'ok' : result.timedOut ? 'TIMEOUT' : 'FAIL').padEnd(7)} ${result.pool.padEnd(22)} ${(result.ms / 1000).toFixed(1)}s`);
-    }
-  }));
-
-  // A lane count that came out wrong once reported "passed" having run nothing, which is worse than a
-  // failure: every pool must have reported, or this did not test what it claims to have tested.
-  const missing = POOLS.filter((pool) => !results.some((result) => result.pool === pool.label));
-  if (missing.length > 0) {
-    console.error(`\nran ${results.length} of ${POOLS.length} pools — never ran: ${missing.map((p) => p.label).join(', ')}`);
-    process.exitCode = 1;
-    return;
+  for (const pool of POOLS) {
+    const result = await run(pool);
+    results.push(result);
+    console.log(`  ${(result.code === 0 ? 'ok' : result.timedOut ? 'TIMEOUT' : 'FAIL').padEnd(7)} ${result.pool.padEnd(22)} ${(result.ms / 1000).toFixed(1)}s`);
   }
 
   const failed = results.filter((result) => result.code !== 0);
   for (const result of failed) console.log(`\n${'='.repeat(70)}\n${result.pool}\n${'='.repeat(70)}\n${result.output}`);
   const total = ((Date.now() - started) / 1000).toFixed(1);
-  const work = (results.reduce((sum, result) => sum + result.ms, 0) / 1000).toFixed(1);
-  console.log(`\n${failed.length ? `${failed.length} pool(s) failed` : 'unit suites passed'} — ${total}s wall, ${work}s of pool time, ${lanes} lanes`);
+  console.log(`\n${failed.length ? `${failed.length} pool(s) failed` : 'unit suites passed'} — ${total}s wall`);
   // Not process.exit(): it drops whatever is still in stdout's buffer, and a failing pool's captured output
   // is the one thing here worth reading. Piped, that truncates at 128KB — measured.
   process.exitCode = failed.length ? 1 : 0;
