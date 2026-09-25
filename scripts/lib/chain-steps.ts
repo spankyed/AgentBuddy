@@ -389,6 +389,16 @@ export const CHAIN_STEPS: readonly ChainStep[] = [
       'packages/default-setup/package.json', 'packages/default-setup/tsconfig.json',
       'packages/default-setup/dev-build.mjs', ...PACKAGE_BUILD_OUTPUTS] },
   // The fixture packs depend on default-setup, so they need its snapshot from compile
+  //
+  // The third place in this chain with a cache inside a cached step, and the one that is benign: `abuddy
+  // build` skips `generate-entries` when its `.inputs-hash` matches. It takes no `forceArgs` because a skip
+  // there cannot make the step a no-op — the script runs four commands per fixture (`validate`, `build`,
+  // `tsc --noEmit`, `test --contract`) and only the second caches anything, so the step still validates,
+  // typechecks and runs the harness specs however that hash reads. That is the whole reason, and it is the
+  // condition to re-check: were this step's work ever to become `abuddy build` alone, or were that skip to
+  // grow to cover the typecheck or the specs, it would have the shape the pool steps had — stale for a
+  // reason its inner layer cannot see, so it runs, skips everything and stamps green.
+  //
   // 38s, not the 20s it takes alone: `seconds` is what a step costs under the chain's own default lanes,
   // because that is what `budgetFor` has to cover. Raising the default from two to three moved this one and
   // nothing else past the drift band, which is `driftedSteps` doing its job.
