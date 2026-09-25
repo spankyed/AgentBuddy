@@ -50,6 +50,33 @@ Verified: four consecutive runs of the two suites started together against stale
 lock errors; reverting the wait fails the same run with two. **Phase 2's mutation check discriminates now**,
 where before it could not, because both sides failed.
 
+## 1b. Nothing could time out — **done, 2026-09-25**
+
+Raised separately from the list below, because it is the reason several of this session's incidents cost
+hours: an orphaned `generate-entries` at 99% CPU for a day and a half, a packaged-authoring script that hung
+a machine until three pids were killed by hand, and a nine-minute hang while writing the tests for item 1.
+
+None of it was bad luck. `scripts/chain.ts` spawned all ten steps with no wall-clock bound at all,
+`scripts/test-unit.ts` spawned eight suites the same way, and four of five shell scripts under
+`tests/scripts/` had none either. The fifth only looked bounded: `test-packaged-authoring.sh` sets
+`timeout 120` inside its `expect` block, which covers a pattern match and not the `wait` after it. Nor could
+vitest help — its timeouts bound a *test*, not the process around it, and a synchronous block
+(`Atomics.wait`) is invisible to them entirely.
+
+`scripts/lib/bounded-spawn.ts` now bounds every spawn an orchestrator makes and kills the process *group*,
+so nothing survives the run that started it. Budgets come from measurements — each chain step declares what
+it costs healthy and gets four times that — because a bound nobody would wait for is the same as no bound;
+the build lock's own wait dropped from ten minutes to one on the same reasoning. `TIMEOUT` is its own
+verdict beside `ok` and `FAIL`. `chain-graph.spec.ts` fails on an orchestrator that imports a raw `spawn`,
+a chain step with no declared cost, or an npm script that runs a shell script without a budget.
+
+Measured: the bound fires at the budget, exit 124, and leaves no survivors — including against a child that
+ignores SIGTERM, which the first version would have missed, because its SIGKILL escalation rode on an
+unref'd timer that never fired.
+
+**Still unbounded:** `release-beta-rule.test.sh`, which no root npm script invokes — it runs from CI, which
+has its own timeouts.
+
 ## 2. Make the stamps sound, and keep them sound
 
 `api:stamp`'s key is incomplete. Its own comment states the invariant — *"the reports are a pure function of
