@@ -29,7 +29,7 @@ beforeAll(async () => {
   v1 = await compileSeeds('v1');
   v2 = await compileSeeds('v2');
   dirs.push(v1, v2);
-}, 120_000);
+});
 afterAll(() => {
   for (const dir of dirs) fs.rmSync(dir, { recursive: true, force: true });
 });
@@ -58,7 +58,7 @@ describe('re-seeding edited rows', () => {
     const after = snapshot();
     expect(after.rows[edited(key)], 'the edited row').toEqual(before.rows[edited(key)]);
     expect(after.rows[untouched(key)], 'the unedited changed row').not.toEqual(before.rows[untouched(key)]);
-  }, 60_000);
+  });
 
   it("keeps a field the record doesn't set and still updates the row", () => {
     resetDatabase();

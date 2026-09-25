@@ -165,7 +165,7 @@ describe('the database write lock', () => {
       holder.kill('SIGKILL');
     }
     expect(fs.existsSync(lockFile(dir))).toBe(false);
-  }, 90_000);
+  });
 
   // The lock existed to keep two tools off one database and did not: it read "nothing holds it", then
   // wrote, and every racer did both in turn. Six for six, before `wx` made the create the acquisition.
@@ -187,7 +187,7 @@ describe('the database write lock', () => {
     }
 
     expect(said.filter((s) => s === 'ACQUIRED')).toHaveLength(1);
-  }, 60_000);
+  });
 
   it("counts a lock from another machine, whose process it can't check", () => {
     const dir = tempDir('write-lock-');

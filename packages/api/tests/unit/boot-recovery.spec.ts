@@ -40,7 +40,7 @@ beforeAll(async () => {
   );
 
   await backend.setupBackend();
-}, 120_000);
+});
 
 afterAll(() => {
   backend.backendActor?.stop();

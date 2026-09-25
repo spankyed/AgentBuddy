@@ -399,7 +399,7 @@ const LAYOUTS = [
 
 describe.each(LAYOUTS)('generated facades with a dependency ($name)', ({ published }) => {
   let parent: string;
-  beforeAll(async () => { parent = await buildPacks(published); }, 240_000);
+  beforeAll(async () => { parent = await buildPacks(published); });
   afterAll(() => fs.rmSync(parent, { recursive: true, force: true }));
 
   it("writes the dependency's facade types into its snapshot", () => {

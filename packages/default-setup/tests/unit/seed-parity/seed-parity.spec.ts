@@ -158,7 +158,7 @@ describe('seed parity (golden snapshots)', () => {
       { name: 'changed', sources: 'v2', mode, include },
     ]);
     checkGolden(label, steps);
-  }, 120_000);
+  });
 
   it('leaves rows without a stored sourceHash alone (user-owned)', async () => {
     const steps = await run([
@@ -174,7 +174,7 @@ describe('seed parity (golden snapshots)', () => {
       },
     ]);
     checkGolden('untracked', steps);
-  }, 120_000);
+  });
 
   it('seeds only the included items', async () => {
     const steps = await run([
@@ -190,10 +190,10 @@ describe('seed parity (golden snapshots)', () => {
       },
     ]);
     checkGolden('include', steps);
-  }, 120_000);
+  });
 
   it("seeds default-setup's own library, notes, actions and prompts", async () => {
     const steps = await run([{ name: 'fresh', sources: 'default-setup' }]);
     checkGolden('default-setup', steps);
-  }, 120_000);
+  });
 });

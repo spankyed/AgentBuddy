@@ -258,13 +258,13 @@ describe('sourceHash is content-addressed', () => {
 
   it('gives the same source the same hash from a different source root and output directory', async () => {
     expect(await hashOf()).toBe(await hashOf());
-  }, 60_000);
+  });
 
   it("changes when the action's own body changes", async () => {
     expect(await hashOf(ACTION.replace("'hello'", "'goodbye'"))).not.toBe(await hashOf());
-  }, 60_000);
+  });
 
   it('changes when an inlined helper changes, since the hash covers the bundle', async () => {
     expect(await hashOf(ACTION, HELPER.replace('toUpperCase', 'toLowerCase'))).not.toBe(await hashOf());
-  }, 60_000);
+  });
 });
