@@ -225,22 +225,43 @@ That is the right trade anyway, and it is bought back twice: the granularity is 
 re-run one suite instead of eight, and Phase 6 gives the eight steps the lanes the single step had. The
 number to beat in Phase 6 is 43.7s for tier 1's suites — not the 100.7s a serial cold run of them costs.
 
-#### What is still unmeasured, and why
+#### Measured, on an idle machine
 
-The chain's cold and warm wall times are not recorded here, because they could not be measured honestly. A
-second checkout (`.claude/worktrees/cli-spawns`) was building and running vitest on this machine throughout,
-at load averages of 44 to 84, and every step roughly doubled under it: `test:external-pack:contract` 17.5s →
-36.3s, `test:integration` 44.8s → 85.4s and 97.0s.
+| Run | Wall | Cached |
+|---|---|---|
+| cold, serial | 311.3s | 0 of 17 |
+| warm, straight after | 268.4s | 7 of 17 |
+| cold, after the `build:app` fix below | 306.9s | 0 of 17 |
+| warm, after it | **58.4s** | **15 of 17** |
 
-`test:integration` also *failed* under that load, three times, reporting `Tests 307 passed (307)` and exiting
-1 on `[vitest-worker]: Timeout calling "onTaskUpdate"` — vitest's worker-to-main RPC missing its deadline on
-a starved box. Run alone on the idle machine it is 44.8s and green. So it is contention, not a defect in the
-suite, but it is a real robustness gap: **a step that passes every test and exits non-zero fails the chain.**
-Phase 8 owns it, and the cheap mitigation is a quieter reporter — the chain buffers a step's output and
-prints it only on failure, so vitest's per-test `onTaskUpdate` traffic is pure cost here.
+Cold: `packages:ensure` 0.3s, `compile` 11.8s, `test:external-pack:contract` 18.2s, `typecheck` 31.4s, the
+eight suites 88.0s, `test:integration` 45.2s, `build:app` 25.2s, `test:external-pack:app` 19.6s, E2E 25.5s,
+`test:packaged-authoring` 59.8s.
 
-What *was* verified is load-independent, because it is a fingerprint comparison rather than a timing: a warm
-run reported **12 of 17 steps cached**, and the table above holds exactly.
+In the warm run only `test` ran by design; `typecheck` ran because that cycle edited `scripts/`, which is
+the cache working rather than failing.
+
+#### The first warm run cached 7 of 17, and the cause was not the cache
+
+`build` was root `npm run build`, which is `-ws` and so includes `@app/default-setup`, whose own `build`
+script is the exact command `compile` runs. So `build` rebuilt the pack on every chain run and rewrote
+`packages/default-setup/dist` — a tree it declares as an input. It invalidated **itself**, and the five
+steps that read that tree: `test:external-pack:contract`, three unit suites and `test:integration`.
+
+Two consecutive `abuddy build` runs differ in exactly two lines, both the order of union members in an
+emitted `Omit<…, "a" | "b">`, so chasing byte-determinism in TypeScript's declaration emit was the fragile
+path. The duplication was the real defect — about 12s of wasted work per build, invisible until something
+depended on the output not changing.
+
+The chain now runs `build:app`, which builds the five workspaces it needs and leaves the pack to `compile`,
+a declared `need`. `npm run build` still builds everything, for CI and `build/build.sh`. A spec derives the
+workspace set from the manifests, so a workspace that gains a `build` script cannot be silently skipped.
+
+**What this says about checking a cache.** Three of Phase 5's four clauses are fingerprint comparisons and
+`npm run chain --dry` answers them without running anything. The fourth is not: "a second run re-runs only
+E2E" is a claim about what the steps *write*, which no amount of reading the inputs can answer. It was
+checked with `--dry`, passed, and was wrong. A cache is only as good as the claim that steps do not write
+outside their declared outputs, and that claim needs a real run.
 
 ### Industry practices this repo does not follow
 

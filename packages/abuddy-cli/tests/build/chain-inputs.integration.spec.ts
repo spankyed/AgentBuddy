@@ -137,3 +137,32 @@ describe('a step that reads another step\'s output depends on it', () => {
     expect(missing).toEqual([]);
   });
 });
+
+// `build:app` is an enumeration of workspaces, which is the shape that goes stale silently: a workspace that
+// gains a `build` script simply would not be built by the chain, and nothing would say so. The set is
+// derivable from the manifests, so it is checked rather than trusted. `@app/default-setup` is the one
+// exclusion, and it is not an exception so much as a division of labour: `compile` runs that exact command,
+// and a second run of it rewrote the `dist` five steps read, which is what made a warm chain uncacheable.
+describe('the chain builds every workspace that has a build', () => {
+  const OWNED_BY_COMPILE = '@app/default-setup';
+
+  it('names them all in build:app, or leaves them to compile', () => {
+    const root = JSON.parse(fs.readFileSync(path.join(REPO_ROOT, 'package.json'), 'utf-8')) as { scripts: Record<string, string> };
+    const named = new Set([...root.scripts['build:app'].matchAll(/-w (\S+)/g)].map(([, name]) => name));
+
+    const withBuild = fs.readdirSync(path.join(REPO_ROOT, 'packages'), { withFileTypes: true })
+      .filter((entry) => entry.isDirectory())
+      .flatMap((entry) => {
+        const manifest = path.join(REPO_ROOT, 'packages', entry.name, 'package.json');
+        if (!fs.existsSync(manifest)) return [];
+        const pkg = JSON.parse(fs.readFileSync(manifest, 'utf-8')) as { name: string; scripts?: Record<string, string> };
+        return pkg.scripts?.build ? [pkg.name] : [];
+      });
+
+    const unbuilt = withBuild.filter((name) => name !== OWNED_BY_COMPILE && !named.has(name));
+    expect(unbuilt, 'add these to build:app, or say which step builds them').toEqual([]);
+    const gone = [...named].filter((name) => !withBuild.includes(name));
+    expect(gone, 'build:app names these and they have no build script').toEqual([]);
+    expect(named.has(OWNED_BY_COMPILE), 'compile already runs this workspace\'s build; a second run thrashes the cache').toBe(false);
+  });
+});

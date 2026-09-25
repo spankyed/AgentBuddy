@@ -247,18 +247,23 @@ export const CHAIN_STEPS: readonly ChainStep[] = [
   // in this table, which `orderedSteps` never promised.
   { name: 'test:integration', tier: 2, needs: ['compile'], seconds: 43,
     inputs: [...ROOT, ...workspace('abuddy-cli'), ...PACKAGE_BUILD_OUTPUTS, ...PACK_OUTPUTS] },
-  { name: 'build', tier: 3, needs: ['compile'], seconds: 37, outputs: APP_OUTPUTS,
+  // `build:app`, not `build`. Root `build` is `-ws`, which includes `@app/default-setup`, whose own build is
+  // the very command `compile` runs — so a `build` step rebuilt the pack every run, rewriting the `dist`
+  // it declares as an input. It invalidated itself, and the five steps that read that tree, on every run:
+  // measured, a warm chain cached 7 of 17 steps instead of 16. `npm run build` still builds everything, for
+  // CI and `build/build.sh`; the chain does not need it to, because `compile` is a declared `need`.
+  { name: 'build:app', tier: 3, needs: ['compile'], seconds: 37, outputs: APP_OUTPUTS,
     inputs: [...ROOT, ...['renderer', 'api', 'main', 'preload'].flatMap(workspace),
       'packages/api/tsup.config.ts', ...APP_ENTRY,
       ...PACKAGE_BUILD_OUTPUTS, ...PACK_OUTPUTS] },
-  { name: 'test:external-pack:app', tier: 3, needs: ['build', 'test:external-pack:contract'], seconds: 20,
+  { name: 'test:external-pack:app', tier: 3, needs: ['build:app', 'test:external-pack:contract'], seconds: 20,
     inputs: [...ROOT, ...BOUNDED_RUNNER, 'tests/fixtures', 'tests/scripts/test-external-pack-app.sh',
       'tests/scripts/lib', 'playwright.config.ts', ...APP_OUTPUTS] },
   // Never cached: it drives real Electron with real timing and is the likeliest step to be flaky, and a
   // flaky pass cached green hides an intermittent failure indefinitely. 28s is cheap enough to always pay.
-  { name: 'test', tier: 3, needs: ['build'], cache: false, seconds: 26, // the E2E suite
+  { name: 'test', tier: 3, needs: ['build:app'], cache: false, seconds: 26, // the E2E suite
     inputs: [...ROOT, 'tests/e2e', 'playwright.config.ts', 'scripts/with-source.mjs', ...APP_ENTRY, ...APP_OUTPUTS] },
-  { name: 'test:packaged-authoring', tier: 3, needs: ['build'], seconds: 60,
+  { name: 'test:packaged-authoring', tier: 3, needs: ['build:app'], seconds: 60,
     inputs: [...ROOT, ...BOUNDED_RUNNER, 'tests/scripts/test-packaged-authoring.sh', 'tests/scripts/lib',
       ...PACKAGE_BUILD_OUTPUTS, ...APP_OUTPUTS] },
 ];
