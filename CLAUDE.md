@@ -183,6 +183,12 @@ npm test                              # Run all E2E tests
 npm test -- smoke                    # Run just smoke tests
 npm test -- tests/e2e/scratch        # Run ad-hoc scratch test (gitignored)
 DEBUG_E2E=1 npm test                  # With Electron stdout/stderr logging
+npm run test:headed                   # Show the app's windows, to watch a test drive it. Under Playwright
+                                      # they are never shown or focused (PLAYWRIGHT_VISIBLE, the guard in
+                                      # packages/main WindowManager, the splash and the protocol handler)
+npm run test:explorer                 # Playwright's UI mode: its test explorer, with a timeline and DOM
+                                      # snapshots. Playwright's own window, not the app's — the two are
+                                      # orthogonal, and `--debug` is a third thing (the Inspector)
 ```
 
 Screenshots save to `tests/screenshots/` (gitignored). The `app` fixture provides `navigate(pluginId)`, `screenshot(name)`, `sendEvent(event)`, `getState()`, `getContext()`, `waitForState(check)`, and `waitForPlugin(pluginId)`.
