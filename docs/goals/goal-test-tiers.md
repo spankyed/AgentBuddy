@@ -3,11 +3,12 @@
 ```
 # Goal: a test knows what it needs, so the pipeline can act on it
 
-Implement docs/goals/goal-test-tiers.md on master, at or after 7eb5aa1e5 — the base its Background was
-surveyed at.
-Before Phase 1, confirm the base: tests/scripts/test-external-pack.sh runs `abuddy validate`, `abuddy
-build`, `tsc --noEmit`, `vitest run` and `abuddy test --app-root` in one loop, and scripts/chain.ts skips
-the whole chain on an unchanged tree. If they don't, stop and say so — the plan was surveyed elsewhere.
+Implement docs/goals/goal-test-tiers.md on master, at or after 047c4e813 — Phases 1 to 3 are already done
+there, and the Background was surveyed at 7eb5aa1e5, before them.
+Before Phase 4, confirm the base: scripts/lib/chain-steps.ts exports CHAIN_STEPS and orderedSteps, every
+step carries a `tier` and `needs`, `npm run check:tiers` passes, and tests/scripts/ holds
+test-external-pack-contract.sh beside test-external-pack-app.sh. If they don't, stop and say so — those are
+this plan's first three phases and the rest builds on them.
 Read Background, Decisions, Phases and Constraints first. Decisions are final: implement them, don't
 reopen them or stop to ask.
 Where a detail isn't specified, pick the conventional option, note it in the final summary, and keep
@@ -16,8 +17,9 @@ test, fixture, template and doc in the same change, and fix forward. Stored user
 it moves with migrations.
 
 Finished when:
-- Phases 1–9 are implemented and each meets its "Done when"; every new guard, helper or test is
-  mutation-checked. Phases 1 and 2's external-pack half are already done (`06f55ea72`, `b1c0b3cc4`).
+- Phases 4–9 are implemented and each meets its "Done when"; every new guard, helper or test is
+  mutation-checked. Phases 1–3 are done (`06f55ea72`, `b1c0b3cc4`, `8095daf14`), and Phase 2's
+  packaged-authoring half is recorded as impossible until Phase 7 rather than skipped.
 - Every check in the chain declares its tier, and no tier-1 or tier-2 check launches Electron.
 - `npm run chain` runs tier 1 and tier 2 before `build`, and tier 3 after it.
 - Every step declares `needs` and `inputs`; a cycle or unknown dependency fails before any step runs; a spec
@@ -94,7 +96,9 @@ Phase 5, not with the split.
 | split (`b1c0b3cc4`) | 352.0s | 154.6s | **43.1s** | **154.1s** |
 
 Before that, `api:check` leaving the chain and `test:packaged-authoring` ensuring rather than rebuilding took
-it from 6m53s to 5m50s (`0f0e57a15`, `7eb5aa1e5`).
+it from 6m53s to 5m50s (`0f0e57a15`, `7eb5aa1e5`). After it, `.tsbuildinfo` per project took `typecheck` from
+55s to 30s warm (`047c4e813`), so tier 1 is about 130s and the chain about 300s warm. Re-measure before Phase
+5: these are the numbers its caching is judged against.
 
 ### One step, five concerns
 
@@ -136,7 +140,7 @@ Four attempts at a cheaper chain, each defeated by the same coupling:
 | Run the steps in three lanes | Failed. `test:packaged-authoring` ran `packages:build`, rewriting `dist/` under the other lanes |
 | Run them in lanes with that step alone | Failed. Work 348s → 567s, `@abuddy/cli` 56s → 118s: every step already uses all the cores |
 | Drop `compile` as redundant with `build` | Wrong. No workspace declares a dependency on `@app/default-setup`, so `build -ws` gives no ordering guarantee, and the renderer's build reads the pack entry `compile` writes |
-| One `vitest run` over eight projects | 105s against 100.9s, no gain — startup was only ~4s of 104s — and it broke `@app/api`'s `boot-recovery.spec.ts` |
+| One `vitest run` over eight projects | 105s against 100.9s, no gain — the suites report 99.6s of 104s wall, so startup was never the cost — and it broke `@app/api`'s `boot-recovery.spec.ts`, which spawns the API server and needs the `@abuddy/source` condition the package's own run supplies. The root `vitest.config.ts`'s four projects stay, for `npm run spec`'s cross-package selection |
 | Per-step input caching | Not viable. Every expensive step reads the built app, so its honest input set is the whole repo |
 
 Only the coarse gate survived: the chain skips itself when no tracked file under `packages/`, `scripts/`
@@ -149,6 +153,13 @@ or `tests/` has changed (of the 20 commits before this, three touched none).
   and nothing else. 1972 tracked files fingerprint in 160ms.
 - `ensurePackagesBuilt()` returns before taking the build lock when nothing is stale, and
   `ABUDDY_PACKAGES_PREBUILT=1` makes staleness an error rather than a racing rebuild (`b76190721`).
+- **A `.tsbuildinfo` per typecheck project** (`047c4e813`): `typecheck` is 30s warm against 55s before, at no
+  cold cost. Not project references — `composite` may not be combined with `noEmit`, and all twelve projects
+  typecheck without emitting, while `incremental` needs neither. One trap worth keeping: `api`'s
+  `tsconfig.test.json` and `tsconfig.scripts.json` `extend` its `tsconfig.json`, so they inherited its
+  `tsBuildInfoFile` and all three passes overwrote one file, leaving none of them warm — a cache that quietly
+  does nothing. This is the shape Phase 5 generalises: a step that can say what it read can be skipped when
+  none of it moved.
 
 ### Industry practices this repo does not follow
 
@@ -414,13 +425,12 @@ hang fails at its tier budget rather than at two minutes.
 
 ## Deferred
 
-Both plans reached the same four, which is itself worth noting — they are what caching hides rather than fixes.
-
-- **`@app/default-setup` reports `setup 97.3s` against 15.4s wall.** The most suspicious number in the run and
-  undiagnosed: an expensive per-file setup paid by every test file. Worth profiling on its own.
-- **The `@abuddy/cli` suite at 56s**, over half of `test:unit`. Already ~4.5× parallel internally; it runs real
-  `abuddy build`s per test, and a shared fixture cache keyed by the fixture's fingerprint is the lever. Which
-  tests dominate is unmeasured, so this needs profiling before a proposal.
+- **The `@abuddy/cli` suite at 56s**, over half of `test:unit`. **Profiled, and there is no hot spot**: the
+  slowest 25 tests are all 1–1.6s, spread across `facade-gate`, `scaffold`, `add-extensions`,
+  `component-contracts`, `release` and `db`, and every one spawns a real `tsc`, `abuddy build` or node
+  subprocess. The 249s of test time is a long tail of genuine work, already ~4.5× parallel. So the lever is
+  fewer subprocesses — a shared tsc service, or one built fixture where tests differ only in their assertions
+  — which is a project rather than a fix, and worth its own goal.
 - **`test:packaged-authoring` at 65s**, mostly npm installs from packed tarballs. A warm `node_modules` cache
   is the lever, and the non-hermetic npm cache it already relies on is the precedent to be careful about.
 - **Turning CI on.** Off deliberately for one contributor; the workflow header says when it returns. A cached
@@ -428,9 +438,10 @@ Both plans reached the same four, which is itself worth noting — they are what
   only gate, which is why Decisions 15 and 16 refuse to cache or skip on a guess.
 - **Declaring `@app/default-setup` as a dependency of what builds against it**, which would let `build -ws`
   order it and retire `compile`. Blocked on the renderer discovering packs rather than importing one.
-- **tsc project references** for `typecheck`'s 55s. Only `packages/renderer/tsconfig.json` uses
-  `composite`/`references`, so the other projects cold-start. Independent of this goal, and Phase 5 may make
-  it moot by caching the step whole.
+- **`@app/default-setup`'s per-file harness setup.** Not a pole, contrary to how it reads: `setupPackTests`
+  runs in `setupFiles`, so it executes once per test file across 84 files at about 1.16s each, and the
+  `setup 97.3s` a run reports is that sum across workers against a 15.4s wall. Halving it would save a few
+  seconds of wall. Recorded so the number stops looking alarming.
 
 ## Constraints
 
