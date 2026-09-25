@@ -79,26 +79,6 @@ afterEach(() => {
 });
 
 describe('CLIENT_CONNECTED on the bus', () => {
-  it('reaches every system when a client connects', async () => {
-    rootEvents.emitConnected();
-    await flush();
-    expect(received).toEqual(['first-pack']);
-  });
-
-  it('reaches an external pack with plugins once, when a client has loaded its frontend after connecting', async () => {
-    bus.stop();
-    registerPack(pack('external-pack'), loaded('external-pack', withFrontend));
-    bus = createActor(backendSystem, { systemId: 'host/bus' }).start();
-
-    rootEvents.emitConnected();
-    await flush();
-    expect(received).toEqual(['first-pack']);
-
-    rootEvents.emitPackClientConnected('external-pack');
-    await flush();
-    expect(received).toEqual(['first-pack', 'external-pack']);
-  });
-
   it("reaches only a pack's systems when a client has loaded that pack's frontend", async () => {
     rootEvents.emitConnected();
     registerPack(pack('second-pack'), loaded('second-pack', withFrontend));

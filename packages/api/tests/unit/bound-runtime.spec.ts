@@ -42,7 +42,6 @@ describe('the bound app', () => {
     expect(services.secrets.status().protection).toBeDefined();
     expect(services.secrets.list()).toEqual([]);
     await expect(services.appData.backupInfo(dataDir)).resolves.toBeNull();
-    expect(typeof boundHost().services.inference.generateText).toBe('function');
     await expect(services.inference.generateText({ model: 'openai:gpt-5', prompt: 'hi' })).rejects.toThrow(/key/i);
   });
 

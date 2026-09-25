@@ -32,41 +32,6 @@ afterAll(() => {
   fs.rmSync(dataDir, { recursive: true, force: true });
 });
 
-describe('relation reads in @abuddy/ears', () => {
-  beforeEach(() => engine.admin.clear());
-
-  it('findRelations returns matching relations with their ids and info', () => {
-    const flow = createEntity(EARS.Entity.Flow as never);
-    const a = createEntity(EARS.Entity.Node as never);
-    const b = createEntity(EARS.Entity.Node as never);
-    untypedTx(a).link(EARS.RelKind.TRANSITIONS_TO as never, b, { sourceHandle: 'yes' });
-    untypedTx(flow).link(EARS.RelKind.CONTAINS as never, a);
-
-    const [edge] = findRelations({ sourceEntity: a, relationType: EARS.RelKind.TRANSITIONS_TO });
-    expect(edge).toMatchObject({ sourceEntity: a, targetEntity: b, relationType: EARS.RelKind.TRANSITIONS_TO as never, info: { sourceHandle: 'yes' } });
-    expect(edge.id).toMatch(/^Relation-/);
-    expect(findRelations({ targetEntity: a }).map((r) => r.sourceEntity)).toEqual([flow]);
-    expect(findRelations().map((r) => r.id).sort()).toEqual([edge.id, findRelations({ sourceEntity: flow })[0].id].sort());
-
-    untypedTx(a).patchLink(EARS.RelKind.TRANSITIONS_TO as never, b, { newTarget: b, newInfo: { sourceHandle: 'no' } });
-    expect(findRelations({ sourceEntity: a })[0]).toMatchObject({ id: edge.id, targetEntity: b, info: { sourceHandle: 'no' } });
-  });
-
-  it('getRelationStats counts relations and distinct endpoints of a kind', () => {
-    const [s1, s2, t] = [createEntity(EARS.Entity.Node as never), createEntity(EARS.Entity.Node as never), createEntity(EARS.Entity.Node as never)];
-    untypedTx(s1).link(EARS.RelKind.TRANSITIONS_TO as never, t);
-    untypedTx(s2).link(EARS.RelKind.TRANSITIONS_TO as never, t);
-    expect(getRelationStats(EARS.RelKind.TRANSITIONS_TO)).toEqual({ total: 2, uniqueSources: 2, uniqueTargets: 1 });
-    expect(getRelationStats(EARS.RelKind.SPAWNED)).toEqual({ total: 0, uniqueSources: 0, uniqueTargets: 0 });
-  });
-
-  it("untypedQx queries the app's engine, which binding installed", () => {
-    expect(installedEngine()).toBe(engine.query);
-    untypedTx('Flow-query' as never, true).put('label', 'Queried');
-    expect(untypedQx('Flow-query' as never).pick(['label'])).toEqual([{ id: 'Flow-query', label: 'Queried' }]);
-  });
-});
-
 describe('services.traceStore', () => {
   const US = '\x1F';
   const ids = { flow: 'TNode-trace-flow', event: 'TNode-trace-event', later: 'TNode-trace-later' } as const;

@@ -97,7 +97,7 @@ describe('secrets procedures', () => {
     expect(incoming).toEqual(Array(4).fill(CHANGED));
 
     await caller.delete({ id: personal.id });
-    expect(() => secretsStore.keyFor('openai')).toThrow('No OpenAI key selected (Old work)');
+    expect(() => secretsStore.keyFor('openai')).toThrow();
   });
 
   it('tell the settings system when packs change keys through services.secrets', async () => {

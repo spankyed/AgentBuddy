@@ -7,10 +7,10 @@ import { repository } from '#generated/repository';
 describe('memo seeds', () => {
   it('seeds memos from its markdown format and its compiler module format', async () => {
     const counts = await importSeeds();
-    expect(counts).toEqual({
+    // This pack's own seeds, exactly. The run also seeds default-setup's library, whose count is that
+    // pack's business and moves when its folders do, so this matches rather than equals.
+    expect(counts).toMatchObject({
       memos: { created: 1, updated: 0, skipped: 0 },
-      // The internal and commands folders, and the document listing this pack's editable command
-      library: { created: 3, updated: 0, skipped: 0 },
       'quick-memos': { created: 1, updated: 0, skipped: 0 },
     });
     expect(repository.memoQueries.all().map((memo) => memo.text).sort()).toEqual(['Seeded by a compiler module', 'Seeded from markdown\n']);

@@ -63,6 +63,16 @@ export interface QueryHandle {
    * Send a control_response back to the CLI for a surfaced control_request.
    * Only meaningful when `surfaceControlRequests: true` — in callback mode
    * the router handles responses internally.
+   *
+   * For a `can_use_tool` request the CLI parses this against a Zod union, and both branches have a
+   * required field: `allow` needs `updatedInput` (an empty object means "run with the original input",
+   * but the key must be there) and `deny` needs `message`. Both are optional in the signature below
+   * because one `respond` serves every control request, so nothing here enforces it.
+   *
+   * Sending `{ behavior: 'allow' }` with no `updatedInput` does not fail loudly: the CLI's parse throws,
+   * its own try/catch turns that into `{ behavior: 'deny', message: 'Tool permission request failed:
+   * ZodError: …' }`, and every approved Write, Bash and Edit comes back as a red error on the
+   * tool-activity row having never run. That happened once and took a while to find.
    */
   respond(requestId: string, response: { behavior: 'allow' | 'deny'; message?: string; updatedInput?: unknown }): void
   /** Ask the CLI to cancel the current turn (interrupt control request). */
