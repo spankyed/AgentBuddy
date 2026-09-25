@@ -11,6 +11,9 @@ tests/helpers/pack-builds.ts exports `run` over execFileSync, and `npm test -w @
 where the time goes, and a stale count invalidates it.
 Read Background, Decisions, Phases and Constraints first. Decisions are final: implement them, don't reopen
 them or stop to ask.
+This can run in a worktree beside goal-test-tiers.md — see "Doing this in a worktree". If you do, `npm install`
+inside it rather than symlinking node_modules, or its build stamps and lock are the other checkout's, and take
+every measurement with nothing else running.
 Where a detail isn't specified, pick the conventional option, note it in the final summary, and keep going.
 No backward compatibility in code: change signatures, move modules, migrate every in-repo caller, test,
 fixture, template and doc in the same change, and fix forward.
@@ -142,6 +145,28 @@ file totals say everything. Any claim of improvement in this goal is a file-tota
 **7. Nothing here is a reason to cache the suite.** Making it cheaper is independent of skipping it, and
 `goal-test-tiers.md`'s Phase 5 caches `test:unit` per package on its inputs. This goal reduces the cost when
 it does run, which is the half caching cannot do.
+
+## Doing this in a worktree, alongside `goal-test-tiers.md`
+
+This goal is a good candidate to run in parallel with that one, and the two barely touch: this one is
+`packages/abuddy-cli/tests/**` and `tests/helpers/pack-builds.ts`, while that one is `scripts/`, the packages'
+`vitest.config.ts`, `tests/scripts/` and `abuddy-cli/src/commands/test.ts`. The single shared directory is
+`abuddy-cli/tests/build/`, where the tiers goal adds specs and this one edits others — different files, which
+merge.
+
+**Give the worktree its own `node_modules`.** This is the part that will bite otherwise. The build stamps and
+the build lock live under it — `STAMP_DIR = repoFile('node_modules', '.cache', 'abuddy-packages-build')`
+(`packages-built.ts:107-108`) — while `packages/*/dist` is per-checkout. A worktree created with a symlinked
+`node_modules`, which is how `.claude/worktrees/` has done it, therefore shares a stamp that describes the
+*other* checkout's sources: the worktree builds and stamps its own fingerprint, the main checkout reads that
+stamp, finds it does not match its sources, rebuilds and overwrites, and both race the one lock. That is
+mutual invalidation, not a slowdown. `npm install` inside the worktree gives it its own stamps and lock, and
+`findCheckoutRoot()` already resolves to the worktree's root (`:40-45`), so nothing else needs configuring.
+
+**Edit in parallel, measure alone.** Every suite here uses all the cores. Two measured runs at once are not
+two measurements: total work went from 348s to 567s when the chain's steps were run in lanes, and a CLI-suite
+timing taken under contention reported 249s of test time for what is 182.6s. Phase 1 is labelling and can
+overlap with anything; Phases 2 and 3 end in a number, and that number needs an idle machine.
 
 ## Phases
 

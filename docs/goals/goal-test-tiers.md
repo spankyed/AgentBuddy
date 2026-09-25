@@ -431,7 +431,10 @@ hang fails at its tier budget rather than at two minutes.
   subprocess. So the lever is fewer subprocesses, which is a project rather than a fix:
   [`goal-cli-suite-spawns.md`](goal-cli-suite-spawns.md) has it, with the per-file totals and the finding that
   both levers — the TypeScript API in-process, and one shared fixture per `beforeAll` — already exist in that
-  suite and are applied unevenly. Its 249s figure here was measured under contention; idle it is 182.6s.
+  suite and are applied unevenly. Its 249s figure here was measured under contention; idle it is 182.6s. **It
+  can run in a worktree alongside this goal** — the two share only `abuddy-cli/tests/build/`, and different
+  files there — provided the worktree gets its own `node_modules` rather than a symlink, since the build stamps
+  and lock live under it. That goal's "Doing this in a worktree" has the reasoning.
 - **`test:packaged-authoring` at 65s**, mostly npm installs from packed tarballs. A warm `node_modules` cache
   is the lever, and the non-hermetic npm cache it already relies on is the precedent to be careful about.
 - **Turning CI on.** Off deliberately for one contributor; the workflow header says when it returns. A cached
