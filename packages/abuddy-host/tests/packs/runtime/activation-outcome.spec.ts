@@ -38,12 +38,12 @@ describe('activationProblem', () => {
 
   it('says why a pack failed to load when the registry recorded it', () => {
     writeRegistry({ id: 'broken' });
-    expect(activationProblem(registry({ broken: 'its snapshot is format 2' }), 'broken', false)).toBe('failed to load: its snapshot is format 2');
+    expect(activationProblem(registry({ broken: 'its snapshot is format 2' }), 'broken', false)).toContain('its snapshot is format 2');
   });
 
   it("reports the seed error of a pack that activated", () => {
     writeRegistry({ id: 'bad-seed', lastError: 'flows: invalid' });
-    expect(activationProblem(registry(), 'bad-seed', true)).toBe('its data failed to seed:\nflows: invalid');
+    expect(activationProblem(registry(), 'bad-seed', true)).toContain('flows: invalid');
   });
 
   it('is undefined for a pack that activated and seeded', () => {

@@ -106,18 +106,12 @@ describe('recoverStagingDirs', () => {
 
   // Deleting an interrupted install's only copy is the bug this function exists to avoid; it once did
   // exactly that, on the first boot after installed-packs.json was renamed away.
-  it('restores every interrupted install when there is no record of what is installed', () => {
+  it.each([
+    ['there is no record of what is installed', () => {}],
+    ['the record cannot be parsed', () => fs.writeFileSync(path.join(root, 'installed-packs.json'), 'not json')],
+  ])('restores every interrupted install when %s', (_how, makeRecordUnreadable) => {
     writePack(`.demo-pack.previous-${exitedPid()}-1a2b3c4d`);
-    expect(fs.existsSync(path.join(root, 'installed-packs.json'))).toBe(false);
-
-    prepareHostDataDirs({ userDataDir: root, packsDir, version: '0.3.14' });
-
-    expect(remaining()).toEqual(['demo-pack']);
-  });
-
-  it('restores every interrupted install when the record cannot be parsed', () => {
-    writePack(`.demo-pack.previous-${exitedPid()}-1a2b3c4d`);
-    fs.writeFileSync(path.join(root, 'installed-packs.json'), 'not json');
+    makeRecordUnreadable();
 
     prepareHostDataDirs({ userDataDir: root, packsDir, version: '0.3.14' });
 

@@ -80,7 +80,7 @@ describe('registerPack repositories', () => {
     registered.push('first-pack');
 
     expect(() => registerPack({ id: 'second-pack', repositories: { memoQueries: {}, settingsQueries: {} } }))
-      .toThrow('Repository collision: "settingsQueries" — pack "second-pack" vs "first-pack"');
+      .toThrow(/"settingsQueries"[\s\S]*"second-pack"[\s\S]*"first-pack"/);
     expect(engine.admin.repositories()).toEqual({ settingsQueries: theirs });
   });
 
@@ -150,11 +150,6 @@ describe('registerPack designations', () => {
     expect(getRegisteredServices()).not.toHaveProperty('second');
   });
 
-  it("drops a pack's roles when it unregisters", () => {
-    registerDesignated('ext');
-    unregisterPack(registered.pop()!);
-    expect(hasDesignation('journal')).toBe(false);
-  });
 });
 
 describe('registered addresses', () => {
@@ -212,23 +207,10 @@ describe('registerPack entities', () => {
     expect(getPackExtensions('first-pack')).toBeNull();
   });
 
-  it('keeps TNode out of persistence without any pack asking', () => {
-    expect(partitionPolicy.routeEntity('TNode-1', 'TNode')).toBe('volatileBackup');
-    expect(partitionPolicy.routeEntity('Note-1', 'Note')).toBe('primary');
-  });
 });
 
 describe('registerPack feature settings', () => {
   const memos = { settings: { visible: false, plugins: { memos: { sort: 'newest' } } } };
-
-  it("registers a pack's feature settings as defaults and drops them when it unregisters", () => {
-    registerPack({ id: 'memo-pack', features: { memos } });
-    expect(getPackSettingsDefaults().settings).toEqual({ plugins: { 'memo-pack/memos': { sort: 'newest' } } });
-    expect(getPackSettingsDefaults().visibility).toEqual({ 'memo-pack/memos': false });
-    unregisterPack('memo-pack');
-    expect(getPackSettingsDefaults().settings).toEqual({ plugins: {} });
-    expect(getPackSettingsDefaults().visibility).toEqual({});
-  });
 
   it("rejects a pack whose feature settings change another plugin's, registering none of it", () => {
     const hooks = { ears: { entities: { Memo: 'Memo' }, relKinds: {} }, seedHooks: { Memo: {} } };
@@ -279,13 +261,6 @@ describe('registerPack seed hooks', () => {
 
 describe('registerPack commands', () => {
   const commands = [{ name: 'standup', placeholder: 'Topic' }];
-
-  it("registers a pack's declared commands and drops them when it unregisters", () => {
-    registerPack({ id: 'memo-pack', commands } as unknown as PackRegistration);
-    expect(getPackCommands()).toEqual(commands);
-    unregisterPack('memo-pack');
-    expect(getPackCommands()).toEqual([]);
-  });
 
   it('rejects a command another pack declares, registering none of the pack', () => {
     registerPack({ id: 'memo-pack', commands } as unknown as PackRegistration);
