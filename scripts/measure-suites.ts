@@ -16,7 +16,7 @@ import { execFileSync } from 'node:child_process';
 import { UNIT_SUITES } from './lib/unit-suites.ts';
 
 const ANSI = /\u001B\[[0-9;]*m/g;
-const FILE = /^\s*[✓×↓]\s+(\S+\.(?:spec|test)\.ts)\s+\([^)]*\)\s+([\d.]+)(ms|s)\b/;
+const FILE = /^\s*[✓×↓❯]\s+(\S+\.(?:spec|test)\.ts)\s+\([^)]*\)\s+([\d.]+)(ms|s)\b/;
 
 const rows: { suite: string; work: number; floor: number; floorFile: string; files: number }[] = [];
 for (const suite of UNIT_SUITES) {

@@ -119,7 +119,8 @@ is a real tier boundary — 91 pure tests, 3 that invoke a compiler.
 esbuild starts a child process — while `suite-split.spec.ts` reads the file as clean, because that rule looks
 for `node:child_process` imports. This is a **pre-existing** second instance of the guard hole recorded in
 `cli-suite-spawns-rebase.md` §3.1, not one that branch creates, and it argues for making the predicate
-cost-based rather than mechanism-based.
+cost-based rather than mechanism-based. **Done** — `goal-one-job-pool.md` Phase 2 replaced the predicate
+with the measured cost in `packages/abuddy-cli/etc/spec-cost.json`, so all three instances below are closed.
 
 A third instance, from `goal-test-tiers.md` Phase 7: `tests/cli/test-contract.integration.spec.ts` injects a
 fake runner and spawns nothing, in about 20ms, but imports `contractTest`, whose *default* runner is

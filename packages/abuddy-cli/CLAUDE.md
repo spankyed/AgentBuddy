@@ -93,25 +93,30 @@ Because host code is inlined, `@abuddy/host` imports are fine in `src/`. The CLI
 
 ## Tests
 
-Two suites, split by what a spec does:
+Two suites, split by what a spec costs:
 
-- **`npm test -w @abuddy/cli`** — the fast half (`tests/**/*.spec.ts`, `vitest.config.ts`). Every spec runs
-  in-process, so it is the per-change loop and is meant to stay seconds.
-- **`npm run test:integration -w @abuddy/cli`** — the specs that run a real build, an install or another
-  process (`tests/**/*.integration.spec.ts`, `vitest.integration.config.ts`, which caps worker threads
-  because those specs spawn compilers of their own).
+- **`npm test -w @abuddy/cli`** — the fast half (`tests/**/*.spec.ts`, `vitest.config.ts`): 57 specs and
+  about 15s of file time, a couple of seconds of wall. The per-change loop.
+- **`npm run test:integration -w @abuddy/cli`** — the expensive half (`tests/**/*.integration.spec.ts`,
+  `vitest.integration.config.ts`, which caps worker threads because many of these specs spawn compilers of
+  their own): 23 specs, about 180s of file time.
 
-**The rule for choosing: a spec that runs a build, an install or another process is an integration spec; one
-that runs in-process is a unit spec, however many assertions it has.** Duration is the symptom, spawning is
-the cause, and the cause is what stays true as the suite grows — `import-specifiers.spec.ts` is one of the
-slowest in the fast half because it has hundreds of in-process tests, and belongs there.
-`tests/build/suite-split.spec.ts` enforces it, resolving spawning through the test helpers and the CLI's own
-`src/` rather than looking only at each spec's imports, so a spec that reaches a child process through
-anything fails it by name. It goes the one way: **deleting the last spawning test from a
-`*.integration.spec.ts` puts that file back in the fast suite**, and nothing complains if you forget, so
-check when a deletion empties one.
+**The rule for choosing is the measured cost, recorded in `etc/spec-cost.json`.** A fast spec moves to the
+integration half above **2.5s**; an integration spec comes back below **1.5s**; anything between stays where
+it is. `npm run spec-cost:update -w @abuddy/cli` re-measures and rewrites the record — run it with nothing
+else on the machine — and `tests/build/suite-split.spec.ts` fails when a spec is in the wrong half, has no
+recorded cost, or is recorded and gone. The check reads the record and runs nothing, because re-measuring to
+decide placement would make the cheap half expensive.
 
-The `*.integration.spec.ts` suffix is orthogonal to the folders below, which group by area.
+Two things about that shape are deliberate. **The band, rather than one threshold**, because a file's time
+is its wall time under whatever else its half is running: `dependency-flow-helpers` reads 4.7s in the fast
+half and 2.4s in the integration half, so a single line between them sends a spec back and forth on every
+update. **Cost rather than spawning**, because spawning was only ever a proxy: `callCli` reaches esbuild,
+which spawns, while reading as clean; `facade-typing` is 30s with no spawn site; and a 20ms spec counted as
+spawning because the export it imports defaults to `spawnSync`. Mechanism said all three wrongly.
+
+The `*.integration.spec.ts` suffix is orthogonal to the folders below, which group by area. It now
+records a cost rather than a mechanism, so renaming a spec is how it changes half.
 
 The root `test:unit` runs the fast half last, being the slowest of the unit suites; CI and the pre-merge
 chain run both halves (`.github/workflows/ci.yml`), after `packages:build`. The `published-*` specs read what `packages:build` wrote, so the suite's `pretest` (`scripts/ensure-packages-built.ts`, the command over `@abuddy/host/build/packages-built`) runs that build itself when anything it read has changed, and skips it otherwise. Freshness is a success stamp, not a timestamp: each build unit records a content fingerprint of its inputs (its own sources, `@abuddy/host`, the bundler script, the manifests and tsconfigs) under `node_modules/.cache/abuddy-packages-build/`, written only when the build returns, so an interrupted or failed build reads as not built rather than as fresh. A run that bypasses `pretest` (`npx vitest` directly) still refuses to test stale output, naming the workspace and why.

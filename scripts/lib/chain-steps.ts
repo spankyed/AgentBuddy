@@ -138,8 +138,10 @@ const PACKAGES = fs.readdirSync(path.join(REPO_ROOT, 'packages'), { withFileType
   .sort();
 
 /**
- * A package's own source, its tests, its own tooling, and the files that say how it compiles, tests and
- * lints. The config files are inputs in the plain sense — a vitest config decides which specs run at all,
+ * A package's own source, its tests, its own tooling, its recorded artifacts, and the files that say how it
+ * compiles, tests and lints. `etc` is there because a spec reads it back: `suite-split.spec.ts` decides
+ * which half every spec runs in from `etc/spec-cost.json`, so a change to that record has to re-run the
+ * suite that asserts on it. The config files are inputs in the plain sense — a vitest config decides which specs run at all,
  * and the renderer's tailwind and postcss configs decide what `build` emits. A name that the package does
  * not have costs nothing: the walk skips what is not there.
  *
@@ -147,7 +149,7 @@ const PACKAGES = fs.readdirSync(path.join(REPO_ROOT, 'packages'), { withFileType
  * every build.
  */
 const WORKSPACE_PARTS = [
-  'src', 'tests', 'scripts', 'index.js',
+  'src', 'tests', 'scripts', 'etc', 'index.js',
   'package.json', 'tsconfig.json', 'tsconfig.package.json',
   'vitest.config.ts', 'vitest.integration.config.ts', 'vite.config.ts', 'vite.config.js',
   'eslint.config.ts', 'postcss.config.cjs', 'tailwind.config.ts', 'tsdown.config.ts', 'env.d.ts',

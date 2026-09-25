@@ -295,6 +295,58 @@ converted spec files fail at `beforeAll`. The second check needs `npm run packag
 mutation: editing `abuddy-cli/src` makes its bundle stale, and without the rebuild all four files fail at
 the freshness guard before running a test — a failure that looks like the mutation being caught and is not.
 
+### Phase 2 — the predicate is the measured cost
+
+`packages/abuddy-cli/etc/spec-cost.json` records what each of the 80 specs costs;
+`tests/build/suite-split.spec.ts` reads it and fails when a spec is in the wrong half, has no recorded cost,
+or is recorded and gone. `spec-cost:update` re-measures and rewrites it, `spec-cost:check` reads it and runs
+nothing — re-measuring to decide placement would make the cheap half expensive, which is what the split
+exists to prevent. 25 specs changed half.
+
+| half | before | after |
+|---|---|---|
+| fast | 46 specs, 41.1s file time | **57 specs, 14.9s file time, 5.9s wall** |
+| integration | 34 specs, ~180s | 23 specs, 179.4s file time, 38.8s wall |
+
+`facade-typing` is integration on its 29.8s rather than on a line-1 import; `test-contract` is fast on its
+18ms. 861 tests against 858 before — the +3 is the rewritten guard, which has five assertions where the old
+one had two.
+
+#### A single threshold oscillates, and that is why there is a band
+
+**The first design was one line at 1s, and it was wrong twice over.** The justification was that the costs
+"fall into two groups with a gap between them" — they do not: measured, they run continuously through a
+second (899, 957, 977, 1167, 1466, 1637, 1981, 2118, 2930). That was a claim written before it was checked.
+
+Worse, a single threshold does not converge. A file's recorded time is its wall time under whatever else its
+half is running, so **moving a spec changes its cost**: `dependency-flow-helpers` reads 4.7s in the fast half
+and 2.4s in the integration half. The first update moved 24 specs; re-measuring then wanted to move four of
+them back, and would have gone on doing so.
+
+So there are two edges: a fast spec moves above **2.5s**, an integration spec returns below **1.5s**, and the
+band between them is where a spec stays put. 2.5s is the widest gap in the distribution (2118 -> 2930, 812ms,
+about four times the next best) and 1.5s sits under everything seen from the integration side. With the band
+the second update moved one spec and the third moved none.
+
+#### Two traps the record had to be taught about
+
+- **A skipped spec records as free.** It would be filed as the fastest thing in the suite and become slow the
+  day it runs — `dependency-runtime` skips until default-setup is built, which is exactly that shape. The
+  update refuses a run that skipped anything.
+- **The guard is inside the suites it measures.** While the record is stale the guard fails, so the update
+  could never produce a clean run. Skipping the guard was tried and is worse: a fully skipped file prints no
+  timing line, so it ends up with no recorded cost and the update rejects itself. The update instead
+  tolerates exactly one failing file, the guard, and measures it like everything else.
+
+#### A caching hole this opened, closed
+
+The guard reads `etc/spec-cost.json`, and `WORKSPACE_PARTS` did not include `etc`, so changing the record
+would not have re-run the suite that asserts on it. `etc` is now a declared input, which also covers the API
+reports the other packages keep there.
+
+**Mutation:** a fast spec recorded above 2.5s, an integration spec recorded below 1.5s, and a recorded spec
+that no longer exists each fail the check, naming the file and both edges.
+
 ## Constraints
 
 `goal-test-tiers.md`'s standing rules carry over unchanged: no push, tag or PR; no publish or release; no
