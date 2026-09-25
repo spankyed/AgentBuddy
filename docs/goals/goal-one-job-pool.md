@@ -399,6 +399,57 @@ once per file — and not by any single slow file. Phase 5 should read that numb
 `generate-entries.spec.ts`: the 11.4s floor file is the host pool's problem, and 83s of per-file setup is a
 larger one sitting in the other pool.
 
+### Phase 4 — two chain steps, with per-package staleness inside them
+
+The chain had eight `test:unit:<dir>` steps, which is eight vitest processes — the thing pooling removed.
+What those steps were buying was the per-package **cache key**, not the per-package **process**, and the two
+are separable. There are now two steps, `test:unit:host` and `test:unit:pack`, whose inputs are the union
+across their pool; `scripts/test-unit-pool.ts` asks `suiteInputs` per project, passes `--project` for only
+the stale ones, and stamps each through `stampedRun` so a failure leaves every project unstamped.
+
+Measured behaviour:
+
+    warm, nothing changed          host pool: all 7 project(s) up to date
+    touch packages/renderer/src    host pool: 2 of 7 — @app/renderer, @app/main   52 tests, one process
+    pack pool, cold then warm      1 of 1, then all 1 up to date
+
+`@app/main` comes along because it depends on the renderer, which `workspaceDeps` derives from its
+manifest rather than from a list.
+
+#### The freshness gotcha is worse than "a dozen specs fail"
+
+npm `pretest` hooks do not fire under a root run, so nothing rebuilds the published packages the suites
+guard on. What that looked like was not an error: the pool reported **1752 tests where it collects 1909**,
+because twelve files failed at the guard before collecting anything, and a run that "only" has twelve failing
+files is easy to read as flaky rather than as 162 tests never having run. The trigger was editing this
+repo's own `package.json` — removing the eight scripts this phase replaced — which is enough to make
+`@abuddy/cli`'s bundle stale. Both pool commands now run `packages:ensure` first, which is a stat and a
+return when nothing is stale.
+
+#### Two guards, one of which caught this phase's own mistake
+
+`chain-inputs.spec.ts` already required that a step declare the paths its own npm script names, and it
+failed the moment the new step ran `scripts/test-unit-pool.ts` without declaring it. The new guard is the
+one this shape needs: **a pool step's inputs must cover every project inside it.** The step caches on the
+union while the runner decides per project, so a narrower step would cache while a project inside it was
+stale — and that project would simply never run again. Both readings come from `suiteInputs` for that
+reason. **Mutation:** narrowing a pool step to its first suite's inputs fails it by name.
+
+`chain-inputs.spec.ts` reports 17 tests where it reported 23: it has one case per chain step, and there are
+six fewer steps. The file count is 224 either way, so no spec was lost.
+
+#### The root config lists its projects literally, and that is the safe answer
+
+`check:specifiers` reads configs as text to decide whether one that compiles `@abuddy` imports declares the
+source condition, and it cannot read a computed list — deriving `projects` from `UNIT_SUITES` failed it.
+Of the three ways out it offers, **declaring the condition at the root is the one that would have been
+wrong by accident and right by luck**: a root setting reaches the projects under it, and it is safe here
+only because every project in this list is a host package. Had the pack ever been added to that list, the
+condition would have followed it and the suite would have resolved source without anything failing.
+
+So the list is literal and guarded: `chain-inputs.spec.ts` asserts it is exactly the host suites.
+**Mutation:** adding `packages/default-setup` to it fails by name, which is the case that matters.
+
 ## Constraints
 
 `goal-test-tiers.md`'s standing rules carry over unchanged: no push, tag or PR; no publish or release; no

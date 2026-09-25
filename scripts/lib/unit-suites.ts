@@ -38,5 +38,8 @@ export const UNIT_SUITES: readonly UnitSuite[] = [
   { workspace: '@app/main', dir: 'main', kind: 'host' },
 ];
 
-/** The chain step that runs one suite: `test:unit:<dir>`, which the root package.json declares */
-export const unitStepName = (suite: UnitSuite): string => `test:unit:${suite.dir}`;
+/**
+ * The chain step that runs a suite. Steps are per pool, not per suite: eight steps meant eight vitest
+ * processes, which is the thing pooling removed. The per-package cache key survives inside the step.
+ */
+export const unitStepName = (suite: UnitSuite): string => `test:unit:${suite.kind}`;

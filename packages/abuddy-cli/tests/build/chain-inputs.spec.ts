@@ -12,7 +12,7 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { inputFiles, REPO_ROOT } from '@abuddy/host/build/packages-built';
-import { CHAIN_STEPS, SUITE_READS, type ChainStep } from '../../../../scripts/lib/chain-steps.ts';
+import { CHAIN_STEPS, SUITE_READS, suiteInputs, type ChainStep } from '../../../../scripts/lib/chain-steps.ts';
 import { UNIT_SUITES } from '../../../../scripts/lib/unit-suites.ts';
 
 /** Tracked code no chain step reads, and why. An entry that stops applying is reported, not ignored. */
@@ -122,7 +122,7 @@ describe('a unit suite whose specs name build output declares it', () => {
   });
 
   // There is deliberately no check that a declared reader also needs the step that writes what it reads:
-  // `UNIT_STEPS` derives `needs` from this same table, so the two cannot disagree and such a test could
+  // `POOL_STEPS` derives `needs` from this same table, so the two cannot disagree and such a test could
   // never fail. The declaration is the single point of truth, which is why getting it right is measured.
 
 });
@@ -196,5 +196,32 @@ describe('a gitignored input belongs to someone', () => {
     expect([...new Set(unaccounted.map((file) => file.split('/').slice(0, 5).join('/')))],
       `${name} hashes generated files nobody declares: depend on the step that writes them, or list them in \`excludes\` with why this step reads around them`)
       .toEqual([]);
+  });
+});
+
+// A pool step caches on the union of its projects' inputs, while `scripts/test-unit-pool.ts` decides which
+// projects to run by asking each one's inputs separately. Those are two readings of the same thing, and if
+// the step's were ever narrower the chain would cache the step while a project inside it was stale — the
+// project would simply never run again. They come from one function for that reason; this is the check that
+// nothing has since been added to a pool without widening the step.
+describe('a pool step reads everything its projects read', () => {
+  it.each(['host', 'pack'] as const)('%s', (kind) => {
+    const step = CHAIN_STEPS.find((s) => s.name === `test:unit:${kind}`)!;
+    const declared = new Set(step.inputs);
+    const missing = UNIT_SUITES.filter((suite) => suite.kind === kind)
+      .flatMap((suite) => suiteInputs(suite).filter((input) => !declared.has(input)).map((input) => `${suite.workspace} reads ${input}`));
+    expect([...new Set(missing)]).toEqual([]);
+  });
+});
+
+// The root vitest config lists its projects literally, because `check:specifiers` reads it as text and
+// cannot read a computed list. This is the guard that the literal is the host suites and nothing else — a
+// pack project appearing here would resolve workspace source instead of the published dist, silently.
+describe('the root pool lists exactly the host suites', () => {
+  it('matches UNIT_SUITES', () => {
+    const config = fs.readFileSync(path.join(REPO_ROOT, 'vitest.config.ts'), 'utf-8');
+    const listed = [...config.matchAll(/^\s*'(packages\/[\w-]+)',$/gm)].map(([, dir]) => dir);
+    const host = UNIT_SUITES.filter((suite) => suite.kind === 'host').map((suite) => `packages/${suite.dir}`);
+    expect(listed).toEqual(host);
   });
 });

@@ -1,7 +1,7 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { BUILD_UNITS, REPO_ROOT } from '@abuddy/host/build/packages-built';
-import { UNIT_SUITES, unitStepName } from './unit-suites.ts';
+import { UNIT_SUITES, type UnitSuite } from './unit-suites.ts';
 
 /**
  * The pre-merge chain's steps and what each is allowed to read. Separate from `scripts/chain.ts` because
@@ -272,20 +272,47 @@ const UNIT_SECONDS: Record<string, number> = {
   api: 7, 'abuddy-ears': 4, renderer: 3, main: 1,
 };
 
-const UNIT_STEPS: readonly ChainStep[] = UNIT_SUITES.map((suite) => {
+/**
+ * What one unit suite reads: its own workspace, its dependencies' source, and whatever build output it
+ * touches. Exported because two things need exactly this list and must not compute it differently — the
+ * chain step below, whose inputs are the union across a pool, and `scripts/test-unit-pool.ts`, which asks
+ * per project which ones are stale so a pool runs only those.
+ */
+export function suiteInputs(suite: UnitSuite): string[] {
   const reads = SUITE_READS[suite.dir] ?? {};
+  return [
+    ...ROOT,
+    ...workspace(suite.dir),
+    ...workspaceDeps(suite.dir).flatMap(dependencySource),
+    ...(reads.packages ? PACKAGE_BUILD_OUTPUTS : []),
+    ...(reads.pack ? PACK_OUTPUTS : []),
+  ];
+}
+
+/**
+ * One step per pool, not per suite.
+ *
+ * Eight steps meant eight vitest processes, which is the ceiling `docs/plans/test-unit-scheduling.md`
+ * existed to remove: two schedulers with no shared budget. What the split was actually buying was the
+ * per-package *cache key*, not the per-package *process*, and those are separable — the step's inputs are
+ * the union across its pool, so a warm chain caches the whole step, and when it does run,
+ * `test-unit-pool.ts` asks `suiteInputs` per project and passes `--project` for only the stale ones.
+ *
+ * Two pools rather than one because host suites resolve workspace source and the pack suite must resolve
+ * the published `dist`, and Node conditions are per process: see `UnitSuite.kind`.
+ */
+const POOL_STEPS: readonly ChainStep[] = (['host', 'pack'] as const).map((kind) => {
+  const suites = UNIT_SUITES.filter((suite) => suite.kind === kind);
   return {
-    name: unitStepName(suite),
+    name: `test:unit:${kind}`,
     tier: 1,
-    needs: reads.pack ? ['compile'] : reads.packages ? ['packages:ensure'] : [],
-    seconds: UNIT_SECONDS[suite.dir],
-    inputs: [
-      ...ROOT,
-      ...workspace(suite.dir),
-      ...workspaceDeps(suite.dir).flatMap(dependencySource),
-      ...(reads.packages ? PACKAGE_BUILD_OUTPUTS : []),
-      ...(reads.pack ? PACK_OUTPUTS : []),
-    ],
+    needs: ['compile'],
+    seconds: suites.reduce((total, suite) => total + (UNIT_SECONDS[suite.dir] ?? 0), 0),
+    inputs: [...new Set([
+      ...suites.flatMap(suiteInputs),
+      // The runner itself: it decides which projects a pool runs, so a change to it changes the step
+      'scripts/test-unit-pool.ts', 'scripts/lib/unit-suites.ts', 'scripts/with-source.mjs', ...BOUNDED_RUNNER,
+    ])].sort(),
   };
 });
 
@@ -323,7 +350,7 @@ export const CHAIN_STEPS: readonly ChainStep[] = [
     // generated directory, which leaves it passing. Hashing that output would tie a tier-1 check's
     // freshness to a tier-2 build it does not depend on.
     excludes: [...FIXTURE_OUTPUTS, ...FIXTURE_TEST_OUTPUT] },
-  ...UNIT_STEPS,
+  ...POOL_STEPS,
   // The CLI specs that run a real build, install or child process. Tier 2: they need the built packages,
   // never the app — which is why they can run before `build` rather than behind it.
   // Needs `compile` and not just `packages:ensure`, because `dependency-runtime` builds a pack that depends

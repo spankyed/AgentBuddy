@@ -215,12 +215,14 @@ npm run chain            # Before a merge: every check in dependency order, cold
                          #             when test:unit becomes one root vitest run (docs/plans/
                          #             test-unit-scheduling.md), since two is tuned against eight suites
 npm test                 # Playwright E2E tests
-npm run test:unit        # Vitest, every suite CI calls a unit test, two at a time, slowest first. The list
-                         # is scripts/lib/unit-suites.ts, which the chain reads too, so the two agree
-npm run test:unit:<pkg>  # One of them, by its directory under packages/ (test:unit:abuddy-sdk,
-                         # test:unit:default-setup, ...). These are the chain's steps: each is cached on its
-                         # own package plus its dependencies' source, so a one-package edit re-runs one suite
-                         # The CLI suite rebuilds the published packages itself when its dist is stale
+npm run test:unit        # Vitest, as two pools: the host suites as one root run under the
+                         # @abuddy/source condition, and the pack suite on its own resolving the published
+                         # dist. Serial, measured — a second lane buys 3% for 87% more work.
+                         # The list is scripts/lib/unit-suites.ts, which the chain reads too
+npm run test:unit:host   # One pool, running only the projects whose own inputs changed (--project per
+npm run test:unit:pack   # stale project, one process). These are the chain's two steps; per-package
+                         # staleness lives inside them, so a one-package edit still runs one project.
+                         # Both run packages:ensure first: npm pretest does not fire under a root run
 npm run test:all         # test:unit, then the E2E tests
 npm run bench -w @abuddy/ears    # EARS engine benchmark (baseline and tolerance: packages/abuddy-ears/CLAUDE.md)
 npm run test:external-pack       # Both halves of the fixture-pack check, for running it by hand
