@@ -78,7 +78,9 @@ async function main(): Promise<void> {
   const total = ((Date.now() - started) / 1000).toFixed(1);
   const work = (results.reduce((sum, r) => sum + r.ms, 0) / 1000).toFixed(1);
   console.log(`\n${failed.length ? `${failed.length} suite(s) failed` : 'unit suites passed'} — ${total}s wall, ${work}s of suite time, ${lanes} lanes × ${perSuite} workers`);
-  process.exit(failed.length ? 1 : 0);
+  // Not process.exit(): it drops whatever is still in stdout's buffer, and a failing suite's captured
+  // output is the one thing here worth reading. Piped, that truncates at 128KB — measured.
+  process.exitCode = failed.length ? 1 : 0;
 }
 
 void main();
