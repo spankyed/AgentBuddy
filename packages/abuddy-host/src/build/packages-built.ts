@@ -106,6 +106,11 @@ export const BUILD_UNITS: Record<string, BuildUnit> = {
 /** Stamps and the build lock, outside every output tree so a build can remove its own */
 const STAMP_DIR = repoFile('node_modules', '.cache', 'abuddy-packages-build');
 const LOCK_FILE = path.join(STAMP_DIR, 'packages-build.lock');
+/** How long a `freshness` fix waits for a live holder, and how often it looks. A bound, not a schedule: it
+ *  returns the moment the holder is gone. Ten minutes is longer than any build here and short enough that a
+ *  wedged holder is reported rather than waited on forever. */
+const LOCK_WAIT_MS = 600_000;
+const LOCK_POLL_MS = 200;
 
 export const stampFile = (workspace: string): string => path.join(STAMP_DIR, `${workspace.replace(/[@/]/g, '-').replace(/^-/, '')}.json`);
 
@@ -264,7 +269,7 @@ function sleepSync(ms: number): void {
  * schedule: it returns as soon as the holder is gone, and a holder that outlives it leaves the caller to
  * report staleness as before, which is the pre-existing behaviour rather than a hang.
  */
-export function waitForPackageBuild({ timeoutMs = 600_000, pollMs = 200 }: { timeoutMs?: number; pollMs?: number } = {}): LockHolder | undefined {
+export function waitForPackageBuild({ timeoutMs = LOCK_WAIT_MS, pollMs = LOCK_POLL_MS }: { timeoutMs?: number; pollMs?: number } = {}): LockHolder | undefined {
   const waitedFor = runningPackageBuild();
   if (!waitedFor) return undefined;
   const deadline = Date.now() + timeoutMs;
@@ -281,27 +286,66 @@ function readLock(file: string): LockHolder | null {
 }
 
 /**
- * Runs `run` holding the repo's package-build lock, so two builds never clear and rewrite the same
- * output at once. A lock whose process is gone is taken over; a live holder fails at once, naming it,
- * rather than waiting. Written then `link`ed, so a reader never sees a half-written holder and
- * mistakes it for an abandoned lock.
+ * Why this process wants to build, which decides what it does when another build already holds the lock.
+ *
+ * A `command` is someone asking for a build — `npm run packages:build`, `abuddy build`. It fails at once
+ * naming the holder, because the person wants to know, and it builds whether or not the output is already
+ * fresh, because they asked for a build.
+ *
+ * A `freshness` fix is a process that wants the packages *built* and does not care who builds them — a
+ * suite's pretest, `ensurePackagesBuilt`. It waits for a live holder rather than failing, and once it has
+ * the lock it checks again, because the build it waited for has very likely just done the work. Without
+ * that second check the waiting only moves the duplicate build later; without the wait, two processes that
+ * both found the same units stale race, and the one that reaches the lock second fails on a lock rather
+ * than on anything about the code.
  */
-export async function withBuildLock<T>(label: string, run: () => T | Promise<T>, file = LOCK_FILE): Promise<T> {
+export type BuildIntent = 'command' | 'freshness';
+
+/** Set by `ensurePackagesBuilt` on the builds it spawns, since the intent has to cross a process boundary */
+export const BUILD_INTENT_ENV = 'ABUDDY_BUILD_INTENT';
+
+const intentFromEnv = (): BuildIntent => (process.env[BUILD_INTENT_ENV] === 'freshness' ? 'freshness' : 'command');
+
+/**
+ * Runs `run` holding the repo's package-build lock, so two builds never clear and rewrite the same
+ * output at once. A lock whose process is gone is taken over. A live holder fails at once for a
+ * `command` and is waited for by a `freshness` fix (see `BuildIntent`). Written then `link`ed, so a
+ * reader never sees a half-written holder and mistakes it for an abandoned lock.
+ */
+export interface BuildLockOptions {
+  readonly intent?: BuildIntent;
+  /** How long a `freshness` fix waits. Injectable so a test can bound it: the default outlasts any suite. */
+  readonly timeoutMs?: number;
+}
+
+export async function withBuildLock<T>(label: string, run: () => T | Promise<T>, file = LOCK_FILE, options: BuildLockOptions = {}): Promise<T> {
+  const intent = options.intent ?? intentFromEnv();
+  const waitMs = options.timeoutMs ?? LOCK_WAIT_MS;
   fs.mkdirSync(path.dirname(file), { recursive: true });
   const pending = `${file}.${process.pid}`;
   fs.writeFileSync(pending, JSON.stringify({ pid: process.pid, label, startedAt: new Date().toISOString() }));
   try {
-    for (let attempt = 0; ; attempt++) {
+    const deadline = Date.now() + waitMs;
+    // Counted separately from the loop: a `freshness` fix goes round it many times without taking anything
+    // over, and taking over twice is what means the lock is not being released rather than merely held.
+    for (let takeovers = 0; ; ) {
       try {
         fs.linkSync(pending, file);
         break;
       } catch (err) {
         if ((err as NodeJS.ErrnoException).code !== 'EEXIST') throw err;
         const holder = readLock(file);
-        if (attempt > 0 || holder === null || holderIsRunning(holder)) {
-          const who = holder === null ? 'an unreadable lock file' : `pid ${holder.pid} (${holder.label}, started ${holder.startedAt})`;
-          throw new Error(`another package build holds ${path.relative(REPO_ROOT, file)}: ${who}. Wait for it to finish, then run this again.`);
+        const live = holder !== null && holderIsRunning(holder);
+        if (live && intent === 'freshness' && Date.now() < deadline) {
+          sleepSync(LOCK_POLL_MS);
+          continue;
         }
+        if (takeovers > 0 || holder === null || live) {
+          const who = holder === null ? 'an unreadable lock file' : `pid ${holder.pid} (${holder.label}, started ${holder.startedAt})`;
+          const waited = intent === 'freshness' ? ` after waiting ${Math.round(waitMs / 1000)}s` : '';
+          throw new Error(`another package build holds ${path.relative(REPO_ROOT, file)}${waited}: ${who}. Wait for it to finish, then run this again.`);
+        }
+        takeovers++;
         fs.rmSync(file, { force: true });
       }
     }
@@ -327,21 +371,27 @@ export async function stampedBuild(
   stamp: string,
   build: () => void | Promise<void>,
   lock?: string,
+  options: BuildLockOptions = {},
 ): Promise<void> {
+  const intent = options.intent ?? intentFromEnv();
   await withBuildLock(label, async () => {
+    // A `freshness` fix that waited for the lock asks again now it holds it: the build it waited for was
+    // very likely building this same unit, and rebuilding what is already fresh is the duplicate work the
+    // wait exists to avoid. A `command` builds regardless — it was asked for a build, not for freshness.
+    if (intent === 'freshness' && unitStaleReason(unit, stamp) === null) return;
     const fingerprint = fingerprintUnit(unit);
     fs.rmSync(stamp, { force: true });
     await build();
     fs.mkdirSync(path.dirname(stamp), { recursive: true });
     fs.writeFileSync(stamp, `${JSON.stringify({ workspace: label, version: STAMP_VERSION, fingerprint, builtAt: new Date().toISOString() }, null, 2)}\n`);
-  }, lock);
+  }, lock, { ...options, intent });
 }
 
 /** Every `build:package` script wraps its work in this */
 export async function runPackageBuild(workspace: string, build: () => void | Promise<void>): Promise<void> {
   const unit = BUILD_UNITS[workspace];
   if (!unit) throw new Error(`No build unit for ${workspace} in BUILD_UNITS (@abuddy/host/build/packages-built)`);
-  await stampedBuild(workspace, unit, stampFile(workspace), build);
+  await stampedBuild(workspace, unit, stampFile(workspace), build, undefined, { intent: intentFromEnv() });
 }
 
 /**
@@ -390,7 +440,10 @@ export function ensurePackagesBuilt(): void {
   // so this runs the right script even as a workspace's own pretest.
   for (const { workspace } of stale) {
     try {
-      execFileSync(windows ? 'npm.cmd' : 'npm', ['run', 'build:package', '-w', workspace], { cwd: REPO_ROOT, stdio: 'inherit', shell: windows });
+      // These builds are a freshness fix, not a command: another process may be building the same unit
+      // right now, and the right answer is to wait for it and then find the work done.
+      execFileSync(windows ? 'npm.cmd' : 'npm', ['run', 'build:package', '-w', workspace],
+        { cwd: REPO_ROOT, stdio: 'inherit', shell: windows, env: { ...process.env, [BUILD_INTENT_ENV]: 'freshness' } });
     } catch (err) {
       const status = (err as { status?: number }).status;
       throw new PackagesBuildFailed(typeof status === 'number' && status !== 0 ? status : 1, workspace);

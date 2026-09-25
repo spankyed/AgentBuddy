@@ -317,8 +317,8 @@ describe('the stale message', () => {
 
 describe('a stamped build', () => {
   /** stampedBuild against a fixture: its own stamp and lock, never the repo's */
-  const run = (f: ReturnType<typeof fixture>, build: () => void | Promise<void>) =>
-    stampedBuild('@abuddy/fixture', f.unit, path.join(f.root, 'stamp.json'), build, path.join(f.root, 'build.lock'));
+  const run = (f: ReturnType<typeof fixture>, build: () => void | Promise<void>, intent: 'command' | 'freshness' = 'command') =>
+    stampedBuild('@abuddy/fixture', f.unit, path.join(f.root, 'stamp.json'), build, path.join(f.root, 'build.lock'), { intent });
 
   it('leaves the unit fresh when the build returns', async () => {
     const f = fixture();
@@ -353,6 +353,21 @@ describe('a stamped build', () => {
     expect(unitStaleReason(f.unit, path.join(f.root, 'stamp.json'))).toMatch(/sources changed/);
   });
 
+  it('rebuilds a fresh unit for a command and skips it for a freshness fix', async () => {
+    const f = fixture();
+    await run(f, () => fs.writeFileSync(path.join(f.out, 'built.js'), 'ok'));
+    expect(unitStaleReason(f.unit, path.join(f.root, 'stamp.json'))).toBeNull();
+
+    // The second arrival of two racing freshness fixes: the first built it while this one waited, so
+    // there is nothing left to do. A command was asked for a build and gets one.
+    let built = false;
+    await run(f, () => { built = true; }, 'freshness');
+    expect(built, 'a freshness fix rebuilt a unit that was already fresh').toBe(false);
+
+    await run(f, () => { built = true; }, 'command');
+    expect(built, 'a command skipped a build it was asked for').toBe(true);
+  });
+
   it('holds the build lock while it runs', async () => {
     const f = fixture();
     const lock = path.join(f.root, 'build.lock');
@@ -372,6 +387,23 @@ describe('the build lock', () => {
       await expect(withBuildLock('@abuddy/ui', () => 'never', file)).rejects.toThrow(/another package build holds/);
     }, file);
   });
+
+  it('waits for a live holder when the build is a freshness fix, where a command fails at once', async () => {
+    const file = lockFile();
+    // This process is the holder, so it is alive for certain and the test cannot race its exit
+    fs.mkdirSync(path.dirname(file), { recursive: true });
+    fs.writeFileSync(file, JSON.stringify({ pid: process.pid, label: '@abuddy/other', startedAt: new Date().toISOString() }));
+
+    const started = Date.now();
+    await expect(withBuildLock('@abuddy/sdk', () => 'never', file, { intent: 'command' })).rejects.toThrow(/another package build holds/);
+    expect(Date.now() - started, 'a command waited instead of failing at once').toBeLessThan(500);
+
+    // The wait is bounded, and says it waited — a holder that never goes is reported, not waited on forever
+    const waited = Date.now();
+    await expect(withBuildLock('@abuddy/sdk', () => 'never', file, { intent: 'freshness', timeoutMs: 1_000 }))
+      .rejects.toThrow(/after waiting 1s/);
+    expect(Date.now() - waited, 'a freshness fix gave up without waiting').toBeGreaterThanOrEqual(900);
+  }, 30_000);
 
   it('names the holder', async () => {
     const file = lockFile();
