@@ -817,6 +817,37 @@ complaint". They did: the loop a developer actually pays went from 58.4s to 8.9s
 
 If someone wants the last 2s, the cheaper lever is the 13 npm sub-invocations, not the compiler.
 
+### Phase 2's mutation check does not discriminate
+
+Run at review time, and it is the finding rather than the proof it was meant to be.
+
+With the lock change reverted, `@abuddy/sdk` dirtied so the packages are genuinely stale, and `test:unit`
+and `test:external-pack` started together: `test:unit` fails with stamp errors. With the change back in
+place and the same conditions: **it fails the same way**. Reverting it changes nothing, so the check cannot
+tell the two apart.
+
+The logs say why. "Published packages are out of date … Rebuilding 2 of 5" is `ensurePackagesBuilt`
+reporting what it is about to do, not an error. The failure is `withBuildLock` throwing *another package
+build holds … pid 34600 (@abuddy/testing)*. Two processes each ran `ensurePackagesBuilt`, each waited and
+found no build running, each found the same units stale, and each spawned `npm run build:package`. The one
+that reached the lock second threw.
+
+So there are two races, and `waitForPackageBuild` closes one of them:
+
+- **The reader race** — a freshness reader seeing the stamps a live build is rewriting, and reporting them
+  stale. That is what `published-packages.ts` hit, and the wait closes it.
+- **The builder race** — two freshness *fixers* both deciding to build. The wait cannot close this, because
+  at the moment each one checks there is no build running yet: the window is between checking and the
+  spawned npm taking the lock, which is seconds wide.
+
+The commit message for the lock change overstates it on this point: it says the wait means not "starting a
+second build alongside the first", which holds only once the first already has the lock.
+
+Closing the builder race needs the loser to wait for the lock and re-check rather than throw — a `wait`
+option on `withBuildLock`, used by the freshness path, with `stampedBuild` re-checking staleness once it
+has the lock so the second process finds the work already done. That is a change to shared build
+infrastructure and is left for a decision rather than taken here.
+
 ### Branch
 
 Rebased onto `AS/test-pipeline` at Phase 8, giving one linear branch. Two conflicts, both real:
