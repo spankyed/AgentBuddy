@@ -79,6 +79,9 @@ export const CHAIN_STEPS: readonly ChainStep[] = [
   { name: 'test:external-pack:contract', tier: 2, needs: ['compile'] },
   { name: 'typecheck', tier: 1, needs: ['compile'] },
   { name: 'test:unit', tier: 1, needs: ['compile'] },
+  // The CLI specs that run a real build, install or child process. Tier 2: they need the built packages,
+  // never the app — which is why they can run before `build` rather than behind it.
+  { name: 'test:integration', tier: 2, needs: ['packages:ensure'] },
   { name: 'build', tier: 3, needs: ['compile'] },
   { name: 'test:external-pack:app', tier: 3, needs: ['build', 'test:external-pack:contract'] },
   // Never cached: it drives real Electron with real timing and is the likeliest step to be flaky, and a

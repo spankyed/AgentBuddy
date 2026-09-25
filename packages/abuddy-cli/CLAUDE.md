@@ -93,7 +93,28 @@ Because host code is inlined, `@abuddy/host` imports are fine in `src/`. The CLI
 
 ## Tests
 
-`npm test -w @abuddy/cli` (vitest, `tests/**/*.spec.ts`). The root `test:unit` runs it last, being the slowest; CI runs it after `packages:build` (`.github/workflows/ci.yml`). The `published-*` specs read what `packages:build` wrote, so the suite's `pretest` (`scripts/ensure-packages-built.ts`, the command over `@abuddy/host/build/packages-built`) runs that build itself when anything it read has changed, and skips it otherwise. Freshness is a success stamp, not a timestamp: each build unit records a content fingerprint of its inputs (its own sources, `@abuddy/host`, the bundler script, the manifests and tsconfigs) under `node_modules/.cache/abuddy-packages-build/`, written only when the build returns, so an interrupted or failed build reads as not built rather than as fresh. A run that bypasses `pretest` (`npx vitest` directly) still refuses to test stale output, naming the workspace and why.
+Two suites, split by what a spec does:
+
+- **`npm test -w @abuddy/cli`** — the fast half (`tests/**/*.spec.ts`, `vitest.config.ts`). Every spec runs
+  in-process, so it is the per-change loop and is meant to stay seconds.
+- **`npm run test:integration -w @abuddy/cli`** — the specs that run a real build, an install or another
+  process (`tests/**/*.integration.spec.ts`, `vitest.integration.config.ts`, which caps worker threads
+  because those specs spawn compilers of their own).
+
+**The rule for choosing: a spec that runs a build, an install or another process is an integration spec; one
+that runs in-process is a unit spec, however many assertions it has.** Duration is the symptom, spawning is
+the cause, and the cause is what stays true as the suite grows — `import-specifiers.spec.ts` is one of the
+slowest in the fast half because it has hundreds of in-process tests, and belongs there.
+`tests/build/suite-split.spec.ts` enforces it, resolving spawning through the test helpers and the CLI's own
+`src/` rather than looking only at each spec's imports, so a spec that reaches a child process through
+anything fails it by name. It goes the one way: **deleting the last spawning test from a
+`*.integration.spec.ts` puts that file back in the fast suite**, and nothing complains if you forget, so
+check when a deletion empties one.
+
+The `*.integration.spec.ts` suffix is orthogonal to the folders below, which group by area.
+
+The root `test:unit` runs the fast half last, being the slowest of the unit suites; CI and the pre-merge
+chain run both halves (`.github/workflows/ci.yml`), after `packages:build`. The `published-*` specs read what `packages:build` wrote, so the suite's `pretest` (`scripts/ensure-packages-built.ts`, the command over `@abuddy/host/build/packages-built`) runs that build itself when anything it read has changed, and skips it otherwise. Freshness is a success stamp, not a timestamp: each build unit records a content fingerprint of its inputs (its own sources, `@abuddy/host`, the bundler script, the manifests and tsconfigs) under `node_modules/.cache/abuddy-packages-build/`, written only when the build returns, so an interrupted or failed build reads as not built rather than as fresh. A run that bypasses `pretest` (`npx vitest` directly) still refuses to test stale output, naming the workspace and why.
 
 - `tests/build/`: bundlers and gates (`facade-*`, `seed-runtime-*`, `dsl-defs`, `fe-bundler-*`, `host-import-guard`, `clear-build-output`, `feature-settings`, `step-collisions`, `build-registry`) and published-package checks (`published-*`, `package-freshness`, `checkout-packages`, `ui-exports`, `ui-import-side-effects`, `import-specifiers`, `with-source`, `verify-node-modules`).
 - `tests/cli/`: commands run end to end or through their exports: scaffold, `add`, pack, release, install `hostVersion`, a scaffolded pack installed and loaded by the host pack loader (`init-install-load`), dev install, hand-off, source hooks, app launcher.

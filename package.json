@@ -41,6 +41,7 @@
     "test:external-pack": "npm run packages:ensure && bash tests/scripts/test-external-pack.sh",
     "test:packaged-authoring": "bash tests/scripts/test-packaged-authoring.sh",
     "test:unit": "npm test --workspace @app/api && npm test --workspace @app/default-setup && npm test --workspace @abuddy/sdk && npm test --workspace @abuddy/ears && npm test --workspace @abuddy/host && npm test --workspace @app/main && npm test --workspace @app/renderer && npm test --workspace @abuddy/cli",
+    "test:integration": "npm run test:integration -w @abuddy/cli",
     "spec": "tsx scripts/spec.ts",
     "test:all": "npm run test:unit && npm run test",
     "start": "node packages/dev-mode.js",

@@ -18,7 +18,8 @@
     "build:package": "tsx ../../scripts/bundle-package.ts .",
     "typecheck": "tsc --noEmit",
     "pretest": "tsx ../../scripts/ensure-packages-built.ts",
-    "test": "vitest run"
+    "test": "vitest run",
+    "test:integration": "vitest run --config vitest.integration.config.ts"
   },
   "dependencies": {
     "@abuddy/host": "*",
