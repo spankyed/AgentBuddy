@@ -19,7 +19,7 @@ The goal's own record is its Outcome section. This is only what is left.
 
 ---
 
-## 1. The builder race in `withBuildLock`
+## 1. The builder race in `withBuildLock` — **done, 2026-09-25**
 
 Two `ensurePackagesBuilt` calls each check for a running build and find none, each find the same units
 stale, and each spawn `npm run build:package`. The one that reaches the lock second throws:
@@ -40,9 +40,15 @@ re-checking staleness once it holds the lock, so the second process finds the wo
 row). **Does not buy lanes** — measured: at three lanes with packages fresh, 0 lock-shaped errors and 6
 timeouts.
 
-**Note:** Phase 2's mutation check cannot discriminate today. Reverting the lock change and running the pair
-against stale packages fails; putting it back and running the same thing fails identically, because the
-builder race is what fires. Fixing this item is what makes that check mean something.
+**Done.** A build now declares a `BuildIntent`: a `command` fails at once naming the holder and builds
+whether or not the output is fresh; a `freshness` fix waits for a live holder and, once it has the lock,
+re-checks staleness so the second arrival finds the work done. The intent crosses the spawn boundary in
+`ABUDDY_BUILD_INTENT`. The wait is bounded and the bound is injectable — writing the tests hung a suite for
+nine minutes against the ten-minute default before that parameter existed.
+
+Verified: four consecutive runs of the two suites started together against stale packages, all green, no
+lock errors; reverting the wait fails the same run with two. **Phase 2's mutation check discriminates now**,
+where before it could not, because both sides failed.
 
 ## 2. Make the stamps sound, and keep them sound
 

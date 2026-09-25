@@ -824,9 +824,11 @@ complaint". They did: the loop a developer actually pays went from 58.4s to 8.9s
 
 If someone wants the last 2s, the cheaper lever is the 13 npm sub-invocations, not the compiler.
 
-### Phase 2's mutation check does not discriminate
+### Phase 2's mutation check did not discriminate — fixed after the review
 
-Run at review time, and it is the finding rather than the proof it was meant to be.
+Run at review time, it was the finding rather than the proof it was meant to be. The cause below is now
+fixed (`BuildIntent`, `06fa1eb6b`), and the check discriminates: four consecutive runs of the two suites
+against stale packages pass, and reverting the wait fails them. What follows is why it did not.
 
 With the lock change reverted, `@abuddy/sdk` dirtied so the packages are genuinely stale, and `test:unit`
 and `test:external-pack` started together: `test:unit` fails with stamp errors. With the change back in
