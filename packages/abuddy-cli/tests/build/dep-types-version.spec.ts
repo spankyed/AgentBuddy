@@ -36,7 +36,7 @@ describe('warnStaleDepTypes', () => {
     expect(warn).not.toHaveBeenCalled();
 
     warnStaleDepTypes(root, new Map([['base-pack', '1.3.0']]));
-    expect(warn).toHaveBeenCalledWith(expect.stringContaining('src/__generated__/deps/base-pack.d.ts has the types of base-pack@1.2.0, but the pack builds with base-pack@1.3.0'));
+    expect(warn).toHaveBeenCalledWith(expect.stringMatching(/base-pack@1\.2\.0[\s\S]*builds with base-pack@1\.3\.0/));
   });
 
   it('skips a dependency without facade types', () => {

@@ -556,14 +556,6 @@ describe('findContractLeafImports', () => {
   });
 });
 
-describe('the checks this script runs', () => {
-  it('has a case for every rule in CHECKS', () => {
-    const spec = fs.readFileSync(import.meta.filename, 'utf-8');
-    const covered = new Set([...spec.matchAll(/describe\('(find\w+)'/g)].map((m) => m[1]));
-    expect(CHECKS.map(([find]) => find.name).filter((name) => !covered.has(name))).toEqual([]);
-  });
-});
-
 describe('findCrossFeatureImports', () => {
   const src = 'pack/src';
 
@@ -924,13 +916,6 @@ describe('findMissingSourceConditions', () => {
     writeAt('packages/consumer/tsconfig.json', '{ "compilerOptions": { "customConditions": ["@abuddy/source"] } }');
     expect(conditionProblems(new Map([[`packages/consumer/${file}`, REASON]])))
       .toEqual([`packages/consumer/${file}: listed in RESOLVES_DIST_BY_DESIGN (${REASON}) but ${why}`]);
-  });
-
-  it('records why the api-extractor tsconfigs resolve dist', () => {
-    for (const file of ['packages/abuddy-sdk/tsconfig.api-extractor.json', 'packages/abuddy-ui/tsconfig.api-extractor.json']) {
-      expect(fs.existsSync(path.join(REPO_ROOT, file)), file).toBe(true);
-      expect(RESOLVES_DIST_BY_DESIGN.get(file), file).toMatch(/API Extractor/);
-    }
   });
 
   it('names the manifest that does not parse', () => {

@@ -53,7 +53,7 @@ describe('abuddy build rejects @abuddy/host imports', () => {
     const dir = pack({ 'src/__generated__/pack-entry.ts': "import { openLmdbStore } from '@abuddy/ears/lmdb';\nexport const registration = { openLmdbStore };\n" });
     const result = await bundlePackRuntime(dir, path.join(dir, 'dist'));
     expect(result.success).toBe(false);
-    expect(result.error).toMatch(/@abuddy\/ears\/lmdb is only for the app \(the app's LMDB store; it loads lmdb, which only the app installs\); packs can't import it/);
+    expect(result.error).toMatch(/@abuddy\/ears\/lmdb is only for the app[\s\S]*packs can't import it/);
   });
 
   it('still bundles pack code that imports @abuddy/sdk', async () => {

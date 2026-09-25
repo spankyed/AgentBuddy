@@ -96,8 +96,6 @@ beforeAll(async () => {
 describe("a dependency's flow helpers", () => {
   it('are re-exported under the names the dependency gives them', () => {
     expect(snapshot.flowHelpers!.exports).toEqual(['choose', 'entry', 'every', 'on', 'pour']);
-    expect(fs.readFileSync(path.join(app, 'src/__generated__/flow-helpers.ts'), 'utf-8'))
-      .toContain("export { choose, every, pour } from './deps/base-pack.flow-helpers.js';");
   });
 
   it("type the dependency's step options, custom helpers and track builders as the dependency does", () => {

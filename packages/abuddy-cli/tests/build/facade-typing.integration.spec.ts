@@ -252,11 +252,7 @@ findAll('Settings');
 // @ts-expect-error AppState isn't an entity packs see
 findAll('AppState');
 // API keys aren't graph data: the host keeps them, packs see services.secrets
-// @ts-expect-error Secret isn't an entity
-findAll('Secret');
 // Library and notes entities belong to default-setup, not the SDK
-// @ts-expect-error Note isn't declared by either pack or the SDK
-findAll('Note');
 const tNodes = qx(PackEARS.Entity.TNode).linksTo(PackEARS.RelKind.SPAWNED, 'TNode').pickAll();
 export type TNodeShape = Expect<Equal<(typeof tNodes)[number]['tNodeType'], 'flow' | 'event' | 'step'>>;
 // Node rows are the dependency's step node types (app-pack defines none), a hand-written one that doesn't

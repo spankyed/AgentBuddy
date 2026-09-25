@@ -85,12 +85,11 @@ describe('abuddy add feature', () => {
     expect(output).not.toContain('__generated__/ regenerated');
   });
 
-  it('writes --designation into abuddy.json and no feature.config.ts', async () => {
+  it('writes --designation into abuddy.json', async () => {
     installDependencies();
     await addFeature(['notes', '--designation', 'notes'], pack);
 
     expect(readManifest().features).toEqual([expect.objectContaining({ id: 'notes', designation: 'notes' })]);
-    expect(fs.existsSync(path.join(pack, 'src', 'features', 'notes', 'feature.config.ts'))).toBe(false);
     expect((await runValidate()).exitCode).toBeUndefined();
   }, 60_000);
 

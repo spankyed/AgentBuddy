@@ -36,7 +36,7 @@ function builtPack(hostVersion: string): string {
 describe('abuddy install', () => {
   it("refuses a pack whose hostVersion the data dir's AgentBuddy doesn't satisfy", async () => {
     recordHostInfo(path.join(tmp, 'data'), { version: '0.3.14', packFormat: PACK_SNAPSHOT_FORMAT });
-    await expect(install([builtPack('>=99.0.0'), '--dev'])).rejects.toThrow('requires AgentBuddy >=99.0.0; this is 0.3.14');
+    await expect(install([builtPack('>=99.0.0'), '--dev'])).rejects.toThrow(/requires AgentBuddy >=99\.0\.0/);
   });
 
   it("installs when the data dir's AgentBuddy satisfies it", async () => {

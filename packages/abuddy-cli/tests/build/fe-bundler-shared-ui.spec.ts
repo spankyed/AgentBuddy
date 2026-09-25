@@ -51,9 +51,7 @@ describe('pack FE code and @abuddy/ui state', () => {
   }, 60_000);
 
   it("fails with a clear message on a host that doesn't provide the module", async () => {
-    await expect(buildPack({}, {})).rejects.toThrow(
-      "@abuddy/ui/components/monaco-config isn't provided by this AgentBuddy; update AgentBuddy or check the pack's hostVersion",
-    );
+    await expect(buildPack({}, {})).rejects.toThrow(/monaco-config isn't provided by this AgentBuddy/);
   }, 60_000);
 
   it('warns once per export an older host lacks', async () => {
@@ -62,9 +60,9 @@ describe('pack FE code and @abuddy/ui state', () => {
       const { getMonacoState: _, ...older } = hostMonacoConfig;
       const pack = await buildPack({}, { ...HOST_GLOBALS, '@abuddy/ui/components/monaco-config': older });
       expect(pack.getMonacoState).toBeUndefined();
-      expect(warn.mock.calls).toEqual([[
-        '@abuddy/ui/components/monaco-config in this AgentBuddy has no export "getMonacoState"; update AgentBuddy or check the pack\'s hostVersion',
-      ]]);
+      // once, which is the point of the test; the sentence around it is not
+      expect(warn.mock.calls).toHaveLength(1);
+      expect(warn.mock.calls[0]![0]).toMatch(/has no export "getMonacoState"/);
     } finally {
       warn.mockRestore();
     }

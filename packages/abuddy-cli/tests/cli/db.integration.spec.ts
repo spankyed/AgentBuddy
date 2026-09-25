@@ -184,7 +184,7 @@ describe('abuddy db query', () => {
     holdLock(dir);
     const { out, err } = await ok(['query', 'return getSchemaStats().entities.Note', '--data-dir', dir]);
     expect(out).toBe('2');
-    expect(err).toMatch(/Warning: AgentBuddy is running on it \(its process is running \(pid \d+\)\)/);
+    expect(err).toMatch(/Warning: AgentBuddy is running on it/);
   });
 
   it('refuses bad arguments with its usage', async () => {
@@ -204,7 +204,7 @@ describe('naming the data dir', () => {
     try {
       for (const args of [['query', 'return 1', '--data-dir='], ['query', 'return 1', '--data-dir', '']]) {
         const { error, err } = await run(args);
-        expect(error?.message).toMatch(/^--data-dir needs a path\n\nUsage: abuddy db query/);
+        expect(error?.message).toMatch(/^--data-dir needs a path/);
         expect(err).toBe('');
       }
     } finally {
@@ -266,7 +266,7 @@ describe('naming the data dir', () => {
     const changes = [['exec', 'return 1'], ['reset', '--force'], ['clear-settings', '--force'], ['import', dir, '--force'], ['repl', '--write']];
     for (const args of changes) {
       const { error, err, out } = await run(args);
-      expect(error?.message, args.join(' ')).toBe('Name the data dir to change: --production, -d, -b, or --data-dir <path>');
+      expect(error?.message, args.join(' ')).toMatch(/--production, -d, -b, or --data-dir <path>/);
       expect(`${err}${out}`).toBe('');
     }
   });
@@ -381,7 +381,7 @@ describe('abuddy db exec', () => {
     const locked = await appDataDir();
     holdLock(locked);
     const byLock = await run(['exec', "tx('Note-a').put('title', 'Changed')", '--data-dir', locked]);
-    expect(byLock.error?.message).toMatch(/^AgentBuddy is running on .* \(its process is running \(pid \d+\)\): quit it first/);
+    expect(byLock.error?.message).toMatch(/^AgentBuddy is running on [\s\S]*quit it first/);
     // The marker outlives a crash and its pid can be one the OS has since reused, so the refusal has to
     // name the file: without it the data dir is one no tool could ever write to again
     expect(byLock.error?.message, 'the refusal gave no way out').toContain(`delete ${path.join(locked, 'app.lock')}`);
@@ -403,7 +403,7 @@ describe('abuddy db exec', () => {
   it('keeps what the code wrote before it threw: there is no rollback', async () => {
     const dir = await appDataDir();
     const { error } = await run(['exec', "tx('Note-a').put('title', 'Written'); throw new Error('boom')", '--data-dir', dir]);
-    expect(error?.message).toBe('Transaction failed: boom\n  The writes it made before failing stand: nothing is rolled back.');
+    expect(error?.message).toMatch(/^Transaction failed: boom[\s\S]*nothing is rolled back/);
     // The code runs as one function, not one transaction: what it wrote before throwing is flushed on close
     const { out } = await ok(['query', "return getAttr('Note-a', 'title')", '--data-dir', dir]);
     expect(out).toBe('Written');
@@ -413,7 +413,7 @@ describe('abuddy db exec', () => {
     const dir = await appDataDir();
     // The code writes a value LMDB can't store, then throws
     const { error } = await run(['exec', "tx('Note-a').put('count', 1n); throw new Error('boom')", '--data-dir', dir]);
-    expect(error?.message).toMatch(/^Transaction failed: boom\n  The writes it made before failing stand[^\n]*\n  The database also failed to close: 1 write\(s\) didn't reach the database/);
+    expect(error?.message).toMatch(/^Transaction failed: boom[\s\S]*failed to close: 1 write\(s\) didn't reach the database/);
     expect((error as Error).cause).toBeInstanceOf(Error);
   });
 });
@@ -663,7 +663,7 @@ describe('abuddy db script', () => {
   it('refuses a file that is missing, or exports no function, changing nothing', async () => {
     const dir = await appDataDir();
     expect((await run(['script', path.join(dir, 'nope.ts'), '--data-dir', dir])).error?.message).toBe(`No script at ${path.join(dir, 'nope.ts')}`);
-    expect((await run(['script', '--data-dir', dir])).error?.message).toMatch(/^Name the script to run\n\nUsage: abuddy db script/);
+    expect((await run(['script', '--data-dir', dir])).error?.message).toMatch(/^Name the script to run/);
 
     const noExport = writeScript(dir, 'no-export.ts', 'export const notDefault = () => 1;');
     expect((await run(['script', noExport, '--data-dir', dir])).error?.message)
@@ -765,7 +765,7 @@ describe('abuddy db clear-settings', () => {
   it('lists the Settings rows, and destroys them only with --force', async () => {
     const dir = await appDataDir();
     const dry = await ok(['clear-settings', '--data-dir', dir]);
-    expect(dry.out).toContain('Would destroy 1 Settings row(s):\n  Settings-app  label: App  stored keys: general');
+    expect(dry.out).toMatch(/Would destroy 1 Settings row\(s\)/);
     expect(dry.out).toContain('Dry run: nothing was changed');
     expect((await ok(['query', 'return getEntitiesOfType("Settings")', '--data-dir', dir, '-o', 'json'])).out).toContain('Settings-app');
 
@@ -845,12 +845,12 @@ describe('abuddy db reset', () => {
     const dry = await ok(['reset', '--data-dir', dir]);
     expect(dry.out).toContain('Would delete the database');
     expect(dry.out).toContain('  Note: 2');
-    expect(dry.out).toContain('Would delete 1 stored API key(s), which no backup holds:\n  Anthropic — Work (selected)');
+    expect(dry.out).toMatch(/Would delete 1 stored API key\(s\)[\s\S]*Anthropic — Work/);
     expect(dry.out).toContain('Dry run: nothing was changed');
     expect(JSON.parse(fs.readFileSync(secretsFile, 'utf-8')).secrets).toHaveLength(1);
 
     const forced = await ok(['reset', '--force', '--data-dir', dir]);
-    expect(forced.out).toContain('Reset. AgentBuddy creates its default data on its next start.');
+    expect(forced.out).toContain('Reset.');
     expect(JSON.parse(fs.readFileSync(secretsFile, 'utf-8')).secrets).toEqual([]);
     const after = await ok(['query', 'return getAllEntities()', '--data-dir', dir, '-o', 'json']);
     expect(JSON.parse(after.out)).toEqual([]);

@@ -52,7 +52,6 @@ afterEach(() => {
 });
 
 describe.each(LAYOUTS)('bundlePackFE host binding guard ($name)', (layout) => {
-  const { ext } = layout;
   it('fails when pack FE code inlines an SDK module that needs the host binding', async () => {
     const { packDir, entry } = makePack(layout,
       // onLog needs the bound app (createLogger alone doesn't: unbound, it writes to the console)
@@ -63,7 +62,7 @@ describe.each(LAYOUTS)('bundlePackFE host binding guard ($name)', (layout) => {
 
     expect(result.success).toBe(false);
     expect(result.error).toContain('No host is bound');
-    expect(result.error).toContain(`Import chain: src/entry.ts → @abuddy/sdk/logger/index.${ext} → @abuddy/sdk/logger/logger.${ext} → @abuddy/sdk/runtime/host-runtime.${ext}`);
+    expect(result.error).toContain('Import chain: src/entry.ts → @abuddy/sdk/logger');
   }, 60_000);
 
   it('uses the host\'s @abuddy/ui instead of bundling it', async () => {

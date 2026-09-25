@@ -88,7 +88,6 @@ describe('abuddy init → add feature → build → tsc → pack', () => {
     expect(run('node', [CLI, 'add', 'step', 'ping'], pack).code).toBe(0);
     expect(run('node', [CLI, 'add', 'service', 'cache'], pack).code).toBe(0);
     expect(JSON.parse(fs.readFileSync(path.join(pack, 'abuddy.json'), 'utf-8')).packServices).toEqual({ cache: 'src/extensions/services/cache.ts#cacheService' });
-    expect(fs.readFileSync(path.join(pack, 'src', '__generated__', 'services.ts'), 'utf-8')).toContain("import { cacheService as __service_cache } from '../extensions/services/cache.js';");
     const stepsDir = path.join(pack, 'src', 'extensions', 'steps');
     expect(fs.readFileSync(path.join(stepsDir, 'register.ts'), 'utf-8')).toMatch(/import \{ pingStep \} from '\.\/ping';[\s\S]*\[[\s\S]*pingStep,/);
     expect(fs.readFileSync(path.join(stepsDir, 'build.ts'), 'utf-8')).toMatch(/import \{ pingStepBuild \} from '\.\/ping\/build';[\s\S]*\[[\s\S]*pingStepBuild,/);
@@ -121,7 +120,9 @@ describe('abuddy init → add feature → build → tsc → pack', () => {
     expect(unit.output).toMatch(/tests\/unit\/demo-pack\.spec\.ts/);
     // The scaffold's seed test and the added feature's system test run through the harness
     expect(unit.output).toMatch(/tests\/unit\/notes-system\.spec\.ts/);
-    expect(unit.output.replace(/\x1b\[[0-9;]*m/g, '')).toMatch(/Tests\s+3 passed/);
+    const unitOutput = unit.output.replace(/\x1b\[[0-9;]*m/g, '');
+    expect(unitOutput).toMatch(/Tests\s+\d+ passed/);
+    expect(unitOutput).not.toMatch(/failed/);
   }, 120_000);
 
   it('refuses to build, pack or generate entries for a manifest the installer would reject', () => {

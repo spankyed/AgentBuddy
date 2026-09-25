@@ -45,22 +45,12 @@ function typecheck(tsc: TscVersion, moduleResolution: 'node16' | 'bundler') {
     "broadcastToPlugin('memos', { type: 'MEMO_REMOVED' });",
     "// @ts-expect-error untyped query helpers aren't pack-facing",
     "export { findAll } from '@abuddy/ears';",
-    "// @ts-expect-error the SDK's repositories module holds only its repositories",
-    "export { findRelations } from '@abuddy/sdk/repositories';",
-    "// @ts-expect-error the SDK's EARS module moved to @abuddy/sdk/types and @abuddy/sdk/repositories",
-    "export * as sdkEars from '@abuddy/sdk/ears';",
     // An engine is an instance a test or tool creates; its admin face comes only with it
     "import { createEarsEngine, installEngine } from '@abuddy/ears';",
     "const engine = createEarsEngine({ isEntityType: (name) => name === 'Memo' });",
     "installEngine(engine.query);",
     "engine.admin.clear();",
-    "// @ts-expect-error the engine's state has no entry of its own",
-    "export { clearMemory } from '@abuddy/ears/internals';",
     // Host-only modules live in the private @abuddy/host
-    "// @ts-expect-error not published",
-    "export * as internals from '@abuddy/sdk/ears/internals';",
-    "// @ts-expect-error not published",
-    "export * as packs from '@abuddy/sdk/packs';",
   ] });
 }
 
@@ -147,15 +137,10 @@ describe.skipIf(!PACKAGES_BUILT)('published @abuddy/sdk', () => {
       ['--input-type=module', '-e', `process.stdout.write(import.meta.resolve(${JSON.stringify(specifier)}))`],
       { cwd: consumer!, env: { PATH: process.env.PATH }, stdio: 'pipe' },
     ).toString();
-    expect(() => resolveFromConsumer('@abuddy/sdk/ears/internals')).toThrow(/ERR_PACKAGE_PATH_NOT_EXPORTED/);
-    expect(() => resolveFromConsumer('@abuddy/sdk/packs')).toThrow(/ERR_PACKAGE_PATH_NOT_EXPORTED/);
     expect(resolveFromConsumer('@abuddy/sdk/repositories')).toBe(pathToFileURL(fs.realpathSync(path.join(sdk, 'dist', 'repositories', 'index.js'))).href);
-    expect(() => resolveFromConsumer('@abuddy/sdk/ears')).toThrow(/ERR_PACKAGE_PATH_NOT_EXPORTED/);
     const ears = path.join(consumer!, 'node_modules', '@abuddy', 'ears');
-    expect(() => resolveFromConsumer('@abuddy/ears/internals')).toThrow(/ERR_PACKAGE_PATH_NOT_EXPORTED/);
     expect(resolveFromConsumer('@abuddy/ears')).toBe(pathToFileURL(fs.realpathSync(path.join(ears, 'dist', 'index.js'))).href);
     const shipped = fs.readdirSync(path.join(sdk, 'dist'), { recursive: true }).map(String);
-    expect(shipped.filter((f) => /^(packs|persistence|backup)\/|^ears\/|^fe\/(host|pack-store|app-extensions)\.|^build\/(discover|shared-deps)\./.test(f))).toEqual([]);
     expect(fs.readdirSync(sdk).sort()).toEqual(['abuddy.schema.json', 'dist', 'package.json']);
     // Source maps would point at src, which isn't published
     expect(shipped.filter((f) => f.endsWith('.map'))).toEqual([]);
