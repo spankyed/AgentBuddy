@@ -385,7 +385,17 @@ covers the flag.
 
 - Size the timeouts per Decision 7, tier by tier, and delete the two `testTimeout: 120_000`.
 - Make the app choice injectable so `test-packaged-authoring.sh` stops unsetting `CI` to drive a prompt with
-  `expect`; cover the prompt itself in `@abuddy/cli`'s suite.
+  `expect`; cover the prompt itself in `@abuddy/cli`'s suite. **This one hung a machine**, which is worth more
+  than the tidiness argument: with the app missing, `abuddy test --list` started a Playwright test-server that
+  never returned, and the script's `lassign [wait] …` blocks with no timeout — `expect`'s `set timeout` covers a
+  pattern match, not `wait`. It took three PIDs killed by hand. No `spawn`, no `wait`, no hang.
+- **Give every shell test script a total-runtime bound.** Nothing has one: the only timeouts under
+  `tests/scripts/` are that script's two guarded `expect` patterns. A test that can hang cannot fail — vitest
+  and Playwright each give a test a deadline, and a shell script that spawns a server has none. Note before
+  reaching for the obvious: neither `timeout` nor `gtimeout` exists on this machine, so it wants
+  `perl -e 'alarm'` or a watchdog.
+- **Reap the process group on exit.** Nothing in `tests/scripts/` uses `kill 0`, `setsid` or `set -m`, so an
+  orphaned server outlives its parent and a bound on the script alone would not have cleaned it up.
 - Report slowest-N per suite, so the next person profiling `@abuddy/cli` has it without instrumenting.
 - Record the npm-cache exception where the script uses it, as a declared non-hermetic input.
 
