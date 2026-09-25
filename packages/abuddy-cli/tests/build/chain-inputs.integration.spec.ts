@@ -22,9 +22,23 @@ const NOT_A_CHAIN_INPUT: Record<string, string> = {
   'build/prod/verify-node-modules.mjs': 'packaging check; the chain has its own in the cli suite',
   'packages/abuddy-ears/bench/ears.bench.ts': 'npm run bench -w @abuddy/ears, measured against its own baseline',
   'docs/archive/research/claude_code_headless_ex.ts': 'an archived transcript that happens to end in .ts',
+  // The production packaging and release path. The chain builds the app (`build:app`) and never packages,
+  // signs or releases it, so none of this runs in any step — listed per file rather than as a `build/`
+  // prefix so that something chain-relevant landing there has to be noticed.
+  'build/build.sh': 'npm run build-prod; packaging, which no chain step does',
+  'build/prod/clean.sh': 'part of build-prod',
+  'build/prod/run.sh': 'part of build-prod',
+  'build/prod/verify-signing.sh': 'checks a signed artifact, which only build-prod produces',
+  'build/release/release.sh': 'the release path, which the chain never runs',
+  'build/release/beta-tag.sh': 'the release path; its rule is covered by release-beta-rule.test.sh',
+  'build/release/unrelease.sh': 'the release path',
+  'build/resources/gen-icons.sh': 'regenerates committed icons by hand',
+  'native/speech/macos/build.sh': 'builds the native speech helper, which build-prod invokes',
 };
 
-const CODE = /\.(ts|tsx|vue|mts|cts|mjs|cjs|js)$/;
+// `.sh` included: three of the chain's steps *are* shell scripts, so leaving the extension out meant the
+// coverage claim skipped the files that drive tier 3 entirely.
+const CODE = /\.(ts|tsx|vue|mts|cts|mjs|cjs|js|sh)$/;
 
 const trackedCode = (): string[] =>
   execFileSync('git', ['ls-files'], { cwd: REPO_ROOT, maxBuffer: 64 * 1024 * 1024 })
