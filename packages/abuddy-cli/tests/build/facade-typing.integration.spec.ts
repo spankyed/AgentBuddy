@@ -5,7 +5,7 @@ import * as path from 'node:path';
 import ts from 'typescript';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { PACKAGES_BUILT, REPO_ROOT, installPublishedPackages } from '../helpers/published-packages';
-import { CLI, TSC, callCli, packageJson, preparePack, run, tsconfig, write } from '../helpers/pack-builds';
+import { CLI, callCli, packageJson, preparePack, run, tsconfig, typecheckPack, write } from '../helpers/pack-builds';
 
 /**
  * A pack's typed facades (#generated/ears, events, services, repository) cover its own
@@ -414,11 +414,11 @@ describe.each(LAYOUTS)('generated facades with a dependency ($name)', ({ publish
     expect(snapshot.defs['pack-types']).not.toContain('StateMachine');
   });
 
-  it.each(['bundler', 'node16'] as const)('typechecks own and dependency types under moduleResolution %s', (moduleResolution) => {
+  it.each(['bundler', 'node16'] as const)('typechecks own and dependency types under moduleResolution %s', async (moduleResolution) => {
     const app = path.join(parent, 'app-pack');
     const tsconfig = writeTsconfig(app, moduleResolution, published);
-    // typecheck: a tsc spawn — packDeclarationDiagnostics below builds a program for the same tree in-process
-    const result = run(TSC, ['-p', tsconfig], app);
+    // typecheck: the same program packDeclarationDiagnostics below builds, for the whole tree
+    const result = await typecheckPack(app, tsconfig);
     expect(result.code, result.output).toBe(0);
     // skipLibCheck skips the dependency's bundled facade (src/__generated__/deps/*.d.ts), where an invalid declaration reads as any
     expect(packDeclarationDiagnostics(app, tsconfig)).toEqual([]);

@@ -9,7 +9,6 @@ import { REPO_ROOT } from './published-packages';
 
 /** The CLI these specs build with: the repo's own bin, run from source */
 export const CLI = path.join(REPO_ROOT, 'packages', 'abuddy-cli', 'bin', 'abuddy.mjs');
-export const TSC = path.join(REPO_ROOT, 'node_modules', '.bin', 'tsc');
 
 /** Runs a command, returning its status and combined output instead of throwing, so a spec can assert on both */
 export function run(cmd: string, args: string[], cwd: string): { code: number; output: string } {
@@ -83,6 +82,37 @@ export async function callCli(dir: string, command: keyof typeof COMMANDS, args:
     Object.assign(console, console_);
     process.exit = exit;
   }
+}
+
+/**
+ * Typechecks a pack with the TypeScript API instead of a `tsc` spawn, returning what `run` returns.
+ * The same program the compiler would build, from the same tsconfig — `tsc -p` and `tsc --noEmit` in
+ * the pack both reduce to this — without paying process start and lib loading each time, and reusing
+ * those lib files across calls within a file.
+ *
+ * `facade-typing.spec.ts` already reads diagnostics this way (`packDeclarationDiagnostics`); this is
+ * the same move for the call sites that only wanted a pass or fail.
+ */
+export async function typecheckPack(dir: string, tsconfigName = 'tsconfig.json'): Promise<{ code: number; output: string }> {
+  const ts = await import('typescript');
+  const configPath = path.join(dir, tsconfigName);
+  const host = { ...ts.sys, onUnRecoverableConfigFileDiagnostic: (d: import('typescript').Diagnostic) => { throw new Error(ts.flattenDiagnosticMessageText(d.messageText, ' ')); } };
+  const config = ts.getParsedCommandLineOfConfigFile(configPath, {}, host);
+  if (!config) return { code: 1, output: `could not read ${configPath}` };
+  const program = ts.createProgram({ rootNames: config.fileNames, options: { ...config.options, noEmit: true } });
+  const diagnostics = [
+    ...config.errors,
+    ...program.getSyntacticDiagnostics(),
+    ...program.getSemanticDiagnostics(),
+    ...program.getGlobalDiagnostics(),
+  ];
+  const output = diagnostics.map((d) => {
+    const where = d.file && d.start !== undefined
+      ? `${path.relative(dir, d.file.fileName)}(${d.file.getLineAndCharacterOfPosition(d.start).line + 1})`
+      : '';
+    return `${where}: error TS${d.code}: ${ts.flattenDiagnosticMessageText(d.messageText, ' ')}`;
+  }).join('\n');
+  return { code: diagnostics.length > 0 ? 1 : 0, output };
 }
 
 /** Writes a tree of files under `dir`, creating directories as needed */

@@ -4,7 +4,7 @@ import * as os from 'node:os';
 import * as path from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { extractPackArchive, verifyPack } from '@abuddy/host/packs';
-import { callCli } from '../helpers/pack-builds';
+import { callCli, typecheckPack } from '../helpers/pack-builds';
 
 /**
  * The scaffold an outside author starts from must build, typecheck and pack as
@@ -13,10 +13,6 @@ import { callCli } from '../helpers/pack-builds';
  */
 const REPO_ROOT = path.resolve(__dirname, '..', '..', '..', '..');
 const CLI = path.join(REPO_ROOT, 'packages', 'abuddy-cli', 'bin', 'abuddy.mjs');
-const TSC = path.join(REPO_ROOT, 'node_modules', '.bin', 'tsc');
-// Plain tsc on the generated tsconfig: the borrowed node_modules link the workspace @abuddy/*
-// packages, which the scaffold's tsconfig typechecks from source
-const TSC_ARGS = ['--noEmit'];
 
 let tmp: string;
 let pack: string;
@@ -80,8 +76,8 @@ describe('abuddy init → add feature → build → tsc → pack', () => {
     const examples = JSON.parse(fs.readFileSync(path.join(pack, 'dist', 'runtime', 'seeds', 'examples.seed.json'), 'utf-8'));
     expect(examples.records).toEqual([expect.objectContaining({ entity: 'DemoPack', title: 'Hello', content: expect.stringContaining('hello.md') })]);
 
-    // typecheck: a tsc spawn — the TS API this file already uses (packDeclarationDiagnostics) does the same work in-process
-    const tsc = run(TSC, TSC_ARGS, pack);
+    // typecheck: the TypeScript API builds the same program tsc --noEmit would, in this process
+    const tsc = await typecheckPack(pack);
     expect(tsc.code, tsc.output).toBe(0);
 
     const out = path.join(tmp, 'out');
@@ -108,8 +104,8 @@ describe('abuddy init → add feature → build → tsc → pack', () => {
     const stepsBuild = await import(path.join(pack, 'dist', 'build', 'steps.build.mjs'));
     expect(stepsBuild.steps.map((step: { type: string }) => step.type)).toEqual(['ping']);
 
-    // typecheck: a tsc spawn — see the note at the first one
-    const tsc = run(TSC, TSC_ARGS, pack);
+    // typecheck: as above
+    const tsc = await typecheckPack(pack);
     expect(tsc.code, tsc.output).toBe(0);
   }, 240_000);
 
