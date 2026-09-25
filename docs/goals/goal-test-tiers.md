@@ -181,6 +181,67 @@ came out of `goal-test-cleanup.md` and the review after it.
   being called from `scripts/chain.ts`. The API-report work exported it, so that note is stale and there is
   nothing to do.
 
+### What Phase 5 measured
+
+Per-step caching goes through the package builds' stamp protocol rather than a second one: `fingerprintUnit`
+over `ChainStep.inputs`, `unitStaleReason` to decide, `stampedRun` to record. `stampedRun` is the lock-free
+half of `stampedBuild`, extracted because a chain step must not queue behind the package build lock — that
+would serialise Phase 6's lanes on a lock none of them needs.
+
+**There is no cascade rule, and there does not need to be one.** A step that produces something declares it
+in `outputs` and its readers declare those same paths in `inputs`, so a rebuild that changed the output moves
+their fingerprints, and one that produced identical bytes leaves them fresh. "A needed step ran, so re-run"
+would get that second case wrong. It depends on one thing: a step's verdict is computed at its turn in the
+loop, not for every step up front, which `scripts/chain.ts` says at the point where it matters.
+
+`test:unit` is eight steps, one per package. Each declares its own workspace plus its dependencies' source,
+read from that package's `package.json`, so a dependency added later is covered the moment it is declared.
+Five of the eight declare no build output and so need no step at all: they resolve workspace source through
+the `@abuddy/source` condition. That is what lets them start beside the builds in Phase 6.
+
+Staleness is a pure function of the tree, so `npm run chain --dry` answers most of the "Done when" without
+running anything — which is how they were checked, on a machine another checkout was loading:
+
+| Edit | Steps that go stale |
+|---|---|
+| a doc, a CLAUDE.md | **none** |
+| `packages/renderer/src` | `typecheck`, `test:unit:renderer`, `test:unit:main` (main depends on renderer) |
+| `packages/default-setup/src` | `compile`, `typecheck`, `test:unit:default-setup` |
+| `packages/abuddy-ears/src` | `packages:ensure`, `typecheck`, and all eight suites |
+| `packages/abuddy-cli/tests` | `typecheck`, `test:unit:abuddy-cli` |
+| `tests/e2e` | `typecheck` alone; the E2E step is never cached |
+
+`@abuddy/ears` invalidating all eight is honest rather than a bug: every package imports the bottom layer.
+
+#### The split makes a *serial* cold chain slower, and Phase 6 is what pays it back
+
+This is the one place Phase 5's bullets pull against each other, so it is recorded rather than smoothed over.
+"Split `test:unit` per package" and "a cold run matches Phase 3's time" cannot both hold while the chain is
+serial: the single step ran the eight suites two at a time (43.7s wall, measured idle), and eight separate
+steps run them one at a time (69.8s, the one-lane control already in `scripts/test-unit.ts`). So a cold
+serial chain pays about **+26s** for the split.
+
+That is the right trade anyway, and it is bought back twice: the granularity is what makes a one-package edit
+re-run one suite instead of eight, and Phase 6 gives the eight steps the lanes the single step had. The
+number to beat in Phase 6 is 43.7s for tier 1's suites — not the 100.7s a serial cold run of them costs.
+
+#### What is still unmeasured, and why
+
+The chain's cold and warm wall times are not recorded here, because they could not be measured honestly. A
+second checkout (`.claude/worktrees/cli-spawns`) was building and running vitest on this machine throughout,
+at load averages of 44 to 84, and every step roughly doubled under it: `test:external-pack:contract` 17.5s →
+36.3s, `test:integration` 44.8s → 85.4s and 97.0s.
+
+`test:integration` also *failed* under that load, three times, reporting `Tests 307 passed (307)` and exiting
+1 on `[vitest-worker]: Timeout calling "onTaskUpdate"` — vitest's worker-to-main RPC missing its deadline on
+a starved box. Run alone on the idle machine it is 44.8s and green. So it is contention, not a defect in the
+suite, but it is a real robustness gap: **a step that passes every test and exits non-zero fails the chain.**
+Phase 8 owns it, and the cheap mitigation is a quieter reporter — the chain buffers a step's output and
+prints it only on failure, so vitest's per-test `onTaskUpdate` traffic is pure cost here.
+
+What *was* verified is load-independent, because it is a fingerprint comparison rather than a timing: a warm
+run reported **12 of 17 steps cached**, and the table above holds exactly.
+
 ### Industry practices this repo does not follow
 
 Each of these was found in this survey, not taken from a list.

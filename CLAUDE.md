@@ -186,14 +186,21 @@ npm run spec -- <target> # You don't say what the target is; it works that out:
                          # `--bail 1` and `--changed HEAD~1` work. It groups by package and runs each
                          # package's own `test`, so a pretest guard and its vitest config still apply;
                          # a tests/e2e path goes to Playwright instead
-npm run chain            # Before a merge: every check in dependency order, ~6 min. Reports each step's
-                         # time and buffers its output, printing only a failing step's. It leaves out
-                         # api:check, which typecheck's api:stamp already covers. Serial on purpose —
-                         # scripts/chain.ts records what running the steps in parallel measured
+npm run chain            # Before a merge: every check in dependency order. Reports each step's time and
+                         # buffers its output, printing only a failing step's. It leaves out api:check,
+                         # which typecheck's api:stamp already covers. Serial on purpose — scripts/chain.ts
+                         # records what running the steps in parallel measured.
+                         # Each step is cached on the inputs it declares (scripts/lib/chain-steps.ts),
+                         # through the package builds' stamp protocol: an unchanged step reports `cached`
+                         # and does not run, so a doc edit runs nothing and a one-package edit runs that
+                         # package's suite. The E2E suite is never cached, with its reason on the step.
+                         # `--all` runs everything regardless
 npm test                 # Playwright E2E tests
-npm run test:unit        # Vitest, every suite CI calls a unit test: @app/api, @app/default-setup, @abuddy/sdk,
-                         # @abuddy/ears, @abuddy/host, @app/main, @app/renderer, then @abuddy/cli (the slowest,
-                         # last).
+npm run test:unit        # Vitest, every suite CI calls a unit test, two at a time, slowest first. The list
+                         # is scripts/lib/unit-suites.ts, which the chain reads too, so the two agree
+npm run test:unit:<pkg>  # One of them, by its directory under packages/ (test:unit:abuddy-sdk,
+                         # test:unit:default-setup, ...). These are the chain's steps: each is cached on its
+                         # own package plus its dependencies' source, so a one-package edit re-runs one suite
                          # The CLI suite rebuilds the published packages itself when its dist is stale
 npm run test:all         # test:unit, then the E2E tests
 npm run bench -w @abuddy/ears    # EARS engine benchmark (baseline and tolerance: packages/abuddy-ears/CLAUDE.md)

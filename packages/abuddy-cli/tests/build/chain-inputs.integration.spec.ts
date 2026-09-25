@@ -12,7 +12,8 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { inputFiles, REPO_ROOT } from '@abuddy/host/build/packages-built';
-import { CHAIN_STEPS } from '../../../../scripts/lib/chain-steps.ts';
+import { CHAIN_STEPS, SUITE_READS, type ChainStep } from '../../../../scripts/lib/chain-steps.ts';
+import { UNIT_SUITES } from '../../../../scripts/lib/unit-suites.ts';
 
 /** Tracked code no chain step reads, and why. An entry that stops applying is reported, not ignored. */
 const NOT_A_CHAIN_INPUT: Record<string, string> = {
@@ -73,5 +74,66 @@ describe('the chain reads every source file', () => {
   it('gives every step inputs that exist', () => {
     const empty = CHAIN_STEPS.filter((step) => step.inputs.every((input) => !fs.existsSync(path.join(REPO_ROOT, input))));
     expect(empty.map((step) => step.name), 'a step whose every input is missing is cached on nothing').toEqual([]);
+  });
+});
+
+// The one direction of drift that is silent. A unit suite that reads no build output declares no dependency
+// on a build step, so it is cached against its own source alone — correct, right up until one of its specs
+// starts loading `@abuddy/testing`'s bundle or the built-in pack's `dist`. From then on it would keep
+// getting cache hits against a key that never saw what it reads. What a spec reads is not in a manifest, so
+// the list in `chain-steps.ts` is written; this scans for the two markers and fails when it has gone stale.
+describe('unit suites that read build output say so', () => {
+  const sources = (dir: string): string[] => {
+    const root = path.join(REPO_ROOT, 'packages', dir, 'tests');
+    return fs.existsSync(root) ? inputFiles(root).map((file) => fs.readFileSync(path.join(REPO_ROOT, file), 'utf-8')) : [];
+  };
+  /** Its pretest builds the packages, or a spec loads the one @abuddy package that always resolves its bundle */
+  const readsPackages = (dir: string, texts: string[]): boolean => {
+    const pretest = (JSON.parse(fs.readFileSync(path.join(REPO_ROOT, 'packages', dir, 'package.json'), 'utf-8')) as
+      { scripts?: Record<string, string> }).scripts?.pretest ?? '';
+    return pretest.includes('ensure-packages-built') || texts.some((text) => text.includes('@abuddy/testing'));
+  };
+  /** A spec reaches into the built-in pack's build output */
+  const readsPack = (texts: string[]): boolean =>
+    texts.some((text) => /PACK_DIR|default-setup['"`, )\]]*,?\s*['"`]dist|default-setup\/dist/.test(text));
+
+  it.each(UNIT_SUITES.map((suite) => suite.dir))('%s', (dir) => {
+    const texts = sources(dir);
+    const declared = SUITE_READS[dir] ?? {};
+    expect({ packages: readsPackages(dir, texts), pack: readsPack(texts) },
+      `${dir}'s specs and SUITE_READS disagree about what it reads`)
+      .toEqual({ packages: declared.packages === true, pack: declared.pack === true });
+  });
+});
+
+// `inputs` and `needs` are two halves of one claim and nothing made them agree. A step that reads what
+// another step writes has to run after it, and saying so in `inputs` does not say so to `orderedSteps`,
+// which sorts on `needs` alone. Until this was added `test:integration` declared the built-in pack's `dist`
+// and needed only `packages:ensure`: it ran after `compile` because of where it sat in the table, which is
+// not a guarantee. The check is derivable, so it is a check rather than a review note.
+describe('a step that reads another step\'s output depends on it', () => {
+  /** Everything `step` transitively needs */
+  const ancestorsOf = (step: ChainStep, seen = new Set<string>()): Set<string> => {
+    for (const need of step.needs) {
+      if (seen.has(need)) continue;
+      seen.add(need);
+      ancestorsOf(CHAIN_STEPS.find((s) => s.name === need)!, seen);
+    }
+    return seen;
+  };
+
+  it('names it in needs, not only in inputs', () => {
+    const missing: string[] = [];
+    for (const step of CHAIN_STEPS) {
+      const ancestors = ancestorsOf(step);
+      for (const producer of CHAIN_STEPS) {
+        if (producer.name === step.name || ancestors.has(producer.name)) continue;
+        // A declared input that is one of the producer's outputs, or sits under one
+        const read = (producer.outputs ?? []).filter((out) =>
+          step.inputs.some((input) => input === out || input.startsWith(`${out}/`)));
+        if (read.length > 0) missing.push(`${step.name} declares ${read.join(', ')}, which ${producer.name} writes, but does not need it`);
+      }
+    }
+    expect(missing).toEqual([]);
   });
 });

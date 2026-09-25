@@ -25,7 +25,7 @@ function root(kind: 'checkout' | 'installed'): string {
   return dir;
 }
 
-const STALE: StaleUnit[] = [{ workspace: '@abuddy/sdk', reason: 'its sources changed since the last successful build' }];
+const STALE: StaleUnit[] = [{ workspace: '@abuddy/sdk', reason: 'its inputs changed since the last successful run' }];
 const threw = (): StaleUnit[] => { throw new Error('the layout could not be read'); };
 
 describe('the packages a pack test run loads', () => {
@@ -35,7 +35,7 @@ describe('the packages a pack test run loads', () => {
 
   it('fails when the checkout moved past the build this bundle came from, naming each package and the fix', () => {
     expect(() => assertCheckoutPackagesFresh({ root: root('checkout'), stalePackages: () => STALE }))
-      .toThrow(/@abuddy\/sdk: its sources changed since the last successful build[\s\S]*npm run packages:ensure/);
+      .toThrow(/@abuddy\/sdk: its inputs changed since the last successful run[\s\S]*npm run packages:ensure/);
   });
 
   it('says what a stale run would be testing, not just that something is stale', () => {

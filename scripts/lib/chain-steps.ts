@@ -1,6 +1,7 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { BUILD_UNITS, REPO_ROOT } from '@abuddy/host/build/packages-built';
+import { UNIT_SUITES, unitStepName } from './unit-suites.ts';
 
 /**
  * The pre-merge chain's steps and what each is allowed to read. Separate from `scripts/chain.ts` because
@@ -124,7 +125,7 @@ const WORKSPACE_PARTS = [
 ];
 const workspace = (pkg: string): string[] => WORKSPACE_PARTS.map((part) => `packages/${pkg}/${part}`);
 
-/** Every workspace: what `typecheck` and `test:unit` read, since both cover the repo rather than a package */
+/** Every workspace: what `typecheck` reads, since it compiles the repo rather than a package */
 const EVERY_WORKSPACE = PACKAGES.flatMap(workspace);
 
 /**
@@ -145,6 +146,80 @@ const BOUNDED_RUNNER = ['scripts/bounded.ts', 'scripts/lib/bounded-spawn.ts'];
 /** What `compile` writes: the built-in pack every later step reads */
 const PACK_OUTPUTS = ['packages/default-setup/dist'];
 
+/** Every workspace package's npm name and where it lives, so a declared dependency can become an input path */
+const DIR_BY_PACKAGE = new Map<string, string>(PACKAGES.map((dir) => [
+  (JSON.parse(fs.readFileSync(path.join(REPO_ROOT, 'packages', dir, 'package.json'), 'utf-8')) as { name: string }).name,
+  dir,
+]));
+
+/**
+ * The workspaces a package imports, transitively, read from its own package.json rather than listed here.
+ * A suite compiles its `@abuddy` dependencies from source (the `@abuddy/source` condition), so their source
+ * is genuinely its input — and a dependency added later is covered the moment it is declared, which a list
+ * beside this would not be.
+ */
+function workspaceDeps(dir: string, seen = new Set<string>([dir])): string[] {
+  const manifest = JSON.parse(fs.readFileSync(path.join(REPO_ROOT, 'packages', dir, 'package.json'), 'utf-8')) as {
+    dependencies?: Record<string, string>; devDependencies?: Record<string, string>;
+  };
+  const found: string[] = [];
+  for (const name of Object.keys({ ...manifest.dependencies, ...manifest.devDependencies })) {
+    const child = DIR_BY_PACKAGE.get(name);
+    if (!child || seen.has(child)) continue;
+    seen.add(child);
+    found.push(child, ...workspaceDeps(child, seen));
+  }
+  return found;
+}
+
+/** A dependency contributes its source; another package's specs are not this suite's input */
+const dependencySource = (pkg: string): string[] => [`packages/${pkg}/src`, `packages/${pkg}/package.json`];
+
+/**
+ * The unit suites that read build output, and which. Every other suite resolves workspace source through
+ * the `@abuddy/source` condition, needs nothing built, and so depends on no step at all — which is what
+ * lets five of the eight start while the builds are still running.
+ *
+ * Listed rather than derived, because what a spec reads is not visible from a manifest. The drift that
+ * matters is one direction — a suite that starts reading build output and keeps getting cache hits against
+ * a key that never saw it — and `chain-inputs.integration.spec.ts` scans for exactly that.
+ */
+export const SUITE_READS: Record<string, { packages?: true; pack?: true }> = {
+  // `pretest: ensure-packages-built`, `@abuddy/testing`'s bundle, and its own compiled seeds under `dist/`
+  'default-setup': { packages: true, pack: true },
+  // `pretest: ensure-packages-built`; it packs and installs the published packages, and `dependency-runtime`
+  // builds a fixture pack against default-setup's `dist`
+  'abuddy-cli': { packages: true, pack: true },
+  // `@abuddy/testing`'s bundle, and `dist/runtime/index.cjs` in `sdk-bridge-drift.spec.ts`
+  'abuddy-host': { packages: true, pack: true },
+};
+
+/**
+ * One step per unit suite, so a one-package change re-runs one suite rather than eight. Measured under the
+ * two-lane runner (`scripts/test-unit.ts`), which is what the chain will run them under.
+ */
+const UNIT_SECONDS: Record<string, number> = {
+  'abuddy-sdk': 25, 'default-setup': 20, 'abuddy-cli': 15, 'abuddy-host': 12,
+  api: 6, 'abuddy-ears': 5, renderer: 3, main: 2,
+};
+
+const UNIT_STEPS: readonly ChainStep[] = UNIT_SUITES.map((suite) => {
+  const reads = SUITE_READS[suite.dir] ?? {};
+  return {
+    name: unitStepName(suite),
+    tier: 1,
+    needs: reads.pack ? ['compile'] : reads.packages ? ['packages:ensure'] : [],
+    seconds: UNIT_SECONDS[suite.dir],
+    inputs: [
+      ...ROOT,
+      ...workspace(suite.dir),
+      ...workspaceDeps(suite.dir).flatMap(dependencySource),
+      ...(reads.packages ? PACKAGE_BUILD_OUTPUTS : []),
+      ...(reads.pack ? PACK_OUTPUTS : []),
+    ],
+  };
+});
+
 export const CHAIN_STEPS: readonly ChainStep[] = [
   // Takes the package build lock, so it cannot share a lane with anything else that builds
   { name: 'packages:ensure', tier: 2, needs: [], seconds: 1, exclusive: true,
@@ -164,13 +239,13 @@ export const CHAIN_STEPS: readonly ChainStep[] = [
   // tests, and lints them. A change anywhere in the repo's TypeScript is a change to what it checks.
   { name: 'typecheck', tier: 1, needs: ['compile'], seconds: 30,
     inputs: [...ROOT, ...EVERY_WORKSPACE, 'scripts', 'tests', 'types', ...PACKAGE_BUILD_OUTPUTS, ...PACK_OUTPUTS] },
-  { name: 'test:unit', tier: 1, needs: ['compile'], seconds: 43,
-    inputs: [...ROOT, ...EVERY_WORKSPACE, 'scripts/test-unit.ts', 'scripts/lib/bounded-spawn.ts',
-      ...PACKAGE_BUILD_OUTPUTS, ...PACK_OUTPUTS] },
+  ...UNIT_STEPS,
   // The CLI specs that run a real build, install or child process. Tier 2: they need the built packages,
   // never the app — which is why they can run before `build` rather than behind it.
-  { name: 'test:integration', tier: 2, needs: ['packages:ensure'], seconds: 43,
-    // default-setup's dist too: dependency-runtime builds a pack that depends on it
+  // Needs `compile` and not just `packages:ensure`, because `dependency-runtime` builds a pack that depends
+  // on default-setup and so reads its `dist`. It used to run after `compile` only because of where it sat
+  // in this table, which `orderedSteps` never promised.
+  { name: 'test:integration', tier: 2, needs: ['compile'], seconds: 43,
     inputs: [...ROOT, ...workspace('abuddy-cli'), ...PACKAGE_BUILD_OUTPUTS, ...PACK_OUTPUTS] },
   { name: 'build', tier: 3, needs: ['compile'], seconds: 37, outputs: APP_OUTPUTS,
     inputs: [...ROOT, ...['renderer', 'api', 'main', 'preload'].flatMap(workspace),

@@ -140,7 +140,7 @@ describe('the stamp protocol', () => {
     const stamp = stampFor(f);
     expect(unitStaleReason(f.unit, stamp)).toBeNull();
     const widened = { inputs: [...f.unit.inputs, path.join(f.root, 'tsdown.config.ts')], outputs: f.unit.outputs };
-    expect(unitStaleReason(widened, stamp)).toMatch(/sources changed/);
+    expect(unitStaleReason(widened, stamp)).toMatch(/inputs changed/);
   });
 
   it('is stale when a unit gains an output, which changes what counts as built', () => {
@@ -150,7 +150,7 @@ describe('the stamp protocol', () => {
     // The missing output is reported first; the point is that the stamp no longer matches either
     expect(unitStaleReason(widened, stamp)).not.toBeNull();
     fs.mkdirSync(path.join(f.root, 'dist2'), { recursive: true });
-    expect(unitStaleReason(widened, stamp)).toMatch(/sources changed/);
+    expect(unitStaleReason(widened, stamp)).toMatch(/inputs changed/);
   });
 
   // This module decides whether to build; it cannot change what a build emits
@@ -237,16 +237,16 @@ describe('the staleness verdict', () => {
   it('is stale without a stamp, even when the output tree looks complete', () => {
     // A build that failed or was killed after its rmSync leaves exactly this
     const f = fixture();
-    expect(unitStaleReason(f.unit, path.join(f.root, 'stamp.json'))).toMatch(/no build stamp/);
+    expect(unitStaleReason(f.unit, path.join(f.root, 'stamp.json'))).toMatch(/no stamp/);
   });
 
   it('is stale when the stamp is unreadable or has no fingerprint', () => {
     const f = fixture();
     const stamp = path.join(f.root, 'stamp.json');
     fs.writeFileSync(stamp, '{ not json');
-    expect(unitStaleReason(f.unit, stamp)).toMatch(/no build stamp/);
+    expect(unitStaleReason(f.unit, stamp)).toMatch(/no stamp/);
     fs.writeFileSync(stamp, '{}');
-    expect(unitStaleReason(f.unit, stamp)).toMatch(/no build stamp/);
+    expect(unitStaleReason(f.unit, stamp)).toMatch(/no stamp/);
   });
 
   it('is stale when a source changed, whatever the output mtimes say', () => {
@@ -254,14 +254,14 @@ describe('the staleness verdict', () => {
     const stamp = stampFor(f);
     fs.writeFileSync(path.join(f.src, 'a.ts'), 'export const a = 2;\n');
     // The output is untouched and newer than nothing — only the fingerprint can tell
-    expect(unitStaleReason(f.unit, stamp)).toMatch(/sources changed/);
+    expect(unitStaleReason(f.unit, stamp)).toMatch(/inputs changed/);
   });
 
   it('is stale when a source was deleted', () => {
     const f = fixture();
     const stamp = stampFor(f);
     fs.rmSync(path.join(f.src, 'nested', 'b.ts'));
-    expect(unitStaleReason(f.unit, stamp)).toMatch(/sources changed/);
+    expect(unitStaleReason(f.unit, stamp)).toMatch(/inputs changed/);
   });
 
   it('is stale when an output is missing, and says which', () => {
@@ -314,12 +314,12 @@ describe('the staleness verdict', () => {
 describe('the stale message', () => {
   it('names every stale workspace with its own reason', () => {
     const message = staleMessage([
-      { workspace: '@abuddy/sdk', reason: 'its sources changed since the last successful build' },
-      { workspace: '@abuddy/ui', reason: 'no build stamp' },
+      { workspace: '@abuddy/sdk', reason: 'its inputs changed since the last successful run' },
+      { workspace: '@abuddy/ui', reason: 'no stamp' },
     ]);
     expect(message.split('\n')).toHaveLength(2);
-    expect(message).toContain('@abuddy/sdk: its sources changed');
-    expect(message).toContain('@abuddy/ui: no build stamp');
+    expect(message).toContain('@abuddy/sdk: its inputs changed');
+    expect(message).toContain('@abuddy/ui: no stamp');
   });
 });
 
@@ -346,7 +346,7 @@ describe('a stamped build', () => {
       throw new Error('tsc failed');
     })).rejects.toThrow('tsc failed');
     expect(fs.existsSync(path.join(f.root, 'stamp.json'))).toBe(false);
-    expect(unitStaleReason(f.unit, path.join(f.root, 'stamp.json'))).toMatch(/no build stamp/);
+    expect(unitStaleReason(f.unit, path.join(f.root, 'stamp.json'))).toMatch(/no stamp/);
   });
 
   it('clears the previous stamp before building, so an interrupted build cannot leave a stale one', async () => {
@@ -360,7 +360,7 @@ describe('a stamped build', () => {
   it('records the sources as they were before the build, so a mid-build edit stays stale', async () => {
     const f = fixture();
     await run(f, () => fs.writeFileSync(path.join(f.src, 'a.ts'), 'export const a = 99;\n'));
-    expect(unitStaleReason(f.unit, path.join(f.root, 'stamp.json'))).toMatch(/sources changed/);
+    expect(unitStaleReason(f.unit, path.join(f.root, 'stamp.json'))).toMatch(/inputs changed/);
   });
 
   it('rebuilds a fresh unit for a command and skips it for a freshness fix', async () => {

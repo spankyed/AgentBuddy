@@ -30,51 +30,36 @@
 // So the constraint is cores, not ordering, and the way to a shorter chain is a cheaper `test:unit` —
 // `@abuddy/cli` is over half of it — not a rearranged one. Reopen this on a machine with idle cores, and
 // measure rather than trust the arithmetic: max() assumes steps do not slow each other, and here they do.
-import { execFileSync } from 'node:child_process';
-import * as fs from 'node:fs';
 import * as path from 'node:path';
-import { REPO_ROOT, fingerprintInputs } from '@abuddy/host/build/packages-built';
-import { CHAIN_STEPS, orderedSteps, type Tier } from './lib/chain-steps.ts';
+import { REPO_ROOT, stampedRun, unitStaleReason, type BuildUnit } from '@abuddy/host/build/packages-built';
+import { CHAIN_STEPS, orderedSteps, type ChainStep, type Tier } from './lib/chain-steps.ts';
 import { boundedSpawn, budgetFor } from './lib/bounded-spawn.ts';
 
 /**
- * Bump when a step is added or removed, or when what the fingerprint covers changes: an older stamp would
- * then say a chain passed on inputs this one does not check, and every tree runs once, which is correct.
- */
-const STAMP_VERSION = 1;
-const STAMP = path.join(REPO_ROOT, 'node_modules', '.cache', 'abuddy-chain', 'tree.json');
-
-/**
- * What the chain's verdict depends on: the tracked files under packages/, scripts/ and tests/, plus the
- * root manifests. Tracked, because the chain writes into `dist/`, `src/__generated__/` and
- * `tests/screenshots/` itself, and hashing its own output would mean no two runs ever agree.
+ * Each step is cached on its own declared inputs, through the same protocol the package builds use:
+ * `fingerprintUnit` over `ChainStep.inputs`, `unitStaleReason` to decide, `stampedRun` to record. One
+ * `STAMP_VERSION`, one fingerprint, one thing to bump — which is why the chain's stamps live beside the
+ * builds' rather than inventing a second format.
  *
- * This is deliberately all-or-nothing rather than a set of inputs per step. Per-step caching was measured
- * and does not fit: `test:external-pack` and `test:packaged-authoring` both run `abuddy test` against this
- * checkout's built app (`--app-root`), so they depend on the renderer, main, preload, api and
- * default-setup, and `tests/fixtures/external-pack` declares a dependency on default-setup as well. Every
- * expensive step transitively reads nearly the whole repo, so the only sound skip is "nothing changed".
- * That is not a small case: of the 20 commits before this was written, three touched no input at all.
+ * This replaces a whole-tree fingerprint, which skipped the chain only when nothing tracked had changed at
+ * all. The argument for that was that every expensive step transitively reads nearly the whole repo, and
+ * for the tier-3 steps it is still true: they read the built app, so a change anywhere in it re-runs them.
+ * What it missed is that most of the chain is not tier 3. The eight unit suites read their own package and
+ * its dependencies' source, so a one-package edit re-runs one suite; a doc edit re-runs nothing.
+ *
+ * There is no cascade rule, and there does not need to be one. A step that produces something declares it
+ * in `outputs`, and the steps that read it declare those same paths in their `inputs`, so a rebuild that
+ * changed the output changes the dependents' fingerprints — and a rebuild that produced identical bytes
+ * leaves them fresh, which is the right answer and one a "needed step ran" rule would get wrong.
  */
-function treeFingerprint(): string {
-  const tracked = execFileSync('git', ['ls-files', '-z'], { cwd: REPO_ROOT, maxBuffer: 64 * 1024 * 1024 })
-    .toString().split('\0').filter(Boolean)
-    .filter((f) => f.startsWith('packages/') || f.startsWith('scripts/') || f.startsWith('tests/')
-      || f === 'package.json' || f === 'package-lock.json');
-  return fingerprintInputs(tracked.map((f) => path.join(REPO_ROOT, f)));
-}
+const STAMP_DIR = path.join(REPO_ROOT, 'node_modules', '.cache', 'abuddy-chain');
+const stampFor = (step: string): string => path.join(STAMP_DIR, `${step.replace(/[:/]/g, '-')}.json`);
 
-function lastPassing(): string | undefined {
-  try {
-    const stamp = JSON.parse(fs.readFileSync(STAMP, 'utf-8')) as { version: number; fingerprint: string };
-    return stamp.version === STAMP_VERSION ? stamp.fingerprint : undefined;
-  } catch { return undefined; }
-}
-
-function recordPassing(fingerprint: string): void {
-  fs.mkdirSync(path.dirname(STAMP), { recursive: true });
-  fs.writeFileSync(STAMP, `${JSON.stringify({ version: STAMP_VERSION, fingerprint, passedAt: new Date().toISOString() }, null, 2)}\n`);
-}
+/** A step as a build unit: the same shape, so it goes through the same freshness check */
+const unitFor = (step: ChainStep): BuildUnit => ({
+  inputs: step.inputs.map((input) => path.join(REPO_ROOT, input)),
+  outputs: (step.outputs ?? []).map((output) => path.join(REPO_ROOT, output)),
+});
 
 type Result = { step: string; ms: number; code: number; output: string; timedOut?: true };
 
@@ -89,32 +74,71 @@ async function run(step: string, seconds: number | undefined): Promise<Result> {
 
 const secs = (ms: number) => `${(ms / 1000).toFixed(1)}s`;
 
+/** Thrown to leave `stampedRun` without a stamp: a failed step must read as never run */
+class StepFailed extends Error {
+  constructor(readonly result: Result) { super(result.step); }
+}
+
+/**
+ * The step, with its stamp written only where it passed. The fingerprint is taken before it runs, so a
+ * source edited mid-run records as not done rather than as covered.
+ */
+async function runAndStamp(step: ChainStep): Promise<Result> {
+  if (step.cache === false) return run(step.name, step.seconds);
+  let result: Result | undefined;
+  try {
+    await stampedRun(step.name, unitFor(step), stampFor(step.name), async () => {
+      result = await run(step.name, step.seconds);
+      if (result.code !== 0) throw new StepFailed(result);
+    });
+  } catch (err) {
+    if (!(err instanceof StepFailed)) throw err;
+    return err.result;
+  }
+  return result!;
+}
+
 async function main(): Promise<void> {
   const started = Date.now();
   const results: Result[] = [];
   const all = process.argv.includes('--all');
-  const fingerprint = treeFingerprint();
-
-  if (!all && fingerprint === lastPassing()) {
-    console.log('nothing tracked under packages/, scripts/ or tests/ has changed since the chain last');
-    console.log('passed on exactly this tree, so there is nothing for it to prove. `--all` runs it anyway.');
-    return;
-  }
+  // What the chain would do, without doing it. The answer is a pure function of the tree, so it is the way
+  // to check the cache on a machine too loaded to time a run on — and the way to find out why a step you
+  // expected to be cached is not. It reports each step against the tree as it stands, so the verdicts after
+  // the first step that would run are what that step would produce nothing for: a plan, not a prediction.
+  const dry = process.argv.includes('--dry');
+  let cached = 0;
 
   // Derived from each step's `needs`, and validated first: an unknown dependency or a cycle fails here rather
   // than halfway through a six-minute run
-  for (const { name, tier, seconds } of orderedSteps()) {
-    const result = await run(name, seconds);
+  const steps = orderedSteps();
+  for (const step of steps) {
+    // Asked here, inside the loop, and not for every step up front. A step's inputs include the outputs of
+    // the steps before it, so `compile` is fresh or stale depending on what `packages:ensure` just wrote —
+    // which is the whole reason there is no cascade rule. Hoisting this out of the loop would compute every
+    // verdict against the tree as it was before the chain started, and cache steps against stale inputs.
+    const why = step.cache === false ? 'never cached: it drives real Electron, and a flaky pass cached green hides an intermittent failure' : unitStaleReason(unitFor(step), stampFor(step.name));
+    if (dry) {
+      console.log(`${(why === null ? 'cached' : 'run').padStart(7)} t${step.tier} ${step.name.padEnd(26)} ${why ?? ''}`);
+      continue;
+    }
+    if (!all && step.cache !== false && why === null) {
+      cached++;
+      console.log(` cached t${step.tier} ${step.name}`);
+      continue;
+    }
+
+    const result = await runAndStamp(step);
     results.push(result);
     // TIMEOUT is its own verdict: a step that ran out of budget failed for a different reason than one
     // that returned non-zero, and which it was is the first thing you need to know.
     const verdict = result.code === 0 ? 'ok' : result.timedOut ? 'TIMEOUT' : 'FAIL';
-    console.log(`${verdict.padStart(7)} t${tier} ${name.padEnd(24)} ${secs(result.ms)}`);
+    console.log(`${verdict.padStart(7)} t${step.tier} ${step.name.padEnd(26)} ${secs(result.ms).padStart(6)}  ${all ? '--all' : why}`);
     if (result.code !== 0) {
-      const why = result.timedOut
-        ? `${name} timed out: it exceeded its ${secs(budgetFor(seconds ?? 300))} budget and its process group was killed. It costs ${seconds ?? '?'}s healthy, so either it is wedged or it has grown and the measurement in chain-steps.ts is stale.`
-        : `${name} failed (exit ${result.code})`;
-      console.log(`\n${'='.repeat(72)}\n${why}\n${'='.repeat(72)}\n${result.output}`);
+      const why2 = result.timedOut
+        ? `${step.name} timed out: it exceeded its ${secs(budgetFor(step.seconds ?? 300))} budget and its process group was killed. It costs ${step.seconds ?? '?'}s healthy, so either it is wedged or it has grown and the measurement in chain-steps.ts is stale.`
+        : `${step.name} failed (exit ${result.code})`;
+      console.log(`\n${'='.repeat(72)}\n${why2}\n${'='.repeat(72)}\n${result.output}`);
       break;
     }
   }
@@ -126,11 +150,11 @@ async function main(): Promise<void> {
     return `t${t} ${secs(ms)}`;
   }).join('  ');
 
+  if (dry) return;
+
   const failed = results.find((r) => r.code !== 0);
-  // Recorded after the run, and only on a pass: the fingerprint is of the tracked inputs, which the run
-  // does not touch, so it still describes the tree the verdict was reached on.
-  if (!failed) recordPassing(fingerprint);
-  console.log(`\n${failed ? `chain FAILED at ${failed.step}` : 'chain passed'} — ${secs(Date.now() - started)}  (${byTier})`);
+  const skipped = cached ? `, ${cached} of ${steps.length} cached` : '';
+  console.log(`\n${failed ? `chain FAILED at ${failed.step}` : 'chain passed'} — ${secs(Date.now() - started)}  (${byTier})${skipped}`);
   process.exit(failed ? 1 : 0);
 }
 

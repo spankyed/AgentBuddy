@@ -13,10 +13,11 @@
  */
 import { execFileSync } from 'node:child_process';
 import { boundedSpawn, budgetFor } from './lib/bounded-spawn.ts';
+import { UNIT_SUITES } from './lib/unit-suites.ts';
 import * as os from 'node:os';
 
-// Slowest first: the tail of a concurrent run is whatever started last
-const SUITES = ['@app/default-setup', '@abuddy/sdk', '@abuddy/cli', '@abuddy/host', '@app/api', '@abuddy/ears', '@app/renderer', '@app/main'];
+// Shared with the chain's per-package steps, so the two cannot disagree about what a unit suite is
+const SUITES = UNIT_SUITES.map((suite) => suite.workspace);
 
 const cpus = os.availableParallelism?.() ?? os.cpus().length;
 /** Workers per suite; 0 leaves each suite its own default (`cpus - 1`). Measured, see the table below. */

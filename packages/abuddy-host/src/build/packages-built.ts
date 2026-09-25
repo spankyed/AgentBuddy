@@ -59,10 +59,12 @@ const pkgFile = (pkg: string, ...parts: string[]): string => repoFile('packages'
 const SHARED_INPUTS = [repoFile('package.json'), repoFile('package-lock.json')];
 
 /**
- * The stamp format. Bump it when a stamp written by an older build would be read wrongly by this one —
- * a different hash, a different set of things hashed — and every unit rebuilds once, which is correct.
+ * The stamp format, shared by everything that records "this ran over exactly these inputs" — the package
+ * builds and, through `stampedRun`, the chain's steps. Bump it when a stamp written by an older run would
+ * be read wrongly by this one (a different hash, a different set of things hashed), and every unit runs
+ * once, which is correct. Last bumped when the chain's steps joined the protocol.
  */
-export const STAMP_VERSION = 2;
+export const STAMP_VERSION = 3;
 
 export interface BuildUnit {
   /** Files and directories the build reads, absolute; a directory is walked */
@@ -115,7 +117,6 @@ const LOCK_POLL_MS = 200;
 
 export const stampFile = (workspace: string): string => path.join(STAMP_DIR, `${workspace.replace(/[@/]/g, '-').replace(/^-/, '')}.json`);
 
-/** Files under a watched input, repo-relative. A missing input contributes nothing; creating it changes the fingerprint. */
 /**
  * Every file under a path, repo-relative — the walk a fingerprint is taken over. Exported because the
  * chain's input-coverage guard has to resolve a step's inputs exactly as a fingerprint does: a guard that
@@ -197,7 +198,11 @@ export function fingerprintUnit(unit: BuildUnit): string {
 
 export interface StaleUnit { readonly workspace: string; readonly reason: string }
 
-/** Why `unit` needs building, or null when its stamp says a build of exactly these inputs succeeded. Never throws. */
+/**
+ * Why `unit` needs to run, or null when its stamp says a run over exactly these inputs succeeded. Never
+ * throws. The wording is deliberately not about building: the chain's steps go through this too, and most
+ * of them are checks that produce nothing (`stampedRun`, `scripts/chain.ts`).
+ */
 export function unitStaleReason(unit: BuildUnit, stamp: string): string | null {
   const missing = unit.outputs.filter((output) => !fs.existsSync(output)).map((output) => path.relative(REPO_ROOT, output));
   if (missing.length > 0) return `not built (no ${missing.join(', ')})`;
@@ -205,11 +210,11 @@ export function unitStaleReason(unit: BuildUnit, stamp: string): string | null {
   try {
     record = JSON.parse(fs.readFileSync(stamp, 'utf-8'));
   } catch { /* missing or unreadable: the same as never built */ }
-  if (typeof record.fingerprint !== 'string') return 'no build stamp — never built by this script, or the last build failed or was interrupted';
+  if (typeof record.fingerprint !== 'string') return 'no stamp — it has not run yet, or the last run failed or was interrupted';
   // A stamp from another protocol says nothing about this one, so it counts as never built
-  if (record.version !== STAMP_VERSION) return `its build stamp is from another format (${String(record.version)}, this is ${STAMP_VERSION})`;
+  if (record.version !== STAMP_VERSION) return `its stamp is from another format (${String(record.version)}, this is ${STAMP_VERSION})`;
   try {
-    return record.fingerprint === fingerprintUnit(unit) ? null : 'its sources changed since the last successful build';
+    return record.fingerprint === fingerprintUnit(unit) ? null : 'its inputs changed since the last successful run';
   } catch (err) {
     return `its sources could not be read (${(err as Error).message})`;
   }
@@ -390,12 +395,24 @@ export async function stampedBuild(
     // very likely building this same unit, and rebuilding what is already fresh is the duplicate work the
     // wait exists to avoid. A `command` builds regardless — it was asked for a build, not for freshness.
     if (intent === 'freshness' && unitStaleReason(unit, stamp) === null) return;
-    const fingerprint = fingerprintUnit(unit);
-    fs.rmSync(stamp, { force: true });
-    await build();
-    fs.mkdirSync(path.dirname(stamp), { recursive: true });
-    fs.writeFileSync(stamp, `${JSON.stringify({ workspace: label, version: STAMP_VERSION, fingerprint, builtAt: new Date().toISOString() }, null, 2)}\n`);
+    await stampedRun(label, unit, stamp, build);
   }, lock, { ...lockOptions, intent });
+}
+
+/**
+ * `run` between clearing the stamp and writing a new one, with no lock. The chain's steps stamp through
+ * this: they are not package builds and must not queue behind the build lock, but the stamp they write has
+ * to be the same protocol — one `STAMP_VERSION`, one `fingerprintUnit`, one thing to bump.
+ *
+ * The fingerprint is taken before `run` touches anything, so a source edited while it runs is recorded as
+ * not done. The stamp is written only where `run` returned, so an interrupted step reads as never run.
+ */
+export async function stampedRun(label: string, unit: BuildUnit, stamp: string, run: () => void | Promise<void>): Promise<void> {
+  const fingerprint = fingerprintUnit(unit);
+  fs.rmSync(stamp, { force: true });
+  await run();
+  fs.mkdirSync(path.dirname(stamp), { recursive: true });
+  fs.writeFileSync(stamp, `${JSON.stringify({ workspace: label, version: STAMP_VERSION, fingerprint, builtAt: new Date().toISOString() }, null, 2)}\n`);
 }
 
 /** Every `build:package` script wraps its work in this */
@@ -429,7 +446,7 @@ export class PackagesBuildFailed extends Error {
 export function ensurePackagesBuilt(): void {
   // Another process may be building them right now — two test suites started together each run this as
   // their pretest. Wait for that build rather than reading the stamps it is rewriting and starting a
-  // second one, which is a race that fails the reader with "no build stamp".
+  // second one, which is a race that fails the reader with "no stamp".
   waitForPackageBuild();
   const stale = stalePackageUnits();
   if (stale.length === 0) return;
