@@ -34,6 +34,7 @@ import { execFileSync, spawn } from 'node:child_process';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { REPO_ROOT, fingerprintInputs } from '@abuddy/host/build/packages-built';
+import { CHAIN_STEPS, type Tier } from './lib/chain-steps.ts';
 
 /**
  * Bump when a step is added or removed, or when what the fingerprint covers changes: an older stamp would
@@ -74,22 +75,6 @@ function recordPassing(fingerprint: string): void {
   fs.writeFileSync(STAMP, `${JSON.stringify({ version: STAMP_VERSION, fingerprint, passedAt: new Date().toISOString() }, null, 2)}\n`);
 }
 
-/**
- * In dependency order. `compile` stays ahead of `build` and is not redundant with it: `build -ws` gives no
- * ordering guarantee, since no workspace declares a dependency on `@app/default-setup`, and the renderer's
- * build reads the generated pack entry that `compile` writes.
- */
-const STEPS = [
-  'packages:ensure',
-  'compile',
-  'typecheck',
-  'test:unit',
-  'build',
-  'test:external-pack',
-  'test', // the E2E suite
-  'test:packaged-authoring',
-];
-
 type Result = { step: string; ms: number; code: number; output: string };
 
 function run(step: string): Promise<Result> {
@@ -119,21 +104,28 @@ async function main(): Promise<void> {
     return;
   }
 
-  for (const step of STEPS) {
-    const result = await run(step);
+  for (const { name, tier } of CHAIN_STEPS) {
+    const result = await run(name);
     results.push(result);
-    console.log(`${result.code === 0 ? '  ok ' : ' FAIL'} ${step.padEnd(24)} ${secs(result.ms)}`);
+    console.log(`${result.code === 0 ? '  ok ' : ' FAIL'} t${tier} ${name.padEnd(24)} ${secs(result.ms)}`);
     if (result.code !== 0) {
-      console.log(`\n${'='.repeat(72)}\n${step} failed (exit ${result.code})\n${'='.repeat(72)}\n${result.output}`);
+      console.log(`\n${'='.repeat(72)}\n${name} failed (exit ${result.code})\n${'='.repeat(72)}\n${result.output}`);
       break;
     }
   }
+
+  // Where the time goes by tier, which is the number the goal's phases move
+  const byTier = ([1, 2, 3] as Tier[]).map((t) => {
+    const ms = CHAIN_STEPS.filter((s) => s.tier === t)
+      .reduce((sum, s) => sum + (results.find((r) => r.step === s.name)?.ms ?? 0), 0);
+    return `t${t} ${secs(ms)}`;
+  }).join('  ');
 
   const failed = results.find((r) => r.code !== 0);
   // Recorded after the run, and only on a pass: the fingerprint is of the tracked inputs, which the run
   // does not touch, so it still describes the tree the verdict was reached on.
   if (!failed) recordPassing(fingerprint);
-  console.log(`\n${failed ? `chain FAILED at ${failed.step}` : 'chain passed'} — ${secs(Date.now() - started)}`);
+  console.log(`\n${failed ? `chain FAILED at ${failed.step}` : 'chain passed'} — ${secs(Date.now() - started)}  (${byTier})`);
   process.exit(failed ? 1 : 0);
 }
 
