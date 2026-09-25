@@ -155,3 +155,46 @@ describe('the chain builds every workspace that has a build', () => {
     expect(named.has(OWNED_BY_COMPILE), 'compile already runs this workspace\'s build; a second run thrashes the cache').toBe(false);
   });
 });
+
+// Every gitignored input has to be accounted for.
+//
+// Git already knows what is generated, which makes it the one source of truth nobody has to maintain. A
+// gitignored file among a step's inputs was written by *something*, and there are only two honest cases:
+// a step you depend on declares it as an output, or you declare that you read around it. Anything else is
+// one of the two failures this repo has now produced three times — an undeclared dependency, which races
+// under lanes, or churn that stops the step ever caching.
+//
+// This is the preventive half. `willNotCache` in the chain's summary is the empirical half, and catches
+// what no declaration can anticipate; this catches what can be known before anything runs.
+describe('a gitignored input belongs to someone', () => {
+  const ignoredRoots = execFileSync('git', ['ls-files', '--others', '--ignored', '--exclude-standard', '--directory'],
+    { cwd: REPO_ROOT, maxBuffer: 64 * 1024 * 1024 })
+    .toString().split('\n').filter(Boolean).map((entry) => entry.replace(/\/$/, ''));
+  const isIgnored = (file: string): boolean => ignoredRoots.some((root) => file === root || file.startsWith(`${root}/`));
+
+  const byName = new Map(CHAIN_STEPS.map((step) => [step.name, step]));
+  const ancestorsOf = (name: string, seen = new Set<string>()): Set<string> => {
+    for (const need of byName.get(name)?.needs ?? []) {
+      if (seen.has(need)) continue;
+      seen.add(need);
+      ancestorsOf(need, seen);
+    }
+    return seen;
+  };
+
+  it.each(CHAIN_STEPS.map((step) => step.name))('%s', (name) => {
+    const step = byName.get(name)!;
+    const accountedFor = [
+      ...step.outputs ?? [],
+      ...step.excludes ?? [],
+      ...[...ancestorsOf(name)].flatMap((need) => byName.get(need)?.outputs ?? []),
+    ];
+    const unaccounted = [...new Set(step.inputs.flatMap((input) => inputFiles(path.join(REPO_ROOT, input))))]
+      .filter((file) => isIgnored(file))
+      .filter((file) => !accountedFor.some((owned) => file === owned || file.startsWith(`${owned}/`)));
+
+    expect([...new Set(unaccounted.map((file) => file.split('/').slice(0, 5).join('/')))],
+      `${name} hashes generated files nobody declares: depend on the step that writes them, or list them in \`excludes\` with why this step reads around them`)
+      .toEqual([]);
+  });
+});

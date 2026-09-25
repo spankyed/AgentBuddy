@@ -74,6 +74,16 @@ export const STAMP_VERSION = 1;
 export interface BuildUnit {
   /** Files and directories the build reads, absolute; a directory is walked */
   readonly inputs: readonly string[];
+  /**
+   * Trees inside `inputs` that are not part of the fingerprint, and are not this unit's own output either:
+   * generated files it declares the parent of but never reads. `typecheck` declares `tests/fixtures` for
+   * the pack sources and does not read the packs' build output — `check:specifiers` filters
+   * `__generated__` out itself — so hashing that output would tie this unit's freshness to a build it does
+   * not depend on.
+   *
+   * Distinct from `outputs`, which must exist for the unit to count as built. An exclusion need not exist.
+   */
+  readonly excludes?: readonly string[];
   /** Paths the build writes; all must exist for the unit to count as built */
   readonly outputs: readonly string[];
 }
@@ -199,7 +209,7 @@ export function fingerprintInputs(
  * contents alone would read the new set against the old stamp and call it fresh.
  */
 export function fingerprintUnit(unit: BuildUnit): string {
-  const declared = [...unit.inputs, ...unit.outputs].map((target) => path.relative(REPO_ROOT, target)).sort();
+  const declared = [...unit.inputs, ...unit.outputs, ...(unit.excludes ?? [])].map((target) => path.relative(REPO_ROOT, target)).sort();
   return createHash('sha256')
     .update(declared.join('\0'))
     .update('\0')
@@ -210,7 +220,7 @@ export function fingerprintUnit(unit: BuildUnit): string {
     // surviving on the builds happening to be deterministic, and the pack build is already known not to be
     // (two lines of `Omit<…>` union ordering). Excluding self-output here means declaring `outputs`
     // honestly is the whole fix, rather than every such step needing its inputs hand-narrowed.
-    .update(fingerprintInputs(unit.inputs, undefined, unit.outputs))
+    .update(fingerprintInputs(unit.inputs, undefined, [...unit.outputs, ...(unit.excludes ?? [])]))
     .digest('hex');
 }
 

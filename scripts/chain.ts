@@ -66,6 +66,7 @@ const stampFor = (step: string): string => path.join(STAMP_DIR, `${step.replace(
 const unitFor = (step: ChainStep): BuildUnit => ({
   inputs: step.inputs.map((input) => path.join(REPO_ROOT, input)),
   outputs: (step.outputs ?? []).map((output) => path.join(REPO_ROOT, output)),
+  excludes: (step.excludes ?? []).map((excluded) => path.join(REPO_ROOT, excluded)),
 });
 
 type Result = { step: string; ms: number; code: number; output: string; timedOut?: true };

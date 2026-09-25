@@ -36,6 +36,14 @@ export interface ChainStep {
   readonly inputs: readonly string[];
   /** What it writes, so a later step's `inputs` can name them instead of guessing at the same paths */
   readonly outputs?: readonly string[];
+  /**
+   * Generated trees inside `inputs` that this step declares the parent of and never reads. Every gitignored
+   * input has to be accounted for — `chain-inputs.integration.spec.ts` fails one that is neither a step's
+   * output you depend on nor listed here — because an unaccounted one is either an undeclared dependency
+   * (a race) or churn that stops the step ever caching. Each entry is a claim that the step reads around
+   * the tree, so it belongs with evidence.
+   */
+  readonly excludes?: readonly string[];
   /** Needs the package build lock, so it cannot share a lane with another step that takes it */
   readonly exclusive?: true;
   /** A step whose pass is not reproducible, so it always runs. Only the E2E suite, with its reason. */
@@ -175,10 +183,17 @@ const PACK_OUTPUTS = ['packages/default-setup/dist', 'packages/default-setup/src
  * What building the fixture packs writes, derived from the fixtures themselves. These sit *inside*
  * `tests/fixtures`, which the same step declares as an input, for the same reason as above.
  */
-const FIXTURE_OUTPUTS = fs.readdirSync(path.join(REPO_ROOT, 'tests', 'fixtures'), { withFileTypes: true })
+const FIXTURE_PACKS = fs.readdirSync(path.join(REPO_ROOT, 'tests', 'fixtures'), { withFileTypes: true })
   .filter((entry) => entry.isDirectory() && fs.existsSync(path.join(REPO_ROOT, 'tests', 'fixtures', entry.name, 'abuddy.json')))
-  .flatMap((entry) => [`tests/fixtures/${entry.name}/dist`, `tests/fixtures/${entry.name}/src/__generated__`])
+  .map((entry) => entry.name)
   .sort();
+const FIXTURE_OUTPUTS = FIXTURE_PACKS.flatMap((name) => [`tests/fixtures/${name}/dist`, `tests/fixtures/${name}/src/__generated__`]);
+
+/**
+ * What running a fixture pack's own Playwright suite leaves behind. Nothing reads it, and it changes every
+ * run, so a step that declares `tests/fixtures` has to say it reads around this or it can never cache.
+ */
+const FIXTURE_TEST_OUTPUT = FIXTURE_PACKS.flatMap((name) => [`tests/fixtures/${name}/tests/results`, `tests/fixtures/${name}/tests/screenshots`]);
 
 /** Every workspace package's npm name and where it lives, so a declared dependency can become an input path */
 const DIR_BY_PACKAGE = new Map<string, string>(PACKAGES.map((dir) => [
@@ -285,6 +300,9 @@ export const CHAIN_STEPS: readonly ChainStep[] = [
       'packages/default-setup/dev-build.mjs', ...PACKAGE_BUILD_OUTPUTS] },
   // The fixture packs depend on default-setup, so they need its snapshot from compile
   { name: 'test:external-pack:contract', tier: 2, needs: ['compile'], seconds: 20, outputs: FIXTURE_OUTPUTS,
+    // It declares `tests/fixtures` for the pack sources; the Playwright output under each pack is written
+    // by `:app`, changes every run, and is read by nothing
+    excludes: FIXTURE_TEST_OUTPUT,
     inputs: [...ROOT, ...BOUNDED_RUNNER, 'tests/fixtures', 'tests/scripts/test-external-pack-contract.sh',
       'tests/scripts/lib', ...PACKAGE_BUILD_OUTPUTS, ...PACK_OUTPUTS] },
   // The widest inputs in the table, and honestly so: it compiles every workspace, the scripts and the
@@ -297,7 +315,12 @@ export const CHAIN_STEPS: readonly ChainStep[] = [
     // input-coverage guard backstops the narrowing: a tracked file under `tests/` that none of these
     // three covers fails it by name.
     inputs: [...ROOT, ...EVERY_WORKSPACE, 'scripts', 'tests/e2e', 'tests/fixtures', 'tests/scripts',
-      'tests/tsconfig.json', 'playwright.config.ts', 'types', ...PACKAGE_BUILD_OUTPUTS, ...PACK_OUTPUTS] },
+      'tests/tsconfig.json', 'playwright.config.ts', 'types', ...PACKAGE_BUILD_OUTPUTS, ...PACK_OUTPUTS],
+    // It wants the fixture packs' sources, never their build output: `tsc -p tests` compiles `e2e/**`
+    // only, and `check:specifiers` filters `__generated__` out itself — verified by deleting a fixture's
+    // generated directory, which leaves it passing. Hashing that output would tie a tier-1 check's
+    // freshness to a tier-2 build it does not depend on.
+    excludes: [...FIXTURE_OUTPUTS, ...FIXTURE_TEST_OUTPUT] },
   ...UNIT_STEPS,
   // The CLI specs that run a real build, install or child process. Tier 2: they need the built packages,
   // never the app — which is why they can run before `build` rather than behind it.
@@ -316,6 +339,8 @@ export const CHAIN_STEPS: readonly ChainStep[] = [
       'packages/api/tsup.config.ts', ...APP_ENTRY,
       ...PACKAGE_BUILD_OUTPUTS, ...PACK_OUTPUTS] },
   { name: 'test:external-pack:app', tier: 3, needs: ['build:app', 'test:external-pack:contract'], seconds: 24,
+    // Its own Playwright output, rewritten every run
+    excludes: FIXTURE_TEST_OUTPUT,
     inputs: [...ROOT, ...BOUNDED_RUNNER, 'tests/fixtures', 'tests/scripts/test-external-pack-app.sh',
       'tests/scripts/lib', 'playwright.config.ts', ...APP_OUTPUTS] },
   // Never cached: it drives real Electron with real timing and is the likeliest step to be flaky, and a
