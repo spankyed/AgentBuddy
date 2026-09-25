@@ -29,17 +29,27 @@ export interface BoundedResult {
 export const budgetFor = (measuredSeconds: number): number => Math.max(60_000, Math.round(measuredSeconds * 4) * 1000);
 
 /** How long a killed group gets to exit on SIGTERM before SIGKILL */
-const GRACE_MS = 5_000;
+const GRACE_MS = 2_000;
 
-export function boundedSpawn(command: string, args: readonly string[], budgetMs: number, cwd = process.cwd()): Promise<BoundedResult> {
+export interface BoundedOptions {
+  readonly cwd?: string;
+  /** Inherit stdio instead of capturing it: what a direct run wants, where output is read as it happens */
+  readonly stream?: boolean;
+}
+
+export function boundedSpawn(command: string, args: readonly string[], budgetMs: number, options: BoundedOptions = {}): Promise<BoundedResult> {
+  const { cwd = process.cwd(), stream = false } = options;
   const started = Date.now();
   return new Promise((resolve) => {
     // Its own process group, so one kill reaches the whole tree rather than orphaning it
-    const child = spawn(command, [...args], { cwd, env: process.env, detached: true, stdio: ['ignore', 'pipe', 'pipe'] });
+    const child = spawn(command, [...args], {
+      cwd, env: process.env, detached: true,
+      stdio: stream ? ['ignore', 'inherit', 'inherit'] : ['ignore', 'pipe', 'pipe'],
+    });
     let output = '';
     let timedOut: true | undefined;
-    child.stdout.on('data', (d: Buffer) => { output += d.toString(); });
-    child.stderr.on('data', (d: Buffer) => { output += d.toString(); });
+    child.stdout?.on('data', (d: Buffer) => { output += d.toString(); });
+    child.stderr?.on('data', (d: Buffer) => { output += d.toString(); });
 
     const killGroup = (signal: NodeJS.Signals) => {
       if (child.pid === undefined) return;
@@ -48,16 +58,24 @@ export function boundedSpawn(command: string, args: readonly string[], budgetMs:
       try { process.kill(-child.pid, signal); } catch { /* already gone */ }
     };
 
+    let closed: number | null = null;
+    const done = () => resolve({ code: timedOut ? 124 : closed ?? 1, output, ms: Date.now() - started, ...(timedOut ? { timedOut } : {}) });
+
     const budget = setTimeout(() => {
       timedOut = true;
       killGroup('SIGTERM');
-      setTimeout(() => killGroup('SIGKILL'), GRACE_MS).unref();
+      // Not unref'd, and this is what resolves on the timeout path: an unref'd escalation never fires,
+      // because the process ends as soon as the child closes. A child that ignores SIGTERM would then
+      // have survived the run that started it, which is the whole failure this exists to prevent.
+      setTimeout(() => { killGroup('SIGKILL'); done(); }, GRACE_MS);
     }, budgetMs);
     budget.unref();
 
     child.on('close', (code) => {
       clearTimeout(budget);
-      resolve({ code: timedOut ? 124 : code ?? 1, output, ms: Date.now() - started, ...(timedOut ? { timedOut } : {}) });
+      closed = code;
+      // On a timeout the escalation resolves, so the group is hard-killed before this returns
+      if (!timedOut) done();
     });
   });
 }

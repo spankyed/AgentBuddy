@@ -64,6 +64,17 @@ describe('every spawn an orchestrator makes is bounded', () => {
     expect(source).toContain('boundedSpawn');
   });
 
+  // A shell script run through the chain is bounded by the step's budget, but the direct run is the one
+  // people and agents use, and it had no bound at all. test-packaged-authoring.sh is why: its expect block
+  // sets `timeout 120`, which covers a pattern match and not the `wait` after it, and it once hung a machine.
+  it('every npm script that runs a shell script bounds it', () => {
+    const scripts = (JSON.parse(read('package.json')) as { scripts: Record<string, string> }).scripts;
+    const unbounded = Object.entries(scripts)
+      .filter(([, command]) => command.includes('tests/scripts/') && !command.includes('scripts/bounded.ts'))
+      .map(([name]) => name);
+    expect(unbounded, 'these run a shell script with no wall-clock budget').toEqual([]);
+  });
+
   // The budget is sized from the measurement, so a step with none gets only a loose default
   it('every chain step declares what it costs healthy', () => {
     expect(CHAIN_STEPS.filter((step) => step.seconds === undefined).map((step) => step.name)).toEqual([]);

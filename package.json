@@ -38,8 +38,8 @@
     "test:headed": "npm run packages:ensure && PLAYWRIGHT_VISIBLE=1 node scripts/with-source.mjs playwright test",
     "test:explorer": "npm run packages:ensure && node scripts/with-source.mjs playwright test --ui",
     "packages:ensure": "tsx scripts/ensure-packages-built.ts",
-    "test:external-pack": "npm run packages:ensure && bash tests/scripts/test-external-pack.sh",
-    "test:packaged-authoring": "bash tests/scripts/test-packaged-authoring.sh",
+    "test:external-pack": "npm run packages:ensure && tsx scripts/bounded.ts 180 bash tests/scripts/test-external-pack.sh",
+    "test:packaged-authoring": "tsx scripts/bounded.ts 240 bash tests/scripts/test-packaged-authoring.sh",
     "test:unit": "tsx scripts/test-unit.ts",
     "test:integration": "npm run test:integration -w @abuddy/cli",
     "spec": "tsx scripts/spec.ts",
@@ -84,8 +84,8 @@
     "db:clear-settings": "abuddy db clear-settings -d",
     "chain": "tsx scripts/chain.ts",
     "check:tiers": "tsx scripts/check-test-tiers.ts",
-    "test:external-pack:contract": "npm run packages:ensure && bash tests/scripts/test-external-pack-contract.sh",
-    "test:external-pack:app": "bash tests/scripts/test-external-pack-app.sh"
+    "test:external-pack:contract": "npm run packages:ensure && tsx scripts/bounded.ts 90 bash tests/scripts/test-external-pack-contract.sh",
+    "test:external-pack:app": "tsx scripts/bounded.ts 120 bash tests/scripts/test-external-pack-app.sh"
   },
   "devDependencies": {
     "@arethetypeswrong/cli": "^0.18.5",
