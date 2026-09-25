@@ -43,11 +43,14 @@ const emitToFrontend = (event: OutgoingTerminalEvents) => {
 }
 
 // Pre-compiled regex patterns for OSC sequence detection (hot path — runs on every terminal data event)
+// The control characters are the sequences themselves — ESC and BEL delimit every OSC string.
+/* eslint-disable no-control-regex */
 const OSC_PATTERNS = [
   /\x1b\]7;file:\/\/[^/]*(\/.+?)(?:\x07|\x1b\\)/,       // OSC 7
   /\x1b\]633;P;Cwd=(.+?)(?:\x07|\x1b\\)/,                 // OSC 633
   /\x1b\]1337;CurrentDir=(.+?)(?:\x07|\x1b\\)/,            // OSC 1337
 ] as const
+/* eslint-enable no-control-regex */
 
 // Shared handler setup for terminal output/exit events (used by both create and restore)
 const setupTerminalHandlers = (terminalInfo: TerminalInfo) => {

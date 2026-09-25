@@ -163,8 +163,12 @@ npm run seed-parity:check   # Compare seeded rows against tests/unit/seed-parity
 npm run seed-parity:update  # Re-record them; deliberate, see "What to run after a change"
 
 # Lint (root runs every workspace that has one; oxlint, plus eslint in the renderer)
-npm run lint:check       # Reports; the one a gate runs
-npm run lint:fix         # Rewrites what it can
+npm run lint:check       # Reports; run by npm run typecheck, so it is in the chain. Both workspaces
+                         # are at zero, and the few justified exceptions are inline disables that say
+                         # why (an OSC parser matches control characters; a triple-slash reference keeps
+                         # an ambient declaration global; a spread copies an array the loop shortens)
+npm run lint:fix         # Rewrites what it can — oxlint has no fixer for no-unused-vars, so it will
+                         # not clear those for you
 
 npm run packages:build   # Build dist/ for @abuddy/ears, @abuddy/sdk and @abuddy/ui, bundle @abuddy/cli and @abuddy/testing
 npm run packages:check   # publint + arethetypeswrong on the packed packages (after packages:build)

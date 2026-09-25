@@ -55,7 +55,7 @@
     "compile": "npm run packages:ensure && npm run build -w @app/default-setup",
     "prebuild": "npm run packages:ensure",
     "prebuild:be:dev": "npm run build:dev -w @app/default-setup",
-    "typecheck": "npm run packages:ensure && npm run typecheck:fe && npm run typecheck:be && npm run typecheck:ears && npm run typecheck:sdk && npm run typecheck:host && npm run typecheck:ui && npm run check:specifiers && npm run exports:check -w @abuddy/ui && npm run api:stamp && npm run typecheck:scripts && npm run typecheck:cli && npm run typecheck:pack && echo '\u2705 All type checks passed!'",
+    "typecheck": "npm run packages:ensure && npm run typecheck:fe && npm run typecheck:be && npm run typecheck:ears && npm run typecheck:sdk && npm run typecheck:host && npm run typecheck:ui && npm run check:specifiers && npm run exports:check -w @abuddy/ui && npm run api:stamp && npm run typecheck:scripts && npm run typecheck:cli && npm run typecheck:pack && npm run lint:check && echo '\u2705 All type checks passed!'",
     "typecheck:fe": "npm run type-check --workspace @app/renderer && echo '\u2705 Frontend type check passed'",
     "typecheck:be": "cd packages/api && npx tsc -p . --noEmit && npx tsc -p tsconfig.test.json && npx tsc -p tsconfig.scripts.json && echo '\u2705 Backend type check passed'",
     "typecheck:ears": "npm run typecheck --workspace @abuddy/ears && echo '\u2705 EARS type check passed'",

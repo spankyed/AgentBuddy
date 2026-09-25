@@ -188,7 +188,7 @@ export function prepareNodeAttributes(
   // nodeAttributes: everything merged (for UI display)
   const resolvedAttributes = {
     ...baseAttributes,
-    ...(mappedParams && mappedParams)
+    ...mappedParams
   };
 
   // resolvedParams: only user-provided data (for execution)

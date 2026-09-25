@@ -310,6 +310,8 @@ class TerminalService {
 
   private sanitizeTitle(title: string): string {
     // Remove any control characters and limit length
+    // Stripping control characters is the purpose: a pty title can carry anything.
+    // eslint-disable-next-line no-control-regex
     return title.replace(/[\x00-\x1F\x7F]/g, '').substring(0, 100)
   }
 

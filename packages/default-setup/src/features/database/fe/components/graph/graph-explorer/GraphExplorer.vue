@@ -213,6 +213,10 @@ function toggleFullscreen() {
 }
 
 // Keyboard shortcuts
+function handleFullscreenChange() {
+  isFullscreen.value = !!document.fullscreenElement;
+}
+
 function handleKeyboard(e: KeyboardEvent) {
   if (e.ctrlKey || e.metaKey) {
     switch (e.key) {
@@ -256,14 +260,12 @@ onMounted(() => {
   document.addEventListener('keydown', handleKeyboard);
   
   // Listen for fullscreen changes
-  document.addEventListener('fullscreenchange', () => {
-    isFullscreen.value = !!document.fullscreenElement;
-  });
+  document.addEventListener('fullscreenchange', handleFullscreenChange);
 });
 
 onUnmounted(() => {
   document.removeEventListener('keydown', handleKeyboard);
-  document.removeEventListener('fullscreenchange', () => {});
+  document.removeEventListener('fullscreenchange', handleFullscreenChange);
   destroyGraph();
 });
 </script>

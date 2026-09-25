@@ -538,11 +538,7 @@ export async function consumeStream(
     // auth error, protocol mismatch, etc.). Await handle.result to surface
     // the actual error (exit code + stderr) instead of silently completing.
     if (eventCount === 0) {
-      try {
-        await handle.result;
-      } catch (err: any) {
-        throw err; // Re-throw to hit the catch block's error path below
-      }
+      await handle.result;
     }
 
     // ─── Stream drained — finalize ─────────────────────────────────────

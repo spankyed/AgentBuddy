@@ -424,6 +424,9 @@ const updateScripts = (scripts: TerminalScript[]) => {
 const killAllTerminals = () => {
   if (terminals.value.length === 0) return
   if (confirmTerminalClose.value && !confirm(`Kill all ${terminals.value.length} terminals?`)) return
+  // The copy is the point: `terminals` is a selector over the actor's state and `send` is synchronous, so
+  // closing one shortens the array being iterated.
+  // eslint-disable-next-line no-useless-spread
   for (const terminal of [...terminals.value]) {
     terminalActor?.send({ type: 'terminal.CLOSE', terminalId: terminal.id })
   }
