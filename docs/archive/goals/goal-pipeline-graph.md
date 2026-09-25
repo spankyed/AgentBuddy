@@ -1,3 +1,11 @@
+> **Absorbed by [`goal-test-tiers.md`](../../goals/goal-test-tiers.md)** (its Decisions 10–18 and Phases 3–6,
+> 9). Nothing here was superseded: the graph, the input-coverage guard, the caching and the parallelism are
+> that goal's Phases 3–6 and 9, renumbered, and its Decision 12 folds this plan's `Step` table into the
+> `ChainStep` that already carries a tier. The two were one goal — caching by fingerprint, which this plan
+> rightly refuses to replace with a heuristic, cannot pay while a step's honest input set is the whole repo,
+> and separating the checks that need a built app is what makes it narrow. The text below is the plan as
+> written; its measurements were taken into that goal's Background.
+
 > **Written in session** `00e10b0f-0852-4401-8b3c-7df01734a7eb` (Claude Code, 2026-09-24). Resume it with `claude -r 00e10b0f-0852-4401-8b3c-7df01734a7eb`.
 
 ```

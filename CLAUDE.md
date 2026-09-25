@@ -126,18 +126,21 @@ to read. `npm run check:tiers` fails when a tier-1 or tier-2 step can reach the 
 | Tier | May read | Examples |
 |---|---|---|
 | **1 pure** | its own package's source, the in-memory runtime, fakes | most of `test:unit`, `typecheck` |
-| **2 contract** | the built `@abuddy` packages, a pack's build output | `packages:ensure`, `compile` |
-| **3 app** | the built app | `build`, the E2E suite, `test:external-pack`, `test:packaged-authoring` |
+| **2 contract** | the built `@abuddy` packages, a pack's build output | `packages:ensure`, `compile`, `test:external-pack:contract` |
+| **3 app** | the built app | `build`, the E2E suite, `test:external-pack:app`, `test:packaged-authoring` |
 
 The rule that matters is that tier 1 and tier 2 do not need the app, because the moment one does it has to
 run after `build`, its real inputs become the whole repo, and it can no longer be cached or reordered. Four
 attempts at a cheaper chain each failed on exactly that, because nothing recorded it. A check that genuinely
 needs the app is tier 3 — that is an answer, not a failure, and the fix is never to delete the check.
 
-Two steps are tier 3 today only because they are welded: `test:external-pack` and `test:packaged-authoring`
-each end with `abuddy test --app-root`, and the four checks before it in the same script inherit that.
-Separating them is [`goal-test-tiers.md`](docs/goals/goal-test-tiers.md), which also records what each of the
-four attempts measured.
+`test:external-pack` is split at that boundary: `:contract` validates, builds and typechecks each fixture
+pack and runs its harness specs with no app, in tier 2 before `build`, and `:app` runs its Playwright suite in
+tier 3. Two scripts rather than one with a flag, because `check:tiers` reads a step's scripts as text and a
+branch it never takes still reads as a reach. `test:packaged-authoring` is still tier 3 whole: its nine steps
+build on each other, so it takes a mode rather than a split.
+[`goal-test-tiers.md`](docs/goals/goal-test-tiers.md) has the rest, and what each of the four attempts at a
+cheaper chain measured.
 
 ## Commands
 
@@ -194,7 +197,9 @@ npm run test:unit        # Vitest, every suite CI calls a unit test: @app/api, @
                          # The CLI suite rebuilds the published packages itself when its dist is stale
 npm run test:all         # test:unit, then the E2E tests
 npm run bench -w @abuddy/ears    # EARS engine benchmark (baseline and tolerance: packages/abuddy-ears/CLAUDE.md)
-npm run test:external-pack       # Build the fixture packs in tests/fixtures with the CLI and run their tests (needs npm run build)
+npm run test:external-pack       # Both halves of the fixture-pack check, for running it by hand
+npm run test:external-pack:contract  # validate, build, typecheck, harness specs — no app needed (tier 2)
+npm run test:external-pack:app   # each pack's Playwright suite against this checkout (tier 3, needs npm run build)
 npm run test:packaged-authoring  # Author, build, test and install a pack outside the monorepo from the packed @abuddy/* tarballs (needs npm run build)
 npm run compile          # Build packages/default-setup (abuddy build: compiled seeds, snapshot, types; DSL defs; dist/runtime/index.cjs)
 

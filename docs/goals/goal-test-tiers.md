@@ -16,12 +16,13 @@ test, fixture, template and doc in the same change, and fix forward. Stored user
 it moves with migrations.
 
 Finished when:
-- Phases 1–5 are implemented and each meets its "Done when"; every new guard, helper or test is
-  mutation-checked.
+- Phases 1–9 are implemented and each meets its "Done when"; every new guard, helper or test is
+  mutation-checked. Phases 1 and 2's external-pack half are already done (`06f55ea72`, `b1c0b3cc4`).
 - Every check in the chain declares its tier, and no tier-1 or tier-2 check launches Electron.
 - `npm run chain` runs tier 1 and tier 2 before `build`, and tier 3 after it.
-- A tier-2 check skips when its own declared inputs are unchanged, and a spec fails if a tier-2 input
-  set names the renderer, main, preload or a built app path.
+- Every step declares `needs` and `inputs`; a cycle or unknown dependency fails before any step runs; a spec
+  fails when a tracked source file is an input to no step.
+- A warm chain re-runs only what changed, and only E2E always runs (`cache: false`).
 - npm run chain --all passes; npm run typecheck; npm run test:unit.
 - Measured before and after, in the doc: the chain's wall time, and each tier's.
 - No suite sets a timeout above its tier's budget, retries exist only in tier 3, and no test drives an
@@ -57,8 +58,14 @@ Never:
 Nothing in this repo records what a test depends on. Every attempt to make the pre-merge chain cheaper
 has failed on the same discovery, four times in one session: the expensive checks each end by launching
 the app, so each one transitively depends on nearly the whole repo, and nothing can be skipped, reordered
-or cached. This goal gives every check a declared tier and separates the checks that need a built app
-from the ones that don't.
+or cached. This goal gives every check a declared tier, separates the checks that need a built app from
+the ones that don't, and then makes the chain a graph that caches on those declarations.
+
+**This absorbs [`goal-pipeline-graph.md`](../archive/goals/goal-pipeline-graph.md)** (session
+`00e10b0f-0852-4401-8b3c-7df01734a7eb`), which planned the graph and the caching while this one planned the
+tiers. They are one goal: caching by fingerprint — which that plan insists on, refusing heuristic skips —
+cannot pay while a step's honest input set is the whole repo, and only the tier split makes it narrow. Its
+decisions and phases are below, renumbered; its measurements are in Background.
 
 ## Background (2026-09-24, at 7eb5aa1e5 on master)
 
@@ -74,6 +81,20 @@ from the ones that don't.
 | `test:external-pack` | 39.4s |
 | `npm test` (E2E) | 26.2s |
 | `test:packaged-authoring` | 57s (was 78s before `7eb5aa1e5`) |
+
+### Measured, before and after the split
+
+`npm run chain` reports per-tier totals. The split moved work out of the app tier without changing the total,
+which is the expected shape: tier 2 can be cached and does not wait on `build`, so the saving arrives with
+Phase 5, not with the split.
+
+| | total | tier 1 | tier 2 | tier 3 |
+|---|---|---|---|---|
+| welded (`a398f9813`) | 340.4s | 160.3s | 11.5s | 168.5s |
+| split (`b1c0b3cc4`) | 352.0s | 154.6s | **43.1s** | **154.1s** |
+
+Before that, `api:check` leaving the chain and `test:packaged-authoring` ensuring rather than rebuilding took
+it from 6m53s to 5m50s (`0f0e57a15`, `7eb5aa1e5`).
 
 ### One step, five concerns
 
@@ -203,6 +224,59 @@ quarantined.
 compiled seeds should not need a browser. The CLI already runs `vitest` for the fixtures from a shell
 script; that belongs in the command.
 
+### Absorbed from the pipeline-graph plan
+
+**10. No third-party task runner.** Not nx, turborepo or wireit. They would replace `fingerprintUnit`,
+`stampedBuild` and `STAMP_VERSION` — a mechanism this repo has reasoned about more carefully than they do,
+including a `normalise` hook they have no equivalent for — and bring a config language, and for nx a daemon,
+for a nine-step pipeline on one machine with one contributor. The gap is one field, not a tool.
+
+**11. Cache before parallelism.** Parallelism was measured twice in this repo and made things worse: total
+work rose from 348s to 567s and `@abuddy/cli` began failing, because every step already uses all the cores.
+Caching makes the *second* run cost only what changed. So the order is split → graph → coverage guard →
+cache → parallelism, and parallelism lands last because by then it matters least.
+
+**12. The graph is data in one table**, `scripts/lib/chain-steps.ts`, extending the `ChainStep` that already
+carries `tier`:
+
+```ts
+interface ChainStep {
+  name: string;
+  tier: Tier;                    // what it may read — the precondition for inputs being narrow
+  needs: readonly string[];      // the edges
+  inputs: readonly string[];     // cache key, the same shape as BuildUnit
+  outputs?: readonly string[];   // so a downstream step's inputs can name them
+  cache?: false;                 // a step whose pass is not reproducible
+  exclusive?: true;              // needs the build lock
+}
+```
+
+One table, not two: the tier says what a step *may* read and the inputs say what it *does*, and they belong
+on the same row so they cannot disagree. It reuses `BuildUnit`'s shape and `fingerprintUnit`'s key
+deliberately — one fingerprint protocol in the repo, one `STAMP_VERSION` to bump.
+
+**13. A cycle or an unknown dependency fails before any step runs.** Validation is part of loading the table,
+alongside `check:tiers`, not something the first run discovers.
+
+**14. A step with no outputs caches its pass.** `typecheck` and the test steps produce nothing; what is
+cached is that this input set passed. That is where most of the saving is.
+
+**15. The E2E step is never cached** (`cache: false`, with the reason beside it). It drives real Electron with
+real timing and is the likeliest step to be flaky, and a flaky pass cached green hides an intermittent failure
+indefinitely. 26s is cheap enough to always pay. One documented exception beats a cache that is subtly
+untrustworthy.
+
+**16. Skipping is by fingerprint only, never by heuristic.** No "the renderer didn't change, skip E2E".
+A content hash matching is sound; a path looking unrelated is a guess, and with CI off the chain is the only
+gate. This is also why Decisions 1–5 come first: a fingerprint over a step whose real input is the whole repo
+is honest but useless.
+
+**17. No remote cache.** One contributor, one machine.
+
+**18. The run reports itself.** One line per step: name, tier, status (`ran` | `cached`), wall time, and a
+total. On failure it names the failing step and the steps that did not run *because of it*. The per-step
+timings this plan's own measurements had to recover from log mtimes are the argument.
+
 ## Phases
 
 ### Phase 1 — Name the tiers, and prove nothing in tier 2 needs the app
@@ -235,54 +309,107 @@ script; that belongs in the command.
 halves pass with the app **not** built (delete `packages/renderer/dist` and run them). That last check is
 the point of the phase. **Mutation:** the contract half fails if its fixture's manifest is broken.
 
-### Phase 3 — Cache tier 2 on its own inputs
+### Phase 3 — The graph as data, serial and uncached
 
-- Extend `scripts/chain.ts` with a per-step input set for tier-2 steps, stamped under
-  `node_modules/.cache/abuddy-chain/`, reusing `fingerprintInputs` and a `STAMP_VERSION`. Each step's
-  declared paths are part of its own fingerprint, as `BUILD_UNITS` does, so editing the list invalidates
-  that step alone.
-- `--all` ignores every stamp.
+- Extend `ChainStep` per Decision 12 with `needs`, `inputs`, `outputs`, `cache` and `exclusive`, and fill
+  them for every step. `needs` matches today's order, so nothing moves yet.
+- `scripts/chain.ts` loads and validates the table (Decision 13, beside `check:tiers`), orders it
+  topologically, runs serially, and reports per Decision 18.
+- `packages:ensure` becomes the graph's root rather than a line in a string.
 
-**Done when:** a commit touching only `packages/renderer` skips every tier-2 step and still runs tier 3;
-a commit touching `packages/abuddy-cli` runs them. Both measured and recorded. **Mutation:** removing a
-path from a step's input set, then editing a file under it, still invalidates the step (because the list
-is hashed).
+**Done when:** `npm run chain` passes and its total matches the serial time within a few seconds; an
+introduced cycle and an unknown `needs` name each fail before any step runs. **Mutation:** removing `build`
+from the E2E step's `needs` reorders the run, which a spec on the computed order catches.
 
-### Phase 4 — `abuddy test` runs a pack's contract checks
+### Phase 4 — The input-coverage guard, before anything depends on it
 
-- `abuddy test --contract` (name at implementer's discretion) runs the pack's `vitest` where it has one
-  and skips Playwright, so a pack author can check compiled output without Electron. The fixture scripts
-  use it instead of calling `vitest` directly.
+- A spec asserting every tracked source file is an input to at least one step, resolved through the same
+  walk `fingerprintInputs` uses, so an under-declared input is a failing test rather than a stale pass.
+- Its doc comment says why per-step caching needs this where `BUILD_UNITS` did not.
+
+This is the phase that makes caching safe, and it comes first for that reason: the risk of caching is a wrong
+input list silently skipping a check, and with CI off there is no backstop.
+
+**Done when:** the spec passes over Phase 3's table. **Mutation:** adding a source file no step names, and
+dropping a directory from one step's `inputs`, each fail it.
+
+### Phase 5 — Caching
+
+- Fingerprint each step with `fingerprintUnit`, stamp with `stampedBuild`, report an unchanged step as
+  `cached` and do not run it. Bump `STAMP_VERSION` once.
+- `cache: false` on E2E (Decision 15).
+- Split `test:unit` per package, since that is where 100s lives and a one-package change should not re-run
+  eight suites. The tiers make this honest: each suite's inputs are its own package plus what it imports.
+
+**Done when:** a cold run matches Phase 3's time; a second run immediately after re-runs only E2E; a doc-only
+edit re-runs nothing; a one-package edit re-runs that package's suite and its descendants and no others. Cold
+and warm times recorded. **Mutation:** touching one file under a step's declared inputs makes exactly that
+step and its descendants run again.
+
+### Phase 6 — Parallelism, with a limit
+
+- Run ready steps concurrently up to a concurrency limit; `exclusive: true` takes the build lock.
+
+**Read the measurements before writing this.** Unlimited three-lane parallelism was tried twice and made
+things worse: total work 348s → 567s, `@abuddy/cli` 56s → 118s and reporting errors it does not report alone,
+because every step already saturates the cores. A limit is the difference between this phase and that
+attempt, and if a limited run is not measurably faster than Phase 5's warm time, the honest outcome is to
+leave it serial and record that.
+
+**Done when:** a cold run is measurably shorter than Phase 3's serial time with the critical path reported,
+**or** the phase is closed with the measurement showing it is not. Two consecutive cold runs agree on which
+steps passed.
+
+### Phase 7 — `abuddy test` runs a pack's contract checks
+
+- `abuddy test --contract` runs the pack's `vitest` where it has one and skips Playwright, so a pack author
+  can check compiled output without Electron. `test-external-pack-contract.sh` uses it instead of calling
+  `vitest` directly.
 - `abuddy init-tests` scaffolds both halves.
 
 **Done when:** `abuddy test --contract` passes in both fixtures with no app built; `npm test -w @abuddy/cli`
-covers the new flag; `test:packaged-authoring` uses it.
+covers the flag.
 
-### Phase 5 — The practices that are work, not policy
+### Phase 8 — The practices that are work, not policy
 
 - Size the timeouts per Decision 7, tier by tier, and delete the two `testTimeout: 120_000`.
 - Make the app choice injectable so `test-packaged-authoring.sh` stops unsetting `CI` to drive a prompt with
   `expect`; cover the prompt itself in `@abuddy/cli`'s suite.
-- Report slowest-N per suite in `scripts/chain.ts`'s summary, so the next person profiling `@abuddy/cli` has
-  it without instrumenting anything.
+- Report slowest-N per suite, so the next person profiling `@abuddy/cli` has it without instrumenting.
 - Record the npm-cache exception where the script uses it, as a declared non-hermetic input.
 
 **Done when:** no suite sets a timeout above its tier's budget; `test-packaged-authoring.sh` contains no
-`expect` script and no `env -u CI`; the chain prints the slowest five tests per suite. **Mutation:** a test
-made to hang fails at its tier budget rather than at two minutes.
+`expect` and no `env -u CI`; the chain prints the slowest five tests per suite. **Mutation:** a test made to
+hang fails at its tier budget rather than at two minutes.
+
+### Phase 9 — Retire the per-change table's arithmetic
+
+- Once a warm chain is seconds, the root `CLAUDE.md`'s "What to run after a change" table stops being
+  instructions and becomes documentation of the graph. Rewrite it to say so: run `npm run chain`, which costs
+  what you changed; keep `npm run spec` as the inner-loop tool.
+- Keep the measured figures — they are what justify the design.
+
+**Done when:** the table no longer asks the reader to work out which suite covers their change. Docs only.
 
 ## Deferred
 
-- **Per-package caching of tier 1.** `test:unit` is 101s and `@abuddy/cli` is over half of it. Splitting
-  tier 1 by package needs a dependency graph between packages, which nothing declares today — the same
-  gap this goal fixes one level up. Worth doing after Phase 3 proves the stamp mechanism on tier 2.
-- **`@abuddy/cli`'s own cost.** It reports `tests 249s` across workers because it runs real `abuddy build`s.
-  A shared built-fixture cache is the lever; profile which tests dominate first.
-- **tsc project references** for `typecheck`'s 55.8s. Only `packages/renderer/tsconfig.json` uses
-  `composite`/`references` today, so the other projects cold-start. Independent of this goal.
-- **Declaring `@app/default-setup` as a dependency of the packages that build against it**, which would let
-  `build -ws` order it and retire `compile`. Blocked on the renderer discovering packs rather than
-  importing one.
+Both plans reached the same four, which is itself worth noting — they are what caching hides rather than fixes.
+
+- **`@app/default-setup` reports `setup 97.3s` against 15.4s wall.** The most suspicious number in the run and
+  undiagnosed: an expensive per-file setup paid by every test file. Worth profiling on its own.
+- **The `@abuddy/cli` suite at 56s**, over half of `test:unit`. Already ~4.5× parallel internally; it runs real
+  `abuddy build`s per test, and a shared fixture cache keyed by the fixture's fingerprint is the lever. Which
+  tests dominate is unmeasured, so this needs profiling before a proposal.
+- **`test:packaged-authoring` at 65s**, mostly npm installs from packed tarballs. A warm `node_modules` cache
+  is the lever, and the non-hermetic npm cache it already relies on is the precedent to be careful about.
+- **Turning CI on.** Off deliberately for one contributor; the workflow header says when it returns. A cached
+  graph is what would make CI cheap, but that is a separate decision — and while CI is off, this chain is the
+  only gate, which is why Decisions 15 and 16 refuse to cache or skip on a guess.
+- **Declaring `@app/default-setup` as a dependency of what builds against it**, which would let `build -ws`
+  order it and retire `compile`. Blocked on the renderer discovering packs rather than importing one.
+- **tsc project references** for `typecheck`'s 55s. Only `packages/renderer/tsconfig.json` uses
+  `composite`/`references`, so the other projects cold-start. Independent of this goal, and Phase 5 may make
+  it moot by caching the step whole.
 
 ## Constraints
 
