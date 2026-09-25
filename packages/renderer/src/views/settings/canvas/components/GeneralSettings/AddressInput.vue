@@ -107,7 +107,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watch, reactive } from 'vue'
+import { watch, reactive } from 'vue'
 
 interface Address {
   street: string

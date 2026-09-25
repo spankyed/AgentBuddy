@@ -55,6 +55,9 @@ fePacks.registerPackFE(hostFrontend);
 // The SDK's frontend code (lookups, navigation, sends, the secrets client) reaches this window's app from here on:
 // bound before the application actor is created, since creating it builds its plugins' state, and before any
 // external pack frontend loads
+// Read by the binding above before it is assigned below, so `const` would not compile: a const needs its
+// initializer, and this one cannot have one until the actor exists. prefer-const misses the closure read.
+// eslint-disable-next-line prefer-const
 let createdApplication: typeof applicationState | undefined;
 bindRendererHost(() => createdApplication);
 

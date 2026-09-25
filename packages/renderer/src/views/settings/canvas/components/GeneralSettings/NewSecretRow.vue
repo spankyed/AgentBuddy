@@ -11,7 +11,7 @@
       v-model="name"
       :placeholder="namePlaceholder"
       class="px-2 py-1 bg-neutral-800 border border-neutral-700/50 rounded-md text-white placeholder-neutral-600 text-sm focus:outline-none focus:border-blue-500/50"
-      @keyup.enter="save"
+      @keyup.enter="submit"
       @keyup.escape="cancel"
     />
     <div class="relative">
@@ -20,7 +20,7 @@
         :type="visible ? 'text' : 'password'"
         :placeholder="valuePlaceholder"
         class="w-full pr-8 px-2 py-1 bg-neutral-800 border border-neutral-700/50 rounded-md text-white placeholder-neutral-600 text-sm focus:outline-none focus:border-blue-500/50"
-        @keyup.enter="save"
+        @keyup.enter="submit"
         @keyup.escape="cancel"
       />
       <button type="button" class="absolute right-1.5 top-1/2 -translate-y-1/2 p-0.5" @click="visible = !visible">
@@ -29,7 +29,7 @@
       </button>
     </div>
     <div class="flex justify-end gap-1">
-      <button class="p-1.5 hover:bg-neutral-800 rounded-md" title="Save" :disabled="saving || !name.trim() || !value.trim()" @click="save">
+      <button class="p-1.5 hover:bg-neutral-800 rounded-md" title="Save" :disabled="saving || !name.trim() || !value.trim()" @click="submit">
         <Check class="w-3.5 h-3.5 text-green-400" />
       </button>
       <button v-if="collapsed" class="p-1.5 hover:bg-neutral-800 rounded-md" title="Cancel" @click="cancel">
@@ -71,7 +71,7 @@ function start() {
   open.value = true
 }
 
-async function save() {
+async function submit() {
   const current = entry.value
   if (savingEntry.value === current || !name.value.trim() || !value.value.trim()) return
   savingEntry.value = current

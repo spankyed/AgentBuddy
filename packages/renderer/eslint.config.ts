@@ -26,6 +26,13 @@ export default defineConfigWithVueTs(
   },
 
   {
+    // A .cjs file is CommonJS by extension, so `require` is the only import it has. The TypeScript rule assumes ESM.
+    name: 'app/commonjs-configs',
+    files: ['**/*.cjs'],
+    rules: { '@typescript-eslint/no-require-imports': 'off' },
+  },
+
+  {
     name: 'app/vue-rules-that-do-not-apply-here',
     rules: {
       // Vue's Priority A rule guards against a single-word component name colliding with an HTML element, since

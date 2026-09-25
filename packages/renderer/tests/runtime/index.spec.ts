@@ -69,6 +69,8 @@ it("gives the SDK's frontend lookups the window's registered pack frontends, and
 });
 
 it('binds before the application actor exists, naming it when SDK code reaches the actor too early', () => {
+  // Read by the binding below before it is assigned, which is the case under test, so `const` would not compile.
+  // eslint-disable-next-line prefer-const
   let created: typeof application | undefined;
   bindRendererHost(() => created as never);
   expect(() => untypedOpenPlugin(settingsAddress)).toThrow("The application actor isn't created yet");

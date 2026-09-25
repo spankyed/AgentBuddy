@@ -59,7 +59,6 @@ import { useSelector } from '@xstate/vue'
 import TiptapEditor from '@abuddy/ui/components/tiptap/TiptapEditor'
 import { DISCORD_URL, MEMORIAL_URL } from '@/views/settings/constants'
 import { openLink, usePlugin } from '@abuddy/sdk/fe'
-import type { HelpEntry } from '@abuddy/sdk/framework'
 import type { SettingsState } from '@abuddy/host/fe'
 
 function openDiscordLink() {

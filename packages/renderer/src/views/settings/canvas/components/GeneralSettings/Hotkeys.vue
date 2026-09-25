@@ -78,7 +78,7 @@
               <!-- Keyboard Shortcut Input -->
               <KeyboardShortcutInput
                 v-model="hotkey.shortcut"
-                @change="updateCustomHotkey(index)"
+                @change="updateCustomHotkey()"
                 container-class="flex-1"
                 placeholder="Click to set shortcut"
                 :show-reset-button="false"
@@ -217,7 +217,7 @@ const removeCustomHotkey = (index: number) => {
 }
 
 // Update custom hotkey shortcut
-const updateCustomHotkey = (index: number) => {
+const updateCustomHotkey = () => {
   saveCustomHotkeys()
 }
 

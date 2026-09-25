@@ -93,7 +93,7 @@
 <script setup lang="ts">
 import { computed, ref, onMounted, onUpdated } from 'vue'
 import { useSelector } from '@xstate/vue'
-import { getDesignated, untypedOpenPlugin, PluginScope, usePlugin, useShell } from '@abuddy/sdk/fe'
+import { untypedOpenPlugin, PluginScope, usePlugin, useShell } from '@abuddy/sdk/fe'
 import { Package, CheckCircle, Eye, EyeOff, ExternalLink } from 'lucide-vue-next'
 import { useSettingsSaveStatus } from '@/views/settings/save'
 import { HOST, type SettingsState } from '@abuddy/host/fe'
