@@ -3,16 +3,19 @@
 ```
 # Goal: a test knows what it needs, so the pipeline can act on it
 
-Implement docs/goals/goal-test-tiers.md on master, at or after 047c4e813 — Phases 1 to 3 are already done
-there, and the Background was surveyed at 7eb5aa1e5, before them.
+Implement docs/goals/goal-test-tiers.md on a branch cut from AS/test-pipeline, at or after 0f2d7f04a.
+Phases 1 to 3 are done there. **Not master:** the 23 commits that carry them were moved off it on
+2026-09-24, so a branch cut from master has none of this and nothing below will make sense.
 Before Phase 4, confirm the base: scripts/lib/chain-steps.ts exports CHAIN_STEPS and orderedSteps, every
 step carries a `tier` and `needs`, `npm run check:tiers` passes, and tests/scripts/ holds
 test-external-pack-contract.sh beside test-external-pack-app.sh. If they don't, stop and say so — those are
 this plan's first three phases and the rest builds on them.
-Expect `ChainStep` to carry only `name`, `tier`, `needs` and `cache?`, and no step to declare `inputs`
-(`grep -c inputs scripts/lib/chain-steps.ts` is 0). That is the known state, not drift: Phase 3 shipped three
-of the five fields Decision 12 names, so **Phase 4 begins by finishing that table.** If `inputs` is already
-there, Phase 4's first half is done and its guard is the whole phase.
+Expect `ChainStep` to carry `name`, `tier`, `needs`, `cache?` and `seconds?`, and no step to declare
+`inputs` (`grep -c inputs scripts/lib/chain-steps.ts` is 0). That is the known state, not drift: Phase 3
+shipped three of the five fields Decision 12 names, so **Phase 4 begins by finishing that table.** If
+`inputs` is already there, Phase 4's first half is done and its guard is the whole phase.
+Four things landed after Phase 3 that Phases 4 and 5 build on: read *What landed after Phase 3* in
+Background before planning either.
 Read Background, Decisions, Phases and Constraints first. Decisions are final: implement them, don't
 reopen them or stop to ask.
 Where a detail isn't specified, pick the conventional option, note it in the final summary, and keep
@@ -22,9 +25,8 @@ it moves with migrations.
 
 Finished when:
 - Phases 4–9 are implemented and each meets its "Done when"; every new guard, helper or test is
-  mutation-checked. Phases 1–3 are done (`06f55ea72`, `b1c0b3cc4`, `8095daf14`) except the three `ChainStep`
-  fields Phase 4 now opens with, and Phase 2's packaged-authoring half is recorded as impossible until
-  Phase 7 rather than skipped.
+  mutation-checked. Phases 1–3 are done (`06f55ea72`, `b1c0b3cc4`, `8095daf14`); Phase 2's
+  packaged-authoring half is recorded as impossible until Phase 7 rather than skipped.
 - Every check in the chain declares its tier, and no tier-1 or tier-2 check launches Electron.
 - `npm run chain` runs tier 1 and tier 2 before `build`, and tier 3 after it.
 - Every step declares `needs` and `inputs`; a cycle or unknown dependency fails before any step runs; a spec
@@ -37,27 +39,21 @@ Finished when:
 - A final summary: phase → done/deferred, evidence, and the conventional choices made.
 
 Commit as you go:
-- Commit each phase when its "Done when" holds and the checks are green — not once at the end. A
-  phase is landable on its own; a commit is how that stays true. Conventional message, no
-  Co-Authored-By or session lines, `git commit -- <paths>` naming only that phase's files.
-- Check `git diff --cached` first: something outside the session stages files, and a pathspec commit
-  leaves the rest of the index alone.
-- Don't push, tag, or open a PR unless the user asks.
+- Commit each phase when its "Done when" holds and the checks are green — not once at the end. A phase
+  is landable on its own only while it is finishing. Conventional message, no Co-Authored-By or session
+  lines, `git commit -- <paths>` naming only that phase's files.
+- Check `git diff --cached` first: something outside the session stages files.
 
 Never:
-- push, tag or open a PR unless the user asks in this session.
-- npm publish, create GitHub releases, or trigger workflows (dry runs only).
-- open, copy or modify ~/Library/Application Support/abuddy* or any real data dir.
-- pkill/killall Electron or node; launch the app outside the test env without an isolated
-  ABUDDY_USER_DATA_DIR.
-- run bare tsc on packages/preload, `npm install` in the example pack, or edit version/release
-  metadata.
-- change the typed EARS types' behaviour (packages/abuddy-sdk/TYPED-EARS.md) to make a call site compile.
+- Constraints' standing rules are hard stops, not advice: no push/tag/PR, no publish or release, no real
+  data dir, no broad pkill, no app outside the test env without an isolated ABUDDY_USER_DATA_DIR, no bare
+  tsc on preload, no version metadata, and no change to the typed EARS types to make a call site compile.
 - add backward-compat shims or loosen a failing assertion instead of investigating.
 - delete a test to make a tier boundary hold. A test that needs the app is tier 3; that is an answer,
   not a failure.
-- run the suites concurrently. Measured twice: total work goes from 348s to 567s and @abuddy/cli starts
-  failing, because every suite already uses all the cores.
+- give the chain's steps unbounded parallel lanes. Measured twice: total work 348s to 567s and
+  @abuddy/cli failing, because every step already uses the cores. Phase 6 is a *limited* lane count.
+  `test:unit`'s own two lanes are a different thing and already landed.
 ```
 
 # Goal: a test knows what it needs, so the pipeline can act on it
@@ -165,6 +161,25 @@ or `tests/` has changed (of the 20 commits before this, three touched none).
   `tsBuildInfoFile` and all three passes overwrote one file, leaving none of them warm — a cache that quietly
   does nothing. This is the shape Phase 5 generalises: a step that can say what it read can be skipped when
   none of it moved.
+
+### What landed after Phase 3
+
+Four changes made between Phase 3 and now that Phases 4 and 5 build on. None was part of this plan; they
+came out of `goal-test-cleanup.md` and the review after it.
+
+- **`ChainStep` has a fifth field, `seconds`** — what the step costs when healthy, measured. It is not one
+  of Decision 12's five: `inputs`, `outputs` and `exclusive` are still missing and Phase 4 adds them.
+  `scripts/lib/bounded-spawn.ts` turns `seconds` into a wall-clock budget and kills the step's process
+  group on an overrun, so a wedged step now fails instead of hanging the chain. Phase 4's `inputs` sit
+  beside it on the same row.
+- **`check:tiers` follows `-w` / `--workspace`** into a workspace's own scripts. Before, a step that
+  delegated to one was inspected as nothing at all and passed vacuously.
+- **There is a tenth step, `test:integration`** (tier 2, needs `packages:ensure`): the `@abuddy/cli` specs
+  that run a real build, install or process, split out so the fast half stays seconds. It needs `inputs`
+  like every other step.
+- **`BuildUnit` is exported.** Phase 5 said it was not and that this blocked `fingerprintUnit`/`stampedBuild`
+  being called from `scripts/chain.ts`. The API-report work exported it, so that note is stale and there is
+  nothing to do.
 
 ### Industry practices this repo does not follow
 
@@ -377,9 +392,8 @@ rather than optional — the point of Phase 3's slip.
 
 - Fingerprint each step with `fingerprintUnit`, stamp with `stampedBuild`, report an unchanged step as
   `cached` and do not run it. Bump `STAMP_VERSION` once.
-- Both take a `BuildUnit`, which is **not exported** today (`packages/abuddy-host/src/build/packages-built.ts`,
-  `interface BuildUnit` with no `export`), so `scripts/chain.ts` cannot construct one until it is. `@abuddy/host`
-  is private, so that is an export keyword and no API report.
+- Both take a `BuildUnit`, which **is** exported now (it was not when this was written): the API-report work
+  needed it, since the freshness fixture had hand-copied its shape. Nothing to do here.
 - `cache: false` on E2E (Decision 15).
 - Split `test:unit` per package, since that is where 100s lives and a one-package change should not re-run
   eight suites. The tiers make this honest: each suite's inputs are its own package plus what it imports.
