@@ -428,9 +428,10 @@ hang fails at its tier budget rather than at two minutes.
 - **The `@abuddy/cli` suite at 56s**, over half of `test:unit`. **Profiled, and there is no hot spot**: the
   slowest 25 tests are all 1–1.6s, spread across `facade-gate`, `scaffold`, `add-extensions`,
   `component-contracts`, `release` and `db`, and every one spawns a real `tsc`, `abuddy build` or node
-  subprocess. The 249s of test time is a long tail of genuine work, already ~4.5× parallel. So the lever is
-  fewer subprocesses — a shared tsc service, or one built fixture where tests differ only in their assertions
-  — which is a project rather than a fix, and worth its own goal.
+  subprocess. So the lever is fewer subprocesses, which is a project rather than a fix:
+  [`goal-cli-suite-spawns.md`](goal-cli-suite-spawns.md) has it, with the per-file totals and the finding that
+  both levers — the TypeScript API in-process, and one shared fixture per `beforeAll` — already exist in that
+  suite and are applied unevenly. Its 249s figure here was measured under contention; idle it is 182.6s.
 - **`test:packaged-authoring` at 65s**, mostly npm installs from packed tarballs. A warm `node_modules` cache
   is the lever, and the non-hermetic npm cache it already relies on is the precedent to be careful about.
 - **Turning CI on.** Off deliberately for one contributor; the workflow header says when it returns. A cached
