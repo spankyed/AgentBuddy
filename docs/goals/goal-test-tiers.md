@@ -16,7 +16,7 @@ test, fixture, template and doc in the same change, and fix forward. Stored user
 it moves with migrations.
 
 Finished when:
-- Phases 1–4 are implemented and each meets its "Done when"; every new guard, helper or test is
+- Phases 1–5 are implemented and each meets its "Done when"; every new guard, helper or test is
   mutation-checked.
 - Every check in the chain declares its tier, and no tier-1 or tier-2 check launches Electron.
 - `npm run chain` runs tier 1 and tier 2 before `build`, and tier 3 after it.
@@ -24,6 +24,8 @@ Finished when:
   set names the renderer, main, preload or a built app path.
 - npm run chain --all passes; npm run typecheck; npm run test:unit.
 - Measured before and after, in the doc: the chain's wall time, and each tier's.
+- No suite sets a timeout above its tier's budget, retries exist only in tier 3, and no test drives an
+  interactive prompt.
 - A final summary: phase → done/deferred, evidence, and the conventional choices made.
 
 Commit as you go:
@@ -127,6 +129,34 @@ or `tests/` has changed (of the 20 commits before this, three touched none).
 - `ensurePackagesBuilt()` returns before taking the build lock when nothing is stale, and
   `ABUDDY_PACKAGES_PREBUILT=1` makes staleness an error rather than a racing rebuild (`b76190721`).
 
+### Industry practices this repo does not follow
+
+Each of these was found in this survey, not taken from a list.
+
+- **Nothing owns concurrency.** Eight suites each start their own scheduler and each claims every core, so
+  the chain has eight independent opinions about parallelism and no budget. That is why running the steps
+  in lanes made total work rise from 348s to 567s and `@abuddy/cli` fail. A build system has one job pool;
+  this has N.
+- **No test target declares its inputs**, so nothing can compute what a change affects. Bazel, Nx and
+  Turborepo all start here, and this goal's Decision 1 is the same idea at the granularity the repo can
+  reach today.
+- **Timeouts are not sized to the tier.** `packages/api` and `packages/default-setup` both set
+  `testTimeout: 120_000`. A unit test allowed two minutes means a hang is indistinguishable from slowness —
+  and under load that is exactly how `@abuddy/cli` presented, as errors rather than a fast, clear failure.
+- **There is no flake policy.** `playwright.config.ts` sets `retries: 0` and vitest sets none, while the CLI
+  suite demonstrably fails under CPU pressure. The answer is not blanket retries: retrying a unit test hides
+  a bug, and retrying an app E2E is ordinary. The distinction needs the tiers to exist first.
+- **A test drives an interactive prompt.** `tests/scripts/test-packaged-authoring.sh:91` runs
+  `env -u CI ... expect` to *unset* `CI` so the CLI will prompt, then answers "Choose 1 or 2: " with
+  `send "1\r"`. The app choice should be injectable, with the prompt itself covered by a unit test of the
+  prompt.
+- **Per-test cost is invisible.** `@abuddy/cli` reports `tests 249s` inside a 56s wall; which tests those
+  are is unknown. Every mainstream runner reports slowest-N, and it is how the 20% that costs 80% gets found.
+- **One external input is not hermetic.** The same script reuses the developer's real npm cache
+  (`npm_config_cache="$(npm config get cache)"`) so installs do not re-download. Pragmatic, and worth
+  keeping, but it means a corrupted local cache changes a verdict; it should be a declared exception rather
+  than an unremarked one.
+
 ## Decisions
 
 Final.
@@ -157,7 +187,19 @@ still runs. A check that genuinely needs the app is tier 3 and stays there.
 and honest, so `fingerprintInputs` over them is worth a stamp. Tier 3 reads the built app, whose inputs are
 the repo; the coarse gate already covers the only sound skip for it.
 
-**6. `abuddy test` gains a way to run a pack's tier-2 checks without Electron.** A pack author testing
+**6. One thing owns concurrency, and a suite takes a budget.** The chain decides how much of the machine
+is in use; a suite does not assume all of it. Until a suite can be given a worker budget, the chain runs
+them one at a time — which is what it does now, for the measured reason.
+
+**7. Timeouts are per tier, not per package.** Tier 1 in seconds, tier 2 in tens of seconds, tier 3 up to a
+minute. `testTimeout: 120_000` on a unit suite turns a hang into a slow pass, which is how a load-induced
+stall reached the summary as two unexplained errors.
+
+**8. Retries belong to tier 3 only.** An app E2E may retry; a unit or contract test may not, because there
+the flake is the finding. A quarantine list is written down, with the date and the reason, or it is not
+quarantined.
+
+**9. `abuddy test` gains a way to run a pack's tier-2 checks without Electron.** A pack author testing
 compiled seeds should not need a browser. The CLI already runs `vitest` for the fixtures from a shell
 script; that belongs in the command.
 
@@ -208,6 +250,19 @@ is hashed).
 
 **Done when:** `abuddy test --contract` passes in both fixtures with no app built; `npm test -w @abuddy/cli`
 covers the new flag; `test:packaged-authoring` uses it.
+
+### Phase 5 — The practices that are work, not policy
+
+- Size the timeouts per Decision 7, tier by tier, and delete the two `testTimeout: 120_000`.
+- Make the app choice injectable so `test-packaged-authoring.sh` stops unsetting `CI` to drive a prompt with
+  `expect`; cover the prompt itself in `@abuddy/cli`'s suite.
+- Report slowest-N per suite in `scripts/chain.ts`'s summary, so the next person profiling `@abuddy/cli` has
+  it without instrumenting anything.
+- Record the npm-cache exception where the script uses it, as a declared non-hermetic input.
+
+**Done when:** no suite sets a timeout above its tier's budget; `test-packaged-authoring.sh` contains no
+`expect` script and no `env -u CI`; the chain prints the slowest five tests per suite. **Mutation:** a test
+made to hang fails at its tier budget rather than at two minutes.
 
 ## Deferred
 
