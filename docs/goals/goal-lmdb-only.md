@@ -123,10 +123,14 @@ The user wants **LMDB-only**: reads query LMDB directly, writes are committed sy
 
 Two throwaway worktrees. They may have been removed by the time this goal is picked up; everything needed is recorded here.
 
-- **Read path:** `.claude/worktrees/agent-a95981166c164d641`, detached at `97a566275`, uncommitted.
+- **Read path:** `.claude/worktrees/ears-disk-engine`, detached at `97a566275`, uncommitted. Still there as
+  of 2026-09-25, renamed from `agent-a95981166c164d641` — the files below are untracked, so they are in no
+  commit, branch or stash and exist only in that directory.
   - New files: `packages/abuddy-ears/src/lmdb/disk-storage.ts` (~465 lines), `src/lmdb/disk-engine.ts`, `tests/lmdb/disk-engine.spec.ts`, `bench/engines.bench.ts`, `spike/`.
   - Edits to `relation-index.ts`, `edge-store.ts`, `relations.ts`, `query.ts`, `engine.ts` and `tests/contract/engine-under-test.ts`.
-- **Write path:** `.claude/worktrees/agent-aef0c2460682598b7/packages/abuddy-ears/spike/*.mts`. These are lmdb-js 3.5.3 probes, run with `npx tsx`.
+- **Write path:** was `.claude/worktrees/agent-aef0c2460682598b7/packages/abuddy-ears/spike/*.mts`, lmdb-js
+  3.5.3 probes run with `npx tsx`. **That worktree is gone** as of 2026-09-25, which is what this section
+  anticipated: what it found is recorded below and the probes themselves are not recoverable.
 
 **Don't reuse the spike's code as-is.** Rewrite it on the branch, keeping the seams and the key layout below.
 
