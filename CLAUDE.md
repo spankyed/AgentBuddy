@@ -209,18 +209,27 @@ npm run db:query -- "<code>"   # abuddy db query on the dev app's data (also db:
 # Published API surface (from the root for all three, or inside one of the packages for just it)
 npm run api:check        # CI: fails if a public entry's API changed without updating reports
 npm run api:update       # Dev: regenerate etc/<entry>.api.md (and etc/<entry>.component.md for UI components),
-                         # and record the declarations they came from in etc/declarations.sha256
+                         # and record what they were generated from in etc/declarations.sha256
                          # Both read an @abuddy dependency's built declarations: npm run packages:build first
                          # All three take ~46s (ui is 33s of it), which is why api:check is a before-merge
                          # and CI check rather than a per-edit one
-npm run api:stamp  # The cheap half, run by npm run typecheck: compares the built declarations with
-                         # etc/declarations.sha256 in ~0.6s and says "run npm run api:update" when they
-                         # differ. It hashes only dist/**/*.ts (.d.ts and UI's .d.vue.ts) — never the
-                         # compiled .js, which changes when a function body does — and hashes each
-                         # through `apiSurfaceOf`, which drops doc prose and keeps TSDoc tags and
-                         # whether a comment is there at all: measured, those are what a report carries,
-                         # so prose is the other thing that cannot make one stale. api:check stays the
-                         # authority; this only says when to run it
+npm run api:stamp  # The cheap half, run by npm run typecheck: compares what the reports were
+                         # generated from with etc/declarations.sha256 in ~0.6s and says "run npm run
+                         # api:update" when it differs. Two inputs, because a report is a function of
+                         # both. The declarations: dist/**/*.ts (.d.ts and UI's .d.vue.ts) and never the
+                         # compiled .js, which changes when a function body does, each hashed through
+                         # `apiSurfaceOf`, which drops doc prose and keeps TSDoc tags and whether a
+                         # comment is there at all — measured, those are what a report carries, so prose
+                         # is the other thing that cannot make one stale. And the set of published
+                         # entries, because there is one report per entry: adding an export adds a
+                         # report while no declaration moves. That second input was missing until
+                         # 2026-09-25, when adding `./packs` to a map passed this check and the whole
+                         # chain and was refused by api:check for want of its report.
+                         # Outside the key, and known to be: tsconfig.api-extractor.json and the API
+                         # Extractor version, either of which can move a report with nothing else
+                         # changing. So api:check is the authority and this says when to run it — it
+                         # does not prove that it passes. docs/plans/test-cleanup-followups.md item 2
+                         # carries the fix: capture the key from the producer instead of listing it
 
 # Built-in pack facade types (after `abuddy build`; from packages/default-setup or with -w @app/default-setup)
 npm run facade:check     # CI: fails if dist/types/pack-types.d.ts changed without updating etc/pack-types.api.md
