@@ -464,12 +464,37 @@ export async function stampedBuild(
  * The fingerprint is taken before `run` touches anything, so a source edited while it runs is recorded as
  * not done. The stamp is written only where `run` returned, so an interrupted step reads as never run.
  */
-export async function stampedRun(label: string, unit: BuildUnit, stamp: string, run: () => void | Promise<void>): Promise<void> {
-  const fingerprint = fingerprintUnit(unit);
-  fs.rmSync(stamp, { force: true });
+export interface StampedUnit {
+  readonly label: string;
+  readonly unit: BuildUnit;
+  readonly stamp: string;
+}
+
+/**
+ * One run, several stamps: every unit is fingerprinted **before** the run starts, and each stamp is written
+ * only if it returned.
+ *
+ * Taking all the fingerprints first is the part worth keeping. A unit pool runs one vitest over several
+ * projects, and fingerprinting each one as its own stamp was written measured the units after the first
+ * against a tree the run had already begun touching. Nothing writes into a unit's inputs today, so the
+ * readings were identical — correct by luck rather than by construction. The day a suite rewrites something
+ * under its own `tests/` or `etc/` while it runs (a `seed-parity:update`, a recorded snapshot), a later unit
+ * would stamp a fingerprint of the output instead of the input and read fresh next time when it was not.
+ */
+export async function stampedRunAll(units: readonly StampedUnit[], run: () => void | Promise<void>): Promise<void> {
+  const taken = units.map(({ label, unit, stamp }) => ({ label, stamp, fingerprint: fingerprintUnit(unit) }));
+  for (const { stamp } of taken) fs.rmSync(stamp, { force: true });
   await run();
-  fs.mkdirSync(path.dirname(stamp), { recursive: true });
-  fs.writeFileSync(stamp, `${JSON.stringify({ workspace: label, version: STAMP_VERSION, fingerprint, builtAt: new Date().toISOString() }, null, 2)}\n`);
+  const builtAt = new Date().toISOString();
+  for (const { label, stamp, fingerprint } of taken) {
+    fs.mkdirSync(path.dirname(stamp), { recursive: true });
+    fs.writeFileSync(stamp, `${JSON.stringify({ workspace: label, version: STAMP_VERSION, fingerprint, builtAt }, null, 2)}\n`);
+  }
+}
+
+/** The single-unit case, which is most callers */
+export async function stampedRun(label: string, unit: BuildUnit, stamp: string, run: () => void | Promise<void>): Promise<void> {
+  await stampedRunAll([{ label, unit, stamp }], run);
 }
 
 /** Every `build:package` script wraps its work in this */
