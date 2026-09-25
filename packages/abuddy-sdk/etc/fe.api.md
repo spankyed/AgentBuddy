@@ -511,6 +511,14 @@ export type SettingsTarget = {
 };
 
 // @public
+export interface SettingUpdate {
+    // (undocumented)
+    path: string[];
+    // (undocumented)
+    value: unknown;
+}
+
+// @public
 export interface Shell {
     // (undocumented)
     activePlugin: Readonly<Ref<Plugin_2>>;

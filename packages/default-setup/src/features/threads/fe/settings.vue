@@ -684,6 +684,7 @@
 
 <script setup lang="ts">
 import { usePlugin } from '@abuddy/sdk/fe'
+import type { SettingUpdate } from '@abuddy/sdk/fe'
 
 import { ref, reactive, computed, nextTick, type Directive } from 'vue'
 import { Plus, X, Upload, Download, FolderOpen, CheckCircle, XCircle, Eye, EyeOff } from 'lucide-vue-next'
@@ -714,10 +715,7 @@ const props = withDefaults(defineProps<Props>(), {
 })
 
 const emit = defineEmits<{
-  'update-setting': [{
-    path: string[]
-    value: any
-  }]
+  'update-setting': [SettingUpdate]
 }>()
 
 // State - initialize directly from props with defaults

@@ -188,7 +188,7 @@ import Hotkeys from './Hotkeys.vue'
 import { errorMessage } from '@abuddy/sdk/utils/pure';
 import type { SettingsEvents, SettingsState } from '@abuddy/host/fe'
 import type { ApplicationHotkeys } from '@abuddy/sdk/types'
-import type { SettingUpdate } from '@/views/settings/types'
+import type { SettingUpdate } from '@abuddy/sdk/fe'
 
 /** The modes the Settings machine takes for a seed import, so a widened string cannot reach its event */
 type SeedImportMode = Extract<SettingsEvents, { type: 'PACK_SEEDS.SET_MODE' }>['mode']

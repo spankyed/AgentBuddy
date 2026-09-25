@@ -117,7 +117,7 @@ import { X, Plus } from 'lucide-vue-next'
 import KeyboardShortcutInput from '@abuddy/ui/components/KeyboardShortcutInput'
 import { useDebounceFn } from '@abuddy/ui/composables/useDebounce'
 import type { ApplicationHotkeys, CustomHotkey, KeyboardShortcut } from '@abuddy/sdk/types'
-import type { SettingUpdate } from '@/views/settings/types'
+import type { SettingUpdate } from '@abuddy/sdk/fe'
 
 interface Props {
   settings?: ApplicationHotkeys

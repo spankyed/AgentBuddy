@@ -16,6 +16,17 @@ export interface SettingsSaveStatus {
   problems: string[];
 }
 
+/**
+ * One setting a settings form asks to change: where in the slice it draws, and the new value. A pack's
+ * `fe/settings.vue` emits this to the host's Settings view (`update-setting`), so it is a contract between them
+ * rather than either one's shape. The value is `unknown` because a setting is arbitrary JSON and the store checks
+ * each next document; a form that knows its own field narrows on the way in, not here.
+ */
+export interface SettingUpdate {
+  path: string[];
+  value: unknown;
+}
+
 /** What a feature's settings change names: a registered section, or an installed feature's own slice */
 export type SettingsTarget = { section: string } | { feature: FeatureRef };
 

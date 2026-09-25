@@ -9,16 +9,6 @@ export interface Address {
   country: string;
 }
 
-/**
- * A form's request to change one setting: where in its own slice, and the new value. A setting is arbitrary JSON and
- * the store checks each next document, so the value is `unknown` here rather than a union the view would have to
- * keep in step with every section a pack registers.
- */
-export interface SettingUpdate {
-  path: string[];
-  value: unknown;
-}
-
 /** The `personal` slice as the form that draws it reads it back */
 export interface PersonalSection {
   name?: string;

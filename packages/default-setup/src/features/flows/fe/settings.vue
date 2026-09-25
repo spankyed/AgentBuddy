@@ -195,6 +195,7 @@
 
 <script setup lang="ts">
 import { usePlugin } from '@abuddy/sdk/fe'
+import type { SettingUpdate } from '@abuddy/sdk/fe'
 import { untypedOpenPlugin } from '@abuddy/sdk/fe'
 import { resolveName } from '@abuddy/sdk/ids'
 
@@ -219,10 +220,7 @@ const props = withDefaults(defineProps<Props>(), {
 })
 
 const emit = defineEmits<{
-  'update-setting': [{
-    path: string[]
-    value: any
-  }]
+  'update-setting': [SettingUpdate]
 }>()
 
 // State

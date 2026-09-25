@@ -454,6 +454,7 @@
 
 <script setup lang="ts">
 import { reactive, ref, computed } from 'vue'
+import type { SettingUpdate } from '@abuddy/sdk/fe'
 import KeyboardShortcutInput from '@abuddy/ui/components/KeyboardShortcutInput'
 import CollapsibleSection from '@abuddy/ui/design/CollapsibleSection'
 import DirectorySelect from '@abuddy/ui/design/DirectorySelect'
@@ -481,10 +482,7 @@ const props = withDefaults(defineProps<Props>(), {
 })
 
 const emit = defineEmits<{
-  'update-setting': [{
-    path: string[]
-    value: any
-  }]
+  'update-setting': [SettingUpdate]
 }>()
 
 // State - initialize directly from props with defaults

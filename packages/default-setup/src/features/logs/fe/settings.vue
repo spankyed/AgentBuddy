@@ -104,6 +104,7 @@
 
 <script setup lang="ts">
 import { ref, watch } from 'vue'
+import type { SettingUpdate } from '@abuddy/sdk/fe'
 import CollapsibleSection from '@abuddy/ui/design/CollapsibleSection'
 import { X } from 'lucide-vue-next'
 import type { LogsSettings } from '@/__generated__/types'
@@ -117,10 +118,7 @@ const props = withDefaults(defineProps<Props>(), {
 })
 
 const emit = defineEmits<{
-  'update-setting': [{
-    path: string[]
-    value: any
-  }]
+  'update-setting': [SettingUpdate]
 }>()
 
 // State

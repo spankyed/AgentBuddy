@@ -77,7 +77,8 @@ import { ref } from 'vue'
 import { useDebounce } from '@abuddy/ui/composables/useDebounce'
 import { User, MapPin } from 'lucide-vue-next'
 import AddressInput from './AddressInput.vue'
-import type { Address, PersonalSection, SettingUpdate } from '@/views/settings/types'
+import type { Address, PersonalSection} from '@/views/settings/types'
+import type { SettingUpdate } from '@abuddy/sdk/fe'
 
 interface Props {
   settings?: PersonalSection

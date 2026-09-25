@@ -72,7 +72,8 @@ import SettingsJsonEditor from '../components/GeneralSettings/SettingsJsonEditor
 import { usePlugin } from '@abuddy/sdk/fe'
 import { useSettingsSaveStatus } from '@/views/settings/save'
 import type { SettingsState } from '@abuddy/host/fe'
-import type { GeneralSection, SettingUpdate } from '@/views/settings/types'
+import type { GeneralSection} from '@/views/settings/types'
+import type { SettingUpdate } from '@abuddy/sdk/fe'
 
 const actor: SettingsState = usePlugin()
 
