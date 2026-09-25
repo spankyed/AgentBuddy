@@ -34,7 +34,7 @@ import * as path from 'node:path';
 import { REPO_ROOT, stampedRun, unitStaleReason, type BuildUnit } from '@abuddy/host/build/packages-built';
 import { CHAIN_STEPS, orderedSteps, type ChainStep, type Tier } from './lib/chain-steps.ts';
 import { schedule } from './lib/chain-schedule.ts';
-import { criticalPath, driftedSteps } from './lib/step-timing.ts';
+import { criticalPath, driftedSteps, willNotCache } from './lib/step-timing.ts';
 import { slowestTests } from './lib/slow-tests.ts';
 import { exitOnEpipe } from './lib/exit-on-epipe.ts';
 
@@ -224,6 +224,19 @@ async function main(): Promise<void> {
   const path = criticalPath(ran);
   const floor = lanes > 1 && path.names.length > 1 ? `, critical path ${path.seconds}s (${path.names.join(' -> ')})` : '';
   const verdict = failed ? `chain FAILED at ${failed.step}` : outcome.failed ? `chain FAILED at ${outcome.failed}` : 'chain passed';
+  // Something writing into a step's inputs after it ran is why a "15 of 17 cached" chain still paid 34s
+  // for a typecheck every time. Asked here, where the answer is one hash per step and already to hand.
+  const uncacheable = willNotCache(
+    steps,
+    new Set(results.filter((r) => r.code === 0).map((r) => r.step)),
+    (step) => unitStaleReason(unitFor(step), stampFor(step.name)),
+  );
+  if (uncacheable.length > 0) {
+    console.log(`\n${uncacheable.length} step${uncacheable.length === 1 ? '' : 's'} passed but will run again next time — something wrote into their inputs:`);
+    for (const { name, reason } of uncacheable) console.log(`  ${name.padEnd(26)} ${reason}`);
+    console.log('  Declare what writes there in that step\'s `outputs`, or stop declaring the generated tree as an input.');
+  }
+
   // The table feeds the kill budget and the floor above, so a number a run has contradicted is worth more
   // than a note in a doc nobody re-reads
   const drifted = driftedSteps(steps, measuredMs);

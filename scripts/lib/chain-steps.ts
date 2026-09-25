@@ -290,7 +290,14 @@ export const CHAIN_STEPS: readonly ChainStep[] = [
   // The widest inputs in the table, and honestly so: it compiles every workspace, the scripts and the
   // tests, and lints them. A change anywhere in the repo's TypeScript is a change to what it checks.
   { name: 'typecheck', tier: 1, needs: ['compile'], seconds: 45,
-    inputs: [...ROOT, ...EVERY_WORKSPACE, 'scripts', 'tests', 'types', ...PACKAGE_BUILD_OUTPUTS, ...PACK_OUTPUTS] },
+    // `tests/e2e`, `tests/fixtures` and `tests/scripts`, never `tests` itself: that walk takes in
+    // `tests/screenshots`, which the E2E step rewrites on every run, so declaring the parent meant this
+    // step could never be cached — measured, 26 screenshot files, and a warm chain paid its 34s every
+    // time for nothing. Gitignored output that no step reads should be no step's input, and the
+    // input-coverage guard backstops the narrowing: a tracked file under `tests/` that none of these
+    // three covers fails it by name.
+    inputs: [...ROOT, ...EVERY_WORKSPACE, 'scripts', 'tests/e2e', 'tests/fixtures', 'tests/scripts',
+      'tests/tsconfig.json', 'playwright.config.ts', 'types', ...PACKAGE_BUILD_OUTPUTS, ...PACK_OUTPUTS] },
   ...UNIT_STEPS,
   // The CLI specs that run a real build, install or child process. Tier 2: they need the built packages,
   // never the app — which is why they can run before `build` rather than behind it.

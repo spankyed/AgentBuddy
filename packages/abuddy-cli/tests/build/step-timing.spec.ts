@@ -1,7 +1,7 @@
 // The two pure readings of a run's timings: the floor lanes could reach, and whether the table still tells
 // the truth about what a step costs.
 import { describe, expect, it } from 'vitest';
-import { criticalPath, driftedSteps } from '../../../../scripts/lib/step-timing.ts';
+import { criticalPath, driftedSteps, willNotCache } from '../../../../scripts/lib/step-timing.ts';
 import type { SchedulableStep } from '../../../../scripts/lib/chain-schedule.ts';
 
 const step = (name: string, needs: string[] = [], extra: Partial<SchedulableStep> = {}): SchedulableStep =>
@@ -57,5 +57,30 @@ describe('driftedSteps', () => {
   it('says nothing about a step that did not run, or one that declares no measurement', () => {
     expect(driftedSteps(steps, new Map())).toEqual([]);
     expect(driftedSteps([step('undeclared')], new Map([['undeclared', 999_000]]))).toEqual([]);
+  });
+});
+
+describe('willNotCache', () => {
+  const steps = [{ name: 'a' }, { name: 'b' }, { name: 'e2e', cache: false as const }];
+  const passed = new Set(['a', 'b', 'e2e']);
+
+  it('names a step that passed and is already stale again', () => {
+    expect(willNotCache(steps, passed, (s) => (s.name === 'b' ? 'its inputs changed since the last successful run' : null)))
+      .toEqual([{ name: 'b', reason: 'its inputs changed since the last successful run' }]);
+  });
+
+  it('says nothing when every step stayed fresh', () => {
+    expect(willNotCache(steps, passed, () => null)).toEqual([]);
+  });
+
+  // A step that opts out of caching has no stamp to contradict, so its fingerprint moving means nothing
+  it('ignores a step that is never cached', () => {
+    expect(willNotCache(steps, passed, (s) => (s.name === 'e2e' ? 'stale' : null))).toEqual([]);
+  });
+
+  // A failed step writes no stamp on purpose, so of course it reads as stale; saying so would be noise
+  it('ignores a step that did not pass, whose stamp was deliberately not written', () => {
+    expect(willNotCache(steps, new Set<string>(), () => 'stale')).toEqual([]);
+    expect(willNotCache(steps, new Set(['a']), () => 'stale')).toEqual([{ name: 'a', reason: 'stale' }]);
   });
 });
