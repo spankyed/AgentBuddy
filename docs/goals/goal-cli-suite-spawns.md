@@ -319,6 +319,48 @@ machine was possible.** The last full run went green on every file this goal tou
 test in `import-specifiers.spec.ts` — a file untouched here, whose 187 tests pass in 17s alone — at a
 load average of 109. Take those two numbers before claiming the goal's headline.
 
+### The suite did not get faster, and that is the finding
+
+Taken on a quiet machine (load 6-12) once the other session stopped, before and after, each a full
+`npm run test:unit` so the `@abuddy/cli` step is measured exactly as the chain runs it:
+
+| | before | after |
+|---|---|---|
+| `@abuddy/cli` suite, wall | 59.07s | 59.54s |
+| `@abuddy/cli` suite, total test time | 261.6s | 259.9s |
+| tests | 764 | 764 |
+| `npm run test:unit`, whole step | 144.5s (load 20) | 113.5s (load 12) |
+
+**The suite is unchanged.** The `test:unit` difference is ambient load, not this work: the only step
+this change can touch is `@abuddy/cli`, and that step moved 0.5s on a 59s wall, which is noise.
+
+The four converted files *did* get faster, by the same ~20% in the suite that they showed in isolation:
+
+| file | before | after |
+|---|---|---|
+| `facade-typing` | 48.4s | 39.5s |
+| `scaffold` | 32.7s | 25.1s |
+| `dependency-graph` | 30.7s | 21.4s |
+| `harness-setup` | 16.7s | 16.6s |
+| the four | **128.5s** | **102.6s** |
+
+26 seconds came out of those files and the suite's total fell by 1.7s, so the rest of the suite absorbed
+it: freeing a worker lets the other 66 files run more concurrently, and each gets slower by about what
+was saved. **The suite is bound by cores, not by process starts.** That is the same conclusion the chain
+reached when four attempts to parallelise it failed, and it is why the isolated A/B — 65.9s to 34.6s
+over four files alone — does not carry: with only four files there is spare CPU to hand back, and in the
+full suite there is none.
+
+So the premise in this goal's first paragraph — "it is slow because it starts processes" — is wrong as a
+statement about the *suite*. Process starts are a real per-file cost, worth removing and now removed,
+but they were never the suite's constraint. **Anything that aims at the suite's wall time has to reduce
+total work or run less of it** (`goal-test-tiers.md`'s caching), not make the same work cheaper per file.
+
+What this work is still worth: the four files are a fifth cheaper to run on their own, which is what a
+developer iterating on one of them pays; the diagnostics improved, a typecheck failure now naming file,
+line and code; and the suite is 17 process starts lighter, which is 17 fewer chances for the
+CLI-rebuilds-packages-mid-run race described above.
+
 ### One flake found on the way, in a file this goal did not touch
 
 `import-specifiers.spec.ts > findInternalPackageImports > holds for the repo` scans the whole repo and
