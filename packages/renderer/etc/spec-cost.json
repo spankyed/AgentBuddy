@@ -1,0 +1,14 @@
+{
+  "measuredAt": "2026-09-25T20:38:28.158Z",
+  "costs": {
+    "tests/adapters/pack-frontends.spec.ts": 38,
+    "tests/boot/errors.spec.ts": 5,
+    "tests/runtime/index.spec.ts": 8,
+    "tests/runtime/settings.spec.ts": 3,
+    "tests/runtime/shell.spec.ts": 10,
+    "tests/source-layout.spec.ts": 9,
+    "tests/transport/client.spec.ts": 54,
+    "tests/views/packs/pack-detail.spec.ts": 20
+  },
+  "skipped": []
+}

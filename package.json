@@ -42,6 +42,8 @@
     "test:external-pack": "npm run packages:ensure && tsx scripts/bounded.ts 180 bash tests/scripts/test-external-pack.sh",
     "test:packaged-authoring": "tsx scripts/bounded.ts 240 bash tests/scripts/test-packaged-authoring.sh",
     "test:unit": "tsx scripts/test-unit.ts",
+    "spec-cost:check": "tsx scripts/spec-cost.ts",
+    "spec-cost:update": "tsx scripts/spec-cost.ts --update",
     "test:unit:host": "tsx scripts/test-unit-pool.ts host",
     "test:unit:pack": "tsx scripts/test-unit-pool.ts pack",
     "test:integration": "npm run test:integration -w @abuddy/cli",

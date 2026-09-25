@@ -14,8 +14,12 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 
-/** Where the record lives, relative to the repo root */
-export const SPEC_COST_FILE = path.join('packages', 'abuddy-cli', 'etc', 'spec-cost.json');
+/**
+ * Where a suite's record lives, relative to the repo root. One per package rather than one for the repo:
+ * a package's specs are measured by running that package's configs, so the file that records them belongs
+ * beside the thing that produced it, next to the other recorded artifacts in `etc/`.
+ */
+export const specCostFile = (dir: string): string => path.join('packages', dir, 'etc', 'spec-cost.json');
 
 /**
  * The band a spec must leave before it changes half.
@@ -40,6 +44,16 @@ export const FAST_BELOW_MS = 1_500;
 export interface SpecCost {
   /** Measured milliseconds, per spec path relative to the package */
   readonly costs: Record<string, number>;
+  /**
+   * Specs that ran nothing because every test in them was skipped, so they have no cost to record.
+   *
+   * This is a third state, and collapsing it into either of the others is a trap. Treating such a file as
+   * costing nothing would file it as the cheapest spec in the suite and place it accordingly, until the day
+   * its precondition is met and it runs — `_hybrid/claude-code-permission-flow` needs a real `claude`
+   * binary. Treating it as unmeasured would fail the check forever for a file that is behaving correctly.
+   * Recorded here it is neither, and `spec-cost:check` notices when one starts reporting a duration.
+   */
+  readonly skipped: string[];
   readonly measuredAt: string;
 }
 
@@ -67,24 +81,44 @@ export function halfFor(file: string, ms: number): Half {
   return now;
 }
 
-export function readSpecCost(repoRoot: string): SpecCost | undefined {
+export function readSpecCost(repoRoot: string, dir: string): SpecCost | undefined {
   try {
-    return JSON.parse(fs.readFileSync(path.join(repoRoot, SPEC_COST_FILE), 'utf-8')) as SpecCost;
+    return JSON.parse(fs.readFileSync(path.join(repoRoot, specCostFile(dir)), 'utf-8')) as SpecCost;
   } catch {
     return undefined;
   }
 }
 
-/** Every spec under the package's tests, relative to the package */
+/**
+ * The vitest configs a package runs its specs under. `@abuddy/cli` has two, a fast half and an integration
+ * half; every other suite has one. A spec's cost is measured under the config that actually runs it, which
+ * is why this is read from the package rather than assumed.
+ */
+export function configsFor(packageDir: string): string[] {
+  return ['vitest.config.ts', 'vitest.integration.config.ts'].filter((file) => fs.existsSync(path.join(packageDir, file)));
+}
+
+/** A package with one config has no second half to move a spec into — Decision 4 makes that a finding */
+export const hasSplit = (packageDir: string): boolean => configsFor(packageDir).length > 1;
+
+/**
+ * Every spec a package owns, relative to the package.
+ *
+ * Both `tests/` and `src/`, because a suite may run colocated specs and one does: `@app/default-setup`'s
+ * config includes `src/**` with the comment "without this they are silently never run". Walking only
+ * `tests/` reported its six colocated specs as recorded-but-gone. Ignoring what a package builds keeps the
+ * walk to sources: `dist` holds compiled copies, and `etc` is where the record itself lives.
+ */
+const IGNORED = new Set(['node_modules', 'dist', 'etc', 'coverage']);
 export function specFiles(packageDir: string): string[] {
-  const root = path.join(packageDir, 'tests');
   const walk = (dir: string): string[] =>
     fs.readdirSync(dir, { withFileTypes: true }).flatMap((entry) => {
+      if (entry.name.startsWith('.') || IGNORED.has(entry.name)) return [];
       const full = path.join(dir, entry.name);
       if (entry.isDirectory()) return walk(full);
-      return entry.name.endsWith('.spec.ts') ? [path.relative(packageDir, full)] : [];
+      return /\.(spec|test)\.ts$/.test(entry.name) ? [path.relative(packageDir, full)] : [];
     });
-  return walk(root).sort();
+  return walk(packageDir).sort();
 }
 
 export interface Misplaced { readonly file: string; readonly ms: number; readonly belongs: Half }
@@ -99,10 +133,14 @@ export function misplaced(costs: Record<string, number>, files: readonly string[
   });
 }
 
-/** Specs with no recorded cost: a new one is unmeasured until `spec-cost:update` runs */
-export const unrecorded = (costs: Record<string, number>, files: readonly string[]): string[] =>
-  files.filter((file) => costs[file] === undefined);
+/** Specs with no recorded cost and no recorded reason: a new one is unmeasured until `spec-cost:update` runs */
+export const unrecorded = (record: SpecCost, files: readonly string[]): string[] =>
+  files.filter((file) => record.costs[file] === undefined && !record.skipped.includes(file));
+
+/** A spec recorded as skipped that has since started running, so its cost is now measurable */
+export const nowRunning = (record: SpecCost, measured: Record<string, number>): string[] =>
+  record.skipped.filter((file) => measured[file] !== undefined);
 
 /** Recorded specs that no longer exist */
-export const stale = (costs: Record<string, number>, files: readonly string[]): string[] =>
-  Object.keys(costs).filter((file) => !files.includes(file)).sort();
+export const stale = (record: SpecCost, files: readonly string[]): string[] =>
+  [...Object.keys(record.costs), ...record.skipped].filter((file) => !files.includes(file)).sort();

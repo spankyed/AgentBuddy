@@ -19,9 +19,7 @@
     "typecheck": "tsc --noEmit",
     "pretest": "tsx ../../scripts/ensure-packages-built.ts",
     "test": "vitest run",
-    "test:integration": "vitest run --config vitest.integration.config.ts",
-    "spec-cost:check": "tsx ../../scripts/spec-cost.ts",
-    "spec-cost:update": "tsx ../../scripts/spec-cost.ts --update"
+    "test:integration": "vitest run --config vitest.integration.config.ts"
   },
   "dependencies": {
     "@abuddy/host": "*",

@@ -75,8 +75,12 @@ recorded list needs — a report when an entry has stopped applying.
 | slowest single test, whole repo | **4.0s** — `abuddy-host/tests/database/write-lock.spec.ts` |
 | tier-1 budget | 15s, so 3.75x headroom |
 | tests reporting over 300ms, of ~2634 | **38** |
-| slowest single file | 10.4s — `abuddy-sdk/tests/build/generate-entries.spec.ts` |
+| slowest single file | **18.6s pooled**, 10.6s alone — `abuddy-sdk/tests/build/generate-entries.spec.ts` |
 | per-suite work / max floor | 68.5s / 10.4s |
+
+Re-measured at `9905b6b06` before Phase 1. The slowest test held at 4.1s; the slowest *file* did not — it
+is 18.6s inside the host pool against 10.6s run alone, the same ~2x contention that forced `spec-cost`'s
+dead band. The pooled figure is the operative one, because placement is decided where a spec actually runs.
 
 Nothing is close to its ceiling. That makes this preventive work rather than a fix, and it sets the bar for
 judging it: **the goal is not to make anything faster.** It is that the next spec which does get slow is
