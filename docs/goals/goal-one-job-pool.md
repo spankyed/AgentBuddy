@@ -251,6 +251,81 @@ outcome, as it was for lanes.
 
 ## Outcome
 
+### Summary
+
+| Phase | Status | Evidence |
+|---|---|---|
+| 1 — land `AS/cli-suite-spawns` | done | `2bede965e`. 858 tests before and after; `test:integration` 42.0s -> 35.3s at the same 328 tests |
+| 2 — cost-based predicate | done | `6fec76d21`. 80 specs recorded, 25 moved half; fast half 41.1s -> 14.9s of file time, 5.9s wall |
+| 3 — pool the suites | done, **as two pools** | `e1b99d460`. `test:unit` 41.6s -> 35.3s; 2634 collected = 1914 host + 720 pack |
+| 4 — collapse the chain steps | done | `694baba04`. Eight steps -> two; a one-package edit runs one project in one process |
+| 5 — floor file and timeouts | **partly deferred, measured** | `f9d476404`. File 10.36s -> 9.40s; 97 per-test timeouts removed. The 3-test split was not done |
+| 6 — re-measure and retire | done | `b19c815ff`. Lane scheduler gone; lane default 2 -> 3 |
+
+### The numbers this goal owes
+
+| | before | after |
+|---|---|---|
+| `npm run test:unit` | 41.6s | **35.3s** |
+| unit suites' total work / max floor | 98.6s / 11.4s | **68.5s / 10.4s** |
+| `generate-entries.spec.ts` | 10.36s | **9.40s** |
+| `test:integration` (a cache miss) | 42.0s at 328 tests | **39.6s at 408 tests** |
+| chain, cold | 194s (at 2 lanes, 17 steps) | **157.8 / 161.8 / 156.1s** (3 lanes, 11 steps) |
+| chain, warm | ~28s | **26.0s**, 10 of 11 cached |
+| `npm run chain --all` | — | **163.4s, exit 0** |
+
+Two of those want reading rather than skimming. The suites' total work fell 31%, but most of
+`@abuddy/cli`'s share of that — 41.1s to 14.6s — is Phase 2 **moving** 25 expensive specs into the
+integration half, not work disappearing. And `test:integration` looks barely changed at 39.6s against 42.0s
+until you notice it is carrying 408 tests where it carried 328: the same wall for 24% more work.
+
+### Where the plans were wrong, which is most of what this goal found
+
+- **One root vitest over all eight is not possible.** Host suites resolve workspace source, the pack suite
+  must resolve the published `dist`, Node conditions are per process, and vitest ignores per-project
+  `poolOptions.execArgv`. Probed: under one pooled process a `default-setup` spec resolves `@abuddy/sdk` to
+  `src` where it resolves `dist` today. It would not have failed; it would have tested something else.
+- **`max(floor, work/cores)` was never the model.** It predicted 44.3s -> ~13s. The host pool does ~136s of
+  worker time in 21.1s of wall, so the suites were never serialised the way that arithmetic assumes.
+- **"The cost is 3 tests, not 94" is backwards.** The 3 compiling tests are 3.13s; the other 91 are ~7.2s of
+  `generatePackFiles`, which is different work every time.
+- **`oldProgram` recovers nothing** — 2.44s and 2.52s against 2.46s without it.
+- **A third lane was never capped by the cores.** It was vitest's 5s default, and per-tier timeouts removed
+  it: three lanes is now the fastest measured and green three times out of three.
+
+### Conventional choices, where the goal did not specify
+
+- **Two pools, not one**, split on host/pack resolution — forced, not chosen.
+- **A dead band (1.5s / 2.5s) rather than one threshold**, because a file's recorded time is its wall time
+  under whatever else its half is running, so a single line oscillates.
+- **The cost record is `packages/abuddy-cli/etc/spec-cost.json`** with a `spec-cost:check` / `:update` pair,
+  matching the repo's other five recorded artifacts.
+- **The root config lists its projects literally and is guarded**, because `check:specifiers` reads configs
+  as text and the alternative — declaring the condition at the root — is safe only by luck.
+- **A recovery branch, not a tag**, for the rebase: the constraints forbid tags.
+- **`scripts/measure-suites.ts` is committed**, because three phases owe a before and after.
+
+### Deferred, each with the measurement
+
+- **The 3 compiling tests are not split out.** The floor is not binding (21.1s pool wall against a 9.4s
+  floor) and there is no tier for them to move into, since that split exists only in `@abuddy/cli`. Against
+  ~0 gain it means extracting ~125 lines of helpers from a 1329-line file. Attempted, then reverted.
+- **Decision 5's `abuddy doctor` half is not built.** `process-liveness` identifies records left behind, not
+  live processes, and `withBuildLock` already self-heals a stale lock; such a check would report something
+  already fixing itself and would not have found the orphan that motivated it. The first half of that
+  decision was already done by `59dec5165`.
+- **`test:integration`'s 50% worker cap is unrelaxed.** Phase 1 removed 17 spawns from that suite, which is
+  what would justify relaxing it, and it is two runs and one toggle — but not on the path to the pool.
+
+### One clause of "Finished when" reads differently than it was written
+
+It asks that `npm run test:unit` be "one vitest over eight projects with one `--maxWorkers`". It is two
+vitest runs, over seven projects and one, for the resolution reason above. The test-count half of that
+clause holds exactly: 2634 collected, 1914 + 720, equal to the sum of the eight per-suite counts. It also
+asks for "764 tests before and after" on the spawns branch; that was that branch's own base, and the
+invariant held at this base's number, 858.
+
+
 ### Phase 1 — `AS/cli-suite-spawns` landed
 
 Rebased onto `1c272123c` and fast-forwarded into `AS/chain-inputs`. `4ed04f144` was skipped as already
