@@ -54,13 +54,21 @@ edit — running it after every change costs minutes and finds nothing the narro
 | a public export of `@abuddy/ears`, `/sdk` or `/ui` | `npm run api:update`, and commit `etc/` — `typecheck` fails until you do |
 | a pack's seed source (`src/seeds/`) | that pack's `seed-parity` spec. When only `sourceHash`/`rowSha256` moved, re-record deliberately — `npm run seed-parity:update -w @app/default-setup` — and never edit a hash by hand. Re-recording rewrites a test expectation, not user data; what reaches users is the new `sourceHash`. `packages/default-setup/tests/unit/seed-parity/CLAUDE.md` has the rule for what a golden records |
 | several things, or you lost track | `npm run spec` with no arguments: the specs your uncommitted changes affect, in every package they touch |
-| anything, before you ask for a merge | the full chain, once |
+| anything, before you ask for a merge | `npm run chain`, once — the seven steps in dependency order, with `packages:ensure` hoisted |
 
 What that costs, measured on this machine (2026-09-22, M-series, warm): one spec file 1–3s, one
 package's `tsc --noEmit` 3s, a package's specs folder ~1s, `packages:ensure` 1s when nothing is stale.
-The chain is ~8 minutes: `compile` 16s, `typecheck` 53s, `test:unit` 108s, `api:check` 55s, `build` 60s,
-`test:external-pack` 41s, `npm test` (E2E) 27s, `test:packaged-authoring` 75s. So the narrow check is
-two to three orders of magnitude cheaper than the chain, and covers the edit.
+The chain is ~6 minutes, measured 2026-09-24: `compile` 11s, `typecheck` 54s, `test:unit` 104s,
+`build` 44s, `test:external-pack` 43s, `npm test` (E2E) 30s, `test:packaged-authoring` 71s. So the
+narrow check is two to three orders of magnitude cheaper than the chain, and covers the edit.
+
+**`api:check` is not in that list, on purpose.** `typecheck` runs `api:stamp`, which hashes the same
+declarations the reports are generated from, in 0.6s against `api:check`'s 55. A report is a pure
+function of those declarations, so a matching stamp means `api:check` cannot fail, and a moved
+declaration fails `typecheck` until `api:update` runs. Run `api:check` before publishing, where it is
+the authority; running it per merge re-proves the stamp and costs a minute. The one thing the stamp
+cannot see is a hand-edited `etc/*.api.md` whose declarations never moved, which the publish path
+catches.
 
 That last row is the whole gate: **CI does not run, on purpose.** `.github/workflows/ci.yml` has its `push`
 and `pull_request` triggers commented out while this is a single-contributor repo, so `gh run list` is empty
@@ -87,9 +95,13 @@ Things that waste the most time, in order:
   `npm run build:be`, `DEBUG_E2E=1 npm test -- <spec> --grep "<title>"`. Two carefully argued
   explanations have been wrong where one such run was decisive. `tests/e2e/CLAUDE.md` has the method,
   including what to rebuild first and how to put the instrumentation back.
-- **Running suites concurrently.** They share the package build lock and the build stamps, so a
-  background `test:unit` racing a foreground `test:external-pack` produces failures that are about the
-  race, not the code.
+- **Running suites concurrently *before the packages are built*.** The hazard is the build itself, not
+  the suites: `ensurePackagesBuilt()` returns before taking the lock when nothing is stale
+  (`abuddy-host/src/build/packages-built.ts`), and only `stampedBuild` locks. So two suites that both
+  find a stale package race each other's build and fail about the race rather than the code — which is
+  what a background `test:unit` against a foreground `test:external-pack` used to do. Run
+  `npm run packages:ensure` once first and every later call is a stat and a return, which is what makes
+  a parallel chain safe; the 18 calls a serial chain makes are each paying that stat for nothing.
 
 Three rules that pay for themselves:
 
@@ -150,6 +162,9 @@ npm run spec -- <target> # You don't say what the target is; it works that out:
                          # `--bail 1` and `--changed HEAD~1` work. It groups by package and runs each
                          # package's own `test`, so a pretest guard and its vitest config still apply;
                          # a tests/e2e path goes to Playwright instead
+npm run chain            # Before a merge: the seven steps in dependency order, ~6 min. It hoists
+                         # packages:ensure so every later step's copy is a stat and a return, and it
+                         # leaves out api:check, which typecheck's api:stamp already covers
 npm test                 # Playwright E2E tests
 npm run test:unit        # Vitest, every suite CI calls a unit test: @app/api, @app/default-setup, @abuddy/sdk,
                          # @abuddy/ears, @abuddy/host, @app/main, @app/renderer, then @abuddy/cli (the slowest,
