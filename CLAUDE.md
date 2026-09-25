@@ -212,7 +212,11 @@ npm run chain            # Before a merge: every check in dependency order, cold
                          # and does not run, so a doc edit runs nothing and a one-package edit runs that
                          # package's suite. The E2E suite is never cached, with its reason on the step.
                          #   --dry     the plan and why each step is or is not cached, running nothing
-                         #   --all     run every step regardless of its stamp
+                         #   --all     run every step regardless of its stamp, and force a step that
+                         #             keeps a cache of its own — it appends that step's `forceArgs`, which
+                         #             is how the two unit pools are made to re-run every project. Without
+                         #             that, overriding the chain's stamps said nothing to the pool's, so
+                         #             --all ran the step and the step skipped 2654 tests and returned green
                          #   --lanes N how many steps run at once. Three by default, re-measured against
                          #             the pooled step shape: 1 lane 261s, 2 lanes 208/192s, 3 lanes
                          #             158/162/156s, 4 lanes 160s, none failing. Three reverses the

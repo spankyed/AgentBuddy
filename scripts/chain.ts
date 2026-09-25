@@ -71,12 +71,21 @@ const unitFor = (step: ChainStep): BuildUnit => ({
 
 type Result = { step: string; ms: number; code: number; output: string; timedOut?: true };
 
-/** A step, under a budget sized from what it costs healthy. An overrun kills its whole process group. */
-async function run(step: string, seconds: number | undefined): Promise<Result> {
+/**
+ * A step, under a budget sized from what it costs healthy. An overrun kills its whole process group.
+ *
+ * `force` carries the step's `forceArgs` when the chain was given `--all`. A step that keeps a cache of its
+ * own cannot see this chain's override, so without them `--all` runs the step and the step skips its work:
+ * the two unit pools did exactly that. Only steps that declare them get any, because most steps' commands
+ * would reject an argument they do not know.
+ */
+async function run(step: string, seconds: number | undefined, force: readonly string[] = []): Promise<Result> {
   // `npm test` is the E2E suite and takes no `run`
   const args = step === 'test' ? ['test'] : ['run', step];
+  // npm forwards what follows `--` to the script's own command, which is how this chain was given `--all`
+  const withForce = force.length === 0 ? args : [...args, '--', ...force];
   // A step with no measurement still gets a bound, just a loose one
-  const { code, output, ms, timedOut } = await boundedSpawn('npm', args, budgetFor(seconds ?? 300));
+  const { code, output, ms, timedOut } = await boundedSpawn('npm', withForce, budgetFor(seconds ?? 300));
   return { step, ms, code, output, timedOut };
 }
 
@@ -92,12 +101,13 @@ class StepFailed extends Error {
  * The step, with its stamp written only where it passed. The fingerprint is taken before it runs, so a
  * source edited mid-run records as not done rather than as covered.
  */
-async function runAndStamp(step: ChainStep): Promise<Result> {
-  if (step.cache === false) return run(step.name, step.seconds);
+async function runAndStamp(step: ChainStep, all: boolean): Promise<Result> {
+  const force = all ? step.forceArgs ?? [] : [];
+  if (step.cache === false) return run(step.name, step.seconds, force);
   let result: Result | undefined;
   try {
     await stampedRun(step.name, unitFor(step), stampFor(step.name), async () => {
-      result = await run(step.name, step.seconds);
+      result = await run(step.name, step.seconds, force);
       if (result.code !== 0) throw new StepFailed(result);
     });
   } catch (err) {
@@ -182,7 +192,7 @@ async function main(): Promise<void> {
       return false;
     },
     run: async (step) => {
-      const result = await runAndStamp(step);
+      const result = await runAndStamp(step, all);
       results.push(result);
       // TIMEOUT is its own verdict: a step that ran out of budget failed for a different reason than one
       // that returned non-zero, and which it was is the first thing you need to know.
