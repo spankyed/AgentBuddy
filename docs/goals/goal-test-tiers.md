@@ -372,7 +372,8 @@ keeping in mind when writing the ones below; a phase that adds a field wants a c
 ### Phase 4 — Finish the table, then guard it
 
 - Add the three fields Phase 3 left out — `inputs`, `outputs` and `exclusive` per Decision 12 — and fill
-  `inputs` for all nine steps. **This is the bulk of the phase.** Deriving nine honest input lists is the
+  `inputs` for all ten steps (nine when this was written; `test:integration` landed after). **This is the
+  bulk of the phase.** Deriving ten honest input lists is the
   work; the guard below is a few lines over them.
 - A spec asserting every tracked source file is an input to at least one step, resolved through the same
   walk `fingerprintInputs` uses, so an under-declared input is a failing test rather than a stale pass.

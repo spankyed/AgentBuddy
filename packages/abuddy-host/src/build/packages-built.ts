@@ -116,7 +116,12 @@ const LOCK_POLL_MS = 200;
 export const stampFile = (workspace: string): string => path.join(STAMP_DIR, `${workspace.replace(/[@/]/g, '-').replace(/^-/, '')}.json`);
 
 /** Files under a watched input, repo-relative. A missing input contributes nothing; creating it changes the fingerprint. */
-function inputFiles(target: string, out: string[] = []): string[] {
+/**
+ * Every file under a path, repo-relative — the walk a fingerprint is taken over. Exported because the
+ * chain's input-coverage guard has to resolve a step's inputs exactly as a fingerprint does: a guard that
+ * walked differently would pass files a fingerprint never hashed.
+ */
+export function inputFiles(target: string, out: string[] = []): string[] {
   let stat: fs.Stats;
   try {
     stat = fs.statSync(target);
