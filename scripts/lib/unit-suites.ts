@@ -1,11 +1,20 @@
 /**
  * The workspaces `test:unit` covers, and where each lives.
  *
- * One definition, because two things need it and they must agree: `scripts/test-unit.ts` runs them, and
- * `scripts/lib/chain-steps.ts` gives each one a chain step so a change in one package re-runs one suite
- * rather than eight. A list in both places would drift the first time a package was added.
+ * One definition, because everything that runs or schedules them reads it — `scripts/test-unit.ts`, the
+ * chain's steps, the pool's per-project cache, the spec-cost records — and a second list would drift the
+ * first time a package was added.
  *
- * Slowest first: the tail of a concurrent run is whatever started last.
+ * **The order is not an execution order.** Vitest's sequencer decides what runs when, across every project
+ * at once; the root `vitest.config.ts` is where that is written down. So this is not sorted by cost, and a
+ * reader should not infer that it is — it once claimed to be, and was wrong in a way nothing could notice.
+ * What the order does have to do is match the `projects` list in that config, which `chain-inputs.spec.ts`
+ * asserts.
+ *
+ * If an order is ever wanted, sort at the point of use from `etc/spec-cost.json`, already the authority on
+ * what a suite costs, rather than re-sorting this literal. A guard on sortedness is the thing not to add:
+ * the largest fast halves sit within a few percent of each other in those records, so it would fail on
+ * measurement drift and never on a mistake.
  */
 export interface UnitSuite {
   /** The npm workspace name, as `npm test -w` takes it */
@@ -40,7 +49,8 @@ export const UNIT_SUITES: readonly UnitSuite[] = [
 ];
 
 /**
- * The chain step that runs a suite. Steps are per pool, not per suite: eight steps meant eight vitest
- * processes, which is the thing pooling removed. The per-package cache key survives inside the step.
+ * The chain step that runs a suite: one per pool rather than one per suite. That is `POOL_STEPS`' decision
+ * and its doc in `scripts/lib/chain-steps.ts` carries the reasoning, including what the per-suite steps were
+ * buying and where it went instead.
  */
 export const unitStepName = (suite: UnitSuite): string => `test:unit:${suite.kind}`;

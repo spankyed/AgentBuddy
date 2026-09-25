@@ -6,10 +6,8 @@
  * one reason: the guard in `chain-inputs.spec.ts` has to read what the pool actually fingerprints, and the
  * pool script runs its `main()` on import, so a spec cannot ask it.
  *
- * That guard is the point. A pool is the inner half of two caches over one body of work — the chain stamps
- * the step, this stamps each project — and such a pair is only sound while the inner layer's inputs cover
- * the outer's. Both sides derive from `suiteInputs`, so they hold by construction; the guard is what fails
- * when someone gives the step an input this cannot see, which is the defect it was written after.
+ * Both this and the chain's pool step derive from `suiteInputs`, whose doc carries the rule the pair of
+ * caches holds to and what happened when it did not.
  */
 import * as path from 'node:path';
 import { REPO_ROOT, type BuildUnit } from '@abuddy/host/build/packages-built';

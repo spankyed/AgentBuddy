@@ -4,21 +4,13 @@
  *     tsx scripts/test-unit-pool.ts host   # the root vitest.config.ts projects, under @abuddy/source
  *     tsx scripts/test-unit-pool.ts pack   # each pack suite, resolving the published dist
  *
- * The chain has one step per pool rather than one per suite, because eight steps meant eight vitest
- * processes — two schedulers with no shared budget, which is what pooling removed. What eight steps were
- * actually buying was the per-package *cache key*, and that is separable from the per-package *process*:
- * the step's inputs are the union across the pool, so a warm chain caches the whole step, and when it does
- * run this asks `poolUnitFor` per project and passes `--project` for only the stale ones.
+ * What this decides is which projects are stale, how many vitest runs that takes, and when each is stamped.
+ * Three things it does not, and does not restate: why the chain has one step per pool (`POOL_STEPS` in
+ * `scripts/lib/chain-steps.ts`), what a project's freshness is measured against (`scripts/lib/unit-pool.ts`),
+ * and the rule both cache layers hold to (`suiteInputs`, beside the steps).
  *
- * **This is the inner half of two caches over one body of work**, and the rule that keeps such a pair honest
- * is that the inner layer's inputs cover the outer's. Both derive from `suiteInputs`, so they do. When they
- * did not, the four files the step declared and no project did — this one among them — made the step stale,
- * and it ran, found every project fresh and returned green having tested nothing. `--all` reaches here for
- * the same reason: the chain overriding its own stamps says nothing to a cache it does not know about, so
- * the step declares `forceArgs` and the flag arrives on argv.
- *
- * Stamps are per project through `stampedRunAll`, which takes every fingerprint in a run before it starts
- * and writes each only where it passed — one protocol, the same one the package builds and the chain use.
+ * `--all` is read here, from argv, because the chain overriding its own stamps says nothing to a cache it
+ * does not know about: the pool steps declare `forceArgs` so the flag arrives.
  */
 import { execFileSync } from 'node:child_process';
 import { stampedRunAll, unitStaleReason } from '@abuddy/host/build/packages-built';
