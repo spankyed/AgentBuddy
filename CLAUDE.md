@@ -11,6 +11,7 @@ AgentBuddy is an Electron desktop app with an actor-based architecture. Both fro
 - **Electron main** (`packages/main/`) — Module-based process manager that spawns the API server and manages windows
 - **Preload** (`packages/preload/`) — IPC bridge exposing safe APIs to renderer
 - **Default Setup** (`packages/default-setup/`) — the built-in pack: features, steps, and seed sources (actions, prompts, flows, library, notes, FAQs, settings) that `abuddy build` compiles into `packages/default-setup/dist/` from `abuddy.json` `boot.seed` (see `packages/default-setup/CLAUDE.md` and `docs/public-facing/seeds.md`)
+- **Repo checks** (`packages/repo-checks/`) — the specs whose subject is the repo's own tooling: the chain's graph and cache keys, the recorded spec costs, and the scripts under `scripts/`. A workspace because a spec needs one, and because `npm run spec` routes a `scripts/` change here (see `packages/repo-checks/CLAUDE.md`)
 
 Monorepo using npm workspaces. Requires Node >= 23.0.0.
 
@@ -62,7 +63,9 @@ which is the way to find out why something you expected to be skipped is not.
 **The inner loop is still `npm run spec`**, and it is still much cheaper than a chain run: with no
 arguments it runs the specs your uncommitted changes affect, in every package they touch; with a source
 file it runs the specs that import it. One spec file is 1-3s and a package's `tsc --noEmit` is 3s, against
-the chain's 27s floor. Use it while you are working, and the chain when you are done.
+the chain's 27s floor. Use it while you are working, and the chain when you are done. A change to
+`scripts/` or to a vitest config counts too: it routes to `@app/repo-checks`, the package holding the
+specs that check the repo's own tooling.
 
 Two things the chain cannot work out for you, because they rewrite files you commit:
 
@@ -221,6 +224,9 @@ npm run test:unit        # Vitest, as two pools: the host suites as one root run
                          # @abuddy/source condition, and the pack suite on its own resolving the published
                          # dist. Serial, measured — a second lane buys 3% for 87% more work.
                          # The list is scripts/lib/unit-suites.ts, which the chain reads too
+npm run test:integration # The expensive half of every suite that has one (@abuddy/cli, @app/repo-checks).
+                         # Which packages those are is derived from the configs each has; the script's
+                         # -w flags are the half that is checked rather than derived
 npm run test:unit:host   # One pool, running only the projects whose own inputs changed (--project per
 npm run test:unit:pack   # stale project, one process). These are the chain's two steps; per-package
                          # staleness lives inside them, so a one-package edit still runs one project.

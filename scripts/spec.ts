@@ -40,8 +40,33 @@ function specsUnder(dir: string): string[] {
 
 const allSpecs = (): string[] => [...specsUnder(path.join(ROOT, 'packages')), ...specsUnder(path.join(ROOT, 'tests'))];
 
+/**
+ * The package holding the specs that check the repo's own tooling.
+ *
+ * Repo tooling is checked by specs like everything else, and those specs live in a package. Without the
+ * two functions below, `packageOf` answered "none" for every path outside `packages/`, so editing
+ * `scripts/lib/chain-steps.ts` printed "nothing changed inside a package" while the specs that import it
+ * sat in a suite this command never ran — the one part of the repo its own command could not check.
+ */
+const REPO_CHECKS = 'repo-checks';
+
+/**
+ * A path whose meaning is repo-wide, so the repo checks cover it wherever it lives.
+ *
+ * `scripts/` because those modules are what the checks import. A vitest config because two of them read
+ * every config in the repo: `suite-timeouts.spec.ts` bounds what one may declare, and
+ * `chain-inputs.spec.ts` asserts the root one's project list. So a package's own config belongs to that
+ * package *and* to this one, which is why `packagesFor` returns a set rather than a name.
+ */
+const IS_REPO_TOOLING = /^scripts\/|(^|\/)vitest\.[\w.]*config\.ts$/;
+
 /** The package a repo path belongs to, or null for the repo root (tests/e2e is Playwright's) */
-const packageOf = (rel: string): string | null => /^packages\/([^/]+)\//.exec(rel)?.[1] ?? null;
+const packageOf = (rel: string): string | null =>
+  /^packages\/([^/]+)\//.exec(rel)?.[1] ?? (IS_REPO_TOOLING.test(rel) ? REPO_CHECKS : null);
+
+/** Every package whose specs could cover a change to this path */
+const packagesFor = (rel: string): string[] =>
+  [...new Set([packageOf(rel), IS_REPO_TOOLING.test(rel) ? REPO_CHECKS : null])].filter((p) => p !== null);
 
 const sh = (cmd: string[], cwd: string) => spawnSync('npm', cmd, { cwd, stdio: 'inherit' }).status ?? 1;
 const hasScript = (pkg: string, name: string): boolean =>
@@ -67,7 +92,7 @@ const flags = firstFlag === -1 ? [] : args.slice(firstFlag);
 function changedPaths(): { packages: string[]; elsewhere: string[] } {
   const out = spawnSync('git', ['status', '--porcelain'], { cwd: ROOT, encoding: 'utf-8' }).stdout ?? '';
   const paths = out.split('\n').filter(Boolean).map((l) => l.slice(3).trim().split(' -> ').pop()!);
-  const packages = [...new Set(paths.map(packageOf))].filter((p) => p !== null);
+  const packages = [...new Set(paths.flatMap(packagesFor))];
   return { packages, elsewhere: paths.filter((p) => packageOf(p) === null) };
 }
 
