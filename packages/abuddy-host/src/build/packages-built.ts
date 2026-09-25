@@ -169,9 +169,15 @@ export function inputFiles(target: string, out: string[] = []): string[] {
  * narrower question than "did these bytes change" — the API report stamp asks "could these declarations
  * have changed a report", and a doc comment's prose cannot.
  */
-export function fingerprintInputs(inputs: readonly string[], normalise?: (contents: Buffer, file: string) => Buffer | string): string {
+export function fingerprintInputs(
+  inputs: readonly string[],
+  normalise?: (contents: Buffer, file: string) => Buffer | string,
+  exclude: readonly string[] = [],
+): string {
   const hash = createHash('sha256');
-  for (const file of [...new Set(inputs.flatMap((target) => inputFiles(target)))].sort()) {
+  const excluded = exclude.map((target) => path.relative(REPO_ROOT, target));
+  const isExcluded = (file: string): boolean => excluded.some((out) => file === out || file.startsWith(`${out}/`));
+  for (const file of [...new Set(inputs.flatMap((target) => inputFiles(target)))].sort().filter((f) => !isExcluded(f))) {
     // A file that goes between the walk and the read hashes as absent, never as empty
     let contents: Buffer | null = null;
     try {
@@ -197,7 +203,14 @@ export function fingerprintUnit(unit: BuildUnit): string {
   return createHash('sha256')
     .update(declared.join('\0'))
     .update('\0')
-    .update(fingerprintInputs(unit.inputs))
+    // A unit's own output is never its own input, however broadly its inputs are declared. Two steps
+    // declare a whole tree and then write into it — `compile` writes `src/__generated__` under the `src`
+    // it reads, and the fixture-pack check writes each pack's `dist` under the `tests/fixtures` it reads —
+    // which makes them self-invalidating the moment their build stops being byte-identical. Both were
+    // surviving on the builds happening to be deterministic, and the pack build is already known not to be
+    // (two lines of `Omit<…>` union ordering). Excluding self-output here means declaring `outputs`
+    // honestly is the whole fix, rather than every such step needing its inputs hand-narrowed.
+    .update(fingerprintInputs(unit.inputs, undefined, unit.outputs))
     .digest('hex');
 }
 

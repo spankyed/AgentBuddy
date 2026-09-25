@@ -167,6 +167,27 @@ describe('the stamp protocol', () => {
 });
 
 describe('the input fingerprint', () => {
+  // A unit's own output is never its own input, however broadly its inputs are declared. Two chain steps
+  // declare a whole tree and then write into it — `compile` writes `src/__generated__` under the `src` it
+  // reads, the fixture-pack check writes each pack's `dist` under the `tests/fixtures` it reads — and both
+  // were self-invalidating in waiting: the only thing keeping them cached was those builds happening to be
+  // byte-identical, and the pack build already is not (union ordering in its emitted declarations).
+  it('ignores a change under the unit\'s own output, and still sees one under its inputs', () => {
+    const f = fixture();
+    // The output tree sits inside the input tree, which is the shape that caused this
+    const nested = path.join(f.src, 'generated');
+    fs.mkdirSync(nested, { recursive: true });
+    fs.writeFileSync(path.join(nested, 'emitted.ts'), 'export const emitted = 1;\n');
+    const unit = { inputs: f.unit.inputs, outputs: [...f.unit.outputs, nested] };
+
+    const before = fingerprintUnit(unit);
+    fs.writeFileSync(path.join(nested, 'emitted.ts'), 'export const emitted = 2;\n');
+    expect(fingerprintUnit(unit), 'its own output moved the fingerprint').toBe(before);
+
+    fs.writeFileSync(path.join(f.src, 'a.ts'), 'export const a = 99;\n');
+    expect(fingerprintUnit(unit), 'a real input stopped being seen').not.toBe(before);
+  });
+
   it('changes when a watched file changes', () => {
     const f = fixture();
     const before = fingerprintInputs(f.unit.inputs);
