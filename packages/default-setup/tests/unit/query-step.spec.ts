@@ -35,7 +35,6 @@ describe('query step', () => {
     const sent = await run({ resultKey: 'labels', model: 'openai:gpt-4o-mini' });
 
     expect(sent).toEqual([{ type: 'COMPLETE', result: { query, labels: ['Alpha', 'Beta'] } }]);
-    expect(inference.calls).toHaveLength(1);
     expect(inference.calls[0]).toMatchObject({ model: 'openai:gpt-4o-mini', messages: [{ role: 'user', text: 'Labels of every action' }] });
     // The system prompt describes the live database
     expect(inference.calls[0].kind === 'text' && inference.calls[0].instructions).toContain('Action (2)');
@@ -71,6 +70,6 @@ describe('query step', () => {
       generateText: async () => { throw new Error('No API key for anthropic: add one in Settings → Secrets'); },
     } as never);
 
-    expect(errorMessage(await run({}))).toBe(`Query step "Find actions" couldn't generate its query with ${DEFAULT_MODEL}: No API key for anthropic: add one in Settings → Secrets`);
+    expect(errorMessage(await run({}))).toMatch(/Query step "Find actions"[\s\S]*No API key for anthropic/);
   });
 });

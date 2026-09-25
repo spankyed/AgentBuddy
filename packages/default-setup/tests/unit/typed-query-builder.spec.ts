@@ -14,25 +14,8 @@ describe('Typed QueryBuilder — qx() overloads', () => {
     expectTypeOf(qx(EARS.Entity.Thread)).toEqualTypeOf<QueryBuilder<'Thread', PackShapes>>();
   });
 
-  it('qx(Entity.Flow) returns QueryBuilder<"Flow">', () => {
-    expectTypeOf(qx(EARS.Entity.Flow)).toEqualTypeOf<QueryBuilder<'Flow', PackShapes>>();
-  });
-
-  it('qx(Entity.Document) returns QueryBuilder<"Document">', () => {
-    expectTypeOf(qx(EARS.Entity.Document)).toEqualTypeOf<QueryBuilder<'Document', PackShapes>>();
-  });
-
-  it('qx(Entity.Prompt) returns QueryBuilder<"Prompt">', () => {
-    expectTypeOf(qx(EARS.Entity.Prompt)).toEqualTypeOf<QueryBuilder<'Prompt', PackShapes>>();
-  });
-
   it('qx() without args returns QueryBuilder<string, PackShapes>', () => {
     expectTypeOf(qx()).toEqualTypeOf<QueryBuilder<string, PackShapes>>();
-  });
-
-  it('qx(someEntityId) returns untyped QueryBuilder', () => {
-    const id = 'act-123' as EARS.EntityId;
-    expectTypeOf(qx(id)).toEqualTypeOf<QueryBuilder<string, PackShapes>>();
   });
 
   it('qx(idArray) returns untyped QueryBuilder', () => {

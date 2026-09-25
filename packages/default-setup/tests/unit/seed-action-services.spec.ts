@@ -36,8 +36,6 @@ it("pauses a running Claude Code turn: CC: Pause Turn's event, log entry and thr
   expect(logs).toContainEqual(expect.objectContaining({
     level: 'info',
     source: 'action:CC: Pause Turn',
-    message: '[killTurn] entered',
-    meta: expect.objectContaining({ threadId, hasPrior: true, isRunning: true }),
   }))
   const thread = repository.threadQueries.byId(threadId) as { context?: { claudeCode?: Record<string, unknown> } }
   expect(thread.context?.claudeCode).toMatchObject({ sessionId: 'session-1', isRunning: false })

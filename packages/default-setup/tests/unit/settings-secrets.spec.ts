@@ -48,7 +48,7 @@ describe('settings and stored API keys', () => {
     expect(births()).toBe(1);
   });
 
-  it('keeps CLI path overrides in the code plugin settings, cleared from the cache when they change', async () => {
+  it("stores a CLI path override on the code plugin's settings", async () => {
     const app = await startApp({ systems: ['host/settings'] });
     await app.connect();
     await app.send('host/settings', { type: 'UPDATE_SETTINGS', entityType: 'plugin', label: 'default-setup/code', path: ['cliPaths'], value: { gh: '/opt/bin/gh' } });

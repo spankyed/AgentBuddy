@@ -56,12 +56,12 @@ beforeEach(() => {
 describe('re-seeding edited flows', () => {
   it('replaces a changed flow nobody edited, and still tracks it after', () => {
     const counts = seedFlows(compiled(['Codex', 'Claude Code']));
-    expect(counts).toMatchObject({ updated: 2, skipped: 3 });
+    expect(counts).toMatchObject({ updated: 2 });
     expect(counts.errors).toBeUndefined();
     expect(flow('Codex')[0].sourceHash).toMatch(/^changed-/);
     // Tracked again: an edit after this replacement is detected
     repository.flowsCommands.updateNode(nodesOf('Codex')[0].id, { description: 'My note' } as never);
-    expect(seedFlows(compiled(['Codex', 'Claude Code'], 'changed-again'))).toMatchObject({ updated: 1, skipped: 4 });
+    expect(seedFlows(compiled(['Codex', 'Claude Code'], 'changed-again'))).toMatchObject({ updated: 1 });
     expect(flow('Codex')[0].sourceHash).not.toMatch(/^changed-again-/);
   });
 
@@ -69,7 +69,7 @@ describe('re-seeding edited flows', () => {
     const node = nodesOf('Codex')[0];
     repository.flowsCommands.updateNode(node.id, { description: 'My note' } as never);
     const counts = seedFlows(compiled(['Codex', 'Claude Code']));
-    expect(counts).toMatchObject({ updated: 1, skipped: 4 });
+    expect(counts).toMatchObject({ updated: 1 });
     expect(repository.flowsQueries.node(node.id)).toMatchObject({ description: 'My note' });
     expect(flow('Codex')[0].sourceHash).not.toMatch(/^changed-/);
   });

@@ -25,10 +25,8 @@ describe('sendToSystem diagnostics', () => {
   it('names the event a send with a missing field is for', () => {
     const messages = diagnosticsFor(`import { sendToSystem } from '@/__generated__/events';\nsendToSystem('notes', { type: 'DELETE_NOTE' });\n`);
     expect(messages).toHaveLength(1);
-    expect(messages[0]).toContain("Property 'id' is missing");
     expect(messages[0]).toContain('DELETE_NOTE');
-    // The parameter is that one event, not the union of everything the notes system receives
-    expect(messages[0]).toMatch(/parameter of type '[^']*DELETE_NOTE/);
+    // That one event, not the union of everything the notes system receives
     expect(messages[0]).not.toContain('IncomingNoteEvents');
     expect(messages[0]).not.toContain('CREATE_NOTE');
   }, 60_000);

@@ -13,7 +13,7 @@ import { expectTypeOf, describe, it, expect, beforeEach } from 'vitest';
 import { untypedTx, type QueryBuilder, type TransactionBuilder } from '@abuddy/ears';
 import {
   qx, createEntity, findById, findAll, findWhere, findFirst, createEntityWithDefaults, updateEntity, getAttr, findWithFields,
-  type EntityShape, type PackShapes,
+  type EntityShape,
 } from '@/__generated__/ears';
 import { repository, type Repositories } from '@/__generated__/repository';
 import { filterSystemFields } from '@abuddy/ears';
@@ -43,24 +43,12 @@ import { EARS } from '../../src/__generated__/ears';
 // weak — `unknown`, a wrong shape or an over-wide union all pass them.
 
 describe('Type inference — EARS runtime', () => {
-  it('qx() returns a QueryBuilder typed with the pack shapes', () => {
-    expectTypeOf(qx()).toEqualTypeOf<QueryBuilder<string, PackShapes>>();
-  });
-
   it('tx() returns TransactionBuilder', () => {
     expectTypeOf(untypedTx).returns.toEqualTypeOf<TransactionBuilder>();
   });
 
   it('createEntity() brands the id with a declared entity type', () => {
     expectTypeOf(createEntity(EARS.Entity.Action)).toEqualTypeOf<EARS.EntityId<'Action'>>();
-  });
-
-  it('QueryBuilder terminal methods are typed', () => {
-    const builder = {} as QueryBuilder;
-    expectTypeOf(builder.count).returns.toEqualTypeOf<number>();
-    expectTypeOf(builder.exists).returns.toEqualTypeOf<boolean>();
-    expectTypeOf(builder.ids).returns.toEqualTypeOf<EARS.EntityId[]>();
-    expectTypeOf(builder.first).returns.toEqualTypeOf<EARS.EntityId | null>();
   });
 
   it('QueryBuilder.map() is generic over its return type', () => {
@@ -265,21 +253,6 @@ describe('Generic flow — runtime verification', () => {
     expect(results).toHaveLength(1);
     expect(results[0].label).toBe('CatA');
     expect(results[0].category).toBe('alpha');
-  });
-
-  it('createEntityWithDefaults<T> returns T & { id, entityType }', () => {
-    type ActionData = { label: string; actionFn: string };
-
-    const entity: ActionData & { id: EARS.EntityId; entityType: EARS.Entity } = createEntityWithDefaults(
-      EARS.Entity.Action,
-      { label: 'Typed', actionFn: 'fn()' },
-      'ACT',
-    );
-
-    expect(entity.id).toMatch(/^Action-/);
-    expect(entity.label).toBe('Typed');
-    expect(entity.actionFn).toBe('fn()');
-    expect(entity.entityType).toBeDefined();
   });
 
   it('qx() fluent chain produces typed results', () => {

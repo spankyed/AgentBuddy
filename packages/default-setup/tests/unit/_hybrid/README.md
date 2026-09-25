@@ -4,8 +4,7 @@ Tests that call default-setup's repositories and backend modules directly, witho
 
 | Spec | Covers | Imports |
 |---|---|---|
-| `actions-export.spec.ts` | `exportActions`: exported fields and metadata, directory creation, an empty export, export → re-import round trip | `repository` (`@/__generated__/repository`), `@/features/actions/be/repository` (a side-effect import that registers nothing: the repositories come from the pack's registration), `@/features/actions/be/repository/export-actions`, `helpers/action-fixtures.ts` |
-| `prompts-export.spec.ts` | `exportPrompts`: the same cases for prompts | `repository`, `@/features/prompts/be/repository`, `@/features/prompts/be/repository/export-prompts`, `helpers/prompt-fixtures.ts` |
+| `export-round-trip.spec.ts` | `exportActions` and `exportPrompts` as one suite over both entity types: exported fields and metadata, directory creation, an empty export, export → re-import round trip. The entity's portable fields are the parameter | `repository` (`@/__generated__/repository`), `@/features/{actions,prompts}/be/repository/export-{actions,prompts}`, `helpers/{action,prompt}-fixtures.ts` |
 | `flows-repository.spec.ts` | Flow node validation: schedule cron expressions on create and update, draft nodes of other types | `RepositoryErrorCode` (`@abuddy/ears`), `repository`, `@/features/flows/be/repository` |
 | `brain-trigger-dedupe.spec.ts` | `dedupeMatchingTriggerNodes`: duplicate track keys dropped with a warning, nodes without a track key and parallel tracks kept | `@/features/brain/be/trigger-dedupe`, `EARS` (`@/__generated__/ears`) |
 

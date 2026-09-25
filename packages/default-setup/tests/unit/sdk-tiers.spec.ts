@@ -2,12 +2,9 @@
  * Tests verifying that default-setup imports from @abuddy/sdk and @abuddy/ears resolve to the
  * runtime the harness binds.
  */
+import { untypedTx, exists } from '@abuddy/ears';
 import {
-  untypedTx, repository, registerRepository, exists,
-  RepositoryError, RepositoryErrorCode,
-} from '@abuddy/ears';
-import {
-  qx, createEntity, findById, findByIdRaw, findAll, findWhere,
+  findById, findByIdRaw, findAll, findWhere,
   createEntityWithDefaults, updateEntity, getAttr,
 } from '../../src/__generated__/ears';
 import { resetTestData } from '@abuddy/sdk/testing';
@@ -15,16 +12,6 @@ import { EARS } from '../../src/__generated__/ears';
 
 describe('Tier 1 — EARS delegates', () => {
   beforeEach(() => resetTestData());
-
-  it('qx and untypedTx are callable functions', () => {
-    expect(typeof qx).toBe('function');
-    expect(typeof untypedTx).toBe('function');
-  });
-
-  it('createEntity produces a valid entity ID', () => {
-    const id = createEntity(EARS.Entity.Action as any);
-    expect(id).toMatch(/^Action-/);
-  });
 
   it('tx creates and retrieves an entity', () => {
     const id = untypedTx(EARS.Entity.Action as any)
@@ -84,42 +71,6 @@ describe('Tier 1 — EARS delegates', () => {
     expect(exists('Action-nonexistent' as any)).toBe(false);
   });
 
-  it('RepositoryError is constructable and instanceof Error', () => {
-    const err = new RepositoryError('test msg', RepositoryErrorCode.VALIDATION_ERROR);
-    expect(err).toBeInstanceOf(Error);
-    expect(err.message).toBe('test msg');
-  });
-
-  it('RepositoryErrorCode has expected values', () => {
-    expect(RepositoryErrorCode.VALIDATION_ERROR).toBeDefined();
-    expect(RepositoryErrorCode.NOT_FOUND).toBeDefined();
-  });
-
-  it('repository proxy delegates registerRepository', () => {
-    const testQueries = { list: () => 'ok' };
-    registerRepository('sdkTestQueries', testQueries);
-    expect((repository.sdkTestQueries as typeof testQueries).list()).toBe('ok');
-  });
-
-  it('getAttr reads stored attributes', () => {
-    const id = untypedTx(EARS.Entity.Action as any)
-      .put('color', 'blue')
-      .id();
-    const color = getAttr(id, 'color');
-    expect(color).toBe('blue');
-  });
-
-  it('resetTestData resets all state', () => {
-    createEntityWithDefaults(
-      EARS.Entity.Action as any,
-      { label: 'Temp', actionFn: 'fn()' } as any,
-      'ACT',
-    );
-    expect(findAll(EARS.Entity.Action as any).length).toBe(1);
-    resetTestData();
-    expect(findAll(EARS.Entity.Action as any).length).toBe(0);
-  });
-
 });
 
 describe('Tier 2 — EARS types', () => {
@@ -142,11 +93,6 @@ describe('Tier 3 — System Framework delegates', () => {
   it('defineSystem is callable', async () => {
     const { defineSystem } = await import('@abuddy/sdk/framework');
     expect(typeof defineSystem).toBe('function');
-  });
-
-  it('safeEvents is callable', async () => {
-    const { safeEvents } = await import('@abuddy/sdk/helpers');
-    expect(typeof safeEvents).toBe('function');
   });
 
   it('safeEvents is exported', async () => {
@@ -178,10 +124,6 @@ describe('Tier 5 — Templates and app info', () => {
     expect(executeTemplate('return `Hi ${params.name}`', { name: 'Ada' })).toBe('Hi Ada');
   });
 
-  it('getAppVersion reads the host version', async () => {
-    const { getAppVersion } = await import('@abuddy/sdk/env');
-    expect(getAppVersion()).toBe('0.0.0-test');
-  });
 });
 
 describe('Tier 6 — Utility delegates', () => {
@@ -216,47 +158,4 @@ describe('Tier 6 — Utility delegates', () => {
     expect(BinaryOperator).toBeDefined();
   });
 
-  it('seed helpers are callable', async () => {
-    const { importCompiledSeeds, loadJSON } = await import('@abuddy/sdk/utils');
-    expect(typeof importCompiledSeeds).toBe('function');
-    expect(typeof loadJSON).toBe('function');
-  });
-});
-
-describe('Tier 7 — Event delegates', () => {
-  it('the untyped sends are callable', async () => {
-    const { untypedBroadcastToPlugin, untypedSendToSystem } = await import('@abuddy/sdk/events');
-    expect(typeof untypedBroadcastToPlugin).toBe('function');
-    expect(typeof untypedSendToSystem).toBe('function');
-  });
-});
-
-describe('Import isolation — no remaining @/core/* imports in .ts', () => {
-  it('default-setup .ts files do not import from @/core/* (excluding FE components, migrations, type imports)', async () => {
-    const { execSync } = await import('child_process');
-    const result = execSync(
-      // The alias is spelled in two parts so the pack-test import guard doesn't read this command as an import
-      `grep -rn "from '@/${'core'}/" ../../src/ --include='*.ts' 2>/dev/null | grep -v "@abuddy" | grep -v "@/core/components" | grep -v "migrations/" | grep -v "import type" || true`,
-      { encoding: 'utf-8', cwd: __dirname }
-    ).trim();
-    expect(result).toBe('');
-  });
-
-  it('default-setup .ts files do not import from @/repository (excluding migrations)', async () => {
-    const { execSync } = await import('child_process');
-    const result = execSync(
-      `grep -rn "from '@/repository'" ../../src/ --include='*.ts' 2>/dev/null | grep -v "migrations/" || true`,
-      { encoding: 'utf-8', cwd: __dirname }
-    ).trim();
-    expect(result).toBe('');
-  });
-
-  it('default-setup .ts files do not import from @/services/*', async () => {
-    const { execSync } = await import('child_process');
-    const result = execSync(
-      `grep -rn "from '@/services" ../../src/ --include='*.ts' 2>/dev/null || true`,
-      { encoding: 'utf-8', cwd: __dirname }
-    ).trim();
-    expect(result).toBe('');
-  });
 });

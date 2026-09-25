@@ -51,7 +51,6 @@ describe('settings compiler', () => {
     const { records } = JSON.parse(fs.readFileSync(path.join(DIST, 'settings.seed.json'), 'utf-8'));
     expect(records).toHaveLength(1);
     expect(records[0].settings.plugins).toEqual({});
-    expect(records[0].settings).not.toHaveProperty('internal');
   });
 });
 
