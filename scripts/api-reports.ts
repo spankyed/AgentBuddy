@@ -9,6 +9,7 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { Extractor, ExtractorConfig, ExtractorLogLevel } from '@microsoft/api-extractor';
 import { componentContracts, type ComponentEntry } from './component-contracts.ts';
+import { reportEntries, reportName } from './lib/api-entries.ts';
 
 const pkgDir = path.resolve(process.argv[2] ?? '');
 const local = process.argv.includes('--local');
@@ -18,16 +19,13 @@ const reportFolder = path.join(pkgDir, 'etc');
 
 /** Exports with declarations: [subpath, declaration file in .temp/api-types] */
 function entries(): [string, string][] {
-  return Object.entries(pkg.exports as Record<string, unknown>).flatMap(([key, target]) => {
-    if (typeof target !== 'object' || target === null || !('types' in target)) return [];
-    const source = (target as Record<string, unknown>)['@abuddy/source'] as string;
+  return reportEntries(pkg as { exports?: Record<string, unknown> }).map((key) => {
+    const source = ((pkg.exports as Record<string, Record<string, unknown>>)[key])['@abuddy/source'] as string;
     const rel = source.replace(/^\.\/src\//, '');
     const declaration = rel.endsWith('.vue') ? `${rel}.d.ts` : rel.replace(/\.ts$/, '.d.ts');
-    return [[key, path.join(typesDir, declaration)]];
+    return [key, path.join(typesDir, declaration)];
   });
 }
-
-const reportName = (key: string) => `${key === '.' ? 'index' : key.slice(2).replaceAll('/', '.')}.api.md`;
 
 fs.mkdirSync(reportFolder, { recursive: true });
 let failed = 0;

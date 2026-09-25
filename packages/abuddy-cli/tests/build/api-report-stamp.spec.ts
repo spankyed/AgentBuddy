@@ -192,3 +192,56 @@ describe('the API report staleness gate', () => {
     });
   });
 });
+
+describe('the entry set is part of what the stamp records', () => {
+  /** Give a fixture package an exports map; only entries declaring `types` get a report */
+  const withExports = (dir: string, exports: Record<string, unknown>): void => {
+    const manifest = path.join(dir, 'package.json');
+    const pkgJson = JSON.parse(fs.readFileSync(manifest, 'utf-8')) as Record<string, unknown>;
+    fs.writeFileSync(manifest, JSON.stringify({ ...pkgJson, exports }));
+  };
+
+  // A report is one per entry, so adding an entry adds a report that does not exist yet while no
+  // declaration moves. The stamp used to say "match" there, and api:check refused — which is the one
+  // thing a matching stamp promises cannot happen.
+  it('goes stale when an export is added, though no declaration changed', () => {
+    const root = tempDir();
+    const dir = pkg(root, '@abuddy/one', { 'index.d.ts': 'export declare const a: number;\n' });
+    withExports(dir, { '.': { types: './dist/index.d.ts', '@abuddy/source': './src/index.ts' } });
+    stamp(dir);
+    expect(staleReason(dir)).toBeNull();
+
+    withExports(dir, {
+      '.': { types: './dist/index.d.ts', '@abuddy/source': './src/index.ts' },
+      './packs': { types: './dist/index.d.ts', '@abuddy/source': './src/index.ts' },
+    });
+    expect(staleReason(dir)).toMatch(/published entries changed/);
+  });
+
+  it('goes stale when an export is removed, so an orphaned report is not left behind', () => {
+    const root = tempDir();
+    const dir = pkg(root, '@abuddy/one', { 'index.d.ts': 'export declare const a: number;\n' });
+    withExports(dir, {
+      '.': { types: './dist/index.d.ts', '@abuddy/source': './src/index.ts' },
+      './fe': { types: './dist/index.d.ts', '@abuddy/source': './src/index.ts' },
+    });
+    stamp(dir);
+
+    withExports(dir, { '.': { types: './dist/index.d.ts', '@abuddy/source': './src/index.ts' } });
+    expect(staleReason(dir)).toMatch(/published entries changed/);
+  });
+
+  // An entry with no `types` gets no report, so it is not an input to one
+  it('ignores an export that declares no types', () => {
+    const root = tempDir();
+    const dir = pkg(root, '@abuddy/one', { 'index.d.ts': 'export declare const a: number;\n' });
+    withExports(dir, { '.': { types: './dist/index.d.ts', '@abuddy/source': './src/index.ts' } });
+    stamp(dir);
+
+    withExports(dir, {
+      '.': { types: './dist/index.d.ts', '@abuddy/source': './src/index.ts' },
+      './styles.css': './dist/styles.css',
+    });
+    expect(staleReason(dir)).toBeNull();
+  });
+});

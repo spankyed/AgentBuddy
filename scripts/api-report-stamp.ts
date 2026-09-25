@@ -50,6 +50,8 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { fingerprintInputs } from '@abuddy/host/build/packages-built';
+import { createHash } from 'node:crypto';
+import { reportEntries, reportName } from './lib/api-entries.ts';
 
 /** The file recording the fingerprint the committed reports were generated from */
 export const stampFile = (pkgDir: string): string => path.join(pkgDir, 'etc', 'declarations.sha256');
@@ -152,9 +154,25 @@ export function declarationFingerprints(pkgDir: string): Array<{ name: string; h
   }));
 }
 
-/** The stamp file's contents: one `<name> <hash>` line per contributing package */
+/**
+ * The row that records *which* reports exist, beside the rows recording what they were generated from.
+ *
+ * A report is one per entry, so the set of entries is an input to the reports exactly as the declarations
+ * are. Leaving it out is what let `./packs` be added to a map, pass this check, and be refused by
+ * `api:check` for want of a report — the one thing this check promises cannot happen.
+ */
+const ENTRIES_ROW = '#entries';
+
+function entriesFingerprint(pkgDir: string): string {
+  const pkg = JSON.parse(fs.readFileSync(path.join(pkgDir, 'package.json'), 'utf-8')) as { exports?: Record<string, unknown> };
+  const names = reportEntries(pkg).map(reportName).sort();
+  return createHash('sha256').update(names.join('\n')).digest('hex');
+}
+
+/** The stamp file's contents: one `<name> <hash>` line per contributing package, plus the entry set */
 export function declarationStamp(pkgDir: string): string {
-  return declarationFingerprints(pkgDir).map(({ name, hash }) => `${name} ${hash}`).join('\n') + '\n';
+  const rows = declarationFingerprints(pkgDir).map(({ name, hash }) => `${name} ${hash}`);
+  return [...rows, `${ENTRIES_ROW} ${entriesFingerprint(pkgDir)}`].join('\n') + '\n';
 }
 
 function parseStamp(contents: string): Map<string, string> {
@@ -178,6 +196,13 @@ export function staleReason(pkgDir: string): string | null {
   // A stamp from before this recorded one hash and no names: it says nothing about which package moved,
   // so it is treated as no stamp rather than guessed at
   if (recorded.size === 0) return `${path.basename(stampFile(pkgDir))} predates per-package stamps; run npm run api:update`;
+
+  // A stamp written before the entry set was an input says nothing about it, so it is stale for that
+  // reason rather than silently passing on the input it does not carry
+  if (!recorded.has(ENTRIES_ROW)) return `${path.basename(stampFile(pkgDir))} predates the entry set; run npm run api:update`;
+  if (recorded.get(ENTRIES_ROW) !== entriesFingerprint(pkgDir)) {
+    return 'its published entries changed, so a report is missing or orphaned; run npm run api:update';
+  }
 
   const current = declarationFingerprints(pkgDir);
   const moved = current.filter(({ name, hash }) => recorded.get(name) !== hash).map(({ name }) => name);
