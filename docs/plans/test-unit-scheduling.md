@@ -121,13 +121,81 @@ for `node:child_process` imports. This is a **pre-existing** second instance of 
 `cli-suite-spawns-rebase.md` §3.1, not one that branch creates, and it argues for making the predicate
 cost-based rather than mechanism-based.
 
+## What `goal-test-tiers.md` landed first, and what it means here
+
+Phases 4 to 6 of that goal landed on `AS/chain-inputs` before this plan starts. Three of its results are
+inputs to Lever 1, and one of them pulls against it.
+
+### The chain runs `test:unit` as eight steps, and this plan should collapse them
+
+Phase 5 split `test:unit` into one chain step per package (`test:unit:<dir>` in `scripts/lib/chain-steps.ts`,
+with matching root scripts), so a one-package edit re-runs one suite instead of eight. Each step runs
+`npm test -w <pkg>`, so **the chain now starts eight vitest processes** — eight job pools, which is the
+ceiling this plan exists to remove. The two pull in opposite directions and Lever 1 wins on the measurement:
+what the split actually buys is the per-package *cache key*, not the per-package *process*.
+
+Both properties survive in one shape:
+
+> One `test:unit` chain step that reads the per-package fingerprints, decides which projects are stale, and
+> runs one root vitest with `--project` for just those.
+
+That keeps a renderer edit running only the renderer project while leaving one pool and one `--maxWorkers`.
+`stampedRun` already writes one stamp per name, so N stamps under one step is an extension rather than a
+redesign, and the step's `needs` collapse to `compile`. The eight steps are generated from `UNIT_SUITES` in a
+single `.map()`, and no guard hardcodes eight — the specs in
+`packages/abuddy-cli/tests/build/chain-inputs.integration.spec.ts` iterate `UNIT_SUITES` and `SUITE_READS` —
+so the collapse is local to that map and the chain step table.
+
+### `projects` should derive from `UNIT_SUITES` rather than repeat it
+
+`scripts/lib/unit-suites.ts` already holds the eight workspaces and their directories, shared by
+`scripts/test-unit.ts` and the chain table so the two cannot disagree. Extending `projects` from 4 to 8 by
+hand would make a third copy of that list; deriving it is the same work and cannot drift. Lever 1's "extend
+`projects` from 4 to 8" is then a one-line map.
+
+### Which projects are stale is already computed
+
+`workspaceDeps` and `SUITE_READS` (`scripts/lib/chain-steps.ts`) give each suite its inputs: its own
+workspace, its dependencies' source read from its `package.json`, and the build output it reads. That is
+exactly the input a `--project` filter needs, and `npm run chain --dry` prints the answer without running
+anything.
+
+### What a suite reads cannot be scanned for — it was measured
+
+`@app/api`'s suite reads the built-in pack's `dist`, and no spec of its names that path: they boot the app
+runtime and host code resolves it. Declaring it independent let it run beside `compile` under three lanes,
+where it failed on a missing `settings.seed.json` after passing serially forever. `@abuddy/host` is the
+inverse — `sdk-bridge-drift.spec.ts` reads `dist/runtime/index.cjs` but *skips* when it is absent, so it
+passes without the pack and would pass vacuously in a race.
+
+Under one root run this matters less, because the whole step waits for `compile`. It matters for this plan
+anyway: a per-project staleness filter is a claim about what each project reads, and the only method that
+answers it is running each suite with the tree moved aside. That method, and its 2026-09-25 result, are
+recorded in `SUITE_READS`' doc comment.
+
+### The chain's lane default is 2, measured against today's step shape
+
+Phase 6 added a lane-limited scheduler over the chain's DAG. Measured cold on an idle machine: serial 306.9s,
+two lanes 194.0s (+11% total work), three lanes 202.7s (+55% total work) with one of two runs failing. So the
+default is two.
+
+**That number is against a `test:unit` that is eight suites.** After Lever 1 it becomes one ~13s step using
+every core, and running it beside `typecheck` is a different contention problem — so the lane default is due
+for re-measurement here, not a settled constant. Decision 11 of the goal (cache before parallelism) is why
+the caching landed first; this plan is the second half of Decision 6, and the lane count is the seam between
+them.
+
 ## Relation to the other plans
 
 - `goal-test-tiers.md` Decision 6 (one owner of concurrency) is what Lever 1 implements; Decision 11 (cache
   before parallelism) still holds, because this is not parallelism-by-lanes — it is removing a second
   scheduler.
 - Phase 8's per-tier timeouts are unblocked by the same change: per-project config is where a tier budget can
-  finally be expressed. `generate-entries.spec.ts` is also the file whose 5.2s test against vitest's 5s
-  default caps lanes at two today, so it is implicated twice.
+  finally be expressed. `generate-entries.spec.ts` is one of the files whose margin against vitest's 5s
+  default caps lanes today — **not the only one**, so Lever 3 should not be credited with lifting that cap.
+  Measured 2026-09-25 on a three-lane chain run: the failure was `findLmdbImports > holds for the repo` in
+  `@abuddy/cli` at 5220ms, a whole-repo scan that takes ~2s alone. Two thin-margin whole-repo scans in two
+  different suites is the "class of thin margins, not one test" already recorded in `scripts/test-unit.ts`,
+  where raising one suite's timeout moved the failure to another suite.
 - `cli-suite-spawns-rebase.md` is independent: its conversions live in the integration half, which
   `test:unit` does not run.

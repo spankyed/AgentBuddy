@@ -33,6 +33,7 @@
 import * as path from 'node:path';
 import { REPO_ROOT, stampedRun, unitStaleReason, type BuildUnit } from '@abuddy/host/build/packages-built';
 import { CHAIN_STEPS, orderedSteps, type ChainStep, type Tier } from './lib/chain-steps.ts';
+import { criticalPath, schedule } from './lib/chain-schedule.ts';
 import { boundedSpawn, budgetFor } from './lib/bounded-spawn.ts';
 
 /**
@@ -98,6 +99,32 @@ async function runAndStamp(step: ChainStep): Promise<Result> {
   return result!;
 }
 
+
+/**
+ * How many steps may run at once. **Two, measured cold on an idle machine (2026-09-25):**
+ *
+ *     lanes 1   306.9s wall   306.9s of step time   passed
+ *     lanes 2   194.0s        339.5s (+11%)         passed, and again at 198.7s and 196.5s, 17 of 17 each
+ *     lanes 3   202.7s        477s   (+55%)         one run of two FAILED
+ *
+ * Three is slower than two *and* not reproducible: the failing run timed out in `findLmdbImports > holds for
+ * the repo` at 5220ms against vitest's 5s default, a whole-repo scan that takes ~2s alone. That is the thin
+ * margin `scripts/test-unit.ts` already records, where raising one suite's timeout moved the failure to
+ * another suite rather than fixing it.
+ *
+ * Unlimited lanes were measured twice before this and were worse than serial (348s to 567s of work), which
+ * is why there is a limit at all rather than a ready queue.
+ *
+ * **Re-measure this when `test:unit` becomes one root vitest run** (`docs/plans/test-unit-scheduling.md`):
+ * two lanes is tuned against eight suite steps, and one step using every core is a different problem.
+ */
+function laneCount(): number {
+  const flag = process.argv.indexOf('--lanes');
+  const value = flag === -1 ? 2 : Number(process.argv[flag + 1]);
+  if (!Number.isInteger(value) || value < 1) throw new Error(`--lanes takes a positive integer, not ${String(process.argv[flag + 1])}`);
+  return value;
+}
+
 async function main(): Promise<void> {
   const started = Date.now();
   const results: Result[] = [];
@@ -112,35 +139,55 @@ async function main(): Promise<void> {
   // Derived from each step's `needs`, and validated first: an unknown dependency or a cycle fails here rather
   // than halfway through a six-minute run
   const steps = orderedSteps();
-  for (const step of steps) {
-    // Asked here, inside the loop, and not for every step up front. A step's inputs include the outputs of
-    // the steps before it, so `compile` is fresh or stale depending on what `packages:ensure` just wrote —
-    // which is the whole reason there is no cascade rule. Hoisting this out of the loop would compute every
-    // verdict against the tree as it was before the chain started, and cache steps against stale inputs.
-    const why = step.cache === false ? 'never cached: it drives real Electron, and a flaky pass cached green hides an intermittent failure' : unitStaleReason(unitFor(step), stampFor(step.name));
-    if (dry) {
-      console.log(`${(why === null ? 'cached' : 'run').padStart(7)} t${step.tier} ${step.name.padEnd(26)} ${why ?? ''}`);
-      continue;
-    }
-    if (!all && step.cache !== false && why === null) {
-      cached++;
-      console.log(` cached t${step.tier} ${step.name}`);
-      continue;
-    }
+  const lanes = laneCount();
 
-    const result = await runAndStamp(step);
-    results.push(result);
-    // TIMEOUT is its own verdict: a step that ran out of budget failed for a different reason than one
-    // that returned non-zero, and which it was is the first thing you need to know.
-    const verdict = result.code === 0 ? 'ok' : result.timedOut ? 'TIMEOUT' : 'FAIL';
-    console.log(`${verdict.padStart(7)} t${step.tier} ${step.name.padEnd(26)} ${secs(result.ms).padStart(6)}  ${all ? '--all' : why}`);
-    if (result.code !== 0) {
-      const why2 = result.timedOut
-        ? `${step.name} timed out: it exceeded its ${secs(budgetFor(step.seconds ?? 300))} budget and its process group was killed. It costs ${step.seconds ?? '?'}s healthy, so either it is wedged or it has grown and the measurement in chain-steps.ts is stale.`
-        : `${step.name} failed (exit ${result.code})`;
-      console.log(`\n${'='.repeat(72)}\n${why2}\n${'='.repeat(72)}\n${result.output}`);
-      break;
+  /** Its verdict, asked at dispatch — see `dispatch` for why that timing is load-bearing */
+  const staleReason = (step: ChainStep): string | null =>
+    step.cache === false
+      ? 'never cached: it drives real Electron, and a flaky pass cached green hides an intermittent failure'
+      : unitStaleReason(unitFor(step), stampFor(step.name));
+
+  if (dry) {
+    for (const step of steps) {
+      const why = staleReason(step);
+      console.log(`${(why === null ? 'cached' : 'run').padStart(7)} t${step.tier} ${step.name.padEnd(26)} ${why ?? ''}`);
     }
+    return;
+  }
+
+  /** The reason a step ran, kept for its line and for the failure report */
+  const reasons = new Map<string, string>();
+  const outcome = await schedule({
+    steps,
+    lanes,
+    skip: (step) => {
+      const why = staleReason(step);
+      if (!all && step.cache !== false && why === null) {
+        cached++;
+        console.log(` cached t${step.tier} ${step.name}`);
+        return true;
+      }
+      reasons.set(step.name, all ? '--all' : (why ?? ''));
+      return false;
+    },
+    run: async (step) => {
+      const result = await runAndStamp(step);
+      results.push(result);
+      // TIMEOUT is its own verdict: a step that ran out of budget failed for a different reason than one
+      // that returned non-zero, and which it was is the first thing you need to know.
+      const verdict = result.code === 0 ? 'ok' : result.timedOut ? 'TIMEOUT' : 'FAIL';
+      console.log(`${verdict.padStart(7)} t${step.tier} ${step.name.padEnd(26)} ${secs(result.ms).padStart(6)}  ${reasons.get(step.name) ?? ''}`);
+      return result.code === 0;
+    },
+  });
+
+  const failed = outcome.failed === undefined ? undefined : results.find((r) => r.step === outcome.failed);
+  if (failed) {
+    const step = steps.find((s) => s.name === failed.step)!;
+    const why = failed.timedOut
+      ? `${step.name} timed out: it exceeded its ${secs(budgetFor(step.seconds ?? 300))} budget and its process group was killed. It costs ${step.seconds ?? '?'}s healthy, so either it is wedged or it has grown and the measurement in chain-steps.ts is stale.`
+      : `${step.name} failed (exit ${failed.code})`;
+    console.log(`\n${'='.repeat(72)}\n${why}\n${'='.repeat(72)}\n${failed.output}`);
   }
 
   // Where the time goes by tier, which is the number the goal's phases move
@@ -150,11 +197,11 @@ async function main(): Promise<void> {
     return `t${t} ${secs(ms)}`;
   }).join('  ');
 
-  if (dry) return;
-
-  const failed = results.find((r) => r.code !== 0);
   const skipped = cached ? `, ${cached} of ${steps.length} cached` : '';
-  console.log(`\n${failed ? `chain FAILED at ${failed.step}` : 'chain passed'} — ${secs(Date.now() - started)}  (${byTier})${skipped}`);
+  const ran = steps.filter((step) => results.some((r) => r.step === step.name));
+  const path = criticalPath(ran);
+  const floor = lanes > 1 && path.names.length > 1 ? `, critical path ${path.seconds}s (${path.names.join(' -> ')})` : '';
+  console.log(`\n${failed ? `chain FAILED at ${failed.step}` : 'chain passed'} — ${secs(Date.now() - started)}  (${byTier})${skipped}${lanes > 1 ? `, ${lanes} lanes` : ''}${floor}`);
   process.exit(failed ? 1 : 0);
 }
 

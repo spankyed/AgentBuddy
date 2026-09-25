@@ -263,6 +263,52 @@ E2E" is a claim about what the steps *write*, which no amount of reading the inp
 checked with `--dry`, passed, and was wrong. A cache is only as good as the claim that steps do not write
 outside their declared outputs, and that claim needs a real run.
 
+### What Phase 6 measured
+
+Cold, on an idle machine, 2026-09-25:
+
+| Lanes | Wall | Step time | Cold runs |
+|---|---|---|---|
+| 1 (serial) | 306.9s | 306.9s | passed |
+| **2** | **194.0s, 198.7s, 196.5s** | 339.5s (+11%) | passed, 17 of 17 each |
+| 3 | 202.7s | 477s (+55%) | one of two **failed** |
+
+Two lanes is a 36% cut and is the default; three is slower than two on wall *and* work, and does not
+reproduce. The critical path is 109s (`packages:ensure -> compile -> build:app -> test:packaged-authoring`)
+and is reported in the summary, so a disappointing run is legible rather than a tuning mystery.
+
+**Why this paid where the earlier attempt did not.** That attempt measured work going 348s to 567s with
+`@abuddy/cli` reporting errors it does not report alone. The limit is not the only difference:
+`test:packaged-authoring` no longer rebuilds the published packages underneath the other steps, `build:app`
+no longer rebuilds the pack, and `test:unit` is eight small steps rather than one large one, so a lane can
+be filled with a 1s suite instead of a 43s block. Three lanes reproduces the old result almost exactly, at
++55% work, which is the evidence that the limit is load-bearing.
+
+**Three lanes fails the way the earlier measurement predicted.** The failing run timed out in
+`findLmdbImports > holds for the repo` at 5220ms against vitest's 5s default — a whole-repo scan that takes
+~2s alone. That is the thin-margin class already recorded in `scripts/test-unit.ts`, where raising one
+suite's timeout moved the failure to another suite. Note for
+[`test-unit-scheduling.md`](../plans/test-unit-scheduling.md): this is a *second* such file, so amortising
+`generate-entries.spec.ts` will not by itself lift the lane cap.
+
+**Parallelism found a bug serial execution structurally could not.** `@app/api`'s suite reads the built-in
+pack's `dist` — host code resolves the path while booting the app runtime — and declared that it read
+nothing. It had passed forever because `compile` always happened to finish first. Given a lane it ran beside
+`compile` and failed on a missing `settings.seed.json` in 16 seconds. The fix is in `SUITE_READS`, along with
+the only method that answers the question: run each suite with the tree moved aside.
+
+**Two of the guards written for these phases could not fail, and both were found by mutation rather than by
+review.** One asserted that a suite declaring `pack: true` also needs `compile` — but `needs` is derived from
+that same table, so the two cannot disagree. The other claimed to prove the scheduler stops dispatching
+after a failure, while every step in its fixture *needed* the failed one and so was never ready; deleting the
+guard it tested kept it green. The first was deleted with a comment saying why, the second rewritten around
+a step that depends on nothing. A mutation check is the only thing that distinguishes these from real tests.
+
+The scheduler itself lives in `scripts/lib/chain-schedule.ts` rather than in `scripts/chain.ts`, for the
+reason `chain-steps.ts` is already separate: that module runs the chain when imported, so nothing in it can
+be tested. A scheduler can leak a lane, run an exclusive step beside another, keep going after a failure or
+simply never return, and a green timing run shows none of it.
+
 ### Industry practices this repo does not follow
 
 Each of these was found in this survey, not taken from a list.

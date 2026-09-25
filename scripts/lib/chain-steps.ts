@@ -177,12 +177,26 @@ const dependencySource = (pkg: string): string[] => [`packages/${pkg}/src`, `pac
 
 /**
  * The unit suites that read build output, and which. Every other suite resolves workspace source through
- * the `@abuddy/source` condition, needs nothing built, and so depends on no step at all — which is what
- * lets five of the eight start while the builds are still running.
+ * the `@abuddy/source` condition and needs nothing built, which is what lets it start beside the builds.
  *
- * Listed rather than derived, because what a spec reads is not visible from a manifest. The drift that
- * matters is one direction — a suite that starts reading build output and keeps getting cache hits against
- * a key that never saw it — and `chain-inputs.integration.spec.ts` scans for exactly that.
+ * **This cannot be derived from the spec sources, and a scan of them is not the authority.** `@app/api`'s
+ * specs never name the pack's `dist`: they boot the app runtime, and host code resolves the path. Declaring
+ * that suite as reading nothing let it run beside `compile` under three lanes, where it failed with
+ * "Missing or unreadable settings.seed.json" — after passing serially forever, because `compile` always
+ * happened to finish first.
+ *
+ * Ground truth comes from running each suite with the tree moved aside, which is repeatable:
+ *
+ *     mv packages/default-setup/dist packages/default-setup/.dist-aside
+ *     for w in <the UNIT_SUITES workspaces>; do npm test -w $w; done
+ *     mv packages/default-setup/.dist-aside packages/default-setup/dist
+ *
+ * Measured 2026-09-25: default-setup, @abuddy/cli and @app/api fail without it; the other five pass.
+ *
+ * `@abuddy/host` is listed anyway, and that is the second thing a scan would get wrong. Its
+ * `sdk-bridge-drift.spec.ts` reads `dist/runtime/index.cjs` but *skips* when it is missing, so it passes
+ * without the pack and would pass vacuously if it raced `compile`. A check that silently stops checking is
+ * worse than one that fails, so its verdict depends on that tree and it declares it.
  */
 export const SUITE_READS: Record<string, { packages?: true; pack?: true }> = {
   // `pretest: ensure-packages-built`, `@abuddy/testing`'s bundle, and its own compiled seeds under `dist/`
@@ -190,8 +204,12 @@ export const SUITE_READS: Record<string, { packages?: true; pack?: true }> = {
   // `pretest: ensure-packages-built`; it packs and installs the published packages, and `dependency-runtime`
   // builds a fixture pack against default-setup's `dist`
   'abuddy-cli': { packages: true, pack: true },
-  // `@abuddy/testing`'s bundle, and `dist/runtime/index.cjs` in `sdk-bridge-drift.spec.ts`
+  // `@abuddy/testing`'s bundle; and `sdk-bridge-drift.spec.ts` reads `dist/runtime/index.cjs` when it is
+  // there and skips when it is not, so the tree decides whether that check checks anything
   'abuddy-host': { packages: true, pack: true },
+  // Boots the app runtime, which loads the built-in pack: `dist/runtime/index.cjs` and `settings.seed.json`.
+  // Named by host code rather than by any spec, which is why it has to be measured rather than scanned.
+  api: { pack: true },
 };
 
 /**

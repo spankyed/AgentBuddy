@@ -77,65 +77,40 @@ describe('the chain reads every source file', () => {
   });
 });
 
-// The one direction of drift that is silent. A unit suite that reads no build output declares no dependency
-// on a build step, so it is cached against its own source alone — correct, right up until one of its specs
-// starts loading `@abuddy/testing`'s bundle or the built-in pack's `dist`. From then on it would keep
-// getting cache hits against a key that never saw what it reads. What a spec reads is not in a manifest, so
-// the list in `chain-steps.ts` is written; this scans for the two markers and fails when it has gone stale.
-describe('unit suites that read build output say so', () => {
+// A suite whose own specs name build output must declare that it reads it. This is deliberately a subset
+// check and not an equality one: a scan of spec text can prove a suite reads the tree, never that it does
+// not. `@app/api`'s specs never name the pack's `dist` — they boot the app runtime and host code resolves
+// the path — so an equality check called it independent, it ran beside `compile` under three lanes, and it
+// failed. `SUITE_READS`' doc comment carries the measurement that is the authority, and the command that
+// reproduces it. What this catches is the cheap half: a spec that starts naming the tree outright.
+describe('a unit suite whose specs name build output declares it', () => {
   const sources = (dir: string): string[] => {
     const root = path.join(REPO_ROOT, 'packages', dir, 'tests');
     return fs.existsSync(root) ? inputFiles(root).map((file) => fs.readFileSync(path.join(REPO_ROOT, file), 'utf-8')) : [];
   };
-  /** Its pretest builds the packages, or a spec loads the one @abuddy package that always resolves its bundle */
   const readsPackages = (dir: string, texts: string[]): boolean => {
     const pretest = (JSON.parse(fs.readFileSync(path.join(REPO_ROOT, 'packages', dir, 'package.json'), 'utf-8')) as
       { scripts?: Record<string, string> }).scripts?.pretest ?? '';
     return pretest.includes('ensure-packages-built') || texts.some((text) => text.includes('@abuddy/testing'));
   };
-  /** A spec reaches into the built-in pack's build output */
   const readsPack = (texts: string[]): boolean =>
     texts.some((text) => /PACK_DIR|default-setup['"`, )\]]*,?\s*['"`]dist|default-setup\/dist/.test(text));
 
-  it.each(UNIT_SUITES.map((suite) => suite.dir))('%s', (dir) => {
-    const texts = sources(dir);
-    const declared = SUITE_READS[dir] ?? {};
-    expect({ packages: readsPackages(dir, texts), pack: readsPack(texts) },
-      `${dir}'s specs and SUITE_READS disagree about what it reads`)
-      .toEqual({ packages: declared.packages === true, pack: declared.pack === true });
-  });
-});
-
-// `inputs` and `needs` are two halves of one claim and nothing made them agree. A step that reads what
-// another step writes has to run after it, and saying so in `inputs` does not say so to `orderedSteps`,
-// which sorts on `needs` alone. Until this was added `test:integration` declared the built-in pack's `dist`
-// and needed only `packages:ensure`: it ran after `compile` because of where it sat in the table, which is
-// not a guarantee. The check is derivable, so it is a check rather than a review note.
-describe('a step that reads another step\'s output depends on it', () => {
-  /** Everything `step` transitively needs */
-  const ancestorsOf = (step: ChainStep, seen = new Set<string>()): Set<string> => {
-    for (const need of step.needs) {
-      if (seen.has(need)) continue;
-      seen.add(need);
-      ancestorsOf(CHAIN_STEPS.find((s) => s.name === need)!, seen);
+  it('leaves none of them undeclared', () => {
+    const undeclared: string[] = [];
+    for (const { dir } of UNIT_SUITES) {
+      const texts = sources(dir);
+      const declared = SUITE_READS[dir] ?? {};
+      if (readsPackages(dir, texts) && declared.packages !== true) undeclared.push(`${dir} reads the built packages`);
+      if (readsPack(texts) && declared.pack !== true) undeclared.push(`${dir} reads the built-in pack's dist`);
     }
-    return seen;
-  };
-
-  it('names it in needs, not only in inputs', () => {
-    const missing: string[] = [];
-    for (const step of CHAIN_STEPS) {
-      const ancestors = ancestorsOf(step);
-      for (const producer of CHAIN_STEPS) {
-        if (producer.name === step.name || ancestors.has(producer.name)) continue;
-        // A declared input that is one of the producer's outputs, or sits under one
-        const read = (producer.outputs ?? []).filter((out) =>
-          step.inputs.some((input) => input === out || input.startsWith(`${out}/`)));
-        if (read.length > 0) missing.push(`${step.name} declares ${read.join(', ')}, which ${producer.name} writes, but does not need it`);
-      }
-    }
-    expect(missing).toEqual([]);
+    expect(undeclared, 'add these to SUITE_READS in scripts/lib/chain-steps.ts').toEqual([]);
   });
+
+  // There is deliberately no check that a declared reader also needs the step that writes what it reads:
+  // `UNIT_STEPS` derives `needs` from this same table, so the two cannot disagree and such a test could
+  // never fail. The declaration is the single point of truth, which is why getting it right is measured.
+
 });
 
 // `build:app` is an enumeration of workspaces, which is the shape that goes stale silently: a workspace that
