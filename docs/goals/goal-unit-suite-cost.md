@@ -3,8 +3,8 @@
 ```
 # Goal: the unit suites cost what they do, not what they wait for
 
-Implement docs/goals/goal-unit-suite-cost.md on a branch cut from AS/test-pipeline, at or after
-c7517e0da — the base its Background was measured at. Read Background, Decisions, Phases and
+Implement docs/goals/goal-unit-suite-cost.md on AS/test-pipeline, at or after c7517e0da — the base
+its Background was measured at. Read Background, Decisions, Phases and
 Constraints first. Decisions are final: implement them, don't reopen them or stop to ask.
 
 Before Phase 1, confirm the base: `npm run test:unit` reports "2 lanes" and finishes in about 43s,

@@ -3,7 +3,7 @@
 ```
 # Goal: a test knows what it needs, so the pipeline can act on it
 
-Implement docs/goals/goal-test-tiers.md on a branch cut from AS/test-pipeline, at or after 0f2d7f04a.
+Implement docs/goals/goal-test-tiers.md on AS/test-pipeline, at or after 0f2d7f04a.
 Phases 1 to 3 are done there. **Not master:** the 23 commits that carry them were moved off it on
 2026-09-24, so a branch cut from master has none of this and nothing below will make sense.
 Before Phase 4, confirm the base: scripts/lib/chain-steps.ts exports CHAIN_STEPS and orderedSteps, every

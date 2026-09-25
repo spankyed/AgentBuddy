@@ -86,6 +86,12 @@ Never:
 Rules for the prompt block:
 - **"Finished when" is the stop condition.** A `/goal` hook checks it, so every item must be checkable from the transcript: a spec passes, a command succeeds, a name no longer exists. **Archiving is one of those items**, which is why the template ends with it: without it a goal can meet every check and still sit in `docs/goals/`, and the Outcome — which nobody writes as they go — never gets written. Thirteen of the archive's first thirty-three goals have no Outcome section for that reason.
 - **Keep the "Never" list.** It's the standing list (git, publishing, real data, processes, preload, example pack, release metadata, typed EARS, shims, assertions) plus the goal's own. Don't list an item in "Never" that a phase requires: if the goal needs something the list normally forbids, say so in the phase and leave it out of the list. A goal once required a step its own "Never" forbade, and the run could not finish.
+- **The block has a 4000-character limit.** `/goal` refuses a longer one, and it refuses it *after* the
+  doc is written, which is the wrong moment to find out. Two docs hit it on the same day (4,317 and 4,572).
+  What is nearly always too long is the "Never" list repeating the standing rules that Constraints already
+  carries: collapse those to one line naming them, and keep only the goal's own prohibitions in full. Put
+  detail that is not an instruction — measurements, what landed since, a check list — in Background or the
+  phase that uses it, and point at it from the block.
 - **Name the base the survey was made at, not the default branch.** Give the branch *and* the commit from the Background header, and check that the names the plan acts on exist there before writing the line. "A branch cut from master" is the reflex answer and is wrong whenever the survey was made on a feature branch: five of the first seven goal docs said it, and at least two described code that has never existed on master, so an agent starting there would have found no Background and no targets. A branch name alone doesn't pin a tree either — branches move, and the commit is what the survey was true at. The confirm-the-base line above turns a wrong base into an immediate stop instead of a confusing run.
 - **Don't instruct a branch to be created.** Where the work lands is the user's call, and a goal doc is read long after the conversation that could have asked. Name the base; leave the branching out.
 - **Name steps that need the user.** If a check depends on something only the user can do (installing dependencies in another repo, approving a data copy), say so in the prompt, so the agent asks instead of looping.
@@ -150,11 +156,13 @@ The standing rules, as prose bullets (the prompt's "Never" list in fuller form),
 ## Keeping the loop fast
 
 A goal is carried out in edit-check cycles, and the check is where the time goes. In this repo the
-narrow checks cost seconds — one spec file, one package's `tsc --noEmit`, one folder of specs,
-`packages:ensure` when nothing is stale — while the full chain costs minutes, most of it in
-`test:unit`, `build`, `api:check` and the E2E, external-pack and packaged-authoring suites. Running
-the chain after every edit is the single easiest way to make a goal take days, and it finds nothing
-the narrow check wouldn't.
+narrow checks cost seconds — one spec file, one package's `tsc --noEmit`, `npm run spec` over what you
+changed, `packages:ensure` when nothing is stale — while the full chain costs about five minutes
+(285.6s measured 2026-09-25), most of it in `test:packaged-authoring` (60s), `test:unit` and
+`test:integration` (43s each), `build` (37s) and `typecheck` (30s). Running the chain after every edit
+is the single easiest way to make a goal take days, and it finds nothing the narrow check wouldn't.
+`api:check` is deliberately not in the chain — `typecheck` runs `api:stamp` in 0.6s instead — so a phase
+that changes a published export runs it itself.
 
 So a goal doc plans its own checks:
 
@@ -166,8 +174,15 @@ So a goal doc plans its own checks:
 - **Slow steps run last, and only when their input changed.** The published API reports, the app
   build and the E2E, external-pack and packaged-authoring suites each have a trigger; a phase that
   doesn't touch that input doesn't run them.
-- **Suites don't run concurrently.** They share the package build lock and the build stamps, so two
-  at once produce failures that are about the race rather than the code.
+- **`test:unit` runs its suites two at a time, and two is the number.** It shares a checkout, which used
+  to mean two suites racing each other's package build; the readers now wait for an in-flight build and
+  the builders wait for the lock rather than failing on it. More lanes is a measured dead end: three
+  measures 44.4s against two lanes' 43s, because a suite already uses 2.0–3.8 of ten cores, and the extra
+  contention pushes tests sitting near vitest's 5s default over it. Run `packages:ensure` once before any
+  fan-out, so the suites' own pretests find nothing to do.
+- **Don't run two suites from two shells to save time.** The locking makes it correct, not fast: the
+  cores are already busy, and a contended measurement is worthless — one produced 249s for what is 182.6s
+  idle here, a 36% error.
 - **A stale build looks like a bug.** When a failure makes no sense, check what the run loads before
   reading the code: a test run against a package's `dist`, or an E2E run against the built app, tests
   what was last built, not what was last edited.
