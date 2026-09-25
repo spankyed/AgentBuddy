@@ -222,3 +222,49 @@ export const tags = ({ path }) => fs.readFileSync(path, 'utf-8').trim().split('\
     expect(read(SEED_INDEX_FILE).seeds).toEqual([{ key: 'theme', seeded: false, count: 1, items: [] }]);
   });
 });
+
+/**
+ * `sourceHash` is what a re-seed compares to decide whether a row changed, so it has to depend on the record's
+ * content and nothing else. The seed-parity goldens used to pin its literal value, which made every cosmetic edit
+ * and every bundler change move them; they now record that a hash is present and this is where the property itself
+ * is checked. Both directions matter: equality alone would still pass if the hash became a constant.
+ *
+ * The fixture's action imports a `_helpers/` module, because an action's hash covers its bundle — that is why
+ * editing one helper re-hashes every action importing it, which is the behaviour the last case pins.
+ */
+describe('sourceHash is content-addressed', () => {
+  const HELPER = "export function shout(s: string) { return s.toUpperCase(); }\n";
+  const ACTION = "import { shout } from './_helpers/shout';\n"
+    + "export const meta = { label: 'Greet', description: 'hi' };\n"
+    + "export async function action() { return shout('hello'); }\n";
+
+  /** Compiles one action in its own source root, to its own output dir, and returns its hash */
+  async function hashOf(action = ACTION, helper = HELPER): Promise<string> {
+    const src = fs.mkdtempSync(path.join(os.tmpdir(), 'abuddy-hash-src-'));
+    const dist = fs.mkdtempSync(path.join(os.tmpdir(), 'abuddy-hash-out-'));
+    fs.mkdirSync(path.join(src, 'seeds/actions/_helpers'), { recursive: true });
+    fs.writeFileSync(path.join(src, 'seeds/actions/greet.ts'), action);
+    fs.writeFileSync(path.join(src, 'seeds/actions/_helpers/shout.ts'), helper);
+    const manifest = { id: 'demo', name: 'Demo', version: '1.0.0', seedFormats: {}, boot: { seed: { actions: 'seeds/actions' } } } as unknown as PackManifest;
+    try {
+      await compilePack({ packDir: src, outputDir: dist, packConfig: await buildPackConfigFromManifest(manifest, src) });
+      const { records } = JSON.parse(fs.readFileSync(path.join(dist, 'actions.seed.json'), 'utf-8')) as { records: Array<{ sourceHash: string }> };
+      return records[0].sourceHash;
+    } finally {
+      fs.rmSync(src, { recursive: true, force: true });
+      fs.rmSync(dist, { recursive: true, force: true });
+    }
+  }
+
+  it('gives the same source the same hash from a different source root and output directory', async () => {
+    expect(await hashOf()).toBe(await hashOf());
+  }, 60_000);
+
+  it("changes when the action's own body changes", async () => {
+    expect(await hashOf(ACTION.replace("'hello'", "'goodbye'"))).not.toBe(await hashOf());
+  }, 60_000);
+
+  it('changes when an inlined helper changes, since the hash covers the bundle', async () => {
+    expect(await hashOf(ACTION, HELPER.replace('toUpperCase', 'toLowerCase'))).not.toBe(await hashOf());
+  }, 60_000);
+});
