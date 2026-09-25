@@ -103,16 +103,19 @@ function update(only: string | undefined): void {
 
 function check(): void {
   const problems: string[] = [];
+  const staleSuites = new Set<string>();
   let total = 0;
   for (const suite of UNIT_SUITES) {
     const dir = packageDir(suite);
     const record = readSpecCost(REPO_ROOT, suite.dir);
     if (!record) {
       problems.push(`  no ${specCostFile(suite.dir)}`);
+      staleSuites.add(suite.dir);
       continue;
     }
     const files = specFiles(dir);
     total += files.length;
+    const before = problems.length;
     problems.push(
       ...unrecorded(record, files).map((f) => `  unmeasured: ${suite.dir}/${f}`),
       ...stale(record, files).map((f) => `  recorded but gone: ${suite.dir}/${f}`),
@@ -120,9 +123,15 @@ function check(): void {
         ? misplaced(record.costs, files).map(({ file, ms, belongs }) => `  ${(ms / 1000).toFixed(1)}s is ${belongs}, but this is in the ${halfOfPath(file)} half: ${suite.dir}/${file}`)
         : []),
     );
+    if (problems.length > before) staleSuites.add(suite.dir);
   }
   if (problems.length > 0) {
-    throw new Error(`Spec costs are out of date (a fast spec moves above ${INTEGRATION_ABOVE_MS}ms, an integration one comes back below ${FAST_BELOW_MS}ms):\n${problems.join('\n')}\n\nRun: npm run spec-cost:update`);
+    // Naming the suites matters: re-measuring all eight is a minute, and one is seconds. A check whose
+    // advice costs more than the fix is a check people work around.
+    const fix = staleSuites.size === UNIT_SUITES.length
+      ? 'npm run spec-cost:update'
+      : [...staleSuites].map((dir) => `npm run spec-cost:update -- --suite ${dir}`).join('\n     ');
+    throw new Error(`Spec costs are out of date (a fast spec moves above ${INTEGRATION_ABOVE_MS}ms, an integration one comes back below ${FAST_BELOW_MS}ms):\n${problems.join('\n')}\n\nRun: ${fix}`);
   }
   console.log(`✅ ${total} specs across ${UNIT_SUITES.length} suites, each recorded and in the half its cost implies`);
 }

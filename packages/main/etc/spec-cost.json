@@ -1,7 +1,7 @@
 {
-  "measuredAt": "2026-09-25T20:38:29.028Z",
+  "measuredAt": "2026-09-25T20:49:08.246Z",
   "costs": {
-    "tests/app-context.spec.ts": 139,
+    "tests/app-context.spec.ts": 135,
     "tests/shell-access.spec.ts": 11
   },
   "skipped": []

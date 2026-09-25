@@ -1,15 +1,15 @@
 {
-  "measuredAt": "2026-09-25T20:38:25.520Z",
+  "measuredAt": "2026-09-25T20:49:04.847Z",
   "costs": {
-    "tests/contract/persistence.spec.ts": 19,
-    "tests/contract/queries.spec.ts": 18,
+    "tests/contract/persistence.spec.ts": 18,
+    "tests/contract/queries.spec.ts": 21,
     "tests/contract/relations.spec.ts": 16,
-    "tests/contract/transactions.spec.ts": 13,
+    "tests/contract/transactions.spec.ts": 11,
     "tests/installed-engine.spec.ts": 7,
     "tests/is-entity-type.spec.ts": 2,
-    "tests/lmdb/persistence.spec.ts": 459,
-    "tests/lmdb/store.spec.ts": 1991,
-    "tests/no-module-state.spec.ts": 116
+    "tests/lmdb/persistence.spec.ts": 375,
+    "tests/lmdb/store.spec.ts": 1931,
+    "tests/no-module-state.spec.ts": 110
   },
   "skipped": []
 }

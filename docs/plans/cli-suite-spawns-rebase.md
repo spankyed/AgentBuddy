@@ -1,3 +1,8 @@
+> **Absorbed and closed.** The branch it hands over was rebased and landed in
+> [`goal-one-job-pool.md`](../goals/goal-one-job-pool.md) Phase 1, with 858 tests before and after. Its
+> open questions are answered there: the suite-split predicate is now measured cost, the timeout
+> inventory is done, and lanes pay at three rather than being left serial. Kept for the findings.
+
 # Handoff: `AS/cli-suite-spawns` → `faee075fd`
 
 From the session implementing `docs/goals/goal-cli-suite-spawns.md`. You own the suite split, the

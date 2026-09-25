@@ -174,6 +174,112 @@ survivor is not derivable.
   which is enough to show a test is cheap but not to show it is expensive. Worth building when an exception
   list is non-empty for long enough to need auditing; today it is empty.
 
+## Outcome
+
+| Phase | Status | Evidence |
+|---|---|---|
+| 1 — record every suite's per-file costs | done | `b5a70cf08`. 334 specs across 8 suites; three classes of unmeasured spec found on the first run |
+| 2 — report a spec that outgrew its placement | done | `33851b0a4`. Five named, in both directions |
+| 3 — act on the list | done | `33851b0a4`. All five recorded with what makes them expensive |
+| 4 — retire what the record replaces | **done, and the answer is almost nothing** | this commit. One real gap closed; every other hand-written duration is a policy, not a measurement |
+
+### The record, after
+
+| suite | specs | recorded work | slowest spec |
+|---|---|---|---|
+| `@abuddy/cli` | 80 | 198.8s | 29.4s `facade-typing.integration.spec.ts` |
+| `@abuddy/host` | 77 | 19.3s | 4.7s `write-lock.spec.ts` |
+| `@abuddy/sdk` | 56 | 14.8s | 10.6s `generate-entries.spec.ts` |
+| `@app/default-setup` | 86 | 13.8s | 3.9s `harness-app-stop.spec.ts` |
+| `@app/api` | 15 | 4.9s | 1.0s `secrets.spec.ts` |
+| `@abuddy/ears` | 9 | 2.6s | 2.0s `store.spec.ts` |
+| `@app/renderer` | 8 | 0.1s | — |
+| `@app/main` | 2 | 0.1s | — |
+
+**Before: one package of eight, 80 specs. After: eight of eight, 334.** 25 specs cost more than the 2.5s a
+fast half allows; 20 are `@abuddy/cli`'s integration half, placed correctly by cost, and the other five are
+the findings below.
+
+Slowest single test 4.1s against a 15s budget; slowest single file 18.6s pooled and 10.6s alone, against a
+2.5s placement edge. The headroom Background described is unchanged — this goal moved no spec, and was not
+supposed to.
+
+### What recording it actually found
+
+Nothing had outgrown its placement. What the record found instead were **specs nobody was measuring**, three
+kinds of them, each on the first run:
+
+- **A fully skipped file prints no duration**, so it has no cost. That is a third state, and collapsing it
+  either way is a trap: as zero it becomes the cheapest spec in the suite and is placed accordingly until
+  the day its precondition is met; as unmeasured it fails forever for a file behaving correctly.
+  `_hybrid/claude-code-permission-flow` needs a real `claude` binary, and is recorded as skipped.
+- **`specFiles` walked only `tests/`**, while `@app/default-setup` also runs colocated `src/**` specs — its
+  own config says "without this they are silently never run". Six were recorded and then reported as gone.
+- **The file-line pattern matched `.spec.ts`**, and those colocated files are `.test.ts`, so five ran and
+  recorded nothing.
+
+None of these is a placement question. All three are the same failure the goal was written against — a spec
+whose cost nobody knows — arriving from a direction nobody had named.
+
+### Phase 4, and why the answer is almost nothing
+
+Every hand-written duration left in the test tooling was enumerated, and each states a **policy** or a
+**step's wall time**, neither of which the spec-cost record can state:
+
+- `TIER_TIMEOUT_MS`, `INTEGRATION_ABOVE_MS`, `FAST_BELOW_MS`, `GRACE_MS`, `budgetFor`'s multiplier — ceilings
+  and edges. A bound is not a fit; deriving one from the measurement it bounds is how a timeout stops
+  catching anything.
+- Seven `testTimeout`/`hookTimeout` literals in configs — copies of the tier budget, which a vitest config
+  cannot import across package layers (`check:specifiers`). `suite-timeouts.spec.ts` checks them instead.
+- Nine step `seconds` — a step's wall time under the chain's lanes, which `driftedSteps` keeps honest.
+
+**One real gap, closed.** `@app/api` and `@app/default-setup` declared `testTimeout` and not `hookTimeout`,
+so their hooks fell back to vitest's 10s default — *tighter* than the 15s their tier allows.
+`boot-recovery`'s `beforeAll` had a 120s override removed earlier the same day and had been running under
+10s by accident rather than 15s by policy. Both configs now state the tier's budget for hooks as well.
+
+### Is the record stable enough to be believed?
+
+Measured twice, back to back, nothing else running:
+
+    drift on specs over 200ms       median 6%, p90 22%, max 45%
+    placement decisions that changed    0 of 334
+
+The costs move a lot — three `@abuddy/cli` specs crossed 2.5s between the two runs — and **nothing moved
+half**, because those three are already in the integration half, where the return edge is 1.5s. This is the
+dead band doing the job it was added for, now demonstrated rather than argued: a single threshold would have
+churned three specs' filenames on a re-measure that changed nothing about the code.
+
+It also says what the record is and is not. A cost is good to about 20%, so it can answer "which half" and
+should not be quoted as a measurement of anything finer.
+
+### One clause of "Finished when" does not hold literally, and Decision 4 is why
+
+It asks that "no spec's placement is decided by which package it happens to live in". In a package with one
+suite, placement *is* the package: `write-lock.spec.ts` runs in `@abuddy/host`'s suite because it lives
+there, and costing 4.7s does not change that. Decision 4 is the operative rule — that is a finding, recorded
+with what makes it expensive, and a package that collects findings is the evidence for splitting it later.
+The clause holds where a split exists and is an aspiration where one does not; pretending otherwise would
+mean inventing a half for one spec, which Decision 4 forbids.
+
+### Conventional choices
+
+- **One record per package**, in `etc/` beside the other recorded artifacts, rather than one for the repo:
+  a package's specs are measured by running that package's configs.
+- **One root command** (`spec-cost:check` / `spec-cost:update`, with `--suite` for one) replacing the
+  per-package pair, so there is a single entry point.
+- **A package with one half gets a list, not a split.** Decision 4. The five entries say what makes each
+  spec expensive; a package that collects them is the evidence for splitting it later.
+- **`specFiles` walks what a suite can run** — `tests/` and `src/`, skipping `dist` and `etc` — rather than
+  reading a config's `include` globs, which would be a second parser of someone else's format.
+
+### Deferred
+
+- **Splitting a single-suite package.** Decision 4 makes it a finding; no package has enough entries to
+  justify it yet. `@abuddy/sdk` has two and is the closest.
+- **Per-test durations as a staleness signal.** Still only worth building when an exception list is
+  non-empty long enough to need auditing.
+
 ## Constraints
 
 `goal-test-tiers.md`'s standing rules carry over unchanged: no push, tag or PR; no publish or release; no

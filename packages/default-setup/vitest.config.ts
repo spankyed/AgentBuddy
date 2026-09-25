@@ -27,6 +27,8 @@ export default defineConfig(async () => {
       // Tier 1 (`TIER_TIMEOUT_MS`, scripts/lib/chain-steps.ts): a unit test that takes longer is hung,
       // not slow. This suite's slowest test is 2.9s.
       testTimeout: 15_000,
+      // A hook gets the tier's budget too; vitest's default is 10s, tighter than the tier allows
+      hookTimeout: 15_000,
       // Test files run in parallel: each worker's tests create their own EARS engines
       fileParallelism: true,
       env: dataDir.env,

@@ -1,3 +1,9 @@
+> **Absorbed and closed.** [`goal-one-job-pool.md`](../goals/goal-one-job-pool.md) implemented this and
+> recorded where it was wrong: one root vitest over all eight is not possible (host suites resolve
+> workspace source, the pack suite must resolve the published `dist`, and Node conditions are per
+> process), `max(floor, work/cores)` was never the model, and "the cost is 3 tests, not 94" is backwards.
+> `test:unit` is two pools at 35.3s. Kept for the survey and the reasoning, not as work to pick up.
+
 # Plan: one job pool for `test:unit`
 
 `npm run test:unit` takes **44.3s** doing **~95s of work on 10 cores** against a **13.0s** hard floor. The

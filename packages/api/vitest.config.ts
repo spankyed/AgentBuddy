@@ -28,6 +28,9 @@ export default defineConfig(async () => {
     // Tier 1 (`TIER_TIMEOUT_MS`, scripts/lib/chain-steps.ts): a unit test that takes longer is hung,
     // not slow. This suite's slowest test is 0.7s.
     testTimeout: 15_000,
+    // A hook gets the tier's budget too. Without this it falls back to vitest's 10s default, which is
+    // tighter than the tier allows — a hook would fail at 10s for a policy that says 15s.
+    hookTimeout: 15_000,
     // ❶  there is **no** `tsconfig` option – remove it
   },
 
