@@ -1,8 +1,16 @@
-// Parity gate for seeding: the rows default-setup's library, notes, actions and prompts seeds produce,
-// compared against golden snapshots first recorded from the pre-generic pipeline. The v1/v2 scenarios
-// seed fixture sources (tests/fixtures/seed-parity), so only a change in seeding moves their goldens;
-// default-setup.json follows the pack's own sources. Record them again only deliberately:
-// npm run seed-parity:update -w @app/default-setup   (seed-parity:check is the comparing half)
+// Parity gate for seeding: does importing default-setup's seeds still produce the database it produced before?
+// It compiles the pack's library, notes, actions and prompts, imports them into a scratch database the test
+// discards,
+// and compares the rows against the snapshots in `__golden__/`.
+//
+// **If this failed and you are wondering what to do, read `CLAUDE.md` in this folder first.** It says what belongs
+// in a golden and what must not, and why re-recording one is safe. The short version: a golden moves when what
+// seeding produces moves, you re-record it deliberately with
+// `npm run seed-parity:update -w @app/default-setup`, and you never hand-edit one.
+//
+// The v1/v2 scenarios seed fixture sources (tests/fixtures/seed-parity), so only a change in seeding moves their
+// goldens; default-setup.json follows the pack's own sources, so content moves it too. The goldens were first
+// recorded from the pipeline that preceded the generic seed compiler.
 //
 // Notes are the one intended difference (goal-generic-seed-compiler Decision 10): they now carry a
 // sourceHash and follow the same change-tracking rules as every other entry. Their sourceHash field

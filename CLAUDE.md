@@ -28,11 +28,11 @@ edit — running it after every change costs minutes and finds nothing the narro
 | one package's source | that workspace's `npm test -w <pkg>`, plus its typecheck if the change is typed |
 | a spec | that spec file: `npx vitest run <path> --root packages/<pkg>` |
 | a build script, bundler or gate | `npm test -w @abuddy/cli`, plus the one command whose output changed |
-| a comment, a doc, a CLAUDE.md | nothing, unless a spec asserts the text (the door table) |
+| a comment, a doc, a CLAUDE.md | **nothing** — not typecheck, not a suite. Unless a spec asserts the text (the door table), or a code fence changed and one command proves it |
 | an npm script | the one path that runs it, end to end, once |
 | the renderer, the app's boot, or a pack's FE | `npm test -- <spec>` for the affected E2E, not the whole suite |
 | a public export of `@abuddy/ears`, `/sdk` or `/ui` | `npm run api:update`, and commit `etc/` — `typecheck` fails until you do |
-| a pack's seed source (`src/seeds/`) | that pack's `seed-parity` spec. When only `sourceHash`/`rowSha256` moved, re-record deliberately — `npm run seed-parity:update -w @app/default-setup` — and never edit a hash by hand. Re-recording rewrites a test expectation, not user data; what reaches users is the new `sourceHash` (`docs/public-facing/seeds.md`, "The four stages") |
+| a pack's seed source (`src/seeds/`) | that pack's `seed-parity` spec. When only `sourceHash`/`rowSha256` moved, re-record deliberately — `npm run seed-parity:update -w @app/default-setup` — and never edit a hash by hand. Re-recording rewrites a test expectation, not user data; what reaches users is the new `sourceHash`. `packages/default-setup/tests/unit/seed-parity/CLAUDE.md` has the rule for what a golden records |
 | anything, before you ask for a merge | the full chain, once |
 
 What that costs, measured on this machine (2026-09-22, M-series, warm): one spec file 1–3s, one
@@ -48,6 +48,12 @@ check. The workflow's header says when it goes back on.
 
 Things that waste the most time, in order:
 
+- **Running anything at all after a comment, a doc or a CLAUDE.md edit.** The table above says to run
+  nothing, and it means nothing: not `typecheck`, not the package's suite, not "just to be safe". Prose
+  cannot break a build. The two exceptions are a spec that asserts the text and a code fence someone will
+  copy — check that one command, not the chain. This is first on the list because it is the one most often
+  ignored: a full `typecheck` is 53s and a doc edit needs 0s, and doing it anyway teaches nothing except
+  that the table is decorative.
 - **Running `npm run build` to test a change no build output depends on.** The renderer and API build
   from source; a CLI or SDK change does not need them rebuilt to be tested.
 - **Running an E2E suite to find a bug you have a stack trace for.** A minified frame with a line and
