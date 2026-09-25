@@ -62,9 +62,14 @@ const SHARED_INPUTS = [repoFile('package.json'), repoFile('package-lock.json')];
  * The stamp format, shared by everything that records "this ran over exactly these inputs" — the package
  * builds and, through `stampedRun`, the chain's steps. Bump it when a stamp written by an older run would
  * be read wrongly by this one (a different hash, a different set of things hashed), and every unit runs
- * once, which is correct. Last bumped when the chain's steps joined the protocol.
+ * once, which is correct.
+ *
+ * Back at 1 deliberately. Stamps live in `node_modules/.cache/` and are never committed, so a version only
+ * means something against stamps a machine already has; the bumps taken while the chain's steps were being
+ * added to this protocol meant nothing to anyone but the machine they were written on. The protocol this
+ * describes is one thing, so it starts at one, and `!==` still invalidates whatever those runs left behind.
  */
-export const STAMP_VERSION = 3;
+export const STAMP_VERSION = 1;
 
 export interface BuildUnit {
   /** Files and directories the build reads, absolute; a directory is walked */

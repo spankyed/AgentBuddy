@@ -40,29 +40,39 @@ so out loud so the claim can be checked.
 
 ## What to run after a change
 
-Run the narrowest thing that could fail, and stop. The full chain exists for the merge, not for the
-edit — running it after every change costs minutes and finds nothing the narrow check wouldn't.
+**`npm run chain` costs what you changed.** Each step declares what it reads
+(`scripts/lib/chain-steps.ts`), is fingerprinted over exactly that, and is skipped when nothing under it
+moved — so the table that used to live here, asking you to work out which suite covers your edit, is now the
+graph's job. Run the chain and it runs the subset; it does not need you to have guessed right.
 
-| You changed | Run |
-|---|---|
-| one package's source | `npm run spec -- <the file>` — the specs that import it, which is usually a handful rather than the package's hundreds. Plus its typecheck if the change is typed. `npm test -w <pkg>` when you want the whole suite |
-| a spec | `npm run spec -- <path or name>` |
-| a build script, bundler or gate | `npm test -w @abuddy/cli`, plus the one command whose output changed |
-| a comment, a doc, a CLAUDE.md | **nothing** — not typecheck, not a suite. Unless a spec asserts the text (the door table), or a code fence changed and one command proves it |
-| an npm script | the one path that runs it, end to end, once |
-| the renderer, the app's boot, or a pack's FE | `npm test -- <spec>` for the affected E2E, not the whole suite |
-| a public export of `@abuddy/ears`, `/sdk` or `/ui` | `npm run api:update`, and commit `etc/` — `typecheck` fails until you do |
-| a pack's seed source (`src/seeds/`) | that pack's `seed-parity` spec. When only `sourceHash`/`rowSha256` moved, re-record deliberately — `npm run seed-parity:update -w @app/default-setup` — and never edit a hash by hand. Re-recording rewrites a test expectation, not user data; what reaches users is the new `sourceHash`. `packages/default-setup/tests/unit/seed-parity/CLAUDE.md` has the rule for what a golden records |
-| several things, or you lost track | `npm run spec` with no arguments: the specs your uncommitted changes affect, in every package they touch |
-| anything, before you ask for a merge | `npm run chain`, once — every check in dependency order, reporting each step's time, and the failing step's output alone if one fails |
+Measured cold on an idle machine (2026-09-25), then warm straight after:
 
-What that costs, measured on this machine (2026-09-22, M-series, warm): one spec file 1–3s, one
-package's `tsc --noEmit` 3s, a package's specs folder ~1s, `packages:ensure` 1s when nothing is stale.
-The chain is ~6 minutes, measured 2026-09-24: `compile` 11s, `typecheck` 54s, `test:unit` 104s,
-`build` 44s, `test:external-pack` 43s, `npm test` (E2E) 30s, `test:packaged-authoring` 71s. So the
-narrow check is two to three orders of magnitude cheaper than the chain, and covers the edit.
+| What you changed | What the chain runs | Cost |
+|---|---|---|
+| nothing tracked | the E2E suite, which is never cached | **~28s** |
+| a doc, a comment, a CLAUDE.md | nothing but that | **~28s** |
+| one package's source | its own suite, whatever imports it, `typecheck`, E2E | **~60s** |
+| the built-in pack's source | `compile`, its suite, `typecheck`, the tier-3 steps | ~150s |
+| nothing is cached (a cold tree) | all 17 steps, two at a time | **194s** |
 
-**`api:check` is not in that list, on purpose.** `typecheck` runs `api:stamp`, which hashes the same
+`npm run chain --dry` prints that plan without running it, and says why each step is or is not cached —
+which is the way to find out why something you expected to be skipped is not.
+
+**The inner loop is still `npm run spec`**, and it is still much cheaper than a chain run: with no
+arguments it runs the specs your uncommitted changes affect, in every package they touch; with a source
+file it runs the specs that import it. One spec file is 1-3s and a package's `tsc --noEmit` is 3s, against
+the chain's ~28s floor. Use it while you are working, and the chain when you are done.
+
+Two things the chain cannot work out for you, because they rewrite files you commit:
+
+- **a public export of `@abuddy/ears`, `/sdk` or `/ui`** — `npm run api:update`, and commit `etc/`.
+  `typecheck` fails until you do.
+- **a pack's seed source (`src/seeds/`)** — when only `sourceHash`/`rowSha256` moved, re-record
+  deliberately with `npm run seed-parity:update -w @app/default-setup`, and never edit a hash by hand.
+  Re-recording rewrites a test expectation, not user data; what reaches users is the new `sourceHash`.
+  `packages/default-setup/tests/unit/seed-parity/CLAUDE.md` has the rule for what a golden records.
+
+**`api:check` is not a chain step, on purpose.** `typecheck` runs `api:stamp`, which hashes the same
 declarations the reports are generated from, in 0.6s against `api:check`'s 55. A report is a pure
 function of those declarations, so a matching stamp means `api:check` cannot fail, and a moved
 declaration fails `typecheck` until `api:update` runs. Run `api:check` before publishing, where it is
@@ -70,19 +80,19 @@ the authority; running it per merge re-proves the stamp and costs a minute. The 
 cannot see is a hand-edited `etc/*.api.md` whose declarations never moved, which the publish path
 catches.
 
-That last row is the whole gate: **CI does not run, on purpose.** `.github/workflows/ci.yml` has its `push`
+The chain is the whole gate: **CI does not run, on purpose.** `.github/workflows/ci.yml` has its `push`
 and `pull_request` triggers commented out while this is a single-contributor repo, so `gh run list` is empty
 and always will be. That is not a failure to report, and CI is not a check to cite — the local chain is the
 check. The workflow's header says when it goes back on.
 
 Things that waste the most time, in order:
 
-- **Running anything at all after a comment, a doc or a CLAUDE.md edit.** The table above says to run
-  nothing, and it means nothing: not `typecheck`, not the package's suite, not "just to be safe". Prose
-  cannot break a build. The two exceptions are a spec that asserts the text and a code fence someone will
-  copy — check that one command, not the chain. This is first on the list because it is the one most often
-  ignored: a full `typecheck` is 53s and a doc edit needs 0s, and doing it anyway teaches nothing except
-  that the table is decorative.
+- **Running anything at all after a comment, a doc or a CLAUDE.md edit.** Nothing means nothing: not
+  `typecheck`, not the package's suite, not "just to be safe". Prose cannot break a build, and no step
+  declares `docs/` among its inputs, so the chain agrees — `npm run chain --dry` after a doc edit reports
+  every step cached. The two exceptions are a spec that asserts the text and a code fence someone will
+  copy: check that one command. This is first on the list because it is the one most often ignored, and a
+  full `typecheck` is 53s against a doc edit's 0s.
 - **Running `npm run build` to test a change no build output depends on.** The renderer and API build
   from source; a CLI or SDK change does not need them rebuilt to be tested.
 - **Running an E2E suite to find a bug you have a stack trace for.** A minified frame with a line and
@@ -127,15 +137,15 @@ to read. `npm run check:tiers` fails when a tier-1 or tier-2 step can reach the 
 |---|---|---|
 | **1 pure** | its own package's source, the in-memory runtime, fakes | most of `test:unit`, `typecheck` |
 | **2 contract** | the built `@abuddy` packages, a pack's build output | `packages:ensure`, `compile`, `test:external-pack:contract` |
-| **3 app** | the built app | `build`, the E2E suite, `test:external-pack:app`, `test:packaged-authoring` |
+| **3 app** | the built app | `build:app`, the E2E suite, `test:external-pack:app`, `test:packaged-authoring` |
 
 The rule that matters is that tier 1 and tier 2 do not need the app, because the moment one does it has to
-run after `build`, its real inputs become the whole repo, and it can no longer be cached or reordered. Four
+run after `build:app`, its real inputs become the whole repo, and it can no longer be cached or reordered. Four
 attempts at a cheaper chain each failed on exactly that, because nothing recorded it. A check that genuinely
 needs the app is tier 3 — that is an answer, not a failure, and the fix is never to delete the check.
 
 `test:external-pack` is split at that boundary: `:contract` validates, builds and typechecks each fixture
-pack and runs its harness specs with no app, in tier 2 before `build`, and `:app` runs its Playwright suite in
+pack and runs its harness specs with no app, in tier 2 before `build:app`, and `:app` runs its Playwright suite in
 tier 3. Two scripts rather than one with a flag, because `check:tiers` reads a step's scripts as text and a
 branch it never takes still reads as a reach. `test:packaged-authoring` is still tier 3 whole: its nine steps
 build on each other, so it takes a mode rather than a split.
@@ -162,7 +172,8 @@ an artifact with only an update is one nothing will notice has gone stale.
 npm start                # Dev mode (builds the built-in pack without its FE bundle)
 npm run start:gen        # Full built-in pack build (npm run compile), then dev mode
 npm run build:be         # Build backend only
-npm run build            # Build all workspaces
+npm run build            # Build all workspaces. The chain runs build:app instead, which leaves the
+                         # built-in pack to compile — building it twice rewrote the dist five steps read
 npm run build-prod       # Full production build (build/build.sh)
 
 npm run typecheck        # Every check below, plus check:specifiers
@@ -186,15 +197,20 @@ npm run spec -- <target> # You don't say what the target is; it works that out:
                          # `--bail 1` and `--changed HEAD~1` work. It groups by package and runs each
                          # package's own `test`, so a pretest guard and its vitest config still apply;
                          # a tests/e2e path goes to Playwright instead
-npm run chain            # Before a merge: every check in dependency order. Reports each step's time and
-                         # buffers its output, printing only a failing step's. It leaves out api:check,
-                         # which typecheck's api:stamp already covers. Serial on purpose — scripts/chain.ts
-                         # records what running the steps in parallel measured.
-                         # Each step is cached on the inputs it declares (scripts/lib/chain-steps.ts),
+npm run chain            # Before a merge: every check in dependency order, cold 194s and warm ~28s.
+                         # Reports each step's time and its slowest five tests, buffers its output and
+                         # prints only a failing step's. It leaves out api:check, which typecheck's
+                         # api:stamp already covers.
+                         # Each step is cached on the inputs it declares (scripts/lib/chain-steps.ts)
                          # through the package builds' stamp protocol: an unchanged step reports `cached`
                          # and does not run, so a doc edit runs nothing and a one-package edit runs that
                          # package's suite. The E2E suite is never cached, with its reason on the step.
-                         # `--all` runs everything regardless
+                         #   --dry     the plan and why each step is or is not cached, running nothing
+                         #   --all     run every step regardless of its stamp
+                         #   --lanes N how many steps run at once. Two by default, measured: serial 307s,
+                         #             two 194s, three 203s with one of two runs failing. Re-measure it
+                         #             when test:unit becomes one root vitest run (docs/plans/
+                         #             test-unit-scheduling.md), since two is tuned against eight suites
 npm test                 # Playwright E2E tests
 npm run test:unit        # Vitest, every suite CI calls a unit test, two at a time, slowest first. The list
                          # is scripts/lib/unit-suites.ts, which the chain reads too, so the two agree
