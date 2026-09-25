@@ -292,3 +292,48 @@ describe('the root pool lists exactly the host suites', () => {
     expect(listed).toEqual(host);
   });
 });
+
+// A step that reads what another step writes has to depend on it.
+//
+// `orderedSteps` sorts on `needs` alone, so declaring the path in `inputs` says nothing about ordering: the
+// two can run in either order, or together in a lane. This existed, caught `test:integration` reading the
+// built-in pack's dist while depending only on `packages:ensure`, and was then deleted by accident in
+// `e0c22075f` while that section was being rewritten. It is back, and wider.
+//
+// Wider because the version that was deleted asked only whether an input was *at or under* another step's
+// output. The case it could not see is an input that *contains* one — `typecheck` declaring `tests` while
+// the E2E suite writes `tests/screenshots` — and that is exactly the defect that then went unnoticed for a
+// day, costing 34s of every warm chain. Both directions are the same mistake seen from either end.
+//
+// `excludes` is honoured: a step that declares it reads around a tree is not reading it.
+describe('a step that reads what another writes depends on it', () => {
+  const byName = new Map(CHAIN_STEPS.map((step) => [step.name, step]));
+  const ancestorsOf = (name: string, seen = new Set<string>()): Set<string> => {
+    for (const need of byName.get(name)?.needs ?? []) {
+      if (seen.has(need)) continue;
+      seen.add(need);
+      ancestorsOf(need, seen);
+    }
+    return seen;
+  };
+  /** One path covers another when they are equal or the second lies under the first */
+  const covers = (outer: string, inner: string): boolean => outer === inner || inner.startsWith(`${outer}/`);
+
+  it('names the dependency, not just the path', () => {
+    const missing: string[] = [];
+    for (const step of CHAIN_STEPS) {
+      const ancestors = ancestorsOf(step.name);
+      for (const producer of CHAIN_STEPS) {
+        if (producer.name === step.name || ancestors.has(producer.name)) continue;
+        for (const output of producer.outputs ?? []) {
+          // Read around it deliberately, which is what `excludes` says
+          if ((step.excludes ?? []).some((excluded) => covers(excluded, output))) continue;
+          // Either end: the input is under the output, or the input is a tree containing it
+          const touching = step.inputs.filter((input) => covers(output, input) || covers(input, output));
+          if (touching.length > 0) missing.push(`${step.name} declares ${touching[0]}, which ${producer.name} writes (${output}), and does not need it`);
+        }
+      }
+    }
+    expect([...new Set(missing)]).toEqual([]);
+  });
+});

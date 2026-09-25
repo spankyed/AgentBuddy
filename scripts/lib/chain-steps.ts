@@ -449,7 +449,11 @@ export const CHAIN_STEPS: readonly ChainStep[] = [
       'tests/scripts/lib', 'playwright.config.ts', ...APP_OUTPUTS] },
   // Never cached: it drives real Electron with real timing and is the likeliest step to be flaky, and a
   // flaky pass cached green hides an intermittent failure indefinitely. 28s is cheap enough to always pay.
+  // It declares what it writes although it is never cached and so never reads a stamp: the guard that a
+  // step depending on another's output says so can only see outputs that are declared, and this is the
+  // tree that caused the defect — `typecheck` declared `tests`, which contains these, and could never cache.
   { name: 'test', tier: 3, needs: ['build:app'], cache: false, seconds: 26, // the E2E suite
+    outputs: ['tests/screenshots', 'tests/results'],
     inputs: [...ROOT, 'tests/e2e', 'playwright.config.ts', 'scripts/with-source.mjs', ...APP_ENTRY, ...APP_OUTPUTS] },
   { name: 'test:packaged-authoring', tier: 3, needs: ['build:app'], seconds: 59,
     inputs: [...ROOT, ...BOUNDED_RUNNER, 'tests/scripts/test-packaged-authoring.sh', 'tests/scripts/lib',
