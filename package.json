@@ -81,7 +81,7 @@
     "db:import": "abuddy db import -d",
     "db:reset": "abuddy db reset -d",
     "db:clear-settings": "abuddy db clear-settings -d",
-    "chain": "npm run packages:ensure && npm run compile && npm run typecheck && npm run test:unit && npm run build && npm run test:external-pack && npm test && npm run test:packaged-authoring"
+    "chain": "tsx scripts/chain.ts"
   },
   "devDependencies": {
     "@arethetypeswrong/cli": "^0.18.5",

@@ -54,7 +54,7 @@ edit — running it after every change costs minutes and finds nothing the narro
 | a public export of `@abuddy/ears`, `/sdk` or `/ui` | `npm run api:update`, and commit `etc/` — `typecheck` fails until you do |
 | a pack's seed source (`src/seeds/`) | that pack's `seed-parity` spec. When only `sourceHash`/`rowSha256` moved, re-record deliberately — `npm run seed-parity:update -w @app/default-setup` — and never edit a hash by hand. Re-recording rewrites a test expectation, not user data; what reaches users is the new `sourceHash`. `packages/default-setup/tests/unit/seed-parity/CLAUDE.md` has the rule for what a golden records |
 | several things, or you lost track | `npm run spec` with no arguments: the specs your uncommitted changes affect, in every package they touch |
-| anything, before you ask for a merge | `npm run chain`, once — the seven steps in dependency order, with `packages:ensure` hoisted |
+| anything, before you ask for a merge | `npm run chain`, once — every check in dependency order, reporting each step's time, and the failing step's output alone if one fails |
 
 What that costs, measured on this machine (2026-09-22, M-series, warm): one spec file 1–3s, one
 package's `tsc --noEmit` 3s, a package's specs folder ~1s, `packages:ensure` 1s when nothing is stale.
@@ -162,9 +162,10 @@ npm run spec -- <target> # You don't say what the target is; it works that out:
                          # `--bail 1` and `--changed HEAD~1` work. It groups by package and runs each
                          # package's own `test`, so a pretest guard and its vitest config still apply;
                          # a tests/e2e path goes to Playwright instead
-npm run chain            # Before a merge: the seven steps in dependency order, ~6 min. It hoists
-                         # packages:ensure so every later step's copy is a stat and a return, and it
-                         # leaves out api:check, which typecheck's api:stamp already covers
+npm run chain            # Before a merge: every check in dependency order, ~6 min. Reports each step's
+                         # time and buffers its output, printing only a failing step's. It leaves out
+                         # api:check, which typecheck's api:stamp already covers. Serial on purpose —
+                         # scripts/chain.ts records what running the steps in parallel measured
 npm test                 # Playwright E2E tests
 npm run test:unit        # Vitest, every suite CI calls a unit test: @app/api, @app/default-setup, @abuddy/sdk,
                          # @abuddy/ears, @abuddy/host, @app/main, @app/renderer, then @abuddy/cli (the slowest,
