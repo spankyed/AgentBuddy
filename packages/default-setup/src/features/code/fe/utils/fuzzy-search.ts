@@ -69,7 +69,6 @@ function fuzzyMatch(pattern: string, target: string, filename?: string): FuzzyMa
   let score = 0
   let lastMatchIndex = -1
   const positions: number[] = []
-  let isFirstChar = true
   let consecutiveCount = 0
   
   // Check for exact prefix match
@@ -135,7 +134,6 @@ function fuzzyMatch(pattern: string, target: string, filename?: string): FuzzyMa
       score += charScore
       lastMatchIndex = targetIndex
       patternIndex++
-      isFirstChar = false
     }
     targetIndex++
   }

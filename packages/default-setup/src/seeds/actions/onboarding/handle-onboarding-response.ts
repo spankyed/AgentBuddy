@@ -16,8 +16,8 @@ export const meta: ActionMeta = {
 export async function action(
   params: Record<string, any>,
   services: Services,
-  z: Z,
-  flowId: string,
+  _z: Z,
+  _flowId: string,
 ) {
   const { response } = params;
   const threadId = params.threadId as EntityId;

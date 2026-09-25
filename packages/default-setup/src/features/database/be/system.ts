@@ -24,14 +24,14 @@ export const databaseSpec = defineSystem<Contract>();
 export const databaseSystem = setup({
   types: databaseSpec.types,
   actions: {
-    sendDatabaseRefresh: ({ system }) => {
+    sendDatabaseRefresh: () => {
       const schema = generateSchemaInfo();
       broadcastToPlugin('database', { 
         type: 'DATABASE_REFRESH',
         data: { schema }
       });
     },
-    executeQuery: async ({ system, event }) => {
+    executeQuery: async ({ event }) => {
       const { code } = databaseSpec.typeOf('EXECUTE_QUERY', event);
       
       try {
@@ -52,7 +52,7 @@ export const databaseSystem = setup({
         });
       }
     },
-    executeTransaction: async ({ system, event }) => {
+    executeTransaction: async ({ event }) => {
       const { code } = databaseSpec.typeOf('EXECUTE_TRANSACTION', event);
       
       try {
@@ -81,7 +81,7 @@ export const databaseSystem = setup({
         });
       }
     },
-    handleAiQuery: ({ system, event }) => {
+    handleAiQuery: ({ event }) => {
       const { prompt, mode } = databaseSpec.typeOf('GENERATE_AI_QUERY', event);
 
       if (!prompt?.trim()) {
@@ -102,7 +102,7 @@ export const databaseSystem = setup({
         payload: { prompt: prompt.trim(), mode: mode ?? 'query', provider },
       });
     },
-    getTraceFlows: ({ system }) => {
+    getTraceFlows: () => {
       try {
         const flows = getTraceFlows(100);
         logger.info('Retrieved trace flows', { count: flows.length });
@@ -118,7 +118,7 @@ export const databaseSystem = setup({
         });
       }
     },
-    getFlowEvents: ({ system, event }) => {
+    getFlowEvents: ({ event }) => {
       const { flowId, offset = 0, limit = 50 } = databaseSpec.typeOf('GET_FLOW_EVENTS', event);
       
       try {
@@ -140,7 +140,7 @@ export const databaseSystem = setup({
         });
       }
     },
-    getNodeDetails: ({ system, event }) => {
+    getNodeDetails: ({ event }) => {
       const { nodeId } = databaseSpec.typeOf('GET_NODE_DETAILS', event);
       
       try {
@@ -160,7 +160,7 @@ export const databaseSystem = setup({
         });
       }
     },
-    exportDatabase: ({ system, event }) => {
+    exportDatabase: ({ event }) => {
       const { path, name, databases } = databaseSpec.typeOf('EXPORT_DATABASE', event);
       
       services.appData.exportBackup(path, name, databases).then(
@@ -179,7 +179,7 @@ export const databaseSystem = setup({
         }
       );
     },
-    importDatabase: ({ system, event }) => {
+    importDatabase: ({ event }) => {
       const { path, skipUnknownDatabases } = databaseSpec.typeOf('IMPORT_DATABASE', event);
 
       // Replaces stored data and reloads memory from it; on failure the previous data is restored and reloaded. The
@@ -218,7 +218,7 @@ export const databaseSystem = setup({
         }
       );
     },
-    getBackupInfo: async ({ system, event }) => {
+    getBackupInfo: async ({ event }) => {
       const { path } = databaseSpec.typeOf('GET_BACKUP_INFO', event);
 
       try {
@@ -235,7 +235,7 @@ export const databaseSystem = setup({
         });
       }
     },
-    resetDatabase: async ({ system }) => {
+    resetDatabase: async () => {
       try {
         logger.info('Starting database reset...');
 
@@ -270,7 +270,7 @@ export const databaseSystem = setup({
 }).createMachine({
   id: 'database',
   initial: 'idle',
-  context: ({ input }) => ({}),
+  context: () => ({}),
   on: {
     CLIENT_CONNECTED: {
       actions: 'sendDatabaseRefresh',

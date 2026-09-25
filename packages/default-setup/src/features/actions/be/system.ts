@@ -34,7 +34,7 @@ const broadcastActionEvent = (system: any, event: OutgoingActionEvents) => {
 export const actionsSystem = setup({
   types: actionsSpec.types,
   actions: {
-    sendActionsStartupData: ({ system }) => {
+    sendActionsStartupData: () => {
       const connectedData = repository.actionQueries.connectedData();
       const actionsSettings = services.settings.forFeature<ActionsSettings>(ref('actions'));
       
@@ -46,7 +46,7 @@ export const actionsSystem = setup({
         }
       });
     },
-    fetchActionsPage: ({ system, event }) => {
+    fetchActionsPage: ({ event }) => {
       const ev = actionsSpec.typeOf('FETCH_ACTIONS_PAGE', event);
       const data = repository.actionQueries.connectedData(ev.page || 1);
 
@@ -59,14 +59,14 @@ export const actionsSystem = setup({
         }
       });
     },
-    fetchAllActions: ({ system }) => {
+    fetchAllActions: () => {
       const allActions = repository.actionQueries.all();
       broadcastToPlugin('actions', {
         type: 'ACTIONS_ALL_LOADED',
         data: { actions: allActions }
       });
     },
-    sendActionData: ({ system, event }) => {
+    sendActionData: ({ event }) => {
       const ev = actionsSpec.typeOf('ACTION_SELECT', event);
       const action = repository.actionQueries.byId(ev.actionId as EARS.EntityId);
       
@@ -199,7 +199,7 @@ export const actionsSystem = setup({
       logger.info('Actions import complete', { count, errors: errors.length });
     },
 
-    exportActionsToFile: ({ system, event }) => {
+    exportActionsToFile: ({ event }) => {
       const { directory } = actionsSpec.typeOf('EXPORT_ACTIONS', event);
       const pluginId = 'actions' as const;
 
@@ -263,7 +263,7 @@ export const actionsSystem = setup({
   {
     id: 'actions',
     initial: 'idle',
-    context: ({ input }) => ({}),
+    context: () => ({}),
     on: {
       ACTION_SELECT: {
         actions: 'sendActionData',

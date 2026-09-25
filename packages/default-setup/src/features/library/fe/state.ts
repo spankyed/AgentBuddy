@@ -139,7 +139,7 @@ export const librarySystem = setup({
         })
       }
     },
-    handleDoubleClick: ({ context, event, self }) => {
+    handleDoubleClick: ({ event, self }) => {
       if (event.type === 'DOUBLE_CLICK_ITEM') {
         if (event.item.type === 'folder') {
           sendToSystem(id, {

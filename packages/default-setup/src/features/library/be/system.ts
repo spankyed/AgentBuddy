@@ -42,7 +42,7 @@ function notifyIfCommandsChanged(before: CommandItem[]): void {
 export const librarySystem = setup({
   types: librarySpec.types,
   actions: {
-    createDocument: async ({ system, event }) => {
+    createDocument: async ({ event }) => {
       const commandsBefore = libraryService.commands()
       const ev = event as { type: 'CREATE_DOCUMENT'; name: string; content: any[]; tags: string[]; collectionId?: string }
       const document = await libraryService.create({
@@ -60,7 +60,7 @@ export const librarySystem = setup({
 
       notifyIfCommandsChanged(commandsBefore)
     },
-    updateDocument: async ({ system, event }) => {
+    updateDocument: async ({ event }) => {
       const commandsBefore = libraryService.commands()
       const ev = event as { type: 'UPDATE_DOCUMENT'; id: string; name: string; content: any[]; tags: string[]; collectionId?: string }
       const document = await libraryService.update({
@@ -73,7 +73,7 @@ export const librarySystem = setup({
 
       notifyIfCommandsChanged(commandsBefore)
     },
-    deleteDocument: async ({ system, event }) => {
+    deleteDocument: async ({ event }) => {
       const commandsBefore = libraryService.commands()
       const ev = event as { type: 'DELETE_DOCUMENT'; id: string }
       repository.libraryCommands.deleteDocument(ev.id as EARS.EntityId)
@@ -83,7 +83,7 @@ export const librarySystem = setup({
         })
       notifyIfCommandsChanged(commandsBefore)
     },
-    getDocument: async ({ system, event }) => {
+    getDocument: async ({ event }) => {
       const ev = event as { type: 'GET_DOCUMENT'; id: string }
       const document = await libraryService.get(ev.id as EARS.EntityId)
       if (document) {
@@ -92,13 +92,13 @@ export const librarySystem = setup({
         broadcastToPlugin('library', { type: 'LIBRARY_ERROR' as const, data: { error: 'Document not found' } })
       }
     },
-    sendIndex: ({ system }) => {
+    sendIndex: () => {
       broadcastToPlugin('library', {
           type: 'LIBRARY_INDEX_LOADED' as const,
           data: { index: repository.libraryQueries.getIndex() },
         })
     },
-    createCollection: async ({ system, event }) => {
+    createCollection: async ({ event }) => {
       const ev = event as { type: 'CREATE_COLLECTION'; name: string; description?: string; parentId?: string }
       const isSymlink = ev.parentId ? !!symlink.resolveSymlinkPath(ev.parentId) : false
       if (isSymlink) {
@@ -117,7 +117,7 @@ export const librarySystem = setup({
         broadcastToPlugin('library', { type: 'COLLECTION_CREATED' as const, data: { collection } })
       }
     },
-    updateCollection: async ({ system, event }) => {
+    updateCollection: async ({ event }) => {
       const commandsBefore = libraryService.commands()
       const ev = event as { type: 'UPDATE_COLLECTION'; id: string; name: string; description?: string }
       const collection = repository.libraryCommands.updateCollection(
@@ -131,7 +131,7 @@ export const librarySystem = setup({
         })
       notifyIfCommandsChanged(commandsBefore)
     },
-    deleteCollection: async ({ system, event }) => {
+    deleteCollection: async ({ event }) => {
       const commandsBefore = libraryService.commands()
       const ev = event as { type: 'DELETE_COLLECTION'; id: string }
       repository.libraryCommands.deleteCollection(ev.id as EARS.EntityId)
@@ -141,7 +141,7 @@ export const librarySystem = setup({
         })
       notifyIfCommandsChanged(commandsBefore)
     },
-    moveDocument: async ({ system, event }) => {
+    moveDocument: async ({ event }) => {
       const commandsBefore = libraryService.commands()
       const ev = event as { type: 'MOVE_DOCUMENT'; documentId: string; collectionId?: string }
       const document = repository.libraryCommands.moveDocument(
@@ -154,7 +154,7 @@ export const librarySystem = setup({
         })
       notifyIfCommandsChanged(commandsBefore)
     },
-    sendInitialData: async ({ system }) => {
+    sendInitialData: async () => {
       // Run migrations
       repository.libraryCommands.migrateDocumentShortCodes()
       repository.libraryCommands.migrateDisplayOrders()
@@ -170,7 +170,7 @@ export const librarySystem = setup({
         })
     },
     // File browser actions
-    getFolderContents: async ({ system, event }) => {
+    getFolderContents: async ({ event }) => {
       const ev = event as { type: 'GET_FOLDER_CONTENTS'; folderId: string | null }
       const folderContents = await repository.libraryQueries.getFolderContents(ev.folderId ? ev.folderId as EARS.EntityId : null)
       broadcastToPlugin('library', {
@@ -178,7 +178,7 @@ export const librarySystem = setup({
           data: folderContents,
         })
     },
-    navigateToFolder: async ({ system, event }) => {
+    navigateToFolder: async ({ event }) => {
       const ev = event as { type: 'NAVIGATE_TO_FOLDER'; folderId: string | null }
       const folderContents = await repository.libraryQueries.getFolderContents(ev.folderId ? ev.folderId as EARS.EntityId : null)
       broadcastToPlugin('library', {
@@ -190,7 +190,7 @@ export const librarySystem = setup({
           data: { folderId: ev.folderId, path: folderContents.currentPath },
         })
     },
-    renameItem: async ({ system, event }) => {
+    renameItem: async ({ event }) => {
       const commandsBefore = libraryService.commands()
       const ev = event as { type: 'RENAME_ITEM'; id: string; name: string; itemType: 'document' | 'folder' }
       if (symlink.isSymlinkId(ev.id)) {
@@ -220,14 +220,14 @@ export const librarySystem = setup({
       }
       notifyIfCommandsChanged(commandsBefore)
     },
-    deleteItems: async ({ system, event }) => {
+    deleteItems: async ({ event }) => {
       const commandsBefore = libraryService.commands()
       const ev = event as { type: 'DELETE_ITEMS'; ids: string[] }
       await libraryService.remove(ev.ids)
       broadcastToPlugin('library', { type: 'ITEMS_DELETED' as const, data: { ids: ev.ids } })
       notifyIfCommandsChanged(commandsBefore)
     },
-    moveItems: async ({ system, event }) => {
+    moveItems: async ({ event }) => {
       const commandsBefore = libraryService.commands()
       const ev = event as { type: 'MOVE_ITEMS'; ids: string[]; targetFolderId: string | null }
       await libraryService.move(ev.ids, ev.targetFolderId)
@@ -278,7 +278,7 @@ export const librarySystem = setup({
     //   broadcastToPlugin('library', { type: 'SEARCH_RESULTS', data: { results } })
     // },
     // Symlink actions
-    createSymlinkCollection: async ({ system, event }) => {
+    createSymlinkCollection: async ({ event }) => {
       const ev = event as { type: 'CREATE_SYMLINK_COLLECTION'; name: string; symlinkPath: string; parentId?: string }
       const resolvedPath = resolveHomePath(ev.symlinkPath)
       const collection = repository.libraryCommands.createSymlinkCollection(
@@ -292,7 +292,7 @@ export const librarySystem = setup({
         })
 
     },
-    updateSymlinkPath: async ({ system, event }) => {
+    updateSymlinkPath: async ({ event }) => {
       const ev = event as { type: 'UPDATE_SYMLINK_PATH'; collectionId: string; newPath: string }
       const resolvedPath = resolveHomePath(ev.newPath)
 
@@ -319,7 +319,7 @@ export const librarySystem = setup({
         })
     },
     // Import/Export actions
-    importLibraryItems: async ({ system, event }) => {
+    importLibraryItems: async ({ event }) => {
       const commandsBefore = libraryService.commands()
       const ev = event as { type: 'IMPORT_LIBRARY'; directory: string }
 
@@ -360,7 +360,7 @@ export const librarySystem = setup({
       // An import can fail part way, after creating documents
       notifyIfCommandsChanged(commandsBefore)
     },
-    exportLibraryToFile: async ({ system, event }) => {
+    exportLibraryToFile: async ({ event }) => {
       const ev = event as { type: 'EXPORT_LIBRARY'; directory: string; format: 'markdown' | 'json' }
 
       try {
@@ -379,7 +379,7 @@ export const librarySystem = setup({
           })
       }
     },
-    handleSettingsUpdate: ({ system, event }) => {
+    handleSettingsUpdate: ({ event }) => {
       const { changes } = librarySpec.typeOf('FEATURE_SETTINGS_UPDATED', event)
       const tagChanges = changes?.tags
       
@@ -412,7 +412,7 @@ export const librarySystem = setup({
 }).createMachine({
   id: 'library',
   initial: 'idle',
-  context: ({ input }) => ({
+  context: () => ({
     documents: [],
     collections: [],
     currentItems: [],

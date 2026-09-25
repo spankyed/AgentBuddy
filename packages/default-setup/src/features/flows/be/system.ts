@@ -77,12 +77,12 @@ export const flowsSystem = setup({
   types: flowsSpec.types,
   actors: {},
   actions: {
-    handleClientConnection: ({ system }) => {
+    handleClientConnection: () => {
       logger.info('Sending flows connected data to client');
       sendConnectedData();
     },
 
-    selectFlow: ({ system, event }) => {
+    selectFlow: ({ event }) => {
       const { flowId } = flowsSpec.typeOf('FLOW_SELECT', event);
       const pluginId = 'flows' as const;
       
@@ -97,12 +97,12 @@ export const flowsSystem = setup({
       });
     },
     
-    createFlow: ({ system, event }) => {
+    createFlow: () => {
       const pluginId = 'flows' as const;
       
       logger.info('Creating new flow');
       
-      const { flow, entryNode } = repository.flowsCommands.createFlowWithEntryNode();
+      const { flow } = repository.flowsCommands.createFlowWithEntryNode();
       
       const data = repository.flowsQueries.extendedData(flow.id);
       
@@ -114,7 +114,7 @@ export const flowsSystem = setup({
       });
     },
     
-    updateFlowLabel: ({ system, event }) => {
+    updateFlowLabel: ({ event }) => {
       const { flowId, label } = flowsSpec.typeOf('UPDATE_FLOW_LABEL', event);
 
       logger.info('Updating flow label', { flowId, label });
@@ -122,7 +122,7 @@ export const flowsSystem = setup({
       repository.flowsCommands.updateFlowLabel(flowId as EARS.EntityId, label);
     },
 
-    deleteFlow: ({ system, event }) => {
+    deleteFlow: ({ event }) => {
       const { flowId } = flowsSpec.typeOf('DELETE_FLOW', event);
       const pluginId = 'flows' as const;
 
@@ -143,7 +143,7 @@ export const flowsSystem = setup({
       }
     },
     
-    createNode: ({ system, event }) => {
+    createNode: ({ event }) => {
       const { flowId, tempId, nodeData } = flowsSpec.typeOf('CREATE_NODE', event);
       const pluginId = 'flows' as const;
       
@@ -159,7 +159,7 @@ export const flowsSystem = setup({
       });
     },
     
-    updateNode: ({ system, event }) => {
+    updateNode: ({ event }) => {
       const { flowId, nodeId, nodeData } = flowsSpec.typeOf('UPDATE_NODE', event);
       const pluginId = 'flows' as const;
       
@@ -176,7 +176,7 @@ export const flowsSystem = setup({
       });
     },
     
-    deleteNode: ({ system, event }) => {
+    deleteNode: ({ event }) => {
       const { flowId, nodeId } = flowsSpec.typeOf('DELETE_NODE', event);
       const pluginId = 'flows' as const;
       
@@ -191,7 +191,7 @@ export const flowsSystem = setup({
       });
     },
     
-    createEdge: ({ system, event }) => {
+    createEdge: ({ event }) => {
       const { flowId, sourceId, targetId, sourceHandle, targetHandle } = flowsSpec.typeOf('CREATE_EDGE', event);
       const pluginId = 'flows' as const;
 
@@ -223,7 +223,7 @@ export const flowsSystem = setup({
       }
     },
     
-    deleteEdge: ({ system, event }) => {
+    deleteEdge: ({ event }) => {
       const { flowId, edgeId } = flowsSpec.typeOf('DELETE_EDGE', event);
       const pluginId = 'flows' as const;
       
@@ -237,7 +237,7 @@ export const flowsSystem = setup({
       });
     },
     
-    updateEdge: ({ system, event }) => {
+    updateEdge: ({ event }) => {
       const { flowId, edgeId, source, target, sourceHandle, targetHandle } = flowsSpec.typeOf('UPDATE_EDGE', event);
       const pluginId = 'flows' as const;
 
@@ -274,7 +274,7 @@ export const flowsSystem = setup({
       }
     },
     
-    setRootFlow: ({ system, event }) => {
+    setRootFlow: ({ event }) => {
       const { flowId } = flowsSpec.typeOf('SET_ROOT_FLOW', event);
       const previous = repository.flowsQueries.rootFlow();
       if ((flowId ?? undefined) === previous) return;
@@ -284,7 +284,7 @@ export const flowsSystem = setup({
       sendConnectedData();
     },
 
-    importDSL: ({ system, event }) => {
+    importDSL: ({ event }) => {
       const { dsl } = flowsSpec.typeOf('IMPORT_DSL', event);
       const pluginId = 'flows' as const;
 
@@ -342,7 +342,7 @@ export const flowsSystem = setup({
       repository.flowsCommands.reindexHandles(nodeId as EARS.EntityId, prefix, index, direction);
     },
 
-    exportDSL: ({ system, event }) => {
+    exportDSL: ({ event }) => {
       const { directory, flowId } = flowsSpec.typeOf('EXPORT_DSL', event);
       const pluginId = 'flows' as const;
 

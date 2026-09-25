@@ -17,7 +17,7 @@ import type {
 } from './types/search-index'
 import type { DocumentDTO } from '../types'
 import * as searchService from './service'
-import { libraryQueries, libraryCommands } from '../repository'
+import { libraryQueries } from '../repository'
 import { errorMessage } from '@abuddy/sdk/utils/pure';
 
 const logger = createLogger('search-index')

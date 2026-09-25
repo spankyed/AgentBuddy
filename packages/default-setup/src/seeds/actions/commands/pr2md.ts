@@ -100,8 +100,8 @@ function formatPRMarkdown(pr: any, comments: any[], threads: any[]): string {
 export async function action(
   params: Record<string, any>,
   services: Services,
-  z: Z,
-  flowId: string,
+  _z: Z,
+  _flowId: string,
 ) {
   const { text, threadId } = params;
 

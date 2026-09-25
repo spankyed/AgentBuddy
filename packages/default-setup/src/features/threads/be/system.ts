@@ -55,7 +55,7 @@ export const threadsSystem = setup({
   types: threadsSpec.types,
   actions: {
     // ---- Thread management actions ----
-    sendThreadsConnectedData: ({ system }) => {
+    sendThreadsConnectedData: () => {
       const connectedData = repository.threadQueries.connectedData();
       const threadsSettings = services.settings.forFeature<ThreadsSettings>(ref('threads'));
 
@@ -67,13 +67,13 @@ export const threadsSystem = setup({
         }
       });
     },
-    sendArchivedThreads: ({ system }) => {
+    sendArchivedThreads: () => {
       broadcastToPlugin('threads', {
         type: 'ARCHIVED_THREADS_DATA',
         threads: repository.threadQueries.archivedThreads(),
       });
     },
-    createThread: ({ system, event }) => {
+    createThread: ({ event }) => {
       const thread = threadsSpec.typeOf('CREATE_THREAD', event);
 
       const { id: newThreadId, ...rest } = repository.threadCommands.create({
@@ -102,7 +102,7 @@ export const threadsSystem = setup({
         ...rest
       });
     },
-    sendViewData: ({ system, event }) => {
+    sendViewData: ({ event }) => {
       const threadId = threadsSpec.typeOf('VIEW_THREAD', event).threadId as EARS.EntityId;
 
       repository.threadCommands.markAsVisited(threadId);
@@ -113,7 +113,7 @@ export const threadsSystem = setup({
         data: repository.threadQueries.extendedData(threadId),
       });
     },
-    updateThreadField: ({ system, event }) => {
+    updateThreadField: ({ event }) => {
       const { key, value, threadId } = threadsSpec.typeOf('UPDATE_THREAD_FIELD', event);
       const updates = { [key]: value };
       try {
@@ -166,7 +166,7 @@ export const threadsSystem = setup({
         services.chat.sendRecentThreadsRefresh();
       }
     },
-    updateThreadStatus: ({ system, event }) => {
+    updateThreadStatus: ({ event }) => {
       const { threadId, status } = threadsSpec.typeOf('UPDATE_THREAD_STATUS', event);
       const updates = { status, updatedAt: Date.now() };
       try {
@@ -190,7 +190,7 @@ export const threadsSystem = setup({
         payload: { threadId, status, userInduced: true },
       });
     },
-    handleSettingsUpdate: ({ system, event }) => {
+    handleSettingsUpdate: ({ event }) => {
       const firstStatusLabel = (): string | undefined =>
         services.settings.forFeature<ThreadsSettings>(ref('threads'))?.statuses?.[0]?.label;
 
@@ -252,7 +252,7 @@ export const threadsSystem = setup({
       // Always refresh recent threads — sort order or limit may have changed
       services.chat.sendRecentThreadsRefresh();
     },
-    setThreadParent: ({ system, event }) => {
+    setThreadParent: ({ event }) => {
       const { childIds, parentId } = threadsSpec.typeOf('SET_THREAD_PARENT', event);
 
       try {
@@ -275,7 +275,7 @@ export const threadsSystem = setup({
         },
       });
     },
-    deleteThread: ({ system, event }) => {
+    deleteThread: ({ event }) => {
       const { threadId } = threadsSpec.typeOf('DELETE_THREAD', event);
 
       // Stop active processes before hard-deleting the thread.
@@ -297,7 +297,7 @@ export const threadsSystem = setup({
       // Refresh recent threads since active thread may have been deleted
       services.chat.sendRecentThreadsRefresh();
     },
-    exportThreadsToFile: ({ system, event }) => {
+    exportThreadsToFile: ({ event }) => {
       const ev = event as { type: 'EXPORT_THREADS'; directory: string };
 
       try {
@@ -316,7 +316,7 @@ export const threadsSystem = setup({
         });
       }
     },
-    importThreadItems: ({ system, event }) => {
+    importThreadItems: ({ event }) => {
       const ev = event as { type: 'IMPORT_THREADS'; directory: string };
 
       try {
@@ -356,7 +356,7 @@ export const threadsSystem = setup({
     },
 
     // ---- Chat/agent actions (merged from agent system) ----
-    checkOnboarding: ({ system }) => {
+    checkOnboarding: () => {
       if (!services.appData.hasOnboarded() && !birthFlowStarted) {
         birthFlowStarted = true;
         const assistantSettings = services.settings.getSection<AssistantSettings>('assistant');
@@ -384,7 +384,7 @@ export const threadsSystem = setup({
       }
     },
 
-    startBirthFlow: ({ system }) => {
+    startBirthFlow: () => {
       const assistantSettings = services.settings.getSection<AssistantSettings>('assistant');
 
       if (!assistantSettings.birthdate) {
@@ -400,14 +400,14 @@ export const threadsSystem = setup({
       });
     },
     // Sends the chat the commands when they differ from what it was last sent
-    sendCommands: assign(({ context, system }) => {
+    sendCommands: assign(({ context }) => {
       const commands = services.library.commands();
       const sent = JSON.stringify(commands);
       if (sent === context.sentCommands) return {};
       broadcastToPlugin('threads', { type: 'COMMANDS_UPDATED', commands });
       return { sentCommands: sent };
     }),
-    sendChatConnectedData: ({ system }) => {
+    sendChatConnectedData: () => {
       const data = repository.chatQueries.connectedData();
       broadcastToPlugin('threads', {
         type: 'AGENT_CONNECTED',
@@ -415,7 +415,7 @@ export const threadsSystem = setup({
       });
     },
     rememberSentCommands: assign({ sentCommands: () => JSON.stringify(services.library.commands()) }),
-    sendThreadChatData: ({ system, event }) => {
+    sendThreadChatData: ({ event }) => {
       const { threadId, restore } = threadsSpec.typeOf('OPEN_THREAD_CHAT', event);
       try {
         services.chat.openThreadChatAndRefreshRecent(threadId as EARS.EntityId, restore);
@@ -428,7 +428,7 @@ export const threadsSystem = setup({
         });
       }
     },
-    loadMoreMessages: ({ system, event }) => {
+    loadMoreMessages: ({ event }) => {
       const { threadId, cursor } = threadsSpec.typeOf('LOAD_MORE_MESSAGES', event);
       const result = repository.chatQueries.paginatedMessages(threadId as EARS.EntityId, cursor);
       broadcastToPlugin('threads', {
@@ -437,7 +437,7 @@ export const threadsSystem = setup({
         ...result,
       });
     },
-    sendThreadTabData: ({ system, event }) => {
+    sendThreadTabData: ({ event }) => {
       const { threadId } = threadsSpec.typeOf('OPEN_THREAD_TAB', event);
       try {
         services.chat.openThreadTabAndRefresh(threadId as EARS.EntityId);
@@ -450,14 +450,14 @@ export const threadsSystem = setup({
         });
       }
     },
-    forwardUserMessage: ({ system, event }) => {
+    forwardUserMessage: ({ event }) => {
       try {
         const { text, mode, phase, threadId: providedThreadId, references, cwdOverride, forceDirectoryPicker } = threadsSpec.typeOf('USER_MSG', event);
 
         const sanitizedRefs = references ? {
           ...references,
           ...(references.files && {
-            files: references.files.map(({ previewUrl, ...rest }: any) => rest),
+            files: references.files.map(({ ...rest }: any) => rest),
           }),
         } : undefined;
 
@@ -549,14 +549,14 @@ export const threadsSystem = setup({
         });
       }
     },
-    forwardUserCommand: ({ system, event }) => {
+    forwardUserCommand: ({ event }) => {
       try {
       const { command, text, mode, phase, threadId: providedThreadId, references, cwdOverride } = threadsSpec.typeOf('USER_COMMAND', event);
 
       const sanitizedRefs = references ? {
         ...references,
         ...(references.files && {
-          files: references.files.map(({ previewUrl, ...rest }: any) => rest),
+          files: references.files.map(({ ...rest }: any) => rest),
         }),
       } : undefined;
 
@@ -649,7 +649,7 @@ export const threadsSystem = setup({
         logger.error('forwardUserCommand failed', { error: err });
       }
     },
-    forkThread: ({ system, event }) => {
+    forkThread: ({ event }) => {
       const { messageId, threadId, threadTopic } = threadsSpec.typeOf('FORK_THREAD', event);
       if (!threadId) return;
 
@@ -714,7 +714,7 @@ export const threadsSystem = setup({
         }
       }
     },
-    revertThread: ({ system, event }) => {
+    revertThread: ({ event }) => {
       try {
       const { messageId, threadId, restoreFiles, userCliUuid } = threadsSpec.typeOf('REVERT_THREAD', event);
       const beforeMessages = repository.chatQueries.threadData(threadId as EARS.EntityId)?.messages ?? [];
@@ -767,7 +767,7 @@ export const threadsSystem = setup({
         logger.error('revertThread failed', { error: err });
       }
     },
-    summarizeThread: ({ system, event }) => {
+    summarizeThread: ({ event }) => {
       try {
       const { messageId, threadId } = threadsSpec.typeOf('SUMMARIZE_THREAD', event);
       const beforeMessages = repository.chatQueries.threadData(threadId as EARS.EntityId)?.messages ?? [];
@@ -809,7 +809,7 @@ export const threadsSystem = setup({
         logger.error('summarizeThread failed', { error: err });
       }
     },
-    pauseTurn: ({ system, event }) => {
+    pauseTurn: ({ event }) => {
       const { threadId } = threadsSpec.typeOf('PAUSE_TURN', event);
       sendToSystem('brain', {
         type: 'TRIGGER_BRAIN_EVENT',
@@ -817,11 +817,11 @@ export const threadsSystem = setup({
         payload: { threadId },
       });
     },
-    forwardBrainEvent: ({ system, event }) => {
+    forwardBrainEvent: ({ event }) => {
       const { eventType, payload } = threadsSpec.typeOf('FORWARD_BRAIN_EVENT', event);
       sendToSystem('brain', { type: 'TRIGGER_BRAIN_EVENT', eventType, payload });
     },
-    forwardInteractiveMessageResponse: ({ system, event }) => {
+    forwardInteractiveMessageResponse: ({ event }) => {
       try {
       const { messageId, threadId, response } = threadsSpec.typeOf('INTERACTIVE_MSG_RESPONSE', event);
 
@@ -863,7 +863,7 @@ export const threadsSystem = setup({
       if (!repository.chatQueries.messageById(messageId as EARS.EntityId)) return;
       tx(messageId as EARS.EntityId).destroy();
     },
-    toggleCompacted: ({ system, event }) => {
+    toggleCompacted: ({ event }) => {
       const { markerId, compacted } = threadsSpec.typeOf('TOGGLE_COMPACTED', event);
       const messageIds = repository.chatCommands.toggleMarkerCompacted(
         markerId as EARS.EntityId,
@@ -882,7 +882,7 @@ export const threadsSystem = setup({
   {
     id: 'threads',
     initial: 'idle',
-    context: ({ input }) => ({}),
+    context: () => ({}),
     on: {
       CLIENT_CONNECTED: {
         actions: ['sendThreadsConnectedData', 'sendChatConnectedData', 'rememberSentCommands', 'checkOnboarding'],

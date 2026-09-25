@@ -1,6 +1,6 @@
 import { assign, setup, type ActorRefFrom } from 'xstate';
 import { safeEvents } from '@abuddy/sdk/fe';
-import breadcrumb, { breadcrumbList } from '@abuddy/sdk/fe';
+import { breadcrumbList } from '@abuddy/sdk/fe';
 import { contextMenuFn } from '@abuddy/sdk/fe';
 import { Activity, Play, RefreshCw, Power, PlayCircle, Pause } from 'lucide-vue-next';
 import { targetIs, type TrailClickEvent } from '@abuddy/sdk/fe';
@@ -101,7 +101,7 @@ const brainState = setup({
     addTNodeToTree: assign(({ context, event }) => {
       if (event.type !== 'TNODE_SPAWNED') return {};
 
-      const { tNode, parentId, eventTNodeId, flowTNodeId } = event;
+      const { tNode, parentId, flowTNodeId } = event;
 
       // Filter: Only accept TNode spawns for the currently viewed flow
       // This prevents subflow internal events from appearing in parent flow view
@@ -123,7 +123,7 @@ const brainState = setup({
       if (event.type !== 'TNODE_UPDATED') return {};
 
       const { data } = event;
-      const { tNodeId, status, eventTNodeId } = data;
+      const { tNodeId, status } = data;
 
       if (!context.normalizedTree || !context.normalizedTree.byId[tNodeId]) {
         return {};
@@ -336,7 +336,7 @@ const brainState = setup({
     },
   },
   guards: {
-    canGoBack: ({ context }) => {
+    canGoBack: () => {
       return true;
     },
     targetIs,

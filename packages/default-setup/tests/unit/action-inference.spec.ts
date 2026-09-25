@@ -17,7 +17,7 @@ async function runAction(actionFn: string) {
 
 describe('actions calling services.inference', () => {
   it('get structured output from an output spec built with the injected zod', async () => {
-    const inference = mockInference(JSON.stringify({ label: 'bug', confidence: 0.9 }));
+    mockInference(JSON.stringify({ label: 'bug', confidence: 0.9 }));
 
     const sent = await runAction(`
       const { output } = await services.inference.generateText({

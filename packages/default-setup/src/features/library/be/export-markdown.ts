@@ -5,7 +5,6 @@
  * matching the default-setup source structure for direct reuse.
  */
 
-import * as fs from 'node:fs'
 import * as path from 'node:path'
 import { extractMediaRefs, rewriteMediaUrls, copyFlatMedia, toSlug, uniqueFilename } from '@abuddy/sdk/utils'
 import { ensureDirectoryExists, createExportDir } from '@abuddy/sdk/utils'

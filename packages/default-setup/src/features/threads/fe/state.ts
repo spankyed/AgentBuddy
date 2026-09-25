@@ -392,7 +392,7 @@ const threadsState = setup({
       }
     }),
     sendCreateThread: ({ context }) => {
-      const { parentThread, ...createData } = context.create;
+      const { parentThread: _parentThread, ...createData } = context.create;
       sendToSystem(id, {
         type: 'CREATE_THREAD',
         ...createData,
@@ -461,7 +461,7 @@ const threadsState = setup({
     updateThreadInThreads: assign(({ event, context }) => {
       const typedEvent = typeOf('UPDATE_THREAD_FIELD', event);
 
-      const { messages, linkedThreads, ...rest } = context.view;
+      const { messages: _messages, linkedThreads: _linkedThreads, ...rest } = context.view;
       (rest as any)[typedEvent.key] = typedEvent.value as any;
       const newThread = rest as ThreadListItem;
       return {

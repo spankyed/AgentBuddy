@@ -279,7 +279,7 @@ export const explorerSystem = setup({
       }
     },
 
-    setBaseDirectory: ({ event, context }) => {
+    setBaseDirectory: () => {
       // No longer need to send active directory info
     },
 

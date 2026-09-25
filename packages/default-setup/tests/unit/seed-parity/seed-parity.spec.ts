@@ -16,7 +16,6 @@
 // sourceHash and follow the same change-tracking rules as every other entry. Their sourceHash field
 // and seed counts are left out of the goldens, and so are their rows in the steps where the old
 // pipeline overwrote notes: notes-change-tracking.spec.ts checks those steps by the Decision 10 rules.
-import { createHash } from 'node:crypto';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { afterAll, describe, expect, it } from 'vitest';
@@ -57,7 +56,6 @@ afterAll(() => {
  * normalized row plus the fields that identify them: still an exact comparison.
  */
 function forGolden(step: Step, withNotes: boolean) {
-  const digest = (row: Record<string, unknown>) => createHash('sha256').update(JSON.stringify(row)).digest('hex');
   const rows = Object.fromEntries(
     Object.entries(step.snapshot.rows)
       .filter(([alias]) => withNotes || !alias.startsWith('Note:'))

@@ -174,7 +174,7 @@ describe('the 0.3.15 migration', () => {
     // A thrown migration would stop every later migration and the seeds on every boot
     it('leaves the row as it was when the settings refuse the pruned copy', () => {
       rowOf0314(withUserChanges)
-      const replace = vi.spyOn(services.settings, 'replaceAll').mockImplementation(() => {
+      vi.spyOn(services.settings, 'replaceAll').mockImplementation(() => {
         throw new Error('refused')
       })
 

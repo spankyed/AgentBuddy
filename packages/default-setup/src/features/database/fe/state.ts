@@ -90,7 +90,7 @@ const databaseState = setup({
     }),
 
     /* ── query interactions ────────────────────────────── */
-    executeQuery: ({ event, context }) => {
+    executeQuery: ({ event }) => {
       const ev = typeOf('QUERY.EXECUTE', event);
       sendToSystem(id, {
         type: 'EXECUTE_QUERY',
@@ -98,7 +98,7 @@ const databaseState = setup({
       });
     },
 
-    executeTransaction: ({ event, context }) => {
+    executeTransaction: ({ event }) => {
       const ev = typeOf('TRANSACTION.EXECUTE', event);
       sendToSystem(id, {
         type: 'EXECUTE_TRANSACTION',
@@ -106,7 +106,7 @@ const databaseState = setup({
       });
     },
 
-    deleteEntity: ({ event, context }) => {
+    deleteEntity: ({ event }) => {
       const ev = typeOf('ENTITY.DELETE', event);
       // Use tx() to delete the entity
       const deleteCode = `tx('${ev.entityId}').destroy(); return { deleted: '${ev.entityId}' };`;
@@ -150,7 +150,7 @@ const databaseState = setup({
       };
     }),
 
-    setTransactionResult: enqueueActions(({ event, context, enqueue }) => {
+    setTransactionResult: enqueueActions(({ event, enqueue }) => {
       const ev = typeOf('TRANSACTION_RESULT', event);
 
       // Check if this was a delete operation
@@ -222,7 +222,7 @@ const databaseState = setup({
     }),
 
     /* ── schema interactions ───────────────────────────────── */
-    selectSchemaItem: assign(({ event, context }) => {
+    selectSchemaItem: assign(({ event }) => {
       const ev = typeOf('SCHEMA.SELECT', event);
       const query = generateQueryForSchemaItem(ev.itemType, ev.value);
 

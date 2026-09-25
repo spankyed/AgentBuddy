@@ -414,7 +414,7 @@ export const commitState = setup({
       }
     },
 
-    stashPush: ({ event, context }) => {
+    stashPush: ({ event }) => {
       const ev = event as { type: 'commit.STASH_PUSH'; message?: string; stagedOnly?: boolean }
       sendToSystem('code', { type: 'commit.STASH_PUSH', message: ev.message, stagedOnly: ev.stagedOnly })
     },

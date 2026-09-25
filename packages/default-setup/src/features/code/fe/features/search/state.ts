@@ -134,7 +134,7 @@ export const searchState = setup({
       }
     }),
 
-    handleCodeStartup: ({ self }) => {
+    handleCodeStartup: () => {
       // No immediate action needed on startup
       // Error will be shown if user tries to search without a directory
     },

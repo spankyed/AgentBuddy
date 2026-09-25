@@ -34,7 +34,7 @@ export const notesSpec = defineSystem<Contract>();
 export const notesSystem = setup({
   types: notesSpec.types,
   actions: {
-    sendNotesConnectedData: ({ system }) => {
+    sendNotesConnectedData: () => {
       const connectedData = repository.noteQueries.connectedData();
       const settings = services.settings.forFeature<NotesSettings>(ref('notes'));
       broadcastToPlugin('notes', {
@@ -43,7 +43,7 @@ export const notesSystem = setup({
       });
     },
 
-    createNote: ({ system, event }) => {
+    createNote: ({ event }) => {
       const ev = notesSpec.typeOf('CREATE_NOTE', event);
       const note = repository.noteCommands.create({
         title: ev.title,
@@ -85,7 +85,7 @@ export const notesSystem = setup({
       }
     },
 
-    updateNote: ({ system, event }) => {
+    updateNote: ({ event }) => {
       const ev = notesSpec.typeOf('UPDATE_NOTE', event);
       const noteId = ev.id as EARS.EntityId;
       const noteBeforeUpdate = repository.noteQueries.byId(noteId) as NoteEntity | undefined;
@@ -174,7 +174,7 @@ export const notesSystem = setup({
       logger.info(`Bootstrapped REFERENCES relations for ${allNotes.length} notes`);
     },
 
-    softDeleteNote: ({ system, event }) => {
+    softDeleteNote: ({ event }) => {
       const ev = notesSpec.typeOf('SOFT_DELETE_NOTE', event);
       const deletedIds = repository.noteCommands.softDelete(ev.id as EARS.EntityId);
 
@@ -202,7 +202,7 @@ export const notesSystem = setup({
       }
     },
 
-    restoreNote: ({ system, event }) => {
+    restoreNote: ({ event }) => {
       const ev = notesSpec.typeOf('RESTORE_NOTE', event);
       const restoredIds = repository.noteCommands.restore(ev.id as EARS.EntityId);
 
@@ -242,7 +242,7 @@ export const notesSystem = setup({
       logger.info(`Cleaned up ${expired.length} expired soft-deleted notes`);
     },
 
-    moveNotes: ({ system, event }) => {
+    moveNotes: ({ event }) => {
       const ev = notesSpec.typeOf('MOVE_NOTE', event);
       const newParentId = ev.newParentId as EARS.EntityId | null;
       const affectedParentIds = new Set<string>();
@@ -288,7 +288,7 @@ export const notesSystem = setup({
       }
     },
 
-    reorderNote: ({ system, event }) => {
+    reorderNote: ({ event }) => {
       const ev = notesSpec.typeOf('REORDER_NOTE', event);
       const noteId = ev.id as EARS.EntityId;
       const newParentId = ev.newParentId as EARS.EntityId | null;
@@ -338,7 +338,7 @@ export const notesSystem = setup({
       }
     },
 
-    searchNotes: ({ system, event }) => {
+    searchNotes: ({ event }) => {
       const ev = notesSpec.typeOf('SEARCH_NOTES', event);
       const query = ev.query.trim().toLowerCase();
       if (!query) {
@@ -358,7 +358,7 @@ export const notesSystem = setup({
       });
     },
 
-    importNotesItems: ({ system, event }) => {
+    importNotesItems: ({ event }) => {
       const ev = event as { type: 'IMPORT_NOTES'; directory: string };
       try {
         const result = importNotes(ev.directory);
@@ -393,7 +393,7 @@ export const notesSystem = setup({
       }
     },
 
-    exportNotesToFile: ({ system, event }) => {
+    exportNotesToFile: ({ event }) => {
       const ev = event as { type: 'EXPORT_NOTES'; directory: string; format: 'markdown' | 'json' };
       try {
         const { filePath, itemCount } = exportNotes(ev.directory, ev.format);
@@ -412,7 +412,7 @@ export const notesSystem = setup({
       }
     },
 
-    viewNote: ({ system, event }) => {
+    viewNote: ({ event }) => {
       const ev = notesSpec.typeOf('VIEW_NOTE', event);
       if (!repository.noteQueries.byId(ev.id as EARS.EntityId)) return;
       repository.noteCommands.update(ev.id as EARS.EntityId, { lastSeen: Date.now() }, true);
@@ -425,7 +425,7 @@ export const notesSystem = setup({
       }
     },
 
-    deleteNote: ({ system, event }) => {
+    deleteNote: ({ event }) => {
       const ev = notesSpec.typeOf('DELETE_NOTE', event);
 
       // Get parent before deletion for update
@@ -524,7 +524,7 @@ export const notesSystem = setup({
       }
     },
 
-    permanentlyDeleteNote: ({ system, event }) => {
+    permanentlyDeleteNote: ({ event }) => {
       const ev = notesSpec.typeOf('PERMANENTLY_DELETE_NOTE', event);
       try {
         repository.noteCommands.delete(ev.id as EARS.EntityId);
@@ -537,7 +537,7 @@ export const notesSystem = setup({
       }
     },
 
-    emptyTrash: ({ system }) => {
+    emptyTrash: () => {
       const trashed = repository.noteQueries.trashedDTOs();
       for (const note of trashed) {
         try {
@@ -552,7 +552,7 @@ export const notesSystem = setup({
       }
     },
 
-    sendTrashedNotes: ({ system }) => {
+    sendTrashedNotes: () => {
       const trashed = repository.noteQueries.trashedDTOs();
       broadcastToPlugin('notes', {
         type: 'TRASHED_NOTES',
@@ -563,7 +563,7 @@ export const notesSystem = setup({
 }).createMachine({
   id: 'notes',
   initial: 'idle',
-  context: ({}) => ({}),
+  context: () => ({}),
   on: {
     CREATE_NOTE: {
       actions: 'createNote',

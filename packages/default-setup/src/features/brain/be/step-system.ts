@@ -120,7 +120,7 @@ export function createStepNodeSystem(
     }).createMachine({
       id: `step-machine`,
       initial: 'executing',
-      context: ({ input }) => ({
+      context: () => ({
         tNodeId: tNode.id,
         tNode: tNode,
         step: step,

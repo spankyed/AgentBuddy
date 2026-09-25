@@ -437,7 +437,7 @@ export class FileSystemRepository {
                   matchEnd: match.end
                 })
               }
-            } catch (err) {
+            } catch {
               // Ignore JSON parse errors
             }
           }

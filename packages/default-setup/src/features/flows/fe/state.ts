@@ -246,7 +246,7 @@ const flowsState = setup({
     }),
 
     sendCreateFlow: ({ event }) => {
-      const ev = typeOf('FLOW.CREATE', event);
+      typeOf('FLOW.CREATE', event);
       sendToSystem(id, { type: 'CREATE_FLOW' });
     },
 
@@ -1010,7 +1010,7 @@ const flowsState = setup({
     },
 
     handleDSLImported: assign(({ context, event }) => {
-      const ev = typeOf('DSL_IMPORTED', event);
+      typeOf('DSL_IMPORTED', event);
       return {
         dslImport: {
           status: 'success' as const,

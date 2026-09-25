@@ -1,14 +1,12 @@
 import { tx, qx } from '@/__generated__/ears';
 import * as path from 'path'
 import { EARS } from '@/__generated__/ears'
-import { createLogger } from '@abuddy/sdk/logger'
 import type { DocumentDTO, CollectionDTO, LibraryItem } from '../types'
 // [SEARCH_INDEX_FF] import * as searchIndexRepo from '../search-index/repository' (dormant: ../search-index/README.md)
 import { libraryQueries } from './queries'
 import { findParentCollection, getDisplayOrder, getNextDisplayOrder, getCollectionPath, formatFileSize, getContentLength } from './helpers'
 import type { ContentSection, DocumentShortCode } from '@/features/library/be/types';
 
-const logger = createLogger('library')
 
 export const libraryCommands = {
   createDocument(

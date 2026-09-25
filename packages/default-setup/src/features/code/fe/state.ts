@@ -281,7 +281,7 @@ const codeState = setup({
     promptsState
   },
   actions: {
-    spawnFeatureActors: enqueueActions(({ enqueue, context }) => {
+    spawnFeatureActors: enqueueActions(({ enqueue }) => {
       // Only spawn if not already
         enqueue.spawnChild('explorerState', { id: 'explorer' });
         enqueue.spawnChild('terminalState', { id: 'terminal' });

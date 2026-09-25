@@ -14,8 +14,8 @@ export const meta: ActionMeta = {
 export async function action(
   params: Record<string, any>,
   services: Services,
-  z: Z,
-  flowId: string,
+  _z: Z,
+  _flowId: string,
 ) {
   // If onboarding is already complete, do nothing
   if (services.appData.hasOnboarded()) {

@@ -1,5 +1,4 @@
 import { qx } from '@/__generated__/ears';
-import * as fs from 'node:fs'
 import * as path from 'node:path'
 import { repository } from '@/__generated__/repository';
 

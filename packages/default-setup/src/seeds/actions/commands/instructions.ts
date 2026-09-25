@@ -20,8 +20,8 @@ function stripHtml(html: string): string {
 export async function action(
   params: Record<string, any>,
   services: Services,
-  z: Z,
-  flowId: string,
+  _z: Z,
+  _flowId: string,
 ) {
   const { text, threadId } = params;
 

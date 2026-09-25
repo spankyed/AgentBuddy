@@ -102,7 +102,7 @@ export const terminalSystem = setup({
     })
   },
   actions: {
-    sendConnectedData: ({ context }) => {
+    sendConnectedData: () => {
       emitToFrontend({ type: 'terminal.TERMINALS_LISTED', data: terminalService.list() })
     },
 

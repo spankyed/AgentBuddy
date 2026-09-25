@@ -377,7 +377,7 @@ describe('CC: Handle Fork — stress tests', () => {
       ['new', { id: 'new', context: {}, tags: [] }],
     ]);
 
-    const { t, m } = createServices({
+    const { t } = createServices({
       threads,
       messages: new Map(),
     });

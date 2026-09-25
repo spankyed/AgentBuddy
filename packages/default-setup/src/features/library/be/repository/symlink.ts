@@ -69,7 +69,6 @@ export function resolveSymlinkPath(id: string): { collectionId: string; absolute
 export async function listDirectory(dirPath: string, collectionId: string, relativePath: string = ''): Promise<LibraryItem[]> {
   const entries = await fs.readdir(dirPath, { withFileTypes: true })
   const items: LibraryItem[] = []
-  const now = new Date().toISOString()
 
   for (const entry of entries) {
     // Skip hidden files/directories

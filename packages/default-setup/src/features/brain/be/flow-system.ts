@@ -305,7 +305,7 @@ export function createFlowNodeSystem(
           appServices.scheduler.unregisterByPrefix(flowTNodeId);
           brainLogger.debug(`Unregistered flow actor: ${flowTNodeId}`);
         },
-        handleTrackEvent: enqueueActions(({ context, event, enqueue, system }) => {
+        handleTrackEvent: enqueueActions(({ context, event, enqueue }) => {
           const typedEv = event as { type: string; [key: string]: any };
           const eventType = typedEv.type;
 
@@ -334,7 +334,7 @@ export function createFlowNodeSystem(
 
             // Create execution context with cleaner structure
             // Handle flow.entry events specially - they have a 'data' property we need to unwrap
-            const { type, ...eventPayload } = typedEv;
+            const { type: _type, ...eventPayload } = typedEv;
             const eventData = 'data' in eventPayload ? eventPayload.data : eventPayload;
 
             // Store event payload directly as nodeAttributes for event TNodes
@@ -420,7 +420,7 @@ export function createFlowNodeSystem(
 
           }
         }),
-        handleChildCompletion: enqueueActions(({ context, event, enqueue, system }) => {
+        handleChildCompletion: enqueueActions(({ context, event, enqueue }) => {
           brainLogger.debug(`Child completed in flow - ${context.flowLabel}:`, { completion: event });
           const typedEv = typeOf('CHILD_COMPLETED', event as any);
 
@@ -566,7 +566,7 @@ export function createFlowNodeSystem(
             }
           }
         }),
-        markFlowCompleted: ({ system, context }) => {
+        markFlowCompleted: ({ context }) => {
           brainLogger.debug(`Flow ${flowTNodeId} completed (isFinalStep: ${context.isFinalStep})`);
           repository.brainCommands.updateTNodeStatus(flowTNodeId, 'completed');
           
@@ -600,7 +600,7 @@ export function createFlowNodeSystem(
           ...(context.entryData !== undefined && { data: context.entryData })
         })),
         forwardTNodeUpdate: sendParent(({ event }) => event),
-        resumeFlowSteps: enqueueActions(({ context, enqueue, system }) => {
+        resumeFlowSteps: enqueueActions(({ context, enqueue }) => {
           brainLogger.debug(`Flow ${flowTNodeId} resuming ${context.pendingNextSteps.length} deferred steps, ${context.pendingEvents.length} deferred events`);
 
           // Resume deferred next-steps
@@ -653,7 +653,7 @@ export function createFlowNodeSystem(
     }).createMachine({
       id: isRootFlow ? brainRuntime : `tnode-${flowTNodeId}`,
       initial: 'active',
-      context: ({ input }: any) => ({
+      context: () => ({
         flowId: actualFlowId,
         flowLabel: flowTNode?.label || 'Unknown Flow',
         flowStepNodeId: flowTNode?.blueprint?.nodeId,  // Store the original flow step node ID

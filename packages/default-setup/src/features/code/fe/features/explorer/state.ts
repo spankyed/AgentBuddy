@@ -413,7 +413,7 @@ export const explorerState = setup({
       return { selectedPaths: [] as string[] }
     }),
 
-    handleFilesMoved: assign(({ event, context }) => {
+    handleFilesMoved: assign(({ event }) => {
       const ev = event as { type: 'explorer.FILES_MOVED'; data: { sourcePaths: string[]; targetDir: string; movedPaths: string[] } }
 
       // Refresh the target directory
@@ -429,7 +429,7 @@ export const explorerState = setup({
       return { selectedPaths: [] as string[] }
     }),
 
-    handleFileDeleted: ({ event, self, context }) => {
+    handleFileDeleted: ({ event, self }) => {
       const ev = event as { type: 'explorer.FILE_DELETED'; data: { path: string } }
       const parentContext = getParentContext(self)
 

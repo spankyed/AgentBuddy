@@ -504,7 +504,7 @@ export const pullRequestState = setup({
     }),
 
     // User-initiated actions
-    requestListPRs: ({ }) => {
+    requestListPRs: () => {
       sendToSystem('code', { type: 'pr.LIST_OPEN_PRS' })
     },
 
