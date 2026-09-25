@@ -319,6 +319,19 @@ export async function runPackageBuild(workspace: string, build: () => void | Pro
   await stampedBuild(workspace, unit, stampFile(workspace), build);
 }
 
+/**
+ * Thrown where the caller set `ABUDDY_PACKAGES_PREBUILT=1` and a package went stale anyway: something
+ * rebuilt or edited it while this run was reading it. `npm run chain` sets it for its parallel steps,
+ * because the alternative is two of them rebuilding one `dist` at once.
+ */
+export class PackagesWentStale extends Error {
+  constructor(readonly stale: readonly StaleUnit[]) {
+    super(`the published packages went stale during a run that had already built them:\n${staleMessage(stale)}\n`
+      + 'Something rebuilt or edited them while this process was reading them — `npm run packages:build` in a\n'
+      + 'concurrent step is the usual cause. Nothing was rebuilt here, because that would race the writer.');
+  }
+}
+
 /** Thrown when the build itself failed, so the caller doesn't report a check error as one */
 export class PackagesBuildFailed extends Error {
   constructor(readonly status: number, readonly workspace?: string) {
@@ -330,6 +343,13 @@ export class PackagesBuildFailed extends Error {
 export function ensurePackagesBuilt(): void {
   const stale = stalePackageUnits();
   if (stale.length === 0) return;
+  // A caller that has already built them is asserting nothing will go stale under it, so staleness here
+  // means the tree moved mid-run and whatever this process is about to read is half-written. Building it
+  // would race the writer; saying so stops two processes fighting over one dist and reports the real
+  // problem instead of the build error it turns into.
+  if (process.env.ABUDDY_PACKAGES_PREBUILT === '1') {
+    throw new PackagesWentStale(stale);
+  }
   // Synchronous: a message written just before the process exits must not sit in a pipe's buffer
   fs.writeSync(2, `Published packages are out of date:\n${staleMessage(stale)}\nRebuilding ${stale.length} of ${Object.keys(BUILD_UNITS).length}\n`);
   // npm is a shell script on Windows, which execFile cannot spawn without one

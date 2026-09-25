@@ -12,15 +12,22 @@
  */
 import * as fs from 'node:fs';
 import { pathToFileURL } from 'node:url';
-import { PackagesBuildFailed, ensurePackagesBuilt } from '@abuddy/host/build/packages-built';
+import { PackagesBuildFailed, PackagesWentStale, ensurePackagesBuilt } from '@abuddy/host/build/packages-built';
 
 if (process.argv[1] && import.meta.url === pathToFileURL(fs.realpathSync(process.argv[1])).href) {
   try {
     ensurePackagesBuilt();
   } catch (err) {
-    if (!(err instanceof PackagesBuildFailed)) throw err;
-    // The build printed its own error; exit with its status rather than a stack trace over it
-    fs.writeSync(2, `${err.message} — the packages are not built.\n`);
-    process.exitCode = err.status;
+    // The packages moved under a run that had already built them: report it as itself, not as a stack
+    if (err instanceof PackagesWentStale) {
+      fs.writeSync(2, `${err.message}\n`);
+      process.exitCode = 1;
+      // The build printed its own error; exit with its status rather than a stack trace over it
+    } else if (err instanceof PackagesBuildFailed) {
+      fs.writeSync(2, `${err.message} — the packages are not built.\n`);
+      process.exitCode = err.status;
+    } else {
+      throw err;
+    }
   }
 }
