@@ -316,6 +316,35 @@ export function waitForPackageBuild({ timeoutMs = LOCK_WAIT_MS, pollMs = LOCK_PO
   return waitedFor;
 }
 
+/**
+ * Whether every build unit's output exists — the question a spec that reads the built packages asks before
+ * it runs — refusing outright when what is there is stale.
+ *
+ * Checker 6 of the package-freshness doors (they are listed in `packages/abuddy-testing/CLAUDE.md`). A
+ * suite's `pretest` builds what is stale; this is what catches a run that bypassed it (`npx vitest`, a
+ * watch run), and it refuses rather than testing output that no longer matches the source beside it.
+ * Importing it never builds — that is the pretest's job, in its own process.
+ *
+ * `buildCommand` is the caller's own way of getting them built, because a message naming another package's
+ * command sends the reader somewhere they have no reason to be.
+ */
+export function packagesBuiltOrRefuse(buildCommand: string): boolean {
+  // Another process may be building right now, and a build removes each output and stamp before rewriting
+  // it: both checks below would then read a half-built tree and refuse — which is what made a suite
+  // started alongside `test:external-pack` fail about the race rather than about the code. Waiting is what
+  // lets two suites share one checkout.
+  waitForPackageBuild();
+  const built = Object.values(BUILD_UNITS).every((unit) => unit.outputs.every((output) => fs.existsSync(output)));
+  if (!built && process.env.CI) {
+    throw new Error(`Specs that read the built packages need them built in CI. Run: ${buildCommand}`);
+  }
+  const stale = built ? stalePackageUnits() : [];
+  if (stale.length > 0) {
+    throw new Error(`The published packages are out of date:\n${staleMessage(stale)}\nRun: ${buildCommand}`);
+  }
+  return built;
+}
+
 function readLock(file: string): LockHolder | null {
   try {
     return JSON.parse(fs.readFileSync(file, 'utf-8'));

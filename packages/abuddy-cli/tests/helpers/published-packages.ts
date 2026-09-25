@@ -3,7 +3,7 @@ import { promisify } from 'node:util';
 import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
-import { BUILD_UNITS, staleMessage, stalePackageUnits, waitForPackageBuild } from '@abuddy/host/build/packages-built';
+import { BUILD_UNITS, packagesBuiltOrRefuse } from '@abuddy/host/build/packages-built';
 
 const execFileAsync = promisify(execFile);
 
@@ -33,27 +33,12 @@ export const CONSUMER_MATRIX = (Object.keys(TSC_VERSIONS) as TscVersion[])
   .flatMap((tsc) => (['node16', 'bundler'] as const).map((moduleResolution) => ({ tsc, moduleResolution })));
 
 /**
- * Whether every `BUILD_UNITS` output exists: specs reading build output guard on it, and skip
- * without one — except in CI, where nothing should be unbuilt. The staleness check below catches a
- * run that bypassed the suite's `pretest` (`npx vitest`, a watch run) — checker 6 of the package-freshness
- * doors (the doors are listed in packages/abuddy-testing/CLAUDE.md). It reads the same verdict the
- * pretest acts on, so the two can't disagree, and refuses rather than testing stale output.
- * Importing this never builds; that is the pretest's job, in its own process.
+ * Whether the built packages are there, so a spec reading them can skip without one; it refuses outright
+ * when what is there is stale. The rule and its reasoning live in `packagesBuiltOrRefuse`, which
+ * `@app/repo-checks` calls too — one rule with two callers, rather than a copy in each suite that reads
+ * build output.
  */
-// Before reading any of it: another process may be building these packages right now, and a build removes
-// each output and stamp before rewriting it. Both checks below would then be reading a half-built tree and
-// would refuse — which is what made a suite started alongside `test:external-pack` fail about the race
-// rather than the code. Waiting is what lets the two share one checkout.
-waitForPackageBuild();
-
-export const PACKAGES_BUILT = Object.values(BUILD_UNITS).every((unit) => unit.outputs.every((output) => fs.existsSync(output)));
-if (!PACKAGES_BUILT && process.env.CI) {
-  throw new Error('The published-package specs need built packages in CI. Run: npm run packages:build');
-}
-const stale = PACKAGES_BUILT ? stalePackageUnits() : [];
-if (stale.length > 0) {
-  throw new Error(`The published packages are out of date:\n${staleMessage(stale)}\nRun: npm run packages:build (or npm test -w @abuddy/cli, which builds them)`);
-}
+export const PACKAGES_BUILT = packagesBuiltOrRefuse('npm run packages:build (or npm test -w @abuddy/cli, which builds them)');
 
 /**
  * A directory whose node_modules has the npm-packed @abuddy/ears, @abuddy/sdk and @abuddy/ui installed, as a
