@@ -268,6 +268,7 @@ tx('Nope');
 /** The two packs, built, in a temp dir; node_modules link the workspace or the packed packages */
 /** A step in base-pack, whose node types its dependents read: the scaffolded one and a hand-written one */
 function addBaseStep(dir: string): void {
+  // produces: the step whose scaffolded types this function then rewrites
   const added = run(process.execPath, [CLI, 'add', 'step', 'ping'], dir);
   if (added.code !== 0) throw new Error(`abuddy add step failed in base-pack:\n${added.output}`);
   const types = path.join(dir, 'src', 'extensions', 'steps', 'ping', 'types.ts');
@@ -286,6 +287,7 @@ function buildPacks(published: boolean): string {
   for (const [name, files] of [['base-pack', BASE_PACK], ['app-pack', APP_PACK]] as const) {
     const dir = preparePack(parent, name, files, modules);
     if (name === 'base-pack') addBaseStep(dir);
+    // produces: the built pack whose snapshot and declarations the tests read
     const build = run(process.execPath, [CLI, 'build'], dir);
     if (build.code !== 0) throw new Error(`abuddy build failed in ${name}:\n${build.output}`);
   }
@@ -415,6 +417,7 @@ describe.each(LAYOUTS)('generated facades with a dependency ($name)', ({ publish
   it.each(['bundler', 'node16'] as const)('typechecks own and dependency types under moduleResolution %s', (moduleResolution) => {
     const app = path.join(parent, 'app-pack');
     const tsconfig = writeTsconfig(app, moduleResolution, published);
+    // typecheck: a tsc spawn — packDeclarationDiagnostics below builds a program for the same tree in-process
     const result = run(TSC, ['-p', tsconfig], app);
     expect(result.code, result.output).toBe(0);
     // skipLibCheck skips the dependency's bundled facade (src/__generated__/deps/*.d.ts), where an invalid declaration reads as any

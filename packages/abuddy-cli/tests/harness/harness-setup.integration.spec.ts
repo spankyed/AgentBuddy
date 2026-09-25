@@ -62,6 +62,7 @@ import { importSeeds } from '@abuddy/testing/harness';
 it('seeds nothing', async () => {
   expect(await importSeeds()).toEqual({});
 });`);
+    // inherent: runs a pack's own vitest suite from another cwd — the nested runner is the thing under test
     const result = run(process.execPath, [VITEST, 'run', '--root', root], tempDir('abuddy-elsewhere-'));
     expect(result.output).toMatch(/Tests\s+1 passed/);
   }, 180_000);
@@ -76,6 +77,7 @@ it('sends to its own system and plugin', () => {
   expect(() => services.emitter.broadcastToPlugin('data-pack/notes', { type: 'NOTES_UPDATED' })).not.toThrow();
   expect(() => services.emitter.broadcastToPlugin('data-pack/ghost', { type: 'NOTES_UPDATED' })).toThrow('No registered plugin is named "data-pack/ghost"');
 });`, { features: [{ id: 'notes', system: { entry: 'src/features/notes/be/system.ts' }, plugin: { entry: 'src/features/notes/fe/index.ts' } }] });
+    // inherent: runs a pack's own vitest suite — the nested runner is the thing under test
     const result = run(process.execPath, [VITEST, 'run'], root);
     expect(result.output).toMatch(/Tests\s+1 passed/);
   }, 180_000);
@@ -91,6 +93,7 @@ it('seeds nothing', async () => {
     write(root, 'tests/other.spec.ts', spec);
     const config = fs.readFileSync(path.join(root, 'vitest.config.ts'), 'utf-8');
     write(root, 'vitest.config.ts', config.replace("test: { include:", "test: { isolate: false, fileParallelism: false, include:"));
+    // inherent: runs a pack's own vitest suite — the nested runner is the thing under test
     const result = run(process.execPath, [VITEST, 'run'], root);
     expect(result.output).toContain('setupPackTests() already ran in this process');
     expect(result.output).toContain('`isolate` on (the default)');
@@ -101,6 +104,7 @@ it('seeds nothing', async () => {
 import { it } from 'vitest';
 it.concurrent('one', async () => {});
 it.concurrent('two', async () => {});`);
+    // inherent: runs a pack's own vitest suite — the nested runner is the thing under test
     const result = run(process.execPath, [VITEST, 'run'], root);
     expect(result.output).toMatch(/Tests\s+2 failed/);
     expect(result.output).toContain('"one" runs concurrently: harness tests share one database, service mocks and apps per file');
@@ -115,6 +119,7 @@ describe.concurrent('a concurrent suite', () => {
   it('runs', async () => {});
   it.skip('skipped', async () => {});
 });`);
+    // inherent: runs a pack's own vitest suite — the nested runner is the thing under test
     const result = run(process.execPath, [VITEST, 'run'], root);
     expect(result.output).toMatch(/Tests\s+3 passed \| 1 skipped/);
   }, 180_000);
@@ -123,6 +128,7 @@ describe.concurrent('a concurrent suite', () => {
 describe('abuddy add feature in a pack without the unit test setup', () => {
   it('adds the harness setup its system test runs on, and the test passes', () => {
     const tmp = tempDir('abuddy-pre-harness-');
+    // produces: the pre-harness pack the test then strips and re-adds a feature to
     expect(run(process.execPath, [CLI, 'init', 'old-pack'], tmp).code).toBe(0);
     const pack = path.join(tmp, 'old-pack');
     fs.symlinkSync(path.join(REPO_ROOT, 'node_modules'), path.join(pack, 'node_modules'), 'dir');
@@ -133,6 +139,7 @@ describe('abuddy add feature in a pack without the unit test setup', () => {
     delete pkg.devDependencies['@abuddy/testing'];
     fs.writeFileSync(pkgPath, JSON.stringify(pkg, null, 2));
 
+    // process: the report the command prints, line by line, is the assertion
     const added = run(process.execPath, [CLI, 'add', 'feature', 'notes'], pack);
 
     expect(added.code, added.output).toBe(0);
@@ -142,6 +149,7 @@ describe('abuddy add feature in a pack without the unit test setup', () => {
     expect(added.output).toContain('Added @abuddy/testing to devDependencies. Run: npm install');
     expect(JSON.parse(fs.readFileSync(pkgPath, 'utf-8')).devDependencies['@abuddy/testing']).toMatch(/^\^/);
     // The kept config is the scaffold's, which loads tests/setup.ts
+    // inherent: runs a pack's own vitest suite — the nested runner is the thing under test
     const unit = run(process.execPath, [VITEST, 'run'], pack);
     expect(unit.output).toMatch(/tests\/unit\/notes-system\.spec\.ts/);
     expect(unit.output).toMatch(/Tests\s+1 passed/);

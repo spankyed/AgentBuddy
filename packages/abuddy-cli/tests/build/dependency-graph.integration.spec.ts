@@ -63,6 +63,7 @@ beforeAll(() => {
     buildPack(preparePack(parent, side, pack(side, { [`${side === 'left-pack' ? 'Left' : 'Right'}Note`]: side === 'left-pack' ? 'LeftNote' : 'RightNote' }, on(DEEP)), modules), side);
   }
   const appDir = preparePack(parent, 'app-pack', pack('app-pack', { App: 'App' }, on('left-pack', 'right-pack')), modules);
+  // produces: the app-pack build whose snapshot the tests read (its output is also checked for conflicts)
   built = run(process.execPath, [CLI, 'build'], appDir);
 }, 240_000);
 
@@ -117,6 +118,7 @@ describe.skipIf(!PACKAGES_BUILT)('a collision that is real', () => {
     buildPack(preparePack(parent, rival, pack(rival, { Memo: 'Memo' }), modules), rival);
 
     const clashDir = preparePack(parent, 'clash-pack', pack('clash-pack', {}, on(DEEP, rival)), modules);
+    // process: the exit code and the colliding-entity message are the assertion
     const clash = run(process.execPath, [CLI, 'build'], clashDir);
 
     expect(clash.code, clash.output).not.toBe(0);

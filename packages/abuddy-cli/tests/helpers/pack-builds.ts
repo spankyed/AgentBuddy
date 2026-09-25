@@ -55,6 +55,7 @@ export function preparePack(parent: string, name: string, files: Record<string, 
 
 /** Builds a prepared pack, throwing with the CLI's output when it fails */
 export function buildPack(dir: string, name = path.basename(dir)): string {
+  // produces: every caller wants the built pack, not the process — the one spawn Phase 2 converts for all of them
   const build = run(process.execPath, [CLI, 'build'], dir);
   if (build.code !== 0) throw new Error(`abuddy build failed in ${name}:\n${build.output}`);
   return build.output;
