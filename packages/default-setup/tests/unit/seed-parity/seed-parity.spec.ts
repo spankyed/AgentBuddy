@@ -103,7 +103,11 @@ function checkGolden(scenario: string, steps: Step[]) {
   }
   expect(fs.existsSync(file), `missing golden ${path.relative(process.cwd(), file)}`).toBe(true);
   const golden = JSON.parse(fs.readFileSync(file, 'utf-8')) as Record<string, ReturnType<typeof forGolden>>;
-  expect(actual).toEqual(golden);
+  // The message, not just the diff: a failure here is read without the file header above it, and the object
+  // diff on tens of thousands of lines does not say what to do about it.
+  expect(actual, `the ${scenario} golden moved. If that is the change you meant, re-record it deliberately —\n`
+    + '  npm run seed-parity:update -w @app/default-setup\n'
+    + 'then read the git diff to confirm. See CLAUDE.md in this folder; never hand-edit a golden.').toEqual(golden);
 }
 
 async function run(

@@ -79,3 +79,27 @@ diff, confirm it is the change you meant, and commit it with the change that cau
 Note the split: the `v1`/`v2` scenario goldens seed fixture sources in `packages/default-setup/tests/fixtures/`, so
 only a change in *seeding* moves them. `default-setup.json` follows the pack's own sources, so it also moves when
 content does.
+
+## Why the goldens are hand-rolled, and stay that way
+
+`checkGolden` reads and writes the files itself, switched by `UPDATE_SEED_GOLDEN`. Vitest's own
+`toMatchFileSnapshot` + `-u` would replace that, and was considered and declined. The reasons, so it isn't
+re-raised:
+
+- **It would lose a check.** Vitest computes `updateSnapshot` as `isCI && !UPDATE_SNAPSHOT ? 'none' : UPDATE_SNAPSHOT
+  ? 'all' : 'new'`. This repo's CI is off on purpose, so `isCI` is false and the mode is `'new'` — a *missing*
+  snapshot is written and the test passes. The explicit `existsSync` assertion above fails instead, which is what you
+  want when a scenario is added and nobody recorded its golden. Keeping that under `toMatchFileSnapshot` needs a flag
+  or a config knob, which is the custom code the swap was meant to delete.
+- **It would be the only one.** No spec in this repo uses vitest snapshots, while five recorded artifacts (`api`,
+  `facade`, `exports`, `schema`, and these) share one shape: a committed file and a `<artifact>:check`/`:update`
+  script pair. A framework-owned mechanism here would be a sixth thing to learn, not a convention joined.
+- **The diff is already better than a snapshot's.** These are committed files, so the readable diff is `git diff`
+  after re-recording — which is the documented workflow. A failure message only has to point at it, and it does.
+- **The format is load-bearing.** `notes-change-tracking.spec.ts` reads these files as input data, so a swap would
+  have to write byte-identical JSON through a pre-serialized string, giving up the serializer that is the reason to
+  switch.
+
+One inconsistency is real and forced: the four sibling artifacts take a CLI flag (`--check`, `--local`) and this one
+takes an environment variable, because vitest owns `argv`. `seed-parity:update` hides that, so the flag convention
+holds at the script level where it is read.
