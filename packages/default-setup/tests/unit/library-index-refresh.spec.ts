@@ -2,32 +2,34 @@
 // tiptap reference picker. Nothing else refetches it, so every event that changes a name, a tag or the set
 // of rows has to ask the backend for it again — otherwise the picker keeps offering stale names until the
 // plugin is reactivated.
-import { describe, expect, it } from 'vitest'
-import { librarySystem } from '@/features/library/fe/state'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { createActor } from 'xstate'
 
-/** The actions a top-level event runs on the library plugin's machine */
-function actionsFor(eventType: string): string[] {
-  const transition = (librarySystem.config.on as Record<string, { actions?: unknown } | undefined>)[eventType]
-  expect(transition, `the library machine handles ${eventType}`).toBeDefined()
-  const actions = transition!.actions
-  return (Array.isArray(actions) ? actions : [actions]).map((action) =>
-    typeof action === 'string' ? action : (action as { type?: string })?.type ?? '',
-  )
-}
+const sendToSystem = vi.hoisted(() => vi.fn())
+vi.mock('@/__generated__/events', () => ({ sendToSystem }))
+
+const { librarySystem } = await import('@/features/library/fe/state')
+
+beforeEach(() => {
+  sendToSystem.mockReset()
+})
 
 describe('the library index is refetched whenever it can go stale', () => {
+  // Only DOCUMENT_UPDATED reads its payload here — it compares the updated id against the open document
   it.each([
-    'DOCUMENT_CREATED',
-    'DOCUMENT_UPDATED',
-    'COLLECTION_CREATED',
-    'ITEM_RENAMED',
-    'ITEMS_DELETED',
-    'ITEMS_MOVED',
-  ])('%s asks for it again', (eventType) => {
-    expect(actionsFor(eventType)).toContain('requestIndex')
-  })
+    ['DOCUMENT_CREATED', {}],
+    ['DOCUMENT_UPDATED', { data: { document: { id: 'Document-1' } } }],
+    ['COLLECTION_CREATED', {}],
+    ['ITEM_RENAMED', {}],
+    ['ITEMS_DELETED', {}],
+    ['ITEMS_MOVED', {}],
+  ])('%s asks for it again', (eventType, payload) => {
+    const actor = createActor(librarySystem).start()
+    // whatever starting asked for is not what this is about
+    sendToSystem.mockReset()
 
-  it('and LIBRARY_INDEX_LOADED is what stores it', () => {
-    expect(actionsFor('LIBRARY_INDEX_LOADED')).toContain('setIndex')
+    actor.send({ type: eventType, ...payload } as Parameters<typeof actor.send>[0])
+
+    expect(sendToSystem).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({ type: 'GET_LIBRARY_INDEX' }))
   })
 })

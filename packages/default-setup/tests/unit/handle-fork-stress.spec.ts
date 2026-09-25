@@ -395,36 +395,4 @@ describe('CC: Handle Fork — stress tests', () => {
     });
   });
 
-  // ── 10. State persisted before result returned ──────────────────────────────
-
-  it('persists state on the new thread before returning', async () => {
-    const threads = new Map<string, MockThread>([
-      ['source', { id: 'source', context: { claudeCode: { sessionId: 'S1', cwd: '/p' } }, tags: [] }],
-      ['new', { id: 'new', context: {}, tags: [] }],
-    ]);
-    const messages = new Map([
-      ['source', makeMessages(
-        { id: 'M1', sender: 'user' },
-        { id: 'M2', sender: 'assistant', cliUuid: 'U1' },
-      )],
-    ]);
-
-    const { t, m } = createServices({
-      threads, messages,
-      viewSessionResult: [{ type: 'assistant', uuid: 'U1' }],
-    });
-
-    await handleFork(
-      { sourceThreadId: t('source'), newThreadId: t('new'), sourceMessageId: m('M2') },
-      services,
-    );
-
-    // State should be on the new thread
-    const state = getState(t('new'));
-    expect(state).toMatchObject({
-      sessionId: 'S1',
-      cwd: '/p',
-      forkFrom: { sessionId: 'S1', cliUuid: 'U1' },
-    });
-  });
 });

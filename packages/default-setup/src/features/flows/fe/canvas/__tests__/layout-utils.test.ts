@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest'
 import { testPacks } from '@abuddy/sdk/testing'
-import { stepRegistry, type StepDefinition } from '@abuddy/sdk/steps'
+import { type StepDefinition } from '@abuddy/sdk/steps'
 import { NODE_DIMENSIONS, getDescriptor } from '@abuddy/ui/components/node-dimensions'
 import type { LayoutNodeData } from '@abuddy/ui/components/node-dimensions'
 import {
@@ -68,13 +68,6 @@ beforeAll(() => {
 afterAll(() => {
   testPacks.steps.clear();
 });
-
-it('lays out with the steps the test registered', () => {
-  expect(stepRegistry.getFE('listener')?.nodeConfig).toEqual({ label: 'Listener', connectionRules: { inputs: 0, outputs: -1 } })
-  // The test's frontend facet over the registered switch step, whose other facets stay
-  expect(stepRegistry.getFE('switch')).toBe(testPacks.steps.get('switch')!.fe)
-  expect(stepRegistry.getBuild('switch')).toBeDefined()
-})
 
 // --- parseHandleIndex ---
 

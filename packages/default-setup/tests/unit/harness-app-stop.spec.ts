@@ -41,16 +41,11 @@ describe('a real schedule', () => {
   }
   const ranTick = (app: TestApp) => expect(app.flowTrace('Every Second')).toContainEqual(expect.objectContaining({ label: 'tick', status: 'completed', nodeAttributes: expect.objectContaining({ result: { ticked: true } }) }))
 
-  it('ticks while its app runs', async () => {
-    const app = await startEverySecond()
-
-    await vi.waitFor(() => ranTick(app), { timeout: 3_000, interval: 50 })
-    expect(getAllFlowActorIds()).not.toEqual([])
-  })
-
   it("doesn't tick once its app stopped, as the harness stops it after each test", async () => {
     const app = await startEverySecond()
     await vi.waitFor(() => ranTick(app), { timeout: 3_000, interval: 50 })
+    // from the app running, so the empty list after stopping means stopped rather than never started
+    expect(getAllFlowActorIds()).not.toEqual([])
 
     app.stop()
 

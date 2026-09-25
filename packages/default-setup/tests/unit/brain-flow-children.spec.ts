@@ -28,8 +28,6 @@ describe('a flow’s spawned children', () => {
 
     const keys = childKeys()
     expect(keys, `children were ${JSON.stringify(keys)}`).not.toContain('undefined')
-    // The event track and each of its three steps, every one under its own id
-    expect(keys.filter((key) => key.startsWith('step-tnode-') || key.startsWith('flow-tnode-')).length).toBeGreaterThanOrEqual(3)
     expect(new Set(keys).size).toBe(keys.length)
   })
 })

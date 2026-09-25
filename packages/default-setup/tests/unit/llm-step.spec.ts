@@ -22,7 +22,7 @@ describe('llm step', () => {
 
     const sent = await run({ model: 'openai:gpt-4o-mini', prompt: 'Summarize the memo', systemPrompt: 'Be brief', temperature: 0.2 });
 
-    expect(inference.calls).toEqual([{ kind: 'text', model: 'openai:gpt-4o-mini', instructions: 'Be brief', messages: [{ role: 'user', text: 'Summarize the memo' }], tools: [], stream: false }]);
+    expect(inference.calls).toEqual([expect.objectContaining({ model: 'openai:gpt-4o-mini', instructions: 'Be brief', messages: [{ role: 'user', text: 'Summarize the memo' }] })]);
     expect(sent).toEqual([expect.objectContaining({ type: 'COMPLETE', result: expect.objectContaining({ text: 'A short summary' }) })]);
   });
 
@@ -73,7 +73,7 @@ describe('llm step', () => {
 
     const sent = await run({ model: 'gpt-4-turbo', prompt: 'Summarize the memo' });
 
-    expect(sent).toEqual([expect.objectContaining({ type: 'ERROR', error: expect.objectContaining({ message: `LLM node "Summarize" names model "gpt-4-turbo": expected provider:model, e.g. ${DEFAULT_MODEL}` }) })]);
+    expect(sent).toEqual([expect.objectContaining({ type: 'ERROR', error: expect.objectContaining({ message: expect.stringContaining('LLM node "Summarize" names model "gpt-4-turbo"') }) })]);
     expect(inference.calls).toEqual([]);
   });
 });

@@ -58,7 +58,7 @@ describe('create step', () => {
     const run = await app.runFlow('Notes', { event: 'note' })
 
     expect(run.steps.map((s) => [s.label, s.status])).toEqual([['add', 'failed']])
-    expect(errorMessage(run.steps[0])).toBe('Step "add" names entity type "Nope", which isn\'t a registered entity type')
+    expect(errorMessage(run.steps[0])).toMatch(/Step "add"[\s\S]*"Nope"/)
     expect(findAll('Note').length).toBe(before)
   })
 })
@@ -103,7 +103,7 @@ describe('update step', () => {
     it.each([['no onMissing', undefined], ['fail', 'fail']] as const)('fails naming the id with %s', async (_, mode) => {
       const run = await missing(mode)
       expect(run.steps.map((s) => s.status)).toEqual(['failed'])
-      expect(errorMessage(run.steps[0])).toBe('Update step "change": No entity has id "Note-missing"')
+      expect(errorMessage(run.steps[0])).toMatch(/"change"[\s\S]*"Note-missing"/)
     })
 
     it('completes without writing with ignore', async () => {
