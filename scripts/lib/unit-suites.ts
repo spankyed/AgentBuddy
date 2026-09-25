@@ -12,17 +12,30 @@ export interface UnitSuite {
   readonly workspace: string;
   /** Its directory under `packages/`, which is what an input path needs */
   readonly dir: string;
+  /**
+   * Which resolution a suite runs under, and therefore which pool it can share.
+   *
+   * `host` suites resolve the workspace `@abuddy` packages to source, under the `@abuddy/source`
+   * condition. `pack` suites must resolve the published `dist` — the one layout a pack author ever has —
+   * which is why `check:specifiers` fails a pack config that declares that condition.
+   *
+   * **Node conditions are per process**, and vitest shares its worker pool across projects: per-project
+   * `poolOptions.execArgv` is ignored, measured. So the two kinds cannot be one pool. Probed 2026-09-25,
+   * a `default-setup` spec resolves `@abuddy/sdk` to `dist` today and to `src` inside a pooled process
+   * carrying the condition, which would silently change what the pack suite verifies.
+   */
+  readonly kind: 'host' | 'pack';
 }
 
 export const UNIT_SUITES: readonly UnitSuite[] = [
-  { workspace: '@abuddy/sdk', dir: 'abuddy-sdk' },
-  { workspace: '@app/default-setup', dir: 'default-setup' },
-  { workspace: '@abuddy/cli', dir: 'abuddy-cli' },
-  { workspace: '@abuddy/host', dir: 'abuddy-host' },
-  { workspace: '@app/api', dir: 'api' },
-  { workspace: '@abuddy/ears', dir: 'abuddy-ears' },
-  { workspace: '@app/renderer', dir: 'renderer' },
-  { workspace: '@app/main', dir: 'main' },
+  { workspace: '@abuddy/sdk', dir: 'abuddy-sdk', kind: 'host' },
+  { workspace: '@app/default-setup', dir: 'default-setup', kind: 'pack' },
+  { workspace: '@abuddy/cli', dir: 'abuddy-cli', kind: 'host' },
+  { workspace: '@abuddy/host', dir: 'abuddy-host', kind: 'host' },
+  { workspace: '@app/api', dir: 'api', kind: 'host' },
+  { workspace: '@abuddy/ears', dir: 'abuddy-ears', kind: 'host' },
+  { workspace: '@app/renderer', dir: 'renderer', kind: 'host' },
+  { workspace: '@app/main', dir: 'main', kind: 'host' },
 ];
 
 /** The chain step that runs one suite: `test:unit:<dir>`, which the root package.json declares */

@@ -347,6 +347,58 @@ reports the other packages keep there.
 **Mutation:** a fast spec recorded above 2.5s, an integration spec recorded below 1.5s, and a recorded spec
 that no longer exists each fail the check, naming the file and both edges.
 
+### Phase 3 — two pools, because one is not possible
+
+| | before | after |
+|---|---|---|
+| `npm run test:unit` | 41.6s, eight `npm test -w` runs two at a time | **35.3s, two pools, serial** |
+| collected tests | 2632 passed | 2634 = 1914 host + 720 pack, 2632 passed + 2 skipped |
+
+The count reconciles exactly against the sum of the eight per-suite counts, so every project's `include`
+carried.
+
+#### One pool over all eight is not achievable, and the reason is load-bearing
+
+Host suites resolve the workspace `@abuddy` packages to source under the `@abuddy/source` condition; the
+pack suite must resolve the published `dist`, the only layout a pack author ever has — which is why
+`check:specifiers` fails a pack config that declares that condition. **Node conditions are per process**,
+and vitest shares its worker pool across projects: per-project `poolOptions.execArgv` is ignored, measured
+on `@app/api`.
+
+Probed rather than argued. A `default-setup` spec asking `createRequire(import.meta.url).resolve` for
+`@abuddy/sdk`:
+
+    without the condition   dist     ../abuddy-sdk/dist/index.js      <- how the pack suite runs today
+    with the condition      SOURCE   packages/abuddy-sdk/src/index.ts <- what one pool would do
+
+One pool would not have failed. It would have quietly tested something else, which is worse. So there are
+two pools split on the boundary the repo already enforces: the host projects in the root `vitest.config.ts`
+(21.1s alone) and the pack suite in its own (13.3s alone). The plan's survey checked `environment`, `alias`,
+`setupFiles`, `globals` and `testTimeout` and concluded "nothing has to be flattened". Resolve conditions
+are the thing it did not check, and they are the one setting that cannot be per-project.
+
+#### Serial, again, and for the same reason as before
+
+    lanes 1: 35.4s, 35.2s wall   35.2s of pool time   passed, passed
+    lanes 2: 34.3s, 34.4s wall   66.0s of pool time   passed, and one run failed a test
+
+A second lane buys 3% for 87% more work and a flake — the host pool is 21.1s alone and 33.6s beside the
+pack pool. Each pool already spreads across the cores, which is the same saturation that capped the old
+suite-level scheduler, reached from the other side.
+
+#### `work / cores` was never the right model, which changes Phase 5
+
+The plan predicted 44.3s → ~13s from `max(floor, work/cores)` = `max(13.0, 95/10)`. Measured, the host pool
+does about 136s of worker time in 21.1s of wall — 6.5× parallelism — so the suites were never serialised in
+the way that arithmetic assumes, and pooling them recovered 15%, not 3.4×.
+
+Where the time actually is, from the pools' own breakdowns: the host pool spends `collect 70.1s` and
+`transform 10.5s` against `tests 65.7s`, and the pack suite spends **`setup 83.3s`** against `tests 13.5s`
+across 86 files. So the pack suite is dominated by per-file setup — `isolatedDataDir` and the harness, paid
+once per file — and not by any single slow file. Phase 5 should read that number before it amortises
+`generate-entries.spec.ts`: the 11.4s floor file is the host pool's problem, and 83s of per-file setup is a
+larger one sitting in the other pool.
+
 ## Constraints
 
 `goal-test-tiers.md`'s standing rules carry over unchanged: no push, tag or PR; no publish or release; no
