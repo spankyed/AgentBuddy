@@ -657,3 +657,189 @@ single package's phase can do.
   message.
 - External packs are first-class: the fixture packs, `test:external-pack` and `test:packaged-authoring`
   keep passing.
+
+## Outcome (2026-09-25)
+
+Implemented on `AS/test-pipeline`. The goal said "a branch cut from master"; master had just been emptied
+of the 23 pipeline commits, so a branch cut there forked this work away from the PR it belonged to. It was
+rebased back on at Phase 8 — see *Branch*, below, which is where the two conflicts and one bug it exposed
+are recorded.
+
+### The loop, before and after
+
+Per suite, warm, one run each. "Before" is at the start of Phase 1; "after" is at the end of Phase 9.
+
+| Suite | Before | After | Tests before | Tests after |
+|---|---|---|---|---|
+| `@abuddy/cli` (whole) | **58.4s** | — | 764 | — |
+| `@abuddy/cli` (fast half) | — | **8.9s** | — | 475 |
+| `@abuddy/cli` (integration half) | — | 44.0s | — | 294 |
+| `@app/default-setup` | 15.1s | 14.7s | 767 | 720 |
+| `@abuddy/sdk` | 12.6s | 12.0s | 548 | 539 |
+| `@abuddy/host` | 8.2s | 8.1s | 705 | 684 |
+| `@app/api` | 3.7s | 3.0s | 85 | 70 |
+| `@abuddy/ears` | 3.0s | 2.9s | 118 | 116 |
+| `@app/renderer` | 2.3s | 2.3s | 34 | 33 |
+| `@app/main` | 0.8s | 0.7s | 19 | 19 |
+
+`test:unit` itself went from 69.8s (one lane, through the same script) to ~43s at two lanes, stable across
+three consecutive runs (44.1s, 42.5s, 43.0s).
+
+The cli fast half is 475 rather than the 469 Phase 3 left, because the rebase brought `chain-graph.spec.ts`
+and its 6 tests into the base.
+
+Per typecheck step:
+
+| Step | Before | After | | Step | Before | After |
+|---|---|---|---|---|---|---|
+| `typecheck:pack` | 15.7s | 4.8s | | `check:specifiers` | 3.5s | 3.3s |
+| `typecheck:be` | 7.4s | 3.5s | | `typecheck:sdk` | 2.5s | 1.3s |
+| `typecheck:fe` | 6.2s | 6.1s | | `typecheck:scripts` | 2.3s | 1.3s |
+| `typecheck:cli` | 5.7s | 2.4s | | `lint:check` | 1.8s | 1.7s |
+| `typecheck:ui` | 3.2s | 1.7s | | `typecheck:ears` | 1.1s | 1.2s |
+| `typecheck:host` | 3.1s | 1.2s | | `api:stamp` | 0.6s | 0.6s |
+
+**Read that table with its caveat.** The before column was measured on the branch cut from master, which
+lacks the per-project `.tsbuildinfo` work; the after column is on the merged branch, which has it. Almost
+all of 53.8s → 29.3s is that, not this goal. What this goal moved is the suites, and the largest single
+number in the whole loop: the cli suite a developer runs on every change, 58.4s to 8.9s.
+
+### What each phase did
+
+| Phase | Result |
+|---|---|
+| 1 | CLI suite split at the process boundary. 31 of 70 specs run a real build, install or process; those are `*.integration.spec.ts` on their own command. `suite-split.spec.ts` keeps it that way |
+| 2 | `waitForPackageBuild` lets a freshness reader wait for an in-flight build instead of reporting its half-written stamps as stale; `test:unit` runs two suites at a time |
+| 3 | `@abuddy/cli`: 4 tests deleted, ~30 trims |
+| 4 | `@abuddy/host`: 21 tests deleted, 14 trims |
+| 5 | `@abuddy/sdk` and `@abuddy/ears`: 2 whole files, 9 tests, 7 trims |
+| 6 | default-setup part A: the export clones merged, 11 tests fewer |
+| 7 | default-setup part B: 36 tests fewer |
+| 8 | api, renderer, E2E, fixture packs: 16 tests fewer |
+| 9 | Every surviving guard and allowance mutation-checked; full check list green |
+| 10 | Abandoned deliberately, with the measurement — see *Phase 10* |
+
+### The guards, each made to fail
+
+Decision 3's table, one plausible edit each. "Only the guard" means the named cheaper check passed on the
+same edit, so the guard is what catches it rather than a second opinion.
+
+| Guard | The edit | Result |
+|---|---|---|
+| `check-import-specifiers.ts` | a pack backend imports `@abuddy/host/packs` | fails; `typecheck:pack` passes — only the guard |
+| `no-module-state.spec.ts` | `const blueprintCache = new Map()` at module scope in `src/` | fails; `typecheck:ears` passes — only the guard |
+| `no-pack-seed-specifics.spec.ts` | `src/seed` special-cases `'Document'` and `'Note'` | fails; `typecheck:sdk` passes — only the guard |
+| `identity-guard.spec.ts` | a literal `Library/Application Support/abuddy` path in the SDK | fails; `typecheck:sdk` passes — only the guard |
+| `source-layout.spec.ts` | a new `packages/api/src/helpers.ts` | fails; `typecheck:be` passes — only the guard |
+| `sdk-bridge-drift.spec.ts` | one entry dropped from the bridge map | fails; `typecheck:host` passes — only the guard |
+| `published-sdk-types` | `./repositories` removed from the exports map | fails — see the finding below |
+
+**Finding: the last row's entry in *Do not remove* is wrong.** It is credited with catching "subpaths
+resolving that should not… widening the surface by accident". It does not. With `./packs` added to the
+SDK's exports map and the package rebuilt, the spec passes: Phase 7's trim removed all four
+negative-resolve assertions, on the plan's instruction, because each named a path removed by an earlier
+refactor. What the spec does catch, demonstrated above, is a published entry that stops resolving, the
+package shipping anything but `dist`, `package.json` and the schema, and source maps leaking. Nothing now
+catches an exports map widened on purpose — and for `@abuddy/ears` and `@abuddy/sdk` nothing can, because
+those maps are hand-written and *are* the definition of public (root `CLAUDE.md`). The guard stays; its
+description should be corrected to what it does.
+
+### The allowances, each shown load-bearing
+
+Delete it, run the guard, put it back. Every one failed its guard, so none was describing a file that no
+longer trips it.
+
+- `ALLOWED` (`no-module-state.spec.ts`), its one entry.
+- `UNBRIDGED_BY_POLICY` (`sdk-bridge-drift.spec.ts`), both hand-written entries. Its sibling
+  `UNBRIDGED_LEAVES` was empty and its test could not fail; Phase 4 removed both.
+- `RESOLVES_DIST_BY_DESIGN` (`check-import-specifiers.ts`), both entries. Removing one fails the
+  self-check *and* the rule's own repo-wide test, which is why Phase 3 deleted the self-check.
+- `DECLARES_SOURCE_BY_DESIGN` is exempt by Decision 19 and stays empty.
+- `SHARED_LIST_CONSUMERS` is not an allowance: it is the list of files the rule scans. Deleting an entry
+  narrows coverage silently rather than failing, so it cannot be tested this way.
+- No `GUARDS` list exists any more.
+
+### Kept against the audit
+
+- **`seeder.spec.ts`'s "fail with a rebuild error when the compiled seeds name no pack".** The plan gave
+  `seed-registry.spec.ts` as the shared cover and there is no such file — `tests/seed/` holds
+  `flow-seeder`, `preview` and `seeder`. With flow-seeder's copy deleted this is the only test of that
+  refusal.
+- **`settings-secrets`' CLI-path test.** Its title claimed a cache was cleared and its body never checked
+  one; retitled to what it asserts rather than deleted.
+- **`sdk-tiers`' "safeEvents is exported".** Byte-identical to "safeEvents is callable", which the plan
+  named and which is gone. The survivor is the same `typeof` check; it is listed here rather than removed
+  because the plan named one, not both.
+
+### Skipped: named by the plan, gone from the code
+
+The audit was taken at `1dd69172e`. These no longer exist and were not reconstructed: three
+`packs/runtime/lifecycle.spec.ts` tests, `packs/backend-contributions.spec.ts`, `discovery`'s
+record-rebuilding test, `shared-deps`' `ears/internals` line, `loader`'s installed-bundle test,
+`facade-gate`'s message assertions, `fe-bundler-host-registry`'s `else` branch, `pack-cli`'s duplicated
+`release.yml` line, `generate-entries`' facade header-comment and `export const {` matches,
+`api/destroy-settings.spec.ts`, `api/inspect-relations.spec.ts`, and `secrets.spec.ts`'s `util.inspect`
+cases.
+
+### Open items
+
+- **A test was pinning the app's own version.** `install-host-version` asserted `requires AgentBuddy
+  >=99.0.0; this is 0.3.14`. The second clause is this repo's current version: it would have failed on the
+  next release while saying nothing about the code. Now matches only the part that means something.
+- **`facade:check` was already failing** before any test was touched, from two changes that predate this
+  work — a dropped private `ensureGitRepository` and `PromptEntity` resolving through its import. Included
+  in the re-record with the one line this branch added.
+- **No bug was found hiding behind a deleted test.** Every deletion was checked against the criteria first,
+  and every suite was green after each phase.
+
+### Phase 10: abandoned, deliberately
+
+The phase was written against `typecheck:pack` at 16.4s, "a third of `npm run typecheck`". It is now
+**4.8s of 29.3s**, 16%, because the per-project `.tsbuildinfo` work on this branch already took it. The
+premise is gone before the work starts.
+
+`npm run typecheck` end to end measures **31.4s and 30.8s** on two warm runs, against the phase's 30s
+line. The 1.5–2s between that and the 29.3s its steps sum to is npm's own overhead across 13
+sub-invocations, which no amount of project references touches. What is left is spread thin — `fe` 6.1s
+(vue-tsc over the renderer, which references would barely help), `pack` 4.8s, `be` 3.5s,
+`check:specifiers` 3.3s — so the ceiling on references here is a couple of seconds.
+
+Against that: every package would go `composite` and `@abuddy/host` would gain a build it does not have.
+That is the phase's own description of itself — "the largest change here with the least certain payoff" —
+and its own instruction, "stop if Phases 1 and 2 already made the loop fast enough to stop being a
+complaint". They did: the loop a developer actually pays went from 58.4s to 8.9s.
+
+If someone wants the last 2s, the cheaper lever is the 13 npm sub-invocations, not the compiler.
+
+### Branch
+
+Rebased onto `AS/test-pipeline` at Phase 8, giving one linear branch. Two conflicts, both real:
+
+- `chain` — the string chain this work appended `test:integration` to had become `tsx scripts/chain.ts`
+  with a declared step table. The integration suite is now a step in that table, tier 2, needing
+  `packages:ensure`: it wants the built packages and never the app, so it runs before `build`.
+  `check:tiers` agrees.
+- `test:unit` — kept both the concurrent runner and the new root `test:integration`.
+
+The merge caught a bug this work would otherwise have shipped. `typecheck` runs `lint:check` on that
+branch and did not on the branch cut from master, and it failed immediately: eight unused imports left by
+deletions across three phases, plus a dead helper and its constant. All fixed; `lint:check` is now part of
+each phase's verification.
+
+### The full check list, from a clean build
+
+All green. `typecheck` (13 steps, 29.3s), `schema:check` 0.3s, `compile` 11.4s, `facade:check` 0.8s,
+`api:check` 46.4s, `packages:build` 13.3s, `packages:check` 6.0s, the eight unit suites 52.6s summed,
+`build` 36.9s, `npm test` (E2E, 21 tests) 27.5s, `test:external-pack` 38.2s, `test:packaged-authoring`
+62.1s.
+
+### Conventional choices
+
+- A spec that reaches a child process through the CLI's own `src/` counts as spawning, so four specs
+  costing 1.1s together moved to the integration half rather than earning an allowlist entry.
+- `import-specifiers.spec.ts` stays in the fast half with its one spawning test extracted, rather than
+  moving 187 in-process tests out.
+- The export clones merged to 5 tests per entity type rather than 7, folding the empty-export and
+  metadata cases into the one that checks what a seeded export writes. Every assertion of both is kept.
+- Where the plan said "drop the pinned message", the fragment kept is the one a reader acts on: the flag,
+  the file, the entity type, the id, the fix.
