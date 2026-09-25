@@ -9,6 +9,10 @@ Before Phase 4, confirm the base: scripts/lib/chain-steps.ts exports CHAIN_STEPS
 step carries a `tier` and `needs`, `npm run check:tiers` passes, and tests/scripts/ holds
 test-external-pack-contract.sh beside test-external-pack-app.sh. If they don't, stop and say so — those are
 this plan's first three phases and the rest builds on them.
+Expect `ChainStep` to carry only `name`, `tier`, `needs` and `cache?`, and no step to declare `inputs`
+(`grep -c inputs scripts/lib/chain-steps.ts` is 0). That is the known state, not drift: Phase 3 shipped three
+of the five fields Decision 12 names, so **Phase 4 begins by finishing that table.** If `inputs` is already
+there, Phase 4's first half is done and its guard is the whole phase.
 Read Background, Decisions, Phases and Constraints first. Decisions are final: implement them, don't
 reopen them or stop to ask.
 Where a detail isn't specified, pick the conventional option, note it in the final summary, and keep
@@ -18,8 +22,9 @@ it moves with migrations.
 
 Finished when:
 - Phases 4–9 are implemented and each meets its "Done when"; every new guard, helper or test is
-  mutation-checked. Phases 1–3 are done (`06f55ea72`, `b1c0b3cc4`, `8095daf14`), and Phase 2's
-  packaged-authoring half is recorded as impossible until Phase 7 rather than skipped.
+  mutation-checked. Phases 1–3 are done (`06f55ea72`, `b1c0b3cc4`, `8095daf14`) except the three `ChainStep`
+  fields Phase 4 now opens with, and Phase 2's packaged-authoring half is recorded as impossible until
+  Phase 7 rather than skipped.
 - Every check in the chain declares its tier, and no tier-1 or tier-2 check launches Electron.
 - `npm run chain` runs tier 1 and tier 2 before `build`, and tier 3 after it.
 - Every step declares `needs` and `inputs`; a cycle or unknown dependency fails before any step runs; a spec
@@ -343,22 +348,38 @@ the point of the phase. **Mutation:** the contract half fails if its fixture's m
 introduced cycle and an unknown `needs` name each fail before any step runs. **Mutation:** removing `build`
 from the E2E step's `needs` reorders the run, which a spec on the computed order catches.
 
-### Phase 4 — The input-coverage guard, before anything depends on it
+**Shipped partially** (`8095daf14`, checked 2026-09-25): `needs` and `cache` landed, `inputs`, `outputs` and
+`exclusive` did not, and `orderedSteps`, the validation and the reporting are all there. Both halves of the
+"Done when" pass over a three-field table, which is how the other two fields slipped: it asserted the
+*behaviour* the fields were for — ordering, cycle detection, timing — and never that the fields existed. Worth
+keeping in mind when writing the ones below; a phase that adds a field wants a check that reads the field.
 
+### Phase 4 — Finish the table, then guard it
+
+- Add the three fields Phase 3 left out — `inputs`, `outputs` and `exclusive` per Decision 12 — and fill
+  `inputs` for all nine steps. **This is the bulk of the phase.** Deriving nine honest input lists is the
+  work; the guard below is a few lines over them.
 - A spec asserting every tracked source file is an input to at least one step, resolved through the same
   walk `fingerprintInputs` uses, so an under-declared input is a failing test rather than a stale pass.
 - Its doc comment says why per-step caching needs this where `BUILD_UNITS` did not.
 
 This is the phase that makes caching safe, and it comes first for that reason: the risk of caching is a wrong
-input list silently skipping a check, and with CI off there is no backstop.
+input list silently skipping a check, and with CI off there is no backstop. Which is also why the authoring
+belongs here rather than folded into Phase 5 — an input list written in the same change that starts trusting
+it has nothing checking it was right.
 
-**Done when:** the spec passes over Phase 3's table. **Mutation:** adding a source file no step names, and
-dropping a directory from one step's `inputs`, each fail it.
+**Done when:** every step declares `inputs`; a step producing a build artifact declares `outputs`; the spec
+passes over the filled table. **Mutation:** adding a source file no step names, and dropping a directory from
+one step's `inputs`, each fail it. A table with a field missing fails to typecheck, so `inputs` is required
+rather than optional — the point of Phase 3's slip.
 
 ### Phase 5 — Caching
 
 - Fingerprint each step with `fingerprintUnit`, stamp with `stampedBuild`, report an unchanged step as
   `cached` and do not run it. Bump `STAMP_VERSION` once.
+- Both take a `BuildUnit`, which is **not exported** today (`packages/abuddy-host/src/build/packages-built.ts`,
+  `interface BuildUnit` with no `export`), so `scripts/chain.ts` cannot construct one until it is. `@abuddy/host`
+  is private, so that is an export keyword and no API report.
 - `cache: false` on E2E (Decision 15).
 - Split `test:unit` per package, since that is where 100s lives and a one-package change should not re-run
   eight suites. The tiers make this honest: each suite's inputs are its own package plus what it imports.
@@ -386,7 +407,8 @@ steps passed.
 
 - `abuddy test --contract` runs the pack's `vitest` where it has one and skips Playwright, so a pack author
   can check compiled output without Electron. `test-external-pack-contract.sh` uses it instead of calling
-  `vitest` directly.
+  `vitest` directly — still line 25 there, `"$ROOT/node_modules/.bin/vitest" run --root "$PACK"`, checked
+  2026-09-25.
 - `abuddy init-tests` scaffolds both halves.
 
 **Done when:** `abuddy test --contract` passes in both fixtures with no app built; `npm test -w @abuddy/cli`
@@ -394,7 +416,8 @@ covers the flag.
 
 ### Phase 8 — The practices that are work, not policy
 
-- Size the timeouts per Decision 7, tier by tier, and delete the two `testTimeout: 120_000`.
+- Size the timeouts per Decision 7, tier by tier, and delete the two `testTimeout: 120_000` — still
+  `packages/default-setup/vitest.config.ts:27` and `packages/api/vitest.config.ts:28`, checked 2026-09-25.
 - Make the app choice injectable so `test-packaged-authoring.sh` stops unsetting `CI` to drive a prompt with
   `expect`; cover the prompt itself in `@abuddy/cli`'s suite. **This one hung a machine**, which is worth more
   than the tidiness argument: with the app missing, `abuddy test --list` started a Playwright test-server that
@@ -419,6 +442,9 @@ hang fails at its tier budget rather than at two minutes.
 - Once a warm chain is seconds, the root `CLAUDE.md`'s "What to run after a change" table stops being
   instructions and becomes documentation of the graph. Rewrite it to say so: run `npm run chain`, which costs
   what you changed; keep `npm run spec` as the inner-loop tool.
+- **Half of this already happened** without the caching that was meant to justify it: that table now opens on
+  `npm run spec` and closes on `npm run chain`. So what is left is narrower than this phase reads — retiring
+  the per-row arithmetic in between, which stays blocked on Phase 5 actually making a warm chain cheap.
 - Keep the measured figures — they are what justify the design.
 
 **Done when:** the table no longer asks the reader to work out which suite covers their change. Docs only.
@@ -464,3 +490,10 @@ The repo's standing rules (root `CLAUDE.md`) apply:
   passing, and a pack author's path stays the one this repo tests;
 - **measure before and after every phase.** Four proposals in the session that wrote this were rejected by
   one command each, and each had been argued for at length first.
+- **Measure with nothing else running in this checkout, and check first.** Phases 4 to 6 are the measurement
+  phases, and a contended run already produced 249s for what is 182.6s idle — a 36% error, larger than
+  Phase 5 or 6 is likely to save. On 2026-09-25 a second session was editing six files here mid-change, which
+  is normal in this repo and invisible unless you run `git status` before taking a number. **Phases 4 to 6 can
+  run in a worktree**, which suits them better than the CLI-spawns goal: nothing in them touches
+  `abuddy-cli/src`, and their subject — `scripts/`, the chain table and the guard spec — is touched by little
+  else. Take the before and after from the same tree, whichever tree it is.
