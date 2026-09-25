@@ -23,17 +23,22 @@ export interface ChainStep {
  * ordering guarantee, since no workspace declares a dependency on `@app/default-setup`, and the renderer's
  * build reads the generated pack entry that `compile` writes.
  *
- * `test:external-pack` and `test:packaged-authoring` are tier 3 because today they are: each ends with
- * `abuddy test --app-root`, and the four checks before it in the same script inherit that. Splitting them so
- * the contract half is tier 2 is Phase 2 of the goal.
+ * `test:external-pack` is split: its contract half runs here in tier 2, before `build`, because validating,
+ * building and typechecking a pack and running its harness specs needs no app — proved by running it with
+ * `packages/renderer/dist` moved aside. Its Playwright half stays tier 3.
+ *
+ * `test:packaged-authoring` is still tier 3 whole. It is a linear scenario rather than two halves: step 8
+ * needs the archive step 6 produced and step 9 reads the data step 8's app seeded, so it takes a mode rather
+ * than a split (Phase 2 of the goal).
  */
 export const CHAIN_STEPS: readonly ChainStep[] = [
   { name: 'packages:ensure', tier: 2 },
   { name: 'compile', tier: 2 },
+  { name: 'test:external-pack:contract', tier: 2 },
   { name: 'typecheck', tier: 1 },
   { name: 'test:unit', tier: 1 },
   { name: 'build', tier: 3 },
-  { name: 'test:external-pack', tier: 3 },
+  { name: 'test:external-pack:app', tier: 3 },
   { name: 'test', tier: 3 }, // the E2E suite
   { name: 'test:packaged-authoring', tier: 3 },
 ];

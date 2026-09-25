@@ -82,7 +82,9 @@
     "db:reset": "abuddy db reset -d",
     "db:clear-settings": "abuddy db clear-settings -d",
     "chain": "tsx scripts/chain.ts",
-    "check:tiers": "tsx scripts/check-test-tiers.ts"
+    "check:tiers": "tsx scripts/check-test-tiers.ts",
+    "test:external-pack:contract": "npm run packages:ensure && bash tests/scripts/test-external-pack-contract.sh",
+    "test:external-pack:app": "bash tests/scripts/test-external-pack-app.sh"
   },
   "devDependencies": {
     "@arethetypeswrong/cli": "^0.18.5",

@@ -37,6 +37,18 @@ const APP_MARKERS = [
 /** This file names the markers it looks for, so scanning it would always match */
 const SELF = path.join('scripts', 'check-test-tiers.ts');
 
+/**
+ * Comments are prose, and prose about launching the app is not launching it — a script explaining why it does
+ * *not* run `abuddy test` would otherwise report itself, which is how this was found. Stripping `#` can take a
+ * `#` inside a string with it; that direction is safe here, because what is left is still scanned and the
+ * markers are commands, which do not live inside string literals in these scripts.
+ */
+function withoutComments(text: string, shell: boolean): string {
+  return shell
+    ? text.split('\n').map((l) => l.replace(/(^|\s)#.*$/, '$1')).join('\n')
+    : text.replace(/\/\*[\s\S]*?\*\//g, '').split('\n').map((l) => l.replace(/\/\/.*$/, '')).join('\n');
+}
+
 const scripts = (): Record<string, string> =>
   (JSON.parse(fs.readFileSync(path.join(REPO_ROOT, 'package.json'), 'utf-8')) as { scripts: Record<string, string> }).scripts;
 
@@ -49,7 +61,10 @@ function reachableText(script: string, all: Record<string, string>, seen = new S
   for (const file of text.matchAll(/(?:bash |sh |tsx |node )?((?:tests|scripts)\/[\w./-]+\.(?:sh|ts|mjs))/g)) {
     if (file[1].endsWith(SELF) || file[1] === SELF) continue;
     const abs = path.join(REPO_ROOT, file[1]);
-    if (!seen.has(abs) && fs.existsSync(abs)) { seen.add(abs); text += `\n${fs.readFileSync(abs, 'utf-8')}`; }
+    if (!seen.has(abs) && fs.existsSync(abs)) {
+      seen.add(abs);
+      text += `\n${withoutComments(fs.readFileSync(abs, 'utf-8'), abs.endsWith('.sh'))}`;
+    }
   }
   return text;
 }
