@@ -220,8 +220,15 @@ script; that belongs in the command.
 - `tests/scripts/test-external-pack.sh` becomes `test-external-pack-contract.sh` (steps 1–4) and
   `test-external-pack-app.sh` (step 5), with npm scripts `test:external-pack:contract` and
   `:app`. `test:external-pack` stays as both, for anyone running it by hand.
-- The same split for `test-packaged-authoring.sh`: everything up to and including the authored pack's
-  `tsc` and `vitest`, then the `abuddy test` step.
+- `tests/scripts/test-packaged-authoring.sh` does **not** split into two independent halves, and the plan
+  should not pretend otherwise. It is a linear scenario: its 9 numbered steps build on each other, step 8
+  (`abuddy test`) needs the archive step 6 produced, and step 9 reads the data step 8's app seeded. Give it a
+  mode instead — `--contract` runs every step but 8 and 9 and the first-run prompt at line 89, which is only
+  there to configure the app for step 8. That does not reduce the work when both run; what it buys is a half
+  that can run in tier 2, before `build`, and be skipped on a commit that touches no app code.
+- `test-external-pack.sh` is the one that splits cleanly, and is where the value is: its `validate`, `build`,
+  `tsc` and `vitest` each assert something on their own and none of them feeds the Playwright step anything
+  it could not rebuild.
 - The chain runs the contract halves in tier 2 and the app halves in tier 3.
 
 **Done when:** every assertion that ran before still runs; `npm run chain --all` passes; the contract
