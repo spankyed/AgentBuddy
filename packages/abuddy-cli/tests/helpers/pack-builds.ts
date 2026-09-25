@@ -20,6 +20,71 @@ export function run(cmd: string, args: string[], cwd: string): { code: number; o
   }
 }
 
+/**
+ * The commands `callCli` can run, by the name the CLI's argv dispatch uses (`src/index.ts`). `build`
+ * is the inner `build`, not `buildCommand`: the wrapper's only extra is `ensureCheckoutPackages`, a
+ * freshness check the suite's own `pretest` already made once for the whole run.
+ */
+const COMMANDS = {
+  'init': async () => (await import('../../src/commands/init')).init,
+  'add': async () => (await import('../../src/commands/add')).add,
+  'generate-entries': async () => (await import('../../src/commands/generate-entries')).generateEntries,
+  'build': async () => (await import('../../src/commands/build')).build,
+  'pack': async () => (await import('../../src/commands/pack')).pack,
+  'init-tests': async () => (await import('../../src/commands/init-tests')).initTests,
+} satisfies Record<string, () => Promise<(args: string[]) => unknown>>;
+
+/**
+ * Registered once per process, as `bin/abuddy.mjs` does for a spawn: the CLI loads a pack's TypeScript
+ * by dynamic import, and those files sit in a temp dir outside vitest's root, where its own transform
+ * does not reach.
+ */
+let tsxRegistered = false;
+async function registerTsx(): Promise<void> {
+  if (tsxRegistered) return;
+  (await import('tsx/esm/api')).register();
+  tsxRegistered = true;
+}
+
+/**
+ * Runs a CLI command in this process against `dir`, returning what `run` returns so a call site reads
+ * the same either way. For the spawns that exist to *produce* something — a built pack, a scaffold —
+ * where the process boundary is cost rather than coverage; a test asserting on an exit code, stderr or
+ * argv keeps `run`, because that is what it is testing.
+ *
+ * Measured on a minimal pack: three builds cost 14.1s spawned and 7.4s here, because esbuild, vite and
+ * tailwind load once for the file instead of once per build.
+ *
+ * Two pieces of global state make this safe only for tests that run one at a time, which is every test
+ * in this suite — vitest gives each file its own forked process and runs its tests in sequence:
+ *
+ * - the commands read `process.cwd()` rather than taking a root, so this chdirs and restores;
+ * - a command that fails calls `process.exit`, which would take the worker with it, so that is swapped
+ *   for a throw and reported as `code` instead.
+ */
+export async function callCli(dir: string, command: keyof typeof COMMANDS, args: string[] = []): Promise<{ code: number; output: string }> {
+  await registerTsx();
+  const chunks: string[] = [];
+  const cwd = process.cwd();
+  const console_ = { log: console.log, error: console.error, warn: console.warn, info: console.info };
+  const exit = process.exit;
+  const capture = (...parts: unknown[]) => { chunks.push(`${parts.map(String).join(' ')}\n`); };
+  class Exited extends Error { constructor(readonly code: number) { super(`process.exit(${code})`); } }
+  try {
+    process.chdir(dir);
+    Object.assign(console, { log: capture, error: capture, warn: capture, info: capture });
+    process.exit = ((code?: number) => { throw new Exited(code ?? 0); }) as typeof process.exit;
+    await (await COMMANDS[command]())(args);
+    return { code: 0, output: chunks.join('') };
+  } catch (err) {
+    return { code: err instanceof Exited ? err.code : 1, output: `${chunks.join('')}${err instanceof Exited ? '' : String(err)}` };
+  } finally {
+    process.chdir(cwd);
+    Object.assign(console, console_);
+    process.exit = exit;
+  }
+}
+
 /** Writes a tree of files under `dir`, creating directories as needed */
 export function write(dir: string, files: Record<string, string>): void {
   for (const [rel, content] of Object.entries(files)) {
@@ -54,9 +119,8 @@ export function preparePack(parent: string, name: string, files: Record<string, 
 }
 
 /** Builds a prepared pack, throwing with the CLI's output when it fails */
-export function buildPack(dir: string, name = path.basename(dir)): string {
-  // produces: every caller wants the built pack, not the process — the one spawn Phase 2 converts for all of them
-  const build = run(process.execPath, [CLI, 'build'], dir);
+export async function buildPack(dir: string, name = path.basename(dir)): Promise<string> {
+  const build = await callCli(dir, 'build');
   if (build.code !== 0) throw new Error(`abuddy build failed in ${name}:\n${build.output}`);
   return build.output;
 }

@@ -5,7 +5,7 @@ import * as path from 'node:path';
 import ts from 'typescript';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { PACKAGES_BUILT, REPO_ROOT, installPublishedPackages } from '../helpers/published-packages';
-import { CLI, TSC, packageJson, preparePack, run, tsconfig, write } from '../helpers/pack-builds';
+import { CLI, TSC, callCli, packageJson, preparePack, run, tsconfig, write } from '../helpers/pack-builds';
 
 /**
  * A pack's typed facades (#generated/ears, events, services, repository) cover its own
@@ -267,9 +267,9 @@ tx('Nope');
 
 /** The two packs, built, in a temp dir; node_modules link the workspace or the packed packages */
 /** A step in base-pack, whose node types its dependents read: the scaffolded one and a hand-written one */
-function addBaseStep(dir: string): void {
+async function addBaseStep(dir: string): Promise<void> {
   // produces: the step whose scaffolded types this function then rewrites
-  const added = run(process.execPath, [CLI, 'add', 'step', 'ping'], dir);
+  const added = await callCli(dir, 'add', ['step', 'ping']);
   if (added.code !== 0) throw new Error(`abuddy add step failed in base-pack:\n${added.output}`);
   const types = path.join(dir, 'src', 'extensions', 'steps', 'ping', 'types.ts');
   const scaffolded = fs.readFileSync(types, 'utf-8');
@@ -281,14 +281,14 @@ function addBaseStep(dir: string): void {
     + '\n/** A node type that doesn\'t narrow nodeType and adds no required field */\nexport interface NoteNode extends NodeBase {\n  note?: string;\n}\n');
 }
 
-function buildPacks(published: boolean): string {
+async function buildPacks(published: boolean): Promise<string> {
   const parent = fs.mkdtempSync(path.join(os.tmpdir(), 'facade-typing-'));
   const modules = published ? path.join(installPublishedPackages(), 'node_modules') : path.join(REPO_ROOT, 'node_modules');
   for (const [name, files] of [['base-pack', BASE_PACK], ['app-pack', APP_PACK]] as const) {
     const dir = preparePack(parent, name, files, modules);
-    if (name === 'base-pack') addBaseStep(dir);
+    if (name === 'base-pack') await addBaseStep(dir);
     // produces: the built pack whose snapshot and declarations the tests read
-    const build = run(process.execPath, [CLI, 'build'], dir);
+    const build = await callCli(dir, 'build');
     if (build.code !== 0) throw new Error(`abuddy build failed in ${name}:\n${build.output}`);
   }
   write(path.join(parent, 'app-pack'), { 'src/consumer.ts': CONSUMER });
@@ -399,7 +399,7 @@ const LAYOUTS = [
 
 describe.each(LAYOUTS)('generated facades with a dependency ($name)', ({ published }) => {
   let parent: string;
-  beforeAll(() => { parent = buildPacks(published); }, 240_000);
+  beforeAll(async () => { parent = await buildPacks(published); }, 240_000);
   afterAll(() => fs.rmSync(parent, { recursive: true, force: true }));
 
   it("writes the dependency's facade types into its snapshot", () => {

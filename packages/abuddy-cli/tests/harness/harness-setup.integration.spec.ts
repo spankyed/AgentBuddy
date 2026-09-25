@@ -5,6 +5,7 @@ import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { afterAll, describe, expect, it } from 'vitest';
+import { callCli } from '../helpers/pack-builds';
 
 const REPO_ROOT = path.resolve(__dirname, '..', '..', '..', '..');
 const CLI = path.join(REPO_ROOT, 'packages', 'abuddy-cli', 'bin', 'abuddy.mjs');
@@ -126,10 +127,10 @@ describe.concurrent('a concurrent suite', () => {
 });
 
 describe('abuddy add feature in a pack without the unit test setup', () => {
-  it('adds the harness setup its system test runs on, and the test passes', () => {
+  it('adds the harness setup its system test runs on, and the test passes', async () => {
     const tmp = tempDir('abuddy-pre-harness-');
     // produces: the pre-harness pack the test then strips and re-adds a feature to
-    expect(run(process.execPath, [CLI, 'init', 'old-pack'], tmp).code).toBe(0);
+    expect((await callCli(tmp, 'init', ['old-pack'])).code).toBe(0);
     const pack = path.join(tmp, 'old-pack');
     fs.symlinkSync(path.join(REPO_ROOT, 'node_modules'), path.join(pack, 'node_modules'), 'dir');
     // As a pack scaffolded before the harness: no tests/setup.ts, a vitest config of its own, no harness dependency

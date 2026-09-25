@@ -12,7 +12,7 @@ import * as os from 'node:os';
 import * as path from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { PACKAGES_BUILT, REPO_ROOT } from '../helpers/published-packages';
-import { CLI, buildPack, packageJson, preparePack, run, tsconfig } from '../helpers/pack-builds';
+import { CLI, buildPack, callCli, packageJson, preparePack, run, tsconfig } from '../helpers/pack-builds';
 
 /** A pack declaring `entities`, depending on `dependencies`. Nothing else: the graph is the subject. */
 function pack(id: string, entities: Record<string, string>, dependencies: Record<string, string> = {}, extra: Record<string, unknown> = {}) {
@@ -53,18 +53,18 @@ const on = (...ids: string[]) => Object.fromEntries(ids.map((id) => [id, '*']));
 let parent: string;
 let built: { code: number; output: string } | undefined;
 
-beforeAll(() => {
+beforeAll(async () => {
   if (!PACKAGES_BUILT) return;
   parent = fs.mkdtempSync(path.join(os.tmpdir(), 'dependency-graph-'));
   const modules = path.join(REPO_ROOT, 'node_modules');
   // D, then B and C on D, then A on B and C: four builds, the budget for this spec
-  buildPack(preparePack(parent, DEEP, { ...pack(DEEP, { Memo: 'Memo' }, {}, NOTIFIER), ...NOTIFIER_SOURCES }, modules), DEEP);
+  await buildPack(preparePack(parent, DEEP, { ...pack(DEEP, { Memo: 'Memo' }, {}, NOTIFIER), ...NOTIFIER_SOURCES }, modules), DEEP);
   for (const side of ['left-pack', 'right-pack']) {
-    buildPack(preparePack(parent, side, pack(side, { [`${side === 'left-pack' ? 'Left' : 'Right'}Note`]: side === 'left-pack' ? 'LeftNote' : 'RightNote' }, on(DEEP)), modules), side);
+    await buildPack(preparePack(parent, side, pack(side, { [`${side === 'left-pack' ? 'Left' : 'Right'}Note`]: side === 'left-pack' ? 'LeftNote' : 'RightNote' }, on(DEEP)), modules), side);
   }
   const appDir = preparePack(parent, 'app-pack', pack('app-pack', { App: 'App' }, on('left-pack', 'right-pack')), modules);
   // produces: the app-pack build whose snapshot the tests read (its output is also checked for conflicts)
-  built = run(process.execPath, [CLI, 'build'], appDir);
+  built = await callCli(appDir, 'build');
 }, 240_000);
 
 afterAll(() => {
@@ -112,10 +112,10 @@ describe.skipIf(!PACKAGES_BUILT)('a pack depending on two packs that share an an
 describe.skipIf(!PACKAGES_BUILT)('a collision that is real', () => {
   // The diamond fix must not swallow this: two packs each declaring `Memo` themselves is not a diamond,
   // and a dependent of both cannot tell which one it means.
-  it('still fails when two independent packs declare the same entity', () => {
+  it('still fails when two independent packs declare the same entity', async () => {
     const modules = path.join(REPO_ROOT, 'node_modules');
     const rival = 'rival-pack';
-    buildPack(preparePack(parent, rival, pack(rival, { Memo: 'Memo' }), modules), rival);
+    await buildPack(preparePack(parent, rival, pack(rival, { Memo: 'Memo' }), modules), rival);
 
     const clashDir = preparePack(parent, 'clash-pack', pack('clash-pack', {}, on(DEEP, rival)), modules);
     // process: the exit code and the colliding-entity message are the assertion
