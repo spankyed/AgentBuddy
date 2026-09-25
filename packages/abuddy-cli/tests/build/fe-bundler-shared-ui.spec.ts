@@ -42,17 +42,17 @@ describe('pack FE code and @abuddy/ui state', () => {
     const pack = await buildPack({});
     expect(pack.getMonacoState).toBe(hostMonacoConfig.getMonacoState);
     expect(pack.resetMonacoState).toBe(hostMonacoConfig.resetMonacoState);
-  }, 60_000);
+  });
 
   it('has its own instance with fe.bundleUi', async () => {
     const pack = await buildPack({ fe: { bundleUi: true } });
     expect(typeof pack.getMonacoState).toBe('function');
     expect(pack.getMonacoState).not.toBe(hostMonacoConfig.getMonacoState);
-  }, 60_000);
+  });
 
   it("fails with a clear message on a host that doesn't provide the module", async () => {
     await expect(buildPack({}, {})).rejects.toThrow(/monaco-config isn't provided by this AgentBuddy/);
-  }, 60_000);
+  });
 
   it('warns once per export an older host lacks', async () => {
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
@@ -66,5 +66,5 @@ describe('pack FE code and @abuddy/ui state', () => {
     } finally {
       warn.mockRestore();
     }
-  }, 60_000);
+  });
 });

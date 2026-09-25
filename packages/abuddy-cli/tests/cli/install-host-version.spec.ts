@@ -73,5 +73,5 @@ describe('the abuddy bin', () => {
     expect(result.status, result.stderr).toBe(0);
     expect(result.stdout).toContain('[pack-installer] Installed "Demo Pack" v1.0.0');
     expect(fs.existsSync(path.join(tmp, 'data', 'packs', 'demo-pack', 'abuddy.json'))).toBe(true);
-  }, 60_000);
+  });
 });

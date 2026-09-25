@@ -106,7 +106,7 @@ it("connects to default-setup's notes and the app's settings", async () => {
 });`);
     const result = vitest(root);
     expect(result.stdout + result.stderr, 'the dependent pack test run').toMatch(/Tests\s+1 passed/);
-  }, 180_000);
+  });
 
   it("drops a system's sends to its plugin until a client connects", () => {
     const root = dependentPack(`
@@ -121,7 +121,7 @@ it('delivers only what the system sends once connected', async () => {
 });`);
     const result = vitest(root);
     expect(result.stdout + result.stderr, 'the dependent pack test run').toMatch(/Tests\s+1 passed/);
-  }, 180_000);
+  });
 
   it("fails a test when a system reports an error the test didn't take", () => {
     const root = dependentPack(`
@@ -141,5 +141,5 @@ it('reports and takes', async () => {
     expect(output).toMatch(/Tests\s+1 failed \| 1 passed/);
     expect(output).toContain("Systems reported errors the test didn't take (takeSystemErrors()):");
     expect(output).toContain('memos: lost memo');
-  }, 180_000);
+  });
 });

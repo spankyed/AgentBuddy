@@ -45,7 +45,7 @@ describe('facade gate', () => {
       'src/__generated__/pack-types.ts': "import type { searchService } from '../search.js';\nexport type Services = { search: typeof searchService };\n",
     });
     expect(problems).toEqual([]);
-  }, 60_000);
+  });
 
   // rollup-plugin-dts turns a namespace's type-only re-export into `declare const x: typeof Type`
   it('fails a facade that does not type-check: a type-only re-export through a namespace', async () => {
@@ -58,7 +58,7 @@ describe('facade gate', () => {
     expect(problems).toEqual([
       expect.stringMatching(/^dist\/types\/pack-types\.d\.ts:\d+:\d+ error TS2693: 'AnyActorLogic' only refers to a type, but is being used as a value here\. \(in types_AnyActorLogic; reached from: Services\)$/),
     ]);
-  }, 60_000);
+  });
 
   it('fails a facade that imports a package outside the allowlist', async () => {
     const { problems } = await gate('undeclared-package', {
@@ -68,7 +68,7 @@ describe('facade gate', () => {
     expect(problems).toEqual([
       expect.stringMatching(/^dist\/types\/pack-types\.d\.ts:1:1 imports "playwright", which dependents don't have: facades may import only @abuddy\/\* packages, @abuddy\/sdk's peer dependencies \([^)]*\bxstate\b[^)]*\) and Node built-ins \(reached from: Services\)$/),
     ]);
-  }, 60_000);
+  });
 
   // Nothing resolves these now: a pack build compiles the published packages, so a source-only export
   // fails the rule and fails to compile, and the rule's message is what names the reason
@@ -86,7 +86,7 @@ describe('facade gate', () => {
       expect.stringMatching(/imports "@abuddy\/host\/packs", a private package dependents can't install \(reached from: Services\)$/),
       expect.stringContaining("error TS2307: Cannot find module '@abuddy/sdk/runtime/internals'"),
     ]);
-  }, 60_000);
+  });
 
   it('fails a facade whose import does not resolve', async () => {
     const { problems } = await gate('unresolved', {
@@ -97,5 +97,5 @@ describe('facade gate', () => {
       expect.stringContaining('imports "not-an-installed-package", which dependents don\'t have'),
       expect.stringMatching(/error TS2307: Cannot find module 'not-an-installed-package'/),
     ]);
-  }, 60_000);
+  });
 });

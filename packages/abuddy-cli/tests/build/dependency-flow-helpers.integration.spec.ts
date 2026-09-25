@@ -91,7 +91,7 @@ beforeAll(async () => {
     fs.mkdirSync(path.dirname(path.join(app, file)), { recursive: true });
     fs.writeFileSync(path.join(app, file), content);
   }
-}, 120_000);
+});
 
 describe("a dependency's flow helpers", () => {
   it('are re-exported under the names the dependency gives them', () => {
@@ -110,7 +110,7 @@ describe("a dependency's flow helpers", () => {
       .filter((d) => d.file?.fileName.startsWith(path.join(app, 'src')))
       .map((d) => `${path.relative(app, d.file!.fileName)}: ${ts.flattenDiagnosticMessageText(d.messageText, ' ')}`);
     expect(diagnostics).toEqual([]);
-  }, 60_000);
+  });
 
   it("run the dependency's helper code", async () => {
     const helpers = await import(path.join(app, 'src/__generated__/flow-helpers.ts'));

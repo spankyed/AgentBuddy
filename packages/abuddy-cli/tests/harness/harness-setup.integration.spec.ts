@@ -66,7 +66,7 @@ it('seeds nothing', async () => {
     // inherent: runs a pack's own vitest suite from another cwd — the nested runner is the thing under test
     const result = run(process.execPath, [VITEST, 'run', '--root', root], tempDir('abuddy-elsewhere-'));
     expect(result.output).toMatch(/Tests\s+1 passed/);
-  }, 180_000);
+  });
 
   // A seed runtime registers no features, yet an action the test runs sends to the pack's own through services.emitter
   it("let services.emitter send to the features the pack's manifest declares", () => {
@@ -81,7 +81,7 @@ it('sends to its own system and plugin', () => {
     // inherent: runs a pack's own vitest suite — the nested runner is the thing under test
     const result = run(process.execPath, [VITEST, 'run'], root);
     expect(result.output).toMatch(/Tests\s+1 passed/);
-  }, 180_000);
+  });
 
   it('fail naming why when test files share the harness (vitest isolate off)', () => {
     const spec = `
@@ -98,7 +98,7 @@ it('seeds nothing', async () => {
     const result = run(process.execPath, [VITEST, 'run'], root);
     expect(result.output).toContain('setupPackTests() already ran in this process');
     expect(result.output).toContain('`isolate` on (the default)');
-  }, 180_000);
+  });
 
   it('fail concurrent tests, naming why', () => {
     const root = dataPack(`
@@ -109,7 +109,7 @@ it.concurrent('two', async () => {});`);
     const result = run(process.execPath, [VITEST, 'run'], root);
     expect(result.output).toMatch(/Tests\s+2 failed/);
     expect(result.output).toContain('"one" runs concurrently: harness tests share one database, service mocks and apps per file');
-  }, 180_000);
+  });
 
   it("run a concurrent test nothing runs alongside: alone in its group, or next to skipped ones", () => {
     const root = dataPack(`
@@ -123,7 +123,7 @@ describe.concurrent('a concurrent suite', () => {
     // inherent: runs a pack's own vitest suite — the nested runner is the thing under test
     const result = run(process.execPath, [VITEST, 'run'], root);
     expect(result.output).toMatch(/Tests\s+3 passed \| 1 skipped/);
-  }, 180_000);
+  });
 });
 
 describe('abuddy add feature in a pack without the unit test setup', () => {
@@ -154,5 +154,5 @@ describe('abuddy add feature in a pack without the unit test setup', () => {
     const unit = run(process.execPath, [VITEST, 'run'], pack);
     expect(unit.output).toMatch(/tests\/unit\/notes-system\.spec\.ts/);
     expect(unit.output).toMatch(/Tests\s+1 passed/);
-  }, 240_000);
+  });
 });

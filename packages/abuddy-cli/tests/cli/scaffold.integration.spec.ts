@@ -32,7 +32,7 @@ beforeAll(async () => {
   expect((await callCli(tmp, 'init', ['demo-pack'])).code).toBe(0);
   pack = path.join(tmp, 'demo-pack');
   fs.symlinkSync(path.join(REPO_ROOT, 'node_modules'), path.join(pack, 'node_modules'), 'dir');
-}, 60_000);
+});
 
 afterAll(() => {
   fs.rmSync(tmp, { recursive: true, force: true });
@@ -86,7 +86,7 @@ describe('abuddy init → add feature → build → tsc → pack', () => {
     expect(packed.code, packed.output).toBe(0);
     const extracted = await extractPackArchive(path.join(out, 'demo-pack-0.1.0.tgz'), path.join(tmp, 'extract'));
     expect(verifyPack(extracted).id).toBe('demo-pack');
-  }, 240_000);
+  });
 
   it('adds a step (registered, shipped in build/steps.build.mjs) and a service that build', async () => {
     // produces: the step whose generated register/build files are asserted below
@@ -107,7 +107,7 @@ describe('abuddy init → add feature → build → tsc → pack', () => {
     // typecheck: as above
     const tsc = await typecheckPack(pack);
     expect(tsc.code, tsc.output).toBe(0);
-  }, 240_000);
+  });
 
   it('regenerates entries when a source file codegen reads changes, not only the manifest', async () => {
     const servicePath = path.join(pack, 'src', 'extensions', 'services', 'cache.ts');
@@ -119,7 +119,7 @@ describe('abuddy init → add feature → build → tsc → pack', () => {
     expect(fs.readFileSync(path.join(pack, 'src', '__generated__', 'services.ts'), 'utf-8')).toMatch(/import \{ cacheService as __service_cache \}/);
     // process: the stdout a second, unchanged run prints is the assertion
     expect(run('node', [CLI, 'generate-entries'], pack).output).toMatch(/inputs unchanged/);
-  }, 120_000);
+  });
 
   it('keeps unit tests runnable after init-tests adds Playwright specs', async () => {
     // produces: the Playwright specs the vitest run below picks up
@@ -135,7 +135,7 @@ describe('abuddy init → add feature → build → tsc → pack', () => {
     const unitOutput = unit.output.replace(/\x1b\[[0-9;]*m/g, '');
     expect(unitOutput).toMatch(/Tests\s+\d+ passed/);
     expect(unitOutput).not.toMatch(/failed/);
-  }, 120_000);
+  });
 
   it('refuses to build, pack or generate entries for a manifest the installer would reject', () => {
     const manifestPath = path.join(pack, 'abuddy.json');
@@ -153,7 +153,7 @@ describe('abuddy init → add feature → build → tsc → pack', () => {
     } finally {
       fs.writeFileSync(manifestPath, original);
     }
-  }, 120_000);
+  });
 
   it('fails the build on an unresolvable dependency', () => {
     const manifestPath = path.join(pack, 'abuddy.json');
@@ -169,5 +169,5 @@ describe('abuddy init → add feature → build → tsc → pack', () => {
     expect(fs.existsSync(path.join(pack, 'dist'))).toBe(false);
     // process: the exit code after a failed build is the assertion
     expect(run('node', [CLI, 'pack', '--out', path.join(tmp, 'stale-out')], pack).code).not.toBe(0);
-  }, 120_000);
+  });
 });

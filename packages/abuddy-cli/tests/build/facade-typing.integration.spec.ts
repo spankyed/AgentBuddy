@@ -422,7 +422,7 @@ describe.each(LAYOUTS)('generated facades with a dependency ($name)', ({ publish
     expect(result.code, result.output).toBe(0);
     // skipLibCheck skips the dependency's bundled facade (src/__generated__/deps/*.d.ts), where an invalid declaration reads as any
     expect(packDeclarationDiagnostics(app, tsconfig)).toEqual([]);
-  }, 120_000);
+  });
 
   it.each(['bundler', 'node16'] as const)('offers field and entity-name completions under moduleResolution %s', (moduleResolution) => {
     const app = path.join(parent, 'app-pack');
@@ -433,7 +433,7 @@ describe.each(LAYOUTS)('generated facades with a dependency ($name)', ({ publish
     expect(missing(NAME_POSITIONS, ['Memo', 'Tag', 'Relation', 'Prompt']), 'positions without entity-name completions').toEqual([]);
     // A typo's error lists the fields it could have been
     expect(diagnostics.find((message) => message.includes('"txet"'))).toMatch(/"text"/);
-  }, 120_000);
+  });
 
   it.each(['bundler', 'node16'] as const)('offers system-id and event-type completions for sendToSystem under moduleResolution %s', (moduleResolution) => {
     const app = path.join(parent, 'app-pack');
@@ -441,7 +441,7 @@ describe.each(LAYOUTS)('generated facades with a dependency ($name)', ({ publish
     expect(at.systemId, 'system-id completions').toEqual(expect.arrayContaining(['memos', 'base-pack/threads']));
     expect(at.eventType, 'event-type completions').toEqual(expect.arrayContaining(['ADD_MEMO', 'CLEAR_MEMOS', 'PIN_MEMO', 'UNPIN_MEMO']));
     expect(at.eventType, 'only the chosen system\'s events').not.toContain('ADD_TAG');
-  }, 120_000);
+  });
 
   // qx's name overloads come before its id overloads; in the other order a name seed gets no suggestions
   it.each(['bundler', 'node16'] as const)('offers entity-name completions in qx() under moduleResolution %s', (moduleResolution) => {
@@ -449,5 +449,5 @@ describe.each(LAYOUTS)('generated facades with a dependency ($name)', ({ publish
     const { at } = completionsIn(app, writeTsconfig(app, moduleResolution, published));
     expect(at.qx, 'entity-name completions in qx()').toEqual(expect.arrayContaining(['Memo', 'Tag', 'Relation', 'Prompt']));
     expect(at.qx, 'no completion for an entity no pack here declares').not.toContain('Settings');
-  }, 120_000);
+  });
 });

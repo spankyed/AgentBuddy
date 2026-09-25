@@ -21,7 +21,7 @@ import { PACKAGES_BUILT, installPublishedPackages } from '../helpers/published-p
 let consumer: string | undefined;
 beforeAll(() => {
   if (PACKAGES_BUILT) consumer = installPublishedPackages();
-}, 120_000);
+});
 afterAll(() => {
   if (consumer) fs.rmSync(consumer, { recursive: true, force: true });
 });
@@ -72,5 +72,5 @@ describe.skipIf(!PACKAGES_BUILT)('the published declarations', () => {
       .map((d) => `${path.relative(consumer!, d.file?.fileName ?? '')}: TS${d.code} ${ts.flattenDiagnosticMessageText(d.messageText, ' ')}`);
 
     expect(problems).toEqual([]);
-  }, 180_000);
+  });
 });

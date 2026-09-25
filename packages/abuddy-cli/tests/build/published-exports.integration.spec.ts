@@ -8,7 +8,7 @@ import { CONSUMER_MATRIX, PACKAGES_BUILT, REPO_ROOT, TSC_VERSIONS, installPublis
 let consumer: string | undefined;
 beforeAll(() => {
   if (PACKAGES_BUILT) consumer = installPublishedPackages();
-}, 120_000);
+});
 afterAll(() => {
   if (consumer) fs.rmSync(consumer, { recursive: true, force: true });
 });
@@ -62,5 +62,5 @@ describe.skipIf(!PACKAGES_BUILT)('published package exports', () => {
       output = `${err.stdout ?? ''}${err.stderr ?? ''}`;
     }
     expect(output).toBe('');
-  }, 120_000);
+  });
 });

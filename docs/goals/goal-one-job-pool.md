@@ -450,6 +450,60 @@ condition would have followed it and the suite would have resolved source withou
 So the list is literal and guarded: `chain-inputs.spec.ts` asserts it is exactly the host suites.
 **Mutation:** adding `packages/default-setup` to it fails by name, which is the case that matters.
 
+### Phase 5 — the floor file, and 97 timeouts the tier budget now covers
+
+#### "The cost is 3 tests, not 94" is backwards
+
+| | measured |
+|---|---|
+| the 3 compiling tests | **3.13s** |
+| the other 91 | **~7.2s** of `generatePackFiles` |
+| all 94 tests' `mkdtemp` + `rmSync` | 0.15s |
+
+The plan has it the other way round — "the cost is 3 tests, not 94", the other 91 "together about 1s" — and
+that is what made 13s -> 5-7s look reachable. The 91 are not string assertions over a cached artifact: each
+one calls `generatePackFiles` with a different manifest, which is real work that no cache can share.
+
+#### What amortising the compiler actually buys
+
+A shared `ts.CompilerHost` with one `SourceFile` cache across the three programs, under the rule the plan
+gives — `root` is `mkdtemp`'d per test, so cache anything not under `root` and never anything that is.
+
+    the 3 compiling tests   3.13s -> 2.46s
+    the whole file         10.36s -> 9.40s
+
+**`oldProgram` was tried and is not kept.** The plan says it "is what recovers the rest"; measured at 2.44s
+and 2.52s against 2.46s without it, which is no difference. Code that buys nothing should not be carried
+for the story it tells.
+
+**Mutation:** a type error injected into a file under `root` is still reported
+(`src/probe.ts: Type 'string' is not assignable to type 'number'`), so the cache cannot mask an error in
+what a test writes.
+
+#### The split was not done, and the measurement is why
+
+The phase asks for the 3 compiling tests in their own file as "a real tier boundary". Two things measured
+against it. The floor is not binding: the host pool is 21.1s of wall against a 9.4s floor, so splitting the
+floor file changes the pool's time by about nothing. And there is no tier for those tests to move into —
+Phase 2 established that a spec's half is its measured cost, and that split exists only in `@abuddy/cli`,
+while this file is in `@abuddy/sdk`, which runs one suite. Against that, the split means extracting ~125
+lines of helpers that close over a per-test `root` out of a 1329-line file used by 94 tests. Attempted,
+then reverted when the measurement said it bought nothing: a number that did not move is a result.
+
+#### 97 per-test timeouts existed because the configs sat at 5s
+
+Both `@abuddy/cli` configs ran at vitest's 5s default, which is why 97 per-test and per-hook timeouts of 30s
+to 240s had been written — in fast-half files that run in about a second, and integration files whose
+slowest single test is about 5s. The budget belongs to the tier: `testTimeout` and `hookTimeout` are now
+15s in the fast config and 60s in the integration one, which is `TIER_TIMEOUT_MS` for tiers 1 and 2, and all
+97 are gone. Both halves pass unchanged, 451 and 408.
+
+**A regex that reached into string literals.** The first pass matched `}, <n>)` anywhere and rewrote
+`setTimeout(()=>{},5000)` inside a fixture string, removing the delay that kept a child process alive; two
+`with-source` tests failed in 70ms, which is not what a timeout change looks like. Redone anchored to a line
+that closes a call. The same greedy match had also reported "keeping" a deliberate 300ms timeout that was
+never a timeout at all — it was inside that same fixture.
+
 ## Constraints
 
 `goal-test-tiers.md`'s standing rules carry over unchanged: no push, tag or PR; no publish or release; no

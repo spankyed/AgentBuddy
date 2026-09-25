@@ -65,7 +65,7 @@ beforeAll(async () => {
   const appDir = preparePack(parent, 'app-pack', pack('app-pack', { App: 'App' }, on('left-pack', 'right-pack')), modules);
   // produces: the app-pack build whose snapshot the tests read (its output is also checked for conflicts)
   built = await callCli(appDir, 'build');
-}, 240_000);
+});
 
 afterAll(() => {
   if (parent) fs.rmSync(parent, { recursive: true, force: true });
@@ -123,6 +123,6 @@ describe.skipIf(!PACKAGES_BUILT)('a collision that is real', () => {
 
     expect(clash.code, clash.output).not.toBe(0);
     expect(clash.output).toMatch(/entity "Memo" declared by both/);
-  }, 120_000);
+  });
 });
 

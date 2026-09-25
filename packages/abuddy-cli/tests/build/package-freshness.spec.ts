@@ -434,7 +434,7 @@ describe('the build lock', () => {
     await expect(withBuildLock('@abuddy/sdk', () => 'never', file, { intent: 'freshness', timeoutMs: 1_000 }))
       .rejects.toThrow(/after waiting 1s/);
     expect(Date.now() - waited, 'a freshness fix gave up without waiting').toBeGreaterThanOrEqual(900);
-  }, 30_000);
+  });
 
   it('names the holder', async () => {
     const file = lockFile();

@@ -9,7 +9,7 @@ import { PACKAGES_BUILT, installPublishedPackages } from '../helpers/published-p
 let consumer: string | undefined;
 beforeAll(() => {
   if (PACKAGES_BUILT) consumer = installPublishedPackages();
-}, 120_000);
+});
 afterAll(() => {
   if (consumer) fs.rmSync(consumer, { recursive: true, force: true });
 });
@@ -146,7 +146,7 @@ describe.skipIf(!PACKAGES_BUILT)('published pack-facing packages', () => {
     it(`${name} exposes no any`, () => {
       const roots = packFacingRoots(consumer!);
       expect(exportsWithAny(name, path.join(consumer!, 'node_modules', ...name.split('/')), roots)).toEqual([]);
-    }, 120_000);
+    });
   }
 });
 

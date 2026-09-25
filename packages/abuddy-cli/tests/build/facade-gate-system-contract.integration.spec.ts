@@ -75,12 +75,12 @@ describe('facade gate: a system contract', () => {
     expect(problems).toEqual([]);
     expect(facade).toContain('TAG_ADDED');
     expect(facade).toContain('ADD_TAG');
-  }, 60_000);
+  });
 
   it('publishes the same events when the entry is annotated, which used to erase them', async () => {
     const bare = await gate('bare');
     const annotated = await gate('annotation');
     expect(annotated.problems).toEqual([]);
     expect(annotated.facade).toBe(bare.facade);
-  }, 60_000);
+  });
 });

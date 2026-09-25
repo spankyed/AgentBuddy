@@ -25,5 +25,5 @@ describe('check-import-specifiers as a script', () => {
     const output = execFileSync(path.join(REPO_ROOT, 'node_modules', '.bin', 'tsx'), [link], { cwd: REPO_ROOT, stdio: 'pipe' }).toString();
     expect(output).toMatch(/Import specifiers and pack rules pass/);
     // It checks the whole repo, parsing every file
-  }, 60_000);
+  });
 });

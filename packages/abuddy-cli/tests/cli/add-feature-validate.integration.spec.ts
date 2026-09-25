@@ -22,7 +22,7 @@ beforeEach(async () => {
     process.chdir(origCwd);
   }
   pack = path.join(tmp, 'demo-pack');
-}, 60_000);
+});
 
 afterEach(() => {
   process.chdir(origCwd);
@@ -91,7 +91,7 @@ describe('abuddy add feature', () => {
 
     expect(readManifest().features).toEqual([expect.objectContaining({ id: 'notes', designation: 'notes' })]);
     expect((await runValidate()).exitCode).toBeUndefined();
-  }, 60_000);
+  });
 
   // A designation is a role, not a name. The CLI refused one that differed from the feature name, which
   // `validate` has always accepted and the manifest schema has always allowed.
@@ -101,7 +101,7 @@ describe('abuddy add feature', () => {
 
     expect(readManifest().features).toEqual([expect.objectContaining({ id: 'notes', designation: 'inbox' })]);
     expect((await runValidate()).exitCode).toBeUndefined();
-  }, 60_000);
+  });
 });
 
 describe('abuddy validate', () => {
@@ -117,7 +117,7 @@ describe('abuddy validate', () => {
     expect(exitCode).toBe(1);
     expect(output).toContain('Feature "notes": settings file "src/features/notes/settings.ts" not found');
     expect(output).not.toContain('designation');
-  }, 60_000);
+  });
 
   // A dependency found only in a build this CLI can't read is a warning, like one that isn't found: the rest still runs
   it('warns about a dependency built in another snapshot format, and still runs its other checks', async () => {
@@ -133,7 +133,7 @@ describe('abuddy validate', () => {
     expect(output).toContain('Warnings:');
     expect(output).toContain('Dependency "old-pack" has no build this CLI can use');
     expect(output).toContain('its snapshot is format (none), written by an older abuddy CLI');
-  }, 60_000);
+  });
 
   describe('seed entries (the checks code generation makes)', () => {
     const DEFAULT_SETUP = path.resolve(import.meta.dirname, '../../../default-setup');
@@ -152,7 +152,7 @@ describe('abuddy validate', () => {
 
       expect(exitCode).toBe(1);
       expect(output).toContain(`Seed format "memos": entity "Memo" isn't declared by this pack, its dependencies or the SDK`);
-    }, 60_000);
+    });
 
     it("reports a format a dependency doesn't have", async () => {
       editManifest((manifest) => {
@@ -164,7 +164,7 @@ describe('abuddy validate', () => {
 
       expect(exitCode).toBe(1);
       expect(output).toContain('Seed "memos": dependency "default-setup" has no format "nope"');
-    }, 60_000);
+    });
 
     it('reports a seed hooks module without the named export', async () => {
       fs.mkdirSync(path.join(pack, 'src', 'seeds'), { recursive: true });
@@ -178,10 +178,10 @@ describe('abuddy validate', () => {
 
       expect(exitCode).toBe(1);
       expect(output).toContain(`Seed hooks for "Memo": src/seeds/hooks.ts doesn't export "memoHooks"`);
-    }, 60_000);
+    });
 
     it('passes a pack whose seed entries check out', async () => {
       expect((await runValidate()).exitCode).toBeUndefined();
-    }, 60_000);
+    });
   });
 });
