@@ -139,13 +139,21 @@ both: cheaper suites, and less mutual interference.
 vitest's 5s default. Raising one package's timeout moves the failure to the next package, so the margins are
 thin across suites rather than in one test.
 
-## 4. `check:tiers` cannot follow into a workspace's `package.json`
+## 4. `check:tiers` cannot follow into a workspace's `package.json` — **done, 2026-09-25**
 
 It follows root `npm run` chains and files under `tests/` and `scripts/`, so for a step that delegates to a
 workspace script — `test:integration` is now one — it inspects nothing and passes vacuously. Tier 2 for that
 step was established by reading the specs, not by the guard.
 
-Belongs with the pipeline work, not here.
+**Done.** It follows `-w <ws>` / `--workspace <ws>` into that workspace's scripts, so a step that delegates
+is inspected instead of passing vacuously. Mutation-checked: an app marker in `@abuddy/cli`'s
+`test:integration` script now fails the check, where before it read nothing at all.
+
+**Deliberately not followed: the workspace's spec files.** The markers are commands, and a spec's prose is
+not — two specs here say "the app configured for abuddy test" in a title, and scanning them would report
+them. That is the same false-positive class this checker was narrowed to avoid when it was written. So a
+spec that called `_electron.launch` directly would still not be caught; nothing does, and the E2E fixture
+that could lives in `@abuddy/testing`, which only tier-3 steps use.
 
 ## 5. Correct one row in the goal's *Do not remove* — **done, 2026-09-25**
 

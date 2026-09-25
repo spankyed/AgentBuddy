@@ -52,12 +52,42 @@ function withoutComments(text: string, shell: boolean): string {
 const scripts = (): Record<string, string> =>
   (JSON.parse(fs.readFileSync(path.join(REPO_ROOT, 'package.json'), 'utf-8')) as { scripts: Record<string, string> }).scripts;
 
+/**
+ * A step that delegates to a workspace — `npm run test:integration -w @abuddy/cli` — used to be inspected
+ * as nothing at all: the name is not a root script, so there was no text to scan and the step passed
+ * vacuously. What is followed is the workspace's *scripts*, which are commands, and not its spec files,
+ * which are prose: two of this repo's own specs say "the app configured for abuddy test" in a title, and
+ * scanning those would report them. The markers are commands for that reason.
+ *
+ * One level. A workspace script that itself runs `npm run x` resolves that against the root's scripts
+ * below, which is wrong but harmless — it is text being searched for a marker, not a graph being walked.
+ */
+const workspaceScripts = (name: string): Record<string, string> | undefined => {
+  const packages = path.join(REPO_ROOT, 'packages');
+  for (const dir of fs.readdirSync(packages)) {
+    const manifest = path.join(packages, dir, 'package.json');
+    if (!fs.existsSync(manifest)) continue;
+    const pkg = JSON.parse(fs.readFileSync(manifest, 'utf-8')) as { name?: string; scripts?: Record<string, string> };
+    if (pkg.name === name) return pkg.scripts ?? {};
+  }
+  return undefined;
+};
+
+/** `npm run <script> -w <ws>`, `npm test --workspace <ws>`: the script named is the workspace's, not the root's */
+const WORKSPACE_CALL = /npm\s+(?:run\s+)?([\w:-]+)[^\n]*?(?:--workspace[= ]|-w\s+)(\S+)/g;
+
 /** The text of a script plus every repo file it names, one level of following at a time */
 function reachableText(script: string, all: Record<string, string>, seen = new Set<string>()): string {
   if (seen.has(script)) return '';
   seen.add(script);
   let text = all[script] ?? '';
   for (const called of text.matchAll(/npm run ([\w:-]+)/g)) text += `\n${reachableText(called[1], all, seen)}`;
+  for (const [, called, workspace] of text.matchAll(WORKSPACE_CALL)) {
+    const key = `${workspace}:${called}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    text += `\n${workspaceScripts(workspace)?.[called] ?? ''}`;
+  }
   for (const file of text.matchAll(/(?:bash |sh |tsx |node )?((?:tests|scripts)\/[\w./-]+\.(?:sh|ts|mjs))/g)) {
     if (file[1].endsWith(SELF) || file[1] === SELF) continue;
     const abs = path.join(REPO_ROOT, file[1]);
