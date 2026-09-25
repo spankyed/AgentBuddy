@@ -37,12 +37,13 @@ const KEY = 'sk-proj-SPECKEY1234567890abcdefghij';
 const caller = secretsRouter.createCaller({});
 // What the API's boot registers; the settings system is registered in the first test, once it checks changes made before
 forwardSecretsChanges(packs);
-// A pack designating its settings feature, whose system isn't running yet
-packs.registerPack({ id: 'test', features: { settings: { designation: 'settings' } } });
-// The same pack again, now running its settings feature's system (at `test/settings`, where the designation resolves)
+// A pack with a settings feature, whose system isn't running yet: a system is sent the event because it declares
+// it, not because of any role it plays
+packs.registerPack({ id: 'test', features: { settings: {} } });
+// The same pack again, now running that feature's system, which declares the event and so is sent it
 const registerSettingsSystem = () => {
   packs.unregisterPack('test');
-  packs.registerPack({ id: 'test', features: { settings: { designation: 'settings', system: { machine: setup({}).createMachine({}), receives: ['SECRETS_CHANGED'] } } } });
+  packs.registerPack({ id: 'test', features: { settings: { system: { machine: setup({}).createMachine({}), receives: ['SECRETS_CHANGED'] } } } });
 };
 
 /** The incoming events `run` sends */

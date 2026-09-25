@@ -111,8 +111,9 @@ describe('the host claims no designation', () => {
     expect(hasDesignation('settings')).toBe(false);
   });
 
-  // Nothing in the app looks the role up, so a pack may claim it without colliding with the app's own view
-  it('leaves the name free for a pack', () => {
+  // A role is a pack's own name for a pack's own feature, `settings` included: the app's view is registered at its
+  // ref either way, and the two are not the same thing
+  it('leaves every role name to the packs, `settings` included', () => {
     registry.registerPack(hostRegistration());
     registered.push(HOST_PACK_ID);
     registerPack({ id: 'ext', features: { prefs: { designation: 'settings', plugin: { receives: [] } } } });
