@@ -60,6 +60,11 @@ function forGolden(step: Step, withNotes: boolean) {
         // once moved 75 of these rows at once. What parity means for an action is that seeding produced it, under
         // its label, with its description, carrying a hash; which hash is the compiler's business, and the rules
         // the hash drives are covered by edited-rows.spec.ts and notes-change-tracking.spec.ts.
+        //
+        // Whether a hash is there at all does belong here, though, which is what `hasSourceHash` keeps: a row
+        // without one is the user's for good, since the seeder skips an existing row with no `sourceHash` as
+        // user-owned. The `untracked` scenario is the one row recording `false`, and without the field a
+        // regression that stamped hashes onto untracked rows — taking a user's data back — would pass.
         if (alias.startsWith('Action:') || alias.startsWith('Prompt:')) {
           return [alias, { label: row.label, description: row.description, hasSourceHash: typeof row.sourceHash === 'string' }];
         }
