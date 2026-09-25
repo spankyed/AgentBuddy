@@ -685,6 +685,12 @@ Per suite, warm, one run each. "Before" is at the start of Phase 1; "after" is a
 `test:unit` itself went from 69.8s (one lane, through the same script) to ~43s at two lanes, stable across
 three consecutive runs (44.1s, 42.5s, 43.0s).
 
+**Phase 2's 25s target is not met, and lane count will not reach it.** Three lanes measures 41s against two
+lanes' 43s — no real gain — and fails intermittently on a test hitting vitest's 5s default under contention.
+That is not one test: raising `@abuddy/sdk`'s timeout to 20s moves the failure to `@abuddy/cli` timing out at
+the same 5s. The margins are thin across suites, and the distance from 43s to 25s wants the suites cheaper
+rather than more of them at once.
+
 The cli fast half is 475 rather than the 469 Phase 3 left, because the rebase brought `chain-graph.spec.ts`
 and its 6 tests into the base.
 

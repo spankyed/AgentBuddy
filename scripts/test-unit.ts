@@ -29,10 +29,12 @@ const perSuite = Number(process.env.ABUDDY_TEST_WORKERS || 0);
  *     lanes  3: 47.7s  1 failed
  *     lanes  8: 63.1s  2 failed
  *
- * Three and eight are not a race: what fails there is `@abuddy/sdk`'s "generated sends compile", which
- * compiles generated code and takes 5.2s against vitest's 5s default, so contention pushes it over. Raising
- * the lane count wants that timeout sized to what the test does first; until then two lanes is the most
- * that is both faster and green. A suite is internally parallel already and uses 2.0-3.8 of the 10 cores,
+ * Three and eight are not a race: what fails there is a test timing out at vitest's 5s default — first
+ * `@abuddy/sdk`'s "generated sends compile", which takes 1.3s alone and 5.2s under three-lane contention.
+ * Raising that one package's timeout to 20s does not fix it: measured, the failure moves to `@abuddy/cli`
+ * timing out at the same 5s, and three lanes still measures 41s against two lanes' 43s. So it is a class of
+ * thin margins across suites, not one test, and more lanes are not faster here anyway. Two is the most that
+ * is both faster and green; getting below this wants the suites cheaper, not more of them at once. A suite is internally parallel already and uses 2.0-3.8 of the 10 cores,
  * which is why two lanes help at all and why eight only add contention.
  */
 const lanes = Math.max(1, Number(process.env.ABUDDY_TEST_LANES || 2));
