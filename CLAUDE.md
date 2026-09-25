@@ -222,14 +222,17 @@ npm run api:stamp  # The cheap half, run by npm run typecheck: compares what the
                          # comment is there at all — measured, those are what a report carries, so prose
                          # is the other thing that cannot make one stale. And the set of published
                          # entries, because there is one report per entry: adding an export adds a
-                         # report while no declaration moves. That second input was missing until
-                         # 2026-09-25, when adding `./packs` to a map passed this check and the whole
-                         # chain and was refused by api:check for want of its report.
-                         # Outside the key, and known to be: tsconfig.api-extractor.json and the API
-                         # Extractor version, either of which can move a report with nothing else
-                         # changing. So api:check is the authority and this says when to run it — it
-                         # does not prove that it passes. docs/plans/test-cleanup-followups.md item 2
-                         # carries the fix: capture the key from the producer instead of listing it
+                         # report while no declaration moves. Then the producer — the API Extractor
+                         # version and the tsconfig it is pointed at — either of which moves a report
+                         # on its own. And a stamp-format version, so changing what a stamp *means*
+                         # (apiSurfaceOf, the rows) invalidates every one.
+                         # The key is still a list, and a list of someone else's inputs is a guess:
+                         # the entry set was missing until 2026-09-25, when adding `./packs` to a map
+                         # passed this check and the whole chain and was refused by api:check. So
+                         # api:reports now checks the proxy against itself — if a report moves while
+                         # this said it was current, it fails naming both causes, a missing input or a
+                         # hand-edited report. That is what catches the input nobody listed, and it is
+                         # why api:check stays the authority rather than this
 
 # Built-in pack facade types (after `abuddy build`; from packages/default-setup or with -w @app/default-setup)
 npm run facade:check     # CI: fails if dist/types/pack-types.d.ts changed without updating etc/pack-types.api.md

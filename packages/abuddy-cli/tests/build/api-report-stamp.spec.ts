@@ -245,3 +245,27 @@ describe('the entry set is part of what the stamp records', () => {
     expect(staleReason(dir)).toBeNull();
   });
 });
+
+describe('the producer is part of what the stamp records', () => {
+  // API Extractor and the tsconfig it is pointed at move a report on their own: a path mapping added
+  // to the tsconfig, a version whose formatting differs. Neither touches a declaration or an entry.
+  it('goes stale when the extractor tsconfig changes', () => {
+    const root = tempDir();
+    const dir = pkg(root, '@abuddy/one', { 'index.d.ts': 'export declare const a: number;\n' });
+    fs.writeFileSync(path.join(dir, 'tsconfig.api-extractor.json'), '{ "compilerOptions": { "strict": true } }');
+    stamp(dir);
+    expect(staleReason(dir)).toBeNull();
+
+    fs.writeFileSync(path.join(dir, 'tsconfig.api-extractor.json'), '{ "compilerOptions": { "strict": false } }');
+    expect(staleReason(dir)).toMatch(/API Extractor or its tsconfig changed/);
+  });
+
+  // What a stamp *means* can change without any input changing — apiSurfaceOf, or the rows themselves.
+  // A stamp from another format says nothing about the inputs it does not carry.
+  it('treats a stamp from another format as stale rather than reading it', () => {
+    const root = tempDir();
+    const dir = pkg(root, '@abuddy/one', { 'index.d.ts': 'export declare const a: number;\n' });
+    stamp(dir, declarationStamp(dir).replace(/#version \d+/, '#version 0'));
+    expect(staleReason(dir)).toMatch(/another stamp format/);
+  });
+});

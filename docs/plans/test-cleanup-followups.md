@@ -77,7 +77,7 @@ unref'd timer that never fired.
 **Still unbounded:** `release-beta-rule.test.sh`, which no root npm script invokes — it runs from CI, which
 has its own timeouts.
 
-## 2. Make the stamps sound, and keep them sound
+## 2. Make the stamps sound, and keep them sound — **api:stamp done, 2026-09-25**
 
 `api:stamp`'s key is incomplete. Its own comment states the invariant — *"the reports are a pure function of
 the declarations API Extractor reads"* — and that is subtly wrong: a report is a pure function of the
@@ -116,7 +116,23 @@ version, and a version for `apiSurfaceOf` itself.
 Generalised, and worth writing into `CLAUDE.md`: *a cheap proxy for an expensive check must assert its own
 soundness every time the expensive check runs.*
 
-**Scope:** 1, 3 and 4 on `api:stamp` is the contained piece. Layer 3 on `packages-built`, and 1+2 for chain
+**Done for `api:stamp`.** Layer 1 where it is cheap: the entry set is derived from `exports` through
+`scripts/lib/api-entries.ts`, which `api-reports.ts` and the stamp now share rather than each having their
+own (they had one and none, which is how they came to disagree). Layer 2: five tests mutate each new input
+and watch the stamp move. Layer 3, the one that matters: `api-reports.ts` compares the proxy against itself
+— a report that moves while the stamp said current fails the run, naming both causes. Layer 4:
+`STAMP_VERSION`.
+
+**Full capture was tried on paper and declined, with reasons**, so it is not re-raised: API Extractor reads
+the report it is comparing against, which makes the key circular; it reads `.temp/api-types`, which is
+derived from `dist` and regenerated per run, where hashing `dist` is stabler and says the same thing; and it
+reads TypeScript's `lib.*.d.ts`, which would put node_modules into a reviewed file and churn it on every
+bump. Two named inputs cost twenty lines and no churn, and layer 3 covers what a list cannot.
+
+**Still to do:** the same treatment for `packages-built` (`tsc --listFiles`, esbuild `metafile`) and for
+chain steps, which belong with `goal-test-tiers.md` Phase 4 so they share whatever shape lands here.
+
+**Original scope note:** 1, 3 and 4 on `api:stamp` is the contained piece. Layer 3 on `packages-built`, and 1+2 for chain
 steps, belong with `goal-test-tiers.md` Phase 4 — same problem, so they should share whatever shape lands
 here rather than inventing a third.
 
