@@ -26,11 +26,17 @@ const REPO_ROOT = path.resolve(import.meta.dirname, '..');
  * and starts nothing, so `typecheck` names it and is still tier 1; the markers are invocations only.
  * `abuddy test` is one, because that command is Playwright under another name
  * (`abuddy-cli/src/commands/test.ts` requires a `playwright.config.ts`).
+ *
+ * `abuddy test --contract` is the exception, and the only one: it runs the pack's vitest and starts no app,
+ * which is what the flag is for. The negative lookahead is narrow on purpose — it exempts that one spelling
+ * rather than the command, so `abuddy test` anywhere still reads as a launch. Without it,
+ * `test-external-pack-contract.sh` failed this check the moment it started calling the CLI instead of
+ * invoking vitest by path, which is the guard working rather than the guard being wrong.
  */
 const APP_MARKERS = [
   /playwright\s+test\b/,
-  /\babuddy["']?\s+test\b/,
-  /\$\{?ABUDDY\}?"?\s+test\b/,
+  /\babuddy["']?\s+test\b(?!\s+--contract)/,
+  /\$\{?ABUDDY\}?"?\s+test\b(?!\s+--contract)/,
   /_electron\.launch/,
 ];
 

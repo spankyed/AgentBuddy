@@ -34,6 +34,7 @@ import * as path from 'node:path';
 import { REPO_ROOT, stampedRun, unitStaleReason, type BuildUnit } from '@abuddy/host/build/packages-built';
 import { CHAIN_STEPS, orderedSteps, type ChainStep, type Tier } from './lib/chain-steps.ts';
 import { criticalPath, schedule } from './lib/chain-schedule.ts';
+import { slowestTests } from './lib/slow-tests.ts';
 import { boundedSpawn, budgetFor } from './lib/bounded-spawn.ts';
 
 /**
@@ -72,6 +73,7 @@ async function run(step: string, seconds: number | undefined): Promise<Result> {
   const { code, output, ms, timedOut } = await boundedSpawn('npm', args, budgetFor(seconds ?? 300));
   return { step, ms, code, output, timedOut };
 }
+
 
 const secs = (ms: number) => `${(ms / 1000).toFixed(1)}s`;
 
@@ -177,6 +179,8 @@ async function main(): Promise<void> {
       // that returned non-zero, and which it was is the first thing you need to know.
       const verdict = result.code === 0 ? 'ok' : result.timedOut ? 'TIMEOUT' : 'FAIL';
       console.log(`${verdict.padStart(7)} t${step.tier} ${step.name.padEnd(26)} ${secs(result.ms).padStart(6)}  ${reasons.get(step.name) ?? ''}`);
+      // So whoever profiles a suite next has its slow tests without instrumenting it
+      for (const slow of slowestTests(result.output)) console.log(`${' '.repeat(11)}${secs(slow.ms).padStart(6)}  ${slow.name}`);
       return result.code === 0;
     },
   });

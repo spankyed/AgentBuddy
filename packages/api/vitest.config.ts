@@ -25,7 +25,9 @@ export default defineConfig(async () => {
     include: ['tests/unit/**/*.spec.ts', 'tests/integration/**/*.spec.ts'],
     // Integration tests spawn real subprocesses and gate themselves on env
     // vars (RUN_INTEGRATION=1) so default `npm test` runs skip them cleanly.
-    testTimeout: 120_000,
+    // Tier 1 (`TIER_TIMEOUT_MS`, scripts/lib/chain-steps.ts): a unit test that takes longer is hung,
+    // not slow. This suite's slowest test is 0.7s.
+    testTimeout: 15_000,
     // ❶  there is **no** `tsconfig` option – remove it
   },
 

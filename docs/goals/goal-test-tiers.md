@@ -333,6 +333,50 @@ derives `@abuddy/testing`'s range from `cliVersion()` while `scaffoldUnitTestSet
 pack's `@abuddy/sdk` range, so in this checkout it adds `^0.1.0` and immediately reports it as too old for
 `@abuddy/sdk ^0.3.14`. Left alone here: those are version ranges, which the release process owns.
 
+### What Phase 8 landed
+
+**Timeouts are a ceiling checked per tier, not a constant packages import.** `TIER_TIMEOUT_MS` sits with the
+tier table (tier 1 15s, tiers 2 and 3 60s) and `suite-timeouts.spec.ts` fails a config that declares more
+than its step's tier allows. The configs keep plain literals on purpose: a vitest config importing a
+constant across package layers is what `check:specifiers` exists to prevent, and a guard needs no import.
+The two `testTimeout: 120_000` are gone — measured first, the slowest single test in those suites was 2.9s
+(`@app/default-setup`) and 0.7s (`@app/api`), so 15s is five times the headroom either needs.
+**Mutation:** a test made to hang now fails at 15008ms saying "Test timed out in 15000ms", not at two minutes.
+
+**Two bullets were already done** by work that landed between the plan being written and this phase: every
+shell-script step runs under `tsx scripts/bounded.ts <seconds>`, and `bounded-spawn.ts` kills the whole
+process group (`detached: true`, `kill(-pid)`, then SIGKILL after a grace period). The plan's "nothing has
+one" and "nothing uses `kill 0`, `setsid` or `set -m`" no longer describe the repo.
+
+**`test-packaged-authoring.sh` no longer drives a prompt.** The `expect` block, the tty and `env -u CI` are
+gone; the script writes the saved app choice directly, and the prompt is covered in `@abuddy/cli`'s fast
+suite (`app-target.spec.ts`), which already injected a `prompt` and a temp config dir. The shape the script
+writes is pinned by a spec there, so a hand-written literal in a shell script cannot drift from what
+`saveAppChoice` produces. This is the item that hung a machine: `expect`'s `set timeout` covers a pattern
+match, not `wait`, so `lassign [wait]` blocked forever when `abuddy test --list` started a Playwright server
+that never returned.
+
+**The slowest five tests per suite come from output the chain already buffers.** Vitest's default reporter
+prints any test past its 300ms threshold indented under its file, so `slowestTests` reads that back rather
+than adding a reporter, a JSON file or a flag — which also means it survives `test:unit` becoming one root
+vitest run. It lives in `scripts/lib/` because `scripts/chain.ts` runs the chain on import and so cannot be
+imported by a spec, the same reason the step table and the scheduler are already out there.
+
+**The npm cache is declared where it is used**, as this script's one non-hermetic input, with what it buys
+(no multi-minute cold download, no failure that means only that the network was down) and what it costs (a
+corrupt entry fails here and nowhere else, and `npm cache verify` is the first thing to try).
+
+**Phase 7 broke Phase 1's guard, and the guard caught it.** `check:tiers` reads a step's scripts as text, so
+`test-external-pack-contract.sh` calling `"$ABUDDY" test --contract` read as launching the app. The marker
+now carries a negative lookahead for that one spelling — narrow deliberately, so `abuddy test` anywhere else
+still reads as a launch — and dropping `--contract` from that script fails the check again by name.
+
+**One thing was investigated and left alone.** The `[vitest-worker]: Timeout calling "onTaskUpdate"` failures
+that broke three chain runs are already mitigated where they belong: `vitest.integration.config.ts` caps
+workers at 50% and explains why. Those runs failed anyway because the contention came from a second checkout
+building on the same machine at load 44-84, which no config in this repo can fix. Nothing to change, which is
+worth recording so it is not "fixed" a second time.
+
 ### Industry practices this repo does not follow
 
 Each of these was found in this survey, not taken from a list.

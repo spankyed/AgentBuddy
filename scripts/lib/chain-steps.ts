@@ -49,6 +49,21 @@ export interface ChainStep {
   readonly seconds?: number;
 }
 
+/**
+ * What one test may take, by the tier of the step that runs it (Decision 7 of the goal: tier 1 in seconds,
+ * tier 2 in tens of seconds, tier 3 up to a minute).
+ *
+ * The point is the ceiling, not the number. `testTimeout: 120_000` on a unit suite turns a hang into a slow
+ * pass — a load-induced stall reached a chain summary as two unexplained errors rather than as a timeout.
+ * Measured 2026-09-25, the slowest single test in the two suites that set that value was 2.9s
+ * (`@app/default-setup`) and 0.7s (`@app/api`), so tier 1 has five times the headroom it needs.
+ *
+ * A suite that sets nothing gets vitest's 5s default, which is inside tier 1 already. This is a bound on
+ * what a config may declare, checked by `suite-timeouts.spec.ts`, not a value the configs import: a vitest
+ * config importing across package layers is the thing that rule exists to prevent.
+ */
+export const TIER_TIMEOUT_MS: Record<Tier, number> = { 1: 15_000, 2: 60_000, 3: 60_000 };
+
 /** Every step, by name, for validating `needs` */
 const BY_NAME = new Map<string, ChainStep>();
 

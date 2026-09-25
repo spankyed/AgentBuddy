@@ -24,7 +24,9 @@ export default defineConfig(async () => {
         'src/**/*.test.ts',
         'src/**/*.spec.ts',
       ],
-      testTimeout: 120_000,
+      // Tier 1 (`TIER_TIMEOUT_MS`, scripts/lib/chain-steps.ts): a unit test that takes longer is hung,
+      // not slow. This suite's slowest test is 2.9s.
+      testTimeout: 15_000,
       // Test files run in parallel: each worker's tests create their own EARS engines
       fileParallelism: true,
       env: dataDir.env,
