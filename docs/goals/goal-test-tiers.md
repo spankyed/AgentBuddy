@@ -294,12 +294,23 @@ timings this plan's own measurements had to recover from log mtimes are the argu
 - `tests/scripts/test-external-pack.sh` becomes `test-external-pack-contract.sh` (steps 1–4) and
   `test-external-pack-app.sh` (step 5), with npm scripts `test:external-pack:contract` and
   `:app`. `test:external-pack` stays as both, for anyone running it by hand.
-- `tests/scripts/test-packaged-authoring.sh` does **not** split into two independent halves, and the plan
-  should not pretend otherwise. It is a linear scenario: its 9 numbered steps build on each other, step 8
-  (`abuddy test`) needs the archive step 6 produced, and step 9 reads the data step 8's app seeded. Give it a
-  mode instead — `--contract` runs every step but 8 and 9 and the first-run prompt at line 89, which is only
-  there to configure the app for step 8. That does not reduce the work when both run; what it buys is a half
-  that can run in tier 2, before `build`, and be skipped on a commit that touches no app code.
+- `tests/scripts/test-packaged-authoring.sh` **cannot be split, and a `--contract` mode was tried and
+  reverted.** It stays tier 3 whole. Two things were learned by running it with `packages/renderer/dist` moved
+  aside, neither of which is visible from reading it:
+
+  1. The first-run prompt is not just there to point step 8 at an app. Step 3's `abuddy build` resolves the
+     authored pack's dependency on default-setup *from the app the prompt configures* — the script runs outside
+     the monorepo with no `ABUDDY_ROOT`, so there is nothing else to resolve it from. Gating the prompt failed
+     with `default-setup: not found in the installed app`.
+  2. The prompt itself needs a built app. It drives `abuddy test --list`, which starts a Playwright
+     test-server; with no app that server never returns and the `expect` script hangs rather than failing.
+
+  So every step from 3 onwards transitively needs the app, and a mode that skipped only 8 and 9 would still
+  have been tier 3 — a branch in the script buying nothing. It is also a linear scenario (step 8 needs step 6's
+  archive, step 9 reads the data step 8's app seeded), which is the second reason not to split it.
+
+  What would make it splittable is giving the CLI a way to resolve a dependency from a checkout without the app
+  — which is Phase 7's `--contract` by another route — so this is deferred to there rather than dropped.
 - `test-external-pack.sh` is the one that splits cleanly, and is where the value is: its `validate`, `build`,
   `tsc` and `vitest` each assert something on their own and none of them feeds the Playwright step anything
   it could not rebuild.
