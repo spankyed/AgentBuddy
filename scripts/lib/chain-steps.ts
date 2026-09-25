@@ -21,6 +21,13 @@ export interface ChainStep {
   readonly needs: readonly string[];
   /** A step whose pass is not reproducible, so it always runs. Only the E2E suite, with its reason. */
   readonly cache?: false;
+  /**
+   * What this step costs when it is healthy, in seconds, measured on this machine. `chain.ts` turns it into
+   * a wall-clock budget and kills the step's process group if it overruns — a run that can hang cannot fail.
+   * It is a measurement, so re-measure it rather than raising it when a step legitimately grows. A step
+   * without one still gets a bound, just a loose one.
+   */
+  readonly seconds?: number;
 }
 
 /** Every step, by name, for validating `needs` */
@@ -71,21 +78,21 @@ export function orderedSteps(steps: readonly ChainStep[] = CHAIN_STEPS): readonl
  * than a split (Phase 2 of the goal).
  */
 export const CHAIN_STEPS: readonly ChainStep[] = [
-  { name: 'packages:ensure', tier: 2, needs: [] },
+  { name: 'packages:ensure', tier: 2, needs: [], seconds: 1 },
   // Ahead of build and not redundant with it: build -ws gives no ordering guarantee, since no workspace
   // declares a dependency on @app/default-setup, and the renderer's build reads the pack entry this writes
-  { name: 'compile', tier: 2, needs: ['packages:ensure'] },
+  { name: 'compile', tier: 2, needs: ['packages:ensure'], seconds: 11 },
   // The fixture packs depend on default-setup, so they need its snapshot from compile
-  { name: 'test:external-pack:contract', tier: 2, needs: ['compile'] },
-  { name: 'typecheck', tier: 1, needs: ['compile'] },
-  { name: 'test:unit', tier: 1, needs: ['compile'] },
+  { name: 'test:external-pack:contract', tier: 2, needs: ['compile'], seconds: 17 },
+  { name: 'typecheck', tier: 1, needs: ['compile'], seconds: 30 },
+  { name: 'test:unit', tier: 1, needs: ['compile'], seconds: 43 },
   // The CLI specs that run a real build, install or child process. Tier 2: they need the built packages,
   // never the app — which is why they can run before `build` rather than behind it.
-  { name: 'test:integration', tier: 2, needs: ['packages:ensure'] },
-  { name: 'build', tier: 3, needs: ['compile'] },
-  { name: 'test:external-pack:app', tier: 3, needs: ['build', 'test:external-pack:contract'] },
+  { name: 'test:integration', tier: 2, needs: ['packages:ensure'], seconds: 43 },
+  { name: 'build', tier: 3, needs: ['compile'], seconds: 37 },
+  { name: 'test:external-pack:app', tier: 3, needs: ['build', 'test:external-pack:contract'], seconds: 20 },
   // Never cached: it drives real Electron with real timing and is the likeliest step to be flaky, and a
   // flaky pass cached green hides an intermittent failure indefinitely. 28s is cheap enough to always pay.
-  { name: 'test', tier: 3, needs: ['build'], cache: false }, // the E2E suite
-  { name: 'test:packaged-authoring', tier: 3, needs: ['build'] },
+  { name: 'test', tier: 3, needs: ['build'], cache: false, seconds: 26 }, // the E2E suite
+  { name: 'test:packaged-authoring', tier: 3, needs: ['build'], seconds: 60 },
 ];

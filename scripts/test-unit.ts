@@ -11,7 +11,8 @@
  * work slower while making birpc timeouts look like test failures. `packages:ensure` runs once up front so
  * the suites' own pretests find nothing to do, rather than eight of them racing to build the same packages.
  */
-import { execFileSync, spawn } from 'node:child_process';
+import { execFileSync } from 'node:child_process';
+import { boundedSpawn, budgetFor } from './lib/bounded-spawn.ts';
 import * as os from 'node:os';
 
 // Slowest first: the tail of a concurrent run is whatever started last
@@ -39,17 +40,14 @@ const perSuite = Number(process.env.ABUDDY_TEST_WORKERS || 0);
  */
 const lanes = Math.max(1, Number(process.env.ABUDDY_TEST_LANES || 2));
 
-interface Result { suite: string; code: number; ms: number; output: string }
+interface Result { suite: string; code: number; ms: number; output: string; timedOut?: true }
 
 async function run(suite: string): Promise<Result> {
-  const started = Date.now();
   const args = ['test', '-w', suite, ...(perSuite ? ['--', `--maxWorkers=${perSuite}`] : [])];
-  const child = spawn('npm', args, { stdio: ['ignore', 'pipe', 'pipe'] });
-  let output = '';
-  child.stdout.on('data', (c: Buffer) => { output += c.toString(); });
-  child.stderr.on('data', (c: Buffer) => { output += c.toString(); });
-  const code = await new Promise<number>((resolve) => child.on('close', (c) => resolve(c ?? 1)));
-  return { suite, code, ms: Date.now() - started, output };
+  // The slowest suite is ~15s alone and ~25s under two lanes, so five minutes means wedged, not slow.
+  // A bound nobody will wait for is the same as no bound, which is what this used to have.
+  const { code, output, ms, timedOut } = await boundedSpawn('npm', args, budgetFor(75));
+  return { suite, code, ms, output, ...(timedOut ? { timedOut } : {}) };
 }
 
 async function main(): Promise<void> {
@@ -63,7 +61,7 @@ async function main(): Promise<void> {
     for (let suite = queue.shift(); suite; suite = queue.shift()) {
       const result = await run(suite);
       results.push(result);
-      console.log(`  ${result.code === 0 ? 'ok  ' : 'FAIL'} ${result.suite.padEnd(20)} ${(result.ms / 1000).toFixed(1)}s`);
+      console.log(`  ${(result.code === 0 ? 'ok' : result.timedOut ? 'TIMEOUT' : 'FAIL').padEnd(7)} ${result.suite.padEnd(20)} ${(result.ms / 1000).toFixed(1)}s`);
     }
   }));
 

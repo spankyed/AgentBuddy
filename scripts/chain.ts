@@ -30,11 +30,12 @@
 // So the constraint is cores, not ordering, and the way to a shorter chain is a cheaper `test:unit` —
 // `@abuddy/cli` is over half of it — not a rearranged one. Reopen this on a machine with idle cores, and
 // measure rather than trust the arithmetic: max() assumes steps do not slow each other, and here they do.
-import { execFileSync, spawn } from 'node:child_process';
+import { execFileSync } from 'node:child_process';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { REPO_ROOT, fingerprintInputs } from '@abuddy/host/build/packages-built';
 import { CHAIN_STEPS, orderedSteps, type Tier } from './lib/chain-steps.ts';
+import { boundedSpawn, budgetFor } from './lib/bounded-spawn.ts';
 
 /**
  * Bump when a step is added or removed, or when what the fingerprint covers changes: an older stamp would
@@ -75,19 +76,15 @@ function recordPassing(fingerprint: string): void {
   fs.writeFileSync(STAMP, `${JSON.stringify({ version: STAMP_VERSION, fingerprint, passedAt: new Date().toISOString() }, null, 2)}\n`);
 }
 
-type Result = { step: string; ms: number; code: number; output: string };
+type Result = { step: string; ms: number; code: number; output: string; timedOut?: true };
 
-function run(step: string): Promise<Result> {
-  const started = Date.now();
+/** A step, under a budget sized from what it costs healthy. An overrun kills its whole process group. */
+async function run(step: string, seconds: number | undefined): Promise<Result> {
   // `npm test` is the E2E suite and takes no `run`
   const args = step === 'test' ? ['test'] : ['run', step];
-  return new Promise((resolve) => {
-    const child = spawn('npm', args, { cwd: process.cwd(), env: process.env });
-    let output = '';
-    child.stdout.on('data', (d: Buffer) => { output += d.toString(); });
-    child.stderr.on('data', (d: Buffer) => { output += d.toString(); });
-    child.on('close', (code) => resolve({ step, ms: Date.now() - started, code: code ?? 1, output }));
-  });
+  // A step with no measurement still gets a bound, just a loose one
+  const { code, output, ms, timedOut } = await boundedSpawn('npm', args, budgetFor(seconds ?? 300));
+  return { step, ms, code, output, timedOut };
 }
 
 const secs = (ms: number) => `${(ms / 1000).toFixed(1)}s`;
@@ -106,12 +103,18 @@ async function main(): Promise<void> {
 
   // Derived from each step's `needs`, and validated first: an unknown dependency or a cycle fails here rather
   // than halfway through a six-minute run
-  for (const { name, tier } of orderedSteps()) {
-    const result = await run(name);
+  for (const { name, tier, seconds } of orderedSteps()) {
+    const result = await run(name, seconds);
     results.push(result);
-    console.log(`${result.code === 0 ? '  ok ' : ' FAIL'} t${tier} ${name.padEnd(24)} ${secs(result.ms)}`);
+    // TIMEOUT is its own verdict: a step that ran out of budget failed for a different reason than one
+    // that returned non-zero, and which it was is the first thing you need to know.
+    const verdict = result.code === 0 ? 'ok' : result.timedOut ? 'TIMEOUT' : 'FAIL';
+    console.log(`${verdict.padStart(7)} t${tier} ${name.padEnd(24)} ${secs(result.ms)}`);
     if (result.code !== 0) {
-      console.log(`\n${'='.repeat(72)}\n${name} failed (exit ${result.code})\n${'='.repeat(72)}\n${result.output}`);
+      const why = result.timedOut
+        ? `${name} timed out: it exceeded its ${secs(budgetFor(seconds ?? 300))} budget and its process group was killed. It costs ${seconds ?? '?'}s healthy, so either it is wedged or it has grown and the measurement in chain-steps.ts is stale.`
+        : `${name} failed (exit ${result.code})`;
+      console.log(`\n${'='.repeat(72)}\n${why}\n${'='.repeat(72)}\n${result.output}`);
       break;
     }
   }

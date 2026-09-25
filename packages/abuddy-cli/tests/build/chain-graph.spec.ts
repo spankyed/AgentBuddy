@@ -1,6 +1,8 @@
 // The pre-merge chain's run order is derived from each step's `needs`, not written down, so what this pins is
 // that the derivation is a topological sort and that a wrong graph fails before any step runs — a six-minute
 // chain should not discover a cycle halfway through. See docs/goals/goal-test-tiers.md.
+import * as fs from 'node:fs';
+import * as path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { CHAIN_STEPS, orderedSteps, type ChainStep } from '../../../../scripts/lib/chain-steps.ts';
 
@@ -46,5 +48,24 @@ describe('the chain graph', () => {
 
   it('caches every step but the E2E suite, whose pass is not reproducible', () => {
     expect(CHAIN_STEPS.filter((s) => s.cache === false).map((s) => s.name)).toEqual(['test']);
+  });
+});
+
+describe('every spawn an orchestrator makes is bounded', () => {
+  const REPO = path.resolve(import.meta.dirname, '../../../..');
+  const read = (rel: string) => fs.readFileSync(path.join(REPO, rel), 'utf-8');
+
+  // An unbounded run cannot fail — it waits until a person notices and kills it by pid, which is how this
+  // repo collected an orphaned build at 99% CPU for a day. `boundedSpawn` bounds the wall clock and kills
+  // the process group rather than the child, so nothing outlives the run that started it.
+  it.each(['scripts/chain.ts', 'scripts/test-unit.ts'])('%s spawns only through boundedSpawn', (file) => {
+    const source = read(file);
+    expect(source, `${file} imports spawn directly`).not.toMatch(/import \{[^}]*\bspawn\b[^}]*\} from 'node:child_process'/);
+    expect(source).toContain('boundedSpawn');
+  });
+
+  // The budget is sized from the measurement, so a step with none gets only a loose default
+  it('every chain step declares what it costs healthy', () => {
+    expect(CHAIN_STEPS.filter((step) => step.seconds === undefined).map((step) => step.name)).toEqual([]);
   });
 });

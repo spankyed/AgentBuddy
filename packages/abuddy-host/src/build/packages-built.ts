@@ -107,9 +107,10 @@ export const BUILD_UNITS: Record<string, BuildUnit> = {
 const STAMP_DIR = repoFile('node_modules', '.cache', 'abuddy-packages-build');
 const LOCK_FILE = path.join(STAMP_DIR, 'packages-build.lock');
 /** How long a `freshness` fix waits for a live holder, and how often it looks. A bound, not a schedule: it
- *  returns the moment the holder is gone. Ten minutes is longer than any build here and short enough that a
- *  wedged holder is reported rather than waited on forever. */
-const LOCK_WAIT_MS = 600_000;
+ *  returns the moment the holder is gone. A minute against a longest-unit build of ~15s: four times what
+ *  the thing being waited for costs, so a wedged holder is reported in a minute rather than held for ten.
+ *  A bound nobody will wait for is the same as no bound. */
+const LOCK_WAIT_MS = 60_000;
 const LOCK_POLL_MS = 200;
 
 export const stampFile = (workspace: string): string => path.join(STAMP_DIR, `${workspace.replace(/[@/]/g, '-').replace(/^-/, '')}.json`);
