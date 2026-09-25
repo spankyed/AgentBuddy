@@ -15,7 +15,7 @@ export type { ShellPackFrontends } from './pack-frontends.ts';
 // The app shell (`features/application/fe/`)
 export { createShellMachine, type ShellMachine } from '../features/application/fe/machine.ts';
 export { visiblePluginsOf, withHostLast } from '../features/application/fe/plugins.ts';
-export { computeCrumbs } from '../features/application/fe/trail.ts';
+export { computeCrumbs, type BreadcrumbItem } from '../features/application/fe/trail.ts';
 export type { ShellNotify, ShellOptions, ShellStorage } from '../features/application/fe/types.ts';
 
 // The Packs plugin, the pack-frontend loader the shell is given, and the install a deep link asks for

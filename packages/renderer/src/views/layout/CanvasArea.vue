@@ -84,13 +84,14 @@ import {
 import PluginMenuItems from './PluginMenuItems.vue'
 import { useTrackedMenuOpen } from '@abuddy/sdk/fe'
 import type { ContextMenuItem as ContextMenuItemType } from '@abuddy/sdk/fe'
+import type { BreadcrumbItem } from '@abuddy/host/fe'
 
 const menuOpen = ref(false)
 useTrackedMenuOpen(menuOpen)
 
 interface Props {
   label: string
-  breadcrumbs?: { label: string; target?: string; info?: any }[]
+  breadcrumbs?: BreadcrumbItem[]
   menuItems?: ContextMenuItemType[]
   headerClass?: string
   headerOnly?: boolean
@@ -110,8 +111,8 @@ const headerStyle = computed(() => ({
 }))
 defineEmits<{
   (e: 'canvas-toggle'): void
-  (e: 'crumb-click', target: string, info?: any): void
-  (e: 'menu-action', event: { type: string; [key: string]: any }): void
+  (e: 'crumb-click', target: string, info?: unknown): void
+  (e: 'menu-action', event: ContextMenuItemType['event']): void
 }>()
 </script>
 

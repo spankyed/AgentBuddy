@@ -77,21 +77,18 @@ import { ref } from 'vue'
 import { useDebounce } from '@abuddy/ui/composables/useDebounce'
 import { User, MapPin } from 'lucide-vue-next'
 import AddressInput from './AddressInput.vue'
-import type { Address } from '@/views/settings/types'
+import type { Address, PersonalSection, SettingUpdate } from '@/views/settings/types'
 
 interface Props {
-  settings?: any
+  settings?: PersonalSection
 }
 
-const props = withDefaults(defineProps<Props>(), {
-  settings: null
-})
+// `settings` is optional, so it is already undefined when the tab has no slice for this form; the forms read it
+// with `?.`, so the default that turned it into null was never a distinction either of them could see.
+const props = defineProps<Props>()
 
 const emit = defineEmits<{
-  'update-setting': [{
-    path: string[]
-    value: any
-  }]
+  'update-setting': [SettingUpdate]
 }>()
 
 const formData = ref<{

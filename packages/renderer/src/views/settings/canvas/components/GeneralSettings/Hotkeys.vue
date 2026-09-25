@@ -116,25 +116,23 @@ import { ref, reactive } from 'vue'
 import { X, Plus } from 'lucide-vue-next'
 import KeyboardShortcutInput from '@abuddy/ui/components/KeyboardShortcutInput'
 import { useDebounceFn } from '@abuddy/ui/composables/useDebounce'
-import type { KeyboardShortcut } from '@abuddy/sdk/types'
+import type { ApplicationHotkeys, CustomHotkey, KeyboardShortcut } from '@abuddy/sdk/types'
+import type { SettingUpdate } from '@/views/settings/types'
 
 interface Props {
-  settings?: any
+  settings?: ApplicationHotkeys
 }
 
-const props = withDefaults(defineProps<Props>(), {
-  settings: null
-})
+// `settings` is optional, so it is already undefined when the tab has no slice for this form; the forms read it
+// with `?.`, so the default that turned it into null was never a distinction either of them could see.
+const props = defineProps<Props>()
 
 const emit = defineEmits<{
-  'update-setting': [{
-    path: string[]
-    value: any
-  }]
+  'update-setting': [SettingUpdate]
 }>()
 
 // Helper function to convert hotkey format
-const convertToShortcut = (hotkey: any): KeyboardShortcut | null => {
+const convertToShortcut = (hotkey?: KeyboardShortcut): KeyboardShortcut | null => {
   if (!hotkey) return null
   return {
     key: hotkey.key || '',
@@ -166,7 +164,7 @@ interface CustomHotkeyItem {
 }
 
 const customHotkeys = ref<CustomHotkeyItem[]>(
-  props.settings?.custom?.map((h: any) => ({
+  props.settings?.custom?.map((h: CustomHotkey) => ({
     id: h.id,
     eventName: h.eventName || '',
     shortcut: convertToShortcut(h)

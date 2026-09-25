@@ -118,6 +118,7 @@ import { ref, watch } from 'vue'
 import { Plus, X, GripVertical } from 'lucide-vue-next'
 import { ArrangeableList, type MovingItem } from 'vue-arrange'
 import ColorPicker, { DEFAULT_COLORS } from '@abuddy/ui/design/ColorPicker'
+import type { SettingUpdate } from '@/views/settings/types'
 
 interface Project {
   name: string
@@ -134,10 +135,7 @@ const props = withDefaults(defineProps<Props>(), {
 })
 
 const emit = defineEmits<{
-  'update-setting': [{
-    path: string[]
-    value: any
-  }]
+  'update-setting': [SettingUpdate]
 }>()
 
 const projects = ref<Project[]>(props.settings ?? [])

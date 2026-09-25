@@ -166,7 +166,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, type Component } from 'vue'
 import {
   Zap,
   MessageSquare,
@@ -210,7 +210,7 @@ const importModes: { value: ImportMode; label: string; description: string }[] =
 interface Row {
   key: string
   label: string
-  icon: any
+  icon: Component
   hint?: string
   totalCount: number
   selectedCount: number
@@ -220,7 +220,7 @@ interface Row {
 }
 
 // Seed keys the pack's compiled seeds.json lists; known keys get an icon and hint, any other key a generic row
-const KEY_META: Record<string, { icon: any; hint?: string }> = {
+const KEY_META: Record<string, { icon: Component; hint?: string }> = {
   actions: { icon: Zap },
   prompts: { icon: MessageSquare },
   flows: {

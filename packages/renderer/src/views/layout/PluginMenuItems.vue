@@ -24,17 +24,18 @@
 </template>
 
 <script setup lang="ts">
+import type { Component } from 'vue';
 import { Check } from 'lucide-vue-next';
 import type { ContextMenuItem } from '@abuddy/sdk/fe';
 
 defineProps<{
   items: ContextMenuItem[];
-  ItemComponent: any;
-  SeparatorComponent: any;
+  ItemComponent: Component;
+  SeparatorComponent: Component;
 }>();
 
 const emit = defineEmits<{
-  action: [event: { type: string; [key: string]: any }];
+  action: [event: ContextMenuItem['event']];
 }>();
 
 const handleAction = (item: ContextMenuItem) => {

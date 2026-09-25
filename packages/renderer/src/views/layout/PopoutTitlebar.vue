@@ -73,9 +73,10 @@ import WindowControls from '@/views/layout/WindowControls.vue'
 import PluginMenuItems from '@/views/layout/PluginMenuItems.vue'
 import { useTrackedMenuOpen } from '@abuddy/sdk/fe'
 import type { ContextMenuItem } from '@abuddy/sdk/fe'
+import type { BreadcrumbItem } from '@abuddy/host/fe'
 
 withDefaults(defineProps<{
-  breadcrumbs?: { label: string; target?: string; info?: any }[]
+  breadcrumbs?: BreadcrumbItem[]
   menuItems?: ContextMenuItem[]
   headerClass?: string
 }>(), {
@@ -84,8 +85,8 @@ withDefaults(defineProps<{
 })
 
 defineEmits<{
-  (e: 'crumb-click', target: string, info?: any): void
-  (e: 'menu-action', event: { type: string; [key: string]: any }): void
+  (e: 'crumb-click', target: string, info?: unknown): void
+  (e: 'menu-action', event: ContextMenuItem['event']): void
 }>()
 
 const menuOpen = ref(false)

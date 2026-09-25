@@ -186,21 +186,25 @@ import { HardDrive, PackageOpen, RotateCcw, Trash2 } from 'lucide-vue-next'
 import ImportPackSeedsPicker from './ImportPackSeedsPicker.vue'
 import Hotkeys from './Hotkeys.vue'
 import { errorMessage } from '@abuddy/sdk/utils/pure';
-import type { SettingsState } from '@abuddy/host/fe'
+import type { SettingsEvents, SettingsState } from '@abuddy/host/fe'
+import type { ApplicationHotkeys } from '@abuddy/sdk/types'
+import type { SettingUpdate } from '@/views/settings/types'
 
+/** The modes the Settings machine takes for a seed import, so a widened string cannot reach its event */
+type SeedImportMode = Extract<SettingsEvents, { type: 'PACK_SEEDS.SET_MODE' }>['mode']
+
+/** The `application` slice this form draws; it passes the hotkeys on to the Hotkeys form */
 interface Props {
-  settings?: any
+  settings?: { hotkeys?: ApplicationHotkeys }
 }
 
-const props = withDefaults(defineProps<Props>(), {
-  settings: null
-})
+const props = defineProps<Props>()
 
 const emit = defineEmits<{
-  'update-setting': [{ path: string[]; value: any }]
+  'update-setting': [SettingUpdate]
 }>()
 
-function onHotkeyUpdate(event: { path: string[]; value: any }) {
+function onHotkeyUpdate(event: SettingUpdate) {
   emit('update-setting', {
     path: ['hotkeys', ...event.path],
     value: event.value
@@ -240,7 +244,9 @@ function onClearAppCache() {
 }
 
 async function selectDirectory() {
-  const result = await (window as any).electronAPI?.fileUtils?.selectPath?.({ type: 'directory' })
+  // selectDirectory rather than selectPath({ type: 'directory' }): the general one is declared
+  // `string | string[] | null` whatever the options, and this wants one directory, as Projects.vue does
+  const result = await window.electronAPI?.fileUtils?.selectDirectory?.()
   if (!result) return
   actor.send({ type: 'PACK_SEEDS.PREVIEW', directory: result })
 }
@@ -257,8 +263,8 @@ function onToggleItem(payload: { key: string; item: string }) {
   actor.send({ type: 'PACK_SEEDS.TOGGLE_ITEM', key: payload.key, item: payload.item })
 }
 
-function onSetMode(mode: string) {
-  actor.send({ type: 'PACK_SEEDS.SET_MODE', mode } as any)
+function onSetMode(mode: SeedImportMode) {
+  actor.send({ type: 'PACK_SEEDS.SET_MODE', mode })
 }
 
 function onToggleRestartBrain() {

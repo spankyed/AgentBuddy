@@ -86,13 +86,15 @@ const handleInspectionResize = (delta: number) => {
   send({ type: 'RESIZE_PANEL', panel: 'inspection', size: newWidth })
 }
 
-const handleMenuAction = (event: { type: string; [key: string]: any }) => {
+const handleMenuAction = (event: ContextMenuItem['event']) => {
   if (event.type === 'APP_TOGGLE_INSPECTION_PANEL') {
     send({ type: 'TOGGLE_INSPECTION_PANEL' })
     return
   }
 
-  if (event.type === 'APP_COPY_TO_CLIPBOARD') {
+  // A menu item's event is whatever the plugin that raised it put there, so the payload is checked rather than
+  // assumed: without this a menu item declaring no `text` would copy the string "undefined".
+  if (event.type === 'APP_COPY_TO_CLIPBOARD' && typeof event.text === 'string') {
     navigator.clipboard.writeText(event.text)
     return
   }

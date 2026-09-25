@@ -61,7 +61,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, type Component } from 'vue'
 import { useSelector } from '@xstate/vue'
 import { User, Key, Settings, CheckCircle, Briefcase, FileJson } from 'lucide-vue-next'
 import PersonalInfo from '../components/GeneralSettings/PersonalInfo.vue'
@@ -72,7 +72,7 @@ import SettingsJsonEditor from '../components/GeneralSettings/SettingsJsonEditor
 import { usePlugin } from '@abuddy/sdk/fe'
 import { useSettingsSaveStatus } from '@/views/settings/save'
 import type { SettingsState } from '@abuddy/host/fe'
-import type { GeneralSection } from '@/views/settings/types'
+import type { GeneralSection, SettingUpdate } from '@/views/settings/types'
 
 const actor: SettingsState = usePlugin()
 
@@ -98,7 +98,7 @@ const currentSettings = computed(() => {
 })
 
 // Component mapping
-const componentMap: Record<string, any> = {
+const componentMap: Record<string, Component> = {
   personal: PersonalInfo,
   secrets: Secrets,
   projects: Projects,
@@ -122,7 +122,7 @@ const selectNavItem = (itemId: string) => {
 }
 
 // Handle update events from child components
-const handleUpdateSetting = (event: { path: string[], value: any }) => {
+const handleUpdateSetting = (event: SettingUpdate) => {
   // Map the current nav item to the appropriate label
   const labelMap = {
     personal: 'personal',
