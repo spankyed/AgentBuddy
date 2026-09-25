@@ -262,6 +262,35 @@ with what makes it expensive, and a package that collects findings is the eviden
 The clause holds where a split exists and is an aspiration where one does not; pretending otherwise would
 mean inventing a half for one spec, which Decision 4 forbids.
 
+### What the findings do not mean, corrected
+
+The list was first called `EXPENSIVE_WITHOUT_A_SPLIT`, and both the name and the summary written beside it
+said a package collecting entries was a package wanting a split — with `@abuddy/sdk` "closest, at two
+entries". Checked afterwards, that was wrong twice.
+
+**Count distinguishes nothing:** `@app/default-setup` also has two. What separates them is concentration.
+
+| suite | suite cost | over 2.5s | their cost | loop if split out |
+|---|---|---|---|---|
+| `@abuddy/sdk` | 15.1s | 2 | **13.6s (90%)** | 1.5s |
+| `@app/default-setup` | 14.2s | 2 | 7.0s (49%) | 7.3s |
+| `@abuddy/host` | 18.7s | 1 | 4.7s (25%) | 14.0s |
+
+**And concentration is not the criterion either**, which is the part worth keeping. A split buys a different
+*tier* — a different timeout budget and a different worker cap. `@abuddy/cli` has two halves because its
+expensive specs spawn compilers: they need the 50% cap and tier 2's 60s, and the fast half needs neither.
+None of the five entries does. They build TypeScript programs in-process or wait on real timing — no spawn
+— and their slowest single tests are around a second against tier 1's 15s.
+
+Ninety percent of `@abuddy/sdk`'s suite in two files still looks like an open-and-shut case, and it is not:
+what a split would buy there is a faster whole-suite run, which is not the dev loop. `npm run spec -- <file>`
+is file-targeted and the chain pools projects and runs only the stale ones, so the loop is already narrow.
+All three packages stay as they are.
+
+The list is now `EXPENSIVE_BY_NATURE`, which says what it holds: specs that are expensive for a reason
+recorded beside them. The check still runs both ways — an unlisted spec that has become expensive fails, and
+so does a listed one that has become cheap — because knowing the cost is what it is for.
+
 ### Conventional choices
 
 - **One record per package**, in `etc/` beside the other recorded artifacts, rather than one for the repo:
@@ -275,8 +304,9 @@ mean inventing a half for one spec, which Decision 4 forbids.
 
 ### Deferred
 
-- **Splitting a single-suite package.** Decision 4 makes it a finding; no package has enough entries to
-  justify it yet. `@abuddy/sdk` has two and is the closest.
+- **Splitting a single-suite package.** Not deferred so much as answered: none of the three needs one, and
+  the section below says why. Reopen it when a spec appears that needs a different *tier*, not when the
+  list grows.
 - **Per-test durations as a staleness signal.** Still only worth building when an exception list is
   non-empty long enough to need auditing.
 

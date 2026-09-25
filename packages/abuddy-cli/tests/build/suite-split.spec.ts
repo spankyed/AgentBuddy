@@ -61,14 +61,25 @@ describe('a spec runs in the half its cost puts it in', () => {
 });
 
 /**
- * Specs that cost more than a fast half should, in a package with no slower half to put them in.
+ * Specs that cost more than a fast half allows, in a package with one suite. Each entry records what makes
+ * that spec expensive, so the cost is known rather than discovered.
  *
- * Decision 4 of `goal-measured-placement.md`: a finding, not an exception. Each entry says why that spec is
- * expensive and what would have to change; a package collecting entries here is a package that wants a
- * split, and this is the evidence for it. The check fails on one that is not listed **and** on a listed one
- * that has since become cheap, so the list cannot quietly outlive its reasons.
+ * **This is not a queue of packages to split**, which is what an earlier version of it implied. A split
+ * buys a different *tier* — a different timeout budget and a different worker cap — and that is the
+ * criterion, not slowness. `@abuddy/cli` has two halves because its expensive specs spawn compilers, so
+ * they need a 50% worker cap and tier 2's 60s; the fast half needs neither.
+ *
+ * Measured 2026-09-25, none of the entries below qualifies. They build TypeScript programs in-process or
+ * wait on real timing — no spawn, so no worker cap — and their slowest single tests are around a second
+ * against tier 1's 15s. Splitting their packages would buy a faster whole-suite run, which is not the dev
+ * loop: `npm run spec -- <file>` is file-targeted, and the chain pools projects and runs only the stale
+ * ones. So all three packages stay as they are, on the measurement.
+ *
+ * What the list is for is the other direction. The check fails on a spec that has become expensive and is
+ * not listed, **and** on a listed one that has become cheap, so neither the cost nor the reason can quietly
+ * stop being true.
  */
-const EXPENSIVE_WITHOUT_A_SPLIT: Record<string, string> = {
+const EXPENSIVE_BY_NATURE: Record<string, string> = {
   // Two TypeScript programs, built through `createModuleExports` and shared by 13 tests. The cost is the
   // compiler, not the assertions; it would drop if the reader could answer from one program.
   'abuddy-sdk/tests/build/declared-type-of.spec.ts': 'builds two TypeScript programs to read declared types',
@@ -86,23 +97,23 @@ const EXPENSIVE_WITHOUT_A_SPLIT: Record<string, string> = {
   'default-setup/tests/unit/send-to-system-diagnostics.spec.ts': 'builds a TypeScript program over the pack',
 };
 
-describe('a spec too expensive for its half, where there is no other half', () => {
+describe('a spec that costs more than a fast half allows', () => {
   const found = () => suites
     .filter(({ split, record }) => !split && record)
     .flatMap(({ suite, record, files }) => outgrown(record!.costs, files)
       .map(({ file, ms }) => ({ key: `${suite.dir}/${file}`, ms })));
 
-  it('is listed, with what makes it expensive', () => {
+  it('is recorded, with what makes it expensive', () => {
     const unlisted = found()
-      .filter(({ key }) => !(key in EXPENSIVE_WITHOUT_A_SPLIT))
+      .filter(({ key }) => !(key in EXPENSIVE_BY_NATURE))
       .map(({ key, ms }) => `${key} costs ${(ms / 1000).toFixed(1)}s, over the ${INTEGRATION_ABOVE_MS / 1000}s a fast half allows`);
-    expect(unlisted, 'move it, or add it to EXPENSIVE_WITHOUT_A_SPLIT with what makes it expensive').toEqual([]);
+    expect(unlisted, 'make it cheaper, or record it in EXPENSIVE_BY_NATURE with what makes it expensive').toEqual([]);
   });
 
   // The other direction: an entry that has become cheap is one the list should stop carrying
-  it('lists nothing that has since become cheap', () => {
+  it('records nothing that has since become cheap', () => {
     const live = new Set(found().map(({ key }) => key));
-    expect(Object.keys(EXPENSIVE_WITHOUT_A_SPLIT).filter((key) => !live.has(key)),
-      'these are no longer expensive; drop them from EXPENSIVE_WITHOUT_A_SPLIT').toEqual([]);
+    expect(Object.keys(EXPENSIVE_BY_NATURE).filter((key) => !live.has(key)),
+      'these are no longer expensive; drop them from EXPENSIVE_BY_NATURE').toEqual([]);
   });
 });

@@ -138,11 +138,12 @@ export const unrecorded = (record: SpecCost, files: readonly string[]): string[]
   files.filter((file) => record.costs[file] === undefined && !record.skipped.includes(file));
 
 /**
- * Specs whose cost says they belong in a slower half, in a package that has none.
+ * Specs costing more than a fast half allows, in a package that has no slower half.
  *
- * Decision 4: this is a finding, not an exception and not a reason to raise a budget. A package whose specs
- * keep landing here is a package that wants a split, and the list of them is the evidence for that — which
- * is why they are recorded with a reason rather than silently tolerated.
+ * Decision 4: a finding, not an exception and not a reason to raise a budget. What the finding is *for* is
+ * knowing — a cost nobody has looked at is the failure this whole record exists against. It is not a
+ * request to split the package: a split buys a different tier, and slowness alone does not need one.
+ * `suite-split.spec.ts` carries the criterion and the measurement behind it.
  */
 export const outgrown = (costs: Record<string, number>, files: readonly string[]): Misplaced[] =>
   files.flatMap((file) => {
