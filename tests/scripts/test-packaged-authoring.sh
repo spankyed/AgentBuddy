@@ -33,7 +33,10 @@ export HOME="$WORK/home"
 mkdir -p "$HOME"
 
 step "Pack @abuddy/ears, @abuddy/sdk, @abuddy/ui, @abuddy/cli and @abuddy/testing"
-(cd "$ROOT" && npm run packages:build >/dev/null)
+# ensure, not build: it needs the tarballs to match the sources, which is what ensure guarantees, and it
+# rewrites nothing when they already do. packages:build rebuilt all five unconditionally, which deleted and
+# rewrote the dist/ that anything running beside this reads.
+(cd "$ROOT" && npm run packages:ensure >/dev/null)
 for dir in abuddy-ears abuddy-sdk abuddy-ui abuddy-cli/dist/package abuddy-testing/dist/package; do
   (cd "$ROOT/packages/$dir" && npm pack --silent --pack-destination "$WORK" >/dev/null)
 done

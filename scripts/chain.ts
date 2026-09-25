@@ -30,7 +30,49 @@
 // So the constraint is cores, not ordering, and the way to a shorter chain is a cheaper `test:unit` —
 // `@abuddy/cli` is over half of it — not a rearranged one. Reopen this on a machine with idle cores, and
 // measure rather than trust the arithmetic: max() assumes steps do not slow each other, and here they do.
-import { spawn } from 'node:child_process';
+import { execFileSync, spawn } from 'node:child_process';
+import * as fs from 'node:fs';
+import * as path from 'node:path';
+import { REPO_ROOT, fingerprintInputs } from '@abuddy/host/build/packages-built';
+
+/**
+ * Bump when a step is added or removed, or when what the fingerprint covers changes: an older stamp would
+ * then say a chain passed on inputs this one does not check, and every tree runs once, which is correct.
+ */
+const STAMP_VERSION = 1;
+const STAMP = path.join(REPO_ROOT, 'node_modules', '.cache', 'abuddy-chain', 'tree.json');
+
+/**
+ * What the chain's verdict depends on: the tracked files under packages/, scripts/ and tests/, plus the
+ * root manifests. Tracked, because the chain writes into `dist/`, `src/__generated__/` and
+ * `tests/screenshots/` itself, and hashing its own output would mean no two runs ever agree.
+ *
+ * This is deliberately all-or-nothing rather than a set of inputs per step. Per-step caching was measured
+ * and does not fit: `test:external-pack` and `test:packaged-authoring` both run `abuddy test` against this
+ * checkout's built app (`--app-root`), so they depend on the renderer, main, preload, api and
+ * default-setup, and `tests/fixtures/external-pack` declares a dependency on default-setup as well. Every
+ * expensive step transitively reads nearly the whole repo, so the only sound skip is "nothing changed".
+ * That is not a small case: of the 20 commits before this was written, three touched no input at all.
+ */
+function treeFingerprint(): string {
+  const tracked = execFileSync('git', ['ls-files', '-z'], { cwd: REPO_ROOT, maxBuffer: 64 * 1024 * 1024 })
+    .toString().split('\0').filter(Boolean)
+    .filter((f) => f.startsWith('packages/') || f.startsWith('scripts/') || f.startsWith('tests/')
+      || f === 'package.json' || f === 'package-lock.json');
+  return fingerprintInputs(tracked.map((f) => path.join(REPO_ROOT, f)));
+}
+
+function lastPassing(): string | undefined {
+  try {
+    const stamp = JSON.parse(fs.readFileSync(STAMP, 'utf-8')) as { version: number; fingerprint: string };
+    return stamp.version === STAMP_VERSION ? stamp.fingerprint : undefined;
+  } catch { return undefined; }
+}
+
+function recordPassing(fingerprint: string): void {
+  fs.mkdirSync(path.dirname(STAMP), { recursive: true });
+  fs.writeFileSync(STAMP, `${JSON.stringify({ version: STAMP_VERSION, fingerprint, passedAt: new Date().toISOString() }, null, 2)}\n`);
+}
 
 /**
  * In dependency order. `compile` stays ahead of `build` and is not redundant with it: `build -ws` gives no
@@ -68,6 +110,14 @@ const secs = (ms: number) => `${(ms / 1000).toFixed(1)}s`;
 async function main(): Promise<void> {
   const started = Date.now();
   const results: Result[] = [];
+  const all = process.argv.includes('--all');
+  const fingerprint = treeFingerprint();
+
+  if (!all && fingerprint === lastPassing()) {
+    console.log('nothing tracked under packages/, scripts/ or tests/ has changed since the chain last');
+    console.log('passed on exactly this tree, so there is nothing for it to prove. `--all` runs it anyway.');
+    return;
+  }
 
   for (const step of STEPS) {
     const result = await run(step);
@@ -80,6 +130,9 @@ async function main(): Promise<void> {
   }
 
   const failed = results.find((r) => r.code !== 0);
+  // Recorded after the run, and only on a pass: the fingerprint is of the tracked inputs, which the run
+  // does not touch, so it still describes the tree the verdict was reached on.
+  if (!failed) recordPassing(fingerprint);
   console.log(`\n${failed ? `chain FAILED at ${failed.step}` : 'chain passed'} — ${secs(Date.now() - started)}`);
   process.exit(failed ? 1 : 0);
 }
