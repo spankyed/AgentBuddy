@@ -5,7 +5,7 @@ import * as path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import {
   BUILD_UNITS, CHECKOUT_MARKER, fingerprintInputs, fingerprintUnit, STAMP_VERSION, staleMessage, stampFile,
-  stampedBuild, unitStaleReason, withBuildLock,
+  stampedBuild, unitStaleReason, withBuildLock, type BuildIntent, type BuildUnit,
 } from '@abuddy/host/build/packages-built';
 import { PACKED_PACKAGES, REPO_ROOT } from '../helpers/published-packages';
 
@@ -27,7 +27,15 @@ afterEach(() => {
 });
 
 /** A watched source tree plus its output tree, as a build unit sees them */
-function fixture(): { root: string; src: string; out: string; unit: { inputs: string[]; outputs: string[] } } {
+/** A temp package to build: its sources, its output tree, and the unit that ties them together */
+interface Fixture {
+  readonly root: string;
+  readonly src: string;
+  readonly out: string;
+  readonly unit: BuildUnit;
+}
+
+function fixture(): Fixture {
   const root = tempDir();
   const src = path.join(root, 'src');
   const out = path.join(root, 'dist');
@@ -41,7 +49,7 @@ function fixture(): { root: string; src: string; out: string; unit: { inputs: st
 }
 
 /** What a successful build of the fixture writes */
-function stampFor(f: ReturnType<typeof fixture>): string {
+function stampFor(f: Fixture): string {
   const stamp = path.join(f.root, 'stamp.json');
   fs.writeFileSync(stamp, JSON.stringify({ version: STAMP_VERSION, fingerprint: fingerprintUnit(f.unit) }));
   return stamp;
@@ -317,8 +325,10 @@ describe('the stale message', () => {
 
 describe('a stamped build', () => {
   /** stampedBuild against a fixture: its own stamp and lock, never the repo's */
-  const run = (f: ReturnType<typeof fixture>, build: () => void | Promise<void>, intent: 'command' | 'freshness' = 'command') =>
-    stampedBuild('@abuddy/fixture', f.unit, path.join(f.root, 'stamp.json'), build, path.join(f.root, 'build.lock'), { intent });
+  // Pinned to `command` rather than left to `intentFromEnv()`, so a test reads the same whatever
+  // ABUDDY_BUILD_INTENT the run inherited
+  const run = (f: Fixture, build: () => void | Promise<void>, intent: BuildIntent = 'command') =>
+    stampedBuild('@abuddy/fixture', f.unit, path.join(f.root, 'stamp.json'), build, { lock: path.join(f.root, 'build.lock'), intent });
 
   it('leaves the unit fresh when the build returns', async () => {
     const f = fixture();

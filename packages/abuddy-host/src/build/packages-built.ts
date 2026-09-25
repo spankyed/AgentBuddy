@@ -64,7 +64,7 @@ const SHARED_INPUTS = [repoFile('package.json'), repoFile('package-lock.json')];
  */
 export const STAMP_VERSION = 2;
 
-interface BuildUnit {
+export interface BuildUnit {
   /** Files and directories the build reads, absolute; a directory is walked */
   readonly inputs: readonly string[];
   /** Paths the build writes; all must exist for the unit to count as built */
@@ -319,6 +319,11 @@ export interface BuildLockOptions {
   readonly timeoutMs?: number;
 }
 
+export interface StampedBuildOptions extends BuildLockOptions {
+  /** The lock to hold, for a test building a fixture against its own; the repo's by default */
+  readonly lock?: string;
+}
+
 export async function withBuildLock<T>(label: string, run: () => T | Promise<T>, file = LOCK_FILE, options: BuildLockOptions = {}): Promise<T> {
   const intent = options.intent ?? intentFromEnv();
   const waitMs = options.timeoutMs ?? LOCK_WAIT_MS;
@@ -371,9 +376,9 @@ export async function stampedBuild(
   unit: BuildUnit,
   stamp: string,
   build: () => void | Promise<void>,
-  lock?: string,
-  options: BuildLockOptions = {},
+  options: StampedBuildOptions = {},
 ): Promise<void> {
+  const { lock, ...lockOptions } = options;
   const intent = options.intent ?? intentFromEnv();
   await withBuildLock(label, async () => {
     // A `freshness` fix that waited for the lock asks again now it holds it: the build it waited for was
@@ -385,14 +390,14 @@ export async function stampedBuild(
     await build();
     fs.mkdirSync(path.dirname(stamp), { recursive: true });
     fs.writeFileSync(stamp, `${JSON.stringify({ workspace: label, version: STAMP_VERSION, fingerprint, builtAt: new Date().toISOString() }, null, 2)}\n`);
-  }, lock, { ...options, intent });
+  }, lock, { ...lockOptions, intent });
 }
 
 /** Every `build:package` script wraps its work in this */
 export async function runPackageBuild(workspace: string, build: () => void | Promise<void>): Promise<void> {
   const unit = BUILD_UNITS[workspace];
   if (!unit) throw new Error(`No build unit for ${workspace} in BUILD_UNITS (@abuddy/host/build/packages-built)`);
-  await stampedBuild(workspace, unit, stampFile(workspace), build, undefined, { intent: intentFromEnv() });
+  await stampedBuild(workspace, unit, stampFile(workspace), build);
 }
 
 /**
