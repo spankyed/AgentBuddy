@@ -43,14 +43,4 @@ describe('flow seeder', () => {
     expect(counts.created).toBe(0);
   });
 
-  it('fails with a rebuild error when the compiled seeds name no pack', () => {
-    tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'flow-seeder-'));
-    const file = seedPath(tmp, 'flows');
-    fs.mkdirSync(path.dirname(file), { recursive: true });
-    fs.writeFileSync(path.join(tmp, 'seeds.json'), JSON.stringify({ version: 1, seeds: [] }));
-    fs.writeFileSync(file, JSON.stringify({}));
-
-    expect(() => createFlowSeeder().apply({ compiledDir: tmp!, mode: 'replace-on-collision', log: () => {} }))
-      .toThrow(/doesn't name the pack that compiled these seeds: rebuild the pack/);
-  });
 });

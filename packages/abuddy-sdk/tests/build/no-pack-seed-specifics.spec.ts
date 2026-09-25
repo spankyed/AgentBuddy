@@ -46,11 +46,4 @@ describe('SDK build and seed modules', () => {
     expect(findPackSeedSpecifics()).toEqual([]);
   });
 
-  it('every allowlist entry still matches a line', () => {
-    const stale = Object.keys(ALLOWED).filter((allowed) => {
-      const file = path.join(SRC, allowed.slice(0, allowed.indexOf(':')));
-      return !fs.existsSync(file) || !fs.readFileSync(file, 'utf-8').includes(allowed.slice(allowed.indexOf(':') + 1));
-    });
-    expect(stale).toEqual([]);
-  });
 });

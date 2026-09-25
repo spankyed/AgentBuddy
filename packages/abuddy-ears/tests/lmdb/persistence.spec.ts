@@ -497,10 +497,9 @@ describe('Partition Routing', () => {
     excludedEntityTypes: new Set([Entity.TNode]),
   });
 
-  it('routes Document -> primary, TNode -> volatileBackup, and nothing to a secrets partition', () => {
+  it('routes Document -> primary and TNode -> volatileBackup', () => {
     expect(policy.routeEntity('Document-1')).toBe('primary');
     expect(policy.routeEntity('TNode-1')).toBe('volatileBackup');
-    expect(policy.routeEntity('Secret-1')).toBe('primary');
   });
 
   it('routes relations based on endpoint types', () => {

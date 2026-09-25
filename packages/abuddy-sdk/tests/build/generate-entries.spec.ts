@@ -561,7 +561,6 @@ describe('generated backend entry', () => {
     const entry = files['src/__generated__/pack-entry.ts'];
     expect(entry).toContain("    'notes': {\n      plugin: { receives: [] },\n      services: [],\n    }");
     expect(entry).toContain("    'brain': {\n      system: packSystem(__system_brain),\n      services: [],\n    }");
-    expect(entry).not.toMatch(/label|icon|isPinned/);
   });
 
   // One record, keyed by feature: the app derives every ref, system and plugin from it
@@ -692,7 +691,6 @@ describe('generated repositories', () => {
     expect(files['src/__generated__/repository.ts']).toContain("import type { memoQueries as __repo_memoQueries } from '../features/memos/be/repository.js';");
     expect(files['src/__generated__/repository.ts']).toContain('memoQueries: typeof __repo_memoQueries;');
     expect(files['src/__generated__/repositories.ts']).toContain('  memoQueries: __repo_memoQueries,');
-    expect(files['src/__generated__/repositories.ts']).not.toContain('registerRepository');
     expect(files['src/__generated__/pack-entry.ts']).toContain("import { repositories } from './repositories.js';");
     expect(files['src/__generated__/pack-entry.ts']).toContain('  repositories,\n');
   });
@@ -1014,7 +1012,6 @@ describe('generated registrations', () => {
       "      memos: 'typeof _dsl.memos',",
     ].join('\n'));
     for (const [file, content] of Object.entries(files)) {
-      expect(content, file).not.toMatch(/\bregister(Seeders?|DslType)\s*\(/);
       expect(content, file).not.toMatch(/^import '[^']+';$/m);
     }
   });

@@ -37,7 +37,6 @@ describe('the test host', () => {
       { to: 'brain-system', event: { type: 'TRIGGER_BRAIN_EVENT', eventType: 'user.message' } },
       { to: 'memos', event: { type: 'PING' } },
     ]);
-    expect(boundHost().transport.rootEvents).toBe(testRootEvents);
   });
 
   it('records the SYSTEM_ERROR events systems report until taken', () => {

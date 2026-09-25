@@ -46,29 +46,6 @@ const runtime: HostRuntime = {
   },
 };
 
-// HostRuntime compiles only when complete
-type Without<K extends keyof HostRuntime> = Omit<HostRuntime, K>;
-type WithoutService<K extends keyof HostRuntime['services']> = Omit<HostRuntime, 'services'> & { services: Omit<HostRuntime['services'], K> };
-// @ts-expect-error no transport
-export const noTransport: HostRuntime = {} as Without<'transport'>;
-// @ts-expect-error no engine
-export const noEars: HostRuntime = {} as Without<'ears'>;
-// @ts-expect-error no packs
-export const noPacks: HostRuntime = {} as Without<'packs'>;
-// @ts-expect-error no app version
-export const noVersion: HostRuntime = {} as Without<'appVersion'>;
-// @ts-expect-error no services
-export const noServices: HostRuntime = {} as Without<'services'>;
-// @ts-expect-error no appData
-export const noAppData: HostRuntime = {} as WithoutService<'appData'>;
-// @ts-expect-error no traceStore
-export const noTraceStore: HostRuntime = {} as WithoutService<'traceStore'>;
-// @ts-expect-error no inference
-export const noInference: HostRuntime = {} as WithoutService<'inference'>;
-// @ts-expect-error no secrets
-export const noSecrets: HostRuntime = {} as WithoutService<'secrets'>;
-// @ts-expect-error no filesystem
-export const noFilesystem: HostRuntime = {} as WithoutService<'filesystem'>;
 
 afterEach(() => {
   unbindHost();

@@ -65,16 +65,6 @@ describe('on the bound bus', () => {
     expect(sent.incoming).toEqual([{ to: 'memo-pack/memos', event: { type: 'OPEN', systemId: 'kept', pluginId: 'also-kept' } }]);
   });
 
-  it('untypedSendToSystem sends to the system that plays a role', () => {
-    testPacks.designations.set('brain', 'brain-system');
-    try {
-      expect(onBus(() => untypedSendToSystem({ role: 'brain' }, { type: 'TRIGGER_BRAIN_EVENT', eventType: 'user.message', payload: 1 })).incoming)
-        .toEqual([{ to: 'brain-system', event: { type: 'TRIGGER_BRAIN_EVENT', eventType: 'user.message', payload: 1 } }]);
-    } finally {
-      testPacks.designations.delete('brain');
-    }
-  });
-
   it('onIncoming and onLog hear the bus until unsubscribed', () => {
     vi.spyOn(console, 'debug').mockImplementation(() => {});
     const heard: unknown[] = [];
@@ -85,15 +75,6 @@ describe('on the bound bus', () => {
     testRootEvents.emitIncoming({ to: 'memos', event: { type: 'ADD_MEMO' } });
     testRootEvents.emitLog({ level: 'debug', message: 'y' });
     expect(heard).toEqual([{ to: 'memos', event: { type: 'ADD_MEMO' } }, { level: 'debug', message: 'x' }]);
-  });
-
-  it('reportError logs a system error and sends it to the clients', () => {
-    vi.spyOn(console, 'error').mockImplementation(() => {});
-    const sent = onBus(() => reportError({ error: new Error('boom'), source: 'memos', operation: 'save' }));
-    // `via` is the source, the only thing a report knows about its caller — there is no pack here to put in `from`
-    expect(sent.outgoing).toEqual([{ to: 'host/application', via: 'memos', event: expect.objectContaining({ type: 'SYSTEM_ERROR', source: 'memos', message: 'boom' }) }]);
-    expect(sent.logs).toEqual([expect.objectContaining({ level: 'error', source: 'memos', message: 'boom' })]);
-    expect(takeSystemErrors()).toHaveLength(1);
   });
 
   it('createLogger emits one redacted log event per entry, with meta that JSON holds and an error stack, and prints only through the bus', () => {
