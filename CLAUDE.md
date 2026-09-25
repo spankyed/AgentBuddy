@@ -45,15 +45,16 @@ so out loud so the claim can be checked.
 moved — so the table that used to live here, asking you to work out which suite covers your edit, is now the
 graph's job. Run the chain and it runs the subset; it does not need you to have guessed right.
 
-Measured cold on an idle machine (2026-09-25), then warm straight after:
+Measured on an idle machine, 2026-09-25, each one a real run rather than a sum of the parts:
 
 | What you changed | What the chain runs | Cost |
 |---|---|---|
-| nothing tracked | the E2E suite, which is never cached | **~28s** |
-| a doc, a comment, a CLAUDE.md | nothing but that | **~28s** |
-| one package's source | its own suite, whatever imports it, `typecheck`, E2E | **~60s** |
-| the built-in pack's source | `compile`, its suite, `typecheck`, the tier-3 steps | ~150s |
-| nothing is cached (a cold tree) | all 17 steps, two at a time | **194s** |
+| nothing tracked | the E2E suite, which is never cached | **26.8s** |
+| a doc, a comment, a CLAUDE.md | nothing but that — no step declares `docs/` | **26.8s** |
+| one package's source (the renderer) | its suite, `test:unit:main` which depends on it, `typecheck`, then `build:app` and all of tier 3, because rebuilding the app moves what tier 3 reads | **115.1s** |
+| nothing is cached (a cold tree) | all 17 steps, two at a time | **190.1s** |
+
+The one-package row is the one worth reading twice: editing a package that the *app* is built from costs four times editing one it is not, because `build:app` rewrites `packages/*/dist` and every tier-3 step reads it. A change under `@abuddy/ears` or a pack's tests does not pay that.
 
 `npm run chain --dry` prints that plan without running it, and says why each step is or is not cached —
 which is the way to find out why something you expected to be skipped is not.
@@ -61,7 +62,7 @@ which is the way to find out why something you expected to be skipped is not.
 **The inner loop is still `npm run spec`**, and it is still much cheaper than a chain run: with no
 arguments it runs the specs your uncommitted changes affect, in every package they touch; with a source
 file it runs the specs that import it. One spec file is 1-3s and a package's `tsc --noEmit` is 3s, against
-the chain's ~28s floor. Use it while you are working, and the chain when you are done.
+the chain's 27s floor. Use it while you are working, and the chain when you are done.
 
 Two things the chain cannot work out for you, because they rewrite files you commit:
 
@@ -197,10 +198,12 @@ npm run spec -- <target> # You don't say what the target is; it works that out:
                          # `--bail 1` and `--changed HEAD~1` work. It groups by package and runs each
                          # package's own `test`, so a pretest guard and its vitest config still apply;
                          # a tests/e2e path goes to Playwright instead
-npm run chain            # Before a merge: every check in dependency order, cold 194s and warm ~28s.
+npm run chain            # Before a merge: every check in dependency order, cold 190s and warm 27s.
                          # Reports each step's time and its slowest five tests, buffers its output and
                          # prints only a failing step's. It leaves out api:check, which typecheck's
-                         # api:stamp already covers.
+                         # api:stamp already covers. Afterwards it says which steps a run contradicted:
+                         # one whose measured time has left its declared `seconds`, and one that passed
+                         # but is already stale again, which means something wrote into its inputs.
                          # Each step is cached on the inputs it declares (scripts/lib/chain-steps.ts)
                          # through the package builds' stamp protocol: an unchanged step reports `cached`
                          # and does not run, so a doc edit runs nothing and a one-package edit runs that
