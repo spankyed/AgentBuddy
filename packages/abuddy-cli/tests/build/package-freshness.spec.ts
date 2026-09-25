@@ -5,7 +5,7 @@ import * as path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import {
   BUILD_UNITS, CHECKOUT_MARKER, fingerprintInputs, fingerprintUnit, STAMP_VERSION, staleMessage, stampFile,
-  stampedBuild, unitStaleReason, withBuildLock, type BuildIntent, type BuildUnit,
+  stampedBuild, stampedRun, stampedRunAll, unitStaleReason, withBuildLock, type BuildIntent, type BuildUnit,
 } from '@abuddy/host/build/packages-built';
 import { PACKED_PACKAGES, REPO_ROOT } from '../helpers/published-packages';
 
@@ -462,5 +462,75 @@ describe('the build lock', () => {
     const other = JSON.stringify({ pid: process.pid + 1, label: '@abuddy/ui', startedAt: new Date().toISOString() });
     await withBuildLock('@abuddy/sdk', () => fs.writeFileSync(file, other), file);
     expect(fs.readFileSync(file, 'utf-8')).toBe(other);
+  });
+});
+
+// The write side of the protocol. The read side is above; these are the two functions that put a stamp on
+// disk, and nothing tested them — including the ordering `stampedRunAll` exists for, which is the whole
+// reason it is not a loop over `stampedRun`.
+describe('recording that something ran', () => {
+  it('leaves the unit fresh, and clears the stamp first so an interrupted run reads as never run', async () => {
+    const f = fixture();
+    const stamp = path.join(f.root, 'stamp.json');
+    fs.writeFileSync(stamp, JSON.stringify({ version: STAMP_VERSION, fingerprint: 'stale' }));
+
+    let stampPresentDuringRun = true;
+    await stampedRun('a-unit', f.unit, stamp, () => { stampPresentDuringRun = fs.existsSync(stamp); });
+
+    expect(stampPresentDuringRun, 'a run that dies halfway would leave the old stamp readable').toBe(false);
+    expect(unitStaleReason(f.unit, stamp)).toBeNull();
+  });
+
+  // The fingerprint is of the tree the run *started* from, so work the run itself does is not recorded as
+  // covered. A source edited while a build runs must read as stale afterwards, not as built.
+  it('fingerprints before the run, so a change made during it is not recorded as covered', async () => {
+    const f = fixture();
+    const stamp = path.join(f.root, 'stamp.json');
+    await stampedRun('a-unit', f.unit, stamp, () => {
+      fs.writeFileSync(path.join(f.src, 'a.ts'), 'export const a = 99;\n');
+    });
+    expect(unitStaleReason(f.unit, stamp)).toMatch(/inputs changed/);
+  });
+
+  it('writes no stamp when the run throws', async () => {
+    const f = fixture();
+    const stamp = path.join(f.root, 'stamp.json');
+    await expect(stampedRun('a-unit', f.unit, stamp, () => { throw new Error('the build failed'); })).rejects.toThrow('the build failed');
+    expect(fs.existsSync(stamp)).toBe(false);
+  });
+
+  describe('a run that covers several units', () => {
+    const two = () => {
+      const [a, b] = [fixture(), fixture()];
+      return { a, b, stamps: { a: path.join(a.root, 'stamp.json'), b: path.join(b.root, 'stamp.json') } };
+    };
+
+    it('stamps all of them when it passes', async () => {
+      const { a, b, stamps } = two();
+      await stampedRunAll([{ label: 'a', unit: a.unit, stamp: stamps.a }, { label: 'b', unit: b.unit, stamp: stamps.b }], () => {});
+      expect(unitStaleReason(a.unit, stamps.a)).toBeNull();
+      expect(unitStaleReason(b.unit, stamps.b)).toBeNull();
+    });
+
+    it('stamps none of them when it throws, so a failure leaves the whole run unrecorded', async () => {
+      const { a, b, stamps } = two();
+      await expect(stampedRunAll([{ label: 'a', unit: a.unit, stamp: stamps.a }, { label: 'b', unit: b.unit, stamp: stamps.b }], () => {
+        throw new Error('the suite failed');
+      })).rejects.toThrow('the suite failed');
+      expect(fs.existsSync(stamps.a)).toBe(false);
+      expect(fs.existsSync(stamps.b)).toBe(false);
+    });
+
+    // This is what it is for. A loop of `stampedRun` would fingerprint the second unit *after* the shared
+    // run had already started touching the tree, recording work the run had done as work it was verified
+    // against. Every fingerprint is taken before anything runs.
+    it('fingerprints every unit before the run starts, not as each is reached', async () => {
+      const { a, b, stamps } = two();
+      await stampedRunAll([{ label: 'a', unit: a.unit, stamp: stamps.a }, { label: 'b', unit: b.unit, stamp: stamps.b }], () => {
+        fs.writeFileSync(path.join(b.src, 'a.ts'), 'export const a = 42;\n');
+      });
+      expect(unitStaleReason(a.unit, stamps.a), 'a was untouched by the run').toBeNull();
+      expect(unitStaleReason(b.unit, stamps.b), 'b changed during the run and must not read as covered').toMatch(/inputs changed/);
+    });
   });
 });
