@@ -45,8 +45,8 @@ edit — running it after every change costs minutes and finds nothing the narro
 
 | You changed | Run |
 |---|---|
-| one package's source | that workspace's `npm test -w <pkg>`, plus its typecheck if the change is typed |
-| a spec | that spec file: `npx vitest run <path> --root packages/<pkg>` |
+| one package's source | that workspace's `npm test -w <pkg>`, plus its typecheck if the change is typed. For the specs that cover it, `npm run spec -- <name>` is faster |
+| a spec | that spec file: `npm run spec -- <path or name>`. It takes a repo-relative path, a directory or part of a name, works out the package, and runs that package's own `test` so its guards still apply |
 | a build script, bundler or gate | `npm test -w @abuddy/cli`, plus the one command whose output changed |
 | a comment, a doc, a CLAUDE.md | **nothing** — not typecheck, not a suite. Unless a spec asserts the text (the door table), or a code fence changed and one command proves it |
 | an npm script | the one path that runs it, end to end, once |
@@ -140,6 +140,10 @@ npm run typecheck:scripts # scripts/ and tests/
 npm run typecheck:pack   # @app/default-setup only
 npm run exports:check -w @abuddy/ui  # Fails on a stale exports map or a component without an entry
 
+npm run spec -- <path|name>  # One spec file, or a few: the cheapest check here, 1-3s. Takes a repo-relative
+                         # path, a directory, or part of a name; groups by package and runs each package's own
+                         # `test`, so a pretest guard and the package's vitest config still apply. A tests/e2e
+                         # path goes to Playwright instead
 npm test                 # Playwright E2E tests
 npm run test:unit        # Vitest, every suite CI calls a unit test: @app/api, @app/default-setup, @abuddy/sdk,
                          # @abuddy/ears, @abuddy/host, @app/main, @app/renderer, then @abuddy/cli (the slowest,
