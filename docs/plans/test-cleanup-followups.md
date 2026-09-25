@@ -136,7 +136,7 @@ chain steps, which belong with `goal-test-tiers.md` Phase 4 so they share whatev
 steps, belong with `goal-test-tiers.md` Phase 4 — same problem, so they should share whatever shape lands
 here rather than inventing a third.
 
-## 3. Get `test:unit` under 43s
+## 3. Get `test:unit` under 43s — **has its own goal: `docs/goals/goal-unit-suite-cost.md`**
 
 Phase 2's 25s Done-when is unmet and lane count will not close it. Two levers, both real work:
 
@@ -149,7 +149,8 @@ Phase 2's 25s Done-when is unmet and lane count will not close it. Two levers, b
 | Suite time at two lanes | ~86s, so each suite runs **1.63× slower** when two run at once |
 
 So most of the gap between 26.3s and 43s is the contention tax, not the suites' own cost. Closing it needs
-both: cheaper suites, and less mutual interference.
+both: cheaper suites, and less mutual interference. Written up as a goal, because it is five phases and
+the first of them is a measurement rather than a change.
 
 **Adding lanes is not a lever.** Three lanes measured 44.4s against two lanes' 43s, with 6 tests hitting
 vitest's 5s default. Raising one package's timeout moves the failure to the next package, so the margins are
