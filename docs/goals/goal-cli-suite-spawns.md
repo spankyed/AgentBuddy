@@ -319,6 +319,18 @@ machine was possible.** The last full run went green on every file this goal tou
 test in `import-specifiers.spec.ts` — a file untouched here, whose 187 tests pass in 17s alone — at a
 load average of 109. Take those two numbers before claiming the goal's headline.
 
+### One flake found on the way, in a file this goal did not touch
+
+`import-specifiers.spec.ts > findInternalPackageImports > holds for the repo` scans the whole repo and
+takes **2445ms against vitest's default 5000ms timeout** — it passed at load 12 and timed out at 9135ms
+under load. It has half its budget in hand on an idle machine, so any 2x slowdown fails it, and a
+contended `test:unit` is exactly that. Nothing here changes it or its input; it passed in the
+post-change CLI suite at load 37-82 and failed only in the wider `test:unit`.
+
+It wants an explicit timeout, or to be a tier-1 check that does not race other suites. Until then it
+will keep failing for reasons that have nothing to do with the change under test — which is the most
+expensive kind of red.
+
 ### Coverage
 
 764 tests before, 764 after (759 passing, 5 skipped in both; the skips are `fe-bundler-ui-theme` and
