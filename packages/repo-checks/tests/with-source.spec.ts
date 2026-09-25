@@ -1,7 +1,7 @@
 import { execFileSync, spawn, spawnSync } from 'node:child_process';
 import * as path from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { REPO_ROOT } from '../helpers/published-packages';
+import { REPO_ROOT } from '@abuddy/host/build/packages-built';
 
 /** scripts/with-source.mjs gives a command's Node processes the @abuddy/source condition */
 const WITH_SOURCE = path.join(REPO_ROOT, 'scripts', 'with-source.mjs');

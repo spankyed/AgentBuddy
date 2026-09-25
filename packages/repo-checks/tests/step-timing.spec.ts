@@ -1,8 +1,8 @@
 // The two pure readings of a run's timings: the floor lanes could reach, and whether the table still tells
 // the truth about what a step costs.
 import { describe, expect, it } from 'vitest';
-import { criticalPath, driftedSteps, willNotCache } from '../../../../scripts/lib/step-timing.ts';
-import type { SchedulableStep } from '../../../../scripts/lib/chain-schedule.ts';
+import { criticalPath, driftedSteps, willNotCache } from '../../../scripts/lib/step-timing.ts';
+import type { SchedulableStep } from '../../../scripts/lib/chain-schedule.ts';
 
 const step = (name: string, needs: string[] = [], extra: Partial<SchedulableStep> = {}): SchedulableStep =>
   ({ name, needs, ...extra });

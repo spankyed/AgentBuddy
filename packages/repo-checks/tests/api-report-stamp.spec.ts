@@ -2,7 +2,7 @@ import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
-import { apiSurfaceOf, declarationInputs, declarationPackages, declarationStamp, staleReason, stampFile } from '../../../../scripts/api-report-stamp.ts';
+import { apiSurfaceOf, declarationInputs, declarationPackages, declarationStamp, staleReason, stampFile } from '../../../scripts/api-report-stamp.ts';
 
 /**
  * The cheap staleness gate for the committed API reports (scripts/api-report-stamp.ts), which runs in

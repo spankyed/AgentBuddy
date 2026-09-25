@@ -2,7 +2,7 @@
 // it can leak a lane, keep dispatching after a failure, run an exclusive step beside another, or simply
 // never return. Each of those is a case here, and none of them is visible from a green `npm run chain`.
 import { describe, expect, it } from 'vitest';
-import { schedule, type SchedulableStep } from '../../../../scripts/lib/chain-schedule.ts';
+import { schedule, type SchedulableStep } from '../../../scripts/lib/chain-schedule.ts';
 
 const step = (name: string, needs: string[] = [], extra: Partial<SchedulableStep> = {}): SchedulableStep =>
   ({ name, needs, ...extra });

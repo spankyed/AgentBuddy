@@ -15,8 +15,8 @@ import { REPO_ROOT } from '@abuddy/host/build/packages-built';
 import {
   FAST_BELOW_MS, INTEGRATION_ABOVE_MS, halfOfPath, hasSplit, misplaced, outgrown, readSpecCost, specFiles,
   stale, unrecorded,
-} from '../../../../scripts/lib/spec-cost.ts';
-import { UNIT_SUITES } from '../../../../scripts/lib/unit-suites.ts';
+} from '../../../scripts/lib/spec-cost.ts';
+import { UNIT_SUITES } from '../../../scripts/lib/unit-suites.ts';
 
 /** Every suite's record, read once. A suite with no record is a failure below, not an empty pass. */
 const suites = UNIT_SUITES.map((suite) => {

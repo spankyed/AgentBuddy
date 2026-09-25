@@ -3,14 +3,14 @@ import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { componentContracts } from '../../../../scripts/component-contracts.ts';
+import { REPO_ROOT } from '@abuddy/host/build/packages-built';
+import { componentContracts } from '../../../scripts/component-contracts.ts';
 
 /**
  * scripts/component-contracts.ts: the contract report behind etc/<entry>.component.md. The fixture
  * goes through vue-tsc, so this also pins what the script assumes of vue-tsc's emitted shape — the
  * assumption that would otherwise break silently, reporting a component as having no props.
  */
-const REPO_ROOT = path.resolve(import.meta.dirname, '../../../..');
 
 let root: string;
 let typesDir: string;

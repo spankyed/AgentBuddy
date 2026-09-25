@@ -6,8 +6,11 @@ import * as path from 'node:path';
 import { builtinModules } from 'node:module';
 import ts from 'typescript';
 import { describe, expect, it } from 'vitest';
-import { PACKAGES_BUILT, REPO_ROOT } from '../helpers/published-packages';
-import { packageName } from '../../../../scripts/lib/published-imports.ts';
+import { packagesBuiltOrRefuse, REPO_ROOT } from '@abuddy/host/build/packages-built';
+import { packageName } from '../../../scripts/lib/published-imports.ts';
+
+// Skips without built packages, and refuses rather than reading a stale `dist`
+const PACKAGES_BUILT = packagesBuiltOrRefuse('npm run packages:build (or npm test -w @app/repo-checks, which builds them)');
 
 const SDK = path.join(REPO_ROOT, 'packages', 'abuddy-sdk');
 

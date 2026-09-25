@@ -95,16 +95,21 @@ Because host code is inlined, `@abuddy/host` imports are fine in `src/`. The CLI
 
 Two suites, split by what a spec costs:
 
-- **`npm test -w @abuddy/cli`** — the fast half (`tests/**/*.spec.ts`, `vitest.config.ts`): 57 specs and
-  about 15s of file time, a couple of seconds of wall. The per-change loop.
+- **`npm test -w @abuddy/cli`** — the fast half (`tests/**/*.spec.ts`, `vitest.config.ts`): 45 specs and
+  about 14s of file time, a couple of seconds of wall. The per-change loop.
 - **`npm run test:integration -w @abuddy/cli`** — the expensive half (`tests/**/*.integration.spec.ts`,
   `vitest.integration.config.ts`, which caps worker threads because many of these specs spawn compilers of
-  their own): 23 specs, about 180s of file time.
+  their own): 20 specs, about 188s of file time.
+
+**Specs about the repo's own tooling are not here.** Fifteen of them were, and none was about the CLI: they
+moved to `@app/repo-checks`, which is where a spec that reads `scripts/` belongs and where `npm run spec`
+can reach one from a change to what it checks. `repo-check-boundary.spec.ts` there keeps them from coming
+back.
 
 **The rule for choosing is the measured cost, recorded in `etc/spec-cost.json`.** A fast spec moves to the
 integration half above **2.5s**; an integration spec comes back below **1.5s**; anything between stays where
 it is. `npm run spec-cost:update -w @abuddy/cli` re-measures and rewrites the record — run it with nothing
-else on the machine — and `tests/build/suite-split.spec.ts` fails when a spec is in the wrong half, has no
+else on the machine — and `repo-checks`' `suite-split.spec.ts` fails when a spec is in the wrong half, has no
 recorded cost, or is recorded and gone. The check reads the record and runs nothing, because re-measuring to
 decide placement would make the cheap half expensive.
 
@@ -121,11 +126,11 @@ records a cost rather than a mechanism, so renaming a spec is how it changes hal
 The root `test:unit` runs the fast half last, being the slowest of the unit suites; CI and the pre-merge
 chain run both halves (`.github/workflows/ci.yml`), after `packages:build`. The `published-*` specs read what `packages:build` wrote, so the suite's `pretest` (`scripts/ensure-packages-built.ts`, the command over `@abuddy/host/build/packages-built`) runs that build itself when anything it read has changed, and skips it otherwise. Freshness is a success stamp, not a timestamp: each build unit records a content fingerprint of its inputs (its own sources, `@abuddy/host`, the bundler script, the manifests and tsconfigs) under `node_modules/.cache/abuddy-packages-build/`, written only when the build returns, so an interrupted or failed build reads as not built rather than as fresh. A run that bypasses `pretest` (`npx vitest` directly) still refuses to test stale output, naming the workspace and why.
 
-- `tests/build/`: bundlers and gates (`facade-*`, `seed-runtime-*`, `dsl-defs`, `fe-bundler-*`, `host-import-guard`, `clear-build-output`, `feature-settings`, `step-collisions`, `build-registry`) and published-package checks (`published-*`, `package-freshness`, `checkout-packages`, `ui-exports`, `ui-import-side-effects`, `import-specifiers`, `with-source`, `verify-node-modules`).
+- `tests/build/`: bundlers and gates (`facade-*`, `seed-runtime-*`, `dsl-defs`, `fe-bundler-*`, `host-import-guard`, `clear-build-output`, `feature-settings`, `step-collisions`, `build-registry`) and published-package checks (`published-*`, `package-freshness`, `checkout-packages`, `ui-exports`, `ui-import-side-effects`, `verify-node-modules`).
 - `tests/cli/`: commands run end to end or through their exports: scaffold, `add`, pack, release, install `hostVersion`, a scaffolded pack installed and loaded by the host pack loader (`init-install-load`), dev install, hand-off, source hooks, app launcher.
 - `tests/app/`: app target resolution, beta download (`ensureBetaApp`: macOS arm64 only), Playwright resolution, app version.
 - `tests/harness/`: `@abuddy/testing/harness` from a scaffolded pack (`harness-setup`) and a dependent pack running default-setup's runtime (`dependency-runtime`, skipped until default-setup is built).
 - `tests/packs/host-output.spec.ts`: `publishHostPackOutput` and dependency resolution from an installed app.
-- `tests/helpers/published-packages.ts`: `PACKAGES_BUILT`, `installPublishedPackages()` (npm-packs `@abuddy/ears`, the SDK and UI into a temp `node_modules`), `compileConsumer()` over `CONSUMER_MATRIX` (current TypeScript and the 5.7 floor from `packages/typescript-floor`, × `node16`/`bundler`). The `published-*` specs skip without `dist/`, but throw in CI or when `dist` is older than `src`: run `npm run packages:build`.
+- `tests/helpers/published-packages.ts`: `PACKAGES_BUILT` (from `packagesBuiltOrRefuse()` in `@abuddy/host/build/packages-built`, which `@app/repo-checks` calls too — one rule, two callers), `installPublishedPackages()` (npm-packs `@abuddy/ears`, the SDK and UI into a temp `node_modules`), `compileConsumer()` over `CONSUMER_MATRIX` (current TypeScript and the 5.7 floor from `packages/typescript-floor`, × `node16`/`bundler`). The `published-*` specs skip without `dist/`, but throw in CI or when `dist` is older than `src`: run `npm run packages:build`.
 
 End-to-end coverage outside this package: `npm run test:external-pack` (`tests/fixtures`) and `npm run test:packaged-authoring` (packed tarballs, outside the monorepo).

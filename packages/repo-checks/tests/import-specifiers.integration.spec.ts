@@ -7,8 +7,8 @@ import {
   findAppImportsInPackTests, findContractLeafImports, findCrossCheckoutResolution, findCrossFeatureImports, findHostImports, findJsSpecifiers, findMissingSourceConditions, findPackBackendConsole, findRawPackHelpers,
   findRawTransport, findInternalPackageImports, findLmdbImports, findRepositoryCasts, findSharedPackageLists, findUpwardImports, LAYERS, LMDB_RULES, packageSourceDirs,
   DECLARES_SOURCE_BY_DESIGN, RESOLVES_DIST_BY_DESIGN, SHARED_LIST_CONSUMERS, sourceConditionPackages, SOURCE_CONDITION,
-} from '../../../../scripts/check-import-specifiers.ts';
-import { REPO_ROOT } from '../helpers/published-packages';
+} from '../../../scripts/check-import-specifiers.ts';
+import { REPO_ROOT } from '@abuddy/host/build/packages-built';
 
 /** scripts/check-import-specifiers.ts, over a temp tree holding the modules the checks resolve against */
 let root: string;

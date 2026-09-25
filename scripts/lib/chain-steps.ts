@@ -2,6 +2,7 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { BUILD_UNITS, REPO_ROOT } from '@abuddy/host/build/packages-built';
 import { UNIT_SUITES, type UnitSuite } from './unit-suites.ts';
+import { hasSplit } from './spec-cost.ts';
 
 /**
  * The pre-merge chain's steps and what each is allowed to read. Separate from `scripts/chain.ts` because
@@ -261,6 +262,8 @@ export const SUITE_READS: Record<string, { packages?: true; pack?: true }> = {
   // Boots the app runtime, which loads the built-in pack: `dist/runtime/index.cjs` and `settings.seed.json`.
   // Named by host code rather than by any spec, which is why it has to be measured rather than scanned.
   api: { pack: true },
+  // `pretest: ensure-packages-built`; `published-sdk-peers` reads the built `dist` and skips without it
+  'repo-checks': { packages: true },
 };
 
 /**
@@ -286,6 +289,16 @@ export function suiteInputs(suite: UnitSuite): string[] {
     ...(reads.pack ? PACK_OUTPUTS : []),
   ];
 }
+
+/**
+ * The suites with an expensive half, derived from which configs each package has rather than listed here.
+ *
+ * One step runs all of them (`npm run test:integration`), so the set has to be the same in two places: the
+ * step's inputs, and the root script's `-w` flags. A package that gains an integration config is covered
+ * by the first automatically, and `chain-inputs.spec.ts` fails the second until it names the package too —
+ * which is the half a derivation cannot do for itself, an npm script being text.
+ */
+export const INTEGRATION_SUITES = UNIT_SUITES.filter((suite) => hasSplit(path.join(REPO_ROOT, 'packages', suite.dir)));
 
 /**
  * One step per pool, not per suite.
@@ -361,7 +374,8 @@ export const CHAIN_STEPS: readonly ChainStep[] = [
   // on default-setup and so reads its `dist`. It used to run after `compile` only because of where it sat
   // in this table, which `orderedSteps` never promised.
   { name: 'test:integration', tier: 2, needs: ['compile'], seconds: 52,
-    inputs: [...ROOT, ...workspace('abuddy-cli'), ...PACKAGE_BUILD_OUTPUTS, ...PACK_OUTPUTS] },
+    inputs: [...ROOT, ...INTEGRATION_SUITES.flatMap((suite) => workspace(suite.dir)),
+      ...PACKAGE_BUILD_OUTPUTS, ...PACK_OUTPUTS] },
   // `build:app`, not `build`. Root `build` is `-ws`, which includes `@app/default-setup`, whose own build is
   // the very command `compile` runs — so a `build` step rebuilt the pack every run, rewriting the `dist`
   // it declares as an input. It invalidated itself, and the five steps that read that tree, on every run:

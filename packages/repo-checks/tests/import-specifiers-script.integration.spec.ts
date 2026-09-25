@@ -3,7 +3,7 @@ import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { REPO_ROOT } from '../helpers/published-packages';
+import { REPO_ROOT } from '@abuddy/host/build/packages-built';
 
 /**
  * The one check on `scripts/check-import-specifiers.ts` that runs it as a process. Every other test of it

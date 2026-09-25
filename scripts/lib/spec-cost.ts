@@ -68,7 +68,7 @@ export const INTEGRATION_SUFFIX = '.integration.spec.ts';
 export const UPDATING_ENV = 'UPDATE_SPEC_COST';
 
 /** The guard that reads this record. It is the one spec that skips itself while the record is rewritten. */
-export const PLACEMENT_GUARD = 'tests/build/suite-split.spec.ts';
+export const PLACEMENT_GUARD = 'tests/suite-split.spec.ts';
 export const isUpdating = (env: NodeJS.ProcessEnv = process.env): boolean => env[UPDATING_ENV] === '1';
 export type Half = 'fast' | 'integration';
 export const halfOfPath = (file: string): Half => (file.endsWith(INTEGRATION_SUFFIX) ? 'integration' : 'fast');

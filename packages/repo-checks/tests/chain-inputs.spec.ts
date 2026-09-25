@@ -12,8 +12,8 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { inputFiles, REPO_ROOT } from '@abuddy/host/build/packages-built';
-import { CHAIN_STEPS, SUITE_READS, suiteInputs, type ChainStep } from '../../../../scripts/lib/chain-steps.ts';
-import { UNIT_SUITES } from '../../../../scripts/lib/unit-suites.ts';
+import { CHAIN_STEPS, INTEGRATION_SUITES, SUITE_READS, suiteInputs, type ChainStep } from '../../../scripts/lib/chain-steps.ts';
+import { UNIT_SUITES } from '../../../scripts/lib/unit-suites.ts';
 
 /** Tracked code no chain step reads, and why. An entry that stops applying is reported, not ignored. */
 const NOT_A_CHAIN_INPUT: Record<string, string> = {
@@ -98,9 +98,17 @@ describe('the chain reads every source file', () => {
 // failed. `SUITE_READS`' doc comment carries the measurement that is the authority, and the command that
 // reproduces it. What this catches is the cheap half: a spec that starts naming the tree outright.
 describe('a unit suite whose specs name build output declares it', () => {
+  // Every spec in the suite except this one. The patterns below are written out here, so scanning this
+  // file finds them and reports whichever suite happens to hold it — which, since the move to
+  // @app/repo-checks, is a suite that reads neither tree. A pattern's definition is not evidence about
+  // anyone.
   const sources = (dir: string): string[] => {
     const root = path.join(REPO_ROOT, 'packages', dir, 'tests');
-    return fs.existsSync(root) ? inputFiles(root).map((file) => fs.readFileSync(path.join(REPO_ROOT, file), 'utf-8')) : [];
+    if (!fs.existsSync(root)) return [];
+    return inputFiles(root)
+      .map((file) => path.join(REPO_ROOT, file))
+      .filter((file) => file !== import.meta.filename)
+      .map((file) => fs.readFileSync(file, 'utf-8'));
   };
   const readsPackages = (dir: string, texts: string[]): boolean => {
     const pretest = (JSON.parse(fs.readFileSync(path.join(REPO_ROOT, 'packages', dir, 'package.json'), 'utf-8')) as
@@ -211,6 +219,18 @@ describe('a pool step reads everything its projects read', () => {
     const missing = UNIT_SUITES.filter((suite) => suite.kind === kind)
       .flatMap((suite) => suiteInputs(suite).filter((input) => !declared.has(input)).map((input) => `${suite.workspace} reads ${input}`));
     expect([...new Set(missing)]).toEqual([]);
+  });
+});
+
+// One chain step runs every expensive half, and which packages those are is derived from the configs each
+// one has. The step's inputs follow that derivation; the npm script it runs cannot, being text — so a
+// package that gains an integration config would have its specs hashed into the step's cache key and never
+// run. This is the half that has to be checked rather than derived.
+describe('the integration step runs every suite that has an expensive half', () => {
+  it('names them all in test:integration', () => {
+    const scripts = (JSON.parse(fs.readFileSync(path.join(REPO_ROOT, 'package.json'), 'utf-8')) as { scripts: Record<string, string> }).scripts;
+    const named = [...scripts['test:integration'].matchAll(/-w (\S+)/g)].map(([, name]) => name);
+    expect(named.sort()).toEqual(INTEGRATION_SUITES.map((suite) => suite.workspace).sort());
   });
 });
 

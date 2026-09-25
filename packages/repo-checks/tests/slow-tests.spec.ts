@@ -2,7 +2,7 @@
 // flag — so it keeps working when `test:unit` becomes one root vitest run. The risk is the same: it is a
 // parser over someone else's format, so the shapes it must handle are pinned here.
 import { describe, expect, it } from 'vitest';
-import { slowestTests } from '../../../../scripts/lib/slow-tests.ts';
+import { slowestTests } from '../../../scripts/lib/slow-tests.ts';
 
 const line = (indent: number, mark: string, name: string, ms: number) => `${' '.repeat(indent)}${mark} ${name}  ${ms}ms`;
 

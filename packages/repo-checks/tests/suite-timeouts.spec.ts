@@ -13,9 +13,9 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { REPO_ROOT } from '@abuddy/host/build/packages-built';
-import { CHAIN_STEPS, TIER_TIMEOUT_MS, type Tier } from '../../../../scripts/lib/chain-steps.ts';
-import { UNIT_SUITES, unitStepName } from '../../../../scripts/lib/unit-suites.ts';
-import { overrideKey, specFilesUnder, timeoutOverrides, type TimeoutOverride } from '../../../../scripts/lib/test-timeouts.ts';
+import { CHAIN_STEPS, TIER_TIMEOUT_MS, type Tier } from '../../../scripts/lib/chain-steps.ts';
+import { UNIT_SUITES, unitStepName } from '../../../scripts/lib/unit-suites.ts';
+import { overrideKey, specFilesUnder, timeoutOverrides, type TimeoutOverride } from '../../../scripts/lib/test-timeouts.ts';
 
 /**
  * Tests allowed to override their tier's budget, and why.

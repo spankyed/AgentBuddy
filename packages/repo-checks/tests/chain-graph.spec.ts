@@ -4,7 +4,8 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { CHAIN_STEPS, orderedSteps, type ChainStep } from '../../../../scripts/lib/chain-steps.ts';
+import { REPO_ROOT } from '@abuddy/host/build/packages-built';
+import { CHAIN_STEPS, orderedSteps, type ChainStep } from '../../../scripts/lib/chain-steps.ts';
 
 describe('the chain graph', () => {
   it('orders every step after the steps it needs', () => {
@@ -52,7 +53,7 @@ describe('the chain graph', () => {
 });
 
 describe('every spawn an orchestrator makes is bounded', () => {
-  const REPO = path.resolve(import.meta.dirname, '../../../..');
+  const REPO = REPO_ROOT;
   const read = (rel: string) => fs.readFileSync(path.join(REPO, rel), 'utf-8');
 
   // An unbounded run cannot fail — it waits until a person notices and kills it by pid, which is how this

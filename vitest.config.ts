@@ -38,6 +38,7 @@ export default defineConfig({
       'packages/abuddy-cli',
       'packages/abuddy-host',
       'packages/api',
+      'packages/repo-checks',
       'packages/abuddy-ears',
       'packages/renderer',
       'packages/main',
