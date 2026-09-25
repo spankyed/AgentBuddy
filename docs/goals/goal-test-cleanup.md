@@ -745,10 +745,17 @@ resolving that should not… widening the surface by accident". It does not. Wit
 SDK's exports map and the package rebuilt, the spec passes: Phase 7's trim removed all four
 negative-resolve assertions, on the plan's instruction, because each named a path removed by an earlier
 refactor. What the spec does catch, demonstrated above, is a published entry that stops resolving, the
-package shipping anything but `dist`, `package.json` and the schema, and source maps leaking. Nothing now
-catches an exports map widened on purpose — and for `@abuddy/ears` and `@abuddy/sdk` nothing can, because
-those maps are hand-written and *are* the definition of public (root `CLAUDE.md`). The guard stays; its
-description should be corrected to what it does.
+package shipping anything but `dist`, `package.json` and the schema, and source maps leaking. The guard
+stays; its description should be corrected to what it does.
+
+**`api:check` does catch the widening, and it is outside the chain.** Checked after the above: with
+`./packs` added, `npm run api:check -w @abuddy/sdk` fails — API Extractor wants a report per entry and
+`etc/packs.api.md` does not exist. So the surface is not unguarded. But `api:check` is deliberately not a
+chain step, and `api:stamp` — the 0.6s half `typecheck` runs in its place — **passes on the same edit**,
+reporting "API reports match its declarations". It hashes built declarations, and an entry aliasing files
+that are already built adds none. Root `CLAUDE.md` says a matching stamp means `api:check` cannot fail;
+this is a case where it can. Untested: whether the stamp catches a widening that points at a genuinely new
+module, which would emit new declarations.
 
 ### The allowances, each shown load-bearing
 
