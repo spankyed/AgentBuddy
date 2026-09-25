@@ -8,27 +8,27 @@
  * processes — two schedulers with no shared budget, which is what pooling removed. What eight steps were
  * actually buying was the per-package *cache key*, and that is separable from the per-package *process*:
  * the step's inputs are the union across the pool, so a warm chain caches the whole step, and when it does
- * run this asks `suiteInputs` per project and passes `--project` for only the stale ones.
+ * run this asks `poolUnitFor` per project and passes `--project` for only the stale ones.
  *
- * Stamps are per project and go through `stampedRun`, so each project's fingerprint is taken before the run
- * and written only where it passed — one protocol, the same one the package builds and the chain use.
+ * **This is the inner half of two caches over one body of work**, and the rule that keeps such a pair honest
+ * is that the inner layer's inputs cover the outer's. Both derive from `suiteInputs`, so they do. When they
+ * did not, the four files the step declared and no project did — this one among them — made the step stale,
+ * and it ran, found every project fresh and returned green having tested nothing. `--all` reaches here for
+ * the same reason: the chain overriding its own stamps says nothing to a cache it does not know about, so
+ * the step declares `forceArgs` and the flag arrives on argv.
+ *
+ * Stamps are per project through `stampedRunAll`, which takes every fingerprint in a run before it starts
+ * and writes each only where it passed — one protocol, the same one the package builds and the chain use.
  */
 import { execFileSync } from 'node:child_process';
-import * as path from 'node:path';
-import { REPO_ROOT, stampedRun, unitStaleReason, type BuildUnit } from '@abuddy/host/build/packages-built';
-import { UNIT_SUITES, type UnitSuite } from './lib/unit-suites.ts';
-import { suiteInputs } from './lib/chain-steps.ts';
+import { stampedRunAll, unitStaleReason } from '@abuddy/host/build/packages-built';
+import { UNIT_SUITES } from './lib/unit-suites.ts';
+import { POOL_SECONDS } from './lib/chain-steps.ts';
+import { poolStampFor, poolUnitFor } from './lib/unit-pool.ts';
 import { boundedSpawn, budgetFor } from './lib/bounded-spawn.ts';
 import { exitOnEpipe } from './lib/exit-on-epipe.ts';
 
 exitOnEpipe();
-
-const STAMP_DIR = path.join(REPO_ROOT, 'node_modules', '.cache', 'abuddy-unit-pool');
-const stampFor = (suite: UnitSuite): string => path.join(STAMP_DIR, `${suite.dir}.json`);
-const unitFor = (suite: UnitSuite): BuildUnit => ({
-  inputs: suiteInputs(suite).map((input) => path.join(REPO_ROOT, input)),
-  outputs: [],
-});
 
 async function main(): Promise<void> {
   const kind = process.argv[2] === 'pack' ? 'pack' : 'host';
@@ -40,7 +40,7 @@ async function main(): Promise<void> {
   const suites = UNIT_SUITES.filter((suite) => suite.kind === kind);
   const all = process.argv.includes('--all');
 
-  const stale = suites.filter((suite) => all || unitStaleReason(unitFor(suite), stampFor(suite)) !== null);
+  const stale = suites.filter((suite) => all || unitStaleReason(poolUnitFor(suite), poolStampFor(suite)) !== null);
   if (stale.length === 0) {
     console.log(`${kind} pool: all ${suites.length} project(s) up to date`);
     return;
@@ -56,16 +56,30 @@ async function main(): Promise<void> {
     : stale.map((suite) => ({ suites: [suite], command: 'npm', args: ['test', '-w', suite.workspace] }));
 
   for (const { suites: covered, command, args } of runs) {
-    // Shared across the suites one run covers: `stampedRun` takes each fingerprint before it starts and
-    // writes each stamp only where it returned, so a failure leaves every suite in that run unstamped.
-    let started: Promise<void> | undefined;
-    const runOnce = (): Promise<void> => (started ??= (async () => {
-      const { code, output, timedOut } = await boundedSpawn(command, [...args], budgetFor(75));
-      process.stdout.write(output);
-      if (code !== 0) throw new Error(`${kind} pool ${timedOut ? 'timed out' : `failed (exit ${code})`}`);
-    })());
-    await Promise.all(covered.map((suite) => stampedRun(suite.dir, unitFor(suite), stampFor(suite), runOnce)));
+    // `stampedRunAll` fingerprints every suite this run covers before it starts and writes each stamp only
+    // if it returned, so a failure leaves all of them unstamped and none is measured against a tree the run
+    // has already begun touching.
+    await stampedRunAll(
+      covered.map((suite) => ({ label: suite.dir, unit: poolUnitFor(suite), stamp: poolStampFor(suite) })),
+      async () => {
+        // The budget is what this pool costs healthy, from the same measurement the chain step declares
+        const { code, output, timedOut } = await boundedSpawn(command, [...args], budgetFor(POOL_SECONDS[kind]));
+        process.stdout.write(output);
+        if (code !== 0) throw new Error(`${kind} pool ${timedOut ? 'timed out' : `failed (exit ${code})`}`);
+      },
+    );
   }
 }
 
-await main();
+// A throw here would otherwise surface as an unhandled rejection, printing a stack on top of the suite
+// output that is the thing worth reading. `process.exitCode` rather than `process.exit()`, which would
+// truncate that output — the rule `orchestrator-exit.spec.ts` holds for every script here that reprints a
+// captured buffer.
+try {
+  await main();
+} catch (err) {
+  console.error(`\n${err instanceof Error ? err.message : String(err)}`);
+  process.exitCode = 1;
+}
+
+// probe

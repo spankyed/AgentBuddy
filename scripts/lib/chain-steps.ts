@@ -50,6 +50,23 @@ export interface ChainStep {
   /** A step whose pass is not reproducible, so it always runs. Only the E2E suite, with its reason. */
   readonly cache?: false;
   /**
+   * What to pass the step so it ignores a cache of its own, appended by `chain.ts` under `--all`.
+   *
+   * **A step that keeps its own cache needs this, or `--all` lies about it.** The chain's `--all` overrides
+   * the chain's stamps; it says nothing to a step that then consults stamps of its own, so the step runs,
+   * skips its work and returns green — which is what the two unit pools did with 2634 tests behind them.
+   * There is no other escape hatch: the three stamp stores under `node_modules/.cache` have no clear
+   * command, so `--all` is the whole answer and has to be true.
+   *
+   * It is per step rather than a blanket forward because most steps' commands would reject an argument they
+   * do not know, and per step rather than an environment variable because an environment variable is
+   * inherited by everything a step spawns. This step's inner cache is the one to override; the same run's
+   * nested `packages:ensure` calls are not, and there are 18 of them in a serial chain, each a stat and a
+   * return. That is the reason an override never goes in the freshness primitive itself — `unitStaleReason`
+   * honouring a global flag would turn those 18 stats into 18 builds behind one lock.
+   */
+  readonly forceArgs?: readonly string[];
+  /**
    * What this step costs **when it does its work**, in seconds, measured on this machine under the chain's
    * default two lanes. Not what it costs when it is cached: `packages:ensure` returns in 0.3s with nothing
    * stale and takes 14s when it builds, and recording the 0.3 gave a step that builds a budget sized for a
@@ -175,6 +192,23 @@ const APP_OUTPUTS = ['packages/renderer/dist', 'packages/api/dist', 'packages/ma
 const APP_ENTRY = ['packages/entry-point.mjs', 'packages/dev-mode.js'];
 /** The wrapper a shell-script step runs through, and the module that bounds it */
 const BOUNDED_RUNNER = ['scripts/bounded.ts', 'scripts/lib/bounded-spawn.ts'];
+
+/**
+ * What *runs* a unit suite, as against what the suite reads — and an input to every project all the same.
+ *
+ * These decide what runs and how: the runner picks which projects a pool runs, `unit-suites.ts` says which
+ * pool a suite is even in, `with-source.mjs` supplies the `@abuddy/source` condition the host suites
+ * resolve under, and the bounded runner bounds the spawn. A pass recorded before one of them changed is not
+ * evidence about the pass after it, so a project whose runner moved is stale.
+ *
+ * **They used to be declared on the pool step and on no project, which is the defect this fixes.** The step
+ * went stale, ran, asked each project and found them all fresh, printed "all N project(s) up to date" and
+ * stamped green having tested nothing — and the five files it could not notice changing were the five that
+ * decide whether the suites run correctly at all. Changing a suite's `kind` was the worst of them: the
+ * destination pool's step went stale, the suite's stamp was keyed by directory rather than by pool, and it
+ * ran in neither.
+ */
+const SUITE_RUNNER = ['scripts/test-unit-pool.ts', 'scripts/lib/unit-suites.ts', 'scripts/with-source.mjs', ...BOUNDED_RUNNER];
 /**
  * What `compile` writes. `src/__generated__` is under the `src` it also reads, so it has to be declared:
  * `fingerprintUnit` excludes a unit's own output from its own fingerprint, and that is what stops the step
@@ -271,18 +305,25 @@ export const SUITE_READS: Record<string, { packages?: true; pack?: true }> = {
  * two-lane runner (`scripts/test-unit.ts`), which is what the chain will run them under.
  */
 /** Measured per pool under the chain's own lanes, which is what `seconds` means (`driftedSteps` keeps it honest) */
-const POOL_SECONDS: Record<'host' | 'pack', number> = { host: 20, pack: 21 };
+export const POOL_SECONDS: Record<'host' | 'pack', number> = { host: 20, pack: 21 };
 
 /**
- * What one unit suite reads: its own workspace, its dependencies' source, and whatever build output it
- * touches. Exported because two things need exactly this list and must not compute it differently — the
- * chain step below, whose inputs are the union across a pool, and `scripts/test-unit-pool.ts`, which asks
- * per project which ones are stale so a pool runs only those.
+ * What one unit suite's last pass depended on: its own workspace, its dependencies' source, whatever build
+ * output it touches, and what ran it.
+ *
+ * **One definition for both cache layers, which is the invariant.** The chain step below declares the union
+ * of this across a pool, and `scripts/lib/unit-pool.ts` fingerprints it per project so a pool runs only the
+ * stale ones. Two layers over one body of work are only sound when the inner layer's inputs cover the
+ * outer's: anything the outer treats as a reason to run has to be a reason for some inner unit to run, or
+ * the step runs, skips everything and stamps green. Deriving both from here is what makes that hold by
+ * construction rather than by anyone remembering; `chain-inputs.spec.ts` checks the step against what the
+ * pool actually fingerprints, so re-adding a step-only input fails by name.
  */
 export function suiteInputs(suite: UnitSuite): string[] {
   const reads = SUITE_READS[suite.dir] ?? {};
   return [
     ...ROOT,
+    ...SUITE_RUNNER,
     ...workspace(suite.dir),
     ...workspaceDeps(suite.dir).flatMap(dependencySource),
     ...(reads.packages ? PACKAGE_BUILD_OUTPUTS : []),
@@ -322,16 +363,22 @@ const POOL_STEPS: readonly ChainStep[] = (['host', 'pack'] as const).map((kind) 
     // takes 20s, because the suites overlap inside one vitest run — which is the entire point of pooling
     // them. `driftedSteps` reported it on every run.
     seconds: POOL_SECONDS[kind],
-    inputs: [...new Set([
-      ...suites.flatMap(suiteInputs),
-      // The runner itself: it decides which projects a pool runs, so a change to it changes the step
-      'scripts/test-unit-pool.ts', 'scripts/lib/unit-suites.ts', 'scripts/with-source.mjs', ...BOUNDED_RUNNER,
-    ])].sort(),
+    // Nothing but the union, so the step cannot go stale for a reason no project can see. The runner files
+    // this used to add by hand are in `suiteInputs` now, where both layers read them.
+    inputs: [...new Set(suites.flatMap(suiteInputs))].sort(),
+    // It keeps a cache of its own, so the chain's `--all` has to reach inside it
+    forceArgs: ['--all'],
   };
 });
 
 export const CHAIN_STEPS: readonly ChainStep[] = [
   // Takes the package build lock, so it cannot share a lane with anything else that builds
+  // This step has an inner cache too — `ensurePackagesBuilt()` consults the build stamps — and one input the
+  // inner layer cannot see: `ensure-packages-built.ts`. That is safe, and worth saying why rather than
+  // leaving a reader to check: the file is the command over the rule, so it cannot change what "built"
+  // means, and the rule itself (`BUILD_UNITS` in `@abuddy/host`) is inside every unit's own inputs. It takes
+  // no `forceArgs` for a second reason — 18 call sites reach `ensurePackagesBuilt()` in a serial chain, each
+  // a stat and a return, so forcing it would turn them into 18 builds behind one lock.
   { name: 'packages:ensure', tier: 2, needs: [], seconds: 14, exclusive: true,
     inputs: [...PACKAGE_BUILD_INPUTS, 'scripts/ensure-packages-built.ts'], outputs: PACKAGE_BUILD_OUTPUTS },
   // Ahead of build and not redundant with it: build -ws gives no ordering guarantee, since no workspace

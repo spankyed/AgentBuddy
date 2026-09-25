@@ -13,7 +13,8 @@ import * as path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { inputFiles, REPO_ROOT } from '@abuddy/host/build/packages-built';
 import { CHAIN_STEPS, INTEGRATION_SUITES, SUITE_READS, suiteInputs, type ChainStep } from '../../../scripts/lib/chain-steps.ts';
-import { UNIT_SUITES } from '../../../scripts/lib/unit-suites.ts';
+import { UNIT_SUITES, type UnitSuite } from '../../../scripts/lib/unit-suites.ts';
+import { poolUnitFor } from '../../../scripts/lib/unit-pool.ts';
 
 /** Tracked code no chain step reads, and why. An entry that stops applying is reported, not ignored. */
 const NOT_A_CHAIN_INPUT: Record<string, string> = {
@@ -207,18 +208,40 @@ describe('a gitignored input belongs to someone', () => {
   });
 });
 
-// A pool step caches on the union of its projects' inputs, while `scripts/test-unit-pool.ts` decides which
-// projects to run by asking each one's inputs separately. Those are two readings of the same thing, and if
-// the step's were ever narrower the chain would cache the step while a project inside it was stale — the
-// project would simply never run again. They come from one function for that reason; this is the check that
-// nothing has since been added to a pool without widening the step.
-describe('a pool step reads everything its projects read', () => {
-  it.each(['host', 'pack'] as const)('%s', (kind) => {
-    const step = CHAIN_STEPS.find((s) => s.name === `test:unit:${kind}`)!;
-    const declared = new Set(step.inputs);
-    const missing = UNIT_SUITES.filter((suite) => suite.kind === kind)
+// Nested caches that can disagree, which is the defect this pair of checks exists for.
+//
+// A pool is two caches over one body of work: the chain stamps the step, `scripts/lib/unit-pool.ts` stamps
+// each project. Such a pair is only sound when the inner layer's inputs **cover** the outer's — anything the
+// outer treats as a reason to run must be a reason for some inner unit to run. Both directions fail, and
+// differently, so both are checked.
+//
+// Narrower than its projects and the chain caches the step while a project inside it is stale: that project
+// never runs again. Wider and the step goes stale for a reason no project can see, so it runs, asks each
+// project, finds them all fresh, prints "all N project(s) up to date" and stamps green having tested
+// nothing. That one happened: four runner files were declared on the step and on no project, and the file
+// deciding what the pool runs was the one file the pool could not notice changing.
+//
+// The second check reads what the pool *actually fingerprints* rather than `suiteInputs` directly. Both are
+// derived from it today, so comparing the step with `suiteInputs` would also pass — but it would keep
+// passing if the pool started fingerprinting something else, which is the divergence that matters. The
+// pool's fingerprint lives in its own module precisely so a spec can ask it: the script runs `main()` on
+// import.
+describe('a pool step and its projects cache on the same inputs', () => {
+  const poolStep = (kind: 'host' | 'pack'): ChainStep => CHAIN_STEPS.find((s) => s.name === `test:unit:${kind}`)!;
+  const projects = (kind: 'host' | 'pack'): UnitSuite[] => UNIT_SUITES.filter((suite) => suite.kind === kind);
+
+  it.each(['host', 'pack'] as const)('%s reads everything its projects read', (kind) => {
+    const declared = new Set(poolStep(kind).inputs);
+    const missing = projects(kind)
       .flatMap((suite) => suiteInputs(suite).filter((input) => !declared.has(input)).map((input) => `${suite.workspace} reads ${input}`));
     expect([...new Set(missing)]).toEqual([]);
+  });
+
+  it.each(['host', 'pack'] as const)('%s declares nothing its projects cannot see', (kind) => {
+    const fingerprinted = new Set(projects(kind).flatMap((suite) => poolUnitFor(suite).inputs.map((input) => path.relative(REPO_ROOT, input))));
+    const unseen = poolStep(kind).inputs.filter((input) => !fingerprinted.has(input));
+    expect(unseen, 'the step would go stale for these and every project would still read fresh, so it would run '
+      + 'and test nothing: put them in suiteInputs, where both cache layers read them').toEqual([]);
   });
 });
 
@@ -231,6 +254,30 @@ describe('the integration step runs every suite that has an expensive half', () 
     const scripts = (JSON.parse(fs.readFileSync(path.join(REPO_ROOT, 'package.json'), 'utf-8')) as { scripts: Record<string, string> }).scripts;
     const named = [...scripts['test:integration'].matchAll(/-w (\S+)/g)].map(([, name]) => name);
     expect(named.sort()).toEqual(INTEGRATION_SUITES.map((suite) => suite.workspace).sort());
+  });
+});
+
+// `--all` has to arrive somewhere that honours it.
+//
+// A step declaring `forceArgs` claims its command takes them, and nothing at run time can tell whether it
+// did: a command that ignores an argument it does not know looks exactly like one that skipped its cache and
+// found nothing to do. That is the shape of the bug this field was added for, so the claim is checked against
+// the script rather than trusted.
+describe('a step that declares forceArgs runs something that reads them', () => {
+  const declaring = CHAIN_STEPS.filter((step) => step.forceArgs !== undefined);
+
+  it('there are some, so this check is not vacuous', () => {
+    expect(declaring.map((step) => step.name)).not.toEqual([]);
+  });
+
+  it.each(declaring.map((step) => step.name))('%s', (name) => {
+    const step = CHAIN_STEPS.find((candidate) => candidate.name === name)!;
+    const scripts = (JSON.parse(fs.readFileSync(path.join(REPO_ROOT, 'package.json'), 'utf-8')) as { scripts: Record<string, string> }).scripts;
+    const named = [...(scripts[name] ?? '').matchAll(/\b(scripts\/[\w./-]+\.(?:ts|mjs))/g)].map(([, file]) => file);
+    expect(named, `${name} declares forceArgs and its npm script runs no scripts/ file, so nothing can read them`).not.toEqual([]);
+    const text = named.map((file) => fs.readFileSync(path.join(REPO_ROOT, file), 'utf-8')).join('\n');
+    const unread = (step.forceArgs ?? []).filter((flag) => !text.includes(`'${flag}'`));
+    expect(unread, `${name} passes these under --all and ${named.join(', ')} never reads them`).toEqual([]);
   });
 });
 
