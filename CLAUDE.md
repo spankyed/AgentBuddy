@@ -45,14 +45,15 @@ edit — running it after every change costs minutes and finds nothing the narro
 
 | You changed | Run |
 |---|---|
-| one package's source | that workspace's `npm test -w <pkg>`, plus its typecheck if the change is typed. For the specs that cover it, `npm run spec -- <name>` is faster |
-| a spec | that spec file: `npm run spec -- <path or name>`. It takes a repo-relative path, a directory or part of a name, works out the package, and runs that package's own `test` so its guards still apply |
+| one package's source | `npm run spec -- <the file>` — the specs that import it, which is usually a handful rather than the package's hundreds. Plus its typecheck if the change is typed. `npm test -w <pkg>` when you want the whole suite |
+| a spec | `npm run spec -- <path or name>` |
 | a build script, bundler or gate | `npm test -w @abuddy/cli`, plus the one command whose output changed |
 | a comment, a doc, a CLAUDE.md | **nothing** — not typecheck, not a suite. Unless a spec asserts the text (the door table), or a code fence changed and one command proves it |
 | an npm script | the one path that runs it, end to end, once |
 | the renderer, the app's boot, or a pack's FE | `npm test -- <spec>` for the affected E2E, not the whole suite |
 | a public export of `@abuddy/ears`, `/sdk` or `/ui` | `npm run api:update`, and commit `etc/` — `typecheck` fails until you do |
 | a pack's seed source (`src/seeds/`) | that pack's `seed-parity` spec. When only `sourceHash`/`rowSha256` moved, re-record deliberately — `npm run seed-parity:update -w @app/default-setup` — and never edit a hash by hand. Re-recording rewrites a test expectation, not user data; what reaches users is the new `sourceHash`. `packages/default-setup/tests/unit/seed-parity/CLAUDE.md` has the rule for what a golden records |
+| several things, or you lost track | `npm run spec` with no arguments: the specs your uncommitted changes affect, in every package they touch |
 | anything, before you ask for a merge | the full chain, once |
 
 What that costs, measured on this machine (2026-09-22, M-series, warm): one spec file 1–3s, one
@@ -140,10 +141,15 @@ npm run typecheck:scripts # scripts/ and tests/
 npm run typecheck:pack   # @app/default-setup only
 npm run exports:check -w @abuddy/ui  # Fails on a stale exports map or a component without an entry
 
-npm run spec -- <path|name>  # One spec file, or a few: the cheapest check here, 1-3s. Takes a repo-relative
-                         # path, a directory, or part of a name; groups by package and runs each package's own
-                         # `test`, so a pretest guard and the package's vitest config still apply. A tests/e2e
-                         # path goes to Playwright instead
+npm run spec             # The specs your uncommitted changes affect, in every package they touch
+npm run spec -- <target> # You don't say what the target is; it works that out:
+                         #   a source file  -> the specs that import it (vitest `related`) — the usual case
+                         #   a spec path    -> that spec        a directory -> every spec under it
+                         #   part of a name -> every spec whose path contains it
+                         # Anything from the first `-` goes to vitest untouched, so `-t "a case"`,
+                         # `--bail 1` and `--changed HEAD~1` work. It groups by package and runs each
+                         # package's own `test`, so a pretest guard and its vitest config still apply;
+                         # a tests/e2e path goes to Playwright instead
 npm test                 # Playwright E2E tests
 npm run test:unit        # Vitest, every suite CI calls a unit test: @app/api, @app/default-setup, @abuddy/sdk,
                          # @abuddy/ears, @abuddy/host, @app/main, @app/renderer, then @abuddy/cli (the slowest,
