@@ -34,7 +34,7 @@ import { execFileSync, spawn } from 'node:child_process';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { REPO_ROOT, fingerprintInputs } from '@abuddy/host/build/packages-built';
-import { CHAIN_STEPS, type Tier } from './lib/chain-steps.ts';
+import { CHAIN_STEPS, orderedSteps, type Tier } from './lib/chain-steps.ts';
 
 /**
  * Bump when a step is added or removed, or when what the fingerprint covers changes: an older stamp would
@@ -104,7 +104,9 @@ async function main(): Promise<void> {
     return;
   }
 
-  for (const { name, tier } of CHAIN_STEPS) {
+  // Derived from each step's `needs`, and validated first: an unknown dependency or a cycle fails here rather
+  // than halfway through a six-minute run
+  for (const { name, tier } of orderedSteps()) {
     const result = await run(name);
     results.push(result);
     console.log(`${result.code === 0 ? '  ok ' : ' FAIL'} t${tier} ${name.padEnd(24)} ${secs(result.ms)}`);
