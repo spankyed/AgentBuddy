@@ -337,3 +337,64 @@ describe('a step that reads what another writes depends on it', () => {
     expect([...new Set(missing)]).toEqual([]);
   });
 });
+
+// The other half of `forceArgs`: a step that keeps a cache must say so.
+//
+// The guard above checks that a step declaring `forceArgs` runs something that reads them. It cannot catch
+// the case that actually happened — a step with a cache of its own and no `forceArgs` at all, where `--all`
+// runs the step, the step consults its own stamps, finds nothing to do and returns green. Two unit pools
+// did that with 2634 tests behind them.
+//
+// A step's runner reads stamps if it, or a `scripts/lib` module it imports, names one of the freshness
+// functions. That is derivable, so it is derived rather than listed.
+describe('a step whose runner reads stamps declares forceArgs', () => {
+  /** Naming any of these means the runner consults a stamp store, so the chain's --all has to reach it */
+  const STAMP_READERS = ['unitStaleReason', 'stalePackageUnits', 'ensurePackagesBuilt', 'poolStampFor'];
+
+  /**
+   * Steps that read stamps and take no `forceArgs` on purpose. An entry that stops applying is reported.
+   */
+  const KEEPS_ITS_CACHE_UNDER_ALL: Record<string, string> = {
+    'packages:ensure': 'forcing it would turn the 18 nested ensurePackagesBuilt() calls a chain makes into 18 builds behind one lock; the packages keep their own content-addressed stamps, which package-freshness.spec.ts covers, and "regardless of its stamp" means the chain\'s stamps',
+  };
+
+  const scripts = (JSON.parse(fs.readFileSync(path.join(REPO_ROOT, 'package.json'), 'utf-8')) as { scripts: Record<string, string> }).scripts;
+
+  /** The runner's own text, plus any `./lib` module it imports — where the freshness calls actually live */
+  function runnerText(stepName: string): string {
+    const named = [...(scripts[stepName] ?? '').matchAll(/\b(scripts\/[\w./-]+\.(?:ts|mjs))/g)].map(([, file]) => file);
+    const seen = new Set(named);
+    for (const file of named) {
+      const full = path.join(REPO_ROOT, file);
+      if (!fs.existsSync(full)) continue;
+      for (const [, rel] of fs.readFileSync(full, 'utf-8').matchAll(/from '(\.\/[\w./-]+\.ts)'/g)) {
+        seen.add(path.join(path.dirname(file), rel));
+      }
+    }
+    return [...seen].filter((file) => fs.existsSync(path.join(REPO_ROOT, file)))
+      .map((file) => fs.readFileSync(path.join(REPO_ROOT, file), 'utf-8')).join('\n');
+  }
+
+  const readsStamps = CHAIN_STEPS.filter((step) => {
+    const text = runnerText(step.name);
+    return STAMP_READERS.some((fn) => text.includes(fn));
+  });
+
+  it('there are some, so this check is not vacuous', () => {
+    expect(readsStamps.map((step) => step.name)).not.toEqual([]);
+  });
+
+  it.each(readsStamps.map((step) => step.name))('%s', (name) => {
+    const step = CHAIN_STEPS.find((candidate) => candidate.name === name)!;
+    if (KEEPS_ITS_CACHE_UNDER_ALL[name] !== undefined) {
+      expect(step.forceArgs, `${name} is listed as keeping its cache under --all, so it must declare none`).toBeUndefined();
+      return;
+    }
+    expect(step.forceArgs, `${name}'s runner consults its own stamps, so --all would run it and it would skip its work: give it forceArgs, or list it with why not`).toBeDefined();
+  });
+
+  it('lists no exception that has stopped reading stamps', () => {
+    const stale = Object.keys(KEEPS_ITS_CACHE_UNDER_ALL).filter((name) => !readsStamps.some((step) => step.name === name));
+    expect(stale, 'these no longer consult a stamp store; drop them').toEqual([]);
+  });
+});
