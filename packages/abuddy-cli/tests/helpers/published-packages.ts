@@ -3,7 +3,7 @@ import { promisify } from 'node:util';
 import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
-import { BUILD_UNITS, staleMessage, stalePackageUnits } from '@abuddy/host/build/packages-built';
+import { BUILD_UNITS, staleMessage, stalePackageUnits, waitForPackageBuild } from '@abuddy/host/build/packages-built';
 
 const execFileAsync = promisify(execFile);
 
@@ -40,6 +40,12 @@ export const CONSUMER_MATRIX = (Object.keys(TSC_VERSIONS) as TscVersion[])
  * pretest acts on, so the two can't disagree, and refuses rather than testing stale output.
  * Importing this never builds; that is the pretest's job, in its own process.
  */
+// Before reading any of it: another process may be building these packages right now, and a build removes
+// each output and stamp before rewriting it. Both checks below would then be reading a half-built tree and
+// would refuse — which is what made a suite started alongside `test:external-pack` fail about the race
+// rather than the code. Waiting is what lets the two share one checkout.
+waitForPackageBuild();
+
 export const PACKAGES_BUILT = Object.values(BUILD_UNITS).every((unit) => unit.outputs.every((output) => fs.existsSync(output)));
 if (!PACKAGES_BUILT && process.env.CI) {
   throw new Error('The published-package specs need built packages in CI. Run: npm run packages:build');

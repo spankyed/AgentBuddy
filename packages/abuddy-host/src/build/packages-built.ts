@@ -247,6 +247,31 @@ export function runningPackageBuild(file = LOCK_FILE): { pid: number; label: str
   return holder && holderIsRunning(holder) ? holder : undefined;
 }
 
+/** A synchronous pause, for the module-level readers below, which cannot await */
+function sleepSync(ms: number): void {
+  Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, ms);
+}
+
+/**
+ * Waits for an in-flight package build to finish, and returns the build it waited for. A reader of the
+ * stamps wants this rather than `runningPackageBuild` alone: a build removes each stamp before rewriting
+ * it, so a reader that checks freshness mid-build sees units that look unbuilt and reports them stale,
+ * telling the reader to run the build that is already running. Waiting turns that into the pause it
+ * actually is — the point at which two suites can share one checkout.
+ *
+ * It waits on the lock rather than on the stamps, because only the lock says a build is in progress; a
+ * missing stamp cannot tell "being rebuilt now" from "never built". The timeout is a bound, not a
+ * schedule: it returns as soon as the holder is gone, and a holder that outlives it leaves the caller to
+ * report staleness as before, which is the pre-existing behaviour rather than a hang.
+ */
+export function waitForPackageBuild({ timeoutMs = 600_000, pollMs = 200 }: { timeoutMs?: number; pollMs?: number } = {}): LockHolder | undefined {
+  const waitedFor = runningPackageBuild();
+  if (!waitedFor) return undefined;
+  const deadline = Date.now() + timeoutMs;
+  while (runningPackageBuild() && Date.now() < deadline) sleepSync(pollMs);
+  return waitedFor;
+}
+
 function readLock(file: string): LockHolder | null {
   try {
     return JSON.parse(fs.readFileSync(file, 'utf-8'));
@@ -341,6 +366,10 @@ export class PackagesBuildFailed extends Error {
 
 /** Builds every publishable package when any of them is stale; a no-op when they are all up to date */
 export function ensurePackagesBuilt(): void {
+  // Another process may be building them right now — two test suites started together each run this as
+  // their pretest. Wait for that build rather than reading the stamps it is rewriting and starting a
+  // second one, which is a race that fails the reader with "no build stamp".
+  waitForPackageBuild();
   const stale = stalePackageUnits();
   if (stale.length === 0) return;
   // A caller that has already built them is asserting nothing will go stale under it, so staleness here
