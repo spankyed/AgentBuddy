@@ -30,10 +30,7 @@ Finished when:
   *and* to be the thing that catches it — not a second opinion behind tsc or an allowlist.
 - Every allowance left in a guard has been shown to be load-bearing: delete it, watch the guard fail,
   put it back.
-- Each phase's package suite passes, and the full list passes at the end: npm run typecheck,
-  schema:check, api:check (sdk, ui, ears), packages:build + packages:check, compile + facade:check,
-  the api, sdk, ears, host, cli, default-setup and renderer unit suites, npm run build, npm test (E2E),
-  test:external-pack and test:packaged-authoring.
+- Each phase's package suite passes, and Phase 9's full check list passes at the end.
 - `npm test -w @abuddy/cli` runs no build, install or child process and finishes under 15s;
   `npm run test:integration -w @abuddy/cli` runs the specs that do; CI and the pre-merge chain run both.
 - `npm run test:unit` runs its suites concurrently and finishes under 25s, and a concurrent
@@ -52,13 +49,9 @@ Commit as you go:
 - Don't push, tag, or open a PR unless the user asks.
 
 Never:
-- push, tag or open a PR unless the user asks in this session.
-- npm publish, create GitHub releases, or trigger workflows (dry runs only).
-- open, copy or modify ~/Library/Application Support/abuddy* or any real data dir.
-- pkill/killall Electron or node; launch the app outside the test env without an isolated
-  ABUDDY_USER_DATA_DIR.
-- run bare tsc on packages/preload, `npm install` in the example pack, or edit version/release metadata.
-- change the typed EARS types' behaviour (packages/abuddy-sdk/TYPED-EARS.md) to make a call site compile.
+- Constraints' standing rules are hard stops, not advice: no push/tag/PR, no publish or release, no real
+  data dir, no broad pkill, no app outside the test env without an isolated ABUDDY_USER_DATA_DIR, no bare
+  tsc on preload, no version metadata, and no change to the typed EARS types to make a call site compile.
 - delete a test because it fails; investigate it, and keep it if it found something.
 - widen a kept test's scope, add new coverage, or refactor the code under test. Phases 3-9 remove and
   loosen test code only; a bug a deleted test was covering goes in the Outcome's Open items. Phases 1, 2
@@ -609,7 +602,10 @@ single package's phase can do.
 - For each allowance in each remaining guard (`ALLOWED`, `GUARDS`, `UNBRIDGED_BY_DESIGN`): delete it and
   run the guard. Still green means the allowance describes a file that no longer trips it — drop it.
   `DECLARES_SOURCE_BY_DESIGN` is exempt: empty on purpose, kept empty by its own spec (Decision 19).
-- Run the whole list from the prompt block, in order, from a clean build.
+- Run the full check list, in order, from a clean build: `npm run typecheck`, `schema:check`,
+  `api:check` (sdk, ui, ears), `packages:build` + `packages:check`, `compile` + `facade:check`, the api,
+  sdk, ears, host, cli, default-setup and renderer unit suites, `npm run build`, `npm test` (E2E),
+  `test:external-pack` and `test:packaged-authoring`.
 - Record each suite's test count and `Duration` next to the numbers taken before Phase 1.
 - Write the Outcome section: per phase, the tests kept against the audit and why, and any bug a deleted
   test turned out to be covering.
