@@ -14,10 +14,13 @@
 import { execFileSync } from 'node:child_process';
 import { boundedSpawn, budgetFor } from './lib/bounded-spawn.ts';
 import { UNIT_SUITES } from './lib/unit-suites.ts';
+import { exitOnEpipe } from './lib/exit-on-epipe.ts';
 import * as os from 'node:os';
 
 // Shared with the chain's per-package steps, so the two cannot disagree about what a unit suite is
 const SUITES = UNIT_SUITES.map((suite) => suite.workspace);
+
+exitOnEpipe();
 
 const cpus = os.availableParallelism?.() ?? os.cpus().length;
 /** Workers per suite; 0 leaves each suite its own default (`cpus - 1`). Measured, see the table below. */
@@ -71,7 +74,8 @@ async function main(): Promise<void> {
   const missing = SUITES.filter((s) => !results.some((r) => r.suite === s));
   if (missing.length) {
     console.error(`\nran ${results.length} of ${SUITES.length} suites — never ran: ${missing.join(', ')}`);
-    process.exit(1);
+    process.exitCode = 1;
+    return;
   }
 
   const failed = results.filter((r) => r.code !== 0);
