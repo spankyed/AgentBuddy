@@ -92,9 +92,9 @@ What did **not** land: any change to `PackFeaturePlugin.receives` or `PackFEFeat
 3. **It breaks two published contracts at once, and `receives` is in the snapshot.** `Message` is public API;
    `PackFeaturePlugin.receives` and `PackFEFeature` are the pack registration contract. `receives` reaches
    `dist/snapshot.json`, so this is a `PACK_SNAPSHOT_FORMAT` bump (currently 1) plus `api:update`, plus the
-   install-time `buildFormatProblem`/`hostVersion` gate. A pack a user already installed has flat `receives`, and
-   the no-backcompat rule means it fails rather than degrades. The change wants a release boundary, not a
-   mid-branch landing.
+   install-time `buildFormatProblem`/`hostVersion` gate. What this is *not* is a compatibility risk: no pack exists
+   outside this repo (root `CLAUDE.md`, "Backward compatibility"), so there is no installed copy with flat
+   `receives` to break. The format bump is the reason to land it at a release boundary rather than mid-branch.
 
 4. **The policy would be designed with no evidence.** No third-party pack exists, so what counts as a violation is
    guesswork: may a pack forward an event it received? Re-emit on behalf of another feature? The first real

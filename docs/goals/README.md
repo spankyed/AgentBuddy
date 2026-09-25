@@ -45,9 +45,10 @@ Read Background, Decisions, Phases and Constraints first. Decisions are final: i
 reopen them or stop to ask. <If there are open decisions: "The Open decisions must be settled with the
 user before Phase N; if any is still marked open, stop and ask.">
 Where a detail isn't specified, pick the conventional option, note it in the final summary, and keep
-going. No backward compatibility in code: change signatures, move modules, migrate every in-repo caller,
-test, fixture, template and doc in the same change, and fix forward. Stored user data is the exception:
-it moves with migrations.
+going. No backward compatibility in code (root `CLAUDE.md`, "Backward compatibility" — it is a standing rule,
+not this goal's choice): change signatures, move modules, migrate every in-repo caller, test, fixture,
+template and doc in the same change, and fix forward. Stored user data is the exception: it moves with
+migrations.
 
 Finished when:
 - Phases 1–N are implemented and each meets its "Done when"; every new guard, helper or test is

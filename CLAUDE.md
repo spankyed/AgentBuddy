@@ -18,6 +18,26 @@ Monorepo using npm workspaces. Requires Node >= 23.0.0.
 
 Do not edit release/version metadata unless the user explicitly asks for a release or version bump. This includes `package.json` version fields, `package-lock.json` root package versions, app version constants, release notes, changelogs, and generated release artifacts. The release process owns those changes.
 
+## Backward compatibility
+
+**There is none to keep, and assuming otherwise is the more expensive mistake.** Change a signature, a manifest key,
+a published export or a stored field's name outright, and migrate every in-repo caller, test, fixture, template and
+doc in the same change. No dual-read of an old key and a new one, no alias, no deprecation window, no shim.
+
+That is not a stylistic preference, it rests on a fact: **no pack exists outside this repo.** Third-party
+distribution is not built — `resolveFromRemoteRegistry` (`packages/abuddy-cli/src/commands/install.ts:17`) throws
+for every name it is given — so every pack that exists is in this tree, where a rename is a change the typecheck
+proves you finished. Weighing a design against packs that might be installed weighs it against nothing, and that
+caution has a real cost: it is how a repo with no users takes on the constraints of one.
+
+**The exception is stored user data**, which does exist on disk. A renamed `AppState` field, settings key or entity
+attribute moves with a migration (`packages/abuddy-host/src/migrations/CLAUDE.md`); a renamed function or type does
+not, because nothing has one saved.
+
+**Revisit this when a third-party pack can actually be installed from a registry.** That is the condition. Until it
+holds, "an installed pack might depend on this" has no subject, and a plan that treats it as a constraint should say
+so out loud so the claim can be checked.
+
 ## What to run after a change
 
 Run the narrowest thing that could fail, and stop. The full chain exists for the merge, not for the
