@@ -34,6 +34,37 @@ export interface Run {
 const IS_SPEC = /\.(spec|test)\.[cm]?[jt]sx?$/;
 const SKIP = new Set(['node_modules', 'dist', '.git', '.temp', 'dist-ssr', 'coverage', '__generated__']);
 
+/**
+ * The specs a bare name stands for, narrowest reading first: the file's stem, then its name, then the path inside
+ * its package. The `packages/<name>/` prefix is never searched, because every path has it — searching the whole
+ * repo-relative path made `pack` match 355 of 368 spec files, which ran the suite, tier 3 included, for a plausible
+ * search term.
+ */
+export function matchByName(query: string, root: string): string[] {
+  const all = [...specsUnder(path.join(root, 'packages')), ...specsUnder(path.join(root, 'tests'))];
+  const stem = (f: string) => path.basename(f).replace(IS_SPEC, '');
+  const inPackage = (f: string) => path.relative(root, f).replace(/^packages\/[^/]+\//, '');
+  for (const reading of [
+    (f: string) => stem(f) === query,
+    (f: string) => path.basename(f).includes(query),
+    (f: string) => inPackage(f).includes(query),
+  ]) {
+    const found = all.filter(reading);
+    if (found.length > 0) return found;
+  }
+  return [];
+}
+
+/**
+ * Whether a name reads as a search rather than a target, in which case the caller lists it instead of running it.
+ * A few files in one or two suites is someone narrowing; wider than that and crossing suites means tiers and
+ * built-package dependencies they did not ask for.
+ */
+export function tooBroad(specs: string[], root: string): boolean {
+  const suites = new Set(specs.map((s) => packageOf(path.relative(root, s))));
+  return specs.length > 4 || suites.size > 2;
+}
+
 export function specsUnder(dir: string): string[] {
   if (!fs.existsSync(dir)) return [];
   return fs.readdirSync(dir, { withFileTypes: true }).flatMap((entry) => {
@@ -125,11 +156,14 @@ export interface Planned {
   readonly runs: readonly Run[];
   /** Targets that matched nothing, so the command can fail rather than pass silently */
   readonly unmatched: readonly string[];
+  /** Names that read as a search: listed for the caller to narrow, rather than run */
+  readonly ambiguous: readonly { readonly query: string; readonly specs: readonly string[] }[];
 }
 
 export function planTargets(targets: readonly string[], flags: readonly string[], root: string): Planned {
   const runs: Run[] = [];
   const unmatched: string[] = [];
+  const ambiguous: { query: string; specs: string[] }[] = [];
   const named: string[] = [];          // spec files the targets name, grouped at the end
   let wantsRoot = false;
 
@@ -151,10 +185,10 @@ export function planTargets(targets: readonly string[], flags: readonly string[]
       wantsRoot = true;
       runs.push(rootRun(root, `every spec covering ${rel}`, ['related', '--run', rel], flags));
     } else {
-      const matches = specsUnder(path.join(root, 'packages')).concat(specsUnder(path.join(root, 'tests')))
-        .filter((f) => path.relative(root, f).includes(arg));
+      const matches = matchByName(arg, root);
       if (matches.length === 0) unmatched.push(arg);
-      named.push(...matches);
+      else if (tooBroad(matches, root)) ambiguous.push({ query: arg, specs: matches });
+      else named.push(...matches);
     }
   }
 
@@ -163,7 +197,7 @@ export function planTargets(targets: readonly string[], flags: readonly string[]
     runs.push(pkg === null ? e2eRun(root, specs, flags) : packageRun(root, pkg, specs.map((s) => path.relative(path.join(root, 'packages', pkg), s)), flags, label));
   }
 
-  return { runs: wantsRoot ? [ensurePackages(root), ...runs] : runs, unmatched };
+  return { runs: wantsRoot ? [ensurePackages(root), ...runs] : runs, unmatched, ambiguous };
 }
 
 /**
@@ -180,5 +214,5 @@ export function planChanged(changedPackages: readonly string[], flags: readonly 
   for (const pkg of changedPackages) {
     if (!pack.includes(pkg)) runs.push(packageRun(root, pkg, [], flags, '(changed)'));
   }
-  return { runs, unmatched: [] };
+  return { runs, unmatched: [], ambiguous: [] };
 }

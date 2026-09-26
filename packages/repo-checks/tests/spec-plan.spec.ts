@@ -56,6 +56,31 @@ describe('what a target plans', () => {
       .toEqual(['packages/api: (its config changed)', 'packages/repo-checks: the checks that read every config']);
   });
 
+  // `pack` matched 355 of 368 spec files when the whole repo-relative path was searched, because every path
+  // begins with `packages/`. A plausible search term ran the suite, tier 3 included.
+  it('reads a name against the file, never the packages/ prefix every path carries', () => {
+    const { runs, ambiguous } = planTargets(['pack'], [], REPO_ROOT);
+    const matched = ambiguous[0]?.specs ?? runs.flatMap((r) => r.args);
+    expect(matched.length).toBeLessThan(40);
+    expect(matched.every((f) => path.basename(String(f)).includes('pack'))).toBe(true);
+  });
+
+  // `seeder` is the discriminator: one file's stem is exactly that, and flow-seeder.spec.ts merely contains it
+  it('prefers the file whose stem is the name over the ones that merely contain it', () => {
+    const { runs } = planTargets(['seeder'], [], REPO_ROOT);
+    expect(runs).toHaveLength(1);
+    expect(runs[0]!.args).toEqual(['test', '--', 'tests/seed/seeder.spec.ts']);
+  });
+
+  // The narrowest thing that could fail is the point, so a name wide enough to be a search is answered with the
+  // paths rather than by running two dozen specs across eight suites
+  it('lists a name that reads as a search instead of running it', () => {
+    const { runs, ambiguous } = planTargets(['pack'], [], REPO_ROOT);
+    expect(runs).toEqual([]);
+    expect(ambiguous[0]!.query).toBe('pack');
+    expect(ambiguous[0]!.specs.length).toBeGreaterThan(4);
+  });
+
   it('reports a target that matches nothing instead of passing quietly', () => {
     const { runs, unmatched } = planTargets(['no-such-thing-anywhere'], [], REPO_ROOT);
     expect(unmatched).toEqual(['no-such-thing-anywhere']);

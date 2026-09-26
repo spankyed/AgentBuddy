@@ -53,13 +53,24 @@ if (targets.length === 0 && !changed().anything) {
   process.exit(0);
 }
 
-const { runs, unmatched } = targets.length > 0
+const { runs, unmatched, ambiguous } = targets.length > 0
   ? planTargets(targets, flags, ROOT)
   : planChanged(changed().packages, flags, ROOT);
 
 if (unmatched.length > 0) {
   console.error(`No spec or file matches ${unmatched.map((t) => `"${t}"`).join(', ')}`);
   process.exit(1);
+}
+
+// A name wide enough to be a search is answered with the paths, not by running them: the one to run is a copy away,
+// and running two dozen across eight suites because a word was short is not the narrowest thing that could fail.
+if (ambiguous.length > 0) {
+  for (const { query, specs } of ambiguous) {
+    console.error(`"${query}" matches ${specs.length} specs across ${new Set(specs.map((f) => packageOf(path.relative(ROOT, f)))).size} suites:\n`);
+    for (const f of specs) console.error(`  ${path.relative(ROOT, f)}`);
+    console.error(`\nRun one, or several:\n  npm run spec -- ${path.relative(ROOT, specs[0])}`);
+  }
+  process.exit(2);
 }
 
 let failed = 0;
