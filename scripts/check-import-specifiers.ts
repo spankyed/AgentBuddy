@@ -294,6 +294,23 @@ export function findPackBackendConsole(dirs = PACK_SOURCE_DIRS, root = repoRoot)
 /** Pack unit tests, which run on @abuddy/testing's harness: the pack's code and the SDK, not the app */
 const PACK_TEST_DIRS = ['packages/default-setup/tests', 'tests/fixtures/external-pack/tests'];
 
+/**
+ * `file:line: specifier` for each `@/…` a pack names one of its own modules with.
+ *
+ * A pack names its own modules with `#` subpath imports from its own `package.json` `imports`, which Node,
+ * Vite and esbuild all resolve unaided and which is private to the declaring package. `@/…` is a TypeScript
+ * `compilerOptions.paths` mapping that no runtime reads — and it was not even a static one here, meaning
+ * *the importer's own pack*, so four separate bundler configs each carried an implementation of it: the
+ * renderer's resolveId hook, the API's esbuild plugin, the pack's `vite-tsconfig-paths`, and `abuddy build`'s
+ * own reader, which had two copies that had each missed the other's fix.
+ *
+ * All four are gone (`goal-one-way-to-name-your-own-modules.md`), so a single `@/` reintroduced here does not
+ * fail loudly — it resolves for `tsc` and for nothing else, which is the shape of failure this refuses.
+ */
+export function findPackOwnAliases(dirs = [...PACK_SOURCE_DIRS, ...PACK_TEST_DIRS], root = repoRoot): string[] {
+  return findSpecifiers(packFiles(dirs, root), root, (text) => text.startsWith('@/'), true);
+}
+
 /** API modules (its `@/` alias) and host, API or CLI sources by relative path */
 const APP_SPECIFIER = /^(?:@abuddy\/host(?:\/|$)|@\/(?:core|setup)(?:\/|$)|(?:\.\.?\/)+(?:[\w.-]+\/)*(?:api|abuddy-host|abuddy-cli)\/src(?:\/|$))/;
 
@@ -1245,6 +1262,8 @@ export const CHECKS: ReadonlyArray<readonly [find: () => string[], rule: string]
   [findRawTransport, 'Pack code sends with broadcastToPlugin, sendToPlugin and sendToSystem from #generated/events, and subscribes with onConnected and onIncoming from @abuddy/sdk/events'],
   [findPackBackendConsole, 'Pack backend code logs with createLogger from @abuddy/sdk/logger'],
   [findHostImports, "Pack code doesn't import the host's private @abuddy/host package; use @abuddy/sdk"],
+  [findPackOwnAliases, "A pack names its own modules with # subpath imports from its package.json (#generated/x, "
+    + '#features/x): a @/ path is TypeScript-only, no runtime reads it, and nothing resolves one for a pack any more'],
   [findAppImportsInPackTests, 'Pack unit tests run on the harness (@abuddy/testing) without the app; test host, API and CLI code in its own package'],
   [findUpwardImports, "Packages import only downward (@abuddy/ears imports no @abuddy package, @abuddy/sdk only @abuddy/ears, @abuddy/host only those two and never the API, the API and the renderer only the packages below them), and list each @abuddy package they import in their package.json"],
   [findLmdbImports, "Only @abuddy/ears/lmdb loads lmdb: the host and the API open the store through it, the engine's root and packs never load it"],
