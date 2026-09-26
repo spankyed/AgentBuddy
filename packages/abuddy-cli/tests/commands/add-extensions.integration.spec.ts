@@ -208,7 +208,7 @@ describe('abuddy add migration', () => {
     expect(readManifest().migrations).toBe('src/migrations/index.ts');
 
     await generateEntries([], pack);
-    expect(read('src/__generated__/pack-entry.ts')).toMatch(/import \{ migrations \} from '\.\.\/migrations\/index\.js';[\s\S]*\n {2}migrations,/);
+    expect(read('src/__generated__/pack-entry.ts')).toMatch(/import \{ migrations \} from '\.\.\/migrations\/index\.ts';[\s\S]*\n {2}migrations,/);
     const tsc = run(path.join(BIN, 'tsc'), ['--noEmit']);
     expect(tsc.code, tsc.output).toBe(0);
   });

@@ -132,8 +132,8 @@ export default definePackTestConfig();
 
 // Unit tests run against an in-memory EARS with the pack's repositories, seed hooks, seeders, systems,
 // services and steps, and its dependencies' runtimes (cached by abuddy build)
-const TEST_SETUP_TEMPLATE = `import { seedRuntime } from '#generated/seed-runtime';
-import { registration } from '#generated/pack-entry';
+const TEST_SETUP_TEMPLATE = `import { seedRuntime } from '#generated/seed-runtime.ts';
+import { registration } from '#generated/pack-entry.ts';
 import { setupPackTests } from '@abuddy/testing/harness';
 
 await setupPackTests({ seedRuntime, registration });
@@ -247,7 +247,7 @@ const EXAMPLE_TEST_TEMPLATE = (name: string) => {
   const pascalName = name.split('-').map(w => w[0].toUpperCase() + w.slice(1)).join('');
   return `import { describe, it, expect } from 'vitest';
 import { importSeeds } from '@abuddy/testing/harness';
-import { EARS, findAll } from '#generated/ears';
+import { EARS, findAll } from '#generated/ears.ts';
 
 describe('${name}', () => {
   it('should have a valid manifest', async () => {
@@ -369,7 +369,7 @@ export async function init(args: string[]) {
   console.log(`\nCreated pack "${name}" at ./${name}/`);
   console.log(`\nImport types in your seed code:`);
   console.log(`  import type { ActionMeta } from '@abuddy/sdk/build';`);
-  console.log(`  import type { Services, Z } from '#generated/services';`);
+  console.log(`  import type { Services, Z } from '#generated/services.ts';`);
   console.log(`\nNext steps:`);
   console.log(`  cd ${name}`);
   console.log(`  npm install`);

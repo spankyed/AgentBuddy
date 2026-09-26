@@ -369,7 +369,12 @@ function writeTsconfig(app: string, moduleResolution: 'bundler' | 'node16', publ
     compilerOptions: {
       target: 'ES2022', module: moduleResolution === 'node16' ? 'node16' : 'esnext', moduleResolution,
       strict: true, skipLibCheck: true, noEmit: true, types: ['node'],
-      ...(published ? {} : { customConditions: ['@abuddy/source'], allowImportingTsExtensions: true }),
+      // Every pack sets this, the scaffold included, and it is about the pack's *own* generated code rather
+      // than where @abuddy came from: codegen writes `./services.ts`, the file that is there
+      // (`goal-pack-imports-name-the-file.md`), so typechecking a generated facade needs it either way. The
+      // `published` split below stays what it was about — which copy of @abuddy the consumer resolves.
+      allowImportingTsExtensions: true,
+      ...(published ? {} : { customConditions: ['@abuddy/source'] }),
       ...(moduleResolution === 'bundler' ? { paths: { '#generated/*': ['./src/__generated__/*'] } } : {}),
     },
     // Every generated facade, not only the ones the consumer imports

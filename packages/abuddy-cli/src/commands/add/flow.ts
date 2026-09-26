@@ -3,7 +3,7 @@ import * as path from 'node:path';
 import { validateName, toLabel, writeIfNotExists, logCreated, hasFlag } from './templates';
 
 const FLOW_TEMPLATE = (label: string) => `import type { FlowDSL } from '@abuddy/sdk/build';
-import { entry, keepAlive } from '#generated/flow-helpers';
+import { entry, keepAlive } from '#generated/flow-helpers.ts';
 
 export default {
   "${label}": [

@@ -117,7 +117,7 @@ node -e '
   fs.writeFileSync("abuddy.json", JSON.stringify(m, null, 2) + "\n");
 '
 cat > src/seeds/flows/notes-heartbeat.ts <<'EOF'
-import { entry, keepAlive } from '#generated/flow-helpers';
+import { entry, keepAlive } from '#generated/flow-helpers.ts';
 
 export default {
   "Notes Heartbeat": [
@@ -170,7 +170,7 @@ export function template(params: Record<string, any>) {
 }
 TS
 cat > src/seeds/flows/notes-summary.ts <<'TS'
-import { entry, keepAlive, on, llm } from '#generated/flow-helpers';
+import { entry, keepAlive, on, llm } from '#generated/flow-helpers.ts';
 
 export default {
   "Notes Summary": [
@@ -185,7 +185,7 @@ TS
 cat > src/features/notes/be/services/digest.ts <<'TS'
 import { Output } from 'ai';
 import { z } from 'zod';
-import { services } from '#generated/services';
+import { services } from '#generated/services.ts';
 
 const Digest = z.object({ summary: z.string(), tags: z.array(z.string()) });
 
@@ -234,7 +234,7 @@ mkdir -p tests/seeds/flows tests/features/notes/be/services
 cat > tests/seeds/demo-notes.spec.ts <<'TS'
 import { describe, expect, it } from 'vitest';
 import { importSeeds } from '@abuddy/testing/harness';
-import { findAll } from '#generated/ears';
+import { findAll } from '#generated/ears.ts';
 import { findRelations } from '@abuddy/ears';
 
 describe('demo notes', () => {
@@ -258,7 +258,7 @@ TS
 cat > tests/features/notes/be/services/digest.spec.ts <<'TS'
 import { describe, expect, it } from 'vitest';
 import { mockInference } from '@abuddy/testing/harness';
-import { services } from '#generated/services';
+import { services } from '#generated/services.ts';
 
 describe('digest service', () => {
   it('digests a note from the structured output inference returns', async () => {
@@ -271,7 +271,7 @@ TS
 cat > tests/seeds/flows/notes-summary.spec.ts <<'TS'
 import { describe, expect, it } from 'vitest';
 import { importFlows, mockInference, importSeeds, startApp } from '@abuddy/testing/harness';
-import { entry, keepAlive, subflow } from '#generated/flow-helpers';
+import { entry, keepAlive, subflow } from '#generated/flow-helpers.ts';
 
 describe('notes summary flow', () => {
   it("runs on default-setup's brain and llm step with inference mocked", async () => {

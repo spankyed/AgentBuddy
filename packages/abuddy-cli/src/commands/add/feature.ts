@@ -32,7 +32,7 @@ export type Contract = {
 const SYSTEM = (name: string, camel: string, pascal: string) => `import { setup } from 'xstate';
 import { defineSystem } from '@abuddy/sdk/framework';
 // broadcastToPlugin is typed with the events each of this pack's plugins receives
-import { broadcastToPlugin } from '#generated/events';
+import { broadcastToPlugin } from '#generated/events.ts';
 import type { Contract } from './contract';
 
 export const ${camel}Spec = defineSystem<Contract>();
@@ -99,7 +99,7 @@ export type Outgoing${pascal}Events =
 
 const REPOSITORY = (camel: string) => `// EARS reads and writes for this feature. Declared in abuddy.json (features[].repositories) and
 // registered by the generated pack entry; systems and actions use them through
-// \`repository\` from '#generated/repository'. Typed query helpers come from '#generated/ears'.
+// \`repository\` from '#generated/repository.ts'. Typed query helpers come from '#generated/ears.ts'.
 export const ${camel}Queries = {};
 
 export const ${camel}Commands = {};
