@@ -213,6 +213,9 @@ npm run spec -- <target> # You don't say what the target is; it works that out:
                          # own `test`, so a pretest guard and its vitest config still apply; a root run has
                          # no such hook, so packages:ensure goes in front of it. The routing is data
                          # (scripts/lib/spec-plan.ts) and asserted by repo-checks' spec-plan.spec.ts
+                         # Where a spec belongs: its path under tests/ mirrors the source it covers, no
+                         # directory names a level or a cost half, and support dirs take a _ prefix
+                         # (docs/reference/test-inventory.md; repo-checks' spec-placement.spec.ts)
 npm run chain            # Before a merge: every check in dependency order, cold 190s and warm 27s.
                          # Reports each step's time and its slowest five tests, buffers its output and
                          # prints only a failing step's. It leaves out api:check, which typecheck's

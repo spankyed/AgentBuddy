@@ -126,6 +126,15 @@ Seeders: `__generated__/seeders.ts` exports `seeders` (the SDK's generic seeder 
 
 See `src/seeds/CLAUDE.md` for authoring details.
 
+## Tests
+
+A spec's path under `tests/` mirrors the source it covers: `src/features/brain/be/trigger-dedupe.ts` is
+covered by `tests/features/brain/be/trigger-dedupe.spec.ts`. No directory names a level, a cost half or a
+history — which half a spec runs in is its `.integration.spec.ts` suffix, decided by measured cost — and
+support directories take a `_` prefix. `repo-checks/tests/spec-placement.spec.ts` fails a directory here
+that names no directory under `src/`. The reference is
+[`docs/reference/test-inventory.md`](../../docs/reference/test-inventory.md).
+
 ## Flow steps
 
 Step definitions in `src/extensions/steps/`. Each step directory contains:

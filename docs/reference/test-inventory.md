@@ -41,11 +41,25 @@ measurement, which is why the band in `spec-cost.ts` exists.
 
 ## Where a spec lives
 
-Every package keeps its specs in `tests/`, and no package colocates. `@app/default-setup` had six under
-`src/` with an include whose comment read *"without this they are silently never run"*; they moved to
-`tests/unit/` and the include went with them. `scripts/lib/spec-cost.ts` still walks `src/` on purpose —
-nothing includes it now, so a colocated spec would never run, and the walk is what makes it show up as
-unrecorded instead of vanishing twice over.
+**A spec's path under `tests/` mirrors the source path it covers.** `src/features/brain/be/trigger-dedupe.ts`
+is covered by `tests/features/brain/be/trigger-dedupe.spec.ts`. Exactly, rather than collapsed, because
+exact is checkable and collapsing is a judgement call per file — `repo-checks/tests/spec-placement.spec.ts`
+fails a directory under `tests/` that names no directory under `src/`.
+
+Three consequences worth stating, because each was once decided the other way:
+
+- **A directory never denotes a level, a cost half, or a history.** No `unit/`, no `integration/`, no
+  `_hybrid/`. Which half a spec runs in is the `.integration.spec.ts` suffix and nothing else, decided by
+  measured cost; two mechanisms for one fact is how they drift apart.
+- **Support directories carry a `_` prefix** — `_support/` for helpers and fixtures. The prefix is what
+  tells a reader, and the guard, that it is not claiming to mirror anything.
+- **A spec covering several modules mirrors the entry point it drives**, not a new directory for things
+  that span two.
+
+No package colocates. `@app/default-setup` had six specs under `src/` with an include whose comment read
+*"without this they are silently never run"*; they moved and the include went with them.
+`scripts/lib/spec-cost.ts` still walks `src/` on purpose — nothing includes it now, so a colocated spec
+would never run, and the walk is what makes it show up as unrecorded instead of vanishing twice over.
 
 Two suites have an expensive half, selected by measured cost rather than by what a spec does:
 `@abuddy/cli` and `@app/repo-checks`, each with a `vitest.integration.config.ts` over
