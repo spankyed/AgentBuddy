@@ -1,6 +1,9 @@
 # Goal: a pack's test config is a call, not a copy
 
-> **Written in session** `1d53eb9c-d886-49f8-bc5a-90793d43315e` (Claude Code, 2026-09-26). Resume it with `claude -r 1d53eb9c-d886-49f8-bc5a-90793d43315e`.
+> **Done** (`c0f7b49de`..`edd6ab382` on `AS/alias-simplification`). The text below is the plan as written,
+> with its Decision 2 and its Open decision already corrected before implementation (`73ea2deab`). For what
+> a pack's config is now, see `docs/public-facing/testing.md`; for the rule that keeps it that way,
+> `repo-checks/tests/pack-test-config.spec.ts`.
 
 ```
 # Goal: a pack's test config is a call, not a copy
@@ -105,7 +108,7 @@ Measured 2026-09-26 with a three-line stub plugin and **default-setup's existing
 | the whole suite | 87 files / 720 tests | **87 / 720, unchanged** |
 
 Against **18s** for the whole suite, which is what `npm run spec -- <pack source>` runs today
-([`goal-spec-follows-the-graph.md`](../archive/goals/goal-spec-follows-the-graph.md)'s Outcome records why it
+([`goal-spec-follows-the-graph.md`](goal-spec-follows-the-graph.md)'s Outcome records why it
 runs anything at all: it used to run nothing and exit 0).
 
 ### Almost nothing renders, so almost nothing needs the real plugin
@@ -179,7 +182,7 @@ Add `definePackTestConfig` to `@abuddy/testing/vitest`: the `.vue` stub, `global
 (`tests/**/*.spec.ts`, less `tests/e2e/**` and any `_support/**`), the tier-1 timeouts and the data-dir
 wiring. No alias handling — Decision 2. `packages/default-setup/vitest.config.ts` becomes a call plus its own
 `_support` exclusion and, until
-[`goal-one-way-to-name-your-own-modules.md`](goal-one-way-to-name-your-own-modules.md) removes its `@/`
+[`goal-one-way-to-name-your-own-modules.md`](../../goals/goal-one-way-to-name-your-own-modules.md) removes its `@/`
 imports, its own `tsconfigPaths`. `npm run api:update` if the entry's surface moved, committed.
 
 **Done when:** `npx vitest related --run src/features/notes/be/system.ts` inside `packages/default-setup`
@@ -249,3 +252,54 @@ does as text. Mutation-check it by restating `globals` in one config by hand.
   sees it — `npm run packages:ensure` does it, and every entry point that triggers it is listed in that file.
 - **Don't relitigate settled decisions.** The two pools and why they cannot be one, a pack resolving `dist`,
   and where a spec lives are final.
+
+## Outcome (2026-09-26)
+
+| Phase | Status | Evidence |
+|---|---|---|
+| 1 — the function, and the built-in pack calls it | **done** | `c0f7b49de`. `related --run src/features/notes/be/system.ts` is 1 spec where it was `Install @vitejs/plugin-vue`; 87 files / 720 tests unchanged |
+| 2 — the fixture packs and the scaffold | **done** | `0bf5ec9ea`. `abuddy init` writes 4 lines where it wrote 18; external-pack 10 / 32 and 12 + 1 Playwright; `@abuddy/cli` 39 / 329 and 15 / 187; `test:packaged-authoring` green |
+| 3 — `spec` narrows inside a pack | **done** | `1fc522ed9`. 1–3 files in 2–6s against the whole suite's 87 and 18s |
+| 4 — the guard | **done** | `edd6ab382`. Three mutations, each caught |
+
+`npx vitest related` and `--changed` both work inside a pack now, which is what the whole thing turned on. No
+API report covers `@abuddy/testing`, so there was nothing to regenerate.
+
+### What the plan did not anticipate
+
+- **A guard had to follow the budget into the helper.** `suite-timeouts.spec.ts` reads every vitest config as
+  *text* — deliberately, because importing one creates a temp data dir — and requires each to declare its
+  tier's timeouts. The moment default-setup's config became a call, the property read as absent. It now reads
+  the helper's source too when a config delegates to it, helper first so a pack overriding a key still wins.
+  Two mutations pin it. This is the general shape to expect from consolidating anything: a check that reads
+  configs as data has to learn where the data moved.
+- **One CLI case had to change rather than move.** `harness-setup`'s isolate-off test string-replaced
+  `test: { include:` in the config text. It now writes a config that spreads the helper's result and overrides
+  two keys — which is both what a pack would do and the only way to override anything the helper decides, so
+  the case proves composition as well as the failure it was written for.
+
+### The conventional choices
+
+- **The helper excludes `tests/e2e/**` and `tests/_support/**` by default**, so no pack passes `exclude` at
+  all. The plan had default-setup keeping its own `_support` exclusion; making it a default meant one less
+  thing in every config, and the fixture pack's `e2e` exclusion disappeared for free.
+- **`isolatedDataDir` stays exported**, for a config the helper cannot express, and the docs say so.
+- **The guard's rule is "declares no `test` block"** rather than an enumeration of the keys the helper owns.
+  Blunter, and it fails on any escape rather than on a list someone has to keep current — with an exception
+  list that then records *which* pack escaped and why.
+- **The two CLI harness fixtures' inline configs moved too.** `harness-setup`'s was marked *"As `abuddy init`
+  scaffolds it"*, a claim that goes stale the moment the scaffold changes, which is the drift this goal is
+  about.
+
+### A lesson worth the line
+
+**Both halves of the Phase 4 guard were fooled by prose on their first mutation run.** The scaffolded template
+*mentions* `definePackTestConfig()` in the comment explaining it, so a template that had reverted to
+`defineConfig({ test: … })` still passed a `toContain` check; and `test:` written mid-line — exactly what
+spreading the helper's result looks like — was missed by a pattern anchored to the line start. Both now strip
+comments and match a call rather than a mention.
+
+That is twice in one day that a first-draft guard passed its own mutation for the wrong reason (the other was
+`doc-links`, which matched only `./`-prefixed links and so could not see the sibling links archiving
+produces). The mutation check is not a formality on a guard that reads text: **a text check tends to pass for
+the wrong reason, and the mutation is the only thing that says so.**

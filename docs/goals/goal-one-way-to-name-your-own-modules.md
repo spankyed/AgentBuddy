@@ -199,10 +199,10 @@ Add the `imports` entries the settled Open decision 1 names, mirrored in `paths`
 
 ### Phase 3 — the configs that re-implemented it
 
-> One line here is shared with [`goal-pack-test-config.md`](goal-pack-test-config.md), which rewrites
-> `packages/default-setup/vitest.config.ts` into a `definePackTestConfig()` call and keeps `tsconfigPaths`
-> beside it while `@/` still exists. If that goal has run, this phase removes that one line from the call
-> site; if it has not, it removes the plugin from the config as written. Nothing else overlaps: the two
+> One line here is shared with [`goal-pack-test-config.md`](../archive/goals/goal-pack-test-config.md), which
+> has run: `packages/default-setup/vitest.config.ts` is a `definePackTestConfig()` call that passes
+> `tsconfigPaths` beside it, with a comment naming this goal as what removes that. So this phase deletes one
+> line and its import from that file, not a plugin from a config it assembles. Nothing else overlaps — the two
 > goals' phases name no other file in common.
 
 Delete the `@/` branch from `packages/renderer/vite.config.ts`, and `vite-tsconfig-paths` from
