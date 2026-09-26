@@ -1,5 +1,5 @@
 /**
- * A pack's own-module specifiers that name no file, and what they should have said.
+ * The rule: an own-module specifier a pack wrote, and the file it should have named.
  *
  * A pack names its own modules two ways — the `#` subpath imports in its `package.json`, and a relative path
  * to a sibling — and either names the file that is there: `#generated/services.ts`, not
@@ -17,9 +17,12 @@
  * Vite and esbuild all resolve it. The `@abuddy` packages have named their `.ts` sources for as long
  * (`check:specifiers`, `findJsSpecifiers`).
  *
- * One implementation, two callers, because the rule is the same rule: `npm run check:specifiers` applies it
- * to the packs in this checkout, and `abuddy build` to every pack outside it. The two copies of a tsconfig
- * reader that drifted apart are why this is not written twice.
+ * **The rule is here; finding the specifiers is the caller's.** `npm run check:specifiers` applies this to
+ * the packs in this checkout and `abuddy build` to every pack outside it, and each already parses a pack's
+ * sources for other rules — so each hands its specifiers over and neither reimplements the rule. It was
+ * briefly the other way round, with a regex and a hand-written comment stripper in here: that reported a
+ * commented-out import as a real one whenever a regex literal earlier in the file held an unbalanced quote,
+ * and read no `vi.mock('./x')` at all. A syntax tree has neither problem, and both callers had one already.
  */
 import * as fs from 'node:fs';
 import * as path from 'node:path';
@@ -55,91 +58,35 @@ function fileAt(base: string): string | undefined {
   return undefined;
 }
 
-/** A pack's source: TypeScript and SFCs, whose `<script>` blocks import the same way. `.d.ts` declares, and imports nothing of the pack's. */
-const SOURCE_FILE = /(?<!\.d)\.(ts|tsx|mts|cts)$|\.vue$/;
-/** Every quoted `#…` in a file: a `#` string in a pack's source is a specifier, whatever syntax reaches it */
-const SUBPATH_SPECIFIER = /(['"])(#[^'"\s]+)\1/g;
-/**
- * A relative specifier, in import position only.
- *
- * `#` needs no context — nothing else in a pack's source starts a string that way — but `'./media'` is as
- * likely to be a path as a specifier, so this one reads the syntax around it.
- */
-const RELATIVE_SPECIFIER = /(?:\bfrom\s*|\bimport\s*\(\s*|\brequire\s*\(\s*|\bimport\s+)(['"])(\.{1,2}\/[^'"]+)\1/g;
-
-/**
- * The code with its comments blanked out, character for character, so an offset still points where it did.
- *
- * A commented-out import is not an import: five of them in default-setup name a module that has since moved
- * or gone, and a check that reported those would be asking for a comment to be kept resolvable. Blanking
- * rather than deleting keeps every line number and match index the same as in the file on disk.
- */
-function withoutComments(code: string): string {
-  const out = [...code];
-  let i = 0;
-  const blank = (from: number, to: number) => { for (let k = from; k < to; k++) if (out[k] !== '\n') out[k] = ' '; };
-  while (i < code.length) {
-    const two = code.slice(i, i + 2);
-    if (two === '//') { const end = code.indexOf('\n', i); blank(i, end === -1 ? code.length : end); i = end === -1 ? code.length : end; continue; }
-    if (two === '/*') { const end = code.indexOf('*/', i + 2); blank(i, end === -1 ? code.length : end + 2); i = end === -1 ? code.length : end + 2; continue; }
-    const quote = code[i];
-    if (quote === '"' || quote === "'" || quote === '`') {
-      i += 1;
-      while (i < code.length && code[i] !== quote) i += code[i] === '\\' ? 2 : 1;
-      i += 1;
-      continue;
-    }
-    i += 1;
-  }
-  return out.join('');
-}
-
-function* sourceFiles(dir: string): Generator<string> {
-  for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
-    if (entry.name === 'node_modules') continue;
-    const full = path.join(dir, entry.name);
-    if (entry.isDirectory()) yield* sourceFiles(full);
-    else if (entry.isFile() && SOURCE_FILE.test(entry.name)) yield full;
-  }
+/** One specifier a pack's source names, as the caller's reader found it: the file is relative to the pack */
+export interface OwnModuleSpecifier {
+  file: string;
+  line: number;
+  specifier: string;
 }
 
 /**
- * `file:line: specifier -> what it should say`, one per own-module specifier that names no file.
+ * `file:line: specifier -> what it should say`, one per specifier in `found` that names no file.
+ *
+ * Every specifier a reader found may be passed, `@abuddy/sdk` and `vue` included: what counts as one of the
+ * pack's own modules is this rule's to know, not the reader's.
  *
  * Two forms fail the same way and get the same message: nothing (`#generated/events`), and the emitted
  * extension of a TypeScript module (`#generated/events.js`), which names a file a pack never produces — a
  * pack ships one bundle, not a module per source file.
  *
- * Generated files are included: `abuddy generate-entries` writes them and writes extensions, so one that
- * lacks them means the pack was generated by an older CLI and `abuddy build` regenerates it anyway — saying
- * so is more use than skipping it.
- *
- * A `#` string that resolves to nothing is left alone rather than reported. Only the pack's declared
- * patterns are considered, so a hex colour (`'#3B82F6'`) is not a specifier, and a `#` name pointing at a
+ * A specifier that resolves to nothing is left alone rather than reported. Only the pack's declared patterns
+ * are considered for a `#` name, so a hex colour (`'#3B82F6'`) is not a specifier, and a name pointing at a
  * file that does not exist is a resolution error the bundler reports with more context than this could.
  */
-export function ownModuleSpecifierProblems(packDir: string, dirs: readonly string[] = ['src']): string[] {
+export function ownModuleProblems(packDir: string, found: Iterable<OwnModuleSpecifier>): string[] {
   const imports = readSubpathImports(packDir);
-  if (Object.keys(imports).length === 0) return [];
   const problems: string[] = [];
-  for (const dir of dirs) {
-    const root = path.join(packDir, dir);
-    if (!fs.existsSync(root)) continue;
-    for (const file of sourceFiles(root)) {
-      const code = withoutComments(fs.readFileSync(file, 'utf-8'));
-      const where = path.relative(packDir, file).split(path.sep).join('/');
-      for (const [regex, nameFor] of [
-        [SUBPATH_SPECIFIER, (s: string) => fileNamedBy(packDir, imports, s)],
-        [RELATIVE_SPECIFIER, (s: string) => fileNamedAt(path.resolve(path.dirname(file), s), s)],
-      ] as const) {
-        for (const match of code.matchAll(regex)) {
-          const specifier = match[2] as string;
-          const named = nameFor(specifier);
-          if (named === undefined) continue;
-          problems.push(`${where}:${code.slice(0, match.index).split('\n').length}: '${specifier}' names no file — write '${named}'`);
-        }
-      }
-    }
+  for (const { file, line, specifier } of found) {
+    const named = specifier.startsWith('#') ? namedFileFor(packDir, imports, specifier)
+      : /^\.{1,2}\//.test(specifier) ? namedFileAt(path.resolve(packDir, path.dirname(file), specifier), specifier)
+      : undefined;
+    if (named !== undefined) problems.push(`${file}:${line}: '${specifier}' names no file — write '${named}'`);
   }
   return problems;
 }
@@ -148,20 +95,21 @@ export function ownModuleSpecifierProblems(packDir: string, dirs: readonly strin
 const TRAILING_EXTENSION = new RegExp(`(${MODULE_EXTENSIONS.join('|')})$`.replace(/\./g, '\\.'));
 
 /**
- * What the specifier should have said, or undefined when it already names a file, or names nothing this pack
- * declares.
+ * What a `#` specifier should have said, or undefined when it already names a file, or names nothing this
+ * pack declares.
  *
- * Exact patterns first, as Node resolves them: an exact pattern's target is a file path in the manifest, so
- * whether it is there is the manifest's business rather than the specifier's.
+ * Node's precedence, not the manifest's key order: an exact pattern first, then the *longest* matching
+ * wildcard. Taking them in key order named the wrong file for a pack declaring both `#gen/*` and
+ * `#gen/deep/*`, advice that would not have resolved either.
  */
-function fileNamedBy(packDir: string, imports: Record<string, string>, specifier: string): string | undefined {
+export function namedFileFor(packDir: string, imports: Record<string, string>, specifier: string): string | undefined {
   if (imports[specifier] !== undefined) return undefined;
-  for (const [pattern, target] of Object.entries(imports)) {
-    if (!pattern.endsWith('/*') || !target.endsWith('/*')) continue;
+  const wildcards = Object.entries(imports).filter(([pattern, target]) => pattern.endsWith('/*') && target.endsWith('/*'))
+    .sort(([a], [b]) => b.length - a.length);
+  for (const [pattern, target] of wildcards) {
     const prefix = pattern.slice(0, -1);
     if (!specifier.startsWith(prefix)) continue;
-    const named = fileNamedAt(path.resolve(packDir, target.slice(0, -1) + specifier.slice(prefix.length)), specifier);
-    if (named !== undefined) return named;
+    return namedFileAt(path.resolve(packDir, target.slice(0, -1) + specifier.slice(prefix.length)), specifier);
   }
   return undefined;
 }
@@ -171,7 +119,7 @@ function fileNamedBy(packDir: string, imports: Record<string, string>, specifier
  * nothing is there. A specifier that resolves to nothing is the bundler's to report, with more context than
  * this has.
  */
-function fileNamedAt(mapped: string, specifier: string): string | undefined {
+function namedFileAt(mapped: string, specifier: string): string | undefined {
   if (isFile(mapped)) return undefined;
   const base = mapped.replace(TRAILING_EXTENSION, '');
   const resolved = fileAt(base);

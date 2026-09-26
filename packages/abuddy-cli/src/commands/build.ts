@@ -14,7 +14,7 @@ import {
 import { findFEEntry, bundlePackFE } from '../build/fe-bundler';
 import { ensureCheckoutPackages } from '../build/checkout-packages.ts';
 import { internalImportProblems } from '../build/internal-imports-gate.ts';
-import { ownModuleSpecifierProblems } from '@abuddy/host/build/own-module-specifiers';
+import { ownModuleSpecifierProblems } from '../build/own-module-specifiers-gate.ts';
 import { bundlePackRuntime, bundlePackSeedCompilers, bundlePackSeedRuntime, bundlePackStepBuild, SEED_RUNTIME_FILE } from '../build/be-bundler';
 import { bundleDslDefs, DEFS_DIR } from '../build/dsl-defs';
 import { bundlePackTypes } from '../build/types-bundler';

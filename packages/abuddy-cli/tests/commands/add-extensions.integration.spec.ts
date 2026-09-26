@@ -11,7 +11,7 @@ import { addArtifact } from '../../src/commands/add/artifact';
 import { addBlock } from '../../src/commands/add/block';
 import { addMigration } from '../../src/commands/add/migration';
 import { generateEntries } from '../../src/commands/generate-entries';
-import { ownModuleSpecifierProblems } from '@abuddy/host/build/own-module-specifiers';
+import { ownModuleSpecifierProblems } from '../../src/build/own-module-specifiers-gate.ts';
 
 const REPO_ROOT = path.resolve(__dirname, '..', '..', '..', '..');
 const BIN = path.join(REPO_ROOT, 'node_modules', '.bin');

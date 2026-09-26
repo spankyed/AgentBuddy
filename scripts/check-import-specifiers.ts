@@ -8,7 +8,7 @@ import ts from 'typescript';
 import { parse as parseSfc } from '@vue/compiler-sfc';
 import { SHARED_INSTANCE_PACKAGES } from '@abuddy/host/build/shared-deps';
 import { packageName } from '@abuddy/host/build/specifiers';
-import { ownModuleSpecifierProblems } from '@abuddy/host/build/own-module-specifiers';
+import { ownModuleProblems, type OwnModuleSpecifier } from '@abuddy/host/build/own-module-specifiers';
 
 const repoRoot = path.resolve(import.meta.dirname, '..');
 const CHECKED_DIRS = [
@@ -349,9 +349,30 @@ export function findExtensionlessOwnModules(
   root = repoRoot,
   templates = CLI_TEMPLATE_SOURCES,
 ): string[] {
-  const inPacks = [...repoPacks(dirs)].flatMap(([packDir, subdirs]) =>
-    ownModuleSpecifierProblems(path.join(root, packDir), subdirs).map((problem) => `${packDir}/${problem}`));
+  const inPacks = [...repoPacks(dirs)].flatMap(([packDir, subdirs]) => {
+    const pack = path.join(root, packDir);
+    return ownModuleProblems(pack, packSpecifiers(pack, subdirs)).map((problem) => `${packDir}/${problem}`);
+  });
   return [...inPacks, ...templateProblems(templates, root)];
+}
+
+/** Every specifier the pack's `dirs` name, read the way every other rule here reads a file: as a syntax tree */
+function packSpecifiers(pack: string, dirs: readonly string[]): OwnModuleSpecifier[] {
+  const found: OwnModuleSpecifier[] = [];
+  for (const dir of dirs) {
+    const full = path.join(pack, dir);
+    if (!fs.existsSync(full)) continue;
+    // A directory or a single file, as `packFiles` takes: a caller naming one file should not read as a walk
+    for (const file of fs.statSync(full).isFile() ? [full] : [...sourceFiles(full)]) {
+      const where = path.relative(pack, file).split(path.sep).join('/');
+      for (const { content, lineOffset } of codeBlocks(file)) {
+        for (const { text, line } of specifiers(content, file, true)) {
+          found.push({ file: where, line: line + lineOffset, specifier: text });
+        }
+      }
+    }
+  }
+  return found;
 }
 
 /** A specifier for one of the pack's own modules: its `#` imports, or a sibling by relative path */
