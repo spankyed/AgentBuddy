@@ -6,6 +6,7 @@ import type { Plugin as VitePlugin, Rollup } from 'vite';
 import { init as initModuleLexer, parse as parseModule } from 'es-module-lexer';
 import { getSharedFeDeps, unresolvedSubpathPackages, getSdkFeModules, getUiFeModules, sharedInstancePackage } from '@abuddy/host/build/shared-deps';
 import { errorMessage } from '@abuddy/sdk/utils/pure';
+import { readTsconfigAliases } from './tsconfig-aliases.ts';
 
 const EXTERNAL_PREFIX = '\0pack-external:';
 
@@ -301,30 +302,6 @@ export function findFEEntry(packDir: string): string | null {
   if (fs.existsSync(generatedEntry)) return generatedEntry;
 
   return null;
-}
-
-function readTsconfigAliases(packDir: string): Record<string, string> {
-  let aliases: Record<string, string> = {};
-  const tsconfigPath = path.join(packDir, 'tsconfig.json');
-  if (!fs.existsSync(tsconfigPath)) return aliases;
-  try {
-    const raw = fs.readFileSync(tsconfigPath, 'utf-8').replace(/\/\/.*/g, '').replace(/,\s*([}\]])/g, '$1');
-    const tsconfig = JSON.parse(raw);
-    const paths: Record<string, string[]> = tsconfig.compilerOptions?.paths ?? {};
-    for (const [pattern, targets] of Object.entries(paths)) {
-      if (!pattern.endsWith('/*') || !targets[0]?.endsWith('/*')) continue;
-      const alias = pattern.slice(0, -2);
-      const target = targets[0].slice(0, -2);
-      aliases[alias] = path.resolve(packDir, target);
-    }
-  } catch (err) {
-    // The file is there, so this is a real problem: every `compilerOptions.paths` alias is lost and
-    // the imports using one fail later as "can't resolve", pointing nowhere near the cause. Not a
-    // hard failure — a pack with no aliases still builds — but never silent.
-    aliases = {};
-    console.warn(`! FE bundle: couldn't read ${tsconfigPath}, so its compilerOptions.paths aliases are ignored: ${errorMessage(err)}`);
-  }
-  return aliases;
 }
 
 /**

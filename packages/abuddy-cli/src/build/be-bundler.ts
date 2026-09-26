@@ -1,5 +1,6 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
+import { readTsconfigAliases } from './tsconfig-aliases.ts';
 import ts from 'typescript';
 import { APP_ONLY_EXPORTS, SHARED_DEPS, sharedInstanceExternals } from '@abuddy/host/build/shared-deps';
 import { SEED_COMPILERS_FILE } from '@abuddy/sdk/build';
@@ -242,30 +243,6 @@ function stubFrontendAssetsPlugin(): import('esbuild').Plugin {
       build.onLoad({ filter: /.*/, namespace: 'frontend-stub' }, () => ({ contents: 'module.exports = {};', loader: 'js' }));
     },
   };
-}
-
-/** A pack tsconfig's `paths` as esbuild aliases: `{ "#generated/*": "src/__generated__/*" }` → absolute dirs. */
-export function readTsconfigAliases(packDir: string): Record<string, string> {
-  const aliases: Record<string, string> = {};
-  const tsconfigPath = path.join(packDir, 'tsconfig.json');
-  if (!fs.existsSync(tsconfigPath)) return aliases;
-  try {
-    // TypeScript's own reader, not a regex: a `//` inside a string is the common case here
-    // (`"$schema": "https://…"`), and stripping to end of line there breaks the parse — which the
-    // catch below swallows, dropping every path alias in silence.
-    const { config, error } = ts.readConfigFile(tsconfigPath, file => fs.readFileSync(file, 'utf-8'));
-    if (error) return aliases;
-    // And TypeScript's own merge, so a pack whose tsconfig extends a shared base gets the base's paths.
-    // Reading one file answers for one file; `extends` is a chain only the compiler knows how to walk.
-    const parsed = ts.parseJsonConfigFileContent(config, ts.sys, packDir);
-    // Where a relative target is relative: `baseUrl` when the config sets one, the pack otherwise
-    const from = parsed.options.baseUrl ?? packDir;
-    for (const [pattern, targets] of Object.entries(parsed.options.paths ?? {})) {
-      if (!pattern.endsWith('/*') || !targets[0]?.endsWith('/*')) continue;
-      aliases[pattern.slice(0, -2)] = path.resolve(from, targets[0].slice(0, -2));
-    }
-  } catch {}
-  return aliases;
 }
 
 function readSubpathImports(packDir: string): Record<string, string> {

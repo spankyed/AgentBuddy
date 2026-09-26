@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
-import { readTsconfigAliases } from '../../src/build/be-bundler';
+import { readTsconfigAliases } from '../../src/build/tsconfig-aliases';
 
 let packDir: string;
 
@@ -50,6 +50,23 @@ describe('readTsconfigAliases', () => {
       compilerOptions: { paths: { '#generated/*': ['./src/__generated__/*'] } },
     }));
 
+    expect(readTsconfigAliases(packDir)).toEqual({ '#generated': path.join(packDir, 'src/__generated__') });
+  });
+
+  // Ignoring `baseUrl` does not lose an alias, it produces a wrong one — every import through it resolving
+  // against the pack root instead of wherever the pack said. Nothing covered it until the two copies merged.
+  it('resolves a relative target against baseUrl when the config sets one', () => {
+    writeTsconfig(JSON.stringify({
+      compilerOptions: { baseUrl: './src', paths: { '#generated/*': ['./__generated__/*'] } },
+    }));
+    expect(readTsconfigAliases(packDir)).toEqual({ '#generated': path.join(packDir, 'src/__generated__') });
+  });
+
+  it('reads a tsconfig with a block comment, which only the compiler strips', () => {
+    writeTsconfig(`{
+      /* the pack's compiler settings */
+      "compilerOptions": { "paths": { "#generated/*": ["./src/__generated__/*"] } }
+    }`);
     expect(readTsconfigAliases(packDir)).toEqual({ '#generated': path.join(packDir, 'src/__generated__') });
   });
 

@@ -141,17 +141,27 @@ describe('pack FE Tailwind setup', () => {
     expect(result.error).toContain('fe.bundleUi');
   });
 
-  it('warns about a tsconfig whose aliases it cannot read', async () => {
+  /**
+   * This case used to be a block comment, because the alias reader's line-comment stripping could not parse
+   * one and the assertion was that the build carried on without the aliases. `readTsconfigAliases` reads
+   * JSONC now (`tsconfig-aliases.spec.ts` covers what it reads), so the case had to become a tsconfig no
+   * reader can make sense of — and that turns out not to warn-and-continue at all: **Vite reads the pack's
+   * tsconfig itself**, and fails the build with a better message than the warning.
+   *
+   * So the honest property is that an unparseable tsconfig is reported twice and does not build. Keeping the
+   * warning is still worth it: it fires first, and it names the aliases as what was lost, which vite's
+   * syntax error does not.
+   */
+  it('reports a tsconfig it cannot read, and does not build the pack', async () => {
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
     const packDir = makePack({});
-    // Valid JSONC that the alias reader's line-comment stripping can't parse, so its paths are lost
-    fs.writeFileSync(
-      path.join(packDir, 'tsconfig.json'),
-      '{ /* block comment */ "compilerOptions": { "paths": { "#gen/*": ["./src/*"] } } }',
-    );
+    fs.writeFileSync(path.join(packDir, 'tsconfig.json'), '{ "compilerOptions": { not json');
+
     const result = await build(packDir);
-    expect(result.success).toBe(true);
+
     expect(warn.mock.calls.flat().join('\n')).toContain('tsconfig.json');
+    expect(result.success, 'vite parses the same file and refuses it').toBe(false);
+    expect(String((result as { error?: unknown }).error)).toContain('tsconfig.json');
   });
 });
 
