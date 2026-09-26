@@ -24,7 +24,15 @@ const REPO_SCRIPTS = path.join(REPO_ROOT, 'scripts') + path.sep;
  * A spec whose correctness depends on a module under the repo's `scripts/`.
  *
  * The import half resolves each relative specifier rather than matching `/scripts/` as text, because
- * `@abuddy/ui` has a `scripts/` of its own and a spec about *its* export map is not a repo check. The
+ * `@abuddy/ui` has a `scripts/` of its own and a spec about *its* export map is not a repo check.
+ *
+ * **What it cannot see is whether the import is a subject or a tool**, and that is where it has been wrong
+ * once. `published-sdk-peers.spec.ts` imported `packageName` from `scripts/lib/published-imports.ts` and was
+ * placed here by this rule, but it reads the built `dist` of `@abuddy/sdk` and asserts what its declarations
+ * import — the script was a helper, the published SDK was the subject, and it belongs in
+ * `@app/publish-checks`. Its sibling `published-imports.spec.ts` stays, because that one tests
+ * `rewriteDeclarationExtensions` against inline fixtures and really is about the script. 17 of 18 were right,
+ * which is the rule earning its place; the 18th is why a placement is worth reading before it is trusted. The
  * second half is for a spec that never imports one because it runs it as a process, which is how
  * `with-source` and `import-specifiers-script` reach their subject.
  */
@@ -43,6 +51,10 @@ const namesRepoScripts = (file: string): boolean => {
  * tell apart, since both spell the path the same way.
  */
 const NOT_A_REPO_CHECK: Record<string, string> = {
+  'packages/publish-checks/tests/published-sdk-peers.spec.ts':
+    'it imports `packageName` from scripts/lib/published-imports.ts as a helper, but reads the built dist of '
+    + '@abuddy/sdk and asserts what its declarations import: the script is the tool, the published SDK is the '
+    + 'subject. This rule placed it here once and was wrong — see the note above',
   'packages/abuddy-cli/tests/build/package-freshness.spec.ts':
     'its subject is the freshness rule in @abuddy/host/build/packages-built; it asserts that BUILD_UNITS '
     + 'names the build scripts among its inputs, and never reads them',

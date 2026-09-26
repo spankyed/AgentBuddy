@@ -21,7 +21,9 @@ of that:
 
 `scripts/spec.ts` now routes `scripts/` and any `vitest.config.ts` here, and
 `tests/repo-check-boundary.spec.ts` holds the other half: a spec that reads the repo's scripts belongs in
-this package, and this package holds nothing else — bar the layout checks its `LAYOUT_CHECKS` names, which
+this package, and this package holds nothing else — with one caveat the rule cannot see, that an import can
+be a *tool* rather than a subject. `published-sdk-peers` was placed here by it and moved to
+`@app/publish-checks` once read: it imports a script helper but asserts about the built SDK — bar the layout checks its `LAYOUT_CHECKS` names, which
 read the tree and so have no `scripts/` module to import.
 
 The same shape has since turned up twice more, which is why `tests/spec-placement.spec.ts` generalises it:
@@ -51,7 +53,7 @@ names every workspace that has a second config.
 | `chain-inputs` | every step's cache key: that the inputs cover the tracked tree, that a pool reads what its projects read, and that the two literal lists (`vitest.config.ts` projects, `test:integration`'s workspaces) match what they are derived from |
 | `suite-split`, `suite-timeouts`, `slow-tests` | the recorded spec costs, the per-tier timeout budgets, and the slow-test report |
 | `orchestrator-exit`, `with-source`, `import-specifiers-script` | the scripts themselves: no `process.exit()` in one that reprints captured output, the `@abuddy/source` wrapper, and `check-import-specifiers` run as a process |
-| `import-specifiers`, `component-contracts`, `published-imports`, `published-sdk-peers`, `api-report-stamp` | the analysis scripts behind `check:specifiers`, the component reports and the API stamp |
+| `import-specifiers`, `component-contracts`, `published-imports`, `api-report-stamp` | the analysis scripts behind `check:specifiers`, the component reports and the API stamp |
 | `unit-pool` | the pool's per-project cache: what a project's freshness is measured against |
 | `repo-check-boundary`, `spec-placement` | where a spec belongs: this package's own boundary, that every package with source has a suite, and that no spec reaches into another package's tree |
 

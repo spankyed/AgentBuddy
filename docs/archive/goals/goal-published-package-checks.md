@@ -191,7 +191,7 @@ and stay put under Decision 1, so wherever the five go, the fixture must be reac
 name. Every other answer paid for that badly: promoting it to `@abuddy/testing` ships repo-internal packing
 tooling in a package pack authors install; distributing the five gives `@abuddy/sdk` and `@abuddy/ui` an
 expensive pack-and-compile half each, where both suites are currently pure and fast; and folding them into
-`@app/repo-checks` widens that package a third time, after `scripts/` and layout. A workspace is what exists
+`@app/repo-checks` widens that package again, after the one widening it already carries for layout checks. A workspace is what exists
 so two packages can share a module by name, and it keeps five specs that share one expensive fixture in one
 place.
 
@@ -344,7 +344,7 @@ specs rather than seven.
 **The first recommendation was wrong and the user rejected it.** It distributed the specs to `@abuddy/sdk`
 and `@abuddy/ui` and promoted the fixture to `@abuddy/testing` — which would have shipped repo-internal
 packing tooling in a package pack authors install, given two pure fast suites an expensive
-pack-and-compile half each, and widened `repo-checks` a third time. All three costs were stated and waved
+pack-and-compile half each, and widened `repo-checks` again. All three costs were stated and waved
 through in the same message. What decided it in the end was the fixture, not the specs: three CLI specs
 need it and stay, so it has to be reachable from two packages by name, and a workspace is what exists for
 that.

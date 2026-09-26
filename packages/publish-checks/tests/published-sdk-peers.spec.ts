@@ -10,7 +10,7 @@ import { packagesBuiltOrRefuse, REPO_ROOT } from '@abuddy/host/build/packages-bu
 import { packageName } from '../../../scripts/lib/published-imports.ts';
 
 // Skips without built packages, and refuses rather than reading a stale `dist`
-const PACKAGES_BUILT = packagesBuiltOrRefuse('npm run packages:build (or npm test -w @app/repo-checks, which builds them)');
+const PACKAGES_BUILT = packagesBuiltOrRefuse('npm run packages:build (or npm test -w @app/publish-checks, which builds them)');
 
 const SDK = path.join(REPO_ROOT, 'packages', 'abuddy-sdk');
 
