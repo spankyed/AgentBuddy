@@ -42,7 +42,7 @@ const PACK: Record<string, string> = {
   'src/system.ts': [
     "import { setup } from 'xstate';",
     "import { defineSystem } from '@abuddy/sdk/framework';",
-    "import type { Contract } from './system.contract.js';",
+    "import type { Contract } from './system.contract.ts';",
     'export const tagsSpec = defineSystem<Contract>();',
     'const entry = { spec: tagsSpec, machine: setup({ types: tagsSpec.types }).createMachine({ id: "tags" }) };',
     'export default entry;',
@@ -50,7 +50,7 @@ const PACK: Record<string, string> = {
   // Inferred types that name SDK declarations: the declaration emit prints them from whichever copy resolved
   'src/tags.ts': [
     "import { z } from 'zod';",
-    "import { qx, findAll } from '#generated/ears.js';",
+    "import { qx, findAll } from '#generated/ears.ts';",
     "export const TagInput = z.object({ name: z.string(), color: z.enum(['red', 'blue']).optional() });",
     'export const tagsService = {',
     "  query: () => qx('Tag'),",
@@ -59,7 +59,7 @@ const PACK: Record<string, string> = {
     '};',
   ].join('\n'),
   'src/repository.ts': [
-    "import { findAll, EARS } from '#generated/ears.js';",
+    "import { findAll, EARS } from '#generated/ears.ts';",
     'export const tagQueries = { names: () => findAll(EARS.Entity.Tag).map((tag) => tag.name), ids: () => findAll(EARS.Entity.Tag).map((tag) => tag.id) };',
   ].join('\n'),
 };

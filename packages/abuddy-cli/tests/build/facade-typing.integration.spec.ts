@@ -43,7 +43,7 @@ const BASE_PACK = {
   'src/system.ts': [
     "import { setup } from 'xstate';",
     "import { defineSystem } from '@abuddy/sdk/framework';",
-    "import type { Contract } from './system.contract.js';",
+    "import type { Contract } from './system.contract.ts';",
     'export const threadsSpec = defineSystem<Contract>();',
     'const entry = { spec: threadsSpec, machine: setup({ types: threadsSpec.types }).createMachine({ id: "threads" }) };',
     'export default entry;',
@@ -62,7 +62,7 @@ const BASE_PACK = {
   'src/inbox.ts': [
     "import { setup } from 'xstate';",
     "import { defineSystem } from '@abuddy/sdk/framework';",
-    "import type { Contract } from './inbox.contract.js';",
+    "import type { Contract } from './inbox.contract.ts';",
     'export const inboxSpec = defineSystem<Contract>();',
     'const entry = { spec: inboxSpec, machine: setup({ types: inboxSpec.types }).createMachine({ id: "inbox" }) };',
     'export default entry;',
@@ -70,7 +70,7 @@ const BASE_PACK = {
   'src/inbox-plugin.ts': "import type { Plugin } from '@abuddy/sdk/fe';\nexport default { id: 'inbox' } as unknown as Plugin;\n",
   'src/search.ts': 'export const searchService = { query: (q: string): string[] => [q] };\n',
   'src/repository.ts': [
-    "import { findAll, EARS } from '#generated/ears.js';",
+    "import { findAll, EARS } from '#generated/ears.ts';",
     'export const tagQueries = { names: (): string[] => findAll(EARS.Entity.Tag).map((tag) => tag.name) };',
   ].join('\n'),
 };
@@ -96,7 +96,7 @@ const APP_PACK = {
   'src/system.ts': [
     "import { setup } from 'xstate';",
     "import { defineSystem } from '@abuddy/sdk/framework';",
-    "import type { Contract } from './system.contract.js';",
+    "import type { Contract } from './system.contract.ts';",
     'export const memosSpec = defineSystem<Contract>();',
     'const entry = { spec: memosSpec, machine: setup({ types: memosSpec.types }).createMachine({ id: "memos" }) };',
     'export default entry;',
@@ -104,10 +104,10 @@ const APP_PACK = {
 };
 
 const CONSUMER = `
-import { EARS as PackEARS, qx, tx, findById, findAll, createEntity, type EntityShape, type EntityName } from '#generated/ears.js';
-import { broadcastToPlugin, sendToSystem } from '#generated/events.js';
-import { services } from '#generated/services.js';
-import { repository } from '#generated/repository.js';
+import { EARS as PackEARS, qx, tx, findById, findAll, createEntity, type EntityShape, type EntityName } from '#generated/ears.ts';
+import { broadcastToPlugin, sendToSystem } from '#generated/events.ts';
+import { services } from '#generated/services.ts';
+import { repository } from '#generated/repository.ts';
 import type { EARS } from '@abuddy/sdk';
 type IsAny<T> = 0 extends 1 & T ? true : false;
 type Expect<T extends true> = T;
@@ -301,8 +301,8 @@ async function buildPacks(published: boolean): Promise<string> {
  * Incidents), so these positions are checked directly. `|name|` marks a position in the source.
  */
 const COMPLETIONS = `
-import { EARS, qx, getAttr, getAttrs, findAll, findWithFields, findByIdWithFields, createEntity } from '#generated/ears.js';
-import { sendToSystem } from '#generated/events.js';
+import { EARS, qx, getAttr, getAttrs, findAll, findWithFields, findByIdWithFields, createEntity } from '#generated/ears.ts';
+import { sendToSystem } from '#generated/events.ts';
 declare const memoId: EARS.EntityId<'Memo'>;
 sendToSystem('|systemId|', { type: 'CLEAR_MEMOS' });
 sendToSystem('memos', { type: '|eventType|' });

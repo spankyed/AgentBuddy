@@ -49,7 +49,7 @@ const baseManifest = {
 const appManifest = { id: 'app-pack', name: 'App', version: '1.0.0', dependencies: { 'base-pack': '*' } } as unknown as PackManifest;
 
 const CONSUMER = `
-import { choose, entry, every, pour } from './__generated__/flow-helpers.js';
+import { choose, entry, every, pour } from './__generated__/flow-helpers.ts';
 
 export const tracks = [
   entry([pour('espresso', { size: 'large', label: 'pour' })]),
@@ -73,7 +73,7 @@ beforeAll(async () => {
     'src/steps/choose/types.ts': "import type { DSLStepNode } from '@abuddy/sdk/build';\nexport interface DSLChooseOption { when: string; steps: DSLStepNode[] }\n",
     'src/steps/choose/helpers.ts': [
       "import type { DSLStepNode } from '@abuddy/sdk/build';",
-      "import type { DSLChooseOption } from './types.js';",
+      "import type { DSLChooseOption } from './types.ts';",
       "export function choose(options: DSLChooseOption[]): DSLStepNode { return { type: 'choose', options }; }",
     ].join('\n'),
     'src/steps/tick/build.ts': "export const tickTriggerBuild = { type: 'tick', kind: 'trigger', trigger: { trackField: 'every' } };\n",
