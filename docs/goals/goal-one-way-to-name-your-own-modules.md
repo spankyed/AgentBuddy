@@ -146,6 +146,11 @@ Final.
    `@abuddy/cli` and both depend on host, and it needs only `node:fs` and `node:path` — no new dependency
    anywhere. The api's `resolve-at-aliases` plugin is replaced by a `#`-extension plugin over it, and the
    CLI's BE bundler calls the same function.
+
+   **Skip the move if [`goal-pack-imports-name-the-file.md`](goal-pack-imports-name-the-file.md) is also
+   planned.** That goal has pack code write its extensions, after which nothing needs the function at all and
+   it is deleted rather than moved — measured, `.ts` and `.js` specifiers resolve in `tsc`, Vite and esbuild
+   alike, and only the extensionless form has to be taught. Move it only if this goal runs alone.
 5. **A check refuses a new `@/`** in a pack's source or tests (`check:specifiers`). Without it this reverts
    one import at a time, and 824 edits are not something to do twice.
 6. **Nothing about the scaffold's layout changes.** A scaffolded pack already uses `#generated` and nothing
