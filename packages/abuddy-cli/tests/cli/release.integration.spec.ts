@@ -265,7 +265,7 @@ describe('runRelease', () => {
     expect(git(root, 'log', '-1', '--format=%s', tagged)).toBe('release: v1.2.4');
     expect(readPackIntegrity(path.join(root, '.abuddy', 'staged', 'demo-pack')).source?.commit).toBe(tagged);
     expect(git(origin, 'rev-parse', 'v1.2.4^{commit}')).toBe(tagged);
-  }, 60_000);
+  });
 
   // The dry run writes no version files, so a --version override on the staged pack would make its
   // abuddy.json disagree with the snapshot built beside it
@@ -279,7 +279,7 @@ describe('runRelease', () => {
     expect(readPackIntegrity(path.join(root, '.abuddy', 'staged', 'demo-pack')).version).toBe('1.2.3');
     expect(JSON.parse(fs.readFileSync(path.join(root, 'abuddy.json'), 'utf-8')).version).toBe('1.2.3');
     expect(git(root, 'log', '-1', '--format=%s')).toBe('initial pack');
-  }, 60_000);
+  });
 
   // A release that moved only the two manifests tagged a commit whose lockfile disagreed with it, and
   // the author's next `npm install` rewrote the lockfile and dirtied the tree
@@ -296,7 +296,7 @@ describe('runRelease', () => {
       .toEqual(['abuddy.json', 'package-lock.json', 'package.json']);
     // no tracked file left behind modified (.abuddy/ build output is untracked, and gitignored in a real pack)
     expect(git(root, 'status', '--porcelain', '--untracked-files=no')).toBe('');
-  }, 60_000);
+  });
 
   // A finished release sits at HEAD with its own commit subject. Reading that as one to resume would
   // re-run it and never cut the next version — the beta cycle (-beta.0 → -beta.1) is exactly this shape.
@@ -306,7 +306,7 @@ describe('runRelease', () => {
     expect((await runRelease(root, { ...releaseOptions, run, env: {} })).version).toBe('1.2.4');
     expect((await runRelease(root, { ...releaseOptions, run, env: {} })).version).toBe('1.2.5');
     expect(git(root, 'tag', '--list').split('\n').sort()).toEqual(['v1.2.4', 'v1.2.5']);
-  }, 90_000);
+  });
 
   it('resumes the committed version instead of bumping past it', async () => {
     const { root, origin, run } = packRepo();
@@ -321,7 +321,7 @@ describe('runRelease', () => {
     expect(git(root, 'rev-list', '--count', 'HEAD')).toBe('2');
     expect(git(origin, 'rev-parse', 'v1.2.4^{commit}')).toBe(git(root, 'rev-parse', 'HEAD'));
     expect(git(root, 'tag', '--list')).toBe('v1.2.4');
-  }, 60_000);
+  });
 
   it('reports what the release left behind when a step after the commit fails', async () => {
     const { root, run } = packRepo();
@@ -333,6 +333,6 @@ describe('runRelease', () => {
     await expect(runRelease(root, { ...releaseOptions, run: failing, env: {} })).rejects.toThrow('push rejected');
 
     expect(errors.join('\n')).toMatch(/Release v1\.2\.4 stopped part-way[\s\S]*✓ version commit[\s\S]*✓ local tag v1\.2\.4[\s\S]*· tag v1\.2\.4 on origin[\s\S]*resumes this version/);
-  }, 60_000);
+  });
 });
 

@@ -14,7 +14,6 @@ import {
 import { fixtureEnv } from '../../src/commands/test';
 import { cliBin } from '../../src/utils';
 import { packagedExecutable } from '../../src/app/beta-app';
-import { appLaunchEnv } from '../../../abuddy-testing/src/launch-env';
 
 let tmp: string;
 let dirs: CliDirs;
@@ -125,6 +124,14 @@ describe('resolveTestApp', () => {
     await expect(resolve({ interactive: true, prompt: noPrompt })).resolves.toEqual({ kind: 'source', root: good });
   });
 
+  // tests/scripts/test-packaged-authoring.sh writes this file itself rather than driving the prompt with
+  // `expect` and a real tty, so the shape it writes is pinned here.
+  it('writes the saved choice where the packaged-authoring script expects it', () => {
+    saveAppChoice(dirs, { source: '/a/checkout' });
+    const written = JSON.parse(fs.readFileSync(path.join(dirs.config, 'config.json'), 'utf-8'));
+    expect(written).toEqual({ app: { source: '/a/checkout' } });
+  });
+
   it("doesn't save a first-run beta choice that can't be satisfied, so the next run asks again", async () => {
     const unavailable = vi.fn(async () => { throw new Error('No AgentBuddy Beta release satisfies'); });
     await expect(resolve({ interactive: true, prompt: async () => '2', betaApp: unavailable })).rejects.toThrow(/No AgentBuddy Beta/);
@@ -198,22 +205,6 @@ describe('configuredAppPackagesDir', () => {
 
   it('resolves nothing without a configured app', async () => {
     await expect(configuredAppPackagesDir(opts({}))).resolves.toBeNull();
-  });
-});
-
-describe('appLaunchEnv (@abuddy/testing)', () => {
-  it("doesn't pass the app-bundled launcher's ELECTRON_RUN_AS_NODE to the app under test", () => {
-    expect(appLaunchEnv({ ELECTRON_RUN_AS_NODE: '1', HOME: '/home' }, '/tmp/data')).toEqual({
-      HOME: '/home',
-      PLAYWRIGHT_TEST: 'true',
-      ABUDDY_USER_DATA_DIR: '/tmp/data',
-    });
-  });
-
-  it("doesn't pass the runner's @abuddy/source condition to the app", () => {
-    expect(appLaunchEnv({ NODE_OPTIONS: '--max-old-space-size=4096 --conditions=@abuddy/source' }, '/tmp/data').NODE_OPTIONS)
-      .toBe('--max-old-space-size=4096');
-    expect(appLaunchEnv({ NODE_OPTIONS: '--conditions=@abuddy/source' }, '/tmp/data')).not.toHaveProperty('NODE_OPTIONS');
   });
 });
 

@@ -89,5 +89,5 @@ describe.skipIf(!PACKAGES_BUILT)('facade bundle determinism (needs dist: npm run
     const fromPacked = buildFacade(parent, 'packed', path.join(installPublishedPackages(), 'node_modules'));
     expect(fromWorkspace).toContain('QueryBuilder');
     expect(fromPacked).toBe(fromWorkspace);
-  }, 240_000);
+  });
 });

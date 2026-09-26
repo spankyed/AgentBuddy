@@ -1,0 +1,15 @@
+{
+  "measuredAt": "2026-09-25T22:55:52.303Z",
+  "costs": {
+    "tests/contract/persistence.spec.ts": 16,
+    "tests/contract/queries.spec.ts": 18,
+    "tests/contract/relations.spec.ts": 21,
+    "tests/contract/transactions.spec.ts": 11,
+    "tests/installed-engine.spec.ts": 10,
+    "tests/is-entity-type.spec.ts": 2,
+    "tests/lmdb/persistence.spec.ts": 431,
+    "tests/lmdb/store.spec.ts": 1849,
+    "tests/no-module-state.spec.ts": 66
+  },
+  "skipped": []
+}

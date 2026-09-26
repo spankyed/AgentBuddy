@@ -62,7 +62,7 @@ carries no comments.
 | # | Door | Covers | Where |
 |---|---|---|---|
 | 1 | `npm run packages:ensure &&` in a root script | a repo command: `test`, `test:headed`, `test:explorer`, `test:external-pack`, `typecheck`, `typecheck:pack`, `compile`, `prebuild` | root `package.json` |
-| 2 | that workspace's `pretest` | `npm test -w @abuddy/cli` and `npm test -w @app/default-setup` run directly, which no root script wraps | each package's `package.json` |
+| 2 | that workspace's `pretest` | `npm test -w @abuddy/cli`, `-w @app/default-setup` and `-w @app/repo-checks` run directly, which no root script wraps | each package's `package.json` |
 | 3 | `ensureCheckoutPackages(packRoot)` | `abuddy build`, `abuddy test`, `abuddy dev` — from any directory, for a pack whose packages are a checkout's | `abuddy-cli/src/build/checkout-packages.ts`, called from `commands/{build,test,dev}.ts` |
 | 4 | the `Build publishable packages` step | CI, whose typecheck step already built them through `typecheck:pack` | `.github/workflows/ci.yml` |
 
@@ -72,7 +72,7 @@ mid-run would be wrong. All they can do is fail, and say what to run.
 | # | Door | Covers | Where |
 |---|---|---|---|
 | 5 | `assertCheckoutPackagesFresh()` | a pack author's bare `npx vitest` or `npx playwright test`, with no CLI in front of it | `src/checkout-freshness.ts`, called from `setupPackTests` and the `electronApp` fixture |
-| 6 | a throw while the module loads | the CLI's own `published-*` specs run without their `pretest` (`npx vitest`, a watch run) | `abuddy-cli/tests/helpers/published-packages.ts` |
+| 6 | a throw while the module loads | a spec that reads the built packages run without its `pretest` (`npx vitest`, a watch run): the CLI's `published-*` family and `@app/repo-checks`' `published-sdk-peers` | `packagesBuiltOrRefuse()` in `@abuddy/host/build/packages-built`, called from `abuddy-cli/tests/helpers/published-packages.ts` and the spec |
 
 Three things follow.
 

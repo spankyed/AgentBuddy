@@ -31,6 +31,38 @@ export const budgetFor = (measuredSeconds: number): number => Math.max(60_000, M
 /** How long a killed group gets to exit on SIGTERM before SIGKILL */
 const GRACE_MS = 2_000;
 
+/**
+ * The groups this process started and has not seen close. A budget bounds a step that hangs, but nothing
+ * bounded *this* process dying with steps still running: Ctrl-C at a chain, or an orchestrator throwing,
+ * left a vitest and its workers alive and reparented to init. That is the same orphan the group-kill above
+ * exists to prevent, arriving through the other door.
+ *
+ * Only pids this module spawned, killed by group — never a search for processes by name.
+ */
+const liveGroups = new Set<number>();
+let reaperInstalled = false;
+
+function reapOnExit(): void {
+  if (reaperInstalled) return;
+  reaperInstalled = true;
+  const reap = (signal: NodeJS.Signals) => {
+    for (const pid of liveGroups) {
+      try { process.kill(-pid, signal); } catch { /* already gone */ }
+    }
+  };
+  // 'exit' is synchronous-only, which process.kill is. It covers a normal end and an uncaught throw.
+  process.on('exit', () => reap('SIGKILL'));
+  // A signal does not run 'exit' handlers on its own, so each one reaps and then re-raises the default,
+  // which keeps the exit status honest (130 for SIGINT) instead of turning a Ctrl-C into a clean 0.
+  for (const signal of ['SIGINT', 'SIGTERM', 'SIGHUP'] as const) {
+    process.on(signal, () => {
+      reap('SIGTERM');
+      process.removeAllListeners(signal);
+      process.kill(process.pid, signal);
+    });
+  }
+}
+
 export interface BoundedOptions {
   readonly cwd?: string;
   /** Inherit stdio instead of capturing it: what a direct run wants, where output is read as it happens */
@@ -40,12 +72,14 @@ export interface BoundedOptions {
 export function boundedSpawn(command: string, args: readonly string[], budgetMs: number, options: BoundedOptions = {}): Promise<BoundedResult> {
   const { cwd = process.cwd(), stream = false } = options;
   const started = Date.now();
+  reapOnExit();
   return new Promise((resolve) => {
     // Its own process group, so one kill reaches the whole tree rather than orphaning it
     const child = spawn(command, [...args], {
       cwd, env: process.env, detached: true,
       stdio: stream ? ['ignore', 'inherit', 'inherit'] : ['ignore', 'pipe', 'pipe'],
     });
+    if (child.pid !== undefined) liveGroups.add(child.pid);
     let output = '';
     let timedOut: true | undefined;
     child.stdout?.on('data', (d: Buffer) => { output += d.toString(); });
@@ -73,6 +107,7 @@ export function boundedSpawn(command: string, args: readonly string[], budgetMs:
 
     child.on('close', (code) => {
       clearTimeout(budget);
+      if (child.pid !== undefined) liveGroups.delete(child.pid);
       closed = code;
       // On a timeout the escalation resolves, so the group is hard-killed before this returns
       if (!timedOut) done();

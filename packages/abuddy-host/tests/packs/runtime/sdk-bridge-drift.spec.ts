@@ -31,6 +31,11 @@ const UNBRIDGED_BY_POLICY = new Map<string, string>([
   // The app's settings store: one row with one writer, reached by packs through `services.settings`. A pack
   // loading the store would be a second writer, past the checks and the listeners the first one tells.
   ['@abuddy/host/settings', 'host-only — packs reach the settings through services.settings, which is the one writer'],
+  // The key vault: the OS credential store, or a file when there is none. Values reach the backend only
+  // through the API's secrets procedures and never over the bus, so a pack that could open the vault would
+  // read every key the user has stored. Published as a subpath so the api's spec can mock it by specifier
+  // rather than by a path into this package's src/ (`repo-checks/tests/spec-placement.spec.ts`).
+  ['@abuddy/host/secrets/vault', 'host-only — a pack that could open the vault would read every stored key'],
   // Build-time only: consumed by vite configs and the abuddy CLI, never by a
   // loaded pack's runtime code.
   ['@abuddy/host/build/shared-deps', 'build-time only'],

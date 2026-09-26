@@ -29,9 +29,9 @@ describe('sendToSystem diagnostics', () => {
     // That one event, not the union of everything the notes system receives
     expect(messages[0]).not.toContain('IncomingNoteEvents');
     expect(messages[0]).not.toContain('CREATE_NOTE');
-  }, 60_000);
+  });
 
   it('accepts a complete send', () => {
     expect(diagnosticsFor(`import { sendToSystem } from '@/__generated__/events';\nsendToSystem('notes', { type: 'DELETE_NOTE', id: 'Note-1' });\n`)).toEqual([]);
-  }, 60_000);
+  });
 });

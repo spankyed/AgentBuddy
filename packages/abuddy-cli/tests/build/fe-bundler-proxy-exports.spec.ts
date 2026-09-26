@@ -63,7 +63,7 @@ beforeAll(async () => {
     resolve: { conditions: ['@abuddy/source', ...vite.defaultClientConditions] },
     build: { lib: { entry, formats: ['es'], fileName: 'fe' }, outDir: path.join(packDir, 'dist'), write: false },
   });
-}, 120_000);
+});
 
 afterAll(() => {
   if (packDir) fs.rmSync(packDir, { recursive: true, force: true });

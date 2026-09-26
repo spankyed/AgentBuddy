@@ -46,7 +46,7 @@ beforeAll(async () => {
   }
   pack = path.join(tmp, 'demo-pack');
   fs.symlinkSync(path.join(REPO_ROOT, 'node_modules'), path.join(pack, 'node_modules'), 'dir');
-}, 60_000);
+});
 
 afterAll(() => {
   vi.restoreAllMocks();
@@ -64,7 +64,7 @@ describe('abuddy add step', () => {
     const form = read(`${dir}/form.vue`);
     expect(form).toMatch(/defineProps<\{[\s\S]*node: MyStepNode;/);
     expect(form).toMatch(/'update-node': \[updates: Record<string, unknown>\];/);
-  }, 60_000);
+  });
 
   it('generates flow helpers for the kebab-case step that typecheck with tsc', async () => {
     await addStep(['my-other-step'], pack);
@@ -90,7 +90,7 @@ describe('abuddy add step', () => {
     const tsc = run(path.join(BIN, 'tsc'), ['--noEmit']);
     fs.rmSync(path.join(pack, 'src/flow-helpers-usage.ts'));
     expect(tsc.code, tsc.output).toBe(0);
-  }, 180_000);
+  });
 });
 
 describe('abuddy add step in a pack without steps', () => {
@@ -108,7 +108,7 @@ describe('abuddy add step in a pack without steps', () => {
     const register = fs.readFileSync(path.join(bare, manifest.steps.register), 'utf-8');
     expect(register).toContain("import { pingStep } from './ping';");
     expect(register).toMatch(/export const steps: StepDefinition\[\] = \[[\s\S]*pingStep,/);
-  }, 60_000);
+  });
 });
 
 describe('abuddy add artifact and block', () => {
@@ -190,7 +190,7 @@ describe('abuddy add artifact and block', () => {
     write('tsconfig.sfc.json', JSON.stringify({ extends: './tsconfig.json', include: ['env.d.ts', 'src/**/*.ts', 'src/**/*.vue'] }));
     const vueTsc = run(path.join(BIN, 'vue-tsc'), ['--noEmit', '-p', 'tsconfig.sfc.json']);
     expect(vueTsc.code, vueTsc.output).toBe(0);
-  }, 180_000);
+  });
 });
 
 describe('abuddy add migration', () => {
@@ -211,7 +211,7 @@ describe('abuddy add migration', () => {
     expect(read('src/__generated__/pack-entry.ts')).toMatch(/import \{ migrations \} from '\.\.\/migrations\/index\.js';[\s\S]*\n {2}migrations,/);
     const tsc = run(path.join(BIN, 'tsc'), ['--noEmit']);
     expect(tsc.code, tsc.output).toBe(0);
-  }, 180_000);
+  });
 
   it('adds the import after an index whose only import is its first line', async () => {
     write('src/migrations/index.ts', "import type { PackMigration } from '@abuddy/sdk/framework';\n\nexport const migrations: PackMigration[] = [\n];\n");

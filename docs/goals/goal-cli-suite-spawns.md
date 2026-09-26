@@ -244,6 +244,145 @@ passes. **Mutation:** a type error in a fixture still fails the in-process check
 **Done when:** the doc names every remaining second that is not going away, so the next person reading "the
 CLI suite is 30s" knows which part of it is a floor. Docs only.
 
+## Outcome (2026-09-25)
+
+Implemented on `AS/cli-suite-spawns`, in a worktree, because another session held the main checkout.
+
+### What changed
+
+| Phase | Result |
+|---|---|
+| 1 Label every spawn | 32 sites, each with a reason: **14 produces, 8 process, 3 typecheck, 7 inherent** |
+| 2 Call commands in-process | the 14 `produces` sites now call `callCli()`; `buildPack` with them |
+| 3 Retire the `tsc` spawns | the 3 `run(TSC, …)` sites now call `typecheckPack()`; both `TSC` constants gone |
+| 4 Record what is irreducible | this section |
+
+`callCli` takes the two pieces of global state the commands assume — they read `process.cwd()` rather
+than a root, so it chdirs and restores, and a failing command calls `process.exit`, so that is swapped
+for a throw and reported as a code. Both are safe only because vitest forks a process per file and runs
+its tests in sequence, which is what the suite does; a `it.concurrent` in a converted file would break
+it, and that is the condition that would make this worth revisiting.
+
+### Three things the Background got wrong, corrected here
+
+- **"`CLI` is named about 70 times"** counts *mentions* (72). The `run()` idiom has **32 spawn sites**,
+  in five files. Phases 2 and 3 were sized against a number roughly twice the real one.
+- **"`TSC` is named 5 times"** is right, but only 3 were `run(TSC, …)`. The other two spawn a *named
+  TypeScript version* from the floor matrix (`published-packages.ts`, `published-exports.spec.ts`) and
+  cannot go in-process: the point is which compiler runs.
+- **Decision 6's recipe bypasses the suite's `pretest`.** `npx vitest` skips it, and
+  `published-packages.ts:39` exists precisely to catch that, so the recipe fails whenever `dist` is
+  stale — 21 files failed on the first attempt. Run `npm run packages:ensure` first. Worse, the suite
+  repairs itself mid-run, because the specs that spawn the CLI rebuild stale packages as a side effect,
+  so a bypassed run half-fails and then goes green on a retry with nothing changed.
+
+### What is irreducible, and why
+
+- **`db.spec.ts`** — 62 tests over its own `spawn`/`spawnSync` helpers, asserting exit codes and stderr.
+  The process is the subject (Decision 1), and it is already the cheapest of the big files per test.
+- **The 7 nested vitest runs** (`harness-setup.spec.ts`, one in `scaffold.spec.ts`) — they assert that a
+  pack's *own* test run behaves: isolation refused, concurrency refused, the right specs collected. The
+  runner is the thing under test.
+- **`types-bundler-determinism.spec.ts`** — one test, ~11.5s, builds the facade twice on purpose, from
+  the workspace and from the packed tarballs, to compare them. The second build is the assertion.
+- **The TypeScript floor matrix** — spawns each supported `tsc` version.
+- **The first-run prompt** — needs a tty, driven with `expect` in `test-packaged-authoring.sh`.
+
+Beyond the `run()` idiom this goal set out to fix, **30 further spawn-primitive call sites live in 22
+spec files**, most of them a local helper that a file then calls many times. They were not labelled:
+this goal's Finished-when names the `run('node', [CLI, …])` shape, and that shape is now fully
+accounted for. Labelling the rest is the obvious next slice, and `db.spec.ts` is most of it.
+
+### Measured
+
+Every number below was taken on a **contended machine** and none is a clean figure. Another session
+was building and testing in the same checkout throughout; the 1-minute load average is given with each
+reading, and for reference the suite's own baseline was taken at load 12.
+
+A 34-hour runaway `abuddy generate-entries` (PID 83105, orphaned, 98.5% of a core, started ~Sep 23) was
+found and killed before any of this. It had been consuming a core during the Background measurement too,
+which is part of why that 182.6s does not reproduce.
+
+The honest comparison is the four affected files, A/B back to back so contention hits both:
+
+| | wall | test sum | load |
+|---|---|---|---|
+| before, spawning | 65.9s | 181.0s | 37 |
+| after, in-process | **34.6s** | **89.9s** | 47 |
+
+The in-process run was ~2× faster while carrying *higher* load, so that ratio is conservative. An
+isolated probe of three builds of one pack, the mechanism on its own: **14.1s spawned, 7.4s
+in-process**, the first call paying esbuild/vite/tailwind's load and the rest at ~2.15s against ~4.7s.
+
+**The whole-suite and `test:unit` figures this goal asks for are not recorded, because no run on an idle
+machine was possible.** The last full run went green on every file this goal touched and timed out one
+test in `import-specifiers.spec.ts` — a file untouched here, whose 187 tests pass in 17s alone — at a
+load average of 109. Take those two numbers before claiming the goal's headline.
+
+### The suite did not get faster, and that is the finding
+
+Taken on a quiet machine (load 6-12) once the other session stopped, before and after, each a full
+`npm run test:unit` so the `@abuddy/cli` step is measured exactly as the chain runs it:
+
+| | before | after |
+|---|---|---|
+| `@abuddy/cli` suite, wall | 59.07s | 59.54s |
+| `@abuddy/cli` suite, total test time | 261.6s | 259.9s |
+| tests | 764 | 764 |
+| `npm run test:unit`, whole step | 144.5s (load 20) | 113.5s (load 12) |
+
+**The suite is unchanged.** The `test:unit` difference is ambient load, not this work: the only step
+this change can touch is `@abuddy/cli`, and that step moved 0.5s on a 59s wall, which is noise.
+
+The four converted files *did* get faster, by the same ~20% in the suite that they showed in isolation:
+
+| file | before | after |
+|---|---|---|
+| `facade-typing` | 48.4s | 39.5s |
+| `scaffold` | 32.7s | 25.1s |
+| `dependency-graph` | 30.7s | 21.4s |
+| `harness-setup` | 16.7s | 16.6s |
+| the four | **128.5s** | **102.6s** |
+
+26 seconds came out of those files and the suite's total fell by 1.7s, so the rest of the suite absorbed
+it: freeing a worker lets the other 66 files run more concurrently, and each gets slower by about what
+was saved. **The suite is bound by cores, not by process starts.** That is the same conclusion the chain
+reached when four attempts to parallelise it failed, and it is why the isolated A/B — 65.9s to 34.6s
+over four files alone — does not carry: with only four files there is spare CPU to hand back, and in the
+full suite there is none.
+
+So the premise in this goal's first paragraph — "it is slow because it starts processes" — is wrong as a
+statement about the *suite*. Process starts are a real per-file cost, worth removing and now removed,
+but they were never the suite's constraint. **Anything that aims at the suite's wall time has to reduce
+total work or run less of it** (`goal-test-tiers.md`'s caching), not make the same work cheaper per file.
+
+What this work is still worth: the four files are a fifth cheaper to run on their own, which is what a
+developer iterating on one of them pays; the diagnostics improved, a typecheck failure now naming file,
+line and code; and the suite is 17 process starts lighter, which is 17 fewer chances for the
+CLI-rebuilds-packages-mid-run race described above.
+
+### One flake found on the way, in a file this goal did not touch
+
+`import-specifiers.spec.ts > findInternalPackageImports > holds for the repo` scans the whole repo and
+takes **2445ms against vitest's default 5000ms timeout** — it passed at load 12 and timed out at 9135ms
+under load. It has half its budget in hand on an idle machine, so any 2x slowdown fails it, and a
+contended `test:unit` is exactly that. Nothing here changes it or its input; it passed in the
+post-change CLI suite at load 37-82 and failed only in the wider `test:unit`.
+
+It wants an explicit timeout, or to be a tier-1 check that does not race other suites. Until then it
+will keep failing for reasons that have nothing to do with the change under test — which is the most
+expensive kind of red.
+
+### Coverage
+
+764 tests before, 764 after (759 passing, 5 skipped in both; the skips are `fe-bundler-ui-theme` and
+`snapshot-entity-names`, gated on build output and unrelated to this work). Nothing was deleted.
+
+Both new helpers are mutation-checked: with `generateEntries` skipped in `build()`, all three converted
+spec files fail as they did when they spawned; with a type error injected into the `CONSUMER` fixture,
+all four typecheck cases fail with `src/consumer.ts(161): error TS2322` — naming the file, line and code,
+where the spawn reported only a non-zero exit.
+
 ## Deferred
 
 - **Caching the suite** — `goal-test-tiers.md` Phase 5, and independent of this (Decision 7).

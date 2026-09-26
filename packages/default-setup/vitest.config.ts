@@ -16,15 +16,18 @@ export default defineConfig(async () => {
     test: {
       globals: true,
       environment: 'node',
+      // Specs live in tests/, as they do in every other package. There used to be six under src/ as well,
+      // with an include for them whose comment said "without this they are silently never run" — a layout
+      // that needs a config line to avoid silence is one where the next file is silent.
       include: [
         'tests/unit/**/*.spec.ts',
         'tests/integration/**/*.spec.ts',
-        // Colocated tests next to the code they cover. Without this they are
-        // silently never run.
-        'src/**/*.test.ts',
-        'src/**/*.spec.ts',
       ],
-      testTimeout: 120_000,
+      // Tier 1 (`TIER_TIMEOUT_MS`, scripts/lib/chain-steps.ts): a unit test that takes longer is hung,
+      // not slow. This suite's slowest test is 2.9s.
+      testTimeout: 15_000,
+      // A hook gets the tier's budget too; vitest's default is 10s, tighter than the tier allows
+      hookTimeout: 15_000,
       // Test files run in parallel: each worker's tests create their own EARS engines
       fileParallelism: true,
       env: dataDir.env,

@@ -1,0 +1,24 @@
+{
+  "measuredAt": "2026-09-26T01:19:47.527Z",
+  "costs": {
+    "tests/api-report-stamp.spec.ts": 125,
+    "tests/chain-graph.spec.ts": 4,
+    "tests/chain-inputs.spec.ts": 915,
+    "tests/chain-schedule.spec.ts": 23,
+    "tests/component-contracts.integration.spec.ts": 2111,
+    "tests/import-specifiers-script.integration.spec.ts": 3851,
+    "tests/import-specifiers.integration.spec.ts": 3871,
+    "tests/orchestrator-exit.spec.ts": 14,
+    "tests/published-imports.spec.ts": 14,
+    "tests/published-sdk-peers.spec.ts": 14,
+    "tests/repo-check-boundary.spec.ts": 81,
+    "tests/slow-tests.spec.ts": 3,
+    "tests/spec-placement.spec.ts": 60,
+    "tests/step-timing.spec.ts": 3,
+    "tests/suite-split.spec.ts": 10,
+    "tests/suite-timeouts.spec.ts": 608,
+    "tests/unit-pool.spec.ts": 4,
+    "tests/with-source.spec.ts": 1031
+  },
+  "skipped": []
+}

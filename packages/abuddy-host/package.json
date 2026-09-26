@@ -29,6 +29,7 @@
     "./exclusive-lock": "./src/exclusive-lock.ts",
     "./process-liveness": "./src/process-liveness.ts",
     "./secrets": "./src/secrets/index.ts",
+    "./secrets/vault": "./src/secrets/vault.ts",
     "./services": "./src/services/index.ts",
     "./settings": "./src/features/settings/be/index.ts"
   },

@@ -162,7 +162,7 @@ const VITEST_FLOOR = '3.0.0';
 const UNIT_TEST_DEV_DEPENDENCIES = (sdkRange: string) => ({ '@abuddy/testing': sdkRange, vitest: '^3.2.1' });
 
 /** The files vitest loads its config from, in the order it looks for them */
-const VITEST_CONFIG_FILES = ['vitest.config', 'vite.config'].flatMap((name) => ['ts', 'mts', 'cts', 'js', 'mjs', 'cjs'].map((ext) => `${name}.${ext}`));
+export const VITEST_CONFIG_FILES = ['vitest.config', 'vite.config'].flatMap((name) => ['ts', 'mts', 'cts', 'js', 'mjs', 'cjs'].map((ext) => `${name}.${ext}`));
 
 export interface UnitTestSetup {
   /** Files written */

@@ -8,7 +8,7 @@ import { CONSUMER_MATRIX, PACKAGES_BUILT, REPO_ROOT, compileConsumer, installPub
 let consumer: string | undefined;
 beforeAll(() => {
   if (PACKAGES_BUILT) consumer = installPublishedPackages();
-}, 120_000);
+});
 afterAll(() => {
   if (consumer) fs.rmSync(consumer, { recursive: true, force: true });
 });
@@ -120,14 +120,14 @@ describe.skipIf(!PACKAGES_BUILT)('published @abuddy/sdk', () => {
   it.each(CONSUMER_MATRIX)('typecheck for consumers using TypeScript $tsc, moduleResolution $moduleResolution', async ({ tsc, moduleResolution }) => {
     const result = await typecheck(tsc, moduleResolution);
     expect(result.code, result.output).toBe(0);
-  }, 120_000);
+  });
 
   it("types inference with the AI SDK's own types at the TypeScript floor, with library checks, under node16 and bundler", async () => {
     // Each compile checks ai's full declarations: run both at once
     for (const result of await Promise.all([typecheckInference('node16'), typecheckInference('bundler')])) {
       expect(result.code, result.output).toBe(0);
     }
-  }, 120_000);
+  });
 
   it('ships no host-only module', () => {
     const sdk = path.join(consumer!, 'node_modules', '@abuddy', 'sdk');

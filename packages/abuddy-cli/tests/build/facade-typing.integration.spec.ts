@@ -5,7 +5,7 @@ import * as path from 'node:path';
 import ts from 'typescript';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { PACKAGES_BUILT, REPO_ROOT, installPublishedPackages } from '../helpers/published-packages';
-import { CLI, TSC, packageJson, preparePack, run, tsconfig, write } from '../helpers/pack-builds';
+import { CLI, callCli, packageJson, preparePack, run, tsconfig, typecheckPack, write } from '../helpers/pack-builds';
 
 /**
  * A pack's typed facades (#generated/ears, events, services, repository) cover its own
@@ -267,8 +267,9 @@ tx('Nope');
 
 /** The two packs, built, in a temp dir; node_modules link the workspace or the packed packages */
 /** A step in base-pack, whose node types its dependents read: the scaffolded one and a hand-written one */
-function addBaseStep(dir: string): void {
-  const added = run(process.execPath, [CLI, 'add', 'step', 'ping'], dir);
+async function addBaseStep(dir: string): Promise<void> {
+  // produces: the step whose scaffolded types this function then rewrites
+  const added = await callCli(dir, 'add', ['step', 'ping']);
   if (added.code !== 0) throw new Error(`abuddy add step failed in base-pack:\n${added.output}`);
   const types = path.join(dir, 'src', 'extensions', 'steps', 'ping', 'types.ts');
   const scaffolded = fs.readFileSync(types, 'utf-8');
@@ -280,13 +281,14 @@ function addBaseStep(dir: string): void {
     + '\n/** A node type that doesn\'t narrow nodeType and adds no required field */\nexport interface NoteNode extends NodeBase {\n  note?: string;\n}\n');
 }
 
-function buildPacks(published: boolean): string {
+async function buildPacks(published: boolean): Promise<string> {
   const parent = fs.mkdtempSync(path.join(os.tmpdir(), 'facade-typing-'));
   const modules = published ? path.join(installPublishedPackages(), 'node_modules') : path.join(REPO_ROOT, 'node_modules');
   for (const [name, files] of [['base-pack', BASE_PACK], ['app-pack', APP_PACK]] as const) {
     const dir = preparePack(parent, name, files, modules);
-    if (name === 'base-pack') addBaseStep(dir);
-    const build = run(process.execPath, [CLI, 'build'], dir);
+    if (name === 'base-pack') await addBaseStep(dir);
+    // produces: the built pack whose snapshot and declarations the tests read
+    const build = await callCli(dir, 'build');
     if (build.code !== 0) throw new Error(`abuddy build failed in ${name}:\n${build.output}`);
   }
   write(path.join(parent, 'app-pack'), { 'src/consumer.ts': CONSUMER });
@@ -397,7 +399,7 @@ const LAYOUTS = [
 
 describe.each(LAYOUTS)('generated facades with a dependency ($name)', ({ published }) => {
   let parent: string;
-  beforeAll(() => { parent = buildPacks(published); }, 240_000);
+  beforeAll(async () => { parent = await buildPacks(published); });
   afterAll(() => fs.rmSync(parent, { recursive: true, force: true }));
 
   it("writes the dependency's facade types into its snapshot", () => {
@@ -412,14 +414,15 @@ describe.each(LAYOUTS)('generated facades with a dependency ($name)', ({ publish
     expect(snapshot.defs['pack-types']).not.toContain('StateMachine');
   });
 
-  it.each(['bundler', 'node16'] as const)('typechecks own and dependency types under moduleResolution %s', (moduleResolution) => {
+  it.each(['bundler', 'node16'] as const)('typechecks own and dependency types under moduleResolution %s', async (moduleResolution) => {
     const app = path.join(parent, 'app-pack');
     const tsconfig = writeTsconfig(app, moduleResolution, published);
-    const result = run(TSC, ['-p', tsconfig], app);
+    // typecheck: the same program packDeclarationDiagnostics below builds, for the whole tree
+    const result = await typecheckPack(app, tsconfig);
     expect(result.code, result.output).toBe(0);
     // skipLibCheck skips the dependency's bundled facade (src/__generated__/deps/*.d.ts), where an invalid declaration reads as any
     expect(packDeclarationDiagnostics(app, tsconfig)).toEqual([]);
-  }, 120_000);
+  });
 
   it.each(['bundler', 'node16'] as const)('offers field and entity-name completions under moduleResolution %s', (moduleResolution) => {
     const app = path.join(parent, 'app-pack');
@@ -430,7 +433,7 @@ describe.each(LAYOUTS)('generated facades with a dependency ($name)', ({ publish
     expect(missing(NAME_POSITIONS, ['Memo', 'Tag', 'Relation', 'Prompt']), 'positions without entity-name completions').toEqual([]);
     // A typo's error lists the fields it could have been
     expect(diagnostics.find((message) => message.includes('"txet"'))).toMatch(/"text"/);
-  }, 120_000);
+  });
 
   it.each(['bundler', 'node16'] as const)('offers system-id and event-type completions for sendToSystem under moduleResolution %s', (moduleResolution) => {
     const app = path.join(parent, 'app-pack');
@@ -438,7 +441,7 @@ describe.each(LAYOUTS)('generated facades with a dependency ($name)', ({ publish
     expect(at.systemId, 'system-id completions').toEqual(expect.arrayContaining(['memos', 'base-pack/threads']));
     expect(at.eventType, 'event-type completions').toEqual(expect.arrayContaining(['ADD_MEMO', 'CLEAR_MEMOS', 'PIN_MEMO', 'UNPIN_MEMO']));
     expect(at.eventType, 'only the chosen system\'s events').not.toContain('ADD_TAG');
-  }, 120_000);
+  });
 
   // qx's name overloads come before its id overloads; in the other order a name seed gets no suggestions
   it.each(['bundler', 'node16'] as const)('offers entity-name completions in qx() under moduleResolution %s', (moduleResolution) => {
@@ -446,5 +449,5 @@ describe.each(LAYOUTS)('generated facades with a dependency ($name)', ({ publish
     const { at } = completionsIn(app, writeTsconfig(app, moduleResolution, published));
     expect(at.qx, 'entity-name completions in qx()').toEqual(expect.arrayContaining(['Memo', 'Tag', 'Relation', 'Prompt']));
     expect(at.qx, 'no completion for an entity no pack here declares').not.toContain('Settings');
-  }, 120_000);
+  });
 });

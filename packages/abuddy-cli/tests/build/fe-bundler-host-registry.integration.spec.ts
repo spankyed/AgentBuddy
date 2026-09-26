@@ -24,7 +24,7 @@ const LAYOUTS = [
 
 beforeAll(() => {
   if (PACKAGES_BUILT) installed = installPublishedPackages();
-}, 120_000);
+});
 
 afterAll(() => {
   if (installed) fs.rmSync(installed, { recursive: true, force: true });
@@ -63,7 +63,7 @@ describe.each(LAYOUTS)('bundlePackFE host binding guard ($name)', (layout) => {
     expect(result.success).toBe(false);
     expect(result.error).toContain('No host is bound');
     expect(result.error).toContain('Import chain: src/entry.ts → @abuddy/sdk/logger');
-  }, 60_000);
+  });
 
   it('uses the host\'s @abuddy/ui instead of bundling it', async () => {
     const { packDir, entry } = makePack(layout, [
@@ -80,7 +80,7 @@ describe.each(LAYOUTS)('bundlePackFE host binding guard ($name)', (layout) => {
     expect(output).toContain('window.__abuddy?.["@abuddy/ui/composables/useDebounce"]');
     // No UI code: the editor's extensions, its styles or the debounce implementation
     expect(output).not.toMatch(/createExtensions|ProseMirror|clearTimeout/);
-  }, 60_000);
+  });
 
   it('bundles @abuddy/ui with fe.bundleUi and proxies the shared SDK modules it imports', async () => {
     const { packDir, entry } = makePack(layout,
@@ -96,7 +96,7 @@ describe.each(LAYOUTS)('bundlePackFE host binding guard ($name)', (layout) => {
     const output = fs.readFileSync(path.join(packDir, 'dist', 'fe.js'), 'utf-8');
     expect(output).toContain('window.__abuddy?.["sdkFe"]');
     expect(output).toContain('createEditorClickHandler');
-  }, 60_000);
+  });
 
   it("uses the host's ProseMirror and tiptap menus when a pack bundles @abuddy/ui", async () => {
     const { packDir, entry } = makePack(layout,
@@ -112,7 +112,7 @@ describe.each(LAYOUTS)('bundlePackFE host binding guard ($name)', (layout) => {
     expect(output).toContain('window.__abuddy?.["@tiptap/vue-3/menus"]');
     // prosemirror-model's own code (its content-expression error) isn't inlined
     expect(output).not.toContain('Invalid content for node');
-  }, 60_000);
+  });
 
   it.each([
     { bundleUi: true, packConfig: false, generated: true },
@@ -134,7 +134,7 @@ describe.each(LAYOUTS)('bundlePackFE host binding guard ($name)', (layout) => {
       .map((f) => fs.readFileSync(path.join(packDir, 'dist', f), 'utf-8')).join('\n');
     // A class only @abuddy/ui templates use (TiptapSearchBar's input), not the pack's
     expect(css.includes('.placeholder-neutral-500::')).toBe(generated);
-  }, 60_000);
+  });
 
   it('compiles no @abuddy/ui SFC when a pack bundles @abuddy/ui', async () => {
     const { packDir, entry } = makePack(layout,
@@ -150,7 +150,7 @@ describe.each(LAYOUTS)('bundlePackFE host binding guard ($name)', (layout) => {
     expect(uiSources.length).toBeGreaterThan(0);
     // @abuddy/ui ships compiled components, and a pack reads those whichever way it has the package
     expect(uiSources.filter((source) => /\.vue(\?|$)/.test(source))).toEqual([]);
-  }, 60_000);
+  });
 
   it('drops the generated EARS facade from FE code that only uses the EARS constants', async () => {
     const { packDir, entry } = makePack(layout, `import { EARS } from './ears';\nexport const kind = EARS.Entity.Memo;\n`);
@@ -167,7 +167,7 @@ describe.each(LAYOUTS)('bundlePackFE host binding guard ($name)', (layout) => {
     const output = fs.readFileSync(path.join(packDir, 'dist', 'fe.js'), 'utf-8');
     expect(output).not.toContain('defineEars');
     expect(output).toContain('Memo');
-  }, 60_000);
+  });
 
   it('builds when SDK imports go through host-shared proxies', async () => {
     const { packDir, entry } = makePack(layout,
@@ -184,5 +184,5 @@ describe.each(LAYOUTS)('bundlePackFE host binding guard ($name)', (layout) => {
     const output = fs.readFileSync(path.join(packDir, 'dist', 'fe.js'), 'utf-8');
     expect(output).toContain('window.__abuddy?.["sdkRuntime"]');
     expect(output).toContain('window.__abuddy?.["sdkEvents"]');
-  }, 60_000);
+  });
 });

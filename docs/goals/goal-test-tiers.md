@@ -181,6 +181,202 @@ came out of `goal-test-cleanup.md` and the review after it.
   being called from `scripts/chain.ts`. The API-report work exported it, so that note is stale and there is
   nothing to do.
 
+### What Phase 5 measured
+
+Per-step caching goes through the package builds' stamp protocol rather than a second one: `fingerprintUnit`
+over `ChainStep.inputs`, `unitStaleReason` to decide, `stampedRun` to record. `stampedRun` is the lock-free
+half of `stampedBuild`, extracted because a chain step must not queue behind the package build lock — that
+would serialise Phase 6's lanes on a lock none of them needs.
+
+**There is no cascade rule, and there does not need to be one.** A step that produces something declares it
+in `outputs` and its readers declare those same paths in `inputs`, so a rebuild that changed the output moves
+their fingerprints, and one that produced identical bytes leaves them fresh. "A needed step ran, so re-run"
+would get that second case wrong. It depends on one thing: a step's verdict is computed at its turn in the
+loop, not for every step up front, which `scripts/chain.ts` says at the point where it matters.
+
+`test:unit` is eight steps, one per package. Each declares its own workspace plus its dependencies' source,
+read from that package's `package.json`, so a dependency added later is covered the moment it is declared.
+Five of the eight declare no build output and so need no step at all: they resolve workspace source through
+the `@abuddy/source` condition. That is what lets them start beside the builds in Phase 6.
+
+Staleness is a pure function of the tree, so `npm run chain --dry` answers most of the "Done when" without
+running anything — which is how they were checked, on a machine another checkout was loading:
+
+| Edit | Steps that go stale |
+|---|---|
+| a doc, a CLAUDE.md | **none** |
+| `packages/renderer/src` | `typecheck`, `test:unit:renderer`, `test:unit:main` (main depends on renderer) |
+| `packages/default-setup/src` | `compile`, `typecheck`, `test:unit:default-setup` |
+| `packages/abuddy-ears/src` | `packages:ensure`, `typecheck`, and all eight suites |
+| `packages/abuddy-cli/tests` | `typecheck`, `test:unit:abuddy-cli` |
+| `tests/e2e` | `typecheck` alone; the E2E step is never cached |
+
+`@abuddy/ears` invalidating all eight is honest rather than a bug: every package imports the bottom layer.
+
+#### The split makes a *serial* cold chain slower, and Phase 6 is what pays it back
+
+This is the one place Phase 5's bullets pull against each other, so it is recorded rather than smoothed over.
+"Split `test:unit` per package" and "a cold run matches Phase 3's time" cannot both hold while the chain is
+serial: the single step ran the eight suites two at a time (43.7s wall, measured idle), and eight separate
+steps run them one at a time (69.8s, the one-lane control already in `scripts/test-unit.ts`). So a cold
+serial chain pays about **+26s** for the split.
+
+That is the right trade anyway, and it is bought back twice: the granularity is what makes a one-package edit
+re-run one suite instead of eight, and Phase 6 gives the eight steps the lanes the single step had. The
+number to beat in Phase 6 is 43.7s for tier 1's suites — not the 100.7s a serial cold run of them costs.
+
+#### Measured, on an idle machine
+
+| Run | Wall | Cached |
+|---|---|---|
+| cold, serial | 311.3s | 0 of 17 |
+| warm, straight after | 268.4s | 7 of 17 |
+| cold, after the `build:app` fix below | 306.9s | 0 of 17 |
+| warm, after it | **58.4s** | **15 of 17** |
+
+Cold: `packages:ensure` 0.3s, `compile` 11.8s, `test:external-pack:contract` 18.2s, `typecheck` 31.4s, the
+eight suites 88.0s, `test:integration` 45.2s, `build:app` 25.2s, `test:external-pack:app` 19.6s, E2E 25.5s,
+`test:packaged-authoring` 59.8s.
+
+In the warm run only `test` ran by design; `typecheck` ran because that cycle edited `scripts/`, which is
+the cache working rather than failing.
+
+#### The first warm run cached 7 of 17, and the cause was not the cache
+
+`build` was root `npm run build`, which is `-ws` and so includes `@app/default-setup`, whose own `build`
+script is the exact command `compile` runs. So `build` rebuilt the pack on every chain run and rewrote
+`packages/default-setup/dist` — a tree it declares as an input. It invalidated **itself**, and the five
+steps that read that tree: `test:external-pack:contract`, three unit suites and `test:integration`.
+
+Two consecutive `abuddy build` runs differ in exactly two lines, both the order of union members in an
+emitted `Omit<…, "a" | "b">`, so chasing byte-determinism in TypeScript's declaration emit was the fragile
+path. The duplication was the real defect — about 12s of wasted work per build, invisible until something
+depended on the output not changing.
+
+The chain now runs `build:app`, which builds the five workspaces it needs and leaves the pack to `compile`,
+a declared `need`. `npm run build` still builds everything, for CI and `build/build.sh`. A spec derives the
+workspace set from the manifests, so a workspace that gains a `build` script cannot be silently skipped.
+
+**What this says about checking a cache.** Three of Phase 5's four clauses are fingerprint comparisons and
+`npm run chain --dry` answers them without running anything. The fourth is not: "a second run re-runs only
+E2E" is a claim about what the steps *write*, which no amount of reading the inputs can answer. It was
+checked with `--dry`, passed, and was wrong. A cache is only as good as the claim that steps do not write
+outside their declared outputs, and that claim needs a real run.
+
+### What Phase 6 measured
+
+Cold, on an idle machine, 2026-09-25:
+
+| Lanes | Wall | Step time | Cold runs |
+|---|---|---|---|
+| 1 (serial) | 306.9s | 306.9s | passed |
+| **2** | **194.0s, 198.7s, 196.5s** | 339.5s (+11%) | passed, 17 of 17 each |
+| 3 | 202.7s | 477s (+55%) | one of two **failed** |
+
+Two lanes is a 36% cut and is the default; three is slower than two on wall *and* work, and does not
+reproduce. The critical path is 109s (`packages:ensure -> compile -> build:app -> test:packaged-authoring`)
+and is reported in the summary, so a disappointing run is legible rather than a tuning mystery.
+
+**Why this paid where the earlier attempt did not.** That attempt measured work going 348s to 567s with
+`@abuddy/cli` reporting errors it does not report alone. The limit is not the only difference:
+`test:packaged-authoring` no longer rebuilds the published packages underneath the other steps, `build:app`
+no longer rebuilds the pack, and `test:unit` is eight small steps rather than one large one, so a lane can
+be filled with a 1s suite instead of a 43s block. Three lanes reproduces the old result almost exactly, at
++55% work, which is the evidence that the limit is load-bearing.
+
+**Three lanes fails the way the earlier measurement predicted.** The failing run timed out in
+`findLmdbImports > holds for the repo` at 5220ms against vitest's 5s default — a whole-repo scan that takes
+~2s alone. That is the thin-margin class already recorded in `scripts/test-unit.ts`, where raising one
+suite's timeout moved the failure to another suite. Note for
+[`test-unit-scheduling.md`](../plans/test-unit-scheduling.md): this is a *second* such file, so amortising
+`generate-entries.spec.ts` will not by itself lift the lane cap.
+
+**Parallelism found a bug serial execution structurally could not.** `@app/api`'s suite reads the built-in
+pack's `dist` — host code resolves the path while booting the app runtime — and declared that it read
+nothing. It had passed forever because `compile` always happened to finish first. Given a lane it ran beside
+`compile` and failed on a missing `settings.seed.json` in 16 seconds. The fix is in `SUITE_READS`, along with
+the only method that answers the question: run each suite with the tree moved aside.
+
+**Two of the guards written for these phases could not fail, and both were found by mutation rather than by
+review.** One asserted that a suite declaring `pack: true` also needs `compile` — but `needs` is derived from
+that same table, so the two cannot disagree. The other claimed to prove the scheduler stops dispatching
+after a failure, while every step in its fixture *needed* the failed one and so was never ready; deleting the
+guard it tested kept it green. The first was deleted with a comment saying why, the second rewritten around
+a step that depends on nothing. A mutation check is the only thing that distinguishes these from real tests.
+
+The scheduler itself lives in `scripts/lib/chain-schedule.ts` rather than in `scripts/chain.ts`, for the
+reason `chain-steps.ts` is already separate: that module runs the chain when imported, so nothing in it can
+be tested. A scheduler can leak a lane, run an exclusive step beside another, keep going after a failure or
+simply never return, and a green timing run shows none of it.
+
+### What Phase 7 landed
+
+`abuddy test --contract` runs the pack's vitest and starts no app, so a pack author can check compiled
+output, generated types and the harness specs without an AgentBuddy to run them in. It is the tier split
+this repo makes for itself, offered to packs rather than kept here.
+`tests/scripts/test-external-pack-contract.sh` calls it instead of invoking `vitest` by path, so the fixtures
+exercise the command a pack author actually runs; a pack with no vitest config is a no-op with a message
+rather than an error, which is why the bundled-UI fixture needs no special case in that script.
+`abuddy init-tests` scaffolds both halves, having previously scaffolded only Playwright — which left an
+author with a `vitest.config.ts` only if they had run `abuddy init` or `abuddy add feature`.
+
+**One deviation from the "Done when", and it is forced.** That clause asks for `npm test -w @abuddy/cli` —
+the fast half — to cover the flag. No spec of this flag can live there: `suite-split.spec.ts` asks whether an
+export's implementation reaches a child process, and `contractTest`'s default runner is `spawnSync`. That is
+true of the export and false of all nine tests, which inject a recorder and run in ~20ms. The coverage is in
+`@abuddy/cli`'s suite, in the integration half, rather than weakening a guard to suit one spec.
+`docs/plans/test-unit-scheduling.md` records this as a third instance of that predicate being mechanism-based
+rather than cost-based.
+
+Wiring the two scaffolders together surfaced a pre-existing inconsistency worth knowing about: `init-tests`
+derives `@abuddy/testing`'s range from `cliVersion()` while `scaffoldUnitTestSetup` checks it against the
+pack's `@abuddy/sdk` range, so in this checkout it adds `^0.1.0` and immediately reports it as too old for
+`@abuddy/sdk ^0.3.14`. Left alone here: those are version ranges, which the release process owns.
+
+### What Phase 8 landed
+
+**Timeouts are a ceiling checked per tier, not a constant packages import.** `TIER_TIMEOUT_MS` sits with the
+tier table (tier 1 15s, tiers 2 and 3 60s) and `suite-timeouts.spec.ts` fails a config that declares more
+than its step's tier allows. The configs keep plain literals on purpose: a vitest config importing a
+constant across package layers is what `check:specifiers` exists to prevent, and a guard needs no import.
+The two `testTimeout: 120_000` are gone — measured first, the slowest single test in those suites was 2.9s
+(`@app/default-setup`) and 0.7s (`@app/api`), so 15s is five times the headroom either needs.
+**Mutation:** a test made to hang now fails at 15008ms saying "Test timed out in 15000ms", not at two minutes.
+
+**Two bullets were already done** by work that landed between the plan being written and this phase: every
+shell-script step runs under `tsx scripts/bounded.ts <seconds>`, and `bounded-spawn.ts` kills the whole
+process group (`detached: true`, `kill(-pid)`, then SIGKILL after a grace period). The plan's "nothing has
+one" and "nothing uses `kill 0`, `setsid` or `set -m`" no longer describe the repo.
+
+**`test-packaged-authoring.sh` no longer drives a prompt.** The `expect` block, the tty and `env -u CI` are
+gone; the script writes the saved app choice directly, and the prompt is covered in `@abuddy/cli`'s fast
+suite (`app-target.spec.ts`), which already injected a `prompt` and a temp config dir. The shape the script
+writes is pinned by a spec there, so a hand-written literal in a shell script cannot drift from what
+`saveAppChoice` produces. This is the item that hung a machine: `expect`'s `set timeout` covers a pattern
+match, not `wait`, so `lassign [wait]` blocked forever when `abuddy test --list` started a Playwright server
+that never returned.
+
+**The slowest five tests per suite come from output the chain already buffers.** Vitest's default reporter
+prints any test past its 300ms threshold indented under its file, so `slowestTests` reads that back rather
+than adding a reporter, a JSON file or a flag — which also means it survives `test:unit` becoming one root
+vitest run. It lives in `scripts/lib/` because `scripts/chain.ts` runs the chain on import and so cannot be
+imported by a spec, the same reason the step table and the scheduler are already out there.
+
+**The npm cache is declared where it is used**, as this script's one non-hermetic input, with what it buys
+(no multi-minute cold download, no failure that means only that the network was down) and what it costs (a
+corrupt entry fails here and nowhere else, and `npm cache verify` is the first thing to try).
+
+**Phase 7 broke Phase 1's guard, and the guard caught it.** `check:tiers` reads a step's scripts as text, so
+`test-external-pack-contract.sh` calling `"$ABUDDY" test --contract` read as launching the app. The marker
+now carries a negative lookahead for that one spelling — narrow deliberately, so `abuddy test` anywhere else
+still reads as a launch — and dropping `--contract` from that script fails the check again by name.
+
+**One thing was investigated and left alone.** The `[vitest-worker]: Timeout calling "onTaskUpdate"` failures
+that broke three chain runs are already mitigated where they belong: `vitest.integration.config.ts` caps
+workers at 50% and explains why. Those runs failed anyway because the contention came from a second checkout
+building on the same machine at load 44-84, which no config in this repo can fix. Nothing to change, which is
+worth recording so it is not "fixed" a second time.
+
 ### Industry practices this repo does not follow
 
 Each of these was found in this survey, not taken from a list.
@@ -372,7 +568,8 @@ keeping in mind when writing the ones below; a phase that adds a field wants a c
 ### Phase 4 — Finish the table, then guard it
 
 - Add the three fields Phase 3 left out — `inputs`, `outputs` and `exclusive` per Decision 12 — and fill
-  `inputs` for all nine steps. **This is the bulk of the phase.** Deriving nine honest input lists is the
+  `inputs` for all ten steps (nine when this was written; `test:integration` landed after). **This is the
+  bulk of the phase.** Deriving ten honest input lists is the
   work; the guard below is a few lines over them.
 - A spec asserting every tracked source file is an input to at least one step, resolved through the same
   walk `fingerprintInputs` uses, so an under-declared input is a failing test rather than a stale pass.
@@ -511,3 +708,60 @@ The repo's standing rules (root `CLAUDE.md`) apply:
   run in a worktree**, which suits them better than the CLI-spawns goal: nothing in them touches
   `abuddy-cli/src`, and their subject — `scripts/`, the chain table and the guard spec — is touched by little
   else. Take the before and after from the same tree, whichever tree it is.
+
+## Outcome
+
+Phases 1-3 landed earlier (`06f55ea72`, `b1c0b3cc4`, `8095daf14`). Phases 4-9:
+
+| Phase | Status | Evidence |
+|---|---|---|
+| 4 — finish the table, then guard it | done | `13ccc21a6`. Every step declares `inputs`; `chain-inputs.integration.spec.ts` fails on tracked code no step reads |
+| 5 — caching | done | `b438608fb`, `822c8fbdc`. Warm chain 15 of 17 cached; the `build:app` fix was needed before its last clause held |
+| 6 — parallelism, with a limit | done | `e0c22075f`. Serial 306.9s, two lanes 194.0/198.7/196.5s all 17 of 17, three lanes 202.7s with one of two runs failing |
+| 7 — `abuddy test --contract` | done | `e2a2cf9a5`. Both fixtures pass with no app; the contract script calls the CLI rather than vitest by path |
+| 8 — timeouts and process hygiene | done | `16ffd3b2e`. Tier budgets guarded; a hanging test dies at 15008ms; no `expect`, tty or `env -u CI` |
+| 9 — retire the table's arithmetic | done | this commit. The per-change table is the chain's cost model, not a lookup |
+
+**The chain went from ~348s always to 194s cold and ~28s warm.** The cold saving is small and always will
+be; the point is that a chain run now costs what you changed, which it could not before — the only cache
+was "nothing tracked changed at all".
+
+Final verification, on an idle machine: `npm run chain -- --all` **209.9s, 17 of 17 steps, exit 0**
+(t1 110.7s, t2 98.9s, t3 148.3s at two lanes; the 16s over the 194s baseline is `packages:ensure` rebuilding
+every package, which resetting `STAMP_VERSION` forces once). `npm run typecheck` passes, and
+`npm run test:unit` passes in 41.6s across all eight suites through the shared list.
+
+### Choices made where the plan did not say
+
+- **Tier budgets are 15s / 60s / 60s.** "Tier 1 in seconds" left the number open; 15s is five times the
+  slowest test measured in the two suites that had to change.
+- **Two lanes, not three.** Measured, and three was worse on wall time, on total work, and on whether it
+  passed twice.
+- **`build:app` is a new script rather than a change to `npm run build`.** CI and `build/build.sh` keep the
+  full `-ws` build; only the chain skips the pack that `compile` already built.
+- **`slowestTests` parses the default reporter** rather than adding a reporter, a JSON file or a flag —
+  which is also what makes it survive `test:unit` becoming one root vitest run.
+- **`--dry` was added** although no phase asked for it. Three of Phase 5's four clauses are fingerprint
+  comparisons, so a way to answer them without running anything is the difference between checking the
+  cache and hoping.
+- **`STAMP_VERSION` is back at 1.** The bumps taken while the chain joined the protocol meant something only
+  to the machine they were written on; stamps are never committed.
+
+### Deviations, both forced and both recorded where they bite
+
+- **Phase 7's "`npm test -w @abuddy/cli` covers the flag"** could not hold: `suite-split.spec.ts` asks what
+  an export's implementation reaches, and `contractTest`'s default runner is `spawnSync`. The spec is in
+  that package's integration half instead of weakening the guard for it.
+- **Phase 5's "a cold run matches Phase 3's time"** is true only with lanes. Splitting `test:unit` into
+  eight steps costs ~26s on a serial chain, which Phase 6 gives back and more.
+
+### What this cost to learn, which is the part worth keeping
+
+Three things were believed, checked, and wrong. A guard that asserted a scan of spec text equalled what a
+suite reads — `@app/api` never names the path its host code resolves, so parallelism found in 16 seconds
+what serial ordering had hidden forever. A guard that could not fail, because it asserted an invariant
+derived from the table it was checking. And a scheduler test that proved its fixture rather than its
+subject: every step in it needed the failed one, so deleting the guard under test kept it green.
+
+Each was caught by a mutation, and none by review. The measurement that matters is not the 194s.
+

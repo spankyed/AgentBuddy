@@ -99,7 +99,7 @@ in the Phases below.
 [`docs/plans/test-audit-pack-naming-pr.md`](../plans/test-audit-pack-naming-pr.md). It needs no phase of
 its own — 15 of its 17 added tests are keeps — and its two exceptions are folded into Phase 4.
 
-[`docs/plans/test-inventory.md`](../plans/test-inventory.md) then covers the whole repo: all 2,211 tests
+[`docs/plans/test-inventory.md`](../archive/plans/test-inventory.md) then covers the whole repo: all 2,211 tests
 in 279 files, each blamed to the commit that introduced it. It changes the shape of this goal in one
 way worth reading before starting. **Pinning, not dead guards, is the dominant pathology**: 327 tests
 assert a message of 45+ characters or an exact call/length count, against a much smaller set of guards
@@ -166,7 +166,7 @@ package — and it caught it precisely *because* it runs a real build. The probl
 change, not that it exists.
 
 **Slow does not mean valuable either.** A test that is expensive *and* guards nothing should be deleted,
-not carefully partitioned. `import-specifiers.spec.ts` is the example: [`test-inventory.md`](../plans/test-inventory.md)
+not carefully partitioned. `import-specifiers.spec.ts` is the example: [`test-inventory.md`](../archive/plans/test-inventory.md)
 finds 12 of its 166 assert things about the allowlist rather than the rule. Deleting them makes the fast
 suite faster with no coverage lost and no file moved.
 
@@ -226,7 +226,7 @@ Final.
    signal is flat by commit type — `fix(` 16%, `feat(` 16%, `refactor(` 14%, `test(` 11%. A test born in
    a bug fix is no likelier to be clean than one born in a refactor. An earlier draft of this decision
    said the opposite, inferred from 17 tests on one branch where every addition came from a review
-   finding; see [`test-inventory.md`](../plans/test-inventory.md) Finding 1.
+   finding; see [`test-inventory.md`](../archive/plans/test-inventory.md) Finding 1.
 12. **Split the CLI suite by what a spec does, not how long it takes.** A spec that runs a build, an
    install or another process is an integration spec; one that runs in-process is a unit spec, however
    many assertions it has. Duration is the symptom, spawning is the cause, and it is the thing that

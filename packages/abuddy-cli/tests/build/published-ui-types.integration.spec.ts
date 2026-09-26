@@ -6,7 +6,7 @@ import { CONSUMER_MATRIX, PACKAGES_BUILT, REPO_ROOT, compileConsumer, installPub
 let consumer: string | undefined;
 beforeAll(() => {
   if (PACKAGES_BUILT) consumer = installPublishedPackages();
-}, 120_000);
+});
 afterAll(() => {
   if (consumer) fs.rmSync(consumer, { recursive: true, force: true });
 });
@@ -44,5 +44,5 @@ describe.skipIf(!PACKAGES_BUILT)('published @abuddy/ui declarations', () => {
   it.each(CONSUMER_MATRIX)('types component props and composables for TypeScript $tsc, moduleResolution $moduleResolution', async ({ tsc, moduleResolution }) => {
     const result = await typecheck(consumer!, tsc, moduleResolution);
     expect(result.code, result.output).toBe(0);
-  }, 120_000);
+  });
 });
