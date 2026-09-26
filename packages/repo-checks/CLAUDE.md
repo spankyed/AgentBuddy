@@ -21,10 +21,17 @@ of that:
 
 `scripts/spec.ts` now routes `scripts/` and any `vitest.config.ts` here, and
 `tests/repo-check-boundary.spec.ts` holds the other half: a spec that reads the repo's scripts belongs in
-this package, and this package holds nothing else — with one caveat the rule cannot see, that an import can
-be a *tool* rather than a subject. `published-sdk-peers` was placed here by it and moved to
-`@app/publish-checks` once read: it imports a script helper but asserts about the built SDK — bar the layout checks its `LAYOUT_CHECKS` names, which
+this package, and this package holds nothing else — bar the layout checks its `LAYOUT_CHECKS` names, which
 read the tree and so have no `scripts/` module to import.
+
+**The two halves ask different questions, and that is what keeps the lists empty.** The first is about
+*reachability* — `scripts/spec.ts` routes a change under `scripts/` here and nowhere else, so a spec
+importing one from another package will not run when what it covers changes — and it asks only about
+imports, since only an import can create that. The second is about *cohesion*, and asks the wider question,
+because a spec that spawns `scripts/with-source.mjs` is as much about repo tooling as one that imports it.
+Asking one question for both cost an allowlist: `package-freshness` names a script path as an expected value
+and tripped the reachability check it cannot affect. `check:specifiers` now refuses a package reaching into
+`scripts/` at all, so the first check should stay empty by construction.
 
 The same shape has since turned up twice more, which is why `tests/spec-placement.spec.ts` generalises it:
 `@abuddy/testing` and `@abuddy/ui` had no suite at all and their specs lived in `@abuddy/cli`. Every package

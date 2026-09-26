@@ -7,7 +7,7 @@ import { builtinModules } from 'node:module';
 import ts from 'typescript';
 import { describe, expect, it } from 'vitest';
 import { packagesBuiltOrRefuse, REPO_ROOT } from '@abuddy/host/build/packages-built';
-import { packageName } from '../../../scripts/lib/published-imports.ts';
+import { packageName } from '@abuddy/host/build/specifiers';
 
 // Skips without built packages, and refuses rather than reading a stale `dist`
 const PACKAGES_BUILT = packagesBuiltOrRefuse('npm run packages:build (or npm test -w @app/publish-checks, which builds them)');

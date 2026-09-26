@@ -21,44 +21,41 @@ import { REPO_ROOT } from '@abuddy/host/build/packages-built';
 const REPO_SCRIPTS = path.join(REPO_ROOT, 'scripts') + path.sep;
 
 /**
- * A spec whose correctness depends on a module under the repo's `scripts/`.
+ * **Importing** a module under the repo's `scripts/`.
  *
- * The import half resolves each relative specifier rather than matching `/scripts/` as text, because
- * `@abuddy/ui` has a `scripts/` of its own and a spec about *its* export map is not a repo check.
+ * Resolves each relative specifier rather than matching `/scripts/` as text, because `@abuddy/ui` has a
+ * `scripts/` of its own and a spec about *its* export map is not a repo check.
  *
- * **What it cannot see is whether the import is a subject or a tool**, and that is where it has been wrong
- * once. `published-sdk-peers.spec.ts` imported `packageName` from `scripts/lib/published-imports.ts` and was
- * placed here by this rule, but it reads the built `dist` of `@abuddy/sdk` and asserts what its declarations
- * import — the script was a helper, the published SDK was the subject, and it belongs in
- * `@app/publish-checks`. Its sibling `published-imports.spec.ts` stays, because that one tests
- * `rewriteDeclarationExtensions` against inline fixtures and really is about the script. 17 of 18 were right,
- * which is the rule earning its place; the 18th is why a placement is worth reading before it is trusted. The
- * second half is for a spec that never imports one because it runs it as a process, which is how
- * `with-source` and `import-specifiers-script` reach their subject.
+ * This is what the first check below asks, and it asks only this, because what that check protects is
+ * *reachability*: `scripts/spec.ts` routes a change under `scripts/` to this package, so a spec that imports
+ * one and lives elsewhere is a spec that will not run when what it covers changes. An import is the only
+ * thing that can create that, and it is now the only thing that can, since `check:specifiers` refuses a
+ * package reaching into `scripts/` at all.
  */
-const namesRepoScripts = (file: string): boolean => {
+const importsARepoScript = (file: string): boolean => {
   const text = fs.readFileSync(path.join(REPO_ROOT, file), 'utf-8');
   const dir = path.dirname(path.join(REPO_ROOT, file));
   for (const [, specifier] of text.matchAll(/(?:from|import\()\s*'(\.[^']*)'/g)) {
     if (path.resolve(dir, specifier).startsWith(REPO_SCRIPTS)) return true;
   }
-  return /REPO_ROOT,\s*'scripts'/.test(text);
+  return false;
 };
 
 /**
- * A spec that names a repo script without its subject being one, and why. Kept to the ones that name a
- * script as an *expected value* rather than reading or running it — the one case the rule above cannot
- * tell apart, since both spell the path the same way.
+ * Importing one, **or running one as a process**.
+ *
+ * This is what the second check asks, and the wider question is right there: it is about *cohesion*, that
+ * this package holds nothing unrelated, and a spec that spawns `scripts/with-source.mjs` is as much about
+ * repo tooling as one that imports it. `with-source` and `import-specifiers-script` reach their subject
+ * that way and import nothing.
+ *
+ * The two checks asked one question between them until 2026-09-26, and that cost an allowlist: a spec
+ * naming a script path as an *expected value* — `package-freshness` asserting `BUILD_UNITS` covers the
+ * build scripts — tripped the reachability check, which it cannot affect, and had to be excused. Asking
+ * each check only what it needs left no exception to write down.
  */
-const NOT_A_REPO_CHECK: Record<string, string> = {
-  'packages/publish-checks/tests/published-sdk-peers.spec.ts':
-    'it imports `packageName` from scripts/lib/published-imports.ts as a helper, but reads the built dist of '
-    + '@abuddy/sdk and asserts what its declarations import: the script is the tool, the published SDK is the '
-    + 'subject. This rule placed it here once and was wrong — see the note above',
-  'packages/abuddy-cli/tests/build/package-freshness.spec.ts':
-    'its subject is the freshness rule in @abuddy/host/build/packages-built; it asserts that BUILD_UNITS '
-    + 'names the build scripts among its inputs, and never reads them',
-};
+const namesARepoScript = (file: string): boolean =>
+  importsARepoScript(file) || /REPO_ROOT,\s*'scripts'/.test(fs.readFileSync(path.join(REPO_ROOT, file), 'utf-8'));
 
 const IS_SPEC = /\.(spec|test)\.[cm]?[jt]sx?$/;
 const OWN_PACKAGE = 'packages/repo-checks/';
@@ -82,20 +79,10 @@ const specs = (): string[] =>
 
 describe('a spec about the repo\'s tooling lives in @app/repo-checks', () => {
   it('has none anywhere else', () => {
-    const elsewhere = specs()
-      .filter((file) => !file.startsWith(OWN_PACKAGE))
-      .filter(namesRepoScripts)
-      .filter((file) => !(file in NOT_A_REPO_CHECK));
-    expect(elsewhere, 'move these to packages/repo-checks/tests: a spec that reads the repo\'s scripts is a '
-      + 'repo check, and outside this package npm run spec cannot reach it from a change to what it checks')
-      .toEqual([]);
-  });
-
-  // A list of exceptions is only honest while each one is still an exception
-  it('lists no exception that has stopped applying', () => {
-    const stale = Object.keys(NOT_A_REPO_CHECK)
-      .filter((file) => !fs.existsSync(path.join(REPO_ROOT, file)) || !namesRepoScripts(file));
-    expect(stale, 'these are gone or no longer name a repo script; drop them from NOT_A_REPO_CHECK').toEqual([]);
+    const elsewhere = specs().filter((file) => !file.startsWith(OWN_PACKAGE)).filter(importsARepoScript);
+    expect(elsewhere, 'move these to packages/repo-checks/tests: npm run spec routes a change under scripts/ '
+      + 'to this package alone, so a spec importing one from anywhere else will not run when what it covers '
+      + 'changes').toEqual([]);
   });
 
   // The converse, so the package stays what it says it is. A spec that lands here and checks something else
@@ -103,7 +90,7 @@ describe('a spec about the repo\'s tooling lives in @app/repo-checks', () => {
   it('holds nothing else', () => {
     const here = specs().filter((file) => file.startsWith(OWN_PACKAGE)
       && !(file.slice(OWN_PACKAGE.length) in LAYOUT_CHECKS));
-    expect(here.filter((file) => !namesRepoScripts(file)),
+    expect(here.filter((file) => !namesARepoScript(file)),
       'this package is for specs whose subject is a repo script or the repo\'s own layout; these are '
       + 'neither — move them, or add them to LAYOUT_CHECKS with what repo-wide property they check').toEqual([]);
   });
@@ -112,7 +99,7 @@ describe('a spec about the repo\'s tooling lives in @app/repo-checks', () => {
   it('lists no layout check that has stopped applying', () => {
     const stale = Object.keys(LAYOUT_CHECKS).filter((rel) => {
       const file = `${OWN_PACKAGE}${rel}`;
-      return !fs.existsSync(path.join(REPO_ROOT, file)) || namesRepoScripts(file);
+      return !fs.existsSync(path.join(REPO_ROOT, file)) || namesARepoScript(file);
     });
     expect(stale, 'these are gone, or now name a repo script and need no exemption; drop them from '
       + 'LAYOUT_CHECKS').toEqual([]);

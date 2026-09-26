@@ -17,6 +17,7 @@
     "./build/packages-built": "./src/build/packages-built.ts",
     "./build/shared-deps": "./src/build/shared-deps.ts",
     "./build/source-resolution": "./src/build/source-resolution.ts",
+    "./build/specifiers": "./src/build/specifiers.ts",
     "./bus": "./src/bus/index.ts",
     "./database": "./src/database/index.ts",
     "./fe": "./src/fe/index.ts",

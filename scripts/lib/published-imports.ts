@@ -5,10 +5,8 @@ import * as path from 'node:path';
 import { builtinModules } from 'node:module';
 import { build } from 'esbuild';
 import ts from 'typescript';
+import { packageName } from '@abuddy/host/build/specifiers';
 
-/** The package a bare specifier names: `@scope/name` or `name` */
-export const packageName = (specifier: string) =>
-  specifier.startsWith('@') ? specifier.split('/').slice(0, 2).join('/') : specifier.split('/')[0];
 
 /** Package name → files importing it, across a package's shipped modules. */
 export class BareImports {

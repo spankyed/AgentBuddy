@@ -9,7 +9,21 @@
 //   npm run exports:check -w @abuddy/ui    (--check: fails on a stale map or a component without an entry)
 import * as fs from 'node:fs';
 import * as path from 'node:path';
-import { SOURCE_CONDITION, walk } from '../../../scripts/lib/published-imports.ts';
+/**
+ * A package's own `scripts/` imports that package's `src/` and its declared dependencies, and nothing
+ * else — as `abuddy-host/scripts/sdk-modules.ts` and `abuddy-sdk/scripts/generate-schema.ts` do, and as
+ * `check:specifiers` now enforces. These two came from `scripts/lib/published-imports.ts`, out of this
+ * package's tree entirely, which is how a build script came to depend on repo tooling it cannot name.
+ *
+ * Neither is worth an import. The condition is a string every host config already writes out as a literal
+ * by design (root `CLAUDE.md`: "A host config declares that condition outright"), and the walk is five
+ * lines that at least four files in this repo each keep their own copy of.
+ */
+const SOURCE_CONDITION = '@abuddy/source';
+
+const walk = (dir: string): string[] =>
+  fs.readdirSync(dir, { withFileTypes: true })
+    .flatMap((entry) => (entry.isDirectory() ? walk(path.join(dir, entry.name)) : [path.join(dir, entry.name)]));
 
 export const pkgDir = path.resolve(import.meta.dirname, '..');
 const srcDir = path.join(pkgDir, 'src');

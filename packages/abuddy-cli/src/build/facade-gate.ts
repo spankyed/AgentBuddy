@@ -1,4 +1,5 @@
 import * as fs from 'node:fs';
+import { packageName } from '@abuddy/host/build/specifiers';
 import { createRequire, isBuiltin } from 'node:module';
 import * as path from 'node:path';
 import ts from 'typescript';
@@ -9,11 +10,6 @@ const DECLARATION_EXTENSIONS: readonly string[] = [ts.Extension.Dts, ts.Extensio
 
 const SOURCE_CONDITION = '@abuddy/source';
 
-/** `@scope/name` or `name` of a package specifier */
-function packageName(specifier: string): string {
-  const parts = specifier.split('/');
-  return specifier.startsWith('@') ? parts.slice(0, 2).join('/') : parts[0]!;
-}
 
 /**
  * Packages a facade may import: every dependent has them. @abuddy/* packages, @abuddy/sdk's peer
