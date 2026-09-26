@@ -13,7 +13,7 @@
  * passed at construction time.
  */
 
-import type { Services, EntityId } from '#generated/services';
+import type { Services, EntityId } from '#generated/services.ts';
 import type { ThinkingBlockProps } from './thinking-types';
 import { formatDuration } from './tool-activity-label';
 

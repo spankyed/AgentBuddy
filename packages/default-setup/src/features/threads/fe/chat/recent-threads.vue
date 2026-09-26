@@ -266,11 +266,11 @@
 <script setup lang="ts">
 import { usePlugin } from '@abuddy/sdk/fe'
 import { useSettingsSection } from '@abuddy/sdk/fe'
-import type { GeneralSettings } from '#app-settings/types'
+import type { GeneralSettings } from '#app-settings/types.ts'
 import { ref, onMounted, onUnmounted, computed, watch, nextTick, type CSSProperties } from 'vue'
 import { Archive, History, ChevronUp, ChevronRight, Plus, PanelLeft, FileText, Pin, Trash2, FolderOpen, GitBranchPlus } from 'lucide-vue-next'
-import type { ThreadEntity } from '#generated/types';
-import type { AgentThreadData } from '#generated/types'
+import type { ThreadEntity } from '#generated/types.ts';
+import type { AgentThreadData } from '#generated/types.ts'
 import {
   ContextMenuRoot,
   ContextMenuTrigger,
@@ -283,7 +283,7 @@ import {
   ContextMenuSubContent,
 } from 'reka-ui'
 import { useSelector } from '@xstate/vue'
-import type { ThreadsState } from '#features/threads/fe/state'
+import type { ThreadsState } from '#features/threads/fe/state.ts'
 import ThreadContextMenu from '#features/threads/fe/canvas/components/thread-context-menu.vue'
 import { getThreadDotColor, isThreadBusy } from './thread-status'
 

@@ -6,11 +6,11 @@ import {
   TRAIL_CLICK,
   type TrailClickEvent,
 } from '@abuddy/sdk/fe'
-import type { ActionsSettings } from '#generated/types'
+import type { ActionsSettings } from '#generated/types.ts'
 import type { ActionsContext, ActionsInboxEvent } from './contract'
-import type { OutgoingActionEvents } from '#features/actions/be/types'
+import type { OutgoingActionEvents } from '#features/actions/be/types.ts'
 import type { ActionParameter } from '@abuddy/sdk'
-import { sendToSystem } from '#generated/events'
+import { sendToSystem } from '#generated/events.ts'
 import { Trash2 } from 'lucide-vue-next'
 import { contextMenuFn } from '@abuddy/sdk/fe'
 import type { ActionEntity } from '@abuddy/sdk'

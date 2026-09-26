@@ -17,7 +17,7 @@
 </template>
 
 <script setup lang="ts">
-import { EARS } from '#generated/ears'
+import { EARS } from '#generated/ears.ts'
 
 defineProps<{ modelValue?: string }>()
 defineEmits<{ 'update:modelValue': [entityType: string | undefined] }>()

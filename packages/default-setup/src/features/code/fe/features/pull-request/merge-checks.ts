@@ -1,4 +1,4 @@
-import type { GhPullRequest } from '#generated/types'
+import type { GhPullRequest } from '#generated/types.ts'
 
 export type StatusCheck = NonNullable<GhPullRequest['statusCheckRollup']>[number]
 

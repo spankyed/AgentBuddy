@@ -13,7 +13,7 @@
  * `THREAD_UPDATED` events.
  */
 
-import type { Services, EntityId } from '#generated/services';
+import type { Services, EntityId } from '#generated/services.ts';
 import { resolvePlanDraft } from './plan-artifact';
 
 // ─── Types ───────────────────────────────────────────────────────────────────

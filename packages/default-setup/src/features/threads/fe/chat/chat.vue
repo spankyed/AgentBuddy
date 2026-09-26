@@ -186,12 +186,12 @@ import ImageLightbox from '@abuddy/ui/design/ImageLightbox'
 import ConfirmationDialog from '@abuddy/ui/design/ConfirmationDialog'
 import ScrollToBottomFob from '@abuddy/ui/design/ScrollToBottomFob'
 import { usePlugin, useShell, updateSettings } from '@abuddy/sdk/fe'
-import { openPlugin } from '#generated/fe'
+import { openPlugin } from '#generated/fe.ts'
 import { useSelector } from '@xstate/vue'
-import { threadsFromStore, type ThreadsState } from '#features/threads/fe/state';
-import type { MessageEntity, ThreadEntity, MessageReferences, QuickPrompt } from '#generated/types'
-import { sendToSystem } from '#generated/events'
-import { ref as featureRef } from '#generated/ref';
+import { threadsFromStore, type ThreadsState } from '#features/threads/fe/state.ts';
+import type { MessageEntity, ThreadEntity, MessageReferences, QuickPrompt } from '#generated/types.ts'
+import { sendToSystem } from '#generated/events.ts'
+import { ref as featureRef } from '#generated/ref.ts';
 
 const shell = useShell()
 const actor: ThreadsState = usePlugin();

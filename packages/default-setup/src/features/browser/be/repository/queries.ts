@@ -1,6 +1,6 @@
 
-import { findAll } from '#generated/ears';
-import { EARS } from '#generated/ears';
+import { findAll } from '#generated/ears.ts';
+import { EARS } from '#generated/ears.ts';
 import type { BrowserTabEntity, SavedTab, BrowserBookmarkEntity, SavedBookmark } from '../types';
 import { normalizeSavedTabs } from './normalize-tabs';
 import { browserCommands } from './commands';

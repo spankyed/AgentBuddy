@@ -1,7 +1,7 @@
 import type { PromptTab } from '../../contract';
 export type { PromptTab } from '../../contract';
 import { setup , type ActorRefFrom } from 'xstate';
-import { sendToSystem } from '#generated/events';
+import { sendToSystem } from '#generated/events.ts';
 import { updateParentState, getParentContext, addTabToParent } from '../../utils/parent-communication';
 import type { PromptEntity } from '@abuddy/sdk';
 

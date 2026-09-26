@@ -1,5 +1,5 @@
-import type { ThreadsSettings } from '#generated/types';
-import { sendToSystem, broadcastToPlugin } from '#generated/events';
+import type { ThreadsSettings } from '#generated/types.ts';
+import { sendToSystem, broadcastToPlugin } from '#generated/events.ts';
 import { setup } from 'xstate';
 import { performance } from 'node:perf_hooks';
 import { defineSystem } from '@abuddy/sdk/framework';
@@ -10,9 +10,9 @@ import { executeTransaction } from './execute/transaction';
 import { generateSchemaInfo } from './repository/schema';
 import { getTraceFlows, getFlowEvents, getNodeDetails } from './repository/trace-query';
 import { createLogger } from '@abuddy/sdk/logger';
-import { services } from '#generated/services';
-import { repository } from '#generated/repository';
-import { ref } from '#generated/ref';
+import { services } from '#generated/services.ts';
+import { repository } from '#generated/repository.ts';
+import { ref } from '#generated/ref.ts';
 import { errorMessage } from '@abuddy/sdk/utils/pure';
 
 const logger = createLogger('database');

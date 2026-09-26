@@ -1,5 +1,5 @@
 import { computed, type Ref } from 'vue'
-import { usePluginState } from '#generated/fe'
+import { usePluginState } from '#generated/fe.ts'
 import type { CommandItem } from './command-config'
 
 export function useCommandItems(query: Ref<string>) {

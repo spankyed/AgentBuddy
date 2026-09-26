@@ -1,4 +1,4 @@
-import type { EARS, BaseEntity } from '#generated/ears'
+import type { EARS, BaseEntity } from '#generated/ears.ts'
 
 export type DocumentShortCode = `DOC-${number}`;
 

@@ -84,10 +84,10 @@ import { usePlugin } from '@abuddy/sdk/fe'
 
 import { computed, ref, watch } from 'vue'
 import { useSelector } from '@xstate/vue'
-import type { BrainState } from '#features/brain/fe/state'
+import type { BrainState } from '#features/brain/fe/state.ts'
 import TNodeListItem from '@abuddy/ui/components/TNodeListItem'
 import type { TrackTree } from '@abuddy/sdk/steps'
-import { sendToSystem } from '#generated/events'
+import { sendToSystem } from '#generated/events.ts'
 
 const brainActor: BrainState = usePlugin();
 const normalizedTree = useSelector(brainActor, (state) => state.context.normalizedTree);

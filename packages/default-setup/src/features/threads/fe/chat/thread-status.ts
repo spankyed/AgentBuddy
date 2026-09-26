@@ -1,4 +1,4 @@
-import type { ThreadsSettings } from '#generated/types'
+import type { ThreadsSettings } from '#generated/types.ts'
 
 type ChatState = string
 type ChatStateOverride = { id: string; expiresAt: number }

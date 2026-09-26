@@ -33,7 +33,7 @@
  * Phase A.
  */
 
-import type { Services, EntityId } from '#generated/services';
+import type { Services, EntityId } from '#generated/services.ts';
 import { computeLabel } from './tool-activity-label';
 import type { ToolActivityEntry, ToolActivityBlockProps } from './tool-activity-types';
 

@@ -367,9 +367,9 @@ import {
   Sparkle,
   Pin,
 } from 'lucide-vue-next'
-import type { OpenFile, TerminalTab, TabGroup as TabGroupType } from '#features/code/fe/state'
-import type { ActionTab } from '#features/code/fe/features/actions/state'
-import type { PromptTab } from '#features/code/fe/features/prompts/state'
+import type { OpenFile, TerminalTab, TabGroup as TabGroupType } from '#features/code/fe/state.ts'
+import type { ActionTab } from '#features/code/fe/features/actions/state.ts'
+import type { PromptTab } from '#features/code/fe/features/prompts/state.ts'
 import { groupTabs } from '../utils/tab-management'
 import { getFileIcon } from '../utils/file-icons'
 import GroupLabel from '../components/GroupLabel.vue'

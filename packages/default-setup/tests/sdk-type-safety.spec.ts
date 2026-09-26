@@ -14,8 +14,8 @@ import { untypedTx, type QueryBuilder, type TransactionBuilder } from '@abuddy/e
 import {
   qx, createEntity, findById, findAll, findWhere, findFirst, createEntityWithDefaults, updateEntity, getAttr, findWithFields,
   type EntityShape,
-} from '#generated/ears';
-import { repository, type Repositories } from '#generated/repository';
+} from '#generated/ears.ts';
+import { repository, type Repositories } from '#generated/repository.ts';
 import { filterSystemFields } from '@abuddy/ears';
 import { resetTestData } from '@abuddy/sdk/testing';
 import { createLogger, type Logger } from '@abuddy/sdk/logger';
@@ -30,11 +30,11 @@ import {
   breadcrumb, breadcrumbWithParams, breadcrumbList,
   contextMenuFn, type ContextMenuItem,
 } from '@abuddy/sdk/fe';
-import { services, type Services } from '#generated/services';
+import { services, type Services } from '#generated/services.ts';
 import type { HostServices } from '@abuddy/sdk/services';
 import type { flowRepository } from '@abuddy/sdk/repositories';
-import type { promptService } from '#features/prompts/be/services/prompt';
-import { EARS } from '#generated/ears';
+import type { promptService } from '#features/prompts/be/services/prompt.ts';
+import { EARS } from '#generated/ears.ts';
 
 
 // ─── Compile-time type assertions ──────────────────────────────────────

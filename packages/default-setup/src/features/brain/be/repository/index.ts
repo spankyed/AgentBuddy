@@ -1,9 +1,9 @@
-import { tx, qx, findById } from '#generated/ears';
-import { EARS } from '#generated/ears';
+import { tx, qx, findById } from '#generated/ears.ts';
+import { EARS } from '#generated/ears.ts';
 import { findRelations, untypedQx } from '@abuddy/ears';
 import type { FlowTNodeData, EventListenerEntity } from '../types';
-import type { NodeEntity } from '#generated/types';
-import type { FlowNode } from '#extensions/steps/subflow/types';
+import type { NodeEntity } from '#generated/types.ts';
+import type { FlowNode } from '#extensions/steps/subflow/types.ts';
 import { stepRegistry } from '@abuddy/sdk/steps';
 import { prepareNodeAttributes, type PreparedAttributes } from './node-attribute-mappers';
 import { truncateResult } from '@abuddy/sdk/steps';

@@ -13,7 +13,7 @@
 
 <script setup lang="ts">
 import TiptapEditor from '@abuddy/ui/components/tiptap/TiptapEditor'
-import type { MarkdownContent } from '#features/library/be/types';
+import type { MarkdownContent } from '#features/library/be/types.ts';
 
 defineProps<{
   content: MarkdownContent

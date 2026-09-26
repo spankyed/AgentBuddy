@@ -4,7 +4,7 @@ import { resolveName } from '@abuddy/sdk/ids'
 
 const HOST_SETTINGS = resolveName('settings', 'host')
 import { updateSettings, useSettingsSection } from '@abuddy/sdk/fe'
-import type { GeneralSettings } from '#app-settings/types'
+import type { GeneralSettings } from '#app-settings/types.ts'
 export interface Project {
   name: string
   directories: string[]

@@ -8,7 +8,7 @@ export { EARS } from '@abuddy/sdk/types';
 export type { BaseEntity, QueryBuilder, RelationMatch, RelationRow, RelationStats } from '@abuddy/ears';
 
 // Read: the pack's typed helpers where there are any, the engine's otherwise
-export { qx, getAttr, getAttrs } from '#generated/ears';
+export { qx, getAttr, getAttrs } from '#generated/ears.ts';
 export {
   getAll, getRoles, getAllEntities, getEntitiesOfType,
   queryEntitiesByAttribute, queryEntitiesByRelationTo, queryEntitiesInRelationTo,
@@ -17,7 +17,7 @@ export {
 export { getSchemaStats } from '@abuddy/sdk/database-console';
 
 // Write: only a transaction gets these; a query naming one fails with "<name> is not defined"
-export { createEntityWithDefaults, updateEntity } from '#generated/ears';
+export { createEntityWithDefaults, updateEntity } from '#generated/ears.ts';
 export {
   untypedTx as tx, destroyEntity, prepareEntity, createRelation, removeRelation, removeRelationById, grantRole, revokeRole,
 } from '@abuddy/ears';

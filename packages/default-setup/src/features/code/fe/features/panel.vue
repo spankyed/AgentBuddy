@@ -46,7 +46,7 @@ import { usePlugin } from '@abuddy/sdk/fe'
 
 import { ref } from 'vue'
 import { useSelector } from '@xstate/vue'
-import type { CodeState } from '#features/code/fe/state'
+import type { CodeState } from '#features/code/fe/state.ts'
 import ExplorerPanel from '#features/code/fe/features/explorer/ExplorerPanel.vue'
 import SearchPanel from '#features/code/fe/features/search/SearchPanel.vue'
 import CommitPanel from '#features/code/fe/features/commit/CommitPanel.vue'

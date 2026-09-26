@@ -1,12 +1,12 @@
 // 0.3.0 adds the Codex mode to the chat modes a user stored and drops Hermes. It reads the stored settings, not the
 // merged ones: the defaults already have Codex, and a user who never changed the modes must keep getting the defaults.
-import { services } from '#generated/services';
+import { services } from '#generated/services.ts';
 import { describe, expect, it } from 'vitest'
 import { untypedTx, untypedQx } from '@abuddy/ears'
 import type { EARS as SdkEARS } from '@abuddy/sdk'
 import { migrations } from '../../src/migrations/index'
-import threadsSettings from '#features/threads/settings'
-import { ref } from '#generated/ref'
+import threadsSettings from '#features/threads/settings.ts'
+import { ref } from '#generated/ref.ts'
 
 /** The migration as the pack registers it, so this fails too if it was never listed */
 const migration = migrations.find((m) => m.target === '0.3.0')!

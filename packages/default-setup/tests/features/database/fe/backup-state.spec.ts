@@ -4,9 +4,9 @@ import { beforeEach, expect, it, vi } from 'vitest';
 import { createActor } from 'xstate';
 
 const sendToSystem = vi.hoisted(() => vi.fn());
-vi.mock('#generated/events', () => ({ sendToSystem }));
+vi.mock('#generated/events.ts', () => ({ sendToSystem }));
 
-const { default: databaseState } = await import('#features/database/fe/state');
+const { default: databaseState } = await import('#features/database/fe/state.ts');
 
 function backupView() {
   const actor = createActor(databaseState).start();

@@ -7,12 +7,12 @@ import { loadRecentFiles, addRecentFile } from './utils/recent-files';
 import { pushTabViewHistory, nextActiveFromHistory } from './utils/tab-management';
 import { saveTabGroups, loadTabGroups, getNextAvailableColor, type TabGroupColor, type TabGroup } from '@abuddy/sdk/fe';
 import { createNavHistory, pushNavHistory, goBack, goForward, canGoBack, canGoForward } from '@abuddy/sdk/fe';
-import type { CodeSettings } from '#generated/types';
+import type { CodeSettings } from '#generated/types.ts';
 import type { ActionTab, CodeContext as Context, CodeInboxEvent, OpenFile, PanelType, PromptTab, TerminalTab } from './contract';
 export type { OpenFile, TerminalTab, QuickOpenResult, PanelType } from './contract';
 export type { CodeContext as Context } from './contract';
-import type {  } from '#features/code/be/types'
-import type { OutgoingCodeEvents } from '#features/code/be/contract';
+import type {  } from '#features/code/be/types.ts'
+import type { OutgoingCodeEvents } from '#features/code/be/contract.ts';
 
 // Import child state machines
 import { explorerState } from './features/explorer/state';

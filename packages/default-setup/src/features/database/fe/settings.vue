@@ -69,8 +69,8 @@ import { reactive } from 'vue'
 import KeyboardShortcutInput from '@abuddy/ui/components/KeyboardShortcutInput'
 import CollapsibleSection from '@abuddy/ui/design/CollapsibleSection'
 import { HardDriveDownload } from 'lucide-vue-next'
-import type { DatabaseSettings } from '#generated/types'
-import { openPlugin } from '#generated/fe'
+import type { DatabaseSettings } from '#generated/types.ts'
+import { openPlugin } from '#generated/fe.ts'
 import type { DatabaseState } from './state'
 
 interface Props {

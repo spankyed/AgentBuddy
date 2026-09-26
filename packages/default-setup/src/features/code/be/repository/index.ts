@@ -1,6 +1,6 @@
-import { tx, findById, findAll } from '#generated/ears';
+import { tx, findById, findAll } from '#generated/ears.ts';
 
-import { EARS } from '#generated/ears'
+import { EARS } from '#generated/ears.ts'
 
 import { exists } from '@abuddy/ears';
 import { trash } from '@abuddy/sdk/repositories';

@@ -187,7 +187,7 @@ import {
   ContextMenuRoot, ContextMenuTrigger, ContextMenuContent,
   ContextMenuItem, ContextMenuPortal, ContextMenuSeparator,
 } from 'reka-ui'
-import type { LibraryItem } from '#generated/types'
+import type { LibraryItem } from '#generated/types.ts'
 import { formatDate } from '../utils/naming'
 
 const props = defineProps<{

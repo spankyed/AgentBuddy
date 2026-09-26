@@ -1,6 +1,6 @@
-import { services } from '#generated/services';
+import { services } from '#generated/services.ts';
 import type { PackMigration } from '@abuddy/sdk/framework';
-import { ref } from '#generated/ref';
+import { ref } from '#generated/ref.ts';
 
 export const migration: PackMigration = {
   target: '0.3.14',

@@ -1,7 +1,7 @@
-import { services } from '#generated/services';
-import { GitRepository } from '#features/code/be/services/git'
-import * as ghCli from '#features/code/be/services/gh-cli'
-import type { GitStatusFile, GhPullRequest, GhPRComment, GhReviewThread } from '#features/code/be/types'
+import { services } from '#generated/services.ts';
+import { GitRepository } from '#features/code/be/services/git.ts'
+import * as ghCli from '#features/code/be/services/gh-cli.ts'
+import type { GitStatusFile, GhPullRequest, GhPRComment, GhReviewThread } from '#features/code/be/types.ts'
 import { claudeCode } from './claude-code'
 import type { QueryOptions, QueryHandle, AuthStatus, SessionInfo, SessionListOptions, SessionTranscriptEntry, SessionViewOptions } from './claude-code'
 import type { ExecOnceOptions, ExecOnceResult } from './claude-code/runner'
@@ -13,7 +13,7 @@ import { configDir } from './claude-code/sessions'
 import fs from 'fs'
 import path from 'path'
 import os from 'os'
-import { ref } from '#generated/ref';
+import { ref } from '#generated/ref.ts';
 
 interface CodeSettings {
   defaultBaseDirectory?: string | null
@@ -42,7 +42,7 @@ export interface CliServiceType {
   /**
    * Claude Code wrapper. Highlights only — the full surface (sessions, mcp,
    * plugins, skills, …) is available via `import { claudeCode } from
-   * '#features/code/be/services/claude-code'`.
+   * '#features/code/be/services/claude-code/index.ts'`.
    */
   /** Clear-cache resolve + exec test — same path as the Settings test button. */
   testCli(provider: string): Promise<{ success: true; resolvedPath: string } | { success: false; error: string }>

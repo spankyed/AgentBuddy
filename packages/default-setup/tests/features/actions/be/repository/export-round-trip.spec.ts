@@ -1,10 +1,10 @@
 import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
-import { repository } from '#generated/repository';
+import { repository } from '#generated/repository.ts';
 import { resetTestData } from '@abuddy/sdk/testing';
-import { exportActions } from '#features/actions/be/repository/export-actions';
-import { exportPrompts } from '#features/prompts/be/repository/export-prompts';
+import { exportActions } from '#features/actions/be/repository/export-actions.ts';
+import { exportPrompts } from '#features/prompts/be/repository/export-prompts.ts';
 import { actionFixtures } from '../../../../_support/action-fixtures';
 import { promptFixtures } from '../../../../_support/prompt-fixtures';
 

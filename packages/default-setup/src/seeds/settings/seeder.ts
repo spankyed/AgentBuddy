@@ -1,7 +1,7 @@
 // Seeds the `settings` entry (compiled by ../_compilers/settings.ts): importing it resets the user's settings to the
 // defaults it holds. Keeping the existing data leaves them. The app's own state (AppState) isn't settings, so a reset
 // leaves it alone.
-import { services } from '#generated/services';
+import { services } from '#generated/services.ts';
 import * as fs from 'node:fs';
 import { seedPath } from '@abuddy/sdk/build';
 import type { ImportCounts, ImportContext } from '@abuddy/sdk/utils';

@@ -6,9 +6,9 @@ import { untypedTx, exists } from '@abuddy/ears';
 import {
   findById, findByIdRaw, findAll, findWhere,
   createEntityWithDefaults, updateEntity, getAttr,
-} from '#generated/ears';
+} from '#generated/ears.ts';
 import { resetTestData } from '@abuddy/sdk/testing';
-import { EARS } from '#generated/ears';
+import { EARS } from '#generated/ears.ts';
 
 describe('Tier 1 — EARS delegates', () => {
   beforeEach(() => resetTestData());

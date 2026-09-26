@@ -4,8 +4,8 @@ import { effectScope } from 'vue';
 import { expect, it } from 'vitest';
 import { startApp, startShell } from '@abuddy/testing/harness';
 import { useShell } from '@abuddy/sdk/fe';
-import { openPlugin } from '#generated/fe';
-import { sendToPlugin } from '#generated/events';
+import { openPlugin } from '#generated/fe.ts';
+import { sendToPlugin } from '#generated/events.ts';
 import memosState from '../../../../src/features/memos/fe/state';
 import notesState from '../../../../src/features/notes/fe/state';
 

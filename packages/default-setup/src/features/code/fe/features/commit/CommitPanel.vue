@@ -632,11 +632,11 @@
 import { computed, ref, nextTick, watch } from 'vue'
 import { useSelector } from '@xstate/vue'
 import { usePlugin, useShell } from '@abuddy/sdk/fe'
-import type { CodeState } from '#features/code/fe/state'
-import type { GitStatusFile } from '#features/code/fe/features/commit/state'
+import type { CodeState } from '#features/code/fe/state.ts'
+import type { GitStatusFile } from '#features/code/fe/features/commit/state.ts'
 import { GitBranch, GitBranchPlus, GitCommit, GitFork, GitMerge, RefreshCw, Plus, Minus, RotateCcw, ChevronDown, ChevronRight, CheckCircle, Check, X, Sparkles, Loader2, ArrowDownToLine, ArrowUpFromLine, MoreVertical, Trash2, Copy, Search, FolderSync, Lock } from 'lucide-vue-next'
 import { ContextMenuItem } from 'reka-ui'
-import { MENU_ITEM_CLASS, MENU_ITEM_DANGER_CLASS } from '#features/code/fe/features/explorer/constants'
+import { MENU_ITEM_CLASS, MENU_ITEM_DANGER_CLASS } from '#features/code/fe/features/explorer/constants.ts'
 import GitFileItem from '#features/code/fe/features/commit/GitFileItem.vue'
 import CodePanelHeader from '#features/code/fe/features/CodePanelHeader.vue'
 import NoDirectoryState from '#features/code/fe/features/NoDirectoryState.vue'
@@ -646,7 +646,7 @@ import CommitLogSection from '#features/code/fe/features/commit/CommitLogSection
 import ToastNotification from '@abuddy/ui/design/ToastNotification'
 import ContextMenuPopup from '@abuddy/ui/design/ContextMenuPopup'
 import PanelResizer from '@abuddy/ui/layout/panel-resizer'
-import { useSectionVisibilityMenu } from '#features/code/fe/composables/useSectionVisibilityMenu'
+import { useSectionVisibilityMenu } from '#features/code/fe/composables/useSectionVisibilityMenu.ts'
 import { codeChild } from '../children';
 
 // Get actors

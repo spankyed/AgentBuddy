@@ -1,5 +1,5 @@
 import { setup, assign , type ActorRefFrom } from 'xstate';
-import { sendToSystem } from '#generated/events';
+import { sendToSystem } from '#generated/events.ts';
 import { getParentContext } from '../../utils/parent-communication';
 
 // Search types

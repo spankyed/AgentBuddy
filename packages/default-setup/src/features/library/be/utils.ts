@@ -4,8 +4,8 @@
  * Common functions used across library export, import, and default-setup compilation.
  */
 
-import type { ExportedItem } from '#features/library/be/export-types';
-import type { ContentSection } from '#features/library/be/types';
+import type { ExportedItem } from '#features/library/be/export-types.ts';
+import type { ContentSection } from '#features/library/be/types.ts';
 
 
 function escapeQuotes(str: string): string {

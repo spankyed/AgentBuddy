@@ -1,13 +1,13 @@
 // Finds the CLIs the code feature runs (Claude Code, Codex, Copilot, gh): a path the user set in the code
 // plugin's settings (`cliPaths`), known install locations, then PATH.
-import type { CodeSettings } from '#features/code/be/types';
-import { services } from '#generated/services';
+import type { CodeSettings } from '#features/code/be/types.ts';
+import { services } from '#generated/services.ts';
 import { execFile } from 'child_process'
 import { promisify } from 'util'
 import * as fs from 'fs'
 import * as os from 'os'
 import * as path from 'path'
-import { ref } from '#generated/ref'
+import { ref } from '#generated/ref.ts'
 
 const execFileAsync = promisify(execFile)
 

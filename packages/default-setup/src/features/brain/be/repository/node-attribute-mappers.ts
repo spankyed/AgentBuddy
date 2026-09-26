@@ -1,4 +1,4 @@
-import type { NodeEntity } from '#generated/types';
+import type { NodeEntity } from '#generated/types.ts';
 import type { FieldMapping, SourceResolver } from '../types';
 import { brainLogger } from '../utils/brain-inspect';
 import { truncateResult, isTruncated } from '@abuddy/sdk/steps';

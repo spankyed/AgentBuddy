@@ -136,7 +136,7 @@ import { computed, ref, watch, nextTick, useTemplateRef } from 'vue'
 import { GitBranch, ArrowRight, Loader2, Pencil, ExternalLink } from 'lucide-vue-next'
 import TiptapEditor from '@abuddy/ui/components/tiptap/TiptapEditor'
 import ImageLightbox from '@abuddy/ui/design/ImageLightbox'
-import type { GhPullRequest, GhPRComment } from '#generated/types'
+import type { GhPullRequest, GhPRComment } from '#generated/types.ts'
 import { openLink } from '@abuddy/sdk/fe'
 
 const props = defineProps<{

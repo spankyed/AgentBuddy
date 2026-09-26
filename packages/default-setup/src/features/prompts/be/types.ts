@@ -1,9 +1,9 @@
-import { EARS } from '#generated/ears';
+import { EARS } from '#generated/ears.ts';
 /**
  * Prompt template types and definitions
  */
 
-import type { Category } from '#generated/types';
+import type { Category } from '#generated/types.ts';
 
 
 

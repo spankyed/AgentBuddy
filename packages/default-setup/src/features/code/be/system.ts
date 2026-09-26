@@ -15,9 +15,9 @@
  *   baseDirectory > defaultBaseDirectory > first workspace project > null
  */
 import type { Contract } from './contract';
-import type { GeneralSettings } from '#app-settings/types';
-import { services } from '#generated/services';
-import { broadcastToPlugin } from '#generated/events';
+import type { GeneralSettings } from '#app-settings/types.ts';
+import { services } from '#generated/services.ts';
+import { broadcastToPlugin } from '#generated/events.ts';
 import { clearCliPathCache, isCliName, testCli } from './utils/resolve-cli';
 import { createLogger } from '@abuddy/sdk/logger';
 
@@ -46,7 +46,7 @@ function child(self: AnyActorRef, id: string): AnyActorRef | undefined {
 // Union all outgoing events from child systems  
 // Import only the type needed for broadcast event
 import type { CodeConnectedData, CodeSettings } from './types'
-import { ref } from '#generated/ref';
+import { ref } from '#generated/ref.ts';
 
 export const codeSpec = defineSystem<Contract>();
 

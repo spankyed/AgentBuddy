@@ -45,7 +45,7 @@
 import { usePlugin } from '@abuddy/sdk/fe'
 
 import { FolderOpen } from 'lucide-vue-next'
-import type { CodeState } from '#features/code/fe/state'
+import type { CodeState } from '#features/code/fe/state.ts'
 import { useProjectActions } from './explorer/composables/useProjectActions'
 import { codeChild } from './children';
 

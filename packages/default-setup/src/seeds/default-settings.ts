@@ -1,4 +1,4 @@
-import type { SettingsData } from '#app-settings/types'
+import type { SettingsData } from '#app-settings/types.ts'
 
 const settings: SettingsData = {
   general: {

@@ -1,7 +1,7 @@
 import type { KeyboardShortcut } from '@abuddy/sdk/types';
-import { type BaseEntity, EARS } from '#generated/ears';
+import { type BaseEntity, EARS } from '#generated/ears.ts';
 type Simplify<T> = { [K in keyof T]: T[K] } & {};
-import type { PermissionMode } from "#features/code/be/services/claude-code/types";
+import type { PermissionMode } from "#features/code/be/services/claude-code/types.ts";
 
 import type { ArtifactItem } from '@abuddy/sdk/artifacts';
 

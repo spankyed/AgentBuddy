@@ -1,13 +1,13 @@
-import { sendToSystem } from '#generated/events';
+import { sendToSystem } from '#generated/events.ts';
 import { untypedQx } from '@abuddy/ears';
-import { services as appServices } from '#generated/services';
+import { services as appServices } from '#generated/services.ts';
 import { setup, sendParent, enqueueActions, raise, type AnyActorRef, type AnyStateMachine } from 'xstate';
-import type { NodeEntity } from '#generated/types';
-import { repository } from '#generated/repository';
+import type { NodeEntity } from '#generated/types.ts';
+import { repository } from '#generated/repository.ts';
 
 import { stepRegistry } from '@abuddy/sdk/steps';
 import { createStepNodeSystem } from './step-system';
-import { EARS } from '#generated/ears';
+import { EARS } from '#generated/ears.ts';
 import type { ExecutionContext, TNodeEntity } from '@abuddy/sdk/steps';
 import { safeEvents } from '@abuddy/sdk/helpers';
 import { brainRuntime } from './system';

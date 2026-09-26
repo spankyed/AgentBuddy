@@ -4,8 +4,8 @@ import {
   prunePersistedTabsToOpenPaths,
   saveOpenTabs,
   type PersistedTabState,
-} from '#features/code/fe/utils/persisted-tabs'
-import { terminalEventBus } from '#features/code/fe/utils/terminal-events'
+} from '#features/code/fe/utils/persisted-tabs.ts'
+import { terminalEventBus } from '#features/code/fe/utils/terminal-events.ts'
 
 describe('code persisted tabs', () => {
   beforeEach(() => {

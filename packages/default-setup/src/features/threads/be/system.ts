@@ -1,13 +1,13 @@
-import type { ThreadsSettings } from '#generated/types'
-import type { AssistantSettings } from '#app-settings/types';
-import { sendToSystem, broadcastToPlugin } from '#generated/events';
-import { services } from '#generated/services';
-import { REQUIRED_PROVIDERS } from '#app-settings/providers';
+import type { ThreadsSettings } from '#generated/types.ts'
+import type { AssistantSettings } from '#app-settings/types.ts';
+import { sendToSystem, broadcastToPlugin } from '#generated/events.ts';
+import { services } from '#generated/services.ts';
+import { REQUIRED_PROVIDERS } from '#app-settings/providers.ts';
 import { assign, setup } from 'xstate';
 import { defineSystem } from '@abuddy/sdk/framework';
 
-import { tx, EARS } from '#generated/ears';
-import { repository } from '#generated/repository';
+import { tx, EARS } from '#generated/ears.ts';
+import { repository } from '#generated/repository.ts';
 import type { Contract } from './contract';
 import type { MessageEntity, ThreadLinkItem } from './types';
 import { type ChangeBlock, toMap, toIdentifierSet, mapScalar, mapArray } from '@abuddy/sdk/utils';
@@ -16,7 +16,7 @@ import { importThreads } from './import-threads';
 import { runThreadTeardown } from './thread-teardown';
 import { generateAsideText } from './services/chat';
 import { createLogger, reportError } from '@abuddy/sdk/logger';
-import { ref } from '#generated/ref';
+import { ref } from '#generated/ref.ts';
 import { errorMessage } from '@abuddy/sdk/utils/pure';
 
 const logger = createLogger('threads');

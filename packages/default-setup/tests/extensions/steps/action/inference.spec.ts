@@ -3,8 +3,8 @@
 import { describe, expect, it } from 'vitest';
 import { mockInference } from '@abuddy/testing/harness';
 import type { ExecutionContext, TNodeEntity } from '@abuddy/sdk/steps';
-import { services } from '#generated/services';
-import { handler } from '#extensions/steps/action/runtime';
+import { services } from '#generated/services.ts';
+import { handler } from '#extensions/steps/action/runtime.ts';
 
 /** Runs inline action code on the action step, as a flow node in code mode does */
 async function runAction(actionFn: string) {

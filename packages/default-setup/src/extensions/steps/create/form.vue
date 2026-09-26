@@ -34,7 +34,7 @@
 
 <script setup lang="ts">
 import { computed } from 'vue'
-import type { NodeEntity } from '#generated/types'
+import type { NodeEntity } from '#generated/types.ts'
 import BaseForm from '@abuddy/ui/components/BaseForm'
 import type { CreateNode } from './types'
 import Fields from './fields.vue'

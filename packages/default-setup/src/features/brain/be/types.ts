@@ -1,5 +1,5 @@
 import type { StepRuntimeError } from '@abuddy/sdk/steps';
-import type { EARS } from '#generated/ears';
+import type { EARS } from '#generated/ears.ts';
 
 import type { TrackTree, TNodeEntity, ExecutionContext } from '@abuddy/sdk/steps';
 

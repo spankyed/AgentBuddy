@@ -5,7 +5,7 @@
 // the only place the cross-pack read is exercised; within a pack the same reader answers from the pack's own
 // contracts, which the app's own features use everywhere.
 import { describe, expect, it } from 'vitest';
-import { readPluginState, usePluginState } from '#generated/fe';
+import { readPluginState, usePluginState } from '#generated/fe.ts';
 
 describe('typed reads of a plugin state', () => {
   it('types a dependency read from that pack\'s published state, and its own as always present', () => {

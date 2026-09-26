@@ -1,9 +1,9 @@
 import { setup, assign, type ActorRefFrom } from 'xstate'
-import type { DocumentDTO, CollectionDTO, LibraryItem, DocumentItem } from '#generated/types'
+import type { DocumentDTO, CollectionDTO, LibraryItem, DocumentItem } from '#generated/types.ts'
 import type { LibraryContext, LibraryInboxEvent } from './contract'
-import type { OutgoingLibraryEvents } from '#features/library/be/types'
+import type { OutgoingLibraryEvents } from '#features/library/be/types.ts'
 import type { SearchIndexFormData } from './types/search-index'
-import { sendToSystem } from '#generated/events'
+import { sendToSystem } from '#generated/events.ts'
 import { Trash2 } from 'lucide-vue-next'
 import { contextMenuFn } from '@abuddy/sdk/fe'
 import breadcrumb, { breadcrumbWithParams } from '@abuddy/sdk/fe'
@@ -47,7 +47,7 @@ function findItemById(context: LibraryContext, id: string): LibraryItem | undefi
 }
 
 export const id = 'library' as const;
-import type { ContentSection } from '#features/library/be/types';
+import type { ContentSection } from '#features/library/be/types.ts';
 
 /** The library plugin's actor, as its own components reach it with `usePlugin<LibraryActor>()` */
 export type LibraryActor = ActorRefFrom<typeof librarySystem>

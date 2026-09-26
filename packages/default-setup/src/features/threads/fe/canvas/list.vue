@@ -117,9 +117,9 @@ import { useSelector } from '@xstate/vue'
 import Button from '@abuddy/ui/design/button'
 import ThreadRow from './list/thread-row.vue'
 import ThreadsHeader from './components/ThreadsHeader.vue'
-import { threadsFromStore, type ThreadsState } from '#features/threads/fe/state'
-import { useThreadSelection } from '#features/threads/fe/composables/useThreadSelection'
-import { useThreadDragDrop } from '#features/threads/fe/composables/useThreadDragDrop'
+import { threadsFromStore, type ThreadsState } from '#features/threads/fe/state.ts'
+import { useThreadSelection } from '#features/threads/fe/composables/useThreadSelection.ts'
+import { useThreadDragDrop } from '#features/threads/fe/composables/useThreadDragDrop.ts'
 
 const actor: ThreadsState = usePlugin()
 const threadMap = useSelector(actor, s => s.context.threadMap)

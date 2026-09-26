@@ -4,7 +4,7 @@
 // codegen read the contract without resolving the machine, whose imports cycle back through `#generated/events`.
 // `abuddy.json` names it at `features[].plugin.contract`.
 import type { NavHistory, PluginInbox } from '@abuddy/sdk/fe'
-import type { BreadcrumbItem, DocumentDTO, LibraryIndex, LibraryItem, SearchIndex } from '#generated/types'
+import type { BreadcrumbItem, DocumentDTO, LibraryIndex, LibraryItem, SearchIndex } from '#generated/types.ts'
 
 export interface LibraryContext {
   // Core view state

@@ -1,5 +1,5 @@
-import { tx, qx } from '#generated/ears';
-import { EARS } from '#generated/ears';
+import { tx, qx } from '#generated/ears.ts';
+import { EARS } from '#generated/ears.ts';
 import { flowRepository } from '@abuddy/sdk/repositories';
 import type {
   NodeEntity,
@@ -8,7 +8,7 @@ import type {
   FlowsConnectedData
 } from '../types';
 import { availableModels } from '@abuddy/sdk/models';
-import { repository } from '#generated/repository';
+import { repository } from '#generated/repository.ts';
 import { ROOT_FLOW_ROLE } from '@abuddy/sdk';
 import type { FlowEntity } from '@abuddy/sdk';
 

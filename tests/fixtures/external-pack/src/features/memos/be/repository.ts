@@ -1,4 +1,4 @@
-import { findAll, createEntityWithDefaults, EARS } from '#generated/ears';
+import { findAll, createEntityWithDefaults, EARS } from '#generated/ears.ts';
 import type { MemoDTO, MemoEntity } from './types';
 
 function toDTO(memo: MemoEntity): MemoDTO {

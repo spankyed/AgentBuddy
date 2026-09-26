@@ -4,7 +4,7 @@
 // dependency's as default-setup/<feature>, and reports the id the plugin runs under.
 import { describe, expect, it } from 'vitest';
 import { startApp } from '@abuddy/testing/harness';
-import { broadcastToPlugin, sendToSystem } from '#generated/events';
+import { broadcastToPlugin, sendToSystem } from '#generated/events.ts';
 
 describe('typed sends to systems', () => {
   it("reaches default-setup's library system", async () => {

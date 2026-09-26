@@ -2,9 +2,9 @@
 // through @abuddy/testing, as the app runs flows.
 import { describe, expect, it } from 'vitest'
 import { importFlows, startApp } from '@abuddy/testing/harness'
-import { action, entry, fire, keepAlive, on, subflow, transform } from '#generated/flow-helpers'
-import { repository } from '#generated/repository'
-import { listen, type BrainEventPayload } from '#features/brain/be/services/brain'
+import { action, entry, fire, keepAlive, on, subflow, transform } from '#generated/flow-helpers.ts'
+import { repository } from '#generated/repository.ts'
+import { listen, type BrainEventPayload } from '#features/brain/be/services/brain.ts'
 
 const startBrain = () => startApp({ systems: ['brain'] })
 const step = (label: string) => transform('return true', { label })

@@ -248,7 +248,7 @@
 import { computed } from 'vue'
 import { useSelector } from '@xstate/vue'
 import { usePlugin, useShell } from '@abuddy/sdk/fe'
-import type { CodeState } from '#features/code/fe/state'
+import type { CodeState } from '#features/code/fe/state.ts'
 import {
   AlertCircle, AlertTriangle, GitBranch, GitPullRequest, RefreshCw,
   Loader2, ArrowLeft, X
@@ -262,7 +262,7 @@ import CreatePRForm from '#features/code/fe/features/pull-request/CreatePRForm.v
 import PRInfo from '#features/code/fe/features/pull-request/PRInfo.vue'
 import PRComments from '#features/code/fe/features/pull-request/PRComments.vue'
 import PRActionBar from '#features/code/fe/features/pull-request/PRActionBar.vue'
-import type { GitStatusFile } from '#features/code/fe/features/commit/state'
+import type { GitStatusFile } from '#features/code/fe/features/commit/state.ts'
 import type { TreeNode } from './types'
 import { codeChild } from '../children';
 

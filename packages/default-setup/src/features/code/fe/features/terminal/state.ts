@@ -1,5 +1,5 @@
 import { setup, assign, enqueueActions, type ActorRefFrom } from 'xstate';
-import { sendToSystem } from '#generated/events';
+import { sendToSystem } from '#generated/events.ts';
 import { terminalEventBus } from '../../utils/terminal-events';
 import { terminalPool } from '../../utils/terminal-pool';
 import { updateParentState, getParentContext, addTabToParent, sendEventToParent } from '../../utils/parent-communication';

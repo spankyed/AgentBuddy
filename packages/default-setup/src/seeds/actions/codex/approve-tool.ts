@@ -1,7 +1,7 @@
 /** CDX: Approve Tool — sends an approval decision back to the app-server, or starts an execute turn after plan approval. */
 
 import type { ActionMeta } from '@abuddy/sdk/build';
-import type { Services, EntityId } from '#generated/services';
+import type { Services, EntityId } from '#generated/services.ts';
 import { persistCodexState, getCodexState, setRunning, updateChatState } from './_helpers/thread-context';
 
 export const meta: ActionMeta = {

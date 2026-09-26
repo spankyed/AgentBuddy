@@ -1,4 +1,4 @@
-import { EARS } from '#generated/ears';
+import { EARS } from '#generated/ears.ts';
 
 export type FlowTriggerNode = {
   id?: string;

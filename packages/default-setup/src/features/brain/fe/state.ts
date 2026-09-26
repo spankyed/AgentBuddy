@@ -5,9 +5,9 @@ import { contextMenuFn } from '@abuddy/sdk/fe';
 import { Activity, Play, RefreshCw, Power, PlayCircle, Pause } from 'lucide-vue-next';
 import { targetIs, type TrailClickEvent } from '@abuddy/sdk/fe';
 import type { BrainContext } from './contract';
-import type { OutgoingBrainEvents } from '#features/brain/be/types'
-import type { FlowTNodeData } from '#generated/types';
-import { sendToSystem } from '#generated/events';
+import type { OutgoingBrainEvents } from '#features/brain/be/types.ts'
+import type { FlowTNodeData } from '#generated/types.ts';
+import { sendToSystem } from '#generated/events.ts';
 import type { StepRuntimeError, TNodeEntity, TrackTree } from '@abuddy/sdk/steps';
 import {
   applyTNodeSpawn,

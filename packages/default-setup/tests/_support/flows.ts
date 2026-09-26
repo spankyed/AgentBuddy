@@ -2,7 +2,7 @@
 import * as path from 'node:path';
 import { importCompiledSeeds } from '@abuddy/sdk/utils';
 import type { FlowStepTrace } from '@abuddy/testing/harness';
-import { repository } from '#generated/repository';
+import { repository } from '#generated/repository.ts';
 
 /** default-setup's compiled actions, prompts and flows, seeded as the app's boot seed seeds them */
 export function seedDefaultFlows(): void {

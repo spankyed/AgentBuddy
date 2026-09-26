@@ -1,7 +1,7 @@
 /** CDX: Handle Rewind Unsupported — Codex rollback cannot restore local files. */
 
 import type { ActionMeta } from '@abuddy/sdk/build';
-import type { Services, EntityId } from '#generated/services';
+import type { Services, EntityId } from '#generated/services.ts';
 
 export const meta: ActionMeta = {
   label: 'CDX: Handle Rewind Unsupported',

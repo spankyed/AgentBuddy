@@ -1,12 +1,12 @@
 // The llm step asks services.inference for the node's model, prompt and settings, and completes with the text
 import { describe, expect, it } from 'vitest';
 import { mockInference, mockService } from '@abuddy/testing/harness';
-import { repository } from '#generated/repository';
+import { repository } from '#generated/repository.ts';
 import type { ExecutionContext, TNodeEntity } from '@abuddy/sdk/steps';
-import { handler } from '#extensions/steps/llm/runtime';
-import { DEFAULT_MODEL } from '#extensions/steps/llm/model';
-import { llmStepFE } from '#extensions/steps/llm/fe';
-import { validate } from '#extensions/steps/llm/build';
+import { handler } from '#extensions/steps/llm/runtime.ts';
+import { DEFAULT_MODEL } from '#extensions/steps/llm/model.ts';
+import { llmStepFE } from '#extensions/steps/llm/fe.ts';
+import { validate } from '#extensions/steps/llm/build.ts';
 import { availableModels } from '@abuddy/sdk/models';
 
 function run(nodeAttributes: Record<string, unknown>) {

@@ -121,7 +121,7 @@ import AddHandle from '../nodes/AddHandle.vue'
 import { nodeTypes } from '../nodes'
 import { useNodeViewport } from '../useNodeViewport'
 
-import type { LayoutDirection } from '#features/flows/fe/canvas/layout-utils'
+import type { LayoutDirection } from '#features/flows/fe/canvas/layout-utils.ts'
 import { isTriggerNode } from '@abuddy/ui/components/node-styles'
 
 provide('BaseNodeAddHandle', AddHandle)

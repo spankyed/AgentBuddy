@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import { createLogger } from '@abuddy/sdk/logger';
 import { createActionEmitter } from '@abuddy/sdk/services';
-import { packId } from '#generated/ref';
+import { packId } from '#generated/ref.ts';
 
 export interface ActionRun {
   /** Names the action's logger and stamps its sends: `action:<label>` */

@@ -3,7 +3,7 @@
 //
 // A leaf: no machine, no other feature, and nothing from `#generated/*` but `types` and `ears`.
 // `abuddy.json` names it at `features[].plugin.contract`.
-import type { EventListenerEntity } from '#generated/types'
+import type { EventListenerEntity } from '#generated/types.ts'
 import type { StepRuntimeError, TNodeEntity, TrackTree } from '@abuddy/sdk/steps'
 import type { NormalizedTNodeTree } from './trace-tree'
 

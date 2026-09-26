@@ -1,5 +1,5 @@
 import type { OutgoingPullRequestEvents } from '../contract'
-import { broadcastToPlugin } from '#generated/events';
+import { broadcastToPlugin } from '#generated/events.ts';
 import { setup, assign, type AnyActorRef } from 'xstate'
 
 import { createLogger } from '@abuddy/sdk/logger'

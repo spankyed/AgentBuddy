@@ -1,6 +1,6 @@
-import type { ThreadsSettings } from '#generated/types';
-import { services } from '#generated/services';
-import { tx } from '#generated/ears';
+import type { ThreadsSettings } from '#generated/types.ts';
+import { services } from '#generated/services.ts';
+import { tx } from '#generated/ears.ts';
 /**
  * Thread Import
  *
@@ -11,12 +11,12 @@ import { tx } from '#generated/ears';
 
 import * as fs from 'node:fs'
 import * as path from 'node:path'
-import { EARS } from '#generated/ears'
+import { EARS } from '#generated/ears.ts'
 import { hasIdCollision } from '@abuddy/ears';
 import { restoreJsonMediaRefs } from '@abuddy/sdk/utils'
-import { repository } from '#generated/repository';
+import { repository } from '#generated/repository.ts';
 import type { ExportedThreadsData } from './export-types'
-import { ref } from '#generated/ref';
+import { ref } from '#generated/ref.ts';
 import { errorMessage } from '@abuddy/sdk/utils/pure';
 
 interface ImportResult {

@@ -96,7 +96,7 @@ import {
   ContextMenuItem, ContextMenuSeparator,
   ContextMenuSub, ContextMenuSubTrigger, ContextMenuSubContent,
 } from 'reka-ui';
-import type { ThreadTabGroup } from '#features/threads/fe/canvas/agent/tabs/types';
+import type { ThreadTabGroup } from '#features/threads/fe/canvas/agent/tabs/types.ts';
 
 const props = defineProps<{
   isPinned: boolean;

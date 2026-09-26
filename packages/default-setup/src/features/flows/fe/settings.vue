@@ -200,14 +200,14 @@ import { untypedOpenPlugin } from '@abuddy/sdk/fe'
 import { resolveName } from '@abuddy/sdk/ids'
 
 const HOST_SETTINGS = resolveName('settings', 'host')
-import { usePluginState } from '#generated/fe'
+import { usePluginState } from '#generated/fe.ts'
 import { ref, computed, watch } from 'vue'
 import CollapsibleSection from '@abuddy/ui/design/CollapsibleSection'
 import { AlertTriangle, Brain, Upload, Download, FolderOpen, CheckCircle, XCircle } from 'lucide-vue-next'
-import type { FlowsSettings } from '#generated/types'
+import type { FlowsSettings } from '#generated/types.ts'
 import { useSelector } from '@xstate/vue'
 import { type FlowsState } from './state'
-import { ref as featureRef } from '#generated/ref'
+import { ref as featureRef } from '#generated/ref.ts'
 
 interface Props {
   settings?: FlowsSettings

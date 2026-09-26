@@ -1,5 +1,5 @@
-import { tx, qx } from '#generated/ears';
-import { EARS } from '#generated/ears';
+import { tx, qx } from '#generated/ears.ts';
+import { EARS } from '#generated/ears.ts';
 
 import { REFERENCES } from '../types';
 

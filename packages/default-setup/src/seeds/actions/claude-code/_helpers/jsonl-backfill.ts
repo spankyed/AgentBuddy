@@ -14,7 +14,7 @@
  * so non-rewind flows incur no extra I/O.
  */
 
-import type { Services, EntityId } from '#generated/services';
+import type { Services, EntityId } from '#generated/services.ts';
 import { getClaudeState } from './thread-context';
 
 export async function backfillUserCliUuids(

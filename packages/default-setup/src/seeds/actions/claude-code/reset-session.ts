@@ -8,7 +8,7 @@
  */
 
 import type { ActionMeta } from '@abuddy/sdk/build';
-import type { Services, Z, EntityId } from '#generated/services';
+import type { Services, Z, EntityId } from '#generated/services.ts';
 import { clearClaudeState } from './_helpers/thread-context';
 
 export const meta: ActionMeta = {

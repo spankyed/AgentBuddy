@@ -1,5 +1,5 @@
 import { ref, computed, type Ref } from 'vue'
-import type { NoteDTO } from '#generated/types'
+import type { NoteDTO } from '#generated/types.ts'
 
 type DropPosition = 'before' | 'after' | 'on'
 

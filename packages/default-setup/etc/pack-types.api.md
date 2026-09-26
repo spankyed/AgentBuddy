@@ -601,7 +601,7 @@ interface CliServiceType {
     /**
      * Claude Code wrapper. Highlights only — the full surface (sessions, mcp,
      * plugins, skills, …) is available via `import { claudeCode } from
-     * '#features/code/be/services/claude-code'`.
+     * '#features/code/be/services/claude-code/index.ts'`.
      */
     /** Clear-cache resolve + exec test — same path as the Settings test button. */
     testCli(provider: string): Promise<{

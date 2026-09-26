@@ -1,6 +1,6 @@
 import type { TraceStore } from '@abuddy/sdk/services';
-import { services } from '#generated/services';
-import { EARS } from '#generated/ears';
+import { services } from '#generated/services.ts';
+import { EARS } from '#generated/ears.ts';
 import type { TNodeEntity, TrackTree } from '@abuddy/sdk/steps';
 import { createLogger } from '@abuddy/sdk/logger';
 

@@ -214,7 +214,7 @@ import { useSelector } from '@xstate/vue'
 import { type LibraryEvents } from '../../state'
 import { FileText, Search, Hash, Copy, ChevronRight } from 'lucide-vue-next'
 import Button from '@abuddy/ui/design/button'
-import type { IndexSearchResult, SearchIndex } from '#generated/types'
+import type { IndexSearchResult, SearchIndex } from '#generated/types.ts'
 import type { LibraryActor } from '../../state'
 
 const actor = usePlugin<LibraryActor>()

@@ -351,7 +351,7 @@ import { resolveName } from '@abuddy/sdk/ids'
 
 const HOST_SETTINGS = resolveName('settings', 'host')
 import { updateSettings } from '@abuddy/sdk/fe'
-import { ref as featureRef } from '#generated/ref'
+import { ref as featureRef } from '#generated/ref.ts'
 import { parseSearchTerm, searchLog, highlightSearchTerm } from './search';
 
 const logsContent = ref<HTMLElement>();

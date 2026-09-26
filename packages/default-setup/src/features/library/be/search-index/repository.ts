@@ -1,7 +1,7 @@
-import { tx, qx } from '#generated/ears';
+import { tx, qx } from '#generated/ears.ts';
 import { Index } from 'usearch'
 
-import { EARS } from '#generated/ears'
+import { EARS } from '#generated/ears.ts'
 import { randomId } from '@abuddy/sdk/utils'
 import { getIndexFilePath } from './paths'
 import { createLogger } from '@abuddy/sdk/logger'

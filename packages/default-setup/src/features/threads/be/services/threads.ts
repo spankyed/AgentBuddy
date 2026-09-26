@@ -5,10 +5,10 @@
  * frontend notification, following the same pattern as artifact service.
  */
 
-import { broadcastToPlugin } from '#generated/events';
-import { EARS } from '#generated/ears';
+import { broadcastToPlugin } from '#generated/events.ts';
+import { EARS } from '#generated/ears.ts';
 
-import { repository } from '#generated/repository';
+import { repository } from '#generated/repository.ts';
 
 /**
  * Update a thread's chatState and notify the frontend.

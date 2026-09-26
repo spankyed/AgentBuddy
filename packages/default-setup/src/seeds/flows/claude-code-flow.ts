@@ -1,5 +1,5 @@
 import type { FlowDSL } from '@abuddy/sdk/build';
-import { entry, on, keepAlive, action, branch } from '#generated/flow-helpers';
+import { entry, on, keepAlive, action, branch } from '#generated/flow-helpers.ts';
 
 /**
  * Claude Code mode flow.

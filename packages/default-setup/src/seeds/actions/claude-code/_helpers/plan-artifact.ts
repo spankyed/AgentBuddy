@@ -21,8 +21,8 @@
  * helper adds zero runtime dependencies.
  */
 
-import type { Services, EntityId } from '#generated/services';
-import type { PlanArtifactContent } from '#features/threads/be/types';
+import type { Services, EntityId } from '#generated/services.ts';
+import type { PlanArtifactContent } from '#features/threads/be/types.ts';
 
 export type { PlanArtifactContent };
 

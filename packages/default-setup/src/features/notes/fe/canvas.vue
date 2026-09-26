@@ -294,7 +294,7 @@
 import { ref, computed, watch, provide, nextTick, onMounted } from 'vue'
 import { useExternalFileDrag } from '@abuddy/ui/composables/useExternalFileDrag'
 import { useSelector } from '@xstate/vue'
-import type { NoteDTO } from '#generated/types'
+import type { NoteDTO } from '#generated/types.ts'
 import { type NotesState } from './state'
 import TiptapEditor from '@abuddy/ui/components/tiptap/TiptapEditor'
 import { EXTRA_BLOCK_ITEMS_KEY, type BlockItem, usePlugin } from '@abuddy/sdk/fe'

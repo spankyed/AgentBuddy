@@ -172,7 +172,7 @@ import { Plus, X, Upload, Download, FolderOpen, CheckCircle, XCircle } from 'luc
 import CollapsibleSection from '@abuddy/ui/design/CollapsibleSection'
 import ColorPicker from '@abuddy/ui/design/ColorPicker'
 import { useDebounce } from '@abuddy/ui/composables/useDebounce'
-import type { PromptsSettings, Category } from '#generated/types'
+import type { PromptsSettings, Category } from '#generated/types.ts'
 import { useSelector } from '@xstate/vue'
 import type { PromptsState } from './state'
 

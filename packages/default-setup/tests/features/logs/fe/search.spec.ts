@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
-import { parseSearchTerm, searchLog, highlightSearchTerm } from '#features/logs/fe/search';
-import type { LogEntry } from '#features/logs/fe/state';
+import { parseSearchTerm, searchLog, highlightSearchTerm } from '#features/logs/fe/search.ts';
+import type { LogEntry } from '#features/logs/fe/state.ts';
 
 describe('parseSearchTerm', () => {
   it('should parse include terms', () => {

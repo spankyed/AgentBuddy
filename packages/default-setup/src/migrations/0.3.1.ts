@@ -1,4 +1,4 @@
-import { findAll, qx } from '#generated/ears';
+import { findAll, qx } from '#generated/ears.ts';
 import { EARS } from '../__generated__/ears';
 import { untypedTx } from '@abuddy/ears';
 import type { ThreadEntity } from '../features/threads/be/types';

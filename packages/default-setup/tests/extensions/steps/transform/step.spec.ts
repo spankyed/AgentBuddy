@@ -3,8 +3,8 @@
 import { describe, expect, it } from 'vitest';
 import { importFlows, startApp } from '@abuddy/testing/harness';
 import type { ExecutionContext, TNodeEntity } from '@abuddy/sdk/steps';
-import { on, transform } from '#generated/flow-helpers';
-import { handler } from '#extensions/steps/transform/runtime';
+import { on, transform } from '#generated/flow-helpers.ts';
+import { handler } from '#extensions/steps/transform/runtime.ts';
 
 type Sent = { type: string; result?: unknown; error?: { message?: string } };
 

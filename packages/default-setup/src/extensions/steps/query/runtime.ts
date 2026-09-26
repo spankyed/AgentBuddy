@@ -1,8 +1,8 @@
 import type { ExecutionContext, TNodeEntity } from '@abuddy/sdk/steps';
 import { reportError, createLogger } from '@abuddy/sdk/logger';
 import { isModelId } from '@abuddy/sdk/models';
-import { services } from '#generated/services';
-import { executeQuery } from '#features/database/be/execute/query';
+import { services } from '#generated/services.ts';
+import { executeQuery } from '#features/database/be/execute/query.ts';
 import { WRITE_HELPER_NAMES } from '@abuddy/sdk/database-console';
 import { DEFAULT_MODEL } from '../llm/model';
 import { DEFAULT_RESULT_KEY } from './result-key';

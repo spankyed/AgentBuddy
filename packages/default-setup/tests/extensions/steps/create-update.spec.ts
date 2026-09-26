@@ -2,10 +2,10 @@
 import { describe, expect, it } from 'vitest'
 import { importFlows, startApp } from '@abuddy/testing/harness'
 import { startTestRuntime } from '@abuddy/sdk/testing'
-import { create, on, update } from '#generated/flow-helpers'
-import { createEntityWithDefaults, findAll, findById, type EARS } from '#generated/ears'
-import { createStepBuild } from '#extensions/steps/create/build'
-import { updateStepBuild } from '#extensions/steps/update/build'
+import { create, on, update } from '#generated/flow-helpers.ts'
+import { createEntityWithDefaults, findAll, findById, type EARS } from '#generated/ears.ts'
+import { createStepBuild } from '#extensions/steps/create/build.ts'
+import { updateStepBuild } from '#extensions/steps/update/build.ts'
 
 const startBrain = () => startApp({ systems: ['brain'] })
 const result = (step: { nodeAttributes: Record<string, unknown> }) => step.nodeAttributes.result as Record<string, unknown>

@@ -22,7 +22,7 @@ import { usePlugin } from '@abuddy/sdk/fe'
 
 import { X } from 'lucide-vue-next';
 import { useSelector } from '@xstate/vue';
-import type { ThreadsState } from '#features/threads/fe/state';
+import type { ThreadsState } from '#features/threads/fe/state.ts';
 import TabBar from '#features/threads/fe/canvas/agent/tabs/tab-bar.vue';
 
 defineProps<{

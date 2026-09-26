@@ -1,11 +1,11 @@
-import { qx } from '#generated/ears';
+import { qx } from '#generated/ears.ts';
 import * as fs from 'fs/promises'
 import * as path from 'path'
 
-import { EARS } from '#generated/ears'
+import { EARS } from '#generated/ears.ts'
 import type { LibraryItem, FolderContents, BreadcrumbItem } from '../types'
 import { formatFileSize, findParentCollection } from './helpers'
-import type { DocumentShortCode } from '#features/library/be/types';
+import type { DocumentShortCode } from '#features/library/be/types.ts';
 
 const SYMLINK_PREFIX = 'symlink:'
 

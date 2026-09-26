@@ -1,7 +1,7 @@
 import type { ActionTab } from '../../contract';
 export type { ActionTab } from '../../contract';
 import { setup , type ActorRefFrom } from 'xstate';
-import { sendToSystem } from '#generated/events';
+import { sendToSystem } from '#generated/events.ts';
 import { updateParentState, getParentContext, addTabToParent } from '../../utils/parent-communication';
 import type { ActionEntity } from '@abuddy/sdk';
 

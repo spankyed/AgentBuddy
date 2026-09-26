@@ -11,12 +11,12 @@
 
 import * as fs from 'node:fs'
 import * as path from 'node:path'
-import { repository } from '#generated/repository';
-import type { EARS } from '#generated/ears'
+import { repository } from '#generated/repository.ts';
+import type { EARS } from '#generated/ears.ts'
 import { hasIdCollision } from '@abuddy/ears';
 import { restoreJsonMediaRefs, restoreMarkdownMediaRefs, toDisplayName } from '@abuddy/sdk/utils'
 import { parseFrontmatter, parseMarkdownSections } from './utils'
-import type { ContentSection } from '#features/library/be/types';
+import type { ContentSection } from '#features/library/be/types.ts';
 import { errorMessage } from '@abuddy/sdk/utils/pure';
 
 interface ImportResult {

@@ -204,8 +204,8 @@ import { Plus, Trash2, Code } from 'lucide-vue-next'
 import BaseForm from '@abuddy/ui/components/BaseForm'
 import TipSection from '@abuddy/ui/components/TipSection'
 import SimpleMonacoEditor from '@abuddy/ui/components/SimpleMonacoEditor'
-import type { NodeEntity } from '#generated/types'
-import type { SwitchNode, Condition, Predicate } from '#extensions/steps/switch/types'
+import type { NodeEntity } from '#generated/types.ts'
+import type { SwitchNode, Condition, Predicate } from '#extensions/steps/switch/types.ts'
 import type { BinaryOperator } from '@abuddy/sdk/utils'
 
 // Type guard and accessor for object predicates (vs function predicates)

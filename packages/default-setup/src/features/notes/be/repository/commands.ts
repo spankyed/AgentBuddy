@@ -1,12 +1,12 @@
-import { tx, findById, findByIdRaw, qx } from '#generated/ears';
-import { EARS } from '#generated/ears';
+import { tx, findById, findByIdRaw, qx } from '#generated/ears.ts';
+import { EARS } from '#generated/ears.ts';
 import { createRelation, removeRelation, RepositoryError, RepositoryErrorCode } from '@abuddy/ears';
-import { createEntityWithDefaults, updateEntity } from '#generated/ears';
+import { createEntityWithDefaults, updateEntity } from '#generated/ears.ts';
 import { trash } from '@abuddy/sdk/repositories';
 
 import { REFERENCES } from '../types';
 import { syncReferences } from './link-utils';
-import type { NoteEntity } from '#features/notes/be/types';
+import type { NoteEntity } from '#features/notes/be/types.ts';
 
 /** Strips the sub-document link to a note from its parent's content */
 function removeParentLink(parentId: EARS.EntityId, id: EARS.EntityId): void {

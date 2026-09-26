@@ -1,7 +1,7 @@
 import type { MemosContext, MemosInbox } from './contract';
 import { setup, assign, type ActorRefFrom } from 'xstate';
 import { safeEvents } from '@abuddy/sdk/fe';
-import { sendToSystem } from '#generated/events';
+import { sendToSystem } from '#generated/events.ts';
 import type { OutgoingMemosEvents } from '../be/types';
 import type { MemoNoteDTO } from '../be/memo-notes';
 import type { MemoDTO } from '../be/types';

@@ -2,8 +2,8 @@ import { computed, type Ref } from 'vue'
 import { GitCommitHorizontal, Archive, GitFork } from 'lucide-vue-next'
 import { useContextMenu, type MenuItem } from '@abuddy/ui/composables/useContextMenu'
 import { useSettingsSave } from '@abuddy/sdk/fe'
-import type { CodeSettings } from '#generated/types'
-import { ref } from '#generated/ref'
+import type { CodeSettings } from '#generated/types.ts'
+import { ref } from '#generated/ref.ts'
 
 type SectionKey = 'showCommits' | 'showStashes' | 'showWorktrees'
 

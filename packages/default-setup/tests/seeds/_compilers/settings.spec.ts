@@ -2,7 +2,7 @@
 // its seeder resets the user's settings when the seed is imported. Features' settings come from the pack registry,
 // under each plugin's address, so the seed holds none: a copy under the bare feature id would be a default only a
 // stale reader finds.
-import { services } from '#generated/services';
+import { services } from '#generated/services.ts';
 import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
@@ -10,7 +10,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 import type { SeedCompileContext } from '@abuddy/sdk/build';
 import { importCompiledSeeds } from '@abuddy/sdk/utils';
 import compileSettings from '../../../src/seeds/_compilers/settings';
-import { ref } from '#generated/ref';
+import { ref } from '#generated/ref.ts';
 
 const PACK_DIR = path.resolve(import.meta.dirname, '../../..');
 const DIST = path.join(PACK_DIR, 'dist');

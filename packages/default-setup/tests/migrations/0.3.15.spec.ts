@@ -4,14 +4,14 @@
 // settings' copies of the root flow and of the flow the brain runs are dropped: the role and the brain own them. Link
 // blocks, which named this pack's plugins by bare id, name their refs, and a link to a plugin since removed is dropped. And 0.3.14 stored every default as if the user had chosen it:
 // what still equals 0.3.14's default is dropped, so today's defaults apply.
-import { services } from '#generated/services';
+import { services } from '#generated/services.ts';
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { untypedTx, untypedQx } from '@abuddy/ears'
 import type { EARS as SdkEARS } from '@abuddy/sdk'
 import { dropAttribute } from '@abuddy/sdk/testing'
 import { migrations } from '../../src/migrations/index'
-import { EARS, createEntityWithDefaults } from '#generated/ears'
-import { ref } from '#generated/ref'
+import { EARS, createEntityWithDefaults } from '#generated/ears.ts'
+import { ref } from '#generated/ref.ts'
 import { addressLinkBlocks } from '../../src/migrations/bare-feature-ids'
 import { DEFAULT_SETTINGS_0314 } from '../../src/migrations/defaults-0.3.14'
 

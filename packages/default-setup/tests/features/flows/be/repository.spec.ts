@@ -1,6 +1,6 @@
 import { RepositoryErrorCode } from '@abuddy/ears';
 import { resetTestData } from '@abuddy/sdk/testing';
-import { repository } from '#generated/repository';
+import { repository } from '#generated/repository.ts';
 
 describe('flows repository', () => {
   beforeEach(() => {

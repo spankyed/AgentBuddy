@@ -4,12 +4,12 @@ import * as fs from 'fs'
 import * as path from 'path'
 import type { SearchIndexConfig, EmbeddingResult, Occurrence, EmbeddingModel } from './types/search-index'
 import type { ContentSection } from '../types'
-import type { EARS } from '#generated/ears'
+import type { EARS } from '#generated/ears.ts'
 import { getModelConfig, getModelDimensions } from '../../embedding-models'
 import { getFastEmbedModel } from './config/fastembed-mapping'
 import { ensureDirectoryExists } from '@abuddy/sdk/utils'
 import { getModelsCachePath, getIndexMetadataPath, getIndexMappingsPath, getIndexPath } from './paths'
-import { services } from '#generated/services'
+import { services } from '#generated/services.ts'
 
 // Lazy-loaded embedding models cache
 const embeddingModels = new Map<string, FlagEmbedding | null>()

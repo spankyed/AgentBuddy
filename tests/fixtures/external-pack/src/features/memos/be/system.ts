@@ -1,9 +1,9 @@
 import type { Contract } from './contract.ts';
-import { broadcastToPlugin } from '#generated/events';
+import { broadcastToPlugin } from '#generated/events.ts';
 import { setup } from 'xstate';
 import { defineSystem } from '@abuddy/sdk/framework';
 
-import { repository } from '#generated/repository';
+import { repository } from '#generated/repository.ts';
 import { addMemoNote, type MemoNoteDTO } from './memo-notes';
 import type { MemoDTO } from './types';
 

@@ -1,5 +1,5 @@
 import type { FlowDSL } from '@abuddy/sdk/build';
-import { entry, on, keepAlive, action, branch, kill } from '#generated/flow-helpers';
+import { entry, on, keepAlive, action, branch, kill } from '#generated/flow-helpers.ts';
 
 export default {
   "Onboarding Flow": [

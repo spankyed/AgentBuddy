@@ -8,7 +8,7 @@ import type { HotkeysMap, NavHistory, PluginInbox } from '@abuddy/sdk/fe'
 import type {
   AgentMode as AgentModeConfig, AgentSettings, AgentThreadData, CommandItem, Tab, ThreadCreateData,
   ThreadEntity, ThreadTagOption, ThreadViewData, ThreadsSettings,
-} from '#generated/types'
+} from '#generated/types.ts'
 import type { ThreadTabGroup } from './canvas/agent/tabs/types'
 
 export type ThreadListItem = Simplify<ThreadEntity & {

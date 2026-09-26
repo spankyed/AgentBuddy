@@ -5,7 +5,7 @@
  * entities through `services.repository`; pack code imports `qx`/`tx` from `#generated/ears`.
  */
 
-import { EARS } from '#generated/ears';
+import { EARS } from '#generated/ears.ts';
 import { getEntitiesOfType, getAllEntityTypes, getAll } from '@abuddy/ears';
 import { findRelations } from '@abuddy/ears';
 

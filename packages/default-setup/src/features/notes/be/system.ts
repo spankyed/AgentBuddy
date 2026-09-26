@@ -1,21 +1,21 @@
-import type { NotesSettings } from '#generated/types';
-import { services } from '#generated/services';
-import { qx } from '#generated/ears';
-import { broadcastToPlugin } from '#generated/events';
+import type { NotesSettings } from '#generated/types.ts';
+import { services } from '#generated/services.ts';
+import { qx } from '#generated/ears.ts';
+import { broadcastToPlugin } from '#generated/events.ts';
 import { setup } from 'xstate';
 import { defineSystem } from '@abuddy/sdk/framework';
 
-import { EARS } from '#generated/ears';
+import { EARS } from '#generated/ears.ts';
 import type { Contract } from './contract';
 import type { NoteDTO } from './types';
-import { repository } from '#generated/repository';
+import { repository } from '#generated/repository.ts';
 
 import { syncReferences } from './repository/link-utils';
 import { exportNotes } from './export-notes';
 import { importNotes } from './import-notes';
 import { createLogger } from '@abuddy/sdk/logger';
-import type { NoteEntity } from '#features/notes/be/types';
-import { ref } from '#generated/ref';
+import type { NoteEntity } from '#features/notes/be/types.ts';
+import { ref } from '#generated/ref.ts';
 import { errorMessage } from '@abuddy/sdk/utils/pure';
 
 const logger = createLogger('notes');

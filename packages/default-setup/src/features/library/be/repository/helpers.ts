@@ -1,6 +1,6 @@
-import { qx } from '#generated/ears';
-import { EARS } from '#generated/ears'
-import type { ContentSection } from '#features/library/be/types';
+import { qx } from '#generated/ears.ts';
+import { EARS } from '#generated/ears.ts'
+import type { ContentSection } from '#features/library/be/types.ts';
 
 // ================ Helper Functions ================
 

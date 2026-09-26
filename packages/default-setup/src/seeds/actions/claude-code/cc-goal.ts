@@ -7,7 +7,7 @@
  */
 
 import type { ActionMeta } from '@abuddy/sdk/build';
-import type { Services, Z } from '#generated/services';
+import type { Services, Z } from '#generated/services.ts';
 import {
   getClaudeState,
   persistClaudeState,

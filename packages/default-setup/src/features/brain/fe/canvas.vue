@@ -134,7 +134,7 @@ import { type BrainState } from '#features/brain/fe/state.ts';
 import TNodeGraph from './components/TNodeGraph.vue';
 import EventsList from './components/EventsList.vue';
 import StepNodeDetails from './components/StepNodeDetails.vue';
-import { sendToSystem } from '#generated/events';
+import { sendToSystem } from '#generated/events.ts';
 
 const actor: BrainState = usePlugin();
 

@@ -5,9 +5,9 @@
  * The action returns immediately; notifications stream via callbacks.
  */
 
-import type { GeneralSettings } from '#app-settings/types';
+import type { GeneralSettings } from '#app-settings/types.ts';
 import type { ActionMeta } from '@abuddy/sdk/build';
-import type { Services, Z, EntityId } from '#generated/services';
+import type { Services, Z, EntityId } from '#generated/services.ts';
 import { createStreamWriter } from '../claude-code/_helpers/stream-writer';
 import { createToolActivityWriter } from '../claude-code/_helpers/tool-activity-writer';
 import { createThinkingWriter } from '../claude-code/_helpers/thinking-writer';

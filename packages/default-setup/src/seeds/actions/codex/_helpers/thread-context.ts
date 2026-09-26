@@ -1,6 +1,6 @@
 /** Helpers for reading/writing `thread.context.codex`. */
 
-import type { Services, EntityId } from '#generated/services';
+import type { Services, EntityId } from '#generated/services.ts';
 
 export type ChatState = 'idle' | 'working' | 'paused' | 'error' | 'success';
 

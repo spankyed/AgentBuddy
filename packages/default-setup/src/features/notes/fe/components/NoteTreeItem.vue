@@ -235,7 +235,7 @@
 
 <script setup lang="ts">
 import { computed, ref } from 'vue'
-import type { NoteDTO } from '#generated/types'
+import type { NoteDTO } from '#generated/types.ts'
 import { Check, ChevronRight, CircleCheck, Copy, Eye, EyeOff, FileText, FilePlus, ListChecks, MoreHorizontal, Plus, Star, Trash2 } from 'lucide-vue-next'
 import {
   DropdownMenuRoot,

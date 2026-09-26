@@ -5,8 +5,8 @@ import { mockService, startApp } from '@abuddy/testing/harness'
 import { testRootEvents } from '@abuddy/sdk/testing'
 import type { LogEvent } from '@abuddy/sdk/logger'
 import type { EARS } from '@abuddy/sdk'
-import { repository } from '#generated/repository'
-import type { Services } from '#generated/services'
+import { repository } from '#generated/repository.ts'
+import type { Services } from '#generated/services.ts'
 import { actionLabel, seedDefaultFlows } from '../../_support/flows'
 
 it("pauses a running Claude Code turn: CC: Pause Turn's event, log entry and thread row", async () => {

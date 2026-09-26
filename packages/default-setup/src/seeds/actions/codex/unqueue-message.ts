@@ -1,7 +1,7 @@
 /** CDX: Unqueue Message — removes a queued message without killing the running turn. */
 
 import type { ActionMeta } from '@abuddy/sdk/build';
-import type { Services } from '#generated/services';
+import type { Services } from '#generated/services.ts';
 import { dequeueMessage, getCodexState } from './_helpers/thread-context';
 
 export const meta: ActionMeta = {

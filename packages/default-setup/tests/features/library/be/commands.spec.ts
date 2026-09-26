@@ -9,8 +9,8 @@ import { registerPack, startApp, unregisterPack, type TestApp } from '@abuddy/te
 import { importCompiledSeeds } from '@abuddy/sdk/utils'
 import { createSeeder } from '@abuddy/sdk/seed'
 import type { PackCommand } from '@abuddy/sdk/framework'
-import { repository } from '#generated/repository'
-import { services } from '#generated/services'
+import { repository } from '#generated/repository.ts'
+import { services } from '#generated/services.ts'
 import manifest from '../../../../abuddy.json'
 
 const DIST = path.resolve(import.meta.dirname, '../../../../dist')

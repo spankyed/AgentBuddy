@@ -1,5 +1,5 @@
-import { type NodeEntity } from '#generated/types';
-import { EARS } from '#generated/ears';
+import { type NodeEntity } from '#generated/types.ts';
+import { EARS } from '#generated/ears.ts';
 import type { ModelCatalogEntry } from '@abuddy/sdk/models';
 import type { FlowEdge } from '@abuddy/sdk/repositories';
 
@@ -16,7 +16,7 @@ export type EdgeEntity = FlowEdge;
  * Node entity: generated union of the step node interfaces in each step's types.ts
  *─────────────────────────────────────────────────────────────────*/
 
-export type { NodeEntity } from '#generated/types';
+export type { NodeEntity } from '#generated/types.ts';
 
 export type NodeKind = NodeEntity['nodeType'] | (string & {});
 

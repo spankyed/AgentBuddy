@@ -1,7 +1,7 @@
 import { describe, it } from 'vitest';
 import { expectTypeOf } from 'vitest';
 import type { QueryBuilder } from '@abuddy/ears';
-import { EARS, createEntity, findAll, findById, qx, type EntityShape, type PackShapes } from '#generated/ears';
+import { EARS, createEntity, findAll, findById, qx, type EntityShape, type PackShapes } from '#generated/ears.ts';
 
 // ─── EntityId<E> phantom brand ─────────────────────────────────────────
 
