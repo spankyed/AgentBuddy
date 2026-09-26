@@ -3,7 +3,7 @@ import * as os from 'node:os';
 import * as path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import { bundlePackSeedRuntime } from '../../src/build/be-bundler';
-import { REPO_ROOT } from '../helpers/published-packages';
+import { REPO_ROOT } from '@abuddy/host/build/packages-built';
 
 /** A seed runtime that bundles but can't load where dependents' unit tests load it fails `abuddy build` */
 const tmpDirs: string[] = [];

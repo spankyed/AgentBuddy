@@ -5,7 +5,7 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { REPO_ROOT } from '../helpers/published-packages';
+import { REPO_ROOT } from '@abuddy/host/build/packages-built';
 
 /** A built-in pack writes dist/snapshot.json; an external one writes it into the pack's types dir */
 const snapshotFile = (pack: string): string | undefined =>

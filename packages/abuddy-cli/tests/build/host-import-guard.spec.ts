@@ -4,7 +4,7 @@ import * as path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import { bundlePackRuntime, bundlePackSeedCompilers, bundlePackStepBuild } from '../../src/build/be-bundler';
 import { bundlePackFE } from '../../src/build/fe-bundler';
-import { REPO_ROOT } from '../helpers/published-packages';
+import { REPO_ROOT } from '@abuddy/host/build/packages-built';
 
 /** Pack code that imports the app's private @abuddy/host fails `abuddy build`, not the app at load */
 const tmpDirs: string[] = [];

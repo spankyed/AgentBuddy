@@ -90,10 +90,15 @@ divide cleanly:
   `TSC_VERSIONS`** — npm-packs `@abuddy/ears`, the SDK and UI into a temp `node_modules` and compiles a
   consumer against them, across the current TypeScript and the 5.7 floor × `node16`/`bundler`. **Nine
   files use these.**
-- **`REPO_ROOT` and `PACKAGES_BUILT`** — a path constant and a freshness verdict. **Twelve files use only
+- **`REPO_ROOT` and `PACKAGES_BUILT`** — a path constant and a freshness verdict. **Ten files use only
   these**, and both are now available from `@abuddy/host/build/packages-built` (`REPO_ROOT` directly,
-  `PACKAGES_BUILT` via `packagesBuiltOrRefuse()`, which `@app/repo-checks` already calls). Those twelve
-  import a packing fixture to get a path.
+  `PACKAGES_BUILT` via `packagesBuiltOrRefuse()`, which `@app/repo-checks` already calls). Those ten import
+  a packing fixture to get a path.
+
+  *Corrected in Phase 1: the survey said twelve, counting `fe-bundler-tailwind` and `fe-bundler-ui-theme`,
+  which name the helper only in a comment explaining why they deliberately do not import it — importing it
+  asserts the packages are freshly built, and neither reads them. A `grep -l` cannot tell a mention from an
+  import.*
 
 That split is what makes the move hard, because the nine real users are not one concern:
 
@@ -191,7 +196,7 @@ its subject without a new workspace, and the only one that has to answer the spa
 
 ### Phase 1 — stop importing a packing fixture to get a path
 
-For each of the twelve files that use only `REPO_ROOT`/`PACKAGES_BUILT`, take them from
+For each of the ten files that use only `REPO_ROOT`/`PACKAGES_BUILT`, take them from
 `@abuddy/host/build/packages-built` instead. Independent of the Open decision, and it drops the fixture's
 apparent reach from 21 files to 9.
 

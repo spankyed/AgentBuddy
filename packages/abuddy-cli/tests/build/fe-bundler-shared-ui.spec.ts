@@ -6,7 +6,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import * as hostMonacoConfig from '@abuddy/ui/components/monaco-config';
 import * as hostSdkFe from '@abuddy/sdk/fe';
 import { bundlePackFE } from '../../src/build/fe-bundler';
-import { REPO_ROOT } from '../helpers/published-packages';
+import { REPO_ROOT } from '@abuddy/host/build/packages-built';
 
 /**
  * A pack's @abuddy/ui imports resolve to the host's modules at runtime, so stateful UI modules
