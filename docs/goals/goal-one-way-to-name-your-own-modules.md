@@ -199,6 +199,12 @@ Add the `imports` entries the settled Open decision 1 names, mirrored in `paths`
 
 ### Phase 3 — the configs that re-implemented it
 
+> One line here is shared with [`goal-pack-test-config.md`](goal-pack-test-config.md), which rewrites
+> `packages/default-setup/vitest.config.ts` into a `definePackTestConfig()` call and keeps `tsconfigPaths`
+> beside it while `@/` still exists. If that goal has run, this phase removes that one line from the call
+> site; if it has not, it removes the plugin from the config as written. Nothing else overlaps: the two
+> goals' phases name no other file in common.
+
 Delete the `@/` branch from `packages/renderer/vite.config.ts`, and `vite-tsconfig-paths` from
 `packages/default-setup/vitest.config.ts` (with its devDependency). Move `resolveWithExtensions` to
 `@abuddy/host/build/`, replace `packages/api/tsup.config.ts`'s `resolve-at-aliases` with a `#`-extension

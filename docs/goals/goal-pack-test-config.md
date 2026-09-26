@@ -12,8 +12,8 @@ src/features/notes/be/system.ts` fails with "Install @vitejs/plugin-vue", and pa
 tests/fixtures/external-pack and abuddy-cli's VITEST_CONFIG_TEMPLATE hold three different vitest configs.
 If either is already false, stop and say so — the survey was taken somewhere else.
 Read Background, Decisions, Phases and Constraints first. Decisions are final: implement them, don't
-reopen them or stop to ask. The Open decision must be settled with the user before Phase 1; if it is still
-marked open, stop and ask.
+reopen them or stop to ask. Its one Open decision was settled on 2026-09-26 and the section records what
+settled it; there is nothing to ask before starting.
 Where a detail isn't specified, pick the conventional option, note it in the final summary, and keep
 going. No backward compatibility in code (root `CLAUDE.md`, "Backward compatibility" — it is a standing
 rule, not this goal's choice): change signatures, move modules, migrate every in-repo caller, test,
@@ -23,8 +23,9 @@ Finished when:
 - Phases 1–4 are implemented and each meets its "Done when"; every new guard is mutation-checked.
 - One function defines a pack's vitest config, and packages/default-setup, every fixture pack and the
   `abuddy init` template call it rather than restating it.
-- `npx vitest related` and `--changed` work inside a pack, and `npm run spec -- <pack source>` runs the
-  specs that cover it rather than that pack's whole suite. The before and after are measured and recorded.
+- `npx vitest related` and `--changed` work inside a pack — through the `.vue` stub, with no pack config
+  holding alias handling of its own — and `npm run spec -- <pack source>` runs the specs that cover it rather
+  than that pack's whole suite. The before and after are measured and recorded.
 - npm run typecheck; npm run api:update committed if a published entry moved; npm run test:external-pack;
   npm run test:packaged-authoring; npm run chain once at the end.
 - A final summary: phase → done/deferred, evidence, and the conventional choices made.
@@ -78,39 +79,41 @@ Error: Failed to parse source for import analysis because the content contains i
 Install @vitejs/plugin-vue to handle .vue files.
 ```
 
-### Two mechanisms for one fact: a pack's aliases
+### The answer is not the real plugin, and this repo already says so twice
 
-Adding the plugin exposes the second layer:
+Adding `@vitejs/plugin-vue` works, and it drags a second problem in with it — the pack's `@/` aliases are not
+applied inside an SFC, so `form.vue`'s own imports then fail to resolve. Chasing that led to
+`vite-tsconfig-paths`' `loose: true` and to sharing the FE bundler's tsconfig reader. **Both were solving a
+problem that does not need to exist**, and the repo had already answered this question twice elsewhere:
 
-```
-Error: Failed to resolve import "@/__generated__/events" from "src/extensions/steps/subflow/form.vue".
-```
+- `abuddy init`'s `env.d.ts` declares `*.vue` as a generic component, because *"Plain `tsc` can't read .vue
+  files"* — and adds that checking *inside* an SFC needs the real tool, `vue-tsc`.
+- `abuddy build` stubs `.vue` and `.css` to empty modules for the **backend** bundle
+  (`be-bundler.ts`, `stubFrontendAssetsPlugin`): *"The backend runtime never renders them."*
 
-`abuddy build`'s FE bundler reads the pack's `tsconfig.json` `compilerOptions.paths` itself and converts them
-to Vite `resolve.alias` (`abuddy-cli/src/build/fe-bundler.ts:306`, `readTsconfigAliases`), which applies to
-every importer including `.vue`. The pack's *test* config uses `vite-tsconfig-paths` on the same tsconfig,
-which by default resolves only from TypeScript and JavaScript modules. `loose: true` is the documented switch
-(`vite-tsconfig-paths`' `PluginOptions`: *"Useful if you want asset URLs in Vue templates to be resolved"*).
+Stubbing `.vue` in the test config is the third instance of that pattern, not an invention. And it makes the
+alias problem vanish rather than solving it: a stubbed SFC is never parsed, so nothing inside one is resolved.
 
-Two readers of one file, disagreeing on one extension. With both fixes applied by hand, measured
-2026-09-26 in `packages/default-setup`:
+Measured 2026-09-26 with a three-line stub plugin and **default-setup's existing config otherwise untouched**
+— no Vue plugin, no `loose: true`, `tsconfigPaths` exactly as it is:
 
-| Changed source | Specs found | Wall |
+| Changed source | Before | After |
 |---|---|---|
-| `features/brain/be/flow-system.ts` | 3 | 2.8s |
-| `extensions/steps/llm/runtime.ts` | 3 | 2.7s |
-| `seeds/actions/claude-code/_helpers/auto-approve.ts` | 3 | 2.8s |
-| `features/threads/be/system.ts` | 1 | 2.6s |
+| `features/brain/be/flow-system.ts` | parse error | **3 specs, 2.8s** |
+| `extensions/steps/llm/runtime.ts` | parse error | runs |
+| `features/{code,brain}/fe/plugin.ts` | parse error | "no test files" — correct, nothing imports them |
+| the whole suite | 87 files / 720 tests | **87 / 720, unchanged** |
 
 Against **18s** for the whole suite, which is what `npm run spec -- <pack source>` runs today
 ([`goal-spec-follows-the-graph.md`](../archive/goals/goal-spec-follows-the-graph.md)'s Outcome records why it
 runs anything at all: it used to run nothing and exit 0).
 
-### The dependency is already in the tree, in the right package
+### Almost nothing renders, so almost nothing needs the real plugin
 
-`@vitejs/plugin-vue` is a devDependency of `@abuddy/cli` — the pack toolchain, which needs it to bundle a
-pack's frontend — and of `@app/renderer`. So Vue compilation for pack sources is already the toolchain's job;
-what is missing is that the *test* half of the toolchain doesn't do it.
+**Exactly one spec in this repo mounts a Vue component** (`docs/reference/test-inventory.md` lists it as a
+coverage gap), and no pack spec imports a `.vue` at all — which is precisely why `npm test` passes in
+default-setup while `vitest related` dies. What every pack needs is a module graph that resolves. What almost
+no pack needs is rendering. That asymmetry is what makes the stub the default and the plugin opt-in.
 
 ## Decisions
 
@@ -119,49 +122,65 @@ Final.
 1. **One function defines a pack's vitest config**, exported from `@abuddy/testing/vitest` beside
    `isolatedDataDir`. That package is already every pack's test-time dependency and already owns the data-dir
    half of the config; the rest belongs with it. A pack's config becomes a call plus whatever that pack adds.
-2. **It holds the Vue plugin and the pack's aliases**, so a pack can load its own frontend and a graph walk
-   works. Aliases come from the pack's `tsconfig.json` the way `abuddy build` already reads them, or from
-   `vite-tsconfig-paths` with `loose: true` — Phase 1 picks one and records why, and the point either way is
-   that **the test config and the FE bundler stop disagreeing about `.vue`**.
-3. **It declares no `@abuddy/source` condition, ever.** A pack resolves the published `dist` because that is
+2. **It stubs `.vue` to a generic component, and holds no alias handling at all.** The stub is what makes a
+   pack's graph walk, following `env.d.ts` and `stubFrontendAssetsPlugin`; and because a stubbed SFC is never
+   parsed, nothing inside one needs resolving, so the helper needs neither the pack's aliases nor
+   `vite-tsconfig-paths`' `loose: true`. Measured: default-setup's existing config walks the graph with the
+   stub and no other change. **The stub throws on mount**, naming `vue: true` as the fix, so a component test
+   cannot silently assert against an empty component.
+3. **`vue: true` opts into `@vitejs/plugin-vue`, as an optional peer of `@abuddy/testing`.** Peer because a
+   vite plugin must match the vite instance vitest brings, and `vitest` is already a peer for that reason; a
+   direct dependency invites two vites and a plugin bound to the wrong one. Optional because a pack that
+   renders nothing needs nothing, and `peerDependenciesMeta` is how that is said. The helper imports it
+   dynamically and, when it is missing, throws one sentence naming the install — rather than vitest's
+   "Install @vitejs/plugin-vue" surfacing from inside a config file the author did not write. The scaffold
+   adds it to no one.
+4. **It declares no `@abuddy/source` condition, ever.** A pack resolves the published `dist` because that is
    the one layout a pack author has, `check:specifiers` refuses a pack config that declares the condition, and
    this helper must not become the place that quietly does it. The two pools (`UnitSuite.kind`) depend on it.
-4. **The built-in pack, every fixture pack and the `abuddy init` template all call it.** A reference pack that
+5. **The built-in pack, every fixture pack and the `abuddy init` template all call it.** A reference pack that
    does not look like what the tool generates is how the three copies happened; nothing that can call it keeps
    a copy.
-5. **`npm run spec` narrows a pack source file once the graph walks.** `ownSuiteFor` in
+6. **`npm run spec` narrows a pack source file once the graph walks.** `ownSuiteFor` in
    `scripts/lib/spec-plan.ts` plans the pack's whole suite today with a comment pointing here; Phase 3 turns
-   that into `related` inside the pack, which is 2.6s against 18s, and keeps `packages:ensure` in front of it
-   for the same reason a root run does.
-6. **A guard, because this is a copy-paste failure by nature.** A check that every pack's vitest config calls
+   that into `related` inside the pack — measured 3 specs in 2.8s against the whole suite's 18s — and keeps
+   `packages:ensure` in front of it for the same reason a root run does.
+7. **A guard, because this is a copy-paste failure by nature.** A check that every pack's vitest config calls
    the helper — the built-in pack, the fixture packs, and the CLI's template as text — so the fourth copy
    fails rather than drifts.
 
-## Open decision — how a pack gets the two packages
+## Open decision — **settled 2026-09-26: no package on the default path**
 
-`definePackTestConfig` needs `@vitejs/plugin-vue` and (if Decision 2 takes that route) `vite-tsconfig-paths`
-at the pack author's install, not just in this repo.
+It asked how a pack author gets `@vitejs/plugin-vue` and `vite-tsconfig-paths` at their own install, with
+three options. It has no subject any more: **the default path needs neither.** `vite-tsconfig-paths` was only
+ever needed for the alias problem a stubbed SFC does not have, and `@vitejs/plugin-vue` is now opt-in.
 
-- **Dependencies of `@abuddy/testing`.** A pack author installs one devDependency and their frontend specs
-  work. Cost: two packages every pack downloads, including a pack with no `.vue` files at all, and
-  `@abuddy/testing` currently keeps `vitest` and `@playwright/test` as *peer* dependencies, so this breaks its
-  own pattern.
-- **Peer dependencies, listed by `abuddy init`.** Keeps `@abuddy/testing` honest about what it is a wrapper
-  around and matches `vitest`'s treatment. Cost: a pack that does not install them gets a resolution error
-  from a config file, which is a worse first experience than a slightly bigger install; and `abuddy doctor`
-  probably has to say so.
-- **Optional, detected.** The helper adds the Vue plugin only if the package resolves, so a pack with no
-  frontend needs nothing. Cost: a silent difference between two packs' configs, which is the class of problem
-  this goal exists to remove.
+What settled it, in order: a scaffolded pack's only alias is `#generated/*`, declared in `package.json`
+`imports` and resolved natively by Node, Vite and esbuild — the tsconfig `paths` copy exists only so `tsc`
+agrees. Only default-setup needs alias resolution at all, having chosen `@/features/*`. And stubbing `.vue`
+means no alias inside an SFC is ever resolved, so the question stops being asked.
+
+So Decision 3 stands where three options were: an **optional peer** for `vue: true`, nothing for anyone else,
+and the scaffold unchanged. The reasoning, kept, because "why not simply depend on it" will be asked again:
+
+- **A dependency of `@abuddy/testing`** would give a pack author working frontend specs from one install, and
+  it breaks that package's own pattern — `vitest` and `@playwright/test` are peers precisely because a test
+  framework must be the consumer's single copy, and a plugin *of* vite has the same constraint.
+- **A plain peer** would have every pack declare a package most of them never load.
+- **Detected by whether the package resolves** would hide a broken install behind a silently different config,
+  which is the failure this goal exists to remove. Detecting on the *pack's own content* — does it have SFCs —
+  is a different thing and is what the error in Decision 3 does.
 
 ## Phases
 
 ### Phase 1 — the function, and the built-in pack calls it
 
-Add `definePackTestConfig` to `@abuddy/testing/vitest`: the Vue plugin, the pack's aliases, `globals`, the
-include/exclude (`tests/**/*.spec.ts`, less `tests/e2e/**` and any `_support/**`), the tier-1 timeouts and the
-data-dir wiring. `packages/default-setup/vitest.config.ts` becomes a call plus its own `_support` exclusion.
-`npm run api:update` if the entry's surface moved, committed.
+Add `definePackTestConfig` to `@abuddy/testing/vitest`: the `.vue` stub, `globals`, the include/exclude
+(`tests/**/*.spec.ts`, less `tests/e2e/**` and any `_support/**`), the tier-1 timeouts and the data-dir
+wiring. No alias handling — Decision 2. `packages/default-setup/vitest.config.ts` becomes a call plus its own
+`_support` exclusion and, until
+[`goal-one-way-to-name-your-own-modules.md`](goal-one-way-to-name-your-own-modules.md) removes its `@/`
+imports, its own `tsconfigPaths`. `npm run api:update` if the entry's surface moved, committed.
 
 **Done when:** `npx vitest related --run src/features/notes/be/system.ts` inside `packages/default-setup`
 reports the covering specs rather than an error; `npm test -w @app/default-setup` is 87 files and 720 tests,
@@ -179,7 +198,7 @@ what the helper holds.
 ### Phase 3 — `spec` narrows inside a pack
 
 Turn `ownSuiteFor`'s whole-suite run into `related` inside that pack, `packages:ensure` in front. Measure and
-record: the same four files as the Background table, before (18s) and after.
+record the same files as the Background table, before (18s) and after.
 
 **Done when:** `npm run spec -- packages/default-setup/src/features/brain/be/flow-system.ts` runs 3 files in
 about 3s, `spec-plan.spec.ts` asserts the plan, and the comment in `spec-plan.ts` pointing at this goal is
@@ -193,6 +212,11 @@ does as text. Mutation-check it by restating `globals` in one config by hand.
 **Done when:** the guard passes, has been made to fail, and `npm run chain` is green.
 
 ## Deferred
+
+- **Sharing the FE bundler's tsconfig reader with the test config**, and `vite-tsconfig-paths`' `loose: true`.
+  Both were in this goal's Decision 2 as ways to resolve a pack's aliases inside an SFC. Neither is needed:
+  a stubbed SFC is never parsed. Recorded because the reasoning that led to them is sound and will recur — it
+  is only the premise, that the test config must read SFCs, that is wrong.
 
 - **Making a pack suite resolve workspace source** so no seam exists. Rejected rather than deferred: the pack
   suite exists to check that a pack works against the `dist` a pack author installs, `packages:check` and
