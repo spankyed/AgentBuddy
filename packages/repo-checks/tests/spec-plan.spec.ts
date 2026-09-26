@@ -97,10 +97,18 @@ describe('what a target plans', () => {
    */
   it('plans a pack source file against its own suite, not a root run that cannot see it', () => {
     for (const suite of UNIT_SUITES.filter((s) => s.kind === 'pack')) {
-      const runs = plan(path.relative(REPO_ROOT, someSourceFile(path.join(REPO_ROOT, 'packages', suite.dir, 'src'))));
-      expect(runs.map((r) => r.cwd), suite.workspace).toEqual([path.join(REPO_ROOT, 'packages', suite.dir)]);
-      expect(runs[0]!.covers, 'it runs the suite in full').toEqual([suite.workspace]);
-      expect(runs.some((r) => r.args.includes('related')), 'no root run: none of them imports this').toBe(false);
+      const source = someSourceFile(path.join(REPO_ROOT, 'packages', suite.dir, 'src'));
+      const runs = plan(path.relative(REPO_ROOT, source));
+      // `packages:ensure` first, because going through npx loses the pretest that would have run it
+      expect(runs.map((r) => r.label), suite.workspace).toEqual([
+        ENSURE_LABEL,
+        `${suite.workspace}: every spec covering ${path.relative(path.join(REPO_ROOT, 'packages', suite.dir), source)}`,
+      ]);
+      const [, related] = runs;
+      // Inside the pack, which is the only place its own `#generated/*` and `@/…` resolve
+      expect(related!.cwd).toBe(path.join(REPO_ROOT, 'packages', suite.dir));
+      expect(related!.args.slice(0, 3)).toEqual(['vitest', 'related', '--run']);
+      expect(related!.covers, 'a filtered run covers no suite in full').toBeUndefined();
     }
   });
 });

@@ -240,9 +240,14 @@ npm run spec -- <target> # You don't say what the target is; it works that out:
                          # spec-plan.spec.ts partitions every one of them, so a new dependency edge fails a
                          # check instead of dating a sentence. It used to warn on every root run, a
                          # @app/renderer edit included, and a warning always on is one nobody reads.
-                         # A pack's own source goes to its own suite: measured, no root project imports a
-                         # pack's backend, frontend or generated FE entry, so the root run this used to plan
-                         # found nothing and exited 0 for the repo's largest suite.
+                         # A pack's own source runs `related` inside that pack, because no root project
+                         # imports a pack's backend, frontend or generated FE entry — measured, so the root
+                         # run this used to plan found nothing and exited 0 for the largest suite. It walks
+                         # the pack's graph because a pack's config stubs its .vue files
+                         # (definePackTestConfig, @abuddy/testing/vitest); without that it stopped at the
+                         # first SFC. 1-3 files in 2-6s against the whole suite's 87 and 18s. It goes
+                         # through npx, since `npm test -- related x` makes vitest read `related` as a
+                         # filename filter, so packages:ensure goes in front of it too
                          # Anything from the first `-` goes to vitest untouched, so `-t "a case"`,
                          # `--bail 1` and `--changed HEAD~1` work. A named spec runs through its package's
                          # own `test`, so a pretest guard and its vitest config still apply; a root run has

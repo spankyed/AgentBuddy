@@ -131,9 +131,14 @@ const PACK_SUITES = UNIT_SUITES.filter((suite) => suite.kind === 'pack');
  * run for one is not a narrower answer, it is no answer: `npm run spec -- <pack source>` reported
  * "No test files found, exiting with code 0" for the repo's largest suite. Its own suite is what covers it.
  *
- * The whole suite rather than `related` inside it, because a pack's vitest config cannot walk its own module
- * graph yet — no Vue plugin, and `vite-tsconfig-paths` does not apply the pack's aliases inside a `.vue`
- * file. `goal-pack-test-config.md` closes that and takes this from 18s to about 2.6s.
+ * `related` inside the pack, not its whole suite. That needs the pack's own graph to be walkable, which
+ * `definePackTestConfig` made it: a pack's config stubs its `.vue` files, so nothing stops at the first SFC
+ * the walk reaches. Measured on `features/brain/be/flow-system.ts`: 3 files where the whole suite is 87.
+ *
+ * Through `npx vitest` rather than the pack's `test` script, because `npm test -- related <file>` makes
+ * vitest read `related` as a *filename filter* (`filter: related, src/…`, exit 1) — so this loses the
+ * `pretest` that would have refreshed the packages, and `packages:ensure` goes in front for the same reason
+ * a root run needs it.
  */
 const ownSuiteFor = (rel: string): UnitSuite | undefined => {
   const pkg = packageOf(rel);
@@ -158,6 +163,14 @@ const packSuiteRun = (root: string, affected: readonly string[]): Run => ({
   // The pool runs every pack suite, not only the affected ones — equal today, and `spec-plan.spec.ts` fails
   // when a second pack suite appears, which is when the label and this would start disagreeing
   covers: PACK_SUITES.map((suite) => suite.workspace),
+});
+
+/** `related` inside a pack, which is the only place its own graph resolves */
+const packRelatedRun = (root: string, suite: UnitSuite, relToPack: string, flags: readonly string[]): Run => ({
+  label: `${suite.workspace}: every spec covering ${relToPack}`,
+  cwd: path.join(root, 'packages', suite.dir),
+  command: 'npx',
+  args: ['vitest', 'related', '--run', relToPack, ...flags],
 });
 
 /**
@@ -267,7 +280,8 @@ export function planTargets(targets: readonly string[], flags: readonly string[]
   const ambiguous: { query: string; specs: string[] }[] = [];
   const named: string[] = [];          // spec files the targets name, grouped at the end
   const sourcePackages: (string | null)[] = [];   // whose pack-suite dependents a rebuild would reach
-  let wantsRoot = false;
+  let wantsRoot = false;      // a root run was planned, so the pack suites it cannot reach are worth naming
+  let needsEnsure = false;    // a run was planned that npm fires no `pretest` for
 
   for (const arg of targets) {
     const abs = path.resolve(root, arg);
@@ -286,10 +300,11 @@ export function planTargets(targets: readonly string[], flags: readonly string[]
     } else if (exists) {
       const own = ownSuiteFor(rel);
       if (own !== undefined) {
-        runs.push(packageRun(root, own.dir, [], flags,
-          'its whole suite, which is what covers it — no root project imports a pack\'s source'));
+        needsEnsure = true;
+        runs.push(packRelatedRun(root, own, path.relative(path.join('packages', own.dir), rel), flags));
       } else {
         wantsRoot = true;
+        needsEnsure = true;
         sourcePackages.push(packageOf(rel));
         runs.push(rootRun(root, `every spec covering ${rel}`, ['related', '--run', rel], flags,
           packSuiteNote(affectedPackSuites([packageOf(rel)], root), full)));
@@ -309,7 +324,7 @@ export function planTargets(targets: readonly string[], flags: readonly string[]
 
   const affected = notYetCovered(wantsRoot ? affectedPackSuites(sourcePackages, root) : [], runs);
   if (full && affected.length > 0) runs.push(packSuiteRun(root, affected));
-  return { runs: wantsRoot ? [ensurePackages(root), ...runs] : runs, unmatched, ambiguous };
+  return { runs: needsEnsure ? [ensurePackages(root), ...runs] : runs, unmatched, ambiguous };
 }
 
 /** What a plan does not already run in full, so a dependency and its pack changing together plan it once */

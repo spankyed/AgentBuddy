@@ -204,6 +204,19 @@ record the same files as the Background table, before (18s) and after.
 about 3s, `spec-plan.spec.ts` asserts the plan, and the comment in `spec-plan.ts` pointing at this goal is
 replaced by what the code now does.
 
+**Measured 2026-09-26**, `npm run spec -- packages/default-setup/<file>`, against the whole suite's 87 files
+and 18s:
+
+| Changed source | Files | Wall |
+|---|---|---|
+| `features/brain/be/flow-system.ts` | 3 | 6s |
+| `extensions/steps/llm/runtime.ts` | 3 | 3s |
+| `seeds/actions/claude-code/_helpers/auto-approve.ts` | 3 | 3s |
+| `features/threads/be/system.ts` | 1 | 2s |
+
+The first is the slowest only because it paid for `packages:ensure`'s stat pass first; the rest are the steady
+state.
+
 ### Phase 4 — the guard
 
 A check that every pack vitest config in the repo calls `definePackTestConfig`, and that the CLI's template
