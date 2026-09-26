@@ -1,6 +1,9 @@
 # Goal: `npm run spec` runs every spec that covers what you changed
 
-> **Written in session** `1d53eb9c-d886-49f8-bc5a-90793d43315e` (Claude Code, 2026-09-26). Resume it with `claude -r 1d53eb9c-d886-49f8-bc5a-90793d43315e`.
+> **Done** (`0074e26dd`..`232f85e78` on `AS/test-pipeline`). The text below is the plan as written; two of
+> its Decisions were corrected afterwards and one Deferred item was closed, both under the Outcome. For
+> what the command does now, see the root `CLAUDE.md` beside the spec commands, and
+> `repo-checks/tests/spec-plan.spec.ts` for the routing itself.
 
 ```
 # Goal: npm run spec runs every spec that covers what you changed
@@ -191,3 +194,55 @@ Mutation-check it by making the source-file case plan one package again and watc
   ([`goal-test-placement.md`](../archive/goals/goal-test-placement.md)), cost-based placement, and the two
   pools and why they cannot be one (`UnitSuite.kind`) are final. This goal changes which specs a command
   runs, and nothing about where a spec belongs.
+
+## Outcome (2026-09-26)
+
+| Phase | Status | Evidence |
+|---|---|---|
+| 1 — a routing plan, and the root run behind it | **done** | `0074e26dd`. `scripts/lib/spec-plan.ts`; `sdk-entities.ts` runs 104 files where it ran one package's |
+| 2 — the change set follows the same path | **done** | `0074e26dd`. One root `--changed`, with a per-package run kept for a non-root package |
+| 3 — the numbers | **done** | `a4215dd9b`, which also recorded that they were taken under load and are upper bounds |
+| 4 — the guard | **done** | `spec-plan.spec.ts`, mutation-checked; 33 cases by the time the corrections below landed |
+
+### Corrections to the Decisions
+
+- **Decision 5 was too broad, and the broad form was worse than nothing.** It said the pack suite's absence
+  is reported when a root run finishes for a source file, and that is what shipped: the note was set on
+  *every* root run. `@app/default-setup` depends on five of the twelve packages, so `npm run spec --
+  packages/renderer/src/main.ts` printed "not covered: @app/default-setup" about a package the pack has never
+  depended on. The corrected rule is that the note is derived — from `workspaceDeps`, the function the chain
+  keys its cache on — and prints only when a pack suite is genuinely out of reach. *A limit a user can see is
+  a limit* still holds; a limit printed when it does not apply is wallpaper.
+- **Decision 2 held, and it is what settled where the pack-source fix belongs.** "The default is the correct
+  answer" is why a pack's own source file plans that pack's suite with no flag, rather than being rescued by
+  `--full`: a flag that fixes a wrong default leaves the default wrong. The same decision's cost argument did
+  *not* extend to the cross-seam direction, which costs a build rather than more specs, so that stayed opt-in.
+
+### A Deferred item, closed — and the estimate that kept it deferred
+
+Deferred said: *"Closing it in `spec` would mean rebuilding the packages and running a second pool — which is
+most of `npm run test:unit`, and that command already exists."*
+
+Measured 2026-09-26: `packages:build` forced is **14s** and `test:unit:pack` forced is **18s**, so the whole
+of it is **33s** on a shallow `@abuddy/sdk` edit — against `test:unit`'s two full pools. `npm run spec:full`
+closes it, and the pack pool re-reads its own stamp, so the 18s is only paid when something it reads moved.
+
+That is the second time in this repo a proposal was argued at length and settled by one command; the first
+was this goal's own per-package fan-out, costed at 0.83s × N and retired by a single `related` run. The
+standing lesson is in the root `CLAUDE.md`: *measure before you optimise, and before you accept someone
+else's measurement* — including your own prose.
+
+### What the graph still cannot see, recorded rather than deferred again
+
+- **A seed source change does not reach the goldens.** `related` on
+  `src/seeds/actions/claude-code/handle-fork.ts` finds the spec that imports it and not `seed-parity.spec.ts`,
+  which reads `dist/*.seed.json`. `src` → `abuddy build` → compiled seed → golden is a build edge, like the
+  `dist` seam this goal closed, and nothing routes it.
+- **`abuddy.json` → codegen → specs** is the same shape: a manifest change regenerates `src/__generated__/`,
+  which specs do import, so a *regenerated* tree is covered — but editing the manifest alone reaches nothing
+  until codegen runs.
+- **`vitest related` cannot walk a pack's own sources at all**, its config loading no Vue plugin and
+  `vite-tsconfig-paths` not applying the pack's aliases inside a `.vue` file. That is why a pack source file
+  runs its pack's whole suite (18s) rather than the 1–3 specs that cover it (2.6s, measured with the plugin
+  and `loose: true` added by hand). [`goal-pack-test-config.md`](../../goals/goal-pack-test-config.md) closes
+  it for every pack rather than only the built-in one.
