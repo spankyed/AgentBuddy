@@ -1,4 +1,5 @@
 import { ensureCheckoutPackages } from '../build/checkout-packages.ts';
+import { refuseUnnamedOwnModules } from '../build/own-module-specifiers-gate.ts';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { spawnSync } from 'node:child_process';
@@ -63,6 +64,9 @@ export function fixtureEnv(
  * harness specs without an AgentBuddy to run them in — which is the same split the repo's own chain makes
  * between its contract tier and its app tier, offered to packs rather than kept for this repo.
  */
+/** Where a pack keeps its tests: what `abuddy init-tests` scaffolds, and what the harness docs describe */
+const TEST_DIRS = ['tests'];
+
 export interface ContractRunner {
   /** Returns the runner's exit status; `null` means it did not exit normally */
   (command: string, args: readonly string[], options: { cwd: string; env: NodeJS.ProcessEnv }): number | null;
@@ -76,6 +80,9 @@ export async function contractTest(cwd: string, args: string[], run: ContractRun
     console.log('No vitest config in this pack, so there are no contract checks to run. `abuddy init-tests` scaffolds one.');
     return;
   }
+  // A pack's tests name its modules the way its sources do, and `abuddy build` reads only `src` — so this is
+  // where a test file's `#generated/ears` is refused, before a run whose resolution depends on it
+  refuseUnnamedOwnModules(cwd, TEST_DIRS);
   // The harness this run loads is built from the checkout's source, so bring it up to date first
   ensureCheckoutPackages(cwd);
   // A pack resolves the packages' published dist, whoever runs it — the same rule the Playwright half
@@ -109,6 +116,7 @@ export async function test(args: string[], run?: ContractRunner): Promise<void> 
   const playwrightCli = resolvePlaywrightCli(cwd);
   const app = await resolveTestApp({ flags, hostVersion: manifest?.hostVersion ?? '*' });
 
+  refuseUnnamedOwnModules(cwd, TEST_DIRS);
   // The harness bundle this run loads is built from the checkout's source, so bring it up to date first
   ensureCheckoutPackages(cwd);
 

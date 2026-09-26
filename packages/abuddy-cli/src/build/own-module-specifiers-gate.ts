@@ -14,3 +14,17 @@ import { packSpecifiers } from './pack-sources.ts';
 export function ownModuleSpecifierProblems(packDir: string, dirs: readonly string[] = ['src']): string[] {
   return ownModuleProblems(packDir, packSpecifiers(packDir, dirs));
 }
+
+/**
+ * Throws naming every specifier and the file it should have named, or returns.
+ *
+ * One sentence, two callers: `abuddy build` over the pack's `src`, and `abuddy test` over its tests, which
+ * the build has no business reading and which the repo's own `check:specifiers` holds to the same rule.
+ */
+export function refuseUnnamedOwnModules(packDir: string, dirs?: readonly string[]): void {
+  const problems = ownModuleSpecifierProblems(packDir, dirs);
+  if (problems.length === 0) return;
+  throw new Error('A pack names its own modules by the file that is there, extension and all: no runtime '
+    + 'resolves an extensionless specifier in ESM, so one works only while a build guesses the suffix and '
+    + `this one does not:\n${problems.map((problem) => `  - ${problem}`).join('\n')}`);
+}

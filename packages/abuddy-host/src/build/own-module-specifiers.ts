@@ -34,9 +34,11 @@ import { readSubpathImports } from './subpath-imports.ts';
  * This is a diagnostic, not a resolver: nothing resolves an extensionless specifier any more, and the search
  * is here so the message can name the file the author meant instead of leaving them a bundler's error.
  * `.vue` is in the list for the same reason — Vite's default extensions leave it out, so an extensionless SFC
- * import never resolved anywhere, and naming it is more use than passing over it.
+ * import never resolved anywhere, and naming it is more use than passing over it. `.json` is last, so a
+ * `data.ts` beside a `data.json` wins: naming the file is right for every bundler in a pack's toolchain, and
+ * what Node additionally wants for JSON — an import attribute — is past what this rule is about.
  */
-const MODULE_EXTENSIONS = ['.ts', '.tsx', '.mts', '.cts', '.vue', '.js', '.mjs', '.cjs'];
+const MODULE_EXTENSIONS = ['.ts', '.tsx', '.mts', '.cts', '.vue', '.js', '.mjs', '.cjs', '.json'];
 
 /** `statSync` rather than `existsSync`, which is true of a directory */
 const isFile = (target: string): boolean => {

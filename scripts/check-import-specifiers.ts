@@ -28,12 +28,12 @@ function* sourceFiles(dir: string): Generator<string> {
   for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
     const full = path.join(dir, entry.name);
     if (entry.isDirectory()) yield* sourceFiles(full);
-    else if (entry.isFile() && /(?<!\.d)\.(ts|tsx|mts|cts)$|\.vue$/.test(entry.name)) yield full;
+    else if (entry.isFile() && /(?<!\.d)\.(ts|tsx|mts|cts|js|jsx|mjs|cjs)$|\.vue$/.test(entry.name)) yield full;
   }
 }
 
 function parse(code: string, fileName: string): ts.SourceFile {
-  const kind = fileName.endsWith('.tsx') ? ts.ScriptKind.TSX : ts.ScriptKind.TS;
+  const kind = /\.[jt]sx$/.test(fileName) ? ts.ScriptKind.TSX : ts.ScriptKind.TS;
   return ts.createSourceFile(fileName, code, ts.ScriptTarget.Latest, true, kind);
 }
 
@@ -405,6 +405,38 @@ function templateProblems(dirs: readonly string[], root: string): string[] {
       };
       visit(source);
     }
+    return found;
+  });
+}
+
+/** Every CLI command source, since which of them write pack code is the question below */
+const CLI_COMMAND_SOURCES = ['packages/abuddy-cli/src/commands'];
+
+/**
+ * `file: what it holds` for each CLI source that writes pack code in a template literal without being listed
+ * as one that does (`CLI_TEMPLATE_SOURCES`).
+ *
+ * That list is what tells four rules here to look inside template literals — the untyped sends, the internal
+ * imports, the `@/` aliases and the specifier rule above all scan them for pack code. It is hand-kept, and a
+ * new `abuddy add <thing>` in its own file would be scanned by none of them, silently: the pack code it
+ * writes would be the only pack code in this repo that no rule reads. So the list is checked against what is
+ * there, the way `PACKAGE_DIRS` and `SHARED_INSTANCE_PACKAGES` are, rather than trusted.
+ */
+export function findUnlistedPackTemplates(dirs = CLI_COMMAND_SOURCES, root = repoRoot, listed = CLI_TEMPLATE_SOURCES): string[] {
+  const covered = (relative: string) => listed.some((dir) => relative === dir || relative.startsWith(`${dir}/`));
+  return packFiles(dirs, root).flatMap((file) => {
+    const relative = path.relative(root, file).split(path.sep).join('/');
+    if (covered(relative)) return [];
+    const source = parse(fs.readFileSync(file, 'utf-8'), file);
+    const found: string[] = [];
+    const visit = (node: ts.Node): void => {
+      if (ts.isNoSubstitutionTemplateLiteral(node) || ts.isTemplateExpression(node)) {
+        const written = specifiers(templateCode(node, source), file, true).map(({ text }) => text).filter(ownModule);
+        if (written.length > 0) found.push(`${relative}: writes ${written.join(', ')} in a template literal`);
+      }
+      ts.forEachChild(node, visit);
+    };
+    visit(source);
     return found;
   });
 }
@@ -1365,6 +1397,9 @@ export const CHECKS: ReadonlyArray<readonly [find: () => string[], rule: string]
   [findExtensionlessOwnModules, "A pack names its own modules by the file that is there, extension and all "
     + '(#generated/events.ts): no runtime resolves an extensionless specifier in ESM, and the .js a pack '
     + 'would otherwise name is a file it never emits, since it ships one bundle rather than a module per source'],
+  [findUnlistedPackTemplates, 'A CLI source that writes pack code in a template literal is listed in '
+    + 'CLI_TEMPLATE_SOURCES, so the rules over pack code read it: the untyped sends, the internal imports, the '
+    + '@/ aliases and the own-module specifiers'],
   [findAppImportsInPackTests, 'Pack unit tests run on the harness (@abuddy/testing) without the app; test host, API and CLI code in its own package'],
   [findUpwardImports, "Packages import only downward (@abuddy/ears imports no @abuddy package, @abuddy/sdk only @abuddy/ears, @abuddy/host only those two and never the API, the API and the renderer only the packages below them), and list each @abuddy package they import in their package.json"],
   [findLmdbImports, "Only @abuddy/ears/lmdb loads lmdb: the host and the API open the store through it, the engine's root and packs never load it"],

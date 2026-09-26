@@ -5,7 +5,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import {
   CHECKS,
   findAppImportsInPackTests, findContractLeafImports, findCrossCheckoutResolution, findCrossFeatureImports, findExtensionlessOwnModules, findHostImports, findJsSpecifiers, findMissingSourceConditions,
-  findPackageScriptImports, findPackBackendConsole, findPackOwnAliases, findRawPackHelpers,
+  findPackageScriptImports, findPackBackendConsole, findPackOwnAliases, findRawPackHelpers, findUnlistedPackTemplates,
   findRawTransport, findInternalPackageImports, findLmdbImports, findRepositoryCasts, findSharedPackageLists, findUpwardImports, LAYERS, LMDB_RULES, packageSourceDirs,
   DECLARES_SOURCE_BY_DESIGN, RESOLVES_DIST_BY_DESIGN, SHARED_LIST_CONSUMERS, sourceConditionPackages, SOURCE_CONDITION,
 } from '../../../scripts/check-import-specifiers.ts';
@@ -465,11 +465,60 @@ describe('findExtensionlessOwnModules', () => {
     expect(problems()).toEqual([]);
   });
 
+  it('reads a pack authored in JavaScript, which nothing requires a pack not to be', () => {
+    writeAt('pack/package.json', JSON.stringify({ name: 'p', type: 'module', imports: { '#generated/*': './src/__generated__/*' } }));
+    writeAt('pack/src/__generated__/events.ts', 'export const a = 1;');
+    writeAt('pack/src/f.js', "import { a } from '#generated/events';");
+    expect(findExtensionlessOwnModules(['pack/src'], root))
+      .toEqual(["pack/src/f.js:1: '#generated/events' names no file — write '#generated/events.ts'"]);
+  });
+
+  it('names a .json target, which a bundler resolves and Node wants an attribute for', () => {
+    writeAt('pack/package.json', JSON.stringify({ name: 'p', type: 'module', imports: { '#data/*': './src/data/*' } }));
+    writeAt('pack/src/data/providers.json', '{}');
+    writeAt('pack/src/f.ts', "import providers from '#data/providers';");
+    expect(findExtensionlessOwnModules(['pack/src'], root))
+      .toEqual(["pack/src/f.ts:1: '#data/providers' names no file — write '#data/providers.json'"]);
+  });
+
   it('flags a template the CLI writes, which has no pack to resolve against', () => {
     writeAt('templates/add.ts', "const T = `import { x } from '#generated/events';`;");
     expect(findExtensionlessOwnModules(['templates/add.ts'], root)).toEqual([]);
     expect(findExtensionlessOwnModules([], root, ['templates/add.ts']))
       .toEqual(["templates/add.ts:1: #generated/events"]);
+  });
+});
+
+/**
+ * The list that tells four rules here to look inside a template literal. A new `abuddy add <thing>` in its
+ * own file would be read by none of them, and the pack code it writes would be the only pack code in the repo
+ * that no rule sees.
+ */
+describe('findUnlistedPackTemplates', () => {
+  const unlisted = (files: Record<string, string>) => {
+    for (const [file, content] of Object.entries(files)) writeAt(`commands/${file}`, content);
+    return findUnlistedPackTemplates(['commands'], root, ['commands/add', 'commands/init.ts']);
+  };
+
+  it('flags a command that writes an own-module import and is not listed', () => {
+    expect(unlisted({ 'add-thing.ts': "const T = `import { x } from '#generated/events.ts';`;" }))
+      .toEqual(['commands/add-thing.ts: writes #generated/events.ts in a template literal']);
+  });
+
+  it('passes the listed ones, a file and a directory alike', () => {
+    expect(unlisted({
+      'init.ts': "const T = `import { x } from '#generated/ears.ts';`;",
+      'add/step.ts': "const T = `import { y } from './types.ts';`;",
+    })).toEqual([]);
+  });
+
+  it('passes a template that writes no pack code', () => {
+    expect(unlisted({ 'release.ts': 'const YAML = `name: release\non: push`;' })).toEqual([]);
+    expect(unlisted({ 'info.ts': "const T = `import { z } from '@abuddy/sdk';`;" })).toEqual([]);
+  });
+
+  it('holds for the repo', () => {
+    expect(findUnlistedPackTemplates()).toEqual([]);
   });
 });
 

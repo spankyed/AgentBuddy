@@ -10,8 +10,14 @@ import ts from 'typescript';
 import { parse as parseSfc } from 'vue/compiler-sfc';
 import type { OwnModuleSpecifier } from '@abuddy/host/build/own-module-specifiers';
 
-/** A pack's source: TypeScript, JavaScript and SFCs. `.d.ts` declares, and imports nothing of the pack's. */
-const SOURCE_FILE = /(?<!\.d)\.(ts|tsx|mts|cts)$|\.vue$/;
+/**
+ * A pack's source: TypeScript, JavaScript and SFCs. `.d.ts` declares, and imports nothing of the pack's.
+ *
+ * JavaScript counts because a pack may be authored in it — `abuddy init` writes TypeScript, and nothing
+ * requires a pack to. Leaving `.js` out meant the rules over a pack's sources simply did not apply to such a
+ * pack, silently, which is the worse half of not supporting it.
+ */
+const SOURCE_FILE = /(?<!\.d)\.(ts|tsx|mts|cts|js|jsx|mjs|cjs)$|\.vue$/;
 
 /** Every source file under `dir`, skipping `node_modules` and whatever else `skip` names by entry name */
 export function* sourceFiles(dir: string, skip: (entryName: string) => boolean = () => false): Generator<string> {
@@ -34,7 +40,7 @@ export function codeBlocks(file: string, code: string): { content: string; lineO
 /** One block of a pack's code as a syntax tree, with positions, so a caller can report a line */
 export function parseSource(file: string, content: string): ts.SourceFile {
   return ts.createSourceFile(file, content, ts.ScriptTarget.Latest, true,
-    file.endsWith('.tsx') ? ts.ScriptKind.TSX : ts.ScriptKind.TS);
+    /\.[jt]sx$/.test(file) ? ts.ScriptKind.TSX : ts.ScriptKind.TS);
 }
 
 /** The module a static import or export, or a dynamic import(), names */

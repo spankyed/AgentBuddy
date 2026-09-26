@@ -14,7 +14,7 @@ import {
 import { findFEEntry, bundlePackFE } from '../build/fe-bundler';
 import { ensureCheckoutPackages } from '../build/checkout-packages.ts';
 import { internalImportProblems } from '../build/internal-imports-gate.ts';
-import { ownModuleSpecifierProblems } from '../build/own-module-specifiers-gate.ts';
+import { refuseUnnamedOwnModules } from '../build/own-module-specifiers-gate.ts';
 import { bundlePackRuntime, bundlePackSeedCompilers, bundlePackSeedRuntime, bundlePackStepBuild, SEED_RUNTIME_FILE } from '../build/be-bundler';
 import { bundleDslDefs, DEFS_DIR } from '../build/dsl-defs';
 import { bundlePackTypes } from '../build/types-bundler';
@@ -110,12 +110,7 @@ export async function build(args: string[]) {
     throw new Error(`A pack names only the @abuddy packages' public API; an export prefixed _ is the app's own, and an app update is free to rename it:\n${internalImports.map(p => `  - ${p}`).join('\n')}`);
   }
 
-  const ownModules = ownModuleSpecifierProblems(root);
-  if (ownModules.length > 0) {
-    throw new Error("A pack names its own modules by the file that is there, extension and all: no runtime "
-      + 'resolves an extensionless specifier in ESM, so one works only while a build guesses the suffix and '
-      + `this one does not:\n${ownModules.map((p) => `  - ${p}`).join('\n')}`);
-  }
+  refuseUnnamedOwnModules(root);
 
   const release = args.includes('--release');
   console.log(`Building pack: ${manifest.name} v${manifest.version}${release ? ' (release)' : ''}`);
