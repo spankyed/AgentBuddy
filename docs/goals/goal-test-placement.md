@@ -157,6 +157,20 @@ Colocation is a mainstream pattern and fine on its own terms. Being the *only* p
 defect, and there are three conventions here, not two: `tests/`, `src/`, and one `__tests__/`. A layout
 that needs a config line to avoid silence is one where the next file will be silent.
 
+### Finding 6 — twelve specs about the published packages, split into its own goal
+
+`@abuddy/cli` holds twelve specs whose subject is the published `@abuddy` packages rather than the CLI —
+30.2s of that suite's 190.8s. They are the same defect as Finding 1 at four times the size, and unlike the
+other five findings they have **no obvious right answer**: their subject belongs to no single package, the
+family is already split (two of them live in `@app/repo-checks`), and the packing fixture they share is also
+used by three specs that legitimately belong in the CLI. That needs a decision rather than a move, so it is
+[`goal-published-package-checks.md`](goal-published-package-checks.md), to be done after this one — its
+Phase 2 depends on the `@abuddy/testing` suite this goal's Phase 2 creates, and its Phase 4 extends this
+goal's Phase 3 guard.
+
+It matters here for one reason: until it lands, `@abuddy/cli`'s cost record includes 30.2s that is not about
+the CLI, so the record cannot be read as a CLI number.
+
 ### What the earlier inventory still has open
 
 [`test-inventory.md`](../plans/test-inventory.md) was written 2026-09-19 against
