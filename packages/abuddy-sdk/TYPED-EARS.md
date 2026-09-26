@@ -17,7 +17,7 @@ The engine's types moved to `@abuddy/ears` (`packages/abuddy-ears`); the SDK kee
 ## The contract
 
 **No `any`.**
-- Nothing pack-facing exposes `any`. `tests/build/published-sdk-any.spec.ts` in `@abuddy/cli` enforces it.
+- Nothing pack-facing exposes `any`. `published-sdk-any.integration.spec.ts` in `@app/publish-checks` enforces it.
 - An entity type without a declared shape reads as `BaseEntity & Record<string, unknown>`, so its values need narrowing.
 
 **Shapes.**

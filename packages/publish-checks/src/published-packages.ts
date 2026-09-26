@@ -3,11 +3,18 @@ import { promisify } from 'node:util';
 import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
-import { BUILD_UNITS, packagesBuiltOrRefuse } from '@abuddy/host/build/packages-built';
+import { BUILD_UNITS, packagesBuiltOrRefuse, REPO_ROOT } from '@abuddy/host/build/packages-built';
 
 const execFileAsync = promisify(execFile);
 
-export const REPO_ROOT = path.resolve(__dirname, '..', '..', '..', '..');
+/**
+ * Re-exported so a consumer of this fixture needs one import, not two.
+ *
+ * It comes from `@abuddy/host/build/packages-built`, which derives it from a marker file, rather than by
+ * counting `..` from this file. The count was right where this used to live and would have been wrong
+ * here; two specs broke exactly that way during `goal-test-placement.md`.
+ */
+export { REPO_ROOT };
 
 /**
  * The packages `installPublishedPackages()` npm-packs into a consumer fixture, by the name a
@@ -38,7 +45,7 @@ export const CONSUMER_MATRIX = (Object.keys(TSC_VERSIONS) as TscVersion[])
  * `@app/repo-checks` calls too — one rule with two callers, rather than a copy in each suite that reads
  * build output.
  */
-export const PACKAGES_BUILT = packagesBuiltOrRefuse('npm run packages:build (or npm test -w @abuddy/cli, which builds them)');
+export const PACKAGES_BUILT = packagesBuiltOrRefuse('npm run packages:build (or npm test -w @app/publish-checks, which builds them)');
 
 /**
  * A directory whose node_modules has the npm-packed @abuddy/ears, @abuddy/sdk and @abuddy/ui installed, as a

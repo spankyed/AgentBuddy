@@ -3,7 +3,7 @@ import * as path from 'node:path';
 import ts from 'typescript';
 import { parse } from '@vue/compiler-sfc';
 import { describe, expect, it } from 'vitest';
-const REPO_ROOT = path.resolve(__dirname, '..', '..', '..', '..');
+
 
 /**
  * The app imports every @abuddy/ui module at startup to share it with packs (virtual:host-deps),
@@ -11,7 +11,10 @@ const REPO_ROOT = path.resolve(__dirname, '..', '..', '..', '..');
  * registrations). Declarations, including objects built from calls, are fine; `<script setup>`
  * runs per component instance and isn't checked.
  */
-const UI_SRC = path.join(REPO_ROOT, 'packages', 'abuddy-ui', 'src');
+// Its subject is this package's own source, which is why it lives here now rather than in @abuddy/cli.
+// One level up, not a repo root: @abuddy/ui is a leaf package and importing @abuddy/host for a path
+// would be an upward dependency (`check:specifiers`, findUpwardImports).
+const UI_SRC = path.resolve(import.meta.dirname, '..', 'src');
 
 function modules(dir: string): string[] {
   return fs.readdirSync(dir, { withFileTypes: true }).flatMap((entry) => {

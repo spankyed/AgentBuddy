@@ -72,7 +72,7 @@ mid-run would be wrong. All they can do is fail, and say what to run.
 | # | Door | Covers | Where |
 |---|---|---|---|
 | 5 | `assertCheckoutPackagesFresh()` | a pack author's bare `npx vitest` or `npx playwright test`, with no CLI in front of it | `src/checkout-freshness.ts`, called from `setupPackTests` and the `electronApp` fixture |
-| 6 | a throw while the module loads | a spec that reads the built packages run without its `pretest` (`npx vitest`, a watch run): the CLI's `published-*` family and `@app/repo-checks`' `published-sdk-peers` | `packagesBuiltOrRefuse()` in `@abuddy/host/build/packages-built`, called from `abuddy-cli/tests/helpers/published-packages.ts` and the spec |
+| 6 | a throw while the module loads | a spec that reads the built packages run without its `pretest` (`npx vitest`, a watch run): `@app/publish-checks`' specs and `@app/repo-checks`' `published-sdk-peers` | `packagesBuiltOrRefuse()` in `@abuddy/host/build/packages-built`, called from `abuddy-cli/tests/helpers/published-packages.ts` and the spec |
 
 Three things follow.
 

@@ -44,6 +44,7 @@ export default defineConfig({
       'packages/main',
       'packages/abuddy-testing',
       'packages/abuddy-ui',
+      'packages/publish-checks',
     ],
   },
 });

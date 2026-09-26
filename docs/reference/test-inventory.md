@@ -9,30 +9,31 @@ describes the suite as it is, not a plan.
 
 ## Scale
 
-366 spec files: 337 in eleven package suites, 15 fixture-pack specs, 14 E2E, plus the root's own
+367 spec files: 338 in twelve package suites, 15 fixture-pack specs, 14 E2E, plus the root's own
 `tests/scripts` shell checks.
 
 | Suite | Specs | Fast half | Expensive half | Total |
 |---|---|---|---|---|
-| `@app/default-setup` | 86 | 13.8s | — | 13.8s |
-| `@abuddy/host` | 77 | 18.9s | — | 18.9s |
-| `@abuddy/cli` | 61 | 15.5s | 185.4s | **200.8s** |
+| `@app/default-setup` | 86 | 16.0s | — | 16.0s |
+| `@abuddy/host` | 76 | 18.7s | — | 18.7s |
 | `@abuddy/sdk` | 56 | 15.1s | — | 15.1s |
-| `@app/repo-checks` | 17 | 3.1s | 9.5s | 12.6s |
+| `@abuddy/cli` | 53 | 13.5s | 157.2s | **170.8s** |
+| `@app/repo-checks` | 18 | 2.9s | 9.8s | 12.7s |
 | `@app/api` | 15 | 5.6s | — | 5.6s |
 | `@abuddy/ears` | 9 | 2.4s | — | 2.4s |
 | `@app/renderer` | 8 | 0.1s | — | 0.1s |
+| `@app/publish-checks` | 7 | 0.0s | 28.0s | 28.1s |
 | `@abuddy/testing` | 4 | 0.1s | — | 0.1s |
-| `@app/main` | 2 | 0.2s | — | 0.2s |
-| `@abuddy/ui` | 1 | 0.0s | — | 0.0s |
-| | **336** | | | **269.6s** |
+| `@app/main` | 3 | 0.2s | — | 0.2s |
+| `@abuddy/ui` | 2 | 0.1s | — | 0.1s |
+| | **337** | | | **269.8s** |
 
 One spec more is recorded as skipped (every test in it skips, so it has no cost to place): 337 in total.
 
-`@abuddy/cli` is 74% of the file time, and roughly 30s of that is specs whose subject is not the CLI — see
-*Known misplacements*. Read its number as a suite total, not as a statement about the CLI. Its total moved
-from 190.8s to 200.8s across two recordings that removed four specs, which is what a contended measurement
-looks like: the band in `spec-cost.ts` exists so that noise of that size moves nothing.
+`@abuddy/cli` is still 63% of the file time, and now legitimately: the eight specs whose subject was the
+published packages are `@app/publish-checks`, so its record can be read as a CLI number. It has moved
+190.8s → 200.8s → 170.8s across recordings that removed twelve specs; the middle figure was a contended
+measurement, which is why the band in `spec-cost.ts` exists.
 
 `packages/preload` has source but neither specs nor a `test` script; `@app/electron-versions` and
 `@app/typescript-floor` hold no source. Every other package has a suite —
@@ -133,7 +134,7 @@ because its subject belongs to no single package.
 | 3 | ~~`secrets.spec.ts` mocks host's vault by relative path~~ — **resolved** in Phase 4: `@abuddy/host` publishes `./secrets/vault`, so it is a specifier. The mock stays: host's own suite covers the vault, this covers what a renderer learns, and Decision 10's sentence now says so | done |
 | 4 | `@abuddy/ui` has 33 recorded component contracts and no behavioural test; exactly one spec in the repo mounts a Vue component | coverage gap |
 | 5 | ~~`@app/default-setup` is the only package with colocated specs~~ — **resolved** in Phase 5: the six moved to `tests/unit/`, the `src/**` include and the `__tests__/` variant are gone | done |
-| 6 | twelve specs in `@abuddy/cli` are about the published `@abuddy` packages | 30.2s |
+| 6 | ~~twelve specs in `@abuddy/cli` are about the published `@abuddy` packages~~ — **resolved**: eight moved to `@app/publish-checks` with the packing fixture, one to `@abuddy/ui`; `package-freshness`, `checkout-packages` and `verify-node-modules` stay, their subjects being host's stamp rule, a CLI command and the packaging script | done |
 
 `pack-protocol.spec.ts` was a seventh, resolved in Phase 6: it sat in `@abuddy/host` while `PackProtocol.ts`
 lives in `@app/main`, and both its describes asserted against copies declared in the test. It moved, and its

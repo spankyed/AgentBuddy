@@ -2,7 +2,7 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import ts from 'typescript';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { PACKAGES_BUILT, installPublishedPackages } from '../helpers/published-packages';
+import { PACKAGES_BUILT, installPublishedPackages } from '../src/published-packages.ts';
 
 /**
  * The published declarations, checked with `skipLibCheck` off.

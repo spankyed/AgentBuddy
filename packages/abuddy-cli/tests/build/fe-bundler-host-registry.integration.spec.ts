@@ -3,7 +3,7 @@ import * as os from 'node:os';
 import * as path from 'node:path';
 import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest';
 import { bundlePackFE } from '../../src/build/fe-bundler';
-import { PACKAGES_BUILT, REPO_ROOT, installPublishedPackages } from '../helpers/published-packages';
+import { PACKAGES_BUILT, REPO_ROOT, installPublishedPackages } from '@app/publish-checks';
 
 const EARS_SOURCE = path.join(REPO_ROOT, 'packages', 'abuddy-ears');
 const SDK_SOURCE = path.join(REPO_ROOT, 'packages', 'abuddy-sdk');

@@ -5,7 +5,7 @@ import { execFileSync } from 'node:child_process';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { PACK_TSCONFIG } from '../../src/commands/init';
-import { REPO_ROOT } from './published-packages';
+import { REPO_ROOT } from '@abuddy/host/build/packages-built';
 
 /** The CLI these specs build with: the repo's own bin, run from source */
 export const CLI = path.join(REPO_ROOT, 'packages', 'abuddy-cli', 'bin', 'abuddy.mjs');

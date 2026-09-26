@@ -46,7 +46,7 @@
     "spec-cost:update": "tsx scripts/spec-cost.ts --update",
     "test:unit:host": "tsx scripts/test-unit-pool.ts host",
     "test:unit:pack": "tsx scripts/test-unit-pool.ts pack",
-    "test:integration": "npm run test:integration -w @abuddy/cli -w @app/repo-checks",
+    "test:integration": "npm run test:integration -w @abuddy/cli -w @app/repo-checks -w @app/publish-checks",
     "spec": "tsx scripts/spec.ts",
     "test:all": "npm run test:unit && npm run test",
     "start": "node packages/dev-mode.js",

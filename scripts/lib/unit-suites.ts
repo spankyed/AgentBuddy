@@ -48,6 +48,7 @@ export const UNIT_SUITES: readonly UnitSuite[] = [
   { workspace: '@app/main', dir: 'main', kind: 'host' },
   { workspace: '@abuddy/testing', dir: 'abuddy-testing', kind: 'host' },
   { workspace: '@abuddy/ui', dir: 'abuddy-ui', kind: 'host' },
+  { workspace: '@app/publish-checks', dir: 'publish-checks', kind: 'host' },
 ];
 
 /**

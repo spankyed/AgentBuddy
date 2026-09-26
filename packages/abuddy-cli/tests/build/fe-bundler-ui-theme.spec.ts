@@ -3,7 +3,7 @@ import * as path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { uiTailwindPreset } from '../../../abuddy-ui/src/tailwind-preset.ts';
 
-// Not from ../helpers/published-packages: importing that asserts the packages are freshly built,
+// Not from @app/publish-checks: importing that asserts the packages are freshly built,
 // and nothing here reads them — this spec reads @abuddy/ui's source and the fixture's built CSS.
 const REPO_ROOT = path.resolve(__dirname, '..', '..', '..', '..');
 

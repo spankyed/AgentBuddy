@@ -1,9 +1,13 @@
 {
-  "name": "@app/repo-checks",
+  "name": "@app/publish-checks",
   "version": "0.0.0",
   "private": true,
-  "description": "Specs whose subject is the repo's own tooling: the chain's graph and cache keys, the recorded spec costs, and the scripts that check the published packages",
+  "description": "What a consumer gets when they install the published @abuddy packages, and the fixture that finds out",
   "type": "module",
+  "main": "./src/published-packages.ts",
+  "exports": {
+    ".": "./src/published-packages.ts"
+  },
   "scripts": {
     "typecheck": "tsc --noEmit",
     "pretest": "tsx ../../scripts/ensure-packages-built.ts",

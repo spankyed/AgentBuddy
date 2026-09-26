@@ -6,9 +6,11 @@ A private workspace that installs nothing but `typescript@5.7.3`, the oldest Typ
 
 `packages/abuddy-cli/tests/helpers/published-packages.ts` points `TSC_VERSIONS['5.7']` at `packages/typescript-floor/node_modules/typescript/bin/tsc`, next to the workspace compiler (`current`). `CONSUMER_MATRIX` crosses both compilers with `node16` and `bundler` module resolution, and these specs compile a consumer against the built packages for every combination:
 
-- `published-sdk-types.spec.ts` (with `@abuddy/ears`)
-- `published-ui-types.spec.ts`
-- `published-exports.spec.ts`
+- `published-sdk-types.integration.spec.ts` (with `@abuddy/ears`)
+- `published-ui-types.integration.spec.ts`
+- `published-exports.integration.spec.ts`
+
+All three are in `@app/publish-checks`.
 
 They need `npm run packages:build` first; without `dist/` they skip, except in CI, where they fail.
 

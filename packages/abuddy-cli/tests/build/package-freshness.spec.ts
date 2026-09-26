@@ -7,7 +7,7 @@ import {
   BUILD_UNITS, CHECKOUT_MARKER, fingerprintInputs, fingerprintUnit, STAMP_VERSION, staleMessage, stampFile,
   stampedBuild, stampedRun, stampedRunAll, unitStaleReason, withBuildLock, type BuildIntent, type BuildUnit,
 } from '@abuddy/host/build/packages-built';
-import { PACKED_PACKAGES, REPO_ROOT } from '../helpers/published-packages';
+import { PACKED_PACKAGES, REPO_ROOT } from '@app/publish-checks';
 
 /**
  * The freshness rule behind `npm test -w @abuddy/cli`'s pretest (@abuddy/host/build/packages-built):

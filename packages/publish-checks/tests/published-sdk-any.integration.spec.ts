@@ -4,7 +4,7 @@ import * as path from 'node:path';
 import ts from 'typescript';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { APP_ONLY_EXPORTS } from '@abuddy/host/build/shared-deps';
-import { PACKAGES_BUILT, installPublishedPackages } from '../helpers/published-packages';
+import { PACKAGES_BUILT, installPublishedPackages } from '../src/published-packages.ts';
 
 let consumer: string | undefined;
 beforeAll(() => {

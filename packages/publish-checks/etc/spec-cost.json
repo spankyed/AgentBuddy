@@ -1,0 +1,13 @@
+{
+  "measuredAt": "2026-09-26T03:15:17.816Z",
+  "costs": {
+    "tests/published-declarations.integration.spec.ts": 3271,
+    "tests/published-exports.integration.spec.ts": 4891,
+    "tests/published-sdk-any.integration.spec.ts": 7608,
+    "tests/published-sdk-types.integration.spec.ts": 7045,
+    "tests/published-specifiers.spec.ts": 19,
+    "tests/published-ui-dist.spec.ts": 15,
+    "tests/published-ui-types.integration.spec.ts": 5224
+  },
+  "skipped": []
+}

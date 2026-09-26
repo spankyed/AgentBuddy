@@ -2,7 +2,7 @@ import { execFileSync } from 'node:child_process';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { CONSUMER_MATRIX, PACKAGES_BUILT, REPO_ROOT, TSC_VERSIONS, installPublishedPackages, type TscVersion } from '../helpers/published-packages';
+import { CONSUMER_MATRIX, PACKAGES_BUILT, REPO_ROOT, TSC_VERSIONS, installPublishedPackages, type TscVersion } from '../src/published-packages.ts';
 
 /** Every export of the packed @abuddy/ears, @abuddy/sdk and @abuddy/ui resolves to declarations for consumers. */
 let consumer: string | undefined;

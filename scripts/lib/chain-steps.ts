@@ -298,6 +298,8 @@ export const SUITE_READS: Record<string, { packages?: true; pack?: true }> = {
   api: { pack: true },
   // `pretest: ensure-packages-built`; `published-sdk-peers` reads the built `dist` and skips without it
   'repo-checks': { packages: true },
+  // `pretest: ensure-packages-built`; it npm-packs the built packages into a consumer and compiles it
+  'publish-checks': { packages: true },
 };
 
 /**

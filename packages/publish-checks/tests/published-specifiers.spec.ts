@@ -4,7 +4,7 @@ import { describe, expect, it } from 'vitest';
 import { packagesBuiltOrRefuse, REPO_ROOT } from '@abuddy/host/build/packages-built';
 
 /** Skips without built packages, and refuses rather than reading a stale `dist` */
-const PACKAGES_BUILT = packagesBuiltOrRefuse('npm run packages:build (or npm test -w @abuddy/cli, which builds them)');
+const PACKAGES_BUILT = packagesBuiltOrRefuse('npm run packages:build (or npm test -w @app/publish-checks, which builds them)');
 
 /**
  * Sources import `./x.ts`; the published JS must name the emitted `./x.js` (tsc's

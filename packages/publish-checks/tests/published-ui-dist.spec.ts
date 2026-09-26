@@ -4,7 +4,7 @@ import { describe, expect, it } from 'vitest';
 import { packagesBuiltOrRefuse, REPO_ROOT } from '@abuddy/host/build/packages-built';
 
 /** Skips without built packages, and refuses rather than reading a stale `dist` */
-const PACKAGES_BUILT = packagesBuiltOrRefuse('npm run packages:build (or npm test -w @abuddy/cli, which builds them)');
+const PACKAGES_BUILT = packagesBuiltOrRefuse('npm run packages:build (or npm test -w @app/publish-checks, which builds them)');
 
 /** @abuddy/ui's build: compiled modules only, and each module's state defined once. */
 const UI_DIST = path.join(REPO_ROOT, 'packages', 'abuddy-ui', 'dist');
