@@ -1,3 +1,12 @@
+> **Partly overtaken, 2026-09-25.** Phase 4 is **done** (`1b3eb9876`), at the tier rather than per test —
+> and it was right about the test it named: "generated sends compile" failed a chain run at 5.8s under three
+> lanes against a 5s default, exactly the flake the phase predicted. One "Finished when" clause is already
+> met by other work: `npm run test:unit` is 37.6–40.8s against its 43s target, delivered by
+> [`goal-one-job-pool.md`](../archive/goals/goal-one-job-pool.md)'s pooling. **Phases 1, 2, 3 and 5 are
+> untouched and still the point** — the suite-time sum is what bounds any arrangement of lanes, and
+> `default-setup` and `@abuddy/sdk` are still 51% of it. Its Background table is re-measured in place for the
+> eleven suites that exist now; re-read the targets before Phase 1, not the 2026-09-25 originals.
+
 > **Written in session** `1d53eb9c-d886-49f8-bc5a-90793d43315e` (Claude Code, 2026-09-25). Resume it with `claude -r 1d53eb9c-d886-49f8-bc5a-90793d43315e`.
 
 ```
@@ -54,6 +63,33 @@ Never:
 reached 43s and stopped. This goal is the part that was left.
 
 ### Where the time is
+
+> **Re-measured 2026-09-25** at `07afe0bc2`, idle, same machine. The table below it is the original survey
+> at `c7517e0da`, kept because the Decisions were taken against it. Eleven suites now rather than eight:
+> `@app/repo-checks`, `@abuddy/testing` and `@abuddy/ui` were created by later goals, and `@abuddy/cli`
+> gave twenty specs away to them.
+>
+> | Suite | Alone | Tests |
+> |---|---|---|
+> | `@app/default-setup` | **15.9s** | 718 |
+> | `@abuddy/sdk` | **12.3s** | 539 |
+> | `@abuddy/host` | 8.9s | 680 |
+> | `@abuddy/cli` (fast half) | 5.3s | 319 |
+> | `@app/api` | 3.1s | 70 |
+> | `@abuddy/ears` | 3.0s | 116 |
+> | `@app/renderer` | 2.5s | 33 |
+> | `@app/repo-checks` | 2.1s | 177 |
+> | `@abuddy/ui` | 0.9s | 2 |
+> | `@app/main` | 0.8s | 23 |
+> | `@abuddy/testing` | 0.8s | 19 |
+> | **Sum** | **55.5s** | **2,696** |
+>
+> **The diagnosis is unchanged: `default-setup` and `sdk` are 51% of it**, exactly as before. The sum rose
+> from 52.6s only because there are three more suites; the two targets did not move (14.7 → 15.9s,
+> 12.0 → 12.3s), and `@abuddy/cli`'s fast half fell 8.9 → 5.3s by giving specs away rather than by getting
+> faster. **`npm run test:unit` is 37.6–40.8s**, already under this goal's 43s target — delivered by
+> `goal-one-job-pool.md`'s pooling, not by this goal. What is left here is the sum, which bounds what any
+> arrangement of lanes can reach.
 
 Per suite, run alone, warm, on a 10-core machine:
 
@@ -149,15 +185,39 @@ registry still cannot see another file's changes.
 **Done when:** sdk's alone-time has dropped with its test count unchanged, or the phase is closed with
 the measurement.
 
-### Phase 4 — Size the thin timeouts
+### Phase 4 — Size the thin timeouts — **done 2026-09-25 (`1b3eb9876`), by a different mechanism**
 
-- Every test that hits the 5s default under two or three lanes gets a timeout sized per Decision 5.
-  Known: `@abuddy/sdk`'s "generated sends compile" (1.3s alone), and at least one in `@abuddy/cli`.
-- This is not a speed change. It is what makes a lane measurement mean anything, and it stands on its
-  own: a test whose margin is 4× under load is a flake waiting for a busy machine.
+This phase was right, and it was right about the specific test. It sat unactioned, and on 2026-09-25 the
+prediction below came true in a chain run: `@abuddy/sdk`'s "generated sends compile" — 1.3s alone — took
+**5.8s under three lanes** and failed with *"Test timed out in 5000ms"*. A 4.5× multiplier against a 5s
+default, in a suite whose tier allows 15s.
+
+**It was fixed at the tier rather than per test**, which is the opposite of what Decision 5 below asks and
+is the better answer. Five of the thirteen configs declared no timeout at all — `abuddy-ears`,
+`abuddy-host`, `abuddy-sdk`, `main`, `renderer` — so every spec in them ran on vitest's 5s/10s defaults,
+*tighter* than their tier. The budget belongs to the tier (`TIER_TIMEOUT_MS`), not to each test that trips
+over a default, so all five now declare it, and `suite-timeouts.spec.ts` gained the half it was missing: it
+checked a ceiling and left silence as an unrecorded third state, which was the state that bit. It now
+requires each config to declare its tier's budget. The next test in line was a 4.1s lock test in
+`@abuddy/host`, at 82% of a budget it never chose.
+
+So **Decision 5 is superseded for this case**: a per-test timeout is for a test that genuinely needs longer
+than its tier, and `TIMEOUT_EXCEPTIONS` is where those are recorded. It is not the fix for a suite running
+on a default nobody chose.
+
+~~- Every test that hits the 5s default under two or three lanes gets a timeout sized per Decision 5.~~
+~~- This is not a speed change. It is what makes a lane measurement mean anything.~~
 
 **Done when:** three lanes runs green five times in a row. **Mutation:** dropping one sized timeout back
-to the default fails that run.
+to the default fails that run — done, in the other direction: dropping `hookTimeout` from `@abuddy/sdk`'s
+config fails `suite-timeouts.spec.ts` by name.
+
+**The five-run bar is not met, and this is the evidence there is.** Two `chain -- --all` runs went green
+after the fix, at 190.1s and 180.8s, both three lanes with every step forced. The remaining three were
+abandoned rather than run: the next goal started editing spec files while they were in flight, and a flake
+measurement taken over a tree being edited is evidence about nothing. Re-run the five on a quiet tree before
+treating this phase as closed on its own terms — the fix is landed and guarded either way, but "green five
+times in a row" is a claim nobody has checked.
 
 ### Phase 5 — Re-measure, and state the floor
 
