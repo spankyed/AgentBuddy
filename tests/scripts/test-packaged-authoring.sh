@@ -227,7 +227,11 @@ node -e '
 ' || fail "the compiler modules and markdown seeds were not compiled"
 
 step "4. Unit tests through the harness, with default-setup's runtime"
-cat > tests/unit/demo-notes.spec.ts <<'TS'
+# A spec's path mirrors the source it covers, which is the layout `abuddy init` scaffolds and the one a
+# pack author reads about (docs/public-facing/testing.md). These three cover the seeds, a feature's service
+# and a seeded flow, so they go where those live.
+mkdir -p tests/seeds/flows tests/features/notes/be/services
+cat > tests/seeds/demo-notes.spec.ts <<'TS'
 import { describe, expect, it } from 'vitest';
 import { importSeeds } from '@abuddy/testing/harness';
 import { findAll } from '#generated/ears';
@@ -251,7 +255,7 @@ describe('demo notes', () => {
   });
 });
 TS
-cat > tests/unit/digest-service.spec.ts <<'TS'
+cat > tests/features/notes/be/services/digest.spec.ts <<'TS'
 import { describe, expect, it } from 'vitest';
 import { mockInference } from '@abuddy/testing/harness';
 import { services } from '#generated/services';
@@ -264,7 +268,7 @@ describe('digest service', () => {
   });
 });
 TS
-cat > tests/unit/notes-summary.spec.ts <<'TS'
+cat > tests/seeds/flows/notes-summary.spec.ts <<'TS'
 import { describe, expect, it } from 'vitest';
 import { importFlows, mockInference, importSeeds, startApp } from '@abuddy/testing/harness';
 import { entry, keepAlive, subflow } from '#generated/flow-helpers';
