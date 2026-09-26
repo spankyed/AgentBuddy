@@ -248,12 +248,15 @@ to `.js` and watch that named too.
 | 2 — hand-written pack code | **done** | `5a2011b48` (801 `#` specifiers, 437 files) and `6f01bdbf6` (736 relative ones: 716 by script in 364 files, 6 by hand, 14 in the CLI's templates) |
 | 3 — generated code and the scaffold | **done** | `f590c1b29`. `toImportPath` and the facades' own imports emit `.ts`; the scaffold writes it; `abuddy build` refuses a specifier that names no file |
 | 4 — delete the guessing | **done** | `94164fc69`. 160 lines deleted against 78 added |
-| 5 — the guard | **done** | `b91745f78`. `findJsSpecifiers` over the packs, `findExtensionlessOwnModules` beside it, four mutations |
+| 5 — the guard | **done** | `b91745f78`. `findJsSpecifiers` over the packs, `findExtensionlessOwnModules` beside it, four mutations; `e349447c5` for the fixture packs it found |
 
-**1,537 specifiers across some 600 files**, and every suite's counts unchanged: default-setup 87 files / 720
-tests, `@abuddy/host` 78 / 706 (the one new spec file), the fixture pack 10 / 32, repo-checks'
-`import-specifiers` 192 cases, `@app/publish-checks` 8, E2E 21, `test:packaged-authoring` and
-`test:external-pack` green.
+**1,537 specifiers across some 600 files.** Counts: default-setup 87 files / 720 tests unchanged, the fixture
+pack 10 / 32 unchanged, E2E 21 unchanged, `test:packaged-authoring` and `test:external-pack` green,
+`npm run chain` green. Three suites grew, all of them checks this goal added: `@abuddy/host` 77 / 697 to
+78 / 706 (`own-module-specifiers.spec.ts`), repo-checks' `import-specifiers` to 192 cases (the two rules that
+had none, and this one), and `@abuddy/cli`'s integration half from 1 failed / 167 passed / 20 skipped to 188
+passed — the skips were everything downstream of a fixture pack that had stopped building, which is how the
+last four failures of this goal were found.
 
 ### The Open decision, settled
 
@@ -279,6 +282,10 @@ error, and the machinery that used to guess is gone rather than kept for externa
 - **The rewrite script's own rule was wrong for six specifiers**, and the guard caught that too:
   `path.extname('./0.3.15')` is `.15`, so the migrations named after versions looked like they had
   extensions. A check that resolves against the file system does not make that mistake.
+- **Every fixture pack in the CLI's integration specs was a pack too**, so the new gate held it to the rule
+  and four specs failed on `'./system.contract.js'` and `'#generated/ears.js'` — files those fixtures never
+  write. The unit half could not see it: those specs run the real build over a real tree, which is what the
+  gate reads, and 20 further tests had been skipping behind them.
 - **The CLI's templates wrote extensionless imports into every scaffolded pack.** Once `abuddy build`
   refused them, `abuddy init` + `abuddy add feature` + build was broken — caught by
   `test:packaged-authoring`, which is the check that authors a pack the way an author would. `abuddy add`'s
