@@ -64,7 +64,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import BaseForm from '@abuddy/ui/components/BaseForm'
-import type { NodeEntity } from '@/__generated__/types'
+import type { NodeEntity } from '#generated/types'
 import type { FormResources } from '../form-props'
 import { parseModelId, providerLabels, type ModelCatalogEntry, type ProviderName } from '@abuddy/sdk/models'
 import { DEFAULT_MODEL } from '../llm/model'

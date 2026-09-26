@@ -1,4 +1,4 @@
-import type { Tab } from '@/__generated__/types'
+import type { Tab } from '#generated/types'
 import type { ThreadTabGroup } from './types'
 
 export function categorizeThreadTabs(

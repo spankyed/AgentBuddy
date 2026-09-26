@@ -192,9 +192,9 @@
 <script setup lang="ts">
 import { usePlugin } from '@abuddy/sdk/fe'
 
-import type { CodeSettings } from '@/__generated__/types'
+import type { CodeSettings } from '#generated/types'
 import { updateSettings, useFeatureSettings } from '@abuddy/sdk/fe'
-import { ref as featureRef } from '@/__generated__/ref'
+import { ref as featureRef } from '#generated/ref'
 import { ref, computed, watch, onMounted, onBeforeUnmount, nextTick } from 'vue'
 import { useSelector } from '@xstate/vue'
 import { ChevronRight, ChevronDown, Plus, X, Edit, Trash2, PanelTop, PanelBottom, Terminal as TerminalIcon, Ellipsis, Square, Copy, ClipboardPaste, TextSelect, Eraser, RotateCcw } from 'lucide-vue-next'
@@ -220,7 +220,7 @@ import { useTerminalActions } from '@/features/code/fe/composables/useTerminalAc
 import RunScriptPopover from './RunScriptPopover.vue'
 import ContextMenuPopup from '@abuddy/ui/design/ContextMenuPopup'
 import { useSectionVisibilityMenu } from '@/features/code/fe/composables/useSectionVisibilityMenu'
-import type { TerminalScript } from '@/__generated__/types'
+import type { TerminalScript } from '#generated/types'
 import type { Terminal } from '@xterm/xterm'
 import type { FitAddon } from '@xterm/addon-fit'
 import type { IDisposable } from '@xterm/xterm'

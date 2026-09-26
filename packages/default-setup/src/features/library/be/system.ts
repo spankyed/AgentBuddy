@@ -1,12 +1,12 @@
 // [SEARCH_INDEX_FF] The search index is dormant: ./search-index/README.md lists its call sites and how to turn it on
 import type { Contract } from './contract';
-import { services } from '@/__generated__/services';
+import { services } from '#generated/services';
 import { setup } from 'xstate'
 import { defineSystem } from '@abuddy/sdk/framework'
-import type { EARS } from '@/__generated__/ears'
+import type { EARS } from '#generated/ears'
 // [SEARCH_INDEX_FF] import type { SearchIndex } from './search-index/types/search-index'
-import { sendToSystem, broadcastToPlugin } from '@/__generated__/events'
-import { repository } from '@/__generated__/repository';
+import { sendToSystem, broadcastToPlugin } from '#generated/events'
+import { repository } from '#generated/repository';
 import * as path from 'path'
 import * as os from 'os'
 import * as fs from 'fs/promises'
@@ -16,8 +16,8 @@ import * as symlink from './repository/symlink'
 import { toMap, toIdentifierSet, mapArray } from '@abuddy/sdk/utils'
 import { exportLibrary } from './export-library'
 import { importLibrary } from './import-library'
-import type { CommandItem } from '@/__generated__/types';
-import { ref } from '@/__generated__/ref';
+import type { CommandItem } from '#generated/types';
+import { ref } from '#generated/ref';
 import { errorMessage } from '@abuddy/sdk/utils/pure';
 
 export const librarySpec = defineSystem<Contract>();

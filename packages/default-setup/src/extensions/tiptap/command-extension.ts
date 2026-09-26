@@ -1,6 +1,6 @@
 import { Extension } from '@tiptap/core'
 import { commandSuggestionPlugin } from './command-suggestion-plugin'
-import { readPluginState } from '@/__generated__/fe'
+import { readPluginState } from '#generated/fe'
 
 export const CommandSuggestion = Extension.create({
   name: 'commandSuggestion',

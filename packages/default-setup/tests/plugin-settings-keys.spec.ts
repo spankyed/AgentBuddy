@@ -5,8 +5,8 @@
 import { describe, expect, it, onTestFinished } from 'vitest';
 import { registerPack, startApp, takeSystemErrors, unregisterPack } from '@abuddy/testing/harness';
 import type { FeatureRef } from '@abuddy/sdk/ids';
-import { services } from '@/__generated__/services';
-import { ref } from '@/__generated__/ref';
+import { services } from '#generated/services';
+import { ref } from '#generated/ref';
 
 const stored = () => services.settings.getStored().plugins as Record<string, any>;
 

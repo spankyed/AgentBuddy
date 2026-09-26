@@ -3,7 +3,7 @@
  */
 
 import type { ActionMeta } from '@abuddy/sdk/build';
-import type { Services } from '@/__generated__/services';
+import type { Services } from '#generated/services';
 import { persistClaudeState, getClaudeState } from './_helpers/thread-context';
 
 export const meta: ActionMeta = {

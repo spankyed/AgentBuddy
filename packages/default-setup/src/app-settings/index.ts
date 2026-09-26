@@ -3,7 +3,7 @@
 // from this pack's compiled seeds, which exist only after `abuddy build`.
 import * as fs from 'fs';
 import { seedFile, seedPath } from '@abuddy/sdk/build';
-import { getCompiledDir } from '@/__generated__/seeders';
+import { getCompiledDir } from '#generated/seeders';
 import { loadJSON } from '@abuddy/sdk/utils';
 import type { HelpEntry } from '@abuddy/sdk/framework';
 import type { SettingsData } from './types';

@@ -4,7 +4,7 @@ import { beforeEach, expect, it, vi } from 'vitest';
 import { createActor } from 'xstate';
 
 const sendToSystem = vi.hoisted(() => vi.fn());
-vi.mock('@/__generated__/events', () => ({ sendToSystem }));
+vi.mock('#generated/events', () => ({ sendToSystem }));
 
 const { default: databaseState } = await import('@/features/database/fe/state');
 

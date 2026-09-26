@@ -1,5 +1,5 @@
-import { broadcastToPlugin } from '@/__generated__/events';
-import { repository } from '@/__generated__/repository';
+import { broadcastToPlugin } from '#generated/events';
+import { repository } from '#generated/repository';
 import { setup } from 'xstate';
 import { defineSystem } from '@abuddy/sdk/framework';
 import type { Contract } from './contract';

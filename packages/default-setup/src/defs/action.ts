@@ -3,7 +3,7 @@
  * Defines what's available as globals in the action code editor.
  */
 
-import type { Services } from '@/__generated__/services';
+import type { Services } from '#generated/services';
 
 // What actions receive as `services`: the pack's generated type, host services included (as seed actions import it)
 export const services = undefined as unknown as Services;

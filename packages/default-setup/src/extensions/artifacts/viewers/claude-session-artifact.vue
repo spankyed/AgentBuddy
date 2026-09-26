@@ -261,9 +261,9 @@
 import { computed, ref } from 'vue'
 import { Wrench, Copy, Check, Terminal } from 'lucide-vue-next'
 import type { ArtifactItem } from '@abuddy/sdk/artifacts'
-import { usePluginState } from '@/__generated__/fe'
-import { openPlugin } from '@/__generated__/fe'
-import { sendToSystem } from '@/__generated__/events'
+import { usePluginState } from '#generated/fe'
+import { openPlugin } from '#generated/fe'
+import { sendToSystem } from '#generated/events'
 
 
 type PermissionMode =

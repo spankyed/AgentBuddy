@@ -2,7 +2,7 @@
 // the link blocks in messages do. These rewrite such a name onto this pack's ref, which the 0.3.15 migration applies
 // to stored data. Code users wrote is left as they wrote it: a bare name there fails when the code runs, and the
 // services' error names the ref it meant.
-import { ref, type FeatureName } from '@/__generated__/ref';
+import { ref, type FeatureName } from '#generated/ref';
 
 /**
  * The features this pack had in 0.3.14, each a plugin and a system then under its bare id. A bare id among them is

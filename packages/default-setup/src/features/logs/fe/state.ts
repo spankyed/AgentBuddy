@@ -1,7 +1,7 @@
 import { setup, type ActorRefFrom, assign } from 'xstate';
 import { safeEvents } from '@abuddy/sdk/fe';
-import { sendToSystem } from '@/__generated__/events';
-import type { LogsSettings } from '@/__generated__/types';
+import { sendToSystem } from '#generated/events';
+import type { LogsSettings } from '#generated/types';
 import type { LogsContext } from './contract';
 import type { OutgoingLogsEvents } from '@/features/logs/be/types';
 

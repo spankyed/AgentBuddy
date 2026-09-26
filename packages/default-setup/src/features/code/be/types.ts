@@ -1,6 +1,6 @@
 import type { GitRepository } from './services/git';
 import type { GitWatcherService } from './services/gitwatcher';
-import { EARS } from '@/__generated__/ears'
+import { EARS } from '#generated/ears'
 import type { KeyboardShortcut } from '@abuddy/sdk/types'
 
 export interface FileInfo {

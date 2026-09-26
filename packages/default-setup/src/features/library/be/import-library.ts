@@ -11,8 +11,8 @@
 
 import * as fs from 'node:fs'
 import * as path from 'node:path'
-import { repository } from '@/__generated__/repository';
-import type { EARS } from '@/__generated__/ears'
+import { repository } from '#generated/repository';
+import type { EARS } from '#generated/ears'
 import { hasIdCollision } from '@abuddy/ears';
 import { restoreJsonMediaRefs, restoreMarkdownMediaRefs, toDisplayName } from '@abuddy/sdk/utils'
 import { parseFrontmatter, parseMarkdownSections } from './utils'

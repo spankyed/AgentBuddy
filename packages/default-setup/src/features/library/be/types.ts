@@ -1,4 +1,4 @@
-import type { EARS, BaseEntity } from '@/__generated__/ears'
+import type { EARS, BaseEntity } from '#generated/ears'
 
 export type DocumentShortCode = `DOC-${number}`;
 

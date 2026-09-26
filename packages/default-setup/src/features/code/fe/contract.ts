@@ -6,8 +6,8 @@
 // them reach `#generated/events`. `abuddy.json` names it at `features[].plugin.contract`.
 import type { HotkeysMap, NavHistory, PluginInbox, TabGroup } from '@abuddy/sdk/fe'
 import type { ActionEntity, PromptEntity } from '@abuddy/sdk'
-import type { EARS } from '@/__generated__/ears'
-import type { CodeSettings } from '@/__generated__/types'
+import type { EARS } from '#generated/ears'
+import type { CodeSettings } from '#generated/types'
 import type { GitDiff, GitStatusFile, TerminalInfo } from '../be/types'
 
 export interface OpenFile {

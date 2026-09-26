@@ -12,7 +12,7 @@ import { createSeeder } from '@abuddy/sdk/seed';
 import type { ImportMode, ImportCounts, SeedIncludeSet } from '@abuddy/sdk/utils';
 import { untypedQx as qx } from '@abuddy/ears';
 import { dropAttribute, entityIds } from '@abuddy/sdk/testing';
-import { createEntityWithDefaults, type EARS } from '@/__generated__/ears';
+import { createEntityWithDefaults, type EARS } from '#generated/ears';
 import { FIXTURES, PACK_DIR, resetDatabase, snapshot, type Snapshot } from './harness';
 
 const manifest = JSON.parse(fs.readFileSync(path.join(PACK_DIR, 'abuddy.json'), 'utf-8'));

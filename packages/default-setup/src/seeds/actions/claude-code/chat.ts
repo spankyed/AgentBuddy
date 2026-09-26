@@ -16,7 +16,7 @@
 
 import type { GeneralSettings } from '@/app-settings/types';
 import type { ActionMeta } from '@abuddy/sdk/build';
-import type { Services, Z, EntityId } from '@/__generated__/services';
+import type { Services, Z, EntityId } from '#generated/services';
 import { createStreamWriter } from './_helpers/stream-writer';
 import { createToolActivityWriter } from './_helpers/tool-activity-writer';
 import { createThinkingWriter } from './_helpers/thinking-writer';

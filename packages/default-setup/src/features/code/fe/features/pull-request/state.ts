@@ -1,7 +1,7 @@
 import { setup, assign, enqueueActions , type ActorRefFrom } from 'xstate';
-import { sendToSystem } from '@/__generated__/events';
+import { sendToSystem } from '#generated/events';
 import type { GitStatusFile, GitDiff } from '../commit/state';
-import type { GhPullRequest, GhPRComment, GhReviewThread } from '@/__generated__/types';
+import type { GhPullRequest, GhPRComment, GhReviewThread } from '#generated/types';
 import { updateParentState, getParentContext, addTabToParent, sendEventToParent } from '../../utils/parent-communication';
 import { untypedOpenPlugin } from '@abuddy/sdk/fe'
 import { resolveName } from '@abuddy/sdk/ids'

@@ -3,7 +3,7 @@
 import { describe, expect, it } from 'vitest';
 import { mockInference } from '@abuddy/testing/harness';
 import type { ExecutionContext, TNodeEntity } from '@abuddy/sdk/steps';
-import { services } from '@/__generated__/services';
+import { services } from '#generated/services';
 import { handler } from '@/extensions/steps/action/runtime';
 
 /** Runs inline action code on the action step, as a flow node in code mode does */

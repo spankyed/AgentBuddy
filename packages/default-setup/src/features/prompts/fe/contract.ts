@@ -5,8 +5,8 @@
 // `abuddy.json` names it at `features[].plugin.contract`.
 import type { PluginInbox } from '@abuddy/sdk/fe'
 import type { PromptEntity, TemplateInput } from '@abuddy/sdk'
-import type { EARS } from '@/__generated__/ears'
-import type { Category } from '@/__generated__/types'
+import type { EARS } from '#generated/ears'
+import type { Category } from '#generated/types'
 
 export interface PromptsContext {
   selectedPromptId?: EARS.EntityId;

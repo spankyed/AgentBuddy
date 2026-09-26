@@ -2,7 +2,7 @@
 // The Codex app server and the chat and threads services the actions drive are mocked.
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { mockService, startApp, type FlowRun, type TestApp } from '@abuddy/testing/harness'
-import type { Services } from '@/__generated__/services'
+import type { Services } from '#generated/services'
 import { actionLabel, seedDefaultFlows } from '../../../_support/flows'
 
 const actions = (run: FlowRun) => run.steps.map(actionLabel).filter(Boolean)

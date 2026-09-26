@@ -9,7 +9,7 @@
  */
 
 import type { ActionMeta } from '@abuddy/sdk/build';
-import type { Services, EntityId } from '@/__generated__/services';
+import type { Services, EntityId } from '#generated/services';
 import { persistClaudeState, ensureSessionMarker, updateChatState } from './_helpers/thread-context';
 import { resolvePlanDraft, type PlanArtifactContent } from './_helpers/plan-artifact';
 

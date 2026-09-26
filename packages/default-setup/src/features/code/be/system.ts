@@ -16,8 +16,8 @@
  */
 import type { Contract } from './contract';
 import type { GeneralSettings } from '@/app-settings/types';
-import { services } from '@/__generated__/services';
-import { broadcastToPlugin } from '@/__generated__/events';
+import { services } from '#generated/services';
+import { broadcastToPlugin } from '#generated/events';
 import { clearCliPathCache, isCliName, testCli } from './utils/resolve-cli';
 import { createLogger } from '@abuddy/sdk/logger';
 
@@ -46,7 +46,7 @@ function child(self: AnyActorRef, id: string): AnyActorRef | undefined {
 // Union all outgoing events from child systems  
 // Import only the type needed for broadcast event
 import type { CodeConnectedData, CodeSettings } from './types'
-import { ref } from '@/__generated__/ref';
+import { ref } from '#generated/ref';
 
 export const codeSpec = defineSystem<Contract>();
 

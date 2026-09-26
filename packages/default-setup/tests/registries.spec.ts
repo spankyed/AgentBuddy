@@ -16,7 +16,7 @@ describe('boot exports — source modules', () => {
 
 describe('registries/services — feature services assembly', () => {
   it('does not include core services (logger, emitter, repository)', async () => {
-    const { featureServices } = await import('@/__generated__/services');
+    const { featureServices } = await import('#generated/services');
 
     expect(featureServices).not.toHaveProperty('logger');
     expect(featureServices).not.toHaveProperty('emitter');

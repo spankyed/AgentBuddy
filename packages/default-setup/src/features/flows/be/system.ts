@@ -1,17 +1,17 @@
-import type { FlowsSettings } from '@/__generated__/types';
-import { services } from '@/__generated__/services';
-import { broadcastToPlugin } from '@/__generated__/events';
+import type { FlowsSettings } from '#generated/types';
+import { services } from '#generated/services';
+import { broadcastToPlugin } from '#generated/events';
 import { setup } from 'xstate';
 import { defineSystem } from '@abuddy/sdk/framework';
 // import { addMessageToLatestThread, getLatestMessage } from './accessors';
-import { EARS } from '@/__generated__/ears';
-import { repository } from '@/__generated__/repository';
+import { EARS } from '#generated/ears';
+import { repository } from '#generated/repository';
 import type { Contract } from './contract';
 import { FLOW_ROLES } from './repository';
 import { createLogger } from '@abuddy/sdk/logger';
 import type { ActionEntity, PromptEntity } from '@abuddy/sdk';
 import { compileFlowDSL, validateFlowDSL, exportFlowsToDSL, type FlowDSL, type ValidationError } from '@abuddy/sdk/build';
-import { ref } from '@/__generated__/ref';
+import { ref } from '#generated/ref';
 import { errorMessage } from '@abuddy/sdk/utils/pure';
 
 const logger = createLogger('flows');

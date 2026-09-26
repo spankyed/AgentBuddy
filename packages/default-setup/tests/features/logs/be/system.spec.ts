@@ -8,7 +8,7 @@ import { createLogger } from '@abuddy/sdk/logger';
 import { testRootEvents } from '@abuddy/sdk/testing';
 import type { Message } from '@abuddy/testing/harness';
 import logsEntry from '@/features/logs/be/system';
-import { registration } from '@/__generated__/pack-entry';
+import { registration } from '#generated/pack-entry';
 
 const cleanup: Array<() => void> = [];
 afterEach(() => {

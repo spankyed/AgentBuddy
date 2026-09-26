@@ -269,8 +269,8 @@ import { useSettingsSection } from '@abuddy/sdk/fe'
 import type { GeneralSettings } from '@/app-settings/types'
 import { ref, onMounted, onUnmounted, computed, watch, nextTick, type CSSProperties } from 'vue'
 import { Archive, History, ChevronUp, ChevronRight, Plus, PanelLeft, FileText, Pin, Trash2, FolderOpen, GitBranchPlus } from 'lucide-vue-next'
-import type { ThreadEntity } from '@/__generated__/types';
-import type { AgentThreadData } from '@/__generated__/types'
+import type { ThreadEntity } from '#generated/types';
+import type { AgentThreadData } from '#generated/types'
 import {
   ContextMenuRoot,
   ContextMenuTrigger,

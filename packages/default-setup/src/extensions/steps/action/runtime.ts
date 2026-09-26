@@ -1,7 +1,7 @@
 import type { ExecutionContext, TNodeEntity } from '@abuddy/sdk/steps';
 import type { EARS } from '@abuddy/sdk';
-import type { NodeEntity } from '@/__generated__/types';
-import { repository } from '@/__generated__/repository';
+import type { NodeEntity } from '#generated/types';
+import { repository } from '#generated/repository';
 import { createLogger, reportError } from '@abuddy/sdk/logger';
 import { runActionCode } from './sandbox';
 

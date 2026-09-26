@@ -3,6 +3,7 @@ import path from 'path';
 import fs from 'fs';
 import { fileURLToPath } from 'url';
 import { builtInPackLoadersModule, discoverBuiltInPacksForBuild } from '@abuddy/host/build/discover';
+import { readSubpathImports, resolveWithExtensions } from '@abuddy/host/build/subpath-imports';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const packagesRoot = path.resolve(__dirname, '..');
@@ -73,6 +74,37 @@ export default defineConfig((options) => {
           loader: 'ts',
           resolveDir: packLoaderDir,
         }));
+      },
+    },
+    {
+      /**
+       * A built-in pack's own `#…` imports, which esbuild resolves the mapping for and then refuses.
+       *
+       * Measured with esbuild 0.25.12: given a pack's `"imports": { "#generated/*": "./src/__generated__/*" }`
+       * it finds the target and says so — *"The module ./src/__generated__/services was not found on the file
+       * system"* — because the file is `.ts` and the specifier has no extension, which is Node's ESM rule.
+       * Supplying the suffix is the whole job, and `@abuddy/cli`'s backend bundle does it with the same two
+       * functions (`@abuddy/host/build/subpath-imports`) rather than a second copy.
+       *
+       * It went unnoticed until the built-in pack's own imports moved to `#generated/…`: the five that
+       * already used it were all under `src/seeds/flows/`, which `abuddy build` compiles and this build
+       * never sees.
+       */
+      name: 'resolve-pack-subpath-imports',
+      setup(build) {
+        const importsByPack = new Map(builtInPacks.map((pack) => [pack.srcDir, readSubpathImports(path.dirname(pack.srcDir))]));
+        build.onResolve({ filter: /^#/ }, (args) => {
+          const srcDir = builtInPackSrcDirs.find((dir) => args.importer.startsWith(dir));
+          if (!srcDir) return undefined;
+          for (const [pattern, target] of Object.entries(importsByPack.get(srcDir) ?? {})) {
+            if (!pattern.endsWith('/*') || !target.endsWith('/*')) continue;
+            const prefix = pattern.slice(0, -1);
+            if (!args.path.startsWith(prefix)) continue;
+            const resolved = resolveWithExtensions(path.resolve(path.dirname(srcDir), target.slice(0, -1) + args.path.slice(prefix.length)));
+            if (resolved) return { path: resolved };
+          }
+          return undefined;
+        });
       },
     },
     {

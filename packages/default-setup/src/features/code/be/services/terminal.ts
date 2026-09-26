@@ -1,15 +1,15 @@
 import type { CodeSettings } from '@/features/code/be/types';
-import { services } from '@/__generated__/services';
-import { tx } from '@/__generated__/ears';
+import { services } from '#generated/services';
+import { tx } from '#generated/ears';
 import * as pty from 'node-pty'
 import * as os from 'os'
 import * as path from 'path'
 import * as fs from 'fs'
 import type { TerminalInfo, TerminalCreate } from '../types'
-import { EARS } from '@/__generated__/ears'
-import { repository } from '@/__generated__/repository';
+import { EARS } from '#generated/ears'
+import { repository } from '#generated/repository';
 import { createLogger } from '@abuddy/sdk/logger';
-import { ref } from '@/__generated__/ref';
+import { ref } from '#generated/ref';
 
 const logger = createLogger('terminal');
 

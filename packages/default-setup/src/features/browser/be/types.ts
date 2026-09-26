@@ -1,4 +1,4 @@
-import type { EARS } from '@/__generated__/ears';
+import type { EARS } from '#generated/ears';
 
 export type BrowserTabId = `${EARS.Entity.BrowserTab}-${string}`;
 

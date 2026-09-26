@@ -1,4 +1,4 @@
-import { broadcastToPlugin } from '@/__generated__/events';
+import { broadcastToPlugin } from '#generated/events';
 import { assign, setup } from 'xstate'
 
 import { FileSystemRepository } from '../services/filesystem'

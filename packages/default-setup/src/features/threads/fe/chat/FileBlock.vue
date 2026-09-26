@@ -18,7 +18,7 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import { File as FileIcon, X } from 'lucide-vue-next'
-import type { FileReference } from '@/__generated__/types'
+import type { FileReference } from '#generated/types'
 
 const props = withDefaults(defineProps<{
   file: FileReference

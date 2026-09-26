@@ -204,7 +204,7 @@ import { Plus, Trash2, Code } from 'lucide-vue-next'
 import BaseForm from '@abuddy/ui/components/BaseForm'
 import TipSection from '@abuddy/ui/components/TipSection'
 import SimpleMonacoEditor from '@abuddy/ui/components/SimpleMonacoEditor'
-import type { NodeEntity } from '@/__generated__/types'
+import type { NodeEntity } from '#generated/types'
 import type { SwitchNode, Condition, Predicate } from '@/extensions/steps/switch/types'
 import type { BinaryOperator } from '@abuddy/sdk/utils'
 

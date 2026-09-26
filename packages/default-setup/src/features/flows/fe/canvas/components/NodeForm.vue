@@ -28,7 +28,7 @@
 
 <script setup lang="ts">
 import { ref, computed, watch, provide } from 'vue'
-import type { NodeEntity } from '@/__generated__/types'
+import type { NodeEntity } from '#generated/types'
 import { stepRegistry } from '@abuddy/sdk/steps'
 
 import BaseForm from '@abuddy/ui/components/BaseForm'

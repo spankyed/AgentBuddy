@@ -86,7 +86,7 @@
 </template>
 
 <script setup lang="ts">
-import { sendToPlugin } from '@/__generated__/events'
+import { sendToPlugin } from '#generated/events'
 import { ref, computed, watch, nextTick } from 'vue'
 import { ChevronRight, Wrench, Check, Loader2, X, AlertCircle, ArrowRight } from 'lucide-vue-next'
 import JsonHoverPopup from '@abuddy/ui/components/JsonHoverPopup'

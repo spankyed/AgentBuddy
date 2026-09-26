@@ -3,8 +3,8 @@
 // PARENT_OF and hold documents with contains, like rows created in the app. Rows match by name
 // within their folder, as the library itself names them.
 import type { SeedHooks, SeedRecord } from '@abuddy/sdk/seed';
-import { EARS, findWhere, qx } from '@/__generated__/ears';
-import { repository } from '@/__generated__/repository';
+import { EARS, findWhere, qx } from '#generated/ears';
+import { repository } from '#generated/repository';
 import type { ContentSection } from '@/features/library/be/types';
 
 export interface DocumentSeedRecord extends SeedRecord {

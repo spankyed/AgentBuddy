@@ -3,7 +3,7 @@
 // the parent holds only the last, and stopping the flow leaves the rest running.
 import { describe, expect, it } from 'vitest'
 import { importFlows, startApp } from '@abuddy/testing/harness'
-import { entry, keepAlive, on, transform } from '@/__generated__/flow-helpers'
+import { entry, keepAlive, on, transform } from '#generated/flow-helpers'
 import { getFlowActor } from '@/features/brain/be/flow-system'
 
 const ROOT_FLOW_TNODE = 'TNode-Root'

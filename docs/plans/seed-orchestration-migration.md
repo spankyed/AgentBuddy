@@ -10,7 +10,7 @@ Three seed-related concerns baked into the settings state machine:
 2. **`PREVIEW_PACK_SEEDS`** — Calls `previewPackSeeds()` (`@abuddy/sdk/seed`, generic over a compiled seeds directory) and reports what's available. Emits `PACK_SEEDS_PREVIEW` / `PACK_SEEDS_PREVIEW_FAILED`.
 3. **`toSeedInclude()`** — Converts the FE's JSON-safe include shape (`null | string[]`) into `SeedIncludeSet` (`true | Set<string>`).
 
-These depend on `importCompiledSeeds` (from `@/__generated__/seeders`) and `previewPackSeeds`.
+These depend on `importCompiledSeeds` (from `#generated/seeders`) and `previewPackSeeds`.
 
 *Done since:* app reset left settings. `RESET_APP`'s `resetAppActor` only calls `services.appData.reset()`, which the host implements (`packages/abuddy-host/src/services/app-data.ts`): it empties the stores and keys, then runs each pack's `onInit` and boot seed and the app migrations. Settings still emits `APP_RESET_COMPLETE` / `APP_RESET_FAILED` and tells the brain to restart.
 

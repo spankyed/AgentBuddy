@@ -4,10 +4,10 @@ import { safeEvents } from '@abuddy/sdk/fe';
 import { setup, assign, enqueueActions, fromCallback, spawnChild, stopChild, type AnyEventObject } from 'xstate';
 import { createNavHistory, pushNavHistory, goBack, goForward, canGoBack, canGoForward } from '@abuddy/sdk/fe';
 import type { ActorRefFrom } from 'xstate';
-import type { ThreadEntity, ThreadCreateData, ThreadViewData, ThreadEditFields, ThreadsSettings, MessageEntity, AgentThreadData, Tab, AgentSettings, AgentMode as AgentModeConfig, MessageReferences, CommandItem, BlockResponse } from '@/__generated__/types';
+import type { ThreadEntity, ThreadCreateData, ThreadViewData, ThreadEditFields, ThreadsSettings, MessageEntity, AgentThreadData, Tab, AgentSettings, AgentMode as AgentModeConfig, MessageReferences, CommandItem, BlockResponse } from '#generated/types';
 import type { ChatState, ThreadListItem, ThreadsContext } from './contract';
 import type { OutgoingThreadsEvents } from '@/features/threads/be/types';
-import { sendToSystem } from '@/__generated__/events';
+import { sendToSystem } from '#generated/events';
 import { Archive, Copy, Pin, Trash2 } from 'lucide-vue-next';
 import { contextMenuFn } from '@abuddy/sdk/fe';
 import { untypedOpenPlugin } from '@abuddy/sdk/fe'

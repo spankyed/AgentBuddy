@@ -2,8 +2,8 @@
 import { describe, expect, it } from 'vitest'
 import { importFlows, startApp } from '@abuddy/testing/harness'
 import { startTestRuntime } from '@abuddy/sdk/testing'
-import { create, on, update } from '@/__generated__/flow-helpers'
-import { createEntityWithDefaults, findAll, findById, type EARS } from '@/__generated__/ears'
+import { create, on, update } from '#generated/flow-helpers'
+import { createEntityWithDefaults, findAll, findById, type EARS } from '#generated/ears'
 import { createStepBuild } from '@/extensions/steps/create/build'
 import { updateStepBuild } from '@/extensions/steps/update/build'
 

@@ -5,8 +5,8 @@
  * Supports JSON (full-fidelity) and Markdown (flat, human-readable) formats.
  */
 
-import { qx } from '@/__generated__/ears';
-import { EARS } from '@/__generated__/ears'
+import { qx } from '#generated/ears';
+import { EARS } from '#generated/ears'
 import { isRootCollection, findDocumentCollection } from './repository/helpers'
 import { extractMediaRefs, copyMediaByRef } from '@abuddy/sdk/utils'
 import { createExportDir } from '@abuddy/sdk/utils'

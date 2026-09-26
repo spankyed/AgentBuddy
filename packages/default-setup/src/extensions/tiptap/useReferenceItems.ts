@@ -1,5 +1,5 @@
 import { computed, type Ref } from 'vue'
-import { CATEGORIES, ITEMS_PROVIDERS } from '@/__generated__/references'
+import { CATEGORIES, ITEMS_PROVIDERS } from '#generated/references'
 import type { ReferenceItem } from '@abuddy/sdk/fe/references'
 
 export type ReferenceCategory = string

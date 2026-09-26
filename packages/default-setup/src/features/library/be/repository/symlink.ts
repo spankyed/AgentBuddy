@@ -1,8 +1,8 @@
-import { qx } from '@/__generated__/ears';
+import { qx } from '#generated/ears';
 import * as fs from 'fs/promises'
 import * as path from 'path'
 
-import { EARS } from '@/__generated__/ears'
+import { EARS } from '#generated/ears'
 import type { LibraryItem, FolderContents, BreadcrumbItem } from '../types'
 import { formatFileSize, findParentCollection } from './helpers'
 import type { DocumentShortCode } from '@/features/library/be/types';

@@ -5,7 +5,7 @@
 // `abuddy.json` names it at `features[].plugin.contract`.
 import type { PluginInbox } from '@abuddy/sdk/fe'
 import type { TabGroup } from '@abuddy/sdk/fe'
-import type { BrowserSettings } from '@/__generated__/types'
+import type { BrowserSettings } from '#generated/types'
 import type { AutocompleteSuggestion } from './history'
 
 export type BrowserTabPersistedId = `BrowserTab-${string}`;

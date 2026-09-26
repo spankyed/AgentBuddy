@@ -1,7 +1,7 @@
 import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
-import { repository } from '@/__generated__/repository';
+import { repository } from '#generated/repository';
 import { resetTestData } from '@abuddy/sdk/testing';
 import { exportActions } from '@/features/actions/be/repository/export-actions';
 import { exportPrompts } from '@/features/prompts/be/repository/export-prompts';

@@ -1,7 +1,7 @@
 import type { ExecutionContext, TNodeEntity } from '@abuddy/sdk/steps';
 import { reportError, createLogger } from '@abuddy/sdk/logger';
 import { isEntityType } from '@abuddy/ears';
-import { EARS, createEntityWithDefaults } from '@/__generated__/ears';
+import { EARS, createEntityWithDefaults } from '#generated/ears';
 import type { CreateNode } from './types';
 
 const brainLogger = createLogger('brain', { debug: true });

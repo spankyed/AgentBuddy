@@ -144,11 +144,11 @@ import { usePlugin } from '@abuddy/sdk/fe'
 import { ref, computed } from 'vue'
 import CollapsibleSection from '@abuddy/ui/design/CollapsibleSection'
 import { RefreshCw, AlertTriangle, Power, CheckCircle, PlayCircle } from 'lucide-vue-next'
-import type { BrainSettings } from '@/__generated__/types'
-import { sendToSystem } from '@/__generated__/events'
+import type { BrainSettings } from '#generated/types'
+import { sendToSystem } from '#generated/events'
 import { useSelector } from '@xstate/vue'
 import type { BrainState } from '@/features/brain/fe/state'
-import { usePluginState } from '@/__generated__/fe'
+import { usePluginState } from '#generated/fe'
 
 interface Props {
   settings?: BrainSettings

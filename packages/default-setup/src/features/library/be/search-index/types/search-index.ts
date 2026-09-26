@@ -1,4 +1,4 @@
-import type { EARS } from '@/__generated__/ears'
+import type { EARS } from '#generated/ears'
 import type { SearchEmbeddingModelId } from '../../../embedding-models'
 
 export type EmbeddingModel = SearchEmbeddingModelId

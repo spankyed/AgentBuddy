@@ -6,7 +6,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { createActor } from 'xstate'
 
 const sendToSystem = vi.hoisted(() => vi.fn())
-vi.mock('@/__generated__/events', () => ({ sendToSystem }))
+vi.mock('#generated/events', () => ({ sendToSystem }))
 
 const { librarySystem } = await import('@/features/library/fe/state')
 

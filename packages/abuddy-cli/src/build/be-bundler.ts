@@ -1,7 +1,7 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { readTsconfigAliases } from './tsconfig-aliases.ts';
-import { readSubpathImports, resolveWithExtensions } from './subpath-imports.ts';
+import { readSubpathImports, resolveWithExtensions } from '@abuddy/host/build/subpath-imports';
 import ts from 'typescript';
 import { APP_ONLY_EXPORTS, SHARED_DEPS, sharedInstanceExternals } from '@abuddy/host/build/shared-deps';
 import { SEED_COMPILERS_FILE } from '@abuddy/sdk/build';

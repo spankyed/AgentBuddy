@@ -286,7 +286,7 @@ import {
   ChevronRight, Reply, CheckCircle
 } from 'lucide-vue-next'
 import TiptapEditor from '@abuddy/ui/components/tiptap/TiptapEditor'
-import type { GhPRComment, GhReviewThread, GhReviewComment } from '@/__generated__/types'
+import type { GhPRComment, GhReviewThread, GhReviewComment } from '#generated/types'
 import { getCommentDatabaseId } from './comment-id'
 
 const props = defineProps<{

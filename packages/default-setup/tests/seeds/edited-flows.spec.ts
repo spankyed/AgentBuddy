@@ -9,10 +9,10 @@ import { SEED_INDEX_FILE, seedFile } from '@abuddy/sdk/build';
 import { createFlowSeeder, createSeeder } from '@abuddy/sdk/seed';
 import { importCompiledSeeds } from '@abuddy/sdk/utils';
 import { registerPack, unregisterPack } from '@abuddy/testing/harness';
-import { findWhere } from '@/__generated__/ears';
+import { findWhere } from '#generated/ears';
 import { dropAttribute } from '@abuddy/sdk/testing';
 import { findRelations, untypedTx } from '@abuddy/ears';
-import { repository } from '@/__generated__/repository';
+import { repository } from '#generated/repository';
 import { PACK_DIR, resetDatabase } from './harness';
 
 type FlowRow = { id: never; label: string; sourceHash?: string };

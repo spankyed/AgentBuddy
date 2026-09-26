@@ -1,13 +1,13 @@
 // The root flow is the flow with the root role, and only that: the flows system reports it to its plugin and changes
 // it (SET_ROOT_FLOW), imports and seed imports bring it with their flows, and no setting records it
-import { services } from '@/__generated__/services';
+import { services } from '#generated/services';
 import * as path from 'node:path'
 import { describe, expect, it } from 'vitest'
 import { compileFlowDSL } from '@abuddy/sdk/build'
 import { flowRepository } from '@abuddy/sdk/repositories'
 import { startApp } from '@abuddy/testing/harness'
-import { repository } from '@/__generated__/repository'
-import { ref } from '@/__generated__/ref'
+import { repository } from '#generated/repository'
+import { ref } from '#generated/ref'
 
 const DIST = path.resolve(import.meta.dirname, '../../../../dist')
 const importRoot = (label: string) =>

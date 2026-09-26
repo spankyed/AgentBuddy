@@ -1,4 +1,4 @@
-import type { ThreadsSettings } from '@/__generated__/types'
+import type { ThreadsSettings } from '#generated/types'
 
 type ChatState = string
 type ChatStateOverride = { id: string; expiresAt: number }

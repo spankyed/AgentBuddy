@@ -11,10 +11,10 @@ import { createNavHistory, pushNavHistory, goBack, goForward, canGoBack, canGoFo
 import type {
   NodeEntity,
   EdgeEntity,
-} from '@/__generated__/types'
+} from '#generated/types'
 import type { FlowsContext, FlowsInboxEvent } from './contract'
 import type { OutgoingFlowsEvents } from '@/features/flows/be/types'
-import { sendToSystem } from '@/__generated__/events'
+import { sendToSystem } from '#generated/events'
 import { getNodeConfig, isTriggerNode } from '@abuddy/ui/components/node-styles'
 import { stepRegistry } from '@abuddy/sdk/steps'
 import { calculateLayoutAsync, allNodesHavePositions, LAYOUT_CONFIG, layoutComponentAroundSource } from './canvas/layout-utils'

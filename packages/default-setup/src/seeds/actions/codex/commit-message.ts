@@ -6,7 +6,7 @@
  */
 
 import type { ActionMeta } from '@abuddy/sdk/build';
-import type { Services, Z } from '@/__generated__/services';
+import type { Services, Z } from '#generated/services';
 import { formatProviderError } from '../_helpers/format-provider-error';
 
 export const meta: ActionMeta = {

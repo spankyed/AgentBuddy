@@ -1,5 +1,5 @@
 import type { ActionMeta } from '@abuddy/sdk/build';
-import type { EntityId, Services, Z } from '@/__generated__/services';
+import type { EntityId, Services, Z } from '#generated/services';
 import { getOnboardingState } from './onboarding-helpers';
 
 export const meta: ActionMeta = {

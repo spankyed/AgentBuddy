@@ -3,7 +3,7 @@
  */
 
 import type { ActionMeta } from '@abuddy/sdk/build';
-import type { Services, Z } from '@/__generated__/services';
+import type { Services, Z } from '#generated/services';
 import { getClaudeState } from './_helpers/thread-context';
 import { parseContextMarkdown } from './_helpers/context-parser';
 

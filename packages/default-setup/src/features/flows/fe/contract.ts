@@ -7,8 +7,8 @@
 import type { NavHistory, PluginInbox } from '@abuddy/sdk/fe'
 import type { ActionEntity, FlowEntity, PromptEntity } from '@abuddy/sdk'
 import type { ModelCatalogEntry } from '@abuddy/sdk/models'
-import type { EARS } from '@/__generated__/ears'
-import type { EdgeEntity, NodeEntity } from '@/__generated__/types'
+import type { EARS } from '#generated/ears'
+import type { EdgeEntity, NodeEntity } from '#generated/types'
 
 export interface FlowsContext {
   selectedNodeId?: EARS.EntityId;

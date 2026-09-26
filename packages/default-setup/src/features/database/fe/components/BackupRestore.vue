@@ -307,7 +307,7 @@ import {
   Image as ImageIcon
 } from 'lucide-vue-next';
 import { id, type DatabaseState } from '../state';
-import { sendToSystem } from '@/__generated__/events';
+import { sendToSystem } from '#generated/events';
 import ToastNotification from '@abuddy/ui/design/ToastNotification';
 
 const actor: DatabaseState = usePlugin();

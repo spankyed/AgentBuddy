@@ -5,7 +5,7 @@ import { expect, it } from 'vitest';
 import { startApp, startShell } from '@abuddy/testing/harness';
 import { untypedOpenPlugin } from '@abuddy/sdk/fe';
 import { resolveName } from '@abuddy/sdk/ids';
-import { ref } from '@/__generated__/ref';
+import { ref } from '#generated/ref';
 import logsState from '@/features/logs/fe/state';
 
 it('opens Settings on the Logs plugin from the Logs link', async () => {

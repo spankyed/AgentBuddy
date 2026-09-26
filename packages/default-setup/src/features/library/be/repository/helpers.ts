@@ -1,5 +1,5 @@
-import { qx } from '@/__generated__/ears';
-import { EARS } from '@/__generated__/ears'
+import { qx } from '#generated/ears';
+import { EARS } from '#generated/ears'
 import type { ContentSection } from '@/features/library/be/types';
 
 // ================ Helper Functions ================

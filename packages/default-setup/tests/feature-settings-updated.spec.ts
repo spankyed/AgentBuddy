@@ -7,7 +7,7 @@ import { mockService, registerPack, startApp, takeSystemErrors, unregisterPack }
 import { untypedTx } from '@abuddy/ears';
 import type { EARS } from '@abuddy/sdk';
 
-import { services } from '@/__generated__/services';
+import { services } from '#generated/services';
 import { resolveName } from '@abuddy/sdk/ids';
 
 /** A system that keeps each FEATURE_SETTINGS_UPDATED it gets */

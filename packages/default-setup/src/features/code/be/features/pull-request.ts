@@ -1,5 +1,5 @@
 import type { OutgoingPullRequestEvents } from '../contract'
-import { broadcastToPlugin } from '@/__generated__/events';
+import { broadcastToPlugin } from '#generated/events';
 import { setup, assign, type AnyActorRef } from 'xstate'
 
 import { createLogger } from '@abuddy/sdk/logger'

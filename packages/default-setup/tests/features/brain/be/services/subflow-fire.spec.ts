@@ -2,8 +2,8 @@
 // through @abuddy/testing, as the app runs flows.
 import { describe, expect, it } from 'vitest'
 import { importFlows, startApp } from '@abuddy/testing/harness'
-import { action, entry, fire, keepAlive, on, subflow, transform } from '@/__generated__/flow-helpers'
-import { repository } from '@/__generated__/repository'
+import { action, entry, fire, keepAlive, on, subflow, transform } from '#generated/flow-helpers'
+import { repository } from '#generated/repository'
 import { listen, type BrainEventPayload } from '@/features/brain/be/services/brain'
 
 const startBrain = () => startApp({ systems: ['brain'] })

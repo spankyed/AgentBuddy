@@ -140,9 +140,9 @@ import {
 } from 'reka-ui'
 import BaseForm from '@abuddy/ui/components/BaseForm'
 import TipSection from '@abuddy/ui/components/TipSection'
-import type { NodeEntity } from '@/__generated__/types'
+import type { NodeEntity } from '#generated/types'
 import type { FormResources } from '../form-props'
-import { sendToPlugin } from '@/__generated__/events'
+import { sendToPlugin } from '#generated/events'
 import type { FlowEntity } from '@abuddy/sdk'
 
 const props = defineProps<{

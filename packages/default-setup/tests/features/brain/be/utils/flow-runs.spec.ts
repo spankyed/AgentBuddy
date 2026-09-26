@@ -2,13 +2,13 @@
 // and the subflows it spawns, runFlow sends an event and waits for one flow's tracks. Also waiting steps, schedule
 // ticks through the scheduler service, the trace of a flow's steps, and how the brain starts.
 import { describe, expect, it, vi } from 'vitest'
-import { services } from '@/__generated__/services'
+import { services } from '#generated/services'
 import { importFlows, mockService, startApp, takeSystemErrors, type TestApp } from '@abuddy/testing/harness'
-import { action, entry, on, keepAlive, schedule, subflow, transform } from '@/__generated__/flow-helpers'
-import { repository } from '@/__generated__/repository'
-import type { Services } from '@/__generated__/services'
+import { action, entry, on, keepAlive, schedule, subflow, transform } from '#generated/flow-helpers'
+import { repository } from '#generated/repository'
+import type { Services } from '#generated/services'
 import { isBrainPaused } from '@/features/brain/be/utils/brain-pause'
-import { ref } from '@/__generated__/ref'
+import { ref } from '#generated/ref'
 
 const step = (label: string) => transform('return true', { label })
 const startBrain = () => startApp({ systems: ['brain'] })

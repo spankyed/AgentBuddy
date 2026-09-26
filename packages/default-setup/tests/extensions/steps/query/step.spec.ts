@@ -3,7 +3,7 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import { mockInference, mockService, importSeeds } from '@abuddy/testing/harness';
 import type { ExecutionContext, TNodeEntity } from '@abuddy/sdk/steps';
-import { repository } from '@/__generated__/repository';
+import { repository } from '#generated/repository';
 import { handler } from '@/extensions/steps/query/runtime';
 import { DEFAULT_MODEL } from '@/extensions/steps/llm/model';
 

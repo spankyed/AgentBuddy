@@ -83,7 +83,7 @@ import DetailsSection from './DetailsSection.vue'
 import ScopeSection from './ScopeSection.vue'
 import SectionsConfig from './SectionsConfig.vue'
 import type { SearchIndexFormData } from '../../types/search-index'
-import type { SearchIndex } from '@/__generated__/types'
+import type { SearchIndex } from '#generated/types'
 import { DEFAULT_EMBEDDING_MODEL } from '../../../embedding-models'
 
 const props = defineProps<{

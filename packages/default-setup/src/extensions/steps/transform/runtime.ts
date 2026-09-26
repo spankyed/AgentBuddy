@@ -1,6 +1,6 @@
 import type { ExecutionContext, TNodeEntity } from '@abuddy/sdk/steps';
 import { reportError, createLogger } from '@abuddy/sdk/logger';
-import { services } from '@/__generated__/services';
+import { services } from '#generated/services';
 import type { TransformNode, TransformOutputType } from './types';
 import { errorMessage } from '@abuddy/sdk/utils/pure';
 

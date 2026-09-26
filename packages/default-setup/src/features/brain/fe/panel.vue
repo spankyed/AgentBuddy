@@ -87,7 +87,7 @@ import { useSelector } from '@xstate/vue'
 import type { BrainState } from '@/features/brain/fe/state'
 import TNodeListItem from '@abuddy/ui/components/TNodeListItem'
 import type { TrackTree } from '@abuddy/sdk/steps'
-import { sendToSystem } from '@/__generated__/events'
+import { sendToSystem } from '#generated/events'
 
 const brainActor: BrainState = usePlugin();
 const normalizedTree = useSelector(brainActor, (state) => state.context.normalizedTree);

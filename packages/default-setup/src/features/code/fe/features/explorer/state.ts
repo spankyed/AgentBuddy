@@ -1,5 +1,5 @@
 import { setup, assign, enqueueActions, type ActorRefFrom } from 'xstate';
-import { sendToSystem } from '@/__generated__/events';
+import { sendToSystem } from '#generated/events';
 import { updateParentState, getParentContext, addTabToParent } from '../../utils/parent-communication';
 import { removeTabs, renameInTabViewHistory } from '../../utils/tab-management';
 import { addRecentFile } from '../../utils/recent-files';

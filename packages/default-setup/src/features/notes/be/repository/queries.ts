@@ -1,5 +1,5 @@
-import { findById, findAll, qx } from '@/__generated__/ears';
-import { EARS } from '@/__generated__/ears';
+import { findById, findAll, qx } from '#generated/ears';
+import { EARS } from '#generated/ears';
 import { trash } from '@abuddy/sdk/repositories';
 
 import type { NoteDTO } from '../types';

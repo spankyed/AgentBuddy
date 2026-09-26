@@ -1,4 +1,4 @@
-import { services } from '@/__generated__/services';
+import { services } from '#generated/services';
 import { GitRepository } from '@/features/code/be/services/git'
 import * as ghCli from '@/features/code/be/services/gh-cli'
 import type { GitStatusFile, GhPullRequest, GhPRComment, GhReviewThread } from '@/features/code/be/types'
@@ -13,7 +13,7 @@ import { configDir } from './claude-code/sessions'
 import fs from 'fs'
 import path from 'path'
 import os from 'os'
-import { ref } from '@/__generated__/ref';
+import { ref } from '#generated/ref';
 
 interface CodeSettings {
   defaultBaseDirectory?: string | null

@@ -3,7 +3,7 @@
  */
 
 import type { ActionMeta } from '@abuddy/sdk/build';
-import type { Services, Z } from '@/__generated__/services';
+import type { Services, Z } from '#generated/services';
 import { getClaudeState, persistClaudeState, updateChatState, dequeueMessage } from './_helpers/thread-context';
 import { replayQueuedMessage } from './_helpers/stream-consumer';
 

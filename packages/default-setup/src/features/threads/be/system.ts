@@ -1,13 +1,13 @@
-import type { ThreadsSettings } from '@/__generated__/types'
+import type { ThreadsSettings } from '#generated/types'
 import type { AssistantSettings } from '@/app-settings/types';
-import { sendToSystem, broadcastToPlugin } from '@/__generated__/events';
-import { services } from '@/__generated__/services';
+import { sendToSystem, broadcastToPlugin } from '#generated/events';
+import { services } from '#generated/services';
 import { REQUIRED_PROVIDERS } from '@/app-settings/providers';
 import { assign, setup } from 'xstate';
 import { defineSystem } from '@abuddy/sdk/framework';
 
-import { tx, EARS } from '@/__generated__/ears';
-import { repository } from '@/__generated__/repository';
+import { tx, EARS } from '#generated/ears';
+import { repository } from '#generated/repository';
 import type { Contract } from './contract';
 import type { MessageEntity, ThreadLinkItem } from './types';
 import { type ChangeBlock, toMap, toIdentifierSet, mapScalar, mapArray } from '@abuddy/sdk/utils';
@@ -16,7 +16,7 @@ import { importThreads } from './import-threads';
 import { runThreadTeardown } from './thread-teardown';
 import { generateAsideText } from './services/chat';
 import { createLogger, reportError } from '@abuddy/sdk/logger';
-import { ref } from '@/__generated__/ref';
+import { ref } from '#generated/ref';
 import { errorMessage } from '@abuddy/sdk/utils/pure';
 
 const logger = createLogger('threads');

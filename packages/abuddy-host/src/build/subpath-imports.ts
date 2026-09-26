@@ -6,6 +6,11 @@
  * `Could not resolve "#gen/events" … Import from ".ts" to get the file …/src/gen/events.ts` — but refuses
  * an extensionless specifier and a directory, as Node's ESM resolver does. Pack code is TypeScript and
  * writes `from '#generated/events'`, so the whole job here is supplying the suffix esbuild will not guess.
+ *
+ * In `@abuddy/host` because two bundlers need it and neither can reach the other: `@abuddy/cli`'s backend
+ * bundle (`abuddy build`) and the API's tsup build, which compiles the built-in packs' sources into itself.
+ * `packages/api` does not depend on `@abuddy/cli`, both depend on host, and this needs only `node:fs` and
+ * `node:path` — so host is the one place it can live without a new dependency anywhere.
  */
 import * as fs from 'node:fs';
 import * as path from 'node:path';

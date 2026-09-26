@@ -221,7 +221,7 @@ import {
 } from 'reka-ui'
 import BaseForm from '@abuddy/ui/components/BaseForm'
 import TipSection from '@abuddy/ui/components/TipSection'
-import type { NodeEntity } from '@/__generated__/types'
+import type { NodeEntity } from '#generated/types'
 import type { FormResources } from '../form-props'
 import { parseModelId, providerLabels, type ModelCatalogEntry, type ModelId, type ProviderName } from '@abuddy/sdk/models'
 import type { PromptEntity } from '@abuddy/sdk'

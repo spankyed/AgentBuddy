@@ -1,5 +1,5 @@
 import { executeTemplate, createTemplateResolver } from '@abuddy/sdk/templates';
-import { repository } from '@/__generated__/repository';
+import { repository } from '#generated/repository';
 
 export class PromptService {
   getByLabel(label: string) {

@@ -1,8 +1,8 @@
-import { qx } from '@/__generated__/ears';
+import { qx } from '#generated/ears';
 import * as path from 'node:path'
-import { repository } from '@/__generated__/repository';
+import { repository } from '#generated/repository';
 
-import { EARS } from '@/__generated__/ears'
+import { EARS } from '#generated/ears'
 import { ensureDirectoryExists, createExportDir } from '@abuddy/sdk/utils'
 import { extractMediaRefs, rewriteMediaUrls, copyMediaByRef, copyFlatMedia } from '@abuddy/sdk/utils'
 import { toSlug, uniqueFilename, writeExportJson, writeExportFile } from '@abuddy/sdk/utils'

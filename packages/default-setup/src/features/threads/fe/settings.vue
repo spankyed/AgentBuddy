@@ -704,7 +704,7 @@ import type {
   AgentMode,
   AgentPhase,
   QuickPrompt,
-} from '@/__generated__/types'
+} from '#generated/types'
 
 interface Props {
   settings?: ThreadsSettings

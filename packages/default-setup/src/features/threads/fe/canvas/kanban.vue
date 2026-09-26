@@ -8,7 +8,7 @@ import { threadsFromStore, type ThreadsState, type ThreadListItem } from '@/feat
 import ThreadsHeader from './components/ThreadsHeader.vue'
 import { SquarePen } from 'lucide-vue-next'
 
-// import type { ThreadsSettings } from '@/__generated__/types'
+// import type { ThreadsSettings } from '#generated/types'
 
 const actor: ThreadsState = usePlugin()
 const threadMap = useSelector(actor, s => s.context.threadMap)

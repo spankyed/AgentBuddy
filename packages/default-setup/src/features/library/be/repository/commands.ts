@@ -1,6 +1,6 @@
-import { tx, qx } from '@/__generated__/ears';
+import { tx, qx } from '#generated/ears';
 import * as path from 'path'
-import { EARS } from '@/__generated__/ears'
+import { EARS } from '#generated/ears'
 import type { DocumentDTO, CollectionDTO, LibraryItem } from '../types'
 // [SEARCH_INDEX_FF] import * as searchIndexRepo from '../search-index/repository' (dormant: ../search-index/README.md)
 import { libraryQueries } from './queries'

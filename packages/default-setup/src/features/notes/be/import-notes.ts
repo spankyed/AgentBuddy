@@ -1,8 +1,8 @@
-import { findWhere, qx } from '@/__generated__/ears';
+import { findWhere, qx } from '#generated/ears';
 import * as fs from 'node:fs'
 import * as path from 'node:path'
-import { repository } from '@/__generated__/repository';
-import { EARS } from '@/__generated__/ears'
+import { repository } from '#generated/repository';
+import { EARS } from '#generated/ears'
 import { hasIdCollision } from '@abuddy/ears';
 
 import { restoreJsonMediaRefs, restoreMarkdownMediaRefs } from '@abuddy/sdk/utils'

@@ -1,6 +1,6 @@
 import { Library, Folder } from 'lucide-vue-next'
 
-import { openPlugin, usePluginState } from '@/__generated__/fe'
+import { openPlugin, usePluginState } from '#generated/fe'
 import { id as library } from './state'
 import type { ReferenceTypeConfig, CategoryConfig, CategoryItemsProvider, ReferenceItem } from '@abuddy/sdk/fe/references'
 

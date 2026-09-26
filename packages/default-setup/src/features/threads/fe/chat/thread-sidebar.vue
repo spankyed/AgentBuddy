@@ -175,7 +175,7 @@ import { getThreadDotColor, isThreadBusy } from './thread-status'
 import { ContextMenuRoot, ContextMenuTrigger } from 'reka-ui'
 import ThreadContextMenu from '@/features/threads/fe/canvas/components/thread-context-menu.vue'
 import SidebarThreadItem from './sidebar-thread-item.vue'
-import { sendToSystem } from '@/__generated__/events'
+import { sendToSystem } from '#generated/events'
 
 const emit = defineEmits<{
   'select-thread': [threadId: string]

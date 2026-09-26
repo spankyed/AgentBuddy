@@ -1,4 +1,4 @@
-import { repository } from '@/__generated__/repository';
+import { repository } from '#generated/repository';
 import type { ActionEntity } from '@abuddy/sdk';
 import { services as appServices } from '@abuddy/sdk/services';
 import { runActionCode } from '@/extensions/steps/action/sandbox';

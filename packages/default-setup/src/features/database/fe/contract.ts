@@ -5,7 +5,7 @@
 // `abuddy.json` names it at `features[].plugin.contract`.
 import type { PluginInbox } from '@abuddy/sdk/fe'
 import type { TNodeEntity } from '@abuddy/sdk'
-import type { DatabaseSettings } from '@/__generated__/types'
+import type { DatabaseSettings } from '#generated/types'
 import type { DatabaseSchemaInfo } from '../be/types'
 
 export interface DatabaseContext {

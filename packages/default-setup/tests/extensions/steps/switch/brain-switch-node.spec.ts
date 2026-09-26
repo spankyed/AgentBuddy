@@ -8,10 +8,10 @@
  */
 import { describe, expect, it } from 'vitest'
 import { importFlows, startApp, type FlowRun } from '@abuddy/testing/harness'
-import { on, transform } from '@/__generated__/flow-helpers'
+import { on, transform } from '#generated/flow-helpers'
 import { branch } from '@/extensions/steps/switch/helpers'
-import { repository } from '@/__generated__/repository'
-import { EARS, findWhere } from '@/__generated__/ears'
+import { repository } from '#generated/repository'
+import { EARS, findWhere } from '#generated/ears'
 import type { DSLStepNode } from '@abuddy/sdk/build'
 import type { Condition } from '@/extensions/steps/switch/types'
 

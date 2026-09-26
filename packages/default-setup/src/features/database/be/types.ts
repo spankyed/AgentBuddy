@@ -1,6 +1,6 @@
 import type { TNodeEntity } from '@abuddy/sdk/steps';
 import type { KeyboardShortcut } from '@abuddy/sdk/types';
-import { EARS } from '@/__generated__/ears';
+import { EARS } from '#generated/ears';
 
 export interface DatabaseQueryResult {
   nodes: Array<{

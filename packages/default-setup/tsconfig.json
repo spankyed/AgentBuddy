@@ -18,7 +18,6 @@
     "allowImportingTsExtensions": true,
     "types": ["node", "vitest/globals"],
     "paths": {
-      "@/__generated__/*": ["./src/__generated__/*"],
       "#generated/*": ["./src/__generated__/*"],
       "@/features/*": ["./src/features/*"],
       "@/extensions/*": ["./src/extensions/*"],

@@ -6,8 +6,8 @@
  */
 
 import type { ActionMeta } from '@abuddy/sdk/build';
-import type { Services, Z } from '@/__generated__/services';
-import type { ThreadsSettings } from '@/__generated__/types';
+import type { Services, Z } from '#generated/services';
+import type { ThreadsSettings } from '#generated/types';
 import { getClaudeState, persistClaudeState, ensureSessionMarker, updateChatState } from './_helpers/thread-context';
 
 export const meta: ActionMeta = {

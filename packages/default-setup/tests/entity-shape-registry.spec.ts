@@ -3,8 +3,8 @@
 import { describe, expectTypeOf, it } from 'vitest';
 import type { BaseEntity } from '@abuddy/ears';
 import type { SdkEntityShapes, ActionEntity, FlowEntity, NodeBase } from '@abuddy/sdk';
-import type { NodeEntity } from '@/__generated__/types';
-import type { EntityShape, OwnEntityShapes, PackShapes } from '@/__generated__/ears';
+import type { NodeEntity } from '#generated/types';
+import type { EntityShape, OwnEntityShapes, PackShapes } from '#generated/ears';
 import type { MessageEntity, ThreadEntity } from '@/features/threads/be/types';
 
 describe('PackShapes', () => {

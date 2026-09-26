@@ -1,7 +1,7 @@
-import { tx, findById, findByIdRaw, qx } from '@/__generated__/ears';
-import { EARS } from '@/__generated__/ears';
+import { tx, findById, findByIdRaw, qx } from '#generated/ears';
+import { EARS } from '#generated/ears';
 import { createRelation, removeRelation, RepositoryError, RepositoryErrorCode } from '@abuddy/ears';
-import { createEntityWithDefaults, updateEntity } from '@/__generated__/ears';
+import { createEntityWithDefaults, updateEntity } from '#generated/ears';
 import { trash } from '@abuddy/sdk/repositories';
 
 import { REFERENCES } from '../types';

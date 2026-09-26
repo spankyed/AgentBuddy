@@ -113,14 +113,14 @@
 <script setup lang="ts">
 import { usePlugin } from '@abuddy/sdk/fe'
 import { computed } from 'vue';
-import type { Category } from '@/__generated__/types';
+import type { Category } from '#generated/types';
 import { ExternalLink } from 'lucide-vue-next';
 import NameSaveHeader from '@abuddy/ui/design/NameSaveHeader';
 import CollapsibleSection from '@abuddy/ui/design/CollapsibleSection';
 import ActionParametersEditor from './ActionParametersEditor.vue';
 import ActionFunctionEditor from './ActionFunctionEditor.vue';
 import JsonSchemaEditor from '@abuddy/ui/components/JsonSchemaEditor';
-import { openPlugin } from '@/__generated__/fe'
+import { openPlugin } from '#generated/fe'
 import { useCollapsibleState } from '@abuddy/ui/composables/useCollapsibleState';
 import type { ActionsState } from '@/features/actions/fe/state';
 import type { ActionEntity } from '@abuddy/sdk';

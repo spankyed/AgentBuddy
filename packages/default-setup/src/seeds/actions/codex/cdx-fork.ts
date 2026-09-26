@@ -3,7 +3,7 @@
  */
 
 import type { ActionMeta } from '@abuddy/sdk/build';
-import type { Services, Z } from '@/__generated__/services';
+import type { Services, Z } from '#generated/services';
 
 export const meta: ActionMeta = {
   label: 'CDX: Fork',

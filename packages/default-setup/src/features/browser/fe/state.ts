@@ -1,9 +1,9 @@
 import { setup, assign, fromCallback, type ActorRefFrom } from 'xstate';
-import type { BrowserSettings } from '@/__generated__/types';
+import type { BrowserSettings } from '#generated/types';
 import type { Bookmark, BrowserContext, BrowserInboxEvent, BrowserTab, BrowserTabPersistedId } from './contract';
 import { autocomplete, recordVisit, updateHistoryMeta, displayUrl, type AutocompleteSuggestion } from './history';
-import { sendToSystem } from '@/__generated__/events';
-import { openPlugin } from '@/__generated__/fe';
+import { sendToSystem } from '#generated/events';
+import { openPlugin } from '#generated/fe';
 import { getNextAvailableColor, saveTabGroups, loadTabGroups, type TabGroup, type TabGroupColor } from '@abuddy/sdk/fe';
 
 export type { TabGroup, TabGroupColor };

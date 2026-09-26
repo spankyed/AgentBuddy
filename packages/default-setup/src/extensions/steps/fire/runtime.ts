@@ -1,4 +1,4 @@
-import { sendToSystem } from '@/__generated__/events';
+import { sendToSystem } from '#generated/events';
 import type { TNodeEntity, ExecutionContext } from '@abuddy/sdk/steps';
 import { extractValueByPath } from '@abuddy/sdk/utils';
 import type { FireNode } from './types';

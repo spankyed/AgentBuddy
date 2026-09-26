@@ -1,9 +1,9 @@
-import { EARS } from '@/__generated__/ears';
+import { EARS } from '#generated/ears';
 /**
  * Prompt template types and definitions
  */
 
-import type { Category } from '@/__generated__/types';
+import type { Category } from '#generated/types';
 
 
 

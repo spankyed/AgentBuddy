@@ -1,7 +1,7 @@
 /** CDX: Goal Continue — auto-continues a Codex turn when the thread goal is active. */
 
 import type { ActionMeta } from '@abuddy/sdk/build';
-import type { Services } from '@/__generated__/services';
+import type { Services } from '#generated/services';
 import { getCodexState, persistCodexState } from './_helpers/thread-context';
 
 export const meta: ActionMeta = {

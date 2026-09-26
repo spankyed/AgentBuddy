@@ -89,9 +89,9 @@
 <script setup lang="ts">
 import { usePlugin } from '@abuddy/sdk/fe'
 
-import type { CodeSettings } from '@/__generated__/types'
+import type { CodeSettings } from '#generated/types'
 import { useFeatureSettings } from '@abuddy/sdk/fe'
-import { ref as featureRef } from '@/__generated__/ref'
+import { ref as featureRef } from '#generated/ref'
 import { ref, computed, provide, nextTick } from 'vue'
 import { useSelector } from '@xstate/vue'
 import type { CodeState } from '@/features/code/fe/state'
