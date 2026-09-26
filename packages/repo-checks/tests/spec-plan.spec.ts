@@ -1,7 +1,7 @@
 import * as path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { REPO_ROOT } from '@abuddy/host/build/packages-built';
-import { ENSURE_LABEL, PACK_SUITE_NOTE, packageOf, planChanged, planTargets } from '../../../scripts/lib/spec-plan.ts';
+import { affectedPackSuites, ENSURE_LABEL, packageOf, planChanged, planTargets, splitArgs } from '../../../scripts/lib/spec-plan.ts';
 
 /**
  * What `npm run spec` decides to run, asserted without running any of it.
@@ -35,7 +35,69 @@ describe('what a target plans', () => {
 
   it('says what a root run does not cover, rather than leaving it to be discovered', () => {
     const [, related] = plan('packages/abuddy-sdk/src/types/sdk-entities.ts');
-    expect(related!.note).toBe(PACK_SUITE_NOTE);
+    expect(related!.note, 'a pack suite resolves dist, so no import edge runs from this file to its specs')
+      .toContain('@app/default-setup');
+  });
+
+  // The note used to be set on every root run, including for a package no pack depends on. A warning that is
+  // always on is one nobody reads, and this is the half that makes the other half worth printing.
+  it('says nothing about the pack suites when the edited package cannot reach one', () => {
+    const [, related] = plan('packages/renderer/src/main.ts');
+    expect(affectedPackSuites(['renderer']), '@app/default-setup declares no dependency on the renderer').toEqual([]);
+    expect(related!.note).toBeUndefined();
+  });
+
+  it('derives which pack suites a change reaches from the declared dependencies', () => {
+    // The four @app/default-setup declares, so a change to any of them reaches it through a rebuilt dist
+    for (const dep of ['abuddy-sdk', 'abuddy-ears', 'abuddy-ui', 'abuddy-testing']) {
+      expect(affectedPackSuites([dep]), dep).toEqual(['@app/default-setup']);
+    }
+    for (const other of ['renderer', 'main', 'api', 'repo-checks', 'publish-checks']) {
+      expect(affectedPackSuites([other]), other).toEqual([]);
+    }
+  });
+});
+
+describe('what --full adds', () => {
+  const full = (target: string) => planTargets([target], [], REPO_ROOT, { full: true }).runs;
+
+  it('runs the pack suites a rebuilt dist would reach, after the root run', () => {
+    const runs = full('packages/abuddy-sdk/src/types/sdk-entities.ts');
+    expect(runs.map((r) => r.label)).toEqual([
+      ENSURE_LABEL,
+      'every spec covering packages/abuddy-sdk/src/types/sdk-entities.ts',
+      '@app/default-setup, against a rebuilt dist',
+    ]);
+    const pack = runs.at(-1)!;
+    // Through the pool, not vitest directly: the pool re-reads its own stamp, so an unchanged suite skips
+    expect(pack.cwd).toBe(REPO_ROOT);
+    expect(pack.args).toEqual(['run', 'test:unit:pack']);
+  });
+
+  it('drops the note it would otherwise print, the run below being the answer', () => {
+    const [, related] = full('packages/abuddy-sdk/src/types/sdk-entities.ts');
+    expect(related!.note, 'telling you to run spec:full while running spec:full').toBeUndefined();
+  });
+
+  it('adds nothing when no pack suite depends on what changed', () => {
+    expect(full('packages/renderer/src/main.ts').map((r) => r.label))
+      .toEqual([ENSURE_LABEL, 'every spec covering packages/renderer/src/main.ts']);
+  });
+
+  it('adds nothing for a named spec: naming one is asking for exactly it', () => {
+    expect(planTargets(['packages/repo-checks/tests/slow-tests.spec.ts'], [], REPO_ROOT, { full: true }).runs)
+      .toHaveLength(1);
+  });
+
+  it('is the same plan as without it when the change set touches no pack dependency', () => {
+    const args = [['renderer'], [], REPO_ROOT] as const;
+    expect(planChanged(...args, { full: true }).runs.map((r) => r.label))
+      .toEqual(planChanged(...args).runs.map((r) => r.label));
+  });
+
+  it('does not double-run a pack whose own source changed, which is already its own run', () => {
+    const labels = planChanged(['default-setup'], [], REPO_ROOT, { full: true }).runs.map((r) => r.label);
+    expect(labels.filter((l) => l.includes('default-setup'))).toEqual(['packages/default-setup: (changed)']);
   });
 
   it('runs a named spec in its own package, which is how you narrow while iterating', () => {
@@ -112,5 +174,23 @@ describe('packageOf', () => {
     expect(packageOf('packages/abuddy-sdk/src/x.ts')).toBe('abuddy-sdk');
     expect(packageOf('scripts/lib/x.ts')).toBeNull();
     expect(packageOf('tests/e2e/smoke.spec.ts')).toBeNull();
+  });
+});
+
+describe('how the arguments split', () => {
+  it('gives vitest everything from the first flag, so a flag keeps its own value', () => {
+    expect(splitArgs(['chain-schedule', '-t', 'a case']))
+      .toEqual({ full: false, targets: ['chain-schedule'], flags: ['-t', 'a case'] });
+    expect(splitArgs(['--changed', 'HEAD~1']))
+      .toEqual({ full: false, targets: [], flags: ['--changed', 'HEAD~1'] });
+  });
+
+  it('consumes --full in first position, and nowhere else', () => {
+    expect(splitArgs(['--full', 'packages/abuddy-sdk/src/x.ts']))
+      .toEqual({ full: true, targets: ['packages/abuddy-sdk/src/x.ts'], flags: [] });
+    // Not a target's suffix, and not a flag's value: both stay vitest's to accept or reject, because a
+    // command that filtered it out wherever it appeared would eat the second one silently
+    expect(splitArgs(['a-spec', '--full'])).toEqual({ full: false, targets: ['a-spec'], flags: ['--full'] });
+    expect(splitArgs(['-t', '--full'])).toEqual({ full: false, targets: [], flags: ['-t', '--full'] });
   });
 });

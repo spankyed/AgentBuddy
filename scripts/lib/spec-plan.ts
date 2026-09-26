@@ -19,6 +19,8 @@
  */
 import * as fs from 'node:fs';
 import * as path from 'node:path';
+import { UNIT_SUITES } from './unit-suites.ts';
+import { workspaceDeps } from './workspace-deps.ts';
 
 /** One command to run, and where. A plan is a list of these, in order. */
 export interface Run {
@@ -79,14 +81,42 @@ export function specsUnder(dir: string): string[] {
 export const packageOf = (rel: string): string | null => /^packages\/([^/]+)\//.exec(rel)?.[1] ?? null;
 
 /**
- * `@app/default-setup` is not among the root projects and cannot be: it resolves the published `dist`
- * while the host projects resolve source, and Node conditions are per process (`UnitSuite.kind`). So
- * `related` on a workspace source path finds nothing there — that suite never imports the source, and
- * reaches a change through the rebuilt `dist`, which is what the chain expresses through `SUITE_READS` and
- * a module graph cannot see. Said out loud rather than hidden: a limit you can read is a limit.
+ * The pack suites a change to these packages can reach, and which no module graph can show you.
+ *
+ * A pack suite resolves the published `dist` while the host projects resolve source — deliberately, because
+ * `dist` is the one layout a pack author ever has. So a pack's specs never import `packages/<dep>/src` at
+ * all, no import edge runs from the file you edited to the spec that covers it, and `related` reports
+ * nothing. The edge is real and runs through a build: `src` -> tsdown -> `dist` -> the pack's specs.
+ *
+ * Which is why this is derived from the *declared* graph (`workspaceDeps`) rather than the import graph, and
+ * from the same function the chain keys its cache on. `@app/default-setup` declares four `@abuddy`
+ * dependencies, so eight of the twelve packages cannot reach it and should not be warned about: the note
+ * used to fire on every root run, including a `@app/renderer` edit, and a warning that is always on is one
+ * nobody reads.
  */
-export const PACK_SUITE_NOTE =
-  'not covered: @app/default-setup tests the built packages rather than this source (npm run test:unit:pack)';
+export function affectedPackSuites(editedPackages: readonly (string | null)[]): string[] {
+  const edited = new Set(editedPackages.filter((p): p is string => p !== null));
+  return UNIT_SUITES
+    .filter((suite) => suite.kind === 'pack' && workspaceDeps(suite.dir).some((dep) => edited.has(dep)))
+    .map((suite) => suite.workspace);
+}
+
+/**
+ * What a root run says about the pack suites it could not reach — nothing when it could reach none, and
+ * nothing under `--full`, where the run below is the answer rather than a thing to go and do next.
+ */
+export const packSuiteNote = (affected: readonly string[], full = false): string | undefined =>
+  affected.length === 0 || full ? undefined
+    : `not in this answer: ${affected.join(', ')} reaches this only through a rebuilt dist, so no module `
+      + 'graph connects the two — npm run spec:full, or npm run test:unit:pack';
+
+/** The run that answers it, incremental on its own stamp: unchanged inputs report "up to date" and skip */
+const packSuiteRun = (root: string, affected: readonly string[]): Run => ({
+  label: `${affected.join(', ')}, against a rebuilt dist`,
+  cwd: root,
+  command: 'npm',
+  args: ['run', 'test:unit:pack'],
+});
 
 /**
  * The packages the root run already covers, so nothing plans them twice. Read from the root config's
@@ -112,12 +142,12 @@ const ensurePackages = (root: string): Run => ({
  * One vitest over every host project: `related --run <file>` after an edit, `--changed --run` for the
  * change set. `args` is everything after `vitest`, in order, so the call site reads as the command does.
  */
-const rootRun = (root: string, label: string, args: readonly string[], flags: readonly string[]): Run => ({
+const rootRun = (root: string, label: string, args: readonly string[], flags: readonly string[], note?: string): Run => ({
   label,
   cwd: root,
   command: 'npx',
   args: ['vitest', ...args, ...flags],
-  note: PACK_SUITE_NOTE,
+  note,
 });
 
 /** A package's own suite, through its `test` script so its pretest and vitest config still apply */
@@ -152,6 +182,32 @@ const groupByPackage = (specs: readonly string[], root: string): Map<string | nu
 const IS_VITEST_CONFIG = /(^|\/)vitest\.[\w.]*config\.ts$/;
 const CONFIG_READER = 'repo-checks';
 
+/** `--full` asks for the answer a rebuild would give as well, which costs a build and the pack suite */
+export interface PlanOptions { readonly full?: boolean }
+
+/**
+ * The command's arguments, split.
+ *
+ * **Targets first, then flags: everything from the first `-` onward is vitest's, verbatim.** Splitting at the
+ * first flag rather than filtering by prefix is what makes a flag's *value* its own — `-t "a case"`,
+ * `--changed HEAD~1`, `--bail 1` — without this having to know which flags take one.
+ *
+ * `--full` is the single argument the command consumes, and only in first position. That is what keeps the
+ * rule above exact rather than nearly true: filtering `--full` out wherever it appeared would silently eat
+ * it as another flag's value, and reading it after a target would make its position meaningful in a way
+ * nothing else here is. `npm run spec:full` puts it there, so nobody types it.
+ */
+export function splitArgs(argv: readonly string[]): { full: boolean; targets: string[]; flags: string[] } {
+  const full = argv[0] === '--full';
+  const rest = full ? argv.slice(1) : [...argv];
+  const firstFlag = rest.findIndex((a) => a.startsWith('-'));
+  return {
+    full,
+    targets: firstFlag === -1 ? rest : rest.slice(0, firstFlag),
+    flags: firstFlag === -1 ? [] : rest.slice(firstFlag),
+  };
+}
+
 export interface Planned {
   readonly runs: readonly Run[];
   /** Targets that matched nothing, so the command can fail rather than pass silently */
@@ -160,11 +216,13 @@ export interface Planned {
   readonly ambiguous: readonly { readonly query: string; readonly specs: readonly string[] }[];
 }
 
-export function planTargets(targets: readonly string[], flags: readonly string[], root: string): Planned {
+export function planTargets(targets: readonly string[], flags: readonly string[], root: string,
+  { full = false }: PlanOptions = {}): Planned {
   const runs: Run[] = [];
   const unmatched: string[] = [];
   const ambiguous: { query: string; specs: string[] }[] = [];
   const named: string[] = [];          // spec files the targets name, grouped at the end
+  const sourcePackages: (string | null)[] = [];   // whose pack-suite dependents a rebuild would reach
   let wantsRoot = false;
 
   for (const arg of targets) {
@@ -183,7 +241,9 @@ export function planTargets(targets: readonly string[], flags: readonly string[]
       runs.push(packageRun(root, CONFIG_READER, [], flags, 'the checks that read every config'));
     } else if (exists) {
       wantsRoot = true;
-      runs.push(rootRun(root, `every spec covering ${rel}`, ['related', '--run', rel], flags));
+      sourcePackages.push(packageOf(rel));
+      runs.push(rootRun(root, `every spec covering ${rel}`, ['related', '--run', rel], flags,
+        packSuiteNote(affectedPackSuites([packageOf(rel)]), full)));
     } else {
       const matches = matchByName(arg, root);
       if (matches.length === 0) unmatched.push(arg);
@@ -197,6 +257,8 @@ export function planTargets(targets: readonly string[], flags: readonly string[]
     runs.push(pkg === null ? e2eRun(root, specs, flags) : packageRun(root, pkg, specs.map((s) => path.relative(path.join(root, 'packages', pkg), s)), flags, label));
   }
 
+  const affected = wantsRoot ? affectedPackSuites(sourcePackages) : [];
+  if (full && affected.length > 0) runs.push(packSuiteRun(root, affected));
   return { runs: wantsRoot ? [ensurePackages(root), ...runs] : runs, unmatched, ambiguous };
 }
 
@@ -208,11 +270,18 @@ export function planTargets(targets: readonly string[], flags: readonly string[]
  * pack suite is asked separately because it is not a root project, and it is asked at all because a change
  * *inside* it is the one thing a root run cannot see.
  */
-export function planChanged(changedPackages: readonly string[], flags: readonly string[], root: string): Planned {
-  const runs: Run[] = [ensurePackages(root), rootRun(root, 'the specs your changes affect', ['--changed', '--run'], flags)];
+export function planChanged(changedPackages: readonly string[], flags: readonly string[], root: string,
+  { full = false }: PlanOptions = {}): Planned {
+  const affected = affectedPackSuites(changedPackages);
+  const runs: Run[] = [
+    ensurePackages(root),
+    rootRun(root, 'the specs your changes affect', ['--changed', '--run'], flags, packSuiteNote(affected, full)),
+  ];
   const pack = rootProjects(root);
   for (const pkg of changedPackages) {
     if (!pack.includes(pkg)) runs.push(packageRun(root, pkg, [], flags, '(changed)'));
   }
+  // Only when a *dependency* changed: a change inside the pack itself is already its own run above
+  if (full && affected.length > 0) runs.push(packSuiteRun(root, affected));
   return { runs, unmatched: [], ambiguous: [] };
 }

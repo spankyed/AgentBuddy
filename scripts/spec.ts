@@ -15,6 +15,7 @@
 //   npm run spec -- <source file>           every spec that imports it, transitively, in whatever package
 //   npm run spec -- <any of the above> -t "case"     anything starting with `-` goes to vitest untouched
 //   npm run spec -- --changed HEAD~1        a different base for the change set
+//   npm run spec:full [...]                 and the pack suites a rebuilt `dist` would reach
 //
 // A **source file** is the case worth knowing about. It used to run the file's own package, which for
 // `@abuddy/sdk` was one of the seven suites that cover it: a green run of specs that could not fail for the
@@ -26,20 +27,20 @@
 // pretest guard (`packages:ensure`) and each vitest config still apply. A root run has no such hook, so the
 // plan puts `packages:ensure` in front of it.
 //
+// What a module graph cannot reach is a **pack suite**: it resolves the published `dist` while the host
+// projects resolve source, so its specs never import `packages/<dep>/src` and no import edge runs from the
+// file you edited to the spec that covers it. `npm run spec` says so when it is true — derived from the
+// declared dependencies, so editing a package no pack depends on says nothing — and `npm run spec:full`
+// answers it, at the cost of a build (14s when stale) and the pack suite (18s).
+//
 // `scripts/lib/spec-plan.ts` decides all of that and is asserted by a spec; this file runs what it returns.
 import { spawnSync } from 'node:child_process';
 import * as path from 'node:path';
-import { ENSURE_LABEL, packageOf, planChanged, planTargets } from './lib/spec-plan.ts';
+import { ENSURE_LABEL, packageOf, planChanged, planTargets, splitArgs } from './lib/spec-plan.ts';
 
 const ROOT = path.resolve(import.meta.dirname, '..');
 
-// Targets first, then flags: everything from the first `-` onward goes to vitest verbatim. Splitting on the
-// first flag rather than filtering by prefix is what makes a flag's *value* its own — `-t "a case"`,
-// `--changed HEAD~1`, `--bail 1` — without this having to know which flags take one.
-const args = process.argv.slice(2);
-const firstFlag = args.findIndex((a) => a.startsWith('-'));
-const targets = firstFlag === -1 ? args : args.slice(0, firstFlag);
-const flags = firstFlag === -1 ? [] : args.slice(firstFlag);
+const { full, targets, flags } = splitArgs(process.argv.slice(2));
 
 /** What git reports as changed, by package; a path in no package is covered by the root run's graph */
 function changed(): { packages: string[]; anything: boolean } {
@@ -54,8 +55,8 @@ if (targets.length === 0 && !changed().anything) {
 }
 
 const { runs, unmatched, ambiguous } = targets.length > 0
-  ? planTargets(targets, flags, ROOT)
-  : planChanged(changed().packages, flags, ROOT);
+  ? planTargets(targets, flags, ROOT, { full })
+  : planChanged(changed().packages, flags, ROOT, { full });
 
 if (unmatched.length > 0) {
   console.error(`No spec or file matches ${unmatched.map((t) => `"${t}"`).join(', ')}`);

@@ -3,6 +3,7 @@ import * as path from 'node:path';
 import { BUILD_UNITS, REPO_ROOT } from '@abuddy/host/build/packages-built';
 import { UNIT_SUITES, type UnitSuite } from './unit-suites.ts';
 import { hasSplit } from './spec-cost.ts';
+import { dependencySource, workspaceDeps } from './workspace-deps.ts';
 
 /**
  * The pre-merge chain's steps and what each is allowed to read. Separate from `scripts/chain.ts` because
@@ -231,35 +232,6 @@ const FIXTURE_OUTPUTS = FIXTURE_PACKS.flatMap((name) => [`tests/fixtures/${name}
  * run, so a step that declares `tests/fixtures` has to say it reads around this or it can never cache.
  */
 const FIXTURE_TEST_OUTPUT = FIXTURE_PACKS.flatMap((name) => [`tests/fixtures/${name}/tests/results`, `tests/fixtures/${name}/tests/screenshots`]);
-
-/** Every workspace package's npm name and where it lives, so a declared dependency can become an input path */
-const DIR_BY_PACKAGE = new Map<string, string>(PACKAGES.map((dir) => [
-  (JSON.parse(fs.readFileSync(path.join(REPO_ROOT, 'packages', dir, 'package.json'), 'utf-8')) as { name: string }).name,
-  dir,
-]));
-
-/**
- * The workspaces a package imports, transitively, read from its own package.json rather than listed here.
- * A suite compiles its `@abuddy` dependencies from source (the `@abuddy/source` condition), so their source
- * is genuinely its input — and a dependency added later is covered the moment it is declared, which a list
- * beside this would not be.
- */
-function workspaceDeps(dir: string, seen = new Set<string>([dir])): string[] {
-  const manifest = JSON.parse(fs.readFileSync(path.join(REPO_ROOT, 'packages', dir, 'package.json'), 'utf-8')) as {
-    dependencies?: Record<string, string>; devDependencies?: Record<string, string>;
-  };
-  const found: string[] = [];
-  for (const name of Object.keys({ ...manifest.dependencies, ...manifest.devDependencies })) {
-    const child = DIR_BY_PACKAGE.get(name);
-    if (!child || seen.has(child)) continue;
-    seen.add(child);
-    found.push(child, ...workspaceDeps(child, seen));
-  }
-  return found;
-}
-
-/** A dependency contributes its source; another package's specs are not this suite's input */
-const dependencySource = (pkg: string): string[] => [`packages/${pkg}/src`, `packages/${pkg}/package.json`];
 
 /**
  * The unit suites that read build output, and which. Every other suite resolves workspace source through

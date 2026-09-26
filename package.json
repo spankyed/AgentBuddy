@@ -48,6 +48,7 @@
     "test:unit:pack": "tsx scripts/test-unit-pool.ts pack",
     "test:integration": "npm run test:integration -w @abuddy/cli -w @app/repo-checks -w @app/publish-checks",
     "spec": "tsx scripts/spec.ts",
+    "spec:full": "tsx scripts/spec.ts --full",
     "test:all": "npm run test:unit && npm run test",
     "start": "node packages/dev-mode.js",
     "start:gen": "npm run compile && node packages/dev-mode.js",

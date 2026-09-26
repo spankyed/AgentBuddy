@@ -67,6 +67,13 @@ the chain's 27s floor. Use it while you are working, and the chain when you are 
 `scripts/` or to a vitest config counts too: it routes to `@app/repo-checks`, the package holding the
 specs that check the repo's own tooling.
 
+**The one answer `spec` cannot give from the module graph is a pack suite's**, because a pack resolves the
+published `dist` while the host projects resolve source — so its specs never import a dependency's `src`,
+and the edge from your edit to the spec that covers it exists only through a build. `npm run spec` says so
+when it is true; `npm run spec:full` runs it, for a build plus 18s. Which is also why editing `@abuddy/sdk`
+can be green under `spec` and red under `chain`: the chain declares that dependency
+(`scripts/lib/workspace-deps.ts`) where a module graph cannot see it.
+
 Two things the chain cannot work out for you, because they rewrite files you commit:
 
 - **a public export of `@abuddy/ears`, `/sdk` or `/ui`** — `npm run api:update`, and commit `etc/`.
@@ -193,6 +200,13 @@ npm run typecheck:pack   # @app/default-setup only
 npm run exports:check -w @abuddy/ui  # Fails on a stale exports map or a component without an entry
 
 npm run spec             # The specs your uncommitted changes affect, wherever they live
+npm run spec:full [...]  # The same, plus the pack suites a rebuilt dist would reach — the answer the module
+                         # graph cannot give. Takes every argument spec does. Costs a build when one is stale
+                         # (14s) and the pack suite (18s), so a shallow @abuddy/sdk edit goes from ~24s to
+                         # ~33s measured; it adds nothing when no pack depends on what you changed, and the
+                         # pack pool skips on its own stamp when nothing it reads has moved. `--full` is the
+                         # one argument spec.ts consumes and only in first position, which is what keeps
+                         # "everything from the first - is vitest's" exact rather than nearly true
 npm run spec -- <target> # You don't say what the target is; it works that out:
                          #   a source file  -> every spec that imports it, transitively, in ANY package
                          #   a spec path    -> that spec        a directory -> every spec under it
@@ -206,8 +220,15 @@ npm run spec -- <target> # You don't say what the target is; it works that out:
                          # types 104. Wall times of 4.1s, 6.0s and 23.7s were taken 2026-09-26 on a machine
                          # at load ~10 of 10 cores, so read them as upper bounds; the file counts are what
                          # the decision rests on and contention does not move those.
-                         # @app/default-setup is not in that answer and says so: it tests the built packages
-                         # rather than this source, so no module graph connects the two (test:unit:pack).
+                         # A pack suite is not in that answer, because it resolves the published dist while
+                         # the host projects resolve source, so its specs never import packages/<dep>/src and
+                         # no import edge runs from the file you edited to the spec that covers it. The edge is
+                         # real and runs through a build: src -> tsdown -> dist -> the pack's specs. The
+                         # command says so when it is true, derived from the declared dependencies
+                         # (workspace-deps.ts, the same function the chain keys its cache on): @app/default-setup
+                         # declares four, so editing the other eight packages says nothing. It used to warn on
+                         # every root run, a @app/renderer edit included, and a warning always on is one
+                         # nobody reads.
                          # Anything from the first `-` goes to vitest untouched, so `-t "a case"`,
                          # `--bail 1` and `--changed HEAD~1` work. A named spec runs through its package's
                          # own `test`, so a pretest guard and its vitest config still apply; a root run has
