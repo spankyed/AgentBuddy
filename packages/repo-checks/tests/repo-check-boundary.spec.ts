@@ -50,7 +50,19 @@ const NOT_A_REPO_CHECK: Record<string, string> = {
 
 const IS_SPEC = /\.(spec|test)\.[cm]?[jt]sx?$/;
 const OWN_PACKAGE = 'packages/repo-checks/';
-const THIS_SPEC = `${OWN_PACKAGE}tests/repo-check-boundary.spec.ts`;
+/**
+ * The specs here whose subject is the repo's own *layout* rather than a module under `scripts/`, and why.
+ *
+ * They are the reason the converse check below is not simply "names a repo script". A check on where specs
+ * live, or on which packages have suites, has no `scripts/` module behind it to import — it reads the tree.
+ * That still belongs here: it is a property of the repo, owned by no package, which is what this package is
+ * for. Kept as a named list rather than a widened predicate, because "its subject is repo-wide" is not
+ * something a check can decide about itself.
+ */
+const LAYOUT_CHECKS: Record<string, string> = {
+  'tests/spec-placement.spec.ts': 'where a spec lives and which packages have suites — a property of the '
+    + 'tree, read from git and the manifests, with no scripts/ module to import',
+};
 
 const specs = (): string[] =>
   execFileSync('git', ['ls-files'], { cwd: REPO_ROOT, maxBuffer: 64 * 1024 * 1024 })
@@ -77,8 +89,20 @@ describe('a spec about the repo\'s tooling lives in @app/repo-checks', () => {
   // The converse, so the package stays what it says it is. A spec that lands here and checks something else
   // makes "the repo checks" a name for wherever a spec was inconvenient, which is what it replaced.
   it('holds nothing else', () => {
-    const here = specs().filter((file) => file.startsWith(OWN_PACKAGE) && file !== THIS_SPEC);
+    const here = specs().filter((file) => file.startsWith(OWN_PACKAGE)
+      && !(file.slice(OWN_PACKAGE.length) in LAYOUT_CHECKS));
     expect(here.filter((file) => !namesRepoScripts(file)),
-      'this package is for specs whose subject is a repo script; these name none').toEqual([]);
+      'this package is for specs whose subject is a repo script or the repo\'s own layout; these are '
+      + 'neither — move them, or add them to LAYOUT_CHECKS with what repo-wide property they check').toEqual([]);
+  });
+
+  // The list is only honest while each entry is still here and still needs the exemption
+  it('lists no layout check that has stopped applying', () => {
+    const stale = Object.keys(LAYOUT_CHECKS).filter((rel) => {
+      const file = `${OWN_PACKAGE}${rel}`;
+      return !fs.existsSync(path.join(REPO_ROOT, file)) || namesRepoScripts(file);
+    });
+    expect(stale, 'these are gone, or now name a repo script and need no exemption; drop them from '
+      + 'LAYOUT_CHECKS').toEqual([]);
   });
 });

@@ -1,7 +1,8 @@
 # @app/repo-checks
 
-The specs whose subject is the repo's own tooling: the pre-merge chain's graph and cache keys, the
-recorded spec costs, the timeout budgets, and the scripts under `scripts/` that the other checks run.
+The specs whose subject is the repo itself rather than any package: the pre-merge chain's graph and cache
+keys, the recorded spec costs, the timeout budgets, where specs live, and the scripts under `scripts/` that
+the other checks run.
 
 Nothing here is published, imported by the app, or part of a pack. It is a workspace because a spec needs
 a package to live in — and because which package it lives in decides whether `npm run spec` can find it.
@@ -20,17 +21,23 @@ of that:
 
 `scripts/spec.ts` now routes `scripts/` and any `vitest.config.ts` here, and
 `tests/repo-check-boundary.spec.ts` holds the other half: a spec that reads the repo's scripts belongs in
-this package, and this package holds nothing else.
+this package, and this package holds nothing else — bar the layout checks its `LAYOUT_CHECKS` names, which
+read the tree and so have no `scripts/` module to import.
+
+The same shape has since turned up twice more, which is why `tests/spec-placement.spec.ts` generalises it:
+`@abuddy/testing` and `@abuddy/ui` had no suite at all and their specs lived in `@abuddy/cli`. Every package
+extraction this repo has done left tests behind, and nothing noticed any of them until someone went
+looking.
 
 ## Tests
 
 Two halves, split by measured cost exactly as every other suite is — the rule and the band are in
 `scripts/lib/spec-cost.ts`, and `etc/spec-cost.json` is this suite's record.
 
-- **`npm test -w @app/repo-checks`** — the fast half (`tests/**/*.spec.ts`): 13 specs, about 2.7s of file
+- **`npm test -w @app/repo-checks`** — the fast half (`tests/**/*.spec.ts`): 15 specs, about 2.9s of file
   time.
 - **`npm run test:integration -w @app/repo-checks`** — the expensive half
-  (`tests/**/*.integration.spec.ts`): 3 specs, about 9.4s. Each runs a compiler over a fixture tree.
+  (`tests/**/*.integration.spec.ts`): 3 specs, about 9.8s. Each runs a compiler over a fixture tree.
 
 Both run in the chain: the fast half inside `test:unit:host` (this is a host suite — it resolves workspace
 `@abuddy/*` source through the `@abuddy/source` condition), the expensive half in `test:integration`, which
@@ -45,6 +52,8 @@ names every workspace that has a second config.
 | `suite-split`, `suite-timeouts`, `slow-tests` | the recorded spec costs, the per-tier timeout budgets, and the slow-test report |
 | `orchestrator-exit`, `with-source`, `import-specifiers-script` | the scripts themselves: no `process.exit()` in one that reprints captured output, the `@abuddy/source` wrapper, and `check-import-specifiers` run as a process |
 | `import-specifiers`, `component-contracts`, `published-imports`, `published-sdk-peers`, `api-report-stamp` | the analysis scripts behind `check:specifiers`, the component reports and the API stamp |
+| `unit-pool` | the pool's per-project cache: what a project's freshness is measured against |
+| `repo-check-boundary`, `spec-placement` | where a spec belongs: this package's own boundary, that every package with source has a suite, and that no spec reaches into another package's tree |
 
 ## Conventions
 
