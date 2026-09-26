@@ -111,7 +111,7 @@ The user wants **LMDB-only**: reads query LMDB directly, writes are committed sy
   - SDK round-trip and seeder specs, and host and api specs, build raw memory engines.
   - The ears contract `persistence.spec.ts` pins sink call order.
   - The benchmark loads data with `bulkLoadAttr`.
-  - `api/tests/unit/restart-persistence.spec.ts:36` asserts nothing is visible before hydrate.
+  - `api/tests/runtime/restart-persistence.spec.ts:36` asserts nothing is visible before hydrate.
 - **Data lifecycle.**
   - `openAppStore` (`packages/api/src/setup/backend.ts:62-71,152`) hydrates after packs register, since the policy depends on registered types.
   - `appData.reset` does `engine.clear` → `store.reset` → `startPacks`.

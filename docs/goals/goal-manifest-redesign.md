@@ -873,7 +873,7 @@ and `migrations` is still a root key; no pack re-seeds on the next boot — `com
 (`packs/runtime/seed.ts:28`) and the boot seed's hash cover the compiled `.json` output and never the
 manifest, so byte-identical compiled seeds mean an unchanged hash, which is the same fact the next
 clause checks from the other side; the compiled seeds for default-setup are
-byte-identical (`dist/*.seed.json`, `dist/seeds.json`); `tests/unit/seed-parity` passes;
+byte-identical (`dist/*.seed.json`, `dist/seeds.json`); `tests/seeds` passes;
 `npm run compile`, `npm run test:unit`, `npm run test:external-pack` pass.
 
 ### Phase 4 — features: what they contribute, and where
