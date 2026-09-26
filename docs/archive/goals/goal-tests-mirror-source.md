@@ -1,6 +1,10 @@
 # Goal: a spec's path is the path of what it covers
 
-> **Written in session** `1d53eb9c-d886-49f8-bc5a-90793d43315e` (Claude Code, 2026-09-25). Resume it with `claude -r 1d53eb9c-d886-49f8-bc5a-90793d43315e`.
+> **Done** (`731d1e2d9`..`64ba820c5` on `AS/test-pipeline`). The text below is the plan as written. For
+> the rule and the suite as it is now, see
+> [`docs/reference/test-inventory.md`](../../reference/test-inventory.md); the two directories that still
+> name no `src/` counterpart, and why that is a property rather than pending work, are in
+> `repo-checks/tests/spec-placement.spec.ts`'s `NOT_MIRRORED_YET`.
 
 ```
 # Goal: a spec's path is the path of what it covers
@@ -238,3 +242,56 @@ than work not yet done.
 - **Don't relitigate settled decisions.** Cost-based placement and the `.integration.spec.ts` suffix, the
   two pools, the tier table and its budgets, and which package a spec belongs in
   (`goal-test-placement.md`) are all final.
+
+## Outcome (2026-09-26)
+
+| Phase | Status | Evidence |
+|---|---|---|
+| 1 — the rule, written where it is read | **done** | `731d1e2d9`. `default-setup/CLAUDE.md` (new `## Tests`), `docs/reference/test-inventory.md`, root `CLAUDE.md` beside the spec commands |
+| 2 — the guard | **done** | `6af519dd3`. `spec-placement.spec.ts`, landed with nine entries so it was green before anything moved; mutation-checked again at the end (a planted `abuddy-ears/tests/nonsense/` is named) |
+| 3 — `@app/default-setup` | **done** | `811d76e38`, with its 141 renames in `e27338c6d`. 87 files / 720 tests unchanged |
+| 4 — `@app/api` | **done** | `ac5b4cd10`. No `unit/`; 15 files / 70 tests unchanged |
+| 5 — `@abuddy/ears` and `@abuddy/cli` | **done** | `c9d48ba3a` (9 / 116), `6b6649e65` (38 / 310 and 15 / 187), `64ba820c5` (the scaffold and the fixture pack, 10 / 32) |
+
+Every count is before and after the moves, and none of them changed.
+
+### What the exception list is for now
+
+It began as nine entries, each one work not yet done, and ended as two — and the two are a different kind,
+which is recorded on the list itself. `abuddy-cli/harness` and `abuddy-cli/packs` name a module of a package
+`@abuddy/cli` *depends on* (`@abuddy/testing`'s harness, `@abuddy/host/packs`), which its own `src/` has no
+counterpart for and should not grow one. The bar for a new entry is written down beside them: not "this spans
+two modules", which Decision 6 already places at the entry point it drives, but "what it covers is another
+package's, and this package holds it on purpose".
+
+### The conventional choices, since the plan did not specify them
+
+- **A spec whose subject is the package rather than a module in it sits at `tests/` root**, which mirrors
+  `src/` itself. That is eighteen of default-setup's 87 (the typed-EARS tiers, the registries, the event
+  channels, the harness, the host's settings as a pack sees them), `api/tests/source-layout.spec.ts` — where
+  the renderer's counterpart already sat — and four of the fixture pack's ten. The alternative for
+  default-setup's generated-surface specs was `tests/__generated__/`, which reads as generated specs and is
+  skipped by `specsUnder`'s walk besides.
+- **A filename loses only the leading segments the target directory already spells.** `brain-flow-children`
+  under `features/brain/be/` is `flow-children.spec.ts`; `brain-switch-node` under `extensions/steps/switch/`
+  keeps its whole name, because `brain` is not what that directory says and dropping it would lose which
+  side runs the node.
+- **A relative `../../src/` import that the `@/` alias covers became the alias.** Six levels of `../` for
+  `features/code/be/services/claude-code` was the worst of them, and the alias makes the next move free.
+  `src/seeds`, `src/defs` and `src/migrations` have no alias, so those stayed relative and were re-expressed.
+- **`seed-parity:check` now runs `tests/seeds`**, which is the whole seed suite rather than the five golden
+  specs — 18 files and 4.1s. There is no directory holding exactly the five any more, and a listed set of
+  five filenames is a list that goes stale silently.
+- **`tests/e2e/**` is excluded from a pack's vitest include**, in the scaffold and in the fixture pack. It is
+  Playwright's, run by `abuddy test`: a different runner, which is not the level a directory may not denote.
+- **`_hybrid/README.md` was deleted** rather than moved. Its subject was the directory, and what it recorded
+  beyond that — which spec covers what — is what the paths now say.
+
+### What this did not close
+
+`vitest related` cannot traverse `@app/default-setup` at all: its config loads no Vue plugin, so a graph walk
+over `src/` dies on the first `.vue` file it reaches. `npm run spec` never does that walk — a source file
+plans a root run, and that package is not a root project — so nothing here depends on it. Worth knowing
+before anyone reaches for `related` inside that package, and separate from the reason
+[`goal-spec-follows-the-graph.md`](goal-spec-follows-the-graph.md) excludes it, which is that Node conditions
+are per process.

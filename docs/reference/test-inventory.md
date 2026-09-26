@@ -9,12 +9,12 @@ describes the suite as it is, not a plan.
 
 ## Scale
 
-367 spec files: 338 in twelve package suites, 15 fixture-pack specs, 14 E2E, plus the root's own
+369 spec files: 339 in twelve package suites, 15 fixture-pack specs, 14 E2E, plus the root's own
 `tests/scripts` shell checks.
 
 | Suite | Specs | Fast half | Expensive half | Total |
 |---|---|---|---|---|
-| `@app/default-setup` | 86 | 16.0s | — | 16.0s |
+| `@app/default-setup` | 87 | 16.0s | — | 16.0s |
 | `@abuddy/host` | 76 | 18.7s | — | 18.7s |
 | `@abuddy/sdk` | 56 | 15.1s | — | 15.1s |
 | `@abuddy/cli` | 53 | 13.5s | 157.2s | **170.8s** |
@@ -22,13 +22,15 @@ describes the suite as it is, not a plan.
 | `@app/api` | 15 | 5.6s | — | 5.6s |
 | `@abuddy/ears` | 9 | 2.4s | — | 2.4s |
 | `@app/renderer` | 8 | 0.1s | — | 0.1s |
-| `@app/publish-checks` | 7 | 0.0s | 28.0s | 28.1s |
+| `@app/publish-checks` | 8 | 0.0s | 28.0s | 28.1s |
 | `@abuddy/testing` | 4 | 0.1s | — | 0.1s |
 | `@app/main` | 3 | 0.2s | — | 0.2s |
 | `@abuddy/ui` | 2 | 0.1s | — | 0.1s |
-| | **337** | | | **269.8s** |
+| | **339** | | | **269.8s** |
 
-One spec more is recorded as skipped (every test in it skips, so it has no cost to place): 337 in total.
+One of default-setup's is recorded as skipped rather than costed (every test in it skips — it needs a real
+`claude` binary — so it has no cost to place), which is why the recorded counts are one ahead of the
+measured ones.
 
 `@abuddy/cli` is still 63% of the file time, and now legitimately: the eight specs whose subject was the
 published packages are `@app/publish-checks`, so its record can be read as a CLI number. It has moved
