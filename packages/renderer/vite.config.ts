@@ -17,7 +17,7 @@ const packs = discoverBuiltInPacksForBuild(packagesRoot);
  * Single plugin for all built-in pack resolution:
  * - virtual:built-in-packs — auto-imports each pack's FE entry
  * - @<pack-id>/* — namespace alias into each pack's src/
- * - @/ — scoped to the importer's pack (or renderer/src/ for renderer files)
+ * - @/ — the renderer's own src/ (tsconfig.app.json maps it; packs use # subpath imports)
  */
 function builtInPacksPlugin(): Plugin {
   const VIRTUAL_ID = 'virtual:built-in-packs';
@@ -46,9 +46,12 @@ function builtInPacksPlugin(): Plugin {
         }
       }
 
+      // The renderer's own `@/`, and only the renderer's: `tsconfig.app.json` maps it to ./src/*. It used to
+      // mean "the importer's pack, or the renderer" — a per-importer rule, which is why four bundler configs
+      // each had to implement it. Packs name their own modules with `#` subpath imports now, which Node, Vite
+      // and esbuild resolve from the pack's own package.json with no help from here.
       if (source.startsWith('@/') && importer) {
-        const pack = packs.find(p => importer.startsWith(p.srcDir + '/'));
-        return this.resolve(resolve(pack ? pack.srcDir : rendererSrcDir, source.slice(2)), importer, { skipSelf: true });
+        return this.resolve(resolve(rendererSrcDir, source.slice(2)), importer, { skipSelf: true });
       }
     },
     load(id) {

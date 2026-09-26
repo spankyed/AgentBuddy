@@ -142,24 +142,24 @@ describe('pack FE Tailwind setup', () => {
   });
 
   /**
-   * This case used to be a block comment, because the alias reader's line-comment stripping could not parse
-   * one and the assertion was that the build carried on without the aliases. `readTsconfigAliases` reads
-   * JSONC now (`tsconfig-aliases.spec.ts` covers what it reads), so the case had to become a tsconfig no
-   * reader can make sense of — and that turns out not to warn-and-continue at all: **Vite reads the pack's
-   * tsconfig itself**, and fails the build with a better message than the warning.
+   * An unparseable tsconfig fails the build, and nothing in this build reads that file to say so.
    *
-   * So the honest property is that an unparseable tsconfig is reported twice and does not build. Keeping the
-   * warning is still worth it: it fires first, and it names the aliases as what was lost, which vite's
-   * syntax error does not.
+   * The case has been rewritten twice for the same reason each time — it was pinning a *mechanism* rather
+   * than a property. It began as a block comment, because the alias reader's line-comment stripping could
+   * not parse one and the build carried on without the aliases; when that reader moved to TypeScript's own
+   * (`c9033ebd7`) it became a tsconfig no reader can make sense of, warning and then failing; and now the
+   * reader is gone entirely, packs naming their own modules with `#` subpath imports, so there is no warning
+   * left to assert.
+   *
+   * What survived all three is the property worth having: **Vite parses the pack's tsconfig itself and
+   * refuses it.** That does not depend on anything this repo wrote.
    */
-  it('reports a tsconfig it cannot read, and does not build the pack', async () => {
-    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+  it('does not build a pack whose tsconfig cannot be parsed', async () => {
     const packDir = makePack({});
     fs.writeFileSync(path.join(packDir, 'tsconfig.json'), '{ "compilerOptions": { not json');
 
     const result = await build(packDir);
 
-    expect(warn.mock.calls.flat().join('\n')).toContain('tsconfig.json');
     expect(result.success, 'vite parses the same file and refuses it').toBe(false);
     expect(String((result as { error?: unknown }).error)).toContain('tsconfig.json');
   });

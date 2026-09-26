@@ -1,6 +1,5 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
-import { readTsconfigAliases } from './tsconfig-aliases.ts';
 import { readSubpathImports, resolveWithExtensions } from '@abuddy/host/build/subpath-imports';
 import ts from 'typescript';
 import { APP_ONLY_EXPORTS, SHARED_DEPS, sharedInstanceExternals } from '@abuddy/host/build/shared-deps';
@@ -30,10 +29,8 @@ async function bundlePackSource<T extends EsbuildOptions>(
 ): Promise<import('esbuild').BuildResult<T>> {
   const esbuild = await import('esbuild');
   const tsconfigPath = path.join(packDir, 'tsconfig.json');
-  const aliases = readTsconfigAliases(packDir);
   const subpathImports = readSubpathImports(packDir);
   const plugins: import('esbuild').Plugin[] = [rejectHostImportsPlugin(), stubFrontendAssetsPlugin()];
-  if (Object.keys(aliases).length > 0) plugins.push(makeAliasPlugin(aliases));
   if (Object.keys(subpathImports).length > 0) plugins.push(makeSubpathPlugin(subpathImports, packDir));
 
   const merged: EsbuildOptions = {
@@ -270,18 +267,3 @@ function makeSubpathPlugin(imports: Record<string, string>, packDir: string): im
   };
 }
 
-function makeAliasPlugin(aliases: Record<string, string>): import('esbuild').Plugin {
-  return {
-    name: 'tsconfig-aliases',
-    setup(build) {
-      for (const [prefix, target] of Object.entries(aliases)) {
-        const filter = new RegExp(`^${prefix.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}/`);
-        build.onResolve({ filter }, args => {
-          const rest = args.path.slice(prefix.length + 1);
-          const resolved = resolveWithExtensions(path.resolve(target, rest));
-          return resolved ? { path: resolved } : undefined;
-        });
-      }
-    },
-  };
-}
