@@ -192,15 +192,25 @@ npm run typecheck:scripts # scripts/ and tests/
 npm run typecheck:pack   # @app/default-setup only
 npm run exports:check -w @abuddy/ui  # Fails on a stale exports map or a component without an entry
 
-npm run spec             # The specs your uncommitted changes affect, in every package they touch
+npm run spec             # The specs your uncommitted changes affect, wherever they live
 npm run spec -- <target> # You don't say what the target is; it works that out:
-                         #   a source file  -> the specs that import it (vitest `related`) — the usual case
+                         #   a source file  -> every spec that imports it, transitively, in ANY package
                          #   a spec path    -> that spec        a directory -> every spec under it
-                         #   part of a name -> every spec whose path contains it
+                         #   part of a name -> every spec whose path contains it — how you run one while
+                         #                     working: `npm run spec -- chain-schedule` is 1.7s
+                         # A source file is one vitest over every host project, because that is the honest
+                         # answer to "what could this break" and the root vitest.config.ts already lists
+                         # them. It used to run the file's own package: for a type every pack's data flows
+                         # through that was 24 of the 104 specs covering it, reported green. The cost is the
+                         # blast radius — measured 2026-09-26, a renderer module 1 file/4.1s, the api's
+                         # runtime 13/6.0s, abuddy-sdk's entity types 104/23.7s.
+                         # @app/default-setup is not in that answer and says so: it tests the built packages
+                         # rather than this source, so no module graph connects the two (test:unit:pack).
                          # Anything from the first `-` goes to vitest untouched, so `-t "a case"`,
-                         # `--bail 1` and `--changed HEAD~1` work. It groups by package and runs each
-                         # package's own `test`, so a pretest guard and its vitest config still apply;
-                         # a tests/e2e path goes to Playwright instead
+                         # `--bail 1` and `--changed HEAD~1` work. A named spec runs through its package's
+                         # own `test`, so a pretest guard and its vitest config still apply; a root run has
+                         # no such hook, so packages:ensure goes in front of it. The routing is data
+                         # (scripts/lib/spec-plan.ts) and asserted by repo-checks' spec-plan.spec.ts
 npm run chain            # Before a merge: every check in dependency order, cold 190s and warm 27s.
                          # Reports each step's time and its slowest five tests, buffers its output and
                          # prints only a failing step's. It leaves out api:check, which typecheck's
