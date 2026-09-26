@@ -48,8 +48,21 @@ export interface ChainStep {
   readonly excludes?: readonly string[];
   /** Needs the package build lock, so it cannot share a lane with another step that takes it */
   readonly exclusive?: true;
-  /** A step whose pass is not reproducible, so it always runs. Only the E2E suite, with its reason. */
+  /**
+   * A step the chain does not cache, with its reason on the step.
+   *
+   * Two kinds qualify. One is a pass that is not reproducible (the E2E suite). The other is a step whose
+   * *effect* is recorded somewhere the chain's fingerprint cannot see: `packages:ensure` guarantees the
+   * built packages are current, and whether they are is recorded in `node_modules/.cache/abuddy-packages-build`
+   * — not in this step's inputs, and not in its outputs either, which `fingerprintUnit` excludes from the
+   * content hash on purpose. Caching such a step is a second record of one fact, and the two can disagree.
+   *
+   * Comes with `neverCachedBecause`, which the chain prints in place of a cache verdict. It was one hardcoded
+   * sentence about Electron until there were two such steps, and then it was wrong about one of them.
+   */
   readonly cache?: false;
+  /** Why, printed where a cached step's reason would go. Required of every `cache: false` step. */
+  readonly neverCachedBecause?: string;
   /**
    * What to pass the step so it ignores a cache of its own, appended by `chain.ts` under `--all`.
    *
@@ -353,7 +366,19 @@ export const CHAIN_STEPS: readonly ChainStep[] = [
   // means, and the rule itself (`BUILD_UNITS` in `@abuddy/host`) is inside every unit's own inputs. It takes
   // no `forceArgs` for a second reason — 18 call sites reach `ensurePackagesBuilt()` in a serial chain, each
   // a stat and a return, so forcing it would turn them into 18 builds behind one lock.
-  { name: 'packages:ensure', tier: 2, needs: [], seconds: 14, exclusive: true,
+  // Not cached, and the 0.3s that costs is the point. Measured 2026-09-26: with the package stamps removed
+  // but `dist` still on disk, this step reported `cached` — its inputs had not moved — while
+  // `packagesBuiltOrRefuse()` refused, because the stamps are what it reads. Every step that guards on the
+  // built packages then fails at collection (five files, thirty-three tests skipped, seen once), and whether
+  // it does depends on which other step's `pretest` rebuilds the stamps first, which across three lanes is a
+  // race. The step's own check is content-addressed and returns in ~0.3s warm, so a chain-level cache on top
+  // of it buys nothing and is a second record of one fact.
+  // `seconds` is the warm cost, which is what it does on almost every run: 0.3s, measured three times, and
+  // the chain's warm floor is unchanged at 26.6s. The cold case is 14s and reports drift once — which is a
+  // run where you have just changed a package's source and are rebuilding it anyway.
+  { name: 'packages:ensure', tier: 2, needs: [], seconds: 1, exclusive: true, cache: false,
+    neverCachedBecause: 'what it guarantees is recorded in stamps of its own, which this fingerprint cannot '
+      + 'see; its check is ~0.3s warm, so a cache on top only adds a record that can disagree',
     inputs: [...PACKAGE_BUILD_INPUTS, 'scripts/ensure-packages-built.ts'], outputs: PACKAGE_BUILD_OUTPUTS },
   // Ahead of build and not redundant with it: build -ws gives no ordering guarantee, since no workspace
   // declares a dependency on @app/default-setup, and the renderer's build reads the pack entry this writes
@@ -427,6 +452,7 @@ export const CHAIN_STEPS: readonly ChainStep[] = [
   // step depending on another's output says so can only see outputs that are declared, and this is the
   // tree that caused the defect — `typecheck` declared `tests`, which contains these, and could never cache.
   { name: 'test', tier: 3, needs: ['build:app'], cache: false, seconds: 26, // the E2E suite
+    neverCachedBecause: 'it drives real Electron, and a flaky pass cached green hides an intermittent failure',
     outputs: ['tests/screenshots', 'tests/results'],
     inputs: [...ROOT, 'tests/e2e', 'playwright.config.ts', 'scripts/with-source.mjs', ...APP_ENTRY, ...APP_OUTPUTS] },
   { name: 'test:packaged-authoring', tier: 3, needs: ['build:app'], seconds: 59,

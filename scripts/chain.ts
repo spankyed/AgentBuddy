@@ -162,7 +162,7 @@ async function main(): Promise<void> {
   /** Its verdict, asked at dispatch — see `dispatch` for why that timing is load-bearing */
   const staleReason = (step: ChainStep): string | null =>
     step.cache === false
-      ? 'never cached: it drives real Electron, and a flaky pass cached green hides an intermittent failure'
+      ? `never cached: ${step.neverCachedBecause}`
       : unitStaleReason(unitFor(step), stampFor(step.name));
 
   if (dry) {

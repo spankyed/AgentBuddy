@@ -117,6 +117,14 @@ Things that waste the most time, in order:
   `npm run build:be`, `DEBUG_E2E=1 npm test -- <spec> --grep "<title>"`. Two carefully argued
   explanations have been wrong where one such run was decisive. `tests/e2e/CLAUDE.md` has the method,
   including what to rebuild first and how to put the instrumentation back.
+- **Reading a chain step's `cached` as "the thing it guarantees is true".** It means only that the step's
+  declared inputs have not moved. `packages:ensure` used to be cached that way, and what it guarantees —
+  that the built packages are current — is recorded in `node_modules/.cache/abuddy-packages-build`, which
+  its fingerprint cannot see and `fingerprintUnit` excludes from the content hash by design. Measured
+  2026-09-26: with those stamps cleared and `dist` still present, the step reported `cached` while
+  `packagesBuiltOrRefuse()` refused, so every step reading the built packages failed at collection (five
+  files, thirty-three tests skipped). It is `cache: false` now — 0.3s warm, against a second record of one
+  fact that can disagree with the first. Two caches over one body of work is the bug, not the cost.
 - **Running suites concurrently *before the packages are built*.** The hazard is the build itself, not
   the suites: `ensurePackagesBuilt()` returns before taking the lock when nothing is stale
   (`abuddy-host/src/build/packages-built.ts`), and only `stampedBuild` locks. So two suites that both

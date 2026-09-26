@@ -47,8 +47,34 @@ describe('the chain graph', () => {
     expect(() => orderedSteps(steps)).toThrow(/Two chain steps named a/);
   });
 
-  it('caches every step but the E2E suite, whose pass is not reproducible', () => {
-    expect(CHAIN_STEPS.filter((s) => s.cache === false).map((s) => s.name)).toEqual(['test']);
+  /**
+   * A step may go uncached for one of two reasons, and both are properties of the step rather than a name.
+   *
+   * Its pass is not reproducible — the E2E suite, which drives real Electron — or its *effect* is recorded
+   * where `fingerprintUnit` cannot see it. `packages:ensure` is the second kind: what it guarantees is that
+   * the built packages are current, and whether they are lives in `node_modules/.cache/abuddy-packages-build`,
+   * which is neither among its inputs nor content-hashed as an output. Measured 2026-09-26: with those stamps
+   * removed and `dist` still present, the step reported `cached` while `packagesBuiltOrRefuse()` refused, so
+   * every step guarding on the built packages failed at collection — nested caches that can disagree, the
+   * same class this branch fixed for the two unit pools.
+   *
+   * Written as the rule so a third uncached step has to earn it: anything that writes the package build
+   * outputs cannot be cached on its inputs alone, and anything else needs a reason in the list below.
+   */
+  it('makes every uncached step say why, which is what the chain prints for it', () => {
+    expect(CHAIN_STEPS.filter((s) => s.cache === false && s.neverCachedBecause === undefined).map((s) => s.name),
+      'give these a neverCachedBecause: the chain prints it where a cache verdict would go, and it was one '
+      + 'hardcoded sentence about Electron until a second step opted out and it was wrong about that one').toEqual([]);
+    expect(CHAIN_STEPS.filter((s) => s.cache !== false && s.neverCachedBecause !== undefined).map((s) => s.name),
+      'these give a reason for not being cached and are cached').toEqual([]);
+  });
+
+  it('does not cache the step that guarantees the built packages', () => {
+    expect(CHAIN_STEPS.find((s) => s.name === 'packages:ensure')!.cache,
+      'it would cache on its inputs while what it guarantees is recorded in stamps the fingerprint cannot '
+      + 'see. Measured: with those stamps cleared and dist still present, the step reported `cached` while '
+      + 'packagesBuiltOrRefuse() refused, so every step reading the built packages failed at collection')
+      .toBe(false);
   });
 });
 
