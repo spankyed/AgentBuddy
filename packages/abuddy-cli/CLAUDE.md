@@ -145,7 +145,7 @@ that reason. `_support/` is the prefix that says a directory claims to mirror no
 **One mechanism: `#` subpath imports from the pack's own `package.json`.** A pack's
 `compilerOptions.paths` is TypeScript's business and no build here reads it — `tsconfig-aliases.ts` and
 `makeAliasPlugin` were deleted with the `@/` aliases they served
-([`goal-one-way-to-name-your-own-modules.md`](../../docs/goals/goal-one-way-to-name-your-own-modules.md)),
+([`goal-one-way-to-name-your-own-modules.md`](../../docs/archive/goals/goal-one-way-to-name-your-own-modules.md)),
 because four separate bundler configs each had to re-implement a mapping no runtime reads. What follows is
 what the audit of 2026-09-26 cost to establish, so it needn't be established again.
 

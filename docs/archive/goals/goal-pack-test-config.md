@@ -182,7 +182,7 @@ Add `definePackTestConfig` to `@abuddy/testing/vitest`: the `.vue` stub, `global
 (`tests/**/*.spec.ts`, less `tests/e2e/**` and any `_support/**`), the tier-1 timeouts and the data-dir
 wiring. No alias handling — Decision 2. `packages/default-setup/vitest.config.ts` becomes a call plus its own
 `_support` exclusion and, until
-[`goal-one-way-to-name-your-own-modules.md`](../../goals/goal-one-way-to-name-your-own-modules.md) removes its `@/`
+[`goal-one-way-to-name-your-own-modules.md`](goal-one-way-to-name-your-own-modules.md) removes its `@/`
 imports, its own `tsconfigPaths`. `npm run api:update` if the entry's surface moved, committed.
 
 **Done when:** `npx vitest related --run src/features/notes/be/system.ts` inside `packages/default-setup`

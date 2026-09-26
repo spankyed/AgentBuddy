@@ -1,6 +1,9 @@
 # Goal: one way for a pack to name its own modules
 
-> **Written in session** `1d53eb9c-d886-49f8-bc5a-90793d43315e` (Claude Code, 2026-09-26). Resume it with `claude -r 1d53eb9c-d886-49f8-bc5a-90793d43315e`.
+> **Done** (`bb996d9cb`..`01fb228bd` on `AS/alias-simplification`). The text below is the plan as written;
+> Phase 1's claim that it needed no config change was wrong and the Outcome says how. For the convention
+> now, see `packages/default-setup/CLAUDE.md`; for what refuses a new `@/`, `findPackOwnAliases` in
+> `scripts/check-import-specifiers.ts`.
 
 ```
 # Goal: one way for a pack to name its own modules
@@ -147,7 +150,7 @@ Final.
    anywhere. The api's `resolve-at-aliases` plugin is replaced by a `#`-extension plugin over it, and the
    CLI's BE bundler calls the same function.
 
-   **Skip the move if [`goal-pack-imports-name-the-file.md`](goal-pack-imports-name-the-file.md) is also
+   **Skip the move if [`goal-pack-imports-name-the-file.md`](../../goals/goal-pack-imports-name-the-file.md) is also
    planned.** That goal has pack code write its extensions, after which nothing needs the function at all and
    it is deleted rather than moved — measured, `.ts` and `.js` specifiers resolve in `tsc`, Vite and esbuild
    alike, and only the extensionless form has to be taught. Move it only if this goal runs alone.
@@ -190,7 +193,7 @@ Add the `imports` entries the settled Open decision 1 names, mirrored in `paths`
 
 ### Phase 3 — the configs that re-implemented it
 
-> One line here is shared with [`goal-pack-test-config.md`](../archive/goals/goal-pack-test-config.md), which
+> One line here is shared with [`goal-pack-test-config.md`](goal-pack-test-config.md), which
 > has run: `packages/default-setup/vitest.config.ts` is a `definePackTestConfig()` call that passes
 > `tsconfigPaths` beside it, with a comment naming this goal as what removes that. So this phase deletes one
 > line and its import from that file, not a plugin from a config it assembles. Nothing else overlaps — the two
@@ -243,3 +246,78 @@ significant — measure `npm run build:app` before and after rather than claimin
   `.ts` leaves the pack half-migrated and typechecking green, because `tsc` does not read SFCs (`vue-tsc`
   does).
 - **Another agent works in this checkout.** Check `git status` before committing and name paths explicitly.
+
+## Outcome (2026-09-26)
+
+| Phase | Status | Evidence |
+|---|---|---|
+| 1 — `@/__generated__` becomes `#generated` | **done** | `bb996d9cb`. 550 specifiers in 345 files; the duplicate tsconfig mapping dropped |
+| 2 — the other three prefixes | **done** | `ffb5d233c`. 282 in 159 files; `#features/*`, `#extensions/*`, `#app-settings/*` in `imports` with the `paths` mirror |
+| 3 — the configs that re-implemented it | **done** | `242024eac`. Four mechanisms to none |
+| 4 — the guard | **done** | `01fb228bd`. `findPackOwnAliases`, three mutations |
+| 5 — the numbers | **done** | below |
+
+**832 specifiers across 416 files**, and every suite's counts unchanged throughout: default-setup 87 files /
+720 tests, `@abuddy/cli` 37 / 305 and 15 / 187, `@abuddy/host` 77 / 697, repo-checks 17 / 227, the fixture
+pack 10 / 32, E2E 21, `test:packaged-authoring` green.
+
+### What went, and what replaced it
+
+Four implementations of one idea became zero, because the idea itself was removed rather than centralised:
+
+- `packages/renderer/vite.config.ts` — the `@/` branch keeps the renderer's own and loses the per-importer
+  pack lookup. That lookup was the reason none of this could be a static alias.
+- `packages/api/tsup.config.ts` — `resolve-at-aliases` keeps the API's own `@/` and loses its pack branch.
+- `packages/default-setup/vitest.config.ts` — `vite-tsconfig-paths` gone; the config is one call and nothing
+  else, Vite resolving `#` from the pack's own `package.json` unaided.
+- `abuddy-cli/src/build/tsconfig-aliases.ts` (55 lines), `makeAliasPlugin` and the spec's 7 cases (78 lines)
+  — deleted per Open decision 2.
+
+What a pack needs instead is `#` from its own `package.json` `imports`, plus one small thing esbuild will not
+do: supply the extension. That lives in `@abuddy/host/build/subpath-imports`, shared by `abuddy build`'s
+backend bundle and the API's, because `packages/api` does not depend on `@abuddy/cli` and both depend on host.
+
+### Corrections to the Decisions
+
+- **Phase 1's "No config changes: `#generated` already resolves in every tool" was false**, and `npm run
+  build` said so: the API's tsup could not resolve `#generated/services`. esbuild finds the mapping and then
+  refuses the path, needing the extension — which this goal's own spike table already recorded. What hid it is
+  that the five `#generated` imports the pack already had were all under `src/seeds/flows/`, which
+  `abuddy build` compiles and the API never sees, so the claim rested on files that could not have tested it.
+  Decision 4 moved forward from Phase 3 into Phase 1 as a result; **if a phase's premise is "no config
+  change", name the evidence for it, because five files in the wrong directory looked like evidence.**
+- **Decision 4's move became a deletion in part.** It said `resolveWithExtensions` moves to host so the API
+  and CLI can share it, which happened — and the *alias* reader beside it was deleted rather than moved, per
+  Open decision 2.
+
+### The numbers, and one I could not honestly get
+
+`npm run build:app` is **24.2s, 24.4s, 24.2s** over three runs after the change. The deleted hooks were
+per-import `resolveId`/`onResolve` callbacks, and their cost is below the noise of a 24s build.
+
+**A valid "before" was not cheaply obtainable, and the attempt is worth recording.** Restoring the two
+configs while the code uses `#` gives a build that *fails* — 292 errors — so the 24.5s it took is a
+measurement of nothing; a worktree at the old commit resolves `@abuddy/*` back through the shared
+`node_modules` to this checkout's migrated source, so that is no better. The configs and the specifiers are
+now coupled, which is the point of the change and also what makes them hard to time apart. Reporting the
+failed run as a "before" would have been the easy error.
+
+### The conventional choices
+
+- **`#` names mirror the directory** — `#features/*` for `src/features/*` and so on, so a specifier reads as
+  a path. `#src/*` was the rejected alternative (Open decision 1).
+- **The rewrite matched `['\"]` and not `'`.** The first Phase 2 run matched single quotes only and missed one
+  double-quoted import; `typecheck` caught it. Two stale prose paths naming a `@/services/…` that was never a
+  mapping went with it.
+- **`fe-bundler-tailwind`'s unreadable-tsconfig case was rewritten a third time**, having pinned the mechanism
+  each time: first the line-comment stripping, then the warning, now neither. What survives is the property —
+  Vite parses the pack's tsconfig itself and refuses it — which depends on nothing this repo wrote.
+- **`etc/pack-types.api.md` was re-recorded twice**, a doc comment reaching the bundled facade types both
+  times. `facade:check` is deliberately not a chain step, so it is the only thing that notices.
+
+### What this leaves for the next goal
+
+[`goal-pack-imports-name-the-file.md`](../../goals/goal-pack-imports-name-the-file.md) is now the one thing
+between the repo and needing no resolver at all: with extensions written, esbuild needs no help and
+`@abuddy/host/build/subpath-imports` can be deleted too. Its spike table and this goal's are the same
+measurements.

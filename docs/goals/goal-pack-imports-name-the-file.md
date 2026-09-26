@@ -97,7 +97,7 @@ the pack's own imports have not followed it.
 
 ## Order
 
-**Run [`goal-one-way-to-name-your-own-modules.md`](goal-one-way-to-name-your-own-modules.md) first.** That one
+**Run [`goal-one-way-to-name-your-own-modules.md`](../archive/goals/goal-one-way-to-name-your-own-modules.md) first.** That one
 changes a specifier's *prefix* (`@/features/x` → `#features/x`, four resolver mechanisms down to one); this
 one changes its *suffix*. They touch overlapping sets of specifiers, so each is one script pass and the order
 is not load-bearing — but the suffix rule and its guard are much simpler to state against one prefix than two.
