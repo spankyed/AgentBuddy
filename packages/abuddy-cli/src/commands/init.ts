@@ -122,24 +122,12 @@ const PACKAGE_JSON_TEMPLATE = (name: string) => JSON.stringify({
   },
 }, null, 2);
 
-const VITEST_CONFIG_TEMPLATE = `import { configDefaults, defineConfig } from 'vitest/config';
-import { isolatedDataDir } from '@abuddy/testing/vitest';
+const VITEST_CONFIG_TEMPLATE = `import { definePackTestConfig } from '@abuddy/testing/vitest';
 
-// A throwaway data dir per run (media, stores), one subdir per worker
-const dataDir = isolatedDataDir();
-
-export default defineConfig({
-  test: {
-    globals: true,
-    // A spec's path mirrors the source it covers, so one pattern covers every one of them. tests/e2e/ is
-    // excluded because it is Playwright's (abuddy init-tests), run with \`abuddy test\` — a different runner.
-    include: ['tests/**/*.spec.ts'],
-    exclude: [...configDefaults.exclude, 'tests/e2e/**'],
-    env: dataDir.env,
-    globalSetup: dataDir.globalSetup,
-    setupFiles: [...dataDir.setupFiles, './tests/setup.ts'],
-  },
-});
+// Everything a pack's suite needs: a throwaway data dir per run (the harness requires one), the tier's
+// timeouts, \`tests/**/*.spec.ts\`, and a stub for this pack's .vue files so \`vitest related\` can walk its
+// module graph. Pass { vue: true } — with @vitejs/plugin-vue installed — to compile and render them instead.
+export default definePackTestConfig();
 `;
 
 // Unit tests run against an in-memory EARS with the pack's repositories, seed hooks, seeders, systems,

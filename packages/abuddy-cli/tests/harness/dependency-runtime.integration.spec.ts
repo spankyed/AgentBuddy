@@ -35,13 +35,10 @@ function dependentPack(spec: string): string {
   for (const file of fs.readdirSync(DEFAULT_SETUP_DIST)) {
     if (file.endsWith('.seed.json') || file === 'seeds.json') fs.copyFileSync(path.join(DEFAULT_SETUP_DIST, file), path.join(dep, 'runtime', 'seeds', file));
   }
+  // As `abuddy init` scaffolds it: one call, so this fixture stays what a real pack has
   write(root, 'vitest.config.ts', `
-import { defineConfig } from 'vitest/config';
-import { isolatedDataDir } from '@abuddy/testing/vitest';
-const dataDir = isolatedDataDir('dependent-runtime-');
-export default defineConfig({
-  test: { include: ['tests/*.spec.ts'], env: dataDir.env, globalSetup: dataDir.globalSetup, setupFiles: [...dataDir.setupFiles, './tests/setup.ts'] },
-});`);
+import { definePackTestConfig } from '@abuddy/testing/vitest';
+export default definePackTestConfig({ dataDirPrefix: 'dependent-runtime-' });`);
   write(root, 'tests/setup.ts', `
 import { setupPackTests } from '@abuddy/testing/harness';
 import { memos } from './memos-system';

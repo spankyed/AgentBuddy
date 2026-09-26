@@ -13,27 +13,37 @@ This page covers unit tests.
 
 ```typescript
 // vitest.config.ts
-import { configDefaults, defineConfig } from 'vitest/config';
-import { isolatedDataDir } from '@abuddy/testing/vitest';
+import { definePackTestConfig } from '@abuddy/testing/vitest';
 
-// A throwaway data dir per run, one subdir per worker
-const dataDir = isolatedDataDir();
-
-export default defineConfig({
-  test: {
-    globals: true,
-    include: ['tests/**/*.spec.ts'],                           // a spec's path mirrors the source it covers
-    exclude: [...configDefaults.exclude, 'tests/e2e/**'],      // tests/e2e is Playwright's, run by `abuddy test`
-    env: dataDir.env,                                          // ABUDDY_ENV=test, ABUDDY_USER_DATA_DIR=<run dir>
-    globalSetup: dataDir.globalSetup,                          // passes the project root to the harness; removes the run dir at the end
-    setupFiles: [...dataDir.setupFiles, './tests/setup.ts'],   // the worker setup first: each worker uses <run dir>/worker-<n>
-  },
-});
+export default definePackTestConfig();
 ```
 
-- **Set no `resolve.conditions`.** A pack's tests resolve its `@abuddy` packages exactly as `abuddy build` does: to the `dist` each published package ships. That is the one layout a pack ever has, so there is nothing to select.
-- **`isolatedDataDir(prefix?)`** creates the run's data dir. `setupPackTests` fails when `ABUDDY_USER_DATA_DIR` is unset, so keep its `env`, `globalSetup` and `setupFiles`, with its setup files before yours.
-- **Keep vitest's `isolate` on** (the default). The harness keeps one registry, database and set of mocks per test file, and `setupPackTests` fails, saying so, when it runs a second time in one process (`isolate: false`).
+That one call is the whole config. It gives you:
+
+- **A throwaway data dir per run**, one subdir per worker. The harness fails without `ABUDDY_USER_DATA_DIR`,
+  and a per-worker split is what stops one spec's reset deleting another worker's files mid-test.
+- **`include: ['tests/**/*.spec.ts']`**, because a spec's path mirrors the source it covers, less `tests/e2e/`
+  (Playwright's, run by `abuddy test`) and `tests/_support/` (helpers and fixtures, not specs).
+- **A stub for your `.vue` files**, so `vitest related` and `--changed` can walk your pack's module graph.
+  Without it they stop at the first SFC they reach, which is any pack with a plugin. Your specs can import a
+  plugin module and read everything but the component; rendering one throws and says how to enable it.
+- **`globals: true`**, and timeouts that match what a pack's unit tests are allowed.
+- **No `resolve.conditions`** — and you should not add any. A pack's tests resolve its `@abuddy` packages
+  exactly as `abuddy build` does, to the `dist` each published package ships, which is the one layout a pack
+  ever has. There is nothing to select.
+
+What you may pass it:
+
+| Option | For |
+|---|---|
+| `dataDirPrefix` | naming the run's temp dir, so leftovers say which suite made them |
+| `vue: true` | compiling and rendering your components instead of stubbing them. Install `@vitejs/plugin-vue` |
+| `plugins`, `exclude`, `setupFiles` | anything your pack needs on top |
+
+- **Keep vitest's `isolate` on** (the default). The harness keeps one registry, database and set of mocks per
+  test file, and `setupPackTests` fails, saying so, when it runs a second time in one process (`isolate: false`).
+- **`isolatedDataDir(prefix?)`** is still exported, for a config `definePackTestConfig` cannot express. Keep
+  its `env`, `globalSetup` and `setupFiles` if you assemble one by hand, with its setup files before yours.
 
 ```typescript
 // tests/setup.ts
