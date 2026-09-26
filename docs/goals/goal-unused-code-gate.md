@@ -143,7 +143,18 @@ Final.
    typechecks omits `noUnusedLocals`. Without it the gate decays the way lint did: silently, one new
    package at a time.
 
-## Open decisions (settle with the user before Phase 3)
+## Open decisions — **settled 2026-09-25**
+
+1. **`noUnusedLocals` is declared in each workspace's tsconfig**, not in a shared base. The configs stay
+   standalone, which is how this repo has deliberately kept them; the flag is repeated thirteen times and
+   Decision 5's guard is what catches a new package omitting it.
+2. **The whole goal is in scope**, Phases 1–4, not only Phase 4's lint widening. Phase 1 reports what
+   `@app/electron-versions` and `@app/typescript-floor` contain before either is included.
+
+Confirmed unimplemented at `9e0eb7891`: `noUnusedLocals` appears in **0** tsconfigs and `lint:check` in
+**2** of 13 workspaces — exactly the state the Background describes.
+
+The options as surveyed, kept for the reasoning:
 
 1. **Where `noUnusedLocals` is declared.** The workspaces share no base tsconfig today — each
    `packages/*/tsconfig.json` is standalone.

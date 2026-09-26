@@ -177,9 +177,27 @@ Final.
 6. **Don't reopen cost-based placement or the two pools.** Which half a spec runs in is decided by
    `etc/spec-cost.json` and the dead band; which pool by `UnitSuite.kind`. Both settled.
 
-## Open decision
+## Open decision — **settled 2026-09-25: a new `@app/publish-checks`**
 
-Settle with the user before Phase 2. Four answers, and the fixture's home is part of each.
+The five specs and the packing fixture go to one new workspace, and `@abuddy/cli` depends on it for the
+fixture. Option 2 below.
+
+**What decided it was the fixture, not the specs.** Three `@abuddy/cli` specs need `installPublishedPackages`
+and stay put under Decision 1, so wherever the five go, the fixture must be reachable from two packages by
+name. Every other answer paid for that badly: promoting it to `@abuddy/testing` ships repo-internal packing
+tooling in a package pack authors install; distributing the five gives `@abuddy/sdk` and `@abuddy/ui` an
+expensive pack-and-compile half each, where both suites are currently pure and fast; and folding them into
+`@app/repo-checks` widens that package a third time, after `scripts/` and layout. A workspace is what exists
+so two packages can share a module by name, and it keeps five specs that share one expensive fixture in one
+place.
+
+**Two corrections that fell out of settling it.** `published-imports.spec.ts` and `published-sdk-peers.spec.ts`
+**stay in `@app/repo-checks`**: their subject is `scripts/lib/published-imports.ts`, which five build scripts
+use (`build-package`, `build-ui-package`, `bundle-package`, `abuddy-ui/scripts/exports`, `packages-built`) and
+which therefore cannot leave `scripts/`. The family is split by subject, correctly, and "reuniting it" was the
+wrong goal. So this is **five specs, not seven**.
+
+The options as surveyed, kept for the reasoning:
 
 | | Where Group A goes | Where the packing fixture goes | Cost |
 |---|---|---|---|

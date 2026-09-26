@@ -147,9 +147,13 @@ Final.
 7. **`@abuddy/ears` and `@abuddy/cli` are in scope only where they already deviate**, and `@app/repo-checks`
    stays flat: its 18 specs cover `scripts/`, which is flat, so flat mirrors it.
 
-## Open decision
+## Open decision — **settled 2026-09-25: the scaffold changes with the rule**
 
-Settle with the user before Phase 3.
+`abuddy init-tests` scaffolds the same layout the built-in pack uses, so the reference pack is what the tool
+generates. The CLI's own scaffold specs and the fixture packs move with it. Nothing breaks downstream: no
+pack exists outside this repo (root `CLAUDE.md`, *Backward compatibility*).
+
+The reasoning, kept:
 
 **Does `abuddy init-tests`' scaffold change with it?** `init.ts:135` writes `tests/unit/**/*.spec.ts` into
 every pack created by the CLI.

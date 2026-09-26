@@ -212,12 +212,11 @@ on a default nobody chose.
 to the default fails that run — done, in the other direction: dropping `hookTimeout` from `@abuddy/sdk`'s
 config fails `suite-timeouts.spec.ts` by name.
 
-**The five-run bar is not met, and this is the evidence there is.** Two `chain -- --all` runs went green
-after the fix, at 190.1s and 180.8s, both three lanes with every step forced. The remaining three were
-abandoned rather than run: the next goal started editing spec files while they were in flight, and a flake
-measurement taken over a tree being edited is evidence about nothing. Re-run the five on a quiet tree before
-treating this phase as closed on its own terms — the fix is landed and guarded either way, but "green five
-times in a row" is a claim nobody has checked.
+**The five-run bar is met.** Five `chain -- --all` runs, three lanes with every step forced, on a clean and
+fully committed tree: **192.5s, 192.1s, 185.0s, 173.0s, 201.7s — all green.** An earlier attempt at the same
+five was abandoned after two because the next goal began editing spec files while they were in flight, and a
+flake measurement taken over a tree being edited is evidence about nothing; these five were run on a quiet
+one.
 
 ### Phase 5 — Re-measure, and state the floor
 
