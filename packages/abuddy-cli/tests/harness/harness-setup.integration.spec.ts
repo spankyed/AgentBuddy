@@ -145,14 +145,14 @@ describe('abuddy add feature in a pack without the unit test setup', () => {
 
     expect(added.code, added.output).toBe(0);
     expect(added.output).toContain('+ tests/setup.ts');
-    expect(added.output).toContain('+ tests/unit/notes-system.spec.ts');
+    expect(added.output).toContain('+ tests/features/notes/be/system.spec.ts');
     expect(added.output).toContain('vitest.config.ts already exists');
     expect(added.output).toContain('Added @abuddy/testing to devDependencies. Run: npm install');
     expect(JSON.parse(fs.readFileSync(pkgPath, 'utf-8')).devDependencies['@abuddy/testing']).toMatch(/^\^/);
     // The kept config is the scaffold's, which loads tests/setup.ts
     // inherent: runs a pack's own vitest suite — the nested runner is the thing under test
     const unit = run(process.execPath, [VITEST, 'run'], pack);
-    expect(unit.output).toMatch(/tests\/unit\/notes-system\.spec\.ts/);
+    expect(unit.output).toMatch(/tests\/features\/notes\/be\/system\.spec\.ts/);
     expect(unit.output).toMatch(/Tests\s+1 passed/);
   });
 });

@@ -32,8 +32,9 @@ src/features/bookmarks/
     canvas/
       list.vue                   # Main view component
     settings.vue                 # Settings panel
-tests/unit/
-  bookmarks-system.spec.ts       # System test on @abuddy/testing/harness
+tests/features/bookmarks/be/
+  system.spec.ts                 # System test on @abuddy/testing/harness — a spec's path
+                                 # mirrors the source it covers
 ```
 
 It also adds the feature to `abuddy.json` and regenerates `__generated__/`. A pack without `tests/setup.ts` also gets the unit test setup the system test runs on: `tests/setup.ts`, `vitest.config.ts` when it has no Vitest config, and the test dev dependencies.

@@ -2,7 +2,7 @@
 // app starts, onShutdown when the last one stops
 import { describe, expect, it } from 'vitest';
 import { startApp } from '@abuddy/testing/harness';
-import { journal } from '../../src/features/memos/be/journal';
+import { journal } from '../../../../src/features/memos/be/journal';
 
 describe("the pack's boot hooks", () => {
   it('open the journal while an app runs, and close it when the app stops', async () => {

@@ -5,7 +5,7 @@ import { importFlows, mockService, importSeeds, startApp } from '@abuddy/testing
 import { action, branch, entry, fire, keepAlive, on, schedule, subflow } from '#generated/flow-helpers';
 import { repository } from '#generated/repository';
 import type { Services } from '#generated/services';
-import memoReminderFlow from '../../src/seeds/flows/memo-reminder-flow';
+import memoReminderFlow from '../../../src/seeds/flows/memo-reminder-flow';
 
 describe('memo reminder flow', () => {
   it('adds the memo on each scheduled tick and branches on the result', async () => {

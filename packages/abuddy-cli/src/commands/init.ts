@@ -122,7 +122,7 @@ const PACKAGE_JSON_TEMPLATE = (name: string) => JSON.stringify({
   },
 }, null, 2);
 
-const VITEST_CONFIG_TEMPLATE = `import { defineConfig } from 'vitest/config';
+const VITEST_CONFIG_TEMPLATE = `import { configDefaults, defineConfig } from 'vitest/config';
 import { isolatedDataDir } from '@abuddy/testing/vitest';
 
 // A throwaway data dir per run (media, stores), one subdir per worker
@@ -131,8 +131,10 @@ const dataDir = isolatedDataDir();
 export default defineConfig({
   test: {
     globals: true,
-    // tests/e2e holds Playwright specs (abuddy init-tests), run with \`abuddy test\`
-    include: ['tests/unit/**/*.spec.ts'],
+    // A spec's path mirrors the source it covers, so one pattern covers every one of them. tests/e2e/ is
+    // excluded because it is Playwright's (abuddy init-tests), run with \`abuddy test\` — a different runner.
+    include: ['tests/**/*.spec.ts'],
+    exclude: [...configDefaults.exclude, 'tests/e2e/**'],
     env: dataDir.env,
     globalSetup: dataDir.globalSetup,
     setupFiles: [...dataDir.setupFiles, './tests/setup.ts'],
@@ -261,7 +263,7 @@ import { EARS, findAll } from '#generated/ears';
 
 describe('${name}', () => {
   it('should have a valid manifest', async () => {
-    const manifest = await import('../../abuddy.json', { with: { type: 'json' } });
+    const manifest = await import('../abuddy.json', { with: { type: 'json' } });
     expect(manifest.default.id).toBe('${name}');
   });
 
@@ -351,7 +353,7 @@ export async function init(args: string[]) {
   fs.mkdirSync(path.join(dir, 'src', 'seeds', 'flows'), { recursive: true });
   fs.mkdirSync(path.join(dir, 'src', 'seeds', SEED_ROWS_KEY), { recursive: true });
   fs.mkdirSync(path.join(dir, 'src', 'extensions', 'steps'), { recursive: true });
-  fs.mkdirSync(path.join(dir, 'tests', 'unit'), { recursive: true });
+  fs.mkdirSync(path.join(dir, 'tests'), { recursive: true });
 
   fs.writeFileSync(path.join(dir, 'abuddy.json'), MANIFEST_TEMPLATE(name));
   fs.writeFileSync(path.join(dir, 'src', 'seeds', SEED_ROWS_KEY, 'hello.md'), EXAMPLE_SEED_ROW_TEMPLATE);
@@ -368,7 +370,7 @@ export async function init(args: string[]) {
   fs.writeFileSync(path.join(dir, 'src', 'extensions', 'steps', 'build.ts'), STEPS_BUILD_TEMPLATE);
   scaffoldUnitTestSetup(dir);
   fs.writeFileSync(
-    path.join(dir, 'tests', 'unit', `${name}.spec.ts`),
+    path.join(dir, 'tests', `${name}.spec.ts`),
     EXAMPLE_TEST_TEMPLATE(name),
   );
 

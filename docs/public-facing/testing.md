@@ -13,7 +13,7 @@ This page covers unit tests.
 
 ```typescript
 // vitest.config.ts
-import { defineConfig } from 'vitest/config';
+import { configDefaults, defineConfig } from 'vitest/config';
 import { isolatedDataDir } from '@abuddy/testing/vitest';
 
 // A throwaway data dir per run, one subdir per worker
@@ -22,7 +22,8 @@ const dataDir = isolatedDataDir();
 export default defineConfig({
   test: {
     globals: true,
-    include: ['tests/unit/**/*.spec.ts'],
+    include: ['tests/**/*.spec.ts'],                           // a spec's path mirrors the source it covers
+    exclude: [...configDefaults.exclude, 'tests/e2e/**'],      // tests/e2e is Playwright's, run by `abuddy test`
     env: dataDir.env,                                          // ABUDDY_ENV=test, ABUDDY_USER_DATA_DIR=<run dir>
     globalSetup: dataDir.globalSetup,                          // passes the project root to the harness; removes the run dir at the end
     setupFiles: [...dataDir.setupFiles, './tests/setup.ts'],   // the worker setup first: each worker uses <run dir>/worker-<n>

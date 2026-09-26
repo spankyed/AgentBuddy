@@ -55,7 +55,7 @@ describe('pack CLI: init', () => {
     expect(fs.existsSync(path.join(packDir, '.github', 'workflows', 'release.yml'))).toBe(true);
     expect(fs.existsSync(path.join(packDir, 'src', '__generated__', 'pack-entry-fe.ts'))).toBe(true);
     expect(fs.existsSync(path.join(packDir, 'vitest.config.ts'))).toBe(true);
-    expect(fs.existsSync(path.join(packDir, 'tests', 'unit', `${packName}.spec.ts`))).toBe(true);
+    expect(fs.existsSync(path.join(packDir, 'tests', `${packName}.spec.ts`))).toBe(true);
 
     // Verify manifest content
     const manifest = JSON.parse(fs.readFileSync(path.join(packDir, 'abuddy.json'), 'utf-8'));
