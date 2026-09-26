@@ -4,7 +4,7 @@ import * as os from 'node:os';
 import * as path from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { extractPackArchive, verifyPack } from '@abuddy/host/packs';
-import { callCli, typecheckPack } from '../helpers/pack-builds';
+import { callCli, typecheckPack } from '../_support/pack-builds';
 
 /**
  * The scaffold an outside author starts from must build, typecheck and pack as

@@ -12,7 +12,7 @@ import * as os from 'node:os';
 import * as path from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { packagesBuiltOrRefuse, REPO_ROOT } from '@abuddy/host/build/packages-built';
-import { CLI, buildPack, callCli, packageJson, preparePack, run, tsconfig } from '../helpers/pack-builds';
+import { CLI, buildPack, callCli, packageJson, preparePack, run, tsconfig } from '../_support/pack-builds';
 
 /** Skips without built packages, and refuses rather than reading a stale `dist` */
 const PACKAGES_BUILT = packagesBuiltOrRefuse('npm run packages:build (or npm test -w @abuddy/cli, which builds them)');

@@ -139,14 +139,23 @@ describe('a spec about the published packages lives in @app/publish-checks', () 
 /**
  * A directory under `tests/` that holds specs and names no directory under `src/`, and why.
  *
- * Every entry is work not yet done rather than a property of the package, which is the opposite of the
- * other lists here — so this one shrinks to nothing and then goes. It is landed full on purpose: the guard
- * is green before anything moves, and each phase of `goal-tests-mirror-source.md` deletes its own entries.
+ * It was landed full by `goal-tests-mirror-source.md` Phase 2 — nine entries, each one work not yet done —
+ * so that the guard was green before anything moved and each phase deleted its own. The two left are the
+ * other kind: a directory naming a module of a package this one *depends on*, which its own `src/` has no
+ * counterpart for and should not grow one. Both are `@abuddy/cli`, which is where the specs that drive a
+ * pack's whole toolchain live ([`goal-test-placement.md`](../../../docs/archive/goals/goal-test-placement.md)
+ * settled that), so the toolchain's parts are what its directories can name.
+ *
+ * The bar for a new entry is that: not "this spans two modules" — Decision 6 places those at the entry point
+ * they drive — but "what it covers is another package's, and this package holds it on purpose".
  */
 const NOT_MIRRORED_YET: Record<string, string> = {
-  'abuddy-cli/cli': 'named for the command surface; src calls it commands/',
-  'abuddy-cli/harness': "@abuddy/testing's harness driven from a scaffolded pack — no src/ counterpart",
-  'abuddy-cli/packs': 'publishHostPackOutput and dependency resolution — no src/packs',
+  'abuddy-cli/harness': "@abuddy/testing's harness: the scaffolded setup, a dependency's cached runtime, and "
+    + 'isolatedDataDir. The CLI owns the commands that launch it (`abuddy test`, `init-tests`) and none of the '
+    + 'harness itself, so a tests/commands/ name would say the wrong thing about all three',
+  'abuddy-cli/packs': "a pack's published output: publishHostPackOutput and stagePack are @abuddy/host/packs', "
+    + "the snapshot format is @abuddy/sdk/build's, and only dependency resolution is this package's "
+    + '(src/commands/fetch-deps). Three subjects in one suite about one artifact, and no src/packs to mirror',
 };
 
 describe("a spec's directory names one under src/", () => {

@@ -305,8 +305,8 @@ What opening an app's database needs, shared by the API's boot and `abuddy db`, 
 - Related suites elsewhere:
   - `packages/api/tests/runtime/` (`secrets`, `bus-client-connected`, `bound-runtime`, `host-data-services` (with an old backup's import moving the app's state), `restart-persistence`, and `app-reset`: a reset on the built-in packs)
   - `packages/abuddy-ears/tests/lmdb/` (the LMDB adapter, sharded router, query layer and `openLmdbStore`)
-  - `packages/abuddy-cli/tests/cli/init-install-load.spec.ts`
-  - `packages/abuddy-cli/tests/cli/{install-host-version,dev-install,pack-cli}.spec.ts` (the CLI's installs checked against `host.json`)
+  - `packages/abuddy-cli/tests/commands/init-install-load.spec.ts`
+  - `packages/abuddy-cli/tests/commands/{install-host-version,dev-install,pack-cli}.spec.ts` (the CLI's installs checked against `host.json`)
   - `packages/abuddy-cli/tests/packs/host-output.spec.ts`
 
 ## Gotchas
