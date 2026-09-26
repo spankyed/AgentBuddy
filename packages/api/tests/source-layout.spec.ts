@@ -11,7 +11,7 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { describe, expect, it } from 'vitest';
 
-const SRC = path.resolve(__dirname, '..', '..', 'src');
+const SRC = path.resolve(__dirname, '..', 'src');
 
 /** The jobs this package does, one folder each */
 const JOBS = ['adapters', 'boot', 'runtime', 'transport'];

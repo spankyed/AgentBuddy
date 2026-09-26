@@ -80,7 +80,7 @@ Seven kinds are actually distinguishable in the tree. The tier is what a check m
 | **Contract over build output** | `abuddy-cli/tests/build/`, `default-setup/tests/seeds/` | 2 | the built `@abuddy` packages, a pack's `dist` |
 | **Command / process** | `abuddy-cli/tests/cli/`, `tests/harness/` | 2 | runs real builds, installs and child processes |
 | **Repo tooling** | `@app/repo-checks` | 1–2 | the chain table, the cost records, `scripts/` |
-| **App runtime** | `api/tests/unit/` | 1 | boots the composed runtime over a temp data dir |
+| **App runtime** | `api/tests/runtime/` | 1 | boots the composed runtime over a temp data dir |
 | **Fixture pack** | `tests/fixtures/*` | 2 and 3 | a pack built and tested as a third party would |
 | **E2E** | `tests/e2e/` | 3 | the built app, real Electron |
 

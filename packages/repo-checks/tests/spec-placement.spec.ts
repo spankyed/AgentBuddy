@@ -144,7 +144,6 @@ describe('a spec about the published packages lives in @app/publish-checks', () 
  * is green before anything moves, and each phase of `goal-tests-mirror-source.md` deletes its own entries.
  */
 const NOT_MIRRORED_YET: Record<string, string> = {
-  'api/unit': 'a level. Its sibling tests/runtime does mirror src/runtime',
   'abuddy-cli/cli': 'named for the command surface; src calls it commands/',
   'abuddy-cli/harness': "@abuddy/testing's harness driven from a scaffolded pack — no src/ counterpart",
   'abuddy-cli/packs': 'publishHostPackOutput and dependency resolution — no src/packs',

@@ -22,11 +22,13 @@ export default defineConfig(async () => {
   test: {
     globals: true,                   // use `describe/it/expect` without imports
     environment: 'node',             // happy in pure Node (no jsdom needed here)
-    // `unit/` is in-process and costs 4-22ms a file; `runtime/` boots the composed app over a temp data dir
-    // and costs 100-1120ms. Both are this one suite and tier 1 (the in-memory runtime is what tier 1 admits,
-    // and `SUITE_READS` records that it reads the built-in pack's dist) — the split is so that the cheap five
-    // can be run on their own, which one directory called `unit` holding ten booting specs made impossible.
-    include: ['tests/unit/**/*.spec.ts', 'tests/runtime/**/*.spec.ts', 'tests/integration/**/*.spec.ts'],
+    // Specs live where the source they cover does (`CLAUDE.md`, Tests), so one pattern covers every one of
+    // them. `runtime/` boots the composed app over a temp data dir and costs 100-1120ms a file, the rest are
+    // in-process at 4-22ms; all of it is this one suite and tier 1 (the in-memory runtime is what tier 1
+    // admits, and `SUITE_READS` records that it reads the built-in pack's dist). Running the cheap ones alone
+    // is `npm run spec -- <name>`, not a directory: a directory that named the cost half was the second
+    // mechanism for a fact the .integration.spec.ts suffix already carries.
+    include: ['tests/**/*.spec.ts'],
     // Integration tests spawn real subprocesses and gate themselves on env
     // vars (RUN_INTEGRATION=1) so default `npm test` runs skip them cleanly.
     // Tier 1 (`TIER_TIMEOUT_MS`, scripts/lib/chain-steps.ts): a unit test that takes longer is hung,
