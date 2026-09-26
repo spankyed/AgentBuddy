@@ -34,7 +34,7 @@ import type {
   ControlRequestLine,
   PermissionDecision,
   PermissionHandler,
-} from './types'
+} from './types.ts'
 import { errorMessage } from '@abuddy/sdk/utils/pure';
 
 const logger = createLogger('claude-code-control')

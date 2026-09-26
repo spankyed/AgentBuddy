@@ -5,7 +5,7 @@ import { setup, assign, enqueueActions, fromCallback, spawnChild, stopChild, typ
 import { createNavHistory, pushNavHistory, goBack, goForward, canGoBack, canGoForward } from '@abuddy/sdk/fe';
 import type { ActorRefFrom } from 'xstate';
 import type { ThreadEntity, ThreadCreateData, ThreadViewData, ThreadEditFields, ThreadsSettings, MessageEntity, AgentThreadData, Tab, AgentSettings, AgentMode as AgentModeConfig, MessageReferences, CommandItem, BlockResponse } from '#generated/types.ts';
-import type { ChatState, ThreadListItem, ThreadsContext } from './contract';
+import type { ChatState, ThreadListItem, ThreadsContext } from './contract.ts';
 import type { OutgoingThreadsEvents } from '#features/threads/be/types.ts';
 import { sendToSystem } from '#generated/events.ts';
 import { Archive, Copy, Pin, Trash2 } from 'lucide-vue-next';
@@ -238,7 +238,7 @@ type ThreadEvents =
 
 const typeOf = safeEvents<ThreadEvents>();
 
-export type { ChatState, ThreadListItem } from './contract';
+export type { ChatState, ThreadListItem } from './contract.ts';
 
 // ---- Context ----
 

@@ -40,7 +40,7 @@ import { usePlugin } from '@abuddy/sdk/fe'
 
 import { computed } from 'vue';
 import { useSelector } from '@xstate/vue';
-import type { ActionsState } from './state';
+import type { ActionsState } from './state.ts';
 import ActionsList from './components/ActionsList.vue';
 import ActionDetail from './components/ActionDetail.vue';
 import type { EARS } from '@abuddy/sdk';

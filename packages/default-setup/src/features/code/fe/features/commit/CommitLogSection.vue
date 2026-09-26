@@ -97,7 +97,7 @@ import type { CommitLogEntry } from '#features/code/fe/features/commit/state.ts'
 import { ChevronDown, ChevronRight, RefreshCw, Undo2, RotateCw, Copy, Search, X } from 'lucide-vue-next'
 import RevertDialog from '#features/code/fe/features/commit/RevertDialog.vue'
 import PanelResizer from '@abuddy/ui/layout/panel-resizer'
-import { codeChild } from '../children';
+import { codeChild } from '../children.ts';
 
 const props = defineProps<{
   toast: { success: (title: string, message: string) => void } | undefined

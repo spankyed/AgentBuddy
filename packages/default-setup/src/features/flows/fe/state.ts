@@ -12,12 +12,12 @@ import type {
   NodeEntity,
   EdgeEntity,
 } from '#generated/types.ts'
-import type { FlowsContext, FlowsInboxEvent } from './contract'
+import type { FlowsContext, FlowsInboxEvent } from './contract.ts'
 import type { OutgoingFlowsEvents } from '#features/flows/be/types.ts'
 import { sendToSystem } from '#generated/events.ts'
 import { getNodeConfig, isTriggerNode } from '@abuddy/ui/components/node-styles'
 import { stepRegistry } from '@abuddy/sdk/steps'
-import { calculateLayoutAsync, allNodesHavePositions, LAYOUT_CONFIG, layoutComponentAroundSource } from './canvas/layout-utils'
+import { calculateLayoutAsync, allNodesHavePositions, LAYOUT_CONFIG, layoutComponentAroundSource } from './canvas/layout-utils.ts'
 import { computeMaxBottom, type LayoutNodeData } from '@abuddy/ui/components/node-dimensions'
 import type { FlowEntity, EARS } from '@abuddy/sdk'
 

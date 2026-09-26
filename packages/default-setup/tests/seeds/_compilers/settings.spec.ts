@@ -9,7 +9,7 @@ import * as path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import type { SeedCompileContext } from '@abuddy/sdk/build';
 import { importCompiledSeeds } from '@abuddy/sdk/utils';
-import compileSettings from '../../../src/seeds/_compilers/settings';
+import compileSettings from '../../../src/seeds/_compilers/settings.ts';
 import { ref } from '#generated/ref.ts';
 
 const PACK_DIR = path.resolve(import.meta.dirname, '../../..');

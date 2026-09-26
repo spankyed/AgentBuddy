@@ -2,7 +2,7 @@ import { execFile } from 'child_process'
 import { promisify } from 'util'
 import * as path from 'path'
 import * as fs from 'fs/promises'
-import type { GitStatusFile, StashEntry, CommitLogEntry } from '../types'
+import type { GitStatusFile, StashEntry, CommitLogEntry } from '../types.ts'
 import { createLogger } from '@abuddy/sdk/logger'
 
 const logger = createLogger('git')
@@ -1440,11 +1440,11 @@ export class GitRepository {
 
   // ── Worktree operations ──────────────────────────────────────────
 
-  async worktreeList(): Promise<import('../types').WorktreeEntry[]> {
+  async worktreeList(): Promise<import('../types.ts').WorktreeEntry[]> {
     const result = await this.executeGitCommand(['worktree', 'list', '--porcelain'])
     if (!result.success || !result.output?.trim()) return []
 
-    const entries: import('../types').WorktreeEntry[] = []
+    const entries: import('../types.ts').WorktreeEntry[] = []
     const blocks = result.output.trim().split('\n\n')
 
     for (let i = 0; i < blocks.length; i++) {

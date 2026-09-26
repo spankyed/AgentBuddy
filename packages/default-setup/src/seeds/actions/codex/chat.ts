@@ -8,18 +8,18 @@
 import type { GeneralSettings } from '#app-settings/types.ts';
 import type { ActionMeta } from '@abuddy/sdk/build';
 import type { Services, Z, EntityId } from '#generated/services.ts';
-import { createStreamWriter } from '../claude-code/_helpers/stream-writer';
-import { createToolActivityWriter } from '../claude-code/_helpers/tool-activity-writer';
-import { createThinkingWriter } from '../claude-code/_helpers/thinking-writer';
+import { createStreamWriter } from '../claude-code/_helpers/stream-writer.ts';
+import { createToolActivityWriter } from '../claude-code/_helpers/tool-activity-writer.ts';
+import { createThinkingWriter } from '../claude-code/_helpers/thinking-writer.ts';
 import {
   getCodexState, persistCodexState, setRunning, enqueueMessage,
   killTurn, ensureSessionMarker, updateChatState,
-} from './_helpers/thread-context';
-import { createStreamConsumer } from './_helpers/stream-consumer';
-import { buildSessionBootstrapPrompt } from '../_helpers/session-bootstrap';
+} from './_helpers/thread-context.ts';
+import { createStreamConsumer } from './_helpers/stream-consumer.ts';
+import { buildSessionBootstrapPrompt } from '../_helpers/session-bootstrap.ts';
 import {
   renderContinuationPrompt, renderBudgetLimitPrompt, renderObjectiveUpdatedPrompt,
-} from './_helpers/goal-prompts';
+} from './_helpers/goal-prompts.ts';
 
 export const meta: ActionMeta = {
   label: 'Codex Chat',

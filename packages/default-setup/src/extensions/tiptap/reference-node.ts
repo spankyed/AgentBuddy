@@ -1,6 +1,6 @@
 import { Node, mergeAttributes } from '@tiptap/core'
-import { referenceSuggestionPlugin } from './reference-suggestion-plugin'
-import { REFERENCE_TYPES, ALL_PROTOCOLS, type ReferenceType } from './reference-config'
+import { referenceSuggestionPlugin } from './reference-suggestion-plugin.ts'
+import { REFERENCE_TYPES, ALL_PROTOCOLS, type ReferenceType } from './reference-config.ts'
 
 function createIconSvg(type: ReferenceType): SVGSVGElement {
   const ns = 'http://www.w3.org/2000/svg'

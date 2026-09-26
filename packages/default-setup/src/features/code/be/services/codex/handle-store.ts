@@ -1,4 +1,4 @@
-import type { CodexTurnHandle } from './types'
+import type { CodexTurnHandle } from './types.ts'
 import { createLogger } from '@abuddy/sdk/logger'
 import { registerThreadTeardown } from '#features/threads/be/thread-teardown.ts'
 

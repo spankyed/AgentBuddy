@@ -101,10 +101,10 @@ import CodePanelHeader from '#features/code/fe/features/CodePanelHeader.vue'
 import NoDirectoryState from '#features/code/fe/features/NoDirectoryState.vue'
 import EmptyState from '#features/code/fe/features/EmptyState.vue'
 import { FolderOpen, FolderPlus, RefreshCw, AlertCircle, X } from 'lucide-vue-next'
-import { useExplorerSelection } from './composables/useExplorerSelection'
-import { useExplorerDragDrop } from './composables/useExplorerDragDrop'
-import type { FileInfo } from './state'
-import { codeChild } from '../children';
+import { useExplorerSelection } from './composables/useExplorerSelection.ts'
+import { useExplorerDragDrop } from './composables/useExplorerDragDrop.ts'
+import type { FileInfo } from './state.ts'
+import { codeChild } from '../children.ts';
 
 // Get actors
 const codeActor: CodeState = usePlugin()

@@ -5,7 +5,7 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { getSchemaStats, READ_HELPER_NAMES, WRITE_HELPER_NAMES } from '@abuddy/sdk/database-console';
-import * as defs from '../../src/defs/database';
+import * as defs from '../../src/defs/database.ts';
 
 const manifest = JSON.parse(fs.readFileSync(path.resolve(import.meta.dirname, '..', '..', 'abuddy.json'), 'utf-8'));
 const globals: Record<string, string> = manifest.dsl.database.globals;

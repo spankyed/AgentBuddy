@@ -1,12 +1,12 @@
 import type { StepDefinition } from '@abuddy/sdk/steps';
-import { fireStepBuild } from './build';
-import { fireStepFE } from './fe';
+import { fireStepBuild } from './build.ts';
+import { fireStepFE } from './fe.ts';
 
 export const fireStep: StepDefinition = {
   ...fireStepBuild,
   runtime: {
     handler: async (tNode, node, ctx, actor) => {
-      const { handler } = await import('./runtime');
+      const { handler } = await import('./runtime.ts');
       return handler(tNode, node, ctx, actor);
     },
   },

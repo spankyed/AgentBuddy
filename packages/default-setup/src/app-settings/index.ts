@@ -6,8 +6,8 @@ import { seedFile, seedPath } from '@abuddy/sdk/build';
 import { getCompiledDir } from '#generated/seeders.ts';
 import { loadJSON } from '@abuddy/sdk/utils';
 import type { HelpEntry } from '@abuddy/sdk/framework';
-import type { SettingsData } from './types';
-import type { SettingsSeedRecord } from '../seeds/_compilers/settings';
+import type { SettingsData } from './types.ts';
+import type { SettingsSeedRecord } from '../seeds/_compilers/settings.ts';
 
 let base: SettingsData | null = null;
 

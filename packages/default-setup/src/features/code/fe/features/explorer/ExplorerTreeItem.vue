@@ -255,11 +255,11 @@ import {
   ContextMenuCheckboxItem,
   ContextMenuItemIndicator,
 } from 'reka-ui'
-import { useProjectActions } from './composables/useProjectActions'
-import { MENU_ITEM_CLASS, MENU_ITEM_DANGER_CLASS, MENU_SEPARATOR_CLASS, MENU_DISABLED_CLASS } from './constants'
-import { getFileIcon, videoExtensions } from '../../utils/file-icons'
+import { useProjectActions } from './composables/useProjectActions.ts'
+import { MENU_ITEM_CLASS, MENU_ITEM_DANGER_CLASS, MENU_SEPARATOR_CLASS, MENU_DISABLED_CLASS } from './constants.ts'
+import { getFileIcon, videoExtensions } from '../../utils/file-icons.ts'
 import TrackedContextMenuRoot from '@abuddy/ui/design/TrackedContextMenuRoot'
-import type { FileInfo } from './state'
+import type { FileInfo } from './state.ts'
 
 const props = defineProps<{
   file: FileInfo

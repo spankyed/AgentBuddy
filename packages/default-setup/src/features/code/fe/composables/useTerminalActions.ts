@@ -1,7 +1,7 @@
 import { type Ref } from 'vue'
 import type { ActorRefFrom } from 'xstate'
-import type { TerminalInfo } from '../features/terminal/state'
-import type { terminalState } from '../features/terminal/state'
+import type { TerminalInfo } from '../features/terminal/state.ts'
+import type { terminalState } from '../features/terminal/state.ts'
 
 type TerminalActor = ActorRefFrom<typeof terminalState>
 

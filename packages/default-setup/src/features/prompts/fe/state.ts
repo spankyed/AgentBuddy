@@ -7,7 +7,7 @@ import {
   type TrailClickEvent,
 } from '@abuddy/sdk/fe'
 import type { PromptsSettings } from '#generated/types.ts'
-import type { PromptsContext, PromptsInboxEvent } from './contract'
+import type { PromptsContext, PromptsInboxEvent } from './contract.ts'
 import type { OutgoingPromptEvents } from '#features/prompts/be/types.ts'
 import type { TemplateInput } from '@abuddy/sdk'
 import { sendToSystem } from '#generated/events.ts'

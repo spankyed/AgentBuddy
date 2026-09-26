@@ -4,8 +4,8 @@
 
 import type { ActionMeta } from '@abuddy/sdk/build';
 import type { Services, Z } from '#generated/services.ts';
-import { getClaudeState, persistClaudeState, updateChatState, dequeueMessage } from './_helpers/thread-context';
-import { replayQueuedMessage } from './_helpers/stream-consumer';
+import { getClaudeState, persistClaudeState, updateChatState, dequeueMessage } from './_helpers/thread-context.ts';
+import { replayQueuedMessage } from './_helpers/stream-consumer.ts';
 
 export const meta: ActionMeta = {
   label: 'CC: Compact',

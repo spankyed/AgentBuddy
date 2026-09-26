@@ -1,4 +1,4 @@
-import type { MemoNoteDTO } from './memo-notes';
+import type { MemoNoteDTO } from './memo-notes.ts';
 import type { BaseEntity, EARS } from '#generated/ears.ts';
 
 export interface MemoEntity extends BaseEntity {

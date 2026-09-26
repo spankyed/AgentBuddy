@@ -6,8 +6,8 @@ import { startApp, startShell } from '@abuddy/testing/harness';
 import { useShell } from '@abuddy/sdk/fe';
 import { openPlugin } from '#generated/fe.ts';
 import { sendToPlugin } from '#generated/events.ts';
-import memosState from '../../../../src/features/memos/fe/state';
-import notesState from '../../../../src/features/notes/fe/state';
+import memosState from '../../../../src/features/memos/fe/state.ts';
+import notesState from '../../../../src/features/notes/fe/state.ts';
 
 const memo = { id: 'memo-1', text: 'handed over on opening', createdAt: 1 };
 

@@ -214,7 +214,7 @@ import {
 import TrackedContextMenuRoot from '@abuddy/ui/design/TrackedContextMenuRoot'
 import { MENU_ITEM_CLASS, MENU_ITEM_DANGER_CLASS, MENU_CONTENT_CLASS, MENU_SEPARATOR_CLASS } from '#features/code/fe/features/explorer/constants.ts'
 import type { CodeState } from '#features/code/fe/state.ts'
-import type { TerminalInfo } from './state'
+import type { TerminalInfo } from './state.ts'
 import { terminalPool } from '#features/code/fe/utils/terminal-pool.ts'
 import { useTerminalActions } from '#features/code/fe/composables/useTerminalActions.ts'
 import RunScriptPopover from './RunScriptPopover.vue'
@@ -224,7 +224,7 @@ import type { TerminalScript } from '#generated/types.ts'
 import type { Terminal } from '@xterm/xterm'
 import type { FitAddon } from '@xterm/addon-fit'
 import type { IDisposable } from '@xterm/xterm'
-import { codeChild } from '../children';
+import { codeChild } from '../children.ts';
 
 const props = withDefaults(defineProps<{ height?: number }>(), { height: 256 })
 

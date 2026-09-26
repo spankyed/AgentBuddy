@@ -1,6 +1,6 @@
 import { computed, type Ref } from 'vue'
 import { usePluginState } from '#generated/fe.ts'
-import type { CommandItem } from './command-config'
+import type { CommandItem } from './command-config.ts'
 
 export function useCommandItems(query: Ref<string>) {
   const commands = usePluginState('threads', (s) => s.commands)

@@ -202,7 +202,7 @@ import BaseForm from '@abuddy/ui/components/BaseForm'
 import TipSection from '@abuddy/ui/components/TipSection'
 import SimpleMonacoEditor from '@abuddy/ui/components/SimpleMonacoEditor'
 import type { NodeEntity } from '#generated/types.ts'
-import type { FormResources } from '../form-props'
+import type { FormResources } from '../form-props.ts'
 import type { ActionEntity } from '@abuddy/sdk'
 
 const props = defineProps<{

@@ -2,7 +2,7 @@
 
 import type { ActionMeta } from '@abuddy/sdk/build';
 import type { Services, EntityId } from '#generated/services.ts';
-import { getCodexState, killTurn, persistCodexState, updateChatState } from './_helpers/thread-context';
+import { getCodexState, killTurn, persistCodexState, updateChatState } from './_helpers/thread-context.ts';
 
 export const meta: ActionMeta = {
   label: 'CDX: Handle Revert',

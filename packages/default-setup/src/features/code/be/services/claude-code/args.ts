@@ -7,7 +7,7 @@
  * its mapping in this file and the matching test.
  */
 
-import type { QueryOptions } from './types'
+import type { QueryOptions } from './types.ts'
 
 /**
  * Build the argv vector for `claude` given a `QueryOptions` bag.

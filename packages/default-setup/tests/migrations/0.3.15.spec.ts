@@ -9,11 +9,11 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { untypedTx, untypedQx } from '@abuddy/ears'
 import type { EARS as SdkEARS } from '@abuddy/sdk'
 import { dropAttribute } from '@abuddy/sdk/testing'
-import { migrations } from '../../src/migrations/index'
+import { migrations } from '../../src/migrations/index.ts'
 import { EARS, createEntityWithDefaults } from '#generated/ears.ts'
 import { ref } from '#generated/ref.ts'
-import { addressLinkBlocks } from '../../src/migrations/bare-feature-ids'
-import { DEFAULT_SETTINGS_0314 } from '../../src/migrations/defaults-0.3.14'
+import { addressLinkBlocks } from '../../src/migrations/bare-feature-ids.ts'
+import { DEFAULT_SETTINGS_0314 } from '../../src/migrations/defaults-0.3.14.ts'
 
 /** The migration as the pack registers it, so this fails too if it was never listed */
 const migration = migrations.find((m) => m.target === '0.3.15')!

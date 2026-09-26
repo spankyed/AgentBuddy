@@ -2,7 +2,7 @@ import { setup, type ActorRefFrom, assign } from 'xstate';
 import { safeEvents } from '@abuddy/sdk/fe';
 import { sendToSystem } from '#generated/events.ts';
 import type { LogsSettings } from '#generated/types.ts';
-import type { LogsContext } from './contract';
+import type { LogsContext } from './contract.ts';
 import type { OutgoingLogsEvents } from '#features/logs/be/types.ts';
 
 export const id = 'logs' as const;

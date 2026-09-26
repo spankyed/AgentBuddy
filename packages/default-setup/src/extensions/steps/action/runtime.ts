@@ -3,7 +3,7 @@ import type { EARS } from '@abuddy/sdk';
 import type { NodeEntity } from '#generated/types.ts';
 import { repository } from '#generated/repository.ts';
 import { createLogger, reportError } from '@abuddy/sdk/logger';
-import { runActionCode } from './sandbox';
+import { runActionCode } from './sandbox.ts';
 
 const brainLogger = createLogger('brain', { debug: true });
 

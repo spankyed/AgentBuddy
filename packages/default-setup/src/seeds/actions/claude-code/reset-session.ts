@@ -9,7 +9,7 @@
 
 import type { ActionMeta } from '@abuddy/sdk/build';
 import type { Services, Z, EntityId } from '#generated/services.ts';
-import { clearClaudeState } from './_helpers/thread-context';
+import { clearClaudeState } from './_helpers/thread-context.ts';
 
 export const meta: ActionMeta = {
   label: 'Claude Code Reset Session',

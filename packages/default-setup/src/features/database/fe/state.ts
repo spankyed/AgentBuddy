@@ -4,10 +4,10 @@ import { contextMenu } from '@abuddy/sdk/fe'
 import { safeEvents } from '@abuddy/sdk/fe'
 import { targetIs, TRAIL_CLICK, type TrailClickEvent } from '@abuddy/sdk/fe'
 import type { DatabaseStartupData, DatabaseSettings } from '#generated/types.ts'
-import type { DatabaseContext, DatabaseInboxEvent } from './contract'
+import type { DatabaseContext, DatabaseInboxEvent } from './contract.ts'
 import type { OutgoingDatabaseEvents } from '#features/database/be/types.ts'
 import { sendToSystem } from '#generated/events.ts'
-import { attributeQueryTemplate, entityQueryTemplate, exampleQuery, relationQueryTemplate } from './constants'
+import { attributeQueryTemplate, entityQueryTemplate, exampleQuery, relationQueryTemplate } from './constants.ts'
 import { History, HardDriveDownload } from 'lucide-vue-next'
 
 /* ─────────────────────────────────────────────────────────── */

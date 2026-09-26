@@ -7,7 +7,7 @@
 
 import type { ActionMeta } from '@abuddy/sdk/build';
 import type { Services, Z } from '#generated/services.ts';
-import { formatProviderError } from '../_helpers/format-provider-error';
+import { formatProviderError } from '../_helpers/format-provider-error.ts';
 
 export const meta: ActionMeta = {
   label: 'CDX: DB Query',

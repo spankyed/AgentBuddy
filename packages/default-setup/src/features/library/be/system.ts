@@ -1,5 +1,5 @@
 // [SEARCH_INDEX_FF] The search index is dormant: ./search-index/README.md lists its call sites and how to turn it on
-import type { Contract } from './contract';
+import type { Contract } from './contract.ts';
 import { services } from '#generated/services.ts';
 import { setup } from 'xstate'
 import { defineSystem } from '@abuddy/sdk/framework'
@@ -10,12 +10,12 @@ import { repository } from '#generated/repository.ts';
 import * as path from 'path'
 import * as os from 'os'
 import * as fs from 'fs/promises'
-import { libraryService } from './services/library'
-import * as symlink from './repository/symlink'
+import { libraryService } from './services/library.ts'
+import * as symlink from './repository/symlink.ts'
 // [SEARCH_INDEX_FF] import { DEFAULT_EMBEDDING_MODEL } from '#features/library/embedding-models.ts'
 import { toMap, toIdentifierSet, mapArray } from '@abuddy/sdk/utils'
-import { exportLibrary } from './export-library'
-import { importLibrary } from './import-library'
+import { exportLibrary } from './export-library.ts'
+import { importLibrary } from './import-library.ts'
 import type { CommandItem } from '#generated/types.ts';
 import { ref } from '#generated/ref.ts';
 import { errorMessage } from '@abuddy/sdk/utils/pure';

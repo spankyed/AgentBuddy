@@ -17,8 +17,8 @@
 
 import type { ActionMeta } from '@abuddy/sdk/build';
 import type { Services, EntityId } from '#generated/services.ts';
-import { getClaudeState } from './_helpers/thread-context';
-import { backfillUserCliUuids } from './_helpers/jsonl-backfill';
+import { getClaudeState } from './_helpers/thread-context.ts';
+import { backfillUserCliUuids } from './_helpers/jsonl-backfill.ts';
 
 /** Claude prints this on a successful `--rewind-files` run. See
  * `claude-code/src/cli/print.ts:766-768` — any other exit-0 path (notably

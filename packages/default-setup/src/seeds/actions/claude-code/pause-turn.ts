@@ -5,7 +5,7 @@
 
 import type { ActionMeta } from '@abuddy/sdk/build';
 import type { Services, EntityId } from '#generated/services.ts';
-import { getClaudeState, killTurn, updateChatState } from './_helpers/thread-context';
+import { getClaudeState, killTurn, updateChatState } from './_helpers/thread-context.ts';
 
 export const meta: ActionMeta = {
   label: 'CC: Pause Turn',

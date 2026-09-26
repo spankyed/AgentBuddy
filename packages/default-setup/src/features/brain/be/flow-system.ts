@@ -6,16 +6,16 @@ import type { NodeEntity } from '#generated/types.ts';
 import { repository } from '#generated/repository.ts';
 
 import { stepRegistry } from '@abuddy/sdk/steps';
-import { createStepNodeSystem } from './step-system';
+import { createStepNodeSystem } from './step-system.ts';
 import { EARS } from '#generated/ears.ts';
 import type { ExecutionContext, TNodeEntity } from '@abuddy/sdk/steps';
 import { safeEvents } from '@abuddy/sdk/helpers';
-import { brainRuntime } from './system';
-import { brainLogger } from './utils/brain-inspect';
-import { isBrainPaused } from './utils/brain-pause';
-import { isPersistentTriggerFlow, shouldCompleteFlow } from './flow-completion';
+import { brainRuntime } from './system.ts';
+import { brainLogger } from './utils/brain-inspect.ts';
+import { isBrainPaused } from './utils/brain-pause.ts';
+import { isPersistentTriggerFlow, shouldCompleteFlow } from './flow-completion.ts';
 import { createLogger, reportError } from '@abuddy/sdk/logger';
-import { dedupeTriggerNodes, type FlowTriggerNode, type TriggerDedupeWarning } from './trigger-dedupe';
+import { dedupeTriggerNodes, type FlowTriggerNode, type TriggerDedupeWarning } from './trigger-dedupe.ts';
 
 /**
  * Flow Actor Registry

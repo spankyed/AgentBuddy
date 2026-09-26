@@ -5,7 +5,7 @@
  * Use it to schedule work on the CLI side (e.g. `--later` agentic runs).
  */
 
-import { run, runJson, type SubcommandOptions } from './subcommand'
+import { run, runJson, type SubcommandOptions } from './subcommand.ts'
 
 export interface TaskInfo {
   id: string

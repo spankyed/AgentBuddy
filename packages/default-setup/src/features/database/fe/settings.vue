@@ -71,7 +71,7 @@ import CollapsibleSection from '@abuddy/ui/design/CollapsibleSection'
 import { HardDriveDownload } from 'lucide-vue-next'
 import type { DatabaseSettings } from '#generated/types.ts'
 import { openPlugin } from '#generated/fe.ts'
-import type { DatabaseState } from './state'
+import type { DatabaseState } from './state.ts'
 
 interface Props {
   settings?: DatabaseSettings

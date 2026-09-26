@@ -1,5 +1,5 @@
 import type { Tab } from '#generated/types.ts'
-import type { ThreadTabGroup } from './types'
+import type { ThreadTabGroup } from './types.ts'
 
 export function categorizeThreadTabs(
   tabs: Tab[],

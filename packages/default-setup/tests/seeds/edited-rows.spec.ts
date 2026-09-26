@@ -7,7 +7,7 @@ import * as path from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { findWhere } from '#generated/ears.ts';
 import { repository } from '#generated/repository.ts';
-import { compileSeeds, resetDatabase, seed, snapshot } from './harness';
+import { compileSeeds, resetDatabase, seed, snapshot } from './harness.ts';
 
 type Row = { id: never; [field: string]: unknown };
 const note = (title: string) => findWhere('Note' as never, 'title', title)[0] as Row;

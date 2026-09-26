@@ -5,7 +5,7 @@ import * as pty from 'node-pty'
 import * as os from 'os'
 import * as path from 'path'
 import * as fs from 'fs'
-import type { TerminalInfo, TerminalCreate } from '../types'
+import type { TerminalInfo, TerminalCreate } from '../types.ts'
 import { EARS } from '#generated/ears.ts'
 import { repository } from '#generated/repository.ts';
 import { createLogger } from '@abuddy/sdk/logger';

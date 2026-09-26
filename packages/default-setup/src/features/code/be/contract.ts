@@ -6,9 +6,9 @@ import type {
   CodeConnectedData, CodeSystemError, CommitLogEntry, Context, DirectoryContent, FileContent, FileInfo,
   GhPRComment, GhPullRequest, GhReviewThread, GitDiff, GitStatusFile, QuickOpenResult, SearchProgress,
   SearchResult, StashEntry, TerminalInfo, WorktreeEntry,
-} from './types';
-import type { ActiveTokenInfo } from './services/gh-cli';
-import type { FileChangeInfo } from './services/gitwatcher';
+} from './types.ts';
+import type { ActiveTokenInfo } from './services/gh-cli.ts';
+import type { FileChangeInfo } from './services/gitwatcher.ts';
 
 // ── The child actors' events ─────────────────────────────────────────────────────────────────────
 // They live here rather than beside each child because this module is the contract leaf: codegen reads it as a

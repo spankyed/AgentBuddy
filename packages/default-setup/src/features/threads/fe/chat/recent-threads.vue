@@ -285,7 +285,7 @@ import {
 import { useSelector } from '@xstate/vue'
 import type { ThreadsState } from '#features/threads/fe/state.ts'
 import ThreadContextMenu from '#features/threads/fe/canvas/components/thread-context-menu.vue'
-import { getThreadDotColor, isThreadBusy } from './thread-status'
+import { getThreadDotColor, isThreadBusy } from './thread-status.ts'
 
 export interface ThreadsProps {
   currentThread: AgentThreadData | null;

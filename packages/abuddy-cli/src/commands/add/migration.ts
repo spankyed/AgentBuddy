@@ -16,7 +16,7 @@ export const migration: PackMigration = {
 `;
 
 const INDEX_TEMPLATE = (fileName: string, importName: string) => `import type { PackMigration } from '@abuddy/sdk/framework';
-import { migration as ${importName} } from './${fileName}';
+import { migration as ${importName} } from './${fileName}.ts';
 
 export const migrations: PackMigration[] = [
   ${importName},
@@ -62,13 +62,13 @@ export async function addMigration(args: string[], root: string) {
     created.push(indexPath);
   } else {
     let content = fs.readFileSync(indexPath, 'utf-8');
-    if (!content.includes(`'./${version}'`)) {
+    if (!content.includes(`'./${version}.ts'`)) {
       // Where the last import line starts (it may be the file's first line)
       const lastImportStart = `\n${content}`.lastIndexOf('\nimport ');
       if (lastImportStart !== -1) {
         const endOfLastImport = content.indexOf('\n', lastImportStart);
         content = content.slice(0, endOfLastImport + 1)
-          + `import { migration as ${importName} } from './${version}';\n`
+          + `import { migration as ${importName} } from './${version}.ts';\n`
           + content.slice(endOfLastImport + 1);
       }
       const arrayCloseIdx = content.lastIndexOf('];');

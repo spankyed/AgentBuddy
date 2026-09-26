@@ -48,7 +48,7 @@ import {
   GitBranch, ArrowRight,
 } from 'lucide-vue-next'
 import type { GhPullRequest } from '#generated/types.ts'
-import { isFailing, isPending, PENDING_STATUSES, type StatusCheck } from './merge-checks'
+import { isFailing, isPending, PENDING_STATUSES, type StatusCheck } from './merge-checks.ts'
 
 export type MergeVariant = 'clean' | 'merging' | 'blocked' | 'error' | 'pending'
 

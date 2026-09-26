@@ -9,7 +9,7 @@ import type {
   AgentMode as AgentModeConfig, AgentSettings, AgentThreadData, CommandItem, Tab, ThreadCreateData,
   ThreadEntity, ThreadTagOption, ThreadViewData, ThreadsSettings,
 } from '#generated/types.ts'
-import type { ThreadTabGroup } from './canvas/agent/tabs/types'
+import type { ThreadTabGroup } from './canvas/agent/tabs/types.ts'
 
 export type ThreadListItem = Simplify<ThreadEntity & {
   tags?: string[];

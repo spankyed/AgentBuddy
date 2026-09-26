@@ -647,7 +647,7 @@ import ToastNotification from '@abuddy/ui/design/ToastNotification'
 import ContextMenuPopup from '@abuddy/ui/design/ContextMenuPopup'
 import PanelResizer from '@abuddy/ui/layout/panel-resizer'
 import { useSectionVisibilityMenu } from '#features/code/fe/composables/useSectionVisibilityMenu.ts'
-import { codeChild } from '../children';
+import { codeChild } from '../children.ts';
 
 // Get actors
 const shell = useShell()

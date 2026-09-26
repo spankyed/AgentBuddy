@@ -6,8 +6,8 @@ import { EARS } from '#generated/ears.ts';
 import type { PackMigration } from '@abuddy/sdk/framework';
 import { createLogger } from '@abuddy/sdk/logger';
 import { ref, type FeatureName } from '#generated/ref.ts';
-import { addressLinkBlocks, refOf0314Feature } from './bare-feature-ids';
-import { DEFAULT_SETTINGS_0314 } from './defaults-0.3.14';
+import { addressLinkBlocks, refOf0314Feature } from './bare-feature-ids.ts';
+import { DEFAULT_SETTINGS_0314 } from './defaults-0.3.14.ts';
 import { isDeepStrictEqual } from 'node:util';
 import { hasOwn, isPlainObject } from '@abuddy/sdk/utils/pure';
 

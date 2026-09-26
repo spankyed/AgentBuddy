@@ -109,7 +109,7 @@ import BaseForm from '@abuddy/ui/components/BaseForm'
 import TipSection from '@abuddy/ui/components/TipSection'
 import SimpleMonacoEditor from '@abuddy/ui/components/SimpleMonacoEditor'
 import type { NodeEntity } from '#generated/types.ts'
-import type { TransformNode, TransformOutputType } from './types'
+import type { TransformNode, TransformOutputType } from './types.ts'
 
 type FieldMapping = NonNullable<TransformNode['fieldMappings']>[number]
 

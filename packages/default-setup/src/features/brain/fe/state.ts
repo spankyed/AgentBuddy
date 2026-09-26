@@ -4,7 +4,7 @@ import { breadcrumbList } from '@abuddy/sdk/fe';
 import { contextMenuFn } from '@abuddy/sdk/fe';
 import { Activity, Play, RefreshCw, Power, PlayCircle, Pause } from 'lucide-vue-next';
 import { targetIs, type TrailClickEvent } from '@abuddy/sdk/fe';
-import type { BrainContext } from './contract';
+import type { BrainContext } from './contract.ts';
 import type { OutgoingBrainEvents } from '#features/brain/be/types.ts'
 import type { FlowTNodeData } from '#generated/types.ts';
 import { sendToSystem } from '#generated/events.ts';
@@ -14,7 +14,7 @@ import {
   denormalizeTNodeTree,
   normalizeTNodeTree,
   type NormalizedTNodeTree,
-} from './trace-tree';
+} from './trace-tree.ts';
 
 export const id = 'brain' as const;
 export type BrainState = ActorRefFrom<typeof brainState>

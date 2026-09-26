@@ -2,8 +2,8 @@ import { defineAsyncComponent } from 'vue';
 import { definePlugin } from '@abuddy/sdk/fe';
 
 import { Brain } from 'lucide-vue-next';
-import state from './state';
-import type { BrainContext } from './contract';
+import state from './state.ts';
+import type { BrainContext } from './contract.ts';
 import settings from './settings.vue';
 
 const canvas = defineAsyncComponent(() => import('./canvas.vue'));

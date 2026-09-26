@@ -263,8 +263,8 @@ import PRInfo from '#features/code/fe/features/pull-request/PRInfo.vue'
 import PRComments from '#features/code/fe/features/pull-request/PRComments.vue'
 import PRActionBar from '#features/code/fe/features/pull-request/PRActionBar.vue'
 import type { GitStatusFile } from '#features/code/fe/features/commit/state.ts'
-import type { TreeNode } from './types'
-import { codeChild } from '../children';
+import type { TreeNode } from './types.ts'
+import { codeChild } from '../children.ts';
 
 // Get actors
 const shell = useShell()

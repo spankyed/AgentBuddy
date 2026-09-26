@@ -4,8 +4,8 @@ import { setup } from 'xstate';
 import { defineSystem } from '@abuddy/sdk/framework';
 
 import { repository } from '#generated/repository.ts';
-import { addMemoNote, type MemoNoteDTO } from './memo-notes';
-import type { MemoDTO } from './types';
+import { addMemoNote, type MemoNoteDTO } from './memo-notes.ts';
+import type { MemoDTO } from './types.ts';
 
 export const memosSpec = defineSystem<Contract>();
 

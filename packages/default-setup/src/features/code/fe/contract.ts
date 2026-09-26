@@ -8,7 +8,7 @@ import type { HotkeysMap, NavHistory, PluginInbox, TabGroup } from '@abuddy/sdk/
 import type { ActionEntity, PromptEntity } from '@abuddy/sdk'
 import type { EARS } from '#generated/ears.ts'
 import type { CodeSettings } from '#generated/types.ts'
-import type { GitDiff, GitStatusFile, TerminalInfo } from '../be/types'
+import type { GitDiff, GitStatusFile, TerminalInfo } from '../be/types.ts'
 
 export interface OpenFile {
   path: string

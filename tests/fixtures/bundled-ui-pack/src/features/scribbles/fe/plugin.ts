@@ -1,6 +1,6 @@
 import { definePlugin } from '@abuddy/sdk/fe';
 import { NotebookPen } from 'lucide-vue-next';
-import state from './state';
+import state from './state.ts';
 import canvas from './canvas/editor.vue';
 
 const scribblesPlugin = definePlugin({

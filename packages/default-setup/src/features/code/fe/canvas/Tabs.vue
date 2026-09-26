@@ -370,11 +370,11 @@ import {
 import type { OpenFile, TerminalTab, TabGroup as TabGroupType } from '#features/code/fe/state.ts'
 import type { ActionTab } from '#features/code/fe/features/actions/state.ts'
 import type { PromptTab } from '#features/code/fe/features/prompts/state.ts'
-import { groupTabs } from '../utils/tab-management'
-import { getFileIcon } from '../utils/file-icons'
+import { groupTabs } from '../utils/tab-management.ts'
+import { getFileIcon } from '../utils/file-icons.ts'
 import GroupLabel from '../components/GroupLabel.vue'
 import TabContextMenu from '../components/TabContextMenu.vue'
-import { useTabDragDrop } from '../composables/useTabDragDrop'
+import { useTabDragDrop } from '../composables/useTabDragDrop.ts'
 import {
   ContextMenuRoot,
   ContextMenuTrigger,

@@ -4,8 +4,8 @@ import { createRelation, removeRelation, RepositoryError, RepositoryErrorCode } 
 import { createEntityWithDefaults, updateEntity } from '#generated/ears.ts';
 import { trash } from '@abuddy/sdk/repositories';
 
-import { REFERENCES } from '../types';
-import { syncReferences } from './link-utils';
+import { REFERENCES } from '../types.ts';
+import { syncReferences } from './link-utils.ts';
 import type { NoteEntity } from '#features/notes/be/types.ts';
 
 /** Strips the sub-document link to a note from its parent's content */

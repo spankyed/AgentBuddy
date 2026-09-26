@@ -2,8 +2,8 @@
 
 import type { ActionMeta } from '@abuddy/sdk/build';
 import type { Services, EntityId } from '#generated/services.ts';
-import { getCodexState, persistCodexState, updateCodexState, updateChatState } from './_helpers/thread-context';
-import { parseUnifiedDiff } from '../claude-code/_helpers/parse-diff';
+import { getCodexState, persistCodexState, updateCodexState, updateChatState } from './_helpers/thread-context.ts';
+import { parseUnifiedDiff } from '../claude-code/_helpers/parse-diff.ts';
 
 export const meta: ActionMeta = {
   label: 'CDX: Turn Completed',

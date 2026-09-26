@@ -1,4 +1,4 @@
-import type { LogEntry } from './types';
+import type { LogEntry } from './types.ts';
 
 const escapeRegExp = (text: string) => text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 

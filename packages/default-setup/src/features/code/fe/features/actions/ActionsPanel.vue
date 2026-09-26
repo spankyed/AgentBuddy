@@ -252,11 +252,11 @@ import {
   ContextMenuItem,
   ContextMenuPortal,
 } from 'reka-ui'
-import { MENU_CONTENT_CLASS, MENU_ITEM_CLASS } from '../explorer/constants'
+import { MENU_CONTENT_CLASS, MENU_ITEM_CLASS } from '../explorer/constants.ts'
 import { useInfiniteScroll } from '@abuddy/ui/composables/useInfiniteScroll'
 import Button from '@abuddy/ui/design/button'
 import uFuzzy from '@leeoniya/ufuzzy'
-import { codeChild } from '../children';
+import { codeChild } from '../children.ts';
 
 // Get actors - use main actions plugin for state, codeActions for tab management
 const codeActor: CodeState = usePlugin()

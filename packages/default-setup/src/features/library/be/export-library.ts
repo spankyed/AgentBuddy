@@ -7,12 +7,12 @@
 
 import { qx } from '#generated/ears.ts';
 import { EARS } from '#generated/ears.ts'
-import { isRootCollection, findDocumentCollection } from './repository/helpers'
+import { isRootCollection, findDocumentCollection } from './repository/helpers.ts'
 import { extractMediaRefs, copyMediaByRef } from '@abuddy/sdk/utils'
 import { createExportDir } from '@abuddy/sdk/utils'
-import type { ExportFormat } from './export-types'
-import { exportLibraryMarkdown } from './export-markdown'
-import { countExportedItems } from './utils'
+import type { ExportFormat } from './export-types.ts'
+import { exportLibraryMarkdown } from './export-markdown.ts'
+import { countExportedItems } from './utils.ts'
 import { writeExportJson } from '@abuddy/sdk/utils'
 import type { ContentSection } from '#features/library/be/types.ts';
 import type { ExportedItem } from '#features/library/be/export-types.ts';

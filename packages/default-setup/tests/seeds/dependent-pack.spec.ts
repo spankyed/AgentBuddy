@@ -13,7 +13,7 @@ import {
   type PackManifest, type PackSnapshot, type SeedDependency,
 } from '@abuddy/sdk/build';
 import { createSeeder } from '@abuddy/sdk/seed';
-import { PACK_DIR, resetDatabase, snapshot } from './harness';
+import { PACK_DIR, resetDatabase, snapshot } from './harness.ts';
 
 const FIXTURE = path.join(PACK_DIR, 'tests/_support/fixtures/dependent-pack');
 const manifest = JSON.parse(fs.readFileSync(path.join(FIXTURE, 'abuddy.json'), 'utf-8')) as PackManifest;

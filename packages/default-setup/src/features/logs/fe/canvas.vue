@@ -343,7 +343,7 @@
 import { usePlugin } from '@abuddy/sdk/fe'
 import { computed, ref, reactive, watch, onMounted, onUnmounted } from 'vue';
 import { Search, ChevronRight, AlertCircle, Info, AlertTriangle, Bug, FileWarning, Terminal, X, Trash, Radio, Copy, Check } from 'lucide-vue-next';
-import type { LogsState, LogEntry } from './state';
+import type { LogsState, LogEntry } from './state.ts';
 import { useSelector } from '@xstate/vue';
 import DataRenderer from '@abuddy/ui/components/DataRenderer';
 import { untypedOpenPlugin } from '@abuddy/sdk/fe'
@@ -352,7 +352,7 @@ import { resolveName } from '@abuddy/sdk/ids'
 const HOST_SETTINGS = resolveName('settings', 'host')
 import { updateSettings } from '@abuddy/sdk/fe'
 import { ref as featureRef } from '#generated/ref.ts'
-import { parseSearchTerm, searchLog, highlightSearchTerm } from './search';
+import { parseSearchTerm, searchLog, highlightSearchTerm } from './search.ts';
 
 const logsContent = ref<HTMLElement>();
 

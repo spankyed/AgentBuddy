@@ -2,28 +2,28 @@ import { setup, type ActorRefFrom, type AnyActorRef, assign, enqueueActions } fr
 
 import breadcrumb from '@abuddy/sdk/fe';
 import { type HotkeyEvent, type HotkeysMap, createHotkeyProcessor } from '@abuddy/sdk/fe';
-import { saveOpenTabs, loadPersistedTabs, sortTabsByPinned } from './utils/persisted-tabs';
-import { loadRecentFiles, addRecentFile } from './utils/recent-files';
-import { pushTabViewHistory, nextActiveFromHistory } from './utils/tab-management';
+import { saveOpenTabs, loadPersistedTabs, sortTabsByPinned } from './utils/persisted-tabs.ts';
+import { loadRecentFiles, addRecentFile } from './utils/recent-files.ts';
+import { pushTabViewHistory, nextActiveFromHistory } from './utils/tab-management.ts';
 import { saveTabGroups, loadTabGroups, getNextAvailableColor, type TabGroupColor, type TabGroup } from '@abuddy/sdk/fe';
 import { createNavHistory, pushNavHistory, goBack, goForward, canGoBack, canGoForward } from '@abuddy/sdk/fe';
 import type { CodeSettings } from '#generated/types.ts';
-import type { ActionTab, CodeContext as Context, CodeInboxEvent, OpenFile, PanelType, PromptTab, TerminalTab } from './contract';
-export type { OpenFile, TerminalTab, QuickOpenResult, PanelType } from './contract';
-export type { CodeContext as Context } from './contract';
+import type { ActionTab, CodeContext as Context, CodeInboxEvent, OpenFile, PanelType, PromptTab, TerminalTab } from './contract.ts';
+export type { OpenFile, TerminalTab, QuickOpenResult, PanelType } from './contract.ts';
+export type { CodeContext as Context } from './contract.ts';
 import type {  } from '#features/code/be/types.ts'
 import type { OutgoingCodeEvents } from '#features/code/be/contract.ts';
 
 // Import child state machines
-import { explorerState } from './features/explorer/state';
-import { searchState } from './features/search/state';
-import { commitState } from './features/commit/state';
-import { pullRequestState } from './features/pull-request/state';
-import { terminalState, type TerminalInfo } from './features/terminal/state';
-import { actionsState } from './features/actions/state';
-import { promptsState } from './features/prompts/state';
+import { explorerState } from './features/explorer/state.ts';
+import { searchState } from './features/search/state.ts';
+import { commitState } from './features/commit/state.ts';
+import { pullRequestState } from './features/pull-request/state.ts';
+import { terminalState, type TerminalInfo } from './features/terminal/state.ts';
+import { actionsState } from './features/actions/state.ts';
+import { promptsState } from './features/prompts/state.ts';
 import type { KeyboardShortcut } from '@abuddy/sdk/types';
-import { codeChild, routeToCodeChild, CODE_CHILD_IDS } from './features/children';
+import { codeChild, routeToCodeChild, CODE_CHILD_IDS } from './features/children.ts';
 
 export const id = 'code' as const;
 

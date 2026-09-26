@@ -111,7 +111,7 @@ import {
 } from 'reka-ui';
 import ThreadContextMenu from '#features/threads/fe/canvas/components/thread-context-menu.vue';
 import type { Tab } from '#generated/types.ts';
-import type { ThreadTabGroup } from './types';
+import type { ThreadTabGroup } from './types.ts';
 import { useSelector } from '@xstate/vue';
 import type { ThreadsState } from '#features/threads/fe/state.ts';
 

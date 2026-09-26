@@ -1,9 +1,9 @@
 import { broadcastToPlugin } from '#generated/events.ts';
 import { assign, setup } from 'xstate'
 
-import { FileSystemRepository } from '../services/filesystem'
-import { GitWatcherService } from '../services/gitwatcher'
-import type { FileChangeInfo } from '../services/gitwatcher'
+import { FileSystemRepository } from '../services/filesystem.ts'
+import { GitWatcherService } from '../services/gitwatcher.ts'
+import type { FileChangeInfo } from '../services/gitwatcher.ts'
 
 const pluginId = 'code' as const
 

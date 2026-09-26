@@ -14,8 +14,8 @@
  */
 
 import type { Services, EntityId } from '#generated/services.ts';
-import type { ThinkingBlockProps } from './thinking-types';
-import { formatDuration } from './tool-activity-label';
+import type { ThinkingBlockProps } from './thinking-types.ts';
+import { formatDuration } from './tool-activity-label.ts';
 
 export interface ThinkingWriterOptions {
   /** Minimum ms between `updateMessageState` calls. Default 250ms. */

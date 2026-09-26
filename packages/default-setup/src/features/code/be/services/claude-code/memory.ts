@@ -2,7 +2,7 @@
  * `claude memory` — list/add/remove memory files (CLAUDE.md fragments).
  */
 
-import { run, runJson, type SubcommandOptions } from './subcommand'
+import { run, runJson, type SubcommandOptions } from './subcommand.ts'
 
 type Scope = 'user' | 'project' | 'local'
 

@@ -141,7 +141,7 @@ import {
 import BaseForm from '@abuddy/ui/components/BaseForm'
 import TipSection from '@abuddy/ui/components/TipSection'
 import type { NodeEntity } from '#generated/types.ts'
-import type { FormResources } from '../form-props'
+import type { FormResources } from '../form-props.ts'
 import { sendToPlugin } from '#generated/events.ts'
 import type { FlowEntity } from '@abuddy/sdk'
 

@@ -1,6 +1,6 @@
 import { definePlugin } from '@abuddy/sdk/fe';
 import { StickyNote } from 'lucide-vue-next';
-import state from './state';
+import state from './state.ts';
 import canvas from './canvas/list.vue';
 import settings from './settings.vue';
 

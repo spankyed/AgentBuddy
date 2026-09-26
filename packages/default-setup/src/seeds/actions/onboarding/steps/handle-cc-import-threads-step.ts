@@ -1,7 +1,7 @@
 import type { GeneralSettings } from '#app-settings/types.ts';
 import type { ActionMeta } from '@abuddy/sdk/build';
 import type { EntityId, Services } from '#generated/services.ts';
-import { getOnboardingState, persistOnboardingState, showChooseModeOrFinish, flashState, getRecentImportedThreads } from '../onboarding-helpers';
+import { getOnboardingState, persistOnboardingState, showChooseModeOrFinish, flashState, getRecentImportedThreads } from '../onboarding-helpers.ts';
 
 export const meta: ActionMeta = {
   label: 'Handle Import Threads Step',

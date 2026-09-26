@@ -7,7 +7,7 @@ import {
   type TrailClickEvent,
 } from '@abuddy/sdk/fe'
 import type { ActionsSettings } from '#generated/types.ts'
-import type { ActionsContext, ActionsInboxEvent } from './contract'
+import type { ActionsContext, ActionsInboxEvent } from './contract.ts'
 import type { OutgoingActionEvents } from '#features/actions/be/types.ts'
 import type { ActionParameter } from '@abuddy/sdk'
 import { sendToSystem } from '#generated/events.ts'

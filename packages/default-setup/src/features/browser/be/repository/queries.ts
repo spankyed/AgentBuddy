@@ -1,9 +1,9 @@
 
 import { findAll } from '#generated/ears.ts';
 import { EARS } from '#generated/ears.ts';
-import type { BrowserTabEntity, SavedTab, BrowserBookmarkEntity, SavedBookmark } from '../types';
-import { normalizeSavedTabs } from './normalize-tabs';
-import { browserCommands } from './commands';
+import type { BrowserTabEntity, SavedTab, BrowserBookmarkEntity, SavedBookmark } from '../types.ts';
+import { normalizeSavedTabs } from './normalize-tabs.ts';
+import { browserCommands } from './commands.ts';
 import { createLogger } from '@abuddy/sdk/logger';
 
 const logger = createLogger('browser');

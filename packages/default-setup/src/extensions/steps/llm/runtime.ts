@@ -6,7 +6,7 @@ import { createLogger, reportError } from '@abuddy/sdk/logger';
 import { executeTemplate, createTemplateResolver } from '@abuddy/sdk/templates';
 import { services } from '@abuddy/sdk/services';
 import { isModelId } from '@abuddy/sdk/models';
-import { DEFAULT_MODEL } from './model';
+import { DEFAULT_MODEL } from './model.ts';
 
 const brainLogger = createLogger('brain', { debug: true });
 

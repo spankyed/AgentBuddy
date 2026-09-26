@@ -6,12 +6,12 @@ import { setup } from 'xstate';
 import { defineSystem } from '@abuddy/sdk/framework';
 
 import { EARS } from '#generated/ears.ts';
-import type { Contract } from './contract';
-import type { OutgoingActionEvents } from './types';
+import type { Contract } from './contract.ts';
+import type { OutgoingActionEvents } from './types.ts';
 import { repository } from '#generated/repository.ts';
 import { createLogger } from '@abuddy/sdk/logger';
 import { toMap, toIdentifierSet, mapScalar } from '@abuddy/sdk/utils';
-import { exportActions } from './repository/export-actions';
+import { exportActions } from './repository/export-actions.ts';
 import { ref } from '#generated/ref.ts';
 import { errorMessage } from '@abuddy/sdk/utils/pure';
 

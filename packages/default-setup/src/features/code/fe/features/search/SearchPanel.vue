@@ -196,7 +196,7 @@ import { ChevronRight, ChevronsDownUp, Search } from 'lucide-vue-next'
 import CodePanelHeader from '#features/code/fe/features/CodePanelHeader.vue'
 import NoDirectoryState from '#features/code/fe/features/NoDirectoryState.vue'
 import EmptyState from '#features/code/fe/features/EmptyState.vue'
-import { codeChild } from '../children';
+import { codeChild } from '../children.ts';
 
 // Get actors
 const codeActor: CodeState = usePlugin()

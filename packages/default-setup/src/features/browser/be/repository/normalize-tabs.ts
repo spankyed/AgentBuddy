@@ -1,5 +1,5 @@
 import { EARS } from '#generated/ears.ts';
-import type { BrowserTabId, SavedTab } from '../types';
+import type { BrowserTabId, SavedTab } from '../types.ts';
 
 export interface NormalizeTabsResult {
   tabs: SavedTab[];

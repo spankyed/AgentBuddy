@@ -306,7 +306,7 @@ import {
   HardDrive,
   Image as ImageIcon
 } from 'lucide-vue-next';
-import { id, type DatabaseState } from '../state';
+import { id, type DatabaseState } from '../state.ts';
 import { sendToSystem } from '#generated/events.ts';
 import ToastNotification from '@abuddy/ui/design/ToastNotification';
 

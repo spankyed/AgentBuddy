@@ -14,7 +14,7 @@ import type {
   ThreadTypeShortCode,
   ThreadConnectedData,
   AgentThreadData, RecentThreadRefreshData, AgentConnectedData, Tab, ArtifactType,
-} from '../types';
+} from '../types.ts';
 import type { ThreadsSettings, ThreadTagOption } from '#generated/types.ts';
 import type { ArtifactItem } from '@abuddy/sdk/artifacts';
 import { ref } from '#generated/ref.ts';

@@ -1,4 +1,4 @@
-import type { ThreadTabGroup } from './types'
+import type { ThreadTabGroup } from './types.ts'
 
 const STORAGE_KEY = 'threads-tab-groups'
 

@@ -4,7 +4,7 @@ import { useSelector } from '@xstate/vue';
 import { usePlugin } from '@abuddy/sdk/fe';
 // Comes from the host app at runtime, not bundled into the pack
 import TiptapEditor from '@abuddy/ui/components/tiptap/TiptapEditor';
-import { id, type MemosState } from '../state';
+import { id, type MemosState } from '../state.ts';
 
 const actor: MemosState = usePlugin();
 const memos = useSelector(actor, (state) => state.context.memos);

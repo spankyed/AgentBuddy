@@ -23,16 +23,16 @@ import {
 } from 'child_process'
 import type { Readable, Writable } from 'stream'
 
-import { resolveForService } from '../../utils/resolve-cli'
+import { resolveForService } from '../../utils/resolve-cli.ts'
 import { createLogger } from '@abuddy/sdk/logger'
 
-import { decodeNdjson, encodeNdjsonLine, type DecodedLine } from './ndjson'
+import { decodeNdjson, encodeNdjsonLine, type DecodedLine } from './ndjson.ts'
 import {
   ClaudeAbortError,
   ClaudeCliNotFoundError,
   ClaudeExitError,
   ClaudeTimeoutError,
-} from './errors'
+} from './errors.ts'
 
 const logger = createLogger('claude-code-runner')
 

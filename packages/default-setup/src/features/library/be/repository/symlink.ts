@@ -3,8 +3,8 @@ import * as fs from 'fs/promises'
 import * as path from 'path'
 
 import { EARS } from '#generated/ears.ts'
-import type { LibraryItem, FolderContents, BreadcrumbItem } from '../types'
-import { formatFileSize, findParentCollection } from './helpers'
+import type { LibraryItem, FolderContents, BreadcrumbItem } from '../types.ts'
+import { formatFileSize, findParentCollection } from './helpers.ts'
 import type { DocumentShortCode } from '#features/library/be/types.ts';
 
 const SYMLINK_PREFIX = 'symlink:'

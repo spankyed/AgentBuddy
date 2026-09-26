@@ -2,8 +2,8 @@ import { findById, findAll, qx } from '#generated/ears.ts';
 import { EARS } from '#generated/ears.ts';
 import { trash } from '@abuddy/sdk/repositories';
 
-import type { NoteDTO } from '../types';
-import { REFERENCES } from '../types';
+import type { NoteDTO } from '../types.ts';
+import { REFERENCES } from '../types.ts';
 import type { NoteEntity } from '#features/notes/be/types.ts';
 
 function toDTO(note: NoteEntity): NoteDTO {

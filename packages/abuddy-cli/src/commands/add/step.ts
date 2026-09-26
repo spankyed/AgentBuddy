@@ -32,7 +32,7 @@ Example:
 // Build-time facet: no FE or runtime imports, so it can ship in build/steps.build.mjs
 const BUILD = (type: string, camel: string, pascal: string) => `import type { StepDefinition, StepCompileResult, StepValidationError } from '@abuddy/sdk/steps';
 import { EARS } from '@abuddy/sdk';
-import type { DSL${pascal}Node } from './types';
+import type { DSL${pascal}Node } from './types.ts';
 
 export const ${camel}StepBuild: StepDefinition = {
   type: '${type}',
@@ -55,8 +55,8 @@ export const ${camel}StepBuild: StepDefinition = {
 `;
 
 const INDEX = (camel: string) => `import type { StepDefinition } from '@abuddy/sdk/steps';
-import { ${camel}StepBuild } from './build';
-import { ${camel}StepFE } from './fe';
+import { ${camel}StepBuild } from './build.ts';
+import { ${camel}StepFE } from './fe.ts';
 
 export const ${camel}Step: StepDefinition = {
   ...${camel}StepBuild,
@@ -105,7 +105,7 @@ export interface ${pascal}Node extends NodeBase {
 // and listens for `update-node` (the changed fields) and `close`
 const FORM_VUE = (pascal: string) => `<script setup lang="ts">
 import BaseForm from '@abuddy/ui/components/BaseForm';
-import type { ${pascal}Node } from './types';
+import type { ${pascal}Node } from './types.ts';
 
 defineProps<{
   node: ${pascal}Node;
@@ -171,7 +171,7 @@ export async function addStep(args: string[], root: string) {
 
     updateRegisterArray(
       path.join(root, registerPath),
-      `import { ${exportName} } from './${type}';`,
+      `import { ${exportName} } from './${type}/index.ts';`,
       `  ${exportName},\n`,
     );
 
@@ -179,7 +179,7 @@ export async function addStep(args: string[], root: string) {
     const feExportName = `${camel}StepFE`;
     updateRegisterArray(
       path.join(root, feRegisterPath),
-      `import { ${feExportName} } from './${type}/fe';`,
+      `import { ${feExportName} } from './${type}/fe.ts';`,
       `  ${feExportName},\n`,
     );
   }
@@ -187,7 +187,7 @@ export async function addStep(args: string[], root: string) {
   if (stepsConfig.build) {
     updateRegisterArray(
       path.join(root, stepsConfig.build),
-      `import { ${camel}StepBuild } from './${type}/build';`,
+      `import { ${camel}StepBuild } from './${type}/build.ts';`,
       `  ${camel}StepBuild,\n`,
     );
   }

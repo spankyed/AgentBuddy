@@ -6,7 +6,7 @@
  */
 
 import { spawn, type ChildProcess } from 'child_process'
-import { resolveForService } from '../../utils/resolve-cli'
+import { resolveForService } from '../../utils/resolve-cli.ts'
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 

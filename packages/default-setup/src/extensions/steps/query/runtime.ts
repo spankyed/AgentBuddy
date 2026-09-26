@@ -4,9 +4,9 @@ import { isModelId } from '@abuddy/sdk/models';
 import { services } from '#generated/services.ts';
 import { executeQuery } from '#features/database/be/execute/query.ts';
 import { WRITE_HELPER_NAMES } from '@abuddy/sdk/database-console';
-import { DEFAULT_MODEL } from '../llm/model';
-import { DEFAULT_RESULT_KEY } from './result-key';
-import type { QueryNode } from './types';
+import { DEFAULT_MODEL } from '../llm/model.ts';
+import { DEFAULT_RESULT_KEY } from './result-key.ts';
+import type { QueryNode } from './types.ts';
 import { errorMessage } from '@abuddy/sdk/utils/pure';
 
 const brainLogger = createLogger('brain', { debug: true });

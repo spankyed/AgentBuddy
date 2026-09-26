@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { useSelector } from '@xstate/vue';
 import { usePlugin } from '@abuddy/sdk/fe';
-import type { NotesState } from '../state';
+import type { NotesState } from '../state.ts';
 
 const actor: NotesState = usePlugin();
 const label = useSelector(actor, (state) => state.context.label);

@@ -46,7 +46,7 @@
 </template>
 
 <script setup lang="ts">
-import type { ResultType } from '../composables/useResultAnalysis';
+import type { ResultType } from '../composables/useResultAnalysis.ts';
 
 interface Props {
   queryResult: any;

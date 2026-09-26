@@ -5,7 +5,7 @@
  * directories. This namespace just exposes what the CLI already knows about.
  */
 
-import { run, type SubcommandOptions } from './subcommand'
+import { run, type SubcommandOptions } from './subcommand.ts'
 
 export interface AgentInfo {
   name: string

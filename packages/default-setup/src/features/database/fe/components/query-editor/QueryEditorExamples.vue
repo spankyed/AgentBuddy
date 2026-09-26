@@ -18,10 +18,10 @@ import { usePlugin } from '@abuddy/sdk/fe'
 
 import { computed } from 'vue';
 import { useSelector } from '@xstate/vue';
-import type { DatabaseState } from '../../state';
+import type { DatabaseState } from '../../state.ts';
 import ExampleCard from './ExampleCard.vue';
-import { queryExamples } from './query-examples';
-import { transactionExamples } from './transaction-examples';
+import { queryExamples } from './query-examples.ts';
+import { transactionExamples } from './transaction-examples.ts';
 
 const actor: DatabaseState = usePlugin();
 const mode = useSelector(actor, (state) => state.context.mode);

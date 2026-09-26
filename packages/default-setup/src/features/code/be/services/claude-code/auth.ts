@@ -6,7 +6,7 @@
  * usually delegate to the CLI UI rather than call this programmatically.
  */
 
-import { run, runJson, type SubcommandOptions } from './subcommand'
+import { run, runJson, type SubcommandOptions } from './subcommand.ts'
 
 export interface AuthLoginOptions extends SubcommandOptions {
   email?: string

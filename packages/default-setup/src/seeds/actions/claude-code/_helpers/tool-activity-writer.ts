@@ -34,8 +34,8 @@
  */
 
 import type { Services, EntityId } from '#generated/services.ts';
-import { computeLabel } from './tool-activity-label';
-import type { ToolActivityEntry, ToolActivityBlockProps } from './tool-activity-types';
+import { computeLabel } from './tool-activity-label.ts';
+import type { ToolActivityEntry, ToolActivityBlockProps } from './tool-activity-types.ts';
 
 export interface ToolActivityWriterOptions {
   /** Minimum ms between `updateMessageState` calls. Default 250ms. */

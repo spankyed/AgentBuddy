@@ -2,7 +2,7 @@
 
 import type { ActionMeta } from '@abuddy/sdk/build';
 import type { Services } from '#generated/services.ts';
-import { getCodexState, persistCodexState } from './_helpers/thread-context';
+import { getCodexState, persistCodexState } from './_helpers/thread-context.ts';
 
 export const meta: ActionMeta = {
   label: 'CDX: Goal Continue',

@@ -5,7 +5,7 @@
 
 import type { ActionMeta } from '@abuddy/sdk/build';
 import type { Services } from '#generated/services.ts';
-import { dequeueMessage, getClaudeState } from './_helpers/thread-context';
+import { dequeueMessage, getClaudeState } from './_helpers/thread-context.ts';
 
 export const meta: ActionMeta = {
   label: 'CC: Unqueue Message',

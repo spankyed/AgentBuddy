@@ -6,7 +6,7 @@
 
 import type { ActionMeta } from '@abuddy/sdk/build';
 import type { Services, Z } from '#generated/services.ts';
-import { getClaudeState, persistClaudeState, setProjectDirectory, updateClaudeState } from './_helpers/thread-context';
+import { getClaudeState, persistClaudeState, setProjectDirectory, updateClaudeState } from './_helpers/thread-context.ts';
 
 export const meta: ActionMeta = {
   label: 'CC: Dir Ops',

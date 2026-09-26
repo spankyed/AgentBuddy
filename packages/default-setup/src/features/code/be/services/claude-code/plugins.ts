@@ -5,7 +5,7 @@
  * The CLI accepts both `plugin` and `plugins`; we use `plugin` internally.
  */
 
-import { run, runJson, scopeArg, type SubcommandOptions } from './subcommand'
+import { run, runJson, scopeArg, type SubcommandOptions } from './subcommand.ts'
 
 type Scope = 'user' | 'project' | 'local'
 

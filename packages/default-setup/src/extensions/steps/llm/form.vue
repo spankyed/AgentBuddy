@@ -222,7 +222,7 @@ import {
 import BaseForm from '@abuddy/ui/components/BaseForm'
 import TipSection from '@abuddy/ui/components/TipSection'
 import type { NodeEntity } from '#generated/types.ts'
-import type { FormResources } from '../form-props'
+import type { FormResources } from '../form-props.ts'
 import { parseModelId, providerLabels, type ModelCatalogEntry, type ModelId, type ProviderName } from '@abuddy/sdk/models'
 import type { PromptEntity } from '@abuddy/sdk'
 

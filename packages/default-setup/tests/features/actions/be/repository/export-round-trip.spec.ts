@@ -5,8 +5,8 @@ import { repository } from '#generated/repository.ts';
 import { resetTestData } from '@abuddy/sdk/testing';
 import { exportActions } from '#features/actions/be/repository/export-actions.ts';
 import { exportPrompts } from '#features/prompts/be/repository/export-prompts.ts';
-import { actionFixtures } from '../../../../_support/action-fixtures';
-import { promptFixtures } from '../../../../_support/prompt-fixtures';
+import { actionFixtures } from '../../../../_support/action-fixtures.ts';
+import { promptFixtures } from '../../../../_support/prompt-fixtures.ts';
 
 /**
  * Exporting actions and exporting prompts are one routine over two entity types: the same file written,

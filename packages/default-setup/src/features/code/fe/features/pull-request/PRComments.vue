@@ -287,7 +287,7 @@ import {
 } from 'lucide-vue-next'
 import TiptapEditor from '@abuddy/ui/components/tiptap/TiptapEditor'
 import type { GhPRComment, GhReviewThread, GhReviewComment } from '#generated/types.ts'
-import { getCommentDatabaseId } from './comment-id'
+import { getCommentDatabaseId } from './comment-id.ts'
 
 const props = defineProps<{
   comments: GhPRComment[]

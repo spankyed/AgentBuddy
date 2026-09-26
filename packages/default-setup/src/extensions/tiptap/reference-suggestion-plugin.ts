@@ -1,7 +1,7 @@
 import { Plugin } from '@tiptap/pm/state'
 import type { Editor } from '@tiptap/core'
-import { referenceSuggestionPluginKey, type ReferenceSuggestionState } from './reference-plugin-key'
-import { CATEGORIES } from './reference-config'
+import { referenceSuggestionPluginKey, type ReferenceSuggestionState } from './reference-plugin-key.ts'
+import { CATEGORIES } from './reference-config.ts'
 
 export { referenceSuggestionPluginKey, type ReferenceSuggestionState }
 

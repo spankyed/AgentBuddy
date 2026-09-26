@@ -2,7 +2,7 @@
  * Shared utilities for managing tabs in the code editor
  */
 
-import type { TabGroup } from '../state'
+import type { TabGroup } from '../state.ts'
 
 // Base tab interface - all tabs must have at least a path
 interface BaseTab {

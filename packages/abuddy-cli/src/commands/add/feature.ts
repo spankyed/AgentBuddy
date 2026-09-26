@@ -15,7 +15,7 @@ const SETTINGS = (id: string) => `export default {
 `;
 
 /** The system's contract: what it receives, what its own children send it, and what it sends its plugin. */
-const BE_CONTRACT = (name: string, pascal: string) => `import type { Incoming${pascal}Events, Outgoing${pascal}Events } from './types';
+const BE_CONTRACT = (name: string, pascal: string) => `import type { Incoming${pascal}Events, Outgoing${pascal}Events } from './types.ts';
 
 // This system's contract, which abuddy.json names at features[].system.contract. Codegen reads it as a declared
 // type, without running anything, so it lives here rather than on the spec: a type has no declared-versus-inferred
@@ -33,7 +33,7 @@ const SYSTEM = (name: string, camel: string, pascal: string) => `import { setup 
 import { defineSystem } from '@abuddy/sdk/framework';
 // broadcastToPlugin is typed with the events each of this pack's plugins receives
 import { broadcastToPlugin } from '#generated/events.ts';
-import type { Contract } from './contract';
+import type { Contract } from './contract.ts';
 
 export const ${camel}Spec = defineSystem<Contract>();
 
@@ -107,7 +107,7 @@ export const ${camel}Commands = {};
 
 const PLUGIN = (camel: string, label: string, icon: string) => `import { definePlugin } from '@abuddy/sdk/fe';
 import { ${icon} } from 'lucide-vue-next';
-import state from './state';
+import state from './state.ts';
 import canvas from './canvas/list.vue';
 
 // What this plugin publishes is its contract, in fe/contract.ts beside it
@@ -148,7 +148,7 @@ export type Contract = {
 `;
 
 const STATE = (name: string) => `import { setup, type ActorRefFrom } from 'xstate';
-import type { ${toPascalCase(name)}Context, ${toPascalCase(name)}Inbox } from './contract';
+import type { ${toPascalCase(name)}Context, ${toPascalCase(name)}Inbox } from './contract.ts';
 
 // The feature's name, which this pack's code sends to and opens the plugin by (\`openPlugin\` from #generated/fe)
 export const id = '${name}';

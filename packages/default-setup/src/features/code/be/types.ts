@@ -1,5 +1,5 @@
-import type { GitRepository } from './services/git';
-import type { GitWatcherService } from './services/gitwatcher';
+import type { GitRepository } from './services/git.ts';
+import type { GitWatcherService } from './services/gitwatcher.ts';
 import { EARS } from '#generated/ears.ts'
 import type { KeyboardShortcut } from '@abuddy/sdk/types'
 

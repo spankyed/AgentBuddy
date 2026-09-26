@@ -15,7 +15,7 @@
  */
 
 import type { Services, EntityId } from '#generated/services.ts';
-import { getClaudeState } from './thread-context';
+import { getClaudeState } from './thread-context.ts';
 
 export async function backfillUserCliUuids(
   services: Services,

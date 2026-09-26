@@ -2,7 +2,7 @@ import { setup, assign, sendParent, enqueueActions, type AnyActorRef } from 'xst
 import { EARS } from '#generated/ears.ts';
 import type { ExecutionContext, TNodeEntity } from '@abuddy/sdk/steps';
 import type { NodeEntity } from '#generated/types.ts';
-import { executeNode } from './node-handlers';
+import { executeNode } from './node-handlers/index.ts';
 import { repository } from '#generated/repository.ts';
 import { errorMessage } from '@abuddy/sdk/utils/pure';
 

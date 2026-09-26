@@ -1,6 +1,6 @@
 import type { ActionMeta } from '@abuddy/sdk/build';
 import type { EntityId, Services } from '#generated/services.ts';
-import { getOnboardingState, persistOnboardingState, showChooseModeOrFinish, flashState } from '../onboarding-helpers';
+import { getOnboardingState, persistOnboardingState, showChooseModeOrFinish, flashState } from '../onboarding-helpers.ts';
 
 export const meta: ActionMeta = {
   label: 'Handle Projects Step',

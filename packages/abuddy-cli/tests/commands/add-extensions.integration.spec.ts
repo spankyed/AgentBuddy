@@ -11,6 +11,7 @@ import { addArtifact } from '../../src/commands/add/artifact';
 import { addBlock } from '../../src/commands/add/block';
 import { addMigration } from '../../src/commands/add/migration';
 import { generateEntries } from '../../src/commands/generate-entries';
+import { ownModuleSpecifierProblems } from '@abuddy/host/build/own-module-specifiers';
 
 const REPO_ROOT = path.resolve(__dirname, '..', '..', '..', '..');
 const BIN = path.join(REPO_ROOT, 'node_modules', '.bin');
@@ -106,7 +107,7 @@ describe('abuddy add step in a pack without steps', () => {
     const manifest = JSON.parse(fs.readFileSync(path.join(bare, 'abuddy.json'), 'utf-8'));
     expect(manifest.steps.register).toBe('src/extensions/steps/register.ts');
     const register = fs.readFileSync(path.join(bare, manifest.steps.register), 'utf-8');
-    expect(register).toContain("import { pingStep } from './ping';");
+    expect(register).toContain("import { pingStep } from './ping/index.ts';");
     expect(register).toMatch(/export const steps: StepDefinition\[\] = \[[\s\S]*pingStep,/);
   });
 });
@@ -122,7 +123,7 @@ describe('abuddy add artifact and block', () => {
     ].join('\n'));
     write('src/extensions/artifacts/register-fe.ts', [
       "import type { ArtifactDefinition } from '@abuddy/sdk/artifacts';",
-      "import { artifacts } from './register';",
+      "import { artifacts } from './register.ts';",
       '',
       'const componentMap: Record<string, unknown> = {',
       '};',
@@ -142,7 +143,7 @@ describe('abuddy add artifact and block', () => {
     ].join('\n'));
     write('src/extensions/blocks/register-fe.ts', [
       "import type { BlockDefinition } from '@abuddy/sdk/blocks';",
-      "import { blocks } from './register';",
+      "import { blocks } from './register.ts';",
       '',
       'const componentMap: Record<string, unknown> = {',
       '};',
@@ -203,7 +204,7 @@ describe('abuddy add migration', () => {
     expect(migration).toContain("import type { PackMigration } from '@abuddy/sdk/framework';");
     expect(migration).toMatch(/export const migration: PackMigration = \{[\s\S]*target: '0\.2\.0'/);
     const index = read('src/migrations/index.ts');
-    expect(index).toContain("import { migration as v0_2_0 } from './0.2.0';\nimport { migration as v0_10_1 } from './0.10.1';\nimport { migration as v0_11_0_beta_1 } from './0.11.0-beta.1';");
+    expect(index).toContain("import { migration as v0_2_0 } from './0.2.0.ts';\nimport { migration as v0_10_1 } from './0.10.1.ts';\nimport { migration as v0_11_0_beta_1 } from './0.11.0-beta.1.ts';");
     expect(index).toContain('export const migrations: PackMigration[] = [\n  v0_2_0,\n  v0_10_1,\n  v0_11_0_beta_1,\n];');
     expect(readManifest().migrations).toBe('src/migrations/index.ts');
 
@@ -219,12 +220,24 @@ describe('abuddy add migration', () => {
 
     expect(read('src/migrations/index.ts')).toBe([
       "import type { PackMigration } from '@abuddy/sdk/framework';",
-      "import { migration as v0_12_0 } from './0.12.0';",
+      "import { migration as v0_12_0 } from './0.12.0.ts';",
       '',
       'export const migrations: PackMigration[] = [',
       '  v0_12_0,',
       '];',
       '',
     ].join('\n'));
+  });
+});
+
+/**
+ * Everything `abuddy add` wrote, held to the rule `abuddy build` applies: a pack's specifier names the file
+ * that is there. This is where the scaffold's own templates are checked against real files — the repo's
+ * `check:specifiers` reads them as text, where a `'./${name}'` tells it nothing about the extension the
+ * substitution carries.
+ */
+describe('what abuddy add scaffolds', () => {
+  it('names its own modules by the file that is there', () => {
+    expect(ownModuleSpecifierProblems(pack, ['src', 'tests'])).toEqual([]);
   });
 });

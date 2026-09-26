@@ -1,5 +1,5 @@
 import type { ArtifactDefinition } from '@abuddy/sdk/artifacts';
-import { artifacts } from './register';
+import { artifacts } from './register.ts';
 
 import TextArtifact from './viewers/text-artifact.vue';
 import CodeArtifact from './viewers/code-artifact.vue';

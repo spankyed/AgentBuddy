@@ -83,7 +83,7 @@ import { useSelector } from '@xstate/vue'
 import { type CodeState } from '#features/code/fe/state.ts'
 import { isAnyMenuOpen, usePlugin } from '@abuddy/sdk/fe'
 import BaseDirectoryMenu from '#features/code/fe/features/explorer/components/BaseDirectoryMenu.vue'
-import { codeChild } from './children';
+import { codeChild } from './children.ts';
 import {
   FolderOpen,
   Search,

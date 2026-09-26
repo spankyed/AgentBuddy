@@ -1,3 +1,3 @@
-export { browserQueries } from './queries';
-export { browserCommands } from './commands';
+export { browserQueries } from './queries.ts';
+export { browserCommands } from './commands.ts';
 

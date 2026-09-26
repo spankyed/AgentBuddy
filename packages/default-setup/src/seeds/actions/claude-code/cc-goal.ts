@@ -12,8 +12,8 @@ import {
   getClaudeState,
   persistClaudeState,
   endGoal,
-} from './_helpers/thread-context';
-import { replayQueuedMessage } from './_helpers/stream-consumer';
+} from './_helpers/thread-context.ts';
+import { replayQueuedMessage } from './_helpers/stream-consumer.ts';
 
 export const meta: ActionMeta = {
   label: 'CC: Goal',

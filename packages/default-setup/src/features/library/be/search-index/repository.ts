@@ -3,7 +3,7 @@ import { Index } from 'usearch'
 
 import { EARS } from '#generated/ears.ts'
 import { randomId } from '@abuddy/sdk/utils'
-import { getIndexFilePath } from './paths'
+import { getIndexFilePath } from './paths.ts'
 import { createLogger } from '@abuddy/sdk/logger'
 import type {
   SearchIndex,
@@ -14,10 +14,10 @@ import type {
   IndexedDocEntity,
   IndexedDocCreateData,
   IndexedDocUpdateData
-} from './types/search-index'
-import type { DocumentDTO } from '../types'
-import * as searchService from './service'
-import { libraryQueries } from '../repository'
+} from './types/search-index.ts'
+import type { DocumentDTO } from '../types.ts'
+import * as searchService from './service.ts'
+import { libraryQueries } from '../repository/index.ts'
 import { errorMessage } from '@abuddy/sdk/utils/pure';
 
 const logger = createLogger('search-index')

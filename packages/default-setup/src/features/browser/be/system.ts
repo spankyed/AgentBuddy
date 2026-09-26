@@ -2,7 +2,7 @@ import { broadcastToPlugin } from '#generated/events.ts';
 import { repository } from '#generated/repository.ts';
 import { setup } from 'xstate';
 import { defineSystem } from '@abuddy/sdk/framework';
-import type { Contract } from './contract';
+import type { Contract } from './contract.ts';
 import { createLogger } from '@abuddy/sdk/logger';
 
 const logger = createLogger('browser');

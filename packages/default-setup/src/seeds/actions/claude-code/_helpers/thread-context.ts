@@ -14,7 +14,7 @@
  */
 
 import type { Services, EntityId } from '#generated/services.ts';
-import { resolvePlanDraft } from './plan-artifact';
+import { resolvePlanDraft } from './plan-artifact.ts';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 

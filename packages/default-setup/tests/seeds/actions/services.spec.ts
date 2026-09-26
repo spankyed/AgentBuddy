@@ -7,7 +7,7 @@ import type { LogEvent } from '@abuddy/sdk/logger'
 import type { EARS } from '@abuddy/sdk'
 import { repository } from '#generated/repository.ts'
 import type { Services } from '#generated/services.ts'
-import { actionLabel, seedDefaultFlows } from '../../_support/flows'
+import { actionLabel, seedDefaultFlows } from '../../_support/flows.ts'
 
 it("pauses a running Claude Code turn: CC: Pause Turn's event, log entry and thread row", async () => {
   seedDefaultFlows()

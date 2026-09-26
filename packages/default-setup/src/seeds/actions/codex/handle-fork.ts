@@ -2,8 +2,8 @@
 
 import type { ActionMeta } from '@abuddy/sdk/build';
 import type { Services, EntityId } from '#generated/services.ts';
-import { ensureSessionMarker, getCodexState, persistCodexState, dequeueMessage, updateChatState } from './_helpers/thread-context';
-import { replayQueuedMessage } from './_helpers/stream-consumer';
+import { ensureSessionMarker, getCodexState, persistCodexState, dequeueMessage, updateChatState } from './_helpers/thread-context.ts';
+import { replayQueuedMessage } from './_helpers/stream-consumer.ts';
 
 export const meta: ActionMeta = {
   label: 'CDX: Handle Fork',

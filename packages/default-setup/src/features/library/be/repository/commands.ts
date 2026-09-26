@@ -1,10 +1,10 @@
 import { tx, qx } from '#generated/ears.ts';
 import * as path from 'path'
 import { EARS } from '#generated/ears.ts'
-import type { DocumentDTO, CollectionDTO, LibraryItem } from '../types'
+import type { DocumentDTO, CollectionDTO, LibraryItem } from '../types.ts'
 // [SEARCH_INDEX_FF] import * as searchIndexRepo from '../search-index/repository' (dormant: ../search-index/README.md)
-import { libraryQueries } from './queries'
-import { findParentCollection, getDisplayOrder, getNextDisplayOrder, getCollectionPath, formatFileSize, getContentLength } from './helpers'
+import { libraryQueries } from './queries.ts'
+import { findParentCollection, getDisplayOrder, getNextDisplayOrder, getCollectionPath, formatFileSize, getContentLength } from './helpers.ts'
 import type { ContentSection, DocumentShortCode } from '#features/library/be/types.ts';
 
 

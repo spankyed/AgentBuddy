@@ -17,12 +17,12 @@
 import type { GeneralSettings } from '#app-settings/types.ts';
 import type { ActionMeta } from '@abuddy/sdk/build';
 import type { Services, Z, EntityId } from '#generated/services.ts';
-import { createStreamWriter } from './_helpers/stream-writer';
-import { createToolActivityWriter } from './_helpers/tool-activity-writer';
-import { createThinkingWriter } from './_helpers/thinking-writer';
-import { getClaudeState, persistClaudeState, setRunning, enqueueMessage, killTurn, ensureSessionMarker, updateChatState, extractStaleSessionId, markSessionBroken } from './_helpers/thread-context';
-import { consumeStream, finalizeSessionError } from './_helpers/stream-consumer';
-import { buildSessionBootstrapPrompt } from '../_helpers/session-bootstrap';
+import { createStreamWriter } from './_helpers/stream-writer.ts';
+import { createToolActivityWriter } from './_helpers/tool-activity-writer.ts';
+import { createThinkingWriter } from './_helpers/thinking-writer.ts';
+import { getClaudeState, persistClaudeState, setRunning, enqueueMessage, killTurn, ensureSessionMarker, updateChatState, extractStaleSessionId, markSessionBroken } from './_helpers/thread-context.ts';
+import { consumeStream, finalizeSessionError } from './_helpers/stream-consumer.ts';
+import { buildSessionBootstrapPrompt } from '../_helpers/session-bootstrap.ts';
 
 export const meta: ActionMeta = {
   label: 'Claude Code Chat',

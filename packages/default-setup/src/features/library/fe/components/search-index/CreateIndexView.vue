@@ -82,9 +82,9 @@ import Button from '@abuddy/ui/design/button'
 import DetailsSection from './DetailsSection.vue'
 import ScopeSection from './ScopeSection.vue'
 import SectionsConfig from './SectionsConfig.vue'
-import type { SearchIndexFormData } from '../../types/search-index'
+import type { SearchIndexFormData } from '../../types/search-index.ts'
 import type { SearchIndex } from '#generated/types.ts'
-import { DEFAULT_EMBEDDING_MODEL } from '../../../embedding-models'
+import { DEFAULT_EMBEDDING_MODEL } from '../../../embedding-models.ts'
 
 const props = defineProps<{
   editMode?: boolean

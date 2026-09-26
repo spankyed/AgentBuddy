@@ -63,7 +63,7 @@ import type { FitAddon } from '@xterm/addon-fit'
 import { type CodeState } from '#features/code/fe/state.ts'
 import type { TerminalInfo } from '#features/code/fe/features/terminal/state.ts'
 import { terminalPool } from '#features/code/fe/utils/terminal-pool.ts'
-import { codeChild } from '../features/children';
+import { codeChild } from '../features/children.ts';
 
 /* --------------------------------------------------------------------------
  * Props & actor -------------------------------------------------------------------------- */

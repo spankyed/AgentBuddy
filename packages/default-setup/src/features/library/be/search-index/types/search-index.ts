@@ -1,5 +1,5 @@
 import type { EARS } from '#generated/ears.ts'
-import type { SearchEmbeddingModelId } from '../../../embedding-models'
+import type { SearchEmbeddingModelId } from '../../../embedding-models.ts'
 
 export type EmbeddingModel = SearchEmbeddingModelId
 export type IndexMetric = 'cosine' | 'dot_product'

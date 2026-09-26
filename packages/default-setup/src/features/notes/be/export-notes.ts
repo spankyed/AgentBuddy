@@ -6,7 +6,7 @@ import { EARS } from '#generated/ears.ts'
 import { ensureDirectoryExists, createExportDir } from '@abuddy/sdk/utils'
 import { extractMediaRefs, rewriteMediaUrls, copyMediaByRef, copyFlatMedia } from '@abuddy/sdk/utils'
 import { toSlug, uniqueFilename, writeExportJson, writeExportFile } from '@abuddy/sdk/utils'
-import type { NotesExportFormat } from './export-types'
+import type { NotesExportFormat } from './export-types.ts'
 import type { ExportedNote } from '#features/notes/be/export-types.ts';
 import type { NoteEntity } from '#features/notes/be/types.ts';
 

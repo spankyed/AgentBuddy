@@ -8,7 +8,7 @@ import {
 import type {
   NoteDTO,
 } from '#generated/types.ts'
-import type { NotesContext, NotesInboxEvent } from './contract'
+import type { NotesContext, NotesInboxEvent } from './contract.ts'
 import type { OutgoingNotesEvents } from '#features/notes/be/types.ts'
 import { sendToSystem } from '#generated/events.ts'
 import { Trash2 } from 'lucide-vue-next'

@@ -4,7 +4,7 @@ import { repository } from '#generated/repository.ts';
 import type { BlockConfig, BlockResponse, MessageEntity, ThreadCreateData, MessageReferences } from '#features/threads/be/types.ts';
 
 import { readMediaBuffer } from '@abuddy/sdk/utils';
-import * as threadsService from './threads';
+import * as threadsService from './threads.ts';
 import { blockRegistry } from '@abuddy/sdk/blocks';
 import { createLogger } from '@abuddy/sdk/logger';
 import { errorMessage } from '@abuddy/sdk/utils/pure';

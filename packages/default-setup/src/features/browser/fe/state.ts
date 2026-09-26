@@ -1,13 +1,13 @@
 import { setup, assign, fromCallback, type ActorRefFrom } from 'xstate';
 import type { BrowserSettings } from '#generated/types.ts';
-import type { Bookmark, BrowserContext, BrowserInboxEvent, BrowserTab, BrowserTabPersistedId } from './contract';
-import { autocomplete, recordVisit, updateHistoryMeta, displayUrl, type AutocompleteSuggestion } from './history';
+import type { Bookmark, BrowserContext, BrowserInboxEvent, BrowserTab, BrowserTabPersistedId } from './contract.ts';
+import { autocomplete, recordVisit, updateHistoryMeta, displayUrl, type AutocompleteSuggestion } from './history.ts';
 import { sendToSystem } from '#generated/events.ts';
 import { openPlugin } from '#generated/fe.ts';
 import { getNextAvailableColor, saveTabGroups, loadTabGroups, type TabGroup, type TabGroupColor } from '@abuddy/sdk/fe';
 
 export type { TabGroup, TabGroupColor };
-export type { Bookmark, BrowserTab, BrowserTabPersistedId } from './contract';
+export type { Bookmark, BrowserTab, BrowserTabPersistedId } from './contract.ts';
 
 export const id = 'browser' as const;
 

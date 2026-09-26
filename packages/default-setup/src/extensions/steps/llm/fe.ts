@@ -1,7 +1,7 @@
 import type { StepDefinition } from '@abuddy/sdk/steps';
 import { defineAsyncComponent } from 'vue';
 import { Sparkle } from 'lucide-vue-next';
-import { DEFAULT_MODEL } from './model';
+import { DEFAULT_MODEL } from './model.ts';
 
 export const llmStepFE: StepDefinition = {
   type: 'llm',

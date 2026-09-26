@@ -6,7 +6,7 @@
  * long-lived stdio process better driven via `runner.spawnStream` directly.
  */
 
-import { run, runJson, scopeArg, type SubcommandOptions } from './subcommand'
+import { run, runJson, scopeArg, type SubcommandOptions } from './subcommand.ts'
 
 type Scope = 'user' | 'project' | 'local'
 

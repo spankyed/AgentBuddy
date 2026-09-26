@@ -8,15 +8,15 @@
  */
 
 import type { Services, EntityId } from '#generated/services.ts';
-import type { StreamWriter } from '../../claude-code/_helpers/stream-writer';
-import type { ToolActivityWriter } from '../../claude-code/_helpers/tool-activity-writer';
-import type { ThinkingWriter } from '../../claude-code/_helpers/thinking-writer';
+import type { StreamWriter } from '../../claude-code/_helpers/stream-writer.ts';
+import type { ToolActivityWriter } from '../../claude-code/_helpers/tool-activity-writer.ts';
+import type { ThinkingWriter } from '../../claude-code/_helpers/thinking-writer.ts';
 import {
   persistCodexState,
   getCodexState,
   dequeueMessage,
   updateChatState,
-} from './thread-context';
+} from './thread-context.ts';
 
 export interface ConsumerContext {
   services: Services;

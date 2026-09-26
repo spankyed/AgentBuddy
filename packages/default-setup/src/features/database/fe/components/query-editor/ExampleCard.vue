@@ -25,7 +25,7 @@
 
 <script setup lang="ts">
 import { ArrowRight } from 'lucide-vue-next';
-import type { QueryExample } from './query-examples';
+import type { QueryExample } from './query-examples.ts';
 
 defineProps<{
   example: QueryExample;

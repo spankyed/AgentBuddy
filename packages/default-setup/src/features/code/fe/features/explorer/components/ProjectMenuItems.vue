@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ChevronRight, FolderPlus, Folder, Settings } from 'lucide-vue-next'
-import { useProjectActions } from '../composables/useProjectActions'
-import { MENU_ITEM_CLASS, MENU_SEPARATOR_CLASS, MENU_DISABLED_CLASS } from '../constants'
+import { useProjectActions } from '../composables/useProjectActions.ts'
+import { MENU_ITEM_CLASS, MENU_SEPARATOR_CLASS, MENU_DISABLED_CLASS } from '../constants.ts'
 
 const props = withDefaults(defineProps<{
   directoryPath: string

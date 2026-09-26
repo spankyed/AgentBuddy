@@ -4,7 +4,7 @@ import { EARS } from '#generated/ears.ts'
 
 import { exists } from '@abuddy/ears';
 import { trash } from '@abuddy/sdk/repositories';
-import type { TerminalInfo } from '../types'
+import type { TerminalInfo } from '../types.ts'
 import { createLogger } from '@abuddy/sdk/logger'
 
 const logger = createLogger('code')

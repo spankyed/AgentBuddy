@@ -17,7 +17,7 @@
  * imports are used here.
  */
 
-import type { ToolActivityEntry } from './tool-activity-types';
+import type { ToolActivityEntry } from './tool-activity-types.ts';
 
 /** Pick the human present-progressive verb for a tool name. */
 function presentVerb(tool: string): string {

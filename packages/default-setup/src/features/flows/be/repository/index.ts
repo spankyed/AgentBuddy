@@ -6,7 +6,7 @@ import type {
   FlowExtendedData,
   NodeCreateInput,
   FlowsConnectedData
-} from '../types';
+} from '../types.ts';
 import { availableModels } from '@abuddy/sdk/models';
 import { repository } from '#generated/repository.ts';
 import { ROOT_FLOW_ROLE } from '@abuddy/sdk';

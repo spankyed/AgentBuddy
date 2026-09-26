@@ -1,7 +1,7 @@
 import { Plugin, PluginKey, TextSelection } from '@tiptap/pm/state'
 import { Decoration, DecorationSet } from '@tiptap/pm/view'
 import type { Editor } from '@tiptap/core'
-import type { CommandItem } from './command-config'
+import type { CommandItem } from './command-config.ts'
 
 export interface CommandSuggestionState {
   active: boolean

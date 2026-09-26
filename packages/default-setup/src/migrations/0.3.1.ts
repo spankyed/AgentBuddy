@@ -1,7 +1,7 @@
 import { findAll, qx } from '#generated/ears.ts';
-import { EARS } from '../__generated__/ears';
+import { EARS } from '../__generated__/ears.ts';
 import { untypedTx } from '@abuddy/ears';
-import type { ThreadEntity } from '../features/threads/be/types';
+import type { ThreadEntity } from '../features/threads/be/types.ts';
 import type { PackMigration } from '@abuddy/sdk/framework';
 import { createLogger } from '@abuddy/sdk/logger';
 

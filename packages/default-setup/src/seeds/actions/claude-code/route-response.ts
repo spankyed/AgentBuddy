@@ -9,7 +9,7 @@
 
 import type { ActionMeta } from '@abuddy/sdk/build';
 import type { Services } from '#generated/services.ts';
-import { getClaudeState } from './_helpers/thread-context';
+import { getClaudeState } from './_helpers/thread-context.ts';
 
 export const meta: ActionMeta = {
   label: 'CC: Route Response',
