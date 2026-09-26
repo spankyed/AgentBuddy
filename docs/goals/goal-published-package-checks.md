@@ -115,6 +115,41 @@ and `@abuddy/ui`. Those records are not documentation any more — `suite-split.
 them and the chain sizes step budgets from them — so a package that serves as a dumping ground confounds
 both, and no care taken over the measurement fixes a mislabelled subject.
 
+### What the chain guarantees now, and what it still does not
+
+Reviewed 2026-09-25 after the chain's cache work landed. Three of these change how a phase below is
+written; the last is a confounder that remains, and a number in the docs that is already wrong is in
+Constraints.
+
+**A new suite that never runs no longer passes silently.** Phase 2 may create a workspace and add it to
+`UNIT_SUITES` and the root `projects` list. The pool runs one vitest with `--project <workspace>` per stale
+suite and then stamps them all — and a `--project` filter that matches nothing is *dropped silently* as long
+as one other filter matched: measured, `--project @abuddy/ears --project @abuddy/no-such-project` runs ears
+and exits 0 with no warning. So a new suite whose workspace name did not match its vitest project name would
+be stamped as having passed a run it was excluded from, and would stay cached.
+
+The pool now checks the run against what it asked for and fails naming the projects that never reported.
+Note what this does *not* cover: `chain-inputs.spec.ts` compares the **directories** in the root config with
+`UNIT_SUITES`, not project names, so the ordering guard Phase 2 satisfies says nothing about this. The
+runtime assertion is the one that does.
+
+**`npm run chain -- --all` is usable as a baseline again.** It used to run the two unit pools and let them
+skip every project — 2634 tests, green, in seconds. Anything measured with `--all` before 2026-09-25 is not
+comparable with anything measured after. Phase 3 and the Finished-when both lean on a chain run, so this is
+the difference between a before/after and two unrelated numbers.
+
+**A step that reads what another writes is guarded again, in both directions.** Phase 2's `SUITE_READS`
+entry for the built packages means the new suite declares `PACKAGE_BUILD_OUTPUTS`, and a guard now fails if
+its `needs` do not follow. The same guard catches the reverse — a declared input that *contains* another
+step's output — which is how `typecheck` came to read the E2E suite's screenshots and never cache.
+
+**Still confounded: the built-in pack's runtime bundle is not reproducible.**
+[`pack-runtime-nondeterminism.md`](../plans/pack-runtime-nondeterminism.md) has the measurement — three
+bytes, about three builds in four. It matters here only in how a Phase 3 run reads: whenever `compile`
+actually runs, every step declaring `PACK_OUTPUTS` goes stale for one cycle and the chain prints
+*"N steps passed but will run again next time"*. That is the cache verifier, not the drift report, and it is
+not caused by anything this goal does. Phase 3's Done-when says which line it means.
+
 ## Decisions
 
 Final.
@@ -173,7 +208,10 @@ the root `projects` list in `UNIT_SUITES` order, `pretest` running `ensure-packa
 
 **Done when:** every Group A spec is in the chosen home and passes there; Group B passes unchanged with no
 relative import crossing a package; the `published-*` specs in `@app/repo-checks` are either with their
-siblings or recorded as staying, with the reason.
+siblings or recorded as staying, with the reason. If a new workspace was created, show that its suite **ran**
+rather than that it appears — `npm run test:unit:host -- --all` naming it in the output, or the pool's total
+test count rising by the specs that moved. A suite can be listed, ordered and stamped without executing, and
+"appears in `test:unit:host`" does not distinguish the two.
 
 ### Phase 3 — re-record and re-measure
 
@@ -181,8 +219,10 @@ siblings or recorded as staying, with the reason.
 `seconds` is measured across the suites that have an expensive half, and this moves ~30s between them.
 Re-record it if a run reports drift past the band; leave it if not, and say which.
 
-**Done when:** `spec-cost:check` passes; `npm run chain` is green with no drift report, or the drift is
-recorded with the measurement behind it.
+**Done when:** `spec-cost:check` passes; `npm run chain` is green with no **drift** report, or the drift is
+recorded with the measurement behind it. A *"passed but will run again next time"* line is a different thing
+— the cache verifier — and after a run in which `compile` rebuilt the pack it is expected and not this
+goal's doing; see the confounder above before chasing it.
 
 ### Phase 4 — the guard
 
@@ -209,6 +249,10 @@ Mutation-check it: put a Group A spec back in `@abuddy/cli` and watch the guard 
 
 - **Measure with nothing else on the machine**, and never hand-edit a recorded cost. A spec's cost is its
   wall time under whatever else its half is running.
+- **Take the "before" from a run, not from the docs.** The root `CLAUDE.md` still describes the chain as
+  17 steps at two lanes costing 190.1s; it is 11 steps at three lanes, measured 173.8s cold and 26.0s warm
+  on 2026-09-25. Correcting that table is its own item and is not this goal's job — but using it as a
+  baseline would compare against a chain that no longer exists.
 - **A guard that cannot fail is worse than none.** Break Phase 4's guard on purpose and watch it fail, in
   a copy or a worktree — a mutation in this shared tree has reached the index before.
 - **Another agent works in this checkout.** Check `git status` before committing and name paths
