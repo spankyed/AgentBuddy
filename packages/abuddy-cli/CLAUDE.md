@@ -126,7 +126,7 @@ records a cost rather than a mechanism, so renaming a spec is how it changes hal
 The root `test:unit` runs the fast half last, being the slowest of the unit suites; CI and the pre-merge
 chain run both halves (`.github/workflows/ci.yml`), after `packages:build`. The `published-*` specs read what `packages:build` wrote, so the suite's `pretest` (`scripts/ensure-packages-built.ts`, the command over `@abuddy/host/build/packages-built`) runs that build itself when anything it read has changed, and skips it otherwise. Freshness is a success stamp, not a timestamp: each build unit records a content fingerprint of its inputs (its own sources, `@abuddy/host`, the bundler script, the manifests and tsconfigs) under `node_modules/.cache/abuddy-packages-build/`, written only when the build returns, so an interrupted or failed build reads as not built rather than as fresh. A run that bypasses `pretest` (`npx vitest` directly) still refuses to test stale output, naming the workspace and why.
 
-- `tests/build/`: bundlers and gates (`facade-*`, `seed-runtime-*`, `dsl-defs`, `fe-bundler-*`, `host-import-guard`, `clear-build-output`, `feature-settings`, `step-collisions`, `build-registry`) and the checks on what a build produces here (`package-freshness`, `checkout-packages`, `verify-node-modules`). The specs whose subject is the *published* packages are `@app/publish-checks`; `@abuddy/ui`'s own exports map and import side effects are its own suite's.
+- `tests/build/`: bundlers and gates (`facade-*`, `seed-runtime-*`, `dsl-defs`, `fe-bundler-*`, `host-import-guard`, `clear-build-output`, `feature-settings`, `step-collisions`, `build-registry`), how a pack's own paths are read (`tsconfig-aliases`, `subpath-imports`) and the checks on what a build produces here (`package-freshness`, `checkout-packages`, `verify-node-modules`). The specs whose subject is the *published* packages are `@app/publish-checks`; `@abuddy/ui`'s own exports map and import side effects are its own suite's.
 - `tests/commands/`: commands run end to end or through their exports: scaffold, `add`, pack, release, install `hostVersion`, a scaffolded pack installed and loaded by the host pack loader (`init-install-load`), dev install, hand-off, source hooks, app launcher.
 - `tests/app/`: app target resolution, beta download (`ensureBetaApp`: macOS arm64 only), Playwright resolution, app version.
 - `tests/harness/`: `@abuddy/testing/harness` from a scaffolded pack (`harness-setup`) and a dependent pack running default-setup's runtime (`dependency-runtime`, skipped until default-setup is built).
@@ -139,5 +139,32 @@ A spec's path under `tests/` mirrors the source it covers, as it does in every p
 pack's whole toolchain is driven from, and `repo-checks/tests/spec-placement.spec.ts` records both with
 that reason. `_support/` is the prefix that says a directory claims to mirror nothing.
 - The packing fixture moved to `@app/publish-checks` and is imported from here as that package: `facade-typing`, `fe-bundler-host-registry`, `types-bundler-determinism` and `package-freshness` use it to build a consumer, which is the fixture rather than the subject. `tests/_support/pack-builds.ts` stays.
+
+### How a pack's own module paths are resolved, and why each half is where it is
+
+Two readers, and the asymmetry between the bundlers is deliberate. Both were audited 2026-09-26; what follows
+is what that cost to establish, so it needn't be established again.
+
+- **`tsconfig-aliases.ts`** — a pack's `compilerOptions.paths`, through `ts.readConfigFile` and
+  `parseJsonConfigFileContent` rather than by hand. `typescript` is already a dependency, and the compiler is
+  what decides what a tsconfig means: a `/* */` block comment, a `//` inside any string (the scaffold's
+  `$schema` URL), an `extends` chain, and `baseUrl` — the last being the one that produces *wrong* aliases
+  rather than none. Used by both bundlers. It was two copies until they were merged, and the FE one had
+  missed both fixes the BE one received.
+- **`subpath-imports.ts`** — a pack's `package.json` `imports`, and supplying the extension. esbuild resolves
+  the mapping itself and still needs this: measured with 0.25.12, it finds the target and names the file in
+  its error (`Import from ".ts" to get the file …`) but refuses an extensionless specifier or a directory, as
+  Node's ESM resolver does. Pack code is TypeScript and writes `from '#generated/events'`.
+- **The FE bundler reads neither `imports` nor supplies extensions, on purpose**: Vite resolves both
+  natively. The evidence is `tests/fixtures/external-pack`, whose `features/memos/fe/state.ts` value-imports
+  `#generated/events` and whose FE bundle and Playwright suite pass. A reader there would be a second
+  mechanism for something already handled.
+- **A conditional target keeps the pack's own key order**, taking the first of `node`, `import`, `require`,
+  `default` — Node's rule, not an imposed preference. `abuddy init` writes `"type": "module"`, so `import` is
+  the condition a pack's entries are likeliest to carry.
+
+Both readers report an unreadable file rather than returning nothing in silence, because the failure that
+follows — "can't resolve `#generated/…`" — names neither the file nor the cause. A malformed `tsconfig.json`
+fails the build outright, Vite parsing the same file and refusing it.
 
 End-to-end coverage outside this package: `npm run test:external-pack` (`tests/fixtures`) and `npm run test:packaged-authoring` (packed tarballs, outside the monorepo).

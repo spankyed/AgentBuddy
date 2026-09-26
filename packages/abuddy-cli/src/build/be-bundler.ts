@@ -1,6 +1,7 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { readTsconfigAliases } from './tsconfig-aliases.ts';
+import { readSubpathImports, resolveWithExtensions } from './subpath-imports.ts';
 import ts from 'typescript';
 import { APP_ONLY_EXPORTS, SHARED_DEPS, sharedInstanceExternals } from '@abuddy/host/build/shared-deps';
 import { SEED_COMPILERS_FILE } from '@abuddy/sdk/build';
@@ -243,37 +244,6 @@ function stubFrontendAssetsPlugin(): import('esbuild').Plugin {
       build.onLoad({ filter: /.*/, namespace: 'frontend-stub' }, () => ({ contents: 'module.exports = {};', loader: 'js' }));
     },
   };
-}
-
-function readSubpathImports(packDir: string): Record<string, string> {
-  const imports: Record<string, string> = {};
-  const pkgPath = path.join(packDir, 'package.json');
-  if (!fs.existsSync(pkgPath)) return imports;
-  try {
-    const pkg = JSON.parse(fs.readFileSync(pkgPath, 'utf-8'));
-    const pkgImports: Record<string, string> = pkg.imports ?? {};
-    for (const [pattern, target] of Object.entries(pkgImports)) {
-      if (typeof target === 'string') {
-        imports[pattern] = target;
-      } else if (typeof target === 'object' && target !== null) {
-        const resolved = (target as Record<string, string>).default
-          ?? (target as Record<string, string>).require
-          ?? (target as Record<string, string>).node;
-        if (typeof resolved === 'string') imports[pattern] = resolved;
-      }
-    }
-  } catch {}
-  return imports;
-}
-
-function resolveWithExtensions(base: string): string | undefined {
-  for (const ext of ['', '.ts', '.js', '.mts', '.mjs']) {
-    const p = base + ext;
-    if (fs.existsSync(p)) return p;
-  }
-  const indexTs = path.join(base, 'index.ts');
-  if (fs.existsSync(indexTs)) return indexTs;
-  return undefined;
 }
 
 function makeSubpathPlugin(imports: Record<string, string>, packDir: string): import('esbuild').Plugin {
