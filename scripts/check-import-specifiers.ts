@@ -8,6 +8,7 @@ import ts from 'typescript';
 import { parse as parseSfc } from '@vue/compiler-sfc';
 import { SHARED_INSTANCE_PACKAGES } from '@abuddy/host/build/shared-deps';
 import { packageName } from '@abuddy/host/build/specifiers';
+import { ownModuleSpecifierProblems } from '@abuddy/host/build/own-module-specifiers';
 
 const repoRoot = path.resolve(import.meta.dirname, '..');
 const CHECKED_DIRS = [
@@ -83,13 +84,19 @@ function findSpecifiers(files: string[], root: string, matches: (text: string, f
 /**
  * `file:line: specifier` for each relative emitted-extension specifier that names a TypeScript module.
  * An import of hand-written declarations (`./speech-event.js` → speech-event.d.ts) has no source and is fine.
+ *
+ * A pack's sources are in scope too (`PACK_SOURCE_DIRS`, `PACK_TEST_DIRS`, below): the repo used to forbid in
+ * its own packages exactly what it generated into its packs, which is how a pack came to have three ways of
+ * naming its own modules (`docs/archive/goals/goal-pack-imports-name-the-file.md`). The `#` half of the same
+ * rule is `findExtensionlessOwnModules`.
  */
-export function findJsSpecifiers(dirs = CHECKED_DIRS, root = repoRoot): string[] {
+export function findJsSpecifiers(dirs = [...CHECKED_DIRS, ...PACK_SOURCE_DIRS, ...PACK_TEST_DIRS], root = repoRoot): string[] {
   const files = dirs.flatMap((dir) => {
     // A listed directory that is gone means the list is stale and something is no longer checked,
     // which is worth failing over — but say so, rather than letting a readdir ENOENT stack out
-    if (!fs.existsSync(path.join(root, dir))) throw new Error(`${dir} is listed in CHECKED_DIRS and does not exist: remove it, or restore the directory`);
-    return [...sourceFiles(path.join(root, dir))];
+    const full = path.join(root, dir);
+    if (!fs.existsSync(full)) throw new Error(`${dir} is listed among the checked directories and does not exist: remove it, or restore the directory`);
+    return fs.statSync(full).isFile() ? [full] : [...sourceFiles(full)];
   });
   return findSpecifiers(files, root, (text, file) => {
     const emitted = path.extname(text);
@@ -309,6 +316,76 @@ const PACK_TEST_DIRS = ['packages/default-setup/tests', 'tests/fixtures/external
  */
 export function findPackOwnAliases(dirs = [...PACK_SOURCE_DIRS, ...PACK_TEST_DIRS], root = repoRoot): string[] {
   return findSpecifiers(packFiles(dirs, root), root, (text) => text.startsWith('@/'), true);
+}
+
+/**
+ * Each pack in this checkout with the directories of it that are checked, derived from the two lists above so
+ * a pack added to either is covered here without a third list to keep in step.
+ */
+function repoPacks(dirs: readonly string[]): Map<string, string[]> {
+  const packs = new Map<string, string[]>();
+  for (const dir of dirs) {
+    if (CLI_TEMPLATE_SOURCES.includes(dir)) continue;
+    const packDir = path.dirname(dir);
+    packs.set(packDir, [...(packs.get(packDir) ?? []), path.basename(dir)]);
+  }
+  return packs;
+}
+
+/**
+ * `file:line: specifier` for each of a pack's own-module specifiers that names no file — written without an
+ * extension, or with the `.js` a pack never emits.
+ *
+ * The rule and its search are one module (`@abuddy/host/build/own-module-specifiers`), because `abuddy build`
+ * applies the same rule to every pack outside this checkout and a rule written twice is a rule that drifts.
+ * Here it can resolve against the pack's files and name the one the author meant.
+ *
+ * The CLI's templates are checked as text and held to the extension alone: they are the pack source
+ * `abuddy init` and `abuddy add` write, so there is no pack yet to resolve them against — and they are
+ * exactly where an extensionless import gets reintroduced, since nothing compiles a template string.
+ */
+export function findExtensionlessOwnModules(
+  dirs = [...PACK_SOURCE_DIRS, ...PACK_TEST_DIRS],
+  root = repoRoot,
+  templates = CLI_TEMPLATE_SOURCES,
+): string[] {
+  const inPacks = [...repoPacks(dirs)].flatMap(([packDir, subdirs]) =>
+    ownModuleSpecifierProblems(path.join(root, packDir), subdirs).map((problem) => `${packDir}/${problem}`));
+  return [...inPacks, ...templateProblems(templates, root)];
+}
+
+/** A specifier for one of the pack's own modules: its `#` imports, or a sibling by relative path */
+const ownModule = (text: string) => text.startsWith('#') || text.startsWith('./') || text.startsWith('../');
+
+/**
+ * `file:line: specifier` for each own-module specifier without an extension inside a CLI template literal.
+ *
+ * Only inside the literals: the pack code these write is held to the rule, and the CLI's own source around
+ * them is not — it is bundled, names its modules extensionlessly throughout, and is not a pack.
+ *
+ * A specifier whose last segment is a substitution (`'./${componentFileName}'`, which carries `.vue`) is
+ * skipped: `templateCode` masks the substitution, so whether an extension arrives with it is not in the text.
+ * What covers those is the pack the CLI actually writes — `abuddy add`'s integration spec runs this same rule
+ * over the scaffolded tree, where the files are there to resolve against, and `abuddy build` runs it for real.
+ */
+function templateProblems(dirs: readonly string[], root: string): string[] {
+  return packFiles([...dirs], root).flatMap((file) => {
+    const found: string[] = [];
+    for (const { content, lineOffset } of codeBlocks(file)) {
+      const source = parse(content, file);
+      const visit = (node: ts.Node): void => {
+        if (ts.isNoSubstitutionTemplateLiteral(node) || ts.isTemplateExpression(node)) {
+          const at = source.getLineAndCharacterOfPosition(node.getStart(source)).line + lineOffset;
+          for (const { text, line } of specifiers(templateCode(node, source), file, true)) {
+            if (ownModule(text) && path.extname(text) === '' && !/_$/.test(text)) found.push(`${path.relative(root, file)}:${at + line}: ${text}`);
+          }
+        }
+        ts.forEachChild(node, visit);
+      };
+      visit(source);
+    }
+    return found;
+  });
 }
 
 /** API modules (its `@/` alias) and host, API or CLI sources by relative path */
@@ -1264,6 +1341,9 @@ export const CHECKS: ReadonlyArray<readonly [find: () => string[], rule: string]
   [findHostImports, "Pack code doesn't import the host's private @abuddy/host package; use @abuddy/sdk"],
   [findPackOwnAliases, "A pack names its own modules with # subpath imports from its package.json (#generated/x, "
     + '#features/x): a @/ path is TypeScript-only, no runtime reads it, and nothing resolves one for a pack any more'],
+  [findExtensionlessOwnModules, "A pack names its own modules by the file that is there, extension and all "
+    + '(#generated/events.ts): no runtime resolves an extensionless specifier in ESM, and the .js a pack '
+    + 'would otherwise name is a file it never emits, since it ships one bundle rather than a module per source'],
   [findAppImportsInPackTests, 'Pack unit tests run on the harness (@abuddy/testing) without the app; test host, API and CLI code in its own package'],
   [findUpwardImports, "Packages import only downward (@abuddy/ears imports no @abuddy package, @abuddy/sdk only @abuddy/ears, @abuddy/host only those two and never the API, the API and the renderer only the packages below them), and list each @abuddy package they import in their package.json"],
   [findLmdbImports, "Only @abuddy/ears/lmdb loads lmdb: the host and the API open the store through it, the engine's root and packs never load it"],

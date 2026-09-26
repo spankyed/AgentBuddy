@@ -4,7 +4,8 @@ import * as path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import {
   CHECKS,
-  findAppImportsInPackTests, findContractLeafImports, findCrossCheckoutResolution, findCrossFeatureImports, findHostImports, findJsSpecifiers, findMissingSourceConditions, findPackBackendConsole, findRawPackHelpers,
+  findAppImportsInPackTests, findContractLeafImports, findCrossCheckoutResolution, findCrossFeatureImports, findExtensionlessOwnModules, findHostImports, findJsSpecifiers, findMissingSourceConditions,
+  findPackageScriptImports, findPackBackendConsole, findPackOwnAliases, findRawPackHelpers,
   findRawTransport, findInternalPackageImports, findLmdbImports, findRepositoryCasts, findSharedPackageLists, findUpwardImports, LAYERS, LMDB_RULES, packageSourceDirs,
   DECLARES_SOURCE_BY_DESIGN, RESOLVES_DIST_BY_DESIGN, SHARED_LIST_CONSUMERS, sourceConditionPackages, SOURCE_CONDITION,
 } from '../../../scripts/check-import-specifiers.ts';
@@ -419,11 +420,98 @@ describe('findSharedPackageLists', () => {
 });
 
 /**
- * Every rule in `CHECKS` is a gate that fails the build, so every one needs a case that proves it bites. Fourteen
- * of the fifteen had one and the fifteenth didn't, which nothing noticed: the convention was held up by whoever
- * remembered it. This is the same shape as `step-build-barrel.spec.ts` — a table and its uses, kept in step by a
- * test rather than by attention.
+ * Every rule in `CHECKS` is a gate that fails the build, so every one needs a case that proves it bites.
+ *
+ * This used to be that sentence and nothing else: the file imported `CHECKS` and never read it, so the
+ * convention was held up by whoever remembered it — and two rules had landed with no case at all
+ * (`findPackOwnAliases`, `findPackageScriptImports`), which is exactly what the sentence promised could not
+ * happen. Same shape as `step-build-barrel.spec.ts`: a table and its uses, kept in step by a test.
  */
+describe('CHECKS', () => {
+  it('has a case per rule, named after the check it exercises', () => {
+    const code = fs.readFileSync(import.meta.filename, 'utf-8');
+    const uncovered = CHECKS.map(([find]) => find.name).filter((name) => !code.includes(`describe('${name}'`));
+    expect(uncovered, "each rule in CHECKS needs a describe block naming its check").toEqual([]);
+  });
+});
+
+/**
+ * A pack names its own modules by the file that is there. Two forms fail the same way — nothing, and the
+ * `.js` a pack never emits — so they get one rule and one message, and the search that names the file the
+ * author meant is the one `abuddy build` runs over every pack outside this checkout.
+ */
+describe('findExtensionlessOwnModules', () => {
+  /** A pack with an `imports` map, which is what makes a `#` string a specifier rather than a colour */
+  function pack(files: Record<string, string>): void {
+    writeAt('pack/package.json', JSON.stringify({ name: 'p', type: 'module', imports: { '#generated/*': './src/__generated__/*' } }));
+    writeAt('pack/src/__generated__/events.ts', 'export const sendToSystem = 1;');
+    for (const [file, content] of Object.entries(files)) writeAt(`pack/${file}`, content);
+  }
+  const problems = () => findExtensionlessOwnModules(['pack/src', 'pack/tests'], root);
+
+  it.each([
+    ['extensionless', '#generated/events'],
+    ['the emitted extension of a TypeScript module', '#generated/events.js'],
+  ])('flags a specifier naming no file: %s', (_form, specifier) => {
+    pack({ 'src/f.ts': `import { sendToSystem } from '${specifier}';` });
+    expect(problems()).toEqual([`pack/src/f.ts:1: '${specifier}' names no file — write '#generated/events.ts'`]);
+  });
+
+  it('passes the form that names the file, in the pack and in its tests', () => {
+    pack({
+      'src/f.ts': "import { sendToSystem } from '#generated/events.ts';",
+      'tests/f.spec.ts': "import { sendToSystem } from '#generated/events.ts';",
+    });
+    expect(problems()).toEqual([]);
+  });
+
+  it('flags a template the CLI writes, which has no pack to resolve against', () => {
+    writeAt('templates/add.ts', "const T = `import { x } from '#generated/events';`;");
+    expect(findExtensionlessOwnModules(['templates/add.ts'], root)).toEqual([]);
+    expect(findExtensionlessOwnModules([], root, ['templates/add.ts']))
+      .toEqual(["templates/add.ts:1: #generated/events"]);
+  });
+});
+
+/**
+ * `@/…` is a TypeScript-only mapping: it resolved for `tsc` and for four bundler configs that each carried
+ * their own implementation of it, all of which are gone. A reintroduced one fails quietly, which is why the
+ * rule exists.
+ */
+describe('findPackOwnAliases', () => {
+  it('flags a @/ specifier in a pack, and passes the # form', () => {
+    writeAt('pack/src/a.ts', "import { x } from '@/features/notes/be/x.ts';");
+    writeAt('pack/src/b.ts', "import { y } from '#features/notes/be/y.ts';");
+    expect(findPackOwnAliases(['pack/src'], root)).toEqual(['pack/src/a.ts:1: @/features/notes/be/x.ts']);
+  });
+});
+
+/**
+ * A module under the repo's `scripts/` belongs to no package, so `npm run spec` cannot route a change to it
+ * back to the spec that covers it — a package's own `scripts/` therefore stays inside the package and its
+ * declared dependencies.
+ */
+describe('findPackageScriptImports', () => {
+  /** A package with a scripts/ directory, which is the only shape this rule looks at */
+  function pkg(deps: Record<string, string>, files: Record<string, string>): void {
+    writeAt('packages/thing/package.json', JSON.stringify({ name: '@abuddy/thing', dependencies: deps }));
+    writeAt('packages/thing/src/own.ts', 'export const own = 1;');
+    for (const [file, content] of Object.entries(files)) writeAt(`packages/thing/${file}`, content);
+  }
+
+  it('passes the package\'s own source, a declared dependency and a builtin', () => {
+    pkg({ esbuild: '*' }, { 'scripts/build.ts': "import { own } from '../src/own.ts';\nimport * as fs from 'node:fs';\nimport esbuild from 'esbuild';" });
+    expect(findPackageScriptImports(root)).toEqual([]);
+  });
+
+  it('flags a reach outside the package and an undeclared dependency', () => {
+    pkg({}, { 'scripts/build.ts': "import { x } from '../../../scripts/lib/x.ts';\nimport { y } from '@abuddy/host/build/discover';" });
+    expect(findPackageScriptImports(root)).toEqual([
+      'packages/thing/scripts/build.ts:1: ../../../scripts/lib/x.ts',
+      'packages/thing/scripts/build.ts:2: @abuddy/host/build/discover',
+    ]);
+  });
+});
 /**
  * A contract leaf is what codegen reads a feature's events and state from, as a declared type, without resolving
  * the actor they describe. `#generated/events` imports both contracts and both actors import `#generated/events`,

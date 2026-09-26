@@ -118,6 +118,22 @@ describe('ownModuleSpecifierProblems', () => {
     expect(ownModuleSpecifierProblems(packDir)).toEqual([]);
   });
 
+  it('names the source behind an emitted extension, which a pack never produces', () => {
+    pack();
+    write('src/__generated__/events.ts');
+    write('src/f.ts', "import { sendToSystem } from '#generated/events.js';\n");
+    expect(ownModuleSpecifierProblems(packDir)).toEqual([
+      "src/f.ts:1: '#generated/events.js' names no file — write '#generated/events.ts'",
+    ]);
+  });
+
+  it('leaves alone a .js specifier that does name a .js file', () => {
+    pack();
+    write('src/__generated__/flow-helpers.js');
+    write('src/f.ts', "import { entry } from '#generated/flow-helpers.js';\n");
+    expect(ownModuleSpecifierProblems(packDir)).toEqual([]);
+  });
+
   it('says nothing about a pack that declares no subpath imports', () => {
     write('package.json', JSON.stringify({ name: 'p', type: 'module' }));
     write('src/f.ts', "import x from '#generated/events';\n");
