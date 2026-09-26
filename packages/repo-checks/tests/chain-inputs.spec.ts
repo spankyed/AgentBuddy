@@ -111,10 +111,15 @@ describe('a unit suite whose specs name build output declares it', () => {
       .filter((file) => file !== import.meta.filename)
       .map((file) => fs.readFileSync(file, 'utf-8'));
   };
+  // Naming `@abuddy/testing` means loading its built bundle — except in `@abuddy/testing`'s own suite, where
+  // its specs name it because it is what they are about, and import its `src/` rather than the bundle. A
+  // detector must not read a package's own name as evidence about it; the same mistake as scanning the file
+  // that declares these patterns.
   const readsPackages = (dir: string, texts: string[]): boolean => {
     const pretest = (JSON.parse(fs.readFileSync(path.join(REPO_ROOT, 'packages', dir, 'package.json'), 'utf-8')) as
       { scripts?: Record<string, string> }).scripts?.pretest ?? '';
-    return pretest.includes('ensure-packages-built') || texts.some((text) => text.includes('@abuddy/testing'));
+    if (pretest.includes('ensure-packages-built')) return true;
+    return dir !== 'abuddy-testing' && texts.some((text) => text.includes('@abuddy/testing'));
   };
   const readsPack = (texts: string[]): boolean =>
     texts.some((text) => /PACK_DIR|default-setup['"`, )\]]*,?\s*['"`]dist|default-setup\/dist/.test(text));

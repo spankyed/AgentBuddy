@@ -5,7 +5,7 @@ import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
-import { assertCheckoutPackagesFresh } from '../../../abuddy-testing/src/checkout-freshness';
+import { assertCheckoutPackagesFresh } from '../src/checkout-freshness.ts';
 import { CHECKOUT_MARKER, REPO_ROOT, type StaleUnit } from '@abuddy/host/build/packages-built';
 
 const tmpDirs: string[] = [];

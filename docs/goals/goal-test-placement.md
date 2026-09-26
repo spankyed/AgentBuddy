@@ -88,14 +88,22 @@ historical: these specs once imported the API's EARS and repository modules too.
 `@abuddy/testing` and `@abuddy/ui` have no `test` script and no `vitest.config.ts`. Six specs about them
 live in `@abuddy/cli`, reaching across the boundary by relative path:
 
-| Spec (in `@abuddy/cli`) | Subject |
-|---|---|
-| `tests/app/app-target.spec.ts` | `abuddy-testing/src/launch-env` |
-| `tests/app/app-version.spec.ts` | `abuddy-testing/src/app-version` |
-| `tests/build/checkout-freshness.spec.ts` | `abuddy-testing/src/checkout-freshness` |
-| `tests/harness/shared-ears.spec.ts` | `abuddy-testing/src/shared-ears` |
-| `tests/build/fe-bundler-ui-theme.spec.ts` | `abuddy-ui/src/tailwind-preset` |
-| `tests/build/ui-exports.spec.ts` | `abuddy-ui/scripts/exports` |
+| Spec (in `@abuddy/cli`) | Subject | Verdict |
+|---|---|---|
+| `tests/app/app-version.spec.ts` | `abuddy-testing/src/app-version` | moves |
+| `tests/build/checkout-freshness.spec.ts` | `abuddy-testing/src/checkout-freshness` | moves |
+| `tests/harness/shared-ears.spec.ts` | `abuddy-testing/src/shared-ears` | moves |
+| `tests/build/ui-exports.spec.ts` | `abuddy-ui/scripts/exports` | moves |
+| `tests/app/app-target.spec.ts` | four describes on the CLI's own `src/app/app-target`, one on `abuddy-testing`'s `appLaunchEnv` | **splits** |
+| `tests/build/fe-bundler-ui-theme.spec.ts` | `abuddy-ui`'s preset, the renderer's tailwind config, and a fixture pack's built CSS | **stays** |
+
+**Corrected 2026-09-25 during Phase 2.** The six were found by scanning *imports*, and two of them are not
+what that scan implied. `app-target.spec.ts` is four fifths a CLI spec — its `appLaunchEnv` describe is the
+only part that belongs elsewhere, so it splits rather than moves. `fe-bundler-ui-theme.spec.ts` reads three
+packages and a fixture pack's build output, and its four tests are a chain — the preset defines what the
+components name, the renderer applies it rather than copying it, a built pack ships the CSS. Moving it to
+`@abuddy/ui` would push a tier-2 dependency on the app's tree into a leaf package's suite, and splitting it
+would lose the chain, so it stays and becomes the first recorded exception to Phase 3's guard.
 
 This is the same class as the `scripts/` hole that
 [`goal-one-job-pool.md`](goal-one-job-pool.md) closed by creating `@app/repo-checks`, and it fails louder:

@@ -3,33 +3,40 @@
 What tests this repo has, where they live, and how to tell where a test *belongs*. Kept current: it
 describes the suite as it is, not a plan.
 
-> **Surveyed** 2026-09-25 at `e055d73ee`. Spec-file counts and costs come from each package's
+> **Surveyed** 2026-09-25, updated through `goal-test-placement.md` Phase 2. Spec-file counts and costs come from each package's
 > `etc/spec-cost.json`, which `npm run spec-cost:check` holds to the tree. Test counts are not recorded
 > here on purpose — they move on every commit, and nothing decides anything from them.
 
 ## Scale
 
-365 spec files: 335 in nine package suites, 15 fixture-pack specs, 14 E2E, plus the root's own
+366 spec files: 337 in eleven package suites, 15 fixture-pack specs, 14 E2E, plus the root's own
 `tests/scripts` shell checks.
 
 | Suite | Specs | Fast half | Expensive half | Total |
 |---|---|---|---|---|
 | `@app/default-setup` | 86 | 13.8s | — | 13.8s |
 | `@abuddy/host` | 77 | 18.9s | — | 18.9s |
-| `@abuddy/cli` | 65 | 14.8s | 175.9s | **190.8s** |
+| `@abuddy/cli` | 61 | 15.5s | 185.4s | **200.8s** |
 | `@abuddy/sdk` | 56 | 15.1s | — | 15.1s |
 | `@app/repo-checks` | 17 | 3.1s | 9.5s | 12.6s |
 | `@app/api` | 15 | 5.6s | — | 5.6s |
 | `@abuddy/ears` | 9 | 2.4s | — | 2.4s |
 | `@app/renderer` | 8 | 0.1s | — | 0.1s |
+| `@abuddy/testing` | 4 | 0.1s | — | 0.1s |
 | `@app/main` | 2 | 0.2s | — | 0.2s |
-| | **335** | | | **259.4s** |
+| `@abuddy/ui` | 1 | 0.0s | — | 0.0s |
+| | **336** | | | **269.6s** |
+
+One spec more is recorded as skipped (every test in it skips, so it has no cost to place): 337 in total.
 
 `@abuddy/cli` is 74% of the file time, and roughly 30s of that is specs whose subject is not the CLI — see
-*Known misplacements*. Read its number as a suite total, not as a statement about the CLI.
+*Known misplacements*. Read its number as a suite total, not as a statement about the CLI. Its total moved
+from 190.8s to 200.8s across two recordings that removed four specs, which is what a contended measurement
+looks like: the band in `spec-cost.ts` exists so that noise of that size moves nothing.
 
-**Two packages have source and no suite**, `@abuddy/testing` and `@abuddy/ui`; `packages/preload` has
-neither specs nor a `test` script. `@app/electron-versions` and `@app/typescript-floor` hold no source.
+`packages/preload` has source but neither specs nor a `test` script; `@app/electron-versions` and
+`@app/typescript-floor` hold no source. Every other package has a suite —
+`@abuddy/testing` and `@abuddy/ui` gained theirs in `goal-test-placement.md` Phase 2, having had none.
 
 ## Where a spec lives
 
@@ -105,7 +112,7 @@ because its subject belongs to no single package.
 
 | # | What | Size |
 |---|---|---|
-| 1 | `@abuddy/testing` and `@abuddy/ui` have no suite; six specs about them live in `@abuddy/cli`, and `npm run spec` on either package's source crashes in vitest's project resolution | 6 specs |
+| 1 | ~~`@abuddy/testing` and `@abuddy/ui` have no suite~~ — **resolved** in Phase 2: both have one, four specs and one describe moved to them, and `npm run spec` reaches their source instead of crashing | done |
 | 2 | `@app/api`'s only test directory is `unit/`; 10 of its 15 specs boot a runtime | 15 specs |
 | 3 | `api/tests/unit/secrets.spec.ts` mocks `abuddy-host/src/secrets/vault.ts` by relative path | 1 spec |
 | 4 | `@abuddy/ui` has 33 recorded component contracts and no behavioural test; exactly one spec in the repo mounts a Vue component | coverage gap |
