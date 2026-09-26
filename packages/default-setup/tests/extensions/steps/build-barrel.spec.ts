@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { steps as registeredSteps } from '../../src/extensions/steps/register';
-import { steps as buildSteps } from '../../src/extensions/steps/build';
+import { steps as registeredSteps } from '@/extensions/steps/register';
+import { steps as buildSteps } from '@/extensions/steps/build';
 
 /**
  * build.ts ships as build/steps.build.mjs: packs that depend on default-setup validate their

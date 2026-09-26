@@ -1,4 +1,4 @@
-# Seed parity (`tests/unit/seed-parity/`)
+# Seed parity (`tests/seeds/`)
 
 ## What this is
 
@@ -58,7 +58,7 @@ so **editing two helper files once moved 47 of 62 rows** — for a change that w
 that fails on every correct change stops being read; you re-record reflexively and the signal is gone.
 
 What the exclusion does *not* cover is that the compiler emitted a usable body at all, which the old whole-row
-digest covered by accident. `tests/unit/compiled-bodies.spec.ts` covers it directly instead: every action and prompt
+digest covered by accident. `compiled-bodies.spec.ts` beside it covers it directly instead: every action and prompt
 has a non-empty body that parses. That check is stable under content changes and catches the failure that is
 otherwise silent — the seed imports, the row looks right, and the action dies when a flow reaches it.
 
@@ -76,7 +76,7 @@ Re-recording rewrites a **test expectation**. It changes no user data and needs 
 a new `sourceHash` from the compile stage, and the seeder updates only rows the user never edited — so read the
 diff, confirm it is the change you meant, and commit it with the change that caused it. Never hand-edit a golden.
 
-Note the split: the `v1`/`v2` scenario goldens seed fixture sources in `packages/default-setup/tests/fixtures/`, so
+Note the split: the `v1`/`v2` scenario goldens seed fixture sources in `packages/default-setup/tests/_support/fixtures/`, so
 only a change in *seeding* moves them. `default-setup.json` follows the pack's own sources, so it also moves when
 content does.
 

@@ -3,10 +3,10 @@ import { describe, expect, it } from 'vitest';
 import { mockInference, mockService } from '@abuddy/testing/harness';
 import { repository } from '@/__generated__/repository';
 import type { ExecutionContext, TNodeEntity } from '@abuddy/sdk/steps';
-import { handler } from '../../src/extensions/steps/llm/runtime';
-import { DEFAULT_MODEL } from '../../src/extensions/steps/llm/model';
-import { llmStepFE } from '../../src/extensions/steps/llm/fe';
-import { validate } from '../../src/extensions/steps/llm/build';
+import { handler } from '@/extensions/steps/llm/runtime';
+import { DEFAULT_MODEL } from '@/extensions/steps/llm/model';
+import { llmStepFE } from '@/extensions/steps/llm/fe';
+import { validate } from '@/extensions/steps/llm/build';
 import { availableModels } from '@abuddy/sdk/models';
 
 function run(nodeAttributes: Record<string, unknown>) {

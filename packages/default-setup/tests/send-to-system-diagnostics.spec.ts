@@ -4,7 +4,7 @@ import * as path from 'node:path';
 import ts from 'typescript';
 import { describe, expect, it } from 'vitest';
 
-const root = path.resolve(import.meta.dirname, '../..');
+const root = path.resolve(import.meta.dirname, '..');
 
 function diagnosticsFor(source: string): string[] {
   const configFile = ts.findConfigFile(root, ts.sys.fileExists, 'tsconfig.json')!;

@@ -92,9 +92,9 @@ const EXPENSIVE_BY_NATURE: Record<string, string> = {
   'abuddy-host/tests/database/write-lock.spec.ts': 'waits on real cross-process lock timeouts',
   // Starts and stops real pack backends and then waits to prove a cron schedule does *not* tick into the
   // next test. The wait is the assertion, so shortening it removes what the test checks.
-  'default-setup/tests/unit/harness-app-stop.spec.ts': 'waits to prove a stopped schedule does not tick',
+  'default-setup/tests/harness-app-stop.spec.ts': 'waits to prove a stopped schedule does not tick',
   // Builds a TypeScript program over the pack to check a diagnostic names the event a send is for.
-  'default-setup/tests/unit/send-to-system-diagnostics.spec.ts': 'builds a TypeScript program over the pack',
+  'default-setup/tests/send-to-system-diagnostics.spec.ts': 'builds a TypeScript program over the pack',
 };
 
 describe('a spec that costs more than a fast half allows', () => {

@@ -77,7 +77,7 @@ Seven kinds are actually distinguishable in the tree. The tier is what a check m
 | Category | Where | Tier | Reads |
 |---|---|---|---|
 | **Package unit** | most of every `tests/` | 1 | its own package's source, the in-memory runtime, fakes |
-| **Contract over build output** | `abuddy-cli/tests/build/`, `default-setup/tests/unit/seed-parity/` | 2 | the built `@abuddy` packages, a pack's `dist` |
+| **Contract over build output** | `abuddy-cli/tests/build/`, `default-setup/tests/seeds/` | 2 | the built `@abuddy` packages, a pack's `dist` |
 | **Command / process** | `abuddy-cli/tests/cli/`, `tests/harness/` | 2 | runs real builds, installs and child processes |
 | **Repo tooling** | `@app/repo-checks` | 1–2 | the chain table, the cost records, `scripts/` |
 | **App runtime** | `api/tests/unit/` | 1 | boots the composed runtime over a temp data dir |
@@ -102,8 +102,9 @@ criteria — in particular **Decision 10: a duplicate that names the level it ad
 
 `MOVE` is the class that accumulates on its own. The other four are written wrong once; a misplaced spec is
 written *correctly* and then left behind when the code moves. That is why the tree records the repo's
-history rather than its structure, and `default-setup/tests/unit/_hybrid/CLAUDE.md` says so outright: *"The
-directory's name is historical: these specs once imported the API's EARS and repository modules too."*
+history rather than its structure. `default-setup/tests/unit/_hybrid/README.md` said so outright — *"The
+directory's name is historical: these specs once imported the API's EARS and repository modules too"* — until
+`goal-tests-mirror-source.md` moved its three specs under the features they cover and the directory went.
 
 ### Mechanical signals
 
@@ -147,7 +148,7 @@ because its subject belongs to no single package.
 | 2 | ~~`@app/api`'s only test directory is `unit/`~~ — **resolved** in Phase 4: split on measured cost into `unit/` (5 specs, 4–22ms) and `runtime/` (10, 100–1120ms); the cheap five run alone in 2.1s | done |
 | 3 | ~~`secrets.spec.ts` mocks host's vault by relative path~~ — **resolved** in Phase 4: `@abuddy/host` publishes `./secrets/vault`, so it is a specifier. The mock stays: host's own suite covers the vault, this covers what a renderer learns, and Decision 10's sentence now says so | done |
 | 4 | `@abuddy/ui` has 33 recorded component contracts and no behavioural test; exactly one spec in the repo mounts a Vue component | coverage gap |
-| 5 | ~~`@app/default-setup` is the only package with colocated specs~~ — **resolved** in Phase 5: the six moved to `tests/unit/`, the `src/**` include and the `__tests__/` variant are gone | done |
+| 5 | ~~`@app/default-setup` is the only package with colocated specs~~ — **resolved** in Phase 5: the six moved under `tests/`, the `src/**` include and the `__tests__/` variant are gone | done |
 | 6 | ~~twelve specs in `@abuddy/cli` are about the published `@abuddy` packages~~ — **resolved**: eight moved to `@app/publish-checks` with the packing fixture, one to `@abuddy/ui`; `package-freshness`, `checkout-packages` and `verify-node-modules` stay, their subjects being host's stamp rule, a CLI command and the packaging script | done |
 
 `pack-protocol.spec.ts` was a seventh, resolved in Phase 6: it sat in `@abuddy/host` while `PackProtocol.ts`

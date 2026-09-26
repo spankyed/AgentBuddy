@@ -4,9 +4,9 @@ import * as os from 'node:os';
 import * as path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import type { SeedCompileContext } from '@abuddy/sdk/build';
-import compileFaqs from '../../src/seeds/_compilers/faqs';
+import compileFaqs from '../../../src/seeds/_compilers/faqs';
 
-const PACK_DIR = path.resolve(import.meta.dirname, '../..');
+const PACK_DIR = path.resolve(import.meta.dirname, '../../..');
 
 const dirs: string[] = [];
 afterEach(() => {

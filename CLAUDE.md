@@ -74,7 +74,7 @@ Two things the chain cannot work out for you, because they rewrite files you com
 - **a pack's seed source (`src/seeds/`)** — when only `sourceHash`/`rowSha256` moved, re-record
   deliberately with `npm run seed-parity:update -w @app/default-setup`, and never edit a hash by hand.
   Re-recording rewrites a test expectation, not user data; what reaches users is the new `sourceHash`.
-  `packages/default-setup/tests/unit/seed-parity/CLAUDE.md` has the rule for what a golden records.
+  `packages/default-setup/tests/seeds/CLAUDE.md` has the rule for what a golden records.
 
 **`api:check` is not a chain step, on purpose.** `typecheck` runs `api:stamp`, which hashes the same
 declarations the reports are generated from, in 0.6s against `api:check`'s 55. A report is a pure
@@ -298,7 +298,7 @@ npm run schema:update    # Regenerate packages/abuddy-sdk/abuddy.schema.json fro
 npm run schema:check     # Fails if abuddy.schema.json is stale
 
 # Seed goldens (-w @app/default-setup)
-npm run seed-parity:check   # Compare seeded rows against tests/unit/seed-parity/__golden__
+npm run seed-parity:check   # Compare seeded rows against tests/seeds/__golden__
 npm run seed-parity:update  # Re-record them; deliberate, see "What to run after a change"
 
 # Lint (root runs every workspace that has one; oxlint, plus eslint in the renderer)

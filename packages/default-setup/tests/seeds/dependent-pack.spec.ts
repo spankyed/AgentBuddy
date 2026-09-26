@@ -1,5 +1,5 @@
 // A pack that depends on default-setup seeds Notes and library documents from its own markdown with
-// entries naming default-setup's formats (tests/fixtures/dependent-pack): no field maps, compiler
+// entries naming default-setup's formats (tests/_support/fixtures/dependent-pack): no field maps, compiler
 // modules or seed hooks of its own. Its notes go through default-setup's Note hooks and its library
 // through default-setup's bundled compiler module (dist/build/seed-compilers.mjs) and library hooks,
 // so it gets the rows default-setup's own entries seed from the same sources: NOTE shortCodes,
@@ -15,7 +15,7 @@ import {
 import { createSeeder } from '@abuddy/sdk/seed';
 import { PACK_DIR, resetDatabase, snapshot } from './harness';
 
-const FIXTURE = path.join(PACK_DIR, 'tests/fixtures/dependent-pack');
+const FIXTURE = path.join(PACK_DIR, 'tests/_support/fixtures/dependent-pack');
 const manifest = JSON.parse(fs.readFileSync(path.join(FIXTURE, 'abuddy.json'), 'utf-8')) as PackManifest;
 /** default-setup as a dependent's build sees it: its built snapshot and build dir */
 const depSnapshot = JSON.parse(fs.readFileSync(path.join(PACK_DIR, 'dist/snapshot.json'), 'utf-8')) as PackSnapshot;

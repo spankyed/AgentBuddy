@@ -1,9 +1,9 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { mockService, startApp, type TestApp } from '@abuddy/testing/harness'
 import type { Services } from '@/__generated__/services'
-import threadSettings from '../../src/features/threads/settings'
-import { actionLabel, seedDefaultFlows } from './helpers/flows'
-import { phaseTipPromptLabel } from '../../src/seeds/actions/claude-code/chat'
+import threadSettings from '@/features/threads/settings'
+import { actionLabel, seedDefaultFlows } from '../../_support/flows'
+import { phaseTipPromptLabel } from '../../../src/seeds/actions/claude-code/chat'
 
 const chat = threadSettings.plugins.threads.chat
 

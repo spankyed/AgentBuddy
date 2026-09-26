@@ -4,7 +4,7 @@ import { services } from '@/__generated__/services';
 import { describe, expect, it } from 'vitest'
 import { untypedTx, untypedQx } from '@abuddy/ears'
 import type { EARS as SdkEARS } from '@abuddy/sdk'
-import { migrations } from '../../../src/migrations/index'
+import { migrations } from '../../src/migrations/index'
 import threadsSettings from '@/features/threads/settings'
 import { ref } from '@/__generated__/ref'
 

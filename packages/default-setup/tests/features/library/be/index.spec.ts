@@ -7,7 +7,7 @@ import { importCompiledSeeds } from '@abuddy/sdk/utils'
 import { repository } from '@/__generated__/repository'
 import type { LibraryIndex } from '@/features/library/be/types'
 
-const DIST = path.resolve(import.meta.dirname, '../../dist')
+const DIST = path.resolve(import.meta.dirname, '../../../../dist')
 
 const indexOf = (event: unknown) => (event as { data: { index: LibraryIndex } }).data.index
 const folderNamed = (name: string) => repository.libraryQueries.getCollections().find((collection) => collection.name === name)!.id

@@ -8,7 +8,7 @@
 // seeding produces moves, you re-record it deliberately with
 // `npm run seed-parity:update -w @app/default-setup`, and you never hand-edit one.
 //
-// The v1/v2 scenarios seed fixture sources (tests/fixtures/seed-parity), so only a change in seeding moves their
+// The v1/v2 scenarios seed fixture sources (tests/_support/fixtures/seed-parity), so only a change in seeding moves their
 // goldens; default-setup.json follows the pack's own sources, so content moves it too. The goldens were first
 // recorded from the pipeline that preceded the generic seed compiler.
 //

@@ -78,7 +78,7 @@ The engine's types moved to `@abuddy/ears` (`packages/abuddy-ears`); the SDK kee
    - a runtime name typed `string`
    - the untyped `qx`/`tx` (`untypedQx`/`untypedTx`)
 2. **Run the type tests** that pin the contract:
-   - default-setup: `tests/unit/typed-query-builder.spec.ts`, `branded-entity-id.spec.ts`, `entity-shape-registry.spec.ts`, `sdk-type-safety.spec.ts`, and `npm run typecheck:pack`
+   - default-setup: `tests/typed-query-builder.spec.ts`, `branded-entity-id.spec.ts`, `entity-shape-registry.spec.ts`, `sdk-type-safety.spec.ts`, and `npm run typecheck:pack`
    - `@abuddy/cli`: `tests/build/facade-typing.spec.ts` (a real dependent pack under bundler and node16, against both the workspace source and the packed `@abuddy/ears` and `@abuddy/sdk`) and `tests/build/published-sdk-any.spec.ts`
 3. **Mutation-check every rule you touch.** Break it on purpose and confirm a test fails.
 4. **Check editor completions and error messages.** `tests/build/facade-typing.spec.ts` in `@abuddy/cli` checks the positions below with the TypeScript language service, under both module resolutions and against the published package. Extend it when you add a field or name parameter, and still look at anything it doesn't cover.

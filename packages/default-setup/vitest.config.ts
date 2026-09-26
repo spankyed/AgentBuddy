@@ -1,4 +1,4 @@
-import { defineConfig } from 'vitest/config';
+import { configDefaults, defineConfig } from 'vitest/config';
 import { isolatedDataDir } from '@abuddy/testing/vitest';
 // The harness requires an explicit environment and data dir (the media store). Each run gets a
 // throwaway data dir, split per worker and removed when the run ends.
@@ -16,13 +16,14 @@ export default defineConfig(async () => {
     test: {
       globals: true,
       environment: 'node',
-      // Specs live in tests/, as they do in every other package. There used to be six under src/ as well,
-      // with an include for them whose comment said "without this they are silently never run" — a layout
-      // that needs a config line to avoid silence is one where the next file is silent.
-      include: [
-        'tests/unit/**/*.spec.ts',
-        'tests/integration/**/*.spec.ts',
-      ],
+      // Specs live in tests/, mirroring the source they cover (`CLAUDE.md`, Tests), so one pattern covers
+      // every one of them. There used to be six under src/ as well, with an include for them whose comment
+      // said "without this they are silently never run" — a layout that needs a config line to avoid
+      // silence is one where the next file is silent.
+      include: ['tests/**/*.spec.ts'],
+      // `tests/_support/fixtures/` holds pack sources, not specs, and nothing in it ends in .spec.ts today.
+      // Named anyway: a fixture pack that grows one would otherwise be collected into this suite.
+      exclude: [...configDefaults.exclude, 'tests/_support/**'],
       // Tier 1 (`TIER_TIMEOUT_MS`, scripts/lib/chain-steps.ts): a unit test that takes longer is hung,
       // not slow. This suite's slowest test is 2.9s.
       testTimeout: 15_000,

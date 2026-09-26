@@ -34,7 +34,7 @@ import { services, type Services } from '@/__generated__/services';
 import type { HostServices } from '@abuddy/sdk/services';
 import type { flowRepository } from '@abuddy/sdk/repositories';
 import type { promptService } from '@/features/prompts/be/services/prompt';
-import { EARS } from '../../src/__generated__/ears';
+import { EARS } from '@/__generated__/ears';
 
 
 // ─── Compile-time type assertions ──────────────────────────────────────

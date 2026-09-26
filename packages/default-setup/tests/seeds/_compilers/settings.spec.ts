@@ -9,10 +9,10 @@ import * as path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import type { SeedCompileContext } from '@abuddy/sdk/build';
 import { importCompiledSeeds } from '@abuddy/sdk/utils';
-import compileSettings from '../../src/seeds/_compilers/settings';
+import compileSettings from '../../../src/seeds/_compilers/settings';
 import { ref } from '@/__generated__/ref';
 
-const PACK_DIR = path.resolve(import.meta.dirname, '../..');
+const PACK_DIR = path.resolve(import.meta.dirname, '../../..');
 const DIST = path.join(PACK_DIR, 'dist');
 
 const dirs: string[] = [];

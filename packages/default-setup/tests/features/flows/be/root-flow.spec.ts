@@ -9,7 +9,7 @@ import { startApp } from '@abuddy/testing/harness'
 import { repository } from '@/__generated__/repository'
 import { ref } from '@/__generated__/ref'
 
-const DIST = path.resolve(import.meta.dirname, '../../dist')
+const DIST = path.resolve(import.meta.dirname, '../../../../dist')
 const importRoot = (label: string) =>
   repository.flowsCommands.importFromDSL(compileFlowDSL({ [label]: { root: true, tracks: [{ event: 'flow.entry', exits: [[]] }] } })).flowIds[0]
 const reportedRoot = (event: unknown) => (event as { data: { rootFlow?: { id: string } } }).data.rootFlow?.id

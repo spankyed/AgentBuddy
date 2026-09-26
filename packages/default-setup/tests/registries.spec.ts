@@ -7,7 +7,7 @@ describe('boot exports — source modules', () => {
   it('default-exports the logs entry (early boot system)', async () => {
     // System modules default-export their SystemEntry, the same way plugin
     // modules default-export their Plugin.
-    const { default: logsEntry } = await import('../../src/features/logs/be/system');
+    const { default: logsEntry } = await import('@/features/logs/be/system');
 
     expect(logsEntry).toBeDefined();
     expect(typeof logsEntry.machine.id).toBe('string');
@@ -16,7 +16,7 @@ describe('boot exports — source modules', () => {
 
 describe('registries/services — feature services assembly', () => {
   it('does not include core services (logger, emitter, repository)', async () => {
-    const { featureServices } = await import('../../src/__generated__/services');
+    const { featureServices } = await import('@/__generated__/services');
 
     expect(featureServices).not.toHaveProperty('logger');
     expect(featureServices).not.toHaveProperty('emitter');

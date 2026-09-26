@@ -5,8 +5,8 @@ import { repository } from '@/__generated__/repository';
 import { resetTestData } from '@abuddy/sdk/testing';
 import { exportActions } from '@/features/actions/be/repository/export-actions';
 import { exportPrompts } from '@/features/prompts/be/repository/export-prompts';
-import { actionFixtures } from './helpers/action-fixtures';
-import { promptFixtures } from './helpers/prompt-fixtures';
+import { actionFixtures } from '../../../../_support/action-fixtures';
+import { promptFixtures } from '../../../../_support/prompt-fixtures';
 
 /**
  * Exporting actions and exporting prompts are one routine over two entity types: the same file written,

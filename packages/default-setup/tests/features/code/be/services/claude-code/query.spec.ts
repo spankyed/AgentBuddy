@@ -21,12 +21,12 @@ import {
   ClaudeAbortError,
   ClaudeExitError,
   ClaudeProtocolError,
-} from '../../src/features/code/be/services/claude-code/errors'
-import { finaliseNoResult, query } from '../../src/features/code/be/services/claude-code/query'
-import type { StreamHandle } from '../../src/features/code/be/services/claude-code/runner'
-import type { DecodedLine } from '../../src/features/code/be/services/claude-code/ndjson'
+} from '@/features/code/be/services/claude-code/errors'
+import { finaliseNoResult, query } from '@/features/code/be/services/claude-code/query'
+import type { StreamHandle } from '@/features/code/be/services/claude-code/runner'
+import type { DecodedLine } from '@/features/code/be/services/claude-code/ndjson'
 
-import * as runner from '../../src/features/code/be/services/claude-code/runner'
+import * as runner from '@/features/code/be/services/claude-code/runner'
 
 describe('finaliseNoResult', () => {
   const args = ['--print', '--input-format', 'stream-json'] as const

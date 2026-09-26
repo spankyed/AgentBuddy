@@ -1,7 +1,7 @@
 /**
  * Integration test — real Claude CLI subprocess + live permission flow.
  *
- * Unlike everything in `tests/unit/**`, this test spawns an actual `claude`
+ * Unlike every other spec in this suite, this test spawns an actual `claude`
  * binary as a child process and drives it through the real stdio
  * permission protocol. It exists to answer one question that unit tests
  * with mocked streams cannot answer:

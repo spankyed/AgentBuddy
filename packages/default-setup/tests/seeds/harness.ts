@@ -9,8 +9,8 @@ import { untypedQx as qx } from '@abuddy/ears';
 import { entityIds } from '@abuddy/sdk/testing';
 import { resetTestData, testMediaPath } from '@abuddy/testing/harness';
 
-export const PACK_DIR = path.resolve(import.meta.dirname, '../../..');
-export const FIXTURES = path.join(PACK_DIR, 'tests/fixtures/seed-parity');
+export const PACK_DIR = path.resolve(import.meta.dirname, '../..');
+export const FIXTURES = path.join(PACK_DIR, 'tests/_support/fixtures/seed-parity');
 
 /** The seed keys the parity gate covers */
 export const PARITY_KEYS = ['actions', 'prompts', 'library', 'notes'] as const;

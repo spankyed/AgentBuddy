@@ -1,7 +1,7 @@
 import { stepRegistry, type StepDefinition } from '@abuddy/sdk/steps';
 import { testPacks } from '@abuddy/sdk/testing';
-import { listenerTrigger } from '../../src/extensions/steps/listener';
-import { scheduleTrigger } from '../../src/extensions/steps/schedule';
+import { listenerTrigger } from '@/extensions/steps/listener';
+import { scheduleTrigger } from '@/extensions/steps/schedule';
 
 // Steps a test registers go in the test runtime's stand-in, over the pack's registered ones
 const register = (step: StepDefinition) => testPacks.steps.set(step.type, step);

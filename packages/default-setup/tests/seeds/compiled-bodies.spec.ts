@@ -5,7 +5,7 @@
 // The seed-parity golden used to cover this by accident, digesting the whole row — which also meant every edit to
 // any source moved 75 rows, so it fired constantly on changes that were fine. This checks the property that edit
 // cannot change: there is a body, and it parses. Editing what a body *does* leaves it alone; emitting an empty or
-// truncated one fails it. `tests/unit/seed-parity/CLAUDE.md` has the whole split of what the golden records.
+// truncated one fails it. `tests/seeds/CLAUDE.md` has the whole split of what the golden records.
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { describe, expect, it } from 'vitest';

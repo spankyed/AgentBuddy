@@ -8,8 +8,8 @@ import { services } from '@abuddy/sdk/services';
 import { repository } from '@/__generated__/repository';
 import { testRootEvents } from '@abuddy/sdk/testing';
 import { packId } from '@/__generated__/ref';
-import { handler } from '../../src/extensions/steps/action/runtime';
-import { actionService } from '../../src/features/actions/be/services/action';
+import { handler } from '@/extensions/steps/action/runtime';
+import { actionService } from '@/features/actions/be/services/action';
 
 // Logs what it can reach, and returns it
 const ACTION = `

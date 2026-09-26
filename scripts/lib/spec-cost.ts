@@ -49,7 +49,7 @@ export interface SpecCost {
    *
    * This is a third state, and collapsing it into either of the others is a trap. Treating such a file as
    * costing nothing would file it as the cheapest spec in the suite and place it accordingly, until the day
-   * its precondition is met and it runs — `_hybrid/claude-code-permission-flow` needs a real `claude`
+   * its precondition is met and it runs — `features/code/be/claude-code-permission-flow` needs a real `claude`
    * binary. Treating it as unmeasured would fail the check forever for a file that is behaving correctly.
    * Recorded here it is neither, and `spec-cost:check` notices when one starts reporting a duration.
    */
@@ -106,7 +106,7 @@ export const hasSplit = (packageDir: string): boolean => configsFor(packageDir).
  *
  * Both `tests/` and `src/`, and `src/` is now a net rather than a necessity. It was there because
  * `@app/default-setup` ran six colocated specs and walking only `tests/` reported them as
- * recorded-but-gone; those moved to `tests/unit/` and no package colocates any more. Keeping the walk is
+ * recorded-but-gone; those moved under `tests/` and no package colocates any more. Keeping the walk is
  * what stops the next one being silent twice over: no config includes `src/**` now, so such a spec would
  * never run, and if this did not see it the record would not report it missing either. As it is, it lands
  * here with no measured cost and `suite-split.spec.ts` says so by name.

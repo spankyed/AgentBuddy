@@ -5,7 +5,7 @@ import * as path from 'node:path';
 import { afterEach, expect, it } from 'vitest';
 import { compileBuiltinFormat } from '@abuddy/sdk/build';
 
-const manifest = JSON.parse(fs.readFileSync(path.resolve(import.meta.dirname, '../../abuddy.json'), 'utf-8'));
+const manifest = JSON.parse(fs.readFileSync(path.resolve(import.meta.dirname, '../../../abuddy.json'), 'utf-8'));
 const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'notes-format-'));
 afterEach(() => fs.rmSync(dir, { recursive: true, force: true }));
 

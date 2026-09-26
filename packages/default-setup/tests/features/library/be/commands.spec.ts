@@ -11,9 +11,9 @@ import { createSeeder } from '@abuddy/sdk/seed'
 import type { PackCommand } from '@abuddy/sdk/framework'
 import { repository } from '@/__generated__/repository'
 import { services } from '@/__generated__/services'
-import manifest from '../../abuddy.json'
+import manifest from '../../../../abuddy.json'
 
-const DIST = path.resolve(import.meta.dirname, '../../dist')
+const DIST = path.resolve(import.meta.dirname, '../../../../dist')
 
 const commandNames = (event: unknown) => ((event as { commands: Array<{ name: string }> }).commands).map((command) => command.name)
 const commandDocuments = () => repository.libraryQueries.getDocuments().filter((document) => document.collectionPath?.join('/') === 'internal/commands')
