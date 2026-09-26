@@ -1,6 +1,7 @@
 import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
+import ts from 'typescript';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import {
   CHECKS,
@@ -428,10 +429,72 @@ describe('findSharedPackageLists', () => {
  * happen. Same shape as `step-build-barrel.spec.ts`: a table and its uses, kept in step by a test.
  */
 describe('CHECKS', () => {
-  it('has a case per rule, named after the check it exercises', () => {
-    const code = fs.readFileSync(import.meta.filename, 'utf-8');
-    const uncovered = CHECKS.map(([find]) => find.name).filter((name) => !code.includes(`describe('${name}'`));
-    expect(uncovered, "each rule in CHECKS needs a describe block naming its check").toEqual([]);
+  const source = ts.createSourceFile(import.meta.filename, fs.readFileSync(import.meta.filename, 'utf-8'),
+    ts.ScriptTarget.Latest, true, ts.ScriptKind.TS);
+
+  /** The `describe('<name>', …)` blocks in this file, by the name each one gives */
+  function blocksByName(): Map<string, ts.Node> {
+    const blocks = new Map<string, ts.Node>();
+    const visit = (node: ts.Node): void => {
+      if (ts.isCallExpression(node) && node.expression.getText(source).startsWith('describe')
+        && node.arguments[0] && ts.isStringLiteralLike(node.arguments[0])) {
+        blocks.set((node.arguments[0] as ts.StringLiteralLike).text, node);
+      }
+      ts.forEachChild(node, visit);
+    };
+    visit(source);
+    return blocks;
+  }
+
+  /**
+   * Whether a block asserts that something *was* found: a non-empty array, a length, a match, a throw.
+   *
+   * Read from the syntax tree rather than from the text, because the distinction is what an assertion says,
+   * and a regex over `toEqual` cannot tell `toEqual([])` — a rule staying quiet — from `toEqual([problem])`.
+   */
+  /**
+   * Whether an expected value says "nothing was found". Anything else counts as a finding, the built list
+   * `expect(…).toEqual(found.map(…))` included — the first version took only a non-empty array literal, and
+   * called `findSharedPackageLists` uncovered although its three cases each assert what it flags.
+   */
+  const isEmptiness = (expected: ts.Expression): boolean =>
+    (ts.isArrayLiteralExpression(expected) && expected.elements.length === 0)
+    || (ts.isObjectLiteralExpression(expected) && expected.properties.length === 0)
+    || expected.getText(source) === 'undefined';
+
+  function assertsAFinding(block: ts.Node): boolean {
+    let found = false;
+    const visit = (node: ts.Node): void => {
+      if (found) return;
+      if (ts.isCallExpression(node) && ts.isPropertyAccessExpression(node.expression)) {
+        const matcher = node.expression.name.text;
+        const [argument] = node.arguments;
+        if (matcher === 'toContain' || matcher === 'toMatch' || matcher === 'toThrow' || matcher === 'toThrowError') found = true;
+        if ((matcher === 'toEqual' || matcher === 'toStrictEqual') && argument && !isEmptiness(argument)) found = true;
+        if (matcher === 'toHaveLength' && argument && ts.isNumericLiteral(argument) && Number(argument.text) > 0) found = true;
+      }
+      ts.forEachChild(node, visit);
+    };
+    visit(block);
+    return found;
+  }
+
+  /**
+   * Every rule in `CHECKS` is a gate that fails the build, so every one needs a case that proves it bites.
+   *
+   * This was a sentence and nothing else for a while: the file imported `CHECKS` and never read it, and two
+   * rules had landed with no case at all (`findPackOwnAliases`, `findPackageScriptImports`). Then it checked
+   * that a `describe` existed, which the own-module rule satisfied while half of it — the relative form, and
+   * 716 of the specifiers it governs — was asserted nowhere. So the bar is what an assertion *says*: a rule
+   * whose only cases are "and this one passes" is a rule nothing has watched fail.
+   */
+  it('has a case per rule that asserts the rule finding something', () => {
+    const blocks = blocksByName();
+    const uncovered = CHECKS.map(([find]) => find.name).filter((name) => {
+      const block = blocks.get(name);
+      return block === undefined || !assertsAFinding(block);
+    });
+    expect(uncovered, 'each rule in CHECKS needs a describe block naming it, holding a case that asserts what it flags').toEqual([]);
   });
 });
 
