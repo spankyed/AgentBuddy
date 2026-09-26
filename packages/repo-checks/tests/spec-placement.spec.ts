@@ -79,11 +79,6 @@ describe('a package with source has a suite', () => {
  * move rather than an entry here.
  */
 const SPANS_PACKAGES: Record<string, string> = {
-  'packages/api/tests/unit/secrets.spec.ts':
-    "pending: this is goal-test-placement.md's Finding 3, which Phase 4 resolves once the user has chosen "
-    + 'between host exporting a seam the api mocks through its public surface and the vault-failure cases '
-    + "moving into host's suite. It is here so the guard can land first; remove the entry with the fix, not "
-    + 'the finding',
   'packages/abuddy-cli/tests/build/fe-bundler-ui-theme.spec.ts':
     "its four tests are a chain across three packages: @abuddy/ui's preset defines the shades its components "
     + 'name, the renderer applies that preset instead of copying the colours, and a built fe.bundleUi pack '

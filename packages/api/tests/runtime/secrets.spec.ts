@@ -1,5 +1,18 @@
 // API keys in the API: the secrets procedures (the only way a value reaches the backend), and logs and error reports
 // that redact keys.
+//
+// The vault-failure cases repeat a condition `@abuddy/host` already covers, on purpose, and the level they add is
+// the procedure boundary. `abuddy-host/tests/secrets/store.spec.ts` drives a failing vault straight into
+// `createSecretsStore` (which takes `osVault`/`fileVault`) and asserts the store's own status and transitions. What
+// it cannot assert is what a renderer learns: that `secrets.add` rejects naming the backend, that a CHANGED event
+// still reaches the client, and that `secrets.list` carries the unavailable status out. That is tRPC over the host
+// store over the vault, which only exists composed — the same reason `boot-recovery.spec.ts` beside this one repeats
+// two host unit tests through the real boot.
+//
+// It mocks the vault module rather than injecting one because the procedures use the module-level `secretsStore`
+// singleton, which builds its own vaults; injection is reachable from host's suite and not from here. `@abuddy/host`
+// publishes `./secrets/vault` so this names it as a specifier instead of reaching into another package's `src/`
+// (`repo-checks/tests/spec-placement.spec.ts`).
 import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
@@ -9,8 +22,8 @@ import type { Message } from '@abuddy/sdk/events';
 // The test environment keeps the data key in a file vault; `vaultDown` swaps it for an OS credential store that fails,
 // the way a system without one (or a locked keyring) does
 const vaultDown = vi.hoisted(() => ({ value: false }));
-vi.mock('../../../abuddy-host/src/secrets/vault.ts', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('../../../abuddy-host/src/secrets/vault.ts')>();
+vi.mock('@abuddy/host/secrets/vault', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@abuddy/host/secrets/vault')>();
   const fail = () => { throw new actual.KeyVaultUnavailableError('Secret Service', new Error('no dbus')); };
   const down = { backend: 'Secret Service', protection: 'os-keystore' as const, get: fail, set: fail, delete: fail };
   return { ...actual, fileKeyVault: (file: string) => vaultDown.value ? down : actual.fileKeyVault(file) };
