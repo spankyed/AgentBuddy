@@ -161,6 +161,19 @@ measurement, and 800 edits are a poor way to find out.
 **Done when:** the two results are recorded in this doc. If either fails, stop: the goal needs rethinking for
 SFCs and that is worth knowing before Phase 2, not during it.
 
+**Both hold, measured 2026-09-26 on the real tree rather than a fixture** — one specifier inside
+`packages/default-setup/src/features/database/fe/settings.vue` changed to `from '#generated/types.ts'`, then
+reverted:
+
+| Check | Result |
+|---|---|
+| `vue-tsc` over a `.ts` specifier in `<script setup>` | ✅ `npm run typecheck:pack` passed |
+| the renderer's Vite build and the API's esbuild, resolving it from a pack's SFC | ✅ `npm run build:app` exit 0, no errors |
+
+A standalone fixture (`package.json` `imports`, `moduleResolution: bundler`, `allowImportingTsExtensions`, an
+SFC importing `#feat/thing.ts`) agreed. So nothing about SFCs needs rethinking, and Phase 2's rewrite must
+include them — which the Constraints already say, since `tsc` does not read an SFC and `vue-tsc` does.
+
 ### Phase 2 — hand-written pack code
 
 The 801 extensionless specifiers, in `packages/default-setup` (src and tests) and `tests/fixtures/*`, take the
