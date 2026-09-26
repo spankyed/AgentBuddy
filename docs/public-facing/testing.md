@@ -47,15 +47,15 @@ What you may pass it:
 
 ```typescript
 // tests/setup.ts
-import { seedRuntime } from '#generated/seed-runtime';
-import { registration } from '#generated/pack-entry';
+import { seedRuntime } from '#generated/seed-runtime.ts';
+import { registration } from '#generated/pack-entry.ts';
 import { setupPackTests } from '@abuddy/testing/harness';
 
 await setupPackTests({ seedRuntime, registration });
 ```
 
 - **What's registered:** your entity types, repositories, seed hooks and seeders, and, with `registration`, your systems, services, steps and feature settings. Each dependency's full backend runtime (its systems, services and steps, on your pack's `@abuddy/sdk`) is registered too.
-- **Without `registration`**, only data code runs: each dependency contributes its seed runtime (entity types, repositories, seed hooks). Pass your seeders (`import { seeders } from '#generated/seeders'`, `setupPackTests({ seedRuntime, seeders })`) for `importSeeds`; a registration carries its own. These tests start faster and never load a dependency's runtime.
+- **Without `registration`**, only data code runs: each dependency contributes its seed runtime (entity types, repositories, seed hooks). Pass your seeders (`import { seeders } from '#generated/seeders.ts'`, `setupPackTests({ seedRuntime, seeders })`) for `importSeeds`; a registration carries its own. These tests start faster and never load a dependency's runtime.
 - **The registered packs are the test file's own:** the harness registers your pack and its dependencies in a registry it creates for the file, which the SDK's lookups (`getDesignated`, `stepRegistry`, `getPackCommands`, `services`, …) read. To test how your pack reacts to another pack (its commands, feature settings or seeders), register one with `registerPack({ id, features: { … }, … })` from `@abuddy/testing/harness`, and `unregisterPack(id)` when done.
 - **A lookup filled directly:** for what no pack registers (a step type or designation only one test needs), fill `testPacks` from `@abuddy/sdk/testing` (`steps`, `designations`, `artifacts`, `blocks`, `services`, `seedHooks`, `seeders`, `commands`); its entries are found before the registered packs'. Empty it with `testPacks.clear()`.
 - **Run `abuddy build` once first**, so dependencies are fetched into `.abuddy/deps/`.
@@ -70,7 +70,7 @@ await setupPackTests({ seedRuntime, registration });
 
 ```typescript
 import { importSeeds } from '@abuddy/testing/harness';
-import { findAll } from '#generated/ears';
+import { findAll } from '#generated/ears.ts';
 
 it('seeds notes', async () => {
   expect(await importSeeds({ keys: ['team-notes'] })).toEqual({ 'team-notes': { created: 1, updated: 0, skipped: 0 } });
@@ -86,7 +86,7 @@ it('seeds notes', async () => {
 
 ```typescript
 import { importSeeds, startApp } from '@abuddy/testing/harness';
-import { repository } from '#generated/repository';
+import { repository } from '#generated/repository.ts';
 
 it('stores a memo a client adds and sends it back', async () => {
   const app = await startApp({ systems: ['memos'] });
@@ -122,9 +122,9 @@ module: the module imports `.vue` components, which a unit test doesn't load.
 
 ```typescript
 import { startApp, startShell } from '@abuddy/testing/harness';
-import { openPlugin } from '#generated/fe';
-import memosState from '../../src/features/memos/fe/state';
-import notesState from '../../src/features/notes/fe/state';
+import { openPlugin } from '#generated/fe.ts';
+import memosState from '../../src/features/memos/fe/state.ts';
+import notesState from '../../src/features/notes/fe/state.ts';
 
 it('opens memos with an event', async () => {
   const shell = await startShell({ plugins: { notes: { state: notesState }, memos: { state: memosState } } });
@@ -159,7 +159,7 @@ Start one shell per test, in place of `startFeTestRuntime`: it binds the fronten
 
 ```typescript
 import { mockService } from '@abuddy/testing/harness';
-import { services, type Services } from '#generated/services';
+import { services, type Services } from '#generated/services.ts';
 
 it('digests a note, with only the inference call it makes mocked', async () => {
   mockService<Services, 'inference'>('inference', { generateText: async () => ({ output: { summary: 'Buy milk' } }) } as never);
@@ -202,7 +202,7 @@ Flows run in unit tests as they do in the app. The brain runs the root flow, the
 
 ```typescript
 import { importFlows, mockInference, importSeeds, startApp } from '@abuddy/testing/harness';
-import { entry, keepAlive, subflow } from '#generated/flow-helpers';
+import { entry, keepAlive, subflow } from '#generated/flow-helpers.ts';
 
 it('summarizes a note', async () => {
   await importSeeds({ keys: ['prompts', 'flows'] });

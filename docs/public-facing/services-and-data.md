@@ -70,7 +70,7 @@ Service names (the keys) are identifiers. `abuddy add service <name>` writes bot
 4. Exports `services`, the host's services proxy typed as `Services`
 
 ```typescript
-import { services } from '#generated/services';
+import { services } from '#generated/services.ts';
 
 services.cache.get('key');              // this pack's service
 services.brain.listen(/* … */);         // a dependency's service
@@ -143,7 +143,7 @@ Each call takes models from the providers that give that kind (`providerCapabili
 ```typescript
 import { isStepCount, tool } from 'ai';
 import { z } from 'zod';
-import { services } from '#generated/services';
+import { services } from '#generated/services.ts';
 
 // Text
 const { text } = await services.inference.generateText({
@@ -246,7 +246,7 @@ Keys become TypeScript constants; values are runtime strings. An entity's key mu
 
 ```typescript
 // Auto-generated — import from here
-import { EARS } from '#generated/ears';
+import { EARS } from '#generated/ears.ts';
 
 EARS.Entity.Bookmark  // "Bookmark"
 EARS.RelKind.TAGGED_WITH  // "tagged_with"
@@ -257,7 +257,7 @@ EARS.RelKind.TAGGED_WITH  // "tagged_with"
 EARS queries (`qx`) and transactions (`tx`) are **synchronous** — do not `await` them.
 
 ```typescript
-import { EARS, qx, tx, createEntityWithDefaults } from '#generated/ears';
+import { EARS, qx, tx, createEntityWithDefaults } from '#generated/ears.ts';
 
 const bookmarks = qx(EARS.Entity.Bookmark).pickAll();                 // typed with the Bookmark shape
 const id = tx(EARS.Entity.Bookmark).batchPut({ url, title }).id();   // EARS.EntityId<'Bookmark'>
@@ -387,7 +387,7 @@ Declare them in the feature's `repositories` (name → `path#exportName`):
 The generated pack entry carries them in its registration, and the app registers them with its engine before any system starts. Repository names are the app's, not the feature's: `abuddy build` fails on a name two of your features declare, or one a dependency declares, naming both, since the app refuses to register two packs that share a repository name. Use them through `repository` from `#generated/repository`, typed with your repositories and your dependencies':
 
 ```typescript
-import { repository } from '#generated/repository';
+import { repository } from '#generated/repository.ts';
 
 repository.bookmarkCommands.create({ url, title });
 ```
@@ -459,7 +459,7 @@ declared shapes), `PackShapes` (the SDK's, the dependencies' and this pack's), `
 against its shape:
 
 ```ts
-import { EARS, qx } from '#generated/ears';
+import { EARS, qx } from '#generated/ears.ts';
 
 qx(EARS.Entity.Bookmark).where('url', u)      // ok — declared attribute
 qx(EARS.Entity.Bookmark).where('urll', u)     // compile error
@@ -510,7 +510,7 @@ an undeclared name isn't registered at runtime, so a query for it silently match
 (typed `string`) is accepted and reads as undeclared.
 
 ```ts
-import { EARS, findAll, type EntityName } from '#generated/ears';
+import { EARS, findAll, type EntityName } from '#generated/ears.ts';
 
 findAll(EARS.Entity.Bookmark)          // ok
 findAll('Bookmark')                    // ok: declared
@@ -583,7 +583,7 @@ export const migration: PackMigration = {
 ```typescript
 // src/migrations/index.ts
 import type { PackMigration } from '@abuddy/sdk/framework';
-import { migration as v020 } from './0-2-0';
+import { migration as v020 } from './0-2-0.ts';
 
 export const migrations: PackMigration[] = [
   v020,

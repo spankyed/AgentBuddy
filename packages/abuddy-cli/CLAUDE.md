@@ -149,22 +149,32 @@ that reason. `_support/` is the prefix that says a directory claims to mirror no
 because four separate bundler configs each had to re-implement a mapping no runtime reads. What follows is
 what the audit of 2026-09-26 cost to establish, so it needn't be established again.
 
-- **`@abuddy/host/build/subpath-imports`** — a pack's `package.json` `imports`, and supplying the extension.
-  In host rather than here because the API's tsup build needs it too, for the same reason and over the same
-  pack sources, and `packages/api` does not depend on this package. esbuild resolves
-  the mapping itself and still needs this: measured with 0.25.12, it finds the target and names the file in
-  its error (`Import from ".ts" to get the file …`) but refuses an extensionless specifier or a directory, as
-  Node's ESM resolver does. Pack code is TypeScript and writes `from '#generated/events'`.
-- **The FE bundler reads neither `imports` nor supplies extensions, on purpose**: Vite resolves both
+- **Nothing here resolves a pack's `#` imports any more.** A specifier names the file that is there
+  ([`goal-pack-imports-name-the-file.md`](../../docs/archive/goals/goal-pack-imports-name-the-file.md)), and
+  esbuild and Vite both resolve the pack's mapping themselves once it does — measured by deleting the two
+  plugins that used to supply the suffix and rebuilding: `abuddy build` over both fixture packs and
+  default-setup green, and the API's tsup build byte for byte the same. What supplying the extension cost to
+  establish is recorded in that goal's Outcome; what is left is `@abuddy/host/build/subpath-imports`, which
+  reads `package.json` `imports` for the check below and resolves nothing.
+- **`own-module-specifiers-gate.ts`** refuses a specifier that names no file — extensionless, or the `.js` a
+  pack never emits — through `@abuddy/host/build/own-module-specifiers`, the same rule
+  `scripts/check-import-specifiers.ts` applies to the packs in this checkout. The rule is shared; the reading
+  is not, because each caller already parses a pack's sources for other rules.
+- **`pack-sources.ts` is that reading, once**: the files, an SFC's `<script>` blocks, and every specifier in
+  them, from a syntax tree. `internal-imports-gate.ts` uses it too. A regex over the text was tried and is
+  the reason this is a parser: a regex literal holding an unbalanced quote made a commented-out import look
+  real and failed a build naming a comment, and three module-path forms (`vi.mock`, `require.resolve`,
+  `import x = require(…)`) went unread.
+- **The FE bundler reads neither `imports` nor supplies extensions, on purpose**: Vite resolves them
   natively. The evidence is `tests/fixtures/external-pack`, whose `features/memos/fe/state.ts` value-imports
-  `#generated/events` and whose FE bundle and Playwright suite pass. A reader there would be a second
-  mechanism for something already handled.
+  `#generated/events.ts` and whose FE bundle and Playwright suite pass.
 - **A conditional target keeps the pack's own key order**, taking the first of `node`, `import`, `require`,
   `default` — Node's rule, not an imposed preference. `abuddy init` writes `"type": "module"`, so `import` is
-  the condition a pack's entries are likeliest to carry.
+  the condition a pack's entries are likeliest to carry. A *pattern* is matched the other way round, longest
+  first, which is also Node's rule: key order named the wrong file for a pack declaring both `#gen/*` and
+  `#gen/deep/*`.
 
-Both readers report an unreadable file rather than returning nothing in silence, because the failure that
-follows — "can't resolve `#generated/…`" — names neither the file nor the cause. A malformed `tsconfig.json`
-fails the build outright, Vite parsing the same file and refusing it.
+An unreadable `package.json` is reported rather than passed over in silence, because the failure that
+follows — "can't resolve `#generated/…`" — names neither the file nor the cause.
 
 End-to-end coverage outside this package: `npm run test:external-pack` (`tests/fixtures`) and `npm run test:packaged-authoring` (packed tarballs, outside the monorepo).
