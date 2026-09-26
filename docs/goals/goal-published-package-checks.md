@@ -52,7 +52,7 @@ Never:
 
 ## Background (surveyed 2026-09-25 at `c4f59a87c`)
 
-[`goal-test-placement.md`](goal-test-placement.md) applies one rule — *a spec lives with the thing it can
+[`goal-test-placement.md`](../archive/goals/goal-test-placement.md) applies one rule — *a spec lives with the thing it can
 break* — to five findings. This is the sixth, split out because it is four times the size of any of them
 and because, unlike the others, **it has no obvious right answer**: the specs in question have a subject
 that belongs to no single package.

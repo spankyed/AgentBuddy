@@ -1,5 +1,9 @@
 # Goal: every spec lives with the thing it can break
 
+> **Done** (`8932ece71`..`b87c22fd2` on `AS/chain-inputs`). The text below is the plan as written, with
+> Finding 1's table corrected during Phase 2 where an import scan had implied the wrong verdict for two
+> specs. For the suite as it is now, see [`docs/reference/test-inventory.md`](../../reference/test-inventory.md).
+
 > **Written in session** `1d53eb9c-d886-49f8-bc5a-90793d43315e` (Claude Code, 2026-09-25). Resume it with `claude -r 1d53eb9c-d886-49f8-bc5a-90793d43315e`.
 
 ```
@@ -52,9 +56,9 @@ Never:
 
 ## Background (surveyed 2026-09-25 at `e82b960af`)
 
-[`goal-test-cleanup.md`](goal-test-cleanup.md) swept the suite for tests that could not fail meaningfully
+[`goal-test-cleanup.md`](../../goals/goal-test-cleanup.md) swept the suite for tests that could not fail meaningfully
 and finished on 2026-09-25. It acted on four of the five verdict classes
-[`test-inventory.md`](../archive/plans/test-inventory.md) defined — `KEEP`, `TRIM`, `MERGE`, `DELETE` — and barely
+[`test-inventory.md`](../plans/test-inventory.md) defined — `KEEP`, `TRIM`, `MERGE`, `DELETE` — and barely
 touched the fifth, **`MOVE`: right assertion, wrong level or package.** This goal is that class, plus what
 that sweep deferred.
 
@@ -106,7 +110,7 @@ components name, the renderer applies it rather than copying it, a built pack sh
 would lose the chain, so it stays and becomes the first recorded exception to Phase 3's guard.
 
 This is the same class as the `scripts/` hole that
-[`goal-one-job-pool.md`](goal-one-job-pool.md) closed by creating `@app/repo-checks`, and it fails louder:
+[`goal-one-job-pool.md`](../../goals/goal-one-job-pool.md) closed by creating `@app/repo-checks`, and it fails louder:
 
 ```
 $ npm run spec -- packages/abuddy-testing/src/launch-env.ts
@@ -172,7 +176,7 @@ that needs a config line to avoid silence is one where the next file will be sil
 other five findings they have **no obvious right answer**: their subject belongs to no single package, the
 family is already split (two of them live in `@app/repo-checks`), and the packing fixture they share is also
 used by three specs that legitimately belong in the CLI. That needs a decision rather than a move, so it is
-[`goal-published-package-checks.md`](goal-published-package-checks.md), to be done after this one — its
+[`goal-published-package-checks.md`](../../goals/goal-published-package-checks.md), to be done after this one — its
 Phase 2 depends on the `@abuddy/testing` suite this goal's Phase 2 creates, and its Phase 4 extends this
 goal's Phase 3 guard.
 
@@ -181,7 +185,7 @@ the CLI, so the record cannot be read as a CLI number.
 
 ### What the earlier inventory still has open
 
-[`test-inventory.md`](../archive/plans/test-inventory.md) was written 2026-09-19 against
+[`test-inventory.md`](../plans/test-inventory.md) was written 2026-09-19 against
 `AS/package-boundaries` at `1dd69172e` and has not been touched since. Its numbers are out — 279 spec
 files and 2,211 tests against 364 and roughly 2,654 — it predates `@app/repo-checks`, the CLI suite's two
 halves and the cost records, and its per-file references are stale. Checked at this base:
@@ -196,7 +200,7 @@ halves and the cost records, and its per-file references are stale. Checked at t
 
 Two of its conclusions are superseded and must not be re-implemented. Its Decision 12 and 14 — split a
 suite by *what a spec does*, and guard that the fast half spawns nothing — were replaced by
-[`goal-measured-placement.md`](goal-measured-placement.md): placement is decided by **measured cost** in
+[`goal-measured-placement.md`](../../goals/goal-measured-placement.md): placement is decided by **measured cost** in
 `etc/spec-cost.json` with a dead band, and `suite-split.spec.ts` is the guard. Mechanism was a proxy that
 said three things wrongly. Its Decision 11 was already struck by the inventory's own Finding 1.
 
@@ -341,3 +345,76 @@ covers behaviour nothing else covers.
   `goal-test-cleanup.md`'s Decisions 1–10 are all final. Where this goal's survey contradicts an old
   decision, the table in *What the earlier inventory still has open* says which and why.
 - **Nothing in `docs/archive/` gets updated to match the code.** It records the past by design.
+
+## Outcome (2026-09-25)
+
+| Phase | Status | Evidence |
+|---|---|---|
+| 1 — record the suite as it is | **done** | `8932ece71`. `docs/reference/test-inventory.md`; the 2026-09-19 survey archived with what superseded it |
+| 2 — a suite for `@abuddy/testing` and `@abuddy/ui` | **done** | `c58c086eb`. 19 and 2 tests; the host pool runs 10 projects |
+| 3 — the guards | **done** | `993e8f8c2`. `spec-placement.spec.ts`, both halves mutation-checked |
+| 4 — `@app/api` | **done** | `d7de9f5fb`. `unit/` 5 specs, `runtime/` 10; `@abuddy/host` publishes `./secrets/vault` |
+| 5 — `default-setup`: one convention | **done** | `b87c22fd2`. Zero colocated specs repo-wide |
+| 6 — the scan, bounded | **done, and mostly a null result** | `9b72862e3`. One move with a real fix; three flagged duplicates needed nothing |
+
+### What moved
+
+337 recorded specs across eleven suites, 271.7s of file time. Four specs and one `describe` left `@abuddy/cli`
+for the two packages they were about; `pack-protocol.spec.ts` left `@abuddy/host` for `@app/main`; six left
+`default-setup/src/`; ten moved within `@app/api`. No spec was deleted.
+
+### The unlocks, measured
+
+- **`npm run spec` reaches two packages it could not.** Before: `npm run spec -- packages/abuddy-testing/src/launch-env.ts`
+  failed with *"Projects definition references a non-existing file or a directory:
+  .../packages/abuddy-testing/packages/abuddy-sdk"* — with no config of its own, vitest walked up to the root
+  one and resolved its `projects` list against the wrong directory. After: it runs the two specs covering it.
+- **A fast api loop exists.** `npx vitest run tests/unit` in `@app/api` is 21 tests in **2.1s**, where "the
+  api's tests" previously meant booting ten runtimes. The split is on measured cost — 4–22ms against
+  100–1120ms — so the boundary is a reading, not a judgement.
+- **A vacuous spec became a real one.** `pack-protocol`'s MIME describe asserted a copy of the map declared
+  in the test; it now reads `MIME_TYPES` from `PackProtocol.ts`, and deleting `.woff2` there fails it.
+- **No chain speedup, and none was expected.** Moving specs between packages does not change total work, and
+  the host pool sequences files across projects regardless.
+
+### Corrected during the work
+
+- **Finding 1 listed six specs; two were not what an import scan implied.** `app-target.spec.ts` is four
+  fifths a CLI spec, so only its `appLaunchEnv` describe moved. `fe-bundler-ui-theme.spec.ts` reads
+  `@abuddy/ui`'s preset, the renderer's tailwind config *and* a fixture pack's built CSS, and its four tests
+  are a chain; it stays, as the guard's one recorded exception. **A scan by import is a candidate list, not a
+  verdict** — the doc's table now carries the verdict column it should have had.
+- **The `dupe-title` signal over-reports.** All three pairs it flagged in 2026-09-19 already satisfied
+  Decision 10, because the `describe` is what names the level. It compares `it(` titles without them.
+- **Splitting `secrets.spec.ts` would have cost coverage, not duplicated it.** Host's `store.spec.ts` drives a
+  failing vault straight into `createSecretsStore`; what it cannot assert is what a renderer learns. The
+  export-map entry keeps the coverage and removes only the boundary violation. Raised by the user, and the
+  right call.
+- **Two detectors were reading their own subject as evidence.** `chain-inputs`' build-output check read the
+  string `@abuddy/testing` as proof a suite loads that bundle — true everywhere but in that package's own
+  suite. And `repo-check-boundary`'s new stale-entry check immediately rejected the self-exemption it had
+  been given, because that file names a repo script itself.
+
+### Conventional choices made
+
+- New suites are single-half: every spec builds a temp fixture and none reads the built packages, so no
+  `pretest` and no `SUITE_READS` entry.
+- `@app/api`'s split is `unit/` and `runtime/`, one suite and one tier, because the tier was measured and
+  correct and only the name was not.
+- `default-setup`'s six took flat `.spec.ts` names in `tests/unit/` matching the eighty already there, named
+  for what they test rather than the file they sat beside.
+- `spec-cost.ts` still walks `src/` although nothing colocates: no config includes `src/**` now, so such a
+  spec would not run, and without the walk the record would not report it missing either. Narrowing was the
+  obvious tidy-up and would have removed the last thing watching that path.
+
+### Still open
+
+- **`@abuddy/ui`'s 33 component contracts have no behavioural test** (Finding 4), and exactly one spec in the
+  repo mounts a Vue component. Phase 2 created the suite they belong in; writing them is new coverage and
+  needs its own sizing.
+- **Finding 6, the twelve published-package specs**, is [`goal-published-package-checks.md`](../../goals/goal-published-package-checks.md).
+- **`pack-protocol`'s path-traversal describe** still rebuilds `path.join(…) + path.sep` and checks Node's
+  `path`. Making it real needs the handler's prefix check extracted as an export — a product change, deferred
+  as `goal-test-cleanup.md`'s Decision 7 left it.
+- **`_hybrid`'s name**, which its own CLAUDE.md calls historical. Phase 5 moved nothing into it, so it was
+  left alone.

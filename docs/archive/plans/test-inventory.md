@@ -15,7 +15,7 @@
 >
 > Of its open candidates, three are done (`claude-code-permission-shape`, the `_hybrid` export clones,
 > `no-engine-state-access`) and two are still open, carried into
-> [`goal-test-placement.md`](../../goals/goal-test-placement.md) Phase 6.
+> [`goal-test-placement.md`](../goals/goal-test-placement.md) Phase 6.
 
 
 A complete pass over the test suite — what each test is, which commit introduced it, and which of five
