@@ -22,7 +22,6 @@ Finished when:
   mutation-checked.
 - Editing a package's source runs every spec that covers it, in whatever package it lives, and the
   routing is a pure function a spec can assert against.
-- `--here` narrows to the edited file's own package, and is the only way to get the old behaviour.
 - The cost is measured and recorded: a shallow edit, a deep one, and what each was before.
 - npm run typecheck; npm run spec-cost:check; npm test -w @app/repo-checks; npm run chain once at the end.
 - A final summary: phase → done/deferred, evidence, and the conventional choices made.
@@ -113,8 +112,12 @@ Final.
 2. **The default is the correct answer.** `npm run spec -- <source file>` runs every spec that covers it.
    A fast wrong answer is not a faster command; it is a broken one, and a default people reach for by habit
    is the one that has to be right.
-3. **`--here` narrows to the file's own package**, which is today's behaviour, for when you knowingly want
-   it. Opt into narrow, never opt into correct.
+3. **No narrowing flag.** A first draft added `--here` to run only the edited file's own package, and it
+   was solving a solved problem: while iterating you run the spec you are working on — `npm run spec --
+   chain-schedule` finds it by name in 1.7s — and the wide answer is for when you are done, which is what
+   the root `CLAUDE.md` already advises. It would also be the first flag `spec.ts` itself consumes, and
+   that script splits arguments at the first `-` and passes the rest to vitest verbatim *precisely* so it
+   need not know which flags take a value. A convenience is not worth eroding that.
 4. **`packages:ensure` runs once before a root run.** Today `spec` delegates to each package's `test`
    script, so npm's `pretest` fires; a root invocation bypasses that, and without it the run tests whatever
    `dist` is on disk. `scripts/test-unit-pool.ts` solves this the same way and for the same reason.
@@ -147,21 +150,21 @@ set that touches only one package's tests, where a root run would be slower than
 **Done when:** an uncommitted edit to `@abuddy/sdk/src` runs the dependents' specs, and a change confined to
 one package's `tests/` still runs only that package.
 
-### Phase 3 — `--here`, and the numbers
+### Phase 3 — the numbers
 
-Implement `--here`. Then measure and record, idle: a shallow edit (`@app/renderer`, nothing depends on it),
+Measure and record, idle: a shallow edit (`@app/renderer`, nothing depends on it),
 a mid one (`@app/api`), and a deep one (`@abuddy/sdk/src/types/sdk-entities.ts`) — before and after.
 Update the root `CLAUDE.md`'s description of the command, which currently promises "the specs your
 uncommitted changes affect, in every package they touch" and does not deliver it.
 
-**Done when:** the three measurements are recorded; `--here` reproduces the old behaviour exactly; the docs
-describe what the command does.
+**Done when:** the three measurements are recorded, and the docs describe what the command does — including
+that naming a spec is how you narrow, since that is the answer people will want on first meeting the wide
+default.
 
 ### Phase 4 — the guard
 
 A spec in `@app/repo-checks` over the routing function from Phase 1: a package source file plans a root
-run, a spec path plans its own package, a `scripts/` path plans `@app/repo-checks`, and `--here` plans one
-package. It asserts the plan, so it costs nothing and cannot drift from the implementation.
+run, a spec path plans its own package, and a `scripts/` path plans `@app/repo-checks`. It asserts the plan, so it costs nothing and cannot drift from the implementation.
 
 Mutation-check it by making the source-file case plan one package again and watching it named.
 
