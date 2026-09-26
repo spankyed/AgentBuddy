@@ -43,7 +43,7 @@ looking.
 Two halves, split by measured cost exactly as every other suite is — the rule and the band are in
 `scripts/lib/spec-cost.ts`, and `etc/spec-cost.json` is this suite's record.
 
-- **`npm test -w @app/repo-checks`** — the fast half (`tests/**/*.spec.ts`): 15 specs, about 2.9s of file
+- **`npm test -w @app/repo-checks`** — the fast half (`tests/**/*.spec.ts`): 16 specs, about 3s of file
   time.
 - **`npm run test:integration -w @app/repo-checks`** — the expensive half
   (`tests/**/*.integration.spec.ts`): 3 specs, about 9.8s. Each runs a compiler over a fixture tree.
@@ -63,6 +63,7 @@ names every workspace that has a second config.
 | `import-specifiers`, `component-contracts`, `published-imports`, `api-report-stamp` | the analysis scripts behind `check:specifiers`, the component reports and the API stamp |
 | `unit-pool` | the pool's per-project cache: what a project's freshness is measured against |
 | `spec-plan` | what `npm run spec` decides to run for what you gave it, asserted without running any of it: the plan per target shape, which pack suites a change reaches across the `dist` seam, that no plan runs one suite twice, and how the arguments split |
+| `doc-links` | that a relative link between the repo's documents resolves: archiving a goal turns its own `../archive/goals/x.md` into `archive/archive/goals/x.md`, and a dead link fails nothing on its own |
 | `repo-check-boundary`, `spec-placement` | where a spec belongs: this package's own boundary, that every package with source has a suite, and that no spec reaches into another package's tree |
 
 `tests/spec-plan.spec.ts` itself checks that this table names every spec here, in both directions. It had to:

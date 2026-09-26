@@ -191,7 +191,7 @@ Mutation-check it by making the source-file case plan one package again and watc
   copy or a worktree — a mutation in this shared tree has reached the index before.
 - **Another agent works in this checkout.** Check `git status` before committing and name paths explicitly.
 - **Don't relitigate settled decisions.** Which package a spec lives in
-  ([`goal-test-placement.md`](../archive/goals/goal-test-placement.md)), cost-based placement, and the two
+  ([`goal-test-placement.md`](goal-test-placement.md)), cost-based placement, and the two
   pools and why they cannot be one (`UnitSuite.kind`) are final. This goal changes which specs a command
   runs, and nothing about where a spec belongs.
 

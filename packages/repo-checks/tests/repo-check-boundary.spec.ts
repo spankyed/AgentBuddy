@@ -71,6 +71,8 @@ const OWN_PACKAGE = 'packages/repo-checks/';
 const LAYOUT_CHECKS: Record<string, string> = {
   'tests/spec-placement.spec.ts': 'where a spec lives and which packages have suites — a property of the '
     + 'tree, read from git and the manifests, with no scripts/ module to import',
+  'tests/doc-links.spec.ts': 'that a relative link between the repo\'s documents resolves — a property of '
+    + 'the doc tree, read from git, with no scripts/ module behind it either',
 };
 
 const specs = (): string[] =>

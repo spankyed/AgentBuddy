@@ -370,7 +370,7 @@ One invariant, and it has a guard:
 
 The rest of the "Finished when" list is milestones: the identifiers that no longer exist, the `AppState` fields, the
 docs. They were true when this landed, and a later rename making one false is not a regression. Per
-[the README](README.md#invariants-and-milestones), no guard names a deleted identifier — the guard holds the property
+[the README](../../goals/README.md#invariants-and-milestones), no guard names a deleted identifier — the guard holds the property
 that made the old shape wrong.
 
 ### Two things worth knowing if you touch this again
