@@ -100,9 +100,22 @@ Cheap greps that flag a candidate. None is a verdict on its own — they narrow 
 | `dupe-title` | the same test title in more than one file |
 | `type-only` | `typeof x === 'function'`: the type system's job |
 
+Measured 2026-09-25 across 367 spec files: `count-pinned` 218, `msg-pinned` 32, `tests-fixture` 9,
+`type-only` 5 — 97 files carry at least one. Those are candidates, not verdicts; the last sweep read them.
+
+**`dupe-title` over-reports, and by a lot.** It compares `it(` titles without the `describe` above them, so a
+property asserted of three different things reads as three copies. All three pairs it flagged in 2026-09-19
+turned out to satisfy Decision 10 already, because the describe is what names the level:
+`getEventValidationMap` / `getPluginEventValidationMap` / `a registry's partitionPolicy`, `secrets store` /
+`secret rules`, `the command store` / `registerPack commands`. Read a `dupe-title` hit with its describe
+before believing it.
+
 Provenance (`git blame` on the `it(` line) answers *what was this for* when intent is unclear. It is **not**
 a filter: measured across 2,211 tests, the share carrying a signal was flat by commit type — `fix(` 16%,
 `feat(` 16%, `refactor(` 14%, `test(` 11%.
+
+**Last scanned** 2026-09-25 over the four specs added since the sweep (`launch-env`, `repo-check-boundary`,
+`spec-placement`, `unit-pool`). None carries a signal.
 
 ## Known misplacements
 
@@ -118,6 +131,13 @@ because its subject belongs to no single package.
 | 4 | `@abuddy/ui` has 33 recorded component contracts and no behavioural test; exactly one spec in the repo mounts a Vue component | coverage gap |
 | 5 | `@app/default-setup` is the only package with colocated specs, and has a third `__tests__/` variant | 6 specs |
 | 6 | twelve specs in `@abuddy/cli` are about the published `@abuddy` packages | 30.2s |
+
+`pack-protocol.spec.ts` was a seventh, resolved in Phase 6: it sat in `@abuddy/host` while `PackProtocol.ts`
+lives in `@app/main`, and both its describes asserted against copies declared in the test. It moved, and its
+MIME map now reads the product's export rather than its own copy — removing `.woff2` from `PackProtocol.ts`
+fails it, where before nothing in the product could. Its path-traversal describe still rebuilds
+`path.join(…) + path.sep` and checks Node's `path`; making that real needs the handler's prefix check
+extracted as an export, which is a product change and stays deferred.
 
 ## Guards that hold placement
 

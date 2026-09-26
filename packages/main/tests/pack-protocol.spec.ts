@@ -1,17 +1,8 @@
 import { describe, it, expect } from 'vitest';
 import * as path from 'node:path';
+import { MIME_TYPES } from '../src/modules/pack-protocol/PackProtocol.js';
 
 describe('PackProtocol MIME types', () => {
-  const MIME_TYPES: Record<string, string> = {
-    '.js': 'application/javascript',
-    '.mjs': 'application/javascript',
-    '.css': 'text/css',
-    '.json': 'application/json',
-    '.html': 'text/html',
-    '.svg': 'image/svg+xml',
-    '.png': 'image/png',
-    '.woff2': 'font/woff2',
-  };
 
   it('resolves common file extensions to correct MIME types', () => {
     const cases: [string, string][] = [
@@ -40,6 +31,16 @@ describe('PackProtocol MIME types', () => {
   });
 });
 
+/**
+ * Still asserts Node's `path`, not this module's guard.
+ *
+ * `createPackProtocol()` builds `path.join(packsDir, packId) + path.sep` and rejects a resolved path that
+ * does not start with it, inline in the request handler. These two tests rebuild that expression and check
+ * `path.resolve` and `startsWith` behave — which they do, and would whatever this module did. Making them
+ * real means extracting the check as a named export and calling it, which is a change to the product rather
+ * than to where a spec lives: deferred by `goal-test-cleanup.md`'s Decision 7 and left deferred here. The
+ * MIME describe above was the half that could be fixed by an export, and was.
+ */
 describe('PackProtocol path traversal prevention', () => {
   it('trailing separator prevents pack prefix collision', () => {
     const packsDir = '/home/user/.agentbuddy/packs';
