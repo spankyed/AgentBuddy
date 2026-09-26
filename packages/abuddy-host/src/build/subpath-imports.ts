@@ -1,55 +1,15 @@
 /**
- * Reading a pack's `package.json` `imports`, and resolving a module path the way a pack author writes one.
+ * Reading a pack's `package.json` `imports`: the patterns by which a pack names its own modules.
  *
- * **esbuild resolves the mapping itself and still needs this.** Measured with esbuild 0.25.12: given
- * `"imports": { "#gen/*": "./src/gen/*" }` it finds the target and names the file in its error —
- * `Could not resolve "#gen/events" … Import from ".ts" to get the file …/src/gen/events.ts` — but refuses
- * an extensionless specifier and a directory, as Node's ESM resolver does. Pack code is TypeScript and
- * writes `from '#generated/events'`, so the whole job here is supplying the suffix esbuild will not guess.
- *
- * In `@abuddy/host` because two bundlers need it and neither can reach the other: `@abuddy/cli`'s backend
- * bundle (`abuddy build`) and the API's tsup build, which compiles the built-in packs' sources into itself.
- * `packages/api` does not depend on `@abuddy/cli`, both depend on host, and this needs only `node:fs` and
- * `node:path` — so host is the one place it can live without a new dependency anywhere.
+ * Nothing resolves them here any more. A pack's specifier names the file that is there
+ * (`docs/archive/goals/goal-pack-imports-name-the-file.md`), and esbuild and Vite both resolve a pack's
+ * mapping themselves once the path names a file — measured by deleting the two plugins that used to supply
+ * the suffix and rebuilding: `abuddy build` over the fixture pack and default-setup, and the API's tsup
+ * build, byte for byte the same output. What is left is the reading, which the check that a specifier names
+ * its file still needs (`own-module-specifiers.ts`).
  */
 import * as fs from 'node:fs';
 import * as path from 'node:path';
-
-/**
- * The extensions a pack's module may have, source first.
- *
- * One list for both the file and the directory-index attempt, because two lists drifted: the file attempt
- * had `.mts` and `.mjs` and neither of their CJS counterparts, and the index attempt had `index.ts` alone.
- */
-const MODULE_EXTENSIONS = ['.ts', '.tsx', '.mts', '.cts', '.js', '.mjs', '.cjs'];
-
-/** `statSync` rather than `existsSync`: the latter is true for a directory, which is the bug below */
-const isFile = (target: string): boolean => {
-  try {
-    return fs.statSync(target).isFile();
-  } catch {
-    return false;
-  }
-};
-
-/**
- * `<dir>/events` → `<dir>/events.ts`, and `<dir>/repository` → `<dir>/repository/index.ts`.
- *
- * The directory case used to be unreachable. The loop began with the empty extension and used
- * `fs.existsSync`, which is true of a directory, so a bare directory returned *itself* and the `index.ts`
- * fallback written underneath it never ran — dead code for exactly the case it was written for. esbuild
- * then got a directory where it wanted a file. Latent: no pack in this repo imports a directory through a
- * subpath today, so nothing had failed on it yet.
- */
-export function resolveWithExtensions(base: string): string | undefined {
-  if (isFile(base)) return base;
-  for (const ext of MODULE_EXTENSIONS) if (isFile(base + ext)) return base + ext;
-  for (const ext of MODULE_EXTENSIONS) {
-    const index = path.join(base, `index${ext}`);
-    if (isFile(index)) return index;
-  }
-  return undefined;
-}
 
 /**
  * The conditions that apply when bundling a pack's backend, and nothing else.

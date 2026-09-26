@@ -1,6 +1,5 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
-import { readSubpathImports, resolveWithExtensions } from '@abuddy/host/build/subpath-imports';
 import ts from 'typescript';
 import { APP_ONLY_EXPORTS, SHARED_DEPS, sharedInstanceExternals } from '@abuddy/host/build/shared-deps';
 import { SEED_COMPILERS_FILE } from '@abuddy/sdk/build';
@@ -18,8 +17,9 @@ const HOST_EXTERNALS = [...Object.keys(SHARED_DEPS), ...sharedInstanceExternals(
 type EsbuildOptions = import('esbuild').BuildOptions;
 
 /**
- * The esbuild setup every pack bundle shares: the pack's tsconfig, its tsconfig path aliases and
- * package.json subpath imports, the host-import guard and frontend-asset stub, and node/esm defaults.
+ * The esbuild setup every pack bundle shares: the pack's tsconfig, the host-import guard and
+ * frontend-asset stub, and node/esm defaults. esbuild resolves the pack's own `#` imports itself, since
+ * each names the file that is there.
  * `overrides` supplies the entry, output and per-bundle options.
  */
 async function bundlePackSource<T extends EsbuildOptions>(
@@ -29,9 +29,7 @@ async function bundlePackSource<T extends EsbuildOptions>(
 ): Promise<import('esbuild').BuildResult<T>> {
   const esbuild = await import('esbuild');
   const tsconfigPath = path.join(packDir, 'tsconfig.json');
-  const subpathImports = readSubpathImports(packDir);
   const plugins: import('esbuild').Plugin[] = [rejectHostImportsPlugin(), stubFrontendAssetsPlugin()];
-  if (Object.keys(subpathImports).length > 0) plugins.push(makeSubpathPlugin(subpathImports, packDir));
 
   const merged: EsbuildOptions = {
     bundle: true,
@@ -239,30 +237,6 @@ function stubFrontendAssetsPlugin(): import('esbuild').Plugin {
     setup(build) {
       build.onResolve({ filter: /\.(vue|css)$/ }, args => ({ path: args.path, namespace: 'frontend-stub' }));
       build.onLoad({ filter: /.*/, namespace: 'frontend-stub' }, () => ({ contents: 'module.exports = {};', loader: 'js' }));
-    },
-  };
-}
-
-function makeSubpathPlugin(imports: Record<string, string>, packDir: string): import('esbuild').Plugin {
-  return {
-    name: 'subpath-imports',
-    setup(build) {
-      build.onResolve({ filter: /^#/ }, args => {
-        for (const [pattern, target] of Object.entries(imports)) {
-          if (pattern.endsWith('/*') && target.endsWith('/*')) {
-            const prefix = pattern.slice(0, -1);
-            if (args.path.startsWith(prefix)) {
-              const rest = args.path.slice(prefix.length);
-              const resolved = resolveWithExtensions(path.resolve(packDir, target.slice(0, -1) + rest));
-              if (resolved) return { path: resolved };
-            }
-          } else if (pattern === args.path) {
-            const resolved = resolveWithExtensions(path.resolve(packDir, target));
-            if (resolved) return { path: resolved };
-          }
-        }
-        return undefined;
-      });
     },
   };
 }

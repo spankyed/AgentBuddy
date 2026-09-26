@@ -85,6 +85,39 @@ describe('ownModuleSpecifierProblems', () => {
     ]);
   });
 
+  // One list for the file and the index attempt: the two in the resolver this replaced had drifted, the
+  // first having .mts and .mjs and neither of their CJS counterparts, the second only ever trying index.ts
+  it.each(['.ts', '.tsx', '.mts', '.cts', '.js', '.mjs', '.cjs'])('names a %s file, and an index of one', (ext) => {
+    pack({ '#generated/*': './src/__generated__/*' });
+    write(`src/__generated__/a${ext}`);
+    write(`src/__generated__/d/index${ext}`);
+    write('src/f.ts', "import a from '#generated/a';\nimport d from '#generated/d';\n");
+    expect(ownModuleSpecifierProblems(packDir)).toEqual([
+      `src/f.ts:1: '#generated/a' names no file — write '#generated/a${ext}'`,
+      `src/f.ts:2: '#generated/d' names no file — write '#generated/d/index${ext}'`,
+    ]);
+  });
+
+  /**
+   * Vite's default extensions leave `.vue` out, so an extensionless SFC import resolved nowhere — the one
+   * form that was broken before this rule as well as after it, and the one most worth naming.
+   */
+  it('names an SFC target', () => {
+    pack({ '#features/*': './src/features/*' });
+    write('src/features/a/fe/view.vue', '<template><div /></template>');
+    write('src/f.ts', "import View from '#features/a/fe/view';\n");
+    expect(ownModuleSpecifierProblems(packDir)).toEqual([
+      "src/f.ts:1: '#features/a/fe/view' names no file — write '#features/a/fe/view.vue'",
+    ]);
+  });
+
+  it('leaves alone a specifier naming a directory with no index, which names no file either way', () => {
+    pack();
+    fs.mkdirSync(path.join(packDir, 'src/__generated__/empty'), { recursive: true });
+    write('src/f.ts', "import x from '#generated/empty';\n");
+    expect(ownModuleSpecifierProblems(packDir)).toEqual([]);
+  });
+
   it('says nothing about a pack that declares no subpath imports', () => {
     write('package.json', JSON.stringify({ name: 'p', type: 'module' }));
     write('src/f.ts', "import x from '#generated/events';\n");

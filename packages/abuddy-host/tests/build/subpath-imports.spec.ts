@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
-import { readSubpathImports, resolveWithExtensions } from '../../src/build/subpath-imports.ts';
+import { readSubpathImports } from '../../src/build/subpath-imports.ts';
 
 let packDir: string;
 
@@ -16,42 +16,6 @@ const write = (rel: string, contents = 'export const x = 1') => {
   return full;
 };
 const manifest = (imports: unknown) => write('package.json', JSON.stringify({ name: 'p', type: 'module', imports }));
-
-describe('resolveWithExtensions', () => {
-  it('takes an exact file, and one that needs its extension supplied', () => {
-    const exact = write('gen/events.ts');
-    expect(resolveWithExtensions(exact)).toBe(exact);
-    expect(resolveWithExtensions(path.join(packDir, 'gen/events'))).toBe(exact);
-  });
-
-  /**
-   * The loop used to begin with the empty extension and use `fs.existsSync`, which is true of a directory —
-   * so a directory returned itself and the `index.ts` fallback written below it never ran. esbuild then got a
-   * directory where it wanted a file, and the fallback was dead code for the one case it was written for.
-   */
-  it('takes the index inside a directory the import names', () => {
-    const index = write('gen/repository/index.ts');
-    expect(resolveWithExtensions(path.join(packDir, 'gen/repository'))).toBe(index);
-  });
-
-  it('never returns a directory', () => {
-    fs.mkdirSync(path.join(packDir, 'gen/empty'), { recursive: true });
-    expect(resolveWithExtensions(path.join(packDir, 'gen/empty'))).toBeUndefined();
-  });
-
-  // One list for the file and the index attempt: the two drifted, the first having .mts and .mjs and
-  // neither of their CJS counterparts, the second only ever trying index.ts
-  it.each(['.ts', '.tsx', '.mts', '.cts', '.js', '.mjs', '.cjs'])('supplies %s, and index%s', (ext) => {
-    const file = write(`a${ext}`);
-    expect(resolveWithExtensions(path.join(packDir, 'a'))).toBe(file);
-    const index = write(`d/index${ext}`);
-    expect(resolveWithExtensions(path.join(packDir, 'd'))).toBe(index);
-  });
-
-  it('is undefined when nothing is there', () => {
-    expect(resolveWithExtensions(path.join(packDir, 'nope'))).toBeUndefined();
-  });
-});
 
 describe('readSubpathImports', () => {
   it('reads a plain string target', () => {

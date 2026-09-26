@@ -22,7 +22,37 @@
  */
 import * as fs from 'node:fs';
 import * as path from 'node:path';
-import { readSubpathImports, resolveWithExtensions } from './subpath-imports.ts';
+import { readSubpathImports } from './subpath-imports.ts';
+
+/**
+ * The extensions a pack's module may have, source first, and the only place left that looks for one.
+ *
+ * This is a diagnostic, not a resolver: nothing resolves an extensionless specifier any more, and the search
+ * is here so the message can name the file the author meant instead of leaving them a bundler's error.
+ * `.vue` is in the list for the same reason — Vite's default extensions leave it out, so an extensionless SFC
+ * import never resolved anywhere, and naming it is more use than passing over it.
+ */
+const MODULE_EXTENSIONS = ['.ts', '.tsx', '.mts', '.cts', '.vue', '.js', '.mjs', '.cjs'];
+
+/** `statSync` rather than `existsSync`, which is true of a directory */
+const isFile = (target: string): boolean => {
+  try {
+    return fs.statSync(target).isFile();
+  } catch {
+    return false;
+  }
+};
+
+/** `<dir>/events` -> `<dir>/events.ts`, and `<dir>/repository` -> `<dir>/repository/index.ts` */
+function fileAt(base: string): string | undefined {
+  if (isFile(base)) return base;
+  for (const ext of MODULE_EXTENSIONS) if (isFile(base + ext)) return base + ext;
+  for (const ext of MODULE_EXTENSIONS) {
+    const index = path.join(base, `index${ext}`);
+    if (isFile(index)) return index;
+  }
+  return undefined;
+}
 
 /** A pack's source: TypeScript and SFCs, whose `<script>` blocks import the same way. `.d.ts` declares, and imports nothing of the pack's. */
 const SOURCE_FILE = /(?<!\.d)\.(ts|tsx|mts|cts)$|\.vue$/;
@@ -86,7 +116,7 @@ function fileNamedBy(packDir: string, imports: Record<string, string>, specifier
     const prefix = pattern.slice(0, -1);
     if (!specifier.startsWith(prefix)) continue;
     const base = path.resolve(packDir, target.slice(0, -1) + specifier.slice(prefix.length));
-    const resolved = resolveWithExtensions(base);
+    const resolved = fileAt(base);
     if (resolved === undefined) continue;
     return specifier + resolved.slice(base.length).split(path.sep).join('/');
   }
