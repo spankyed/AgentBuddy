@@ -86,6 +86,56 @@ const SPANS_PACKAGES: Record<string, string> = {
     + "pack's build output into a leaf package's suite; splitting it would lose the chain",
 };
 
+/**
+ * A spec that packs the published packages into a consumer, and why it is not in `@app/publish-checks`.
+ *
+ * Every entry is a claim that the packed consumer is the spec's *fixture* rather than its *subject* — that
+ * what fails when the spec fails is the package it lives in, not the publish. That is a real distinction and
+ * the reason `@abuddy/cli` keeps three of these, but it is not one a checker can make, so it is written
+ * down per spec.
+ */
+const PACKS_AS_A_FIXTURE: Record<string, string> = {
+  'packages/abuddy-cli/tests/build/facade-typing.integration.spec.ts':
+    "the facade gate: it compiles a dependent pack against the packed packages, so a failure is abuddy build's",
+  'packages/abuddy-cli/tests/build/fe-bundler-host-registry.integration.spec.ts':
+    "the FE bundler's host-registry proxying, with a packed consumer as the thing it bundles against",
+  'packages/abuddy-cli/tests/build/types-bundler-determinism.integration.spec.ts':
+    'the types bundler emits the same facade from the workspace and from the packed tarballs — the packed '
+    + 'side is one of two inputs to a comparison about the bundler',
+  'packages/abuddy-cli/tests/build/package-freshness.spec.ts':
+    "the stamp rule in @abuddy/host/build/packages-built; it reads PACKED_PACKAGES only to assert BUILD_UNITS "
+    + 'covers everything packed, and never packs anything itself',
+};
+
+describe('a spec about the published packages lives in @app/publish-checks', () => {
+  const FIXTURE = '@app/publish-checks';
+  const HOME = 'packages/publish-checks/';
+
+  /** Importing the packing fixture is the signal: nothing else in the repo installs a published consumer. */
+  const packs = (spec: string): boolean =>
+    fs.readFileSync(path.join(REPO_ROOT, spec), 'utf-8').includes(`from '${FIXTURE}'`);
+
+  const specs = (): string[] => tracked().filter((file) => IS_SPEC.test(file) && file.startsWith('packages/'));
+
+  it('there are some, so this check is not vacuous', () => {
+    expect(specs().filter((file) => file.startsWith(HOME) || packs(file))).not.toEqual([]);
+  });
+
+  it('leaves none of them elsewhere', () => {
+    const elsewhere = specs()
+      .filter((file) => !file.startsWith(HOME) && packs(file))
+      .filter((file) => !(file in PACKS_AS_A_FIXTURE));
+    expect(elsewhere, `move these to ${HOME}, or record in PACKS_AS_A_FIXTURE why the packed consumer is `
+      + "this spec's fixture rather than its subject").toEqual([]);
+  });
+
+  it('lists no exception that has stopped applying', () => {
+    const stale = Object.keys(PACKS_AS_A_FIXTURE)
+      .filter((file) => !fs.existsSync(path.join(REPO_ROOT, file)) || !packs(file));
+    expect(stale, 'these are gone or no longer pack a consumer; drop them from PACKS_AS_A_FIXTURE').toEqual([]);
+  });
+});
+
 describe('a spec does not reach into another package', () => {
   const RELATIVE = /(?:from|import\(|require\()\s*['"](\.[^'"]*)['"]/g;
 
