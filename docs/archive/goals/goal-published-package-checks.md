@@ -1,5 +1,9 @@
 # Goal: the checks on a published package live where publishing does
 
+> **Done** (`9e0eb7891`..`3d0d0da8d` on `AS/chain-inputs`). The text below is the plan as written, with its
+> Background's importer count corrected during Phase 1. For the suite as it is now, see
+> [`docs/reference/test-inventory.md`](../../reference/test-inventory.md).
+
 > **Written in session** `1d53eb9c-d886-49f8-bc5a-90793d43315e` (Claude Code, 2026-09-25). Resume it with `claude -r 1d53eb9c-d886-49f8-bc5a-90793d43315e`.
 
 ```
@@ -52,7 +56,7 @@ Never:
 
 ## Background (surveyed 2026-09-25 at `c4f59a87c`)
 
-[`goal-test-placement.md`](../archive/goals/goal-test-placement.md) applies one rule — *a spec lives with the thing it can
+[`goal-test-placement.md`](goal-test-placement.md) applies one rule — *a spec lives with the thing it can
 break* — to five findings. This is the sixth, split out because it is four times the size of any of them
 and because, unlike the others, **it has no obvious right answer**: the specs in question have a subject
 that belongs to no single package.
@@ -77,7 +81,7 @@ are 30.2s of that suite's 190.8s:
 
 **The family is already split across two packages**, which is the clearest sign it has no settled home:
 `published-imports.spec.ts` and `published-sdk-peers.spec.ts` live in `@app/repo-checks`, moved there by
-[`goal-one-job-pool.md`](../archive/goals/goal-one-job-pool.md) because they import `scripts/lib/published-imports.ts`. So
+[`goal-one-job-pool.md`](goal-one-job-pool.md) because they import `scripts/lib/published-imports.ts`. So
 "where do the `published-*` specs go" has been answered twice, differently, on a mechanical criterion that
 happened not to apply to the other twelve.
 
@@ -149,7 +153,7 @@ its `needs` do not follow. The same guard catches the reverse — a declared inp
 step's output — which is how `typecheck` came to read the E2E suite's screenshots and never cache.
 
 **Still confounded: the built-in pack's runtime bundle is not reproducible.**
-[`pack-runtime-nondeterminism.md`](../plans/pack-runtime-nondeterminism.md) has the measurement — three
+[`pack-runtime-nondeterminism.md`](../../plans/pack-runtime-nondeterminism.md) has the measurement — three
 bytes, about three builds in four. It matters here only in how a Phase 3 run reads: whenever `compile`
 actually runs, every step declaring `PACK_OUTPUTS` goes stale for one cycle and the chain prints
 *"N steps passed but will run again next time"*. That is the cache verifier, not the drift report, and it is
@@ -286,3 +290,73 @@ Mutation-check it: put a Group A spec back in `@abuddy/cli` and watch the guard 
   comment in `vitest.integration.config.ts` has the measurement.
 - **Don't relitigate settled decisions.** Cost-based placement, the two pools, the tier table, and
   `goal-test-cleanup.md`'s Decisions 1–10 are final.
+
+## Outcome (2026-09-25)
+
+| Phase | Status | Evidence |
+|---|---|---|
+| 1 — stop importing a fixture to get a path | **done** | `9e0eb7891`. Ten files repointed; the fixture's reach fell from 21 importers to its real 9 |
+| 2 — settle and move | **done** | `52c0d7a60`. `@app/publish-checks` created; eight specs and the fixture moved, one to `@abuddy/ui` |
+| 3 — re-record and re-measure | **done** | this commit. 338 specs across twelve suites; chain green, no drift reported |
+| 4 — the guard | **done** | `3d0d0da8d`. Mutation-checked both ways |
+
+### What moved, and what it cost
+
+`@abuddy/cli` went from 65 specs and 190.8s to **53 and 170.8s**, and its record can now be read as a CLI
+number rather than a suite total. `@app/publish-checks` holds 7 specs and 28.1s. `@abuddy/ui` gained the
+one spec whose subject was its own source.
+
+**The chain's `test:integration` reads 71.4s against a declared 52s, and is left at 52.** The step gained a
+third workspace, so the growth is structural rather than noise — but `driftedSteps` reported nothing,
+71.4s being inside the half-to-double band, and this phase's instruction was to re-record only on a
+reported drift and otherwise say which. Two readings exist for whoever re-measures next: 64.0s before this
+goal, 71.4s after.
+
+### Three specs beyond the five the plan named
+
+The Finished-when is about subjects, not about the fixture, and three more specs failed it.
+`published-specifiers` and `published-ui-dist` read the built `dist` of four packages, so they came here and
+gave the new suite a fast half it would otherwise have lacked — its `vitest.config.ts` matched zero files
+until they arrived, which is how it was noticed. `ui-import-side-effects` reads `@abuddy/ui`'s *source*, so
+it went to `@abuddy/ui` instead. That one hard-coded the repo root by counting four `..`, which the move
+would have broken; it needs no repo root at all now, one level up to its own `src`. Taking `REPO_ROOT` from
+`@abuddy/host` would have been an upward dependency from a leaf package.
+
+### What the move surfaced
+
+- **A second helper imported the fixture as a sibling.** `tests/helpers/pack-builds.ts` used
+  `./published-packages`, which the `../helpers/` pattern missed; four integration specs failed on it. It
+  needed only `REPO_ROOT` and takes it from the host module.
+- **`npm run test:integration` fires no `pretest`.** npm hooks `pre<script>` only for the script named, so
+  the standalone command tested whichever `dist` was on disk — it failed here the moment a manifest change
+  made the packages stale. All three suites with a second half now have `pretest:integration`.
+- **The Background said twelve importers; ten was right.** `fe-bundler-tailwind` and `fe-bundler-ui-theme`
+  name the fixture only in a comment saying why they deliberately do not import it. A `grep -l` cannot tell
+  a mention from an import, and the plan was written from one.
+
+### Corrected while settling the decision
+
+**`published-imports` and `published-sdk-peers` stay in `@app/repo-checks`.** Their subject is
+`scripts/lib/published-imports.ts`, which five build scripts use and which therefore cannot leave
+`scripts/`. The family is split by subject, correctly; "reuniting it" was the wrong goal, and this is five
+specs rather than seven.
+
+**The first recommendation was wrong and the user rejected it.** It distributed the specs to `@abuddy/sdk`
+and `@abuddy/ui` and promoted the fixture to `@abuddy/testing` — which would have shipped repo-internal
+packing tooling in a package pack authors install, given two pure fast suites an expensive
+pack-and-compile half each, and widened `repo-checks` a third time. All three costs were stated and waved
+through in the same message. What decided it in the end was the fixture, not the specs: three CLI specs
+need it and stay, so it has to be reachable from two packages by name, and a workspace is what exists for
+that.
+
+### Conventional choices made
+
+- The new workspace is `host` kind with both halves, `SUITE_READS: { packages: true }`, and the worker cap
+  its integration config explains — the same shape as `@abuddy/cli`'s, for the same reason.
+- `@abuddy/cli` reaches the fixture as `@app/publish-checks`, a devDependency, rather than by path.
+- The guard's signal is the fixture import, because nothing else in the repo installs a published consumer.
+
+### Deferred, unchanged
+
+Whether `@abuddy/cli` should own `tests/build/` at all once `goal-tests-mirror-source.md` lands, and
+whether the consumer matrix's four TypeScript × moduleResolution combinations all earn their 14.7s.

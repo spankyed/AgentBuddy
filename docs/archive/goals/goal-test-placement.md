@@ -176,7 +176,7 @@ that needs a config line to avoid silence is one where the next file will be sil
 other five findings they have **no obvious right answer**: their subject belongs to no single package, the
 family is already split (two of them live in `@app/repo-checks`), and the packing fixture they share is also
 used by three specs that legitimately belong in the CLI. That needs a decision rather than a move, so it is
-[`goal-published-package-checks.md`](../../goals/goal-published-package-checks.md), to be done after this one — its
+[`goal-published-package-checks.md`](goal-published-package-checks.md), to be done after this one — its
 Phase 2 depends on the `@abuddy/testing` suite this goal's Phase 2 creates, and its Phase 4 extends this
 goal's Phase 3 guard.
 
@@ -412,7 +412,7 @@ for the two packages they were about; `pack-protocol.spec.ts` left `@abuddy/host
 - **`@abuddy/ui`'s 33 component contracts have no behavioural test** (Finding 4), and exactly one spec in the
   repo mounts a Vue component. Phase 2 created the suite they belong in; writing them is new coverage and
   needs its own sizing.
-- **Finding 6, the twelve published-package specs**, is [`goal-published-package-checks.md`](../../goals/goal-published-package-checks.md).
+- **Finding 6, the twelve published-package specs**, is [`goal-published-package-checks.md`](goal-published-package-checks.md).
 - **`pack-protocol`'s path-traversal describe** still rebuilds `path.join(…) + path.sep` and checks Node's
   `path`. Making it real needs the handler's prefix check extracted as an export — a product change, deferred
   as `goal-test-cleanup.md`'s Decision 7 left it.

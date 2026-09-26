@@ -124,7 +124,7 @@ a filter: measured across 2,211 tests, the share carrying a signal was flat by c
 ## Known misplacements
 
 Open at this survey. [`goal-test-placement.md`](../archive/goals/goal-test-placement.md) acts on these;
-[`goal-published-package-checks.md`](../goals/goal-published-package-checks.md) is the largest, split out
+[`goal-published-package-checks.md`](../archive/goals/goal-published-package-checks.md) is the largest, split out
 because its subject belongs to no single package.
 
 | # | What | Size |
