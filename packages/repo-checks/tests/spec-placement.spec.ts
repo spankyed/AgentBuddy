@@ -136,6 +136,79 @@ describe('a spec about the published packages lives in @app/publish-checks', () 
   });
 });
 
+/**
+ * A directory under `tests/` that holds specs and names no directory under `src/`, and why.
+ *
+ * Every entry is work not yet done rather than a property of the package, which is the opposite of the
+ * other lists here — so this one shrinks to nothing and then goes. It is landed full on purpose: the guard
+ * is green before anything moves, and each phase of `goal-tests-mirror-source.md` deletes its own entries.
+ */
+const NOT_MIRRORED_YET: Record<string, string> = {
+  'default-setup/integration': 'a level, and it holds one spec whose filename already carries the same fact',
+  'default-setup/unit': 'a level; the 76 specs under it spell their own tree in hyphens (brain-flow-children)',
+  'default-setup/unit/migrations': 'mirrors src/migrations once the level above it goes',
+  'default-setup/unit/seed-parity': 'mirrors src/seeds once the level above it goes',
+  'api/unit': 'a level. Its sibling tests/runtime does mirror src/runtime',
+  'abuddy-cli/cli': 'named for the command surface; src calls it commands/',
+  'abuddy-cli/harness': "@abuddy/testing's harness driven from a scaffolded pack — no src/ counterpart",
+  'abuddy-cli/packs': 'publishHostPackOutput and dependency resolution — no src/packs',
+  'abuddy-ears/contract': "the engine's behaviour as a contract, across its modules rather than mirroring one",
+};
+
+describe("a spec's directory names one under src/", () => {
+  const SPEC_EXT = ['.ts', '.tsx', '.vue', '.mts'];
+
+  /** A directory mirrors `src/` when the same path is a directory there, or a module with an extension */
+  const mirrorsSource = (srcRoot: string, rel: string): boolean => {
+    const target = path.join(srcRoot, rel);
+    return (fs.existsSync(target) && fs.statSync(target).isDirectory())
+      || SPEC_EXT.some((ext) => fs.existsSync(target + ext));
+  };
+
+  const holdsASpec = (dir: string): boolean => {
+    const walk = (at: string): boolean => fs.readdirSync(at, { withFileTypes: true }).some((entry) => {
+      if (entry.name === 'node_modules') return false;
+      const full = path.join(at, entry.name);
+      return entry.isDirectory() ? walk(full) : IS_SPEC.test(entry.name);
+    });
+    return fs.existsSync(dir) && walk(dir);
+  };
+
+  /** Every `tests/` directory holding a spec, as `<package>/<path under tests>` */
+  const specDirs = (): string[] => packageDirs().flatMap((pkg) => {
+    const root = path.join(REPO_ROOT, 'packages', pkg, 'tests');
+    if (!fs.existsSync(root)) return [];
+    const walk = (at: string): string[] => fs.readdirSync(at, { withFileTypes: true })
+      .filter((entry) => entry.isDirectory() && entry.name !== 'node_modules' && !entry.name.startsWith('_'))
+      .flatMap((entry) => {
+        const full = path.join(at, entry.name);
+        return [path.relative(root, full), ...walk(full)];
+      });
+    return walk(root).filter((rel) => holdsASpec(path.join(root, rel))).map((rel) => `${pkg}/${rel}`);
+  });
+
+  const unmirrored = (): string[] => specDirs().filter((entry) => {
+    const [pkg, ...rest] = entry.split('/');
+    return !mirrorsSource(path.join(REPO_ROOT, 'packages', pkg!, 'src'), rest.join('/'));
+  });
+
+  it('there are some, so this check is not vacuous', () => {
+    expect(specDirs()).not.toEqual([]);
+  });
+
+  it('leaves none unaccounted for', () => {
+    expect(unmirrored().filter((entry) => !(entry in NOT_MIRRORED_YET)),
+      "a directory under tests/ names a directory under src/, or takes a _ prefix if it is support, or is "
+      + 'recorded in NOT_MIRRORED_YET while it waits to be moved').toEqual([]);
+  });
+
+  it('records nothing that has been moved already', () => {
+    const live = new Set(unmirrored());
+    expect(Object.keys(NOT_MIRRORED_YET).filter((entry) => !live.has(entry)),
+      'these mirror src/ now, or are gone; drop them from NOT_MIRRORED_YET').toEqual([]);
+  });
+});
+
 describe('a spec does not reach into another package', () => {
   const RELATIVE = /(?:from|import\(|require\()\s*['"](\.[^'"]*)['"]/g;
 
