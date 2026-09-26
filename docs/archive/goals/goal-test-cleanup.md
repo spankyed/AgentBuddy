@@ -104,7 +104,7 @@ The audit's own reports were written to a session scratchpad, which is not durab
 in the Phases below.
 
 `AS/pack-naming-convention` is a second branch, outside that audit, classified in
-[`docs/plans/test-audit-pack-naming-pr.md`](../../plans/test-audit-pack-naming-pr.md). It needs no phase of
+[`docs/archive/plans/test-audit-pack-naming-pr.md`](../plans/test-audit-pack-naming-pr.md). It needs no phase of
 its own — 15 of its 17 added tests are keeps — and its two exceptions are folded into Phase 4.
 
 [`docs/plans/test-inventory.md`](../plans/test-inventory.md) then covers the whole repo: all 2,211 tests

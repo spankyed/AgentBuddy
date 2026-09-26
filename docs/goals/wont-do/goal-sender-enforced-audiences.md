@@ -30,7 +30,7 @@ Half of `goal-plugin-contract.md`'s Deferred item 2 shipped, because it stands o
 - Nothing routes or refuses on `from`. It is a label, not a claim: a sender that doesn't stamp is not thereby
   untrusted, and one that does has not been checked.
 
-Since, on `AS/plugin-contract` (`docs/plans/host-seams.md`), still all envelope and still no rejection:
+Since, on `AS/plugin-contract` (`docs/archive/plans/host-seams.md`), still all envelope and still no rejection:
 
 - The host stamps `from: 'host'` (`e5580d6b4`), so the call sites reason 2 counted now have a sender.
 - The dedupe key is now the sender as the report names it (`senderSuffix`), not a second reading of the envelope:

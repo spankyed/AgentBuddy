@@ -27,13 +27,14 @@ Generated `__generated__/` files are a disconnected node in the build graph. The
 
 ### Staleness scenarios
 
+What follows is the state before Phase 1. Every one of these is closed by the generation `prebuild:be`
+now runs; they are kept because Phase 3 is argued against them.
+
 1. **Branch switch**: `__generated__/` is gitignored, so files survive `git checkout`. Branch A's generated files persist when you switch to branch B, even if the manifest, template, or features differ.
 
 2. **Template change**: Editing `generate-entries.ts` (the codegen template) doesn't regenerate output. The on-disk files keep the old pattern until an explicit re-run.
 
 3. **Manifest change**: Adding/removing a feature, changing a plugin path, modifying extensions in `abuddy.json` -- all require manual re-generation.
-
-4. **Dev loop gap**: `npm start` runs `build:be` which runs `compile` (DSL compilation), but never runs `generate-entries` (pack barrel codegen). These are independent pipelines.
 
 ### Generation characteristics
 
