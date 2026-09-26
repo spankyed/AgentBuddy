@@ -199,6 +199,14 @@ The pack registers boot hooks via `__generated__/pack-entry.ts`:
   `tsconfig.json` `paths` mirrors it because `tsc` under `moduleResolution: bundler` will not resolve a `#`
   specifier from `package.json` alone — spiked 2026-09-26, and `abuddy init`'s scaffold carries the same pair
   with the same comment. Changing `moduleResolution` invalidates that, so don't.
+- **A specifier names the file that is there, extension and all** — `#generated/events.ts`, `./contract.ts`,
+  `./repository/index.ts`, `../fe/panel.vue` — for a `#` import and a relative one alike. Not nothing, which
+  no runtime resolves in ESM and which only worked while a build guessed the suffix; not the `.js` generated
+  code used to write, which names a file a pack never emits, since a pack ships one bundle rather than a
+  module per source. `check:specifiers` refuses both (`findExtensionlessOwnModules`, `findJsSpecifiers`), and
+  `abuddy build` refuses them for every other pack through the same rule
+  (`@abuddy/host/build/own-module-specifiers`). This is what `allowImportingTsExtensions` in `tsconfig.json`
+  is for; nothing looks for a missing suffix any more.
 - `npm run typecheck` runs `vue-tsc` over the `.ts`, `.vue` and `src/defs/` files
 - Vitest config at `vitest.config.ts`, which resolves the path aliases from `tsconfig.json`: the one tsconfig, whose `include` covers the tests, so `npm run typecheck` checks them with the source. Unit tests run on `@abuddy/testing/harness` (`tests/setup.ts`: `setupPackTests({ seedRuntime, registration })`), in memory, with no `@abuddy/host` or API imports (`check:specifiers` rejects them). Systems run with `startApp`, flows with `importFlows` (a root flow, `root: true`, or default-setup's own through `tests/_support/flows.ts`) and `runFlow`, as the app runs them, and services the code under test reaches outside the process (CLIs, Codex, `inference`) are mocked with `mockService` (`inference` with `mockInference`). The registered packs are the harness's registry for the test file: a test that needs another pack registers one with the harness's `registerPack`/`unregisterPack`, and one that needs a lookup filled without a pack (a step type) uses `testPacks` from `@abuddy/sdk/testing` (`features/flows/fe/canvas/layout-utils.spec.ts`)
 - `prepare` script runs `abuddy generate-entries` after `npm install`

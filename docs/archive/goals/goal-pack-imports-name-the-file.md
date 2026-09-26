@@ -1,5 +1,12 @@
 # Goal: a pack's import names the file that is there
 
+> **Done** (`8f9ad78d7`..`b91745f78` on `AS/alias-simplification`). The text below is the plan as written;
+> Phase 2's "801 extensionless specifiers" counted the `#` ones only, and the relative half — 736 more —
+> was found by Phase 5's guard and done then. The Outcome says so. For the convention now, see
+> `packages/default-setup/CLAUDE.md`; for what refuses a specifier that names no file,
+> `findExtensionlessOwnModules` in `scripts/check-import-specifiers.ts` and
+> `@abuddy/host/build/own-module-specifiers`, which `abuddy build` runs for every other pack.
+
 > **Written in session** `1d53eb9c-d886-49f8-bc5a-90793d43315e` (Claude Code, 2026-09-26). Resume it with `claude -r 1d53eb9c-d886-49f8-bc5a-90793d43315e`.
 
 ```
@@ -97,7 +104,7 @@ the pack's own imports have not followed it.
 
 ## Order
 
-**Run [`goal-one-way-to-name-your-own-modules.md`](../archive/goals/goal-one-way-to-name-your-own-modules.md) first.** That one
+**Run [`goal-one-way-to-name-your-own-modules.md`](goal-one-way-to-name-your-own-modules.md) first.** That one
 changes a specifier's *prefix* (`@/features/x` → `#features/x`, four resolver mechanisms down to one); this
 one changes its *suffix*. They touch overlapping sets of specifiers, so each is one script pass and the order
 is not load-bearing — but the suffix rule and its guard are much simpler to state against one prefix than two.
@@ -232,3 +239,60 @@ to `.js` and watch that named too.
 - **Don't touch `allowImportingTsExtensions`**, in a pack tsconfig or the scaffold's. It is set in both, and
   every measurement here assumed it.
 - **Another agent works in this checkout.** Check `git status` before committing and name paths explicitly.
+
+## Outcome (2026-09-26)
+
+| Phase | Status | Evidence |
+|---|---|---|
+| 1 — the SFC spike | **done** | `8f9ad78d7`. `vue-tsc` and the renderer's Vite build both take a `.ts` specifier from an SFC, measured on the real tree |
+| 2 — hand-written pack code | **done** | `5a2011b48` (801 `#` specifiers, 437 files) and `6f01bdbf6` (736 relative ones: 716 by script in 364 files, 6 by hand, 14 in the CLI's templates) |
+| 3 — generated code and the scaffold | **done** | `f590c1b29`. `toImportPath` and the facades' own imports emit `.ts`; the scaffold writes it; `abuddy build` refuses a specifier that names no file |
+| 4 — delete the guessing | **done** | `94164fc69`. 160 lines deleted against 78 added |
+| 5 — the guard | **done** | `b91745f78`. `findJsSpecifiers` over the packs, `findExtensionlessOwnModules` beside it, four mutations |
+
+**1,537 specifiers across some 600 files**, and every suite's counts unchanged: default-setup 87 files / 720
+tests, `@abuddy/host` 78 / 706 (the one new spec file), the fixture pack 10 / 32, repo-checks'
+`import-specifiers` 192 cases, `@app/publish-checks` 8, E2E 21, `test:packaged-authoring` and
+`test:external-pack` green.
+
+### The Open decision, settled
+
+**Every pack writes the extension, and `abuddy build` says so** (option one). A pack outside this checkout
+gets `'#generated/events' names no file — write '#generated/events.ts'` instead of esbuild's resolution
+error, and the machinery that used to guess is gone rather than kept for external packs alone.
+
+### Corrections to the Decisions
+
+- **Decision 5 said the machinery goes "when nothing needs it"; nothing did, including the two bundler
+  plugins.** The plan expected to delete `resolveWithExtensions` and keep the plugins that called it. With
+  every specifier naming a file, esbuild and Vite resolve a pack's `imports` map themselves: removing both
+  plugins left `abuddy build` over the fixture pack and default-setup green, its 32 tests passing, and the
+  API's tsup build writing 52 of 53 files byte for byte identical (`server.cjs` is not reproducible between
+  two runs of the *same* config, and matched on a second pair). The file search survives, unexported, inside
+  the diagnostic — its job is no longer to resolve but to name the file the author meant, which is why `.vue`
+  joined its list: Vite's default extensions leave `.vue` out, so an extensionless SFC import resolved nowhere.
+- **Phase 2's survey counted one form of specifier.** "776 + 25 extensionless" were the `#` ones; 725
+  relative extensionless specifiers remained after Phase 2 reported no extensionless specifier left, and
+  `./contract` names one of the pack's own modules exactly as `#generated/events` does. Phase 5's guard is
+  what found them, which is the argument for writing the guard against the rule rather than against the
+  survey.
+- **The rewrite script's own rule was wrong for six specifiers**, and the guard caught that too:
+  `path.extname('./0.3.15')` is `.15`, so the migrations named after versions looked like they had
+  extensions. A check that resolves against the file system does not make that mistake.
+- **The CLI's templates wrote extensionless imports into every scaffolded pack.** Once `abuddy build`
+  refused them, `abuddy init` + `abuddy add feature` + build was broken — caught by
+  `test:packaged-authoring`, which is the check that authors a pack the way an author would. `abuddy add`'s
+  integration spec now holds everything it scaffolds to the rule against real files, and a step's register
+  import became `./<type>/index.ts`, a directory's index rather than a file.
+- **Two rules in `CHECKS` had no test at all.** The table's doc comment promised every rule has a case that
+  proves it bites, above a test nobody had written: the spec imported `CHECKS` and never read it.
+  `findPackOwnAliases` (added the day before) and `findPackageScriptImports` were the two, and both have a
+  case now.
+
+### What is left of the guessing
+
+Nothing resolves an extensionless own-module specifier any more. One place still looks for a file: the
+diagnostic, so that it can name the one the author meant. Deferred as written: `moduleResolution: nodenext`,
+which would reverse Decision 1, and the `@abuddy` packages' own specifiers, which already name `.ts`. Not
+deferred but noted: `packages/abuddy-cli/src` is not in scope for this rule — it is bundled, is not a pack,
+and names its own modules extensionlessly throughout.
