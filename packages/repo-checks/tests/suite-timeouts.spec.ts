@@ -62,10 +62,27 @@ function configs(): { file: string; step: string }[] {
 
 const TIMEOUT_KEYS = ['testTimeout', 'hookTimeout', 'teardownTimeout', 'timeout'];
 
+/**
+ * Where a config's timeouts are declared: its own text, and the helper it delegates to.
+ *
+ * A pack's config is a call to `definePackTestConfig` (`@abuddy/testing/vitest`), which holds the budget so
+ * that every pack's suite runs with the same one — the whole point of collapsing three copies into it. This
+ * check reads a config as *text* rather than importing it (importing one creates a temp data dir), so the
+ * delegation has to be followed here or the property it checks reads as absent the moment a pack stops
+ * restating it. The helper's source comes first, so a pack that overrides a key still wins.
+ */
+const PACK_TEST_CONFIG = path.join('packages', 'abuddy-testing', 'src', 'vitest.ts');
+
+function timeoutSources(file: string): string[] {
+  const own = fs.readFileSync(path.join(REPO_ROOT, file), 'utf-8');
+  if (!own.includes('definePackTestConfig')) return [own];
+  return [fs.readFileSync(path.join(REPO_ROOT, PACK_TEST_CONFIG), 'utf-8'), own];
+}
+
 /** The timeout values a config declares, ignoring commented-out lines */
 function declaredTimeouts(file: string): { key: string; ms: number }[] {
   const out: { key: string; ms: number }[] = [];
-  for (const raw of fs.readFileSync(path.join(REPO_ROOT, file), 'utf-8').split('\n')) {
+  for (const raw of timeoutSources(file).join('\n').split('\n')) {
     const line = raw.trim();
     if (line.startsWith('//') || line.startsWith('*')) continue;
     for (const key of TIMEOUT_KEYS) {
