@@ -72,7 +72,8 @@ published `dist` while the host projects resolve source — so its specs never i
 and the edge from your edit to the spec that covers it exists only through a build. `npm run spec` says so
 when it is true; `npm run spec:full` runs it, for a build plus 18s. Which is also why editing `@abuddy/sdk`
 can be green under `spec` and red under `chain`: the chain declares that dependency
-(`scripts/lib/workspace-deps.ts`) where a module graph cannot see it.
+(`scripts/lib/workspace-deps.ts`) where a module graph cannot see it. The same seam is why a *pack's own*
+source runs that pack's whole suite rather than a root `related` — nothing in the root projects imports it.
 
 Two things the chain cannot work out for you, because they rewrite files you commit:
 
@@ -225,10 +226,15 @@ npm run spec -- <target> # You don't say what the target is; it works that out:
                          # no import edge runs from the file you edited to the spec that covers it. The edge is
                          # real and runs through a build: src -> tsdown -> dist -> the pack's specs. The
                          # command says so when it is true, derived from the declared dependencies
-                         # (workspace-deps.ts, the same function the chain keys its cache on): @app/default-setup
-                         # declares four, so editing the other eight packages says nothing. It used to warn on
-                         # every root run, a @app/renderer edit included, and a warning always on is one
-                         # nobody reads.
+                         # (workspace-deps.ts, the same function the chain keys its cache on) and including
+                         # the transitive ones: @abuddy/host reaches the pack through @abuddy/testing, whose
+                         # bundle inlines it. Which packages those are is not written down here — repo-checks'
+                         # spec-plan.spec.ts partitions every one of them, so a new dependency edge fails a
+                         # check instead of dating a sentence. It used to warn on every root run, a
+                         # @app/renderer edit included, and a warning always on is one nobody reads.
+                         # A pack's own source goes to its own suite: measured, no root project imports a
+                         # pack's backend, frontend or generated FE entry, so the root run this used to plan
+                         # found nothing and exited 0 for the repo's largest suite.
                          # Anything from the first `-` goes to vitest untouched, so `-t "a case"`,
                          # `--bail 1` and `--changed HEAD~1` work. A named spec runs through its package's
                          # own `test`, so a pretest guard and its vitest config still apply; a root run has

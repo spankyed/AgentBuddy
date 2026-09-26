@@ -1,7 +1,10 @@
+import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { REPO_ROOT } from '@abuddy/host/build/packages-built';
 import { affectedPackSuites, ENSURE_LABEL, packageOf, planChanged, planTargets, splitArgs } from '../../../scripts/lib/spec-plan.ts';
+import { PACKAGE_DIRS } from '../../../scripts/lib/workspace-deps.ts';
+import { UNIT_SUITES } from '../../../scripts/lib/unit-suites.ts';
 
 /**
  * What `npm run spec` decides to run, asserted without running any of it.
@@ -13,6 +16,19 @@ import { affectedPackSuites, ENSURE_LABEL, packageOf, planChanged, planTargets, 
  */
 
 const plan = (target: string) => planTargets([target], [], REPO_ROOT).runs;
+
+/** Any one source module under a directory, so a case about *a* source file needn't name one that may move */
+function someSourceFile(dir: string): string {
+  for (const entry of fs.readdirSync(dir, { withFileTypes: true }).sort((a, b) => a.name.localeCompare(b.name))) {
+    if (entry.name === '__generated__' || entry.name === 'node_modules') continue;
+    const full = path.join(dir, entry.name);
+    if (entry.isDirectory()) {
+      const found = someSourceFile(full);
+      if (found !== '') return found;
+    } else if (/\.ts$/.test(entry.name) && !/\.d\.ts$/.test(entry.name)) return full;
+  }
+  return '';
+}
 const labels = (target: string) => plan(target).map((run) => run.label);
 
 describe('what a target plans', () => {
@@ -47,13 +63,44 @@ describe('what a target plans', () => {
     expect(related!.note).toBeUndefined();
   });
 
-  it('derives which pack suites a change reaches from the declared dependencies', () => {
-    // The four @app/default-setup declares, so a change to any of them reaches it through a rebuilt dist
-    for (const dep of ['abuddy-sdk', 'abuddy-ears', 'abuddy-ui', 'abuddy-testing']) {
-      expect(affectedPackSuites([dep]), dep).toEqual(['@app/default-setup']);
+  /**
+   * Every package, partitioned — not a sample.
+   *
+   * The first version of this listed nine of the twelve by hand, looked exhaustive, and was missing
+   * `abuddy-host`, which reaches `@app/default-setup` transitively through `@abuddy/testing` (whose bundle
+   * inlines it). Three doc comments said "four dependencies, so eight cannot reach it" on the strength of
+   * that sample. Reading the list from disk is what makes a new package, or a new dependency edge, fail here
+   * rather than quietly widen what `--full` runs.
+   */
+  it('partitions every package into those that reach a pack suite and those that do not', () => {
+    const reaches = PACKAGE_DIRS.filter((dir) => affectedPackSuites([dir]).length > 0);
+    expect(reaches, 'a dependency edge changed: check the partition is still what you meant, and that no doc '
+      + 'comment states a count').toEqual(['abuddy-ears', 'abuddy-host', 'abuddy-sdk', 'abuddy-testing', 'abuddy-ui']);
+    // And the rest genuinely say nothing, rather than being absent from a list
+    for (const dir of PACKAGE_DIRS.filter((d) => !reaches.includes(d))) {
+      expect(affectedPackSuites([dir]), dir).toEqual([]);
     }
-    for (const other of ['renderer', 'main', 'api', 'repo-checks', 'publish-checks']) {
-      expect(affectedPackSuites([other]), other).toEqual([]);
+  });
+
+  it('never reaches a pack suite from its own source, that being its own suite\'s job', () => {
+    for (const suite of UNIT_SUITES.filter((s) => s.kind === 'pack')) {
+      expect(affectedPackSuites([suite.dir]), suite.workspace).toEqual([]);
+    }
+  });
+
+  /**
+   * A pack source file plans its own suite, because nothing else can run it.
+   *
+   * Measured: `vitest related` from the root finds nothing for a pack's backend, frontend or generated FE
+   * entry, so the root run this used to plan reported "No test files found, exiting with code 0" — zero specs
+   * and a zero exit for the repo's largest suite.
+   */
+  it('plans a pack source file against its own suite, not a root run that cannot see it', () => {
+    for (const suite of UNIT_SUITES.filter((s) => s.kind === 'pack')) {
+      const runs = plan(path.relative(REPO_ROOT, someSourceFile(path.join(REPO_ROOT, 'packages', suite.dir, 'src'))));
+      expect(runs.map((r) => r.cwd), suite.workspace).toEqual([path.join(REPO_ROOT, 'packages', suite.dir)]);
+      expect(runs[0]!.covers, 'it runs the suite in full').toEqual([suite.workspace]);
+      expect(runs.some((r) => r.args.includes('related')), 'no root run: none of them imports this').toBe(false);
     }
   });
 });
@@ -192,5 +239,102 @@ describe('how the arguments split', () => {
     // command that filtered it out wherever it appeared would eat the second one silently
     expect(splitArgs(['a-spec', '--full'])).toEqual({ full: false, targets: ['a-spec'], flags: ['--full'] });
     expect(splitArgs(['-t', '--full'])).toEqual({ full: false, targets: [], flags: ['-t', '--full'] });
+  });
+});
+
+/**
+ * One property over every plan, rather than a case per mistake.
+ *
+ * `--full` planned `@app/default-setup`'s 87 specs twice when a dependency *and* the pack changed in one edit
+ * — which this repo's no-backward-compatibility rule makes the normal shape of a change, not a corner. The
+ * case written to pin it passed for an unrelated reason, so what holds it now is the invariant: a `Run` states
+ * which suites it executes in full, and no plan may list one twice. Derived from the package list, so a new
+ * package is covered without anyone adding a case.
+ */
+describe('no plan runs a suite twice', () => {
+  const duplicated = (runs: readonly { covers?: readonly string[] }[]): string[] => {
+    const seen = new Set<string>();
+    return runs.flatMap((run) => (run.covers ?? []).filter((w) => (seen.has(w) ? true : (seen.add(w), false))));
+  };
+
+  it('holds for every package, as a change set and as a target, with and without --full', () => {
+    for (const dir of PACKAGE_DIRS) {
+      for (const full of [false, true]) {
+        expect(duplicated(planChanged([dir], [], REPO_ROOT, { full }).runs), `${dir} changed, full=${full}`).toEqual([]);
+      }
+    }
+  });
+
+  it('holds when a pack and one of its dependencies change together', () => {
+    for (const suite of UNIT_SUITES.filter((s) => s.kind === 'pack')) {
+      for (const dep of PACKAGE_DIRS.filter((d) => affectedPackSuites([d]).includes(suite.workspace))) {
+        for (const full of [false, true]) {
+          expect(duplicated(planChanged([dep, suite.dir], [], REPO_ROOT, { full }).runs),
+            `${dep} + ${suite.dir}, full=${full}`).toEqual([]);
+        }
+      }
+    }
+  });
+
+  /**
+   * What `covers` means, pinned, because the dedup above is only sound while it means "in full".
+   *
+   * A run that names specs claims nothing: it is a subset, and running a subset beside the whole suite is
+   * wasteful rather than wrong. Were a filtered run to claim coverage, `notYetCovered` would suppress a pack
+   * run that genuinely had not happened — which is the same class of silent under-running this whole command
+   * was fixed for.
+   */
+  it('claims coverage only for a run with no spec named', () => {
+    const named = planTargets(['packages/default-setup/tests/registries.spec.ts'], [], REPO_ROOT).runs;
+    expect(named.map((r) => r.args)).toEqual([['test', '--', 'tests/registries.spec.ts']]);
+    expect(named[0]!.covers, 'it runs two of 87 specs').toBeUndefined();
+    // and the same package's whole suite does claim it
+    expect(planChanged(['default-setup'], [], REPO_ROOT).runs.at(-1)!.covers).toEqual(['@app/default-setup']);
+  });
+
+  // The union is still complete: deduplicating must not drop the suite, only the second copy of it
+  it('still runs the pack suite when a dependency alone changed', () => {
+    const runs = planChanged(['abuddy-sdk'], [], REPO_ROOT, { full: true }).runs;
+    expect(runs.flatMap((r) => r.covers ?? [])).toContain('@app/default-setup');
+  });
+});
+
+/**
+ * A tripwire, not a feature: `test-unit-pool.ts` takes `pack`/`host` and `--all` and no project filter, so
+ * `packSuiteRun` runs *every* pack suite while its label names only the affected ones. Equal while there is
+ * one. This fails when that stops being true, which is the moment the two would start disagreeing.
+ */
+it('has one pack suite, which is what lets the pool stand in for the affected ones', () => {
+  expect(UNIT_SUITES.filter((s) => s.kind === 'pack').map((s) => s.workspace),
+    "a second pack suite exists: either give test-unit-pool.ts a project filter, or widen packSuiteRun's "
+    + 'label, which names the affected suites while the command runs both').toEqual(['@app/default-setup']);
+});
+
+/**
+ * The package's own CLAUDE.md names every spec in it.
+ *
+ * `spec-plan.spec.ts` was added without a row, and ten cases were added to it before a review noticed. This
+ * package already checks three lists for
+ * stale entries (`NO_SUITE`, `LAYOUT_CHECKS`, `PACKS_AS_A_FIXTURE`); a table describing what is here is the
+ * same kind of list and gets the same treatment, in both directions.
+ */
+describe("the package's CLAUDE.md names what is here", () => {
+  const HERE = path.join(REPO_ROOT, 'packages', 'repo-checks');
+  const doc = (): string => fs.readFileSync(path.join(HERE, 'CLAUDE.md'), 'utf-8');
+  const specs = (): string[] => fs.readdirSync(path.join(HERE, 'tests'))
+    .filter((f) => /\.spec\.ts$/.test(f))
+    .map((f) => f.replace(/\.(integration\.)?spec\.ts$/, ''));
+
+  it('leaves none of them out', () => {
+    const missing = specs().filter((name) => !doc().includes(`\`${name}\``));
+    expect(missing, 'add these to the "What is here" table in packages/repo-checks/CLAUDE.md, with what each '
+      + 'one\'s subject is').toEqual([]);
+  });
+
+  it('names none that has gone', () => {
+    const named = [...doc().matchAll(/^\| ((?:`[\w-]+`(?:, )?)+) \|/gm)]
+      .flatMap(([, cell]) => [...cell.matchAll(/`([\w-]+)`/g)].map(([, name]) => name));
+    expect(named.filter((name) => !specs().includes(name)),
+      'these specs are gone or renamed; drop them from the table').toEqual([]);
   });
 });

@@ -62,7 +62,13 @@ names every workspace that has a second config.
 | `orchestrator-exit`, `with-source`, `import-specifiers-script` | the scripts themselves: no `process.exit()` in one that reprints captured output, the `@abuddy/source` wrapper, and `check-import-specifiers` run as a process |
 | `import-specifiers`, `component-contracts`, `published-imports`, `api-report-stamp` | the analysis scripts behind `check:specifiers`, the component reports and the API stamp |
 | `unit-pool` | the pool's per-project cache: what a project's freshness is measured against |
+| `spec-plan` | what `npm run spec` decides to run for what you gave it, asserted without running any of it: the plan per target shape, which pack suites a change reaches across the `dist` seam, that no plan runs one suite twice, and how the arguments split |
 | `repo-check-boundary`, `spec-placement` | where a spec belongs: this package's own boundary, that every package with source has a suite, and that no spec reaches into another package's tree |
+
+`tests/spec-plan.spec.ts` itself checks that this table names every spec here, in both directions. It had to:
+that spec was added without a row, and ten cases were added to it before a review noticed. A table of eighteen
+that lists seventeen is the same failure as an exception list with a stale entry, which this package already
+checks in three other places.
 
 ## Conventions
 

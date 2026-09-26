@@ -19,7 +19,7 @@
  */
 import * as fs from 'node:fs';
 import * as path from 'node:path';
-import { UNIT_SUITES } from './unit-suites.ts';
+import { UNIT_SUITES, type UnitSuite } from './unit-suites.ts';
 import { workspaceDeps } from './workspace-deps.ts';
 
 /** One command to run, and where. A plan is a list of these, in order. */
@@ -31,6 +31,16 @@ export interface Run {
   readonly args: readonly string[];
   /** Printed after it, for something the mechanism cannot cover */
   readonly note?: string;
+  /**
+   * The unit suites this run executes **in full**, by workspace name.
+   *
+   * What makes "planned twice" a checkable property rather than a case someone has to think of: a filtered
+   * run (a named spec, `related`, `--changed`) covers nothing here, because it is a subset and running a
+   * subset beside the whole suite is not the same mistake. `spec-plan.spec.ts` asserts no plan lists one
+   * suite twice, which is how a dependency *and* its pack changing together stopped planning the pack's
+   * 87 specs under both `npm test -w` and `test:unit:pack`.
+   */
+  readonly covers?: readonly string[];
 }
 
 const IS_SPEC = /\.(spec|test)\.[cm]?[jt]sx?$/;
@@ -88,18 +98,47 @@ export const packageOf = (rel: string): string | null => /^packages\/([^/]+)\//.
  * all, no import edge runs from the file you edited to the spec that covers it, and `related` reports
  * nothing. The edge is real and runs through a build: `src` -> tsdown -> `dist` -> the pack's specs.
  *
+ * A pack suite is also not among the root projects **and cannot be**: `--conditions` is a Node process flag
+ * and vitest shares its worker pool across projects, so one process cannot give some projects the source
+ * condition and withhold it from others (`UnitSuite.kind`, measured). Two pools, therefore, and no root run
+ * that could include the pack.
+ *
  * Which is why this is derived from the *declared* graph (`workspaceDeps`) rather than the import graph, and
- * from the same function the chain keys its cache on. `@app/default-setup` declares four `@abuddy`
- * dependencies, so eight of the twelve packages cannot reach it and should not be warned about: the note
- * used to fire on every root run, including a `@app/renderer` edit, and a warning that is always on is one
- * nobody reads.
+ * from the same function the chain keys its cache on. Not every package reaches a pack suite, and the ones
+ * that do are not only the ones a pack names: `@abuddy/host` arrives transitively through `@abuddy/testing`,
+ * whose bundle inlines it. No count is written here on purpose — `spec-plan.spec.ts` partitions every
+ * package under `packages/` into those that reach one and those that do not, which is the only form of that
+ * claim that cannot quietly go stale. A hand-written "four of twelve" was wrong the day it was written.
+ *
+ * The note this feeds used to fire on every root run, a `@app/renderer` edit included, and a warning that is
+ * always on is one nobody reads.
  */
-export function affectedPackSuites(editedPackages: readonly (string | null)[]): string[] {
+export function affectedPackSuites(editedPackages: readonly (string | null)[], root?: string): string[] {
   const edited = new Set(editedPackages.filter((p): p is string => p !== null));
-  return UNIT_SUITES
-    .filter((suite) => suite.kind === 'pack' && workspaceDeps(suite.dir).some((dep) => edited.has(dep)))
+  return PACK_SUITES
+    .filter((suite) => workspaceDeps(suite.dir, root).some((dep) => edited.has(dep)))
     .map((suite) => suite.workspace);
 }
+
+/** Every pack-kind suite: the ones that resolve `dist`, and so the ones no root project can reach */
+const PACK_SUITES = UNIT_SUITES.filter((suite) => suite.kind === 'pack');
+
+/**
+ * The suite that covers a source file when the root projects cannot — its own package's, for a pack.
+ *
+ * Measured 2026-09-26: `vitest related` from the root finds nothing for a pack source file, its backend, its
+ * frontend and its generated FE entry alike, because no root project imports any of them. So planning a root
+ * run for one is not a narrower answer, it is no answer: `npm run spec -- <pack source>` reported
+ * "No test files found, exiting with code 0" for the repo's largest suite. Its own suite is what covers it.
+ *
+ * The whole suite rather than `related` inside it, because a pack's vitest config cannot walk its own module
+ * graph yet — no Vue plugin, and `vite-tsconfig-paths` does not apply the pack's aliases inside a `.vue`
+ * file. `goal-pack-test-config.md` closes that and takes this from 18s to about 2.6s.
+ */
+const ownSuiteFor = (rel: string): UnitSuite | undefined => {
+  const pkg = packageOf(rel);
+  return PACK_SUITES.find((suite) => suite.dir === pkg);
+};
 
 /**
  * What a root run says about the pack suites it could not reach — nothing when it could reach none, and
@@ -116,6 +155,9 @@ const packSuiteRun = (root: string, affected: readonly string[]): Run => ({
   cwd: root,
   command: 'npm',
   args: ['run', 'test:unit:pack'],
+  // The pool runs every pack suite, not only the affected ones — equal today, and `spec-plan.spec.ts` fails
+  // when a second pack suite appears, which is when the label and this would start disagreeing
+  covers: PACK_SUITES.map((suite) => suite.workspace),
 });
 
 /**
@@ -156,6 +198,8 @@ const packageRun = (root: string, pkg: string, args: readonly string[], flags: r
   cwd: path.join(root, 'packages', pkg),
   command: 'npm',
   args: ['test', '--', ...args, ...flags],
+  // Only a run with no spec named executes the suite in full; anything else is a subset
+  covers: args.length === 0 ? UNIT_SUITES.filter((suite) => suite.dir === pkg).map((suite) => suite.workspace) : undefined,
 });
 
 /** Playwright's, for a `tests/e2e` path — the root's `test` script rather than a package's */
@@ -240,10 +284,16 @@ export function planTargets(targets: readonly string[], flags: readonly string[]
       if (own !== null && own !== CONFIG_READER) runs.push(packageRun(root, own, [], flags, '(its config changed)'));
       runs.push(packageRun(root, CONFIG_READER, [], flags, 'the checks that read every config'));
     } else if (exists) {
-      wantsRoot = true;
-      sourcePackages.push(packageOf(rel));
-      runs.push(rootRun(root, `every spec covering ${rel}`, ['related', '--run', rel], flags,
-        packSuiteNote(affectedPackSuites([packageOf(rel)]), full)));
+      const own = ownSuiteFor(rel);
+      if (own !== undefined) {
+        runs.push(packageRun(root, own.dir, [], flags,
+          'its whole suite, which is what covers it — no root project imports a pack\'s source'));
+      } else {
+        wantsRoot = true;
+        sourcePackages.push(packageOf(rel));
+        runs.push(rootRun(root, `every spec covering ${rel}`, ['related', '--run', rel], flags,
+          packSuiteNote(affectedPackSuites([packageOf(rel)], root), full)));
+      }
     } else {
       const matches = matchByName(arg, root);
       if (matches.length === 0) unmatched.push(arg);
@@ -257,10 +307,16 @@ export function planTargets(targets: readonly string[], flags: readonly string[]
     runs.push(pkg === null ? e2eRun(root, specs, flags) : packageRun(root, pkg, specs.map((s) => path.relative(path.join(root, 'packages', pkg), s)), flags, label));
   }
 
-  const affected = wantsRoot ? affectedPackSuites(sourcePackages) : [];
+  const affected = notYetCovered(wantsRoot ? affectedPackSuites(sourcePackages, root) : [], runs);
   if (full && affected.length > 0) runs.push(packSuiteRun(root, affected));
   return { runs: wantsRoot ? [ensurePackages(root), ...runs] : runs, unmatched, ambiguous };
 }
+
+/** What a plan does not already run in full, so a dependency and its pack changing together plan it once */
+const notYetCovered = (affected: readonly string[], runs: readonly Run[]): string[] => {
+  const already = new Set(runs.flatMap((run) => run.covers ?? []));
+  return affected.filter((workspace) => !already.has(workspace));
+};
 
 /**
  * With no target: the specs your uncommitted changes affect.
@@ -272,7 +328,7 @@ export function planTargets(targets: readonly string[], flags: readonly string[]
  */
 export function planChanged(changedPackages: readonly string[], flags: readonly string[], root: string,
   { full = false }: PlanOptions = {}): Planned {
-  const affected = affectedPackSuites(changedPackages);
+  const affected = affectedPackSuites(changedPackages, root);
   const runs: Run[] = [
     ensurePackages(root),
     rootRun(root, 'the specs your changes affect', ['--changed', '--run'], flags, packSuiteNote(affected, full)),
@@ -281,7 +337,9 @@ export function planChanged(changedPackages: readonly string[], flags: readonly 
   for (const pkg of changedPackages) {
     if (!pack.includes(pkg)) runs.push(packageRun(root, pkg, [], flags, '(changed)'));
   }
-  // Only when a *dependency* changed: a change inside the pack itself is already its own run above
-  if (full && affected.length > 0) runs.push(packSuiteRun(root, affected));
+  // What the runs above do not already cover: changing `@abuddy/sdk` *and* the pack code that uses it is one
+  // edit under this repo's no-backward-compatibility rule, and planned the pack's 87 specs twice
+  const toRun = notYetCovered(affected, runs);
+  if (full && toRun.length > 0) runs.push(packSuiteRun(root, toRun));
   return { runs, unmatched: [], ambiguous: [] };
 }

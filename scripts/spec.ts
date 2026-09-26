@@ -75,10 +75,13 @@ if (ambiguous.length > 0) {
 }
 
 let failed = 0;
+// Each distinct note once: two source-file targets are two root runs carrying the same sentence about the
+// pack suites, and a limit worth stating is not worth stating twice
+const said = new Set<string>();
 for (const run of runs) {
   if (run.label !== ENSURE_LABEL) console.log(`\n→ ${run.label}`);
   const result = spawnSync(run.command, [...run.args], { cwd: run.cwd, stdio: 'inherit' });
   if ((result.status ?? 1) !== 0) failed++;
-  if (run.note !== undefined) console.log(`   ${run.note}`);
+  if (run.note !== undefined && !said.has(run.note)) { console.log(`   ${run.note}`); said.add(run.note); }
 }
 process.exit(failed === 0 ? 0 : 1);
