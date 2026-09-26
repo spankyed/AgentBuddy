@@ -202,8 +202,10 @@ npm run spec -- <target> # You don't say what the target is; it works that out:
                          # answer to "what could this break" and the root vitest.config.ts already lists
                          # them. It used to run the file's own package: for a type every pack's data flows
                          # through that was 24 of the 104 specs covering it, reported green. The cost is the
-                         # blast radius — measured 2026-09-26, a renderer module 1 file/4.1s, the api's
-                         # runtime 13/6.0s, abuddy-sdk's entity types 104/23.7s.
+                         # blast radius: a renderer module 1 file, the api's runtime 13, abuddy-sdk's entity
+                         # types 104. Wall times of 4.1s, 6.0s and 23.7s were taken 2026-09-26 on a machine
+                         # at load ~10 of 10 cores, so read them as upper bounds; the file counts are what
+                         # the decision rests on and contention does not move those.
                          # @app/default-setup is not in that answer and says so: it tests the built packages
                          # rather than this source, so no module graph connects the two (test:unit:pack).
                          # Anything from the first `-` goes to vitest untouched, so `-t "a case"`,

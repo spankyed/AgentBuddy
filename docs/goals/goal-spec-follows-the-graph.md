@@ -73,7 +73,7 @@ the cheap one — the one run per change — holds the wrong one.
 ### The fix is already in the tree, unused
 
 The root `vitest.config.ts` lists eleven projects, and vitest resolves `related` against the module graph
-across all of them **in one process**. Measured 2026-09-26, idle, from the repo root:
+across all of them **in one process**. Measured 2026-09-26 from the repo root, on a machine at load ~10 of 10 cores:
 
 ```
 $ npx vitest related --run packages/abuddy-sdk/src/types/sdk-entities.ts
@@ -180,8 +180,9 @@ Mutation-check it by making the source-file case plan one package again and watc
 
 ## Constraints
 
-- **Measure on an idle machine, and record what you measured on.** The 28s and 1.5s figures above were
-  taken 2026-09-26 with nothing else running. The first draft of this goal was costed on a model that one
+- **Measure on an idle machine, and record what you measured on.** The figures above were *not*: they were
+  taken 2026-09-26 at load ~10 on a 10-core machine, so they are upper bounds. Re-take them quiet before
+  treating any of them as a budget. The counts beside them — 104 files, 4 against 3 — are not affected. The first draft of this goal was costed on a model that one
   command disproved; prefer the command.
 - **A guard that cannot fail is worse than none.** Break Phase 4's guard on purpose and watch it fail, in a
   copy or a worktree — a mutation in this shared tree has reached the index before.
