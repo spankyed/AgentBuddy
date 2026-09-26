@@ -6,7 +6,6 @@
     "tests/chain-inputs.spec.ts": 798,
     "tests/chain-schedule.spec.ts": 23,
     "tests/component-contracts.integration.spec.ts": 1836,
-    "tests/doc-fences.spec.ts": 49,
     "tests/doc-links.spec.ts": 64,
     "tests/import-specifiers-script.integration.spec.ts": 4470,
     "tests/import-specifiers.integration.spec.ts": 3848,

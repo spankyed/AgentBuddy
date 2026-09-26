@@ -309,7 +309,8 @@ A principal-engineer review of these commits found five defects and they are fix
 - **The relative half had no test**: deleting that branch left every suite in the repo green. Its spec runs
   every case over both forms from one table now.
 - **The guides still taught the old form** — 30 fences that `abuddy build` refuses, pasted into packs — and
-  `doc-fences.spec.ts` now holds them to it.
+  those are fixed. A spec over the guides' fences was added and then removed at the user's request: docs are
+  not tested here.
 - **Overlapping `#` patterns named the wrong file**: Node takes the longest match, key order took the first.
 - **Scope**: a pack authored in JavaScript, a `.json` target, a pack's tests (`abuddy test` checks those now)
   and a new CLI command writing pack code were each outside the rule, silently.
