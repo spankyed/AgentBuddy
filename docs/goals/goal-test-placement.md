@@ -26,7 +26,7 @@ Finished when:
   fails when that stops being true.
 - No spec imports another package's `src/` by relative path, or the exception is recorded with a reason
   and a stale-entry check.
-- `docs/reference/test-inventory.md` exists and describes the suite as it is; `docs/plans/test-inventory.md`
+- `docs/reference/test-inventory.md` exists and describes the suite as it is; `docs/archive/plans/test-inventory.md`
   is archived.
 - npm run typecheck; npm run spec-cost:check; the suites this goal touches; npm run chain once at the end.
 - A final summary: phase → done/deferred, evidence, and the conventional choices made.
@@ -54,7 +54,7 @@ Never:
 
 [`goal-test-cleanup.md`](goal-test-cleanup.md) swept the suite for tests that could not fail meaningfully
 and finished on 2026-09-25. It acted on four of the five verdict classes
-[`test-inventory.md`](../plans/test-inventory.md) defined — `KEEP`, `TRIM`, `MERGE`, `DELETE` — and barely
+[`test-inventory.md`](../archive/plans/test-inventory.md) defined — `KEEP`, `TRIM`, `MERGE`, `DELETE` — and barely
 touched the fifth, **`MOVE`: right assertion, wrong level or package.** This goal is that class, plus what
 that sweep deferred.
 
@@ -173,7 +173,7 @@ the CLI, so the record cannot be read as a CLI number.
 
 ### What the earlier inventory still has open
 
-[`test-inventory.md`](../plans/test-inventory.md) was written 2026-09-19 against
+[`test-inventory.md`](../archive/plans/test-inventory.md) was written 2026-09-19 against
 `AS/package-boundaries` at `1dd69172e` and has not been touched since. Its numbers are out — 279 spec
 files and 2,211 tests against 364 and roughly 2,654 — it predates `@app/repo-checks`, the CLI suite's two
 halves and the cost records, and its per-file references are stale. Checked at this base:
@@ -216,7 +216,7 @@ Final.
    merge only then.
 7. **The inventory becomes a reference doc, not a plan.** `docs/reference/test-inventory.md` describes the
    suite as it is and is the standing answer to "what tests do we have and where do they belong".
-   `docs/plans/test-inventory.md` is archived, since its purpose was to feed a goal that is finished.
+   `docs/archive/plans/test-inventory.md` is archived, since its purpose was to feed a goal that is finished.
 8. **Don't regenerate the per-test provenance.** The 2026-09-19 survey `git blame`d every `it(` line
    across 325 commits. Its own Finding 1 showed provenance does not predict a verdict, and none of this
    goal's findings needed it. `git blame` stays a reading aid.
@@ -241,7 +241,7 @@ Settle with the user before Phase 4.
 Write `docs/reference/test-inventory.md`: the location table above, the seven categories the tree actually
 distinguishes (package unit; contract over build output; command/process; repo tooling; app runtime;
 fixture pack; E2E), and the five verdict classes from the old inventory, with `MOVE` defined as this
-goal's subject. Date it and name the base. Archive `docs/plans/test-inventory.md` with a
+goal's subject. Date it and name the base. Archive `docs/archive/plans/test-inventory.md` with a
 `> **Superseded in part**` blockquote pointing at the new doc and at `goal-measured-placement.md` for the
 split decisions it got wrong.
 

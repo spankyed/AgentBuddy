@@ -1,5 +1,23 @@
 # Test inventory: every test in the repo, with provenance and a verdict class
 
+> **Superseded in part** by [`docs/reference/test-inventory.md`](../../reference/test-inventory.md), which
+> describes the suite as it is. The text below is the survey as written, 2026-09-19 against
+> `AS/package-boundaries` at `1dd69172e`: its counts (279 spec files, 2,211 tests) predate
+> `@app/repo-checks`, the CLI suite's two halves and the cost records, and its per-file paths name specs that
+> have since moved. Read it as history.
+>
+> **Two of its conclusions were superseded rather than absorbed.** It fed
+> [`goal-test-cleanup.md`](../../goals/goal-test-cleanup.md), whose Decisions 12 and 14 split a suite by
+> *what a spec does* and guarded that the fast half spawns nothing.
+> [`goal-measured-placement.md`](../../goals/goal-measured-placement.md) replaced both with **measured cost**
+> in `etc/spec-cost.json` and a dead band: mechanism was a proxy that said three things wrongly. Don't
+> re-implement it. Its Decision 11 was already struck by this survey's own Finding 1.
+>
+> Of its open candidates, three are done (`claude-code-permission-shape`, the `_hybrid` export clones,
+> `no-engine-state-access`) and two are still open, carried into
+> [`goal-test-placement.md`](../../goals/goal-test-placement.md) Phase 6.
+
+
 A complete pass over the test suite — what each test is, which commit introduced it, and which of five
 verdicts it belongs in. Written to feed `docs/goals/goal-test-cleanup.md`, whose phases delete and trim
 tests but whose audit covered one branch (`AS/package-boundaries` at `1dd69172e`). This covers all of it.
