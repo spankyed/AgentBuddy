@@ -73,6 +73,8 @@ const LAYOUT_CHECKS: Record<string, string> = {
     + 'tree, read from git and the manifests, with no scripts/ module to import',
   'tests/doc-links.spec.ts': 'that a relative link between the repo\'s documents resolves — a property of '
     + 'the doc tree, read from git, with no scripts/ module behind it either',
+  'tests/pack-test-config.spec.ts': 'that every pack\'s vitest config calls definePackTestConfig rather than '
+    + 'restating it — a property of the packs in the tree, read from git and the manifests',
 };
 
 const specs = (): string[] =>
