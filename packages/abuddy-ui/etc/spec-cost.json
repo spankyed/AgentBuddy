@@ -1,0 +1,8 @@
+{
+  "measuredAt": "2026-09-26T03:15:59.733Z",
+  "costs": {
+    "tests/exports.spec.ts": 7,
+    "tests/import-side-effects.spec.ts": 125
+  },
+  "skipped": []
+}

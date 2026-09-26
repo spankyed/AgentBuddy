@@ -29,7 +29,7 @@ Creates no feature (add one with `abuddy add feature`). It writes:
 - `.github/workflows/release.yml`: publishes the GitHub release when `abuddy release` pushes a `v*` tag
 - `src/extensions/steps/register.ts` and `src/extensions/steps/build.ts`
 - `src/seeds/actions/`, `src/seeds/flows/`, `src/seeds/examples/hello.md`
-- `vitest.config.ts`, `tests/setup.ts` (the `@abuddy/testing/harness` setup) and `tests/unit/<name>.spec.ts`
+- `vitest.config.ts`, `tests/setup.ts` (the `@abuddy/testing/harness` setup) and `tests/<name>.spec.ts`
 
 Then runs `generate` and `generate-entries`.
 
@@ -56,7 +56,7 @@ Only `add feature`, `add service` and `add step` update `abuddy.json` entries an
 - `src/features/<name>/settings.ts`
 - `src/features/<name>/be/system.ts`, `be/contract.ts` (the system's contract, which `abuddy.json` names), `be/types.ts`, `be/repository/index.ts`
 - `src/features/<name>/fe/plugin.ts`, `fe/state.ts`, `fe/canvas/list.vue`, `fe/settings.vue`
-- `tests/unit/<name>-system.spec.ts` (and `tests/setup.ts` with its devDependencies if the pack has none)
+- `tests/features/<name>/be/system.spec.ts` (and `tests/setup.ts` with its devDependencies if the pack has none)
 
 and adds a `features[]` entry with `settings`, `system.entry`, `plugin` (`entry`, `label`, `icon`), empty `services`, and `repositories` `<name>Queries` and `<name>Commands` pointing at `be/repository/index.ts`.
 

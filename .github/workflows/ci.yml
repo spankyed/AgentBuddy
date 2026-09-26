@@ -103,6 +103,15 @@ jobs:
       - name: Unit tests (cli)
         run: npm test --workspace @abuddy/cli -- --reporter=verbose
 
+      - name: Integration tests (cli)
+        run: npm run test:integration --workspace @abuddy/cli -- --reporter=verbose
+
+      - name: Unit tests (repo checks)
+        run: npm test --workspace @app/repo-checks -- --reporter=verbose
+
+      - name: Integration tests (repo checks)
+        run: npm run test:integration --workspace @app/repo-checks -- --reporter=verbose
+
       - name: Unit tests (renderer)
         run: npm run test:unit --workspace @app/renderer -- --run
 

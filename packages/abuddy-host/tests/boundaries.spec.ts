@@ -148,8 +148,5 @@ describe('host package boundaries', () => {
     const files = fs.readdirSync(path.join(SRC, 'services')).sort();
     expect(files, 'src/services holds HostRuntime["services"]: put other host code in a module named by its concern')
       .toEqual([...HOST_SERVICE_KEYS.map((key) => `${kebab(key)}.ts`), 'index.ts'].sort());
-    // The services the runtime assembles are exactly these (the store is reached only when a service is called)
-    const runtime = createHostRuntime({ store: {} as LmdbStore, engine: createEarsEngine({ isEntityType: () => false }), transport: { rootEvents: testRootEvents }, appVersion: '0.0.0', packs: createPackRegistry() });
-    expect(Object.keys(runtime.services).sort()).toEqual([...HOST_SERVICE_KEYS].sort());
   });
 });

@@ -4,7 +4,10 @@ import * as path from 'node:path';
 import { init as initLexer, parse } from 'es-module-lexer';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { packExternalsPlugin } from '../../src/build/fe-bundler';
-import { PACKAGES_BUILT, REPO_ROOT } from '../helpers/published-packages';
+import { packagesBuiltOrRefuse, REPO_ROOT } from '@abuddy/host/build/packages-built';
+
+/** Skips without built packages, and refuses rather than reading a stale `dist` */
+const PACKAGES_BUILT = packagesBuiltOrRefuse('npm run packages:build (or npm test -w @abuddy/cli, which builds them)');
 
 /**
  * A pack's proxy for a host-shared @abuddy/ui module re-exports every name the host's module has.
@@ -63,7 +66,7 @@ beforeAll(async () => {
     resolve: { conditions: ['@abuddy/source', ...vite.defaultClientConditions] },
     build: { lib: { entry, formats: ['es'], fileName: 'fe' }, outDir: path.join(packDir, 'dist'), write: false },
   });
-}, 120_000);
+});
 
 afterAll(() => {
   if (packDir) fs.rmSync(packDir, { recursive: true, force: true });

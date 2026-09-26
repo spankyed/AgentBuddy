@@ -16,15 +16,6 @@ const SDK_MODULES_FILE = path.join(REPO_ROOT, 'packages', 'abuddy-host', 'src', 
 const RUNTIME_ENTRY = path.join(REPO_ROOT, 'packages', 'default-setup', 'dist', 'runtime', 'index.cjs');
 
 /**
- * Subpaths that can't fail when an unbridged copy loads under plain Node:
- * zero imports and no module-level state. The leaf test below proves it, so an
- * import added later fails CI instead of silently breaking pack loading.
- */
-const UNBRIDGED_LEAVES = new Map<string, string>([
-  // None: an installed pack has no node_modules, so even leaf modules are bridged
-]);
-
-/**
  * Subpaths unbridged by policy: pack runtime code never requires them. These
  * CAN fail under plain Node (relative imports), so their safety rests on the policy
  * holding — the built-runtime test checks the built pack never requires them.
@@ -40,11 +31,17 @@ const UNBRIDGED_BY_POLICY = new Map<string, string>([
   // The app's settings store: one row with one writer, reached by packs through `services.settings`. A pack
   // loading the store would be a second writer, past the checks and the listeners the first one tells.
   ['@abuddy/host/settings', 'host-only — packs reach the settings through services.settings, which is the one writer'],
+  // The key vault: the OS credential store, or a file when there is none. Values reach the backend only
+  // through the API's secrets procedures and never over the bus, so a pack that could open the vault would
+  // read every key the user has stored. Published as a subpath so the api's spec can mock it by specifier
+  // rather than by a path into this package's src/ (`repo-checks/tests/spec-placement.spec.ts`).
+  ['@abuddy/host/secrets/vault', 'host-only — a pack that could open the vault would read every stored key'],
   // Build-time only: consumed by vite configs and the abuddy CLI, never by a
   // loaded pack's runtime code.
   ['@abuddy/host/build/shared-deps', 'build-time only'],
   ['@abuddy/host/build/discover', 'build-time only'],
   ['@abuddy/host/build/source-resolution', 'host tooling only (CLI, fixture, API boot)'],
+  ['@abuddy/host/build/specifiers', 'build-time only: what a module specifier names, for the scripts that pack the published packages and the packages that check them'],
   ['@abuddy/host/build/packages-built', 'checkout build tooling: the freshness rule behind npm run packages:ensure'],
   // What a running process published and whether it is still there: the app's own plumbing, which is why
   // it moved out of @abuddy/sdk/env. A pack reaches a running API through the app, never by reading its
@@ -83,7 +80,7 @@ const UNBRIDGED_BY_POLICY = new Map<string, string>([
   ['@abuddy/sdk/abuddy.schema.json', 'manifest JSON schema, not code'],
 ]);
 
-const UNBRIDGED_BY_DESIGN = new Map([...UNBRIDGED_LEAVES, ...UNBRIDGED_BY_POLICY]);
+const UNBRIDGED_BY_DESIGN = new Map(UNBRIDGED_BY_POLICY);
 
 /** Renderer-only subpaths reach pack FE code through Vite + window.__abuddy, never the CJS bridge. */
 function isFeSpecifier(s: string): boolean {
@@ -177,7 +174,7 @@ describe('SDK bridge drift', () => {
 
     const bridged = new Set(getBridgedSdkSpecifiers());
     const missing = [...new Set(required)]
-      .filter((s) => !isFeSpecifier(s) && !bridged.has(s) && !UNBRIDGED_LEAVES.has(s))
+      .filter((s) => !isFeSpecifier(s) && !bridged.has(s))
       .sort();
 
     expect(missing, 'the built runtime requires subpaths that are not bridged').toEqual([]);
@@ -189,13 +186,4 @@ describe('SDK bridge drift', () => {
     expect(stale, 'UNBRIDGED_BY_DESIGN lists specifiers absent from the exports maps').toEqual([]);
   });
 
-  it('keeps unbridged leaf modules free of imports', () => {
-    const withImports = [...UNBRIDGED_LEAVES.keys()].filter((specifier) => {
-      const pkg = Object.keys(PACKAGE_DIRS).find((p) => specifier === p || specifier.startsWith(`${p}/`))!;
-      const key = specifier === pkg ? '.' : `./${specifier.slice(pkg.length + 1)}`;
-      const source = fs.readFileSync(sourceOf(pkg, key), 'utf8');
-      return /^\s*import\s|^\s*export\s[^\n]*\sfrom\s|\brequire\(|\bimport\(/m.test(source);
-    });
-    expect(withImports, 'These leaves gained imports; bridge them in SDK_BRIDGE and move them out of UNBRIDGED_LEAVES').toEqual([]);
-  });
 });

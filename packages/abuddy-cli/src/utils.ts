@@ -67,3 +67,22 @@ export function cliBin(): string {
 export function cliVersion(): string {
   return JSON.parse(fs.readFileSync(path.join(import.meta.dirname, '..', 'package.json'), 'utf-8')).version;
 }
+
+/**
+ * The vitest CLI the pack resolves. `createRequire` walks up, so this finds a pack's own devDependency and,
+ * for a fixture pack inside this monorepo that declares none, the hoisted copy — which is the same binary
+ * `tests/scripts/` used to invoke by path.
+ */
+export function resolveVitestCli(packDir: string): string {
+  const from = path.join(packDir, 'package.json');
+  let pkgPath: string;
+  try {
+    pkgPath = createRequire(from).resolve('vitest/package.json');
+  } catch {
+    throw new Error('vitest is not installed in this pack. Run: npm i -D vitest');
+  }
+  const bin = (JSON.parse(fs.readFileSync(pkgPath, 'utf-8')) as { bin?: string | Record<string, string> }).bin;
+  const entry = typeof bin === 'string' ? bin : bin?.vitest;
+  if (!entry) throw new Error(`The vitest at ${pkgPath} declares no bin`);
+  return fs.realpathSync(path.join(path.dirname(pkgPath), entry));
+}

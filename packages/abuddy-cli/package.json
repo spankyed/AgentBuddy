@@ -18,7 +18,9 @@
     "build:package": "tsx ../../scripts/bundle-package.ts .",
     "typecheck": "tsc --noEmit",
     "pretest": "tsx ../../scripts/ensure-packages-built.ts",
-    "test": "vitest run"
+    "test": "vitest run",
+    "pretest:integration": "tsx ../../scripts/ensure-packages-built.ts",
+    "test:integration": "vitest run --config vitest.integration.config.ts"
   },
   "dependencies": {
     "@abuddy/host": "*",
@@ -40,6 +42,7 @@
     "vue": "^3.5.18"
   },
   "devDependencies": {
+    "@app/publish-checks": "*",
     "@types/semver": "^7.8.0",
     "vitest": "^3.2.4"
   }

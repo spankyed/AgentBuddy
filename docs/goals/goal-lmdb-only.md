@@ -111,7 +111,7 @@ The user wants **LMDB-only**: reads query LMDB directly, writes are committed sy
   - SDK round-trip and seeder specs, and host and api specs, build raw memory engines.
   - The ears contract `persistence.spec.ts` pins sink call order.
   - The benchmark loads data with `bulkLoadAttr`.
-  - `api/tests/unit/restart-persistence.spec.ts:36` asserts nothing is visible before hydrate.
+  - `api/tests/runtime/restart-persistence.spec.ts:36` asserts nothing is visible before hydrate.
 - **Data lifecycle.**
   - `openAppStore` (`packages/api/src/setup/backend.ts:62-71,152`) hydrates after packs register, since the policy depends on registered types.
   - `appData.reset` does `engine.clear` → `store.reset` → `startPacks`.
@@ -123,10 +123,14 @@ The user wants **LMDB-only**: reads query LMDB directly, writes are committed sy
 
 Two throwaway worktrees. They may have been removed by the time this goal is picked up; everything needed is recorded here.
 
-- **Read path:** `.claude/worktrees/agent-a95981166c164d641`, detached at `97a566275`, uncommitted.
+- **Read path:** `.claude/worktrees/ears-disk-engine`, detached at `97a566275`, uncommitted. Still there as
+  of 2026-09-25, renamed from `agent-a95981166c164d641` — the files below are untracked, so they are in no
+  commit, branch or stash and exist only in that directory.
   - New files: `packages/abuddy-ears/src/lmdb/disk-storage.ts` (~465 lines), `src/lmdb/disk-engine.ts`, `tests/lmdb/disk-engine.spec.ts`, `bench/engines.bench.ts`, `spike/`.
-  - Edits to `relation-index.ts`, `edge-store.ts`, `relations.ts`, `query.ts`, `engine.ts` and `tests/contract/engine-under-test.ts`.
-- **Write path:** `.claude/worktrees/agent-aef0c2460682598b7/packages/abuddy-ears/spike/*.mts`. These are lmdb-js 3.5.3 probes, run with `npx tsx`.
+  - Edits to `relation-index.ts`, `edge-store.ts`, `relations.ts`, `query.ts`, `engine.ts` and `tests/engine/engine-under-test.ts`.
+- **Write path:** was `.claude/worktrees/agent-aef0c2460682598b7/packages/abuddy-ears/spike/*.mts`, lmdb-js
+  3.5.3 probes run with `npx tsx`. **That worktree is gone** as of 2026-09-25, which is what this section
+  anticipated: what it found is recorded below and the probes themselves are not recoverable.
 
 **Don't reuse the spike's code as-is.** Rewrite it on the branch, keeping the seams and the key layout below.
 

@@ -4,7 +4,7 @@ import * as path from 'node:path';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { bundlePackFE } from '../../src/build/fe-bundler';
 
-// Computed here rather than taken from tests/helpers/published-packages, whose import checks that
+// Computed here rather than taken from @app/publish-checks, whose import checks that
 // the published packages' dist is up to date — irrelevant to this suite, which builds from source.
 const REPO_ROOT = path.resolve(import.meta.dirname, '../../../..');
 
@@ -62,7 +62,7 @@ describe('pack FE Tailwind setup', () => {
     const result = await build(packDir);
     expect(result).toEqual({ success: true });
     expect(emittedCss(packDir)).toContain('#abc123');
-  }, 60_000);
+  });
 
   it('fails the build when a pack that bundles @abuddy/ui has a tailwind.config that throws', async () => {
     const packDir = makePack({
@@ -73,7 +73,7 @@ describe('pack FE Tailwind setup', () => {
     expect(result.success).toBe(false);
     expect(result.error).toContain('tailwind.config.ts');
     expect(result.error).toContain('bad tailwind config');
-  }, 60_000);
+  });
 
   it("fails the build when a bundleUi pack's tailwind.config has no usable content", async () => {
     const packDir = makePack({
@@ -83,7 +83,7 @@ describe('pack FE Tailwind setup', () => {
     const result = await build(packDir);
     expect(result.success).toBe(false);
     expect(result.error).toContain('`content`');
-  }, 60_000);
+  });
 
   it("fails the build when a bundleUi pack can't resolve @abuddy/ui", async () => {
     const packDir = makePack({ manifest: { fe: { bundleUi: true } }, linkNodeModules: false });
@@ -91,7 +91,7 @@ describe('pack FE Tailwind setup', () => {
     expect(result.success).toBe(false);
     expect(result.error).toContain('@abuddy/ui');
     expect(result.error).toContain('fe.bundleUi');
-  }, 60_000);
+  });
 
   /** A bundleUi pack whose @abuddy/ui resolves but has no build: a checkout before packages:build */
   function uiWithoutBuild(): string {
@@ -118,7 +118,7 @@ describe('pack FE Tailwind setup', () => {
     expect(result.success).toBe(false);
     expect(result.error).toContain('@abuddy/ui has no built modules');
     expect(result.error).toContain('packages:ensure');
-  }, 60_000);
+  });
 
   it("fails the build when a bundleUi pack's @abuddy/ui dist holds no module to read", async () => {
     // A dist with only declarations in it is the same silence: Tailwind's glob matches no file either
@@ -131,7 +131,7 @@ describe('pack FE Tailwind setup', () => {
     const result = await build(packDir);
     expect(result.success).toBe(false);
     expect(result.error).toContain('@abuddy/ui has no built modules');
-  }, 60_000);
+  });
 
   it("fails the build when abuddy.json can't be read, so fe.bundleUi is unknown", async () => {
     const packDir = makePack({ manifest: '{ not json' });
@@ -139,20 +139,30 @@ describe('pack FE Tailwind setup', () => {
     expect(result.success).toBe(false);
     expect(result.error).toContain('abuddy.json');
     expect(result.error).toContain('fe.bundleUi');
-  }, 60_000);
+  });
 
-  it('warns about a tsconfig whose aliases it cannot read', async () => {
+  /**
+   * This case used to be a block comment, because the alias reader's line-comment stripping could not parse
+   * one and the assertion was that the build carried on without the aliases. `readTsconfigAliases` reads
+   * JSONC now (`tsconfig-aliases.spec.ts` covers what it reads), so the case had to become a tsconfig no
+   * reader can make sense of — and that turns out not to warn-and-continue at all: **Vite reads the pack's
+   * tsconfig itself**, and fails the build with a better message than the warning.
+   *
+   * So the honest property is that an unparseable tsconfig is reported twice and does not build. Keeping the
+   * warning is still worth it: it fires first, and it names the aliases as what was lost, which vite's
+   * syntax error does not.
+   */
+  it('reports a tsconfig it cannot read, and does not build the pack', async () => {
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
     const packDir = makePack({});
-    // Valid JSONC that the alias reader's line-comment stripping can't parse, so its paths are lost
-    fs.writeFileSync(
-      path.join(packDir, 'tsconfig.json'),
-      '{ /* block comment */ "compilerOptions": { "paths": { "#gen/*": ["./src/*"] } } }',
-    );
+    fs.writeFileSync(path.join(packDir, 'tsconfig.json'), '{ "compilerOptions": { not json');
+
     const result = await build(packDir);
-    expect(result.success).toBe(true);
+
     expect(warn.mock.calls.flat().join('\n')).toContain('tsconfig.json');
-  }, 60_000);
+    expect(result.success, 'vite parses the same file and refuses it').toBe(false);
+    expect(String((result as { error?: unknown }).error)).toContain('tsconfig.json');
+  });
 });
 
 describe('pack FE Tailwind setup when Tailwind cannot be loaded', () => {
@@ -174,7 +184,7 @@ describe('pack FE Tailwind setup when Tailwind cannot be loaded', () => {
     const result = await buildWithoutTailwind(packDir);
     expect(result.success).toBe(true);
     expect(warn.mock.calls.flat().join('\n')).toContain("Tailwind CSS couldn't be loaded");
-  }, 60_000);
+  });
 
   it('fails the build for a pack that bundles @abuddy/ui', async () => {
     const packDir = makePack({ manifest: { fe: { bundleUi: true } } });
@@ -182,12 +192,12 @@ describe('pack FE Tailwind setup when Tailwind cannot be loaded', () => {
     expect(result.success).toBe(false);
     expect(result.error).toContain("Tailwind CSS couldn't be loaded");
     expect(result.error).toContain('fe.bundleUi');
-  }, 60_000);
+  });
 
   it('fails the build for a pack that has its own tailwind.config', async () => {
     const packDir = makePack({ tailwindConfig: "export default { content: ['./src/**/*.ts'] };\n" });
     const result = await buildWithoutTailwind(packDir);
     expect(result.success).toBe(false);
     expect(result.error).toContain('tailwind.config.ts');
-  }, 60_000);
+  });
 });

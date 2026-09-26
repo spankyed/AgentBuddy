@@ -36,14 +36,6 @@ describe('frontend designations', () => {
     expect(registry.getRegisteredPlugins().map((p) => p.id)).not.toContain('clock-pack/scheduler');
   });
 
-  it('resolve a role to the plugin that plays it, and drop it when the pack unregisters', () => {
-    register('notebook-pack', [['notebookMain', 'notebook']]);
-    expect(getDesignated('notebook')).toBe('notebook-pack/notebookMain');
-
-    unregisterPackFE(packs.pop()!);
-    expect(hasDesignation('notebook')).toBe(false);
-  });
-
   it('refuse a pack claiming a role another plays, leaving nothing of it registered', () => {
     register('first-pack', [['firstNotebook', 'notebook']]);
     expect(() => register('second-pack', [['secondNotebook', 'notebook']])).toThrow('Designation collision: role "notebook" — pack "second-pack" vs "first-pack"');

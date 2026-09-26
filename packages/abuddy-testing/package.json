@@ -23,6 +23,7 @@
   },
   "scripts": {
     "build:package": "tsx ../../scripts/bundle-package.ts .",
+    "test": "vitest run",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
@@ -36,7 +37,8 @@
     "vitest": ">=3.0.0"
   },
   "devDependencies": {
-    "typescript": "^5.8.3"
+    "typescript": "^5.8.3",
+    "vitest": "^3.2.4"
   },
   "peerDependenciesMeta": {
     "@playwright/test": {

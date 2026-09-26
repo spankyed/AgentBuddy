@@ -1,7 +1,7 @@
 > **Done** (`AS/plugin-contract`: `576873cbe`, `9d80d94ff`, `2e51651da`). The text below is the plan as written;
 > two things it did not predict are in the Outcome, and `via` ended up naming any source rather than only an
 > action. For the current shape, see the root `CLAUDE.md` ("Addressing is an envelope") and
-> `docs/plans/host-seams.md`.
+> `docs/archive/plans/host-seams.md`.
 
 > **Written in session** `8b92798a-1d8e-4b9d-bb17-daa98bec9f93` (Claude Code, 2026-09-24). Resume it with `claude -r 8b92798a-1d8e-4b9d-bb17-daa98bec9f93`.
 
@@ -9,7 +9,7 @@
 # Goal: actions send as themselves, and the host's last exception goes
 
 Implement docs/goals/goal-actions-and-seams.md on AS/plugin-contract, at or after e806a36c3 — the base
-its Background was surveyed at. It finishes docs/plans/host-seams.md, whose steps 1, 2 and 5 have landed
+its Background was surveyed at. It finishes docs/archive/plans/host-seams.md, whose steps 1, 2 and 5 have landed
 (a07b5c095, e5580d6b4, 4d649fc0b); this goal is its steps 3 and 4 plus the docs they falsify.
 Before Phase 1, confirm the base: `Message` in packages/abuddy-sdk/src/events/index.ts has `from?: string`
 and no `via`; `packages/abuddy-sdk/src/services/index.ts` declares `emitter.broadcastToPlugin` as
@@ -58,12 +58,12 @@ Never:
 - let a bare feature id compile from an action (Decision 2). The `@ts-expect-error` cases in
   abuddy-cli/tests/build/facade-typing.spec.ts are the guard; if they go unused, you broke the rule.
 - give the host an `abuddy.json`, or add a table of blessed exceptions to a gate. Both were investigated
-  and rejected; docs/plans/host-seams.md records why.
+  and rejected; docs/archive/plans/host-seams.md records why.
 ```
 
 ## Background (2026-09-24, at e806a36c3 on AS/plugin-contract)
 
-`docs/plans/host-seams.md` has five findings and five steps. Three have landed: the `settings` designation
+`docs/archive/plans/host-seams.md` has five findings and five steps. Three have landed: the `settings` designation
 is gone and the app addresses `HOST.settings` (step 1); `createSends` builds every send and the host stamps
 `from: 'host'` (step 2); the host's sends are typed against maps assembled from its own contracts and it
 names features by bare id like a pack (step 5). What is left is steps 3 and 4.
@@ -173,7 +173,7 @@ import in the host is reported, with no exception left to excuse it.
 
 - Update `docs/goals/wont-do/goal-sender-enforced-audiences.md`: its objections 1 and 2 are answered.
   Say so and say what still stands; do not reopen the goal (the user's decision).
-- Update `docs/plans/host-seams.md`: steps 3 and 4 landed, with the commits.
+- Update `docs/archive/plans/host-seams.md`: steps 3 and 4 landed, with the commits.
 - **A spec pinning which modules send unbound.** After Phase 1 that set is one —
   `abuddy-sdk/src/logger/report-error.ts`, which sends on behalf of a caller it can't name. A spec asserting
   the set hasn't grown makes "a new sender should bind one" a failing test rather than something to
@@ -292,7 +292,7 @@ the build lock and build stamps are shared, as the root `CLAUDE.md` warns.
 - **The 80 pre-existing `--noUnusedLocals` reports in default-setup.** Real but unrelated; sweeping them
   would bury this work's diff. `packages/abuddy-host/src/secrets/index.ts` has an unused
   `getDesignated, hasDesignation` import in the same category.
-- **Giving the host codegen.** `docs/plans/host-seams.md` records why the host gets no manifest. Phase 2
+- **Giving the host codegen.** `docs/archive/plans/host-seams.md` records why the host gets no manifest. Phase 2
   removes the reason that question kept being asked.
 
 ## Constraints

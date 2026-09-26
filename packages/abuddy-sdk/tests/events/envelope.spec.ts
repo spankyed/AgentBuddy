@@ -5,7 +5,7 @@
 // in, so a rendering site is never where a combination is first thought about.
 //
 // That a field added to `Message` is noticed at all is guarded where it can be lost — the `Required<Message>`
-// sample in `api/tests/unit/bus-send-sender.spec.ts`, which stops compiling until the new field is named.
+// sample in `api/tests/transport/bus-send-sender.spec.ts`, which stops compiling until the new field is named.
 import { describe, expect, it } from 'vitest';
 import { senderSuffix } from '../../src/events/index.ts';
 

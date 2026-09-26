@@ -12,6 +12,7 @@ Four notes were dropped as already fixed, and are recorded here so they are not 
 | An empty `.sha256` installs unverified | `pack-installer.ts:308` requires `/^[0-9a-f]{64}$/i` |
 | Node floor `>=20.6` vs `import.meta.dirname` | Both CLI and testing are `engines: >=22` |
 | `@abuddy/sdk/build` re-exports host-only `discover`/`shared-deps` | Moved to `@abuddy/host` |
+| `verify-node-modules.mjs` passes when the bundled CLI directory is missing | Settled by reading it: it moved to `build/prod/`, and `abuddy-cli/tests/build/verify-node-modules.spec.ts:29` asserts it fails when the bundled CLI's dependencies or a platform binary are missing |
 
 `lookupRegistry` (`fetch-deps.ts:264`) is a deliberate placeholder until `api.abuddy.com` exists, not a task.
 
@@ -41,9 +42,10 @@ code; this is the index from item to commit.
 
 One thing outside the list was fixed on the way, because it was failing the E2E suite: the secrets test
 read every file under the data and logs directories with `readFileSync`, and the shared
-`~/Library/Logs/abuddy-test/app-events.log` has reached 24 GB, which `readFileSync` refuses outright
-(`dbb14383d`). **That log file grows without bound and is worth its own look** — every test run on the
-machine appends to it, and nothing rotates it.
+`~/Library/Logs/abuddy-test/app-events.log` had reached 24 GB, which `readFileSync` refuses outright
+(`dbb14383d`). The unbounded growth this flagged is closed since: `appendCappedLine`
+(`abuddy-host/src/logs.ts:25`) renames the file to `.old` at `LOG_FILE_MAX_BYTES`, so a run keeps one
+previous generation and no more. The 24 GB file is gone from this machine.
 
 ---
 
@@ -96,13 +98,11 @@ with checksums has been published yet, so there is nothing to resolve against.
 
 ## Unverified — needs reading, not grepping
 
-Six things the original review listed that a grep could not settle:
+Five things the original review listed that a grep could not settle:
 
 - build-only facets not enforced: `.vue`/`.css` imports are stubbed, but `vue`/`lucide` stay external
   (`be-bundler.ts:113-120`)
 - a saved beta choice ignoring `hostVersion` (`app-target.ts:111-118`)
-- `verify-node-modules.mjs` passing when the bundled CLI directory is missing — it moved to `build/prod/` and
-  now has a spec, so it may already be fixed
 - "Install in PATH" errors other than `EACCES`/`EPERM` becoming unhandled rejections
   (`cli-command.ts`, `MacOSAppMenu.ts`)
 - three more fixture smells: `readPackLastError` failing open, teardown `rmSync` racing API shutdown, the

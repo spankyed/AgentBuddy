@@ -11,8 +11,9 @@ const REPO_ROOT = path.resolve(import.meta.dirname, '..', '..', '..', '..');
 describe('APP_ONLY_EXPORTS', () => {
   it('names exports @abuddy/ears has', () => {
     const exported = sharedInstanceExports('@abuddy/ears', import.meta.filename);
-    expect(Object.keys(APP_ONLY_EXPORTS)).toEqual(['@abuddy/ears/lmdb']);
-    expect(Object.keys(exported)).toContain('./lmdb');
+    for (const specifier of Object.keys(APP_ONLY_EXPORTS)) {
+      expect(Object.keys(exported)).toContain(`.${specifier.replace('@abuddy/ears', '')}`);
+    }
   });
 
   it('leaves them out of the shared specifiers the harness bridges and the app bridge', () => {

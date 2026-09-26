@@ -27,13 +27,23 @@ fail() { echo "FAIL: $*" >&2; exit 1; }
 
 unset ABUDDY_ROOT ABUDDY_APP_EXECUTABLE ABUDDY_CLI PACK_DIR
 # The CLI keeps its saved app choice and downloads under the user's home; use a fresh one.
-# Keep npm's cache so installs don't re-download everything.
+#
+# THE ONE NON-HERMETIC INPUT. Everything else this script reads is in the checkout or in $WORK: HOME is a
+# fresh directory, the @abuddy packages come from tarballs it packs itself, and the app choice is written
+# below rather than typed. npm's cache is deliberately not isolated, because a cold cache makes this a
+# network test — several minutes of downloads, and a failure when the network is down that says nothing
+# about the code. The cost of keeping it is that a corrupt or partial cache entry fails here and nowhere
+# else; `npm cache verify` is the first thing to try when this script fails on an install and no other
+# step does.
 export npm_config_cache="$(npm config get cache)"
 export HOME="$WORK/home"
 mkdir -p "$HOME"
 
 step "Pack @abuddy/ears, @abuddy/sdk, @abuddy/ui, @abuddy/cli and @abuddy/testing"
-(cd "$ROOT" && npm run packages:build >/dev/null)
+# ensure, not build: it needs the tarballs to match the sources, which is what ensure guarantees, and it
+# rewrites nothing when they already do. packages:build rebuilt all five unconditionally, which deleted and
+# rewrote the dist/ that anything running beside this reads.
+(cd "$ROOT" && npm run packages:ensure >/dev/null)
 for dir in abuddy-ears abuddy-sdk abuddy-ui abuddy-cli/dist/package abuddy-testing/dist/package; do
   (cd "$ROOT/packages/$dir" && npm pack --silent --pack-destination "$WORK" >/dev/null)
 done
@@ -83,19 +93,20 @@ node -e '
 npm pkg set "devDependencies.@abuddy/testing=file:$TESTING_TGZ"
 npm install --silent
 
-step "Configure the app at the first-run prompt (a local checkout)"
-# expect gives the CLI a terminal and answers its questions, as an author at the keyboard would
-env -u CI ABUDDY="$ABUDDY" ROOT="$ROOT" expect >"$WORK/first-run.log" 2>&1 <<'EXPECT' \
-  || { cat "$WORK/first-run.log"; fail "first run of abuddy test"; }
-set timeout 120
-spawn $env(ABUDDY) test --list
-expect "Choose 1 or 2: " { send "1\r" } timeout { exit 1 }
-expect "Path to the AgentBuddy checkout: " { send "$env(ROOT)\r" } timeout { exit 1 }
-expect eof
-lassign [wait] pid spawnid os_error status
-exit $status
-EXPECT
-grep -q "Which AgentBuddy app" "$WORK/first-run.log" || { cat "$WORK/first-run.log"; fail "abuddy test did not ask which app to use"; }
+step "Configure the app the way the first-run prompt saves it (a local checkout)"
+# Written directly, not typed at a prompt. The prompt is covered in @abuddy/cli's suite
+# (tests/app/app-target.spec.ts: it asks, re-asks for an unusable path, saves, and the next run reuses the
+# answer) with an injected prompt and no terminal. Driving it here took `expect`, a real tty and `env -u CI`
+# — and `expect`'s `set timeout` covers a pattern match, not `wait`, so when `abuddy test --list` started a
+# Playwright server that never returned, `lassign [wait]` blocked forever and hung the machine.
+# The shape below is pinned by that spec ("writes the saved choice where the packaged-authoring script
+# expects it"), so this literal cannot drift away from what the CLI writes.
+mkdir -p "$HOME/Library/Preferences/abuddy-cli"
+ROOT="$ROOT" node -e '
+  const fs = require("fs"), path = require("path");
+  const file = path.join(process.env.HOME, "Library", "Preferences", "abuddy-cli", "config.json");
+  fs.writeFileSync(file, JSON.stringify({ app: { source: process.env.ROOT } }, null, 2) + "\n");
+'
 grep -q "\"source\": \"$ROOT\"" "$HOME"/Library/Preferences/abuddy-cli/config.json || fail "the app choice was not saved"
 
 step "2. A flow using keepAlive from default-setup"
@@ -216,7 +227,11 @@ node -e '
 ' || fail "the compiler modules and markdown seeds were not compiled"
 
 step "4. Unit tests through the harness, with default-setup's runtime"
-cat > tests/unit/demo-notes.spec.ts <<'TS'
+# A spec's path mirrors the source it covers, which is the layout `abuddy init` scaffolds and the one a
+# pack author reads about (docs/public-facing/testing.md). These three cover the seeds, a feature's service
+# and a seeded flow, so they go where those live.
+mkdir -p tests/seeds/flows tests/features/notes/be/services
+cat > tests/seeds/demo-notes.spec.ts <<'TS'
 import { describe, expect, it } from 'vitest';
 import { importSeeds } from '@abuddy/testing/harness';
 import { findAll } from '#generated/ears';
@@ -240,7 +255,7 @@ describe('demo notes', () => {
   });
 });
 TS
-cat > tests/unit/digest-service.spec.ts <<'TS'
+cat > tests/features/notes/be/services/digest.spec.ts <<'TS'
 import { describe, expect, it } from 'vitest';
 import { mockInference } from '@abuddy/testing/harness';
 import { services } from '#generated/services';
@@ -253,7 +268,7 @@ describe('digest service', () => {
   });
 });
 TS
-cat > tests/unit/notes-summary.spec.ts <<'TS'
+cat > tests/seeds/flows/notes-summary.spec.ts <<'TS'
 import { describe, expect, it } from 'vitest';
 import { importFlows, mockInference, importSeeds, startApp } from '@abuddy/testing/harness';
 import { entry, keepAlive, subflow } from '#generated/flow-helpers';

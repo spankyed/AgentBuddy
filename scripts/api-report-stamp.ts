@@ -50,6 +50,9 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { fingerprintInputs } from '@abuddy/host/build/packages-built';
+import { createHash } from 'node:crypto';
+import { createRequire } from 'node:module';
+import { reportEntries, reportName } from './lib/api-entries.ts';
 
 /** The file recording the fingerprint the committed reports were generated from */
 export const stampFile = (pkgDir: string): string => path.join(pkgDir, 'etc', 'declarations.sha256');
@@ -152,9 +155,56 @@ export function declarationFingerprints(pkgDir: string): Array<{ name: string; h
   }));
 }
 
-/** The stamp file's contents: one `<name> <hash>` line per contributing package */
+/**
+ * The row that records *which* reports exist, beside the rows recording what they were generated from.
+ *
+ * A report is one per entry, so the set of entries is an input to the reports exactly as the declarations
+ * are. Leaving it out is what let `./packs` be added to a map, pass this check, and be refused by
+ * `api:check` for want of a report — the one thing this check promises cannot happen.
+ */
+const ENTRIES_ROW = '#entries';
+
+/**
+ * The producer itself: the API Extractor that writes the reports, and the tsconfig it is pointed at.
+ * Either moves a report with no declaration and no entry changing — a path mapping added to the tsconfig,
+ * or a version whose formatting differs — so both are inputs in the same sense the declarations are.
+ *
+ * Listed rather than captured. Capturing what the extractor reads was the first design and does not suit
+ * this one: it reads the report it is comparing against, which would make the key circular; it reads
+ * `.temp/api-types`, which is derived from `dist` and regenerated per run, where hashing `dist` is stabler
+ * and says the same thing; and it reads TypeScript's `lib.*.d.ts`, which would put node_modules into a
+ * reviewed file and churn it on every bump. Two named inputs cost twenty lines and no churn. What covers
+ * the ones nobody named is the check in `api-reports.ts`, not this list.
+ */
+const PRODUCER_ROW = '#producer';
+
+/** Invalidates every stamp when what a stamp *means* changes — `apiSurfaceOf`, or the rows themselves */
+const STAMP_VERSION = 1;
+const VERSION_ROW = '#version';
+
+function producerFingerprint(pkgDir: string): string {
+  const require = createRequire(import.meta.url);
+  const version = (JSON.parse(fs.readFileSync(require.resolve('@microsoft/api-extractor/package.json'), 'utf-8')) as { version: string }).version;
+  let tsconfig = '';
+  try { tsconfig = fs.readFileSync(path.join(pkgDir, 'tsconfig.api-extractor.json'), 'utf-8'); } catch { /* none: nothing to hash */ }
+  return createHash('sha256').update(`api-extractor ${version}\n${tsconfig}`).digest('hex');
+}
+
+function entriesFingerprint(pkgDir: string): string {
+  const pkg = JSON.parse(fs.readFileSync(path.join(pkgDir, 'package.json'), 'utf-8')) as { exports?: Record<string, unknown> };
+  const names = reportEntries(pkg).map(reportName).sort();
+  return createHash('sha256').update(names.join('\n')).digest('hex');
+}
+
+/** The stamp file's contents: one `<name> <hash>` line per contributing package, plus the entry set */
 export function declarationStamp(pkgDir: string): string {
-  return declarationFingerprints(pkgDir).map(({ name, hash }) => `${name} ${hash}`).join('\n') + '\n';
+  const rows = declarationFingerprints(pkgDir).map(({ name, hash }) => `${name} ${hash}`);
+  return [
+    ...rows,
+    `${ENTRIES_ROW} ${entriesFingerprint(pkgDir)}`,
+    `${PRODUCER_ROW} ${producerFingerprint(pkgDir)}`,
+    `${VERSION_ROW} ${STAMP_VERSION}`,
+  ].join('\n') + '\n';
 }
 
 function parseStamp(contents: string): Map<string, string> {
@@ -178,6 +228,18 @@ export function staleReason(pkgDir: string): string | null {
   // A stamp from before this recorded one hash and no names: it says nothing about which package moved,
   // so it is treated as no stamp rather than guessed at
   if (recorded.size === 0) return `${path.basename(stampFile(pkgDir))} predates per-package stamps; run npm run api:update`;
+
+  // A stamp from another format says nothing about the inputs it does not carry, so it is stale for that
+  // reason rather than silently passing on them
+  if (recorded.get(VERSION_ROW) !== String(STAMP_VERSION)) {
+    return `${path.basename(stampFile(pkgDir))} is from another stamp format; run npm run api:update`;
+  }
+  if (recorded.get(ENTRIES_ROW) !== entriesFingerprint(pkgDir)) {
+    return 'its published entries changed, so a report is missing or orphaned; run npm run api:update';
+  }
+  if (recorded.get(PRODUCER_ROW) !== producerFingerprint(pkgDir)) {
+    return 'API Extractor or its tsconfig changed, which can move a report on its own; run npm run api:update';
+  }
 
   const current = declarationFingerprints(pkgDir);
   const moved = current.filter(({ name, hash }) => recorded.get(name) !== hash).map(({ name }) => name);

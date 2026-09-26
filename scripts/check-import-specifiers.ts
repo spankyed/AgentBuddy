@@ -3,9 +3,11 @@
 //   tsx scripts/check-import-specifiers.ts
 import * as fs from 'node:fs';
 import * as path from 'node:path';
+import { builtinModules } from 'node:module';
 import ts from 'typescript';
 import { parse as parseSfc } from '@vue/compiler-sfc';
 import { SHARED_INSTANCE_PACKAGES } from '@abuddy/host/build/shared-deps';
+import { packageName } from '@abuddy/host/build/specifiers';
 
 const repoRoot = path.resolve(import.meta.dirname, '..');
 const CHECKED_DIRS = [
@@ -1142,6 +1144,56 @@ export function findMissingSourceConditions(
 }
 
 /**
+ * A package's own `scripts/` imports that package's `src/` and its declared dependencies, nothing else.
+ *
+ * Two of the three followed this already — `abuddy-host/scripts/sdk-modules.ts` reads `../src/build`, and
+ * `abuddy-sdk/scripts/generate-schema.ts` reads `../src` plus a declared dependency. The third,
+ * `abuddy-ui/scripts/exports.ts`, reached out to `scripts/lib/published-imports.ts` for a string constant
+ * and a five-line directory walk.
+ *
+ * That is not a style point. A module under the repo's `scripts/` belongs to no package, so `npm run spec`
+ * cannot route a change to it back to every spec that covers it — it sends `scripts/` to `@app/repo-checks`
+ * and nothing else. A package reaching in there is a spec that will one day not run, reported green. The
+ * layer rule is the other half of it (root `CLAUDE.md`): the packages' build scripts live in the repo's
+ * `scripts/` so that no package's own `scripts/` imports a package above its layer, and reaching sideways
+ * into `scripts/` sidesteps that while creating the same coupling.
+ *
+ * `@app/repo-checks` is not exempt and needs no exemption: its specs are not a package's `scripts/`.
+ */
+export function findPackageScriptImports(root = repoRoot): string[] {
+  const packagesDir = path.join(root, 'packages');
+  return fs.readdirSync(packagesDir).flatMap((pkg) => {
+    const scriptsDir = path.join(packagesDir, pkg, 'scripts');
+    const manifestFile = path.join(packagesDir, pkg, 'package.json');
+    if (!fs.existsSync(scriptsDir) || !fs.statSync(scriptsDir).isDirectory() || !fs.existsSync(manifestFile)) return [];
+    const manifest = JSON.parse(fs.readFileSync(manifestFile, 'utf-8')) as {
+      dependencies?: Record<string, string>; devDependencies?: Record<string, string>; peerDependencies?: Record<string, string>;
+    };
+    const declared = new Set(Object.keys({ ...manifest.dependencies, ...manifest.devDependencies, ...manifest.peerDependencies }));
+    const own = path.join(packagesDir, pkg) + path.sep;
+
+    // Per file, so a relative specifier is resolved against the file that wrote it rather than guessed at
+    // from its shape. `packages/api/scripts/db/` is nested, so `../../src/x` there lands inside the package
+    // while `../../../scripts/x` from one level up leaves it — the same prefix, different answers.
+    return [...sourceFiles(scriptsDir)].flatMap((file) => {
+      const outsideThePackage: Rule = (node) => {
+        const specifier = moduleOf(node);
+        if (specifier === undefined) return;
+        if (specifier.startsWith('.')) {
+          return path.resolve(path.dirname(file), specifier).startsWith(own) ? undefined : [specifier];
+        }
+        // `@/…` is this repo's alias for the importing package's own `src/` (root `CLAUDE.md`, Path
+        // aliases), and `#…` is a package's own `imports` map. Both stay inside the package.
+        if (specifier.startsWith('@/') || specifier.startsWith('#')) return;
+        if (specifier.startsWith('node:') || builtinModules.includes(specifier)) return;
+        return declared.has(packageName(specifier)) ? undefined : [specifier];
+      };
+      return findInFiles([file], root, outsideThePackage);
+    });
+  });
+}
+
+/**
  * Each workspace package, resolved the way TypeScript resolves it, must land inside this checkout.
  *
  * A worktree created under the repository (Claude Code's `.claude/worktrees/`, say) is isolated for
@@ -1200,6 +1252,7 @@ export const CHECKS: ReadonlyArray<readonly [find: () => string[], rule: string]
   [findRepositoryCasts, "Call a package's repositories through its exports, not a cast of the repository registry"],
   [findCrossFeatureImports, "A feature's frontend is its own: what it offers other features is its plugin's contract, read through #generated/fe and #generated/events, never a module of its own"],
   [findContractLeafImports, "A contract leaf is a leaf: no ./state or ./system, no other feature, and nothing generated but types and ears — codegen reads a plugin's and a system's contract without resolving its actor, and an import that reaches one restores the cycle"],
+  [findPackageScriptImports, "A package's own scripts/ imports that package's src/ and its declared dependencies, nothing else: a module under the repo's scripts/ belongs to no package, so npm run spec cannot route a change to it back to a spec that covers it"],
   [findCrossCheckoutResolution, 'Workspace packages resolve inside this checkout, so a worktree nested in the repository never typechecks against the parent checkout'],
   [findMissingSourceConditions, "The repo's own configs declare the @abuddy/source condition when they compile or bundle code importing @abuddy/ears, @abuddy/sdk or @abuddy/ui, so they read TypeScript source instead of a stale dist; a pack's configs declare none, because a pack resolves the published dist"],
 ];

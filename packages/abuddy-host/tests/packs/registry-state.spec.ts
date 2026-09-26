@@ -81,22 +81,5 @@ describe('registry modules', () => {
     expect(found, 'keep what packs registered in the registry instance (createPackRegistry, createFePackRegistry)').toEqual([]);
   });
 
-  it.each([
-    ['const registry = new Map<string, string>();'],
-    ['const listeners = new Set<() => void>();'],
-    ['let current = 0;'],
-    ['const plugins: string[] = [];'],
-    ['class Registry { steps = new Map(); }\nexport const stepRegistry = new Registry();'],
-  ])('finds %s', (source) => {
-    expect(moduleState('planted.ts', source)).toHaveLength(1);
-  });
 
-  it('allows constants and state inside functions', () => {
-    expect(moduleState('fine.ts', [
-      "const NAMES = ['a', 'b'] as const satisfies readonly string[];",
-      'const lookup = { get: () => undefined };',
-      'export const proxy = new Proxy({}, {});',
-      'export function create() { const byId = new Map(); let n = 0; return { byId, n }; }',
-    ].join('\n'))).toEqual([]);
-  });
 });

@@ -55,7 +55,7 @@ npm run api:update -w @abuddy/ui       # regenerate etc/ reports, commit them
 - Stale reports are deleted on update. CI runs `api:check` for `@abuddy/ears`, the SDK and UI, after `packages:build`: `tsconfig.api-extractor.json` resolves `@abuddy/*` dependencies to their built declarations, since API Extractor analyses `.d.ts` and follows a dependency read as source into it instead of reporting it as an import.
 - The reports carry API Extractor's messages (`scripts/api-reports.ts` sets them explicitly, because `ExtractorConfig.prepare()` applies none of its defaults and reports nothing without them). `ae-forgotten-export` — a type a public export names without exporting it — is recorded in the report, so a new one shows up as a report diff. On a component entry one of those names `__VLS_export`: that is vue-tsc's own symbol for the SFC's default export, not something to export.
 
-The published surface supports TypeScript 5.7+ (`typescript` peer `>=5.7`). `abuddy-cli/tests/build/published-ui-types.spec.ts` compiles consumers against the packed package with both compilers (`packages/typescript-floor`).
+The published surface supports TypeScript 5.7+ (`typescript` peer `>=5.7`). `@app/publish-checks`'s `published-ui-types` compiles consumers against the packed package with both compilers (`packages/typescript-floor`).
 
 ## Build (`npm run build:package`, part of root `packages:build`)
 
@@ -67,7 +67,7 @@ The repo's `scripts/build-ui-package.ts` (it lives there, not here, so this pack
 4. `vue-tsc -p tsconfig.package.json` type-checks and emits declarations. `X.vue.d.ts` files are renamed to `X.d.vue.ts`, the name TypeScript looks for under node16/nodenext.
 5. `BareImports.assertDeclared` (`scripts/lib/published-imports.ts`) checks that every bare import in `dist/**/*.js` is declared in `package.json`, and `assertExportTargetsBuilt` that every export target exists.
 
-`dist/` checks live in `abuddy-cli/tests/build/`: `published-ui-dist` (no SFC source shipped, no relative CSS `@import` left, shared modules emitted once), `published-exports`, `published-specifiers`, `ui-exports`, `ui-import-side-effects`. They skip without `dist/` locally and fail when `dist` is older than `src`.
+`dist/` checks live in `@app/publish-checks`: `published-ui-dist` (no SFC source shipped, no relative CSS `@import` left, shared modules emitted once), `published-exports`, `published-specifiers`. They skip without `dist/` locally and fail when `dist` is older than `src`. This package's own suite holds `exports` (the map) and `import-side-effects` (its source).
 
 `package.json` is the published manifest (`files: ["dist"]`). Monorepo tooling resolves `src/` through the `@abuddy/source` condition (`tsconfig.json` `customConditions`, the renderer's Vite `resolve.conditions`).
 
@@ -76,7 +76,7 @@ The repo's `scripts/build-ui-package.ts` (it lives there, not here, so this pack
 - **Host copy (default).** `getUiFeModules()` (`@abuddy/host/build/shared-deps`) lists every key of this package's exports map. The renderer's `hostDepsPlugin` (`packages/renderer/vite.config.ts`) imports each module and puts it on `window.__abuddy` under its full specifier (`window.__abuddy['@abuddy/ui/design/button']`). The pack FE bundler (`abuddy-cli/src/build/fe-bundler.ts`, `packExternalsPlugin`) replaces a pack's `@abuddy/ui/*` imports with proxy modules that read that global. A proxy throws if the host lacks the module and warns once for each export an older host lacks. Stateful modules therefore have one instance app-wide: `monaco-config.ts` (registered DSL libs, initialized languages). Specs: `fe-bundler-shared-ui`, `fe-bundler-proxy-exports`.
 - **`fe.bundleUi: true`** in `abuddy.json` bundles all of `@abuddy/ui` into the pack's `fe.js`, so a pack never mixes its own copy with the host's. The pack's Tailwind build then also scans `@abuddy/ui` (its `src/` when linked to a checkout, else `dist/**/*.js`). Fixture: `tests/fixtures/bundled-ui-pack`.
 - **Consequences for this package:**
-  - The app imports every public module at startup, so a module must do nothing when imported: no top-level listeners or registrations (`ui-import-side-effects.spec.ts`). Declarations are fine, including objects built from calls.
+  - The app imports every public module at startup, so a module must do nothing when imported: no top-level listeners or registrations (`tests/import-side-effects.spec.ts`). Declarations are fine, including objects built from calls.
   - Removing or renaming an export breaks packs built against it on newer hosts. The `etc/` reports make such changes visible in review.
 
 ## What stays in `@abuddy/sdk/fe`
@@ -107,7 +107,7 @@ UI modules also read `stepRegistry` from `@abuddy/sdk/steps` (`node-styles.ts`, 
 
 - Tailwind utility classes in templates, on the app's dark theme with no `dark:` variants: mostly `neutral-*` (a few `gray-*`) for surfaces, text and borders, and the app's `primary-400…700` scale for accents.
 - The app's Tailwind config (`packages/renderer/tailwind.config.ts`) scans `abuddy-ui/src/**` and defines `primary`. A class used only here is generated by the host build, and a pack with `fe.bundleUi` generates it itself. `primary-*` exists only where the Tailwind config defines it.
-- Component-specific CSS goes in `<style scoped>` as plain CSS (no `@apply`), as in `dialog.vue` (`.dialog-overlay`, `.dialog-content`). Unscoped `<style>` is kept for styles that must reach rendered or third-party DOM (`TiptapEditor.vue` `@import "./tiptap-theme.css"`, `UnifiedMonacoEditor.vue`, `ColorPicker.vue`, `JsonViewerDialog.vue`); those rules are namespaced by a class the component owns (`.tiptap-wrapper .ProseMirror`), so a second copy of this package inside a `fe.bundleUi` pack restyles nothing outside it. **No module here imports a stylesheet from another package**: those are global, and this package ships inside every such pack, so the app imports them itself (`highlight.js/styles/github-dark.css`, in `packages/renderer/src/main.ts`). `ui-import-side-effects.spec.ts` fails one that comes back.
+- Component-specific CSS goes in `<style scoped>` as plain CSS (no `@apply`), as in `dialog.vue` (`.dialog-overlay`, `.dialog-content`). Unscoped `<style>` is kept for styles that must reach rendered or third-party DOM (`TiptapEditor.vue` `@import "./tiptap-theme.css"`, `UnifiedMonacoEditor.vue`, `ColorPicker.vue`, `JsonViewerDialog.vue`); those rules are namespaced by a class the component owns (`.tiptap-wrapper .ProseMirror`), so a second copy of this package inside a `fe.bundleUi` pack restyles nothing outside it. **No module here imports a stylesheet from another package**: those are global, and this package ships inside every such pack, so the app imports them itself (`highlight.js/styles/github-dark.css`, in `packages/renderer/src/main.ts`). `tests/import-side-effects.spec.ts` fails one that comes back.
 - These styles ship as CSS files that the compiled component imports. Consumers' bundlers collect them.
 
 ## Checks
@@ -117,5 +117,6 @@ npm run typecheck:ui                  # vue-tsc --noEmit (src, scripts, tsdown c
 npm run exports:check -w @abuddy/ui   # exports map + component entries
 npm run api:check -w @abuddy/ui       # etc/ reports current
 npm run packages:build && npm run packages:check   # dist, publint, attw (esm-only)
-npm test -w @abuddy/cli               # the published-ui / ui-* / fe-bundler-*ui specs
+npm test -w @app/publish-checks       # the published-* dist checks
+npm test -w @abuddy/cli               # the fe-bundler-*ui specs
 ```

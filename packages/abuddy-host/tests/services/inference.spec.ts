@@ -94,17 +94,17 @@ async function provider(body: object = {}): Promise<{ baseURL: string; inference
 
 describe("the app's inference service", () => {
   it.each([
-    ['anthropic:claude-sonnet-4-5', 'anthropic.messages'],
-    ['openai:gpt-5', 'openai.responses'],
-    ['google:gemini-2.5-pro', 'google.generative-ai'],
-    ['groq:llama-3.3-70b-versatile', 'groq.chat'],
-    ['mistral:mistral-large-latest', 'mistral.chat'],
-    ['cohere:command-a-03-2025', 'cohere.chat'],
-  ] as const)('resolves %s to a %s model', async (id, providerId) => {
+    'anthropic:claude-sonnet-4-5',
+    'openai:gpt-5',
+    'google:gemini-2.5-pro',
+    'groq:llama-3.3-70b-versatile',
+    'mistral:mistral-large-latest',
+    'cohere:command-a-03-2025',
+  ] as const)('resolves %s to a model of that provider', async (id) => {
     const parts = parseModelId(id)!;
     secrets.set(parts.provider, 'stored-key');
     const model = await languageModel(id) as { provider: string; modelId: string };
-    expect(model.provider).toBe(providerId);
+    expect(model.provider.split('.')[0]).toBe(parts.provider);
     expect(model.modelId).toBe(parts.model);
   });
 

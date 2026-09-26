@@ -1,7 +1,7 @@
 /**
  * The Database console's type surface for Monaco: exactly the names console code can use, so the editor's types and
  * what the code actually gets are one list. The runners provide them (`@abuddy/sdk/database-console`), and
- * `abuddy.json`'s `dsl.database.globals` names them all (`tests/unit/database-console-globals.test.ts`).
+ * `abuddy.json`'s `dsl.database.globals` names them all (`tests/defs/database-console-globals.spec.ts`).
  */
 
 export { EARS } from '@abuddy/sdk/types';

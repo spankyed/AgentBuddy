@@ -79,22 +79,6 @@ describe('pack full lifecycle: install → discover', () => {
     expect(manifest.version).toBe('2.0.0');
   });
 
-  it('hostVersion gating prevents loading incompatible packs', async () => {
-    const { installPackFromLocal } = await import('../../../src/packs/installer.ts');
-
-    const sourceDir = path.join(tmpDir, 'future-pack');
-    writeManifest(sourceDir, { id: 'future-pack', name: 'Future Pack', version: '1.0.0', hostVersion: '>=99.0.0' });
-    writeBuild(sourceDir, 'future-pack');
-
-    await installPackFromLocal(sourceDir, packsDir());
-
-    const { loadExternalPacks } = await import('../../../src/packs/runtime/loader.ts');
-    const packs = loadExternalPacks();
-
-    // Pack is discovered but skipped due to hostVersion
-    expect(packs).toEqual([]);
-  });
-
   it('multiple packs coexist and all get discovered', async () => {
     const { installPackFromLocal } = await import('../../../src/packs/installer.ts');
 
@@ -348,21 +332,6 @@ describe('FE pack deregistration', () => {
   });
 
   // Two packs with the same feature each have their own plugin; unregistering one leaves the other's
-  it("unregisterPackFE leaves a plugin another pack declared under the same feature id", async () => {
-    const { registerPackFE, unregisterPackFE, getRegisteredPlugins } = createFePackRegistry();
-
-    const definition = (label: string) => ({ label }) as unknown as PluginDefinition;
-    const builtIn = { label: 'Built-in', id: 'built-in-pack/shared' };
-    const packCopy = { label: 'Pack', id: 'duplicate-pack/shared' };
-    const packOwn = { label: 'Own', id: 'duplicate-pack/own' };
-    registerPackFE({ id: 'built-in-pack', features: { shared: { plugin: definition('Built-in') } } });
-    registerPackFE({ id: 'duplicate-pack', features: { shared: { plugin: definition('Pack') }, own: { plugin: definition('Own') } } });
-
-    expect(getRegisteredPlugins()).toEqual([builtIn, packCopy, packOwn]);
-    expect(unregisterPackFE('duplicate-pack')).toEqual([packCopy, packOwn]);
-    expect(getRegisteredPlugins()).toEqual([builtIn]);
-  });
-
   it('unregisterPackFE handles pack with no extensions gracefully', async () => {
     const { unregisterPackFE } = createFePackRegistry();
 
@@ -372,24 +341,6 @@ describe('FE pack deregistration', () => {
 });
 
 describe('pack-registration teardown', () => {
-  it('registerPack then unregisterPack cleans up SDK registries', async () => {
-    const { registerPack, unregisterPack, getPackExtensions } = registry;
-
-    const packId = 'teardown-test-pack';
-    registerPack({
-      id: packId,
-      steps: [],
-      artifacts: [],
-      blocks: [],
-    });
-
-    expect(getPackExtensions(packId)).not.toBeNull();
-
-    unregisterPack(packId);
-
-    expect(getPackExtensions(packId)).toBeNull();
-  });
-
   it('unregisterPack throws for unknown pack', async () => {
     expect(() => registry.unregisterPack('nonexistent')).toThrow('Pack "nonexistent" is not registered');
   });

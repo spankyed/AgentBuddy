@@ -2,7 +2,6 @@
 // through `services.secrets`, and never import this module.
 import * as path from 'node:path';
 import { resolveAppContext } from '@abuddy/sdk/env';
-import { getDesignated, hasDesignation } from '@abuddy/sdk/designations';
 import { _rootEvents } from '@abuddy/sdk/runtime';
 import { _getSecretsFilePath } from '@abuddy/sdk/utils';
 import type { SecretsSnapshot } from '@abuddy/sdk/services';
@@ -51,7 +50,7 @@ export function secretsSnapshot(): SecretsSnapshot {
 }
 
 /**
- * Sends the `settings` designation `SECRETS_CHANGED` (no values) on the root event bus whenever the stored keys or
+ * Sends every system that declares it `SECRETS_CHANGED` (no values) on the root event bus whenever the stored keys or
  * their protection change, through the API's procedures, `services.secrets` or a failing credential store, so it
  * refreshes its plugin and key checks. The app calls it once at boot. Before a settings system is registered there's
  * none to tell (in `registry`): once it runs, it sends the current keys on CLIENT_CONNECTED. Returns the unsubscribe.

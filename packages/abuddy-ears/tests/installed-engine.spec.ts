@@ -4,7 +4,7 @@ import {
   createEarsEngine, defineEars, findRelations, getAllEntities, installEngine, installedEngine, isEntityType,
   registerRepository, unregisterRepository, repository, spawn, untypedTx, untypedQx, bp, type EARS, type PersistenceSink,
 } from '../src/index.ts';
-import { recordingSink } from './contract/helpers.ts';
+import { recordingSink } from './engine/helpers.ts';
 
 const types = new Set(['Note']);
 const newEngine = (persistence?: PersistenceSink) => createEarsEngine({ isEntityType: (name) => types.has(name), persistence });
@@ -30,11 +30,7 @@ describe('with no engine installed', () => {
       ['installedEngine', () => installedEngine()],
     ];
     for (const [name, use] of uses) {
-      expect(use, name).toThrow(
-        'No EARS engine is installed: the app installs its engine when it binds (bindHost from @abuddy/sdk/runtime), ' +
-        'unit tests with startTestRuntime() from @abuddy/sdk/testing, and tooling with ' +
-        'installEngine(createEarsEngine({ isEntityType }).query) from @abuddy/ears',
-      );
+      expect(use, name).toThrow('No EARS engine is installed');
     }
   });
 

@@ -111,7 +111,7 @@ Every other manifest a phase has to change — **four hand-maintained, two gener
 |---|---|---|
 | `tests/fixtures/external-pack/abuddy.json` | 89 lines | one feature, `memos` |
 | `tests/fixtures/bundled-ui-pack/abuddy.json` | 24 lines | one feature, `scribbles`, no system |
-| `packages/default-setup/tests/fixtures/dependent-pack/abuddy.json` | 22 lines | `features: []`; root keys are `$schema, id, name, version, hostVersion, dependencies, boot` — the `boot` Phase 3 renames |
+| `packages/default-setup/tests/_support/fixtures/dependent-pack/abuddy.json` | 22 lines | `features: []`; root keys are `$schema, id, name, version, hostVersion, dependencies, boot` — the `boot` Phase 3 renames |
 | the `abuddy init` scaffold | — | a template literal, `abuddy-cli/src/commands/init.ts:10-43` |
 | the packaged-authoring pack | — | built by `abuddy init` then edited by `tests/scripts/test-packaged-authoring.sh` in three node snippets |
 | `tests/fixtures/external-pack/.abuddy/bundle/e2e-fixture/abuddy.json` | — | a build artifact; regenerated, never edited |
@@ -873,7 +873,7 @@ and `migrations` is still a root key; no pack re-seeds on the next boot — `com
 (`packs/runtime/seed.ts:28`) and the boot seed's hash cover the compiled `.json` output and never the
 manifest, so byte-identical compiled seeds mean an unchanged hash, which is the same fact the next
 clause checks from the other side; the compiled seeds for default-setup are
-byte-identical (`dist/*.seed.json`, `dist/seeds.json`); `tests/unit/seed-parity` passes;
+byte-identical (`dist/*.seed.json`, `dist/seeds.json`); `tests/seeds` passes;
 `npm run compile`, `npm run test:unit`, `npm run test:external-pack` pass.
 
 ### Phase 4 — features: what they contribute, and where

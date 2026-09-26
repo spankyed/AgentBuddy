@@ -5,9 +5,9 @@ import * as path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import {
   BUILD_UNITS, CHECKOUT_MARKER, fingerprintInputs, fingerprintUnit, STAMP_VERSION, staleMessage, stampFile,
-  stampedBuild, unitStaleReason, withBuildLock,
+  stampedBuild, stampedRun, stampedRunAll, unitStaleReason, withBuildLock, type BuildIntent, type BuildUnit,
 } from '@abuddy/host/build/packages-built';
-import { PACKED_PACKAGES, REPO_ROOT } from '../helpers/published-packages';
+import { PACKED_PACKAGES, REPO_ROOT } from '@app/publish-checks';
 
 /**
  * The freshness rule behind `npm test -w @abuddy/cli`'s pretest (@abuddy/host/build/packages-built):
@@ -27,7 +27,15 @@ afterEach(() => {
 });
 
 /** A watched source tree plus its output tree, as a build unit sees them */
-function fixture(): { root: string; src: string; out: string; unit: { inputs: string[]; outputs: string[] } } {
+/** A temp package to build: its sources, its output tree, and the unit that ties them together */
+interface Fixture {
+  readonly root: string;
+  readonly src: string;
+  readonly out: string;
+  readonly unit: BuildUnit;
+}
+
+function fixture(): Fixture {
   const root = tempDir();
   const src = path.join(root, 'src');
   const out = path.join(root, 'dist');
@@ -41,7 +49,7 @@ function fixture(): { root: string; src: string; out: string; unit: { inputs: st
 }
 
 /** What a successful build of the fixture writes */
-function stampFor(f: ReturnType<typeof fixture>): string {
+function stampFor(f: Fixture): string {
   const stamp = path.join(f.root, 'stamp.json');
   fs.writeFileSync(stamp, JSON.stringify({ version: STAMP_VERSION, fingerprint: fingerprintUnit(f.unit) }));
   return stamp;
@@ -132,7 +140,7 @@ describe('the stamp protocol', () => {
     const stamp = stampFor(f);
     expect(unitStaleReason(f.unit, stamp)).toBeNull();
     const widened = { inputs: [...f.unit.inputs, path.join(f.root, 'tsdown.config.ts')], outputs: f.unit.outputs };
-    expect(unitStaleReason(widened, stamp)).toMatch(/sources changed/);
+    expect(unitStaleReason(widened, stamp)).toMatch(/inputs changed/);
   });
 
   it('is stale when a unit gains an output, which changes what counts as built', () => {
@@ -142,7 +150,7 @@ describe('the stamp protocol', () => {
     // The missing output is reported first; the point is that the stamp no longer matches either
     expect(unitStaleReason(widened, stamp)).not.toBeNull();
     fs.mkdirSync(path.join(f.root, 'dist2'), { recursive: true });
-    expect(unitStaleReason(widened, stamp)).toMatch(/sources changed/);
+    expect(unitStaleReason(widened, stamp)).toMatch(/inputs changed/);
   });
 
   // This module decides whether to build; it cannot change what a build emits
@@ -159,6 +167,27 @@ describe('the stamp protocol', () => {
 });
 
 describe('the input fingerprint', () => {
+  // A unit's own output is never its own input, however broadly its inputs are declared. Two chain steps
+  // declare a whole tree and then write into it — `compile` writes `src/__generated__` under the `src` it
+  // reads, the fixture-pack check writes each pack's `dist` under the `tests/fixtures` it reads — and both
+  // were self-invalidating in waiting: the only thing keeping them cached was those builds happening to be
+  // byte-identical, and the pack build already is not (union ordering in its emitted declarations).
+  it('ignores a change under the unit\'s own output, and still sees one under its inputs', () => {
+    const f = fixture();
+    // The output tree sits inside the input tree, which is the shape that caused this
+    const nested = path.join(f.src, 'generated');
+    fs.mkdirSync(nested, { recursive: true });
+    fs.writeFileSync(path.join(nested, 'emitted.ts'), 'export const emitted = 1;\n');
+    const unit = { inputs: f.unit.inputs, outputs: [...f.unit.outputs, nested] };
+
+    const before = fingerprintUnit(unit);
+    fs.writeFileSync(path.join(nested, 'emitted.ts'), 'export const emitted = 2;\n');
+    expect(fingerprintUnit(unit), 'its own output moved the fingerprint').toBe(before);
+
+    fs.writeFileSync(path.join(f.src, 'a.ts'), 'export const a = 99;\n');
+    expect(fingerprintUnit(unit), 'a real input stopped being seen').not.toBe(before);
+  });
+
   it('changes when a watched file changes', () => {
     const f = fixture();
     const before = fingerprintInputs(f.unit.inputs);
@@ -229,16 +258,16 @@ describe('the staleness verdict', () => {
   it('is stale without a stamp, even when the output tree looks complete', () => {
     // A build that failed or was killed after its rmSync leaves exactly this
     const f = fixture();
-    expect(unitStaleReason(f.unit, path.join(f.root, 'stamp.json'))).toMatch(/no build stamp/);
+    expect(unitStaleReason(f.unit, path.join(f.root, 'stamp.json'))).toMatch(/no stamp/);
   });
 
   it('is stale when the stamp is unreadable or has no fingerprint', () => {
     const f = fixture();
     const stamp = path.join(f.root, 'stamp.json');
     fs.writeFileSync(stamp, '{ not json');
-    expect(unitStaleReason(f.unit, stamp)).toMatch(/no build stamp/);
+    expect(unitStaleReason(f.unit, stamp)).toMatch(/no stamp/);
     fs.writeFileSync(stamp, '{}');
-    expect(unitStaleReason(f.unit, stamp)).toMatch(/no build stamp/);
+    expect(unitStaleReason(f.unit, stamp)).toMatch(/no stamp/);
   });
 
   it('is stale when a source changed, whatever the output mtimes say', () => {
@@ -246,14 +275,14 @@ describe('the staleness verdict', () => {
     const stamp = stampFor(f);
     fs.writeFileSync(path.join(f.src, 'a.ts'), 'export const a = 2;\n');
     // The output is untouched and newer than nothing — only the fingerprint can tell
-    expect(unitStaleReason(f.unit, stamp)).toMatch(/sources changed/);
+    expect(unitStaleReason(f.unit, stamp)).toMatch(/inputs changed/);
   });
 
   it('is stale when a source was deleted', () => {
     const f = fixture();
     const stamp = stampFor(f);
     fs.rmSync(path.join(f.src, 'nested', 'b.ts'));
-    expect(unitStaleReason(f.unit, stamp)).toMatch(/sources changed/);
+    expect(unitStaleReason(f.unit, stamp)).toMatch(/inputs changed/);
   });
 
   it('is stale when an output is missing, and says which', () => {
@@ -306,19 +335,21 @@ describe('the staleness verdict', () => {
 describe('the stale message', () => {
   it('names every stale workspace with its own reason', () => {
     const message = staleMessage([
-      { workspace: '@abuddy/sdk', reason: 'its sources changed since the last successful build' },
-      { workspace: '@abuddy/ui', reason: 'no build stamp' },
+      { workspace: '@abuddy/sdk', reason: 'its inputs changed since the last successful run' },
+      { workspace: '@abuddy/ui', reason: 'no stamp' },
     ]);
     expect(message.split('\n')).toHaveLength(2);
-    expect(message).toContain('@abuddy/sdk: its sources changed');
-    expect(message).toContain('@abuddy/ui: no build stamp');
+    expect(message).toContain('@abuddy/sdk: its inputs changed');
+    expect(message).toContain('@abuddy/ui: no stamp');
   });
 });
 
 describe('a stamped build', () => {
   /** stampedBuild against a fixture: its own stamp and lock, never the repo's */
-  const run = (f: ReturnType<typeof fixture>, build: () => void | Promise<void>) =>
-    stampedBuild('@abuddy/fixture', f.unit, path.join(f.root, 'stamp.json'), build, path.join(f.root, 'build.lock'));
+  // Pinned to `command` rather than left to `intentFromEnv()`, so a test reads the same whatever
+  // ABUDDY_BUILD_INTENT the run inherited
+  const run = (f: Fixture, build: () => void | Promise<void>, intent: BuildIntent = 'command') =>
+    stampedBuild('@abuddy/fixture', f.unit, path.join(f.root, 'stamp.json'), build, { lock: path.join(f.root, 'build.lock'), intent });
 
   it('leaves the unit fresh when the build returns', async () => {
     const f = fixture();
@@ -336,7 +367,7 @@ describe('a stamped build', () => {
       throw new Error('tsc failed');
     })).rejects.toThrow('tsc failed');
     expect(fs.existsSync(path.join(f.root, 'stamp.json'))).toBe(false);
-    expect(unitStaleReason(f.unit, path.join(f.root, 'stamp.json'))).toMatch(/no build stamp/);
+    expect(unitStaleReason(f.unit, path.join(f.root, 'stamp.json'))).toMatch(/no stamp/);
   });
 
   it('clears the previous stamp before building, so an interrupted build cannot leave a stale one', async () => {
@@ -350,7 +381,22 @@ describe('a stamped build', () => {
   it('records the sources as they were before the build, so a mid-build edit stays stale', async () => {
     const f = fixture();
     await run(f, () => fs.writeFileSync(path.join(f.src, 'a.ts'), 'export const a = 99;\n'));
-    expect(unitStaleReason(f.unit, path.join(f.root, 'stamp.json'))).toMatch(/sources changed/);
+    expect(unitStaleReason(f.unit, path.join(f.root, 'stamp.json'))).toMatch(/inputs changed/);
+  });
+
+  it('rebuilds a fresh unit for a command and skips it for a freshness fix', async () => {
+    const f = fixture();
+    await run(f, () => fs.writeFileSync(path.join(f.out, 'built.js'), 'ok'));
+    expect(unitStaleReason(f.unit, path.join(f.root, 'stamp.json'))).toBeNull();
+
+    // The second arrival of two racing freshness fixes: the first built it while this one waited, so
+    // there is nothing left to do. A command was asked for a build and gets one.
+    let built = false;
+    await run(f, () => { built = true; }, 'freshness');
+    expect(built, 'a freshness fix rebuilt a unit that was already fresh').toBe(false);
+
+    await run(f, () => { built = true; }, 'command');
+    expect(built, 'a command skipped a build it was asked for').toBe(true);
   });
 
   it('holds the build lock while it runs', async () => {
@@ -371,6 +417,23 @@ describe('the build lock', () => {
     await withBuildLock('@abuddy/sdk', async () => {
       await expect(withBuildLock('@abuddy/ui', () => 'never', file)).rejects.toThrow(/another package build holds/);
     }, file);
+  });
+
+  it('waits for a live holder when the build is a freshness fix, where a command fails at once', async () => {
+    const file = lockFile();
+    // This process is the holder, so it is alive for certain and the test cannot race its exit
+    fs.mkdirSync(path.dirname(file), { recursive: true });
+    fs.writeFileSync(file, JSON.stringify({ pid: process.pid, label: '@abuddy/other', startedAt: new Date().toISOString() }));
+
+    const started = Date.now();
+    await expect(withBuildLock('@abuddy/sdk', () => 'never', file, { intent: 'command' })).rejects.toThrow(/another package build holds/);
+    expect(Date.now() - started, 'a command waited instead of failing at once').toBeLessThan(500);
+
+    // The wait is bounded, and says it waited — a holder that never goes is reported, not waited on forever
+    const waited = Date.now();
+    await expect(withBuildLock('@abuddy/sdk', () => 'never', file, { intent: 'freshness', timeoutMs: 1_000 }))
+      .rejects.toThrow(/after waiting 1s/);
+    expect(Date.now() - waited, 'a freshness fix gave up without waiting').toBeGreaterThanOrEqual(900);
   });
 
   it('names the holder', async () => {
@@ -399,5 +462,75 @@ describe('the build lock', () => {
     const other = JSON.stringify({ pid: process.pid + 1, label: '@abuddy/ui', startedAt: new Date().toISOString() });
     await withBuildLock('@abuddy/sdk', () => fs.writeFileSync(file, other), file);
     expect(fs.readFileSync(file, 'utf-8')).toBe(other);
+  });
+});
+
+// The write side of the protocol. The read side is above; these are the two functions that put a stamp on
+// disk, and nothing tested them — including the ordering `stampedRunAll` exists for, which is the whole
+// reason it is not a loop over `stampedRun`.
+describe('recording that something ran', () => {
+  it('leaves the unit fresh, and clears the stamp first so an interrupted run reads as never run', async () => {
+    const f = fixture();
+    const stamp = path.join(f.root, 'stamp.json');
+    fs.writeFileSync(stamp, JSON.stringify({ version: STAMP_VERSION, fingerprint: 'stale' }));
+
+    let stampPresentDuringRun = true;
+    await stampedRun('a-unit', f.unit, stamp, () => { stampPresentDuringRun = fs.existsSync(stamp); });
+
+    expect(stampPresentDuringRun, 'a run that dies halfway would leave the old stamp readable').toBe(false);
+    expect(unitStaleReason(f.unit, stamp)).toBeNull();
+  });
+
+  // The fingerprint is of the tree the run *started* from, so work the run itself does is not recorded as
+  // covered. A source edited while a build runs must read as stale afterwards, not as built.
+  it('fingerprints before the run, so a change made during it is not recorded as covered', async () => {
+    const f = fixture();
+    const stamp = path.join(f.root, 'stamp.json');
+    await stampedRun('a-unit', f.unit, stamp, () => {
+      fs.writeFileSync(path.join(f.src, 'a.ts'), 'export const a = 99;\n');
+    });
+    expect(unitStaleReason(f.unit, stamp)).toMatch(/inputs changed/);
+  });
+
+  it('writes no stamp when the run throws', async () => {
+    const f = fixture();
+    const stamp = path.join(f.root, 'stamp.json');
+    await expect(stampedRun('a-unit', f.unit, stamp, () => { throw new Error('the build failed'); })).rejects.toThrow('the build failed');
+    expect(fs.existsSync(stamp)).toBe(false);
+  });
+
+  describe('a run that covers several units', () => {
+    const two = () => {
+      const [a, b] = [fixture(), fixture()];
+      return { a, b, stamps: { a: path.join(a.root, 'stamp.json'), b: path.join(b.root, 'stamp.json') } };
+    };
+
+    it('stamps all of them when it passes', async () => {
+      const { a, b, stamps } = two();
+      await stampedRunAll([{ label: 'a', unit: a.unit, stamp: stamps.a }, { label: 'b', unit: b.unit, stamp: stamps.b }], () => {});
+      expect(unitStaleReason(a.unit, stamps.a)).toBeNull();
+      expect(unitStaleReason(b.unit, stamps.b)).toBeNull();
+    });
+
+    it('stamps none of them when it throws, so a failure leaves the whole run unrecorded', async () => {
+      const { a, b, stamps } = two();
+      await expect(stampedRunAll([{ label: 'a', unit: a.unit, stamp: stamps.a }, { label: 'b', unit: b.unit, stamp: stamps.b }], () => {
+        throw new Error('the suite failed');
+      })).rejects.toThrow('the suite failed');
+      expect(fs.existsSync(stamps.a)).toBe(false);
+      expect(fs.existsSync(stamps.b)).toBe(false);
+    });
+
+    // This is what it is for. A loop of `stampedRun` would fingerprint the second unit *after* the shared
+    // run had already started touching the tree, recording work the run had done as work it was verified
+    // against. Every fingerprint is taken before anything runs.
+    it('fingerprints every unit before the run starts, not as each is reached', async () => {
+      const { a, b, stamps } = two();
+      await stampedRunAll([{ label: 'a', unit: a.unit, stamp: stamps.a }, { label: 'b', unit: b.unit, stamp: stamps.b }], () => {
+        fs.writeFileSync(path.join(b.src, 'a.ts'), 'export const a = 42;\n');
+      });
+      expect(unitStaleReason(a.unit, stamps.a), 'a was untouched by the run').toBeNull();
+      expect(unitStaleReason(b.unit, stamps.b), 'b changed during the run and must not read as covered').toMatch(/inputs changed/);
+    });
   });
 });

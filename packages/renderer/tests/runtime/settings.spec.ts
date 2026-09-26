@@ -34,7 +34,6 @@ beforeEach(() => {
   startFeTestRuntime({
     application: { system: { get: (ref: string) => (ref === HOST.settings ? settingsActor : undefined) } } as never,
     settings: settingsPort,
-    packs: { designation: (role: string) => (role === 'settings' ? HOST.settings : undefined) } as never,
   });
 });
 afterEach(() => stopFeTestRuntime());

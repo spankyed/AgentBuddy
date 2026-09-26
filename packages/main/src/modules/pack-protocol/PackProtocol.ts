@@ -9,7 +9,8 @@ import { devServerUrl } from '@abuddy/host/packs/dev-server';
 /** A pack id, as the manifest schema defines it (`abuddy-sdk/src/build/manifest-schema.ts`) */
 const PACK_ID = /^[a-z][a-z0-9-]*$/;
 
-const MIME_TYPES: Record<string, string> = {
+/** What the pack:// handler serves each extension as. Exported so its spec asserts this map, not a copy. */
+export const MIME_TYPES: Record<string, string> = {
   '.js': 'application/javascript',
   '.mjs': 'application/javascript',
   '.css': 'text/css',

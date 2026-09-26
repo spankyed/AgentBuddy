@@ -227,7 +227,7 @@ unchanged. No code moves in this phase.
 **Done when:** no two exported functions in `packages/abuddy-host` or `packages/abuddy-sdk` differ only in
 their absent-case behaviour; `packages/abuddy-host/tests/packs/staging.spec.ts`,
 `tests/database/write-lock.spec.ts`, `tests/database/running-app.spec.ts` and
-`packages/api/tests/unit/boot-recovery.spec.ts` pass; `npm run api:update` committed. Mutation: making the
+`packages/api/tests/runtime/boot-recovery.spec.ts` pass; `npm run api:update` committed. Mutation: making the
 new staging argument default to "known, empty" fails the two `boot-recovery` tests.
 
 ### Phase 3 — the verb states the contract

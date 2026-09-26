@@ -1,0 +1,21 @@
+{
+  "measuredAt": "2026-09-26T05:21:10.729Z",
+  "costs": {
+    "tests/adapters/log-capture.spec.ts": 14,
+    "tests/runtime/app-database-parity.spec.ts": 800,
+    "tests/runtime/app-reset.spec.ts": 1006,
+    "tests/runtime/boot-recovery.spec.ts": 329,
+    "tests/runtime/bound-runtime.spec.ts": 108,
+    "tests/runtime/bus-client-connected.spec.ts": 115,
+    "tests/runtime/db-write-lock.spec.ts": 11,
+    "tests/runtime/host-data-services.spec.ts": 739,
+    "tests/runtime/packaged-boot.spec.ts": 517,
+    "tests/runtime/restart-persistence.spec.ts": 271,
+    "tests/runtime/secrets.spec.ts": 1079,
+    "tests/runtime/upgrade-from-0.3.14.spec.ts": 142,
+    "tests/source-layout.spec.ts": 9,
+    "tests/transport/bus-send-sender.spec.ts": 4,
+    "tests/transport/dev-reload-access.spec.ts": 147
+  },
+  "skipped": []
+}

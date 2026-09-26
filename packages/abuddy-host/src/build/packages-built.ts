@@ -59,14 +59,31 @@ const pkgFile = (pkg: string, ...parts: string[]): string => repoFile('packages'
 const SHARED_INPUTS = [repoFile('package.json'), repoFile('package-lock.json')];
 
 /**
- * The stamp format. Bump it when a stamp written by an older build would be read wrongly by this one —
- * a different hash, a different set of things hashed — and every unit rebuilds once, which is correct.
+ * The stamp format, shared by everything that records "this ran over exactly these inputs" — the package
+ * builds and, through `stampedRun`, the chain's steps. Bump it when a stamp written by an older run would
+ * be read wrongly by this one (a different hash, a different set of things hashed), and every unit runs
+ * once, which is correct.
+ *
+ * Back at 1 deliberately. Stamps live in `node_modules/.cache/` and are never committed, so a version only
+ * means something against stamps a machine already has; the bumps taken while the chain's steps were being
+ * added to this protocol meant nothing to anyone but the machine they were written on. The protocol this
+ * describes is one thing, so it starts at one, and `!==` still invalidates whatever those runs left behind.
  */
-export const STAMP_VERSION = 2;
+export const STAMP_VERSION = 1;
 
-interface BuildUnit {
+export interface BuildUnit {
   /** Files and directories the build reads, absolute; a directory is walked */
   readonly inputs: readonly string[];
+  /**
+   * Trees inside `inputs` that are not part of the fingerprint, and are not this unit's own output either:
+   * generated files it declares the parent of but never reads. `typecheck` declares `tests/fixtures` for
+   * the pack sources and does not read the packs' build output — `check:specifiers` filters
+   * `__generated__` out itself — so hashing that output would tie this unit's freshness to a build it does
+   * not depend on.
+   *
+   * Distinct from `outputs`, which must exist for the unit to count as built. An exclusion need not exist.
+   */
+  readonly excludes?: readonly string[];
   /** Paths the build writes; all must exist for the unit to count as built */
   readonly outputs: readonly string[];
 }
@@ -106,11 +123,21 @@ export const BUILD_UNITS: Record<string, BuildUnit> = {
 /** Stamps and the build lock, outside every output tree so a build can remove its own */
 const STAMP_DIR = repoFile('node_modules', '.cache', 'abuddy-packages-build');
 const LOCK_FILE = path.join(STAMP_DIR, 'packages-build.lock');
+/** How long a `freshness` fix waits for a live holder, and how often it looks. A bound, not a schedule: it
+ *  returns the moment the holder is gone. A minute against a longest-unit build of ~15s: four times what
+ *  the thing being waited for costs, so a wedged holder is reported in a minute rather than held for ten.
+ *  A bound nobody will wait for is the same as no bound. */
+const LOCK_WAIT_MS = 60_000;
+const LOCK_POLL_MS = 200;
 
 export const stampFile = (workspace: string): string => path.join(STAMP_DIR, `${workspace.replace(/[@/]/g, '-').replace(/^-/, '')}.json`);
 
-/** Files under a watched input, repo-relative. A missing input contributes nothing; creating it changes the fingerprint. */
-function inputFiles(target: string, out: string[] = []): string[] {
+/**
+ * Every file under a path, repo-relative — the walk a fingerprint is taken over. Exported because the
+ * chain's input-coverage guard has to resolve a step's inputs exactly as a fingerprint does: a guard that
+ * walked differently would pass files a fingerprint never hashed.
+ */
+export function inputFiles(target: string, out: string[] = []): string[] {
   let stat: fs.Stats;
   try {
     stat = fs.statSync(target);
@@ -152,9 +179,15 @@ function inputFiles(target: string, out: string[] = []): string[] {
  * narrower question than "did these bytes change" — the API report stamp asks "could these declarations
  * have changed a report", and a doc comment's prose cannot.
  */
-export function fingerprintInputs(inputs: readonly string[], normalise?: (contents: Buffer, file: string) => Buffer | string): string {
+export function fingerprintInputs(
+  inputs: readonly string[],
+  normalise?: (contents: Buffer, file: string) => Buffer | string,
+  exclude: readonly string[] = [],
+): string {
   const hash = createHash('sha256');
-  for (const file of [...new Set(inputs.flatMap((target) => inputFiles(target)))].sort()) {
+  const excluded = exclude.map((target) => path.relative(REPO_ROOT, target));
+  const isExcluded = (file: string): boolean => excluded.some((out) => file === out || file.startsWith(`${out}/`));
+  for (const file of [...new Set(inputs.flatMap((target) => inputFiles(target)))].sort().filter((f) => !isExcluded(f))) {
     // A file that goes between the walk and the read hashes as absent, never as empty
     let contents: Buffer | null = null;
     try {
@@ -176,17 +209,28 @@ export function fingerprintInputs(inputs: readonly string[], normalise?: (conten
  * contents alone would read the new set against the old stamp and call it fresh.
  */
 export function fingerprintUnit(unit: BuildUnit): string {
-  const declared = [...unit.inputs, ...unit.outputs].map((target) => path.relative(REPO_ROOT, target)).sort();
+  const declared = [...unit.inputs, ...unit.outputs, ...(unit.excludes ?? [])].map((target) => path.relative(REPO_ROOT, target)).sort();
   return createHash('sha256')
     .update(declared.join('\0'))
     .update('\0')
-    .update(fingerprintInputs(unit.inputs))
+    // A unit's own output is never its own input, however broadly its inputs are declared. Two steps
+    // declare a whole tree and then write into it — `compile` writes `src/__generated__` under the `src`
+    // it reads, and the fixture-pack check writes each pack's `dist` under the `tests/fixtures` it reads —
+    // which makes them self-invalidating the moment their build stops being byte-identical. Both were
+    // surviving on the builds happening to be deterministic, and the pack build is already known not to be
+    // (two lines of `Omit<…>` union ordering). Excluding self-output here means declaring `outputs`
+    // honestly is the whole fix, rather than every such step needing its inputs hand-narrowed.
+    .update(fingerprintInputs(unit.inputs, undefined, [...unit.outputs, ...(unit.excludes ?? [])]))
     .digest('hex');
 }
 
 export interface StaleUnit { readonly workspace: string; readonly reason: string }
 
-/** Why `unit` needs building, or null when its stamp says a build of exactly these inputs succeeded. Never throws. */
+/**
+ * Why `unit` needs to run, or null when its stamp says a run over exactly these inputs succeeded. Never
+ * throws. The wording is deliberately not about building: the chain's steps go through this too, and most
+ * of them are checks that produce nothing (`stampedRun`, `scripts/chain.ts`).
+ */
 export function unitStaleReason(unit: BuildUnit, stamp: string): string | null {
   const missing = unit.outputs.filter((output) => !fs.existsSync(output)).map((output) => path.relative(REPO_ROOT, output));
   if (missing.length > 0) return `not built (no ${missing.join(', ')})`;
@@ -194,11 +238,11 @@ export function unitStaleReason(unit: BuildUnit, stamp: string): string | null {
   try {
     record = JSON.parse(fs.readFileSync(stamp, 'utf-8'));
   } catch { /* missing or unreadable: the same as never built */ }
-  if (typeof record.fingerprint !== 'string') return 'no build stamp — never built by this script, or the last build failed or was interrupted';
+  if (typeof record.fingerprint !== 'string') return 'no stamp — it has not run yet, or the last run failed or was interrupted';
   // A stamp from another protocol says nothing about this one, so it counts as never built
-  if (record.version !== STAMP_VERSION) return `its build stamp is from another format (${String(record.version)}, this is ${STAMP_VERSION})`;
+  if (record.version !== STAMP_VERSION) return `its stamp is from another format (${String(record.version)}, this is ${STAMP_VERSION})`;
   try {
-    return record.fingerprint === fingerprintUnit(unit) ? null : 'its sources changed since the last successful build';
+    return record.fingerprint === fingerprintUnit(unit) ? null : 'its inputs changed since the last successful run';
   } catch (err) {
     return `its sources could not be read (${(err as Error).message})`;
   }
@@ -247,6 +291,60 @@ export function runningPackageBuild(file = LOCK_FILE): { pid: number; label: str
   return holder && holderIsRunning(holder) ? holder : undefined;
 }
 
+/** A synchronous pause, for the module-level readers below, which cannot await */
+function sleepSync(ms: number): void {
+  Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, ms);
+}
+
+/**
+ * Waits for an in-flight package build to finish, and returns the build it waited for. A reader of the
+ * stamps wants this rather than `runningPackageBuild` alone: a build removes each stamp before rewriting
+ * it, so a reader that checks freshness mid-build sees units that look unbuilt and reports them stale,
+ * telling the reader to run the build that is already running. Waiting turns that into the pause it
+ * actually is — the point at which two suites can share one checkout.
+ *
+ * It waits on the lock rather than on the stamps, because only the lock says a build is in progress; a
+ * missing stamp cannot tell "being rebuilt now" from "never built". The timeout is a bound, not a
+ * schedule: it returns as soon as the holder is gone, and a holder that outlives it leaves the caller to
+ * report staleness as before, which is the pre-existing behaviour rather than a hang.
+ */
+export function waitForPackageBuild({ timeoutMs = LOCK_WAIT_MS, pollMs = LOCK_POLL_MS }: { timeoutMs?: number; pollMs?: number } = {}): LockHolder | undefined {
+  const waitedFor = runningPackageBuild();
+  if (!waitedFor) return undefined;
+  const deadline = Date.now() + timeoutMs;
+  while (runningPackageBuild() && Date.now() < deadline) sleepSync(pollMs);
+  return waitedFor;
+}
+
+/**
+ * Whether every build unit's output exists — the question a spec that reads the built packages asks before
+ * it runs — refusing outright when what is there is stale.
+ *
+ * Checker 6 of the package-freshness doors (they are listed in `packages/abuddy-testing/CLAUDE.md`). A
+ * suite's `pretest` builds what is stale; this is what catches a run that bypassed it (`npx vitest`, a
+ * watch run), and it refuses rather than testing output that no longer matches the source beside it.
+ * Importing it never builds — that is the pretest's job, in its own process.
+ *
+ * `buildCommand` is the caller's own way of getting them built, because a message naming another package's
+ * command sends the reader somewhere they have no reason to be.
+ */
+export function packagesBuiltOrRefuse(buildCommand: string): boolean {
+  // Another process may be building right now, and a build removes each output and stamp before rewriting
+  // it: both checks below would then read a half-built tree and refuse — which is what made a suite
+  // started alongside `test:external-pack` fail about the race rather than about the code. Waiting is what
+  // lets two suites share one checkout.
+  waitForPackageBuild();
+  const built = Object.values(BUILD_UNITS).every((unit) => unit.outputs.every((output) => fs.existsSync(output)));
+  if (!built && process.env.CI) {
+    throw new Error(`Specs that read the built packages need them built in CI. Run: ${buildCommand}`);
+  }
+  const stale = built ? stalePackageUnits() : [];
+  if (stale.length > 0) {
+    throw new Error(`The published packages are out of date:\n${staleMessage(stale)}\nRun: ${buildCommand}`);
+  }
+  return built;
+}
+
 function readLock(file: string): LockHolder | null {
   try {
     return JSON.parse(fs.readFileSync(file, 'utf-8'));
@@ -256,27 +354,71 @@ function readLock(file: string): LockHolder | null {
 }
 
 /**
- * Runs `run` holding the repo's package-build lock, so two builds never clear and rewrite the same
- * output at once. A lock whose process is gone is taken over; a live holder fails at once, naming it,
- * rather than waiting. Written then `link`ed, so a reader never sees a half-written holder and
- * mistakes it for an abandoned lock.
+ * Why this process wants to build, which decides what it does when another build already holds the lock.
+ *
+ * A `command` is someone asking for a build — `npm run packages:build`, `abuddy build`. It fails at once
+ * naming the holder, because the person wants to know, and it builds whether or not the output is already
+ * fresh, because they asked for a build.
+ *
+ * A `freshness` fix is a process that wants the packages *built* and does not care who builds them — a
+ * suite's pretest, `ensurePackagesBuilt`. It waits for a live holder rather than failing, and once it has
+ * the lock it checks again, because the build it waited for has very likely just done the work. Without
+ * that second check the waiting only moves the duplicate build later; without the wait, two processes that
+ * both found the same units stale race, and the one that reaches the lock second fails on a lock rather
+ * than on anything about the code.
  */
-export async function withBuildLock<T>(label: string, run: () => T | Promise<T>, file = LOCK_FILE): Promise<T> {
+export type BuildIntent = 'command' | 'freshness';
+
+/** Set by `ensurePackagesBuilt` on the builds it spawns, since the intent has to cross a process boundary */
+export const BUILD_INTENT_ENV = 'ABUDDY_BUILD_INTENT';
+
+const intentFromEnv = (): BuildIntent => (process.env[BUILD_INTENT_ENV] === 'freshness' ? 'freshness' : 'command');
+
+/**
+ * Runs `run` holding the repo's package-build lock, so two builds never clear and rewrite the same
+ * output at once. A lock whose process is gone is taken over. A live holder fails at once for a
+ * `command` and is waited for by a `freshness` fix (see `BuildIntent`). Written then `link`ed, so a
+ * reader never sees a half-written holder and mistakes it for an abandoned lock.
+ */
+export interface BuildLockOptions {
+  readonly intent?: BuildIntent;
+  /** How long a `freshness` fix waits. Injectable so a test can bound it: the default outlasts any suite. */
+  readonly timeoutMs?: number;
+}
+
+export interface StampedBuildOptions extends BuildLockOptions {
+  /** The lock to hold, for a test building a fixture against its own; the repo's by default */
+  readonly lock?: string;
+}
+
+export async function withBuildLock<T>(label: string, run: () => T | Promise<T>, file = LOCK_FILE, options: BuildLockOptions = {}): Promise<T> {
+  const intent = options.intent ?? intentFromEnv();
+  const waitMs = options.timeoutMs ?? LOCK_WAIT_MS;
   fs.mkdirSync(path.dirname(file), { recursive: true });
   const pending = `${file}.${process.pid}`;
   fs.writeFileSync(pending, JSON.stringify({ pid: process.pid, label, startedAt: new Date().toISOString() }));
   try {
-    for (let attempt = 0; ; attempt++) {
+    const deadline = Date.now() + waitMs;
+    // Counted separately from the loop: a `freshness` fix goes round it many times without taking anything
+    // over, and taking over twice is what means the lock is not being released rather than merely held.
+    for (let takeovers = 0; ; ) {
       try {
         fs.linkSync(pending, file);
         break;
       } catch (err) {
         if ((err as NodeJS.ErrnoException).code !== 'EEXIST') throw err;
         const holder = readLock(file);
-        if (attempt > 0 || holder === null || holderIsRunning(holder)) {
-          const who = holder === null ? 'an unreadable lock file' : `pid ${holder.pid} (${holder.label}, started ${holder.startedAt})`;
-          throw new Error(`another package build holds ${path.relative(REPO_ROOT, file)}: ${who}. Wait for it to finish, then run this again.`);
+        const live = holder !== null && holderIsRunning(holder);
+        if (live && intent === 'freshness' && Date.now() < deadline) {
+          sleepSync(LOCK_POLL_MS);
+          continue;
         }
+        if (takeovers > 0 || holder === null || live) {
+          const who = holder === null ? 'an unreadable lock file' : `pid ${holder.pid} (${holder.label}, started ${holder.startedAt})`;
+          const waited = intent === 'freshness' ? ` after waiting ${Math.round(waitMs / 1000)}s` : '';
+          throw new Error(`another package build holds ${path.relative(REPO_ROOT, file)}${waited}: ${who}. Wait for it to finish, then run this again.`);
+        }
+        takeovers++;
         fs.rmSync(file, { force: true });
       }
     }
@@ -301,15 +443,58 @@ export async function stampedBuild(
   unit: BuildUnit,
   stamp: string,
   build: () => void | Promise<void>,
-  lock?: string,
+  options: StampedBuildOptions = {},
 ): Promise<void> {
+  const { lock, ...lockOptions } = options;
+  const intent = options.intent ?? intentFromEnv();
   await withBuildLock(label, async () => {
-    const fingerprint = fingerprintUnit(unit);
-    fs.rmSync(stamp, { force: true });
-    await build();
+    // A `freshness` fix that waited for the lock asks again now it holds it: the build it waited for was
+    // very likely building this same unit, and rebuilding what is already fresh is the duplicate work the
+    // wait exists to avoid. A `command` builds regardless — it was asked for a build, not for freshness.
+    if (intent === 'freshness' && unitStaleReason(unit, stamp) === null) return;
+    await stampedRun(label, unit, stamp, build);
+  }, lock, { ...lockOptions, intent });
+}
+
+/**
+ * `run` between clearing the stamp and writing a new one, with no lock. The chain's steps stamp through
+ * this: they are not package builds and must not queue behind the build lock, but the stamp they write has
+ * to be the same protocol — one `STAMP_VERSION`, one `fingerprintUnit`, one thing to bump.
+ *
+ * The fingerprint is taken before `run` touches anything, so a source edited while it runs is recorded as
+ * not done. The stamp is written only where `run` returned, so an interrupted step reads as never run.
+ */
+export interface StampedUnit {
+  readonly label: string;
+  readonly unit: BuildUnit;
+  readonly stamp: string;
+}
+
+/**
+ * One run, several stamps: every unit is fingerprinted **before** the run starts, and each stamp is written
+ * only if it returned.
+ *
+ * Taking all the fingerprints first is the part worth keeping. A unit pool runs one vitest over several
+ * projects, and fingerprinting each one as its own stamp was written measured the units after the first
+ * against a tree the run had already begun touching. Nothing writes into a unit's inputs today, so the
+ * readings were identical — correct by luck rather than by construction. The day a suite rewrites something
+ * under its own `tests/` or `etc/` while it runs (a `seed-parity:update`, a recorded snapshot), a later unit
+ * would stamp a fingerprint of the output instead of the input and read fresh next time when it was not.
+ */
+export async function stampedRunAll(units: readonly StampedUnit[], run: () => void | Promise<void>): Promise<void> {
+  const taken = units.map(({ label, unit, stamp }) => ({ label, stamp, fingerprint: fingerprintUnit(unit) }));
+  for (const { stamp } of taken) fs.rmSync(stamp, { force: true });
+  await run();
+  const builtAt = new Date().toISOString();
+  for (const { label, stamp, fingerprint } of taken) {
     fs.mkdirSync(path.dirname(stamp), { recursive: true });
-    fs.writeFileSync(stamp, `${JSON.stringify({ workspace: label, version: STAMP_VERSION, fingerprint, builtAt: new Date().toISOString() }, null, 2)}\n`);
-  }, lock);
+    fs.writeFileSync(stamp, `${JSON.stringify({ workspace: label, version: STAMP_VERSION, fingerprint, builtAt }, null, 2)}\n`);
+  }
+}
+
+/** The single-unit case, which is most callers */
+export async function stampedRun(label: string, unit: BuildUnit, stamp: string, run: () => void | Promise<void>): Promise<void> {
+  await stampedRunAll([{ label, unit, stamp }], run);
 }
 
 /** Every `build:package` script wraps its work in this */
@@ -317,6 +502,19 @@ export async function runPackageBuild(workspace: string, build: () => void | Pro
   const unit = BUILD_UNITS[workspace];
   if (!unit) throw new Error(`No build unit for ${workspace} in BUILD_UNITS (@abuddy/host/build/packages-built)`);
   await stampedBuild(workspace, unit, stampFile(workspace), build);
+}
+
+/**
+ * Thrown where the caller set `ABUDDY_PACKAGES_PREBUILT=1` and a package went stale anyway: something
+ * rebuilt or edited it while this run was reading it. `npm run chain` sets it for its parallel steps,
+ * because the alternative is two of them rebuilding one `dist` at once.
+ */
+export class PackagesWentStale extends Error {
+  constructor(readonly stale: readonly StaleUnit[]) {
+    super(`the published packages went stale during a run that had already built them:\n${staleMessage(stale)}\n`
+      + 'Something rebuilt or edited them while this process was reading them — `npm run packages:build` in a\n'
+      + 'concurrent step is the usual cause. Nothing was rebuilt here, because that would race the writer.');
+  }
 }
 
 /** Thrown when the build itself failed, so the caller doesn't report a check error as one */
@@ -328,8 +526,19 @@ export class PackagesBuildFailed extends Error {
 
 /** Builds every publishable package when any of them is stale; a no-op when they are all up to date */
 export function ensurePackagesBuilt(): void {
+  // Another process may be building them right now — two test suites started together each run this as
+  // their pretest. Wait for that build rather than reading the stamps it is rewriting and starting a
+  // second one, which is a race that fails the reader with "no stamp".
+  waitForPackageBuild();
   const stale = stalePackageUnits();
   if (stale.length === 0) return;
+  // A caller that has already built them is asserting nothing will go stale under it, so staleness here
+  // means the tree moved mid-run and whatever this process is about to read is half-written. Building it
+  // would race the writer; saying so stops two processes fighting over one dist and reports the real
+  // problem instead of the build error it turns into.
+  if (process.env.ABUDDY_PACKAGES_PREBUILT === '1') {
+    throw new PackagesWentStale(stale);
+  }
   // Synchronous: a message written just before the process exits must not sit in a pipe's buffer
   fs.writeSync(2, `Published packages are out of date:\n${staleMessage(stale)}\nRebuilding ${stale.length} of ${Object.keys(BUILD_UNITS).length}\n`);
   // npm is a shell script on Windows, which execFile cannot spawn without one
@@ -341,7 +550,10 @@ export function ensurePackagesBuilt(): void {
   // so this runs the right script even as a workspace's own pretest.
   for (const { workspace } of stale) {
     try {
-      execFileSync(windows ? 'npm.cmd' : 'npm', ['run', 'build:package', '-w', workspace], { cwd: REPO_ROOT, stdio: 'inherit', shell: windows });
+      // These builds are a freshness fix, not a command: another process may be building the same unit
+      // right now, and the right answer is to wait for it and then find the work done.
+      execFileSync(windows ? 'npm.cmd' : 'npm', ['run', 'build:package', '-w', workspace],
+        { cwd: REPO_ROOT, stdio: 'inherit', shell: windows, env: { ...process.env, [BUILD_INTENT_ENV]: 'freshness' } });
     } catch (err) {
       const status = (err as { status?: number }).status;
       throw new PackagesBuildFailed(typeof status === 'number' && status !== 0 ? status : 1, workspace);

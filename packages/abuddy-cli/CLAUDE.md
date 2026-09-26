@@ -33,8 +33,8 @@ A command module exports `async (args: string[]) => void`; `src/index.ts` maps t
 | `install <source> [-d\|-b]` | `commands/install.ts` | `detectSource` → `installPackFromLocal` / `installPack`, checking the pack's `hostVersion` and build format against what `readHostInfo(userDataDir)` says the data dir's app is. Bare names go to `resolveFromRemoteRegistry`, which always throws (not implemented) |
 | `uninstall <id>`, `list` | `commands/uninstall.ts`, `commands/list.ts` | Target env from `parseTargetEnv`: production by default |
 | `dev` | `commands/dev.ts` | Build + `installToDev` (checked against the dev app's `readHostInfo`, as `install` is), then a Vite dev server (port 5199, `strictPort: false`) with `packExternalsPlugin`; writes the `pack-dev-servers` marker (`writeDevServerMarker`). `.ts` changes rebuild, reinstall and `POST /dev/reload` to the dev API (port from `apiPortFile`). Without an FE entry: `watchRebuildFallback` |
-| `init-tests` | `commands/init-tests.ts` | `playwright.config.ts`, `tests/e2e/smoke.spec.ts`, `.gitignore` entries, `@abuddy/testing` (`^cliVersion()`) + `@playwright/test` |
-| `test [--app-root <path> \| --app beta]` | `commands/test.ts`, `src/app/` | Needs `playwright.config.ts`. Runs the pack's Playwright CLI with `fixtureEnv()`. Details in `packages/abuddy-testing/CLAUDE.md` |
+| `init-tests` | `commands/init-tests.ts` | Both halves. Playwright: `playwright.config.ts`, `tests/e2e/smoke.spec.ts`, `.gitignore` entries, `@abuddy/testing` (`^cliVersion()`) + `@playwright/test`. Contract: `scaffoldUnitTestSetup()` (`vitest.config.ts`, `tests/setup.ts`, devDependencies) unless `tests/setup.ts` is already there |
+| `test [--app-root <path> \| --app beta]`, `test --contract` | `commands/test.ts`, `src/app/` | Needs `playwright.config.ts`. Runs the pack's Playwright CLI with `fixtureEnv()`. Details in `packages/abuddy-testing/CLAUDE.md`. `--contract` runs the pack's vitest instead and starts no app — the checks that read compiled output, generated types and the harness; it is a no-op with a message in a pack with no vitest config, and `tests/scripts/test-external-pack-contract.sh` runs the fixtures through it |
 | `open [-b]` | `commands/open.ts` | macOS `open -a` with the product name; no dev app |
 | `db <command>` | `commands/db/` | The app's database, offline, through `@abuddy/host/database` (`openAppDatabase`, `findRunningApp`): `query`/`exec`/`repl` (`code.ts`, `repl.ts`: `@abuddy/sdk/database-console`'s runners, with `EARS` from the installed packs' manifests (`consoleScope`, the SDK's `consoleEars`), as the app's console builds it from its registered packs (`installedEars`)), `script` (`script.ts`: a file whose default export is called with the open database, since the published CLI's own engine copy isn't the one a script would open; TypeScript is bundled to a temp file with its packages resolved to absolute paths from the script's directory, so nothing is written where the script lives and `import.meta` still points at it), `inspect`, `export`, and `import`/`reset`/`clear-settings` (`destructive.ts`: without `--force` they list the change and open the database read-only, so a dry run works while an app runs and against files it may not write; `reset` names each stored API key it deletes by provider and label, since no backup holds them, and `--keep-keys` deletes only the data). `target.ts`: `-d`/`-b`/`--production`/`--data-dir` (one of them; an empty `--data-dir` is an error, and a command that writes must name its data dir), `--volatile` (the run history is hydrated with the data); prints the target on stderr, refuses writes while an app runs on it, warns reads, and holds the data dir's write lock for a change (`holdDatabaseWriteLock`). A flag resolves to that app's own data dir (`appDataDirFor`, `@abuddy/sdk/env`), so `ABUDDY_USER_DATA_DIR` can't redirect a named target; with no flag the variable still applies, which is how the root `db:*` scripts and the specs read a temp data dir. `withDatabase` closes the database after a command, reporting a failed close without ever hiding what the command hit first. `lmdb` is a dependency, external in the bundle. Spec: `tests/cli/db.spec.ts` |
 | `info`, `doctor`, `clean` | `commands/info.ts`, `doctor.ts`, `clean.ts` | Summary; manifest/file checks; `clean` removes `dist/`, `.abuddy/` (the dependency cache too) and `src/__generated__/` |
@@ -93,13 +93,78 @@ Because host code is inlined, `@abuddy/host` imports are fine in `src/`. The CLI
 
 ## Tests
 
-`npm test -w @abuddy/cli` (vitest, `tests/**/*.spec.ts`). The root `test:unit` runs it last, being the slowest; CI runs it after `packages:build` (`.github/workflows/ci.yml`). The `published-*` specs read what `packages:build` wrote, so the suite's `pretest` (`scripts/ensure-packages-built.ts`, the command over `@abuddy/host/build/packages-built`) runs that build itself when anything it read has changed, and skips it otherwise. Freshness is a success stamp, not a timestamp: each build unit records a content fingerprint of its inputs (its own sources, `@abuddy/host`, the bundler script, the manifests and tsconfigs) under `node_modules/.cache/abuddy-packages-build/`, written only when the build returns, so an interrupted or failed build reads as not built rather than as fresh. A run that bypasses `pretest` (`npx vitest` directly) still refuses to test stale output, naming the workspace and why.
+Two suites, split by what a spec costs:
 
-- `tests/build/`: bundlers and gates (`facade-*`, `seed-runtime-*`, `dsl-defs`, `fe-bundler-*`, `host-import-guard`, `clear-build-output`, `feature-settings`, `step-collisions`, `build-registry`) and published-package checks (`published-*`, `package-freshness`, `checkout-packages`, `ui-exports`, `ui-import-side-effects`, `import-specifiers`, `with-source`, `verify-node-modules`).
-- `tests/cli/`: commands run end to end or through their exports: scaffold, `add`, pack, release, install `hostVersion`, a scaffolded pack installed and loaded by the host pack loader (`init-install-load`), dev install, hand-off, source hooks, app launcher.
+- **`npm test -w @abuddy/cli`** — the fast half (`tests/**/*.spec.ts`, `vitest.config.ts`): 38 specs and
+  about 13.5s of file time, a couple of seconds of wall. The per-change loop.
+- **`npm run test:integration -w @abuddy/cli`** — the expensive half (`tests/**/*.integration.spec.ts`,
+  `vitest.integration.config.ts`, which caps worker threads because many of these specs spawn compilers of
+  their own): 15 specs, about 157s of file time.
+
+**Specs about the repo's own tooling are not here.** Fifteen of them were, and none was about the CLI: they
+moved to `@app/repo-checks`, which is where a spec that reads `scripts/` belongs and where `npm run spec`
+can reach one from a change to what it checks. `repo-check-boundary.spec.ts` there keeps them from coming
+back.
+
+**The rule for choosing is the measured cost, recorded in `etc/spec-cost.json`.** A fast spec moves to the
+integration half above **2.5s**; an integration spec comes back below **1.5s**; anything between stays where
+it is. `npm run spec-cost:update -w @abuddy/cli` re-measures and rewrites the record — run it with nothing
+else on the machine — and `repo-checks`' `suite-split.spec.ts` fails when a spec is in the wrong half, has no
+recorded cost, or is recorded and gone. The check reads the record and runs nothing, because re-measuring to
+decide placement would make the cheap half expensive.
+
+Two things about that shape are deliberate. **The band, rather than one threshold**, because a file's time
+is its wall time under whatever else its half is running: `dependency-flow-helpers` reads 4.7s in the fast
+half and 2.4s in the integration half, so a single line between them sends a spec back and forth on every
+update. **Cost rather than spawning**, because spawning was only ever a proxy: `callCli` reaches esbuild,
+which spawns, while reading as clean; `facade-typing` is 30s with no spawn site; and a 20ms spec counted as
+spawning because the export it imports defaults to `spawnSync`. Mechanism said all three wrongly.
+
+The `*.integration.spec.ts` suffix is orthogonal to the folders below, which group by area. It now
+records a cost rather than a mechanism, so renaming a spec is how it changes half.
+
+The root `test:unit` runs the fast half last, being the slowest of the unit suites; CI and the pre-merge
+chain run both halves (`.github/workflows/ci.yml`), after `packages:build`. The `published-*` specs read what `packages:build` wrote, so the suite's `pretest` (`scripts/ensure-packages-built.ts`, the command over `@abuddy/host/build/packages-built`) runs that build itself when anything it read has changed, and skips it otherwise. Freshness is a success stamp, not a timestamp: each build unit records a content fingerprint of its inputs (its own sources, `@abuddy/host`, the bundler script, the manifests and tsconfigs) under `node_modules/.cache/abuddy-packages-build/`, written only when the build returns, so an interrupted or failed build reads as not built rather than as fresh. A run that bypasses `pretest` (`npx vitest` directly) still refuses to test stale output, naming the workspace and why.
+
+- `tests/build/`: bundlers and gates (`facade-*`, `seed-runtime-*`, `dsl-defs`, `fe-bundler-*`, `host-import-guard`, `clear-build-output`, `feature-settings`, `step-collisions`, `build-registry`), how a pack's own paths are read (`tsconfig-aliases`, `subpath-imports`) and the checks on what a build produces here (`package-freshness`, `checkout-packages`, `verify-node-modules`). The specs whose subject is the *published* packages are `@app/publish-checks`; `@abuddy/ui`'s own exports map and import side effects are its own suite's.
+- `tests/commands/`: commands run end to end or through their exports: scaffold, `add`, pack, release, install `hostVersion`, a scaffolded pack installed and loaded by the host pack loader (`init-install-load`), dev install, hand-off, source hooks, app launcher.
 - `tests/app/`: app target resolution, beta download (`ensureBetaApp`: macOS arm64 only), Playwright resolution, app version.
 - `tests/harness/`: `@abuddy/testing/harness` from a scaffolded pack (`harness-setup`) and a dependent pack running default-setup's runtime (`dependency-runtime`, skipped until default-setup is built).
 - `tests/packs/host-output.spec.ts`: `publishHostPackOutput` and dependency resolution from an installed app.
-- `tests/helpers/published-packages.ts`: `PACKAGES_BUILT`, `installPublishedPackages()` (npm-packs `@abuddy/ears`, the SDK and UI into a temp `node_modules`), `compileConsumer()` over `CONSUMER_MATRIX` (current TypeScript and the 5.7 floor from `packages/typescript-floor`, × `node16`/`bundler`). The `published-*` specs skip without `dist/`, but throw in CI or when `dist` is older than `src`: run `npm run packages:build`.
+
+A spec's path under `tests/` mirrors the source it covers, as it does in every package
+([`test-inventory.md`](../../docs/reference/test-inventory.md)); `commands/`, `build/` and `app/` are
+`src/`'s own folders. `harness/` and `packs/` are the two that name a *dependency's* module instead —
+`@abuddy/testing`'s harness and `@abuddy/host/packs` — which this package holds because it is where a
+pack's whole toolchain is driven from, and `repo-checks/tests/spec-placement.spec.ts` records both with
+that reason. `_support/` is the prefix that says a directory claims to mirror nothing.
+- The packing fixture moved to `@app/publish-checks` and is imported from here as that package: `facade-typing`, `fe-bundler-host-registry`, `types-bundler-determinism` and `package-freshness` use it to build a consumer, which is the fixture rather than the subject. `tests/_support/pack-builds.ts` stays.
+
+### How a pack's own module paths are resolved, and why each half is where it is
+
+Two readers, and the asymmetry between the bundlers is deliberate. Both were audited 2026-09-26; what follows
+is what that cost to establish, so it needn't be established again.
+
+- **`tsconfig-aliases.ts`** — a pack's `compilerOptions.paths`, through `ts.readConfigFile` and
+  `parseJsonConfigFileContent` rather than by hand. `typescript` is already a dependency, and the compiler is
+  what decides what a tsconfig means: a `/* */` block comment, a `//` inside any string (the scaffold's
+  `$schema` URL), an `extends` chain, and `baseUrl` — the last being the one that produces *wrong* aliases
+  rather than none. Used by both bundlers. It was two copies until they were merged, and the FE one had
+  missed both fixes the BE one received.
+- **`subpath-imports.ts`** — a pack's `package.json` `imports`, and supplying the extension. esbuild resolves
+  the mapping itself and still needs this: measured with 0.25.12, it finds the target and names the file in
+  its error (`Import from ".ts" to get the file …`) but refuses an extensionless specifier or a directory, as
+  Node's ESM resolver does. Pack code is TypeScript and writes `from '#generated/events'`.
+- **The FE bundler reads neither `imports` nor supplies extensions, on purpose**: Vite resolves both
+  natively. The evidence is `tests/fixtures/external-pack`, whose `features/memos/fe/state.ts` value-imports
+  `#generated/events` and whose FE bundle and Playwright suite pass. A reader there would be a second
+  mechanism for something already handled.
+- **A conditional target keeps the pack's own key order**, taking the first of `node`, `import`, `require`,
+  `default` — Node's rule, not an imposed preference. `abuddy init` writes `"type": "module"`, so `import` is
+  the condition a pack's entries are likeliest to carry.
+
+Both readers report an unreadable file rather than returning nothing in silence, because the failure that
+follows — "can't resolve `#generated/…`" — names neither the file nor the cause. A malformed `tsconfig.json`
+fails the build outright, Vite parsing the same file and refusing it.
 
 End-to-end coverage outside this package: `npm run test:external-pack` (`tests/fixtures`) and `npm run test:packaged-authoring` (packed tarballs, outside the monorepo).

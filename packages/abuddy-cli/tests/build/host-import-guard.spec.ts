@@ -4,7 +4,7 @@ import * as path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import { bundlePackRuntime, bundlePackSeedCompilers, bundlePackStepBuild } from '../../src/build/be-bundler';
 import { bundlePackFE } from '../../src/build/fe-bundler';
-import { REPO_ROOT } from '../helpers/published-packages';
+import { REPO_ROOT } from '@abuddy/host/build/packages-built';
 
 /** Pack code that imports the app's private @abuddy/host fails `abuddy build`, not the app at load */
 const tmpDirs: string[] = [];
@@ -47,13 +47,13 @@ describe('abuddy build rejects @abuddy/host imports', () => {
     const result = await bundlePackFE({ packDir: dir, outputDir: path.join(dir, 'dist'), entryPoint: path.join(dir, 'src', 'entry.ts') });
     expect(result.success).toBe(false);
     expect(result.error).toMatch(/@abuddy\/host\/fe is the app's private host package/);
-  }, 60_000);
+  });
 
   it('rejects an export only the app loads, the LMDB store', async () => {
     const dir = pack({ 'src/__generated__/pack-entry.ts': "import { openLmdbStore } from '@abuddy/ears/lmdb';\nexport const registration = { openLmdbStore };\n" });
     const result = await bundlePackRuntime(dir, path.join(dir, 'dist'));
     expect(result.success).toBe(false);
-    expect(result.error).toMatch(/@abuddy\/ears\/lmdb is only for the app \(the app's LMDB store; it loads lmdb, which only the app installs\); packs can't import it/);
+    expect(result.error).toMatch(/@abuddy\/ears\/lmdb is only for the app[\s\S]*packs can't import it/);
   });
 
   it('still bundles pack code that imports @abuddy/sdk', async () => {

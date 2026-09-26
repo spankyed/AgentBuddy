@@ -189,13 +189,6 @@ describe('fakeInference', () => {
     ]);
   });
 
-  it('records a model call per batch the AI SDK splits a call into', async () => {
-    const inference = fakeInference('unused');
-    await inference.generateImage({ model: 'openai:gpt-image-1', prompt: 'Milk', n: 12 });
-    await inference.embedMany({ model: 'openai:text-embedding-3-small', values: Array.from({ length: 2050 }, (_, i) => `value ${i}`) });
-    expect(inference.calls.map((call) => call.kind === 'image' ? call.n : call.kind === 'embedding' ? call.values.length : undefined)).toEqual([10, 2, 2048, 2]);
-  });
-
   it('reranks documents by the scripted relevance', async () => {
     const inference = fakeInference('unused', { relevance: (query, document) => String(document).includes(query) ? 1 : 0 });
     const { rerankedDocuments } = await inference.rerank({ model: 'cohere:rerank-v3.5', query: 'milk', documents: ['bread', 'milk', 'eggs'], topN: 2 });

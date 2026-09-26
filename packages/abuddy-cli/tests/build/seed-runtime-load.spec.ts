@@ -3,7 +3,7 @@ import * as os from 'node:os';
 import * as path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import { bundlePackSeedRuntime } from '../../src/build/be-bundler';
-import { REPO_ROOT } from '../helpers/published-packages';
+import { REPO_ROOT } from '@abuddy/host/build/packages-built';
 
 /** A seed runtime that bundles but can't load where dependents' unit tests load it fails `abuddy build` */
 const tmpDirs: string[] = [];
@@ -36,7 +36,7 @@ describe('abuddy build loads the seed runtime it bundles', () => {
   it('passes a seed runtime that uses only @abuddy/sdk', async () => {
     const dir = pack("import { findRelations } from '@abuddy/ears';\nexport const memoQueries = { links: findRelations };\n");
     expect(await bundlePackSeedRuntime(dir, path.join(dir, 'dist'))).toEqual({ success: true });
-  }, 60_000);
+  });
 
   it('passes when the caller carries the source condition, as npm test and PACK_DIR builds do', async () => {
     // The check loads the bundle in a child process. Inheriting --conditions=@abuddy/source would make
@@ -50,7 +50,7 @@ describe('abuddy build loads the seed runtime it bundles', () => {
     } finally {
       if (before === undefined) delete process.env.NODE_OPTIONS; else process.env.NODE_OPTIONS = before;
     }
-  }, 60_000);
+  });
 
   it('fails one bundling a native addon', async () => {
     // The shape of node-gyp-build and bindings: the addon path is computed, so esbuild leaves the require
@@ -63,11 +63,11 @@ describe('abuddy build loads the seed runtime it bundles', () => {
     const result = await bundlePackSeedRuntime(dir, path.join(dir, 'dist'));
     expect(result.success).toBe(false);
     expect(result.error).toMatch(/Cannot find module '.*memo_index\.node'/);
-  }, 60_000);
+  });
 
   it('fails one that throws while loading', async () => {
     const dir = pack("if (!('abuddyHost' in globalThis)) throw new Error('memo repository needs the app');\nexport const memoQueries = {};\n");
     const result = await bundlePackSeedRuntime(dir, path.join(dir, 'dist'));
     expect(result.error).toContain('memo repository needs the app');
-  }, 60_000);
+  });
 });

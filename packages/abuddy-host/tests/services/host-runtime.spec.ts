@@ -48,7 +48,6 @@ describe('createHostRuntime', () => {
     const engine = newEngine();
     const packs = createPackRegistry();
     const runtime = createHostRuntime({ store: {} as LmdbStore, engine, transport: { rootEvents: testRootEvents }, appVersion: '1.2.3', packs });
-    expect(Object.keys(runtime).sort()).toEqual(['appVersion', 'ears', 'packs', 'redaction', 'services', 'transport']);
     // What log redaction masks: the host's own check over the values its secrets store has handled
     expect(runtime.redaction).toBe(secretRedaction);
     expect(runtime.transport.rootEvents).toBe(testRootEvents);

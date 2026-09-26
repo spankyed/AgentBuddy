@@ -266,7 +266,7 @@ describe('Sharded Router', () => {
     sharded.onAddRelation('Relation-cd1', 'REF', 'Document-d1', 'Document-d2', null);
     expect(sharded.getRelMeta().has('Relation-cd1')).toBe(true);
 
-    // The engine's order (contract/persistence.spec.ts)
+    // The engine's order (engine/persistence.spec.ts)
     sharded.onRemoveRelation('Relation-cd1');
     sharded.onDestroyEntity('Document-d1');
 
@@ -497,10 +497,9 @@ describe('Partition Routing', () => {
     excludedEntityTypes: new Set([Entity.TNode]),
   });
 
-  it('routes Document -> primary, TNode -> volatileBackup, and nothing to a secrets partition', () => {
+  it('routes Document -> primary and TNode -> volatileBackup', () => {
     expect(policy.routeEntity('Document-1')).toBe('primary');
     expect(policy.routeEntity('TNode-1')).toBe('volatileBackup');
-    expect(policy.routeEntity('Secret-1')).toBe('primary');
   });
 
   it('routes relations based on endpoint types', () => {

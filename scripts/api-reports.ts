@@ -9,6 +9,8 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { Extractor, ExtractorConfig, ExtractorLogLevel } from '@microsoft/api-extractor';
 import { componentContracts, type ComponentEntry } from './component-contracts.ts';
+import { reportEntries, reportName } from './lib/api-entries.ts';
+import { staleReason } from './api-report-stamp.ts';
 
 const pkgDir = path.resolve(process.argv[2] ?? '');
 const local = process.argv.includes('--local');
@@ -18,16 +20,24 @@ const reportFolder = path.join(pkgDir, 'etc');
 
 /** Exports with declarations: [subpath, declaration file in .temp/api-types] */
 function entries(): [string, string][] {
-  return Object.entries(pkg.exports as Record<string, unknown>).flatMap(([key, target]) => {
-    if (typeof target !== 'object' || target === null || !('types' in target)) return [];
-    const source = (target as Record<string, unknown>)['@abuddy/source'] as string;
+  return reportEntries(pkg as { exports?: Record<string, unknown> }).map((key) => {
+    const source = ((pkg.exports as Record<string, Record<string, unknown>>)[key])['@abuddy/source'] as string;
     const rel = source.replace(/^\.\/src\//, '');
     const declaration = rel.endsWith('.vue') ? `${rel}.d.ts` : rel.replace(/\.ts$/, '.d.ts');
-    return [[key, path.join(typesDir, declaration)]];
+    return [key, path.join(typesDir, declaration)];
   });
 }
 
-const reportName = (key: string) => `${key === '.' ? 'index' : key.slice(2).replaceAll('/', '.')}.api.md`;
+/**
+ * What the cheap check thought before this ran. `api:stamp` is a proxy for this script, and a proxy is
+ * only worth having if it cannot quietly disagree — so the moment to catch a disagreement is here, where
+ * both facts are in hand: what the stamp said, and whether a report actually moved.
+ *
+ * Its key is a list, and a list of someone else's inputs is a guess. This is what catches the guess being
+ * wrong, including for an input nobody has thought of — which is how the entry set went unnoticed until a
+ * widened exports map passed the whole chain.
+ */
+const stampWasClean = staleReason(pkgDir) === null;
 
 fs.mkdirSync(reportFolder, { recursive: true });
 let failed = 0;
@@ -121,6 +131,16 @@ for (const file of fs.readdirSync(reportFolder).filter((f) => /\.(api|component)
   changed++;
   if (local) fs.rmSync(path.join(reportFolder, file));
   else { failed++; console.error(`etc/${file} has no matching export; run with --local to remove it`); }
+}
+
+// The proxy said these were current and they were not: its key is missing an input. Loud, because every
+// other symptom of this is silence — a report that drifts until something else happens to regenerate it.
+if (changed > 0 && stampWasClean) {
+  console.error(`${pkg.name}: ${changed} report(s) moved while etc/declarations.sha256 said they were current.`);
+  console.error('  Two things do that. Either api:stamp\'s key is missing an input — its inputs are listed in');
+  console.error('  scripts/api-report-stamp.ts, and docs/plans/test-cleanup-followups.md item 2 has the reasoning —');
+  console.error('  or a report under etc/ was edited by hand, which no key can see. Check the diff first.');
+  failed++;
 }
 
 if (failed > 0) process.exit(1);

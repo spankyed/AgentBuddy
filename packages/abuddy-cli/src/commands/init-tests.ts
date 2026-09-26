@@ -1,6 +1,7 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { cliVersion } from '../utils';
+import { scaffoldUnitTestSetup } from './init';
 
 // The Playwright version @abuddy/testing is tested with
 const PLAYWRIGHT_RANGE = '^1.54.1';
@@ -91,6 +92,24 @@ export async function initTests(_args: string[]): Promise<void> {
     }
   }
 
+  // Both halves, because a pack has both: `abuddy test` needs an app and `abuddy test --contract` does not.
+  // Scaffolding only the Playwright half left an author with no way to check compiled output without one.
+  if (!fs.existsSync(path.join(cwd, 'tests', 'setup.ts'))) {
+    const { keptConfig, addedDependencies, upgrades } = scaffoldUnitTestSetup(cwd);
+    console.log('Created tests/setup.ts for the contract half (@abuddy/testing/harness)');
+    if (keptConfig) {
+      console.log(`  ${keptConfig} already exists: give its test options isolatedDataDir()'s env and globalSetup, and setupFiles: [...dataDir.setupFiles, './tests/setup.ts'] (@abuddy/testing/vitest)`);
+    } else {
+      console.log('Created vitest.config.ts');
+    }
+    if (addedDependencies.length > 0) console.log(`  Added ${addedDependencies.join(', ')} to devDependencies. Run: npm install`);
+    if (upgrades.length > 0) {
+      console.log(`  The harness can't run on the pack's ${upgrades.map(({ name, reason }) => `${name} (${reason})`).join(', ')}.`);
+      console.log(`  Upgrade: npm install -D ${upgrades.map(({ name, range }) => `${name}@"${range}"`).join(' ')}`);
+    }
+  }
+
   console.log('\nTo run tests:');
-  console.log('  abuddy test');
+  console.log('  abuddy test --contract   # the pack\'s vitest, no app');
+  console.log('  abuddy test              # Playwright, in AgentBuddy');
 }

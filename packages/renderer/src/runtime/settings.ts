@@ -1,7 +1,5 @@
-// The renderer's side of the SDK's settings port: what frontend code reads and changes of the app's settings.
-//
-// It resolves the view by the `settings` role rather than by name, so it works wherever that view lives: the app
-// draws it (`views/settings/`), and a pack that replaced it would answer the same way.
+// The renderer's side of the SDK's settings port: what frontend code reads and changes of the app's settings,
+// over the Settings view the app draws (`views/settings/`).
 import type { SettingsPort, SettingsSaveStatus, SettingsTarget } from '@abuddy/sdk/fe';
 import type { FeatureRef } from '@abuddy/sdk/ids';
 import { boundFeHost } from '@abuddy/sdk/runtime/internals';

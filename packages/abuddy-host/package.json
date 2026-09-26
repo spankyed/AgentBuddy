@@ -17,6 +17,7 @@
     "./build/packages-built": "./src/build/packages-built.ts",
     "./build/shared-deps": "./src/build/shared-deps.ts",
     "./build/source-resolution": "./src/build/source-resolution.ts",
+    "./build/specifiers": "./src/build/specifiers.ts",
     "./bus": "./src/bus/index.ts",
     "./database": "./src/database/index.ts",
     "./fe": "./src/fe/index.ts",
@@ -29,6 +30,7 @@
     "./exclusive-lock": "./src/exclusive-lock.ts",
     "./process-liveness": "./src/process-liveness.ts",
     "./secrets": "./src/secrets/index.ts",
+    "./secrets/vault": "./src/secrets/vault.ts",
     "./services": "./src/services/index.ts",
     "./settings": "./src/features/settings/be/index.ts"
   },

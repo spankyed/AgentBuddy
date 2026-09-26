@@ -1,5 +1,7 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
+import { readTsconfigAliases } from './tsconfig-aliases.ts';
+import { readSubpathImports, resolveWithExtensions } from './subpath-imports.ts';
 import ts from 'typescript';
 import { APP_ONLY_EXPORTS, SHARED_DEPS, sharedInstanceExternals } from '@abuddy/host/build/shared-deps';
 import { SEED_COMPILERS_FILE } from '@abuddy/sdk/build';
@@ -242,61 +244,6 @@ function stubFrontendAssetsPlugin(): import('esbuild').Plugin {
       build.onLoad({ filter: /.*/, namespace: 'frontend-stub' }, () => ({ contents: 'module.exports = {};', loader: 'js' }));
     },
   };
-}
-
-/** A pack tsconfig's `paths` as esbuild aliases: `{ "#generated/*": "src/__generated__/*" }` → absolute dirs. */
-export function readTsconfigAliases(packDir: string): Record<string, string> {
-  const aliases: Record<string, string> = {};
-  const tsconfigPath = path.join(packDir, 'tsconfig.json');
-  if (!fs.existsSync(tsconfigPath)) return aliases;
-  try {
-    // TypeScript's own reader, not a regex: a `//` inside a string is the common case here
-    // (`"$schema": "https://…"`), and stripping to end of line there breaks the parse — which the
-    // catch below swallows, dropping every path alias in silence.
-    const { config, error } = ts.readConfigFile(tsconfigPath, file => fs.readFileSync(file, 'utf-8'));
-    if (error) return aliases;
-    // And TypeScript's own merge, so a pack whose tsconfig extends a shared base gets the base's paths.
-    // Reading one file answers for one file; `extends` is a chain only the compiler knows how to walk.
-    const parsed = ts.parseJsonConfigFileContent(config, ts.sys, packDir);
-    // Where a relative target is relative: `baseUrl` when the config sets one, the pack otherwise
-    const from = parsed.options.baseUrl ?? packDir;
-    for (const [pattern, targets] of Object.entries(parsed.options.paths ?? {})) {
-      if (!pattern.endsWith('/*') || !targets[0]?.endsWith('/*')) continue;
-      aliases[pattern.slice(0, -2)] = path.resolve(from, targets[0].slice(0, -2));
-    }
-  } catch {}
-  return aliases;
-}
-
-function readSubpathImports(packDir: string): Record<string, string> {
-  const imports: Record<string, string> = {};
-  const pkgPath = path.join(packDir, 'package.json');
-  if (!fs.existsSync(pkgPath)) return imports;
-  try {
-    const pkg = JSON.parse(fs.readFileSync(pkgPath, 'utf-8'));
-    const pkgImports: Record<string, string> = pkg.imports ?? {};
-    for (const [pattern, target] of Object.entries(pkgImports)) {
-      if (typeof target === 'string') {
-        imports[pattern] = target;
-      } else if (typeof target === 'object' && target !== null) {
-        const resolved = (target as Record<string, string>).default
-          ?? (target as Record<string, string>).require
-          ?? (target as Record<string, string>).node;
-        if (typeof resolved === 'string') imports[pattern] = resolved;
-      }
-    }
-  } catch {}
-  return imports;
-}
-
-function resolveWithExtensions(base: string): string | undefined {
-  for (const ext of ['', '.ts', '.js', '.mts', '.mjs']) {
-    const p = base + ext;
-    if (fs.existsSync(p)) return p;
-  }
-  const indexTs = path.join(base, 'index.ts');
-  if (fs.existsSync(indexTs)) return indexTs;
-  return undefined;
 }
 
 function makeSubpathPlugin(imports: Record<string, string>, packDir: string): import('esbuild').Plugin {

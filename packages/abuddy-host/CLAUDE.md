@@ -63,7 +63,7 @@ All paths come from `resolveAppContext()` (`@abuddy/sdk/env`). The context gives
 
 - The app's own state is one `AppState` row (`AppState-app`): `hasOnboarded`, `version` (the app version the data was migrated to), `packVersions`, `externalSeedHashes` (external packs' seeds), `externalSeedDeps` (for an external pack whose last seed failed, the seed state of the packs it depends on at the time, which is what lets that seed be retried without re-importing it every boot), `builtInSeedHashes` and `builtInSeedFingerprints` (built-in packs' boot seeds, per pack), and the app shell's state: `pluginVisibility` (the tabs the user showed or hid, by plugin ref) and `lastActivePlugin`. Host declares the entity type (`HOST_ENTITY_TYPES`), which the engine's entity-type check and the test harness include and no pack may declare.
 - Only host code reads and writes it, through `appState` (`get()` fills defaults; `update()` creates the row on the first write): the migrations runners, the boot seed and external pack seeding (`packs/runtime/seed.ts`, `lifecycle.ts`, `reload.ts`, the API's boot), `createAppBus()` (the application plugin's `CLIENT_CONNECTED` carries `hasOnboarded`, the tabs' visibility and the plugin last open), the host `application` system (`features/application/be/system.ts`, which records `SET_PLUGIN_VISIBILITY` and `SET_LAST_ACTIVE_PLUGIN` and sends `PLUGIN_VISIBILITY_UPDATED` on a change and on `PACK_CHANGED`) and `services.appData` (`hasOnboarded()`, `completeOnboarding()`, which default-setup's onboarding calls).
-- Packs never read it, and their settings don't hold it: resetting settings leaves it alone (`default-setup/tests/unit/settings-reset-app-state.spec.ts`). `appData.reset()` clears it with the rest of the database; the migrations the reset runs record the version again.
+- Packs never read it, and their settings don't hold it: resetting settings leaves it alone (`default-setup/tests/settings-reset-app-state.spec.ts`). `appData.reset()` clears it with the rest of the database; the migrations the reset runs record the version again.
 - Before 0.3.15 it lived in default-setup's Settings row (`data.internal`); the host's 0.3.15 app migration moves it (`migrations/app/0.3.15.ts`, `tests/migrations/app-state-0.3.15.spec.ts`).
 
 ## Packs
@@ -274,7 +274,7 @@ Neither predicate is exact, and the module's header says what exact would take: 
 
 ## Database (`database/`)
 
-What opening an app's database needs, shared by the API's boot and `abuddy db`, so both hydrate a data dir the same way (`packages/api/tests/unit/app-database-parity.spec.ts`):
+What opening an app's database needs, shared by the API's boot and `abuddy db`, so both hydrate a data dir the same way (`packages/api/tests/runtime/app-database-parity.spec.ts`):
 
 - `openDatabaseStore({ paths, schema, readOnly?, log? })` (`open.ts`): the LMDB store (`openLmdbStore`) with `schema.partitionPolicy` and a new engine persisting to it, checking entity types against `schema` (`DatabaseSchema`: `getRegisteredEntityTypes()` and `partitionPolicy`, which the app's registry implements). The API's `openAppStore()` calls it with its registry.
 - `openAppDatabase({ env, userDataDir, readOnly?, includeVolatile?, log? })`: for a data dir outside the app. It reads the installed packs' schema (`readInstalledSchema`, `schema.ts`: the built-in packs' `host-packs/<id>/types/snapshot.json` manifests and the external packs' `abuddy.json`, minus those `installed-packs.json` disables; entity types and relation kinds from all, the partition policy from the built-in packs through `appPartitionPolicy`, as the registry does; no pack code runs; a data dir with no published built-in packs throws), finds the layout (`findAppDataPaths`, `layout.ts`: the stores at the data dir's root (packaged) or under `.data/` (source), from `_appDataPaths` in `@abuddy/sdk/utils`; none or both throws), opens and hydrates the primary partition — and the volatile one (the run history) with `includeVolatile`, which `abuddy db --volatile` passes — and installs the engine's query face. `close()` puts back the engine that was installed before this one (none, in a tool), closes the store and throws when a write failed (the store's `close()` returns its failed writes, the final flush's included). `readOnly` opens the files read-only (LMDB and the sink: a write throws). Files in another storage format are refused by `@abuddy/ears/lmdb` itself (`LMDB_FORMAT_VERSION`), so the app, `abuddy db` and a backup read all refuse them alike.
@@ -303,10 +303,10 @@ What opening an app's database needs, shared by the API's boot and `abuddy db`, 
 - `services/`: `inference` (provider URLs, model kinds) and `host-runtime` (`createHostRuntime`'s members, and a reset's order: shutdown hooks, stores, `onInit`, migrations, seeds, external packs included; `startPacks` runs no pack migration or seed after a failed app migration).
 - `build/`: `source-resolution`, `shared-deps` (`APP_ONLY_EXPORTS` stay out of both bridges).
 - Related suites elsewhere:
-  - `packages/api/tests/unit/` (`secrets`, `bus-client-connected`, `bound-runtime`, `log-capture`, `host-data-services` (with an old backup's import moving the app's state), `restart-persistence`, and `app-reset`: a reset on the built-in packs)
+  - `packages/api/tests/runtime/` (`secrets`, `bus-client-connected`, `bound-runtime`, `host-data-services` (with an old backup's import moving the app's state), `restart-persistence`, and `app-reset`: a reset on the built-in packs)
   - `packages/abuddy-ears/tests/lmdb/` (the LMDB adapter, sharded router, query layer and `openLmdbStore`)
-  - `packages/abuddy-cli/tests/cli/init-install-load.spec.ts`
-  - `packages/abuddy-cli/tests/cli/{install-host-version,dev-install,pack-cli}.spec.ts` (the CLI's installs checked against `host.json`)
+  - `packages/abuddy-cli/tests/commands/init-install-load.spec.ts`
+  - `packages/abuddy-cli/tests/commands/{install-host-version,dev-install,pack-cli}.spec.ts` (the CLI's installs checked against `host.json`)
   - `packages/abuddy-cli/tests/packs/host-output.spec.ts`
 
 ## Gotchas

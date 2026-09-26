@@ -147,7 +147,7 @@ describe('withModuleBridge', () => {
     installPackage(lib, `module.exports = { value: 'real copy' };`);
     const runtime = writeRuntime(`module.exports = require('${lib}');`);
     expect(() => withModuleBridge({ modules: {}, resolveFrom, appOnly: { [lib]: "the app's store" } }, () => createRequire(runtime)(runtime)))
-      .toThrow(`${lib} is only for the app (the app's store); pack code can't import it`);
+      .toThrow(new RegExp(`${lib} is only for the app[\\s\\S]*can't import it`));
   });
 
   it("still throws for a missing package without stubMissing, and for a missing relative file", () => {

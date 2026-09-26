@@ -62,7 +62,7 @@ carries no comments.
 | # | Door | Covers | Where |
 |---|---|---|---|
 | 1 | `npm run packages:ensure &&` in a root script | a repo command: `test`, `test:headed`, `test:explorer`, `test:external-pack`, `typecheck`, `typecheck:pack`, `compile`, `prebuild` | root `package.json` |
-| 2 | that workspace's `pretest` | `npm test -w @abuddy/cli` and `npm test -w @app/default-setup` run directly, which no root script wraps | each package's `package.json` |
+| 2 | that workspace's `pretest` | `npm test -w @abuddy/cli`, `-w @app/default-setup` and `-w @app/repo-checks` run directly, which no root script wraps | each package's `package.json` |
 | 3 | `ensureCheckoutPackages(packRoot)` | `abuddy build`, `abuddy test`, `abuddy dev` — from any directory, for a pack whose packages are a checkout's | `abuddy-cli/src/build/checkout-packages.ts`, called from `commands/{build,test,dev}.ts` |
 | 4 | the `Build publishable packages` step | CI, whose typecheck step already built them through `typecheck:pack` | `.github/workflows/ci.yml` |
 
@@ -72,7 +72,7 @@ mid-run would be wrong. All they can do is fail, and say what to run.
 | # | Door | Covers | Where |
 |---|---|---|---|
 | 5 | `assertCheckoutPackagesFresh()` | a pack author's bare `npx vitest` or `npx playwright test`, with no CLI in front of it | `src/checkout-freshness.ts`, called from `setupPackTests` and the `electronApp` fixture |
-| 6 | a throw while the module loads | the CLI's own `published-*` specs run without their `pretest` (`npx vitest`, a watch run) | `abuddy-cli/tests/helpers/published-packages.ts` |
+| 6 | a throw while the module loads | a spec that reads the built packages run without its `pretest` (`npx vitest`, a watch run): `@app/publish-checks`' specs and `@app/repo-checks`' `published-sdk-peers` | `packagesBuiltOrRefuse()` in `@abuddy/host/build/packages-built`, called from `abuddy-cli/tests/helpers/published-packages.ts` and the spec |
 
 Three things follow.
 
@@ -162,9 +162,9 @@ A pack's unit tests run its code without the app: seeds, repositories and seed h
 - **The seed runtime facet** (`src/__generated__/seed-runtime.ts`, bundled by `abuddy build` into `dist/build/seed-runtime.mjs` with only the shared-instance packages, `@abuddy/sdk` and `@abuddy/ears`, external) holds the pack's entity types, relation kinds, repositories and seed hooks. Everything it imports must load in a plain Node process: no `@abuddy/host` (rejected at build), no native modules, no optional SDK peers. `abuddy build` checks this for every pack (`abuddy-cli/src/build/seed-runtime-check.ts`).
 - **Proofs:**
   - `tests/fixtures/external-pack` unit-tests its memo seeds, its memos system, a memo flow on default-setup's brain, its `boot.onInit`/`onShutdown` pair around a test's apps (`boot-hooks.spec.ts`), and the harness's isolation (mocks, waits and calls ended by stop, events for systems before a client connects), run by `test:external-pack`.
-  - `default-setup/tests/unit/harness-app-stop.spec.ts`: a real schedule (an action step) ticks while its app runs and stops with it.
+  - `default-setup/tests/harness-app-stop.spec.ts`: a real schedule (an action step) ticks while its app runs and stops with it.
   - `abuddy-cli/tests/harness/harness-setup.spec.ts`: `vitest run --root <pack>` from elsewhere, tests that run concurrently rejected (a lone concurrent test isn't), a second `setupPackTests` in one process (vitest `isolate: false`) rejected naming why, `abuddy add feature` adding the setup to a pack without one.
-  - `abuddy-cli/tests/cli/scaffold-unit-test-setup.spec.ts`: that setup keeps any config vitest loads (`vitest.config.*`, `vite.config.*`), adds `@abuddy/testing` at the pack's `@abuddy/sdk` range (the two release at one version, and `@abuddy/testing` peers on `^<version>`), and names the upgrade for an `@abuddy/testing` without `./harness` or off the SDK range, or a vitest before 3.
+  - `abuddy-cli/tests/commands/scaffold-unit-test-setup.spec.ts`: that setup keeps any config vitest loads (`vitest.config.*`, `vite.config.*`), adds `@abuddy/testing` at the pack's `@abuddy/sdk` range (the two release at one version, and `@abuddy/testing` peers on `^<version>`), and names the upgrade for an `@abuddy/testing` without `./harness` or off the SDK range, or a vitest before 3.
   - `test:packaged-authoring` also type-checks the packed declarations with `skipLibCheck: false`, failing unless tsc checked the probe and every error is in other packages' declarations.
   - `abuddy-cli/tests/harness/dependency-runtime.spec.ts` runs default-setup's systems, and the app's settings beside them, from a dependent pack.
   - `test:packaged-authoring` runs a system test, a service test with structured output and an `llm` flow, with `inference` mocked by `mockInference`, all from the packed tarballs.

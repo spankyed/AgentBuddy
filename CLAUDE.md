@@ -11,6 +11,7 @@ AgentBuddy is an Electron desktop app with an actor-based architecture. Both fro
 - **Electron main** (`packages/main/`) — Module-based process manager that spawns the API server and manages windows
 - **Preload** (`packages/preload/`) — IPC bridge exposing safe APIs to renderer
 - **Default Setup** (`packages/default-setup/`) — the built-in pack: features, steps, and seed sources (actions, prompts, flows, library, notes, FAQs, settings) that `abuddy build` compiles into `packages/default-setup/dist/` from `abuddy.json` `boot.seed` (see `packages/default-setup/CLAUDE.md` and `docs/public-facing/seeds.md`)
+- **Repo checks** (`packages/repo-checks/`) — the specs whose subject is the repo's own tooling: the chain's graph and cache keys, the recorded spec costs, and the scripts under `scripts/`. A workspace because a spec needs one, and because `npm run spec` routes a `scripts/` change here (see `packages/repo-checks/CLAUDE.md`)
 
 Monorepo using npm workspaces. Requires Node >= 23.0.0.
 
@@ -40,29 +41,50 @@ so out loud so the claim can be checked.
 
 ## What to run after a change
 
-Run the narrowest thing that could fail, and stop. The full chain exists for the merge, not for the
-edit — running it after every change costs minutes and finds nothing the narrow check wouldn't.
+**`npm run chain` costs what you changed.** Each step declares what it reads
+(`scripts/lib/chain-steps.ts`), is fingerprinted over exactly that, and is skipped when nothing under it
+moved — so the table that used to live here, asking you to work out which suite covers your edit, is now the
+graph's job. Run the chain and it runs the subset; it does not need you to have guessed right.
 
-| You changed | Run |
-|---|---|
-| one package's source | `npm run spec -- <the file>` — the specs that import it, which is usually a handful rather than the package's hundreds. Plus its typecheck if the change is typed. `npm test -w <pkg>` when you want the whole suite |
-| a spec | `npm run spec -- <path or name>` |
-| a build script, bundler or gate | `npm test -w @abuddy/cli`, plus the one command whose output changed |
-| a comment, a doc, a CLAUDE.md | **nothing** — not typecheck, not a suite. Unless a spec asserts the text (the door table), or a code fence changed and one command proves it |
-| an npm script | the one path that runs it, end to end, once |
-| the renderer, the app's boot, or a pack's FE | `npm test -- <spec>` for the affected E2E, not the whole suite |
-| a public export of `@abuddy/ears`, `/sdk` or `/ui` | `npm run api:update`, and commit `etc/` — `typecheck` fails until you do |
-| a pack's seed source (`src/seeds/`) | that pack's `seed-parity` spec. When only `sourceHash`/`rowSha256` moved, re-record deliberately — `npm run seed-parity:update -w @app/default-setup` — and never edit a hash by hand. Re-recording rewrites a test expectation, not user data; what reaches users is the new `sourceHash`. `packages/default-setup/tests/unit/seed-parity/CLAUDE.md` has the rule for what a golden records |
-| several things, or you lost track | `npm run spec` with no arguments: the specs your uncommitted changes affect, in every package they touch |
-| anything, before you ask for a merge | `npm run chain`, once — the seven steps in dependency order, with `packages:ensure` hoisted |
+Measured on an idle machine, 2026-09-25, each one a real run rather than a sum of the parts:
 
-What that costs, measured on this machine (2026-09-22, M-series, warm): one spec file 1–3s, one
-package's `tsc --noEmit` 3s, a package's specs folder ~1s, `packages:ensure` 1s when nothing is stale.
-The chain is ~6 minutes, measured 2026-09-24: `compile` 11s, `typecheck` 54s, `test:unit` 104s,
-`build` 44s, `test:external-pack` 43s, `npm test` (E2E) 30s, `test:packaged-authoring` 71s. So the
-narrow check is two to three orders of magnitude cheaper than the chain, and covers the edit.
+| What you changed | What the chain runs | Cost |
+|---|---|---|
+| nothing tracked | the E2E suite, which is never cached | **26.8s** |
+| a doc, a comment, a CLAUDE.md | nothing but that — no step declares `docs/` | **26.8s** |
+| one package's source (the renderer) | `test:unit:host`, which runs only the renderer's project and `@app/main`'s (it depends on the renderer), `typecheck`, then `build:app` and all of tier 3, because rebuilding the app moves what tier 3 reads | **115.1s** |
+| nothing is cached (a cold tree) | all 17 steps, two at a time | **190.1s** |
 
-**`api:check` is not in that list, on purpose.** `typecheck` runs `api:stamp`, which hashes the same
+The one-package row is the one worth reading twice: editing a package that the *app* is built from costs four times editing one it is not, because `build:app` rewrites `packages/*/dist` and every tier-3 step reads it. A change under `@abuddy/ears` or a pack's tests does not pay that.
+
+`npm run chain --dry` prints that plan without running it, and says why each step is or is not cached —
+which is the way to find out why something you expected to be skipped is not.
+
+**The inner loop is still `npm run spec`**, and it is still much cheaper than a chain run: with no
+arguments it runs the specs your uncommitted changes affect, in every package they touch; with a source
+file it runs the specs that import it. One spec file is 1-3s and a package's `tsc --noEmit` is 3s, against
+the chain's 27s floor. Use it while you are working, and the chain when you are done. A change to
+`scripts/` or to a vitest config counts too: it routes to `@app/repo-checks`, the package holding the
+specs that check the repo's own tooling.
+
+**The one answer `spec` cannot give from the module graph is a pack suite's**, because a pack resolves the
+published `dist` while the host projects resolve source — so its specs never import a dependency's `src`,
+and the edge from your edit to the spec that covers it exists only through a build. `npm run spec` says so
+when it is true; `npm run spec:full` runs it, for a build plus 18s. Which is also why editing `@abuddy/sdk`
+can be green under `spec` and red under `chain`: the chain declares that dependency
+(`scripts/lib/workspace-deps.ts`) where a module graph cannot see it. The same seam is why a *pack's own*
+source runs that pack's whole suite rather than a root `related` — nothing in the root projects imports it.
+
+Two things the chain cannot work out for you, because they rewrite files you commit:
+
+- **a public export of `@abuddy/ears`, `/sdk` or `/ui`** — `npm run api:update`, and commit `etc/`.
+  `typecheck` fails until you do.
+- **a pack's seed source (`src/seeds/`)** — when only `sourceHash`/`rowSha256` moved, re-record
+  deliberately with `npm run seed-parity:update -w @app/default-setup`, and never edit a hash by hand.
+  Re-recording rewrites a test expectation, not user data; what reaches users is the new `sourceHash`.
+  `packages/default-setup/tests/seeds/CLAUDE.md` has the rule for what a golden records.
+
+**`api:check` is not a chain step, on purpose.** `typecheck` runs `api:stamp`, which hashes the same
 declarations the reports are generated from, in 0.6s against `api:check`'s 55. A report is a pure
 function of those declarations, so a matching stamp means `api:check` cannot fail, and a moved
 declaration fails `typecheck` until `api:update` runs. Run `api:check` before publishing, where it is
@@ -70,19 +92,19 @@ the authority; running it per merge re-proves the stamp and costs a minute. The 
 cannot see is a hand-edited `etc/*.api.md` whose declarations never moved, which the publish path
 catches.
 
-That last row is the whole gate: **CI does not run, on purpose.** `.github/workflows/ci.yml` has its `push`
+The chain is the whole gate: **CI does not run, on purpose.** `.github/workflows/ci.yml` has its `push`
 and `pull_request` triggers commented out while this is a single-contributor repo, so `gh run list` is empty
 and always will be. That is not a failure to report, and CI is not a check to cite — the local chain is the
 check. The workflow's header says when it goes back on.
 
 Things that waste the most time, in order:
 
-- **Running anything at all after a comment, a doc or a CLAUDE.md edit.** The table above says to run
-  nothing, and it means nothing: not `typecheck`, not the package's suite, not "just to be safe". Prose
-  cannot break a build. The two exceptions are a spec that asserts the text and a code fence someone will
-  copy — check that one command, not the chain. This is first on the list because it is the one most often
-  ignored: a full `typecheck` is 53s and a doc edit needs 0s, and doing it anyway teaches nothing except
-  that the table is decorative.
+- **Running anything at all after a comment, a doc or a CLAUDE.md edit.** Nothing means nothing: not
+  `typecheck`, not the package's suite, not "just to be safe". Prose cannot break a build, and no step
+  declares `docs/` among its inputs, so the chain agrees — `npm run chain --dry` after a doc edit reports
+  every step cached. The two exceptions are a spec that asserts the text and a code fence someone will
+  copy: check that one command. This is first on the list because it is the one most often ignored, and a
+  full `typecheck` is 53s against a doc edit's 0s.
 - **Running `npm run build` to test a change no build output depends on.** The renderer and API build
   from source; a CLI or SDK change does not need them rebuilt to be tested.
 - **Running an E2E suite to find a bug you have a stack trace for.** A minified frame with a line and
@@ -95,6 +117,14 @@ Things that waste the most time, in order:
   `npm run build:be`, `DEBUG_E2E=1 npm test -- <spec> --grep "<title>"`. Two carefully argued
   explanations have been wrong where one such run was decisive. `tests/e2e/CLAUDE.md` has the method,
   including what to rebuild first and how to put the instrumentation back.
+- **Reading a chain step's `cached` as "the thing it guarantees is true".** It means only that the step's
+  declared inputs have not moved. `packages:ensure` used to be cached that way, and what it guarantees —
+  that the built packages are current — is recorded in `node_modules/.cache/abuddy-packages-build`, which
+  its fingerprint cannot see and `fingerprintUnit` excludes from the content hash by design. Measured
+  2026-09-26: with those stamps cleared and `dist` still present, the step reported `cached` while
+  `packagesBuiltOrRefuse()` refused, so every step reading the built packages failed at collection (five
+  files, thirty-three tests skipped). It is `cache: false` now — 0.3s warm, against a second record of one
+  fact that can disagree with the first. Two caches over one body of work is the bug, not the cost.
 - **Running suites concurrently *before the packages are built*.** The hazard is the build itself, not
   the suites: `ensurePackagesBuilt()` returns before taking the lock when nothing is stale
   (`abuddy-host/src/build/packages-built.ts`), and only `stampedBuild` locks. So two suites that both
@@ -118,6 +148,30 @@ Three rules that pay for themselves:
   say: why a non-obvious choice was made, what breaks if you undo it, and the condition that would make a
   recorded tradeoff worth revisiting.
 
+### What a test may read
+
+Every check in `npm run chain` declares a tier (`scripts/lib/chain-steps.ts`), which says what it is allowed
+to read. `npm run check:tiers` fails when a tier-1 or tier-2 step can reach the app.
+
+| Tier | May read | Examples |
+|---|---|---|
+| **1 pure** | its own package's source, the in-memory runtime, fakes | most of `test:unit`, `typecheck` |
+| **2 contract** | the built `@abuddy` packages, a pack's build output | `packages:ensure`, `compile`, `test:external-pack:contract` |
+| **3 app** | the built app | `build:app`, the E2E suite, `test:external-pack:app`, `test:packaged-authoring` |
+
+The rule that matters is that tier 1 and tier 2 do not need the app, because the moment one does it has to
+run after `build:app`, its real inputs become the whole repo, and it can no longer be cached or reordered. Four
+attempts at a cheaper chain each failed on exactly that, because nothing recorded it. A check that genuinely
+needs the app is tier 3 — that is an answer, not a failure, and the fix is never to delete the check.
+
+`test:external-pack` is split at that boundary: `:contract` validates, builds and typechecks each fixture
+pack and runs its harness specs with no app, in tier 2 before `build:app`, and `:app` runs its Playwright suite in
+tier 3. Two scripts rather than one with a flag, because `check:tiers` reads a step's scripts as text and a
+branch it never takes still reads as a reach. `test:packaged-authoring` is still tier 3 whole: its nine steps
+build on each other, so it takes a mode rather than a split.
+[`goal-test-tiers.md`](docs/archive/goals/goal-test-tiers.md) has the rest, and what each of the four attempts at a
+cheaper chain measured.
+
 ## Commands
 
 **Script names say whether they write.** Three shapes, and the second word tells them apart:
@@ -138,7 +192,8 @@ an artifact with only an update is one nothing will notice has gone stale.
 npm start                # Dev mode (builds the built-in pack without its FE bundle)
 npm run start:gen        # Full built-in pack build (npm run compile), then dev mode
 npm run build:be         # Build backend only
-npm run build            # Build all workspaces
+npm run build            # Build all workspaces. The chain runs build:app instead, which leaves the
+                         # built-in pack to compile — building it twice rewrote the dist five steps read
 npm run build-prod       # Full production build (build/build.sh)
 
 npm run typecheck        # Every check below, plus check:specifiers
@@ -153,26 +208,88 @@ npm run typecheck:scripts # scripts/ and tests/
 npm run typecheck:pack   # @app/default-setup only
 npm run exports:check -w @abuddy/ui  # Fails on a stale exports map or a component without an entry
 
-npm run spec             # The specs your uncommitted changes affect, in every package they touch
+npm run spec             # The specs your uncommitted changes affect, wherever they live
+npm run spec:full [...]  # The same, plus the pack suites a rebuilt dist would reach — the answer the module
+                         # graph cannot give. Takes every argument spec does. Costs a build when one is stale
+                         # (14s) and the pack suite (18s), so a shallow @abuddy/sdk edit goes from ~24s to
+                         # ~33s measured; it adds nothing when no pack depends on what you changed, and the
+                         # pack pool skips on its own stamp when nothing it reads has moved. `--full` is the
+                         # one argument spec.ts consumes and only in first position, which is what keeps
+                         # "everything from the first - is vitest's" exact rather than nearly true
 npm run spec -- <target> # You don't say what the target is; it works that out:
-                         #   a source file  -> the specs that import it (vitest `related`) — the usual case
+                         #   a source file  -> every spec that imports it, transitively, in ANY package
                          #   a spec path    -> that spec        a directory -> every spec under it
-                         #   part of a name -> every spec whose path contains it
+                         #   part of a name -> every spec whose path contains it — how you run one while
+                         #                     working: `npm run spec -- chain-schedule` is 1.7s
+                         # A source file is one vitest over every host project, because that is the honest
+                         # answer to "what could this break" and the root vitest.config.ts already lists
+                         # them. It used to run the file's own package: for a type every pack's data flows
+                         # through that was 24 of the 104 specs covering it, reported green. The cost is the
+                         # blast radius: a renderer module 1 file, the api's runtime 13, abuddy-sdk's entity
+                         # types 104. Wall times of 4.1s, 6.0s and 23.7s were taken 2026-09-26 on a machine
+                         # at load ~10 of 10 cores, so read them as upper bounds; the file counts are what
+                         # the decision rests on and contention does not move those.
+                         # A pack suite is not in that answer, because it resolves the published dist while
+                         # the host projects resolve source, so its specs never import packages/<dep>/src and
+                         # no import edge runs from the file you edited to the spec that covers it. The edge is
+                         # real and runs through a build: src -> tsdown -> dist -> the pack's specs. The
+                         # command says so when it is true, derived from the declared dependencies
+                         # (workspace-deps.ts, the same function the chain keys its cache on) and including
+                         # the transitive ones: @abuddy/host reaches the pack through @abuddy/testing, whose
+                         # bundle inlines it. Which packages those are is not written down here — repo-checks'
+                         # spec-plan.spec.ts partitions every one of them, so a new dependency edge fails a
+                         # check instead of dating a sentence. It used to warn on every root run, a
+                         # @app/renderer edit included, and a warning always on is one nobody reads.
+                         # A pack's own source goes to its own suite: measured, no root project imports a
+                         # pack's backend, frontend or generated FE entry, so the root run this used to plan
+                         # found nothing and exited 0 for the repo's largest suite.
                          # Anything from the first `-` goes to vitest untouched, so `-t "a case"`,
-                         # `--bail 1` and `--changed HEAD~1` work. It groups by package and runs each
-                         # package's own `test`, so a pretest guard and its vitest config still apply;
-                         # a tests/e2e path goes to Playwright instead
-npm run chain            # Before a merge: the seven steps in dependency order, ~6 min. It hoists
-                         # packages:ensure so every later step's copy is a stat and a return, and it
-                         # leaves out api:check, which typecheck's api:stamp already covers
+                         # `--bail 1` and `--changed HEAD~1` work. A named spec runs through its package's
+                         # own `test`, so a pretest guard and its vitest config still apply; a root run has
+                         # no such hook, so packages:ensure goes in front of it. The routing is data
+                         # (scripts/lib/spec-plan.ts) and asserted by repo-checks' spec-plan.spec.ts
+                         # Where a spec belongs: its path under tests/ mirrors the source it covers, no
+                         # directory names a level or a cost half, and support dirs take a _ prefix
+                         # (docs/reference/test-inventory.md; repo-checks' spec-placement.spec.ts)
+npm run chain            # Before a merge: every check in dependency order, cold 190s and warm 27s.
+                         # Reports each step's time and its slowest five tests, buffers its output and
+                         # prints only a failing step's. It leaves out api:check, which typecheck's
+                         # api:stamp already covers. Afterwards it says which steps a run contradicted:
+                         # one whose measured time has left its declared `seconds`, and one that passed
+                         # but is already stale again, which means something wrote into its inputs.
+                         # Each step is cached on the inputs it declares (scripts/lib/chain-steps.ts)
+                         # through the package builds' stamp protocol: an unchanged step reports `cached`
+                         # and does not run, so a doc edit runs nothing and a one-package edit runs that
+                         # package's suite. The E2E suite is never cached, with its reason on the step.
+                         #   --dry     the plan and why each step is or is not cached, running nothing
+                         #   --all     run every step regardless of its stamp, and force a step that
+                         #             keeps a cache of its own — it appends that step's `forceArgs`, which
+                         #             is how the two unit pools are made to re-run every project. Without
+                         #             that, overriding the chain's stamps said nothing to the pool's, so
+                         #             --all ran the step and the step skipped 2654 tests and returned green
+                         #   --lanes N how many steps run at once. Three by default, re-measured against
+                         #             the pooled step shape: 1 lane 261s, 2 lanes 208/192s, 3 lanes
+                         #             158/162/156s, 4 lanes 160s, none failing. Three reverses the
+                         #             earlier cap, which was vitest's 5s default failing the third lane
+                         #             rather than the cores; per-tier timeouts removed it. Re-measure
+                         #             when the step shape changes: this is tuned to eleven steps
 npm test                 # Playwright E2E tests
-npm run test:unit        # Vitest, every suite CI calls a unit test: @app/api, @app/default-setup, @abuddy/sdk,
-                         # @abuddy/ears, @abuddy/host, @app/main, @app/renderer, then @abuddy/cli (the slowest,
-                         # last).
-                         # The CLI suite rebuilds the published packages itself when its dist is stale
+npm run test:unit        # Vitest, as two pools: the host suites as one root run under the
+                         # @abuddy/source condition, and the pack suite on its own resolving the published
+                         # dist. Serial, measured — a second lane buys 3% for 87% more work.
+                         # The list is scripts/lib/unit-suites.ts, which the chain reads too
+npm run test:integration # The expensive half of every suite that has one (@abuddy/cli, @app/repo-checks).
+                         # Which packages those are is derived from the configs each has; the script's
+                         # -w flags are the half that is checked rather than derived
+npm run test:unit:host   # One pool, running only the projects whose own inputs changed (--project per
+npm run test:unit:pack   # stale project, one process). These are the chain's two steps; per-package
+                         # staleness lives inside them, so a one-package edit still runs one project.
+                         # Both run packages:ensure first: npm pretest does not fire under a root run
 npm run test:all         # test:unit, then the E2E tests
 npm run bench -w @abuddy/ears    # EARS engine benchmark (baseline and tolerance: packages/abuddy-ears/CLAUDE.md)
-npm run test:external-pack       # Build the fixture packs in tests/fixtures with the CLI and run their tests (needs npm run build)
+npm run test:external-pack       # Both halves of the fixture-pack check, for running it by hand
+npm run test:external-pack:contract  # validate, build, typecheck, harness specs — no app needed (tier 2)
+npm run test:external-pack:app   # each pack's Playwright suite against this checkout (tier 3, needs npm run build)
 npm run test:packaged-authoring  # Author, build, test and install a pack outside the monorepo from the packed @abuddy/* tarballs (needs npm run build)
 npm run compile          # Build packages/default-setup (abuddy build: compiled seeds, snapshot, types; DSL defs; dist/runtime/index.cjs)
 
@@ -182,18 +299,30 @@ npm run db:query -- "<code>"   # abuddy db query on the dev app's data (also db:
 # Published API surface (from the root for all three, or inside one of the packages for just it)
 npm run api:check        # CI: fails if a public entry's API changed without updating reports
 npm run api:update       # Dev: regenerate etc/<entry>.api.md (and etc/<entry>.component.md for UI components),
-                         # and record the declarations they came from in etc/declarations.sha256
+                         # and record what they were generated from in etc/declarations.sha256
                          # Both read an @abuddy dependency's built declarations: npm run packages:build first
                          # All three take ~46s (ui is 33s of it), which is why api:check is a before-merge
                          # and CI check rather than a per-edit one
-npm run api:stamp  # The cheap half, run by npm run typecheck: compares the built declarations with
-                         # etc/declarations.sha256 in ~0.6s and says "run npm run api:update" when they
-                         # differ. It hashes only dist/**/*.ts (.d.ts and UI's .d.vue.ts) — never the
-                         # compiled .js, which changes when a function body does — and hashes each
-                         # through `apiSurfaceOf`, which drops doc prose and keeps TSDoc tags and
-                         # whether a comment is there at all: measured, those are what a report carries,
-                         # so prose is the other thing that cannot make one stale. api:check stays the
-                         # authority; this only says when to run it
+npm run api:stamp  # The cheap half, run by npm run typecheck: compares what the reports were
+                         # generated from with etc/declarations.sha256 in ~0.6s and says "run npm run
+                         # api:update" when it differs. Two inputs, because a report is a function of
+                         # both. The declarations: dist/**/*.ts (.d.ts and UI's .d.vue.ts) and never the
+                         # compiled .js, which changes when a function body does, each hashed through
+                         # `apiSurfaceOf`, which drops doc prose and keeps TSDoc tags and whether a
+                         # comment is there at all — measured, those are what a report carries, so prose
+                         # is the other thing that cannot make one stale. And the set of published
+                         # entries, because there is one report per entry: adding an export adds a
+                         # report while no declaration moves. Then the producer — the API Extractor
+                         # version and the tsconfig it is pointed at — either of which moves a report
+                         # on its own. And a stamp-format version, so changing what a stamp *means*
+                         # (apiSurfaceOf, the rows) invalidates every one.
+                         # The key is still a list, and a list of someone else's inputs is a guess:
+                         # the entry set was missing until 2026-09-25, when adding `./packs` to a map
+                         # passed this check and the whole chain and was refused by api:check. So
+                         # api:reports now checks the proxy against itself — if a report moves while
+                         # this said it was current, it fails naming both causes, a missing input or a
+                         # hand-edited report. That is what catches the input nobody listed, and it is
+                         # why api:check stays the authority rather than this
 
 # Built-in pack facade types (after `abuddy build`; from packages/default-setup or with -w @app/default-setup)
 npm run facade:check     # CI: fails if dist/types/pack-types.d.ts changed without updating etc/pack-types.api.md
@@ -204,7 +333,7 @@ npm run schema:update    # Regenerate packages/abuddy-sdk/abuddy.schema.json fro
 npm run schema:check     # Fails if abuddy.schema.json is stale
 
 # Seed goldens (-w @app/default-setup)
-npm run seed-parity:check   # Compare seeded rows against tests/unit/seed-parity/__golden__
+npm run seed-parity:check   # Compare seeded rows against tests/seeds/__golden__
 npm run seed-parity:update  # Re-record them; deliberate, see "What to run after a change"
 
 # Lint (root runs every workspace that has one; oxlint, plus eslint in the renderer)
@@ -289,7 +418,7 @@ What crosses to the app follows one rule, **bind resources, derive behaviour**. 
 
 - `@abuddy/ears` (`packages/abuddy-ears`, see its CLAUDE.md) — the EARS engine, published like the SDK and imported by no other `@abuddy` package: `untypedTx`, `defineEars`, `grantRole`, `repository`/`registerRepository`, the core `EARS` namespace (`Entity = { Relation }`), `BaseEntity`/`EntityShapes`/`ShapeOf`/`EntityNameArg`, etc. The engine is an instance: `createEarsEngine({ persistence?, isEntityType })` returns a new, empty engine that owns its stores, indexes and caches (no `@abuddy/ears` module keeps data at module scope, `tests/no-module-state.spec.ts`), with two faces: `query` (`qx`, `tx`, the finders, relation reads, graph walks, the repository registry) and `admin` (`clear`, `bulkLoadAttr`, direct attribute and relation writes, `edgeStore`, the relation index, the entity-type checker), which only its creator holds. The free functions (`untypedQx`, `untypedTx`, `repository`, the `defineEars` facades…) act on the engine installed with `installEngine(query)` and throw, naming the fix, when none is: `bindHost` installs the app's (`HostRuntime.ears`), `startTestRuntime` a test engine (`resetTestData` replaces it, keeping repositories), and tooling installs or passes its own (`exportFlowsToDSL(dir, { engine })`). A pack's repositories arrive in its registration (`PackRegistration.repositories`), and the host registry's `registerPack` registers them with the installed engine. It's a shared-instance package with the SDK: `SHARED_INSTANCE_PACKAGES` in `@abuddy/host/build/shared-deps` is the one list the bundler externals, the pack loader's bridge (generated `packs/runtime/sdk-modules.ts`, `npm run sdk-modules:update -w @abuddy/host`), the harness bridge and `bundle-package` derive from; `check:specifiers` rejects those consumers naming the packages themselves, and upward imports (`@abuddy/ears` imports no `@abuddy/*`, `@abuddy/sdk` only `@abuddy/ears`, `@abuddy/host` only those two and never the API).
 - What the SDK adds to the engine: its `EARS` (the engine's types plus `SDK_ENTITIES`/`SDK_REL_KINDS`) and the SDK entity shapes, from `@abuddy/sdk/types` (and the root), and the SDK entities' repositories from `@abuddy/sdk/repositories` (`flowRepository`, `tnodeRepository`, `actionRepository`, `promptRepository`; default-setup's flows, actions and prompts repositories build their views over them). Packs get typed `qx`/`tx`/`find*`/`createEntityWithDefaults`/`updateEntity`/`getAttr` from `#generated/ears` (a literal entity name must be one the pack or its dependencies declare, its `EntityName`; a name typed `string` passes unchecked; ids from typed queries carry their entity type, a plain `EARS.EntityId` is accepted anywhere; `tx` checks declared fields' values when it knows the entity; the SDK owns Relation and the flow model (Flow, Node, TNode, Action, Prompt), defined in `abuddy-sdk/src/types/sdk-entities.ts`, and no pack declares them; the host declares `AppState` and `Settings`, which packs reach only through `services.settings`), `repository` (typed with the repositories declared in `abuddy.json` `features[].repositories`) from `#generated/repository`, and `broadcastToPlugin`/`sendToPlugin` (keyed by receiving plugin: its own feature's system's outgoing events, plus the inbox that plugin's `Contract` declares, which `abuddy.json` names at `features[].plugin.contract`) and `sendToSystem` (keyed by receiving system; a pack without systems sends to its dependencies') from `#generated/events`. A system's events come from the contract `abuddy.json` names at `features[].system.contract` — a declared type in a leaf module (`be/contract.ts`), read without resolving the machine — so how its entry is declared can't change them; the generated pack entry asserts that `defineSystem<Contract>()` names that same contract. `abuddy build` bundles a pack's facade types into `dist/types/pack-types.d.ts` (and its snapshot), so dependents' facades include them. `check:specifiers` rejects raw `broadcastToPlugin`/`sendToPlugin`/`sendToSystem` imports and `registerRepository` from `@abuddy/ears` in pack sources.
-- `@abuddy/ears` also holds the persistence port (`PersistenceSink`, `Partition`/`PartitionPolicy`/`makePolicy`, `makeShardedPersistence`). `@abuddy/ears/lmdb` is the LMDB store: `openLmdbStore({ paths, policy })` returns the store (`sink`, `envs`, `hydrate`, `query`, `close`, `reopen`, `reset`); nothing opens on import. `lmdb` is an optional peer of `@abuddy/ears` that the app installs (`packages/api` keeps it as a dependency for the packaged app). Only `/lmdb` imports `lmdb`: the api's composition (`openAppStore()` in `runtime/index.ts`) opens the store with the app registry's `partitionPolicy` (and `engine: () => engine.admin`, which the store hydrates into and reads relation details from), creates the engine with `store.sink` as its persistence, and binds `createHostRuntime({ store, engine, packs, … })`; host code (`@abuddy/host/services`, `/backup`) takes the store, and the engine's `admin` face, as arguments; packs, pack tests and the pack bridges never load it (`APP_ONLY_EXPORTS`); `check:specifiers` (`findLmdbImports`) enforces it. No code reaches engine state except through an engine's `admin`, and no source imports an admin write from `@abuddy/ears` (`abuddy-ears/tests/no-engine-state-access.spec.ts`).
+- `@abuddy/ears` also holds the persistence port (`PersistenceSink`, `Partition`/`PartitionPolicy`/`makePolicy`, `makeShardedPersistence`). `@abuddy/ears/lmdb` is the LMDB store: `openLmdbStore({ paths, policy })` returns the store (`sink`, `envs`, `hydrate`, `query`, `close`, `reopen`, `reset`); nothing opens on import. `lmdb` is an optional peer of `@abuddy/ears` that the app installs (`packages/api` keeps it as a dependency for the packaged app). Only `/lmdb` imports `lmdb`: the api's composition (`openAppStore()` in `runtime/index.ts`) opens the store with the app registry's `partitionPolicy` (and `engine: () => engine.admin`, which the store hydrates into and reads relation details from), creates the engine with `store.sink` as its persistence, and binds `createHostRuntime({ store, engine, packs, … })`; host code (`@abuddy/host/services`, `/backup`) takes the store, and the engine's `admin` face, as arguments; packs, pack tests and the pack bridges never load it (`APP_ONLY_EXPORTS`); `check:specifiers` (`findLmdbImports`) enforces it. No code reaches engine state except through an engine's `admin`, which the package's exports enforce: an admin write is a member of an engine's admin face and no entry exports one, so `import { edgeStore } from '@abuddy/ears'` doesn't compile.
 - `@abuddy/sdk/events` — messaging: `sendToPlugin`, `sendToSystem` (a system by ref, or `{ role }`), `onConnected`, `onIncoming`, `defineEvents` and the event map types (`HostPluginEvents`, `HostSystemEvents`). Frontend-safe; shared with pack frontends as the `sdkEvents` global. It sends over the bound app's bus (`HostRuntime.transport`), or in the renderer over the frontend port's `client`. `broadcastToPlugin` (and `services.emitter.broadcastToPlugin`) goes through the bus actor, so it's dropped until a client connects, and reaches every window; the renderer's `sendToPlugin` goes straight to this window's actor.
 - `@abuddy/sdk/logger` — `createLogger(source, { debug? })` (debug gated per source by `setDebugEnabled`), `reportError` (a system error, sent to the app as `SYSTEM_ERROR`, or with `step` a flow step's error recorded on its TNode) and `onLog`. SDK code over the bound bus: a logger emits redacted log events there (the api prints each once), and with no app bound (the CLI, tooling) writes to the console. Backend pack code doesn't call `console.*` (`check:specifiers`).
 - `@abuddy/sdk/templates` — `executeTemplate`, `createTemplateResolver`. `@abuddy/sdk/env` — `resolveAppContext`, `getAppVersion`. `@abuddy/sdk/runtime` — the one port to the app: `HostRuntime` (`transport.rootEvents`, `ears`, `packs`, `appVersion`, `services`: `appData`, `traceStore`, `inference`, `secrets`, `filesystem`, `settings`, and the optional `redaction`, which tells log redaction which runs of characters are key values this process used — absent in a runtime with no secrets of its own), bound once per process with `bindHost` (the api binds `createHostRuntime(...)`, `startTestRuntime` an in-memory one), and the renderer's `bindFeHost({ application, secrets, client, packs })`; an unbound use throws naming them. The registered packs are an instance too: the program that assembles an app creates one (the api's composition root `createPackRegistry()`, the renderer `createFePackRegistry()`, the harness one per test file, the CLI one per build) and binds its read face (`PackRegistryView`, `FePackRegistryView`); the SDK's registries of what packs registered (designations, steps, artifacts, blocks, seed hooks, seeders, feature settings defaults, commands, pack services, and in the renderer tiptap plugins and DSL types) read the bound one, and no SDK or host module keeps them at module scope. Everything a pack contributes arrives in its `PackRegistration`/`PackFERegistration` (seeders and DSL types included); there's no registry for pack code to write to. Contexts without an app (SDK specs, a pack test filling a registry directly) use `testPacks` from `@abuddy/sdk/testing`. Also the `@internal` `_rootEvents` (the bound bus). `secretsClient` (`@abuddy/sdk/fe`) reads the frontend port's `secrets`; no general API client reaches the SDK.
@@ -300,14 +429,14 @@ What crosses to the app follows one rule, **bind resources, derive behaviour**. 
 - `@abuddy/host/process-liveness` — what a running process left on disk and whether it is still there: `lockIsHeld`, `recordIsStale`, and `readApiEndpoint` for the port file a running API publishes. The app's own plumbing, so packs never reach it.
 - `@abuddy/host/bus` — `createBusMachine`, the backend bus (spawns registered systems, routes events, pack activate/teardown/reload), `createAppBus()`, the app's composition of it, and `receiveClientEvent()`, the check, log and send behind the API's `bus.send`. It never imports the pack loader; the pack test harness runs the same machine.
 - `@abuddy/host/migrations` — the app's migrations runners (`runAppMigrations`, `runPackMigrations`; see Migrations below). Host-only, never bridged to packs.
-- `@abuddy/host/services` — the host's implementations of the services packs reach through `services` (`app-data.ts`, `trace-store.ts`, `inference.ts`, `secrets.ts`, `filesystem.ts`, `settings.ts`, each named after its contract and delegate in `@abuddy/sdk/services`). `createHostRuntime({ store, engine, transport, appVersion, packs })` (`services/index.ts`) is the only place the app's `HostRuntime` is assembled, over the LMDB store (`appData` and `traceStore` use it); the API's composition binds it. `appData.reset()` resets the whole app: stores and keys, each pack's `onInit` and boot seed, then the host's `runAppMigrations(registry)`. `src/services` holds only those six services and the index (`tests/boundaries.spec.ts`). A service's implementation never lives in the API, which keeps only transport, process boot and composition (`packages/api/tests/unit/source-layout.spec.ts` lists its files); the API's tRPC procedures delegate to host (`receiveClientEvent`, `secretsStore`/`secretsSnapshot`, `getLoadedPackEntries`).
+- `@abuddy/host/services` — the host's implementations of the services packs reach through `services` (`app-data.ts`, `trace-store.ts`, `inference.ts`, `secrets.ts`, `filesystem.ts`, `settings.ts`, each named after its contract and delegate in `@abuddy/sdk/services`). `createHostRuntime({ store, engine, transport, appVersion, packs })` (`services/index.ts`) is the only place the app's `HostRuntime` is assembled, over the LMDB store (`appData` and `traceStore` use it); the API's composition binds it. `appData.reset()` resets the whole app: stores and keys, each pack's `onInit` and boot seed, then the host's `runAppMigrations(registry)`. `src/services` holds only those six services and the index (`tests/boundaries.spec.ts`). A service's implementation never lives in the API, which keeps only transport, process boot and composition (`packages/api/tests/source-layout.spec.ts` lists its files); the API's tRPC procedures delegate to host (`receiveClientEvent`, `secretsStore`/`secretsSnapshot`, `getLoadedPackEntries`).
 - `@abuddy/host/app-state` — host-only: the app's own state, one `AppState` row (`hasOnboarded`, `version`, `packVersions`, `packSeedHashes`, `seedHashes`, `seedStatFingerprints`) that only host code reads and writes (`appState`); the host registers the entity type next to the SDK's, with `Settings` (`HOST_ENTITY_TYPES`), and no pack may declare either. Packs learn whether the user onboarded through `services.appData.hasOnboarded()`/`completeOnboarding()`, the renderer through the application plugin's `CLIENT_CONNECTED`. Resetting settings doesn't touch it; `appData.reset()` empties it with the rest.
 - `@abuddy/host/secrets` — host-only, never bridged to packs: the store of the user's API keys (metadata plain, values AES-256-GCM encrypted in `secrets.json`, the data key in a `KeyVault`: the OS credential store via `@napi-rs/keyring`, or a file in the test environment or after the user allows unprotected storage). Values reach it only through the API's `secrets.*` tRPC procedures, off the event bus (`forwardSecretsChanges()` tells every system that declares it takes `SECRETS_CHANGED` that keys changed, never their values); inference reads them with `secretsStore.keyFor(provider)`. The API logger and error reports redact key-shaped strings.
 - `@abuddy/ui` (`packages/abuddy-ui`) — Vue components, editors and UI composables (`@abuddy/ui/design/button`, `@abuddy/ui/components/tiptap/TiptapEditor`, `@abuddy/ui/composables/useDebounce`). Published as compiled JS (tsdown, with vue-tsc declarations). Packs use the host's copy at runtime: the renderer exposes every export on `window.__abuddy` and the pack FE bundler proxies `@abuddy/ui` imports, unless `abuddy.json` sets `fe.bundleUi`. Contracts and host-shared state (`useShell`, menu state, the tiptap plugin and DSL type lookups) stay in `@abuddy/sdk/fe`; `@abuddy/sdk` must not import `@abuddy/ui`.
 - `@abuddy/sdk/utils` — **Node-only**: re-exports everything (pure + Node-dependent). Backend code imports from here.
 - `@abuddy/sdk/utils/pure` — **environment-agnostic**: pure utilities only (`compareVersions`, `detectChanges`, `BinaryOperator`, `toMap`, `randomId`, etc.). Frontend/renderer code must import from this path (or a specific sub-path like `@abuddy/sdk/utils/compare-versions`), never from `@abuddy/sdk/utils`.
 
-The freshness rule itself lives in `@abuddy/host/build/packages-built`, and everything that needs it imports it by that name: a relative import of a repo-root script would put the repo root into `@abuddy/testing`'s declaration emit and move every declaration its bundle publishes. `scripts/ensure-packages-built.ts` is only the command over it. The packages' build scripts live in the repo's `scripts/` for the same reason — `build-package.ts` (`@abuddy/ears` and `@abuddy/sdk`, which build alike) and `build-ui-package.ts` — so that no package's own `scripts/` imports a package above its layer, and the layer rule holds as written rather than through a re-export.
+The freshness rule itself lives in `@abuddy/host/build/packages-built`, and everything that needs it imports it by that name: a relative import of a repo-root script would put the repo root into `@abuddy/testing`'s declaration emit and move every declaration its bundle publishes. `scripts/ensure-packages-built.ts` is only the command over it. The packages' build scripts live in the repo's `scripts/` for the same reason — `build-package.ts` (`@abuddy/ears` and `@abuddy/sdk`, which build alike) and `build-ui-package.ts` — so that no package's own `scripts/` imports a package above its layer, and the layer rule holds as written rather than through a re-export. `check:specifiers` (`findPackageScriptImports`) holds the other half: a package's own `scripts/` imports that package's `src/` and its declared dependencies and nothing else, because a module under the repo's `scripts/` belongs to no package — so `npm run spec` cannot route a change to it back to a spec that covers it, and a package reaching in there is a spec that will one day not run, reported green.
 
 Relative imports in `@abuddy/ears`, `@abuddy/sdk`, `@abuddy/host`, `@abuddy/ui` and `@abuddy/testing` name the `.ts` source (`./query.ts`); tsc (`rewriteRelativeImportExtensions`) and tsdown write `.js` into the output. `npm run check:specifiers` (part of `npm run typecheck`) rejects relative `.js` specifiers there. Workspace tsconfigs that compile this source need `allowImportingTsExtensions`. Generated pack code (`generate-entries`) keeps `.js`.
 

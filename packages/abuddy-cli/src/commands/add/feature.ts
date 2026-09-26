@@ -236,7 +236,7 @@ export async function addFeature(args: string[], root: string) {
     [path.join(featureDir, 'fe', 'state.ts'), STATE(name)],
     [path.join(featureDir, 'fe', 'canvas', 'list.vue'), LIST_VUE(label)],
     [path.join(featureDir, 'fe', 'settings.vue'), SETTINGS_VUE()],
-    [path.join(root, 'tests', 'unit', `${name}-system.spec.ts`), SYSTEM_SPEC(name)],
+    [path.join(root, 'tests', 'features', name, 'be', 'system.spec.ts'), SYSTEM_SPEC(name)],
   ];
 
   for (const [filePath, content] of files) {
