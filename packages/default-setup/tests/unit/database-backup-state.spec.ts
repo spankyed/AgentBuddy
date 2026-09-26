@@ -6,7 +6,7 @@ import { createActor } from 'xstate';
 const sendToSystem = vi.hoisted(() => vi.fn());
 vi.mock('@/__generated__/events', () => ({ sendToSystem }));
 
-const { default: databaseState } = await import('./state');
+const { default: databaseState } = await import('@/features/database/fe/state');
 
 function backupView() {
   const actor = createActor(databaseState).start();

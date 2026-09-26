@@ -8,7 +8,7 @@ import {
   buildPortId,
   partitionIntoComponents,
   buildElkGraph,
-} from '../layout-utils'
+} from '@/features/flows/fe/canvas/layout-utils'
 
 const SWITCH_DIMS = NODE_DIMENSIONS.switch
 

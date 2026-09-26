@@ -104,10 +104,15 @@ export const hasSplit = (packageDir: string): boolean => configsFor(packageDir).
 /**
  * Every spec a package owns, relative to the package.
  *
- * Both `tests/` and `src/`, because a suite may run colocated specs and one does: `@app/default-setup`'s
- * config includes `src/**` with the comment "without this they are silently never run". Walking only
- * `tests/` reported its six colocated specs as recorded-but-gone. Ignoring what a package builds keeps the
- * walk to sources: `dist` holds compiled copies, and `etc` is where the record itself lives.
+ * Both `tests/` and `src/`, and `src/` is now a net rather than a necessity. It was there because
+ * `@app/default-setup` ran six colocated specs and walking only `tests/` reported them as
+ * recorded-but-gone; those moved to `tests/unit/` and no package colocates any more. Keeping the walk is
+ * what stops the next one being silent twice over: no config includes `src/**` now, so such a spec would
+ * never run, and if this did not see it the record would not report it missing either. As it is, it lands
+ * here with no measured cost and `suite-split.spec.ts` says so by name.
+ *
+ * Ignoring what a package builds keeps the walk to sources: `dist` holds compiled copies, and `etc` is
+ * where the record itself lives.
  */
 const IGNORED = new Set(['node_modules', 'dist', 'etc', 'coverage']);
 export function specFiles(packageDir: string): string[] {

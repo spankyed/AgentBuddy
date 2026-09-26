@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { applyTNodeSpawn, denormalizeTNodeTree, normalizeTNodeTree, type NormalizedTNodeTree } from './trace-tree';
+import { applyTNodeSpawn, denormalizeTNodeTree, normalizeTNodeTree, type NormalizedTNodeTree } from '@/features/brain/fe/trace-tree';
 import type { TNodeEntity, TrackTree } from '@abuddy/sdk/steps';
 
 function tNode(id: string, label = id): TNodeEntity {

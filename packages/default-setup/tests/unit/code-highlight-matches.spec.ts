@@ -1,6 +1,6 @@
 // Quick Open renders file names with highlightMatches through v-html: the name is escaped, the matches wrapped
 import { describe, expect, it } from 'vitest'
-import { highlightMatches } from './fuzzy-search'
+import { highlightMatches } from '@/features/code/fe/utils/fuzzy-search'
 
 describe('highlightMatches', () => {
   it('wraps the matched ranges and escapes the rest', () => {

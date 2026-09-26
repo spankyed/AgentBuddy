@@ -40,8 +40,11 @@ looks like: the band in `spec-cost.ts` exists so that noise of that size moves n
 
 ## Where a spec lives
 
-Every package keeps its specs in `tests/`, with one exception: `@app/default-setup` also has six under
-`src/`, colocated with the code, and its `vitest.config.ts` names `src/**/*.test.ts` to pick them up.
+Every package keeps its specs in `tests/`, and no package colocates. `@app/default-setup` had six under
+`src/` with an include whose comment read *"without this they are silently never run"*; they moved to
+`tests/unit/` and the include went with them. `scripts/lib/spec-cost.ts` still walks `src/` on purpose —
+nothing includes it now, so a colocated spec would never run, and the walk is what makes it show up as
+unrecorded instead of vanishing twice over.
 
 Two suites have an expensive half, selected by measured cost rather than by what a spec does:
 `@abuddy/cli` and `@app/repo-checks`, each with a `vitest.integration.config.ts` over
@@ -126,10 +129,10 @@ because its subject belongs to no single package.
 | # | What | Size |
 |---|---|---|
 | 1 | ~~`@abuddy/testing` and `@abuddy/ui` have no suite~~ — **resolved** in Phase 2: both have one, four specs and one describe moved to them, and `npm run spec` reaches their source instead of crashing | done |
-| 2 | `@app/api`'s only test directory is `unit/`; 10 of its 15 specs boot a runtime | 15 specs |
-| 3 | `api/tests/unit/secrets.spec.ts` mocks `abuddy-host/src/secrets/vault.ts` by relative path | 1 spec |
+| 2 | ~~`@app/api`'s only test directory is `unit/`~~ — **resolved** in Phase 4: split on measured cost into `unit/` (5 specs, 4–22ms) and `runtime/` (10, 100–1120ms); the cheap five run alone in 2.1s | done |
+| 3 | ~~`secrets.spec.ts` mocks host's vault by relative path~~ — **resolved** in Phase 4: `@abuddy/host` publishes `./secrets/vault`, so it is a specifier. The mock stays: host's own suite covers the vault, this covers what a renderer learns, and Decision 10's sentence now says so | done |
 | 4 | `@abuddy/ui` has 33 recorded component contracts and no behavioural test; exactly one spec in the repo mounts a Vue component | coverage gap |
-| 5 | `@app/default-setup` is the only package with colocated specs, and has a third `__tests__/` variant | 6 specs |
+| 5 | ~~`@app/default-setup` is the only package with colocated specs~~ — **resolved** in Phase 5: the six moved to `tests/unit/`, the `src/**` include and the `__tests__/` variant are gone | done |
 | 6 | twelve specs in `@abuddy/cli` are about the published `@abuddy` packages | 30.2s |
 
 `pack-protocol.spec.ts` was a seventh, resolved in Phase 6: it sat in `@abuddy/host` while `PackProtocol.ts`
