@@ -1,4 +1,4 @@
-> **Absorbed by [`goal-test-tiers.md`](../../goals/goal-test-tiers.md)** (its Decisions 10–18 and Phases 3–6,
+> **Absorbed by [`goal-test-tiers.md`](goal-test-tiers.md)** (its Decisions 10–18 and Phases 3–6,
 > 9). Nothing here was superseded: the graph, the input-coverage guard, the caching and the parallelism are
 > that goal's Phases 3–6 and 9, renumbered, and its Decision 12 folds this plan's `Step` table into the
 > `ChainStep` that already carries a tier. The two were one goal — caching by fingerprint, which this plan

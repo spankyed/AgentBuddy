@@ -82,7 +82,7 @@ From the 2026-09-19 survey, which swept the first four. They remain the vocabula
 | `DELETE` | cannot fail meaningfully, or something cheaper fails first |
 
 `KEEP`/`TRIM`/`MERGE`/`DELETE` were acted on by
-[`goal-test-cleanup.md`](../goals/goal-test-cleanup.md), whose Decisions 1–10 are the standing
+[`goal-test-cleanup.md`](../archive/goals/goal-test-cleanup.md), whose Decisions 1–10 are the standing
 criteria — in particular **Decision 10: a duplicate that names the level it adds is not a duplicate.**
 
 `MOVE` is the class that accumulates on its own. The other four are written wrong once; a misplaced spec is

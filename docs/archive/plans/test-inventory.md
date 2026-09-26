@@ -7,9 +7,9 @@
 > have since moved. Read it as history.
 >
 > **Two of its conclusions were superseded rather than absorbed.** It fed
-> [`goal-test-cleanup.md`](../../goals/goal-test-cleanup.md), whose Decisions 12 and 14 split a suite by
+> [`goal-test-cleanup.md`](../goals/goal-test-cleanup.md), whose Decisions 12 and 14 split a suite by
 > *what a spec does* and guarded that the fast half spawns nothing.
-> [`goal-measured-placement.md`](../../goals/goal-measured-placement.md) replaced both with **measured cost**
+> [`goal-measured-placement.md`](../goals/goal-measured-placement.md) replaced both with **measured cost**
 > in `etc/spec-cost.json` and a dead band: mechanism was a proxy that said three things wrongly. Don't
 > re-implement it. Its Decision 11 was already struck by this survey's own Finding 1.
 >

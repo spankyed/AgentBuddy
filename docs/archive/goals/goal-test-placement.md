@@ -56,7 +56,7 @@ Never:
 
 ## Background (surveyed 2026-09-25 at `e82b960af`)
 
-[`goal-test-cleanup.md`](../../goals/goal-test-cleanup.md) swept the suite for tests that could not fail meaningfully
+[`goal-test-cleanup.md`](goal-test-cleanup.md) swept the suite for tests that could not fail meaningfully
 and finished on 2026-09-25. It acted on four of the five verdict classes
 [`test-inventory.md`](../plans/test-inventory.md) defined — `KEEP`, `TRIM`, `MERGE`, `DELETE` — and barely
 touched the fifth, **`MOVE`: right assertion, wrong level or package.** This goal is that class, plus what
@@ -110,7 +110,7 @@ components name, the renderer applies it rather than copying it, a built pack sh
 would lose the chain, so it stays and becomes the first recorded exception to Phase 3's guard.
 
 This is the same class as the `scripts/` hole that
-[`goal-one-job-pool.md`](../../goals/goal-one-job-pool.md) closed by creating `@app/repo-checks`, and it fails louder:
+[`goal-one-job-pool.md`](goal-one-job-pool.md) closed by creating `@app/repo-checks`, and it fails louder:
 
 ```
 $ npm run spec -- packages/abuddy-testing/src/launch-env.ts
@@ -200,7 +200,7 @@ halves and the cost records, and its per-file references are stale. Checked at t
 
 Two of its conclusions are superseded and must not be re-implemented. Its Decision 12 and 14 — split a
 suite by *what a spec does*, and guard that the fast half spawns nothing — were replaced by
-[`goal-measured-placement.md`](../../goals/goal-measured-placement.md): placement is decided by **measured cost** in
+[`goal-measured-placement.md`](goal-measured-placement.md): placement is decided by **measured cost** in
 `etc/spec-cost.json` with a dead band, and `suite-split.spec.ts` is the guard. Mechanism was a proxy that
 said three things wrongly. Its Decision 11 was already struck by the inventory's own Finding 1.
 

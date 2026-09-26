@@ -1,3 +1,9 @@
+> **Done** (the pooled unit steps on `AS/chain-inputs`). The text below is the plan as written; the pool's
+> two cache layers were later found able to disagree — a step could go stale for a reason no project could
+> see, run, skip everything and stamp green — and that is fixed in `suiteInputs` and
+> `chain-inputs.spec.ts`. For the suite as it is, see
+> [`docs/reference/test-inventory.md`](../../reference/test-inventory.md).
+
 > **Written in session** `1d53eb9c-d886-49f8-bc5a-90793d43315e` (Claude Code, 2026-09-25). Resume it with `claude -r 1d53eb9c-d886-49f8-bc5a-90793d43315e`.
 
 ```

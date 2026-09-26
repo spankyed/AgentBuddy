@@ -153,7 +153,7 @@ pack and runs its harness specs with no app, in tier 2 before `build:app`, and `
 tier 3. Two scripts rather than one with a flag, because `check:tiers` reads a step's scripts as text and a
 branch it never takes still reads as a reach. `test:packaged-authoring` is still tier 3 whole: its nine steps
 build on each other, so it takes a mode rather than a split.
-[`goal-test-tiers.md`](docs/goals/goal-test-tiers.md) has the rest, and what each of the four attempts at a
+[`goal-test-tiers.md`](docs/archive/goals/goal-test-tiers.md) has the rest, and what each of the four attempts at a
 cheaper chain measured.
 
 ## Commands

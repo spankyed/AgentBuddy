@@ -1,3 +1,8 @@
+> **Done** (`AS/cli-suite-spawns`, in a worktree). **Superseded in part** by
+> [`goal-measured-placement.md`](goal-measured-placement.md): this split `@abuddy/cli`'s suite by whether a
+> spec spawns a process, and spawning turned out to be a proxy that said three things wrongly. Placement is
+> now measured cost. The split itself stands; the predicate does not.
+
 > **Written in session** `1d53eb9c-d886-49f8-bc5a-90793d43315e` (Claude Code, 2026-09-24). Resume it with `claude -r 1d53eb9c-d886-49f8-bc5a-90793d43315e`.
 
 ```

@@ -77,7 +77,7 @@ are 30.2s of that suite's 190.8s:
 
 **The family is already split across two packages**, which is the clearest sign it has no settled home:
 `published-imports.spec.ts` and `published-sdk-peers.spec.ts` live in `@app/repo-checks`, moved there by
-[`goal-one-job-pool.md`](goal-one-job-pool.md) because they import `scripts/lib/published-imports.ts`. So
+[`goal-one-job-pool.md`](../archive/goals/goal-one-job-pool.md) because they import `scripts/lib/published-imports.ts`. So
 "where do the `published-*` specs go" has been answered twice, differently, on a mechanical criterion that
 happened not to apply to the other twelve.
 

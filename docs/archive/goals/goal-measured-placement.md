@@ -1,3 +1,8 @@
+> **Done** (`b5a70cf08`..`2303eec53`). The text below is the plan as written. It supersedes
+> [`goal-cli-suite-spawns.md`](goal-cli-suite-spawns.md) and `goal-test-cleanup.md`'s Decisions 12 and 14,
+> which split a suite by *what a spec does*: placement is decided by measured cost in `etc/spec-cost.json`
+> and a dead band. Two suites have gained a second half since, and every record has been re-measured.
+
 > **Written in session** `1d53eb9c-d886-49f8-bc5a-90793d43315e` (Claude Code, 2026-09-25). Resume it with `claude -r 1d53eb9c-d886-49f8-bc5a-90793d43315e`.
 
 ```

@@ -1,3 +1,8 @@
+> **Done** (the chain, tiers and caching on `AS/test-pipeline`). The text below is the plan as written;
+> later work pooled the eight per-suite steps into two ([`goal-one-job-pool.md`](goal-one-job-pool.md))
+> and replaced its per-change table with the chain's own, so the commands and step names it gives have
+> moved. For what the chain does now, see the root `CLAUDE.md` under *What to run after a change*.
+
 > **Written in session** `1d53eb9c-d886-49f8-bc5a-90793d43315e` (Claude Code, 2026-09-24). Resume it with `claude -r 1d53eb9c-d886-49f8-bc5a-90793d43315e`.
 
 ```
@@ -64,7 +69,7 @@ the app, so each one transitively depends on nearly the whole repo, and nothing 
 or cached. This goal gives every check a declared tier, separates the checks that need a built app from
 the ones that don't, and then makes the chain a graph that caches on those declarations.
 
-**This absorbs [`goal-pipeline-graph.md`](../archive/goals/goal-pipeline-graph.md)** (session
+**This absorbs [`goal-pipeline-graph.md`](goal-pipeline-graph.md)** (session
 `00e10b0f-0852-4401-8b3c-7df01734a7eb`), which planned the graph and the caching while this one planned the
 tiers. They are one goal: caching by fingerprint — which that plan insists on, refusing heuristic skips —
 cannot pay while a step's honest input set is the whole repo, and only the tier split makes it narrow. Its

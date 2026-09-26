@@ -85,10 +85,10 @@ Saying so places them; nothing else needs to.
 ### Two mechanisms for one fact
 
 The repo already decided that a level is not a directory concern.
-[`goal-test-cleanup.md`](goal-test-cleanup.md)'s Decision 13: *"don't move files between directories:
+[`goal-test-cleanup.md`](../archive/goals/goal-test-cleanup.md)'s Decision 13: *"don't move files between directories:
 `tests/build/`, `tests/cli/`, `tests/app/` and `tests/harness/` group by area, and the suffix is
 orthogonal."* The cost half rides on the `.integration.spec.ts` filename suffix, decided by measured cost
-([`goal-measured-placement.md`](goal-measured-placement.md)), precisely so that directories are free to
+([`goal-measured-placement.md`](../archive/goals/goal-measured-placement.md)), precisely so that directories are free to
 carry subject.
 
 `default-setup` has both: `unit/` and `integration/` directories *and* the suffix. Two mechanisms for one
