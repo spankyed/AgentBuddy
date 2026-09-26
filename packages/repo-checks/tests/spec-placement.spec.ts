@@ -147,7 +147,6 @@ const NOT_MIRRORED_YET: Record<string, string> = {
   'abuddy-cli/cli': 'named for the command surface; src calls it commands/',
   'abuddy-cli/harness': "@abuddy/testing's harness driven from a scaffolded pack — no src/ counterpart",
   'abuddy-cli/packs': 'publishHostPackOutput and dependency resolution — no src/packs',
-  'abuddy-ears/contract': "the engine's behaviour as a contract, across its modules rather than mirroring one",
 };
 
 describe("a spec's directory names one under src/", () => {

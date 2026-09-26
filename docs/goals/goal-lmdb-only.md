@@ -127,7 +127,7 @@ Two throwaway worktrees. They may have been removed by the time this goal is pic
   of 2026-09-25, renamed from `agent-a95981166c164d641` — the files below are untracked, so they are in no
   commit, branch or stash and exist only in that directory.
   - New files: `packages/abuddy-ears/src/lmdb/disk-storage.ts` (~465 lines), `src/lmdb/disk-engine.ts`, `tests/lmdb/disk-engine.spec.ts`, `bench/engines.bench.ts`, `spike/`.
-  - Edits to `relation-index.ts`, `edge-store.ts`, `relations.ts`, `query.ts`, `engine.ts` and `tests/contract/engine-under-test.ts`.
+  - Edits to `relation-index.ts`, `edge-store.ts`, `relations.ts`, `query.ts`, `engine.ts` and `tests/engine/engine-under-test.ts`.
 - **Write path:** was `.claude/worktrees/agent-aef0c2460682598b7/packages/abuddy-ears/spike/*.mts`, lmdb-js
   3.5.3 probes run with `npx tsx`. **That worktree is gone** as of 2026-09-25, which is what this section
   anticipated: what it found is recorded below and the probes themselves are not recoverable.

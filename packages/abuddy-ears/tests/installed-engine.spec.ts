@@ -4,7 +4,7 @@ import {
   createEarsEngine, defineEars, findRelations, getAllEntities, installEngine, installedEngine, isEntityType,
   registerRepository, unregisterRepository, repository, spawn, untypedTx, untypedQx, bp, type EARS, type PersistenceSink,
 } from '../src/index.ts';
-import { recordingSink } from './contract/helpers.ts';
+import { recordingSink } from './engine/helpers.ts';
 
 const types = new Set(['Note']);
 const newEngine = (persistence?: PersistenceSink) => createEarsEngine({ isEntityType: (name) => types.has(name), persistence });

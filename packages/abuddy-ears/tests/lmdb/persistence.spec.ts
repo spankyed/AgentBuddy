@@ -266,7 +266,7 @@ describe('Sharded Router', () => {
     sharded.onAddRelation('Relation-cd1', 'REF', 'Document-d1', 'Document-d2', null);
     expect(sharded.getRelMeta().has('Relation-cd1')).toBe(true);
 
-    // The engine's order (contract/persistence.spec.ts)
+    // The engine's order (engine/persistence.spec.ts)
     sharded.onRemoveRelation('Relation-cd1');
     sharded.onDestroyEntity('Document-d1');
 

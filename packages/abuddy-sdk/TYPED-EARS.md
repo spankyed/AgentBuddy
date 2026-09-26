@@ -113,7 +113,7 @@ The engine's types moved to `@abuddy/ears` (`packages/abuddy-ears`); the SDK kee
     where a tagged one is expected, casts still work, `'user-note'` is rejected. **17 type errors** in the
     repo: `id === 'TNode-Root'` comparisons (`database/be/repository/trace-query.ts`,
     `database/fe/state.ts`), literal ids passed in `browser/be/repository/commands.ts`, and an array cast
-    in `abuddy-ears/tests/contract/persistence.spec.ts`. All correct code.
+    in `abuddy-ears/tests/engine/persistence.spec.ts`. All correct code.
   - **Conclusion: there is no type-level fix that leaves current behaviour unchanged.** Anything that
     stops `'user-note'` being an id also stops `'TNode-Root'` being one.
   - **The only design that gets both properties** is to stop overloading: a checked `qx(name)` and a

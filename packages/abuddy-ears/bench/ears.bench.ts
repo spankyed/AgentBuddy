@@ -2,7 +2,7 @@
 // Run with `npm run bench -w @abuddy/ears`; the baseline and tolerance are in docs/goals/goal-package-boundaries.md (Phase 6).
 import { bench, describe } from 'vitest';
 import { EARS, type PersistenceSink } from '../src/index.ts';
-import { freshEngine } from '../tests/contract/engine-under-test.ts';
+import { freshEngine } from '../tests/engine/engine-under-test.ts';
 
 const TASKS = 40_000;
 const PROJECTS = 5_000;
