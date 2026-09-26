@@ -296,6 +296,24 @@ error, and the machinery that used to guess is gone rather than kept for externa
   `findPackOwnAliases` (added the day before) and `findPackageScriptImports` were the two, and both have a
   case now.
 
+### Follow-up (a review of this goal's own changes, same day)
+
+A principal-engineer review of these commits found five defects and they are fixed in
+`3b3aae75a`..`3d295ba5b`, which is why the modules no longer look quite like the description above:
+
+- **The rule module had grown a reader** — a regex per form and a hand-written comment stripper — and the
+  stripper was not a lexer: a regex literal holding an unbalanced quote made a commented-out import read as
+  real, so `abuddy build` could fail a pack naming a comment. The rule (`ownModuleProblems`) is now given
+  the specifiers its callers found, and both callers already parsed a pack's sources — `abuddy build`'s
+  neighbour gate had ts and `vue/compiler-sfc` two lines from the call.
+- **The relative half had no test**: deleting that branch left every suite in the repo green. Its spec runs
+  every case over both forms from one table now.
+- **The guides still taught the old form** — 30 fences that `abuddy build` refuses, pasted into packs — and
+  `doc-fences.spec.ts` now holds them to it.
+- **Overlapping `#` patterns named the wrong file**: Node takes the longest match, key order took the first.
+- **Scope**: a pack authored in JavaScript, a `.json` target, a pack's tests (`abuddy test` checks those now)
+  and a new CLI command writing pack code were each outside the rule, silently.
+
 ### What is left of the guessing
 
 Nothing resolves an extensionless own-module specifier any more. One place still looks for a file: the
