@@ -96,12 +96,20 @@ export default defineConfig((options) => {
         build.onResolve({ filter: /^#/ }, (args) => {
           const srcDir = builtInPackSrcDirs.find((dir) => args.importer.startsWith(dir));
           if (!srcDir) return undefined;
+          const packDir = path.dirname(srcDir);
           for (const [pattern, target] of Object.entries(importsByPack.get(srcDir) ?? {})) {
-            if (!pattern.endsWith('/*') || !target.endsWith('/*')) continue;
-            const prefix = pattern.slice(0, -1);
-            if (!args.path.startsWith(prefix)) continue;
-            const resolved = resolveWithExtensions(path.resolve(path.dirname(srcDir), target.slice(0, -1) + args.path.slice(prefix.length)));
-            if (resolved) return { path: resolved };
+            // Wildcard and exact both, as `abuddy build`'s backend bundle does: a pack declaring
+            // `"#env": "./src/env.ts"` would otherwise resolve there and fail here, which is the kind of
+            // disagreement between two bundlers over one manifest that this whole seam exists to avoid.
+            if (pattern.endsWith('/*') && target.endsWith('/*')) {
+              const prefix = pattern.slice(0, -1);
+              if (!args.path.startsWith(prefix)) continue;
+              const resolved = resolveWithExtensions(path.resolve(packDir, target.slice(0, -1) + args.path.slice(prefix.length)));
+              if (resolved) return { path: resolved };
+            } else if (pattern === args.path) {
+              const resolved = resolveWithExtensions(path.resolve(packDir, target));
+              if (resolved) return { path: resolved };
+            }
           }
           return undefined;
         });

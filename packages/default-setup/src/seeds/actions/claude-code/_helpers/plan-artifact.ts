@@ -22,7 +22,7 @@
  */
 
 import type { Services, EntityId } from '#generated/services';
-import type { PlanArtifactContent } from '@/features/threads/be/types';
+import type { PlanArtifactContent } from '#features/threads/be/types';
 
 export type { PlanArtifactContent };
 

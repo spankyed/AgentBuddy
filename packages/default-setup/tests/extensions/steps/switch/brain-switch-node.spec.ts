@@ -9,11 +9,11 @@
 import { describe, expect, it } from 'vitest'
 import { importFlows, startApp, type FlowRun } from '@abuddy/testing/harness'
 import { on, transform } from '#generated/flow-helpers'
-import { branch } from '@/extensions/steps/switch/helpers'
+import { branch } from '#extensions/steps/switch/helpers'
 import { repository } from '#generated/repository'
 import { EARS, findWhere } from '#generated/ears'
 import type { DSLStepNode } from '@abuddy/sdk/build'
-import type { Condition } from '@/extensions/steps/switch/types'
+import type { Condition } from '#extensions/steps/switch/types'
 
 const step = (label: string) => transform('return true', { label })
 const when = (cmd: string) => `$.event.data.payload.cmd == '${cmd}'`

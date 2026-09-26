@@ -99,7 +99,7 @@ import ContentSectionEditor from './content-sections/ContentSectionEditor.vue'
 import TagInput from '@abuddy/ui/design/tag-input'
 import { useSelector } from '@xstate/vue'
 import type { DocumentDTO } from '#generated/types'
-import type { ContentSection } from '@/features/library/be/types'
+import type { ContentSection } from '#features/library/be/types'
 import type { LibraryActor } from '../state'
 
 const props = defineProps<{

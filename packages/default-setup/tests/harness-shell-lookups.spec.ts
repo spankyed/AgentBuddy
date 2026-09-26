@@ -4,7 +4,7 @@ import { expect, it } from 'vitest';
 import { startShell } from '@abuddy/testing/harness';
 import { getDesignated, hasDesignation } from '@abuddy/sdk/designations';
 import { stepRegistry } from '@abuddy/sdk/steps';
-import logsState from '@/features/logs/fe/state';
+import logsState from '#features/logs/fe/state';
 
 it("keeps the backend's roles and steps while a shell is running", async () => {
   await startShell({ plugins: { logs: { state: logsState } } });

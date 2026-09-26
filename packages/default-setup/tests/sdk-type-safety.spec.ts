@@ -33,7 +33,7 @@ import {
 import { services, type Services } from '#generated/services';
 import type { HostServices } from '@abuddy/sdk/services';
 import type { flowRepository } from '@abuddy/sdk/repositories';
-import type { promptService } from '@/features/prompts/be/services/prompt';
+import type { promptService } from '#features/prompts/be/services/prompt';
 import { EARS } from '#generated/ears';
 
 

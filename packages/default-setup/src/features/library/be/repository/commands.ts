@@ -5,7 +5,7 @@ import type { DocumentDTO, CollectionDTO, LibraryItem } from '../types'
 // [SEARCH_INDEX_FF] import * as searchIndexRepo from '../search-index/repository' (dormant: ../search-index/README.md)
 import { libraryQueries } from './queries'
 import { findParentCollection, getDisplayOrder, getNextDisplayOrder, getCollectionPath, formatFileSize, getContentLength } from './helpers'
-import type { ContentSection, DocumentShortCode } from '@/features/library/be/types';
+import type { ContentSection, DocumentShortCode } from '#features/library/be/types';
 
 
 export const libraryCommands = {

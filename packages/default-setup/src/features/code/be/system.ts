@@ -15,7 +15,7 @@
  *   baseDirectory > defaultBaseDirectory > first workspace project > null
  */
 import type { Contract } from './contract';
-import type { GeneralSettings } from '@/app-settings/types';
+import type { GeneralSettings } from '#app-settings/types';
 import { services } from '#generated/services';
 import { broadcastToPlugin } from '#generated/events';
 import { clearCliPathCache, isCliName, testCli } from './utils/resolve-cli';

@@ -464,7 +464,7 @@ import { resolveName } from '@abuddy/sdk/ids'
 
 const HOST_SETTINGS = resolveName('settings', 'host')
 import { useSettingsSection } from '@abuddy/sdk/fe'
-import type { GeneralSettings } from '@/app-settings/types'
+import type { GeneralSettings } from '#app-settings/types'
 import type { CodeSettings, TerminalScript } from '#generated/types'
 
 interface Project {

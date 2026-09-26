@@ -4,8 +4,8 @@ import { importFlows, startApp } from '@abuddy/testing/harness'
 import { startTestRuntime } from '@abuddy/sdk/testing'
 import { create, on, update } from '#generated/flow-helpers'
 import { createEntityWithDefaults, findAll, findById, type EARS } from '#generated/ears'
-import { createStepBuild } from '@/extensions/steps/create/build'
-import { updateStepBuild } from '@/extensions/steps/update/build'
+import { createStepBuild } from '#extensions/steps/create/build'
+import { updateStepBuild } from '#extensions/steps/update/build'
 
 const startBrain = () => startApp({ systems: ['brain'] })
 const result = (step: { nodeAttributes: Record<string, unknown> }) => step.nodeAttributes.result as Record<string, unknown>

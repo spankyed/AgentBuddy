@@ -7,7 +7,7 @@ import { importFlows, mockService, startApp, takeSystemErrors, type TestApp } fr
 import { action, entry, on, keepAlive, schedule, subflow, transform } from '#generated/flow-helpers'
 import { repository } from '#generated/repository'
 import type { Services } from '#generated/services'
-import { isBrainPaused } from '@/features/brain/be/utils/brain-pause'
+import { isBrainPaused } from '#features/brain/be/utils/brain-pause'
 import { ref } from '#generated/ref'
 
 const step = (label: string) => transform('return true', { label })

@@ -1,6 +1,6 @@
 // Finds the CLIs the code feature runs (Claude Code, Codex, Copilot, gh): a path the user set in the code
 // plugin's settings (`cliPaths`), known install locations, then PATH.
-import type { CodeSettings } from '@/features/code/be/types';
+import type { CodeSettings } from '#features/code/be/types';
 import { services } from '#generated/services';
 import { execFile } from 'child_process'
 import { promisify } from 'util'

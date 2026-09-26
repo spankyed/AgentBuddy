@@ -5,7 +5,7 @@ import { describe, expect, it } from 'vitest'
 import { untypedTx, untypedQx } from '@abuddy/ears'
 import type { EARS as SdkEARS } from '@abuddy/sdk'
 import { migrations } from '../../src/migrations/index'
-import threadsSettings from '@/features/threads/settings'
+import threadsSettings from '#features/threads/settings'
 import { ref } from '#generated/ref'
 
 /** The migration as the pack registers it, so this fails too if it was never listed */

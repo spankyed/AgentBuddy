@@ -1,4 +1,4 @@
-import type { GeneralSettings } from '@/app-settings/types';
+import type { GeneralSettings } from '#app-settings/types';
 import type { ActionMeta } from '@abuddy/sdk/build';
 import type { EntityId, Services } from '#generated/services';
 import { getOnboardingState, persistOnboardingState, flashState } from '../onboarding-helpers';

@@ -6,7 +6,7 @@ import { trash } from '@abuddy/sdk/repositories';
 
 import { REFERENCES } from '../types';
 import { syncReferences } from './link-utils';
-import type { NoteEntity } from '@/features/notes/be/types';
+import type { NoteEntity } from '#features/notes/be/types';
 
 /** Strips the sub-document link to a note from its parent's content */
 function removeParentLink(parentId: EARS.EntityId, id: EARS.EntityId): void {

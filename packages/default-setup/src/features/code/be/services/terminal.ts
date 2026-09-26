@@ -1,4 +1,4 @@
-import type { CodeSettings } from '@/features/code/be/types';
+import type { CodeSettings } from '#features/code/be/types';
 import { services } from '#generated/services';
 import { tx } from '#generated/ears';
 import * as pty from 'node-pty'

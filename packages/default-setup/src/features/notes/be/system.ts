@@ -14,7 +14,7 @@ import { syncReferences } from './repository/link-utils';
 import { exportNotes } from './export-notes';
 import { importNotes } from './import-notes';
 import { createLogger } from '@abuddy/sdk/logger';
-import type { NoteEntity } from '@/features/notes/be/types';
+import type { NoteEntity } from '#features/notes/be/types';
 import { ref } from '#generated/ref';
 import { errorMessage } from '@abuddy/sdk/utils/pure';
 

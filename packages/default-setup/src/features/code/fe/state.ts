@@ -11,8 +11,8 @@ import type { CodeSettings } from '#generated/types';
 import type { ActionTab, CodeContext as Context, CodeInboxEvent, OpenFile, PanelType, PromptTab, TerminalTab } from './contract';
 export type { OpenFile, TerminalTab, QuickOpenResult, PanelType } from './contract';
 export type { CodeContext as Context } from './contract';
-import type {  } from '@/features/code/be/types'
-import type { OutgoingCodeEvents } from '@/features/code/be/contract';
+import type {  } from '#features/code/be/types'
+import type { OutgoingCodeEvents } from '#features/code/be/contract';
 
 // Import child state machines
 import { explorerState } from './features/explorer/state';

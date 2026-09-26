@@ -5,7 +5,7 @@ import { describe, expect, it } from 'vitest'
 import { startApp, type TestApp } from '@abuddy/testing/harness'
 import { importCompiledSeeds } from '@abuddy/sdk/utils'
 import { repository } from '#generated/repository'
-import type { LibraryIndex } from '@/features/library/be/types'
+import type { LibraryIndex } from '#features/library/be/types'
 
 const DIST = path.resolve(import.meta.dirname, '../../../../dist')
 

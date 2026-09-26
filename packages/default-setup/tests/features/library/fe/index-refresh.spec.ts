@@ -8,7 +8,7 @@ import { createActor } from 'xstate'
 const sendToSystem = vi.hoisted(() => vi.fn())
 vi.mock('#generated/events', () => ({ sendToSystem }))
 
-const { librarySystem } = await import('@/features/library/fe/state')
+const { librarySystem } = await import('#features/library/fe/state')
 
 beforeEach(() => {
   sendToSystem.mockReset()

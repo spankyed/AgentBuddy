@@ -1,8 +1,8 @@
 import type { ThreadsSettings } from '#generated/types'
-import type { AssistantSettings } from '@/app-settings/types';
+import type { AssistantSettings } from '#app-settings/types';
 import { sendToSystem, broadcastToPlugin } from '#generated/events';
 import { services } from '#generated/services';
-import { REQUIRED_PROVIDERS } from '@/app-settings/providers';
+import { REQUIRED_PROVIDERS } from '#app-settings/providers';
 import { assign, setup } from 'xstate';
 import { defineSystem } from '@abuddy/sdk/framework';
 

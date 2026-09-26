@@ -9,7 +9,7 @@ import type {
   NoteDTO,
 } from '#generated/types'
 import type { NotesContext, NotesInboxEvent } from './contract'
-import type { OutgoingNotesEvents } from '@/features/notes/be/types'
+import type { OutgoingNotesEvents } from '#features/notes/be/types'
 import { sendToSystem } from '#generated/events'
 import { Trash2 } from 'lucide-vue-next'
 import { contextMenuFn } from '@abuddy/sdk/fe'

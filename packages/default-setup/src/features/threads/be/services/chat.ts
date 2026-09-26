@@ -1,7 +1,7 @@
 import { broadcastToPlugin } from '#generated/events';
 import { EARS } from '#generated/ears';
 import { repository } from '#generated/repository';
-import type { BlockConfig, BlockResponse, MessageEntity, ThreadCreateData, MessageReferences } from '@/features/threads/be/types';
+import type { BlockConfig, BlockResponse, MessageEntity, ThreadCreateData, MessageReferences } from '#features/threads/be/types';
 
 import { readMediaBuffer } from '@abuddy/sdk/utils';
 import * as threadsService from './threads';

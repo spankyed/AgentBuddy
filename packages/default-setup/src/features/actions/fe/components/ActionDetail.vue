@@ -122,7 +122,7 @@ import ActionFunctionEditor from './ActionFunctionEditor.vue';
 import JsonSchemaEditor from '@abuddy/ui/components/JsonSchemaEditor';
 import { openPlugin } from '#generated/fe'
 import { useCollapsibleState } from '@abuddy/ui/composables/useCollapsibleState';
-import type { ActionsState } from '@/features/actions/fe/state';
+import type { ActionsState } from '#features/actions/fe/state';
 import type { ActionEntity } from '@abuddy/sdk';
 import type { ActionParameter } from '@abuddy/sdk';
 

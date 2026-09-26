@@ -5,7 +5,7 @@ import type { BaseEntity } from '@abuddy/ears';
 import type { SdkEntityShapes, ActionEntity, FlowEntity, NodeBase } from '@abuddy/sdk';
 import type { NodeEntity } from '#generated/types';
 import type { EntityShape, OwnEntityShapes, PackShapes } from '#generated/ears';
-import type { MessageEntity, ThreadEntity } from '@/features/threads/be/types';
+import type { MessageEntity, ThreadEntity } from '#features/threads/be/types';
 
 describe('PackShapes', () => {
   it('maps declared entities to their shape types', () => {

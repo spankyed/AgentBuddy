@@ -6,7 +6,7 @@ import { createNavHistory, pushNavHistory, goBack, goForward, canGoBack, canGoFo
 import type { ActorRefFrom } from 'xstate';
 import type { ThreadEntity, ThreadCreateData, ThreadViewData, ThreadEditFields, ThreadsSettings, MessageEntity, AgentThreadData, Tab, AgentSettings, AgentMode as AgentModeConfig, MessageReferences, CommandItem, BlockResponse } from '#generated/types';
 import type { ChatState, ThreadListItem, ThreadsContext } from './contract';
-import type { OutgoingThreadsEvents } from '@/features/threads/be/types';
+import type { OutgoingThreadsEvents } from '#features/threads/be/types';
 import { sendToSystem } from '#generated/events';
 import { Archive, Copy, Pin, Trash2 } from 'lucide-vue-next';
 import { contextMenuFn } from '@abuddy/sdk/fe';
@@ -15,9 +15,9 @@ import { resolveName } from '@abuddy/sdk/ids'
 
 const HOST_SETTINGS = resolveName('settings', 'host');
 import { type HotkeyEvent, type HotkeysMap, createHotkeyProcessor } from '@abuddy/sdk/fe';
-import type { ThreadTabGroup, TabGroupColor } from '@/features/threads/fe/canvas/agent/tabs/types';
-import { getNextAvailableColor } from '@/features/threads/fe/canvas/agent/tabs/types';
-import { saveThreadTabGroups, loadThreadTabGroups } from '@/features/threads/fe/canvas/agent/tabs/tab-groups';
+import type { ThreadTabGroup, TabGroupColor } from '#features/threads/fe/canvas/agent/tabs/types';
+import { getNextAvailableColor } from '#features/threads/fe/canvas/agent/tabs/types';
+import { saveThreadTabGroups, loadThreadTabGroups } from '#features/threads/fe/canvas/agent/tabs/tab-groups';
 import type { EARS } from '@abuddy/sdk';
 
 export const id = 'threads' as const;

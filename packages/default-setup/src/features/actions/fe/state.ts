@@ -8,7 +8,7 @@ import {
 } from '@abuddy/sdk/fe'
 import type { ActionsSettings } from '#generated/types'
 import type { ActionsContext, ActionsInboxEvent } from './contract'
-import type { OutgoingActionEvents } from '@/features/actions/be/types'
+import type { OutgoingActionEvents } from '#features/actions/be/types'
 import type { ActionParameter } from '@abuddy/sdk'
 import { sendToSystem } from '#generated/events'
 import { Trash2 } from 'lucide-vue-next'

@@ -1,7 +1,7 @@
 import { repository } from '#generated/repository';
 import type { ActionEntity } from '@abuddy/sdk';
 import { services as appServices } from '@abuddy/sdk/services';
-import { runActionCode } from '@/extensions/steps/action/sandbox';
+import { runActionCode } from '#extensions/steps/action/sandbox';
 import { errorMessage } from '@abuddy/sdk/utils/pure';
 
 export class ActionService {

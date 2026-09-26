@@ -16,7 +16,7 @@ import type { EARS } from '#generated/ears'
 import { hasIdCollision } from '@abuddy/ears';
 import { restoreJsonMediaRefs, restoreMarkdownMediaRefs, toDisplayName } from '@abuddy/sdk/utils'
 import { parseFrontmatter, parseMarkdownSections } from './utils'
-import type { ContentSection } from '@/features/library/be/types';
+import type { ContentSection } from '#features/library/be/types';
 import { errorMessage } from '@abuddy/sdk/utils/pure';
 
 interface ImportResult {

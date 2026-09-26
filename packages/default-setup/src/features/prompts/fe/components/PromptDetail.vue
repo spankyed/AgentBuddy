@@ -115,7 +115,7 @@ import PromptTemplateEditor from './PromptTemplateEditor.vue';
 import JsonSchemaEditor from '@abuddy/ui/components/JsonSchemaEditor';
 import { useCollapsibleState } from '@abuddy/ui/composables/useCollapsibleState';
 import { openPlugin } from '#generated/fe'
-import type { PromptsState } from '@/features/prompts/fe/state';
+import type { PromptsState } from '#features/prompts/fe/state';
 import type { PromptEntity } from '@abuddy/sdk';
 import type { TemplateInput } from '@abuddy/sdk';
 

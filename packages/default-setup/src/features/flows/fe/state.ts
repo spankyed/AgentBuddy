@@ -13,7 +13,7 @@ import type {
   EdgeEntity,
 } from '#generated/types'
 import type { FlowsContext, FlowsInboxEvent } from './contract'
-import type { OutgoingFlowsEvents } from '@/features/flows/be/types'
+import type { OutgoingFlowsEvents } from '#features/flows/be/types'
 import { sendToSystem } from '#generated/events'
 import { getNodeConfig, isTriggerNode } from '@abuddy/ui/components/node-styles'
 import { stepRegistry } from '@abuddy/sdk/steps'

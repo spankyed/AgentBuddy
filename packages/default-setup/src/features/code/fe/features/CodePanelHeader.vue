@@ -80,9 +80,9 @@
 import type { Component } from 'vue'
 import { computed } from 'vue'
 import { useSelector } from '@xstate/vue'
-import { type CodeState } from '@/features/code/fe/state'
+import { type CodeState } from '#features/code/fe/state'
 import { isAnyMenuOpen, usePlugin } from '@abuddy/sdk/fe'
-import BaseDirectoryMenu from '@/features/code/fe/features/explorer/components/BaseDirectoryMenu.vue'
+import BaseDirectoryMenu from '#features/code/fe/features/explorer/components/BaseDirectoryMenu.vue'
 import { codeChild } from './children';
 import {
   FolderOpen,

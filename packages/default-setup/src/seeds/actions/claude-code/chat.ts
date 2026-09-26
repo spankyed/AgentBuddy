@@ -14,7 +14,7 @@
  * `mode === 'Claude Code'`.
  */
 
-import type { GeneralSettings } from '@/app-settings/types';
+import type { GeneralSettings } from '#app-settings/types';
 import type { ActionMeta } from '@abuddy/sdk/build';
 import type { Services, Z, EntityId } from '#generated/services';
 import { createStreamWriter } from './_helpers/stream-writer';

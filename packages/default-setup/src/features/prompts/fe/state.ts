@@ -8,7 +8,7 @@ import {
 } from '@abuddy/sdk/fe'
 import type { PromptsSettings } from '#generated/types'
 import type { PromptsContext, PromptsInboxEvent } from './contract'
-import type { OutgoingPromptEvents } from '@/features/prompts/be/types'
+import type { OutgoingPromptEvents } from '#features/prompts/be/types'
 import type { TemplateInput } from '@abuddy/sdk'
 import { sendToSystem } from '#generated/events'
 import { Trash2 } from 'lucide-vue-next'

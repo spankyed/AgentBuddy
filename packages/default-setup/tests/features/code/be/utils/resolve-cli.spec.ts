@@ -29,7 +29,7 @@ describe('resolveCliPath', () => {
       callback(Object.assign(new Error('not found'), { code: 'ENOENT' }))
     })
 
-    const { resolveCliPath } = await import('@/features/code/be/utils/resolve-cli')
+    const { resolveCliPath } = await import('#features/code/be/utils/resolve-cli')
 
     await expect(resolveCliPath(provider)).resolves.toBe(executable)
   })

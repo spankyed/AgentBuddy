@@ -190,7 +190,16 @@ The pack registers boot hooks via `__generated__/pack-entry.ts`:
 - `abuddy build` writes the Monaco DSL definitions the renderer imports, one `dist/defs/monaco/<name>-defs.d.ts` per `abuddy.json` `dsl` entry with a `monaco` target
 - `npm run compile` from the repo root runs this package's `npm run build`
 - `npm run build:dev` runs `abuddy build --skip-fe`
-- `tsconfig.json` — uses `@/` path alias pointing to `src/`; `npm run typecheck` runs `vue-tsc` over the `.ts`, `.vue` and `src/defs/` files
+- **The pack names its own modules one way: `#` subpath imports.** `#generated/*`, `#features/*`,
+  `#extensions/*` and `#app-settings/*`, declared in `package.json` `imports` — a Node standard that Node,
+  Vite and esbuild all resolve with no configuration, and private to this package by construction. It replaced
+  a `@/…` TypeScript `paths` mapping that no runtime reads, which four separate bundler configs each had to
+  re-implement; `check:specifiers` refuses a `@/` specifier here now.
+  **The mapping is declared twice, and has to be.** `package.json` `imports` is what the runtimes read, and
+  `tsconfig.json` `paths` mirrors it because `tsc` under `moduleResolution: bundler` will not resolve a `#`
+  specifier from `package.json` alone — spiked 2026-09-26, and `abuddy init`'s scaffold carries the same pair
+  with the same comment. Changing `moduleResolution` invalidates that, so don't.
+- `npm run typecheck` runs `vue-tsc` over the `.ts`, `.vue` and `src/defs/` files
 - Vitest config at `vitest.config.ts`, which resolves the path aliases from `tsconfig.json`: the one tsconfig, whose `include` covers the tests, so `npm run typecheck` checks them with the source. Unit tests run on `@abuddy/testing/harness` (`tests/setup.ts`: `setupPackTests({ seedRuntime, registration })`), in memory, with no `@abuddy/host` or API imports (`check:specifiers` rejects them). Systems run with `startApp`, flows with `importFlows` (a root flow, `root: true`, or default-setup's own through `tests/_support/flows.ts`) and `runFlow`, as the app runs them, and services the code under test reaches outside the process (CLIs, Codex, `inference`) are mocked with `mockService` (`inference` with `mockInference`). The registered packs are the harness's registry for the test file: a test that needs another pack registers one with the harness's `registerPack`/`unregisterPack`, and one that needs a lookup filled without a pack (a step type) uses `testPacks` from `@abuddy/sdk/testing` (`features/flows/fe/canvas/layout-utils.spec.ts`)
 - `prepare` script runs `abuddy generate-entries` after `npm install`
 - `abuddy build` gates the facade types it bundles into `dist/types/pack-types.d.ts` (`packages/abuddy-cli/src/build/facade-gate.ts`): the bundle must type-check on its own and import only `@abuddy/*` modules the published packages export, `@abuddy/sdk`'s peers and Node built-ins. `etc/pack-types.api.md` is the reviewed report of that bundle: after a build that changes it, run `npm run facade:update` and commit the report; CI runs `npm run facade:check` after `abuddy build`

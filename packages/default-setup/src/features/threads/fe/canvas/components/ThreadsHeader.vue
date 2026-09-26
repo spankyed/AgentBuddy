@@ -121,7 +121,7 @@ import { Search, Filter, List, Columns3, PanelLeft, History, Archive, X } from '
 import { useSelector } from '@xstate/vue'
 import Button from '@abuddy/ui/design/button'
 import FilterPopover from './FilterPopover.vue'
-import { type ThreadsState } from '@/features/threads/fe/state'
+import { type ThreadsState } from '#features/threads/fe/state'
 import type { ThreadTagOption } from '#generated/types'
 
 const actor: ThreadsState = usePlugin()

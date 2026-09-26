@@ -3,7 +3,7 @@
 import { afterAll, afterEach, beforeEach, expect, it, vi } from 'vitest'
 import { createActor } from 'xstate'
 import { startFeTestRuntime } from '@abuddy/sdk/testing'
-import threadsState from '@/features/threads/fe/state'
+import threadsState from '#features/threads/fe/state'
 
 // The plugin's module tracks the mouse for its hotkeys as it loads; the test setup's window is a bare stand-in
 vi.hoisted(() => { (globalThis as { addEventListener?: unknown }).addEventListener ??= () => {} })

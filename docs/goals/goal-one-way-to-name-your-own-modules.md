@@ -156,28 +156,19 @@ Final.
 6. **Nothing about the scaffold's layout changes.** A scaffolded pack already uses `#generated` and nothing
    else; that it needs no edit is the evidence this goal is moving *toward* what the tool generates.
 
-## Open decisions — settle before Phase 2
+## Open decisions — **settled 2026-09-26**
 
-1. **One `imports` entry per top-level directory, or one catch-all?**
-   - **Per directory** — `#generated/*`, `#features/*`, `#extensions/*`, `#app-settings/*`. Matches the
-     entry that exists, keeps specifiers short (`#features/brain/be/system`), and a new top-level directory
-     is a deliberate two-line addition.
-   - **One catch-all** — `#src/*` → `./src/*`, so `#src/features/brain/be/system`. One line that never needs
-     editing, at the cost of four more characters per import and a name that says `src` in code that is all
-     `src`. It would also make `#generated` inconsistent unless that is folded in too, which is a rename of
-     the 547 rather than a keep.
+1. **One `imports` entry per top-level directory**: `#features/*`, `#extensions/*`, `#app-settings/*`, beside
+   the `#generated/*` that already exists. It matches the entry that was already there, keeps specifiers
+   short, and makes a new top-level directory a deliberate two-line addition. The catch-all `#src/*` was the
+   alternative — one line that never needs editing — and it costs four characters on every import and would
+   have left `#generated` inconsistent unless that folded in too, re-renaming the 550 Phase 1 had just moved.
 
-2. **Does a pack keep the ability to use tsconfig `paths` at all?**
-   After this, nothing in the repo uses `@/`, and `abuddy-cli/src/build/tsconfig-aliases.ts` plus
-   `makeAliasPlugin` exist only for a pack that declares paths of its own.
-   - **Drop them** — `#` becomes the only supported way for a pack to name its own modules, and ~90 lines
-     and a spec go with them. Simplest, and it makes the supported surface one thing rather than two.
-   - **Keep them** — a pack author who wants `@/` in their own pack still gets it, now correctly (it was
-     fixed in `c9033ebd7`). Costs a mechanism nothing in the repo exercises, which is how the two copies
-     drifted unnoticed in the first place.
-
-   Note what does *not* bear on this: no pack exists outside this repo (root `CLAUDE.md`, *Backward
-   compatibility*), so this is a question about the surface we want to support, not about breaking anyone.
+2. **Drop the CLI's tsconfig-alias reader.** `#` becomes the only supported way a pack names its own modules,
+   and `abuddy-cli/src/build/tsconfig-aliases.ts`, `makeAliasPlugin` and the spec's seven cases go with it —
+   about ninety lines. Keeping them would keep a mechanism nothing in the repo exercises, which is exactly how
+   its two copies drifted apart unnoticed until 2026-09-26. The cost is real and accepted: a pack that
+   declares `compilerOptions.paths` of its own gets no bundler support for it.
 
 ## Phases
 

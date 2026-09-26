@@ -19,7 +19,7 @@ import { resolvePlanDraft } from './plan-artifact';
 // ─── Types ───────────────────────────────────────────────────────────────────
 
 /**
- * Local mirror of `PermissionMode` (from `@/services/claude-code/types` on
+ * Local mirror of `PermissionMode` (from `#features/code/be/services/claude-code/types` on
  * the backend). Duplicated here so helper files in this folder can typecheck
  * without reaching across package boundaries.
  */

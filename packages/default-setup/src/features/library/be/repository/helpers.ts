@@ -1,6 +1,6 @@
 import { qx } from '#generated/ears';
 import { EARS } from '#generated/ears'
-import type { ContentSection } from '@/features/library/be/types';
+import type { ContentSection } from '#features/library/be/types';
 
 // ================ Helper Functions ================
 

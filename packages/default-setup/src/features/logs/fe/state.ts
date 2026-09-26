@@ -3,7 +3,7 @@ import { safeEvents } from '@abuddy/sdk/fe';
 import { sendToSystem } from '#generated/events';
 import type { LogsSettings } from '#generated/types';
 import type { LogsContext } from './contract';
-import type { OutgoingLogsEvents } from '@/features/logs/be/types';
+import type { OutgoingLogsEvents } from '#features/logs/be/types';
 
 export const id = 'logs' as const;
 

@@ -1,7 +1,7 @@
 import { NotebookText, CircleCheck, ListChecks } from 'lucide-vue-next'
 
 import { openPlugin, usePluginState } from '#generated/fe'
-import { NOTE_TYPE_TO_REFERENCE_TYPE } from '@/extensions/tiptap/reference-config'
+import { NOTE_TYPE_TO_REFERENCE_TYPE } from '#extensions/tiptap/reference-config'
 import { id as notes } from './state'
 import type { ReferenceTypeConfig, CategoryConfig, CategoryItemsProvider, ReferenceItem } from '@abuddy/sdk/fe/references'
 

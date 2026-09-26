@@ -5,7 +5,7 @@ import * as path from 'path'
 import { EARS } from '#generated/ears'
 import type { LibraryItem, FolderContents, BreadcrumbItem } from '../types'
 import { formatFileSize, findParentCollection } from './helpers'
-import type { DocumentShortCode } from '@/features/library/be/types';
+import type { DocumentShortCode } from '#features/library/be/types';
 
 const SYMLINK_PREFIX = 'symlink:'
 

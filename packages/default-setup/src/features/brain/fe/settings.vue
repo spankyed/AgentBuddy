@@ -147,7 +147,7 @@ import { RefreshCw, AlertTriangle, Power, CheckCircle, PlayCircle } from 'lucide
 import type { BrainSettings } from '#generated/types'
 import { sendToSystem } from '#generated/events'
 import { useSelector } from '@xstate/vue'
-import type { BrainState } from '@/features/brain/fe/state'
+import type { BrainState } from '#features/brain/fe/state'
 import { usePluginState } from '#generated/fe'
 
 interface Props {

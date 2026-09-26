@@ -238,12 +238,12 @@ import { usePlugin } from '@abuddy/sdk/fe'
 
 import { ref, computed, watch, nextTick } from 'vue'
 import { openPlugin } from '#generated/fe'
-import type { CodeState } from '@/features/code/fe/state'
+import type { CodeState } from '#features/code/fe/state'
 import { usePluginState } from '#generated/fe'
 import { sendToPlugin } from '#generated/events'
 import { ExternalLink, Plus, X, Pencil, Trash2, Sparkle, Search, ChevronDown, ChevronRight } from 'lucide-vue-next'
-import CodePanelHeader from '@/features/code/fe/features/CodePanelHeader.vue'
-import EmptyState from '@/features/code/fe/features/EmptyState.vue'
+import CodePanelHeader from '#features/code/fe/features/CodePanelHeader.vue'
+import EmptyState from '#features/code/fe/features/EmptyState.vue'
 import type { PromptEntity } from '@abuddy/sdk'
 import {
   ContextMenuRoot,

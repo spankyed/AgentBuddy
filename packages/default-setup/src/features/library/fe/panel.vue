@@ -245,7 +245,7 @@ import { usePlugin } from '@abuddy/sdk/fe'
 
 import { computed, ref } from 'vue'
 import { useSelector } from '@xstate/vue'
-import type { FieldContent, ListContent, MarkdownContent, TextContent } from '@/features/library/be/types'
+import type { FieldContent, ListContent, MarkdownContent, TextContent } from '#features/library/be/types'
 import type { LibraryActor } from './state'
 // [SEARCH_INDEX_FF] import { getModelConfig } from '../embedding-models'
 

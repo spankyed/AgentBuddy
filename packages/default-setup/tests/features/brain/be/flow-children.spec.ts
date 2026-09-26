@@ -4,7 +4,7 @@
 import { describe, expect, it } from 'vitest'
 import { importFlows, startApp } from '@abuddy/testing/harness'
 import { entry, keepAlive, on, transform } from '#generated/flow-helpers'
-import { getFlowActor } from '@/features/brain/be/flow-system'
+import { getFlowActor } from '#features/brain/be/flow-system'
 
 const ROOT_FLOW_TNODE = 'TNode-Root'
 const step = (label: string) => transform('return true', { label })

@@ -179,7 +179,7 @@ import TiptapEditor from '@abuddy/ui/components/tiptap/TiptapEditor'
 import ChatInput from './input.vue'
 import RecentThreads from './recent-threads.vue'
 import InlineTabBar from './inline-tab-bar.vue'
-import AgentCanvas from '@/features/threads/fe/canvas/agent/canvas.vue'
+import AgentCanvas from '#features/threads/fe/canvas/agent/canvas.vue'
 import ThreadSidebar from './thread-sidebar.vue'
 import PanelResizer from '@abuddy/ui/layout/panel-resizer'
 import ImageLightbox from '@abuddy/ui/design/ImageLightbox'
@@ -188,7 +188,7 @@ import ScrollToBottomFob from '@abuddy/ui/design/ScrollToBottomFob'
 import { usePlugin, useShell, updateSettings } from '@abuddy/sdk/fe'
 import { openPlugin } from '#generated/fe'
 import { useSelector } from '@xstate/vue'
-import { threadsFromStore, type ThreadsState } from '@/features/threads/fe/state';
+import { threadsFromStore, type ThreadsState } from '#features/threads/fe/state';
 import type { MessageEntity, ThreadEntity, MessageReferences, QuickPrompt } from '#generated/types'
 import { sendToSystem } from '#generated/events'
 import { ref as featureRef } from '#generated/ref';
