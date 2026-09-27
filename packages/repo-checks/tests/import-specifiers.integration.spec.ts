@@ -9,6 +9,7 @@ import {
   findPackageScriptImports, findPackBackendConsole, findPackOwnAliases, findRawPackHelpers,
   findRawTransport, findInternalPackageImports, findLmdbImports, findRepositoryCasts, findSharedPackageLists, findUpwardImports, LAYERS, LMDB_RULES, packageSourceDirs,
   DECLARES_SOURCE_BY_DESIGN, RESOLVES_DIST_BY_DESIGN, SHARED_LIST_CONSUMERS, sourceConditionPackages, SOURCE_CONDITION,
+  checkedDirs, packDirs,
 } from '../../../scripts/check-import-specifiers.ts';
 import { REPO_ROOT } from '@abuddy/host/build/packages-built';
 
@@ -526,14 +527,60 @@ const FIRES: Record<string, () => string[]> = {
 };
 
 describe('CHECKS', () => {
-  it.each(CHECKS.map(([find]) => find.name))('%s flags an offending example', (name) => {
+  it.each(CHECKS.map((rule) => rule.id))('%s flags an offending example', (name) => {
     const fire = FIRES[name];
     expect(fire, `add an offending example for ${name} to FIRES: a gate with no case that makes it speak is a gate nothing has watched fail`).toBeDefined();
     expect((fire as () => string[])(), `${name} found nothing in a tree written to offend it`).not.toEqual([]);
   });
 
+  /**
+   * And no offence claimed twice. This is the bug that hid behind the old runner: a relative `.js` in pack code
+   * was reported by both `findJsSpecifiers` and the own-module rule, and since the runner exited on the first
+   * failure, only one was ever read. Resolved by narrowing `findJsSpecifiers` to the packages, where there is
+   * no `imports` map to resolve against — and asserted here so the next overlap fails instead of hiding.
+   *
+   * Bounded by the examples, honestly: it runs the pack-code rules over each pack-code fixture, which is where
+   * the overlap was. A rule that reads the whole tree cannot be pointed at a fixture (its scope is the repo's
+   * layers, configs and exception lists), so it is not in this sweep.
+   */
+  it.each([
+    ['findRawPackHelpers', ['src/pack']],
+    ['findInternalPackageImports', ['src/pack']],
+    ['findRawTransport', ['src/pack']],
+    ['findPackBackendConsole', ['src/pack']],
+    ['findHostImports', ['src/pack']],
+    ['findPackOwnAliases', ['pack/src']],
+    ['findExtensionlessOwnModules', ['pack/src']],
+  ] as const)('%s claims its own example and no other pack rule does', (id, dirs) => {
+    const packRules: Record<string, (where: string[], at: string) => string[]> = {
+      findJsSpecifiers, findRawPackHelpers, findInternalPackageImports, findRawTransport,
+      findPackBackendConsole, findHostImports, findPackOwnAliases, findExtensionlessOwnModules,
+    };
+    expect(FIRES[id]!(), `${id} must fire on its own example`).not.toEqual([]);
+    const alsoClaimed = Object.entries(packRules)
+      .filter(([other]) => other !== id)
+      .filter(([, run]) => run([...dirs], root).length > 0)
+      .map(([other]) => other);
+    expect(alsoClaimed, `${id}'s offence is also reported by these, so only the first to run is ever read`).toEqual([]);
+  });
+
+  /**
+   * `findJsSpecifiers` is not in that sweep, and this is why: it and the own-module rule report the same
+   * relative `.js`, and what keeps them apart is not the finding but the *population* — packages that are not
+   * packs, against packs. A fixture directory plays both roles at once, so both fire there; in the repo they
+   * cannot, and that is the property worth asserting. `packages/default-setup` is the case that matters: it is
+   * a package *and* a pack, and before the exclusion both rules reported its every `.js` with only the first
+   * printed.
+   */
+  it('gives findJsSpecifiers and the own-module rule disjoint populations', () => {
+    const packs = packDirs();
+    expect(packs, 'the packs are derived from where a manifest is, so this should never be empty').not.toEqual([]);
+    const overlap = checkedDirs().filter((dir) => packs.some((pack) => dir === pack || dir.startsWith(`${pack}/`)));
+    expect(overlap, 'a pack\'s own code belongs to own-modules, which names the file to write').toEqual([]);
+  });
+
   it('has no example left behind by a rule that is gone', () => {
-    expect(Object.keys(FIRES).filter((name) => !CHECKS.some(([find]) => find.name === name))).toEqual([]);
+    expect(Object.keys(FIRES).filter((name) => !CHECKS.some((rule) => rule.id === name))).toEqual([]);
   });
 });
 
