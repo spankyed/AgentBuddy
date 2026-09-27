@@ -17,77 +17,9 @@ Example:
   abuddy add step my-trigger --trigger
 `.trim();
 
-// Build-time facet: no FE or runtime imports, so it can ship in build/steps.build.mjs
-const BUILD = (type: string, camel: string, pascal: string) => `import type { StepDefinition, StepCompileResult, StepValidationError } from '@abuddy/sdk/steps';
-import { EARS } from '@abuddy/sdk';
-import type { DSL${pascal}Node } from './types.ts';
 
-export const ${camel}StepBuild: StepDefinition = {
-  type: '${type}',
-  build: {
-    compile(node, nodeId, ts): StepCompileResult {
-      const step = node as unknown as DSL${pascal}Node;
-      return {
-        entity: { id: nodeId, entityType: EARS.Entity.Node, createdAt: ts, nodeType: '${type}', label: step.label ?? '${toLabel(type)}' },
-        relations: [],
-      };
-    },
-    validate(): StepValidationError[] {
-      return [];
-    },
-    getLabel(node, index) {
-      return typeof node.label === 'string' ? node.label : \`${toLabel(type)} \${index}\`;
-    },
-  },
-};
-`;
 
-const INDEX = (camel: string) => `import type { StepDefinition } from '@abuddy/sdk/steps';
-import { ${camel}StepBuild } from './build.ts';
-import { ${camel}StepFE } from './fe.ts';
 
-export const ${camel}Step: StepDefinition = {
-  ...${camel}StepBuild,
-  fe: ${camel}StepFE.fe,
-};
-`;
-
-const FE = (type: string, camel: string) => `import type { StepDefinition } from '@abuddy/sdk/steps';
-import { defineAsyncComponent } from 'vue';
-import { Box } from 'lucide-vue-next';
-
-export const ${camel}StepFE: StepDefinition = {
-  type: '${type}',
-  fe: {
-    loadComponents: () => ({ form: defineAsyncComponent(() => import('./form.vue')) }),
-    nodeConfig: {
-      label: '${toLabel(type)}',
-      icon: Box,
-      color: 'text-indigo-400',
-      bgColor: 'bg-indigo-700/20',
-      hoverBgColor: 'group-hover:bg-indigo-700/30',
-      connectionRules: { inputs: -1, outputs: -1 },
-      category: 'logic',
-      isImplemented: true,
-    },
-  },
-};
-`;
-
-// generate-entries types a `dsl.primaryField` helper's options from the first `DSL…Node` interface,
-// and adds each `… extends NodeBase` interface to the pack's Node row union
-const TYPES = (pascal: string, type: string) => `import type { NodeBase } from '@abuddy/sdk';
-import type { DSLNodeBase } from '@abuddy/sdk/build';
-
-export interface DSL${pascal}Node extends DSLNodeBase {
-  type: '${type}';
-  label?: string;
-}
-
-export interface ${pascal}Node extends NodeBase {
-  nodeType: '${type}';
-}
-`;
 
 // The flows editor renders a step's form with `node` and `resources` ({ actions, flows, models, prompts })
 // and listens for `update-node` (the changed fields) and `close`
@@ -108,10 +40,10 @@ export async function addStep(args: string[], root: string) {
 
   const created: string[] = [];
   const files: [string, string][] = [
-    [path.join(stepDir, 'build.ts'), BUILD(type, camel, pascal)],
-    [path.join(stepDir, 'index.ts'), INDEX(camel)],
-    [path.join(stepDir, 'fe.ts'), FE(type, camel)],
-    [path.join(stepDir, 'types.ts'), TYPES(pascal, type)],
+    [path.join(stepDir, 'build.ts'), renderTemplate('pack/src/extensions/steps/step/build.ts', { TYPE: type, CAMEL: camel, PASCAL: pascal, LABEL: toLabel(type) })],
+    [path.join(stepDir, 'index.ts'), renderTemplate('pack/src/extensions/steps/step/index.ts', { CAMEL: camel })],
+    [path.join(stepDir, 'fe.ts'), renderTemplate('pack/src/extensions/steps/step/fe.ts', { TYPE: type, CAMEL: camel, LABEL: toLabel(type) })],
+    [path.join(stepDir, 'types.ts'), renderTemplate('pack/src/extensions/steps/step/types.ts', { PASCAL: pascal, TYPE: type })],
     [path.join(stepDir, 'form.vue'), renderTemplate('pack/src/extensions/steps/step/form.vue', { PASCAL: pascal })],
   ];
 
