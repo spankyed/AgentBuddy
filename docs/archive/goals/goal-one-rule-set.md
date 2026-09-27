@@ -1,5 +1,11 @@
 # Goal: one rule set, one reader, one census
 
+> **Done** (`1b2bc6761`..`437bdf35d` on `AS/alias-simplification`). The text below is the plan as written; four
+> things it did not foresee are in the Outcome, the largest being that `.d.ts` and `.md` templates cannot reach
+> the packaged app at all. For the rules now, see `packages/abuddy-cli/src/build/pack-rules.ts` and
+> `docs/public-facing/cli.md` § Validation; for the scaffold's templates,
+> `packages/abuddy-cli/src/templates.ts`.
+
 > **Written in session** `1d53eb9c-d886-49f8-bc5a-90793d43315e` (Claude Code, 2026-09-26). Resume it with `claude -r 1d53eb9c-d886-49f8-bc5a-90793d43315e`.
 
 ```
@@ -319,3 +325,55 @@ deleted; `npm run test:external-pack:contract` passes.
   `CLAUDE.md` table; a new spec anywhere needs `spec-cost:update` for its suite.
 - `packages/repo-checks` should declare `vue` as a devDependency rather than relying on hoisting, since
   nothing checks its dependencies.
+
+## Outcome (2026-09-26)
+
+| Phase | Status | Evidence |
+|---|---|---|
+| 1 — the chain stops nagging | **done** | `240c78cc3`. `driftedSteps` skips a step that keeps its own cache unless `--all` forced it; four cases, one mutation; two chain runs silent, a seeded drift still reported |
+| 2 — templates become files | **done** | `c4ea43aec`, `226819ac4`, `753833c29`, `9d00f67ed`, `eaf89af1f`, `2725f14ad`, `0ca955577`. 34 template files; the golden scaffold diff empty at every step; 176 lines of extraction machinery and one rule deleted |
+| 3 — one reader, one rule set | **done** | `65021e770`, `2e51b133f`. `readSource` with positions; nine pack rules in `build/pack-rules.ts`; `internal-imports-gate.ts` deleted; `abuddy.checks.json` |
+| 4 — census, one pass, per-file flag | **done** | `6c8eee988`, `1c40e6dca`, `a3e3be850`. **1,735 parses over 1,735 files, 2.67s — from 9,698 parses and 4.4s**; pack dirs derived from where a manifest is; `<paths…>`, `--rule`, `--list`; collect-all |
+| 5 — `specifiers:fix` | **done** | `6c8eee988`. Its first subject was real: the 87 specifiers the widened rule found |
+| 6 — `backend-console` moves, the cast rule stays | **done** | `437bdf35d`, and the rule itself in Phase 3 |
+
+**Counts**: `@abuddy/cli` 350 tests (was 305 + 21 in the integration half), `@app/repo-checks` 239,
+`@app/default-setup` 720 unchanged, the fixture pack 32 unchanged, E2E 21 unchanged, `npm run chain` green in
+183s. 15 commits.
+
+### Corrections to the Decisions
+
+- **Decision 6 said `.ts` and `.vue` templates are files. Two file types cannot be.** `electron-builder.mjs`
+  strips every `.d.ts` from the packaged app whatever its `files` array says — measured on a `--dir` build:
+  zero remain in `app.asar` — and excludes `'!**/*.md'` outright. So `env.d.ts` and the example seed row stay
+  strings in `init.ts`, with the reason recorded there and in `src/templates.ts`, and a spec refuses a `.d.ts`
+  template. Without the `--dir` build in Phase 2's step 1 this would have shipped: `abuddy init` from the CLI
+  the app installs would have scaffolded a pack with no `env.d.ts`, and no test covers that path.
+- **Decision 3 listed `js-specifiers` as a pack rule; it is not one.** Both it and `own-modules` report a
+  relative `.js`, and `own-modules` gives the better message because it resolves the specifier and names the
+  file to write. Worse, `packages/default-setup` is a package *and* a pack, so with both rules covering it the
+  offence was reported twice and — until the runner stopped exiting on the first failure — only once printed.
+  `CHECKED_DIRS` now excludes any pack's own code, and a spec asserts the two populations stay disjoint.
+- **Decision 9 expected the 87 specifiers to need a script; `specifiers:fix` did it**, which is the phase the
+  plan said had no subject. The order in the plan (C then D) was wrong for that reason: D shipped first and
+  earned its keep immediately.
+- **The renderer's strictness caught a real mistake during Phase 2.** Passing a feature's whole value map to
+  `be/system.ts`, which names no `__PASCAL__`, failed the render rather than ignoring the extra — so each call
+  site passes exactly what its template uses.
+- **`add action`, `add prompt` and `add flow` had no test that read their output**, only their exit code. Each
+  has one now; the flow case writes the generated `flow-helpers.ts` the command reads to decide whether the
+  pack has steps.
+- **One `renderTemplate` may have two callers.** `steps/register.ts` is written by `abuddy init` and again by
+  `abuddy add step` when a pack has no step list, so the completeness spec asserts every template is rendered
+  *somewhere* rather than exactly once.
+
+### Open items
+
+- **Three heavy rules are still repo-only**: `contract-leaves`, `cross-feature-imports` and the pack half of
+  the source-condition check. Decision 3 listed the first two as pack rules, and they are not in
+  `PACK_RULES` — each needs its closure walk or its `exports` reader moved, which is a phase of its own. An
+  external pack is held to nine rules rather than twelve.
+- **The disjointness sweep covers the pack-code rules only.** A rule that reads the whole tree cannot be
+  pointed at a fixture, so two such rules could still claim one offence; the `findJsSpecifiers` pair is
+  asserted directly instead, as a property of the populations.
+- **The `.oxlintrc.json` for editor feedback** (Decision 11) was deferred as planned, and stays deferred.
