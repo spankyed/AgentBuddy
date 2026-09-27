@@ -791,14 +791,42 @@ describe('findContractLeafImports', () => {
     ]);
   });
 
-  // Deeper in the closure only the cycle matters: a module the leaf reaches may use the rest of the generated code
-  it('allows a generated module other than events and fe deeper in the closure', () => {
+  /**
+   * Deeper in the closure only the five generated modules a contract is behind matter: a module the leaf reaches may
+   * use the rest of the generated code. `repository` is the case that fixes which way round it is — it *does* reach a
+   * contract, through a feature's repository index, as twelve of default-setup's sixteen generated modules do, and is
+   * allowed anyway, because what the rule is about is the three codegen generates *from* a contract and the two that
+   * import the machines.
+   */
+  it('allows a generated module no contract is behind deeper in the closure', () => {
     pack({
       'features/notes/be/contract.ts': "import type { Ev } from './children/list';",
       'features/notes/be/children/list.ts': "import { repository } from '@/__generated__/repository';",
       'features/notes/fe/contract.ts': 'export type Contract = { state: {} };',
     });
     expect(findContractLeafImports([src], root)).toEqual([]);
+  });
+
+  /**
+   * The other three, which the closure branch listed `events` and `fe` alone against until this case. `system-specs`
+   * is the module in the middle of the cycle the origin commit documents — `events` reads each system's contract
+   * through it — and the two pack entries import the machines, which is the cost half of the rule. Nothing in either
+   * pack imports any of the three from source today: the case is here so the list matches the property stated on
+   * `GENERATED_BEHIND_A_CONTRACT`, not because something reaches them now.
+   */
+  it('flags the other generated modules a contract is behind, reached through the closure', () => {
+    pack({
+      'features/notes/be/contract.ts': "import type { A } from './children/one';\nimport type { B } from './children/two';",
+      'features/notes/be/children/one.ts': "import type { A } from '@/__generated__/system-specs';",
+      'features/notes/be/children/two.ts': "import type { B } from '@/__generated__/pack-entry';\nimport type { C } from '@/__generated__/pack-entry-fe';",
+      'features/notes/fe/contract.ts': 'export type Contract = { state: {} };',
+    });
+    const from = `(reached from ${src}/features/notes/be/contract.ts)`;
+    expect(findContractLeafImports([src], root).sort()).toEqual([
+      `${src}/features/notes/be/children/one.ts:1: @/__generated__/system-specs ${from}`,
+      `${src}/features/notes/be/children/two.ts:1: @/__generated__/pack-entry ${from}`,
+      `${src}/features/notes/be/children/two.ts:2: @/__generated__/pack-entry-fe ${from}`,
+    ]);
   });
 
   /**

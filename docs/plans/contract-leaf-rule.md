@@ -36,7 +36,7 @@ this rule as the guard), and `manifest-schema.ts:130` and `:138` (the `.describe
 | # | Line | Forbids | Covered elsewhere? |
 |---|---|---|---|
 | 1 | `:764` (`viaLeaf`) | the leaf importing any `#generated/*` but `types` and `ears` | **nothing**, in a warm tree |
-| 2 | `:764` (closure) | any module the leaf reaches importing `#generated/events` or `#generated/fe` | the reader, **only where the collapse lands in a position it reads** — see below |
+| 2 | `:764` (closure) | any module the leaf reaches importing one of the five generated modules a contract is behind | the reader, **only where the collapse lands in a position it reads** — see below |
 | 3 | `:771` | the leaf importing *any* other feature, `be/` included | **nothing** |
 | 4 | `:775` | anything in the closure reaching a declared `plugin.entry`/`system.entry` | **nothing** |
 | 5 | `:780` | the leaf importing a file named `state`/`system` | **nothing** outside the rule |
@@ -179,3 +179,15 @@ guards; the origin commit's account of claim 3.
 **Since verified:** the indirect route *is* refused where the collapse reaches one of the four read positions, and
 is not refused anywhere else — measured through the reader, with a mutation per direction (deleting the member check
 fails the hop case; adding a `state` check fails the case that says a collapsed state is read as data).
+
+**Claim 2's list was short by three.** It named `events` and `fe`; read through `readSource(file).specifiers` over
+both packs' generated trees, the generated modules that import a contract are `events`, `fe` **and `system-specs`** —
+the module in the middle of the cycle the origin commit documents. `pack-entry` and `pack-entry-fe` belong with them
+for the rule's other reason: they import the machines. All five are now `GENERATED_BEHIND_A_CONTRACT`
+(`check-import-specifiers.ts`), with a case in `import-specifiers.integration.spec.ts` for the three that were
+missing. None has a live subject in either pack, so this closes a gap rather than a bug.
+
+**And not transitive reach**, which the same measurement settles the other way: twelve of default-setup's sixteen
+generated modules reach a contract through some hop, `repository` among them — and a module the leaf reaches is meant
+to use the repository facade, which one of the rule's own cases asserts. What sets the five apart is that codegen
+derives them from the thing it is reading, or from the thing it is reading around.

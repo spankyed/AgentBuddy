@@ -704,6 +704,23 @@ function sourceFile(base: string): string | undefined {
 }
 
 /**
+ * The generated modules a contract leaf's closure may not reach. Both reasons are the rule's own, stated below;
+ * this is what they come to when read against a pack's generated tree.
+ *
+ * - `system-specs`, `events` and `fe` are generated **from** the contracts: their own specifiers name one, so a
+ *   module the leaf reaches importing one closes the loop codegen read the contract as a declared type to avoid.
+ *   Measured on both packs here, those three are exactly the generated modules that import a contract.
+ * - `pack-entry` and `pack-entry-fe` import the actors, which is the cost half: reaching either parses and binds
+ *   every machine and its whole closure.
+ *
+ * **Not transitive reach**, deliberately. Twelve of default-setup's sixteen generated modules reach a contract
+ * through some hop — `repository` does, through a feature's repository index — and a module the leaf reaches is
+ * meant to use the repository facade, which the case beside this rule's asserts. What sets these five apart is that
+ * codegen derives them from the thing it is reading, or from the thing it is reading around.
+ */
+const GENERATED_BEHIND_A_CONTRACT = ['system-specs', 'events', 'fe', 'pack-entry', 'pack-entry-fe'];
+
+/**
  * `file:line: specifier` for each import a contract leaf makes that would put the machine back in front of codegen.
  *
  * A leaf is a module `abuddy.json` names at `features[].plugin.contract` or `features[].system.contract`, and
@@ -779,11 +796,13 @@ export function findContractLeafImports(srcRoots = PACK_SRC_ROOTS, root = repoRo
           const at = viaLeaf ? where : `${where} (reached from ${path.relative(root, leaf)})`;
           const generated = /^(?:@\/__generated__|#generated)\/(.+?)(?:\.(?:ts|js))?$/.exec(specifier);
           if (generated) {
-            // Two rules, and they are not the same one. The leaf's own imports are held to `types` and `ears`,
-            // the two generated modules that reach nothing: that is what keeps a contract cheap to read. Deeper in
-            // the closure only the cycle matters — `events` imports the contract, and `fe` imports `events` — so a
-            // module the leaf reaches may use the rest.
-            const offends = viaLeaf ? !['types', 'ears'].includes(generated[1]) : ['events', 'fe'].includes(generated[1]);
+            // Two rules, and they are not the same one. The leaf's own imports are held to `types` and `ears`, the
+            // two generated modules that reach nothing: that is what keeps a contract cheap to read. Deeper in the
+            // closure only the cycle and the cost matter, which is `GENERATED_BEHIND_A_CONTRACT` above — so a module
+            // the leaf reaches may use the rest of the generated code.
+            const offends = viaLeaf
+              ? !['types', 'ears'].includes(generated[1])
+              : GENERATED_BEHIND_A_CONTRACT.includes(generated[1]);
             if (offends) found.push(at);
             continue;
           }
