@@ -101,6 +101,16 @@ dangling-published-path check, which publint cannot be — it skips any target b
 is how 99 published paths named files no tarball held. `@app/publish-checks`' `published-manifest-paths` is
 that one.
 
+**Only a recorded proxy can go stale from an input nobody listed**, and this repo has one. Measured 2026-09-27,
+against a proposal to give every `<artifact>:check` a case that makes it fail: `schema:check` regenerates from
+`manifest-schema.ts`, `exports:check` recomputes from `src/`, `facade:check` re-normalises the built bundle and
+`seed-parity:check` re-seeds — each takes its derivation fresh on every run and compares, so a missing input is
+not a thing that can happen to them, and a case perturbing the recorded file would prove that `!==` works. The
+exception is `api:stamp`, which records a *hash of what it believes the inputs are* rather than re-deriving, and
+it is the only one this ever bit; `api-reports.ts` already checks the proxy against itself for exactly that
+reason. So the question to ask of a new recorded artifact is not "does its check fail on a stale recording" but
+"does it re-derive, or record a proxy" — and a proxy needs the self-check, not a firing case.
+
 The chain is the whole gate: **CI does not run, on purpose.** `.github/workflows/ci.yml` has its `push`
 and `pull_request` triggers commented out while this is a single-contributor repo, so `gh run list` is empty
 and always will be. That is not a failure to report, and CI is not a check to cite — the local chain is the
