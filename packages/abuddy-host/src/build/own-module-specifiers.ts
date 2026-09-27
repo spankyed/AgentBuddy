@@ -65,6 +65,15 @@ export interface OwnModuleSpecifier {
   file: string;
   line: number;
   specifier: string;
+  /**
+   * Where the specifier's text sits in the file on disk, inside the quotes — a rewriter's splice point.
+   *
+   * Optional because this rule does not read them: it reports, and `specifiers:fix` is what splices. A reader
+   * that stops filling them is caught by a test rather than by the type, since the host's own spec passes
+   * hand-written findings with no position at all.
+   */
+  start?: number;
+  end?: number;
 }
 
 /**

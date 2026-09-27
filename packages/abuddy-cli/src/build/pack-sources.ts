@@ -29,12 +29,19 @@ export function* sourceFiles(dir: string, skip: (entryName: string) => boolean =
   }
 }
 
-/** A file's code: the whole file, or a .vue file's <script> blocks with the line each starts on (less one) */
-export function codeBlocks(file: string, code: string): { content: string; lineOffset: number }[] {
-  if (!file.endsWith('.vue')) return [{ content: code, lineOffset: 0 }];
+/**
+ * A file's code: the whole file, or a .vue file's `<script>` blocks.
+ *
+ * `lineOffset` is the line the block starts on, less one, and `offset` the character it starts at — so a
+ * position inside a block becomes a position in the file, which is what a rewriter needs. No `pad` option is
+ * passed, so `block.content[i]` is `code[offset + i]`; `pack-sources.spec.ts` asserts that rather than trusting
+ * it, because every splice `specifiers:fix` makes rests on it.
+ */
+export function codeBlocks(file: string, code: string): { content: string; lineOffset: number; offset: number }[] {
+  if (!file.endsWith('.vue')) return [{ content: code, lineOffset: 0, offset: 0 }];
   const { descriptor } = parseSfc(code, { filename: file });
   return [descriptor.script, descriptor.scriptSetup].filter((block) => block !== null)
-    .map((block) => ({ content: block.content, lineOffset: block.loc.start.line - 1 }));
+    .map((block) => ({ content: block.content, lineOffset: block.loc.start.line - 1, offset: block.loc.start.offset }));
 }
 
 /** One block of a pack's code as a syntax tree, with positions, so a caller can report a line */
@@ -53,9 +60,14 @@ export function moduleOf(node: ts.Node): string | undefined {
 /** Calls whose first argument is a module path, as `scripts/check-import-specifiers.ts` reads them too */
 const MODULE_PATH_CALLS = /^(require|require\.resolve|(vi|jest)\.(mock|doMock|unmock|importActual|importMock))$/;
 
-/** Every module specifier in one block of code, in every form that names a module path */
-function specifiersIn(source: ts.SourceFile): { text: string; line: number }[] {
-  const found: { text: string; line: number }[] = [];
+/**
+ * Every module specifier in one block of code, in every form that names a module path.
+ *
+ * `start` and `end` are the literal's bounds **inside the quotes**, so a rewriter splices the specifier and
+ * never the quote style. They are offsets into the block; `packSpecifiers` adds the block's own offset.
+ */
+function specifiersIn(source: ts.SourceFile): { text: string; line: number; start: number; end: number }[] {
+  const found: { text: string; line: number; start: number; end: number }[] = [];
   const visit = (node: ts.Node): void => {
     let literal: ts.StringLiteralLike | undefined;
     if ((ts.isImportDeclaration(node) || ts.isExportDeclaration(node)) && node.moduleSpecifier && ts.isStringLiteral(node.moduleSpecifier)) literal = node.moduleSpecifier;
@@ -65,7 +77,14 @@ function specifiersIn(source: ts.SourceFile): { text: string; line: number }[] {
       && (node.expression.kind === ts.SyntaxKind.ImportKeyword || MODULE_PATH_CALLS.test(node.expression.getText(source)))) {
       literal = node.arguments[0] as ts.StringLiteralLike;
     }
-    if (literal) found.push({ text: literal.text, line: source.getLineAndCharacterOfPosition(literal.getStart(source)).line + 1 });
+    if (literal) {
+      found.push({
+        text: literal.text,
+        line: source.getLineAndCharacterOfPosition(literal.getStart(source)).line + 1,
+        start: literal.getStart(source) + 1,
+        end: literal.getEnd() - 1,
+      });
+    }
     ts.forEachChild(node, visit);
   };
   visit(source);
@@ -87,12 +106,90 @@ export function packSpecifiers(packDir: string, dirs: readonly string[]): OwnMod
     for (const file of fs.statSync(root).isFile() ? [root] : [...sourceFiles(root)]) {
       const where = path.relative(packDir, file).split(path.sep).join('/');
       const code = fs.readFileSync(file, 'utf-8');
-      for (const { content, lineOffset } of codeBlocks(file, code)) {
-        for (const { text, line } of specifiersIn(parseSource(file, content))) {
-          found.push({ file: where, line: line + lineOffset, specifier: text });
+      for (const { content, lineOffset, offset } of codeBlocks(file, code)) {
+        for (const { text, line, start, end } of specifiersIn(parseSource(file, content))) {
+          found.push({ file: where, line: line + lineOffset, specifier: text, start: start + offset, end: end + offset });
         }
       }
     }
   }
   return found;
+}
+
+/** One block of a file as a syntax tree, with what it takes to turn a position inside it into a file position */
+export interface Block {
+  readonly source: ts.SourceFile;
+  readonly lineOffset: number;
+  readonly offset: number;
+}
+
+/** A specifier as the reader found it: the line it is on, and its bounds in the file, inside the quotes */
+export interface Specifier {
+  readonly text: string;
+  readonly line: number;
+  readonly start: number;
+  readonly end: number;
+}
+
+/** A file read and parsed once: its blocks, its specifiers, and a walk over every node of every block */
+export interface SourceView {
+  readonly file: string;
+  readonly code: string;
+  readonly blocks: readonly Block[];
+  readonly specifiers: readonly Specifier[];
+  /** `rule` returns what it found at a node, or nothing; the line reported is the file's, not the block's */
+  visit(rule: (node: ts.Node, source: ts.SourceFile) => string[] | undefined): { line: number; what: string }[];
+}
+
+/**
+ * The cache that makes one pass over the tree one parse per file.
+ *
+ * Keyed by absolute path and never invalidated, because the processes that read sources — `abuddy build`,
+ * `abuddy validate`, `check:specifiers` — read each file once and exit. A test over a temp tree reuses paths,
+ * so it calls `resetSourceCache()` between trees.
+ */
+const views = new Map<string, SourceView>();
+
+export function resetSourceCache(): void {
+  views.clear();
+}
+
+export function readSource(file: string): SourceView {
+  const seen = views.get(file);
+  if (seen) return seen;
+  const code = fs.readFileSync(file, 'utf-8');
+  const blocks: Block[] = codeBlocks(file, code)
+    .map(({ content, lineOffset, offset }) => ({ source: parseSource(file, content), lineOffset, offset }));
+  const specifiers = blocks.flatMap(({ source, lineOffset, offset }) =>
+    specifiersIn(source).map((found) => ({
+      text: found.text,
+      line: found.line + lineOffset,
+      start: found.start + offset,
+      end: found.end + offset,
+    })));
+  const view: SourceView = {
+    file,
+    code,
+    blocks,
+    specifiers,
+    visit(rule) {
+      const found: { line: number; what: string }[] = [];
+      for (const { source, lineOffset } of blocks) {
+        const walk = (node: ts.Node): void => {
+          for (const what of rule(node, source) ?? []) {
+            found.push({ line: source.getLineAndCharacterOfPosition(node.getStart(source)).line + 1 + lineOffset, what });
+          }
+          ts.forEachChild(node, walk);
+        };
+        walk(source);
+      }
+      return found.sort((a, b) => a.line - b.line);
+    },
+  };
+  views.set(file, view);
+  return view;
+}
+
+export function* readSources(files: Iterable<string>): Generator<SourceView> {
+  for (const file of files) yield readSource(file);
 }

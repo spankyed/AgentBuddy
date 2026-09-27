@@ -5,7 +5,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
-import { packSpecifiers, sourceFiles } from '../../src/build/pack-sources.ts';
+import { packSpecifiers, readSource, resetSourceCache, sourceFiles } from '../../src/build/pack-sources.ts';
 
 let packDir: string;
 
@@ -93,5 +93,56 @@ describe('sourceFiles', () => {
       [...sourceFiles(path.join(packDir, dir), skip)].map((f) => path.relative(packDir, f).split(path.sep).join('/')).sort();
     expect(under('src')).toEqual(['src/__generated__/e.ts', 'src/a.ts', 'src/b.vue', 'src/nested/d.mts']);
     expect(under('src', (name) => name === '__generated__')).toEqual(['src/a.ts', 'src/b.vue', 'src/nested/d.mts']);
+  });
+});
+
+/**
+ * The positions, which every splice `specifiers:fix` makes rests on. Asserted against the file on disk rather
+ * than against the reader's own arithmetic: `block.content[i] === code[offset + i]` is a property of
+ * `@vue/compiler-sfc` passing no `pad` option, and a property is what a test is for.
+ */
+describe('the positions a specifier carries', () => {
+  beforeEach(() => resetSourceCache());
+
+  const slices = (rel: string) => {
+    const full = path.join(packDir, rel);
+    const code = fs.readFileSync(full, 'utf-8');
+    return readSource(full).specifiers.map(({ text, start, end }) => ({ text, cut: code.slice(start, end) }));
+  };
+
+  it.each(['f.ts', 'view.tsx', 'legacy.js'])('slice the specifier out of %s', (name) => {
+    write(name, "import { a } from './a.ts';\nconst b = await import('../b/index.ts');");
+    for (const { text, cut } of slices(name)) expect(cut).toBe(text);
+  });
+
+  it("slice it out of both of an SFC's script blocks, through the block offset", () => {
+    write('view.vue', [
+      '<template><pre>from \'./decoy.ts\'</pre></template>',
+      '',
+      '<script lang="ts">',
+      "import { a } from './a.ts';",
+      '</script>',
+      '',
+      '<script setup lang="ts">',
+      "import { b } from './b.ts';",
+      '</script>',
+    ].join('\n'));
+    expect(slices('view.vue')).toEqual([
+      { text: './a.ts', cut: './a.ts' },
+      { text: './b.ts', cut: './b.ts' },
+    ]);
+  });
+
+  it('give two specifiers on one line distinct spans', () => {
+    write('two.ts', "import './a.ts'; import './b.ts';");
+    const [first, second] = readSource(path.join(packDir, 'two.ts')).specifiers;
+    expect(first!.line).toBe(second!.line);
+    expect(first!.end).toBeLessThan(second!.start);
+  });
+
+  it('read and parse a file once, however many times it is asked for', () => {
+    write('once.ts', "import './a.ts';");
+    const full = path.join(packDir, 'once.ts');
+    expect(readSource(full)).toBe(readSource(full));
   });
 });
