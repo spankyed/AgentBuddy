@@ -142,8 +142,8 @@ Checks:
 
 | Rule | What it refuses |
 |---|---|
-| `own-modules` | a specifier that names no file: `#generated/events` or `#generated/events.js` where the file is `events.ts`. No runtime resolves an extensionless specifier in ESM, and a pack ships one bundle rather than a module per source |
-| `js-specifiers` | a relative `./x.js` whose source sibling is `./x.ts` |
+| `source-resolution` | a `tsconfig.json` or Vitest config of yours that resolves a checkout's `@abuddy` source instead of the published `dist` — esbuild and the pack bundler read `dist` either way, so such a pack typechecks against one thing and ships another |
+| `own-modules` | a specifier that names no file: `#generated/events` or `#generated/events.js` where the file is `events.ts`, and a relative `./x.js` whose source sibling is `./x.ts`. No runtime resolves an extensionless specifier in ESM, and a pack ships one bundle rather than a module per source |
 | `pack-own-aliases` | `@/…`, a TypeScript-only `paths` mapping no runtime reads. Name your own modules with `#` subpath imports from your `package.json` |
 | `internal-package-imports` | an `@abuddy` export named `_x`: it is `@internal`, the app's own, and an app update is free to rename it |
 | `host-imports` | `@abuddy/host`, which is not installed for a pack |
@@ -151,8 +151,9 @@ Checks:
 | `untyped-sends` | `untypedBroadcastToPlugin`, `untypedSendToSystem`, `registerRepository` — use the typed facades from `#generated/events` |
 | `raw-transport` | `_rootEvents`, `trpc.bus`, `@abuddy/sdk/rpc` |
 | `backend-console` | `console.*` under `features/*/be/`, `migrations/` or `extensions/` — use `createLogger` from `@abuddy/sdk/logger` |
+| `cross-feature-imports` | a module of another feature's `fe/`, and a feature passing its own frontend on (`export … from './fe/state.ts'`). What a feature offers the rest is its plugin's contract, read through `#generated/fe` and `#generated/events` |
 
-The last three have no effect at run time, so a pack may switch them off in **`abuddy.checks.json`** at its root:
+The last four have no effect at run time, so a pack may switch them off in **`abuddy.checks.json`** at its root:
 
 ```json
 { "allow": ["backend-console", "untyped-sends"] }
