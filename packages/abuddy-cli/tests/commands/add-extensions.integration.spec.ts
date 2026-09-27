@@ -14,7 +14,7 @@ import { addAction } from '../../src/commands/add/action';
 import { addPrompt } from '../../src/commands/add/prompt';
 import { addFlow } from '../../src/commands/add/flow';
 import { generateEntries } from '../../src/commands/generate-entries';
-import { ownModuleSpecifierProblems } from '../../src/build/own-module-specifiers-gate.ts';
+import { packRuleProblems } from '../../src/build/pack-rules.ts';
 
 const REPO_ROOT = path.resolve(__dirname, '..', '..', '..', '..');
 const BIN = path.join(REPO_ROOT, 'node_modules', '.bin');
@@ -241,7 +241,7 @@ describe('abuddy add migration', () => {
  */
 describe('what abuddy add scaffolds', () => {
   it('names its own modules by the file that is there', () => {
-    expect(ownModuleSpecifierProblems(pack, ['src', 'tests'])).toEqual([]);
+    expect([...packRuleProblems(pack, ['src', 'tests'])]).toEqual([]);
   });
 });
 

@@ -210,6 +210,11 @@ describe('findPackBackendConsole', () => {
   });
 });
 
+/**
+ * Read from the syntax tree, since the rule became the pack rule `abuddy build` runs (`goal-one-rule-set.md`).
+ * The case this used to have for a specifier inside a template literal is gone with its subject: the CLI's
+ * templates are files now, and in a pack's own source a string that looks like an import is a string.
+ */
 describe('findHostImports', () => {
   it.each([
     ["import { edgeStore } from '@abuddy/host/ears';", '@abuddy/host/ears'],
@@ -218,8 +223,6 @@ describe('findHostImports', () => {
     ["const backup = await import('@abuddy/host/backup');", '@abuddy/host/backup'],
     ["const { envs } = require('@abuddy/host/ears');", '@abuddy/host/ears'],
     ["import '@abuddy/host';", '@abuddy/host'],
-    // A CLI template writes this as pack source
-    ["const REPO = `import { edgeStore } from '@abuddy/host/ears';`;", '@abuddy/host/ears'],
   ])('flags %s', (code, specifier) => {
     write('pack/feature.ts', code);
     expect(findHostImports(['src/pack'], root)).toEqual([`src/pack/feature.ts:1: ${specifier}`]);

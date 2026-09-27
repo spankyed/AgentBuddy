@@ -8,7 +8,9 @@ import ts from 'typescript';
 import { parse as parseSfc } from '@vue/compiler-sfc';
 import { SHARED_INSTANCE_PACKAGES } from '@abuddy/host/build/shared-deps';
 import { packageName } from '@abuddy/host/build/specifiers';
-import { ownModuleProblems, type OwnModuleSpecifier } from '@abuddy/host/build/own-module-specifiers';
+import { readSubpathImports } from '@abuddy/host/build/subpath-imports';
+import { PACK_RULES, type PackRuleKey } from '../packages/abuddy-cli/src/build/pack-rules.ts';
+import { readSource, sourceFiles as packSourceFiles } from '../packages/abuddy-cli/src/build/pack-sources.ts';
 
 const repoRoot = path.resolve(import.meta.dirname, '..');
 const CHECKED_DIRS = [
@@ -85,12 +87,12 @@ function findSpecifiers(files: string[], root: string, matches: (text: string, f
  * `file:line: specifier` for each relative emitted-extension specifier that names a TypeScript module.
  * An import of hand-written declarations (`./speech-event.js` → speech-event.d.ts) has no source and is fine.
  *
- * A pack's sources are in scope too (`PACK_SOURCE_DIRS`, `PACK_TEST_DIRS`, below): the repo used to forbid in
- * its own packages exactly what it generated into its packs, which is how a pack came to have three ways of
- * naming its own modules (`docs/archive/goals/goal-pack-imports-name-the-file.md`). The `#` half of the same
- * rule is `findExtensionlessOwnModules`.
+ * The `@abuddy` packages only. A pack's sources are covered by `own-modules` instead — the pack rule that
+ * resolves a specifier against the pack's files and so reports the file to write rather than only the offence,
+ * and the one `abuddy build` already runs for every pack. Two rules claiming one relative `.js` is what let the
+ * double-claim hide before (`docs/goals/goal-one-rule-set.md`): whichever ran first was the only one reported.
  */
-export function findJsSpecifiers(dirs = [...CHECKED_DIRS, ...PACK_SOURCE_DIRS, ...PACK_TEST_DIRS], root = repoRoot): string[] {
+export function findJsSpecifiers(dirs = CHECKED_DIRS, root = repoRoot): string[] {
   const files = dirs.flatMap((dir) => {
     // A listed directory that is gone means the list is stale and something is no longer checked,
     // which is worth failing over — but say so, rather than letting a readdir ENOENT stack out
@@ -103,6 +105,38 @@ export function findJsSpecifiers(dirs = [...CHECKED_DIRS, ...PACK_SOURCE_DIRS, .
     const base = path.resolve(path.dirname(file), text.slice(0, -emitted.length));
     return (SOURCE_EXTENSIONS[emitted] ?? []).some((ext) => fs.existsSync(`${base}${ext}`));
   }, false);
+}
+
+/**
+ * A pack rule from `@abuddy/cli`'s `build/pack-rules.ts`, applied to this repo's packs.
+ *
+ * The rule is the same rule wherever it runs — `abuddy build`, `abuddy validate` and `abuddy test` run these
+ * for every pack outside this checkout, and running a second implementation here is how two copies of one rule
+ * drift apart (`docs/goals/goal-one-rule-set.md`). What this adds is the repo's shape: each `dir` may be a
+ * pack's `src`, a pack's `tests`, or — in a spec — a directory standing in for one, and paths are reported
+ * relative to the repo rather than to the pack.
+ */
+function packRule(key: PackRuleKey, dirs: readonly string[], root: string): string[] {
+  const rule = PACK_RULES.find((candidate) => candidate.key === key);
+  if (!rule) throw new Error(`No pack rule "${key}"`);
+  return dirs.flatMap((dir) => {
+    const full = path.join(root, dir);
+    if (!fs.existsSync(full)) return [];
+    const files = fs.statSync(full).isFile() ? [full] : [...sourceFiles(full)];
+    // The pack a file belongs to: the directory above `src`/`tests`, which is what carries `package.json`
+    const packDir = path.dirname(full);
+    const imports = readSubpathImports(packDir);
+    return files.flatMap((file) => {
+      const relative = path.relative(root, file).split(path.sep).join('/');
+      return rule.check(readSource(file), {
+        packDir,
+        relative,
+        inRoot: path.relative(full, file).split(path.sep).join('/'),
+        generated: relative.split('/').includes('__generated__'),
+        imports,
+      });
+    });
+  }).sort();
 }
 
 /**
@@ -225,8 +259,7 @@ const internalImport: Rule = (node) => {
 
 /** `file:line: name from module` for each host-only export a pack's sources or tests import. Generated files are exempt. */
 export function findInternalPackageImports(dirs = [...PACK_SOURCE_DIRS, ...PACK_TEST_DIRS], root = repoRoot): string[] {
-  const files = packFiles(dirs, root).filter((file) => !file.split(path.sep).includes('__generated__'));
-  return findInFiles(files, root, internalImport);
+  return packRule('internal-package-imports', dirs, root);
 }
 
 /**
@@ -234,7 +267,7 @@ export function findInternalPackageImports(dirs = [...PACK_SOURCE_DIRS, ...PACK_
  * private to the app; packs use @abuddy/sdk (`services.appData`, `services.traceStore`, …).
  */
 export function findHostImports(dirs = PACK_SOURCE_DIRS, root = repoRoot): string[] {
-  return findSpecifierText(packFiles(dirs, root), root, (text) => /^@abuddy\/host(?:\/|$)/.test(text));
+  return packRule('host-imports', dirs, root);
 }
 
 /** The host's raw event paths: `@abuddy/sdk/rpc` modules, `_rootEvents` and `trpc.bus` */
@@ -250,7 +283,7 @@ const rawTransport: Rule = (node) => {
 
 /** `file:line: what` for each raw event path a pack source uses, which the typed sends in #generated/events replace */
 export function findRawTransport(dirs = PACK_SOURCE_DIRS, root = repoRoot): string[] {
-  return findInFiles(packFiles(dirs, root), root, rawTransport);
+  return packRule('raw-transport', dirs, root);
 }
 
 /** Pack backend code by path from the pack's `src` root, and the frontend code and tests among it */
@@ -271,15 +304,7 @@ const consoleUse: Rule = (node) => {
  * template sources (their console output is the CLI's) or single files.
  */
 export function findPackBackendConsole(dirs = PACK_SOURCE_DIRS, root = repoRoot): string[] {
-  const files = dirs.flatMap((dir) => {
-    const full = path.join(root, dir);
-    if (!fs.existsSync(full) || !fs.statSync(full).isDirectory()) return [];
-    return [...sourceFiles(full)].filter((file) => {
-      const relative = path.relative(full, file).split(path.sep).join('/');
-      return PACK_BACKEND_PATH.test(relative) && !PACK_FRONTEND_OR_TEST_PATH.test(relative);
-    });
-  });
-  return findInFiles(files, root, consoleUse);
+  return packRule('backend-console', dirs, root);
 }
 
 /** Pack unit tests, which run on @abuddy/testing's harness: the pack's code and the SDK, not the app */
@@ -316,46 +341,18 @@ function repoPacks(dirs: readonly string[]): Map<string, string[]> {
 }
 
 /**
- * `file:line: specifier` for each of a pack's own-module specifiers that names no file — written without an
- * extension, or with the `.js` a pack never emits.
+ * `file:line: specifier -> what it should say` for each of a pack's own-module specifiers naming no file.
  *
- * The rule and its search are one module (`@abuddy/host/build/own-module-specifiers`), because `abuddy build`
- * applies the same rule to every pack outside this checkout and a rule written twice is a rule that drifts.
- * Here it can resolve against the pack's files and name the one the author meant.
- *
- * The CLI's templates are checked as text and held to the extension alone: they are the pack source
- * `abuddy init` and `abuddy add` write, so there is no pack yet to resolve them against — and they are
- * exactly where an extensionless import gets reintroduced, since nothing compiles a template string.
+ * The rule is `@abuddy/cli`'s `own-modules`, which `abuddy build`, `abuddy validate` and `abuddy test` run for
+ * every pack outside this checkout. This applies it to the packs in it.
  */
 export function findExtensionlessOwnModules(
   dirs = [...PACK_SOURCE_DIRS, ...PACK_TEST_DIRS],
   root = repoRoot,
 ): string[] {
-  const inPacks = [...repoPacks(dirs)].flatMap(([packDir, subdirs]) => {
-    const pack = path.join(root, packDir);
-    return ownModuleProblems(pack, packSpecifiers(pack, subdirs)).map((problem) => `${packDir}/${problem}`);
-  });
-  return inPacks;
+  return packRule('own-modules', dirs, root);
 }
 
-/** Every specifier the pack's `dirs` name, read the way every other rule here reads a file: as a syntax tree */
-function packSpecifiers(pack: string, dirs: readonly string[]): OwnModuleSpecifier[] {
-  const found: OwnModuleSpecifier[] = [];
-  for (const dir of dirs) {
-    const full = path.join(pack, dir);
-    if (!fs.existsSync(full)) continue;
-    // A directory or a single file, as `packFiles` takes: a caller naming one file should not read as a walk
-    for (const file of fs.statSync(full).isFile() ? [full] : [...sourceFiles(full)]) {
-      const where = path.relative(pack, file).split(path.sep).join('/');
-      for (const { content, lineOffset } of codeBlocks(file)) {
-        for (const { text, line } of specifiers(content, file, true)) {
-          found.push({ file: where, line: line + lineOffset, specifier: text });
-        }
-      }
-    }
-  }
-  return found;
-}
 
 /** API modules (its `@/` alias) and host, API or CLI sources by relative path */
 const APP_SPECIFIER = /^(?:@abuddy\/host(?:\/|$)|@\/(?:core|setup)(?:\/|$)|(?:\.\.?\/)+(?:[\w.-]+\/)*(?:api|abuddy-host|abuddy-cli)\/src(?:\/|$))/;

@@ -1,5 +1,5 @@
 import { ensureCheckoutPackages } from '../build/checkout-packages.ts';
-import { refuseUnnamedOwnModules } from '../build/own-module-specifiers-gate.ts';
+import { refusePackRuleViolations } from '../build/pack-rules.ts';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { spawnSync } from 'node:child_process';
@@ -82,7 +82,7 @@ export async function contractTest(cwd: string, args: string[], run: ContractRun
   }
   // A pack's tests name its modules the way its sources do, and `abuddy build` reads only `src` — so this is
   // where a test file's `#generated/ears` is refused, before a run whose resolution depends on it
-  refuseUnnamedOwnModules(cwd, TEST_DIRS);
+  refusePackRuleViolations(cwd, TEST_DIRS);
   // The harness this run loads is built from the checkout's source, so bring it up to date first
   ensureCheckoutPackages(cwd);
   // A pack resolves the packages' published dist, whoever runs it — the same rule the Playwright half
@@ -116,7 +116,7 @@ export async function test(args: string[], run?: ContractRunner): Promise<void> 
   const playwrightCli = resolvePlaywrightCli(cwd);
   const app = await resolveTestApp({ flags, hostVersion: manifest?.hostVersion ?? '*' });
 
-  refuseUnnamedOwnModules(cwd, TEST_DIRS);
+  refusePackRuleViolations(cwd, TEST_DIRS);
   // The harness bundle this run loads is built from the checkout's source, so bring it up to date first
   ensureCheckoutPackages(cwd);
 

@@ -42,6 +42,8 @@ const UNBRIDGED_BY_POLICY = new Map<string, string>([
   ['@abuddy/host/build/discover', 'build-time only'],
   ['@abuddy/host/build/source-resolution', 'host tooling only (CLI, fixture, API boot)'],
   ['@abuddy/host/build/specifiers', 'build-time only: what a module specifier names, for the scripts that pack the published packages and the packages that check them'],
+  ['@abuddy/host/build/subpath-imports', "build-time only: a pack's package.json `imports`, read by the rule "
+    + 'below and by the pack rules abuddy build runs'],
   ['@abuddy/host/build/own-module-specifiers', "build-time only: the rule that a pack's own-module specifier "
     + 'names the file that is there, applied by check:specifiers here and by abuddy build to every other pack'],
   ['@abuddy/host/build/packages-built', 'checkout build tooling: the freshness rule behind npm run packages:ensure'],

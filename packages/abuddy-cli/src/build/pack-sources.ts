@@ -1,7 +1,6 @@
-// Reading a pack's sources: the files, an SFC's script blocks, and every module specifier in them. One
-// reader for the build's gates — `internal-imports-gate.ts` and `own-module-specifiers-gate.ts` — because
-// both ask the same question of the same files, and a second copy of "what does this file import" is a
-// second thing to get wrong. `typescript` and `vue` are this package's dependencies, so a syntax tree costs
+// Reading a pack's sources: the files, an SFC's script blocks, and every module specifier in them. One reader
+// for every rule in `pack-rules.ts` and for the repo's own `check:specifiers`, because they all ask the same
+// question of the same files, and a second copy of "what does this file import" is a second thing to get wrong. `typescript` and `vue` are this package's dependencies, so a syntax tree costs
 // nothing here: a string that looks like an import inside a comment or a template literal is not one, and no
 // regex over the text can tell.
 import * as fs from 'node:fs';
