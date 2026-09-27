@@ -152,12 +152,24 @@ Things that waste the most time, in order:
   `npm run packages:ensure` once first and every later call is a stat and a return, which is what makes
   a parallel chain safe; the 18 calls a serial chain makes are each paying that stat for nothing.
 
-Three rules that pay for themselves:
+Four rules that pay for themselves:
 
 - **Measure before you optimise, and before you accept someone else's measurement.** Two proposals in
   this repo were rejected by one command each, and both had been argued for at length first.
 - **A mutation check is worth more than a re-run.** Breaking the thing on purpose and watching the
   right test fail proves more than running the whole suite again.
+- **A check that reports nothing may have looked at nothing**, and a green run cannot tell you which. This
+  repo has shipped both kinds: a step that skipped every test and returned green, a cached stamp for work
+  that was stale, an extractor that found no paths in the one manifest it was written for, a probe naming a
+  file that does not exist. A rule table already has the answer — *"a rule with no firing case is a gate
+  nothing has watched fail"* — and an ad-hoc check needs the same thing and rarely has it. Two habits, both
+  cheaper than the review that catches it otherwise. **Derive the subject from the tree and assert it is not
+  empty**: a population that comes from a walk cannot be fictional, and one that comes back empty should fail
+  by name rather than pass every assertion over it. **Where the input is data — a pattern list, a manifest, a
+  rule table — mutate it in the test**: drop the thing under test from a copy, assert the answer flips, and the
+  check proves it can fail on every run for microseconds. `repo-checks/tests/packaged-app-files.spec.ts` is the
+  worked example; its two mutation cases corrected two wrong beliefs about the patterns they check on the first
+  run, before the commit.
 - **A comment is for whoever opens the file cold, not for whoever reads the diff.** What changed, how many
   copies there used to be, what you measured to decide, why some other value would be worse — that is
   commit-message material, and the commit message is where someone looks when they ask why. The test: will
