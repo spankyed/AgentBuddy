@@ -139,22 +139,6 @@ export function jsSpecifierFixes(dirs = CHECKED_DIRS, root = repoRoot): Fix[] {
 }
 
 /**
- * A pack rule from `@abuddy/cli`'s `build/pack-rules.ts`, applied to this repo's packs.
- *
- * The rule is the same rule wherever it runs — `abuddy build`, `abuddy validate` and `abuddy test` run these
- * for every pack outside this checkout, and running a second implementation here is how two copies of one rule
- * drift apart (`docs/goals/goal-one-rule-set.md`). What this adds is the repo's shape: each `dir` may be a
- * pack's `src`, a pack's `tests`, or — in a spec — a directory standing in for one, and paths are reported
- * relative to the repo rather than to the pack.
- *
- * One rule at a time, so it does not get `packRuleProblems`' "one offence, one message" — there, a pack author
- * reading a build failure is told once by the rule whose cause comes first. Here the rule *is* the subject:
- * `--rule <id>` runs one, `--list` names them all, and a rule that stood down would make a per-rule run's
- * answer depend on which other rules ran. What keeps that from becoming two answers to one question is that
- * both read the same `check`, and `FIRES`' disjointness sweep asserts no two rules claim one offence to begin
- * with.
- */
-/**
  * The pack a path belongs to: the nearest directory at or above it holding a manifest.
  *
  * Not `dirname` of the given directory, which is right only when a caller names a pack's `src` — and a
@@ -170,6 +154,22 @@ function packRootOf(from: string, root: string): string {
   return path.dirname(fs.statSync(from).isFile() ? path.dirname(from) : from);
 }
 
+/**
+ * A pack rule from `@abuddy/cli`'s `build/pack-rules.ts`, applied to this repo's packs.
+ *
+ * The rule is the same rule wherever it runs — `abuddy build`, `abuddy validate` and `abuddy test` run these
+ * for every pack outside this checkout, and running a second implementation here is how two copies of one rule
+ * drift apart (`docs/goals/goal-one-rule-set.md`). What this adds is the repo's shape: each `dir` may be a
+ * pack's `src`, a pack's `tests`, or — in a spec — a directory standing in for one, and paths are reported
+ * relative to the repo rather than to the pack.
+ *
+ * One rule at a time, so it does not get `packRuleProblems`' "one offence, one message" — there, a pack author
+ * reading a build failure is told once by the rule whose cause comes first. Here the rule *is* the subject:
+ * `--rule <id>` runs one, `--list` names them all, and a rule that stood down would make a per-rule run's
+ * answer depend on which other rules ran. What keeps that from becoming two answers to one question is that
+ * both read the same `check`, and `FIRES`' disjointness sweep asserts no two rules claim one offence to begin
+ * with.
+ */
 function packRule(key: PackRuleKey, dirs: readonly string[], root: string): string[] {
   const rule = PACK_RULES.find((candidate) => candidate.key === key);
   if (!rule) throw new Error(`No pack rule "${key}"`);
@@ -261,58 +261,10 @@ function findInFiles(files: string[], root: string, rule: Rule): string[] {
   });
 }
 
-/**
- * Ref-taking sends packs get as name-taking ones from #generated/events, whichever SDK module exports them.
- */
-const EVENT_SENDS = ['untypedBroadcastToPlugin', 'untypedSendToSystem', '_sendToLocalPlugin'];
-
-/** Imports and re-exports of the untyped sends (and the engine's repository registration), or all of @abuddy/sdk/events */
-const rawPackHelper: Rule = (node) => {
-  if (!ts.isImportDeclaration(node) && !ts.isExportDeclaration(node)) return;
-  const module = moduleOf(node);
-  if (!module?.startsWith('@abuddy/')) return;
-  const bindings = ts.isImportDeclaration(node) ? node.importClause?.namedBindings : node.exportClause;
-  if (!bindings || ts.isNamespaceImport(bindings) || ts.isNamespaceExport(bindings)) {
-    // `import * as x from`, `export * from`, `export * as x from` (a default import has no bindings)
-    const namespace = bindings !== undefined || ts.isExportDeclaration(node);
-    return namespace && module === '@abuddy/sdk/events' ? ['* from @abuddy/sdk/events (import the names)'] : undefined;
-  }
-  const raw = module === '@abuddy/ears' ? [...EVENT_SENDS, 'registerRepository', 'unregisterRepository'] : EVENT_SENDS;
-  return bindings.elements.map((el) => (el.propertyName ?? el.name).text).filter((name) => raw.includes(name))
-    .map((name) => `${name} from ${module}`);
-};
-
 /** `file:line: name from module` for each untyped send or repository registration a pack source names. Generated files are exempt. */
 export function findRawPackHelpers(dirs = PACK_SOURCE_DIRS, root = repoRoot): string[] {
-  const files = packFiles(dirs, root).filter((file) => !file.split(path.sep).includes('__generated__'));
-  return findInFiles(files, root, rawPackHelper);
+  return packRule('untyped-sends', dirs, root);
 }
-
-/**
- * A host-only export a pack named: `@internal` exports are prefixed `_` (API Extractor's
- * `ae-internal-missing-underscore` keeps them that way), so the name alone says the app owns it. It
- * reads the imported name, not the local one, so an alias can't hide one and a public name aliased
- * to an underscore local is fine. A namespace import (`import * as u`, then `u._x()`) is not caught:
- * a per-node rule has no scope tracking, as with `rawPackHelper`. It's a guardrail, not a sandbox.
- */
-const internalImport: Rule = (node) => {
-  const internal = (names: string[], module: string) =>
-    names.filter((name) => name.startsWith('_')).map((name) => `${name} from ${module}`);
-  if (ts.isImportDeclaration(node) || ts.isExportDeclaration(node)) {
-    const module = moduleOf(node);
-    if (!module?.startsWith('@abuddy/')) return;
-    const bindings = ts.isImportDeclaration(node) ? node.importClause?.namedBindings : node.exportClause;
-    if (!bindings || ts.isNamespaceImport(bindings) || ts.isNamespaceExport(bindings)) return;
-    return internal(bindings.elements.map((el) => (el.propertyName ?? el.name).text), module);
-  }
-  // `const { _x } = await import('@abuddy/…')`
-  if (ts.isVariableDeclaration(node) && node.initializer && ts.isObjectBindingPattern(node.name)) {
-    const call = ts.isAwaitExpression(node.initializer) ? node.initializer.expression : node.initializer;
-    const module = moduleOf(call);
-    if (!module?.startsWith('@abuddy/')) return;
-    return internal(node.name.elements.map((el) => (el.propertyName ?? el.name).getText()), module);
-  }
-};
 
 /** `file:line: name from module` for each host-only export a pack's sources or tests import. Generated files are exempt. */
 export function findInternalPackageImports(dirs = [...PACK_SOURCE_DIRS, ...PACK_TEST_DIRS], root = repoRoot): string[] {
@@ -381,7 +333,7 @@ const PACK_TEST_DIRS = packHalves('tests');
  * fail loudly — it resolves for `tsc` and for nothing else, which is the shape of failure this refuses.
  */
 export function findPackOwnAliases(dirs = [...PACK_SOURCE_DIRS, ...PACK_TEST_DIRS], root = repoRoot): string[] {
-  return findSpecifiers(packFiles(dirs, root), root, (text) => text.startsWith('@/'), true);
+  return packRule('pack-own-aliases', dirs, root);
 }
 
 /**
@@ -479,7 +431,7 @@ export function findUpwardImports(layers = LAYERS, root = repoRoot): string[] {
  * Who may load LMDB (docs/goals/goal-package-boundaries.md, Decision 3): only `@abuddy/ears/lmdb` imports
  * `lmdb`. `dirs` may not import what `forbidden` matches; `except` is a directory inside them that may.
  */
-export const LMDB_RULES: { dirs: string[]; except?: string; forbidden: RegExp }[] = [
+export const LMDB_RULES: { dirs: string[]; except?: string; forbidden?: RegExp; rule?: PackRuleKey }[] = [
   // The host and the API open the store through @abuddy/ears/lmdb
   {
     dirs: ['packages/abuddy-host/src', 'packages/abuddy-host/tests', 'packages/abuddy-host/scripts', 'packages/api/src', 'packages/api/tests', 'packages/api/scripts'],
@@ -487,16 +439,19 @@ export const LMDB_RULES: { dirs: string[]; except?: string; forbidden: RegExp }[
   },
   // The engine's root never loads the store
   { dirs: ['packages/abuddy-ears/src'], except: 'packages/abuddy-ears/src/lmdb', forbidden: /^(?:lmdb(?:\/|$)|(?:\.\.?\/)+(?:[\w.-]+\/)*lmdb(?:\/|$))/ },
-  // Packs and their tests don't use the app's store
-  { dirs: [...PACK_SOURCE_DIRS, ...PACK_TEST_DIRS], forbidden: /^(?:lmdb|@abuddy\/ears\/lmdb)(?:\/|$)/ },
+  // Packs and their tests don't use the app's store. Named rather than spelled: this population is a pack's, so
+  // the rule is `@abuddy/cli`'s, the one `abuddy build` already runs for every pack. The two above are the host's
+  // and the engine's own trees, which no pack rule can have, so they keep a pattern here.
+  { dirs: [...PACK_SOURCE_DIRS, ...PACK_TEST_DIRS], rule: 'lmdb-imports' },
 ];
 
 /** `file:line: specifier` for each import of LMDB or the LMDB store where `rules` forbid it */
 export function findLmdbImports(rules = LMDB_RULES, root = repoRoot): string[] {
-  return rules.flatMap(({ dirs, except, forbidden }) => {
+  return rules.flatMap(({ dirs, except, forbidden, rule }) => {
+    if (rule) return packRule(rule, dirs, root);
     const allowed = except && path.join(root, except) + path.sep;
     const files = packFiles(dirs, root).filter((file) => !allowed || !file.startsWith(allowed));
-    return findSpecifiers(files, root, (text) => forbidden.test(text));
+    return findSpecifiers(files, root, (text) => forbidden!.test(text));
   });
 }
 
