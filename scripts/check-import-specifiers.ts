@@ -11,7 +11,7 @@ import { packageName } from '@abuddy/host/build/specifiers';
 import { readSubpathImports } from '@abuddy/host/build/subpath-imports';
 import { ownModuleFindings } from '@abuddy/host/build/own-module-specifiers';
 import { PACK_RULES, type PackRuleKey } from '../packages/abuddy-cli/src/build/pack-rules.ts';
-import { readSource } from '../packages/abuddy-cli/src/build/pack-sources.ts';
+import { readSource, sourceFiles } from '../packages/abuddy-cli/src/build/pack-sources.ts';
 import type { Fix } from './lib/specifier-fixes.ts';
 
 const repoRoot = path.resolve(import.meta.dirname, '..');
@@ -76,13 +76,6 @@ const SOURCE_EXTENSIONS: Record<string, string[]> = { '.js': ['.ts', '.tsx'], '.
 /** Calls whose first argument is a module path */
 const MODULE_PATH_CALLS = /^(require|require\.resolve|(vi|jest)\.(mock|doMock|unmock|importActual|importMock))$/;
 
-function* sourceFiles(dir: string): Generator<string> {
-  for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
-    const full = path.join(dir, entry.name);
-    if (entry.isDirectory()) yield* sourceFiles(full);
-    else if (entry.isFile() && /(?<!\.d)\.(ts|tsx|mts|cts|js|jsx|mjs|cjs)$|\.vue$/.test(entry.name)) yield full;
-  }
-}
 
 
 

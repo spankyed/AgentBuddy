@@ -92,6 +92,9 @@ describe('sourceFiles', () => {
     const under = (dir: string, skip?: (name: string) => boolean) =>
       [...sourceFiles(path.join(packDir, dir), skip)].map((f) => path.relative(packDir, f).split(path.sep).join('/')).sort();
     expect(under('src')).toEqual(['src/__generated__/e.ts', 'src/a.ts', 'src/b.vue', 'src/nested/d.mts']);
+    // Build output is not source either, and one walker means one answer for both callers
+    write('src/dist/built.js', 'export const x = 1;');
+    expect(under('src')).toEqual(['src/__generated__/e.ts', 'src/a.ts', 'src/b.vue', 'src/nested/d.mts']);
     expect(under('src', (name) => name === '__generated__')).toEqual(['src/a.ts', 'src/b.vue', 'src/nested/d.mts']);
   });
 });

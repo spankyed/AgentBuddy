@@ -21,7 +21,10 @@ const SOURCE_FILE = /(?<!\.d)\.(ts|tsx|mts|cts|js|jsx|mjs|cjs)$|\.vue$/;
 /** Every source file under `dir`, skipping `node_modules` and whatever else `skip` names by entry name */
 export function* sourceFiles(dir: string, skip: (entryName: string) => boolean = () => false): Generator<string> {
   for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
-    if (entry.name === 'node_modules' || skip(entry.name)) continue;
+    // Dependencies and build output are not a pack's source, whoever walks: the repo's own rules used to have a
+    // second walk that skipped neither, which is how a `node_modules` under a checked directory would have been
+    // read as source — latent, since none sits under one today
+    if (entry.name === 'node_modules' || entry.name === 'dist' || skip(entry.name)) continue;
     const full = path.join(dir, entry.name);
     if (entry.isDirectory()) yield* sourceFiles(full, skip);
     else if (entry.isFile() && SOURCE_FILE.test(entry.name)) yield full;
