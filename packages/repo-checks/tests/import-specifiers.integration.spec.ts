@@ -428,73 +428,136 @@ describe('findSharedPackageLists', () => {
  * (`findPackOwnAliases`, `findPackageScriptImports`), which is exactly what the sentence promised could not
  * happen. Same shape as `step-build-barrel.spec.ts`: a table and its uses, kept in step by a test.
  */
+/**
+ * One offending example per rule in `CHECKS`, and the call that runs the rule over it.
+ *
+ * Every rule there is a gate that fails the build, so every one needs a case that proves it bites — and the
+ * two attempts before this one read the *spec* instead of running the rules. The first asked whether a
+ * `describe` block existed, which the own-module rule satisfied while half of it was asserted nowhere. The
+ * second parsed this file and asked what each block's assertions looked like, which `expect([1]).toEqual([1])`
+ * inside a well-named `describe` would have satisfied, and which called `findSharedPackageLists` uncovered
+ * because its cases build their expected list instead of writing it out.
+ *
+ * So this runs each rule against input written to make it speak. The table is keyed by the rule's function
+ * name and checked against `CHECKS` in both directions, so a rule added without an example fails here, and an
+ * example left behind by a deleted rule fails too. The per-rule `describe` blocks above cover the nuances:
+ * what each rule allows, the line it reports, the forms it reads. This covers one thing, for all of them.
+ */
+const FIRES: Record<string, () => string[]> = {
+  findJsSpecifiers: () => {
+    write('f.ts', "import { q } from './query.js';");
+    return findJsSpecifiers(['src'], root);
+  },
+  findRawPackHelpers: () => {
+    write('pack/feature.ts', "import { untypedSendToSystem } from '@abuddy/sdk/events';");
+    return findRawPackHelpers(['src/pack'], root);
+  },
+  findInternalPackageImports: () => {
+    write('pack/feature.ts', "import { _getMediaPath } from '@abuddy/sdk/utils';");
+    return findInternalPackageImports(['src/pack'], root);
+  },
+  findRawTransport: () => {
+    write('pack/feature.ts', '_rootEvents.emitOutgoing(event);');
+    return findRawTransport(['src/pack'], root);
+  },
+  findPackBackendConsole: () => {
+    write('pack/features/notes/be/system.ts', "console.log('seeded');");
+    return findPackBackendConsole(['src/pack'], root);
+  },
+  findHostImports: () => {
+    write('pack/feature.ts', "import { edgeStore } from '@abuddy/host/ears';");
+    return findHostImports(['src/pack'], root);
+  },
+  findPackOwnAliases: () => {
+    writeAt('pack/src/a.ts', "import { x } from '@/features/notes/be/x.ts';");
+    return findPackOwnAliases(['pack/src'], root);
+  },
+  findExtensionlessOwnModules: () => {
+    writeAt('pack/package.json', JSON.stringify({ name: 'p', type: 'module', imports: { '#generated/*': './src/__generated__/*' } }));
+    writeAt('pack/src/__generated__/events.ts', 'export const sendToSystem = 1;');
+    writeAt('pack/src/f.ts', "import { sendToSystem } from '#generated/events';");
+    return findExtensionlessOwnModules(['pack/src'], root);
+  },
+  findUnlistedPackTemplates: () => {
+    writeAt('commands/add-thing.ts', "const T = `import { x } from '#generated/events.ts';`;");
+    return findUnlistedPackTemplates(['commands'], root, ['commands/add']);
+  },
+  findAppImportsInPackTests: () => {
+    write('pack-tests/unit/feature.spec.ts', "import { hydrate } from '@abuddy/host/ears';");
+    return findAppImportsInPackTests(['src/pack-tests'], root);
+  },
+  findUpwardImports: () => {
+    const layers = LAYERS.map((l) => ({ ...l, dir: `layers/${path.basename(l.dir).replace(/^abuddy-/, '')}` }));
+    // Every layer has to be there, since the rule walks all of them; only the lowest one imports upward
+    for (const { dir } of layers) layer(dir, {}, {});
+    layer('layers/ears', {}, { 'src/index.ts': "import { services } from '@abuddy/sdk/services';\n" });
+    return findUpwardImports(layers, root);
+  },
+  findLmdbImports: () => {
+    const rules = LMDB_RULES.map((rule) => ({
+      ...rule,
+      dirs: rule.dirs.map((dir) => `src/${dir}`),
+      except: rule.except && `src/${rule.except}`,
+    }));
+    write('packages/abuddy-host/src/services/trace-store.ts', "import { open } from 'lmdb';");
+    return findLmdbImports(rules, root);
+  },
+  findSharedPackageLists: () => {
+    write('consumer.ts', "const EXTERNALS = ['@abuddy/sdk'];");
+    return findSharedPackageLists(['src/consumer.ts'], root);
+  },
+  findRepositoryCasts: () => {
+    write('packages/thing/src/a.ts', 'const notes = repository as unknown as Repositories;');
+    return findRepositoryCasts(['src/packages/thing/src'], root);
+  },
+  findCrossFeatureImports: () => {
+    writeAt('pack/src/extensions/viewer.ts', "import List from '../features/notes/fe/canvas/list.vue';");
+    return findCrossFeatureImports(['pack/src'], root);
+  },
+  findContractLeafImports: () => {
+    writeAt('pack/abuddy.json', JSON.stringify({
+      id: 'demo-pack', name: 'Demo', version: '1.0.0',
+      features: [{ id: 'notes', plugin: { entry: 'src/features/notes/fe/plugin.ts', contract: 'src/features/notes/fe/contract.ts#Contract' } }],
+    }));
+    writeAt('pack/src/features/notes/fe/contract.ts', "import type { P } from './plugin';");
+    writeAt('pack/src/features/notes/fe/plugin.ts', 'export type P = { id: string };');
+    return findContractLeafImports(['pack/src'], root);
+  },
+  findPackageScriptImports: () => {
+    writeAt('packages/thing/package.json', JSON.stringify({ name: '@abuddy/thing' }));
+    writeAt('packages/thing/scripts/build.ts', "import { x } from '../../../scripts/lib/x.ts';");
+    return findPackageScriptImports(root);
+  },
+  findCrossCheckoutResolution: () => {
+    // A worktree nested in the repository: its own build output is missing, so TypeScript keeps walking up
+    // and resolves the package to the parent checkout's
+    const outer = path.join(root, 'outer');
+    const inner = path.join(outer, 'nested', 'worktree');
+    for (const checkout of [outer, inner]) {
+      writeAt(path.relative(root, path.join(checkout, 'package.json')), JSON.stringify({ name: 'root', workspaces: ['packages/*'] }));
+      writeAt(path.relative(root, path.join(checkout, 'packages', 'api', 'package.json')), JSON.stringify({ name: '@app/api', types: 'dist/types.d.ts' }));
+      fs.mkdirSync(path.join(checkout, 'node_modules', '@app'), { recursive: true });
+      fs.symlinkSync(path.join(checkout, 'packages', 'api'), path.join(checkout, 'node_modules', '@app', 'api'), 'dir');
+    }
+    writeAt(path.relative(root, path.join(outer, 'packages', 'api', 'dist', 'types.d.ts')), 'export {};\n');
+    return findCrossCheckoutResolution(inner);
+  },
+  findMissingSourceConditions: () => {
+    workspace();
+    writeAt('packages/consumer/tsconfig.json', '{ "compilerOptions": { "strict": true } }');
+    return conditionProblems();
+  },
+};
+
 describe('CHECKS', () => {
-  const source = ts.createSourceFile(import.meta.filename, fs.readFileSync(import.meta.filename, 'utf-8'),
-    ts.ScriptTarget.Latest, true, ts.ScriptKind.TS);
+  it.each(CHECKS.map(([find]) => find.name))('%s flags an offending example', (name) => {
+    const fire = FIRES[name];
+    expect(fire, `add an offending example for ${name} to FIRES: a gate with no case that makes it speak is a gate nothing has watched fail`).toBeDefined();
+    expect((fire as () => string[])(), `${name} found nothing in a tree written to offend it`).not.toEqual([]);
+  });
 
-  /** The `describe('<name>', …)` blocks in this file, by the name each one gives */
-  function blocksByName(): Map<string, ts.Node> {
-    const blocks = new Map<string, ts.Node>();
-    const visit = (node: ts.Node): void => {
-      if (ts.isCallExpression(node) && node.expression.getText(source).startsWith('describe')
-        && node.arguments[0] && ts.isStringLiteralLike(node.arguments[0])) {
-        blocks.set((node.arguments[0] as ts.StringLiteralLike).text, node);
-      }
-      ts.forEachChild(node, visit);
-    };
-    visit(source);
-    return blocks;
-  }
-
-  /**
-   * Whether a block asserts that something *was* found: a non-empty array, a length, a match, a throw.
-   *
-   * Read from the syntax tree rather than from the text, because the distinction is what an assertion says,
-   * and a regex over `toEqual` cannot tell `toEqual([])` — a rule staying quiet — from `toEqual([problem])`.
-   */
-  /**
-   * Whether an expected value says "nothing was found". Anything else counts as a finding, the built list
-   * `expect(…).toEqual(found.map(…))` included — the first version took only a non-empty array literal, and
-   * called `findSharedPackageLists` uncovered although its three cases each assert what it flags.
-   */
-  const isEmptiness = (expected: ts.Expression): boolean =>
-    (ts.isArrayLiteralExpression(expected) && expected.elements.length === 0)
-    || (ts.isObjectLiteralExpression(expected) && expected.properties.length === 0)
-    || expected.getText(source) === 'undefined';
-
-  function assertsAFinding(block: ts.Node): boolean {
-    let found = false;
-    const visit = (node: ts.Node): void => {
-      if (found) return;
-      if (ts.isCallExpression(node) && ts.isPropertyAccessExpression(node.expression)) {
-        const matcher = node.expression.name.text;
-        const [argument] = node.arguments;
-        if (matcher === 'toContain' || matcher === 'toMatch' || matcher === 'toThrow' || matcher === 'toThrowError') found = true;
-        if ((matcher === 'toEqual' || matcher === 'toStrictEqual') && argument && !isEmptiness(argument)) found = true;
-        if (matcher === 'toHaveLength' && argument && ts.isNumericLiteral(argument) && Number(argument.text) > 0) found = true;
-      }
-      ts.forEachChild(node, visit);
-    };
-    visit(block);
-    return found;
-  }
-
-  /**
-   * Every rule in `CHECKS` is a gate that fails the build, so every one needs a case that proves it bites.
-   *
-   * This was a sentence and nothing else for a while: the file imported `CHECKS` and never read it, and two
-   * rules had landed with no case at all (`findPackOwnAliases`, `findPackageScriptImports`). Then it checked
-   * that a `describe` existed, which the own-module rule satisfied while half of it — the relative form, and
-   * 716 of the specifiers it governs — was asserted nowhere. So the bar is what an assertion *says*: a rule
-   * whose only cases are "and this one passes" is a rule nothing has watched fail.
-   */
-  it('has a case per rule that asserts the rule finding something', () => {
-    const blocks = blocksByName();
-    const uncovered = CHECKS.map(([find]) => find.name).filter((name) => {
-      const block = blocks.get(name);
-      return block === undefined || !assertsAFinding(block);
-    });
-    expect(uncovered, 'each rule in CHECKS needs a describe block naming it, holding a case that asserts what it flags').toEqual([]);
+  it('has no example left behind by a rule that is gone', () => {
+    expect(Object.keys(FIRES).filter((name) => !CHECKS.some(([find]) => find.name === name))).toEqual([]);
   });
 });
 
