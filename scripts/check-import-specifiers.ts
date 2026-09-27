@@ -653,6 +653,24 @@ function doorSpans(view: SourceView): { start: number; end: number }[] {
 }
 
 /**
+ * The path a pack-internal specifier names, by the two spellings a pack may write: a relative path, or one of its
+ * own `#` subpaths, mapped through `mappedPathFor` — the one owner of Node's precedence for an `imports` map.
+ *
+ * `@/` is not one of them, and this is the one place that is decided for both rules below. It is a TypeScript-only
+ * `paths` mapping no runtime reads: `findPackOwnAliases` fails `check:specifiers` on one in any pack source or test
+ * and the CLI's `pack-own-aliases` refuses it unswitchably, so every own-module specifier a pack writes is a `#`
+ * subpath. Resolving `@/` here bought nothing and cost the rest — both rules read it and skipped the spelling the
+ * packs use, and their fixtures were written in it, so both were blind with every test green.
+ *
+ * It answers with a path and does not ask whether the file is there; a caller that reads the target composes this
+ * with `sourceFile` below.
+ */
+function packTargetOf(packDir: string, imports: Record<string, string>, from: string, specifier: string): string | undefined {
+  if (specifier.startsWith('.')) return path.resolve(path.dirname(from), specifier);
+  return specifier.startsWith('#') ? mappedPathFor(packDir, imports, specifier) : undefined;
+}
+
+/**
  * `file:line: specifier` for each import of another feature's frontend. A feature reaches into no other feature's
  * frontend at all: what one offers the rest is its plugin's contract — its published state, which `#generated/fe`
  * generates typed readers for, and the inbox `#generated/events` types the sends with. Neither needs a module of
@@ -664,6 +682,9 @@ function doorSpans(view: SourceView): { start: number; end: number }[] {
  * Two modules are exempt, and both are the pack's own assembly rather than one feature reaching another: generated
  * code, which registers every feature's plugin, and what the package publishes (`publishedEntryPoints`).
  *
+ * Which specifiers it can follow at all is `packTargetOf` above, not restated here: a pack-internal one, relative
+ * or a `#` subpath of its own.
+ *
  * It reads a syntax tree, like every rule here bar the two that read text on purpose. It used to match regexes,
  * and 28% of what it reads are `.vue` files it read whole: a commented-out import, one in a `<template>`, one in a
  * template literal and a CSS `@import` in a `<style>` block all counted, while a module path in a `vi.mock` did
@@ -674,7 +695,9 @@ function doorSpans(view: SourceView): { start: number; end: number }[] {
 export function findCrossFeatureImports(srcRoots = PACK_SRC_ROOTS, root = repoRoot): string[] {
   return srcRoots.flatMap((srcRoot) => {
     const src = path.join(root, srcRoot);
-    const published = publishedEntryPoints(path.dirname(src));
+    const packDir = path.dirname(src);
+    const published = publishedEntryPoints(packDir);
+    const imports = readSubpathImports(packDir);
     const relative = (file: string) => path.relative(src, file).split(path.sep).join('/');
     const featureOf = (file: string) => /^features\/([^/]+)\//.exec(relative(file))?.[1];
     /** What the package publishes, from outside every feature: the modules that assemble it (`publishedEntryPoints`) */
@@ -684,8 +707,7 @@ export function findCrossFeatureImports(srcRoots = PACK_SRC_ROOTS, root = repoRo
       const inOwnFrontend = /^features\/[^/]+\/fe\//.test(relative(file));
       const doors = inOwnFrontend ? [] : doorSpans(view);
       return view.specifiers.flatMap(({ text, line, start, end }) => {
-        const target = text.startsWith('@/') ? path.join(src, text.slice(2))
-          : text.startsWith('.') ? path.resolve(path.dirname(file), text) : undefined;
+        const target = packTargetOf(packDir, imports, file, text);
         if (target === undefined) return [];
         const into = /^features\/([^/]+)\/fe(?:\/.+)?$/.exec(relative(target));
         if (!into) return [];
@@ -766,17 +788,15 @@ export function findContractLeafImports(srcRoots = PACK_SRC_ROOTS, root = repoRo
      * are the two paths the manifest states outright, so a leaf reaching one is reported whatever it is called.
      */
     const actorEntries = new Set(files((f) => [f.plugin?.entry, f.system?.entry]));
-    // A pack's own `#` subpaths, so the walk follows the alias the packs actually write: `default-setup` uses
-    // `#features/` 188 times and `@/features/` never, and two of its contract closures ended at one of those
-    // imports — including `threads/be/types.ts` reaching `code/`, a cross-feature hop the walk stopped at.
-    // `mappedPathFor` owns Node's precedence for the map; a `#generated/…` specifier never reaches it, being
-    // matched and classified below *before* resolution, where `types`/`ears` are told apart from `events`/`fe` —
-    // a distinction the file they resolve to cannot make.
+    // The pack's own `#` subpaths, which is how a pack names its own modules and so how its features reach each
+    // other. Two of `default-setup`'s contract closures used to end at one of those imports — including
+    // `threads/be/types.ts` reaching `code/`, a cross-feature hop the walk stopped at.
+    // A `#generated/…` specifier never reaches the resolver, being matched and classified below *before*
+    // resolution, where `types`/`ears` are told apart from `events`/`fe` — a distinction the file a specifier
+    // resolves to cannot make.
     const imports = readSubpathImports(packDir);
     const resolveFrom = (from: string, specifier: string): string | undefined => {
-      const base = specifier.startsWith('@/') ? path.join(src, specifier.slice(2))
-        : specifier.startsWith('.') ? path.resolve(path.dirname(from), specifier)
-          : specifier.startsWith('#') ? mappedPathFor(packDir, imports, specifier) : undefined;
+      const base = packTargetOf(packDir, imports, from, specifier);
       return base === undefined ? undefined : sourceFile(base);
     };
     const relative = (target: string) => path.relative(src, target).split(path.sep).join('/');
@@ -794,7 +814,7 @@ export function findContractLeafImports(srcRoots = PACK_SRC_ROOTS, root = repoRo
         for (const { text: specifier, line } of readSource(file).specifiers) {
           const where = `${path.relative(root, file)}:${line}: ${specifier}`;
           const at = viaLeaf ? where : `${where} (reached from ${path.relative(root, leaf)})`;
-          const generated = /^(?:@\/__generated__|#generated)\/(.+?)(?:\.(?:ts|js))?$/.exec(specifier);
+          const generated = /^#generated\/(.+?)(?:\.(?:ts|js))?$/.exec(specifier);
           if (generated) {
             // Two rules, and they are not the same one. The leaf's own imports are held to `types` and `ears`, the
             // two generated modules that reach nothing: that is what keeps a contract cheap to read. Deeper in the
