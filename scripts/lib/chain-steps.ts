@@ -46,7 +46,12 @@ export interface ChainStep {
    * the tree, so it belongs with evidence.
    */
   readonly excludes?: readonly string[];
-  /** Needs the package build lock, so it cannot share a lane with another step that takes it */
+  /**
+   * Runs alone: the scheduler starts it only when nothing else is running and holds everything else back
+   * while it does (`chain-schedule.ts`). Two steps need that for two different reasons — `packages:ensure`
+   * takes the package build lock, and `packages:check` reads the trees a build deletes and recreates — so the
+   * field says what the scheduler does rather than naming one step's reason.
+   */
   readonly exclusive?: true;
   /**
    * A step the chain does not cache, with its reason on the step.
@@ -390,6 +395,27 @@ export const CHAIN_STEPS: readonly ChainStep[] = [
     neverCachedBecause: 'what it guarantees is recorded in stamps of its own, which this fingerprint cannot '
       + 'see; its check is ~0.3s warm, so a cache on top only adds a record that can disagree',
     inputs: [...PACKAGE_BUILD_INPUTS, 'scripts/ensure-packages-built.ts'], outputs: PACKAGE_BUILD_OUTPUTS },
+  // publint and attw over the five trees npm publishes. 5.9s measured (publint 2.7s, attw 3.2s), against
+  // which its only live call sites were `.github/workflows/ci.yml`, whose triggers are commented out, and the
+  // publish workflow — so the artifact checks ran at the one moment they cannot be cheap.
+  //
+  // Not the dangling-path check, and the difference matters: publint skips any target behind a custom
+  // condition (`hasCustomCondition`) and attw resolves standard conditions only, which is how 99 published
+  // paths named files no tarball held. `@app/publish-checks`' `published-manifest-paths` is that check.
+  //
+  // It reads the published trees, which `PACKAGE_BUILD_OUTPUTS` covers along with the `dist` they are staged
+  // from — the same constant `packages:ensure` declares as its outputs, so every input here is an ancestor's
+  // output and the gitignored-input accounting holds without a second list to keep.
+  //
+  // `exclusive` because it must not overlap a build. `attw --pack <dir>` packs a tarball *inside* the tree it
+  // is checking, and `stagePublishTree` removes and recreates that tree, so a rebuild landing mid-check leaves
+  // attw opening a tarball that is no longer there — observed once, as
+  // `ENOENT: open 'publish/abuddy-ui-0.1.0.tgz'`, and not reproducible in 20 tries against concurrent packs,
+  // which is the profile of a window rather than a collision. Six seconds alone in a 154s chain buys the
+  // window shut; the alternative is packing to a temp directory ourselves and handing attw the tarball, which
+  // is the fix if this step ever needs to share a lane.
+  { name: 'packages:check', tier: 2, needs: ['packages:ensure'], seconds: 6, exclusive: true,
+    inputs: [...ROOT, ...PACKAGE_BUILD_OUTPUTS] },
   // Ahead of build and not redundant with it: build -ws gives no ordering guarantee, since no workspace
   // declares a dependency on @app/default-setup, and the renderer's build reads the pack entry this writes
   { name: 'compile', tier: 2, needs: ['packages:ensure'], seconds: 13, outputs: PACK_OUTPUTS,

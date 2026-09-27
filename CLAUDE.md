@@ -92,6 +92,15 @@ the authority; running it per merge re-proves the stamp and costs a minute. The 
 cannot see is a hand-edited `etc/*.api.md` whose declarations never moved, which the publish path
 catches.
 
+**`packages:check` is a chain step, for the opposite reason**: publint and attw over the five published trees
+are 5.9s together, so there is nothing to build a proxy for, and its only other homes were the publish workflow
+and a CI file whose triggers are commented out — the artifact checks ran at the one moment they cannot be
+cheap. It runs `exclusive`, alone: `attw --pack <dir>` packs a tarball inside the tree it is checking and
+`stagePublishTree` removes and recreates that tree, so the two must not overlap. It is not the
+dangling-published-path check, which publint cannot be — it skips any target behind a custom condition, which
+is how 99 published paths named files no tarball held. `@app/publish-checks`' `published-manifest-paths` is
+that one.
+
 The chain is the whole gate: **CI does not run, on purpose.** `.github/workflows/ci.yml` has its `push`
 and `pull_request` triggers commented out while this is a single-contributor repo, so `gh run list` is empty
 and always will be. That is not a failure to report, and CI is not a check to cite — the local chain is the
@@ -259,7 +268,8 @@ npm run spec -- <target> # You don't say what the target is; it works that out:
 npm run chain            # Before a merge: every check in dependency order, cold 190s and warm 27s.
                          # Reports each step's time and its slowest five tests, buffers its output and
                          # prints only a failing step's. It leaves out api:check, which typecheck's
-                         # api:stamp already covers. Afterwards it says which steps a run contradicted:
+                         # api:stamp already covers, and includes packages:check, which has no such proxy
+                         # and costs 5.9s. Afterwards it says which steps a run contradicted:
                          # one whose measured time has left its declared `seconds` — a step that keeps a
                          # cache of its own only under --all, since otherwise it may have run a fraction of
                          # its projects — and one that passed but is already stale again, which means
@@ -280,7 +290,9 @@ npm run chain            # Before a merge: every check in dependency order, cold
                          #             158/162/156s, 4 lanes 160s, none failing. Three reverses the
                          #             earlier cap, which was vitest's 5s default failing the third lane
                          #             rather than the cores; per-tier timeouts removed it. Re-measure
-                         #             when the step shape changes: this is tuned to eleven steps
+                         #             when the step shape changes: this is tuned to eleven steps, and the
+                         #             twelfth (packages:check) was not re-measured on purpose — it is 6s and
+                         #             `exclusive`, so it runs alone whatever the lane count is
 npm test                 # Playwright E2E tests
 npm run test:unit        # Vitest, as two pools: the host suites as one root run under the
                          # @abuddy/source condition, and the pack suite on its own resolving the published
@@ -361,7 +373,8 @@ npm run lint:fix         # Rewrites what it can — oxlint has no fixer for no-u
                          # not clear those for you
 
 npm run packages:build   # Build dist/ for @abuddy/ears, @abuddy/sdk and @abuddy/ui, bundle @abuddy/cli and @abuddy/testing
-npm run packages:check   # publint + arethetypeswrong on the packed packages (after packages:build)
+npm run packages:check   # publint + arethetypeswrong on the five published trees (after packages:build).
+                         # A chain step, 5.9s; see "api:check is not a chain step" above for why this one is
 ```
 
 ### E2E visual testing
