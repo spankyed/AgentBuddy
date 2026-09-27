@@ -1,6 +1,7 @@
 import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { afterEach, describe, expect, it } from 'vitest';
 import { loadPackChecks, packRuleProblems, PACK_RULES, refusePackRuleViolations, type PackRuleKey } from '../../src/build/pack-rules.ts';
 import { resetSourceCache } from '../../src/build/pack-sources.ts';
@@ -60,6 +61,41 @@ describe('internal-package-imports', () => {
 });
 
 /**
+ * One rule, one offending file, one expected message. The table *is* the coverage claim below, so a rule added
+ * without a row here fails that case — where the set it replaced could be satisfied by editing the set.
+ */
+const FIRES_ON_A_FILE: [PackRuleKey, string, string][] = [
+    ['own-modules', "import { sendToSystem } from '#generated/events';\n",
+      "src/f.ts:1: '#generated/events' names no file — write '#generated/events.ts'"],
+    // The `.js` form is this rule's too, not a second rule's: one offence, one message, and this one names the fix
+    ['own-modules', "import { sibling } from './sibling.js';\n",
+      "src/f.ts:1: './sibling.js' names no file — write './sibling.ts'"],
+    ['pack-own-aliases', "import { x } from '@/features/notes/be/x.ts';\n", 'src/f.ts:1: @/features/notes/be/x.ts'],
+    ['host-imports', "import { edgeStore } from '@abuddy/host/ears';\n", 'src/f.ts:1: @abuddy/host/ears'],
+    ['lmdb-imports', "import { open } from 'lmdb';\n", 'src/f.ts:1: lmdb'],
+    ['untyped-sends', "import { untypedSendToSystem } from '@abuddy/sdk/events';\n",
+      'src/f.ts:1: untypedSendToSystem from @abuddy/sdk/events'],
+    ['raw-transport', 'export const send = () => _rootEvents.emitOutgoing(event);\n', 'src/f.ts:1: _rootEvents'],
+];
+
+/**
+ * The rules whose firing case cannot be a row above, and the title of the case that covers each.
+ *
+ * The title is checked against this file's own text, so an entry pointing at a case that was renamed or
+ * deleted fails rather than standing as a claim nobody re-reads — the same reason every exception table in this
+ * repo reports one that has stopped applying.
+ */
+const FIRES_ELSEWHERE: Record<string, string> = {
+  // Two shapes and eleven allowed ones, transcribed when the repo script's console rule moved here
+  'backend-console': 'backend-console fires under a backend path and not under a frontend one',
+  // A `_`-prefixed import from an @abuddy package, which needs no pack fixture to be offending
+  'internal-package-imports': "internal-package-imports",
+  // Not a file's text but the pack's own module resolution, so its case needs a whole installed package to
+  // resolve against
+  'source-resolution': 'source-resolution',
+};
+
+/**
  * One firing example per rule, so none of them can land without a case that proves it bites — the same
  * property `check:specifiers`' own spec asserts for the repo's rules. The pack fixture carries the
  * `package.json` `imports` map that makes a `#` string a specifier rather than a colour.
@@ -73,19 +109,7 @@ describe('every rule', () => {
     ...files,
   });
 
-  it.each([
-    ['own-modules', "import { sendToSystem } from '#generated/events';\n",
-      "src/f.ts:1: '#generated/events' names no file — write '#generated/events.ts'"],
-    // The `.js` form is this rule's too, not a second rule's: one offence, one message, and this one names the fix
-    ['own-modules', "import { sibling } from './sibling.js';\n",
-      "src/f.ts:1: './sibling.js' names no file — write './sibling.ts'"],
-    ['pack-own-aliases', "import { x } from '@/features/notes/be/x.ts';\n", 'src/f.ts:1: @/features/notes/be/x.ts'],
-    ['host-imports', "import { edgeStore } from '@abuddy/host/ears';\n", 'src/f.ts:1: @abuddy/host/ears'],
-    ['lmdb-imports', "import { open } from 'lmdb';\n", 'src/f.ts:1: lmdb'],
-    ['untyped-sends', "import { untypedSendToSystem } from '@abuddy/sdk/events';\n",
-      'src/f.ts:1: untypedSendToSystem from @abuddy/sdk/events'],
-    ['raw-transport', 'export const send = () => _rootEvents.emitOutgoing(event);\n', 'src/f.ts:1: _rootEvents'],
-  ])('%s fires on an offending file', (key, code, problem) => {
+  it.each(FIRES_ON_A_FILE)('%s fires on an offending file', (key, code, problem) => {
     expect(problems(packWithImports({ 'src/f.ts': code }), key as PackRuleKey)).toEqual([problem]);
   });
 
@@ -97,14 +121,18 @@ describe('every rule', () => {
     expect(problems(dir, 'backend-console')).toEqual(['src/features/notes/be/system.ts:1: console.log']);
   });
 
-  it('has a case above for every rule it defines', () => {
-    const covered = new Set(['own-modules', 'pack-own-aliases', 'host-imports', 'lmdb-imports',
-      'untyped-sends', 'raw-transport', 'backend-console', 'internal-package-imports',
-      // Not a file's text but the pack's own module resolution, so its firing case needs a whole
-      // installed package to resolve against: `describe('source-resolution')` at the end of this file
-      'source-resolution']);
+  it('has a case for every rule it defines', () => {
+    const covered = new Set<string>([...FIRES_ON_A_FILE.map(([key]) => key), ...Object.keys(FIRES_ELSEWHERE)]);
     expect(PACK_RULES.map((rule) => rule.key).filter((key) => !covered.has(key)),
       'a rule with no firing case is a gate nothing has watched fail').toEqual([]);
+  });
+
+  it('names a case that exists for each rule covered elsewhere', () => {
+    const own = fs.readFileSync(fileURLToPath(import.meta.url), 'utf-8');
+    const gone = Object.entries(FIRES_ELSEWHERE)
+      .filter(([, title]) => !own.includes(`describe('${title}'`) && !own.includes(`it('${title}'`))
+      .map(([key, title]) => `${key} names "${title}", which is no case in this file`);
+    expect(gone, 'a pointer to a case that no longer exists is the claim this table exists to avoid').toEqual([]);
   });
 });
 
