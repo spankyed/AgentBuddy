@@ -367,12 +367,53 @@ deleted; `npm run test:external-pack:contract` passes.
   `abuddy add step` when a pack has no step list, so the completeness spec asserts every template is rendered
   *somewhere* rather than exactly once.
 
+### Found after archiving (2026-09-26, 2026-09-27)
+
+Three defects in what the phases shipped, each found by checking rather than by a failure.
+
+- **The script's walk never skipped `node_modules` or `dist`**, while the CLI's did — so the one reader the
+  goal was about was reading two trees it had no business in. One walker now skips both (`f2156fd70`).
+- **Three rules reported one import three times.** `import { _rootEvents } from '@abuddy/host/bus'` breaks
+  `host-imports`, `internal-package-imports` and `raw-transport`, and a pack author deleting one line was told
+  three times in three blocks. A finding now carries the span of the code it is about, and one overlapping a
+  span an earlier rule claimed stands down; `PACK_RULES`' order *is* that precedence. Overlap rather than
+  containment, because the spans nest both ways — `host-imports` reports the specifier, `internal-package-imports`
+  the import around it — so containment would let the wider span win regardless of the declared order. Spans
+  rather than lines, because two real offences do share a line (`cf2f12f35`).
+- **Decision 4's paste-able `allow` line was not paste-able.** The failure printed
+  `add "checks": { "allow": [...] }`, and `loadPackChecks` reads `allow` at the top level and knows no `checks`
+  key — so following the advice allowed nothing and the rule kept firing. It now prints the file's whole
+  contents, and the spec pastes the printed line into `abuddy.checks.json` rather than matching its text, which
+  is what stops the reader and the advice drifting apart again.
+
 ### Open items
 
-- **Three heavy rules are still repo-only**: `contract-leaves`, `cross-feature-imports` and the pack half of
-  the source-condition check. Decision 3 listed the first two as pack rules, and they are not in
-  `PACK_RULES` — each needs its closure walk or its `exports` reader moved, which is a phase of its own. An
-  external pack is held to nine rules rather than twelve.
+- **Three rules are still repo-only**, so an external pack is held to nine of twelve. Measured 2026-09-27,
+  the three are not one item and the count overstates the debt:
+  - **`contract-leaves` has no demonstrated consequence.** Two mutations to `tests/fixtures/external-pack`'s
+    `be/contract.ts` — a value import of `#generated/events`, then a hard value cycle importing `memosSpec`
+    back from `./system.ts` — each built from a cold tree (`rm -rf src/__generated__ dist`): exit 0, with
+    `src/__generated__/events.ts` and `dist/types/pack-types.d.ts` byte-identical to a clean build. Reading a
+    *declared* type is robust to extra imports as long as the type's own dependencies resolve, which is why.
+    Both mutations left the contract's type expression independent of the machine; a mutation where it is not
+    was not constructed. Until one is, "still repo-only" is not a debt, and 74 lines and a rule-set entry are
+    the standing cost of a rule nobody can make fire.
+  - **`cross-feature-imports` is 71 lines, and the rule is 33 of them.** The rest is the last regex pair in the
+    script — `EXPORT_FROM`, `exportedLocalNames`, `importedNames`, which exist only to spot a re-export in two
+    steps — so the work is porting that to the shared AST reader, not moving the rule. No runtime effect, so it
+    lands switchable.
+  - **The source-condition rule's 140 lines are the *repo's*, not a pack's.** 39 of them walk Vite/Vitest config
+    *expressions*, needed because the repo's own configs may compute or spread `conditions`; no pack declares
+    `conditions` in any config (checked: `default-setup`, both fixtures). The pack-side question is answerable
+    without reading config at all — one `ts.resolveModuleName('@abuddy/sdk', <a pack file>, <the pack's parsed
+    options>)` and a test of whether the result is under `src/`. Measured on the fixture: without the condition
+    `packages/abuddy-sdk/dist/index.d.ts`, with it `packages/abuddy-sdk/src/index.ts`. That is ~10 lines, it
+    catches every route to source rather than the one spelled `customConditions`, and it can name the file it
+    resolved. Where it bites: **esbuild does not read tsconfig `customConditions`**, so `abuddy build` bundles
+    against `dist` either way while the author's `tsc` does read it — a linked pack that enables the condition
+    typechecks green against workspace source and ships a bundle built from `dist`. If the published manifests
+    drop their `@abuddy/source` branch, the installed-from-registry case resolves `dist` and disappears; the
+    linked-checkout case does not, because a linked pack resolves the workspace manifest through the symlink.
 - **The disjointness sweep covers the pack-code rules only.** A rule that reads the whole tree cannot be
   pointed at a fixture, so two such rules could still claim one offence; the `findJsSpecifiers` pair is
   asserted directly instead, as a property of the populations.
