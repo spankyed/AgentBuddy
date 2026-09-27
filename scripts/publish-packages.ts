@@ -1,6 +1,8 @@
-// Publishes @abuddy/ears, @abuddy/sdk and @abuddy/ui from their package directories (their package.json is the
-// published manifest) and the bundled copies of @abuddy/cli and @abuddy/testing
-// (packages/<name>/dist/package). Run `npm run packages:build` first. Versions already on the
+// Publishes each package's built tree, never a workspace directory: @abuddy/ears, @abuddy/sdk and @abuddy/ui
+// from publish/ (a manifest derived from theirs, without the checkout-only @abuddy/source branches) and
+// @abuddy/cli and @abuddy/testing from dist/package (a generated manifest). Which tree is which is
+// `PUBLISHED_TREES` in @abuddy/host/build/packages-built, where @app/publish-checks reads it too. Run
+// `npm run packages:build` first. Versions already on the
 // registry are skipped, so re-running after a partial failure is safe. Prints "New tag:" lines,
 // which changesets/action turns into git tags and GitHub releases.
 //

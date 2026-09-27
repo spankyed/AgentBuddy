@@ -31,17 +31,25 @@ scripts use, so it cannot leave `scripts/`. The family is split by subject, not 
 | `published-sdk-any`, `published-sdk-types` | the SDK's published surface: no `any`, and it compiles for a consumer |
 | `published-ui-types` | `@abuddy/ui`'s declarations compile for a consumer |
 | `published-specifiers`, `published-ui-dist` | what the built `dist` trees contain: declared bare imports, no SFC source shipped, no relative CSS `@import` left |
+| `published-manifest-paths` | that each of the **five** published trees names only files its tarball holds, publishes no `scripts` and ships no `src/`. The only spec here that covers `@abuddy/cli` and `@abuddy/testing` too, because their manifests are generated and their shape is not the other three's |
 
 `src/published-packages.ts` is the fixture: `installPublishedPackages()` (npm-packs the three into a temp
-`node_modules`), `compileConsumer()` over `CONSUMER_MATRIX` (the workspace TypeScript and the 5.7 floor
+`node_modules`), `packedFiles()` (one `npm pack --dry-run`, for a check that needs the file list and not a
+consumer), `compileConsumer()` over `CONSUMER_MATRIX` (the workspace TypeScript and the 5.7 floor
 from `packages/typescript-floor`, × `node16`/`bundler`), `PACKED_PACKAGES`, and `PACKAGES_BUILT`.
 `@abuddy/cli` imports it as `@app/publish-checks`.
+
+What it packs is each package's **staged** tree (`publishedTreeDirs()`), never the workspace directory: no
+published package carries its workspace manifest, because that manifest resolves `src/` under the
+`@abuddy/source` condition and no tarball ships `src/`. `@abuddy/host/build/published-manifest` derives what
+is published; a consumer fixture reads the derived manifest, as a consumer does.
 
 ## Tests
 
 Two halves, split by measured cost like every other suite (`scripts/lib/spec-cost.ts`, `etc/spec-cost.json`):
 
-- **`npm test -w @app/publish-checks`** — 2 specs that read the built `dist` without packing anything.
+- **`npm test -w @app/publish-checks`** — 3 specs: two read the built `dist` without packing anything, and
+  `published-manifest-paths` packs five file lists with `--dry-run`, ~1.5s, which keeps it in this half.
 - **`npm run test:integration -w @app/publish-checks`** — 5 specs, about 28s. Each packs and compiles, so
   the config caps worker threads; the comment there has the reason.
 

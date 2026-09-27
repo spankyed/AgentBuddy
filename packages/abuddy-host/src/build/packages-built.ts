@@ -20,6 +20,7 @@ import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { PUBLISH_TREE } from './published-manifest.ts';
 
 /**
  * The file whose presence says a directory is an AgentBuddy checkout, not an installed package: this
@@ -96,7 +97,7 @@ function compiled(pkg: string, ...extraInputs: string[]): BuildUnit {
     inputs: [...SHARED_INPUTS, repoFile('scripts', 'lib', 'published-imports.ts'), repoFile('scripts', 'build-package.ts'), ...extraInputs,
       pkgFile(pkg, 'src'),
       pkgFile(pkg, 'package.json'), pkgFile(pkg, 'tsconfig.json'), pkgFile(pkg, 'tsconfig.package.json')],
-    outputs: [pkgFile(pkg, 'dist')],
+    outputs: [pkgFile(pkg, 'dist'), pkgFile(pkg, PUBLISH_TREE)],
   };
 }
 
@@ -122,8 +123,9 @@ export const BUILD_UNITS: Record<string, BuildUnit> = {
 
 /**
  * Package directory → the directory inside it that npm publishes, in publish order (a dependency before its
- * dependents). `@abuddy/ears`, `/sdk` and `/ui` publish from the package root, whose own `package.json` is the
- * manifest; `@abuddy/cli` and `@abuddy/testing` publish a generated one from `dist/package`.
+ * dependents). None of the five publishes its workspace `package.json`: `@abuddy/ears`, `/sdk` and `/ui` stage a
+ * derived one under `publish/` (`stagePublishTree`), and `@abuddy/cli` and `@abuddy/testing` a generated one
+ * under `dist/package`.
  *
  * Here rather than in `scripts/publish-packages.ts` because two callers need it and neither may import the
  * other: that script is the command over this, and `@app/publish-checks` checks what it would publish. It is
@@ -131,9 +133,9 @@ export const BUILD_UNITS: Record<string, BuildUnit> = {
  * nothing publishes.
  */
 export const PUBLISHED_TREES: Record<string, string> = {
-  'abuddy-ears': '.',
-  'abuddy-sdk': '.',
-  'abuddy-ui': '.',
+  'abuddy-ears': PUBLISH_TREE,
+  'abuddy-sdk': PUBLISH_TREE,
+  'abuddy-ui': PUBLISH_TREE,
   'abuddy-testing': 'dist/package',
   'abuddy-cli': 'dist/package',
 };

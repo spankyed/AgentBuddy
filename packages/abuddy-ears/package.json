@@ -18,7 +18,7 @@
   ],
   "scripts": {
     "build:package": "tsx ../../scripts/build-package.ts .",
-    "attw": "attw --pack . --profile esm-only",
+    "attw": "attw --pack publish --profile esm-only",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "bench": "vitest bench --run",

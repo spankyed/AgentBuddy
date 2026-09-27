@@ -60,9 +60,11 @@ function publishedTarget(target: unknown): boolean {
  * dependent installing from the registry resolves neither.
  *
  * This reads the exports map rather than trying to resolve: a source-only entry is one whose target
- * names no condition but `@abuddy/source`. That is why such an entry must not gain a `default`, even
- * one pointing at a module that throws a friendlier error than ERR_MODULE_NOT_FOUND — a published
- * target makes it look resolvable here, and the gate stops reporting it. A pack importing a host-only
+ * names no condition but `@abuddy/source`, and in the published manifest there is no entry at all
+ * (`publishedManifest` drops one the condition was the whole of). Both read as unpublished here, which is
+ * the point — that is why such an entry must not gain a `default`, even one pointing at a module that
+ * throws a friendlier error than ERR_MODULE_NOT_FOUND: a published target makes it look resolvable here,
+ * and the gate stops reporting it. A pack importing a host-only
  * entry should fail this build, not the user's app. `abuddy-sdk/tests/runtime/internals-entry.spec.ts`
  * pins the shape from the other side.
  */
@@ -77,7 +79,8 @@ function unpublishedReason(packDir: string, name: string, specifier: string): st
     ? (subpath === '.' ? exportsMap : undefined)
     : exportsMap && typeof exportsMap === 'object' ? exportTarget(exportsMap as Record<string, unknown>, subpath) : undefined;
   if (exportsMap !== undefined && !publishedTarget(target)) {
-    return `which ${name} exports only to a linked checkout (the ${SOURCE_CONDITION} condition), not to installed dependents`;
+    return `which ${name} doesn't export to installed dependents: in a checkout it resolves only under the `
+      + `${SOURCE_CONDITION} condition, and the published manifest drops the entry`;
   }
   return null;
 }

@@ -3,7 +3,7 @@ import { promisify } from 'node:util';
 import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
-import { BUILD_UNITS, packagesBuiltOrRefuse, REPO_ROOT } from '@abuddy/host/build/packages-built';
+import { BUILD_UNITS, packagesBuiltOrRefuse, publishedTreeDirs, REPO_ROOT } from '@abuddy/host/build/packages-built';
 
 const execFileAsync = promisify(execFile);
 
@@ -18,15 +18,17 @@ export { REPO_ROOT };
 
 /**
  * The packages `installPublishedPackages()` npm-packs into a consumer fixture, by the name a
- * consumer installs them as. Deliberately not the build-freshness watch list (`BUILD_UNITS`), which
- * covers everything a build reads — `@abuddy/host` and `@abuddy/testing` among it — and must be
- * free to grow without changing what is packed into a fixture.
- * `tests/build/package-freshness.spec.ts` checks every packed package is one the build builds.
+ * consumer installs them as. Each is its *staged* tree (`publishedTreeDirs()`), the one npm publishes, so a
+ * consumer fixture reads the derived manifest rather than the workspace one it is derived from.
+ *
+ * Deliberately not the build-freshness watch list (`BUILD_UNITS`), which covers everything a build reads —
+ * `@abuddy/host` and `@abuddy/testing` among it — and must be free to grow without changing what is packed
+ * into a fixture. `tests/build/package-freshness.spec.ts` checks every packed package is one the build builds.
  */
 export const PACKED_PACKAGES: Record<string, string> = {
-  ears: path.join(REPO_ROOT, 'packages', 'abuddy-ears'),
-  sdk: path.join(REPO_ROOT, 'packages', 'abuddy-sdk'),
-  ui: path.join(REPO_ROOT, 'packages', 'abuddy-ui'),
+  ears: publishedTreeDirs()['abuddy-ears']!,
+  sdk: publishedTreeDirs()['abuddy-sdk']!,
+  ui: publishedTreeDirs()['abuddy-ui']!,
 };
 
 /** Compilers consumers may use: the workspace TypeScript and the oldest the packages support (their typescript peer) */
@@ -80,8 +82,14 @@ export function installPublishedPackages(): string {
  * `git ls-remote ssh://git@github.com/packages/abuddy-sdk.git`.
  */
 export function packedFiles(dir: string): Set<string> {
-  const out = execFileSync('npm', ['pack', '--dry-run', '--json', path.resolve(dir)], { stdio: ['ignore', 'pipe', 'ignore'] });
-  const [{ files }] = JSON.parse(out.toString()) as [{ files: { path: string }[] }];
+  const out = execFileSync('npm', ['pack', '--dry-run', '--json', path.resolve(dir)], { stdio: ['ignore', 'pipe', 'ignore'] }).toString();
+  // A lifecycle script in the manifest runs before npm prints, and whatever it wrote is on this stdout first.
+  // Measured while mutation-checking the case below: a `prepack` of `echo hi` turned this into a parse error
+  // three cases deep instead of naming its cause here.
+  if (!out.trimStart().startsWith('[')) {
+    throw new Error(`npm pack printed something other than JSON for ${dir}; a lifecycle script in its manifest?\n${out}`);
+  }
+  const [{ files }] = JSON.parse(out) as [{ files: { path: string }[] }];
   return new Set(files.map((file) => file.path));
 }
 

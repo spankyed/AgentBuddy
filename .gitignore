@@ -1,5 +1,7 @@
 node_modules
 dist
+# The tree npm publishes, staged by the package builds (stagePublishTree)
+packages/*/publish/
 .env
 .env.*
 !.env.signing.example

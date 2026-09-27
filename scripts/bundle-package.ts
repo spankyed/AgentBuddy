@@ -10,6 +10,7 @@ import { builtinModules, createRequire } from 'node:module';
 import { execFileSync } from 'node:child_process';
 import { packageName } from '@abuddy/host/build/specifiers';
 import { runPackageBuild } from '@abuddy/host/build/packages-built';
+import { manifestPaths, type Manifest } from '@abuddy/host/build/published-manifest';
 import { SHARED_INSTANCE_PACKAGES } from '@abuddy/host/build/shared-deps';
 import { build, type BuildOptions, type Plugin } from 'esbuild';
 
@@ -51,14 +52,9 @@ const CONFIGS: Record<string, BundleConfig> = {
 
 /** Every path the published manifest points at, as [what names it, where it points] */
 function publishedPaths(config: BundleConfig, pkgDir: string): [string, string][] {
-  const manifest = config.manifest as { exports?: Record<string, string | Record<string, string>>; bin?: Record<string, string> };
-  const paths: [string, string][] = [];
-  for (const [subpath, target] of Object.entries(manifest.exports ?? {})) {
-    // An export names either one target or a target per condition
-    if (typeof target === 'string') paths.push([`exports["${subpath}"]`, target]);
-    else for (const [condition, file] of Object.entries(target)) paths.push([`exports["${subpath}"] (${condition})`, file]);
-  }
-  for (const [command, target] of Object.entries(manifest.bin ?? {})) paths.push([`bin.${command}`, target]);
+  // The same walk the staged packages' manifests get (`@abuddy/host/build/published-manifest`), so a generated
+  // manifest and a derived one are held to one answer about what a manifest names
+  const paths: [string, string][] = [...manifestPaths(config.manifest as Manifest)];
   for (const file of config.copy ?? []) {
     // A directory entry becomes its files, because `existsSync` is true of an empty directory and shipping an
     // empty `templates/` is exactly the failure this assertion is for: the CLI would scaffold nothing, and only
