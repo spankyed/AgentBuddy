@@ -20,6 +20,7 @@ import { BUILD_UNITS, buildScriptFor, inputFiles, NOT_A_BUILD_INPUT, REPO_ROOT, 
 import { CHAIN_STEPS, INTEGRATION_SUITES, SUITE_READS, suiteInputs, type ChainStep } from '../../../scripts/lib/chain-steps.ts';
 import { UNIT_SUITES, type UnitSuite } from '../../../scripts/lib/unit-suites.ts';
 import { reachableText, rootScripts } from '../../../scripts/lib/npm-scripts.ts';
+import { TYPECHECK_LEGS } from '../../../scripts/lib/typecheck-legs.ts';
 import { poolUnitFor } from '../../../scripts/lib/unit-pool.ts';
 
 /** Tracked code no chain step reads, and why. An entry that stops applying is reported, not ignored. */
@@ -574,6 +575,16 @@ describe("the chain runs every artifact's check", () => {
     const all = rootScripts();
     const invoked = new Set<string>();
     for (const step of CHAIN_STEPS) for (const name of reachableText(step.name, all).invoked) invoked.add(name);
+    // `reachableText` follows `npm run` one level, out of a script's own text, and deliberately not out of the
+    // files it runs — a text scan cannot tell a command from a mention, and a loose answer here would say a
+    // check runs when nothing runs it. `typecheck` moved its commands into a module, so the module says what it
+    // runs rather than being read for it.
+    for (const leg of TYPECHECK_LEGS) {
+      const [, name, workspace] = /npm run ([\w:-]+)(?:.*-w\s+(\S+))?/.exec(leg.command) ?? [];
+      if (name === undefined) continue;
+      invoked.add(name);
+      if (workspace !== undefined) invoked.add(`${workspace}:${name}`);
+    }
     return invoked;
   };
 

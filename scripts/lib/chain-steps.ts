@@ -101,6 +101,11 @@ export interface ChainStep {
    * it is the cost of the *whole* pool, which is what both kill budgets are sized from (`budgetFor` here, and
    * `test-unit-pool.ts`'s own inner spawn). `driftedSteps` therefore checks such a step only under `--all`,
    * the one run that does all of its work.
+   *
+   * **It is the cost in the chain at `MEASURED_AT_LANES`, not the cost alone.** Those differ by about two
+   * times for a CPU-bound step — `typecheck` was 29s by itself and 63s in a three-lane run — so the number is
+   * meaningless without the lane count, and saying only "what this costs when it does its work" is how a
+   * two-lane measurement came to sit in a three-lane chain for two days.
    */
   readonly seconds?: number;
 }
@@ -307,7 +312,14 @@ export const SUITE_READS: Record<string, { packages?: true; pack?: true }> = {
  * Measured per pool with every project stale — `npm run chain --all`, the only run that does the whole
  * pool's work, and the run `driftedSteps` checks this number on.
  */
-export const POOL_SECONDS: Record<'host' | 'pack', number> = { host: 20, pack: 21 };
+/**
+ * The two pooled steps' whole-pool cost, in the chain at `MEASURED_AT_LANES`. Re-measured 2026-09-27 under
+ * `--all` with the rest of this table: 20 and 21 were taken before `typecheck` stopped running its legs one at
+ * a time, and a step that asks for half the cores makes everything beside it slower — which is where those
+ * seconds went rather than being new work. It feeds two kill budgets, `budgetFor` here and the pool's own inner
+ * spawn (`test-unit-pool.ts`), so it is the cost of the whole pool and not of a partial run.
+ */
+export const POOL_SECONDS: Record<'host' | 'pack', number> = { host: 42, pack: 30 };
 
 /**
  * What one unit suite's last pass depended on: its own workspace, its dependencies' source, whatever build
@@ -372,6 +384,17 @@ const POOL_STEPS: readonly ChainStep[] = (['host', 'pack'] as const).map((kind) 
     forceArgs: ['--all'],
   };
 });
+
+/**
+ * The lane count every `seconds` below was measured at.
+ *
+ * A step's cost depends on how many other steps are running beside it, so the table is only true of one
+ * schedule. `seconds: 45` for `typecheck` was measured 2026-09-25 at 07:38 under two lanes; the default became
+ * three at 09:30 the same day, and nothing connected the two — it read 63s for two days and the drift band
+ * happened to absorb it. The chain compares this against its own default and says so when they differ, which
+ * is the connection that was missing rather than a number that was wrong.
+ */
+export const MEASURED_AT_LANES = 3;
 
 export const CHAIN_STEPS: readonly ChainStep[] = [
   // Takes the package build lock, so it cannot share a lane with anything else that builds
@@ -442,7 +465,7 @@ export const CHAIN_STEPS: readonly ChainStep[] = [
   // 38s, not the 20s it takes alone: `seconds` is what a step costs under the chain's own default lanes,
   // because that is what `budgetFor` has to cover. Raising the default from two to three moved this one and
   // nothing else past the drift band, which is `driftedSteps` doing its job.
-  { name: 'test:external-pack:contract', tier: 2, needs: ['compile'], seconds: 38, outputs: FIXTURE_OUTPUTS,
+  { name: 'test:external-pack:contract', tier: 2, needs: ['compile'], seconds: 57, outputs: FIXTURE_OUTPUTS,
     // It declares `tests/fixtures` for the pack sources; the Playwright output under each pack is written
     // by `:app`, changes every run, and is read by nothing
     excludes: FIXTURE_TEST_OUTPUT,
@@ -450,7 +473,7 @@ export const CHAIN_STEPS: readonly ChainStep[] = [
       'tests/scripts/lib', ...PACKAGE_BUILD_OUTPUTS, ...PACK_OUTPUTS] },
   // The widest inputs in the table, and honestly so: it compiles every workspace, the scripts and the
   // tests, and lints them. A change anywhere in the repo's TypeScript is a change to what it checks.
-  { name: 'typecheck', tier: 1, needs: ['compile'], seconds: 45,
+  { name: 'typecheck', tier: 1, needs: ['compile'], seconds: 27,
     // `tests/e2e`, `tests/fixtures` and `tests/scripts`, never `tests` itself: that walk takes in
     // `tests/screenshots`, which the E2E step rewrites on every run, so declaring the parent meant this
     // step could never be cached — measured, 26 screenshot files, and a warm chain paid its 34s every
@@ -470,7 +493,7 @@ export const CHAIN_STEPS: readonly ChainStep[] = [
   // Needs `compile` and not just `packages:ensure`, because `dependency-runtime` builds a pack that depends
   // on default-setup and so reads its `dist`. It used to run after `compile` only because of where it sat
   // in this table, which `orderedSteps` never promised.
-  { name: 'test:integration', tier: 2, needs: ['compile'], seconds: 52,
+  { name: 'test:integration', tier: 2, needs: ['compile'], seconds: 60,
     inputs: [...ROOT, ...INTEGRATION_SUITES.flatMap((suite) => workspace(suite.dir)),
       ...PACKAGE_BUILD_OUTPUTS, ...PACK_OUTPUTS] },
   // `build:app`, not `build`. Root `build` is `-ws`, which includes `@app/default-setup`, whose own build is

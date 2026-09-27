@@ -69,6 +69,13 @@ export interface Reached {
    * Separate from `text` because a script *named* in prose is not a script run. `check-import-specifiers.ts`
    * mentions `api:check` in a message it prints, and a reachability check that searched the text would read
    * that as the chain running it.
+   *
+   * **One level, from the script's own text, and deliberately not from the files it runs.** Following `npm run`
+   * out of a file's contents was tried and reverted: a text scan cannot tell a command from a mention, and
+   * `test-external-pack-app.sh` then "invoked" the contract script it documents itself as not running. A loose
+   * `files` set over-declares inputs, which is safe; a loose `invoked` set says a check runs when nothing runs
+   * it, which is the failure the caller exists to catch. A script that moves its commands into a module
+   * exports them instead — `scripts/typecheck.ts` does, as `TYPECHECK_LEGS`.
    */
   readonly invoked: ReadonlySet<string>;
 }

@@ -53,7 +53,7 @@ Measured on an idle machine, 2026-09-25, each one a real run rather than a sum o
 | nothing tracked | the E2E suite, which is never cached | **26.8s** |
 | a doc, a comment, a CLAUDE.md | nothing but that — no step declares `docs/` | **26.8s** |
 | one package's source (the renderer) | `test:unit:host`, which runs only the renderer's project and `@app/main`'s (it depends on the renderer), `typecheck`, then `build:app` and all of tier 3, because rebuilding the app moves what tier 3 reads | **115.1s** |
-| nothing is cached (a cold tree) | all 12 steps, three at a time (re-measured 2026-09-27, `--all`) | **176.7s** |
+| nothing is cached (a cold tree) | all 12 steps, three at a time (re-measured 2026-09-27, `--all`) | **178.3s** |
 
 The one-package row is the one worth reading twice: editing a package that the *app* is built from costs four times editing one it is not, because `build:app` rewrites `packages/*/dist` and every tier-3 step reads it. A change under `@abuddy/ears` or a pack's tests does not pay that.
 
@@ -123,7 +123,7 @@ Things that waste the most time, in order:
   declares `docs/` among its inputs, so the chain agrees — `npm run chain --dry` after a doc edit reports
   every step cached. The two exceptions are a spec that asserts the text and a code fence someone will
   copy: check that one command. This is first on the list because it is the one most often ignored, and a
-  full `typecheck` is 53s against a doc edit's 0s.
+  full `typecheck` is 11s against a doc edit's 0s.
 - **Running `npm run build` to test a change no build output depends on.** The renderer and API build
   from source; a CLI or SDK change does not need them rebuilt to be tested.
 - **Running an E2E suite to find a bug you have a stack trace for.** A minified frame with a line and
@@ -227,7 +227,12 @@ npm run build            # Build all workspaces. The chain runs build:app instea
                          # built-in pack to compile — building it twice rewrote the dist five steps read
 npm run build-prod       # Full production build (build/build.sh)
 
-npm run typecheck        # Every check below, plus check:specifiers
+npm run typecheck        # Every check below, plus check:specifiers — its sixteen legs run at once
+                         # (scripts/typecheck.ts, legs in scripts/lib/typecheck-legs.ts), which is 29.3s of
+                         # single-threaded compilers in 11s. Only `packages:ensure` is ordered; the rest are
+                         # independent, and `-- --lanes 1` runs them one at a time to test that claim or to
+                         # read a confusing failure. A failure prints that leg's output alone, and several
+                         # legs can fail in one run where the old `&&` chain stopped at the first
 npm run typecheck:fe     # Frontend only (vue-tsc)
 npm run typecheck:be     # Backend only (tsc --noEmit, plus the api's scripts)
 npm run typecheck:ears   # @abuddy/ears only

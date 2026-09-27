@@ -22,17 +22,28 @@
 // deletes and rewrites the `dist/` every other step reads. `ABUDDY_PACKAGES_PREBUILT=1` now reports that
 // rather than racing it.
 //
-// The second is the machine. Every step already uses all the cores — vitest runs its files across workers,
-// tsc forks per project — so lanes oversubscribe rather than overlap: total work went from 348s to 567s,
+// The second is the machine. Lanes oversubscribe rather than overlap: total work went from 348s to 567s,
 // `@abuddy/cli` went from 56s to 118s, and it began reporting errors it does not report alone. Wall time
 // fell, but only by doing 60% more work, and failing.
 //
-// So the constraint is cores, not ordering, and the way to a shorter chain is a cheaper `test:unit` —
-// `@abuddy/cli` is over half of it — not a rearranged one. Reopen this on a machine with idle cores, and
-// measure rather than trust the arithmetic: max() assumes steps do not slow each other, and here they do.
+// So the constraint is cores, not ordering, and the way to a shorter chain is a cheaper step, not a
+// rearranged one. Reopen this on a machine with idle cores, and measure rather than trust the arithmetic:
+// max() assumes steps do not slow each other, and here they do.
+//
+// ONE PREMISE OF THAT ARGUMENT WAS WRONG (2026-09-27)
+//
+// It read "every step already uses all the cores — vitest runs its files across workers, tsc forks per
+// project". The second half was false, and `typecheck` was the largest tier-1 step: sixteen legs chained with
+// `&&`, each a single-threaded compiler, so it held one core for half a minute while nine sat idle — which is
+// also why it was the step most starved by the lanes put there to use them. Running its legs at once took it
+// from 29.3s to 10.8s alone (`scripts/typecheck.ts`).
+//
+// That does not overturn the measurement above, which stands: three lanes over seven steps still cost 60% more
+// work. It narrows what it means. "The constraint is cores" is right; "every step already uses them" was an
+// assumption, and the cheapest work left in this chain may be another step that is quietly serial.
 import * as path from 'node:path';
 import { REPO_ROOT, stampedRun, unitStaleReason, type BuildUnit } from '@abuddy/host/build/packages-built';
-import { CHAIN_STEPS, orderedSteps, type ChainStep, type Tier } from './lib/chain-steps.ts';
+import { CHAIN_STEPS, MEASURED_AT_LANES, orderedSteps, type ChainStep, type Tier } from './lib/chain-steps.ts';
 import { schedule } from './lib/chain-schedule.ts';
 import { criticalPath, driftedSteps, willNotCache } from './lib/step-timing.ts';
 import { slowestTests } from './lib/slow-tests.ts';
@@ -136,9 +147,12 @@ async function runAndStamp(step: ChainStep, all: boolean): Promise<Result> {
  * the floor and more lanes have nothing left to overlap. Re-measure this when the step shape changes again
  * — it is tuned to eleven steps, two of which are the unit pools, and it was tuned to seventeen before.
  */
+/** What `--lanes` defaults to, named so the timing table can be checked against it */
+const DEFAULT_LANES = 3;
+
 function laneCount(): number {
   const flag = process.argv.indexOf('--lanes');
-  const value = flag === -1 ? 3 : Number(process.argv[flag + 1]);
+  const value = flag === -1 ? DEFAULT_LANES : Number(process.argv[flag + 1]);
   if (!Number.isInteger(value) || value < 1) throw new Error(`--lanes takes a positive integer, not ${String(process.argv[flag + 1])}`);
   return value;
 }
@@ -250,6 +264,13 @@ async function main(): Promise<void> {
 
   // The table feeds the kill budget and the floor above, so a number a run has contradicted is worth more
   // than a note in a doc nobody re-reads
+  // Every `seconds` is the cost at some lane count, so changing the default invalidates all of them at once —
+  // which is what happened, silently, the day three lanes landed two hours after a number was taken under two
+  if (DEFAULT_LANES !== MEASURED_AT_LANES) {
+    console.log(`\nchain-steps.ts' seconds were measured at ${MEASURED_AT_LANES} lanes and this chain defaults to ${DEFAULT_LANES}.`);
+    console.log('  Re-measure with `npm run chain -- --all` and set MEASURED_AT_LANES, or the table is about another schedule.');
+  }
+
   const drifted = driftedSteps(steps, measuredMs, all);
   if (drifted.length > 0) {
     console.log(`\n${drifted.length} step${drifted.length === 1 ? '' : 's'} cost something other than chain-steps.ts says — re-measure, or record:`);
