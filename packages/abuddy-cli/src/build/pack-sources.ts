@@ -139,8 +139,11 @@ export interface SourceView {
   readonly code: string;
   readonly blocks: readonly Block[];
   readonly specifiers: readonly Specifier[];
-  /** `rule` returns what it found at a node, or nothing; the line reported is the file's, not the block's */
-  visit(rule: (node: ts.Node, source: ts.SourceFile) => string[] | undefined): { line: number; what: string }[];
+  /**
+   * `rule` returns what it found at a node, or nothing. The line and the span are the file's, not the block's,
+   * so a caller can tell two findings at one site from two findings on one line.
+   */
+  visit(rule: (node: ts.Node, source: ts.SourceFile) => string[] | undefined): { line: number; what: string; start: number; end: number }[];
 }
 
 /**
@@ -175,11 +178,16 @@ export function readSource(file: string): SourceView {
     blocks,
     specifiers,
     visit(rule) {
-      const found: { line: number; what: string }[] = [];
-      for (const { source, lineOffset } of blocks) {
+      const found: { line: number; what: string; start: number; end: number }[] = [];
+      for (const { source, lineOffset, offset } of blocks) {
         const walk = (node: ts.Node): void => {
           for (const what of rule(node, source) ?? []) {
-            found.push({ line: source.getLineAndCharacterOfPosition(node.getStart(source)).line + 1 + lineOffset, what });
+            found.push({
+              line: source.getLineAndCharacterOfPosition(node.getStart(source)).line + 1 + lineOffset,
+              what,
+              start: node.getStart(source) + offset,
+              end: node.getEnd() + offset,
+            });
           }
           ts.forEachChild(node, walk);
         };

@@ -13,7 +13,7 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import ts from 'typescript';
-import { ownModuleProblems, type OwnModuleSpecifier } from '@abuddy/host/build/own-module-specifiers';
+import { ownModuleFindings, type OwnModuleSpecifier } from '@abuddy/host/build/own-module-specifiers';
 import { readSubpathImports } from '@abuddy/host/build/subpath-imports';
 import { moduleOf, readSource, sourceFiles, type SourceView } from './pack-sources.ts';
 
@@ -36,18 +36,30 @@ export type PackRuleKey =
   | 'host-imports' | 'lmdb-imports'
   | 'untyped-sends' | 'raw-transport' | 'backend-console';
 
+/**
+ * One finding, with the span of the code it is about.
+ *
+ * The span is what lets the set report one message per offence. `import { _rootEvents } from '@abuddy/host/bus'`
+ * breaks three rules — the package is not installed, the name is `@internal`, and `_rootEvents` is the raw
+ * transport — and a pack author who has to delete one line should be told once, by the rule whose cause is the
+ * most fundamental. Without spans the only way to tell "three rules, one site" from "three rules, one line"
+ * would be the line number, and two real offences do share a line.
+ */
+export interface PackFinding {
+  readonly line: number;
+  readonly what: string;
+  readonly start: number;
+  readonly end: number;
+}
+
 export interface PackRule {
   readonly key: PackRuleKey;
   /** The sentence reported when it fires, the same one `check:specifiers` prints */
   readonly rule: string;
   /** Whether a pack may allow it in `abuddy.checks.json`: true only when a violation has no runtime effect */
   readonly switchable: boolean;
-  /** `file:line: what` for each finding in one file */
-  check(view: SourceView, at: PackPlace): string[];
+  check(view: SourceView, at: PackPlace): PackFinding[];
 }
-
-/** `file:line: what`, the format every rule reports in and every caller prints */
-const at = (place: PackPlace, line: number, what: string): string => `${place.relative}:${line}: ${what}`;
 
 /** Ref-taking sends a pack gets as name-taking ones from `#generated/events`, whichever module exports them */
 const EVENT_SENDS = ['untypedBroadcastToPlugin', 'untypedSendToSystem', '_sendToLocalPlugin'];
@@ -75,7 +87,33 @@ function importedFrom(node: ts.Node): { module: string; names: string[] } | unde
   return undefined;
 }
 
+/**
+ * Every pack rule, **in precedence order**: when several are right about one site, the first reports it and the
+ * rest stand down (`packRuleProblems`). The order is the order of causes — what stops the pack loading at all,
+ * then what stops a specifier resolving, then what breaks on an app update, then the conventions — so an author
+ * deleting one import is told the thing that matters about it.
+ */
 export const PACK_RULES: readonly PackRule[] = [
+  {
+    key: 'host-imports',
+    switchable: false,
+    rule: "A pack doesn't import the host's private @abuddy/host package, which is not installed for a pack; "
+      + 'use @abuddy/sdk',
+    check(view, place) {
+      return view.specifiers.filter(({ text }) => /^@abuddy\/host(\/|$)/.test(text))
+        .map(({ text, line, start, end }) => ({ line, what: text, start, end }));
+    },
+  },
+  {
+    key: 'lmdb-imports',
+    switchable: false,
+    rule: 'A pack reaches its data through the engine the app installs: neither lmdb nor @abuddy/ears/lmdb is '
+      + 'provided to a pack, so importing one fails at load',
+    check(view, place) {
+      return view.specifiers.filter(({ text }) => /^lmdb(\/|$)/.test(text) || /^@abuddy\/ears\/lmdb(\/|$)/.test(text))
+        .map(({ text, line, start, end }) => ({ line, what: text, start, end }));
+    },
+  },
   {
     key: 'own-modules',
     switchable: false,
@@ -85,7 +123,8 @@ export const PACK_RULES: readonly PackRule[] = [
     check(view, place) {
       const found: OwnModuleSpecifier[] = view.specifiers.map(({ text, line, start, end }) =>
         ({ file: place.relative, line, specifier: text, start, end }));
-      return ownModuleProblems(place.packDir, found);
+      return ownModuleFindings(place.packDir, found).map(({ line, specifier, named, start, end }) =>
+        ({ line, what: `'${specifier}' names no file — write '${named}'`, start: start as number, end: end as number }));
     },
   },
   {
@@ -94,7 +133,7 @@ export const PACK_RULES: readonly PackRule[] = [
     rule: 'A pack names its own modules with # subpath imports from its package.json (#generated/x, '
       + '#features/x): a @/ path is a TypeScript-only mapping and no runtime reads it',
     check(view, place) {
-      return view.specifiers.filter(({ text }) => text.startsWith('@/')).map(({ text, line }) => at(place, line, text));
+      return view.specifiers.filter(({ text }) => text.startsWith('@/')).map(({ text, line, start, end }) => ({ line, what: text, start, end }));
     },
   },
   {
@@ -108,27 +147,7 @@ export const PACK_RULES: readonly PackRule[] = [
         const imported = importedFrom(node);
         if (!imported?.module.startsWith('@abuddy/')) return undefined;
         return imported.names.filter((name) => name.startsWith('_')).map((name) => `${name} from ${imported.module}`);
-      }).map(({ line, what }) => at(place, line, what));
-    },
-  },
-  {
-    key: 'host-imports',
-    switchable: false,
-    rule: "A pack doesn't import the host's private @abuddy/host package, which is not installed for a pack; "
-      + 'use @abuddy/sdk',
-    check(view, place) {
-      return view.specifiers.filter(({ text }) => /^@abuddy\/host(\/|$)/.test(text))
-        .map(({ text, line }) => at(place, line, text));
-    },
-  },
-  {
-    key: 'lmdb-imports',
-    switchable: false,
-    rule: 'A pack reaches its data through the engine the app installs: neither lmdb nor @abuddy/ears/lmdb is '
-      + 'provided to a pack, so importing one fails at load',
-    check(view, place) {
-      return view.specifiers.filter(({ text }) => /^lmdb(\/|$)/.test(text) || /^@abuddy\/ears\/lmdb(\/|$)/.test(text))
-        .map(({ text, line }) => at(place, line, text));
+      });
     },
   },
   {
@@ -152,7 +171,7 @@ export const PACK_RULES: readonly PackRule[] = [
         const raw = imported.module === '@abuddy/ears'
           ? [...EVENT_SENDS, 'registerRepository', 'unregisterRepository'] : EVENT_SENDS;
         return imported.names.filter((name) => raw.includes(name)).map((name) => `${name} from ${imported.module}`);
-      }).map(({ line, what }) => at(place, line, what));
+      });
     },
   },
   {
@@ -168,7 +187,7 @@ export const PACK_RULES: readonly PackRule[] = [
         if (ts.isPropertyAccessExpression(node) && node.name.text === 'bus'
           && ts.isIdentifier(node.expression) && node.expression.text === 'trpc') return ['trpc.bus'];
         return undefined;
-      }).map(({ line, what }) => at(place, line, what));
+      });
     },
   },
   {
@@ -182,7 +201,7 @@ export const PACK_RULES: readonly PackRule[] = [
           return [`console.${node.name.text}`];
         }
         return undefined;
-      }).map(({ line, what }) => at(place, line, what));
+      });
     },
   },
 ];
@@ -247,17 +266,39 @@ function packFiles(packDir: string, dirs: readonly string[]): { view: SourceView
 /**
  * Every rule's findings over the pack, by key, with the rules the pack allows left out.
  *
- * One pass over the files: each is read and parsed once and every rule sees the same view, which is what
- * makes running eleven rules cost about what running one used to.
+ * One pass over the files: each is read and parsed once and every rule sees the same view, which is what makes
+ * running nine rules cost about what running one used to.
+ *
+ * **One offence, one message.** Several rules can be right about one line —
+ * `import { _rootEvents } from '@abuddy/host/bus'` breaks three — and a pack author deleting one import should
+ * be told once, by the rule whose cause comes first: the package is not installed for a pack, so whether the
+ * name is `@internal` and whether it is the raw transport are beside the point. So a finding whose span sits
+ * inside one an earlier rule already claimed is dropped, and `PACK_RULES`' order *is* that precedence —
+ * declared there, with each rule's reason, rather than decided here.
+ *
+ * Spans, not lines: two real offences do share a line (`import …; console.log(…)`), and both should be
+ * reported. `pack-rules.spec.ts` holds the order to what it claims.
  */
 export function packRuleProblems(packDir: string, dirs: readonly string[] = ['src']): Map<PackRuleKey, string[]> {
   const allowed = loadPackChecks(packDir);
   const rules = PACK_RULES.filter((rule) => !allowed.has(rule.key));
   const problems = new Map<PackRuleKey, string[]>();
   for (const { view, place } of packFiles(packDir, dirs)) {
+    const claimed: { start: number; end: number }[] = [];
     for (const rule of rules) {
-      const found = rule.check(view, place);
-      if (found.length > 0) problems.set(rule.key, [...(problems.get(rule.key) ?? []), ...found]);
+      const kept = rule.check(view, place).filter((finding) => {
+        // Overlapping a span an earlier rule claimed, so it is the same offence seen another way. Overlap
+        // rather than containment, because the spans nest both ways: `host-imports` reports the specifier and
+        // `internal-package-imports` the whole import around it, so a containment test would let whichever
+        // rule reported the *wider* span win regardless of the order declared below.
+        if (claimed.some(({ start, end }) => finding.start < end && start < finding.end)) return false;
+        claimed.push({ start: finding.start, end: finding.end });
+        return true;
+      });
+      if (kept.length > 0) {
+        problems.set(rule.key, [...(problems.get(rule.key) ?? []),
+          ...kept.map(({ line, what }) => `${place.relative}:${line}: ${what}`)]);
+      }
     }
   }
   return problems;
@@ -276,7 +317,10 @@ export function refusePackRuleViolations(packDir: string, dirs?: readonly string
   const blocks = [...problems].map(([key, found]) => {
     const rule = PACK_RULES.find((candidate) => candidate.key === key) as PackRule;
     const lines = [`  ${rule.rule}:`, ...found.map((problem) => `    - ${problem}`)];
-    if (rule.switchable) lines.push(`    to allow this, add "checks": { "allow": ["${key}"] } to abuddy.checks.json`);
+    // The whole file, not a key inside one: `abuddy.checks.json` holds `allow` at the top level, and advice
+    // that has to be re-nested to work is advice that silently does nothing (`loadPackChecks` reads no `checks`
+    // key, so a pasted `"checks": { … }` allows nothing). `allowLineWorks` in the spec pastes it and checks.
+    if (rule.switchable) lines.push(`    to allow this, put { "allow": ["${key}"] } in abuddy.checks.json`);
     return lines.join('\n');
   });
   throw new Error(`${problems.size} pack rule${problems.size === 1 ? '' : 's'} failed.\n\n${blocks.join('\n\n')}`);

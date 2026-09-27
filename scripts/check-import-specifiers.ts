@@ -145,6 +145,13 @@ export function jsSpecifierFixes(dirs = CHECKED_DIRS, root = repoRoot): Fix[] {
  * drift apart (`docs/goals/goal-one-rule-set.md`). What this adds is the repo's shape: each `dir` may be a
  * pack's `src`, a pack's `tests`, or — in a spec — a directory standing in for one, and paths are reported
  * relative to the repo rather than to the pack.
+ *
+ * One rule at a time, so it does not get `packRuleProblems`' "one offence, one message" — there, a pack author
+ * reading a build failure is told once by the rule whose cause comes first. Here the rule *is* the subject:
+ * `--rule <id>` runs one, `--list` names them all, and a rule that stood down would make a per-rule run's
+ * answer depend on which other rules ran. What keeps that from becoming two answers to one question is that
+ * both read the same `check`, and `FIRES`' disjointness sweep asserts no two rules claim one offence to begin
+ * with.
  */
 /**
  * The pack a path belongs to: the nearest directory at or above it holding a manifest.
@@ -179,7 +186,7 @@ function packRule(key: PackRuleKey, dirs: readonly string[], root: string): stri
         inRoot: path.relative(full, file).split(path.sep).join('/'),
         generated: relative.split('/').includes('__generated__'),
         imports,
-      });
+      }).map(({ line, what }) => `${relative}:${line}: ${what}`);
     });
   }).sort();
 }

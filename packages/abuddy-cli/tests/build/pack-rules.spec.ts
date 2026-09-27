@@ -158,7 +158,7 @@ describe('refusePackRuleViolations', () => {
     expect(message).toContain('2 pack rules failed.');
     expect(message).toContain('src/extensions/steps/x.ts:1: @abuddy/host/ears');
     expect(message).toContain('src/extensions/steps/x.ts:2: console.log');
-    expect(message).toContain('"checks": { "allow": ["backend-console"] }');
+    expect(message).toContain('{ "allow": ["backend-console"] }');
     expect(message, 'a rule that is not switchable must not offer a way to allow it')
       .not.toContain('["host-imports"]');
   });
@@ -166,4 +166,59 @@ describe('refusePackRuleViolations', () => {
   it('returns for a pack with nothing to report', () => {
     expect(() => refusePackRuleViolations(pack({ 'src/f.ts': 'export const x = 1;\n' }))).not.toThrow();
   });
+});
+
+/**
+ * One offence, one message. Several rules can be right about one import, and a pack author deleting one line
+ * should be told the thing that matters about it — not the same line three times in three blocks.
+ */
+describe('when several rules are right about one site', () => {
+  const offender = (code: string) => {
+    const dir = pack({ 'package.json': JSON.stringify({ name: 'p', type: 'module' }), 'src/extensions/steps/x.ts': code });
+    return [...packRuleProblems(dir)].map(([key, found]) => `${key}: ${found.join(' | ')}`);
+  };
+
+  it('reports the cause that comes first, and only that one', () => {
+    // Three rules are right: @abuddy/host is not installed for a pack, `_rootEvents` is @internal, and it is
+    // the raw transport. The import is unusable because the package is absent, so that is what is said about it;
+    // `raw-transport` still names the identifier, which is a second thing to change rather than the same one.
+    expect(offender("import { _rootEvents } from '@abuddy/host/bus';\n")).toEqual([
+      'host-imports: src/extensions/steps/x.ts:1: @abuddy/host/bus',
+      'raw-transport: src/extensions/steps/x.ts:1: _rootEvents',
+    ]);
+  });
+
+  it('keeps two real offences that happen to share a line', () => {
+    expect(offender("import { edgeStore } from '@abuddy/host/ears'; console.log('x');\n")).toEqual([
+      'host-imports: src/extensions/steps/x.ts:1: @abuddy/host/ears',
+      'backend-console: src/extensions/steps/x.ts:1: console.log',
+    ]);
+  });
+
+  /**
+   * The order in `PACK_RULES` *is* the precedence, so it is worth pinning: what stops the pack loading, then
+   * what stops a specifier resolving, then what breaks on an app update, then the conventions.
+   */
+  it('declares that precedence in one place', () => {
+    expect(PACK_RULES.map((rule) => rule.key)).toEqual([
+      'host-imports', 'lmdb-imports',
+      'own-modules', 'pack-own-aliases',
+      'internal-package-imports',
+      'untyped-sends', 'raw-transport', 'backend-console',
+    ]);
+  });
+});
+
+/**
+ * The line the failure prints is the file the reader reads. They drifted once — the advice named a `"checks"`
+ * key the reader never looks for — so this pastes it rather than matching its text.
+ */
+it('allowLineWorks: pasting the line the error prints switches the rule off', () => {
+  const dir = pack({ 'package.json': JSON.stringify({ name: 'p', type: 'module' }), 'src/extensions/steps/x.ts': "console.log('x');\n" });
+  const printed = (() => { try { refusePackRuleViolations(dir); return ''; } catch (err) { return (err as Error).message; } })();
+  const advice = printed.split('\n').find((line) => line.includes('abuddy.checks.json'));
+  expect(advice).toBeDefined();
+  const json = advice!.slice(advice!.indexOf('{'), advice!.lastIndexOf('}') + 1);
+  fs.writeFileSync(path.join(dir, 'abuddy.checks.json'), json);
+  expect(() => refusePackRuleViolations(dir)).not.toThrow();
 });
