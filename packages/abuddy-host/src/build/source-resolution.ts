@@ -1,8 +1,14 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 
-/** The packages that publish their source under the condition, and so can resolve two ways in a checkout */
-const SOURCE_PACKAGES = ['@abuddy/ears', '@abuddy/sdk', '@abuddy/ui'] as const;
+/**
+ * The packages whose exports name `src/` under the condition, and so resolve two ways in a checkout.
+ *
+ * Exported because the pack rule asks the mirror-image question of a pack's own compiler
+ * (`abuddy-cli/src/build/pack-resolution.ts`, which wants `dist` where this wants source), and two lists of the
+ * same three packages could disagree about which three.
+ */
+export const SOURCE_PACKAGES = ['@abuddy/ears', '@abuddy/sdk', '@abuddy/ui'] as const;
 
 const SOURCE_CONDITION_FLAG = '--conditions=@abuddy/source';
 

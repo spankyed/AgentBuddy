@@ -19,9 +19,10 @@ and the alternatives all cost more: putting it in `@abuddy/testing` ships repo-i
 pack authors, and distributing the specs gives `@abuddy/sdk` and `@abuddy/ui` an expensive
 pack-and-compile half each where both suites are pure and fast.
 
-**Not everything named `published-*` belongs here.** `published-imports` and `published-sdk-peers` are in
-`@app/repo-checks`, because their subject is `scripts/lib/published-imports.ts` — a module five build
-scripts use, so it cannot leave `scripts/`. The family is split by subject, not by accident.
+**Not everything named `published-*` belongs here.** `published-imports` is in `@app/repo-checks`, because its
+subject is `scripts/lib/published-imports.ts` — a module five build scripts use, so it cannot leave `scripts/`.
+`published-sdk-peers` came the other way, from there to here, once its subject was read as the published SDK
+rather than the script it borrows from. The family is split by subject, not by accident.
 
 ## What is here
 
@@ -48,7 +49,7 @@ is published; a consumer fixture reads the derived manifest, as a consumer does.
 
 Two halves, split by measured cost like every other suite (`scripts/lib/spec-cost.ts`, `etc/spec-cost.json`):
 
-- **`npm test -w @app/publish-checks`** — 3 specs: two read the built `dist` without packing anything, and
+- **`npm test -w @app/publish-checks`** — 4 specs: three read the built `dist` without packing anything, and
   `published-manifest-paths` packs five file lists with `--dry-run`, ~1.5s, which keeps it in this half.
 - **`npm run test:integration -w @app/publish-checks`** — 5 specs, about 28s. Each packs and compiles, so
   the config caps worker threads; the comment there has the reason.

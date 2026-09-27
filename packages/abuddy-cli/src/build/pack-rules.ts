@@ -106,12 +106,14 @@ export const PACK_RULES: readonly PackRule[] = [
   {
     key: 'source-resolution',
     switchable: false,
-    rule: "A pack compiles against the @abuddy packages' published dist, the one layout a pack author has: "
-      + 'its tsconfig must not resolve a checkout\'s source, which its own bundles never do',
+    rule: "A pack compiles against the @abuddy packages' published dist, the one layout a pack author has, so its "
+      + "tsconfig must not resolve a checkout's source: esbuild and Vite ignore the @abuddy/source condition, so a "
+      + 'pack that declares it typechecks against source while both its bundles are built from dist',
+    // The finding is the site, not the advice: the sentence above is printed once per rule by
+    // `refusePackRuleViolations` and appended to each finding by `abuddy validate`, so advice carried here too
+    // arrived twice, three times over for a pack that resolves all three packages
     checkPack(packDir) {
-      return packResolvesSource(packDir).map(({ specifier, resolved }) =>
-        `${specifier} -> ${resolved} (remove the @abuddy/source condition from this pack's tsconfig; esbuild and `
-        + 'Vite ignore it, so only the typecheck reads source and it proves nothing about what ships)');
+      return packResolvesSource(packDir).map(({ specifier, resolved }) => `${specifier} -> ${resolved}`);
     },
   },
   {

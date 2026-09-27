@@ -22,10 +22,8 @@
  */
 import * as fs from 'node:fs';
 import * as path from 'node:path';
+import { SOURCE_PACKAGES } from '@abuddy/host/build/source-resolution';
 import ts from 'typescript';
-
-/** The packages that resolve two ways in a checkout: source under the condition, `dist` without it */
-const SOURCE_PACKAGES = ['@abuddy/sdk', '@abuddy/ears', '@abuddy/ui'];
 
 /** One package a pack's compiler resolves to source, and the file it landed on */
 export interface SourceResolution {
