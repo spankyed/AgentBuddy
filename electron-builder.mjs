@@ -145,6 +145,10 @@ export default /** @type import('electron-builder').Configuration */
     '!packages/renderer/public/**',
     // Include compiled output
     'packages/*/dist/**',
+    // The CLI's scaffold templates, which are .ts and .vue files it reads at run time rather than code the
+    // app loads — so the exclusions above would strip every one of them and `abuddy init` from the CLI this
+    // app installs (bin/app-launcher.sh) would scaffold nothing. Last match wins, so this comes after them.
+    'packages/abuddy-cli/dist/package/templates/**',
     // Include API's local node_modules
     'packages/api/node_modules/**/*',
     // Exclude platform-specific prebuilds not needed for current target

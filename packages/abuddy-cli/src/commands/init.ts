@@ -1,10 +1,11 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
+import { renderTemplate } from '../templates.ts';
 import * as readline from 'node:readline';
 import semver from 'semver';
 import { resolveDeps } from './generate';
 import { generateEntries } from './generate-entries';
-import { STEPS_BUILD_TEMPLATE, STEPS_REGISTER_TEMPLATE } from './add/step';
+import { STEPS_BUILD_TEMPLATE } from './add/step';
 import { cliVersion, readManifest, sdkVersion } from '../utils';
 
 const MANIFEST_TEMPLATE = (name: string) => {
@@ -80,15 +81,6 @@ export const PACK_TSCONFIG = {
 
 const TSCONFIG_TEMPLATE = JSON.stringify(PACK_TSCONFIG, null, 2);
 
-const ENV_DTS_TEMPLATE = `// Plain \`tsc\` can't read .vue files, so the pack's own single-file components resolve to a
-// generic component here. @abuddy/ui components ship declarations and keep their prop types.
-// Checking inside SFCs needs vue-tsc.
-declare module '*.vue' {
-  import type { DefineComponent } from 'vue';
-  const component: DefineComponent<Record<string, unknown>, Record<string, unknown>, any>;
-  export default component;
-}
-`;
 
 const PACKAGE_JSON_TEMPLATE = (name: string) => JSON.stringify({
   name: `@abuddy-pack/${name}`,
@@ -130,13 +122,18 @@ const VITEST_CONFIG_TEMPLATE = `import { definePackTestConfig } from '@abuddy/te
 export default definePackTestConfig();
 `;
 
-// Unit tests run against an in-memory EARS with the pack's repositories, seed hooks, seeders, systems,
-// services and steps, and its dependencies' runtimes (cached by abuddy build)
-const TEST_SETUP_TEMPLATE = `import { seedRuntime } from '#generated/seed-runtime.ts';
-import { registration } from '#generated/pack-entry.ts';
-import { setupPackTests } from '@abuddy/testing/harness';
 
-await setupPackTests({ seedRuntime, registration });
+// One of the four templates that cannot be a file under `templates/` (`src/templates.ts` has the list):
+// electron-builder strips every `.d.ts` from the packaged app whatever its `files` array says — measured, zero
+// remain in app.asar — so a `.d.ts` template would be missing from the CLI the app installs.
+const ENV_DTS_TEMPLATE = `// Plain \`tsc\` can't read .vue files, so the pack's own single-file components resolve to a
+// generic component here. @abuddy/ui components ship declarations and keep their prop types.
+// Checking inside SFCs needs vue-tsc.
+declare module '*.vue' {
+  import type { DefineComponent } from 'vue';
+  const component: DefineComponent<Record<string, unknown>, Record<string, unknown>, any>;
+  export default component;
+}
 `;
 
 /** The @abuddy/sdk range the scaffold declares: the SDK this CLI runs against */
@@ -216,7 +213,7 @@ export function scaffoldUnitTestSetup(root: string): UnitTestSetup {
   const setupPath = path.join(root, 'tests', 'setup.ts');
   if (!fs.existsSync(setupPath)) {
     fs.mkdirSync(path.dirname(setupPath), { recursive: true });
-    fs.writeFileSync(setupPath, TEST_SETUP_TEMPLATE);
+    fs.writeFileSync(setupPath, renderTemplate('pack/tests/setup.ts'));
     created.push(setupPath);
   }
   const addedDependencies: string[] = [];
@@ -353,7 +350,7 @@ export async function init(args: string[]) {
   fs.writeFileSync(path.join(dir, 'src', 'env.d.ts'), ENV_DTS_TEMPLATE);
   fs.writeFileSync(
     path.join(dir, 'src', 'extensions', 'steps', 'register.ts'),
-    STEPS_REGISTER_TEMPLATE,
+    renderTemplate('pack/src/extensions/steps/register.ts'),
   );
   fs.writeFileSync(path.join(dir, 'src', 'extensions', 'steps', 'build.ts'), STEPS_BUILD_TEMPLATE);
   scaffoldUnitTestSetup(dir);

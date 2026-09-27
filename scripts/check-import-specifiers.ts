@@ -108,9 +108,16 @@ export function findJsSpecifiers(dirs = [...CHECKED_DIRS, ...PACK_SOURCE_DIRS, .
 /** CLI sources whose template strings are the pack source `abuddy init` and `abuddy add` write */
 const CLI_TEMPLATE_SOURCES = ['packages/abuddy-cli/src/commands/add', 'packages/abuddy-cli/src/commands/init.ts'];
 
+/**
+ * The scaffold's pack code, which is files rather than string literals (`goal-one-rule-set.md`): the pack
+ * every pack author starts from, and so the one whose specifiers most need to be right.
+ */
+const CLI_TEMPLATE_PACK = 'packages/abuddy-cli/templates/pack';
+
 /** Pack sources (each a pack's `src` root) and the pack templates the CLI writes, which use the generated facades */
 const PACK_SOURCE_DIRS = [
   'packages/default-setup/src', 'tests/fixtures/external-pack/src', 'tests/fixtures/bundled-ui-pack/src',
+  `${CLI_TEMPLATE_PACK}/src`,
   ...CLI_TEMPLATE_SOURCES,
 ];
 
@@ -299,7 +306,7 @@ export function findPackBackendConsole(dirs = PACK_SOURCE_DIRS, root = repoRoot)
 }
 
 /** Pack unit tests, which run on @abuddy/testing's harness: the pack's code and the SDK, not the app */
-const PACK_TEST_DIRS = ['packages/default-setup/tests', 'tests/fixtures/external-pack/tests'];
+const PACK_TEST_DIRS = ['packages/default-setup/tests', 'tests/fixtures/external-pack/tests', `${CLI_TEMPLATE_PACK}/tests`];
 
 /**
  * `file:line: specifier` for each `@/…` a pack names one of its own modules with.
@@ -609,6 +616,7 @@ const CODE_FILE = /\.(?:[cm]?[jt]sx?|vue)$/;
 const PACK_SRC_ROOTS = [
   'packages/default-setup/src', 'packages/abuddy-host/src',
   'tests/fixtures/external-pack/src', 'tests/fixtures/bundled-ui-pack/src',
+  `${CLI_TEMPLATE_PACK}/src`,
 ];
 
 /** `export … from '…'`: a module passing another's exports on */
@@ -1251,6 +1259,11 @@ export function findMissingSourceConditions(
     configs: [], code: [], packs: [], imports: new Map(), tsconfigs: new Map(), sources: new Map(),
   };
   walkTree(root, scan, new Set());
+  // The scaffold's templates are a pack with no manifest — `abuddy.json` is built in code, from an object with
+  // computed keys — so the walk cannot recognise it, and its `vitest.config.ts` would be read as one of the
+  // repo's own and told to declare the source condition. It is the pack every pack author starts from, so the
+  // rule that applies is the pack one: declare nothing.
+  scan.packs.push(path.join(root, CLI_TEMPLATE_PACK));
   const problems: string[] = [];
   const applied = new Set<string>();
   const packApplied = new Set<string>();

@@ -114,7 +114,9 @@ export const hasSplit = (packageDir: string): boolean => configsFor(packageDir).
  * Ignoring what a package builds keeps the walk to sources: `dist` holds compiled copies, and `etc` is
  * where the record itself lives.
  */
-const IGNORED = new Set(['node_modules', 'dist', 'etc', 'coverage']);
+// `templates` holds the CLI's scaffold: `templates/pack/tests/*.spec.ts` is a spec a pack author will run,
+// not one of this package's, and vitest's own `include` already leaves it out
+const IGNORED = new Set(['node_modules', 'dist', 'etc', 'coverage', 'templates']);
 export function specFiles(packageDir: string): string[] {
   const walk = (dir: string): string[] =>
     fs.readdirSync(dir, { withFileTypes: true }).flatMap((entry) => {
