@@ -10,7 +10,7 @@ import { SHARED_INSTANCE_PACKAGES } from '@abuddy/host/build/shared-deps';
 import { packageName } from '@abuddy/host/build/specifiers';
 import { readSubpathImports } from '@abuddy/host/build/subpath-imports';
 import { SOURCE_CONDITION } from '@abuddy/host/build/source-resolution';
-import { ownModuleFindings } from '@abuddy/host/build/own-module-specifiers';
+import { mappedPathFor, ownModuleFindings } from '@abuddy/host/build/own-module-specifiers';
 import { PACK_RULES, type PackRuleKey } from '../packages/abuddy-cli/src/build/pack-rules.ts';
 import { moduleOf, readSource, sourceFiles, type SourceView } from '../packages/abuddy-cli/src/build/pack-sources.ts';
 import type { Fix } from './lib/specifier-fixes.ts';
@@ -718,14 +718,15 @@ function sourceFile(base: string): string | undefined {
 export function findContractLeafImports(srcRoots = PACK_SRC_ROOTS, root = repoRoot): string[] {
   return srcRoots.flatMap((srcRoot) => {
     const src = path.join(root, srcRoot);
-    const manifestPath = path.join(path.dirname(src), 'abuddy.json');
+    const packDir = path.dirname(src);
+    const manifestPath = path.join(packDir, 'abuddy.json');
     if (!fs.existsSync(manifestPath)) return [];
     const manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf-8')) as {
       features?: Array<{ plugin?: { contract?: string; entry?: string }; system?: { contract?: string; entry?: string } }>;
     };
     /** A `"path"` or `"path#Export"` the manifest names, as a file in the pack */
     const named = (target: string | undefined): string | undefined =>
-      target ? sourceFile(path.join(path.dirname(src), target.split('#')[0]!)) : undefined;
+      target ? sourceFile(path.join(packDir, target.split('#')[0]!)) : undefined;
     const files = (pick: (f: NonNullable<typeof manifest.features>[number]) => Array<string | undefined>) =>
       (manifest.features ?? []).flatMap((feature) => pick(feature).flatMap((t) => { const f = named(t); return f ? [f] : []; }));
 
@@ -735,9 +736,17 @@ export function findContractLeafImports(srcRoots = PACK_SRC_ROOTS, root = repoRo
      * are the two paths the manifest states outright, so a leaf reaching one is reported whatever it is called.
      */
     const actorEntries = new Set(files((f) => [f.plugin?.entry, f.system?.entry]));
+    // A pack's own `#` subpaths, so the walk follows the alias the packs actually write: `default-setup` uses
+    // `#features/` 188 times and `@/features/` never, and two of its contract closures ended at one of those
+    // imports — including `threads/be/types.ts` reaching `code/`, a cross-feature hop the walk stopped at.
+    // `mappedPathFor` owns Node's precedence for the map; a `#generated/…` specifier never reaches it, being
+    // matched and classified below *before* resolution, where `types`/`ears` are told apart from `events`/`fe` —
+    // a distinction the file they resolve to cannot make.
+    const imports = readSubpathImports(packDir);
     const resolveFrom = (from: string, specifier: string): string | undefined => {
       const base = specifier.startsWith('@/') ? path.join(src, specifier.slice(2))
-        : specifier.startsWith('.') ? path.resolve(path.dirname(from), specifier) : undefined;
+        : specifier.startsWith('.') ? path.resolve(path.dirname(from), specifier)
+          : specifier.startsWith('#') ? mappedPathFor(packDir, imports, specifier) : undefined;
       return base === undefined ? undefined : sourceFile(base);
     };
     const relative = (target: string) => path.relative(src, target).split(path.sep).join('/');

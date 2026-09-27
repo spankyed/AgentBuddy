@@ -126,23 +126,37 @@ export function ownModuleFindings(packDir: string, found: Iterable<OwnModuleSpec
 const TRAILING_EXTENSION = new RegExp(`(${MODULE_EXTENSIONS.join('|')})$`.replace(/\./g, '\\.'));
 
 /**
- * What a `#` specifier should have said, or undefined when it already names a file, or names nothing this
- * pack declares.
+ * The path a pack's `imports` map sends a `#` specifier to, or undefined when the map doesn't cover it.
  *
- * Node's precedence, not the manifest's key order: an exact pattern first, then the *longest* matching
- * wildcard. Taking them in key order named the wrong file for a pack declaring both `#gen/*` and
- * `#gen/deep/*`, advice that would not have resolved either.
+ * Node's precedence, not the manifest's key order: an exact entry first, then the *longest* matching wildcard.
+ * Taking them in key order named the wrong file for a pack declaring both `#gen/*` and `#gen/deep/*`, advice
+ * that would not have resolved either.
+ *
+ * The path the mapping names, which need not be a file: `namedFileFor` below turns it into advice about the file
+ * that *is* there, and `findContractLeafImports` resolves it to a source file to walk. Both need the mapping
+ * before they can do either, and one owner for the precedence is the reason this is separate.
  */
-export function namedFileFor(packDir: string, imports: Record<string, string>, specifier: string): string | undefined {
-  if (imports[specifier] !== undefined) return undefined;
+export function mappedPathFor(packDir: string, imports: Record<string, string>, specifier: string): string | undefined {
+  const exact = imports[specifier];
+  if (exact !== undefined) return path.resolve(packDir, exact);
   const wildcards = Object.entries(imports).filter(([pattern, target]) => pattern.endsWith('/*') && target.endsWith('/*'))
     .sort(([a], [b]) => b.length - a.length);
   for (const [pattern, target] of wildcards) {
     const prefix = pattern.slice(0, -1);
-    if (!specifier.startsWith(prefix)) continue;
-    return namedFileAt(path.resolve(packDir, target.slice(0, -1) + specifier.slice(prefix.length)), specifier);
+    if (specifier.startsWith(prefix)) return path.resolve(packDir, target.slice(0, -1) + specifier.slice(prefix.length));
   }
   return undefined;
+}
+
+/**
+ * What a `#` specifier should have said, or undefined when it already names a file, or names nothing this
+ * pack declares.
+ */
+export function namedFileFor(packDir: string, imports: Record<string, string>, specifier: string): string | undefined {
+  // An exact entry names one file outright, so there is nothing to rewrite; only a wildcard can lose an extension
+  if (imports[specifier] !== undefined) return undefined;
+  const mapped = mappedPathFor(packDir, imports, specifier);
+  return mapped === undefined ? undefined : namedFileAt(mapped, specifier);
 }
 
 /**

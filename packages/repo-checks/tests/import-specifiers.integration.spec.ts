@@ -681,8 +681,13 @@ describe('findPackageScriptImports', () => {
  */
 describe('findContractLeafImports', () => {
   const src = 'pack/src';
-  /** A pack whose `notes` feature names both contracts, as a real manifest does */
-  function pack(files: Record<string, string>): void {
+  /**
+   * A pack whose `notes` feature names both contracts, as a real manifest does. `imports` writes a
+   * `package.json` with a subpath map, for the cases about `#` specifiers — the packs in this repo address each
+   * other's features that way and never through `@/`.
+   */
+  function pack(files: Record<string, string>, imports?: Record<string, string>): void {
+    if (imports) writeAt('pack/package.json', JSON.stringify({ name: 'demo-pack', type: 'module', imports }));
     writeAt('pack/abuddy.json', JSON.stringify({
       id: 'demo-pack', name: 'Demo', version: '1.0.0',
       features: [{
@@ -794,6 +799,37 @@ describe('findContractLeafImports', () => {
       'features/notes/fe/contract.ts': 'export type Contract = { state: {} };',
     });
     expect(findContractLeafImports([src], root)).toEqual([]);
+  });
+
+  /**
+   * The same two claims through a pack's own `#` subpaths, which is how the packs here are written:
+   * `default-setup` uses `#features/` 188 times and `@/features/` never. The walk skipped them until
+   * `mappedPathFor` resolved the map, so two of its contract closures ended at one of those imports — one of them
+   * `threads/be/types.ts` reaching into `code/`, a cross-feature hop the closure rule never got to look past.
+   */
+  const FEATURES = { '#features/*': './src/features/*', '#generated/*': './src/__generated__/*' };
+
+  it('flags a leaf that names another feature through the pack\'s own subpath', () => {
+    pack({
+      'features/notes/fe/contract.ts': "import type { T } from '#features/threads/be/types.ts';",
+      'features/threads/be/types.ts': 'export type T = { id: string };',
+      'features/notes/be/contract.ts': 'export type Contract = { outgoing: { type: "A" } };',
+    }, FEATURES);
+    expect(findContractLeafImports([src], root)).toEqual([
+      `${src}/features/notes/fe/contract.ts:1: #features/threads/be/types.ts`,
+    ]);
+  });
+
+  it('follows one to #generated/events deeper in the closure', () => {
+    pack({
+      'features/notes/be/contract.ts': "import type { Ev } from './types.ts';",
+      'features/notes/be/types.ts': "import type { H } from '#features/threads/be/helper.ts';\nexport type Ev = H;",
+      'features/threads/be/helper.ts': "import { untypedBroadcastToPlugin } from '#generated/events.ts';\nexport type H = typeof untypedBroadcastToPlugin;",
+      'features/notes/fe/contract.ts': 'export type Contract = { state: {} };',
+    }, FEATURES);
+    expect(findContractLeafImports([src], root)).toEqual([
+      `${src}/features/threads/be/helper.ts:1: #generated/events.ts (reached from ${src}/features/notes/be/contract.ts)`,
+    ]);
   });
 
   it('checks nothing in a tree with no manifest, there being no contract to find', () => {
