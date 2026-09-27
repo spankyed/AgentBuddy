@@ -80,9 +80,6 @@ describe('a spec runs in the half its cost puts it in', () => {
  * stop being true.
  */
 const EXPENSIVE_BY_NATURE: Record<string, string> = {
-  // Two TypeScript programs, built through `createModuleExports` and shared by 13 tests. The cost is the
-  // compiler, not the assertions; it would drop if the reader could answer from one program.
-  'abuddy-sdk/tests/build/declared-type-of.spec.ts': 'builds two TypeScript programs to read declared types',
   // 94 tests: 91 call `generatePackFiles` with a different manifest each (~7.2s, different work every time
   // and so not cacheable), and 3 build TypeScript programs (2.5s since they share a compiler host).
   // Measured in goal-one-job-pool.md Phase 5, which also records why the split it proposed was not done.
