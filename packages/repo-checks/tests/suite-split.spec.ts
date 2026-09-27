@@ -90,6 +90,11 @@ const EXPENSIVE_BY_NATURE: Record<string, string> = {
   // Holds the repo's slowest single test at 4.1s. It spawns real processes and waits on real lock
   // timeouts, so its cost is elapsed time rather than work, and no amount of cores shortens it.
   'abuddy-host/tests/database/write-lock.spec.ts': 'waits on real cross-process lock timeouts',
+  // Seven `npm pack --dry-run` spawns at ~0.3s each. Asking npm what it would publish is the subject, not an
+  // implementation detail of the test: the module exists because reading `files` ourselves lost npm's
+  // force-included files. Two of the calls could go, for ~2.4s against the 2.5s edge — a cost that flips half
+  // on a contended measurement, which is what the band exists to avoid.
+  'abuddy-host/tests/build/published-manifest.spec.ts': 'spawns npm pack seven times, which is its subject',
   // Starts and stops real pack backends and then waits to prove a cron schedule does *not* tick into the
   // next test. The wait is the assertion, so shortening it removes what the test checks.
   'default-setup/tests/harness-app-stop.spec.ts': 'waits to prove a stopped schedule does not tick',
