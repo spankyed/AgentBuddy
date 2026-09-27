@@ -337,6 +337,14 @@ describe('source-resolution', () => {
     expect(problems(dir, 'source-resolution')).toEqual(['vitest.config.ts:1: @abuddy/source']);
   });
 
+  /** A pattern over the pack root, so a JS config is not a hole an external pack can fall into */
+  it('reports a JS config too, not only a .ts one', () => {
+    const dir = withSdk({});
+    fs.writeFileSync(path.join(dir, 'vitest.config.js'),
+      "export default { resolve: { conditions: ['@abuddy/source'] } };\n");
+    expect(problems(dir, 'source-resolution')).toEqual(['vitest.config.js:1: @abuddy/source']);
+  });
+
   /** A string literal from the tree, not a text search, so a pack may still write about the condition */
   it('says nothing about a config that only mentions it in a comment', () => {
     const dir = withSdk({});

@@ -121,12 +121,17 @@ export function packResolvesSource(packDir: string): PackResolution {
  * and a pack may still write about it. Any literal, rather than only one inside `resolve.conditions`: there is
  * no other reason for a pack's config to name it, and matching the shape would mean guessing at how the
  * property was spelled.
+ *
+ * A pattern over the pack root rather than a list of filenames, so `vitest.config.js`, a `.mjs` and a
+ * `vitest.workspace.ts` are covered — a list of four `.ts` spellings left every JS config unchecked, which is
+ * not the shape an external pack is obliged to use. `readSource` reads all of them: `pack-sources.ts`'s
+ * `SOURCE_FILE` covers `js|jsx|mjs|cjs`, and a non-`.vue` file is parsed whole.
  */
-const PACK_CONFIGS = ['vitest.config.ts', 'vitest.config.mts', 'vite.config.ts', 'vite.config.mts'];
+const PACK_CONFIG = /^(?:vite|vitest)\.(?:config|workspace)\.[cm]?[jt]s$/;
 
 /** `<config>:<line>: <condition>` for each of the pack's configs naming the source condition */
 export function configsNamingSourceCondition(packDir: string): string[] {
-  return PACK_CONFIGS.filter((name) => fs.existsSync(path.join(packDir, name))).flatMap((name) =>
+  return fs.readdirSync(packDir).filter((name) => PACK_CONFIG.test(name)).sort().flatMap((name) =>
     readSource(path.join(packDir, name))
       .visit((node) => (ts.isStringLiteralLike(node) && node.text === SOURCE_CONDITION ? [node.text] : undefined))
       .map(({ line, what }) => `${name}:${line}: ${what}`));
