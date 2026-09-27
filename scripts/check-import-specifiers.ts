@@ -39,50 +39,16 @@ function* sourceFiles(dir: string): Generator<string> {
   }
 }
 
-function parse(code: string, fileName: string): ts.SourceFile {
-  const kind = /\.[jt]sx$/.test(fileName) ? ts.ScriptKind.TSX : ts.ScriptKind.TS;
-  return ts.createSourceFile(fileName, code, ts.ScriptTarget.Latest, true, kind);
-}
 
-/** A file's code: the whole file, or a .vue file's <script> blocks with the line each starts on (less one) */
-function codeBlocks(file: string): { content: string; lineOffset: number }[] {
-  const code = fs.readFileSync(file, 'utf-8');
-  if (!file.endsWith('.vue')) return [{ content: code, lineOffset: 0 }];
-  const { descriptor } = parseSfc(code, { filename: file });
-  return [descriptor.script, descriptor.scriptSetup].filter((b) => b !== null)
-    .map((b) => ({ content: b.content, lineOffset: b.loc.start.line - 1 }));
-}
 
-/** Specifiers in a module (relative ones only unless `all`): every static and dynamic form that names a module path */
-function specifiers(code: string, fileName: string, all = false): { text: string; line: number }[] {
-  const source = parse(code, fileName);
-  const found: { text: string; line: number }[] = [];
-  const visit = (node: ts.Node) => {
-    let literal: ts.StringLiteralLike | undefined;
-    if ((ts.isImportDeclaration(node) || ts.isExportDeclaration(node)) && node.moduleSpecifier && ts.isStringLiteral(node.moduleSpecifier)) literal = node.moduleSpecifier;
-    else if (ts.isImportEqualsDeclaration(node) && ts.isExternalModuleReference(node.moduleReference) && ts.isStringLiteral(node.moduleReference.expression)) literal = node.moduleReference.expression;
-    else if (ts.isImportTypeNode(node) && ts.isLiteralTypeNode(node.argument) && ts.isStringLiteral(node.argument.literal)) literal = node.argument.literal;
-    else if (ts.isCallExpression(node) && node.arguments[0] && ts.isStringLiteralLike(node.arguments[0])
-      && (node.expression.kind === ts.SyntaxKind.ImportKeyword || MODULE_PATH_CALLS.test(node.expression.getText(source)))) {
-      literal = node.arguments[0];
-    }
-    if (literal && (all || /^\.\.?\//.test(literal.text))) {
-      found.push({ text: literal.text, line: source.getLineAndCharacterOfPosition(literal.getStart(source)).line + 1 });
-    }
-    ts.forEachChild(node, visit);
-  };
-  visit(source);
-  return found;
-}
 
 /** `file:line: specifier` for each specifier in `files` that `matches` (relative ones only unless `all`) */
 function findSpecifiers(files: string[], root: string, matches: (text: string, file: string) => boolean, all = true): string[] {
   const problems: string[] = [];
   for (const file of files) {
-    for (const { content, lineOffset } of codeBlocks(file)) {
-      for (const { text, line } of specifiers(content, file, all)) {
-        if (matches(text, file)) problems.push(`${path.relative(root, file)}:${line + lineOffset}: ${text}`);
-      }
+    for (const { text, line } of readSource(file).specifiers) {
+      if (!all && !/^\.\.?\//.test(text)) continue;
+      if (matches(text, file)) problems.push(`${path.relative(root, file)}:${line}: ${text}`);
     }
   }
   return problems;
@@ -242,18 +208,7 @@ function moduleOf(node: ts.Node): string | undefined {
 function findInFiles(files: string[], root: string, rule: Rule): string[] {
   return files.flatMap((file) => {
     const relative = path.relative(root, file).split(path.sep).join('/');
-    const found: { line: number; what: string }[] = [];
-    const scan = (code: string, lineOffset: number): void => {
-      const source = parse(code, file);
-      const lineOf = (node: ts.Node) => source.getLineAndCharacterOfPosition(node.getStart(source)).line + 1 + lineOffset;
-      const visit = (node: ts.Node): void => {
-        for (const what of rule(node) ?? []) found.push({ line: lineOf(node), what });
-        ts.forEachChild(node, visit);
-      };
-      visit(source);
-    };
-    for (const { content, lineOffset } of codeBlocks(file)) scan(content, lineOffset);
-    return found.sort((a, b) => a.line - b.line).map(({ line, what }) => `${relative}:${line}: ${what}`);
+    return readSource(file).visit(rule).map(({ line, what }) => `${relative}:${line}: ${what}`);
   });
 }
 
@@ -920,7 +875,7 @@ function importsSourcePackage(file: string, scan: ConditionScan): boolean {
     // A file that never spells a package's name imports none of them: skip the parse
     if (!scan.packages.some((pkg) => code.includes(pkg))) return false;
     const matches = (text: string) => scan.packages.some((pkg) => text === pkg || text.startsWith(`${pkg}/`));
-    return codeBlocks(file).some(({ content }) => specifiers(content, file, true).some(({ text }) => matches(text)));
+    return readSource(file).specifiers.some(({ text }) => matches(text));
   });
 }
 
@@ -1190,7 +1145,8 @@ function declaresCondition(file: string, scan: ConditionScan, seen = new Set<str
   const values = conditionValues(source);
   if (values.length > 0) return combine(values.map((value) => yieldsCondition(value, source, new Set())));
   let unreadable: Verdict | undefined;
-  for (const { text } of specifiers(source.text, file, false)) {
+  // The same file the parse above came from, through the shared reader so it is parsed once per process
+  for (const { text } of readSource(file).specifiers.filter(({ text }) => /^\.\.?\//.test(text))) {
     const resolved = resolveConfig(file, text);
     if (resolved === undefined) continue;
     const verdict = declaresCondition(resolved, scan, seen);
