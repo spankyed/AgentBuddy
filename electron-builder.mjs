@@ -145,6 +145,10 @@ export default /** @type import('electron-builder').Configuration */
     '!packages/renderer/public/**',
     // Include compiled output
     'packages/*/dist/**',
+    // ...but not the tree each publishable package stages for npm (stagePublishTree): a second copy of the same
+    // dist, which the app never loads — it resolves @abuddy/sdk through node_modules to packages/abuddy-sdk/dist.
+    // electron-builder reads no .gitignore, so ignoring it there was not enough: 'packages/**/*' above took it.
+    '!packages/*/publish/**',
     // The CLI's scaffold templates, which are .ts and .vue files it reads at run time rather than code the
     // app loads — so the exclusions above would strip every one of them and `abuddy init` from the CLI this
     // app installs (bin/app-launcher.sh) would scaffold nothing. Last match wins, so this comes after them.

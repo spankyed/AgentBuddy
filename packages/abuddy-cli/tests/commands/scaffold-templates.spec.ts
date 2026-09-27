@@ -37,6 +37,10 @@ describe('what the scaffold ships', () => {
   /**
    * And the include that carries the rest: the same `files` array excludes `**` + `/*.ts`, so without a later
    * pattern naming the templates every `.ts` among them goes the same way.
+   *
+   * This asserts the include's position, which is what matters here. What that array *does* — which paths reach
+   * the app — is `repo-checks/tests/packaged-app-files.spec.ts`, which runs electron-builder's own matcher over
+   * it, this one included.
    */
   it('is included by electron-builder after the exclusions that would drop it', () => {
     const config = fs.readFileSync(path.join(REPO, 'electron-builder.mjs'), 'utf-8');

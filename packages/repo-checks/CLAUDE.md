@@ -43,7 +43,7 @@ looking.
 Two halves, split by measured cost exactly as every other suite is — the rule and the band are in
 `scripts/lib/spec-cost.ts`, and `etc/spec-cost.json` is this suite's record.
 
-- **`npm test -w @app/repo-checks`** — the fast half (`tests/**/*.spec.ts`): 17 specs, about 3s of file
+- **`npm test -w @app/repo-checks`** — the fast half (`tests/**/*.spec.ts`): 18 specs, about 3s of file
   time.
 - **`npm run test:integration -w @app/repo-checks`** — the expensive half
   (`tests/**/*.integration.spec.ts`): 3 specs, about 9.8s. Each runs a compiler over a fixture tree.
@@ -65,6 +65,7 @@ names every workspace that has a second config.
 | `spec-plan` | what `npm run spec` decides to run for what you gave it, asserted without running any of it: the plan per target shape, which pack suites a change reaches across the `dist` seam, that no plan runs one suite twice, and how the arguments split |
 | `pack-test-config` | that every pack's vitest config calls `definePackTestConfig` and declares no `test` block of its own, the scaffolded template included: there were three copies and they had drifted, and a fourth is a `cp` away |
 | `specifier-fixes` | what `npm run specifiers:fix` may write: right-to-left splicing, and the three refusals — a span that no longer holds what the reader saw, two spans that overlap, a file with nothing to do. What makes a rewriter safe is the refusals, not the writing |
+| `packaged-app-files` | what the installed app carries, asked of the matcher electron-builder builds from `electron-builder.mjs`: each package's `dist` in, the trees staged for npm out, the CLI's scaffold templates kept. That config is named by no chain step, so nothing else reads it, and a text check on its patterns passes whether or not they exclude anything |
 | `doc-links` | that a relative link between the repo's documents resolves: archiving a goal turns its own `../archive/goals/x.md` into `archive/archive/goals/x.md`, and a dead link fails nothing on its own |
 | `repo-check-boundary`, `spec-placement` | where a spec belongs: this package's own boundary, that every package with source has a suite, and that no spec reaches into another package's tree |
 
