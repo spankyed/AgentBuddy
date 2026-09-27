@@ -47,8 +47,22 @@ describe("the packaged app's file list", () => {
     expect(ships('packages/abuddy-ui/publish/dist/design/button.js')).toBe(false);
   });
 
+  // The exclusion of `.ts` files sits above the includes, and last match wins; without one of them the app would
+  // install a CLI that scaffolds nothing, which is how the templates were once found missing — by packaging the
+  // app and listing what arrived.
+  //
+  // *One of them*, measured: `packages/*/dist/**` and the dedicated `templates/**` include each carry these on
+  // their own, so this fails only when both go. That is the condition worth failing on — the app breaks when no
+  // pattern reaches the templates, not when either one is edited — and it is why the older check on that
+  // include's position was dropped rather than kept: it pinned one of two redundant patterns, so it failed on a
+  // harmless edit and not on this.
+  //
+  // Real files, both of them. The first path this case named was `src/env.d.ts`, which no template has been since
+  // `.d.ts` templates were ruled out (`abuddy-cli/tests/commands/scaffold-templates.spec.ts` asserts there are
+  // none) — the matcher answers about any string, so nothing said the probe was fiction.
   it("keeps the CLI's scaffold templates, which the exclusion above them would strip", () => {
-    expect(ships('packages/abuddy-cli/dist/package/templates/pack/src/env.d.ts')).toBe(true);
+    expect(ships('packages/abuddy-cli/dist/package/templates/pack/vitest.config.ts')).toBe(true);
+    expect(ships('packages/abuddy-cli/dist/package/templates/pack/tests/example.spec.ts')).toBe(true);
   });
 
   it('ships no package source', () => {

@@ -19,12 +19,16 @@ function rendered(): { name: string; from: string }[] {
 }
 
 /**
- * What a template may be, if the CLI is to have it wherever it runs. Both of these were found by packaging the
- * app and listing what arrived, not by reading the config.
+ * What a template may be, if the CLI is to have it wherever it runs. Found by packaging the app and listing what
+ * arrived, not by reading the config.
+ *
+ * Whether the packaging config *does* carry the templates is `repo-checks/tests/packaged-app-files.spec.ts`,
+ * which asks electron-builder's own matcher. There used to be a second case here, comparing two string offsets to
+ * pin one include's position — and measured, two patterns carry the templates independently, so that case failed
+ * on an edit to either and not on the thing that breaks the app. The matcher case fails when no pattern reaches
+ * them, which is the condition. This file is about the templates themselves.
  */
 describe('what the scaffold ships', () => {
-  const REPO = path.join(import.meta.dirname, '..', '..', '..', '..');
-
   /**
    * electron-builder strips every `.d.ts` from the packaged app whatever its `files` array says — measured on a
    * `--dir` build: zero remain in app.asar. So a `.d.ts` template would be missing from the CLI the app
@@ -32,22 +36,6 @@ describe('what the scaffold ships', () => {
    */
   it('holds no .d.ts template, which the packaged app would drop', () => {
     expect(templateFiles().filter((file) => file.endsWith('.d.ts'))).toEqual([]);
-  });
-
-  /**
-   * And the include that carries the rest: the same `files` array excludes `**` + `/*.ts`, so without a later
-   * pattern naming the templates every `.ts` among them goes the same way.
-   *
-   * This asserts the include's position, which is what matters here. What that array *does* — which paths reach
-   * the app — is `repo-checks/tests/packaged-app-files.spec.ts`, which runs electron-builder's own matcher over
-   * it, this one included.
-   */
-  it('is included by electron-builder after the exclusions that would drop it', () => {
-    const config = fs.readFileSync(path.join(REPO, 'electron-builder.mjs'), 'utf-8');
-    const include = config.indexOf("'packages/abuddy-cli/dist/package/templates/**'");
-    const exclude = config.indexOf("'!**/*.ts'");
-    expect(include, 'electron-builder must name the templates, or the app installs a CLI that scaffolds nothing').toBeGreaterThan(-1);
-    expect(include, 'last match wins, so the include has to come after the exclusion').toBeGreaterThan(exclude);
   });
 });
 
