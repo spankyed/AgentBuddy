@@ -733,14 +733,14 @@ function sourceFile(base: string): string | undefined {
  *   module the leaf reaches importing one closes the loop codegen read the contract as a declared type to avoid.
  *   Measured on both packs here, those three are exactly the generated modules that import a contract.
  * - `pack-entry` and `pack-entry-fe` import the actors, which is the cost half: reaching either parses and binds
- *   every machine and its whole closure.
+ *   every machine and its whole closure, and puts the machine's inferred type in the pack's published facade.
  *
  * **Not transitive reach**, deliberately. Twelve of default-setup's sixteen generated modules reach a contract
  * through some hop — `repository` does, through a feature's repository index — and a module the leaf reaches is
  * meant to use the repository facade, which the case beside this rule's asserts. What sets these five apart is that
  * codegen derives them from the thing it is reading, or from the thing it is reading around.
  */
-const GENERATED_BEHIND_A_CONTRACT = ['system-specs', 'events', 'fe', 'pack-entry', 'pack-entry-fe'];
+export const GENERATED_BEHIND_A_CONTRACT = ['system-specs', 'events', 'fe', 'pack-entry', 'pack-entry-fe'];
 
 /**
  * `file:line: specifier` for each import a contract leaf makes that would put the machine back in front of codegen.
@@ -757,6 +757,18 @@ const GENERATED_BEHIND_A_CONTRACT = ['system-specs', 'events', 'fe', 'pack-entry
  * The cycle is one of two reasons, and the other is cost, recorded at `generate-entries.ts:433`: the contracts are
  * in codegen's TypeScript program and the machines are not, so an import that puts one back in reach parses and
  * binds every machine and its whole closure, XState and Vue included, for nothing.
+ *
+ * **What the cycle does is not a wrong read.** Measured 2026-09-27 on the external-pack fixture, twice, each from a
+ * cold tree: a plugin contract deriving its state from the machine, and one deriving its inbox as `Extract<>` over
+ * the machine's event union — the shape the origin commit found seven times. Both built with exit 0 and a
+ * byte-identical `src/__generated__/events.ts`. What moved was the published facade: `dist/types/pack-types.d.ts`
+ * grew by 41 lines, gaining `import * as xstate from 'xstate'` and the machine's whole declaration, every action
+ * name included, where a contract of its own contributes one interface. That is the cost above, made visible in an
+ * artifact — and since a dependent's facade inlines its dependencies' verbatim, it travels one hop further.
+ *
+ * Not a *disallowed* import, though, and that is worth knowing before deriving it again: `abuddy-cli`'s
+ * `build/facade-gate.ts` allows a facade to import `@abuddy/*`, Node built-ins and `@abuddy/sdk`'s peers, `xstate`
+ * and `zod` among them, because every dependent has them. The leak is size and coupling, not resolution.
  *
  * **Codegen's own refusal is not a second guard for this.** `checkResolved`
  * (`abuddy-sdk/src/build/module-exports.ts`) refuses a type that collapsed to `any` in the four positions a reader
@@ -816,10 +828,11 @@ export function findContractLeafImports(srcRoots = PACK_SRC_ROOTS, root = repoRo
           const at = viaLeaf ? where : `${where} (reached from ${path.relative(root, leaf)})`;
           const generated = /^#generated\/(.+?)(?:\.(?:ts|js))?$/.exec(specifier);
           if (generated) {
-            // Two rules, and they are not the same one. The leaf's own imports are held to `types` and `ears`, the
-            // two generated modules that reach nothing: that is what keeps a contract cheap to read. Deeper in the
-            // closure only the cycle and the cost matter, which is `GENERATED_BEHIND_A_CONTRACT` above — so a module
-            // the leaf reaches may use the rest of the generated code.
+            // Two rules, and they are not the same one. The leaf's own imports are held to `types` and `ears`
+            // because those are what a context legitimately needs — a policy, not a fact about the generated tree:
+            // six generated modules reach neither a contract nor an actor, and the other four are simply not
+            // something a contract has business naming. Deeper in the closure the population is
+            // `GENERATED_BEHIND_A_CONTRACT` above, so a module the leaf reaches may use the rest.
             const offends = viaLeaf
               ? !['types', 'ears'].includes(generated[1])
               : GENERATED_BEHIND_A_CONTRACT.includes(generated[1]);

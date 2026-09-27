@@ -27,6 +27,10 @@ Two properties, not one:
 2. **The cost.** `generate-entries.ts:433`: *"putting the machines in the program would parse and bind every one
    of them — and their whole closure, XState and Vue included — for nothing."* Nothing else measures this.
 
+**Of those two, the cost is the one with evidence, and the cycle is not what anyone thought.** See *"What the
+cycle actually does"* below: three separate statements of this rule's harm have now been wrong, and the measured
+one is the published facade.
+
 Three places assert the invariant to readers and pack authors: `packages/abuddy-sdk/CLAUDE.md:61` (which names
 this rule as the guard), and `manifest-schema.ts:130` and `:138` (the `.describe()` strings a pack author sees).
 `docs/goals/README.md:218-230` is the repo's own policy that an invariant with a criterion has a guard.
@@ -36,7 +40,7 @@ this rule as the guard), and `manifest-schema.ts:130` and `:138` (the `.describe
 | # | Line | Forbids | Covered elsewhere? |
 |---|---|---|---|
 | 1 | `:764` (`viaLeaf`) | the leaf importing any `#generated/*` but `types` and `ears` | **nothing**, in a warm tree |
-| 2 | `:764` (closure) | any module the leaf reaches importing one of the five generated modules a contract is behind | the reader, **only where the collapse lands in a position it reads** — see below |
+| 2 | `:764` (closure) | any module the leaf reaches importing one of the five generated modules a contract is behind (`GENERATED_BEHIND_A_CONTRACT`, derived by `repo-checks/tests/generated-behind-contract.spec.ts`) | the reader, **only where the collapse lands in a position it reads** — see below |
 | 3 | `:771` | the leaf importing *any* other feature, `be/` included | **nothing** |
 | 4 | `:775` | anything in the closure reaching a declared `plugin.entry`/`system.entry` | **nothing** |
 | 5 | `:780` | the leaf importing a file named `state`/`system` | **nothing** outside the rule |
@@ -149,6 +153,40 @@ every tree, and claims 1, 3, 4 and 5 have no other guard. State the cost propert
 as the second reason the rule exists, since the cycle is the only one currently written down.
 
 ---
+
+
+## What the cycle actually does — measured 2026-09-27
+
+Two mutations of `tests/fixtures/external-pack`'s plugin contract, each from a cold tree, each a shape a pack
+author writes: the contract deriving its `state` from the machine (`SnapshotFrom<typeof memosState>['context']`),
+and deriving its inbox as `Extract<>` over the machine's event union — the shape the origin commit records finding
+seven times. **Both built with exit 0 and a byte-identical `src/__generated__/events.ts`.** No collapse, no wrong
+event types. So the harm is not a wrong read, and the earlier framing of claim 2 as "the cycle returns" describes a
+module-graph fact rather than a consequence.
+
+What moved is the published artifact. `dist/types/pack-types.d.ts` went 6374 → 6415 lines (198236 → 199263 bytes)
+and gained `import * as xstate from 'xstate'` plus `declare const memosState: xstate.StateMachine<…>` — every
+event, every action name, `NonReducibleUnknown` — where the unmutated contract contributes one `interface
+MemosContext`. Because a dependent's facade inlines its dependencies' verbatim (`src/__generated__/deps/<id>.d.ts`,
+6135 lines of default-setup in the fixture's tree), it travels one hop further than the pack that caused it.
+
+**And the third wrong harm, for the record.** The first was "codegen refuses it anyway" (refuted above); the second
+"a contract that reads as `any`" (refuted by the two mutations); the third was mine — *"the facade gains a
+third-party import its dependents may not have."* `abuddy-cli/src/build/facade-gate.ts:14-25` already allows a
+facade to import `@abuddy/*`, Node built-ins and `@abuddy/sdk`'s peers, which include **`xstate`** and `zod`,
+under *"Packages a facade may import: every dependent has them"* — with a passing gate case whose facade imports
+both. `zod` travels that route today into a fixture that uses no zod. The leak is size and coupling, not
+resolution.
+
+**This does not reopen the decision below.** The rule stays: four of its five claims still have no other guard, it
+costs nothing to run, and a narrower harm is still a harm — keeping the machine's internals out of a pack's public
+types is worth one shape rule. What changes is that the rule now says what it actually prevents, so a fourth
+investigation starts from the measurement instead of re-deriving it.
+
+**Weighed and not built:** extending `facade:check` past default-setup, so a fixture or external pack would notice
+its own facade growing. It guards a diff in a gitignored artifact nothing consumes, at the cost of a tracked
+~6000-line `etc/pack-types.api.md` per pack that churns on every codegen change. The audience that needs the
+signal is an external pack author, and no check here runs for them — that is the pack-rule question, not this one.
 
 ## Decisions — settled, do not reopen
 

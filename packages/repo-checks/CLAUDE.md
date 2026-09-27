@@ -43,7 +43,7 @@ looking.
 Two halves, split by measured cost exactly as every other suite is — the rule and the band are in
 `scripts/lib/spec-cost.ts`, and `etc/spec-cost.json` is this suite's record.
 
-- **`npm test -w @app/repo-checks`** — the fast half (`tests/**/*.spec.ts`): 18 specs, about 3s of file
+- **`npm test -w @app/repo-checks`** — the fast half (`tests/**/*.spec.ts`): 20 specs, about 3.5s of file
   time.
 - **`npm run test:integration -w @app/repo-checks`** — the expensive half
   (`tests/**/*.integration.spec.ts`): 3 specs, about 9.8s. Each runs a compiler over a fixture tree.
@@ -61,6 +61,7 @@ names every workspace that has a second config.
 | `suite-split`, `suite-timeouts`, `slow-tests` | the recorded spec costs, the per-tier timeout budgets, and the slow-test report |
 | `orchestrator-exit`, `with-source`, `import-specifiers-script` | the scripts themselves: no `process.exit()` in one that reprints captured output, the `@abuddy/source` wrapper, and `check-import-specifiers` run as a process |
 | `import-specifiers`, `component-contracts`, `published-imports`, `api-report-stamp` | the analysis scripts behind `check:specifiers`, the component reports and the API stamp |
+| `generated-behind-contract` | that `check:specifiers`' list of the generated modules a contract leaf may not reach through its closure is the set codegen really emits, and really imports a contract or an actor from. It runs codegen over a temp pack rich enough to emit all eighteen, because a module the fixture skips is one the check never looks at |
 | `unit-pool` | the pool's per-project cache: what a project's freshness is measured against |
 | `spec-plan` | what `npm run spec` decides to run for what you gave it, asserted without running any of it: the plan per target shape, which pack suites a change reaches across the `dist` seam, that no plan runs one suite twice, and how the arguments split |
 | `pack-test-config` | that every pack's vitest config calls `definePackTestConfig` and declares no `test` block of its own, the scaffolded template included: there were three copies and they had drifted, and a fourth is a `cp` away |

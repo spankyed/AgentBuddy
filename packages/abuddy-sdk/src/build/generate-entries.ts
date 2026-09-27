@@ -434,6 +434,9 @@ export function generatePackFiles(
       // its contract now, so putting the machines in the program would parse and bind every one of them — and
       // their whole closure, XState and Vue included — for nothing. Their paths still reach the generated
       // imports; only membership of this program is what they don't need.
+      // Measured once, from the other end: a contract written to derive its state from its machine builds fine and
+      // emits identical events, and adds the machine's whole inferred type to dist/types/pack-types.d.ts. So the
+      // cost is not only parse time — it reaches the facade. `findContractLeafImports` is what keeps it out.
       ...features.flatMap((f) => (f.plugin?.contract ? [f.plugin.contract.split('#')[0]!] : [])),
       ...features.flatMap((f) => (f.system?.contract ? [f.system.contract.split('#')[0]!] : [])),
     ];
