@@ -19,6 +19,7 @@ import ts from 'typescript';
 import { BUILD_UNITS, inputFiles, REPO_ROOT, type BuildUnit } from '@abuddy/host/build/packages-built';
 import { CHAIN_STEPS, INTEGRATION_SUITES, SUITE_READS, suiteInputs, type ChainStep } from '../../../scripts/lib/chain-steps.ts';
 import { UNIT_SUITES, type UnitSuite } from '../../../scripts/lib/unit-suites.ts';
+import { reachableText, rootScripts } from '../../../scripts/lib/npm-scripts.ts';
 import { poolUnitFor } from '../../../scripts/lib/unit-pool.ts';
 
 /** Tracked code no chain step reads, and why. An entry that stops applying is reported, not ignored. */
@@ -505,5 +506,87 @@ describe('a build unit declares the modules its build script imports', () => {
       return closure.length > 1 ? [] : [`${workspace}'s closure is ${closure.length} files`];
     });
     expect(shallow, 'a closure of one file is the entry alone, which means the walk resolved nothing').toEqual([]);
+  });
+});
+
+/**
+ * The chain runs every recorded artifact's check.
+ *
+ * An `<artifact>:check` that nothing runs is a recorded file free to go stale with every gate green, and with
+ * CI off the chain is the only gate. Two of them were in exactly that state until 2026-09-27 — `schema:check`,
+ * which holds the manifest schema published with the SDK, and `facade:check` — each named only by
+ * `.github/workflows/ci.yml`, whose triggers are commented out. `packages:check` had been the same. Three
+ * instances of one thing nobody could see is what makes this a check rather than a sweep somebody repeats.
+ *
+ * It asks what a step *invokes*, not what its text mentions: `check-import-specifiers.ts` prints `api:check` in
+ * a message, and a search over the reachable text would read that as the chain running it. The walk is
+ * `reachableText` from `scripts/lib/npm-scripts.ts`, which `check:tiers` uses for its own question — one
+ * follower, so the two cannot disagree about what a step reaches.
+ *
+ * A check counts as run when its own `<workspace>:<name>` is invoked **or** the bare `<name>` is: root
+ * `lint:check` fans out with `-ws`, which no `-w <name>` pattern can follow, and an artifact's exception is
+ * about the artifact rather than about each workspace the root script delegates to.
+ */
+describe("the chain runs every artifact's check", () => {
+  /** A `:check` script the chain does not run, and why. An entry that stops applying is reported. */
+  const NOT_RUN_BY_THE_CHAIN: Record<string, string> = {
+    'api:check': 'API Extractor over three packages, 55s; `api:stamp` is its 0.6s proxy inside typecheck, and '
+      + 'api-reports.ts checks that proxy against itself, which is what catches an input nobody listed',
+    // These two are commands over a rule a spec already asserts, so the artifact is checked and the script is
+    // a way to ask by hand. Both say so themselves: `spec-cost.ts` records that `scripts/lib/spec-cost.ts`
+    // holds what it and `suite-split.spec.ts` share, "so a spec and this command cannot disagree".
+    'seed-parity:check': 'a wrapper for `npm test -- tests/seeds`; those specs run in test:unit:pack',
+    'spec-cost:check': 'reads the records and runs nothing; suite-split.spec.ts asserts the same rule from '
+      + 'scripts/lib/spec-cost.ts, and it runs in test:unit:host',
+  };
+
+  /** Every `<artifact>:check` in the repo, as the label of the manifest declaring it and the script's name */
+  const checkScripts = (): { where: string; name: string }[] => {
+    const manifests = [path.join(REPO_ROOT, 'package.json'),
+      ...fs.readdirSync(path.join(REPO_ROOT, 'packages'))
+        .map((dir) => path.join(REPO_ROOT, 'packages', dir, 'package.json'))
+        .filter((file) => fs.existsSync(file))];
+    return manifests.flatMap((file) => {
+      const pkg = JSON.parse(fs.readFileSync(file, 'utf-8')) as { name?: string; scripts?: Record<string, string> };
+      const where = file === path.join(REPO_ROOT, 'package.json') ? 'root' : pkg.name ?? file;
+      return Object.keys(pkg.scripts ?? {}).filter((name) => name.endsWith(':check')).map((name) => ({ where, name }));
+    });
+  };
+
+  const invokedByTheChain = (): Set<string> => {
+    const all = rootScripts();
+    const invoked = new Set<string>();
+    for (const step of CHAIN_STEPS) for (const name of reachableText(step.name, all).invoked) invoked.add(name);
+    return invoked;
+  };
+
+  it('leaves none of them unrun', () => {
+    const invoked = invokedByTheChain();
+    const unrun = checkScripts()
+      .filter(({ where, name }) => !invoked.has(name) && !invoked.has(`${where}:${name}`))
+      .filter(({ name }) => NOT_RUN_BY_THE_CHAIN[name] === undefined)
+      .map(({ where, name }) => `${where}'s ${name}`);
+    expect(unrun, 'nothing in the chain runs these, so what they record can go stale with every gate green: '
+      + 'add them to a step that already reads what they read, or list them with why not').toEqual([]);
+  });
+
+  it('lists no exception that has stopped applying', () => {
+    const declared = checkScripts();
+    const invoked = invokedByTheChain();
+    const stale = Object.keys(NOT_RUN_BY_THE_CHAIN).flatMap((name) => {
+      const found = declared.filter((script) => script.name === name);
+      if (found.length === 0) return [`${name}: no package declares it any more`];
+      return found.every(({ where }) => invoked.has(name) || invoked.has(`${where}:${name}`))
+        ? [`${name}: the chain runs it now, so it needs no exception`] : [];
+    });
+    expect(stale).toEqual([]);
+  });
+
+  /** What stops the cases above passing over an empty list */
+  it('finds the checks to ask about', () => {
+    const found = checkScripts();
+    expect(found.length).toBeGreaterThan(5);
+    expect(found.map(({ name }) => name), 'schema:check is one of the two this check was written for')
+      .toContain('schema:check');
   });
 });
