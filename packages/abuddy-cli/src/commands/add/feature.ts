@@ -1,5 +1,6 @@
 import { FEATURE_ID_PATTERN } from '@abuddy/sdk/build';
 import * as fs from 'node:fs';
+import { renderTemplate } from '../../templates.ts';
 import * as path from 'node:path';
 import { regenerateAfterScaffold } from '../generate-entries';
 import { scaffoldUnitTestSetup, type UnitTestSetup } from '../init';
@@ -181,15 +182,6 @@ const LIST_VUE = (label: string) => `<script setup lang="ts">
 </template>
 `;
 
-const SETTINGS_VUE = () => `<script setup lang="ts">
-</script>
-
-<template>
-  <div class="p-4">
-    <p class="text-sm text-neutral-400">No settings yet.</p>
-  </div>
-</template>
-`;
 
 const HELP = `
 Usage: abuddy add feature <name> [options]
@@ -235,7 +227,7 @@ export async function addFeature(args: string[], root: string) {
     [path.join(featureDir, 'fe', 'contract.ts'), FE_CONTRACT(pascal)],
     [path.join(featureDir, 'fe', 'state.ts'), STATE(name)],
     [path.join(featureDir, 'fe', 'canvas', 'list.vue'), LIST_VUE(label)],
-    [path.join(featureDir, 'fe', 'settings.vue'), SETTINGS_VUE()],
+    [path.join(featureDir, 'fe', 'settings.vue'), renderTemplate('pack/src/features/feature/fe/settings.vue')],
     [path.join(root, 'tests', 'features', name, 'be', 'system.spec.ts'), SYSTEM_SPEC(name)],
   ];
 

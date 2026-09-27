@@ -1,20 +1,12 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
+import { renderTemplate } from '../templates.ts';
 import { cliVersion } from '../utils';
 import { scaffoldUnitTestSetup } from './init';
 
 // The Playwright version @abuddy/testing is tested with
 const PLAYWRIGHT_RANGE = '^1.54.1';
 
-const PLAYWRIGHT_CONFIG = `import { defineConfig } from '@playwright/test';
-
-export default defineConfig({
-  testDir: 'tests/e2e',
-  timeout: 60_000,
-  workers: 1,
-  outputDir: 'tests/results',
-});
-`;
 
 function sampleTest(pluginId: string | undefined): string {
   const waitLine = pluginId
@@ -51,7 +43,7 @@ export async function initTests(_args: string[]): Promise<void> {
   if (fs.existsSync(configPath)) {
     console.log('playwright.config.ts already exists, skipping');
   } else {
-    fs.writeFileSync(configPath, PLAYWRIGHT_CONFIG);
+    fs.writeFileSync(configPath, renderTemplate('pack/playwright.config.ts'));
     console.log('Created playwright.config.ts');
   }
 

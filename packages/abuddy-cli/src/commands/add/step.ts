@@ -4,12 +4,6 @@ import { validateName, toPascalCase, toCamelCase, toLabel, writeIfNotExists, log
 import { readManifest, writeManifest, addStepDefinition } from './manifest';
 import { renderTemplate } from '../../templates.ts';
 
-/** The pack's list of step build definitions (`steps.build`), which `abuddy init` writes */
-export const STEPS_BUILD_TEMPLATE = `import type { StepDefinition } from '@abuddy/sdk/steps';
-
-export const steps: StepDefinition[] = [
-];
-`;
 
 
 const HELP = `
@@ -156,7 +150,7 @@ export async function addStep(args: string[], root: string) {
   const stepsConfig = manifest.steps!;
   const registerPath = stepsConfig.register;
   // A pack not made by `abuddy init` may have no step lists yet
-  for (const [file, template] of [[registerPath, renderTemplate('pack/src/extensions/steps/register.ts')], [stepsConfig.build, STEPS_BUILD_TEMPLATE]] as const) {
+  for (const [file, template] of [[registerPath, renderTemplate('pack/src/extensions/steps/register.ts')], [stepsConfig.build, renderTemplate('pack/src/extensions/steps/build.ts')]] as const) {
     if (file && writeIfNotExists(path.join(root, file), template)) created.push(path.join(root, file));
   }
 

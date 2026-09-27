@@ -5,7 +5,6 @@ import * as readline from 'node:readline';
 import semver from 'semver';
 import { resolveDeps } from './generate';
 import { generateEntries } from './generate-entries';
-import { STEPS_BUILD_TEMPLATE } from './add/step';
 import { cliVersion, readManifest, sdkVersion } from '../utils';
 
 const MANIFEST_TEMPLATE = (name: string) => {
@@ -114,13 +113,6 @@ const PACKAGE_JSON_TEMPLATE = (name: string) => JSON.stringify({
   },
 }, null, 2);
 
-const VITEST_CONFIG_TEMPLATE = `import { definePackTestConfig } from '@abuddy/testing/vitest';
-
-// Everything a pack's suite needs: a throwaway data dir per run (the harness requires one), the tier's
-// timeouts, \`tests/**/*.spec.ts\`, and a stub for this pack's .vue files so \`vitest related\` can walk its
-// module graph. Pass { vue: true } — with @vitejs/plugin-vue installed — to compile and render them instead.
-export default definePackTestConfig();
-`;
 
 
 // One of the four templates that cannot be a file under `templates/` (`src/templates.ts` has the list):
@@ -207,7 +199,7 @@ export function scaffoldUnitTestSetup(root: string): UnitTestSetup {
   const keptConfig = VITEST_CONFIG_FILES.find((file) => fs.existsSync(path.join(root, file)));
   if (!keptConfig) {
     const configPath = path.join(root, 'vitest.config.ts');
-    fs.writeFileSync(configPath, VITEST_CONFIG_TEMPLATE);
+    fs.writeFileSync(configPath, renderTemplate('pack/vitest.config.ts'));
     created.push(configPath);
   }
   const setupPath = path.join(root, 'tests', 'setup.ts');
@@ -352,7 +344,7 @@ export async function init(args: string[]) {
     path.join(dir, 'src', 'extensions', 'steps', 'register.ts'),
     renderTemplate('pack/src/extensions/steps/register.ts'),
   );
-  fs.writeFileSync(path.join(dir, 'src', 'extensions', 'steps', 'build.ts'), STEPS_BUILD_TEMPLATE);
+  fs.writeFileSync(path.join(dir, 'src', 'extensions', 'steps', 'build.ts'), renderTemplate('pack/src/extensions/steps/build.ts'));
   scaffoldUnitTestSetup(dir);
   fs.writeFileSync(
     path.join(dir, 'tests', `${name}.spec.ts`),

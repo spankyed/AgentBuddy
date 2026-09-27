@@ -100,11 +100,11 @@ describe("a pack's vitest config calls definePackTestConfig", () => {
    * starts as a copy of it, so a template that assembled its own would put the drift back at the source.
    */
   it('is what abuddy init scaffolds', () => {
-    const init = read(path.join('packages', 'abuddy-cli', 'src', 'commands', 'init.ts'));
-    const template = /const VITEST_CONFIG_TEMPLATE = `([\s\S]*?)`;/.exec(init)?.[1];
-    expect(template, 'VITEST_CONFIG_TEMPLATE is gone or renamed; this check reads it by name').toBeDefined();
-    expect(calls(template!), "the scaffolded config is where a pack author's copy comes from — and the "
+    // The template is a file now, so this reads the file rather than a literal out of init.ts
+    // (`docs/goals/goal-one-rule-set.md`) — the same two assertions over a stronger subject.
+    const template = read(path.join('packages', 'abuddy-cli', 'templates', 'pack', 'vitest.config.ts'));
+    expect(calls(template), "the scaffolded config is where a pack author's copy comes from — and the "
       + 'comment above the call mentions the helper too, so this reads the code and not the prose').toBe(true);
-    expect(declaresTestBlock(template!), 'the scaffold declares a test block of its own').toBe(false);
+    expect(declaresTestBlock(template), 'the scaffold declares a test block of its own').toBe(false);
   });
 });
