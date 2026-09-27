@@ -41,6 +41,7 @@ const UNBRIDGED_BY_POLICY = new Map<string, string>([
   ['@abuddy/host/build/shared-deps', 'build-time only'],
   ['@abuddy/host/build/discover', 'build-time only'],
   ['@abuddy/host/build/source-resolution', 'host tooling only (CLI, fixture, API boot)'],
+  ['@abuddy/host/build/published-manifest', 'build-time only: what a published tarball may say, for the scripts that stage it and the specs that check it'],
   ['@abuddy/host/build/specifiers', 'build-time only: what a module specifier names, for the scripts that pack the published packages and the packages that check them'],
   ['@abuddy/host/build/subpath-imports', "build-time only: a pack's package.json `imports`, read by the rule "
     + 'below and by the pack rules abuddy build runs'],

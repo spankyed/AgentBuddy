@@ -128,17 +128,17 @@ export const packageJson = (name: string) =>
   JSON.stringify({ name, type: 'module', imports: { '#generated/*': './src/__generated__/*' } });
 
 /**
- * A pack's tsconfig. It declares `@abuddy/source` because these packs sit inside the checkout and
- * resolve the workspace packages; a pack author's config declares none (see the root CLAUDE.md), which
- * `check:specifiers` records as `DECLARES_SOURCE_BY_DESIGN` for this file's callers.
+ * A pack's tsconfig: the scaffold's, unchanged, so a test pack compiles the same way a scaffolded one does.
+ *
+ * It used to add `customConditions: ['@abuddy/source']`, on the stated grounds that these packs sit inside the
+ * checkout and resolve the workspace packages. They do sit inside it, but they never needed to read its source:
+ * dropping the condition left all 15 integration specs and their 191 cases green (2026-09-27). What it bought
+ * was the asymmetry the root CLAUDE.md warns about — these packs typechecked against workspace `src/` while
+ * `abuddy build` bundled them from `dist`, because esbuild has no notion of the condition. So the fixture was
+ * the one place in the repo where a pack compiled unlike every pack author's, which is what the
+ * `source-resolution` pack rule now refuses.
  */
-export const tsconfig = JSON.stringify({
-  ...PACK_TSCONFIG,
-  // The one deliberate difference: these packs sit inside the checkout and resolve the workspace
-  // packages. Everything else, `include` above all, is the scaffold's, so a test pack compiles the
-  // same file set a real one does.
-  compilerOptions: { ...PACK_TSCONFIG.compilerOptions, customConditions: ['@abuddy/source'] },
-});
+export const tsconfig = JSON.stringify(PACK_TSCONFIG);
 
 /** Writes a pack and links it to the given `node_modules`, so `abuddy build` can run in it */
 export function preparePack(parent: string, name: string, files: Record<string, string>, modules: string): string {
