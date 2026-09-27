@@ -388,8 +388,10 @@ Three defects in what the phases shipped, each found by checking rather than by 
 
 ### Open items
 
-- **Three rules are still repo-only**, so an external pack is held to nine of twelve. Measured 2026-09-27,
-  the three are not one item and the count overstates the debt:
+- **Two rules are still repo-only**: `cross-feature-imports` and `contract-leaves`. How many rules a pack is
+  held to is `PACK_RULES` (`abuddy-cli/src/build/pack-rules.ts`) and not a number written here — this bullet
+  said "nine of twelve" for a day after the third of the three had shipped, which is what a count in prose
+  does. Measured 2026-09-27, the two are not one item:
   - **`contract-leaves` has no demonstrated consequence.** Two mutations to `tests/fixtures/external-pack`'s
     `be/contract.ts` — a value import of `#generated/events`, then a hard value cycle importing `memosSpec`
     back from `./system.ts` — each built from a cold tree (`rm -rf src/__generated__ dist`): exit 0, with
@@ -402,25 +404,26 @@ Three defects in what the phases shipped, each found by checking rather than by 
     script — `EXPORT_FROM`, `exportedLocalNames`, `importedNames`, which exist only to spot a re-export in two
     steps — so the work is porting that to the shared AST reader, not moving the rule. No runtime effect, so it
     lands switchable.
-  - **The source-condition rule's 140 lines are the *repo's*, not a pack's.** 39 of them walk Vite/Vitest config
-    *expressions*, needed because the repo's own configs may compute or spread `conditions`; no pack declares
-    `conditions` in any config (checked: `default-setup`, both fixtures). The pack-side question is answerable
-    without reading config at all — one `ts.resolveModuleName('@abuddy/sdk', <a pack file>, <the pack's parsed
-    options>)` and a test of whether the result is under `src/`. Measured on the fixture: without the condition
-    `packages/abuddy-sdk/dist/index.d.ts`, with it `packages/abuddy-sdk/src/index.ts`. That is ~10 lines, it
-    catches every route to source rather than the one spelled `customConditions`, and it can name the file it
-    resolved. Where it bites: **esbuild does not read tsconfig `customConditions`**, so `abuddy build` bundles
-    against `dist` either way while the author's `tsc` does read it — a linked pack that enables the condition
-    typechecks green against workspace source and ships a bundle built from `dist`. If the published manifests
-    drop their `@abuddy/source` branch, the installed-from-registry case resolves `dist` and disappears; the
-    linked-checkout case does not, because a linked pack resolves the workspace manifest through the symlink.
+  The third, the pack half of the source-condition check, **shipped on 2026-09-27** and is why this list is
+  two rules rather than three. It is worth recording what it cost against what the plan assumed, because the
+  140-line figure that made it look like a phase of its own was the *repo's* rule: 39 of those lines walk
+  Vite/Vitest config expressions, which exist because the repo's own configs may compute or spread
+  `conditions`. A pack needed none of that. `source-resolution`
+  (`abuddy-cli/src/build/pack-resolution.ts`) asks `ts.resolveModuleName` where the pack's own compiler lands
+  and tests whether the answer is under `src/` — about ten lines of resolution, which catches an `extends`
+  chain and a `paths` entry as well as `customConditions`, and names the file it resolved. Beside it, the
+  published manifests became derived (`stagePublishTree`), so a pack installed from the registry that enables
+  the condition now resolves `dist` and the trap only survives for a pack linked to a checkout.
 
-    **Both halves landed on 2026-09-27**, in that order: the published manifests are now derived
-    (`stagePublishTree`, so the installed case resolves `dist`), and the linked case is refused by the pack rule
-    `source-resolution` (`abuddy-cli/src/build/pack-resolution.ts`) — 74 lines with its comments, the resolve
-    being ~10 of them. The repo's `findMissingSourceConditions` stays as it is: it asks whether a *config*
-    declares the condition, which covers a pack's vitest and Vite configs, where no `tsc` resolution happens at
-    all. Two rules with two subjects, rather than one that claims to be the other.
+  It found a real defect on its first run: every test pack in `abuddy-cli/tests/_support/pack-builds.ts` had
+  been typechecking against workspace `src/` while `abuddy build` bundled it from `dist`, because esbuild has
+  no notion of the condition. That was the one place in the repo where a pack compiled unlike every pack
+  author's, and a rule written for external packs is what found it.
+
+  The rule reads the pack's Vitest and Vite configs too, for the condition as a string literal, because nothing
+  resolves `resolve.conditions` until the run — by which time the pack's suite has passed against source. So
+  the split with the repo's `findMissingSourceConditions` is by *population*, not by subject: that one holds the
+  repo's own configs to declaring the condition, this one holds a pack's to declaring nothing.
 - **The disjointness sweep covers the pack-code rules only.** A rule that reads the whole tree cannot be
   pointed at a fixture, so two such rules could still claim one offence; the `findJsSpecifiers` pair is
   asserted directly instead, as a property of the populations.
