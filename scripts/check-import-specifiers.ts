@@ -1223,6 +1223,28 @@ function declaresCondition(file: string, scan: ConditionScan, seen = new Set<str
  * read statically is reported too, with what to change: a rule that guesses is a rule that lets the
  * next one through. An exception that no longer applies is reported too, so the list doesn't outlive
  * its reason.
+ *
+ * **It reads config text, where `abuddy-cli/src/build/pack-resolution.ts` asks the resolver, and that is
+ * settled rather than unfinished.** Three measurements, 2026-09-27:
+ *
+ * - **Nothing would be gained.** Of 29 tsconfigs, every one that reaches a source package's `src` does it
+ *   through `customConditions` — none through a `paths` entry, an `extends` chain or a project reference.
+ *   (A probe saying otherwise counted `@abuddy/sdk` resolved from inside `packages/abuddy-sdk`, which lands
+ *   in its own `src` whatever the conditions say: a package resolved from within itself is not this rule's
+ *   subject.)
+ * - **Something would be lost.** Resolution only answers against the filesystem as it is. On a checkout
+ *   before `npm run packages:ensure` a config *missing* the condition resolves to nothing at all, so a
+ *   resolution-based rule would report nothing — silence exactly where this one reports the problem. Reading
+ *   text needs no build, and this check is run standalone as often as through `typecheck`.
+ * - **Half the population cannot be resolved at any price.** A Vitest config's `resolve.conditions` has no
+ *   resolved value until the run, and by then the pack's suite has already passed against workspace source
+ *   (`pack-resolution.ts` records the same thing from the other side). Driving Vite's resolver needs two
+ *   `@experimental` APIs, a client-versus-ssr choice per config, and importing configs that create temp
+ *   directories, mutate `process.env` from a `.env`, or import `electron`.
+ *
+ * So the split with `pack-resolution.ts` is by population and by what each population can be asked, not by
+ * subject. Revisit if a config ever reaches source another way — that is the condition, and it is checkable
+ * with the probe above.
  */
 export function findMissingSourceConditions(
   root = repoRoot,
