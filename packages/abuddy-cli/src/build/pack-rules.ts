@@ -16,7 +16,7 @@ import ts from 'typescript';
 import { ownModuleFindings, type OwnModuleSpecifier } from '@abuddy/host/build/own-module-specifiers';
 import { readSubpathImports } from '@abuddy/host/build/subpath-imports';
 import { moduleOf, readSource, sourceFiles, type SourceView } from './pack-sources.ts';
-import { packResolvesSource } from './pack-resolution.ts';
+import { configsNamingSourceCondition, packResolvesSource } from './pack-resolution.ts';
 
 /** Where a file sits in the pack, which is all any of these rules needs besides the file itself */
 export interface PackPlace {
@@ -106,9 +106,10 @@ export const PACK_RULES: readonly PackRule[] = [
   {
     key: 'source-resolution',
     switchable: false,
-    rule: "A pack compiles against the @abuddy packages' published dist, the one layout a pack author has, so its "
-      + "tsconfig must not resolve a checkout's source: esbuild and Vite ignore the @abuddy/source condition, so a "
-      + 'pack that declares it typechecks against source while both its bundles are built from dist',
+    rule: "A pack compiles against the @abuddy packages' published dist, the one layout a pack author has, so "
+      + "neither its tsconfig nor its Vitest config may resolve a checkout's source: esbuild and Vite's pack "
+      + 'bundler ignore the @abuddy/source condition, so a pack that declares it typechecks and tests against '
+      + 'source while both its bundles are built from dist',
     // The finding is the site, not the advice: the sentence above is printed once per rule by
     // `refusePackRuleViolations` and appended to each finding by `abuddy validate`, so advice carried here too
     // arrived twice, three times over for a pack that resolves all three packages
@@ -117,7 +118,8 @@ export const PACK_RULES: readonly PackRule[] = [
       // A config the rule could not read is its own finding, not an empty pass: the pack author is told the
       // check did not run, which is the one thing silence cannot say
       return [...(unreadable === undefined ? [] : [unreadable]),
-        ...resolved.map(({ specifier, resolved: file }) => `${specifier} -> ${file}`)];
+        ...resolved.map(({ specifier, resolved: file }) => `${specifier} -> ${file}`),
+        ...configsNamingSourceCondition(packDir)];
     },
   },
   {

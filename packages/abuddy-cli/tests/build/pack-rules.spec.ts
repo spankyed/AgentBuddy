@@ -298,6 +298,25 @@ describe('source-resolution', () => {
     expect(problems(dir, 'source-resolution')).toEqual([]);
   });
 
+  /**
+   * The other route to source, and the one `tsc` cannot be asked about: nothing resolves a Vitest config's
+   * `resolve.conditions` until the run, by which time the pack's suite has passed against workspace source.
+   */
+  it("reports a pack's vitest config naming the condition", () => {
+    const dir = withSdk({});
+    fs.writeFileSync(path.join(dir, 'vitest.config.ts'),
+      "export default { resolve: { conditions: ['@abuddy/source'] } };\n");
+    expect(problems(dir, 'source-resolution')).toEqual(['vitest.config.ts:1: @abuddy/source']);
+  });
+
+  /** A string literal from the tree, not a text search, so a pack may still write about the condition */
+  it('says nothing about a config that only mentions it in a comment', () => {
+    const dir = withSdk({});
+    fs.writeFileSync(path.join(dir, 'vitest.config.ts'),
+      '// A pack declares no @abuddy/source condition: it resolves the published dist\nexport default {};\n');
+    expect(problems(dir, 'source-resolution')).toEqual([]);
+  });
+
   it('says nothing about a package the pack does not have', () => {
     expect(problems(pack({ 'package.json': '{"name":"p"}', 'tsconfig.json': '{}', 'src/x.ts': 'export const x = 1;\n' }), 'source-resolution')).toEqual([]);
   });

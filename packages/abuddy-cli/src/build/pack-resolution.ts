@@ -24,6 +24,7 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { SOURCE_PACKAGES } from '@abuddy/host/build/source-resolution';
 import ts from 'typescript';
+import { readSource } from './pack-sources.ts';
 
 /** One package a pack's compiler resolves to source, and the file it landed on */
 export interface SourceResolution {
@@ -105,4 +106,30 @@ export function packResolvesSource(packDir: string): PackResolution {
     return [{ specifier, resolved: path.relative(base, file).split(path.sep).join('/') }];
   });
   return { resolved };
+}
+
+/**
+ * The pack's own Vite-family configs, which are the other place the condition can be turned on.
+ *
+ * Read as text rather than resolved, and that is not a relapse: `tsc` can be asked where it lands, but nothing
+ * resolves a Vitest config's `resolve.conditions` until the run itself, and by then the pack's suite has
+ * already passed against workspace source. The repo's own `findMissingSourceConditions` reads configs for the
+ * same reason. What it cannot be is `definePackTestConfig`'s job — that helper *builds* a config and never sees
+ * one, so a pack spreading its result and adding `resolve.conditions` is invisible to it.
+ *
+ * A string literal from the syntax tree, not a text search, so a comment about the condition is not a finding
+ * and a pack may still write about it. Any literal, rather than only one inside `resolve.conditions`: there is
+ * no other reason for a pack's config to name it, and matching the shape would mean guessing at how the
+ * property was spelled.
+ */
+const PACK_CONFIGS = ['vitest.config.ts', 'vitest.config.mts', 'vite.config.ts', 'vite.config.mts'];
+
+const SOURCE_CONDITION = '@abuddy/source';
+
+/** `<config>:<line>: <condition>` for each of the pack's configs naming the source condition */
+export function configsNamingSourceCondition(packDir: string): string[] {
+  return PACK_CONFIGS.filter((name) => fs.existsSync(path.join(packDir, name))).flatMap((name) =>
+    readSource(path.join(packDir, name))
+      .visit((node) => (ts.isStringLiteralLike(node) && node.text === SOURCE_CONDITION ? [node.text] : undefined))
+      .map(({ line, what }) => `${name}:${line}: ${what}`));
 }
