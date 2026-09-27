@@ -95,14 +95,20 @@ function compiled(pkg: string, ...extraInputs: string[]): BuildUnit {
     // The build scripts live in the repo's scripts/, not the package's: a package's own scripts are its
     // other tooling (the SDK's schema generator) and no input of this build, bar @abuddy/ui's exports
     //
-    // `abuddy-host/src/build` because that is where the build script's imports lead: `runPackageBuild` from
-    // this module and `stagePublishTree`, which derives the manifest it stages. The directory rather than the
-    // three files, so the next sibling it reaches is covered on the day it does; `chain-inputs.spec.ts` walks
-    // the script's imports and names anything outside it. 1,376 lines, against the alternative of a list that
-    // was already missing all three — one of them this file, so a change to the stamp protocol did not
+    // The three `abuddy-host/src/build` modules the build script's imports lead to: `runPackageBuild` from this
+    // one, `stagePublishTree`, which derives the manifest it stages, and what those two reach in turn. All
+    // three were missing until 2026-09-27 — including this file, so a change to the stamp protocol did not
     // invalidate the stamps it defines.
+    //
+    // Named rather than the whole `build/` directory, which is what landed first. A directory covers the next
+    // sibling automatically, but it also means an import *within* it can never fail the guard that found this —
+    // and it rebuilds all three packages when `discover.ts` or `shared-deps.ts` changes, which none of them
+    // reads. `chain-inputs.spec.ts` walks the build script's imports and names anything undeclared, so the
+    // guard is the maintenance a directory was standing in for.
     inputs: [...SHARED_INPUTS, repoFile('scripts', 'lib', 'published-imports.ts'), repoFile('scripts', 'build-package.ts'),
-      pkgFile('abuddy-host', 'src', 'build'), ...extraInputs,
+      pkgFile('abuddy-host', 'src', 'build', 'packages-built.ts'),
+      pkgFile('abuddy-host', 'src', 'build', 'published-manifest.ts'),
+      pkgFile('abuddy-host', 'src', 'build', 'specifiers.ts'), ...extraInputs,
       pkgFile(pkg, 'src'),
       pkgFile(pkg, 'package.json'), pkgFile(pkg, 'tsconfig.json'), pkgFile(pkg, 'tsconfig.package.json')],
     outputs: [pkgFile(pkg, 'dist'), pkgFile(pkg, PUBLISH_TREE)],
