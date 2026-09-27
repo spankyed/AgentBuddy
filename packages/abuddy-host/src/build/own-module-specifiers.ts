@@ -149,6 +149,25 @@ export function mappedPathFor(packDir: string, imports: Record<string, string>, 
 }
 
 /**
+ * The path a pack-internal specifier names, by the two spellings a pack may write: a relative path, or one of its
+ * own `#` subpaths, mapped through `mappedPathFor` — the one owner of Node's precedence for an `imports` map.
+ *
+ * `@/` is not one of them, and this is the one place that is decided for every caller. It is a TypeScript-only
+ * `paths` mapping no runtime reads: `findPackOwnAliases` fails `check:specifiers` on one in any pack source or test
+ * and the CLI's `pack-own-aliases` refuses it unswitchably, so every own-module specifier a pack writes is a `#`
+ * subpath. Resolving `@/` here bought nothing and cost the rest — both rules read it and skipped the spelling the
+ * packs use, and their fixtures were written in it, so both were blind with every test green.
+ *
+ * It answers with a path and does not ask whether the file is there: a caller that reads the target pairs this
+ * with its own existence check (`check-import-specifiers.ts`'s `sourceFile` does), and a caller that only asks
+ * where a specifier points needs none.
+ */
+export function packTargetOf(packDir: string, imports: Record<string, string>, from: string, specifier: string): string | undefined {
+  if (specifier.startsWith('.')) return path.resolve(path.dirname(from), specifier);
+  return specifier.startsWith('#') ? mappedPathFor(packDir, imports, specifier) : undefined;
+}
+
+/**
  * What a `#` specifier should have said, or undefined when it already names a file, or names nothing this
  * pack declares.
  */

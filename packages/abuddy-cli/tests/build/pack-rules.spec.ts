@@ -93,6 +93,8 @@ const FIRES_ELSEWHERE: Record<string, string> = {
   // Not a file's text but the pack's own module resolution, so its case needs a whole installed package to
   // resolve against
   'source-resolution': 'source-resolution',
+  // A feature layout, which one `src/f.ts` cannot express: the offence is which feature the file is in
+  'cross-feature-imports': "cross-feature-imports flags another feature's frontend and allows a feature its own",
 };
 
 /**
@@ -121,6 +123,15 @@ describe('every rule', () => {
     expect(problems(dir, 'backend-console')).toEqual(['src/features/notes/be/system.ts:1: console.log']);
   });
 
+  it("cross-feature-imports flags another feature's frontend and allows a feature its own", () => {
+    const dir = packWithImports({
+      'package.json': JSON.stringify({ name: 'p', type: 'module', imports: { '#generated/*': './src/__generated__/*', '#features/*': './src/features/*' } }),
+      'src/features/code/fe/panel.ts': "import { id } from '#features/actions/fe/state.ts';\nimport { own } from './state.ts';\n",
+      'src/features/code/fe/state.ts': 'export const own = 1;\n',
+    });
+    expect(problems(dir, 'cross-feature-imports')).toEqual(['src/features/code/fe/panel.ts:1: #features/actions/fe/state.ts']);
+  });
+
   it('has a case for every rule it defines', () => {
     const covered = new Set<string>([...FIRES_ON_A_FILE.map(([key]) => key), ...Object.keys(FIRES_ELSEWHERE)]);
     expect(PACK_RULES.map((rule) => rule.key).filter((key) => !covered.has(key)),
@@ -129,8 +140,12 @@ describe('every rule', () => {
 
   it('names a case that exists for each rule covered elsewhere', () => {
     const own = fs.readFileSync(fileURLToPath(import.meta.url), 'utf-8');
+    // Either quote style: a title holding an apostrophe is written with double quotes, and a pointer check that
+    // only matched single ones would report a case that is right there
+    const declared = (title: string) => [`it('`, `it("`, `describe('`, `describe("`]
+      .some((open) => own.includes(`${open}${title}${open.at(-1)}`));
     const gone = Object.entries(FIRES_ELSEWHERE)
-      .filter(([, title]) => !own.includes(`describe('${title}'`) && !own.includes(`it('${title}'`))
+      .filter(([, title]) => !declared(title))
       .map(([key, title]) => `${key} names "${title}", which is no case in this file`);
     expect(gone, 'a pointer to a case that no longer exists is the claim this table exists to avoid').toEqual([]);
   });
@@ -236,7 +251,7 @@ describe('when several rules are right about one site', () => {
       'host-imports', 'lmdb-imports',
       'own-modules', 'pack-own-aliases',
       'internal-package-imports',
-      'untyped-sends', 'raw-transport', 'backend-console',
+      'untyped-sends', 'raw-transport', 'backend-console', 'cross-feature-imports',
     ]);
   });
 });

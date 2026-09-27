@@ -16,6 +16,7 @@ import ts from 'typescript';
 import { ownModuleFindings, type OwnModuleSpecifier } from '@abuddy/host/build/own-module-specifiers';
 import { readSubpathImports } from '@abuddy/host/build/subpath-imports';
 import { moduleOf, readSource, sourceFiles, type SourceView } from './pack-sources.ts';
+import { crossFeatureFindings } from './pack-features.ts';
 import { configsNamingSourceCondition, packResolvesSource } from './pack-resolution.ts';
 
 /** Where a file sits in the pack, which is all any of these rules needs besides the file itself */
@@ -36,7 +37,8 @@ export type PackRuleKey =
   | 'source-resolution'
   | 'own-modules' | 'pack-own-aliases' | 'internal-package-imports'
   | 'host-imports' | 'lmdb-imports'
-  | 'untyped-sends' | 'raw-transport' | 'backend-console';
+  | 'untyped-sends' | 'raw-transport' | 'backend-console'
+  | 'cross-feature-imports';
 
 /**
  * One finding, with the span of the code it is about.
@@ -231,6 +233,13 @@ export const PACK_RULES: readonly PackRule[] = [
         return undefined;
       });
     },
+  },
+  {
+    key: 'cross-feature-imports',
+    switchable: true,
+    rule: "A feature's frontend is its own: what it offers other features is its plugin's contract, read through "
+      + '#generated/fe and #generated/events, never a module of its own',
+    check: crossFeatureFindings,
   },
 ];
 
