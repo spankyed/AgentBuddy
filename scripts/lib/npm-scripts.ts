@@ -54,6 +54,15 @@ export interface Reached {
   /** Every script's text and every followed file's, concatenated — what a marker is searched for in */
   readonly text: string;
   /**
+   * The repo files this script reaches, repo-relative: what it names and what those name in turn.
+   *
+   * A step that declares its inputs has to declare these, or an edit to one changes what the step accepts
+   * while its stamp says nothing moved. `compile` reached `scripts/facade-report.ts` through
+   * `npm run facade:check -w @app/default-setup` and declared it nowhere, which is the case that asked for
+   * this field.
+   */
+  readonly files: ReadonlySet<string>;
+  /**
    * The scripts this one invokes, itself included: a root script as `<name>`, a workspace's as
    * `<workspace>:<name>`.
    *
@@ -73,6 +82,7 @@ export interface Reached {
 export function reachableText(script: string, all: Record<string, string>, { skip }: { skip?: string } = {}): Reached {
   const seen = new Set<string>();
   const invoked = new Set<string>();
+  const files = new Set<string>();
 
   const walk = (name: string): string => {
     if (seen.has(name)) return '';
@@ -93,11 +103,12 @@ export function reachableText(script: string, all: Record<string, string>, { ski
       const abs = path.join(REPO_ROOT, named);
       if (!seen.has(abs) && fs.existsSync(abs)) {
         seen.add(abs);
+        files.add(path.relative(REPO_ROOT, abs));
         text += `\n${withoutComments(fs.readFileSync(abs, 'utf-8'), abs.endsWith('.sh'))}`;
       }
     }
     return text;
   };
 
-  return { text: walk(script), invoked };
+  return { text: walk(script), files, invoked };
 }

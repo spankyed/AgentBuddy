@@ -78,17 +78,24 @@ describe('the chain reads every source file', () => {
   // Coverage is repo-wide: it proves *some* step reads a file, not that the right one does. Steps overlap
   // honestly — `typecheck` reads `tests/` because it compiles the E2E specs — so dropping `tests/e2e` from
   // the E2E step leaves it covered and the check above green. This is the per-step half, and it is what can
-  // be derived: a path the step's own npm script names is a path that step reads, so it must be an input.
-  it('gives every step the files its own script names', () => {
-    const scripts = (JSON.parse(fs.readFileSync(path.join(REPO_ROOT, 'package.json'), 'utf-8')) as { scripts: Record<string, string> }).scripts;
-    const missing: string[] = [];
-    for (const step of CHAIN_STEPS) {
+  // be derived: a path the step *reaches* is a path that step reads, so it must be an input.
+  //
+  // Reaches, not names. This used to scan the step's own script text for a `tests/` or `scripts/` path, which
+  // sees nothing through a delegation: `compile` runs `npm run facade:check -w @app/default-setup`, whose
+  // script names `scripts/facade-report.ts`, and that went undeclared for a commit. `reachableText` follows
+  // `npm run`, `-w` and the files a script names, and is the same walk `check:tiers` uses for its own
+  // question.
+  it('gives every step the files its script reaches', () => {
+    const all = rootScripts();
+    const missing = CHAIN_STEPS.flatMap((step) => {
       const covered = coveredBy([step]);
-      const command = scripts[step.name === 'test' ? 'test' : step.name] ?? '';
-      for (const [, named] of command.matchAll(/\b((?:tests|scripts)\/[\w./-]+\.(?:sh|ts|mjs))/g)) {
-        if (!covered.has(named)) missing.push(`${step.name} runs ${named} and does not declare it`);
-      }
-    }
+      return [...reachableText(step.name, all).files]
+        // A module that only decides *whether* to do the work cannot change what the step accepts, so a step
+        // reaching one need not declare it — the same list `package-freshness.spec.ts` reads
+        .filter((file) => NOT_A_BUILD_INPUT[file] === undefined)
+        .filter((file) => !covered.has(file))
+        .map((file) => `${step.name} reaches ${file} and does not declare it`);
+    });
     expect(missing).toEqual([]);
   });
 

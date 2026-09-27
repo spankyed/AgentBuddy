@@ -422,9 +422,12 @@ export const CHAIN_STEPS: readonly ChainStep[] = [
   // declares a dependency on @app/default-setup, and the renderer's build reads the pack entry this writes
   { name: 'compile', tier: 2, needs: ['packages:ensure'], seconds: 13, outputs: PACK_OUTPUTS,
     // Its sources and its manifest, not its tests: `abuddy build` never reads those
+    // `facade-report.ts` because this step now runs `facade:check` after the build that produces its subject:
+    // edit how the report is normalised and the check accepts something different, which a cached step would
+    // never re-run. Found by the guard below, one commit after the check moved here
     inputs: [...ROOT, 'packages/default-setup/src', 'packages/default-setup/abuddy.json',
       'packages/default-setup/package.json', 'packages/default-setup/tsconfig.json',
-      'packages/default-setup/dev-build.mjs', ...PACKAGE_BUILD_OUTPUTS] },
+      'packages/default-setup/dev-build.mjs', 'scripts/facade-report.ts', ...PACKAGE_BUILD_OUTPUTS] },
   // The fixture packs depend on default-setup, so they need its snapshot from compile
   //
   // The third place in this chain with a cache inside a cached step, and the one that is benign: `abuddy
