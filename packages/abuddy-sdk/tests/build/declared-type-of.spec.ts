@@ -28,6 +28,8 @@ const FIXTURES = {
   // The collapse a hop away: the contract's own text is fine and the module it names is the one that cannot resolve
   'hopped.ts': "import type { Ev } from './hop.ts';\nexport type Contract = { state: {}; inbox: { public: Ev } };\n",
   'hop.ts': "import type { PackPluginEvents } from './__generated__/events.ts';\nexport type Ev = PackPluginEvents;\n",
+  // An event union that comes from the pack's own generated code: the one cause the advice cannot name
+  'generated-inbox.ts': "import type { I } from '#generated/types.ts';\nexport type Contract = { state: {}; inbox: { pack: I } };\n",
   // The same collapse in the two positions no reader reads
   'collapsed-state.ts': "import type { Category } from './__generated__/types.ts';\nexport type Contract = { state: Category; inbox: { public: { type: 'A' } } };\n",
   'collapsed-payload.ts': "import type { Category } from './__generated__/types.ts';\nexport type Contract = { state: {}; inbox: { public: { type: 'A'; category: Category } } };\n",
@@ -60,7 +62,7 @@ const at = (name: keyof typeof FIXTURES) => path.join(root, name);
 /**
  * A type that didn't resolve is `any`, and `any` has no properties — so every reader here would answer "no events"
  * for a contract whose import is missing, and the pack would build with an inbox nothing may send to. These are the
- * five shapes that reach the readers, since the failure is silent in two of them and misleading in the other three.
+ * six shapes that reach the readers, since the failure is silent in two of them and misleading in the rest.
  */
 describe('a contract whose type did not resolve', () => {
   const unresolved = /resolves to `any`.*didn't resolve: an uninstalled dependency, or a name its module doesn't export/;
@@ -95,6 +97,20 @@ describe('a contract whose type did not resolve', () => {
    */
   it('refuses a collapse that arrives through a module the contract imports', () => {
     expect(() => read.inboxEventTypesOf(at('hopped.ts'), 'Contract')).toThrow(unresolved);
+  });
+
+  /**
+   * The one cause the message can name, because it is the one that never comes right on its own: the type came from
+   * the pack's own generated code, which codegen writes *after* reading every contract — so the module is absent,
+   * the throw means it is never written, and the next run starts from the same tree. Measured: `generatePackFiles`
+   * over a pack shaped like this throws on every attempt and leaves no `src/__generated__` behind.
+   *
+   * The fixture declares no `imports` map, which is beside the point: the clause is about the spelling a contract
+   * used, and the module it names is absent either way.
+   */
+  it('names the pack\'s own generated code as the cause when the contract imported some', () => {
+    expect(() => read.inboxEventTypesOf(at('generated-inbox.ts'), 'Contract'))
+      .toThrow(/imports the pack's own generated code.*writes them after reading every contract/);
   });
 
   it('still reads a contract that resolves', () => {

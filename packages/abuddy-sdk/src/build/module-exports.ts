@@ -128,7 +128,7 @@ export function createModuleExports(packRoot: string, files: string[]): ModuleEx
     const resolved = exported && followAliases(exported);
     if (!resolved || !(resolved.symbol.flags & ts.SymbolFlags.Type)) return undefined;
     const declared = checker.getDeclaredTypeOfSymbol(resolved.symbol);
-    checkResolved(declared, path.basename(file), name);
+    checkResolved(declared, file, name);
     return declared;
   }
 
@@ -147,15 +147,35 @@ export function createModuleExports(packRoot: string, files: string[]): ModuleEx
    * fail, it failed as "this member's `type` is missing" or "declares no `outgoing`" — both of which point the
    * author at their own contract, and the second of which advises deleting the manifest entry that is correct.
    *
-   * It doesn't say why the type didn't resolve. A pack whose dependencies aren't installed reads exactly like one
-   * with a misspelled import, which is why the code that claimed to tell them apart was removed.
+   * It doesn't say why the type didn't resolve, with one exception. A pack whose dependencies aren't installed
+   * reads exactly like one with a misspelled import, which is why the code that claimed to tell them apart was
+   * removed — but a module of the pack's own generated code is a cause neither of those words fits, and the only
+   * one that can never come right by itself, so `generatedCause` names it.
    */
   function checkResolved(type: TS.Type, file: string, what: string): void {
     if (!(type.flags & (ts.TypeFlags.Any | ts.TypeFlags.Unknown))) return;
     // `typeToString` prints the alias as written (`PluginInbox<{ pack: NotesInbox }>`), which reads as though it
     // resolved, so name what it collapsed to first and show the written form as corroboration
     const collapsed = type.flags & ts.TypeFlags.Any ? 'any' : 'unknown';
-    throw new Error(`${file}: ${what} resolves to \`${collapsed}\` — written as \`${checker.typeToString(type)}\` — so a type it names didn't resolve: an uninstalled dependency, or a name its module doesn't export. Read as it stands, it would contribute no events at all`);
+    throw new Error(`${path.basename(file)}: ${what} resolves to \`${collapsed}\` — written as \`${checker.typeToString(type)}\` — so a type it names didn't resolve: an uninstalled dependency, or a name its module doesn't export${generatedCause(file)}. Read as it stands, it would contribute no events at all`);
+  }
+
+  /**
+   * The clause for the one cause the advice above cannot name: the module is the pack's own generated code, which
+   * codegen writes *after* reading every contract. A contract may name `#generated/types` or `#generated/ears` for
+   * the types its state and its events' payload fields use — nothing reads those, so they may be `any` while
+   * codegen runs, as `default-setup`'s contracts are on a pack's first build. What is read is an event's `type`
+   * literal and the union it sits in, and those cannot come from generated code at any point: the file does not
+   * exist yet, the throw means it is never written, and the next run starts from the same tree. Without this the
+   * author is sent to look for an uninstalled dependency.
+   */
+  function generatedCause(file: string): string {
+    const source = program.getSourceFile(file);
+    const generated = source?.statements.some((statement) => ts.isImportDeclaration(statement)
+      && ts.isStringLiteralLike(statement.moduleSpecifier) && /^#generated\/|__generated__\//.test(statement.moduleSpecifier.text));
+    return generated
+      ? ", or — since this module imports the pack's own generated code — a generated module codegen has not written yet, which it cannot: it writes them after reading every contract, so the types it reads out of one may never come from them"
+      : '';
   }
 
   return {
@@ -181,8 +201,8 @@ export function createModuleExports(packRoot: string, files: string[]): ModuleEx
       if (!declared) {
         throw new Error(`${path.basename(file)}: ${name} declares no \`outgoing\` events. A system with none omits features[].system.contract rather than declaring an empty one`);
       }
-      checkResolved(declared, path.basename(file), `${name}'s \`outgoing\` events`);
-      return eventTypeLiterals(declared, path.basename(file), "its system's outgoing events");
+      checkResolved(declared, file, `${name}'s \`outgoing\` events`);
+      return eventTypeLiterals(declared, file, "its system's outgoing events");
     },
     inboxEventTypesOf(file, name) {
       const contract = declaredTypeOf(file, name);
@@ -192,7 +212,7 @@ export function createModuleExports(packRoot: string, files: string[]): ModuleEx
       const inbox = propertyType(contract, 'inbox');
       // A contract may publish state alone; its own system's events still reach it
       if (!inbox) return [];
-      checkResolved(inbox, path.basename(file), `${name}'s inbox`);
+      checkResolved(inbox, file, `${name}'s inbox`);
       const audiences = inbox.getProperties();
       const unknown = audiences.filter((audience) => !(INBOX_AUDIENCES as readonly string[]).includes(audience.name));
       if (unknown.length > 0) {
@@ -200,7 +220,7 @@ export function createModuleExports(packRoot: string, files: string[]): ModuleEx
       }
       return audiences.flatMap((audience) => {
         const declared = propertyType(inbox, audience.name);
-        const events = declared ? eventTypeLiterals(declared, path.basename(file), `the events it accepts from \`${audience.name}\``) : [];
+        const events = declared ? eventTypeLiterals(declared, file, `the events it accepts from \`${audience.name}\``) : [];
         // The same refusal `outgoing` gets above, which the inbox went without: a declared audience that accepts
         // nothing published an audience nothing may send to, and the pack built. `PluginInbox<{ public: never }>`
         // is the shape, and it need not arrive as a literal `never` — any type that resolves to one does, which is
@@ -220,7 +240,11 @@ export function createModuleExports(packRoot: string, files: string[]): ModuleEx
     },
   };
 
-  /** The `type` literals of a contract's event union; `never` is none, and a lone event is its own type. */
+  /**
+   * The `type` literals of a contract's event union; `never` is none, and a lone event is its own type.
+   *
+   * `file` is the module's path, not its name: `checkResolved` reads its imports to say why a type collapsed.
+   */
   function eventTypeLiterals(declared: TS.Type, file: string, what: string): string[] {
     if (declared.flags & ts.TypeFlags.Never) return [];
     const members = declared.isUnion() ? declared.types : [declared];
@@ -232,7 +256,7 @@ export function createModuleExports(packRoot: string, files: string[]): ModuleEx
       // the union is expanded here and every constituent still has to be a literal.
       const literals = declaredType?.isUnion() ? declaredType.types : declaredType ? [declaredType] : [];
       if (literals.length === 0 || !literals.every((t) => t.isStringLiteral())) {
-        throw new Error(`${file}: ${what} have a member whose \`type\` is ${declaredType ? checker.typeToString(declaredType) : 'missing'}, not a string literal or a union of them: the event maps are read from these, and a member without one would leave them short`);
+        throw new Error(`${path.basename(file)}: ${what} have a member whose \`type\` is ${declaredType ? checker.typeToString(declaredType) : 'missing'}, not a string literal or a union of them: the event maps are read from these, and a member without one would leave them short`);
       }
       return literals.map((t) => (t as TS.StringLiteralType).value);
     });

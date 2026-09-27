@@ -753,6 +753,10 @@ export const GENERATED_BEHIND_A_CONTRACT = ['system-specs', 'events', 'fe', 'pac
  *
  * So a leaf imports neither machine, no other feature, and nothing generated but `types` and `ears`, which are
  * themselves leaves: a context needs both (`NoteDTO`, `EARS.EntityId`) and neither reaches `#generated/events`.
+ * Those two are for the types a contract's state and its events' payload *fields* name, and no further: what
+ * codegen reads out of a contract — an event's `type` literal and the union it sits in — may never come from
+ * generated code, which codegen writes after reading every contract, so a pack that names one there never builds
+ * (`abuddy-sdk`'s `module-exports.ts` says so in the failure).
  *
  * The cycle is one of two reasons, and the other is cost, recorded at `generate-entries.ts:433`: the contracts are
  * in codegen's TypeScript program and the machines are not, so an import that puts one back in reach parses and
