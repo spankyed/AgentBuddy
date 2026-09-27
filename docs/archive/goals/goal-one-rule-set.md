@@ -302,8 +302,11 @@ deleted; `npm run test:external-pack:contract` passes.
 - **An `.oxlintrc.json` for `no-console`** (Decision 11) — editor feedback for `default-setup`, at the cost of
   ~30 repeated globs, a root `lint:packs` leg, a coverage spec and a second enforcement point. Ask for it if
   the editor gap bites.
-- **`findCrossFeatureImports` and `findContractLeafImports` reading the AST** instead of text. They need byte
-  offsets for their correlation and closure walks; they take `view.code` from the reader and keep their regex.
+- ~~**`findCrossFeatureImports` and `findContractLeafImports` reading the AST** instead of text.~~ **Both done**
+  (2026-09-27): the premise was wrong twice — neither needed byte offsets from a text scan (the reader's specifiers
+  carry `start`/`end`, which is what the door-span correlation uses), and the closure walk needed only a line, while
+  `findContractLeafImports` never took `view.code` from the reader at all, it called `fs.readFileSync`. Each port
+  came with the false positives the regex had: a commented-out import and one inside a template literal.
 - **`moduleResolution: nodenext` for packs** — recorded as deferred in
   `docs/archive/goals/goal-pack-imports-name-the-file.md` and unchanged by this goal.
 

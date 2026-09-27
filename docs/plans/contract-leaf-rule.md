@@ -5,13 +5,10 @@ Surveyed 2026-09-27 at `565319d91` on `AS/alias-simplification`. `findContractLe
 spec's fixtures. Two separate investigations concluded it should be deleted. **Both were wrong**, and this doc
 exists mostly so the third does not repeat them.
 
-To pick this up:
-
-```
-Read docs/plans/contract-leaf-rule.md, then implement Phase 1. The Decisions are settled — do not reopen the
-question of deleting the rule without reading "Why deleting it is wrong" first, because the two obvious
-arguments for deletion are both recorded there as refuted, with the measurements.
-```
+**Done, 2026-09-27.** The gap below is closed (`27a532ed5`: the walk resolves a pack's own `#` subpaths through
+`mappedPathFor`), the rule reads the shared AST reader rather than a regex, and the division of labour with codegen's
+own refusal is recorded on the rule and measured by `abuddy-sdk/tests/build/declared-type-of.spec.ts`. What is worth
+keeping here is the background: the two refuted arguments for deleting the rule, and the position table below.
 
 ---
 
@@ -39,7 +36,7 @@ this rule as the guard), and `manifest-schema.ts:130` and `:138` (the `.describe
 | # | Line | Forbids | Covered elsewhere? |
 |---|---|---|---|
 | 1 | `:764` (`viaLeaf`) | the leaf importing any `#generated/*` but `types` and `ears` | **nothing**, in a warm tree |
-| 2 | `:764` (closure) | any module the leaf reaches importing `#generated/events` or `#generated/fe` | the reader, **partially** — see below |
+| 2 | `:764` (closure) | any module the leaf reaches importing `#generated/events` or `#generated/fe` | the reader, **only where the collapse lands in a position it reads** — see below |
 | 3 | `:771` | the leaf importing *any* other feature, `be/` included | **nothing** |
 | 4 | `:775` | anything in the closure reaching a declared `plugin.entry`/`system.entry` | **nothing** |
 | 5 | `:780` | the leaf importing a file named `state`/`system` | **nothing** outside the rule |
@@ -109,22 +106,26 @@ whose leaf reaches `#generated/events` through a `#features/` hop is reported by
 change and pass after; `npx tsx scripts/check-import-specifiers.ts --rule findContractLeafImports` still reports
 nothing over this repo.
 
-## Phase 2 — the cold-tree case the reader's own spec lacks
+## What the reader refuses, and what it cannot
 
-`packages/abuddy-sdk/tests/build/declared-type-of.spec.ts` has 14 cases; all five "unresolved" ones are the
-simple shape (a direct `import type … from '@not/installed'`). None covers *the contract's type depending on a
-local module that imports a `#generated/*` which does not exist yet* — the one route where the reader and this
-rule overlap.
+`checkResolved` guards the four positions a reader reads: the whole contract (`module-exports.ts:131`), `outgoing`
+(`:184`), `inbox` (`:196`) and each member of an event union (`:213`). A collapse that arrives through a hop is
+refused like a direct one — aliases are followed — so the indirect route is covered *where it lands in one of those
+four*.
 
-Its header also says *"These are the four shapes that reach the readers"* over five cases; fix that while there.
+A collapse in `state`, `context` or an event's payload field is read as data, and **must be**. `src/__generated__/`
+is untracked and `generatePackFiles` computes every generated file's contents before its caller writes any of them,
+so on a pack's first build nothing under `#generated/` resolves: `actions/fe/contract.ts` has `categories: Category`
+from `#generated/types.ts` in its state and `actionId: EARS.EntityId` in its events, both `any` at that moment, and
+codegen is right to carry on — it needs each member's literal `type` and nothing else. Refusing those would make the
+first build of a fresh checkout impossible.
 
-Fixture note: that file's trees have no `package.json` `imports` map, so a `#generated/*` specifier will not
-resolve by that route — use a relative `./__generated__/events.ts` that is absent, or add an `imports` map and a
-tsconfig.
+That is the whole overlap, and it is why four of the five claims have no second guard anywhere.
 
-**Done when:** the case exists and fails if `checkResolved`'s throw is removed. **If it turns out the refusal
-does *not* fire on that route, say so in the doc comment** — that is a real finding about the overlap, not a
-failure of the phase.
+`abuddy-sdk/tests/build/declared-type-of.spec.ts` holds both halves: a case for the collapse through a hop, and two
+for the positions nothing reads. Two earlier notes in this doc were wrong and are corrected here — the spec's header
+said *"the four shapes that reach the readers"* over five cases, which was the four refusal shapes plus a control and
+so already right; and the reader's refusal is not "a slice of claim 2 in a cold tree" but the position table above.
 
 ## Phase 3 — read a syntax tree
 
@@ -175,6 +176,6 @@ tests/build/declared-type-of.spec.ts`; `npm run test:external-pack:contract`; `n
 `pack-rules.ts` uses it; that the rule reports nothing today; `checkResolved`'s condition and the three narrower
 guards; the origin commit's account of claim 3.
 
-**Not verified:** whether the reader's refusal actually fires on the indirect cold-tree route. Phase 2 is the
-experiment that settles it, and its outcome changes only what Phase 4's comment says — not whether the rule
-stays.
+**Since verified:** the indirect route *is* refused where the collapse reaches one of the four read positions, and
+is not refused anywhere else — measured through the reader, with a mutation per direction (deleting the member check
+fails the hop case; adding a `state` check fails the case that says a collapsed state is read as data).

@@ -832,6 +832,29 @@ describe('findContractLeafImports', () => {
     ]);
   });
 
+  /**
+   * The two shapes a text match cannot tell from an import, both of which this rule reported until it read the
+   * reader's specifiers: `from '…'` inside a comment, and the same inside a template literal. `./state.ts` is
+   * written in each case, so the regex had a resolvable target and the finding looked real.
+   */
+  it('ignores a machine import that is commented out', () => {
+    pack({
+      'features/notes/fe/contract.ts': "// import type { Ctx } from './state.ts';\nexport type Contract = { state: {} };",
+      'features/notes/fe/state.ts': 'export type Ctx = { ready: boolean };',
+      'features/notes/be/contract.ts': 'export type Contract = { outgoing: { type: "A" } };',
+    });
+    expect(findContractLeafImports([src], root)).toEqual([]);
+  });
+
+  it('ignores one written inside a template literal', () => {
+    pack({
+      'features/notes/fe/contract.ts': "export const SNIPPET = `import type { Ctx } from './state.ts'`;\nexport type Contract = { state: {} };",
+      'features/notes/fe/state.ts': 'export type Ctx = { ready: boolean };',
+      'features/notes/be/contract.ts': 'export type Contract = { outgoing: { type: "A" } };',
+    });
+    expect(findContractLeafImports([src], root)).toEqual([]);
+  });
+
   it('checks nothing in a tree with no manifest, there being no contract to find', () => {
     writeAt(`${src}/features/notes/fe/contract.ts`, "import type { Ctx } from './state';");
     expect(findContractLeafImports([src], root)).toEqual([]);

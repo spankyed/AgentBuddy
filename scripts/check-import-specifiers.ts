@@ -714,6 +714,19 @@ function sourceFile(base: string): string | undefined {
  *
  * So a leaf imports neither machine, no other feature, and nothing generated but `types` and `ears`, which are
  * themselves leaves: a context needs both (`NoteDTO`, `EARS.EntityId`) and neither reaches `#generated/events`.
+ *
+ * The cycle is one of two reasons, and the other is cost, recorded at `generate-entries.ts:433`: the contracts are
+ * in codegen's TypeScript program and the machines are not, so an import that puts one back in reach parses and
+ * binds every machine and its whole closure, XState and Vue included, for nothing.
+ *
+ * **Codegen's own refusal is not a second guard for this.** `checkResolved`
+ * (`abuddy-sdk/src/build/module-exports.ts`) refuses a type that collapsed to `any` in the four positions a reader
+ * reads — the contract, `outgoing`, `inbox`, and each member of an event union — and reads a collapse in `state`,
+ * `context` or an event's payload as data. It has to: `src/__generated__/` is untracked and codegen computes every
+ * generated file before its caller writes any of them, so on a pack's first build nothing under `#generated/`
+ * resolves and those positions are legitimately `any` (`actions/fe/contract.ts` has two). So of the claims below,
+ * only the closure's reach to `#generated/events` overlaps that refusal, and only where the collapse lands in one
+ * of the four; the rest have no other guard in any tree.
  */
 export function findContractLeafImports(srcRoots = PACK_SRC_ROOTS, root = repoRoot): string[] {
   return srcRoots.flatMap((srcRoot) => {
@@ -759,10 +772,10 @@ export function findContractLeafImports(srcRoots = PACK_SRC_ROOTS, root = repoRo
       const walk = (file: string, viaLeaf: boolean) => {
         if (seen.has(file)) return;
         seen.add(file);
-        const code = fs.readFileSync(file, 'utf-8');
-        for (const match of code.matchAll(ANY_SPECIFIER)) {
-          const specifier = match[1];
-          const where = `${path.relative(root, file)}:${code.slice(0, match.index).split('\n').length}: ${specifier}`;
+        // The reader's specifiers, not a text match: a commented-out import and one inside a template literal are
+        // both `from '…'` to a regex, and this rule used to report either as a leaf reaching the machine
+        for (const { text: specifier, line } of readSource(file).specifiers) {
+          const where = `${path.relative(root, file)}:${line}: ${specifier}`;
           const at = viaLeaf ? where : `${where} (reached from ${path.relative(root, leaf)})`;
           const generated = /^(?:@\/__generated__|#generated)\/(.+?)(?:\.(?:ts|js))?$/.exec(specifier);
           if (generated) {
