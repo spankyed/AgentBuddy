@@ -200,7 +200,22 @@ export function createModuleExports(packRoot: string, files: string[]): ModuleEx
       }
       return audiences.flatMap((audience) => {
         const declared = propertyType(inbox, audience.name);
-        return declared ? eventTypeLiterals(declared, path.basename(file), `the events it accepts from \`${audience.name}\``) : [];
+        const events = declared ? eventTypeLiterals(declared, path.basename(file), `the events it accepts from \`${audience.name}\``) : [];
+        // The same refusal `outgoing` gets above, which the inbox went without: a declared audience that accepts
+        // nothing published an audience nothing may send to, and the pack built. `PluginInbox<{ public: never }>`
+        // is the shape, and it need not arrive as a literal `never` — any type that resolves to one does, which is
+        // how a contract reaching another plugin's absent inbox reads.
+        //
+        // At the audience level, not below it: an **absent** `inbox` is legitimate and returns early above, and
+        // `never` as one member of a union stays "no events" in `eventTypeLiterals`, which is what lets a first
+        // build carry on while `#generated/` is unresolved. What is refused is only an audience someone wrote down
+        // and left empty.
+        if (events.length === 0) {
+          throw new Error(`${path.basename(file)}: ${name}'s inbox declares \`${audience.name}\` and it accepts no events. `
+            + 'An audience with none is left out rather than declared empty, and a plugin that accepts nothing from '
+            + "anyone omits `inbox` altogether — its own system's outgoing events still reach it");
+        }
+        return events;
       });
     },
   };

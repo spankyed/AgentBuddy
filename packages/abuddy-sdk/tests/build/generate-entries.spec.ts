@@ -214,6 +214,22 @@ describe('generated events', () => {
       .toThrow(/declares no `outgoing` events/);
   });
 
+  // The inbox half of the refusal above. It went without one until 2026-09-27: a declared audience that accepted
+  // nothing published an audience nothing may send to, and the pack built green — while the same mistake in a
+  // system's `outgoing` threw. Asked before adding it: `npm run compile`, both fixture packs and this suite were
+  // green with the check in, so nothing in the tree relied on the old behaviour.
+  it('refuses an audience that accepts no events, rather than publishing an inbox nothing may send to', () => {
+    const plugin = pluginWithContract('src/features/sidebar/fe/index.ts', 'never');
+    expect(() => generate({ features: [{ id: 'sidebar', plugin }] }))
+      .toThrow(/inbox declares `public` and it accepts no events/);
+  });
+
+  // The two shapes that are not that, and must keep working: no inbox at all, and a real one
+  it('reads a plugin with no inbox as accepting only its own system\'s events', () => {
+    const plugin = pluginWithContract('src/features/quiet/fe/index.ts');
+    expect(() => generate({ features: [{ id: 'quiet', plugin }] })).not.toThrow();
+  });
+
   // A system that sends nothing names no contract at all; its plugin then receives only what it declares itself
   it('reads a system with no contract as sending nothing', () => {
     const entry = 'src/features/quiet2/be/system.ts';
