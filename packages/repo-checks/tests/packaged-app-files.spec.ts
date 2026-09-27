@@ -111,9 +111,9 @@ describe("the packaged app's file list", () => {
    * dedicated include — so the app breaks when no pattern reaches them, not when either is edited. That is why
    * the older check on one include's string position is gone: it failed on a harmless edit and not on this.
    *
-   * And it is the `.ts` templates that depend on them, all 27 of 27. The other seven are `.yml` and `.vue`,
-   * which no exclusion names, so the recursive include of `packages` carries them either way. Asserting all 34
-   * would have been wrong, and this case said so on its first run.
+   * And it is the `.ts` templates that depend on them: the rest are `.yml` and `.vue`, which no exclusion names,
+   * so the recursive include of `packages` carries those either way. Asserting every template would have been
+   * wrong, and this case said so on its first run.
    */
   it('would lose its TypeScript templates if both patterns that carry them went', () => {
     const stripped = without('packages/*/dist/**', 'packages/abuddy-cli/dist/package/templates/**');
@@ -129,7 +129,7 @@ describe("the packaged app's file list", () => {
    * The trees `stagePublishTree` writes so `npm publish` has something to publish. The app never loads one — it
    * resolves `@abuddy/sdk` through `node_modules` to `packages/abuddy-sdk/dist` — and the recursive include of
    * `packages` took all three until the publish exclusion was added, because electron-builder reads no
-   * `.gitignore`. Measured before it was: 597 files, 1.66MB of them surviving the other exclusions.
+   * `.gitignore`.
    */
   describe.skipIf(!PACKAGES_BUILT)('over the built trees', () => {
     it('ships no tree staged for npm', () => {
@@ -137,10 +137,11 @@ describe("the packaged app's file list", () => {
     });
 
     /**
-     * The mutation. Not *all* of them come back — 256 of 597 did when this was measured, the `.js`, `.css` and
-     * `.json`; the rest are `.d.ts`, `.map` and `.md`, which other exclusions already name. So the claim is that
-     * this pattern is the only thing standing between the app and a second copy of the packages, not that it is
-     * the only thing that ever touches those files. A count would date on the next module.
+     * The mutation. Not *all* of them come back: the `.js`, `.css` and `.json` do, where the `.d.ts`, `.map` and
+     * `.md` are named by other exclusions already. So the claim is that this pattern is the only thing standing
+     * between the app and a second copy of the packages, not that it is the only thing that ever touches those
+     * files — which is why the assertion below is "more than none" rather than a number that would date on the
+     * next module this package gains.
      */
     it('would carry them without the one pattern that excludes them', () => {
       const stripped = without('!packages/*/publish/**');
