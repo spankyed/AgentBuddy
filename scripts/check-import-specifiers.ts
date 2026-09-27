@@ -105,9 +105,6 @@ export function findJsSpecifiers(dirs = [...CHECKED_DIRS, ...PACK_SOURCE_DIRS, .
   }, false);
 }
 
-/** CLI sources whose template strings are the pack source `abuddy init` and `abuddy add` write */
-const CLI_TEMPLATE_SOURCES = ['packages/abuddy-cli/src/commands/add', 'packages/abuddy-cli/src/commands/init.ts'];
-
 /**
  * The scaffold's pack code, which is files rather than string literals (`goal-one-rule-set.md`): the pack
  * every pack author starts from, and so the one whose specifiers most need to be right.
@@ -118,7 +115,6 @@ const CLI_TEMPLATE_PACK = 'packages/abuddy-cli/templates/pack';
 const PACK_SOURCE_DIRS = [
   'packages/default-setup/src', 'tests/fixtures/external-pack/src', 'tests/fixtures/bundled-ui-pack/src',
   `${CLI_TEMPLATE_PACK}/src`,
-  ...CLI_TEMPLATE_SOURCES,
 ];
 
 /** The source files under each of `dirs` (a directory or a single file) */
@@ -151,21 +147,6 @@ function moduleOf(node: ts.Node): string | undefined {
   return literal && ts.isStringLiteralLike(literal) ? literal.text : undefined;
 }
 
-/** A template literal's text as code. `${…}` and the escapes are blanked or unescaped in place, so lines and columns stay put. */
-function templateCode(node: ts.TemplateLiteral, source: ts.SourceFile): string {
-  const start = node.getStart(source);
-  const chars = source.text.slice(start + 1, node.end - 1).split('');
-  if (ts.isTemplateExpression(node)) {
-    for (const span of node.templateSpans) {
-      // From the `${` that opens the span to its closing `}`
-      for (let i = span.pos - 2; i <= span.literal.getStart(source); i++) {
-        if (chars[i - start - 1] !== '\n') chars[i - start - 1] = '_';
-      }
-    }
-  }
-  return chars.join('').replace(/\\([`$\\])/g, ' $1');
-}
-
 /**
  * `file:line: what` for each finding of `rule` in `files`. A syntax tree leaves out comments and string
  * text; a .vue file is read in its <script> blocks, and in the CLI's template sources the template
@@ -174,21 +155,17 @@ function templateCode(node: ts.TemplateLiteral, source: ts.SourceFile): string {
 function findInFiles(files: string[], root: string, rule: Rule): string[] {
   return files.flatMap((file) => {
     const relative = path.relative(root, file).split(path.sep).join('/');
-    const isTemplateSource = CLI_TEMPLATE_SOURCES.some((dir) => relative === dir || relative.startsWith(`${dir}/`));
     const found: { line: number; what: string }[] = [];
-    const scan = (code: string, lineOffset: number, templates: boolean): void => {
+    const scan = (code: string, lineOffset: number): void => {
       const source = parse(code, file);
       const lineOf = (node: ts.Node) => source.getLineAndCharacterOfPosition(node.getStart(source)).line + 1 + lineOffset;
       const visit = (node: ts.Node): void => {
         for (const what of rule(node) ?? []) found.push({ line: lineOf(node), what });
-        if (templates && (ts.isNoSubstitutionTemplateLiteral(node) || ts.isTemplateExpression(node))) {
-          scan(templateCode(node, source), lineOf(node) - 1, false);
-        }
         ts.forEachChild(node, visit);
       };
       visit(source);
     };
-    for (const { content, lineOffset } of codeBlocks(file)) scan(content, lineOffset, isTemplateSource);
+    for (const { content, lineOffset } of codeBlocks(file)) scan(content, lineOffset);
     return found.sort((a, b) => a.line - b.line).map(({ line, what }) => `${relative}:${line}: ${what}`);
   });
 }
@@ -294,7 +271,7 @@ const consoleUse: Rule = (node) => {
  * template sources (their console output is the CLI's) or single files.
  */
 export function findPackBackendConsole(dirs = PACK_SOURCE_DIRS, root = repoRoot): string[] {
-  const files = dirs.filter((dir) => !CLI_TEMPLATE_SOURCES.includes(dir)).flatMap((dir) => {
+  const files = dirs.flatMap((dir) => {
     const full = path.join(root, dir);
     if (!fs.existsSync(full) || !fs.statSync(full).isDirectory()) return [];
     return [...sourceFiles(full)].filter((file) => {
@@ -332,7 +309,6 @@ export function findPackOwnAliases(dirs = [...PACK_SOURCE_DIRS, ...PACK_TEST_DIR
 function repoPacks(dirs: readonly string[]): Map<string, string[]> {
   const packs = new Map<string, string[]>();
   for (const dir of dirs) {
-    if (CLI_TEMPLATE_SOURCES.includes(dir)) continue;
     const packDir = path.dirname(dir);
     packs.set(packDir, [...(packs.get(packDir) ?? []), path.basename(dir)]);
   }
@@ -354,13 +330,12 @@ function repoPacks(dirs: readonly string[]): Map<string, string[]> {
 export function findExtensionlessOwnModules(
   dirs = [...PACK_SOURCE_DIRS, ...PACK_TEST_DIRS],
   root = repoRoot,
-  templates = CLI_TEMPLATE_SOURCES,
 ): string[] {
   const inPacks = [...repoPacks(dirs)].flatMap(([packDir, subdirs]) => {
     const pack = path.join(root, packDir);
     return ownModuleProblems(pack, packSpecifiers(pack, subdirs)).map((problem) => `${packDir}/${problem}`);
   });
-  return [...inPacks, ...templateProblems(templates, root)];
+  return inPacks;
 }
 
 /** Every specifier the pack's `dirs` name, read the way every other rule here reads a file: as a syntax tree */
@@ -380,72 +355,6 @@ function packSpecifiers(pack: string, dirs: readonly string[]): OwnModuleSpecifi
     }
   }
   return found;
-}
-
-/** A specifier for one of the pack's own modules: its `#` imports, or a sibling by relative path */
-const ownModule = (text: string) => text.startsWith('#') || text.startsWith('./') || text.startsWith('../');
-
-/**
- * `file:line: specifier` for each own-module specifier without an extension inside a CLI template literal.
- *
- * Only inside the literals: the pack code these write is held to the rule, and the CLI's own source around
- * them is not — it is bundled, names its modules extensionlessly throughout, and is not a pack.
- *
- * A specifier whose last segment is a substitution (`'./${componentFileName}'`, which carries `.vue`) is
- * skipped: `templateCode` masks the substitution, so whether an extension arrives with it is not in the text.
- * What covers those is the pack the CLI actually writes — `abuddy add`'s integration spec runs this same rule
- * over the scaffolded tree, where the files are there to resolve against, and `abuddy build` runs it for real.
- */
-function templateProblems(dirs: readonly string[], root: string): string[] {
-  return packFiles([...dirs], root).flatMap((file) => {
-    const found: string[] = [];
-    for (const { content, lineOffset } of codeBlocks(file)) {
-      const source = parse(content, file);
-      const visit = (node: ts.Node): void => {
-        if (ts.isNoSubstitutionTemplateLiteral(node) || ts.isTemplateExpression(node)) {
-          const at = source.getLineAndCharacterOfPosition(node.getStart(source)).line + lineOffset;
-          for (const { text, line } of specifiers(templateCode(node, source), file, true)) {
-            if (ownModule(text) && path.extname(text) === '' && !/_$/.test(text)) found.push(`${path.relative(root, file)}:${at + line}: ${text}`);
-          }
-        }
-        ts.forEachChild(node, visit);
-      };
-      visit(source);
-    }
-    return found;
-  });
-}
-
-/** Every CLI command source, since which of them write pack code is the question below */
-const CLI_COMMAND_SOURCES = ['packages/abuddy-cli/src/commands'];
-
-/**
- * `file: what it holds` for each CLI source that writes pack code in a template literal without being listed
- * as one that does (`CLI_TEMPLATE_SOURCES`).
- *
- * That list is what tells four rules here to look inside template literals — the untyped sends, the internal
- * imports, the `@/` aliases and the specifier rule above all scan them for pack code. It is hand-kept, and a
- * new `abuddy add <thing>` in its own file would be scanned by none of them, silently: the pack code it
- * writes would be the only pack code in this repo that no rule reads. So the list is checked against what is
- * there, the way `PACKAGE_DIRS` and `SHARED_INSTANCE_PACKAGES` are, rather than trusted.
- */
-export function findUnlistedPackTemplates(dirs = CLI_COMMAND_SOURCES, root = repoRoot, listed = CLI_TEMPLATE_SOURCES): string[] {
-  const covered = (relative: string) => listed.some((dir) => relative === dir || relative.startsWith(`${dir}/`));
-  return packFiles(dirs, root).flatMap((file) => {
-    const relative = path.relative(root, file).split(path.sep).join('/');
-    if (covered(relative)) return [];
-    const source = parse(fs.readFileSync(file, 'utf-8'), file);
-    const found: string[] = [];
-    const visit = (node: ts.Node): void => {
-      if (ts.isNoSubstitutionTemplateLiteral(node) || ts.isTemplateExpression(node)) {
-        const written = specifiers(templateCode(node, source), file, true).map(({ text }) => text).filter(ownModule);
-        if (written.length > 0) found.push(`${relative}: writes ${written.join(', ')} in a template literal`);
-      }
-      ts.forEachChild(node, visit);
-    };
-    visit(source);
-    return found;
-  });
 }
 
 /** API modules (its `@/` alias) and host, API or CLI sources by relative path */
@@ -1410,9 +1319,6 @@ export const CHECKS: ReadonlyArray<readonly [find: () => string[], rule: string]
   [findExtensionlessOwnModules, "A pack names its own modules by the file that is there, extension and all "
     + '(#generated/events.ts): no runtime resolves an extensionless specifier in ESM, and the .js a pack '
     + 'would otherwise name is a file it never emits, since it ships one bundle rather than a module per source'],
-  [findUnlistedPackTemplates, 'A CLI source that writes pack code in a template literal is listed in '
-    + 'CLI_TEMPLATE_SOURCES, so the rules over pack code read it: the untyped sends, the internal imports, the '
-    + '@/ aliases and the own-module specifiers'],
   [findAppImportsInPackTests, 'Pack unit tests run on the harness (@abuddy/testing) without the app; test host, API and CLI code in its own package'],
   [findUpwardImports, "Packages import only downward (@abuddy/ears imports no @abuddy package, @abuddy/sdk only @abuddy/ears, @abuddy/host only those two and never the API, the API and the renderer only the packages below them), and list each @abuddy package they import in their package.json"],
   [findLmdbImports, "Only @abuddy/ears/lmdb loads lmdb: the host and the API open the store through it, the engine's root and packs never load it"],

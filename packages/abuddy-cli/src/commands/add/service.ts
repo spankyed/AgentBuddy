@@ -1,7 +1,7 @@
 import * as path from 'node:path';
 import { regenerateAfterScaffold } from '../generate-entries';
 import { renderTemplate } from '../../templates.ts';
-import { validateName, toCamelCase, writeIfNotExists, logCreated, parseFlag, hasFlag } from './templates';
+import { validateName, toCamelCase, writeIfNotExists, logCreated, parseFlag, hasFlag } from './write';
 import { readManifest, writeManifest, addPackService, addFeatureService } from './manifest';
 
 // abuddy.json names this object ("path#exportName"): `services.<camel>` is the object itself

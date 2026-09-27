@@ -6,7 +6,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import {
   CHECKS,
   findAppImportsInPackTests, findContractLeafImports, findCrossCheckoutResolution, findCrossFeatureImports, findExtensionlessOwnModules, findHostImports, findJsSpecifiers, findMissingSourceConditions,
-  findPackageScriptImports, findPackBackendConsole, findPackOwnAliases, findRawPackHelpers, findUnlistedPackTemplates,
+  findPackageScriptImports, findPackBackendConsole, findPackOwnAliases, findRawPackHelpers,
   findRawTransport, findInternalPackageImports, findLmdbImports, findRepositoryCasts, findSharedPackageLists, findUpwardImports, LAYERS, LMDB_RULES, packageSourceDirs,
   DECLARES_SOURCE_BY_DESIGN, RESOLVES_DIST_BY_DESIGN, SHARED_LIST_CONSUMERS, sourceConditionPackages, SOURCE_CONDITION,
 } from '../../../scripts/check-import-specifiers.ts';
@@ -82,13 +82,6 @@ describe('findJsSpecifiers', () => {
   });
 });
 
-/** Pack code a CLI template writes, in a file under one of CLI_TEMPLATE_SOURCES */
-function writeTemplateSource(content: string): string {
-  const dir = 'packages/abuddy-cli/src/commands/add';
-  writeAt(path.join(dir, 'feature.ts'), content);
-  return dir;
-}
-
 /** Code none of the pack rules flag: comments, string text and the allowed imports */
 const ALLOWED = [
   "// import { untypedBroadcastToPlugin } from '@abuddy/sdk/events'; _rootEvents; trpc.bus; console.log('x')",
@@ -162,11 +155,6 @@ describe('findRawPackHelpers', () => {
     write('pack/Widget.vue', "<template><pre>import { untypedBroadcastToPlugin } from '@abuddy/sdk/events'</pre></template>\n<script setup lang=\"ts\">\n\nimport { untypedBroadcastToPlugin } from '@abuddy/sdk/events';\n</script>\n");
     expect(findRawPackHelpers(['src/pack'], root)).toEqual(['src/pack/Widget.vue:4: untypedBroadcastToPlugin from @abuddy/sdk/events']);
   });
-
-  it("checks the pack code in the CLI's templates, with its line", () => {
-    const dir = writeTemplateSource("const name = 'x';\nexport const SYSTEM = `// ${name}\nconst label = \\`${name}\\`;\nimport { ${name}, untypedBroadcastToPlugin } from '@abuddy/sdk/events';\n`;\n");
-    expect(findRawPackHelpers([dir], root)).toEqual([`${dir}/feature.ts:4: untypedBroadcastToPlugin from @abuddy/sdk/events`]);
-  });
 });
 
 describe('findRawTransport', () => {
@@ -185,11 +173,6 @@ describe('findRawTransport', () => {
     write('pack/feature.ts', ALLOWED);
     write('pack/__generated__/events.ts', "\nimport { _rootEvents } from '@abuddy/sdk/runtime';\n");
     expect(findRawTransport(['src/pack'], root)).toEqual(['src/pack/__generated__/events.ts:2: _rootEvents']);
-  });
-
-  it("checks the pack code in the CLI's templates, with its line", () => {
-    const dir = writeTemplateSource('export const STATE = `\ntrpc.bus.send.mutate(event);\n`;\n');
-    expect(findRawTransport([dir], root)).toEqual([`${dir}/feature.ts:2: trpc.bus`]);
   });
 });
 
@@ -224,12 +207,6 @@ describe('findPackBackendConsole', () => {
       'seeds/actions/run.ts',
     ]) write(`pack/${file}`, "console.log('x');");
     expect(findPackBackendConsole(['src/pack'], root)).toEqual([]);
-  });
-
-  it("skips the CLI's template sources and single files", () => {
-    const dir = writeTemplateSource("console.log('Created pack');");
-    write('pack/features/hooks.ts', "console.log('x');");
-    expect(findPackBackendConsole([dir, 'src/pack/features/hooks.ts'], root)).toEqual([]);
   });
 });
 
@@ -478,10 +455,6 @@ const FIRES: Record<string, () => string[]> = {
     writeAt('pack/src/f.ts', "import { sendToSystem } from '#generated/events';");
     return findExtensionlessOwnModules(['pack/src'], root);
   },
-  findUnlistedPackTemplates: () => {
-    writeAt('commands/add-thing.ts', "const T = `import { x } from '#generated/events.ts';`;");
-    return findUnlistedPackTemplates(['commands'], root, ['commands/add']);
-  },
   findAppImportsInPackTests: () => {
     write('pack-tests/unit/feature.spec.ts', "import { hydrate } from '@abuddy/host/ears';");
     return findAppImportsInPackTests(['src/pack-tests'], root);
@@ -605,46 +578,6 @@ describe('findExtensionlessOwnModules', () => {
     writeAt('pack/src/f.ts', "import providers from '#data/providers';");
     expect(findExtensionlessOwnModules(['pack/src'], root))
       .toEqual(["pack/src/f.ts:1: '#data/providers' names no file — write '#data/providers.json'"]);
-  });
-
-  it('flags a template the CLI writes, which has no pack to resolve against', () => {
-    writeAt('templates/add.ts', "const T = `import { x } from '#generated/events';`;");
-    expect(findExtensionlessOwnModules(['templates/add.ts'], root)).toEqual([]);
-    expect(findExtensionlessOwnModules([], root, ['templates/add.ts']))
-      .toEqual(["templates/add.ts:1: #generated/events"]);
-  });
-});
-
-/**
- * The list that tells four rules here to look inside a template literal. A new `abuddy add <thing>` in its
- * own file would be read by none of them, and the pack code it writes would be the only pack code in the repo
- * that no rule sees.
- */
-describe('findUnlistedPackTemplates', () => {
-  const unlisted = (files: Record<string, string>) => {
-    for (const [file, content] of Object.entries(files)) writeAt(`commands/${file}`, content);
-    return findUnlistedPackTemplates(['commands'], root, ['commands/add', 'commands/init.ts']);
-  };
-
-  it('flags a command that writes an own-module import and is not listed', () => {
-    expect(unlisted({ 'add-thing.ts': "const T = `import { x } from '#generated/events.ts';`;" }))
-      .toEqual(['commands/add-thing.ts: writes #generated/events.ts in a template literal']);
-  });
-
-  it('passes the listed ones, a file and a directory alike', () => {
-    expect(unlisted({
-      'init.ts': "const T = `import { x } from '#generated/ears.ts';`;",
-      'add/step.ts': "const T = `import { y } from './types.ts';`;",
-    })).toEqual([]);
-  });
-
-  it('passes a template that writes no pack code', () => {
-    expect(unlisted({ 'release.ts': 'const YAML = `name: release\non: push`;' })).toEqual([]);
-    expect(unlisted({ 'info.ts': "const T = `import { z } from '@abuddy/sdk';`;" })).toEqual([]);
-  });
-
-  it('holds for the repo', () => {
-    expect(findUnlistedPackTemplates()).toEqual([]);
   });
 });
 

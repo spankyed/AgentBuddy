@@ -1,7 +1,7 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { renderTemplate } from '../../templates.ts';
-import { writeIfNotExists, logCreated, parseFlag, hasFlag } from './templates';
+import { writeIfNotExists, logCreated, parseFlag, hasFlag } from './write';
 import { readManifest, writeManifest } from './manifest';
 
 // Runs once when the pack updates past `target`; `up` is synchronous and must be safe to run again

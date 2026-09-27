@@ -1,5 +1,5 @@
 import * as path from 'node:path';
-import { validateName, toLabel, writeIfNotExists, logCreated, hasFlag } from './templates';
+import { validateName, toLabel, writeIfNotExists, logCreated, hasFlag } from './write';
 import { renderTemplate } from '../../templates.ts';
 
 

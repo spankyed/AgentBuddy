@@ -1,6 +1,6 @@
 import * as path from 'node:path';
 import { regenerateAfterScaffold } from '../generate-entries';
-import { validateName, toPascalCase, toCamelCase, toLabel, writeIfNotExists, logCreated, hasFlag, updateRegisterArray } from './templates';
+import { validateName, toPascalCase, toCamelCase, toLabel, writeIfNotExists, logCreated, hasFlag, updateRegisterArray } from './write';
 import { readManifest, writeManifest, addStepDefinition } from './manifest';
 import { renderTemplate } from '../../templates.ts';
 

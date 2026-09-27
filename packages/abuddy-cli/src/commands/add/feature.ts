@@ -4,7 +4,7 @@ import { renderTemplate } from '../../templates.ts';
 import * as path from 'node:path';
 import { regenerateAfterScaffold } from '../generate-entries';
 import { scaffoldUnitTestSetup, type UnitTestSetup } from '../init';
-import { toPascalCase, toCamelCase, toLabel, writeIfNotExists, logCreated, parseFlag, hasFlag } from './templates';
+import { toPascalCase, toCamelCase, toLabel, writeIfNotExists, logCreated, parseFlag, hasFlag } from './write';
 import { readManifest, writeManifest, addFeature as addFeatureToManifest } from './manifest';
 
 

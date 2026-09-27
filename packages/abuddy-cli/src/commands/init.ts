@@ -1,7 +1,7 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { renderTemplate } from '../templates.ts';
-import { toPascalCase } from './add/templates';
+import { toPascalCase } from './add/write';
 import * as readline from 'node:readline';
 import semver from 'semver';
 import { resolveDeps } from './generate';

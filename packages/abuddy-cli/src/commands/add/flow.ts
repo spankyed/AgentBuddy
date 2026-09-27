@@ -1,7 +1,7 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { renderTemplate } from '../../templates.ts';
-import { validateName, toLabel, writeIfNotExists, logCreated, hasFlag } from './templates';
+import { validateName, toLabel, writeIfNotExists, logCreated, hasFlag } from './write';
 
 
 const HELP = `
