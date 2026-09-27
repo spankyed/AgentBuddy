@@ -92,8 +92,9 @@ const EXPENSIVE_BY_NATURE: Record<string, string> = {
   'abuddy-host/tests/database/write-lock.spec.ts': 'waits on real cross-process lock timeouts',
   // Seven `npm pack --dry-run` spawns at ~0.3s each. Asking npm what it would publish is the subject, not an
   // implementation detail of the test: the module exists because reading `files` ourselves lost npm's
-  // force-included files. Two of the calls could go, for ~2.4s against the 2.5s edge — a cost that flips half
-  // on a contended measurement, which is what the band exists to avoid.
+  // force-included files. Trimming two of the calls would land it about at the 2.5s edge — a cost that flips half
+  // on a contended measurement, which is what the band exists to avoid. Re-measured on an idle machine and it
+  // came back slightly slower, not faster, so the entry is not an artefact of load.
   'abuddy-host/tests/build/published-manifest.spec.ts': 'spawns npm pack seven times, which is its subject',
   // Starts and stops real pack backends and then waits to prove a cron schedule does *not* tick into the
   // next test. The wait is the assertion, so shortening it removes what the test checks.
