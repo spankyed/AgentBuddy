@@ -1,27 +1,11 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
+import { renderTemplate } from '../../templates.ts';
 import { writeIfNotExists, logCreated, parseFlag, hasFlag } from './templates';
 import { readManifest, writeManifest } from './manifest';
 
 // Runs once when the pack updates past `target`; `up` is synchronous and must be safe to run again
-const MIGRATION_TEMPLATE = (version: string) => `import type { PackMigration } from '@abuddy/sdk/framework';
 
-export const migration: PackMigration = {
-  target: '${version}',
-  description: 'Describe what this migration changes',
-  up: () => {
-    // Check whether the change is needed before applying it
-  },
-};
-`;
-
-const INDEX_TEMPLATE = (fileName: string, importName: string) => `import type { PackMigration } from '@abuddy/sdk/framework';
-import { migration as ${importName} } from './${fileName}.ts';
-
-export const migrations: PackMigration[] = [
-  ${importName},
-];
-`;
 
 const HELP = `
 Usage: abuddy add migration [version] [options]
@@ -51,14 +35,14 @@ export async function addMigration(args: string[], root: string) {
   const importName = toImportName(version);
 
   const created: string[] = [];
-  if (writeIfNotExists(filePath, MIGRATION_TEMPLATE(version))) {
+  if (writeIfNotExists(filePath, renderTemplate('pack/src/migrations/migration.ts', { VERSION: version }))) {
     created.push(filePath);
   }
 
   const indexPath = path.join(root, 'src', 'migrations', 'index.ts');
   if (!fs.existsSync(indexPath)) {
     fs.mkdirSync(path.dirname(indexPath), { recursive: true });
-    fs.writeFileSync(indexPath, INDEX_TEMPLATE(version, importName));
+    fs.writeFileSync(indexPath, renderTemplate('pack/src/migrations/index.ts', { FILE_NAME: version, IMPORT_NAME: importName }));
     created.push(indexPath);
   } else {
     let content = fs.readFileSync(indexPath, 'utf-8');

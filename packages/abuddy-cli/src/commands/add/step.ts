@@ -91,27 +91,6 @@ export interface ${pascal}Node extends NodeBase {
 
 // The flows editor renders a step's form with `node` and `resources` ({ actions, flows, models, prompts })
 // and listens for `update-node` (the changed fields) and `close`
-const FORM_VUE = (pascal: string) => `<script setup lang="ts">
-import BaseForm from '@abuddy/ui/components/BaseForm';
-import type { ${pascal}Node } from './types.ts';
-
-defineProps<{
-  node: ${pascal}Node;
-  resources?: Record<string, unknown[] | undefined>;
-}>();
-
-defineEmits<{
-  'update-node': [updates: Record<string, unknown>];
-  close: [];
-}>();
-</script>
-
-<template>
-  <BaseForm :node="node" @update-node="$emit('update-node', $event)" @close="$emit('close')">
-    <p class="text-xs text-neutral-400">${pascal} step configuration</p>
-  </BaseForm>
-</template>
-`;
 
 export async function addStep(args: string[], root: string) {
   if (hasFlag(args, '--help') || hasFlag(args, '-h')) {
@@ -133,7 +112,7 @@ export async function addStep(args: string[], root: string) {
     [path.join(stepDir, 'index.ts'), INDEX(camel)],
     [path.join(stepDir, 'fe.ts'), FE(type, camel)],
     [path.join(stepDir, 'types.ts'), TYPES(pascal, type)],
-    [path.join(stepDir, 'form.vue'), FORM_VUE(pascal)],
+    [path.join(stepDir, 'form.vue'), renderTemplate('pack/src/extensions/steps/step/form.vue', { PASCAL: pascal })],
   ];
 
   for (const [filePath, content] of files) {

@@ -10,6 +10,9 @@ import { addStep } from '../../src/commands/add/step';
 import { addArtifact } from '../../src/commands/add/artifact';
 import { addBlock } from '../../src/commands/add/block';
 import { addMigration } from '../../src/commands/add/migration';
+import { addAction } from '../../src/commands/add/action';
+import { addPrompt } from '../../src/commands/add/prompt';
+import { addFlow } from '../../src/commands/add/flow';
 import { generateEntries } from '../../src/commands/generate-entries';
 import { ownModuleSpecifierProblems } from '../../src/build/own-module-specifiers-gate.ts';
 
@@ -241,3 +244,49 @@ describe('what abuddy add scaffolds', () => {
     expect(ownModuleSpecifierProblems(pack, ['src', 'tests'])).toEqual([]);
   });
 });
+
+/**
+ * The seed scaffolds, which had no test reading their output before their templates became files
+ * (`docs/goals/goal-one-rule-set.md`): `abuddy add action`, `add prompt` and `add flow` were covered only by
+ * whether they exited 0.
+ */
+describe('abuddy add action, prompt and flow', () => {
+  it('writes an action under its category, with the label and the typed services import', async () => {
+    await addAction(['analyze-text'], pack);
+    const action = read('src/seeds/actions/demo-pack/analyze-text.ts');
+    expect(action).toContain("import type { Services, Z } from '#generated/services.ts';");
+    expect(action).toContain("label: 'Analyze Text'");
+    expect(action).toContain("category: 'demo-pack'");
+    expect(action).toContain('export async function action(\n  params: Record<string, any>,\n  services: Services,');
+  });
+
+  it('writes a prompt with its label and template function', async () => {
+    await addPrompt(['summarize-text'], pack);
+    const prompt = read('src/seeds/prompts/summarize-text.ts');
+    expect(prompt).toContain("import type { PromptMeta } from '@abuddy/sdk/build';");
+    expect(prompt).toContain("label: 'Summarize Text'");
+    expect(prompt).toContain('export function template(params: Record<string, any>)');
+  });
+
+  /**
+   * `add flow` refuses a pack whose dependencies provide no steps, and it decides that by reading the pack's
+   * generated flow helpers for `keepAlive` — so the fixture is that file, which is what a dependency's
+   * generate-entries would have written.
+   */
+  it('writes a flow whose track uses the helpers the pack generates', async () => {
+    write('src/__generated__/flow-helpers.ts', ['export const entry = 1;', 'export const keepAlive = 2;', ''].join('\n'));
+    await addFlow(['onboarding'], pack);
+    expect(read('src/seeds/flows/onboarding.ts')).toBe([
+      "import type { FlowDSL } from '@abuddy/sdk/build';",
+      "import { entry, keepAlive } from '#generated/flow-helpers.ts';",
+      '',
+      'export default {',
+      '  "Onboarding": [',
+      '    entry([keepAlive()]),',
+      '  ],',
+      '} satisfies FlowDSL;',
+      '',
+    ].join('\n'));
+  });
+});
+

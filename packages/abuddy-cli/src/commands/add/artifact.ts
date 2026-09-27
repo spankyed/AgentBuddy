@@ -1,5 +1,6 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
+import { renderTemplate } from '../../templates.ts';
 import { validateName, toPascalCase, writeIfNotExists, logCreated, parseFlag, hasFlag, updateRegisterArray, updateComponentMap } from './templates';
 import { readManifest } from './manifest';
 
@@ -14,23 +15,6 @@ Example:
 `.trim();
 
 // The threads artifact panel renders a viewer with the selected `artifact` (ArtifactItem)
-const VIEWER_VUE = (icon: string) => `<script setup lang="ts">
-import type { ArtifactItem } from '@abuddy/sdk/artifacts';
-import { ${icon} } from 'lucide-vue-next';
-
-defineProps<{ artifact: ArtifactItem }>();
-</script>
-
-<template>
-  <div class="p-4">
-    <div class="flex items-center gap-2 mb-2">
-      <${icon} class="w-4 h-4" />
-      <span class="text-sm font-medium">{{ artifact.title }}</span>
-    </div>
-    <pre class="text-xs text-neutral-400">{{ artifact.content }}</pre>
-  </div>
-</template>
-`;
 
 export async function addArtifact(args: string[], root: string) {
   if (hasFlag(args, '--help') || hasFlag(args, '-h')) {
@@ -46,7 +30,7 @@ export async function addArtifact(args: string[], root: string) {
   const viewerPath = path.join(root, 'src', 'extensions', 'artifacts', 'viewers', `${type}-artifact.vue`);
 
   const created: string[] = [];
-  if (writeIfNotExists(viewerPath, VIEWER_VUE(icon))) {
+  if (writeIfNotExists(viewerPath, renderTemplate('pack/src/extensions/artifacts/viewers/artifact.vue', { ICON: icon }))) {
     created.push(viewerPath);
   }
 

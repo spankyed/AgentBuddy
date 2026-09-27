@@ -172,15 +172,6 @@ const ${toCamelCase(name)}State = setup({
 export default ${toCamelCase(name)}State;
 `;
 
-const LIST_VUE = (label: string) => `<script setup lang="ts">
-</script>
-
-<template>
-  <div class="p-4">
-    <h2 class="text-lg font-semibold">${label}</h2>
-  </div>
-</template>
-`;
 
 
 const HELP = `
@@ -226,7 +217,7 @@ export async function addFeature(args: string[], root: string) {
     [path.join(featureDir, 'fe', 'plugin.ts'), PLUGIN(camel, label, icon)],
     [path.join(featureDir, 'fe', 'contract.ts'), FE_CONTRACT(pascal)],
     [path.join(featureDir, 'fe', 'state.ts'), STATE(name)],
-    [path.join(featureDir, 'fe', 'canvas', 'list.vue'), LIST_VUE(label)],
+    [path.join(featureDir, 'fe', 'canvas', 'list.vue'), renderTemplate('pack/src/features/feature/fe/canvas/list.vue', { LABEL: label })],
     [path.join(featureDir, 'fe', 'settings.vue'), renderTemplate('pack/src/features/feature/fe/settings.vue')],
     [path.join(root, 'tests', 'features', name, 'be', 'system.spec.ts'), SYSTEM_SPEC(name)],
   ];
