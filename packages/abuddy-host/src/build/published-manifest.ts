@@ -19,6 +19,7 @@
  * `scripts/`: the two build scripts write the tree, `bundle-package.ts` checks its own generated manifest with
  * the same walk, and `@app/publish-checks` checks what `npm pack` would produce.
  */
+import { execFileSync } from 'node:child_process';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 
@@ -94,7 +95,8 @@ export function manifestPaths(manifest: Manifest): [string, string][] {
     if (typeof node === 'string') found.push([what, node]);
     else if (Array.isArray(node)) node.forEach((item, index) => walk(item, `${what}[${index}]`));
     else if (node !== null && typeof node === 'object') {
-      for (const [key, value] of Object.entries(node)) walk(value, `${what}.${key}`);
+      // Bracketed, not dotted: every `exports` key begins with a dot, so `${what}.${key}` reads `exports...types`
+      for (const [key, value] of Object.entries(node)) walk(value, `${what}[${JSON.stringify(key)}]`);
     }
   };
   for (const field of PATH_FIELDS) if (field in manifest) walk(manifest[field], field);
@@ -131,6 +133,31 @@ export function missingPublishedPaths(manifest: Manifest, files: ReadonlySet<str
     .map(([what, target]) => `${what} -> ${target}`);
 }
 
+/**
+ * The files `npm pack` would put in a tarball for the tree at `dir`, relative to the package root.
+ *
+ * npm's answer rather than a reading of `files`, and the difference is not academic: `npm-packlist` force-includes
+ * `/package.json`, `/readme*`, `/copying*`, `/license*` and `/licence*` whatever `files` says, and whatever `main`,
+ * `bin` and `browser` name. A staged tree built by walking `files` therefore drops a README the moment one is
+ * added, silently, since nothing else would notice — which is what this function exists to prevent.
+ *
+ * `--dry-run`, so nothing is written; `--ignore-scripts`, so a `prepack` in the manifest cannot run during a
+ * build (measured: the list is identical either way for all three packages today, so the flag costs nothing and
+ * closes that door); and an **absolute** path, because npm reads a relative one as a git shorthand and fails in
+ * `git ls-remote`.
+ */
+export function workspacePackList(dir: string): Set<string> {
+  const out = execFileSync('npm', ['pack', '--dry-run', '--json', '--ignore-scripts', path.resolve(dir)],
+    { stdio: ['ignore', 'pipe', 'ignore'] }).toString();
+  // Anything a lifecycle script wrote lands on this stdout before npm's JSON. `--ignore-scripts` makes that
+  // unreachable through this path, and the guard is what names the cause if some other way is ever found.
+  if (!out.trimStart().startsWith('[')) {
+    throw new Error(`npm pack printed something other than JSON for ${dir}:\n${out}`);
+  }
+  const [{ files }] = JSON.parse(out) as [{ files: { path: string }[] }];
+  return new Set(files.map((file) => file.path));
+}
+
 /** Every file under `dir`, relative to it and `/`-separated: a staged tree in the form `npm pack` reports */
 export function treeFiles(dir: string): Set<string> {
   return new Set(fs.readdirSync(dir, { recursive: true, encoding: 'utf-8' })
@@ -142,29 +169,30 @@ export function treeFiles(dir: string): Set<string> {
  * Writes `<pkgDir>/publish/`: the derived manifest and a copy of everything `files` names, which is the tree
  * npm publishes. Returns it.
  *
- * `files` is kept in the derived manifest rather than dropped, so packing is explicit: a tree with no `files`
- * falls back to gitignore rules, and this one sits inside a gitignored directory. Then it checks the result,
- * so a build that stages a short tree fails here rather than shipping a manifest pointing at nothing —
- * `@app/publish-checks` is the backstop, not the first line.
+ * `files` is kept in the derived manifest rather than dropped, so packing the staged tree is as explicit as
+ * packing the source tree: without it npm would fall back to gitignore rules, and this tree sits inside a
+ * gitignored directory. Then it checks the result, so a build that stages a short tree fails here rather than
+ * shipping a manifest pointing at nothing — `@app/publish-checks` is the backstop, not the first line.
  */
 export function stagePublishTree(pkgDir: string, manifest: Manifest): string {
   const name = String(manifest.name);
   const treeDir = path.join(pkgDir, PUBLISH_TREE);
-  const files = manifest.files;
-  if (!Array.isArray(files) || files.length === 0) {
-    throw new Error(`${name} names no "files", so there is nothing to publish. A staged tree copies what files names.`);
+  // The one thing npm's answer cannot give: with no `files` npm packs everything not ignored, so a manifest that
+  // lost the field would stage `src/` and `tests/` and publish them, and every check here would pass.
+  if (!Array.isArray(manifest.files) || manifest.files.length === 0) {
+    throw new Error(`${name} names no "files", so a staged tree would be its whole working directory. Name what ships.`);
   }
   fs.rmSync(treeDir, { recursive: true, force: true });
   fs.mkdirSync(treeDir, { recursive: true });
-  for (const entry of files) {
-    if (typeof entry !== 'string' || /[*?[\]{}]/.test(entry)) {
-      throw new Error(`${name}'s "files" entry ${JSON.stringify(entry)} is a pattern, and a staged tree copies paths. `
-        + 'Name the directory or the file, or teach stagePublishTree to expand it.');
-    }
-    const from = path.join(pkgDir, entry);
-    if (!fs.existsSync(from)) throw new Error(`${name}'s "files" names ${entry}, which this build did not write`);
-    fs.cpSync(from, path.join(treeDir, entry), { recursive: true });
+  // Exactly what npm would pack, so patterns, its force-included files and its default excludes are all its own
+  // business rather than re-implemented here
+  for (const file of workspacePackList(pkgDir)) {
+    const to = path.join(treeDir, file);
+    fs.mkdirSync(path.dirname(to), { recursive: true });
+    fs.cpSync(path.join(pkgDir, file), to);
   }
+  // After the copy, because `package.json` is in that list: this is the one file the staged tree does not share
+  // with the source tree
   const published = publishedManifest(manifest);
   fs.writeFileSync(path.join(treeDir, 'package.json'), `${JSON.stringify(published, null, 2)}\n`);
   const missing = missingPublishedPaths(published, treeFiles(treeDir));

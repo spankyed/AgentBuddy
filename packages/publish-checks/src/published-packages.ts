@@ -17,6 +17,14 @@ const execFileAsync = promisify(execFile);
 export { REPO_ROOT };
 
 /**
+ * Re-exported for the same reason: the file list `npm pack` would produce lives in
+ * `@abuddy/host/build/published-manifest`, where the package builds stage a tree from it, so the repo has one
+ * dry-run pack call site rather than one per caller. `installPublishedPackages()` below is the other operation —
+ * a real pack, producing tarballs to install.
+ */
+export { workspacePackList } from '@abuddy/host/build/published-manifest';
+
+/**
  * The packages `installPublishedPackages()` npm-packs into a consumer fixture, by the name a
  * consumer installs them as. Each is its *staged* tree (`publishedTreeDirs()`), the one npm publishes, so a
  * consumer fixture reads the derived manifest rather than the workspace one it is derived from.
@@ -68,29 +76,6 @@ export function installPublishedPackages(): string {
     execFileSync('tar', ['-xzf', path.join(root, filename), '-C', target, '--strip-components', '1']);
   }
   return root;
-}
-
-/**
- * The files `npm pack` would put in the tarball for the tree at `dir`, relative to the package root.
- *
- * `--dry-run`, so nothing is written and there is nothing to clean up: ~0.3s per package, against
- * `installPublishedPackages()`'s pack-and-extract, which a check on the manifest does not need. The file list is
- * npm's own answer rather than `files` re-implemented, so `.npmignore`, the default excludes and the always-included
- * files are whatever npm says they are.
- *
- * **An absolute path.** npm reads a relative one as a git shorthand: `npm pack packages/abuddy-sdk` fails in
- * `git ls-remote ssh://git@github.com/packages/abuddy-sdk.git`.
- */
-export function packedFiles(dir: string): Set<string> {
-  const out = execFileSync('npm', ['pack', '--dry-run', '--json', path.resolve(dir)], { stdio: ['ignore', 'pipe', 'ignore'] }).toString();
-  // A lifecycle script in the manifest runs before npm prints, and whatever it wrote is on this stdout first.
-  // Measured while mutation-checking the case below: a `prepack` of `echo hi` turned this into a parse error
-  // three cases deep instead of naming its cause here.
-  if (!out.trimStart().startsWith('[')) {
-    throw new Error(`npm pack printed something other than JSON for ${dir}; a lifecycle script in its manifest?\n${out}`);
-  }
-  const [{ files }] = JSON.parse(out) as [{ files: { path: string }[] }];
-  return new Set(files.map((file) => file.path));
 }
 
 /**

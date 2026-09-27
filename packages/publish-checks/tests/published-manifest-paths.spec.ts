@@ -3,7 +3,7 @@ import * as path from 'node:path';
 import { publishedTreeDirs } from '@abuddy/host/build/packages-built';
 import { declaredPathFields, manifestPaths, missingPublishedPaths, type Manifest } from '@abuddy/host/build/published-manifest';
 import { describe, expect, it } from 'vitest';
-import { PACKAGES_BUILT, packedFiles } from '../src/published-packages.ts';
+import { PACKAGES_BUILT, workspacePackList } from '../src/published-packages.ts';
 
 /**
  * A published tarball names only files it contains, and runs nothing on install.
@@ -23,7 +23,7 @@ const manifestOf = (dir: string) => JSON.parse(fs.readFileSync(path.join(dir, 'p
 /** Packing costs ~0.3s a package, and four cases ask about the same five tarballs */
 const packed = new Map<string, Set<string>>();
 const filesOf = (dir: string): Set<string> => {
-  const known = packed.get(dir) ?? packedFiles(dir);
+  const known = packed.get(dir) ?? workspacePackList(dir);
   packed.set(dir, known);
   return known;
 };
