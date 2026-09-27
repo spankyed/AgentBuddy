@@ -120,6 +120,29 @@ export const BUILD_UNITS: Record<string, BuildUnit> = {
   '@abuddy/cli': bundled('abuddy-cli', pkgFile('abuddy-cli', 'bin')),
 };
 
+/**
+ * Package directory → the directory inside it that npm publishes, in publish order (a dependency before its
+ * dependents). `@abuddy/ears`, `/sdk` and `/ui` publish from the package root, whose own `package.json` is the
+ * manifest; `@abuddy/cli` and `@abuddy/testing` publish a generated one from `dist/package`.
+ *
+ * Here rather than in `scripts/publish-packages.ts` because two callers need it and neither may import the
+ * other: that script is the command over this, and `@app/publish-checks` checks what it would publish. It is
+ * not `BUILD_UNITS` above — that is what a build reads to decide freshness, `@abuddy/host` included, which
+ * nothing publishes.
+ */
+export const PUBLISHED_TREES: Record<string, string> = {
+  'abuddy-ears': '.',
+  'abuddy-sdk': '.',
+  'abuddy-ui': '.',
+  'abuddy-testing': 'dist/package',
+  'abuddy-cli': 'dist/package',
+};
+
+/** Each published tree as an absolute path, by the package's directory name */
+export function publishedTreeDirs(): Record<string, string> {
+  return Object.fromEntries(Object.entries(PUBLISHED_TREES).map(([pkg, tree]) => [pkg, pkgFile(pkg, tree)]));
+}
+
 /** Stamps and the build lock, outside every output tree so a build can remove its own */
 const STAMP_DIR = repoFile('node_modules', '.cache', 'abuddy-packages-build');
 const LOCK_FILE = path.join(STAMP_DIR, 'packages-build.lock');

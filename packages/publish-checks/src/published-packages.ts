@@ -69,6 +69,23 @@ export function installPublishedPackages(): string {
 }
 
 /**
+ * The files `npm pack` would put in the tarball for the tree at `dir`, relative to the package root.
+ *
+ * `--dry-run`, so nothing is written and there is nothing to clean up: ~0.3s per package, against
+ * `installPublishedPackages()`'s pack-and-extract, which a check on the manifest does not need. The file list is
+ * npm's own answer rather than `files` re-implemented, so `.npmignore`, the default excludes and the always-included
+ * files are whatever npm says they are.
+ *
+ * **An absolute path.** npm reads a relative one as a git shorthand: `npm pack packages/abuddy-sdk` fails in
+ * `git ls-remote ssh://git@github.com/packages/abuddy-sdk.git`.
+ */
+export function packedFiles(dir: string): Set<string> {
+  const out = execFileSync('npm', ['pack', '--dry-run', '--json', path.resolve(dir)], { stdio: ['ignore', 'pipe', 'ignore'] });
+  const [{ files }] = JSON.parse(out.toString()) as [{ files: { path: string }[] }];
+  return new Set(files.map((file) => file.path));
+}
+
+/**
  * Compiles `files` (name → lines) as a consumer package in `dir`, with the chosen compiler and module
  * resolution: tsc's exit code and output.
  */

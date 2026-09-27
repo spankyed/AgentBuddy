@@ -8,16 +8,7 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { execFileSync } from 'node:child_process';
-
-/** Package directory → the directory npm publishes */
-const PACKAGES: Record<string, string> = {
-  // Before the SDK, which depends on it
-  'abuddy-ears': '.',
-  'abuddy-sdk': '.',
-  'abuddy-ui': '.',
-  'abuddy-testing': 'dist/package',
-  'abuddy-cli': 'dist/package',
-};
+import { publishedTreeDirs } from '@abuddy/host/build/packages-built';
 
 const dryRun = process.argv.includes('--dry-run');
 const repoRoot = path.resolve(import.meta.dirname, '..');
@@ -31,8 +22,7 @@ function isPublished(name: string, version: string): boolean {
   }
 }
 
-for (const [dir, publishDir] of Object.entries(PACKAGES)) {
-  const packageDir = path.join(repoRoot, 'packages', dir, publishDir);
+for (const packageDir of Object.values(publishedTreeDirs())) {
   const manifestPath = path.join(packageDir, 'package.json');
   if (!fs.existsSync(path.join(packageDir, 'dist'))) {
     throw new Error(`${path.relative(repoRoot, packageDir)} is not built. Run: npm run packages:build`);
