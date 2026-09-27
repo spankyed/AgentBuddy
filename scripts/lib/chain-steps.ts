@@ -186,7 +186,9 @@ const PACKAGES = fs.readdirSync(path.join(REPO_ROOT, 'packages'), { withFileType
  * every build.
  */
 const WORKSPACE_PARTS = [
-  'src', 'tests', 'scripts', 'etc', 'index.js',
+  // `templates` is the CLI's scaffold: pack code the specifier rules read and the CLI's own suite renders,
+  // so a change to one has to invalidate the steps that read the workspace
+  'src', 'tests', 'scripts', 'etc', 'templates', 'index.js',
   'package.json', 'tsconfig.json', 'tsconfig.package.json',
   'vitest.config.ts', 'vitest.integration.config.ts', 'vite.config.ts', 'vite.config.js',
   'eslint.config.ts', 'postcss.config.cjs', 'tailwind.config.ts', 'tsdown.config.ts', 'env.d.ts',
