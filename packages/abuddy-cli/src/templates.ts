@@ -8,6 +8,21 @@
 // The tree under `templates/pack/` mirrors a scaffolded pack, which is load-bearing rather than tidy: a
 // template's relative specifiers then resolve against real sibling files, so the own-module rule checks them
 // for real instead of by looking at extensions.
+// **Six of the scaffold's outputs are not template files, each for a reason that is not style:**
+//
+// - `MANIFEST_TEMPLATE` and `PACKAGE_JSON_TEMPLATE` are objects with computed keys and runtime-resolved version
+//   ranges, `JSON.stringify`d. As files they would be JSON with placeholders in key position — not valid JSON,
+//   and no rule here reads JSON anyway.
+// - `PACK_TSCONFIG` is imported *as an object* by `tests/_support/pack-builds.ts`, which spreads its
+//   `compilerOptions` to add a condition.
+// - `ENV_DTS_TEMPLATE` is a `.d.ts`, and electron-builder strips every `.d.ts` from the packaged app whatever
+//   its `files` array says — measured on a `--dir` build: zero remain in app.asar.
+// - `EXAMPLE_SEED_ROW_TEMPLATE` is markdown, and the same file list excludes `'!**/*.md'`.
+// - `GITIGNORE_TEMPLATE` would be a `templates/pack/.gitignore`, which npm reads as ignore rules for that
+//   subtree when packing — silently dropping template files.
+//
+// The register-array entries and import lines `add/{block,artifact,migration}.ts` build are not templates
+// either: they edit a file that is already there, through `updateRegisterArray`/`updateComponentMap`.
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 

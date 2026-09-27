@@ -1,6 +1,7 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { renderTemplate } from '../templates.ts';
+import { toPascalCase } from './add/templates';
 import * as readline from 'node:readline';
 import semver from 'semver';
 import { resolveDeps } from './generate';
@@ -229,72 +230,6 @@ export function scaffoldUnitTestSetup(root: string): UnitTestSetup {
   return { created, keptConfig, addedDependencies, upgrades };
 }
 
-// Build-time facets only (no runtime handlers or FE): bundled to build/steps.build.mjs so packs
-// that depend on this one validate their flows with this pack's step code
-
-const EXAMPLE_TEST_TEMPLATE = (name: string) => {
-  const pascalName = name.split('-').map(w => w[0].toUpperCase() + w.slice(1)).join('');
-  return `import { describe, it, expect } from 'vitest';
-import { importSeeds } from '@abuddy/testing/harness';
-import { EARS, findAll } from '#generated/ears.ts';
-
-describe('${name}', () => {
-  it('should have a valid manifest', async () => {
-    const manifest = await import('../abuddy.json', { with: { type: 'json' } });
-    expect(manifest.default.id).toBe('${name}');
-  });
-
-  it('seeds the examples entry', async () => {
-    expect(await importSeeds({ keys: ['${SEED_ROWS_KEY}'] })).toEqual({ ${SEED_ROWS_KEY}: { created: 1, updated: 0, skipped: 0 } });
-    expect(findAll(EARS.Entity.${pascalName}).map((row) => row.title)).toEqual(['Hello']);
-  });
-});
-`;
-};
-
-// Publishes the GitHub release when `abuddy release` pushes a v* tag
-export const RELEASE_WORKFLOW_TEMPLATE = `name: Release
-
-on:
-  push:
-    tags: ['v*']
-
-permissions:
-  contents: write
-  id-token: write
-  attestations: write
-
-jobs:
-  release:
-    # AgentBuddy Beta builds are macOS arm64; the build reads built-in packs (e.g. default-setup) from one
-    runs-on: macos-14
-    env:
-      ABUDDY_APP: beta
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 23
-          cache: npm
-
-      - run: npm ci
-
-      - name: Tag matches abuddy.json version
-        run: test "v$(node -p "require('./abuddy.json').version")" = "$GITHUB_REF_NAME"
-
-      - run: npx abuddy build --release
-
-      - run: npx abuddy pack --out .abuddy/release
-
-      - uses: actions/attest-build-provenance@v2
-        with:
-          subject-path: .abuddy/release/*.tgz
-
-      - run: npx abuddy release publish --dir .abuddy/release
-        env:
-          GITHUB_TOKEN: \${{ secrets.GITHUB_TOKEN }}
-`;
 
 const GITIGNORE_TEMPLATE = `node_modules/
 dist/
@@ -338,7 +273,7 @@ export async function init(args: string[]) {
   fs.writeFileSync(path.join(dir, 'tsconfig.json'), TSCONFIG_TEMPLATE);
   fs.writeFileSync(path.join(dir, '.gitignore'), GITIGNORE_TEMPLATE);
   fs.mkdirSync(path.join(dir, '.github', 'workflows'), { recursive: true });
-  fs.writeFileSync(path.join(dir, '.github', 'workflows', 'release.yml'), RELEASE_WORKFLOW_TEMPLATE);
+  fs.writeFileSync(path.join(dir, '.github', 'workflows', 'release.yml'), renderTemplate('pack/github/workflows/release.yml'));
   fs.writeFileSync(path.join(dir, 'src', 'env.d.ts'), ENV_DTS_TEMPLATE);
   fs.writeFileSync(
     path.join(dir, 'src', 'extensions', 'steps', 'register.ts'),
@@ -348,7 +283,7 @@ export async function init(args: string[]) {
   scaffoldUnitTestSetup(dir);
   fs.writeFileSync(
     path.join(dir, 'tests', `${name}.spec.ts`),
-    EXAMPLE_TEST_TEMPLATE(name),
+    renderTemplate('pack/tests/example.spec.ts', { NAME: name, SEED_KEY: SEED_ROWS_KEY, PASCAL: toPascalCase(name) }),
   );
 
   const initManifest = readManifest(dir);

@@ -8,22 +8,15 @@ import { scaffoldUnitTestSetup } from './init';
 const PLAYWRIGHT_RANGE = '^1.54.1';
 
 
+/**
+ * Two files rather than one template with a placeholder: the difference is two *statements* — real calls when
+ * the pack has a plugin, commented-out ones when it does not — and a placeholder in a statement slot would stop
+ * the template parsing as TypeScript, which is what lets every rule read it (`src/templates.ts`).
+ */
 function sampleTest(pluginId: string | undefined): string {
-  const waitLine = pluginId
-    ? `  await app.waitForPlugin('${pluginId}');\n  await app.navigate('${pluginId}');\n`
-    : '  // await app.waitForPlugin(\'your-plugin-id\');\n  // await app.navigate(\'your-plugin-id\');\n';
-
-  return `import { test, expect } from '@abuddy/testing';
-
-test('pack loads and renders', async ({ app }) => {
-${waitLine}  await app.screenshot('pack-default');
-});
-
-test('app reaches connected state', async ({ app }) => {
-  const state = await app.getState();
-  expect(state).toEqual({ running: 'connected' });
-});
-`;
+  return pluginId
+    ? renderTemplate('pack/tests/e2e/smoke.spec.ts', { PLUGIN_ID: pluginId })
+    : renderTemplate('pack/tests/e2e/smoke-without-plugin.spec.ts');
 }
 
 export async function initTests(_args: string[]): Promise<void> {

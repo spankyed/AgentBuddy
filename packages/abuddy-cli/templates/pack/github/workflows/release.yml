@@ -1,0 +1,41 @@
+name: Release
+
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: write
+  id-token: write
+  attestations: write
+
+jobs:
+  release:
+    # AgentBuddy Beta builds are macOS arm64; the build reads built-in packs (e.g. default-setup) from one
+    runs-on: macos-14
+    env:
+      ABUDDY_APP: beta
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 23
+          cache: npm
+
+      - run: npm ci
+
+      - name: Tag matches abuddy.json version
+        run: test "v$(node -p "require('./abuddy.json').version")" = "$GITHUB_REF_NAME"
+
+      - run: npx abuddy build --release
+
+      - run: npx abuddy pack --out .abuddy/release
+
+      - uses: actions/attest-build-provenance@v2
+        with:
+          subject-path: .abuddy/release/*.tgz
+
+      - run: npx abuddy release publish --dir .abuddy/release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
