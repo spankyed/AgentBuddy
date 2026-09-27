@@ -2,6 +2,7 @@ import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { REPO_ROOT } from '../../src/build/packages-built.ts';
 import { discoverBuiltInPacks, discoverPacks, enabledExternalPacks, installedPacks } from '../../src/packs/discovery.ts';
 import { writeInstalledPacks } from '../../src/packs/installed.ts';
 
@@ -109,5 +110,18 @@ describe('discoverBuiltInPacks', () => {
     fs.mkdirSync(path.join(packagesDir, 'api'));
 
     expect(discoverBuiltInPacks(packagesDir)).toEqual([]);
+  });
+
+  /**
+   * Over this repo, not a fixture. Every other case here writes the tree it then reads, so all of them would
+   * pass against a discovery that cannot read `packages/` at all — and the renderer's Vite and Tailwind configs
+   * call this to decide which built-in packs the app is built with. One returning nothing gives an app with no
+   * built-in packs and no error anywhere.
+   */
+  it('finds this checkout\'s built-in packs', () => {
+    const found = discoverBuiltInPacks(path.join(REPO_ROOT, 'packages'));
+
+    expect(found.map((pack) => pack.id), 'discovery found nothing in this repo, which is not a tree with no packs')
+      .toContain('default-setup');
   });
 });

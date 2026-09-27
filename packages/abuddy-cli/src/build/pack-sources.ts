@@ -200,6 +200,3 @@ export function readSource(file: string): SourceView {
   return view;
 }
 
-export function* readSources(files: Iterable<string>): Generator<SourceView> {
-  for (const file of files) yield readSource(file);
-}
