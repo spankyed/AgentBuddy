@@ -16,7 +16,7 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import ts from 'typescript';
-import { BUILD_UNITS, inputFiles, NOT_A_BUILD_INPUT, REPO_ROOT, type BuildUnit } from '@abuddy/host/build/packages-built';
+import { BUILD_UNITS, buildScriptFor, inputFiles, NOT_A_BUILD_INPUT, REPO_ROOT, type BuildUnit } from '@abuddy/host/build/packages-built';
 import { CHAIN_STEPS, INTEGRATION_SUITES, SUITE_READS, suiteInputs, type ChainStep } from '../../../scripts/lib/chain-steps.ts';
 import { UNIT_SUITES, type UnitSuite } from '../../../scripts/lib/unit-suites.ts';
 import { reachableText, rootScripts } from '../../../scripts/lib/npm-scripts.ts';
@@ -467,27 +467,14 @@ describe('a build unit declares the modules its build script imports', () => {
   };
 
   /**
-   * The script a workspace's `build:package` runs, from its own `package.json` — **not** from the unit's
-   * declared inputs, which are the thing under test here.
-   *
-   * Deriving the entry from that list made this case vacuous, and the mutation found it: drop
+   * The script to walk from, `buildScriptFor` (`@abuddy/host/build/packages-built`) — a workspace's own
+   * `build:package`, and deliberately **not** the unit's declared inputs, which are the thing under test.
+   * Deriving the entry from that list made this case vacuous, and a mutation found it: drop
    * `scripts/build-package.ts` from `compiled()` and there was no entry left to walk from, so the check passed
-   * for having nothing to check. The same npm-script text the per-step case above reads is the independent
-   * answer.
+   * for having nothing to check. `package-freshness.spec.ts` reads the same function to decide which units
+   * inline host source, so the two cannot disagree about how a unit is built.
    */
-  const buildScriptOf = (workspace: string): string => {
-    const dir = fs.readdirSync(path.join(REPO_ROOT, 'packages'))
-      .find((name) => {
-        const manifest = path.join(REPO_ROOT, 'packages', name, 'package.json');
-        return fs.existsSync(manifest) && JSON.parse(fs.readFileSync(manifest, 'utf-8')).name === workspace;
-      });
-    expect(dir, `no packages/* declares the name ${workspace}`).toBeDefined();
-    const { scripts } = JSON.parse(fs.readFileSync(path.join(REPO_ROOT, 'packages', dir!, 'package.json'), 'utf-8')) as
-      { scripts?: Record<string, string> };
-    const named = /(scripts\/[\w./-]+\.ts)/.exec(scripts?.['build:package'] ?? '')?.[1];
-    expect(named, `${workspace}'s build:package names no script under scripts/`).toBeDefined();
-    return path.join(REPO_ROOT, named!);
-  };
+  const buildScriptOf = (workspace: string): string => path.join(REPO_ROOT, buildScriptFor(workspace));
 
   /**
    * Not `coveredBy` above: that one takes a chain step, whose inputs are repo-relative by design, and joins
@@ -510,6 +497,23 @@ describe('a build unit declares the modules its build script imports', () => {
     expect(missing,
       `${workspace}'s build imports these and does not declare them, so editing one leaves its output stale while its stamp reads fresh`)
       .toEqual([]);
+  });
+
+  /**
+   * An entry nobody reaches is a claim nobody revisits, which every other exception table in this repo reports.
+   *
+   * Two ways to qualify, because the two entries qualify differently: `packages-built.ts` is *imported* by a
+   * build script, and `scripts/ensure-packages-built.ts` is the command that calls the builds — no build script
+   * imports it, and `packages:ensure` declares it as its own input. An entry that is neither is describing
+   * nothing. Getting this predicate wrong is how it was first written: requiring an import reported the command.
+   */
+  it('lists no NOT_A_BUILD_INPUT entry that nothing reaches', () => {
+    const imported = new Set(Object.keys(BUILD_UNITS).flatMap((workspace) => closureOf([buildScriptOf(workspace)])));
+    const declared = new Set(CHAIN_STEPS.flatMap((step) => step.inputs));
+    const orphans = Object.keys(NOT_A_BUILD_INPUT)
+      .filter((file) => !imported.has(file) && !declared.has(file))
+      .map((file) => `${file}: no build script imports it and no chain step declares it`);
+    expect(orphans, 'an exception for something nothing reads describes nothing').toEqual([]);
   });
 
   /** What stops the case above passing by walking nothing */

@@ -3,7 +3,7 @@ import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
-import { BUILD_UNITS, CHECKOUT_MARKER, NOT_A_BUILD_INPUT, STAMP_VERSION, fingerprintInputs, fingerprintUnit, staleMessage, stampFile, stampedBuild, stampedRun, stampedRunAll, type BuildIntent, type BuildUnit, unitStaleReason, withBuildLock } from '@abuddy/host/build/packages-built';
+import { BUILD_UNITS, buildScriptFor, CHECKOUT_MARKER, fingerprintInputs, fingerprintUnit, inputFiles, NOT_A_BUILD_INPUT, staleMessage, STAMP_VERSION, stampedBuild, stampedRun, stampedRunAll, stampFile, unitStaleReason, withBuildLock, type BuildIntent, type BuildUnit } from '@abuddy/host/build/packages-built';
 import { PACKED_PACKAGES, REPO_ROOT } from '@app/publish-checks';
 
 /**
@@ -153,14 +153,30 @@ describe('the stamp protocol', () => {
   // These modules decide whether to build; none can change what a build emits. The list is
   // `NOT_A_BUILD_INPUT`, shared with `chain-inputs.spec.ts`' closure guard, which would otherwise demand
   // exactly what this refuses — two lists here would be two answers to one question.
+  //
+  // Asked over **resolved** files rather than the declared strings, because an input may be a directory. This
+  // compared declarations until 2026-09-27, and a declaration of the whole `abuddy-host/src/build` then
+  // satisfied it while violating it: the directory contains `packages-built.ts` without equalling it, so the
+  // refusal and the guard demanding the same file coexisted for two commits. `inputFiles` carries the rule.
   it('does not watch the code that decides freshness', () => {
-    const watched = new Set(Object.values(BUILD_UNITS).flatMap((unit) => [...unit.inputs]));
     expect(Object.keys(NOT_A_BUILD_INPUT).length, 'an empty list makes this case vacuous').toBeGreaterThan(0);
-    for (const rule of Object.keys(NOT_A_BUILD_INPUT)) {
-      expect(watched, rule).not.toContain(path.join(REPO_ROOT, rule));
-    }
-    // @abuddy/testing and @abuddy/cli still watch all of abuddy-host/src, which their bundles inline
-    for (const workspace of ['@abuddy/testing', '@abuddy/cli']) {
+    // A bundle that inlines @abuddy/host emits that source, so watching it is right — derived from the
+    // workspace's own `build:package` rather than naming the two units, which is a fact about how they build
+    const inlinesHost = (workspace: string) => buildScriptFor(workspace) === 'scripts/bundle-package.ts';
+    const offences = Object.keys(BUILD_UNITS).flatMap((workspace) => {
+      if (inlinesHost(workspace)) return [];
+      const resolved = new Set(BUILD_UNITS[workspace].inputs.flatMap((input) => inputFiles(input)));
+      return Object.keys(NOT_A_BUILD_INPUT)
+        .filter((rule) => resolved.has(rule))
+        .map((rule) => `${workspace} watches ${rule} — ${NOT_A_BUILD_INPUT[rule]}`);
+    });
+    expect(offences).toEqual([]);
+
+    // The other direction, for the units that are exempt: they watch all of abuddy-host/src *because* they
+    // inline it, so the exemption above is not a hole they could fall through by declaring nothing
+    const bundles = Object.keys(BUILD_UNITS).filter(inlinesHost);
+    expect(bundles.length, 'no unit inlines host, so the exemption above is vacuous').toBeGreaterThan(0);
+    for (const workspace of bundles) {
       expect(new Set(BUILD_UNITS[workspace].inputs), workspace).toContain(path.join(REPO_ROOT, 'packages', 'abuddy-host', 'src'));
     }
   });

@@ -133,6 +133,29 @@ export const BUILD_UNITS: Record<string, BuildUnit> = {
 };
 
 /**
+ * The script a workspace's `build:package` runs, repo-relative — read from that workspace's own manifest.
+ *
+ * **Not from `BUILD_UNITS[workspace].inputs`**, and that is the whole point of it being here. Two checks ask
+ * questions *about* those inputs: one walks the build script's imports and requires them to be declared, and one
+ * refuses `NOT_A_BUILD_INPUT` for a unit whose build does not inline host source. Deriving the script from the
+ * list under test made the first vacuous — dropping an input removed the entry to walk from, and the case passed
+ * for having nothing to check. The manifest is the independent answer.
+ */
+export function buildScriptFor(workspace: string): string {
+  const packages = path.join(REPO_ROOT, 'packages');
+  for (const dir of fs.readdirSync(packages)) {
+    const manifest = path.join(packages, dir, 'package.json');
+    if (!fs.existsSync(manifest)) continue;
+    const pkg = JSON.parse(fs.readFileSync(manifest, 'utf-8')) as { name?: string; scripts?: Record<string, string> };
+    if (pkg.name !== workspace) continue;
+    const named = /(scripts\/[\w./-]+\.ts)/.exec(pkg.scripts?.['build:package'] ?? '')?.[1];
+    if (named === undefined) throw new Error(`${workspace}'s build:package names no script under scripts/`);
+    return named;
+  }
+  throw new Error(`no packages/* declares the name ${workspace}`);
+}
+
+/**
  * Modules a build script imports that are deliberately **not** its inputs, and why.
  *
  * Each decides *whether* to build; none can change what a build emits. Watching one would rebuild every
@@ -187,9 +210,17 @@ const LOCK_POLL_MS = 200;
 export const stampFile = (workspace: string): string => path.join(STAMP_DIR, `${workspace.replace(/[@/]/g, '-').replace(/^-/, '')}.json`);
 
 /**
- * Every file under a path, repo-relative — the walk a fingerprint is taken over. Exported because the
- * chain's input-coverage guard has to resolve a step's inputs exactly as a fingerprint does: a guard that
- * walked differently would pass files a fingerprint never hashed.
+ * Every file under a path, repo-relative — the walk a fingerprint is taken over.
+ *
+ * Exported because **a claim about what a unit or a step reads is evaluated over resolved files, never over the
+ * declared strings**: a guard that walked differently would pass files a fingerprint never hashed, and an input
+ * may be a directory, so a claim compared as a string says nothing about what the directory holds.
+ *
+ * The negative direction is where that matters, and it cost two commits to learn. `package-freshness.spec.ts`
+ * refuses `packages-built.ts` as an input while `chain-inputs.spec.ts`' closure guard demanded it, and the
+ * contradiction was invisible because the refusal compared declared strings: a declaration of the whole
+ * `src/build` directory contains the file without equalling it, so the check passed with its intent violated. A
+ * broader declaration must never be the thing that silences a "must not read this" rule.
  */
 export function inputFiles(target: string, out: string[] = []): string[] {
   let stat: fs.Stats;
