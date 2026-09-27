@@ -1,0 +1,180 @@
+# The Contract-Leaf Rule: What It Guards, And The Gap In It
+
+Surveyed 2026-09-27 at `565319d91` on `AS/alias-simplification`. `findContractLeafImports`
+(`scripts/check-import-specifiers.ts:706-787`) reports nothing over this repo and has no live subject outside its
+spec's fixtures. Two separate investigations concluded it should be deleted. **Both were wrong**, and this doc
+exists mostly so the third does not repeat them.
+
+To pick this up:
+
+```
+Read docs/plans/contract-leaf-rule.md, then implement Phase 1. The Decisions are settled — do not reopen the
+question of deleting the rule without reading "Why deleting it is wrong" first, because the two obvious
+arguments for deletion are both recorded there as refuted, with the measurements.
+```
+
+---
+
+## What the rule is for
+
+From the origin commit, `3d79fed34` (2026-09-23, *"a plugin declares one contract — its state and its inbox"*):
+
+> Codegen reads it with `declaredTypeOf` over `checker.getDeclaredTypeOfSymbol` rather than resolving a value,
+> which is what lets it live outside `fe/plugin.ts`: reading it there pulls in the machine, whose imports cycle
+> back through `#generated/events`.
+
+Two properties, not one:
+
+1. **The cycle.** `#generated/events` is generated *from* the contracts, and both actors import it. Reading a
+   contract anywhere its actor is reachable closes the loop.
+2. **The cost.** `generate-entries.ts:433`: *"putting the machines in the program would parse and bind every one
+   of them — and their whole closure, XState and Vue included — for nothing."* Nothing else measures this.
+
+Three places assert the invariant to readers and pack authors: `packages/abuddy-sdk/CLAUDE.md:61` (which names
+this rule as the guard), and `manifest-schema.ts:130` and `:138` (the `.describe()` strings a pack author sees).
+`docs/goals/README.md:218-230` is the repo's own policy that an invariant with a criterion has a guard.
+
+## The five claims, and what else covers each
+
+| # | Line | Forbids | Covered elsewhere? |
+|---|---|---|---|
+| 1 | `:764` (`viaLeaf`) | the leaf importing any `#generated/*` but `types` and `ears` | **nothing**, in a warm tree |
+| 2 | `:764` (closure) | any module the leaf reaches importing `#generated/events` or `#generated/fe` | the reader, **partially** — see below |
+| 3 | `:771` | the leaf importing *any* other feature, `be/` included | **nothing** |
+| 4 | `:775` | anything in the closure reaching a declared `plugin.entry`/`system.entry` | **nothing** |
+| 5 | `:780` | the leaf importing a file named `state`/`system` | **nothing** outside the rule |
+
+Claim 3 is intended, not an artefact: the origin commit records hitting it for real — *"seven inboxes were
+`Extract<>` over their machine's union and flows' reached another feature's be/. All are respelled
+structurally"* — and chose to eliminate the reach rather than allow it.
+
+## Why deleting it is wrong
+
+**The argument was: codegen now refuses the failure itself,** at `module-exports.ts:158` — *"a type it names
+didn't resolve … Read as it stands, it would contribute no events at all"*. So the shape rule is a proxy whose
+authority has arrived, like `packages:ensure`'s second cache or the electron-builder string-offset check, both
+retired this week.
+
+**It is false, for three reasons, each measured:**
+
+- `checkResolved` (`module-exports.ts:153-159`) tests `type.flags & (Any | Unknown)` on the **whole** type. A
+  contract with one collapsed member is an anonymous object type, not `any`, and passes. Three narrower guards
+  exist (`:184` `outgoing`, `:196` `inbox`, `:213` each event member) — a collapsed `context`/`state` is caught
+  by none.
+- It only fires in a **cold tree**. With `src/__generated__/` present from an earlier run — every tree
+  `abuddy build` sees after the first — the imports resolve and nothing throws.
+- A **value** import of `#generated/events` never affects the declared type, so it never collapses one. That is
+  the rule's own fixture shape (`import { untypedBroadcastToPlugin } from '#generated/events'`).
+
+**And that is why the mutations looked harmless.** On 2026-09-26 two mutations of
+`tests/fixtures/external-pack/src/features/memos/be/contract.ts` — a value import of `#generated/events`, then a
+hard value cycle importing `memosSpec` back from `./system.ts` — each built from a cold tree with exit 0 and
+byte-identical `src/__generated__/events.ts` and `dist/types/pack-types.d.ts`. That was read as *"the authority
+catches the harmful case"*. It actually meant *"a value import is harmless in that state"*. Different claims, and
+the deletion argument rested on conflating them.
+
+**The second wrong turn** was reading claim 3 as an artefact because `CLAUDE.md:442` documents the cross-feature
+boundary as another feature's *frontend* only, and 0 of 26 contracts in the tree reach another feature. The origin
+commit settles it the other way, above.
+
+## The live defect this turned up
+
+**Claim 3 barely works.** `resolveFrom` (`:738-742`) resolves `@/…` and `./ ../` and returns `undefined` for
+anything else, which is silently skipped. Measured in `packages/default-setup/src`:
+
+```
+#features/   188 occurrences
+@/features/    0
+```
+
+So a contract written `import type { T } from '#features/threads/be/types.ts'` violates claim 3 **and is not
+reported** — and the closure walk stops there too, so claims 2, 4 and 5 are bypassed for everything beyond that
+hop. No contract leaf uses `#features/` today, so nothing is missed *now*; the rule is one ordinary import away
+from being silent about the thing it exists for.
+
+`readSubpathImports` (`@abuddy/host/build/subpath-imports.ts:25`) is the resolver for a pack's own `imports` map,
+and `pack-rules.ts:272` already uses it for exactly this. That is the fix, not a new resolver.
+
+---
+
+## Phase 1 — resolve the pack's own `imports` map
+
+`resolveFrom` takes the pack's `imports` map through `readSubpathImports(path.dirname(src))`, so `#features/…`,
+`#generated/…` and any other subpath a pack declares resolve to files. Note the rule already string-matches
+`#generated/` before resolution (`:762`), and that branch must keep precedence — it distinguishes `types`/`ears`
+from `events`/`fe`, which a resolved path cannot.
+
+**Done when:** a fixture contract importing `#features/<other>/be/types.ts` is reported by claim 3; a fixture
+whose leaf reaches `#generated/events` through a `#features/` hop is reported by claim 2; both fail before the
+change and pass after; `npx tsx scripts/check-import-specifiers.ts --rule findContractLeafImports` still reports
+nothing over this repo.
+
+## Phase 2 — the cold-tree case the reader's own spec lacks
+
+`packages/abuddy-sdk/tests/build/declared-type-of.spec.ts` has 14 cases; all five "unresolved" ones are the
+simple shape (a direct `import type … from '@not/installed'`). None covers *the contract's type depending on a
+local module that imports a `#generated/*` which does not exist yet* — the one route where the reader and this
+rule overlap.
+
+Its header also says *"These are the four shapes that reach the readers"* over five cases; fix that while there.
+
+Fixture note: that file's trees have no `package.json` `imports` map, so a `#generated/*` specifier will not
+resolve by that route — use a relative `./__generated__/events.ts` that is absent, or add an `imports` map and a
+tsconfig.
+
+**Done when:** the case exists and fails if `checkResolved`'s throw is removed. **If it turns out the refusal
+does *not* fire on that route, say so in the doc comment** — that is a real finding about the overlap, not a
+failure of the phase.
+
+## Phase 3 — read a syntax tree
+
+The rule still matches `ANY_SPECIFIER` over file text, so it inherits the shapes demonstrated for
+`findCrossFeatureImports` on 2026-09-27 (`c6f88f31e`): a commented-out import, one in a template literal, one in a
+`.vue` `<template>` or `<style>`, all reported; a module path in a `vi.mock` missed. Contract leaves are `.ts`, so
+the `.vue` shapes do not apply, but the comment and template-literal ones do.
+
+The reader is `abuddy-cli/src/build/pack-sources.ts`; `readSource(file).specifiers` gives every specifier with its
+line, and the script already imports it. The closure walk needs no byte offsets — `goal-one-rule-set.md:305`
+claims it does, which is wrong twice: it also says this rule *"takes `view.code` from the reader"*, where the code
+calls `fs.readFileSync` directly.
+
+**Done when:** the 9 existing cases in `import-specifiers.integration.spec.ts:682-803` pass untouched (they assert
+exact `file:line: specifier` strings, so a changed line or order fails), plus a case per false-positive shape.
+
+## Phase 4 — record the division of labour
+
+In the rule's doc comment: the reader catches a whole-type collapse in a cold tree; this rule catches the shape in
+every tree, and claims 1, 3, 4 and 5 have no other guard. State the cost property (`generate-entries.ts:433`)
+as the second reason the rule exists, since the cycle is the only one currently written down.
+
+---
+
+## Decisions — settled, do not reopen
+
+- **The rule stays.** Four of its five claims have no other guard in a warm tree, and two documented invariants
+  plus a pack-facing schema description name it.
+- **Claim 3 stays in this rule.** Not folded into `findCrossFeatureImports`: that rule's subject is another
+  feature's *frontend*, which `CLAUDE.md:442` documents as the boundary. Widening it to `be/` would codify a
+  stricter architecture as a side effect of a cleanup, which is a decision for the user, not a refactor.
+- **No claim is deleted for having no live subject.** `DECLARES_SOURCE_BY_DESIGN` is empty on purpose and kept;
+  absence of a subject is not absence of a guard's value.
+
+## Verification
+
+Per phase above, plus: `npm run typecheck`; `npm run test:integration -w @app/repo-checks` (the 61-case
+`import-specifiers.integration.spec.ts`, 9 of them this rule's); `npx vitest run --root packages/abuddy-sdk
+tests/build/declared-type-of.spec.ts`; `npm run test:external-pack:contract`; `npm run chain`.
+
+`spec-cost` bookkeeping if a spec's cost crosses 1.5s/2.5s: `npm run spec-cost:update -- --suite repo-checks` or
+`-- --suite abuddy-sdk`, on an idle machine.
+
+## What was verified, and what was not
+
+**Verified:** all 26 contract modules' imports in `default-setup` and the fixtures (none reaches another feature);
+`#features/` 188 against `@/features/` 0; `resolveFrom`'s two branches; that `readSubpathImports` exists and
+`pack-rules.ts` uses it; that the rule reports nothing today; `checkResolved`'s condition and the three narrower
+guards; the origin commit's account of claim 3.
+
+**Not verified:** whether the reader's refusal actually fires on the indirect cold-tree route. Phase 2 is the
+experiment that settles it, and its outcome changes only what Phase 4's comment says — not whether the rule
+stays.
