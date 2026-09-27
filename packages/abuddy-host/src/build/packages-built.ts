@@ -94,7 +94,15 @@ function compiled(pkg: string, ...extraInputs: string[]): BuildUnit {
   return {
     // The build scripts live in the repo's scripts/, not the package's: a package's own scripts are its
     // other tooling (the SDK's schema generator) and no input of this build, bar @abuddy/ui's exports
-    inputs: [...SHARED_INPUTS, repoFile('scripts', 'lib', 'published-imports.ts'), repoFile('scripts', 'build-package.ts'), ...extraInputs,
+    //
+    // `abuddy-host/src/build` because that is where the build script's imports lead: `runPackageBuild` from
+    // this module and `stagePublishTree`, which derives the manifest it stages. The directory rather than the
+    // three files, so the next sibling it reaches is covered on the day it does; `chain-inputs.spec.ts` walks
+    // the script's imports and names anything outside it. 1,376 lines, against the alternative of a list that
+    // was already missing all three — one of them this file, so a change to the stamp protocol did not
+    // invalidate the stamps it defines.
+    inputs: [...SHARED_INPUTS, repoFile('scripts', 'lib', 'published-imports.ts'), repoFile('scripts', 'build-package.ts'),
+      pkgFile('abuddy-host', 'src', 'build'), ...extraInputs,
       pkgFile(pkg, 'src'),
       pkgFile(pkg, 'package.json'), pkgFile(pkg, 'tsconfig.json'), pkgFile(pkg, 'tsconfig.package.json')],
     outputs: [pkgFile(pkg, 'dist'), pkgFile(pkg, PUBLISH_TREE)],

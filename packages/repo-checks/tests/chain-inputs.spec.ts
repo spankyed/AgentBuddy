@@ -7,11 +7,16 @@
 // It asks git rather than walking the tree, so an ignored file is not mistaken for an untracked source, and
 // resolves a step's inputs through `inputFiles` — the walk a fingerprint is taken over — so the guard and
 // the cache key cannot disagree about what an input covers.
+//
+// `BUILD_UNITS` gets the same treatment at the bottom of this file, and used to be excused from it here on
+// the grounds that it "covers five packages whose builds read their own trees". That was not true: a build
+// script imports modules, and three units were missing the one their staging is derived from.
 import { execFileSync } from 'node:child_process';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { inputFiles, REPO_ROOT } from '@abuddy/host/build/packages-built';
+import ts from 'typescript';
+import { BUILD_UNITS, inputFiles, REPO_ROOT, type BuildUnit } from '@abuddy/host/build/packages-built';
 import { CHAIN_STEPS, INTEGRATION_SUITES, SUITE_READS, suiteInputs, type ChainStep } from '../../../scripts/lib/chain-steps.ts';
 import { UNIT_SUITES, type UnitSuite } from '../../../scripts/lib/unit-suites.ts';
 import { poolUnitFor } from '../../../scripts/lib/unit-pool.ts';
@@ -401,5 +406,104 @@ describe('a step whose runner reads stamps declares forceArgs', () => {
   it('lists no exception that has stopped reading stamps', () => {
     const stale = Object.keys(KEEPS_ITS_CACHE_UNDER_ALL).filter((name) => !readsStamps.some((step) => step.name === name));
     expect(stale, 'these no longer consult a stamp store; drop them').toEqual([]);
+  });
+});
+
+/**
+ * A build unit declares the modules its build script imports.
+ *
+ * `BuildUnit.inputs` is a hand-written list of what a build reads, and a list of someone else's inputs is a
+ * guess — the same shape that let `api:stamp` pass over an input nobody had listed. Measured 2026-09-27: the
+ * three `compiled()` units declared `scripts/build-package.ts` and not
+ * `@abuddy/host/build/published-manifest`, which it imports and which derives the manifest they stage. Editing
+ * that module left all three staged trees stale while every stamp read fresh.
+ *
+ * Derived, so it holds for the next module too: follow the script's imports and require the closure to be
+ * inside what the unit declares. A subset check, like `gives every step the files its own script names` above —
+ * it proves a unit reads what it declares, never that it declares nothing extra, which over-declaring is the
+ * harmless direction.
+ */
+describe('a build unit declares the modules its build script imports', () => {
+  /** The options `scripts/tsconfig.json` compiles these scripts with, so the walk resolves as they do */
+  const RESOLUTION: ts.CompilerOptions = {
+    module: ts.ModuleKind.NodeNext,
+    moduleResolution: ts.ModuleResolutionKind.NodeNext,
+    // How a repo script reaches `@abuddy/host/build/…` at all: the condition names each package's source
+    customConditions: ['@abuddy/source'],
+    allowImportingTsExtensions: true,
+  };
+
+  /** A module of this repo, as against a dependency or a built copy of one */
+  const firstParty = (file: string): boolean =>
+    file.startsWith(REPO_ROOT + path.sep) && !file.split(path.sep).includes('node_modules');
+
+  /**
+   * Every first-party module these entries import, transitively, repo-relative.
+   *
+   * `ts.preProcessFile` rather than a parse: it is TypeScript's own scanner for exactly this question, and it
+   * reads `import`, `export … from`, `import()` and `require()` without building a program.
+   */
+  const closureOf = (entries: readonly string[]): string[] => {
+    const seen = new Set<string>();
+    const queue = [...entries];
+    while (queue.length > 0) {
+      const file = queue.pop()!;
+      if (seen.has(file) || !fs.existsSync(file)) continue;
+      seen.add(file);
+      for (const { fileName } of ts.preProcessFile(fs.readFileSync(file, 'utf-8'), true, true).importedFiles) {
+        const resolved = ts.resolveModuleName(fileName, file, RESOLUTION, ts.sys).resolvedModule?.resolvedFileName;
+        if (resolved !== undefined && firstParty(resolved)) queue.push(resolved);
+      }
+    }
+    return [...seen].map((file) => path.relative(REPO_ROOT, file));
+  };
+
+  /**
+   * The script a workspace's `build:package` runs, from its own `package.json` — **not** from the unit's
+   * declared inputs, which are the thing under test here.
+   *
+   * Deriving the entry from that list made this case vacuous, and the mutation found it: drop
+   * `scripts/build-package.ts` from `compiled()` and there was no entry left to walk from, so the check passed
+   * for having nothing to check. The same npm-script text the per-step case above reads is the independent
+   * answer.
+   */
+  const buildScriptOf = (workspace: string): string => {
+    const dir = fs.readdirSync(path.join(REPO_ROOT, 'packages'))
+      .find((name) => {
+        const manifest = path.join(REPO_ROOT, 'packages', name, 'package.json');
+        return fs.existsSync(manifest) && JSON.parse(fs.readFileSync(manifest, 'utf-8')).name === workspace;
+      });
+    expect(dir, `no packages/* declares the name ${workspace}`).toBeDefined();
+    const { scripts } = JSON.parse(fs.readFileSync(path.join(REPO_ROOT, 'packages', dir!, 'package.json'), 'utf-8')) as
+      { scripts?: Record<string, string> };
+    const named = /(scripts\/[\w./-]+\.ts)/.exec(scripts?.['build:package'] ?? '')?.[1];
+    expect(named, `${workspace}'s build:package names no script under scripts/`).toBeDefined();
+    return path.join(REPO_ROOT, named!);
+  };
+
+  /**
+   * Not `coveredBy` above: that one takes a chain step, whose inputs are repo-relative by design, and joins
+   * them to the root. A `BuildUnit`'s are absolute, and `path.join` does not reset on an absolute second
+   * argument — it doubles the root, covers nothing, and this case then reports every module including its own
+   * entry. Which is what it did.
+   */
+  const unitCovers = (unit: BuildUnit): Set<string> =>
+    new Set(unit.inputs.flatMap((input) => inputFiles(input)));
+
+  it.each(Object.keys(BUILD_UNITS))('%s', (workspace) => {
+    const covered = unitCovers(BUILD_UNITS[workspace]!);
+    const missing = closureOf([buildScriptOf(workspace)]).filter((file) => !covered.has(file));
+    expect(missing,
+      `${workspace}'s build imports these and does not declare them, so editing one leaves its output stale while its stamp reads fresh`)
+      .toEqual([]);
+  });
+
+  /** What stops the case above passing by walking nothing */
+  it('follows each build script past itself', () => {
+    const shallow = Object.keys(BUILD_UNITS).flatMap((workspace) => {
+      const closure = closureOf([buildScriptOf(workspace)]);
+      return closure.length > 1 ? [] : [`${workspace}'s closure is ${closure.length} files`];
+    });
+    expect(shallow, 'a closure of one file is the entry alone, which means the walk resolved nothing').toEqual([]);
   });
 });
