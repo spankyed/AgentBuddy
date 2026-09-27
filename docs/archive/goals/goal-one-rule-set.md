@@ -414,6 +414,13 @@ Three defects in what the phases shipped, each found by checking rather than by 
     typechecks green against workspace source and ships a bundle built from `dist`. If the published manifests
     drop their `@abuddy/source` branch, the installed-from-registry case resolves `dist` and disappears; the
     linked-checkout case does not, because a linked pack resolves the workspace manifest through the symlink.
+
+    **Both halves landed on 2026-09-27**, in that order: the published manifests are now derived
+    (`stagePublishTree`, so the installed case resolves `dist`), and the linked case is refused by the pack rule
+    `source-resolution` (`abuddy-cli/src/build/pack-resolution.ts`) — 74 lines with its comments, the resolve
+    being ~10 of them. The repo's `findMissingSourceConditions` stays as it is: it asks whether a *config*
+    declares the condition, which covers a pack's vitest and Vite configs, where no `tsc` resolution happens at
+    all. Two rules with two subjects, rather than one that claims to be the other.
 - **The disjointness sweep covers the pack-code rules only.** A rule that reads the whole tree cannot be
   pointed at a fixture, so two such rules could still claim one offence; the `findJsSpecifiers` pair is
   asserted directly instead, as a property of the populations.

@@ -180,13 +180,13 @@ function packRule(key: PackRuleKey, dirs: readonly string[], root: string): stri
     const imports = readSubpathImports(packDir);
     return files.flatMap((file) => {
       const relative = path.relative(root, file).split(path.sep).join('/');
-      return rule.check(readSource(file), {
+      return (rule.check?.(readSource(file), {
         packDir,
         relative,
         inRoot: path.relative(full, file).split(path.sep).join('/'),
         generated: relative.split('/').includes('__generated__'),
         imports,
-      }).map(({ line, what }) => `${relative}:${line}: ${what}`);
+      }) ?? []).map(({ line, what }) => `${relative}:${line}: ${what}`);
     });
   }).sort();
 }

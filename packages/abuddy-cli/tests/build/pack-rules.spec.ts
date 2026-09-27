@@ -99,7 +99,10 @@ describe('every rule', () => {
 
   it('has a case above for every rule it defines', () => {
     const covered = new Set(['own-modules', 'pack-own-aliases', 'host-imports', 'lmdb-imports',
-      'untyped-sends', 'raw-transport', 'backend-console', 'internal-package-imports']);
+      'untyped-sends', 'raw-transport', 'backend-console', 'internal-package-imports',
+      // Not a file's text but the pack's own module resolution, so its firing case needs a whole
+      // installed package to resolve against: `describe('source-resolution')` at the end of this file
+      'source-resolution']);
     expect(PACK_RULES.map((rule) => rule.key).filter((key) => !covered.has(key)),
       'a rule with no firing case is a gate nothing has watched fail').toEqual([]);
   });
@@ -201,6 +204,7 @@ describe('when several rules are right about one site', () => {
    */
   it('declares that precedence in one place', () => {
     expect(PACK_RULES.map((rule) => rule.key)).toEqual([
+      'source-resolution',
       'host-imports', 'lmdb-imports',
       'own-modules', 'pack-own-aliases',
       'internal-package-imports',
@@ -221,4 +225,52 @@ it('allowLineWorks: pasting the line the error prints switches the rule off', ()
   const json = advice!.slice(advice!.indexOf('{'), advice!.lastIndexOf('}') + 1);
   fs.writeFileSync(path.join(dir, 'abuddy.checks.json'), json);
   expect(() => refusePackRuleViolations(dir)).not.toThrow();
+});
+
+/**
+ * The one rule whose subject is not a file's text: what the pack's compiler resolves.
+ *
+ * The fixture installs a package shaped like `@abuddy/sdk` — an exports map with a source branch beside the
+ * published one, `src/` and `dist/` both present — because that shape is the whole point: the branch is
+ * unreachable for a real consumer and reachable for a linked checkout, and the rule is about which one this
+ * pack's `tsc` picks.
+ */
+describe('source-resolution', () => {
+  const withSdk = (tsconfig: Record<string, unknown>) => pack({
+    'package.json': JSON.stringify({ name: 'p', type: 'module' }),
+    'tsconfig.json': JSON.stringify({ compilerOptions: { module: 'esnext', moduleResolution: 'bundler', ...tsconfig } }),
+    'node_modules/@abuddy/sdk/package.json': JSON.stringify({
+      name: '@abuddy/sdk',
+      exports: { '.': { '@abuddy/source': './src/index.ts', types: './dist/index.d.ts', default: './dist/index.js' } },
+    }),
+    'node_modules/@abuddy/sdk/src/index.ts': 'export const version = 1;\n',
+    'node_modules/@abuddy/sdk/dist/index.d.ts': 'export declare const version: number;\n',
+    'node_modules/@abuddy/sdk/dist/index.js': 'export const version = 1;\n',
+    'src/system.ts': "import { version } from '@abuddy/sdk';\nexport const v = version;\n",
+  });
+
+  it('passes a pack that resolves the published dist', () => {
+    expect(problems(withSdk({}), 'source-resolution')).toEqual([]);
+  });
+
+  it('refuses one whose tsconfig resolves a checkout\'s source, naming the file', () => {
+    const found = problems(withSdk({ customConditions: ['@abuddy/source'] }), 'source-resolution');
+    expect(found).toHaveLength(1);
+    expect(found[0]).toContain('@abuddy/sdk -> node_modules/@abuddy/sdk/src/index.ts');
+  });
+
+  /** An `extends` chain is the route a rule that read the config text for `customConditions` would miss */
+  it('refuses it through an extends chain too', () => {
+    const dir = withSdk({});
+    fs.writeFileSync(path.join(dir, 'tsconfig.base.json'), JSON.stringify({ compilerOptions: { customConditions: ['@abuddy/source'] } }));
+    fs.writeFileSync(path.join(dir, 'tsconfig.json'), JSON.stringify({
+      extends: './tsconfig.base.json',
+      compilerOptions: { module: 'esnext', moduleResolution: 'bundler' },
+    }));
+    expect(problems(dir, 'source-resolution')).toHaveLength(1);
+  });
+
+  it('says nothing about a package the pack does not have', () => {
+    expect(problems(pack({ 'package.json': '{"name":"p"}', 'tsconfig.json': '{}', 'src/x.ts': 'export const x = 1;\n' }), 'source-resolution')).toEqual([]);
+  });
 });

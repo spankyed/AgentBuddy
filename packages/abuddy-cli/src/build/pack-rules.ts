@@ -16,6 +16,7 @@ import ts from 'typescript';
 import { ownModuleFindings, type OwnModuleSpecifier } from '@abuddy/host/build/own-module-specifiers';
 import { readSubpathImports } from '@abuddy/host/build/subpath-imports';
 import { moduleOf, readSource, sourceFiles, type SourceView } from './pack-sources.ts';
+import { packResolvesSource } from './pack-resolution.ts';
 
 /** Where a file sits in the pack, which is all any of these rules needs besides the file itself */
 export interface PackPlace {
@@ -32,6 +33,7 @@ export interface PackPlace {
 }
 
 export type PackRuleKey =
+  | 'source-resolution'
   | 'own-modules' | 'pack-own-aliases' | 'internal-package-imports'
   | 'host-imports' | 'lmdb-imports'
   | 'untyped-sends' | 'raw-transport' | 'backend-console';
@@ -58,7 +60,14 @@ export interface PackRule {
   readonly rule: string;
   /** Whether a pack may allow it in `abuddy.checks.json`: true only when a violation has no runtime effect */
   readonly switchable: boolean;
-  check(view: SourceView, at: PackPlace): PackFinding[];
+  /** Per file, over its parsed source. Most rules are this: an offence is something a file says */
+  check?(view: SourceView, at: PackPlace): PackFinding[];
+  /**
+   * The pack as a whole, for a rule whose subject is not any one file's text — what its compiler resolves, what
+   * its manifest wires together. Reported as written, with no span, so it takes no part in the one-offence-one-
+   * message dedupe below: there is no site for another rule to be right about.
+   */
+  checkPack?(packDir: string): string[];
 }
 
 /** Ref-taking sends a pack gets as name-taking ones from `#generated/events`, whichever module exports them */
@@ -94,6 +103,17 @@ function importedFrom(node: ts.Node): { module: string; names: string[] } | unde
  * deleting one import is told the thing that matters about it.
  */
 export const PACK_RULES: readonly PackRule[] = [
+  {
+    key: 'source-resolution',
+    switchable: false,
+    rule: "A pack compiles against the @abuddy packages' published dist, the one layout a pack author has: "
+      + 'its tsconfig must not resolve a checkout\'s source, which its own bundles never do',
+    checkPack(packDir) {
+      return packResolvesSource(packDir).map(({ specifier, resolved }) =>
+        `${specifier} -> ${resolved} (remove the @abuddy/source condition from this pack's tsconfig; esbuild and `
+        + 'Vite ignore it, so only the typecheck reads source and it proves nothing about what ships)');
+    },
+  },
   {
     key: 'host-imports',
     switchable: false,
@@ -283,10 +303,14 @@ export function packRuleProblems(packDir: string, dirs: readonly string[] = ['sr
   const allowed = loadPackChecks(packDir);
   const rules = PACK_RULES.filter((rule) => !allowed.has(rule.key));
   const problems = new Map<PackRuleKey, string[]>();
+  for (const rule of rules) {
+    const found = rule.checkPack?.(packDir) ?? [];
+    if (found.length > 0) problems.set(rule.key, [...(problems.get(rule.key) ?? []), ...found]);
+  }
   for (const { view, place } of packFiles(packDir, dirs)) {
     const claimed: { start: number; end: number }[] = [];
     for (const rule of rules) {
-      const kept = rule.check(view, place).filter((finding) => {
+      const kept = (rule.check?.(view, place) ?? []).filter((finding) => {
         // Overlapping a span an earlier rule claimed, so it is the same offence seen another way. Overlap
         // rather than containment, because the spans nest both ways: `host-imports` reports the specifier and
         // `internal-package-imports` the whole import around it, so a containment test would let whichever

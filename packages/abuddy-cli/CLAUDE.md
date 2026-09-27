@@ -156,12 +156,21 @@ what the audit of 2026-09-26 cost to establish, so it needn't be established aga
   default-setup green, and the API's tsup build byte for byte the same. What supplying the extension cost to
   establish is recorded in that goal's Outcome; what is left is `@abuddy/host/build/subpath-imports`, which
   reads `package.json` `imports` for the check below and resolves nothing.
+- **`pack-resolution.ts`** asks where the pack's own compiler resolves the `@abuddy` packages, and refuses a
+  pack that lands on a checkout's `src/`. It resolves rather than reading config (`ts.resolveModuleName` against
+  the pack's own parsed options), because the routes to source are several — `customConditions`, an `extends`
+  chain, a `paths` entry — and the message can then name the file it landed on. What makes it worth a rule:
+  esbuild has no notion of `customConditions` (the string is absent from its binary) and the FE bundler names
+  Vite's conditions outright, so a pack that enables it typechecks against source while shipping bundles built
+  from `dist` — green locally, and wrong after publishing. `assertSourceResolution`
+  (`@abuddy/host/build/source-resolution`) is the same question with the opposite expectation, asked of a host
+  process; it lives in host and this cannot, because this needs `typescript` and `packages/api` imports host.
 - **`own-module-specifiers-gate.ts`** refuses a specifier that names no file — extensionless, or the `.js` a
   pack never emits — through `@abuddy/host/build/own-module-specifiers`, the same rule
   `scripts/check-import-specifiers.ts` applies to the packs in this checkout. The rule is shared; the reading
   is not, because each caller already parses a pack's sources for other rules.
 - **`pack-sources.ts` is that reading, once**: the files, an SFC's `<script>` blocks, and every specifier in
-  them, from a syntax tree. `internal-imports-gate.ts` uses it too. A regex over the text was tried and is
+  them, from a syntax tree. `pack-rules.ts` reads every pack rule off it, and so does the repo's own script. A regex over the text was tried and is
   the reason this is a parser: a regex literal holding an unbalanced quote made a commented-out import look
   real and failed a build naming a comment, and three module-path forms (`vi.mock`, `require.resolve`,
   `import x = require(…)`) went unread.
