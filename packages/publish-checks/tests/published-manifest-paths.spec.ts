@@ -1,9 +1,9 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
-import { publishedTreeDirs } from '@abuddy/host/build/packages-built';
+import { BUILD_UNITS, publishedTreeDirs } from '@abuddy/host/build/packages-built';
 import { declaredPathFields, manifestPaths, missingPublishedPaths, type Manifest } from '@abuddy/host/build/published-manifest';
 import { describe, expect, it } from 'vitest';
-import { PACKAGES_BUILT, workspacePackList } from '../src/published-packages.ts';
+import { PACKAGES_BUILT, PACKED_PACKAGES, workspacePackList } from '../src/published-packages.ts';
 
 /**
  * A published tarball names only files it contains, and runs nothing on install.
@@ -79,5 +79,20 @@ describe.skipIf(!PACKAGES_BUILT)('a published tarball', () => {
         .map((field) => report(pkg, `${field} is declared but contributed no path`));
     });
     expect(vacuous).toEqual([]);
+  });
+});
+
+/**
+ * What the consumer fixture packs, against what the build builds.
+ *
+ * Here rather than beside `BUILD_UNITS`, which is where it used to be: the constant it guards against widening
+ * is this package's, and a spec that only wanted to read it was paying for the built-packages precondition
+ * `PACKAGES_BUILT` enforces at import — which is what stopped a mutation of `BUILD_UNITS` being runnable at all
+ * (`abuddy-cli/tests/build/package-freshness.spec.ts`). It needs no built packages itself; it compares two lists.
+ */
+describe('the packages a consumer fixture installs', () => {
+  it('are all packages the build builds', () => {
+    expect(Object.keys(PACKED_PACKAGES).sort()).toEqual(['ears', 'sdk', 'ui']);
+    for (const name of Object.keys(PACKED_PACKAGES)) expect(BUILD_UNITS[`@abuddy/${name}`]).toBeDefined();
   });
 });

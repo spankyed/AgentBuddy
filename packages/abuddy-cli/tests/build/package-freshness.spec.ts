@@ -3,8 +3,7 @@ import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
-import { BUILD_UNITS, buildScriptFor, CHECKOUT_MARKER, fingerprintInputs, fingerprintUnit, inputFiles, NOT_A_BUILD_INPUT, staleMessage, STAMP_VERSION, stampedBuild, stampedRun, stampedRunAll, stampFile, unitStaleReason, withBuildLock, type BuildIntent, type BuildUnit } from '@abuddy/host/build/packages-built';
-import { PACKED_PACKAGES, REPO_ROOT } from '@app/publish-checks';
+import { BUILD_UNITS, buildScriptFor, CHECKOUT_MARKER, fingerprintInputs, fingerprintUnit, inputFiles, NOT_A_BUILD_INPUT, REPO_ROOT, staleMessage, STAMP_VERSION, stampedBuild, stampedRun, stampedRunAll, stampFile, unitStaleReason, withBuildLock, type BuildIntent, type BuildUnit } from '@abuddy/host/build/packages-built';
 
 /**
  * The freshness rule behind `npm test -w @abuddy/cli`'s pretest (@abuddy/host/build/packages-built):
@@ -101,18 +100,49 @@ describe('the watched input set', () => {
     expect(missing).toEqual([]);
   });
 
-  it('is separate from the packages a consumer fixture installs', () => {
-    // Widening the watch list must not change what installPublishedPackages() packs
-    expect(Object.keys(PACKED_PACKAGES).sort()).toEqual(['ears', 'sdk', 'ui']);
-    for (const name of Object.keys(PACKED_PACKAGES)) expect(BUILD_UNITS[`@abuddy/${name}`]).toBeDefined();
-  });
-
   it('gives each workspace its own stamp, outside every output tree', () => {
     const stamps = Object.keys(BUILD_UNITS).map(stampFile);
     expect(new Set(stamps).size).toBe(stamps.length);
     for (const [workspace, unit] of Object.entries(BUILD_UNITS)) {
       for (const output of unit.outputs) expect(stampFile(workspace).startsWith(output)).toBe(false);
     }
+  });
+});
+
+/**
+ * `buildScriptFor` reads a workspace's own `build:package` to answer how it is built — which is what the
+ * exemption above turns on, and what nothing tested.
+ *
+ * Against a fixture rather than the repo, because the repo cannot be used: `build:package` lives in a
+ * `package.json` that is one of the unit's declared inputs, so editing it to see the answer change makes the
+ * unit stale, and this file then refused to run. That is why it takes a `root`.
+ */
+describe('buildScriptFor', () => {
+  /** A tree with one workspace in it, as `buildScriptFor` walks one */
+  const treeWith = (manifest: Record<string, unknown>): string => {
+    const root = tempDir();
+    fs.mkdirSync(path.join(root, 'packages', 'thing'), { recursive: true });
+    fs.writeFileSync(path.join(root, 'packages', 'thing', 'package.json'), JSON.stringify(manifest));
+    return root;
+  };
+
+  // The two answers the exemption reads, and the only difference between them is the manifest
+  it.each([
+    ['bundles, so it inlines host', 'tsx ../../scripts/bundle-package.ts .', 'scripts/bundle-package.ts'],
+    ['compiles, so it does not', 'tsx ../../scripts/build-package.ts .', 'scripts/build-package.ts'],
+  ])('reads a workspace that %s', (_what, script, expected) => {
+    const root = treeWith({ name: '@x/thing', scripts: { 'build:package': script } });
+    expect(buildScriptFor('@x/thing', root)).toBe(expected);
+  });
+
+  it('refuses a workspace whose build:package names no script under scripts/', () => {
+    const root = treeWith({ name: '@x/thing', scripts: { 'build:package': 'tsdown' } });
+    expect(() => buildScriptFor('@x/thing', root)).toThrow(/@x\/thing's build:package names no script/);
+  });
+
+  it('refuses a name no manifest declares', () => {
+    const root = treeWith({ name: '@x/thing', scripts: { 'build:package': 'tsx ../../scripts/build-package.ts .' } });
+    expect(() => buildScriptFor('@x/other', root)).toThrow(/no packages\/\* declares the name @x\/other/);
   });
 });
 
@@ -161,7 +191,10 @@ describe('the stamp protocol', () => {
   it('does not watch the code that decides freshness', () => {
     expect(Object.keys(NOT_A_BUILD_INPUT).length, 'an empty list makes this case vacuous').toBeGreaterThan(0);
     // A bundle that inlines @abuddy/host emits that source, so watching it is right — derived from the
-    // workspace's own `build:package` rather than naming the two units, which is a fact about how they build
+    // workspace's own `build:package` rather than naming the two units, which is a fact about how they build.
+    // What `buildScriptFor` makes of a manifest is covered by `describe('buildScriptFor')` below, against a
+    // fixture: editing a real `build:package` to test it makes that unit stale, and a stale unit used to stop
+    // this file running at all.
     const inlinesHost = (workspace: string) => buildScriptFor(workspace) === 'scripts/bundle-package.ts';
     const offences = Object.keys(BUILD_UNITS).flatMap((workspace) => {
       if (inlinesHost(workspace)) return [];

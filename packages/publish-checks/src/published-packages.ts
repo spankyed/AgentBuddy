@@ -31,7 +31,7 @@ export { workspacePackList } from '@abuddy/host/build/published-manifest';
  *
  * Deliberately not the build-freshness watch list (`BUILD_UNITS`), which covers everything a build reads —
  * `@abuddy/host` and `@abuddy/testing` among it — and must be free to grow without changing what is packed
- * into a fixture. `tests/build/package-freshness.spec.ts` checks every packed package is one the build builds.
+ * into a fixture. `tests/published-manifest-paths.spec.ts` checks every packed package is one the build builds.
  */
 export const PACKED_PACKAGES: Record<string, string> = {
   ears: publishedTreeDirs()['abuddy-ears']!,

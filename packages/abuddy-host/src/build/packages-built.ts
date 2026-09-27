@@ -135,14 +135,18 @@ export const BUILD_UNITS: Record<string, BuildUnit> = {
 /**
  * The script a workspace's `build:package` runs, repo-relative — read from that workspace's own manifest.
  *
+ * `root` so it can be pointed at a tree: the only way to test what it does with a manifest was to edit a real
+ * one, which makes that unit stale and stops the spec running at all — the mutation this exists to allow
+ * (`package-freshness.spec.ts`). A function you can point at a tree is a function you can test.
+ *
  * **Not from `BUILD_UNITS[workspace].inputs`**, and that is the whole point of it being here. Two checks ask
  * questions *about* those inputs: one walks the build script's imports and requires them to be declared, and one
  * refuses `NOT_A_BUILD_INPUT` for a unit whose build does not inline host source. Deriving the script from the
  * list under test made the first vacuous — dropping an input removed the entry to walk from, and the case passed
  * for having nothing to check. The manifest is the independent answer.
  */
-export function buildScriptFor(workspace: string): string {
-  const packages = path.join(REPO_ROOT, 'packages');
+export function buildScriptFor(workspace: string, root = REPO_ROOT): string {
+  const packages = path.join(root, 'packages');
   for (const dir of fs.readdirSync(packages)) {
     const manifest = path.join(packages, dir, 'package.json');
     if (!fs.existsSync(manifest)) continue;
