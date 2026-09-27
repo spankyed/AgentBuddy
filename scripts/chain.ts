@@ -250,7 +250,7 @@ async function main(): Promise<void> {
 
   // The table feeds the kill budget and the floor above, so a number a run has contradicted is worth more
   // than a note in a doc nobody re-reads
-  const drifted = driftedSteps(steps, measuredMs);
+  const drifted = driftedSteps(steps, measuredMs, all);
   if (drifted.length > 0) {
     console.log(`\n${drifted.length} step${drifted.length === 1 ? '' : 's'} cost something other than chain-steps.ts says — re-measure, or record:`);
     for (const { name, declared, measured } of drifted) console.log(`  ${name.padEnd(26)} seconds: ${declared} -> ${measured}`);

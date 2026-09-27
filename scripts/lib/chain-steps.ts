@@ -91,6 +91,11 @@ export interface ChainStep {
    * measurement, so re-measure rather than raise it when a step legitimately grows; the chain compares
    * every run against it and prints the value to record when one has drifted past half or double
    * (`driftedSteps`), which is what keeps this table honest without anyone remembering to check.
+   *
+   * For a step that keeps a cache of its own — the two pooled steps, which run only their stale projects —
+   * it is the cost of the *whole* pool, which is what both kill budgets are sized from (`budgetFor` here, and
+   * `test-unit-pool.ts`'s own inner spawn). `driftedSteps` therefore checks such a step only under `--all`,
+   * the one run that does all of its work.
    */
   readonly seconds?: number;
 }
@@ -291,7 +296,10 @@ export const SUITE_READS: Record<string, { packages?: true; pack?: true }> = {
  * One step per unit suite, so a one-package change re-runs one suite rather than eight. Measured under the
  * two-lane runner (`scripts/test-unit.ts`), which is what the chain will run them under.
  */
-/** Measured per pool under the chain's own lanes, which is what `seconds` means (`driftedSteps` keeps it honest) */
+/**
+ * Measured per pool with every project stale — `npm run chain --all`, the only run that does the whole
+ * pool's work, and the run `driftedSteps` checks this number on.
+ */
 export const POOL_SECONDS: Record<'host' | 'pack', number> = { host: 20, pack: 21 };
 
 /**
