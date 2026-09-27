@@ -559,6 +559,13 @@ const repositoryCast: Rule = (node) => {
  * `file:line: code` for each `repository as unknown as …` in `dirs`: each entity's repository lives
  * with the package that declares it, and other packages call it through its exports
  * (docs/goals/goal-package-boundaries.md, Decision 7), never through a cast of the engine's registry.
+ *
+ * **Why this one is here and not in a linter.** It is a syntactic pattern, which is a linter's job — but
+ * oxlint 1.8 hosts no custom rule from the CLI (no `--js-plugins`, no `jsPlugins` in its config schema; its
+ * external-plugin path needs the napi host) and has no `no-restricted-syntax` to express it declaratively,
+ * and eslint runs only over `packages/renderer` while this covers the `src` of every package. Extending eslint to
+ * eleven workspaces to host one rule that fires nowhere today costs more than the rule is worth. Revisit when
+ * oxlint's external-plugin path ships in the published binary.
  */
 export function findRepositoryCasts(dirs = packageSourceDirs(), root = repoRoot): string[] {
   return findInFiles(packFiles(dirs, root), root, repositoryCast);
