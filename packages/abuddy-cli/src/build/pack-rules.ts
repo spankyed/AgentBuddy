@@ -113,7 +113,11 @@ export const PACK_RULES: readonly PackRule[] = [
     // `refusePackRuleViolations` and appended to each finding by `abuddy validate`, so advice carried here too
     // arrived twice, three times over for a pack that resolves all three packages
     checkPack(packDir) {
-      return packResolvesSource(packDir).map(({ specifier, resolved }) => `${specifier} -> ${resolved}`);
+      const { resolved, unreadable } = packResolvesSource(packDir);
+      // A config the rule could not read is its own finding, not an empty pass: the pack author is told the
+      // check did not run, which is the one thing silence cannot say
+      return [...(unreadable === undefined ? [] : [unreadable]),
+        ...resolved.map(({ specifier, resolved: file }) => `${specifier} -> ${file}`)];
     },
   },
   {

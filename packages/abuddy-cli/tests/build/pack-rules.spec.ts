@@ -270,6 +270,34 @@ describe('source-resolution', () => {
     expect(problems(dir, 'source-resolution')).toHaveLength(1);
   });
 
+  /**
+   * A config the rule cannot read is reported, not passed over. The opposite — `[]` for a pack nobody looked
+   * at — is the shape `findMissingSourceConditions` refuses for the repo's own configs, with the reason that a
+   * rule which guesses is a rule that lets the next one through.
+   */
+  it('reports a tsconfig that does not parse, rather than passing', () => {
+    const dir = withSdk({});
+    fs.writeFileSync(path.join(dir, 'tsconfig.json'), '{ "compilerOptions": ');
+    expect(problems(dir, 'source-resolution')).toEqual([expect.stringContaining('could not be read') as unknown as string]);
+  });
+
+  it('reports an extends naming a file that is not there', () => {
+    const dir = withSdk({});
+    fs.writeFileSync(path.join(dir, 'tsconfig.json'), JSON.stringify({ extends: './tsconfig.missing.json' }));
+    const found = problems(dir, 'source-resolution');
+    expect(found).toHaveLength(1);
+    expect(found[0]).toMatch(/could not be read.*tsconfig\.missing\.json/);
+  });
+
+  /** The one diagnostic that is about the file set and not resolution, so it must not make this rule fire */
+  it('says nothing about a pack whose include matches no file', () => {
+    const dir = pack({
+      'package.json': JSON.stringify({ name: 'p', type: 'module' }),
+      'tsconfig.json': JSON.stringify({ compilerOptions: { module: 'esnext', moduleResolution: 'bundler' }, include: ['src/**/*.ts'] }),
+    });
+    expect(problems(dir, 'source-resolution')).toEqual([]);
+  });
+
   it('says nothing about a package the pack does not have', () => {
     expect(problems(pack({ 'package.json': '{"name":"p"}', 'tsconfig.json': '{}', 'src/x.ts': 'export const x = 1;\n' }), 'source-resolution')).toEqual([]);
   });

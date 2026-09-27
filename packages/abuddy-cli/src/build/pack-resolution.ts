@@ -32,6 +32,28 @@ export interface SourceResolution {
   readonly resolved: string;
 }
 
+/**
+ * What this rule found, with "could not tell" as a value rather than as silence.
+ *
+ * `unreadable` is in the type because the alternative was returning `[]` for a pack whose `tsconfig.json` does
+ * not parse — a pass, for a pack the rule never looked at. `findMissingSourceConditions` in the repo's own
+ * script settled this the other way and says why: a rule that guesses is a rule that lets the next one
+ * through. Having it in the result means a caller cannot drop it without deleting a line.
+ */
+export interface PackResolution {
+  readonly resolved: SourceResolution[];
+  /** Why the pack's compiler options could not be read, if they could not */
+  readonly unreadable?: string;
+}
+
+/**
+ * "No inputs were found in config file", which is about the file set and not about resolution.
+ *
+ * A pack with an empty `src/` raises it against the scaffold's `include` while resolving perfectly well, so
+ * reporting it would make this rule fire on a pack with nothing in it yet.
+ */
+const NO_INPUTS_FOUND = 18003;
+
 /** The package a file belongs to: the nearest directory at or above it holding a `package.json` */
 function packageRootOf(file: string): string | undefined {
   let dir = path.dirname(file);
@@ -44,29 +66,43 @@ function packageRootOf(file: string): string | undefined {
 }
 
 /**
- * Every `@abuddy` package this pack's `tsconfig.json` resolves to source instead of `dist`.
+ * Every `@abuddy` package this pack's `tsconfig.json` resolves to source instead of `dist`, or why that could
+ * not be worked out.
  *
- * Empty for a pack with no tsconfig, one whose config cannot be read, and — the ordinary case — one that
- * resolves `dist`. A package the pack does not depend on does not resolve at all and is skipped, rather than
- * being reported as something worse than it is.
+ * Empty for a pack with no tsconfig — there is nothing to resolve against and nothing to report — and, the
+ * ordinary case, for one that resolves `dist`. A package the pack does not depend on does not resolve at all
+ * and is skipped, rather than being reported as something worse than it is. A config that cannot be read comes
+ * back as `unreadable`, never as an empty pass.
  */
-export function packResolvesSource(packDir: string): SourceResolution[] {
+export function packResolvesSource(packDir: string): PackResolution {
   const configFile = path.join(packDir, 'tsconfig.json');
-  if (!fs.existsSync(configFile)) return [];
-  const host: ts.ParseConfigFileHost = { ...ts.sys, onUnRecoverableConfigFileDiagnostic: () => {} };
+  if (!fs.existsSync(configFile)) return { resolved: [] };
+  const flatten = (diagnostic: ts.Diagnostic) => ts.flattenDiagnosticMessageText(diagnostic.messageText, ' ');
+  // Two ways a config fails to be read, and both have to be caught: one that does not parse arrives here, and
+  // one whose `extends` names a missing file arrives in `parsed.errors` with the options still half-built
+  let fatal: string | undefined;
+  const host: ts.ParseConfigFileHost = { ...ts.sys, onUnRecoverableConfigFileDiagnostic: (d) => { fatal ??= flatten(d); } };
   const parsed = ts.getParsedCommandLineOfConfigFile(configFile, {}, host);
-  if (!parsed) return [];
+  const unreadable = (why: string): PackResolution => ({
+    resolved: [],
+    unreadable: `tsconfig.json could not be read, so this rule could not check it: ${why}`,
+  });
+  if (fatal !== undefined) return unreadable(fatal);
+  if (!parsed) return unreadable('TypeScript returned no configuration for it');
+  const errors = parsed.errors.filter((d) => d.category === ts.DiagnosticCategory.Error && d.code !== NO_INPUTS_FOUND);
+  if (errors.length > 0) return unreadable(errors.map(flatten).join('; '));
   // Any path under the pack's `src`: a bare specifier resolves from the containing file's directory outwards, and
   // the file itself is never read, so it need not exist
   const from = path.join(packDir, 'src', 'index.ts');
   // TypeScript hands back a real path, so the report is relative to the pack's: on macOS a temp directory is
   // reached through /var and realpaths to /private/var, and the difference climbed out of the pack entirely
   const base = fs.realpathSync(packDir);
-  return SOURCE_PACKAGES.flatMap((specifier) => {
-    const resolved = ts.resolveModuleName(specifier, from, parsed.options, ts.sys).resolvedModule?.resolvedFileName;
-    if (resolved === undefined) return [];
-    const root = packageRootOf(resolved);
-    if (root === undefined || !resolved.startsWith(path.join(root, 'src') + path.sep)) return [];
-    return [{ specifier, resolved: path.relative(base, resolved).split(path.sep).join('/') }];
+  const resolved = SOURCE_PACKAGES.flatMap((specifier) => {
+    const file = ts.resolveModuleName(specifier, from, parsed.options, ts.sys).resolvedModule?.resolvedFileName;
+    if (file === undefined) return [];
+    const root = packageRootOf(file);
+    if (root === undefined || !file.startsWith(path.join(root, 'src') + path.sep)) return [];
+    return [{ specifier, resolved: path.relative(base, file).split(path.sep).join('/') }];
   });
+  return { resolved };
 }
