@@ -411,9 +411,11 @@ export const CHAIN_STEPS: readonly ChainStep[] = [
   // is checking, and `stagePublishTree` removes and recreates that tree, so a rebuild landing mid-check leaves
   // attw opening a tarball that is no longer there — observed once, as
   // `ENOENT: open 'publish/abuddy-ui-0.1.0.tgz'`, and not reproducible in 20 tries against concurrent packs,
-  // which is the profile of a window rather than a collision. Six seconds alone in a 154s chain buys the
-  // window shut; the alternative is packing to a temp directory ourselves and handing attw the tarball, which
-  // is the fix if this step ever needs to share a lane.
+  // which is the profile of a window rather than a collision. Measured with it in, 2026-09-27 under `--all`:
+  // 5.5s here, 176.7s for the chain, and not on the critical path (`packages:ensure` -> `compile` ->
+  // `build:app` -> `test:packaged-authoring`, 111s), so running it alone costs its own time and no more. The
+  // alternative is packing to a temp directory ourselves and handing attw the tarball, which is the fix if this
+  // step ever needs to share a lane.
   { name: 'packages:check', tier: 2, needs: ['packages:ensure'], seconds: 6, exclusive: true,
     inputs: [...ROOT, ...PACKAGE_BUILD_OUTPUTS] },
   // Ahead of build and not redundant with it: build -ws gives no ordering guarantee, since no workspace
