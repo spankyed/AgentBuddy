@@ -9,17 +9,22 @@ import { parse as parseSfc } from '@vue/compiler-sfc';
 import { SHARED_INSTANCE_PACKAGES } from '@abuddy/host/build/shared-deps';
 import { packageName } from '@abuddy/host/build/specifiers';
 import { readSubpathImports } from '@abuddy/host/build/subpath-imports';
+import { ownModuleFindings } from '@abuddy/host/build/own-module-specifiers';
 import { PACK_RULES, type PackRuleKey } from '../packages/abuddy-cli/src/build/pack-rules.ts';
-import { readSource, sourceFiles as packSourceFiles } from '../packages/abuddy-cli/src/build/pack-sources.ts';
+import { readSource } from '../packages/abuddy-cli/src/build/pack-sources.ts';
+import type { Fix } from './lib/specifier-fixes.ts';
 
 const repoRoot = path.resolve(import.meta.dirname, '..');
-const CHECKED_DIRS = [
-  'packages/abuddy-ears/src', 'packages/abuddy-ears/tests',
-  'packages/abuddy-sdk/src', 'packages/abuddy-sdk/tests', 'packages/abuddy-sdk/scripts',
-  'packages/abuddy-host/src', 'packages/abuddy-host/tests',
-  'packages/abuddy-ui/src', 'packages/abuddy-ui/scripts',
-  'packages/abuddy-testing/src',
-];
+/**
+ * Every package's own code. Derived from `packages/*`, not listed: the list named five of the fifteen, and
+ * pointing the rule at the rest found 87 unmigrated specifiers in `@app/main` and `@app/preload` — both of
+ * which bundle (one `dist/index.js` each), so `./AppModule.js` named a file that never exists.
+ */
+const CHECKED_DIRS = fs.readdirSync(path.join(repoRoot, 'packages'), { withFileTypes: true })
+  .filter((entry) => entry.isDirectory() && fs.existsSync(path.join(repoRoot, 'packages', entry.name, 'package.json')))
+  .flatMap((entry) => ['src', 'tests', 'scripts'].map((part) => `packages/${entry.name}/${part}`))
+  .filter((dir) => fs.existsSync(path.join(repoRoot, dir)))
+  .sort();
 
 /** Emitted extension → the source extensions that compile to it */
 const SOURCE_EXTENSIONS: Record<string, string[]> = { '.js': ['.ts', '.tsx'], '.mjs': ['.mts'], '.cjs': ['.cts'] };
@@ -93,18 +98,39 @@ function findSpecifiers(files: string[], root: string, matches: (text: string, f
  * double-claim hide before (`docs/goals/goal-one-rule-set.md`): whichever ran first was the only one reported.
  */
 export function findJsSpecifiers(dirs = CHECKED_DIRS, root = repoRoot): string[] {
-  const files = dirs.flatMap((dir) => {
+  return jsSpecifierFixes(dirs, root).map(({ file, line, specifier }) => `${file}:${line}: ${specifier}`);
+}
+
+/**
+ * The same findings before they become sentences, with the source each `.js` should have named.
+ *
+ * `npm run specifiers:fix` splices `named` over the span; the message and the repair come from one place, so
+ * "fixable" is not a second judgement but whether this returned the finding.
+ */
+export function jsSpecifierFixes(dirs = CHECKED_DIRS, root = repoRoot): Fix[] {
+  const fixes: Fix[] = [];
+  for (const dir of dirs) {
     // A listed directory that is gone means the list is stale and something is no longer checked,
     // which is worth failing over — but say so, rather than letting a readdir ENOENT stack out
     const full = path.join(root, dir);
     if (!fs.existsSync(full)) throw new Error(`${dir} is listed among the checked directories and does not exist: remove it, or restore the directory`);
-    return fs.statSync(full).isFile() ? [full] : [...sourceFiles(full)];
-  });
-  return findSpecifiers(files, root, (text, file) => {
-    const emitted = path.extname(text);
-    const base = path.resolve(path.dirname(file), text.slice(0, -emitted.length));
-    return (SOURCE_EXTENSIONS[emitted] ?? []).some((ext) => fs.existsSync(`${base}${ext}`));
-  }, false);
+    for (const file of fs.statSync(full).isFile() ? [full] : [...sourceFiles(full)]) {
+      for (const { text, line, start, end } of readSource(file).specifiers) {
+        if (!/^\.{1,2}\//.test(text)) continue;
+        const emitted = path.extname(text);
+        const base = path.resolve(path.dirname(file), text.slice(0, -emitted.length));
+        const source = (SOURCE_EXTENSIONS[emitted] ?? []).find((ext) => fs.existsSync(`${base}${ext}`));
+        if (source === undefined) continue;
+        fixes.push({
+          file: path.relative(root, file).split(path.sep).join('/'),
+          line, start, end,
+          specifier: text,
+          named: `${text.slice(0, -emitted.length)}${source}`,
+        });
+      }
+    }
+  }
+  return fixes;
 }
 
 /**
@@ -137,6 +163,33 @@ function packRule(key: PackRuleKey, dirs: readonly string[], root: string): stri
       });
     });
   }).sort();
+}
+
+/** The repo root, for a command that acts on what these rules report */
+export const repoRootDir = (): string => repoRoot;
+
+/**
+ * Every own-module specifier in this repo's packs that names no file, with the file it should name.
+ *
+ * The rule is `@abuddy/cli`'s `own-modules`; this is its findings before they become sentences, which is what
+ * `specifiers:fix` splices. A pack's own `abuddy build` gets the same repair through the same function.
+ */
+export function packOwnModuleFixes(dirs = [...PACK_SOURCE_DIRS, ...PACK_TEST_DIRS], root = repoRoot): Fix[] {
+  return dirs.flatMap((dir) => {
+    const full = path.join(root, dir);
+    if (!fs.existsSync(full)) return [];
+    const packDir = path.dirname(full);
+    const files = fs.statSync(full).isFile() ? [full] : [...sourceFiles(full)];
+    const found = files.flatMap((file) => readSource(file).specifiers.map(({ text, line, start, end }) => ({
+      file: path.relative(packDir, file).split(path.sep).join('/'),
+      line, specifier: text, start, end,
+    })));
+    return ownModuleFindings(packDir, found).flatMap(({ file, line, specifier, named, start, end }) =>
+      start === undefined || end === undefined ? [] : [{
+        file: path.relative(root, path.join(packDir, file)).split(path.sep).join('/'),
+        line, start, end, specifier, named,
+      }]);
+  });
 }
 
 /**

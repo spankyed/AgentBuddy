@@ -1,20 +1,20 @@
 import type {AppModule} from '../../AppModule.ts';
-import {ModuleContext} from '../../ModuleContext.js';
+import {ModuleContext} from '../../ModuleContext.ts';
 import {BrowserWindow, ipcMain, app, dialog, shell} from 'electron';
 import contextMenu from 'electron-context-menu';
 import type {AppInitConfig} from '../../AppInitConfig.ts';
 import type {ApiServer} from '../api-server/ApiServer.ts';
 import type {SplashScreen} from '../splash-screen/SplashScreen.ts';
 import {join} from 'node:path';
-import {WINDOW_CONFIG} from './constants.js';
-import {getWindowIcon} from './helpers.js';
+import {WINDOW_CONFIG} from './constants.ts';
+import {getWindowIcon} from './helpers.ts';
 import fs from 'node:fs/promises';
 import crypto from 'node:crypto';
 import os from 'node:os';
-import {getMediaBasePath} from '../media-protocol/paths.js';
-import {logRenderer, logRendererFatal} from '../api-server/logger.js';
+import {getMediaBasePath} from '../media-protocol/paths.ts';
+import {logRenderer, logRendererFatal} from '../api-server/logger.ts';
 import {splitRef} from '@abuddy/sdk/ids';
-import {openExternalUrl, openFilePath} from '../shell-access.js';
+import {openExternalUrl, openFilePath} from '../shell-access.ts';
 
 class WindowManager implements AppModule {
   readonly #preload: {path: string};

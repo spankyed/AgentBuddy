@@ -91,15 +91,35 @@ export interface OwnModuleSpecifier {
  * file that does not exist is a resolution error the bundler reports with more context than this could.
  */
 export function ownModuleProblems(packDir: string, found: Iterable<OwnModuleSpecifier>): string[] {
+  return ownModuleFindings(packDir, found)
+    .map(({ file, line, specifier, named }) => `${file}:${line}: '${specifier}' names no file — write '${named}'`);
+}
+
+/** One specifier that names no file, and the file it should have named */
+export interface OwnModuleFinding extends OwnModuleSpecifier {
+  /** What to write instead. Its presence is what makes a finding fixable, which `specifiers:fix` reads. */
+  readonly named: string;
+}
+
+/**
+ * The same findings as `ownModuleProblems`, before they become sentences.
+ *
+ * Two readers of one rule: the message, and `npm run specifiers:fix`, which splices `named` over the
+ * specifier's span. They must agree about what is fixable, so "fixable" is not a second judgement — it is
+ * whether this returned the finding at all.
+ */
+export function ownModuleFindings(packDir: string, found: Iterable<OwnModuleSpecifier>): OwnModuleFinding[] {
   const imports = readSubpathImports(packDir);
-  const problems: string[] = [];
-  for (const { file, line, specifier } of found) {
-    const named = specifier.startsWith('#') ? namedFileFor(packDir, imports, specifier)
-      : /^\.{1,2}\//.test(specifier) ? namedFileAt(path.resolve(packDir, path.dirname(file), specifier), specifier)
-      : undefined;
-    if (named !== undefined) problems.push(`${file}:${line}: '${specifier}' names no file — write '${named}'`);
+  const findings: OwnModuleFinding[] = [];
+  for (const specifier of found) {
+    const named = specifier.specifier.startsWith('#')
+      ? namedFileFor(packDir, imports, specifier.specifier)
+      : /^\.{1,2}\//.test(specifier.specifier)
+        ? namedFileAt(path.resolve(packDir, path.dirname(specifier.file), specifier.specifier), specifier.specifier)
+        : undefined;
+    if (named !== undefined) findings.push({ ...specifier, named });
   }
-  return problems;
+  return findings;
 }
 
 /** A module extension at the end of a path, which the search below replaces with the one that is there */

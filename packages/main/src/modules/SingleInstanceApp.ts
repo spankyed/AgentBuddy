@@ -1,7 +1,7 @@
-import {AppModule} from '../AppModule.js';
+import {AppModule} from '../AppModule.ts';
 import * as Electron from 'electron';
 import {publishRunningApp} from '@abuddy/host/database';
-import {getAppContext} from '../app-context.js';
+import {getAppContext} from '../app-context.ts';
 
 class SingleInstanceApp implements AppModule {
   enable({app}: {app: Electron.App}): void {

@@ -1,1 +1,1 @@
-export { createSpeechRecognition } from './SpeechRecognition.js';
+export { createSpeechRecognition } from './SpeechRecognition.ts';

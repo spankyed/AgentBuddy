@@ -1,7 +1,7 @@
-import type {AppModule} from '../../AppModule.js';
+import type {AppModule} from '../../AppModule.ts';
 import {BrowserWindow, ipcMain, session} from 'electron';
-import {BrowserTabManager} from './BrowserTabManager.js';
-import type {TabBounds} from './types.js';
+import {BrowserTabManager} from './BrowserTabManager.ts';
+import type {TabBounds} from './types.ts';
 
 class BrowserManager implements AppModule {
   #tabManager: BrowserTabManager | null = null;

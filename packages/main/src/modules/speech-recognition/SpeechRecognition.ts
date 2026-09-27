@@ -1,7 +1,7 @@
 import { ipcMain, app, type WebContents } from 'electron';
-import type { AppModule } from '../../AppModule.js';
-import type { SpeechEvent } from './protocol.js';
-import { SpeechHelperProcess } from './SpeechHelperProcess.js';
+import type { AppModule } from '../../AppModule.ts';
+import type { SpeechEvent } from './protocol.ts';
+import { SpeechHelperProcess } from './SpeechHelperProcess.ts';
 
 export function createSpeechRecognition(): AppModule {
   let helper: SpeechHelperProcess | null = null;

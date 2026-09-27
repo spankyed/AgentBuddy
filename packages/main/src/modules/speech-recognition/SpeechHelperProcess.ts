@@ -2,7 +2,7 @@ import { ChildProcess, spawn } from 'child_process';
 import { app } from 'electron';
 import path from 'path';
 import fs from 'fs';
-import type { SpeechCommand, SpeechEvent } from './protocol.js';
+import type { SpeechCommand, SpeechEvent } from './protocol.ts';
 
 export class SpeechHelperProcess {
   private process: ChildProcess | null = null;

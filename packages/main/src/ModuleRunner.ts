@@ -1,5 +1,5 @@
-import {AppModule} from './AppModule.js';
-import {ModuleContext} from './ModuleContext.js';
+import {AppModule} from './AppModule.ts';
+import {ModuleContext} from './ModuleContext.ts';
 import {app} from 'electron';
 
 class ModuleRunner implements PromiseLike<void> {

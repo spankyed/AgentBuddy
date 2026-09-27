@@ -1,10 +1,10 @@
 import { BrowserWindow, app } from 'electron';
-import { AppModule } from '../../AppModule.js';
-import { ModuleContext } from '../../ModuleContext.js';
+import { AppModule } from '../../AppModule.ts';
+import { ModuleContext } from '../../ModuleContext.ts';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { dirname } from 'node:path';
-import { SPLASH_CONFIG } from './constants.js';
+import { SPLASH_CONFIG } from './constants.ts';
 
 export class SplashScreen implements AppModule {
   private splashWindow: BrowserWindow | null = null;

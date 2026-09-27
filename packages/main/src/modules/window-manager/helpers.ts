@@ -1,6 +1,6 @@
 import { BrowserWindow, app } from 'electron';
 import { join } from 'node:path';
-import { WINDOW_CONFIG } from './constants.js';
+import { WINDOW_CONFIG } from './constants.ts';
 
 export function isMainWindow(window: BrowserWindow): boolean {
   return window.getTitle() === WINDOW_CONFIG.MAIN_TITLE;

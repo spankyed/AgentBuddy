@@ -5,8 +5,8 @@ import * as path from 'path';
 import * as fs from 'fs';
 import { randomBytes, randomUUID } from 'crypto';
 import getPort, { clearLockedPorts } from 'get-port';
-import { AppModule } from '../../AppModule.js';
-import { ModuleContext } from '../../ModuleContext.js';
+import { AppModule } from '../../AppModule.ts';
+import { ModuleContext } from '../../ModuleContext.ts';
 import { 
   API_CONFIG, 
   API_EVENTS, 
@@ -14,10 +14,10 @@ import {
   getEnvironment, 
   getNodeExecutable, 
   getExecutionArgs 
-} from './config.js';
-import { ProcessManager, broadcastEvent } from './process-manager.js';
-import { logInfo, logError, logWarn, getLogger, logStartupBanner } from './logger.js';
-import { getAppContext } from '../../app-context.js';
+} from './config.ts';
+import { ProcessManager, broadcastEvent } from './process-manager.ts';
+import { logInfo, logError, logWarn, getLogger, logStartupBanner } from './logger.ts';
+import { getAppContext } from '../../app-context.ts';
 import { errorMessage } from '@abuddy/sdk/utils/pure';
 
 export class ApiServer implements AppModule {

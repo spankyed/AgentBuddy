@@ -1,8 +1,8 @@
 import {BrowserWindow} from 'electron';
-import type {AppModule} from '../AppModule.js';
-import type {ModuleContext} from '../ModuleContext.js';
+import type {AppModule} from '../AppModule.ts';
+import type {ModuleContext} from '../ModuleContext.ts';
 
-import {getAppContext} from '../app-context.js';
+import {getAppContext} from '../app-context.ts';
 
 class ProtocolHandler implements AppModule {
   enable({app}: ModuleContext): void {

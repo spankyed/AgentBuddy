@@ -66,6 +66,7 @@
     "typecheck:sdk": "npm run typecheck --workspace @abuddy/sdk && echo '\u2705 SDK type check passed'",
     "typecheck:host": "npm run typecheck --workspace @abuddy/host && echo '\u2705 Host type check passed'",
     "check:specifiers": "tsx scripts/check-import-specifiers.ts",
+    "specifiers:fix": "tsx scripts/fix-specifiers.ts",
     "typecheck:scripts": "tsc -p scripts && tsc -p tests && tsc -p packages/repo-checks && echo '\u2705 Scripts, repo checks and E2E type check passed'",
     "typecheck:ui": "npm run typecheck --workspace @abuddy/ui && echo '\u2705 UI type check passed'",
     "typecheck:cli": "npm run typecheck --workspace @abuddy/cli --workspace @abuddy/testing && echo '\u2705 CLI + testing type check passed'",

@@ -64,6 +64,7 @@ names every workspace that has a second config.
 | `unit-pool` | the pool's per-project cache: what a project's freshness is measured against |
 | `spec-plan` | what `npm run spec` decides to run for what you gave it, asserted without running any of it: the plan per target shape, which pack suites a change reaches across the `dist` seam, that no plan runs one suite twice, and how the arguments split |
 | `pack-test-config` | that every pack's vitest config calls `definePackTestConfig` and declares no `test` block of its own, the scaffolded template included: there were three copies and they had drifted, and a fourth is a `cp` away |
+| `specifier-fixes` | what `npm run specifiers:fix` may write: right-to-left splicing, and the three refusals — a span that no longer holds what the reader saw, two spans that overlap, a file with nothing to do. What makes a rewriter safe is the refusals, not the writing |
 | `doc-links` | that a relative link between the repo's documents resolves: archiving a goal turns its own `../archive/goals/x.md` into `archive/archive/goals/x.md`, and a dead link fails nothing on its own |
 | `repo-check-boundary`, `spec-placement` | where a spec belongs: this package's own boundary, that every package with source has a suite, and that no spec reaches into another package's tree |
 
