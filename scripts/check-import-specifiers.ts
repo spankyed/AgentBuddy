@@ -12,7 +12,7 @@ import { readSubpathImports } from '@abuddy/host/build/subpath-imports';
 import { SOURCE_CONDITION } from '@abuddy/host/build/source-resolution';
 import { ownModuleFindings } from '@abuddy/host/build/own-module-specifiers';
 import { PACK_RULES, type PackRuleKey } from '../packages/abuddy-cli/src/build/pack-rules.ts';
-import { readSource, sourceFiles } from '../packages/abuddy-cli/src/build/pack-sources.ts';
+import { moduleOf, readSource, sourceFiles, type SourceView } from '../packages/abuddy-cli/src/build/pack-sources.ts';
 import type { Fix } from './lib/specifier-fixes.ts';
 
 const repoRoot = path.resolve(import.meta.dirname, '..');
@@ -248,13 +248,6 @@ function findSpecifierText(files: string[], root: string, matches: (specifier: s
 }
 
 type Rule = (node: ts.Node) => string[] | undefined;
-
-/** The module a static import or export, or a dynamic import(), names */
-function moduleOf(node: ts.Node): string | undefined {
-  const literal = ts.isImportDeclaration(node) || ts.isExportDeclaration(node) ? node.moduleSpecifier
-    : ts.isCallExpression(node) && node.expression.kind === ts.SyntaxKind.ImportKeyword ? node.arguments[0] : undefined;
-  return literal && ts.isStringLiteralLike(literal) ? literal.text : undefined;
-}
 
 /**
  * `file:line: what` for each finding of `rule` in `files`. A syntax tree leaves out comments and string
@@ -596,39 +589,6 @@ const PACK_SRC_ROOTS = [
   'packages/abuddy-host/src',
 ];
 
-/** `export … from '…'`: a module passing another's exports on */
-const EXPORT_FROM = /\bexport\s+(?:type\s+)?(?:\*(?:\s+as\s+\w+)?|\{[^}]*\})\s*from\s*['"][^'"]+['"]/g;
-
-/** The local names an import statement binds (`import a, { b as c } from`, `import * as d from`) */
-function importedNames(statement: string): string[] {
-  const clause = /\bimport\s+(?:type\s+)?([\s\S]*?)\s*from\s*['"]/.exec(statement)?.[1] ?? '';
-  const names: string[] = [];
-  const braces = /\{([^}]*)\}/.exec(clause)?.[1];
-  for (const part of braces?.split(',') ?? []) {
-    const local = part.trim().replace(/^type\s+/, '').split(/\s+as\s+/).pop()?.trim();
-    if (local) names.push(local);
-  }
-  const outside = clause.replace(/\{[^}]*\}/, '');
-  const namespace = /\*\s+as\s+(\w+)/.exec(outside)?.[1];
-  if (namespace) names.push(namespace);
-  const fallback = /^\s*(\w+)/.exec(outside.replace(/\*\s+as\s+\w+/, ''))?.[1];
-  if (fallback && fallback !== 'type') names.push(fallback);
-  return names;
-}
-
-/** The local names a module exports without re-exporting from another (`export { a, b as c }`, `export default a`) */
-function exportedLocalNames(code: string): Set<string> {
-  const names = new Set<string>();
-  for (const m of code.matchAll(/\bexport\s+(?:type\s+)?\{([^}]*)\}(?!\s*from)/g)) {
-    for (const part of m[1].split(',')) {
-      const local = part.trim().replace(/^type\s+/, '').split(/\s+as\s+/)[0]?.trim();
-      if (local) names.add(local);
-    }
-  }
-  for (const m of code.matchAll(/\bexport\s+default\s+(\w+)\s*;?\s*$/gm)) names.add(m[1]);
-  return names;
-}
-
 /**
  * The source files a package publishes, from its `package.json` `exports`.
  *
@@ -654,6 +614,44 @@ function publishedEntryPoints(packageDir: string): Set<string> {
     .map((target) => path.resolve(packageDir, target)));
 }
 
+/** The local names a module binds from an import, or exports without re-exporting (`export { a }`, `export default a`) */
+function localNames(node: ts.Node): string[] {
+  if (ts.isImportDeclaration(node)) {
+    const clause = node.importClause;
+    if (!clause) return [];
+    const bindings = clause.namedBindings;
+    const named = !bindings ? [] : ts.isNamespaceImport(bindings) ? [bindings.name.text] : bindings.elements.map((el) => el.name.text);
+    return clause.name ? [clause.name.text, ...named] : named;
+  }
+  // `export default a`, and `export { a, b as c }` — the local is the name before `as`
+  if (ts.isExportAssignment(node)) return ts.isIdentifier(node.expression) ? [node.expression.text] : [];
+  if (ts.isExportDeclaration(node) && !node.moduleSpecifier && node.exportClause && ts.isNamedExports(node.exportClause)) {
+    return node.exportClause.elements.map((el) => (el.propertyName ?? el.name).text);
+  }
+  return [];
+}
+
+/**
+ * The spans of the declarations in `view` that pass another module's exports on: `export … from '…'`, and an
+ * import whose bindings this module exports again.
+ *
+ * Spans rather than specifier text, because one file may both import a module plainly and re-export from it, and
+ * only the second is a door. The regex this replaced correlated two passes by byte offset to tell them apart;
+ * with a syntax tree the declaration is the unit, so the containment test below is all it takes.
+ *
+ * Deliberately no wider than what it replaced: `export { a }` and `export default a`, not `export const a =
+ * imported` or a binding passed on inside an object literal. Widening it would report imports the old rule
+ * allowed, and there are none to report today.
+ */
+function doorSpans(view: SourceView): { start: number; end: number }[] {
+  const exported = new Set(view.visit((node) => (ts.isImportDeclaration(node) ? undefined : localNames(node))).map(({ what }) => what));
+  return view.visit((node) => {
+    if (ts.isExportDeclaration(node) && node.moduleSpecifier) return [''];
+    if (!ts.isImportDeclaration(node)) return undefined;
+    return localNames(node).some((name) => exported.has(name)) ? [''] : undefined;
+  });
+}
+
 /**
  * `file:line: specifier` for each import of another feature's frontend. A feature reaches into no other feature's
  * frontend at all: what one offers the rest is its plugin's contract — its published state, which `#generated/fe`
@@ -665,6 +663,13 @@ function publishedEntryPoints(packageDir: string): Set<string> {
  *
  * Two modules are exempt, and both are the pack's own assembly rather than one feature reaching another: generated
  * code, which registers every feature's plugin, and what the package publishes (`publishedEntryPoints`).
+ *
+ * It reads a syntax tree, like every rule here bar the two that read text on purpose. It used to match regexes,
+ * and 28% of what it reads are `.vue` files it read whole: a commented-out import, one in a `<template>`, one in a
+ * template literal and a CSS `@import` in a `<style>` block all counted, while a module path in a `vi.mock` did
+ * not. Three commented-out imports sit in `default-setup`'s SFCs today, quiet only because they point inside their
+ * own feature. The reader answers over all 880 files exactly as the regexes did — measured — so nothing about
+ * what this repo reports changed.
  */
 export function findCrossFeatureImports(srcRoots = PACK_SRC_ROOTS, root = repoRoot): string[] {
   return srcRoots.flatMap((srcRoot) => {
@@ -675,26 +680,18 @@ export function findCrossFeatureImports(srcRoots = PACK_SRC_ROOTS, root = repoRo
     /** What the package publishes, from outside every feature: the modules that assemble it (`publishedEntryPoints`) */
     const assembles = (file: string) => published.has(file) && featureOf(file) === undefined;
     return packFiles([srcRoot], root).filter((file) => !relative(file).startsWith('__generated__') && !assembles(file)).flatMap((file) => {
-      const code = fs.readFileSync(file, 'utf-8');
-      // Where each `from` of a re-export starts, which is where ANY_SPECIFIER's match for it starts
-      const reExports = new Set([...code.matchAll(EXPORT_FROM)].map((m) => m.index + m[0].search(/from\s*['"][^'"]+['"]$/)));
+      const view = readSource(file);
       const inOwnFrontend = /^features\/[^/]+\/fe\//.test(relative(file));
-      const exportedLocals = inOwnFrontend ? new Set<string>() : exportedLocalNames(code);
-      /** Whether the import whose specifier `match` is binds a name this module exports again: a re-export in two steps */
-      const passedOn = (match: RegExpMatchArray) => {
-        const end = match.index! + match[0].length + 1;
-        const statement = code.slice(code.lastIndexOf('import', match.index), end);
-        return importedNames(statement).some((name) => exportedLocals.has(name));
-      };
-      return [...code.matchAll(ANY_SPECIFIER)].flatMap((match) => {
-        const specifier = match[1];
-        const target = specifier.startsWith('@/') ? path.join(src, specifier.slice(2))
-          : specifier.startsWith('.') ? path.resolve(path.dirname(file), specifier) : undefined;
+      const doors = inOwnFrontend ? [] : doorSpans(view);
+      return view.specifiers.flatMap(({ text, line, start, end }) => {
+        const target = text.startsWith('@/') ? path.join(src, text.slice(2))
+          : text.startsWith('.') ? path.resolve(path.dirname(file), text) : undefined;
         if (target === undefined) return [];
         const into = /^features\/([^/]+)\/fe(?:\/.+)?$/.exec(relative(target));
         if (!into) return [];
-        if (into[1] === featureOf(file) && (inOwnFrontend || (!reExports.has(match.index) && !passedOn(match)))) return [];
-        return [`${path.relative(root, file)}:${code.slice(0, match.index).split('\n').length}: ${specifier}`];
+        const passedOn = doors.some((door) => start >= door.start && end <= door.end);
+        if (into[1] === featureOf(file) && (inOwnFrontend || !passedOn)) return [];
+        return [`${path.relative(root, file)}:${line}: ${text}`];
       });
     });
   });

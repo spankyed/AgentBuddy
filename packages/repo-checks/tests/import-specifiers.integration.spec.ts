@@ -872,6 +872,34 @@ describe('findCrossFeatureImports', () => {
 
   // Fails closed: with no `exports` to read, every module gets the strict rule — the opposite of an exception
   // derived from a file being missing, which would widen the gate exactly when something had gone.
+  /**
+   * What a syntax tree leaves out and a regex does not. Written before the rule read one, so each of these
+   * failed first: the reader is why `abuddy-cli/CLAUDE.md` records that "a regex literal holding an unbalanced
+   * quote made a commented-out import look real and failed a build naming a comment".
+   *
+   * Not hypothetical. Three commented-out imports already sit in `default-setup`'s SFCs, in
+   * `features/library/fe/canvas.vue` and `features/threads/fe/chat/input.vue`; they are quiet only because they
+   * point inside their own feature. One pointing at another feature's `fe/` would have failed the build.
+   */
+  it('reads code, not comments, templates, template literals or styles', () => {
+    writeAt(`${src}/features/code/fe/panel.ts`, "// import { id } from '@/features/actions/fe/state';");
+    writeAt(`${src}/features/code/fe/block.ts`, "/* import { id } from '@/features/actions/fe/state'; */");
+    writeAt(`${src}/features/code/fe/help.ts`, "export const help = `import { id } from '@/features/actions/fe/state'`;");
+    writeAt(`${src}/features/code/fe/canvas.vue`, [
+      '<template><code>import { id } from \'@/features/actions/fe/state\'</code></template>',
+      '<style scoped>@import \'../../actions/fe/theme.css\';</style>',
+    ].join('\n'));
+    expect(findCrossFeatureImports([src], root)).toEqual([]);
+  });
+
+  /** And a module path a call names, which the same reader already knows about (`MODULE_PATH_CALLS`) */
+  it("flags another feature's frontend mocked by path", () => {
+    writeAt(`${src}/features/code/fe/panel.spec.ts`, "vi.mock('@/features/actions/fe/state', () => ({}));");
+    expect(findCrossFeatureImports([src], root)).toEqual([
+      `${src}/features/code/fe/panel.spec.ts:1: @/features/actions/fe/state`,
+    ]);
+  });
+
   it('excepts nothing when the package publishes nothing', () => {
     writeAt(`${src}/fe/index.ts`, "export { notesMachine } from '../features/notes/fe/state';");
     expect(findCrossFeatureImports([src], root)).toEqual([`${src}/fe/index.ts:1: ../features/notes/fe/state`]);
