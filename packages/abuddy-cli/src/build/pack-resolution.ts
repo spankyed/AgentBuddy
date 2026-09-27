@@ -22,7 +22,7 @@
  */
 import * as fs from 'node:fs';
 import * as path from 'node:path';
-import { SOURCE_PACKAGES } from '@abuddy/host/build/source-resolution';
+import { SOURCE_CONDITION, SOURCE_PACKAGES } from '@abuddy/host/build/source-resolution';
 import ts from 'typescript';
 import { readSource } from './pack-sources.ts';
 
@@ -123,8 +123,6 @@ export function packResolvesSource(packDir: string): PackResolution {
  * property was spelled.
  */
 const PACK_CONFIGS = ['vitest.config.ts', 'vitest.config.mts', 'vite.config.ts', 'vite.config.mts'];
-
-const SOURCE_CONDITION = '@abuddy/source';
 
 /** `<config>:<line>: <condition>` for each of the pack's configs naming the source condition */
 export function configsNamingSourceCondition(packDir: string): string[] {

@@ -95,20 +95,17 @@ function compiled(pkg: string, ...extraInputs: string[]): BuildUnit {
     // The build scripts live in the repo's scripts/, not the package's: a package's own scripts are its
     // other tooling (the SDK's schema generator) and no input of this build, bar @abuddy/ui's exports
     //
-    // The three `abuddy-host/src/build` modules the build script's imports lead to: `runPackageBuild` from this
-    // one, `stagePublishTree`, which derives the manifest it stages, and what those two reach in turn. All
-    // three were missing until 2026-09-27 — including this file, so a change to the stamp protocol did not
-    // invalidate the stamps it defines.
-    //
-    // Named rather than the whole `build/` directory, which is what landed first. A directory covers the next
-    // sibling automatically, but it also means an import *within* it can never fail the guard that found this —
-    // and it rebuilds all three packages when `discover.ts` or `shared-deps.ts` changes, which none of them
-    // reads. `chain-inputs.spec.ts` walks the build script's imports and names anything undeclared, so the
-    // guard is the maintenance a directory was standing in for.
+    // The `abuddy-host/src/build` modules the build script's imports lead to and that decide what it *emits*:
+    // `stagePublishTree`, which derives the staged manifest, and what it reaches in turn. All were missing until
+    // 2026-09-27. Named rather than the whole `build/` directory, which is what landed first: a directory covers
+    // the next sibling automatically, but an import *within* it can then never fail the guard that found this,
+    // and it rebuilds three packages when `discover.ts` changes, which none of them reads.
+    // `chain-inputs.spec.ts` walks the build script's imports and names anything undeclared — apart from
+    // `NOT_A_BUILD_INPUT` below — so the guard is the maintenance a directory was standing in for.
     inputs: [...SHARED_INPUTS, repoFile('scripts', 'lib', 'published-imports.ts'), repoFile('scripts', 'build-package.ts'),
-      pkgFile('abuddy-host', 'src', 'build', 'packages-built.ts'),
       pkgFile('abuddy-host', 'src', 'build', 'published-manifest.ts'),
-      pkgFile('abuddy-host', 'src', 'build', 'specifiers.ts'), ...extraInputs,
+      pkgFile('abuddy-host', 'src', 'build', 'specifiers.ts'),
+      pkgFile('abuddy-host', 'src', 'build', 'source-resolution.ts'), ...extraInputs,
       pkgFile(pkg, 'src'),
       pkgFile(pkg, 'package.json'), pkgFile(pkg, 'tsconfig.json'), pkgFile(pkg, 'tsconfig.package.json')],
     outputs: [pkgFile(pkg, 'dist'), pkgFile(pkg, PUBLISH_TREE)],
@@ -133,6 +130,24 @@ export const BUILD_UNITS: Record<string, BuildUnit> = {
     pkgFile('abuddy-ui', 'scripts', 'exports.ts')),
   '@abuddy/testing': bundled('abuddy-testing'),
   '@abuddy/cli': bundled('abuddy-cli', pkgFile('abuddy-cli', 'bin')),
+};
+
+/**
+ * Modules a build script imports that are deliberately **not** its inputs, and why.
+ *
+ * Each decides *whether* to build; none can change what a build emits. Watching one would rebuild every
+ * package whenever the freshness rule was edited, for output that would be byte-identical — and the protocol's
+ * own way of invalidating stamps is `STAMP_VERSION`, which is deliberate where a content hash would be
+ * incidental.
+ *
+ * One list, two readers, because two would disagree: `package-freshness.spec.ts` asserts no unit names these,
+ * and `chain-inputs.spec.ts`' closure guard would otherwise demand them — which it did, on the day it landed.
+ * Repo-relative, as both readers resolve them against `REPO_ROOT`.
+ */
+export const NOT_A_BUILD_INPUT: Record<string, string> = {
+  'scripts/ensure-packages-built.ts': 'the command over the freshness rule; it cannot change what "built" means',
+  'packages/abuddy-host/src/build/packages-built.ts': 'the freshness rule and the stamp protocol itself; '
+    + 'a change to it is announced by STAMP_VERSION, not by a fingerprint',
 };
 
 /**

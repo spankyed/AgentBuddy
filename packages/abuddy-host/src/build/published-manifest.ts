@@ -22,12 +22,10 @@
 import { execFileSync } from 'node:child_process';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
+import { SOURCE_CONDITION } from './source-resolution.ts';
 
 /** A parsed `package.json`. Only the fields below are read; the rest is copied through */
 export type Manifest = Record<string, unknown>;
-
-/** The condition under which a workspace export resolves TypeScript source, which no tarball holds */
-const SOURCE_CONDITION = '@abuddy/source';
 
 /** The directory inside a package that holds the staged tree npm publishes */
 export const PUBLISH_TREE = 'publish';

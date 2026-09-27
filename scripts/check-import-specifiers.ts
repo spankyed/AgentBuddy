@@ -9,6 +9,7 @@ import { parse as parseSfc } from '@vue/compiler-sfc';
 import { SHARED_INSTANCE_PACKAGES } from '@abuddy/host/build/shared-deps';
 import { packageName } from '@abuddy/host/build/specifiers';
 import { readSubpathImports } from '@abuddy/host/build/subpath-imports';
+import { SOURCE_CONDITION } from '@abuddy/host/build/source-resolution';
 import { ownModuleFindings } from '@abuddy/host/build/own-module-specifiers';
 import { PACK_RULES, type PackRuleKey } from '../packages/abuddy-cli/src/build/pack-rules.ts';
 import { readSource, sourceFiles } from '../packages/abuddy-cli/src/build/pack-sources.ts';
@@ -572,7 +573,9 @@ export function findRepositoryCasts(dirs = packageSourceDirs(), root = repoRoot)
 }
 
 /** The export condition under which @abuddy/* workspace packages resolve their TypeScript source */
-export const SOURCE_CONDITION = '@abuddy/source';
+// Re-exported rather than declared: `@abuddy/host/build/source-resolution` owns it beside the packages it
+// applies to, and repo-checks' integration spec imports the name from here
+export { SOURCE_CONDITION };
 
 /**
  * Config files that compile or bundle workspace source. A tsconfig separates its name with a dot or

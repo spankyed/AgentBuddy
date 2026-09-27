@@ -16,7 +16,7 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import ts from 'typescript';
-import { BUILD_UNITS, inputFiles, REPO_ROOT, type BuildUnit } from '@abuddy/host/build/packages-built';
+import { BUILD_UNITS, inputFiles, NOT_A_BUILD_INPUT, REPO_ROOT, type BuildUnit } from '@abuddy/host/build/packages-built';
 import { CHAIN_STEPS, INTEGRATION_SUITES, SUITE_READS, suiteInputs, type ChainStep } from '../../../scripts/lib/chain-steps.ts';
 import { UNIT_SUITES, type UnitSuite } from '../../../scripts/lib/unit-suites.ts';
 import { reachableText, rootScripts } from '../../../scripts/lib/npm-scripts.ts';
@@ -493,7 +493,13 @@ describe('a build unit declares the modules its build script imports', () => {
 
   it.each(Object.keys(BUILD_UNITS))('%s', (workspace) => {
     const covered = unitCovers(BUILD_UNITS[workspace]!);
-    const missing = closureOf([buildScriptOf(workspace)]).filter((file) => !covered.has(file));
+    const missing = closureOf([buildScriptOf(workspace)])
+      // A module that decides *whether* to build cannot change what the build emits, so it is deliberately not
+      // an input — `package-freshness.spec.ts` refuses one, and this demanded one on the day it landed. That
+      // spec is also where an entry going stale shows up, since it fails the moment a unit names one; only one
+      // of the two entries is even reachable from a build script, the other being the command over them.
+      .filter((file) => NOT_A_BUILD_INPUT[file] === undefined)
+      .filter((file) => !covered.has(file));
     expect(missing,
       `${workspace}'s build imports these and does not declare them, so editing one leaves its output stale while its stamp reads fresh`)
       .toEqual([]);

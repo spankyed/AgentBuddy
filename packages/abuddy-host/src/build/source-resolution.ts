@@ -10,7 +10,20 @@ import * as path from 'node:path';
  */
 export const SOURCE_PACKAGES = ['@abuddy/ears', '@abuddy/sdk', '@abuddy/ui'] as const;
 
-const SOURCE_CONDITION_FLAG = '--conditions=@abuddy/source';
+/**
+ * The export condition under which the three packages above resolve their TypeScript source.
+ *
+ * Here because this module is what the condition is *about*, beside `SOURCE_PACKAGES` for the same reason: the
+ * packages and the condition are one fact, and two modules holding half of it each is how the list of packages
+ * came to exist twice in two orders. Seven copies of this string existed before it moved here.
+ *
+ * `@abuddy/ui`'s `scripts/exports.ts` keeps a copy and must: `@abuddy/ui` does not depend on `@abuddy/host`, and
+ * `check:specifiers` holds a package's own `scripts/` to that package's source and its declared dependencies.
+ * That one is the exception rather than an oversight.
+ */
+export const SOURCE_CONDITION = '@abuddy/source';
+
+const SOURCE_CONDITION_FLAG = `--conditions=${SOURCE_CONDITION}`;
 
 /**
  * NODE_OPTIONS without the source condition, for the processes the CLI starts to run pack code: the

@@ -19,6 +19,10 @@ import * as path from 'node:path';
  * by design (root `CLAUDE.md`: "A host config declares that condition outright"), and the walk is five
  * lines that at least four files in this repo each keep their own copy of.
  */
+// The one copy of this string that stays a copy. `@abuddy/host/build/source-resolution` owns it for every
+// other caller, and @abuddy/ui does not depend on @abuddy/host — `check:specifiers` holds a package's own
+// scripts/ to that package's source and its declared dependencies, so reaching for the owner is the thing
+// that is not allowed here.
 const SOURCE_CONDITION = '@abuddy/source';
 
 const walk = (dir: string): string[] =>

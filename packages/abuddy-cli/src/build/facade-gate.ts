@@ -1,5 +1,6 @@
 import * as fs from 'node:fs';
 import { packageName } from '@abuddy/host/build/specifiers';
+import { SOURCE_CONDITION } from '@abuddy/host/build/source-resolution';
 import { createRequire, isBuiltin } from 'node:module';
 import * as path from 'node:path';
 import ts from 'typescript';
@@ -7,8 +8,6 @@ import { errorMessage } from '@abuddy/sdk/utils/pure';
 
 /** Declaration extensions an import of the facade must resolve to; anything else reads as `any` */
 const DECLARATION_EXTENSIONS: readonly string[] = [ts.Extension.Dts, ts.Extension.Dmts, ts.Extension.Dcts, ts.Extension.Ts, ts.Extension.Mts, ts.Extension.Cts, ts.Extension.Tsx];
-
-const SOURCE_CONDITION = '@abuddy/source';
 
 
 /**

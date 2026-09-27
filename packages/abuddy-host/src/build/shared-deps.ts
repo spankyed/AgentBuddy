@@ -1,6 +1,7 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { createRequire } from 'node:module';
+import { SOURCE_CONDITION } from './source-resolution.ts';
 
 /**
  * Packages a process must load once: pack runtimes, dependency runtimes, the app and tests share one
@@ -42,7 +43,7 @@ export function sharedInstanceSpecifiers(pkg: string, exportsMap: Record<string,
       && !Object.hasOwn(APP_ONLY_EXPORTS, specifier(key))
       && !key.endsWith('.json')
       && key !== './fe' && !key.startsWith('./fe/')
-      && !(typeof target === 'object' && target !== null && Object.keys(target).every((condition) => condition === '@abuddy/source')))
+      && !(typeof target === 'object' && target !== null && Object.keys(target).every((condition) => condition === SOURCE_CONDITION)))
     .map(([key]) => specifier(key));
 }
 

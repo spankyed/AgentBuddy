@@ -3,10 +3,7 @@ import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
-import {
-  BUILD_UNITS, CHECKOUT_MARKER, fingerprintInputs, fingerprintUnit, STAMP_VERSION, staleMessage, stampFile,
-  stampedBuild, stampedRun, stampedRunAll, unitStaleReason, withBuildLock, type BuildIntent, type BuildUnit,
-} from '@abuddy/host/build/packages-built';
+import { BUILD_UNITS, CHECKOUT_MARKER, NOT_A_BUILD_INPUT, STAMP_VERSION, fingerprintInputs, fingerprintUnit, staleMessage, stampFile, stampedBuild, stampedRun, stampedRunAll, type BuildIntent, type BuildUnit, unitStaleReason, withBuildLock } from '@abuddy/host/build/packages-built';
 import { PACKED_PACKAGES, REPO_ROOT } from '@app/publish-checks';
 
 /**
@@ -153,10 +150,13 @@ describe('the stamp protocol', () => {
     expect(unitStaleReason(widened, stamp)).toMatch(/inputs changed/);
   });
 
-  // This module decides whether to build; it cannot change what a build emits
+  // These modules decide whether to build; none can change what a build emits. The list is
+  // `NOT_A_BUILD_INPUT`, shared with `chain-inputs.spec.ts`' closure guard, which would otherwise demand
+  // exactly what this refuses — two lists here would be two answers to one question.
   it('does not watch the code that decides freshness', () => {
     const watched = new Set(Object.values(BUILD_UNITS).flatMap((unit) => [...unit.inputs]));
-    for (const rule of ['scripts/ensure-packages-built.ts', 'packages/abuddy-host/src/build/packages-built.ts']) {
+    expect(Object.keys(NOT_A_BUILD_INPUT).length, 'an empty list makes this case vacuous').toBeGreaterThan(0);
+    for (const rule of Object.keys(NOT_A_BUILD_INPUT)) {
       expect(watched, rule).not.toContain(path.join(REPO_ROOT, rule));
     }
     // @abuddy/testing and @abuddy/cli still watch all of abuddy-host/src, which their bundles inline
