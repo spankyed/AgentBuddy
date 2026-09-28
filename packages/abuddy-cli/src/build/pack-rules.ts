@@ -207,8 +207,13 @@ const RULE_LIST = [
       + 'extensionless specifier in ESM, so one works only while a build guesses the suffix and this one does not — '
       + 'and the .js a pack would otherwise name is a file it never emits, since it ships one bundle',
     check(view, place) {
+      // Pack-relative, derived from the file rather than taken from `place.relative`: the resolution below joins
+      // it to `packDir`, and `relative` is what a runner *prints* — pack-relative for a pack's own build,
+      // repo-relative for `check:specifiers`. Reusing it there made every relative specifier resolve to
+      // `<pack>/<pack>/src/…`, so the `.js` form this rule owns was reported by the CLI and by nothing in this repo.
+      const file = path.relative(place.packDir, view.file).split(path.sep).join('/');
       const found: OwnModuleSpecifier[] = view.specifiers.map(({ text, line, start, end }) =>
-        ({ file: place.relative, line, specifier: text, start, end }));
+        ({ file, line, specifier: text, start, end }));
       return ownModuleFindings(place.packDir, found).map(({ line, specifier, named, start, end }) =>
         ({ line, what: `'${specifier}' names no file — write '${named}'`, start: start as number, end: end as number }));
     },

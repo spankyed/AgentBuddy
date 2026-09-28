@@ -8,11 +8,12 @@ import {
   findAppImportsInPackTests, findContractLeafImports, findCrossCheckoutResolution, findCrossFeatureImports, findExtensionlessOwnModules, findHostImports, findJsSpecifiers, findMissingSourceConditions,
   findPackageScriptImports, findPackBackendConsole, findPackOwnAliases, findRawPackHelpers,
   findRawTransport, findInternalPackageImports, findLmdbImports, findRepositoryCasts, findSharedPackageLists, findUpwardImports, LAYERS, LMDB_RULES, packageSourceDirs,
-  CHECK_IDS, DECLARES_SOURCE_BY_DESIGN, type ImportRuleId, RESOLVES_DIST_BY_DESIGN, SHARED_LIST_CONSUMERS, sourceConditionPackages, SOURCE_CONDITION,
+  CHECK_IDS, type CoveredRuleId, DECLARES_SOURCE_BY_DESIGN, type ImportRuleId, RESOLVES_DIST_BY_DESIGN, SHARED_LIST_CONSUMERS, sourceConditionPackages, SOURCE_CONDITION,
   checkedDirs, type ImportRule, packCodeDirs, packDirs, packRule, ruleRows, ruleTable,
 } from '../../../scripts/check-import-specifiers.ts';
 import { REPO_ROOT } from '@abuddy/host/build/packages-built';
 import { packFixture as buildPackFixture } from '@abuddy/host/testing/pack-fixture';
+import { population } from '@abuddy/host/testing/population';
 
 /** scripts/check-import-specifiers.ts, over a temp tree holding the modules the checks resolve against */
 let root: string;
@@ -393,6 +394,22 @@ describe('findLmdbImports', () => {
     expect(findLmdbImports(rules, root)).toEqual([expect.stringMatching(new RegExp(`^src/${file}:1: `))]);
   });
 
+  /**
+   * The one repo-only rule that *runs* a pack rule: `LMDB_RULES`' pack entry names a key and `findLmdbImports`
+   * delegates to it, so that key and the one the parity table advertises are two records of one fact. The case
+   * that puts the offence in a pack cannot see them diverge — `packRule(by)` still fires on the fixture when the
+   * routing is changed — so this compares the two records directly.
+   */
+  it('routes its pack population to the pack rule the parity table names', () => {
+    const parity = CHECKS.find((rule) => rule.id === 'findLmdbImports')?.repoOnly;
+    if (parity?.kind !== 'covered') throw new Error('findLmdbImports no longer names a pack rule that covers it');
+    const routed = [...new Set(LMDB_RULES.flatMap((rule) => (rule.rule === undefined ? [] : [rule.rule])))];
+    expect(routed, 'no LMDB_RULES entry delegates to a pack rule, so the parity note names a rule nothing runs')
+      .not.toEqual([]);
+    expect(routed, `the pack population is checked by these, while --list tells a pack author it is \`${parity.by}\``)
+      .toEqual([parity.by]);
+  });
+
   it('holds for the repo', () => {
     expect(findLmdbImports()).toEqual([]);
   });
@@ -540,7 +557,9 @@ const FIRES: Record<ImportRuleId, () => string[]> = {
     return findCrossFeatureImports(PACK_SRC, root);
   },
   findContractLeafImports: () => {
-    packFixture({ 'src/features/notes/fe/contract.ts': "import type { P } from './plugin';" });
+    // `./plugin.ts`, not `./plugin`: an extensionless specifier is `own-modules`' offence as well, and this
+    // fixture is the subject of a sweep asserting one offence has one owner
+    packFixture({ 'src/features/notes/fe/contract.ts': "import type { P } from './plugin.ts';" });
     return findContractLeafImports(PACK_SRC, root);
   },
   findPackageScriptImports: () => {
@@ -566,6 +585,36 @@ const FIRES: Record<ImportRuleId, () => string[]> = {
     workspace();
     writeAt('packages/consumer/tsconfig.json', '{ "compilerOptions": { "strict": true } }');
     return conditionProblems();
+  },
+};
+
+/**
+ * The offence each `covered` rule is about, written as pack code, and what the pack rule it names must report.
+ *
+ * `covered: { by }` claims an external pack is held to this rule's subject under another name, and `by:
+ * PackRuleKey` checks only that the key exists — pointing `findLmdbImports` at `backend-console` compiled, printed
+ * in `--list` and left all 243 cases green. So the claim is shown rather than asserted: the offence goes into a
+ * pack, and the named rule has to be the one that reports it.
+ *
+ * Keyed by `CoveredRuleId`, derived from the entries, so a rule that starts claiming coverage without evidence
+ * does not compile. The three relationships underneath differ — `lmdb-imports` is run by its repo rule for the
+ * pack population, `own-modules` takes over a population its repo rule excludes, and `source-resolution` refuses
+ * the same pack config from outside this repo — but what has to hold is one thing, so it is one table.
+ */
+const COVERED_BY: Record<CoveredRuleId, { files: Record<string, string>; finding: string }> = {
+  // The base fixture writes `src/sibling.ts`, which is what makes the `.js` resolvable-but-wrong
+  findJsSpecifiers: {
+    files: { 'src/f.ts': "import { sibling } from './sibling.js';\n" },
+    finding: "packages/demo-pack/src/f.ts:1: './sibling.js' names no file — write './sibling.ts'",
+  },
+  findLmdbImports: {
+    files: { 'src/f.ts': "import { open } from 'lmdb';\n" },
+    finding: 'packages/demo-pack/src/f.ts:1: lmdb',
+  },
+  // Its config route, which reads the pack root's own listing — so the config goes there, not under a subdirectory
+  findMissingSourceConditions: {
+    files: { 'vitest.config.ts': `export default { resolve: { conditions: ['${SOURCE_CONDITION}'] } };\n` },
+    finding: `packages/demo-pack/vitest.config.ts:1: ${SOURCE_CONDITION}`,
   },
 };
 
@@ -638,6 +687,22 @@ describe('CHECKS', () => {
     expect(repoOnly.filter((rule) => rule.repoOnly!.kind === 'unenforced').map((rule) => rule.id),
       'an external pack can break this and nothing refuses it — move it to PACK_RULES, or say which kind it really is')
       .toEqual([]);
+  });
+
+  it('has evidence for every rule that claims a pack rule covers it, and for no other', () => {
+    const covered = CHECKS.filter((rule) => rule.repoOnly?.kind === 'covered').map((rule) => rule.id);
+    population('the covered parity entries', covered);
+    expect(Object.keys(COVERED_BY).sort(), 'COVERED_BY and the entries disagree about which rules claim coverage')
+      .toEqual([...covered].sort());
+  });
+
+  it.each(Object.entries(COVERED_BY))('%s is held for a pack by the rule it names', (id, { files, finding }) => {
+    const parity = CHECKS.find((rule) => rule.id === id)?.repoOnly;
+    if (parity?.kind !== 'covered') throw new Error(`${id} no longer claims a pack rule covers it, so this row is stale`);
+    packFixture(files);
+    expect(packRule(parity.by, PACK_SRC, root),
+      `${id} says an external pack is held to this as \`${parity.by}\`, but that rule does not report the offence in a `
+      + 'pack written to commit it — so the rule named is not the rule that covers it').toEqual([finding]);
   });
 
   /** And every rule reaches the printed table, under a header, one line each */

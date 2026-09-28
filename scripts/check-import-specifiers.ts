@@ -1328,6 +1328,15 @@ const RULE_LIST = [
 export type ImportRuleId = (typeof RULE_LIST)[number]['id'];
 
 /**
+ * The ids whose pack-facing half a named pack rule covers, derived the same way.
+ *
+ * What it is for: `by` is checked for spelling and not for coverage — a key that exists but names the wrong rule
+ * compiles, prints in `--list` and passes everything. A table of evidence keyed by this makes an entry arriving
+ * without any a compile error, so the claim cannot be made without being shown.
+ */
+export type CoveredRuleId = Extract<(typeof RULE_LIST)[number], { repoOnly: { kind: 'covered' } }>['id'];
+
+/**
  * Every rule's id, keeping its literal type: what a table that covers the rules is keyed by.
  *
  * Separate from `CHECKS` because the two are read for different things. A tuple of literal types is what makes the
