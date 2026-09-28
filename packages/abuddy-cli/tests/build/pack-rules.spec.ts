@@ -63,43 +63,50 @@ describe('internal-package-imports', () => {
 });
 
 /**
- * One rule, one offending file, one expected message. The table *is* the coverage claim below, so a rule added
- * without a row here fails that case — where the set it replaced could be satisfied by editing the set.
+ * One firing example per rule, keyed by rule: a `Record` rather than a list, so a rule added without a case is
+ * a compile error at this table instead of a test failure somewhere below. `onFile` is the offending module and
+ * the message it must produce, as a list because one rule can fail in two shapes; `elsewhere` names the case
+ * that covers a rule whose offence no single `src/f.ts` can express.
  */
-const FIRES_ON_A_FILE: [PackRuleKey, string, string][] = [
-    ['own-modules', "import { sendToSystem } from '#generated/events';\n",
-      "src/f.ts:1: '#generated/events' names no file — write '#generated/events.ts'"],
-    // The `.js` form is this rule's too, not a second rule's: one offence, one message, and this one names the fix
-    ['own-modules', "import { sibling } from './sibling.js';\n",
-      "src/f.ts:1: './sibling.js' names no file — write './sibling.ts'"],
-    ['pack-own-aliases', "import { x } from '@/features/notes/be/x.ts';\n", 'src/f.ts:1: @/features/notes/be/x.ts'],
-    ['host-imports', "import { edgeStore } from '@abuddy/host/ears';\n", 'src/f.ts:1: @abuddy/host/ears'],
-    ['lmdb-imports', "import { open } from 'lmdb';\n", 'src/f.ts:1: lmdb'],
-    ['untyped-sends', "import { untypedSendToSystem } from '@abuddy/sdk/events';\n",
-      'src/f.ts:1: untypedSendToSystem from @abuddy/sdk/events'],
-    ['raw-transport', 'export const send = () => _rootEvents.emitOutgoing(event);\n', 'src/f.ts:1: _rootEvents'],
-];
-
-/**
- * The rules whose firing case cannot be a row above, and the title of the case that covers each.
- *
- * The title is checked against this file's own text, so an entry pointing at a case that was renamed or
- * deleted fails rather than standing as a claim nobody re-reads — the same reason every exception table in this
- * repo reports one that has stopped applying.
- */
-const FIRES_ELSEWHERE: Partial<Record<PackRuleKey, string>> = {
+const FIRES: Record<PackRuleKey, { onFile?: [code: string, problem: string][]; elsewhere?: string }> = {
+  'own-modules': {
+    onFile: [
+      ["import { sendToSystem } from '#generated/events';\n",
+        "src/f.ts:1: '#generated/events' names no file — write '#generated/events.ts'"],
+      // The `.js` form is this rule's too, not a second rule's: one offence, one message, and this one names the fix
+      ["import { sibling } from './sibling.js';\n",
+        "src/f.ts:1: './sibling.js' names no file — write './sibling.ts'"],
+    ],
+  },
+  'pack-own-aliases': {
+    onFile: [["import { x } from '@/features/notes/be/x.ts';\n", 'src/f.ts:1: @/features/notes/be/x.ts']],
+  },
+  'host-imports': { onFile: [["import { edgeStore } from '@abuddy/host/ears';\n", 'src/f.ts:1: @abuddy/host/ears']] },
+  'lmdb-imports': { onFile: [["import { open } from 'lmdb';\n", 'src/f.ts:1: lmdb']] },
+  'untyped-sends': {
+    onFile: [["import { untypedSendToSystem } from '@abuddy/sdk/events';\n",
+      'src/f.ts:1: untypedSendToSystem from @abuddy/sdk/events']],
+  },
+  'raw-transport': {
+    onFile: [['export const send = () => _rootEvents.emitOutgoing(event);\n', 'src/f.ts:1: _rootEvents']],
+  },
   // Two shapes and eleven allowed ones, transcribed when the repo script's console rule moved here
-  'backend-console': 'backend-console fires under a backend path and not under a frontend one',
+  'backend-console': { elsewhere: 'backend-console fires under a backend path and not under a frontend one' },
   // A `_`-prefixed import from an @abuddy package, which needs no pack fixture to be offending
-  'internal-package-imports': "internal-package-imports",
+  'internal-package-imports': { elsewhere: 'internal-package-imports' },
   // Not a file's text but the pack's own module resolution, so its case needs a whole installed package to
   // resolve against
-  'source-resolution': 'source-resolution',
+  'source-resolution': { elsewhere: 'source-resolution' },
   // A feature layout, which one `src/f.ts` cannot express: the offence is which feature the file is in
-  'cross-feature-imports': "cross-feature-imports flags another feature's frontend and allows a feature its own",
+  'cross-feature-imports': { elsewhere: "cross-feature-imports flags another feature's frontend and allows a feature its own" },
   // The pack as a whole: which module is a contract comes from the manifest, so its case needs one
-  'contract-leaves': 'contract-leaves flags a contract leaf that reaches its own machine',
+  'contract-leaves': { elsewhere: 'contract-leaves flags a contract leaf that reaches its own machine' },
 };
+
+/** The `onFile` rows flattened for `it.each`, which wants one row per case rather than one per rule */
+const FIRES_ON_A_FILE: [PackRuleKey, string, string][] = Object.entries(FIRES)
+  .flatMap(([key, cases]) => (cases.onFile ?? []).map(([code, problem]): [PackRuleKey, string, string] =>
+    [key as PackRuleKey, code, problem]));
 
 /**
  * One firing example per rule, so none of them can land without a case that proves it bites — the same
@@ -218,19 +225,14 @@ describe('every rule', () => {
       .toEqual(['src/features/notes/fe/contract.ts:1: untypedSendToSystem from @abuddy/sdk/events']);
   });
 
-  it('has a case for every rule it defines', () => {
-    const covered = new Set<string>([...FIRES_ON_A_FILE.map(([key]) => key), ...Object.keys(FIRES_ELSEWHERE)]);
-    expect(PACK_RULES.map((rule) => rule.key).filter((key) => !covered.has(key)),
-      'a rule with no firing case is a gate nothing has watched fail').toEqual([]);
-  });
-
   it('names a case that exists for each rule covered elsewhere', () => {
     const own = fs.readFileSync(fileURLToPath(import.meta.url), 'utf-8');
     // Either quote style: a title holding an apostrophe is written with double quotes, and a pointer check that
     // only matched single ones would report a case that is right there
     const declared = (title: string) => [`it('`, `it("`, `describe('`, `describe("`]
       .some((open) => own.includes(`${open}${title}${open.at(-1)}`));
-    const gone = Object.entries(FIRES_ELSEWHERE)
+    const gone = Object.entries(FIRES)
+      .flatMap(([key, cases]) => (cases.elsewhere === undefined ? [] : [[key, cases.elsewhere] as const]))
       .filter(([, title]) => !declared(title))
       .map(([key, title]) => `${key} names "${title}", which is no case in this file`);
     expect(gone, 'a pointer to a case that no longer exists is the claim this table exists to avoid').toEqual([]);
