@@ -33,7 +33,7 @@ import { REPO_ROOT } from '@abuddy/host/build/packages-built';
 import { UNIT_SUITES, type UnitSuite } from './lib/unit-suites.ts';
 import {
   FAST_BELOW_MS, INTEGRATION_ABOVE_MS, PLACEMENT_GUARD, halfOfPath, hasSplit, misplaced,
-  CONFIG_BY_HALF, contended, drift, DRIFTED, parseArgs, planFor, readSpecCost, settle, specCostFile, specFiles,
+  CONFIG_BY_HALF, contended, drift, drifted, parseArgs, planFor, readSpecCost, settle, specCostFile, specFiles,
   stale, unrecorded, type SpecCostPlan,
 } from './lib/spec-cost.ts';
 
@@ -137,23 +137,22 @@ function update(plans: readonly SuitePlan[], dry: boolean): void {
     const costs = Object.assign({}, ...runs.map((run) => run.costs)) as Record<string, number>;
 
     const { record, added, remeasured } = settle({
-      previous, costs, skipped: [...new Set(runs.flatMap((run) => run.skipped))], measuredFiles, prune: plan.prune,
+      previous, costs, skipped: [...new Set(runs.flatMap((run) => run.skipped))], measuredFiles, prune: plan.prune, all,
     });
 
     // What a sample can check: not equality, which it never has, but reproducibility. An idle run moves a
     // handful; a contended one moves most of what it could move and records the machine instead of the specs.
     // Only specs that had a value to move are evidence of that — a first measurement is not.
     const comparable = Object.keys(costs).length - added.length;
-    if (previous !== undefined && !force && contended(remeasured.length, comparable)) {
+    // Not under `--all`, which records every measurement by design: `remeasured` is then near-total and this
+    // would refuse every run of the one mode that exists to re-record a drifted suite. So `--all` on a loaded
+    // machine records that machine, unguarded — the body drift below still prints, which is the evidence, and
+    // asking for it is the deliberate act the guard exists to distinguish from an accident.
+    if (previous !== undefined && !force && !all && contended(remeasured.length, comparable)) {
       throw new Error(`${suite.workspace}: ${remeasured.length} of ${comparable} already-recorded specs moved, `
         + `which is more than a measurement should. That is what a loaded machine looks like — run this with `
         + `nothing else running, or pass --force if the suite really did change this much.`);
     }
-
-    // What the per-spec tolerance cannot say. Each spec settling inside its threshold is the normal case and
-    // the reason the file is stable; all of them settling in the same direction is a uniform slowdown, and
-    // the only place it shows is the total. Reported always, since a number nobody sees is not a signal.
-    const drifted = drift(previous, costs);
 
     const missing = unrecorded(record, measuredFiles);
     if (missing.length > 0) throw new Error(`These ${suite.workspace} specs ran nothing and were not reported as skipped:\n  ${missing.join('\n  ')}`);
@@ -164,8 +163,11 @@ function update(plans: readonly SuitePlan[], dry: boolean): void {
     if (!fs.existsSync(file) || fs.readFileSync(file, 'utf-8') !== next) fs.writeFileSync(file, next);
 
     const moves = misplaced(record.costs, files);
-    const asBody = Object.keys(costs).length > 0 && previous !== undefined
-      ? `, body ${drifted >= 0 ? '+' : ''}${(drifted * 100).toFixed(0)}%` : '';
+    // What the per-spec tolerance cannot say. Each spec settling inside its threshold is the normal case and
+    // the reason the file is stable; all of them settling in the same direction is a uniform slowdown, and
+    // the only place it shows is the total. Undefined when nothing measured had a value to move from.
+    const body = drift(previous, costs);
+    const asBody = body === undefined ? '' : `, body ${body >= 0 ? '+' : ''}${(body * 100).toFixed(0)}%`;
     const did = [
       plan.configs.length === 0 ? 'measured nothing'
         : [added.length > 0 ? `${added.length} added` : '', remeasured.length > 0 ? `${remeasured.length} moved` : '']
@@ -174,8 +176,8 @@ function update(plans: readonly SuitePlan[], dry: boolean): void {
     ].filter(Boolean).join(', ');
     console.log(`${suite.workspace.padEnd(20)} ${String(files.length).padStart(3)} specs${record.skipped.length ? `, ${record.skipped.length} skipped` : ''}`
       + `, ${did}${asBody} -> ${specCostFile(suite.dir)}${moves.length ? `  (${moves.length} in the wrong half)` : ''}`);
-    if (Math.abs(drifted) > DRIFTED) {
-      console.log(`  the suite moved ${(drifted * 100).toFixed(0)}% as a body, which is more than idle runs vary. `
+    if (drifted(body)) {
+      console.log(`  the suite moved ${(body * 100).toFixed(0)}% as a body, which is more than idle runs vary. `
         + 'A drift this size can sit under every per-spec tolerance and leave the record uniformly stale, so '
         + 'anything reading the total reads a number that is no longer true. `--all` re-measures it.');
     }

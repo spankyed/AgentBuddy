@@ -145,17 +145,22 @@ export const contended = (remeasured: number, comparable: number): boolean =>
  * that are uniformly stale.
  *
  * Measured against the record rather than the settled values, since settling is where the drift went.
- * Returns 0 for an empty run rather than dividing by it.
+ * Undefined when nothing measured had a recorded value to move from — not zero, which would read as steady.
  */
-export function drift(previous: SpecCost | undefined, measured: Record<string, number>): number {
+export function drift(previous: SpecCost | undefined, measured: Record<string, number>): number | undefined {
   const shared = Object.keys(measured).filter((spec) => previous?.costs[spec] !== undefined);
   const before = shared.reduce((sum, spec) => sum + previous!.costs[spec]!, 0);
-  if (before === 0) return 0;
+  // Nothing measured had a value to drift from, which reads as steady if it comes back as zero
+  if (before === 0) return undefined;
   return shared.reduce((sum, spec) => sum + measured[spec]!, 0) / before - 1;
 }
 
 /** Above the drift a run of unchanged specs shows: measured at 0.4%, 6.5% and 9.9% on an idle machine */
-export const DRIFTED = 0.15;
+export const DRIFT_SHARE = 0.15;
+
+/** Whether a run's body moved further than idle runs vary, in either direction */
+export const drifted = (move: number | undefined): move is number =>
+  move !== undefined && Math.abs(move) > DRIFT_SHARE;
 
 /** The guard that reads this record. It is the one spec that skips itself while the record is rewritten. */
 export const PLACEMENT_GUARD = 'tests/suite-split.spec.ts';
@@ -405,8 +410,18 @@ export function settle(input: {
   /** The specs the chosen configs run, which is what makes a recorded skip this run's to drop */
   readonly measuredFiles: readonly string[];
   readonly prune: readonly string[];
+  /**
+   * Record what was measured, rather than only what the tolerance calls new.
+   *
+   * `--all`'s half of the bargain. The tolerance is why the record is stable, and it is also why a drift
+   * that moves every spec a little can never be recorded: each delta sits under its own threshold, so
+   * re-measuring changes nothing and the record stays uniformly stale. Measured before this existed — a
+   * record set 20% low stayed 33% adrift after an `--all` run, and the drift warning's advice to run `--all`
+   * could not be taken.
+   */
+  readonly all: boolean;
 }): Settled {
-  const { previous, costs, measuredFiles, prune } = input;
+  const { previous, costs, measuredFiles, prune, all } = input;
   const kept = Object.entries(previous?.costs ?? {}).filter(([spec]) => !prune.includes(spec));
 
   // A measurement replaces the recorded one only when it says something the record does not already say.
@@ -415,7 +430,7 @@ export function settle(input: {
   const settled: Record<string, number> = Object.fromEntries(kept);
   for (const [spec, ms] of Object.entries(costs)) {
     const before = previous?.costs[spec];
-    settled[spec] = moved(spec, before, ms) ? ms : before!;
+    settled[spec] = all || moved(spec, before, ms) ? ms : before!;
   }
 
   // Against `costs`, which is what this run measured — not against the settled values, which still hold

@@ -13,8 +13,8 @@ import * as path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { REPO_ROOT } from '@abuddy/host/build/packages-built';
 import {
-  DRIFTED, FAST_BELOW_MS, INTEGRATION_ABOVE_MS, changesIn, contended, drift, halfOfPath, hasSplit, misplaced,
-  moved, outgrown, parseArgs, planFor, readSpecCost, settle, specFiles, stale, unrecorded,
+  FAST_BELOW_MS, INTEGRATION_ABOVE_MS, changesIn, contended, drift, drifted, halfOfPath, misplaced,
+  hasSplit, moved, outgrown, parseArgs, planFor, readSpecCost, settle, specFiles, stale, unrecorded,
 } from '../../../scripts/lib/spec-cost.ts';
 import { UNIT_SUITES } from '../../../scripts/lib/unit-suites.ts';
 
@@ -194,21 +194,26 @@ describe('a run that moved as a body has drifted, however little each spec moved
     expect(Object.values(measured).every((ms) => !moved('tests/x.spec.ts', 100, ms)),
       'and not one of them moved on its own').toBe(true);
     expect(drift(record(twenty), measured)).toBeCloseTo(0.2, 5);
-    expect(drift(record(twenty), measured) > DRIFTED, 'so the body is what reports it').toBe(true);
+    expect(drifted(drift(record(twenty), measured)), 'so the body is what reports it').toBe(true);
   });
 
   it('cancels jitter that falls both ways', () => {
     const measured = Object.fromEntries(Object.entries(twenty).map(([spec, ms], i) => [spec, i % 2 ? ms * 1.3 : ms * 0.7]));
-    expect(Math.abs(drift(record(twenty), measured))).toBeLessThan(DRIFTED);
+    expect(drifted(drift(record(twenty), measured)), 'which is jitter, not a slowdown').toBe(false);
   });
 
+  // Undefined and not 0: the caller prints the fragment only when there is one, because `body +0%` reads as
+  // "steady" where the answer is "nothing to compare against"
   it('reads nothing from a run that measured nothing, rather than dividing by it', () => {
-    expect(drift(record(twenty), {})).toBe(0);
-    expect(drift(undefined, twenty)).toBe(0);
+    expect(drift(record(twenty), {})).toBeUndefined();
+    expect(drift(undefined, twenty)).toBeUndefined();
+    expect(drifted(undefined), 'and nothing to compare is not a drift to warn about').toBe(false);
   });
 
   it('ignores specs the record has never seen, which have nothing to have drifted from', () => {
-    expect(drift(record(twenty), { ...twenty, 'tests/new.spec.ts': 9_000 })).toBe(0);
+    expect(drift(record(twenty), { 'tests/new.spec.ts': 9_000 })).toBeUndefined();
+    expect(drift(record(twenty), { ...twenty, 'tests/new.spec.ts': 9_000 }), 'and reads the rest as steady')
+      .toBeCloseTo(0, 5);
   });
 });
 
@@ -312,7 +317,7 @@ describe('what a run does to the record it replaces', () => {
       costs: { 'tests/b.spec.ts': 810 },
       skipped: [FAST],
       measuredFiles: [FAST, 'tests/b.spec.ts'],
-      prune: [],
+      all: false, prune: [],
     });
     expect(record.skipped, 'it ran nothing, so it is skipped').toEqual([FAST]);
     expect(record.costs[FAST], 'and it cannot also carry the cost it used to have').toBeUndefined();
@@ -325,11 +330,23 @@ describe('what a run does to the record it replaces', () => {
   it('keeps a record nothing moved byte-identical, including its date', () => {
     const before = previous({ [FAST]: 1_000 });
     const { record, added, remeasured } = settle({
-      previous: before, costs: { [FAST]: 1_050 }, skipped: [], measuredFiles: [FAST], prune: [],
+      previous: before, costs: { [FAST]: 1_050 }, skipped: [], measuredFiles: [FAST], all: false, prune: [],
     });
     expect(added).toHaveLength(0);
     expect(remeasured, 'inside the tolerance, so nothing was recorded').toHaveLength(0);
     expect(record).toEqual(before);
+  });
+
+  // `--all`'s half of the bargain, and the reason the drift warning's advice works: the same measurement,
+  // two answers. Without it `--all` re-measured everything and then discarded most of it, so a record that
+  // was uniformly stale stayed uniformly stale however many times you ran it
+  it('records what --all measured, where the default keeps what the tolerance settled', () => {
+    const inputs = { previous: previous({ [FAST]: 1_000 }), costs: { [FAST]: 1_050 }, skipped: [],
+      measuredFiles: [FAST], prune: [] };
+    expect(moved(FAST, 1_000, 1_050), 'a move the tolerance is there to absorb').toBe(false);
+    expect(settle({ ...inputs, all: false }).record.costs[FAST]).toBe(1_000);
+    expect(settle({ ...inputs, all: true }).record.costs[FAST]).toBe(1_050);
+    expect(settle({ ...inputs, all: true }).remeasured, 'and it says it recorded it').toEqual([FAST]);
   });
 
   // The skipped list is content too: a spec can arrive with every test in it skipped, which moves nothing in
@@ -342,7 +359,7 @@ describe('what a run does to the record it replaces', () => {
       costs: { [FAST]: 100 },
       skipped: ['tests/needs-a-binary.spec.ts'],
       measuredFiles: [FAST, 'tests/needs-a-binary.spec.ts'],
-      prune: [],
+      all: false, prune: [],
     });
     expect(added, 'nothing was measured for the first time').toHaveLength(0);
     expect(remeasured, 'and no cost moved').toHaveLength(0);
@@ -353,7 +370,7 @@ describe('what a run does to the record it replaces', () => {
 
   it('records a measurement that says something new, and dates it', () => {
     const { record, remeasured } = settle({
-      previous: previous({ [FAST]: 1_000 }), costs: { [FAST]: 4_000 }, skipped: [], measuredFiles: [FAST], prune: [],
+      previous: previous({ [FAST]: 1_000 }), costs: { [FAST]: 4_000 }, skipped: [], measuredFiles: [FAST], all: false, prune: [],
     });
     expect(remeasured).toEqual([FAST]);
     expect(record.costs[FAST]).toBe(4_000);
@@ -366,7 +383,7 @@ describe('what a run does to the record it replaces', () => {
       costs: { [FAST]: 100 },
       skipped: [],
       measuredFiles: [FAST],
-      prune: ['tests/gone.spec.ts', 'tests/also-gone.spec.ts'],
+      all: false, prune: ['tests/gone.spec.ts', 'tests/also-gone.spec.ts'],
     });
     expect(Object.keys(record.costs)).toEqual([FAST]);
     expect(record.skipped).toEqual([]);
@@ -379,7 +396,7 @@ describe('what a run does to the record it replaces', () => {
       costs: { [FAST]: 100 },
       skipped: [],
       measuredFiles: [FAST],
-      prune: [],
+      all: false, prune: [],
     });
     expect(record.skipped, 'the integration config never ran, so its skip stands').toEqual(['tests/other.integration.spec.ts']);
   });
@@ -390,7 +407,7 @@ describe('what a run does to the record it replaces', () => {
       costs: { 'tests/z.spec.ts': 1, 'tests/a.spec.ts': 2 },
       skipped: [],
       measuredFiles: ['tests/a.spec.ts', 'tests/z.spec.ts'],
-      prune: [],
+      all: false, prune: [],
     });
     expect(Object.keys(record.costs)).toEqual(['tests/a.spec.ts', 'tests/z.spec.ts']);
   });
