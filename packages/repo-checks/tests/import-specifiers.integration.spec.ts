@@ -846,6 +846,119 @@ describe('CHECKS', () => {
    * the case's own offending file. Without this, a base that tripped a rule would look like every other rule
    * double-claiming every offence.
    */
+  /**
+   * Every offence, at every place a rule discriminates on — because the sweep above runs each rule's *own*
+   * minimal example, and both overlaps this rule set has had needed a file satisfying **two** rules'
+   * preconditions at once. Neither existed in any fixture: the leaf that reaches another feature was found by
+   * hand after several commits, and the fixtures that could not fire were found by hand too.
+   *
+   * The places are read off what the rules test before they report — `place.generated`, `BACKEND_PATH` over
+   * `inRoot`, inside a feature against outside every one, and the roles `abuddy.json` names — and the offences
+   * are one line each, lifted from the examples above. The cross product is what finds an intersection nobody
+   * thought of, which is the whole point: a hand-written list of "pairs that can collide" would be the same
+   * guess as the fixtures it replaces.
+   *
+   * Specifiers are `#` subpaths, never relative, so one line means the same thing in every cell — a `../` would
+   * resolve differently per place and the matrix would be comparing different offences.
+   *
+   * Most cells are silent, which is correct: an offence only fires where its rule's preconditions hold.
+   */
+  /** Where a file can sit, one per property the rules test before they report. The half is the path's first segment. */
+  const PLACES: Record<string, string> = {
+    'a contract leaf (fe)': 'src/features/notes/fe/contract.ts',
+    'a contract leaf (be)': 'src/features/notes/be/contract.ts',
+    'an actor entry': 'src/features/notes/be/system.ts',
+    "a feature's fe": 'src/features/notes/fe/panel.ts',
+    "a feature's be": 'src/features/notes/be/helper.ts',
+    'outside every feature': 'src/extensions/viewer.ts',
+    generated: 'src/__generated__/thing.ts',
+    'the tests half': 'tests/unit/feature.spec.ts',
+  };
+
+  /** One offending line per rule, in `#` subpaths so the same text means the same thing at every place */
+  const OFFENCES: Record<string, string> = {
+    'host-imports': "import { edgeStore } from '@abuddy/host/ears';",
+    'lmdb-imports': "import { open } from 'lmdb';",
+    'internal-package-imports': "import { _getMediaPath } from '@abuddy/sdk/utils';",
+    'untyped-sends': "import { untypedSendToSystem } from '@abuddy/sdk/events';",
+    'raw-transport': '_rootEvents.emitOutgoing(event);',
+    'backend-console': "console.log('seeded');",
+    'pack-own-aliases': "import { x } from '@/features/notes/be/x.ts';",
+    'own-modules': "import { sendToSystem } from '#generated/events';",
+    'repository-casts': 'const notes = repository as unknown as Repositories;',
+    'cross-feature-imports': "import { t } from '#features/threads/fe/state.ts';",
+    'contract-leaves': "import type { P } from '#features/notes/fe/plugin.ts';",
+  };
+
+  /** A second feature for the cross-feature offence to name. Inert, and in every cell so they are all alike. */
+  const SECOND_FEATURE = { 'src/features/threads/fe/state.ts': 'export const t = 1;\n' };
+
+  /**
+   * A cell two rules both claim, with the verdict a reader can check. Hand-written, because a real overlap needs a
+   * human decision — and asserted still to overlap below, so one the dedupe has since been taught to merge cannot
+   * sit here. A new row is a decision to raise, not to take.
+   *
+   * These say *claimed*, not *reported*: this sweep runs one rule at a time, where `packRuleProblems` merges them
+   * for a pack author. Which rule wins each is pinned in `abuddy-cli/tests/build/pack-rules.spec.ts`.
+   */
+  const ACCEPTED_OVERLAP: Record<string, string> = {
+    'cross-feature-imports at a contract leaf (fe)': 'contract-leaves wins the site, both wording it as the specifier',
+    'cross-feature-imports at a contract leaf (be)': 'contract-leaves wins the site, both wording it as the specifier',
+    // Found by this matrix: `own-modules` words its finding as a sentence around the specifier, so keyed on the
+    // wording the dedupe saw two offences and told a pack author twice about one import. Merged since a finding
+    // carries a `subject` — what it is about, beside how it reads.
+    'own-modules at a contract leaf (fe)': "contract-leaves wins the site, merged on the finding's subject",
+    'own-modules at a contract leaf (be)': "contract-leaves wins the site, merged on the finding's subject",
+  };
+
+  const places = population('places', Object.entries(PLACES), { atLeast: 6 });
+  const offences = population('offences', Object.entries(OFFENCES), { atLeast: 8 });
+  const cells = places.flatMap(([where, file]) => offences.map(([offence, code]) => ({ where, file, offence, code })));
+
+  /**
+   * Every offence at every place, because the sweep above runs each rule's *own* example and both overlaps this
+   * rule set has had needed a file meeting **two** rules' preconditions at once — a shape no minimal example has.
+   * The cross product finds the intersection nobody thought of, which a hand-written list of "pairs that can
+   * collide" would not.
+   *
+   * One case over all of them: 88 would be 88 task updates, and the reporter the cost record is measured through
+   * times out under that. Collecting also names every overlapping cell at once rather than the first.
+   */
+  it('claims each offence under at most one rule, at every place a rule discriminates on', () => {
+    // Hoisted: `sweepers` asks `packDirs()`, which walks the repo for manifests. Per rule per cell that was 29s of
+    // the 30 this case first took.
+    const sweepersFor = { src: [...sweepers('src')], tests: [...sweepers('tests')] };
+    const firing: string[] = [];
+    const overlapping: string[] = [];
+    const accepted = new Set<string>();
+
+    cells.forEach(({ where, file, offence, code }, n) => {
+      // A pack of its own per cell: `readSource` caches by absolute path and never invalidates, and the other
+      // cases here escape that only because `beforeEach` gives each *test* a fresh root. Measured — sharing one
+      // pack, this found none of the four overlaps it finds with a directory each.
+      const at = `${PACK_FIXTURE}-${n}`;
+      buildPackFixture({ at: path.join(root, at), files: { [file]: `${code}\n`, ...SECOND_FEATURE } });
+      // Pointed at the file, not the half, so the rules share one parse instead of each walking the pack.
+      // `packRootOf` still finds the pack above it, so the manifest and the imports map are still in reach.
+      const half = file.startsWith('tests/') ? 'tests' : 'src';
+      const claimed = sweepersFor[half]
+        .filter((rule) => rule.overPaths!([`${at}/${file}`], root).length > 0)
+        .map((rule) => rule.packRule ?? rule.id);
+      const key = `${offence} at ${where}`;
+      if (claimed.length > 0) firing.push(key);
+      if (claimed.length > 1) {
+        if (ACCEPTED_OVERLAP[key] === undefined) overlapping.push(`${key}: ${claimed.sort().join(' and ')}`);
+        else accepted.add(key);
+      }
+    });
+
+    population('cells where some rule claims the offence', firing, { atLeast: 8 });
+    expect(overlapping, 'each is one offence two rules claim, so which a reader is told depends on precedence — '
+      + 'fix it, or record the pair in ACCEPTED_OVERLAP with the verdict').toEqual([]);
+    expect(Object.keys(ACCEPTED_OVERLAP).filter((key) => !accepted.has(key)),
+      'these no longer report one offence under two rules, so drop them from ACCEPTED_OVERLAP').toEqual([]);
+  });
+
   it('offends no rule before a case adds an offence', () => {
     packFixture();
     const claimed = [...sweepers('src')].filter((rule) => rule.overPaths!(PACK_SRC, root).length > 0).map((rule) => rule.id);
