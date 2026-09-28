@@ -2,7 +2,6 @@
 // the window as parameters. Reading them and asking the Packs system is the app's, so a window only subscribes to
 // the protocol and passes on what it was given.
 import { sendToSystem } from '../../../events.ts';
-import { HOST } from '../../../refs.ts';
 
 export interface PackInstallRequest {
   packSlug: string;

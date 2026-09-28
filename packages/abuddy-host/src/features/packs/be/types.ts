@@ -1,4 +1,3 @@
-import type { OutgoingPacksEvents } from '../../registration.ts';
 // The packs feature's contract: what its system receives, what it sends its plugin, and its context.
 // A leaf the system module doesn't import back, so codegen reads it without resolving the machine.
 

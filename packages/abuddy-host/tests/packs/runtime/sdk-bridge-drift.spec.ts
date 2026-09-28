@@ -107,7 +107,7 @@ function exportsMap(pkg: string): Record<string, unknown> {
 }
 
 /** The source file an export resolves to in the monorepo. */
-function sourceOf(pkg: string, key: string): string {
+function _sourceOf(pkg: string, key: string): string {
   const target = exportsMap(pkg)[key];
   const file = typeof target === 'string' ? target : (target as Record<string, string>)['@abuddy/source'];
   return path.join(PACKAGE_DIRS[pkg], file);

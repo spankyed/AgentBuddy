@@ -2,7 +2,7 @@
 // `diagnostic` does neither: it is still logged and still recorded, so a pack test that leaves one
 // fails, but it does not interrupt someone who can do nothing about it — a send to a plugin no pack
 // declares is for whoever wrote the send, and it is already in the Logs plugin.
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { createActor, type Actor } from 'xstate';
 import { createShellMachine, type ShellMachine } from '../../../../src/fe/index.ts';
 import { fakeShell, plugin } from './fakes.ts';

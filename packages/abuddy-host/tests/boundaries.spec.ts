@@ -4,11 +4,6 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import type { HostRuntime } from '@abuddy/sdk/runtime';
-import { createEarsEngine } from '@abuddy/ears';
-import type { LmdbStore } from '@abuddy/ears/lmdb';
-import { testRootEvents } from '@abuddy/sdk/testing';
-import { createHostRuntime } from '../src/services/index.ts';
-import { createPackRegistry } from '../src/packs/registry.ts';
 
 const HOST_ROOT = path.resolve(__dirname, '..');
 const SRC = path.join(HOST_ROOT, 'src');

@@ -1,7 +1,7 @@
 // The app shell's state (which plugins' tabs show, the plugin last open) belongs to the host's `application`
 // feature, which keeps it in AppState. A window opens on its first plugin, and each connection's CLIENT_CONNECTED
 // brings the stored state; what the user changes here is sent back to be recorded, so every window agrees.
-import { afterEach, beforeEach, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, expect, it } from 'vitest';
 import { createActor, type Actor } from 'xstate';
 import { createShellMachine, visiblePluginsOf, withHostLast, type ShellMachine } from '../../../../src/fe/index.ts';
 import { fakeShell, plugin } from './fakes.ts';

@@ -208,7 +208,7 @@ export async function dev(_args: string[]) {
   await new Promise(() => {});
 }
 
-async function watchRebuildFallback(root: string, srcDir: string, packId: string, packsDir: string) {
+async function watchRebuildFallback(root: string, srcDir: string, packId: string, _packsDir: string) {
   let debounceTimer: ReturnType<typeof setTimeout> | null = null;
   let reloading = false;
 

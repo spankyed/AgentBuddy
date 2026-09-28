@@ -1,7 +1,7 @@
 // The one Settings row and the one writer to it. What the store guarantees: the row holds only the user's changes,
 // the settings in effect are the defaults with those over them, every write is checked once, and the listeners hear
 // each change in the order it happened — including the two that bracket a wholesale replacement.
-import { afterAll, beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterAll, beforeEach, describe, expect, it } from 'vitest';
 import { untypedQx } from '@abuddy/ears';
 import { resetTestData } from '@abuddy/sdk/testing';
 import type { EARS } from '@abuddy/sdk';

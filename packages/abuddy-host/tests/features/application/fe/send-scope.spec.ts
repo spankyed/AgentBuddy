@@ -6,9 +6,9 @@
 // once per window. The renderer's `sendToPlugin` reaches this window's only. Two shells over one backend is the
 // cheapest faithful way to say that: each shell is a window, and the bus delivers to both subscriptions.
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { createActor, setup, type Actor } from 'xstate';
+import { createActor, setup } from 'xstate';
 import type { Plugin } from '@abuddy/sdk/fe';
-import { createShellMachine, type ShellMachine } from '../../../../src/fe/index.ts';
+import { createShellMachine } from '../../../../src/fe/index.ts';
 import { fakeShell, settle } from './fakes.ts';
 
 /** What each window's copy of the plugin heard */

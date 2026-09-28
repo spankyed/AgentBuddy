@@ -2,7 +2,7 @@
 // deactivated. Only the plugins the pack added are its own: a plugin whose id the app already has stays.
 // Each pack whose frontend load finished is announced once per establishment of this window's bus
 // subscription, so its systems send their startup data.
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { createActor, type Actor } from 'xstate';
 import type { Plugin } from '@abuddy/sdk/fe';
 import { createShellMachine, type ShellMachine } from '../../../../src/fe/index.ts';

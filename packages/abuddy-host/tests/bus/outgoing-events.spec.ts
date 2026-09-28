@@ -1,7 +1,6 @@
 // The counterpart of client-events.spec.ts: a client's event is checked against what a system accepts,
 // and a system's event against what the plugin declares it receives. A send nobody declared is reported
 // as a system error and dropped, rather than thrown — the caller is a running system.
-import { resolveName } from '@abuddy/sdk/ids';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { createActor, setup, type AnyActorRef } from 'xstate';
 import { startTestRuntime, takeSystemErrors, testRootEvents } from '@abuddy/sdk/testing';

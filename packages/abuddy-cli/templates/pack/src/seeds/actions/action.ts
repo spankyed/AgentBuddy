@@ -9,10 +9,10 @@ export const meta: ActionMeta = {
 };
 
 export async function action(
-  params: Record<string, any>,
-  services: Services,
-  z: Z,
-  flowId: string,
+  _params: Record<string, any>,
+  _services: Services,
+  _z: Z,
+  _flowId: string,
 ) {
   // Action implementation
 }

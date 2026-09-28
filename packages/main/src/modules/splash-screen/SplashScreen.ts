@@ -98,7 +98,7 @@ export class SplashScreen implements AppModule {
       if (this.isValid()) {
         this.splashWindow!.destroy();
       }
-    } catch (error) {
+    } catch {
       // Force close on error
       this.splashWindow?.destroy();
     } finally {

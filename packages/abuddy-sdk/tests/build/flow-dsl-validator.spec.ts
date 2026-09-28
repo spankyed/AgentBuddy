@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, afterEach } from 'vitest';
 import { validate } from '../../src/build/compilers/flow-dsl-validator.ts';
 import type { StepDefinition } from '../../src/steps/types.ts';
 import { startTestRuntime, testPacks } from '../../src/testing/index.ts';

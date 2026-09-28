@@ -7,7 +7,6 @@
  * receives those or passes { env } explicitly (CLI commands). Nothing falls back to
  * production: an unknown environment is an error, not a guess.
  */
-import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { boundHost } from '../runtime/host-runtime.ts';

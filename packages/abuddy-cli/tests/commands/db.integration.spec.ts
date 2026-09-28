@@ -954,7 +954,7 @@ describe('abuddy db import', () => {
     const dir = await appDataDir();
     const backup = await backupWith('From the old backup');
     const metadataFile = path.join(backup, 'metadata.json');
-    const { appVersion, storageFormat, ...older } = JSON.parse(fs.readFileSync(metadataFile, 'utf-8'));
+    const { appVersion: _appVersion, storageFormat: _storageFormat, ...older } = JSON.parse(fs.readFileSync(metadataFile, 'utf-8'));
     fs.writeFileSync(metadataFile, JSON.stringify(older));
 
     const listed = await ok(['import', backup, '--data-dir', dir]);

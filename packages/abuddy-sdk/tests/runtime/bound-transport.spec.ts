@@ -6,9 +6,8 @@ import { testPacksView } from '../../src/testing/packs.ts';
 import { resolveName } from '../../src/ids/index.ts';
 import { onIncoming, untypedBroadcastToPlugin, untypedSendToSystem } from '../../src/events/index.ts';
 import { bindFeHost, unbindFeHost } from '../../src/runtime/fe-host.ts';
-import { createLogger, onLog, reportError, type LogEvent } from '../../src/logger/index.ts';
+import { createLogger, onLog, type LogEvent } from '../../src/logger/index.ts';
 import { services } from '../../src/services/index.ts';
-import { testPacks } from '../../src/testing/packs.ts';
 import type { Message } from '../../src/events/index.ts';
 
 process.env.ABUDDY_ENV ??= 'test';

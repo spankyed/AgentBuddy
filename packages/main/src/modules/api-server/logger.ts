@@ -1,6 +1,5 @@
 import log from 'electron-log/main';
 import { app } from 'electron';
-import * as fs from 'fs';
 import * as path from 'path';
 import { appendCappedLine, LOG_FILE_MAX_BYTES } from '@abuddy/host/logs';
 import { getAppContext } from '../../app-context.ts';

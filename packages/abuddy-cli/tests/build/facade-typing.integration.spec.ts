@@ -1,11 +1,10 @@
-import { execFileSync } from 'node:child_process';
 import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import ts from 'typescript';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { PACKAGES_BUILT, REPO_ROOT, installPublishedPackages } from '@app/publish-checks';
-import { CLI, callCli, packageJson, preparePack, run, tsconfig, typecheckPack, write } from '../_support/pack-builds';
+import { callCli, packageJson, preparePack, tsconfig, typecheckPack, write } from '../_support/pack-builds';
 
 /**
  * A pack's typed facades (#generated/ears, events, services, repository) cover its own

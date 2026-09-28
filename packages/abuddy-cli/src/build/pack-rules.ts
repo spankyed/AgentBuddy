@@ -203,7 +203,7 @@ const RULE_LIST = [
     switchable: false,
     rule: "A pack doesn't import the host's private @abuddy/host package, which is not installed for a pack; "
       + 'use @abuddy/sdk',
-    check(view, place) {
+    check(view, _place) {
       return view.specifiers.filter(({ text }) => /^@abuddy\/host(\/|$)/.test(text))
         .map(({ text, line, start, end }) => ({ line, what: text, start, end }));
     },
@@ -213,7 +213,7 @@ const RULE_LIST = [
     switchable: false,
     rule: 'A pack reaches its data through the engine the app installs: neither lmdb nor @abuddy/ears/lmdb is '
       + 'provided to a pack, so importing one fails at load',
-    check(view, place) {
+    check(view, _place) {
       return view.specifiers.filter(({ text }) => /^lmdb(\/|$)/.test(text) || /^@abuddy\/ears\/lmdb(\/|$)/.test(text))
         .map(({ text, line, start, end }) => ({ line, what: text, start, end }));
     },
@@ -237,7 +237,7 @@ const RULE_LIST = [
     switchable: false,
     rule: 'A pack names its own modules with # subpath imports from its package.json (#generated/x, '
       + '#features/x): a @/ path is a TypeScript-only mapping and no runtime reads it',
-    check(view, place) {
+    check(view, _place) {
       return view.specifiers.filter(({ text }) => text.startsWith('@/')).map(({ text, line, start, end }) => ({ line, what: text, start, end }));
     },
   },
@@ -284,7 +284,7 @@ const RULE_LIST = [
     switchable: true,
     rule: 'Pack code sends with broadcastToPlugin, sendToPlugin and sendToSystem from #generated/events, and '
       + 'subscribes with onConnected and onIncoming from @abuddy/sdk/events',
-    check(view, place) {
+    check(view, _place) {
       return view.visit((node) => {
         const module = moduleOf(node);
         if (module && /^@abuddy\/sdk\/rpc(\/|$)/.test(module)) return [module];

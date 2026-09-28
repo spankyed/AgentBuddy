@@ -17,7 +17,6 @@ import { checkForUpdates } from '../../../packs/updater.ts';
 import { teardownPack, activatePack } from '../../../packs/runtime/lifecycle.ts';
 import { activationProblem } from '../../../packs/runtime/activation-outcome.ts';
 import { HOST } from '../../../refs.ts';
-import { type OutgoingPacksEvents } from '../../registration.ts';
 import { errorMessage } from '@abuddy/sdk/utils/pure';
 
 export type { PackInfo };
@@ -95,7 +94,7 @@ function toBuiltInPackInfoList(registry: PackRegistry): PackInfo[] {
   });
 }
 
-function emitPacksList(registry: PackRegistry, system: any) {
+function emitPacksList(registry: PackRegistry, _system: any) {
   const external = toExternalPackInfoList(registry, installedPacks());
   const builtIn = toBuiltInPackInfoList(registry);
   broadcastToPlugin('packs', { type: 'PACKS_LIST' as const, packs: [...builtIn, ...external] });

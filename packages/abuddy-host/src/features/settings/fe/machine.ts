@@ -1,18 +1,11 @@
-import { HOST } from '../../../refs.ts';
 import { assign, enqueueActions, setup, type ActorRefFrom } from 'xstate'
-import breadcrumb, { breadcrumbWithParams } from '@abuddy/sdk/fe'
+import breadcrumb from '@abuddy/sdk/fe'
 import { safeEvents } from '@abuddy/sdk/fe'
-import {
-  targetIs,
-  TRAIL_CLICK,
-  type TrailClickEvent,
-} from '@abuddy/sdk/fe'
+import { type TrailClickEvent } from '@abuddy/sdk/fe'
 import type { SettingsDocument } from '../be/store.ts'
 import type { OutgoingSettingsEvents } from '../be/types.ts'
 import type { SecretInfo, SecretsStatus } from '@abuddy/sdk/services'
 import { sendToSystem } from '../../../events.ts'
-import type { ApplicationHotkeys } from '@abuddy/sdk/types'
-import type { EARS } from '@abuddy/sdk'
 import type { PackSeedsPreview } from '@abuddy/sdk/build'
 import type { HelpEntry } from '@abuddy/sdk/framework';
 import type { FeatureRef } from '@abuddy/sdk/ids';
@@ -194,7 +187,7 @@ export function createSettingsMachine(io: SettingsIO) {
     }),
 
     /* ── settings updates ────────────────────────────── */
-    updateSettings: enqueueActions(({ event, enqueue }) => {
+    updateSettings: enqueueActions(({ event: _event, enqueue }) => {
       enqueue.assign({ save: { status: 'saving', problems: [] } })
       enqueue('sendUpdate')
     }),

@@ -1,6 +1,6 @@
 import { spawn } from 'child_process';
 import { execFile } from 'child_process';
-import { app, ipcMain, shell } from 'electron';
+import { ipcMain, shell } from 'electron';
 import * as path from 'path';
 import * as fs from 'fs';
 import { randomBytes, randomUUID } from 'crypto';

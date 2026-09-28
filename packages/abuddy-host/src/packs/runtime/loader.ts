@@ -6,7 +6,6 @@ import { resolveAppContext, getAppVersion } from '@abuddy/sdk/env';
 import type { PackSnapshot } from '@abuddy/sdk/build';
 import type { PackRegistration } from '@abuddy/sdk/framework';
 import { packSystemIds, type PackRegistry, type PackOrigin } from '../registry.ts';
-import type { BlockDefinition } from '@abuddy/sdk/blocks';
 import { discoverBuiltInPacks, discoverPacks, discoveredPackIds, enabledExternalPacks, type BuiltInPackInfo, type PackManifest } from '../discovery.ts';
 import { disabledPackIds, forgetPacksExcept } from '../installed.ts';
 import { PACK_LAYOUT, PACK_LAYOUT_VERSION, buildFormatProblem, isPackLayout, readPackIntegrity } from '../layout.ts';

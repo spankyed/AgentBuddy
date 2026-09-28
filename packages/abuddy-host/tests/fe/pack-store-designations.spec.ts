@@ -2,7 +2,7 @@
 // the backend registry refuses it.
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { PluginDefinition } from '@abuddy/sdk/fe';
-import { getDesignated, hasDesignation } from '@abuddy/sdk/designations';
+import { getDesignated } from '@abuddy/sdk/designations';
 import { bindFeHost } from '@abuddy/sdk/runtime';
 import { createFePackRegistry } from '../../src/fe/pack-store.ts';
 

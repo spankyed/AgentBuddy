@@ -5,7 +5,6 @@ import { setup } from 'xstate';
 import { eventTypes } from '@abuddy/sdk/events';
 import { broadcastToPlugin } from '../../../events.ts';
 import { splitRef } from '@abuddy/sdk/ids';
-import { HOST } from '../../../refs.ts';
 import { appState } from '../../../app-state/index.ts';
 import type { PackRegistry } from '../../../packs/registry.ts';
 

@@ -11,7 +11,7 @@ import type { PackManifest } from '@abuddy/sdk/build';
 import { appState, type AppState } from '../../app-state/index.ts';
 import type { PackRegistry } from '../../packs/registry.ts';
 import { discoverPacks } from '../../packs/discovery.ts';
-import { deepMerge, isPlainObject } from '@abuddy/sdk/utils/pure';
+import { deepMerge } from '@abuddy/sdk/utils/pure';
 
 /** The settings row: where the app's state was stored before 0.3.15, and where the plugin settings still are */
 const SETTINGS_ID = 'Settings-app' as EARS.EntityId;

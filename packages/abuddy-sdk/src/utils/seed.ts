@@ -1,6 +1,5 @@
 import * as fs from 'fs';
 import * as path from 'path';
-import type { EARS } from '../types/index.ts';
 import { boundHost } from '../runtime/host-runtime.ts';
 
 export interface ImportCounts {

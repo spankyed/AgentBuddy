@@ -1,6 +1,5 @@
 import * as fs from 'fs';
 import * as path from 'path';
-import * as os from 'os';
 import { createLogger } from '@abuddy/sdk/logger';
 import { resolveAppContext } from '@abuddy/sdk/env';
 import { packRecord, packRecords, type PackRecord } from './installed.ts';
@@ -76,7 +75,7 @@ export function discoverPacks(packsDir: string): { manifest: PackManifest; dir: 
         continue;
       }
       results.push({ manifest: raw as PackManifest, dir: packDir });
-    } catch (err) {
+    } catch {
       logger.warn(`Skipping ${entry.name}: failed to parse abuddy.json`);
     }
   }

@@ -9,7 +9,7 @@ const packagesRoot = path.resolve(__dirname, '..');
 const apiSrc = path.resolve(__dirname, 'src');
 
 const builtInPacks = discoverBuiltInPacksForBuild(packagesRoot);
-const builtInPackSrcDirs = builtInPacks.map(p => p.srcDir);
+const _builtInPackSrcDirs = builtInPacks.map(p => p.srcDir);
 // The generated module's imports resolve from the module that imports it (runtime/index.ts)
 const packLoaderDir = path.resolve(__dirname, 'src', 'runtime');
 

@@ -16,7 +16,7 @@ function appendAppEventLog(event: LogEvent) {
 
 /** The app's event bus: what the SDK binds as HostRuntime.transport, and the tRPC routers serve */
 class RootEventEmitter extends EventEmitter implements RootEvents {
-  emit<K>(eventName: string | symbol, ...args: any[]): boolean {
+  emit<_K>(eventName: string | symbol, ...args: any[]): boolean {
     return super.emit(eventName, ...args);
   }
 

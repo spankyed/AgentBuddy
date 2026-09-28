@@ -3,7 +3,7 @@ import { promisify } from 'node:util';
 import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
-import { BUILD_UNITS, packagesBuiltOrRefuse, publishedTreeDirs, REPO_ROOT } from '@abuddy/host/build/packages-built';
+import { packagesBuiltOrRefuse, publishedTreeDirs, REPO_ROOT } from '@abuddy/host/build/packages-built';
 
 const execFileAsync = promisify(execFile);
 

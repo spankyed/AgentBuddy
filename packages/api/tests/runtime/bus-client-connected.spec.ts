@@ -19,7 +19,7 @@ const registry = createPackRegistry();
 const { registerPack, unregisterPack } = registry;
 const { createAppBus, createBusMachine } = await import('@abuddy/host/bus');
 const { rootEvents } = await import('@/transport/emitter');
-type LoadedPack = import('@abuddy/host/packs/runtime').LoadedPack;
+type _LoadedPack = import('@abuddy/host/packs/runtime').LoadedPack;
 
 // The app's bus on the api's transport, as setup/backend.ts binds it (the services reach the store only when called)
 const { bindHost } = await import('@abuddy/sdk/runtime');

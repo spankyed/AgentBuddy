@@ -3,7 +3,7 @@
 import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
-import { afterAll, beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterAll, describe, expect, it, vi } from 'vitest';
 
 /** The app version the migrations read, when a test sets one; the bound app's otherwise */
 const version = vi.hoisted(() => ({ current: undefined as string | undefined }));
@@ -18,11 +18,11 @@ process.env.ABUDDY_ENV = 'test';
 process.env.ABUDDY_USER_DATA_DIR = dataDir;
 const { openAppStore } = await import('@/runtime');
 const { store, engine, packs } = openAppStore();
-const { defineEars, findRelations, getRelationStats, installedEngine, untypedQx, untypedTx } = await import('@abuddy/ears');
+const { defineEars, findRelations: _findRelations, getRelationStats: _getRelationStats, installedEngine: _installedEngine, untypedQx, untypedTx } = await import('@abuddy/ears');
 const { services } = await import('@abuddy/sdk/services');
-const { createEntity } = defineEars();
+const { createEntity: _createEntity } = defineEars();
 
-const EARS = {
+const _EARS = {
   Entity: { Flow: 'Flow', Node: 'Node' },
   RelKind: { TRANSITIONS_TO: 'transitions_to', CONTAINS: 'contains', SPAWNED: 'spawned' },
 } as const;
