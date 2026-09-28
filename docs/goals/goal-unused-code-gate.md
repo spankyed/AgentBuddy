@@ -8,9 +8,12 @@ Background was surveyed at.
 Before Phase 1, confirm the base: packages/abuddy-host/tsconfig.json, packages/abuddy-sdk/tsconfig.json,
 packages/default-setup/package.json and packages/renderer/eslint.config.ts exist at HEAD, and the root
 package.json's `lint:check` still begins `npm run lint:check -ws --if-present`. If they don't, stop and
-say so — the plan was surveyed somewhere else. (It gained ` && oxlint scripts tests -D correctness` in
-`f91b66b49`, which covers the two trees belonging to no workspace and leaves this goal's subject — the
-workspaces — untouched.)
+say so — the plan was surveyed somewhere else. (A second half was added after the survey and has since been
+widened: `&& oxlint . -D correctness --ignore-path .gitignore --ignore-pattern 'packages/**'
+--ignore-pattern 'docs/**'` as of `7080ebfe7`, having been `oxlint scripts tests -D correctness` at
+`f91b66b49`. Both forms exclude `packages/**`, so this goal's subject — the workspaces — is untouched
+either way, and removing that exclusion one tree at a time is what this goal is for. Read the script
+rather than this sentence: it has moved twice since the survey.)
 Read Background, Decisions, Phases and Constraints first. Decisions are final: implement them, don't
 reopen them or stop to ask. The Open decisions must be settled with the user before Phase 3; if any is
 still marked open, stop and ask.
@@ -76,8 +79,11 @@ root `typecheck` chain, so the chain reports lint as green while covering two of
 
 The second half arrived later, in `f91b66b49`: the repo's own `scripts/` and `tests/` belong to no
 workspace, so no `-ws` fan-out could ever reach them, and eight dead declarations had accumulated there
-unnoticed. Both trees are at zero now. That closes a hole this survey did not name and moves none of what
-follows — the thirteen workspaces are still two linted and eleven not.
+unnoticed. Both trees are at zero now. It was widened at `7080ebfe7` to lint everything git tracks outside
+`packages/**` and `docs/**`, after the narrower form was found reading a pack's build output and a
+gitignored scratch spec. That closes a hole this survey did not name and moves none of what follows — both
+forms exclude `packages/**`, so the thirteen workspaces are still two linted and eleven not, and that
+exclusion is the thing this goal removes.
 
 default-setup's script is `oxlint . -D correctness --ignore-path .gitignore`; renderer has
 `eslint.config.ts`. There is no lint config at the repo root and none in any unlinted package.
