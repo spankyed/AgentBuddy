@@ -5,7 +5,7 @@ import * as path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { firstChange, REPO_ROOT } from '@abuddy/host/build/packages-built';
 import { CHAIN_STEPS } from '../../../scripts/lib/chain-steps.ts';
-import { briefly, declaredAt, dim, DRY_REASON_COLUMN, identicalRewrites, oneLine, REASON_COLUMN, staleLines, STEP_NAME_WIDTH, TIME_COLUMN, wrapAt, whenChanged, writerOf } from '../../../scripts/lib/chain-output.ts';
+import { briefly, declaredAt, dim, DRY_REASON_COLUMN, howLong, identicalRewrites, oneLine, REASON_COLUMN, staleLines, STEP_NAME_WIDTH, TIME_COLUMN, wrapAt, whenChanged, writerOf } from '../../../scripts/lib/chain-output.ts';
 
 describe('wrapAt', () => {
   /**
@@ -294,4 +294,31 @@ it('keeps the name column at least as wide as the widest step name', () => {
   const widest = [...CHAIN_STEPS].sort((a, b) => b.name.length - a.name.length)[0]!.name;
   expect(STEP_NAME_WIDTH, `${widest} does not fit; widen STEP_NAME_WIDTH to ${widest.length}`)
     .toBeGreaterThanOrEqual(widest.length);
+});
+
+describe('howLong', () => {
+  /**
+   * The timeout branch of the chain's failure report already says what a step costs healthy and what to
+   * conclude; an ordinary failure said only its exit code. One unexplained `test:integration` failure then
+   * took a reader into `chain-steps.ts` and `budgetFor` by hand to find out it had not been killed.
+   */
+  it('says what it cost against what it costs healthy, and at how many lanes', () => {
+    expect(howLong({ seconds: 60 }, 47_000, 3)).toBe(' after 47.0s, against 60s healthy at 3 lanes');
+  });
+
+  it('says lane, not lanes, when there is one', () => {
+    expect(howLong({ seconds: 60 }, 47_000, 1)).toContain('at 1 lane');
+    expect(howLong({ seconds: 60 }, 47_000, 1)).not.toContain('lanes');
+  });
+
+  it('points at a single-lane run only when the step was slow enough for contention to explain it', () => {
+    // Past double the declared cost, which is `driftedSteps`' band rather than a second threshold
+    expect(howLong({ seconds: 60 }, 130_000, 3)).toContain('--lanes 1');
+    // A step that failed at its normal speed failed on its merits, and suggesting a re-run would be noise
+    expect(howLong({ seconds: 60 }, 61_000, 3)).not.toContain('--lanes 1');
+  });
+
+  it('says nothing for a step that declares no cost, rather than reporting undefined', () => {
+    expect(howLong({}, 47_000, 3)).toBe('');
+  });
 });

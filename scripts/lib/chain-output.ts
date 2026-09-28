@@ -261,3 +261,23 @@ export function staleLines(found: {
   }
   return rows.map((row, index) => (index === 0 ? head : under) + row);
 }
+
+/**
+ * What a failing step cost, against what it costs healthy. The timeout branch below already says this and
+ * draws its conclusion; an ordinary failure said only its exit code, which is why one unexplained
+ * `test:integration` failure took a reader to `chain-steps.ts` and `budgetFor` by hand to find out it had not
+ * been killed — every number needed was already here.
+ *
+ * Past double the declared cost it names the run that tells the two diagnoses apart, because this repo has
+ * measured that they differ: under lanes `@abuddy/cli` "began reporting errors it does not report alone"
+ * (the note at the top of this file). The band is `driftedSteps`', not a second threshold — half to double is
+ * documented there as where the number has stopped being useful, which is when contention is worth suspecting.
+ */
+export function howLong(step: { readonly seconds?: number }, ms: number, lanes: number): string {
+  if (step.seconds === undefined) return '';
+  const measured = Math.round(ms / 1000);
+  const where = ` after ${(ms / 1000).toFixed(1)}s, against ${step.seconds}s healthy at ${lanes} lane${lanes > 1 ? 's' : ''}`;
+  return measured > step.seconds * 2
+    ? `${where}\n  — over twice its measured cost, so try \`npm run chain --lanes 1\` before reading the output as a real failure`
+    : where;
+}

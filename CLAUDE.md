@@ -304,7 +304,11 @@ npm run spec -- <target> # You don't say what the target is; it works that out:
                          # (docs/reference/test-inventory.md; repo-checks' spec-placement.spec.ts)
 npm run chain            # Before a merge: every check in dependency order, cold 190s and warm 27s.
                          # Reports each step's time and its slowest five tests, buffers its output and
-                         # prints only a failing step's. It leaves out api:check, which typecheck's
+                         # prints only a failing step's — which is why you never pipe a backgrounded run:
+                         # `| tail` discards the one thing a failure leaves behind, and it does not come
+                         # back on a re-run that passes. A failing step names what it cost against what it
+                         # costs healthy, so a failure under lane contention reads as one.
+                         # It leaves out api:check, which typecheck's
                          # api:stamp already covers, and includes packages:check, which has no such proxy
                          # and costs 5.9s. Afterwards it says which steps a run contradicted:
                          # one whose measured time has left its declared `seconds` — a step that keeps a

@@ -47,7 +47,7 @@ import { changedInputs, firstChange, freshnessSweep, INPUTS_CHANGED, REPO_ROOT, 
 import { CHAIN_STEPS, MEASURED_AT_LANES, orderedSteps, type ChainStep, type Tier } from './lib/chain-steps.ts';
 import { schedule } from './lib/chain-schedule.ts';
 import { criticalPath, driftedSteps, willNotCache } from './lib/step-timing.ts';
-import { briefly, declaredAt, dim, DRY_REASON_COLUMN, identicalRewrites, oneLine, REASON_COLUMN, staleLines, STEP_NAME_WIDTH, TIME_COLUMN, whenChanged, wrapAt, writerOf } from './lib/chain-output.ts';
+import { briefly, declaredAt, dim, DRY_REASON_COLUMN, howLong, identicalRewrites, oneLine, REASON_COLUMN, staleLines, STEP_NAME_WIDTH, TIME_COLUMN, whenChanged, wrapAt, writerOf } from './lib/chain-output.ts';
 import { slowestTests } from './lib/slow-tests.ts';
 import { exitOnEpipe } from './lib/exit-on-epipe.ts';
 
@@ -166,6 +166,7 @@ async function run(step: string, seconds: number | undefined, force: readonly st
 
 
 const secs = (ms: number) => `${(ms / 1000).toFixed(1)}s`;
+
 
 /** Thrown to leave `stampedRun` without a stamp: a failed step must read as never run */
 class StepFailed extends Error {
@@ -329,7 +330,7 @@ async function main(): Promise<void> {
     const step = steps.find((s) => s.name === failed.step)!;
     const why = failed.timedOut
       ? `${step.name} timed out: it exceeded its ${secs(budgetFor(step.seconds ?? 300))} budget and its process group was killed. It costs ${step.seconds ?? '?'}s healthy, so either it is wedged or it has grown and the measurement in chain-steps.ts is stale.`
-      : `${step.name} failed (exit ${failed.code})`;
+      : `${step.name} failed (exit ${failed.code})${howLong(step, failed.ms, lanes)}`;
     console.log(`\n${'='.repeat(72)}\n${why}\n${'='.repeat(72)}\n${failed.output}`);
   }
 
