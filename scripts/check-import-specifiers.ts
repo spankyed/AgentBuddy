@@ -14,8 +14,16 @@ import { moduleOf, readSource, sourceFiles } from '../packages/abuddy-cli/src/bu
 import type { Fix } from './lib/specifier-fixes.ts';
 
 const repoRoot = path.resolve(import.meta.dirname, '..');
-/** Directories that hold no workspace source: dependencies, build output and dot directories (worktrees, caches) */
-const SKIPPED_DIRS = /^(?:node_modules|dist|out|coverage|\..+)$/;
+/**
+ * Directories that hold no workspace source: dependencies, build output, test output and dot directories
+ * (worktrees, caches).
+ *
+ * `results`/`test-results` are Playwright's, and it writes and removes them *while a run is in progress* — so
+ * a walk that descends into one races it, and a chain run whose E2E suite overlapped this failed with ENOENT
+ * on a directory that existed when it was listed. Two of them also sit inside the fixture packs, where they
+ * would otherwise read as that pack's own test sources.
+ */
+const SKIPPED_DIRS = /^(?:node_modules|dist|out|coverage|results|test-results|\..+)$/;
 
 const CLI_TEMPLATE_PACK = 'packages/abuddy-cli/templates/pack';
 

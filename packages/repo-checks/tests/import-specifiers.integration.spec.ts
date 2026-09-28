@@ -856,6 +856,26 @@ describe('CHECKS', () => {
   });
 
   /**
+   * Playwright's output directories are not a pack's tests. It writes and removes `tests/results` *during* a
+   * run, so a walk that descends into one races it — a chain run whose E2E suite overlapped `test:integration`
+   * failed with ENOENT on a directory that existed when it was listed. Two of them also sit inside the fixture
+   * packs, where every pack rule would read a trace dump as that pack's own test sources.
+   *
+   * Written over a temp tree rather than the repo, because what the repo holds at any moment is what the last
+   * Playwright run left behind: asking it would pass on a clean checkout and say nothing.
+   */
+  it('finds no pack inside a test-output directory', () => {
+    fs.mkdirSync(path.join(root, 'real'), { recursive: true });
+    fs.writeFileSync(path.join(root, 'real/abuddy.json'), '{}');
+    for (const buried of ['tests/results/trace-1', 'real/tests/results/trace-2', 'test-results/trace-3']) {
+      fs.mkdirSync(path.join(root, buried), { recursive: true });
+      fs.writeFileSync(path.join(root, buried, 'abuddy.json'), '{}');
+    }
+    // The scaffold's template pack is appended rather than walked to, so it is here whatever the tree holds
+    expect(packDirs(root)).toEqual(['packages/abuddy-cli/templates/pack', 'real']);
+  });
+
+  /**
    * The one shape two pack rules are both right about, and the two consumers answer differently on purpose.
    *
    * `abuddy validate` runs every rule together, so its dedupe gives a pack author one message — asserted in
