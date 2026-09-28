@@ -7,10 +7,9 @@ import { builtinModules } from 'node:module';
 import ts from 'typescript';
 import { SHARED_INSTANCE_PACKAGES } from '@abuddy/host/build/shared-deps';
 import { packageName } from '@abuddy/host/build/specifiers';
-import { readSubpathImports } from '@abuddy/host/build/subpath-imports';
 import { SOURCE_CONDITION } from '@abuddy/host/build/source-resolution';
 import { ownModuleFindings } from '@abuddy/host/build/own-module-specifiers';
-import { formatPackWide, PACK_RULES, type PackRuleKey } from '../packages/abuddy-cli/src/build/pack-rules.ts';
+import { formatPackWide, PACK_RULES, packPlaces, packRuleProblems, type PackRuleKey } from '../packages/abuddy-cli/src/build/pack-rules.ts';
 import { moduleOf, readSource, sourceFiles } from '../packages/abuddy-cli/src/build/pack-sources.ts';
 import type { Fix } from './lib/specifier-fixes.ts';
 
@@ -185,21 +184,18 @@ export function packRule(key: PackRuleKey, dirs: readonly string[], root: string
     const where = (file: string) => (prefix ? `${prefix}/${file}` : file);
     return rule.checkPack!(packDir).map((found) => formatPackWide(found, where));
   });
+  // Through `packFiles`, not a second copy of it: this used to build the place itself, and two of the five
+  // fields had drifted from what `PackPlace` declares — `relative` repo-relative where a rule resolves it
+  // against the pack, and `inRoot` relative to whatever the caller named rather than to the pack's half. Both
+  // turned a rule off without failing anything. What stays here is the one thing that is this runner's own: the
+  // path it prints, which is repo-relative because that is where its reader is standing.
   return [...wholePack, ...dirs.flatMap((dir) => {
     const full = path.join(root, dir);
     if (!fs.existsSync(full)) return [];
-    const files = fs.statSync(full).isFile() ? [full] : [...sourceFiles(full)];
     const packDir = packRootOf(full, root);
-    const imports = readSubpathImports(packDir);
-    return files.flatMap((file) => {
-      const relative = path.relative(root, file).split(path.sep).join('/');
-      return (rule.check?.(readSource(file), {
-        packDir,
-        relative,
-        inRoot: path.relative(full, file).split(path.sep).join('/'),
-        generated: relative.split('/').includes('__generated__'),
-        imports,
-      }) ?? []).map(({ line, what }) => `${relative}:${line}: ${what}`);
+    return packPlaces(packDir, [path.relative(packDir, full)]).flatMap(({ view, place }) => {
+      const shown = path.relative(root, path.join(packDir, place.packRelative)).split(path.sep).join('/');
+      return (rule.check?.(view, place) ?? []).map(({ line, what }) => `${shown}:${line}: ${what}`);
     });
   })].sort();
 }
@@ -498,6 +494,12 @@ export function findRepositoryCasts(dirs: readonly string[] = packageSourceDirs(
 // Re-exported rather than declared: `@abuddy/host/build/source-resolution` owns it beside the packages it
 // applies to, and repo-checks' integration spec imports the name from here
 export { SOURCE_CONDITION };
+
+/** What a pack author's own `abuddy build` reports, for the spec that holds the two runners to agreeing */
+// Same reason as above: repo-checks may not reach into another package's tree, and this script is already
+// where it reads the rules from. The property it buys is the one this file's header claims — one rule,
+// two entry points — which nothing could check while only one of them was reachable
+export { packRuleProblems };
 
 /**
  * Config files that compile or bundle workspace source. A tsconfig separates its name with a dot or

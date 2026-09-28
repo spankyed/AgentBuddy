@@ -116,8 +116,9 @@ function doorSpans(view: SourceView): { start: number; end: number }[] {
  * not.
  *
  * The layout comes from `at.inRoot`, so it is the same whether the caller pointed at `src` or at `tests`, and the
- * root itself is walked back from the file rather than assumed: `place.relative` means different things to the two
- * runners (pack-relative for a pack's own build, repo-relative for `check:specifiers`, which prints it).
+ * root is walked back from the file by that depth rather than assumed. Which is why `inRoot` is measured from the
+ * file's own half and not from the directory a runner happened to walk: pointed at one feature, the old reading
+ * was two segments short and this walked back to the wrong root, finding nothing and saying so to nobody.
  */
 export function crossFeatureFindings(view: SourceView, at: PackPlace): PackFinding[] {
   if (at.generated) return [];

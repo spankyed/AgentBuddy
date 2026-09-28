@@ -23,8 +23,14 @@ import { configsNamingSourceCondition, packResolvesSource } from './pack-resolut
 export interface PackPlace {
   /** The pack root */
   readonly packDir: string;
-  /** The file, relative to the pack root, `/`-separated */
-  readonly relative: string;
+  /**
+   * The file, relative to the pack root, `/`-separated.
+   *
+   * Named for what it is relative to, because that was a bug: a runner passing a repo-relative path here
+   * resolved every relative specifier to `<pack>/<pack>/…`, which turned `own-modules` off for the whole form
+   * without failing anything. Whatever a runner *prints* is its own business and not this.
+   */
+  readonly packRelative: string;
   /** Relative to the `src` or `tests` root it was found under — what the backend-path rules read */
   readonly inRoot: string;
   /** A `__generated__` path segment: codegen's output, which some rules exempt */
@@ -207,13 +213,8 @@ const RULE_LIST = [
       + 'extensionless specifier in ESM, so one works only while a build guesses the suffix and this one does not — '
       + 'and the .js a pack would otherwise name is a file it never emits, since it ships one bundle',
     check(view, place) {
-      // Pack-relative, derived from the file rather than taken from `place.relative`: the resolution below joins
-      // it to `packDir`, and `relative` is what a runner *prints* — pack-relative for a pack's own build,
-      // repo-relative for `check:specifiers`. Reusing it there made every relative specifier resolve to
-      // `<pack>/<pack>/src/…`, so the `.js` form this rule owns was reported by the CLI and by nothing in this repo.
-      const file = path.relative(place.packDir, view.file).split(path.sep).join('/');
       const found: OwnModuleSpecifier[] = view.specifiers.map(({ text, line, start, end }) =>
-        ({ file, line, specifier: text, start, end }));
+        ({ file: place.packRelative, line, specifier: text, start, end }));
       return ownModuleFindings(place.packDir, found).map(({ line, specifier, named, start, end }) =>
         ({ line, what: `'${specifier}' names no file — write '${named}'`, start: start as number, end: end as number }));
     },
@@ -370,22 +371,36 @@ export function loadPackChecks(packDir: string): Set<PackRuleKey> {
   return new Set(allow as PackRuleKey[]);
 }
 
-/** Every source file under the pack's `dirs`, with where it sits */
-function packFiles(packDir: string, dirs: readonly string[]): { view: SourceView; place: PackPlace }[] {
+/**
+ * Every source file under `within` — each a directory or a single file, relative to the pack — with where it sits.
+ *
+ * **The only place a `PackPlace` is built.** There used to be a second, in the repo's own script, and two of the
+ * five fields had drifted from what this interface declares: one turned a rule off, the other was one nested
+ * directory away from doing the same. A rule sees the same place whoever ran it, or the claim that it is the same
+ * rule wherever it runs is not checkable.
+ *
+ * A single file, not only a directory, because `check:specifiers <paths>` names files — and a rule that reads a
+ * place must not be able to tell how the caller arrived at the file.
+ */
+export function packPlaces(packDir: string, within: readonly string[]): { view: SourceView; place: PackPlace }[] {
   const imports = readSubpathImports(packDir);
   const found: { view: SourceView; place: PackPlace }[] = [];
-  for (const dir of dirs) {
-    const root = path.join(packDir, dir);
-    if (!fs.existsSync(root)) continue;
-    for (const file of sourceFiles(root)) {
-      const relative = path.relative(packDir, file).split(path.sep).join('/');
+  for (const entry of within) {
+    const at = path.join(packDir, entry);
+    if (!fs.existsSync(at)) continue;
+    for (const file of fs.statSync(at).isFile() ? [at] : sourceFiles(at)) {
+      const packRelative = path.relative(packDir, file).split(path.sep).join('/');
+      // The half is the file's first segment, not the directory the caller happened to name: pointed at one
+      // feature or one file, the old reading gave `be/system.ts` or `''`, and the two rules that match this as a
+      // path shape then quietly matched nothing. They fail open, so nothing said so.
+      const [, ...belowHalf] = packRelative.split('/');
       found.push({
         view: readSource(file),
         place: {
           packDir,
-          relative,
-          inRoot: path.relative(root, file).split(path.sep).join('/'),
-          generated: relative.split('/').includes('__generated__'),
+          packRelative,
+          inRoot: belowHalf.join('/'),
+          generated: packRelative.split('/').includes('__generated__'),
           imports,
         },
       });
@@ -436,13 +451,13 @@ export function packRuleProblems(packDir: string, dirs: readonly string[] = ['sr
     const lines = found.map((finding) => formatPackWide(finding));
     if (lines.length > 0) problems.set(rule.key, [...(problems.get(rule.key) ?? []), ...lines]);
   }
-  for (const { view, place } of packFiles(packDir, dirs)) {
+  for (const { view, place } of packPlaces(packDir, dirs)) {
     const claimed: { start: number; end: number }[] = [];
     for (const rule of rules) {
       const kept = (rule.check?.(view, place) ?? []).filter((finding) => {
         // A whole-pack rule already reported this offence. Its span goes into `claimed` all the same, so a third
         // rule reporting the import around it stands down too — the site is taken, not just this wording of it.
-        if (claimedWide.has(site(place.relative, finding.line, finding.what))) {
+        if (claimedWide.has(site(place.packRelative, finding.line, finding.what))) {
           claimed.push({ start: finding.start, end: finding.end });
           return false;
         }
@@ -456,7 +471,7 @@ export function packRuleProblems(packDir: string, dirs: readonly string[] = ['sr
       });
       if (kept.length > 0) {
         problems.set(rule.key, [...(problems.get(rule.key) ?? []),
-          ...kept.map(({ line, what }) => `${place.relative}:${line}: ${what}`)]);
+          ...kept.map(({ line, what }) => `${place.packRelative}:${line}: ${what}`)]);
       }
     }
   }

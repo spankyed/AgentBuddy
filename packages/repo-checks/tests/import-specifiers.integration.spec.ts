@@ -9,7 +9,7 @@ import {
   findPackageScriptImports, findPackBackendConsole, findPackOwnAliases, findRawPackHelpers,
   findRawTransport, findInternalPackageImports, findLmdbImports, findRepositoryCasts, findSharedPackageLists, findUpwardImports, LAYERS, LMDB_RULES, packageSourceDirs,
   CHECK_IDS, type CoveredRuleId, DECLARES_SOURCE_BY_DESIGN, type ImportRuleId, RESOLVES_DIST_BY_DESIGN, SHARED_LIST_CONSUMERS, sourceConditionPackages, SOURCE_CONDITION,
-  checkedDirs, type ImportRule, packCodeDirs, packDirs, packRule, ruleRows, ruleTable,
+  checkedDirs, type ImportRule, packCodeDirs, packDirs, packRule, packRuleProblems, ruleRows, ruleTable,
 } from '../../../scripts/check-import-specifiers.ts';
 import { REPO_ROOT } from '@abuddy/host/build/packages-built';
 import { packFixture as buildPackFixture } from '@abuddy/host/testing/pack-fixture';
@@ -521,7 +521,9 @@ const FIRES: Record<ImportRuleId, () => string[]> = {
     return findPackOwnAliases(PACK_SRC, root);
   },
   findExtensionlessOwnModules: () => {
-    packFixture({ 'src/f.ts': "import { sendToSystem } from '#generated/events';" });
+    // Both forms this rule owns. The `#` one alone left its relative branch with no repo-side example at all,
+    // which is how that branch stayed broken here while a pack author's own build reported it
+    packFixture({ 'src/f.ts': "import { sendToSystem } from '#generated/events';\nimport { sibling } from './sibling.js';" });
     return findExtensionlessOwnModules(PACK_SRC, root);
   },
   findAppImportsInPackTests: () => {
@@ -703,6 +705,45 @@ describe('CHECKS', () => {
     expect(packRule(parity.by, PACK_SRC, root),
       `${id} says an external pack is held to this as \`${parity.by}\`, but that rule does not report the offence in a `
       + 'pack written to commit it — so the rule named is not the rule that covers it').toEqual([finding]);
+  });
+
+  /**
+   * "The rule is the same rule wherever it runs" is what `pack-rules.ts` opens by claiming, and it was false:
+   * the two runners each built a rule's `PackPlace` by hand, and two of the five fields had drifted, so
+   * `own-modules` reported a relative `.js` to a pack author and nothing at all here.
+   *
+   * Asserted over each rule's own example, which `exampleFor` both writes and runs through the repo's entry
+   * point. `packRuleProblems` is what `abuddy build` calls, and prints pack-relative where this prints
+   * repo-relative, which is the one difference between them that is meant to exist.
+   */
+  it.each([...sweepers('src')].map((rule) => rule.id))('%s reports the same offence to a pack author and to this repo', (id) => {
+    const key = CHECKS.find((rule) => rule.id === id)!.packRule!;
+    const viaRepo = exampleFor(id)!();
+    // A pack author's build runs every rule and drops a finding whose span another rule already claimed; this
+    // runs one. The disjointness case above is what says no fixture here has two claimants, so nothing is
+    // dropped and the two are comparable. `packRule` sorts its findings and `packRuleProblems` does not.
+    const viaPack = packRuleProblems(path.join(root, PACK_FIXTURE)).get(key) ?? [];
+    expect(viaPack, `${id}'s example offends nothing when a pack author builds it`).not.toEqual([]);
+    expect(viaRepo.map((line) => line.replace(`${PACK_FIXTURE}/`, '')).sort(),
+      `${id} reports a different offence to a pack author than to this repo, so the rule is not the same rule `
+      + 'wherever it runs').toEqual([...viaPack].sort());
+  });
+
+  /**
+   * And a run pointed below a half still checks. `check:specifiers <paths>` takes a file or a directory — the
+   * help text offers "one feature" — while `inRoot` used to be measured from whatever the caller named, so the
+   * two rules that read it as a path shape matched nothing and said nothing. Both fail open, which is why this
+   * needs a case rather than having produced a complaint.
+   */
+  it.each([
+    ['a feature directory', `${PACK_FIXTURE}/src/features/notes`],
+    ['a single file', `${PACK_FIXTURE}/src/features/notes/be/system.ts`],
+  ])('reports a backend console under %s, as it does under src', (_shape, target) => {
+    packFixture({ 'src/features/notes/be/system.ts': "console.log('seeded');" });
+    const whole = packRule('backend-console', PACK_SRC, root);
+    expect(whole, 'the offence is not reported even for the whole half, so this proves nothing').not.toEqual([]);
+    expect(packRule('backend-console', [target], root), 'pointing at part of the half reports less than the half')
+      .toEqual(whole);
   });
 
   /** And every rule reaches the printed table, under a header, one line each */
