@@ -140,7 +140,7 @@ describe('slash commands from the library commands folder', () => {
     expect(app.emitted('host/settings').map((event) => event.type)).not.toContain('PACK_SEEDS_IMPORTED')
   })
 
-  it("reports the records an import from Settings couldn't seed, with the counts of the rest", async () => {
+  it("reports the records a seed import couldn't seed, with the counts of the rest", async () => {
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'failing-seeds-'))
     dependentDirs.push(dir)
     fs.writeFileSync(path.join(dir, 'seeds.json'), JSON.stringify({ version: 1, packId: manifest.id, seeds: [] }))
@@ -157,7 +157,7 @@ describe('slash commands from the library commands folder', () => {
     expect(imported.errors[0]).toMatch(/^notes: .*Title is required/)
   })
 
-  it('sends the chat the commands pack seeds imported from Settings bring', async () => {
+  it('sends the chat the commands a pack seed import brings', async () => {
     const app = await startApp({ systems: ['library', 'threads', 'brain', 'host/settings', 'host/packs'] })
     await app.connect()
     await app.send('host/packs', { type: 'IMPORT_PACK_SEEDS', directory: DIST, include: { library: ['internal'] }, mode: 'replace-on-collision', restartBrain: false })

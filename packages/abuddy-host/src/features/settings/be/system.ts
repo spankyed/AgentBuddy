@@ -18,10 +18,6 @@ import type { SettingsDocument } from './store.ts';
  */
 const APP_HOTKEYS_PATH = ['general', 'application', 'hotkeys'] as const;
 
-/**
- * The plugin that draws the settings, by the `settings` role. The store and this system are the app's; the view is
- * still a pack's, so it is addressed by the role it plays rather than by a name the host would have to know.
- */
 
 /**
  * The application hotkeys, from the `general` section a pack contributes. Every section but `plugins` is a pack's

@@ -1,6 +1,33 @@
 # Migrate Seed Orchestration Out of Settings System
 
-Settings system (`features/settings/be/system.ts`) currently owns seed data import, preview, and app reset — operations that belong to the core API's packs infrastructure, not a feature system.
+> **Done** (`352f21ce5`), except `RESET_APP`, which stays in settings deliberately — see *Disposition* below.
+>
+> **The paths below were stale when the work started.** This was written while settings was a default-setup
+> feature; it is the host's now (`packages/abuddy-host/src/features/settings/{be,fe}`), and so is the packs
+> system (`packages/abuddy-host/src/features/packs/be/system.ts`) rather than `packs/runtime/packs-system.ts`.
+> `Settings` is a host-declared entity beside `AppState`, which no pack may declare, so the store, its one
+> writer and the system answering the view are the app's; what a pack owns is the *content* of every section
+> but `plugins`, which is opaque to the host.
+
+## Disposition
+
+- **Moved**: `PREVIEW_PACK_SEEDS`, `IMPORT_PACK_SEEDS`, and `toSeedInclude`, to the packs system. Their answers
+  still go to the settings plugin, which draws them, so the FE's incoming types did not change — all host
+  features share one `broadcastToPlugin`, and `host/settings` maps to `SettingsPluginEvents` whichever system
+  sends. Only the sends moved.
+- **Not moved**: `RESET_APP`. The Open Question below asked whether it belongs on packs; the code answers it.
+  Reset is interlocked with backup import through `refuseResetWhileReplacing`, and both its exits run
+  `tellEveryFeature` to re-baseline what each feature was last told. Moving it means reimplementing a mutual
+  exclusion and a re-baseline across a system boundary, for no gain. The two seed events had no such
+  interlock — `whileBusy` never covered them — which is why they moved cleanly.
+- **Not removed**: the outgoing types in `OutgoingSettingsEvents`. Step 8 says to remove them, which contradicts
+  step 6's choice to answer the settings plugin: a plugin declares what it receives, and it still receives these.
+  They carry a comment naming the packs system as their sender instead.
+- **Unforeseen cost**: `@abuddy/testing`'s harness deliberately ran exactly one of the host's systems, settings.
+  Seed import moving means it runs two, since a pack's tests seed their own compiled output constantly. That
+  list is still hand-maintained and underived, and it is now longer.
+
+Settings system (`features/settings/be/system.ts`) owned seed data import, preview, and app reset — operations that belong to the packs infrastructure, not a feature system.
 
 ## What Lives in Settings Today
 
@@ -17,7 +44,7 @@ These depend on `importCompiledSeeds` (from `#generated/seeders`) and `previewPa
 ## Why Move It
 
 - **Settings is the wrong owner.** Seed import/preview/reset are pack-level operations. Settings happens to be where the UI lives, but the system doing the work should be the one that understands packs.
-- **The packs system already exists.** `packages/abuddy-host/src/packs/runtime/packs-system.ts` (the host `packs` system) handles install, uninstall, and enable/disable. Seed import and preview are the same domain — "manage what data a pack provides."
+- **The packs system already exists.** `packages/abuddy-host/src/features/packs/be/system.ts` (the host `packs` system) handles install, uninstall, and enable/disable. Seed import and preview are the same domain — "manage what data a pack provides."
 - **App reset is infrastructure.** Wiping the database, re-seeding, and running migrations is a host-level operation; it now lives in `services.appData.reset()`, and only its event still goes through settings.
 - **Unblocks pack-scoped seeding.** Once the packs system owns seed orchestration, external packs can use the same preview/import flow without routing through settings.
 
@@ -31,7 +58,7 @@ IMPORT_PACK_SEEDS   → PACK_SEEDS_IMPORTED / PACK_SEEDS_IMPORT_FAILED
 RESET_APP           → APP_RESET_COMPLETE / APP_RESET_FAILED  (calls services.appData.reset())
 ```
 
-The packs system (`packs-system.ts`) handles the operations. It already has access to pack metadata, boot hooks, and the seed pipeline.
+The packs system (`features/packs/be/system.ts`) handles the operations. It already has access to pack metadata, boot hooks, and the seed pipeline.
 
 ### Settings becomes a pass-through
 
@@ -78,10 +105,10 @@ The settings FE plugin sends `PREVIEW_PACK_SEEDS` / `IMPORT_PACK_SEEDS` / `RESET
 
 | File | Change |
 |------|--------|
-| `packages/abuddy-host/src/packs/runtime/packs-system.ts` | Add preview/import/reset handlers |
-| `packages/abuddy-sdk/src/utils/index.ts` | Export `toSeedInclude` (optional) |
-| `packages/default-setup/src/features/settings/be/system.ts` | Remove seed handlers, imports, types, `resetting` state |
-| `packages/default-setup/src/features/settings/fe/state.ts` | Route events to `packs` system instead of `settings` |
+| `packages/abuddy-host/src/features/packs/be/{system,types}.ts` | Preview/import handlers, `toSeedInclude`, the two incoming events |
+| `packages/abuddy-host/src/features/settings/be/{system,types}.ts` | Remove the seed handlers, helper, imports and transitions |
+| `packages/abuddy-host/src/features/settings/fe/machine.ts` | Route the two sends to `packs` |
+| `packages/abuddy-testing/src/harness.ts` | Register the host `packs` system beside `settings` |
 
 ## Open Questions
 
