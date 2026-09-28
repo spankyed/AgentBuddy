@@ -2,6 +2,7 @@ import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { REPO_ROOT } from '@abuddy/host/build/packages-built';
 import { afterEach, describe, expect, it } from 'vitest';
 import { loadPackChecks, packRuleProblems, PACK_RULES, refusePackRuleViolations, type PackRuleKey } from '../../src/build/pack-rules.ts';
 import { resetSourceCache } from '../../src/build/pack-sources.ts';
@@ -263,6 +264,24 @@ describe('when several rules are right about one site', () => {
    * The order in `PACK_RULES` *is* the precedence, so it is worth pinning: what stops the pack loading, then
    * what stops a specifier resolving, then what breaks on an app update, then the conventions.
    */
+  /**
+   * The rule table in `docs/public-facing/cli.md` is what a pack author reads, and nothing derived it from these
+   * keys — so it drifted both ways at once: it documented a `js-specifiers` pack rule that has never existed (the
+   * relative `.js` form is `own-modules`') and left `source-resolution` out entirely.
+   *
+   * Compared as sets, not in order: the doc groups rules the way an author meets them, which is editorial, while
+   * the order here is precedence. What must not differ is which rules exist.
+   */
+  it('documents exactly the rules that exist, in docs/public-facing/cli.md', () => {
+    const doc = fs.readFileSync(path.join(REPO_ROOT, 'docs/public-facing/cli.md'), 'utf-8').split('\n');
+    const header = doc.findIndex((line) => /^\|\s*Rule\s*\|/.test(line));
+    expect(header, 'the rule table is gone from cli.md, or its header changed').toBeGreaterThan(-1);
+    const rows = doc.slice(header + 2).slice(0, doc.slice(header + 2).findIndex((line) => !line.startsWith('|')));
+    const documented = rows.map((row) => /^\|\s*`([^`]+)`/.exec(row)?.[1]).filter((key) => key !== undefined);
+    expect(documented.length, 'no rows read from the table, so this would pass over nothing').toBeGreaterThan(0);
+    expect([...documented].sort()).toEqual([...PACK_RULES.map((rule) => rule.key)].sort());
+  });
+
   it('declares that precedence in one place', () => {
     expect(PACK_RULES.map((rule) => rule.key)).toEqual([
       'source-resolution', 'contract-leaves',

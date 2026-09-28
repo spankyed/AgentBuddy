@@ -1174,6 +1174,14 @@ export interface ImportRule {
   readonly rule: string;
   /** The `@abuddy/cli` pack rule this is the repo's entry point for, set by `backed` below */
   readonly packRule?: PackRuleKey;
+  /**
+   * Why this rule's subject is this repo rather than a pack, for a rule that stays here.
+   *
+   * Exactly one of this and `packRule` is set on every rule, which `import-specifiers.integration.spec.ts`
+   * asserts — because two pack-subject rules sat in this script for months with their reasons in an archived goal
+   * doc that nothing reads, and an external pack was held to neither. A new rule now has to say which it is.
+   */
+  readonly repoOnly?: string;
   /** Over the whole repo */
   find(): string[];
   /** Over paths a caller names, when the rule can answer per file */
@@ -1207,6 +1215,7 @@ const backed = (id: string, key: PackRuleKey, find: (dirs?: readonly string[], r
 export const CHECKS: readonly ImportRule[] = [
   {
     id: 'findJsSpecifiers',
+    repoOnly: "Its population is the packages that are not packs: a pack's relative `.js` belongs to `own-modules`, which resolves the specifier and so names the file to write, and the two populations are asserted disjoint",
     find: findJsSpecifiers,
     rule: 'Relative imports must name the TypeScript source (tsc and tsdown emit .js)',
     overPaths: (paths, root = repoRoot) => jsSpecifierFixes([...paths], root).map(({ file, line, specifier }) => `${file}:${line}: ${specifier}`),
@@ -1220,26 +1229,31 @@ export const CHECKS: readonly ImportRule[] = [
   backed('findExtensionlessOwnModules', 'own-modules', findExtensionlessOwnModules),
   {
     id: 'findAppImportsInPackTests',
+    repoOnly: "Not moved rather than repo-only: its subject is a pack's `tests/`, and whether the rule set reads a pack's tests at all is a decision `abuddy test` owns rather than `abuddy validate`",
     find: findAppImportsInPackTests,
     rule: 'Pack unit tests run on the harness (@abuddy/testing) without the app; test host, API and CLI code in its own package',
   },
   {
     id: 'findUpwardImports',
+    repoOnly: "The `@abuddy/*` layer rule, which is about this repo's packages and their manifests",
     find: findUpwardImports,
     rule: "Packages import only downward (@abuddy/ears imports no @abuddy package, @abuddy/sdk only @abuddy/ears, @abuddy/host only those two and never the API, the API and the renderer only the packages below them), and list each @abuddy package they import in their package.json",
   },
   {
     id: 'findLmdbImports',
+    repoOnly: "The pack half is the CLI's `lmdb-imports`; what is left here is the API, the host and the engine's own root",
     find: findLmdbImports,
     rule: "Only @abuddy/ears/lmdb loads lmdb: the host and the API open the store through it, the engine's root and packs never load it",
   },
   {
     id: 'findSharedPackageLists',
+    repoOnly: 'Its subject is the host, CLI and testing consumers of `SHARED_INSTANCE_PACKAGES`, none of which is a pack',
     find: findSharedPackageLists,
     rule: 'Derive shared-instance packages from SHARED_INSTANCE_PACKAGES (@abuddy/host/build/shared-deps) instead of naming them',
   },
   {
     id: 'findRepositoryCasts',
+    repoOnly: 'Recorded in its doc comment, with the condition to revisit: oxlint hosts no custom rule and eslint does not run where this applies',
     find: findRepositoryCasts,
     rule: "Call a package's repositories through its exports, not a cast of the repository registry",
   },
@@ -1247,16 +1261,19 @@ export const CHECKS: readonly ImportRule[] = [
   backed('findContractLeafImports', 'contract-leaves', findContractLeafImports),
   {
     id: 'findPackageScriptImports',
+    repoOnly: "A package's own `scripts/`, a shape no pack has, and the reason is how `npm run spec` routes a change",
     find: findPackageScriptImports,
     rule: "A package's own scripts/ imports that package's src/ and its declared dependencies, nothing else: a module under the repo's scripts/ belongs to no package, so npm run spec cannot route a change to it back to a spec that covers it",
   },
   {
     id: 'findCrossCheckoutResolution',
+    repoOnly: 'Worktrees nested in this checkout, which is a property of the checkout and not of any pack',
     find: findCrossCheckoutResolution,
     rule: 'Workspace packages resolve inside this checkout, so a worktree nested in the repository never typechecks against the parent checkout',
   },
   {
     id: 'findMissingSourceConditions',
+    repoOnly: "The repo's own configs; the mirror-image rule for a pack's configs is the CLI's `source-resolution`",
     find: findMissingSourceConditions,
     rule: "The repo's own configs declare the @abuddy/source condition when they compile or bundle code importing @abuddy/ears, @abuddy/sdk or @abuddy/ui, so they read TypeScript source instead of a stale dist; a pack's configs declare none, because a pack resolves the published dist",
   },

@@ -586,6 +586,19 @@ describe('CHECKS', () => {
     expect(overlap, 'a pack\'s own code belongs to own-modules, which names the file to write').toEqual([]);
   });
 
+  /**
+   * Every rule says whether `@abuddy/cli` owns it or this repo does, and the second answer carries its reason.
+   *
+   * Two pack-subject rules — `cross-feature-imports` and `contract-leaves` — sat in this script for months while
+   * an external pack was held to neither, and the reasons they had not moved lived in an archived goal doc that
+   * nothing reads. This is what makes the next one say so in the code instead.
+   */
+  it('says of every rule whether the CLI owns it, or why this repo does', () => {
+    const unsaid = CHECKS.filter((rule) => (rule.packRule === undefined) === (rule.repoOnly === undefined))
+      .map((rule) => `${rule.id}: set packRule (the CLI owns it) or repoOnly (why its subject is this repo), not both and not neither`);
+    expect(unsaid).toEqual([]);
+  });
+
   it('has no example left behind by a rule that is gone', () => {
     expect(Object.keys(FIRES).filter((name) => !CHECKS.some((rule) => rule.id === name))).toEqual([]);
   });
