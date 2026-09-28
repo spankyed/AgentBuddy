@@ -4,6 +4,7 @@ import * as os from 'node:os';
 import * as path from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { extractPackArchive, verifyPack } from '@abuddy/host/packs';
+import { parse as parseYaml } from 'yaml';
 import { callCli, typecheckPack } from '../_support/pack-builds';
 
 /**
@@ -127,22 +128,47 @@ describe('abuddy init → add feature → build → tsc → pack', () => {
     expect(checked.output).toContain('is up to date');
   });
 
-  /** Both workflows the scaffold writes run only scripts the scaffold also writes, or abuddy commands */
-  it('scaffolds workflows whose every step names something that exists', () => {
+  /**
+   * Every file the scaffold ships that names a command — both workflows and the README — held to the scripts
+   * it also ships. A README or a workflow step naming a script that does not exist is the same rot, so one
+   * rule reads both.
+   *
+   * The workflows are **parsed**, not scanned. The first version of this matched `/^\s*- run: /`, which a
+   * step written with a `name:` does not begin with — `release.yml`'s tag check is one, so the case was
+   * reading 8 of its 9 steps while claiming all of them. Measured before this was fixed: pointing that step
+   * at `npm run does-not-exist` left the case green. Parsing also means a malformed template throws here
+   * rather than at a pack author's first push.
+   */
+  it('names only scripts and commands that exist, in every workflow step and the README', () => {
     const scripts = Object.keys(JSON.parse(fs.readFileSync(path.join(pack, 'package.json'), 'utf-8')).scripts);
-    const workflows = ['ci.yml', 'release.yml'].map((name) => path.join(pack, '.github', 'workflows', name));
-    for (const file of workflows) expect(fs.existsSync(file), `${path.basename(file)} was not scaffolded`).toBe(true);
+    /** A `npm run x` / `npx abuddy y` the scaffold cannot honour, or nothing when it can */
+    const unknown = (line: string): string | undefined => {
+      const script = /^npm run ([\w:-]+)/.exec(line)?.[1];
+      if (script !== undefined) return scripts.includes(script) ? undefined : `npm run ${script}`;
+      const command = /^npx abuddy ([\w-]+)/.exec(line)?.[1];
+      if (command !== undefined) return CLI_COMMANDS.includes(command) ? undefined : `abuddy ${command}`;
+      return undefined; // npm ci, npm test, a shell test: not ours to check
+    };
 
-    const steps = workflows.flatMap((file) => [...fs.readFileSync(file, 'utf-8').matchAll(/^\s*- run: (.+)$/gm)].map((m) => m[1]!.trim()));
-    expect(steps.length, 'no run steps were read out of the workflows').toBeGreaterThan(0);
-    const unknown = steps.filter((step) => {
-      const script = /^npm run ([\w:-]+)/.exec(step)?.[1];
-      if (script !== undefined) return !scripts.includes(script);
-      const command = /^npx abuddy ([\w-]+)/.exec(step)?.[1];
-      if (command !== undefined) return !CLI_COMMANDS.includes(command);
-      return false; // npm ci, npm test and the like are not ours to check
-    });
-    expect(unknown, 'these workflow steps name a script or command the scaffold does not provide').toEqual([]);
+    const offenders: string[] = [];
+    for (const name of ['ci.yml', 'release.yml']) {
+      const file = path.join(pack, '.github', 'workflows', name);
+      expect(fs.existsSync(file), `${name} was not scaffolded`).toBe(true);
+      const text = fs.readFileSync(file, 'utf-8');
+      // Throws on a malformed template rather than reading nothing out of it
+      const workflow = parseYaml(text) as { jobs?: Record<string, { steps?: { run?: string }[] }> };
+      const runs = Object.values(workflow.jobs ?? {}).flatMap((job) => (job.steps ?? []).flatMap((step) => step.run?.split('\n') ?? []));
+      // Under-reading is the bug this replaced, so the parse is held to what the raw text shows
+      expect(runs.length, `${name}: parsed fewer run steps than it has`).toBeGreaterThanOrEqual((text.match(/^\s*-? ?run:/gm) ?? []).length);
+      offenders.push(...runs.map((line) => unknown(line.trim())).filter((x): x is string => x !== undefined).map((x) => `${name}: ${x}`));
+    }
+
+    const readme = fs.readFileSync(path.join(pack, 'README.md'), 'utf-8');
+    const named = [...readme.matchAll(/`(npm(?: run)? [\w:-]+)`/g)].map((m) => m[1]!);
+    expect(named.length, 'the README names no commands, so this passed over nothing').toBeGreaterThan(0);
+    offenders.push(...named.map((line) => unknown(line)).filter((x): x is string => x !== undefined).map((x) => `README.md: ${x}`));
+
+    expect(offenders, 'these name a script or command the scaffold does not provide').toEqual([]);
   });
 
   it('adds a step (registered, shipped in build/steps.build.mjs) and a service that build', async () => {
