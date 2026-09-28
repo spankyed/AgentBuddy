@@ -1,12 +1,13 @@
-> **Archived** (2026-09-28, same day it was written). It is a dated capture rather than a maintained
-> reference: nothing checks it, and the chain's output moves. For the current form, run the thing —
+> **Archived** (2026-09-28, the day it was written). It is a dated capture rather than a maintained
+> reference: nothing checks it, and the chain's output moves — the `--dry` block here was already wrong
+> within a day, because a stale step stopped printing a sentence and started naming the file. It was
+> re-captured once, at `79e3fe1e8`; it will drift again. For the current form, run the thing —
 > `npm run chain -- --dry` for the plan, and the reproduction steps at the end for the stale report.
-> The wording of two lines in it changed within an hour of the captures being taken.
 
 # What `npm run chain` prints
 
-Every block below is a verbatim capture, piped into this file from real runs on 2026-09-28 at
-`a06509364`. Nothing is typed by hand.
+Every block below is a verbatim capture, piped into this file from real runs on 2026-09-28. Nothing is
+typed by hand. The `--dry` block is from `79e3fe1e8`; the rest from `a06509364`, and unchanged since.
 
 **It is a snapshot, and nothing checks it stays true.** No step declares `docs/`, so editing the chain's
 output will not fail anything here. Treat a difference between this file and your terminal as this file
@@ -15,7 +16,9 @@ and the report's line shapes (the `staleLines` cases in the same file).
 
 ## `npm run chain --dry`
 
-The plan, running nothing: which steps would run, and why each would or would not.
+The plan, running nothing: which steps would run, and why each would or would not. Captured with one real
+edit outstanding — a line added to `packages/abuddy-sdk/src/index.ts` and reverted — so the causes below are
+the ones the chain actually derived, not an illustration.
 
 ```
 
@@ -25,12 +28,12 @@ The plan, running nothing: which steps would run, and why each would or would no
  cached t2 packages:check
  cached t2 compile
  cached t2 test:external-pack:contract
-    run t1 typecheck                   its inputs changed since the last successful run
-    run t1 test:unit:host              its inputs changed since the last successful run
- cached t1 test:unit:pack
-    run t2 test:integration            its inputs changed since the last successful run
+    run t1 typecheck                   changed packages/abuddy-sdk/src/index.ts
+    run t1 test:unit:host              changed packages/abuddy-sdk/src/index.ts
+    run t1 test:unit:pack              changed packages/abuddy-sdk/src/index.ts
+ cached t2 test:integration
  cached t3 build:app
-    run t3 test:external-pack:app      its inputs changed since the last successful run
+ cached t3 test:external-pack:app
     run t3 test                        never cached: it drives real Electron, and a flaky pass
                                        cached green hides an intermittent failure
  cached t3 test:packaged-authoring
@@ -39,7 +42,11 @@ The plan, running nothing: which steps would run, and why each would or would no
 `t1`/`t2`/`t3` is the tier — what the step is allowed to read. A reason too long for its row wraps to
 the column it started at, rather than to column 0 where it would read as another step's line.
 
-`--dry` is the one place a never-cached step's full argument is printed, because that is the question
+A stale step names what moved rather than saying `its inputs changed since the last successful run`, which
+is the only verdict a healthy step can have and so told a reader nothing. One file and a count, because the
+row has no lines beneath it to spend and a cold tree makes every step stale.
+
+`--dry` is also the one place a never-cached step's full argument is printed, because that is the question
 being asked. A run points at the comment instead; see below.
 
 ## `npm run chain`
