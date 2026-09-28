@@ -432,10 +432,16 @@ npm run specifiers:fix   # Rewrites the specifiers whose repair the rules comput
                          # rest. --dry prints without writing. Verifies each span before splicing and refuses
                          # a whole file when the disk and the reader disagree
 
-npm run lint:check       # Reports; run by npm run typecheck, so it is in the chain. Both workspaces
-                         # are at zero, and the few justified exceptions are inline disables that say
-                         # why (an OSC parser matches control characters; a triple-slash reference keeps
-                         # an ambient declaration global; a spread copies an array the loop shortens)
+npm run lint:check       # Reports; run by npm run typecheck, so it is in the chain. The whole tree is at
+                         # zero, over 1766 files in 72ms. `packages/**` was ignored here until 2026-09-28,
+                         # which left 113 findings in twelve workspaces no linter read — including an
+                         # `eslint-disable` written in the house style that suppressed nothing, because
+                         # nothing was looking. The scaffold's templates are the one exclusion: their
+                         # parameter names are what a pack author reads, so an unused one there is
+                         # documentation rather than a finding. The few justified exceptions are inline
+                         # disables that say why (an OSC parser matches control characters; a triple-slash
+                         # reference keeps an ambient declaration global; a spread copies a collection the
+                         # loop shortens; an empty export keeps a module in the emitted declarations)
 npm run lint:fix         # Rewrites what it can — oxlint has no fixer for no-unused-vars, so it will
                          # not clear those for you
 
