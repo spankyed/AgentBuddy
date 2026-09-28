@@ -47,7 +47,7 @@ import { changedInputs, freshnessSweep, INPUTS_CHANGED, REPO_ROOT, stampedRun, s
 import { CHAIN_STEPS, MEASURED_AT_LANES, orderedSteps, type ChainStep, type Tier } from './lib/chain-steps.ts';
 import { schedule } from './lib/chain-schedule.ts';
 import { criticalPath, driftedSteps, willNotCache } from './lib/step-timing.ts';
-import { briefly, declaredAt, dim, DRY_REASON_COLUMN, identicalRewrites, oneLine, REASON_COLUMN, staleLines, STEP_NAME_WIDTH, TIME_COLUMN, whenChanged, wrapAt, writerOf } from './lib/chain-output.ts';
+import { briefly, declaredAt, dim, DRY_REASON_COLUMN, firstChange, identicalRewrites, oneLine, REASON_COLUMN, staleLines, STEP_NAME_WIDTH, TIME_COLUMN, whenChanged, wrapAt, writerOf } from './lib/chain-output.ts';
 import { slowestTests } from './lib/slow-tests.ts';
 import { exitOnEpipe } from './lib/exit-on-epipe.ts';
 
@@ -257,12 +257,29 @@ async function main(): Promise<void> {
   if (dry) {
     // One question about every step, and nothing runs while it is asked, so one reading of the tree answers it all
     const sweep = freshnessSweep();
+    /**
+     * What moved, for the one step being asked about — the same diff the post-run report prints, minus the
+     * stats, because `--dry` places nothing in time: there is no run to be inside or after.
+     *
+     * Asked only of a step that is stale for the ordinary reason, so a warm tree pays for nothing and a cold
+     * one pays a hash per stale step over bytes this sweep has already read. This is the caller that makes the
+     * no-digests case real: it reads stamps it did not write, and one from before those were recorded cannot
+     * say which input moved.
+     */
+    const whatChanged = (step: ChainStep): string => {
+      const record = stampRecord(stampFor(step.name));
+      if (record?.files === undefined || record.declared === undefined) return 'its last run recorded no per-file digests';
+      return firstChange(sweep.changedInputs(unitFor(step), { files: record.files, declared: record.declared }));
+    };
     for (const step of steps) {
       // `--all` runs everything, so a dry run given `--all` must say so rather than reporting the cache it
       // would ignore. A plan that does not answer for the flags it was given is worse than no plan.
       const why = staleReason(step, sweep);
       const willRun = all || why !== null;
-      console.log(`${(willRun ? 'run' : 'cached').padStart(7)} t${step.tier} ${step.name.padEnd(STEP_NAME_WIDTH)} ${wrapAt(DRY_REASON_COLUMN, all ? '--all' : (why ?? ''))}`.trimEnd());
+      // Naming what moved in place of the sentence, which was the same for every stale step and said less
+      const moved = !all && why === INPUTS_CHANGED ? whatChanged(step) : '';
+      const reason = all ? '--all' : (moved === '' ? (why ?? '') : moved);
+      console.log(`${(willRun ? 'run' : 'cached').padStart(7)} t${step.tier} ${step.name.padEnd(STEP_NAME_WIDTH)} ${wrapAt(DRY_REASON_COLUMN, reason)}`.trimEnd());
     }
     return;
   }

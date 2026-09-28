@@ -5,7 +5,7 @@ import * as path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { REPO_ROOT } from '@abuddy/host/build/packages-built';
 import { CHAIN_STEPS } from '../../../scripts/lib/chain-steps.ts';
-import { briefly, declaredAt, dim, DRY_REASON_COLUMN, identicalRewrites, oneLine, REASON_COLUMN, staleLines, STEP_NAME_WIDTH, TIME_COLUMN, wrapAt, whenChanged, writerOf } from '../../../scripts/lib/chain-output.ts';
+import { briefly, declaredAt, dim, DRY_REASON_COLUMN, firstChange, identicalRewrites, oneLine, REASON_COLUMN, staleLines, STEP_NAME_WIDTH, TIME_COLUMN, wrapAt, whenChanged, writerOf } from '../../../scripts/lib/chain-output.ts';
 
 describe('wrapAt', () => {
   /**
@@ -118,6 +118,36 @@ describe('identicalRewrites', () => {
   it('counts nothing when the stamp cannot say when the run was', () => {
     expect(under([], [undefined, until])).toEqual([]);
     expect(under([], [from, undefined])).toEqual([]);
+  });
+});
+
+/**
+ * `--dry` has one line per step and a cold tree makes every step stale, so what moved has to fit the row it is
+ * already on. It replaces a sentence that was identical for every stale step.
+ */
+describe('firstChange', () => {
+  const nothing = { gained: [], lost: [], changed: [], added: [], removed: [] };
+
+  it('leads with the verb, so a column of these lines reads down', () => {
+    expect(firstChange({ ...nothing, changed: ['scripts/chain.ts'] })).toBe('changed scripts/chain.ts');
+    expect(firstChange({ ...nothing, added: ['tests/fixtures/probe.txt'] })).toBe('added tests/fixtures/probe.txt');
+    expect(firstChange({ ...nothing, removed: ['src/gone.ts'] })).toBe('removed src/gone.ts');
+  });
+
+  it('counts the rest across all three kinds, since the row has no room for them', () => {
+    expect(firstChange({ ...nothing, changed: ['a.ts', 'b.ts'], added: ['c.ts'], removed: ['d.ts'] }))
+      .toBe('changed a.ts (and 3 more)');
+  });
+
+  /** A unit that gained a watched path is stale before a byte moved, so naming a file would name a non-cause */
+  it('names a declared path over any file', () => {
+    expect(firstChange({ ...nothing, gained: ['tests/scripts'], changed: ['a.ts'] })).toBe('gained tests/scripts');
+    expect(firstChange({ ...nothing, lost: ['tests/old'] })).toBe('lost tests/old');
+  });
+
+  /** Empty rather than a guess, so the caller falls back to the reason it already had */
+  it('says nothing when there is nothing to name', () => {
+    expect(firstChange(nothing)).toBe('');
   });
 });
 
