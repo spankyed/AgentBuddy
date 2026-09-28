@@ -25,7 +25,6 @@ import { poolUnitFor } from '../../../scripts/lib/unit-pool.ts';
 
 /** Tracked code no chain step reads, and why. An entry that stops applying is reported, not ignored. */
 const NOT_A_CHAIN_INPUT: Record<string, string> = {
-  'packages/abuddy-ears/bench/ears.bench.ts': 'npm run bench -w @abuddy/ears, measured against its own baseline',
   'docs/archive/research/claude_code_headless_ex.ts': 'an archived transcript that happens to end in .ts',
   // The production packaging and release path. The chain builds the app (`build:app`) and never packages,
   // signs or releases it, so none of this runs in any step — listed per file rather than as a `build/`
