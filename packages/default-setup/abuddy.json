@@ -390,7 +390,7 @@
         "type": "action",
         "path": "src/extensions/steps/action",
         "dsl": {
-          "primaryField": "action"
+          "custom": true
         }
       },
       {

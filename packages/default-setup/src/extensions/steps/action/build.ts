@@ -9,20 +9,24 @@ export function compile(
   ts: number,
   ctx: StepCompileContext,
 ): StepCompileResult {
-  const actionId = ctx.actions.get(node.action as string);
+  const code = node.mode === 'code';
+  const actionId = code ? undefined : ctx.actions.get(node.action as string);
   return {
     entity: {
       id: nodeId,
       entityType: EARS.Entity.Node,
       createdAt: ts,
       nodeType: 'action',
-      label: (node.label as string) || (node.action as string),
+      label: (node.label as string) || (node.action as string) || 'Action',
       description: node.description,
+      mode: code ? 'code' : undefined,
+      actionFn: code ? node.actionFn : undefined,
       actionId,
       params: node.params,
       fieldMappings: expandRecord(node.map as Record<string, string> | undefined),
       final: node.final,
     },
+    // Code mode has no Action to be an instance of
     relations: actionId ? [
       { source: nodeId, kind: EARS.RelKind.INSTANCE_OF as string, target: actionId }
     ] : [],
@@ -35,6 +39,19 @@ export function validate(
   ctx: StepValidationContext,
 ): StepValidationError[] {
   const errors: StepValidationError[] = [];
+  if (s.mode === 'code') {
+    // The union in types.ts refuses these at the call site; this is for DSL that arrived as data
+    if (!s.actionFn || typeof s.actionFn !== 'string') {
+      errors.push({ path, message: 'An action step in code mode must have an "actionFn" string' });
+    }
+    if (s.action !== undefined) {
+      errors.push({ path, message: 'An action step in code mode names no action: drop "action" or drop "mode"' });
+    }
+    return errors;
+  }
+  if (s.actionFn !== undefined) {
+    errors.push({ path, message: 'An action step with "actionFn" must set mode: "code"' });
+  }
   if (!s.action || typeof s.action !== 'string') {
     errors.push({ path, message: 'Action step must have an "action" string (action name)' });
   } else if (!ctx.skipReferenceCheck && !ctx.actions.has(s.action)) {
@@ -55,11 +72,16 @@ export function getLabel(step: Record<string, unknown>, index: number): string {
 }
 
 export function decompile(node: Record<string, unknown>, ctx: StepDecompileContext): Record<string, unknown> {
+  const code = node.mode === 'code';
   const actionLabel = node.actionId
     ? ctx.actionMap.get(node.actionId as string) || node.actionId
     : node.label || 'Unknown Action';
-  const dsl: Record<string, unknown> = { type: 'action', action: actionLabel };
-  if (node.label && node.label !== actionLabel) dsl.label = node.label;
+  // A code-mode node names no action, and inventing one from its label is how an export used to both lose the
+  // code and fail its own re-import with `Action "<label>" not found`
+  const dsl: Record<string, unknown> = code
+    ? { type: 'action', mode: 'code', actionFn: node.actionFn }
+    : { type: 'action', action: actionLabel };
+  if (node.label && (code || node.label !== actionLabel)) dsl.label = node.label;
   if (node.description) dsl.description = node.description;
   if (node.final) dsl.final = true;
   const map = collapseRecord(node.fieldMappings as any);

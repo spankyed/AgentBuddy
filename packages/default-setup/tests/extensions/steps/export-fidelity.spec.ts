@@ -10,7 +10,7 @@ import { EARS, ROOT_FLOW_ROLE } from '@abuddy/sdk'
 import { untypedQx } from '@abuddy/ears'
 import { importFlows } from '@abuddy/testing/harness'
 import { startTestRuntime } from '@abuddy/sdk/testing'
-import { action, branch, create, entry, fire, keepAlive, kill, llm, on, query, subflow, transform, update } from '#generated/flow-helpers.ts'
+import { action, actionCode, branch, create, entry, fire, keepAlive, kill, llm, on, query, subflow, transform, update } from '#generated/flow-helpers.ts'
 
 startTestRuntime()
 
@@ -52,6 +52,7 @@ describe('a flow exported and imported back', () => {
           entry([keepAlive()]),
           on('go', [[
             action('Send', { label: 'send', description: 'd', map: { to: '$.event.data.to' }, params: { x: 1 } }),
+            actionCode('return ctx.a + 1', { label: 'compute' }),
             llm('Summarise', { label: 'sum', temperature: 0.2, maxTokens: 10 }),
             query('what?', { as: 'results' }),
             create('Note', { params: { content: 'c' } }),
