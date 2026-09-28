@@ -9,22 +9,25 @@ import { SHARED_INSTANCE_PACKAGES } from '@abuddy/host/build/shared-deps';
 import { packageName } from '@abuddy/host/build/specifiers';
 import { SOURCE_CONDITION } from '@abuddy/host/build/source-resolution';
 import { ownModuleFindings } from '@abuddy/host/build/own-module-specifiers';
-import { formatPackWide, PACK_RULES, packPlaces, packRuleProblems, type PackRuleKey } from '../packages/abuddy-cli/src/build/pack-rules.ts';
+import { packRuleProblems, type PackRuleKey } from '../packages/abuddy-cli/src/build/pack-rules.ts';
 import { moduleOf, readSource, sourceFiles } from '../packages/abuddy-cli/src/build/pack-sources.ts';
 import type { Fix } from './lib/specifier-fixes.ts';
 import {
   CHECKED_DIRS, checkedDirs, filesUnder, PACK_CODE_DIRS, packCodeDirs, packDirs, packageSourceDirs,
-  packRootOf, PACK_SOURCE_DIRS, PACK_SRC_ROOTS, PACK_TEST_DIRS, readJsonFile, repoRelative, repoRoot,
+  PACK_SOURCE_DIRS, PACK_SRC_ROOTS, PACK_TEST_DIRS, readJsonFile, repoRelative, repoRoot,
   SOURCE_EXTENSIONS,
 } from './lib/import-populations.ts';
 import {
   DECLARES_SOURCE_BY_DESIGN, findMissingSourceConditions, RESOLVES_DIST_BY_DESIGN, sourceConditionPackages,
 } from './lib/import-source-conditions.ts';
+import { backed, type ImportRule, type PackParity, packRule } from './lib/import-rules.ts';
+import { listLines, ruleRows as rowsOf, type RuleRow, ruleTable } from './lib/import-list.ts';
 
 // Re-exported so the consumers of this file keep importing from it: it is the command, and the command is the
 // name everything else knows. `scripts/lib/import-populations.ts` and `./lib/import-source-conditions.ts` are
 // where they are defined.
 export { checkedDirs, packCodeDirs, packDirs, packageSourceDirs };
+export { type ImportRule, type PackParity, packRule };
 export { DECLARES_SOURCE_BY_DESIGN, findMissingSourceConditions, RESOLVES_DIST_BY_DESIGN, sourceConditionPackages };
 
 /** `file:line: specifier` for each specifier in `files` that `matches` (relative ones only unless `all`) */
@@ -82,56 +85,6 @@ export function jsSpecifierFixes(dirs: readonly string[] = CHECKED_DIRS, root = 
     }
   }
   return fixes;
-}
-
-/**
- * A pack rule from `@abuddy/cli`'s `build/pack-rules.ts`, applied to this repo's packs.
- *
- * The rule is the same rule wherever it runs — `abuddy build`, `abuddy validate` and `abuddy test` run these
- * for every pack outside this checkout, and running a second implementation here is how two copies of one rule
- * drift apart (`docs/goals/goal-one-rule-set.md`). What this adds is the repo's shape: each `dir` may be a
- * pack's `src`, a pack's `tests`, or — in a spec — a directory standing in for one, and paths are reported
- * relative to the repo rather than to the pack.
- *
- * One rule at a time, so it does not get `packRuleProblems`' "one offence, one message" — there, a pack author
- * reading a build failure is told once by the rule whose cause comes first. Here the rule *is* the subject:
- * `--rule <id>` runs one; `--list` names them all, says which an external pack is held to as well (a rule with
- * a `packRule` is one `abuddy validate`, `build` and `test` run), and prints what doing without each of the
- * rest costs a pack — answering from the entries rather than from a table in a doc, which is what a survey of
- * this taken by hand went stale as. A rule that stood down would make a per-rule run's
- * answer depend on which other rules ran. What keeps that from becoming two answers to one question is that
- * both run the same rule — its `check` per file, its `checkPack` once for the pack — and `FIRES`' disjointness
- * sweep asserts no two rules claim one offence to begin with, for every rule this delegates to.
- */
-export function packRule(key: PackRuleKey, dirs: readonly string[], root: string): string[] {
-  const rule = PACK_RULES.find((candidate) => candidate.key === key);
-  if (!rule) throw new Error(`No pack rule "${key}"`);
-  // A rule whose subject is the pack answers once per pack, not once per directory of it: `dirs` holds a pack's
-  // `src` and its `tests` separately, and the CLI's own runner calls such a rule once per pack too. Its findings
-  // are written relative to the pack, as a pack author reads them, so here they take the pack's own prefix.
-  const packs = new Set(dirs.map((dir) => path.join(root, dir)).filter(fs.existsSync).map((full) => packRootOf(full, root)));
-  // A whole-pack rule names places relative to its pack, as a pack author reads them; this repo has five packs,
-  // so a finding says which one. `formatPackWide` writes the line and takes the path from here, which is why this
-  // needs to know nothing about how any rule words its findings.
-  const wholePack = rule.checkPack === undefined ? [] : [...packs].flatMap((packDir) => {
-    const prefix = repoRelative(root, packDir);
-    const where = (file: string) => (prefix ? `${prefix}/${file}` : file);
-    return rule.checkPack!(packDir).map((found) => formatPackWide(found, where));
-  });
-  // Through `packPlaces`, not a second copy of it: this used to build the place itself, and two of the five
-  // fields had drifted from what `PackPlace` declares — `packRelative` repo-relative where a rule resolves it
-  // against the pack, and `inRoot` relative to whatever the caller named rather than to the pack's half. Both
-  // turned a rule off without failing anything. What stays here is the one thing that is this runner's own: the
-  // path it prints, which is repo-relative because that is where its reader is standing.
-  return [...wholePack, ...dirs.flatMap((dir) => {
-    const full = path.join(root, dir);
-    if (!fs.existsSync(full)) return [];
-    const packDir = packRootOf(full, root);
-    return packPlaces(packDir, [path.relative(packDir, full)]).flatMap(({ view, place }) => {
-      const shown = repoRelative(root, path.join(packDir, place.packRelative));
-      return (rule.check?.(view, place) ?? []).map(({ line, what }) => `${shown}:${line}: ${what}`);
-    });
-  })].sort();
 }
 
 /** The repo root, for a command that acts on what these rules report */
@@ -520,104 +473,6 @@ export function findCrossCheckoutResolution(root = repoRoot): string[] {
 }
 
 /**
- * Every rule this script enforces, with the sentence it reports. Exported so the runner below and the specs read
- * the same list: `import-specifiers.spec.ts` asserts each entry has a case, which is what stops a check landing
- * with nothing exercising it.
- */
-/**
- * Every rule this script enforces, with the sentence it reports and — for the rules that can answer about one
- * file at a time — how to run it over paths a caller names.
- *
- * `overPaths` is what makes `npm run check:specifiers <paths…>` honest: a rule that reads the whole tree (the
- * layer manifests, the config scan, the stale-exception checks) declares none, and a per-file run says which
- * rules it skipped rather than reporting a pass it did not earn.
- *
- * Exported so the runner below and the specs read the same list: `import-specifiers.spec.ts` asserts each
- * entry has a case that makes it fire, which is what stops a check landing with nothing exercising it.
- */
-interface RuleShape {
-  /** Stable name, the one the spec's FIRES table is keyed by and `--rule` takes */
-  readonly id: string;
-  /** The sentence reported when it fires */
-  readonly rule: string;
-  /** Over the whole repo */
-  find(): string[];
-  /** Over paths a caller names, when the rule can answer per file */
-  overPaths?(paths: readonly string[], root?: string): string[];
-  /**
-   * The directories the whole-tree run reads, for a rule whose subject is a tree rather than the checkout.
-   *
-   * Data rather than a default parameter, because two checks need to read it: the sweeps that assert one rule owns
-   * each offence derive who takes part from it — a rule that reads a pack's `tests` is swept there, and one that
-   * reads `packages/*` minus the packs takes part in neither — and a population is otherwise unassertable, which is
-   * how `host-imports` came to read a pack's `src` alone while `abuddy test` ran it over a pack's tests.
-   *
-   * Absent for the six rules whose subject is not a dir list: the layer table, `LMDB_RULES`, the shared-list files,
-   * the repo's configs, a package's own `scripts/` and the checkout itself.
-   */
-  readonly over?: readonly string[];
-}
-
-/**
- * A rule, which says who owns it: `@abuddy/cli`, or this repo.
- *
- * A union rather than two optional fields, so a rule that says both or neither does not compile. Two pack-subject
- * rules sat in this script for months while an external pack was held to neither, and the reasons they had not
- * moved lived in an archived goal doc that nothing reads; this is the cheapest place to make the next one answer
- * the question — at the declaration, before anything runs, rather than in a case that has to be remembered.
- */
-export type PackParity =
-  /** The pack-facing half is a named pack rule, so an external pack is held to the same thing by another name */
-  | { readonly kind: 'covered'; readonly by: PackRuleKey; readonly note: string }
-  /** A pack cannot commit this offence: it has no `scripts/` of its own, is not an `@abuddy/*` package, and so on */
-  | { readonly kind: 'inapplicable'; readonly note: string }
-  /**
-   * A pack *can* commit it and nothing outside this repo refuses it.
-   *
-   * The variant exists so that the next such rule has somewhere honest to go. Without it, whoever adds one
-   * reaches for `inapplicable` — a claim no check can contradict — and the gap reopens silently, which is how
-   * `findRepositoryCasts` sat here holding built-in packs to a rule external packs were free of.
-   */
-  | { readonly kind: 'unenforced'; readonly note: string };
-
-export type ImportRule = RuleShape & (
-  /** The CLI owns the implementation; `backed` sets this */
-  { readonly packRule: PackRuleKey; readonly repoOnly?: never }
-  /** Why this rule's subject is this repo rather than a pack, as an answer a reader can check rather than prose */
-  | { readonly packRule?: never; readonly repoOnly: PackParity }
-);
-
-/** The sentence a pack rule reports, read from the rule itself so this script prints what a pack author is told */
-function ruleSentence(key: PackRuleKey): string {
-  const rule = PACK_RULES.find((candidate) => candidate.key === key);
-  if (!rule) throw new Error(`No pack rule "${key}"`);
-  return rule.rule;
-}
-
-/**
- * A rule `@abuddy/cli` owns, applied to the packs in this checkout: one body of code, one sentence, two entry
- * points. `find` takes the rule's own population and `overPaths` the paths a caller named, both through the same
- * function.
- *
- * The sentence comes from `PACK_RULES` rather than being written again here, because a second copy drifts: for a
- * while `host-imports` printed one sentence from `abuddy validate` and a different one from `check:specifiers`,
- * for the same offence in the same file.
- */
-const backed = <Id extends string>(
-  id: Id,
-  key: PackRuleKey,
-  find: (dirs?: readonly string[], root?: string) => string[],
-  over: readonly string[],
-) => ({
-  id,
-  packRule: key,
-  rule: ruleSentence(key),
-  over,
-  find: () => find(over),
-  overPaths: (paths: readonly string[], root = repoRoot) => find(paths, root),
-}) satisfies ImportRule;
-
-/**
  * Every rule, and the one place their ids are written.
  *
  * `as const satisfies` rather than an annotation, so each id keeps its literal type and `ImportRuleId` below is
@@ -717,58 +572,11 @@ export const CHECK_IDS: readonly ImportRuleId[] = RULE_LIST.map((rule) => rule.i
 export const CHECKS: readonly ImportRule[] = RULE_LIST;
 
 /**
- * One rule as `--list` shows it. Rendered cells rather than the rule itself, so the widths below are derived
- * from the text that will actually be printed and a caller cannot compose a column a different way.
+ * The `--list` presentation, with the rules bound: `scripts/lib/import-list.ts` takes them, because it is the
+ * command that knows which exist. Re-exported so this file stays the one name its consumers import.
  */
-export interface RuleRow {
-  readonly id: string;
-  /** Whether it can be pointed at paths, which is what decides if a per-file run covers it */
-  readonly paths: string;
-  /** Whether an external pack is held to it too: `abuddy validate`, `build` and `test` run the pack rules */
-  readonly parity: string;
-  /** The first clause of what it reports, which is the part that fits a row */
-  readonly reports: string;
-}
-
-/** What each answer means, in the order the second table groups them: the gap last, where it is read */
-const PARITY_HEADINGS: Record<PackParity['kind'], string> = {
-  covered: 'A pack rule covers the pack-facing half:',
-  inapplicable: 'A pack cannot commit the offence:',
-  unenforced: 'A pack can commit it and nothing checks — move it to PACK_RULES or say why not:',
-};
-
-/**
- * The rows `--list` prints, as data.
- *
- * Separate from the printing because the pairing is the only thing the table is for, and a row is the only place
- * an id and its parity are together — asserted over these, a rule rendered with another rule's key fails, where
- * over the command's stdout every string is still present and every `toContain` still passes.
- *
- * Takes the rules so a case can render a parity a real rule does not have yet.
- */
-export const ruleRows = (checks: readonly ImportRule[] = CHECKS): readonly RuleRow[] => checks.map((rule) => ({
-  id: rule.id,
-  paths: rule.overPaths ? 'yes' : 'no',
-  parity: rule.packRule === undefined ? 'no — see below' : `yes, as \`${rule.packRule}\``,
-  reports: rule.rule.split(':')[0],
-}));
-
-/**
- * Those rows as lines, each column as wide as its own longest entry: a width guessed from today's entries is one
- * the next rule runs off the end of, and the entry that does it is the one nobody reads twice.
- */
-export const ruleTable = (rows: readonly RuleRow[]): string[] => {
-  const width = (header: string, cell: (row: RuleRow) => string) => Math.max(header.length, ...rows.map((row) => cell(row).length)) + 2;
-  const columns = [
-    ['rule', width('rule', (row) => row.id), (row: RuleRow) => row.id],
-    ['paths?', width('paths?', (row) => row.paths), (row: RuleRow) => row.paths],
-    ['a pack too?', width('a pack too?', (row) => row.parity), (row: RuleRow) => row.parity],
-    ['what it reports', 0, (row: RuleRow) => row.reports],
-  ] as const;
-  const line = (cell: (column: (typeof columns)[number]) => string) =>
-    columns.map((column) => cell(column).padEnd(column[1])).join('').trimEnd();
-  return [line((column) => column[0]), ...rows.map((row) => line((column) => column[2](row)))];
-};
+export const ruleRows = (checks: readonly ImportRule[] = CHECKS): readonly RuleRow[] => rowsOf(checks);
+export { ruleTable, type RuleRow };
 
 // Run as a script, also through a symlinked path (tests import findJsSpecifiers)
 if (process.argv[1] && import.meta.filename === fs.realpathSync(process.argv[1])) {
@@ -778,18 +586,7 @@ if (process.argv[1] && import.meta.filename === fs.realpathSync(process.argv[1])
   const rules = only ? CHECKS.filter((rule) => rule.id === only) : CHECKS;
 
   if (args.includes('--list')) {
-    for (const line of ruleTable(ruleRows())) console.log(line);
-    const repoOnly = CHECKS.filter((rule) => rule.repoOnly !== undefined);
-    console.log(`\n${repoOnly.length} of ${CHECKS.length} are this repo's alone. What an external pack does without each:\n`);
-    for (const [kind, heading] of Object.entries(PARITY_HEADINGS)) {
-      const group = repoOnly.filter((rule) => rule.repoOnly!.kind === kind);
-      if (group.length === 0) continue;
-      console.log(`  ${heading}\n`);
-      for (const rule of group) {
-        const parity = rule.repoOnly!;
-        console.log(`    ${rule.id}${parity.kind === 'covered' ? ` — held as \`${parity.by}\`` : ''}\n      ${parity.note}\n`);
-      }
-    }
+    for (const line of listLines(CHECKS)) console.log(line);
     process.exit(0);
   }
   if (only && rules.length === 0) {
