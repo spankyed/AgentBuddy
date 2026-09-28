@@ -1,25 +1,48 @@
-> **Re-verified 2026-09-28, and re-framed.** Phase 4 is **done** (`1b3eb9876`), at the tier rather than per
-> test — and it was right about the test it named: "generated sends compile" failed a chain run at 5.8s under
-> three lanes against a 5s default, exactly the flake the phase predicted. One "Finished when" clause is met by
-> other work: `npm run test:unit` is 37.6–40.8s against its 43s target, delivered by
-> [`goal-one-job-pool.md`](../archive/goals/goal-one-job-pool.md)'s pooling.
+> **Re-verified 2026-09-28 (later the same day). The mechanism this goal analyses no longer exists, and the
+> metric it measures in cannot be taken here. Read this block before the Background; it strikes two Decisions
+> and collapses three Phases.**
 >
-> **The diagnosis holds.** Re-measured 2026-09-28 (table in Background): `default-setup` 17.6s and `@abuddy/sdk`
-> 12.9s are still the two largest and still about half the sum, and `default-setup`'s per-file setup has grown
-> to **116s cumulative against 15.9s of tests** — the item Phase 2 names, now a 7:1 ratio. Phases 1, 2, 3 and 5
-> are unstarted and correctly aimed.
+> **`ABUDDY_TEST_LANES` appears nowhere in the repo.** `test:unit` runs **two pools, one after the other**,
+> handing vitest every file at once so its own longest-first sequencer packs them
+> ([`goal-one-job-pool.md`](../archive/goals/goal-one-job-pool.md)). The lane machinery this goal is written
+> against is gone, and the pooling that replaced it already delivered the 43s this goal set as its target.
 >
-> **What changed is why it is worth doing.** This goal says suite time "bounds the wall clock however the lanes
-> are arranged". That is no longer true of the chain: every full run on 2026-09-28 put the critical path at
-> 105–111s through `packages:ensure -> compile -> build:app -> test:packaged-authoring`, with the two unit pools
-> in a lane beside it. **Making the unit suites faster will not move a cold chain.** What it moves is the inner
-> loop — `npm run spec`, and the warm chain where the pools are the only steps that run. Read Decision 3 with
-> that correction: suite time still bounds `test:unit`, it no longer bounds the gate.
+> - **The base check below failed, and told an implementer to stop.** It asked them to confirm `test:unit`
+>   reports "2 lanes" and takes `ABUDDY_TEST_LANES`. Corrected in place, so the next reader is not stopped by a
+>   condition that can never hold again.
+> - **Decision 2 is moot** — there is no lane count to leave alone — and **Decision 3 is wrong**: wall clock is
+>   a makespan over one file list now, not a sum over suites. Vitest packs files across what used to be suite
+>   boundaries, so suite time is not the scheduling unit and bounds the wall only loosely. Both struck below.
+> - **The lane table is history, and lives in the code that replaced it.** `scripts/test-unit.ts`'s header
+>   carries it — `1: 69.8s, 2: 44.3s, 3: 47.7s, 8: 63.1s` — beside the reason it stopped applying: two
+>   schedulers with no shared budget. It is not repeated here.
+>
+> **What survives is Phase 2, and it is intact.** `setupPackTests` is still called at module scope
+> (`packages/default-setup/tests/setup.ts:33`), once per test file. That is the whole remaining value. Phases 1,
+> 3 and 5 were scaffolding around the old scheduler and are collapsed into one measure-and-close phase.
+>
+> **The metric changes, because the old one is not obtainable in this repo.** Every number here was taken
+> "alone, on an idle machine", and the machine is not idle — this tree is worked by concurrent agents, and both
+> re-measures before this one carry an "upper bound, another agent held the repo" caveat. The attempt that
+> prompted this block read `default-setup` at **52.9s against the 17.6s recorded hours earlier**: load average
+> **44.5 on ten cores**, six foreign `vitest` processes at 117–145% CPU. A uniform 3× inflation is contention,
+> and it is not a number anyone can act on.
+>
+> So the quantity this goal moves is **work** — CPU-seconds (`user` + `sys`) and invocation counts: how many
+> times `setupPackTests` runs, and what one call costs. Work is what a change removes; elapsed is what the
+> scheduler and the neighbours make of it. **Work can be measured on a loaded box and compared across days;
+> elapsed cannot**, which is why this goal has been re-measured three times and moved none. Elapsed stays as a
+> reported secondary, quoted only with the load average beside it.
+>
+> **And the payoff is smaller than the framing suggests, which is worth knowing before starting.** Every full
+> chain run on 2026-09-28 put the critical path at 105–125s through `packages:ensure -> compile -> build:app ->
+> test:packaged-authoring`, with the unit pools in a lane beside it. **Making the unit suites faster will not
+> move a cold chain.** What it moves is the inner loop — `npm run spec` — and the warm chain where the pools
+> are the only steps that run.
 >
 > **One measurement trap, recorded because it caught a reader.** `etc/spec-cost.json` sums per-file durations,
-> which is not this goal's metric. By that measure `@abuddy/host` looks largest — 81 specs, 20.1s cumulative —
-> while its wall time run alone is 8.6s, third. Compare suites the way the table below does, alone and by the
-> clock, or the aim moves to the wrong suite.
+> which is neither metric. By that measure `@abuddy/host` looks largest — 81 specs, 20.1s cumulative — while
+> its wall time run alone is third.
 
 > **Written in session** `1d53eb9c-d886-49f8-bc5a-90793d43315e` (Claude Code, 2026-09-25). Resume it with `claude -r 1d53eb9c-d886-49f8-bc5a-90793d43315e`.
 
@@ -30,30 +53,34 @@ Implement docs/goals/goal-unit-suite-cost.md on AS/test-pipeline, at or after c7
 its Background was measured at. Read Background, Decisions, Phases and
 Constraints first. Decisions are final: implement them, don't reopen them or stop to ask.
 
-Before Phase 1, confirm the base: `npm run test:unit` reports "2 lanes" and finishes in about 43s,
-scripts/test-unit.ts exists and takes ABUDDY_TEST_LANES, and packages/default-setup/tests/setup.ts
-calls setupPackTests at module scope. If they don't, stop and say so — the numbers below are
-arithmetic about where the time goes, and a stale base invalidates them.
+Before Phase 1, confirm the base: `scripts/test-unit.ts` runs two pools one after the other, and
+`packages/default-setup/tests/setup.ts` calls `setupPackTests` at module scope. If the second is no
+longer true, stop and say so — it is the item this goal exists to remove. (The lane machinery the
+original base named is gone; see the block above.)
 
-Then re-measure the per-suite table with nothing else running. Every number in this doc is from
-2026-09-25 on a 10-core machine, and a contended run has already produced a 36% error here.
+Then take the work figures, not the clock: `user` + `sys` for a suite run, and how many times
+`setupPackTests` is called. Those hold on a loaded machine. If you want an elapsed number too, check
+`uptime` and `ps` first and quote the load beside it — a contended run has already produced a 3x error
+here, which is larger than anything this goal can save.
 
 Where a detail isn't specified, pick the conventional option, note it in the final summary, and keep
 going. No backward compatibility in code: change signatures, move modules, migrate every in-repo
 caller, test and doc in the same change, and fix forward.
 
 Finished when:
-- Phases 1-5 are implemented and each meets its "Done when".
-- `npm run test:unit` is measurably faster than 43s on an idle machine, or the phase that would have
-  made it so is closed with the measurement saying why not. A number that did not move is a result.
-- The suite-time total (the sum of the eight suites run alone, 52.6s today) has dropped, since that
-  is what bounds the wall clock however the lanes are arranged.
+- Phase 1 measures, Phase 2 acts or closes, and Phase 3 runs only if Phase 1 names something in `sdk`.
+  Phase 4 is done; Phase 5 is folded into Phase 1. Each that runs meets its "Done when".
+- The work `default-setup`'s suite does has measurably dropped — CPU-seconds and `setupPackTests`
+  invocations, both recorded before and after — or Phase 2 is closed with the measurement showing the
+  cost is the isolation. A number that did not move is a result.
+- No elapsed figure is quoted without the load average it was taken under. `test:unit` is already
+  inside the 43s the original target named, delivered by pooling rather than by this goal.
 - No test is deleted or loosened to make a number. Coverage is not the lever here; cost is.
 - Every test that hits vitest's 5s default under load has a timeout sized to what it does, and the
   size is justified by a measurement rather than raised until it passes.
 - npm run chain passes once at the end; npm run typecheck; npm run lint:check.
-- The Outcome records: the per-suite table before and after, the contention tax before and after,
-  what each phase moved, and what it cost to move it.
+- The Outcome records: the work figures before and after, what each phase moved, what it cost to move it,
+  and the load any elapsed number was taken under.
 
 Commit as you go:
 - Commit each phase when its "Done when" holds and its suite is green — not once at the end.
@@ -118,8 +145,8 @@ reached 43s and stopped. This goal is the part that was left.
 > from 52.6s only because there are three more suites; the two targets did not move (14.7 → 15.9s,
 > 12.0 → 12.3s), and `@abuddy/cli`'s fast half fell 8.9 → 5.3s by giving specs away rather than by getting
 > faster. **`npm run test:unit` is 37.6–40.8s**, already under this goal's 43s target — delivered by
-> `goal-one-job-pool.md`'s pooling, not by this goal. What is left here is the sum, which bounds what any
-> arrangement of lanes can reach.
+> `goal-one-job-pool.md`'s pooling, not by this goal. What is left here is the work inside the two largest
+> suites — no arrangement of the scheduler removes it, and no scheduler is left to arrange.
 
 Per suite, run alone, warm, on a 10-core machine:
 
@@ -137,25 +164,18 @@ Per suite, run alone, warm, on a 10-core machine:
 
 `default-setup` and `sdk` are **51%** of it.
 
-### Why lanes cannot close the gap
+### Why lanes cannot close the gap — **superseded 2026-09-28**
 
-| Lanes | Wall | Suite time | Failures |
-|---|---|---|---|
-| 1 (control, same script) | 69.8s | 69.8s | 0 |
-| **2 (today)** | **43s** | ~86s | 0 |
-| 3 | 44.4s | 130.7s | 6 |
-| 8 | 63.1s | 260.9s | 2 |
+The table that stood here measured `test:unit` running suites two at a time, and that is not how it runs.
+`scripts/test-unit.ts` carries the numbers now (`1: 69.8s, 2: 44.3s, 3: 47.7s, 8: 63.1s`) beside the reason
+they stopped applying: two schedulers with no shared budget, so a third lane oversubscribed *inside* a suite
+rather than filling idle cores. Vitest's own sequencer takes every project's files as one list and sorts it
+longest-first, which is the greedy makespan approximation — so the pooling that replaced this closed the gap
+the section was written to explain, and reached the 43s target on the way.
 
-Two facts fall out of that table. **Perfect packing of 52.6s over two lanes would be 26.3s**, so most of
-the distance from 26.3s to 43s is not the suites' own cost — it is the **1.63× contention tax**: suite
-time inflates from 52.6s to ~86s when two run at once. And **more lanes buy nothing**: three lanes
-measures 44.4s against two lanes' 43s, because a suite already uses 2.0-3.8 of the ten cores and the
-extra lane only contends for what is left.
-
-The failures at three and eight lanes are not a race. Every one is a test hitting vitest's 5s default
-under contention — first `@abuddy/sdk`'s "generated sends compile", which takes **1.3s alone and 5.2s
-under three lanes**. Raising that one package's timeout to 20s does not fix it: measured, the failure
-moves to `@abuddy/cli` timing out at the same 5s. The margins are thin across suites.
+What the section got right is worth keeping: **the margins were thin across suites**, and the failures at
+three and eight lanes were tests hitting vitest's 5s default rather than a race. Phase 4 fixed that at the
+tier, and `suite-timeouts.spec.ts` now refuses a config that declares no budget at all.
 
 ### The one cost already identified
 
@@ -169,51 +189,68 @@ suite. Nothing equivalent has been measured for `@abuddy/sdk`.
 
 Final.
 
-1. **The target is a measured floor, not 25s.** Phase 2's 25s was written before the contention tax was
-   known. What this goal owes is a smaller number with the reason attached, and the floor stated. If the
-   floor turns out to be 30s, that is the answer.
-2. **Lane count is not a lever and is not to be revisited.** The table above is the measurement. Changing
-   `ABUDDY_TEST_LANES`'s default is out of scope until Phase 4 has sized the timeouts, and then only if a
-   measurement says it helps.
-3. **Suite time is the number that matters.** Wall clock is bounded by the sum of the suites however the
-   lanes are arranged, so a phase that lowers wall without lowering suite time has moved the contention
-   around rather than removed work.
+1. **The target is a measured floor, not 25s.** `goal-test-cleanup.md`'s 25s was set before anyone had
+   measured what the suites cost. What this goal owes is a smaller number with the reason attached, and the
+   floor stated — in work now, not in seconds. If the floor turns out to be "the isolation costs this much",
+   that is the answer, and it is a result.
+2. ~~**Lane count is not a lever and is not to be revisited.**~~ **Struck 2026-09-28: there are no lanes.**
+   `test:unit` runs two pools, and inside each one vitest schedules every file itself. The decision was right
+   about its own question and the question is gone.
+3. ~~**Suite time is the number that matters.**~~ **Struck and replaced: work is the number that matters.**
+   Wall clock is a makespan over one file list now, so a suite's total is not the scheduling unit and bounds
+   the wall only loosely — and, measured alone on an idle machine, it is a figure this repo cannot produce
+   while other agents run. Count **CPU-seconds (`user` + `sys`) and invocations** instead: a phase that lowers
+   work has removed something, where one that lowers elapsed may only have been measured at a quieter moment.
+   Work is comparable across days and across load; elapsed is comparable with nothing.
 4. **Cost, never coverage.** No test is deleted, skipped or loosened to make a number. `goal-test-cleanup.md`
    already removed what did not earn its place; what is left is paid for.
 5. **A timeout is sized from a measurement.** Phase 4 sizes each thin margin at about four times what the
    test costs alone, the same rule `chain-steps.ts` uses for step budgets. Raising one until it passes is
    the failure mode, not the fix.
-6. **Measure alone, then together.** A suite's own cost is measured alone; the contention tax is the
-   difference. Reporting only the together number hides which of the two moved.
+6. **Measure work under any load; measure elapsed only when the box is quiet, and say what quiet meant.**
+   `uptime` and `ps` before an elapsed number, and the load average quoted beside it. The old form of this
+   decision — measure alone, then together, and call the difference the contention tax — belonged to the lane
+   model and went with it.
 
 ## Phases
 
-### Phase 1 — Find where the two big suites spend their time
+### Phase 1 — Measure the work, and name the largest item
 
-- Per-file totals for `@app/default-setup` and `@abuddy/sdk`, by the recipe in
-  `goal-cli-suite-spawns.md` Decision 6 (the reporter gives per-test lines; the totals have to be summed).
-- Separate setup cost from test cost: a suite's `setup` figure is a sum across workers, not wall clock.
-- No changes. The output is the table the next phases are sized against.
+Phases 1, 3 and 5 were three passes of the same activity, sized for a scheduler that is gone. They are one
+phase now: measure before, measure after, and let the measurement close what it closes.
 
-**Done when:** both tables are in the doc, and the largest item in each is named with what it costs.
+- For `@app/default-setup` and `@abuddy/sdk`: **CPU-seconds (`user` + `sys`) for the suite**, and the count
+  and unit cost of `setupPackTests`. Per-file totals if they help, by the recipe in `goal-cli-suite-spawns.md`
+  Decision 6 — but the summed `setup` figure a run prints is across workers and is not wall clock, which is
+  why it reads as alarming and is not.
+- An elapsed number is optional and takes the load average with it.
+- No changes. The output is what Phase 2 is sized against and compared to afterwards.
 
-### Phase 2 — default-setup's per-file harness setup
+**Done when:** both suites have a work figure, the largest item in each is named with what one call costs,
+and the same figures are taken again after Phase 2 so the delta is the phase's result.
 
-- `setupPackTests` runs once per test file (`tests/setup.ts:33`). Establish what it does per file that
-  could be done once per worker, and do that much.
-- Keep the isolation it provides: tests that share a registry or a database between files is not a
-  trade this goal makes. If the isolation is what costs, say so and stop.
+### Phase 2 — default-setup's per-file harness setup — **the goal**
 
-**Done when:** default-setup's alone-time has dropped with its test count unchanged, or the phase is
-closed with the measurement showing the cost is the isolation. **Mutation:** a test that mutates the
-registry still cannot see another file's changes.
+`setupPackTests` runs once per test file (`tests/setup.ts:33`), and the summed setup figure has been several
+times the tests' own cost at every measurement. It is the one item every survey of this goal has agreed on,
+and the only one that survived the scheduler changing underneath it.
 
-### Phase 3 — @abuddy/sdk's largest item
+- Establish what it does per file that could be done once per worker, and do that much.
+- Keep the isolation it provides: sharing a registry or a database between files is not a trade this goal
+  makes. **If the isolation is what costs, say so, record the number, and stop** — that closes the goal.
 
-- Phase 1 names it. Same shape as Phase 2: remove work, not coverage.
+**Done when:** `default-setup`'s work has dropped with its test count unchanged, or the phase is closed with
+the measurement showing the cost is the isolation. **Mutation:** a test that mutates the registry still
+cannot see another file's changes.
 
-**Done when:** sdk's alone-time has dropped with its test count unchanged, or the phase is closed with
-the measurement.
+### Phase 3 — `@abuddy/sdk`'s largest item — **only if Phase 1 names one**
+
+Nothing equivalent to `setupPackTests` has ever been measured for `sdk`; it has been assumed to have one
+because it is second-largest. If Phase 1 finds no single item worth removing, close this with that sentence
+rather than going looking for work to do.
+
+**Done when:** sdk's work has dropped with its test count unchanged, or the phase is closed by Phase 1's
+measurement naming nothing.
 
 ### Phase 4 — Size the thin timeouts — **done 2026-09-25 (`1b3eb9876`), by a different mechanism**
 
@@ -248,13 +285,10 @@ five was abandoned after two because the next goal began editing spec files whil
 flake measurement taken over a tree being edited is evidence about nothing; these five were run on a quiet
 one.
 
-### Phase 5 — Re-measure, and state the floor
+### Phase 5 — Re-measure, and state the floor — **folded into Phase 1**
 
-- The per-suite table, the contention tax, and the lane table again, on an idle machine.
-- If a lane count other than two is now both faster and green, change the default and say what it cost.
-- Record the floor: what `test:unit` cannot go below without a change this goal ruled out.
-
-**Done when:** the Outcome carries both tables and the floor, and `npm run chain` passes.
+Measuring before and after is one activity, not two phases with a gap between them where the tree moves.
+Phase 1 owns both passes and the floor it reports. The lane half of this phase went with the lanes.
 
 ## Deferred
 
@@ -274,6 +308,8 @@ The repo's standing rules (root `CLAUDE.md`) apply:
 - published packages: `api:update` after export changes, with `etc/` committed.
 - investigate a failing test before touching it; a test that fails while being made faster has found
   something.
-- **measure on an idle machine, and check first.** `git status` and `ps` before taking a number: a
-  contended run has already produced 249s for what is 182.6s idle here, a 36% error — larger than any
-  single phase below is likely to save.
+- **Measure work, and it holds under load; measure elapsed, and the load decides the number.** `git status`,
+  `uptime` and `ps` before taking any elapsed figure, and quote the load beside it. Two errors are on record:
+  249s for what is 182.6s idle (36%), and `default-setup` reading 52.9s against 17.6s under load 44.5 with six
+  foreign vitest processes (3×) — both larger than anything a phase here is likely to save, which is why the
+  metric is CPU-seconds and invocations rather than the clock.
