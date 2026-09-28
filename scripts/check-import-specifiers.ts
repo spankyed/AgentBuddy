@@ -184,8 +184,8 @@ export function packRule(key: PackRuleKey, dirs: readonly string[], root: string
     const where = (file: string) => (prefix ? `${prefix}/${file}` : file);
     return rule.checkPack!(packDir).map((found) => formatPackWide(found, where));
   });
-  // Through `packFiles`, not a second copy of it: this used to build the place itself, and two of the five
-  // fields had drifted from what `PackPlace` declares — `relative` repo-relative where a rule resolves it
+  // Through `packPlaces`, not a second copy of it: this used to build the place itself, and two of the five
+  // fields had drifted from what `PackPlace` declares — `packRelative` repo-relative where a rule resolves it
   // against the pack, and `inRoot` relative to whatever the caller named rather than to the pack's half. Both
   // turned a rule off without failing anything. What stays here is the one thing that is this runner's own: the
   // path it prints, which is repo-relative because that is where its reader is standing.
@@ -235,7 +235,7 @@ export function packOwnModuleFixes(dirs: readonly string[] = PACK_CODE_DIRS, roo
 
 
 /** The source files under each of `dirs` (a directory or a single file) */
-function packFiles(dirs: readonly string[], root: string): string[] {
+function filesUnder(dirs: readonly string[], root: string): string[] {
   return dirs.flatMap((dir) => {
     const full = path.join(root, dir);
     if (!fs.existsSync(full)) return [];
@@ -360,7 +360,7 @@ const APP_SPECIFIER = /^(?:\.\.?\/)+(?:[\w.-]+\/)*(?:api|abuddy-host|abuddy-cli)
  * that package; pack tests use @abuddy/sdk and @abuddy/testing.
  */
 export function findAppImportsInPackTests(dirs: readonly string[] = PACK_TEST_DIRS, root = repoRoot): string[] {
-  return findSpecifierText(packFiles(dirs, root), root, (text) => APP_SPECIFIER.test(text));
+  return findSpecifierText(filesUnder(dirs, root), root, (text) => APP_SPECIFIER.test(text));
 }
 
 /**
@@ -395,7 +395,7 @@ export function findUpwardImports(layers = LAYERS, root = repoRoot): string[] {
   for (const { name, dir, allowed, forbidden } of layers) {
     const permitted = new Set([name, ...allowed]);
     const imported = new Set<string>();
-    const files = packFiles(['src', 'tests', 'scripts'].map((sub) => path.join(dir, sub)), root);
+    const files = filesUnder(['src', 'tests', 'scripts'].map((sub) => path.join(dir, sub)), root);
     problems.push(...findSpecifiers(files, root, (text) => {
       const pkg = abuddyPackage(text);
       if (pkg !== undefined && pkg !== name) imported.add(pkg);
@@ -439,7 +439,7 @@ export function findLmdbImports(rules = LMDB_RULES, root = repoRoot): string[] {
   return rules.flatMap(({ dirs, except, forbidden, rule }) => {
     if (rule) return packRule(rule, dirs, root);
     const allowed = except && path.join(root, except) + path.sep;
-    const files = packFiles(dirs, root).filter((file) => !allowed || !file.startsWith(allowed));
+    const files = filesUnder(dirs, root).filter((file) => !allowed || !file.startsWith(allowed));
     return findSpecifiers(files, root, (text) => forbidden!.test(text));
   });
 }

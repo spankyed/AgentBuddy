@@ -559,9 +559,15 @@ const FIRES: Record<ImportRuleId, () => string[]> = {
     return findCrossFeatureImports(PACK_SRC, root);
   },
   findContractLeafImports: () => {
-    // `./plugin.ts`, not `./plugin`: an extensionless specifier is `own-modules`' offence as well, and this
-    // fixture is the subject of a sweep asserting one offence has one owner
-    packFixture({ 'src/features/notes/fe/contract.ts': "import type { P } from './plugin.ts';" });
+    // Both shapes this rule reports: the leaf's own import, and one reached through its closure, which is the
+    // only one that carries a `from` — so a consumer rewriting the paths of a finding that names two of them
+    // has something to be wrong about. `.ts` on the sibling and a type-only generated import keep the site to
+    // one claimant, since this fixture is swept for exactly that
+    packFixture({
+      'src/features/notes/fe/contract.ts': "import type { P } from './plugin.ts';",
+      'src/features/notes/be/contract.ts': "import type { Ev } from './children/list.ts';",
+      'src/features/notes/be/children/list.ts': "import type { Ev } from '#generated/events.ts';",
+    });
     return findContractLeafImports(PACK_SRC, root);
   },
   findPackageScriptImports: () => {
@@ -724,26 +730,41 @@ describe('CHECKS', () => {
     // dropped and the two are comparable. `packRule` sorts its findings and `packRuleProblems` does not.
     const viaPack = packRuleProblems(path.join(root, PACK_FIXTURE)).get(key) ?? [];
     expect(viaPack, `${id}'s example offends nothing when a pack author builds it`).not.toEqual([]);
-    expect(viaRepo.map((line) => line.replace(`${PACK_FIXTURE}/`, '')).sort(),
+    // `replaceAll`: a finding that names two paths carries the prefix twice — `contract-leaves` writes
+    // `… (reached from <path>)` — and stripping only the first reads as a rule disagreeing with itself
+    expect(viaRepo.map((line) => line.replaceAll(`${PACK_FIXTURE}/`, '')).sort(),
       `${id} reports a different offence to a pack author than to this repo, so the rule is not the same rule `
       + 'wherever it runs').toEqual([...viaPack].sort());
   });
 
   /**
-   * And a run pointed below a half still checks. `check:specifiers <paths>` takes a file or a directory — the
-   * help text offers "one feature" — while `inRoot` used to be measured from whatever the caller named, so the
-   * two rules that read it as a path shape matched nothing and said nothing. Both fail open, which is why this
-   * needs a case rather than having produced a complaint.
+   * And a run pointed below a half still reports what a run over the half reports.
+   *
+   * `check:specifiers <paths>` takes a file or a directory — CLAUDE.md offers "one feature" — and `inRoot` used
+   * to be measured from whatever the caller named, so the two rules that read it as a path shape matched
+   * nothing. Both fail open, so the per-path mode ran fewer rules than it claimed and nothing complained.
+   *
+   * Derived from the rules and from their own findings rather than from the pair I remembered: the guard that
+   * replaced this named `backend-console` and missed `cross-feature-imports`, which was broken identically.
+   * Every sweeper's finding carries a path — `packRule` writes `<file>:<line>: <what>`, and a whole-pack finding
+   * carries one whenever it has an `at`, which `contractLeafFindings` always sets — so the file to point at is
+   * read back out of the finding instead of being listed beside the fixture.
+   *
+   * `toContain`, because a whole-pack rule answers for the pack however the run is pointed and so yields a
+   * superset. What has to hold either way is that the offence does not disappear.
    */
-  it.each([
-    ['a feature directory', `${PACK_FIXTURE}/src/features/notes`],
-    ['a single file', `${PACK_FIXTURE}/src/features/notes/be/system.ts`],
-  ])('reports a backend console under %s, as it does under src', (_shape, target) => {
-    packFixture({ 'src/features/notes/be/system.ts': "console.log('seeded');" });
-    const whole = packRule('backend-console', PACK_SRC, root);
-    expect(whole, 'the offence is not reported even for the whole half, so this proves nothing').not.toEqual([]);
-    expect(packRule('backend-console', [target], root), 'pointing at part of the half reports less than the half')
-      .toEqual(whole);
+  it.each([...sweepers('src')].map((rule) => rule.id))('%s reports its offence wherever the run is pointed', (id) => {
+    const key = CHECKS.find((rule) => rule.id === id)!.packRule!;
+    const whole = population(`${id}'s findings over the half`, exampleFor(id)!());
+    for (const finding of whole) {
+      const file = /^(.+?):\d+: /.exec(finding)?.[1];
+      expect(file, `${id} reports a finding with no path, so there is nowhere to point a run at`).toBeDefined();
+      for (const target of [file!, path.dirname(file!)]) {
+        expect(packRule(key, [target], root),
+          `${id} reports this under ${PACK_SRC[0]} and not under ${target}, so what it finds depends on what the `
+          + 'run was pointed at rather than on what the pack says').toContain(finding);
+      }
+    }
   });
 
   /** And every rule reaches the printed table, under a header, one line each */
