@@ -767,6 +767,28 @@ describe('CHECKS', () => {
     }
   });
 
+  /**
+   * And it reads the file it was pointed at, not the pack around it.
+   *
+   * The case above cannot see this: every sweeper's example puts its offence in one file, so "the findings for
+   * that file" and "all the findings" are the same list however exactly it asserts. Measured — with `packPlaces`
+   * made to walk the whole pack for a file target, all 267 cases passed. Two offending files is what tells them
+   * apart, and one rule is enough, because the walk is a single code path every rule shares.
+   */
+  it('reads the file it was pointed at and not the pack around it', () => {
+    packFixture({
+      'src/features/notes/be/system.ts': "console.log('one');",
+      'src/features/memos/be/system.ts': "console.log('two');",
+    });
+    const both = packRule('backend-console', PACK_SRC, root);
+    expect(both, 'both offences must be reported over the half, or pointing at one of them proves nothing')
+      .toHaveLength(2);
+    const [first] = both;
+    expect(packRule('backend-console', [/^(.+?):\d+: /.exec(first!)![1]!], root),
+      'pointing at one file reported more than that file, so a per-path run reads the pack and the mode that '
+      + 'exists to be cheap is not').toEqual([first]);
+  });
+
   /** And every rule reaches the printed table, under a header, one line each */
   it('prints a header and one line per rule', () => {
     const lines = ruleTable(ruleRows());
