@@ -27,27 +27,27 @@ afterAll(() => {
   if (consumer) fs.rmSync(consumer, { recursive: true, force: true });
 });
 
-/** Every declaration file the three published packages ship */
+/**
+ * Every declaration file the three published packages ship, each package confirmed to have contributed.
+ *
+ * Guarded per package rather than over their sum, because a sum cannot see one of them go missing: there are
+ * 233 declarations between the three, so `ui` or `ears` failing to install still clears any floor worth
+ * setting, and the check would compile the other two and report green having never read that package's types.
+ * A `dist` that is not there throws naming the path, where skipping it quietly made the check smaller.
+ */
 function publishedDeclarations(root: string): string[] {
-  const out: string[] = [];
-  const walk = (dir: string): void => {
-    for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
-      const full = path.join(dir, entry.name);
-      if (entry.isDirectory()) walk(full);
-      else if (entry.name.endsWith('.d.ts') || entry.name.endsWith('.d.vue.ts')) out.push(full);
-    }
-  };
-  for (const pkg of ['ears', 'sdk', 'ui']) {
-    const dist = path.join(root, 'node_modules', '@abuddy', pkg, 'dist');
-    if (fs.existsSync(dist)) walk(dist);
-  }
-  return out;
+  const walk = (dir: string): string[] => fs.readdirSync(dir, { withFileTypes: true }).flatMap((entry) => {
+    const full = path.join(dir, entry.name);
+    if (entry.isDirectory()) return walk(full);
+    return entry.name.endsWith('.d.ts') || entry.name.endsWith('.d.vue.ts') ? [full] : [];
+  });
+  return ['ears', 'sdk', 'ui'].flatMap((pkg) =>
+    [...population(`@abuddy/${pkg}'s published declarations`, walk(path.join(root, 'node_modules', '@abuddy', pkg, 'dist')))]);
 }
 
 describe.skipIf(!PACKAGES_BUILT)('the published declarations', () => {
   it('type-check on their own, so no shipped type silently resolves to any', () => {
     const declarations = publishedDeclarations(consumer!);
-    population('the published declarations', declarations, { atLeast: 100 });
 
     const program = ts.createProgram({
       rootNames: declarations,
