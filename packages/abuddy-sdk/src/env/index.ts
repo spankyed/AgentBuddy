@@ -12,9 +12,16 @@ import * as os from 'node:os';
 import * as path from 'node:path';
 import { boundHost } from '../runtime/host-runtime.ts';
 
-export type AppEnv = 'production' | 'beta' | 'development' | 'test';
+/**
+ * The environments, and the type of one.
+ *
+ * The list is the declaration and the union is derived from it, rather than the two being written side by side:
+ * `APP_ENVS: readonly AppEnv[]` accepted a list missing a member, and the one thing that reads it is the guard
+ * below — so an environment left out of the array would be rejected at startup as invalid.
+ */
+export const APP_ENVS = ['production', 'beta', 'development', 'test'] as const;
 
-export const APP_ENVS: readonly AppEnv[] = ['production', 'beta', 'development', 'test'];
+export type AppEnv = (typeof APP_ENVS)[number];
 
 /** Channels a packaged build can be stamped with (build/build.sh → __ABUDDY_CHANNEL__). */
 export type ReleaseChannel = Extract<AppEnv, 'production' | 'beta'>;
