@@ -389,25 +389,46 @@ Three defects in what the phases shipped, each found by checking rather than by 
   contents, and the spec pastes the printed line into `abuddy.checks.json` rather than matching its text, which
   is what stops the reader and the advice drifting apart again.
 
-### Open items
+### Open items — closed 2026-09-27, and what closing them corrected
 
-- **Two rules are still repo-only**: `cross-feature-imports` and `contract-leaves`. How many rules a pack is
-  held to is `PACK_RULES` (`abuddy-cli/src/build/pack-rules.ts`) and not a number written here — this bullet
-  said "nine of twelve" for a day after the third of the three had shipped, which is what a count in prose
-  does. Measured 2026-09-27, the two are not one item:
-  - **`contract-leaves` has no demonstrated consequence.** Two mutations to `tests/fixtures/external-pack`'s
-    `be/contract.ts` — a value import of `#generated/events`, then a hard value cycle importing `memosSpec`
-    back from `./system.ts` — each built from a cold tree (`rm -rf src/__generated__ dist`): exit 0, with
-    `src/__generated__/events.ts` and `dist/types/pack-types.d.ts` byte-identical to a clean build. Reading a
-    *declared* type is robust to extra imports as long as the type's own dependencies resolve, which is why.
-    Both mutations left the contract's type expression independent of the machine; a mutation where it is not
-    was not constructed. Until one is, "still repo-only" is not a debt, and 74 lines and a rule-set entry are
-    the standing cost of a rule nobody can make fire.
-  - **`cross-feature-imports` is 71 lines, and the rule is 33 of them.** The rest is the last regex pair in the
-    script — `EXPORT_FROM`, `exportedLocalNames`, `importedNames`, which exist only to spot a re-export in two
-    steps — so the work is porting that to the shared AST reader, not moving the rule. No runtime effect, so it
-    lands switchable.
-  The third, the pack half of the source-condition check, **shipped on 2026-09-27** and is why this list is
+**Both rules moved.** `cross-feature-imports` and `contract-leaves` are in `PACK_RULES`, so an external pack is
+held to them (`ca1b4ecbb`, `32c7b03dc`). How many rules a pack is held to is `PACK_RULES` and not a number
+written here — the bullet this replaces said "nine of twelve" for a day after the third of three had shipped,
+which is what a count in prose does. A rule now states in code whether the CLI owns it (`packRule`) or why its
+subject is this repo (`repoOnly`), and a case fails on one that says neither, so this section can no longer be
+the only place that knows.
+
+- **`cross-feature-imports`' stated blocker was real and was cleared.** It was 71 lines of which 33 were the
+  rule, the rest the script's last regex pair; porting it to the shared reader (`9ea3558ef`) removed them, and
+  the rule moved with `publishedEntryPoints` and `doorSpans` into `abuddy-cli/src/build/pack-features.ts`.
+  Switchable, as this predicted.
+- **`contract-leaves` had no demonstrated consequence, and now it has two.** The earlier note was right that
+  two mutations built clean and wrong to conclude the rule could not fire: both left the contract's type
+  expression independent of the machine, which is the case a *declared* type is robust to. Five shapes measured
+  on a copy of the fixture, each from a cold tree: `state`, `context` and `incoming` derived from the machine
+  build with exit 0, as does an `inbox` naming a plain union the machine module declares — nothing reads those
+  positions, or they resolve. An `inbox` or an `outgoing` written as `Extract<EventFromLogic<typeof machine>, …>`
+  is **refused every time**: that resolution passes through `defineSystem<Contract>()` and so back through the
+  contract, collapses to `any`, and codegen refuses an `any` where it reads. It never comes right, because the
+  throw means the generated module it wanted is never written. The accepting shapes carry the other harm, which
+  `54d09d539` measured: the machine's whole declaration and `import * as xstate` land in the published
+  `dist/types/pack-types.d.ts`, +41 lines, and travel into every dependent. Not switchable, on the first of those.
+  The cost half of the rule (`generate-entries.ts:433`) stayed unmeasurable: 867-897ms across all five shapes on
+  a two-feature pack, which is noise.
+
+**A correction to this document's own account of the migration.** A later summary of `f877ea673` said it "moved
+seven rule bodies" and left seven dead declarations. It moved **two** — `untyped-sends` and `pack-own-aliases`;
+the other five were already delegating — and the dead declarations predated it. They accumulated because the
+repo's `scripts/` was linted by nothing: two of fifteen workspaces have a lint script, and `npm run lint:check
+-ws --if-present` reaches only those. `f91b66b49` closes `scripts/` and `tests/` with `oxlint … -D correctness`
+and leaves 111 findings measured in nine package trees, led by `abuddy-host` at 49.
+
+**What the migration is finding-preserving on, which nothing had checked.** Running the pre-collapse
+implementations against the delegations over each rule's own offending fixture agrees 7/7, and an independent
+reimplementation from the same plan agrees 7/7 too. That second pass is also what found the ninth dead
+declaration (`EVENT_SENDS`), by linting the file.
+
+The third, the pack half of the source-condition check, **shipped on 2026-09-27** and is why this list is
   two rules rather than three. It is worth recording what it cost against what the plan assumed, because the
   140-line figure that made it look like a phase of its own was the *repo's* rule: 39 of those lines walk
   Vite/Vitest config expressions, which exist because the repo's own configs may compute or spread
