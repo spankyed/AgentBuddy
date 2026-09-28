@@ -5,6 +5,7 @@
  * cannot load `chain.ts` without starting a six-minute build.
  */
 import { covers } from '@abuddy/host/build/packages-built';
+import { budgetFor } from './bounded-spawn.ts';
 import { overBand } from './step-timing.ts';
 
 /**
@@ -293,8 +294,8 @@ export function howLong(step: { readonly seconds?: number }, ms: number, lanes: 
  * about, arrived at by following this tool's advice.
  *
  * The same numbers are worth printing as what they are. Which steps the schedule's contention moves most is not
- * recorded anywhere, and it is the first thing worth knowing when a step has failed under lanes and you are
- * deciding whether the failure was real.
+ * recorded anywhere else. It takes `--all --lanes 1` to see it, not the plain `--lanes 1` a failing step
+ * suggests — that run answers the narrower question the failure asks, whether the step passes alone.
  */
 export function driftReport(
   drifted: readonly { name: string; declared: number; measured: number }[],
@@ -303,23 +304,30 @@ export function driftReport(
   /** Whether the run did every step's work (`--all`), which is how the table's numbers are taken */
   forced: boolean,
 ): string {
-  // A partly cached run is not a smaller version of a full one: with nine of twelve steps cached there is no
-  // contention, so three lanes behave as one and every step looks fast against a number taken from a busy
-  // chain. Silent rather than noted, because most runs are incremental and a warning on all of them is one
-  // nobody reads — the reason the pooled-step advisory was narrowed before it.
-  if (!forced || drifted.length === 0) return '';
-  const count = `${drifted.length} step${drifted.length === 1 ? '' : 's'}`;
-  if (lanes === measuredAt) {
-    return [
-      `\n${count} cost something other than chain-steps.ts says — re-measure, or record:`,
-      ...drifted.map(({ name, declared, measured }) => `  ${name.padEnd(STEP_NAME_WIDTH)} seconds: ${declared} -> ${measured}`),
-    ].join('\n');
+  // The two directions are not alike, so a run that cannot answer for one can still answer for the other.
+  // Under the band is the run's doing: fewer lanes, or most steps cached, is less contention, and with nine of
+  // twelve cached three lanes behave as one. Over it is not — less contention should make a step faster, so an
+  // overrun on a partial run is the step growing, which is the direction `budgetFor` kills on at four times.
+  // Measured over 40 step runs in one day: 6 under the band, 0 over it, so this costs no noise.
+  const shown = forced ? drifted : drifted.filter(({ declared, measured }) => overBand(declared, measured));
+  if (shown.length === 0) return '';
+  const count = `${shown.length} step${shown.length === 1 ? '' : 's'}`;
+  const rows = (line: (d: { name: string; declared: number; measured: number }) => string): string =>
+    shown.map((d) => `  ${d.name.padEnd(STEP_NAME_WIDTH)} ${line(d)}`).join('\n');
+
+  if (!forced) {
+    return `\n${count} ran past twice the declared cost, on a run that did less work than the table describes`
+      + ` — the step grew, not the schedule:\n`
+      + `${rows(({ declared, measured }) => `${declared}s -> ${measured}s  (killed at ${budgetFor(declared) / 1000}s)`)}`;
   }
-  return [
-    `\nat ${lanes} lane${lanes === 1 ? '' : 's'}, ${count} moved against ${measuredAt}-lane numbers — the schedule, not a stale table:`,
-    ...drifted.map(({ name, declared, measured }) => {
+  if (lanes === measuredAt) {
+    return `\n${count} cost something other than chain-steps.ts says — re-measure, or record:\n`
+      + `${rows(({ declared, measured }) => `seconds: ${declared} -> ${measured}`)}`;
+  }
+  return `\nat ${lanes} lane${lanes === 1 ? '' : 's'}, ${count} moved against ${measuredAt}-lane numbers`
+    + ` — the schedule, not a stale table:\n`
+    + `${rows(({ declared, measured }) => {
       const factor = (Math.max(declared, measured) / Math.min(declared, measured)).toFixed(1);
-      return `  ${name.padEnd(STEP_NAME_WIDTH)} ${declared}s -> ${measured}s  (${factor}x ${measured < declared ? 'faster alone' : 'slower'})`;
-    }),
-  ].join('\n');
+      return `${declared}s -> ${measured}s  (${factor}x ${measured < declared ? 'faster alone' : 'slower'})`;
+    })}`;
 }

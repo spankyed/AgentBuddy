@@ -93,14 +93,17 @@ export interface ChainStep {
    *
    * It feeds two things — `budgetFor` turns it into a kill deadline at four times, and it is the weight on
    * the critical path — so a stale value both mis-sizes the bound and misreports the floor. It is a
-   * measurement, so re-measure rather than raise it when a step legitimately grows; the chain compares
-   * every run against it and prints the value to record when one has drifted past half or double
-   * (`driftedSteps`), which is what keeps this table honest without anyone remembering to check.
+   * measurement, so re-measure rather than raise it when a step legitimately grows. Every run reports a step
+   * that ran past double this number, which is what keeps the table honest without anyone remembering to
+   * check — and it is the direction that matters, since `budgetFor` starts killing at four times. A step that
+   * came in under half is reported only by `--all` at `MEASURED_AT_LANES`: a run with steps cached, or fewer
+   * lanes, has less contention and makes everything look fast, so that direction says nothing about the
+   * table. `driftedSteps` finds both; `driftReport` in chain-output.ts decides which the run can answer for.
    *
    * For a step that keeps a cache of its own — the two pooled steps, which run only their stale projects —
    * it is the cost of the *whole* pool, which is what both kill budgets are sized from (`budgetFor` here, and
-   * `test-unit-pool.ts`'s own inner spawn). `driftedSteps` therefore checks such a step only under `--all`,
-   * the one run that does all of its work.
+   * `test-unit-pool.ts`'s own inner spawn). Those steps needed no rule of their own once the gate was on the
+   * run: an incremental pool run lands under half, which is the direction every step is now quiet about.
    *
    * **It is the cost in the chain at `MEASURED_AT_LANES`, not the cost alone.** Those differ by about two
    * times for a CPU-bound step — `typecheck` was 29s by itself and 63s in a three-lane run — so the number is

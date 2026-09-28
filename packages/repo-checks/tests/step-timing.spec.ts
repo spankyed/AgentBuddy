@@ -4,7 +4,7 @@ import { describe, expect, it } from 'vitest';
 import { criticalPath, driftedSteps, willNotCache } from '../../../scripts/lib/step-timing.ts';
 import type { SchedulableStep } from '../../../scripts/lib/chain-schedule.ts';
 
-/** `forceArgs` is not the scheduler's business, which is why `driftedSteps` takes it as an intersection */
+/** A pooled step, which `driftedSteps` treats like any other — the run decides what may be reported, not the step */
 type TimedStep = SchedulableStep & { readonly forceArgs?: readonly string[] };
 
 const step = (name: string, needs: string[] = [], extra: Partial<TimedStep> = {}): TimedStep =>

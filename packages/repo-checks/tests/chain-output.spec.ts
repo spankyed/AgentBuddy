@@ -358,9 +358,39 @@ describe('driftReport', () => {
    * with almost everything cached is no contention at all, so the step ran at its solo speed and the lane
    * count — which is what the first version of this gated on — said nothing about it.
    */
-  it('says nothing about a run that did not do all the work, whatever its lane count', () => {
+  it('says nothing about a step that came in under the band, on a run that did less work', () => {
     expect(driftReport(drifted, 3, 3, false)).toBe('');
     expect(driftReport(drifted, 1, 3, false)).toBe('');
+  });
+
+  /**
+   * The other direction is not the run's doing: less contention cannot make a step slower, so an overrun on a
+   * partial run is the step growing. It is also the direction that ends in a kill — `budgetFor` is four times
+   * — which is why this one is reported whatever the run did. Measured over 40 step runs in a day: 6 under the
+   * band, 0 over it, so saying it always costs no noise.
+   */
+  it('names a step that ran past double, on any run, and what it is heading toward', () => {
+    const grew = [{ name: 'typecheck', declared: 27, measured: 61 }];
+
+    const report = driftReport(grew, 3, 3, false);
+
+    expect(report).toContain('the step grew, not the schedule');
+    expect(report).toContain('27s -> 61s  (killed at 108s)');
+  });
+
+  /**
+   * `budgetFor` floors at 60s, so four times is not the budget for a cheap step. Caught by a real run, where a
+   * declared 5s printed "killed at 20s" — the unit case above uses 27s, where the floor never shows.
+   */
+  it('names the real budget for a cheap step, which the four-times floor makes 60s', () => {
+    expect(driftReport([{ name: 'packages:check', declared: 5, measured: 21 }], 3, 3, false))
+      .toContain('5s -> 21s  (killed at 60s)');
+  });
+
+  it('keeps an overrun out of the count when the run could answer for both directions', () => {
+    // forced: the run did all the work, so both directions are reportable and the record form is right
+    expect(driftReport([{ name: 'typecheck', declared: 27, measured: 61 }], 3, 3, true))
+      .toContain('re-measure, or record');
   });
 
   it('says nothing when nothing drifted, at either lane count', () => {

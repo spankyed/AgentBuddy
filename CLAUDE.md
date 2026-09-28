@@ -311,9 +311,11 @@ npm run chain            # Before a merge: every check in dependency order, cold
                          # It leaves out api:check, which typecheck's
                          # api:stamp already covers, and includes packages:check, which has no such proxy
                          # and costs 5.9s. Afterwards it says which steps a run contradicted:
-                         # one whose measured time has left its declared `seconds` — a step that keeps a
-                         # cache of its own only under --all, since otherwise it may have run a fraction of
-                         # its projects — and one that passed but is already stale again, which it
+                         # one that ran past double its declared `seconds`, on any run, since less
+                         # contention cannot make a step slower and that is the direction budgetFor kills
+                         # on — a step under half is reported only by `--all` at MEASURED_AT_LANES, a
+                         # cached or single-lane run making everything look fast — and one that passed
+                         # but is already stale again, which it
                          # explains by diffing that step's inputs against the per-file digests its own
                          # stamp recorded: the files that differ, what happened to each, and whether it
                          # changed while the step ran (an ordering to fix) or since. A file rewritten
