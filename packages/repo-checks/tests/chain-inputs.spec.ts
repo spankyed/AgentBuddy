@@ -25,9 +25,6 @@ import { poolUnitFor } from '../../../scripts/lib/unit-pool.ts';
 
 /** Tracked code no chain step reads, and why. An entry that stops applying is reported, not ignored. */
 const NOT_A_CHAIN_INPUT: Record<string, string> = {
-  'electron-builder.mjs': 'packaging config, read by npm run build-prod — which is not a chain step',
-  'build/prod/diagnostics.mjs': 'runs inside a packaged app, not during any check',
-  'build/prod/verify-node-modules.mjs': 'packaging check; the chain has its own in the cli suite',
   'packages/abuddy-ears/bench/ears.bench.ts': 'npm run bench -w @abuddy/ears, measured against its own baseline',
   'docs/archive/research/claude_code_headless_ex.ts': 'an archived transcript that happens to end in .ts',
   // The production packaging and release path. The chain builds the app (`build:app`) and never packages,
@@ -86,6 +83,61 @@ describe('the chain reads every source file', () => {
   // script names `scripts/facade-report.ts`, and that went undeclared for a commit. `reachableText` follows
   // `npm run`, `-w` and the files a script names, and is the same walk `check:tiers` uses for its own
   // question.
+  /**
+   * A linter walks a directory, so the files it reads are not the files its command names — `oxlint .` names one
+   * path and reads a hundred. `reachableText` answers what a script *names*, which is the right answer to its own
+   * question and no answer to this one, so the case above sees nothing here: it also cannot follow into
+   * `TYPECHECK_LEGS`, because the legs are data this imports rather than text a script spells.
+   *
+   * Measured before this existed: the root `lint:check` grew from `oxlint scripts tests` to `oxlint .` minus two
+   * directories, which took in three packaging modules that `typecheck` did not declare — so an unused binding in
+   * `build/prod/diagnostics.mjs` failed `lint:check` while the chain planned `typecheck` as cached.
+   *
+   * Derived from the command, not restated: the targets and the `--ignore-pattern`s are parsed out of the same
+   * string the leg runs, so narrowing the lint scope narrows what this demands. A pattern shape it cannot read
+   * fails rather than passing over whatever it did not understand.
+   */
+  it('gives the step that lints the files its linter walks', () => {
+    const all = rootScripts();
+    /** A leg's command with each `npm run <name>` it spells expanded once, which is where the oxlint call lives */
+    const expanded = (command: string): string => command.replace(/npm run ([\w:-]+)/g, (whole, name: string) => all[name] ?? whole);
+    const VALUED = new Set(['-D', '--deny', '-A', '--allow', '-W', '--warn', '-c', '--config', '--ignore-path', '--ignore-pattern']);
+    const linted = new Set<string>();
+    for (const leg of TYPECHECK_LEGS) {
+      for (const call of expanded(leg.command).split('&&').filter((part) => /(^|\s)oxlint(\s|$)/.test(part))) {
+        const tokens = call.trim().split(/\s+/);
+        const args = tokens.slice(tokens.indexOf('oxlint') + 1);
+        const targets: string[] = [];
+        const ignores: string[] = [];
+        for (let i = 0; i < args.length; i += 1) {
+          const arg = args[i]!;
+          if (VALUED.has(arg)) { if (arg === '--ignore-pattern') ignores.push(args[i + 1]!.replace(/^['"]|['"]$/g, '')); i += 1; continue; }
+          if (!arg.startsWith('-')) targets.push(arg);
+        }
+        expect(targets, `no target read out of \`${call.trim()}\``).not.toEqual([]);
+        const ignored = ignores.map((pattern) => {
+          const prefix = /^([\w./-]+)\/\*\*$/.exec(pattern)?.[1];
+          expect(prefix, `this only reads a \`dir/**\` ignore pattern, and got \`${pattern}\``).toBeDefined();
+          return `${prefix}/`;
+        });
+        // What oxlint parses, which is narrower than `CODE`: a shell script is tracked code and no linter's input
+        const LINTS = /\.(ts|tsx|mts|cts|js|mjs|cjs|jsx|vue)$/;
+        for (const file of trackedCode()) {
+          if (!LINTS.test(file)) continue;
+          if (!targets.some((target) => target === '.' || file === target || file.startsWith(`${target}/`))) continue;
+          if (ignored.some((prefix) => file.startsWith(prefix))) continue;
+          linted.add(file);
+        }
+      }
+    }
+    expect(linted.size, 'no linted file was derived, so this would pass over nothing').toBeGreaterThan(50);
+
+    const step = CHAIN_STEPS.find((candidate) => candidate.name === 'typecheck')!;
+    const covered = coveredBy([step]);
+    const missing = [...linted].filter((file) => !covered.has(file)).sort();
+    expect(missing, 'typecheck runs lint over these and declares none of them, so it caches over their changes').toEqual([]);
+  });
+
   it('gives every step the files its script reaches', () => {
     const all = rootScripts();
     const missing = CHAIN_STEPS.flatMap((step) => {

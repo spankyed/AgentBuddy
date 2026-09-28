@@ -488,8 +488,15 @@ export const CHAIN_STEPS: readonly ChainStep[] = [
     // time for nothing. Gitignored output that no step reads should be no step's input, and the
     // input-coverage guard backstops the narrowing: a tracked file under `tests/` that none of these
     // three covers fails it by name.
+    // The packaging modules are here because `lint:check` is a leg of this step and reads them: its root pass is
+    // `oxlint .` minus `packages/**` and `docs/**`, which takes in every tracked JS module outside those two. No
+    // step *runs* them — they belong to `build-prod` — but a step that reads a file declares it, or this one
+    // reports `cached` over a lint error in it. Measured: an unused binding in `build/prod/diagnostics.mjs` failed
+    // `lint:check` while `chain --dry` planned this step as cached.
     inputs: [...ROOT, ...EVERY_WORKSPACE, 'scripts', 'tests/e2e', 'tests/fixtures', 'tests/scripts',
-      'tests/tsconfig.json', 'playwright.config.ts', 'types', ...PACKAGE_BUILD_OUTPUTS, ...PACK_OUTPUTS],
+      'tests/tsconfig.json', 'playwright.config.ts', 'types', 'electron-builder.mjs',
+      'build/prod/diagnostics.mjs', 'build/prod/verify-node-modules.mjs',
+      ...PACKAGE_BUILD_OUTPUTS, ...PACK_OUTPUTS],
     // It wants the fixture packs' sources, never their build output: `tsc -p tests` compiles `e2e/**`
     // only, and `check:specifiers` filters `__generated__` out itself — verified by deleting a fixture's
     // generated directory, which leaves it passing. Hashing that output would tie a tier-1 check's
