@@ -130,7 +130,15 @@ export function packResolvesSource(packDir: string): PackResolution {
  */
 const PACK_CONFIG = /^(?:vite|vitest)\.(?:config|workspace)\.[cm]?[jt]s$/;
 
-/** `<config>:<line>: <condition>` for each of the pack's configs naming the source condition */
+/**
+ * `<config>:<line>: <condition>` for each of the pack's configs naming the source condition.
+ *
+ * The only findings this rule gives an `at`, and so the only ones that claim a site in the one-offence-one-message
+ * dedupe — a claim nothing can currently match, because these sit at the pack root while the per-file rules read
+ * `src` or `tests`. It is not dead: `check:specifiers` takes paths, so a caller can name the root and put a config
+ * in both populations. The rule's other two findings have no `at` on purpose: an unreadable config is a sentence
+ * about one, and a resolved path is where a specifier landed, outside the pack, which is evidence and not a place.
+ */
 export function configsNamingSourceCondition(packDir: string): PackWideFinding[] {
   return fs.readdirSync(packDir).filter((name) => PACK_CONFIG.test(name)).sort().flatMap((name) =>
     readSource(path.join(packDir, name))
