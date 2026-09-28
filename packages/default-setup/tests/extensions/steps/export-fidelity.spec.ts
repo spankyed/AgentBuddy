@@ -11,7 +11,7 @@ import { untypedQx } from '@abuddy/ears'
 import { importFlows } from '@abuddy/testing/harness'
 import { repository } from '#generated/repository.ts'
 import { startTestRuntime } from '@abuddy/sdk/testing'
-import { action, actionCode, branch, create, entry, fire, keepAlive, kill, llm, on, query, subflow, transform, update } from '#generated/flow-helpers.ts'
+import { EVERY_STEP_FLOW } from '../../_support/every-step-flow.ts'
 
 startTestRuntime()
 
@@ -42,30 +42,9 @@ function drift(before: Map<string, Record<string, unknown>>, after: Map<string, 
 }
 
 describe('a flow exported and imported back', () => {
-  // Every option below is set to a *non-default* value on purpose: a field set to its default round-trips to
-  // the same value even when nothing carries it, so the case would pass while covering nothing. Measured — with
-  // `outputType: 'json'` here, deleting it from transform's decompile left this green.
+  // The fixture sets every option to a non-default value; `_support/every-step-flow.ts` says why.
   it('comes back as the same graph, but for the two differences recorded here', () => {
-    importFlows({
-      Every: {
-        root: true,
-        tracks: [
-          entry([keepAlive()]),
-          on('go', [[
-            action('Send', { label: 'send', description: 'd', map: { to: '$.event.data.to' }, params: { x: 1 } }),
-            actionCode('return ctx.a + 1', { label: 'compute' }),
-            llm('Summarise', { label: 'sum', temperature: 0.2, maxTokens: 10 }),
-            query('what?', { as: 'results' }),
-            create('Note', { params: { content: 'c' } }),
-            update('$.note', { params: { content: 'c' }, onMissing: 'ignore' }),
-            transform('return 1', { outputType: 'text' }),
-            fire('ping', { scope: 'global', payload: { a: 1 } }),
-            subflow('Every', { inherit: false }),
-            branch([{ if: 'ok == true', steps: [kill()] }], [keepAlive()]),
-          ]]),
-        ],
-      },
-    })
+    importFlows(EVERY_STEP_FLOW)
     const before = nodesByLabel(untypedQx(EARS.Entity.Node).pickAll() as Record<string, unknown>[])
 
     const { filePath, flowCount } = exportFlowsToDSL(tmp(), { rootFlowRole: ROOT_FLOW_ROLE }, false)

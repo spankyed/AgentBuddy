@@ -19,6 +19,8 @@
     "build:dev": "abuddy build --skip-fe",
     "facade:check": "tsx ../../scripts/facade-report.ts .",
     "facade:update": "tsx ../../scripts/facade-report.ts . --local",
+    "flow-export:check": "npm test -- tests/extensions/steps/export-example.spec.ts",
+    "flow-export:update": "UPDATE_FLOW_EXAMPLE=1 npm test -- tests/extensions/steps/export-example.spec.ts",
     "seed-parity:check": "npm test -- tests/seeds",
     "seed-parity:update": "UPDATE_SEED_GOLDEN=1 npm test -- tests/seeds"
   },

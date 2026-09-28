@@ -338,6 +338,13 @@ A flow file's default export is a `FlowDSL` (`@abuddy/sdk/build`): flow name →
 
 Every other flow runs as a subflow that a running flow spawned: default-setup's `Root Flow` spawns its long-running work modes from its entry track. An event reaches every running flow (see `fire`'s `scope`).
 
+**A worked example of the exported form** is
+`packages/default-setup/tests/extensions/steps/__golden__/exported-flows.json` — what
+`exportFlowsToDSL` writes for a flow that uses every step default-setup registers, including a
+`FlowConfig` with `root`, the `exits` nesting and a `subflow` reference. It is recorded by the spec
+beside it rather than kept by hand, so it cannot drift from the types: re-record it with
+`npm run flow-export:update -w @app/default-setup`, and never edit it.
+
 A step's options:
 
 | Option | Effect |
