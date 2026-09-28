@@ -97,6 +97,10 @@ const PACKAGE_JSON_TEMPLATE = (name: string) => JSON.stringify({
     dev: 'abuddy dev',
     test: 'vitest run',
     typecheck: 'tsc --noEmit',
+    // The facade dependents compile against, recorded for review. Nothing to report before the first
+    // build, so `etc/pack-types.api.md` appears at the first `facade:update` rather than at init
+    'facade:check': 'abuddy facade-report',
+    'facade:update': 'abuddy facade-report --update',
   },
   dependencies: {
     // The generated facades import the EARS engine; it's released with the SDK at the same version
@@ -274,6 +278,9 @@ export async function init(args: string[]) {
   fs.writeFileSync(path.join(dir, '.gitignore'), GITIGNORE_TEMPLATE);
   fs.mkdirSync(path.join(dir, '.github', 'workflows'), { recursive: true });
   fs.writeFileSync(path.join(dir, '.github', 'workflows', 'release.yml'), renderTemplate('pack/github/workflows/release.yml'));
+  fs.writeFileSync(path.join(dir, '.github', 'workflows', 'ci.yml'), renderTemplate('pack/github/workflows/ci.yml'));
+  // What `init` prints below scrolls away; this is what the author reads in six months
+  fs.writeFileSync(path.join(dir, 'README.md'), renderTemplate('pack/README.md', { NAME: name }));
   fs.writeFileSync(path.join(dir, 'src', 'env.d.ts'), ENV_DTS_TEMPLATE);
   fs.writeFileSync(
     path.join(dir, 'src', 'extensions', 'steps', 'register.ts'),
@@ -299,4 +306,6 @@ export async function init(args: string[]) {
   console.log(`  npm install`);
   console.log(`  abuddy add feature <name>`);
   console.log(`  abuddy build`);
+  console.log(`  npm run facade:update   # records the types dependents compile against; commit it`);
+  console.log(`\nREADME.md has the rest.`);
 }

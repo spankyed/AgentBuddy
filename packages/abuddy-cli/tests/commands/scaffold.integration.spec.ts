@@ -7,6 +7,18 @@ import { extractPackArchive, verifyPack } from '@abuddy/host/packs';
 import { callCli, typecheckPack } from '../_support/pack-builds';
 
 /**
+ * The commands `abuddy` answers to, read from `src/index.ts`'s COMMANDS table — the authority. Read as text
+ * rather than imported because that module calls `main()` at the top level, which is why the test support
+ * keeps its own map; a second hand-written list here would be a third copy that nothing keeps honest.
+ */
+const CLI_COMMANDS: string[] = (() => {
+  const source = fs.readFileSync(path.join(import.meta.dirname, '..', '..', 'src', 'index.ts'), 'utf-8');
+  const table = /const COMMANDS[^{]*\{([\s\S]*?)\n\};/.exec(source)?.[1];
+  if (table === undefined) throw new Error("couldn't find the COMMANDS table in src/index.ts");
+  return [...table.matchAll(/^\s*'([\w-]+)':/gm)].map((m) => m[1]!);
+})();
+
+/**
  * The scaffold an outside author starts from must build, typecheck and pack as
  * generated. Runs the real CLI in a temp dir outside the monorepo; only the
  * toolchain's node_modules are borrowed from the repo (no Electron).
@@ -86,6 +98,51 @@ describe('abuddy init → add feature → build → tsc → pack', () => {
     expect(packed.code, packed.output).toBe(0);
     const extracted = await extractPackArchive(path.join(out, 'demo-pack-0.1.0.tgz'), path.join(tmp, 'extract'));
     expect(verifyPack(extracted).id).toBe('demo-pack');
+  });
+
+  /**
+   * The facade round trip, on a pack scaffolded the way an author gets one. `abuddy facade-report` existed
+   * for a while before the scaffold gave anyone a reason to run it — the command was offered to every pack
+   * and used by one, since `abuddy init` wrote no `etc/` — so its external-pack path had never been
+   * exercised. Scaffolding the workflow is what makes this a test rather than a fiction.
+   */
+  it('records the facade dependents compile against, and then reports it up to date', async () => {
+    // No feature added: every pack has a facade, and the cases here share one pack in declaration order
+    const build = await callCli(pack, 'build');
+    expect(build.code, build.output).toBe(0);
+
+    const report = path.join(pack, 'etc', 'pack-types.api.md');
+    // Nothing is recorded before the first update: there is no report to be stale against
+    expect(fs.existsSync(report)).toBe(false);
+    const missing = await callCli(pack, 'facade-report');
+    expect(missing.code, missing.output).toBe(1);
+    expect(missing.output).toContain("doesn't exist");
+
+    const written = await callCli(pack, 'facade-report', ['--update']);
+    expect(written.code, written.output).toBe(0);
+    expect(fs.readFileSync(report, 'utf-8')).toContain('Facade types report for the "demo-pack" pack');
+
+    const checked = await callCli(pack, 'facade-report');
+    expect(checked.code, checked.output).toBe(0);
+    expect(checked.output).toContain('is up to date');
+  });
+
+  /** Both workflows the scaffold writes run only scripts the scaffold also writes, or abuddy commands */
+  it('scaffolds workflows whose every step names something that exists', () => {
+    const scripts = Object.keys(JSON.parse(fs.readFileSync(path.join(pack, 'package.json'), 'utf-8')).scripts);
+    const workflows = ['ci.yml', 'release.yml'].map((name) => path.join(pack, '.github', 'workflows', name));
+    for (const file of workflows) expect(fs.existsSync(file), `${path.basename(file)} was not scaffolded`).toBe(true);
+
+    const steps = workflows.flatMap((file) => [...fs.readFileSync(file, 'utf-8').matchAll(/^\s*- run: (.+)$/gm)].map((m) => m[1]!.trim()));
+    expect(steps.length, 'no run steps were read out of the workflows').toBeGreaterThan(0);
+    const unknown = steps.filter((step) => {
+      const script = /^npm run ([\w:-]+)/.exec(step)?.[1];
+      if (script !== undefined) return !scripts.includes(script);
+      const command = /^npx abuddy ([\w-]+)/.exec(step)?.[1];
+      if (command !== undefined) return !CLI_COMMANDS.includes(command);
+      return false; // npm ci, npm test and the like are not ours to check
+    });
+    expect(unknown, 'these workflow steps name a script or command the scaffold does not provide').toEqual([]);
   });
 
   it('adds a step (registered, shipped in build/steps.build.mjs) and a service that build', async () => {

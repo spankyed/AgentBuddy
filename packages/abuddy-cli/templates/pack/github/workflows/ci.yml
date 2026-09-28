@@ -1,0 +1,35 @@
+name: Checks
+
+on:
+  push:
+    branches: ['**']
+  pull_request:
+
+jobs:
+  checks:
+    # ubuntu is enough while this pack declares no dependencies in abuddy.json: nothing has to resolve
+    # another pack, so no AgentBuddy install is needed. Add one and this needs what the release workflow
+    # uses — `runs-on: macos-14` with `ABUDDY_APP: beta`, so the build can read it from an installed app.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 23
+          cache: npm
+
+      # `prepare` runs `abuddy generate-entries`, so src/__generated__ exists for everything below
+      - run: npm ci
+
+      - run: npx abuddy validate
+
+      - run: npm run typecheck
+
+      - run: npm test
+
+      - run: npx abuddy build
+
+      # After the build, which is what it reads: the facade is what packs depending on this one compile
+      # against, so a change to it should be visible in review rather than only at their next build
+      - run: npm run facade:check

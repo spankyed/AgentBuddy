@@ -28,7 +28,18 @@ jobs:
       - name: Tag matches abuddy.json version
         run: test "v$(node -p "require('./abuddy.json').version")" = "$GITHUB_REF_NAME"
 
+      # The checks, before anything is built for publication. Without these the tag path could publish a
+      # pack whose tests fail: `abuddy release` runs them, but this workflow calls `build`, `pack` and
+      # `release publish` directly, and `publish`'s own verify checks the archive's checksums, not the code.
+      - run: npx abuddy validate
+
+      - run: npm run typecheck
+
+      - run: npm test
+
       - run: npx abuddy build --release
+
+      - run: npm run facade:check
 
       - run: npx abuddy pack --out .abuddy/release
 
