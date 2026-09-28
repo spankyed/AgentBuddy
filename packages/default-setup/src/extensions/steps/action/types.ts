@@ -1,5 +1,6 @@
 import type { NodeBase } from '@abuddy/sdk';
 import type { DSLNodeBase } from '@abuddy/sdk/build';
+import type { FieldMapping } from '@abuddy/sdk/steps';
 
 /** What either shape of action step carries */
 interface DSLActionCommon extends DSLNodeBase {
@@ -37,5 +38,5 @@ export interface ActionNode extends NodeBase {
   actionId?: string;
   actionFn?: string;
   params?: Record<string, any>;
-  fieldMappings?: Array<{ target: string; source: string; default?: any }>;
+  fieldMappings?: FieldMapping[];
 }

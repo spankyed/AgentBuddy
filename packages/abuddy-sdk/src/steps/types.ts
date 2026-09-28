@@ -24,6 +24,20 @@ export interface StepRelation {
   info?: Record<string, unknown>;
 }
 
+/**
+ * One field a step reads out of the running flow: `target` is where the value lands, `source` is a `$.` path
+ * into the execution context or a literal, and `default` is the fallback when the source resolves to nothing.
+ *
+ * One declaration because there were eight, and they had already drifted: four typed `default` as `any` and
+ * three as `unknown`, and four of those reached dependent packs through the published facade. The runtime
+ * (`node-attribute-mappers.ts`), the step compilers and the editor forms all describe the same record.
+ */
+export interface FieldMapping {
+  target: string;
+  source: string;
+  default?: unknown;
+}
+
 export interface StepCompileResult {
   entity: Record<string, unknown>;
   relations: StepRelation[];

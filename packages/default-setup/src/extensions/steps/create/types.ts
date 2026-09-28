@@ -1,6 +1,7 @@
 import type { NodeBase } from '@abuddy/sdk';
 import type { DSLNodeBase } from '@abuddy/sdk/build';
 import type { EARS } from '@abuddy/sdk';
+import type { FieldMapping } from '@abuddy/sdk/steps';
 
 export interface DSLCreateNode extends DSLNodeBase {
   type: 'create';
@@ -18,6 +19,6 @@ export interface CreateNode extends NodeBase {
   // The SDK's open EARS.Entity on purpose: a flow's create step may name any entity type
   entityTypeTarget: EARS.Entity;
   params?: Record<string, unknown>;
-  fieldMappings?: Array<{ target: string; source: string; default?: unknown }>;
+  fieldMappings?: FieldMapping[];
   inferLabel?: boolean;
 }

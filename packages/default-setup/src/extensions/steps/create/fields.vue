@@ -48,8 +48,7 @@
 import { computed } from 'vue'
 import { Plus, X } from 'lucide-vue-next'
 import TipSection from '@abuddy/ui/components/TipSection'
-
-interface FieldMapping { target: string; source: string; default?: unknown }
+import type { FieldMapping } from '@abuddy/sdk/steps'
 
 const props = defineProps<{ modelValue?: FieldMapping[] }>()
 const emit = defineEmits<{ 'update:modelValue': [mappings: FieldMapping[]] }>()

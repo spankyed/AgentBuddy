@@ -1,4 +1,4 @@
-import type { ExecutionContext, TNodeEntity } from '@abuddy/sdk/steps';
+import type { ExecutionContext, TNodeEntity, FieldMapping } from '@abuddy/sdk/steps';
 import type { EARS } from '@abuddy/sdk';
 import type { NodeEntity } from '#generated/types.ts';
 import { repository } from '#generated/repository.ts';
@@ -11,7 +11,7 @@ interface ActionNodeConfig {
   mode?: 'template' | 'code';
   actionFn?: string;
   params?: Record<string, any>;
-  fieldMappings?: Array<{ target: string; source: string; default?: any }>;
+  fieldMappings?: FieldMapping[];
 }
 
 type ActionNode = NodeEntity & ActionNodeConfig;

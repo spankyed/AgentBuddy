@@ -15,7 +15,7 @@ import { EmbeddingModelId, ModelCatalogEntry, ModelId } from '@abuddy/sdk/models
 import * as _abuddy_sdk_repositories from '@abuddy/sdk/repositories';
 import { FlowEdge } from '@abuddy/sdk/repositories';
 import { HostServices } from '@abuddy/sdk/services';
-import { ExecutionContext, StepRuntimeError, TNodeEntity, TrackTree } from '@abuddy/sdk/steps';
+import { ExecutionContext, FieldMapping, StepRuntimeError, TNodeEntity, TrackTree } from '@abuddy/sdk/steps';
 import { KeyboardShortcut } from '@abuddy/sdk/types';
 import { BinaryOperator } from '@abuddy/sdk/utils';
 import { z } from 'zod';
@@ -26,11 +26,7 @@ interface ActionNode extends NodeBase {
     actionId?: string;
     actionFn?: string;
     params?: Record<string, any>;
-    fieldMappings?: Array<{
-        target: string;
-        source: string;
-        default?: any;
-    }>;
+    fieldMappings?: FieldMapping[];
 }
 
 declare class ActionService {
@@ -1181,11 +1177,7 @@ interface CreateNode extends NodeBase {
     nodeType: 'create';
     entityTypeTarget: EARS$1.Entity;
     params?: Record<string, unknown>;
-    fieldMappings?: Array<{
-        target: string;
-        source: string;
-        default?: unknown;
-    }>;
+    fieldMappings?: FieldMapping[];
     inferLabel?: boolean;
 }
 
@@ -1513,6 +1505,7 @@ interface FireNode extends NodeBase {
     eventType: string;
     payload?: unknown;
     scope?: 'global' | 'local';
+    fieldMappings?: FieldMapping[];
 }
 
 interface FlowExtendedData {
@@ -1524,11 +1517,7 @@ interface FlowNode extends NodeBase {
     nodeType: 'subflow';
     flowRef: string;
     propagateCtx?: boolean;
-    fieldMappings?: Array<{
-        target: string;
-        source: string;
-        default?: any;
-    }>;
+    fieldMappings?: FieldMapping[];
 }
 
 interface FlowTNodeData {
@@ -2730,11 +2719,7 @@ interface LLMNode extends NodeBase {
     nodeType: 'llm';
     prompt?: string;
     promptTemplateId?: string;
-    fieldMappings?: Array<{
-        target: string;
-        source: string;
-        default?: any;
-    }>;
+    fieldMappings?: FieldMapping[];
     model?: ModelId;
     temperature?: number;
     maxTokens?: number;
@@ -5384,11 +5369,7 @@ interface TransformNode extends NodeBase {
     nodeType: 'transform';
     script: string;
     outputType?: TransformOutputType;
-    fieldMappings?: Array<{
-        target: string;
-        source: string;
-        default?: unknown;
-    }>;
+    fieldMappings?: FieldMapping[];
 }
 
 /** How a transform step's script return value becomes the step's result */
@@ -5434,11 +5415,7 @@ interface UpdateNode extends NodeBase {
     nodeType: 'update';
     target: string;
     params?: Record<string, unknown>;
-    fieldMappings?: Array<{
-        target: string;
-        source: string;
-        default?: unknown;
-    }>;
+    fieldMappings?: FieldMapping[];
     onMissing?: UpdateOnMissing;
     entityTypeTarget?: EARS$1.Entity;
 }

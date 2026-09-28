@@ -1,5 +1,6 @@
 import type { NodeBase } from '@abuddy/sdk';
 import type { DSLNodeBase } from '@abuddy/sdk/build';
+import type { FieldMapping } from '@abuddy/sdk/steps';
 
 export interface DSLFireNode extends DSLNodeBase {
   type: 'fire';
@@ -15,5 +16,5 @@ export interface FireNode extends NodeBase {
   eventType: string;
   payload?: unknown;
   scope?: 'local' | 'global';
-  fieldMappings?: Array<{ target: string; source: string; default?: unknown }>;
+  fieldMappings?: FieldMapping[];
 }

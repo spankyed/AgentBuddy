@@ -1,6 +1,7 @@
 import type { NodeBase } from '@abuddy/sdk';
 import type { DSLNodeBase } from '@abuddy/sdk/build';
 import type { EARS } from '@abuddy/sdk';
+import type { FieldMapping } from '@abuddy/sdk/steps';
 
 export type UpdateOnMissing = 'fail' | 'ignore' | 'create';
 
@@ -22,7 +23,7 @@ export interface UpdateNode extends NodeBase {
   nodeType: 'update';
   target: string;
   params?: Record<string, unknown>;
-  fieldMappings?: Array<{ target: string; source: string; default?: unknown }>;
+  fieldMappings?: FieldMapping[];
   onMissing?: UpdateOnMissing;
   // The SDK's open EARS.Entity on purpose, as the create step's: any entity type a flow names
   entityTypeTarget?: EARS.Entity;

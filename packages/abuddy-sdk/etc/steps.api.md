@@ -45,6 +45,16 @@ export interface ExecutionEvent {
 export function expandRecord(map: Record<string, string> | undefined, keyField?: string, valueField?: string): Array<Record<string, string>> | undefined;
 
 // @public
+export interface FieldMapping {
+    // (undocumented)
+    default?: unknown;
+    // (undocumented)
+    source: string;
+    // (undocumented)
+    target: string;
+}
+
+// @public
 export function isTruncated(result: unknown): result is TruncatedResult;
 
 // @internal

@@ -1,5 +1,6 @@
 import type { NodeBase } from '@abuddy/sdk';
 import type { DSLNodeBase } from '@abuddy/sdk/build';
+import type { FieldMapping } from '@abuddy/sdk/steps';
 
 /** How a transform step's script return value becomes the step's result */
 export type TransformOutputType = 'json' | 'text' | 'custom';
@@ -21,5 +22,5 @@ export interface TransformNode extends NodeBase {
   nodeType: 'transform';
   script: string;
   outputType?: TransformOutputType;
-  fieldMappings?: Array<{ target: string; source: string; default?: unknown }>;
+  fieldMappings?: FieldMapping[];
 }
