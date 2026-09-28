@@ -106,6 +106,12 @@ type Result = { step: string; ms: number; code: number; output: string; timedOut
 function whatMoved(step: ChainStep, steps: readonly ChainStep[]): Omit<Parameters<typeof staleLines>[0], 'indent'> {
   const nothing = { gained: [], lost: [], files: [], identical: [] };
   const record = stampRecord(stampFor(step.name));
+  // `recorded: false` is required of the types and unreachable from here, which is worth saying rather than
+  // leaving as a fallback someone trusts: this is asked only of a step that *passed* in this run, and a step
+  // that passed rewrote its own stamp a moment ago with both fields in it. The state it stands for — a stamp
+  // from before they were recorded — is reachable only by whoever asks about a run they did not just watch,
+  // which is `--dry`, the question "why would this run?". That is where naming the files would pay next, and it
+  // would make this branch live.
   if (record?.files === undefined || record.declared === undefined) return { ...nothing, recorded: false };
   const changes = changedInputs(unitFor(step), { files: record.files, declared: record.declared });
   const at = (file: string) => {
