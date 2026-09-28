@@ -164,10 +164,10 @@ function packRootOf(from: string, root: string): string {
  * reading a build failure is told once by the rule whose cause comes first. Here the rule *is* the subject:
  * `--rule <id>` runs one, `--list` names them all, and a rule that stood down would make a per-rule run's
  * answer depend on which other rules ran. What keeps that from becoming two answers to one question is that
- * both read the same `check`, and `FIRES`' disjointness sweep asserts no two rules claim one offence to begin
- * with.
+ * both run the same rule — its `check` per file, its `checkPack` once for the pack — and `FIRES`' disjointness
+ * sweep asserts no two rules claim one offence to begin with, for every rule this delegates to.
  */
-function packRule(key: PackRuleKey, dirs: readonly string[], root: string): string[] {
+export function packRule(key: PackRuleKey, dirs: readonly string[], root: string): string[] {
   const rule = PACK_RULES.find((candidate) => candidate.key === key);
   if (!rule) throw new Error(`No pack rule "${key}"`);
   // A rule whose subject is the pack answers once per pack, not once per directory of it: `dirs` holds a pack's
@@ -210,7 +210,7 @@ export const repoRootDir = (): string => repoRoot;
  * The rule is `@abuddy/cli`'s `own-modules`; this is its findings before they become sentences, which is what
  * `specifiers:fix` splices. A pack's own `abuddy build` gets the same repair through the same function.
  */
-export function packOwnModuleFixes(dirs = [...PACK_SOURCE_DIRS, ...PACK_TEST_DIRS], root = repoRoot): Fix[] {
+export function packOwnModuleFixes(dirs: readonly string[] = PACK_CODE_DIRS, root = repoRoot): Fix[] {
   return dirs.flatMap((dir) => {
     const full = path.join(root, dir);
     if (!fs.existsSync(full)) return [];
@@ -276,7 +276,7 @@ export function findRawPackHelpers(dirs: readonly string[] = PACK_SOURCE_DIRS, r
 }
 
 /** `file:line: name from module` for each host-only export a pack's sources or tests import. Generated files are exempt. */
-export function findInternalPackageImports(dirs: readonly string[] = [...PACK_SOURCE_DIRS, ...PACK_TEST_DIRS], root = repoRoot): string[] {
+export function findInternalPackageImports(dirs: readonly string[] = PACK_CODE_DIRS, root = repoRoot): string[] {
   return packRule('internal-package-imports', dirs, root);
 }
 
@@ -284,7 +284,7 @@ export function findInternalPackageImports(dirs: readonly string[] = [...PACK_SO
  * `file:line: specifier` for each `@abuddy/host` module a pack source loads. The host package is
  * private to the app; packs use @abuddy/sdk (`services.appData`, `services.traceStore`, …).
  */
-export function findHostImports(dirs: readonly string[] = PACK_SOURCE_DIRS, root = repoRoot): string[] {
+export function findHostImports(dirs: readonly string[] = PACK_CODE_DIRS, root = repoRoot): string[] {
   return packRule('host-imports', dirs, root);
 }
 
@@ -306,6 +306,16 @@ export function findPackBackendConsole(dirs: readonly string[] = PACK_SOURCE_DIR
 const PACK_TEST_DIRS = packHalves('tests');
 
 /**
+ * A pack's own code, tests included: the population for a rule about a specifier a pack may not write, wherever
+ * it writes it. `abuddy test` runs the whole rule set over a pack's `tests` (`refusePackRuleViolations(cwd,
+ * TEST_DIRS)`), so a rule that reads only `src` here is narrower in this repo than the same rule is for a pack.
+ */
+const PACK_CODE_DIRS = [...PACK_SOURCE_DIRS, ...PACK_TEST_DIRS];
+
+/** For the spec: the population above, which has to cover every pack's `src` and its `tests` */
+export const packCodeDirs = (): readonly string[] => PACK_CODE_DIRS;
+
+/**
  * `file:line: specifier` for each `@/…` a pack names one of its own modules with.
  *
  * A pack names its own modules with `#` subpath imports from its own `package.json` `imports`, which Node,
@@ -318,7 +328,7 @@ const PACK_TEST_DIRS = packHalves('tests');
  * All four are gone (`goal-one-way-to-name-your-own-modules.md`), so a single `@/` reintroduced here does not
  * fail loudly — it resolves for `tsc` and for nothing else, which is the shape of failure this refuses.
  */
-export function findPackOwnAliases(dirs: readonly string[] = [...PACK_SOURCE_DIRS, ...PACK_TEST_DIRS], root = repoRoot): string[] {
+export function findPackOwnAliases(dirs: readonly string[] = PACK_CODE_DIRS, root = repoRoot): string[] {
   return packRule('pack-own-aliases', dirs, root);
 }
 
@@ -329,15 +339,22 @@ export function findPackOwnAliases(dirs: readonly string[] = [...PACK_SOURCE_DIR
  * every pack outside this checkout. This applies it to the packs in it.
  */
 export function findExtensionlessOwnModules(
-  dirs: readonly string[] = [...PACK_SOURCE_DIRS, ...PACK_TEST_DIRS],
+  dirs: readonly string[] = PACK_CODE_DIRS,
   root = repoRoot,
 ): string[] {
   return packRule('own-modules', dirs, root);
 }
 
 
-/** API modules (its `@/` alias) and host, API or CLI sources by relative path */
-const APP_SPECIFIER = /^(?:@abuddy\/host(?:\/|$)|@\/(?:core|setup)(?:\/|$)|(?:\.\.?\/)+(?:[\w.-]+\/)*(?:api|abuddy-host|abuddy-cli)\/src(?:\/|$))/;
+/**
+ * The app's sources by relative path, which is the one shape only a pack *inside this repo* can name.
+ *
+ * It used to match `@abuddy/host` and the API's `@/core`/`@/setup` aliases too, and both belong elsewhere:
+ * `host-imports` owns the package wherever a pack names it, and `pack-own-aliases` owns every `@/` specifier —
+ * each over a pack's tests as well as its sources, here and through `abuddy test` for every other pack. Three
+ * rules claiming one import is how only the first to run gets read.
+ */
+const APP_SPECIFIER = /^(?:\.\.?\/)+(?:[\w.-]+\/)*(?:api|abuddy-host|abuddy-cli)\/src(?:\/|$)/;
 
 /**
  * `file:line: specifier` for each app module a pack's unit tests load. Tests of app code belong to
@@ -415,7 +432,7 @@ export const LMDB_RULES: { dirs: string[]; except?: string; forbidden?: RegExp; 
   // Packs and their tests don't use the app's store. Named rather than spelled: this population is a pack's, so
   // the rule is `@abuddy/cli`'s, the one `abuddy build` already runs for every pack. The two above are the host's
   // and the engine's own trees, which no pack rule can have, so they keep a pattern here.
-  { dirs: [...PACK_SOURCE_DIRS, ...PACK_TEST_DIRS], rule: 'lmdb-imports' },
+  { dirs: PACK_CODE_DIRS, rule: 'lmdb-imports' },
 ];
 
 /** `file:line: specifier` for each import of LMDB or the LMDB store where `rules` forbid it */
@@ -1229,7 +1246,7 @@ export const CHECKS: readonly ImportRule[] = [
   backed('findExtensionlessOwnModules', 'own-modules', findExtensionlessOwnModules),
   {
     id: 'findAppImportsInPackTests',
-    repoOnly: "Not moved rather than repo-only: its subject is a pack's `tests/`, and whether the rule set reads a pack's tests at all is a decision `abuddy test` owns rather than `abuddy validate`",
+    repoOnly: "Its subject is a relative import into this repo's api, host or CLI sources, which only a pack inside this monorepo can write; `@abuddy/host` and every `@/` specifier belong to `host-imports` and `pack-own-aliases`, which `abuddy test` runs over a pack's tests",
     find: findAppImportsInPackTests,
     rule: 'Pack unit tests run on the harness (@abuddy/testing) without the app; test host, API and CLI code in its own package',
   },

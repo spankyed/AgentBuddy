@@ -9,7 +9,7 @@ import {
   findPackageScriptImports, findPackBackendConsole, findPackOwnAliases, findRawPackHelpers,
   findRawTransport, findInternalPackageImports, findLmdbImports, findRepositoryCasts, findSharedPackageLists, findUpwardImports, LAYERS, LMDB_RULES, packageSourceDirs,
   DECLARES_SOURCE_BY_DESIGN, RESOLVES_DIST_BY_DESIGN, SHARED_LIST_CONSUMERS, sourceConditionPackages, SOURCE_CONDITION,
-  checkedDirs, packDirs,
+  checkedDirs, packCodeDirs, packDirs, packRule,
 } from '../../../scripts/check-import-specifiers.ts';
 import { REPO_ROOT } from '@abuddy/host/build/packages-built';
 
@@ -245,14 +245,31 @@ describe('findHostImports', () => {
 
 describe('findAppImportsInPackTests', () => {
   it.each([
-    ["import { hydrate } from '@abuddy/host/ears';", '@abuddy/host/ears'],
-    ["import { openAppStore } from '@/setup/backend';", '@/setup/backend'],
-    ["import { rootEvents } from '@/core/router/bus-emitter';", '@/core/router/bus-emitter'],
     ["const { init } = await import('../../../abuddy-cli/src/commands/init');", '../../../abuddy-cli/src/commands/init'],
     ["import { installPackFromLocal } from '../../../abuddy-host/src/packs/pack-installer';", '../../../abuddy-host/src/packs/pack-installer'],
   ])('flags %s', (code, specifier) => {
     write('pack-tests/unit/feature.spec.ts', code);
     expect(findAppImportsInPackTests(['src/pack-tests'], root)).toEqual([`src/pack-tests/unit/feature.spec.ts:1: ${specifier}`]);
+  });
+
+  /**
+   * The two shapes this rule used to claim as well, each with the rule that owns it wherever a pack writes it.
+   * One import reported by two rules is how only the first to run gets read, and these also say what is left for
+   * this one: a relative path into the app's sources, which no pack outside this repo can write.
+   *
+   * The second assertion in each is the narrowing; the first is what makes dropping it safe, since `abuddy test`
+   * runs both of those rules over a pack's tests.
+   */
+  it("leaves @abuddy/host in a pack's test to host-imports", () => {
+    write('pack-tests/unit/feature.spec.ts', "import { hydrate } from '@abuddy/host/ears';");
+    expect(findHostImports(['src/pack-tests'], root)).toEqual(['src/pack-tests/unit/feature.spec.ts:1: @abuddy/host/ears']);
+    expect(findAppImportsInPackTests(['src/pack-tests'], root)).toEqual([]);
+  });
+
+  it("leaves a @/ specifier in a pack's test to pack-own-aliases", () => {
+    write('pack-tests/unit/feature.spec.ts', "import { openAppStore } from '@/setup/backend';");
+    expect(findPackOwnAliases(['src/pack-tests'], root)).toEqual(['src/pack-tests/unit/feature.spec.ts:1: @/setup/backend']);
+    expect(findAppImportsInPackTests(['src/pack-tests'], root)).toEqual([]);
   });
 
   it('allows the SDK, the harness and the pack itself', () => {
@@ -467,7 +484,7 @@ const FIRES: Record<string, () => string[]> = {
     return findExtensionlessOwnModules(['pack/src'], root);
   },
   findAppImportsInPackTests: () => {
-    write('pack-tests/unit/feature.spec.ts', "import { hydrate } from '@abuddy/host/ears';");
+    write('pack-tests/unit/feature.spec.ts', "import { hydrate } from '../../../abuddy-host/src/database/store';");
     return findAppImportsInPackTests(['src/pack-tests'], root);
   },
   findUpwardImports: () => {
@@ -549,6 +566,10 @@ describe('CHECKS', () => {
    * Bounded by the examples, honestly: it runs the pack-code rules over each pack-code fixture, which is where
    * the overlap was. A rule that reads the whole tree cannot be pointed at a fixture (its scope is the repo's
    * layers, configs and exception lists), so it is not in this sweep.
+   *
+   * **Every pack-backed rule is a row.** The sweep is what `check-import-specifiers.ts` cites for running one rule
+   * at a time, so a rule the CLI owns that is missing here makes that claim wider than the sweep — which is what
+   * `cross-feature-imports` and `contract-leaves` did on arriving.
    */
   it.each([
     ['findRawPackHelpers', ['src/pack']],
@@ -558,10 +579,13 @@ describe('CHECKS', () => {
     ['findHostImports', ['src/pack']],
     ['findPackOwnAliases', ['pack/src']],
     ['findExtensionlessOwnModules', ['pack/src']],
+    ['findCrossFeatureImports', ['pack/src']],
+    ['findContractLeafImports', ['pack/src']],
   ] as const)('%s claims its own example and no other pack rule does', (id, dirs) => {
     const packRules: Record<string, (where: string[], at: string) => string[]> = {
       findJsSpecifiers, findRawPackHelpers, findInternalPackageImports, findRawTransport,
       findPackBackendConsole, findHostImports, findPackOwnAliases, findExtensionlessOwnModules,
+      findCrossFeatureImports, findContractLeafImports,
     };
     expect(FIRES[id]!(), `${id} must fire on its own example`).not.toEqual([]);
     const alsoClaimed = Object.entries(packRules)
@@ -569,6 +593,16 @@ describe('CHECKS', () => {
       .filter(([, run]) => run([...dirs], root).length > 0)
       .map(([other]) => other);
     expect(alsoClaimed, `${id}'s offence is also reported by these, so only the first to run is ever read`).toEqual([]);
+
+    // And the key the entry declares is the rule that fires. `backed(id, key, find)` takes the key twice over —
+    // once as `key`, which picks the sentence printed above the findings, and once inside `find`, which is what
+    // actually runs — so a mismatch prints one rule's wording over another rule's offences. Nothing else notices:
+    // the ownership guard below asks only that a key is declared, not that it is this one.
+    const declared = CHECKS.find((rule) => rule.id === id)?.packRule;
+    expect(declared, `${id} is a subject of this sweep, so it must declare the pack rule it delegates to`).toBeDefined();
+    expect(packRule(declared!, [...dirs], root),
+      `${id} declares \`${declared}\`, which finds nothing in a tree written to offend ${id}: the key it names is `
+      + 'not the rule it runs, so its findings print under the wrong sentence').not.toEqual([]);
   });
 
   /**
@@ -597,6 +631,20 @@ describe('CHECKS', () => {
     const unsaid = CHECKS.filter((rule) => (rule.packRule === undefined) === (rule.repoOnly === undefined))
       .map((rule) => `${rule.id}: set packRule (the CLI owns it) or repoOnly (why its subject is this repo), not both and not neither`);
     expect(unsaid).toEqual([]);
+  });
+
+  /**
+   * The population a rule about a pack's own code reads. A rule that covered `src` alone was narrower in this repo
+   * than the same rule is for a pack, since `abuddy test` runs the set over a pack's `tests` — which is how
+   * `@abuddy/host` in a pack's test came to be reported by a third rule instead of the one that owns it.
+   */
+  it("covers every pack's src and its tests", () => {
+    const packs = packDirs();
+    expect(packs, 'the packs are derived from where a manifest is, so this should never be empty').not.toEqual([]);
+    const missing = packs.flatMap((pack) => ['src', 'tests']
+      .filter((half) => fs.existsSync(path.join(REPO_ROOT, pack, half)) && !packCodeDirs().includes(`${pack}/${half}`))
+      .map((half) => `${pack}/${half}`));
+    expect(missing, 'a pack half that exists and is not in the population is a tree no such rule reads').toEqual([]);
   });
 
   it('has no example left behind by a rule that is gone', () => {
