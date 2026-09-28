@@ -6,7 +6,7 @@
 // workspace stopped matching its vitest project name would be stamped as having passed a run it was
 // excluded from — the same "recorded fresh having never run" the pool was already fixed for once.
 import { describe, expect, it } from 'vitest';
-import { projectsThatRan, projectsThatDidNotRun } from '../../../scripts/lib/unit-pool.ts';
+import { projectsThatRan, projectsThatDidNotRun, whyItRuns } from '../../../scripts/lib/unit-pool.ts';
 
 const line = (project: string, file: string) => ` ✓ |${project}| ${file} (3 tests) 12ms`;
 
@@ -48,5 +48,37 @@ describe('projectsThatDidNotRun', () => {
 
   it('names them all when the filter matched none of several', () => {
     expect(projectsThatDidNotRun(asked, ' Test Files  0 passed (0)')).toEqual(asked);
+  });
+});
+
+/**
+ * A pool runs a subset, so every non-empty run claims something about which projects moved — and `--dry` cannot
+ * settle it, because it reports on the step, a different unit with a different input set.
+ */
+describe('whyItRuns', () => {
+  const stamped = { version: 1, fingerprint: 'abc', declared: ['packages/x/src'], files: { 'packages/x/src/a.ts': 'd' } };
+
+  it('names what moved, which is the whole of what the line adds', () => {
+    expect(whyItRuns(stamped, () => 'changed packages/x/src/a.ts (and 2 more)'))
+      .toBe('changed packages/x/src/a.ts (and 2 more)');
+  });
+
+  /**
+   * Live in this store, not hypothetical: `abuddy-unit-pool/abuddy-ears.json` is a 175-byte stamp from before
+   * the digests were recorded, and `node_modules/.cache` is never cleared, so it is what a machine has today.
+   */
+  it('says so when the stamp predates the digests, rather than guessing', () => {
+    expect(whyItRuns({ version: 1, fingerprint: 'abc' }, () => 'changed a.ts'))
+      .toBe('its last run recorded no per-file digests');
+  });
+
+  it('distinguishes a project that has never run from one whose inputs moved', () => {
+    expect(whyItRuns(undefined, () => 'changed a.ts')).toBe('has not run yet');
+    expect(whyItRuns({ version: 1 }, () => 'changed a.ts')).toBe('has not run yet');
+  });
+
+  /** The diff can come back empty on a walk-time race; the line still has to say something true */
+  it('falls back to the verdict when the diff names nothing', () => {
+    expect(whyItRuns(stamped, () => '')).toBe('its inputs changed');
   });
 });

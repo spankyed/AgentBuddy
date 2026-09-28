@@ -13,14 +13,23 @@
  * does not know about: the pool steps declare `forceArgs` so the flag arrives.
  */
 import { execFileSync } from 'node:child_process';
-import { stampedRunAll, unitStaleReason } from '@abuddy/host/build/packages-built';
-import { UNIT_SUITES } from './lib/unit-suites.ts';
+import { firstChange, freshnessSweep, stampedRunAll, stampRecord } from '@abuddy/host/build/packages-built';
+import { UNIT_SUITES, type UnitSuite } from './lib/unit-suites.ts';
 import { POOL_SECONDS } from './lib/chain-steps.ts';
-import { poolStampFor, poolUnitFor, projectsThatDidNotRun } from './lib/unit-pool.ts';
+import { poolStampFor, poolUnitFor, projectsThatDidNotRun, whyItRuns } from './lib/unit-pool.ts';
 import { boundedSpawn, budgetFor } from './lib/bounded-spawn.ts';
 import { exitOnEpipe } from './lib/exit-on-epipe.ts';
 
 exitOnEpipe();
+
+
+/** The diff itself, for the one branch of `whyItRuns` that needs it — over the sweep the decision was made on */
+function movedUnder(suite: UnitSuite, sweep: ReturnType<typeof freshnessSweep>): string {
+  const record = stampRecord(poolStampFor(suite));
+  return record?.files === undefined || record.declared === undefined
+    ? ''
+    : firstChange(sweep.changedInputs(poolUnitFor(suite), { files: record.files, declared: record.declared }));
+}
 
 async function main(): Promise<void> {
   const kind = process.argv[2] === 'pack' ? 'pack' : 'host';
@@ -32,12 +41,23 @@ async function main(): Promise<void> {
   const suites = UNIT_SUITES.filter((suite) => suite.kind === kind);
   const all = process.argv.includes('--all');
 
-  const stale = suites.filter((suite) => all || unitStaleReason(poolUnitFor(suite), poolStampFor(suite)) !== null);
+  // One reading of the tree for the whole decision, which is made about every project at this one moment.
+  // The projects overlap heavily — most declare the same dependency sources — so they are asked through a sweep
+  const sweep = freshnessSweep();
+  const stale = suites.filter((suite) => all || sweep.staleReason(poolUnitFor(suite), poolStampFor(suite)) !== null);
   if (stale.length === 0) {
     console.log(`${kind} pool: all ${suites.length} project(s) up to date`);
     return;
   }
-  console.log(`${kind} pool: ${stale.length} of ${suites.length} project(s) to run — ${stale.map((s) => s.workspace).join(', ')}`);
+  // Why each one runs, not just that it does. A pool exists to run a subset, so every non-empty run makes a
+  // claim about which projects moved — and `npm run chain -- --dry` cannot answer it, because it reports on the
+  // *step*, a different unit with a different input set. It can say what moved under `test:unit:host` while
+  // being unable to say which of the eleven projects inside it that was
+  console.log(`${kind} pool: ${stale.length} of ${suites.length} project(s) to run`);
+  const width = Math.max(...stale.map((suite) => suite.workspace.length));
+  for (const suite of stale) {
+    console.log(`  ${suite.workspace.padEnd(width)}  ${all ? '--all' : whyItRuns(stampRecord(poolStampFor(suite)), () => movedUnder(suite, sweep))}`);
+  }
 
   // What each run covers. The host suites are projects of one root config, so one vitest run takes them all
   // with `--project`. A pack suite is its own config resolving the published dist, so it cannot share that

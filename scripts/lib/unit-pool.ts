@@ -10,7 +10,7 @@
  * caches holds to and what happened when it did not.
  */
 import * as path from 'node:path';
-import { REPO_ROOT, type BuildUnit } from '@abuddy/host/build/packages-built';
+import { REPO_ROOT, type BuildUnit, type StampRecord } from '@abuddy/host/build/packages-built';
 import { suiteInputs } from './chain-steps.ts';
 import type { UnitSuite } from './unit-suites.ts';
 
@@ -71,3 +71,21 @@ export function projectsThatDidNotRun(asked: readonly string[], output: string):
   const ran = projectsThatRan(output);
   return asked.filter((project) => !ran.has(project));
 }
+
+/**
+ * Why one project is about to run, given what its stamp recorded and what a diff of its inputs would say.
+ *
+ * A pool exists to run a subset, so every non-empty run makes a claim about which projects moved — and
+ * `npm run chain -- --dry` cannot settle it, because it reports on the *step*, a different unit with a
+ * different input set. It can say what moved under `test:unit:host` while being unable to say which of the
+ * eleven projects inside it that was.
+ *
+ * Pure, over a record and a thunk, so the four answers can be checked without a stamp on disk — and so the
+ * diff is only computed for the one branch that needs it. `poolUnitFor` declares no outputs, so the verdicts
+ * that reach here are narrower than `unitStaleReason`'s: a project that has never run, one whose stamp
+ * predates the digests, and one whose inputs moved, which is every project on an ordinary day.
+ */
+export const whyItRuns = (record: StampRecord | undefined, moved: () => string): string =>
+  (record?.fingerprint === undefined ? 'has not run yet'
+    : record.files === undefined || record.declared === undefined ? 'its last run recorded no per-file digests'
+      : moved() || 'its inputs changed');
