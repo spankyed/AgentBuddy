@@ -15,7 +15,7 @@ import { HOST_PACK_ID } from '@abuddy/sdk/ids';
 const registry = createPackRegistry();
 startTestRuntime({ packs: registry });
 const {
-  getPackExtensions, partitionPolicy: _partitionPolicy, getRegisteredEntityTypes, getRegisteredServices,
+  getPackExtensions, getRegisteredEntityTypes, getRegisteredServices,
   registerPack, systemIds, pluginIds, runRegisteredBootSeeds, unregisterPack,
 } = registry;
 

@@ -18,14 +18,8 @@ process.env.ABUDDY_ENV = 'test';
 process.env.ABUDDY_USER_DATA_DIR = dataDir;
 const { openAppStore } = await import('@/runtime');
 const { store, engine, packs } = openAppStore();
-const { defineEars, findRelations: _findRelations, getRelationStats: _getRelationStats, installedEngine: _installedEngine, untypedQx, untypedTx } = await import('@abuddy/ears');
+const { untypedQx, untypedTx } = await import('@abuddy/ears');
 const { services } = await import('@abuddy/sdk/services');
-const { createEntity: _createEntity } = defineEars();
-
-const _EARS = {
-  Entity: { Flow: 'Flow', Node: 'Node' },
-  RelKind: { TRANSITIONS_TO: 'transitions_to', CONTAINS: 'contains', SPAWNED: 'spawned' },
-} as const;
 
 afterAll(() => {
   store.close();

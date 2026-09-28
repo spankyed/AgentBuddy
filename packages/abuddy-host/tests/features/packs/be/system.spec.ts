@@ -278,8 +278,6 @@ describe('a decision that could not be saved', () => {
 });
 
 describe('a pack that is gone', () => {
-  const _recordFile = () => resolveAppContext({ env: 'test', userDataDir: tmpDir }).installedPacksFile;
-
   it('leaves no row behind when it is uninstalled', async () => {
     const system = runPacksSystem();
     try {

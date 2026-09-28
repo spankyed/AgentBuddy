@@ -106,12 +106,6 @@ function exportsMap(pkg: string): Record<string, unknown> {
   return JSON.parse(fs.readFileSync(path.join(PACKAGE_DIRS[pkg], 'package.json'), 'utf8')).exports;
 }
 
-/** The source file an export resolves to in the monorepo. */
-function _sourceOf(pkg: string, key: string): string {
-  const target = exportsMap(pkg)[key];
-  const file = typeof target === 'string' ? target : (target as Record<string, string>)['@abuddy/source'];
-  return path.join(PACKAGE_DIRS[pkg], file);
-}
 
 function toSpecifier(pkg: string, key: string): string {
   return key === '.' ? pkg : `${pkg}/${key.slice(2)}`;

@@ -780,8 +780,6 @@ describe('generated repositories', () => {
 // A → B and A → C, both of which depend on D. Nothing exercised two dependencies converging, which
 // is where a collision is silent rather than obvious: each dependency is fine on its own.
 describe('a diamond dependency', () => {
-  const _dep = (id: string, fields: Record<string, unknown> = {}) => ({ ...dependency({ id, ...fields }), manifest: manifest({ id, ...fields }) }) as PackSnapshot;
-
   const surfacing = (id: string, owner: string) => ({
     types: { entities: { Memo: 'Memo' }, relKinds: {} },
     defs: facade(),
