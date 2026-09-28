@@ -4,7 +4,7 @@ import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
-import { ABSENT, BUILD_UNITS, buildScriptFor, changedInputs, CHECKOUT_MARKER, covers, declaredPaths, fingerprintInputs, fingerprintUnit, fingerprintWithDigests, freshnessSweep, inputFiles, repoRelative, NOT_A_BUILD_INPUT, REPO_ROOT, staleMessage, stampRecord, STAMP_VERSION, stampedBuild, stampedRun, stampedRunAll, stampFile, unitStaleReason, withBuildLock, type BuildIntent, type BuildUnit } from '@abuddy/host/build/packages-built';
+import { ABSENT, ALLOW_UNBUILT, BUILD_UNITS, buildScriptFor, changedInputs, CHECKOUT_MARKER, covers, declaredPaths, fingerprintInputs, fingerprintUnit, fingerprintWithDigests, freshnessSweep, inputFiles, repoRelative, NOT_A_BUILD_INPUT, REPO_ROOT, staleMessage, stampRecord, STAMP_VERSION, stampedBuild, stampedRun, stampedRunAll, stampFile, unbuiltRefusal, unitStaleReason, withBuildLock, type BuildIntent, type BuildUnit } from '@abuddy/host/build/packages-built';
 
 /**
  * The freshness rule behind `npm test -w @abuddy/cli`'s pretest (@abuddy/host/build/packages-built):
@@ -144,6 +144,28 @@ describe('buildScriptFor', () => {
   it('refuses a name no manifest declares', () => {
     const root = treeWith({ name: '@x/thing', scripts: { 'build:package': 'tsx ../../scripts/build-package.ts .' } });
     expect(() => buildScriptFor('@x/other', root)).toThrow(/no packages\/\* declares the name @x\/other/);
+  });
+});
+
+describe('refusing an unbuilt tree', () => {
+  /**
+   * Gated on `CI` this never fired, because this repo's CI is off by design — and thirteen spec files sit
+   * behind the `false` it used to return, nine of them all of `@app/publish-checks`. Put `process.env.CI`
+   * back in place of the escape and the first case below passes on an unbuilt tree, which is the bug.
+   */
+  it('refuses, naming the build command and the way to run anyway', () => {
+    const refusal = unbuiltRefusal(false, 'npm run packages:build', {});
+
+    expect(refusal).toContain('npm run packages:build');
+    expect(refusal).toContain(ALLOW_UNBUILT);
+  });
+
+  it('lets a caller through when the escape is set, since it asked for a run that checks nothing', () => {
+    expect(unbuiltRefusal(false, 'npm run packages:build', { [ALLOW_UNBUILT]: '1' })).toBeNull();
+  });
+
+  it('says nothing when the packages are built', () => {
+    expect(unbuiltRefusal(true, 'npm run packages:build', {})).toBeNull();
   });
 });
 

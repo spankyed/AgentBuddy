@@ -5,11 +5,12 @@ import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { afterAll, describe, expect, it } from 'vitest';
+import { ALLOW_UNBUILT } from '@abuddy/host/build/packages-built';
 const REPO_ROOT = path.resolve(__dirname, '..', '..', '..', '..');
 
 const DEFAULT_SETUP_DIST = path.join(REPO_ROOT, 'packages', 'default-setup', 'dist');
 const built = fs.existsSync(path.join(DEFAULT_SETUP_DIST, 'runtime', 'index.cjs')) && fs.existsSync(path.join(DEFAULT_SETUP_DIST, 'snapshot.json'));
-if (!built && process.env.CI) throw new Error('default-setup must be built (abuddy build and dev-build.mjs) for the dependency runtime spec');
+if (!built && process.env[ALLOW_UNBUILT] !== '1') throw new Error('default-setup must be built (abuddy build and dev-build.mjs) for the dependency runtime spec');
 
 const dirs: string[] = [];
 afterAll(() => {

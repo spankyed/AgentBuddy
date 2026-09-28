@@ -50,8 +50,9 @@ export const CONSUMER_MATRIX = (Object.keys(TSC_VERSIONS) as TscVersion[])
   .flatMap((tsc) => (['node16', 'bundler'] as const).map((moduleResolution) => ({ tsc, moduleResolution })));
 
 /**
- * Whether the built packages are there, so a spec reading them can skip without one; it refuses outright
- * when what is there is stale. The rule and its reasoning live in `packagesBuiltOrRefuse`, which
+ * Whether the built packages are there. Absent them this refuses, so a suite cannot report green having
+ * checked nothing, and `ABUDDY_ALLOW_UNBUILT=1` is the deliberate way to get `false` and skip. It refuses
+ * outright when what is there is stale. The rule and its reasoning live in `packagesBuiltOrRefuse`, which
  * `@app/repo-checks` calls too — one rule with two callers, rather than a copy in each suite that reads
  * build output.
  */

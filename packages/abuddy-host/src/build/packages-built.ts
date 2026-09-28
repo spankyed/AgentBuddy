@@ -626,6 +626,24 @@ export function waitForPackageBuild({ timeoutMs = LOCK_WAIT_MS, pollMs = LOCK_PO
  * `buildCommand` is the caller's own way of getting them built, because a message naming another package's
  * command sends the reader somewhere they have no reason to be.
  */
+/**
+ * Run the specs that read the built packages against an unbuilt tree anyway, knowing they will skip.
+ *
+ * The refusal above is not gated on `CI`, which is the obvious place for it and the wrong one here: this
+ * repo's CI is off by design, so a CI-gated refusal never fires, and thirteen spec files — nine of them all
+ * of `@app/publish-checks` — reported green having checked nothing. Every gated path (`test:unit`, `chain`,
+ * a package's `pretest`) runs `packages:ensure` first, so refusing costs those nothing; what it changes is a
+ * bare run against an unbuilt tree, which now says so.
+ */
+export const ALLOW_UNBUILT = 'ABUDDY_ALLOW_UNBUILT';
+
+/** Why a caller may not proceed on an unbuilt tree, or `null` when it may */
+export const unbuiltRefusal = (built: boolean, buildCommand: string, env: NodeJS.ProcessEnv = process.env): string | null =>
+  built || env[ALLOW_UNBUILT] === '1'
+    ? null
+    : `Specs that read the built packages need them built. Run: ${buildCommand}\n`
+      + `To run them anyway, knowing they will check nothing: ${ALLOW_UNBUILT}=1`;
+
 export function packagesBuiltOrRefuse(buildCommand: string): boolean {
   // Another process may be building right now, and a build removes each output and stamp before rewriting
   // it: both checks below would then read a half-built tree and refuse — which is what made a suite
@@ -633,9 +651,8 @@ export function packagesBuiltOrRefuse(buildCommand: string): boolean {
   // lets two suites share one checkout.
   waitForPackageBuild();
   const built = Object.values(BUILD_UNITS).every((unit) => unit.outputs.every((output) => fs.existsSync(output)));
-  if (!built && process.env.CI) {
-    throw new Error(`Specs that read the built packages need them built in CI. Run: ${buildCommand}`);
-  }
+  const refusal = unbuiltRefusal(built, buildCommand);
+  if (refusal !== null) throw new Error(refusal);
   const stale = built ? stalePackageUnits() : [];
   if (stale.length > 0) {
     throw new Error(`The published packages are out of date:\n${staleMessage(stale)}\nRun: ${buildCommand}`);
