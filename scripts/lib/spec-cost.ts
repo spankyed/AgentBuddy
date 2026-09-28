@@ -277,3 +277,165 @@ export const outgrown = (costs: Record<string, number>, files: readonly string[]
 /** Recorded specs that no longer exist */
 export const stale = (record: SpecCost, files: readonly string[]): string[] =>
   [...Object.keys(record.costs), ...record.skipped].filter((file) => !files.includes(file)).sort();
+
+/**
+ * The command's arguments, checked against the suites that exist.
+ *
+ * Here rather than at module scope in `scripts/spec-cost.ts`, because that file runs its command on import:
+ * parsing written there can only be exercised by running the command, which is why the failure this guards
+ * against is an argument accepted and then not used. The suites arrive as data, so a case can drop one from
+ * a copy and watch the answer flip.
+ *
+ * **It refuses a contradiction rather than picking a winner.** `--suite` with a path in another suite, and
+ * `--all` with a path, each name two different bodies of work; honouring either silently means reporting
+ * that the other was done. An error costs one run and a wrong winner costs a record nobody knows is stale.
+ */
+export type SpecCostMode = 'check' | 'list' | 'update';
+
+export interface SpecCostArgs {
+  readonly mode: SpecCostMode;
+  /** The one suite to act on, or undefined for all of them */
+  readonly only: string | undefined;
+  /** Repo-relative spec paths, which name both the suite they belong to and the half that measures them */
+  readonly named: readonly string[];
+  readonly force: boolean;
+  readonly all: boolean;
+  readonly dry: boolean;
+}
+
+export function parseArgs(argv: readonly string[], suiteDirs: readonly string[]): SpecCostArgs {
+  const has = (name: string): boolean => argv.includes(`--${name}`);
+  const suites = `They are:\n  ${suiteDirs.join('\n  ')}`;
+
+  // Read by index, not by value: the value is skipped from `named` below by its position, so a positional
+  // argument that happens to read like a suite name is still a path rather than silently the flag's value
+  const at = argv.indexOf('--suite');
+  let only: string | undefined;
+  if (at !== -1) {
+    const value = argv[at + 1];
+    // A trailing `--suite` reads as undefined, which would skip the check below and mean every suite —
+    // the expensive direction, since `--all --suite` then measures all of them
+    if (value === undefined || value.startsWith('--')) throw new Error(`\`--suite\` needs a suite after it. ${suites}`);
+    if (!suiteDirs.includes(value)) throw new Error(`No suite "${value}". ${suites}`);
+    only = value;
+  }
+
+  const named = argv.filter((arg, index) => !arg.startsWith('--') && !(at !== -1 && index === at + 1));
+  const unknown = named.filter((file) => !suiteDirs.some((dir) => file.startsWith(`packages/${dir}/`)));
+  if (unknown.length > 0) {
+    throw new Error(`These are in no unit suite, so nothing measures them:\n  ${unknown.join('\n  ')}\n`
+      + 'Name a spec by its repo-relative path, as `packages/<suite>/tests/<file>.spec.ts`.');
+  }
+
+  const all = has('all');
+  if (all && named.length > 0) {
+    throw new Error(`--all measures every spec and naming ${named.join(', ')} asks for one; they contradict. `
+      + 'Drop --all to measure that spec\'s half, or drop the path to re-measure everything.');
+  }
+  if (only !== undefined) {
+    const outside = named.filter((file) => !file.startsWith(`packages/${only}/`));
+    if (outside.length > 0) {
+      throw new Error(`--suite ${only} and these paths name different suites, so nothing would be measured:\n`
+        + `  ${outside.join('\n  ')}\n`
+        + `Drop --suite, or name paths inside packages/${only}/.`);
+    }
+  }
+
+  return { mode: has('list') ? 'list' : has('update') ? 'update' : 'check', only, named, force: has('force'), all, dry: has('dry') };
+}
+
+/** What one suite needs doing, worked out from the record before anything runs */
+export interface SpecCostPlan {
+  /** The configs to measure. Empty means nothing needs measuring. */
+  readonly configs: readonly string[];
+  /** Recorded specs that no longer exist, which need no measurement to drop */
+  readonly prune: readonly string[];
+  readonly reason: string;
+}
+
+/**
+ * The least that makes a suite's record current.
+ *
+ * Read from the same three questions the check asks, so the command and the check cannot disagree about
+ * what is wrong. A misplaced spec is deliberately not among them: its fix is renaming the file into the
+ * other half, which no update can do for you.
+ */
+export function planFor(repoRoot: string, dir: string, named: readonly string[], all: boolean): SpecCostPlan {
+  const packageDir = path.join(repoRoot, 'packages', dir);
+  const files = specFiles(packageDir);
+  const previous = readSpecCost(repoRoot, dir);
+  const prune = previous === undefined ? [] : stale(previous, files);
+
+  // A path is otherwise only checked for its `packages/<suite>/` prefix, so a typo would map to a half by
+  // its extension and measure that whole config — recording nothing for the file named, and reporting
+  // "none moved", which reads as success
+  const missing = named.filter((file) => !files.includes(file));
+  if (missing.length > 0) {
+    throw new Error(`These are not specs in ${dir}:\n  ${missing.map((file) => `packages/${dir}/${file}`).join('\n  ')}\n`
+      + 'Nothing would measure them, so this would run a config and record nothing.');
+  }
+
+  if (all) return { configs: configsFor(packageDir), prune, reason: 'every spec, asked for' };
+  if (named.length > 0) return { configs: configsOf(packageDir, named), prune, reason: `${named.length} named` };
+
+  const needs = previous === undefined ? files : unrecorded(previous, files);
+  if (needs.length > 0) return { configs: configsOf(packageDir, needs), prune, reason: `${needs.length} unmeasured` };
+  return { configs: [], prune, reason: prune.length > 0 ? `${prune.length} gone` : 'current' };
+}
+
+export interface Settled extends Changes { readonly record: SpecCost }
+
+/**
+ * The record a run produces from the one it is replacing.
+ *
+ * Separate from the measuring so that it can be watched: what a run does to a record is the half with the
+ * decisions in it, and it used to sit inline behind a `measure()` that spawns vitest, where no case could
+ * reach it.
+ *
+ * `measuredAt` moves when the content does, **compared against the previous record rather than derived from
+ * a list of the reasons it might have changed** — a record nothing moved is byte-identical, so an update that
+ * found nothing leaves no diff to read past. Enumerating the reasons is what to undo this back into: costs
+ * moving, specs arriving and rows pruned are three, a spec that stops running is a fourth, and a list of
+ * them is wrong every time someone adds a fifth without noticing there was a list.
+ */
+export function settle(input: {
+  readonly previous: SpecCost | undefined;
+  readonly costs: Record<string, number>;
+  readonly skipped: readonly string[];
+  /** The specs the chosen configs run, which is what makes a recorded skip this run's to drop */
+  readonly measuredFiles: readonly string[];
+  readonly prune: readonly string[];
+}): Settled {
+  const { previous, costs, measuredFiles, prune } = input;
+  const kept = Object.entries(previous?.costs ?? {}).filter(([spec]) => !prune.includes(spec));
+
+  // A measurement replaces the recorded one only when it says something the record does not already say.
+  // Without this the file is rewritten on every run by jitter alone, and a real movement is one line among
+  // a hundred that mean nothing. `moved` carries the measured reasoning.
+  const settled: Record<string, number> = Object.fromEntries(kept);
+  for (const [spec, ms] of Object.entries(costs)) {
+    const before = previous?.costs[spec];
+    settled[spec] = moved(spec, before, ms) ? ms : before!;
+  }
+
+  // Against `costs`, which is what this run measured — not against the settled values, which still hold
+  // everything the record had. A spec that had a cost and is now wholly skipped is the case that separates
+  // them: it has no measurement, so it must lose the cost it had rather than keep it beside its own skip.
+  const nowSkipped = input.skipped.filter((file) => costs[file] === undefined);
+  for (const file of nowSkipped) delete settled[file];
+
+  const keptSkipped = (previous?.skipped ?? []).filter((file) => !prune.includes(file) && !measuredFiles.includes(file));
+  const skipped = [...new Set([...keptSkipped, ...nowSkipped])].sort();
+  const sorted = Object.fromEntries(Object.entries(settled).sort(([a], [b]) => a.localeCompare(b)));
+
+  const same = previous !== undefined
+    && Object.keys(previous.costs).length === Object.keys(sorted).length
+    && Object.entries(sorted).every(([spec, ms]) => previous.costs[spec] === ms)
+    && previous.skipped.length === skipped.length
+    && previous.skipped.every((file, index) => skipped[index] === file);
+
+  return {
+    ...changesIn(previous, settled, Object.keys(costs)),
+    record: { measuredAt: same ? previous.measuredAt : new Date().toISOString(), costs: sorted, skipped },
+  };
+}

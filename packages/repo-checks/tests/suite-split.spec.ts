@@ -13,7 +13,8 @@ import * as path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { REPO_ROOT } from '@abuddy/host/build/packages-built';
 import {
-  DRIFTED, FAST_BELOW_MS, INTEGRATION_ABOVE_MS, changesIn, contended, drift, halfOfPath, hasSplit, misplaced, moved, outgrown, readSpecCost, specFiles, stale, unrecorded,
+  DRIFTED, FAST_BELOW_MS, INTEGRATION_ABOVE_MS, changesIn, contended, drift, halfOfPath, hasSplit, misplaced,
+  moved, outgrown, parseArgs, planFor, readSpecCost, settle, specFiles, stale, unrecorded,
 } from '../../../scripts/lib/spec-cost.ts';
 import { UNIT_SUITES } from '../../../scripts/lib/unit-suites.ts';
 
@@ -208,5 +209,189 @@ describe('a run that moved as a body has drifted, however little each spec moved
 
   it('ignores specs the record has never seen, which have nothing to have drifted from', () => {
     expect(drift(record(twenty), { ...twenty, 'tests/new.spec.ts': 9_000 })).toBe(0);
+  });
+});
+
+/**
+ * What the command accepts, and what it refuses.
+ *
+ * Every case here was a defect: an argument accepted and then not used, which the command reported as having
+ * done the job. They live in `scripts/lib/spec-cost.ts` rather than the command because `scripts/spec-cost.ts`
+ * runs on import, so the only way to test the parsing inline in it was to run it — and none of these was
+ * caught by anything for that reason.
+ */
+describe('the command refuses arguments it cannot honour', () => {
+  const DIRS = ['repo-checks', 'abuddy-cli', 'abuddy-sdk'];
+  const spec = (dir: string, file = 'tests/a.spec.ts'): string => `packages/${dir}/${file}`;
+
+  it('takes a suite and a path inside it', () => {
+    const args = parseArgs(['--update', '--suite', 'repo-checks', spec('repo-checks')], DIRS);
+    expect(args).toMatchObject({ mode: 'update', only: 'repo-checks', named: [spec('repo-checks')], all: false });
+  });
+
+  // It used to AND the two filters, so the plan list came out empty and `update` printed "every record is
+  // current" — a claim about suites it had not looked at — and exited 0
+  it('refuses a suite and a path that name different suites', () => {
+    expect(() => parseArgs(['--update', '--suite', 'repo-checks', spec('abuddy-cli')], DIRS))
+      .toThrow(/--suite repo-checks and these paths name different suites/);
+  });
+
+  // `args[i + 1]` was undefined, which skipped the validation below it and meant every suite: with `--all`
+  // that is the whole 315s rather than the one suite asked for
+  it('refuses a --suite with nothing after it', () => {
+    expect(() => parseArgs(['--update', '--suite'], DIRS)).toThrow(/`--suite` needs a suite after it/);
+    expect(() => parseArgs(['--update', '--suite', '--all'], DIRS)).toThrow(/`--suite` needs a suite after it/);
+  });
+
+  it('refuses --all together with a named spec, which ask for different work', () => {
+    expect(() => parseArgs(['--update', '--all', spec('repo-checks')], DIRS)).toThrow(/they contradict/);
+  });
+
+  it('names the suites it knows when given one it does not', () => {
+    expect(() => parseArgs(['--update', '--suite', 'nope'], DIRS)).toThrow(/No suite "nope"[\s\S]*repo-checks/);
+  });
+
+  // The suites are a parameter, so this can drop one and watch the answer flip — the check that the refusal
+  // reads the list at all rather than a pattern that happens to match
+  it('reads the suite list it is given, not a shape it assumes', () => {
+    expect(parseArgs([spec('abuddy-cli')], DIRS).named).toEqual([spec('abuddy-cli')]);
+    expect(() => parseArgs([spec('abuddy-cli')], DIRS.filter((dir) => dir !== 'abuddy-cli')))
+      .toThrow(/in no unit suite/);
+  });
+
+  it('reads a positional argument as a path even when it reads like a suite name', () => {
+    expect(() => parseArgs(['--suite', 'repo-checks', 'repo-checks'], DIRS)).toThrow(/in no unit suite/);
+  });
+
+  it('defaults to checking, and takes its flags', () => {
+    expect(parseArgs([], DIRS)).toMatchObject({ mode: 'check', only: undefined, named: [], force: false, all: false, dry: false });
+    expect(parseArgs(['--list'], DIRS).mode).toBe('list');
+    expect(parseArgs(['--update', '--dry', '--force', '--all'], DIRS))
+      .toMatchObject({ mode: 'update', dry: true, force: true, all: true });
+  });
+});
+
+describe('what a suite needs measuring is read from its record before anything runs', () => {
+  const HERE = 'repo-checks';
+  const fast = specFiles(path.join(REPO_ROOT, 'packages', HERE)).find((file) => halfOfPath(file) === 'fast')!;
+  const slow = specFiles(path.join(REPO_ROOT, 'packages', HERE)).find((file) => halfOfPath(file) === 'integration')!;
+
+  it('runs only the config that measures the spec you named', () => {
+    expect(planFor(REPO_ROOT, HERE, [fast], false).configs).toEqual(['vitest.config.ts']);
+    expect(planFor(REPO_ROOT, HERE, [slow], false).configs).toEqual(['vitest.integration.config.ts']);
+  });
+
+  it('runs both halves for --all', () => {
+    expect(planFor(REPO_ROOT, HERE, [], true))
+      .toMatchObject({ configs: ['vitest.config.ts', 'vitest.integration.config.ts'], reason: 'every spec, asked for' });
+  });
+
+  // A named path was checked against `packages/<suite>/` and no further, so a typo was mapped to a half by
+  // its extension and measured that whole config, recording nothing for it and reporting "none moved"
+  it('refuses a named spec that does not exist, rather than measuring its half for nothing', () => {
+    expect(() => planFor(REPO_ROOT, HERE, ['tests/does-not-exist.spec.ts'], false))
+      .toThrow(/not specs in repo-checks[\s\S]*does-not-exist/);
+  });
+
+  it('measures nothing when the record is current', () => {
+    expect(planFor(REPO_ROOT, HERE, [], false)).toMatchObject({ configs: [], prune: [], reason: 'current' });
+  });
+});
+
+describe('what a run does to the record it replaces', () => {
+  const FAST = 'tests/a.spec.ts';
+  const previous = (costs: Record<string, number>, skipped: string[] = []) =>
+    ({ measuredAt: 'then', costs, skipped });
+
+  // The defect: the newly-skipped filter read the *settled* costs, which start as everything the record
+  // already held — so a spec that had a cost and stopped running was filtered out of `skipped` and kept the
+  // cost it no longer has, and the record claimed a duration for a file that ran nothing
+  it('drops the cost of a spec that has stopped running, and records it as skipped', () => {
+    const { record } = settle({
+      previous: previous({ [FAST]: 1_200, 'tests/b.spec.ts': 800 }),
+      costs: { 'tests/b.spec.ts': 810 },
+      skipped: [FAST],
+      measuredFiles: [FAST, 'tests/b.spec.ts'],
+      prune: [],
+    });
+    expect(record.skipped, 'it ran nothing, so it is skipped').toEqual([FAST]);
+    expect(record.costs[FAST], 'and it cannot also carry the cost it used to have').toBeUndefined();
+    expect(record.measuredAt, 'the record changed, so the run is what dated it').not.toBe('then');
+  });
+
+  // `measuredAt` used to be decided by a list of the reasons a record might have changed — a cost moving, a
+  // spec arriving, a row pruned. A spec that stopped running was a fourth, so the drop above was computed
+  // and then thrown away by a write that kept the previous record
+  it('keeps a record nothing moved byte-identical, including its date', () => {
+    const before = previous({ [FAST]: 1_000 });
+    const { record, added, remeasured } = settle({
+      previous: before, costs: { [FAST]: 1_050 }, skipped: [], measuredFiles: [FAST], prune: [],
+    });
+    expect(added).toHaveLength(0);
+    expect(remeasured, 'inside the tolerance, so nothing was recorded').toHaveLength(0);
+    expect(record).toEqual(before);
+  });
+
+  // The skipped list is content too: a spec can arrive with every test in it skipped, which moves nothing in
+  // `costs` and still changes what the record says. Enumerating the reasons a record might have changed
+  // missed this one as well, so the comparison is against the record rather than a list of causes.
+  it('dates a run where only the skipped list moved', () => {
+    const before = previous({ [FAST]: 100 });
+    const { record, added, remeasured } = settle({
+      previous: before,
+      costs: { [FAST]: 100 },
+      skipped: ['tests/needs-a-binary.spec.ts'],
+      measuredFiles: [FAST, 'tests/needs-a-binary.spec.ts'],
+      prune: [],
+    });
+    expect(added, 'nothing was measured for the first time').toHaveLength(0);
+    expect(remeasured, 'and no cost moved').toHaveLength(0);
+    expect(record.costs, 'so the costs are untouched').toEqual(before.costs);
+    expect(record.skipped).toEqual(['tests/needs-a-binary.spec.ts']);
+    expect(record.measuredAt, 'but the record changed, so it is dated').not.toBe('then');
+  });
+
+  it('records a measurement that says something new, and dates it', () => {
+    const { record, remeasured } = settle({
+      previous: previous({ [FAST]: 1_000 }), costs: { [FAST]: 4_000 }, skipped: [], measuredFiles: [FAST], prune: [],
+    });
+    expect(remeasured).toEqual([FAST]);
+    expect(record.costs[FAST]).toBe(4_000);
+    expect(record.measuredAt).not.toBe('then');
+  });
+
+  it('drops a pruned spec from both halves of the record', () => {
+    const { record } = settle({
+      previous: previous({ [FAST]: 100, 'tests/gone.spec.ts': 200 }, ['tests/also-gone.spec.ts']),
+      costs: { [FAST]: 100 },
+      skipped: [],
+      measuredFiles: [FAST],
+      prune: ['tests/gone.spec.ts', 'tests/also-gone.spec.ts'],
+    });
+    expect(Object.keys(record.costs)).toEqual([FAST]);
+    expect(record.skipped).toEqual([]);
+    expect(record.measuredAt, 'a prune changed the record').not.toBe('then');
+  });
+
+  it('keeps a skip recorded for a half this run did not measure', () => {
+    const { record } = settle({
+      previous: previous({ [FAST]: 100 }, ['tests/other.integration.spec.ts']),
+      costs: { [FAST]: 100 },
+      skipped: [],
+      measuredFiles: [FAST],
+      prune: [],
+    });
+    expect(record.skipped, 'the integration config never ran, so its skip stands').toEqual(['tests/other.integration.spec.ts']);
+  });
+
+  it('sorts costs so the file a run writes does not depend on the order vitest reported', () => {
+    const { record } = settle({
+      previous: undefined,
+      costs: { 'tests/z.spec.ts': 1, 'tests/a.spec.ts': 2 },
+      skipped: [],
+      measuredFiles: ['tests/a.spec.ts', 'tests/z.spec.ts'],
+      prune: [],
+    });
+    expect(Object.keys(record.costs)).toEqual(['tests/a.spec.ts', 'tests/z.spec.ts']);
   });
 });

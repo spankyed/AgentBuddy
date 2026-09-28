@@ -32,8 +32,9 @@ import * as path from 'node:path';
 import { REPO_ROOT } from '@abuddy/host/build/packages-built';
 import { UNIT_SUITES, type UnitSuite } from './lib/unit-suites.ts';
 import {
-  FAST_BELOW_MS, INTEGRATION_ABOVE_MS, PLACEMENT_GUARD, configsFor, halfOfPath, hasSplit, misplaced,
-  changesIn, CONFIG_BY_HALF, configsOf, contended, drift, DRIFTED, moved, readSpecCost, specCostFile, specFiles, stale, unrecorded,
+  FAST_BELOW_MS, INTEGRATION_ABOVE_MS, PLACEMENT_GUARD, halfOfPath, hasSplit, misplaced,
+  CONFIG_BY_HALF, contended, drift, DRIFTED, parseArgs, planFor, readSpecCost, settle, specCostFile, specFiles,
+  stale, unrecorded, type SpecCostPlan,
 } from './lib/spec-cost.ts';
 
 // eslint-disable-next-line no-control-regex -- vitest colours its output and this reads it back
@@ -87,36 +88,8 @@ function measure(suite: UnitSuite, config: string): Measured {
   return { costs, skipped };
 }
 
-/** What one suite needs doing, worked out from the record before anything runs */
-interface SuitePlan {
-  readonly suite: UnitSuite;
-  /** The configs to measure. Empty means nothing needs measuring. */
-  readonly configs: readonly string[];
-  /** Recorded specs that no longer exist, which need no measurement to drop */
-  readonly prune: readonly string[];
-  readonly reason: string;
-}
-
-/**
- * The least that makes a suite's record current.
- *
- * Read from the same three questions the check asks, so the command and the check cannot disagree about
- * what is wrong. A misplaced spec is deliberately not among them: its fix is renaming the file into the
- * other half, which no update can do for you.
- */
-function planFor(suite: UnitSuite, named: readonly string[], all: boolean): SuitePlan {
-  const dir = packageDir(suite);
-  const files = specFiles(dir);
-  const previous = readSpecCost(REPO_ROOT, suite.dir);
-  const prune = previous === undefined ? [] : stale(previous, files);
-
-  if (all) return { suite, configs: configsFor(dir), prune, reason: 'every spec, asked for' };
-  if (named.length > 0) return { suite, configs: configsOf(dir, named), prune, reason: `${named.length} named` };
-
-  const needs = previous === undefined ? files : unrecorded(previous, files);
-  if (needs.length > 0) return { suite, configs: configsOf(dir, needs), prune, reason: `${needs.length} unmeasured` };
-  return { suite, configs: [], prune, reason: prune.length > 0 ? `${prune.length} gone` : 'current' };
-}
+/** A suite's plan, with the suite it is for. `planFor` decides the plan; this carries what prints it. */
+interface SuitePlan extends SpecCostPlan { readonly suite: UnitSuite }
 
 function describe(plan: SuitePlan): string {
   const doing = [
@@ -127,6 +100,11 @@ function describe(plan: SuitePlan): string {
 }
 
 function update(plans: readonly SuitePlan[], dry: boolean): void {
+  // "Every record is current" is a claim about the suites this looked at, so it must have looked at one.
+  // `list` refuses an empty population for the same reason: a check that reports nothing may have looked
+  // at nothing, and a green run cannot tell you which.
+  if (plans.length === 0) throw new Error('No suite was selected, so there is nothing to report on.');
+
   const work = plans.filter((plan) => plan.configs.length > 0 || plan.prune.length > 0);
   if (work.length === 0) {
     console.log('✅ every record is current — nothing to measure. `--all` re-measures anyway.');
@@ -151,7 +129,6 @@ function update(plans: readonly SuitePlan[], dry: boolean): void {
     const dir = packageDir(suite);
     const files = specFiles(dir);
     const previous = readSpecCost(REPO_ROOT, suite.dir);
-    const kept = Object.fromEntries(Object.entries(previous?.costs ?? {}).filter(([spec]) => !plan.prune.includes(spec)));
 
     // Only the specs the chosen configs actually run. Every guard below is scoped to these: over the whole
     // suite they would each fire on a file this run never claimed to measure.
@@ -159,15 +136,9 @@ function update(plans: readonly SuitePlan[], dry: boolean): void {
     const runs = plan.configs.map((config) => measure(suite, config));
     const costs = Object.assign({}, ...runs.map((run) => run.costs)) as Record<string, number>;
 
-    // A measurement replaces the recorded one only when it says something the record does not already say.
-    // Without this the file is rewritten on every run by jitter alone, and a real movement is one line among
-    // a hundred that mean nothing. `moved` carries the measured reasoning.
-    const settled: Record<string, number> = { ...kept };
-    for (const [spec, ms] of Object.entries(costs)) {
-      const before = previous?.costs[spec];
-      settled[spec] = moved(spec, before, ms) ? ms : before!;
-    }
-    const { added, remeasured } = changesIn(previous, settled, Object.keys(costs));
+    const { record, added, remeasured } = settle({
+      previous, costs, skipped: [...new Set(runs.flatMap((run) => run.skipped))], measuredFiles, prune: plan.prune,
+    });
 
     // What a sample can check: not equality, which it never has, but reproducibility. An idle run moves a
     // handful; a contended one moves most of what it could move and records the machine instead of the specs.
@@ -184,26 +155,15 @@ function update(plans: readonly SuitePlan[], dry: boolean): void {
     // the only place it shows is the total. Reported always, since a number nobody sees is not a signal.
     const drifted = drift(previous, costs);
 
-    const measuredSkipped = [...new Set(runs.flatMap((run) => run.skipped))].filter((file) => settled[file] === undefined);
-    const keptSkipped = (previous?.skipped ?? []).filter((file) => !plan.prune.includes(file) && !measuredFiles.includes(file));
-    const skipped = [...new Set([...keptSkipped, ...measuredSkipped])].sort();
-
-    const record = { measuredAt: new Date().toISOString(), costs: Object.fromEntries(Object.entries(settled).sort(([a], [b]) => a.localeCompare(b))), skipped };
-
     const missing = unrecorded(record, measuredFiles);
     if (missing.length > 0) throw new Error(`These ${suite.workspace} specs ran nothing and were not reported as skipped:\n  ${missing.join('\n  ')}`);
 
     const file = path.join(REPO_ROOT, specCostFile(suite.dir));
     fs.mkdirSync(path.dirname(file), { recursive: true });
-    // `measuredAt` moves with the costs, not with the run: a record nothing moved is byte-identical, so an
-    // update that found nothing leaves no diff to read past. A prune moves it, having changed the record.
-    const settledRecord = added.length === 0 && remeasured.length === 0 && plan.prune.length === 0 && previous !== undefined
-      ? { ...previous, skipped }
-      : record;
-    const next = `${JSON.stringify(settledRecord, null, 2)}\n`;
+    const next = `${JSON.stringify(record, null, 2)}\n`;
     if (!fs.existsSync(file) || fs.readFileSync(file, 'utf-8') !== next) fs.writeFileSync(file, next);
 
-    const moves = misplaced(settled, files);
+    const moves = misplaced(record.costs, files);
     const asBody = Object.keys(costs).length > 0 && previous !== undefined
       ? `, body ${drifted >= 0 ? '+' : ''}${(drifted * 100).toFixed(0)}%` : '';
     const did = [
@@ -212,7 +172,7 @@ function update(plans: readonly SuitePlan[], dry: boolean): void {
           .filter(Boolean).join(', ') || 'none moved',
       plan.prune.length > 0 ? `${plan.prune.length} gone` : '',
     ].filter(Boolean).join(', ');
-    console.log(`${suite.workspace.padEnd(20)} ${String(files.length).padStart(3)} specs${skipped.length ? `, ${skipped.length} skipped` : ''}`
+    console.log(`${suite.workspace.padEnd(20)} ${String(files.length).padStart(3)} specs${record.skipped.length ? `, ${record.skipped.length} skipped` : ''}`
       + `, ${did}${asBody} -> ${specCostFile(suite.dir)}${moves.length ? `  (${moves.length} in the wrong half)` : ''}`);
     if (Math.abs(drifted) > DRIFTED) {
       console.log(`  the suite moved ${(drifted * 100).toFixed(0)}% as a body, which is more than idle runs vary. `
@@ -301,32 +261,18 @@ function list(only: string | undefined): void {
   for (const line of near.sort()) console.log(line);
 }
 
-const args = process.argv.slice(2);
-const force = args.includes('--force');
-const all = args.includes('--all');
-const dry = args.includes('--dry');
+const { mode, only, named, force, all, dry } = parseArgs(process.argv.slice(2), UNIT_SUITES.map((suite) => suite.dir));
 
-const suiteFlag = args.indexOf('--suite');
-const only = suiteFlag === -1 ? undefined : args[suiteFlag + 1];
-if (only !== undefined && !UNIT_SUITES.some((suite) => suite.dir === only)) {
-  throw new Error(`No suite "${only}". They are:\n  ${UNIT_SUITES.map((suite) => suite.dir).join('\n  ')}`);
-}
-
-/** Repo-relative spec paths, which name both the suite they belong to and the half that measures them */
-const named = args.filter((arg) => !arg.startsWith('--') && arg !== only);
-const unknown = named.filter((file) => !UNIT_SUITES.some((suite) => file.startsWith(`packages/${suite.dir}/`)));
-if (unknown.length > 0) {
-  throw new Error(`These are in no unit suite, so nothing measures them:\n  ${unknown.join('\n  ')}\n`
-    + 'Name a spec by its repo-relative path, as `packages/<suite>/tests/<file>.spec.ts`.');
-}
-
-if (args.includes('--list')) list(only);
-else if (args.includes('--update')) {
+if (mode === 'list') list(only);
+else if (mode === 'update') {
   const plans = UNIT_SUITES
     .filter((suite) => only === undefined || suite.dir === only)
     .filter((suite) => named.length === 0 || named.some((file) => file.startsWith(`packages/${suite.dir}/`)))
-    .map((suite) => planFor(suite, named
-      .filter((file) => file.startsWith(`packages/${suite.dir}/`))
-      .map((file) => file.slice(`packages/${suite.dir}/`.length)), all));
+    .map((suite) => ({
+      suite,
+      ...planFor(REPO_ROOT, suite.dir, named
+        .filter((file) => file.startsWith(`packages/${suite.dir}/`))
+        .map((file) => file.slice(`packages/${suite.dir}/`.length)), all),
+    }));
   update(plans, dry);
 } else check(only);
