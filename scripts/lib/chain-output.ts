@@ -250,7 +250,8 @@ export function staleLines(found: {
     // It names the file, because the name is the whole of what it has to say — a count answers nothing and
     // leaves the reader with the question the note exists to pre-empt, which is the chase it was written after.
     const rest = identical.length - 1;
-    rows.push(dim(`· ${identical[0]}${rest > 0 ? ` and ${rest} more` : ''} — rewritten identically, not a cause`));
+    // `touched` in its exact sense: the mtime moved and the bytes did not, which is what put this file here
+    rows.push(dim(`· ${identical[0]}${rest > 0 ? ` and ${rest} more` : ''} — touched during the run, not changed`));
   }
   return rows.map((row, index) => (index === 0 ? head : under) + row);
 }

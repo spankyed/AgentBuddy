@@ -346,7 +346,12 @@ async function main(): Promise<void> {
     (step) => staleReason(step, sweep),
   );
   if (uncacheable.length > 0) {
-    console.log(`\n${uncacheable.length} step${uncacheable.length === 1 ? '' : 's'} will run again: something wrote into their inputs`);
+    // What is known is that each of these stamped inputs it no longer matches; *why* is per file, on the
+    // lines below, and is not always a write — it may be an edit since the run, or a declared path gained.
+    // The consequence is stated as one rather than promised, since reverting the change takes it back.
+    const one = uncacheable.length === 1;
+    console.log(`\n${uncacheable.length} step${one ? '' : 's'} passed, then ${one ? 'its' : 'their'} inputs changed`
+      + ` — ${one ? 'it' : 'they'} will not be cached next run`);
     // Sized to the names in this report rather than to the widest in the table: the block stands on its own
     // under a blank line, so it owes the rows above it no column, and a report without the longest-named step
     // in it should not be indented as though it had one
