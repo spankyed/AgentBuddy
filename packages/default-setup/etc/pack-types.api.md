@@ -1592,6 +1592,8 @@ interface FlowsContext {
         errors: string[];
         filePath: string;
         flowCount: number;
+        /** Flows that could not be written as DSL, having no trigger to hang their steps from */
+        skipped: string[];
     };
     navHistory: NavHistory<string | null>;
 }
@@ -3583,6 +3585,7 @@ type OutgoingFlowsEvents = {
     type: 'DSL_EXPORTED';
     filePath: string;
     flowCount: number;
+    skipped: string[];
 } | {
     type: 'DSL_EXPORT_FAILED';
     errors: string[];
