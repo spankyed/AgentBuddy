@@ -1,7 +1,8 @@
 import type { StepDefinition } from '@abuddy/sdk/steps';
 import type { StepCompileResult, StepCompileContext, StepValidationError, StepValidationContext, StepDecompileContext } from '@abuddy/sdk/steps';
 import { EARS } from '@abuddy/sdk';
-import { expandRecord, collapseRecord } from '@abuddy/sdk/steps';
+import { expandRecord, collapseRecord, mapProblems } from '@abuddy/sdk/steps';
+import type { FieldMapping, MapEntry } from '@abuddy/sdk/steps';
 
 export function compile(
   node: Record<string, unknown>,
@@ -23,7 +24,7 @@ export function compile(
       actionFn: code ? node.actionFn : undefined,
       actionId,
       params: node.params,
-      fieldMappings: expandRecord(node.map as Record<string, string> | undefined),
+      fieldMappings: expandRecord(node.map as Record<string, MapEntry> | undefined),
       final: node.final,
     },
     // Code mode has no Action to be an instance of
@@ -60,10 +61,7 @@ export function validate(
       message: `Action "${s.action}" not found. Available: ${Array.from(ctx.actions).join(', ') || '(none)'}`,
     });
   }
-  if (s.map !== undefined && (typeof s.map !== 'object' || s.map === null || Array.isArray(s.map))) {
-    errors.push({ path: `${path}.map`, message: '"map" must be an object { target: source }' });
-  }
-  return errors;
+  return [...errors, ...mapProblems(s.map, `${path}.map`)];
 }
 
 export function getLabel(step: Record<string, unknown>, index: number): string {
@@ -84,7 +82,7 @@ export function decompile(node: Record<string, unknown>, ctx: StepDecompileConte
   if (node.label && (code || node.label !== actionLabel)) dsl.label = node.label;
   if (node.description) dsl.description = node.description;
   if (node.final) dsl.final = true;
-  const map = collapseRecord(node.fieldMappings as any);
+  const map = collapseRecord(node.fieldMappings as FieldMapping[] | undefined);
   if (map) dsl.map = map;
   if (node.params && Object.keys(node.params as any).length > 0) dsl.params = node.params;
   return dsl;

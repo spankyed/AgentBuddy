@@ -3,7 +3,8 @@
 import type { StepDefinition } from '@abuddy/sdk/steps';
 import type { StepCompileResult, StepCompileContext, StepValidationError, StepValidationContext, StepDecompileContext } from '@abuddy/sdk/steps';
 import { EARS } from '@abuddy/sdk';
-import { expandRecord, collapseRecord } from '@abuddy/sdk/steps';
+import { expandRecord, collapseRecord, mapProblems } from '@abuddy/sdk/steps';
+import type { FieldMapping, MapEntry } from '@abuddy/sdk/steps';
 import { isModelId } from '@abuddy/sdk/models';
 
 export function compile(
@@ -22,7 +23,7 @@ export function compile(
       label: (node.label as string) || (node.prompt as string),
       description: node.description,
       promptTemplateId: promptId,
-      fieldMappings: expandRecord(node.map as Record<string, string> | undefined),
+      fieldMappings: expandRecord(node.map as Record<string, MapEntry> | undefined),
       model: node.model,
       temperature: node.temperature,
       maxTokens: node.maxTokens,
@@ -52,10 +53,7 @@ export function validate(
   if (s.model !== undefined && (typeof s.model !== 'string' || !isModelId(s.model))) {
     errors.push({ path: `${path}.model`, message: `"model" must be a provider:model id (e.g. "anthropic:claude-opus-5"), got ${JSON.stringify(s.model)}` });
   }
-  if (s.map !== undefined && (typeof s.map !== 'object' || s.map === null || Array.isArray(s.map))) {
-    errors.push({ path: `${path}.map`, message: '"map" must be an object { target: source }' });
-  }
-  return errors;
+  return [...errors, ...mapProblems(s.map, `${path}.map`)];
 }
 
 export function getLabel(step: Record<string, unknown>, index: number): string {
@@ -71,7 +69,7 @@ export function decompile(node: Record<string, unknown>, ctx: StepDecompileConte
   if (node.label && node.label !== promptLabel) dsl.label = node.label;
   if (node.description) dsl.description = node.description;
   if (node.final) dsl.final = true;
-  const map = collapseRecord(node.fieldMappings as any);
+  const map = collapseRecord(node.fieldMappings as FieldMapping[] | undefined);
   if (map) dsl.map = map;
   if (node.model) dsl.model = node.model;
   if (node.temperature !== undefined) dsl.temperature = node.temperature;

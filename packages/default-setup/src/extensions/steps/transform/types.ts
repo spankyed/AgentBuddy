@@ -1,6 +1,6 @@
 import type { NodeBase } from '@abuddy/sdk';
 import type { DSLNodeBase } from '@abuddy/sdk/build';
-import type { FieldMapping } from '@abuddy/sdk/steps';
+import type { FieldMapping, MapEntry } from '@abuddy/sdk/steps';
 
 /** How a transform step's script return value becomes the step's result */
 export type TransformOutputType = 'json' | 'text' | 'custom';
@@ -15,7 +15,7 @@ export interface DSLTransformNode extends DSLNodeBase {
   /** `json` (default): the returned value, which must be JSON-serializable; `text`: `String(value)`; `custom`: the value as returned */
   outputType?: TransformOutputType;
   /** Fields of `params`, `{ target: source }` (see Mappings); a mapped `input` replaces the previous step's result */
-  map?: Record<string, string>;
+  map?: Record<string, MapEntry>;
 }
 
 export interface TransformNode extends NodeBase {

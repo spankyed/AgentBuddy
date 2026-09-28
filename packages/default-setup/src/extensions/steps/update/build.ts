@@ -1,6 +1,7 @@
 import type { StepDefinition, StepCompileResult, StepValidationError, StepValidationContext, StepCompileContext, StepDecompileContext } from '@abuddy/sdk/steps';
 import { EARS } from '@abuddy/sdk';
 import { expandRecord, collapseRecord } from '@abuddy/sdk/steps';
+import type { FieldMapping, MapEntry } from '@abuddy/sdk/steps';
 import { validateFields } from '../create/build.ts';
 
 function compile(node: Record<string, unknown>, nodeId: string, ts: number, _ctx: StepCompileContext): StepCompileResult {
@@ -14,7 +15,7 @@ function compile(node: Record<string, unknown>, nodeId: string, ts: number, _ctx
       description: node.description,
       target: node.target,
       params: node.params,
-      fieldMappings: expandRecord(node.map as Record<string, string> | undefined),
+      fieldMappings: expandRecord(node.map as Record<string, MapEntry> | undefined),
       onMissing: node.onMissing,
       entityTypeTarget: node.entity,
       final: node.final,
@@ -49,7 +50,7 @@ function decompile(node: Record<string, unknown>, _ctx: StepDecompileContext): R
   if (node.label) dsl.label = node.label;
   if (node.description) dsl.description = node.description;
   if (node.final) dsl.final = true;
-  const map = collapseRecord(node.fieldMappings as Array<Record<string, string>> | undefined);
+  const map = collapseRecord(node.fieldMappings as FieldMapping[] | undefined);
   if (map) dsl.map = map;
   if (node.params && Object.keys(node.params as object).length > 0) dsl.params = node.params;
   if (node.onMissing) dsl.onMissing = node.onMissing;

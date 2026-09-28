@@ -1,7 +1,7 @@
 import type { NodeBase } from '@abuddy/sdk';
 import type { DSLNodeBase } from '@abuddy/sdk/build';
 import type { EARS } from '@abuddy/sdk';
-import type { FieldMapping } from '@abuddy/sdk/steps';
+import type { FieldMapping, MapEntry } from '@abuddy/sdk/steps';
 
 export type UpdateOnMissing = 'fail' | 'ignore' | 'create';
 
@@ -10,7 +10,7 @@ export interface DSLUpdateNode extends DSLNodeBase {
   /** The entity's id: a `$.` path resolved when the step runs (`$.lastStep.result.id`), or a literal id */
   target: string;
   /** Fields to write: `{ field: source }`, resolved as mappings when the step runs */
-  map?: Record<string, string>;
+  map?: Record<string, MapEntry>;
   /** Literal fields to write; mapped fields win */
   params?: Record<string, unknown>;
   /** When no entity has the target id: `fail` (default) errors, `ignore` completes, `create` creates one of `entity` */

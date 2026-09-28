@@ -1,7 +1,7 @@
 import type { NodeBase } from '@abuddy/sdk';
 import type { DSLNodeBase } from '@abuddy/sdk/build';
 import type { ModelId } from '@abuddy/sdk/models';
-import type { FieldMapping } from '@abuddy/sdk/steps';
+import type { FieldMapping, MapEntry } from '@abuddy/sdk/steps';
 
 /**
  * **Provisional — the LLM step's authoring surface is still being designed.**
@@ -17,7 +17,7 @@ import type { FieldMapping } from '@abuddy/sdk/steps';
 export interface DSLLLMNode extends DSLNodeBase {
   type: 'llm';
   prompt: string;
-  map?: Record<string, string>;
+  map?: Record<string, MapEntry>;
   model?: ModelId;
   temperature?: number;
   maxTokens?: number;

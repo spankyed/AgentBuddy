@@ -1,6 +1,7 @@
 import type { StepDefinition, StepCompileResult, StepValidationError, StepValidationContext, StepCompileContext, StepDecompileContext } from '@abuddy/sdk/steps';
 import { EARS } from '@abuddy/sdk';
-import { expandRecord, collapseRecord } from '@abuddy/sdk/steps';
+import { expandRecord, collapseRecord, mapProblems } from '@abuddy/sdk/steps';
+import type { FieldMapping, MapEntry } from '@abuddy/sdk/steps';
 import { isPlainObject } from '@abuddy/sdk/utils/pure';
 
 function compile(node: Record<string, unknown>, nodeId: string, ts: number, _ctx: StepCompileContext): StepCompileResult {
@@ -14,7 +15,7 @@ function compile(node: Record<string, unknown>, nodeId: string, ts: number, _ctx
       description: node.description,
       entityTypeTarget: node.entity as EARS.Entity,
       params: node.params,
-      fieldMappings: expandRecord(node.map as Record<string, string> | undefined),
+      fieldMappings: expandRecord(node.map as Record<string, MapEntry> | undefined),
       inferLabel: node.inferLabel,
       final: node.final,
     },
@@ -24,10 +25,7 @@ function compile(node: Record<string, unknown>, nodeId: string, ts: number, _ctx
 
 /** Errors for a step's `map` and `params` fields, shared with the update step */
 export function validateFields(s: Record<string, unknown>, path: string): StepValidationError[] {
-  const errors: StepValidationError[] = [];
-  if (s.map !== undefined && !isPlainObject(s.map)) {
-    errors.push({ path: `${path}.map`, message: '"map" must be an object { field: source }' });
-  }
+  const errors: StepValidationError[] = [...mapProblems(s.map, `${path}.map`)];
   if (s.params !== undefined && !isPlainObject(s.params)) {
     errors.push({ path: `${path}.params`, message: '"params" must be an object { field: value }' });
   }
@@ -55,7 +53,7 @@ function decompile(node: Record<string, unknown>, _ctx: StepDecompileContext): R
   if (node.label) dsl.label = node.label;
   if (node.description) dsl.description = node.description;
   if (node.final) dsl.final = true;
-  const map = collapseRecord(node.fieldMappings as Array<Record<string, string>> | undefined);
+  const map = collapseRecord(node.fieldMappings as FieldMapping[] | undefined);
   if (map) dsl.map = map;
   if (node.params && Object.keys(node.params as object).length > 0) dsl.params = node.params;
   if (typeof node.inferLabel === 'boolean') dsl.inferLabel = node.inferLabel;

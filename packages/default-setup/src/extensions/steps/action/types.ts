@@ -1,11 +1,11 @@
 import type { NodeBase } from '@abuddy/sdk';
 import type { DSLNodeBase } from '@abuddy/sdk/build';
-import type { FieldMapping } from '@abuddy/sdk/steps';
+import type { FieldMapping, MapEntry } from '@abuddy/sdk/steps';
 
 /** What either shape of action step carries */
 interface DSLActionCommon extends DSLNodeBase {
   type: 'action';
-  map?: Record<string, string>;
+  map?: Record<string, MapEntry>;
   params?: Record<string, any>;
 }
 

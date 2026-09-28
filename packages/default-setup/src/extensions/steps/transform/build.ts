@@ -1,6 +1,7 @@
 import type { StepDefinition, StepCompileResult, StepValidationError, StepValidationContext, StepCompileContext, StepDecompileContext } from '@abuddy/sdk/steps';
 import { EARS } from '@abuddy/sdk';
-import { expandRecord, collapseRecord } from '@abuddy/sdk/steps';
+import { expandRecord, collapseRecord, mapProblems } from '@abuddy/sdk/steps';
+import type { FieldMapping, MapEntry } from '@abuddy/sdk/steps';
 
 function compile(node: Record<string, unknown>, nodeId: string, ts: number, _ctx: StepCompileContext): StepCompileResult {
   return {
@@ -13,7 +14,7 @@ function compile(node: Record<string, unknown>, nodeId: string, ts: number, _ctx
       description: node.description,
       script: node.script,
       outputType: (node.outputType as string) || 'json',
-      fieldMappings: expandRecord(node.map as Record<string, string> | undefined),
+      fieldMappings: expandRecord(node.map as Record<string, MapEntry> | undefined),
       final: node.final,
     },
     relations: [],
@@ -28,10 +29,7 @@ function validate(s: Record<string, unknown>, path: string, _ctx: StepValidation
   if (s.outputType !== undefined && !['json', 'text', 'custom'].includes(s.outputType as string)) {
     errors.push({ path: `${path}.outputType`, message: '"outputType" must be "json", "text", or "custom"' });
   }
-  if (s.map !== undefined && (typeof s.map !== 'object' || s.map === null || Array.isArray(s.map))) {
-    errors.push({ path: `${path}.map`, message: '"map" must be an object { target: source }' });
-  }
-  return errors;
+  return [...errors, ...mapProblems(s.map, `${path}.map`)];
 }
 
 function getLabel(step: Record<string, unknown>, index: number): string {
@@ -45,7 +43,7 @@ function decompile(node: Record<string, unknown>, _ctx: StepDecompileContext): R
   if (node.description) dsl.description = node.description;
   if (node.final) dsl.final = true;
   if (node.outputType && node.outputType !== 'json') dsl.outputType = node.outputType;
-  const map = collapseRecord(node.fieldMappings as Array<Record<string, string>> | undefined);
+  const map = collapseRecord(node.fieldMappings as FieldMapping[] | undefined);
   if (map) dsl.map = map;
   return dsl;
 }

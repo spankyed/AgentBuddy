@@ -9,8 +9,8 @@ import type { BaseEntity } from '@abuddy/ears';
 import { EARS as EARS_2 } from '@abuddy/ears';
 import { z } from 'zod';
 
-// @public (undocumented)
-export function collapseRecord(entries: Array<Record<string, string>> | undefined, keyField?: string, valueField?: string): Record<string, string> | undefined;
+// @public
+export function collapseRecord(entries: FieldMapping[] | undefined): Record<string, MapEntry> | undefined;
 
 // @public (undocumented)
 export type EntityStatus = 'active' | 'paused' | 'completed' | 'failed';
@@ -41,8 +41,8 @@ export interface ExecutionEvent {
     type: string;
 }
 
-// @public (undocumented)
-export function expandRecord(map: Record<string, string> | undefined, keyField?: string, valueField?: string): Array<Record<string, string>> | undefined;
+// @public
+export function expandRecord(map: Record<string, MapEntry> | undefined): FieldMapping[] | undefined;
 
 // @public
 export interface FieldMapping {
@@ -56,6 +56,18 @@ export interface FieldMapping {
 
 // @public
 export function isTruncated(result: unknown): result is TruncatedResult;
+
+// @public
+export type MapEntry = string | {
+    source: string;
+    default?: unknown;
+};
+
+// @public
+export function mapProblems(map: unknown, path: string): Array<{
+    path: string;
+    message: string;
+}>;
 
 // @internal
 export function _mergeStepDefinitions(existing: StepDefinition, def: StepDefinition): StepDefinition;

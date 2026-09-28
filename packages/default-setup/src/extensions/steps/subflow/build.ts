@@ -1,6 +1,7 @@
 import type { StepDefinition, StepCompileResult, StepCompileContext, StepValidationError, StepValidationContext, StepDecompileContext } from '@abuddy/sdk/steps';
 import { EARS } from '@abuddy/sdk';
-import { expandRecord, collapseRecord } from '@abuddy/sdk/steps';
+import { expandRecord, collapseRecord, mapProblems } from '@abuddy/sdk/steps';
+import type { FieldMapping, MapEntry } from '@abuddy/sdk/steps';
 
 function compile(
   node: Record<string, unknown>,
@@ -19,7 +20,7 @@ function compile(
       description: node.description,
       flowRef,
       propagateCtx: node.inherit !== false,
-      fieldMappings: expandRecord(node.map as Record<string, string> | undefined),
+      fieldMappings: expandRecord(node.map as Record<string, MapEntry> | undefined),
       final: node.final,
     },
     relations: [],
@@ -42,7 +43,7 @@ function validate(
       message: `Flow "${s.flow}" not found. Available: ${Array.from(ctx.flowNames).join(', ') || '(none)'}`,
     });
   }
-  return errors;
+  return [...errors, ...mapProblems(s.map, `${path}.map`)];
 }
 
 function getLabel(step: Record<string, unknown>, index: number): string {
@@ -57,7 +58,7 @@ function decompile(node: Record<string, unknown>, ctx: StepDecompileContext): Re
   if (node.description) dsl.description = node.description;
   if (node.final) dsl.final = true;
   if (node.propagateCtx === false) dsl.inherit = false;
-  const map = collapseRecord(node.fieldMappings as any);
+  const map = collapseRecord(node.fieldMappings as FieldMapping[] | undefined);
   if (map) dsl.map = map;
   return dsl;
 }

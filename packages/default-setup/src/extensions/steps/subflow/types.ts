@@ -1,12 +1,12 @@
 import type { NodeBase } from '@abuddy/sdk';
 import type { DSLNodeBase } from '@abuddy/sdk/build';
-import type { FieldMapping } from '@abuddy/sdk/steps';
+import type { FieldMapping, MapEntry } from '@abuddy/sdk/steps';
 
 export interface DSLFlowNode extends DSLNodeBase {
   type: 'subflow';
   flow: string;
   inherit?: boolean;
-  map?: Record<string, string>;
+  map?: Record<string, MapEntry>;
 }
 
 export interface FlowNode extends NodeBase {

@@ -1,13 +1,13 @@
 import type { NodeBase } from '@abuddy/sdk';
 import type { DSLNodeBase } from '@abuddy/sdk/build';
 import type { EARS } from '@abuddy/sdk';
-import type { FieldMapping } from '@abuddy/sdk/steps';
+import type { FieldMapping, MapEntry } from '@abuddy/sdk/steps';
 
 export interface DSLCreateNode extends DSLNodeBase {
   type: 'create';
   entity: string;
   /** Fields of the new entity: `{ field: source }`, resolved as mappings when the step runs */
-  map?: Record<string, string>;
+  map?: Record<string, MapEntry>;
   /** Literal fields of the new entity; mapped fields win */
   params?: Record<string, unknown>;
   /** Label the entity from its `title`, `name` or `topic` when no `label` field is given (default true) */

@@ -1,21 +1,21 @@
 {
-  "measuredAt": "2026-09-28T15:58:17.600Z",
+  "measuredAt": "2026-09-28T19:54:55.469Z",
   "costs": {
-    "tests/adapters/log-capture.spec.ts": 35,
-    "tests/runtime/app-database-parity.spec.ts": 729,
-    "tests/runtime/app-reset.spec.ts": 961,
-    "tests/runtime/boot-recovery.spec.ts": 361,
-    "tests/runtime/bound-runtime.spec.ts": 89,
-    "tests/runtime/bus-client-connected.spec.ts": 79,
-    "tests/runtime/db-write-lock.spec.ts": 12,
-    "tests/runtime/host-data-services.spec.ts": 712,
-    "tests/runtime/packaged-boot.spec.ts": 454,
+    "tests/adapters/log-capture.spec.ts": 9,
+    "tests/runtime/app-database-parity.spec.ts": 868,
+    "tests/runtime/app-reset.spec.ts": 1092,
+    "tests/runtime/boot-recovery.spec.ts": 358,
+    "tests/runtime/bound-runtime.spec.ts": 72,
+    "tests/runtime/bus-client-connected.spec.ts": 160,
+    "tests/runtime/db-write-lock.spec.ts": 22,
+    "tests/runtime/host-data-services.spec.ts": 836,
+    "tests/runtime/packaged-boot.spec.ts": 584,
     "tests/runtime/restart-persistence.spec.ts": 313,
-    "tests/runtime/secrets.spec.ts": 1102,
-    "tests/runtime/upgrade-from-0.3.14.spec.ts": 154,
-    "tests/source-layout.spec.ts": 4,
+    "tests/runtime/secrets.spec.ts": 1215,
+    "tests/runtime/upgrade-from-0.3.14.spec.ts": 135,
+    "tests/source-layout.spec.ts": 8,
     "tests/transport/bus-send-sender.spec.ts": 3,
-    "tests/transport/dev-reload-access.spec.ts": 183
+    "tests/transport/dev-reload-access.spec.ts": 158
   },
   "skipped": []
 }
