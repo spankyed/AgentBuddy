@@ -8,7 +8,7 @@ import {
   findAppImportsInPackTests, findContractLeafImports, findCrossCheckoutResolution, findCrossFeatureImports, findExtensionlessOwnModules, findHostImports, findJsSpecifiers, findMissingSourceConditions,
   findPackageScriptImports, findPackBackendConsole, findPackOwnAliases, findRawPackHelpers,
   findRawTransport, findInternalPackageImports, findLmdbImports, findRepositoryCasts, findSharedPackageLists, findUpwardImports, LAYERS, LMDB_RULES, packageSourceDirs,
-  DECLARES_SOURCE_BY_DESIGN, RESOLVES_DIST_BY_DESIGN, SHARED_LIST_CONSUMERS, sourceConditionPackages, SOURCE_CONDITION,
+  CHECK_IDS, DECLARES_SOURCE_BY_DESIGN, type ImportRuleId, RESOLVES_DIST_BY_DESIGN, SHARED_LIST_CONSUMERS, sourceConditionPackages, SOURCE_CONDITION,
   checkedDirs, type ImportRule, packCodeDirs, packDirs, packRule,
 } from '../../../scripts/check-import-specifiers.ts';
 import { REPO_ROOT } from '@abuddy/host/build/packages-built';
@@ -487,7 +487,11 @@ function packFixture(files: Record<string, string> = {}): void {
   for (const [rel, body] of Object.entries({ ...base, ...files })) writeAt(`${PACK_FIXTURE}/${rel}`, body);
 }
 
-const FIRES: Record<string, () => string[]> = {
+/** The same table read by id-as-a-string, for the sweeps, which derive their ids from the widened `CHECKS` */
+const exampleFor = (id: string): (() => string[]) | undefined =>
+  (FIRES as Record<string, () => string[]>)[id];
+
+const FIRES: Record<ImportRuleId, () => string[]> = {
   findJsSpecifiers: () => {
     write('f.ts', "import { q } from './query.js';");
     return findJsSpecifiers(['src'], root);
@@ -603,10 +607,14 @@ const alsoClaiming = (id: string, dirs: readonly string[], half: 'src' | 'tests'
 
 
 describe('CHECKS', () => {
-  it.each(CHECKS.map((rule) => rule.id))('%s flags an offending example', (name) => {
-    const fire = FIRES[name];
-    expect(fire, `add an offending example for ${name} to FIRES: a gate with no case that makes it speak is a gate nothing has watched fail`).toBeDefined();
-    expect((fire as () => string[])(), `${name} found nothing in a tree written to offend it`).not.toEqual([]);
+  /**
+   * That each rule *fires* — the half a type cannot state. `FIRES` is keyed by `ImportRuleId`, derived from
+   * `CHECKS`, so a rule with no example and an example for a rule that is gone are both compile errors now,
+   * naming the id and suggesting the one it meant. What is left here is the assertion that the example is not a
+   * fiction: a gate with no case that makes it speak is a gate nothing has watched fail.
+   */
+  it.each(CHECK_IDS)('%s flags an offending example', (name) => {
+    expect(FIRES[name](), `${name} found nothing in a tree written to offend it`).not.toEqual([]);
   });
 
   /**
@@ -624,7 +632,7 @@ describe('CHECKS', () => {
    * `cross-feature-imports` and `contract-leaves` did on arriving.
    */
   it.each([...sweepers('src')].map((rule) => rule.id))('%s claims its own example and no other pack rule does', (id) => {
-    expect(FIRES[id]!(), `${id} must fire on its own example`).not.toEqual([]);
+    expect(exampleFor(id)!(), `${id} must fire on its own example`).not.toEqual([]);
     expect(alsoClaiming(id, PACK_SRC, 'src'),
       `${id}'s offence is also reported by these, so only the first to run is ever read`).toEqual([]);
 
@@ -658,18 +666,6 @@ describe('CHECKS', () => {
     expect(overlap, 'a pack\'s own code belongs to own-modules, which names the file to write').toEqual([]);
   });
 
-  /**
-   * Every rule says whether `@abuddy/cli` owns it or this repo does, and the second answer carries its reason.
-   *
-   * Two pack-subject rules — `cross-feature-imports` and `contract-leaves` — sat in this script for months while
-   * an external pack was held to neither, and the reasons they had not moved lived in an archived goal doc that
-   * nothing reads. This is what makes the next one say so in the code instead.
-   */
-  it('says of every rule whether the CLI owns it, or why this repo does', () => {
-    const unsaid = CHECKS.filter((rule) => (rule.packRule === undefined) === (rule.repoOnly === undefined))
-      .map((rule) => `${rule.id}: set packRule (the CLI owns it) or repoOnly (why its subject is this repo), not both and not neither`);
-    expect(unsaid).toEqual([]);
-  });
 
   /**
    * The population a rule about a pack's own code reads. A rule that covered `src` alone was narrower in this repo
@@ -721,7 +717,7 @@ describe('CHECKS', () => {
   it("sweeps every rule that reads a pack's src", () => {
     const swept = [...sweepers('src')].map((rule) => rule.id);
     expect(swept.length, 'no rule declares a population holding a pack\'s src, so the sweep runs over nothing').toBeGreaterThan(5);
-    expect(swept.filter((id) => FIRES[id] === undefined),
+    expect(swept.filter((id) => exampleFor(id) === undefined),
       'a swept rule with no offending example in FIRES cannot be checked for double-claiming').toEqual([]);
   });
 
@@ -741,10 +737,6 @@ describe('CHECKS', () => {
     packFixture({ 'tests/unit/feature.spec.ts': code });
     const claimed = [...sweepers('tests')].filter((rule) => rule.overPaths!(PACK_TESTS, root).length > 0).map((rule) => rule.id);
     expect(claimed, 'one offence, one owner — in a pack\'s tests as in its src').toEqual([owner]);
-  });
-
-  it('has no example left behind by a rule that is gone', () => {
-    expect(Object.keys(FIRES).filter((name) => !CHECKS.some((rule) => rule.id === name))).toEqual([]);
   });
 });
 

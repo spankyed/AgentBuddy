@@ -1184,21 +1184,11 @@ export function findCrossCheckoutResolution(root = repoRoot): string[] {
  * Exported so the runner below and the specs read the same list: `import-specifiers.spec.ts` asserts each
  * entry has a case that makes it fire, which is what stops a check landing with nothing exercising it.
  */
-export interface ImportRule {
+interface RuleShape {
   /** Stable name, the one the spec's FIRES table is keyed by and `--rule` takes */
   readonly id: string;
   /** The sentence reported when it fires */
   readonly rule: string;
-  /** The `@abuddy/cli` pack rule this is the repo's entry point for, set by `backed` below */
-  readonly packRule?: PackRuleKey;
-  /**
-   * Why this rule's subject is this repo rather than a pack, for a rule that stays here.
-   *
-   * Exactly one of this and `packRule` is set on every rule, which `import-specifiers.integration.spec.ts`
-   * asserts — because two pack-subject rules sat in this script for months with their reasons in an archived goal
-   * doc that nothing reads, and an external pack was held to neither. A new rule now has to say which it is.
-   */
-  readonly repoOnly?: string;
   /** Over the whole repo */
   find(): string[];
   /** Over paths a caller names, when the rule can answer per file */
@@ -1217,6 +1207,21 @@ export interface ImportRule {
   readonly over?: readonly string[];
 }
 
+/**
+ * A rule, which says who owns it: `@abuddy/cli`, or this repo.
+ *
+ * A union rather than two optional fields, so a rule that says both or neither does not compile. Two pack-subject
+ * rules sat in this script for months while an external pack was held to neither, and the reasons they had not
+ * moved lived in an archived goal doc that nothing reads; this is the cheapest place to make the next one answer
+ * the question — at the declaration, before anything runs, rather than in a case that has to be remembered.
+ */
+export type ImportRule = RuleShape & (
+  /** The CLI owns the implementation; `backed` sets this */
+  { readonly packRule: PackRuleKey; readonly repoOnly?: never }
+  /** Why this rule's subject is this repo rather than a pack */
+  | { readonly packRule?: never; readonly repoOnly: string }
+);
+
 /** The sentence a pack rule reports, read from the rule itself so this script prints what a pack author is told */
 function ruleSentence(key: PackRuleKey): string {
   const rule = PACK_RULES.find((candidate) => candidate.key === key);
@@ -1233,21 +1238,29 @@ function ruleSentence(key: PackRuleKey): string {
  * while `host-imports` printed one sentence from `abuddy validate` and a different one from `check:specifiers`,
  * for the same offence in the same file.
  */
-const backed = (
-  id: string,
+const backed = <Id extends string>(
+  id: Id,
   key: PackRuleKey,
   find: (dirs?: readonly string[], root?: string) => string[],
   over: readonly string[],
-): ImportRule => ({
+) => ({
   id,
   packRule: key,
   rule: ruleSentence(key),
   over,
   find: () => find(over),
-  overPaths: (paths, root = repoRoot) => find(paths, root),
-});
+  overPaths: (paths: readonly string[], root = repoRoot) => find(paths, root),
+}) satisfies ImportRule;
 
-export const CHECKS: readonly ImportRule[] = [
+/**
+ * Every rule, and the one place their ids are written.
+ *
+ * `as const satisfies` rather than an annotation, so each id keeps its literal type and `ImportRuleId` below is
+ * *derived* from this list: a table keyed by it fails to compile when a rule is added, renamed or removed, naming
+ * the id and suggesting the one it meant, where an annotation widens every id to `string` and leaves that to a
+ * runtime case to notice.
+ */
+const RULE_LIST = [
   {
     id: 'findJsSpecifiers',
     over: CHECKED_DIRS,
@@ -1318,7 +1331,23 @@ export const CHECKS: readonly ImportRule[] = [
     find: findMissingSourceConditions,
     rule: "The repo's own configs declare the @abuddy/source condition when they compile or bundle code importing @abuddy/ears, @abuddy/sdk or @abuddy/ui, so they read TypeScript source instead of a stale dist; a pack's configs declare none, because a pack resolves the published dist",
   },
-];
+] as const satisfies readonly ImportRule[];
+
+/** The id of a rule, derived from the list so nothing keys a table by a name no rule has */
+export type ImportRuleId = (typeof RULE_LIST)[number]['id'];
+
+/**
+ * Every rule's id, keeping its literal type: what a table that covers the rules is keyed by.
+ *
+ * Separate from `CHECKS` because the two are read for different things. A tuple of literal types is what makes the
+ * ids derivable, and it is also a union whose members lack the properties they do not declare — so anything that
+ * asks a rule whether it has an `overPaths` or a `packRule` reads `CHECKS`, which is the same list widened, and
+ * anything keyed by id reads this.
+ */
+export const CHECK_IDS: readonly ImportRuleId[] = RULE_LIST.map((rule) => rule.id);
+
+/** Every rule, as the runner and the sweeps read them */
+export const CHECKS: readonly ImportRule[] = RULE_LIST;
 
 // Run as a script, also through a symlinked path (tests import findJsSpecifiers)
 if (process.argv[1] && import.meta.filename === fs.realpathSync(process.argv[1])) {

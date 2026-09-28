@@ -86,7 +86,7 @@ const FIRES_ON_A_FILE: [PackRuleKey, string, string][] = [
  * deleted fails rather than standing as a claim nobody re-reads — the same reason every exception table in this
  * repo reports one that has stopped applying.
  */
-const FIRES_ELSEWHERE: Record<string, string> = {
+const FIRES_ELSEWHERE: Partial<Record<PackRuleKey, string>> = {
   // Two shapes and eleven allowed ones, transcribed when the repo script's console rule moved here
   'backend-console': 'backend-console fires under a backend path and not under a frontend one',
   // A `_`-prefixed import from an @abuddy package, which needs no pack fixture to be offending
@@ -316,9 +316,12 @@ describe('refusePackRuleViolations', () => {
  * should be told the thing that matters about it — not the same line three times in three blocks.
  */
 describe('when several rules are right about one site', () => {
+  // One line per finding rather than a key's findings joined: a separator inside a message would otherwise read
+  // as two findings, and the assertion could not tell which it had — the same reason a pack rule's findings are
+  // an array and not a formatted blob
   const offender = (code: string) => {
     const dir = pack({ 'package.json': JSON.stringify({ name: 'p', type: 'module' }), 'src/extensions/steps/x.ts': code });
-    return [...packRuleProblems(dir)].map(([key, found]) => `${key}: ${found.join(' | ')}`);
+    return [...packRuleProblems(dir)].flatMap(([key, found]) => found.map((problem) => `${key}: ${problem}`));
   };
 
   it('reports the cause that comes first, and only that one', () => {
