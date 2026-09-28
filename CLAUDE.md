@@ -506,6 +506,13 @@ The `_` prefix is a different axis and doesn't combine with it: `_sendToLocalPlu
 host-only, which `check:specifiers` enforces by the underscore, and packs may not import them at all — where an
 `untyped*` helper is something a pack may use and simply isn't checked on.
 
+**That is the `_` that carries a rule. A `_` on a local or a parameter is an unrelated convention** — a binding
+deliberately left unused, as `_z` and `_flowId` are in an action's signature, which oxlint prescribes and nothing
+enforces. The two never collide in practice, one being an export and the other never one. The trap is reaching
+for the second on dead code: a declaration nobody reads is not deliberately unused, it is simply gone, and
+prefixing it hides it from the gate that just found it — which is how seven dead declarations survived a sweep
+whose whole point was to remove them.
+
 ### SDK packages
 
 `@abuddy/sdk` is the pack-facing API; host-only modules live in the private `@abuddy/host` (`packages/abuddy-host`). Packs, built-in or external, import only `@abuddy/sdk`, `@abuddy/ears` and `@abuddy/ui`; host code (api, renderer, CLI and testing) also uses `@abuddy/host`; default-setup, tests included, does not depend on it. `npm run check:specifiers` rejects `@abuddy/host` in pack sources and CLI templates, and `abuddy build` fails a pack bundle that imports it. Pack code reads relations with `findRelations`/`getRelationStats` and queries untyped with `untypedQx` (`@abuddy/ears`), reaches host-implemented data operations through `services.appData` (reset, backup export/import, whether the user finished onboarding), `services.traceStore` (the volatile trace store), `services.secrets` (the user's API keys as metadata: list, select, rename, delete; never values) and `services.filesystem` (files and folders on disk, as text), and calls models through `services.inference` (AI SDK 7's `generateText`/`streamText`, `createAgent`, `embed`/`embedMany`, `generateImage`, `generateSpeech`, `transcribe` and `rerank`, with `provider:model` ids checked against `providerCapabilities`, `output` as an `Output` or plain data like `{ type: 'object', schema }`, and the key the user selected per provider, never the environment; packs import pure pieces like `tool` from `ai`).

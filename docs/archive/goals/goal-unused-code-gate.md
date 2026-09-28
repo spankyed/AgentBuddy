@@ -13,8 +13,9 @@
 > files, about a tenth of a second — with one exclusion: the CLI's scaffold templates, whose parameter names are
 > what a pack author reads, so an unused one there is documentation rather than a finding. **Phase 4's
 > requirement that lint cover every workspace with source is therefore met**; what remains of that phase is the
-> guard naming any workspace it does not cover. Two of fifteen workspaces still declare their own `lint:check`,
-> but that no longer leaves the other thirteen unchecked.
+> guard naming any workspace it does not cover. Of the two workspaces that declared their own `lint:check`,
+> only `@app/renderer` still does, and only because it adds `eslint`: `@app/default-setup`'s ran the same binary
+> over the same 792 files the root pass already reads, so it was dropped rather than kept in sync.
 >
 > **The counts this goal was argued from were cleared in the same stretch** (`d8be2926d`, `44486da98`,
 > `a5c795c58`). The 113 correctness findings behind that exclusion are at zero, and so is Phase 4's "51 across
