@@ -152,7 +152,7 @@ Things that waste the most time, in order:
   `npm run packages:ensure` once first and every later call is a stat and a return, which is what makes
   a parallel chain safe; the 18 calls a serial chain makes are each paying that stat for nothing.
 
-Four rules that pay for themselves:
+Five rules that pay for themselves:
 
 - **Measure before you optimise, and before you accept someone else's measurement.** Two proposals in
   this repo were rejected by one command each, and both had been argued for at length first.
@@ -170,6 +170,16 @@ Four rules that pay for themselves:
   check proves it can fail on every run for microseconds. `repo-checks/tests/packaged-app-files.spec.ts` is the
   worked example; its two mutation cases corrected two wrong beliefs about the patterns they check on the first
   run, before the commit.
+- **A list and its type are one declaration.** Write the list and derive the type from it
+  (`const XS = [...] as const; type X = (typeof XS)[number]`), or the other way round where the type is the
+  definition — never both by hand. Four pairs in this repo were written twice, and each had a different failure:
+  `PackRuleKey` beside `PACK_RULES` made adding a pack rule two edits; `APP_ENVS: readonly AppEnv[]` accepted a
+  list missing an environment, which its one consumer would have rejected at startup as invalid; `ALL_COLORS` and
+  `TabGroupColor` had already drifted into different orders, and a colour in the union but not the list is one the
+  picker never offers. Deriving turns each of those into a compile error at the site that would have broken. The
+  cost is that the widened form has to be exported separately when consumers read optional members — which is a
+  line, and it is written where it is done.
+
 - **A comment is for whoever opens the file cold, not for whoever reads the diff.** What changed, how many
   copies there used to be, what you measured to decide, why some other value would be worse — that is
   commit-message material, and the commit message is where someone looks when they ask why. The test: will
