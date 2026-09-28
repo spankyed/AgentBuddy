@@ -17,8 +17,8 @@ import { REPO_ROOT } from '@abuddy/host/build/packages-built';
 import {
   FAST_BELOW_MS, INTEGRATION_ABOVE_MS, SPEC_COST_FLAGS, absentIn, changesIn, contended, drift, drifted,
   absentNamed, halfOfPath, misplaced, hasSplit, moved, namedIn, outgrown, parseArgs, planFor, readSpecCost,
-  refuseAbsent,
-  refusesAsContended, settle, specCostFile, specFiles, stale, suitesFor, unrecorded,
+  refuseAbsent, refusesAsContended, rewritesEveryRow, settle, specCostFile, specFiles, stale, suitesFor,
+  unrecorded,
 } from '../../../scripts/lib/spec-cost.ts';
 import { UNIT_SUITES } from '../../../scripts/lib/unit-suites.ts';
 
@@ -375,7 +375,7 @@ describe('what a run does to the record it replaces', () => {
       costs: { 'tests/b.spec.ts': 810 },
       skipped: [FAST],
       measuredFiles: [FAST, 'tests/b.spec.ts'],
-      all: false, prune: [],
+      rewriteAll: false, prune: [],
     });
     expect(record.skipped, 'it ran nothing, so it is skipped').toEqual([FAST]);
     expect(record.costs[FAST], 'and it cannot also carry the cost it used to have').toBeUndefined();
@@ -388,40 +388,39 @@ describe('what a run does to the record it replaces', () => {
   it('keeps a record nothing moved byte-identical, including its date', () => {
     const before = previous({ [FAST]: 1_000 });
     const { record, added, moved: movedSpecs } = settle({
-      previous: before, costs: { [FAST]: 1_050 }, skipped: [], measuredFiles: [FAST], all: false, prune: [],
+      previous: before, costs: { [FAST]: 1_050 }, skipped: [], measuredFiles: [FAST], rewriteAll: false, prune: [],
     });
     expect(added).toHaveLength(0);
     expect(movedSpecs, 'inside the tolerance, so nothing was recorded').toHaveLength(0);
     expect(record).toEqual(before);
   });
 
-  // `--all`'s half of the bargain, and the reason the drift warning's advice works: the same measurement,
-  // two answers. Without it `--all` re-measured everything and then discarded most of it, so a record that
-  // was uniformly stale stayed uniformly stale however many times you ran it
-  it('records what --all measured, where the default keeps what the tolerance settled', () => {
+  // The reason the drift warning's advice works: the same measurement, two answers. Without it a record that
+  // was uniformly stale stayed uniformly stale however many times you ran `--all`, because every delta sat
+  // under its own threshold and the settling discarded each one
+  it('rewrites a row the tolerance would have kept, and keeps it otherwise', () => {
     const inputs = { previous: previous({ [FAST]: 1_000 }), costs: { [FAST]: 1_050 }, skipped: [],
       measuredFiles: [FAST], prune: [] };
     expect(moved(FAST, 1_000, 1_050), 'a move the tolerance is there to absorb').toBe(false);
-    expect(settle({ ...inputs, all: false }).record.costs[FAST]).toBe(1_000);
-    expect(settle({ ...inputs, all: true }).record.costs[FAST]).toBe(1_050);
+    expect(settle({ ...inputs, rewriteAll: false }).record.costs[FAST]).toBe(1_000);
+    expect(settle({ ...inputs, rewriteAll: true }).record.costs[FAST]).toBe(1_050);
 
-    // And it says which of the two it did. One word for both read a run of pure jitter as a suite that had
-    // got slower — `--all` rewrites a row whether or not the tolerance found anything, so the report can
-    // only be honest if the two are counted apart.
-    const written = settle({ ...inputs, all: true });
+    // And it says which of the two it did. One word for both read a run that rewrote the file as a suite
+    // that had got slower, so the report can only be honest if the two are counted apart.
+    const written = settle({ ...inputs, rewriteAll: true });
     expect(written.rewritten, 'the row was rewritten').toEqual([FAST]);
     expect(written.moved, 'but nothing moved, and the report must not say it did').toEqual([]);
   });
 
-  // What the default path lets the report rely on: off `--all` the two are one set, so the line that prints
-  // the difference prints nothing, and the common output is untouched by the distinction
-  it('rewrites a row only for a movement unless --all was given', () => {
+  // What the default path lets the report rely on: unless every row is being rewritten the two are one set,
+  // so the line that prints the difference prints nothing and the common output is untouched by it
+  it('rewrites a row only for a movement otherwise', () => {
     const SLOW = 'tests/slow.spec.ts';
     const inputs = { previous: previous({ [FAST]: 1_000, [SLOW]: 1_000 }), skipped: [],
-      measuredFiles: [FAST, SLOW], prune: [], all: false };
+      measuredFiles: [FAST, SLOW], prune: [], rewriteAll: false };
     const { moved: movedSpecs, rewritten } = settle({ ...inputs, costs: { [FAST]: 1_050, [SLOW]: 4_000 } });
     expect(rewritten, 'the one the tolerance kept').toEqual([SLOW]);
-    expect(movedSpecs, 'and the two sets are the same off --all').toEqual(rewritten);
+    expect(movedSpecs, 'and the two sets are one').toEqual(rewritten);
   });
 
   // The skipped list is content too: a spec can arrive with every test in it skipped, which moves nothing in
@@ -434,7 +433,7 @@ describe('what a run does to the record it replaces', () => {
       costs: { [FAST]: 100 },
       skipped: ['tests/needs-a-binary.spec.ts'],
       measuredFiles: [FAST, 'tests/needs-a-binary.spec.ts'],
-      all: false, prune: [],
+      rewriteAll: false, prune: [],
     });
     expect(added, 'nothing was measured for the first time').toHaveLength(0);
     expect(movedSpecs, 'and no cost moved').toHaveLength(0);
@@ -445,7 +444,7 @@ describe('what a run does to the record it replaces', () => {
 
   it('records a measurement that says something new, and dates it', () => {
     const { record, moved: movedSpecs, rewritten } = settle({
-      previous: previous({ [FAST]: 1_000 }), costs: { [FAST]: 4_000 }, skipped: [], measuredFiles: [FAST], all: false, prune: [],
+      previous: previous({ [FAST]: 1_000 }), costs: { [FAST]: 4_000 }, skipped: [], measuredFiles: [FAST], rewriteAll: false, prune: [],
     });
     expect(movedSpecs).toEqual([FAST]);
     expect(rewritten, 'a movement is a rewrite too').toEqual([FAST]);
@@ -459,7 +458,7 @@ describe('what a run does to the record it replaces', () => {
       costs: { [FAST]: 100 },
       skipped: [],
       measuredFiles: [FAST],
-      all: false, prune: ['tests/gone.spec.ts', 'tests/also-gone.spec.ts'],
+      rewriteAll: false, prune: ['tests/gone.spec.ts', 'tests/also-gone.spec.ts'],
     });
     expect(Object.keys(record.costs)).toEqual([FAST]);
     expect(record.skipped).toEqual([]);
@@ -476,7 +475,7 @@ describe('what a run does to the record it replaces', () => {
       skipped: [FAST],
       measuredFiles: [FAST, 'tests/b.spec.ts'],
       prune: [],
-      all: false,
+      rewriteAll: false,
     });
     expect(dropped, 'the run has to report this, or it reports nothing at all').toEqual([FAST]);
     expect([...added, ...rewritten], 'and it is neither of the two that were counted').toEqual([]);
@@ -491,7 +490,7 @@ describe('what a run does to the record it replaces', () => {
       skipped: [],
       measuredFiles: [FAST],
       prune: ['tests/gone.spec.ts'],
-      all: false,
+      rewriteAll: false,
     });
     expect(dropped).toEqual([]);
   });
@@ -502,7 +501,7 @@ describe('what a run does to the record it replaces', () => {
       costs: { [FAST]: 100 },
       skipped: [],
       measuredFiles: [FAST],
-      all: false, prune: [],
+      rewriteAll: false, prune: [],
     });
     expect(record.skipped, 'the integration config never ran, so its skip stands').toEqual(['tests/other.integration.spec.ts']);
   });
@@ -513,7 +512,7 @@ describe('what a run does to the record it replaces', () => {
       costs: { 'tests/z.spec.ts': 1, 'tests/a.spec.ts': 2 },
       skipped: [],
       measuredFiles: ['tests/a.spec.ts', 'tests/z.spec.ts'],
-      all: false, prune: [],
+      rewriteAll: false, prune: [],
     });
     expect(Object.keys(record.costs)).toEqual(['tests/a.spec.ts', 'tests/z.spec.ts']);
   });
@@ -643,7 +642,7 @@ describe('a named spec that is not there is refused, whatever was asked of it', 
 });
 
 describe('when a run is refused as a measurement of the machine', () => {
-  const loaded = { hasPrevious: true, force: false, all: false, moved: 6, comparable: 20 };
+  const loaded = { hasPrevious: true, force: false, moved: 6, comparable: 20 };
 
   it('refuses a run that moved more of the suite than a measurement should', () => {
     expect(refusesAsContended(loaded)).toBe(true);
@@ -653,14 +652,49 @@ describe('when a run is refused as a measurement of the machine', () => {
     expect(refusesAsContended({ ...loaded, force: true })).toBe(false);
   });
 
-  // `--all` rewrites every row by design, so its `rewritten` is near-total on every such run: guarding it
-  // would refuse the one mode that exists to clear a drift the per-spec tolerance cannot
-  it('is suppressed by --all, which records what it measured', () => {
-    expect(refusesAsContended({ ...loaded, all: true })).toBe(false);
+  // `--all` suppressed it while this counted rewrites rather than movements, and the input went with that.
+  // The case is kept the other way up: a correlated drift moves nothing the tolerance sees, so the run the
+  // bypass existed for never reached here, and a quarter of a suite each past its own threshold is a loaded
+  // machine whichever flags the run carries
+  it('takes no account of --all, which does not change what moved', () => {
+    expect(Object.keys(loaded), 'the flag is not one of its inputs').not.toContain('all');
+    expect(refusesAsContended({ ...loaded, force: true }), 'and --force is still the way past it').toBe(false);
   });
 
   it('never fires for a suite with no record to have moved', () => {
     expect(refusesAsContended({ ...loaded, hasPrevious: false })).toBe(false);
-    expect(refusesAsContended({ hasPrevious: true, force: false, all: false, moved: 0, comparable: 0 })).toBe(false);
+    expect(refusesAsContended({ hasPrevious: true, force: false, moved: 0, comparable: 0 })).toBe(false);
+  });
+});
+
+/**
+ * What `--all` buys and what it costs, which are not the same question.
+ *
+ * Re-measuring everything is always what the flag asks for. Rewriting everything is only worth the churn
+ * against a drift the per-spec tolerance cannot record, so the two are decided apart.
+ */
+describe('every row is rewritten only against a drift that no single row would report', () => {
+  it('clears a body the tolerance cannot see', () => {
+    expect(rewritesEveryRow({ all: true, body: 0.25 })).toBe(true);
+    expect(rewritesEveryRow({ all: true, body: -0.25 }), 'in either direction').toBe(true);
+  });
+
+  // The churn this exists to stop: measured 2026-09-28, an `--all` run on a current record rewrote 26 of 28
+  // rows at a body of -3%, which is jitter overwriting jitter and is what the tolerance is for
+  it('leaves a quiet run alone, however it was asked for', () => {
+    expect(rewritesEveryRow({ all: true, body: 0.03 })).toBe(false);
+    expect(rewritesEveryRow({ all: true, body: undefined }), 'and nothing to compare is not a drift').toBe(false);
+  });
+
+  it('never fires without the flag, so a default run still settles every row', () => {
+    expect(rewritesEveryRow({ all: false, body: 0.25 })).toBe(false);
+  });
+
+  // The threshold is one declaration, not two: a drift this reads as worth clearing is exactly one the run
+  // reports, so the warning cannot advise `--all` for a body the flag would then decline to record
+  it('fires on exactly the drifts the run warns about', () => {
+    for (const body of [0.25, -0.25, 0.03, undefined]) {
+      expect(rewritesEveryRow({ all: true, body }), `body ${body}`).toBe(drifted(body));
+    }
   });
 });

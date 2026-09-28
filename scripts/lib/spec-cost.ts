@@ -443,16 +443,36 @@ export function refuseAbsent(dir: string, files: readonly string[], named: reado
 /**
  * Whether to refuse this run as a measurement of the machine rather than of the specs.
  *
- * Four inputs, which is why it is named rather than spelled out at the call site. `--force` is the user
- * saying the suite really did change this much; `--all` rewrites every row by design, so its `rewritten` is
- * near-total and this would refuse the one mode that exists to clear a drift — it is `moved` that is asked
- * for here, the movements the tolerance found; and a suite with no previous record has nothing to have moved.
+ * Three inputs, which is why it is named rather than spelled out at the call site. `--force` is the user
+ * saying the suite really did change this much, and a suite with no previous record has nothing to have moved.
+ *
+ * `--all` is not among them, and the arithmetic is why. A correlated drift of a fraction `f` moves a spec
+ * only where `f * r > max(SETTLED_MS, SETTLED_FRACTION * r)`: above 857ms that needs `f > SETTLED_FRACTION`,
+ * and below it needs `r > SETTLED_MS / f`, which cannot both hold. So the drift `--all` exists to clear moves
+ * nothing but the few specs that cross the band, and this counts `moved` — it cannot fire on that run. What
+ * it still fires on is a quarter of a suite each past its own tolerance, which is a loaded machine or a real
+ * regression, and `--force` is the answer to the second whichever flags the run carries.
  */
 export const refusesAsContended = (input: {
-  readonly hasPrevious: boolean; readonly force: boolean; readonly all: boolean;
+  readonly hasPrevious: boolean; readonly force: boolean;
   readonly moved: number; readonly comparable: number;
-}): boolean => input.hasPrevious && !input.force && !input.all
-  && contended(input.moved, input.comparable);
+}): boolean => input.hasPrevious && !input.force && contended(input.moved, input.comparable);
+
+/**
+ * Whether this run should replace every row it measured, rather than only the movements.
+ *
+ * `--all`'s half of the bargain, and its limit. Re-measuring everything is always what the flag asks for;
+ * rewriting everything is only ever useful against a drift that moved the body, because that is the one thing
+ * the per-spec tolerance cannot record — each delta sits under its own threshold, so nothing re-records and
+ * the record stays uniformly stale. Off that case, rewriting is jitter overwriting jitter: measured
+ * 2026-09-28, an `--all` run on a current record rewrote 26 of 28 rows at a body of -3%, which is the churn
+ * the tolerance exists to prevent.
+ *
+ * The drift is measured against the record rather than the run before, so an episode under the threshold is
+ * not forgiven — two of 12% present as one of 25% and are cleared then.
+ */
+export const rewritesEveryRow = (input: { readonly all: boolean; readonly body: number | undefined }): boolean =>
+  input.all && drifted(input.body);
 
 /** What one suite needs doing, worked out from the record before anything runs */
 export interface SpecCostPlan {
@@ -518,17 +538,15 @@ export function settle(input: {
   readonly measuredFiles: readonly string[];
   readonly prune: readonly string[];
   /**
-   * Record what was measured, rather than only what the tolerance calls new.
+   * Replace every row measured, rather than only the ones the tolerance calls a movement.
    *
-   * `--all`'s half of the bargain. The tolerance is why the record is stable, and it is also why a drift
-   * that moves every spec a little can never be recorded: each delta sits under its own threshold, so
-   * re-measuring changes nothing and the record stays uniformly stale. Measured before this existed — a
-   * record set 20% low stayed 33% adrift after an `--all` run, and the drift warning's advice to run `--all`
-   * could not be taken.
+   * What `rewritesEveryRow` decides, which is `--all` against a drifted body. Before it existed a record set
+   * 20% low stayed 33% adrift after an `--all` run, because each delta sat under its own threshold: the
+   * drift warning's advice to run `--all` could not be taken.
    */
-  readonly all: boolean;
+  readonly rewriteAll: boolean;
 }): Settled {
-  const { previous, costs, measuredFiles, prune, all } = input;
+  const { previous, costs, measuredFiles, prune, rewriteAll } = input;
   const kept = Object.entries(previous?.costs ?? {}).filter(([spec]) => !prune.includes(spec));
 
   // A measurement replaces the recorded one only when it says something the record does not already say.
@@ -537,7 +555,7 @@ export function settle(input: {
   const settled: Record<string, number> = Object.fromEntries(kept);
   for (const [spec, ms] of Object.entries(costs)) {
     const before = previous?.costs[spec];
-    settled[spec] = all || moved(spec, before, ms) ? ms : before!;
+    settled[spec] = rewriteAll || moved(spec, before, ms) ? ms : before!;
   }
 
   // Against `costs`, which is what this run measured — not against the settled values, which still hold

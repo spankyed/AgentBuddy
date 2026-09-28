@@ -6,12 +6,16 @@
  *     npm run spec-cost:update                     # the least that makes them current
  *     npm run spec-cost:update -- <spec path>      # that spec's half, nothing else
  *     npm run spec-cost:update -- --suite <dir>    # one suite
- *     npm run spec-cost:update -- --all            # re-measure everything regardless
+ *     npm run spec-cost:update -- --all            # re-measure everything, and re-record it if it drifted
  *     npm run spec-cost:update -- --dry            # what it would run and write
  *
  * **A bare update does the least that clears what the check would report**, which is often nothing: a
  * deleted spec leaves a row that needs no measurement to drop, and a new spec needs only the half it lives
- * in. It says which case it took. `--all` is how you ask for the whole thing anyway, after a bundler bump.
+ * in. It says which case it took. `--all` is how you ask for the whole thing anyway, after a bundler bump —
+ * and it is the only thing that clears a *correlated* drift, since one that adds a fifth to every spec sits
+ * under every per-spec tolerance and so re-records nothing. It rewrites every row it measured only when the
+ * body has moved further than idle runs vary (`rewritesEveryRow`); on a quiet run it settles them like any
+ * other, because rewriting a row that agrees with the record is the churn the tolerance exists to prevent.
  *
  * **Naming a spec selects its config, never the file alone.** A spec measured on its own is not comparable
  * to one measured beside its siblings — `chain-inputs` reads 1688ms in its config and 963ms alone, against a
@@ -24,7 +28,9 @@
  * so a spec and this command cannot disagree about where a file belongs.
  *
  * Run the update with nothing else on the machine. A contended run records a cost that is about the
- * machine, and a spec near an edge then moves for no reason anyone can see later.
+ * machine, and a spec near an edge then moves for no reason anyone can see later. It is refused when it
+ * shows, whatever flags it carries (`refusesAsContended`), and `--force` is how you say the suite really
+ * did change that much.
  */
 import { spawnSync } from 'node:child_process';
 import * as fs from 'node:fs';
@@ -34,7 +40,7 @@ import { UNIT_SUITES, type UnitSuite } from './lib/unit-suites.ts';
 import {
   FAST_BELOW_MS, INTEGRATION_ABOVE_MS, PLACEMENT_GUARD, halfOfPath, hasSplit, misplaced,
   CONFIG_BY_HALF, absentNamed, drift, drifted, namedIn, parseArgs, planFor, readSpecCost, refusesAsContended,
-  settle, specCostFile, specFiles, stale, suitesFor, unrecorded, type SpecCostPlan,
+  rewritesEveryRow, settle, specCostFile, specFiles, stale, suitesFor, unrecorded, type SpecCostPlan,
 } from './lib/spec-cost.ts';
 
 // eslint-disable-next-line no-control-regex -- vitest colours its output and this reads it back
@@ -139,19 +145,20 @@ function update(plans: readonly SuitePlan[], dry: boolean): void {
     const runs = plan.configs.map((config) => measure(suite, config));
     const costs = Object.assign({}, ...runs.map((run) => run.costs)) as Record<string, number>;
 
+    // What the per-spec tolerance cannot say. Each spec settling inside its threshold is the normal case and
+    // the reason the file is stable; all of them settling in the same direction is a uniform slowdown, and
+    // the only place it shows is the total. Undefined when nothing measured had a value to move from.
+    const body = drift(previous, costs);
     const { record, added, moved, rewritten, dropped } = settle({
-      previous, costs, skipped: [...new Set(runs.flatMap((run) => run.skipped))], measuredFiles, prune: plan.prune, all,
+      previous, costs, skipped: [...new Set(runs.flatMap((run) => run.skipped))], measuredFiles,
+      prune: plan.prune, rewriteAll: rewritesEveryRow({ all, body }),
     });
 
     // What a sample can check: not equality, which it never has, but reproducibility. An idle run moves a
     // handful; a contended one moves most of what it could move and records the machine instead of the specs.
     // Only specs that had a value to move are evidence of that — a first measurement is not.
     const comparable = Object.keys(costs).length - added.length;
-    // `--all` rewrites every row by design, so this would refuse the one mode that exists to clear a drift:
-    // on a loaded machine it records that machine, unguarded — the body drift below still prints, which is
-    // the evidence, and asking for it is the deliberate act the guard exists to distinguish from an accident.
-    // `refusesAsContended` holds the rest.
-    if (refusesAsContended({ hasPrevious: previous !== undefined, force, all, moved: moved.length, comparable })) {
+    if (refusesAsContended({ hasPrevious: previous !== undefined, force, moved: moved.length, comparable })) {
       throw new Error(`${suite.workspace}: ${moved.length} of ${comparable} already-recorded specs moved, `
         + `which is more than a measurement should. That is what a loaded machine looks like — run this with `
         + `nothing else running, or pass --force if the suite really did change this much.`);
@@ -166,10 +173,6 @@ function update(plans: readonly SuitePlan[], dry: boolean): void {
     if (!fs.existsSync(file) || fs.readFileSync(file, 'utf-8') !== next) fs.writeFileSync(file, next);
 
     const moves = misplaced(record.costs, files);
-    // What the per-spec tolerance cannot say. Each spec settling inside its threshold is the normal case and
-    // the reason the file is stable; all of them settling in the same direction is a uniform slowdown, and
-    // the only place it shows is the total. Undefined when nothing measured had a value to move from.
-    const body = drift(previous, costs);
     const asBody = body === undefined ? '' : `, body ${body >= 0 ? '+' : ''}${(body * 100).toFixed(0)}%`;
     // Every way the record can differ from the one it replaced, for the same reason `settle` compares rather
     // than enumerates: a change nobody listed reads as "none moved" over a rewritten file, and a spec that
@@ -179,10 +182,10 @@ function update(plans: readonly SuitePlan[], dry: boolean): void {
         : [
           added.length > 0 ? `${added.length} added` : '',
           moved.length > 0 ? `${moved.length} moved` : '',
-          // Only `--all` can produce these: rows rewritten with a measurement the tolerance would have
-          // discarded. Reported apart from the movements rather than summed with them, because one word for
-          // both made a run of pure jitter read as a suite that got slower.
-          rewritten.length > moved.length ? `${rewritten.length - moved.length} recorded anyway` : '',
+          // The drift being cleared: rows carried up or down with the body, which no single one of them
+          // moved enough to ask for. Counted apart from the movements rather than summed with them, because
+          // one word for both read a run that rewrote the file as a suite that had got slower.
+          rewritten.length > moved.length ? `${rewritten.length - moved.length} re-recorded` : '',
           dropped.length > 0 ? `${dropped.length} stopped running` : '',
         ].filter(Boolean).join(', ') || 'none moved',
       plan.prune.length > 0 ? `${plan.prune.length} gone` : '',
