@@ -7,8 +7,10 @@ Implement docs/goals/goal-unused-code-gate.md on master, at or after 34da529b7 �
 Background was surveyed at.
 Before Phase 1, confirm the base: packages/abuddy-host/tsconfig.json, packages/abuddy-sdk/tsconfig.json,
 packages/default-setup/package.json and packages/renderer/eslint.config.ts exist at HEAD, and the root
-package.json's `lint:check` is still `npm run lint:check -ws --if-present`. If they don't, stop and say
-so — the plan was surveyed somewhere else.
+package.json's `lint:check` still begins `npm run lint:check -ws --if-present`. If they don't, stop and
+say so — the plan was surveyed somewhere else. (It gained ` && oxlint scripts tests -D correctness` in
+`f91b66b49`, which covers the two trees belonging to no workspace and leaves this goal's subject — the
+workspaces — untouched.)
 Read Background, Decisions, Phases and Constraints first. Decisions are final: implement them, don't
 reopen them or stop to ask. The Open decisions must be settled with the user before Phase 3; if any is
 still marked open, stop and ask.
@@ -68,9 +70,14 @@ reading, not by a check. Asking why turned up two independent gaps.
 |---|---|
 | `@app/default-setup`, `@app/renderer` | `@abuddy/host`, `@abuddy/sdk`, `@abuddy/ears`, `@abuddy/cli`, `@abuddy/testing`, `@abuddy/ui`, `@app/api`, `@app/main`, `@app/preload`, `@app/electron-versions`, `@app/typescript-floor` |
 
-The root script is `npm run lint:check -ws --if-present` (`package.json`), and `--if-present` makes a
-missing script a pass. `lint:check` is the last step of the root `typecheck` chain, so the chain reports
-lint as green while covering two of thirteen workspaces.
+The root script is `npm run lint:check -ws --if-present && oxlint scripts tests -D correctness`
+(`package.json`), and `--if-present` makes a missing script a pass. `lint:check` is the last step of the
+root `typecheck` chain, so the chain reports lint as green while covering two of thirteen workspaces.
+
+The second half arrived later, in `f91b66b49`: the repo's own `scripts/` and `tests/` belong to no
+workspace, so no `-ws` fan-out could ever reach them, and eight dead declarations had accumulated there
+unnoticed. Both trees are at zero now. That closes a hole this survey did not name and moves none of what
+follows — the thirteen workspaces are still two linted and eleven not.
 
 default-setup's script is `oxlint . -D correctness --ignore-path .gitignore`; renderer has
 `eslint.config.ts`. There is no lint config at the repo root and none in any unlinted package.
