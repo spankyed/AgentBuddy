@@ -167,6 +167,13 @@ const repositoryCast = (node: ts.Node): string[] | undefined => {
  * rest stand down (`packRuleProblems`). The order is the order of causes — what stops the pack loading at all,
  * then what stops a specifier resolving, then what breaks on an app update, then the conventions — so an author
  * deleting one import is told the thing that matters about it.
+ *
+ * **Where one fix subsumes another, the subsuming one comes first**, even against that grouping. An extensionless
+ * cross-feature import is both unresolvable and a crossing, and cause order alone would hand it to `own-modules`:
+ * the author adds `.ts`, re-runs, and is then told the import should not exist at all. The first fix was wasted,
+ * so `cross-feature-imports` outranks `own-modules` despite sitting a group later by cause. Measured before it was
+ * moved: the five rules it passed contest no site with it, and the only tests that changed were the two recording
+ * this order.
  */
 const RULE_LIST = [
   {
@@ -217,6 +224,13 @@ const RULE_LIST = [
       return view.specifiers.filter(({ text }) => /^lmdb(\/|$)/.test(text) || /^@abuddy\/ears\/lmdb(\/|$)/.test(text))
         .map(({ text, line, start, end }) => ({ line, what: text, start, end }));
     },
+  },
+  {
+    key: 'cross-feature-imports',
+    switchable: true,
+    rule: "A feature's frontend is its own: what it offers other features is its plugin's contract, read through "
+      + '#generated/fe and #generated/events, never a module of its own',
+    check: crossFeatureFindings,
   },
   {
     key: 'own-modules',
@@ -308,13 +322,6 @@ const RULE_LIST = [
         return undefined;
       });
     },
-  },
-  {
-    key: 'cross-feature-imports',
-    switchable: true,
-    rule: "A feature's frontend is its own: what it offers other features is its plugin's contract, read through "
-      + '#generated/fe and #generated/events, never a module of its own',
-    check: crossFeatureFindings,
   },
   {
     key: 'repository-casts',

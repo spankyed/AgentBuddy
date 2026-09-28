@@ -431,19 +431,17 @@ describe('when several rules are right about one site', () => {
   });
 
   /**
-   * The pair worth arguing about. An extensionless cross-feature import is both unresolvable and a crossing, and
-   * precedence gives it to `own-modules` (5th) over `cross-feature-imports` (11th) — so the author is told to add
-   * `.ts`, does, and is then told the import should not exist at all. The first fix was wasted.
+   * The pair the ordering principle is written for. An extensionless cross-feature import is both unresolvable and
+   * a crossing, and cause order alone would hand it to `own-modules`: the author adds `.ts`, re-runs, and is then
+   * told the import should not exist at all, which is the fix that subsumes the one they just made.
    *
-   * Pinned as it behaves, not as it should: the order above says "what stops a specifier resolving" comes before
-   * "the conventions", which defends this, while the same comment's stated goal — "an author deleting one import is
-   * told the thing that matters about it" — argues for the crossing, the fix that subsumes the other. Which
-   * principle wins is a decision to raise; reordering would move every pair that sits between the two rules.
+   * So `cross-feature-imports` is ranked above it deliberately, and this is the case that holds it there — the
+   * repo's own `check:specifiers` and every fixture pack pass either way, so nothing else would notice a revert.
    */
-  it('gives an extensionless cross-feature import to the rule about the extension', () => {
+  it('gives an extensionless cross-feature import to the rule about the crossing, the fix that subsumes the other', () => {
     expect(offenderIn('src/extensions/viewer.ts', "import { t } from '#features/threads/fe/state';\n",
       { 'src/features/threads/fe/state.ts': 'export const t = 1;\n' }))
-      .toEqual(["own-modules: src/extensions/viewer.ts:1: '#features/threads/fe/state' names no file — write '#features/threads/fe/state.ts'"]);
+      .toEqual(['cross-feature-imports: src/extensions/viewer.ts:1: #features/threads/fe/state']);
   });
 
   /**
@@ -510,9 +508,10 @@ describe('when several rules are right about one site', () => {
     expect(PACK_RULES.map((rule) => rule.key)).toEqual([
       'source-resolution', 'contract-leaves',
       'host-imports', 'lmdb-imports',
-      'own-modules', 'pack-own-aliases',
+      // cross-feature-imports is out of its cause group on purpose: its fix subsumes own-modules'
+      'cross-feature-imports', 'own-modules', 'pack-own-aliases',
       'internal-package-imports',
-      'untyped-sends', 'raw-transport', 'backend-console', 'cross-feature-imports', 'repository-casts',
+      'untyped-sends', 'raw-transport', 'backend-console', 'repository-casts',
     ]);
   });
 });
