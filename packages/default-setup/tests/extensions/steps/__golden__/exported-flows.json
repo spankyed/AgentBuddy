@@ -76,6 +76,9 @@
               "scope": "global",
               "payload": {
                 "a": 1
+              },
+              "map": {
+                "payload": "$.event.data.to"
               }
             },
             {

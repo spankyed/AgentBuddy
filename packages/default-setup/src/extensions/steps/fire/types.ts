@@ -6,6 +6,8 @@ export interface DSLFireNode extends DSLNodeBase {
   event: string;
   scope?: 'local' | 'global';
   payload?: unknown;
+  /** The payload read from the flow when the step runs: `{ payload: source }`. Wins over `payload` */
+  map?: Record<string, string>;
 }
 
 export interface FireNode extends NodeBase {
@@ -13,4 +15,5 @@ export interface FireNode extends NodeBase {
   eventType: string;
   payload?: unknown;
   scope?: 'local' | 'global';
+  fieldMappings?: Array<{ target: string; source: string; default?: unknown }>;
 }

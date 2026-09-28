@@ -22,7 +22,7 @@ export const EVERY_STEP_FLOW = {
         create('Note', { params: { content: 'c' } }),
         update('$.note', { params: { content: 'c' }, onMissing: 'ignore' }),
         transform('return 1', { outputType: 'text' }),
-        fire('ping', { scope: 'global', payload: { a: 1 } }),
+        fire('ping', { scope: 'global', payload: { a: 1 }, map: { payload: '$.event.data.to' } }),
         subflow('Every', { inherit: false }),
         branch([{ if: 'ok == true', steps: [kill()] }], [keepAlive()]),
       ]]),

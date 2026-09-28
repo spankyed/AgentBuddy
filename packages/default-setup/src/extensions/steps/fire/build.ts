@@ -1,5 +1,7 @@
 import type { StepDefinition, StepCompileResult, StepCompileContext, StepValidationError, StepValidationContext, StepDecompileContext } from '@abuddy/sdk/steps';
 import { EARS } from '@abuddy/sdk';
+import { expandRecord, collapseRecord } from '@abuddy/sdk/steps';
+import { validateFields } from '../create/build.ts';
 
 function compile(
   node: Record<string, unknown>,
@@ -18,6 +20,7 @@ function compile(
       eventType: node.event,
       scope: (node.scope as string) || 'local',
       payload: node.payload,
+      fieldMappings: expandRecord(node.map as Record<string, string> | undefined),
       final: node.final,
     },
     relations: [],
@@ -36,7 +39,7 @@ function validate(
   if (s.scope !== undefined && !['local', 'global'].includes(s.scope as string)) {
     errors.push({ path: `${path}.scope`, message: '"scope" must be "local" or "global"' });
   }
-  return errors;
+  return [...errors, ...validateFields(s, path)];
 }
 
 function getLabel(step: Record<string, unknown>, index: number): string {
@@ -51,6 +54,8 @@ function decompile(node: Record<string, unknown>, _ctx: StepDecompileContext): R
   if (node.final) dsl.final = true;
   if (node.scope && node.scope !== 'local') dsl.scope = node.scope;
   if (node.payload !== undefined) dsl.payload = node.payload;
+  const map = collapseRecord(node.fieldMappings as Array<Record<string, string>> | undefined);
+  if (map) dsl.map = map;
   return dsl;
 }
 
