@@ -4,30 +4,29 @@ import { setup } from 'xstate';
 import { defineSystem } from '@abuddy/sdk/framework';
 
 import { repository } from '#generated/repository.ts';
-import { addMemoNote, type MemoNoteDTO } from './memo-notes.ts';
-import type { MemoDTO } from './types.ts';
+import { addMemoNote } from './memo-notes.ts';
 
 export const memosSpec = defineSystem<Contract>();
 
 export const memosSystem = setup({
   types: memosSpec.types,
   actions: {
-    sendConnectedData: ({ system }) => {
+    sendConnectedData: () => {
       broadcastToPlugin('memos', { type: 'MEMOS_CONNECTED', memos: repository.memoQueries.all() });
     },
-    addMemo: ({ system, event }) => {
+    addMemo: ({ event }) => {
       const { text } = memosSpec.typeOf('ADD_MEMO', event);
       broadcastToPlugin('memos', { type: 'MEMO_ADDED', memo: repository.memoCommands.add(text) });
     },
     // A send to a dependency's plugin, named as code names another pack's feature; that plugin declares it takes it
-    announceMemo: ({ system, event }) => {
+    announceMemo: ({ event }) => {
       const { text } = memosSpec.typeOf('ANNOUNCE_MEMO', event);
       broadcastToPlugin('default-setup/logs', {
         type: 'LOG_ADDED',
         log: { id: `memo-${Date.now()}`, timestamp: Date.now(), level: 'info', message: text, source: 'memos' },
       });
     },
-    addMemoNote: ({ system, event }) => {
+    addMemoNote: ({ event }) => {
       const { text } = memosSpec.typeOf('ADD_MEMO_NOTE', event);
       broadcastToPlugin('memos', { type: 'MEMO_NOTE_ADDED', text, note: addMemoNote(text) });
     },

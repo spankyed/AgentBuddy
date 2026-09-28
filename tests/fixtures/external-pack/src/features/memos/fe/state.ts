@@ -3,8 +3,6 @@ import { setup, assign, type ActorRefFrom } from 'xstate';
 import { safeEvents } from '@abuddy/sdk/fe';
 import { sendToSystem } from '#generated/events.ts';
 import type { OutgoingMemosEvents } from '../be/types.ts';
-import type { MemoNoteDTO } from '../be/memo-notes.ts';
-import type { MemoDTO } from '../be/types.ts';
 
 export const id = 'memos' as const;
 
