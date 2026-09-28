@@ -33,7 +33,7 @@ import { REPO_ROOT } from '@abuddy/host/build/packages-built';
 import { UNIT_SUITES, type UnitSuite } from './lib/unit-suites.ts';
 import {
   FAST_BELOW_MS, INTEGRATION_ABOVE_MS, PLACEMENT_GUARD, halfOfPath, hasSplit, misplaced,
-  CONFIG_BY_HALF, drift, drifted, namedIn, parseArgs, planFor, readSpecCost, refuseAbsent, refusesAsContended,
+  CONFIG_BY_HALF, absentNamed, drift, drifted, namedIn, parseArgs, planFor, readSpecCost, refusesAsContended,
   settle, specCostFile, specFiles, stale, suitesFor, unrecorded, type SpecCostPlan,
 } from './lib/spec-cost.ts';
 
@@ -223,7 +223,6 @@ function check(only: string | undefined, named: readonly string[]): void {
     }
     const files = specFiles(dir);
     const asked = named.length > 0 ? namedIn(suite.dir, named) : files;
-    refuseAbsent(suite.dir, files, asked);
     total += asked.length;
     const before = problems.length;
     problems.push(
@@ -274,7 +273,6 @@ function list(only: string | undefined, named: readonly string[]): void {
     for (const suite of selected) {
       const record = readSpecCost(REPO_ROOT, suite.dir);
       const asked = namedIn(suite.dir, named);
-      refuseAbsent(suite.dir, specFiles(packageDir(suite)), asked);
       for (const file of asked) {
         const ms = record?.costs[file];
         // Milliseconds below a second, because the aggregate below only ever prints in-band specs and every
@@ -314,6 +312,14 @@ function list(only: string | undefined, named: readonly string[]): void {
 }
 
 const { mode, only, named, force, all, dry } = parseArgs(process.argv.slice(2), UNIT_SUITES.map((suite) => suite.dir));
+
+// Before any mode reads a record, and for all of them: a path that names no spec is the caller's mistake, and
+// every one of them is worth reporting at once rather than one per run
+const absent = absentNamed(REPO_ROOT, UNIT_SUITES.map((suite) => suite.dir), named);
+if (absent.length > 0) {
+  throw new Error(`These are not specs:\n  ${absent.join('\n  ')}\n`
+    + 'Name a spec by its repo-relative path, as `packages/<suite>/tests/<file>.spec.ts`.');
+}
 
 if (mode === 'list') list(only, named);
 else if (mode === 'update') {

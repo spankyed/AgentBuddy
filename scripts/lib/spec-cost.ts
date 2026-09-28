@@ -404,11 +404,34 @@ export const absentIn = (files: readonly string[], named: readonly string[]): st
   named.filter((file) => !files.includes(file));
 
 /**
- * Refuse a named spec that does not exist, which every mode has to do and for the same reason.
+ * Named paths that name no spec, across every suite they reach into.
+ *
+ * The command validates with this, once, before it reads a record — because a typo is the caller's mistake and
+ * has nothing to do with which suite it lands in. Validated inside a mode's per-suite loop instead, a run
+ * reports the first suite's typo and the second only once you have fixed that one; and `check`, which
+ * accumulates every other kind of problem across all twelve suites before reporting, would contradict itself.
+ *
+ * Returns the paths as the caller wrote them. The early return for an unnamed run is a cost guard — without
+ * it every bare invocation walks twelve trees to answer a question nobody asked.
+ */
+export function absentNamed(repoRoot: string, suiteDirs: readonly string[], named: readonly string[]): string[] {
+  if (named.length === 0) return [];
+  return suitesFor(suiteDirs, undefined, named).flatMap((dir) => {
+    const files = specFiles(path.join(repoRoot, 'packages', dir));
+    return absentIn(files, namedIn(dir, named)).map((file) => `packages/${dir}/${file}`);
+  });
+}
+
+/**
+ * Refuse a named spec that does not exist, so that `planFor` cannot plan a run for one.
  *
  * A path is otherwise only checked for its `packages/<suite>/` prefix, so a typo maps to a half by its
- * extension: an update would measure that whole config and record nothing for the file named, reporting
- * "none moved", and a check would pass having judged nothing.
+ * extension and the run measures that whole config, records nothing for the file named, and reports
+ * "none moved".
+ *
+ * The command cannot reach this: it validates every named path with `absentNamed` before it reads anything.
+ * That makes this an assertion rather than a gate — it holds for a caller reaching `planFor` directly, which
+ * the specs do, and what would make it fire from the command is `absentNamed` being dropped from the tail.
  */
 export function refuseAbsent(dir: string, files: readonly string[], named: readonly string[]): void {
   const absent = absentIn(files, named);

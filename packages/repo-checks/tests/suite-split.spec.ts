@@ -16,7 +16,8 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { REPO_ROOT } from '@abuddy/host/build/packages-built';
 import {
   FAST_BELOW_MS, INTEGRATION_ABOVE_MS, SPEC_COST_FLAGS, absentIn, changesIn, contended, drift, drifted,
-  halfOfPath, misplaced, hasSplit, moved, namedIn, outgrown, parseArgs, planFor, readSpecCost, refuseAbsent,
+  absentNamed, halfOfPath, misplaced, hasSplit, moved, namedIn, outgrown, parseArgs, planFor, readSpecCost,
+  refuseAbsent,
   refusesAsContended, settle, specCostFile, specFiles, stale, suitesFor, unrecorded,
 } from '../../../scripts/lib/spec-cost.ts';
 import { UNIT_SUITES } from '../../../scripts/lib/unit-suites.ts';
@@ -599,6 +600,35 @@ describe('a named spec that is not there is refused, whatever was asked of it', 
     expect(() => refuseAbsent('mini', FILES, ['tests/nope.spec.ts']))
       .toThrow(/not specs in mini[\s\S]*packages\/mini\/tests\/nope\.spec\.ts/);
     expect(() => refuseAbsent('mini', FILES, FILES)).not.toThrow();
+  });
+
+  // The command validates every named path here rather than inside a mode's per-suite loop. In the loop it
+  // reported the first suite's typo and the second only once that was fixed — and `check` accumulates every
+  // other kind of problem across all twelve suites before reporting, so it contradicted itself.
+  it('collects the absent paths from every suite they reach into, not the first', () => {
+    const found = absentNamed(REPO_ROOT, UNIT_SUITES.map((suite) => suite.dir), [
+      'packages/repo-checks/tests/nope1.spec.ts',
+      'packages/abuddy-cli/tests/nope2.spec.ts',
+    ]);
+    expect(found, 'both, so one run names every typo').toHaveLength(2);
+    expect([...found].sort()).toEqual([
+      'packages/abuddy-cli/tests/nope2.spec.ts',
+      'packages/repo-checks/tests/nope1.spec.ts',
+    ]);
+  });
+
+  it('names only the paths that are absent', () => {
+    const real = `packages/repo-checks/${specFiles(path.join(REPO_ROOT, 'packages', 'repo-checks'))[0]!}`;
+    const dirs = UNIT_SUITES.map((suite) => suite.dir);
+    expect(absentNamed(REPO_ROOT, dirs, [real, 'packages/repo-checks/tests/nope.spec.ts']))
+      .toEqual(['packages/repo-checks/tests/nope.spec.ts']);
+    expect(absentNamed(REPO_ROOT, dirs, [real]), 'a real spec is not a problem').toEqual([]);
+  });
+
+  // Asserts the answer, not the shortcut above it: that `named.length === 0` returns before walking twelve
+  // trees is a cost guard, and nothing here would fail if it went
+  it('has nothing to report when no path was named', () => {
+    expect(absentNamed(REPO_ROOT, UNIT_SUITES.map((suite) => suite.dir), [])).toEqual([]);
   });
 
   // Why `check` narrows `unrecorded` and `misplaced` but never `stale`: `stale` answers "recorded and no
