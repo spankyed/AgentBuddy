@@ -43,7 +43,7 @@
 // assumption, and the cheapest work left in this chain may be another step that is quietly serial.
 import * as fs from 'node:fs';
 import * as path from 'node:path';
-import { changedInputs, REPO_ROOT, stampedRun, stampRecord, unitStaleReason, type BuildUnit } from '@abuddy/host/build/packages-built';
+import { changedInputs, freshnessSweep, REPO_ROOT, stampedRun, stampRecord, unitStaleReason, type BuildUnit } from '@abuddy/host/build/packages-built';
 import { CHAIN_STEPS, MEASURED_AT_LANES, orderedSteps, type ChainStep, type Tier } from './lib/chain-steps.ts';
 import { schedule } from './lib/chain-schedule.ts';
 import { criticalPath, driftedSteps, willNotCache } from './lib/step-timing.ts';
@@ -101,9 +101,14 @@ type Result = { step: string; ms: number; code: number; output: string; timedOut
  * after the wrong thing. mtime is still read, but only to place a change the digests already found.
  *
  * Asked only of a step already known to be stale, so its walk and its stats are paid on the runs with
- * something to report.
+ * something to report — and over the same sweep that reached the verdict, so the digests are already read rather
+ * than walked a second time.
  */
-function whatMoved(step: ChainStep, steps: readonly ChainStep[]): Omit<Parameters<typeof staleLines>[0], 'indent'> {
+function whatMoved(
+  step: ChainStep,
+  steps: readonly ChainStep[],
+  asking: { changedInputs: typeof changedInputs },
+): Omit<Parameters<typeof staleLines>[0], 'indent'> {
   const nothing = { gained: [], lost: [], files: [], identical: [] };
   const record = stampRecord(stampFor(step.name));
   // `recorded: false` is required of the types and unreachable from here, which is worth saying rather than
@@ -113,7 +118,7 @@ function whatMoved(step: ChainStep, steps: readonly ChainStep[]): Omit<Parameter
   // which is `--dry`, the question "why would this run?". That is where naming the files would pay next, and it
   // would make this branch live.
   if (record?.files === undefined || record.declared === undefined) return { ...nothing, recorded: false };
-  const changes = changedInputs(unitFor(step), { files: record.files, declared: record.declared });
+  const changes = asking.changedInputs(unitFor(step), { files: record.files, declared: record.declared });
   const at = (file: string) => {
     try {
       return fs.statSync(path.join(REPO_ROOT, file)).mtimeMs;
@@ -233,16 +238,29 @@ async function main(): Promise<void> {
   const lanes = laneCount();
 
   /** Its verdict, asked at dispatch — see `dispatch` for why that timing is load-bearing */
-  const staleReason = (step: ChainStep): string | null =>
+  /**
+   * Why a step would run. `asking` is how it reads the tree: the default reads per step, and a sweep reads once
+   * for all of them.
+   *
+   * **Which one is not a performance choice.** A sweep answers as of its first read, so it is right only where
+   * every step is asked about at one moment — `--dry`, which runs nothing, and the report below, which runs after
+   * everything has stopped. The dispatch decisions are asked as the scheduler reaches each step, spread across the
+   * whole run, so they read for themselves: a step reached at t=100s has to see the tree as of then, or a snapshot
+   * from t=0 calls it fresh when another step has just written into its inputs. That is the defect the report
+   * exists to find, and sharing reads there would hide it instead.
+   */
+  const staleReason = (step: ChainStep, asking = { staleReason: unitStaleReason }): string | null =>
     step.cache === false
       ? `never cached: ${step.neverCachedBecause}`
-      : unitStaleReason(unitFor(step), stampFor(step.name));
+      : asking.staleReason(unitFor(step), stampFor(step.name));
 
   if (dry) {
+    // One question about every step, and nothing runs while it is asked, so one reading of the tree answers it all
+    const sweep = freshnessSweep();
     for (const step of steps) {
       // `--all` runs everything, so a dry run given `--all` must say so rather than reporting the cache it
       // would ignore. A plan that does not answer for the flags it was given is worse than no plan.
-      const why = staleReason(step);
+      const why = staleReason(step, sweep);
       const willRun = all || why !== null;
       console.log(`${(willRun ? 'run' : 'cached').padStart(7)} t${step.tier} ${step.name.padEnd(26)} ${wrapAt(DRY_REASON_COLUMN, all ? '--all' : (why ?? ''))}`.trimEnd());
     }
@@ -318,17 +336,21 @@ async function main(): Promise<void> {
   const verdict = failed ? `chain FAILED at ${failed.step}` : outcome.failed ? `chain FAILED at ${outcome.failed}` : 'chain passed';
   // Something writing into a step's inputs after it ran is why a "15 of 17 cached" chain still paid 34s
   // for a typecheck every time. Asked here, where the answer is one hash per step and already to hand.
+  //
+  // Every step is asked about at this one moment, with nothing left running, so one reading of the tree answers
+  // both halves: whether each step is stale, and which of its inputs moved. A fresh sweep, never the dry one.
+  const sweep = freshnessSweep();
   const uncacheable = willNotCache(
     steps,
     new Set(results.filter((r) => r.code === 0).map((r) => r.step)),
-    (step) => unitStaleReason(unitFor(step), stampFor(step.name)),
+    (step) => staleReason(step, sweep),
   );
   if (uncacheable.length > 0) {
     console.log(`\n${uncacheable.length} step${uncacheable.length === 1 ? '' : 's'} passed but will run again next time — something wrote into their inputs:`);
     for (const { name, reason } of uncacheable) {
       const step = steps.find((s) => s.name === name)!;
       console.log(`  ${name.padEnd(STEP_NAME_WIDTH)} ${reason}`);
-      for (const line of staleLines({ indent: REPORT_REASON_COLUMN, ...whatMoved(step, steps) })) console.log(line);
+      for (const line of staleLines({ indent: REPORT_REASON_COLUMN, ...whatMoved(step, steps, sweep) })) console.log(line);
     }
     console.log('  Declare what writes there in that step\'s `outputs`, or stop declaring the generated tree as an input.');
   }
