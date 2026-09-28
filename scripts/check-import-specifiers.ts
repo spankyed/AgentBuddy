@@ -1355,6 +1355,53 @@ export const CHECK_IDS: readonly ImportRuleId[] = RULE_LIST.map((rule) => rule.i
 /** Every rule, as the runner and the sweeps read them */
 export const CHECKS: readonly ImportRule[] = RULE_LIST;
 
+/**
+ * One rule as `--list` shows it. Rendered cells rather than the rule itself, so the widths below are derived
+ * from the text that will actually be printed and a caller cannot compose a column a different way.
+ */
+export interface RuleRow {
+  readonly id: string;
+  /** Whether it can be pointed at paths, which is what decides if a per-file run covers it */
+  readonly paths: string;
+  /** Whether an external pack is held to it too: `abuddy validate`, `build` and `test` run the pack rules */
+  readonly parity: string;
+  /** The first clause of what it reports, which is the part that fits a row */
+  readonly reports: string;
+}
+
+/**
+ * The rows `--list` prints, as data.
+ *
+ * Separate from the printing because the pairing is the only thing the table is for, and a row is the only place
+ * an id and its parity are together — asserted over these, a rule rendered with another rule's key fails, where
+ * over the command's stdout every string is still present and every `toContain` still passes.
+ *
+ * Takes the rules so a case can render a parity a real rule does not have yet.
+ */
+export const ruleRows = (checks: readonly ImportRule[] = CHECKS): readonly RuleRow[] => checks.map((rule) => ({
+  id: rule.id,
+  paths: rule.overPaths ? 'yes' : 'no',
+  parity: rule.packRule === undefined ? 'no — see below' : `yes, as \`${rule.packRule}\``,
+  reports: rule.rule.split(':')[0],
+}));
+
+/**
+ * Those rows as lines, each column as wide as its own longest entry: a width guessed from today's entries is one
+ * the next rule runs off the end of, and the entry that does it is the one nobody reads twice.
+ */
+export const ruleTable = (rows: readonly RuleRow[]): string[] => {
+  const width = (header: string, cell: (row: RuleRow) => string) => Math.max(header.length, ...rows.map((row) => cell(row).length)) + 2;
+  const columns = [
+    ['rule', width('rule', (row) => row.id), (row: RuleRow) => row.id],
+    ['paths?', width('paths?', (row) => row.paths), (row: RuleRow) => row.paths],
+    ['a pack too?', width('a pack too?', (row) => row.parity), (row: RuleRow) => row.parity],
+    ['what it reports', 0, (row: RuleRow) => row.reports],
+  ] as const;
+  const line = (cell: (column: (typeof columns)[number]) => string) =>
+    columns.map((column) => cell(column).padEnd(column[1])).join('').trimEnd();
+  return [line((column) => column[0]), ...rows.map((row) => line((column) => column[2](row)))];
+};
+
 // Run as a script, also through a symlinked path (tests import findJsSpecifiers)
 if (process.argv[1] && import.meta.filename === fs.realpathSync(process.argv[1])) {
   const args = process.argv.slice(2);
@@ -1363,17 +1410,7 @@ if (process.argv[1] && import.meta.filename === fs.realpathSync(process.argv[1])
   const rules = only ? CHECKS.filter((rule) => rule.id === only) : CHECKS;
 
   if (args.includes('--list')) {
-    // `abuddy validate`, `build` and `test` run the pack rules, so a rule with one is a rule an external pack
-    // is held to. One without is this repo's alone, and the second table says what that costs
-    const heldToo = (rule: ImportRule) => (rule.packRule === undefined ? 'no — see below' : `yes, as \`${rule.packRule}\``);
-    // Widths from the longest entry rather than a literal: the last column runs off the end of the one that
-    // outgrew its guess, and the entry that did it is the one nobody reads twice
-    const packsWidth = Math.max(...CHECKS.map((rule) => heldToo(rule).length)) + 2;
-    console.log('rule'.padEnd(34) + 'paths?'.padEnd(8) + 'a pack too?'.padEnd(packsWidth) + 'what it reports');
-    for (const rule of CHECKS) {
-      console.log(rule.id.padEnd(34) + (rule.overPaths ? 'yes' : 'no').padEnd(8)
-        + heldToo(rule).padEnd(packsWidth) + rule.rule.split(':')[0]);
-    }
+    for (const line of ruleTable(ruleRows())) console.log(line);
     const repoOnly = CHECKS.filter((rule) => rule.repoOnly !== undefined);
     console.log(`\n${repoOnly.length} of ${CHECKS.length} are this repo's alone. What an external pack does without each:\n`);
     for (const rule of repoOnly) console.log(`  ${rule.id}\n    ${rule.repoOnly}\n`);

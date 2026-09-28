@@ -9,7 +9,7 @@ import {
   findPackageScriptImports, findPackBackendConsole, findPackOwnAliases, findRawPackHelpers,
   findRawTransport, findInternalPackageImports, findLmdbImports, findRepositoryCasts, findSharedPackageLists, findUpwardImports, LAYERS, LMDB_RULES, packageSourceDirs,
   CHECK_IDS, DECLARES_SOURCE_BY_DESIGN, type ImportRuleId, RESOLVES_DIST_BY_DESIGN, SHARED_LIST_CONSUMERS, sourceConditionPackages, SOURCE_CONDITION,
-  checkedDirs, type ImportRule, packCodeDirs, packDirs, packRule,
+  checkedDirs, type ImportRule, packCodeDirs, packDirs, packRule, ruleRows, ruleTable,
 } from '../../../scripts/check-import-specifiers.ts';
 import { REPO_ROOT } from '@abuddy/host/build/packages-built';
 import { packFixture as buildPackFixture } from '@abuddy/host/testing/pack-fixture';
@@ -598,6 +598,39 @@ describe('CHECKS', () => {
    */
   it.each(CHECK_IDS)('%s flags an offending example', (name) => {
     expect(FIRES[name](), `${name} found nothing in a tree written to offend it`).not.toEqual([]);
+  });
+
+  /**
+   * `--list`'s parity column, asserted one row at a time.
+   *
+   * A row is the only place a rule's id and its answer sit together, and that pairing is the whole point of the
+   * column — so the claim has to be about *this* row. Asserted over the command's stdout instead, rendering every
+   * rule with the next rule's key left the table saying `findRawPackHelpers -> internal-package-imports` and the
+   * whole suite green, because every string was still somewhere in the output.
+   */
+  it('lists a rule, and never another rule, in each rule\'s own answer', () => {
+    const rows = ruleRows();
+    expect(CHECKS.length, 'no rules, so this would pass over nothing').toBeGreaterThan(0);
+    expect(rows.map((row) => row.id), '--list reaches a different set of rules than the runner does')
+      .toEqual(CHECKS.map((rule) => rule.id));
+
+    for (const rule of CHECKS) {
+      const cell = rows.find((row) => row.id === rule.id)!.parity;
+      // The key it names, rather than whether the key appears: a cell naming two, or naming the neighbour's,
+      // is what this is here to catch, and `toContain` cannot tell either from the right answer
+      expect(cell.match(/`([^`]+)`/)?.[1], `${rule.id}'s row names the wrong pack rule`).toBe(rule.packRule);
+      if (rule.packRule === undefined) expect(cell, `${rule.id} is this repo's alone and its row must say so`).toMatch(/^no\b/);
+    }
+  });
+
+  /** And every rule reaches the printed table, under a header, one line each */
+  it('prints a header and one line per rule', () => {
+    const lines = ruleTable(ruleRows());
+    expect(lines).toHaveLength(CHECKS.length + 1);
+    expect(lines[0]).toMatch(/^rule\s+paths\?\s+a pack too\?\s+what it reports$/);
+    for (const [index, rule] of CHECKS.entries()) {
+      expect(lines[index + 1], `${rule.id} is missing from the table`).toMatch(new RegExp(`^${rule.id}\\s`));
+    }
   });
 
   /**

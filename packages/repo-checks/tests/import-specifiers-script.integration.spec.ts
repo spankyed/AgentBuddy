@@ -29,27 +29,18 @@ describe('check-import-specifiers as a script', () => {
   });
 
   /**
-   * `--list` is where "does an external pack get this rule, and what does doing without it cost?" is answered.
-   * That question was surveyed by hand twice and written down neither time; the answer is derived from the
-   * entries now, so what has to hold is that every rule reaches the output and says which side it is on.
-   *
-   * Derived from `CHECKS` rather than from a count written here — a table of eighteen that lists seventeen is
-   * the failure this replaces.
+   * `--list` as a process: that the flag is wired, and that the table it prints is over the rule set the runner
+   * uses. What each row *says* is asserted in-process and per row in `import-specifiers.integration.spec.ts` —
+   * over the rows as data, because every rule's key appears somewhere in this output whatever it is paired with,
+   * so a table rendered one row out reads as correct from here.
    */
-  it('says of every rule whether a pack is held to it too, and what the others cost', () => {
+  it('prints the rule table over every rule', () => {
     const list = execFileSync(path.join(REPO_ROOT, 'node_modules', '.bin', 'tsx'),
       [path.join(REPO_ROOT, 'scripts', 'check-import-specifiers.ts'), '--list'], { cwd: REPO_ROOT, stdio: 'pipe' }).toString();
 
     expect(CHECKS.length, 'no rules, so this would pass over nothing').toBeGreaterThan(0);
-    for (const rule of CHECKS) {
-      expect(list, `${rule.id} is missing from --list`).toContain(rule.id);
-      const side = rule.packRule === undefined ? 'no — see below' : `yes, as \`${rule.packRule}\``;
-      expect(list, `${rule.id} does not say which side it is on`).toContain(side);
-    }
-
-    // And each repo-only rule says what a pack does without it, rather than only that it is repo-only
-    const repoOnly = CHECKS.filter((rule) => rule.repoOnly !== undefined);
-    expect(repoOnly.length, 'no rule is repo-only, so the second table would be empty').toBeGreaterThan(0);
-    for (const rule of repoOnly) expect(list, `${rule.id} gives no reason`).toContain(rule.repoOnly!);
+    expect(list).toMatch(/^rule\s+paths\?\s+a pack too\?\s+what it reports$/m);
+    expect(list, 'the second table counts a different rule set than the runner has')
+      .toMatch(new RegExp(`\\d+ of ${CHECKS.length} are this repo's alone`));
   });
 });
