@@ -250,9 +250,6 @@ export const outgrown = (costs: Record<string, number>, files: readonly string[]
     return ms !== undefined && ms > INTEGRATION_ABOVE_MS ? [{ file, ms, belongs: 'integration' as Half }] : [];
   });
 
-/** A spec recorded as skipped that has since started running, so its cost is now measurable */
-export const nowRunning = (record: SpecCost, measured: Record<string, number>): string[] =>
-  record.skipped.filter((file) => measured[file] !== undefined);
 
 /** Recorded specs that no longer exist */
 export const stale = (record: SpecCost, files: readonly string[]): string[] =>

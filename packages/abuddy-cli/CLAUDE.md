@@ -109,10 +109,13 @@ back.
 
 **The rule for choosing is the measured cost, recorded in `etc/spec-cost.json`.** A fast spec moves to the
 integration half above **2.5s**; an integration spec comes back below **1.5s**; anything between stays where
-it is. `npm run spec-cost:update -w @abuddy/cli` re-measures and rewrites the record — run it with nothing
-else on the machine — and `repo-checks`' `suite-split.spec.ts` fails when a spec is in the wrong half, has no
-recorded cost, or is recorded and gone. The check reads the record and runs nothing, because re-measuring to
-decide placement would make the cheap half expensive.
+it is. `npm run spec-cost:update` records what the check reports, and naming a spec
+(`npm run spec-cost:update -- packages/abuddy-cli/tests/<file>.spec.ts`) measures only the half that spec
+lives in — 15.0s of fast specs here, against 167.9s of integration ones. Run it with nothing else on the
+machine: a cost is a sample, and a contended run is refused rather than recorded. `repo-checks`'
+`suite-split.spec.ts` fails when a spec is in the wrong half, has no recorded cost, or is recorded and
+gone. The check reads the record and runs nothing, because re-measuring to decide placement would make
+the cheap half expensive.
 
 Two things about that shape are deliberate. **The band, rather than one threshold**, because a file's time
 is its wall time under whatever else its half is running: `dependency-flow-helpers` reads 4.7s in the fast

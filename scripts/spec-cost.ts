@@ -213,15 +213,18 @@ function update(plans: readonly SuitePlan[], dry: boolean): void {
 
 function check(only: string | undefined): void {
   const suites = UNIT_SUITES.filter((candidate) => only === undefined || candidate.dir === only);
+  /** What an update can fix: a cost it can measure, or a row it can drop */
   const problems: string[] = [];
-  const staleSuites = new Set<string>();
+  /** What it cannot: a spec whose filename puts it in the other half from its cost */
+  const renames: string[] = [];
+  const recordable = new Set<string>();
   let total = 0;
   for (const suite of suites) {
     const dir = packageDir(suite);
     const record = readSpecCost(REPO_ROOT, suite.dir);
     if (!record) {
       problems.push(`  no ${specCostFile(suite.dir)}`);
-      staleSuites.add(suite.dir);
+      recordable.add(suite.dir);
       continue;
     }
     const files = specFiles(dir);
@@ -230,19 +233,24 @@ function check(only: string | undefined): void {
     problems.push(
       ...unrecorded(record, files).map((f) => `  unmeasured: ${suite.dir}/${f}`),
       ...stale(record, files).map((f) => `  recorded but gone: ${suite.dir}/${f}`),
-      ...(hasSplit(dir)
-        ? misplaced(record.costs, files).map(({ file, ms, belongs }) => `  ${(ms / 1000).toFixed(1)}s is ${belongs}, but this is in the ${halfOfPath(file)} half: ${suite.dir}/${file}`)
-        : []),
     );
-    if (problems.length > before) staleSuites.add(suite.dir);
+    if (problems.length > before) recordable.add(suite.dir);
+    if (hasSplit(dir)) {
+      for (const { file, ms, belongs } of misplaced(record.costs, files)) {
+        renames.push(`  ${(ms / 1000).toFixed(1)}s is ${belongs}, but this is in the ${halfOfPath(file)} half: ${suite.dir}/${file}`);
+      }
+    }
   }
-  if (problems.length > 0) {
-    // Naming the suites matters: re-measuring all eight is a minute, and one is seconds. A check whose
-    // advice costs more than the fix is a check people work around.
-    const fix = staleSuites.size === suites.length
-      ? 'npm run spec-cost:update'
-      : [...staleSuites].map((dir) => `npm run spec-cost:update -- --suite ${dir}`).join('\n     ');
-    throw new Error(`Spec costs are out of date (a fast spec moves above ${INTEGRATION_ABOVE_MS}ms, an integration one comes back below ${FAST_BELOW_MS}ms):\n${problems.join('\n')}\n\nRun: ${fix}`);
+  if (problems.length > 0 || renames.length > 0) {
+    // The two kinds take different fixes, and telling them apart is the whole value of the advice: an
+    // update records what it can measure and cannot move a file, so a misplaced spec needs renaming and
+    // nothing else. Naming one command for both sent people to re-measure a suite that was already right.
+    const advice = [
+      problems.length > 0 ? `Run: npm run spec-cost:update${recordable.size === 1 ? ` -- --suite ${[...recordable][0]}` : ''}` : '',
+      renames.length > 0 ? `Rename ${renames.length === 1 ? 'it' : 'them'} into the half the cost implies; no measurement will move ${renames.length === 1 ? 'it' : 'them'}.` : '',
+    ].filter(Boolean).join('\n');
+    const found = [...problems, ...renames].join('\n');
+    throw new Error(`Spec costs are out of date (a fast spec moves above ${INTEGRATION_ABOVE_MS}ms, an integration one comes back below ${FAST_BELOW_MS}ms):\n${found}\n\n${advice}`);
   }
   console.log(`✅ ${total} specs across ${suites.length} suite${suites.length === 1 ? '' : 's'}, each recorded and in the half its cost implies`);
 }
