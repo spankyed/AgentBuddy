@@ -275,21 +275,23 @@ async function main(): Promise<void> {
     console.log(`\n${'='.repeat(72)}\n${why}\n${'='.repeat(72)}\n${failed.output}`);
   }
 
-  // Where the time goes by tier, which is the number the goal's phases move
+  // Where the time goes by tier, which is the number the goal's phases move. Its own line under the verdict:
+  // it is a breakdown rather than part of the sentence, and in the sentence it competed with the two numbers
+  // a run is read for — what it cost and how much of it was skipped.
   const byTier = ([1, 2, 3] as Tier[]).map((t) => {
     const ms = CHAIN_STEPS.filter((s) => s.tier === t)
       .reduce((sum, s) => sum + (results.find((r) => r.step === s.name)?.ms ?? 0), 0);
-    return `t${t} ${secs(ms)}`;
+    return `t${t}= ${secs(ms)}`;
   }).join('  ');
 
-  const skipped = cached ? `, ${cached} of ${steps.length} cached` : '';
+  const skipped = cached ? ` (${cached} of ${steps.length} cached)` : '';
   // Measured, not declared. Reporting the floor from `seconds` made it wrong by the amount the table had
   // drifted — 109s against the 125.8s those same four steps actually took in that run.
   const measuredMs = new Map(results.map((r) => [r.step, r.ms]));
   const ran = steps.filter((step) => measuredMs.has(step.name))
     .map((step) => ({ ...step, seconds: Math.round((measuredMs.get(step.name) ?? 0) / 1000) }));
   const path = criticalPath(ran);
-  const floor = lanes > 1 && path.names.length > 1 ? `, critical path ${path.seconds}s (${path.names.join(' -> ')})` : '';
+  const floor = lanes > 1 && path.names.length > 1 ? `\ncritical path ${path.seconds}s (${path.names.join(' -> ')})` : '';
   const verdict = failed ? `chain FAILED at ${failed.step}` : outcome.failed ? `chain FAILED at ${outcome.failed}` : 'chain passed';
   // Something writing into a step's inputs after it ran is why a "15 of 17 cached" chain still paid 34s
   // for a typecheck every time. Asked here, where the answer is one hash per step and already to hand.
@@ -335,7 +337,7 @@ async function main(): Promise<void> {
     for (const { name, declared, measured } of drifted) console.log(`  ${name.padEnd(26)} seconds: ${declared} -> ${measured}`);
   }
 
-  console.log(`\n${verdict} — ${secs(Date.now() - started)}  (${byTier})${skipped}${lanes > 1 ? `, ${lanes} lanes` : ''}${floor}`);
+  console.log(`\n${verdict} in ${secs(Date.now() - started)}${skipped}${lanes > 1 ? ` with ${lanes} lanes` : ''}\n${byTier}${floor}`);
   // Not process.exit(): it drops whatever stdout has still to flush, and the failing step's captured output
   // printed just above is the one thing here worth reading. Measured: piped, process.exit() delivers 64KB
   // of a 500KB write, and @app/default-setup's suite output alone is 654KB.
