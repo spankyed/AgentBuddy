@@ -235,16 +235,21 @@ export function staleLines(found: {
   const declared = [...gained.map((one) => `+${one}`), ...lost.map((one) => `-${one}`)];
 
   const rows = reason !== undefined ? [reason]
-    : !recorded ? [dim('its last run recorded no per-file digests, so it cannot say which input moved')]
-      : declared.length > 0
-        ? [`its declared inputs moved: ${declared.slice(0, cap).join(', ')}`, ...more(declared.length)]
-        : [
-          // The path is undimmed because it is the thing to act on; when and whose it is are the qualifiers
-          ...shown.map(({ file, how, when, writer }) =>
-            file.padEnd(column) + dim(`  ${how}${when === '' ? '' : ` ${when}`}${writer === undefined ? '' : `, ${writer}'s declared output`}`)),
-          ...more(files.length),
-        ];
-  if (rows.length === 0) rows.push(dim('nothing under its inputs differs now, so whatever moved has moved back'));
+    : declared.length > 0
+      ? [`its declared inputs moved: ${declared.slice(0, cap).join(', ')}`, ...more(declared.length)]
+      : [
+        // The path is undimmed because it is the thing to act on; when and whose it is are the qualifiers
+        ...shown.map(({ file, how, when, writer }) =>
+          file.padEnd(column) + dim(`  ${how}${when === '' ? '' : ` ${when}`}${writer === undefined ? '' : `, ${writer}'s declared output`}`)),
+        ...more(files.length),
+      ];
+  // One guard over two states neither of which the chain can produce, kept because the alternative is worse
+  // than either: with no rows the step's own name never prints, and it vanishes from a report about it. A
+  // stamp older than the digests cannot explain itself, and a stale verdict from a sweep cannot disagree with
+  // the diff taken from that same sweep — so if this ever prints, the caller is not the one it was written for.
+  if (rows.length === 0) {
+    rows.push(dim(recorded ? 'nothing under its inputs differs now' : 'its last run recorded no per-file digests'));
+  }
   if (identical.length > 0) {
     // A note, not another row: it is the one line here that is explicitly not a cause, and it read as one.
     // It names the file, because the name is the whole of what it has to say — a count answers nothing and

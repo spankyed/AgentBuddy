@@ -8,18 +8,15 @@ import { CHAIN_STEPS } from '../../../scripts/lib/chain-steps.ts';
 import { briefly, declaredAt, dim, DRY_REASON_COLUMN, identicalRewrites, oneLine, REASON_COLUMN, staleLines, STEP_NAME_WIDTH, TIME_COLUMN, wrapAt, whenChanged, writerOf } from '../../../scripts/lib/chain-output.ts';
 
 describe('wrapAt', () => {
-  it('leaves a reason that fits on the line it is on', () => {
-    expect(wrapAt(46, 'never cached', 120)).toBe('never cached');
-  });
-
   /**
    * The whole point: a continuation indented to the reason's own column reads as part of that row. Wrapped to
    * column 0 it reads as another step's line, which is what a 180-character reason did to every run that
    * printed one.
    */
-  it('indents what it wraps to the column the reason starts at', () => {
+  it('indents what it wraps to the column the reason starts at, and leaves what fits', () => {
     const wrapped = wrapAt(10, 'one two three four five six seven', 24);
     expect(wrapped.split('\n')).toEqual(['one two three four', '          five six seven']);
+    expect(wrapAt(46, 'never cached', 120)).toBe('never cached');
   });
 
   /** A path or a flag cut in half is worse than a ragged edge, so a word longer than the room keeps its line */
@@ -34,13 +31,10 @@ describe('wrapAt', () => {
 });
 
 describe('oneLine', () => {
-  it('leaves a name that fits', () => {
-    expect(oneLine(46, 'a quick test', 120)).toBe('a quick test');
-  });
-
   /** The slowest tests are a list to scan, and wrapping them costs three lines each on a narrow terminal */
-  it('cuts a name to the room it has, and says it cut', () => {
+  it('cuts a name to the room it has, says it cut, and leaves one that fits', () => {
     expect(oneLine(10, 'a test with a very long name indeed', 30)).toBe('a test with a very…');
+    expect(oneLine(46, 'a quick test', 120)).toBe('a quick test');
   });
 });
 
@@ -183,16 +177,6 @@ describe('staleLines', () => {
     expect(lines.at(-1)).toBe('             and 5 more');
   });
 
-  /** One generation of stamps predates the digests, and a report that said nothing would read as "no cause" */
-  it('says so when the last run recorded no digests', () => {
-    expect(under({ recorded: false, files: [{ file: 'src/a.ts', how: 'changed', when: '' }] }))
-      .toEqual(['  typecheck  its last run recorded no per-file digests, so it cannot say which input moved']);
-  });
-
-  /** The tree can move between the verdict and the diff, and an empty report has to say which it is */
-  it('says the change has gone when the diff finds nothing', () => {
-    expect(under({})).toEqual(['  typecheck  nothing under its inputs differs now, so whatever moved has moved back']);
-  });
 });
 
 describe('declaredAt', () => {
@@ -246,17 +230,6 @@ it('points at the line each never-cached step is declared on', () => {
 });
 
 /**
- * The columns are constants because two rows have to agree on them — a run's and `--dry`'s — and a literal in
- * either is a number that drifts from the row above it the first time a column changes.
- */
-it('composes both rows from the declared columns', () => {
-  const chain = fs.readFileSync(path.join(REPO_ROOT, 'scripts/chain.ts'), 'utf-8');
-  expect(chain).toContain('wrapAt(REASON_COLUMN');
-  expect(chain).toContain('wrapAt(DRY_REASON_COLUMN');
-  expect(REASON_COLUMN - DRY_REASON_COLUMN, "a run's rows carry a time column and `--dry`'s do not").toBe(8);
-});
-
-/**
  * And every row agrees with the lines under it, for the name that is hardest to fit.
  *
  * Asserted with the **longest** declared step name, because the previous version of this case composed the
@@ -266,10 +239,17 @@ it('composes both rows from the declared columns', () => {
  *
  * The end-of-run report is not here: it sizes its column to the names it is printing, and `staleLines`' own
  * cases assert the rows it composes.
+ *
+ * It also holds that both rows wrap to the columns declared for them rather than to a literal, which is the
+ * half of the old `composes both rows` case that this one did not already cover. The other half of that case
+ * asserted `REASON_COLUMN - DRY_REASON_COLUMN === 8`, and went with it: both are now `STEP_NAME_WIDTH` plus a
+ * constant, so the difference is arithmetic that cannot drift.
  */
 it('lines every row up with what sits under it, for the widest step name', () => {
   const chain = fs.readFileSync(path.join(REPO_ROOT, 'scripts/chain.ts'), 'utf-8');
   expect(chain, 'a row pads the name by something other than the shared width').not.toMatch(/padEnd\(\d/);
+  expect(chain, "a run's rows wrap to something other than the declared column").toContain('wrapAt(REASON_COLUMN');
+  expect(chain, "`--dry`'s rows wrap to something other than the declared column").toContain('wrapAt(DRY_REASON_COLUMN');
 
   const widest = [...CHAIN_STEPS].sort((a, b) => b.name.length - a.name.length)[0]!.name;
   const name = widest.padEnd(STEP_NAME_WIDTH);
