@@ -9,7 +9,7 @@ import {
   findPackageScriptImports, findPackBackendConsole, findPackOwnAliases, findRawPackHelpers,
   findRawTransport, findInternalPackageImports, findLmdbImports, findRepositoryCasts, findSharedPackageLists, findUpwardImports, LAYERS, LMDB_RULES, packageSourceDirs,
   DECLARES_SOURCE_BY_DESIGN, RESOLVES_DIST_BY_DESIGN, SHARED_LIST_CONSUMERS, sourceConditionPackages, SOURCE_CONDITION,
-  checkedDirs, packCodeDirs, packDirs, packRule,
+  checkedDirs, type ImportRule, packCodeDirs, packDirs, packRule,
 } from '../../../scripts/check-import-specifiers.ts';
 import { REPO_ROOT } from '@abuddy/host/build/packages-built';
 
@@ -550,6 +550,39 @@ const FIRES: Record<string, () => string[]> = {
   },
 };
 
+/**
+ * Which half of a pack a rule's declared population reads, taken from `over` rather than a list written here.
+ *
+ * This is what makes the sweeps below cover whoever arrives: a rule that reads a pack's `src` is swept there, one
+ * that reads its `tests` is swept there, and one whose population holds no pack dir at all — `findJsSpecifiers`,
+ * whose subject is the packages that are *not* packs — takes part in neither, which is the exclusion its own
+ * disjointness case asserts from the other side.
+ */
+const readsPackHalf = (rule: ImportRule, half: 'src' | 'tests'): boolean =>
+  (rule.over ?? []).some((dir) => path.basename(dir) === half && packDirs().includes(path.dirname(dir)));
+
+/** The rules a sweep over `half` runs: the ones that read it and can be pointed at a directory */
+const sweepers = (half: 'src' | 'tests'): readonly ImportRule[] =>
+  CHECKS.filter((rule) => readsPackHalf(rule, half) && rule.overPaths !== undefined);
+
+/** Every rule but `id` that also claims the offence sitting in `dirs` */
+const alsoClaiming = (id: string, dirs: readonly string[], half: 'src' | 'tests'): string[] =>
+  sweepers(half).filter((rule) => rule.id !== id && rule.overPaths!([...dirs], root).length > 0).map((rule) => rule.id);
+
+/** Where each src-reading rule's own offending example sits, which is the one thing the derivation cannot supply */
+const SRC_FIXTURES: Record<string, string[]> = {
+  findRawPackHelpers: ['src/pack'],
+  findInternalPackageImports: ['src/pack'],
+  findRawTransport: ['src/pack'],
+  findPackBackendConsole: ['src/pack'],
+  findHostImports: ['src/pack'],
+  findPackOwnAliases: ['pack/src'],
+  findExtensionlessOwnModules: ['pack/src'],
+  findCrossFeatureImports: ['pack/src'],
+  findContractLeafImports: ['pack/src'],
+  findRepositoryCasts: ['src/packages/thing/src'],
+};
+
 describe('CHECKS', () => {
   it.each(CHECKS.map((rule) => rule.id))('%s flags an offending example', (name) => {
     const fire = FIRES[name];
@@ -571,36 +604,22 @@ describe('CHECKS', () => {
    * at a time, so a rule the CLI owns that is missing here makes that claim wider than the sweep — which is what
    * `cross-feature-imports` and `contract-leaves` did on arriving.
    */
-  it.each([
-    ['findRawPackHelpers', ['src/pack']],
-    ['findInternalPackageImports', ['src/pack']],
-    ['findRawTransport', ['src/pack']],
-    ['findPackBackendConsole', ['src/pack']],
-    ['findHostImports', ['src/pack']],
-    ['findPackOwnAliases', ['pack/src']],
-    ['findExtensionlessOwnModules', ['pack/src']],
-    ['findCrossFeatureImports', ['pack/src']],
-    ['findContractLeafImports', ['pack/src']],
-  ] as const)('%s claims its own example and no other pack rule does', (id, dirs) => {
-    const packRules: Record<string, (where: string[], at: string) => string[]> = {
-      findJsSpecifiers, findRawPackHelpers, findInternalPackageImports, findRawTransport,
-      findPackBackendConsole, findHostImports, findPackOwnAliases, findExtensionlessOwnModules,
-      findCrossFeatureImports, findContractLeafImports,
-    };
+  it.each(Object.entries(SRC_FIXTURES))('%s claims its own example and no other pack rule does', (id, dirs) => {
     expect(FIRES[id]!(), `${id} must fire on its own example`).not.toEqual([]);
-    const alsoClaimed = Object.entries(packRules)
-      .filter(([other]) => other !== id)
-      .filter(([, run]) => run([...dirs], root).length > 0)
-      .map(([other]) => other);
-    expect(alsoClaimed, `${id}'s offence is also reported by these, so only the first to run is ever read`).toEqual([]);
+    expect(alsoClaiming(id, dirs, 'src'),
+      `${id}'s offence is also reported by these, so only the first to run is ever read`).toEqual([]);
 
-    // And the key the entry declares is the rule that fires. `backed(id, key, find)` takes the key twice over —
-    // once as `key`, which picks the sentence printed above the findings, and once inside `find`, which is what
-    // actually runs — so a mismatch prints one rule's wording over another rule's offences. Nothing else notices:
-    // the ownership guard below asks only that a key is declared, not that it is this one.
+    // And the key the entry declares is the rule that fires. `backed(id, key, find, over)` takes the key twice
+    // over — once as `key`, which picks the sentence printed above the findings, and once inside `find`, which is
+    // what actually runs — so a mismatch prints one rule's wording over another rule's offences. Nothing else
+    // notices: the ownership guard below asks only that a key is declared, not that it is this one.
+    //
+    // Only for a rule the CLI owns. The sweep's subjects are derived from what each rule reads, and a repo-only
+    // rule is swept for the same ownership property while having no key to check — `findRepositoryCasts` is one,
+    // and requiring a key of it failed the moment the derivation brought it in.
     const declared = CHECKS.find((rule) => rule.id === id)?.packRule;
-    expect(declared, `${id} is a subject of this sweep, so it must declare the pack rule it delegates to`).toBeDefined();
-    expect(packRule(declared!, [...dirs], root),
+    if (declared === undefined) return;
+    expect(packRule(declared, [...dirs], root),
       `${id} declares \`${declared}\`, which finds nothing in a tree written to offend ${id}: the key it names is `
       + 'not the rule it runs, so its findings print under the wrong sentence').not.toEqual([]);
   });
@@ -666,6 +685,31 @@ describe('CHECKS', () => {
     const offence = 'pack/src/features/notes/fe/contract.ts:1: ../../threads/fe/state.ts';
     expect(findContractLeafImports(['pack/src'], root)).toEqual([offence]);
     expect(findCrossFeatureImports(['pack/src'], root)).toEqual([offence]);
+  });
+
+  /** A rule that reads a pack's src and has no fixture row is a rule the sweep would silently not cover */
+  it("sweeps every rule that reads a pack's src", () => {
+    expect(Object.keys(SRC_FIXTURES).sort()).toEqual([...sweepers('src')].map((rule) => rule.id).sort());
+  });
+
+  /**
+   * The other population, and nothing swept it: `abuddy test` runs the whole rule set over a pack's `tests`
+   * (`refusePackRuleViolations(cwd, TEST_DIRS)`), so an offence there has an owner exactly as one in `src` does.
+   * Three rules claimed `@abuddy/host` in a pack's test until `f04775d70`, and this is the case that would have
+   * said so — the fixtures live in `tests/`, where a src sweep cannot reach.
+   */
+  it.each([
+    ['@abuddy/host', "import { hydrate } from '@abuddy/host/ears';", 'findHostImports'],
+    ['a @/ alias', "import { openAppStore } from '@/setup/backend';", 'findPackOwnAliases'],
+    ['an @internal export', "import { _getMediaPath } from '@abuddy/sdk/utils';", 'findInternalPackageImports'],
+    ['the app by relative path', "import { hydrate } from '../../../abuddy-host/src/database/store';", 'findAppImportsInPackTests'],
+    ['an extensionless own module', "import { sendToSystem } from '#generated/events';", 'findExtensionlessOwnModules'],
+  ])("in a pack's tests, %s is claimed by exactly one rule", (_shape, code, owner) => {
+    writeAt('pack/package.json', JSON.stringify({ name: 'p', type: 'module', imports: { '#generated/*': './src/__generated__/*' } }));
+    writeAt('pack/src/__generated__/events.ts', 'export const sendToSystem = 1;');
+    writeAt('pack/tests/unit/feature.spec.ts', code);
+    const claimed = [...sweepers('tests')].filter((rule) => rule.overPaths!(['pack/tests'], root).length > 0).map((rule) => rule.id);
+    expect(claimed, 'one offence, one owner — in a pack\'s tests as in its src').toEqual([owner]);
   });
 
   it('has no example left behind by a rule that is gone', () => {

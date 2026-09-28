@@ -99,7 +99,7 @@ function findSpecifiers(files: string[], root: string, matches: (text: string, f
  * and the one `abuddy build` already runs for every pack. Two rules claiming one relative `.js` is what let the
  * double-claim hide before (`docs/goals/goal-one-rule-set.md`): whichever ran first was the only one reported.
  */
-export function findJsSpecifiers(dirs = CHECKED_DIRS, root = repoRoot): string[] {
+export function findJsSpecifiers(dirs: readonly string[] = CHECKED_DIRS, root = repoRoot): string[] {
   return jsSpecifierFixes(dirs, root).map(({ file, line, specifier }) => `${file}:${line}: ${specifier}`);
 }
 
@@ -109,7 +109,7 @@ export function findJsSpecifiers(dirs = CHECKED_DIRS, root = repoRoot): string[]
  * `npm run specifiers:fix` splices `named` over the span; the message and the repair come from one place, so
  * "fixable" is not a second judgement but whether this returned the finding.
  */
-export function jsSpecifierFixes(dirs = CHECKED_DIRS, root = repoRoot): Fix[] {
+export function jsSpecifierFixes(dirs: readonly string[] = CHECKED_DIRS, root = repoRoot): Fix[] {
   const fixes: Fix[] = [];
   for (const dir of dirs) {
     // A listed directory that is gone means the list is stale and something is no longer checked,
@@ -236,7 +236,7 @@ export function packOwnModuleFixes(dirs: readonly string[] = PACK_CODE_DIRS, roo
 
 
 /** The source files under each of `dirs` (a directory or a single file) */
-function packFiles(dirs: string[], root: string): string[] {
+function packFiles(dirs: readonly string[], root: string): string[] {
   return dirs.flatMap((dir) => {
     const full = path.join(root, dir);
     if (!fs.existsSync(full)) return [];
@@ -360,7 +360,7 @@ const APP_SPECIFIER = /^(?:\.\.?\/)+(?:[\w.-]+\/)*(?:api|abuddy-host|abuddy-cli)
  * `file:line: specifier` for each app module a pack's unit tests load. Tests of app code belong to
  * that package; pack tests use @abuddy/sdk and @abuddy/testing.
  */
-export function findAppImportsInPackTests(dirs = PACK_TEST_DIRS, root = repoRoot): string[] {
+export function findAppImportsInPackTests(dirs: readonly string[] = PACK_TEST_DIRS, root = repoRoot): string[] {
   return findSpecifierText(packFiles(dirs, root), root, (text) => APP_SPECIFIER.test(text));
 }
 
@@ -506,7 +506,7 @@ const repositoryCast: Rule = (node) => {
  * eleven workspaces to host one rule that fires nowhere today costs more than the rule is worth. Revisit when
  * oxlint's external-plugin path ships in the published binary.
  */
-export function findRepositoryCasts(dirs = packageSourceDirs(), root = repoRoot): string[] {
+export function findRepositoryCasts(dirs: readonly string[] = packageSourceDirs(), root = repoRoot): string[] {
   return findInFiles(packFiles(dirs, root), root, repositoryCast);
 }
 
@@ -1203,6 +1203,18 @@ export interface ImportRule {
   find(): string[];
   /** Over paths a caller names, when the rule can answer per file */
   overPaths?(paths: readonly string[], root?: string): string[];
+  /**
+   * The directories the whole-tree run reads, for a rule whose subject is a tree rather than the checkout.
+   *
+   * Data rather than a default parameter, because two checks need to read it: the sweeps that assert one rule owns
+   * each offence derive who takes part from it — a rule that reads a pack's `tests` is swept there, and one that
+   * reads `packages/*` minus the packs takes part in neither — and a population is otherwise unassertable, which is
+   * how `host-imports` came to read a pack's `src` alone while `abuddy test` ran it over a pack's tests.
+   *
+   * Absent for the six rules whose subject is not a dir list: the layer table, `LMDB_RULES`, the shared-list files,
+   * the repo's configs, a package's own `scripts/` and the checkout itself.
+   */
+  readonly over?: readonly string[];
 }
 
 /** The sentence a pack rule reports, read from the rule itself so this script prints what a pack author is told */
@@ -1221,33 +1233,43 @@ function ruleSentence(key: PackRuleKey): string {
  * while `host-imports` printed one sentence from `abuddy validate` and a different one from `check:specifiers`,
  * for the same offence in the same file.
  */
-const backed = (id: string, key: PackRuleKey, find: (dirs?: readonly string[], root?: string) => string[]): ImportRule => ({
+const backed = (
+  id: string,
+  key: PackRuleKey,
+  find: (dirs?: readonly string[], root?: string) => string[],
+  over: readonly string[],
+): ImportRule => ({
   id,
   packRule: key,
   rule: ruleSentence(key),
-  find: () => find(),
+  over,
+  find: () => find(over),
   overPaths: (paths, root = repoRoot) => find(paths, root),
 });
 
 export const CHECKS: readonly ImportRule[] = [
   {
     id: 'findJsSpecifiers',
+    over: CHECKED_DIRS,
     repoOnly: "Its population is the packages that are not packs: a pack's relative `.js` belongs to `own-modules`, which resolves the specifier and so names the file to write, and the two populations are asserted disjoint",
-    find: findJsSpecifiers,
+    find: () => findJsSpecifiers(CHECKED_DIRS),
     rule: 'Relative imports must name the TypeScript source (tsc and tsdown emit .js)',
     overPaths: (paths, root = repoRoot) => jsSpecifierFixes([...paths], root).map(({ file, line, specifier }) => `${file}:${line}: ${specifier}`),
   },
-  backed('findRawPackHelpers', 'untyped-sends', findRawPackHelpers),
-  backed('findInternalPackageImports', 'internal-package-imports', findInternalPackageImports),
-  backed('findRawTransport', 'raw-transport', findRawTransport),
-  backed('findPackBackendConsole', 'backend-console', findPackBackendConsole),
-  backed('findHostImports', 'host-imports', findHostImports),
-  backed('findPackOwnAliases', 'pack-own-aliases', findPackOwnAliases),
-  backed('findExtensionlessOwnModules', 'own-modules', findExtensionlessOwnModules),
+  backed('findRawPackHelpers', 'untyped-sends', findRawPackHelpers, PACK_SOURCE_DIRS),
+  backed('findInternalPackageImports', 'internal-package-imports', findInternalPackageImports, PACK_CODE_DIRS),
+  backed('findRawTransport', 'raw-transport', findRawTransport, PACK_SOURCE_DIRS),
+  backed('findPackBackendConsole', 'backend-console', findPackBackendConsole, PACK_SOURCE_DIRS),
+  backed('findHostImports', 'host-imports', findHostImports, PACK_CODE_DIRS),
+  backed('findPackOwnAliases', 'pack-own-aliases', findPackOwnAliases, PACK_CODE_DIRS),
+  backed('findExtensionlessOwnModules', 'own-modules', findExtensionlessOwnModules, PACK_CODE_DIRS),
   {
     id: 'findAppImportsInPackTests',
+    over: PACK_TEST_DIRS,
     repoOnly: "Its subject is a relative import into this repo's api, host or CLI sources, which only a pack inside this monorepo can write; `@abuddy/host` and every `@/` specifier belong to `host-imports` and `pack-own-aliases`, which `abuddy test` runs over a pack's tests",
-    find: findAppImportsInPackTests,
+    find: () => findAppImportsInPackTests(PACK_TEST_DIRS),
+    // Dirs-shaped, so a per-file run can answer for it too, which is also what lets the sweeps call it
+    overPaths: (paths, root = repoRoot) => findAppImportsInPackTests(paths, root),
     rule: 'Pack unit tests run on the harness (@abuddy/testing) without the app; test host, API and CLI code in its own package',
   },
   {
@@ -1270,12 +1292,14 @@ export const CHECKS: readonly ImportRule[] = [
   },
   {
     id: 'findRepositoryCasts',
+    over: packageSourceDirs(),
     repoOnly: 'Recorded in its doc comment, with the condition to revisit: oxlint hosts no custom rule and eslint does not run where this applies',
-    find: findRepositoryCasts,
+    find: () => findRepositoryCasts(packageSourceDirs()),
+    overPaths: (paths, root = repoRoot) => findRepositoryCasts(paths, root),
     rule: "Call a package's repositories through its exports, not a cast of the repository registry",
   },
-  backed('findCrossFeatureImports', 'cross-feature-imports', findCrossFeatureImports),
-  backed('findContractLeafImports', 'contract-leaves', findContractLeafImports),
+  backed('findCrossFeatureImports', 'cross-feature-imports', findCrossFeatureImports, PACK_SRC_ROOTS),
+  backed('findContractLeafImports', 'contract-leaves', findContractLeafImports, PACK_SRC_ROOTS),
   {
     id: 'findPackageScriptImports',
     repoOnly: "A package's own `scripts/`, a shape no pack has, and the reason is how `npm run spec` routes a change",
