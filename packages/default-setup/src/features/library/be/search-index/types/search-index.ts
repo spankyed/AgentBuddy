@@ -13,7 +13,7 @@ export type Occurrence =
 
 export interface SegmentRule {
   id: string
-  type: 'text' | 'list' | 'field'
+  type: 'markdown' | 'text' | 'list' | 'field'  // markdown included: the library's compiler produces it
   occurrence: string // String representation of Occurrence
   key?: string // Only for 'field' type
   indexMode: 'combined' | 'separate' // For list and field types - how to index items

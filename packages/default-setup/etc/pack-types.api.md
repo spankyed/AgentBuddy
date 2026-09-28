@@ -4816,7 +4816,7 @@ interface SearchResult {
 
 interface SegmentRule {
     id: string;
-    type: 'field' | 'list' | 'text';
+    type: 'field' | 'list' | 'markdown' | 'text';
     occurrence: string;
     key?: string;
     indexMode: 'combined' | 'separate';

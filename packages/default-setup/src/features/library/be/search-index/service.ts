@@ -220,9 +220,15 @@ export function processDocumentContent(
   return fillSegments(config.constructTemplate, n => segments[n - 1])
 }
 
-/** The first item of the segment `{{segment n}}` names, 1-based, or nothing when no rule carries that number */
-function firstItemOf(segments: { index: number, items: string[] }[], n: number): string | undefined {
-  return segments.find(segment => segment.index + 1 === n)?.items[0]
+/**
+ * The text of the segment `{{segment n}}` names, 1-based, or nothing when no rule carries that number.
+ *
+ * Every item, not the first. A combined rule already arrives as one joined string, so this only shows for a
+ * rule marked `separate` that is not the one being expanded — chunk identity is `seg<i>-item<j>`, so only one
+ * rule can expand, and the rest have to be combined rather than silently reduced to their first item.
+ */
+function textOf(segments: { index: number, items: string[] }[], n: number): string | undefined {
+  return segments.find(segment => segment.index + 1 === n)?.items.join(' ')
 }
 
 /**
@@ -277,14 +283,14 @@ export function processDocumentContentMultiIndex(
   
   if (!separateSegment) {
     // No separation needed, return single result
-    const text = fillSegments(template, n => firstItemOf(segmentData, n))
+    const text = fillSegments(template, n => textOf(segmentData, n))
     return [{text, segmentIndex: 0}]
   }
   
   // Generate combinations for separated items
   separateSegment.items.forEach((item, itemIndex) => {
     const text = fillSegments(template, n =>
-      (n === separateSegment.index + 1 ? item : firstItemOf(segmentData, n)))
+      (n === separateSegment.index + 1 ? item : textOf(segmentData, n)))
     results.push({
       text,
       segmentIndex: separateSegment.index,

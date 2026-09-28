@@ -37,6 +37,7 @@
                 class="w-32 px-2 py-1 bg-neutral-800/50 border border-neutral-700/50 rounded-md text-sm text-neutral-100 focus:border-neutral-600"
               >
                 <option value="text">Text Block</option>
+                <option value="markdown">Markdown</option>
                 <option value="list">List</option>
                 <option value="field">Field</option>
               </select>
@@ -230,6 +231,7 @@ function getSegmentVariable(index: number): string {
 
 function getTemplatePreview(): string {
   const placeholders: Record<string, string> = {
+    markdown: '[markdown block]',
     text: '[text block]',
     list: '[list item_1, item_2, ...]',
     field: '[field key_1: value_1, key_2: value_2, ...]'
