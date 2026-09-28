@@ -137,7 +137,7 @@ Each is a mutation, per the repo's rule that breaking it on purpose proves more 
 | the opt-out works | the same run with `ABUDDY_ALLOW_UNBUILT=1` skips as before |
 | nothing gated changed | `npm run chain` — `packages:ensure` precedes every step that reads a built package, so no step may newly refuse |
 | the fixture bites | delete the manifest from `packFixture`'s default: the `contract-leaves` cases must fail. Today two of the three shapes cannot make that rule speak at all |
-| the floor is preserved | drop `published-declarations`' floor to `atLeast: 1` and point it at a directory with one file: it must still fail |
+| ~~the floor is preserved~~ | **This row was unrunnable, and the floor it defends was the wrong shape. See "As shipped" below.** |
 | `population` bites | call it on `[]`: throws naming the subject |
 | the merged table bites | delete a key from the `Record`: a compile error, not a test failure |
 | nothing else moved | `npm test -w @abuddy/cli`, `npm run test:integration -w @app/repo-checks -w @app/publish-checks`, expectations unedited |
@@ -205,3 +205,32 @@ that work, **none was caught by a unit case**. Two cases have since been written
 and both do it the same way — by asserting against `CHAIN_STEPS`, the real table, rather than against a literal
 chosen to make the assertion pass.
 
+---
+
+## As shipped (2026-09-28)
+
+Four things diverged from this plan, recorded rather than edited away, as the document already does elsewhere.
+
+**The "floor is preserved" verification row was unrunnable, and chasing it found a defect.** `atLeast: 1` over a
+directory with one file passes, so there was no such mutation. Asking what the floor was really testing showed
+that a floor over three packages' summed declarations cannot see one of them go missing: 233 between them, so
+`ui` absent leaves 165 and `ears` absent leaves 205, both clearing 100, and the check compiles what remains and
+reports green. Fixed in `ee54dd656` by guarding each named package instead of the sum, which removed the floor
+and the constant with it — so §3's "whose floor is carried over, not flattened" describes something that no
+longer exists. The principle is now in `population`'s doc comment (`4d7972c2e`): guard each contributor where
+the list of them is written down; a population derived from a walk of the tree does not need it.
+
+**§3 lists three floors moving onto `population`; two did.** `chain-inputs.spec.ts:614` stayed — it is a
+dedicated case with its own message, which is the category §3 already lists as not migrated.
+
+**§3 says the sdk spec "keeps its own three-line guard with a comment saying why"; no comment was added.**
+`import-is-the-verb.spec.ts:60` turned out to be a dedicated case as well, not a copy of the helper, so there
+was no duplication to explain.
+
+**Chunk 1 was one site wider than written.** The same hand-written CI-gated throw in
+`dependency-runtime.integration.spec.ts:12` moved to the same `ABUDDY_ALLOW_UNBUILT` escape.
+
+Two obligations the plan did not anticipate, both enforced by checks that already existed: a new `@abuddy/host`
+export must be bridged or recorded in `UNBRIDGED_BY_DESIGN` (`sdk-bridge-drift`), and a new spec file needs
+`npm run spec-cost:update -- --suite <dir>` — the no-argument form re-records every suite and rewrote 570 lines
+across twelve files.
