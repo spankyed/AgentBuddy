@@ -20,6 +20,7 @@ import { exportFlowsToDSL } from '@abuddy/sdk/build'
 import { ROOT_FLOW_ROLE } from '@abuddy/sdk'
 import { importFlows } from '@abuddy/testing/harness'
 import { startTestRuntime } from '@abuddy/sdk/testing'
+import { steps as registeredSteps } from '#extensions/steps/register.ts'
 import { EVERY_STEP_FLOW } from '../../_support/every-step-flow.ts'
 
 startTestRuntime()
@@ -39,10 +40,53 @@ function exported(): unknown {
   return JSON.parse(fs.readFileSync(filePath, 'utf-8'))
 }
 
+/**
+ * What the example actually shows, derived from the export rather than from the fixture: the step types
+ * reached through every track, and the triggers, identified by the Track key each trigger facet declares it
+ * owns (`trigger.trackField`).
+ *
+ * The walk follows nesting through the step's own `branches` facet (`StepBranch`, `@abuddy/sdk/steps`), which
+ * is the declared answer to "which keys of this node hold more steps". Without it this finds ten of eleven:
+ * `kill` sits inside the switch's `conditions[].steps` and a second `keep_alive` inside its `else`, so a walk
+ * that reads only `exits` reports a shorter list and blames the fixture for it.
+ */
+function shownBy(dsl: Record<string, unknown>): { steps: Set<string>; triggers: Set<string> } {
+  const byType = new Map(registeredSteps.map((step) => [step.type, step]))
+  const walk = (nodes: Record<string, unknown>[]): string[] => nodes.flatMap((node) => {
+    const nested = byType.get(node.type as string)?.build?.branches?.(node)?.flatMap((branch) => branch.steps) ?? []
+    return [node.type as string, ...walk(nested as Record<string, unknown>[])]
+  })
+  const steps = new Set<string>()
+  const triggers = new Set<string>()
+  for (const flow of Object.values(dsl)) {
+    const tracks = (Array.isArray(flow) ? flow : (flow as { tracks: unknown[] }).tracks) as Record<string, unknown>[]
+    for (const track of tracks) {
+      for (const candidate of registeredSteps) {
+        const field = candidate.trigger?.trackField
+        if (field !== undefined && track[field] !== undefined) triggers.add(candidate.type)
+      }
+      for (const exit of (track.exits ?? []) as Record<string, unknown>[][]) for (const type of walk(exit)) steps.add(type)
+    }
+  }
+  return { steps, triggers }
+}
+
 describe('the flow DSL export example', () => {
   it('is what the exporter writes for a flow using every step', () => {
     importFlows(EVERY_STEP_FLOW)
     const actual = exported()
+
+    // Before the branch below, so an example missing a step cannot be *recorded* — only failing to compare
+    // one would leave the docs pointing at a file that no longer shows what they say it shows
+    const shown = shownBy(actual as Record<string, unknown>)
+    const expectedSteps = registeredSteps.filter((step) => step.kind !== 'trigger').map((step) => step.type).sort()
+    const expectedTriggers = registeredSteps.filter((step) => step.kind === 'trigger').map((step) => step.type).sort()
+    expect(expectedSteps.length, 'no step types were derived, so the two comparisons below cover nothing').toBeGreaterThan(5)
+    expect(expectedTriggers.length, 'no triggers were derived, so the comparison below covers nothing').toBeGreaterThan(0)
+    expect([...shown.steps].sort(), 'the example is meant to show every step this pack registers, and these '
+      + 'differ. Add the missing ones to tests/_support/every-step-flow.ts').toEqual(expectedSteps)
+    expect([...shown.triggers].sort(), 'the example is meant to show every trigger this pack registers, and '
+      + 'these differ. Add a track for the missing one to tests/_support/every-step-flow.ts').toEqual(expectedTriggers)
 
     if (UPDATE) {
       fs.mkdirSync(path.dirname(GOLDEN), { recursive: true })

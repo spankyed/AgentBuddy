@@ -7,7 +7,7 @@
 // Every option is set to a *non-default* value on purpose: a field set to its default round-trips to the same
 // value even when nothing carries it, so a case would pass while covering nothing. Measured — with
 // `outputType: 'json'` here, deleting it from transform's decompile left the fidelity spec green.
-import { action, actionCode, branch, create, entry, fire, keepAlive, kill, llm, on, query, subflow, transform, update } from '#generated/flow-helpers.ts';
+import { action, actionCode, branch, create, entry, fire, keepAlive, kill, llm, on, query, schedule, subflow, transform, update } from '#generated/flow-helpers.ts';
 
 export const EVERY_STEP_FLOW = {
   Every: {
@@ -26,6 +26,9 @@ export const EVERY_STEP_FLOW = {
         subflow('Every', { inherit: false }),
         branch([{ if: 'ok == true', steps: [kill()] }], [keepAlive()]),
       ]]),
+      // Appended, so the entry track stays first: `compileTrack` grants the entry_event role to the first
+      // track only when its trigger is a listener, and the fidelity spec records that role's loss
+      schedule('0 9 * * 1-5', [[transform('return 2', { label: 'daily total', outputType: 'text' })]], 'Weekday report'),
     ],
   },
 };

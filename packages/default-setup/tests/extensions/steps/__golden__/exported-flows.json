@@ -107,6 +107,20 @@
           ]
         ],
         "label": "go"
+      },
+      {
+        "schedule": "0 9 * * 1-5",
+        "exits": [
+          [
+            {
+              "type": "transform",
+              "script": "return 2",
+              "label": "daily total",
+              "outputType": "text"
+            }
+          ]
+        ],
+        "label": "Weekday report"
       }
     ]
   }

@@ -689,7 +689,7 @@ describe("the chain runs every artifact's check", () => {
     // a way to ask by hand. Both say so themselves: `spec-cost.ts` records that `scripts/lib/spec-cost.ts`
     // holds what it and `suite-split.spec.ts` share, "so a spec and this command cannot disagree".
     'seed-parity:check': 'a wrapper for `npm test -- tests/seeds`; those specs run in test:unit:pack',
-    'flow-export:check': 'a wrapper for one spec; it runs in test:unit:pack, where it records the flow DSL example',
+    'flow-export:check': 'a wrapper for `npm test -- tests/extensions/steps/export-example.spec.ts`; that spec runs in test:unit:pack, where it compares the flow DSL example rather than recording it',
     'spec-cost:check': 'reads the records and runs nothing; suite-split.spec.ts asserts the same rule from '
       + 'scripts/lib/spec-cost.ts, and it runs in test:unit:host',
   };
