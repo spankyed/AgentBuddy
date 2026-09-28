@@ -158,3 +158,44 @@ Each is a mutation, per the repo's rule that breaking it on purpose proves more 
    the sdk spec's local copy commented.
 3. `packFixture` beside it, and the five variants in the two specs that collapse onto it.
 4. `pack-rules`' two firing tables merge into one `Record`.
+
+---
+
+## Added for coordination (2026-09-28, another session)
+
+Five concrete instances of this class landed and were removed in `1300e85a0`, in
+`packages/repo-checks/tests/chain-output.spec.ts` — 32 cases to 27. They are a **different vector** from the
+conditional skips above: every one of them *ran*, and passed, and could not fail. They do not contradict the
+condition in "Not done"; none was green over a population it had not read.
+
+| what it asserted | why it could not fail |
+|---|---|
+| `staleLines` prints "its last run recorded no per-file digests" | the only caller asks about a step that just stamped, so the field is always there |
+| `staleLines` prints "nothing under its inputs differs now" | the verdict and the diff come from one sweep, so a stale fingerprint implies a non-empty diff |
+| `REASON_COLUMN - DRY_REASON_COLUMN === 8` | both became `STEP_NAME_WIDTH` plus a constant — arithmetic that cannot drift |
+| `wrapAt` returns short input unchanged | the `if (length <= room) return text` line, restated |
+| `oneLine` returns short input unchanged | the same line in the sibling function |
+
+Two things this class shows that a static rule cannot reach, and both are measured rather than argued:
+
+- **Vacuity is created by changes elsewhere.** The second row was reachable until `3b69501a2` made a sweep
+  memoise its walk as well as its reads. That commit did not touch the case; it made the case's own docstring
+  false ("the tree can move between the verdict and the diff"). So this is time-varying, and a rule that passes
+  today says nothing about the same case next week.
+- **And it is undone the same way.** The first row was unreachable from the post-run report, and `6db973378`
+  gave `--dry` a second caller that reads stamps it did not write — where a stamp from before those fields
+  existed is ordinary. The branch is live now and prints honestly. **Vacuity is a property of the set of
+  callers, not of the code**, which is why no analysis of the assertion alone can decide it.
+
+What did decide it, in every case: running the mutation. Break the thing on purpose, watch which case fails.
+That is what found the five, and it is what proved the replacements bite.
+
+One rule worth carrying, because deleting the whole branch was the wrong answer twice: **when the state is
+impossible but the guard is load-bearing, delete the case and keep the guard**, with a comment naming the caller
+it was written for. In `staleLines` both guards produce the step's own name row — without them a step vanishes
+from a report about itself, which is worse than either impossible state.
+
+And one datum for the "only a firing case" argument in defect 3 above: of the four defects found by review in
+that work, **none was caught by a unit case**. The two cases that would have catch them by comparing against
+`CHAIN_STEPS` — the real table — rather than against a literal.
+
