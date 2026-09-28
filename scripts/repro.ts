@@ -7,26 +7,31 @@
 // first thing here that has ever asked the question of *every* built output rather than the one file someone
 // hashed by hand.
 //
-// **Provisional: nothing runs this.** It is not a chain step, deliberately — two full builds (54.7s measured
-// 2026-09-28) against a chain that is 27s warm, which is the same trade `api:check` makes and the same
-// answer. But unlike `api:check`, which `typecheck` covers with a 0.6s `api:stamp` proxy and which the
-// publish path runs, this has no caller at all. So it reports only when someone types it, and a check nobody
-// invokes reports nothing. Treat its absence from a green chain as meaning nothing about reproducibility.
+// **A diagnostic instrument, not a gate — and that is the settled answer, not a pending one.**
 //
-// Whether it earns a caller is open. The shapes on the table, none chosen:
-//   - a `prerelease` hook, beside the other checks that guard what gets published;
-//   - run when a bundler moves — an esbuild, vite, tsup or tsx bump — which is when the answer can change;
-//   - deleted, keeping the measurement in docs/archive/goals/goal-reproducible-builds.md, if the honest
-//     answer turns out to be that nobody will run it.
+// Everything it compares (`BUILD_UNITS` outputs, `PACK_OUTPUTS`) is declared as a chain input, so the chain's
+// own `freshnessSweep` already watches all of it: after every run it reports a step that passed and is stale
+// again, naming the files that moved. That detector fires on every chain run; this one fires when someone
+// types it. So having no caller is right rather than unfinished, and an earlier version of this comment
+// treating it as a gate-in-waiting was wrong.
 //
-// Until then, by hand:
+// What it does that the sweep cannot is ask the question *systematically, in one run, per file*. It earned
+// that once: the sweep had been firing on `PACK_OUTPUTS` for days and the diagnosis it produced blamed esbuild
+// and named only the runtime bundle, while this found three files and the actual cause (tsc's union ordering).
+// An incidental signal told us something was wrong; this told us what.
 //
-//   npm run check:repro                 # after a bundler bump, or before cutting a release
-//   npm run check:repro 2>&1 | tail -20 # the recorded exceptions and the verdict, without the build logs
+// So reach for it when diagnosing, not to widen its coverage speculatively. `APP_OUTPUTS` is the worked
+// example: measured 2026-09-28, three builds of the app produced byte-identical `renderer`, `api`, `main` and
+// `preload` trees, and adding them would cost +26.2s per round (+52s, roughly doubling this) to place a second
+// detector on ground the sweep already covers. Point this at them when app-build waste is what you are chasing
+// — by editing the population for that run — rather than carrying the cost for a problem nobody has.
 //
-// Expect it to rebuild this checkout's outputs, which costs the next `npm run chain` one cycle of cache
-// invalidation, and to take the package-build lock — so against a running chain it fails at once rather than
-// racing it.
+//   npm run check:repro                 # when a bundler moved, or a step keeps going stale after it passed
+//   npm run check:repro 2>&1 | tail -20 # the verdict without the build logs
+//
+// It rebuilds this checkout's outputs and takes the package-build lock, so against a running chain it fails at
+// once rather than racing it. Treat its absence from a green chain as saying nothing: the sweep is what speaks
+// on every run.
 //
 import { execFileSync } from 'node:child_process';
 import { REPO_ROOT } from '@abuddy/host/build/packages-built';

@@ -512,7 +512,13 @@ npm run packages:build   # Build dist/ for @abuddy/ears, @abuddy/sdk and @abuddy
 npm run packages:check   # publint + arethetypeswrong on the five published trees (after packages:build).
                          # A chain step, 5.9s; see "api:check is not a chain step" above for why this one is
 
-npm run check:repro      # **Provisional, and nothing runs it.** Builds everything twice from one input and
+npm run check:repro      # **A diagnostic instrument, not a gate**: nothing runs it, and that is the answer
+                         # rather than a gap. Everything it compares is a chain input, so freshnessSweep
+                         # already reports a step that passed and went stale again, naming what moved — every
+                         # run, against this one's never. What this adds is asking per file, in one run:
+                         # the sweep had been firing on PACK_OUTPUTS for days and the diagnosis blamed esbuild
+                         # and one file, while this found three and the cause (tsc's union ordering).
+                         # Builds everything twice from one input and
                          # compares 1295 built files (54.7s measured 2026-09-28), so an output that moves
                          # without its input is named rather than silently re-invalidating every step that
                          # caches on it. Not a chain step — two full builds against a 27s warm chain, the
