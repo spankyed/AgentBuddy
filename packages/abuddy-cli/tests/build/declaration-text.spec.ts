@@ -4,7 +4,7 @@
 // hashes in four builds of `action-defs.d.ts`, so what is asserted here is the difference between a build
 // output that is reproducible and one that is not.
 import { describe, expect, it } from 'vitest';
-import { sortLiteralUnions } from '../../src/build/declaration-text.ts';
+import { sortLiteralUnions } from '../../src/build/declaration-text';
 
 describe('sortLiteralUnions', () => {
   /** The property the whole thing exists for: the same members in any order produce the same text */

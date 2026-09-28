@@ -176,6 +176,20 @@ Health checks with pass/warn/fail output:
 - Each feature's `system.entry` and `plugin.entry` exist
 - Each `steps.definitions[].path` exists
 
+#### `abuddy facade-report [--update]`
+
+Reports your pack's **facade types** — `dist/types/pack-types.d.ts`, what packs depending on yours compile
+against — as a reviewed file at `etc/pack-types.api.md`.
+
+Run it after `abuddy build`. Without `--update` it fails, printing a diff, when the committed report differs
+from the built facade; with `--update` it rewrites the report. Commit the result: the point is that a change
+to what dependents can see is visible in review rather than buried in a generated bundle.
+
+The report is normalised so it moves only when the facade does — imports first and sorted, declarations in
+name order, literal unions sorted, and the pack's own path shortened to `.`. That last normalisation matters
+for a reason worth knowing: TypeScript prints an inferred union's members in the order it created the member
+types, and that order varies between builds, so an unnormalised report would differ from itself.
+
 #### `abuddy info`
 
 Print a summary of the current pack: id, version, host version, feature count, step count, pack service count, action/prompt/flow seed file counts, dependency count, whether `dist/` exists, and the pack root.

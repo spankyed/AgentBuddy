@@ -29,6 +29,7 @@ A command module exports `async (args: string[]) => void`; `src/index.ts` maps t
 | `build [--skip-generate] [--skip-fe] [--release]` | `commands/build.ts` | See Build pipeline |
 | `pack [--out <dir>]` | `commands/pack.ts` | `buildPackArchive()`: `stagePack` into `.abuddy/staged/<id>`, `verifyPack`, `createPackArchive` (all `@abuddy/host/packs`). Records `gitSource()` with credentials stripped from the remote. Refuses built-in packs |
 | `release [...]`, `release publish` | `commands/release.ts` | `runRelease`: `nextReleaseVersion` → `preflight` → write version → `verify` (`build --release`, `tsc`, `npm test`, `test`) → commit → pack into `.abuddy/release` → tag → push. `publishRelease` uses Octokit. The shell `Runner` and the Octokit client can be injected (tested in `tests/cli/release.spec.ts`) |
+| `facade-report [--update]` | `commands/facade-report.ts` | The reviewed report of the pack's facade types (`etc/pack-types.api.md`), normalised so it moves only with the facade. Fails with a diff when the committed report is stale; `--update` rewrites it |
 | `validate` | `commands/validate.ts` | `validateManifest` + `validateFeatures`; unresolved dependencies are warnings only |
 | `install <source> [-d\|-b]` | `commands/install.ts` | `detectSource` → `installPackFromLocal` / `installPack`, checking the pack's `hostVersion` and build format against what `readHostInfo(userDataDir)` says the data dir's app is. Bare names go to `resolveFromRemoteRegistry`, which always throws (not implemented) |
 | `uninstall <id>`, `list` | `commands/uninstall.ts`, `commands/list.ts` | Target env from `parseTargetEnv`: production by default |
@@ -70,7 +71,7 @@ A failing bundle or gate is reported and the build continues, so every failure s
 
 Each problem names the facade exports that reach it (`exportsReaching`). Specs: `tests/build/facade-gate.spec.ts`, `facade-gate-system-contract.spec.ts` (the contract's events reach the facade however the entry is declared), `facade-typing.spec.ts`, `types-bundler-determinism.spec.ts`.
 
-The committed report is separate: `npm run facade:check` / `facade:update` in `packages/default-setup` run `scripts/facade-report.ts`. It normalizes the built bundle (sorted imports, declarations and literal unions) and compares it with `etc/pack-types.api.md`. Run `abuddy build` first; a changed facade needs `facade:update`.
+The committed report is separate: `abuddy facade-report [--update]` (`commands/facade-report.ts`), which `packages/default-setup`'s `facade:check` / `facade:update` scripts invoke. It normalizes the built bundle (sorted imports, declarations in name order, literal unions sorted via `build/declaration-text.ts`, the pack's path shortened) and compares it with `etc/pack-types.api.md`. Run `abuddy build` first; a changed facade needs `facade:update`. It was a repo script until 2026-09-28, which is why the normalisation it shares with the bundler had spent a spell in `@abuddy/host`: a repo script and a package's `src/` cannot reach each other, so the util moved when the thing in the wrong place should have.
 
 ## Source vs dist mode (`bin/abuddy.mjs`)
 

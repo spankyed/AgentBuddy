@@ -15,6 +15,7 @@ Commands:
   pack                Bundle dist/ into a verified .tgz + .sha256
   release [patch|minor|major] [--beta] [--dry-run] [--local]  Cut a release
   validate            Check manifest and types
+  facade-report [--update]  Report the pack's facade types (etc/pack-types.api.md)
   install <source> [-d] [-b]  Install a pack (path, URL, GitHub, or registry name)
   uninstall <id> [-d] [-b]   Remove an installed pack
   list [-d] [-b]             Show installed packs
@@ -39,6 +40,7 @@ const COMMANDS: Record<string, () => Promise<(args: string[]) => Promise<void>>>
   'fetch-deps':        async () => (await import('./commands/fetch-deps')).fetchDeps,
   'build':      async () => (await import('./commands/build')).buildCommand,
   'pack':       async () => (await import('./commands/pack')).pack,
+  'facade-report':     async () => (await import('./commands/facade-report')).facadeReport,
   'release':    async () => (await import('./commands/release')).release,
   'validate':   async () => (await import('./commands/validate')).validate,
   'install':    async () => (await import('./commands/install')).install,

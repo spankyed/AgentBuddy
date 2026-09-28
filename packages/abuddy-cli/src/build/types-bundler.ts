@@ -1,6 +1,6 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
-import { sortLiteralUnions } from '@abuddy/host/build/declaration-text';
+import { sortLiteralUnions } from './declaration-text';
 import { errorMessage } from '@abuddy/sdk/utils/pure';
 
 /** A package specifier (`vue`, `@abuddy/ears`), not a relative path or a pack's own `#` subpath */

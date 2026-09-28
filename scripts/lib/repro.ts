@@ -74,7 +74,7 @@ export function snapshot(paths: readonly string[], root = REPO_ROOT): Map<string
  * `pack-types.d.ts`, `action-defs.d.ts` and `snapshot.json`, all of them `tsc` printing a union's members in
  * the order it created the member types — an order that changes between builds, so the same sources emitted
  * different bytes. That was fixed rather than accepted: `sortLiteralUnions`
- * (`@abuddy/host/build/declaration-text`) now sorts them at the one point that writes a declaration bundle, and six consecutive builds produce one
+ * (`@abuddy/cli`'s `build/declaration-text.ts`) now sorts them at the one point that writes a declaration bundle, and six consecutive builds produce one
  * hash where `action-defs.d.ts` alone had taken five in six.
  *
  * So a new entry here is a claim that something cannot be fixed, and it needs the measurement to say so.

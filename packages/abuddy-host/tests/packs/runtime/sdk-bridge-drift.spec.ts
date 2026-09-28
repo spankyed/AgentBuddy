@@ -38,7 +38,6 @@ const UNBRIDGED_BY_POLICY = new Map<string, string>([
   ['@abuddy/host/secrets/vault', 'host-only — a pack that could open the vault would read every stored key'],
   // Build-time only: consumed by vite configs and the abuddy CLI, never by a
   // loaded pack's runtime code.
-  ['@abuddy/host/build/declaration-text', 'build-time only: normalising emitted .d.ts, for the declaration bundler and the facade report'],
   ['@abuddy/host/build/shared-deps', 'build-time only'],
   ['@abuddy/host/build/discover', 'build-time only'],
   ['@abuddy/host/build/source-resolution', 'host tooling only (CLI, fixture, API boot)'],

@@ -414,6 +414,10 @@ npm run api:stamp  # The cheap half, run by npm run typecheck: compares what the
 # Built-in pack facade types (after `abuddy build`; from packages/default-setup or with -w @app/default-setup)
 npm run facade:check     # CI: fails if dist/types/pack-types.d.ts changed without updating etc/pack-types.api.md
 npm run facade:update    # Dev: regenerate etc/pack-types.api.md
+                         # Both are `abuddy facade-report [--update]`: it reads one pack's dist and writes
+                         # that pack's etc, so it is a CLI command like `validate` and `build`, not a repo
+                         # script. It was one until 2026-09-28, and the cost showed up as a util that had to
+                         # live in a third package to be reachable from both it and the bundler
 
 # Manifest JSON schema (-w @abuddy/sdk)
 npm run schema:update    # Regenerate packages/abuddy-sdk/abuddy.schema.json from manifest-schema.ts

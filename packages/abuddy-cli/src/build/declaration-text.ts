@@ -1,10 +1,9 @@
 // Normalising emitted TypeScript declarations, so the same sources produce the same bytes.
 //
-// Here, rather than beside either caller, because there are two and they cannot reach each other: the CLI's
-// declaration bundler is package source and may not import the repo's `scripts/`, and `scripts/` cannot
-// import `@abuddy/cli`, which publishes no exports map. `@abuddy/host/build` is what both already import
-// from, so it is where a thing they share belongs — and one of them holding the copy is how this came to be
-// applied to a recorded report for years while the artifact it was derived from stayed unstable.
+// Beside its callers, which are both this package's: `bundleDeclarations` (build/types-bundler.ts), which
+// writes every declaration bundle a pack build produces, and `abuddy facade-report`, which records one of
+// them. It lived in @abuddy/host for a while because the report was a repo script and a script and a
+// package's src cannot reach each other — the util moved rather than the thing that was in the wrong place.
 import ts from 'typescript';
 
 /**
