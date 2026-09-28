@@ -33,6 +33,10 @@ export interface PackFixtureOptions {
  * `#features/*` map — and a fixture too thin for a rule to fire is a case that passes because it could not
  * fail. `import-specifiers.integration.spec.ts` measured that: half its sweep ran on a fixture where
  * `own-modules` and `contract-leaves` could not speak, so for those rows the sweep asserted nothing.
+ *
+ * A spec in `@abuddy/sdk`, `/ears`, `/ui` or `default-setup` cannot import this — the layer rule reads their
+ * `tests/` too. Nothing there builds a pack today; the first one that does is the signal to move this and
+ * `population` to an `@app/*` package, rather than to write a second fixture.
  */
 export function packFixture({ at, files = {}, manifest = DEFAULT_MANIFEST }: PackFixtureOptions = {}): string {
   const dir = at ?? fs.mkdtempSync(path.join(os.tmpdir(), 'abuddy-pack-fixture-'));

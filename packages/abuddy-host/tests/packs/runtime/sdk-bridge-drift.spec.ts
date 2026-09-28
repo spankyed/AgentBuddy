@@ -51,6 +51,11 @@ const UNBRIDGED_BY_POLICY = new Map<string, string>([
   // Test machinery: what a spec asserted over, confirmed to be there. It throws rather than asserting, so it
   // needs no test framework — which is also why it must not reach a pack, whose code has no business
   // refusing on the size of something it read.
+  // Test machinery, in a runtime package deliberately: these resolve from source, cost nothing to publish
+  // (host is private) and are reachable by every spec that builds a pack. @abuddy/testing would not do —
+  // it resolves dist, so a rebuild per edit, and the layer rule refuses it in @abuddy/sdk and /ears exactly
+  // as it refuses this. Move them to an @app/* package the day a spec in @abuddy/sdk, /ears, /ui or
+  // default-setup needs one: the layer rule polices @abuddy/* only, so that is the one home they can reach.
   ['@abuddy/host/testing/population', 'test machinery: the subject guard specs call before asserting over a walk'],
   ['@abuddy/host/testing/pack-fixture', 'test machinery: a complete pack on disk, for specs about the rules that read one'],
   // What a running process published and whether it is still there: the app's own plumbing, which is why
