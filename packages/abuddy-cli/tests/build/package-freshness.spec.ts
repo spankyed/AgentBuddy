@@ -4,7 +4,7 @@ import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
-import { ABSENT, BUILD_UNITS, buildScriptFor, changedInputs, CHECKOUT_MARKER, covers, declaredPaths, fingerprintInputs, fingerprintUnit, fingerprintWithDigests, freshnessSweep, inputFiles, NOT_A_BUILD_INPUT, REPO_ROOT, staleMessage, stampRecord, STAMP_VERSION, stampedBuild, stampedRun, stampedRunAll, stampFile, unitStaleReason, withBuildLock, type BuildIntent, type BuildUnit } from '@abuddy/host/build/packages-built';
+import { ABSENT, BUILD_UNITS, buildScriptFor, changedInputs, CHECKOUT_MARKER, covers, declaredPaths, fingerprintInputs, fingerprintUnit, fingerprintWithDigests, freshnessSweep, inputFiles, repoRelative, NOT_A_BUILD_INPUT, REPO_ROOT, staleMessage, stampRecord, STAMP_VERSION, stampedBuild, stampedRun, stampedRunAll, stampFile, unitStaleReason, withBuildLock, type BuildIntent, type BuildUnit } from '@abuddy/host/build/packages-built';
 
 /**
  * The freshness rule behind `npm test -w @abuddy/cli`'s pretest (@abuddy/host/build/packages-built):
@@ -231,6 +231,42 @@ describe('covers', () => {
   });
 });
 
+/**
+ * The other half of `covers`: both sides of every comparison it makes have to be spelled the same way.
+ *
+ * One side is always a hand-written POSIX literal — `chain-steps.ts` declares `'packages/default-setup/dist'` —
+ * and the other came from `path.relative`, which is backslash-separated on Windows, where nothing matched and a
+ * unit hashed its own declared outputs into its own fingerprint. Neither case below can fail on this platform,
+ * because here `path.sep` is already `/`; what they hold is the thing that makes the other platform correct.
+ */
+describe('repoRelative', () => {
+  /** So landing this changed no fingerprint here, which is what `api:stamp`'s committed hashes also prove */
+  it('is what path.relative already gives on a platform whose separator is a slash', () => {
+    const f = fixture();
+    expect(path.sep, 'this platform separates with something else, so the case below means more than it says').toBe('/');
+    expect(repoRelative(path.join(f.src, 'a.ts'))).toBe(path.relative(REPO_ROOT, path.join(f.src, 'a.ts')));
+  });
+
+  /**
+   * And it stays the only boundary. A bare `path.relative(REPO_ROOT, …)` returning to any of these is how one side
+   * of a `covers` comparison drifts back out of spelling with the other, which nothing on this platform would
+   * notice — so the check is on the source rather than on a result.
+   */
+  it('is the only way these modules make a repo-relative path', () => {
+    const onTheCachePath = ['packages/abuddy-host/src/build/packages-built.ts', 'scripts/lib/chain-steps.ts',
+      'scripts/lib/chain-output.ts', 'scripts/chain.ts'];
+    const offenders = onTheCachePath.flatMap((file) => {
+      const source = fs.readFileSync(path.join(REPO_ROOT, file), 'utf-8');
+      return source.split('\n')
+        .map((line, index) => ({ at: `${file}:${index + 1}`, line }))
+        // The definition itself is the one place it may appear
+        .filter(({ line }) => line.includes('path.relative(REPO_ROOT') && !line.includes('export const repoRelative'))
+        .map(({ at }) => at);
+    });
+    expect(offenders, 'use repoRelative, or a covers comparison has one POSIX side and one platform side').toEqual([]);
+  });
+});
+
 describe('the input fingerprint', () => {
   // A unit's own output is never its own input, however broadly its inputs are declared. Two chain steps
   // declare a whole tree and then write into it — `compile` writes `src/__generated__` under the `src` it
@@ -409,7 +445,8 @@ describe('the staleness verdict', () => {
 describe('which inputs changed', () => {
   /** What a successful run records beside the fingerprint: the half that lets the next run explain itself */
   const recordFor = (unit: BuildUnit) => ({ files: fingerprintWithDigests(unit).files, declared: declaredPaths(unit) });
-  const rel = (file: string) => path.relative(REPO_ROOT, file);
+  // Through the same helper the subject uses, or these expectations disagree with it on Windows
+  const rel = repoRelative;
 
   it('names the file whose bytes changed', () => {
     const f = fixture();

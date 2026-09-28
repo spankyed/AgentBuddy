@@ -1,6 +1,6 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
-import { BUILD_UNITS, REPO_ROOT } from '@abuddy/host/build/packages-built';
+import { BUILD_UNITS, repoRelative, REPO_ROOT } from '@abuddy/host/build/packages-built';
 import { UNIT_SUITES, type UnitSuite } from './unit-suites.ts';
 import { hasSplit } from './spec-cost.ts';
 import { dependencySource, workspaceDeps } from './workspace-deps.ts';
@@ -213,7 +213,9 @@ const EVERY_WORKSPACE = PACKAGES.flatMap(workspace);
  * rather than copied beside it. A copy of someone else's input list is the thing that goes stale silently:
  * a file added to a build unit would leave this step cached against a key that never saw it.
  */
-const relative = (absolute: string): string => path.relative(REPO_ROOT, absolute);
+// Through `repoRelative`, because these land in `step.outputs` beside hand-written POSIX literals and
+// `writerOf` compares the two
+const relative = repoRelative;
 const PACKAGE_BUILD_INPUTS = [...new Set(Object.values(BUILD_UNITS).flatMap((unit) => unit.inputs.map(relative)))].sort();
 const PACKAGE_BUILD_OUTPUTS = [...new Set(Object.values(BUILD_UNITS).flatMap((unit) => unit.outputs.map(relative)))].sort();
 

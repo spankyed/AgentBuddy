@@ -16,7 +16,7 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import ts from 'typescript';
-import { BUILD_UNITS, buildScriptFor, covers, inputFiles, NOT_A_BUILD_INPUT, REPO_ROOT, type BuildUnit } from '@abuddy/host/build/packages-built';
+import { BUILD_UNITS, buildScriptFor, covers, inputFiles, NOT_A_BUILD_INPUT, repoRelative, REPO_ROOT, type BuildUnit } from '@abuddy/host/build/packages-built';
 import { CHAIN_STEPS, INTEGRATION_SUITES, SUITE_READS, suiteInputs, type ChainStep } from '../../../scripts/lib/chain-steps.ts';
 import { UNIT_SUITES, type UnitSuite } from '../../../scripts/lib/unit-suites.ts';
 import { reachableText, rootScripts } from '../../../scripts/lib/npm-scripts.ts';
@@ -219,7 +219,7 @@ describe('a gitignored input belongs to someone', () => {
     ];
     const unaccounted = [...new Set(step.inputs.flatMap((input) => inputFiles(path.join(REPO_ROOT, input))))]
       .filter((file) => isIgnored(file))
-      .filter((file) => !accountedFor.some((owned) => file === owned || file.startsWith(`${owned}/`)));
+      .filter((file) => !accountedFor.some((owned) => covers(owned, file)));
 
     expect([...new Set(unaccounted.map((file) => file.split('/').slice(0, 5).join('/')))],
       `${name} hashes generated files nobody declares: depend on the step that writes them, or list them in \`excludes\` with why this step reads around them`)
@@ -257,7 +257,7 @@ describe('a pool step and its projects cache on the same inputs', () => {
   });
 
   it.each(['host', 'pack'] as const)('%s declares nothing its projects cannot see', (kind) => {
-    const fingerprinted = new Set(projects(kind).flatMap((suite) => poolUnitFor(suite).inputs.map((input) => path.relative(REPO_ROOT, input))));
+    const fingerprinted = new Set(projects(kind).flatMap((suite) => poolUnitFor(suite).inputs.map(repoRelative)));
     const unseen = poolStep(kind).inputs.filter((input) => !fingerprinted.has(input));
     expect(unseen, 'the step would go stale for these and every project would still read fresh, so it would run '
       + 'and test nothing: put them in suiteInputs, where both cache layers read them').toEqual([]);
@@ -462,7 +462,7 @@ describe('a build unit declares the modules its build script imports', () => {
         if (resolved !== undefined && firstParty(resolved)) queue.push(resolved);
       }
     }
-    return [...seen].map((file) => path.relative(REPO_ROOT, file));
+    return [...seen].map(repoRelative);
   };
 
   /**

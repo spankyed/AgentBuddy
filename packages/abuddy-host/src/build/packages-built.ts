@@ -235,6 +235,20 @@ export const stampFile = (workspace: string): string => path.join(STAMP_DIR, `${
  */
 export const covers = (outer: string, inner: string): boolean => outer === inner || inner.startsWith(`${outer}/`);
 
+/**
+ * A path relative to the repo root, always spelled with `/`.
+ *
+ * Every comparison `covers` makes has a hand-written POSIX literal on at least one side — `chain-steps.ts`
+ * declares `'packages/default-setup/dist'` and the like — while the other side came from `path.relative`, which
+ * is backslash-separated on Windows. There, nothing matched: a unit's own declared outputs were hashed into its
+ * own fingerprint, so it disagreed with the stamp it had just written and rebuilt. Silent, because it costs a
+ * redundant build rather than an error, and `build/build.sh` calls `packages:ensure` twice on the release path.
+ *
+ * So the two sides are spelled the same here, where repo-relative paths are made, rather than in `covers`, which
+ * runs once per file per excluded path. On macOS and Linux `path.sep` is already `/` and this changes nothing.
+ */
+export const repoRelative = (absolute: string): string => path.relative(REPO_ROOT, absolute).split(path.sep).join('/');
+
 export function inputFiles(target: string, out: string[] = []): string[] {
   let stat: fs.Stats;
   try {
@@ -243,7 +257,7 @@ export function inputFiles(target: string, out: string[] = []): string[] {
     if ((err as NodeJS.ErrnoException).code !== 'ENOENT') throw err;
     return out;
   }
-  if (stat.isFile()) return (out.push(path.relative(REPO_ROOT, target)), out);
+  if (stat.isFile()) return (out.push(repoRelative(target)), out);
   for (const entry of fs.readdirSync(target, { withFileTypes: true })) {
     // Dot files (editor and OS droppings) and installed modules are not sources of this build
     if (!entry.name.startsWith('.') && entry.name !== 'node_modules') inputFiles(path.join(target, entry.name), out);
@@ -334,7 +348,7 @@ export function fingerprintInputs(
   read: ReadInput = readInput,
 ): string {
   const hash = createHash('sha256');
-  const excluded = exclude.map((target) => path.relative(REPO_ROOT, target));
+  const excluded = exclude.map(repoRelative);
   const isExcluded = (file: string): boolean => excluded.some((out) => covers(out, file));
   for (const file of [...new Set(inputs.flatMap((target) => inputFiles(target)))].sort().filter((f) => !isExcluded(f))) {
     const contents = read(file);
@@ -376,7 +390,7 @@ export function fingerprintUnit(unit: BuildUnit, collect?: (file: string, digest
  * as one verdict and a report of which *files* differ answers "none" while the step is genuinely stale.
  */
 export const declaredPaths = (unit: BuildUnit): string[] =>
-  [...unit.inputs, ...unit.outputs, ...(unit.excludes ?? [])].map((target) => path.relative(REPO_ROOT, target)).sort();
+  [...unit.inputs, ...unit.outputs, ...(unit.excludes ?? [])].map(repoRelative).sort();
 
 /** A unit's fingerprint and the per-file digests it is composed of, from one walk */
 export function fingerprintWithDigests(unit: BuildUnit, read?: ReadInput): { fingerprint: string; files: Record<string, string> } {
@@ -448,7 +462,7 @@ export function stampRecord(stamp: string): StampRecord | undefined {
  * of them are checks that produce nothing (`stampedRun`, `scripts/chain.ts`).
  */
 export function unitStaleReason(unit: BuildUnit, stamp: string, read?: ReadInput): string | null {
-  const missing = unit.outputs.filter((output) => !fs.existsSync(output)).map((output) => path.relative(REPO_ROOT, output));
+  const missing = unit.outputs.filter((output) => !fs.existsSync(output)).map(repoRelative);
   if (missing.length > 0) return `not built (no ${missing.join(', ')})`;
   const record = stampRecord(stamp) ?? {};
   if (typeof record.fingerprint !== 'string') return 'no stamp — it has not run yet, or the last run failed or was interrupted';
@@ -663,7 +677,7 @@ export async function withBuildLock<T>(label: string, run: () => T | Promise<T>,
         if (takeovers > 0 || holder === null || live) {
           const who = holder === null ? 'an unreadable lock file' : `pid ${holder.pid} (${holder.label}, started ${holder.startedAt})`;
           const waited = intent === 'freshness' ? ` after waiting ${Math.round(waitMs / 1000)}s` : '';
-          throw new Error(`another package build holds ${path.relative(REPO_ROOT, file)}${waited}: ${who}. Wait for it to finish, then run this again.`);
+          throw new Error(`another package build holds ${repoRelative(file)}${waited}: ${who}. Wait for it to finish, then run this again.`);
         }
         takeovers++;
         fs.rmSync(file, { force: true });
