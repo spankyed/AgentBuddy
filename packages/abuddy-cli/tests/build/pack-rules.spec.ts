@@ -294,7 +294,11 @@ describe('when several rules are right about one site', () => {
     const doc = fs.readFileSync(path.join(REPO_ROOT, 'docs/public-facing/cli.md'), 'utf-8').split('\n');
     const header = doc.findIndex((line) => /^\|\s*Rule\s*\|/.test(line));
     expect(header, 'the rule table is gone from cli.md, or its header changed').toBeGreaterThan(-1);
-    const rows = doc.slice(header + 2).slice(0, doc.slice(header + 2).findIndex((line) => !line.startsWith('|')));
+    const after = doc.slice(header + 2);
+    // `findIndex` answers -1 for a table that ends the file, and `slice(0, -1)` would drop its last row — a row
+    // this would then report as missing, which is a confusing way to say "the table runs to the end"
+    const ends = after.findIndex((line) => !line.startsWith('|'));
+    const rows = ends === -1 ? after : after.slice(0, ends);
     const documented = rows.map((row) => /^\|\s*`([^`]+)`/.exec(row)?.[1]).filter((key) => key !== undefined);
     expect(documented.length, 'no rows read from the table, so this would pass over nothing').toBeGreaterThan(0);
     expect([...documented].sort()).toEqual([...PACK_RULES.map((rule) => rule.key)].sort());
