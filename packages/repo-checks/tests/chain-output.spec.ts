@@ -5,7 +5,7 @@ import * as path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { firstChange, REPO_ROOT } from '@abuddy/host/build/packages-built';
 import { CHAIN_STEPS } from '../../../scripts/lib/chain-steps.ts';
-import { briefly, declaredAt, dim, DRY_REASON_COLUMN, howLong, identicalRewrites, oneLine, REASON_COLUMN, staleLines, STEP_NAME_WIDTH, TIME_COLUMN, wrapAt, whenChanged, writerOf } from '../../../scripts/lib/chain-output.ts';
+import { briefly, declaredAt, dim, driftReport, DRY_REASON_COLUMN, howLong, identicalRewrites, oneLine, REASON_COLUMN, staleLines, STEP_NAME_WIDTH, TIME_COLUMN, wrapAt, whenChanged, writerOf } from '../../../scripts/lib/chain-output.ts';
 
 describe('wrapAt', () => {
   /**
@@ -320,5 +320,41 @@ describe('howLong', () => {
 
   it('says nothing for a step that declares no cost, rather than reporting undefined', () => {
     expect(howLong({}, 47_000, 3)).toBe('');
+  });
+});
+
+describe('driftReport', () => {
+  const drifted = [
+    { name: 'test:external-pack:contract', declared: 57, measured: 18 },
+    { name: 'typecheck', declared: 27, measured: 11 },
+  ];
+
+  it('prints the value to record, when the run is comparable to the table', () => {
+    const report = driftReport(drifted, 3, 3);
+
+    expect(report).toContain('re-measure, or record');
+    expect(report).toContain('seconds: 57 -> 18');
+  });
+
+  /**
+   * Measured: a `--lanes 1` run reports exactly these two, and the old report told the reader to record 18 for
+   * a step that costs 57s in the default schedule — which `budgetFor` turns into a 72s kill budget, the
+   * mis-sized bound `seconds`' own doc warns about. The numbers are real; only "record them" was wrong.
+   */
+  it('names the spread instead, when the run used another lane count', () => {
+    const report = driftReport(drifted, 1, 3);
+
+    expect(report).not.toContain('record');
+    expect(report).toContain('at 1 lane, 2 steps moved against 3-lane numbers');
+    expect(report).toContain('57s -> 18s  (3.2x faster alone)');
+  });
+
+  it('says slower when more lanes made a step slower, not faster', () => {
+    expect(driftReport([{ name: 'typecheck', declared: 27, measured: 54 }], 6, 3)).toContain('(2.0x slower)');
+  });
+
+  it('says nothing when nothing drifted, at either lane count', () => {
+    expect(driftReport([], 3, 3)).toBe('');
+    expect(driftReport([], 1, 3)).toBe('');
   });
 });

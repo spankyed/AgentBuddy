@@ -47,7 +47,7 @@ import { changedInputs, firstChange, freshnessSweep, INPUTS_CHANGED, REPO_ROOT, 
 import { CHAIN_STEPS, MEASURED_AT_LANES, orderedSteps, type ChainStep, type Tier } from './lib/chain-steps.ts';
 import { schedule } from './lib/chain-schedule.ts';
 import { criticalPath, driftedSteps, willNotCache } from './lib/step-timing.ts';
-import { briefly, declaredAt, dim, DRY_REASON_COLUMN, howLong, identicalRewrites, oneLine, REASON_COLUMN, staleLines, STEP_NAME_WIDTH, TIME_COLUMN, whenChanged, wrapAt, writerOf } from './lib/chain-output.ts';
+import { briefly, declaredAt, dim, DRY_REASON_COLUMN, driftReport, howLong, identicalRewrites, oneLine, REASON_COLUMN, staleLines, STEP_NAME_WIDTH, TIME_COLUMN, whenChanged, wrapAt, writerOf } from './lib/chain-output.ts';
 import { slowestTests } from './lib/slow-tests.ts';
 import { exitOnEpipe } from './lib/exit-on-epipe.ts';
 
@@ -391,11 +391,8 @@ async function main(): Promise<void> {
     console.log('  Re-measure with `npm run chain -- --all` and set MEASURED_AT_LANES, or the table is about another schedule.');
   }
 
-  const drifted = driftedSteps(steps, measuredMs, all);
-  if (drifted.length > 0) {
-    console.log(`\n${drifted.length} step${drifted.length === 1 ? '' : 's'} cost something other than chain-steps.ts says — re-measure, or record:`);
-    for (const { name, declared, measured } of drifted) console.log(`  ${name.padEnd(STEP_NAME_WIDTH)} seconds: ${declared} -> ${measured}`);
-  }
+  const report = driftReport(driftedSteps(steps, measuredMs, all), lanes, MEASURED_AT_LANES);
+  if (report !== '') console.log(report);
 
   console.log(`\n${verdict} in ${secs(Date.now() - started)}${skipped}${lanes > 1 ? ` with ${lanes} lanes` : ''}\n${byTier}${floor}`);
   // Not process.exit(): it drops whatever stdout has still to flush, and the failing step's captured output

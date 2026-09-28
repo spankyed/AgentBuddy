@@ -281,3 +281,38 @@ export function howLong(step: { readonly seconds?: number }, ms: number, lanes: 
     ? `${where}\n  — over twice its measured cost, so try \`npm run chain --lanes 1\` before reading the output as a real failure`
     : where;
 }
+
+/**
+ * What a drift report means, which depends on the lane count the run used.
+ *
+ * At `MEASURED_AT_LANES` the numbers are comparable and a drifted step is a stale row, so the value to record
+ * is the useful thing to print. At any other lane count they are not comparable at all: measured here,
+ * `test:external-pack:contract` costs 57s at three lanes and 18s at one. Printing "record 18" would give a step
+ * that takes 57s in the default schedule a 72s kill budget — the mis-sized bound `seconds`' own doc warns
+ * about, arrived at by following this tool's advice.
+ *
+ * The same numbers are worth printing as what they are. Which steps the schedule's contention moves most is not
+ * recorded anywhere, and it is the first thing worth knowing when a step has failed under lanes and you are
+ * deciding whether the failure was real.
+ */
+export function driftReport(
+  drifted: readonly { name: string; declared: number; measured: number }[],
+  lanes: number,
+  measuredAt: number,
+): string {
+  if (drifted.length === 0) return '';
+  const count = `${drifted.length} step${drifted.length === 1 ? '' : 's'}`;
+  if (lanes === measuredAt) {
+    return [
+      `\n${count} cost something other than chain-steps.ts says — re-measure, or record:`,
+      ...drifted.map(({ name, declared, measured }) => `  ${name.padEnd(STEP_NAME_WIDTH)} seconds: ${declared} -> ${measured}`),
+    ].join('\n');
+  }
+  return [
+    `\nat ${lanes} lane${lanes === 1 ? '' : 's'}, ${count} moved against ${measuredAt}-lane numbers — the schedule, not a stale table:`,
+    ...drifted.map(({ name, declared, measured }) => {
+      const factor = (Math.max(declared, measured) / Math.min(declared, measured)).toFixed(1);
+      return `  ${name.padEnd(STEP_NAME_WIDTH)} ${declared}s -> ${measured}s  (${factor}x ${measured < declared ? 'faster alone' : 'slower'})`;
+    }),
+  ].join('\n');
+}
