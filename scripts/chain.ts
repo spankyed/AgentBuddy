@@ -41,12 +41,13 @@
 // That does not overturn the measurement above, which stands: three lanes over seven steps still cost 60% more
 // work. It narrows what it means. "The constraint is cores" is right; "every step already uses them" was an
 // assumption, and the cheapest work left in this chain may be another step that is quietly serial.
+import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { REPO_ROOT, stampedRun, unitStaleReason, type BuildUnit } from '@abuddy/host/build/packages-built';
 import { CHAIN_STEPS, MEASURED_AT_LANES, orderedSteps, type ChainStep, type Tier } from './lib/chain-steps.ts';
 import { schedule } from './lib/chain-schedule.ts';
 import { criticalPath, driftedSteps, willNotCache } from './lib/step-timing.ts';
-import { briefly, DRY_REASON_COLUMN, REASON_COLUMN, wrapAt } from './lib/chain-output.ts';
+import { briefly, declaredAt, DRY_REASON_COLUMN, REASON_COLUMN, wrapAt } from './lib/chain-output.ts';
 import { slowestTests } from './lib/slow-tests.ts';
 import { exitOnEpipe } from './lib/exit-on-epipe.ts';
 
@@ -72,6 +73,14 @@ import { boundedSpawn, budgetFor } from './lib/bounded-spawn.ts';
  * leaves them fresh, which is the right answer and one a "needed step ran" rule would get wrong.
  */
 const STAMP_DIR = path.join(REPO_ROOT, 'node_modules', '.cache', 'abuddy-chain');
+
+/** The table a run points at when it says a step is never cached: the sentence is there, the argument above it */
+const STEP_TABLE = 'scripts/lib/chain-steps.ts';
+const declaredIn = (name: string): string | undefined => {
+  const line = declaredAt(stepTable, name);
+  return line === undefined ? undefined : `${STEP_TABLE}:${line}`;
+};
+const stepTable = fs.readFileSync(path.join(REPO_ROOT, STEP_TABLE), 'utf-8');
 const stampFor = (step: string): string => path.join(STAMP_DIR, `${step.replace(/[:/]/g, '-')}.json`);
 
 /** A step as a build unit: the same shape, so it goes through the same freshness check */
@@ -212,7 +221,7 @@ async function main(): Promise<void> {
       // TIMEOUT is its own verdict: a step that ran out of budget failed for a different reason than one
       // that returned non-zero, and which it was is the first thing you need to know.
       const verdict = result.code === 0 ? 'ok' : result.timedOut ? 'TIMEOUT' : 'FAIL';
-      console.log(`${verdict.padStart(7)} t${step.tier} ${step.name.padEnd(26)} ${secs(result.ms).padStart(6)}  ${wrapAt(REASON_COLUMN, briefly(reasons.get(step.name) ?? ''))}`);
+      console.log(`${verdict.padStart(7)} t${step.tier} ${step.name.padEnd(26)} ${secs(result.ms).padStart(6)}  ${wrapAt(REASON_COLUMN, briefly(reasons.get(step.name) ?? '', declaredIn(step.name)))}`);
       // So whoever profiles a suite next has its slow tests without instrumenting it
       for (const slow of slowestTests(result.output)) console.log(`${' '.repeat(11)}${secs(slow.ms).padStart(6)}  ${slow.name}`);
       return result.code === 0;

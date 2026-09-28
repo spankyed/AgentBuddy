@@ -4,7 +4,8 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { REPO_ROOT } from '@abuddy/host/build/packages-built';
-import { briefly, DRY_REASON_COLUMN, REASON_COLUMN, wrapAt } from '../../../scripts/lib/chain-output.ts';
+import { CHAIN_STEPS } from '../../../scripts/lib/chain-steps.ts';
+import { briefly, declaredAt, DRY_REASON_COLUMN, REASON_COLUMN, wrapAt } from '../../../scripts/lib/chain-output.ts';
 
 describe('wrapAt', () => {
   it('leaves a reason that fits on the line it is on', () => {
@@ -32,20 +33,54 @@ describe('wrapAt', () => {
   });
 });
 
+describe('declaredAt', () => {
+  it('finds the line a step is declared on', () => {
+    const table = ["  // why it is never cached", "  { name: 'test', tier: 3, cache: false,", '  },'].join('\n');
+    expect(declaredAt(table, 'test')).toBe(2);
+  });
+
+  /** A rename degrades to no pointer rather than to a wrong one, which is why the caller takes `undefined` */
+  it('answers nothing for a name the table does not hold', () => {
+    expect(declaredAt("  { name: 'test' },", 'compile')).toBeUndefined();
+  });
+});
+
 describe('briefly', () => {
   /**
    * A never-cached step's sentence explains a design choice and is the same on every run — the longest text on
-   * the screen and the least specific to the run in front of you. `--dry` is the question it answers.
+   * the screen and the least specific to the run in front of you. So the run points at where the reasoning is
+   * kept, `--dry` prints it, and the argument stays in the comment above the step, its only copy.
    */
-  it('reports the verdict for a step that is never cached, not the essay', () => {
-    expect(briefly('never cached: it drives real Electron, and a flaky pass cached green hides a failure'))
-      .toBe('never cached');
+  it('points at the reasoning for a step that is never cached, rather than repeating it', () => {
+    expect(briefly('never cached: it drives real Electron, and a flaky pass cached green hides a failure',
+      'scripts/lib/chain-steps.ts:518')).toBe('never cached — scripts/lib/chain-steps.ts:518');
+  });
+
+  it('still says the verdict when there is nowhere to point', () => {
+    expect(briefly('never cached: it drives real Electron')).toBe('never cached');
   });
 
   it('leaves a reason that is about this run', () => {
     const why = 'its inputs changed since the last successful run';
     expect(briefly(why)).toBe(why);
   });
+});
+
+/**
+ * And it lands on the step in the table a run actually points at. A pointer that resolves to an unrelated line
+ * sends a reader somewhere with confidence, which is worse than printing nothing — and the only thing that could
+ * move it is the table's own formatting, which nothing else here would notice.
+ */
+it('points at the line each never-cached step is declared on', () => {
+  const table = fs.readFileSync(path.join(REPO_ROOT, 'scripts/lib/chain-steps.ts'), 'utf-8');
+  const lines = table.split('\n');
+  const neverCached = CHAIN_STEPS.filter((step) => step.cache === false);
+  expect(neverCached.length, 'no step is never cached, so this would pass over nothing').toBeGreaterThan(0);
+  for (const step of neverCached) {
+    const at = declaredAt(table, step.name);
+    expect(at, `${step.name} is declared somewhere this cannot find`).toBeDefined();
+    expect(lines[at! - 1]).toContain(`name: '${step.name}'`);
+  }
 });
 
 /**

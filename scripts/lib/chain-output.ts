@@ -42,11 +42,27 @@ export function wrapAt(column: number, text: string, width = terminalWidth()): s
 }
 
 /**
+ * The line where a step is declared, for a run that wants to point at the reasoning rather than repeat it.
+ *
+ * A step's name is unique in the table, so the first line naming it is its declaration — and a reader who lands
+ * there has the `neverCachedBecause` sentence and, above it, the comment that argues for it, which is where the
+ * rationale actually lives. Undefined when the name is not found, so a rename degrades to no pointer rather than
+ * to a wrong one.
+ */
+export function declaredAt(source: string, name: string): number | undefined {
+  const index = source.split('\n').findIndex((line) => line.includes(`name: '${name}'`));
+  return index === -1 ? undefined : index + 1;
+}
+
+/**
  * What a run says about why a step ran, against what `--dry` says.
  *
  * A step that is never cached carries a sentence explaining the design choice, and that sentence is the same on
- * every run — the longest text on the screen and the least specific to the run in front of you. A run reports the
- * verdict; `--dry`, which is the question "why would this run?", keeps the whole answer.
+ * every run — the longest text on the screen and the least specific to the run in front of you. So a run reports
+ * the verdict and *where the reasoning is*, `--dry` prints it in full, and the argument itself stays in the
+ * comment above the step, which is the only copy of it.
  */
-export const briefly = (reason: string): string =>
-  (reason.startsWith('never cached:') ? 'never cached' : reason);
+export const briefly = (reason: string, where?: string): string =>
+  (reason.startsWith('never cached:')
+    ? `never cached${where === undefined ? '' : ` — ${where}`}`
+    : reason);
