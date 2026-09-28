@@ -47,7 +47,7 @@ import { changedInputs, REPO_ROOT, stampedRun, stampRecord, unitStaleReason, typ
 import { CHAIN_STEPS, MEASURED_AT_LANES, orderedSteps, type ChainStep, type Tier } from './lib/chain-steps.ts';
 import { schedule } from './lib/chain-schedule.ts';
 import { criticalPath, driftedSteps, willNotCache } from './lib/step-timing.ts';
-import { briefly, declaredAt, dim, DRY_REASON_COLUMN, identicalRewrites, oneLine, REASON_COLUMN, staleLines, TIME_COLUMN, whenChanged, wrapAt, writerOf } from './lib/chain-output.ts';
+import { briefly, declaredAt, dim, DRY_REASON_COLUMN, identicalRewrites, oneLine, REASON_COLUMN, REPORT_REASON_COLUMN, staleLines, STEP_NAME_WIDTH, TIME_COLUMN, whenChanged, wrapAt, writerOf } from './lib/chain-output.ts';
 import { slowestTests } from './lib/slow-tests.ts';
 import { exitOnEpipe } from './lib/exit-on-epipe.ts';
 
@@ -327,8 +327,8 @@ async function main(): Promise<void> {
     console.log(`\n${uncacheable.length} step${uncacheable.length === 1 ? '' : 's'} passed but will run again next time — something wrote into their inputs:`);
     for (const { name, reason } of uncacheable) {
       const step = steps.find((s) => s.name === name)!;
-      console.log(`  ${name.padEnd(26)} ${reason}`);
-      for (const line of staleLines({ indent: 27, ...whatMoved(step, steps) })) console.log(line);
+      console.log(`  ${name.padEnd(STEP_NAME_WIDTH)} ${reason}`);
+      for (const line of staleLines({ indent: REPORT_REASON_COLUMN, ...whatMoved(step, steps) })) console.log(line);
     }
     console.log('  Declare what writes there in that step\'s `outputs`, or stop declaring the generated tree as an input.');
   }

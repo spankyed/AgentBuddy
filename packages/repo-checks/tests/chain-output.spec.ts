@@ -5,7 +5,7 @@ import * as path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { REPO_ROOT } from '@abuddy/host/build/packages-built';
 import { CHAIN_STEPS } from '../../../scripts/lib/chain-steps.ts';
-import { briefly, declaredAt, dim, DRY_REASON_COLUMN, identicalRewrites, oneLine, REASON_COLUMN, staleLines, wrapAt, whenChanged, writerOf } from '../../../scripts/lib/chain-output.ts';
+import { briefly, declaredAt, dim, DRY_REASON_COLUMN, identicalRewrites, oneLine, REASON_COLUMN, REPORT_REASON_COLUMN, staleLines, STEP_NAME_WIDTH, wrapAt, whenChanged, writerOf } from '../../../scripts/lib/chain-output.ts';
 
 describe('wrapAt', () => {
   it('leaves a reason that fits on the line it is on', () => {
@@ -233,4 +233,15 @@ it('composes both rows from the declared columns', () => {
   expect(chain).toContain('wrapAt(REASON_COLUMN');
   expect(chain).toContain('wrapAt(DRY_REASON_COLUMN');
   expect(REASON_COLUMN - DRY_REASON_COLUMN, "a run's rows carry a time column and `--dry`'s do not").toBe(8);
+});
+
+/**
+ * And the report's own rows agree with the lines under them. They were two apart, because each carried its own
+ * literal: every file the report named sat just left of the reason it was explaining.
+ */
+it('indents what moved to the column the reason above it starts at', () => {
+  const chain = fs.readFileSync(path.join(REPO_ROOT, 'scripts/chain.ts'), 'utf-8');
+  expect(chain, 'the report row no longer pads by the shared width').toContain('padEnd(STEP_NAME_WIDTH)');
+  expect(chain, 'the lines under it no longer take the shared column').toContain('indent: REPORT_REASON_COLUMN');
+  expect(REPORT_REASON_COLUMN).toBe(`  ${'x'.padEnd(STEP_NAME_WIDTH)} `.length);
 });

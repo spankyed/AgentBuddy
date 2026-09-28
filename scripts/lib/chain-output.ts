@@ -6,8 +6,20 @@
  */
 import { covers } from '@abuddy/host/build/packages-built';
 
+/** How wide a step's name column is, in every row that has one */
+export const STEP_NAME_WIDTH = 26;
+
 /** Where a run's reason starts: verdict(7) + ` ` + tier(2) + ` ` + name(26) + ` ` + time(6) + two spaces */
 export const REASON_COLUMN = 46;
+
+/**
+ * Where a reason starts in the end-of-run reports, which indent by two rather than carrying a verdict column.
+ *
+ * A constant because two things have to agree on it — the step's own row and the lines listing what moved under
+ * it — and the first version used a literal in each. They were two apart, so every file the report named sat
+ * just left of the reason it explained.
+ */
+export const REPORT_REASON_COLUMN = 2 + STEP_NAME_WIDTH + 1;
 
 /** The same, for `--dry`, which reports no time */
 export const DRY_REASON_COLUMN = 38;
