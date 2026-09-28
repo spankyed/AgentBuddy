@@ -115,7 +115,8 @@ const FIRES_ON_A_FILE: [PackRuleKey, string, string][] = Object.entries(FIRES)
 
 /**
  * One firing example per rule, so none of them can land without a case that proves it bites — the same
- * property `check:specifiers`' own spec asserts for the repo's rules. The pack fixture carries the
+ * property `check:specifiers`' own spec asserts for the repo's rules — and that the rule it bites for is the
+ * only one that reports it. The pack fixture carries the
  * `package.json` `imports` map that makes a `#` string a specifier rather than a colour.
  */
 describe('every rule', () => {
@@ -127,8 +128,25 @@ describe('every rule', () => {
     return dir;
   };
 
-  it.each(FIRES_ON_A_FILE)('%s fires on an offending file', (key, code, problem) => {
-    expect(problems(completePack({ 'src/f.ts': code }), key as PackRuleKey)).toEqual([problem]);
+  /**
+   * The whole map rather than this rule's row. Asking one key says the rule fired and nothing about whether a
+   * second reported the same line — which is what a pack author would then be told twice, and what the dedupe
+   * in `packRuleProblems` exists to prevent. Three rules had nothing pinning them as an owner before this read
+   * the map: `own-modules`, `pack-own-aliases` and `repository-casts`. The other nine are covered either here
+   * or by the hand-written pairs below, whose sites are the shape this cannot reach — a line two rules are both
+   * right about, rather than a line written for one of them.
+   *
+   * It is a regression guard and has no firing case of its own, which is worth knowing before trusting it:
+   * measured by disabling the span dedupe in `packRuleProblems`, every row here still passes, because no rule's
+   * canonical line is one another rule also claims — which is the thing being asserted. What it catches is a
+   * *new* rule whose predicate starts claiming an existing rule's example. The mechanism it uses, reading the
+   * whole map rather than one key, is watched failing by the pairs below, which is where a second reporter
+   * actually appears.
+   */
+  it.each(FIRES_ON_A_FILE)('%s fires on an offending file, and owns it', (key, code, problem) => {
+    const dir = completePack({ 'src/f.ts': code });
+    const reported = [...packRuleProblems(dir)].flatMap(([owner, found]) => found.map((line) => `${owner}: ${line}`));
+    expect(reported).toEqual([`${key}: ${problem}`]);
   });
 
   /**
