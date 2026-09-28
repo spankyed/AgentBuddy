@@ -201,6 +201,7 @@ it was written for. In `staleLines` both guards produce the step's own name row 
 from a report about itself, which is worse than either impossible state.
 
 And one datum for the "only a firing case" argument in defect 3 above: of the four defects found by review in
-that work, **none was caught by a unit case**. The two cases that would have catch them by comparing against
-`CHAIN_STEPS` — the real table — rather than against a literal.
+that work, **none was caught by a unit case**. Two cases have since been written that would have caught them,
+and both do it the same way — by asserting against `CHAIN_STEPS`, the real table, rather than against a literal
+chosen to make the assertion pass.
 
