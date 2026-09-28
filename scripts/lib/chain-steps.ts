@@ -419,7 +419,10 @@ export const CHAIN_STEPS: readonly ChainStep[] = [
   // `seconds` is the warm cost, which is what it does on almost every run: 0.3s, measured three times, and
   // the chain's warm floor is unchanged at 26.6s. The cold case is 14s and reports drift once — which is a
   // run where you have just changed a package's source and are rebuilding it anyway.
-  { name: 'packages:ensure', tier: 2, needs: [], seconds: 1, exclusive: true, cache: false,
+  // 14, not the 0.3 its warm check costs: `seconds` is what a step costs when it does its work, and this one's
+  // work is the build. The paragraph on that field describes this step getting it wrong — "a timeout message
+  // claiming it costs 1s healthy" — and 1 was still here until the overrun report named it, 1s -> 14s.
+  { name: 'packages:ensure', tier: 2, needs: [], seconds: 14, exclusive: true, cache: false,
     neverCachedBecause: 'what it guarantees is recorded in stamps of its own, which this fingerprint cannot '
       + 'see; its check is ~0.3s warm, so a cache on top only adds a record that can disagree',
     inputs: [...PACKAGE_BUILD_INPUTS, 'scripts/ensure-packages-built.ts'], outputs: PACKAGE_BUILD_OUTPUTS },
