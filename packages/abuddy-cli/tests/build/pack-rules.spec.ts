@@ -360,7 +360,9 @@ describe('when several rules are right about one site', () => {
    * relative `.js` form is `own-modules`') and left `source-resolution` out entirely.
    *
    * Compared as sets, not in order: the doc groups rules the way an author meets them, which is editorial, while
-   * the order here is precedence. What must not differ is which rules exist.
+   * the order here is precedence. What must not differ is which rules exist, and which of them a pack may switch
+   * off — which the table says per row rather than in a sentence counting the trailing ones, since that sentence
+   * was right only for as long as nobody appended a switchable rule or flipped one, and nothing read it.
    */
   /**
    * A whole-pack finding says where it is separately from what it says, and this is why: `source-resolution`
@@ -380,7 +382,7 @@ describe('when several rules are right about one site', () => {
     expect(formatPackWide({ what: 'x', at: { file: 'src/a.ts', line: 3 } })).toBe('src/a.ts:3: x');
   });
 
-  it('documents exactly the rules that exist, in docs/public-facing/cli.md', () => {
+  it('documents exactly the rules that exist, and which are switchable, in docs/public-facing/cli.md', () => {
     const doc = fs.readFileSync(path.join(REPO_ROOT, 'docs/public-facing/cli.md'), 'utf-8').split('\n');
     const header = doc.findIndex((line) => /^\|\s*Rule\s*\|/.test(line));
     expect(header, 'the rule table is gone from cli.md, or its header changed').toBeGreaterThan(-1);
@@ -389,9 +391,23 @@ describe('when several rules are right about one site', () => {
     // this would then report as missing, which is a confusing way to say "the table runs to the end"
     const ends = after.findIndex((line) => !line.startsWith('|'));
     const rows = ends === -1 ? after : after.slice(0, ends);
-    const documented = rows.map((row) => /^\|\s*`([^`]+)`/.exec(row)?.[1]).filter((key) => key !== undefined);
+    // The marker is read from the end of the row rather than by splitting on `|`, so a pipe inside a rule's
+    // description stays the author's business rather than this check's
+    const documented = rows.flatMap((row) => {
+      const key = /^\|\s*`([^`]+)`/.exec(row)?.[1];
+      return key === undefined ? [] : [{ key, switchable: /\|\s*(yes|no)\s*\|\s*$/.exec(row)?.[1] }];
+    });
     population('the rule table rows in cli.md', documented);
-    expect([...documented].sort()).toEqual([...PACK_RULES.map((rule) => rule.key)].sort());
+    expect(documented.map((row) => row.key).sort()).toEqual([...PACK_RULES.map((rule) => rule.key)].sort());
+
+    // A row whose marker is missing or misspelled would otherwise read as "not switchable" and agree with the
+    // table for every rule that is not, which is the half of this a set comparison alone cannot see
+    expect(documented.filter((row) => row.switchable === undefined).map((row) => row.key),
+      'these rows of the cli.md table say nothing in the Switchable? column').toEqual([]);
+    expect(documented.filter((row) => row.switchable === 'yes').map((row) => row.key).sort(),
+      'cli.md marks a different set of rules switchable than PACK_RULES declares, so a pack author is told they '
+      + 'may allow a rule abuddy.checks.json will refuse, or not told about one they may')
+      .toEqual(PACK_RULES.filter((rule) => rule.switchable).map((rule) => rule.key).sort());
   });
 
   it('declares that precedence in one place', () => {
