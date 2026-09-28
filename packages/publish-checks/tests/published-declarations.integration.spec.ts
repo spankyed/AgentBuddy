@@ -2,6 +2,7 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import ts from 'typescript';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { population } from '@abuddy/host/testing/population';
 import { PACKAGES_BUILT, installPublishedPackages } from '../src/published-packages.ts';
 
 /**
@@ -46,7 +47,7 @@ function publishedDeclarations(root: string): string[] {
 describe.skipIf(!PACKAGES_BUILT)('the published declarations', () => {
   it('type-check on their own, so no shipped type silently resolves to any', () => {
     const declarations = publishedDeclarations(consumer!);
-    expect(declarations.length, 'declarations found to check').toBeGreaterThan(100);
+    population('the published declarations', declarations, { atLeast: 100 });
 
     const program = ts.createProgram({
       rootNames: declarations,

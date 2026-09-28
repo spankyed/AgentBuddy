@@ -2,6 +2,7 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { packagesBuiltOrRefuse, REPO_ROOT } from '@abuddy/host/build/packages-built';
+import { population } from '@abuddy/host/testing/population';
 import { FileMatcher } from 'app-builder-lib/out/fileMatcher.js';
 import { beforeAll, describe, expect, it } from 'vitest';
 
@@ -82,12 +83,6 @@ function filesUnder(dir: string): string[] {
 /** Every `packages/<pkg>/<part>` that exists: the populations below are per-package, and derived */
 const perPackage = (part: string): string[] =>
   fs.readdirSync(path.join(REPO_ROOT, 'packages')).flatMap((pkg) => filesUnder(path.join('packages', pkg, part)));
-
-/** What every case does before asserting: a population it cannot read is a case that proves nothing */
-function population(what: string, files: string[]): string[] {
-  expect(files.length, `${what} is empty, so anything asserted over it would pass for the wrong reason`).toBeGreaterThan(0);
-  return files;
-}
 
 const TEMPLATES = 'packages/abuddy-cli/templates';
 const PACKED_TEMPLATES = 'packages/abuddy-cli/dist/package/templates';

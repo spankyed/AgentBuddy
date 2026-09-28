@@ -48,6 +48,10 @@ const UNBRIDGED_BY_POLICY = new Map<string, string>([
   ['@abuddy/host/build/own-module-specifiers', "build-time only: the rule that a pack's own-module specifier "
     + 'names the file that is there, applied by check:specifiers here and by abuddy build to every other pack'],
   ['@abuddy/host/build/packages-built', 'checkout build tooling: the freshness rule behind npm run packages:ensure'],
+  // Test machinery: what a spec asserted over, confirmed to be there. It throws rather than asserting, so it
+  // needs no test framework — which is also why it must not reach a pack, whose code has no business
+  // refusing on the size of something it read.
+  ['@abuddy/host/testing/population', 'test machinery: the subject guard specs call before asserting over a walk'],
   // What a running process published and whether it is still there: the app's own plumbing, which is why
   // it moved out of @abuddy/sdk/env. A pack reaches a running API through the app, never by reading its
   // port file.

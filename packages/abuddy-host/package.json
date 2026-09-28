@@ -35,7 +35,8 @@
     "./secrets": "./src/secrets/index.ts",
     "./secrets/vault": "./src/secrets/vault.ts",
     "./services": "./src/services/index.ts",
-    "./settings": "./src/features/settings/be/index.ts"
+    "./settings": "./src/features/settings/be/index.ts",
+    "./testing/population": "./src/testing/population.ts"
   },
   "dependencies": {
     "@abuddy/ears": "*",
