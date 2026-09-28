@@ -606,11 +606,13 @@ export function freshnessSweep(): {
 
 /** Every workspace of `packages:build` that needs building — empty when all of them are up to date */
 export function stalePackageUnits(): StaleUnit[] {
-  // One reading of the tree across the five, as `--dry` does for the chain's steps: they overlap, and the
-  // question is asked of all of them at one moment
+  // One reading of the tree across the five, as `--dry` does for the chain's steps: they overlap — every
+  // bundled unit reads `packages/abuddy-host/src` — and the question is asked of all of them at one moment.
+  // The verdict goes through it too, not only the diff: two readings can describe two different trees, and
+  // sharing pays on the fresh path as well, which is the one that runs eighteen times in a serial chain
   const sweep = freshnessSweep();
   return Object.entries(BUILD_UNITS).flatMap(([workspace, unit]) => {
-    const reason = unitStaleReason(unit, stampFile(workspace));
+    const reason = sweep.staleReason(unit, stampFile(workspace));
     // The diff is only for a unit already known to be stale — one about to cost a 14s build — so the path that
     // runs eighteen times in a serial chain, and finds nothing, still costs a stat and a return
     return reason === null ? [] : [{ workspace, reason, moved: whatMovedUnder(unit, stampFile(workspace), sweep) }];

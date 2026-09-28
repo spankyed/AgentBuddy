@@ -24,11 +24,29 @@ exitOnEpipe();
 
 
 /** The diff itself, for the one branch of `whyItRuns` that needs it — over the sweep the decision was made on */
-function movedUnder(suite: UnitSuite, sweep: ReturnType<typeof freshnessSweep>): string {
-  const record = stampRecord(poolStampFor(suite));
-  return record?.files === undefined || record.declared === undefined
-    ? ''
-    : firstChange(sweep.changedInputs(poolUnitFor(suite), { files: record.files, declared: record.declared }));
+/**
+ * Which projects will run, and why — asked of all of them at this one moment, over one reading of the tree.
+ *
+ * A function rather than a block, so the sweep is unreachable the moment it returns. It caches every byte it
+ * reads (14.7MB across the host pool's 2,372 distinct input files), and the run it decides on then spawns vitest
+ * for as long as the suites take — `freshnessSweep`'s own rule is that a sweep may not outlive the one question
+ * it was made for, and holding one across a test run is the worst way to break it.
+ *
+ * The verdict goes through the same sweep as the explanation. That is not only the double read it saves: a
+ * verdict and an explanation taken from two readings can describe two different trees, which is the shape the
+ * chain's report had removed from it a week ago.
+ */
+function decide(suites: readonly UnitSuite[], all: boolean): Array<{ suite: UnitSuite; why: string }> {
+  const sweep = freshnessSweep();
+  return suites.flatMap((suite) => {
+    const record = stampRecord(poolStampFor(suite));
+    if (!all && sweep.staleReason(poolUnitFor(suite), poolStampFor(suite)) === null) return [];
+    // The record is read once and handed to both halves, rather than fetched again inside the diff
+    const moved = () => (record?.files === undefined || record.declared === undefined
+      ? ''
+      : firstChange(sweep.changedInputs(poolUnitFor(suite), { files: record.files, declared: record.declared })));
+    return [{ suite, why: all ? '--all' : whyItRuns(record, moved) }];
+  });
 }
 
 async function main(): Promise<void> {
@@ -41,10 +59,9 @@ async function main(): Promise<void> {
   const suites = UNIT_SUITES.filter((suite) => suite.kind === kind);
   const all = process.argv.includes('--all');
 
-  // One reading of the tree for the whole decision, which is made about every project at this one moment.
-  // The projects overlap heavily — most declare the same dependency sources — so they are asked through a sweep
-  const sweep = freshnessSweep();
-  const stale = suites.filter((suite) => all || sweep.staleReason(poolUnitFor(suite), poolStampFor(suite)) !== null);
+  // The sweep lives and dies inside this call, and what comes back is text
+  const running = decide(suites, all);
+  const stale = running.map(({ suite }) => suite);
   if (stale.length === 0) {
     console.log(`${kind} pool: all ${suites.length} project(s) up to date`);
     return;
@@ -55,8 +72,8 @@ async function main(): Promise<void> {
   // being unable to say which of the eleven projects inside it that was
   console.log(`${kind} pool: ${stale.length} of ${suites.length} project(s) to run`);
   const width = Math.max(...stale.map((suite) => suite.workspace.length));
-  for (const suite of stale) {
-    console.log(`  ${suite.workspace.padEnd(width)}  ${all ? '--all' : whyItRuns(stampRecord(poolStampFor(suite)), () => movedUnder(suite, sweep))}`);
+  for (const { suite, why } of running) {
+    console.log(`  ${suite.workspace.padEnd(width)}  ${why}`);
   }
 
   // What each run covers. The host suites are projects of one root config, so one vitest run takes them all
