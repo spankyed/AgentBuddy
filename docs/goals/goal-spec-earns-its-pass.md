@@ -58,6 +58,12 @@ Never:
 
 ## Background (surveyed 2026-09-28 at `56ba5bcad` on `master`)
 
+> Re-checked at `851cf6860`, later the same day: `scripts/spec.ts`, `scripts/lib/spec-plan.ts` and
+> `repo-checks/tests/spec-plan.spec.ts` are untouched since the survey, and every reproduction below still
+> reproduces. Nothing in this goal has been implemented. What moved in between is the lint gate, which now
+> reads `packages/**` — so new code under `scripts/` has a linter over it that it did not have when this was
+> written.
+
 [`goal-spec-follows-the-graph.md`](../archive/goals/goal-spec-follows-the-graph.md) made `npm run spec` route a
 source file through the module graph: one root `vitest related` over every host project, so editing
 `@abuddy/sdk` runs the 104 specs that cover it rather than the one package it lives in.
@@ -193,20 +199,39 @@ otherwise go looking:
    (already shipped), **3** a target that exists is covered by no spec. Distinct codes, because the three
    need different next moves and only one of them is a bug in the code under test.
 
+   **`--passWithNoTests=false` already does half of this**, measured: `npx vitest related --run
+   packages/renderer/src/main.ts --passWithNoTests=false` exits 1 where the same run without it exits 0. That
+   is the fallback if the reporter below turns out awkward — one flag, and the pass stops being a pass. It is
+   not the choice, because it fails without saying why and collapses into exit 1, and because Phase 4 needs the
+   count anyway to check its prediction against what ran.
+
 2. **Emptiness is decided from the run's own report, not by collecting first.** The run already knows what it
    ran; asking a second process would double the ~2s collection on every source-file target to learn
    something the first process is about to tell us. So the `related` and `--changed` runs write a JSON
    reporter to a temp file beside the human output, and `spec.ts` reads the file count back.
 
-   **Only a run that carries a coverage claim is judged this way.** A run that legitimately executes nothing
-   is not a hole: `test:unit:pack` skipping on its own stamp, and a filtered run whose `-t` pattern matched no
-   case, both report zero and both are correct. The claim belongs to the route, so it is a field on `Run`,
-   set by the two `related` routes and the `--changed` route and by nothing else.
+   **Only a run that carries a coverage claim is judged this way, and only over a file a spec could cover.**
+   A run that legitimately executes nothing is not a hole: `test:unit:pack` skipping on its own stamp, and a
+   filtered run whose `-t` pattern matched no case, both report zero and both are correct. The claim belongs to
+   the route, so it is a field on `Run`, set by the two `related` routes and the `--changed` route and by
+   nothing else.
+
+   **And the target has to be code.** Today a `.md` takes the source-file route: `npm run spec --
+   docs/goals/README.md` prints *"every spec covering docs/goals/README.md"* and exits 0, and a change set of
+   nothing but a doc plans the same empty root `--changed` run. Failing those would contradict the first entry
+   in the root `CLAUDE.md`'s list of time-wasters — *running anything at all after a comment, a doc or a
+   CLAUDE.md edit* — which is the one most often ignored. So the claim is made for a target with a source
+   extension, and the `--changed` route claims only over the subset of the change set that has one: an empty
+   subset is not a hole, it exits 0 and says nothing changed that a spec could cover. A doc target keeps
+   today's behaviour, and the label stops claiming coverage it was never going to have.
 
 3. **The two edges no module graph can see are declared routes, reported by default and run under `--full`.**
    This is the mechanism `packSuiteNote`/`packSuiteRun` already is, reused rather than reinvented, and it
    inherits that decision's shape for the same reason: the note costs nothing and the run costs a build.
-   - `packages/<pack>/src/seeds/**` → that pack's `tests/seeds/`, through `npm run compile -w <pack>`.
+   - `packages/<pack>/src/seeds/**` → that pack's `tests/seeds/`, through `npm run build -w <pack>` — the
+     pack's own build, which is what the root `compile` wraps; there is no `compile -w <pack>`, and the
+     `packages:ensure` and `facade:check` that `compile` adds around it are already the plan's own first run
+     and a separate artifact check.
    - `packages/<pack>/abuddy.json` → that pack's whole suite, through the same build, codegen rewriting
      `src/__generated__/` being a change to what every spec in the pack imports.
 
@@ -237,7 +262,10 @@ otherwise go looking:
    corresponds to where one exists — `packages:ensure` and `test:unit:pack` are tier 2, a `tests/e2e` run is
    the `test` step's tier 3 — and prints nothing where none does, a root `related` run spanning tier 1 and the
    tier-2 specs that read the built packages. Read from `chain-steps.ts`, never computed from what a run looks
-   like, so the label cannot disagree with `check:tiers`. That is the half of the original request worth
+   like, so the label cannot disagree with `check:tiers`. Derived, not mapped: a `Run`'s command already *is*
+   the npm script whose name the chain step carries (`packages:ensure`, `test:unit:pack`, `test`), so the label
+   is a lookup on that name. Writing a second table beside `chain-steps.ts` is the trap here — *a list and its
+   type are one declaration*, and this is the same mistake in another shape. That is the half of the original request worth
    keeping: knowing that the next run launches the app is worth a word, and it costs no scheduler.
 
 7. **A predicted cost is stated as file-time, with the wall ratio said out loud.** 36.0s of recorded
@@ -262,8 +290,9 @@ otherwise go looking:
   commands.
 
 **Done when:** `npm run spec -- packages/renderer/src/main.ts` exits 3 and says no spec covers it;
-`npm run spec -- packages/abuddy-sdk/src/fe/settings.ts` still passes and exits 0; a `-t` pattern matching
-no case still exits 0 (it is a filter, not a claim). New cases in
+`npm run spec -- packages/abuddy-sdk/src/fe/settings.ts` still passes and exits 0; `npm run spec --
+docs/goals/README.md` exits 0 and no longer claims to run every spec covering it; a change set of nothing but
+a doc exits 0; a `-t` pattern matching no case still exits 0 (it is a filter, not a claim). New cases in
 `packages/repo-checks/tests/spec-plan.spec.ts` assert which routes carry the claim and the verdict for each
 of the three outcomes. Mutation: dropping the claim from the root route makes the empty case pass again, and
 the new case fails.
@@ -272,7 +301,7 @@ the new case fails.
 
 - Implement the two routes of Decision 3 in `spec-plan.ts`, derived from the pack's layout.
 - A seed-source or `abuddy.json` target prints what covers it and how (the note), and under `--full` runs it:
-  `compile -w <pack>` then the seed specs, or the pack's suite for a manifest change.
+  the pack's `build` then the seed specs, or the pack's suite for a manifest change.
 - Delete the corresponding sentences from `packages/default-setup/tests/seeds/CLAUDE.md` and the root
   `CLAUDE.md` where they describe the gap as permanent, and say what the router now does instead.
 
