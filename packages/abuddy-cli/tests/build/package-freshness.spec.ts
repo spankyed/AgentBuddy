@@ -1,9 +1,10 @@
 import { spawnSync } from 'node:child_process';
+import { createHash } from 'node:crypto';
 import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
-import { BUILD_UNITS, buildScriptFor, CHECKOUT_MARKER, fingerprintInputs, fingerprintUnit, inputFiles, NOT_A_BUILD_INPUT, REPO_ROOT, staleMessage, STAMP_VERSION, stampedBuild, stampedRun, stampedRunAll, stampFile, unitStaleReason, withBuildLock, type BuildIntent, type BuildUnit } from '@abuddy/host/build/packages-built';
+import { ABSENT, BUILD_UNITS, buildScriptFor, changedInputs, CHECKOUT_MARKER, declaredPaths, fingerprintInputs, fingerprintUnit, fingerprintWithDigests, inputFiles, NOT_A_BUILD_INPUT, REPO_ROOT, staleMessage, stampRecord, STAMP_VERSION, stampedBuild, stampedRun, stampedRunAll, stampFile, unitStaleReason, withBuildLock, type BuildIntent, type BuildUnit } from '@abuddy/host/build/packages-built';
 
 /**
  * The freshness rule behind `npm test -w @abuddy/cli`'s pretest (@abuddy/host/build/packages-built):
@@ -378,6 +379,122 @@ describe('the staleness verdict', () => {
     } finally {
       fs.chmodSync(f.src, 0o755);
     }
+  });
+});
+
+/**
+ * Which input moved, for a report that has to name it rather than say a write happened.
+ *
+ * The shipped version of that report walked mtimes of its own, and the two answers disagreed the first time
+ * it mattered: it named a compiled seed that `tests/e2e/dev-reload.spec.ts` rewrites with the bytes it already
+ * had, and the diagnosis that followed was about the wrong file. Every case here is the pair of questions those
+ * two walks answer differently — `it names nothing when only an mtime moved` is the one that fails on an mtime
+ * walk, and is why this exists.
+ */
+describe('which inputs changed', () => {
+  /** What a successful run records beside the fingerprint: the half that lets the next run explain itself */
+  const recordFor = (unit: BuildUnit) => ({ files: fingerprintWithDigests(unit).files, declared: declaredPaths(unit) });
+  const rel = (file: string) => path.relative(REPO_ROOT, file);
+
+  it('names the file whose bytes changed', () => {
+    const f = fixture();
+    const recorded = recordFor(f.unit);
+    fs.writeFileSync(path.join(f.src, 'a.ts'), 'export const a = 2;\n');
+    const changes = changedInputs(f.unit, recorded);
+    expect(changes.changed).toEqual([rel(path.join(f.src, 'a.ts'))]);
+    expect([...changes.added, ...changes.removed, ...changes.gained, ...changes.lost]).toEqual([]);
+  });
+
+  it('names nothing when only an mtime moved, which is what a walk of its own gets wrong', () => {
+    const f = fixture();
+    const recorded = recordFor(f.unit);
+    const written = fs.readFileSync(path.join(f.src, 'a.ts'));
+    // What a test that edits a file and puts it back does: the mtime moves twice, the bytes end where they were
+    fs.writeFileSync(path.join(f.src, 'a.ts'), 'export const a = 2;\n');
+    fs.writeFileSync(path.join(f.src, 'a.ts'), written);
+    const future = new Date(Date.now() + 60 * 60 * 1000);
+    fs.utimesSync(path.join(f.src, 'nested', 'b.ts'), future, future);
+    const changes = changedInputs(f.unit, recorded);
+    expect([...changes.changed, ...changes.added, ...changes.removed]).toEqual([]);
+    // And the verdict agrees there is nothing to explain, which is the property the two have to share
+    expect(unitStaleReason(f.unit, stampFor(f))).toBeNull();
+  });
+
+  it('names an added file as added and a deleted one as removed', () => {
+    const f = fixture();
+    const recorded = recordFor(f.unit);
+    fs.writeFileSync(path.join(f.src, 'c.ts'), 'export const c = 3;\n');
+    fs.rmSync(path.join(f.src, 'nested', 'b.ts'));
+    const changes = changedInputs(f.unit, recorded);
+    expect(changes.added).toEqual([rel(path.join(f.src, 'c.ts'))]);
+    expect(changes.removed).toEqual([rel(path.join(f.src, 'nested', 'b.ts'))]);
+    expect(changes.changed).toEqual([]);
+  });
+
+  it('ignores a change under the unit\'s own output, as the fingerprint does', () => {
+    const f = fixture();
+    // The output inside the input tree, the shape that makes a step self-invalidating
+    const nested = path.join(f.src, 'generated');
+    fs.mkdirSync(nested, { recursive: true });
+    fs.writeFileSync(path.join(nested, 'emitted.ts'), 'export const emitted = 1;\n');
+    const unit = { inputs: f.unit.inputs, outputs: [...f.unit.outputs, nested] };
+    const recorded = recordFor(unit);
+    fs.writeFileSync(path.join(nested, 'emitted.ts'), 'export const emitted = 2;\n');
+    expect(changedInputs(unit, recorded).changed).toEqual([]);
+  });
+
+  it('says the declared set moved, and names no file, when a unit gains or loses a watched path', () => {
+    const f = fixture();
+    const recorded = recordFor(f.unit);
+    // An excluded path that holds nothing: the declared set moves and not one byte under the inputs does
+    const wider = { ...f.unit, excludes: [path.join(f.root, 'nowhere')] };
+    const changes = changedInputs(wider, recorded);
+    expect(changes.gained).toEqual([rel(path.join(f.root, 'nowhere'))]);
+    expect([...changes.changed, ...changes.added, ...changes.removed]).toEqual([]);
+    // Which is a real staleness, and the cause a file list cannot express
+    expect(unitStaleReason(wider, stampFor(f))).toMatch(/inputs changed/);
+
+    const narrower = { inputs: [f.unit.inputs[0]!], outputs: f.unit.outputs };
+    expect(changedInputs(narrower, recorded).lost).toEqual([rel(path.join(f.root, 'package.json'))]);
+  });
+
+  it('collects a digest per file that the hash taken beside it agrees with', () => {
+    const f = fixture();
+    const files: Record<string, string> = {};
+    const collected = fingerprintInputs(f.unit.inputs, undefined, [], (file, digest) => { files[file] = digest; });
+    expect(collected, 'collecting moved the verdict').toBe(fingerprintInputs(f.unit.inputs));
+    expect(Object.keys(files).map((file) => path.basename(file)).sort()).toEqual(['a.ts', 'b.ts', 'package.json']);
+    const a = rel(path.join(f.src, 'a.ts'));
+    expect(files[a]).toBe(createHash('sha256').update(fs.readFileSync(path.join(f.src, 'a.ts'))).digest('hex'));
+
+    // A normaliser narrows what "changed" means, and a digest has to be narrowed the same way or a report
+    // names a file whose prose moved while the hash it explains says nothing did
+    const shouted: Record<string, string> = {};
+    fingerprintInputs(f.unit.inputs, (contents) => contents.toString('utf-8').toUpperCase(), [], (file, digest) => { shouted[file] = digest; });
+    expect(shouted[a]).toBe(createHash('sha256').update(fs.readFileSync(path.join(f.src, 'a.ts'), 'utf-8').toUpperCase()).digest('hex'));
+    expect(shouted[a]).not.toBe(files[a]);
+
+    // The map's keys are the files the hash walked and no others, so a diff over it cannot name a file the
+    // verdict never read. A declared input that is not there is not walked at all — `ABSENT` is for the
+    // narrower case of a file that goes between the walk and the read, which the hash counts and so must this
+    const absent = path.join(f.root, 'tsdown.config.ts');
+    const missing: Record<string, string> = {};
+    fingerprintInputs([...f.unit.inputs, absent], undefined, [], (file, digest) => { missing[file] = digest; });
+    expect(missing[rel(absent)]).toBeUndefined();
+    expect(Object.keys(missing).sort()).toEqual(Object.keys(files).sort());
+    expect(ABSENT, 'the word the hash frames a vanished file with, so a digest map agrees with it').toBe('absent');
+  });
+
+  it('records what the next run reads back', async () => {
+    const f = fixture();
+    const stamp = path.join(f.root, 'stamp.json');
+    await stampedRun('fixture', f.unit, stamp, () => {});
+    const record = stampRecord(stamp);
+    expect(record?.files, 'a run recorded no per-file digests, so nothing can explain its staleness').toBeDefined();
+    const recorded = { files: record!.files!, declared: record!.declared! };
+    expect(changedInputs(f.unit, recorded).changed).toEqual([]);
+    fs.writeFileSync(path.join(f.src, 'a.ts'), 'export const a = 2;\n');
+    expect(changedInputs(f.unit, recorded).changed).toEqual([rel(path.join(f.src, 'a.ts'))]);
   });
 });
 

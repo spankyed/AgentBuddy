@@ -242,6 +242,9 @@ export function inputFiles(target: string, out: string[] = []): string[] {
   return out;
 }
 
+/** What stands in for a digest where the file was not there to read — never a hash of nothing */
+export const ABSENT = 'absent';
+
 /**
  * A content fingerprint of `inputs`: every file's repo-relative path and its bytes, sorted.
  *
@@ -267,11 +270,18 @@ export function inputFiles(target: string, out: string[] = []): string[] {
  * `normalise` hashes each file through a transform instead of as it is read, for a caller asking a
  * narrower question than "did these bytes change" — the API report stamp asks "could these declarations
  * have changed a report", and a doc comment's prose cannot.
+ *
+ * `collect` receives each file's own digest as this walk hashes it: the same files, in the same order, after
+ * the same `normalise`, in one pass. It is how a caller that has to say *which* file moved gets an answer that
+ * cannot disagree with the verdict, because both come from here. A second walk of its own can disagree, and
+ * one did — an mtime walk named a file an E2E test rewrites with identical bytes, and the diagnosis that
+ * followed was wrong. The returned hash is unaffected, so a caller wanting only the verdict passes nothing.
  */
 export function fingerprintInputs(
   inputs: readonly string[],
   normalise?: (contents: Buffer, file: string) => Buffer | string,
   exclude: readonly string[] = [],
+  collect?: (file: string, digest: string) => void,
 ): string {
   const hash = createHash('sha256');
   const excluded = exclude.map((target) => path.relative(REPO_ROOT, target));
@@ -286,8 +296,10 @@ export function fingerprintInputs(
     }
     // Without a normaliser the bytes are hashed as read — no copy on the path that runs per command
     const hashed = contents !== null && normalise ? Buffer.from(normalise(contents, file)) : contents;
-    hash.update(`${file}\0${hashed === null ? 'absent' : hashed.length}\0`);
+    hash.update(`${file}\0${hashed === null ? ABSENT : hashed.length}\0`);
     if (hashed !== null) hash.update(hashed);
+    // One word for "not there" in both, so a digest map distinguishes the three cases this loop does
+    if (collect) collect(file, hashed === null ? ABSENT : createHash('sha256').update(hashed).digest('hex'));
   }
   return hash.digest('hex');
 }
@@ -297,10 +309,9 @@ export function fingerprintInputs(
  * unit that gains or loses a watched directory invalidates itself — and only itself. Hashing the input
  * contents alone would read the new set against the old stamp and call it fresh.
  */
-export function fingerprintUnit(unit: BuildUnit): string {
-  const declared = [...unit.inputs, ...unit.outputs, ...(unit.excludes ?? [])].map((target) => path.relative(REPO_ROOT, target)).sort();
+export function fingerprintUnit(unit: BuildUnit, collect?: (file: string, digest: string) => void): string {
   return createHash('sha256')
-    .update(declared.join('\0'))
+    .update(declaredPaths(unit).join('\0'))
     .update('\0')
     // A unit's own output is never its own input, however broadly its inputs are declared. Two steps
     // declare a whole tree and then write into it — `compile` writes `src/__generated__` under the `src`
@@ -309,11 +320,82 @@ export function fingerprintUnit(unit: BuildUnit): string {
     // surviving on the builds happening to be deterministic, and the pack build is already known not to be
     // (two lines of `Omit<…>` union ordering). Excluding self-output here means declaring `outputs`
     // honestly is the whole fix, rather than every such step needing its inputs hand-narrowed.
-    .update(fingerprintInputs(unit.inputs, undefined, [...unit.outputs, ...(unit.excludes ?? [])]))
+    .update(fingerprintInputs(unit.inputs, undefined, [...unit.outputs, ...(unit.excludes ?? [])], collect))
     .digest('hex');
 }
 
+/**
+ * The paths a unit declares, sorted and repo-relative — the first thing `fingerprintUnit` hashes.
+ *
+ * Exported because a stamp records it: a unit that gains a watched directory is stale before anything under it
+ * has changed, and that is a different cause from a byte moving. Without the set on the stamp, the two arrive
+ * as one verdict and a report of which *files* differ answers "none" while the step is genuinely stale.
+ */
+export const declaredPaths = (unit: BuildUnit): string[] =>
+  [...unit.inputs, ...unit.outputs, ...(unit.excludes ?? [])].map((target) => path.relative(REPO_ROOT, target)).sort();
+
+/** A unit's fingerprint and the per-file digests it is composed of, from one walk */
+export function fingerprintWithDigests(unit: BuildUnit): { fingerprint: string; files: Record<string, string> } {
+  const files: Record<string, string> = {};
+  const fingerprint = fingerprintUnit(unit, (file, digest) => { files[file] = digest; });
+  return { fingerprint, files };
+}
+
+/** What a stale unit's inputs did, against what a run recorded about them */
+export interface InputChanges {
+  /** Watched paths this unit has gained and lost — a cause on its own, before any file changes */
+  readonly gained: readonly string[];
+  readonly lost: readonly string[];
+  /** Files under the inputs whose bytes differ from the record */
+  readonly changed: readonly string[];
+  readonly added: readonly string[];
+  readonly removed: readonly string[];
+}
+
+/**
+ * Which of `unit`'s inputs differ from what a run recorded, so a report can name them instead of guessing.
+ *
+ * Pure, over digests taken here and digests handed in, because the same three sets are the answer whether the
+ * record came from a stamp on disk or from a test. `changed` is only ever bytes: a file rewritten with the
+ * bytes it already had appears in none of these, which is the whole point — mtime says it was written and the
+ * cache does not care, and reading one as the other is what sent a diagnosis after the wrong file.
+ */
+export function changedInputs(unit: BuildUnit, recorded: { files: Record<string, string>; declared: readonly string[] }): InputChanges {
+  const now = fingerprintWithDigests(unit).files;
+  const declared = new Set(recorded.declared);
+  const wasDeclared = declaredPaths(unit);
+  return {
+    gained: wasDeclared.filter((declaredPath) => !declared.has(declaredPath)),
+    lost: recorded.declared.filter((declaredPath) => !wasDeclared.includes(declaredPath)),
+    changed: Object.keys(now).filter((file) => recorded.files[file] !== undefined && recorded.files[file] !== now[file]).sort(),
+    added: Object.keys(now).filter((file) => recorded.files[file] === undefined).sort(),
+    removed: Object.keys(recorded.files).filter((file) => now[file] === undefined).sort(),
+  };
+}
+
 export interface StaleUnit { readonly workspace: string; readonly reason: string }
+
+/**
+ * What a successful run recorded. `fingerprint` and `version` are the verdict; `declared` and `files` are the
+ * diagnosis, and a stamp written before those existed simply has neither.
+ */
+export interface StampRecord {
+  readonly workspace?: unknown;
+  readonly version?: unknown;
+  readonly fingerprint?: unknown;
+  readonly builtAt?: unknown;
+  readonly declared?: readonly string[];
+  readonly files?: Record<string, string>;
+}
+
+/** A stamp as it was written, or undefined when there is none to read — the one place this file is parsed */
+export function stampRecord(stamp: string): StampRecord | undefined {
+  try {
+    return JSON.parse(fs.readFileSync(stamp, 'utf-8')) as StampRecord;
+  } catch {
+    return undefined; // missing or unreadable: the same as never built
+  }
+}
 
 /**
  * Why `unit` needs to run, or null when its stamp says a run over exactly these inputs succeeded. Never
@@ -323,10 +405,7 @@ export interface StaleUnit { readonly workspace: string; readonly reason: string
 export function unitStaleReason(unit: BuildUnit, stamp: string): string | null {
   const missing = unit.outputs.filter((output) => !fs.existsSync(output)).map((output) => path.relative(REPO_ROOT, output));
   if (missing.length > 0) return `not built (no ${missing.join(', ')})`;
-  let record: { fingerprint?: unknown; version?: unknown } = {};
-  try {
-    record = JSON.parse(fs.readFileSync(stamp, 'utf-8'));
-  } catch { /* missing or unreadable: the same as never built */ }
+  const record = stampRecord(stamp) ?? {};
   if (typeof record.fingerprint !== 'string') return 'no stamp — it has not run yet, or the last run failed or was interrupted';
   // A stamp from another protocol says nothing about this one, so it counts as never built
   if (record.version !== STAMP_VERSION) return `its stamp is from another format (${String(record.version)}, this is ${STAMP_VERSION})`;
@@ -571,13 +650,16 @@ export interface StampedUnit {
  * would stamp a fingerprint of the output instead of the input and read fresh next time when it was not.
  */
 export async function stampedRunAll(units: readonly StampedUnit[], run: () => void | Promise<void>): Promise<void> {
-  const taken = units.map(({ label, unit, stamp }) => ({ label, stamp, fingerprint: fingerprintUnit(unit) }));
+  const taken = units.map(({ label, unit, stamp }) => ({ label, stamp, declared: declaredPaths(unit), ...fingerprintWithDigests(unit) }));
   for (const { stamp } of taken) fs.rmSync(stamp, { force: true });
   await run();
   const builtAt = new Date().toISOString();
-  for (const { label, stamp, fingerprint } of taken) {
+  for (const { label, stamp, fingerprint, declared, files } of taken) {
     fs.mkdirSync(path.dirname(stamp), { recursive: true });
-    fs.writeFileSync(stamp, `${JSON.stringify({ workspace: label, version: STAMP_VERSION, fingerprint, builtAt }, null, 2)}\n`);
+    // `declared` and `files` are what the next run needs to say *which* input moved, taken in the same pass as
+    // the fingerprint so the diagnosis and the verdict describe one reading of the tree. Additive: a stamp
+    // without them is still a valid stamp, it just cannot explain itself.
+    fs.writeFileSync(stamp, `${JSON.stringify({ workspace: label, version: STAMP_VERSION, fingerprint, builtAt, declared, files }, null, 2)}\n`);
   }
 }
 
