@@ -1,27 +1,41 @@
-> **Re-verified 2026-09-28, unstarted, and the premise is intact.** Nothing here has been implemented, and
-> nothing has drifted: still **two of fifteen workspaces declare `lint:check`** (`@app/default-setup`,
-> `@app/renderer`), and `--if-present` still passes the other thirteen in silence, so the chain reports lint
-> green over an eighth of its subject. `@abuddy/host` reports the same **27** `no-unused-vars` the Background
-> recorded three days ago — nothing has been cleaned in between.
+> **Re-verified 2026-09-28, later the same day. Phase 4's lint half has landed, and the Background's figures
+> no longer hold — read this block before the table below it.**
 >
-> **Decision 1's gate measures larger than lint does**, which is the point of choosing it. Turning
-> `noUnusedLocals` and `noUnusedParameters` on for four packages that do not set them:
+> `lint:check` stopped excluding `packages/**` in `8549f81a5`. The root pass reads the whole tree now — 1767
+> files, about a tenth of a second — with one exclusion: the CLI's scaffold templates, whose parameter names are
+> what a pack author reads, so an unused one there is documentation rather than a finding. **Phase 4's
+> requirement that lint cover every workspace with source is therefore met**; what remains of that phase is the
+> guard naming any workspace it does not cover. Two of fifteen workspaces still declare their own `lint:check`,
+> but that no longer leaves the other thirteen unchecked.
 >
-> | package | unused declarations (`tsc`) | `no-unused-vars` (oxlint) |
+> **The counts this goal was argued from were cleared in the same stretch** (`d8be2926d`, `44486da98`,
+> `a5c795c58`). The 113 correctness findings behind that exclusion are at zero, and so is Phase 4's "51 across
+> the ten unlinted packages". Measured with this goal's own `noUnusedLocals`, the four packages its table rests
+> on report nothing:
+>
+> | package | the table below | 2026-09-28 |
 > |---|---|---|
-> | `@abuddy/host` | **44** | 27 |
-> | `@app/api` | **21** | 1 |
-> | `@abuddy/sdk` | **10** | 2 |
-> | `@abuddy/ears` | 1 | 0 |
+> | `@abuddy/host` | 44 | **0** |
+> | `@app/api` | 21 | **0** |
+> | `@abuddy/sdk` | 10 | **0** |
+> | `@abuddy/ears` | 1 | **0** |
 >
-> 76 in four packages, against 30 that lint sees in the same four — so the compiler gate is roughly 2.5× the
-> catch, and Decision 1's "it catches 14 cases in default-setup that its lint does not" understates it at this
-> scale. Phase 4's lint half has its own current figure: **51 correctness errors across the ten unlinted
-> packages with source, 40 of them unused variables.**
+> **What still justifies the goal is narrower than 2.5×, and structural: the compiler reads files the linter
+> cannot parse at all.** Measured while this landed, `oxlint` reported zero on
+> `abuddy-ui/src/design/Autocomplete.vue` while `vue-tsc` reported two unused locals in that same file. An SFC is
+> invisible to the linter, not merely under-covered, and no lint configuration closes that — which matters here
+> because three of the workspaces are Vue-heavy. It also reports unused *types* (TS6196), which `no-unused-vars`
+> does not. **Those two are the case for the gate; the arithmetic above is not.**
 >
-> **`lint:check` moved twice on 2026-09-28** and neither move touches this goal: both forms still exclude
-> `packages/**`, which is the exclusion the goal exists to remove. The precondition block below was updated for
-> the second of those and is current.
+> Do not expect to reproduce a count: the remainder — a handful of hand-written `.vue` declarations across
+> `@abuddy/ui` and `@app/default-setup`, generated code aside — was cleared as the gate went on, which is the
+> goal working rather than evidence going missing.
+>
+> **Two properties to design for, both visible on the first run.** The gate fires on generated code — 13 of
+> default-setup's first 18 were under `src/__generated__/`, including the `__contract_check_*` aliases codegen
+> emits *in order to be unreferenced* — so either codegen stops emitting them or the directory is excluded, and
+> the first is the honest fix. And `noUnusedLocals` on its own leaves unused *parameters* to lint and to the `_`
+> convention, which is where they are handled today.
 
 > **Written in session** `c9f31de2-e94c-46ea-a2ac-2898390dc27d` (Claude Code, 2026-09-25). Resume it with `claude -r c9f31de2-e94c-46ea-a2ac-2898390dc27d`.
 
@@ -36,9 +50,9 @@ package.json's `lint:check` still begins `npm run lint:check -ws --if-present`. 
 say so — the plan was surveyed somewhere else. (A second half was added after the survey and has since been
 widened: `&& oxlint . -D correctness --ignore-path .gitignore --ignore-pattern 'packages/**'
 --ignore-pattern 'docs/**'` as of `7080ebfe7`, having been `oxlint scripts tests -D correctness` at
-`f91b66b49`. Both forms exclude `packages/**`, so this goal's subject — the workspaces — is untouched
-either way, and removing that exclusion one tree at a time is what this goal is for. Read the script
-rather than this sentence: it has moved twice since the survey.)
+`f91b66b49`. It moved a third time at `8549f81a5`, which **removed the `packages/**` exclusion** — so the
+lint half of this goal's subject is already covered and Phase 4 is largely done; what is left there is the
+guard. Read the script rather than this sentence: it has moved three times since the survey.)
 Read Background, Decisions, Phases and Constraints first. Decisions are final: implement them, don't
 reopen them or stop to ask. The Open decisions must be settled with the user before Phase 3; if any is
 still marked open, stop and ask.
@@ -106,9 +120,11 @@ The second half arrived later, in `f91b66b49`: the repo's own `scripts/` and `te
 workspace, so no `-ws` fan-out could ever reach them, and eight dead declarations had accumulated there
 unnoticed. Both trees are at zero now. It was widened at `7080ebfe7` to lint everything git tracks outside
 `packages/**` and `docs/**`, after the narrower form was found reading a pack's build output and a
-gitignored scratch spec. That closes a hole this survey did not name and moves none of what follows — both
-forms exclude `packages/**`, so the thirteen workspaces are still two linted and eleven not, and that
-exclusion is the thing this goal removes.
+gitignored scratch spec. That closed a hole this survey did not name. The exclusion itself went at
+`8549f81a5`: the root pass reads every workspace now, bar the CLI's scaffold templates, and the 113
+findings behind it were cleared in the same stretch. So the sentence this paragraph used to end on — that
+the thirteen workspaces are two linted and eleven not — no longer holds, and what this goal removes is not
+the lint exclusion but the blind spot underneath it: a linter that cannot parse an SFC at all.
 
 default-setup's script is `oxlint . -D correctness --ignore-path .gitignore`; renderer has
 `eslint.config.ts`. There is no lint config at the repo root and none in any unlinted package.
