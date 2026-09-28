@@ -33,12 +33,6 @@ export interface PackPlace {
   readonly imports: Record<string, string>;
 }
 
-export type PackRuleKey =
-  | 'source-resolution'
-  | 'own-modules' | 'pack-own-aliases' | 'internal-package-imports'
-  | 'host-imports' | 'lmdb-imports'
-  | 'untyped-sends' | 'raw-transport' | 'backend-console'
-  | 'cross-feature-imports' | 'contract-leaves';
 
 /**
  * One finding, with the span of the code it is about.
@@ -82,7 +76,15 @@ export function formatPackWide(found: PackWideFinding, where: (file: string) => 
 }
 
 export interface PackRule {
-  readonly key: PackRuleKey;
+  /**
+   * The rule's name, which `abuddy.checks.json` and `--rule` take.
+   *
+   * `string` rather than `PackRuleKey`, because that union is derived from this list below and a rule cannot be
+   * typed by a union it defines. So a misspelled key here does not fail at the declaration — it fails at the three
+   * places that pin the set: the precedence case and the firing-case coverage in `pack-rules.spec.ts`, and the
+   * check that `docs/public-facing/cli.md` documents exactly these rules.
+   */
+  readonly key: string;
   /** The sentence reported when it fires, the same one `check:specifiers` prints */
   readonly rule: string;
   /** Whether a pack may allow it in `abuddy.checks.json`: true only when a violation has no runtime effect */
@@ -133,7 +135,7 @@ function importedFrom(node: ts.Node): { module: string; names: string[] } | unde
  * then what stops a specifier resolving, then what breaks on an app update, then the conventions — so an author
  * deleting one import is told the thing that matters about it.
  */
-export const PACK_RULES: readonly PackRule[] = [
+const RULE_LIST = [
   {
     key: 'source-resolution',
     switchable: false,
@@ -280,7 +282,26 @@ export const PACK_RULES: readonly PackRule[] = [
       + '#generated/fe and #generated/events, never a module of its own',
     check: crossFeatureFindings,
   },
-];
+] as const satisfies readonly PackRule[];
+
+/**
+ * Every rule's name, derived from the list above rather than written beside it.
+ *
+ * It was a union of eleven strings next to an array of eleven rules, so adding one was two edits and only the
+ * second was checked. One declaration now: the list is the definition, and everything that takes a key — the
+ * `allow` list a pack writes, the repo's own entry points, the specs — is typed against what the list holds.
+ */
+export type PackRuleKey = (typeof RULE_LIST)[number]['key'];
+
+/**
+ * Every rule, as a consumer reads one: every optional member present, and the key narrowed to the union above.
+ *
+ * A tuple of literal types is what makes that union derivable, and it is also a union of object types whose
+ * members lack the properties they do not declare — where every consumer asks a rule whether it has a `check` or
+ * a `checkPack`. Widening to `PackRule` alone would take the key back to `string` with them, so the key is put
+ * back: an assignment TypeScript checks, since each entry's key is one of the literals the union is made of.
+ */
+export const PACK_RULES: readonly (PackRule & { readonly key: PackRuleKey })[] = RULE_LIST;
 
 const SWITCHABLE = PACK_RULES.filter((rule) => rule.switchable).map((rule) => rule.key);
 
