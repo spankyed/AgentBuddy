@@ -299,8 +299,13 @@ npm run chain            # Before a merge: every check in dependency order, cold
                          # and costs 5.9s. Afterwards it says which steps a run contradicted:
                          # one whose measured time has left its declared `seconds` — a step that keeps a
                          # cache of its own only under --all, since otherwise it may have run a fraction of
-                         # its projects — and one that passed but is already stale again, which means
-                         # something wrote into its inputs.
+                         # its projects — and one that passed but is already stale again, which it
+                         # explains by diffing that step's inputs against the per-file digests its own
+                         # stamp recorded: the files that differ, what happened to each, and whether it
+                         # changed while the step ran (an ordering to fix) or since. A file rewritten
+                         # with the bytes it already had is counted in one dimmed line instead, because
+                         # it is not why anything re-ran — reading one as a cause sent a diagnosis after
+                         # the wrong file, which is what the digests are recorded for.
                          # Each step is cached on the inputs it declares (scripts/lib/chain-steps.ts)
                          # through the package builds' stamp protocol: an unchanged step reports `cached`
                          # and does not run, so a doc edit runs nothing and a one-package edit runs that
