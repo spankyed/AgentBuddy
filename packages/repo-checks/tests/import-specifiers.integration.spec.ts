@@ -915,6 +915,16 @@ describe('CHECKS', () => {
   const SECOND_FEATURE = { 'src/features/threads/fe/state.ts': 'export const t = 1;\n' };
 
   /**
+   * An unrelated offence elsewhere in every cell's pack, which must survive whatever the cell's own offence does.
+   *
+   * Without it the dedupe's other failure is invisible here: a drop only happens where two rules claim one site,
+   * and every such cell is recorded in ACCEPTED_OVERLAP, so a dedupe that suppressed far too much would pass.
+   * Measured — made to drop every per-file finding in a pack holding any whole-pack claim, the sweep did not
+   * notice until this was here.
+   */
+  const DECOY = { 'src/decoy.ts': "import { edgeStore } from '@abuddy/host/ears';\n" };
+
+  /**
    * A cell two rules both claim, with the verdict a reader can check. Hand-written, because a real overlap needs a
    * human decision — and asserted still to overlap below, so one the dedupe has since been taught to merge cannot
    * sit here. A new row is a decision to raise, not to take.
@@ -951,6 +961,7 @@ describe('CHECKS', () => {
     const sweepersFor = { src: [...sweepers('src')], tests: [...sweepers('tests')] };
     const firing: string[] = [];
     const overlapping: string[] = [];
+    const mismatched: string[] = [];
     const accepted = new Set<string>();
 
     cells.forEach(({ where, file, offence, code }, n) => {
@@ -958,7 +969,7 @@ describe('CHECKS', () => {
       // cases here escape that only because `beforeEach` gives each *test* a fresh root. Measured — sharing one
       // pack, this found none of the four overlaps it finds with a directory each.
       const at = `${PACK_FIXTURE}-${n}`;
-      buildPackFixture({ at: path.join(root, at), files: { [file]: `${code}\n`, ...SECOND_FEATURE } });
+      buildPackFixture({ at: path.join(root, at), files: { [file]: `${code}\n`, ...SECOND_FEATURE, ...DECOY } });
       // Pointed at the file, not the half, so the rules share one parse instead of each walking the pack.
       // `packRootOf` still finds the pack above it, so the manifest and the imports map are still in reach.
       const half = file.startsWith('tests/') ? 'tests' : 'src';
@@ -966,16 +977,38 @@ describe('CHECKS', () => {
         .filter((rule) => rule.overPaths!([`${at}/${file}`], root).length > 0)
         .map((rule) => rule.packRule ?? rule.id);
       const key = `${offence} at ${where}`;
-      if (claimed.length > 0) firing.push(key);
       if (claimed.length > 1) {
         if (ACCEPTED_OVERLAP[key] === undefined) overlapping.push(`${key}: ${claimed.sort().join(' and ')}`);
         else accepted.add(key);
+      }
+      if (claimed.length === 0) return;
+      firing.push(key);
+
+      // And what a pack author is actually told. `packRuleProblems` runs the rules together and drops a finding
+      // another rule already claimed, which is the half this sweep cannot see: it runs one rule at a time, so a
+      // rule that claims here and is silent there was dropped by the dedupe. Rule keys, not lines — the two
+      // runners spell a path differently on purpose.
+      const reported = [...packRuleProblems(path.join(root, at), [half])]
+        .filter(([, found]) => found.some((line) => line.startsWith(`${file}:`)))
+        .map(([rule]) => rule as string);
+
+      const everything = [...packRuleProblems(path.join(root, at), [half])];
+      if (half === 'src' && !everything.some(([rule, found]) => rule === 'host-imports' && found.some((line) => line.startsWith('src/decoy.ts:')))) {
+        mismatched.push(`${key}: the unrelated offence in src/decoy.ts went with it, so the dedupe drops too much`);
+      }
+      const added = reported.filter((rule) => !claimed.includes(rule));
+      const dropped = claimed.filter((rule) => !reported.includes(rule));
+      if (added.length > 0) mismatched.push(`${key}: ${added.join(', ')} told a pack author and claimed by nothing`);
+      if (dropped.length > 0 && ACCEPTED_OVERLAP[key] === undefined) {
+        mismatched.push(`${key}: ${dropped.join(', ')} claims the offence and no pack author hears it`);
       }
     });
 
     population('cells where some rule claims the offence', firing, { atLeast: 8 });
     expect(overlapping, 'each is one offence two rules claim, so which a reader is told depends on precedence — '
       + 'fix it, or record the pair in ACCEPTED_OVERLAP with the verdict').toEqual([]);
+    expect(mismatched, 'a rule claims an offence that reaches a pack author under another rule or under none: the '
+      + 'dedupe is dropping or re-attributing findings the one-rule-at-a-time run says are there').toEqual([]);
     expect(Object.keys(ACCEPTED_OVERLAP).filter((key) => !accepted.has(key)),
       'these no longer report one offence under two rules, so drop them from ACCEPTED_OVERLAP').toEqual([]);
   });
