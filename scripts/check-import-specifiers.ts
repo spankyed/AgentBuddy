@@ -1355,7 +1355,7 @@ export interface RuleRow {
 }
 
 /** What each answer means, in the order the second table groups them: the gap last, where it is read */
-export const PARITY_HEADINGS: Record<PackParity['kind'], string> = {
+const PARITY_HEADINGS: Record<PackParity['kind'], string> = {
   covered: 'A pack rule covers the pack-facing half:',
   inapplicable: 'A pack cannot commit the offence:',
   unenforced: 'A pack can commit it and nothing checks — move it to PACK_RULES or say why not:',
