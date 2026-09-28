@@ -43,11 +43,11 @@
 // assumption, and the cheapest work left in this chain may be another step that is quietly serial.
 import * as fs from 'node:fs';
 import * as path from 'node:path';
-import { changedInputs, freshnessSweep, INPUTS_CHANGED, REPO_ROOT, stampedRun, stampRecord, unitStaleReason, type BuildUnit } from '@abuddy/host/build/packages-built';
+import { changedInputs, firstChange, freshnessSweep, INPUTS_CHANGED, REPO_ROOT, stampedRun, stampRecord, unitStaleReason, type BuildUnit } from '@abuddy/host/build/packages-built';
 import { CHAIN_STEPS, MEASURED_AT_LANES, orderedSteps, type ChainStep, type Tier } from './lib/chain-steps.ts';
 import { schedule } from './lib/chain-schedule.ts';
 import { criticalPath, driftedSteps, willNotCache } from './lib/step-timing.ts';
-import { briefly, declaredAt, dim, DRY_REASON_COLUMN, firstChange, identicalRewrites, oneLine, REASON_COLUMN, staleLines, STEP_NAME_WIDTH, TIME_COLUMN, whenChanged, wrapAt, writerOf } from './lib/chain-output.ts';
+import { briefly, declaredAt, dim, DRY_REASON_COLUMN, identicalRewrites, oneLine, REASON_COLUMN, staleLines, STEP_NAME_WIDTH, TIME_COLUMN, whenChanged, wrapAt, writerOf } from './lib/chain-output.ts';
 import { slowestTests } from './lib/slow-tests.ts';
 import { exitOnEpipe } from './lib/exit-on-epipe.ts';
 

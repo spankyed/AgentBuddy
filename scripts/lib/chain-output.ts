@@ -4,7 +4,7 @@
  * Its own module because the chain's own file runs the chain on import: a spec that wants to check the columns
  * cannot load `chain.ts` without starting a six-minute build.
  */
-import { covers, type InputChanges } from '@abuddy/host/build/packages-built';
+import { covers } from '@abuddy/host/build/packages-built';
 
 /**
  * How wide a step's name column is, in every row that has one.
@@ -191,30 +191,6 @@ export interface ChangedInput {
   readonly writer?: string;
 }
 
-/**
- * The first input that moved, named, for a row that has no lines under it to spend.
- *
- * `--dry` answers "why would this run?", which is the question the diff is *most* use for — asked before a
- * 180s run rather than after one. But its shape is one line per step, and a cold tree has every step stale, so
- * a block of files under each would bury the plan it exists to print. One name and a count fits the row it is
- * already on and replaces a sentence that was the same for every step.
- *
- * The verb leads because the rows form a column: `changed`, `added` and `removed` line up where a path would
- * not. Empty when there is nothing to name, and the caller keeps its plain reason.
- */
-export function firstChange(changes: InputChanges): string {
-  const [gained, lost] = [changes.gained[0], changes.lost[0]];
-  if (gained !== undefined || lost !== undefined) {
-    const rest = changes.gained.length + changes.lost.length - 1;
-    return `${gained === undefined ? `lost ${lost!}` : `gained ${gained}`}${rest > 0 ? ` (and ${rest} more)` : ''}`;
-  }
-  const [first] = [...changes.changed.map((file) => ({ file, how: 'changed' })),
-    ...changes.added.map((file) => ({ file, how: 'added' })),
-    ...changes.removed.map((file) => ({ file, how: 'removed' }))];
-  if (first === undefined) return '';
-  const rest = changes.changed.length + changes.added.length + changes.removed.length - 1;
-  return `${first.how} ${first.file}${rest > 0 ? ` (and ${rest} more)` : ''}`;
-}
 
 /** How many files a report names before it counts the rest */
 export const CHANGED_CAP = 5;

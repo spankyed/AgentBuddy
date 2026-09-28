@@ -451,7 +451,46 @@ export function changedInputs(unit: BuildUnit, recorded: { files: Record<string,
   };
 }
 
-export interface StaleUnit { readonly workspace: string; readonly reason: string }
+/**
+ * The first input that moved, named, for a row that has no lines under it to spend.
+ *
+ * For a caller with one line per unit and no room beneath it: the chain's `--dry`, which a cold tree gives
+ * twelve stale steps, and `staleMessage`, whose five call sites are each a person stopped. Both printed the
+ * same sentence for every unit before this, which is the only verdict a healthy one can have.
+ *
+ * Here rather than in `scripts/lib/` because `@abuddy/host` may not import the repo's scripts
+ * (`check:specifiers`' `findPackageScriptImports`), and it belongs beside `changedInputs`, whose answer it
+ * summarises.
+ *
+ * The verb leads because the rows form a column: `changed`, `added` and `removed` line up where a path would
+ * not. Empty when there is nothing to name, and the caller keeps its plain reason.
+ */
+export function firstChange(changes: InputChanges): string {
+  const [gained, lost] = [changes.gained[0], changes.lost[0]];
+  if (gained !== undefined || lost !== undefined) {
+    const rest = changes.gained.length + changes.lost.length - 1;
+    return `${gained === undefined ? `lost ${lost!}` : `gained ${gained}`}${rest > 0 ? ` (and ${rest} more)` : ''}`;
+  }
+  const [first] = [...changes.changed.map((file) => ({ file, how: 'changed' })),
+    ...changes.added.map((file) => ({ file, how: 'added' })),
+    ...changes.removed.map((file) => ({ file, how: 'removed' }))];
+  if (first === undefined) return '';
+  const rest = changes.changed.length + changes.added.length + changes.removed.length - 1;
+  return `${first.how} ${first.file}${rest > 0 ? ` (and ${rest} more)` : ''}`;
+}
+
+export interface StaleUnit {
+  readonly workspace: string;
+  readonly reason: string;
+  /**
+   * What moved, when the unit's own stamp recorded enough to say — `firstChange` over `changedInputs`.
+   *
+   * Separate from `reason` rather than folded into it, for the reason the chain's report arrived at: the verdict
+   * is one sentence every stale unit shares, and what moved is the part that differs. A reader formats them
+   * apart; a producer that cannot say leaves this undefined and the message is what it was.
+   */
+  readonly moved?: string;
+}
 
 /**
  * The ordinary verdict, named because a reader compares against it.
@@ -548,14 +587,35 @@ export function freshnessSweep(): {
 
 /** Every workspace of `packages:build` that needs building — empty when all of them are up to date */
 export function stalePackageUnits(): StaleUnit[] {
+  // One reading of the tree across the five, as `--dry` does for the chain's steps: they overlap, and the
+  // question is asked of all of them at one moment
+  const sweep = freshnessSweep();
   return Object.entries(BUILD_UNITS).flatMap(([workspace, unit]) => {
     const reason = unitStaleReason(unit, stampFile(workspace));
-    return reason === null ? [] : [{ workspace, reason }];
+    // The diff is only for a unit already known to be stale — one about to cost a 14s build — so the path that
+    // runs eighteen times in a serial chain, and finds nothing, still costs a stat and a return
+    return reason === null ? [] : [{ workspace, reason, moved: whatMovedUnder(unit, stampFile(workspace), sweep) }];
   });
 }
 
+/**
+ * What moved under a unit, for a message that has a line to spend on it — or undefined when its stamp cannot say.
+ *
+ * Undefined is a real answer here and not a failure: a stamp written before the digests were recorded has a
+ * fingerprint and nothing to diff against, and `node_modules/.cache` is never cleared, so those exist on machines
+ * today. The message then reads as it always did.
+ */
+function whatMovedUnder(unit: BuildUnit, stamp: string, sweep: ReturnType<typeof freshnessSweep>): string | undefined {
+  const record = stampRecord(stamp);
+  if (record?.files === undefined || record.declared === undefined) return undefined;
+  const moved = firstChange(sweep.changedInputs(unit, { files: record.files, declared: record.declared }));
+  return moved === '' ? undefined : moved;
+}
+
 export const staleMessage = (stale: readonly StaleUnit[]): string =>
-  stale.map(({ workspace, reason }) => `  ${workspace}: ${reason}`).join('\n');
+  // One line per unit, which a case pins: a reader counts them against "Rebuilding N of M". So what moved is a
+  // suffix rather than a line of its own
+  stale.map(({ workspace, reason, moved }) => `  ${workspace}: ${reason}${moved === undefined ? '' : ` — ${moved}`}`).join('\n');
 
 interface LockHolder { pid: number; label: string; startedAt: string }
 

@@ -3,9 +3,9 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { REPO_ROOT } from '@abuddy/host/build/packages-built';
+import { firstChange, REPO_ROOT } from '@abuddy/host/build/packages-built';
 import { CHAIN_STEPS } from '../../../scripts/lib/chain-steps.ts';
-import { briefly, declaredAt, dim, DRY_REASON_COLUMN, firstChange, identicalRewrites, oneLine, REASON_COLUMN, staleLines, STEP_NAME_WIDTH, TIME_COLUMN, wrapAt, whenChanged, writerOf } from '../../../scripts/lib/chain-output.ts';
+import { briefly, declaredAt, dim, DRY_REASON_COLUMN, identicalRewrites, oneLine, REASON_COLUMN, staleLines, STEP_NAME_WIDTH, TIME_COLUMN, wrapAt, whenChanged, writerOf } from '../../../scripts/lib/chain-output.ts';
 
 describe('wrapAt', () => {
   /**

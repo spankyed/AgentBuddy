@@ -4,7 +4,7 @@ import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
-import { ABSENT, ALLOW_UNBUILT, BUILD_UNITS, buildScriptFor, changedInputs, CHECKOUT_MARKER, covers, declaredPaths, fingerprintInputs, fingerprintUnit, fingerprintWithDigests, freshnessSweep, inputFiles, repoRelative, NOT_A_BUILD_INPUT, REPO_ROOT, staleMessage, stampRecord, STAMP_VERSION, stampedBuild, stampedRun, stampedRunAll, stampFile, unbuiltRefusal, unitStaleReason, withBuildLock, type BuildIntent, type BuildUnit } from '@abuddy/host/build/packages-built';
+import { ABSENT, ALLOW_UNBUILT, BUILD_UNITS, buildScriptFor, changedInputs, CHECKOUT_MARKER, covers, declaredPaths, fingerprintInputs, fingerprintUnit, fingerprintWithDigests, freshnessSweep, inputFiles, INPUTS_CHANGED, repoRelative, NOT_A_BUILD_INPUT, REPO_ROOT, staleMessage, stampRecord, STAMP_VERSION, stampedBuild, stampedRun, stampedRunAll, stampFile, unbuiltRefusal, unitStaleReason, withBuildLock, type BuildIntent, type BuildUnit } from '@abuddy/host/build/packages-built';
 
 /**
  * The freshness rule behind `npm test -w @abuddy/cli`'s pretest (@abuddy/host/build/packages-built):
@@ -667,6 +667,33 @@ describe('the stale message', () => {
     expect(message.split('\n')).toHaveLength(2);
     expect(message).toContain('@abuddy/sdk: its inputs changed');
     expect(message).toContain('@abuddy/ui: no stamp');
+  });
+
+  /**
+   * The reason is the same sentence for every healthy unit — `its inputs changed since the last successful run`
+   * is the only verdict one can have — so it is the file that tells the five callers of this message apart. Four
+   * of them are a refusal someone is stopped by, including the one a pack author reads about a checkout that may
+   * not be theirs.
+   */
+  it('names what moved, after the reason that is the same for all of them', () => {
+    const message = staleMessage([
+      { workspace: '@abuddy/sdk', reason: INPUTS_CHANGED, moved: 'changed src/types/entities.ts (and 2 more)' },
+    ]);
+    expect(message).toBe('  @abuddy/sdk: its inputs changed since the last successful run — changed src/types/entities.ts (and 2 more)');
+  });
+
+  /**
+   * A suffix rather than a line of its own, because a reader counts these against the "Rebuilding N of M" printed
+   * under them — which is what the case above pins, and why it needed no edit when this arrived.
+   */
+  it('keeps one line per unit whether or not it can say what moved', () => {
+    const message = staleMessage([
+      { workspace: '@abuddy/sdk', reason: INPUTS_CHANGED, moved: 'changed src/a.ts' },
+      { workspace: '@abuddy/ui', reason: INPUTS_CHANGED },
+    ]);
+    expect(message.split('\n')).toHaveLength(2);
+    expect(message.split('\n')[1], 'a stamp from before the digests existed still reads as it did')
+      .toBe('  @abuddy/ui: its inputs changed since the last successful run');
   });
 });
 
