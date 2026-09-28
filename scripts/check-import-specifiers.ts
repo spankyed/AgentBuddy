@@ -162,7 +162,10 @@ function packRootOf(from: string, root: string): string {
  *
  * One rule at a time, so it does not get `packRuleProblems`' "one offence, one message" — there, a pack author
  * reading a build failure is told once by the rule whose cause comes first. Here the rule *is* the subject:
- * `--rule <id>` runs one, `--list` names them all, and a rule that stood down would make a per-rule run's
+ * `--rule <id>` runs one; `--list` names them all, says which an external pack is held to as well (a rule with
+ * a `packRule` is one `abuddy validate`, `build` and `test` run), and prints what doing without each of the
+ * rest costs a pack — answering from the entries rather than from a table in a doc, which is what a survey of
+ * this taken by hand went stale as. A rule that stood down would make a per-rule run's
  * answer depend on which other rules ran. What keeps that from becoming two answers to one question is that
  * both run the same rule — its `check` per file, its `checkPack` once for the pack — and `FIRES`' disjointness
  * sweep asserts no two rules claim one offence to begin with, for every rule this delegates to.
@@ -1306,7 +1309,10 @@ const RULE_LIST = [
   {
     id: 'findRepositoryCasts',
     over: packageSourceDirs(),
-    repoOnly: 'Recorded in its doc comment, with the condition to revisit: oxlint hosts no custom rule and eslint does not run where this applies',
+    repoOnly: 'The one here a pack can actually break, and so the one whose absence costs something: `packages/*/src` '
+      + 'includes `default-setup`, so a built-in pack is held to it and an external pack is not. Nothing else refuses '
+      + '`repository as unknown as` outside this repo — oxlint hosts no custom rule and eslint does not run where this '
+      + 'applies, which is the condition to revisit, and moving it to `PACK_RULES` is the other way',
     find: () => findRepositoryCasts(packageSourceDirs()),
     overPaths: (paths, root = repoRoot) => findRepositoryCasts(paths, root),
     rule: "Call a package's repositories through its exports, not a cast of the repository registry",
@@ -1357,10 +1363,20 @@ if (process.argv[1] && import.meta.filename === fs.realpathSync(process.argv[1])
   const rules = only ? CHECKS.filter((rule) => rule.id === only) : CHECKS;
 
   if (args.includes('--list')) {
-    console.log('rule'.padEnd(34) + 'over paths?  what it reports');
+    // `abuddy validate`, `build` and `test` run the pack rules, so a rule with one is a rule an external pack
+    // is held to. One without is this repo's alone, and the second table says what that costs
+    const heldToo = (rule: ImportRule) => (rule.packRule === undefined ? 'no — see below' : `yes, as \`${rule.packRule}\``);
+    // Widths from the longest entry rather than a literal: the last column runs off the end of the one that
+    // outgrew its guess, and the entry that did it is the one nobody reads twice
+    const packsWidth = Math.max(...CHECKS.map((rule) => heldToo(rule).length)) + 2;
+    console.log('rule'.padEnd(34) + 'paths?'.padEnd(8) + 'a pack too?'.padEnd(packsWidth) + 'what it reports');
     for (const rule of CHECKS) {
-      console.log(rule.id.padEnd(34) + (rule.overPaths ? 'yes          ' : 'no           ') + rule.rule.split(':')[0]);
+      console.log(rule.id.padEnd(34) + (rule.overPaths ? 'yes' : 'no').padEnd(8)
+        + heldToo(rule).padEnd(packsWidth) + rule.rule.split(':')[0]);
     }
+    const repoOnly = CHECKS.filter((rule) => rule.repoOnly !== undefined);
+    console.log(`\n${repoOnly.length} of ${CHECKS.length} are this repo's alone. What an external pack does without each:\n`);
+    for (const rule of repoOnly) console.log(`  ${rule.id}\n    ${rule.repoOnly}\n`);
     process.exit(0);
   }
   if (only && rules.length === 0) {
