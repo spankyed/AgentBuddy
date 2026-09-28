@@ -95,6 +95,8 @@ const FIRES_ELSEWHERE: Record<string, string> = {
   'source-resolution': 'source-resolution',
   // A feature layout, which one `src/f.ts` cannot express: the offence is which feature the file is in
   'cross-feature-imports': "cross-feature-imports flags another feature's frontend and allows a feature its own",
+  // The pack as a whole: which module is a contract comes from the manifest, so its case needs one
+  'contract-leaves': 'contract-leaves flags a contract leaf that reaches its own machine',
 };
 
 /**
@@ -130,6 +132,22 @@ describe('every rule', () => {
       'src/features/code/fe/state.ts': 'export const own = 1;\n',
     });
     expect(problems(dir, 'cross-feature-imports')).toEqual(['src/features/code/fe/panel.ts:1: #features/actions/fe/state.ts']);
+  });
+
+  /**
+   * A whole-pack rule, so its findings arrive as written with no span and its case needs a manifest: which module
+   * is a contract is what `abuddy.json` says, not what a file looks like.
+   */
+  it('contract-leaves flags a contract leaf that reaches its own machine', () => {
+    const dir = packWithImports({
+      'abuddy.json': JSON.stringify({
+        id: 'p', name: 'P', version: '1.0.0',
+        features: [{ id: 'notes', plugin: { entry: 'src/features/notes/fe/plugin.ts', contract: 'src/features/notes/fe/contract.ts#Contract' } }],
+      }),
+      'src/features/notes/fe/contract.ts': "import type { Ctx } from './state.ts';\nexport type Contract = { state: Ctx };\n",
+      'src/features/notes/fe/state.ts': "import { sendToPlugin } from '#generated/events.ts';\nexport type Ctx = { sent: typeof sendToPlugin };\n",
+    });
+    expect(problems(dir, 'contract-leaves')).toEqual(['src/features/notes/fe/contract.ts:1: ./state.ts']);
   });
 
   it('has a case for every rule it defines', () => {
@@ -247,7 +265,7 @@ describe('when several rules are right about one site', () => {
    */
   it('declares that precedence in one place', () => {
     expect(PACK_RULES.map((rule) => rule.key)).toEqual([
-      'source-resolution',
+      'source-resolution', 'contract-leaves',
       'host-imports', 'lmdb-imports',
       'own-modules', 'pack-own-aliases',
       'internal-package-imports',

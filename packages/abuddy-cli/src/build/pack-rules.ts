@@ -16,7 +16,7 @@ import ts from 'typescript';
 import { ownModuleFindings, type OwnModuleSpecifier } from '@abuddy/host/build/own-module-specifiers';
 import { readSubpathImports } from '@abuddy/host/build/subpath-imports';
 import { moduleOf, readSource, sourceFiles, type SourceView } from './pack-sources.ts';
-import { crossFeatureFindings } from './pack-features.ts';
+import { contractLeafFindings, crossFeatureFindings } from './pack-features.ts';
 import { configsNamingSourceCondition, packResolvesSource } from './pack-resolution.ts';
 
 /** Where a file sits in the pack, which is all any of these rules needs besides the file itself */
@@ -38,7 +38,7 @@ export type PackRuleKey =
   | 'own-modules' | 'pack-own-aliases' | 'internal-package-imports'
   | 'host-imports' | 'lmdb-imports'
   | 'untyped-sends' | 'raw-transport' | 'backend-console'
-  | 'cross-feature-imports';
+  | 'cross-feature-imports' | 'contract-leaves';
 
 /**
  * One finding, with the span of the code it is about.
@@ -123,6 +123,14 @@ export const PACK_RULES: readonly PackRule[] = [
         ...resolved.map(({ specifier, resolved: file }) => `${specifier} -> ${file}`),
         ...configsNamingSourceCondition(packDir)];
     },
+  },
+  {
+    key: 'contract-leaves',
+    switchable: false,
+    rule: 'A contract leaf is a leaf: no ./state or ./system, no other feature, and nothing generated but types '
+      + "and ears — codegen reads a plugin's and a system's contract without resolving its actor, and an import "
+      + 'that reaches one restores the cycle',
+    checkPack: contractLeafFindings,
   },
   {
     key: 'host-imports',

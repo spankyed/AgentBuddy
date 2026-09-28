@@ -9,7 +9,7 @@ import { SHARED_INSTANCE_PACKAGES } from '@abuddy/host/build/shared-deps';
 import { packageName } from '@abuddy/host/build/specifiers';
 import { readSubpathImports } from '@abuddy/host/build/subpath-imports';
 import { SOURCE_CONDITION } from '@abuddy/host/build/source-resolution';
-import { ownModuleFindings, packTargetOf } from '@abuddy/host/build/own-module-specifiers';
+import { ownModuleFindings } from '@abuddy/host/build/own-module-specifiers';
 import { PACK_RULES, type PackRuleKey } from '../packages/abuddy-cli/src/build/pack-rules.ts';
 import { moduleOf, readSource, sourceFiles } from '../packages/abuddy-cli/src/build/pack-sources.ts';
 import type { Fix } from './lib/specifier-fixes.ts';
@@ -170,7 +170,19 @@ function packRootOf(from: string, root: string): string {
 function packRule(key: PackRuleKey, dirs: readonly string[], root: string): string[] {
   const rule = PACK_RULES.find((candidate) => candidate.key === key);
   if (!rule) throw new Error(`No pack rule "${key}"`);
-  return dirs.flatMap((dir) => {
+  // A rule whose subject is the pack answers once per pack, not once per directory of it: `dirs` holds a pack's
+  // `src` and its `tests` separately, and the CLI's own runner calls such a rule once per pack too. Its findings
+  // are written relative to the pack, as a pack author reads them, so here they take the pack's own prefix.
+  const packs = new Set(dirs.map((dir) => path.join(root, dir)).filter(fs.existsSync).map((full) => packRootOf(full, root)));
+  const wholePack = rule.checkPack === undefined ? [] : [...packs].flatMap((packDir) => {
+    const prefix = path.relative(root, packDir).split(path.sep).join('/');
+    // `(reached from …)` names a second file of the same pack, so it takes the prefix too. These are the two
+    // shapes a whole-pack finding has; a third would need a line here rather than arriving half-prefixed, which
+    // is why this substitutes rather than concatenating and hoping.
+    const prefixed = (found: string) => `${prefix}/${found}`.replace('(reached from ', `(reached from ${prefix}/`);
+    return rule.checkPack!(packDir).map((found) => (prefix ? prefixed(found) : found));
+  });
+  return [...wholePack, ...dirs.flatMap((dir) => {
     const full = path.join(root, dir);
     if (!fs.existsSync(full)) return [];
     const files = fs.statSync(full).isFile() ? [full] : [...sourceFiles(full)];
@@ -186,7 +198,7 @@ function packRule(key: PackRuleKey, dirs: readonly string[], root: string): stri
         imports,
       }) ?? []).map(({ line, what }) => `${relative}:${line}: ${what}`);
     });
-  }).sort();
+  })].sort();
 }
 
 /** The repo root, for a command that acts on what these rules report */
@@ -520,150 +532,20 @@ export function findCrossFeatureImports(srcRoots: readonly string[] = PACK_SRC_R
   return packRule('cross-feature-imports', srcRoots, root);
 }
 
-/** The file a path without an extension names: itself, `<path>.ts`, or `<path>/index.ts` */
-function sourceFile(base: string): string | undefined {
-  return [base, `${base}.ts`, path.join(base, 'index.ts')]
-    .find((candidate) => fs.existsSync(candidate) && fs.statSync(candidate).isFile());
+/**
+ * `file:line: specifier` for each import a contract leaf makes that would put the machine back in front of codegen,
+ * in the packs of this checkout.
+ *
+ * The rule is `@abuddy/cli`'s `contract-leaves` (`build/pack-features.ts`), which `abuddy build`, `abuddy validate`
+ * and `abuddy test` run for every pack outside this checkout — where the whole reasoning, and what the two harms
+ * were measured to be, is recorded.
+ */
+export function findContractLeafImports(srcRoots: readonly string[] = PACK_SRC_ROOTS, root = repoRoot): string[] {
+  return packRule('contract-leaves', srcRoots, root);
 }
 
-/**
- * The generated modules a contract leaf's closure may not reach. Both reasons are the rule's own, stated below;
- * this is what they come to when read against a pack's generated tree.
- *
- * - `system-specs`, `events` and `fe` are generated **from** the contracts: their own specifiers name one, so a
- *   module the leaf reaches importing one closes the loop codegen read the contract as a declared type to avoid.
- *   Measured on both packs here, those three are exactly the generated modules that import a contract.
- * - `pack-entry` and `pack-entry-fe` import the actors, which is the cost half: reaching either parses and binds
- *   every machine and its whole closure, and puts the machine's inferred type in the pack's published facade.
- *
- * **Not transitive reach**, deliberately. Twelve of default-setup's sixteen generated modules reach a contract
- * through some hop — `repository` does, through a feature's repository index — and a module the leaf reaches is
- * meant to use the repository facade, which the case beside this rule's asserts. What sets these five apart is that
- * codegen derives them from the thing it is reading, or from the thing it is reading around.
- */
-export const GENERATED_BEHIND_A_CONTRACT = ['system-specs', 'events', 'fe', 'pack-entry', 'pack-entry-fe'];
-
-/**
- * `file:line: specifier` for each import a contract leaf makes that would put the machine back in front of codegen.
- *
- * A leaf is a module `abuddy.json` names at `features[].plugin.contract` or `features[].system.contract`, and
- * codegen reads the contract from it as a declared type — without resolving the actor it describes. Both actors
- * import `#generated/events`, and `#generated/events` imports both contracts, so reading a contract anywhere its
- * actor is reachable closes that loop again. The two sides are one rule with one machine module each: `fe/state`
- * for a plugin, `be/system` for a system.
- *
- * So a leaf imports neither machine, no other feature, and nothing generated but `types` and `ears`, which are
- * themselves leaves: a context needs both (`NoteDTO`, `EARS.EntityId`) and neither reaches `#generated/events`.
- * Those two are for the types a contract's state and its events' payload *fields* name, and no further: what
- * codegen reads out of a contract — an event's `type` literal and the union it sits in — may never come from
- * generated code, which codegen writes after reading every contract, so a pack that names one there never builds
- * (`abuddy-sdk`'s `module-exports.ts` says so in the failure).
- *
- * The cycle is one of two reasons, and the other is cost, recorded at `generate-entries.ts:433`: the contracts are
- * in codegen's TypeScript program and the machines are not, so an import that puts one back in reach parses and
- * binds every machine and its whole closure, XState and Vue included, for nothing.
- *
- * **What the cycle does is not a wrong read.** Measured 2026-09-27 on the external-pack fixture, twice, each from a
- * cold tree: a plugin contract deriving its state from the machine, and one deriving its inbox as `Extract<>` over
- * the machine's event union — the shape the origin commit found seven times. Both built with exit 0 and a
- * byte-identical `src/__generated__/events.ts`. What moved was the published facade: `dist/types/pack-types.d.ts`
- * grew by 41 lines, gaining `import * as xstate from 'xstate'` and the machine's whole declaration, every action
- * name included, where a contract of its own contributes one interface. That is the cost above, made visible in an
- * artifact — and since a dependent's facade inlines its dependencies' verbatim, it travels one hop further.
- *
- * Not a *disallowed* import, though, and that is worth knowing before deriving it again: `abuddy-cli`'s
- * `build/facade-gate.ts` allows a facade to import `@abuddy/*`, Node built-ins and `@abuddy/sdk`'s peers, `xstate`
- * and `zod` among them, because every dependent has them. The leak is size and coupling, not resolution.
- *
- * **Codegen's own refusal is not a second guard for this.** `checkResolved`
- * (`abuddy-sdk/src/build/module-exports.ts`) refuses a type that collapsed to `any` in the four positions a reader
- * reads — the contract, `outgoing`, `inbox`, and each member of an event union — and reads a collapse in `state`,
- * `context` or an event's payload as data. It has to: `src/__generated__/` is untracked and codegen computes every
- * generated file before its caller writes any of them, so on a pack's first build nothing under `#generated/`
- * resolves and those positions are legitimately `any` (`actions/fe/contract.ts` has two). So of the claims below,
- * only the closure's reach to `#generated/events` overlaps that refusal, and only where the collapse lands in one
- * of the four; the rest have no other guard in any tree.
- */
-export function findContractLeafImports(srcRoots = PACK_SRC_ROOTS, root = repoRoot): string[] {
-  return srcRoots.flatMap((srcRoot) => {
-    const src = path.join(root, srcRoot);
-    const packDir = path.dirname(src);
-    const manifestPath = path.join(packDir, 'abuddy.json');
-    if (!fs.existsSync(manifestPath)) return [];
-    const manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf-8')) as {
-      features?: Array<{ plugin?: { contract?: string; entry?: string }; system?: { contract?: string; entry?: string } }>;
-    };
-    /** A `"path"` or `"path#Export"` the manifest names, as a file in the pack */
-    const named = (target: string | undefined): string | undefined =>
-      target ? sourceFile(path.join(packDir, target.split('#')[0]!)) : undefined;
-    const files = (pick: (f: NonNullable<typeof manifest.features>[number]) => Array<string | undefined>) =>
-      (manifest.features ?? []).flatMap((feature) => pick(feature).flatMap((t) => { const f = named(t); return f ? [f] : []; }));
-
-    const leaves = files((f) => [f.plugin?.contract, f.system?.contract]);
-    /**
-     * The actor modules `abuddy.json` names. Exact, where the machine rule below is a guess at a filename: these
-     * are the two paths the manifest states outright, so a leaf reaching one is reported whatever it is called.
-     */
-    const actorEntries = new Set(files((f) => [f.plugin?.entry, f.system?.entry]));
-    // The pack's own `#` subpaths, which is how a pack names its own modules and so how its features reach each
-    // other. Two of `default-setup`'s contract closures used to end at one of those imports — including
-    // `threads/be/types.ts` reaching `code/`, a cross-feature hop the walk stopped at.
-    // A `#generated/…` specifier never reaches the resolver, being matched and classified below *before*
-    // resolution, where `types`/`ears` are told apart from `events`/`fe` — a distinction the file a specifier
-    // resolves to cannot make.
-    const imports = readSubpathImports(packDir);
-    const resolveFrom = (from: string, specifier: string): string | undefined => {
-      const base = packTargetOf(packDir, imports, from, specifier);
-      return base === undefined ? undefined : sourceFile(base);
-    };
-    const relative = (target: string) => path.relative(src, target).split(path.sep).join('/');
-    return leaves.flatMap((leaf) => {
-      const ownFeature = /^features\/([^/]+)\//.exec(relative(leaf))?.[1];
-      const seen = new Set<string>();
-      const found: string[] = [];
-      // The whole closure, not just the leaf's own imports: a module the leaf reaches through two hops puts
-      // `#generated/events` back in the contract's path just as surely as importing it directly would.
-      const walk = (file: string, viaLeaf: boolean) => {
-        if (seen.has(file)) return;
-        seen.add(file);
-        // The reader's specifiers, not a text match: a commented-out import and one inside a template literal are
-        // both `from '…'` to a regex, and this rule used to report either as a leaf reaching the machine
-        for (const { text: specifier, line } of readSource(file).specifiers) {
-          const where = `${path.relative(root, file)}:${line}: ${specifier}`;
-          const at = viaLeaf ? where : `${where} (reached from ${path.relative(root, leaf)})`;
-          const generated = /^#generated\/(.+?)(?:\.(?:ts|js))?$/.exec(specifier);
-          if (generated) {
-            // Two rules, and they are not the same one. The leaf's own imports are held to `types` and `ears`
-            // because those are what a context legitimately needs — a policy, not a fact about the generated tree:
-            // six generated modules reach neither a contract nor an actor, and the other four are simply not
-            // something a contract has business naming. Deeper in the closure the population is
-            // `GENERATED_BEHIND_A_CONTRACT` above, so a module the leaf reaches may use the rest.
-            const offends = viaLeaf
-              ? !['types', 'ears'].includes(generated[1])
-              : GENERATED_BEHIND_A_CONTRACT.includes(generated[1]);
-            if (offends) found.push(at);
-            continue;
-          }
-          const target = resolveFrom(file, specifier);
-          if (target === undefined) continue;
-          const into = /^features\/([^/]+)\//.exec(relative(target));
-          if (viaLeaf && into && into[1] !== ownFeature) { found.push(at); continue; }
-          // The plugin and the system definitions, which the manifest names: reaching either puts the actor in
-          // front of the contract, at any depth — a leaf's own types module has no business importing one either.
-          if (actorEntries.has(target)) { found.push(at); continue; }
-          // The machines themselves, by the filenames the scaffold writes. A guess, deliberately: `Plugin.state`
-          // is a value, so no manifest field names the machine, and this is what makes the report say "your leaf
-          // imports ./state" instead of naming a module three hops away that happens to reach #generated/events.
-          // A machine called something else still fails, on the closure rule above — just less precisely.
-          if (viaLeaf && /(?:^|\/)(?:state|system)(?:\.ts)?$/.test(relative(target))) { found.push(at); continue; }
-          walk(target, false);
-        }
-      };
-      walk(leaf, true);
-      return found;
-    });
-  });
-}
+/** The population `generated-behind-contract.spec.ts` checks against what codegen emits, from the rule that owns it */
+export { GENERATED_BEHIND_A_CONTRACT } from '../packages/abuddy-cli/src/build/pack-features.ts';
 
 const CONFIG_EXTENSIONS = ['', '.ts', '.mts', '.cts', '.js', '.mjs', '.cjs'];
 /**
@@ -1362,11 +1244,7 @@ export const CHECKS: readonly ImportRule[] = [
     rule: "Call a package's repositories through its exports, not a cast of the repository registry",
   },
   backed('findCrossFeatureImports', 'cross-feature-imports', findCrossFeatureImports),
-  {
-    id: 'findContractLeafImports',
-    find: findContractLeafImports,
-    rule: "A contract leaf is a leaf: no ./state or ./system, no other feature, and nothing generated but types and ears — codegen reads a plugin's and a system's contract without resolving its actor, and an import that reaches one restores the cycle",
-  },
+  backed('findContractLeafImports', 'contract-leaves', findContractLeafImports),
   {
     id: 'findPackageScriptImports',
     find: findPackageScriptImports,

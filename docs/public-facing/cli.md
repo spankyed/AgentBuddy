@@ -142,6 +142,7 @@ Checks:
 
 | Rule | What it refuses |
 |---|---|
+| `contract-leaves` | a contract that reaches its own machine (`./state.ts`, `./system.ts`), another feature, or generated code beyond `#generated/types` and `#generated/ears`. Codegen reads a contract as a declared type before it writes anything, so a contract whose read positions resolve through the machine collapses to `any` and the build fails for good — and one that resolves anyway ships the machine's whole declaration in your published facade |
 | `source-resolution` | a `tsconfig.json` or Vitest config of yours that resolves a checkout's `@abuddy` source instead of the published `dist` — esbuild and the pack bundler read `dist` either way, so such a pack typechecks against one thing and ships another |
 | `own-modules` | a specifier that names no file: `#generated/events` or `#generated/events.js` where the file is `events.ts`, and a relative `./x.js` whose source sibling is `./x.ts`. No runtime resolves an extensionless specifier in ESM, and a pack ships one bundle rather than a module per source |
 | `pack-own-aliases` | `@/…`, a TypeScript-only `paths` mapping no runtime reads. Name your own modules with `#` subpath imports from your `package.json` |
