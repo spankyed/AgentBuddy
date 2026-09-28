@@ -119,6 +119,21 @@ it is the only one this ever bit; `api-reports.ts` already checks the proxy agai
 reason. So the question to ask of a new recorded artifact is not "does its check fail on a stale recording" but
 "does it re-derive, or record a proxy" — and a proxy needs the self-check, not a firing case.
 
+**There is a third kind, and it is the one that misbehaves: a sample.** `spec-cost.json` records a measured
+millisecond per spec, and a measurement cannot re-derive — that is what makes it a sample — so neither an
+equality check nor a self-check is available to it. Treated as a derivation it churned: measured 2026-09-28,
+**125 of 163 entries changed between two runs on an idle machine**, and 40 commits moved ~3 000 lines of it in
+three days while the answer it exists to support — which half a spec runs in — changed **zero** times. Under a
+loaded machine it is worse: one spec read 900ms idle and 4 200ms during a chain run, against a band whose dead
+zone is 1 000ms, and twice in one day that recorded a rename nobody wanted.
+
+A sample needs three things the other two do not. **Hysteresis on the record**, or jitter rewrites it and a
+real movement is one line among a hundred that mean nothing — `moved` in `scripts/lib/spec-cost.ts` records a
+measurement only when it would place the spec differently, or when it is a large move. **A band rather than
+equality** for its check, which `halfFor` already had. And **reproducibility as its guard**: an idle run moves
+a handful of entries, so a run that moves a quarter of a suite was measuring the machine, and
+`spec-cost:update` refuses it rather than recording it.
+
 The chain is the whole gate: **CI does not run, on purpose.** `.github/workflows/ci.yml` has its `push`
 and `pull_request` triggers commented out while this is a single-contributor repo, so `gh run list` is empty
 and always will be. That is not a failure to report, and CI is not a check to cite — the local chain is the

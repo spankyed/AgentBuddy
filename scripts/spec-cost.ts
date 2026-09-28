@@ -20,7 +20,7 @@ import { REPO_ROOT } from '@abuddy/host/build/packages-built';
 import { UNIT_SUITES, type UnitSuite } from './lib/unit-suites.ts';
 import {
   FAST_BELOW_MS, INTEGRATION_ABOVE_MS, PLACEMENT_GUARD, configsFor, halfOfPath, hasSplit, misplaced,
-  readSpecCost, specCostFile, specFiles, stale, unrecorded,
+  CONTENDED_SHARE, moved, readSpecCost, specCostFile, specFiles, stale, unrecorded,
 } from './lib/spec-cost.ts';
 
 // eslint-disable-next-line no-control-regex -- vitest colours its output and this reads it back
@@ -86,17 +86,43 @@ function update(only: string | undefined): void {
     const costs = Object.assign({}, ...runs.map((run) => run.costs)) as Record<string, number>;
     const skipped = [...new Set(runs.flatMap((run) => run.skipped))].filter((file) => costs[file] === undefined).sort();
     const files = specFiles(dir);
-    const record = { measuredAt: new Date().toISOString(), costs: Object.fromEntries(Object.entries(costs).sort(([a], [b]) => a.localeCompare(b))), skipped };
+
+    // A measurement replaces the recorded one only when it says something the record does not already say.
+    // Without this the file is rewritten on every run by jitter alone, and a real movement is one line among
+    // a hundred that mean nothing. `moved` carries the measured reasoning.
+    const previous = readSpecCost(REPO_ROOT, suite.dir);
+    const settled = Object.fromEntries(Object.entries(costs).map(([spec, ms]) => {
+      const before = previous?.costs[spec];
+      return [spec, moved(spec, before, ms) ? ms : before!];
+    }));
+    const changed = Object.keys(settled).filter((spec) => settled[spec] !== previous?.costs[spec]);
+
+    // What a sample can check: not equality, which it never has, but reproducibility. An idle run moves a
+    // handful; a contended one moves most of the suite and records the machine instead of the specs.
+    if (previous !== undefined && !force && changed.length > CONTENDED_SHARE * Object.keys(settled).length) {
+      throw new Error(`${suite.workspace}: ${changed.length} of ${Object.keys(settled).length} specs moved, which is `
+        + `more than a measurement should. That is what a loaded machine looks like — run this with nothing else `
+        + `running, or pass --force if the suite really did change this much.`);
+    }
+
+    const record = { measuredAt: new Date().toISOString(), costs: Object.fromEntries(Object.entries(settled).sort(([a], [b]) => a.localeCompare(b))), skipped };
 
     const missing = unrecorded(record, files);
     if (missing.length > 0) throw new Error(`These ${suite.workspace} specs ran nothing and were not reported as skipped:\n  ${missing.join('\n  ')}`);
 
     const file = path.join(REPO_ROOT, specCostFile(suite.dir));
     fs.mkdirSync(path.dirname(file), { recursive: true });
-    fs.writeFileSync(file, `${JSON.stringify(record, null, 2)}\n`);
+    // `measuredAt` moves with the costs, not with the run: a record nothing moved is byte-identical, so an
+    // update that found nothing leaves no diff to read past.
+    const settledRecord = changed.length === 0 && previous !== undefined
+      ? { ...previous, skipped }
+      : record;
+    const next = `${JSON.stringify(settledRecord, null, 2)}\n`;
+    if (!fs.existsSync(file) || fs.readFileSync(file, 'utf-8') !== next) fs.writeFileSync(file, next);
 
     const moves = misplaced(costs, files);
-    console.log(`${suite.workspace.padEnd(20)} ${String(files.length).padStart(3)} specs${skipped.length ? `, ${skipped.length} skipped` : ''} -> ${specCostFile(suite.dir)}${moves.length ? `  (${moves.length} in the wrong half)` : ''}`);
+    console.log(`${suite.workspace.padEnd(20)} ${String(files.length).padStart(3)} specs${skipped.length ? `, ${skipped.length} skipped` : ''}`
+      + `, ${changed.length === 0 ? 'none moved' : `${changed.length} moved`} -> ${specCostFile(suite.dir)}${moves.length ? `  (${moves.length} in the wrong half)` : ''}`);
     for (const { file: spec, ms, belongs } of moves) console.log(`  ${(ms / 1000).toFixed(1)}s  ${spec}  ->  ${belongs}`);
   }
 }
@@ -136,6 +162,7 @@ function check(): void {
   console.log(`✅ ${total} specs across ${UNIT_SUITES.length} suites, each recorded and in the half its cost implies`);
 }
 
+const force = process.argv.includes('--force');
 const suiteFlag = process.argv.indexOf('--suite');
 if (process.argv.includes('--update')) update(suiteFlag === -1 ? undefined : process.argv[suiteFlag + 1]);
 else check();

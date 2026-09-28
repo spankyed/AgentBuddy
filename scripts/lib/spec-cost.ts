@@ -60,16 +60,50 @@ export interface SpecCost {
 export const INTEGRATION_SUFFIX = '.integration.spec.ts';
 
 /**
- * Set by `spec-cost:update` on the run it measures. The guard that reads the record is itself a spec in the
- * suites being measured, so while the record is being rewritten it would fail on the record it is about to
- * replace, and the update could never succeed. `seed-parity` has the same shape and solves it the same way
- * with `UPDATE_SEED_GOLDEN`.
+ * How far a new measurement must move before it replaces the recorded one.
+ *
+ * A cost is a **sample**, not a derivation: re-running the measurement does not reproduce it. Measured over
+ * two runs on an idle machine, 125 of 163 entries changed — median drift 10-18%, p90 50-75% — because 304 of
+ * the 366 specs are under 500ms, where a few milliseconds is a large *relative* change. Recording every
+ * sample therefore rewrote most of the file every time, and a real movement had nowhere to be seen.
+ *
+ * Wider than that jitter, far narrower than the 1 000ms band between `FAST_BELOW_MS` and
+ * `INTEGRATION_ABOVE_MS`, so a spec that genuinely crosses is still recorded and still reported. Modelled
+ * against the same two runs: one entry of 163 moves, against 125 before.
+ *
+ * It compounds rather than hides a slow creep: the tolerance is relative to the *recorded* value, which stays
+ * put, so 400 -> 480 -> 576 exceeds it on the third step rather than never.
  */
-export const UPDATING_ENV = 'UPDATE_SPEC_COST';
+export const SETTLED_MS = 500;
+export const SETTLED_FRACTION = 0.5;
+
+/**
+ * Whether a fresh measurement says something the record does not already say.
+ *
+ * Two clauses, and the first is why the second can be loose. A cost is only *consulted* to place a spec in a
+ * half, so a measurement that would place it differently is always recorded, exactly. Everything else is a
+ * number a human reads, and there the record only has to stay roughly true — which is what lets a spec with
+ * real variance stop rewriting the file. `generated-behind-contract` runs codegen over a temp pack and swings
+ * 714-995ms between idle runs; both are far below the band, and neither says anything the other does not.
+ */
+export const moved = (file: string, recorded: number | undefined, measured: number): boolean => {
+  if (recorded === undefined) return true;
+  if (halfFor(file, measured) !== halfFor(file, recorded)) return true;
+  return Math.abs(measured - recorded) > Math.max(SETTLED_MS, SETTLED_FRACTION * recorded);
+};
+
+/**
+ * The share of a suite's entries that may move before the run is read as measuring the machine.
+ *
+ * This is the check a sample can have. A derivation's is equality and a proxy's is a self-check against the
+ * real thing; neither is available here, and what is left is reproducibility. With the tolerance above, an
+ * idle run moves 0-3% of a suite; a contended one moved 76%. The file's own instruction to "run the update
+ * with nothing else on the machine" was prose until this, and was ignored twice in one day.
+ */
+export const CONTENDED_SHARE = 0.25;
 
 /** The guard that reads this record. It is the one spec that skips itself while the record is rewritten. */
 export const PLACEMENT_GUARD = 'tests/suite-split.spec.ts';
-export const isUpdating = (env: NodeJS.ProcessEnv = process.env): boolean => env[UPDATING_ENV] === '1';
 export type Half = 'fast' | 'integration';
 export const halfOfPath = (file: string): Half => (file.endsWith(INTEGRATION_SUFFIX) ? 'integration' : 'fast');
 
