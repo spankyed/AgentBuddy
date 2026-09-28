@@ -144,9 +144,22 @@ export const writerOf = (
  * an ordering or a declaration to fix; after means the tree has moved on since, which is usually you. The
  * brackets are the run's own (`takenAt`, `builtAt` on its stamp), so this places a change without the reporter
  * keeping a second reading of when anything started.
+ *
+ * There is a third answer, and it is the honest one for a case the first two cannot describe: a file whose bytes
+ * differ from the stamp but whose mtime predates `takenAt` has not been placed at all, because the stamp recorded
+ * that content at `takenAt` and so the timestamp is not telling the truth — something restored it (`cp -p`, an
+ * archive, a deliberate `utimes`). Claiming "while it ran" there invents a window the mtime cannot support, which
+ * is the same mistake as reading an mtime as a cause: what the file did is known from the digests, and when it
+ * did it is not.
  */
-export const whenChanged = (mtimeMs: number | undefined, ranUntil: number | undefined): '' | 'while it ran' | 'since it ran' =>
-  (mtimeMs === undefined || ranUntil === undefined ? '' : mtimeMs <= ranUntil ? 'while it ran' : 'since it ran');
+export const whenChanged = (
+  mtimeMs: number | undefined,
+  ranFrom: number | undefined,
+  ranUntil: number | undefined,
+): '' | 'while it ran' | 'since it ran' | 'though its mtime predates the run' =>
+  (mtimeMs === undefined || ranFrom === undefined || ranUntil === undefined ? ''
+    : mtimeMs < ranFrom ? 'though its mtime predates the run'
+      : mtimeMs <= ranUntil ? 'while it ran' : 'since it ran');
 
 /**
  * The recorded inputs whose bytes did not change and which were written inside the run's own window.
@@ -181,8 +194,8 @@ export function identicalRewrites(found: {
 export interface ChangedInput {
   readonly file: string;
   readonly how: 'changed' | 'added' | 'removed';
-  /** From `whenChanged`; empty when the stamp cannot say */
-  readonly when: '' | 'while it ran' | 'since it ran';
+  /** Whatever `whenChanged` answered, taken from it so a new answer cannot fail to reach the line it prints */
+  readonly when: ReturnType<typeof whenChanged>;
   /** The step whose declared `outputs` hold it, from `writerOf` */
   readonly writer?: string;
 }

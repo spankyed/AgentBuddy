@@ -132,7 +132,7 @@ function whatMoved(
     ...changes.changed.map((file) => ({ file, how: 'changed' as const })),
     ...changes.added.map((file) => ({ file, how: 'added' as const })),
     ...changes.removed.map((file) => ({ file, how: 'removed' as const })),
-  ]).map((found) => ({ ...found, when: whenChanged(at(found.file), until), writer: writerOf(found.file, steps) }))
+  ]).map((found) => ({ ...found, when: whenChanged(at(found.file), from, until), writer: writerOf(found.file, steps) }))
     // What ran beside this step comes first: it is the case with an ordering to fix, where a change since the
     // run is usually the edit you just made
     .sort((a, b) => Number(a.when !== 'while it ran') - Number(b.when !== 'while it ran'));

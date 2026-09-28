@@ -65,18 +65,29 @@ describe('writerOf', () => {
 });
 
 describe('whenChanged', () => {
-  const ranUntil = Date.parse('2026-09-27T12:00:00.000Z');
+  const ranFrom = Date.parse('2026-09-27T12:00:00.000Z');
+  const ranUntil = Date.parse('2026-09-27T12:01:00.000Z');
 
   /** A write inside the run is the case with an ordering to fix; one after it is usually the reader's own edit */
   it('places a change inside the run, and after it', () => {
-    expect(whenChanged(ranUntil - 1000, ranUntil)).toBe('while it ran');
-    expect(whenChanged(ranUntil + 1000, ranUntil)).toBe('since it ran');
+    expect(whenChanged(ranFrom + 1000, ranFrom, ranUntil)).toBe('while it ran');
+    expect(whenChanged(ranUntil + 1000, ranFrom, ranUntil)).toBe('since it ran');
+  });
+
+  /**
+   * The file differs from what the stamp recorded at `takenAt`, so an mtime older than that is not telling the
+   * truth — something restored it. Saying "while it ran" there invents a window, which is the whole mistake this
+   * report was rebuilt to stop making.
+   */
+  it('refuses to place a change whose mtime predates the run', () => {
+    expect(whenChanged(ranFrom - 1000, ranFrom, ranUntil)).toBe('though its mtime predates the run');
   });
 
   /** A stamp from before the run window was recorded says nothing about when, and must not guess */
   it('says nothing when the stamp cannot place it', () => {
-    expect(whenChanged(ranUntil, undefined)).toBe('');
-    expect(whenChanged(undefined, ranUntil)).toBe('');
+    expect(whenChanged(ranFrom, ranFrom, undefined)).toBe('');
+    expect(whenChanged(ranFrom, undefined, ranUntil)).toBe('');
+    expect(whenChanged(undefined, ranFrom, ranUntil)).toBe('');
   });
 });
 
