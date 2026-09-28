@@ -1,3 +1,28 @@
+> **Re-verified 2026-09-28, unstarted, and the premise is intact.** Nothing here has been implemented, and
+> nothing has drifted: still **two of fifteen workspaces declare `lint:check`** (`@app/default-setup`,
+> `@app/renderer`), and `--if-present` still passes the other thirteen in silence, so the chain reports lint
+> green over an eighth of its subject. `@abuddy/host` reports the same **27** `no-unused-vars` the Background
+> recorded three days ago — nothing has been cleaned in between.
+>
+> **Decision 1's gate measures larger than lint does**, which is the point of choosing it. Turning
+> `noUnusedLocals` and `noUnusedParameters` on for four packages that do not set them:
+>
+> | package | unused declarations (`tsc`) | `no-unused-vars` (oxlint) |
+> |---|---|---|
+> | `@abuddy/host` | **44** | 27 |
+> | `@app/api` | **21** | 1 |
+> | `@abuddy/sdk` | **10** | 2 |
+> | `@abuddy/ears` | 1 | 0 |
+>
+> 76 in four packages, against 30 that lint sees in the same four — so the compiler gate is roughly 2.5× the
+> catch, and Decision 1's "it catches 14 cases in default-setup that its lint does not" understates it at this
+> scale. Phase 4's lint half has its own current figure: **51 correctness errors across the ten unlinted
+> packages with source, 40 of them unused variables.**
+>
+> **`lint:check` moved twice on 2026-09-28** and neither move touches this goal: both forms still exclude
+> `packages/**`, which is the exclusion the goal exists to remove. The precondition block below was updated for
+> the second of those and is current.
+
 > **Written in session** `c9f31de2-e94c-46ea-a2ac-2898390dc27d` (Claude Code, 2026-09-25). Resume it with `claude -r c9f31de2-e94c-46ea-a2ac-2898390dc27d`.
 
 ```

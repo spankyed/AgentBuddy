@@ -1,11 +1,25 @@
-> **Partly overtaken, 2026-09-25.** Phase 4 is **done** (`1b3eb9876`), at the tier rather than per test —
-> and it was right about the test it named: "generated sends compile" failed a chain run at 5.8s under three
-> lanes against a 5s default, exactly the flake the phase predicted. One "Finished when" clause is already
-> met by other work: `npm run test:unit` is 37.6–40.8s against its 43s target, delivered by
-> [`goal-one-job-pool.md`](../archive/goals/goal-one-job-pool.md)'s pooling. **Phases 1, 2, 3 and 5 are
-> untouched and still the point** — the suite-time sum is what bounds any arrangement of lanes, and
-> `default-setup` and `@abuddy/sdk` are still 51% of it. Its Background table is re-measured in place for the
-> eleven suites that exist now; re-read the targets before Phase 1, not the 2026-09-25 originals.
+> **Re-verified 2026-09-28, and re-framed.** Phase 4 is **done** (`1b3eb9876`), at the tier rather than per
+> test — and it was right about the test it named: "generated sends compile" failed a chain run at 5.8s under
+> three lanes against a 5s default, exactly the flake the phase predicted. One "Finished when" clause is met by
+> other work: `npm run test:unit` is 37.6–40.8s against its 43s target, delivered by
+> [`goal-one-job-pool.md`](../archive/goals/goal-one-job-pool.md)'s pooling.
+>
+> **The diagnosis holds.** Re-measured 2026-09-28 (table in Background): `default-setup` 17.6s and `@abuddy/sdk`
+> 12.9s are still the two largest and still about half the sum, and `default-setup`'s per-file setup has grown
+> to **116s cumulative against 15.9s of tests** — the item Phase 2 names, now a 7:1 ratio. Phases 1, 2, 3 and 5
+> are unstarted and correctly aimed.
+>
+> **What changed is why it is worth doing.** This goal says suite time "bounds the wall clock however the lanes
+> are arranged". That is no longer true of the chain: every full run on 2026-09-28 put the critical path at
+> 105–111s through `packages:ensure -> compile -> build:app -> test:packaged-authoring`, with the two unit pools
+> in a lane beside it. **Making the unit suites faster will not move a cold chain.** What it moves is the inner
+> loop — `npm run spec`, and the warm chain where the pools are the only steps that run. Read Decision 3 with
+> that correction: suite time still bounds `test:unit`, it no longer bounds the gate.
+>
+> **One measurement trap, recorded because it caught a reader.** `etc/spec-cost.json` sums per-file durations,
+> which is not this goal's metric. By that measure `@abuddy/host` looks largest — 81 specs, 20.1s cumulative —
+> while its wall time run alone is 8.6s, third. Compare suites the way the table below does, alone and by the
+> clock, or the aim moves to the wrong suite.
 
 > **Written in session** `1d53eb9c-d886-49f8-bc5a-90793d43315e` (Claude Code, 2026-09-25). Resume it with `claude -r 1d53eb9c-d886-49f8-bc5a-90793d43315e`.
 
@@ -63,6 +77,22 @@ Never:
 reached 43s and stopped. This goal is the part that was left.
 
 ### Where the time is
+
+> **Re-measured 2026-09-28**, the four largest, alone and warm, on the same machine. Not idle — another agent
+> held the repo — so read these as upper bounds; the ordering is what the aim rests on, and contention does not
+> reorder them.
+>
+> | Suite | Alone (2026-09-25) | Alone (2026-09-28) | Tests |
+> |---|---|---|---|
+> | `@app/default-setup` | 15.9s | **17.6s** | 727 |
+> | `@abuddy/sdk` | 12.3s | **12.9s** | 545 |
+> | `@abuddy/host` | 8.9s | 8.6s | 747 |
+> | `@abuddy/cli` (fast half) | 5.3s | 4.6s | 396 |
+>
+> The two targets grew and the others did not, so their share of the sum has risen rather than fallen. The item
+> Phase 2 names grew with them: `default-setup` reports **`setup 116.4s` against `tests 15.9s`** — the per-file
+> `setupPackTests`, summed across workers, now about seven times the cost of the tests it sets up. The seven
+> smaller suites were not re-measured; at 13.2s combined below, they do not move the aim.
 
 > **Re-measured 2026-09-25** at `07afe0bc2`, idle, same machine. The table below it is the original survey
 > at `c7517e0da`, kept because the Decisions were taken against it. Eleven suites now rather than eight:
