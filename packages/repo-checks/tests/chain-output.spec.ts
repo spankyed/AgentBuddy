@@ -5,7 +5,7 @@ import * as path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { REPO_ROOT } from '@abuddy/host/build/packages-built';
 import { CHAIN_STEPS } from '../../../scripts/lib/chain-steps.ts';
-import { briefly, cachedLine, declaredAt, dim, DRY_REASON_COLUMN, oneLine, REASON_COLUMN, wrapAt } from '../../../scripts/lib/chain-output.ts';
+import { briefly, cachedLine, declaredAt, dim, DRY_REASON_COLUMN, oneLine, REASON_COLUMN, wrapAt, writerOf } from '../../../scripts/lib/chain-output.ts';
 
 describe('wrapAt', () => {
   it('leaves a reason that fits on the line it is on', () => {
@@ -59,6 +59,19 @@ describe('dim', () => {
   /** A log file and a CI capture are not terminals, and an escape code in one is noise nobody asked for */
   it('leaves text alone when the output is not a terminal', () => {
     expect(dim('cached')).toBe(process.stdout.isTTY ? '\u001B[2mcached\u001B[22m' : 'cached');
+  });
+});
+
+describe('writerOf', () => {
+  const steps = [{ name: 'compile', outputs: ['packages/demo-pack/generated'] }, { name: 'typecheck' }];
+
+  it('names the step whose outputs hold the file', () => {
+    expect(writerOf('packages/demo-pack/generated/library.seed.json', steps)).toBe('compile');
+  });
+
+  /** Nobody's output is the interesting answer: an undeclared write is the one there is something to do about */
+  it('answers nothing for a file no step declares', () => {
+    expect(writerOf('tests/fixtures/probe.txt', steps)).toBeUndefined();
   });
 });
 

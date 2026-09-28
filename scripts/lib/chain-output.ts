@@ -104,3 +104,16 @@ export const cachedLine = (steps: readonly { readonly tier: number; readonly nam
   [...new Set(steps.map((step) => step.tier))].sort()
     .map((tier) => `t${tier} ${steps.filter((step) => step.tier === tier).map((step) => step.name).join(', ')}`)
     .join('  ·  ');
+
+/**
+ * The step whose declared `outputs` hold `file`, when one does.
+ *
+ * A step that passes and is immediately stale was written into while it ran, and the first question is by whom.
+ * When the file sits in another step's declared outputs the answer is that step and the fix is an ordering or a
+ * narrower input; when it sits in nobody's, the write is undeclared, which is the case the advice is for.
+ */
+export const writerOf = (
+  file: string,
+  steps: readonly { readonly name: string; readonly outputs?: readonly string[] }[],
+): string | undefined =>
+  steps.find((step) => (step.outputs ?? []).some((out) => file === out || file.startsWith(`${out}/`)))?.name;
