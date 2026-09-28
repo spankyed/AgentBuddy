@@ -2,7 +2,7 @@ import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { CHECKS, findAppImportsInPackTests, findContractLeafImports, findCrossCheckoutResolution, findCrossFeatureImports, findExtensionlessOwnModules, findHostImports, findJsSpecifiers, findMissingSourceConditions, findPackageScriptImports, findPackBackendConsole, findPackOwnAliases, findRawPackHelpers, findRawTransport, findInternalPackageImports, findLmdbImports, findRepositoryCasts, findSharedPackageLists, findUpwardImports, LAYERS, LMDB_RULES, packageSourceDirs, CHECK_IDS, type CoveredRuleId, DECLARES_SOURCE_BY_DESIGN, type ImportRuleId, SHARED_LIST_CONSUMERS, sourceConditionPackages, SOURCE_CONDITION, checkedDirs, type ImportRule, packCodeDirs, packDirs, packRule, packRuleProblems, ruleRows, ruleTable } from '../../../scripts/check-import-specifiers.ts';
+import { CHECKS, findAppImportsInPackTests, findContractLeafImports, findCrossCheckoutResolution, findCrossFeatureImports, findExtensionlessOwnModules, findHostImports, findJsSpecifiers, findMissingSourceConditions, findPackageScriptImports, findPackBackendConsole, findPackOwnAliases, findRawPackHelpers, findRawTransport, findInternalPackageImports, findLmdbImports, findRepositoryCasts, findSharedPackageLists, findUpwardImports, LAYERS, LMDB_RULES, MANIFEST_FIELDS, packageSourceDirs, CHECK_IDS, type CoveredRuleId, DECLARES_SOURCE_BY_DESIGN, type ImportRuleId, SHARED_LIST_CONSUMERS, sourceConditionPackages, SOURCE_CONDITION, checkedDirs, type ImportRule, packCodeDirs, packDirs, packRule, packRuleProblems, ruleRows, ruleTable } from '../../../scripts/check-import-specifiers.ts';
 import { REPO_ROOT } from '@abuddy/host/build/packages-built';
 import { packFixture as buildPackFixture } from '@abuddy/host/testing/pack-fixture';
 import { population } from '@abuddy/host/testing/population';
@@ -1183,8 +1183,8 @@ describe('findPackOwnAliases', () => {
  */
 describe('findPackageScriptImports', () => {
   /** A package with a scripts/ directory, which is the only shape this rule looks at */
-  function pkg(deps: Record<string, string>, files: Record<string, string>): void {
-    writeAt('packages/thing/package.json', JSON.stringify({ name: '@abuddy/thing', dependencies: deps }));
+  function pkg(deps: Record<string, string>, files: Record<string, string>, field = 'dependencies'): void {
+    writeAt('packages/thing/package.json', JSON.stringify({ name: '@abuddy/thing', [field]: deps }));
     writeAt('packages/thing/src/own.ts', 'export const own = 1;');
     for (const [file, content] of Object.entries(files)) writeAt(`packages/thing/${file}`, content);
   }
@@ -1192,6 +1192,19 @@ describe('findPackageScriptImports', () => {
   it('passes the package\'s own source, a declared dependency and a builtin', () => {
     pkg({ esbuild: '*' }, { 'scripts/build.ts': "import { own } from '../src/own.ts';\nimport * as fs from 'node:fs';\nimport esbuild from 'esbuild';" });
     expect(findPackageScriptImports(root)).toEqual([]);
+  });
+
+  // Every field a manifest declares a dependency in, from the list both rules read: this restated three of the
+  // four and dropped `optionalDependencies`, which nothing noticed because no package in this repo declares one.
+  // Derived, so a field added to `MANIFEST_FIELDS` is covered the day it lands and one removed fails here.
+  it.each(MANIFEST_FIELDS)('takes a dependency declared in %s', (field) => {
+    pkg({ esbuild: '*' }, { 'scripts/build.ts': "import esbuild from 'esbuild';" }, field);
+    expect(findPackageScriptImports(root)).toEqual([]);
+  });
+
+  it('flags a dependency no field declares', () => {
+    pkg({}, { 'scripts/build.ts': "import esbuild from 'esbuild';" });
+    expect(findPackageScriptImports(root)).toEqual(['packages/thing/scripts/build.ts:1: esbuild']);
   });
 
   it('flags a reach outside the package and an undeclared dependency', () => {

@@ -30,13 +30,12 @@ export { checkedDirs, packCodeDirs, packDirs, packageSourceDirs };
 export { type ImportRule, type PackParity, packRule };
 export { DECLARES_SOURCE_BY_DESIGN, findMissingSourceConditions, RESOLVES_DIST_BY_DESIGN, sourceConditionPackages };
 
-/** `file:line: specifier` for each specifier in `files` that `matches` (relative ones only unless `all`) */
-function findSpecifiers(files: string[], root: string, matches: (text: string, file: string) => boolean, all = true): string[] {
+/** `file:line: specifier` for each specifier in `files` that `matches` */
+function findSpecifiers(files: string[], root: string, matches: (text: string) => boolean): string[] {
   const problems: string[] = [];
   for (const file of files) {
     for (const { text, line } of readSource(file).specifiers) {
-      if (!all && !/^\.\.?\//.test(text)) continue;
-      if (matches(text, file)) problems.push(`${path.relative(root, file)}:${line}: ${text}`);
+      if (matches(text)) problems.push(`${path.relative(root, file)}:${line}: ${text}`);
     }
   }
   return problems;
@@ -68,7 +67,7 @@ export function jsSpecifierFixes(dirs: readonly string[] = CHECKED_DIRS, root = 
     // which is worth failing over — but say so, rather than letting a readdir ENOENT stack out
     const full = path.join(root, dir);
     if (!fs.existsSync(full)) throw new Error(`${dir} is listed among the checked directories and does not exist: remove it, or restore the directory`);
-    for (const file of fs.statSync(full).isFile() ? [full] : [...sourceFiles(full)]) {
+    for (const file of filesUnder([dir], root)) {
       for (const { text, line, start, end } of readSource(file).specifiers) {
         if (!/^\.{1,2}\//.test(text)) continue;
         const emitted = path.extname(text);
@@ -101,8 +100,7 @@ export function packOwnModuleFixes(dirs: readonly string[] = PACK_CODE_DIRS, roo
     const full = path.join(root, dir);
     if (!fs.existsSync(full)) return [];
     const packDir = path.dirname(full);
-    const files = fs.statSync(full).isFile() ? [full] : [...sourceFiles(full)];
-    const found = files.flatMap((file) => readSource(file).specifiers.map(({ text, line, start, end }) => ({
+    const found = filesUnder([dir], root).flatMap((file) => readSource(file).specifiers.map(({ text, line, start, end }) => ({
       file: repoRelative(packDir, file),
       line, specifier: text, start, end,
     })));
@@ -245,7 +243,12 @@ export const LAYERS: { name: string; dir: string; allowed: string[]; forbidden?:
 
 const abuddyPackage = (specifier: string) => specifier.match(/^@abuddy\/[^/]+/)?.[0];
 
-const MANIFEST_FIELDS = ['dependencies', 'peerDependencies', 'optionalDependencies', 'devDependencies'];
+/**
+ * Where a manifest names a dependency. The two rules that ask read this one list: `findPackageScriptImports`
+ * restated three of the four and dropped `optionalDependencies`, so a package script importing one would have
+ * been reported as undeclared — latent only because no package declares any today.
+ */
+export const MANIFEST_FIELDS = ['dependencies', 'peerDependencies', 'optionalDependencies', 'devDependencies'];
 
 /**
  * For each layered package, over its sources, tests and scripts: `file:line: specifier` for an import
@@ -405,10 +408,8 @@ export function findPackageScriptImports(root = repoRoot): string[] {
     const scriptsDir = path.join(packagesDir, pkg, 'scripts');
     const manifestFile = path.join(packagesDir, pkg, 'package.json');
     if (!fs.existsSync(scriptsDir) || !fs.statSync(scriptsDir).isDirectory() || !fs.existsSync(manifestFile)) return [];
-    const manifest = JSON.parse(fs.readFileSync(manifestFile, 'utf-8')) as {
-      dependencies?: Record<string, string>; devDependencies?: Record<string, string>; peerDependencies?: Record<string, string>;
-    };
-    const declared = new Set(Object.keys({ ...manifest.dependencies, ...manifest.devDependencies, ...manifest.peerDependencies }));
+    const manifest = readJsonFile<Record<string, Record<string, string> | undefined>>(manifestFile);
+    const declared = new Set(MANIFEST_FIELDS.flatMap((field) => Object.keys(manifest[field] ?? {})));
     const own = path.join(packagesDir, pkg) + path.sep;
 
     // Per file, so a relative specifier is resolved against the file that wrote it rather than guessed at

@@ -71,15 +71,16 @@ export function packRule(key: PackRuleKey, dirs: readonly string[], root: string
 }
 
 /**
- * Every rule this script enforces, with the sentence it reports and — for the rules that can answer about one
- * file at a time — how to run it over paths a caller names.
+ * What a rule is: the sentence it reports, and — for the rules that can answer about one file at a time — how
+ * to run it over paths a caller names.
  *
  * `overPaths` is what makes `npm run check:specifiers <paths…>` honest: a rule that reads the whole tree (the
  * layer manifests, the config scan, the stale-exception checks) declares none, and a per-file run says which
  * rules it skipped rather than reporting a pass it did not earn.
  *
- * Exported so the runner below and the specs read the same list: `import-specifiers.spec.ts` asserts each
- * entry has a case that makes it fire, which is what stops a check landing with nothing exercising it.
+ * The runner and the specs read one list of these (`CHECKS`), and `import-specifiers.integration.spec.ts`
+ * asserts each entry has a case that makes it fire — which is what stops a check landing with nothing
+ * exercising it.
  */
 export interface RuleShape {
   /** Stable name, the one the spec's FIRES table is keyed by and `--rule` takes */
