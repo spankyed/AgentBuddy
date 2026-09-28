@@ -33,8 +33,8 @@ import { REPO_ROOT } from '@abuddy/host/build/packages-built';
 import { UNIT_SUITES, type UnitSuite } from './lib/unit-suites.ts';
 import {
   FAST_BELOW_MS, INTEGRATION_ABOVE_MS, PLACEMENT_GUARD, halfOfPath, hasSplit, misplaced,
-  CONFIG_BY_HALF, contended, drift, drifted, parseArgs, planFor, readSpecCost, settle, specCostFile, specFiles,
-  stale, unrecorded, type SpecCostPlan,
+  CONFIG_BY_HALF, drift, drifted, namedIn, parseArgs, planFor, readSpecCost, refuseAbsent, refusesAsContended,
+  settle, specCostFile, specFiles, stale, suitesFor, unrecorded, type SpecCostPlan,
 } from './lib/spec-cost.ts';
 
 // eslint-disable-next-line no-control-regex -- vitest colours its output and this reads it back
@@ -101,8 +101,11 @@ function describe(plan: SuitePlan): string {
 
 function update(plans: readonly SuitePlan[], dry: boolean): void {
   // "Every record is current" is a claim about the suites this looked at, so it must have looked at one.
-  // `list` refuses an empty population for the same reason: a check that reports nothing may have looked
-  // at nothing, and a green run cannot tell you which.
+  //
+  // Unreachable as written — `parseArgs` refuses the arguments that used to empty this list and `suitesFor`
+  // carries the case — and kept because what makes it reachable again is a *narrowing added below*, where no
+  // case can see it. Append `.filter(() => false)` to the chain that builds `plans` and every spec still
+  // passes: this is the only thing that turns that into a failure instead of a green run over no work.
   if (plans.length === 0) throw new Error('No suite was selected, so there is nothing to report on.');
 
   const work = plans.filter((plan) => plan.configs.length > 0 || plan.prune.length > 0);
@@ -136,7 +139,7 @@ function update(plans: readonly SuitePlan[], dry: boolean): void {
     const runs = plan.configs.map((config) => measure(suite, config));
     const costs = Object.assign({}, ...runs.map((run) => run.costs)) as Record<string, number>;
 
-    const { record, added, remeasured } = settle({
+    const { record, added, remeasured, dropped } = settle({
       previous, costs, skipped: [...new Set(runs.flatMap((run) => run.skipped))], measuredFiles, prune: plan.prune, all,
     });
 
@@ -144,11 +147,11 @@ function update(plans: readonly SuitePlan[], dry: boolean): void {
     // handful; a contended one moves most of what it could move and records the machine instead of the specs.
     // Only specs that had a value to move are evidence of that — a first measurement is not.
     const comparable = Object.keys(costs).length - added.length;
-    // Not under `--all`, which records every measurement by design: `remeasured` is then near-total and this
-    // would refuse every run of the one mode that exists to re-record a drifted suite. So `--all` on a loaded
-    // machine records that machine, unguarded — the body drift below still prints, which is the evidence, and
-    // asking for it is the deliberate act the guard exists to distinguish from an accident.
-    if (previous !== undefined && !force && !all && contended(remeasured.length, comparable)) {
+    // `--all` records every measurement by design, so `remeasured` is then near-total and this would refuse
+    // the one mode that exists to clear a drift. So `--all` on a loaded machine records that machine,
+    // unguarded — the body drift below still prints, which is the evidence, and asking for it is the
+    // deliberate act the guard exists to distinguish from an accident. `refusesAsContended` holds the rest.
+    if (refusesAsContended({ hasPrevious: previous !== undefined, force, all, remeasured: remeasured.length, comparable })) {
       throw new Error(`${suite.workspace}: ${remeasured.length} of ${comparable} already-recorded specs moved, `
         + `which is more than a measurement should. That is what a loaded machine looks like — run this with `
         + `nothing else running, or pass --force if the suite really did change this much.`);
@@ -168,10 +171,16 @@ function update(plans: readonly SuitePlan[], dry: boolean): void {
     // the only place it shows is the total. Undefined when nothing measured had a value to move from.
     const body = drift(previous, costs);
     const asBody = body === undefined ? '' : `, body ${body >= 0 ? '+' : ''}${(body * 100).toFixed(0)}%`;
+    // Every way the record can differ from the one it replaced, for the same reason `settle` compares rather
+    // than enumerates: a change nobody listed reads as "none moved" over a rewritten file, and a spec that
+    // stops running is exactly that.
     const did = [
       plan.configs.length === 0 ? 'measured nothing'
-        : [added.length > 0 ? `${added.length} added` : '', remeasured.length > 0 ? `${remeasured.length} moved` : '']
-          .filter(Boolean).join(', ') || 'none moved',
+        : [
+          added.length > 0 ? `${added.length} added` : '',
+          remeasured.length > 0 ? `${remeasured.length} moved` : '',
+          dropped.length > 0 ? `${dropped.length} stopped running` : '',
+        ].filter(Boolean).join(', ') || 'none moved',
       plan.prune.length > 0 ? `${plan.prune.length} gone` : '',
     ].filter(Boolean).join(', ');
     console.log(`${suite.workspace.padEnd(20)} ${String(files.length).padStart(3)} specs${record.skipped.length ? `, ${record.skipped.length} skipped` : ''}`
@@ -185,8 +194,15 @@ function update(plans: readonly SuitePlan[], dry: boolean): void {
   }
 }
 
-function check(only: string | undefined): void {
-  const suites = UNIT_SUITES.filter((candidate) => only === undefined || candidate.dir === only);
+/**
+ * Whether the record is current, for the whole tree or for the specs named.
+ *
+ * A named spec narrows what is judged, as `--suite` narrows which suites are read. Both have to narrow, or
+ * a path is validated and then dropped and `check <path>` answers about all twelve suites instead.
+ */
+function check(only: string | undefined, named: readonly string[]): void {
+  const dirs = suitesFor(UNIT_SUITES.map((suite) => suite.dir), only, named);
+  const suites = UNIT_SUITES.filter((candidate) => dirs.includes(candidate.dir));
   /** What an update can fix: a cost it can measure, or a row it can drop */
   const problems: string[] = [];
   /** What it cannot: a spec whose filename puts it in the other half from its cost */
@@ -202,15 +218,19 @@ function check(only: string | undefined): void {
       continue;
     }
     const files = specFiles(dir);
-    total += files.length;
+    const asked = named.length > 0 ? namedIn(suite.dir, named) : files;
+    refuseAbsent(suite.dir, files, asked);
+    total += asked.length;
     const before = problems.length;
     problems.push(
-      ...unrecorded(record, files).map((f) => `  unmeasured: ${suite.dir}/${f}`),
-      ...stale(record, files).map((f) => `  recorded but gone: ${suite.dir}/${f}`),
+      ...unrecorded(record, asked).map((f) => `  unmeasured: ${suite.dir}/${f}`),
+      // Only over the whole suite: `stale` returns what the record holds and the file list does not, so
+      // against a narrowed list every spec the caller did not name would read as recorded but gone
+      ...(named.length > 0 ? [] : stale(record, files).map((f) => `  recorded but gone: ${suite.dir}/${f}`)),
     );
     if (problems.length > before) recordable.add(suite.dir);
     if (hasSplit(dir)) {
-      for (const { file, ms, belongs } of misplaced(record.costs, files)) {
+      for (const { file, ms, belongs } of misplaced(record.costs, asked)) {
         renames.push(`  ${(ms / 1000).toFixed(1)}s is ${belongs}, but this is in the ${halfOfPath(file)} half: ${suite.dir}/${file}`);
       }
     }
@@ -226,7 +246,9 @@ function check(only: string | undefined): void {
     const found = [...problems, ...renames].join('\n');
     throw new Error(`Spec costs are out of date (a fast spec moves above ${INTEGRATION_ABOVE_MS}ms, an integration one comes back below ${FAST_BELOW_MS}ms):\n${found}\n\n${advice}`);
   }
-  console.log(`✅ ${total} specs across ${suites.length} suite${suites.length === 1 ? '' : 's'}, each recorded and in the half its cost implies`);
+  console.log(named.length > 0
+    ? `✅ ${total} spec${total === 1 ? '' : 's'}, recorded and in the half its cost implies`
+    : `✅ ${total} specs across ${suites.length} suite${suites.length === 1 ? '' : 's'}, each recorded and in the half its cost implies`);
 }
 
 /**
@@ -238,10 +260,34 @@ function check(only: string | undefined): void {
  */
 interface ListRow { readonly suite: string; readonly specs: number; readonly settled: number; readonly nearBand: number }
 
-function list(only: string | undefined): void {
+function list(only: string | undefined, named: readonly string[]): void {
+  const dirs = suitesFor(UNIT_SUITES.map((suite) => suite.dir), only, named);
+  const selected = UNIT_SUITES.filter((candidate) => dirs.includes(candidate.dir));
+
+  // Named specs are the question itself, so the per-suite aggregate has nothing to add: what is wanted is
+  // each one's cost and the half it is in
+  if (named.length > 0) {
+    for (const suite of selected) {
+      const record = readSpecCost(REPO_ROOT, suite.dir);
+      const asked = namedIn(suite.dir, named);
+      refuseAbsent(suite.dir, specFiles(packageDir(suite)), asked);
+      for (const file of asked) {
+        const ms = record?.costs[file];
+        // Milliseconds below a second, because the aggregate below only ever prints in-band specs and every
+        // one of those is over 1 500ms — naming a cheap spec here would otherwise report it as `0.0s`
+        const cost = ms === undefined
+          ? (record?.skipped.includes(file) ? 'skipped' : 'unmeasured')
+          : (ms < 1_000 ? `${ms}ms` : `${(ms / 1000).toFixed(1)}s`);
+        const band = ms !== undefined && ms >= FAST_BELOW_MS && ms <= INTEGRATION_ABOVE_MS ? '  (in the band)' : '';
+        console.log(`  ${cost.padStart(10)}  ${halfOfPath(file).padEnd(11)} ${suite.dir}/${file}${band}`);
+      }
+    }
+    return;
+  }
+
   const rows: ListRow[] = [];
   const near: string[] = [];
-  for (const suite of UNIT_SUITES.filter((candidate) => only === undefined || candidate.dir === only)) {
+  for (const suite of selected) {
     const record = readSpecCost(REPO_ROOT, suite.dir);
     if (record === undefined) continue;
     const costs = Object.entries(record.costs);
@@ -265,16 +311,11 @@ function list(only: string | undefined): void {
 
 const { mode, only, named, force, all, dry } = parseArgs(process.argv.slice(2), UNIT_SUITES.map((suite) => suite.dir));
 
-if (mode === 'list') list(only);
+if (mode === 'list') list(only, named);
 else if (mode === 'update') {
+  const dirs = suitesFor(UNIT_SUITES.map((suite) => suite.dir), only, named);
   const plans = UNIT_SUITES
-    .filter((suite) => only === undefined || suite.dir === only)
-    .filter((suite) => named.length === 0 || named.some((file) => file.startsWith(`packages/${suite.dir}/`)))
-    .map((suite) => ({
-      suite,
-      ...planFor(REPO_ROOT, suite.dir, named
-        .filter((file) => file.startsWith(`packages/${suite.dir}/`))
-        .map((file) => file.slice(`packages/${suite.dir}/`.length)), all),
-    }));
+    .filter((suite) => dirs.includes(suite.dir))
+    .map((suite) => ({ suite, ...planFor(REPO_ROOT, suite.dir, namedIn(suite.dir, named), all) }));
   update(plans, dry);
-} else check(only);
+} else check(only, named);

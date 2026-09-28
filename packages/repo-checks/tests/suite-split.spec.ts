@@ -9,12 +9,15 @@
 // This reads the record and runs nothing. Re-measuring here would make the cheap half expensive, which is
 // the thing the split exists to prevent, so `npm run spec-cost:update -w @abuddy/cli` is the deliberate act
 // and this is the guard that it was done.
+import * as fs from 'node:fs';
+import * as os from 'node:os';
 import * as path from 'node:path';
-import { describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { REPO_ROOT } from '@abuddy/host/build/packages-built';
 import {
-  FAST_BELOW_MS, INTEGRATION_ABOVE_MS, changesIn, contended, drift, drifted, halfOfPath, misplaced,
-  hasSplit, moved, outgrown, parseArgs, planFor, readSpecCost, settle, specFiles, stale, unrecorded,
+  FAST_BELOW_MS, INTEGRATION_ABOVE_MS, SPEC_COST_FLAGS, absentIn, changesIn, contended, drift, drifted,
+  halfOfPath, misplaced, hasSplit, moved, namedIn, outgrown, parseArgs, planFor, readSpecCost, refuseAbsent,
+  refusesAsContended, settle, specCostFile, specFiles, stale, suitesFor, unrecorded,
 } from '../../../scripts/lib/spec-cost.ts';
 import { UNIT_SUITES } from '../../../scripts/lib/unit-suites.ts';
 
@@ -278,12 +281,19 @@ describe('the command refuses arguments it cannot honour', () => {
 
 describe('what a suite needs measuring is read from its record before anything runs', () => {
   const HERE = 'repo-checks';
-  const fast = specFiles(path.join(REPO_ROOT, 'packages', HERE)).find((file) => halfOfPath(file) === 'fast')!;
-  const slow = specFiles(path.join(REPO_ROOT, 'packages', HERE)).find((file) => halfOfPath(file) === 'integration')!;
+  const halves = (half: 'fast' | 'integration'): string[] =>
+    specFiles(path.join(REPO_ROOT, 'packages', HERE)).filter((file) => halfOfPath(file) === half);
+
+  // Derived from the tree, so assert they are there: with a `find(...)!` that came back undefined, the cases
+  // below would fail saying "not specs in repo-checks", which is about the wrong thing entirely
+  it('has a spec in each half to plan for', () => {
+    expect(halves('fast').length, 'the cases below name one of each').toBeGreaterThan(0);
+    expect(halves('integration').length).toBeGreaterThan(0);
+  });
 
   it('runs only the config that measures the spec you named', () => {
-    expect(planFor(REPO_ROOT, HERE, [fast], false).configs).toEqual(['vitest.config.ts']);
-    expect(planFor(REPO_ROOT, HERE, [slow], false).configs).toEqual(['vitest.integration.config.ts']);
+    expect(planFor(REPO_ROOT, HERE, [halves('fast')[0]!], false).configs).toEqual(['vitest.config.ts']);
+    expect(planFor(REPO_ROOT, HERE, [halves('integration')[0]!], false).configs).toEqual(['vitest.integration.config.ts']);
   });
 
   it('runs both halves for --all', () => {
@@ -298,8 +308,54 @@ describe('what a suite needs measuring is read from its record before anything r
       .toThrow(/not specs in repo-checks[\s\S]*does-not-exist/);
   });
 
-  it('measures nothing when the record is current', () => {
-    expect(planFor(REPO_ROOT, HERE, [], false)).toMatchObject({ configs: [], prune: [], reason: 'current' });
+});
+
+/**
+ * The branches a bare `spec-cost:update` takes, which the live tree cannot show.
+ *
+ * `unmeasured` and `gone` are what the command works out on its own, and against this checkout the record is
+ * by definition current — so those two were the uncovered half of `planFor` while the three a caller asks for
+ * by name were covered. A temp tree is the only way to hold a record that disagrees with the specs beside it.
+ */
+describe('a bare update asks for the least the record needs', () => {
+  const DIR = 'mini';
+  let root = '';
+  const write = (rel: string, body: string): void => {
+    fs.mkdirSync(path.dirname(path.join(root, rel)), { recursive: true });
+    fs.writeFileSync(path.join(root, rel), body);
+  };
+  const record = (costs: Record<string, number>, skipped: string[] = []): void =>
+    write(specCostFile(DIR), `${JSON.stringify({ measuredAt: 'then', costs, skipped }, null, 2)}\n`);
+
+  beforeAll(() => {
+    root = fs.mkdtempSync(path.join(os.tmpdir(), 'spec-cost-'));
+    write(`packages/${DIR}/vitest.config.ts`, 'export default {};\n');
+    write(`packages/${DIR}/tests/a.spec.ts`, '');
+    write(`packages/${DIR}/tests/b.spec.ts`, '');
+  });
+  afterAll(() => fs.rmSync(root, { recursive: true, force: true }));
+
+  it('measures only the half a spec with no recorded cost lives in', () => {
+    record({ 'tests/a.spec.ts': 100 });
+    expect(planFor(root, DIR, [], false))
+      .toMatchObject({ configs: ['vitest.config.ts'], prune: [], reason: '1 unmeasured' });
+  });
+
+  it('drops a recorded spec that is gone without measuring anything', () => {
+    record({ 'tests/a.spec.ts': 100, 'tests/b.spec.ts': 200, 'tests/gone.spec.ts': 300 });
+    expect(planFor(root, DIR, [], false))
+      .toMatchObject({ configs: [], prune: ['tests/gone.spec.ts'], reason: '1 gone' });
+  });
+
+  it('counts a recorded skip as recorded, so it asks for nothing', () => {
+    record({ 'tests/a.spec.ts': 100 }, ['tests/b.spec.ts']);
+    expect(planFor(root, DIR, [], false)).toMatchObject({ configs: [], prune: [], reason: 'current' });
+  });
+
+  it('measures everything when there is no record at all', () => {
+    fs.rmSync(path.join(root, specCostFile(DIR)));
+    expect(planFor(root, DIR, [], false))
+      .toMatchObject({ configs: ['vitest.config.ts'], prune: [], reason: '2 unmeasured' });
   });
 });
 
@@ -390,6 +446,36 @@ describe('what a run does to the record it replaces', () => {
     expect(record.measuredAt, 'a prune changed the record').not.toBe('then');
   });
 
+  // What the report line reads. It used to enumerate its own reasons — costs moving, specs arriving, rows
+  // pruned — so a spec that stopped running rewrote the file and printed "none moved"; the `N skipped` beside
+  // it is the total, identical whether the skip is new or carried, so nothing on the line said otherwise.
+  it('names a spec that lost its cost, which is neither a move nor an arrival nor a prune', () => {
+    const { dropped, added, remeasured } = settle({
+      previous: previous({ [FAST]: 1_200, 'tests/b.spec.ts': 800 }),
+      costs: { 'tests/b.spec.ts': 800 },
+      skipped: [FAST],
+      measuredFiles: [FAST, 'tests/b.spec.ts'],
+      prune: [],
+      all: false,
+    });
+    expect(dropped, 'the run has to report this, or it reports nothing at all').toEqual([FAST]);
+    expect([...added, ...remeasured], 'and it is neither of the two that were counted').toEqual([]);
+  });
+
+  // A pruned spec loses its cost too, and the caller already reports those as `N gone`; counting them here
+  // would report one deletion twice
+  it('leaves a pruned spec to the caller that pruned it', () => {
+    const { dropped } = settle({
+      previous: previous({ [FAST]: 100, 'tests/gone.spec.ts': 200 }),
+      costs: { [FAST]: 100 },
+      skipped: [],
+      measuredFiles: [FAST],
+      prune: ['tests/gone.spec.ts'],
+      all: false,
+    });
+    expect(dropped).toEqual([]);
+  });
+
   it('keeps a skip recorded for a half this run did not measure', () => {
     const { record } = settle({
       previous: previous({ [FAST]: 100 }, ['tests/other.integration.spec.ts']),
@@ -410,5 +496,122 @@ describe('what a run does to the record it replaces', () => {
       all: false, prune: [],
     });
     expect(Object.keys(record.costs)).toEqual(['tests/a.spec.ts', 'tests/z.spec.ts']);
+  });
+});
+
+describe('an unrecognised flag is refused rather than dropped', () => {
+  const DIRS = ['repo-checks', 'abuddy-cli'];
+
+  // The one that mattered: `--drry` used to parse as nothing, so a run asked to write nothing measured the
+  // suite and rewrote the record. Silence is the wrong answer for every flag, and worst for this one
+  it('refuses a misspelled flag, naming the ones there are', () => {
+    expect(() => parseArgs(['--update', '--drry'], DIRS)).toThrow(/No such flag: --drry[\s\S]*--dry/);
+    expect(() => parseArgs(['--update', '--forse'], DIRS)).toThrow(/No such flag: --forse/);
+    expect(() => parseArgs(['--update', '--sute', 'repo-checks'], DIRS)).toThrow(/No such flag: --sute/);
+  });
+
+  it('refuses `--suite=x`, whose value it would otherwise look for in the next argument', () => {
+    expect(() => parseArgs(['--update', '--suite=repo-checks'], DIRS)).toThrow(/No such flag: --suite=repo-checks/);
+  });
+
+  // Derived from the declaration rather than a second list: a flag the parser handles and this does not know
+  // about would be refused by the command that defines it, which is the failure this pair can have
+  it('accepts every flag it declares', () => {
+    for (const flag of SPEC_COST_FLAGS) {
+      const argv = flag === 'suite' ? ['--suite', 'repo-checks'] : [`--${flag}`];
+      expect(() => parseArgs(argv, DIRS), `--${flag} is declared, so it must parse`).not.toThrow();
+    }
+  });
+});
+
+describe('which suites an invocation acts on', () => {
+  const DIRS = ['repo-checks', 'abuddy-cli', 'abuddy-sdk'];
+  const spec = (dir: string): string => `packages/${dir}/tests/a.spec.ts`;
+
+  it('is all of them when nothing narrows it', () => {
+    expect(suitesFor(DIRS, undefined, [])).toEqual(DIRS);
+  });
+
+  it('is the one --suite names', () => {
+    expect(suitesFor(DIRS, 'abuddy-cli', [])).toEqual(['abuddy-cli']);
+  });
+
+  it('is the suite a named path belongs to', () => {
+    expect(suitesFor(DIRS, undefined, [spec('abuddy-sdk')])).toEqual(['abuddy-sdk']);
+  });
+
+  // The invariant the command could not reach: it used to AND these two filters and then report "every
+  // record is current" over the empty result, a claim about suites it had never read. `parseArgs` refuses
+  // the contradiction that produced it, and this is the other half — valid arguments always select something
+  it('never selects nothing, for any arguments parseArgs accepts', () => {
+    for (const only of [undefined, ...DIRS]) {
+      for (const named of [[], [spec('repo-checks')], [spec('abuddy-cli')]]) {
+        const accepted = ((): boolean => {
+          try {
+            parseArgs(['--update', ...(only ? ['--suite', only] : []), ...named], DIRS);
+            return true;
+          } catch { return false; }
+        })();
+        if (!accepted) continue;
+        expect(suitesFor(DIRS, only, named), `--suite ${only} with ${named.join(' ') || 'no path'}`).not.toHaveLength(0);
+      }
+    }
+  });
+
+  it('reads the list it is given', () => {
+    expect(suitesFor(DIRS.filter((dir) => dir !== 'abuddy-sdk'), undefined, [spec('abuddy-sdk')])).toEqual([]);
+  });
+
+  it('takes a named path apart into the suite it is in and the path within it', () => {
+    expect(namedIn('repo-checks', [spec('repo-checks'), spec('abuddy-cli')])).toEqual(['tests/a.spec.ts']);
+    expect(namedIn('abuddy-sdk', [spec('repo-checks')])).toEqual([]);
+  });
+});
+
+describe('a named spec that is not there is refused, whatever was asked of it', () => {
+  const FILES = ['tests/a.spec.ts', 'tests/b.spec.ts'];
+
+  it('names the ones that are absent', () => {
+    expect(absentIn(FILES, ['tests/a.spec.ts', 'tests/nope.spec.ts'])).toEqual(['tests/nope.spec.ts']);
+    expect(absentIn(FILES, FILES)).toEqual([]);
+  });
+
+  it('says so with the path as the caller wrote it', () => {
+    expect(() => refuseAbsent('mini', FILES, ['tests/nope.spec.ts']))
+      .toThrow(/not specs in mini[\s\S]*packages\/mini\/tests\/nope\.spec\.ts/);
+    expect(() => refuseAbsent('mini', FILES, FILES)).not.toThrow();
+  });
+
+  // Why `check` narrows `unrecorded` and `misplaced` but never `stale`: `stale` answers "recorded and no
+  // longer on disk" from the file list it is given, so over a narrowed list every spec the caller did not
+  // name reads as gone. Narrowing the whole loop's file list is the obvious simplification and is wrong.
+  it('is why the recorded-but-gone question is only ever asked of a whole suite', () => {
+    const record = { measuredAt: '', skipped: [], costs: { 'tests/a.spec.ts': 1, 'tests/b.spec.ts': 2 } };
+    expect(stale(record, FILES), 'nothing is gone').toEqual([]);
+    expect(stale(record, ['tests/a.spec.ts']), 'but against one named spec, the other reads as gone')
+      .toEqual(['tests/b.spec.ts']);
+  });
+});
+
+describe('when a run is refused as a measurement of the machine', () => {
+  const loaded = { hasPrevious: true, force: false, all: false, remeasured: 6, comparable: 20 };
+
+  it('refuses a run that moved more of the suite than a measurement should', () => {
+    expect(refusesAsContended(loaded)).toBe(true);
+  });
+
+  it('is suppressed by --force, which is the user saying the suite really did change', () => {
+    expect(refusesAsContended({ ...loaded, force: true })).toBe(false);
+  });
+
+  // `--all` records every measurement by design, so `remeasured` is near-total on every such run: guarding it
+  // would refuse the one mode that exists to clear a drift the per-spec tolerance cannot
+  it('is suppressed by --all, which records what it measured', () => {
+    expect(refusesAsContended({ ...loaded, all: true })).toBe(false);
+  });
+
+  it('never fires for a suite with no record to have moved', () => {
+    expect(refusesAsContended({ ...loaded, hasPrevious: false })).toBe(false);
+    expect(refusesAsContended({ hasPrevious: true, force: false, all: false, remeasured: 0, comparable: 0 })).toBe(false);
   });
 });

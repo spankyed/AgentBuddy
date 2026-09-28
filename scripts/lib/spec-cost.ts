@@ -297,6 +297,16 @@ export const stale = (record: SpecCost, files: readonly string[]): string[] =>
  */
 export type SpecCostMode = 'check' | 'list' | 'update';
 
+/**
+ * Every flag the command defines, as one declaration.
+ *
+ * Read twice — once to find each flag, once to refuse anything else — so a seventh flag cannot be added
+ * without joining the list. A flag dropped in silence is worst for `--dry`, where it means a measuring run
+ * and a rewritten record in place of the error that was asked for.
+ */
+export const SPEC_COST_FLAGS = ['all', 'dry', 'force', 'list', 'suite', 'update'] as const;
+export type SpecCostFlag = (typeof SPEC_COST_FLAGS)[number];
+
 export interface SpecCostArgs {
   readonly mode: SpecCostMode;
   /** The one suite to act on, or undefined for all of them */
@@ -309,8 +319,16 @@ export interface SpecCostArgs {
 }
 
 export function parseArgs(argv: readonly string[], suiteDirs: readonly string[]): SpecCostArgs {
-  const has = (name: string): boolean => argv.includes(`--${name}`);
+  const has = (name: SpecCostFlag): boolean => argv.includes(`--${name}`);
   const suites = `They are:\n  ${suiteDirs.join('\n  ')}`;
+
+  // First, because a typo is otherwise reported as whatever the rest makes of it: `--sute repo-checks` reads
+  // as a path in no suite, and `--drry` as nothing at all. `--suite=x` lands here too, this reading the
+  // value as the next argument rather than after an `=`
+  const strange = argv.filter((arg) => arg.startsWith('--') && !SPEC_COST_FLAGS.includes(arg.slice(2) as SpecCostFlag));
+  if (strange.length > 0) {
+    throw new Error(`No such flag: ${strange.join(', ')}. They are:\n  ${SPEC_COST_FLAGS.map((flag) => `--${flag}`).join('\n  ')}`);
+  }
 
   // Read by index, not by value: the value is skipped from `named` below by its position, so a positional
   // argument that happens to read like a suite name is still a path rather than silently the flag's value
@@ -349,6 +367,59 @@ export function parseArgs(argv: readonly string[], suiteDirs: readonly string[])
   return { mode: has('list') ? 'list' : has('update') ? 'update' : 'check', only, named, force: has('force'), all, dry: has('dry') };
 }
 
+/**
+ * The suites an invocation acts on.
+ *
+ * One function for all three modes, because `--suite` and a named path each narrow the population and every
+ * mode has to narrow it the same way. It also holds the invariant: **given arguments `parseArgs` accepted,
+ * this never selects nothing.** Undo that and `update` reports "every record is current" over a population
+ * it never looked at, which is a green run over no work at all.
+ */
+export function suitesFor(
+  suiteDirs: readonly string[], only: string | undefined, named: readonly string[],
+): string[] {
+  return suiteDirs
+    .filter((dir) => only === undefined || dir === only)
+    .filter((dir) => named.length === 0 || named.some((file) => file.startsWith(`packages/${dir}/`)));
+}
+
+/** The named specs, relative to their suite, for the one suite they are in */
+export const namedIn = (dir: string, named: readonly string[]): string[] => named
+  .filter((file) => file.startsWith(`packages/${dir}/`))
+  .map((file) => file.slice(`packages/${dir}/`.length));
+
+/** Named specs that are not on disk, which nothing can measure or judge */
+export const absentIn = (files: readonly string[], named: readonly string[]): string[] =>
+  named.filter((file) => !files.includes(file));
+
+/**
+ * Refuse a named spec that does not exist, which every mode has to do and for the same reason.
+ *
+ * A path is otherwise only checked for its `packages/<suite>/` prefix, so a typo maps to a half by its
+ * extension: an update would measure that whole config and record nothing for the file named, reporting
+ * "none moved", and a check would pass having judged nothing.
+ */
+export function refuseAbsent(dir: string, files: readonly string[], named: readonly string[]): void {
+  const absent = absentIn(files, named);
+  if (absent.length === 0) return;
+  throw new Error(`These are not specs in ${dir}:\n  ${absent.map((file) => `packages/${dir}/${file}`).join('\n  ')}\n`
+    + 'Nothing would measure them, so this would run a config and record nothing.');
+}
+
+/**
+ * Whether to refuse this run as a measurement of the machine rather than of the specs.
+ *
+ * Four inputs, which is why it is named rather than spelled out at the call site. `--force` is the user
+ * saying the suite really did change this much; `--all` records every measurement by design, so `remeasured`
+ * is then near-total and this would refuse the one mode that exists to clear a drift; and a suite with no
+ * previous record has nothing to have moved.
+ */
+export const refusesAsContended = (input: {
+  readonly hasPrevious: boolean; readonly force: boolean; readonly all: boolean;
+  readonly remeasured: number; readonly comparable: number;
+}): boolean => input.hasPrevious && !input.force && !input.all
+  && contended(input.remeasured, input.comparable);
+
 /** What one suite needs doing, worked out from the record before anything runs */
 export interface SpecCostPlan {
   /** The configs to measure. Empty means nothing needs measuring. */
@@ -371,14 +442,7 @@ export function planFor(repoRoot: string, dir: string, named: readonly string[],
   const previous = readSpecCost(repoRoot, dir);
   const prune = previous === undefined ? [] : stale(previous, files);
 
-  // A path is otherwise only checked for its `packages/<suite>/` prefix, so a typo would map to a half by
-  // its extension and measure that whole config — recording nothing for the file named, and reporting
-  // "none moved", which reads as success
-  const missing = named.filter((file) => !files.includes(file));
-  if (missing.length > 0) {
-    throw new Error(`These are not specs in ${dir}:\n  ${missing.map((file) => `packages/${dir}/${file}`).join('\n  ')}\n`
-      + 'Nothing would measure them, so this would run a config and record nothing.');
-  }
+  refuseAbsent(dir, files, named);
 
   if (all) return { configs: configsFor(packageDir), prune, reason: 'every spec, asked for' };
   if (named.length > 0) return { configs: configsOf(packageDir, named), prune, reason: `${named.length} named` };
@@ -388,7 +452,16 @@ export function planFor(repoRoot: string, dir: string, named: readonly string[],
   return { configs: [], prune, reason: prune.length > 0 ? `${prune.length} gone` : 'current' };
 }
 
-export interface Settled extends Changes { readonly record: SpecCost }
+export interface Settled extends Changes {
+  readonly record: SpecCost;
+  /**
+   * Specs that had a cost and no longer do, other than the pruned ones a caller already reports.
+   *
+   * The third way a record's costs can differ, after a value moving and a spec arriving — and the one a
+   * report that enumerates the first two misses, since a spec that stops running rewrites the file.
+   */
+  readonly dropped: readonly string[];
+}
 
 /**
  * The record a run produces from the one it is replacing.
@@ -451,6 +524,7 @@ export function settle(input: {
 
   return {
     ...changesIn(previous, settled, Object.keys(costs)),
+    dropped: Object.keys(previous?.costs ?? {}).filter((spec) => sorted[spec] === undefined && !prune.includes(spec)),
     record: { measuredAt: same ? previous.measuredAt : new Date().toISOString(), costs: sorted, skipped },
   };
 }
