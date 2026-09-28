@@ -268,23 +268,37 @@ export function inputFiles(target: string, out: string[] = []): string[] {
 /** What stands in for a digest where the file was not there to read — never a hash of nothing */
 export const ABSENT = 'absent';
 
-/** How a fingerprint gets one input's bytes: repo-relative path in, bytes or `null` for a file that is not there */
-export type ReadInput = (file: string) => Buffer | null;
+/**
+ * How a fingerprint looks at the tree: what a declared target holds, and what a file holds.
+ *
+ * Both halves together because they are one question — "the tree, as of now" — and because a caller that shares
+ * one and not the other pays for the half it kept. A sweep that shares reads and walks anyway spends 32ms of a
+ * 53ms pass on `readdir`, measured over `typecheck`'s inputs.
+ */
+export interface TreeReader {
+  /** The files under a declared target, absolute path in, repo-relative paths out. Defaults to `inputFiles`. */
+  readonly list: (target: string) => string[];
+  /** One input's bytes, repo-relative path in, `null` for a file that is not there. Defaults to `readInput`. */
+  readonly read: (file: string) => Buffer | null;
+}
 
 /**
- * The default: read it now.
+ * The default: look now.
  *
  * `ENOENT` is `null` — a file that goes between the walk and the read is absent, never empty. **Every other error
  * propagates**, which is load-bearing rather than incidental: `unitStaleReason` catches it and reports
  * `its sources could not be read (…)`, so an unreadable tree is a refusal instead of a fresh verdict.
  */
-const readInput: ReadInput = (file) => {
-  try {
-    return fs.readFileSync(repoFile(file));
-  } catch (err) {
-    if ((err as NodeJS.ErrnoException).code !== 'ENOENT') throw err;
-    return null;
-  }
+export const readTree: TreeReader = {
+  list: (target) => inputFiles(target),
+  read: (file) => {
+    try {
+      return fs.readFileSync(repoFile(file));
+    } catch (err) {
+      if ((err as NodeJS.ErrnoException).code !== 'ENOENT') throw err;
+      return null;
+    }
+  },
 };
 
 /**
@@ -336,22 +350,28 @@ const readInput: ReadInput = (file) => {
  * one did — an mtime walk named a file an E2E test rewrites with identical bytes, and the diagnosis that
  * followed was wrong. The returned hash is unaffected, so a caller wanting only the verdict passes nothing.
  *
- * `read` is where the bytes come from, defaulting to reading them now (`readInput`, whose `ENOENT` rule this
- * loop used to hold inline). Injected rather than cached here, because a cache has a lifetime and this function
- * has no business owning one: `freshnessSweep` does, for the callers that ask about many units at one moment.
+ * `tree` is where the walk and the bytes come from, defaulting to looking now (`readTree`, whose `ENOENT` rule
+ * this loop used to hold inline). Injected rather than cached here, because a cache has a lifetime and this
+ * function has no business owning one: `freshnessSweep` does, for the callers that ask about many units at one
+ * moment.
+ *
+ * It still computes a fingerprint for a caller that wants only the digests (`changedInputs`). Measured at 9ms of
+ * that caller's 53ms, against splitting this loop into something two projections consume — which would also
+ * dissolve the case that proves the digests and the hash agree, since they would no longer be taken together. The
+ * 9ms is the cheaper of the two.
  */
 export function fingerprintInputs(
   inputs: readonly string[],
   normalise?: (contents: Buffer, file: string) => Buffer | string,
   exclude: readonly string[] = [],
   collect?: (file: string, digest: string) => void,
-  read: ReadInput = readInput,
+  tree: TreeReader = readTree,
 ): string {
   const hash = createHash('sha256');
   const excluded = exclude.map(repoRelative);
   const isExcluded = (file: string): boolean => excluded.some((out) => covers(out, file));
-  for (const file of [...new Set(inputs.flatMap((target) => inputFiles(target)))].sort().filter((f) => !isExcluded(f))) {
-    const contents = read(file);
+  for (const file of [...new Set(inputs.flatMap((target) => tree.list(target)))].sort().filter((f) => !isExcluded(f))) {
+    const contents = tree.read(file);
     // Without a normaliser the bytes are hashed as read — no copy on the path that runs per command
     const hashed = contents !== null && normalise ? Buffer.from(normalise(contents, file)) : contents;
     hash.update(`${file}\0${hashed === null ? ABSENT : hashed.length}\0`);
@@ -367,7 +387,7 @@ export function fingerprintInputs(
  * unit that gains or loses a watched directory invalidates itself — and only itself. Hashing the input
  * contents alone would read the new set against the old stamp and call it fresh.
  */
-export function fingerprintUnit(unit: BuildUnit, collect?: (file: string, digest: string) => void, read?: ReadInput): string {
+export function fingerprintUnit(unit: BuildUnit, collect?: (file: string, digest: string) => void, tree?: TreeReader): string {
   return createHash('sha256')
     .update(declaredPaths(unit).join('\0'))
     .update('\0')
@@ -378,7 +398,7 @@ export function fingerprintUnit(unit: BuildUnit, collect?: (file: string, digest
     // surviving on the builds happening to be deterministic, and the pack build is already known not to be
     // (two lines of `Omit<…>` union ordering). Excluding self-output here means declaring `outputs`
     // honestly is the whole fix, rather than every such step needing its inputs hand-narrowed.
-    .update(fingerprintInputs(unit.inputs, undefined, [...unit.outputs, ...(unit.excludes ?? [])], collect, read))
+    .update(fingerprintInputs(unit.inputs, undefined, [...unit.outputs, ...(unit.excludes ?? [])], collect, tree))
     .digest('hex');
 }
 
@@ -393,9 +413,9 @@ export const declaredPaths = (unit: BuildUnit): string[] =>
   [...unit.inputs, ...unit.outputs, ...(unit.excludes ?? [])].map(repoRelative).sort();
 
 /** A unit's fingerprint and the per-file digests it is composed of, from one walk */
-export function fingerprintWithDigests(unit: BuildUnit, read?: ReadInput): { fingerprint: string; files: Record<string, string> } {
+export function fingerprintWithDigests(unit: BuildUnit, tree?: TreeReader): { fingerprint: string; files: Record<string, string> } {
   const files: Record<string, string> = {};
-  const fingerprint = fingerprintUnit(unit, (file, digest) => { files[file] = digest; }, read);
+  const fingerprint = fingerprintUnit(unit, (file, digest) => { files[file] = digest; }, tree);
   return { fingerprint, files };
 }
 
@@ -418,8 +438,8 @@ export interface InputChanges {
  * bytes it already had appears in none of these, which is the whole point — mtime says it was written and the
  * cache does not care, and reading one as the other is what sent a diagnosis after the wrong file.
  */
-export function changedInputs(unit: BuildUnit, recorded: { files: Record<string, string>; declared: readonly string[] }, read?: ReadInput): InputChanges {
-  const now = fingerprintWithDigests(unit, read).files;
+export function changedInputs(unit: BuildUnit, recorded: { files: Record<string, string>; declared: readonly string[] }, tree?: TreeReader): InputChanges {
+  const now = fingerprintWithDigests(unit, tree).files;
   const declared = new Set(recorded.declared);
   const wasDeclared = declaredPaths(unit);
   return {
@@ -461,7 +481,7 @@ export function stampRecord(stamp: string): StampRecord | undefined {
  * throws. The wording is deliberately not about building: the chain's steps go through this too, and most
  * of them are checks that produce nothing (`stampedRun`, `scripts/chain.ts`).
  */
-export function unitStaleReason(unit: BuildUnit, stamp: string, read?: ReadInput): string | null {
+export function unitStaleReason(unit: BuildUnit, stamp: string, tree?: TreeReader): string | null {
   const missing = unit.outputs.filter((output) => !fs.existsSync(output)).map(repoRelative);
   if (missing.length > 0) return `not built (no ${missing.join(', ')})`;
   const record = stampRecord(stamp) ?? {};
@@ -469,7 +489,7 @@ export function unitStaleReason(unit: BuildUnit, stamp: string, read?: ReadInput
   // A stamp from another protocol says nothing about this one, so it counts as never built
   if (record.version !== STAMP_VERSION) return `its stamp is from another format (${String(record.version)}, this is ${STAMP_VERSION})`;
   try {
-    return record.fingerprint === fingerprintUnit(unit, undefined, read) ? null : 'its inputs changed since the last successful run';
+    return record.fingerprint === fingerprintUnit(unit, undefined, tree) ? null : 'its inputs changed since the last successful run';
   } catch (err) {
     return `its sources could not be read (${(err as Error).message})`;
   }
@@ -479,9 +499,10 @@ export function unitStaleReason(unit: BuildUnit, stamp: string, read?: ReadInput
  * One reading of the tree, shared by every question asked of this sweep.
  *
  * Units overlap heavily — measured on this repo, twelve chain steps declare 18,001 files between them and only
- * 3,518 distinct ones, so the primitive reads `packages/*` and the shared trees five times over. Asking them
- * through a sweep reads each file once: 456ms of reading and hashing becomes 153ms, and the fingerprints come out
- * byte-identical, because what is shared is the I/O and not the derivation.
+ * 3,518 distinct ones, and 807 declared targets of which 311 are distinct. So the primitive reads `packages/*`
+ * and the shared trees five times over and walks them nearly three times over. Through a sweep each file is read
+ * once (456ms of reading and hashing becomes 153ms) and each target walked once (129ms becomes 30ms), and the
+ * fingerprints come out byte-identical, because what is shared is the looking and not the derivation.
  *
  * **A sweep must not outlive the one question it was made for.** It answers as of its first read of each file, so
  * a sweep kept across time reports a tree that has moved on. Holding an object is what makes that somebody's
@@ -497,15 +518,22 @@ export function freshnessSweep(): {
   staleReason: (unit: BuildUnit, stamp: string) => string | null;
   changedInputs: (unit: BuildUnit, recorded: { files: Record<string, string>; declared: readonly string[] }) => InputChanges;
 } {
+  const walked = new Map<string, string[]>();
   const seen = new Map<string, Buffer | null>();
-  const read: ReadInput = (file) => {
+  const tree: TreeReader = {
+    list: (target) => {
+      if (!walked.has(target)) walked.set(target, readTree.list(target));
+      return walked.get(target)!;
+    },
     // `has`, not a truthy check: `null` is an answer — the file was not there when this sweep looked
-    if (!seen.has(file)) seen.set(file, readInput(file));
-    return seen.get(file) ?? null;
+    read: (file) => {
+      if (!seen.has(file)) seen.set(file, readTree.read(file));
+      return seen.get(file) ?? null;
+    },
   };
   return {
-    staleReason: (unit, stamp) => unitStaleReason(unit, stamp, read),
-    changedInputs: (unit, recorded) => changedInputs(unit, recorded, read),
+    staleReason: (unit, stamp) => unitStaleReason(unit, stamp, tree),
+    changedInputs: (unit, recorded) => changedInputs(unit, recorded, tree),
   };
 }
 

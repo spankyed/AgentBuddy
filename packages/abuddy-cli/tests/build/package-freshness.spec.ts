@@ -590,6 +590,20 @@ describe('a freshness sweep', () => {
     }
   });
 
+  /**
+   * The walk's half of the snapshot, which only a memoised walk can satisfy: a file that did not exist when the
+   * sweep first looked at a target is not there for it, however many units declare that target afterwards.
+   */
+  it('does not see a file added after it started, where a later sweep does', () => {
+    const f = fixture();
+    const stamp = stampFor(f);
+    const sweep = freshnessSweep();
+    expect(sweep.staleReason(f.unit, stamp)).toBeNull();
+    fs.writeFileSync(path.join(f.src, 'c.ts'), 'export const c = 3;\n');
+    expect(sweep.staleReason(f.unit, stamp), 'it walked the target again').toBeNull();
+    expect(freshnessSweep().staleReason(f.unit, stamp)).toMatch(/inputs changed/);
+  });
+
   /** Why a sweep must be short-lived, asserted rather than left to its comment */
   it('does not see a change made after it started, where a later sweep does', () => {
     const f = fixture();
