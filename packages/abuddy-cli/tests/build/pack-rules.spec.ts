@@ -102,6 +102,10 @@ const FIRES: Record<PackRuleKey, { onFile?: [code: string, problem: string][]; e
   'cross-feature-imports': { elsewhere: "cross-feature-imports flags another feature's frontend and allows a feature its own" },
   // The pack as a whole: which module is a contract comes from the manifest, so its case needs one
   'contract-leaves': { elsewhere: 'contract-leaves flags a contract leaf that reaches its own machine' },
+  'repository-casts': {
+    onFile: [['const notes = repository as unknown as Repositories;\n', 'src/f.ts:1: repository as unknown as Repositories']],
+    elsewhere: 'repository-casts allows the generated facade, which is this cast by design',
+  },
 };
 
 /** The `onFile` rows flattened for `it.each`, which wants one row per case rather than one per rule */
@@ -125,6 +129,19 @@ describe('every rule', () => {
 
   it.each(FIRES_ON_A_FILE)('%s fires on an offending file', (key, code, problem) => {
     expect(problems(completePack({ 'src/f.ts': code }), key as PackRuleKey)).toEqual([problem]);
+  });
+
+  /**
+   * `abuddy generate-entries` writes this very cast into every pack's `#generated/repository`, where it is the
+   * point: the registry is untyped and the facade is what types it. It escapes the rule's shape only by naming
+   * its import `earsRepository`, which is a rename away from failing every pack's build, so the exemption is by
+   * what the file *is*. The offending spelling outside `__generated__` still fires, or the exemption would be
+   * the rule.
+   */
+  it('repository-casts allows the generated facade, which is this cast by design', () => {
+    const cast = 'export const repository = repository as unknown as Repositories;\n';
+    const dir = completePack({ 'src/__generated__/written-by-codegen.ts': cast, 'src/hand-written.ts': cast });
+    expect(problems(dir, 'repository-casts')).toEqual(['src/hand-written.ts:1: repository as unknown as Repositories']);
   });
 
   it('backend-console fires under a backend path and not under a frontend one', () => {
@@ -383,7 +400,7 @@ describe('when several rules are right about one site', () => {
       'host-imports', 'lmdb-imports',
       'own-modules', 'pack-own-aliases',
       'internal-package-imports',
-      'untyped-sends', 'raw-transport', 'backend-console', 'cross-feature-imports',
+      'untyped-sends', 'raw-transport', 'backend-console', 'cross-feature-imports', 'repository-casts',
     ]);
   });
 });

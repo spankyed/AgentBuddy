@@ -153,8 +153,9 @@ Checks:
 | `raw-transport` | `_rootEvents`, `trpc.bus`, `@abuddy/sdk/rpc` |
 | `backend-console` | `console.*` under `features/*/be/`, `migrations/` or `extensions/` — use `createLogger` from `@abuddy/sdk/logger` |
 | `cross-feature-imports` | a module of another feature's `fe/`, and a feature passing its own frontend on (`export … from './fe/state.ts'`). What a feature offers the rest is its plugin's contract, read through `#generated/fe` and `#generated/events` |
+| `repository-casts` | `repository as unknown as …`, reading a repository through a type its owner never declared. `repository` from `#generated/repository` is already typed with your own repositories and your dependencies' |
 
-The last four have no effect at run time, so a pack may switch them off in **`abuddy.checks.json`** at its root:
+The last five have no effect at run time, so a pack may switch them off in **`abuddy.checks.json`** at its root:
 
 ```json
 { "allow": ["backend-console", "untyped-sends"] }

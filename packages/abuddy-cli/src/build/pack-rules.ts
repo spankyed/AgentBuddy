@@ -129,6 +129,21 @@ function importedFrom(node: ts.Node): { module: string; names: string[] } | unde
   return undefined;
 }
 
+/** The engine's repository registry, `repository` or `….repository`, through parentheses */
+const isRepository = (node: ts.Expression): boolean => {
+  const inner = ts.isParenthesizedExpression(node) ? node.expression : node;
+  return (ts.isIdentifier(inner) && inner.text === 'repository')
+    || (ts.isPropertyAccessExpression(inner) && inner.name.text === 'repository');
+};
+
+/** `repository as unknown as X`: reading repositories through a type the registering package doesn't declare */
+const repositoryCast = (node: ts.Node): string[] | undefined => {
+  if (!ts.isAsExpression(node)) return;
+  const inner = ts.isParenthesizedExpression(node.expression) ? node.expression.expression : node.expression;
+  if (!ts.isAsExpression(inner) || inner.type.kind !== ts.SyntaxKind.UnknownKeyword || !isRepository(inner.expression)) return;
+  return [node.getText()];
+};
+
 /**
  * Every pack rule, **in precedence order**: when several are right about one site, the first reports it and the
  * rest stand down (`packRuleProblems`). The order is the order of causes — what stops the pack loading at all,
@@ -281,6 +296,20 @@ const RULE_LIST = [
     rule: "A feature's frontend is its own: what it offers other features is its plugin's contract, read through "
       + '#generated/fe and #generated/events, never a module of its own',
     check: crossFeatureFindings,
+  },
+  {
+    key: 'repository-casts',
+    switchable: true,
+    rule: "Read repositories through their owner's exports — a pack through `repository` from "
+      + "#generated/repository, which types its own and its dependencies' — never through a cast of the engine's "
+      + 'registry',
+    check(view, place) {
+      // The generated facade *is* this cast (`export const repository = earsRepository as unknown as
+      // Repositories`), and escapes the shape below only by its import alias. Exempt it for what it is, so that
+      // renaming that local in codegen cannot fail every pack's build.
+      if (place.generated) return [];
+      return view.visit(repositoryCast);
+    },
   },
 ] as const satisfies readonly PackRule[];
 

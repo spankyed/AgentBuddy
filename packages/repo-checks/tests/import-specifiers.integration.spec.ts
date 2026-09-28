@@ -623,6 +623,23 @@ describe('CHECKS', () => {
     }
   });
 
+  /**
+   * The gap, kept closed.
+   *
+   * `unenforced` is the answer for a rule a pack can break while nothing outside this repo refuses it, and it
+   * has no members — `repository-casts` was the last and is a pack rule now. The variant stays because without
+   * it the next such rule has nowhere honest to go: whoever adds it reaches for `inapplicable`, a claim no check
+   * can contradict, and the gap reopens in silence. If the work seems to need a row here, that is a decision to
+   * raise rather than take.
+   */
+  it('lists no rule a pack can break while only this repo checks it', () => {
+    const repoOnly = CHECKS.filter((rule) => rule.repoOnly !== undefined);
+    expect(repoOnly.length, 'no rule is this repo\'s alone, so this would pass over nothing').toBeGreaterThan(0);
+    expect(repoOnly.filter((rule) => rule.repoOnly!.kind === 'unenforced').map((rule) => rule.id),
+      'an external pack can break this and nothing refuses it — move it to PACK_RULES, or say which kind it really is')
+      .toEqual([]);
+  });
+
   /** And every rule reaches the printed table, under a header, one line each */
   it('prints a header and one line per rule', () => {
     const lines = ruleTable(ruleRows());
@@ -657,12 +674,12 @@ describe('CHECKS', () => {
     // what actually runs — so a mismatch prints one rule's wording over another rule's offences. Nothing else
     // notices: the ownership guard below asks only that a key is declared, not that it is this one.
     //
-    // Only for a rule the CLI owns. The sweep's subjects are derived from what each rule reads, and a repo-only
-    // rule is swept for the same ownership property while having no key to check — `findRepositoryCasts` is one,
-    // and requiring a key of it failed the moment the derivation brought it in.
+    // And a key is always there to check, because every rule that reads a pack's `src` is one the CLI owns. That
+    // is what moving the last one established: a rule swept here without a key would be one this repo holds its
+    // own packs to while an external pack is free of it, which is the gap, not an exemption from this case.
     const declared = CHECKS.find((rule) => rule.id === id)?.packRule;
-    if (declared === undefined) return;
-    expect(packRule(declared, PACK_SRC, root),
+    expect(declared, `${id} reads a pack's src and names no pack rule, so an external pack is not held to it`).toBeDefined();
+    expect(packRule(declared!, PACK_SRC, root),
       `${id} declares \`${declared}\`, which finds nothing in a tree written to offend ${id}: the key it names is `
       + 'not the rule it runs, so its findings print under the wrong sentence').not.toEqual([]);
   });

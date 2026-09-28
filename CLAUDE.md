@@ -532,7 +532,7 @@ Custom entity-attribute-relation graph database (`@abuddy/ears`) backed by LMDB 
 - `tx()` — transaction execution (synchronous, do NOT await)
 - Repository pattern: a feature's `be/repository/index.ts` exports `<name>Queries`/`<name>Commands` objects (usually from `queries.ts`/`commands.ts`), declared in `abuddy.json` `features[].repositories` as `"path#export"`; code reaches them through `repository` from `#generated/repository`
 - A pack's repository can expose another package's repository methods (default-setup's `actionQueries.byId` is the SDK's `actionRepository.byId`), so its code reaches its data through `repository` alone. It takes them by reference (`byId: actionRepository.byId`), never wrapped in a function that re-declares the signature, and adds its own views beside them
-- Each entity's repository lives with the package that declares it: the SDK's entities' in `@abuddy/sdk/repositories`, a pack's in its features, the host's `AppState` in `@abuddy/host/app-state`. No package reads another's repositories through a cast of the registry (`repository as unknown as` fails `check:specifiers`, `findRepositoryCasts`)
+- Each entity's repository lives with the package that declares it: the SDK's entities' in `@abuddy/sdk/repositories`, a pack's in its features, the host's `AppState` in `@abuddy/host/app-state`. No package reads another's repositories through a cast of the registry, and nor does a pack: `repository as unknown as` is the `repository-casts` pack rule, so `abuddy validate`, `build` and `test` refuse it for any pack and `check:specifiers` (`findRepositoryCasts`) for this repo's packages. The generated facade is exempt, being this cast by design
 
 ### Frontend plugin system
 

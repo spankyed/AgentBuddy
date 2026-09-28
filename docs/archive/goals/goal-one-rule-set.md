@@ -400,6 +400,15 @@ and the second is itself an answer with a kind rather than prose, so "a pack can
 and nothing checks" are told apart by the reader instead of by whoever reads the sentence. This section can no
 longer be the only place that knows.
 
+- **Item 12 was wrong, and what it got wrong was the question.** It asked where a *syntactic* rule belongs —
+  oxlint hosts no custom rule, eslint does not run over `packages/*/src` — and answered "the script", which is
+  true of the mechanism and says nothing about who is held to it. Writing down what each repo-only rule costs an
+  external pack (`4d178809a`) asked the other question and `findRepositoryCasts` was the only rule with an
+  answer: `packages/*/src` includes `default-setup`, so this repo held its own packs to it and external packs
+  were free of it, with `tests/fixtures/external-pack` writing the offence unseen. It is `repository-casts` now,
+  switchable, and the exception is the generated facade, which is this cast by design. The linter question the
+  item recorded is still open and still not the reason.
+
 - **`cross-feature-imports`' stated blocker was real and was cleared.** It was 71 lines of which 33 were the
   rule, the rest the script's last regex pair; porting it to the shared reader (`9ea3558ef`) removed them, and
   the rule moved with `publishedEntryPoints` and `doorSpans` into `abuddy-cli/src/build/pack-features.ts`.

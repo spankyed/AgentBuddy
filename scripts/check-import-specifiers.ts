@@ -482,35 +482,16 @@ export function packageSourceDirs(root = repoRoot): string[] {
     .map((entry) => `packages/${entry.name}/src`);
 }
 
-/** The engine's repository registry, `repository` or `….repository`, through parentheses */
-const isRepository = (node: ts.Expression): boolean => {
-  const inner = ts.isParenthesizedExpression(node) ? node.expression : node;
-  return (ts.isIdentifier(inner) && inner.text === 'repository')
-    || (ts.isPropertyAccessExpression(inner) && inner.name.text === 'repository');
-};
-
-/** `repository as unknown as X`: reading repositories through a type the registering package doesn't declare */
-const repositoryCast: Rule = (node) => {
-  if (!ts.isAsExpression(node)) return;
-  const inner = ts.isParenthesizedExpression(node.expression) ? node.expression.expression : node.expression;
-  if (!ts.isAsExpression(inner) || inner.type.kind !== ts.SyntaxKind.UnknownKeyword || !isRepository(inner.expression)) return;
-  return [node.getText()];
-};
-
 /**
  * `file:line: code` for each `repository as unknown as …` in `dirs`: each entity's repository lives
  * with the package that declares it, and other packages call it through its exports
  * (docs/goals/goal-package-boundaries.md, Decision 7), never through a cast of the engine's registry.
  *
- * **Why this one is here and not in a linter.** It is a syntactic pattern, which is a linter's job — but
- * oxlint 1.8 hosts no custom rule from the CLI (no `--js-plugins`, no `jsPlugins` in its config schema; its
- * external-plugin path needs the napi host) and has no `no-restricted-syntax` to express it declaratively,
- * and eslint runs only over `packages/renderer` while this covers the `src` of every package. Extending eslint to
- * eleven workspaces to host one rule that fires nowhere today costs more than the rule is worth. Revisit when
- * oxlint's external-plugin path ships in the published binary.
+ * The rule is the CLI's, so an external pack is refused it too. It reads more than the packs here — every
+ * package's `src`, which is where all four of its real cases are.
  */
 export function findRepositoryCasts(dirs: readonly string[] = packageSourceDirs(), root = repoRoot): string[] {
-  return findInFiles(packFiles(dirs, root), root, repositoryCast);
+  return packRule('repository-casts', dirs, root);
 }
 
 /** The export condition under which @abuddy/* workspace packages resolve their TypeScript source */
@@ -1320,17 +1301,7 @@ const RULE_LIST = [
     find: findSharedPackageLists,
     rule: 'Derive shared-instance packages from SHARED_INSTANCE_PACKAGES (@abuddy/host/build/shared-deps) instead of naming them',
   },
-  {
-    id: 'findRepositoryCasts',
-    over: packageSourceDirs(),
-    repoOnly: { kind: 'unenforced', note: '`packages/*/src` includes `default-setup`, so a built-in pack is held to '
-      + 'this and an external pack is not. Nothing else refuses `repository as unknown as` outside this repo — oxlint '
-      + 'hosts no custom rule and eslint does not run where this applies — and `tests/fixtures/external-pack` writes '
-      + 'the offence today, unseen' },
-    find: () => findRepositoryCasts(packageSourceDirs()),
-    overPaths: (paths, root = repoRoot) => findRepositoryCasts(paths, root),
-    rule: "Call a package's repositories through its exports, not a cast of the repository registry",
-  },
+  backed('findRepositoryCasts', 'repository-casts', findRepositoryCasts, packageSourceDirs()),
   backed('findCrossFeatureImports', 'cross-feature-imports', findCrossFeatureImports, PACK_SRC_ROOTS),
   backed('findContractLeafImports', 'contract-leaves', findContractLeafImports, PACK_SRC_ROOTS),
   {
