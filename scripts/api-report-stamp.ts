@@ -132,6 +132,20 @@ const DOC_COMMENT = /\/\*\*[\s\S]*?\*\//g;
  * sequence within a string literal type would not be seen here. `api:check` is still the authority and
  * still runs in the full chain before a merge.
  */
+/**
+ * Not normalised for union order, which is worth knowing before diagnosing a mystery here.
+ *
+ * `tsc` prints an inferred union's members in the order it created the member types, and that order changes
+ * between builds — measured 2026-09-28 on the pack's declaration bundles, where one file took five distinct
+ * hashes in six builds. This hashes declaration text, so an @abuddy package whose `.d.ts` grew such a union
+ * could make `api:stamp` move with no source change, failing `typecheck` with "run npm run api:update" for
+ * nothing.
+ *
+ * It is not happening: `npm run check:repro` compared all five packages' `dist` across two builds and found
+ * them identical, because those come from `tsc` directly rather than through the rollup-plugin-dts path where
+ * this bites. So this is a recorded exposure, not a bug, and the fix if it ever fires is the one the emitter
+ * already uses — `sortLiteralUnions` (`@abuddy/cli`'s `build/types-bundler.ts`).
+ */
 export function apiSurfaceOf(declarations: string): string {
   return declarations.replace(DOC_COMMENT, (comment) => {
     const lines = comment.split('\n').map((line) => line.trim().replace(/^\*+\s?/, '').replace(/\s*\*\/$/, '').trim());

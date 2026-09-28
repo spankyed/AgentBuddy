@@ -81,35 +81,51 @@ describe('the comparison', () => {
 });
 
 /**
- * The recorded exceptions. Unlike every other exception table here, a stale entry is *reported* rather than
- * failed: all three are races, so a run where one happens to agree says nothing about whether it is fixed,
- * and failing on that would make the check flaky in the direction of a false green.
+ * The recorded exceptions, and the reason the table is empty.
  *
- * What can still be asserted is that an entry names a path the check actually looks at. An exception for a
- * file outside the derived population is dead text that reads as coverage.
+ * It held three, all of them `tsc` ordering a union's members differently between builds. They were fixed at
+ * the emitter rather than accepted (`sortLiteralUnions`, the CLI's `types-bundler.ts`), so the table emptied.
+ *
+ * With nothing in it, asserting things *about* entries would pass over nothing — so the validator runs
+ * against fixture tables that do have entries, and the real table is asserted empty separately. That way
+ * neither half is vacuous: the rules are watched failing, and re-adding a row without a measurement fails a
+ * case that says so.
  */
 describe('the recorded irreproducible outputs', () => {
-  it('each name a path inside the population, so none is dead text', () => {
-    const paths = reproPaths();
-    const covered = (file: string) => paths.some((p) => file === p || file.startsWith(`${p}/`));
-    expect(Object.keys(KNOWN_IRREPRODUCIBLE), 'nothing is recorded, so this passes over nothing').not.toEqual([]);
-    expect(Object.keys(KNOWN_IRREPRODUCIBLE).filter((file) => !covered(file)),
-      'these are recorded as known-irreproducible but sit outside the trees the check compares, so the entry '
-      + 'explains nothing and no run can reach it').toEqual([]);
+  /** What an entry must satisfy: a path the check actually compares, and a reason worth reading */
+  const problems = (table: Record<string, string>, paths: readonly string[]): string[] => [
+    ...Object.keys(table).filter((file) => !paths.some((p) => file === p || file.startsWith(`${p}/`)))
+      .map((file) => `${file}: outside the compared trees`),
+    ...Object.entries(table).filter(([, why]) => why.trim().length < 20).map(([file]) => `${file}: no reason given`),
+  ];
+
+  it('is empty, because the three it held were fixed rather than accepted', () => {
+    expect(KNOWN_IRREPRODUCIBLE,
+      'an entry here claims an output cannot be made reproducible. The three that were here were `tsc` union '
+      + 'ordering and were fixed at the emitter; a new one needs the measurement that says this one cannot be')
+      .toEqual({});
   });
 
-  it('each carry a reason, since an unexplained exception is just a silenced failure', () => {
-    expect(Object.entries(KNOWN_IRREPRODUCIBLE).filter(([, why]) => why.trim().length < 20).map(([file]) => file)).toEqual([]);
+  // The validator, watched failing — the half the empty table above cannot exercise
+  it('would reject an entry naming a path the check never compares', () => {
+    expect(problems({ 'packages/nowhere/dist/ghost.json': 'a reason long enough to pass the other rule' }, reproPaths()))
+      .toEqual(['packages/nowhere/dist/ghost.json: outside the compared trees']);
+  });
+
+  it('would reject an entry with no reason, since that is a silenced failure', () => {
+    const inside = `${reproPaths()[0]!}/x.js`;
+    expect(problems({ [inside]: 'too short' }, reproPaths())).toEqual([`${inside}: no reason given`]);
+  });
+
+  it('accepts an entry that names a compared path and says why', () => {
+    const inside = `${reproPaths()[0]!}/x.js`;
+    expect(problems({ [inside]: 'tsc orders this union differently between builds; five hashes in six' }, reproPaths())).toEqual([]);
   });
 
   /** The split itself: a recorded path is reported, anything else fails the run */
   it('are reported while an unrecorded difference fails', () => {
-    const recorded = Object.keys(KNOWN_IRREPRODUCIBLE)[0]!;
-    const { failing, known } = partition([
-      { path: recorded, kind: 'changed' },
-      { path: 'packages/abuddy-sdk/dist/index.js', kind: 'changed' },
-    ]);
-    expect(known.map((d) => d.path)).toEqual([recorded]);
+    const { failing, known } = partition([{ path: 'packages/abuddy-sdk/dist/index.js', kind: 'changed' }]);
+    expect(known).toEqual([]);
     expect(failing.map((d) => d.path)).toEqual(['packages/abuddy-sdk/dist/index.js']);
   });
 });

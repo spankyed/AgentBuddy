@@ -70,24 +70,18 @@ export function snapshot(paths: readonly string[], root = REPO_ROOT): Map<string
  * Outputs measured as irreproducible, with the cause, so a difference at one of them is reported rather than
  * failing the run. Everything else failing is the point of the check.
  *
- * **All three are TypeScript's declaration emit, not a bundler** — which is the opposite of what
- * `docs/archive/plans/pack-runtime-nondeterminism.md` predicted, and was found by this check's first run
- * (2026-09-28). `tsc` prints the members of a union in an order that varies between runs, so a key union
- * comes out `"topic" | "status"` one time and `"status" | "topic"` the next. Measured over six builds:
- * `action-defs.d.ts` took five distinct hashes, and the other two flipped together once.
+ * **Empty, and it took holding three entries to get there.** The first run recorded
+ * `pack-types.d.ts`, `action-defs.d.ts` and `snapshot.json`, all of them `tsc` printing a union's members in
+ * the order it created the member types — an order that changes between builds, so the same sources emitted
+ * different bytes. That was fixed rather than accepted: `sortLiteralUnions` in the CLI's `types-bundler.ts`
+ * now sorts them at the one point that writes a declaration bundle, and six consecutive builds produce one
+ * hash where `action-defs.d.ts` alone had taken five in six.
  *
- * **Intermittent, so a listed path agreeing on a given run means nothing** — which is why a stale entry here
- * is reported and not failed, unlike every other exception table in this repo. Re-measure over several runs
- * before deleting one.
+ * So a new entry here is a claim that something cannot be fixed, and it needs the measurement to say so.
+ * Note the one asymmetry if one is ever added: a stale entry is *reported*, not failed, because this class of
+ * nondeterminism is a race and a run where one happens to agree is not evidence it is gone.
  */
-export const KNOWN_IRREPRODUCIBLE: Readonly<Record<string, string>> = {
-  'packages/default-setup/dist/defs/monaco/action-defs.d.ts':
-    "tsc declaration emit orders a union's members differently between runs; five hashes in six builds",
-  'packages/default-setup/dist/types/pack-types.d.ts':
-    'the facade bundle, same tsc union ordering; flips with snapshot.json, which records its hash',
-  'packages/default-setup/dist/snapshot.json':
-    'records a hash of the facade bundle above, so it moves whenever that does',
-};
+export const KNOWN_IRREPRODUCIBLE: Readonly<Record<string, string>> = {};
 
 /** The differences that fail a run, and the ones a recorded cause explains */
 export function partition(differences: readonly Difference[]): { failing: Difference[]; known: Difference[] } {

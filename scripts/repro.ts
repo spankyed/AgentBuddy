@@ -67,18 +67,23 @@ if (before.size === 0) {
 
 const { failing, known } = partition(compare(before, after));
 
-// Printed whether or not it fired: these are races, so a run where one happens to agree is not evidence it is
-// fixed, and a silent pass would let the reader believe the tree is reproducible when it is not.
-process.stdout.write(`\n${Object.keys(KNOWN_IRREPRODUCIBLE).length} outputs are recorded as irreproducible `
-  + `(tsc declaration emit); ${known.length} of them differed this run:\n`);
-for (const path of Object.keys(KNOWN_IRREPRODUCIBLE).sort()) {
-  const differed = known.some((d) => d.path === path);
-  process.stdout.write(`  ${differed ? 'differed' : 'agreed  '}  ${path}\n    ${KNOWN_IRREPRODUCIBLE[path]}\n`);
+// Printed whether or not one fired: these are races, so a run where a recorded output happens to agree is
+// not evidence it is fixed, and a silent pass would let the reader believe the tree is reproducible when it
+// is not. With nothing recorded there is nothing to caveat, so it says so in one line.
+const recorded = Object.keys(KNOWN_IRREPRODUCIBLE).sort();
+if (recorded.length === 0) {
+  process.stdout.write('\nno outputs are recorded as irreproducible, so every difference below is a failure\n');
+} else {
+  process.stdout.write(`\n${recorded.length} outputs are recorded as irreproducible; ${known.length} differed this run:\n`);
+  for (const path of recorded) {
+    process.stdout.write(`  ${known.some((d) => d.path === path) ? 'differed' : 'agreed  '}  ${path}\n    ${KNOWN_IRREPRODUCIBLE[path]}\n`);
+  }
 }
 
 if (failing.length === 0) {
+  const caveat = known.length === 0 ? '' : `, bar the ${known.length} recorded above`;
   process.stdout.write(`\n✅ ${before.size - known.length} of ${before.size} built files are identical across two `
-    + 'builds of the same input, and the rest are the recorded ones above\n');
+    + `builds of the same input${caveat}\n`);
 } else {
   process.stderr.write(`\n❌ ${failing.length} of ${before.size} built files did not survive a second build `
     + 'of the same input, and no recorded cause explains them:\n');
