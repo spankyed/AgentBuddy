@@ -94,15 +94,20 @@ describe('the chain reads every source file', () => {
    * `build/prod/diagnostics.mjs` failed `lint:check` while the chain planned `typecheck` as cached.
    *
    * `lint:check` lints in two passes and both are derived here. The root one is `oxlint .` minus `packages/**`
-   * and `docs/**`; the other is `npm run lint:check -ws`, each workspace's own script, run from that package's
-   * directory — which is why a target resolves against a base rather than the repo root. Expanding a script's
-   * text is not enough to see the second: the root script's own first clause *is* the fan-out, and `expanded`
-   * substitutes each `npm run` once, so the workspace passes stayed invisible and a package-root `.mjs` no step
-   * declared went unnoticed until someone read the command by hand.
+   * and `docs/**`; the other is the script run in each workspace, from that package's directory — which is why a
+   * target resolves against a base rather than the repo root. Expanding a script's text is not enough to see the
+   * second: the root script's own first clause *is* the fan-out, and `expanded` substitutes each `npm run` once,
+   * so the workspace passes stayed invisible and a package-root `.mjs` no step declared went unnoticed until
+   * someone read the command by hand.
+   *
+   * Everything a pass depends on is derived from the thing that decides it, because a pass this cannot see is a
+   * pass nothing checks and there is no assertion that catches the *absence* of one. So the workspaces come from
+   * the root `workspaces` field rather than a listing of `packages/` that agrees with it today, and both
+   * spellings of the fan-out are followed — `-ws` over all of them and `-w <name>` over the ones it names.
    *
    * Derived from the command, not restated: the targets and the `--ignore-pattern`s are parsed out of the same
-   * string the leg runs, so narrowing the lint scope narrows what this demands. A pattern shape it cannot read
-   * fails rather than passing over whatever it did not understand. The one thing it reads and discards is
+   * string the leg runs, so narrowing the lint scope narrows what this demands. A shape it cannot read fails
+   * rather than passing over whatever it did not understand. The one thing it reads and discards is
    * `--ignore-path .gitignore`, because everything it considers comes from `git ls-files` and a gitignored file
    * is not tracked; any other ignore file is exclusions it cannot account for, and fails.
    *
@@ -117,7 +122,8 @@ describe('the chain reads every source file', () => {
     // What oxlint parses, which is narrower than `CODE`: a shell script is tracked code and no linter's input
     const LINTS = /\.(ts|tsx|mts|cts|js|mjs|cjs|jsx|vue)$/;
     const lintable = trackedCode().filter((file) => LINTS.test(file));
-    const oxlintCalls = (command: string): string[] => command.split('&&').filter((part) => /(^|\s)oxlint(\s|$)/.test(part));
+    const clauses = (command: string): string[] => command.split('&&');
+    const isOxlintCall = (clause: string): boolean => /(^|\s)oxlint(\s|$)/.test(clause);
 
     /** The tracked files one oxlint call walks. `base` is the package directory it runs from, empty at the root */
     const walkedBy = (call: string, base: string): Set<string> => {
@@ -154,23 +160,48 @@ describe('the chain reads every source file', () => {
       return walked;
     };
 
-    const workspaces = fs
-      .readdirSync(path.join(REPO_ROOT, 'packages'), { withFileTypes: true })
-      .filter((entry) => entry.isDirectory() && fs.existsSync(path.join(REPO_ROOT, 'packages', entry.name, 'package.json')))
-      .map((entry) => entry.name);
-    const scriptsOf = (workspace: string): Record<string, string> =>
-      JSON.parse(fs.readFileSync(path.join(REPO_ROOT, 'packages', workspace, 'package.json'), 'utf-8')).scripts ?? {};
+    const rootManifest = JSON.parse(fs.readFileSync(path.join(REPO_ROOT, 'package.json'), 'utf-8')) as { workspaces?: readonly string[] };
+    const workspaces = (rootManifest.workspaces ?? []).flatMap((glob) => {
+      const dir = /^([\w./-]+)\/\*$/.exec(glob)?.[1];
+      expect(dir, `this only reads a \`dir/*\` workspace glob, and got \`${glob}\``).toBeDefined();
+      return fs
+        .readdirSync(path.join(REPO_ROOT, dir!), { withFileTypes: true })
+        .filter((entry) => entry.isDirectory() && fs.existsSync(path.join(REPO_ROOT, dir!, entry.name, 'package.json')))
+        .map((entry) => `${dir}/${entry.name}`);
+    });
+    expect(workspaces, 'the root `workspaces` field named none, so every workspace pass would be invisible').not.toEqual([]);
+    const manifests = new Map(workspaces.map((workspace) => [
+      workspace,
+      JSON.parse(fs.readFileSync(path.join(REPO_ROOT, workspace, 'package.json'), 'utf-8')) as { name?: string; scripts?: Record<string, string> },
+    ]));
+
+    /** The script a clause fans out, and the workspaces it reaches; `undefined` when the clause fans out nothing */
+    const fanOut = (clause: string): { readonly script: string; readonly at: readonly string[] } | undefined => {
+      const script = /npm run ([\w:-]+)/.exec(clause)?.[1];
+      if (script === undefined) return undefined;
+      if (/(^|\s)(-ws|--workspaces)(\s|$)/.test(clause)) return { script, at: workspaces };
+      const named = [...clause.matchAll(/(?:^|\s)(?:-w|--workspace)\s+(\S+)/g)].map((match) => match[1]!);
+      if (named.length === 0) return undefined;
+      return {
+        script,
+        at: named.map((one) => {
+          const found = workspaces.find((workspace) => manifests.get(workspace)!.name === one);
+          expect(found, `\`-w ${one}\` names no workspace`).toBeDefined();
+          return found!;
+        }),
+      };
+    };
 
     const passes: { readonly at: string; readonly call: string; readonly files: Set<string> }[] = [];
     for (const leg of TYPECHECK_LEGS) {
-      const command = expanded(leg.command);
-      for (const call of oxlintCalls(command)) passes.push({ at: '', call, files: walkedBy(call, '') });
-      for (const [, name] of command.matchAll(/npm run ([\w:-]+) -ws/g)) {
-        for (const workspace of workspaces) {
-          const script = scriptsOf(workspace)[name!];
+      for (const clause of clauses(expanded(leg.command))) {
+        if (isOxlintCall(clause)) passes.push({ at: '', call: clause, files: walkedBy(clause, '') });
+        const fan = fanOut(clause);
+        if (fan === undefined) continue;
+        for (const workspace of fan.at) {
+          const script = manifests.get(workspace)!.scripts?.[fan.script];
           if (script === undefined) continue;
-          const base = `packages/${workspace}`;
-          for (const call of oxlintCalls(script)) passes.push({ at: base, call, files: walkedBy(call, base) });
+          for (const call of clauses(script).filter(isOxlintCall)) passes.push({ at: workspace, call, files: walkedBy(call, workspace) });
         }
       }
     }
@@ -182,7 +213,7 @@ describe('the chain reads every source file', () => {
       expect(pass.files.size, `\`${pass.call.trim()}\`${pass.at === '' ? '' : ` in ${pass.at}`} derived no file, so it demands nothing`).toBeGreaterThan(0);
     }
     expect(passes.some((pass) => pass.at === ''), 'no root oxlint call was derived').toBe(true);
-    expect(passes.some((pass) => pass.at !== ''), 'no workspace oxlint call was derived — the `-ws` fan-out stopped being followed').toBe(true);
+    expect(passes.some((pass) => pass.at !== ''), 'no workspace oxlint call was derived — the fan-out stopped being followed').toBe(true);
 
     const linted = new Set(passes.flatMap((pass) => [...pass.files]));
     const step = CHAIN_STEPS.find((candidate) => candidate.name === 'typecheck')!;
