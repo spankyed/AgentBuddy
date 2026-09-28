@@ -4,6 +4,7 @@ import * as path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { REPO_ROOT } from '@abuddy/host/build/packages-built';
 import { afterEach, describe, expect, it } from 'vitest';
+import { packFixture } from '@abuddy/host/testing/pack-fixture';
 import { formatPackWide, loadPackChecks, packRuleProblems, PACK_RULES, refusePackRuleViolations, type PackRuleKey } from '../../src/build/pack-rules.ts';
 import { resetSourceCache } from '../../src/build/pack-sources.ts';
 
@@ -107,19 +108,19 @@ const FIRES_ELSEWHERE: Partial<Record<PackRuleKey, string>> = {
  */
 describe('every rule', () => {
   /** A pack with an imports map, a generated facade to resolve against, and whatever else the case writes */
-  const packWithImports = (files: Record<string, string>) => pack({
-    'package.json': JSON.stringify({ name: 'p', type: 'module', imports: { '#generated/*': './src/__generated__/*' } }),
-    'src/__generated__/events.ts': 'export const sendToSystem = 1;\n',
-    'src/sibling.ts': 'export const sibling = 1;\n',
-    ...files,
-  });
+  /** A complete pack, in a temp directory this file removes: the shape is `packFixture`'s, the lifetime is ours */
+  const completePack = (files: Record<string, string>) => {
+    const dir = packFixture({ files });
+    dirs.push(dir);
+    return dir;
+  };
 
   it.each(FIRES_ON_A_FILE)('%s fires on an offending file', (key, code, problem) => {
-    expect(problems(packWithImports({ 'src/f.ts': code }), key as PackRuleKey)).toEqual([problem]);
+    expect(problems(completePack({ 'src/f.ts': code }), key as PackRuleKey)).toEqual([problem]);
   });
 
   it('backend-console fires under a backend path and not under a frontend one', () => {
-    const dir = packWithImports({
+    const dir = completePack({
       'src/features/notes/be/system.ts': "console.log('x');\n",
       'src/features/notes/fe/state.ts': "console.log('x');\n",
     });
@@ -127,7 +128,7 @@ describe('every rule', () => {
   });
 
   it("cross-feature-imports flags another feature's frontend and allows a feature its own", () => {
-    const dir = packWithImports({
+    const dir = completePack({
       'package.json': JSON.stringify({ name: 'p', type: 'module', imports: { '#generated/*': './src/__generated__/*', '#features/*': './src/features/*' } }),
       'src/features/code/fe/panel.ts': "import { id } from '#features/actions/fe/state.ts';\nimport { own } from './state.ts';\n",
       'src/features/code/fe/state.ts': 'export const own = 1;\n',
@@ -173,11 +174,7 @@ describe('every rule', () => {
    * is a contract is what `abuddy.json` says, not what a file looks like.
    */
   it('contract-leaves flags a contract leaf that reaches its own machine', () => {
-    const dir = packWithImports({
-      'abuddy.json': JSON.stringify({
-        id: 'p', name: 'P', version: '1.0.0',
-        features: [{ id: 'notes', plugin: { entry: 'src/features/notes/fe/plugin.ts', contract: 'src/features/notes/fe/contract.ts#Contract' } }],
-      }),
+    const dir = completePack({
       'src/features/notes/fe/contract.ts': "import type { Ctx } from './state.ts';\nexport type Contract = { state: Ctx };\n",
       'src/features/notes/fe/state.ts': "import { sendToPlugin } from '#generated/events.ts';\nexport type Ctx = { sent: typeof sendToPlugin };\n",
     });
@@ -193,11 +190,7 @@ describe('every rule', () => {
    * `contract-leaves` keeps it, being second in that order where the crossing is last.
    */
   it('reports a contract leaf reaching another feature under one rule, not two', () => {
-    const dir = packWithImports({
-      'abuddy.json': JSON.stringify({
-        id: 'p', name: 'P', version: '1.0.0',
-        features: [{ id: 'notes', plugin: { entry: 'src/features/notes/fe/plugin.ts', contract: 'src/features/notes/fe/contract.ts#Contract' } }],
-      }),
+    const dir = completePack({
       'src/features/notes/fe/contract.ts': "import type { T } from '../../threads/fe/state.ts';\nexport type Contract = { state: { t: T } };\n",
       'src/features/notes/fe/plugin.ts': 'export type P = { id: string };\n',
       'src/features/threads/fe/state.ts': 'export type T = { id: string };\n',
@@ -213,11 +206,7 @@ describe('every rule', () => {
    * the key passes every other case in this file, so this is the one that holds it.
    */
   it('claims the offence a whole-pack rule named, not the whole line it sat on', () => {
-    const dir = packWithImports({
-      'abuddy.json': JSON.stringify({
-        id: 'p', name: 'P', version: '1.0.0',
-        features: [{ id: 'notes', plugin: { entry: 'src/features/notes/fe/plugin.ts', contract: 'src/features/notes/fe/contract.ts#Contract' } }],
-      }),
+    const dir = completePack({
       'src/features/notes/fe/contract.ts':
         "import type { T } from '../../threads/fe/state.ts'; import { untypedSendToSystem } from '@abuddy/sdk/events';\n"
         + 'export type Contract = { state: { t: T; send: typeof untypedSendToSystem } };\n',

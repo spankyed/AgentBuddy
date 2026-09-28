@@ -12,6 +12,7 @@ import {
   checkedDirs, type ImportRule, packCodeDirs, packDirs, packRule,
 } from '../../../scripts/check-import-specifiers.ts';
 import { REPO_ROOT } from '@abuddy/host/build/packages-built';
+import { packFixture as buildPackFixture } from '@abuddy/host/testing/pack-fixture';
 
 /** scripts/check-import-specifiers.ts, over a temp tree holding the modules the checks resolve against */
 let root: string;
@@ -464,27 +465,9 @@ const PACK_FIXTURE = 'packages/demo-pack';
 const PACK_SRC = [`${PACK_FIXTURE}/src`];
 const PACK_TESTS = [`${PACK_FIXTURE}/tests`];
 
+/** The shared complete pack, written where these rules' populations look for one */
 function packFixture(files: Record<string, string> = {}): void {
-  writeAt(`${PACK_FIXTURE}/package.json`, JSON.stringify({
-    name: 'demo-pack', type: 'module',
-    imports: { '#generated/*': './src/__generated__/*', '#features/*': './src/features/*' },
-  }));
-  writeAt(`${PACK_FIXTURE}/abuddy.json`, JSON.stringify({
-    id: 'demo-pack', name: 'Demo', version: '1.0.0',
-    features: [{
-      id: 'notes',
-      plugin: { entry: 'src/features/notes/fe/plugin.ts', contract: 'src/features/notes/fe/contract.ts#Contract' },
-      system: { entry: 'src/features/notes/be/system.ts', contract: 'src/features/notes/be/contract.ts#Contract' },
-    }],
-  }));
-  const base: Record<string, string> = {
-    'src/__generated__/events.ts': 'export const sendToSystem = 1;\n',
-    'src/features/notes/fe/plugin.ts': 'export type P = { id: string };\n',
-    'src/features/notes/be/system.ts': 'export const system = 1;\n',
-    'src/features/notes/fe/contract.ts': 'export type Contract = { state: {} };\n',
-    'src/features/notes/be/contract.ts': "export type Contract = { outgoing: { type: 'A' } };\n",
-  };
-  for (const [rel, body] of Object.entries({ ...base, ...files })) writeAt(`${PACK_FIXTURE}/${rel}`, body);
+  buildPackFixture({ at: path.join(root, PACK_FIXTURE), files });
 }
 
 /** The same table read by id-as-a-string, for the sweeps, which derive their ids from the widened `CHECKS` */
@@ -861,16 +844,8 @@ describe('findContractLeafImports', () => {
   const src = 'pack/src';
   /** A pack whose `notes` feature names both contracts, as a real manifest does, with the subpath map a pack has */
   function pack(files: Record<string, string>): void {
-    writeAt('pack/package.json', JSON.stringify({ name: 'demo-pack', type: 'module', imports: PACK_IMPORTS }));
-    writeAt('pack/abuddy.json', JSON.stringify({
-      id: 'demo-pack', name: 'Demo', version: '1.0.0',
-      features: [{
-        id: 'notes',
-        system: { entry: 'src/features/notes/be/system.ts', contract: 'src/features/notes/be/contract.ts#Contract' },
-        plugin: { entry: 'src/features/notes/fe/plugin.ts', contract: 'src/features/notes/fe/contract.ts#Contract' },
-      }],
-    }));
-    for (const [file, content] of Object.entries(files)) writeAt(`${src}/${file}`, content);
+    const under = Object.fromEntries(Object.entries(files).map(([file, content]) => [`src/${file}`, content]));
+    buildPackFixture({ at: path.join(root, 'pack'), files: under });
   }
 
   it('allows a leaf that names only its own types and the generated leaves', () => {

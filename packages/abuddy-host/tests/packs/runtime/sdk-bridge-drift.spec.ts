@@ -52,6 +52,7 @@ const UNBRIDGED_BY_POLICY = new Map<string, string>([
   // needs no test framework — which is also why it must not reach a pack, whose code has no business
   // refusing on the size of something it read.
   ['@abuddy/host/testing/population', 'test machinery: the subject guard specs call before asserting over a walk'],
+  ['@abuddy/host/testing/pack-fixture', 'test machinery: a complete pack on disk, for specs about the rules that read one'],
   // What a running process published and whether it is still there: the app's own plumbing, which is why
   // it moved out of @abuddy/sdk/env. A pack reaches a running API through the app, never by reading its
   // port file.
