@@ -1,19 +1,25 @@
-> **Done 2026-09-28.** `noUnusedLocals` is on in all 14 workspace configs, every one of them reports zero,
-> and `unused-code-gate.spec.ts` fails when a config drops the flag or a package has TypeScript no config
-> compiles. Phase 4's lint half landed separately and better: `8549f81a5` pointed the root `oxlint` at
-> `packages/` instead of adding `lint:check` to thirteen package.jsons, so one command covers every workspace
-> and a new one is covered the day it exists. The cleanup was done in `44486da98`, `d8be2926d` and `a5c795c58`.
+> **Done 2026-09-28.** `noUnusedLocals` is written into 14 workspace configs and inherited by the rest, so
+> every config that compiles source reports it and every one of them reports zero.
+> `unused-code-gate.spec.ts` fails when any of them drops the flag, when a package has TypeScript no config
+> compiles, or when its two exception lists stop applying.
+>
+> Phase 4's lint half landed separately and better: `8549f81a5` pointed the root `oxlint` at `packages/`
+> instead of adding `lint:check` to thirteen package.jsons, so one command covers every workspace and a new
+> one is covered the day it exists. The cleanup was done in `44486da98`, `d8be2926d` and `a5c795c58`.
 >
 > See Outcome at the end for what the Background got wrong.
 
-> **Re-verified 2026-09-28, later the same day. Phase 4's lint half has landed, and the Background's figures
-> no longer hold — read this block before the table below it.**
+> **Re-verified 2026-09-28, later the same day, and still before the compiler half landed.** Phase 4's lint
+> half had landed and the Background's figures no longer held. Read it before the table below it; where it
+> looks ahead to what an implementer should do, the Outcome at the end records what was done.
 >
 > `lint:check` stopped excluding `packages/**` in `8549f81a5`. The root pass reads the whole tree now — 1767
 > files, about a tenth of a second — with one exclusion: the CLI's scaffold templates, whose parameter names are
 > what a pack author reads, so an unused one there is documentation rather than a finding. **Phase 4's
-> requirement that lint cover every workspace with source is therefore met**; what remains of that phase is the
-> guard naming any workspace it does not cover. Of the two workspaces that declared their own `lint:check`,
+> requirement that lint cover every workspace with source is therefore met**, and its second half — a guard
+> naming any workspace lint does not cover — is moot rather than outstanding: the root pass reaches every
+> workspace, so there is no per-workspace script left to be missing. What holds that exclusion in place is
+> `lint-scope.spec.ts` instead. Of the two workspaces that declared their own `lint:check`,
 > only `@app/renderer` still does, and only because it adds `eslint`: `@app/default-setup`'s ran the same binary
 > over the same 792 files the root pass already reads, so it was dropped rather than kept in sync.
 >
@@ -43,7 +49,8 @@
 > **Two properties to design for, both visible on the first run.** The gate fires on generated code — 13 of
 > default-setup's first 18 were under `src/__generated__/`, including the `__contract_check_*` aliases codegen
 > emits *in order to be unreferenced* — so either codegen stops emitting them or the directory is excluded, and
-> the first is the honest fix. And `noUnusedLocals` on its own leaves unused *parameters* to lint and to the `_`
+> the first is the honest fix. It is the one that landed, and excluding the directory was measured and found
+> not to work at all: see the Outcome. And `noUnusedLocals` on its own leaves unused *parameters* to lint and to the `_`
 > convention, which is where they are handled today.
 
 > **Written in session** `c9f31de2-e94c-46ea-a2ac-2898390dc27d` (Claude Code, 2026-09-25). Resume it with `claude -r c9f31de2-e94c-46ea-a2ac-2898390dc27d`.
@@ -336,6 +343,22 @@ populates and a composable consumes reads as dead. Two would have broken had the
 Both now bind through a function ref, which is a real read of the binding and identical at runtime. The other
 seven refs in that class were genuinely dead: nothing read them, no `defineExpose`, and the template attribute
 went with the binding.
+
+### The guard Decision 5 asked for
+
+`packages/repo-checks/tests/unused-code-gate.spec.ts`. It reads **every** tsconfig in the tree, not one per
+workspace: `typecheck:be` compiles `packages/api` through three of them, and the first version — which read a
+workspace's root config plus whatever a solution config referenced — covered 15 of 25 and would have passed
+with `"noUnusedLocals": false` in `api/tsconfig.test.json`. What leaves the population is derived rather than
+named: a config whose parsed file list is empty compiles nothing, which is the renderer's solution config and
+only that. The three `tsconfig.api-extractor.json` are the one named exemption, because API Extractor reads a
+package's built declarations and `api:update` is not where dead code should surface.
+
+The option is read effective rather than literal, through the compiler's own parser, since these configs carry
+`//` comments that `JSON.parse` rejects and most of them inherit the flag rather than spelling it. Three
+mutation cases hold it to that, each built from what the spec already parses: a dropped flag flips the answer,
+a config that only extends inherits `true` while an override wins `false`, and the empty config is excluded for
+what it compiles rather than for its name.
 
 ### Choices made where the goal left a detail open
 
