@@ -155,15 +155,15 @@ describe('staleLines', () => {
   /**
    * The line the whole change is for. An identical rewrite is not a cause, and reading one as a cause is what
    * sent a diagnosis after the compiled seed an E2E test rewrites; it is still worth saying, because a tree written
-   * during every run is worth knowing about.
+   * during every run is worth knowing about — and worth naming, since a count is not something anyone can know.
    */
-  it('counts a rewrite that changed nothing as a footnote, not a cause', () => {
+  it('names the file rewritten with the bytes it had, and says it is not a cause', () => {
     expect(under({
       files: [{ file: 'tests/fixtures/probe.txt', how: 'changed', when: 'while it ran' }],
       identical: ['packages/demo-pack/dist/library.seed.json', 'packages/demo-pack/dist/notes.seed.json'],
     })).toEqual([
       '  typecheck  tests/fixtures/probe.txt  changed while it ran',
-      '             · 2 files rewritten with identical bytes, which is not why it will run',
+      '             · packages/demo-pack/dist/library.seed.json and 1 more — rewritten identically, not a cause',
     ]);
   });
 

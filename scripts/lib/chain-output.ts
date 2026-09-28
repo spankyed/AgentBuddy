@@ -246,8 +246,11 @@ export function staleLines(found: {
         ];
   if (rows.length === 0) rows.push(dim('nothing under its inputs differs now, so whatever moved has moved back'));
   if (identical.length > 0) {
-    // A note, not another row: it is the one line here that is explicitly not a cause, and it read as one
-    rows.push(dim(`· ${identical.length} file${identical.length === 1 ? '' : 's'} rewritten with identical bytes, which is not why it will run`));
+    // A note, not another row: it is the one line here that is explicitly not a cause, and it read as one.
+    // It names the file, because the name is the whole of what it has to say — a count answers nothing and
+    // leaves the reader with the question the note exists to pre-empt, which is the chase it was written after.
+    const rest = identical.length - 1;
+    rows.push(dim(`· ${identical[0]}${rest > 0 ? ` and ${rest} more` : ''} — rewritten identically, not a cause`));
   }
   return rows.map((row, index) => (index === 0 ? head : under) + row);
 }
