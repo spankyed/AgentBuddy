@@ -53,6 +53,18 @@ export function criticalPath<S extends SchedulableStep>(steps: readonly S[]): { 
  * with the packages fresh returns in 0.4s. Reporting that as drift told the first run of this to record
  * `seconds: 14 -> 0` — the cached cost, which is the exact confusion this field was corrected for.
  */
+/**
+ * Where a declared cost has stopped describing the step: past double, or under half.
+ *
+ * One constant with two readers — `driftedSteps` below, which wants both sides, and `howLong` in
+ * chain-output.ts, which wants only the slow one to decide whether a failure is worth blaming on contention.
+ * Written twice they drift apart silently, and the reasoning for the width lives here in one place.
+ */
+export const BAND = 2;
+
+/** Slower than a declared cost still describes */
+export const overBand = (declared: number, measured: number): boolean => measured > declared * BAND;
+
 export function driftedSteps<S extends SchedulableStep & { readonly forceArgs?: readonly string[] }>(
   steps: readonly S[],
   measuredMs: ReadonlyMap<string, number>,
@@ -76,7 +88,7 @@ export function driftedSteps<S extends SchedulableStep & { readonly forceArgs?: 
     if (step.forceArgs !== undefined && !forced) continue;
     const measured = Math.round(ms / 1000);
     if (measured < 1) continue;
-    if (measured > step.seconds * 2 || measured < step.seconds / 2) {
+    if (overBand(step.seconds, measured) || measured < step.seconds / BAND) {
       drifted.push({ name: step.name, declared: step.seconds, measured });
     }
   }

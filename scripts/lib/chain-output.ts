@@ -5,6 +5,7 @@
  * cannot load `chain.ts` without starting a six-minute build.
  */
 import { covers } from '@abuddy/host/build/packages-built';
+import { overBand } from './step-timing.ts';
 
 /**
  * How wide a step's name column is, in every row that has one.
@@ -270,14 +271,14 @@ export function staleLines(found: {
  *
  * Past double the declared cost it names the run that tells the two diagnoses apart, because this repo has
  * measured that they differ: under lanes `@abuddy/cli` "began reporting errors it does not report alone"
- * (the note at the top of this file). The band is `driftedSteps`', not a second threshold — half to double is
- * documented there as where the number has stopped being useful, which is when contention is worth suspecting.
+ * (the note at the top of this file). The band is `overBand` in step-timing.ts, shared with `driftedSteps`
+ * rather than restated — it was restated here once, which is two copies of one rule and how they come apart.
  */
 export function howLong(step: { readonly seconds?: number }, ms: number, lanes: number): string {
   if (step.seconds === undefined) return '';
   const measured = Math.round(ms / 1000);
   const where = ` after ${(ms / 1000).toFixed(1)}s, against ${step.seconds}s healthy at ${lanes} lane${lanes > 1 ? 's' : ''}`;
-  return measured > step.seconds * 2
+  return overBand(step.seconds, measured)
     ? `${where}\n  — over twice its measured cost, so try \`npm run chain --lanes 1\` before reading the output as a real failure`
     : where;
 }
