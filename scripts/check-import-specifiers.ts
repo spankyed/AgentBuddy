@@ -1218,11 +1218,25 @@ interface RuleShape {
  * moved lived in an archived goal doc that nothing reads; this is the cheapest place to make the next one answer
  * the question — at the declaration, before anything runs, rather than in a case that has to be remembered.
  */
+export type PackParity =
+  /** The pack-facing half is a named pack rule, so an external pack is held to the same thing by another name */
+  | { readonly kind: 'covered'; readonly by: PackRuleKey; readonly note: string }
+  /** A pack cannot commit this offence: it has no `scripts/` of its own, is not an `@abuddy/*` package, and so on */
+  | { readonly kind: 'inapplicable'; readonly note: string }
+  /**
+   * A pack *can* commit it and nothing outside this repo refuses it.
+   *
+   * The variant exists so that the next such rule has somewhere honest to go. Without it, whoever adds one
+   * reaches for `inapplicable` — a claim no check can contradict — and the gap reopens silently, which is how
+   * `findRepositoryCasts` sat here holding built-in packs to a rule external packs were free of.
+   */
+  | { readonly kind: 'unenforced'; readonly note: string };
+
 export type ImportRule = RuleShape & (
   /** The CLI owns the implementation; `backed` sets this */
   { readonly packRule: PackRuleKey; readonly repoOnly?: never }
-  /** Why this rule's subject is this repo rather than a pack */
-  | { readonly packRule?: never; readonly repoOnly: string }
+  /** Why this rule's subject is this repo rather than a pack, as an answer a reader can check rather than prose */
+  | { readonly packRule?: never; readonly repoOnly: PackParity }
 );
 
 /** The sentence a pack rule reports, read from the rule itself so this script prints what a pack author is told */
@@ -1267,7 +1281,7 @@ const RULE_LIST = [
   {
     id: 'findJsSpecifiers',
     over: CHECKED_DIRS,
-    repoOnly: "Its population is the packages that are not packs: a pack's relative `.js` belongs to `own-modules`, which resolves the specifier and so names the file to write, and the two populations are asserted disjoint",
+    repoOnly: { kind: 'covered', by: 'own-modules', note: "Its population is the packages that are not packs: a pack's relative `.js` belongs to `own-modules`, which resolves the specifier and so names the file to write, and the two populations are asserted disjoint" },
     find: () => findJsSpecifiers(CHECKED_DIRS),
     rule: 'Relative imports must name the TypeScript source (tsc and tsdown emit .js)',
     overPaths: (paths, root = repoRoot) => jsSpecifierFixes([...paths], root).map(({ file, line, specifier }) => `${file}:${line}: ${specifier}`),
@@ -1282,7 +1296,7 @@ const RULE_LIST = [
   {
     id: 'findAppImportsInPackTests',
     over: PACK_TEST_DIRS,
-    repoOnly: "Its subject is a relative import into this repo's api, host or CLI sources, which only a pack inside this monorepo can write; `@abuddy/host` and every `@/` specifier belong to `host-imports` and `pack-own-aliases`, which `abuddy test` runs over a pack's tests",
+    repoOnly: { kind: 'inapplicable', note: "Its subject is a relative import into this repo's api, host or CLI sources, which only a pack inside this monorepo can write; `@abuddy/host` and every `@/` specifier belong to `host-imports` and `pack-own-aliases`, which `abuddy test` runs over a pack's tests" },
     find: () => findAppImportsInPackTests(PACK_TEST_DIRS),
     // Dirs-shaped, so a per-file run can answer for it too, which is also what lets the sweeps call it
     overPaths: (paths, root = repoRoot) => findAppImportsInPackTests(paths, root),
@@ -1290,29 +1304,29 @@ const RULE_LIST = [
   },
   {
     id: 'findUpwardImports',
-    repoOnly: "The `@abuddy/*` layer rule, which is about this repo's packages and their manifests",
+    repoOnly: { kind: 'inapplicable', note: "The `@abuddy/*` layer rule, which is about this repo's packages and their manifests" },
     find: findUpwardImports,
     rule: "Packages import only downward (@abuddy/ears imports no @abuddy package, @abuddy/sdk only @abuddy/ears, @abuddy/host only those two and never the API, the API and the renderer only the packages below them), and list each @abuddy package they import in their package.json",
   },
   {
     id: 'findLmdbImports',
-    repoOnly: "The pack half is the CLI's `lmdb-imports`; what is left here is the API, the host and the engine's own root",
+    repoOnly: { kind: 'covered', by: 'lmdb-imports', note: "What is left here is the API, the host and the engine's own root" },
     find: findLmdbImports,
     rule: "Only @abuddy/ears/lmdb loads lmdb: the host and the API open the store through it, the engine's root and packs never load it",
   },
   {
     id: 'findSharedPackageLists',
-    repoOnly: 'Its subject is the host, CLI and testing consumers of `SHARED_INSTANCE_PACKAGES`, none of which is a pack',
+    repoOnly: { kind: 'inapplicable', note: 'Its subject is the host, CLI and testing consumers of `SHARED_INSTANCE_PACKAGES`, none of which is a pack' },
     find: findSharedPackageLists,
     rule: 'Derive shared-instance packages from SHARED_INSTANCE_PACKAGES (@abuddy/host/build/shared-deps) instead of naming them',
   },
   {
     id: 'findRepositoryCasts',
     over: packageSourceDirs(),
-    repoOnly: 'The one here a pack can actually break, and so the one whose absence costs something: `packages/*/src` '
-      + 'includes `default-setup`, so a built-in pack is held to it and an external pack is not. Nothing else refuses '
-      + '`repository as unknown as` outside this repo — oxlint hosts no custom rule and eslint does not run where this '
-      + 'applies, which is the condition to revisit, and moving it to `PACK_RULES` is the other way',
+    repoOnly: { kind: 'unenforced', note: '`packages/*/src` includes `default-setup`, so a built-in pack is held to '
+      + 'this and an external pack is not. Nothing else refuses `repository as unknown as` outside this repo — oxlint '
+      + 'hosts no custom rule and eslint does not run where this applies — and `tests/fixtures/external-pack` writes '
+      + 'the offence today, unseen' },
     find: () => findRepositoryCasts(packageSourceDirs()),
     overPaths: (paths, root = repoRoot) => findRepositoryCasts(paths, root),
     rule: "Call a package's repositories through its exports, not a cast of the repository registry",
@@ -1321,19 +1335,19 @@ const RULE_LIST = [
   backed('findContractLeafImports', 'contract-leaves', findContractLeafImports, PACK_SRC_ROOTS),
   {
     id: 'findPackageScriptImports',
-    repoOnly: "A package's own `scripts/`, a shape no pack has, and the reason is how `npm run spec` routes a change",
+    repoOnly: { kind: 'inapplicable', note: "A package's own `scripts/`, a shape no pack has, and the reason is how `npm run spec` routes a change" },
     find: findPackageScriptImports,
     rule: "A package's own scripts/ imports that package's src/ and its declared dependencies, nothing else: a module under the repo's scripts/ belongs to no package, so npm run spec cannot route a change to it back to a spec that covers it",
   },
   {
     id: 'findCrossCheckoutResolution',
-    repoOnly: 'Worktrees nested in this checkout, which is a property of the checkout and not of any pack',
+    repoOnly: { kind: 'inapplicable', note: 'Worktrees nested in this checkout, which is a property of the checkout and not of any pack' },
     find: findCrossCheckoutResolution,
     rule: 'Workspace packages resolve inside this checkout, so a worktree nested in the repository never typechecks against the parent checkout',
   },
   {
     id: 'findMissingSourceConditions',
-    repoOnly: "The repo's own configs; the mirror-image rule for a pack's configs is the CLI's `source-resolution`",
+    repoOnly: { kind: 'covered', by: 'source-resolution', note: "What is left here is the repo's own configs, which declare the condition where a pack's must not" },
     find: findMissingSourceConditions,
     rule: "The repo's own configs declare the @abuddy/source condition when they compile or bundle code importing @abuddy/ears, @abuddy/sdk or @abuddy/ui, so they read TypeScript source instead of a stale dist; a pack's configs declare none, because a pack resolves the published dist",
   },
@@ -1368,6 +1382,13 @@ export interface RuleRow {
   /** The first clause of what it reports, which is the part that fits a row */
   readonly reports: string;
 }
+
+/** What each answer means, in the order the second table groups them: the gap last, where it is read */
+export const PARITY_HEADINGS: Record<PackParity['kind'], string> = {
+  covered: 'A pack rule covers the pack-facing half:',
+  inapplicable: 'A pack cannot commit the offence:',
+  unenforced: 'A pack can commit it and nothing checks — move it to PACK_RULES or say why not:',
+};
 
 /**
  * The rows `--list` prints, as data.
@@ -1413,7 +1434,15 @@ if (process.argv[1] && import.meta.filename === fs.realpathSync(process.argv[1])
     for (const line of ruleTable(ruleRows())) console.log(line);
     const repoOnly = CHECKS.filter((rule) => rule.repoOnly !== undefined);
     console.log(`\n${repoOnly.length} of ${CHECKS.length} are this repo's alone. What an external pack does without each:\n`);
-    for (const rule of repoOnly) console.log(`  ${rule.id}\n    ${rule.repoOnly}\n`);
+    for (const [kind, heading] of Object.entries(PARITY_HEADINGS)) {
+      const group = repoOnly.filter((rule) => rule.repoOnly!.kind === kind);
+      if (group.length === 0) continue;
+      console.log(`  ${heading}\n`);
+      for (const rule of group) {
+        const parity = rule.repoOnly!;
+        console.log(`    ${rule.id}${parity.kind === 'covered' ? ` — held as \`${parity.by}\`` : ''}\n      ${parity.note}\n`);
+      }
+    }
     process.exit(0);
   }
   if (only && rules.length === 0) {

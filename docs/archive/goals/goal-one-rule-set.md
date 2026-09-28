@@ -395,8 +395,10 @@ Three defects in what the phases shipped, each found by checking rather than by 
 held to them (`ca1b4ecbb`, `32c7b03dc`). How many rules a pack is held to is `PACK_RULES` and not a number
 written here — the bullet this replaces said "nine of twelve" for a day after the third of three had shipped,
 which is what a count in prose does. A rule now states in code whether the CLI owns it (`packRule`) or why its
-subject is this repo (`repoOnly`), and a case fails on one that says neither, so this section can no longer be
-the only place that knows.
+subject is this repo (`repoOnly`), the two being a union so that one saying neither, or both, does not compile —
+and the second is itself an answer with a kind rather than prose, so "a pack cannot commit this" and "a pack can
+and nothing checks" are told apart by the reader instead of by whoever reads the sentence. This section can no
+longer be the only place that knows.
 
 - **`cross-feature-imports`' stated blocker was real and was cleared.** It was 71 lines of which 33 were the
   rule, the rest the script's last regex pair; porting it to the shared reader (`9ea3558ef`) removed them, and
