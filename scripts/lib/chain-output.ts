@@ -29,15 +29,6 @@ export const REASON_COLUMN = STEP_NAME_WIDTH + 20; // verdict(7) ␣ tier(2) ␣
 /** The same, for `--dry`, which reports no time — so its reason starts where the time would have */
 export const DRY_REASON_COLUMN = STEP_NAME_WIDTH + 12;
 
-/**
- * Where a reason starts in the end-of-run reports, which indent by two rather than carrying a verdict column.
- *
- * Derived because two things have to agree on it — the step's own row and the lines listing what moved under it
- * — and the first version used a literal in each. They were two apart, so every file the report named sat just
- * left of the reason it explained.
- */
-export const REPORT_REASON_COLUMN = STEP_NAME_WIDTH + 3;
-
 /** The terminal's width, or a width worth wrapping to when the output is a pipe or a CI log */
 export const terminalWidth = (): number => process.stdout.columns ?? 100;
 
@@ -214,9 +205,18 @@ export const CHANGED_CAP = 5;
  *
  * A declared-set change prints instead of files rather than beside them: gaining a watched path makes a unit
  * stale before a byte moves, and a file list for that cause is empty and reads as a contradiction.
+ *
+ * It renders the whole block, name row included, because the first finding shares that row — a step with one
+ * changed file is two lines of screen rather than three, and this report usually names one or two of each. The
+ * verdict is not on the row at all: it is the same sentence for every step here (`INPUTS_CHANGED` is the only
+ * one a step that just passed can have), so the header says it once and `reason` carries the exception.
  */
 export function staleLines(found: {
-  readonly indent: number;
+  readonly name: string;
+  /** How wide the name column is, from the names in *this* report rather than the whole table */
+  readonly nameWidth: number;
+  /** Printed in place of the findings when the verdict is not the ordinary `INPUTS_CHANGED` */
+  readonly reason?: string;
   readonly gained: readonly string[];
   readonly lost: readonly string[];
   readonly files: readonly ChangedInput[];
@@ -225,22 +225,29 @@ export function staleLines(found: {
   readonly recorded: boolean;
   readonly cap?: number;
 }): string[] {
-  const { indent, gained, lost, files, identical, recorded, cap = CHANGED_CAP } = found;
-  const pad = ' '.repeat(indent);
-  const more = (count: number) => (count > cap ? [`${pad}and ${count - cap} more`] : []);
-  if (!recorded) return [`${pad}its last run recorded no per-file digests, so it cannot say which input moved`].map(dim);
+  const { name, nameWidth, reason, gained, lost, files, identical, recorded, cap = CHANGED_CAP } = found;
+  const head = `  ${name.padEnd(nameWidth)}  `;
+  const under = ' '.repeat(head.length);
+  const more = (count: number) => (count > cap ? [dim(`and ${count - cap} more`)] : []);
+  const shown = files.slice(0, cap);
+  // Each path padded to the widest one this step names, so the qualifiers form a column to scan down
+  const column = Math.max(0, ...shown.map(({ file }) => file.length));
   const declared = [...gained.map((one) => `+${one}`), ...lost.map((one) => `-${one}`)];
-  const lines = declared.length > 0
-    ? [`${pad}its declared inputs moved: ${declared.slice(0, cap).join(', ')}`, ...more(declared.length)]
-    : [
-      ...files.slice(0, cap).map(({ file, how, when, writer }) =>
-        `${pad}${file} — ${how}${when === '' ? '' : ` ${when}`}${writer === undefined ? '' : `, ${writer}'s declared output`}`),
-      ...more(files.length),
-    ];
-  if (lines.length === 0) lines.push(`${pad}nothing under its inputs differs now, so whatever moved has moved back`);
+
+  const rows = reason !== undefined ? [reason]
+    : !recorded ? [dim('its last run recorded no per-file digests, so it cannot say which input moved')]
+      : declared.length > 0
+        ? [`its declared inputs moved: ${declared.slice(0, cap).join(', ')}`, ...more(declared.length)]
+        : [
+          // The path is undimmed because it is the thing to act on; when and whose it is are the qualifiers
+          ...shown.map(({ file, how, when, writer }) =>
+            file.padEnd(column) + dim(`  ${how}${when === '' ? '' : ` ${when}`}${writer === undefined ? '' : `, ${writer}'s declared output`}`)),
+          ...more(files.length),
+        ];
+  if (rows.length === 0) rows.push(dim('nothing under its inputs differs now, so whatever moved has moved back'));
   if (identical.length > 0) {
-    lines.push(`${pad}${identical.length} file${identical.length === 1 ? '' : 's'} rewritten with identical bytes while it ran`
-      + ` (${identical[0]}${identical.length > 1 ? ', …' : ''}) — harmless to the cache`);
+    // A note, not another row: it is the one line here that is explicitly not a cause, and it read as one
+    rows.push(dim(`· ${identical.length} file${identical.length === 1 ? '' : 's'} rewritten with identical bytes, which is not why it will run`));
   }
-  return lines.map(dim);
+  return rows.map((row, index) => (index === 0 ? head : under) + row);
 }

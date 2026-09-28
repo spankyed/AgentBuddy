@@ -43,11 +43,11 @@
 // assumption, and the cheapest work left in this chain may be another step that is quietly serial.
 import * as fs from 'node:fs';
 import * as path from 'node:path';
-import { changedInputs, freshnessSweep, REPO_ROOT, stampedRun, stampRecord, unitStaleReason, type BuildUnit } from '@abuddy/host/build/packages-built';
+import { changedInputs, freshnessSweep, INPUTS_CHANGED, REPO_ROOT, stampedRun, stampRecord, unitStaleReason, type BuildUnit } from '@abuddy/host/build/packages-built';
 import { CHAIN_STEPS, MEASURED_AT_LANES, orderedSteps, type ChainStep, type Tier } from './lib/chain-steps.ts';
 import { schedule } from './lib/chain-schedule.ts';
 import { criticalPath, driftedSteps, willNotCache } from './lib/step-timing.ts';
-import { briefly, declaredAt, dim, DRY_REASON_COLUMN, identicalRewrites, oneLine, REASON_COLUMN, REPORT_REASON_COLUMN, staleLines, STEP_NAME_WIDTH, TIME_COLUMN, whenChanged, wrapAt, writerOf } from './lib/chain-output.ts';
+import { briefly, declaredAt, dim, DRY_REASON_COLUMN, identicalRewrites, oneLine, REASON_COLUMN, staleLines, STEP_NAME_WIDTH, TIME_COLUMN, whenChanged, wrapAt, writerOf } from './lib/chain-output.ts';
 import { slowestTests } from './lib/slow-tests.ts';
 import { exitOnEpipe } from './lib/exit-on-epipe.ts';
 
@@ -108,7 +108,7 @@ function whatMoved(
   step: ChainStep,
   steps: readonly ChainStep[],
   asking: { changedInputs: typeof changedInputs },
-): Omit<Parameters<typeof staleLines>[0], 'indent'> {
+): Omit<Parameters<typeof staleLines>[0], 'name' | 'nameWidth' | 'reason'> {
   const nothing = { gained: [], lost: [], files: [], identical: [] };
   const record = stampRecord(stampFor(step.name));
   // `recorded: false` is required of the types and unreachable from here, which is worth saying rather than
@@ -346,13 +346,17 @@ async function main(): Promise<void> {
     (step) => staleReason(step, sweep),
   );
   if (uncacheable.length > 0) {
-    console.log(`\n${uncacheable.length} step${uncacheable.length === 1 ? '' : 's'} passed but will run again next time — something wrote into their inputs:`);
+    console.log(`\n${uncacheable.length} step${uncacheable.length === 1 ? '' : 's'} will run again: something wrote into their inputs`);
+    // Sized to the names in this report rather than to the widest in the table: the block stands on its own
+    // under a blank line, so it owes the rows above it no column, and a report without the longest-named step
+    // in it should not be indented as though it had one
+    const nameWidth = Math.max(...uncacheable.map(({ name }) => name.length));
     for (const { name, reason } of uncacheable) {
       const step = steps.find((s) => s.name === name)!;
-      console.log(`  ${name.padEnd(STEP_NAME_WIDTH)} ${reason}`);
-      for (const line of staleLines({ indent: REPORT_REASON_COLUMN, ...whatMoved(step, steps, sweep) })) console.log(line);
+      const unusual = reason === INPUTS_CHANGED ? undefined : reason;
+      for (const line of staleLines({ name, nameWidth, reason: unusual, ...whatMoved(step, steps, sweep) })) console.log(line);
     }
-    console.log('  Declare what writes there in that step\'s `outputs`, or stop declaring the generated tree as an input.');
+    console.log(dim('  Declare what writes there in that step\'s `outputs`, or stop declaring the tree as an input.'));
   }
 
   // The table feeds the kill budget and the floor above, so a number a run has contradicted is worth more

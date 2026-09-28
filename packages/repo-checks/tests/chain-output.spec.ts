@@ -5,7 +5,7 @@ import * as path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { REPO_ROOT } from '@abuddy/host/build/packages-built';
 import { CHAIN_STEPS } from '../../../scripts/lib/chain-steps.ts';
-import { briefly, declaredAt, dim, DRY_REASON_COLUMN, identicalRewrites, oneLine, REASON_COLUMN, REPORT_REASON_COLUMN, staleLines, STEP_NAME_WIDTH, TIME_COLUMN, wrapAt, whenChanged, writerOf } from '../../../scripts/lib/chain-output.ts';
+import { briefly, declaredAt, dim, DRY_REASON_COLUMN, identicalRewrites, oneLine, REASON_COLUMN, staleLines, STEP_NAME_WIDTH, TIME_COLUMN, wrapAt, whenChanged, writerOf } from '../../../scripts/lib/chain-output.ts';
 
 describe('wrapAt', () => {
   it('leaves a reason that fits on the line it is on', () => {
@@ -129,17 +129,27 @@ describe('identicalRewrites', () => {
 
 describe('staleLines', () => {
   const under = (found: Partial<Parameters<typeof staleLines>[0]>) => staleLines({
-    indent: 0, gained: [], lost: [], files: [], identical: [], recorded: true, ...found,
-  }).map((line) => line.replace(/\u001B\[\d+m/g, ''));
+    name: 'typecheck', nameWidth: 'typecheck'.length, gained: [], lost: [], files: [], identical: [], recorded: true, ...found,
+  }).map((line) => line.replace(/\u001B\[\d+m/g, '').trimEnd());
 
+  /**
+   * The first finding shares the step's row, and the rest sit under it — two lines of screen for the usual case
+   * of one step and one file. Each path is padded to the widest this step names, so the qualifiers form a column.
+   */
   it('names each file with what happened to it, when, and whose output it is', () => {
     expect(under({ files: [
       { file: 'tests/fixtures/probe.txt', how: 'changed', when: 'while it ran' },
       { file: 'packages/demo-pack/dist/seeds.json', how: 'added', when: 'since it ran', writer: 'compile' },
     ] })).toEqual([
-      'tests/fixtures/probe.txt — changed while it ran',
-      "packages/demo-pack/dist/seeds.json — added since it ran, compile's declared output",
+      '  typecheck  tests/fixtures/probe.txt            changed while it ran',
+      "             packages/demo-pack/dist/seeds.json  added since it ran, compile's declared output",
     ]);
+  });
+
+  /** The verdict is the header's, not the row's — except when it is not the one every step here shares */
+  it('prints a reason only when it is not the ordinary one', () => {
+    expect(under({ reason: 'not built (no packages/abuddy-sdk/dist)', files: [{ file: 'src/a.ts', how: 'changed', when: '' }] }))
+      .toEqual(['  typecheck  not built (no packages/abuddy-sdk/dist)']);
   });
 
   /**
@@ -152,8 +162,8 @@ describe('staleLines', () => {
       files: [{ file: 'tests/fixtures/probe.txt', how: 'changed', when: 'while it ran' }],
       identical: ['packages/demo-pack/dist/library.seed.json', 'packages/demo-pack/dist/notes.seed.json'],
     })).toEqual([
-      'tests/fixtures/probe.txt — changed while it ran',
-      '2 files rewritten with identical bytes while it ran (packages/demo-pack/dist/library.seed.json, …) — harmless to the cache',
+      '  typecheck  tests/fixtures/probe.txt  changed while it ran',
+      '             · 2 files rewritten with identical bytes, which is not why it will run',
     ]);
   });
 
@@ -163,25 +173,25 @@ describe('staleLines', () => {
    */
   it('reports a declared-set change instead of files, because no file moved', () => {
     expect(under({ gained: ['tests/scripts'], lost: ['tests/old'] }))
-      .toEqual(['its declared inputs moved: +tests/scripts, -tests/old']);
+      .toEqual(['  typecheck  its declared inputs moved: +tests/scripts, -tests/old']);
   });
 
   it('counts the rest past the cap rather than filling the screen', () => {
     const files = Array.from({ length: 8 }, (_, index) => ({ file: `src/f${index}.ts`, how: 'changed' as const, when: '' as const }));
     const lines = under({ files, cap: 3 });
     expect(lines).toHaveLength(4);
-    expect(lines.at(-1)).toBe('and 5 more');
+    expect(lines.at(-1)).toBe('             and 5 more');
   });
 
   /** One generation of stamps predates the digests, and a report that said nothing would read as "no cause" */
   it('says so when the last run recorded no digests', () => {
     expect(under({ recorded: false, files: [{ file: 'src/a.ts', how: 'changed', when: '' }] }))
-      .toEqual(['its last run recorded no per-file digests, so it cannot say which input moved']);
+      .toEqual(['  typecheck  its last run recorded no per-file digests, so it cannot say which input moved']);
   });
 
   /** The tree can move between the verdict and the diff, and an empty report has to say which it is */
   it('says the change has gone when the diff finds nothing', () => {
-    expect(under({})).toEqual(['nothing under its inputs differs now, so whatever moved has moved back']);
+    expect(under({})).toEqual(['  typecheck  nothing under its inputs differs now, so whatever moved has moved back']);
   });
 });
 
@@ -253,11 +263,13 @@ it('composes both rows from the declared columns', () => {
  * column from `'x'` — a name shorter than the width, so `padEnd` always applied and the assertion held whatever
  * the real names were. It passed while all three row shapes were a column out for `test:external-pack:contract`,
  * which is the one step in the table wider than the column was.
+ *
+ * The end-of-run report is not here: it sizes its column to the names it is printing, and `staleLines`' own
+ * cases assert the rows it composes.
  */
 it('lines every row up with what sits under it, for the widest step name', () => {
   const chain = fs.readFileSync(path.join(REPO_ROOT, 'scripts/chain.ts'), 'utf-8');
   expect(chain, 'a row pads the name by something other than the shared width').not.toMatch(/padEnd\(\d/);
-  expect(chain, 'the lines under a report row no longer take the shared column').toContain('indent: REPORT_REASON_COLUMN');
 
   const widest = [...CHAIN_STEPS].sort((a, b) => b.name.length - a.name.length)[0]!.name;
   const name = widest.padEnd(STEP_NAME_WIDTH);
@@ -265,7 +277,6 @@ it('lines every row up with what sits under it, for the widest step name', () =>
   expect(`${'ok'.padStart(7)} t1 ${name} ${'26.1s'.padStart(6)}  `.length, "a run row's reason").toBe(REASON_COLUMN);
   expect(`${'run'.padStart(7)} t1 ${name} `.length, "a --dry row's reason").toBe(DRY_REASON_COLUMN);
   expect(`${'ok'.padStart(7)} t1 ${name} `.length, "a run row's time").toBe(TIME_COLUMN);
-  expect(`  ${name} `.length, "a report row's reason").toBe(REPORT_REASON_COLUMN);
 });
 
 /** So a step name longer than the column fails by name, rather than knocking every line under it one to the left */

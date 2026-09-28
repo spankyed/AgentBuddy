@@ -454,6 +454,15 @@ export function changedInputs(unit: BuildUnit, recorded: { files: Record<string,
 export interface StaleUnit { readonly workspace: string; readonly reason: string }
 
 /**
+ * The ordinary verdict, named because a reader compares against it.
+ *
+ * Every other reason `unitStaleReason` gives is about the stamp rather than the tree — no stamp, another format,
+ * an output missing — and a step that has just passed can only have this one. The chain's report says it once in
+ * its header instead of on every row, and needs to recognise the unusual case to keep printing it.
+ */
+export const INPUTS_CHANGED = 'its inputs changed since the last successful run';
+
+/**
  * What a successful run recorded. `fingerprint` and `version` are the verdict; `declared` and `files` are the
  * diagnosis, and a stamp written before those existed simply has neither.
  */
@@ -489,7 +498,7 @@ export function unitStaleReason(unit: BuildUnit, stamp: string, tree?: TreeReade
   // A stamp from another protocol says nothing about this one, so it counts as never built
   if (record.version !== STAMP_VERSION) return `its stamp is from another format (${String(record.version)}, this is ${STAMP_VERSION})`;
   try {
-    return record.fingerprint === fingerprintUnit(unit, undefined, tree) ? null : 'its inputs changed since the last successful run';
+    return record.fingerprint === fingerprintUnit(unit, undefined, tree) ? null : INPUTS_CHANGED;
   } catch (err) {
     return `its sources could not be read (${(err as Error).message})`;
   }
