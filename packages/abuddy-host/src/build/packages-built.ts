@@ -290,6 +290,23 @@ const readInput: ReadInput = (file) => {
  * ever matters, the 320ms of process startup is the part to attack, by calling `stalePackageUnits()`
  * from a process that is already running rather than spawning one.
  *
+ * Re-measured 2026-09-28 at the largest scale this is asked at, a chain sweep over twelve units and 39.1MB,
+ * because the 1ms row above is for 417 files and reads as though stats were nearly free:
+ *
+ *     12 units, 18001 files (3518 distinct)   walk (which stats every path) 205ms | walk + read + hash 661ms
+ *
+ * The conclusion is unchanged and the arithmetic is worse than it looks, in three ways. The stats **are** the
+ * walk — `inputFiles` already takes one per path and drops it — so they are not an alternative to it and the
+ * ceiling is the 456ms of reading and hashing, not the whole 661ms. Skipping the hash for a whole unit whose
+ * stats all match saves that only on a tree where nothing moved, and a unit whose stats have moved pays both:
+ * 861ms against today's 661ms. On this tree, with no edit outstanding beyond a commit, 8 of 10 stamped steps
+ * had a file newer than their stamp — a run of the chain is a run you made because something changed, so the
+ * regression is the ordinary case and the saving is the rare one. And a per-file version, hashing only the
+ * files whose stats moved, needs the fingerprint composed from per-file digests rather than a byte stream,
+ * which moves every recorded fingerprint including the three committed `etc/declarations.sha256`.
+ *
+ * What did pay, for the same 5.1x overlap, was reading each distinct file once per sweep: see `freshnessSweep`.
+ *
  * Note this is a different question from the one the header answers. There, mtimes are rejected for
  * deciding whether *output* is current, where a failed build leaves a complete-looking tree that reads
  * as fresh forever. Here they would be a cache key over *inputs*, which is sound in principle — the
