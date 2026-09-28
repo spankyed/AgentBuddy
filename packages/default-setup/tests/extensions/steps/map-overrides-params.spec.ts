@@ -5,7 +5,7 @@
 // Recorded before the behaviour changes, so the diff that changes it names exactly what moves.
 import { describe, expect, it } from 'vitest'
 import { importFlows, startApp } from '@abuddy/testing/harness'
-import { entry, keepAlive, on } from '#generated/flow-helpers.ts'
+import { entry, fire, keepAlive, on } from '#generated/flow-helpers.ts'
 import { untypedQx } from '@abuddy/ears'
 
 const notes = () => untypedQx('Note' as never).pickAll() as Array<Record<string, unknown>>
@@ -42,12 +42,44 @@ describe('a mapping and a literal params entry on one field', () => {
     expect(notes().at(-1)!.content).toBe('the fallback')
   })
 
-  // The one worth pinning. A mapping whose source resolves to nothing still writes its target, as `undefined`,
-  // and an own property set to `undefined` overrides the literal in a spread — so the step runs on nothing
-  // rather than on the value the author typed beside it.
-  it('writes nothing, not the literal, when the source misses and no fallback is given', async () => {
+  // A mapping that resolved to nothing writes nothing, so the literal shows through. It used to write the
+  // target as `undefined`, which overrides in a spread, and the step ran on nothing rather than on the value
+  // the author had typed beside the mapping.
+  it('leaves the literal alone when the source misses and no fallback is given', async () => {
     await runWithBoth({ content: '$.event.data.payload.absent' })
 
-    expect(notes().at(-1)!.content).toBeUndefined()
+    expect(notes().at(-1)!.content).toBe('the literal')
+  })
+})
+
+/**
+ * The fire step is where this mattered most, because its fallback is not a spread: it asks whether the mapping
+ * produced a `payload` at all (`'payload' in mapped`), and a target written as `undefined` answered yes. So a
+ * flow whose payload mapping missed fired nothing, rather than the payload set beside it.
+ */
+describe('a fire step whose payload mapping resolves to nothing', () => {
+  async function firePayload(source: string): Promise<unknown> {
+    importFlows({
+      Outer: {
+        root: true,
+        tracks: [
+          entry([keepAlive()]),
+          on('go', [[fire('ping', { payload: { a: 1 }, map: { payload: source } })]]),
+        ],
+      },
+    })
+    const app = await startApp({ systems: ['brain'] })
+    await app.runFlow('Outer', { event: 'go', data: { present: 'from the event' } })
+    await app.settle()
+    const step = app.flowTrace('Outer').find((s) => s.label === 'ping')
+    return (step?.nodeAttributes.result as { payload?: unknown } | undefined)?.payload
+  }
+
+  it('fires the payload set beside the mapping', async () => {
+    expect(await firePayload('$.event.data.payload.absent')).toEqual({ a: 1 })
+  })
+
+  it('still fires the mapped value when the source resolves', async () => {
+    expect(await firePayload('$.event.data.payload.present')).toBe('from the event')
   })
 })
