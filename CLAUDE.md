@@ -75,10 +75,18 @@ can be green under `spec` and red under `chain`: the chain declares that depende
 (`scripts/lib/workspace-deps.ts`) where a module graph cannot see it. The same seam is why a *pack's own*
 source runs that pack's whole suite rather than a root `related` — nothing in the root projects imports it.
 
-Two things the chain cannot work out for you, because they rewrite files you commit:
+Three things the chain cannot work out for you, because they rewrite files you commit:
 
 - **a public export of `@abuddy/ears`, `/sdk` or `/ui`** — `npm run api:update`, and commit `etc/`.
   `typecheck` fails until you do.
+- **default-setup's facade** — the types a dependent pack compiles against, bundled by `abuddy build` into
+  `dist/types/pack-types.d.ts` and recorded in `etc/pack-types.api.md`. Run
+  `npm run facade:update -w @app/default-setup` and commit the report. **`typecheck` does not notice this
+  one; `npm run compile` does**, which is the difference worth knowing: `api:stamp`, `exports:check` and
+  `schema:check` are all typecheck legs, so it is easy to finish a typecheck and believe every recorded
+  artifact is current. The check cannot move to typecheck, because its subject is what the build produced —
+  run it anywhere but after that build and it compares the committed report against a stale bundle, which
+  passes over the wrong thing.
 - **a pack's seed source (`src/seeds/`)** — when only `sourceHash`/`rowSha256` moved, re-record
   deliberately with `npm run seed-parity:update -w @app/default-setup`, and never edit a hash by hand.
   Re-recording rewrites a test expectation, not user data; what reaches users is the new `sourceHash`.
