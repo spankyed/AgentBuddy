@@ -251,7 +251,7 @@ const SUITE_RUNNER = ['scripts/test-unit-pool.ts', 'scripts/lib/unit-suites.ts',
  * `fingerprintUnit` excludes a unit's own output from its own fingerprint, and that is what stops the step
  * invalidating itself the first time codegen stops being byte-identical.
  */
-const PACK_OUTPUTS = ['packages/default-setup/dist', 'packages/default-setup/src/__generated__'];
+export const PACK_OUTPUTS = ['packages/default-setup/dist', 'packages/default-setup/src/__generated__'];
 
 /**
  * What building the fixture packs writes, derived from the fixtures themselves. These sit *inside*

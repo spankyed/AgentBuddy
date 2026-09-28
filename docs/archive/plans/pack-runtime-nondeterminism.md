@@ -1,10 +1,18 @@
 # The built-in pack's runtime bundle is not reproducible
 
-> **Planned as** [`goal-reproducible-builds.md`](../goals/goal-reproducible-builds.md), which widens it from
-> this one file to the property — a build output that changes without its input does not pass unnoticed — and
-> corrects two things below: the esbuild bump is narrower than "The fix" says (vite and tsup vendor their own
-> copies and do not move with ours), and the remedy is a hypothesis its Phase 0 falsifies before anything is
-> built on it. The measurement and the reproduction here are what that goal rests on; they stay.
+> **Superseded by** [`goal-reproducible-builds.md`](../goals/goal-reproducible-builds.md), which ran
+> and is archived. Two things below did not survive it, so read them as the state on 2026-09-25 rather than as
+> current:
+>
+> - **The symptom stopped reproducing.** 14 builds at the same esbuild version produced one hash, where this
+>   recorded four hashes from four builds. Nothing changed in between — not `dev-build.mjs`, not esbuild —
+>   which fits a timing-dependent race, so "not manifesting" rather than "fixed".
+> - **"The fix" names the wrong tool, and is wider than it needs to be.** `npm run check:repro` now compares
+>   every built output, and the three irreproducible ones it found are `tsc`'s declaration emit ordering a
+>   union's members differently between runs — not the bundler. Vite and tsup vendor their own esbuild and do
+>   not move with ours.
+>
+> The measurement and the reproduction here are still what the goal rested on; they stay.
 
 `packages/default-setup/dist/runtime/index.cjs` differs between builds of identical input. Diagnosed
 2026-09-25 while reviewing the chain's cache; not fixed, because the fix is an esbuild upgrade.

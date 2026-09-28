@@ -1,3 +1,7 @@
+> **Done** (`61d1f9688`..HEAD on master). Phase 0 falsified the premise it was written for and Phase 1 shipped
+> the check, whose first run found three irreproducible outputs — none of them the one the plan doc named, and
+> all three `tsc`'s declaration emit rather than a bundler. The Outcome has the measurements.
+>
 > **Written in session** `ecc731d9-7b8d-4050-b210-b1ab65aa92e0` (Claude Code, 2026-09-28). Resume it with `claude -r ecc731d9-7b8d-4050-b210-b1ab65aa92e0`.
 
 ```
@@ -19,13 +23,13 @@ migrations.
 
 Finished when:
 - Phase 1 is implemented and meets its "Done when"; the guard is mutation-checked.
-- `npm run repro:check` exists and passes: it builds twice, compares, and fails naming any path whose
+- `npm run check:repro` exists and passes: it builds twice, compares, and fails naming any path whose
   bytes differ between two builds of one input.
 - What it compares is derived from BUILD_UNITS and PACK_OUTPUTS, not listed by hand, and it fails by
   name when that derived population is empty.
 - Its first full run is recorded in the Outcome: which built outputs are reproducible and which are
   not. That is the measurement this repo has never had.
-- npm run typecheck; npm run repro:check; npm run chain once at the end.
+- npm run typecheck; npm run check:repro; npm run chain once at the end.
 - A final summary: done/deferred, evidence, the conventional choices made.
 - The doc is in `docs/archive/goals/`, with its status blockquote and an Outcome section, committed.
 
@@ -40,13 +44,13 @@ Never:
   release metadata/typed EARS/shims/assertions), in full there.
 - bump esbuild, vite, tsup or tsx as part of this goal. Phase 0 measured that there is nothing to fix
   (Spike results); the bump is in Deferred with its evidence.
-- add `repro:check` to `npm run chain`. It is two full builds (Decision 5).
+- add `check:repro` to `npm run chain`. It is two full builds (Decision 5).
 - edit a recorded hash by hand.
 ```
 
 ## Background (2026-09-28, at 93dae1a7e on master)
 
-`docs/plans/pack-runtime-nondeterminism.md` recorded that `packages/default-setup/dist/runtime/index.cjs`
+`docs/archive/plans/pack-runtime-nondeterminism.md` recorded that `packages/default-setup/dist/runtime/index.cjs`
 differs between builds of identical input. Three bytes, in whether esbuild emits its interop helper's
 `isNodeMode` argument — `__toESM(require("https"))` against `__toESM(require("https"), 1)`. Measured
 2026-09-25: four runs, four distinct hashes. `dev-build.mjs` is the only producer, since `abuddy build` stops
@@ -123,34 +127,53 @@ Final.
 4. **The check covers every bundled output the chain caches on**, not only the one the plan doc hashed. Its
    first run is the measurement Background says is missing.
 
-5. **`repro:check` is not a chain step.** Two full builds against a 27s warm chain is not a trade this repo
+5. **`check:repro` is not a chain step.** Two full builds against a 27s warm chain is not a trade this repo
    makes, and `api:check` is the precedent. It runs before a release and when a bundler moves.
 
 ## Phases
 
-### Phase 1 — `repro:check`
+### Phase 1 — `check:repro`
 
-- A script in the `<artifact>:check` shape: build twice into separate trees, compare, report every path whose
+- A script in the `<artifact>:check` shape: build twice, snapshotting between, and compare, report every path whose
   bytes differ. If no recorded artifact is needed, say in the script's header why the pair has only one half,
   per root `CLAUDE.md`'s note that an artifact with only an update is one nothing notices has gone stale.
 - Population derived from `BUILD_UNITS` outputs and `PACK_OUTPUTS` (Decision 3), asserted non-empty.
 - Note for whoever runs it: a clean tree needs `npm run compile` before the pack's runtime bundle exists at
   all — `src/__generated__` is gitignored, which is what made the first spike run fail.
 
-**Done when:** `npm run repro:check` passes on a clean tree; its population is derived and asserted
+**Done when:** `npm run check:repro` passes on a clean tree; its population is derived and asserted
 non-empty; the Outcome records which built outputs are reproducible and which are not. **Mutation:**
 perturbing one byte of one built file between the two builds fails the check and names that path; emptying
 the derived population fails by name rather than passing.
 
 ## Deferred
 
-**Moving this repo's esbuild range to `^0.28.0`.** Phase 0 measured the symptom that motivated it as not
-reproducing, so the bump has no problem to solve today. Whoever picks it up later has the evidence above: the
-change is four manifests (`abuddy-sdk`, `abuddy-cli`, `api`, `default-setup`) and three direct importers
-(`dev-build.mjs`, `abuddy-sdk/src/build/compile-utils.ts`, `scripts/bundle-package.ts`); it does not move
-Vite, tsup or tsx, which vendor their own; expect Vite to de-dupe onto its own 0.25.x; and 0.28.2's output is
-+423 bytes of better `__esm` helper. Do it when something wants it — a bug fixed upstream, or `repro:check`
-reporting the race again — and verify it with `repro:check`, `packages:check` and `test:packaged-authoring`.
+**Moving this repo's esbuild range from `^0.25.0` to `^0.28.0`.** Not done, because the symptom that
+motivated it stopped reproducing. What follows is what was measured, so the next person weighing it starts
+from numbers rather than from the plan doc's guess.
+
+*Measured 2026-09-28, 0.25.12 against 0.28.2, on the pack runtime bundle:*
+
+| | |
+|---|---|
+| determinism | no difference — both stable, 14 runs and 8 runs. The nondeterminism this repo has is `tsc`'s declaration emit, which an esbuild bump does not touch |
+| build time | no difference — 0.18s wall either way, esbuild's own phase 29–31ms |
+| output | +423 bytes, and `__esm` gains error caching: a module whose initializer throws stays errored instead of re-running on the next access, which is what ESM semantics say. Real, and narrow — it bites only where a module throws during evaluation |
+
+*What it would touch:* four manifests (`abuddy-sdk`, `abuddy-cli`, `api`, `default-setup`) and three direct
+importers (`dev-build.mjs`, `abuddy-sdk/src/build/compile-utils.ts`, `scripts/bundle-package.ts`). Not Vite,
+tsup or tsx, which vendor their own copies.
+
+*One thing that runs against the usual instinct:* consolidating versions is not on offer. Vite currently
+shares this repo's 0.25.12; since `^0.25.0` on a 0.x version means `>=0.25.0 <0.26.0`, bumping ours pushes
+Vite onto a copy of its own, taking the tree from four esbuild installs to five. Three distinct versions
+either way.
+
+*Unread:* esbuild ships no changelog in the package, so 0.26–0.28's release notes were never surveyed. The
+`__esm` change above is what a diff of two outputs showed, not a summary of what those three minors contain —
+worth reading before deciding, since it is the one input to this that nobody has looked at.
+
+Verify with `check:repro`, `packages:check` and `test:packaged-authoring` if it is ever done.
 
 ## Constraints
 
@@ -168,3 +191,53 @@ reporting the race again — and verify it with `repro:check`, `packages:check` 
 - External packs are first-class: the fixture packs, the example pack and `test:packaged-authoring` keep
   passing.
 - Another session commits in this checkout continuously. Re-read `git status` and `git log` before committing.
+
+## Outcome (2026-09-28)
+
+**Phase 0 — the premise was false.** The symptom the goal was written for does not reproduce: 14 runs at
+esbuild 0.25.12 and 8 at 0.28.2, one hash each. Nothing explains why (`dev-build.mjs` unchanged since before
+the 2026-09-25 measurement, esbuild unchanged), which fits a timing-dependent race. The esbuild bump is in
+Deferred with its evidence; nothing was bumped.
+
+**Phase 1 — the check shipped, and its first run paid for the goal.** `npm run check:repro`
+(`scripts/repro.ts`, `scripts/lib/repro.ts`) builds everything twice and compares 1295 built files in **54.7s**.
+Three are irreproducible, and **none is the file the plan doc named**:
+
+| output | behaviour |
+|---|---|
+| `dist/defs/monaco/action-defs.d.ts` | **five distinct hashes in six builds** |
+| `dist/types/pack-types.d.ts` | flips intermittently |
+| `dist/snapshot.json` | records the facade's hash, so it moves with it |
+
+**The cause is `tsc`, not a bundler.** TypeScript's declaration emit orders a union's members differently
+between runs — `"topic" \| "status"` one build, `"status" \| "topic"` the next. So the plan doc's diagnosis
+pointed at the wrong tool, and the worst instance in the tree had never been looked at. `dist/runtime/index.cjs`,
+the one file that *was* measured, is reproducible.
+
+They are recorded in `KNOWN_IRREPRODUCIBLE` with their cause and reported on every run rather than failing it:
+all three are races, so failing on a run where one happens to agree would make the check flaky toward a false
+green. A spec asserts each entry still names a path inside the derived population, so an exception cannot rot
+into dead text.
+
+### Corrections to the Decisions
+
+- **`check:repro`, not `repro:check`.** Root `CLAUDE.md` reserves `<artifact>:check`/`<artifact>:update` for a
+  *recorded* artifact whose halves share a noun. This records nothing and re-derives both sides, like
+  `check:tiers` and `check:specifiers`. The original name advertised an `update` half that cannot exist.
+- **Two sequential builds in one tree**, not two trees: the builds write to fixed paths inside the repo, so
+  snapshotting between them is what "build twice, compare" means here.
+- **Scope is `BUILD_UNITS` + `PACK_OUTPUTS`.** Decision 4 read wider than the prompt block's checkable
+  Finished-when; the narrower, checkable reading won.
+
+### The trap worth knowing about
+
+`abuddy build` calls `generateEntries([])` with no `--force`, and `generate-entries` returns early on a
+matching `.inputs-hash`. A check that left codegen to `abuddy build` would re-hash `src/__generated__` without
+regenerating it and report it identical — half of `PACK_OUTPUTS` passing for having been looked at. The script
+runs `generate:entries -- --force` itself, and a spec pins the flag.
+
+### Follow-ups, deliberately not done
+
+- **`APP_OUTPUTS` is not covered** (renderer, api, main, preload). A third full build, ~37s more.
+- **The `tsc` ordering itself is unfixed.** Whether it is worth chasing upstream, sorting the emitted unions,
+  or leaving recorded is a decision nobody has had the measurement to make until now.

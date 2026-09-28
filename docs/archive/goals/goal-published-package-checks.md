@@ -153,7 +153,7 @@ its `needs` do not follow. The same guard catches the reverse — a declared inp
 step's output — which is how `typecheck` came to read the E2E suite's screenshots and never cache.
 
 **Still confounded: the built-in pack's runtime bundle is not reproducible.**
-[`pack-runtime-nondeterminism.md`](../../plans/pack-runtime-nondeterminism.md) has the measurement — three
+[`pack-runtime-nondeterminism.md`](../plans/pack-runtime-nondeterminism.md) has the measurement — three
 bytes, about three builds in four. It matters here only in how a Phase 3 run reads: whenever `compile`
 actually runs, every step declaring `PACK_OUTPUTS` goes stale for one cycle and the chain prints
 *"N steps passed but will run again next time"*. That is the cache verifier, not the drift report, and it is

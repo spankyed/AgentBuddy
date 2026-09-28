@@ -92,6 +92,7 @@
     "db:reset": "abuddy db reset -d",
     "db:clear-settings": "abuddy db clear-settings -d",
     "chain": "tsx scripts/chain.ts",
+    "check:repro": "tsx scripts/repro.ts",
     "check:tiers": "tsx scripts/check-test-tiers.ts",
     "test:external-pack:contract": "npm run packages:ensure && tsx scripts/bounded.ts 90 bash tests/scripts/test-external-pack-contract.sh",
     "test:external-pack:app": "tsx scripts/bounded.ts 120 bash tests/scripts/test-external-pack-app.sh"
