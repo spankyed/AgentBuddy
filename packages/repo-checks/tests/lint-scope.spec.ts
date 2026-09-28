@@ -100,3 +100,71 @@ describe("the lint gate's scaffold exclusion", () => {
     expect([...ignorePatterns('lint:fix')].sort()).toEqual([...ignorePatterns('lint:check')].sort());
   });
 });
+
+/**
+ * Every oxlint invocation here is `-D correctness`, so a disable naming a rule outside that category suppresses
+ * nothing — and reads as protection while doing it. `sdk-bridge-drift.spec.ts` carried an
+ * `eslint-disable-next-line no-console` that had never suppressed anything, and a commit message claimed widening
+ * the gate had given it teeth; both were wrong, and the comment was removed rather than the claim weakened.
+ *
+ * The exception is a workspace whose lint script also runs eslint, which enables rules oxlint has no notion of —
+ * the renderer's `prefer-const`, which is a real finding there and not an oxlint rule at all. That is derived from
+ * the scripts rather than named here, so a second workspace adding eslint is covered on the day it does.
+ */
+describe('a lint disable that names a rule nothing enables', () => {
+  const DISABLE = /\/[/*]\s*(?:es|ox)lint-disable(?:-next-line|-line)?\s+([^\n*]+)/g;
+
+  /** The rules oxlint runs, which is the `correctness` category and nothing else, from oxlint's own listing */
+  function correctnessRules(): Set<string> {
+    const listing = execFileSync(path.join(REPO_ROOT, 'node_modules', '.bin', 'oxlint'), ['--rules'],
+      { cwd: REPO_ROOT, stdio: 'pipe', maxBuffer: 8 * 1024 * 1024 }).toString();
+    const rules = new Set<string>();
+    let category = '';
+    for (const line of listing.split('\n')) {
+      const heading = /^##\s+(\w+)/.exec(line);
+      if (heading) category = heading[1]!.toLowerCase();
+      const row = /^\|\s*([a-z][\w-]*)\s*\|/.exec(line);
+      if (row && category === 'correctness') rules.add(row[1]!);
+    }
+    expect(rules.size, "oxlint's `--rules` listing parsed no correctness rule, so every name below would fail")
+      .toBeGreaterThan(0);
+    return rules;
+  }
+
+  /** The workspaces whose own `lint:check` runs eslint as well, where a non-oxlint rule can still be real */
+  function eslintDirs(): string[] {
+    const workspaces = execFileSync('npm', ['query', '.workspace'], { cwd: REPO_ROOT, stdio: 'pipe', maxBuffer: 32 * 1024 * 1024 }).toString();
+    return (JSON.parse(workspaces) as { location?: string; pkgid?: string }[])
+      .map(({ location }) => location ?? '')
+      .filter((location) => location !== '' && /(^|\s)eslint(\s|$)/.test(
+        (JSON.parse(fs.readFileSync(path.join(REPO_ROOT, location, 'package.json'), 'utf-8')) as { scripts?: Record<string, string> })
+          .scripts?.['lint:check'] ?? ''));
+  }
+
+  it('is not there — every one names a rule its file is actually linted for', () => {
+    const enabled = correctnessRules();
+    const alsoEslint = eslintDirs();
+    expect(alsoEslint, 'no workspace runs eslint, so the exception below would hide nothing').not.toEqual([]);
+
+    const files = execFileSync('git', ['ls-files'], { cwd: REPO_ROOT, maxBuffer: 64 * 1024 * 1024 })
+      .toString().split('\n').filter((file) => /\.(ts|tsx|vue|mts|cts|mjs|cjs|js)$/.test(file));
+    const inert: string[] = [];
+    let seen = 0;
+    for (const file of files) {
+      const source = fs.readFileSync(path.join(REPO_ROOT, file), 'utf-8');
+      for (const [, named] of source.matchAll(DISABLE)) {
+        // `-- reason` is the comment's own, and a plugin prefix is not part of the name oxlint lists
+        for (const rule of named.split('--')[0]!.split(',').map((name) => name.trim().replace(/^.*\//, '')).filter(Boolean)) {
+          seen += 1;
+          if (enabled.has(rule)) continue;
+          if (alsoEslint.some((dir) => file.startsWith(`${dir}/`))) continue;
+          inert.push(`${file}: ${rule}`);
+        }
+      }
+    }
+
+    expect(seen, 'no disable comment was found at all, so this passed over nothing').toBeGreaterThan(0);
+    expect(inert, 'these name a rule outside `correctness`, in a file only oxlint lints — so they suppress '
+      + 'nothing and read as protection. Delete the comment, or fix what it was hiding').toEqual([]);
+  });
+});
