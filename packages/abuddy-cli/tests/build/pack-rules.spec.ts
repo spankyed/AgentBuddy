@@ -375,6 +375,13 @@ describe('when several rules are right about one site', () => {
     ]);
   });
 
+  /** The same, at a path the case picks, in a complete pack — for a specifier that has to resolve to fire */
+  const offenderIn = (at: string, code: string, extra: Record<string, string> = {}) => {
+    const dir = packFixture({ files: { [at]: code, ...extra } });
+    dirs.push(dir);
+    return [...packRuleProblems(dir)].flatMap(([key, found]) => found.map((problem) => `${key}: ${problem}`));
+  };
+
   it('keeps two real offences that happen to share a line', () => {
     expect(offender("import { edgeStore } from '@abuddy/host/ears'; console.log('x');\n")).toEqual([
       'host-imports: src/extensions/steps/x.ts:1: @abuddy/host/ears',
@@ -383,19 +390,62 @@ describe('when several rules are right about one site', () => {
   });
 
   /**
-   * The order in `PACK_RULES` *is* the precedence, so it is worth pinning: what stops the pack loading, then
-   * what stops a specifier resolving, then what breaks on an app update, then the conventions.
+   * One specifier two rules are both right about, for each pair whose predicates can hold at once. The matrix in
+   * repo-checks puts *one rule's* offending line at each place a rule discriminates on, so it can only find a pair
+   * that claims a line written for one of them; these are the other shape, and every one of them was unpinned —
+   * a precedence change would have moved what an author is told and nothing would have failed.
    */
+  it('gives an @internal send to the rule about @internal names, not the one about sends', () => {
+    // `_sendToLocalPlugin` is the one EVENT_SENDS member that is also `_`-prefixed
+    expect(offender("import { _sendToLocalPlugin } from '@abuddy/sdk/events';\n")).toEqual([
+      'internal-package-imports: src/extensions/steps/x.ts:1: _sendToLocalPlugin from @abuddy/sdk/events',
+    ]);
+  });
+
+  it('gives an untyped send from the raw transport to the send rule', () => {
+    expect(offender("import { untypedSendToSystem } from '@abuddy/sdk/rpc/client';\n")).toEqual([
+      'untyped-sends: src/extensions/steps/x.ts:1: untypedSendToSystem from @abuddy/sdk/rpc/client',
+    ]);
+  });
+
   /**
-   * The rule table in `docs/public-facing/cli.md` is what a pack author reads, and nothing derived it from these
-   * keys — so it drifted both ways at once: it documented a `js-specifiers` pack rule that has never existed (the
-   * relative `.js` form is `own-modules`') and left `source-resolution` out entirely.
-   *
-   * Compared as sets, not in order: the doc groups rules the way an author meets them, which is editorial, while
-   * the order here is precedence. What must not differ is which rules exist, and which of them a pack may switch
-   * off — which the table says per row rather than in a sentence counting the trailing ones, since that sentence
-   * was right only for as long as nobody appended a switchable rule or flipped one, and nothing read it.
+   * And the owner changes with the place: `untyped-sends` exempts generated code and `raw-transport` does not, so
+   * the same line is one rule's outside `__generated__` and the other's inside it. Both halves were pinned
+   * separately — each rule's own early return — and nothing said the site changes hands.
    */
+  it('hands that site to the transport rule inside generated code, which exempts nothing', () => {
+    expect(offenderIn('src/__generated__/x.ts', "import { untypedSendToSystem } from '@abuddy/sdk/rpc/client';\n"))
+      .toEqual(['raw-transport: src/__generated__/x.ts:1: @abuddy/sdk/rpc/client']);
+  });
+
+  it('gives an @internal name from the store to the rule about the store', () => {
+    expect(offender("import { _x } from '@abuddy/ears/lmdb';\n")).toEqual([
+      'lmdb-imports: src/extensions/steps/x.ts:1: @abuddy/ears/lmdb',
+    ]);
+  });
+
+  it('gives a cast of the raw transport to the transport rule, whose span sits inside the cast', () => {
+    expect(offender('const r = (_rootEvents.repository as unknown as Repos);\n')).toEqual([
+      'raw-transport: src/extensions/steps/x.ts:1: _rootEvents',
+    ]);
+  });
+
+  /**
+   * The pair worth arguing about. An extensionless cross-feature import is both unresolvable and a crossing, and
+   * precedence gives it to `own-modules` (5th) over `cross-feature-imports` (11th) — so the author is told to add
+   * `.ts`, does, and is then told the import should not exist at all. The first fix was wasted.
+   *
+   * Pinned as it behaves, not as it should: the order above says "what stops a specifier resolving" comes before
+   * "the conventions", which defends this, while the same comment's stated goal — "an author deleting one import is
+   * told the thing that matters about it" — argues for the crossing, the fix that subsumes the other. Which
+   * principle wins is a decision to raise; reordering would move every pair that sits between the two rules.
+   */
+  it('gives an extensionless cross-feature import to the rule about the extension', () => {
+    expect(offenderIn('src/extensions/viewer.ts', "import { t } from '#features/threads/fe/state';\n",
+      { 'src/features/threads/fe/state.ts': 'export const t = 1;\n' }))
+      .toEqual(["own-modules: src/extensions/viewer.ts:1: '#features/threads/fe/state' names no file — write '#features/threads/fe/state.ts'"]);
+  });
+
   /**
    * A whole-pack finding says where it is separately from what it says, and this is why: `source-resolution`
    * reports `@abuddy/sdk -> <where it landed>`, a path *outside* the pack, and `contract-leaves` reports two paths
@@ -414,6 +464,16 @@ describe('when several rules are right about one site', () => {
     expect(formatPackWide({ what: 'x', at: { file: 'src/a.ts', line: 3 } })).toBe('src/a.ts:3: x');
   });
 
+  /**
+   * The rule table in `docs/public-facing/cli.md` is what a pack author reads, and nothing derived it from these
+   * keys — so it drifted both ways at once: it documented a `js-specifiers` pack rule that has never existed (the
+   * relative `.js` form is `own-modules`') and left `source-resolution` out entirely.
+   *
+   * Compared as sets, not in order: the doc groups rules the way an author meets them, which is editorial, while
+   * the order here is precedence. What must not differ is which rules exist, and which of them a pack may switch
+   * off — which the table says per row rather than in a sentence counting the trailing ones, since that sentence
+   * was right only for as long as nobody appended a switchable rule or flipped one, and nothing read it.
+   */
   it('documents exactly the rules that exist, and which are switchable, in docs/public-facing/cli.md', () => {
     const doc = fs.readFileSync(path.join(REPO_ROOT, 'docs/public-facing/cli.md'), 'utf-8').split('\n');
     const header = doc.findIndex((line) => /^\|\s*Rule\s*\|/.test(line));
@@ -442,6 +502,10 @@ describe('when several rules are right about one site', () => {
       .toEqual(PACK_RULES.filter((rule) => rule.switchable).map((rule) => rule.key).sort());
   });
 
+  /**
+   * The order in `PACK_RULES` *is* the precedence, so it is worth pinning: what stops the pack loading, then
+   * what stops a specifier resolving, then what breaks on an app update, then the conventions.
+   */
   it('declares that precedence in one place', () => {
     expect(PACK_RULES.map((rule) => rule.key)).toEqual([
       'source-resolution', 'contract-leaves',
