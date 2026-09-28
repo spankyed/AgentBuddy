@@ -6,6 +6,7 @@
 // workspace stopped matching its vitest project name would be stamped as having passed a run it was
 // excluded from — the same "recorded fresh having never run" the pool was already fixed for once.
 import { describe, expect, it } from 'vitest';
+import { STAMP_VERSION } from '@abuddy/host/build/packages-built';
 import { projectsThatRan, projectsThatDidNotRun, whyItRuns } from '../../../scripts/lib/unit-pool.ts';
 
 const line = (project: string, file: string) => ` ✓ |${project}| ${file} (3 tests) 12ms`;
@@ -80,5 +81,18 @@ describe('whyItRuns', () => {
   /** The diff can come back empty on a walk-time race; the line still has to say something true */
   it('falls back to the verdict when the diff names nothing', () => {
     expect(whyItRuns(stamped, () => '')).toBe('its inputs changed');
+  });
+
+  /**
+   * The defect as a property rather than a string: a stamp this protocol will not compare must not be diffed at
+   * all. It was — the digests were read and a file named, beside a reason saying the stamp was from another
+   * format — so the thing to hold is that the diff is never reached, not merely that the words came out right.
+   */
+  it('never computes the diff for a stamp it may not compare', () => {
+    let asked = false;
+    const fromAnotherFormat = { ...stamped, version: STAMP_VERSION - 1 };
+    expect(whyItRuns(fromAnotherFormat, () => { asked = true; return 'changed packages/x/src/a.ts'; }))
+      .toBe('its stamp is from another format');
+    expect(asked, 'it diffed digests that this protocol says say nothing about the tree').toBe(false);
   });
 });

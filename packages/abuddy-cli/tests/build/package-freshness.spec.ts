@@ -4,7 +4,7 @@ import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
-import { ABSENT, ALLOW_UNBUILT, BUILD_UNITS, buildScriptFor, changedInputs, CHECKOUT_MARKER, covers, declaredPaths, fingerprintInputs, fingerprintUnit, fingerprintWithDigests, freshnessSweep, inputFiles, INPUTS_CHANGED, repoRelative, NOT_A_BUILD_INPUT, REPO_ROOT, staleMessage, stampRecord, STAMP_VERSION, stampedBuild, stampedRun, stampedRunAll, stampFile, unbuiltRefusal, unitStaleReason, withBuildLock, type BuildIntent, type BuildUnit } from '@abuddy/host/build/packages-built';
+import { ABSENT, ALLOW_UNBUILT, BUILD_UNITS, buildScriptFor, changedInputs, CHECKOUT_MARKER, covers, declaredPaths, fingerprintInputs, fingerprintUnit, fingerprintWithDigests, freshnessSweep, inputFiles, INPUTS_CHANGED, repoRelative, NOT_A_BUILD_INPUT, REPO_ROOT, staleMessage, stampRecord, STAMP_VERSION, stampedBuild, stampedRun, stampedRunAll, stampFile, unbuiltRefusal, undiffableReason, unitStaleReason, withBuildLock, type BuildIntent, type BuildUnit } from '@abuddy/host/build/packages-built';
 
 /**
  * The freshness rule behind `npm test -w @abuddy/cli`'s pretest (@abuddy/host/build/packages-built):
@@ -655,6 +655,37 @@ describe('a freshness sweep', () => {
     fs.writeFileSync(path.join(f.src, 'a.ts'), 'export const a = 2;\n');
     fs.rmSync(path.join(f.src, 'nested', 'b.ts'));
     expect(freshnessSweep().changedInputs(f.unit, recorded)).toEqual(changedInputs(f.unit, recorded));
+  });
+});
+
+/**
+ * Whether a stamp's digests may be diffed at all, which the verdict and the explanation have to agree on.
+ *
+ * The version clause is the one an explainer forgets: `unitStaleReason` refuses a stamp from another protocol,
+ * and an explainer that diffs its digests anyway printed a file name beside a reason saying the stamp could not
+ * be compared — on one line, contradicting itself.
+ */
+describe('undiffableReason', () => {
+  const complete = { version: STAMP_VERSION, fingerprint: 'abc', declared: ['packages/x/src'], files: { 'packages/x/src/a.ts': 'd' } };
+
+  it('lets a complete stamp of this protocol through', () => {
+    expect(undiffableReason(complete)).toBeNull();
+  });
+
+  /** The clause that was missing, and the only one here that can give a confidently wrong answer when it is */
+  it('refuses a stamp from another protocol, however complete it looks', () => {
+    expect(undiffableReason({ ...complete, version: STAMP_VERSION - 1 })).toBe('its stamp is from another format');
+  });
+
+  it('refuses one with nothing to diff against', () => {
+    expect(undiffableReason(undefined)).toBe('has not run yet');
+    expect(undiffableReason({ version: STAMP_VERSION })).toBe('has not run yet');
+    expect(undiffableReason({ version: STAMP_VERSION, fingerprint: 'abc' })).toBe('its last run recorded no per-file digests');
+  });
+
+  /** In `unitStaleReason`'s order, so the two cannot disagree about which complaint comes first */
+  it('reports a missing fingerprint before a version it does not know', () => {
+    expect(undiffableReason({ version: STAMP_VERSION - 1 })).toBe('has not run yet');
   });
 });
 

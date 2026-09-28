@@ -10,7 +10,7 @@
  * caches holds to and what happened when it did not.
  */
 import * as path from 'node:path';
-import { REPO_ROOT, type BuildUnit, type StampRecord } from '@abuddy/host/build/packages-built';
+import { REPO_ROOT, undiffableReason, type BuildUnit, type StampRecord } from '@abuddy/host/build/packages-built';
 import { suiteInputs } from './chain-steps.ts';
 import type { UnitSuite } from './unit-suites.ts';
 
@@ -80,12 +80,11 @@ export function projectsThatDidNotRun(asked: readonly string[], output: string):
  * different input set. It can say what moved under `test:unit:host` while being unable to say which of the
  * eleven projects inside it that was.
  *
- * Pure, over a record and a thunk, so the four answers can be checked without a stamp on disk — and so the
- * diff is only computed for the one branch that needs it. `poolUnitFor` declares no outputs, so the verdicts
- * that reach here are narrower than `unitStaleReason`'s: a project that has never run, one whose stamp
- * predates the digests, and one whose inputs moved, which is every project on an ordinary day.
+ * Pure, over a record and a thunk, so the answers can be checked without a stamp on disk — and `??`
+ * short-circuits, so the diff is never computed for a stamp that may not be diffed. Which stamps those are is
+ * `undiffableReason`'s to say, not this line's: a version it does not recognise is the clause an explainer is
+ * most likely to forget, and forgetting it here printed a file name beside a reason that said the stamp could
+ * not be read at all.
  */
 export const whyItRuns = (record: StampRecord | undefined, moved: () => string): string =>
-  (record?.fingerprint === undefined ? 'has not run yet'
-    : record.files === undefined || record.declared === undefined ? 'its last run recorded no per-file digests'
-      : moved() || 'its inputs changed');
+  undiffableReason(record) ?? (moved() || 'its inputs changed');

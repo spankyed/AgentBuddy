@@ -525,6 +525,25 @@ export function stampRecord(stamp: string): StampRecord | undefined {
 }
 
 /**
+ * Why this stamp's digests cannot be diffed against the tree, or null when they can.
+ *
+ * The verdict and the explanation have to agree about which stamps are comparable at all, and the version is the
+ * clause that is easy to forget: `unitStaleReason` refuses a stamp from another protocol — a different hash, or a
+ * different set of things hashed — and an explainer that diffs its digests anyway contradicts the reason printed
+ * beside it. It did: `its stamp is from another format (0, this is 1) — changed src/a.ts`, on one line.
+ *
+ * So the rule is here rather than at each caller, in `unitStaleReason`'s own order — fingerprint, then version —
+ * so the two cannot disagree about precedence. A caller with a line to spend prints the reason; one adding a
+ * suffix to a reason that already says this prints nothing. The wording sits after a name — a workspace or a
+ * project — which is why none of it starts with a subject.
+ */
+export const undiffableReason = (record: StampRecord | undefined): string | null =>
+  (record?.fingerprint === undefined ? 'has not run yet'
+    : record.version !== STAMP_VERSION ? 'its stamp is from another format'
+      : record.files === undefined || record.declared === undefined ? 'its last run recorded no per-file digests'
+        : null);
+
+/**
  * Why `unit` needs to run, or null when its stamp says a run over exactly these inputs succeeded. Never
  * throws. The wording is deliberately not about building: the chain's steps go through this too, and most
  * of them are checks that produce nothing (`stampedRun`, `scripts/chain.ts`).
@@ -607,8 +626,14 @@ export function stalePackageUnits(): StaleUnit[] {
  */
 function whatMovedUnder(unit: BuildUnit, stamp: string, sweep: ReturnType<typeof freshnessSweep>): string | undefined {
   const record = stampRecord(stamp);
-  if (record?.files === undefined || record.declared === undefined) return undefined;
-  const moved = firstChange(sweep.changedInputs(unit, { files: record.files, declared: record.declared }));
+  // Nothing rather than a message: the reason this is a suffix to already says why, and a second sentence
+  // repeating it would be the widest part of the line
+  if (undiffableReason(record) !== null) return undefined;
+  // Destructured so the two are narrowed here rather than asserted: `undiffableReason` has established they are
+  // there, and the compiler cannot see through it. The rule that would be costly to repeat is the version's
+  const { files, declared } = record ?? {};
+  if (files === undefined || declared === undefined) return undefined;
+  const moved = firstChange(sweep.changedInputs(unit, { files, declared }));
   return moved === '' ? undefined : moved;
 }
 
