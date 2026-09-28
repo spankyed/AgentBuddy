@@ -29,6 +29,8 @@ const CLI = path.join(REPO_ROOT, 'packages', 'abuddy-cli', 'bin', 'abuddy.mjs');
 
 let tmp: string;
 let pack: string;
+/** What `init` printed: it names scripts, so it is held to the same rule as the files it wrote */
+let initOutput: string;
 
 function run(cmd: string, args: string[], cwd: string): { code: number; output: string } {
   try {
@@ -42,7 +44,9 @@ function run(cmd: string, args: string[], cwd: string): { code: number; output: 
 beforeAll(async () => {
   tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'abuddy-scaffold-'));
   // produces: the shared demo-pack every test below reads; the code check is a fixture guard
-  expect((await callCli(tmp, 'init', ['demo-pack'])).code).toBe(0);
+  const init = await callCli(tmp, 'init', ['demo-pack']);
+  expect(init.code).toBe(0);
+  initOutput = init.output;
   pack = path.join(tmp, 'demo-pack');
   fs.symlinkSync(path.join(REPO_ROOT, 'node_modules'), path.join(pack, 'node_modules'), 'dir');
 });
@@ -139,34 +143,64 @@ describe('abuddy init → add feature → build → tsc → pack', () => {
    * at `npm run does-not-exist` left the case green. Parsing also means a malformed template throws here
    * rather than at a pack author's first push.
    */
-  it('names only scripts and commands that exist, in every workflow step and the README', () => {
+  it('names only scripts and commands that exist, everywhere the scaffold names one', () => {
     const scripts = Object.keys(JSON.parse(fs.readFileSync(path.join(pack, 'package.json'), 'utf-8')).scripts);
-    /** A `npm run x` / `npx abuddy y` the scaffold cannot honour, or nothing when it can */
+    /** npm subcommands that are npm's own and run no script, so a scaffolded file may name them freely */
+    const NOT_A_SCRIPT = ['ci', 'install', 'i'];
+    /** The first words that mean "this line runs something", and so must resolve to something that exists */
+    const RUNNERS = ['npm', 'npx', 'yarn', 'pnpm', 'bunx', 'abuddy'];
+
+    /**
+     * What a line names and cannot honour, or nothing when it can.
+     *
+     * The default is to **report**, not to ignore. The version this replaced recognised `npm run x` and
+     * `npx abuddy y` and fell through for everything else, which silently passed `npm nonexistent`,
+     * `abuddy nonexistent` and `yarn run x` — three holes that were one hole, the fall-through. A line whose
+     * first word is a runner has to resolve here; a line that is shell (`test "v$(…)"`, `echo`) is not ours.
+     */
     const unknown = (line: string): string | undefined => {
-      const script = /^npm run ([\w:-]+)/.exec(line)?.[1];
-      if (script !== undefined) return scripts.includes(script) ? undefined : `npm run ${script}`;
-      const command = /^npx abuddy ([\w-]+)/.exec(line)?.[1];
-      if (command !== undefined) return CLI_COMMANDS.includes(command) ? undefined : `abuddy ${command}`;
-      return undefined; // npm ci, npm test, a shell test: not ours to check
+      const [first = '', second = '', third = ''] = line.split(/\s+/);
+      if (!RUNNERS.includes(first)) return undefined;
+      // `npm run x`, and npm's lifecycle shorthands, which do run a script of that name
+      if (first === 'npm') {
+        const script = second === 'run' ? third : ['test', 'start'].includes(second) ? second : undefined;
+        if (script !== undefined) return scripts.includes(script) ? undefined : `npm run ${script}`;
+        return NOT_A_SCRIPT.includes(second) ? undefined : `npm ${second}`;
+      }
+      const command = first === 'abuddy' ? second : second === 'abuddy' ? third : undefined;
+      if (command === undefined) return `${first} ${second}`; // a runner invoking something that is not ours
+      return CLI_COMMANDS.includes(command) ? undefined : `abuddy ${command}`;
     };
 
     const offenders: string[] = [];
+    const judge = (where: string, lines: readonly string[]) => {
+      offenders.push(...lines.map((line) => unknown(line.trim())).filter((x): x is string => x !== undefined).map((x) => `${where}: ${x}`));
+    };
+
     for (const name of ['ci.yml', 'release.yml']) {
       const file = path.join(pack, '.github', 'workflows', name);
       expect(fs.existsSync(file), `${name} was not scaffolded`).toBe(true);
       const text = fs.readFileSync(file, 'utf-8');
       // Throws on a malformed template rather than reading nothing out of it
       const workflow = parseYaml(text) as { jobs?: Record<string, { steps?: { run?: string }[] }> };
-      const runs = Object.values(workflow.jobs ?? {}).flatMap((job) => (job.steps ?? []).flatMap((step) => step.run?.split('\n') ?? []));
-      // Under-reading is the bug this replaced, so the parse is held to what the raw text shows
-      expect(runs.length, `${name}: parsed fewer run steps than it has`).toBeGreaterThanOrEqual((text.match(/^\s*-? ?run:/gm) ?? []).length);
-      offenders.push(...runs.map((line) => unknown(line.trim())).filter((x): x is string => x !== undefined).map((x) => `${name}: ${x}`));
+      const runSteps = Object.values(workflow.jobs ?? {}).flatMap((job) => (job.steps ?? []).filter((step) => typeof step.run === 'string'));
+      // Steps against steps, not lines against steps: a multi-line `run: |` block inflates a line count, and
+      // the loose comparison this replaced would pass while the walk had missed a whole step. A literal
+      // `run:` inside a block scalar's body would fail this — rare, loud, and fixable by adjusting the count
+      expect(runSteps.length, `${name}: parsed a different number of run steps than the file has`)
+        .toBe((text.match(/^\s*-? ?run:/gm) ?? []).length);
+      judge(name, runSteps.flatMap((step) => step.run!.split('\n')));
     }
 
     const readme = fs.readFileSync(path.join(pack, 'README.md'), 'utf-8');
-    const named = [...readme.matchAll(/`(npm(?: run)? [\w:-]+)`/g)].map((m) => m[1]!);
+    const named = [...readme.matchAll(/`((?:npm|npx|abuddy)(?: [\w:-]+)+)`/g)].map((m) => m[1]!);
     expect(named.length, 'the README names no commands, so this passed over nothing').toBeGreaterThan(0);
-    offenders.push(...named.map((line) => unknown(line)).filter((x): x is string => x !== undefined).map((x) => `README.md: ${x}`));
+    judge('README.md', named);
+
+    // What `init` prints is the first thing an author reads, and it names scripts that can be renamed
+    const printed = initOutput.split('\n').map((line) => line.trim()).filter((line) => RUNNERS.includes(line.split(/\s+/)[0] ?? ''));
+    expect(printed.length, "init printed no commands, so this passed over nothing").toBeGreaterThan(0);
+    judge('init output', printed);
 
     expect(offenders, 'these name a script or command the scaffold does not provide').toEqual([]);
   });
