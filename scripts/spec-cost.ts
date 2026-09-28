@@ -33,7 +33,7 @@ import { REPO_ROOT } from '@abuddy/host/build/packages-built';
 import { UNIT_SUITES, type UnitSuite } from './lib/unit-suites.ts';
 import {
   FAST_BELOW_MS, INTEGRATION_ABOVE_MS, PLACEMENT_GUARD, configsFor, halfOfPath, hasSplit, misplaced,
-  CONTENDED_SHARE, CONFIG_BY_HALF, configsOf, moved, readSpecCost, specCostFile, specFiles, stale, unrecorded,
+  changesIn, CONFIG_BY_HALF, configsOf, contended, moved, readSpecCost, specCostFile, specFiles, stale, unrecorded,
 } from './lib/spec-cost.ts';
 
 // eslint-disable-next-line no-control-regex -- vitest colours its output and this reads it back
@@ -167,17 +167,16 @@ function update(plans: readonly SuitePlan[], dry: boolean): void {
       const before = previous?.costs[spec];
       settled[spec] = moved(spec, before, ms) ? ms : before!;
     }
-    const changed = Object.keys(costs).filter((spec) => settled[spec] !== previous?.costs[spec]);
+    const { added, remeasured } = changesIn(previous, settled, Object.keys(costs));
 
     // What a sample can check: not equality, which it never has, but reproducibility. An idle run moves a
-    // handful; a contended one moves most of the suite and records the machine instead of the specs. The
-    // denominator is what this run measured, so naming one spec that legitimately moved is not a suite-wide
-    // verdict about the machine.
-    const measuredCount = Object.keys(costs).length;
-    if (previous !== undefined && !force && measuredCount > 0 && changed.length > CONTENDED_SHARE * measuredCount) {
-      throw new Error(`${suite.workspace}: ${changed.length} of ${measuredCount} specs moved, which is `
-        + `more than a measurement should. That is what a loaded machine looks like — run this with nothing else `
-        + `running, or pass --force if the suite really did change this much.`);
+    // handful; a contended one moves most of what it could move and records the machine instead of the specs.
+    // Only specs that had a value to move are evidence of that — a first measurement is not.
+    const comparable = Object.keys(costs).length - added.length;
+    if (previous !== undefined && !force && contended(remeasured.length, comparable)) {
+      throw new Error(`${suite.workspace}: ${remeasured.length} of ${comparable} already-recorded specs moved, `
+        + `which is more than a measurement should. That is what a loaded machine looks like — run this with `
+        + `nothing else running, or pass --force if the suite really did change this much.`);
     }
 
     const measuredSkipped = [...new Set(runs.flatMap((run) => run.skipped))].filter((file) => settled[file] === undefined);
@@ -193,7 +192,7 @@ function update(plans: readonly SuitePlan[], dry: boolean): void {
     fs.mkdirSync(path.dirname(file), { recursive: true });
     // `measuredAt` moves with the costs, not with the run: a record nothing moved is byte-identical, so an
     // update that found nothing leaves no diff to read past. A prune moves it, having changed the record.
-    const settledRecord = changed.length === 0 && plan.prune.length === 0 && previous !== undefined
+    const settledRecord = added.length === 0 && remeasured.length === 0 && plan.prune.length === 0 && previous !== undefined
       ? { ...previous, skipped }
       : record;
     const next = `${JSON.stringify(settledRecord, null, 2)}\n`;
@@ -201,7 +200,9 @@ function update(plans: readonly SuitePlan[], dry: boolean): void {
 
     const moves = misplaced(settled, files);
     const did = [
-      plan.configs.length === 0 ? 'measured nothing' : `${changed.length === 0 ? 'none moved' : `${changed.length} moved`}`,
+      plan.configs.length === 0 ? 'measured nothing'
+        : [added.length > 0 ? `${added.length} added` : '', remeasured.length > 0 ? `${remeasured.length} moved` : '']
+          .filter(Boolean).join(', ') || 'none moved',
       plan.prune.length > 0 ? `${plan.prune.length} gone` : '',
     ].filter(Boolean).join(', ');
     console.log(`${suite.workspace.padEnd(20)} ${String(files.length).padStart(3)} specs${skipped.length ? `, ${skipped.length} skipped` : ''}`

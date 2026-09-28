@@ -67,9 +67,11 @@ export const INTEGRATION_SUFFIX = '.integration.spec.ts';
  * the 366 specs are under 500ms, where a few milliseconds is a large *relative* change. Recording every
  * sample therefore rewrote most of the file every time, and a real movement had nowhere to be seen.
  *
- * Wider than that jitter, far narrower than the 1 000ms band between `FAST_BELOW_MS` and
- * `INTEGRATION_ABOVE_MS`, so a spec that genuinely crosses is still recorded and still reported. Modelled
- * against the same two runs: one entry of 163 moves, against 125 before.
+ * Wider than that jitter, and deliberately not narrow enough to catch a crossing on its own — at a recorded
+ * 2 000ms this tolerance is the width of the whole band. It does not have to be: `moved` records any
+ * measurement that would place the spec in a different half before it looks at magnitude at all, so this
+ * number only decides when a record stops being roughly true. Modelled against the same two runs: one entry
+ * of 163 moves, against 125 before.
  *
  * It compounds rather than hides a slow creep: the tolerance is relative to the *recorded* value, which stays
  * put, so 400 -> 480 -> 576 exceeds it on the third step rather than never.
@@ -101,6 +103,36 @@ export const moved = (file: string, recorded: number | undefined, measured: numb
  * with nothing else on the machine" was prose until this, and was ignored twice in one day.
  */
 export const CONTENDED_SHARE = 0.25;
+
+/** What a run changed, told apart: a spec measured for the first time is not evidence about the machine */
+export interface Changes { readonly added: readonly string[]; readonly remeasured: readonly string[] }
+
+/**
+ * Which of the specs this run measured are new, and which had a recorded value that moved.
+ *
+ * Apart, because the two answer different questions and one call site wanted each. A record must be written
+ * for either. Only the second says anything about the conditions the run was taken under — counting the
+ * first refused eight new specs in a suite of twenty-eight as "a loaded machine", which is the wrong
+ * sentence about the right number.
+ */
+export function changesIn(
+  previous: SpecCost | undefined, settled: Record<string, number>, measured: readonly string[],
+): Changes {
+  const before = (spec: string): number | undefined => previous?.costs[spec];
+  return {
+    added: measured.filter((spec) => before(spec) === undefined),
+    remeasured: measured.filter((spec) => before(spec) !== undefined && settled[spec] !== before(spec)),
+  };
+}
+
+/**
+ * Whether a run moved more of what it could move than a measurement should.
+ *
+ * `comparable` is the specs that had a value to move — measured minus added — so a suite recorded for the
+ * first time is never refused for having recorded everything.
+ */
+export const contended = (remeasured: number, comparable: number): boolean =>
+  comparable > 0 && remeasured > CONTENDED_SHARE * comparable;
 
 /** The guard that reads this record. It is the one spec that skips itself while the record is rewritten. */
 export const PLACEMENT_GUARD = 'tests/suite-split.spec.ts';

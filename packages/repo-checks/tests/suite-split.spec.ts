@@ -13,8 +13,7 @@ import * as path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { REPO_ROOT } from '@abuddy/host/build/packages-built';
 import {
-  FAST_BELOW_MS, INTEGRATION_ABOVE_MS, halfOfPath, hasSplit, misplaced, outgrown, readSpecCost, specFiles,
-  stale, unrecorded,
+  FAST_BELOW_MS, INTEGRATION_ABOVE_MS, changesIn, contended, halfOfPath, hasSplit, misplaced, moved, outgrown, readSpecCost, specFiles, stale, unrecorded,
 } from '../../../scripts/lib/spec-cost.ts';
 import { UNIT_SUITES } from '../../../scripts/lib/unit-suites.ts';
 
@@ -118,5 +117,62 @@ describe('a spec that costs more than a fast half allows', () => {
     const live = new Set(found().map(({ key }) => key));
     expect(Object.keys(EXPENSIVE_BY_NATURE).filter((key) => !live.has(key)),
       'these are no longer expensive; drop them from EXPENSIVE_BY_NATURE').toEqual([]);
+  });
+});
+
+
+/**
+ * When a measurement replaces the recorded one, and when a run is read as measuring the machine.
+ *
+ * Both are pure, and both went in without a case: the tolerance was checked by recording a suite three times
+ * and diffing, the refusal by hand-wrecking a record. Neither left anything behind that runs again.
+ */
+describe('a measurement replaces the record only when it says something new', () => {
+  const FAST = 'tests/x.spec.ts';
+  const SLOW = 'tests/x.integration.spec.ts';
+
+  it('records a spec it has never seen', () => {
+    expect(moved(FAST, undefined, 120)).toBe(true);
+  });
+
+  it('records a measurement that would place the spec in the other half', () => {
+    expect(moved(FAST, 2_400, 2_600), 'a fast spec past the upper edge').toBe(true);
+    expect(moved(SLOW, 2_600, 1_400), 'an integration spec under the lower edge').toBe(true);
+  });
+
+  it('records a large move that crosses nothing, so the number stays roughly true', () => {
+    expect(moved(FAST, 400, 1_200)).toBe(true);
+  });
+
+  // The case the tolerance exists for: `generated-behind-contract` runs codegen over a temp pack and reads
+  // anywhere in this range between idle runs. Both values are far below the band and neither says anything
+  // the other does not, and recording each of them rewrote the file on every update.
+  it('keeps the record for jitter in a spec that is simply variable', () => {
+    expect(moved(FAST, 995, 714)).toBe(false);
+    expect(moved(FAST, 714, 995)).toBe(false);
+  });
+});
+
+describe('a run that moved too much was measuring the machine', () => {
+  const specs = (n: number, prefix: string): string[] => Array.from({ length: n }, (_, i) => `tests/${prefix}${i}.spec.ts`);
+
+  // The regression: `moved` is true for a spec with no recorded value, so counting additions read eight new
+  // specs in a suite of twenty-eight as a contended run and refused it, naming the machine.
+  it('does not read specs measured for the first time as a machine under load', () => {
+    const previous = { measuredAt: '', skipped: [], costs: Object.fromEntries(specs(20, 's').map((spec) => [spec, 100])) };
+    const measured = [...specs(20, 's'), ...specs(8, 'new')];
+    const settled = { ...previous.costs, ...Object.fromEntries(specs(8, 'new').map((spec) => [spec, 50])) };
+    const { added, remeasured } = changesIn(previous, settled, measured);
+    expect(added, 'the eight new ones').toHaveLength(8);
+    expect(remeasured, 'and nothing that had a value moved').toHaveLength(0);
+    expect(contended(remeasured.length, measured.length - added.length)).toBe(false);
+  });
+
+  it('reads a suite whose recorded specs mostly moved as one', () => {
+    expect(contended(6, 20)).toBe(true);
+  });
+
+  it('never refuses a suite that had nothing to compare against', () => {
+    expect(contended(0, 0), 'a record written for the first time').toBe(false);
   });
 });
