@@ -96,7 +96,7 @@ It is not one file. Collected through vitest's node API against the root config 
 | `packages/renderer/src/main.ts` | **0** |
 | `packages/api/src/server.ts` | **0** |
 | `packages/main/src/index.ts` | **0** |
-| `packages/renderer/src/views/settings/index.ts` | **0** |
+| `packages/renderer/src/views/settings/plugin.ts` | **0** |
 | `packages/abuddy-ui/src/design/button.ts` | **0** |
 | `packages/main/src/app-context.ts` | 2 |
 | `packages/abuddy-host/src/services/index.ts` | 16 |
