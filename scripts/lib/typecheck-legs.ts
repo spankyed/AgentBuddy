@@ -46,6 +46,8 @@ export const TYPECHECK_LEGS: readonly Leg[] = [
   { name: 'typecheck:scripts', command: 'npm run typecheck:scripts', needs: [ENSURE], seconds: 2.6 },
   { name: 'typecheck:cli', command: 'npm run typecheck:cli', needs: [ENSURE], seconds: 2.7 },
   { name: 'typecheck:pack', command: 'npm run typecheck:pack', needs: [ENSURE], seconds: 4.8 },
+  { name: 'typecheck:main', command: 'npm run typecheck:main', needs: [ENSURE], seconds: 1.0 },
+  { name: 'typecheck:preload', command: 'npm run typecheck:preload', needs: [ENSURE], seconds: 0.8 },
   { name: 'check:tiers', command: 'npm run check:tiers', needs: [ENSURE], seconds: 0.3 },
   { name: 'lint:check', command: 'npm run lint:check', needs: [ENSURE], seconds: 1.7 },
 ];

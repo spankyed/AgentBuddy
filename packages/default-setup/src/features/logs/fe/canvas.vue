@@ -157,7 +157,7 @@
 
 
     <!-- Logs Content -->
-    <div ref="logsContent" class="flex-1 overflow-y-auto">
+    <div class="flex-1 overflow-y-auto">
       <!-- Empty State -->
       <div v-if="filteredLogs.length === 0" class="flex items-center justify-center h-full min-h-[400px]">
         <div class="text-center">
@@ -354,7 +354,6 @@ import { updateSettings } from '@abuddy/sdk/fe'
 import { ref as featureRef } from '#generated/ref.ts'
 import { parseSearchTerm, searchLog, highlightSearchTerm } from './search.ts';
 
-const logsContent = ref<HTMLElement>();
 
 // Add escape key handler for context menu
 const handleEscape = (e: KeyboardEvent) => {

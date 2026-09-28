@@ -24,7 +24,7 @@
   <Teleport to="body">
     <div
       v-if="showMenu"
-      ref="menuRef"
+      :ref="(el) => (menuRef = el as HTMLDivElement | null)"
       class="pointer-events-auto fixed z-[10003] bg-neutral-800 border border-neutral-700 rounded-md shadow-lg py-1 min-w-[140px]"
       :style="{ left: `${menuPos.x}px`, top: `${menuPos.y}px` }"
     >

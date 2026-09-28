@@ -50,7 +50,6 @@
     
       <div
         v-if="filteredFlows.length > 0"
-        ref="listContainer"
         class="flex-1 overflow-y-auto pb-3 outline-none"
         tabindex="0"
         @keydown="handleKeydown"
@@ -123,7 +122,6 @@ const emit = defineEmits<{
 const isSearchMode = ref(false)
 const searchQuery = ref('')
 const searchInput = ref<HTMLInputElement | null>(null)
-const listContainer = ref<HTMLElement | null>(null)
 
 // Keyboard navigation
 const focusedIndex = ref(-1)

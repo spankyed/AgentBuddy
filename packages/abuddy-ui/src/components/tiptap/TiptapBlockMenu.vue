@@ -1,6 +1,5 @@
 <template>
   <div
-    ref="handleRef"
     class="block-handle"
     :class="{ 'is-visible': buttonVisible }"
     :style="{ top: buttonTop + 'px' }"
@@ -78,7 +77,6 @@ const props = defineProps<{ editor: Editor }>()
 const open = ref(false)
 const dropdownRef = ref<HTMLElement | null>(null)
 const plusBtnRef = ref<HTMLElement | null>(null)
-const handleRef = ref<HTMLElement | null>(null)
 const dropdownStyle = reactive({ top: '0px', left: '0px' })
 
 const {

@@ -95,7 +95,6 @@
                   <div class="flex-1 min-w-0 flex flex-col gap-0.5">
                     <input
                       v-if="editingId === script.id"
-                      ref="editLabelRef"
                       v-model="editLabel"
                       placeholder="Label"
                       class="w-full px-1 py-0.5 text-xs bg-transparent border border-neutral-700 rounded text-neutral-200 focus:outline-none focus:border-primary-500"
@@ -191,7 +190,6 @@ const localScripts = ref<TerminalScript[]>([...props.scripts])
 const editingId = ref<string | null>(null)
 const editLabel = ref('')
 const editCommand = ref('')
-const editLabelRef = ref<HTMLInputElement[]>([])
 
 // Add new script
 const newLabel = ref('')

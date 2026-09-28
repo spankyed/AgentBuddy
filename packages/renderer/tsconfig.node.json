@@ -9,6 +9,7 @@
     "eslint.config.*"
   ],
   "compilerOptions": {
+    "noUnusedLocals": true,
     // Workspace @abuddy/* packages resolve to source (see their package.json exports)
     "customConditions": ["@abuddy/source"],
     // Their relative imports name .ts sources

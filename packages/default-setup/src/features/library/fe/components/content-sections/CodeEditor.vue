@@ -1,6 +1,5 @@
 <template>
   <div
-    ref="containerRef"
     class="overflow-hidden"
     :style="{ height: containerHeight + 'px' }"
   >
@@ -33,7 +32,6 @@ const emit = defineEmits<{
   update: [content: string]
 }>()
 
-const containerRef = ref<HTMLDivElement>()
 const containerHeight = ref(MIN_HEIGHT)
 let sizeChangeDisposable: IDisposable | null = null
 

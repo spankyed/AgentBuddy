@@ -1,5 +1,6 @@
 {
   "compilerOptions": {
+    "noUnusedLocals": true,
     "incremental": true,
     "tsBuildInfoFile": "../../node_modules/.cache/tsbuildinfo/publish-checks.tsbuildinfo",
     "allowImportingTsExtensions": true,

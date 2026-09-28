@@ -245,7 +245,7 @@ npm run build            # Build all workspaces. The chain runs build:app instea
                          # built-in pack to compile — building it twice rewrote the dist five steps read
 npm run build-prod       # Full production build (build/build.sh)
 
-npm run typecheck        # Every check below, plus check:specifiers — its sixteen legs run at once
+npm run typecheck        # Every check below, plus check:specifiers — its eighteen legs run at once
                          # (scripts/typecheck.ts, legs in scripts/lib/typecheck-legs.ts), which is 29.3s of
                          # single-threaded compilers in 11s. Only `packages:ensure` is ordered; the rest are
                          # independent, and `-- --lanes 1` runs them one at a time to test that claim or to

@@ -7,7 +7,7 @@ The preload script every AgentBuddy window loads (`packages/main`'s `WindowManag
 `tsconfig.json` has no `outDir`. It sets `noEmit: true`, so `tsc` and `tsc -p .` only type-check. But `tsc src/index.ts`, or any call that passes files or overrides `noEmit`, ignores or bypasses that and writes `.js` next to the sources in `src/`. The root `.gitignore` ignores `packages/preload/src/**/*.js` as a safety net, so nothing flags such a file. A stray `src/index.js` would be the literal target of `exposed.ts`'s `import './index.js'`.
 
 - Build: `npm run build -w @app/preload` (`vite build`), or `npm run build` / `npm start` at the root.
-- Type-check: `npm run typecheck -w @app/preload` (`tsc --noEmit`). Root `npm run typecheck` and CI don't run it.
+- Type-check: `npm run typecheck -w @app/preload` (`tsc --noEmit`). Root `npm run typecheck` runs it as `typecheck:preload`.
 
 ## Files
 

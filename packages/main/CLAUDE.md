@@ -109,7 +109,7 @@ is untrusted whoever asked, and the two rules live in one module rather than at 
 
 - `vite build` (`vite.config.js`) produces a single SSR ES bundle `dist/index.js`. `@abuddy/sdk` and `@abuddy/host` are bundled in (`ssr.noExternal`), because packaged builds strip `.ts`. They resolve under `@abuddy/source`. Splash assets and `resources/logo.svg` are copied to `dist/assets`.
 - `npm start` (`packages/dev-mode.js`) starts the renderer dev server, builds the API, then builds preload and main in watch mode with the `@app/renderer-watch-server-provider` plugin. Main's `handleHotReload` restarts Electron after each rebuild (`ELECTRON_INSPECT=true`, via `npm run start:inspect`, adds `--inspect`).
-- `npm run typecheck -w @app/main` runs `tsc --noEmit`. Root `npm run typecheck` and CI don't run it.
+- `npm run typecheck -w @app/main` runs `tsc --noEmit`. Root `npm run typecheck` runs it as `typecheck:main`.
 
 ## Tests
 

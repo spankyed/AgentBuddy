@@ -1,10 +1,10 @@
 {
-  "measuredAt": "2026-09-26T01:13:36.651Z",
+  "measuredAt": "2026-09-28T15:58:41.807Z",
   "costs": {
     "tests/app-version.spec.ts": 5,
-    "tests/checkout-freshness.spec.ts": 83,
+    "tests/checkout-freshness.spec.ts": 75,
     "tests/launch-env.spec.ts": 2,
-    "tests/shared-ears.spec.ts": 13
+    "tests/shared-ears.spec.ts": 10
   },
   "skipped": []
 }

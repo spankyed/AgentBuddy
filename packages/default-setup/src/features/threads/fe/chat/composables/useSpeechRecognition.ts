@@ -80,7 +80,7 @@ export function useSpeechRecognition(options: SpeechRecognitionOptions = {}) {
             case 'partial':
               break
             default: {
-              const _exhaustive: never = event
+              event satisfies never
               break
             }
           }

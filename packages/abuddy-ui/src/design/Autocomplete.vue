@@ -1,5 +1,5 @@
 <template>
-  <div ref="containerRef" class="relative">
+  <div class="relative">
     <input
       ref="inputRef"
       :value="modelValue"
@@ -15,7 +15,6 @@
       <Transition name="dropdown">
         <div
           v-if="showDropdown && filteredSuggestions.length > 0"
-          ref="dropdownRef"
           :style="dropdownStyle"
           class="fixed z-50 overflow-hidden bg-neutral-900 border border-neutral-700 rounded-md shadow-lg"
         >
@@ -57,8 +56,6 @@ const emit = defineEmits<{
 }>()
 
 const inputRef = ref<HTMLInputElement>()
-const containerRef = ref<HTMLDivElement>()
-const dropdownRef = ref<HTMLDivElement>()
 const showDropdown = ref(false)
 const selectedIndex = ref(-1)
 const dropdownStyle = ref<{ top: string; left: string; width: string }>({

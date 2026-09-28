@@ -1,3 +1,11 @@
+> **Done 2026-09-28.** `noUnusedLocals` is on in all 14 workspace configs, every one of them reports zero,
+> and `unused-code-gate.spec.ts` fails when a config drops the flag or a package has TypeScript no config
+> compiles. Phase 4's lint half landed separately and better: `8549f81a5` pointed the root `oxlint` at
+> `packages/` instead of adding `lint:check` to thirteen package.jsons, so one command covers every workspace
+> and a new one is covered the day it exists. The cleanup was done in `44486da98`, `d8be2926d` and `a5c795c58`.
+>
+> See Outcome at the end for what the Background got wrong.
+
 > **Re-verified 2026-09-28, later the same day. Phase 4's lint half has landed, and the Background's figures
 > no longer hold — read this block before the table below it.**
 >
@@ -288,3 +296,62 @@ workspace with source has no lint script.
 - External packs are first-class: keep the fixture packs and `test:packaged-authoring` passing.
 - Narrow checks during the work (one package's `tsc --noEmit`, one spec file), the full chain once per
   phase at its end — root `CLAUDE.md`, "What to run after a change".
+
+
+## Outcome
+
+Landed 2026-09-28. Three of the Background's measurements were wrong, and each changed the work.
+
+**The per-package counts were program counts, not ownership counts.** Every workspace compiles its
+dependencies' source under `@abuddy/source`, so one unused symbol in `@abuddy/host` was reported by host,
+api, testing and renderer alike. 187 raw diagnostics across the 14 configs were **87 unique**, owned by 8
+packages. `@app/api`, `@abuddy/testing` and `@app/renderer` owned **none** — every finding their configs
+reported lived somewhere else. Phase 2 and 3's ordering by size was therefore ordering by the wrong number;
+the order that matters is the dependency layer, because enabling the flag on a consumer before its
+dependencies are clean fails that consumer's typecheck on another package's files.
+
+**TS6192 is a fourth unused code** ("All imports in import declaration are unused"), alongside the TS6133 and
+TS6196 the Background counted.
+
+**Decision 1's headline evidence did not survive.** "It catches 14 cases in default-setup that its lint does
+not" — 13 of those were in gitignored generated code and 11 were `__contract_check_*` aliases that exist *to
+be unused*. default-setup's real count was 1.
+
+The corrected evidence for Decision 1 is stronger than the original. Measured the day this landed, with the
+lint gate fully green over `packages/`: `oxlint` reads 114 files in `@abuddy/ui` and reports **zero**, where
+`vue-tsc --noUnusedLocals` reports **ten**. It does not analyse bindings inside an SFC's script block. 27
+findings survived a green lint run — 13 in `.vue` scripts, 13 in generated code, 1 an exhaustiveness binding.
+
+### Defects this found, where the answer was not to delete
+
+`noUnusedLocals` does not count a string template ref (`ref="name"`) as a read, so a binding the template
+populates and a composable consumes reads as dead. Two would have broken had they been deleted:
+
+- `ImageLightbox.vue`'s `menuRef` — `useContextMenu` reads `menuRef.value` to dismiss the menu on an outside
+  click.
+- `notes/fe/canvas.vue`'s `scrollContainerRef` — `useNoteScroll` reads it to save and restore a note's scroll
+  position.
+
+Both now bind through a function ref, which is a real read of the binding and identical at runtime. The other
+seven refs in that class were genuinely dead: nothing read them, no `defineExpose`, and the template attribute
+went with the binding.
+
+### Choices made where the goal left a detail open
+
+- **The generator emits one exported type**, `__ContractChecks`, in place of 11 local `__contract_check_<id>`
+  aliases (`abuddy-sdk/src/build/generate-entries.ts`). An exported declaration is never reported unused and
+  the assertion is unchanged; this closes it for every pack rather than for this one. Two dead imports the
+  generator emitted unconditionally — `EARS` in the pack entry, `Qualified` in the FE entry — are now emitted
+  only where they are used. `facade:check` confirms the exported type does not reach `etc/pack-types.api.md`.
+- **`exclude` was rejected on evidence.** `tsc --explainFiles` shows `pack-entry.ts` enters the program three
+  ways — the include glob, and imports from `tests/setup.ts` and a spec — so excluding it cancels one of
+  three and changes nothing. It would also stop typechecking the file the contract assertions live in.
+- **`@app/main` and `@app/preload` gained typecheck legs.** No entry in `TYPECHECK_LEGS` reached either, so
+  the flag there would have gated nothing; each package's CLAUDE.md said so deliberately and now says the
+  opposite. 16 legs became 18.
+- **`const _exhaustive: never = event` became `event satisfies never`** — the same assertion with no binding,
+  and no `_` prefix, which Decision 3 forbids.
+
+### Deferred, unchanged
+
+`noUnusedParameters` is still the larger, noisier class and is still not attempted.

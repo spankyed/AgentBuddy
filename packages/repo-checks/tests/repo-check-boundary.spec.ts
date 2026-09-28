@@ -78,6 +78,10 @@ const LAYOUT_CHECKS: Record<string, string> = {
   'tests/packaged-app-files.spec.ts': 'which of the repo\'s files reach the installed app — a property of the '
     + 'tree and the packaging config at its root, decided by electron-builder\'s own matcher rather than by '
     + 'anything under scripts/',
+  'tests/lint-scope.spec.ts': 'what the root lint command excludes from packages/ — a property of the '
+    + 'script at the tree\'s root and the templates it names, with no scripts/ module behind it',
+  'tests/unused-code-gate.spec.ts': 'that every workspace\'s tsconfig sets noUnusedLocals — a property of the '
+    + 'packages in the tree, read from the configs themselves through the compiler\'s own parser',
 };
 
 const specs = (): string[] =>

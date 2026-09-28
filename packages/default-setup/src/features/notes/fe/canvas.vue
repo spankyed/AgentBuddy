@@ -236,7 +236,7 @@
 
         <!-- Editor -->
         <div
-          ref="scrollContainerRef"
+          :ref="(el) => (scrollContainerRef = el as HTMLElement | null)"
           class="flex-1 overflow-y-auto pl-1 pr-4"
         >
           <!-- Title row -->

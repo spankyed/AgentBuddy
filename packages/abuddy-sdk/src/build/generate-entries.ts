@@ -617,9 +617,12 @@ export function generatePackFiles(
 // Each system's machine is typed by the contract abuddy.json names for its feature — the one its facade publishes.
 // A machine built from some other contract compiles on its own, so a mismatch reads here as the sentence
 // \`MachineMatchesContract\` returns, in place of the \`true\` the constraint asks for. Type-only: it leaves
-// nothing behind in the pack's bundle.
+// nothing behind in the pack's bundle. Exported because a local type nobody reads is what noUnusedLocals
+// reports, and the assertion is the same either way.
 type __ContractMatches<T extends true> = T;
-${contracted.map(f => `type __contract_check_${f.id} = __ContractMatches<MachineMatchesContract<typeof ${systemBinding(f.id)}, __SystemContracts['${f.id}']>>;`).join('\n')}
+export type __ContractChecks = {
+${contracted.map(f => `  '${f.id}': __ContractMatches<MachineMatchesContract<typeof ${systemBinding(f.id)}, __SystemContracts['${f.id}']>>;`).join('\n')}
+};
 `;
 
     return `${HEADER}
@@ -627,7 +630,6 @@ import type { PackRegistration } from '@abuddy/sdk/framework';
 ${contracted.length ? "import type { MachineMatchesContract } from '@abuddy/sdk/framework';\nimport type { SystemContracts as __SystemContracts } from './system-specs.ts';\n" : ''}${systemFeatures.length ? "import { packSystem } from '@abuddy/sdk/framework';\n" : ''}${hasRepositories() ? "import { repositories } from './repositories.ts';\n" : ''}
 ${systemImports}
 import { featureServices } from './services.ts';
-import { EARS } from './ears.ts';
 ${hooksImport}
 ${hookEntries.map(([, path, exportName], i) => `import { ${exportName} as __seedHooks_${i} } from '${path}';`).join('\n')}
 ${settingsImports}
@@ -866,8 +868,7 @@ export const ref = (name: FeatureName): FeatureRef => resolveName(name, packId);
 
     return `${HEADER}
 import { pluginIsRunning, readUntypedPluginState, untypedOpenPlugin, useUntypedPluginState, type PluginStateOf } from '@abuddy/sdk/fe';
-import type { Qualified } from '@abuddy/sdk/events';
-import type { Ref } from 'vue';
+${qualifiedState.length > 0 ? "import type { Qualified } from '@abuddy/sdk/events';\n" : ''}import type { Ref } from 'vue';
 import type { SendablePluginEvents } from './events.ts';
 import { ref } from './ref.ts';
 ${stateImports}

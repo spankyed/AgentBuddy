@@ -22,7 +22,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed } from 'vue'
 import UnifiedMonacoEditor from './UnifiedMonacoEditor.vue'
 import type { editor } from 'monaco-editor'
 import type { EditorAction } from './monaco-config.ts'

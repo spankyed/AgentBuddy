@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ComboboxAnchor, ComboboxContent, ComboboxGroup, ComboboxInput, ComboboxItem, ComboboxItemIndicator, ComboboxLabel, ComboboxPortal, ComboboxRoot, ComboboxTrigger, ComboboxViewport, TagsInputInput, TagsInputItem, TagsInputItemDelete, TagsInputItemText, TagsInputRoot, useFilter } from 'reka-ui'
+import { ComboboxAnchor, ComboboxContent, ComboboxGroup, ComboboxInput, ComboboxItem, ComboboxItemIndicator, ComboboxPortal, ComboboxRoot, ComboboxTrigger, ComboboxViewport, TagsInputInput, TagsInputItem, TagsInputItemDelete, TagsInputItemText, TagsInputRoot, useFilter } from 'reka-ui'
 import { computed, ref, watch } from 'vue'
 import { X, ChevronDown } from 'lucide-vue-next'
 
@@ -115,7 +115,7 @@ const filteredOptions = computed(() =>
       <ComboboxViewport class="p-2">
         <ComboboxGroup>
           <ComboboxItem
-            v-for="(option, index) in filteredOptions"
+            v-for="option in filteredOptions"
             :key="option.name"
             class="text-sm leading-none text-neutral-200 rounded flex items-center px-3 py-2 relative select-none data-[disabled]:text-neutral-600 data-[disabled]:pointer-events-none data-[highlighted]:outline-none data-[highlighted]:bg-neutral-700 data-[highlighted]:text-neutral-100 hover:bg-neutral-700 transition-colors cursor-pointer"
             :value="option"

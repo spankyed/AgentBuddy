@@ -17,7 +17,6 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
 import Dialog from '../design/dialog.vue'
 import DataRenderer from './DataRenderer.vue'
 
