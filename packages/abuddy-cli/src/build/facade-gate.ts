@@ -13,6 +13,16 @@ const DECLARATION_EXTENSIONS: readonly string[] = [ts.Extension.Dts, ts.Extensio
 /**
  * Packages a facade may import: every dependent has them. @abuddy/* packages, @abuddy/sdk's peer
  * dependencies (as the pack resolves the SDK) and Node's built-in modules.
+ *
+ * **"Every dependent has them" is checked, not assumed**, which is worth knowing before deriving it again: a
+ * dependency's facade is inlined into the dependent's tree verbatim, at `src/__generated__/deps/<packId>.d.ts`,
+ * so an import it carries has to resolve where the dependent is installed and not only where it was built.
+ * `default-setup`'s facade carries `zod` today, from pack code rather than the SDK's own types, and
+ * `tests/scripts/test-packaged-authoring.sh` type-checks a pack that depends on it from packed tarballs outside
+ * this monorepo — where that file's path is under neither prefix its tolerated-error list forgives, so an
+ * unresolved peer fails the step. These are required peers (nothing in `peerDependenciesMeta`), which is why npm
+ * installs them for a pack that never names one; `xstate` would travel the identical route if a contract derived
+ * its state from a machine, which is what `contract-leaves` is there to stop.
  */
 function allowedPackages(packDir: string): { allows: (name: string) => boolean; description: string } {
   const manifest = createRequire(path.join(packDir, 'package.json')).resolve('@abuddy/sdk/package.json');

@@ -320,7 +320,11 @@ grep -v "^/" "$WORK/types-probe.log" || true
 # tsc checked the probe: a config error (no inputs, a bad option) or a crash lists no files. tsc lists real paths.
 grep -qxF "$(pwd -P)/tests/types-probe.ts" "$WORK/types-probe.log" || fail "tsc didn't type-check the types probe"
 # Every error is in other packages' declarations (installed, or dependencies' in .abuddy/deps); errors without a
-# file (config) or anywhere else fail
+# file (config) or anywhere else fail.
+# Don't widen these two prefixes to cover src/: a dependency's facade is inlined at
+# src/__generated__/deps/<packId>.d.ts, and that path being outside the tolerance is what makes this step the proof
+# that a peer its facade imports — zod today, through default-setup — resolves for a pack installed outside this
+# monorepo. Forgiving src/ would swallow exactly that (abuddy-cli's facade-gate.ts says what rests on it).
 if grep "error TS" "$WORK/types-probe.log" | grep -vE "^(node_modules|\.abuddy/deps)/" | grep .; then
   fail "the types probe didn't type-check"
 fi
