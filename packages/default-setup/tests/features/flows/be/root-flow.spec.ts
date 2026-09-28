@@ -42,10 +42,10 @@ describe('the root flow', () => {
   })
 
   it('reaches the plugin when a pack seed import brought it', async () => {
-    const app = await startApp({ systems: ['brain', 'flows', 'host/settings'] })
+    const app = await startApp({ systems: ['brain', 'flows', 'host/settings', 'host/packs'] })
     await app.connect()
     await app.nextEmit('flows', 'FLOWS_CONNECTED')
-    await app.send('host/settings', { type: 'IMPORT_PACK_SEEDS', directory: DIST, include: { flows: null, actions: null, prompts: null }, mode: 'replace-on-collision', restartBrain: false })
+    await app.send('host/packs', { type: 'IMPORT_PACK_SEEDS', directory: DIST, include: { flows: null, actions: null, prompts: null }, mode: 'replace-on-collision', restartBrain: false })
     await app.nextEmit('host/settings', 'PACK_SEEDS_IMPORTED')
 
     expect(flowRepository.rootFlow()).toBeDefined()

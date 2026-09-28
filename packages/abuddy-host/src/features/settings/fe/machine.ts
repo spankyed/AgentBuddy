@@ -249,7 +249,8 @@ export function createSettingsMachine(io: SettingsIO) {
 
     previewPackSeeds: assign(({ context, event }) => {
       const ev = event as { type: 'PACK_SEEDS.PREVIEW'; directory: string };
-      sendToSystem('settings', {
+      // The packs system owns seed orchestration; its answers come back to this plugin, which draws them
+      sendToSystem('packs', {
         type: 'PREVIEW_PACK_SEEDS',
         directory: ev.directory,
       });
@@ -360,7 +361,7 @@ export function createSettingsMachine(io: SettingsIO) {
         return selected.length === total ? null : selected;
       };
 
-      sendToSystem('settings', {
+      sendToSystem('packs', {
         type: 'IMPORT_PACK_SEEDS',
         directory,
         include: Object.fromEntries(Object.keys(preview.seeds).map((key) => [key, toIncludeField(key)])),

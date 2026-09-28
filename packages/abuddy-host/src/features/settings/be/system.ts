@@ -6,8 +6,6 @@ import { broadcastToPlugin, sendToSystem } from '../../../events.ts';
 import { assign, setup, fromCallback, fromPromise, type ErrorActorEvent } from 'xstate';
 import { defineSystem, getPackHelp, onPackSettingsDefaultsChanged } from '@abuddy/sdk/framework';
 import { detectAllArrayChanges, errorMessage } from '@abuddy/sdk/utils/pure';
-import { importCompiledSeeds, type SeedIncludeSet } from '@abuddy/sdk/utils';
-import { previewPackSeeds } from '@abuddy/sdk/seed';
 import { services } from '@abuddy/sdk/services';
 import { createLogger, reportError } from '@abuddy/sdk/logger';
 import { splitRef, type FeatureRef } from '@abuddy/sdk/ids';
@@ -37,15 +35,6 @@ const at = (document: SettingsDocument, path: readonly string[]): unknown =>
   path.reduce<unknown>((node, key) => (node && typeof node === 'object' ? (node as Record<string, unknown>)[key] : undefined), document);
 
 const logger = createLogger('settings');
-
-/**
- * Convert the JSON-safe include shape from the frontend
- * (`null = all items, [] = skip, string[] = filter`) into the `SeedInclude`
- * structure consumed by `importCompiledSeeds`.
- */
-function toSeedInclude(include: Record<string, string[] | null>): Record<string, SeedIncludeSet | undefined> {
-  return Object.fromEntries(Object.entries(include).map(([key, items]) => [key, items === null ? true : new Set(items)]));
-}
 
 /**
  * Tells the settings plugin a change wasn't stored, with the store's reasons: a refusal is the user's to fix, not a
@@ -205,38 +194,6 @@ export const settingsSystem = setup({
     // The stored keys changed: the view shows what there is now. What else acts on it hears the same event.
     secretsChanged: () => sendSecrets(),
 
-    previewPackSeeds: ({ event }) => {
-      const ev = settingsSpec.typeOf('PREVIEW_PACK_SEEDS', event);
-      try {
-        const preview = previewPackSeeds(ev.directory);
-        broadcastToPlugin('settings', { type: 'PACK_SEEDS_PREVIEW', preview });
-      } catch (err) {
-        const message = errorMessage(err);
-        broadcastToPlugin('settings', { type: 'PACK_SEEDS_PREVIEW_FAILED', error: message });
-      }
-    },
-
-    importPackSeeds: ({ event }) => {
-      const ev = settingsSpec.typeOf('IMPORT_PACK_SEEDS', event);
-      try {
-        const include = ev.include ? toSeedInclude(ev.include) : undefined;
-        // Read first: a directory that can't name its pack fails before anything is imported
-        const { packId } = previewPackSeeds(ev.directory);
-        const result = importCompiledSeeds({ compiledDir: ev.directory, include, mode: ev.mode, verbose: true });
-        // Seeders report records they couldn't seed in their counts rather than throwing
-        const errors = Object.entries(result).flatMap(([key, counts]) => (counts.errors ?? []).map((error) => `${key}: ${error}`));
-        broadcastToPlugin('settings', { type: 'PACK_SEEDS_IMPORTED', result, errors });
-        // The running systems read what the seeds changed (the chat's slash commands, the library's documents)
-        sendToSystem('bus', { type: 'PACK_CHANGED', packId });
-        if (ev.restartBrain) {
-          sendToSystem({ role: 'brain' }, { type: 'RESTART_BRAIN' });
-        }
-      } catch (err) {
-        const message = errorMessage(err);
-        broadcastToPlugin('settings', { type: 'PACK_SEEDS_IMPORT_FAILED', error: message });
-      }
-    },
-
     onResetComplete: () => {
       sendToSystem({ role: 'brain' }, { type: 'RESTART_BRAIN' });
       sendToSystem({ role: 'threads' }, { type: 'COMMANDS_CHANGED' });
@@ -283,12 +240,6 @@ export const settingsSystem = setup({
         },
         RESET_SETTINGS: {
           actions: 'resetSettings',
-        },
-        PREVIEW_PACK_SEEDS: {
-          actions: 'previewPackSeeds',
-        },
-        IMPORT_PACK_SEEDS: {
-          actions: 'importPackSeeds',
         },
         RESET_APP: {
           target: 'resetting',
@@ -339,8 +290,6 @@ export const settingsEvents = new Set([
   'GET_SETTINGS',
   'UPDATE_SETTINGS',
   'RESET_SETTINGS',
-  'PREVIEW_PACK_SEEDS',
-  'IMPORT_PACK_SEEDS',
   'REPLACE_SETTINGS',
   'RESET_APP',
   'PACK_SETTINGS_CHANGED',

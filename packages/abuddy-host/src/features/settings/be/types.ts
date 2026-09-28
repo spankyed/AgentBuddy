@@ -11,8 +11,6 @@ export type IncomingSettingsEvents =
   | { type: 'GET_SETTINGS' }
   | { type: 'UPDATE_SETTINGS'; entityType: 'section' | 'plugin'; label: string; path: string[]; value: any }
   | { type: 'RESET_SETTINGS' }
-  | { type: 'PREVIEW_PACK_SEEDS'; directory: string }
-  | { type: 'IMPORT_PACK_SEEDS'; directory: string; include?: Record<string, string[] | null>; mode?: 'keep-existing' | 'replace-on-collision' | 'wipe-and-replace'; restartBrain?: boolean }
   | { type: 'REPLACE_SETTINGS'; data: unknown }
   | { type: 'RESET_APP' }
 
@@ -41,6 +39,8 @@ export type OutgoingSettingsEvents =
   | { type: 'SETTINGS_REFUSED'; problems: string[] }
   | { type: 'SETTINGS_RESET'; data: SettingsDocument }
   | { type: 'APPLICATION_HOTKEYS'; hotkeys: ApplicationHotkeys }
+  // The four seed events are sent by the `packs` system, not this one: the work is pack-level and lives
+  // there, while the view that draws it is the settings plugin, whose inbox this type is.
   /** `errors` lists the records that couldn't be seeded (`<key>: <error>`); the rest were imported */
   | { type: 'PACK_SEEDS_IMPORTED'; result: Record<string, ImportCounts>; errors: string[] }
   | { type: 'PACK_SEEDS_IMPORT_FAILED'; error: string }

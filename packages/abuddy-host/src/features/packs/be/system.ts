@@ -3,7 +3,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { setup } from 'xstate';
 import { defineSystem } from '@abuddy/sdk/framework';
-import { broadcastToPlugin } from '../../../events.ts';
+import { broadcastToPlugin, sendToSystem } from '../../../events.ts';
 import { getAppVersion } from '@abuddy/sdk/env';
 import { PACK_SNAPSHOT_FORMAT } from '@abuddy/sdk/build';
 import { HOST_PACK_ID, PACK_ID_PATTERN } from '@abuddy/sdk/ids';
@@ -18,10 +18,20 @@ import { teardownPack, activatePack } from '../../../packs/runtime/lifecycle.ts'
 import { activationProblem } from '../../../packs/runtime/activation-outcome.ts';
 import { HOST } from '../../../refs.ts';
 import { errorMessage } from '@abuddy/sdk/utils/pure';
+import { importCompiledSeeds, type SeedIncludeSet } from '@abuddy/sdk/utils';
+import { previewPackSeeds } from '@abuddy/sdk/seed';
 
 export type { PackInfo };
 
 export const packsSpec = defineSystem<Contract>();
+
+/**
+ * Convert the JSON-safe include shape from the frontend (`null = all items, [] = skip, string[] = filter`)
+ * into the `SeedInclude` structure `importCompiledSeeds` consumes.
+ */
+function toSeedInclude(include: Record<string, string[] | null>): Record<string, SeedIncludeSet | undefined> {
+  return Object.fromEntries(Object.entries(include).map(([key, items]) => [key, items === null ? true : new Set(items)]));
+}
 
 function readManifest(dir: string): Record<string, any> | null {
   try {
@@ -109,6 +119,35 @@ export function createPacksSystem(registry: PackRegistry) {
   return setup({
     types: packsSpec.types,
     actions: {
+    // Both answer the settings plugin, which is where the seed UI is drawn. The work is this system's; the
+    // view is not, and a system sends whichever plugin's inbox declares the event.
+    previewPackSeeds: ({ event }) => {
+      const ev = packsSpec.typeOf('PREVIEW_PACK_SEEDS', event);
+      try {
+        broadcastToPlugin('settings', { type: 'PACK_SEEDS_PREVIEW', preview: previewPackSeeds(ev.directory) });
+      } catch (err) {
+        broadcastToPlugin('settings', { type: 'PACK_SEEDS_PREVIEW_FAILED', error: errorMessage(err) });
+      }
+    },
+
+    importPackSeeds: ({ event }) => {
+      const ev = packsSpec.typeOf('IMPORT_PACK_SEEDS', event);
+      try {
+        const include = ev.include ? toSeedInclude(ev.include) : undefined;
+        // Read first: a directory that can't name its pack fails before anything is imported
+        const { packId } = previewPackSeeds(ev.directory);
+        const result = importCompiledSeeds({ compiledDir: ev.directory, include, mode: ev.mode, verbose: true });
+        // Seeders report records they couldn't seed in their counts rather than throwing
+        const errors = Object.entries(result).flatMap(([key, counts]) => (counts.errors ?? []).map((error) => `${key}: ${error}`));
+        broadcastToPlugin('settings', { type: 'PACK_SEEDS_IMPORTED', result, errors });
+        // The running systems read what the seeds changed (the chat's slash commands, the library's documents)
+        sendToSystem('bus', { type: 'PACK_CHANGED', packId });
+        if (ev.restartBrain) sendToSystem({ role: 'brain' }, { type: 'RESTART_BRAIN' });
+      } catch (err) {
+        broadcastToPlugin('settings', { type: 'PACK_SEEDS_IMPORT_FAILED', error: errorMessage(err) });
+      }
+    },
+
       sendPacksList: ({ system }) => {
         emitPacksList(registry, system);
       },
@@ -403,6 +442,12 @@ export function createPacksSystem(registry: PackRegistry) {
           UPDATE_PACK: {
             actions: 'updatePack',
           },
+          PREVIEW_PACK_SEEDS: {
+            actions: 'previewPackSeeds',
+          },
+          IMPORT_PACK_SEEDS: {
+            actions: 'importPackSeeds',
+          },
           CHECK_FOR_UPDATES: {
             actions: 'checkForPackUpdates',
           },
@@ -420,4 +465,6 @@ export const packsEvents = new Set([
   'GET_INSTALLED_PACKS',
   'UPDATE_PACK',
   'CHECK_FOR_UPDATES',
+  'PREVIEW_PACK_SEEDS',
+  'IMPORT_PACK_SEEDS',
 ]);

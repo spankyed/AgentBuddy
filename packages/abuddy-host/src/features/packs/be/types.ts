@@ -8,3 +8,8 @@ export type IncomingPacksEvents =
   | { type: 'UPDATE_PACK'; packId: string }
   | { type: 'CHECK_FOR_UPDATES' }
   | { type: 'GET_INSTALLED_PACKS' }
+  // Seed orchestration: a pack's compiled seeds, read and imported. Here rather than in `settings`, which
+  // only happens to be where the UI lives — what these do is pack-level, and this is the system that knows
+  // packs. Their answers still go to the settings plugin, which draws them.
+  | { type: 'PREVIEW_PACK_SEEDS'; directory: string }
+  | { type: 'IMPORT_PACK_SEEDS'; directory: string; include?: Record<string, string[] | null>; mode?: 'keep-existing' | 'replace-on-collision' | 'wipe-and-replace'; restartBrain?: boolean }
