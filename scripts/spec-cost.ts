@@ -33,7 +33,7 @@ import { REPO_ROOT } from '@abuddy/host/build/packages-built';
 import { UNIT_SUITES, type UnitSuite } from './lib/unit-suites.ts';
 import {
   FAST_BELOW_MS, INTEGRATION_ABOVE_MS, PLACEMENT_GUARD, configsFor, halfOfPath, hasSplit, misplaced,
-  changesIn, CONFIG_BY_HALF, configsOf, contended, moved, readSpecCost, specCostFile, specFiles, stale, unrecorded,
+  changesIn, CONFIG_BY_HALF, configsOf, contended, drift, DRIFTED, moved, readSpecCost, specCostFile, specFiles, stale, unrecorded,
 } from './lib/spec-cost.ts';
 
 // eslint-disable-next-line no-control-regex -- vitest colours its output and this reads it back
@@ -179,6 +179,11 @@ function update(plans: readonly SuitePlan[], dry: boolean): void {
         + `nothing else running, or pass --force if the suite really did change this much.`);
     }
 
+    // What the per-spec tolerance cannot say. Each spec settling inside its threshold is the normal case and
+    // the reason the file is stable; all of them settling in the same direction is a uniform slowdown, and
+    // the only place it shows is the total. Reported always, since a number nobody sees is not a signal.
+    const drifted = drift(previous, costs);
+
     const measuredSkipped = [...new Set(runs.flatMap((run) => run.skipped))].filter((file) => settled[file] === undefined);
     const keptSkipped = (previous?.skipped ?? []).filter((file) => !plan.prune.includes(file) && !measuredFiles.includes(file));
     const skipped = [...new Set([...keptSkipped, ...measuredSkipped])].sort();
@@ -199,6 +204,8 @@ function update(plans: readonly SuitePlan[], dry: boolean): void {
     if (!fs.existsSync(file) || fs.readFileSync(file, 'utf-8') !== next) fs.writeFileSync(file, next);
 
     const moves = misplaced(settled, files);
+    const asBody = Object.keys(costs).length > 0 && previous !== undefined
+      ? `, body ${drifted >= 0 ? '+' : ''}${(drifted * 100).toFixed(0)}%` : '';
     const did = [
       plan.configs.length === 0 ? 'measured nothing'
         : [added.length > 0 ? `${added.length} added` : '', remeasured.length > 0 ? `${remeasured.length} moved` : '']
@@ -206,7 +213,12 @@ function update(plans: readonly SuitePlan[], dry: boolean): void {
       plan.prune.length > 0 ? `${plan.prune.length} gone` : '',
     ].filter(Boolean).join(', ');
     console.log(`${suite.workspace.padEnd(20)} ${String(files.length).padStart(3)} specs${skipped.length ? `, ${skipped.length} skipped` : ''}`
-      + `, ${did} -> ${specCostFile(suite.dir)}${moves.length ? `  (${moves.length} in the wrong half)` : ''}`);
+      + `, ${did}${asBody} -> ${specCostFile(suite.dir)}${moves.length ? `  (${moves.length} in the wrong half)` : ''}`);
+    if (Math.abs(drifted) > DRIFTED) {
+      console.log(`  the suite moved ${(drifted * 100).toFixed(0)}% as a body, which is more than idle runs vary. `
+        + 'A drift this size can sit under every per-spec tolerance and leave the record uniformly stale, so '
+        + 'anything reading the total reads a number that is no longer true. `--all` re-measures it.');
+    }
     for (const { file: spec, ms, belongs } of moves) console.log(`  ${(ms / 1000).toFixed(1)}s  ${spec}  ->  ${belongs}`);
   }
 }

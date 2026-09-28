@@ -67,17 +67,18 @@ export const INTEGRATION_SUFFIX = '.integration.spec.ts';
  * the 366 specs are under 500ms, where a few milliseconds is a large *relative* change. Recording every
  * sample therefore rewrote most of the file every time, and a real movement had nowhere to be seen.
  *
- * Wider than that jitter, and deliberately not narrow enough to catch a crossing on its own — at a recorded
- * 2 000ms this tolerance is the width of the whole band. It does not have to be: `moved` records any
+ * Wide enough for that jitter and no wider, because something does sum these. `moved` records any
  * measurement that would place the spec in a different half before it looks at magnitude at all, so this
- * number only decides when a record stops being roughly true. Modelled against the same two runs: one entry
- * of 163 moves, against 125 before.
+ * number never has to catch a crossing — but `suite-split` adds up `abuddy-cli`'s fast half against a
+ * budget, and every spec's tolerance is slack in that total. At `max(500ms, 50%)` the worst sum the record
+ * permitted was 36 602ms against a 30 000ms budget, so the check could pass over a breach; here it is
+ * 28 369ms. Both settle the same 1 entry of 163 between two idle runs, so the narrower pair costs nothing.
  *
  * It compounds rather than hides a slow creep: the tolerance is relative to the *recorded* value, which stays
  * put, so 400 -> 480 -> 576 exceeds it on the third step rather than never.
  */
-export const SETTLED_MS = 500;
-export const SETTLED_FRACTION = 0.5;
+export const SETTLED_MS = 300;
+export const SETTLED_FRACTION = 0.35;
 
 /**
  * Whether a fresh measurement says something the record does not already say.
@@ -133,6 +134,28 @@ export function changesIn(
  */
 export const contended = (remeasured: number, comparable: number): boolean =>
   comparable > 0 && remeasured > CONTENDED_SHARE * comparable;
+
+/**
+ * How far this run's measurements have moved as a body, against what the record holds for the same specs.
+ *
+ * The one thing the per-spec tolerance cannot show. Random jitter does not bias a sum — the lags fall both
+ * ways and cancel, which is why a suite's total moved 0.4%, 6.5% and 9.9% between idle runs while its members
+ * moved 10-18% each. *Correlated* drift does: a vitest or bundler bump that adds a fifth to every spec stays
+ * under every individual tolerance, so nothing re-records and anything reading the total is reading numbers
+ * that are uniformly stale.
+ *
+ * Measured against the record rather than the settled values, since settling is where the drift went.
+ * Returns 0 for an empty run rather than dividing by it.
+ */
+export function drift(previous: SpecCost | undefined, measured: Record<string, number>): number {
+  const shared = Object.keys(measured).filter((spec) => previous?.costs[spec] !== undefined);
+  const before = shared.reduce((sum, spec) => sum + previous!.costs[spec]!, 0);
+  if (before === 0) return 0;
+  return shared.reduce((sum, spec) => sum + measured[spec]!, 0) / before - 1;
+}
+
+/** Above the drift a run of unchanged specs shows: measured at 0.4%, 6.5% and 9.9% on an idle machine */
+export const DRIFTED = 0.15;
 
 /** The guard that reads this record. It is the one spec that skips itself while the record is rewritten. */
 export const PLACEMENT_GUARD = 'tests/suite-split.spec.ts';

@@ -13,7 +13,7 @@ import * as path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { REPO_ROOT } from '@abuddy/host/build/packages-built';
 import {
-  FAST_BELOW_MS, INTEGRATION_ABOVE_MS, changesIn, contended, halfOfPath, hasSplit, misplaced, moved, outgrown, readSpecCost, specFiles, stale, unrecorded,
+  DRIFTED, FAST_BELOW_MS, INTEGRATION_ABOVE_MS, changesIn, contended, drift, halfOfPath, hasSplit, misplaced, moved, outgrown, readSpecCost, specFiles, stale, unrecorded,
 } from '../../../scripts/lib/spec-cost.ts';
 import { UNIT_SUITES } from '../../../scripts/lib/unit-suites.ts';
 
@@ -49,8 +49,13 @@ describe('a spec runs in the half its cost puts it in', () => {
     expect(wrong, 'rename these, or re-measure if the cost has genuinely changed').toEqual([]);
   });
 
-  // The number the threshold is for. If the fast half stops being a few seconds it has stopped being a
-  // per-change loop, whatever the individual placements say.
+  // The number the threshold is for, and it is a proxy — say so rather than let the next reader take it for
+  // elapsed time. It is summed *file* time across parallel workers, so 30s of it is roughly 13s of waiting;
+  // and it excludes collection, which the same run reports as 22.3s against 16.9s of tests, so the larger
+  // half of the work is not in it (`abuddy-sdk/tests/build/declared-type-of.spec.ts` moves fixture building
+  // into `beforeAll` for exactly that reason). It is kept because it is the stable statistic available:
+  // a sum moves 0.4-9.9% between idle runs where its members move 10-18% each, and a wall-clock sample of
+  // the same unchanged suite read 6.5, 10.3, 8.1 and 7.0s. `drift` is what watches the part this cannot.
   it('leaves the fast half worth running in a loop', () => {
     const cli = suites.find(({ suite }) => suite.dir === 'abuddy-cli')!;
     const fast = cli.files.filter((file) => halfOfPath(file) === 'fast');
@@ -174,5 +179,34 @@ describe('a run that moved too much was measuring the machine', () => {
 
   it('never refuses a suite that had nothing to compare against', () => {
     expect(contended(0, 0), 'a record written for the first time').toBe(false);
+  });
+});
+
+describe('a run that moved as a body has drifted, however little each spec moved', () => {
+  const record = (costs: Record<string, number>) => ({ measuredAt: '', skipped: [], costs });
+  const twenty = Object.fromEntries(Array.from({ length: 20 }, (_, i) => [`tests/s${i}.spec.ts`, 100]));
+
+  // The case the per-spec tolerance cannot see: a fifth added to everything stays under every individual
+  // threshold, so nothing re-records and the total silently stops being true
+  it('sees a uniform slowdown that no single spec would report', () => {
+    const measured = Object.fromEntries(Object.entries(twenty).map(([spec, ms]) => [spec, ms * 1.2]));
+    expect(Object.values(measured).every((ms) => !moved('tests/x.spec.ts', 100, ms)),
+      'and not one of them moved on its own').toBe(true);
+    expect(drift(record(twenty), measured)).toBeCloseTo(0.2, 5);
+    expect(drift(record(twenty), measured) > DRIFTED, 'so the body is what reports it').toBe(true);
+  });
+
+  it('cancels jitter that falls both ways', () => {
+    const measured = Object.fromEntries(Object.entries(twenty).map(([spec, ms], i) => [spec, i % 2 ? ms * 1.3 : ms * 0.7]));
+    expect(Math.abs(drift(record(twenty), measured))).toBeLessThan(DRIFTED);
+  });
+
+  it('reads nothing from a run that measured nothing, rather than dividing by it', () => {
+    expect(drift(record(twenty), {})).toBe(0);
+    expect(drift(undefined, twenty)).toBe(0);
+  });
+
+  it('ignores specs the record has never seen, which have nothing to have drifted from', () => {
+    expect(drift(record(twenty), { ...twenty, 'tests/new.spec.ts': 9_000 })).toBe(0);
   });
 });

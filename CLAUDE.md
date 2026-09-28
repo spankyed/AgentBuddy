@@ -134,6 +134,14 @@ equality** for its check, which `halfFor` already had. And **reproducibility as 
 a handful of entries, so a run that moves a quarter of a suite was measuring the machine, and
 `spec-cost:update` refuses it rather than recording it.
 
+**And hysteresis changes what a sum of that record means.** Jitter does not bias a total — the lags fall both
+ways and cancel, which is why a suite's sum moved 0.4-9.9% between idle runs while its members moved 10-18%
+each, and why `suite-split`'s budget over `abuddy-cli`'s fast half is worth asserting at all. Correlated drift
+does bias it: a dependency bump that adds a fifth to every spec sits under every per-spec tolerance, so
+nothing re-records and the total stops being true with every gate green. Where a check needs a total, watch
+the total — `drift` reports the body's movement on every run that measured one, because no individual spec
+ever will.
+
 The chain is the whole gate: **CI does not run, on purpose.** `.github/workflows/ci.yml` has its `push`
 and `pull_request` triggers commented out while this is a single-contributor repo, so `gh run list` is empty
 and always will be. That is not a failure to report, and CI is not a check to cite — the local chain is the
