@@ -7,7 +7,7 @@ import ts from 'typescript';
 import { packTargetOf } from '@abuddy/host/build/own-module-specifiers';
 import { readSubpathImports } from '@abuddy/host/build/subpath-imports';
 import { readSource, type SourceView } from './pack-sources.ts';
-import type { PackFinding, PackPlace } from './pack-rules.ts';
+import type { PackFinding, PackPlace, PackWideFinding } from './pack-rules.ts';
 
 /**
  * The source files a package publishes, from its `package.json` `exports`.
@@ -211,7 +211,7 @@ export const GENERATED_BEHIND_A_CONTRACT = ['system-specs', 'events', 'fe', 'pac
  * only the closure's reach to `#generated/events` overlaps that refusal, and only where the collapse lands in one
  * of the four; the rest have no other guard in any tree.
  */
-export function contractLeafFindings(packDir: string): string[] {
+export function contractLeafFindings(packDir: string): PackWideFinding[] {
   const src = path.join(packDir, 'src');
   const manifestPath = path.join(packDir, 'abuddy.json');
   if (!fs.existsSync(manifestPath)) return [];
@@ -245,7 +245,7 @@ export function contractLeafFindings(packDir: string): string[] {
   return leaves.flatMap((leaf) => {
     const ownFeature = /^features\/([^/]+)\//.exec(relative(leaf))?.[1];
     const seen = new Set<string>();
-    const found: string[] = [];
+    const found: PackWideFinding[] = [];
     // The whole closure, not just the leaf's own imports: a module the leaf reaches through two hops puts
     // `#generated/events` back in the contract's path just as surely as importing it directly would.
     const walk = (file: string, viaLeaf: boolean) => {
@@ -254,8 +254,13 @@ export function contractLeafFindings(packDir: string): string[] {
       // The reader's specifiers, not a text match: a commented-out import and one inside a template literal are
       // both `from '…'` to a regex, and this rule used to report either as a leaf reaching the machine
       for (const { text: specifier, line } of readSource(file).specifiers) {
-        const where = `${path.relative(packDir, file)}:${line}: ${specifier}`;
-        const at = viaLeaf ? where : `${where} (reached from ${path.relative(packDir, leaf)})`;
+        // The specifier is the finding; where it sits and, deeper in the closure, which leaf reaches it are
+        // places, which each consumer writes its own way (`formatPackWide`)
+        const at: PackWideFinding = {
+          what: specifier,
+          at: { file: path.relative(packDir, file), line },
+          ...(viaLeaf ? {} : { from: path.relative(packDir, leaf) }),
+        };
         const generated = /^#generated\/(.+?)(?:\.(?:ts|js))?$/.exec(specifier);
         if (generated) {
           // Two rules, and they are not the same one. The leaf's own imports are held to `types` and `ears`

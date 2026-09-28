@@ -56,6 +56,31 @@ export interface PackFinding {
   readonly end: number;
 }
 
+/**
+ * A finding whose subject is the pack rather than one file's text.
+ *
+ * Structured rather than a formatted string, because the two consumers write a path differently — `abuddy validate`
+ * relative to the pack, as its author reads it, and `check:specifiers` relative to the repo, so a finding in one of
+ * five packs says which — and free-form strings gave them no way to tell a path from prose. The repo's runner used
+ * to prefix the whole string and substitute inside `(reached from …)`, which knew one rule's wording and would have
+ * mangled another's: `source-resolution` reports `@abuddy/sdk -> ../abuddy-sdk/src/index.ts`, whose path points
+ * outside the pack and must not be rewritten at all.
+ *
+ * So `what` is the rule's wording, `at` the place in the pack it is about when it is about one, and `from` a second
+ * place the wording refers to. `formatPackWide` composes them, once, for both consumers.
+ */
+export interface PackWideFinding {
+  readonly what: string;
+  readonly at?: { readonly file: string; readonly line?: number };
+  readonly from?: string;
+}
+
+/** A whole-pack finding as a line, with `where` writing a pack-relative path the way this consumer wants it */
+export function formatPackWide(found: PackWideFinding, where: (file: string) => string = (file) => file): string {
+  const place = found.at === undefined ? '' : `${where(found.at.file)}${found.at.line === undefined ? '' : `:${found.at.line}`}: `;
+  return `${place}${found.what}${found.from === undefined ? '' : ` (reached from ${where(found.from)})`}`;
+}
+
 export interface PackRule {
   readonly key: PackRuleKey;
   /** The sentence reported when it fires, the same one `check:specifiers` prints */
@@ -69,7 +94,7 @@ export interface PackRule {
    * its manifest wires together. Reported as written, with no span, so it takes no part in the one-offence-one-
    * message dedupe below: there is no site for another rule to be right about.
    */
-  checkPack?(packDir: string): string[];
+  checkPack?(packDir: string): PackWideFinding[];
 }
 
 /** Ref-taking sends a pack gets as name-taking ones from `#generated/events`, whichever module exports them */
@@ -119,8 +144,10 @@ export const PACK_RULES: readonly PackRule[] = [
       const { resolved, unreadable } = packResolvesSource(packDir);
       // A config the rule could not read is its own finding, not an empty pass: the pack author is told the
       // check did not run, which is the one thing silence cannot say
-      return [...(unreadable === undefined ? [] : [unreadable]),
-        ...resolved.map(({ specifier, resolved: file }) => `${specifier} -> ${file}`),
+      // None of these is a place in the pack: the first is a sentence about a config, and the second's path is
+      // where the specifier landed, which is outside the pack and is evidence rather than a location
+      return [...(unreadable === undefined ? [] : [{ what: unreadable }]),
+        ...resolved.map(({ specifier, resolved: file }) => ({ what: `${specifier} -> ${file}` })),
         ...configsNamingSourceCondition(packDir)];
     },
   },
@@ -329,7 +356,7 @@ export function packRuleProblems(packDir: string, dirs: readonly string[] = ['sr
   const rules = PACK_RULES.filter((rule) => !allowed.has(rule.key));
   const problems = new Map<PackRuleKey, string[]>();
   for (const rule of rules) {
-    const found = rule.checkPack?.(packDir) ?? [];
+    const found = (rule.checkPack?.(packDir) ?? []).map((finding) => formatPackWide(finding));
     if (found.length > 0) problems.set(rule.key, [...(problems.get(rule.key) ?? []), ...found]);
   }
   for (const { view, place } of packFiles(packDir, dirs)) {

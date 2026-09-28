@@ -4,7 +4,7 @@ import * as path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { REPO_ROOT } from '@abuddy/host/build/packages-built';
 import { afterEach, describe, expect, it } from 'vitest';
-import { loadPackChecks, packRuleProblems, PACK_RULES, refusePackRuleViolations, type PackRuleKey } from '../../src/build/pack-rules.ts';
+import { formatPackWide, loadPackChecks, packRuleProblems, PACK_RULES, refusePackRuleViolations, type PackRuleKey } from '../../src/build/pack-rules.ts';
 import { resetSourceCache } from '../../src/build/pack-sources.ts';
 
 /**
@@ -272,6 +272,24 @@ describe('when several rules are right about one site', () => {
    * Compared as sets, not in order: the doc groups rules the way an author meets them, which is editorial, while
    * the order here is precedence. What must not differ is which rules exist.
    */
+  /**
+   * A whole-pack finding says where it is separately from what it says, and this is why: `source-resolution`
+   * reports `@abuddy/sdk -> <where it landed>`, a path *outside* the pack, and `contract-leaves` reports two paths
+   * inside it. A consumer that rewrote paths by editing the string would prefix the first — which would be wrong —
+   * and would have to know the second's wording to find both.
+   */
+  it('rewrites the places a whole-pack finding names, and nothing else', () => {
+    const where = (file: string) => `packages/demo/${file}`;
+    expect(formatPackWide({ what: '@abuddy/sdk -> ../abuddy-sdk/src/index.ts' }, where))
+      .toBe('@abuddy/sdk -> ../abuddy-sdk/src/index.ts');
+    expect(formatPackWide({ what: '@abuddy/source', at: { file: 'vitest.config.ts', line: 1 } }, where))
+      .toBe('packages/demo/vitest.config.ts:1: @abuddy/source');
+    expect(formatPackWide({ what: './state.ts', at: { file: 'src/a/fe/contract.ts', line: 2 }, from: 'src/a/be/contract.ts' }, where))
+      .toBe('packages/demo/src/a/fe/contract.ts:2: ./state.ts (reached from packages/demo/src/a/be/contract.ts)');
+    // The default writes them as the rule did, which is what `abuddy validate` prints
+    expect(formatPackWide({ what: 'x', at: { file: 'src/a.ts', line: 3 } })).toBe('src/a.ts:3: x');
+  });
+
   it('documents exactly the rules that exist, in docs/public-facing/cli.md', () => {
     const doc = fs.readFileSync(path.join(REPO_ROOT, 'docs/public-facing/cli.md'), 'utf-8').split('\n');
     const header = doc.findIndex((line) => /^\|\s*Rule\s*\|/.test(line));

@@ -10,7 +10,7 @@ import { packageName } from '@abuddy/host/build/specifiers';
 import { readSubpathImports } from '@abuddy/host/build/subpath-imports';
 import { SOURCE_CONDITION } from '@abuddy/host/build/source-resolution';
 import { ownModuleFindings } from '@abuddy/host/build/own-module-specifiers';
-import { PACK_RULES, type PackRuleKey } from '../packages/abuddy-cli/src/build/pack-rules.ts';
+import { formatPackWide, PACK_RULES, type PackRuleKey } from '../packages/abuddy-cli/src/build/pack-rules.ts';
 import { moduleOf, readSource, sourceFiles } from '../packages/abuddy-cli/src/build/pack-sources.ts';
 import type { Fix } from './lib/specifier-fixes.ts';
 
@@ -174,13 +174,13 @@ function packRule(key: PackRuleKey, dirs: readonly string[], root: string): stri
   // `src` and its `tests` separately, and the CLI's own runner calls such a rule once per pack too. Its findings
   // are written relative to the pack, as a pack author reads them, so here they take the pack's own prefix.
   const packs = new Set(dirs.map((dir) => path.join(root, dir)).filter(fs.existsSync).map((full) => packRootOf(full, root)));
+  // A whole-pack rule names places relative to its pack, as a pack author reads them; this repo has five packs,
+  // so a finding says which one. `formatPackWide` writes the line and takes the path from here, which is why this
+  // needs to know nothing about how any rule words its findings.
   const wholePack = rule.checkPack === undefined ? [] : [...packs].flatMap((packDir) => {
     const prefix = path.relative(root, packDir).split(path.sep).join('/');
-    // `(reached from …)` names a second file of the same pack, so it takes the prefix too. These are the two
-    // shapes a whole-pack finding has; a third would need a line here rather than arriving half-prefixed, which
-    // is why this substitutes rather than concatenating and hoping.
-    const prefixed = (found: string) => `${prefix}/${found}`.replace('(reached from ', `(reached from ${prefix}/`);
-    return rule.checkPack!(packDir).map((found) => (prefix ? prefixed(found) : found));
+    const where = (file: string) => (prefix ? `${prefix}/${file}` : file);
+    return rule.checkPack!(packDir).map((found) => formatPackWide(found, where));
   });
   return [...wholePack, ...dirs.flatMap((dir) => {
     const full = path.join(root, dir);

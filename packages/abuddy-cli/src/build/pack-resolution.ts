@@ -25,6 +25,7 @@ import * as path from 'node:path';
 import { SOURCE_CONDITION, SOURCE_PACKAGES } from '@abuddy/host/build/source-resolution';
 import ts from 'typescript';
 import { readSource } from './pack-sources.ts';
+import type { PackWideFinding } from './pack-rules.ts';
 
 /** One package a pack's compiler resolves to source, and the file it landed on */
 export interface SourceResolution {
@@ -130,9 +131,9 @@ export function packResolvesSource(packDir: string): PackResolution {
 const PACK_CONFIG = /^(?:vite|vitest)\.(?:config|workspace)\.[cm]?[jt]s$/;
 
 /** `<config>:<line>: <condition>` for each of the pack's configs naming the source condition */
-export function configsNamingSourceCondition(packDir: string): string[] {
+export function configsNamingSourceCondition(packDir: string): PackWideFinding[] {
   return fs.readdirSync(packDir).filter((name) => PACK_CONFIG.test(name)).sort().flatMap((name) =>
     readSource(path.join(packDir, name))
       .visit((node) => (ts.isStringLiteralLike(node) && node.text === SOURCE_CONDITION ? [node.text] : undefined))
-      .map(({ line, what }) => `${name}:${line}: ${what}`));
+      .map(({ line, what }) => ({ what, at: { file: name, line } })));
 }
