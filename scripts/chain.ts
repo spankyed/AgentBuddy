@@ -47,7 +47,7 @@ import { REPO_ROOT, stampedRun, unitStaleReason, type BuildUnit } from '@abuddy/
 import { CHAIN_STEPS, MEASURED_AT_LANES, orderedSteps, type ChainStep, type Tier } from './lib/chain-steps.ts';
 import { schedule } from './lib/chain-schedule.ts';
 import { criticalPath, driftedSteps, willNotCache } from './lib/step-timing.ts';
-import { briefly, declaredAt, DRY_REASON_COLUMN, REASON_COLUMN, wrapAt } from './lib/chain-output.ts';
+import { briefly, cachedLine, declaredAt, dim, DRY_REASON_COLUMN, oneLine, REASON_COLUMN, TIME_COLUMN, wrapAt } from './lib/chain-output.ts';
 import { slowestTests } from './lib/slow-tests.ts';
 import { exitOnEpipe } from './lib/exit-on-epipe.ts';
 
@@ -195,13 +195,15 @@ async function main(): Promise<void> {
       // would ignore. A plan that does not answer for the flags it was given is worse than no plan.
       const why = staleReason(step);
       const willRun = all || why !== null;
-      console.log(`${(willRun ? 'run' : 'cached').padStart(7)} t${step.tier} ${step.name.padEnd(26)} ${wrapAt(DRY_REASON_COLUMN, all ? '--all' : (why ?? ''))}`);
+      console.log(`${(willRun ? 'run' : 'cached').padStart(7)} t${step.tier} ${step.name.padEnd(26)} ${wrapAt(DRY_REASON_COLUMN, all ? '--all' : (why ?? ''))}`.trimEnd());
     }
     return;
   }
 
   /** The reason a step ran, kept for its line and for the failure report */
   const reasons = new Map<string, string>();
+  /** Held back rather than printed as each is skipped: one line at the end, where they do not bury the run */
+  const cachedSteps: ChainStep[] = [];
   const outcome = await schedule({
     steps,
     lanes,
@@ -209,7 +211,7 @@ async function main(): Promise<void> {
       const why = staleReason(step);
       if (!all && step.cache !== false && why === null) {
         cached++;
-        console.log(` cached t${step.tier} ${step.name}`);
+        cachedSteps.push(step);
         return true;
       }
       reasons.set(step.name, all ? '--all' : (why ?? ''));
@@ -221,9 +223,12 @@ async function main(): Promise<void> {
       // TIMEOUT is its own verdict: a step that ran out of budget failed for a different reason than one
       // that returned non-zero, and which it was is the first thing you need to know.
       const verdict = result.code === 0 ? 'ok' : result.timedOut ? 'TIMEOUT' : 'FAIL';
-      console.log(`${verdict.padStart(7)} t${step.tier} ${step.name.padEnd(26)} ${secs(result.ms).padStart(6)}  ${wrapAt(REASON_COLUMN, briefly(reasons.get(step.name) ?? '', declaredIn(step.name)))}`);
+      console.log(`${verdict.padStart(7)} t${step.tier} ${step.name.padEnd(26)} ${secs(result.ms).padStart(6)}  ${wrapAt(REASON_COLUMN, briefly(reasons.get(step.name) ?? '', declaredIn(step.name)))}`.trimEnd());
       // So whoever profiles a suite next has its slow tests without instrumenting it
-      for (const slow of slowestTests(result.output)) console.log(`${' '.repeat(11)}${secs(slow.ms).padStart(6)}  ${slow.name}`);
+      // In the step's own time column, so every time on the screen lines up and these read as its contents
+      for (const slow of slowestTests(result.output)) {
+        console.log(dim(`${' '.repeat(TIME_COLUMN)}${secs(slow.ms).padStart(6)}  ${oneLine(REASON_COLUMN, slow.name)}`));
+      }
       return result.code === 0;
     },
   });
@@ -249,6 +254,8 @@ async function main(): Promise<void> {
       .reduce((sum, s) => sum + (results.find((r) => r.step === s.name)?.ms ?? 0), 0);
     return `t${t} ${secs(ms)}`;
   }).join('  ');
+
+  if (cachedSteps.length > 0) console.log(dim(`${'cached'.padStart(7)}  ${wrapAt(9, cachedLine(cachedSteps))}`));
 
   const skipped = cached ? `, ${cached} of ${steps.length} cached` : '';
   // Measured, not declared. Reporting the floor from `seconds` made it wrong by the amount the table had

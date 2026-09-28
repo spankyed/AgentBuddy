@@ -66,3 +66,41 @@ export const briefly = (reason: string, where?: string): string =>
   (reason.startsWith('never cached:')
     ? `never cached${where === undefined ? '' : ` — ${where}`}`
     : reason);
+
+/**
+ * `text` cut to the room left on its line, with an ellipsis where it was cut.
+ *
+ * For a list whose job is to be scanned — the slowest tests in a suite, so the next person profiling it has them
+ * without instrumenting anything. Wrapping those keeps every word and costs three lines each on a narrow
+ * terminal, which buries the run; the name that identifies a test is at its front, and its whole name is in the
+ * suite's own output.
+ */
+export function oneLine(column: number, text: string, width = terminalWidth()): string {
+  const room = Math.max(20, width - column);
+  return text.length <= room ? text : `${text.slice(0, room - 1).trimEnd()}…`;
+}
+
+/** Where a step's time ends, so a line beneath it can put a time in the same column */
+export const TIME_COLUMN = 38;
+
+/**
+ * Secondary text, dimmed on a terminal and left alone anywhere else.
+ *
+ * What a run is *for* is the steps that ran: what they cost, and why. The steps that did not, and the slow tests
+ * inside the ones that did, are context — worth having on the screen and not worth the same weight as the rows
+ * they sit among.
+ */
+export const dim = (text: string): string => (process.stdout.isTTY ? `\u001B[2m${text}\u001B[22m` : text);
+
+/**
+ * The cached steps as one line, grouped by tier.
+ *
+ * One line rather than one each: they are decided at dispatch, so they arrive in a burst rather than spread
+ * through the run, and a dozen of them above the two rows that did something buries the thing you are watching
+ * for. The tier stays because it is what the steps are ordered by, and the names stay because "9 of 12 cached"
+ * does not say which nine.
+ */
+export const cachedLine = (steps: readonly { readonly tier: number; readonly name: string }[]): string =>
+  [...new Set(steps.map((step) => step.tier))].sort()
+    .map((tier) => `t${tier} ${steps.filter((step) => step.tier === tier).map((step) => step.name).join(', ')}`)
+    .join('  ·  ');
