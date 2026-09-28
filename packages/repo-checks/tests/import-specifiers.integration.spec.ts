@@ -231,7 +231,7 @@ describe('findHostImports', () => {
   });
 
   it('checks generated files and allows the SDK', () => {
-    write('pack/feature.ts', "import { findRelations, untypedQx } from '@abuddy/ears';\nimport { services } from '#generated/services';\n");
+    write('pack/feature.ts', `import { findRelations, untypedQx } from '@abuddy/ears';\nimport { services } from '#generated/services';\n${ALLOWED}`);
     write('pack/__generated__/ears.ts', "import { qx } from '@abuddy/host/ears';\n");
     expect(findHostImports(['src/pack'], root)).toEqual(['src/pack/__generated__/ears.ts:1: @abuddy/host/ears']);
   });
@@ -246,32 +246,16 @@ describe('findAppImportsInPackTests', () => {
     expect(findAppImportsInPackTests(['src/pack-tests'], root)).toEqual([`src/pack-tests/unit/feature.spec.ts:1: ${specifier}`]);
   });
 
-  /**
-   * The two shapes this rule used to claim as well, each with the rule that owns it wherever a pack writes it.
-   * One import reported by two rules is how only the first to run gets read, and these also say what is left for
-   * this one: a relative path into the app's sources, which no pack outside this repo can write.
-   *
-   * The second assertion in each is the narrowing; the first is what makes dropping it safe, since `abuddy test`
-   * runs both of those rules over a pack's tests.
-   */
-  it("leaves @abuddy/host in a pack's test to host-imports", () => {
-    write('pack-tests/unit/feature.spec.ts', "import { hydrate } from '@abuddy/host/ears';");
-    expect(findHostImports(['src/pack-tests'], root)).toEqual(['src/pack-tests/unit/feature.spec.ts:1: @abuddy/host/ears']);
-    expect(findAppImportsInPackTests(['src/pack-tests'], root)).toEqual([]);
-  });
-
-  it("leaves a @/ specifier in a pack's test to pack-own-aliases", () => {
-    write('pack-tests/unit/feature.spec.ts', "import { openAppStore } from '@/setup/backend';");
-    expect(findPackOwnAliases(['src/pack-tests'], root)).toEqual(['src/pack-tests/unit/feature.spec.ts:1: @/setup/backend']);
-    expect(findAppImportsInPackTests(['src/pack-tests'], root)).toEqual([]);
-  });
-
+  // What is left for this rule is a relative path into the app's sources, which no pack outside this repo can
+  // write. The two shapes it used to claim as well — `@abuddy/host` and a `@/` alias — are rows 1 and 2 of the
+  // derived tests-half sweep, which asserts *exactly one* claimant across every rule that reads a pack's tests.
   it('allows the SDK, the harness and the pack itself', () => {
     write('pack-tests/unit/feature.spec.ts', [
       "import { untypedQx } from '@abuddy/ears';",
       "import { startApp } from '@abuddy/testing/harness';",
       "import { repository } from '#generated/repository.ts';",
       "import { handler } from '../../src/extensions/steps/llm/runtime';",
+      ALLOWED,
     ].join('\n'));
     expect(findAppImportsInPackTests(['src/pack-tests'], root)).toEqual([]);
   });
@@ -1931,10 +1915,6 @@ describe('findMissingSourceConditions', () => {
       expect(conditionProblems()).toEqual([MUST_NOT(`${dir}/vitest.config.ts`, VITE_OPTION)]);
     });
 
-    it('holds for every pack in the repo, built-in and fixture', () => {
-      expect(findMissingSourceConditions()).toEqual([]);
-    });
-
     // The escape for a host-side config that lives in a pack's tree. It is deliberately hard to reach
     // for: the message names it, and an entry that stops applying is reported like any other.
     describe('DECLARES_SOURCE_BY_DESIGN', () => {
@@ -1966,13 +1946,14 @@ describe('findMissingSourceConditions', () => {
       });
 
       // Every case so far has been better served by moving the file, and the table's doc comment says so
-      it('is empty in this repo, and every entry it ever holds still applies', () => {
+      it('is empty in this repo', () => {
         expect([...DECLARES_SOURCE_BY_DESIGN.keys()]).toEqual([]);
-        expect(findMissingSourceConditions()).toEqual([]);
       });
     });
   });
 
+  // The repo, which is every config in it: the host's, the built-in pack's and the fixture packs'. The one
+  // assertion of it, since the same call over the same tree says the same thing wherever it is written.
   it('holds for the repo', () => {
     expect(findMissingSourceConditions()).toEqual([]);
   });
