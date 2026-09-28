@@ -1,18 +1,33 @@
 // `npm run check:repro` — build everything twice from one input and report any output whose bytes moved.
 //
-// Why it exists: `docs/goals/goal-reproducible-builds.md`. default-setup's runtime bundle was measured
+// Why it exists: `docs/archive/goals/goal-reproducible-builds.md`. default-setup's runtime bundle was measured
 // producing four hashes from four builds (2026-09-25), and measured producing one from fourteen (2026-09-28)
 // with nothing changed in between — no code, no dependency. That fits a timing-dependent race, so the
 // evidence says "not manifesting today", not "fixed". This is what notices if it comes back, and it is the
 // first thing here that has ever asked the question of *every* built output rather than the one file someone
 // hashed by hand.
 //
-// Not a chain step, deliberately: it is two full builds against a chain that is 27s warm. `api:check` is the
-// same trade and the same answer. Run it before a release, and when a bundler moves.
+// **Provisional: nothing runs this.** It is not a chain step, deliberately — two full builds (54.7s measured
+// 2026-09-28) against a chain that is 27s warm, which is the same trade `api:check` makes and the same
+// answer. But unlike `api:check`, which `typecheck` covers with a 0.6s `api:stamp` proxy and which the
+// publish path runs, this has no caller at all. So it reports only when someone types it, and a check nobody
+// invokes reports nothing. Treat its absence from a green chain as meaning nothing about reproducibility.
 //
-// It takes the repo's package-build lock, with a `command` intent, so against a running chain it fails at
-// once rather than racing it. And it does rebuild this checkout's outputs, which costs the next chain run one
-// cycle of cache invalidation.
+// Whether it earns a caller is open. The shapes on the table, none chosen:
+//   - a `prerelease` hook, beside the other checks that guard what gets published;
+//   - run when a bundler moves — an esbuild, vite, tsup or tsx bump — which is when the answer can change;
+//   - deleted, keeping the measurement in docs/archive/goals/goal-reproducible-builds.md, if the honest
+//     answer turns out to be that nobody will run it.
+//
+// Until then, by hand:
+//
+//   npm run check:repro                 # after a bundler bump, or before cutting a release
+//   npm run check:repro 2>&1 | tail -20 # the recorded exceptions and the verdict, without the build logs
+//
+// Expect it to rebuild this checkout's outputs, which costs the next `npm run chain` one cycle of cache
+// invalidation, and to take the package-build lock — so against a running chain it fails at once rather than
+// racing it.
+//
 import { execFileSync } from 'node:child_process';
 import { REPO_ROOT } from '@abuddy/host/build/packages-built';
 import { compare, KNOWN_IRREPRODUCIBLE, partition, reproPaths, snapshot } from './lib/repro.ts';

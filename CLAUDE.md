@@ -452,6 +452,21 @@ npm run lint:fix         # Rewrites what it can — oxlint has no fixer for no-u
 npm run packages:build   # Build dist/ for @abuddy/ears, @abuddy/sdk and @abuddy/ui, bundle @abuddy/cli and @abuddy/testing
 npm run packages:check   # publint + arethetypeswrong on the five published trees (after packages:build).
                          # A chain step, 5.9s; see "api:check is not a chain step" above for why this one is
+
+npm run check:repro      # **Provisional, and nothing runs it.** Builds everything twice from one input and
+                         # compares 1295 built files (54.7s measured 2026-09-28), so an output that moves
+                         # without its input is named rather than silently re-invalidating every step that
+                         # caches on it. Not a chain step — two full builds against a 27s warm chain, the
+                         # trade api:check makes — but unlike api:check it has no cheap proxy in typecheck
+                         # and no publish-path caller, so a green chain says nothing about reproducibility.
+                         # Run it after bumping a bundler (esbuild, vite, tsup, tsx), which is when the
+                         # answer can change, or before cutting a release
+                         # Three outputs are known-irreproducible and reported rather than failed, all of
+                         # them tsc's declaration emit ordering a union's members differently between runs
+                         # (KNOWN_IRREPRODUCIBLE, scripts/lib/repro.ts). They are races, so a run where one
+                         # agrees is not evidence it is fixed — which is why a stale entry is reported here
+                         # and failed everywhere else. docs/archive/goals/goal-reproducible-builds.md has
+                         # the measurements, and what an esbuild bump was measured to buy
 ```
 
 ### E2E visual testing
