@@ -1,178 +1,160 @@
-# No assertion over a subject nobody checked
+# No check that reports nothing
 
-*Supersedes `docs/plans/shared-pack-fixture.md`, which was part 3 of this.*
+*Revision 2. Revision 1 is committed at `fc02483de` and was wrong in its premise; the review that found that is
+below, because the reasoning is the part worth keeping.*
 
-## Context
+## What revision 1 got wrong
 
-A spike asked whether Gherkin belongs here and concluded its *format* does not: 4× the lines, a runtime typo where
-the compiler gives `TS2820`, and a table cell containing ` | ` that silently truncated and let a run report
-"8 of 7 scenarios pass". Two of its three structural ideas the repo already has — Scenario Outline + Examples is
-`it.each` (118 tables across 57 specs), and scenario-as-a-sentence is the house style.
+It proposed a new `@app/fixtures` workspace, a `filesIn` vocabulary, a ban on all 79 raw directory reads across 41
+spec files, and a guard spec to hold the line. The evidence for all of it was four checks said to pass green over
+a missing build output. **That was predicted, not measured, and it is false.**
 
-Chasing the third turned up something bigger than a missing helper. **The repo has invented "an assertion that
-cannot be vacuous" four separate times, privately each time, and it reaches four files.**
-
-| where | what it guarantees | reach |
+| # | defect | the measurement |
 |---|---|---|
-| `FIRES` + exhaustiveness, `repo-checks/tests/import-specifiers.integration.spec.ts` | every rule has an input that makes it fire | 10/10 rules |
-| `FIRES_ON_A_FILE`/`FIRES_ELSEWHERE` + exhaustiveness, `abuddy-cli/tests/build/pack-rules.spec.ts:233` | the same | 11/11 rules |
-| `population(what, files)`, `repo-checks/tests/packaged-app-files.spec.ts:87` | the subject is not empty | **1 file** |
-| two mutation cases, same file | the check is able to fail | 2 cases |
+| 1 | **The premise.** The four "silently green" checks are all already guarded. | `published-specifiers`, `published-ui-dist` and `dependency-runtime` each sit under a `describe.skipIf`; and `readdirSync` on a directory that does not exist throws `ENOENT` rather than returning `[]`, so a moved path fails loudly. The demonstrated hazard was zero files. |
+| 2 | **The size was set by the guard, not by the risk.** | 79 call sites migrated to close a hazard measured at 0. The only *exact* population for a static rule is "every directory read", so the rule's detectability chose the scope. That is the tail wagging the dog. |
+| 3 | **It guards the wrong half.** | The vacuity in these specs lives in the *filter* — `files.filter((f) => f.endsWith('.vue'))` — not in the walk. Proving `files` non-empty says nothing about whether the filter can still match. Only a firing case does. |
+| 4 | **It would have caused a regression.** | `published-declarations.integration.spec.ts` already asserts `toBeGreaterThan(100)`. Migrating it onto a `>0` helper weakens a floor the repo had already invented — a fifth private copy of the principle that revision 1 missed and would have flattened. |
+| 5 | **Two functions where one option is better.** | `filesIn` / `filesInAllowingNone` gives a frictionless escape hatch: the first failure a developer hits, they switch names. One `population(what, xs, { atLeast })` handles the floor, and an explicit `atLeast: 0` reads as a deliberate exemption at the call site. |
+| 6 | **The chunk order buried the value.** | The guard, which forced the 79, landed last; the one finding with independent evidence landed second. |
 
-The third is three lines long, private to one file, and its doc comment already states the principle:
-*"a population it cannot read is a case that proves nothing."* CLAUDE.md documents the habit. Nothing shares the
-code, so the habit reaches whoever remembers it.
+Defect 1 is the one that matters: **a plan whose premise is a prediction is the same defect it was written to fix.**
 
-**Measured, where it is not applied.** 41 spec files make 79 raw directory reads. Between them they make **81
-assertions of the shape `expect(<walked>).toEqual([])`** — green over an empty walk. **15 of those files never
-check the walk found anything**, and four of the fifteen walk a *build output* (`published-specifiers`,
-`published-ui-dist`, `scaffold-templates`, `dependency-runtime.integration`), where emptying is not hypothetical:
-a layout that moves or a build that wrote elsewhere, and the check passes.
+## What the evidence does support
 
-Two corrections from the measuring, both of which change the rule worth encoding:
+Re-measuring found the real vector, and it is not empty walks. **30 conditional skips across 22 spec files, and
+14 of them skip on `!PACKAGES_BUILT`** — nine of those thirteen files being the whole of `@app/publish-checks`.
 
-- A first count of "5 of 27 guarded" was wrong — `import-is-the-verb.spec.ts` guards with a message argument the
-  pattern missed. Re-counted per assertion, not per file.
-- **A `toEqual([])` is not itself a defect.** `api/tests/source-layout.spec.ts` asserts no `.vue` under `src/`, and
-  empty is the right answer. What makes it honest is that the set it *filtered from* is known non-empty. The rule
-  is "name the subject and confirm it was read", not "guard every walk".
+`packagesBuiltOrRefuse` (`packages/abuddy-host/src/build/packages-built.ts:629`) throws on unbuilt packages **only
+under `process.env.CI`**, and this repo's CI is off by design — `.github/workflows/ci.yml` has its triggers
+commented out. So locally it returns `false` and thirteen spec files quietly report nothing. That is not a
+hypothetical: CLAUDE.md already records the event, from the other direction, where it *was* caught —
+*"the step reported `cached` while `packagesBuiltOrRefuse()` refused, so every step reading the built packages
+failed at collection (five files, thirty-three tests skipped)."*
 
-This is the same failure as the pack fixture too weak to make `contract-leaves` fire, and the same failure as a
-scenario passing over a truncated string: an assertion evaluated over an input that could not have failed it.
+And the repo's own machinery has the hole in exactly that shape. `scripts/lib/spec-cost.ts` treats "skipped" as a
+deliberate third state and exports `nowRunning` — *"a spec recorded as skipped that has since started running"* —
+with **no inverse**. Skipped becoming running is noticed. Running becoming skipped is not.
 
-**Outcome: one shared vocabulary for "this check looked at something real", and no spec that can skip it.**
+## The plan
 
-## Where it lives
+### 1. A check may not silently skip itself
 
-A new private workspace, **`@app/fixtures`** — not `@abuddy/host`, which was the first choice and does not work.
+`packagesBuiltOrRefuse` refuses whenever the packages are not built, not only under CI, naming the build command
+as it already does. An explicit `ABUDDY_ALLOW_UNBUILT=1` covers the deliberate case — running one spec without
+paying for a build — so the escape is visible in the shell rather than implied by an unset variable.
 
-`findUpwardImports` (`scripts/check-import-specifiers.ts`) reads each layer's `src`, `tests` *and* `scripts`, and
-separately refuses a non-permitted `@abuddy/*` in the manifest at all. So `@abuddy/sdk`, `/ears`, `/ui` and
-`@app/default-setup` specs — **8 of the 41 files** — can neither import `@abuddy/host` nor declare it. The rule
-polices only `@abuddy/*`, so an `@app/*` devDependency is outside the layer graph by construction, which is what
-makes one home reachable from all 41.
+**The fourteen `describe.skipIf(!PACKAGES_BUILT)` sites stay.** The opt-out still yields `false`, so they remain
+correct and become reachable only when someone asked for them — which is better than deleting them and is a
+correction to this plan's first draft. What changes is that the default path can no longer reach them silently.
+`published-packages.ts:52`'s doc comment moves with the behaviour, since its first clause stops being true.
 
-Precedent and cost are both known: `@app/repo-checks` and `@app/publish-checks` are private spec workspaces, and
-`@abuddy/host` already publishes an exports map pointing straight at `./src/**.ts` that other packages' vitest runs
-resolve today — so `@app/fixtures` needs no build step and no vitest `deps.inline`. Wiring is five places, from
-the `publish-checks` precedent:
+This costs nothing in any gated path — `npm run test:unit`, `npm run chain` and each package's `pretest` all run
+`packages:ensure` first, so the packages are built every time it matters. It changes exactly one situation: a bare
+run against an unbuilt tree now says so instead of passing.
 
-- `scripts/lib/unit-suites.ts` (the suite list the chain reads)
-- `scripts/lib/chain-steps.ts` (its inputs)
-- `vitest.config.ts` (the projects list)
-- root `package.json` — `typecheck:scripts`
-- the workspace itself: `package.json`, `tsconfig.json`, `vitest.config.ts`, `CLAUDE.md`, `etc/spec-cost.json`
+**Prefer deleting the skip to detecting it.** A `nowSkipped` projection beside `nowRunning` was the other
+candidate; it needs the run's per-file skip set at check time, which a spec inside that run cannot see, so it
+lands in the runner instead. Making the state unreachable is smaller than building the machine that reports it.
 
-Plus a devDependency line in the 11 consuming packages. It is the first `@app/*` consumed by other workspaces; it
-needs its own suite anyway, because `spec-placement` requires one and because a helper with no firing case is the
-thing this plan exists to stop.
+### 2. One pack fixture
 
-## 1. The vocabulary
+This finding stands on its own evidence and is unchanged from revision 1. `Given a pack that …` is written
+privately in **35 spec files across six packages** — `pack`, `makePack`, `writePack`, `packFixture`,
+`packWithImports`, `packWithDefaults`, `packSource`, `packRepo`. Five of those are where the shape is
+load-bearing, and the weak shape has already cost twice:
 
-Three exports, no vitest dependency — `population` **throws** rather than asserting, which is why it can sit in a
-package nothing test-framework-shaped depends on, and vitest reports the throw with its message just as loudly.
-
-```ts
-population(what: string, xs: readonly T[]): readonly T[]   // throws naming `what` when empty
-filesIn(what: string, dir: string, options?): string[] | Dirent[]   // read + population
-filesInAllowingNone(what: string, dir: string, options?)            // the twin, for when empty is the answer
-packFixture({ at?, files?, manifest? }): string                      // a complete pack on disk
-```
-
-`filesIn`'s options mirror `readdirSync`'s (`recursive`, `withFileTypes`) with overloads so the return type stays
-exact — it is that call plus a named subject and a refusal, not a new walker to learn.
-
-**The twin is what removes the exception table.** The option chosen for this plan priced in "1–3 exceptions, each
-with a reason"; naming the unchecked half instead costs zero table entries and puts the decision at the call site,
-where the repo already puts it (`qx`/`untypedQx`, `openPlugin`/`untypedOpenPlugin` — one name per concern, the
-unchecked half named for being unchecked).
-
-`packFixture` is complete by default: a `package.json` with both subpath maps (`#generated/*`, `#features/*`), an
-`abuddy.json` declaring one feature with **both** halves' entries and contracts, and the files those paths name.
-`files` merges over the base, so a malformed-pack case writes `files: { 'abuddy.json': '{}' }`. `at` defaults to a
-fresh `mkdtemp`; `import-specifiers.integration.spec.ts` passes a path, because its rules' populations are
-`packages/*`-shaped.
-
-**No helper for the firing tables.** `import-specifiers` gets exhaustiveness free from `FIRES: Record<RuleId, …>`
-— the compiler refuses a missing key. `pack-rules` splits across two tables and checks it at runtime instead. The
-fix there is to merge them into one `Record<PackRuleKey, { onFile?: …; elsewhere?: … }>` and delete the runtime
-half, keeping only the staleness direction. A shared function would be weaker than the type system and is not
-worth a fourth export.
-
-## 2. The migration
-
-- **79 raw reads across 41 files** become `filesIn` / `filesInAllowingNone`, each naming its subject. 24 files have
-  a single call site. The four walking build output — `published-specifiers`, `published-ui-dist`,
-  `scaffold-templates`, `dependency-runtime.integration` — are the ones where this changes an outcome rather than
-  the wording.
-- **Five local pack-fixture variants collapse into `packFixture`**: `packWithImports` and the inline-manifest case
-  in `abuddy-cli/tests/build/pack-rules.spec.ts`, and `packFixture` plus the contract-leaf describe's local
-  `pack(files)` in `repo-checks/tests/import-specifiers.integration.spec.ts`. `pack()` stays only where a case is
-  *about* a malformed or minimal pack.
-
-  `Given a pack that …` is currently written privately in **35 spec files across six packages** — `pack`,
-  `makePack`, `writePack`, `packFixture`, `packWithImports`, `packWithDefaults`, `packSource`, `packRepo`. Five is
-  where the shape is load-bearing: `pack-rules.spec.ts` alone carries three, one of them a manifest written inline
-  because neither of the others could express a contract leaf, and
-  `import-specifiers.integration.spec.ts` records what the weak shape already cost — *"there used to be two and
-  the difference was invisible … `own-modules` and `contract-leaves` cannot fire there at all — measured. Half the
+- `abuddy-cli/tests/build/pack-rules.spec.ts` carries three shapes, one an `abuddy.json` written inline because
+  neither of the other two could express a contract leaf.
+- `repo-checks/tests/import-specifiers.integration.spec.ts` records what it cost: *"there used to be two and the
+  difference was invisible … `own-modules` and `contract-leaves` cannot fire there at all — measured. Half the
   sweep's fixtures were that shape, so for those rows those two rules' 'and no other rule claims it' said nothing:
   they were not able to claim."*
-- **The three private copies of the principle** move onto the shared one: `population()` in
-  `packaged-app-files.spec.ts`, and the two firing tables (`pack-rules` merges to one `Record`).
 
-The ~30 other pack builders across the repo stay. They build installers, releases, bundler inputs and E2E trees;
-forcing those through one builder is how a four-option helper becomes a twenty-option one.
+```ts
+packFixture({ at?: string; files?: Record<string, string>; manifest?: PackManifestish }): string
+```
 
-## 3. The guard
+Complete by default: a `package.json` with both subpath maps, an `abuddy.json` declaring one feature with **both**
+halves' entries and contracts, and the files those paths name. `files` merges over the base, so a malformed-pack
+case writes `files: { 'abuddy.json': '{}' }`; `at` defaults to a fresh `mkdtemp`.
 
-`packages/repo-checks/tests/population-guards.spec.ts`: **no spec calls `readdirSync` directly.** The population is
-derived exactly — every `*.spec.ts` in the repo, scanned for the call — which is the point: an earlier design tried
-to scope the rule to "repo walks only" and was abandoned when the call sites turned out to name local variables
-(`dir`, `SRC`, `path.join(…)`) at nearly all 79, so no static rule can tell a repo walk from a tmp walk. A
-heuristic population is the exact failure this plan is about.
+The five variants collapse: `packWithImports` and the inline-manifest case in `pack-rules.spec.ts`, and
+`packFixture` plus the contract-leaf describe's local `pack(files)` in `import-specifiers.integration.spec.ts`.
+`pack()` stays only where a case is *about* a malformed or minimal pack. The other ~30 builders stay — they build
+installers, releases, bundler inputs and E2E trees.
 
-With the `AllowingNone` twin there are no exceptions, so the assertion is `toEqual([])` against a population the
-guard itself passes through `population()` — the check proves it looked at the specs before reporting none
-offending.
+### 3. One population helper, where a floor already exists
+
+```ts
+population(what: string, xs: readonly T[], opts?: { atLeast?: number }): readonly T[]   // default atLeast: 1
+```
+
+Throws naming `what`, so it needs no test framework. It replaces the private copies that already exist:
+`population()` in `packaged-app-files.spec.ts:87`, and three hand-written floors — `chain-inputs.spec.ts:614`
+(`found.length > 5`), `fe-bundler-host-registry.integration.spec.ts:150` (`uiSources.length > 0`) and
+`published-declarations.integration.spec.ts:49` (`toBeGreaterThan(100)`, whose floor is carried over, not
+flattened).
+
+Two sites that look like floors are **not** migrated: `spec-plan.spec.ts:198` (`ambiguous[0]!.specs.length > 4`)
+and `fe-bundler-ui-theme.spec.ts:64` (`used.get('primary')!.size > 0`) assert about one item the scan found, not
+that it found anything. Moving them would be churn, and would read as a population guard where none is meant.
+
+**Home: `packages/abuddy-host/src/testing/`**, beside `packFixture`, exported as two entries in host's
+hand-written map. No new workspace: every one of those files is in a package that already depends on
+`@abuddy/host`. The one exception is `abuddy-sdk/tests/utils/import-is-the-verb.spec.ts`, which cannot import host
+— `findUpwardImports` reads each layer's `tests/` and refuses a non-permitted `@abuddy/*` in the manifest at all —
+so it keeps its own three-line guard with a comment saying why. **One file duplicating three lines is cheaper than
+a workspace, its vitest project, its chain inputs and eleven devDependency lines**, which is what revision 1 spent
+to reach eight files.
+
+### 4. The firing tables
+
+`import-specifiers` gets exhaustiveness free from `FIRES: Record<RuleId, …>`; the compiler refuses a missing key.
+`pack-rules` splits across `FIRES_ON_A_FILE` and `FIRES_ELSEWHERE` and checks it at runtime. Merge them into one
+`Record<PackRuleKey, { onFile?: …; elsewhere?: … }>`, delete the runtime completeness half, keep the staleness
+half. No shared helper: one would be weaker than the type system.
+
+## Not done, and what would change that
+
+**No ban on raw directory reads, and no guard spec.** It was 41 files to close a hazard that measures at zero
+today, and it guards the walk where the vacuity is in the filter. Revisit if a check is ever found green over a
+population it did not read — that is the condition, and it has not happened. What would catch that class properly
+is a firing case per check, which is a different and larger program than a population guard.
 
 ## Verification
 
-Each one is a mutation, per the repo's rule that breaking the thing on purpose proves more than a re-run.
+Each is a mutation, per the repo's rule that breaking it on purpose proves more than a re-run.
 
 | | |
 |---|---|
-| the vocabulary bites | point `filesIn` at a directory that does not exist: it throws naming the subject, and `filesInAllowingNone` returns `[]` |
-| the guard bites | put one raw `readdirSync` back in a spec: reported, naming the file and line |
-| the guard is not vacuous | make the spec scan match nothing: it fails by name rather than reporting zero offenders |
+| the skip is gone | clear `node_modules/.cache/abuddy-packages-build` and remove one `dist`, then run `npm test -w @app/publish-checks`: it must fail naming the build command, where today nine files report green |
+| the opt-out works | the same run with `ABUDDY_ALLOW_UNBUILT=1` skips as before |
+| nothing gated changed | `npm run chain` — `packages:ensure` precedes every step that reads a built package, so no step may newly refuse |
 | the fixture bites | delete the manifest from `packFixture`'s default: the `contract-leaves` cases must fail. Today two of the three shapes cannot make that rule speak at all |
-| the four build-output walks | run their suites against a tree with the output removed: each must now fail naming its subject, where today `published-specifiers` and `published-ui-dist` pass |
-| the merged firing table | delete a key from `Record<PackRuleKey, …>`: a compile error, not a test failure |
-| nothing else moved | `npm test -w @abuddy/cli`, `npm run test:integration -w @app/repo-checks -w @app/publish-checks`, with expectations unedited |
+| the floor is preserved | drop `published-declarations`' floor to `atLeast: 1` and point it at a directory with one file: it must still fail |
+| `population` bites | call it on `[]`: throws naming the subject |
+| the merged table bites | delete a key from the `Record`: a compile error, not a test failure |
+| nothing else moved | `npm test -w @abuddy/cli`, `npm run test:integration -w @app/repo-checks -w @app/publish-checks`, expectations unedited |
 | the gate | `npm run check:specifiers`, `npm run typecheck`, `npm run chain` |
 
 ## Risks
 
-- **79 call sites is one large mechanical diff.** Commit it per package so a bisect lands somewhere useful, and
-  keep the vocabulary and the guard in separate commits from the migration.
-- **A more complete pack fixture can surface findings the old one could not.** That is the intent, and also how it
-  breaks: `offender()` in `pack-rules.spec.ts` asserts over every rule's findings. Run the suites; do not reason
-  about it.
-- **`@app/fixtures` is the first `@app/*` consumed across workspaces.** Host's exports map already points at raw
-  `.ts` that other packages' vitest runs resolve, so this should need no build and no `deps.inline` — verify it
-  with one sdk spec before migrating 41 files.
-- **A new workspace adds a chain step's worth of inputs.** Five wiring points, measured against the
-  `publish-checks` precedent; if `spec-plan`'s partitioning needs an entry, its own spec will say so by failing.
+- **Part 1 changes a shared refusal that thirteen files sit behind.** It is the one part that can break a workflow
+  rather than a test: anyone running a bare spec against an unbuilt tree now gets an error. That is the intent, and
+  the env var is the release valve.
+- **A more complete pack fixture can surface findings the old one could not.** That is the intent and also how it
+  breaks: `offender()` in `pack-rules.spec.ts` asserts over every rule's findings. Run the suites; do not reason.
 - **Mutation checks must not run in the working tree** — a broken line reached the index once already. Use a
   worktree or a copy.
-- **Another agent is committing on this branch.** Explicit pathspecs per commit, and re-run the mutations after a
+- **Another agent is committing on this branch.** Explicit pathspecs per commit; re-run the mutations after a
   rebase rather than trusting the merge.
 
 ## Commit chunks
 
-1. `@app/fixtures`: the workspace, `population`/`filesIn`/`filesInAllowingNone`, its own suite, the five wiring
-   points. Delete `docs/plans/shared-pack-fixture.md`, superseded by this.
-2. `packFixture` in the same workspace, and the five variants in the two specs that collapse onto it.
-3. The migration, one commit per package: 79 sites, 41 files.
-4. `pack-rules`' two firing tables merge into one `Record`; `packaged-app-files` drops its private `population`.
-5. The guard, and its firing case.
+1. `packagesBuiltOrRefuse` refuses unless `ABUDDY_ALLOW_UNBUILT`, and `published-packages.ts`' doc comment moves
+   with it. The fourteen `skipIf` sites are untouched.
+2. `population` in `@abuddy/host/src/testing/`, the three private floors and `packaged-app-files`' helper onto it,
+   the sdk spec's local copy commented.
+3. `packFixture` beside it, and the five variants in the two specs that collapse onto it.
+4. `pack-rules`' two firing tables merge into one `Record`.
