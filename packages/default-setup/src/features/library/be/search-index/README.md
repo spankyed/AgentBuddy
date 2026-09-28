@@ -8,6 +8,7 @@ Semantic search over library documents: documents are split into chunks (whole d
 |---|---|
 | Embedding models: local FastEmbed models, and API models `services.inference` runs by `provider:model` id | `../../embedding-models.ts` (shared with the index editor) |
 | Embedding, chunking, index files | `service.ts` (FastEmbed for local models, `services.inference.embed`/`embedMany` for the rest; `usearch` indices) |
+| Filling an author's `{{segment N}}` template | `../../segment-template.ts` (shared with the index editor, and outside the exclusion below, so it is typechecked and has a spec) |
 | Index and chunk rows, indexing, search | `repository.ts` (`SearchIndex` and `IndexedDoc` entities, declared in `abuddy.json`) |
 | FastEmbed model names | `config/fastembed-mapping.ts` |
 | Where indices and FastEmbed weights live | `paths.ts` (`search-indices/`, `models-cache/` in the app's data directory) |
@@ -16,7 +17,7 @@ Semantic search over library documents: documents are split into chunks (whole d
 
 ## Why it's off
 
-`service.ts`, `repository.ts` and `config/fastembed-mapping.ts` import `fastembed` and `usearch`, which no workspace installs. default-setup's `tsconfig.json` excludes those three files, and every place that uses it is commented out with a `[SEARCH_INDEX_FF]` tag:
+`service.ts`, `repository.ts` and `config/fastembed-mapping.ts` import `fastembed` and `usearch`, which no workspace installs. What is ordinary string work lives outside them for that reason — `../../segment-template.ts` is the `{{segment N}}` rule, which nothing here could test while it sat in `service.ts`. default-setup's `tsconfig.json` excludes those three files, and every place that uses it is commented out with a `[SEARCH_INDEX_FF]` tag:
 
 - `be/system.ts`: search index events and actions (list, create, update, delete, search)
 - `be/repository/commands.ts`: indexing a document when it's created or updated, and removing it from indices when it or its folder is deleted

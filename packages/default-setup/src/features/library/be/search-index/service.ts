@@ -6,6 +6,7 @@ import type { SearchIndexConfig, EmbeddingResult, Occurrence, EmbeddingModel } f
 import type { ContentSection } from '../types.ts'
 import type { EARS } from '#generated/ears.ts'
 import { getModelConfig, getModelDimensions } from '../../embedding-models.ts'
+import { fillSegments } from '../../segment-template.ts'
 import { getFastEmbedModel } from './config/fastembed-mapping.ts'
 import { ensureDirectoryExists } from '@abuddy/sdk/utils'
 import { getModelsCachePath, getIndexMetadataPath, getIndexMappingsPath, getIndexPath } from './paths.ts'
@@ -206,9 +207,7 @@ export function processDocumentContent(
 ): string {
   if (!config.enableSectionIndexing || !config.segmentRules.length) {
     const firstText = content.length > 0 ? sectionToText(content[0]) : ''
-    const result = (config.constructTemplate || '{{segment 1}}')
-      .replace('{{segment 1}}', firstText)
-      .replace(/\{\{segment \d+\}\}/g, '')
+    const result = fillSegments(config.constructTemplate || '{{segment 1}}', n => (n === 1 ? firstText : undefined))
     return result.trim() || firstText
   }
   
@@ -218,12 +217,12 @@ export function processDocumentContent(
     return sections.map(s => sectionToText(s, rule.key)).join(' ')
   })
   
-  let result = config.constructTemplate
-  segments.forEach((segment, i) => {
-    result = result.replace(`{{segment ${i + 1}}}`, segment)
-  })
-  
-  return result
+  return fillSegments(config.constructTemplate, n => segments[n - 1])
+}
+
+/** The first item of the segment `{{segment n}}` names, 1-based, or nothing when no rule carries that number */
+function firstItemOf(segments: { index: number, items: string[] }[], n: number): string | undefined {
+  return segments.find(segment => segment.index + 1 === n)?.items[0]
 }
 
 /**
@@ -278,25 +277,14 @@ export function processDocumentContentMultiIndex(
   
   if (!separateSegment) {
     // No separation needed, return single result
-    let text = template
-    segmentData.forEach(segment => {
-      const placeholder = `{{segment ${segment.index + 1}}}`
-      text = text.replace(placeholder, segment.items[0] || '')
-    })
+    const text = fillSegments(template, n => firstItemOf(segmentData, n))
     return [{text, segmentIndex: 0}]
   }
   
   // Generate combinations for separated items
   separateSegment.items.forEach((item, itemIndex) => {
-    let text = template
-    segmentData.forEach(segment => {
-      const placeholder = `{{segment ${segment.index + 1}}}`
-      if (segment === separateSegment) {
-        text = text.replace(placeholder, item)
-      } else {
-        text = text.replace(placeholder, segment.items[0] || '')
-      }
-    })
+    const text = fillSegments(template, n =>
+      (n === separateSegment.index + 1 ? item : firstItemOf(segmentData, n)))
     results.push({
       text,
       segmentIndex: separateSegment.index,

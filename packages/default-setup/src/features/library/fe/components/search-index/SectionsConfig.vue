@@ -164,6 +164,7 @@
 
 <script setup lang="ts">
 import { ref, watch, computed } from 'vue'
+import { fillSegments } from '../../../segment-template.ts'
 import { X, Plus, ChevronRight } from 'lucide-vue-next'
 import ToggleSwitch from './form/ToggleSwitch.vue'
 import CollapsibleSection from '@abuddy/ui/design/CollapsibleSection'
@@ -234,10 +235,11 @@ function getTemplatePreview(): string {
     field: '[field key_1: value_1, key_2: value_2, ...]'
   }
   
-  return localData.value.constructTemplate.replace(/\{\{segment (\d+)\}\}/g, (match, num) => {
-    const index = parseInt(num) - 1
-    const rule = localData.value.segmentRules[index]
-    if (!rule) return '[segment content...]'
+  // The same scan the backend fills indexed text with, so the preview cannot promise a substitution the index
+  // does not make. What differs is only what each supplies for a segment: shapes here, document text there
+  return fillSegments(localData.value.constructTemplate, num => {
+    const rule = localData.value.segmentRules[num - 1]
+    if (!rule) return undefined
     
     // Handle separate mode for lists and fields
     if (rule.indexMode === 'separate' && (rule.type === 'list' || rule.type === 'field')) {
@@ -255,7 +257,7 @@ function getTemplatePreview(): string {
     }
     
     return placeholders[rule.type] || '[segment content...]'
-  })
+  }, '[segment content...]')
 }
 
 async function copyVariable(variable: string) {
