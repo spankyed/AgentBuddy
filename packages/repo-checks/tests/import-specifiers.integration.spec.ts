@@ -2,7 +2,7 @@ import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { CHECKS, findAppImportsInPackTests, findContractLeafImports, findCrossCheckoutResolution, findCrossFeatureImports, findExtensionlessOwnModules, findHostImports, findJsSpecifiers, findMissingSourceConditions, findPackageScriptImports, findPackBackendConsole, findPackOwnAliases, findRawPackHelpers, findRawTransport, findInternalPackageImports, findLmdbImports, findRepositoryCasts, findSharedPackageLists, findUpwardImports, LAYERS, LMDB_RULES, MANIFEST_FIELDS, packageSourceDirs, CHECK_IDS, type CoveredRuleId, DECLARES_SOURCE_BY_DESIGN, type ImportRuleId, SHARED_LIST_CONSUMERS, sourceConditionPackages, SOURCE_CONDITION, checkedDirs, type ImportRule, packCodeDirs, packDirs, packRule, packRuleProblems, ruleRows, ruleTable } from '../../../scripts/check-import-specifiers.ts';
+import { CHECKS, findAppImportsInPackTests, findContractLeafImports, findCrossCheckoutResolution, findCrossFeatureImports, findExtensionlessOwnModules, findHostImports, findJsSpecifiers, findMissingSourceConditions, findPackageScriptImports, findPackBackendConsole, findPackOwnAliases, findRawPackHelpers, findRawTransport, findInternalPackageImports, findLmdbImports, findRepositoryCasts, findSharedPackageLists, findUpwardImports, jsSpecifierFixes, LAYERS, LMDB_RULES, MANIFEST_FIELDS, packOwnModuleFixes, packageSourceDirs, CHECK_IDS, type CoveredRuleId, DECLARES_SOURCE_BY_DESIGN, type ImportRuleId, SHARED_LIST_CONSUMERS, sourceConditionPackages, SOURCE_CONDITION, checkedDirs, type ImportRule, packCodeDirs, packDirs, packRule, packRuleProblems, ruleRows, ruleTable } from '../../../scripts/check-import-specifiers.ts';
 import { REPO_ROOT } from '@abuddy/host/build/packages-built';
 import { packFixture as buildPackFixture } from '@abuddy/host/testing/pack-fixture';
 import { population } from '@abuddy/host/testing/population';
@@ -1122,6 +1122,67 @@ describe('findExtensionlessOwnModules', () => {
     writeAt('pack/src/f.ts', "import providers from '#data/providers';");
     expect(findExtensionlessOwnModules(['pack/src'], root))
       .toEqual(["pack/src/f.ts:1: '#data/providers' names no file — write '#data/providers.json'"]);
+  });
+});
+
+/**
+ * The other half of two rules: the finder computes the repair and `applyFixes` splices it
+ * (`specifier-fixes.spec.ts` covers the writing, and the refusals that make it safe). Nothing covered the
+ * finders, and what that cost was `packOwnModuleFixes` deriving the pack with `path.dirname` — right only when
+ * the caller names a pack's `src`, so the same offence reached by a nested directory or by the file itself
+ * computed no repair at all and reported it as nothing to fix.
+ *
+ * So every case here names more than one target for one offence: what a caller points the fixer at is the axis
+ * that was wrong, and a fixture with the offence directly under `src` cannot see it.
+ */
+describe('the repairs the rules compute', () => {
+  /** A pack whose one offending specifier sits deep enough that the pack is not the parent of what is named */
+  function offendingPack(): void {
+    writeAt('pack/package.json', JSON.stringify({ name: 'p', type: 'module', imports: { '#generated/*': './src/__generated__/*' } }));
+    writeAt('pack/src/__generated__/events.ts', 'export const sendToSystem = 1;');
+    writeAt('pack/src/features/notes/f.ts', "import { sendToSystem } from '#generated/events';");
+  }
+
+  /** What the file actually holds where a fix says to splice, which is what `applyFixes` writes over */
+  const spanOf = ({ file, start, end }: { file: string; start: number; end: number }): string =>
+    fs.readFileSync(path.join(root, file), 'utf-8').slice(start, end);
+
+  it.each(['pack/src', 'pack/src/features', 'pack/src/features/notes', 'pack/src/features/notes/f.ts'])(
+    'packOwnModuleFixes answers alike for %s', (target) => {
+      offendingPack();
+      expect(packOwnModuleFixes([target], root)).toEqual([{
+        file: 'pack/src/features/notes/f.ts',
+        line: 1,
+        start: expect.any(Number),
+        end: expect.any(Number),
+        specifier: '#generated/events',
+        named: '#generated/events.ts',
+      }]);
+    });
+
+  it.each(['packages/thing/src', 'packages/thing/src/nested', 'packages/thing/src/nested/consumer.ts'])(
+    'jsSpecifierFixes answers alike for %s', (target) => {
+      writeAt('packages/thing/src/nested/query.ts', 'export const q = 1;');
+      writeAt('packages/thing/src/nested/consumer.ts', "import { q } from './query.js';");
+      expect(jsSpecifierFixes([target], root)).toEqual([{
+        file: 'packages/thing/src/nested/consumer.ts',
+        line: 1,
+        start: expect.any(Number),
+        end: expect.any(Number),
+        specifier: './query.js',
+        named: './query.ts',
+      }]);
+    });
+
+  // The seam with the writer: a fix is a span plus what to put there, and a span that does not hold the
+  // specifier the fix names is one `applyFixes` refuses — which reads as "nothing to fix" from the command
+  it('gives spans that hold the specifier each names', () => {
+    offendingPack();
+    writeAt('packages/thing/src/nested/query.ts', 'export const q = 1;');
+    writeAt('packages/thing/src/nested/consumer.ts', "import { q } from './query.js';");
+    const fixes = [...packOwnModuleFixes(['pack/src'], root), ...jsSpecifierFixes(['packages/thing/src'], root)];
+    expect(fixes.length, 'the fixture offends both rules, so neither walk found no files').toBe(2);
+    expect(fixes.map(spanOf)).toEqual(fixes.map((fix) => fix.specifier));
   });
 });
 

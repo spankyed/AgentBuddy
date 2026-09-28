@@ -14,7 +14,7 @@ import { moduleOf, readSource, sourceFiles } from '../packages/abuddy-cli/src/bu
 import type { Fix } from './lib/specifier-fixes.ts';
 import {
   CHECKED_DIRS, checkedDirs, filesUnder, PACK_CODE_DIRS, packCodeDirs, packDirs, packageSourceDirs,
-  PACK_SOURCE_DIRS, PACK_SRC_ROOTS, PACK_TEST_DIRS, readJsonFile, repoRelative, repoRoot,
+  packRootOf, PACK_SOURCE_DIRS, PACK_SRC_ROOTS, PACK_TEST_DIRS, readJsonFile, repoRelative, repoRoot,
   SOURCE_EXTENSIONS,
 } from './lib/import-populations.ts';
 import {
@@ -99,7 +99,7 @@ export function packOwnModuleFixes(dirs: readonly string[] = PACK_CODE_DIRS, roo
   return dirs.flatMap((dir) => {
     const full = path.join(root, dir);
     if (!fs.existsSync(full)) return [];
-    const packDir = path.dirname(full);
+    const packDir = packRootOf(full, root);
     const found = filesUnder([dir], root).flatMap((file) => readSource(file).specifiers.map(({ text, line, start, end }) => ({
       file: repoRelative(packDir, file),
       line, specifier: text, start, end,
@@ -111,11 +111,6 @@ export function packOwnModuleFixes(dirs: readonly string[] = PACK_CODE_DIRS, roo
       }]);
   });
 }
-
-/**
- * The scaffold's pack code, which is files rather than string literals (`goal-one-rule-set.md`): the pack
- * every pack author starts from, and so the one whose specifiers most need to be right.
- */
 
 /** Any module specifier, including ones inside comments and strings */
 const ANY_SPECIFIER = /(?:\bfrom\s*|\bimport\s*\(\s*|\brequire\s*\(\s*|\bimport\s+)['"]([^'"]+)['"]/g;

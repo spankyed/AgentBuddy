@@ -18,7 +18,7 @@ function packRuleFor(key: PackRuleKey) {
 }
 
 /** The sentence a pack rule reports, read from the rule itself so this script prints what a pack author is told */
-export const ruleSentence = (key: PackRuleKey): string => packRuleFor(key).rule;
+const ruleSentence = (key: PackRuleKey): string => packRuleFor(key).rule;
 
 /**
  * A pack rule from `@abuddy/cli`'s `build/pack-rules.ts`, applied to this repo's packs.
@@ -39,7 +39,6 @@ export const ruleSentence = (key: PackRuleKey): string => packRuleFor(key).rule;
  * both run the same rule — its `check` per file, its `checkPack` once for the pack — and `FIRES`' disjointness
  * sweep asserts no two rules claim one offence to begin with, for every rule this delegates to.
  */
-
 export function packRule(key: PackRuleKey, dirs: readonly string[], root: string): string[] {
   const rule = packRuleFor(key);
   // A rule whose subject is the pack answers once per pack, not once per directory of it: `dirs` holds a pack's
@@ -82,7 +81,7 @@ export function packRule(key: PackRuleKey, dirs: readonly string[], root: string
  * asserts each entry has a case that makes it fire — which is what stops a check landing with nothing
  * exercising it.
  */
-export interface RuleShape {
+interface RuleShape {
   /** Stable name, the one the spec's FIRES table is keyed by and `--rule` takes */
   readonly id: string;
   /** The sentence reported when it fires */
