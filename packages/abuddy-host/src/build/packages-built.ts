@@ -383,6 +383,7 @@ export interface StampRecord {
   readonly workspace?: unknown;
   readonly version?: unknown;
   readonly fingerprint?: unknown;
+  readonly takenAt?: unknown;
   readonly builtAt?: unknown;
   readonly declared?: readonly string[];
   readonly files?: Record<string, string>;
@@ -650,6 +651,7 @@ export interface StampedUnit {
  * would stamp a fingerprint of the output instead of the input and read fresh next time when it was not.
  */
 export async function stampedRunAll(units: readonly StampedUnit[], run: () => void | Promise<void>): Promise<void> {
+  const takenAt = new Date().toISOString();
   const taken = units.map(({ label, unit, stamp }) => ({ label, stamp, declared: declaredPaths(unit), ...fingerprintWithDigests(unit) }));
   for (const { stamp } of taken) fs.rmSync(stamp, { force: true });
   await run();
@@ -659,7 +661,11 @@ export async function stampedRunAll(units: readonly StampedUnit[], run: () => vo
     // `declared` and `files` are what the next run needs to say *which* input moved, taken in the same pass as
     // the fingerprint so the diagnosis and the verdict describe one reading of the tree. Additive: a stamp
     // without them is still a valid stamp, it just cannot explain itself.
-    fs.writeFileSync(stamp, `${JSON.stringify({ workspace: label, version: STAMP_VERSION, fingerprint, builtAt, declared, files }, null, 2)}\n`);
+    //
+    // `takenAt` and `builtAt` bracket the run, which is what places a change inside it or after it. Without the
+    // opening bracket a report cannot tell a file rewritten while the run was going from one last touched a
+    // month ago, so it would call every untouched input a rewrite.
+    fs.writeFileSync(stamp, `${JSON.stringify({ workspace: label, version: STAMP_VERSION, fingerprint, takenAt, builtAt, declared, files }, null, 2)}\n`);
   }
 }
 

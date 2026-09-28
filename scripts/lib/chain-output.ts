@@ -104,3 +104,98 @@ export const writerOf = (
   steps: readonly { readonly name: string; readonly outputs?: readonly string[] }[],
 ): string | undefined =>
   steps.find((step) => (step.outputs ?? []).some((out) => file === out || file.startsWith(`${out}/`)))?.name;
+
+/**
+ * Where a change sits relative to the run that stamped the inputs — inside it, or after it finished.
+ *
+ * The two are different problems. Inside means something ran beside this step and wrote where it reads, which is
+ * an ordering or a declaration to fix; after means the tree has moved on since, which is usually you. The
+ * brackets are the run's own (`takenAt`, `builtAt` on its stamp), so this places a change without the reporter
+ * keeping a second reading of when anything started.
+ */
+export const whenChanged = (mtimeMs: number | undefined, ranUntil: number | undefined): '' | 'while it ran' | 'since it ran' =>
+  (mtimeMs === undefined || ranUntil === undefined ? '' : mtimeMs <= ranUntil ? 'while it ran' : 'since it ran');
+
+/**
+ * The recorded inputs whose bytes did not change and which were written inside the run's own window.
+ *
+ * Something rewrote them identically — a test that edits a file and puts it back, a build whose emit is
+ * deterministic. None of it made the step stale, which is why these are counted rather than named as causes.
+ *
+ * It can only undercount, and that is a property of mtime rather than a gap to close: mtime records the *last*
+ * write, so a file rewritten identically during the run and touched again afterwards is placed after the window
+ * and left out. Measured, not reasoned: a rewriter left running past `typecheck`'s window produced exactly that,
+ * and the report was right to say nothing. What must never happen is the other direction, a file counted here
+ * that did change — and it cannot, because `differing` comes from the digests.
+ */
+export function identicalRewrites(found: {
+  readonly recorded: readonly string[];
+  readonly differing: ReadonlySet<string>;
+  readonly mtimeOf: (file: string) => number | undefined;
+  readonly from: number | undefined;
+  readonly until: number | undefined;
+}): string[] {
+  const { recorded, differing, mtimeOf, from, until } = found;
+  if (from === undefined || until === undefined) return [];
+  return recorded.filter((file) => !differing.has(file))
+    .filter((file) => {
+      const mtime = mtimeOf(file);
+      return mtime !== undefined && mtime >= from && mtime <= until;
+    })
+    .sort();
+}
+
+/** One input that differs from what the run recorded */
+export interface ChangedInput {
+  readonly file: string;
+  readonly how: 'changed' | 'added' | 'removed';
+  /** From `whenChanged`; empty when the stamp cannot say */
+  readonly when: '' | 'while it ran' | 'since it ran';
+  /** The step whose declared `outputs` hold it, from `writerOf` */
+  readonly writer?: string;
+}
+
+/** How many files a report names before it counts the rest */
+export const CHANGED_CAP = 5;
+
+/**
+ * What to print under a step that passed and is already stale, given the diff against its own stamp.
+ *
+ * Every line here is something the stamp can prove. That is the whole change: the list used to be the files
+ * whose mtime had moved, which is a superset — it named a compiled seed an E2E test rewrites with the bytes it
+ * already had, and the diagnosis that followed was about the wrong file. So a rewrite that changed nothing is no
+ * longer a cause; it is a footnote, because a tree being written during every run is worth knowing and is not
+ * why anything re-ran.
+ *
+ * A declared-set change prints instead of files rather than beside them: gaining a watched path makes a unit
+ * stale before a byte moves, and a file list for that cause is empty and reads as a contradiction.
+ */
+export function staleLines(found: {
+  readonly indent: number;
+  readonly gained: readonly string[];
+  readonly lost: readonly string[];
+  readonly files: readonly ChangedInput[];
+  readonly identical: readonly string[];
+  /** Whether the stamp carried a diagnosis at all — one written before it did cannot explain itself */
+  readonly recorded: boolean;
+  readonly cap?: number;
+}): string[] {
+  const { indent, gained, lost, files, identical, recorded, cap = CHANGED_CAP } = found;
+  const pad = ' '.repeat(indent);
+  const more = (count: number) => (count > cap ? [`${pad}and ${count - cap} more`] : []);
+  if (!recorded) return [`${pad}its last run recorded no per-file digests, so it cannot say which input moved`].map(dim);
+  const declared = [...gained.map((one) => `+${one}`), ...lost.map((one) => `-${one}`)];
+  const lines = declared.length > 0
+    ? [`${pad}its declared inputs moved: ${declared.slice(0, cap).join(', ')}`, ...more(declared.length)]
+    : [
+      ...files.slice(0, cap).map(({ file, how, when, writer }) =>
+        `${pad}${file} — ${how}${when === '' ? '' : ` ${when}`}${writer === undefined ? '' : `, ${writer}'s declared output`}`),
+      ...more(files.length),
+    ];
+  if (lines.length === 0) lines.push(`${pad}nothing under its inputs differs now, so whatever moved has moved back`);
+  if (identical.length > 0) {
+    lines.push(`${pad}${identical.length} file${identical.length === 1 ? '' : 's'} rewritten with identical bytes while it ran`
+      + ` (${identical[0]}${identical.length > 1 ? ', …' : ''}) — harmless to the cache`);
+  }
+  return lines.map(dim);
+}

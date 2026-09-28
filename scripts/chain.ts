@@ -43,11 +43,11 @@
 // assumption, and the cheapest work left in this chain may be another step that is quietly serial.
 import * as fs from 'node:fs';
 import * as path from 'node:path';
-import { inputFiles, REPO_ROOT, stampedRun, unitStaleReason, type BuildUnit } from '@abuddy/host/build/packages-built';
+import { changedInputs, REPO_ROOT, stampedRun, stampRecord, unitStaleReason, type BuildUnit } from '@abuddy/host/build/packages-built';
 import { CHAIN_STEPS, MEASURED_AT_LANES, orderedSteps, type ChainStep, type Tier } from './lib/chain-steps.ts';
 import { schedule } from './lib/chain-schedule.ts';
 import { criticalPath, driftedSteps, willNotCache } from './lib/step-timing.ts';
-import { briefly, declaredAt, dim, DRY_REASON_COLUMN, oneLine, REASON_COLUMN, TIME_COLUMN, wrapAt, writerOf } from './lib/chain-output.ts';
+import { briefly, declaredAt, dim, DRY_REASON_COLUMN, identicalRewrites, oneLine, REASON_COLUMN, staleLines, TIME_COLUMN, whenChanged, wrapAt, writerOf } from './lib/chain-output.ts';
 import { slowestTests } from './lib/slow-tests.ts';
 import { exitOnEpipe } from './lib/exit-on-epipe.ts';
 
@@ -93,26 +93,46 @@ const unitFor = (step: ChainStep): BuildUnit => ({
 type Result = { step: string; ms: number; code: number; output: string; timedOut?: true };
 
 /**
- * The files under a step's inputs that were written after it started.
+ * What moved under a step's inputs since its last successful run, against that run's own stamp.
  *
- * Its own walk rather than the fingerprint's, because the fingerprint answers "did anything change" with one
- * hash and the question here is which file — asked only of a step that is already known to be stale, so the
- * stats it costs are paid on the runs that have something to report.
+ * Everything here is the stamp's: the per-file digests it recorded, the declared set it recorded, and the two
+ * timestamps bracketing the run. So the files named are exactly the ones the verdict is about — the previous
+ * version walked mtimes instead and named a file a test rewrites with identical bytes, which sent a diagnosis
+ * after the wrong thing. mtime is still read, but only to place a change the digests already found.
+ *
+ * Asked only of a step already known to be stale, so its walk and its stats are paid on the runs with
+ * something to report.
  */
-function writtenWhileRunning(step: ChainStep, since: number): string[] {
-  const unit = unitFor(step);
-  const excluded = [...unit.outputs, ...(unit.excludes ?? [])].map((target) => path.relative(REPO_ROOT, target));
-  const isExcluded = (file: string) => excluded.some((out) => file === out || file.startsWith(`${out}/`));
-  return [...new Set(unit.inputs.flatMap((input) => inputFiles(input)))]
-    .filter((file) => !isExcluded(file))
-    .filter((file) => {
-      try {
-        return fs.statSync(path.join(REPO_ROOT, file)).mtimeMs >= since;
-      } catch {
-        return true; // gone since the walk, which is itself a write into the tree
-      }
-    })
-    .sort();
+function whatMoved(step: ChainStep, steps: readonly ChainStep[]): Omit<Parameters<typeof staleLines>[0], 'indent'> {
+  const nothing = { gained: [], lost: [], files: [], identical: [] };
+  const record = stampRecord(stampFor(step.name));
+  if (record?.files === undefined || record.declared === undefined) return { ...nothing, recorded: false };
+  const changes = changedInputs(unitFor(step), { files: record.files, declared: record.declared });
+  const at = (file: string) => {
+    try {
+      return fs.statSync(path.join(REPO_ROOT, file)).mtimeMs;
+    } catch {
+      return undefined; // gone between the diff and this stat, which the diff already called removed
+    }
+  };
+  const asOf = (field: unknown) => (typeof field === 'string' ? Date.parse(field) : undefined);
+  const [from, until] = [asOf(record.takenAt), asOf(record.builtAt)];
+  const files = ([
+    ...changes.changed.map((file) => ({ file, how: 'changed' as const })),
+    ...changes.added.map((file) => ({ file, how: 'added' as const })),
+    ...changes.removed.map((file) => ({ file, how: 'removed' as const })),
+  ]).map((found) => ({ ...found, when: whenChanged(at(found.file), until), writer: writerOf(found.file, steps) }))
+    // What ran beside this step comes first: it is the case with an ordering to fix, where a change since the
+    // run is usually the edit you just made
+    .sort((a, b) => Number(a.when !== 'while it ran') - Number(b.when !== 'while it ran'));
+  const identical = identicalRewrites({
+    recorded: Object.keys(record.files),
+    differing: new Set(files.map((found) => found.file)),
+    mtimeOf: at,
+    from,
+    until,
+  });
+  return { gained: changes.gained, lost: changes.lost, files, identical, recorded: true };
 }
 
 /**
@@ -225,8 +245,6 @@ async function main(): Promise<void> {
 
   /** The reason a step ran, kept for its line and for the failure report */
   const reasons = new Map<string, string>();
-  /** When each step started, so a staleness found after it passed can say what was written while it ran */
-  const startedAt = new Map<string, number>();
   const outcome = await schedule({
     steps,
     lanes,
@@ -244,7 +262,6 @@ async function main(): Promise<void> {
       return false;
     },
     run: async (step) => {
-      startedAt.set(step.name, Date.now());
       const result = await runAndStamp(step, all);
       results.push(result);
       // TIMEOUT is its own verdict: a step that ran out of budget failed for a different reason than one
@@ -304,20 +321,8 @@ async function main(): Promise<void> {
     console.log(`\n${uncacheable.length} step${uncacheable.length === 1 ? '' : 's'} passed but will run again next time — something wrote into their inputs:`);
     for (const { name, reason } of uncacheable) {
       const step = steps.find((s) => s.name === name)!;
-      // The files, not the fact. Without them this says a write happened and leaves finding it to a bisect.
-      // Written-while-running is a superset of what made the step stale: a file re-emitted with the same bytes
-      // changes an mtime and no fingerprint, and `dev-reload.spec.ts` edits a compiled seed and puts it back.
-      // So the ones nobody declares come first — an undeclared write is both the likelier cause and the one
-      // there is something to do about.
-      const written = writtenWhileRunning(step, startedAt.get(name) ?? 0)
-        .map((file) => ({ file, writer: writerOf(file, steps) }))
-        .sort((a, b) => Number(a.writer !== undefined) - Number(b.writer !== undefined));
       console.log(`  ${name.padEnd(26)} ${reason}`);
-      for (const { file, writer } of written.slice(0, 3)) {
-        console.log(dim(`  ${' '.repeat(26)} ${file}${writer === undefined ? '' : ` — ${writer}'s output, so possibly an identical re-emit`}`));
-      }
-      if (written.length > 3) console.log(dim(`  ${' '.repeat(26)} and ${written.length - 3} more`));
-      if (written.length === 0) console.log(dim(`  ${' '.repeat(26)} nothing under its inputs is newer than the run, so the change is older than it`));
+      for (const line of staleLines({ indent: 27, ...whatMoved(step, steps) })) console.log(line);
     }
     console.log('  Declare what writes there in that step\'s `outputs`, or stop declaring the generated tree as an input.');
   }

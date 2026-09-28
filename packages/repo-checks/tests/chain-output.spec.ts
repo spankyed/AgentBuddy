@@ -5,7 +5,7 @@ import * as path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { REPO_ROOT } from '@abuddy/host/build/packages-built';
 import { CHAIN_STEPS } from '../../../scripts/lib/chain-steps.ts';
-import { briefly, declaredAt, dim, DRY_REASON_COLUMN, oneLine, REASON_COLUMN, wrapAt, writerOf } from '../../../scripts/lib/chain-output.ts';
+import { briefly, declaredAt, dim, DRY_REASON_COLUMN, identicalRewrites, oneLine, REASON_COLUMN, staleLines, wrapAt, whenChanged, writerOf } from '../../../scripts/lib/chain-output.ts';
 
 describe('wrapAt', () => {
   it('leaves a reason that fits on the line it is on', () => {
@@ -61,6 +61,116 @@ describe('writerOf', () => {
   /** Nobody's output is the interesting answer: an undeclared write is the one there is something to do about */
   it('answers nothing for a file no step declares', () => {
     expect(writerOf('tests/fixtures/probe.txt', steps)).toBeUndefined();
+  });
+});
+
+describe('whenChanged', () => {
+  const ranUntil = Date.parse('2026-09-27T12:00:00.000Z');
+
+  /** A write inside the run is the case with an ordering to fix; one after it is usually the reader's own edit */
+  it('places a change inside the run, and after it', () => {
+    expect(whenChanged(ranUntil - 1000, ranUntil)).toBe('while it ran');
+    expect(whenChanged(ranUntil + 1000, ranUntil)).toBe('since it ran');
+  });
+
+  /** A stamp from before the run window was recorded says nothing about when, and must not guess */
+  it('says nothing when the stamp cannot place it', () => {
+    expect(whenChanged(ranUntil, undefined)).toBe('');
+    expect(whenChanged(undefined, ranUntil)).toBe('');
+  });
+});
+
+describe('identicalRewrites', () => {
+  const [from, until] = [Date.parse('2026-09-27T12:00:00.000Z'), Date.parse('2026-09-27T12:01:00.000Z')];
+  const at: Record<string, number> = {
+    'src/rewritten.ts': from + 10_000,
+    'src/touched-later.ts': until + 10_000,
+    'src/untouched.ts': from - 90 * 24 * 60 * 60 * 1000,
+    'src/changed.ts': from + 20_000,
+  };
+  const under = (differing: string[] = [], window: [number | undefined, number | undefined] = [from, until]) =>
+    identicalRewrites({
+      recorded: Object.keys(at), differing: new Set(differing), mtimeOf: (file) => at[file], from: window[0], until: window[1],
+    });
+
+  it('counts a file whose bytes match and which was written inside the run', () => {
+    expect(under(['src/changed.ts'])).toEqual(['src/rewritten.ts']);
+  });
+
+  /**
+   * Measured rather than reasoned: a rewriter left running past `typecheck`'s window produced exactly this, and
+   * the report was right to say nothing — mtime records the last write, so this can only undercount.
+   */
+  it('leaves out one whose last write landed after the run finished', () => {
+    expect(under(['src/changed.ts'])).not.toContain('src/touched-later.ts');
+  });
+
+  /** A file that differs is a cause, and a cause must never be demoted to a harmless footnote */
+  it('leaves out every file that differs, whatever its mtime says', () => {
+    expect(under(['src/changed.ts', 'src/rewritten.ts']), 'a file that differs was counted as harmless').toEqual([]);
+  });
+
+  it('counts nothing when the stamp cannot say when the run was', () => {
+    expect(under([], [undefined, until])).toEqual([]);
+    expect(under([], [from, undefined])).toEqual([]);
+  });
+});
+
+describe('staleLines', () => {
+  const under = (found: Partial<Parameters<typeof staleLines>[0]>) => staleLines({
+    indent: 0, gained: [], lost: [], files: [], identical: [], recorded: true, ...found,
+  }).map((line) => line.replace(/\u001B\[\d+m/g, ''));
+
+  it('names each file with what happened to it, when, and whose output it is', () => {
+    expect(under({ files: [
+      { file: 'tests/fixtures/probe.txt', how: 'changed', when: 'while it ran' },
+      { file: 'packages/demo-pack/dist/seeds.json', how: 'added', when: 'since it ran', writer: 'compile' },
+    ] })).toEqual([
+      'tests/fixtures/probe.txt — changed while it ran',
+      "packages/demo-pack/dist/seeds.json — added since it ran, compile's declared output",
+    ]);
+  });
+
+  /**
+   * The line the whole change is for. An identical rewrite is not a cause, and reading one as a cause is what
+   * sent a diagnosis after the compiled seed an E2E test rewrites; it is still worth saying, because a tree written
+   * during every run is worth knowing about.
+   */
+  it('counts a rewrite that changed nothing as a footnote, not a cause', () => {
+    expect(under({
+      files: [{ file: 'tests/fixtures/probe.txt', how: 'changed', when: 'while it ran' }],
+      identical: ['packages/demo-pack/dist/library.seed.json', 'packages/demo-pack/dist/notes.seed.json'],
+    })).toEqual([
+      'tests/fixtures/probe.txt — changed while it ran',
+      '2 files rewritten with identical bytes while it ran (packages/demo-pack/dist/library.seed.json, …) — harmless to the cache',
+    ]);
+  });
+
+  /**
+   * A unit that gains a watched path is stale before a byte moves, so a file list for that cause is empty —
+   * printing both would read as a contradiction, and printing only the files would read as a bug.
+   */
+  it('reports a declared-set change instead of files, because no file moved', () => {
+    expect(under({ gained: ['tests/scripts'], lost: ['tests/old'] }))
+      .toEqual(['its declared inputs moved: +tests/scripts, -tests/old']);
+  });
+
+  it('counts the rest past the cap rather than filling the screen', () => {
+    const files = Array.from({ length: 8 }, (_, index) => ({ file: `src/f${index}.ts`, how: 'changed' as const, when: '' as const }));
+    const lines = under({ files, cap: 3 });
+    expect(lines).toHaveLength(4);
+    expect(lines.at(-1)).toBe('and 5 more');
+  });
+
+  /** One generation of stamps predates the digests, and a report that said nothing would read as "no cause" */
+  it('says so when the last run recorded no digests', () => {
+    expect(under({ recorded: false, files: [{ file: 'src/a.ts', how: 'changed', when: '' }] }))
+      .toEqual(['its last run recorded no per-file digests, so it cannot say which input moved']);
+  });
+
+  /** The tree can move between the verdict and the diff, and an empty report has to say which it is */
+  it('says the change has gone when the diff finds nothing', () => {
+    expect(under({})).toEqual(['nothing under its inputs differs now, so whatever moved has moved back']);
   });
 });
 
