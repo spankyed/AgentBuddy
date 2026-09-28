@@ -1,3 +1,5 @@
+// The LLM step's DSL surface is provisional — see the note on DSLLLMNode in ./types.ts before building
+// on it: the helper has no call site in this repo, so its shape has never been exercised by an author.
 import type { StepDefinition } from '@abuddy/sdk/steps';
 import type { StepCompileResult, StepCompileContext, StepValidationError, StepValidationContext, StepDecompileContext } from '@abuddy/sdk/steps';
 import { EARS } from '@abuddy/sdk';
