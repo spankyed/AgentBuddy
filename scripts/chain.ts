@@ -47,7 +47,7 @@ import { inputFiles, REPO_ROOT, stampedRun, unitStaleReason, type BuildUnit } fr
 import { CHAIN_STEPS, MEASURED_AT_LANES, orderedSteps, type ChainStep, type Tier } from './lib/chain-steps.ts';
 import { schedule } from './lib/chain-schedule.ts';
 import { criticalPath, driftedSteps, willNotCache } from './lib/step-timing.ts';
-import { briefly, cachedLine, declaredAt, dim, DRY_REASON_COLUMN, oneLine, REASON_COLUMN, TIME_COLUMN, wrapAt, writerOf } from './lib/chain-output.ts';
+import { briefly, declaredAt, dim, DRY_REASON_COLUMN, oneLine, REASON_COLUMN, TIME_COLUMN, wrapAt, writerOf } from './lib/chain-output.ts';
 import { slowestTests } from './lib/slow-tests.ts';
 import { exitOnEpipe } from './lib/exit-on-epipe.ts';
 
@@ -227,8 +227,6 @@ async function main(): Promise<void> {
   const reasons = new Map<string, string>();
   /** When each step started, so a staleness found after it passed can say what was written while it ran */
   const startedAt = new Map<string, number>();
-  /** Held back rather than printed as each is skipped: one line at the end, where they do not bury the run */
-  const cachedSteps: ChainStep[] = [];
   const outcome = await schedule({
     steps,
     lanes,
@@ -236,7 +234,10 @@ async function main(): Promise<void> {
       const why = staleReason(step);
       if (!all && step.cache !== false && why === null) {
         cached++;
-        cachedSteps.push(step);
+        // On its own line where it was skipped, and dimmed. The order these arrive in is information — it is
+        // when the scheduler reached the step — so they are not collected and printed together at the end;
+        // the weight is what separates them from the rows that did work, not the position.
+        console.log(dim(`${'cached'.padStart(7)} t${step.tier} ${step.name}`));
         return true;
       }
       reasons.set(step.name, all ? '--all' : (why ?? ''));
@@ -280,8 +281,6 @@ async function main(): Promise<void> {
       .reduce((sum, s) => sum + (results.find((r) => r.step === s.name)?.ms ?? 0), 0);
     return `t${t} ${secs(ms)}`;
   }).join('  ');
-
-  if (cachedSteps.length > 0) console.log(dim(`${'cached'.padStart(7)}  ${wrapAt(9, cachedLine(cachedSteps))}`));
 
   const skipped = cached ? `, ${cached} of ${steps.length} cached` : '';
   // Measured, not declared. Reporting the floor from `seconds` made it wrong by the amount the table had

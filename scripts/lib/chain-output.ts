@@ -93,19 +93,6 @@ export const TIME_COLUMN = 38;
 export const dim = (text: string): string => (process.stdout.isTTY ? `\u001B[2m${text}\u001B[22m` : text);
 
 /**
- * The cached steps as one line, grouped by tier.
- *
- * One line rather than one each: they are decided at dispatch, so they arrive in a burst rather than spread
- * through the run, and a dozen of them above the two rows that did something buries the thing you are watching
- * for. The tier stays because it is what the steps are ordered by, and the names stay because "9 of 12 cached"
- * does not say which nine.
- */
-export const cachedLine = (steps: readonly { readonly tier: number; readonly name: string }[]): string =>
-  [...new Set(steps.map((step) => step.tier))].sort()
-    .map((tier) => `t${tier} ${steps.filter((step) => step.tier === tier).map((step) => step.name).join(', ')}`)
-    .join('  ·  ');
-
-/**
  * The step whose declared `outputs` hold `file`, when one does.
  *
  * A step that passes and is immediately stale was written into while it ran, and the first question is by whom.

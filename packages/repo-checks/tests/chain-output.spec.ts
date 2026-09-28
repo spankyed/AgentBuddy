@@ -5,7 +5,7 @@ import * as path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { REPO_ROOT } from '@abuddy/host/build/packages-built';
 import { CHAIN_STEPS } from '../../../scripts/lib/chain-steps.ts';
-import { briefly, cachedLine, declaredAt, dim, DRY_REASON_COLUMN, oneLine, REASON_COLUMN, wrapAt, writerOf } from '../../../scripts/lib/chain-output.ts';
+import { briefly, declaredAt, dim, DRY_REASON_COLUMN, oneLine, REASON_COLUMN, wrapAt, writerOf } from '../../../scripts/lib/chain-output.ts';
 
 describe('wrapAt', () => {
   it('leaves a reason that fits on the line it is on', () => {
@@ -41,17 +41,6 @@ describe('oneLine', () => {
   /** The slowest tests are a list to scan, and wrapping them costs three lines each on a narrow terminal */
   it('cuts a name to the room it has, and says it cut', () => {
     expect(oneLine(10, 'a test with a very long name indeed', 30)).toBe('a test with a very…');
-  });
-});
-
-describe('cachedLine', () => {
-  /** "9 of 12 cached" does not say which nine, and the tier is what the steps are ordered by */
-  it('groups the cached steps by tier, in the order they were skipped', () => {
-    expect(cachedLine([
-      { tier: 2, name: 'compile' },
-      { tier: 1, name: 'typecheck' },
-      { tier: 2, name: 'packages:check' },
-    ])).toBe('t1 typecheck  ·  t2 compile, packages:check');
   });
 });
 
