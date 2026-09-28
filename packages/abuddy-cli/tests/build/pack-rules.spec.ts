@@ -5,6 +5,7 @@ import { fileURLToPath } from 'node:url';
 import { REPO_ROOT } from '@abuddy/host/build/packages-built';
 import { afterEach, describe, expect, it } from 'vitest';
 import { packFixture } from '@abuddy/host/testing/pack-fixture';
+import { population } from '@abuddy/host/testing/population';
 import { formatPackWide, loadPackChecks, packRuleProblems, PACK_RULES, refusePackRuleViolations, type PackRuleKey } from '../../src/build/pack-rules.ts';
 import { resetSourceCache } from '../../src/build/pack-sources.ts';
 
@@ -372,7 +373,7 @@ describe('when several rules are right about one site', () => {
     const ends = after.findIndex((line) => !line.startsWith('|'));
     const rows = ends === -1 ? after : after.slice(0, ends);
     const documented = rows.map((row) => /^\|\s*`([^`]+)`/.exec(row)?.[1]).filter((key) => key !== undefined);
-    expect(documented.length, 'no rows read from the table, so this would pass over nothing').toBeGreaterThan(0);
+    population('the rule table rows in cli.md', documented);
     expect([...documented].sort()).toEqual([...PACK_RULES.map((rule) => rule.key)].sort());
   });
 
