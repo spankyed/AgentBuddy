@@ -1,5 +1,11 @@
 # The built-in pack's runtime bundle is not reproducible
 
+> **Planned as** [`goal-reproducible-builds.md`](../goals/goal-reproducible-builds.md), which widens it from
+> this one file to the property — a build output that changes without its input does not pass unnoticed — and
+> corrects two things below: the esbuild bump is narrower than "The fix" says (vite and tsup vendor their own
+> copies and do not move with ours), and the remedy is a hypothesis its Phase 0 falsifies before anything is
+> built on it. The measurement and the reproduction here are what that goal rests on; they stay.
+
 `packages/default-setup/dist/runtime/index.cjs` differs between builds of identical input. Diagnosed
 2026-09-25 while reviewing the chain's cache; not fixed, because the fix is an esbuild upgrade.
 
