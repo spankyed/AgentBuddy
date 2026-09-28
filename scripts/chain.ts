@@ -47,7 +47,7 @@ import { changedInputs, firstChange, freshnessSweep, INPUTS_CHANGED, REPO_ROOT, 
 import { CHAIN_STEPS, MEASURED_AT_LANES, orderedSteps, type ChainStep, type Tier } from './lib/chain-steps.ts';
 import { schedule } from './lib/chain-schedule.ts';
 import { criticalPath, driftedSteps, willNotCache } from './lib/step-timing.ts';
-import { briefly, declaredAt, dim, DRY_REASON_COLUMN, driftReport, howLong, identicalRewrites, oneLine, REASON_COLUMN, staleLines, STEP_NAME_WIDTH, TIME_COLUMN, whenChanged, wrapAt, writerOf } from './lib/chain-output.ts';
+import { briefly, classifyLine, declaredAt, dim, DRY_REASON_COLUMN, driftReport, howLong, identicalRewrites, oneLine, REASON_COLUMN, shouldClassify, staleLines, STEP_NAME_WIDTH, TIME_COLUMN, whenChanged, wrapAt, writerOf } from './lib/chain-output.ts';
 import { slowestTests } from './lib/slow-tests.ts';
 import { exitOnEpipe } from './lib/exit-on-epipe.ts';
 
@@ -231,6 +231,9 @@ async function main(): Promise<void> {
   // expected to be cached is not. It reports each step against the tree as it stands, so the verdicts after
   // the first step that would run are what that step would produce nothing for: a plan, not a prediction.
   const dry = process.argv.includes('--dry');
+  // The retry costs the failing step's own time before the verdict appears, and most failures are the ordinary
+  // kind where the reader already knows what they broke
+  const noClassify = process.argv.includes('--no-classify');
   let cached = 0;
 
   // Derived from each step's `needs`, and validated first: an unknown dependency or a cycle fails here rather
@@ -325,13 +328,39 @@ async function main(): Promise<void> {
     console.log(`\n${'='.repeat(72)}\n${step}: the runner threw, which is a bug in the chain rather than a failing check\n${'='.repeat(72)}\n${error instanceof Error ? (error.stack ?? error.message) : String(error)}`);
   }
 
+  // Every step is asked about at this one moment, with nothing left running, so one reading of the tree answers
+  // both halves: whether each step is stale, and which of its inputs moved. A fresh sweep, never the dry one.
+  //
+  // Read before the retry below, which is a diagnostic rather than part of the run and may write into the tree:
+  // a re-run `compile` rewrites PACK_OUTPUTS. No passed step reads a failed step's outputs today — every reader
+  // of one declares `needs` on it, and the scheduler skips a failed step's dependents — but `needs` is ordering
+  // and `inputs`/`outputs` are caching, so nothing makes them agree. This does not depend on their agreeing.
+  const sweep = freshnessSweep();
+
+  let classifyMs = 0;
   const failed = outcome.failed === undefined ? undefined : results.find((r) => r.step === outcome.failed);
   if (failed) {
     const step = steps.find((s) => s.name === failed.step)!;
+    const classifying = shouldClassify({
+      lanes, exclusive: step.exclusive === true, timedOut: failed.timedOut === true, optedOut: noClassify,
+    });
     const why = failed.timedOut
       ? `${step.name} timed out: it exceeded its ${secs(budgetFor(step.seconds ?? 300))} budget and its process group was killed. It costs ${step.seconds ?? '?'}s healthy, so either it is wedged or it has grown and the measurement in chain-steps.ts is stale.`
-      : `${step.name} failed (exit ${failed.code})${howLong(step, failed.ms, lanes)}`;
+      : `${step.name} failed (exit ${failed.code})${howLong(step, failed.ms, lanes, classifying)}`;
     console.log(`\n${'='.repeat(72)}\n${why}\n${'='.repeat(72)}\n${failed.output}`);
+    if (classifying) {
+      // `run`, never `runAndStamp`: a step that passes alone has not passed the chain, and stamping it here
+      // would let the next run skip the thing that just failed. Nothing else is executing — `schedule` drains
+      // before it returns — so this is the step by itself, which is the whole question being asked.
+      //
+      // Demonstrated rather than assumed, with a `compile` that fails then passes: the retry reports passing,
+      // and the next chain still says `compile  no stamp — it has not run yet, or the last run failed`.
+      const retry = await run(step.name, step.seconds, all ? step.forceArgs ?? [] : []);
+      // The verdict reports what the chain cost. The retry is a diagnostic after it, so a 60s re-run must not
+      // land on the one number a reader compares between runs.
+      classifyMs = retry.ms;
+      console.log(classifyLine(retry));
+    }
   }
 
   // Where the time goes by tier, which is the number the goal's phases move. Its own line under the verdict:
@@ -351,13 +380,12 @@ async function main(): Promise<void> {
     .map((step) => ({ ...step, seconds: Math.round((measuredMs.get(step.name) ?? 0) / 1000) }));
   const path = criticalPath(ran);
   const floor = lanes > 1 && path.names.length > 1 ? `\ncritical path ${path.seconds}s (${path.names.join(' -> ')})` : '';
+  // Named rather than folded in, so the verdict's number stays comparable between runs and the wall time still
+  // adds up — a reader who times the command should not find seconds the chain does not account for.
+  const reran = classifyMs > 0 ? ` (+${secs(classifyMs)} re-run)` : '';
   const verdict = failed ? `chain FAILED at ${failed.step}` : outcome.failed ? `chain FAILED at ${outcome.failed}` : 'chain passed';
   // Something writing into a step's inputs after it ran is why a "15 of 17 cached" chain still paid 34s
-  // for a typecheck every time. Asked here, where the answer is one hash per step and already to hand.
-  //
-  // Every step is asked about at this one moment, with nothing left running, so one reading of the tree answers
-  // both halves: whether each step is stale, and which of its inputs moved. A fresh sweep, never the dry one.
-  const sweep = freshnessSweep();
+  // for a typecheck every time. Asked here, against the sweep taken above.
   const uncacheable = willNotCache(
     steps,
     new Set(results.filter((r) => r.code === 0).map((r) => r.step)),
@@ -394,7 +422,7 @@ async function main(): Promise<void> {
   const report = driftReport(driftedSteps(steps, measuredMs), lanes, MEASURED_AT_LANES, all);
   if (report !== '') console.log(report);
 
-  console.log(`\n${verdict} in ${secs(Date.now() - started)}${skipped}${lanes > 1 ? ` with ${lanes} lanes` : ''}\n${byTier}${floor}`);
+  console.log(`\n${verdict} in ${secs(Date.now() - started - classifyMs)}${reran}${skipped}${lanes > 1 ? ` with ${lanes} lanes` : ''}\n${byTier}${floor}`);
   // Not process.exit(): it drops whatever stdout has still to flush, and the failing step's captured output
   // printed just above is the one thing here worth reading. Measured: piped, process.exit() delivers 64KB
   // of a 500KB write, and @app/default-setup's suite output alone is 654KB.

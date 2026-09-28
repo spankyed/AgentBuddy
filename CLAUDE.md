@@ -343,6 +343,15 @@ npm run chain            # Before a merge: every check in dependency order, cold
                          #             --all, 176.7s over 12 steps at 3 lanes, with that step 5.5s and off the
                          #             critical path (packages:ensure -> compile -> build:app ->
                          #             test:packaged-authoring, 111s), so running it alone costs its own time
+                         #   --no-classify  when a step fails under more than one lane, the chain re-runs
+                         #             that step by itself. A pass rules the code out — the same command
+                         #             over the same tree — leaving contention or a flake. It never counts
+                         #             either: the retry does not stamp and the
+                         #             chain still exits 1, since a green-on-retry nobody sees is how a
+                         #             flake becomes rot. Skipped for an exclusive step, which already ran
+                         #             alone, and for a timeout, which would spend its budget twice. This
+                         #             turns it off, for when you know what you broke and want the failure
+                         #             back without paying the step's own time again
 npm test                 # Playwright E2E tests
 npm run test:unit        # Vitest, as two pools: the host suites as one root run under the
                          # @abuddy/source condition, and the pack suite on its own resolving the published

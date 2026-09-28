@@ -275,12 +275,18 @@ export function staleLines(found: {
  * (the note at the top of this file). The band is `overBand` in step-timing.ts, shared with `driftedSteps`
  * rather than restated — it was restated here once, which is two copies of one rule and how they come apart.
  */
-export function howLong(step: { readonly seconds?: number }, ms: number, lanes: number): string {
+export function howLong(
+  step: { readonly seconds?: number },
+  ms: number,
+  lanes: number,
+  /** Whether the chain is about to re-run the step alone, in which case suggesting it reads as if no answer followed */
+  classifying = false,
+): string {
   if (step.seconds === undefined) return '';
   const measured = Math.round(ms / 1000);
   const where = ` after ${(ms / 1000).toFixed(1)}s, against ${step.seconds}s healthy at ${lanes} lane${lanes > 1 ? 's' : ''}`;
-  return overBand(step.seconds, measured)
-    ? `${where}\n  — over twice its measured cost, so try \`npm run chain --lanes 1\` before reading the output as a real failure`
+  return !classifying && overBand(step.seconds, measured)
+    ? `${where}\n  — over twice its measured cost; try \`npm run chain --lanes 1\``
     : where;
 }
 
@@ -316,8 +322,7 @@ export function driftReport(
     shown.map((d) => `  ${d.name.padEnd(STEP_NAME_WIDTH)} ${line(d)}`).join('\n');
 
   if (!forced) {
-    return `\n${count} ran past twice the declared cost, on a run that did less work than the table describes`
-      + ` — the step grew, not the schedule:\n`
+    return `\n${count} ran past twice the declared cost — the step grew, not the schedule:\n`
       + `${rows(({ declared, measured }) => `${declared}s -> ${measured}s  (killed at ${budgetFor(declared) / 1000}s)`)}`;
   }
   if (lanes === measuredAt) {
@@ -330,4 +335,45 @@ export function driftReport(
       const factor = (Math.max(declared, measured) / Math.min(declared, measured)).toFixed(1);
       return `${declared}s -> ${measured}s  (${factor}x ${measured < declared ? 'faster alone' : 'slower'})`;
     })}`;
+}
+
+/**
+ * Whether a failed step is worth re-running by itself.
+ *
+ * The chain is the only thing placed to ask whether a failure reproduces: it knows which step failed,
+ * and `schedule` drains what is running before it returns, so at that moment the machine is genuinely quiet.
+ * The reader can do it too, which is what the suggestion in `howLong` is for — but they have to decide to, and
+ * the evidence is gone by the next run.
+ */
+export function shouldClassify(run: {
+  readonly lanes: number;
+  /** The step runs with nothing beside it already, so running it alone proves nothing */
+  readonly exclusive: boolean;
+  /** Its budget is four times its cost; re-running a wedged step spends that again for a message that already interprets itself */
+  readonly timedOut: boolean;
+  readonly optedOut: boolean;
+}): boolean {
+  return run.lanes > 1 && !run.exclusive && !run.timedOut && !run.optedOut;
+}
+
+/**
+ * What the re-run proved.
+ *
+ * A pass here rules the code out, which is the useful half: the retry runs the same command over the same tree,
+ * so anything deterministic in it would fail again. What is left is interference from whatever else was running,
+ * or the step being nondeterministic on its own — hence "contention or a flake" rather than either alone. It
+ * does not say which, and `lanes` would not tell it: that is the declared count, not the concurrency that
+ * actually happened, and three lanes with nine steps cached is none at all.
+ *
+ * A pass is also the dangerous output: it is the one a reader can mistake for the chain being fine. It says
+ * "fails" in the sentence, the exit code stays 1, and the retry writes no stamp — `run` rather than
+ * `runAndStamp` — so the next chain has to do the step again. A green-on-retry nobody sees is how a flake
+ * becomes rot, and all three of those are what stop this feature making the repo worse than not having it.
+ */
+export function classifyLine(retry: { readonly code: number; readonly ms: number; readonly timedOut?: true }): string {
+  const took = `${(retry.ms / 1000).toFixed(1)}s`;
+  if (retry.timedOut) return `\nre-ran it alone: timed out after ${took} — wedged, not crowded.`;
+  return retry.code === 0
+    ? `\nre-ran it alone: passed in ${took} — contention or a flake, not the code. The chain still fails.`
+    : `\nre-ran it alone: failed again (exit ${retry.code}) in ${took} — the failure is real.`;
 }

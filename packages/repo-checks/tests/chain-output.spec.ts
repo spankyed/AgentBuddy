@@ -5,7 +5,7 @@ import * as path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { firstChange, REPO_ROOT } from '@abuddy/host/build/packages-built';
 import { CHAIN_STEPS } from '../../../scripts/lib/chain-steps.ts';
-import { briefly, declaredAt, dim, driftReport, DRY_REASON_COLUMN, howLong, identicalRewrites, oneLine, REASON_COLUMN, staleLines, STEP_NAME_WIDTH, TIME_COLUMN, wrapAt, whenChanged, writerOf } from '../../../scripts/lib/chain-output.ts';
+import { briefly, classifyLine, declaredAt, dim, driftReport, DRY_REASON_COLUMN, howLong, shouldClassify, identicalRewrites, oneLine, REASON_COLUMN, staleLines, STEP_NAME_WIDTH, TIME_COLUMN, wrapAt, whenChanged, writerOf } from '../../../scripts/lib/chain-output.ts';
 
 describe('wrapAt', () => {
   /**
@@ -396,5 +396,61 @@ describe('driftReport', () => {
   it('says nothing when nothing drifted, at either lane count', () => {
     expect(driftReport([], 3, 3, true)).toBe('');
     expect(driftReport([], 1, 3, true)).toBe('');
+  });
+});
+
+describe('shouldClassify', () => {
+  const under = { lanes: 3, exclusive: false, timedOut: false, optedOut: false };
+
+  it('re-runs a step that failed while others were running', () => {
+    expect(shouldClassify(under)).toBe(true);
+  });
+
+  it('does not, when there was nothing to contend with', () => {
+    // One lane: the step already had the machine
+    expect(shouldClassify({ ...under, lanes: 1 })).toBe(false);
+    // packages:ensure and packages:check run with nothing beside them whatever the lane count
+    expect(shouldClassify({ ...under, exclusive: true })).toBe(false);
+  });
+
+  it('does not re-run a step that was killed, whose budget it would spend again', () => {
+    expect(shouldClassify({ ...under, timedOut: true })).toBe(false);
+  });
+
+  it('does not when asked not to', () => {
+    expect(shouldClassify({ ...under, optedOut: true })).toBe(false);
+  });
+});
+
+describe('classifyLine', () => {
+  /**
+   * The dangerous output. A reader skimming a failing run must not take this for the chain being fine, so the
+   * sentence says the chain fails; the exit code stays 1, and the retry writes no stamp, in chain.ts.
+   */
+  it('says the chain still fails when the step passed alone', () => {
+    const line = classifyLine({ code: 0, ms: 47_200 });
+
+    expect(line).toContain('passed in 47.2s');
+    expect(line).toContain('contention or a flake, not the code');
+    expect(line).toContain('The chain still fails.');
+  });
+
+  it('says the failure is real when it failed alone too', () => {
+    expect(classifyLine({ code: 1, ms: 48_100 })).toContain('failed again (exit 1) in 48.1s — the failure is real.');
+  });
+
+  it('distinguishes a step that was wedged from one that was crowded', () => {
+    expect(classifyLine({ code: 1, ms: 240_000, timedOut: true })).toContain('wedged, not crowded');
+  });
+});
+
+describe('howLong, once the chain answers the question itself', () => {
+  it('stops suggesting the run it is about to make', () => {
+    const slow = { seconds: 27 };
+
+    expect(howLong(slow, 61_000, 3, false)).toContain('--lanes 1');
+    expect(howLong(slow, 61_000, 3, true)).not.toContain('--lanes 1');
+    // and still says what it cost, which is the half that does not become redundant
+    expect(howLong(slow, 61_000, 3, true)).toContain('against 27s healthy at 3 lanes');
   });
 });
