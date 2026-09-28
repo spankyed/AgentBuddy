@@ -204,6 +204,16 @@ Five rules that pay for themselves:
   check proves it can fail on every run for microseconds. `repo-checks/tests/packaged-app-files.spec.ts` is the
   worked example; its two mutation cases corrected two wrong beliefs about the patterns they check on the first
   run, before the commit.
+- **A check that cannot fail today is a gate or an assertion, and they want opposite things.** A gate's
+  subject is input, which can be wrong, so it needs a firing case — the rule above. An assertion's subject is
+  the program's own construction, and being unreachable is the point: no input reaches it, so no case can, and
+  writing one means faking a state the program cannot be in. What it needs instead is a comment naming the
+  *edit* that would make it fire, because that edit is what you mutate to watch it. `spec-cost`'s
+  `plans.length === 0` is the worked example: `parseArgs` refuses the arguments that used to empty that list
+  and `suitesFor` carries the case, so it reads as dead code and was filed as a defect on exactly that
+  reasoning — but append `.filter(() => false)` to the chain that builds `plans` and all 71 specs still pass
+  while the command reports "every record is current" over no work at all. Judging one as the other costs a
+  round trip at best and deletes the only thing standing under a future edit at worst.
 - **A list and its type are one declaration.** Write the list and derive the type from it
   (`const XS = [...] as const; type X = (typeof XS)[number]`), or the other way round where the type is the
   definition — never both by hand. Four pairs in this repo were written twice, and each had a different failure:
