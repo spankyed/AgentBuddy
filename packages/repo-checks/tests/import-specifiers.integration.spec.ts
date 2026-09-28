@@ -922,7 +922,12 @@ describe('CHECKS', () => {
    * Measured — made to drop every per-file finding in a pack holding any whole-pack claim, the sweep did not
    * notice until this was here.
    */
-  const DECOY = { 'src/decoy.ts': "import { edgeStore } from '@abuddy/host/ears';\n" };
+  const DECOY = {
+    src: 'src/decoy.ts',
+    tests: 'tests/decoy.spec.ts',
+  } as const;
+  const DECOY_FILES = Object.fromEntries(Object.values(DECOY)
+    .map((file) => [file, "import { edgeStore } from '@abuddy/host/ears';\n"]));
 
   /**
    * A cell two rules both claim, with the verdict a reader can check. Hand-written, because a real overlap needs a
@@ -932,14 +937,14 @@ describe('CHECKS', () => {
    * These say *claimed*, not *reported*: this sweep runs one rule at a time, where `packRuleProblems` merges them
    * for a pack author. Which rule wins each is pinned in `abuddy-cli/tests/build/pack-rules.spec.ts`.
    */
-  const ACCEPTED_OVERLAP: Record<string, string> = {
-    'cross-feature-imports at a contract leaf (fe)': 'contract-leaves wins the site, both wording it as the specifier',
-    'cross-feature-imports at a contract leaf (be)': 'contract-leaves wins the site, both wording it as the specifier',
+  const ACCEPTED_OVERLAP: Record<string, { winner: string; why: string }> = {
+    'cross-feature-imports at a contract leaf (fe)': { winner: 'contract-leaves', why: 'both word it as the specifier' },
+    'cross-feature-imports at a contract leaf (be)': { winner: 'contract-leaves', why: 'both word it as the specifier' },
     // Found by this matrix: `own-modules` words its finding as a sentence around the specifier, so keyed on the
     // wording the dedupe saw two offences and told a pack author twice about one import. Merged since a finding
     // carries a `subject` — what it is about, beside how it reads.
-    'own-modules at a contract leaf (fe)': "contract-leaves wins the site, merged on the finding's subject",
-    'own-modules at a contract leaf (be)': "contract-leaves wins the site, merged on the finding's subject",
+    'own-modules at a contract leaf (fe)': { winner: 'contract-leaves', why: "merged on the finding's subject" },
+    'own-modules at a contract leaf (be)': { winner: 'contract-leaves', why: "merged on the finding's subject" },
   };
 
   const places = population('places', Object.entries(PLACES), { atLeast: 6 });
@@ -969,7 +974,7 @@ describe('CHECKS', () => {
       // cases here escape that only because `beforeEach` gives each *test* a fresh root. Measured — sharing one
       // pack, this found none of the four overlaps it finds with a directory each.
       const at = `${PACK_FIXTURE}-${n}`;
-      buildPackFixture({ at: path.join(root, at), files: { [file]: `${code}\n`, ...SECOND_FEATURE, ...DECOY } });
+      buildPackFixture({ at: path.join(root, at), files: { [file]: `${code}\n`, ...SECOND_FEATURE, ...DECOY_FILES } });
       // Pointed at the file, not the half, so the rules share one parse instead of each walking the pack.
       // `packRootOf` still finds the pack above it, so the manifest and the imports map are still in reach.
       const half = file.startsWith('tests/') ? 'tests' : 'src';
@@ -988,19 +993,28 @@ describe('CHECKS', () => {
       // another rule already claimed, which is the half this sweep cannot see: it runs one rule at a time, so a
       // rule that claims here and is silent there was dropped by the dedupe. Rule keys, not lines — the two
       // runners spell a path differently on purpose.
-      const reported = [...packRuleProblems(path.join(root, at), [half])]
+      const told = [...packRuleProblems(path.join(root, at), [half])];
+      const reported = told
         .filter(([, found]) => found.some((line) => line.startsWith(`${file}:`)))
         .map(([rule]) => rule as string);
 
-      const everything = [...packRuleProblems(path.join(root, at), [half])];
-      if (half === 'src' && !everything.some(([rule, found]) => rule === 'host-imports' && found.some((line) => line.startsWith('src/decoy.ts:')))) {
-        mismatched.push(`${key}: the unrelated offence in src/decoy.ts went with it, so the dedupe drops too much`);
+      // The unrelated offence must survive whatever the cell's own does: a drop only happens where two rules
+      // claim one site, and every such cell is accepted below, so without this a dedupe suppressing far too much
+      // would pass. One decoy per half, since a run over `tests` never sees the one in `src`.
+      if (!told.some(([rule, found]) => rule === 'host-imports' && found.some((line) => line.startsWith(`${DECOY[half]}:`)))) {
+        mismatched.push(`${key}: the unrelated offence in ${DECOY[half]} went with it, so the dedupe drops too much`);
       }
       const added = reported.filter((rule) => !claimed.includes(rule));
       const dropped = claimed.filter((rule) => !reported.includes(rule));
       if (added.length > 0) mismatched.push(`${key}: ${added.join(', ')} told a pack author and claimed by nothing`);
-      if (dropped.length > 0 && ACCEPTED_OVERLAP[key] === undefined) {
+      const merge = ACCEPTED_OVERLAP[key];
+      if (dropped.length > 0 && merge === undefined) {
         mismatched.push(`${key}: ${dropped.join(', ')} claims the offence and no pack author hears it`);
+      }
+      // And the winner a recorded merge names is the rule an author actually hears, so the verdict is checked
+      // rather than believed
+      if (merge !== undefined && reported.join() !== merge.winner) {
+        mismatched.push(`${key}: recorded as \`${merge.winner}\` winning, and a pack author hears ${reported.join(', ') || 'nothing'}`);
       }
     });
 
