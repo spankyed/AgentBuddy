@@ -430,7 +430,7 @@ describe('when several rules are right about one site', () => {
       return key === undefined ? [] : [{ key, switchable: /\|\s*(yes|no)\s*\|\s*$/.exec(row)?.[1] }];
     });
     population('the rule table rows in cli.md', documented);
-    expect(documented.map((row) => row.key).sort()).toEqual([...PACK_RULES.map((rule) => rule.key)].sort());
+    expect(documented.map((row) => row.key).sort()).toEqual(PACK_RULES.map((rule) => rule.key).sort());
 
     // A row whose marker is missing or misspelled would otherwise read as "not switchable" and agree with the
     // table for every rule that is not, which is the half of this a set comparison alone cannot see

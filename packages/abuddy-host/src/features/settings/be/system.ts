@@ -59,7 +59,7 @@ function refuseSettings(error: unknown, what: string): void {
 }
 
 /** Each plugin's settings as they apply: what features were last told */
-const appliedPluginSettings = (): Record<string, unknown> => ({ ...(services.settings.getAll<SettingsDocument>().plugins ?? {}) });
+const appliedPluginSettings = (): Record<string, unknown> => ({ ...services.settings.getAll<SettingsDocument>().plugins });
 
 /** What each feature was last told of its settings, by plugin ref */
 /**

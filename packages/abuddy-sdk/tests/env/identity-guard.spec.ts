@@ -45,7 +45,7 @@ describe('environment identity guard', () => {
     for (const file of trackedCodeFiles()) {
       if (ALLOWED[file]) continue;
       // Tests may save/restore the env vars around a case
-      const isTest = /(^|\/)tests?\//.test(file) || /\.spec\.ts$/.test(file);
+      const isTest = /(^|\/)tests?\//.test(file) || file.endsWith('.spec.ts');
       const lines = fs.readFileSync(path.join(REPO_ROOT, file), 'utf-8').split('\n');
       lines.forEach((line, i) => {
         for (const { pattern, why, allowInTests } of FORBIDDEN) {

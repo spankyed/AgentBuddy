@@ -22,6 +22,8 @@ function runner(failing: string[] = []) {
   /** Lets every step that has started and not finished complete, repeatedly, until the run settles */
   const drain = async (): Promise<void> => {
     for (let i = 0; i < 50 && release.size > 0; i += 1) {
+      // The copy is the point: `done()` resolves a promise whose continuation writes back into `release`.
+      // eslint-disable-next-line no-useless-spread
       for (const [name, done] of [...release]) { release.delete(name); done(); }
       await new Promise((r) => setImmediate(r));
     }

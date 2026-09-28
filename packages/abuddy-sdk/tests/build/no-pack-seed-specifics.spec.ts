@@ -19,7 +19,7 @@ const ALLOWED: Record<string, string> = {
 function sourceFiles(dir: string): string[] {
   return fs.readdirSync(dir, { withFileTypes: true }).flatMap((entry) => {
     const file = path.join(dir, entry.name);
-    return entry.isDirectory() ? sourceFiles(file) : /\.ts$/.test(entry.name) ? [file] : [];
+    return entry.isDirectory() ? sourceFiles(file) : entry.name.endsWith('.ts') ? [file] : [];
   });
 }
 

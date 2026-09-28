@@ -1,3 +1,5 @@
+// Matching the control character is the job: this is the ANSI escape an SDK error message is stripped of.
+// eslint-disable-next-line no-control-regex
 const ANSI_ESCAPE_PATTERN = /\x1B(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~])/g;
 
 export interface ProviderErrorResult {

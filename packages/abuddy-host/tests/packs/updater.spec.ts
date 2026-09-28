@@ -83,9 +83,9 @@ describe('findLatestRelease', () => {
       });
       vi.stubGlobal('fetch', fetchMock);
       expect(await findLatestRelease('acme/pack', { hostVersion: '0.4.0' })).toEqual({ version: '1.0.0', tag: 'v1.0.0' });
-      expect(fetchMock.mock.calls.every(([, init]) => (init?.headers as Record<string, string>).Authorization === 'Bearer secret')).toBe(true);
+      expect(fetchMock.mock.calls.every(([, init]) => (init?.headers as Record<string, string> | undefined)?.Authorization === 'Bearer secret')).toBe(true);
       expect(fetchMock.mock.calls.length).toBeGreaterThan(0);
-      expect((fetchMock.mock.calls[1][1]?.headers as Record<string, string>).Accept).toBe('application/octet-stream');
+      expect((fetchMock.mock.calls[1]?.[1]?.headers as Record<string, string> | undefined)?.Accept).toBe('application/octet-stream');
     } finally {
       vi.unstubAllEnvs();
     }

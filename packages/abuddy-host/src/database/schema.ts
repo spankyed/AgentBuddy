@@ -116,8 +116,8 @@ export function readInstalledSchema(context: SchemaContext): InstalledSchema {
     ...Object.fromEntries(HOST_ENTITY_TYPES.map((type) => [type, type])),
   };
   const relKinds: Record<string, string> = { ...SDK_REL_KINDS };
-  const entityOwners = new Map<string, string>([...Object.keys(entities)].map((name) => [name, 'AgentBuddy']));
-  const relKindOwners = new Map<string, string>([...Object.entries(relKinds)].flatMap(([name, value]) => [[name, 'AgentBuddy'], [value, 'AgentBuddy']] as Array<[string, string]>));
+  const entityOwners = new Map<string, string>(Object.keys(entities).map((name) => [name, 'AgentBuddy']));
+  const relKindOwners = new Map<string, string>(Object.entries(relKinds).flatMap(([name, value]) => [[name, 'AgentBuddy'], [value, 'AgentBuddy']] as Array<[string, string]>));
   for (const manifest of [...builtIn, ...external]) {
     addNames(entities, entityOwners, manifest.id, manifest.entities, 'entity type');
     addNames(relKinds, relKindOwners, manifest.id, manifest.relKinds, 'relation kind');

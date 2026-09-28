@@ -132,6 +132,8 @@ describe('abuddy init → add feature → build → tsc → pack', () => {
     expect(unit.output).toMatch(/tests\/demo-pack\.spec\.ts/);
     // The scaffold's seed test and the added feature's system test run through the harness
     expect(unit.output).toMatch(/tests\/features\/notes\/be\/system\.spec\.ts/);
+    // Matching the control character is the job: this strips ANSI colour from captured output.
+    // eslint-disable-next-line no-control-regex
     const unitOutput = unit.output.replace(/\x1b\[[0-9;]*m/g, '');
     expect(unitOutput).toMatch(/Tests\s+\d+ passed/);
     expect(unitOutput).not.toMatch(/failed/);

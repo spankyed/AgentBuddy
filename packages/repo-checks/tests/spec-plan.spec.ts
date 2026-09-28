@@ -25,7 +25,7 @@ function someSourceFile(dir: string): string {
     if (entry.isDirectory()) {
       const found = someSourceFile(full);
       if (found !== '') return found;
-    } else if (/\.ts$/.test(entry.name) && !/\.d\.ts$/.test(entry.name)) return full;
+    } else if (entry.name.endsWith('.ts') && !entry.name.endsWith('.d.ts')) return full;
   }
   return '';
 }
@@ -330,7 +330,7 @@ describe("the package's CLAUDE.md names what is here", () => {
   const HERE = path.join(REPO_ROOT, 'packages', 'repo-checks');
   const doc = (): string => fs.readFileSync(path.join(HERE, 'CLAUDE.md'), 'utf-8');
   const specs = (): string[] => fs.readdirSync(path.join(HERE, 'tests'))
-    .filter((f) => /\.spec\.ts$/.test(f))
+    .filter((f) => f.endsWith('.spec.ts'))
     .map((f) => f.replace(/\.(integration\.)?spec\.ts$/, ''));
 
   it('leaves none of them out', () => {

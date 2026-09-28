@@ -40,6 +40,9 @@ beforeEach(() => {
   notes = fakePlugin(['a']);
   running = { 'default-setup/notes': notes.actor };
   const shellListeners = new Set<() => void>();
+  // The copy is the point: a listener may subscribe while this runs, and a Set visits what is added during
+  // iteration — without it, one that re-subscribes loops forever.
+  // eslint-disable-next-line no-useless-spread
   shellChanged = () => { for (const fn of [...shellListeners]) fn(); };
   bindFeHost({
     application: {

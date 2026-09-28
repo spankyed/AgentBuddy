@@ -281,6 +281,9 @@ export function createTest(options: CreateTestOptions = {}) {
     { appPage: Page; app: AppHelper },
     { electronApp: ElectronApplication }
   >({
+    // Playwright's signature for a fixture that depends on no other fixture. It always passes an object, and
+    // dropping the parameter would change the fixture's arity.
+    // eslint-disable-next-line no-empty-pattern
     electronApp: [async ({}, use) => {
       // From a checkout this fixture is built on demand, and a stale build tests the previous app
       assertCheckoutPackagesFresh();

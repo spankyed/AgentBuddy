@@ -82,7 +82,7 @@ async function importScript(scriptFile: string): Promise<{ default?: unknown }> 
     plugins: [{
       name: 'packages-from-the-script',
       setup(bundler) {
-        bundler.onResolve({ filter: /^[^.\/]/ }, ({ path: specifier }) => {
+        bundler.onResolve({ filter: /^[^./]/ }, ({ path: specifier }) => {
           if (specifier.startsWith('node:') || builtinModules.includes(specifier)) return { path: specifier, external: true };
           try {
             // Kept out of the bundle, at the path it has next to the script, so the compiled copy finds it too

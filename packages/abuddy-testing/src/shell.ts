@@ -67,6 +67,8 @@ function backendFirst(frontend: FePackRegistryView, backend: PackExtensionsView)
 
 /** Stops every shell a test started; the harness calls it after each test */
 export function stopRunningShells(): void {
+  // The copy is the point: `stop()` deletes from `running`, so this iterates a set the body is shortening.
+  // eslint-disable-next-line no-useless-spread
   for (const shell of [...running]) shell.stop();
 }
 

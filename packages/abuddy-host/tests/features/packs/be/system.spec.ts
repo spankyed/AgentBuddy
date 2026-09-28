@@ -205,7 +205,10 @@ describe('an installed pack the app could not load', () => {
     system.sent.length = 0;
     system.send({ type: 'GET_INSTALLED_PACKS' });
     const list = emitted(system.sent).find(e => e.type === 'PACKS_LIST');
-    return (list?.packs as PackInfo[]).find(p => p.id === PACK_ID);
+    // Named rather than dereferenced through `?.`: no PACKS_LIST is the regression this helper exists to
+    // catch, and a truncated chain reports it as a TypeError on the next line instead of by name
+    expect(list, 'the system emitted no PACKS_LIST').toBeDefined();
+    return (list!.packs as PackInfo[]).find(p => p.id === PACK_ID);
   };
   const snapshotFile = () => path.join(resolveAppContext().packsDir, PACK_ID, 'types', 'snapshot.json');
 

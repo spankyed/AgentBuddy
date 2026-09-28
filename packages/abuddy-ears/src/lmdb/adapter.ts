@@ -249,7 +249,12 @@ export function makeLmdbAdapter(dbs: LmdbDbs): PersistenceSink {
       try {
         entities.transactionSync(() => {
           entities.remove(entityId);
+          // The copy is the point: `storedKinds` reads the same store this loop removes from, inside one
+          // `transactionSync`, so materialising first keeps the read off a cursor the body invalidates.
+          // eslint-disable-next-line no-useless-spread
           for (const kind of [...storedKinds(attrs)]) {
+            // Likewise, and more directly: the body removes exactly the keys this iterator is walking.
+            // eslint-disable-next-line no-useless-spread
             for (const key of [...attrs.getKeys(prefix(kind, entityId))]) attrs.remove(key);
           }
         });

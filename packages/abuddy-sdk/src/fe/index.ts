@@ -2,6 +2,9 @@
 // registration functions in ./host.
 
 // Declares window.electronAPI; a type-only re-export survives in the emitted declarations
+// The empty export is what keeps this module in the emitted declarations: drop it and every pack importing
+// `@abuddy/sdk/fe` loses the `window.electronAPI` global, with nothing to say so.
+// eslint-disable-next-line no-useless-empty-export
 export type {} from './electron-api.ts';
 export type { Plugin, PluginDefinition, PluginInbox, PluginInboxAudiences, PluginStateOf, RouteComponents } from './plugin.ts'
 export { definePlugin } from './plugin.ts'
