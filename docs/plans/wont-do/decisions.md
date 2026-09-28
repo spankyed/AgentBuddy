@@ -1,6 +1,10 @@
-# Deferred decisions
+# Decisions not to act
 
-Things considered and deliberately not done, each with the condition that would change the answer.
+Things considered and deliberately not done, each with the condition that would change the answer. The folder
+says `wont-do`; the middle section is the softer kind — not refused, just not now — and it lives here because
+what both need recording is the same thing: the reasoning, and what would revive it.
+
+Audited 2026-09-28. Two entries' premises have moved since they were written and say so in place.
 
 **Not goal docs, on purpose.** `docs/goals/README.md` says a goal doc is for work that "spans several sessions or
 phases" and that "a single fix … stays in the conversation." Every entry here is smaller than that bar, and most
@@ -14,10 +18,10 @@ with no link is recorded only here.
 
 | | why not | condition |
 |---|---|---|
-| **A ban on raw directory reads in specs, with a guard** | 41 files to close a hazard that measured at zero, and it guards the walk where the vacuity is in the filter ([archived plan](../../archive/plans/vacuous-assertions.md)) | a check is found green over a population it never read |
+| **A ban on raw directory reads in specs, with a guard** | 41 files to close a hazard that measured at zero, and it guards the walk where the vacuity is in the filter ([archived plan](../../archive/plans/vacuous-assertions.md)). **Its condition fired on 2026-09-28 and the entry still stands** — twice, and neither was a raw directory read: `chain-inputs`' lint case reported green while the `-ws` fan-out left 858 files unexamined (`75fe1a895`), and `unused-code-gate` read 15 of 25 tsconfigs (`b35cb14ac`). Both were a *derivation* that stopped early, which a ban on `readdirSync` would not have caught. So the condition is worded for the symptom and the ban addresses a different cause; what the two cases argue for is deriving a population from the thing that defines it, which is a habit rather than a gate | a check is found green over a population it never read **and a guard on the walk would have caught it** |
 | **An `@app/*` test-support package** | the two helpers it would hold are reachable from every spec that needs them today; a workspace, its vitest project, its chain inputs and eleven devDependency lines buy nothing | a spec in `@abuddy/sdk`, `/ears`, `/ui` or `default-setup` needs `packFixture`, none of which can import `@abuddy/host` |
 | **Consolidating the temp-dir pattern across 133 specs** | three shapes with a long tail — 45 of them put the `rmSync` in a teardown that does other work — and nothing leaks today | a leaked temp dir causes a flake |
-| **Testing the public docs** | `add50f772` removed a docs test the day it was added: "docs are not tested in this repo" | that position is reopened |
+| **Testing the public docs** | `add50f772` removed a docs test the day it was added: "docs are not tested in this repo". **That sentence is no longer true** — `doc-links.spec.ts` checks every relative link between the repo's documents, and `lint-scope.spec.ts` and `pack-rules.spec.ts` both hold a docs table to what the code declares. What none of them does is test the docs' *content*, which is what this entry is about | a code fence someone copied is found broken, or a doc's prose is asserted somewhere and drifts |
 | **A check that every reader of a step's `outputs` declares `needs` on it** | it holds for all five output-writing steps, and a gate over a population with no offenders is not worth its own maintenance. The one place that depended on the invariant no longer does ([`scripts/chain.ts`](../../../scripts/chain.ts), the sweep above the retry) | a step reads another's outputs without a `needs` edge |
 
 ## Not yet
@@ -26,6 +30,7 @@ with no link is recorded only here.
 |---|---|---|
 | **The flow DSL's `llm` helper has no call site** | no seed flow, no spec, no doc example, so its authoring surface has never been exercised. Marked provisional where an author's editor shows it ([`llm/types.ts`](../../../packages/default-setup/src/extensions/steps/llm/types.ts)) | someone authors a flow with it, and finds the rough edges |
 | **`exported-flows.json` is stale** | the committed round-trip reference uses `steps:` where `Track` now has `exits`, and `"type": "flow"` where the step is `subflow`. Nothing tests it; its README calls it a debugging aid | it misleads someone, or the round-trip suite grows to cover it |
+| **A field mapping's `default` can be read but not written** | `node-attribute-mappers.ts:79` and `:89` apply `mapping.default` at runtime, so it is not vestigial — but every form that builds a mapping pushes `default: undefined` (`llm/form.vue:326`, `fire/form.vue:124`, `action/form.vue:302`) and the DSL has no syntax for one, so nothing can set it. Expressing it is a feature rather than a fix | someone wants a default for a mapped field |
 | **Node positions are not persisted** | no entity holds them, so the flow editor re-runs ELK on every load and a user's arrangement is discarded. A missing feature rather than a defect — every user meets it | it is worth a field on the node and a migration |
 | **The retry's own output is discarded** | `classifyLine` reports the verdict, not the second run's output. If the retry fails differently, that difference is lost; printing two step outputs for one failure is its own noise | a retry is seen to fail for a different reason than the original |
 
