@@ -647,6 +647,27 @@ describe('CHECKS', () => {
     expect(missing, 'a pack half that exists and is not in the population is a tree no such rule reads').toEqual([]);
   });
 
+  /**
+   * The one shape two pack rules are both right about, and the two consumers answer differently on purpose.
+   *
+   * `abuddy validate` runs every rule together, so its dedupe gives a pack author one message — asserted in
+   * `abuddy-cli/tests/build/pack-rules.spec.ts`. `packRule` here runs one rule at a time, because `--rule <id>`
+   * has to answer for that rule alone and an answer that depended on which other rules ran would not be one. So
+   * this side reports both, and that is the difference, not a bug: pinned so nobody 'fixes' one to match the other.
+   */
+  it('reports a leaf reaching another feature under both rules, running one rule at a time', () => {
+    writeAt('pack/abuddy.json', JSON.stringify({
+      id: 'demo-pack', name: 'Demo', version: '1.0.0',
+      features: [{ id: 'notes', plugin: { entry: 'src/features/notes/fe/plugin.ts', contract: 'src/features/notes/fe/contract.ts#Contract' } }],
+    }));
+    writeAt('pack/src/features/notes/fe/contract.ts', "import type { T } from '../../threads/fe/state.ts';\nexport type Contract = { state: { t: T } };");
+    writeAt('pack/src/features/notes/fe/plugin.ts', 'export type P = { id: string };');
+    writeAt('pack/src/features/threads/fe/state.ts', 'export type T = { id: string };');
+    const offence = 'pack/src/features/notes/fe/contract.ts:1: ../../threads/fe/state.ts';
+    expect(findContractLeafImports(['pack/src'], root)).toEqual([offence]);
+    expect(findCrossFeatureImports(['pack/src'], root)).toEqual([offence]);
+  });
+
   it('has no example left behind by a rule that is gone', () => {
     expect(Object.keys(FIRES).filter((name) => !CHECKS.some((rule) => rule.id === name))).toEqual([]);
   });

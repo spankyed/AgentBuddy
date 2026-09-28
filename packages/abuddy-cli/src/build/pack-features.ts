@@ -291,6 +291,12 @@ export function contractLeafFindings(packDir: string): PackWideFinding[] {
         // is a value, so no manifest field names the machine, and this is what makes the report say "your leaf
         // imports ./state" instead of naming a module three hops away that happens to reach #generated/events.
         // A machine called something else still fails, on the closure rule above — just less precisely.
+        //
+        // Not scoped to the own feature, and that is what makes narrowing the rule above the wrong repair for the
+        // overlap with `cross-feature-imports`: another feature's `fe/state.ts` matches here too, so exempting
+        // `fe/` there only re-attributes the identical finding to this line. Narrowing both loses the precise
+        // report this guess exists to give, and letting the walk through recurses the other feature's whole
+        // frontend closure. The overlap is settled where it belongs, in `packRuleProblems`' site dedupe.
         if (viaLeaf && /(?:^|\/)(?:state|system)(?:\.ts)?$/.test(relative(target))) { found.push(at); continue; }
         walk(target, false);
       }

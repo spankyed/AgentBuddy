@@ -91,8 +91,12 @@ export interface PackRule {
   check?(view: SourceView, at: PackPlace): PackFinding[];
   /**
    * The pack as a whole, for a rule whose subject is not any one file's text — what its compiler resolves, what
-   * its manifest wires together. Reported as written, with no span, so it takes no part in the one-offence-one-
-   * message dedupe below: there is no site for another rule to be right about.
+   * its manifest wires together.
+   *
+   * A finding that names an `at` takes part in the one-offence-one-message dedupe below, on that site: it has a
+   * place another rule can be right about, even though it has no byte span. One that names none does not, and
+   * that is the case the exemption was written for — `source-resolution` reports `@abuddy/sdk -> …/src/index.ts`,
+   * where the path is evidence and not a location, so there is no site to claim.
    */
   checkPack?(packDir: string): PackWideFinding[];
 }
@@ -355,14 +359,38 @@ export function packRuleProblems(packDir: string, dirs: readonly string[] = ['sr
   const allowed = loadPackChecks(packDir);
   const rules = PACK_RULES.filter((rule) => !allowed.has(rule.key));
   const problems = new Map<PackRuleKey, string[]>();
+  /**
+   * The offences a whole-pack rule claimed, so a per-file rule does not report one of them a second time.
+   *
+   * `file\0line\0what` — the offence, not the line of output: a closure finding's line carries a
+   * `(reached from …)` suffix that the per-file rule reporting the same import would not write. And not the
+   * `file:line` alone, because two specifiers do share a line and they are two offences.
+   *
+   * Byte spans are what the per-file pass compares, and a whole-pack finding has none, which is why this is the
+   * one place the two kinds are matched on a site rather than a span. Measured before this existed: a contract
+   * leaf importing another feature's frontend was reported by `contract-leaves` and by `cross-feature-imports`,
+   * identically, and `abuddy validate` printed both.
+   */
+  const claimedWide = new Set<string>();
+  const site = (file: string, line: number, what: string) => `${file}\u0000${line}\u0000${what}`;
   for (const rule of rules) {
-    const found = (rule.checkPack?.(packDir) ?? []).map((finding) => formatPackWide(finding));
-    if (found.length > 0) problems.set(rule.key, [...(problems.get(rule.key) ?? []), ...found]);
+    const found = rule.checkPack?.(packDir) ?? [];
+    for (const finding of found) {
+      if (finding.at?.line !== undefined) claimedWide.add(site(finding.at.file, finding.at.line, finding.what));
+    }
+    const lines = found.map((finding) => formatPackWide(finding));
+    if (lines.length > 0) problems.set(rule.key, [...(problems.get(rule.key) ?? []), ...lines]);
   }
   for (const { view, place } of packFiles(packDir, dirs)) {
     const claimed: { start: number; end: number }[] = [];
     for (const rule of rules) {
       const kept = (rule.check?.(view, place) ?? []).filter((finding) => {
+        // A whole-pack rule already reported this offence. Its span goes into `claimed` all the same, so a third
+        // rule reporting the import around it stands down too — the site is taken, not just this wording of it.
+        if (claimedWide.has(site(place.relative, finding.line, finding.what))) {
+          claimed.push({ start: finding.start, end: finding.end });
+          return false;
+        }
         // Overlapping a span an earlier rule claimed, so it is the same offence seen another way. Overlap
         // rather than containment, because the spans nest both ways: `host-imports` reports the specifier and
         // `internal-package-imports` the whole import around it, so a containment test would let whichever

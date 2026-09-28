@@ -184,6 +184,51 @@ describe('every rule', () => {
     expect(problems(dir, 'contract-leaves')).toEqual(['src/features/notes/fe/contract.ts:1: ./state.ts']);
   });
 
+  /**
+   * The one shape both a whole-pack rule and a per-file one are right about: a contract leaf importing another
+   * feature's frontend is a crossing (`cross-feature-imports`) and a leaf reaching outside its feature
+   * (`contract-leaves`). Before the site dedupe, `abuddy validate` printed the identical line under both
+   * sentences — one offence, two messages, which is the thing this table is ordered to prevent.
+   *
+   * `contract-leaves` keeps it, being second in that order where the crossing is last.
+   */
+  it('reports a contract leaf reaching another feature under one rule, not two', () => {
+    const dir = packWithImports({
+      'abuddy.json': JSON.stringify({
+        id: 'p', name: 'P', version: '1.0.0',
+        features: [{ id: 'notes', plugin: { entry: 'src/features/notes/fe/plugin.ts', contract: 'src/features/notes/fe/contract.ts#Contract' } }],
+      }),
+      'src/features/notes/fe/contract.ts': "import type { T } from '../../threads/fe/state.ts';\nexport type Contract = { state: { t: T } };\n",
+      'src/features/notes/fe/plugin.ts': 'export type P = { id: string };\n',
+      'src/features/threads/fe/state.ts': 'export type T = { id: string };\n',
+    });
+    const offence = 'src/features/notes/fe/contract.ts:1: ../../threads/fe/state.ts';
+    const reported = [...packRuleProblems(dir)].filter(([, found]) => found.includes(offence)).map(([key]) => key);
+    expect(reported, 'the same import, word for word, under more than one rule').toEqual(['contract-leaves']);
+  });
+
+  /**
+   * And the site is the offence, not the line. Two imports on one line are two offences, so a whole-pack rule
+   * claiming the first must not take the second with it — which is why the key carries `what`. Dropping it from
+   * the key passes every other case in this file, so this is the one that holds it.
+   */
+  it('claims the offence a whole-pack rule named, not the whole line it sat on', () => {
+    const dir = packWithImports({
+      'abuddy.json': JSON.stringify({
+        id: 'p', name: 'P', version: '1.0.0',
+        features: [{ id: 'notes', plugin: { entry: 'src/features/notes/fe/plugin.ts', contract: 'src/features/notes/fe/contract.ts#Contract' } }],
+      }),
+      'src/features/notes/fe/contract.ts':
+        "import type { T } from '../../threads/fe/state.ts'; import { untypedSendToSystem } from '@abuddy/sdk/events';\n"
+        + 'export type Contract = { state: { t: T; send: typeof untypedSendToSystem } };\n',
+      'src/features/notes/fe/plugin.ts': 'export type P = { id: string };\n',
+      'src/features/threads/fe/state.ts': 'export type T = { id: string };\n',
+    });
+    expect(problems(dir, 'contract-leaves')).toEqual(['src/features/notes/fe/contract.ts:1: ../../threads/fe/state.ts']);
+    expect(problems(dir, 'untyped-sends'), 'the second offence on that line went with the first')
+      .toEqual(['src/features/notes/fe/contract.ts:1: untypedSendToSystem from @abuddy/sdk/events']);
+  });
+
   it('has a case for every rule it defines', () => {
     const covered = new Set<string>([...FIRES_ON_A_FILE.map(([key]) => key), ...Object.keys(FIRES_ELSEWHERE)]);
     expect(PACK_RULES.map((rule) => rule.key).filter((key) => !covered.has(key)),
