@@ -170,7 +170,6 @@ describe('SDK bridge drift', () => {
   it('bridges every SDK and host specifier the built runtime actually imports', () => {
     if (!fs.existsSync(RUNTIME_ENTRY)) {
       if (process.env.REQUIRE_RUNTIME_ENTRY) throw new Error(`${RUNTIME_ENTRY} is required (REQUIRE_RUNTIME_ENTRY) but not built`);
-      // eslint-disable-next-line no-console
       console.warn(`[sdk-bridge-drift] skipped: ${RUNTIME_ENTRY} not built`);
       return;
     }

@@ -433,10 +433,14 @@ npm run specifiers:fix   # Rewrites the specifiers whose repair the rules comput
                          # a whole file when the disk and the reader disagree
 
 npm run lint:check       # Reports; run by npm run typecheck, so it is in the chain. The whole tree is at
-                         # zero, over 1766 files in 72ms. `packages/**` was ignored here until 2026-09-28,
-                         # which left 113 findings in twelve workspaces no linter read — including an
-                         # `eslint-disable` written in the house style that suppressed nothing, because
-                         # nothing was looking. The scaffold's templates are the one exclusion: their
+                         # zero. `packages/**` was ignored here until 2026-09-28, which left 113 findings
+                         # in twelve workspaces no linter read; the whole pass is about a tenth of a
+                         # second, so the gap was an unpaid backlog and never a cost.
+                         # **Only `correctness` is enabled**, in every invocation — so a rule outside that
+                         # category is read nowhere in this repo, and an inline disable naming one
+                         # suppresses nothing wherever it sits. `no-console` is the one to know: it is a
+                         # `restriction` rule, and `console` in a pack's backend is the `backend-console`
+                         # pack rule's job, not oxlint's. The scaffold's templates are the one exclusion: their
                          # parameter names are what a pack author reads, so an unused one there is
                          # documentation rather than a finding. The few justified exceptions are inline
                          # disables that say why (an OSC parser matches control characters; a triple-slash
