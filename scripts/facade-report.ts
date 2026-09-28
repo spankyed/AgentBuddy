@@ -9,6 +9,7 @@ import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import ts from 'typescript';
+import { sortLiteralUnions } from '@abuddy/host/build/declaration-text';
 
 const packDir = path.resolve(process.argv[2] ?? '');
 const local = process.argv.includes('--local');
@@ -31,25 +32,6 @@ function declaredName(statement: ts.Statement): string {
 /** Import names in sorted order: `import { b, a } from 'x'` → `import { a, b } from 'x'` */
 function sortImportNames(text: string): string {
   return text.replace(/\{([^}]*)\}/, (_, names: string) => `{ ${names.split(',').map((n) => n.trim()).filter(Boolean).sort().join(', ')} }`);
-}
-
-/**
- * Literal unions (`"a" | "b"`, `1 | 2`) with their members sorted. TypeScript prints an inferred union in the
- * order it created the member types, which changes between builds; a union's order doesn't change the type.
- */
-function sortLiteralUnions(bundle: string): string {
-  const file = ts.createSourceFile(bundleFile, bundle, ts.ScriptTarget.Latest, true, ts.ScriptKind.TS);
-  const edits: Array<{ start: number; end: number; text: string }> = [];
-  const visit = (node: ts.Node) => {
-    if (ts.isUnionTypeNode(node) && node.types.every((member) => ts.isLiteralTypeNode(member))) {
-      const members = node.types.map((member) => member.getText(file)).sort();
-      edits.push({ start: node.getStart(file), end: node.end, text: members.join(' | ') });
-      return;
-    }
-    ts.forEachChild(node, visit);
-  };
-  visit(file);
-  return edits.reverse().reduce((text, edit) => text.slice(0, edit.start) + edit.text + text.slice(edit.end), bundle);
 }
 
 function report(built: string): string {

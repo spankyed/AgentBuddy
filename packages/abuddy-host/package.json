@@ -13,6 +13,7 @@
   "exports": {
     "./app-state": "./src/app-state/index.ts",
     "./backup": "./src/backup/index.ts",
+    "./build/declaration-text": "./src/build/declaration-text.ts",
     "./build/discover": "./src/build/discover.ts",
     "./build/own-module-specifiers": "./src/build/own-module-specifiers.ts",
     "./build/packages-built": "./src/build/packages-built.ts",
@@ -51,6 +52,7 @@
     "@napi-rs/keyring": "^1.3.0",
     "ai": "^7.0.100",
     "fs-extra": "^11.4.0",
+    "typescript": "^5.8.3",
     "semver": "^7.8.5",
     "tar": "^7.5.22",
     "xstate": "^5.19.2"

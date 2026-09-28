@@ -1,35 +1,7 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
-import ts from 'typescript';
+import { sortLiteralUnions } from '@abuddy/host/build/declaration-text';
 import { errorMessage } from '@abuddy/sdk/utils/pure';
-
-/**
- * A declaration bundle with every all-literal union's members sorted (`"b" | "a"` → `"a" | "b"`).
- *
- * TypeScript prints an inferred union in the order it created the member types, and that order changes
- * between builds — so the same sources emit different bytes. Measured 2026-09-28: `action-defs.d.ts` took
- * five distinct hashes in six builds, and `pack-types.d.ts` flipped with it. Every step caching on
- * `packages/default-setup/dist` then goes stale for a file whose meaning never changed, which is the waste
- * `docs/archive/plans/pack-runtime-nondeterminism.md` recorded and blamed on esbuild.
- *
- * A union's order does not change the type, so sorting is safe. `scripts/facade-report.ts` has the same
- * function and keeps it: it normalises the bundle again before recording `etc/pack-types.api.md`, which is
- * what kept that report stable while the bundle was not, and is still the report's own defence against a
- * bundle built by a CLI without this. If the two ever disagree, `facade:check` is what notices.
- */
-export function sortLiteralUnions(bundle: string, fileName = 'bundle.d.ts'): string {
-  const file = ts.createSourceFile(fileName, bundle, ts.ScriptTarget.Latest, true, ts.ScriptKind.TS);
-  const edits: Array<{ start: number; end: number; text: string }> = [];
-  const visit = (node: ts.Node): void => {
-    if (ts.isUnionTypeNode(node) && node.types.every((member) => ts.isLiteralTypeNode(member))) {
-      edits.push({ start: node.getStart(file), end: node.end, text: node.types.map((member) => member.getText(file)).sort().join(' | ') });
-      return;
-    }
-    ts.forEachChild(node, visit);
-  };
-  visit(file);
-  return edits.reverse().reduce((text, edit) => text.slice(0, edit.start) + edit.text + text.slice(edit.end), bundle);
-}
 
 /** A package specifier (`vue`, `@abuddy/ears`), not a relative path or a pack's own `#` subpath */
 export function isPackageSpecifier(id: string): boolean {
