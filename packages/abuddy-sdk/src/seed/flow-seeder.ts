@@ -125,6 +125,8 @@ export function createFlowSeeder(): Seeder {
         const validation = validate({ [key]: entry }, {
           actions: Array.from(actionMap.keys()),
           prompts: Array.from(promptMap.keys()),
+          // Validated one at a time, so a subflow naming a sibling would otherwise resolve to nothing
+          flowNames: Object.keys(flowsDSL as Record<string, unknown>),
         });
         if (!validation.valid) {
           const msgs = validation.errors.map((e: any) => `${e.path}: ${e.message}`);

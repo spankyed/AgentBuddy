@@ -37,6 +37,11 @@ function resolveSteps(options: ValidateOptions): ResolvedSteps {
 export interface ValidateOptions {
   actions?: string[];
   prompts?: string[];
+  /**
+   * The flows a `subflow` may name, when that is more than the bundle being validated. The seeder validates one
+   * flow at a time, so without this every reference to a sibling flow would be reported as missing.
+   */
+  flowNames?: string[];
   skipReferenceCheck?: boolean;
   stepTypes?: string[];
   steps?: StepDefinition[];
@@ -62,7 +67,9 @@ export function validate(dsl: unknown, options: ValidateOptions = {}): Validatio
   const ctx: ValidationContext = {
     actions: new Set(options.actions || []),
     prompts: new Set(options.prompts || []),
-    flowNames,
+    // The bundle's own keys answer "is this DSL well formed"; the override answers "does this name resolve",
+    // which is a wider question whenever the caller holds more flows than it is validating.
+    flowNames: options.flowNames ? new Set(options.flowNames) : flowNames,
     nodeLabels: new Set(),
     path: '',
   };

@@ -29,11 +29,18 @@ function compile(
 function validate(
   s: Record<string, unknown>,
   path: string,
-  _ctx: StepValidationContext,
+  ctx: StepValidationContext,
 ): StepValidationError[] {
   const errors: StepValidationError[] = [];
   if (!s.flow || typeof s.flow !== 'string') {
     errors.push({ path, message: 'Flow step must have a "flow" string (sub-flow name)' });
+  } else if (!ctx.skipReferenceCheck && !ctx.flowNames.has(s.flow)) {
+    // `compile` falls back to the name itself when it resolves to no flow, so without this a typo becomes a
+    // node whose flowRef points at nothing and says so only at runtime, if anyone is watching
+    errors.push({
+      path: `${path}.flow`,
+      message: `Flow "${s.flow}" not found. Available: ${Array.from(ctx.flowNames).join(', ') || '(none)'}`,
+    });
   }
   return errors;
 }
