@@ -178,9 +178,12 @@ otherwise go looking:
   Install @vitejs/plugin-vue`) is gone: `definePackTestConfig` (`@abuddy/testing/vitest`) stubs a pack's `.vue`
   files, so the walk no longer stops at the first SFC. That was
   [`goal-pack-test-config.md`](../archive/goals/goal-pack-test-config.md).
-- **Two suites racing each other's package build** is gone: readers wait on an in-flight build and builders
-  wait on the lock rather than failing on it (`packages/abuddy-host/src/build/packages-built.ts`, and the root
-  `CLAUDE.md`'s note on running suites concurrently before the packages are built).
+- **Two `spec` runs racing each other's package build** is gone, and this one was verified rather than read:
+  with `@abuddy/ears`' stamp cleared, two `npm run packages:ensure` started 0.3s apart both exit 0. The second
+  waits on the lock, re-checks once it holds it, and returns without a duplicate build — `BuildIntent`, whose
+  `freshness` arm is what `ensurePackagesBuilt` sets on the builds it spawns
+  (`packages/abuddy-host/src/build/packages-built.ts:777,856,966`). What used to fail here was a second reader
+  finding the same units stale and losing the lock; it now waits for the build it would have duplicated.
 
 ## Decisions
 
@@ -229,6 +232,13 @@ otherwise go looking:
    produce. The cost was never the order, it was that nothing stopped — which is Decision 4, and is three
    lines rather than a tier model for a second scheduler. Giving a spec a tier by inference is the thing not
    to do: a tier is declared (`chain-steps.ts`) and `check:tiers` is what makes it mean anything.
+
+   **What a tier is still good for is a label.** `spec:dry` prints the declared tier of the chain step a run
+   corresponds to where one exists — `packages:ensure` and `test:unit:pack` are tier 2, a `tests/e2e` run is
+   the `test` step's tier 3 — and prints nothing where none does, a root `related` run spanning tier 1 and the
+   tier-2 specs that read the built packages. Read from `chain-steps.ts`, never computed from what a run looks
+   like, so the label cannot disagree with `check:tiers`. That is the half of the original request worth
+   keeping: knowing that the next run launches the app is worth a word, and it costs no scheduler.
 
 7. **A predicted cost is stated as file-time, with the wall ratio said out loud.** 36.0s of recorded
    file-time ran in 23.3s of wall; the sum is what the record holds and the wall is what the user waits.
@@ -291,7 +301,7 @@ for the flag's position, beside the `--full` one.
 - Read the per-package records through `scripts/lib/spec-cost.ts`, the module the check and the command
   already share, so a third reader cannot disagree with them. A spec with no recorded cost is counted and
   named, not silently treated as free.
-- Print file-time and the wall shape (Decision 7).
+- Print file-time and the wall shape (Decision 7), and the declared tier of a run that has one (Decision 6).
 
 **Done when:** `npm run spec:dry -- packages/abuddy-sdk/src/types/sdk-entities.ts` prints 104 spec paths and
 their summed cost in under 8s cold, runs no test, and exits 0; the count equals what the ordinary run
