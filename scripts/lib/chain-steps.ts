@@ -205,6 +205,7 @@ const WORKSPACE_PARTS = [
   'package.json', 'tsconfig.json', 'tsconfig.package.json',
   'vitest.config.ts', 'vitest.integration.config.ts', 'vite.config.ts', 'vite.config.js',
   'eslint.config.ts', 'postcss.config.cjs', 'tailwind.config.ts', 'tsdown.config.ts', 'env.d.ts',
+  'dev-build.mjs',
 ];
 const workspace = (pkg: string): string[] => WORKSPACE_PARTS.map((part) => `packages/${pkg}/${part}`);
 

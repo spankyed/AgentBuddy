@@ -93,45 +93,98 @@ describe('the chain reads every source file', () => {
    * directories, which took in three packaging modules that `typecheck` did not declare — so an unused binding in
    * `build/prod/diagnostics.mjs` failed `lint:check` while the chain planned `typecheck` as cached.
    *
+   * `lint:check` lints in two passes and both are derived here. The root one is `oxlint .` minus `packages/**`
+   * and `docs/**`; the other is `npm run lint:check -ws`, each workspace's own script, run from that package's
+   * directory — which is why a target resolves against a base rather than the repo root. Expanding a script's
+   * text is not enough to see the second: the root script's own first clause *is* the fan-out, and `expanded`
+   * substitutes each `npm run` once, so the workspace passes stayed invisible and a package-root `.mjs` no step
+   * declared went unnoticed until someone read the command by hand.
+   *
    * Derived from the command, not restated: the targets and the `--ignore-pattern`s are parsed out of the same
    * string the leg runs, so narrowing the lint scope narrows what this demands. A pattern shape it cannot read
-   * fails rather than passing over whatever it did not understand.
+   * fails rather than passing over whatever it did not understand. The one thing it reads and discards is
+   * `--ignore-path .gitignore`, because everything it considers comes from `git ls-files` and a gitignored file
+   * is not tracked; any other ignore file is exclusions it cannot account for, and fails.
+   *
+   * The renderer's `&& eslint .` half is not derived — its ignores live in `eslint.config.ts`, not in the
+   * command — and it needs no derivation: it walks the tree the oxlint call in that same script already covers.
    */
   it('gives the step that lints the files its linter walks', () => {
     const all = rootScripts();
     /** A leg's command with each `npm run <name>` it spells expanded once, which is where the oxlint call lives */
     const expanded = (command: string): string => command.replace(/npm run ([\w:-]+)/g, (whole, name: string) => all[name] ?? whole);
     const VALUED = new Set(['-D', '--deny', '-A', '--allow', '-W', '--warn', '-c', '--config', '--ignore-path', '--ignore-pattern']);
-    const linted = new Set<string>();
-    for (const leg of TYPECHECK_LEGS) {
-      for (const call of expanded(leg.command).split('&&').filter((part) => /(^|\s)oxlint(\s|$)/.test(part))) {
-        const tokens = call.trim().split(/\s+/);
-        const args = tokens.slice(tokens.indexOf('oxlint') + 1);
-        const targets: string[] = [];
-        const ignores: string[] = [];
-        for (let i = 0; i < args.length; i += 1) {
-          const arg = args[i]!;
-          if (VALUED.has(arg)) { if (arg === '--ignore-pattern') ignores.push(args[i + 1]!.replace(/^['"]|['"]$/g, '')); i += 1; continue; }
-          if (!arg.startsWith('-')) targets.push(arg);
+    // What oxlint parses, which is narrower than `CODE`: a shell script is tracked code and no linter's input
+    const LINTS = /\.(ts|tsx|mts|cts|js|mjs|cjs|jsx|vue)$/;
+    const lintable = trackedCode().filter((file) => LINTS.test(file));
+    const oxlintCalls = (command: string): string[] => command.split('&&').filter((part) => /(^|\s)oxlint(\s|$)/.test(part));
+
+    /** The tracked files one oxlint call walks. `base` is the package directory it runs from, empty at the root */
+    const walkedBy = (call: string, base: string): Set<string> => {
+      const tokens = call.trim().split(/\s+/);
+      const args = tokens.slice(tokens.indexOf('oxlint') + 1);
+      const targets: string[] = [];
+      const ignores: string[] = [];
+      for (let i = 0; i < args.length; i += 1) {
+        const arg = args[i]!;
+        if (VALUED.has(arg)) {
+          const value = args[i + 1];
+          expect(value, `\`${arg}\` ends \`${call.trim()}\` with nothing to read`).toBeDefined();
+          if (arg === '--ignore-pattern') ignores.push(value!.replace(/^['"]|['"]$/g, ''));
+          if (arg === '--ignore-path') expect(value, `this only reads \`--ignore-path .gitignore\`, whose exclusions are already absent from git ls-files`).toBe('.gitignore');
+          i += 1;
+          continue;
         }
-        expect(targets, `no target read out of \`${call.trim()}\``).not.toEqual([]);
-        const ignored = ignores.map((pattern) => {
-          const prefix = /^([\w./-]+)\/\*\*$/.exec(pattern)?.[1];
-          expect(prefix, `this only reads a \`dir/**\` ignore pattern, and got \`${pattern}\``).toBeDefined();
-          return `${prefix}/`;
-        });
-        // What oxlint parses, which is narrower than `CODE`: a shell script is tracked code and no linter's input
-        const LINTS = /\.(ts|tsx|mts|cts|js|mjs|cjs|jsx|vue)$/;
-        for (const file of trackedCode()) {
-          if (!LINTS.test(file)) continue;
-          if (!targets.some((target) => target === '.' || file === target || file.startsWith(`${target}/`))) continue;
-          if (ignored.some((prefix) => file.startsWith(prefix))) continue;
-          linted.add(file);
+        if (!arg.startsWith('-')) targets.push(arg);
+      }
+      expect(targets, `no target read out of \`${call.trim()}\``).not.toEqual([]);
+      const under = (relative: string): string => (relative === '.' ? base : base === '' ? relative : `${base}/${relative}`);
+      const prefixes = targets.map(under);
+      const ignored = ignores.map((pattern) => {
+        const dir = /^([\w./-]+)\/\*\*$/.exec(pattern)?.[1];
+        expect(dir, `this only reads a \`dir/**\` ignore pattern, and got \`${pattern}\``).toBeDefined();
+        return `${under(dir!)}/`;
+      });
+      const walked = new Set<string>();
+      for (const file of lintable) {
+        if (!prefixes.some((prefix) => prefix === '' || file === prefix || file.startsWith(`${prefix}/`))) continue;
+        if (ignored.some((prefix) => file.startsWith(prefix))) continue;
+        walked.add(file);
+      }
+      return walked;
+    };
+
+    const workspaces = fs
+      .readdirSync(path.join(REPO_ROOT, 'packages'), { withFileTypes: true })
+      .filter((entry) => entry.isDirectory() && fs.existsSync(path.join(REPO_ROOT, 'packages', entry.name, 'package.json')))
+      .map((entry) => entry.name);
+    const scriptsOf = (workspace: string): Record<string, string> =>
+      JSON.parse(fs.readFileSync(path.join(REPO_ROOT, 'packages', workspace, 'package.json'), 'utf-8')).scripts ?? {};
+
+    const passes: { readonly at: string; readonly call: string; readonly files: Set<string> }[] = [];
+    for (const leg of TYPECHECK_LEGS) {
+      const command = expanded(leg.command);
+      for (const call of oxlintCalls(command)) passes.push({ at: '', call, files: walkedBy(call, '') });
+      for (const [, name] of command.matchAll(/npm run ([\w:-]+) -ws/g)) {
+        for (const workspace of workspaces) {
+          const script = scriptsOf(workspace)[name!];
+          if (script === undefined) continue;
+          const base = `packages/${workspace}`;
+          for (const call of oxlintCalls(script)) passes.push({ at: base, call, files: walkedBy(call, base) });
         }
       }
     }
-    expect(linted.size, 'no linted file was derived, so this would pass over nothing').toBeGreaterThan(50);
 
+    // Per pass, never per total: the workspace passes are nine tenths of the files, so a floor over the sum
+    // would be cleared by the root pass alone if the fan-out silently stopped expanding — which is the way
+    // this went wrong before it derived the fan-out at all.
+    for (const pass of passes) {
+      expect(pass.files.size, `\`${pass.call.trim()}\`${pass.at === '' ? '' : ` in ${pass.at}`} derived no file, so it demands nothing`).toBeGreaterThan(0);
+    }
+    expect(passes.some((pass) => pass.at === ''), 'no root oxlint call was derived').toBe(true);
+    expect(passes.some((pass) => pass.at !== ''), 'no workspace oxlint call was derived — the `-ws` fan-out stopped being followed').toBe(true);
+
+    const linted = new Set(passes.flatMap((pass) => [...pass.files]));
     const step = CHAIN_STEPS.find((candidate) => candidate.name === 'typecheck')!;
     const covered = coveredBy([step]);
     const missing = [...linted].filter((file) => !covered.has(file)).sort();
