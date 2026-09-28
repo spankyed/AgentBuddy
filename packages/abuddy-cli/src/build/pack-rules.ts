@@ -52,6 +52,16 @@ export interface PackPlace {
 export interface PackFinding {
   readonly line: number;
   readonly what: string;
+  /**
+   * What the finding is *about*, when `what` words it rather than naming it. Absent means `what` is already the
+   * subject, which is every rule that reports a bare specifier.
+   *
+   * The third part of the split: `at` is where a finding is, `what` is how it reads, this is which offence it is —
+   * and it is what lets two rules wording one offence differently be recognised as one. `own-modules` says
+   * "'x' names no file — write 'x.ts'" where `contract-leaves` says `x`; keyed on the wording, a pack author was
+   * told twice about one import.
+   */
+  readonly subject?: string;
   readonly start: number;
   readonly end: number;
 }
@@ -73,6 +83,8 @@ export interface PackWideFinding {
   readonly what: string;
   readonly at?: { readonly file: string; readonly line?: number };
   readonly from?: string;
+  /** What the finding is about, when `what` words it rather than naming it — see `PackFinding.subject` */
+  readonly subject?: string;
 }
 
 /** A whole-pack finding as a line, with `where` writing a pack-relative path the way this consumer wants it */
@@ -216,7 +228,8 @@ const RULE_LIST = [
       const found: OwnModuleSpecifier[] = view.specifiers.map(({ text, line, start, end }) =>
         ({ file: place.packRelative, line, specifier: text, start, end }));
       return ownModuleFindings(place.packDir, found).map(({ line, specifier, named, start, end }) =>
-        ({ line, what: `'${specifier}' names no file — write '${named}'`, start: start as number, end: end as number }));
+        // The specifier is the subject; the sentence around it is only how this rule words it
+        ({ line, what: `'${specifier}' names no file — write '${named}'`, subject: specifier, start: start as number, end: end as number }));
     },
   },
   {
@@ -442,11 +455,11 @@ export function packRuleProblems(packDir: string, dirs: readonly string[] = ['sr
    * identically, and `abuddy validate` printed both.
    */
   const claimedWide = new Set<string>();
-  const site = (file: string, line: number, what: string) => `${file}\u0000${line}\u0000${what}`;
+  const site = (file: string, line: number, subject: string) => `${file}\u0000${line}\u0000${subject}`;
   for (const rule of rules) {
     const found = rule.checkPack?.(packDir) ?? [];
     for (const finding of found) {
-      if (finding.at?.line !== undefined) claimedWide.add(site(finding.at.file, finding.at.line, finding.what));
+      if (finding.at?.line !== undefined) claimedWide.add(site(finding.at.file, finding.at.line, finding.subject ?? finding.what));
     }
     const lines = found.map((finding) => formatPackWide(finding));
     if (lines.length > 0) problems.set(rule.key, [...(problems.get(rule.key) ?? []), ...lines]);
@@ -457,7 +470,7 @@ export function packRuleProblems(packDir: string, dirs: readonly string[] = ['sr
       const kept = (rule.check?.(view, place) ?? []).filter((finding) => {
         // A whole-pack rule already reported this offence. Its span goes into `claimed` all the same, so a third
         // rule reporting the import around it stands down too — the site is taken, not just this wording of it.
-        if (claimedWide.has(site(place.packRelative, finding.line, finding.what))) {
+        if (claimedWide.has(site(place.packRelative, finding.line, finding.subject ?? finding.what))) {
           claimed.push({ start: finding.start, end: finding.end });
           return false;
         }

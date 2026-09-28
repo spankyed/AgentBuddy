@@ -214,6 +214,20 @@ describe('every rule', () => {
    *
    * `contract-leaves` keeps it, being second in that order where the crossing is last.
    */
+  /**
+   * The same one-offence-one-message claim where the two rules *word* it differently, which is what the finding's
+   * `subject` is for. `own-modules` says "'#generated/events' names no file — write '#generated/events.ts'" and
+   * `contract-leaves` says `#generated/events`; keyed on the sentence they look like two offences, and a pack
+   * author writing one extensionless import was told about it twice. Keyed on the subject they are one.
+   */
+  it('reports an offence two rules word differently under one rule, not two', () => {
+    const dir = completePack({
+      'src/features/notes/fe/contract.ts': "import { sendToSystem } from '#generated/events';\nexport type Contract = { state: {} };\n",
+    });
+    const reported = [...packRuleProblems(dir)].filter(([, found]) => found.some((line) => line.includes('#generated/events')));
+    expect(reported.map(([key]) => key), 'one import, told to a pack author under more than one rule').toEqual(['contract-leaves']);
+  });
+
   it('reports a contract leaf reaching another feature under one rule, not two', () => {
     const dir = completePack({
       'src/features/notes/fe/contract.ts': "import type { T } from '../../threads/fe/state.ts';\nexport type Contract = { state: { t: T } };\n",
