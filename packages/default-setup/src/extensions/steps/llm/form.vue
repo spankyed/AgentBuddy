@@ -183,13 +183,23 @@
                   {{ key }}
                   <span v-if="selectedPrompt.inputs[key].required" class="text-xs text-red-500">*</span>
                 </label>
-                <input
-                  :value="getFieldMapping(key)"
-                  type="text"
-                  :placeholder="`e.g. $.event.data.${key}`"
-                  class="w-full px-3 py-2 text-sm border rounded-md bg-neutral-800/50 border-neutral-700 text-neutral-200 placeholder-neutral-500 focus:border-neutral-600 focus:outline-none focus:ring-1 focus:ring-neutral-600"
-                  @input="updateFieldMapping(key, ($event.target as HTMLInputElement).value)"
-                />
+                <div class="flex items-center gap-2">
+                  <input
+                    :value="getFieldMapping(key)"
+                    type="text"
+                    :placeholder="`e.g. $.event.data.${key}`"
+                    class="w-full px-3 py-2 text-sm border rounded-md bg-neutral-800/50 border-neutral-700 text-neutral-200 placeholder-neutral-500 focus:border-neutral-600 focus:outline-none focus:ring-1 focus:ring-neutral-600"
+                    @input="updateFieldMapping(key, ($event.target as HTMLInputElement).value)"
+                  />
+                  <input
+                    :value="getFieldDefault(key)"
+                    type="text"
+                    placeholder="fallback"
+                    title="Used when the source resolves to nothing. Leave empty for no fallback."
+                    class="w-1/4 px-3 py-2 text-sm border rounded-md bg-neutral-800/50 border-neutral-700 text-neutral-200 placeholder-neutral-500 focus:border-neutral-600 focus:outline-none focus:ring-1 focus:ring-neutral-600"
+                    @input="updateFieldDefault(key, ($event.target as HTMLInputElement).value)"
+                  />
+                </div>
                 <p v-if="selectedPrompt.inputs[key].description" class="mt-1.5 text-xs text-neutral-600">
                   {{ selectedPrompt.inputs[key].description }}
                 </p>
@@ -221,6 +231,7 @@ import {
 } from 'reka-ui'
 import BaseForm from '@abuddy/ui/components/BaseForm'
 import TipSection from '@abuddy/ui/components/TipSection'
+import { withDefault, writtenDefault } from '../create/field-default.ts'
 import type { NodeEntity } from '#generated/types.ts'
 import type { FormResources } from '../form-props.ts'
 import { parseModelId, providerLabels, type ModelCatalogEntry, type ModelId, type ProviderName } from '@abuddy/sdk/models'
@@ -320,13 +331,26 @@ const getFieldMapping = (target: string): string => {
 }
 
 const updateFieldMapping = (target: string, source: string) => {
+  const existing = fieldMappings.value.find((m: any) => m.target === target)
   const currentMappings = fieldMappings.value.filter((m: any) => m.target !== target)
-  
-  if (source.trim()) {
-    currentMappings.push({ target, source, default: undefined })
-  }
-  
+
+  // The fallback survives an edit to the source: they are two boxes for one mapping, and rebuilding the row
+  // from the source alone dropped whatever was typed in the other
+  if (source.trim()) currentMappings.push({ ...existing, target, source })
+
   emit('update-node', { fieldMappings: currentMappings })
+}
+
+const getFieldDefault = (target: string): string =>
+  writtenDefault(fieldMappings.value.find((m: any) => m.target === target)?.default)
+
+/** A fallback with no source maps nothing, so the row is dropped rather than stored without one */
+const updateFieldDefault = (target: string, typed: string) => {
+  const existing = fieldMappings.value.find((m: any) => m.target === target)
+  if (!existing) return
+  emit('update-node', {
+    fieldMappings: fieldMappings.value.map((m: any) => (m.target === target ? withDefault(m, typed) : m)),
+  })
 }
 
 // Update handlers
@@ -336,11 +360,9 @@ const handlePromptChange = (prompt: PromptEntity | null) => {
   
   if (prompt) {
     // Create default mappings for new prompt
-    const newMappings = prompt.inputs ? Object.keys(prompt.inputs).map(key => ({
-      target: key,
-      source: `$.event.data.${key}`,
-      default: undefined
-    })) : []
+    const newMappings = prompt.inputs
+      ? Object.keys(prompt.inputs).map(key => ({ target: key, source: `$.event.data.${key}` }))
+      : []
     
     emit('update-node', {
       promptTemplateId: prompt.id,

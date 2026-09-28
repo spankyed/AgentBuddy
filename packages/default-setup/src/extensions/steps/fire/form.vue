@@ -121,7 +121,7 @@ const updatePayloadMapping = (source: string) => {
   const currentMappings = fieldMappings.value.filter((m: any) => m.target !== 'payload')
 
   if (source.trim()) {
-    currentMappings.push({ target: 'payload', source, default: undefined })
+    currentMappings.push({ target: 'payload', source })
   }
 
   emit('update-node', { fieldMappings: currentMappings })

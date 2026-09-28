@@ -54,49 +54,17 @@
 
       <!-- Field mappings -->
       <div class="pt-6 border-t border-neutral-800">
-        <label class="block mb-3 text-xs font-semibold tracking-wider uppercase text-neutral-500">
-          Field Mappings
-        </label>
-        <div class="border rounded-md bg-neutral-800/30 border-neutral-700">
-          <div class="p-4 space-y-3">
-            <div v-for="(mapping, index) in fieldMappings" :key="index" class="flex items-center gap-2">
-              <input
-                :value="mapping.target"
-                type="text"
-                placeholder="field"
-                class="w-1/3 px-3 py-2 text-sm border rounded-md bg-neutral-800/50 border-neutral-700 text-neutral-200 placeholder-neutral-500 focus:border-neutral-600 focus:outline-none focus:ring-1 focus:ring-neutral-600"
-                @input="updateMapping(index, { target: ($event.target as HTMLInputElement).value })"
-              />
-              <input
-                :value="mapping.source"
-                type="text"
-                placeholder="e.g. $.event.data.payload"
-                class="flex-1 px-3 py-2 text-sm border rounded-md bg-neutral-800/50 border-neutral-700 text-neutral-200 placeholder-neutral-500 focus:border-neutral-600 focus:outline-none focus:ring-1 focus:ring-neutral-600"
-                @input="updateMapping(index, { source: ($event.target as HTMLInputElement).value })"
-              />
-              <button
-                type="button"
-                class="p-2 rounded-md text-neutral-500 hover:text-neutral-300 hover:bg-neutral-700"
-                title="Remove mapping"
-                @click="removeMapping(index)"
-              >
-                <X class="w-3.5 h-3.5" />
-              </button>
-            </div>
-            <button
-              type="button"
-              class="flex items-center gap-1 text-xs text-neutral-400 hover:text-neutral-200"
-              @click="addMapping"
-            >
-              <Plus class="w-3 h-3" />
-              Add mapping
-            </button>
-            <p class="text-xs text-neutral-600">
-              Each field is set on <code class="text-neutral-400">params</code>; mapping <code class="text-neutral-400">input</code> replaces the previous step's result.
-            </p>
-          </div>
-          <TipSection />
-        </div>
+        <Fields
+          label="Field Mappings"
+          item-name="mapping"
+          source-placeholder="e.g. $.event.data.payload"
+          :model-value="nodeData.fieldMappings"
+          @update:model-value="$emit('update-node', { fieldMappings: $event })"
+        >
+          <template #hint>
+            Each field is set on <code class="text-neutral-400">params</code>; mapping <code class="text-neutral-400">input</code> replaces the previous step's result.
+          </template>
+        </Fields>
       </div>
     </div>
   </BaseForm>
@@ -104,14 +72,11 @@
 
 <script setup lang="ts">
 import { computed } from 'vue'
-import { Plus, X } from 'lucide-vue-next'
 import BaseForm from '@abuddy/ui/components/BaseForm'
-import TipSection from '@abuddy/ui/components/TipSection'
 import SimpleMonacoEditor from '@abuddy/ui/components/SimpleMonacoEditor'
+import Fields from '../create/fields.vue'
 import type { NodeEntity } from '#generated/types.ts'
 import type { TransformNode, TransformOutputType } from './types.ts'
-
-type FieldMapping = NonNullable<TransformNode['fieldMappings']>[number]
 
 const props = defineProps<{
   node: NodeEntity
@@ -139,14 +104,4 @@ const codeEditorOptions = {
   lineNumbersMinChars: 0,
 }
 
-const fieldMappings = computed<FieldMapping[]>(() => nodeData.value.fieldMappings ?? [])
-
-const emitMappings = (mappings: FieldMapping[]) => emit('update-node', { fieldMappings: mappings })
-
-const addMapping = () => emitMappings([...fieldMappings.value, { target: '', source: '' }])
-
-const removeMapping = (index: number) => emitMappings(fieldMappings.value.filter((_, i) => i !== index))
-
-const updateMapping = (index: number, change: Partial<FieldMapping>) =>
-  emitMappings(fieldMappings.value.map((mapping, i) => (i === index ? { ...mapping, ...change } : mapping)))
 </script>
