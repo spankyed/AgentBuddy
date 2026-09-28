@@ -3,9 +3,9 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import { mockInference, mockService, importSeeds } from '@abuddy/testing/harness';
 import type { ExecutionContext, TNodeEntity } from '@abuddy/sdk/steps';
-import { repository } from '@/__generated__/repository';
-import { handler } from '@/extensions/steps/query/runtime';
-import { DEFAULT_MODEL } from '@/extensions/steps/llm/model';
+import { repository } from '#generated/repository.ts';
+import { handler } from '#extensions/steps/query/runtime.ts';
+import { DEFAULT_MODEL } from '#extensions/steps/llm/model.ts';
 
 type Sent = { type: string; result?: unknown; error?: { message?: string } };
 

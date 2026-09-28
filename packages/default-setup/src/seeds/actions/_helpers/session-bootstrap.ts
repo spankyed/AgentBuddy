@@ -1,4 +1,4 @@
-import type { EntityId, Services } from '@/__generated__/services';
+import type { EntityId, Services } from '#generated/services.ts';
 import { buildTranscript, type TranscriptMessage } from '@abuddy/sdk/actions';
 
 type ThreadMessage = {

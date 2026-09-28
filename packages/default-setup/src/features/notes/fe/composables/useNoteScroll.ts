@@ -1,6 +1,6 @@
 import { ref, watch, nextTick, onBeforeUnmount } from 'vue'
 import { useSelector } from '@xstate/vue'
-import type { NotesState } from '../state'
+import type { NotesState } from '../state.ts'
 
 export function useNoteScroll(actor: NotesState, getNoteId: () => string | undefined) {
   const scrollContainerRef = ref<HTMLElement | null>(null)

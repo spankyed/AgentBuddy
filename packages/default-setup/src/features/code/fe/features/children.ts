@@ -3,13 +3,13 @@
 // The id and the machine behind it are stated once, here. A caller passes the id and the type follows, so an id
 // can't be paired with the wrong actor and an id no child is spawned under doesn't compile.
 import type { AnyActorRef, AnyEventObject } from 'xstate';
-import type { CodeActionsActor } from './actions/state';
-import type { CommitActor } from './commit/state';
-import type { ExplorerActor } from './explorer/state';
-import type { CodePromptsActor } from './prompts/state';
-import type { PullRequestActor } from './pull-request/state';
-import type { SearchActor } from './search/state';
-import type { TerminalActor } from './terminal/state';
+import type { CodeActionsActor } from './actions/state.ts';
+import type { CommitActor } from './commit/state.ts';
+import type { ExplorerActor } from './explorer/state.ts';
+import type { CodePromptsActor } from './prompts/state.ts';
+import type { PullRequestActor } from './pull-request/state.ts';
+import type { SearchActor } from './search/state.ts';
+import type { TerminalActor } from './terminal/state.ts';
 
 /** Every child the code plugin spawns, by the id it is spawned under (`fe/state.ts`) */
 export interface CodeChildren {

@@ -12,9 +12,9 @@
 
 import { vi, describe, expect, it } from 'vitest';
 import { mockService } from '@abuddy/testing/harness';
-import { services, type Services, type EntityId } from '@/__generated__/services';
-import { repository } from '@/__generated__/repository';
-import { action as handleFork } from '../../../../src/seeds/actions/claude-code/handle-fork';
+import { services, type Services, type EntityId } from '#generated/services.ts';
+import { repository } from '#generated/repository.ts';
+import { action as handleFork } from '../../../../src/seeds/actions/claude-code/handle-fork.ts';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 

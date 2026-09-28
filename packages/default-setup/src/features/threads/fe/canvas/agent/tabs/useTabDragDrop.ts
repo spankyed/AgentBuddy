@@ -1,6 +1,6 @@
 import { ref, type Ref } from 'vue'
-import type { Tab } from '@/__generated__/types'
-import type { ThreadTabGroup } from './types'
+import type { Tab } from '#generated/types.ts'
+import type { ThreadTabGroup } from './types.ts'
 
 type Context = 'pinned' | 'ungrouped' | string
 

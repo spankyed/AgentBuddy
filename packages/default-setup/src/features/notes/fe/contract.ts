@@ -4,7 +4,7 @@
 // what lets codegen read the contract without resolving the machine — whose own imports cycle back through
 // `#generated/events`. `abuddy.json` names it at `features[].plugin.contract`.
 import type { NavHistory, PluginInbox } from '@abuddy/sdk/fe'
-import type { NoteDTO } from '@/__generated__/types'
+import type { NoteDTO } from '#generated/types.ts'
 
 export interface NotesContext {
   notes: NoteDTO[]

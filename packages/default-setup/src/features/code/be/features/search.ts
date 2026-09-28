@@ -1,8 +1,8 @@
-import { broadcastToPlugin } from '@/__generated__/events';
+import { broadcastToPlugin } from '#generated/events.ts';
 import { assign, setup } from 'xstate'
 
-import { FileSystemRepository } from '../services/filesystem'
-import type { SearchOptions } from '../types'
+import { FileSystemRepository } from '../services/filesystem.ts'
+import type { SearchOptions } from '../types.ts'
 
 const pluginId = 'code' as const
 

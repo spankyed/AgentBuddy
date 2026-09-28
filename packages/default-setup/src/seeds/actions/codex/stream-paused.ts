@@ -1,8 +1,8 @@
 /** CDX: Stream Paused — updates chat state when an approval request arrives. */
 
 import type { ActionMeta } from '@abuddy/sdk/build';
-import type { Services, EntityId } from '@/__generated__/services';
-import { updateChatState } from './_helpers/thread-context';
+import type { Services, EntityId } from '#generated/services.ts';
+import { updateChatState } from './_helpers/thread-context.ts';
 
 export const meta: ActionMeta = {
   label: 'CDX: Stream Paused',

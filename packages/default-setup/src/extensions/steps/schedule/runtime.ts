@@ -1,5 +1,5 @@
 import type { TriggerRuntimeNode, TriggerRuntimeContext } from '@abuddy/sdk/steps';
-import { services } from '@/__generated__/services';
+import { services } from '#generated/services.ts';
 
 export function register(node: TriggerRuntimeNode, ctx: TriggerRuntimeContext): void {
   // Through the scheduler service, so unit tests can drive ticks (mockService('scheduler', …))

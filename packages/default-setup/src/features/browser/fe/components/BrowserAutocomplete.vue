@@ -29,8 +29,8 @@
 
 <script setup lang="ts">
 import { reactive } from 'vue';
-import type { AutocompleteSuggestion } from '../state';
-import { displayUrl as formatUrl } from '../history';
+import type { AutocompleteSuggestion } from '../state.ts';
+import { displayUrl as formatUrl } from '../history.ts';
 
 const failedFavicons = reactive(new Set<string>());
 

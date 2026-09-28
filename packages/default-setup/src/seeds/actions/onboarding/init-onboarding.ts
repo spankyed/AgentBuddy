@@ -1,6 +1,6 @@
 import type { ActionMeta } from '@abuddy/sdk/build';
-import type { Services, Z } from '@/__generated__/services';
-import { persistOnboardingState, type OnboardingState } from './onboarding-helpers';
+import type { Services, Z } from '#generated/services.ts';
+import { persistOnboardingState, type OnboardingState } from './onboarding-helpers.ts';
 
 export const meta: ActionMeta = {
   label: 'Init Onboarding',

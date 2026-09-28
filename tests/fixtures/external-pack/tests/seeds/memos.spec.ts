@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { importSeeds } from '@abuddy/testing/harness';
 import { getPackCommands } from '@abuddy/sdk/framework';
 import { untypedQx } from '@abuddy/ears';
-import { repository } from '#generated/repository';
+import { repository } from '#generated/repository.ts';
 
 describe('memo seeds', () => {
   it('seeds memos from its markdown format and its compiler module format', async () => {

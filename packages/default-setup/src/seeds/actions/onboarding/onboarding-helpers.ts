@@ -1,5 +1,5 @@
-import type { EntityId, Services } from '@/__generated__/services';
-import type { ThreadsSettings } from '@/__generated__/types';
+import type { EntityId, Services } from '#generated/services.ts';
+import type { ThreadsSettings } from '#generated/types.ts';
 
 export interface OnboardingState {
   step: 'welcome' | 'projects' | 'import-threads' | 'pick-thread' | 'choose-mode' | 'complete';

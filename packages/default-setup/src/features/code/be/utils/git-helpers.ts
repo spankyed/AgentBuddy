@@ -1,6 +1,6 @@
 
-import { broadcastToPlugin } from '@/__generated__/events';
-import { GitRepository } from '../services/git'
+import { broadcastToPlugin } from '#generated/events.ts';
+import { GitRepository } from '../services/git.ts'
 
 const pluginId = 'code' as const
 

@@ -1,4 +1,4 @@
-import type { ContentSection } from './types'
+import type { ContentSection } from './types.ts'
 
 export interface ExportedDocument {
   id?: string

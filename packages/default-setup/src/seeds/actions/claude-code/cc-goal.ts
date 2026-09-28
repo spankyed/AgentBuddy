@@ -7,13 +7,13 @@
  */
 
 import type { ActionMeta } from '@abuddy/sdk/build';
-import type { Services, Z } from '@/__generated__/services';
+import type { Services, Z } from '#generated/services.ts';
 import {
   getClaudeState,
   persistClaudeState,
   endGoal,
-} from './_helpers/thread-context';
-import { replayQueuedMessage } from './_helpers/stream-consumer';
+} from './_helpers/thread-context.ts';
+import { replayQueuedMessage } from './_helpers/stream-consumer.ts';
 
 export const meta: ActionMeta = {
   label: 'CC: Goal',

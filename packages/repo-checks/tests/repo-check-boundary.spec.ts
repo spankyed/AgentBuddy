@@ -73,6 +73,11 @@ const LAYOUT_CHECKS: Record<string, string> = {
     + 'tree, read from git and the manifests, with no scripts/ module to import',
   'tests/doc-links.spec.ts': 'that a relative link between the repo\'s documents resolves — a property of '
     + 'the doc tree, read from git, with no scripts/ module behind it either',
+  'tests/pack-test-config.spec.ts': 'that every pack\'s vitest config calls definePackTestConfig rather than '
+    + 'restating it — a property of the packs in the tree, read from git and the manifests',
+  'tests/packaged-app-files.spec.ts': 'which of the repo\'s files reach the installed app — a property of the '
+    + 'tree and the packaging config at its root, decided by electron-builder\'s own matcher rather than by '
+    + 'anything under scripts/',
 };
 
 const specs = (): string[] =>

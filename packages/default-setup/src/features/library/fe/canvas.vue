@@ -14,12 +14,12 @@ import { usePlugin } from '@abuddy/sdk/fe'
 
 import { computed } from 'vue'
 import { useSelector } from '@xstate/vue'
-import type { LibraryEvents } from './state'
+import type { LibraryEvents } from './state.ts'
 import DocumentEditor from './components/DocumentEditor.vue'
 // [SEARCH_INDEX_FF] import CreateIndexView from './components/search-index/CreateIndexView.vue'
 // [SEARCH_INDEX_FF] import TestIndexView from './components/search-index/TestIndexView.vue'
 import FileSystemBrowser from './components/FileSystemBrowser.vue'
-import type { LibraryActor } from './state'
+import type { LibraryActor } from './state.ts'
 
 const actor: LibraryActor = usePlugin()
 const context = useSelector(actor, (state) => state.context)

@@ -3,7 +3,7 @@ import { promisify } from 'node:util';
 import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
-import { BUILD_UNITS, packagesBuiltOrRefuse, REPO_ROOT } from '@abuddy/host/build/packages-built';
+import { BUILD_UNITS, packagesBuiltOrRefuse, publishedTreeDirs, REPO_ROOT } from '@abuddy/host/build/packages-built';
 
 const execFileAsync = promisify(execFile);
 
@@ -17,16 +17,26 @@ const execFileAsync = promisify(execFile);
 export { REPO_ROOT };
 
 /**
+ * Re-exported for the same reason: the file list `npm pack` would produce lives in
+ * `@abuddy/host/build/published-manifest`, where the package builds stage a tree from it, so the repo has one
+ * dry-run pack call site rather than one per caller. `installPublishedPackages()` below is the other operation —
+ * a real pack, producing tarballs to install.
+ */
+export { workspacePackList } from '@abuddy/host/build/published-manifest';
+
+/**
  * The packages `installPublishedPackages()` npm-packs into a consumer fixture, by the name a
- * consumer installs them as. Deliberately not the build-freshness watch list (`BUILD_UNITS`), which
- * covers everything a build reads — `@abuddy/host` and `@abuddy/testing` among it — and must be
- * free to grow without changing what is packed into a fixture.
- * `tests/build/package-freshness.spec.ts` checks every packed package is one the build builds.
+ * consumer installs them as. Each is its *staged* tree (`publishedTreeDirs()`), the one npm publishes, so a
+ * consumer fixture reads the derived manifest rather than the workspace one it is derived from.
+ *
+ * Deliberately not the build-freshness watch list (`BUILD_UNITS`), which covers everything a build reads —
+ * `@abuddy/host` and `@abuddy/testing` among it — and must be free to grow without changing what is packed
+ * into a fixture. `tests/published-manifest-paths.spec.ts` checks every packed package is one the build builds.
  */
 export const PACKED_PACKAGES: Record<string, string> = {
-  ears: path.join(REPO_ROOT, 'packages', 'abuddy-ears'),
-  sdk: path.join(REPO_ROOT, 'packages', 'abuddy-sdk'),
-  ui: path.join(REPO_ROOT, 'packages', 'abuddy-ui'),
+  ears: publishedTreeDirs()['abuddy-ears']!,
+  sdk: publishedTreeDirs()['abuddy-sdk']!,
+  ui: publishedTreeDirs()['abuddy-ui']!,
 };
 
 /** Compilers consumers may use: the workspace TypeScript and the oldest the packages support (their typescript peer) */
@@ -40,8 +50,9 @@ export const CONSUMER_MATRIX = (Object.keys(TSC_VERSIONS) as TscVersion[])
   .flatMap((tsc) => (['node16', 'bundler'] as const).map((moduleResolution) => ({ tsc, moduleResolution })));
 
 /**
- * Whether the built packages are there, so a spec reading them can skip without one; it refuses outright
- * when what is there is stale. The rule and its reasoning live in `packagesBuiltOrRefuse`, which
+ * Whether the built packages are there. Absent them this refuses, so a suite cannot report green having
+ * checked nothing, and `ABUDDY_ALLOW_UNBUILT=1` is the deliberate way to get `false` and skip. It refuses
+ * outright when what is there is stale. The rule and its reasoning live in `packagesBuiltOrRefuse`, which
  * `@app/repo-checks` calls too — one rule with two callers, rather than a copy in each suite that reads
  * build output.
  */

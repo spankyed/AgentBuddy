@@ -111,3 +111,34 @@ describe('abuddy test --contract', () => {
     expect(TEST_USAGE).toMatch(/starts no app/);
   });
 });
+
+/**
+ * `abuddy build` reads a pack's `src`, so a test file naming `#generated/ears` with no extension is refused
+ * here instead — before a run whose resolution depends on it, and by the same rule and sentence.
+ */
+describe('a pack whose tests name no file', () => {
+  it('is refused before the run, naming the file the test should have named', async () => {
+    const dir = pack({
+      'vitest.config.ts': 'export default {}\n',
+      'src/__generated__/ears.ts': 'export const findAll = 1;\n',
+      'tests/memos.spec.ts': "import { findAll } from '#generated/ears';\n",
+    });
+    fs.writeFileSync(path.join(dir, 'package.json'), JSON.stringify({ name: 'a-pack', imports: { '#generated/*': './src/__generated__/*' } }));
+    const spawned = recorder();
+    await expect(contractTest(dir, [], spawned.run)).rejects
+      .toThrow(/tests\/memos\.spec\.ts:1: '#generated\/ears' names no file — write '#generated\/ears\.ts'/);
+    expect(spawned.calls, 'nothing runs until the specifiers name files').toEqual([]);
+  });
+
+  it('runs when its tests name the files they have', async () => {
+    const dir = pack({
+      'vitest.config.ts': 'export default {}\n',
+      'src/__generated__/ears.ts': 'export const findAll = 1;\n',
+      'tests/memos.spec.ts': "import { findAll } from '#generated/ears.ts';\n",
+    });
+    fs.writeFileSync(path.join(dir, 'package.json'), JSON.stringify({ name: 'a-pack', imports: { '#generated/*': './src/__generated__/*' } }));
+    const spawned = recorder();
+    await contractTest(dir, [], spawned.run);
+    expect(spawned.calls).toHaveLength(1);
+  });
+});

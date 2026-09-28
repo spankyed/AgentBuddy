@@ -3,7 +3,7 @@ import {execFile} from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
 import {promisify} from 'node:util';
-import {getAppContext} from '../app-context.js';
+import {getAppContext} from '../app-context.ts';
 
 const BIN_DIR = '/usr/local/bin';
 

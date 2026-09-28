@@ -64,12 +64,12 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import BaseForm from '@abuddy/ui/components/BaseForm'
-import type { NodeEntity } from '@/__generated__/types'
-import type { FormResources } from '../form-props'
+import type { NodeEntity } from '#generated/types.ts'
+import type { FormResources } from '../form-props.ts'
 import { parseModelId, providerLabels, type ModelCatalogEntry, type ProviderName } from '@abuddy/sdk/models'
-import { DEFAULT_MODEL } from '../llm/model'
-import { DEFAULT_RESULT_KEY } from './result-key'
-import type { QueryNode } from './types'
+import { DEFAULT_MODEL } from '../llm/model.ts'
+import { DEFAULT_RESULT_KEY } from './result-key.ts'
+import type { QueryNode } from './types.ts'
 
 const props = defineProps<{
   node: NodeEntity

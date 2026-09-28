@@ -1,4 +1,4 @@
-import { EARS, findWhere } from '@/__generated__/ears';
+import { EARS, findWhere } from '#generated/ears.ts';
 import { actionRepository } from '@abuddy/sdk/repositories';
 import type { ActionEntity } from '@abuddy/sdk';
 

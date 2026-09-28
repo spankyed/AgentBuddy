@@ -4,7 +4,7 @@ EARS, the entity-attribute-relation graph store behind AgentBuddy's data: the en
 
 ## Package basics
 
-- Published like `@abuddy/sdk`: its workspace `package.json` is the manifest, and each export resolves `src/` under the `@abuddy/source` condition and `dist/` otherwise. Exports: `.` (the engine, types and persistence port) and `./lmdb` (the LMDB store). It's in the changesets fixed group (`.changeset/config.json`) and supports TypeScript 5.7 and later (`packages/typescript-floor`).
+- Published like `@abuddy/sdk`: each export in its `package.json` resolves `src/` under the `@abuddy/source` condition and `dist/` otherwise, and the build stages a derived manifest with no source branches under `publish/`, which is what npm publishes. Exports: `.` (the engine, types and persistence port) and `./lmdb` (the LMDB store). It's in the changesets fixed group (`.changeset/config.json`) and supports TypeScript 5.7 and later (`packages/typescript-floor`).
 - `lmdb` is an optional peer dependency (a dev dependency here). Only `src/lmdb/` loads it; the app installs it (`packages/api` depends on it).
 - Relative imports name the `.ts` source; `tsc` (`rewriteRelativeImportExtensions`) writes `.js`. `sideEffects: false`, and no module does anything on import.
 - It's a shared-instance package (`SHARED_INSTANCE_PACKAGES` in `@abuddy/host/build/shared-deps`): packs, dependency runtimes, the app and tests load one copy, so the installed engine is the same everywhere. The pack loader's bridge and the harness bridge provide every export except `./lmdb` (`APP_ONLY_EXPORTS`). Pack frontends don't share it: they inline the constants and helpers they import.

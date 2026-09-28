@@ -4,8 +4,8 @@
 // contract from here as a declared type, without resolving the machine — whose imports cycle back through
 // `#generated/events`. `abuddy.json` names it at `features[].plugin.contract`.
 import type { PluginInbox } from '@abuddy/sdk/fe'
-import type { MemoDTO } from '#generated/types'
-import type { MemoNoteDTO } from '../be/memo-notes'
+import type { MemoDTO } from '#generated/types.ts'
+import type { MemoNoteDTO } from '../be/memo-notes.ts'
 
 export interface MemosContext {
   memos: MemoDTO[]

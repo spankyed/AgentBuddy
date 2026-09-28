@@ -6,9 +6,9 @@
  */
 
 import type { ActionMeta } from '@abuddy/sdk/build';
-import type { Services, Z } from '@/__generated__/services';
-import type { ThreadsSettings } from '@/__generated__/types';
-import { getClaudeState, persistClaudeState, ensureSessionMarker, updateChatState } from './_helpers/thread-context';
+import type { Services, Z } from '#generated/services.ts';
+import type { ThreadsSettings } from '#generated/types.ts';
+import { getClaudeState, persistClaudeState, ensureSessionMarker, updateChatState } from './_helpers/thread-context.ts';
 
 export const meta: ActionMeta = {
   label: 'CC: Session Ops',

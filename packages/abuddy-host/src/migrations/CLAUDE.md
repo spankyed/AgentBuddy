@@ -55,7 +55,7 @@ An external pack's migrations target that pack's own versions, not the app's.
 
 ```ts
 // packages/default-setup/src/migrations/0.X.Y.ts
-import { repository } from '@/__generated__/repository';
+import { repository } from '#generated/repository.ts';
 import type { PackMigration } from '@abuddy/sdk/framework';
 
 export const migration: PackMigration = {

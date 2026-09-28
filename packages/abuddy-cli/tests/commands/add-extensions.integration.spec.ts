@@ -10,7 +10,11 @@ import { addStep } from '../../src/commands/add/step';
 import { addArtifact } from '../../src/commands/add/artifact';
 import { addBlock } from '../../src/commands/add/block';
 import { addMigration } from '../../src/commands/add/migration';
+import { addAction } from '../../src/commands/add/action';
+import { addPrompt } from '../../src/commands/add/prompt';
+import { addFlow } from '../../src/commands/add/flow';
 import { generateEntries } from '../../src/commands/generate-entries';
+import { packRuleProblems } from '../../src/build/pack-rules.ts';
 
 const REPO_ROOT = path.resolve(__dirname, '..', '..', '..', '..');
 const BIN = path.join(REPO_ROOT, 'node_modules', '.bin');
@@ -106,7 +110,7 @@ describe('abuddy add step in a pack without steps', () => {
     const manifest = JSON.parse(fs.readFileSync(path.join(bare, 'abuddy.json'), 'utf-8'));
     expect(manifest.steps.register).toBe('src/extensions/steps/register.ts');
     const register = fs.readFileSync(path.join(bare, manifest.steps.register), 'utf-8');
-    expect(register).toContain("import { pingStep } from './ping';");
+    expect(register).toContain("import { pingStep } from './ping/index.ts';");
     expect(register).toMatch(/export const steps: StepDefinition\[\] = \[[\s\S]*pingStep,/);
   });
 });
@@ -122,7 +126,7 @@ describe('abuddy add artifact and block', () => {
     ].join('\n'));
     write('src/extensions/artifacts/register-fe.ts', [
       "import type { ArtifactDefinition } from '@abuddy/sdk/artifacts';",
-      "import { artifacts } from './register';",
+      "import { artifacts } from './register.ts';",
       '',
       'const componentMap: Record<string, unknown> = {',
       '};',
@@ -142,7 +146,7 @@ describe('abuddy add artifact and block', () => {
     ].join('\n'));
     write('src/extensions/blocks/register-fe.ts', [
       "import type { BlockDefinition } from '@abuddy/sdk/blocks';",
-      "import { blocks } from './register';",
+      "import { blocks } from './register.ts';",
       '',
       'const componentMap: Record<string, unknown> = {',
       '};',
@@ -203,12 +207,12 @@ describe('abuddy add migration', () => {
     expect(migration).toContain("import type { PackMigration } from '@abuddy/sdk/framework';");
     expect(migration).toMatch(/export const migration: PackMigration = \{[\s\S]*target: '0\.2\.0'/);
     const index = read('src/migrations/index.ts');
-    expect(index).toContain("import { migration as v0_2_0 } from './0.2.0';\nimport { migration as v0_10_1 } from './0.10.1';\nimport { migration as v0_11_0_beta_1 } from './0.11.0-beta.1';");
+    expect(index).toContain("import { migration as v0_2_0 } from './0.2.0.ts';\nimport { migration as v0_10_1 } from './0.10.1.ts';\nimport { migration as v0_11_0_beta_1 } from './0.11.0-beta.1.ts';");
     expect(index).toContain('export const migrations: PackMigration[] = [\n  v0_2_0,\n  v0_10_1,\n  v0_11_0_beta_1,\n];');
     expect(readManifest().migrations).toBe('src/migrations/index.ts');
 
     await generateEntries([], pack);
-    expect(read('src/__generated__/pack-entry.ts')).toMatch(/import \{ migrations \} from '\.\.\/migrations\/index\.js';[\s\S]*\n {2}migrations,/);
+    expect(read('src/__generated__/pack-entry.ts')).toMatch(/import \{ migrations \} from '\.\.\/migrations\/index\.ts';[\s\S]*\n {2}migrations,/);
     const tsc = run(path.join(BIN, 'tsc'), ['--noEmit']);
     expect(tsc.code, tsc.output).toBe(0);
   });
@@ -219,7 +223,7 @@ describe('abuddy add migration', () => {
 
     expect(read('src/migrations/index.ts')).toBe([
       "import type { PackMigration } from '@abuddy/sdk/framework';",
-      "import { migration as v0_12_0 } from './0.12.0';",
+      "import { migration as v0_12_0 } from './0.12.0.ts';",
       '',
       'export const migrations: PackMigration[] = [',
       '  v0_12_0,',
@@ -228,3 +232,61 @@ describe('abuddy add migration', () => {
     ].join('\n'));
   });
 });
+
+/**
+ * Everything `abuddy add` wrote, held to the rule `abuddy build` applies: a pack's specifier names the file
+ * that is there. This is where the scaffold's own templates are checked against real files — the repo's
+ * `check:specifiers` reads them as text, where a `'./${name}'` tells it nothing about the extension the
+ * substitution carries.
+ */
+describe('what abuddy add scaffolds', () => {
+  it('names its own modules by the file that is there', () => {
+    expect([...packRuleProblems(pack, ['src', 'tests'])]).toEqual([]);
+  });
+});
+
+/**
+ * The seed scaffolds, which had no test reading their output before their templates became files
+ * (`docs/goals/goal-one-rule-set.md`): `abuddy add action`, `add prompt` and `add flow` were covered only by
+ * whether they exited 0.
+ */
+describe('abuddy add action, prompt and flow', () => {
+  it('writes an action under its category, with the label and the typed services import', async () => {
+    await addAction(['analyze-text'], pack);
+    const action = read('src/seeds/actions/demo-pack/analyze-text.ts');
+    expect(action).toContain("import type { Services, Z } from '#generated/services.ts';");
+    expect(action).toContain("label: 'Analyze Text'");
+    expect(action).toContain("category: 'demo-pack'");
+    expect(action).toContain('export async function action(\n  params: Record<string, any>,\n  services: Services,');
+  });
+
+  it('writes a prompt with its label and template function', async () => {
+    await addPrompt(['summarize-text'], pack);
+    const prompt = read('src/seeds/prompts/summarize-text.ts');
+    expect(prompt).toContain("import type { PromptMeta } from '@abuddy/sdk/build';");
+    expect(prompt).toContain("label: 'Summarize Text'");
+    expect(prompt).toContain('export function template(params: Record<string, any>)');
+  });
+
+  /**
+   * `add flow` refuses a pack whose dependencies provide no steps, and it decides that by reading the pack's
+   * generated flow helpers for `keepAlive` — so the fixture is that file, which is what a dependency's
+   * generate-entries would have written.
+   */
+  it('writes a flow whose track uses the helpers the pack generates', async () => {
+    write('src/__generated__/flow-helpers.ts', ['export const entry = 1;', 'export const keepAlive = 2;', ''].join('\n'));
+    await addFlow(['onboarding'], pack);
+    expect(read('src/seeds/flows/onboarding.ts')).toBe([
+      "import type { FlowDSL } from '@abuddy/sdk/build';",
+      "import { entry, keepAlive } from '#generated/flow-helpers.ts';",
+      '',
+      'export default {',
+      '  "Onboarding": [',
+      '    entry([keepAlive()]),',
+      '  ],',
+      '} satisfies FlowDSL;',
+      '',
+    ].join('\n'));
+  });
+});
+

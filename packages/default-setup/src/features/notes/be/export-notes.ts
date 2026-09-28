@@ -1,14 +1,14 @@
-import { qx } from '@/__generated__/ears';
+import { qx } from '#generated/ears.ts';
 import * as path from 'node:path'
-import { repository } from '@/__generated__/repository';
+import { repository } from '#generated/repository.ts';
 
-import { EARS } from '@/__generated__/ears'
+import { EARS } from '#generated/ears.ts'
 import { ensureDirectoryExists, createExportDir } from '@abuddy/sdk/utils'
 import { extractMediaRefs, rewriteMediaUrls, copyMediaByRef, copyFlatMedia } from '@abuddy/sdk/utils'
 import { toSlug, uniqueFilename, writeExportJson, writeExportFile } from '@abuddy/sdk/utils'
-import type { NotesExportFormat } from './export-types'
-import type { ExportedNote } from '@/features/notes/be/export-types';
-import type { NoteEntity } from '@/features/notes/be/types';
+import type { NotesExportFormat } from './export-types.ts'
+import type { ExportedNote } from '#features/notes/be/export-types.ts';
+import type { NoteEntity } from '#features/notes/be/types.ts';
 
 function buildNoteTree(): { notes: ExportedNote[]; itemCount: number } {
   const allNotes = repository.noteQueries.all()

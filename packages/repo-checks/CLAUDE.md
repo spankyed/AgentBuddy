@@ -43,7 +43,7 @@ looking.
 Two halves, split by measured cost exactly as every other suite is — the rule and the band are in
 `scripts/lib/spec-cost.ts`, and `etc/spec-cost.json` is this suite's record.
 
-- **`npm test -w @app/repo-checks`** — the fast half (`tests/**/*.spec.ts`): 16 specs, about 3s of file
+- **`npm test -w @app/repo-checks`** — the fast half (`tests/**/*.spec.ts`): 20 specs, about 3.5s of file
   time.
 - **`npm run test:integration -w @app/repo-checks`** — the expensive half
   (`tests/**/*.integration.spec.ts`): 3 specs, about 9.8s. Each runs a compiler over a fixture tree.
@@ -58,11 +58,16 @@ names every workspace that has a second config.
 |---|---|
 | `chain-graph`, `chain-schedule`, `step-timing` | the chain's run order, its lane scheduler, and what a step costs |
 | `chain-inputs` | every step's cache key: that the inputs cover the tracked tree, that a pool reads what its projects read, and that the two literal lists (`vitest.config.ts` projects, `test:integration`'s workspaces) match what they are derived from |
+| `chain-output` | how a chain run puts a step on a line: a reason too long for its row is indented to the column it starts at rather than wrapping to column 0, where it reads as another step; every row's columns are composed from one name width and asserted against the **widest declared step name**, since the version that composed them from `'x'` held while three row shapes were a column out for the one step wider than the column. A cached step keeps its own line where it was skipped, and a suite's slowest tests sit in that step's own time column. And what it prints under a step that passed and is stale again: the inputs that differ from the digests its stamp recorded, each with what happened to it and whether it moved while the step ran or since, a declared-set change instead of a file list because for that cause there are none, and the file whose mtime moved while its bytes did not — named, because a count is not something anyone can act on, and the report used to call that file a cause because it walked mtimes rather than asking the fingerprint |
 | `suite-split`, `suite-timeouts`, `slow-tests` | the recorded spec costs, the per-tier timeout budgets, and the slow-test report |
 | `orchestrator-exit`, `with-source`, `import-specifiers-script` | the scripts themselves: no `process.exit()` in one that reprints captured output, the `@abuddy/source` wrapper, and `check-import-specifiers` run as a process |
 | `import-specifiers`, `component-contracts`, `published-imports`, `api-report-stamp` | the analysis scripts behind `check:specifiers`, the component reports and the API stamp |
-| `unit-pool` | the pool's per-project cache: what a project's freshness is measured against |
+| `generated-behind-contract` | that `check:specifiers`' list of the generated modules a contract leaf may not reach through its closure is the set codegen really emits, and really imports a contract or an actor from. It runs codegen over a temp pack rich enough to emit all eighteen, because a module the fixture skips is one the check never looks at |
+| `unit-pool` | the pool's per-project cache: what a project's freshness is measured against, and what its line says about why it is running — which of the four states a stamp can be in, and that a stamp from a protocol this run does not recognise is never diffed, since reading those digests printed a file name beside a reason saying the stamp could not be compared |
 | `spec-plan` | what `npm run spec` decides to run for what you gave it, asserted without running any of it: the plan per target shape, which pack suites a change reaches across the `dist` seam, that no plan runs one suite twice, and how the arguments split |
+| `pack-test-config` | that every pack's vitest config calls `definePackTestConfig` and declares no `test` block of its own, the scaffolded template included: there were three copies and they had drifted, and a fourth is a `cp` away |
+| `specifier-fixes` | what `npm run specifiers:fix` may write: right-to-left splicing, and the three refusals — a span that no longer holds what the reader saw, two spans that overlap, a file with nothing to do. What makes a rewriter safe is the refusals, not the writing |
+| `packaged-app-files` | what the installed app carries, asked of the matcher electron-builder builds from `electron-builder.mjs`: every packaged template, every staged tree, every package source, all walked rather than named. That config is named by no chain step, so nothing else reads it. Two of its cases **mutate the pattern list in memory** and assert the answer flips, which is how a check on a config proves it can fail at all — and how this one found that both includes carry the templates and only the `.ts` ones depend on them |
 | `doc-links` | that a relative link between the repo's documents resolves: archiving a goal turns its own `../archive/goals/x.md` into `archive/archive/goals/x.md`, and a dead link fails nothing on its own |
 | `repo-check-boundary`, `spec-placement` | where a spec belongs: this package's own boundary, that every package with source has a suite, and that no spec reaches into another package's tree |
 

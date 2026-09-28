@@ -19,16 +19,16 @@
  * emits cc.stream.completed so the flow's Turn Completed action can clean up.
  */
 
-import type { Services, EntityId } from '@/__generated__/services';
-import { isPlanFileWrite, DONT_BYPASS } from './auto-approve';
-import { createStreamWriter } from './stream-writer';
-import { createToolActivityWriter } from './tool-activity-writer';
-import { createThinkingWriter } from './thinking-writer';
-import { createPlanDraft } from './plan-artifact';
-import { parseExitPlanModeInput, buildPlanApprovalContext } from './plan-approval';
-import { parseAskUserQuestionInput } from './ask-user-question';
-import { getClaudeState, persistClaudeState, setRunning, dequeueMessage, updateClaudeState, updateChatState, extractStaleSessionId, markSessionBroken } from './thread-context';
-import { parseContextMarkdown } from './context-parser';
+import type { Services, EntityId } from '#generated/services.ts';
+import { isPlanFileWrite, DONT_BYPASS } from './auto-approve.ts';
+import { createStreamWriter } from './stream-writer.ts';
+import { createToolActivityWriter } from './tool-activity-writer.ts';
+import { createThinkingWriter } from './thinking-writer.ts';
+import { createPlanDraft } from './plan-artifact.ts';
+import { parseExitPlanModeInput, buildPlanApprovalContext } from './plan-approval.ts';
+import { parseAskUserQuestionInput } from './ask-user-question.ts';
+import { getClaudeState, persistClaudeState, setRunning, dequeueMessage, updateClaudeState, updateChatState, extractStaleSessionId, markSessionBroken } from './thread-context.ts';
+import { parseContextMarkdown } from './context-parser.ts';
 
 /** Tools whose execution mutates files and should roll up into a diff artifact. */
 const FILE_MUTATION_TOOLS = new Set(['Write', 'Edit', 'NotebookEdit']);

@@ -245,8 +245,8 @@ import { usePlugin } from '@abuddy/sdk/fe'
 
 import { computed, ref } from 'vue'
 import { useSelector } from '@xstate/vue'
-import type { FieldContent, ListContent, MarkdownContent, TextContent } from '@/features/library/be/types'
-import type { LibraryActor } from './state'
+import type { FieldContent, ListContent, MarkdownContent, TextContent } from '#features/library/be/types.ts'
+import type { LibraryActor } from './state.ts'
 // [SEARCH_INDEX_FF] import { getModelConfig } from '../embedding-models'
 
 const actor = usePlugin<LibraryActor>()

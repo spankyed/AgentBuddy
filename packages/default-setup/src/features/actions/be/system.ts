@@ -1,18 +1,18 @@
-import type { ActionsSettings } from '@/__generated__/types';
-import { services } from '@/__generated__/services';
-import { broadcastToPlugin } from '@/__generated__/events';
+import type { ActionsSettings } from '#generated/types.ts';
+import { services } from '#generated/services.ts';
+import { broadcastToPlugin } from '#generated/events.ts';
 // Cross-plugin send: the flows plugin also receives action events
 import { setup } from 'xstate';
 import { defineSystem } from '@abuddy/sdk/framework';
 
-import { EARS } from '@/__generated__/ears';
-import type { Contract } from './contract';
-import type { OutgoingActionEvents } from './types';
-import { repository } from '@/__generated__/repository';
+import { EARS } from '#generated/ears.ts';
+import type { Contract } from './contract.ts';
+import type { OutgoingActionEvents } from './types.ts';
+import { repository } from '#generated/repository.ts';
 import { createLogger } from '@abuddy/sdk/logger';
 import { toMap, toIdentifierSet, mapScalar } from '@abuddy/sdk/utils';
-import { exportActions } from './repository/export-actions';
-import { ref } from '@/__generated__/ref';
+import { exportActions } from './repository/export-actions.ts';
+import { ref } from '#generated/ref.ts';
 import { errorMessage } from '@abuddy/sdk/utils/pure';
 
 const logger = createLogger('actions');

@@ -1,6 +1,8 @@
-// Publishes @abuddy/ears, @abuddy/sdk and @abuddy/ui from their package directories (their package.json is the
-// published manifest) and the bundled copies of @abuddy/cli and @abuddy/testing
-// (packages/<name>/dist/package). Run `npm run packages:build` first. Versions already on the
+// Publishes each package's built tree, never a workspace directory: @abuddy/ears, @abuddy/sdk and @abuddy/ui
+// from publish/ (a manifest derived from theirs, without the checkout-only @abuddy/source branches) and
+// @abuddy/cli and @abuddy/testing from dist/package (a generated manifest). Which tree is which is
+// `PUBLISHED_TREES` in @abuddy/host/build/packages-built, where @app/publish-checks reads it too. Run
+// `npm run packages:build` first. Versions already on the
 // registry are skipped, so re-running after a partial failure is safe. Prints "New tag:" lines,
 // which changesets/action turns into git tags and GitHub releases.
 //
@@ -8,16 +10,7 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { execFileSync } from 'node:child_process';
-
-/** Package directory → the directory npm publishes */
-const PACKAGES: Record<string, string> = {
-  // Before the SDK, which depends on it
-  'abuddy-ears': '.',
-  'abuddy-sdk': '.',
-  'abuddy-ui': '.',
-  'abuddy-testing': 'dist/package',
-  'abuddy-cli': 'dist/package',
-};
+import { publishedTreeDirs } from '@abuddy/host/build/packages-built';
 
 const dryRun = process.argv.includes('--dry-run');
 const repoRoot = path.resolve(import.meta.dirname, '..');
@@ -31,8 +24,7 @@ function isPublished(name: string, version: string): boolean {
   }
 }
 
-for (const [dir, publishDir] of Object.entries(PACKAGES)) {
-  const packageDir = path.join(repoRoot, 'packages', dir, publishDir);
+for (const packageDir of Object.values(publishedTreeDirs())) {
   const manifestPath = path.join(packageDir, 'package.json');
   if (!fs.existsSync(path.join(packageDir, 'dist'))) {
     throw new Error(`${path.relative(repoRoot, packageDir)} is not built. Run: npm run packages:build`);

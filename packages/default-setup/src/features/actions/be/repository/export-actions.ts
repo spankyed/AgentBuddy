@@ -5,7 +5,7 @@
  * stripping internal fields (id, entityType, timestamps, etc.).
  */
 
-import { repository } from '@/__generated__/repository';
+import { repository } from '#generated/repository.ts';
 import { createExportDir } from '@abuddy/sdk/utils';
 import { stripInternalFields, writeExportJson } from '@abuddy/sdk/utils';
 

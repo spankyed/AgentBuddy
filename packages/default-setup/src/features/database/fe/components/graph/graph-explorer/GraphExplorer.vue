@@ -55,15 +55,15 @@ import { ref, computed, watch, onMounted, onUnmounted, shallowRef } from 'vue';
 import { useSelector } from '@xstate/vue';
 import { Graph } from '@antv/g6';
 import type { GraphData, NodeData, EdgeData } from '@antv/g6';
-import { useGraphInstance } from './composables/useGraphInstance';
-import { useGraphInteractions } from './composables/useGraphInteractions';
-import { ENTITY_COLORS, AVAILABLE_LAYOUTS } from '../constants';
+import { useGraphInstance } from './composables/useGraphInstance.ts';
+import { useGraphInteractions } from './composables/useGraphInteractions.ts';
+import { ENTITY_COLORS, AVAILABLE_LAYOUTS } from '../constants.ts';
 import EmptyState from './components/EmptyState.vue';
 import LoadingState from './components/LoadingState.vue';
 import NodeInfoPanel from './components/NodeInfoPanel.vue';
 import GraphLegend from './components/GraphLegend.vue';
 import GraphToolbar from './components/GraphToolbar.vue';
-import type { DatabaseState } from '../../../state'
+import type { DatabaseState } from '../../../state.ts'
 
 // Props & Emits
 interface Props {

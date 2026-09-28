@@ -1,7 +1,7 @@
-import { sendToSystem } from '@/__generated__/events';
+import { sendToSystem } from '#generated/events.ts';
 import type { TNodeEntity, ExecutionContext } from '@abuddy/sdk/steps';
 import { extractValueByPath } from '@abuddy/sdk/utils';
-import type { FireNode } from './types';
+import type { FireNode } from './types.ts';
 
 /** A payload with its `$.` paths resolved against the execution context, at any depth; other values as they are */
 function resolvePayload(value: unknown, ctx: ExecutionContext): unknown {

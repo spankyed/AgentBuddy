@@ -1,7 +1,7 @@
 // The memos system under the app's bus: its startup data on connect, and a memo added from the client
 import { describe, expect, it } from 'vitest';
 import { importSeeds, startApp } from '@abuddy/testing/harness';
-import { repository } from '#generated/repository';
+import { repository } from '#generated/repository.ts';
 
 describe('memos system', () => {
   it('sends the seeded memos when a client connects', async () => {

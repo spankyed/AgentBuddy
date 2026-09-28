@@ -1,5 +1,5 @@
-import { EARS } from '@/__generated__/ears';
-import type { DatabaseSchemaInfo } from '../types';
+import { EARS } from '#generated/ears.ts';
+import type { DatabaseSchemaInfo } from '../types.ts';
 import { getAllEntityTypes, getAllAttributeKinds, getAllRelationKinds } from '@abuddy/ears';
 
 /**

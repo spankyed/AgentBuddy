@@ -5,16 +5,16 @@ import { untypedOpenPlugin } from '@abuddy/sdk/fe';
 import { describe, expectTypeOf, it } from 'vitest';
 import type { HostPluginEvents } from '@abuddy/sdk/events';
 import type { ApplicationHotkeys } from '@abuddy/sdk/types';
-import type { EARS } from '@/__generated__/ears';
-import type { Services } from '@/__generated__/services';
+import type { EARS } from '#generated/ears.ts';
+import type { Services } from '#generated/services.ts';
 import type { PluginInboxOf } from '@abuddy/sdk/events';
-import { broadcastToPlugin, sendToSystem, type SendablePluginEvents } from '@/__generated__/events';
-import { openPlugin } from '@/__generated__/fe';
-import type { OutgoingActionEvents } from '@/features/actions/be/types';
-import type { OutgoingFlowsEvents } from '@/features/flows/be/types';
-import type { OutgoingThreadsEvents } from '@/features/threads/be/types';
-import type { Contract as ThreadsContract } from '@/features/threads/fe/contract';
-import type { Contract as FlowsContract } from '@/features/flows/fe/contract';
+import { broadcastToPlugin, sendToSystem, type SendablePluginEvents } from '#generated/events.ts';
+import { openPlugin } from '#generated/fe.ts';
+import type { OutgoingActionEvents } from '#features/actions/be/types.ts';
+import type { OutgoingFlowsEvents } from '#features/flows/be/types.ts';
+import type { OutgoingThreadsEvents } from '#features/threads/be/types.ts';
+import type { Contract as ThreadsContract } from '#features/threads/fe/contract.ts';
+import type { Contract as FlowsContract } from '#features/flows/fe/contract.ts';
 
 // The inbox each plugin's contract declares, as codegen reads it
 type ThreadsAccepts = PluginInboxOf<ThreadsContract>;

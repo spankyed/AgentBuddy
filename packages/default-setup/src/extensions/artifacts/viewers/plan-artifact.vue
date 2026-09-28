@@ -53,7 +53,7 @@
 import { computed } from 'vue'
 import { ClipboardList } from 'lucide-vue-next'
 import type { ArtifactItem } from '@abuddy/sdk/artifacts'
-import type { PlanArtifactContent, PlanStatus } from '@/features/threads/be/types'
+import type { PlanArtifactContent, PlanStatus } from '#features/threads/be/types.ts'
 import TiptapEditor from '@abuddy/ui/components/tiptap/TiptapEditor'
 import CopyButton from '@abuddy/ui/design/CopyButton'
 

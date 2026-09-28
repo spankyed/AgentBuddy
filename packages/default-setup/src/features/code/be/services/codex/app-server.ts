@@ -11,7 +11,7 @@
 import { spawn, type ChildProcess } from 'child_process'
 import { createInterface, type Interface } from 'readline'
 import { createLogger } from '@abuddy/sdk/logger'
-import { resolveForService } from '../../utils/resolve-cli'
+import { resolveForService } from '../../utils/resolve-cli.ts'
 import type {
   ServerStatus,
   ApprovalDecision,
@@ -25,7 +25,7 @@ import type {
   TurnStartParams,
   ConsumerHandlers,
   ListMcpServersParams,
-} from './types'
+} from './types.ts'
 
 const logger = createLogger('codex-app-server')
 

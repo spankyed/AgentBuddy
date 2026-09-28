@@ -48,6 +48,7 @@ the renderer.
 | `./build/discover` | `build/discover.ts` | `discoverBuiltInPacksForBuild`, used by the API tsup config and the renderer's Vite and Tailwind configs, and `builtInPackLoadersModule`, the loader map that config generates for the bundle — the only way a packaged app reaches a built-in pack (`tests/build/pack-loaders.spec.ts`) |
 | `./build/shared-deps` | `build/shared-deps.ts` | `SHARED_INSTANCE_PACKAGES` (and `APP_ONLY_EXPORTS`, `sharedInstanceSpecifiers`, `sharedInstanceExports`, `sharedInstanceExternals`, `sharedInstancePackage`), `SHARED_DEPS`, `SDK_FE_MODULES`, `getSharedFeDeps`, `getUiFeModules`, `getSharedBeDeps`, `findSdkVersion` |
 | `./build/source-resolution` | `build/source-resolution.ts` | `assertSourceResolution`, `withoutSourceCondition` |
+| `./build/published-manifest` | `build/published-manifest.ts` | What a tarball may say and what the build stages for npm: `publishedManifest` (the workspace manifest without the checkout-only `@abuddy/source` branches, an entry one was the whole of, `scripts` and `devDependencies`), `workspacePackList` (what `npm pack` would ship, asked of npm), `stagePublishTree` (`packages/<pkg>/publish/`, which `PUBLISHED_TREES` publishes), `manifestPaths`/`missingPublishedPaths` |
 
 ## Data dirs
 
@@ -301,7 +302,7 @@ What opening an app's database needs, shared by the API's boot and `abuddy db`, 
 - `bus/`: `app-bus` (`createAppBus()` on the SDK test host) and `client-events` (`receiveClientEvent`).
 - `secrets/`: `store` (uses `memoryKeyVault`) and `private-file`.
 - `services/`: `inference` (provider URLs, model kinds) and `host-runtime` (`createHostRuntime`'s members, and a reset's order: shutdown hooks, stores, `onInit`, migrations, seeds, external packs included; `startPacks` runs no pack migration or seed after a failed app migration).
-- `build/`: `source-resolution`, `shared-deps` (`APP_ONLY_EXPORTS` stay out of both bridges).
+- `build/`: `source-resolution`, `shared-deps` (`APP_ONLY_EXPORTS` stay out of both bridges), `published-manifest` (what a published manifest drops and what a staged tree holds: the source branch at any depth, an entry it was the whole of, `scripts`, and npm's force-included files, which is why staging asks npm rather than reading `files`).
 - Related suites elsewhere:
   - `packages/api/tests/runtime/` (`secrets`, `bus-client-connected`, `bound-runtime`, `host-data-services` (with an old backup's import moving the app's state), `restart-persistence`, and `app-reset`: a reset on the built-in packs)
   - `packages/abuddy-ears/tests/lmdb/` (the LMDB adapter, sharded router, query layer and `openLmdbStore`)

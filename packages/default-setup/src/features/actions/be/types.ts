@@ -1,4 +1,4 @@
-import { EARS } from '@/__generated__/ears';
+import { EARS } from '#generated/ears.ts';
 
 import type { ActionEntity } from '@abuddy/sdk';
 

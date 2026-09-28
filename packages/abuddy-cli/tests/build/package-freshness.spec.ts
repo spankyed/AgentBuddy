@@ -1,13 +1,10 @@
 import { spawnSync } from 'node:child_process';
+import { createHash } from 'node:crypto';
 import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
-import {
-  BUILD_UNITS, CHECKOUT_MARKER, fingerprintInputs, fingerprintUnit, STAMP_VERSION, staleMessage, stampFile,
-  stampedBuild, stampedRun, stampedRunAll, unitStaleReason, withBuildLock, type BuildIntent, type BuildUnit,
-} from '@abuddy/host/build/packages-built';
-import { PACKED_PACKAGES, REPO_ROOT } from '@app/publish-checks';
+import { ABSENT, ALLOW_UNBUILT, BUILD_UNITS, buildScriptFor, changedInputs, CHECKOUT_MARKER, covers, declaredPaths, fingerprintInputs, fingerprintUnit, fingerprintWithDigests, freshnessSweep, inputFiles, INPUTS_CHANGED, repoRelative, NOT_A_BUILD_INPUT, REPO_ROOT, staleMessage, stampRecord, STAMP_VERSION, stampedBuild, stampedRun, stampedRunAll, stampFile, unbuiltRefusal, undiffableReason, unitStaleReason, withBuildLock, type BuildIntent, type BuildUnit } from '@abuddy/host/build/packages-built';
 
 /**
  * The freshness rule behind `npm test -w @abuddy/cli`'s pretest (@abuddy/host/build/packages-built):
@@ -104,18 +101,71 @@ describe('the watched input set', () => {
     expect(missing).toEqual([]);
   });
 
-  it('is separate from the packages a consumer fixture installs', () => {
-    // Widening the watch list must not change what installPublishedPackages() packs
-    expect(Object.keys(PACKED_PACKAGES).sort()).toEqual(['ears', 'sdk', 'ui']);
-    for (const name of Object.keys(PACKED_PACKAGES)) expect(BUILD_UNITS[`@abuddy/${name}`]).toBeDefined();
-  });
-
   it('gives each workspace its own stamp, outside every output tree', () => {
     const stamps = Object.keys(BUILD_UNITS).map(stampFile);
     expect(new Set(stamps).size).toBe(stamps.length);
     for (const [workspace, unit] of Object.entries(BUILD_UNITS)) {
       for (const output of unit.outputs) expect(stampFile(workspace).startsWith(output)).toBe(false);
     }
+  });
+});
+
+/**
+ * `buildScriptFor` reads a workspace's own `build:package` to answer how it is built — which is what the
+ * exemption above turns on, and what nothing tested.
+ *
+ * Against a fixture rather than the repo, because the repo cannot be used: `build:package` lives in a
+ * `package.json` that is one of the unit's declared inputs, so editing it to see the answer change makes the
+ * unit stale, and this file then refused to run. That is why it takes a `root`.
+ */
+describe('buildScriptFor', () => {
+  /** A tree with one workspace in it, as `buildScriptFor` walks one */
+  const treeWith = (manifest: Record<string, unknown>): string => {
+    const root = tempDir();
+    fs.mkdirSync(path.join(root, 'packages', 'thing'), { recursive: true });
+    fs.writeFileSync(path.join(root, 'packages', 'thing', 'package.json'), JSON.stringify(manifest));
+    return root;
+  };
+
+  // The two answers the exemption reads, and the only difference between them is the manifest
+  it.each([
+    ['bundles, so it inlines host', 'tsx ../../scripts/bundle-package.ts .', 'scripts/bundle-package.ts'],
+    ['compiles, so it does not', 'tsx ../../scripts/build-package.ts .', 'scripts/build-package.ts'],
+  ])('reads a workspace that %s', (_what, script, expected) => {
+    const root = treeWith({ name: '@x/thing', scripts: { 'build:package': script } });
+    expect(buildScriptFor('@x/thing', root)).toBe(expected);
+  });
+
+  it('refuses a workspace whose build:package names no script under scripts/', () => {
+    const root = treeWith({ name: '@x/thing', scripts: { 'build:package': 'tsdown' } });
+    expect(() => buildScriptFor('@x/thing', root)).toThrow(/@x\/thing's build:package names no script/);
+  });
+
+  it('refuses a name no manifest declares', () => {
+    const root = treeWith({ name: '@x/thing', scripts: { 'build:package': 'tsx ../../scripts/build-package.ts .' } });
+    expect(() => buildScriptFor('@x/other', root)).toThrow(/no packages\/\* declares the name @x\/other/);
+  });
+});
+
+describe('refusing an unbuilt tree', () => {
+  /**
+   * Gated on `CI` this never fired, because this repo's CI is off by design — and thirteen spec files sit
+   * behind the `false` it used to return, nine of them all of `@app/publish-checks`. Put `process.env.CI`
+   * back in place of the escape and the first case below passes on an unbuilt tree, which is the bug.
+   */
+  it('refuses, naming the build command and the way to run anyway', () => {
+    const refusal = unbuiltRefusal(false, 'npm run packages:build', {});
+
+    expect(refusal).toContain('npm run packages:build');
+    expect(refusal).toContain(ALLOW_UNBUILT);
+  });
+
+  it('lets a caller through when the escape is set, since it asked for a run that checks nothing', () => {
+    expect(unbuiltRefusal(false, 'npm run packages:build', { [ALLOW_UNBUILT]: '1' })).toBeNull();
+  });
+
+  it('says nothing when the packages are built', () => {
+    expect(unbuiltRefusal(true, 'npm run packages:build', {})).toBeNull();
   });
 });
 
@@ -153,16 +203,89 @@ describe('the stamp protocol', () => {
     expect(unitStaleReason(widened, stamp)).toMatch(/inputs changed/);
   });
 
-  // This module decides whether to build; it cannot change what a build emits
+  // These modules decide whether to build; none can change what a build emits. The list is
+  // `NOT_A_BUILD_INPUT`, shared with `chain-inputs.spec.ts`' closure guard, which would otherwise demand
+  // exactly what this refuses — two lists here would be two answers to one question.
+  //
+  // Asked over **resolved** files rather than the declared strings, because an input may be a directory. This
+  // compared declarations until 2026-09-27, and a declaration of the whole `abuddy-host/src/build` then
+  // satisfied it while violating it: the directory contains `packages-built.ts` without equalling it, so the
+  // refusal and the guard demanding the same file coexisted for two commits. `inputFiles` carries the rule.
   it('does not watch the code that decides freshness', () => {
-    const watched = new Set(Object.values(BUILD_UNITS).flatMap((unit) => [...unit.inputs]));
-    for (const rule of ['scripts/ensure-packages-built.ts', 'packages/abuddy-host/src/build/packages-built.ts']) {
-      expect(watched, rule).not.toContain(path.join(REPO_ROOT, rule));
-    }
-    // @abuddy/testing and @abuddy/cli still watch all of abuddy-host/src, which their bundles inline
-    for (const workspace of ['@abuddy/testing', '@abuddy/cli']) {
+    expect(Object.keys(NOT_A_BUILD_INPUT).length, 'an empty list makes this case vacuous').toBeGreaterThan(0);
+    // A bundle that inlines @abuddy/host emits that source, so watching it is right — derived from the
+    // workspace's own `build:package` rather than naming the two units, which is a fact about how they build.
+    // What `buildScriptFor` makes of a manifest is covered by `describe('buildScriptFor')` below, against a
+    // fixture: editing a real `build:package` to test it makes that unit stale, and a stale unit used to stop
+    // this file running at all.
+    const inlinesHost = (workspace: string) => buildScriptFor(workspace) === 'scripts/bundle-package.ts';
+    const offences = Object.keys(BUILD_UNITS).flatMap((workspace) => {
+      if (inlinesHost(workspace)) return [];
+      const resolved = new Set(BUILD_UNITS[workspace].inputs.flatMap((input) => inputFiles(input)));
+      return Object.keys(NOT_A_BUILD_INPUT)
+        .filter((rule) => resolved.has(rule))
+        .map((rule) => `${workspace} watches ${rule} — ${NOT_A_BUILD_INPUT[rule]}`);
+    });
+    expect(offences).toEqual([]);
+
+    // The other direction, for the units that are exempt: they watch all of abuddy-host/src *because* they
+    // inline it, so the exemption above is not a hole they could fall through by declaring nothing
+    const bundles = Object.keys(BUILD_UNITS).filter(inlinesHost);
+    expect(bundles.length, 'no unit inlines host, so the exemption above is vacuous').toBeGreaterThan(0);
+    for (const workspace of bundles) {
       expect(new Set(BUILD_UNITS[workspace].inputs), workspace).toContain(path.join(REPO_ROOT, 'packages', 'abuddy-host', 'src'));
     }
+  });
+});
+
+describe('covers', () => {
+  /**
+   * The one thing this must not get wrong, and the reason the separator is in the comparison. Three questions
+   * about declared paths used to each write it out — is this file excluded, whose output is it, does one step's
+   * input tree hold another's — and a prefix match without the separator answers all three wrongly for a
+   * sibling whose name starts with the same letters.
+   */
+  it('covers a path under it, and not a sibling whose name merely starts the same', () => {
+    expect(covers('src/build', 'src/build/packages-built.ts')).toBe(true);
+    expect(covers('src/build', 'src/build')).toBe(true);
+    expect(covers('src/build', 'src/buildings/index.ts')).toBe(false);
+    expect(covers('src/build/packages-built.ts', 'src/build')).toBe(false);
+  });
+});
+
+/**
+ * The other half of `covers`: both sides of every comparison it makes have to be spelled the same way.
+ *
+ * One side is always a hand-written POSIX literal — `chain-steps.ts` declares `'packages/default-setup/dist'` —
+ * and the other came from `path.relative`, which is backslash-separated on Windows, where nothing matched and a
+ * unit hashed its own declared outputs into its own fingerprint. Neither case below can fail on this platform,
+ * because here `path.sep` is already `/`; what they hold is the thing that makes the other platform correct.
+ */
+describe('repoRelative', () => {
+  /** So landing this changed no fingerprint here, which is what `api:stamp`'s committed hashes also prove */
+  it('is what path.relative already gives on a platform whose separator is a slash', () => {
+    const f = fixture();
+    expect(path.sep, 'this platform separates with something else, so the case below means more than it says').toBe('/');
+    expect(repoRelative(path.join(f.src, 'a.ts'))).toBe(path.relative(REPO_ROOT, path.join(f.src, 'a.ts')));
+  });
+
+  /**
+   * And it stays the only boundary. A bare `path.relative(REPO_ROOT, …)` returning to any of these is how one side
+   * of a `covers` comparison drifts back out of spelling with the other, which nothing on this platform would
+   * notice — so the check is on the source rather than on a result.
+   */
+  it('is the only way these modules make a repo-relative path', () => {
+    const onTheCachePath = ['packages/abuddy-host/src/build/packages-built.ts', 'scripts/lib/chain-steps.ts',
+      'scripts/lib/chain-output.ts', 'scripts/chain.ts'];
+    const offenders = onTheCachePath.flatMap((file) => {
+      const source = fs.readFileSync(path.join(REPO_ROOT, file), 'utf-8');
+      return source.split('\n')
+        .map((line, index) => ({ at: `${file}:${index + 1}`, line }))
+        // The definition itself is the one place it may appear
+        .filter(({ line }) => line.includes('path.relative(REPO_ROOT') && !line.includes('export const repoRelative'))
+        .map(({ at }) => at);
+    });
+    expect(offenders, 'use repoRelative, or a covers comparison has one POSIX side and one platform side').toEqual([]);
   });
 });
 
@@ -332,6 +455,240 @@ describe('the staleness verdict', () => {
   });
 });
 
+/**
+ * Which input moved, for a report that has to name it rather than say a write happened.
+ *
+ * The shipped version of that report walked mtimes of its own, and the two answers disagreed the first time
+ * it mattered: it named a compiled seed that `tests/e2e/dev-reload.spec.ts` rewrites with the bytes it already
+ * had, and the diagnosis that followed was about the wrong file. Every case here is the pair of questions those
+ * two walks answer differently — `it names nothing when only an mtime moved` is the one that fails on an mtime
+ * walk, and is why this exists.
+ */
+describe('which inputs changed', () => {
+  /** What a successful run records beside the fingerprint: the half that lets the next run explain itself */
+  const recordFor = (unit: BuildUnit) => ({ files: fingerprintWithDigests(unit).files, declared: declaredPaths(unit) });
+  // Through the same helper the subject uses, or these expectations disagree with it on Windows
+  const rel = repoRelative;
+
+  it('names the file whose bytes changed', () => {
+    const f = fixture();
+    const recorded = recordFor(f.unit);
+    fs.writeFileSync(path.join(f.src, 'a.ts'), 'export const a = 2;\n');
+    const changes = changedInputs(f.unit, recorded);
+    expect(changes.changed).toEqual([rel(path.join(f.src, 'a.ts'))]);
+    expect([...changes.added, ...changes.removed, ...changes.gained, ...changes.lost]).toEqual([]);
+  });
+
+  it('names nothing when only an mtime moved, which is what a walk of its own gets wrong', () => {
+    const f = fixture();
+    const recorded = recordFor(f.unit);
+    const written = fs.readFileSync(path.join(f.src, 'a.ts'));
+    // What a test that edits a file and puts it back does: the mtime moves twice, the bytes end where they were
+    fs.writeFileSync(path.join(f.src, 'a.ts'), 'export const a = 2;\n');
+    fs.writeFileSync(path.join(f.src, 'a.ts'), written);
+    const future = new Date(Date.now() + 60 * 60 * 1000);
+    fs.utimesSync(path.join(f.src, 'nested', 'b.ts'), future, future);
+    const changes = changedInputs(f.unit, recorded);
+    expect([...changes.changed, ...changes.added, ...changes.removed]).toEqual([]);
+    // And the verdict agrees there is nothing to explain, which is the property the two have to share
+    expect(unitStaleReason(f.unit, stampFor(f))).toBeNull();
+  });
+
+  it('names an added file as added and a deleted one as removed', () => {
+    const f = fixture();
+    const recorded = recordFor(f.unit);
+    fs.writeFileSync(path.join(f.src, 'c.ts'), 'export const c = 3;\n');
+    fs.rmSync(path.join(f.src, 'nested', 'b.ts'));
+    const changes = changedInputs(f.unit, recorded);
+    expect(changes.added).toEqual([rel(path.join(f.src, 'c.ts'))]);
+    expect(changes.removed).toEqual([rel(path.join(f.src, 'nested', 'b.ts'))]);
+    expect(changes.changed).toEqual([]);
+  });
+
+  it('ignores a change under the unit\'s own output, as the fingerprint does', () => {
+    const f = fixture();
+    // The output inside the input tree, the shape that makes a step self-invalidating
+    const nested = path.join(f.src, 'generated');
+    fs.mkdirSync(nested, { recursive: true });
+    fs.writeFileSync(path.join(nested, 'emitted.ts'), 'export const emitted = 1;\n');
+    const unit = { inputs: f.unit.inputs, outputs: [...f.unit.outputs, nested] };
+    const recorded = recordFor(unit);
+    fs.writeFileSync(path.join(nested, 'emitted.ts'), 'export const emitted = 2;\n');
+    expect(changedInputs(unit, recorded).changed).toEqual([]);
+  });
+
+  it('says the declared set moved, and names no file, when a unit gains or loses a watched path', () => {
+    const f = fixture();
+    const recorded = recordFor(f.unit);
+    // An excluded path that holds nothing: the declared set moves and not one byte under the inputs does
+    const wider = { ...f.unit, excludes: [path.join(f.root, 'nowhere')] };
+    const changes = changedInputs(wider, recorded);
+    expect(changes.gained).toEqual([rel(path.join(f.root, 'nowhere'))]);
+    expect([...changes.changed, ...changes.added, ...changes.removed]).toEqual([]);
+    // Which is a real staleness, and the cause a file list cannot express
+    expect(unitStaleReason(wider, stampFor(f))).toMatch(/inputs changed/);
+
+    const narrower = { inputs: [f.unit.inputs[0]!], outputs: f.unit.outputs };
+    expect(changedInputs(narrower, recorded).lost).toEqual([rel(path.join(f.root, 'package.json'))]);
+  });
+
+  it('collects a digest per file that the hash taken beside it agrees with', () => {
+    const f = fixture();
+    const files: Record<string, string> = {};
+    const collected = fingerprintInputs(f.unit.inputs, undefined, [], (file, digest) => { files[file] = digest; });
+    expect(collected, 'collecting moved the verdict').toBe(fingerprintInputs(f.unit.inputs));
+    expect(Object.keys(files).map((file) => path.basename(file)).sort()).toEqual(['a.ts', 'b.ts', 'package.json']);
+    const a = rel(path.join(f.src, 'a.ts'));
+    expect(files[a]).toBe(createHash('sha256').update(fs.readFileSync(path.join(f.src, 'a.ts'))).digest('hex'));
+
+    // A normaliser narrows what "changed" means, and a digest has to be narrowed the same way or a report
+    // names a file whose prose moved while the hash it explains says nothing did
+    const shouted: Record<string, string> = {};
+    fingerprintInputs(f.unit.inputs, (contents) => contents.toString('utf-8').toUpperCase(), [], (file, digest) => { shouted[file] = digest; });
+    expect(shouted[a]).toBe(createHash('sha256').update(fs.readFileSync(path.join(f.src, 'a.ts'), 'utf-8').toUpperCase()).digest('hex'));
+    expect(shouted[a]).not.toBe(files[a]);
+
+    // The map's keys are the files the hash walked and no others, so a diff over it cannot name a file the
+    // verdict never read. A declared input that is not there is not walked at all — `ABSENT` is for the
+    // narrower case of a file that goes between the walk and the read, which the hash counts and so must this
+    const absent = path.join(f.root, 'tsdown.config.ts');
+    const missing: Record<string, string> = {};
+    fingerprintInputs([...f.unit.inputs, absent], undefined, [], (file, digest) => { missing[file] = digest; });
+    expect(missing[rel(absent)]).toBeUndefined();
+    expect(Object.keys(missing).sort()).toEqual(Object.keys(files).sort());
+    expect(ABSENT, 'the word the hash frames a vanished file with, so a digest map agrees with it').toBe('absent');
+  });
+
+  it('records what the next run reads back', async () => {
+    const f = fixture();
+    const stamp = path.join(f.root, 'stamp.json');
+    await stampedRun('fixture', f.unit, stamp, () => {});
+    const record = stampRecord(stamp);
+    expect(record?.files, 'a run recorded no per-file digests, so nothing can explain its staleness').toBeDefined();
+    const recorded = { files: record!.files!, declared: record!.declared! };
+    expect(changedInputs(f.unit, recorded).changed).toEqual([]);
+    fs.writeFileSync(path.join(f.src, 'a.ts'), 'export const a = 2;\n');
+    expect(changedInputs(f.unit, recorded).changed).toEqual([rel(path.join(f.src, 'a.ts'))]);
+  });
+});
+
+/**
+ * Asking about many units at one moment, over one reading of the tree.
+ *
+ * Units overlap: twelve chain steps declare 18,001 files between them and 3,518 distinct ones, so the primitive
+ * reads the shared trees five times over. A sweep reads each once. What it buys is I/O, not a different
+ * derivation — the fingerprints are the same ones — so the first case here is the equivalence everything else
+ * rests on, and the rest are about the lifetime that equivalence depends on.
+ */
+describe('a freshness sweep', () => {
+  it('gives the verdict an unshared check gives, for every unit it is asked about', () => {
+    const [fresh, moved] = [fixture(), fixture()];
+    const stamps = { fresh: stampFor(fresh), moved: stampFor(moved) };
+    fs.writeFileSync(path.join(moved.src, 'a.ts'), 'export const a = 2;\n');
+    const sweep = freshnessSweep();
+    expect(sweep.staleReason(fresh.unit, stamps.fresh)).toBe(unitStaleReason(fresh.unit, stamps.fresh));
+    expect(sweep.staleReason(moved.unit, stamps.moved)).toBe(unitStaleReason(moved.unit, stamps.moved));
+    expect(sweep.staleReason(fresh.unit, stamps.fresh)).toBeNull();
+    expect(sweep.staleReason(moved.unit, stamps.moved)).toMatch(/inputs changed/);
+  });
+
+  /**
+   * Proven without reaching inside it: a file the sweep has already read stays readable to it after the
+   * filesystem stops handing it over. An unshared check reports `could not be read` at that point, which is what
+   * the second half asserts — so this fails the moment the sweep stops sharing.
+   */
+  it('reads each file once, however many units declare it', () => {
+    const f = fixture();
+    const stamp = stampFor(f);
+    const shared = { inputs: f.unit.inputs, outputs: f.unit.outputs };
+    const sweep = freshnessSweep();
+    expect(sweep.staleReason(f.unit, stamp)).toBeNull();
+    fs.chmodSync(path.join(f.src, 'a.ts'), 0o000);
+    try {
+      expect(sweep.staleReason(shared, stamp), 'the second unit read the file again').toBeNull();
+      expect(unitStaleReason(shared, stamp), 'an unshared check should have hit the unreadable file').toMatch(/could not be read/);
+    } finally {
+      fs.chmodSync(path.join(f.src, 'a.ts'), 0o644);
+    }
+  });
+
+  /**
+   * The walk's half of the snapshot, which only a memoised walk can satisfy: a file that did not exist when the
+   * sweep first looked at a target is not there for it, however many units declare that target afterwards.
+   */
+  it('does not see a file added after it started, where a later sweep does', () => {
+    const f = fixture();
+    const stamp = stampFor(f);
+    const sweep = freshnessSweep();
+    expect(sweep.staleReason(f.unit, stamp)).toBeNull();
+    fs.writeFileSync(path.join(f.src, 'c.ts'), 'export const c = 3;\n');
+    expect(sweep.staleReason(f.unit, stamp), 'it walked the target again').toBeNull();
+    expect(freshnessSweep().staleReason(f.unit, stamp)).toMatch(/inputs changed/);
+  });
+
+  /** Why a sweep must be short-lived, asserted rather than left to its comment */
+  it('does not see a change made after it started, where a later sweep does', () => {
+    const f = fixture();
+    const stamp = stampFor(f);
+    const sweep = freshnessSweep();
+    expect(sweep.staleReason(f.unit, stamp)).toBeNull();
+    fs.writeFileSync(path.join(f.src, 'a.ts'), 'export const a = 2;\n');
+    expect(sweep.staleReason(f.unit, stamp), 'it answered from a tree that has moved on').toBeNull();
+    expect(freshnessSweep().staleReason(f.unit, stamp)).toMatch(/inputs changed/);
+  });
+
+  /** Memoising must never turn an unreadable tree into a fresh one, so the first read still has to fail loudly */
+  it('reports a read that fails for any reason other than absence', () => {
+    const f = fixture();
+    const stamp = stampFor(f);
+    fs.chmodSync(f.src, 0o000);
+    try {
+      expect(freshnessSweep().staleReason(f.unit, stamp)).toMatch(/could not be read/);
+    } finally {
+      fs.chmodSync(f.src, 0o755);
+    }
+  });
+
+  it('finds the same changed inputs as a check that reads for itself', () => {
+    const f = fixture();
+    const recorded = { files: fingerprintWithDigests(f.unit).files, declared: declaredPaths(f.unit) };
+    fs.writeFileSync(path.join(f.src, 'a.ts'), 'export const a = 2;\n');
+    fs.rmSync(path.join(f.src, 'nested', 'b.ts'));
+    expect(freshnessSweep().changedInputs(f.unit, recorded)).toEqual(changedInputs(f.unit, recorded));
+  });
+});
+
+/**
+ * Whether a stamp's digests may be diffed at all, which the verdict and the explanation have to agree on.
+ *
+ * The version clause is the one an explainer forgets: `unitStaleReason` refuses a stamp from another protocol,
+ * and an explainer that diffs its digests anyway printed a file name beside a reason saying the stamp could not
+ * be compared — on one line, contradicting itself.
+ */
+describe('undiffableReason', () => {
+  const complete = { version: STAMP_VERSION, fingerprint: 'abc', declared: ['packages/x/src'], files: { 'packages/x/src/a.ts': 'd' } };
+
+  it('lets a complete stamp of this protocol through', () => {
+    expect(undiffableReason(complete)).toBeNull();
+  });
+
+  /** The clause that was missing, and the only one here that can give a confidently wrong answer when it is */
+  it('refuses a stamp from another protocol, however complete it looks', () => {
+    expect(undiffableReason({ ...complete, version: STAMP_VERSION - 1 })).toBe('its stamp is from another format');
+  });
+
+  it('refuses one with nothing to diff against', () => {
+    expect(undiffableReason(undefined)).toBe('has not run yet');
+    expect(undiffableReason({ version: STAMP_VERSION })).toBe('has not run yet');
+    expect(undiffableReason({ version: STAMP_VERSION, fingerprint: 'abc' })).toBe('its last run recorded no per-file digests');
+  });
+
+  /** In `unitStaleReason`'s order, so the two cannot disagree about which complaint comes first */
+  it('reports a missing fingerprint before a version it does not know', () => {
+    expect(undiffableReason({ version: STAMP_VERSION - 1 })).toBe('has not run yet');
+  });
+});
+
 describe('the stale message', () => {
   it('names every stale workspace with its own reason', () => {
     const message = staleMessage([
@@ -341,6 +698,33 @@ describe('the stale message', () => {
     expect(message.split('\n')).toHaveLength(2);
     expect(message).toContain('@abuddy/sdk: its inputs changed');
     expect(message).toContain('@abuddy/ui: no stamp');
+  });
+
+  /**
+   * The reason is the same sentence for every healthy unit — `its inputs changed since the last successful run`
+   * is the only verdict one can have — so it is the file that tells the five callers of this message apart. Four
+   * of them are a refusal someone is stopped by, including the one a pack author reads about a checkout that may
+   * not be theirs.
+   */
+  it('names what moved, after the reason that is the same for all of them', () => {
+    const message = staleMessage([
+      { workspace: '@abuddy/sdk', reason: INPUTS_CHANGED, moved: 'changed src/types/entities.ts (and 2 more)' },
+    ]);
+    expect(message).toBe('  @abuddy/sdk: its inputs changed since the last successful run — changed src/types/entities.ts (and 2 more)');
+  });
+
+  /**
+   * A suffix rather than a line of its own, because a reader counts these against the "Rebuilding N of M" printed
+   * under them — which is what the case above pins, and why it needed no edit when this arrived.
+   */
+  it('keeps one line per unit whether or not it can say what moved', () => {
+    const message = staleMessage([
+      { workspace: '@abuddy/sdk', reason: INPUTS_CHANGED, moved: 'changed src/a.ts' },
+      { workspace: '@abuddy/ui', reason: INPUTS_CHANGED },
+    ]);
+    expect(message.split('\n')).toHaveLength(2);
+    expect(message.split('\n')[1], 'a stamp from before the digests existed still reads as it did')
+      .toBe('  @abuddy/ui: its inputs changed since the last successful run');
   });
 });
 

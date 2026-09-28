@@ -1,16 +1,8 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
-import { validateName, toLabel, writeIfNotExists, logCreated, hasFlag } from './templates';
+import { renderTemplate } from '../../templates.ts';
+import { validateName, toLabel, writeIfNotExists, logCreated, hasFlag } from './write';
 
-const FLOW_TEMPLATE = (label: string) => `import type { FlowDSL } from '@abuddy/sdk/build';
-import { entry, keepAlive } from '#generated/flow-helpers';
-
-export default {
-  "${label}": [
-    entry([keepAlive()]),
-  ],
-} satisfies FlowDSL;
-`;
 
 const HELP = `
 Usage: abuddy add flow <name>
@@ -43,7 +35,7 @@ export async function addFlow(args: string[], root: string) {
   const filePath = path.join(root, 'src', 'seeds', 'flows', `${name}.ts`);
 
   const created: string[] = [];
-  if (writeIfNotExists(filePath, FLOW_TEMPLATE(label))) {
+  if (writeIfNotExists(filePath, renderTemplate('pack/src/seeds/flows/flow.ts', { LABEL: label }))) {
     created.push(filePath);
   }
 

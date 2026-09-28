@@ -5,8 +5,8 @@
 // `abuddy.json` names it at `features[].plugin.contract`.
 import type { PluginInbox } from '@abuddy/sdk/fe'
 import type { ActionEntity, ActionParameter } from '@abuddy/sdk'
-import type { EARS } from '@/__generated__/ears'
-import type { Category } from '@/__generated__/types'
+import type { EARS } from '#generated/ears.ts'
+import type { Category } from '#generated/types.ts'
 
 export interface ActionsContext {
   selectedActionId?: EARS.EntityId;

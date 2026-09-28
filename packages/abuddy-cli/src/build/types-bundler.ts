@@ -2,9 +2,9 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { errorMessage } from '@abuddy/sdk/utils/pure';
 
-/** A package specifier (`vue`, `@abuddy/ears`), not a relative path or a tsconfig/imports alias */
+/** A package specifier (`vue`, `@abuddy/ears`), not a relative path or a pack's own `#` subpath */
 export function isPackageSpecifier(id: string): boolean {
-  return !id.startsWith('.') && !path.isAbsolute(id) && !id.startsWith('#') && !id.startsWith('@/') && !id.startsWith('\0');
+  return !id.startsWith('.') && !path.isAbsolute(id) && !id.startsWith('#') && !id.startsWith('\0');
 }
 
 /**

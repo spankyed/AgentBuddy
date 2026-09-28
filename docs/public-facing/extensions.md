@@ -41,7 +41,7 @@ It adds `myStepStep` to the `steps.register` barrel, `myStepStepFE` to its `-fe.
 ```typescript
 import type { StepDefinition, StepCompileResult, StepValidationError } from '@abuddy/sdk/steps';
 import { EARS } from '@abuddy/sdk';
-import type { DSLMyStepNode } from './types';
+import type { DSLMyStepNode } from './types.ts';
 
 export const myStepStepBuild: StepDefinition = {
   type: 'my-step',
@@ -208,7 +208,7 @@ Three barrels, each exporting an array:
 ```typescript
 // src/extensions/steps/register.ts
 import type { StepDefinition } from '@abuddy/sdk/steps';
-import { myStepStep } from './my-step';
+import { myStepStep } from './my-step/index.ts';
 
 export const steps: StepDefinition[] = [
   myStepStep,
@@ -306,7 +306,7 @@ export const artifacts: ArtifactDefinition[] = [
 ```typescript
 // src/extensions/artifacts/register-fe.ts
 import type { ArtifactDefinition } from '@abuddy/sdk/artifacts';
-import { artifacts } from './register';
+import { artifacts } from './register.ts';
 import ChartArtifact from './viewers/chart-artifact.vue';
 
 const componentMap: Record<string, unknown> = {
@@ -408,7 +408,7 @@ export const blocks: BlockDefinition[] = [
 ```typescript
 // src/extensions/blocks/register-fe.ts
 import type { BlockDefinition } from '@abuddy/sdk/blocks';
-import { blocks } from './register';
+import { blocks } from './register.ts';
 import RatingBlock from './display/RatingBlock.vue';
 import ColorPickerInput from './input/ColorPickerInput.vue';
 

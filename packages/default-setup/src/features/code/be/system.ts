@@ -14,28 +14,28 @@
  * Priority on startup:
  *   baseDirectory > defaultBaseDirectory > first workspace project > null
  */
-import type { Contract } from './contract';
-import type { GeneralSettings } from '@/app-settings/types';
-import { services } from '@/__generated__/services';
-import { broadcastToPlugin } from '@/__generated__/events';
-import { clearCliPathCache, isCliName, testCli } from './utils/resolve-cli';
+import type { Contract } from './contract.ts';
+import type { GeneralSettings } from '#app-settings/types.ts';
+import { services } from '#generated/services.ts';
+import { broadcastToPlugin } from '#generated/events.ts';
+import { clearCliPathCache, isCliName, testCli } from './utils/resolve-cli.ts';
 import { createLogger } from '@abuddy/sdk/logger';
 
 const cliLogger = createLogger('code');
 import { setup, enqueueActions, assign, type AnyActorRef } from 'xstate'
 
 import { defineSystem } from '@abuddy/sdk/framework'
-import { GitRepository } from './services/git'
-import { GitWatcherService } from './services/gitwatcher'
+import { GitRepository } from './services/git.ts'
+import { GitWatcherService } from './services/gitwatcher.ts'
 
 // child systems; their events come from the contract, which is where every child's now live
-import { explorerSystem } from './features/explorer'
-import { searchSystem } from './features/search'
-import { commitSystem } from './features/commit'
-import { pullRequestSystem } from './features/pull-request'
-import { terminalSystem } from './features/terminal'
-import { actionsSystem } from './features/actions'
-import { promptsSystem } from './features/prompts'
+import { explorerSystem } from './features/explorer.ts'
+import { searchSystem } from './features/search.ts'
+import { commitSystem } from './features/commit.ts'
+import { pullRequestSystem } from './features/pull-request.ts'
+import { terminalSystem } from './features/terminal.ts'
+import { actionsSystem } from './features/actions.ts'
+import { promptsSystem } from './features/prompts.ts'
 
 /** One of this system's children, by the id it was spawned under */
 function child(self: AnyActorRef, id: string): AnyActorRef | undefined {
@@ -45,8 +45,8 @@ function child(self: AnyActorRef, id: string): AnyActorRef | undefined {
 // Union all incoming events from child systems
 // Union all outgoing events from child systems  
 // Import only the type needed for broadcast event
-import type { CodeConnectedData, CodeSettings } from './types'
-import { ref } from '@/__generated__/ref';
+import type { CodeConnectedData, CodeSettings } from './types.ts'
+import { ref } from '#generated/ref.ts';
 
 export const codeSpec = defineSystem<Contract>();
 

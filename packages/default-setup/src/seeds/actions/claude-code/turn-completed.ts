@@ -11,9 +11,9 @@
  */
 
 import type { ActionMeta } from '@abuddy/sdk/build';
-import type { Services, EntityId } from '@/__generated__/services';
-import { getClaudeState, updateClaudeState, updateChatState, endGoal } from './_helpers/thread-context';
-import { parseUnifiedDiff } from './_helpers/parse-diff';
+import type { Services, EntityId } from '#generated/services.ts';
+import { getClaudeState, updateClaudeState, updateChatState, endGoal } from './_helpers/thread-context.ts';
+import { parseUnifiedDiff } from './_helpers/parse-diff.ts';
 
 export const meta: ActionMeta = {
   label: 'CC: Turn Completed',

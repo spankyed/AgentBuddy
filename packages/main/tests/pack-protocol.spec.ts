@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import * as path from 'node:path';
-import { MIME_TYPES } from '../src/modules/pack-protocol/PackProtocol.js';
+import { MIME_TYPES } from '../src/modules/pack-protocol/PackProtocol.ts';
 
 describe('PackProtocol MIME types', () => {
 

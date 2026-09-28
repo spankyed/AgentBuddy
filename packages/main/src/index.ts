@@ -1,23 +1,23 @@
-import type {AppInitConfig} from './AppInitConfig.js';
-import {createModuleRunner} from './ModuleRunner.js';
-import {disallowMultipleAppInstance} from './modules/SingleInstanceApp.js';
-import {createWindowManagerModule} from './modules/window-manager/index.js';
-import {terminateAppOnLastWindowClose} from './modules/ApplicationTerminatorOnLastWindowClose.js';
-import {hardwareAccelerationMode} from './modules/HardwareAccelerationModule.js';
+import type {AppInitConfig} from './AppInitConfig.ts';
+import {createModuleRunner} from './ModuleRunner.ts';
+import {disallowMultipleAppInstance} from './modules/SingleInstanceApp.ts';
+import {createWindowManagerModule} from './modules/window-manager/index.ts';
+import {terminateAppOnLastWindowClose} from './modules/ApplicationTerminatorOnLastWindowClose.ts';
+import {hardwareAccelerationMode} from './modules/HardwareAccelerationModule.ts';
 // import {autoUpdater} from './modules/AutoUpdater.js';
-import {allowInternalOrigins} from './modules/BlockNotAllowdOrigins.js';
-import {allowExternalUrls} from './modules/ExternalUrls.js';
-import {createApiServer} from './modules/api-server/ApiServer.js';
-import {createSplashScreen} from './modules/splash-screen/index.js';
-import {createMediaProtocol} from './modules/media-protocol/index.js';
-import {createPackProtocol} from './modules/pack-protocol/index.js';
-import {createSpeechRecognition} from './modules/speech-recognition/index.js';
-import {createMacOSAppMenu} from './modules/MacOSAppMenu.js';
-import {createBrowserModule} from './modules/browser/index.js';
-import {createProtocolHandler} from './modules/ProtocolHandler.js';
+import {allowInternalOrigins} from './modules/BlockNotAllowdOrigins.ts';
+import {allowExternalUrls} from './modules/ExternalUrls.ts';
+import {createApiServer} from './modules/api-server/ApiServer.ts';
+import {createSplashScreen} from './modules/splash-screen/index.ts';
+import {createMediaProtocol} from './modules/media-protocol/index.ts';
+import {createPackProtocol} from './modules/pack-protocol/index.ts';
+import {createSpeechRecognition} from './modules/speech-recognition/index.ts';
+import {createMacOSAppMenu} from './modules/MacOSAppMenu.ts';
+import {createBrowserModule} from './modules/browser/index.ts';
+import {createProtocolHandler} from './modules/ProtocolHandler.ts';
 import {app} from 'electron';
-import {initializeMainLogCapture} from './modules/api-server/logger.js';
-import {initAppContext} from './app-context.js';
+import {initializeMainLogCapture} from './modules/api-server/logger.ts';
+import {initAppContext} from './app-context.ts';
 
 
 export async function initApp(initConfig: AppInitConfig) {

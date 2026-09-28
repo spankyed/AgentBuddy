@@ -1,7 +1,7 @@
-import { tx, qx } from '@/__generated__/ears';
-import { EARS } from '@/__generated__/ears';
+import { tx, qx } from '#generated/ears.ts';
+import { EARS } from '#generated/ears.ts';
 
-import { REFERENCES } from '../types';
+import { REFERENCES } from '../types.ts';
 
 /**
  * Extract all note:// link target IDs from markdown content.

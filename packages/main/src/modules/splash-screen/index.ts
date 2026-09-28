@@ -1,2 +1,2 @@
-export { SplashScreen, createSplashScreen } from './SplashScreen.js';
-export { SPLASH_CONFIG } from './constants.js';
+export { SplashScreen, createSplashScreen } from './SplashScreen.ts';
+export { SPLASH_CONFIG } from './constants.ts';

@@ -1,14 +1,14 @@
 import { setup, assign, type ActorRefFrom } from 'xstate'
-import type { DocumentDTO, CollectionDTO, LibraryItem, DocumentItem } from '@/__generated__/types'
-import type { LibraryContext, LibraryInboxEvent } from './contract'
-import type { OutgoingLibraryEvents } from '@/features/library/be/types'
-import type { SearchIndexFormData } from './types/search-index'
-import { sendToSystem } from '@/__generated__/events'
+import type { DocumentDTO, CollectionDTO, LibraryItem, DocumentItem } from '#generated/types.ts'
+import type { LibraryContext, LibraryInboxEvent } from './contract.ts'
+import type { OutgoingLibraryEvents } from '#features/library/be/types.ts'
+import type { SearchIndexFormData } from './types/search-index.ts'
+import { sendToSystem } from '#generated/events.ts'
 import { Trash2 } from 'lucide-vue-next'
 import { contextMenuFn } from '@abuddy/sdk/fe'
 import breadcrumb, { breadcrumbWithParams } from '@abuddy/sdk/fe'
 import { targetIs, TRAIL_CLICK } from '@abuddy/sdk/fe'
-import { tagStorage } from './services/tagStorage'
+import { tagStorage } from './services/tagStorage.ts'
 import { createNavHistory, pushNavHistory, goBack, goForward, canGoBack, canGoForward } from '@abuddy/sdk/fe'
 
 // Helper function to convert DocumentItem to DocumentDTO
@@ -47,7 +47,7 @@ function findItemById(context: LibraryContext, id: string): LibraryItem | undefi
 }
 
 export const id = 'library' as const;
-import type { ContentSection } from '@/features/library/be/types';
+import type { ContentSection } from '#features/library/be/types.ts';
 
 /** The library plugin's actor, as its own components reach it with `usePlugin<LibraryActor>()` */
 export type LibraryActor = ActorRefFrom<typeof librarySystem>

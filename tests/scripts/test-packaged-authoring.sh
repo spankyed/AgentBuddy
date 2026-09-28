@@ -44,7 +44,7 @@ step "Pack @abuddy/ears, @abuddy/sdk, @abuddy/ui, @abuddy/cli and @abuddy/testin
 # rewrites nothing when they already do. packages:build rebuilt all five unconditionally, which deleted and
 # rewrote the dist/ that anything running beside this reads.
 (cd "$ROOT" && npm run packages:ensure >/dev/null)
-for dir in abuddy-ears abuddy-sdk abuddy-ui abuddy-cli/dist/package abuddy-testing/dist/package; do
+for dir in abuddy-ears/publish abuddy-sdk/publish abuddy-ui/publish abuddy-cli/dist/package abuddy-testing/dist/package; do
   (cd "$ROOT/packages/$dir" && npm pack --silent --pack-destination "$WORK" >/dev/null)
 done
 EARS_TGZ="$(ls "$WORK"/abuddy-ears-*.tgz)"
@@ -87,7 +87,7 @@ TS
 node -e '
   const fs = require("fs");
   const file = "src/features/notes/fe/plugin.ts";
-  fs.writeFileSync(file, "import { editors } from \"./editors\";\nconsole.debug(Object.keys(editors));\n" + fs.readFileSync(file, "utf8"));
+  fs.writeFileSync(file, "import { editors } from \"./editors.ts\";\nconsole.debug(Object.keys(editors));\n" + fs.readFileSync(file, "utf8"));
 '
 "$ABUDDY" init-tests
 npm pkg set "devDependencies.@abuddy/testing=file:$TESTING_TGZ"
@@ -117,7 +117,7 @@ node -e '
   fs.writeFileSync("abuddy.json", JSON.stringify(m, null, 2) + "\n");
 '
 cat > src/seeds/flows/notes-heartbeat.ts <<'EOF'
-import { entry, keepAlive } from '#generated/flow-helpers';
+import { entry, keepAlive } from '#generated/flow-helpers.ts';
 
 export default {
   "Notes Heartbeat": [
@@ -170,7 +170,7 @@ export function template(params: Record<string, any>) {
 }
 TS
 cat > src/seeds/flows/notes-summary.ts <<'TS'
-import { entry, keepAlive, on, llm } from '#generated/flow-helpers';
+import { entry, keepAlive, on, llm } from '#generated/flow-helpers.ts';
 
 export default {
   "Notes Summary": [
@@ -185,7 +185,7 @@ TS
 cat > src/features/notes/be/services/digest.ts <<'TS'
 import { Output } from 'ai';
 import { z } from 'zod';
-import { services } from '#generated/services';
+import { services } from '#generated/services.ts';
 
 const Digest = z.object({ summary: z.string(), tags: z.array(z.string()) });
 
@@ -234,7 +234,7 @@ mkdir -p tests/seeds/flows tests/features/notes/be/services
 cat > tests/seeds/demo-notes.spec.ts <<'TS'
 import { describe, expect, it } from 'vitest';
 import { importSeeds } from '@abuddy/testing/harness';
-import { findAll } from '#generated/ears';
+import { findAll } from '#generated/ears.ts';
 import { findRelations } from '@abuddy/ears';
 
 describe('demo notes', () => {
@@ -258,7 +258,7 @@ TS
 cat > tests/features/notes/be/services/digest.spec.ts <<'TS'
 import { describe, expect, it } from 'vitest';
 import { mockInference } from '@abuddy/testing/harness';
-import { services } from '#generated/services';
+import { services } from '#generated/services.ts';
 
 describe('digest service', () => {
   it('digests a note from the structured output inference returns', async () => {
@@ -271,7 +271,7 @@ TS
 cat > tests/seeds/flows/notes-summary.spec.ts <<'TS'
 import { describe, expect, it } from 'vitest';
 import { importFlows, mockInference, importSeeds, startApp } from '@abuddy/testing/harness';
-import { entry, keepAlive, subflow } from '#generated/flow-helpers';
+import { entry, keepAlive, subflow } from '#generated/flow-helpers.ts';
 
 describe('notes summary flow', () => {
   it("runs on default-setup's brain and llm step with inference mocked", async () => {
@@ -320,7 +320,11 @@ grep -v "^/" "$WORK/types-probe.log" || true
 # tsc checked the probe: a config error (no inputs, a bad option) or a crash lists no files. tsc lists real paths.
 grep -qxF "$(pwd -P)/tests/types-probe.ts" "$WORK/types-probe.log" || fail "tsc didn't type-check the types probe"
 # Every error is in other packages' declarations (installed, or dependencies' in .abuddy/deps); errors without a
-# file (config) or anywhere else fail
+# file (config) or anywhere else fail.
+# Don't widen these two prefixes to cover src/: a dependency's facade is inlined at
+# src/__generated__/deps/<packId>.d.ts, and that path being outside the tolerance is what makes this step the proof
+# that a peer its facade imports — zod today, through default-setup — resolves for a pack installed outside this
+# monorepo. Forgiving src/ would swallow exactly that (abuddy-cli's facade-gate.ts says what rests on it).
 if grep "error TS" "$WORK/types-probe.log" | grep -vE "^(node_modules|\.abuddy/deps)/" | grep .; then
   fail "the types probe didn't type-check"
 fi

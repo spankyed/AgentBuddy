@@ -1,18 +1,18 @@
-import type { ThreadsSettings } from '@/__generated__/types';
-import { sendToSystem, broadcastToPlugin } from '@/__generated__/events';
+import type { ThreadsSettings } from '#generated/types.ts';
+import { sendToSystem, broadcastToPlugin } from '#generated/events.ts';
 import { setup } from 'xstate';
 import { performance } from 'node:perf_hooks';
 import { defineSystem } from '@abuddy/sdk/framework';
 import { UnknownBackupDatabasesError } from '@abuddy/sdk/services';
-import type { Contract } from './contract';
-import { executeQuery } from './execute/query';
-import { executeTransaction } from './execute/transaction';
-import { generateSchemaInfo } from './repository/schema';
-import { getTraceFlows, getFlowEvents, getNodeDetails } from './repository/trace-query';
+import type { Contract } from './contract.ts';
+import { executeQuery } from './execute/query.ts';
+import { executeTransaction } from './execute/transaction.ts';
+import { generateSchemaInfo } from './repository/schema.ts';
+import { getTraceFlows, getFlowEvents, getNodeDetails } from './repository/trace-query.ts';
 import { createLogger } from '@abuddy/sdk/logger';
-import { services } from '@/__generated__/services';
-import { repository } from '@/__generated__/repository';
-import { ref } from '@/__generated__/ref';
+import { services } from '#generated/services.ts';
+import { repository } from '#generated/repository.ts';
+import { ref } from '#generated/ref.ts';
 import { errorMessage } from '@abuddy/sdk/utils/pure';
 
 const logger = createLogger('database');

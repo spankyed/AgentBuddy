@@ -192,9 +192,9 @@
 <script setup lang="ts">
 import { usePlugin } from '@abuddy/sdk/fe'
 
-import type { CodeSettings } from '@/__generated__/types'
+import type { CodeSettings } from '#generated/types.ts'
 import { updateSettings, useFeatureSettings } from '@abuddy/sdk/fe'
-import { ref as featureRef } from '@/__generated__/ref'
+import { ref as featureRef } from '#generated/ref.ts'
 import { ref, computed, watch, onMounted, onBeforeUnmount, nextTick } from 'vue'
 import { useSelector } from '@xstate/vue'
 import { ChevronRight, ChevronDown, Plus, X, Edit, Trash2, PanelTop, PanelBottom, Terminal as TerminalIcon, Ellipsis, Square, Copy, ClipboardPaste, TextSelect, Eraser, RotateCcw } from 'lucide-vue-next'
@@ -212,19 +212,19 @@ import {
   DropdownMenuPortal,
 } from 'reka-ui'
 import TrackedContextMenuRoot from '@abuddy/ui/design/TrackedContextMenuRoot'
-import { MENU_ITEM_CLASS, MENU_ITEM_DANGER_CLASS, MENU_CONTENT_CLASS, MENU_SEPARATOR_CLASS } from '@/features/code/fe/features/explorer/constants'
-import type { CodeState } from '@/features/code/fe/state'
-import type { TerminalInfo } from './state'
-import { terminalPool } from '@/features/code/fe/utils/terminal-pool'
-import { useTerminalActions } from '@/features/code/fe/composables/useTerminalActions'
+import { MENU_ITEM_CLASS, MENU_ITEM_DANGER_CLASS, MENU_CONTENT_CLASS, MENU_SEPARATOR_CLASS } from '#features/code/fe/features/explorer/constants.ts'
+import type { CodeState } from '#features/code/fe/state.ts'
+import type { TerminalInfo } from './state.ts'
+import { terminalPool } from '#features/code/fe/utils/terminal-pool.ts'
+import { useTerminalActions } from '#features/code/fe/composables/useTerminalActions.ts'
 import RunScriptPopover from './RunScriptPopover.vue'
 import ContextMenuPopup from '@abuddy/ui/design/ContextMenuPopup'
-import { useSectionVisibilityMenu } from '@/features/code/fe/composables/useSectionVisibilityMenu'
-import type { TerminalScript } from '@/__generated__/types'
+import { useSectionVisibilityMenu } from '#features/code/fe/composables/useSectionVisibilityMenu.ts'
+import type { TerminalScript } from '#generated/types.ts'
 import type { Terminal } from '@xterm/xterm'
 import type { FitAddon } from '@xterm/addon-fit'
 import type { IDisposable } from '@xterm/xterm'
-import { codeChild } from '../children';
+import { codeChild } from '../children.ts';
 
 const props = withDefaults(defineProps<{ height?: number }>(), { height: 256 })
 

@@ -2,7 +2,7 @@
 // and made where no test runs (beforeAll, module scope) it fails instead of silently lapsing after the first test
 import { beforeAll, beforeEach, describe, expect, it } from 'vitest'
 import { mockService } from '@abuddy/testing/harness'
-import { services } from '@/__generated__/services'
+import { services } from '#generated/services.ts'
 
 const scripted = { clearAllSchedules: () => {} }
 

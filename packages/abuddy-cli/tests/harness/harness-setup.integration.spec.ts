@@ -40,14 +40,10 @@ function dataPack(spec: string, manifest: Record<string, unknown> = {}): string 
   fs.symlinkSync(path.join(REPO_ROOT, 'node_modules'), path.join(root, 'node_modules'), 'dir');
   write(root, 'package.json', JSON.stringify({ name: 'data-pack', type: 'module' }));
   write(root, 'abuddy.json', JSON.stringify({ id: 'data-pack', name: 'Data', version: '1.0.0', ...manifest }));
-  // As `abuddy init` scaffolds it
+  // As `abuddy init` scaffolds it: one call, so this fixture stays what a real pack has
   write(root, 'vitest.config.ts', `
-import { defineConfig } from 'vitest/config';
-import { isolatedDataDir } from '@abuddy/testing/vitest';
-const dataDir = isolatedDataDir('harness-setup-');
-export default defineConfig({
-  test: { include: ['tests/*.spec.ts'], env: dataDir.env, globalSetup: dataDir.globalSetup, setupFiles: [...dataDir.setupFiles, './tests/setup.ts'] },
-});`);
+import { definePackTestConfig } from '@abuddy/testing/vitest';
+export default definePackTestConfig({ dataDirPrefix: 'harness-setup-' });`);
   write(root, 'tests/setup.ts', `
 import { setupPackTests } from '@abuddy/testing/harness';
 await setupPackTests({ seedRuntime: { id: 'data-pack', entities: {}, relKinds: {}, repositories: {}, seedHooks: {} } });`);
@@ -92,8 +88,12 @@ it('seeds nothing', async () => {
 });`;
     const root = dataPack(spec);
     write(root, 'tests/other.spec.ts', spec);
-    const config = fs.readFileSync(path.join(root, 'vitest.config.ts'), 'utf-8');
-    write(root, 'vitest.config.ts', config.replace("test: { include:", "test: { isolate: false, fileParallelism: false, include:"));
+    // `isolate: false` is the thing under test, and a pack sets what the helper does not by spreading it —
+    // which is also the only way to override anything `definePackTestConfig` decides
+    write(root, 'vitest.config.ts', `
+import { definePackTestConfig } from '@abuddy/testing/vitest';
+const base = await definePackTestConfig({ dataDirPrefix: 'harness-setup-' });
+export default { ...base, test: { ...base.test, isolate: false, fileParallelism: false } };`);
     // inherent: runs a pack's own vitest suite — the nested runner is the thing under test
     const result = run(process.execPath, [VITEST, 'run'], root);
     expect(result.output).toContain('setupPackTests() already ran in this process');

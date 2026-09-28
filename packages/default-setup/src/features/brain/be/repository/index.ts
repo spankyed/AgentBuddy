@@ -1,14 +1,14 @@
-import { tx, qx, findById } from '@/__generated__/ears';
-import { EARS } from '@/__generated__/ears';
+import { tx, qx, findById } from '#generated/ears.ts';
+import { EARS } from '#generated/ears.ts';
 import { findRelations, untypedQx } from '@abuddy/ears';
-import type { FlowTNodeData, EventListenerEntity } from '../types';
-import type { NodeEntity } from '@/__generated__/types';
-import type { FlowNode } from '@/extensions/steps/subflow/types';
+import type { FlowTNodeData, EventListenerEntity } from '../types.ts';
+import type { NodeEntity } from '#generated/types.ts';
+import type { FlowNode } from '#extensions/steps/subflow/types.ts';
 import { stepRegistry } from '@abuddy/sdk/steps';
-import { prepareNodeAttributes, type PreparedAttributes } from './node-attribute-mappers';
+import { prepareNodeAttributes, type PreparedAttributes } from './node-attribute-mappers.ts';
 import { truncateResult } from '@abuddy/sdk/steps';
 import { tnodeRepository } from '@abuddy/sdk/repositories';
-import { brainLogger } from '../utils/brain-inspect';
+import { brainLogger } from '../utils/brain-inspect.ts';
 import type { TNodeEntity, TrackTree, ExecutionContext } from '@abuddy/sdk/steps';
 import { ROOT_FLOW_ROLE, type FlowEntity } from '@abuddy/sdk';
 // Brain Repository - Manages execution traces and TNode trees

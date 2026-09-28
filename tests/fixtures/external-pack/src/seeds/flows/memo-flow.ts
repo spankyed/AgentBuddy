@@ -1,5 +1,5 @@
 import type { FlowDSL } from '@abuddy/sdk/build';
-import { entry, keepAlive, on, action } from '#generated/flow-helpers';
+import { entry, keepAlive, on, action } from '#generated/flow-helpers.ts';
 
 /** Stores a memo when something requests one: a long-running flow on default-setup's brain and action step */
 export default {

@@ -25,9 +25,9 @@ if (typeof globalThis.localStorage === 'undefined') {
 // The pack's runtime on the harness: in-memory EARS, systems, services and steps, no app host
 import * as path from 'path';
 import { setupPackTests } from '@abuddy/testing/harness';
-import { seedRuntime } from '../src/__generated__/seed-runtime';
-import { registration } from '../src/__generated__/pack-entry';
-import { setCompiledDir } from '../src/__generated__/seeders';
+import { seedRuntime } from '../src/__generated__/seed-runtime.ts';
+import { registration } from '../src/__generated__/pack-entry.ts';
+import { setCompiledDir } from '../src/__generated__/seeders.ts';
 
 setCompiledDir(path.resolve(__dirname, '..', 'dist'));
 await setupPackTests({ seedRuntime, registration });

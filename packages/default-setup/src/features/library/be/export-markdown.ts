@@ -8,14 +8,14 @@
 import * as path from 'node:path'
 import { extractMediaRefs, rewriteMediaUrls, copyFlatMedia, toSlug, uniqueFilename } from '@abuddy/sdk/utils'
 import { ensureDirectoryExists, createExportDir } from '@abuddy/sdk/utils'
-import { buildExportTree } from './export-library'
-import { buildFrontmatter, serializeContentToMarkdown } from './utils'
+import { buildExportTree } from './export-library.ts'
+import { buildFrontmatter, serializeContentToMarkdown } from './utils.ts'
 
 function escapeQuotes(str: string): string {
   return str.replace(/\\/g, '\\\\').replace(/"/g, '\\"')
 }
 import { writeExportFile } from '@abuddy/sdk/utils'
-import type { ExportedItem } from '@/features/library/be/export-types';
+import type { ExportedItem } from '#features/library/be/export-types.ts';
 
 export function exportLibraryMarkdown(outputDir: string): { filePath: string; itemCount: number; mediaCopied: number } {
   outputDir = createExportDir(outputDir, 'library')

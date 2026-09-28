@@ -5,8 +5,8 @@
  */
 
 import type { ActionMeta } from '@abuddy/sdk/build';
-import type { Services, Z } from '@/__generated__/services';
-import { formatProviderError } from '../_helpers/format-provider-error';
+import type { Services, Z } from '#generated/services.ts';
+import { formatProviderError } from '../_helpers/format-provider-error.ts';
 
 export const meta: ActionMeta = {
   label: 'CC: DB Transaction',

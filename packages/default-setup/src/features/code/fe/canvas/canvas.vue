@@ -98,13 +98,13 @@ import { usePlugin } from '@abuddy/sdk/fe'
 
 import { useExternalFileDrag } from '@abuddy/ui/composables/useExternalFileDrag'
 import { useSelector } from '@xstate/vue'
-import { type CodeState, type OpenFile, setEditorSelectionGetter, isEditableDiff } from '../state'
+import { type CodeState, type OpenFile, setEditorSelectionGetter, isEditableDiff } from '../state.ts'
 import { GitCompare, FileCode, Terminal } from 'lucide-vue-next'
 import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
-import FileEditor from '@/features/code/fe/canvas/FileEditor.vue'
-import QuickOpenPalette from '@/features/code/fe/canvas/QuickOpenPalette.vue'
-import { reorderTabs } from '../utils/tab-management'
-import { codeChild } from '../features/children';
+import FileEditor from '#features/code/fe/canvas/FileEditor.vue'
+import QuickOpenPalette from '#features/code/fe/canvas/QuickOpenPalette.vue'
+import { reorderTabs } from '../utils/tab-management.ts'
+import { codeChild } from '../features/children.ts';
 
 const actor: CodeState = usePlugin()
 const explorerActor = codeChild(actor, 'explorer')

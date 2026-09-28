@@ -211,11 +211,11 @@ import { usePlugin } from '@abuddy/sdk/fe'
 
 import { ref, computed, watch, nextTick, type Ref, type ComponentPublicInstance } from 'vue'
 import { useSelector } from '@xstate/vue'
-import { type LibraryEvents } from '../../state'
+import { type LibraryEvents } from '../../state.ts'
 import { FileText, Search, Hash, Copy, ChevronRight } from 'lucide-vue-next'
 import Button from '@abuddy/ui/design/button'
-import type { IndexSearchResult, SearchIndex } from '@/__generated__/types'
-import type { LibraryActor } from '../../state'
+import type { IndexSearchResult, SearchIndex } from '#generated/types.ts'
+import type { LibraryActor } from '../../state.ts'
 
 const actor = usePlugin<LibraryActor>()
 

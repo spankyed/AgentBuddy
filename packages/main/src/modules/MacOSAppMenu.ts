@@ -1,7 +1,7 @@
 import {Menu, app} from 'electron';
-import type {AppModule} from '../AppModule.js';
-import type {ModuleContext} from '../ModuleContext.js';
-import {cliCommandName, installCliCommand} from './cli-command.js';
+import type {AppModule} from '../AppModule.ts';
+import type {ModuleContext} from '../ModuleContext.ts';
+import {cliCommandName, installCliCommand} from './cli-command.ts';
 
 /**
  * On macOS, override the default application menu so that Cmd+Q

@@ -55,14 +55,14 @@ import { usePlugin } from '@abuddy/sdk/fe'
 
 import { computed } from 'vue';
 import { useSelector } from '@xstate/vue';
-import { useResultAnalysis } from './composables/useResultAnalysis';
+import { useResultAnalysis } from './composables/useResultAnalysis.ts';
 import ResultsInfoBar from './components/ResultsInfoBar.vue';
 import ResultStates from './components/ResultStates.vue';
 import PrimitivesTable from './components/PrimitivesTable.vue';
 import ObjectsTable from './components/ObjectsTable.vue';
 import JsonDisplay from './components/JsonDisplay.vue';
 import PrimitiveDisplay from './components/PrimitiveDisplay.vue';
-import type { DatabaseState } from '../../state'
+import type { DatabaseState } from '../../state.ts'
 
 // State Management
 const actor: DatabaseState = usePlugin();

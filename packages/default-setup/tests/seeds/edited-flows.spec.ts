@@ -9,11 +9,11 @@ import { SEED_INDEX_FILE, seedFile } from '@abuddy/sdk/build';
 import { createFlowSeeder, createSeeder } from '@abuddy/sdk/seed';
 import { importCompiledSeeds } from '@abuddy/sdk/utils';
 import { registerPack, unregisterPack } from '@abuddy/testing/harness';
-import { findWhere } from '@/__generated__/ears';
+import { findWhere } from '#generated/ears.ts';
 import { dropAttribute } from '@abuddy/sdk/testing';
 import { findRelations, untypedTx } from '@abuddy/ears';
-import { repository } from '@/__generated__/repository';
-import { PACK_DIR, resetDatabase } from './harness';
+import { repository } from '#generated/repository.ts';
+import { PACK_DIR, resetDatabase } from './harness.ts';
 
 type FlowRow = { id: never; label: string; sourceHash?: string };
 const flow = (label: string) => findWhere('Flow' as never, 'label', label) as FlowRow[];

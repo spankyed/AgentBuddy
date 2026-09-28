@@ -16,7 +16,7 @@
 import {
   parseApprovalDecision,
   type ApprovalDecision,
-} from '../../../../../src/seeds/actions/claude-code/_helpers/approval-response'
+} from '../../../../../src/seeds/actions/claude-code/_helpers/approval-response.ts'
 
 describe('parseApprovalDecision', () => {
   // ─── Canonical happy paths ─────────────────────────────────────────────

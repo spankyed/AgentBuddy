@@ -1,9 +1,9 @@
 import type { ExecutionContext, TNodeEntity } from '@abuddy/sdk/steps';
 import { createLogger } from '@abuddy/sdk/logger';
 import { extractValueByPath } from '@abuddy/sdk/utils';
-import { findById, updateEntity, type EARS } from '@/__generated__/ears';
-import { assertEntityType, createEntityRow, reportStepError, stepFields } from '../create/runtime';
-import type { UpdateNode } from './types';
+import { findById, updateEntity, type EARS } from '#generated/ears.ts';
+import { assertEntityType, createEntityRow, reportStepError, stepFields } from '../create/runtime.ts';
+import type { UpdateNode } from './types.ts';
 
 const brainLogger = createLogger('brain', { debug: true });
 

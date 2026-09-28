@@ -1,8 +1,8 @@
-import { broadcastToPlugin } from '@/__generated__/events';
+import { broadcastToPlugin } from '#generated/events.ts';
 import { setup } from 'xstate'
 
-import { repository } from '@/__generated__/repository';
-import { EARS } from '@/__generated__/ears'
+import { repository } from '#generated/repository.ts';
+import { EARS } from '#generated/ears.ts'
 import type { ActionEntity } from '@abuddy/sdk'
 
 const pluginId = 'code' as const

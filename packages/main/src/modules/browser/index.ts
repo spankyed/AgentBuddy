@@ -1,1 +1,1 @@
-export {createBrowserModule} from './BrowserManager.js';
+export {createBrowserModule} from './BrowserManager.ts';

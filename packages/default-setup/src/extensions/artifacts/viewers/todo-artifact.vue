@@ -98,7 +98,7 @@
 </template>
 
 <script setup lang="ts">
-import { sendToPlugin } from '@/__generated__/events'
+import { sendToPlugin } from '#generated/events.ts'
 import { ref, computed, watch } from 'vue';
 import { ListTodo, Check } from 'lucide-vue-next';
 import type { ArtifactItem } from '@abuddy/sdk/artifacts';

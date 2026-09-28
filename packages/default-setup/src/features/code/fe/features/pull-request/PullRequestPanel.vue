@@ -248,23 +248,23 @@
 import { computed } from 'vue'
 import { useSelector } from '@xstate/vue'
 import { usePlugin, useShell } from '@abuddy/sdk/fe'
-import type { CodeState } from '@/features/code/fe/state'
+import type { CodeState } from '#features/code/fe/state.ts'
 import {
   AlertCircle, AlertTriangle, GitBranch, GitPullRequest, RefreshCw,
   Loader2, ArrowLeft, X
 } from 'lucide-vue-next'
-import CodePanelHeader from '@/features/code/fe/features/CodePanelHeader.vue'
-import NoDirectoryState from '@/features/code/fe/features/NoDirectoryState.vue'
-import EmptyState from '@/features/code/fe/features/EmptyState.vue'
-import PRSelector from '@/features/code/fe/features/pull-request/PRSelector.vue'
-import PRComparison from '@/features/code/fe/features/pull-request/PRComparison.vue'
-import CreatePRForm from '@/features/code/fe/features/pull-request/CreatePRForm.vue'
-import PRInfo from '@/features/code/fe/features/pull-request/PRInfo.vue'
-import PRComments from '@/features/code/fe/features/pull-request/PRComments.vue'
-import PRActionBar from '@/features/code/fe/features/pull-request/PRActionBar.vue'
-import type { GitStatusFile } from '@/features/code/fe/features/commit/state'
-import type { TreeNode } from './types'
-import { codeChild } from '../children';
+import CodePanelHeader from '#features/code/fe/features/CodePanelHeader.vue'
+import NoDirectoryState from '#features/code/fe/features/NoDirectoryState.vue'
+import EmptyState from '#features/code/fe/features/EmptyState.vue'
+import PRSelector from '#features/code/fe/features/pull-request/PRSelector.vue'
+import PRComparison from '#features/code/fe/features/pull-request/PRComparison.vue'
+import CreatePRForm from '#features/code/fe/features/pull-request/CreatePRForm.vue'
+import PRInfo from '#features/code/fe/features/pull-request/PRInfo.vue'
+import PRComments from '#features/code/fe/features/pull-request/PRComments.vue'
+import PRActionBar from '#features/code/fe/features/pull-request/PRActionBar.vue'
+import type { GitStatusFile } from '#features/code/fe/features/commit/state.ts'
+import type { TreeNode } from './types.ts'
+import { codeChild } from '../children.ts';
 
 // Get actors
 const shell = useShell()

@@ -3,6 +3,7 @@ import { generatePackFiles, validateManifest, validateFeatures } from '@abuddy/s
 import { resolveDep } from './fetch-deps';
 import { resolveDeps } from './generate';
 import { findPackRoot, readManifest } from '../utils';
+import { packRuleProblems, PACK_RULES } from '../build/pack-rules.ts';
 import { errorMessage } from '@abuddy/sdk/utils/pure';
 
 /**
@@ -71,7 +72,14 @@ export async function validate(_args: string[]) {
   // Codegen stops at its first problem, so it runs only once the manifest and features check out
   const codegen = manifestResult.errors.length === 0 && featureResult.errors.length === 0 ? await validateCodegen(root) : { errors: [], warnings: [] };
 
-  const errors = [...manifestResult.errors, ...featureResult.errors, ...codegen.errors];
+  // The rules `abuddy build` refuses on, reported here without building: this is also what covers the repo's
+  // fixture packs, which are not npm workspaces and so are reached by no lint script (`build/pack-rules.ts`)
+  const ruleErrors = [...packRuleProblems(root)].flatMap(([key, found]) => {
+    const rule = PACK_RULES.find((candidate) => candidate.key === key);
+    return found.map((problem) => `${problem}  (${key}: ${rule?.rule ?? ''})`);
+  });
+
+  const errors = [...manifestResult.errors, ...featureResult.errors, ...codegen.errors, ...ruleErrors];
   const warnings = [...manifestResult.warnings, ...featureResult.warnings, ...depWarnings, ...codegen.warnings];
 
   if (warnings.length > 0) {

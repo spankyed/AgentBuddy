@@ -1,6 +1,6 @@
 import type { StepDefinition } from '@abuddy/sdk/steps';
-import { keepAliveStepBuild } from './build';
-import { keepAliveStepFE } from './fe';
+import { keepAliveStepBuild } from './build.ts';
+import { keepAliveStepFE } from './fe.ts';
 
 export const keepAliveStep: StepDefinition = {
   ...keepAliveStepBuild,

@@ -1,4 +1,4 @@
-import {AbstractSecurityRule} from './AbstractSecurityModule.js';
+import {AbstractSecurityRule} from './AbstractSecurityModule.ts';
 import * as Electron from 'electron';
 import {session} from 'electron';
 import {URL} from 'node:url';

@@ -1,3 +1,6 @@
+// Writing a scaffold's files: create-if-absent, the report of what was created, and the two edits that add a
+// line to a file that is already there. The templates themselves are files under `templates/`, read through
+// `src/templates.ts` — this module was called `templates.ts` while it held them.
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 

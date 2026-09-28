@@ -1,10 +1,11 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
+import { renderTemplate } from '../templates.ts';
+import { toPascalCase } from './add/write';
 import * as readline from 'node:readline';
 import semver from 'semver';
 import { resolveDeps } from './generate';
 import { generateEntries } from './generate-entries';
-import { STEPS_BUILD_TEMPLATE, STEPS_REGISTER_TEMPLATE } from './add/step';
 import { cliVersion, readManifest, sdkVersion } from '../utils';
 
 const MANIFEST_TEMPLATE = (name: string) => {
@@ -80,15 +81,6 @@ export const PACK_TSCONFIG = {
 
 const TSCONFIG_TEMPLATE = JSON.stringify(PACK_TSCONFIG, null, 2);
 
-const ENV_DTS_TEMPLATE = `// Plain \`tsc\` can't read .vue files, so the pack's own single-file components resolve to a
-// generic component here. @abuddy/ui components ship declarations and keep their prop types.
-// Checking inside SFCs needs vue-tsc.
-declare module '*.vue' {
-  import type { DefineComponent } from 'vue';
-  const component: DefineComponent<Record<string, unknown>, Record<string, unknown>, any>;
-  export default component;
-}
-`;
 
 const PACKAGE_JSON_TEMPLATE = (name: string) => JSON.stringify({
   name: `@abuddy-pack/${name}`,
@@ -122,33 +114,19 @@ const PACKAGE_JSON_TEMPLATE = (name: string) => JSON.stringify({
   },
 }, null, 2);
 
-const VITEST_CONFIG_TEMPLATE = `import { configDefaults, defineConfig } from 'vitest/config';
-import { isolatedDataDir } from '@abuddy/testing/vitest';
 
-// A throwaway data dir per run (media, stores), one subdir per worker
-const dataDir = isolatedDataDir();
 
-export default defineConfig({
-  test: {
-    globals: true,
-    // A spec's path mirrors the source it covers, so one pattern covers every one of them. tests/e2e/ is
-    // excluded because it is Playwright's (abuddy init-tests), run with \`abuddy test\` — a different runner.
-    include: ['tests/**/*.spec.ts'],
-    exclude: [...configDefaults.exclude, 'tests/e2e/**'],
-    env: dataDir.env,
-    globalSetup: dataDir.globalSetup,
-    setupFiles: [...dataDir.setupFiles, './tests/setup.ts'],
-  },
-});
-`;
-
-// Unit tests run against an in-memory EARS with the pack's repositories, seed hooks, seeders, systems,
-// services and steps, and its dependencies' runtimes (cached by abuddy build)
-const TEST_SETUP_TEMPLATE = `import { seedRuntime } from '#generated/seed-runtime';
-import { registration } from '#generated/pack-entry';
-import { setupPackTests } from '@abuddy/testing/harness';
-
-await setupPackTests({ seedRuntime, registration });
+// One of the four templates that cannot be a file under `templates/` (`src/templates.ts` has the list):
+// electron-builder strips every `.d.ts` from the packaged app whatever its `files` array says — measured, zero
+// remain in app.asar — so a `.d.ts` template would be missing from the CLI the app installs.
+const ENV_DTS_TEMPLATE = `// Plain \`tsc\` can't read .vue files, so the pack's own single-file components resolve to a
+// generic component here. @abuddy/ui components ship declarations and keep their prop types.
+// Checking inside SFCs needs vue-tsc.
+declare module '*.vue' {
+  import type { DefineComponent } from 'vue';
+  const component: DefineComponent<Record<string, unknown>, Record<string, unknown>, any>;
+  export default component;
+}
 `;
 
 /** The @abuddy/sdk range the scaffold declares: the SDK this CLI runs against */
@@ -222,13 +200,13 @@ export function scaffoldUnitTestSetup(root: string): UnitTestSetup {
   const keptConfig = VITEST_CONFIG_FILES.find((file) => fs.existsSync(path.join(root, file)));
   if (!keptConfig) {
     const configPath = path.join(root, 'vitest.config.ts');
-    fs.writeFileSync(configPath, VITEST_CONFIG_TEMPLATE);
+    fs.writeFileSync(configPath, renderTemplate('pack/vitest.config.ts'));
     created.push(configPath);
   }
   const setupPath = path.join(root, 'tests', 'setup.ts');
   if (!fs.existsSync(setupPath)) {
     fs.mkdirSync(path.dirname(setupPath), { recursive: true });
-    fs.writeFileSync(setupPath, TEST_SETUP_TEMPLATE);
+    fs.writeFileSync(setupPath, renderTemplate('pack/tests/setup.ts'));
     created.push(setupPath);
   }
   const addedDependencies: string[] = [];
@@ -252,72 +230,6 @@ export function scaffoldUnitTestSetup(root: string): UnitTestSetup {
   return { created, keptConfig, addedDependencies, upgrades };
 }
 
-// Build-time facets only (no runtime handlers or FE): bundled to build/steps.build.mjs so packs
-// that depend on this one validate their flows with this pack's step code
-
-const EXAMPLE_TEST_TEMPLATE = (name: string) => {
-  const pascalName = name.split('-').map(w => w[0].toUpperCase() + w.slice(1)).join('');
-  return `import { describe, it, expect } from 'vitest';
-import { importSeeds } from '@abuddy/testing/harness';
-import { EARS, findAll } from '#generated/ears';
-
-describe('${name}', () => {
-  it('should have a valid manifest', async () => {
-    const manifest = await import('../abuddy.json', { with: { type: 'json' } });
-    expect(manifest.default.id).toBe('${name}');
-  });
-
-  it('seeds the examples entry', async () => {
-    expect(await importSeeds({ keys: ['${SEED_ROWS_KEY}'] })).toEqual({ ${SEED_ROWS_KEY}: { created: 1, updated: 0, skipped: 0 } });
-    expect(findAll(EARS.Entity.${pascalName}).map((row) => row.title)).toEqual(['Hello']);
-  });
-});
-`;
-};
-
-// Publishes the GitHub release when `abuddy release` pushes a v* tag
-export const RELEASE_WORKFLOW_TEMPLATE = `name: Release
-
-on:
-  push:
-    tags: ['v*']
-
-permissions:
-  contents: write
-  id-token: write
-  attestations: write
-
-jobs:
-  release:
-    # AgentBuddy Beta builds are macOS arm64; the build reads built-in packs (e.g. default-setup) from one
-    runs-on: macos-14
-    env:
-      ABUDDY_APP: beta
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 23
-          cache: npm
-
-      - run: npm ci
-
-      - name: Tag matches abuddy.json version
-        run: test "v$(node -p "require('./abuddy.json').version")" = "$GITHUB_REF_NAME"
-
-      - run: npx abuddy build --release
-
-      - run: npx abuddy pack --out .abuddy/release
-
-      - uses: actions/attest-build-provenance@v2
-        with:
-          subject-path: .abuddy/release/*.tgz
-
-      - run: npx abuddy release publish --dir .abuddy/release
-        env:
-          GITHUB_TOKEN: \${{ secrets.GITHUB_TOKEN }}
-`;
 
 const GITIGNORE_TEMPLATE = `node_modules/
 dist/
@@ -361,17 +273,17 @@ export async function init(args: string[]) {
   fs.writeFileSync(path.join(dir, 'tsconfig.json'), TSCONFIG_TEMPLATE);
   fs.writeFileSync(path.join(dir, '.gitignore'), GITIGNORE_TEMPLATE);
   fs.mkdirSync(path.join(dir, '.github', 'workflows'), { recursive: true });
-  fs.writeFileSync(path.join(dir, '.github', 'workflows', 'release.yml'), RELEASE_WORKFLOW_TEMPLATE);
+  fs.writeFileSync(path.join(dir, '.github', 'workflows', 'release.yml'), renderTemplate('pack/github/workflows/release.yml'));
   fs.writeFileSync(path.join(dir, 'src', 'env.d.ts'), ENV_DTS_TEMPLATE);
   fs.writeFileSync(
     path.join(dir, 'src', 'extensions', 'steps', 'register.ts'),
-    STEPS_REGISTER_TEMPLATE,
+    renderTemplate('pack/src/extensions/steps/register.ts'),
   );
-  fs.writeFileSync(path.join(dir, 'src', 'extensions', 'steps', 'build.ts'), STEPS_BUILD_TEMPLATE);
+  fs.writeFileSync(path.join(dir, 'src', 'extensions', 'steps', 'build.ts'), renderTemplate('pack/src/extensions/steps/build.ts'));
   scaffoldUnitTestSetup(dir);
   fs.writeFileSync(
     path.join(dir, 'tests', `${name}.spec.ts`),
-    EXAMPLE_TEST_TEMPLATE(name),
+    renderTemplate('pack/tests/example.spec.ts', { NAME: name, SEED_KEY: SEED_ROWS_KEY, PASCAL: toPascalCase(name) }),
   );
 
   const initManifest = readManifest(dir);
@@ -381,7 +293,7 @@ export async function init(args: string[]) {
   console.log(`\nCreated pack "${name}" at ./${name}/`);
   console.log(`\nImport types in your seed code:`);
   console.log(`  import type { ActionMeta } from '@abuddy/sdk/build';`);
-  console.log(`  import type { Services, Z } from '#generated/services';`);
+  console.log(`  import type { Services, Z } from '#generated/services.ts';`);
   console.log(`\nNext steps:`);
   console.log(`  cd ${name}`);
   console.log(`  npm install`);

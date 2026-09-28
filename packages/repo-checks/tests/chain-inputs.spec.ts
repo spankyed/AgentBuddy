@@ -7,13 +7,20 @@
 // It asks git rather than walking the tree, so an ignored file is not mistaken for an untracked source, and
 // resolves a step's inputs through `inputFiles` — the walk a fingerprint is taken over — so the guard and
 // the cache key cannot disagree about what an input covers.
+//
+// `BUILD_UNITS` gets the same treatment at the bottom of this file, and used to be excused from it here on
+// the grounds that it "covers five packages whose builds read their own trees". That was not true: a build
+// script imports modules, and three units were missing the one their staging is derived from.
 import { execFileSync } from 'node:child_process';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { inputFiles, REPO_ROOT } from '@abuddy/host/build/packages-built';
+import ts from 'typescript';
+import { BUILD_UNITS, buildScriptFor, covers, inputFiles, NOT_A_BUILD_INPUT, repoRelative, REPO_ROOT, type BuildUnit } from '@abuddy/host/build/packages-built';
 import { CHAIN_STEPS, INTEGRATION_SUITES, SUITE_READS, suiteInputs, type ChainStep } from '../../../scripts/lib/chain-steps.ts';
 import { UNIT_SUITES, type UnitSuite } from '../../../scripts/lib/unit-suites.ts';
+import { reachableText, rootScripts } from '../../../scripts/lib/npm-scripts.ts';
+import { TYPECHECK_LEGS } from '../../../scripts/lib/typecheck-legs.ts';
 import { poolUnitFor } from '../../../scripts/lib/unit-pool.ts';
 
 /** Tracked code no chain step reads, and why. An entry that stops applying is reported, not ignored. */
@@ -72,17 +79,24 @@ describe('the chain reads every source file', () => {
   // Coverage is repo-wide: it proves *some* step reads a file, not that the right one does. Steps overlap
   // honestly — `typecheck` reads `tests/` because it compiles the E2E specs — so dropping `tests/e2e` from
   // the E2E step leaves it covered and the check above green. This is the per-step half, and it is what can
-  // be derived: a path the step's own npm script names is a path that step reads, so it must be an input.
-  it('gives every step the files its own script names', () => {
-    const scripts = (JSON.parse(fs.readFileSync(path.join(REPO_ROOT, 'package.json'), 'utf-8')) as { scripts: Record<string, string> }).scripts;
-    const missing: string[] = [];
-    for (const step of CHAIN_STEPS) {
+  // be derived: a path the step *reaches* is a path that step reads, so it must be an input.
+  //
+  // Reaches, not names. This used to scan the step's own script text for a `tests/` or `scripts/` path, which
+  // sees nothing through a delegation: `compile` runs `npm run facade:check -w @app/default-setup`, whose
+  // script names `scripts/facade-report.ts`, and that went undeclared for a commit. `reachableText` follows
+  // `npm run`, `-w` and the files a script names, and is the same walk `check:tiers` uses for its own
+  // question.
+  it('gives every step the files its script reaches', () => {
+    const all = rootScripts();
+    const missing = CHAIN_STEPS.flatMap((step) => {
       const covered = coveredBy([step]);
-      const command = scripts[step.name === 'test' ? 'test' : step.name] ?? '';
-      for (const [, named] of command.matchAll(/\b((?:tests|scripts)\/[\w./-]+\.(?:sh|ts|mjs))/g)) {
-        if (!covered.has(named)) missing.push(`${step.name} runs ${named} and does not declare it`);
-      }
-    }
+      return [...reachableText(step.name, all).files]
+        // A module that only decides *whether* to do the work cannot change what the step accepts, so a step
+        // reaching one need not declare it — the same list `package-freshness.spec.ts` reads
+        .filter((file) => NOT_A_BUILD_INPUT[file] === undefined)
+        .filter((file) => !covered.has(file))
+        .map((file) => `${step.name} reaches ${file} and does not declare it`);
+    });
     expect(missing).toEqual([]);
   });
 
@@ -205,7 +219,7 @@ describe('a gitignored input belongs to someone', () => {
     ];
     const unaccounted = [...new Set(step.inputs.flatMap((input) => inputFiles(path.join(REPO_ROOT, input))))]
       .filter((file) => isIgnored(file))
-      .filter((file) => !accountedFor.some((owned) => file === owned || file.startsWith(`${owned}/`)));
+      .filter((file) => !accountedFor.some((owned) => covers(owned, file)));
 
     expect([...new Set(unaccounted.map((file) => file.split('/').slice(0, 5).join('/')))],
       `${name} hashes generated files nobody declares: depend on the step that writes them, or list them in \`excludes\` with why this step reads around them`)
@@ -243,7 +257,7 @@ describe('a pool step and its projects cache on the same inputs', () => {
   });
 
   it.each(['host', 'pack'] as const)('%s declares nothing its projects cannot see', (kind) => {
-    const fingerprinted = new Set(projects(kind).flatMap((suite) => poolUnitFor(suite).inputs.map((input) => path.relative(REPO_ROOT, input))));
+    const fingerprinted = new Set(projects(kind).flatMap((suite) => poolUnitFor(suite).inputs.map(repoRelative)));
     const unseen = poolStep(kind).inputs.filter((input) => !fingerprinted.has(input));
     expect(unseen, 'the step would go stale for these and every project would still read fresh, so it would run '
       + 'and test nothing: put them in suiteInputs, where both cache layers read them').toEqual([]);
@@ -321,8 +335,6 @@ describe('a step that reads what another writes depends on it', () => {
     }
     return seen;
   };
-  /** One path covers another when they are equal or the second lies under the first */
-  const covers = (outer: string, inner: string): boolean => outer === inner || inner.startsWith(`${outer}/`);
 
   it('names the dependency, not just the path', () => {
     const missing: string[] = [];
@@ -401,5 +413,206 @@ describe('a step whose runner reads stamps declares forceArgs', () => {
   it('lists no exception that has stopped reading stamps', () => {
     const stale = Object.keys(KEEPS_ITS_CACHE_UNDER_ALL).filter((name) => !readsStamps.some((step) => step.name === name));
     expect(stale, 'these no longer consult a stamp store; drop them').toEqual([]);
+  });
+});
+
+/**
+ * A build unit declares the modules its build script imports.
+ *
+ * `BuildUnit.inputs` is a hand-written list of what a build reads, and a list of someone else's inputs is a
+ * guess — the same shape that let `api:stamp` pass over an input nobody had listed. Measured 2026-09-27: the
+ * three `compiled()` units declared `scripts/build-package.ts` and not
+ * `@abuddy/host/build/published-manifest`, which it imports and which derives the manifest they stage. Editing
+ * that module left all three staged trees stale while every stamp read fresh.
+ *
+ * Derived, so it holds for the next module too: follow the script's imports and require the closure to be
+ * inside what the unit declares. A subset check, like `gives every step the files its own script names` above —
+ * it proves a unit reads what it declares, never that it declares nothing extra, which over-declaring is the
+ * harmless direction.
+ */
+describe('a build unit declares the modules its build script imports', () => {
+  /** The options `scripts/tsconfig.json` compiles these scripts with, so the walk resolves as they do */
+  const RESOLUTION: ts.CompilerOptions = {
+    module: ts.ModuleKind.NodeNext,
+    moduleResolution: ts.ModuleResolutionKind.NodeNext,
+    // How a repo script reaches `@abuddy/host/build/…` at all: the condition names each package's source
+    customConditions: ['@abuddy/source'],
+    allowImportingTsExtensions: true,
+  };
+
+  /** A module of this repo, as against a dependency or a built copy of one */
+  const firstParty = (file: string): boolean =>
+    file.startsWith(REPO_ROOT + path.sep) && !file.split(path.sep).includes('node_modules');
+
+  /**
+   * Every first-party module these entries import, transitively, repo-relative.
+   *
+   * `ts.preProcessFile` rather than a parse: it is TypeScript's own scanner for exactly this question, and it
+   * reads `import`, `export … from`, `import()` and `require()` without building a program.
+   */
+  const closureOf = (entries: readonly string[]): string[] => {
+    const seen = new Set<string>();
+    const queue = [...entries];
+    while (queue.length > 0) {
+      const file = queue.pop()!;
+      if (seen.has(file) || !fs.existsSync(file)) continue;
+      seen.add(file);
+      for (const { fileName } of ts.preProcessFile(fs.readFileSync(file, 'utf-8'), true, true).importedFiles) {
+        const resolved = ts.resolveModuleName(fileName, file, RESOLUTION, ts.sys).resolvedModule?.resolvedFileName;
+        if (resolved !== undefined && firstParty(resolved)) queue.push(resolved);
+      }
+    }
+    return [...seen].map(repoRelative);
+  };
+
+  /**
+   * The script to walk from, `buildScriptFor` (`@abuddy/host/build/packages-built`) — a workspace's own
+   * `build:package`, and deliberately **not** the unit's declared inputs, which are the thing under test.
+   * Deriving the entry from that list made this case vacuous, and a mutation found it: drop
+   * `scripts/build-package.ts` from `compiled()` and there was no entry left to walk from, so the check passed
+   * for having nothing to check. `package-freshness.spec.ts` reads the same function to decide which units
+   * inline host source, so the two cannot disagree about how a unit is built.
+   */
+  const buildScriptOf = (workspace: string): string => path.join(REPO_ROOT, buildScriptFor(workspace));
+
+  /**
+   * Not `coveredBy` above: that one takes a chain step, whose inputs are repo-relative by design, and joins
+   * them to the root. A `BuildUnit`'s are absolute, and `path.join` does not reset on an absolute second
+   * argument — it doubles the root, covers nothing, and this case then reports every module including its own
+   * entry. Which is what it did.
+   */
+  const unitCovers = (unit: BuildUnit): Set<string> =>
+    new Set(unit.inputs.flatMap((input) => inputFiles(input)));
+
+  it.each(Object.keys(BUILD_UNITS))('%s', (workspace) => {
+    const covered = unitCovers(BUILD_UNITS[workspace]!);
+    const missing = closureOf([buildScriptOf(workspace)])
+      // A module that decides *whether* to build cannot change what the build emits, so it is deliberately not
+      // an input — `package-freshness.spec.ts` refuses one, and this demanded one on the day it landed. That
+      // spec is also where an entry going stale shows up, since it fails the moment a unit names one; only one
+      // of the two entries is even reachable from a build script, the other being the command over them.
+      .filter((file) => NOT_A_BUILD_INPUT[file] === undefined)
+      .filter((file) => !covered.has(file));
+    expect(missing,
+      `${workspace}'s build imports these and does not declare them, so editing one leaves its output stale while its stamp reads fresh`)
+      .toEqual([]);
+  });
+
+  /**
+   * An entry nobody reaches is a claim nobody revisits, which every other exception table in this repo reports.
+   *
+   * Two ways to qualify, because the two entries qualify differently: `packages-built.ts` is *imported* by a
+   * build script, and `scripts/ensure-packages-built.ts` is the command that calls the builds — no build script
+   * imports it, and `packages:ensure` declares it as its own input. An entry that is neither is describing
+   * nothing. Getting this predicate wrong is how it was first written: requiring an import reported the command.
+   */
+  it('lists no NOT_A_BUILD_INPUT entry that nothing reaches', () => {
+    const imported = new Set(Object.keys(BUILD_UNITS).flatMap((workspace) => closureOf([buildScriptOf(workspace)])));
+    const declared = new Set(CHAIN_STEPS.flatMap((step) => step.inputs));
+    const orphans = Object.keys(NOT_A_BUILD_INPUT)
+      .filter((file) => !imported.has(file) && !declared.has(file))
+      .map((file) => `${file}: no build script imports it and no chain step declares it`);
+    expect(orphans, 'an exception for something nothing reads describes nothing').toEqual([]);
+  });
+
+  /** What stops the case above passing by walking nothing */
+  it('follows each build script past itself', () => {
+    const shallow = Object.keys(BUILD_UNITS).flatMap((workspace) => {
+      const closure = closureOf([buildScriptOf(workspace)]);
+      return closure.length > 1 ? [] : [`${workspace}'s closure is ${closure.length} files`];
+    });
+    expect(shallow, 'a closure of one file is the entry alone, which means the walk resolved nothing').toEqual([]);
+  });
+});
+
+/**
+ * The chain runs every recorded artifact's check.
+ *
+ * An `<artifact>:check` that nothing runs is a recorded file free to go stale with every gate green, and with
+ * CI off the chain is the only gate. Two of them were in exactly that state until 2026-09-27 — `schema:check`,
+ * which holds the manifest schema published with the SDK, and `facade:check` — each named only by
+ * `.github/workflows/ci.yml`, whose triggers are commented out. `packages:check` had been the same. Three
+ * instances of one thing nobody could see is what makes this a check rather than a sweep somebody repeats.
+ *
+ * It asks what a step *invokes*, not what its text mentions: `check-import-specifiers.ts` prints `api:check` in
+ * a message, and a search over the reachable text would read that as the chain running it. The walk is
+ * `reachableText` from `scripts/lib/npm-scripts.ts`, which `check:tiers` uses for its own question — one
+ * follower, so the two cannot disagree about what a step reaches.
+ *
+ * A check counts as run when its own `<workspace>:<name>` is invoked **or** the bare `<name>` is: root
+ * `lint:check` fans out with `-ws`, which no `-w <name>` pattern can follow, and an artifact's exception is
+ * about the artifact rather than about each workspace the root script delegates to.
+ */
+describe("the chain runs every artifact's check", () => {
+  /** A `:check` script the chain does not run, and why. An entry that stops applying is reported. */
+  const NOT_RUN_BY_THE_CHAIN: Record<string, string> = {
+    'api:check': 'API Extractor over three packages, 55s; `api:stamp` is its 0.6s proxy inside typecheck, and '
+      + 'api-reports.ts checks that proxy against itself, which is what catches an input nobody listed',
+    // These two are commands over a rule a spec already asserts, so the artifact is checked and the script is
+    // a way to ask by hand. Both say so themselves: `spec-cost.ts` records that `scripts/lib/spec-cost.ts`
+    // holds what it and `suite-split.spec.ts` share, "so a spec and this command cannot disagree".
+    'seed-parity:check': 'a wrapper for `npm test -- tests/seeds`; those specs run in test:unit:pack',
+    'spec-cost:check': 'reads the records and runs nothing; suite-split.spec.ts asserts the same rule from '
+      + 'scripts/lib/spec-cost.ts, and it runs in test:unit:host',
+  };
+
+  /** Every `<artifact>:check` in the repo, as the label of the manifest declaring it and the script's name */
+  const checkScripts = (): { where: string; name: string }[] => {
+    const manifests = [path.join(REPO_ROOT, 'package.json'),
+      ...fs.readdirSync(path.join(REPO_ROOT, 'packages'))
+        .map((dir) => path.join(REPO_ROOT, 'packages', dir, 'package.json'))
+        .filter((file) => fs.existsSync(file))];
+    return manifests.flatMap((file) => {
+      const pkg = JSON.parse(fs.readFileSync(file, 'utf-8')) as { name?: string; scripts?: Record<string, string> };
+      const where = file === path.join(REPO_ROOT, 'package.json') ? 'root' : pkg.name ?? file;
+      return Object.keys(pkg.scripts ?? {}).filter((name) => name.endsWith(':check')).map((name) => ({ where, name }));
+    });
+  };
+
+  const invokedByTheChain = (): Set<string> => {
+    const all = rootScripts();
+    const invoked = new Set<string>();
+    for (const step of CHAIN_STEPS) for (const name of reachableText(step.name, all).invoked) invoked.add(name);
+    // `reachableText` follows `npm run` one level, out of a script's own text, and deliberately not out of the
+    // files it runs — a text scan cannot tell a command from a mention, and a loose answer here would say a
+    // check runs when nothing runs it. `typecheck` moved its commands into a module, so the module says what it
+    // runs rather than being read for it.
+    for (const leg of TYPECHECK_LEGS) {
+      const [, name, workspace] = /npm run ([\w:-]+)(?:.*-w\s+(\S+))?/.exec(leg.command) ?? [];
+      if (name === undefined) continue;
+      invoked.add(name);
+      if (workspace !== undefined) invoked.add(`${workspace}:${name}`);
+    }
+    return invoked;
+  };
+
+  it('leaves none of them unrun', () => {
+    const invoked = invokedByTheChain();
+    const unrun = checkScripts()
+      .filter(({ where, name }) => !invoked.has(name) && !invoked.has(`${where}:${name}`))
+      .filter(({ name }) => NOT_RUN_BY_THE_CHAIN[name] === undefined)
+      .map(({ where, name }) => `${where}'s ${name}`);
+    expect(unrun, 'nothing in the chain runs these, so what they record can go stale with every gate green: '
+      + 'add them to a step that already reads what they read, or list them with why not').toEqual([]);
+  });
+
+  it('lists no exception that has stopped applying', () => {
+    const declared = checkScripts();
+    const invoked = invokedByTheChain();
+    const stale = Object.keys(NOT_RUN_BY_THE_CHAIN).flatMap((name) => {
+      const found = declared.filter((script) => script.name === name);
+      if (found.length === 0) return [`${name}: no package declares it any more`];
+      return found.every(({ where }) => invoked.has(name) || invoked.has(`${where}:${name}`))
+        ? [`${name}: the chain runs it now, so it needs no exception`] : [];
+    });
+    expect(stale).toEqual([]);
+  });
+
+  /** What stops the cases above passing over an empty list */
+  it('finds the checks to ask about', () => {
+    const found = checkScripts();
+    expect(found.length).toBeGreaterThan(5);
+    expect(found.map(({ name }) => name), 'schema:check is one of the two this check was written for')
+      .toContain('schema:check');
   });
 });

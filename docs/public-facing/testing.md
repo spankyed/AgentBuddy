@@ -13,39 +13,49 @@ This page covers unit tests.
 
 ```typescript
 // vitest.config.ts
-import { configDefaults, defineConfig } from 'vitest/config';
-import { isolatedDataDir } from '@abuddy/testing/vitest';
+import { definePackTestConfig } from '@abuddy/testing/vitest';
 
-// A throwaway data dir per run, one subdir per worker
-const dataDir = isolatedDataDir();
-
-export default defineConfig({
-  test: {
-    globals: true,
-    include: ['tests/**/*.spec.ts'],                           // a spec's path mirrors the source it covers
-    exclude: [...configDefaults.exclude, 'tests/e2e/**'],      // tests/e2e is Playwright's, run by `abuddy test`
-    env: dataDir.env,                                          // ABUDDY_ENV=test, ABUDDY_USER_DATA_DIR=<run dir>
-    globalSetup: dataDir.globalSetup,                          // passes the project root to the harness; removes the run dir at the end
-    setupFiles: [...dataDir.setupFiles, './tests/setup.ts'],   // the worker setup first: each worker uses <run dir>/worker-<n>
-  },
-});
+export default definePackTestConfig();
 ```
 
-- **Set no `resolve.conditions`.** A pack's tests resolve its `@abuddy` packages exactly as `abuddy build` does: to the `dist` each published package ships. That is the one layout a pack ever has, so there is nothing to select.
-- **`isolatedDataDir(prefix?)`** creates the run's data dir. `setupPackTests` fails when `ABUDDY_USER_DATA_DIR` is unset, so keep its `env`, `globalSetup` and `setupFiles`, with its setup files before yours.
-- **Keep vitest's `isolate` on** (the default). The harness keeps one registry, database and set of mocks per test file, and `setupPackTests` fails, saying so, when it runs a second time in one process (`isolate: false`).
+That one call is the whole config. It gives you:
+
+- **A throwaway data dir per run**, one subdir per worker. The harness fails without `ABUDDY_USER_DATA_DIR`,
+  and a per-worker split is what stops one spec's reset deleting another worker's files mid-test.
+- **`include: ['tests/**/*.spec.ts']`**, because a spec's path mirrors the source it covers, less `tests/e2e/`
+  (Playwright's, run by `abuddy test`) and `tests/_support/` (helpers and fixtures, not specs).
+- **A stub for your `.vue` files**, so `vitest related` and `--changed` can walk your pack's module graph.
+  Without it they stop at the first SFC they reach, which is any pack with a plugin. Your specs can import a
+  plugin module and read everything but the component; rendering one throws and says how to enable it.
+- **`globals: true`**, and timeouts that match what a pack's unit tests are allowed.
+- **No `resolve.conditions`** — and you should not add any. A pack's tests resolve its `@abuddy` packages
+  exactly as `abuddy build` does, to the `dist` each published package ships, which is the one layout a pack
+  ever has. There is nothing to select.
+
+What you may pass it:
+
+| Option | For |
+|---|---|
+| `dataDirPrefix` | naming the run's temp dir, so leftovers say which suite made them |
+| `vue: true` | compiling and rendering your components instead of stubbing them. Install `@vitejs/plugin-vue` |
+| `plugins`, `exclude`, `setupFiles` | anything your pack needs on top |
+
+- **Keep vitest's `isolate` on** (the default). The harness keeps one registry, database and set of mocks per
+  test file, and `setupPackTests` fails, saying so, when it runs a second time in one process (`isolate: false`).
+- **`isolatedDataDir(prefix?)`** is still exported, for a config `definePackTestConfig` cannot express. Keep
+  its `env`, `globalSetup` and `setupFiles` if you assemble one by hand, with its setup files before yours.
 
 ```typescript
 // tests/setup.ts
-import { seedRuntime } from '#generated/seed-runtime';
-import { registration } from '#generated/pack-entry';
+import { seedRuntime } from '#generated/seed-runtime.ts';
+import { registration } from '#generated/pack-entry.ts';
 import { setupPackTests } from '@abuddy/testing/harness';
 
 await setupPackTests({ seedRuntime, registration });
 ```
 
 - **What's registered:** your entity types, repositories, seed hooks and seeders, and, with `registration`, your systems, services, steps and feature settings. Each dependency's full backend runtime (its systems, services and steps, on your pack's `@abuddy/sdk`) is registered too.
-- **Without `registration`**, only data code runs: each dependency contributes its seed runtime (entity types, repositories, seed hooks). Pass your seeders (`import { seeders } from '#generated/seeders'`, `setupPackTests({ seedRuntime, seeders })`) for `importSeeds`; a registration carries its own. These tests start faster and never load a dependency's runtime.
+- **Without `registration`**, only data code runs: each dependency contributes its seed runtime (entity types, repositories, seed hooks). Pass your seeders (`import { seeders } from '#generated/seeders.ts'`, `setupPackTests({ seedRuntime, seeders })`) for `importSeeds`; a registration carries its own. These tests start faster and never load a dependency's runtime.
 - **The registered packs are the test file's own:** the harness registers your pack and its dependencies in a registry it creates for the file, which the SDK's lookups (`getDesignated`, `stepRegistry`, `getPackCommands`, `services`, …) read. To test how your pack reacts to another pack (its commands, feature settings or seeders), register one with `registerPack({ id, features: { … }, … })` from `@abuddy/testing/harness`, and `unregisterPack(id)` when done.
 - **A lookup filled directly:** for what no pack registers (a step type or designation only one test needs), fill `testPacks` from `@abuddy/sdk/testing` (`steps`, `designations`, `artifacts`, `blocks`, `services`, `seedHooks`, `seeders`, `commands`); its entries are found before the registered packs'. Empty it with `testPacks.clear()`.
 - **Run `abuddy build` once first**, so dependencies are fetched into `.abuddy/deps/`.
@@ -60,7 +70,7 @@ await setupPackTests({ seedRuntime, registration });
 
 ```typescript
 import { importSeeds } from '@abuddy/testing/harness';
-import { findAll } from '#generated/ears';
+import { findAll } from '#generated/ears.ts';
 
 it('seeds notes', async () => {
   expect(await importSeeds({ keys: ['team-notes'] })).toEqual({ 'team-notes': { created: 1, updated: 0, skipped: 0 } });
@@ -76,7 +86,7 @@ it('seeds notes', async () => {
 
 ```typescript
 import { importSeeds, startApp } from '@abuddy/testing/harness';
-import { repository } from '#generated/repository';
+import { repository } from '#generated/repository.ts';
 
 it('stores a memo a client adds and sends it back', async () => {
   const app = await startApp({ systems: ['memos'] });
@@ -112,9 +122,9 @@ module: the module imports `.vue` components, which a unit test doesn't load.
 
 ```typescript
 import { startApp, startShell } from '@abuddy/testing/harness';
-import { openPlugin } from '#generated/fe';
-import memosState from '../../src/features/memos/fe/state';
-import notesState from '../../src/features/notes/fe/state';
+import { openPlugin } from '#generated/fe.ts';
+import memosState from '../../src/features/memos/fe/state.ts';
+import notesState from '../../src/features/notes/fe/state.ts';
 
 it('opens memos with an event', async () => {
   const shell = await startShell({ plugins: { notes: { state: notesState }, memos: { state: memosState } } });
@@ -149,7 +159,7 @@ Start one shell per test, in place of `startFeTestRuntime`: it binds the fronten
 
 ```typescript
 import { mockService } from '@abuddy/testing/harness';
-import { services, type Services } from '#generated/services';
+import { services, type Services } from '#generated/services.ts';
 
 it('digests a note, with only the inference call it makes mocked', async () => {
   mockService<Services, 'inference'>('inference', { generateText: async () => ({ output: { summary: 'Buy milk' } }) } as never);
@@ -192,7 +202,7 @@ Flows run in unit tests as they do in the app. The brain runs the root flow, the
 
 ```typescript
 import { importFlows, mockInference, importSeeds, startApp } from '@abuddy/testing/harness';
-import { entry, keepAlive, subflow } from '#generated/flow-helpers';
+import { entry, keepAlive, subflow } from '#generated/flow-helpers.ts';
 
 it('summarizes a note', async () => {
   await importSeeds({ keys: ['prompts', 'flows'] });

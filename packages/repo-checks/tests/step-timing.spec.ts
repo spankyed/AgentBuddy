@@ -4,7 +4,10 @@ import { describe, expect, it } from 'vitest';
 import { criticalPath, driftedSteps, willNotCache } from '../../../scripts/lib/step-timing.ts';
 import type { SchedulableStep } from '../../../scripts/lib/chain-schedule.ts';
 
-const step = (name: string, needs: string[] = [], extra: Partial<SchedulableStep> = {}): SchedulableStep =>
+/** `forceArgs` is not the scheduler's business, which is why `driftedSteps` takes it as an intersection */
+type TimedStep = SchedulableStep & { readonly forceArgs?: readonly string[] };
+
+const step = (name: string, needs: string[] = [], extra: Partial<TimedStep> = {}): TimedStep =>
   ({ name, needs, ...extra });
 
 describe('criticalPath', () => {
@@ -52,6 +55,36 @@ describe('driftedSteps', () => {
   // this check to record `seconds: 14 -> 0`, the cached cost.
   it('says nothing about a step that finished in under a second, which may have had nothing to do', () => {
     expect(driftedSteps([step('ensure', [], { seconds: 14 })], new Map([['ensure', 400]]))).toEqual([]);
+  });
+
+  /**
+   * The two pooled steps run only their stale projects, so an incremental run is normally well under half
+   * the declared cost — which is the whole pool's. That fired the advisory on nearly every run, and a warning
+   * that is always on is one nobody reads. `forceArgs` is the marker, because it already means the step keeps
+   * a cache of its own.
+   */
+  describe('a step that keeps a cache of its own', () => {
+    const pooled = [step('test:unit:host', [], { seconds: 20, forceArgs: ['--all'] })];
+
+    it('says nothing on an incremental run, where it may have done a fraction of its work', () => {
+      expect(driftedSteps(pooled, new Map([['test:unit:host', 5_000]]))).toEqual([]);
+    });
+
+    it('is reported when the run forced its work, which is what --all is for', () => {
+      expect(driftedSteps(pooled, new Map([['test:unit:host', 5_000]]), true))
+        .toEqual([{ name: 'test:unit:host', declared: 20, measured: 5 }]);
+    });
+
+    // The direction the kill budget cares about: at four times the declared cost, budgetFor starts killing
+    it('is reported under --all when it overran, not only when it undershot', () => {
+      expect(driftedSteps(pooled, new Map([['test:unit:host', 50_000]]), true))
+        .toEqual([{ name: 'test:unit:host', declared: 20, measured: 50 }]);
+    });
+
+    it('does not make the flag the gate for an ordinary step, which has no cache to force', () => {
+      expect(driftedSteps(steps, new Map([['slow', 21_000]]), false))
+        .toEqual([{ name: 'slow', declared: 10, measured: 21 }]);
+    });
   });
 
   it('says nothing about a step that did not run, or one that declares no measurement', () => {

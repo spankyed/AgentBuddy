@@ -1,5 +1,5 @@
 import { ref, computed } from 'vue'
-import type { ThreadListItem } from '@/features/threads/fe/state'
+import type { ThreadListItem } from '#features/threads/fe/state.ts'
 
 export function useThreadSelection(
   items: () => ThreadListItem[],

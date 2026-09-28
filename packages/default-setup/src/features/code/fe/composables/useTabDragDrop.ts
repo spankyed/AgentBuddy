@@ -1,7 +1,7 @@
 import { ref, type Ref } from 'vue'
-import type { OpenFile, TerminalTab, TabGroup } from '../state'
-import type { ActionTab } from '../features/actions/state'
-import type { PromptTab } from '../features/prompts/state'
+import type { OpenFile, TerminalTab, TabGroup } from '../state.ts'
+import type { ActionTab } from '../features/actions/state.ts'
+import type { PromptTab } from '../features/prompts/state.ts'
 
 type Tab = OpenFile | TerminalTab | ActionTab | PromptTab
 type Context = 'pinned' | 'ungrouped' | string

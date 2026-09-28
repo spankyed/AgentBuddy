@@ -4,10 +4,10 @@ import { safeEvents } from '@abuddy/sdk/fe';
 import { setup, assign, enqueueActions, fromCallback, spawnChild, stopChild, type AnyEventObject } from 'xstate';
 import { createNavHistory, pushNavHistory, goBack, goForward, canGoBack, canGoForward } from '@abuddy/sdk/fe';
 import type { ActorRefFrom } from 'xstate';
-import type { ThreadEntity, ThreadCreateData, ThreadViewData, ThreadEditFields, ThreadsSettings, MessageEntity, AgentThreadData, Tab, AgentSettings, AgentMode as AgentModeConfig, MessageReferences, CommandItem, BlockResponse } from '@/__generated__/types';
-import type { ChatState, ThreadListItem, ThreadsContext } from './contract';
-import type { OutgoingThreadsEvents } from '@/features/threads/be/types';
-import { sendToSystem } from '@/__generated__/events';
+import type { ThreadEntity, ThreadCreateData, ThreadViewData, ThreadEditFields, ThreadsSettings, MessageEntity, AgentThreadData, Tab, AgentSettings, AgentMode as AgentModeConfig, MessageReferences, CommandItem, BlockResponse } from '#generated/types.ts';
+import type { ChatState, ThreadListItem, ThreadsContext } from './contract.ts';
+import type { OutgoingThreadsEvents } from '#features/threads/be/types.ts';
+import { sendToSystem } from '#generated/events.ts';
 import { Archive, Copy, Pin, Trash2 } from 'lucide-vue-next';
 import { contextMenuFn } from '@abuddy/sdk/fe';
 import { untypedOpenPlugin } from '@abuddy/sdk/fe'
@@ -15,9 +15,9 @@ import { resolveName } from '@abuddy/sdk/ids'
 
 const HOST_SETTINGS = resolveName('settings', 'host');
 import { type HotkeyEvent, type HotkeysMap, createHotkeyProcessor } from '@abuddy/sdk/fe';
-import type { ThreadTabGroup, TabGroupColor } from '@/features/threads/fe/canvas/agent/tabs/types';
-import { getNextAvailableColor } from '@/features/threads/fe/canvas/agent/tabs/types';
-import { saveThreadTabGroups, loadThreadTabGroups } from '@/features/threads/fe/canvas/agent/tabs/tab-groups';
+import type { ThreadTabGroup, TabGroupColor } from '#features/threads/fe/canvas/agent/tabs/types.ts';
+import { getNextAvailableColor } from '#features/threads/fe/canvas/agent/tabs/types.ts';
+import { saveThreadTabGroups, loadThreadTabGroups } from '#features/threads/fe/canvas/agent/tabs/tab-groups.ts';
 import type { EARS } from '@abuddy/sdk';
 
 export const id = 'threads' as const;
@@ -238,7 +238,7 @@ type ThreadEvents =
 
 const typeOf = safeEvents<ThreadEvents>();
 
-export type { ChatState, ThreadListItem } from './contract';
+export type { ChatState, ThreadListItem } from './contract.ts';
 
 // ---- Context ----
 

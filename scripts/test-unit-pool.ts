@@ -13,14 +13,41 @@
  * does not know about: the pool steps declare `forceArgs` so the flag arrives.
  */
 import { execFileSync } from 'node:child_process';
-import { stampedRunAll, unitStaleReason } from '@abuddy/host/build/packages-built';
-import { UNIT_SUITES } from './lib/unit-suites.ts';
+import { firstChange, freshnessSweep, stampedRunAll, stampRecord } from '@abuddy/host/build/packages-built';
+import { UNIT_SUITES, type UnitSuite } from './lib/unit-suites.ts';
 import { POOL_SECONDS } from './lib/chain-steps.ts';
-import { poolStampFor, poolUnitFor, projectsThatDidNotRun } from './lib/unit-pool.ts';
+import { poolStampFor, poolUnitFor, projectsThatDidNotRun, whyItRuns } from './lib/unit-pool.ts';
 import { boundedSpawn, budgetFor } from './lib/bounded-spawn.ts';
 import { exitOnEpipe } from './lib/exit-on-epipe.ts';
 
 exitOnEpipe();
+
+
+/** The diff itself, for the one branch of `whyItRuns` that needs it — over the sweep the decision was made on */
+/**
+ * Which projects will run, and why — asked of all of them at this one moment, over one reading of the tree.
+ *
+ * A function rather than a block, so the sweep is unreachable the moment it returns. It caches every byte it
+ * reads (14.7MB across the host pool's 2,372 distinct input files), and the run it decides on then spawns vitest
+ * for as long as the suites take — `freshnessSweep`'s own rule is that a sweep may not outlive the one question
+ * it was made for, and holding one across a test run is the worst way to break it.
+ *
+ * The verdict goes through the same sweep as the explanation. That is not only the double read it saves: a
+ * verdict and an explanation taken from two readings can describe two different trees, which is the shape the
+ * chain's report had removed from it a week ago.
+ */
+function decide(suites: readonly UnitSuite[], all: boolean): Array<{ suite: UnitSuite; why: string }> {
+  const sweep = freshnessSweep();
+  return suites.flatMap((suite) => {
+    const record = stampRecord(poolStampFor(suite));
+    if (!all && sweep.staleReason(poolUnitFor(suite), poolStampFor(suite)) === null) return [];
+    // The record is read once and handed to both halves, rather than fetched again inside the diff
+    const moved = () => (record?.files === undefined || record.declared === undefined
+      ? ''
+      : firstChange(sweep.changedInputs(poolUnitFor(suite), { files: record.files, declared: record.declared })));
+    return [{ suite, why: all ? '--all' : whyItRuns(record, moved) }];
+  });
+}
 
 async function main(): Promise<void> {
   const kind = process.argv[2] === 'pack' ? 'pack' : 'host';
@@ -32,12 +59,22 @@ async function main(): Promise<void> {
   const suites = UNIT_SUITES.filter((suite) => suite.kind === kind);
   const all = process.argv.includes('--all');
 
-  const stale = suites.filter((suite) => all || unitStaleReason(poolUnitFor(suite), poolStampFor(suite)) !== null);
+  // The sweep lives and dies inside this call, and what comes back is text
+  const running = decide(suites, all);
+  const stale = running.map(({ suite }) => suite);
   if (stale.length === 0) {
     console.log(`${kind} pool: all ${suites.length} project(s) up to date`);
     return;
   }
-  console.log(`${kind} pool: ${stale.length} of ${suites.length} project(s) to run — ${stale.map((s) => s.workspace).join(', ')}`);
+  // Why each one runs, not just that it does. A pool exists to run a subset, so every non-empty run makes a
+  // claim about which projects moved — and `npm run chain -- --dry` cannot answer it, because it reports on the
+  // *step*, a different unit with a different input set. It can say what moved under `test:unit:host` while
+  // being unable to say which of the eleven projects inside it that was
+  console.log(`${kind} pool: ${stale.length} of ${suites.length} project(s) to run`);
+  const width = Math.max(...stale.map((suite) => suite.workspace.length));
+  for (const { suite, why } of running) {
+    console.log(`  ${suite.workspace.padEnd(width)}  ${why}`);
+  }
 
   // What each run covers. The host suites are projects of one root config, so one vitest run takes them all
   // with `--project`. A pack suite is its own config resolving the published dist, so it cannot share that
@@ -79,5 +116,3 @@ try {
   console.error(`\n${err instanceof Error ? err.message : String(err)}`);
   process.exitCode = 1;
 }
-
-// probe

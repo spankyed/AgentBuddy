@@ -1,16 +1,16 @@
-import type { PromptsSettings } from '@/__generated__/types';
-import { services } from '@/__generated__/services';
-import { broadcastToPlugin } from '@/__generated__/events';
+import type { PromptsSettings } from '#generated/types.ts';
+import { services } from '#generated/services.ts';
+import { broadcastToPlugin } from '#generated/events.ts';
 import { setup } from 'xstate';
 import { defineSystem } from '@abuddy/sdk/framework';
 
-import { EARS } from '@/__generated__/ears';
-import type { Contract } from './contract';
-import { repository } from '@/__generated__/repository';
+import { EARS } from '#generated/ears.ts';
+import type { Contract } from './contract.ts';
+import { repository } from '#generated/repository.ts';
 import { createLogger } from '@abuddy/sdk/logger';
 import { toMap, toIdentifierSet, mapScalar } from '@abuddy/sdk/utils';
-import { exportPrompts } from './repository/export-prompts';
-import { ref } from '@/__generated__/ref';
+import { exportPrompts } from './repository/export-prompts.ts';
+import { ref } from '#generated/ref.ts';
 import { errorMessage } from '@abuddy/sdk/utils/pure';
 
 const logger = createLogger('prompts');

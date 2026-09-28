@@ -172,9 +172,9 @@ import { Plus, X, Upload, Download, FolderOpen, CheckCircle, XCircle } from 'luc
 import CollapsibleSection from '@abuddy/ui/design/CollapsibleSection'
 import ColorPicker from '@abuddy/ui/design/ColorPicker'
 import { useDebounce } from '@abuddy/ui/composables/useDebounce'
-import type { ActionsSettings, Category } from '@/__generated__/types'
+import type { ActionsSettings, Category } from '#generated/types.ts'
 import { useSelector } from '@xstate/vue'
-import type { ActionsState } from './state'
+import type { ActionsState } from './state.ts'
 
 interface Props {
   settings?: ActionsSettings

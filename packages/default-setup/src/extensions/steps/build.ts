@@ -1,17 +1,17 @@
 import type { StepDefinition } from '@abuddy/sdk/steps';
-import { actionStepBuild } from './action/build';
-import { llmStepBuild } from './llm/build';
-import { switchStepBuild } from './switch/build';
-import { fireStepBuild } from './fire/build';
-import { transformStepBuild } from './transform/build';
-import { queryStepBuild } from './query/build';
-import { flowStepBuild } from './subflow/build';
-import { createStepBuild } from './create/build';
-import { updateStepBuild } from './update/build';
-import { keepAliveStepBuild } from './keep-alive/build';
-import { killStepBuild } from './kill/build';
-import { scheduleTriggerBuild } from './schedule/build';
-import { listenerTriggerBuild } from './listener/build';
+import { actionStepBuild } from './action/build.ts';
+import { llmStepBuild } from './llm/build.ts';
+import { switchStepBuild } from './switch/build.ts';
+import { fireStepBuild } from './fire/build.ts';
+import { transformStepBuild } from './transform/build.ts';
+import { queryStepBuild } from './query/build.ts';
+import { flowStepBuild } from './subflow/build.ts';
+import { createStepBuild } from './create/build.ts';
+import { updateStepBuild } from './update/build.ts';
+import { keepAliveStepBuild } from './keep-alive/build.ts';
+import { killStepBuild } from './kill/build.ts';
+import { scheduleTriggerBuild } from './schedule/build.ts';
+import { listenerTriggerBuild } from './listener/build.ts';
 
 /**
  * Build-time step definitions (validate/compile/decompile, trigger facets) without

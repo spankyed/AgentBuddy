@@ -207,21 +207,24 @@ const MODULE_EXTENSIONS = new Set(['.ts', '.tsx', '.mts', '.cts', '.js', '.mjs',
 const TS_SOURCE_EXTENSIONS = new Set(['.ts', '.tsx', '.mts', '.cts']);
 
 /**
- * Specifier from src/__generated__ to a manifest path (relative to the pack root), with an
- * explicit .js extension so generated code resolves under node16/nodenext as well as bundlers.
+ * Specifier from src/__generated__ to a manifest path (relative to the pack root), naming the file that is
+ * there.
+ *
+ * Explicit, because no runtime resolves an extensionless specifier in ESM — and the extension the module
+ * *has*, rather than the `.js` this used to write for a `.ts` file. A pack is bundled rather than emitted as
+ * individual modules, its tsconfig sets `allowImportingTsExtensions`, and every tool in its toolchain
+ * resolves `.ts`: `tsc` and `vue-tsc` under `bundler` resolution, Vite, and esbuild. So `.js` bought nothing
+ * here and cost the pack a second convention — its hand-written code names `.ts`, as the `@abuddy` packages'
+ * own source does (`check:specifiers`, `findJsSpecifiers`).
  */
 function toImportPath(root: string, manifestPath: string): string {
   const normalized = manifestPath.split('\\').join('/');
   const rel = '../' + normalized.replace(/^(\.\/)?src\//, '');
-  const ext = extname(rel);
-  if (ext === '.ts' || ext === '.tsx' || ext === '.mts' || ext === '.cts') {
-    return rel.slice(0, -ext.length) + { '.ts': '.js', '.tsx': '.js', '.mts': '.mjs', '.cts': '.cjs' }[ext];
-  }
-  if (MODULE_EXTENSIONS.has(ext)) return rel;
+  if (MODULE_EXTENSIONS.has(extname(rel))) return rel;
   if (!existsSync(join(root, `${normalized}.ts`)) && existsSync(join(root, normalized, 'index.ts'))) {
-    return `${rel}/index.js`;
+    return `${rel}/index.ts`;
   }
-  return `${rel}.js`;
+  return `${rel}.ts`;
 }
 
 
@@ -302,7 +305,7 @@ export function generatePackFiles(
   /** `import type { name as alias }` from each dependency's facade, and the aliases */
   function depTypeImports(name: string, from: readonly string[] = depIds): { imports: string[]; aliases: string[] } {
     return {
-      imports: from.map((depId) => `import type { ${name} as ${depAlias(depId, name)} } from './deps/${depId}.js';`),
+      imports: from.map((depId) => `import type { ${name} as ${depAlias(depId, name)} } from './deps/${depId}.ts';`),
       aliases: from.map((depId) => depAlias(depId, name)),
     };
   }
@@ -431,6 +434,9 @@ export function generatePackFiles(
       // its contract now, so putting the machines in the program would parse and bind every one of them — and
       // their whole closure, XState and Vue included — for nothing. Their paths still reach the generated
       // imports; only membership of this program is what they don't need.
+      // Measured once, from the other end: a contract written to derive its state from its machine builds fine and
+      // emits identical events, and adds the machine's whole inferred type to dist/types/pack-types.d.ts. So the
+      // cost is not only parse time — it reaches the facade. `findContractLeafImports` is what keeps it out.
       ...features.flatMap((f) => (f.plugin?.contract ? [f.plugin.contract.split('#')[0]!] : [])),
       ...features.flatMap((f) => (f.system?.contract ? [f.system.contract.split('#')[0]!] : [])),
     ];
@@ -618,10 +624,10 @@ ${contracted.map(f => `type __contract_check_${f.id} = __ContractMatches<Machine
 
     return `${HEADER}
 import type { PackRegistration } from '@abuddy/sdk/framework';
-${contracted.length ? "import type { MachineMatchesContract } from '@abuddy/sdk/framework';\nimport type { SystemContracts as __SystemContracts } from './system-specs.js';\n" : ''}${systemFeatures.length ? "import { packSystem } from '@abuddy/sdk/framework';\n" : ''}${hasRepositories() ? "import { repositories } from './repositories.js';\n" : ''}
+${contracted.length ? "import type { MachineMatchesContract } from '@abuddy/sdk/framework';\nimport type { SystemContracts as __SystemContracts } from './system-specs.ts';\n" : ''}${systemFeatures.length ? "import { packSystem } from '@abuddy/sdk/framework';\n" : ''}${hasRepositories() ? "import { repositories } from './repositories.ts';\n" : ''}
 ${systemImports}
-import { featureServices } from './services.js';
-import { EARS } from './ears.js';
+import { featureServices } from './services.ts';
+import { EARS } from './ears.ts';
 ${hooksImport}
 ${hookEntries.map(([, path, exportName], i) => `import { ${exportName} as __seedHooks_${i} } from '${path}';`).join('\n')}
 ${settingsImports}
@@ -629,8 +635,8 @@ ${manifest.migrations ? `import { migrations } from '${toImportPath(root, manife
 ${stepsRegister ? `import { steps } from '${toImportPath(root, stepsRegister)}';` : ''}
 ${manifest.artifacts ? `import { artifacts } from '${toImportPath(root, manifest.artifacts)}';` : ''}
 ${manifest.blocks ? `import { blocks } from '${toImportPath(root, manifest.blocks)}';` : ''}
-import { getCompiledDir, seeders } from './seeders.js';
-export { setCompiledDir } from './seeders.js';
+import { getCompiledDir, seeders } from './seeders.ts';
+export { setCompiledDir } from './seeders.ts';
 ${sections ? `import { ${sections.exportName} as __settingsSections } from '${toImportPath(root, sections.source)}';` : ''}
 ${help ? `import { ${help.exportName} as __help } from '${toImportPath(root, help.source)}';` : ''}
 
@@ -725,7 +731,7 @@ ${contractCheck}`;
     if (feExts.blocks) regProps.push(`  blocks: blocksFE,`);
 
     if (monacoDslEntries().length > 0) {
-      extraImports.push(`import { dslTypes } from './dsl-types-fe.js';`);
+      extraImports.push(`import { dslTypes } from './dsl-types-fe.ts';`);
       regProps.push(`  dslTypes,`);
     }
 
@@ -774,7 +780,7 @@ ${regProps.join('\n')}
 
 import { defineEars, type ShapeOf } from '@abuddy/ears';
 import type { SdkEntityShapes } from '@abuddy/sdk';
-${ownNodes ? "import type { NodeEntity } from './types.js';\n" : ''}${shapeImports.join('\n')}
+${ownNodes ? "import type { NodeEntity } from './types.ts';\n" : ''}${shapeImports.join('\n')}
 
 ${[...depShapes.imports, ...depNodes.imports].join('\n')}
 
@@ -862,8 +868,8 @@ export const ref = (name: FeatureName): FeatureRef => resolveName(name, packId);
 import { pluginIsRunning, readUntypedPluginState, untypedOpenPlugin, useUntypedPluginState, type PluginStateOf } from '@abuddy/sdk/fe';
 import type { Qualified } from '@abuddy/sdk/events';
 import type { Ref } from 'vue';
-import type { SendablePluginEvents } from './events.js';
-import { ref } from './ref.js';
+import type { SendablePluginEvents } from './events.ts';
+import { ref } from './ref.ts';
 ${stateImports}
 ${depState.imports.join('\n')}
 
@@ -997,7 +1003,7 @@ export function readPluginState(name: PluginName, selector: (state: never) => un
     ].join(' & ');
     return `${HEADER}
 import { defineEvents, type HostPluginEvents, type HostSystemEvents, type IncomingEventsOf${hasSystems ? ', type OutgoingEventsOf' : ''}${contracts.size > 0 ? ', type PluginInboxOf, type PublicPluginInboxOf' : ''}, type Qualified, type WithOwnNames } from '@abuddy/sdk/events';
-${hasSystems ? `import type { SystemContracts as __SystemContracts } from './system-specs.js';\n` : ''}${acceptsImports ? `${acceptsImports}\n` : ''}${[...depPlugins.imports, ...depSystems.imports].join('\n')}
+${hasSystems ? `import type { SystemContracts as __SystemContracts } from './system-specs.ts';\n` : ''}${acceptsImports ? `${acceptsImports}\n` : ''}${[...depPlugins.imports, ...depSystems.imports].join('\n')}
 ${[outgoingAliases, acceptsAliases].filter(Boolean).join('\n')}
 
 /**
@@ -1141,8 +1147,8 @@ import type { z } from 'zod';
 import type { EARS } from '@abuddy/ears';
 import { services as sdkServices, type HostServices } from '@abuddy/sdk/services';
 import type { TypedSendToPlugin, TypedSendToSystem } from '@abuddy/sdk/events';
-import type { Repositories } from './repository.js';
-import type { QualifiedPluginEvents, QualifiedSystemEvents } from './events.js';
+import type { Repositories } from './repository.ts';
+import type { QualifiedPluginEvents, QualifiedSystemEvents } from './events.ts';
 ${imports.join('\n')}
 ${deps.imports.join('\n')}
 
@@ -1259,10 +1265,10 @@ export const seedRuntime: SeedRuntime = {
     // plugin state to publish, and naming the module anyway leaves the facade bundle unable to resolve it.
     const hasPlugins = publishesPluginState(manifest, manifest.id);
     return `${HEADER}
-export type { PackShapes as PackEntityShapes, PackStepNodes } from './ears.js';
-export type { PackPluginEvents, PackSystemEvents } from './events.js';
-${hasPlugins ? "export type { PackPluginState } from './fe.js';\n" : ''}export type { Services } from './services.js';
-export type { Repositories } from './repository.js';
+export type { PackShapes as PackEntityShapes, PackStepNodes } from './ears.ts';
+export type { PackPluginEvents, PackSystemEvents } from './events.ts';
+${hasPlugins ? "export type { PackPluginState } from './fe.ts';\n" : ''}export type { Services } from './services.ts';
+export type { Repositories } from './repository.ts';
 `;
   }
 

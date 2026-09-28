@@ -4,8 +4,9 @@
 //
 //   tsx ../../scripts/build-package.ts .        (from the package directory)
 //
-// A package's package.json is its published manifest; its exports resolve source under the
-// @abuddy/source condition (the repo's own configs) and dist otherwise. Relative imports name the .ts
+// Its package.json is what the published manifest is derived from: its exports resolve source under the
+// @abuddy/source condition (the repo's own configs) and dist otherwise, and `stagePublishTree` writes the
+// tree npm publishes into publish/, without the branches a tarball cannot satisfy. Relative imports name the .ts
 // source and tsc rewrites them to .js (rewriteRelativeImportExtensions), so the emitted JS resolves in
 // Node and in bundlers as is.
 //
@@ -17,6 +18,7 @@ import { execFileSync } from 'node:child_process';
 import { createRequire } from 'node:module';
 import { BareImports, assertExportTargetsBuilt, isDeclaration, rewriteDeclarationExtensions, walk } from './lib/published-imports.ts';
 import { runPackageBuild } from '@abuddy/host/build/packages-built';
+import { stagePublishTree } from '@abuddy/host/build/published-manifest';
 
 const repoRoot = path.resolve(import.meta.dirname, '..');
 const pkgDir = path.resolve(process.argv[2] ?? '');
@@ -53,7 +55,10 @@ async function main(): Promise<void> {
   }
   bareImports.assertDeclared(pkg, path.join(path.relative(repoRoot, pkgDir), 'package.json'));
   assertExportTargetsBuilt(pkgDir, pkg.exports);
-  console.log(`Built ${pkg.name}@${pkg.version} into ${path.relative(process.cwd(), outDir)}`);
+  // What npm publishes: the derived manifest and a copy of what `files` names, checked against itself
+  const treeDir = stagePublishTree(pkgDir, pkg);
+  console.log(`Built ${pkg.name}@${pkg.version} into ${path.relative(process.cwd(), outDir)}`
+    + `, staged for publishing in ${path.relative(process.cwd(), treeDir)}`);
 }
 
 // The build's own success stamp: written only if main() returns, and cleared before it touches dist

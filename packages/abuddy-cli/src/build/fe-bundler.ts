@@ -6,7 +6,6 @@ import type { Plugin as VitePlugin, Rollup } from 'vite';
 import { init as initModuleLexer, parse as parseModule } from 'es-module-lexer';
 import { getSharedFeDeps, unresolvedSubpathPackages, getSdkFeModules, getUiFeModules, sharedInstancePackage } from '@abuddy/host/build/shared-deps';
 import { errorMessage } from '@abuddy/sdk/utils/pure';
-import { readTsconfigAliases } from './tsconfig-aliases.ts';
 
 const EXTERNAL_PREFIX = '\0pack-external:';
 
@@ -412,9 +411,6 @@ export async function bundlePackFE(options: BundleFEOptions): Promise<{ success:
   const vite = await import('vite');
   const vue = (await import('@vitejs/plugin-vue')).default;
 
-  const tsconfigAliases = readTsconfigAliases(packDir);
-  const aliasEntries = Object.entries(tsconfigAliases).map(([find, replacement]) => ({ find, replacement }));
-
   let postcssPlugins: any[];
   try {
     postcssPlugins = await tailwindPostcssPlugins(packDir);
@@ -460,7 +456,9 @@ export async function bundlePackFE(options: BundleFEOptions): Promise<{ success:
         postcss: { plugins: postcssPlugins },
       },
       resolve: {
-        alias: aliasEntries,
+        // No alias map: a pack names its own modules with `#` subpath imports, which Vite resolves from the
+        // pack's own `package.json` — measured, extensionless included, and from inside another package's
+        // build graph. A pack's `compilerOptions.paths` is TypeScript's business and no longer this build's.
         conditions: [...vite.defaultClientConditions],
       },
       build: {

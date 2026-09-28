@@ -5,7 +5,7 @@
  * about what the installed Claude Code binary considers its config.
  */
 
-import { run, runJson, scopeArg, type SubcommandOptions } from './subcommand'
+import { run, runJson, scopeArg, type SubcommandOptions } from './subcommand.ts'
 
 type Scope = 'user' | 'project' | 'local'
 

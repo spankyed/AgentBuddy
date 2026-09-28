@@ -8,12 +8,12 @@
  */
 import { describe, expect, it } from 'vitest'
 import { importFlows, startApp, type FlowRun } from '@abuddy/testing/harness'
-import { on, transform } from '@/__generated__/flow-helpers'
-import { branch } from '@/extensions/steps/switch/helpers'
-import { repository } from '@/__generated__/repository'
-import { EARS, findWhere } from '@/__generated__/ears'
+import { on, transform } from '#generated/flow-helpers.ts'
+import { branch } from '#extensions/steps/switch/helpers.ts'
+import { repository } from '#generated/repository.ts'
+import { EARS, findWhere } from '#generated/ears.ts'
 import type { DSLStepNode } from '@abuddy/sdk/build'
-import type { Condition } from '@/extensions/steps/switch/types'
+import type { Condition } from '#extensions/steps/switch/types.ts'
 
 const step = (label: string) => transform('return true', { label })
 const when = (cmd: string) => `$.event.data.payload.cmd == '${cmd}'`

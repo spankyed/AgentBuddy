@@ -80,10 +80,10 @@ import {
   ContextMenuTrigger, ContextMenuContent,
   ContextMenuItem, ContextMenuPortal
 } from 'reka-ui'
-import { MENU_ITEM_CLASS, MENU_CONTENT_CLASS } from '@/features/code/fe/features/explorer/constants'
+import { MENU_ITEM_CLASS, MENU_CONTENT_CLASS } from '#features/code/fe/features/explorer/constants.ts'
 import TrackedContextMenuRoot from '@abuddy/ui/design/TrackedContextMenuRoot'
-import type { GitStatusFile } from '@/features/code/fe/features/commit/state'
-import type { TreeNode } from './types'
+import type { GitStatusFile } from '#features/code/fe/features/commit/state.ts'
+import type { TreeNode } from './types.ts'
 
 const props = withDefaults(defineProps<{
   item: TreeNode

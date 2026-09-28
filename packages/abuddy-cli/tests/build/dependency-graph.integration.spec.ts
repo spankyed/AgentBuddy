@@ -42,7 +42,7 @@ const NOTIFIER_SOURCES = {
   'src/system.ts': [
     "import { setup } from 'xstate';",
     "import { defineSystem } from '@abuddy/sdk/framework';",
-    "import type { Contract } from './system.contract.js';",
+    "import type { Contract } from './system.contract.ts';",
     'export const notifierSpec = defineSystem<Contract>();',
     'const entry = { spec: notifierSpec, machine: setup({ types: notifierSpec.types }).createMachine({ id: "notifier" }) };',
     'export default entry;',

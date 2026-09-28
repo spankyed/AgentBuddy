@@ -1,6 +1,13 @@
-export type TabGroupColor = 'blue' | 'purple' | 'pink' | 'red' | 'orange' | 'yellow' | 'green' | 'teal' | 'gray';
+/**
+ * The colours a tab group may take, and the type of one.
+ *
+ * The list is the declaration and the union is derived from it. Written side by side they drifted into different
+ * orders, and nothing would have caught a colour in the union that the list left out: what iterates this is the
+ * picker and the rotation below, so such a colour would simply never be offered.
+ */
+export const ALL_COLORS = ['blue', 'orange', 'purple', 'green', 'red', 'teal', 'yellow', 'pink', 'gray'] as const;
 
-export const ALL_COLORS: TabGroupColor[] = ['blue', 'orange', 'purple', 'green', 'red', 'teal', 'yellow', 'pink', 'gray'];
+export type TabGroupColor = (typeof ALL_COLORS)[number];
 
 export interface TabGroup {
   id: string;

@@ -6,8 +6,8 @@
 // What this covers is the routing, not `resolve-cli`: whether a CLI is on this machine's PATH is not the
 // system's behaviour, so the case that asserts an outcome is the one that needs no CLI at all.
 import { describe, expect, it } from 'vitest';
-import { services } from '@/__generated__/services';
-import { ref } from '@/__generated__/ref';
+import { services } from '#generated/services.ts';
+import { ref } from '#generated/ref.ts';
 import { startApp } from '@abuddy/testing/harness';
 
 const cliPaths = () => services.settings.forFeature<{ cliPaths?: Record<string, string> }>(ref('code')).cliPaths ?? {};

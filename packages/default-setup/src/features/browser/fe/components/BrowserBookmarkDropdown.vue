@@ -38,7 +38,7 @@
 <script setup lang="ts">
 import { reactive } from 'vue';
 import { X } from 'lucide-vue-next';
-import type { Bookmark } from '../state';
+import type { Bookmark } from '../state.ts';
 
 defineProps<{
   bookmarks: Bookmark[];

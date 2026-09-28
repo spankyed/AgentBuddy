@@ -10,6 +10,7 @@ import { builtinModules, createRequire } from 'node:module';
 import { execFileSync } from 'node:child_process';
 import { packageName } from '@abuddy/host/build/specifiers';
 import { runPackageBuild } from '@abuddy/host/build/packages-built';
+import { manifestPaths, type Manifest } from '@abuddy/host/build/published-manifest';
 import { SHARED_INSTANCE_PACKAGES } from '@abuddy/host/build/shared-deps';
 import { build, type BuildOptions, type Plugin } from 'esbuild';
 
@@ -33,7 +34,7 @@ interface BundleConfig {
 const CONFIGS: Record<string, BundleConfig> = {
   '@abuddy/cli': {
     entries: { cli: 'src/index.ts' },
-    copy: ['bin/abuddy.mjs'],
+    copy: ['bin/abuddy.mjs', 'templates'],
     manifest: { bin: { abuddy: 'bin/abuddy.mjs' } },
   },
   '@abuddy/testing': {
@@ -50,17 +51,28 @@ const CONFIGS: Record<string, BundleConfig> = {
 };
 
 /** Every path the published manifest points at, as [what names it, where it points] */
-function publishedPaths(config: BundleConfig): [string, string][] {
-  const manifest = config.manifest as { exports?: Record<string, string | Record<string, string>>; bin?: Record<string, string> };
-  const paths: [string, string][] = [];
-  for (const [subpath, target] of Object.entries(manifest.exports ?? {})) {
-    // An export names either one target or a target per condition
-    if (typeof target === 'string') paths.push([`exports["${subpath}"]`, target]);
-    else for (const [condition, file] of Object.entries(target)) paths.push([`exports["${subpath}"] (${condition})`, file]);
+function publishedPaths(config: BundleConfig, pkgDir: string): [string, string][] {
+  // The same walk the staged packages' manifests get (`@abuddy/host/build/published-manifest`), so a generated
+  // manifest and a derived one are held to one answer about what a manifest names
+  const paths: [string, string][] = [...manifestPaths(config.manifest as Manifest)];
+  for (const file of config.copy ?? []) {
+    // A directory entry becomes its files, because `existsSync` is true of an empty directory and shipping an
+    // empty `templates/` is exactly the failure this assertion is for: the CLI would scaffold nothing, and only
+    // `test-packaged-authoring.sh` runs the published layout.
+    const from = path.join(pkgDir, file);
+    if (fs.existsSync(from) && fs.statSync(from).isDirectory()) {
+      for (const inside of filesUnder(from)) paths.push(['a copied file', path.join(file, inside)]);
+    } else paths.push(['a copied file', file]);
   }
-  for (const [command, target] of Object.entries(manifest.bin ?? {})) paths.push([`bin.${command}`, target]);
-  for (const file of config.copy ?? []) paths.push(['a copied file', file]);
   return paths;
+}
+
+/** Every file under `dir`, relative to it: what a copied directory entry stands for */
+function filesUnder(dir: string): string[] {
+  return fs.readdirSync(dir, { withFileTypes: true }).flatMap((entry) =>
+    entry.isDirectory()
+      ? filesUnder(path.join(dir, entry.name)).map((inside) => path.join(entry.name, inside))
+      : [entry.name]);
 }
 
 /**
@@ -70,8 +82,8 @@ function publishedPaths(config: BundleConfig): [string, string][] {
  * and a dependent then sees an untyped module, so the build fails here instead. `bin` and the copied
  * files are checked with them: the CLI publishes no exports map, and its bin is how the layout is read.
  */
-function assertPublishedPathsExist(config: BundleConfig, outDir: string, name: string): void {
-  const missing = publishedPaths(config)
+function assertPublishedPathsExist(config: BundleConfig, pkgDir: string, outDir: string, name: string): void {
+  const missing = publishedPaths(config, pkgDir)
     .filter(([, target]) => !fs.existsSync(path.join(outDir, target)))
     .map(([names, target]) => `  ${name} ${names}: ${target}`);
   if (missing.length > 0) {
@@ -192,9 +204,13 @@ async function main(): Promise<void> {
   delete dependencies['@abuddy/host'];
 
   for (const file of config.copy ?? []) {
+    const from = path.join(pkgDir, file);
     const dest = path.join(outDir, file);
     fs.mkdirSync(path.dirname(dest), { recursive: true });
-    fs.copyFileSync(path.join(pkgDir, file), dest);
+    // A directory as well as a file, since the CLI ships its scaffold templates as a tree. `copyFileSync`
+    // throws EISDIR on one, which is how this was found rather than shipped empty.
+    if (fs.statSync(from).isDirectory()) fs.cpSync(from, dest, { recursive: true });
+    else fs.copyFileSync(from, dest);
   }
 
   if (config.declarations) {
@@ -222,7 +238,7 @@ async function main(): Promise<void> {
     publishConfig: { access: 'public', provenance: true },
   };
   fs.writeFileSync(path.join(outDir, 'package.json'), JSON.stringify(manifest, null, 2) + '\n');
-  assertPublishedPathsExist(config, outDir, pkg.name);
+  assertPublishedPathsExist(config, pkgDir, outDir, pkg.name);
   console.log(`Built ${pkg.name}@${pkg.version} into ${path.relative(process.cwd(), outDir)}`);
 }
 

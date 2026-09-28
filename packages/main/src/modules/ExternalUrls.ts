@@ -1,7 +1,7 @@
-import {AppModule} from '../AppModule.js';
-import {ModuleContext} from '../ModuleContext.js';
+import {AppModule} from '../AppModule.ts';
+import {ModuleContext} from '../ModuleContext.ts';
 import {session} from 'electron';
-import {openExternalUrl} from './shell-access.js';
+import {openExternalUrl} from './shell-access.ts';
 
 /**
  * A window opens no window of its own: what asks for one (a link with `target="_blank"`, `window.open`) is a link,

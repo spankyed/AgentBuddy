@@ -306,8 +306,8 @@ import {
   HardDrive,
   Image as ImageIcon
 } from 'lucide-vue-next';
-import { id, type DatabaseState } from '../state';
-import { sendToSystem } from '@/__generated__/events';
+import { id, type DatabaseState } from '../state.ts';
+import { sendToSystem } from '#generated/events.ts';
 import ToastNotification from '@abuddy/ui/design/ToastNotification';
 
 const actor: DatabaseState = usePlugin();

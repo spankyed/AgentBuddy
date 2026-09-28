@@ -302,11 +302,11 @@ import ConfirmDialog from './ConfirmDialog.vue'
 import BrokenSymlinkView from './BrokenSymlinkView.vue'
 import TableHeader from './TableHeader.vue'
 import TreeTableRow from './TreeTableRow.vue'
-import type { LibraryItem, BreadcrumbItem } from '@/__generated__/types'
-import { useSelection } from '../composables/useSelection'
-import { useInlineEdit } from '../composables/useInlineEdit'
-import { useDragDrop } from '../composables/useDragDrop'
-import { generateUniqueFolderName } from '../utils/naming'
+import type { LibraryItem, BreadcrumbItem } from '#generated/types.ts'
+import { useSelection } from '../composables/useSelection.ts'
+import { useInlineEdit } from '../composables/useInlineEdit.ts'
+import { useDragDrop } from '../composables/useDragDrop.ts'
+import { generateUniqueFolderName } from '../utils/naming.ts'
 
 const props = defineProps<{
   items: LibraryItem[]

@@ -42,7 +42,7 @@ re-derived:
 
 | Proposal | Why not | Where |
 |---|---|---|
-| Stat-before-hash, so the check is cheap enough to run continuously | The check is already 24ms; the 345ms of `packages:ensure` is npm spawn and node/tsx startup. Saving ~20ms is not worth a cache key that is right unless a file changes content while keeping its size and timestamp. | comment on `fingerprintInputs`, `@abuddy/host/build/packages-built` |
+| Stat-before-hash, so the check is cheap enough to run continuously | The check is already 24ms; the 345ms of `packages:ensure` is npm spawn and node/tsx startup. Saving ~20ms is not worth a cache key that is right unless a file changes content while keeping its size and timestamp. Re-measured 2026-09-28 at chain-sweep scale (12 units, 39.1MB), where the arithmetic is worse: the stats *are* the walk, and a unit whose stats moved pays both, 861ms against 661ms — which is the ordinary case, since a chain run is a run you made because something changed. | comment on `fingerprintInputs`, `@abuddy/host/build/packages-built` |
 | Rebuild the built-in pack whenever the SDK changes | `abuddy build` for default-setup is ~14s, and what it refreshes (compiled seeds, the facade dependents consume, the step build, the seed runtime) is not what bites the person editing SDK and default-setup together. | Decision 2 below |
 
 ### Measurements (this machine, warm)

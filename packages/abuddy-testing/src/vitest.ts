@@ -1,13 +1,15 @@
-// Vitest helpers for suites that touch AgentBuddy's on-disk stores (EARS, media): an isolated data
-// dir per run, split per worker so parallel spec files don't share stores, removed after the run.
+// A pack's vitest config, and the isolated data dir under it.
 //
-//   import { isolatedDataDir } from '@abuddy/testing/vitest';
-//   const dataDir = isolatedDataDir('my-pack-tests-');
-//   export default defineConfig({ test: { env: dataDir.env, globalSetup: dataDir.globalSetup, setupFiles: [...dataDir.setupFiles, './tests/setup.ts'] } });
+//   import { definePackTestConfig } from '@abuddy/testing/vitest';
+//   export default definePackTestConfig();
+//
+// `isolatedDataDir` is the half a pack used to assemble by hand; it is still exported for a pack that needs
+// a config `definePackTestConfig` cannot express.
 import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import type { ViteUserConfig } from 'vitest/config';
 
 export interface IsolatedDataDir {
   /** The run's data dir; each worker uses a `worker-<n>` subdir of it */
@@ -69,5 +71,106 @@ export function isolatedDataDir(prefix = 'abuddy-tests-'): IsolatedDataDir {
     env: { ABUDDY_ENV: 'test', ABUDDY_USER_DATA_DIR: dir },
     globalSetup: [sibling('vitest-teardown')],
     setupFiles: [sibling('vitest-worker')],
+  };
+}
+
+/**
+ * What a pack's SFCs become in its tests, and why they are not compiled.
+ *
+ * A pack's specs drive machines, systems, seeds and repositories; **one spec in the whole AgentBuddy repo
+ * mounts a Vue component**. What every pack needs instead is a module graph that *resolves*, because
+ * `vitest related` and `--changed` walk it from the file you edited — and without this they die on the first
+ * `.vue` they reach, which is any pack with a plugin.
+ *
+ * This is the third place the toolchain answers that question the same way, so it is the convention rather
+ * than a shortcut: `abuddy init`'s `env.d.ts` declares `*.vue` as a generic component for `tsc` (*"Plain
+ * `tsc` can't read .vue files"*), and `abuddy build` stubs `.vue` and `.css` for the backend bundle (*"The
+ * backend runtime never renders them"*). A stubbed SFC is also never *parsed*, which is why a pack's own path
+ * aliases need no handling here: nothing inside one is resolved.
+ *
+ * It throws when rendered rather than returning an empty component, because a component test that silently
+ * asserts against nothing is worse than one that fails.
+ */
+const STUBBED_SFC = `export default {
+  name: 'AbuddyStubbedSfc',
+  render() {
+    throw new Error(
+      'This pack\\'s test config stubs .vue files, so components are not compiled or rendered. To render '
+      + 'them, install @vitejs/plugin-vue and pass { vue: true } to definePackTestConfig().',
+    );
+  },
+};
+`;
+
+/**
+ * `enforce: 'pre'` with `load` rather than `resolveId`, measured: Vite's own resolver wins the id, so a
+ * `resolveId` hook at normal order never sees `./form.vue` and `load` then gets an absolute path that the
+ * real file is read from. Matching the id in `load` works however it was resolved.
+ */
+const stubSfcPlugin = (): NonNullable<ViteUserConfig['plugins']>[number] => ({
+  name: 'abuddy-stub-sfc',
+  enforce: 'pre',
+  load: (id: string) => (id.split('?')[0]!.endsWith('.vue') ? STUBBED_SFC : null),
+});
+
+/** The real compiler, for a pack that renders. An optional peer, so a pack that does not need it installs nothing. */
+async function vueSfcPlugin(): Promise<NonNullable<ViteUserConfig['plugins']>[number]> {
+  try {
+    const { default: vue } = await import('@vitejs/plugin-vue');
+    return vue();
+  } catch (err) {
+    throw new Error('definePackTestConfig({ vue: true }) compiles this pack\'s .vue files and needs '
+      + `@vitejs/plugin-vue, which could not be loaded: ${(err as Error).message}\n`
+      + 'Install it in the pack (npm i -D @vitejs/plugin-vue), or drop `vue: true` to stub SFCs instead.');
+  }
+}
+
+export interface PackTestConfig {
+  /** Prefix for the run's throwaway data dir, so leftovers name the suite that made them */
+  readonly dataDirPrefix?: string;
+  /** Globs to leave out beyond `tests/e2e/**` and `tests/_support/**`, which are excluded already */
+  readonly exclude?: readonly string[];
+  /** Plugins this pack needs on top of the SFC handling */
+  readonly plugins?: NonNullable<ViteUserConfig['plugins']>;
+  /** Setup files after the data dir's own, which must come first. Defaults to the pack's `tests/setup.ts` */
+  readonly setupFiles?: readonly string[];
+  /** Compile the pack's SFCs instead of stubbing them; needs `@vitejs/plugin-vue` installed */
+  readonly vue?: boolean;
+}
+
+/**
+ * A pack's vitest config.
+ *
+ * It exists because there were three of these and they had drifted: the built-in pack, the repo's fixture
+ * pack and the config `abuddy init` scaffolds each restated the same settings, and one of them ran without
+ * `globals` while another set it. Nobody decided that; it is what three copies do.
+ *
+ * **No `resolve.conditions`, ever.** A pack resolves the `@abuddy` packages' published `dist`, which is the
+ * one layout a pack author has, and `check:specifiers` refuses a pack config that declares the source
+ * condition. A helper that quietly declared it would break that for every pack at once.
+ */
+export async function definePackTestConfig(options: PackTestConfig = {}): Promise<ViteUserConfig> {
+  const dataDir = isolatedDataDir(options.dataDirPrefix);
+  return {
+    plugins: [options.vue === true ? await vueSfcPlugin() : stubSfcPlugin(), ...(options.plugins ?? [])],
+    test: {
+      globals: true,
+      environment: 'node',
+      // A spec's path mirrors the source it covers, so one pattern finds every one of them
+      include: ['tests/**/*.spec.ts'],
+      // `tests/e2e/` is Playwright's, run by `abuddy test` — a different runner, not a cost half. `_support/`
+      // is helpers and fixture packs: a fixture that grew a spec would otherwise join this suite.
+      exclude: ['**/node_modules/**', '**/dist/**', 'tests/e2e/**', 'tests/_support/**', ...(options.exclude ?? [])],
+      // Tier 1 (`TIER_TIMEOUT_MS`, scripts/lib/chain-steps.ts): a unit test that takes longer is hung, not
+      // slow. Vitest's own default is 5s for a test and 10s for a hook, both tighter than the tier allows.
+      testTimeout: 15_000,
+      hookTimeout: 15_000,
+      // Each worker's tests create their own EARS engines, so files may run in parallel
+      fileParallelism: true,
+      env: dataDir.env,
+      globalSetup: dataDir.globalSetup,
+      // The data dir's setup points the worker at its own subdir, before anything opens a store
+      setupFiles: [...dataDir.setupFiles, ...(options.setupFiles ?? ['./tests/setup.ts'])],
+    },
   };
 }

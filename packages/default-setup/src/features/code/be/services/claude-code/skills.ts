@@ -2,7 +2,7 @@
  * `claude skill` — install/uninstall/enable/disable skills + validate + publish.
  */
 
-import { run, runJson, scopeArg, type SubcommandOptions } from './subcommand'
+import { run, runJson, scopeArg, type SubcommandOptions } from './subcommand.ts'
 
 type Scope = 'user' | 'project' | 'local' | 'builtin'
 

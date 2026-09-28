@@ -54,7 +54,7 @@ import { usePlugin } from '@abuddy/sdk/fe'
 
 import { ref, onUnmounted } from 'vue'
 import { useSelector } from '@xstate/vue'
-import type { DatabaseState } from './state'
+import type { DatabaseState } from './state.ts'
 
 import SimpleTable from './components/simple-table/SimpleTable.vue'
 import SchemaPanel from './components/SchemaPanel.vue'

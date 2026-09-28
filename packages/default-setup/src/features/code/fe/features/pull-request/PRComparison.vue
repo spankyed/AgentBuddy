@@ -68,11 +68,11 @@ import {
   ContextMenuRoot, ContextMenuTrigger, ContextMenuContent,
   ContextMenuItem, ContextMenuPortal
 } from 'reka-ui'
-import EmptyState from '@/features/code/fe/features/EmptyState.vue'
-import FileTreeSkeleton from '@/features/code/fe/features/pull-request/FileTreeSkeleton.vue'
-import FileTree from '@/features/code/fe/features/pull-request/FileTree.vue'
-import type { GitStatusFile } from '@/features/code/fe/features/commit/state'
-import type { TreeNode } from './types'
+import EmptyState from '#features/code/fe/features/EmptyState.vue'
+import FileTreeSkeleton from '#features/code/fe/features/pull-request/FileTreeSkeleton.vue'
+import FileTree from '#features/code/fe/features/pull-request/FileTree.vue'
+import type { GitStatusFile } from '#features/code/fe/features/commit/state.ts'
+import type { TreeNode } from './types.ts'
 
 defineProps<{
   files: GitStatusFile[]

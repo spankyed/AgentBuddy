@@ -202,7 +202,7 @@ import CollapsibleSection from '@abuddy/ui/design/CollapsibleSection'
 import ColorPicker, { DEFAULT_COLORS } from '@abuddy/ui/design/ColorPicker'
 import { useDebounce } from '@abuddy/ui/composables/useDebounce'
 import { useSelector } from '@xstate/vue'
-import type { LibraryActor } from './state'
+import type { LibraryActor } from './state.ts'
 
 interface LibraryTagOption {
   name: string

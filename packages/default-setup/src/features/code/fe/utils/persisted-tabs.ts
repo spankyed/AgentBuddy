@@ -1,6 +1,6 @@
-import type { OpenFile, TerminalTab } from '../state'
-import type { ActionTab } from '../features/actions/state'
-import type { PromptTab } from '../features/prompts/state'
+import type { OpenFile, TerminalTab } from '../state.ts'
+import type { ActionTab } from '../features/actions/state.ts'
+import type { PromptTab } from '../features/prompts/state.ts'
 
 // Simplified interface for persisted tabs
 export interface PersistedTab {

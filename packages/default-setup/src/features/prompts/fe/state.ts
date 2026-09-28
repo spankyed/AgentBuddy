@@ -6,11 +6,11 @@ import {
   TRAIL_CLICK,
   type TrailClickEvent,
 } from '@abuddy/sdk/fe'
-import type { PromptsSettings } from '@/__generated__/types'
-import type { PromptsContext, PromptsInboxEvent } from './contract'
-import type { OutgoingPromptEvents } from '@/features/prompts/be/types'
+import type { PromptsSettings } from '#generated/types.ts'
+import type { PromptsContext, PromptsInboxEvent } from './contract.ts'
+import type { OutgoingPromptEvents } from '#features/prompts/be/types.ts'
 import type { TemplateInput } from '@abuddy/sdk'
-import { sendToSystem } from '@/__generated__/events'
+import { sendToSystem } from '#generated/events.ts'
 import { Trash2 } from 'lucide-vue-next'
 import { contextMenuFn } from '@abuddy/sdk/fe'
 import type { PromptEntity } from '@abuddy/sdk'

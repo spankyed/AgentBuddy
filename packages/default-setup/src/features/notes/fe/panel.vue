@@ -258,7 +258,7 @@
 <script setup lang="ts">
 import { computed, ref, nextTick, watch } from 'vue'
 import { useSelector } from '@xstate/vue'
-import { type NotesState } from './state'
+import { type NotesState } from './state.ts'
 import NoteTreeItem from './components/NoteTreeItem.vue'
 import { Plus, ListChecks, MoreVertical, Star, ChevronRight, Trash2, ArrowLeft, Undo2, Search, X, FileText, CircleCheck } from 'lucide-vue-next'
 import {
@@ -268,7 +268,7 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
 } from 'reka-ui'
-import { useNoteTreeDragDrop } from './composables/useNoteTreeDragDrop'
+import { useNoteTreeDragDrop } from './composables/useNoteTreeDragDrop.ts'
 import type { MenuItem } from '@abuddy/ui/composables/useContextMenu'
 import { useTrackedMenuOpen, usePlugin } from '@abuddy/sdk/fe'
 

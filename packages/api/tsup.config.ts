@@ -76,21 +76,19 @@ export default defineConfig((options) => {
       },
     },
     {
+      /**
+       * The API's own `@/`, and only the API's (`packages/api/tsconfig.json` maps it to `src/*`).
+       *
+       * It used to try the importer's built-in pack first, because a pack named its own modules that way too
+       * — a per-importer rule that this config, the renderer's, the pack's vitest config and `abuddy build`
+       * each implemented separately. Packs use `#` subpath imports now, and esbuild resolves those from the
+       * pack's own `package.json` with no help from here, since each names the file that is there.
+       */
       name: 'resolve-at-aliases',
       setup(build) {
         build.onResolve({ filter: /^@\// }, (args) => {
-          const subpath = args.path.slice(2);
-
-          const packSrc = builtInPackSrcDirs.find(d => args.importer.startsWith(d));
-          if (packSrc) {
-            const resolved = tryResolve(packSrc, subpath);
-            if (resolved) return { path: resolved };
-          }
-
-          const resolved = tryResolve(apiSrc, subpath);
-          if (resolved) return { path: resolved };
-
-          return undefined;
+          const resolved = tryResolve(apiSrc, args.path.slice(2));
+          return resolved ? { path: resolved } : undefined;
         });
       },
     },

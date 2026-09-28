@@ -1,9 +1,9 @@
 import { app, protocol } from 'electron';
 import * as path from 'path';
 import * as fs from 'fs';
-import type { AppModule } from '../../AppModule.js';
-import type { ModuleContext } from '../../ModuleContext.js';
-import { getAppContext } from '../../app-context.js';
+import type { AppModule } from '../../AppModule.ts';
+import type { ModuleContext } from '../../ModuleContext.ts';
+import { getAppContext } from '../../app-context.ts';
 import { devServerUrl } from '@abuddy/host/packs/dev-server';
 
 /** A pack id, as the manifest schema defines it (`abuddy-sdk/src/build/manifest-schema.ts`) */

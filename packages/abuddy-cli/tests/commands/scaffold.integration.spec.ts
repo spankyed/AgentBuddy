@@ -95,8 +95,8 @@ describe('abuddy init → add feature → build → tsc → pack', () => {
     expect((await callCli(pack, 'add', ['service', 'cache'])).code).toBe(0);
     expect(JSON.parse(fs.readFileSync(path.join(pack, 'abuddy.json'), 'utf-8')).packServices).toEqual({ cache: 'src/extensions/services/cache.ts#cacheService' });
     const stepsDir = path.join(pack, 'src', 'extensions', 'steps');
-    expect(fs.readFileSync(path.join(stepsDir, 'register.ts'), 'utf-8')).toMatch(/import \{ pingStep \} from '\.\/ping';[\s\S]*\[[\s\S]*pingStep,/);
-    expect(fs.readFileSync(path.join(stepsDir, 'build.ts'), 'utf-8')).toMatch(/import \{ pingStepBuild \} from '\.\/ping\/build';[\s\S]*\[[\s\S]*pingStepBuild,/);
+    expect(fs.readFileSync(path.join(stepsDir, 'register.ts'), 'utf-8')).toMatch(/import \{ pingStep \} from '\.\/ping\/index\.ts';[\s\S]*\[[\s\S]*pingStep,/);
+    expect(fs.readFileSync(path.join(stepsDir, 'build.ts'), 'utf-8')).toMatch(/import \{ pingStepBuild \} from '\.\/ping\/build\.ts';[\s\S]*\[[\s\S]*pingStepBuild,/);
 
     // produces: the build whose steps.build.mjs is imported below
     const build = await callCli(pack, 'build');

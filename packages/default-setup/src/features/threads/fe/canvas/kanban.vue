@@ -4,11 +4,11 @@ import { usePlugin } from '@abuddy/sdk/fe'
 import { ref, reactive, computed, watch } from 'vue'
 import { ArrangeableList, type MovingItem } from 'vue-arrange'
 import { useSelector } from '@xstate/vue'
-import { threadsFromStore, type ThreadsState, type ThreadListItem } from '@/features/threads/fe/state'
+import { threadsFromStore, type ThreadsState, type ThreadListItem } from '#features/threads/fe/state.ts'
 import ThreadsHeader from './components/ThreadsHeader.vue'
 import { SquarePen } from 'lucide-vue-next'
 
-// import type { ThreadsSettings } from '@/__generated__/types'
+// import type { ThreadsSettings } from '#generated/types.ts'
 
 const actor: ThreadsState = usePlugin()
 const threadMap = useSelector(actor, s => s.context.threadMap)

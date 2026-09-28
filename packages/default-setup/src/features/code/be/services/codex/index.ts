@@ -6,9 +6,9 @@
  * and handle management to compiled actions via `services.codex`.
  */
 
-import { CodexAppServer } from './app-server'
-import { storeHandle, getHandle, clearHandle } from './handle-store'
-import * as codexSessions from './sessions'
+import { CodexAppServer } from './app-server.ts'
+import { storeHandle, getHandle, clearHandle } from './handle-store.ts'
+import * as codexSessions from './sessions.ts'
 import type {
   ServerStatus,
   ThreadStartParams,
@@ -23,7 +23,7 @@ import type {
   ConsumerHandlers,
   CodexTurnHandle,
   ListMcpServersParams,
-} from './types'
+} from './types.ts'
 
 export type { ServerStatus, ThreadStartParams, ThreadReadParams, ThreadForkParams, ThreadRollbackParams, ThreadListParams, ConfigReadParams, ConfigValueWriteParams, TurnStartParams, ApprovalDecision, ConsumerHandlers, CodexTurnHandle }
 export { storeHandle, getHandle, clearHandle }

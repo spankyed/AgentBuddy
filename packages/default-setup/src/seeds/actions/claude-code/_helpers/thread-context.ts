@@ -13,13 +13,13 @@
  * `THREAD_UPDATED` events.
  */
 
-import type { Services, EntityId } from '@/__generated__/services';
-import { resolvePlanDraft } from './plan-artifact';
+import type { Services, EntityId } from '#generated/services.ts';
+import { resolvePlanDraft } from './plan-artifact.ts';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
 /**
- * Local mirror of `PermissionMode` (from `@/services/claude-code/types` on
+ * Local mirror of `PermissionMode` (from `#features/code/be/services/claude-code/types` on
  * the backend). Duplicated here so helper files in this folder can typecheck
  * without reaching across package boundaries.
  */

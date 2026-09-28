@@ -169,7 +169,7 @@ import ToggleSwitch from './form/ToggleSwitch.vue'
 import CollapsibleSection from '@abuddy/ui/design/CollapsibleSection'
 import OccurrenceInput from './form/OccurrenceInput.vue'
 import CopyFeedback from '@abuddy/ui/design/CopyFeedback'
-import type { SearchIndexFormData, SegmentRule } from '../../types/search-index'
+import type { SearchIndexFormData, SegmentRule } from '../../types/search-index.ts'
 
 const props = defineProps<{
   modelValue: SearchIndexFormData

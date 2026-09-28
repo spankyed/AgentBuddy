@@ -26,9 +26,9 @@
 <script setup lang="ts">
 import { ref, computed, watch, onMounted, onBeforeUnmount, nextTick } from 'vue'
 import type { Editor } from '@tiptap/core'
-import { commandSuggestionPluginKey, COMMAND_TRIGGER_POS } from './command-suggestion-plugin'
-import { useCommandItems } from './useCommandItems'
-import type { CommandItem } from './command-config'
+import { commandSuggestionPluginKey, COMMAND_TRIGGER_POS } from './command-suggestion-plugin.ts'
+import { useCommandItems } from './useCommandItems.ts'
+import type { CommandItem } from './command-config.ts'
 
 const props = defineProps<{
   editor: Editor

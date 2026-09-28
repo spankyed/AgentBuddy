@@ -1,6 +1,6 @@
 import type { ActionMeta } from '@abuddy/sdk/build';
-import type { EntityId, Services } from '@/__generated__/services';
-import { getOnboardingState, persistOnboardingState, showChooseModeOrFinish, finishOnboarding } from '../onboarding-helpers';
+import type { EntityId, Services } from '#generated/services.ts';
+import { getOnboardingState, persistOnboardingState, showChooseModeOrFinish, finishOnboarding } from '../onboarding-helpers.ts';
 
 export const meta: ActionMeta = {
   label: 'Handle Pick Thread Step',

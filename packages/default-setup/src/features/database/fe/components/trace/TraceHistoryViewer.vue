@@ -71,7 +71,7 @@ import { usePlugin } from '@abuddy/sdk/fe'
 
 import { ref, computed } from 'vue'
 import { useSelector } from '@xstate/vue'
-import type { DatabaseState } from '../../state'
+import type { DatabaseState } from '../../state.ts'
 import { RefreshCw, History } from 'lucide-vue-next'
 import TraceFlowSelector from './TraceFlowSelector.vue'
 import TraceEventList from './TraceEventList.vue'

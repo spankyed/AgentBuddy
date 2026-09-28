@@ -1,21 +1,21 @@
-import { sendToSystem } from '@/__generated__/events';
+import { sendToSystem } from '#generated/events.ts';
 import { untypedQx } from '@abuddy/ears';
-import { services as appServices } from '@/__generated__/services';
+import { services as appServices } from '#generated/services.ts';
 import { setup, sendParent, enqueueActions, raise, type AnyActorRef, type AnyStateMachine } from 'xstate';
-import type { NodeEntity } from '@/__generated__/types';
-import { repository } from '@/__generated__/repository';
+import type { NodeEntity } from '#generated/types.ts';
+import { repository } from '#generated/repository.ts';
 
 import { stepRegistry } from '@abuddy/sdk/steps';
-import { createStepNodeSystem } from './step-system';
-import { EARS } from '@/__generated__/ears';
+import { createStepNodeSystem } from './step-system.ts';
+import { EARS } from '#generated/ears.ts';
 import type { ExecutionContext, TNodeEntity } from '@abuddy/sdk/steps';
 import { safeEvents } from '@abuddy/sdk/helpers';
-import { brainRuntime } from './system';
-import { brainLogger } from './utils/brain-inspect';
-import { isBrainPaused } from './utils/brain-pause';
-import { isPersistentTriggerFlow, shouldCompleteFlow } from './flow-completion';
+import { brainRuntime } from './system.ts';
+import { brainLogger } from './utils/brain-inspect.ts';
+import { isBrainPaused } from './utils/brain-pause.ts';
+import { isPersistentTriggerFlow, shouldCompleteFlow } from './flow-completion.ts';
 import { createLogger, reportError } from '@abuddy/sdk/logger';
-import { dedupeTriggerNodes, type FlowTriggerNode, type TriggerDedupeWarning } from './trigger-dedupe';
+import { dedupeTriggerNodes, type FlowTriggerNode, type TriggerDedupeWarning } from './trigger-dedupe.ts';
 
 /**
  * Flow Actor Registry

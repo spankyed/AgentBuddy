@@ -12,8 +12,8 @@ import { createSeeder } from '@abuddy/sdk/seed';
 import type { ImportMode, ImportCounts, SeedIncludeSet } from '@abuddy/sdk/utils';
 import { untypedQx as qx } from '@abuddy/ears';
 import { dropAttribute, entityIds } from '@abuddy/sdk/testing';
-import { createEntityWithDefaults, type EARS } from '@/__generated__/ears';
-import { FIXTURES, PACK_DIR, resetDatabase, snapshot, type Snapshot } from './harness';
+import { createEntityWithDefaults, type EARS } from '#generated/ears.ts';
+import { FIXTURES, PACK_DIR, resetDatabase, snapshot, type Snapshot } from './harness.ts';
 
 const manifest = JSON.parse(fs.readFileSync(path.join(PACK_DIR, 'abuddy.json'), 'utf-8'));
 /** default-setup's notes format; the test setup registers its Note seed hooks with the pack */

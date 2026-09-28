@@ -1,8 +1,8 @@
 import { vi, describe, expect, it } from 'vitest';
 import { mockService } from '@abuddy/testing/harness';
-import { services, type Services } from '@/__generated__/services';
-import { repository } from '@/__generated__/repository';
-import { action as handleRevert } from '../../../../src/seeds/actions/claude-code/handle-revert';
+import { services, type Services } from '#generated/services.ts';
+import { repository } from '#generated/repository.ts';
+import { action as handleRevert } from '../../../../src/seeds/actions/claude-code/handle-revert.ts';
 
 // The action runs on the harness's services: a real thread and messages in the in-memory database,
 // with the CLI and the chat, threads, settings and artifact services it drives mocked

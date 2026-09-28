@@ -1,12 +1,12 @@
-import type { ThreadsSettings } from '@/__generated__/types';
-import { services } from '@/__generated__/services';
-import { broadcastToPlugin, sendToSystem } from '@/__generated__/events';
+import type { ThreadsSettings } from '#generated/types.ts';
+import { services } from '#generated/services.ts';
+import { broadcastToPlugin, sendToSystem } from '#generated/events.ts';
 import { assign, setup, type AnyActorRef } from 'xstate'
 
-import { GitRepository, StashConflictError } from '../services/git'
-import { GitWatcherService } from '../services/gitwatcher'
-import { requireGitRepository } from '../utils/git-helpers'
-import { ref } from '@/__generated__/ref';
+import { GitRepository, StashConflictError } from '../services/git.ts'
+import { GitWatcherService } from '../services/gitwatcher.ts'
+import { requireGitRepository } from '../utils/git-helpers.ts'
+import { ref } from '#generated/ref.ts';
 
 const pluginId = 'code' as const
 

@@ -1,7 +1,7 @@
 // A pack's feature settings (abuddy.json features[].settings) are defaults once the pack registers: its plugin's
 // slice joins the app's default settings, which stored settings override, and whether its tab shows joins the
 // visibility defaults the host's application system reads.
-import { services } from '@/__generated__/services';
+import { services } from '#generated/services.ts';
 import { afterEach, describe, expect, it } from 'vitest';
 import { getPackSettingsDefaults } from '@abuddy/sdk/framework';
 import { registerPack, resetTestData, unregisterPack } from '@abuddy/testing/harness';

@@ -2,7 +2,7 @@ import { app } from 'electron';
 import * as fs from 'fs';
 import * as os from 'os';
 import * as path from 'path';
-import {getAppContext} from '../../app-context.js';
+import {getAppContext} from '../../app-context.ts';
 
 // API Server Configuration
 export const API_CONFIG = {

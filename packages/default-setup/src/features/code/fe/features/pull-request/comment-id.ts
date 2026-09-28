@@ -1,4 +1,4 @@
-import type { GhPRComment } from '@/__generated__/types'
+import type { GhPRComment } from '#generated/types.ts'
 
 /**
  * Extract the numeric GitHub "database id" from an issue comment by parsing its URL.

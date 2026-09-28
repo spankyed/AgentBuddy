@@ -1,4 +1,4 @@
-import type { EARS, BaseEntity } from '@/__generated__/ears'
+import type { EARS, BaseEntity } from '#generated/ears.ts'
 
 export type DocumentShortCode = `DOC-${number}`;
 
@@ -156,7 +156,7 @@ export interface LibrarySystemContext {
 }
 
 // Library-internal re-exports from search-index subsystem
-export type { SearchEmbeddingModel, SearchEmbeddingModelId, LocalEmbeddingModel, InferenceEmbeddingModel } from '../embedding-models'
+export type { SearchEmbeddingModel, SearchEmbeddingModelId, LocalEmbeddingModel, InferenceEmbeddingModel } from '../embedding-models.ts'
 export type {
   EmbeddingModel,
   IndexMetric,
@@ -167,7 +167,7 @@ export type {
   IndexedDocument,
   IndexSearchResult,
   EmbeddingResult
-} from './search-index/types/search-index'
+} from './search-index/types/search-index.ts'
 
 export type IncomingLibraryEvents =
   | { type: 'CREATE_DOCUMENT'; name: string; content: ContentSection[]; tags: string[]; collectionId?: string }

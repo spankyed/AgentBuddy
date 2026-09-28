@@ -1,8 +1,8 @@
-import { qx } from '@/__generated__/ears';
+import { qx } from '#generated/ears.ts';
 import * as fs from 'fs/promises'
 
-import { EARS } from '@/__generated__/ears'
-import type { DocumentDTO, CollectionDTO, LibraryIndex, LibraryItem, FolderItem, FolderContents, BreadcrumbItem } from '../types'
+import { EARS } from '#generated/ears.ts'
+import type { DocumentDTO, CollectionDTO, LibraryIndex, LibraryItem, FolderItem, FolderContents, BreadcrumbItem } from '../types.ts'
 import {
   findParentCollection,
   isRootCollection,
@@ -11,9 +11,9 @@ import {
   getCollectionPath,
   formatFileSize,
   getContentLength
-} from './helpers'
-import { isSymlinkId, isSymlinkCollection, getSymlinkFolderContents, resolveSymlinkPath } from './symlink'
-import type { ContentSection, DocumentShortCode } from '@/features/library/be/types';
+} from './helpers.ts'
+import { isSymlinkId, isSymlinkCollection, getSymlinkFolderContents, resolveSymlinkPath } from './symlink.ts'
+import type { ContentSection, DocumentShortCode } from '#features/library/be/types.ts';
 
 export const libraryQueries = {
   getDocuments(collectionId?: string): DocumentDTO[] {

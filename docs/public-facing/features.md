@@ -47,7 +47,7 @@ Every system is an XState state machine that communicates via a central event bu
 
 ```typescript
 // src/features/bookmarks/be/contract.ts — the contract, which abuddy.json names at features[].system.contract
-import type { IncomingBookmarksEvents, OutgoingBookmarksEvents } from './types';
+import type { IncomingBookmarksEvents, OutgoingBookmarksEvents } from './types.ts';
 
 export type Contract = {
   incoming: IncomingBookmarksEvents;
@@ -70,8 +70,8 @@ export type OutgoingBookmarksEvents =
 import { setup } from 'xstate';
 import { defineSystem } from '@abuddy/sdk/framework';
 // broadcastToPlugin is typed with the events each of this pack's plugins receives
-import { broadcastToPlugin } from '#generated/events';
-import type { Contract } from './contract';
+import { broadcastToPlugin } from '#generated/events.ts';
+import type { Contract } from './contract.ts';
 
 // The spec types the machine from the same contract. Its identity is its feature's, from abuddy.json
 export const bookmarksSpec = defineSystem<Contract>();
@@ -153,7 +153,7 @@ Your code names features: your own by id (`'bookmarks'`), and every other as `<p
 | open a plugin a piece of data names (a link's target) | `untypedOpenPlugin(ref, event?)` (`@abuddy/sdk/fe`). It throws for a string that isn't a `<packId>/<featureId>`; otherwise the app opens the plugin, waiting while the pack that provides it is still loading, and tells the user if no installed pack provides it |
 
 ```typescript
-import { broadcastToPlugin, sendToSystem } from '#generated/events';
+import { broadcastToPlugin, sendToSystem } from '#generated/events.ts';
 
 // System -> Plugin (via bus)
 broadcastToPlugin('bookmarks', { type: 'BOOKMARK_CREATED', bookmark });
@@ -165,7 +165,7 @@ sendToSystem('tags', { type: 'SOME_EVENT' });
 Frontend code (and backend code) sends events to systems with `sendToSystem` from `#generated/events`:
 
 ```typescript
-import { sendToSystem } from '#generated/events';
+import { sendToSystem } from '#generated/events.ts';
 
 // Plugin -> System: this pack's systems by feature id, a dependency's as <dependency>/<feature>
 sendToSystem('bookmarks', { type: 'CREATE_BOOKMARK', url, title });
@@ -189,7 +189,7 @@ Backend code that needs the connection or every incoming event subscribes with `
 // src/features/bookmarks/fe/plugin.ts
 import type { PluginDefinition } from '@abuddy/sdk/fe';
 import { Bookmark } from 'lucide-vue-next';
-import state from './state';
+import state from './state.ts';
 import canvas from './canvas/list.vue';
 
 // No id: the app registers the plugin at its feature's ref, `<packId>/bookmarks`

@@ -1,6 +1,6 @@
 import type { StepDefinition, ExecutionContext, TNodeEntity } from '@abuddy/sdk/steps';
-import { killStepBuild } from './build';
-import { killStepFE } from './fe';
+import { killStepBuild } from './build.ts';
+import { killStepFE } from './fe.ts';
 
 function handler(_tNode: TNodeEntity, _node: unknown, ctx: ExecutionContext, actor: unknown) {
   const a = actor as { send: (event: any) => void };

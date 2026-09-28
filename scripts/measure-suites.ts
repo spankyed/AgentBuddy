@@ -15,6 +15,7 @@
 import { execFileSync } from 'node:child_process';
 import { UNIT_SUITES } from './lib/unit-suites.ts';
 
+// eslint-disable-next-line no-control-regex -- vitest colours its output and this reads it back
 const ANSI = /\u001B\[[0-9;]*m/g;
 const FILE = /^\s*[✓×↓❯]\s+(\S+\.(?:spec|test)\.ts)\s+\([^)]*\)\s+([\d.]+)(ms|s)\b/;
 

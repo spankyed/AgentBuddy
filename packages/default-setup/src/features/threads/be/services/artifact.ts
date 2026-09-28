@@ -5,11 +5,11 @@
  * Follows a pure vs side-effect pattern similar to chat service.
  */
 
-import { broadcastToPlugin } from '@/__generated__/events';
-import { EARS } from '@/__generated__/ears';
+import { broadcastToPlugin } from '#generated/events.ts';
+import { EARS } from '#generated/ears.ts';
 
-import { repository } from '@/__generated__/repository';
-import type { ArtifactType } from '@/features/threads/be/types';
+import { repository } from '#generated/repository.ts';
+import type { ArtifactType } from '#features/threads/be/types.ts';
 
 export interface CreateArtifactOptions {
   artifactType: ArtifactType;

@@ -3,8 +3,8 @@
 // the code plugin.
 import { describe, expect, it, vi } from 'vitest';
 import { addTestSecret, startApp, takeSystemErrors } from '@abuddy/testing/harness';
-import { services } from '@/__generated__/services';
-import { ref } from '@/__generated__/ref';
+import { services } from '#generated/services.ts';
+import { ref } from '#generated/ref.ts';
 
 describe('settings and stored API keys', () => {
   it('sends its plugin the keys without values when the stored keys change', async () => {

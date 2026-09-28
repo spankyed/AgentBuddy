@@ -1,9 +1,9 @@
 import { setup, assign, enqueueActions, type ActorRefFrom } from 'xstate';
-import { sendToSystem } from '@/__generated__/events';
-import { updateParentState, getParentContext, addTabToParent } from '../../utils/parent-communication';
-import { removeTabs, renameInTabViewHistory } from '../../utils/tab-management';
-import { addRecentFile } from '../../utils/recent-files';
-import { imageExtensions, videoExtensions } from '../../utils/file-icons';
+import { sendToSystem } from '#generated/events.ts';
+import { updateParentState, getParentContext, addTabToParent } from '../../utils/parent-communication.ts';
+import { removeTabs, renameInTabViewHistory } from '../../utils/tab-management.ts';
+import { addRecentFile } from '../../utils/recent-files.ts';
+import { imageExtensions, videoExtensions } from '../../utils/file-icons.ts';
 
 // File types
 export interface FileInfo {

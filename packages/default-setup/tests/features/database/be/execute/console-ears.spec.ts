@@ -2,8 +2,8 @@
 // only default-setup's; `abuddy db query`/`exec` name the installed packs' the same way
 import { afterEach, describe, expect, it } from 'vitest'
 import { registerPack, unregisterPack } from '@abuddy/testing/harness'
-import { executeQuery } from '@/features/database/be/execute/query'
-import { executeTransaction } from '@/features/database/be/execute/transaction'
+import { executeQuery } from '#features/database/be/execute/query.ts'
+import { executeTransaction } from '#features/database/be/execute/transaction.ts'
 
 const MEMO_PACK = { id: 'memo-pack', ears: { entities: { Memo: 'Memo' }, relKinds: { mentions: 'mentions' } } }
 

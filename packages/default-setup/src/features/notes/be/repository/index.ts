@@ -1,6 +1,6 @@
 
 
-export { noteQueries } from './queries';
-export { noteCommands } from './commands';
-export { syncReferences, parseNoteLinks } from './link-utils';
+export { noteQueries } from './queries.ts';
+export { noteCommands } from './commands.ts';
+export { syncReferences, parseNoteLinks } from './link-utils.ts';
 

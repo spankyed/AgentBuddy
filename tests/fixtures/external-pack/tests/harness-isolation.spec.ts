@@ -2,8 +2,8 @@
 // A test app's waits and calls end when it stops, and its systems get events before a client connects, while their sends to plugins wait for one.
 import { describe, expect, it } from 'vitest';
 import { mockInference, mockService, startApp } from '@abuddy/testing/harness';
-import { services } from '#generated/services';
-import { sendToSystem } from '#generated/events';
+import { services } from '#generated/services.ts';
+import { sendToSystem } from '#generated/events.ts';
 
 const scripted = { debug: () => {}, info: () => {}, warn: () => {}, error: () => {} };
 

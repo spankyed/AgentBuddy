@@ -1,13 +1,13 @@
-import type { LogsSettings } from '@/__generated__/types';
-import { services } from '@/__generated__/services';
+import type { LogsSettings } from '#generated/types.ts';
+import { services } from '#generated/services.ts';
 import { untypedTx, untypedQx } from '@abuddy/ears';
 import { markSeededRowUnedited } from '@abuddy/sdk/seed';
-import { EARS } from '@/__generated__/ears';
+import { EARS } from '#generated/ears.ts';
 import type { PackMigration } from '@abuddy/sdk/framework';
 import { createLogger } from '@abuddy/sdk/logger';
-import { ref, type FeatureName } from '@/__generated__/ref';
-import { addressLinkBlocks, refOf0314Feature } from './bare-feature-ids';
-import { DEFAULT_SETTINGS_0314 } from './defaults-0.3.14';
+import { ref, type FeatureName } from '#generated/ref.ts';
+import { addressLinkBlocks, refOf0314Feature } from './bare-feature-ids.ts';
+import { DEFAULT_SETTINGS_0314 } from './defaults-0.3.14.ts';
 import { isDeepStrictEqual } from 'node:util';
 import { hasOwn, isPlainObject } from '@abuddy/sdk/utils/pure';
 

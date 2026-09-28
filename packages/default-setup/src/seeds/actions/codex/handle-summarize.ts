@@ -1,12 +1,12 @@
 /** CDX: Handle Summarize — roll back and trigger Codex app-server compaction. */
 
 import type { ActionMeta } from '@abuddy/sdk/build';
-import type { Services, EntityId } from '@/__generated__/services';
-import { createStreamWriter } from '../claude-code/_helpers/stream-writer';
-import { createToolActivityWriter } from '../claude-code/_helpers/tool-activity-writer';
-import { createThinkingWriter } from '../claude-code/_helpers/thinking-writer';
-import { createStreamConsumer } from './_helpers/stream-consumer';
-import { getCodexState, persistCodexState, updateChatState } from './_helpers/thread-context';
+import type { Services, EntityId } from '#generated/services.ts';
+import { createStreamWriter } from '../claude-code/_helpers/stream-writer.ts';
+import { createToolActivityWriter } from '../claude-code/_helpers/tool-activity-writer.ts';
+import { createThinkingWriter } from '../claude-code/_helpers/thinking-writer.ts';
+import { createStreamConsumer } from './_helpers/stream-consumer.ts';
+import { getCodexState, persistCodexState, updateChatState } from './_helpers/thread-context.ts';
 
 export const meta: ActionMeta = {
   label: 'CDX: Handle Summarize',

@@ -1,9 +1,9 @@
 import { setup, assign, sendParent, enqueueActions, type AnyActorRef } from 'xstate';
-import { EARS } from '@/__generated__/ears';
+import { EARS } from '#generated/ears.ts';
 import type { ExecutionContext, TNodeEntity } from '@abuddy/sdk/steps';
-import type { NodeEntity } from '@/__generated__/types';
-import { executeNode } from './node-handlers';
-import { repository } from '@/__generated__/repository';
+import type { NodeEntity } from '#generated/types.ts';
+import { executeNode } from './node-handlers/index.ts';
+import { repository } from '#generated/repository.ts';
 import { errorMessage } from '@abuddy/sdk/utils/pure';
 
 type StepMachineContext = {

@@ -601,7 +601,7 @@ interface CliServiceType {
     /**
      * Claude Code wrapper. Highlights only — the full surface (sessions, mcp,
      * plugins, skills, …) is available via `import { claudeCode } from
-     * '@/services/claude-code'`.
+     * '#features/code/be/services/claude-code/index.ts'`.
      */
     /** Clear-cache resolve + exec test — same path as the Settings test button. */
     testCli(provider: string): Promise<{
@@ -5703,7 +5703,7 @@ declare const browserQueries: {
  * Database Service
  *
  * `services.database`: live-data context for AI query generation. Actions read and write
- * entities through `services.repository`; pack code imports `qx`/`tx` from `@/__generated__/ears`.
+ * entities through `services.repository`; pack code imports `qx`/`tx` from `#generated/ears`.
  */
 /**
  * Build a query context from live data for AI query generation.

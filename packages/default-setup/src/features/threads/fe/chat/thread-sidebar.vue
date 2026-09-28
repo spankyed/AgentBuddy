@@ -170,12 +170,12 @@ import { usePlugin } from '@abuddy/sdk/fe'
 import { computed, reactive, ref, watchEffect } from 'vue'
 import { X, ChevronDown, ChevronRight, ChevronLeft, Archive } from 'lucide-vue-next'
 import { useSelector } from '@xstate/vue'
-import { id, type ThreadsState, type ThreadListItem } from '@/features/threads/fe/state'
-import { getThreadDotColor, isThreadBusy } from './thread-status'
+import { id, type ThreadsState, type ThreadListItem } from '#features/threads/fe/state.ts'
+import { getThreadDotColor, isThreadBusy } from './thread-status.ts'
 import { ContextMenuRoot, ContextMenuTrigger } from 'reka-ui'
-import ThreadContextMenu from '@/features/threads/fe/canvas/components/thread-context-menu.vue'
+import ThreadContextMenu from '#features/threads/fe/canvas/components/thread-context-menu.vue'
 import SidebarThreadItem from './sidebar-thread-item.vue'
-import { sendToSystem } from '@/__generated__/events'
+import { sendToSystem } from '#generated/events.ts'
 
 const emit = defineEmits<{
   'select-thread': [threadId: string]

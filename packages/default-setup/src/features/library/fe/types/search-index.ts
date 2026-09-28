@@ -1,4 +1,4 @@
-import type { SearchEmbeddingModelId } from '../../embedding-models'
+import type { SearchEmbeddingModelId } from '../../embedding-models.ts'
 import type { EARS } from '@abuddy/sdk'
 
 type ContentType = 'field' | 'list' | 'markdown' | 'text'

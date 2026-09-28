@@ -22,7 +22,7 @@ import { afterAll, describe, expect, it } from 'vitest';
 import type { ImportMode, ImportCounts, SeedIncludeSet } from '@abuddy/sdk/utils';
 import { untypedQx } from '@abuddy/ears';
 import { dropAttribute, entityIds } from '@abuddy/sdk/testing';
-import { compileSeeds, resetDatabase, seed, snapshot, type Snapshot } from './harness';
+import { compileSeeds, resetDatabase, seed, snapshot, type Snapshot } from './harness.ts';
 
 const GOLDEN_DIR = path.join(import.meta.dirname, '__golden__');
 const UPDATE = process.env.UPDATE_SEED_GOLDEN === '1';

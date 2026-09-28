@@ -28,17 +28,17 @@
  */
 
 import { createLogger } from '@abuddy/sdk/logger'
-import { argsFromOptions } from './args'
-import { createControlRouter } from './control'
+import { argsFromOptions } from './args.ts'
+import { createControlRouter } from './control.ts'
 import {
   ClaudeAbortError,
   type ClaudeCodeError,
   ClaudeExitError,
   ClaudeProtocolError,
   ClaudeResultError,
-} from './errors'
-import * as runner from './runner'
-import type { StreamHandle } from './runner'
+} from './errors.ts'
+import * as runner from './runner.ts'
+import type { StreamHandle } from './runner.ts'
 
 const logger = createLogger('claude-code-query')
 import type {
@@ -48,7 +48,7 @@ import type {
   ResultLine,
   StreamLine,
   UserInputMessage,
-} from './types'
+} from './types.ts'
 
 export interface QueryHandle {
   /** Resolves with the session id as soon as the CLI emits `system/init`. */

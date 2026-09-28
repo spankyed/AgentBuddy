@@ -1,4 +1,4 @@
-import { type BaseEntity, EARS } from '@/__generated__/ears';
+import { type BaseEntity, EARS } from '#generated/ears.ts';
 
 
 export const REFERENCES = EARS.RelKind.Custom('references');

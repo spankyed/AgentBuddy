@@ -12,8 +12,8 @@
  * (long-lived children, custom stdin, etc.).
  */
 
-import { execOnce, type ExecOnceOptions } from './runner'
-import { ClaudeProtocolError } from './errors'
+import { execOnce, type ExecOnceOptions } from './runner.ts'
+import { ClaudeProtocolError } from './errors.ts'
 
 export interface SubcommandOptions extends ExecOnceOptions {
   /** Prepend these args before everything else (e.g. `['--debug']`). */

@@ -11,7 +11,7 @@
 
 <script setup lang="ts">
 import { ref } from 'vue'
-import { useAnchorTracking } from './composables/useAnchorTracking'
+import { useAnchorTracking } from './composables/useAnchorTracking.ts'
 
 const props = defineProps<{
   anchor?: HTMLElement | null

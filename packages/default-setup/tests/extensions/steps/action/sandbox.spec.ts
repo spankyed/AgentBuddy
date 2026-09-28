@@ -5,11 +5,11 @@ import type { ExecutionContext, TNodeEntity } from '@abuddy/sdk/steps';
 import type { LogEvent } from '@abuddy/sdk/logger';
 import type { ActionEntity } from '@abuddy/sdk';
 import { services } from '@abuddy/sdk/services';
-import { repository } from '@/__generated__/repository';
+import { repository } from '#generated/repository.ts';
 import { testRootEvents } from '@abuddy/sdk/testing';
-import { packId } from '@/__generated__/ref';
-import { handler } from '@/extensions/steps/action/runtime';
-import { actionService } from '@/features/actions/be/services/action';
+import { packId } from '#generated/ref.ts';
+import { handler } from '#extensions/steps/action/runtime.ts';
+import { actionService } from '#features/actions/be/services/action.ts';
 
 // Logs what it can reach, and returns it
 const ACTION = `

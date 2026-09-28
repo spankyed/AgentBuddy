@@ -1,15 +1,15 @@
-import { services } from '@/__generated__/services';
-import { broadcastToPlugin } from '@/__generated__/events';
+import { services } from '#generated/services.ts';
+import { broadcastToPlugin } from '#generated/events.ts';
 import { assign, setup, fromCallback, spawnChild } from 'xstate';
 import { defineSystem } from '@abuddy/sdk/framework';
 
-import type { Contract } from './contract';
-import type { LogEntry } from './types';
+import type { Contract } from './contract.ts';
+import type { LogEntry } from './types.ts';
 import { randomId } from '@abuddy/sdk/utils';
 import { onLog, type LogEvent } from '@abuddy/sdk/logger';
-import type { LogsSettings } from '@/__generated__/types';
-import { isSourceExcluded, filterLogsByExcludedSources } from './utils';
-import { ref } from '@/__generated__/ref';
+import type { LogsSettings } from '#generated/types.ts';
+import { isSourceExcluded, filterLogsByExcludedSources } from './utils.ts';
+import { ref } from '#generated/ref.ts';
 
 // Resolve the effective exclusion list: when showAppEvents is falsy, treat 'app-events' as excluded.
 function effectiveExcludedSources(settings: LogsSettings | undefined): string[] {

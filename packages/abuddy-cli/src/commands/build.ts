@@ -13,7 +13,7 @@ import {
 } from '@abuddy/sdk/build';
 import { findFEEntry, bundlePackFE } from '../build/fe-bundler';
 import { ensureCheckoutPackages } from '../build/checkout-packages.ts';
-import { internalImportProblems } from '../build/internal-imports-gate.ts';
+import { refusePackRuleViolations } from '../build/pack-rules.ts';
 import { bundlePackRuntime, bundlePackSeedCompilers, bundlePackSeedRuntime, bundlePackStepBuild, SEED_RUNTIME_FILE } from '../build/be-bundler';
 import { bundleDslDefs, DEFS_DIR } from '../build/dsl-defs';
 import { bundlePackTypes } from '../build/types-bundler';
@@ -104,10 +104,9 @@ export async function build(args: string[]) {
     throw new Error(`Invalid feature settings:\n${settingsProblems.map(p => `  - ${p}`).join('\n')}`);
   }
 
-  const internalImports = internalImportProblems(root);
-  if (internalImports.length > 0) {
-    throw new Error(`A pack names only the @abuddy packages' public API; an export prefixed _ is the app's own, and an app update is free to rename it:\n${internalImports.map(p => `  - ${p}`).join('\n')}`);
-  }
+  // Every rule a pack is held to, reported together: an author fixes them in one pass rather than one build
+  // each, and the switchable ones say how to allow them (`build/pack-rules.ts`)
+  refusePackRuleViolations(root);
 
   const release = args.includes('--release');
   console.log(`Building pack: ${manifest.name} v${manifest.version}${release ? ' (release)' : ''}`);

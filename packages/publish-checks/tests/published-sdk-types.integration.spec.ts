@@ -3,6 +3,7 @@ import { pathToFileURL } from 'node:url';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { publishedManifest } from '@abuddy/host/build/published-manifest';
 import { CONSUMER_MATRIX, PACKAGES_BUILT, REPO_ROOT, compileConsumer, installPublishedPackages, type TscVersion } from '../src/published-packages.ts';
 
 let consumer: string | undefined;
@@ -158,9 +159,15 @@ describe.skipIf(!PACKAGES_BUILT)('published @abuddy/sdk', () => {
     expect(ears).toEqual(['dist', 'package.json']);
   });
 
-  it.each(['ears', 'sdk', 'ui'])('publishes the workspace package.json of @abuddy/%s as is', (name) => {
-    const published = fs.readFileSync(path.join(consumer!, 'node_modules', '@abuddy', name, 'package.json'));
-    const workspace = fs.readFileSync(path.join(REPO_ROOT, 'packages', `abuddy-${name}`, 'package.json'));
-    expect(published.equals(workspace)).toBe(true);
+  /**
+   * It used to publish the workspace manifest byte for byte, which is how 99 exports targets came to name
+   * `./src/**` that `files` does not ship. What a consumer installs is that manifest through
+   * `publishedManifest` and nothing else: a field it does not derive is one the workspace still decides.
+   */
+  it.each(['ears', 'sdk', 'ui'])('publishes the workspace package.json of @abuddy/%s, derived', (name) => {
+    const published = JSON.parse(fs.readFileSync(path.join(consumer!, 'node_modules', '@abuddy', name, 'package.json'), 'utf-8'));
+    const workspace = JSON.parse(fs.readFileSync(path.join(REPO_ROOT, 'packages', `abuddy-${name}`, 'package.json'), 'utf-8'));
+    expect(published).toEqual(publishedManifest(workspace));
+    expect(JSON.stringify(published)).not.toContain('@abuddy/source');
   });
 });

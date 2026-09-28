@@ -5,76 +5,86 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { builtinModules } from 'node:module';
 import ts from 'typescript';
-import { parse as parseSfc } from '@vue/compiler-sfc';
 import { SHARED_INSTANCE_PACKAGES } from '@abuddy/host/build/shared-deps';
 import { packageName } from '@abuddy/host/build/specifiers';
+import { readSubpathImports } from '@abuddy/host/build/subpath-imports';
+import { SOURCE_CONDITION } from '@abuddy/host/build/source-resolution';
+import { ownModuleFindings } from '@abuddy/host/build/own-module-specifiers';
+import { formatPackWide, PACK_RULES, type PackRuleKey } from '../packages/abuddy-cli/src/build/pack-rules.ts';
+import { moduleOf, readSource, sourceFiles } from '../packages/abuddy-cli/src/build/pack-sources.ts';
+import type { Fix } from './lib/specifier-fixes.ts';
 
 const repoRoot = path.resolve(import.meta.dirname, '..');
-const CHECKED_DIRS = [
-  'packages/abuddy-ears/src', 'packages/abuddy-ears/tests',
-  'packages/abuddy-sdk/src', 'packages/abuddy-sdk/tests', 'packages/abuddy-sdk/scripts',
-  'packages/abuddy-host/src', 'packages/abuddy-host/tests',
-  'packages/abuddy-ui/src', 'packages/abuddy-ui/scripts',
-  'packages/abuddy-testing/src',
-];
+/** Directories that hold no workspace source: dependencies, build output and dot directories (worktrees, caches) */
+const SKIPPED_DIRS = /^(?:node_modules|dist|out|coverage|\..+)$/;
+
+const CLI_TEMPLATE_PACK = 'packages/abuddy-cli/templates/pack';
+
+/**
+ * Every pack in this checkout: a directory holding `abuddy.json`, which is already how the source-condition
+ * rule defines one, plus the scaffold's templates — the pack every pack author starts from, which has no
+ * manifest because `abuddy.json` is the one thing the scaffold still builds in code.
+ *
+ * Derived rather than listed, so a fixture pack added tomorrow is covered by every rule here on the day it
+ * lands. `dist`, `node_modules` and dot-directories are skipped, which is what keeps a *built* pack's copy of
+ * itself out (`tests/fixtures/external-pack/.abuddy/bundle/…` is the same pack, built).
+ */
+export function packDirs(root = repoRoot): string[] {
+  const found: string[] = [];
+  const walk = (dir: string): void => {
+    for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+      if (entry.isDirectory()) {
+        if (!SKIPPED_DIRS.test(entry.name)) walk(path.join(dir, entry.name));
+      } else if (entry.name === 'abuddy.json') {
+        found.push(path.relative(root, dir).split(path.sep).join('/'));
+      }
+    }
+  };
+  walk(root);
+  return [...found, CLI_TEMPLATE_PACK].sort();
+}
+
+/** A pack's half, where it exists: `src` for every pack, `tests` for the ones that have them */
+const packHalves = (half: 'src' | 'tests', root = repoRoot): string[] =>
+  packDirs(root).map((pack) => `${pack}/${half}`).filter((dir) => fs.existsSync(path.join(root, dir)));
+
+/** Pack sources: each pack's `src` root, derived from where a manifest is */
+const PACK_SOURCE_DIRS = packHalves('src');
+
+/** The packs themselves, so a rule about packages can leave a pack's own code to the pack rules */
+const PACK_DIRS = packDirs();
+
+/**
+ * Every package's own code. Derived from `packages/*`, not listed: the list named five of the fifteen, and
+ * pointing the rule at the rest found 87 unmigrated specifiers in `@app/main` and `@app/preload` — both of
+ * which bundle (one `dist/index.js` each), so `./AppModule.js` named a file that never exists.
+ */
+export const checkedDirs = (): readonly string[] => CHECKED_DIRS;
+
+const CHECKED_DIRS = fs.readdirSync(path.join(repoRoot, 'packages'), { withFileTypes: true })
+  .filter((entry) => entry.isDirectory() && fs.existsSync(path.join(repoRoot, 'packages', entry.name, 'package.json')))
+  .flatMap((entry) => ['src', 'tests', 'scripts'].map((part) => `packages/${entry.name}/${part}`))
+  .filter((dir) => fs.existsSync(path.join(repoRoot, dir)))
+  // A pack's own code belongs to `own-modules`, which resolves the specifier and so names the file to write.
+  // `packages/default-setup` is both a package and a pack, so without this both rules report its every
+  // relative `.js` and, since only the first to run used to be printed, one of them silently.
+  .filter((dir) => !PACK_DIRS.some((pack) => dir === pack || dir.startsWith(`${pack}/`)))
+  .sort();
 
 /** Emitted extension → the source extensions that compile to it */
 const SOURCE_EXTENSIONS: Record<string, string[]> = { '.js': ['.ts', '.tsx'], '.mjs': ['.mts'], '.cjs': ['.cts'] };
-/** Calls whose first argument is a module path */
-const MODULE_PATH_CALLS = /^(require|require\.resolve|(vi|jest)\.(mock|doMock|unmock|importActual|importMock))$/;
 
-function* sourceFiles(dir: string): Generator<string> {
-  for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
-    const full = path.join(dir, entry.name);
-    if (entry.isDirectory()) yield* sourceFiles(full);
-    else if (entry.isFile() && /(?<!\.d)\.(ts|tsx|mts|cts)$|\.vue$/.test(entry.name)) yield full;
-  }
-}
 
-function parse(code: string, fileName: string): ts.SourceFile {
-  const kind = fileName.endsWith('.tsx') ? ts.ScriptKind.TSX : ts.ScriptKind.TS;
-  return ts.createSourceFile(fileName, code, ts.ScriptTarget.Latest, true, kind);
-}
 
-/** A file's code: the whole file, or a .vue file's <script> blocks with the line each starts on (less one) */
-function codeBlocks(file: string): { content: string; lineOffset: number }[] {
-  const code = fs.readFileSync(file, 'utf-8');
-  if (!file.endsWith('.vue')) return [{ content: code, lineOffset: 0 }];
-  const { descriptor } = parseSfc(code, { filename: file });
-  return [descriptor.script, descriptor.scriptSetup].filter((b) => b !== null)
-    .map((b) => ({ content: b.content, lineOffset: b.loc.start.line - 1 }));
-}
 
-/** Specifiers in a module (relative ones only unless `all`): every static and dynamic form that names a module path */
-function specifiers(code: string, fileName: string, all = false): { text: string; line: number }[] {
-  const source = parse(code, fileName);
-  const found: { text: string; line: number }[] = [];
-  const visit = (node: ts.Node) => {
-    let literal: ts.StringLiteralLike | undefined;
-    if ((ts.isImportDeclaration(node) || ts.isExportDeclaration(node)) && node.moduleSpecifier && ts.isStringLiteral(node.moduleSpecifier)) literal = node.moduleSpecifier;
-    else if (ts.isImportEqualsDeclaration(node) && ts.isExternalModuleReference(node.moduleReference) && ts.isStringLiteral(node.moduleReference.expression)) literal = node.moduleReference.expression;
-    else if (ts.isImportTypeNode(node) && ts.isLiteralTypeNode(node.argument) && ts.isStringLiteral(node.argument.literal)) literal = node.argument.literal;
-    else if (ts.isCallExpression(node) && node.arguments[0] && ts.isStringLiteralLike(node.arguments[0])
-      && (node.expression.kind === ts.SyntaxKind.ImportKeyword || MODULE_PATH_CALLS.test(node.expression.getText(source)))) {
-      literal = node.arguments[0];
-    }
-    if (literal && (all || /^\.\.?\//.test(literal.text))) {
-      found.push({ text: literal.text, line: source.getLineAndCharacterOfPosition(literal.getStart(source)).line + 1 });
-    }
-    ts.forEachChild(node, visit);
-  };
-  visit(source);
-  return found;
-}
 
 /** `file:line: specifier` for each specifier in `files` that `matches` (relative ones only unless `all`) */
 function findSpecifiers(files: string[], root: string, matches: (text: string, file: string) => boolean, all = true): string[] {
   const problems: string[] = [];
   for (const file of files) {
-    for (const { content, lineOffset } of codeBlocks(file)) {
-      for (const { text, line } of specifiers(content, file, all)) {
-        if (matches(text, file)) problems.push(`${path.relative(root, file)}:${line + lineOffset}: ${text}`);
-      }
+    for (const { text, line } of readSource(file).specifiers) {
+      if (!all && !/^\.\.?\//.test(text)) continue;
+      if (matches(text, file)) problems.push(`${path.relative(root, file)}:${line}: ${text}`);
     }
   }
   return problems;
@@ -83,32 +93,153 @@ function findSpecifiers(files: string[], root: string, matches: (text: string, f
 /**
  * `file:line: specifier` for each relative emitted-extension specifier that names a TypeScript module.
  * An import of hand-written declarations (`./speech-event.js` → speech-event.d.ts) has no source and is fine.
+ *
+ * The `@abuddy` packages only. A pack's sources are covered by `own-modules` instead — the pack rule that
+ * resolves a specifier against the pack's files and so reports the file to write rather than only the offence,
+ * and the one `abuddy build` already runs for every pack. Two rules claiming one relative `.js` is what let the
+ * double-claim hide before (`docs/goals/goal-one-rule-set.md`): whichever ran first was the only one reported.
  */
-export function findJsSpecifiers(dirs = CHECKED_DIRS, root = repoRoot): string[] {
-  const files = dirs.flatMap((dir) => {
-    // A listed directory that is gone means the list is stale and something is no longer checked,
-    // which is worth failing over — but say so, rather than letting a readdir ENOENT stack out
-    if (!fs.existsSync(path.join(root, dir))) throw new Error(`${dir} is listed in CHECKED_DIRS and does not exist: remove it, or restore the directory`);
-    return [...sourceFiles(path.join(root, dir))];
-  });
-  return findSpecifiers(files, root, (text, file) => {
-    const emitted = path.extname(text);
-    const base = path.resolve(path.dirname(file), text.slice(0, -emitted.length));
-    return (SOURCE_EXTENSIONS[emitted] ?? []).some((ext) => fs.existsSync(`${base}${ext}`));
-  }, false);
+export function findJsSpecifiers(dirs: readonly string[] = CHECKED_DIRS, root = repoRoot): string[] {
+  return jsSpecifierFixes(dirs, root).map(({ file, line, specifier }) => `${file}:${line}: ${specifier}`);
 }
 
-/** CLI sources whose template strings are the pack source `abuddy init` and `abuddy add` write */
-const CLI_TEMPLATE_SOURCES = ['packages/abuddy-cli/src/commands/add', 'packages/abuddy-cli/src/commands/init.ts'];
+/**
+ * The same findings before they become sentences, with the source each `.js` should have named.
+ *
+ * `npm run specifiers:fix` splices `named` over the span; the message and the repair come from one place, so
+ * "fixable" is not a second judgement but whether this returned the finding.
+ */
+export function jsSpecifierFixes(dirs: readonly string[] = CHECKED_DIRS, root = repoRoot): Fix[] {
+  const fixes: Fix[] = [];
+  for (const dir of dirs) {
+    // A listed directory that is gone means the list is stale and something is no longer checked,
+    // which is worth failing over — but say so, rather than letting a readdir ENOENT stack out
+    const full = path.join(root, dir);
+    if (!fs.existsSync(full)) throw new Error(`${dir} is listed among the checked directories and does not exist: remove it, or restore the directory`);
+    for (const file of fs.statSync(full).isFile() ? [full] : [...sourceFiles(full)]) {
+      for (const { text, line, start, end } of readSource(file).specifiers) {
+        if (!/^\.{1,2}\//.test(text)) continue;
+        const emitted = path.extname(text);
+        const base = path.resolve(path.dirname(file), text.slice(0, -emitted.length));
+        const source = (SOURCE_EXTENSIONS[emitted] ?? []).find((ext) => fs.existsSync(`${base}${ext}`));
+        if (source === undefined) continue;
+        fixes.push({
+          file: path.relative(root, file).split(path.sep).join('/'),
+          line, start, end,
+          specifier: text,
+          named: `${text.slice(0, -emitted.length)}${source}`,
+        });
+      }
+    }
+  }
+  return fixes;
+}
 
-/** Pack sources (each a pack's `src` root) and the pack templates the CLI writes, which use the generated facades */
-const PACK_SOURCE_DIRS = [
-  'packages/default-setup/src', 'tests/fixtures/external-pack/src', 'tests/fixtures/bundled-ui-pack/src',
-  ...CLI_TEMPLATE_SOURCES,
-];
+/**
+ * The pack a path belongs to: the nearest directory at or above it holding a manifest.
+ *
+ * Not `dirname` of the given directory, which is right only when a caller names a pack's `src` — and a
+ * per-file run names whatever the author is editing. A fixture tree with no manifest anywhere falls back to
+ * the parent, which is what the specs that pass `['src/pack']` mean by a pack.
+ */
+function packRootOf(from: string, root: string): string {
+  let dir = fs.statSync(from).isFile() ? path.dirname(from) : from;
+  while (dir.startsWith(root) && dir !== root) {
+    if (fs.existsSync(path.join(dir, 'abuddy.json')) || fs.existsSync(path.join(dir, 'package.json'))) return dir;
+    dir = path.dirname(dir);
+  }
+  return path.dirname(fs.statSync(from).isFile() ? path.dirname(from) : from);
+}
+
+/**
+ * A pack rule from `@abuddy/cli`'s `build/pack-rules.ts`, applied to this repo's packs.
+ *
+ * The rule is the same rule wherever it runs — `abuddy build`, `abuddy validate` and `abuddy test` run these
+ * for every pack outside this checkout, and running a second implementation here is how two copies of one rule
+ * drift apart (`docs/goals/goal-one-rule-set.md`). What this adds is the repo's shape: each `dir` may be a
+ * pack's `src`, a pack's `tests`, or — in a spec — a directory standing in for one, and paths are reported
+ * relative to the repo rather than to the pack.
+ *
+ * One rule at a time, so it does not get `packRuleProblems`' "one offence, one message" — there, a pack author
+ * reading a build failure is told once by the rule whose cause comes first. Here the rule *is* the subject:
+ * `--rule <id>` runs one; `--list` names them all, says which an external pack is held to as well (a rule with
+ * a `packRule` is one `abuddy validate`, `build` and `test` run), and prints what doing without each of the
+ * rest costs a pack — answering from the entries rather than from a table in a doc, which is what a survey of
+ * this taken by hand went stale as. A rule that stood down would make a per-rule run's
+ * answer depend on which other rules ran. What keeps that from becoming two answers to one question is that
+ * both run the same rule — its `check` per file, its `checkPack` once for the pack — and `FIRES`' disjointness
+ * sweep asserts no two rules claim one offence to begin with, for every rule this delegates to.
+ */
+export function packRule(key: PackRuleKey, dirs: readonly string[], root: string): string[] {
+  const rule = PACK_RULES.find((candidate) => candidate.key === key);
+  if (!rule) throw new Error(`No pack rule "${key}"`);
+  // A rule whose subject is the pack answers once per pack, not once per directory of it: `dirs` holds a pack's
+  // `src` and its `tests` separately, and the CLI's own runner calls such a rule once per pack too. Its findings
+  // are written relative to the pack, as a pack author reads them, so here they take the pack's own prefix.
+  const packs = new Set(dirs.map((dir) => path.join(root, dir)).filter(fs.existsSync).map((full) => packRootOf(full, root)));
+  // A whole-pack rule names places relative to its pack, as a pack author reads them; this repo has five packs,
+  // so a finding says which one. `formatPackWide` writes the line and takes the path from here, which is why this
+  // needs to know nothing about how any rule words its findings.
+  const wholePack = rule.checkPack === undefined ? [] : [...packs].flatMap((packDir) => {
+    const prefix = path.relative(root, packDir).split(path.sep).join('/');
+    const where = (file: string) => (prefix ? `${prefix}/${file}` : file);
+    return rule.checkPack!(packDir).map((found) => formatPackWide(found, where));
+  });
+  return [...wholePack, ...dirs.flatMap((dir) => {
+    const full = path.join(root, dir);
+    if (!fs.existsSync(full)) return [];
+    const files = fs.statSync(full).isFile() ? [full] : [...sourceFiles(full)];
+    const packDir = packRootOf(full, root);
+    const imports = readSubpathImports(packDir);
+    return files.flatMap((file) => {
+      const relative = path.relative(root, file).split(path.sep).join('/');
+      return (rule.check?.(readSource(file), {
+        packDir,
+        relative,
+        inRoot: path.relative(full, file).split(path.sep).join('/'),
+        generated: relative.split('/').includes('__generated__'),
+        imports,
+      }) ?? []).map(({ line, what }) => `${relative}:${line}: ${what}`);
+    });
+  })].sort();
+}
+
+/** The repo root, for a command that acts on what these rules report */
+export const repoRootDir = (): string => repoRoot;
+
+/**
+ * Every own-module specifier in this repo's packs that names no file, with the file it should name.
+ *
+ * The rule is `@abuddy/cli`'s `own-modules`; this is its findings before they become sentences, which is what
+ * `specifiers:fix` splices. A pack's own `abuddy build` gets the same repair through the same function.
+ */
+export function packOwnModuleFixes(dirs: readonly string[] = PACK_CODE_DIRS, root = repoRoot): Fix[] {
+  return dirs.flatMap((dir) => {
+    const full = path.join(root, dir);
+    if (!fs.existsSync(full)) return [];
+    const packDir = path.dirname(full);
+    const files = fs.statSync(full).isFile() ? [full] : [...sourceFiles(full)];
+    const found = files.flatMap((file) => readSource(file).specifiers.map(({ text, line, start, end }) => ({
+      file: path.relative(packDir, file).split(path.sep).join('/'),
+      line, specifier: text, start, end,
+    })));
+    return ownModuleFindings(packDir, found).flatMap(({ file, line, specifier, named, start, end }) =>
+      start === undefined || end === undefined ? [] : [{
+        file: path.relative(root, path.join(packDir, file)).split(path.sep).join('/'),
+        line, start, end, specifier, named,
+      }]);
+  });
+}
+
+/**
+ * The scaffold's pack code, which is files rather than string literals (`goal-one-rule-set.md`): the pack
+ * every pack author starts from, and so the one whose specifiers most need to be right.
+ */
+
+
 
 /** The source files under each of `dirs` (a directory or a single file) */
-function packFiles(dirs: string[], root: string): string[] {
+function packFiles(dirs: readonly string[], root: string): string[] {
   return dirs.flatMap((dir) => {
     const full = path.join(root, dir);
     if (!fs.existsSync(full)) return [];
@@ -130,28 +261,6 @@ function findSpecifierText(files: string[], root: string, matches: (specifier: s
 
 type Rule = (node: ts.Node) => string[] | undefined;
 
-/** The module a static import or export, or a dynamic import(), names */
-function moduleOf(node: ts.Node): string | undefined {
-  const literal = ts.isImportDeclaration(node) || ts.isExportDeclaration(node) ? node.moduleSpecifier
-    : ts.isCallExpression(node) && node.expression.kind === ts.SyntaxKind.ImportKeyword ? node.arguments[0] : undefined;
-  return literal && ts.isStringLiteralLike(literal) ? literal.text : undefined;
-}
-
-/** A template literal's text as code. `${…}` and the escapes are blanked or unescaped in place, so lines and columns stay put. */
-function templateCode(node: ts.TemplateLiteral, source: ts.SourceFile): string {
-  const start = node.getStart(source);
-  const chars = source.text.slice(start + 1, node.end - 1).split('');
-  if (ts.isTemplateExpression(node)) {
-    for (const span of node.templateSpans) {
-      // From the `${` that opens the span to its closing `}`
-      for (let i = span.pos - 2; i <= span.literal.getStart(source); i++) {
-        if (chars[i - start - 1] !== '\n') chars[i - start - 1] = '_';
-      }
-    }
-  }
-  return chars.join('').replace(/\\([`$\\])/g, ' $1');
-}
-
 /**
  * `file:line: what` for each finding of `rule` in `files`. A syntax tree leaves out comments and string
  * text; a .vue file is read in its <script> blocks, and in the CLI's template sources the template
@@ -160,148 +269,101 @@ function templateCode(node: ts.TemplateLiteral, source: ts.SourceFile): string {
 function findInFiles(files: string[], root: string, rule: Rule): string[] {
   return files.flatMap((file) => {
     const relative = path.relative(root, file).split(path.sep).join('/');
-    const isTemplateSource = CLI_TEMPLATE_SOURCES.some((dir) => relative === dir || relative.startsWith(`${dir}/`));
-    const found: { line: number; what: string }[] = [];
-    const scan = (code: string, lineOffset: number, templates: boolean): void => {
-      const source = parse(code, file);
-      const lineOf = (node: ts.Node) => source.getLineAndCharacterOfPosition(node.getStart(source)).line + 1 + lineOffset;
-      const visit = (node: ts.Node): void => {
-        for (const what of rule(node) ?? []) found.push({ line: lineOf(node), what });
-        if (templates && (ts.isNoSubstitutionTemplateLiteral(node) || ts.isTemplateExpression(node))) {
-          scan(templateCode(node, source), lineOf(node) - 1, false);
-        }
-        ts.forEachChild(node, visit);
-      };
-      visit(source);
-    };
-    for (const { content, lineOffset } of codeBlocks(file)) scan(content, lineOffset, isTemplateSource);
-    return found.sort((a, b) => a.line - b.line).map(({ line, what }) => `${relative}:${line}: ${what}`);
+    return readSource(file).visit(rule).map(({ line, what }) => `${relative}:${line}: ${what}`);
   });
 }
 
-/**
- * Ref-taking sends packs get as name-taking ones from #generated/events, whichever SDK module exports them.
- */
-const EVENT_SENDS = ['untypedBroadcastToPlugin', 'untypedSendToSystem', '_sendToLocalPlugin'];
-
-/** Imports and re-exports of the untyped sends (and the engine's repository registration), or all of @abuddy/sdk/events */
-const rawPackHelper: Rule = (node) => {
-  if (!ts.isImportDeclaration(node) && !ts.isExportDeclaration(node)) return;
-  const module = moduleOf(node);
-  if (!module?.startsWith('@abuddy/')) return;
-  const bindings = ts.isImportDeclaration(node) ? node.importClause?.namedBindings : node.exportClause;
-  if (!bindings || ts.isNamespaceImport(bindings) || ts.isNamespaceExport(bindings)) {
-    // `import * as x from`, `export * from`, `export * as x from` (a default import has no bindings)
-    const namespace = bindings !== undefined || ts.isExportDeclaration(node);
-    return namespace && module === '@abuddy/sdk/events' ? ['* from @abuddy/sdk/events (import the names)'] : undefined;
-  }
-  const raw = module === '@abuddy/ears' ? [...EVENT_SENDS, 'registerRepository', 'unregisterRepository'] : EVENT_SENDS;
-  return bindings.elements.map((el) => (el.propertyName ?? el.name).text).filter((name) => raw.includes(name))
-    .map((name) => `${name} from ${module}`);
-};
-
 /** `file:line: name from module` for each untyped send or repository registration a pack source names. Generated files are exempt. */
-export function findRawPackHelpers(dirs = PACK_SOURCE_DIRS, root = repoRoot): string[] {
-  const files = packFiles(dirs, root).filter((file) => !file.split(path.sep).includes('__generated__'));
-  return findInFiles(files, root, rawPackHelper);
+export function findRawPackHelpers(dirs: readonly string[] = PACK_SOURCE_DIRS, root = repoRoot): string[] {
+  return packRule('untyped-sends', dirs, root);
 }
 
-/**
- * A host-only export a pack named: `@internal` exports are prefixed `_` (API Extractor's
- * `ae-internal-missing-underscore` keeps them that way), so the name alone says the app owns it. It
- * reads the imported name, not the local one, so an alias can't hide one and a public name aliased
- * to an underscore local is fine. A namespace import (`import * as u`, then `u._x()`) is not caught:
- * a per-node rule has no scope tracking, as with `rawPackHelper`. It's a guardrail, not a sandbox.
- */
-const internalImport: Rule = (node) => {
-  const internal = (names: string[], module: string) =>
-    names.filter((name) => name.startsWith('_')).map((name) => `${name} from ${module}`);
-  if (ts.isImportDeclaration(node) || ts.isExportDeclaration(node)) {
-    const module = moduleOf(node);
-    if (!module?.startsWith('@abuddy/')) return;
-    const bindings = ts.isImportDeclaration(node) ? node.importClause?.namedBindings : node.exportClause;
-    if (!bindings || ts.isNamespaceImport(bindings) || ts.isNamespaceExport(bindings)) return;
-    return internal(bindings.elements.map((el) => (el.propertyName ?? el.name).text), module);
-  }
-  // `const { _x } = await import('@abuddy/…')`
-  if (ts.isVariableDeclaration(node) && node.initializer && ts.isObjectBindingPattern(node.name)) {
-    const call = ts.isAwaitExpression(node.initializer) ? node.initializer.expression : node.initializer;
-    const module = moduleOf(call);
-    if (!module?.startsWith('@abuddy/')) return;
-    return internal(node.name.elements.map((el) => (el.propertyName ?? el.name).getText()), module);
-  }
-};
-
 /** `file:line: name from module` for each host-only export a pack's sources or tests import. Generated files are exempt. */
-export function findInternalPackageImports(dirs = [...PACK_SOURCE_DIRS, ...PACK_TEST_DIRS], root = repoRoot): string[] {
-  const files = packFiles(dirs, root).filter((file) => !file.split(path.sep).includes('__generated__'));
-  return findInFiles(files, root, internalImport);
+export function findInternalPackageImports(dirs: readonly string[] = PACK_CODE_DIRS, root = repoRoot): string[] {
+  return packRule('internal-package-imports', dirs, root);
 }
 
 /**
  * `file:line: specifier` for each `@abuddy/host` module a pack source loads. The host package is
  * private to the app; packs use @abuddy/sdk (`services.appData`, `services.traceStore`, …).
  */
-export function findHostImports(dirs = PACK_SOURCE_DIRS, root = repoRoot): string[] {
-  return findSpecifierText(packFiles(dirs, root), root, (text) => /^@abuddy\/host(?:\/|$)/.test(text));
+export function findHostImports(dirs: readonly string[] = PACK_CODE_DIRS, root = repoRoot): string[] {
+  return packRule('host-imports', dirs, root);
 }
-
-/** The host's raw event paths: `@abuddy/sdk/rpc` modules, `_rootEvents` and `trpc.bus` */
-const rawTransport: Rule = (node) => {
-  const module = moduleOf(node);
-  if (module && /^@abuddy\/sdk\/rpc(\/|$)/.test(module)) return [module];
-  if (ts.isIdentifier(node) && node.text === '_rootEvents') return ['_rootEvents'];
-  if (ts.isPropertyAccessExpression(node) && node.name.text === 'bus' && ts.isIdentifier(node.expression) && node.expression.text === 'trpc') {
-    return ['trpc.bus'];
-  }
-  return undefined;
-};
 
 /** `file:line: what` for each raw event path a pack source uses, which the typed sends in #generated/events replace */
-export function findRawTransport(dirs = PACK_SOURCE_DIRS, root = repoRoot): string[] {
-  return findInFiles(packFiles(dirs, root), root, rawTransport);
+export function findRawTransport(dirs: readonly string[] = PACK_SOURCE_DIRS, root = repoRoot): string[] {
+  return packRule('raw-transport', dirs, root);
 }
-
-/** Pack backend code by path from the pack's `src` root, and the frontend code and tests among it */
-const PACK_BACKEND_PATH = /^(features\/[^/]+\/be\/|features\/hooks\.ts$|migrations\/|extensions\/)/;
-const PACK_FRONTEND_OR_TEST_PATH = /\.vue$|(^|\/)(fe|register-fe)\.ts$|^extensions\/(tiptap|artifacts\/viewers|blocks\/[^/]+)\/|(^|\/)__tests__\/|\.(spec|test)\.ts$/;
-
-/** `console.x` and `console?.x` */
-const consoleUse: Rule = (node) => {
-  if (ts.isPropertyAccessExpression(node) && ts.isIdentifier(node.expression) && node.expression.text === 'console') {
-    return [`console.${node.name.text}`];
-  }
-  return undefined;
-};
 
 /**
  * `file:line: console.<method>` for each console use in pack backend code, which logs with
  * `createLogger` from `@abuddy/sdk/logger`. Only pack `src` directories are checked: not the CLI's
  * template sources (their console output is the CLI's) or single files.
  */
-export function findPackBackendConsole(dirs = PACK_SOURCE_DIRS, root = repoRoot): string[] {
-  const files = dirs.filter((dir) => !CLI_TEMPLATE_SOURCES.includes(dir)).flatMap((dir) => {
-    const full = path.join(root, dir);
-    if (!fs.existsSync(full) || !fs.statSync(full).isDirectory()) return [];
-    return [...sourceFiles(full)].filter((file) => {
-      const relative = path.relative(full, file).split(path.sep).join('/');
-      return PACK_BACKEND_PATH.test(relative) && !PACK_FRONTEND_OR_TEST_PATH.test(relative);
-    });
-  });
-  return findInFiles(files, root, consoleUse);
+export function findPackBackendConsole(dirs: readonly string[] = PACK_SOURCE_DIRS, root = repoRoot): string[] {
+  return packRule('backend-console', dirs, root);
 }
 
 /** Pack unit tests, which run on @abuddy/testing's harness: the pack's code and the SDK, not the app */
-const PACK_TEST_DIRS = ['packages/default-setup/tests', 'tests/fixtures/external-pack/tests'];
+const PACK_TEST_DIRS = packHalves('tests');
 
-/** API modules (its `@/` alias) and host, API or CLI sources by relative path */
-const APP_SPECIFIER = /^(?:@abuddy\/host(?:\/|$)|@\/(?:core|setup)(?:\/|$)|(?:\.\.?\/)+(?:[\w.-]+\/)*(?:api|abuddy-host|abuddy-cli)\/src(?:\/|$))/;
+/**
+ * A pack's own code, tests included: the population for a rule about a specifier a pack may not write, wherever
+ * it writes it. `abuddy test` runs the whole rule set over a pack's `tests` (`refusePackRuleViolations(cwd,
+ * TEST_DIRS)`), so a rule that reads only `src` here is narrower in this repo than the same rule is for a pack.
+ */
+const PACK_CODE_DIRS = [...PACK_SOURCE_DIRS, ...PACK_TEST_DIRS];
+
+/** For the spec: the population above, which has to cover every pack's `src` and its `tests` */
+export const packCodeDirs = (): readonly string[] => PACK_CODE_DIRS;
+
+/**
+ * `file:line: specifier` for each `@/…` a pack names one of its own modules with.
+ *
+ * A pack names its own modules with `#` subpath imports from its own `package.json` `imports`, which Node,
+ * Vite and esbuild all resolve unaided and which is private to the declaring package. `@/…` is a TypeScript
+ * `compilerOptions.paths` mapping that no runtime reads — and it was not even a static one here, meaning
+ * *the importer's own pack*, so four separate bundler configs each carried an implementation of it: the
+ * renderer's resolveId hook, the API's esbuild plugin, the pack's `vite-tsconfig-paths`, and `abuddy build`'s
+ * own reader, which had two copies that had each missed the other's fix.
+ *
+ * All four are gone (`goal-one-way-to-name-your-own-modules.md`), so a single `@/` reintroduced here does not
+ * fail loudly — it resolves for `tsc` and for nothing else, which is the shape of failure this refuses.
+ */
+export function findPackOwnAliases(dirs: readonly string[] = PACK_CODE_DIRS, root = repoRoot): string[] {
+  return packRule('pack-own-aliases', dirs, root);
+}
+
+/**
+ * `file:line: specifier -> what it should say` for each of a pack's own-module specifiers naming no file.
+ *
+ * The rule is `@abuddy/cli`'s `own-modules`, which `abuddy build`, `abuddy validate` and `abuddy test` run for
+ * every pack outside this checkout. This applies it to the packs in it.
+ */
+export function findExtensionlessOwnModules(
+  dirs: readonly string[] = PACK_CODE_DIRS,
+  root = repoRoot,
+): string[] {
+  return packRule('own-modules', dirs, root);
+}
+
+
+/**
+ * The app's sources by relative path, which is the one shape only a pack *inside this repo* can name.
+ *
+ * It used to match `@abuddy/host` and the API's `@/core`/`@/setup` aliases too, and both belong elsewhere:
+ * `host-imports` owns the package wherever a pack names it, and `pack-own-aliases` owns every `@/` specifier —
+ * each over a pack's tests as well as its sources, here and through `abuddy test` for every other pack. Three
+ * rules claiming one import is how only the first to run gets read.
+ */
+const APP_SPECIFIER = /^(?:\.\.?\/)+(?:[\w.-]+\/)*(?:api|abuddy-host|abuddy-cli)\/src(?:\/|$)/;
 
 /**
  * `file:line: specifier` for each app module a pack's unit tests load. Tests of app code belong to
  * that package; pack tests use @abuddy/sdk and @abuddy/testing.
  */
-export function findAppImportsInPackTests(dirs = PACK_TEST_DIRS, root = repoRoot): string[] {
+export function findAppImportsInPackTests(dirs: readonly string[] = PACK_TEST_DIRS, root = repoRoot): string[] {
   return findSpecifierText(packFiles(dirs, root), root, (text) => APP_SPECIFIER.test(text));
 }
 
@@ -362,7 +424,7 @@ export function findUpwardImports(layers = LAYERS, root = repoRoot): string[] {
  * Who may load LMDB (docs/goals/goal-package-boundaries.md, Decision 3): only `@abuddy/ears/lmdb` imports
  * `lmdb`. `dirs` may not import what `forbidden` matches; `except` is a directory inside them that may.
  */
-export const LMDB_RULES: { dirs: string[]; except?: string; forbidden: RegExp }[] = [
+export const LMDB_RULES: { dirs: string[]; except?: string; forbidden?: RegExp; rule?: PackRuleKey }[] = [
   // The host and the API open the store through @abuddy/ears/lmdb
   {
     dirs: ['packages/abuddy-host/src', 'packages/abuddy-host/tests', 'packages/abuddy-host/scripts', 'packages/api/src', 'packages/api/tests', 'packages/api/scripts'],
@@ -370,16 +432,19 @@ export const LMDB_RULES: { dirs: string[]; except?: string; forbidden: RegExp }[
   },
   // The engine's root never loads the store
   { dirs: ['packages/abuddy-ears/src'], except: 'packages/abuddy-ears/src/lmdb', forbidden: /^(?:lmdb(?:\/|$)|(?:\.\.?\/)+(?:[\w.-]+\/)*lmdb(?:\/|$))/ },
-  // Packs and their tests don't use the app's store
-  { dirs: [...PACK_SOURCE_DIRS, ...PACK_TEST_DIRS], forbidden: /^(?:lmdb|@abuddy\/ears\/lmdb)(?:\/|$)/ },
+  // Packs and their tests don't use the app's store. Named rather than spelled: this population is a pack's, so
+  // the rule is `@abuddy/cli`'s, the one `abuddy build` already runs for every pack. The two above are the host's
+  // and the engine's own trees, which no pack rule can have, so they keep a pattern here.
+  { dirs: PACK_CODE_DIRS, rule: 'lmdb-imports' },
 ];
 
 /** `file:line: specifier` for each import of LMDB or the LMDB store where `rules` forbid it */
 export function findLmdbImports(rules = LMDB_RULES, root = repoRoot): string[] {
-  return rules.flatMap(({ dirs, except, forbidden }) => {
+  return rules.flatMap(({ dirs, except, forbidden, rule }) => {
+    if (rule) return packRule(rule, dirs, root);
     const allowed = except && path.join(root, except) + path.sep;
     const files = packFiles(dirs, root).filter((file) => !allowed || !file.startsWith(allowed));
-    return findSpecifiers(files, root, (text) => forbidden.test(text));
+    return findSpecifiers(files, root, (text) => forbidden!.test(text));
   });
 }
 
@@ -436,13 +501,22 @@ const repositoryCast: Rule = (node) => {
  * `file:line: code` for each `repository as unknown as …` in `dirs`: each entity's repository lives
  * with the package that declares it, and other packages call it through its exports
  * (docs/goals/goal-package-boundaries.md, Decision 7), never through a cast of the engine's registry.
+ *
+ * **Why this one is here and not in a linter.** It is a syntactic pattern, which is a linter's job — but
+ * oxlint 1.8 hosts no custom rule from the CLI (no `--js-plugins`, no `jsPlugins` in its config schema; its
+ * external-plugin path needs the napi host) and has no `no-restricted-syntax` to express it declaratively,
+ * and eslint runs only over `packages/renderer` while this covers the `src` of every package. Extending eslint to
+ * eleven workspaces to host one rule that fires nowhere today costs more than the rule is worth. Revisit when
+ * oxlint's external-plugin path ships in the published binary.
  */
-export function findRepositoryCasts(dirs = packageSourceDirs(), root = repoRoot): string[] {
+export function findRepositoryCasts(dirs: readonly string[] = packageSourceDirs(), root = repoRoot): string[] {
   return findInFiles(packFiles(dirs, root), root, repositoryCast);
 }
 
 /** The export condition under which @abuddy/* workspace packages resolve their TypeScript source */
-export const SOURCE_CONDITION = '@abuddy/source';
+// Re-exported rather than declared: `@abuddy/host/build/source-resolution` owns it beside the packages it
+// applies to, and repo-checks' integration spec imports the name from here
+export { SOURCE_CONDITION };
 
 /**
  * Config files that compile or bundle workspace source. A tsconfig separates its name with a dot or
@@ -450,8 +524,6 @@ export const SOURCE_CONDITION = '@abuddy/source';
  * either side of `config` (`vitest.node.config.ts`, `vite.config.prod.ts`, `rollup-defs.config.mjs`).
  */
 const CONFIG_FILE = /^(?:tsconfig(?:[.-][\w.-]+)?\.json|(?:vite|vitest|tsup|tsdown|rollup|esbuild|build)(?:[.-][\w.-]+)?\.config(?:\.[\w.-]+)?\.[cm]?[jt]s)$/;
-/** Directories that hold no workspace source: dependencies, build output and dot directories (worktrees, caches) */
-const SKIPPED_DIRS = /^(?:node_modules|dist|out|coverage|\..+)$/;
 /** Files a config compiles or bundles. Declarations included: tsc resolves their imports too */
 const CODE_FILE = /\.(?:[cm]?[jt]sx?|vue)$/;
 /**
@@ -460,202 +532,40 @@ const CODE_FILE = /\.(?:[cm]?[jt]sx?|vue)$/;
  * same rule, with no exception of its own.
  */
 const PACK_SRC_ROOTS = [
-  'packages/default-setup/src', 'packages/abuddy-host/src',
-  'tests/fixtures/external-pack/src', 'tests/fixtures/bundled-ui-pack/src',
+  ...PACK_SOURCE_DIRS,
+  // The app is the pack `host` (`features/` is its features), and it has no manifest to be found by
+  'packages/abuddy-host/src',
 ];
 
-/** `export … from '…'`: a module passing another's exports on */
-const EXPORT_FROM = /\bexport\s+(?:type\s+)?(?:\*(?:\s+as\s+\w+)?|\{[^}]*\})\s*from\s*['"][^'"]+['"]/g;
 
-/** The local names an import statement binds (`import a, { b as c } from`, `import * as d from`) */
-function importedNames(statement: string): string[] {
-  const clause = /\bimport\s+(?:type\s+)?([\s\S]*?)\s*from\s*['"]/.exec(statement)?.[1] ?? '';
-  const names: string[] = [];
-  const braces = /\{([^}]*)\}/.exec(clause)?.[1];
-  for (const part of braces?.split(',') ?? []) {
-    const local = part.trim().replace(/^type\s+/, '').split(/\s+as\s+/).pop()?.trim();
-    if (local) names.push(local);
-  }
-  const outside = clause.replace(/\{[^}]*\}/, '');
-  const namespace = /\*\s+as\s+(\w+)/.exec(outside)?.[1];
-  if (namespace) names.push(namespace);
-  const fallback = /^\s*(\w+)/.exec(outside.replace(/\*\s+as\s+\w+/, ''))?.[1];
-  if (fallback && fallback !== 'type') names.push(fallback);
-  return names;
-}
 
-/** The local names a module exports without re-exporting from another (`export { a, b as c }`, `export default a`) */
-function exportedLocalNames(code: string): Set<string> {
-  const names = new Set<string>();
-  for (const m of code.matchAll(/\bexport\s+(?:type\s+)?\{([^}]*)\}(?!\s*from)/g)) {
-    for (const part of m[1].split(',')) {
-      const local = part.trim().replace(/^type\s+/, '').split(/\s+as\s+/)[0]?.trim();
-      if (local) names.add(local);
-    }
-  }
-  for (const m of code.matchAll(/\bexport\s+default\s+(\w+)\s*;?\s*$/gm)) names.add(m[1]);
-  return names;
+
+
+/**
+ * `file:line: specifier` for each import of another feature's frontend, in the packs of this checkout.
+ *
+ * The rule is `@abuddy/cli`'s `cross-feature-imports` (`build/pack-features.ts`), which `abuddy build`,
+ * `abuddy validate` and `abuddy test` run for every pack outside this checkout. `PACK_SRC_ROOTS` adds
+ * `@abuddy/host`, which is the pack `host` and has the same feature layout without being a pack the CLI builds.
+ */
+export function findCrossFeatureImports(srcRoots: readonly string[] = PACK_SRC_ROOTS, root = repoRoot): string[] {
+  return packRule('cross-feature-imports', srcRoots, root);
 }
 
 /**
- * The source files a package publishes, from its `package.json` `exports`.
+ * `file:line: specifier` for each import a contract leaf makes that would put the machine back in front of codegen,
+ * in the packs of this checkout.
  *
- * A package's entry is where it assembles what it offers, so naming its own features' frontends there is that
- * module's job rather than a crossing: `@abuddy/host`'s `./fe` barrel is exactly that, and a pack's generated
- * `pack-entry-fe.ts` is the same module written by codegen (excluded below with the rest of `__generated__`).
- *
- * **Being published is not enough; the caller must also be outside every feature.** A package may publish a
- * feature's own module — `@abuddy/host` publishes `./settings` from `features/settings/be/index.ts` — and that is
- * a feature's barrel, not the package's assembly. What says a module is assembling the pack is where it sits,
- * not whether anyone can see it; excepting it by visibility alone hands that one feature a licence no other has.
- *
- * Derived, and it fails closed: a tree with no `package.json`, no `exports`, or an entry behind conditions excepts
- * nothing and gets the strict rule. That is the opposite of deriving an exception from a *missing* file, which
- * would widen the gate exactly when something had gone missing.
+ * The rule is `@abuddy/cli`'s `contract-leaves` (`build/pack-features.ts`), which `abuddy build`, `abuddy validate`
+ * and `abuddy test` run for every pack outside this checkout — where the whole reasoning, and what the two harms
+ * were measured to be, is recorded.
  */
-function publishedEntryPoints(packageDir: string): Set<string> {
-  const manifest = path.join(packageDir, 'package.json');
-  if (!fs.existsSync(manifest)) return new Set();
-  const { exports: entries } = JSON.parse(fs.readFileSync(manifest, 'utf-8')) as { exports?: Record<string, unknown> };
-  return new Set(Object.values(entries ?? {})
-    .filter((target): target is string => typeof target === 'string')
-    .map((target) => path.resolve(packageDir, target)));
+export function findContractLeafImports(srcRoots: readonly string[] = PACK_SRC_ROOTS, root = repoRoot): string[] {
+  return packRule('contract-leaves', srcRoots, root);
 }
 
-/**
- * `file:line: specifier` for each import of another feature's frontend. A feature reaches into no other feature's
- * frontend at all: what one offers the rest is its plugin's contract — its published state, which `#generated/fe`
- * generates typed readers for, and the inbox `#generated/events` types the sends with. Neither needs a module of
- * the other feature's, so there is nothing left for an exception to bless.
- *
- * A feature's modules outside its `fe/` may use its frontend but not pass it on (`export … from './fe/state'`),
- * which would be a second door.
- *
- * Two modules are exempt, and both are the pack's own assembly rather than one feature reaching another: generated
- * code, which registers every feature's plugin, and what the package publishes (`publishedEntryPoints`).
- */
-export function findCrossFeatureImports(srcRoots = PACK_SRC_ROOTS, root = repoRoot): string[] {
-  return srcRoots.flatMap((srcRoot) => {
-    const src = path.join(root, srcRoot);
-    const published = publishedEntryPoints(path.dirname(src));
-    const relative = (file: string) => path.relative(src, file).split(path.sep).join('/');
-    const featureOf = (file: string) => /^features\/([^/]+)\//.exec(relative(file))?.[1];
-    /** What the package publishes, from outside every feature: the modules that assemble it (`publishedEntryPoints`) */
-    const assembles = (file: string) => published.has(file) && featureOf(file) === undefined;
-    return packFiles([srcRoot], root).filter((file) => !relative(file).startsWith('__generated__') && !assembles(file)).flatMap((file) => {
-      const code = fs.readFileSync(file, 'utf-8');
-      // Where each `from` of a re-export starts, which is where ANY_SPECIFIER's match for it starts
-      const reExports = new Set([...code.matchAll(EXPORT_FROM)].map((m) => m.index + m[0].search(/from\s*['"][^'"]+['"]$/)));
-      const inOwnFrontend = /^features\/[^/]+\/fe\//.test(relative(file));
-      const exportedLocals = inOwnFrontend ? new Set<string>() : exportedLocalNames(code);
-      /** Whether the import whose specifier `match` is binds a name this module exports again: a re-export in two steps */
-      const passedOn = (match: RegExpMatchArray) => {
-        const end = match.index! + match[0].length + 1;
-        const statement = code.slice(code.lastIndexOf('import', match.index), end);
-        return importedNames(statement).some((name) => exportedLocals.has(name));
-      };
-      return [...code.matchAll(ANY_SPECIFIER)].flatMap((match) => {
-        const specifier = match[1];
-        const target = specifier.startsWith('@/') ? path.join(src, specifier.slice(2))
-          : specifier.startsWith('.') ? path.resolve(path.dirname(file), specifier) : undefined;
-        if (target === undefined) return [];
-        const into = /^features\/([^/]+)\/fe(?:\/.+)?$/.exec(relative(target));
-        if (!into) return [];
-        if (into[1] === featureOf(file) && (inOwnFrontend || (!reExports.has(match.index) && !passedOn(match)))) return [];
-        return [`${path.relative(root, file)}:${code.slice(0, match.index).split('\n').length}: ${specifier}`];
-      });
-    });
-  });
-}
-
-/** The file a path without an extension names: itself, `<path>.ts`, or `<path>/index.ts` */
-function sourceFile(base: string): string | undefined {
-  return [base, `${base}.ts`, path.join(base, 'index.ts')]
-    .find((candidate) => fs.existsSync(candidate) && fs.statSync(candidate).isFile());
-}
-
-/**
- * `file:line: specifier` for each import a contract leaf makes that would put the machine back in front of codegen.
- *
- * A leaf is a module `abuddy.json` names at `features[].plugin.contract` or `features[].system.contract`, and
- * codegen reads the contract from it as a declared type — without resolving the actor it describes. Both actors
- * import `#generated/events`, and `#generated/events` imports both contracts, so reading a contract anywhere its
- * actor is reachable closes that loop again. The two sides are one rule with one machine module each: `fe/state`
- * for a plugin, `be/system` for a system.
- *
- * So a leaf imports neither machine, no other feature, and nothing generated but `types` and `ears`, which are
- * themselves leaves: a context needs both (`NoteDTO`, `EARS.EntityId`) and neither reaches `#generated/events`.
- */
-export function findContractLeafImports(srcRoots = PACK_SRC_ROOTS, root = repoRoot): string[] {
-  return srcRoots.flatMap((srcRoot) => {
-    const src = path.join(root, srcRoot);
-    const manifestPath = path.join(path.dirname(src), 'abuddy.json');
-    if (!fs.existsSync(manifestPath)) return [];
-    const manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf-8')) as {
-      features?: Array<{ plugin?: { contract?: string; entry?: string }; system?: { contract?: string; entry?: string } }>;
-    };
-    /** A `"path"` or `"path#Export"` the manifest names, as a file in the pack */
-    const named = (target: string | undefined): string | undefined =>
-      target ? sourceFile(path.join(path.dirname(src), target.split('#')[0]!)) : undefined;
-    const files = (pick: (f: NonNullable<typeof manifest.features>[number]) => Array<string | undefined>) =>
-      (manifest.features ?? []).flatMap((feature) => pick(feature).flatMap((t) => { const f = named(t); return f ? [f] : []; }));
-
-    const leaves = files((f) => [f.plugin?.contract, f.system?.contract]);
-    /**
-     * The actor modules `abuddy.json` names. Exact, where the machine rule below is a guess at a filename: these
-     * are the two paths the manifest states outright, so a leaf reaching one is reported whatever it is called.
-     */
-    const actorEntries = new Set(files((f) => [f.plugin?.entry, f.system?.entry]));
-    const resolveFrom = (from: string, specifier: string): string | undefined => {
-      const base = specifier.startsWith('@/') ? path.join(src, specifier.slice(2))
-        : specifier.startsWith('.') ? path.resolve(path.dirname(from), specifier) : undefined;
-      return base === undefined ? undefined : sourceFile(base);
-    };
-    const relative = (target: string) => path.relative(src, target).split(path.sep).join('/');
-    return leaves.flatMap((leaf) => {
-      const ownFeature = /^features\/([^/]+)\//.exec(relative(leaf))?.[1];
-      const seen = new Set<string>();
-      const found: string[] = [];
-      // The whole closure, not just the leaf's own imports: a module the leaf reaches through two hops puts
-      // `#generated/events` back in the contract's path just as surely as importing it directly would.
-      const walk = (file: string, viaLeaf: boolean) => {
-        if (seen.has(file)) return;
-        seen.add(file);
-        const code = fs.readFileSync(file, 'utf-8');
-        for (const match of code.matchAll(ANY_SPECIFIER)) {
-          const specifier = match[1];
-          const where = `${path.relative(root, file)}:${code.slice(0, match.index).split('\n').length}: ${specifier}`;
-          const at = viaLeaf ? where : `${where} (reached from ${path.relative(root, leaf)})`;
-          const generated = /^(?:@\/__generated__|#generated)\/(.+?)(?:\.(?:ts|js))?$/.exec(specifier);
-          if (generated) {
-            // Two rules, and they are not the same one. The leaf's own imports are held to `types` and `ears`,
-            // the two generated modules that reach nothing: that is what keeps a contract cheap to read. Deeper in
-            // the closure only the cycle matters — `events` imports the contract, and `fe` imports `events` — so a
-            // module the leaf reaches may use the rest.
-            const offends = viaLeaf ? !['types', 'ears'].includes(generated[1]) : ['events', 'fe'].includes(generated[1]);
-            if (offends) found.push(at);
-            continue;
-          }
-          const target = resolveFrom(file, specifier);
-          if (target === undefined) continue;
-          const into = /^features\/([^/]+)\//.exec(relative(target));
-          if (viaLeaf && into && into[1] !== ownFeature) { found.push(at); continue; }
-          // The plugin and the system definitions, which the manifest names: reaching either puts the actor in
-          // front of the contract, at any depth — a leaf's own types module has no business importing one either.
-          if (actorEntries.has(target)) { found.push(at); continue; }
-          // The machines themselves, by the filenames the scaffold writes. A guess, deliberately: `Plugin.state`
-          // is a value, so no manifest field names the machine, and this is what makes the report say "your leaf
-          // imports ./state" instead of naming a module three hops away that happens to reach #generated/events.
-          // A machine called something else still fails, on the closure rule above — just less precisely.
-          if (viaLeaf && /(?:^|\/)(?:state|system)(?:\.ts)?$/.test(relative(target))) { found.push(at); continue; }
-          walk(target, false);
-        }
-      };
-      walk(leaf, true);
-      return found;
-    });
-  });
-}
+/** The population `generated-behind-contract.spec.ts` checks against what codegen emits, from the rule that owns it */
+export { GENERATED_BEHIND_A_CONTRACT } from '../packages/abuddy-cli/src/build/pack-features.ts';
 
 const CONFIG_EXTENSIONS = ['', '.ts', '.mts', '.cts', '.js', '.mjs', '.cjs'];
 /**
@@ -806,7 +716,7 @@ function importsSourcePackage(file: string, scan: ConditionScan): boolean {
     // A file that never spells a package's name imports none of them: skip the parse
     if (!scan.packages.some((pkg) => code.includes(pkg))) return false;
     const matches = (text: string) => scan.packages.some((pkg) => text === pkg || text.startsWith(`${pkg}/`));
-    return codeBlocks(file).some(({ content }) => specifiers(content, file, true).some(({ text }) => matches(text)));
+    return readSource(file).specifiers.some(({ text }) => matches(text));
   });
 }
 
@@ -1076,7 +986,8 @@ function declaresCondition(file: string, scan: ConditionScan, seen = new Set<str
   const values = conditionValues(source);
   if (values.length > 0) return combine(values.map((value) => yieldsCondition(value, source, new Set())));
   let unreadable: Verdict | undefined;
-  for (const { text } of specifiers(source.text, file, false)) {
+  // The same file the parse above came from, through the shared reader so it is parsed once per process
+  for (const { text } of readSource(file).specifiers.filter(({ text }) => /^\.\.?\//.test(text))) {
     const resolved = resolveConfig(file, text);
     if (resolved === undefined) continue;
     const verdict = declaresCondition(resolved, scan, seen);
@@ -1093,6 +1004,28 @@ function declaresCondition(file: string, scan: ConditionScan, seen = new Set<str
  * read statically is reported too, with what to change: a rule that guesses is a rule that lets the
  * next one through. An exception that no longer applies is reported too, so the list doesn't outlive
  * its reason.
+ *
+ * **It reads config text, where `abuddy-cli/src/build/pack-resolution.ts` asks the resolver, and that is
+ * settled rather than unfinished.** Three measurements, 2026-09-27:
+ *
+ * - **Nothing would be gained.** Of 29 tsconfigs, every one that reaches a source package's `src` does it
+ *   through `customConditions` — none through a `paths` entry, an `extends` chain or a project reference.
+ *   (A probe saying otherwise counted `@abuddy/sdk` resolved from inside `packages/abuddy-sdk`, which lands
+ *   in its own `src` whatever the conditions say: a package resolved from within itself is not this rule's
+ *   subject.)
+ * - **Something would be lost.** Resolution only answers against the filesystem as it is. On a checkout
+ *   before `npm run packages:ensure` a config *missing* the condition resolves to nothing at all, so a
+ *   resolution-based rule would report nothing — silence exactly where this one reports the problem. Reading
+ *   text needs no build, and this check is run standalone as often as through `typecheck`.
+ * - **Half the population cannot be resolved at any price.** A Vitest config's `resolve.conditions` has no
+ *   resolved value until the run, and by then the pack's suite has already passed against workspace source
+ *   (`pack-resolution.ts` records the same thing from the other side). Driving Vite's resolver needs two
+ *   `@experimental` APIs, a client-versus-ssr choice per config, and importing configs that create temp
+ *   directories, mutate `process.env` from a `.env`, or import `electron`.
+ *
+ * So the split with `pack-resolution.ts` is by population and by what each population can be asked, not by
+ * subject. Revisit if a config ever reaches source another way — that is the condition, and it is checkable
+ * with the probe above.
  */
 export function findMissingSourceConditions(
   root = repoRoot,
@@ -1104,6 +1037,11 @@ export function findMissingSourceConditions(
     configs: [], code: [], packs: [], imports: new Map(), tsconfigs: new Map(), sources: new Map(),
   };
   walkTree(root, scan, new Set());
+  // The scaffold's templates are a pack with no manifest — `abuddy.json` is built in code, from an object with
+  // computed keys — so the walk cannot recognise it, and its `vitest.config.ts` would be read as one of the
+  // repo's own and told to declare the source condition. It is the pack every pack author starts from, so the
+  // rule that applies is the pack one: declare nothing.
+  scan.packs.push(path.join(root, CLI_TEMPLATE_PACK));
   const problems: string[] = [];
   const applied = new Set<string>();
   const packApplied = new Set<string>();
@@ -1238,33 +1176,235 @@ export function findCrossCheckoutResolution(root = repoRoot): string[] {
  * the same list: `import-specifiers.spec.ts` asserts each entry has a case, which is what stops a check landing
  * with nothing exercising it.
  */
-export const CHECKS: ReadonlyArray<readonly [find: () => string[], rule: string]> = [
-  [findJsSpecifiers, 'Relative imports must name the TypeScript source (tsc and tsdown emit .js)'],
-  [findRawPackHelpers, 'Pack code uses the typed facades: broadcastToPlugin, sendToPlugin and sendToSystem from #generated/events, repositories declared in abuddy.json'],
-  [findInternalPackageImports, "Pack code imports only the @abuddy packages' public API: an export named `_x` is @internal, the app's alone, and a pack that needs one asks for it to be made public"],
-  [findRawTransport, 'Pack code sends with broadcastToPlugin, sendToPlugin and sendToSystem from #generated/events, and subscribes with onConnected and onIncoming from @abuddy/sdk/events'],
-  [findPackBackendConsole, 'Pack backend code logs with createLogger from @abuddy/sdk/logger'],
-  [findHostImports, "Pack code doesn't import the host's private @abuddy/host package; use @abuddy/sdk"],
-  [findAppImportsInPackTests, 'Pack unit tests run on the harness (@abuddy/testing) without the app; test host, API and CLI code in its own package'],
-  [findUpwardImports, "Packages import only downward (@abuddy/ears imports no @abuddy package, @abuddy/sdk only @abuddy/ears, @abuddy/host only those two and never the API, the API and the renderer only the packages below them), and list each @abuddy package they import in their package.json"],
-  [findLmdbImports, "Only @abuddy/ears/lmdb loads lmdb: the host and the API open the store through it, the engine's root and packs never load it"],
-  [findSharedPackageLists, 'Derive shared-instance packages from SHARED_INSTANCE_PACKAGES (@abuddy/host/build/shared-deps) instead of naming them'],
-  [findRepositoryCasts, "Call a package's repositories through its exports, not a cast of the repository registry"],
-  [findCrossFeatureImports, "A feature's frontend is its own: what it offers other features is its plugin's contract, read through #generated/fe and #generated/events, never a module of its own"],
-  [findContractLeafImports, "A contract leaf is a leaf: no ./state or ./system, no other feature, and nothing generated but types and ears — codegen reads a plugin's and a system's contract without resolving its actor, and an import that reaches one restores the cycle"],
-  [findPackageScriptImports, "A package's own scripts/ imports that package's src/ and its declared dependencies, nothing else: a module under the repo's scripts/ belongs to no package, so npm run spec cannot route a change to it back to a spec that covers it"],
-  [findCrossCheckoutResolution, 'Workspace packages resolve inside this checkout, so a worktree nested in the repository never typechecks against the parent checkout'],
-  [findMissingSourceConditions, "The repo's own configs declare the @abuddy/source condition when they compile or bundle code importing @abuddy/ears, @abuddy/sdk or @abuddy/ui, so they read TypeScript source instead of a stale dist; a pack's configs declare none, because a pack resolves the published dist"],
-];
+/**
+ * Every rule this script enforces, with the sentence it reports and — for the rules that can answer about one
+ * file at a time — how to run it over paths a caller names.
+ *
+ * `overPaths` is what makes `npm run check:specifiers <paths…>` honest: a rule that reads the whole tree (the
+ * layer manifests, the config scan, the stale-exception checks) declares none, and a per-file run says which
+ * rules it skipped rather than reporting a pass it did not earn.
+ *
+ * Exported so the runner below and the specs read the same list: `import-specifiers.spec.ts` asserts each
+ * entry has a case that makes it fire, which is what stops a check landing with nothing exercising it.
+ */
+interface RuleShape {
+  /** Stable name, the one the spec's FIRES table is keyed by and `--rule` takes */
+  readonly id: string;
+  /** The sentence reported when it fires */
+  readonly rule: string;
+  /** Over the whole repo */
+  find(): string[];
+  /** Over paths a caller names, when the rule can answer per file */
+  overPaths?(paths: readonly string[], root?: string): string[];
+  /**
+   * The directories the whole-tree run reads, for a rule whose subject is a tree rather than the checkout.
+   *
+   * Data rather than a default parameter, because two checks need to read it: the sweeps that assert one rule owns
+   * each offence derive who takes part from it — a rule that reads a pack's `tests` is swept there, and one that
+   * reads `packages/*` minus the packs takes part in neither — and a population is otherwise unassertable, which is
+   * how `host-imports` came to read a pack's `src` alone while `abuddy test` ran it over a pack's tests.
+   *
+   * Absent for the six rules whose subject is not a dir list: the layer table, `LMDB_RULES`, the shared-list files,
+   * the repo's configs, a package's own `scripts/` and the checkout itself.
+   */
+  readonly over?: readonly string[];
+}
+
+/**
+ * A rule, which says who owns it: `@abuddy/cli`, or this repo.
+ *
+ * A union rather than two optional fields, so a rule that says both or neither does not compile. Two pack-subject
+ * rules sat in this script for months while an external pack was held to neither, and the reasons they had not
+ * moved lived in an archived goal doc that nothing reads; this is the cheapest place to make the next one answer
+ * the question — at the declaration, before anything runs, rather than in a case that has to be remembered.
+ */
+export type ImportRule = RuleShape & (
+  /** The CLI owns the implementation; `backed` sets this */
+  { readonly packRule: PackRuleKey; readonly repoOnly?: never }
+  /** Why this rule's subject is this repo rather than a pack */
+  | { readonly packRule?: never; readonly repoOnly: string }
+);
+
+/** The sentence a pack rule reports, read from the rule itself so this script prints what a pack author is told */
+function ruleSentence(key: PackRuleKey): string {
+  const rule = PACK_RULES.find((candidate) => candidate.key === key);
+  if (!rule) throw new Error(`No pack rule "${key}"`);
+  return rule.rule;
+}
+
+/**
+ * A rule `@abuddy/cli` owns, applied to the packs in this checkout: one body of code, one sentence, two entry
+ * points. `find` takes the rule's own population and `overPaths` the paths a caller named, both through the same
+ * function.
+ *
+ * The sentence comes from `PACK_RULES` rather than being written again here, because a second copy drifts: for a
+ * while `host-imports` printed one sentence from `abuddy validate` and a different one from `check:specifiers`,
+ * for the same offence in the same file.
+ */
+const backed = <Id extends string>(
+  id: Id,
+  key: PackRuleKey,
+  find: (dirs?: readonly string[], root?: string) => string[],
+  over: readonly string[],
+) => ({
+  id,
+  packRule: key,
+  rule: ruleSentence(key),
+  over,
+  find: () => find(over),
+  overPaths: (paths: readonly string[], root = repoRoot) => find(paths, root),
+}) satisfies ImportRule;
+
+/**
+ * Every rule, and the one place their ids are written.
+ *
+ * `as const satisfies` rather than an annotation, so each id keeps its literal type and `ImportRuleId` below is
+ * *derived* from this list: a table keyed by it fails to compile when a rule is added, renamed or removed, naming
+ * the id and suggesting the one it meant, where an annotation widens every id to `string` and leaves that to a
+ * runtime case to notice.
+ */
+const RULE_LIST = [
+  {
+    id: 'findJsSpecifiers',
+    over: CHECKED_DIRS,
+    repoOnly: "Its population is the packages that are not packs: a pack's relative `.js` belongs to `own-modules`, which resolves the specifier and so names the file to write, and the two populations are asserted disjoint",
+    find: () => findJsSpecifiers(CHECKED_DIRS),
+    rule: 'Relative imports must name the TypeScript source (tsc and tsdown emit .js)',
+    overPaths: (paths, root = repoRoot) => jsSpecifierFixes([...paths], root).map(({ file, line, specifier }) => `${file}:${line}: ${specifier}`),
+  },
+  backed('findRawPackHelpers', 'untyped-sends', findRawPackHelpers, PACK_SOURCE_DIRS),
+  backed('findInternalPackageImports', 'internal-package-imports', findInternalPackageImports, PACK_CODE_DIRS),
+  backed('findRawTransport', 'raw-transport', findRawTransport, PACK_SOURCE_DIRS),
+  backed('findPackBackendConsole', 'backend-console', findPackBackendConsole, PACK_SOURCE_DIRS),
+  backed('findHostImports', 'host-imports', findHostImports, PACK_CODE_DIRS),
+  backed('findPackOwnAliases', 'pack-own-aliases', findPackOwnAliases, PACK_CODE_DIRS),
+  backed('findExtensionlessOwnModules', 'own-modules', findExtensionlessOwnModules, PACK_CODE_DIRS),
+  {
+    id: 'findAppImportsInPackTests',
+    over: PACK_TEST_DIRS,
+    repoOnly: "Its subject is a relative import into this repo's api, host or CLI sources, which only a pack inside this monorepo can write; `@abuddy/host` and every `@/` specifier belong to `host-imports` and `pack-own-aliases`, which `abuddy test` runs over a pack's tests",
+    find: () => findAppImportsInPackTests(PACK_TEST_DIRS),
+    // Dirs-shaped, so a per-file run can answer for it too, which is also what lets the sweeps call it
+    overPaths: (paths, root = repoRoot) => findAppImportsInPackTests(paths, root),
+    rule: 'Pack unit tests run on the harness (@abuddy/testing) without the app; test host, API and CLI code in its own package',
+  },
+  {
+    id: 'findUpwardImports',
+    repoOnly: "The `@abuddy/*` layer rule, which is about this repo's packages and their manifests",
+    find: findUpwardImports,
+    rule: "Packages import only downward (@abuddy/ears imports no @abuddy package, @abuddy/sdk only @abuddy/ears, @abuddy/host only those two and never the API, the API and the renderer only the packages below them), and list each @abuddy package they import in their package.json",
+  },
+  {
+    id: 'findLmdbImports',
+    repoOnly: "The pack half is the CLI's `lmdb-imports`; what is left here is the API, the host and the engine's own root",
+    find: findLmdbImports,
+    rule: "Only @abuddy/ears/lmdb loads lmdb: the host and the API open the store through it, the engine's root and packs never load it",
+  },
+  {
+    id: 'findSharedPackageLists',
+    repoOnly: 'Its subject is the host, CLI and testing consumers of `SHARED_INSTANCE_PACKAGES`, none of which is a pack',
+    find: findSharedPackageLists,
+    rule: 'Derive shared-instance packages from SHARED_INSTANCE_PACKAGES (@abuddy/host/build/shared-deps) instead of naming them',
+  },
+  {
+    id: 'findRepositoryCasts',
+    over: packageSourceDirs(),
+    repoOnly: 'The one here a pack can actually break, and so the one whose absence costs something: `packages/*/src` '
+      + 'includes `default-setup`, so a built-in pack is held to it and an external pack is not. Nothing else refuses '
+      + '`repository as unknown as` outside this repo — oxlint hosts no custom rule and eslint does not run where this '
+      + 'applies, which is the condition to revisit, and moving it to `PACK_RULES` is the other way',
+    find: () => findRepositoryCasts(packageSourceDirs()),
+    overPaths: (paths, root = repoRoot) => findRepositoryCasts(paths, root),
+    rule: "Call a package's repositories through its exports, not a cast of the repository registry",
+  },
+  backed('findCrossFeatureImports', 'cross-feature-imports', findCrossFeatureImports, PACK_SRC_ROOTS),
+  backed('findContractLeafImports', 'contract-leaves', findContractLeafImports, PACK_SRC_ROOTS),
+  {
+    id: 'findPackageScriptImports',
+    repoOnly: "A package's own `scripts/`, a shape no pack has, and the reason is how `npm run spec` routes a change",
+    find: findPackageScriptImports,
+    rule: "A package's own scripts/ imports that package's src/ and its declared dependencies, nothing else: a module under the repo's scripts/ belongs to no package, so npm run spec cannot route a change to it back to a spec that covers it",
+  },
+  {
+    id: 'findCrossCheckoutResolution',
+    repoOnly: 'Worktrees nested in this checkout, which is a property of the checkout and not of any pack',
+    find: findCrossCheckoutResolution,
+    rule: 'Workspace packages resolve inside this checkout, so a worktree nested in the repository never typechecks against the parent checkout',
+  },
+  {
+    id: 'findMissingSourceConditions',
+    repoOnly: "The repo's own configs; the mirror-image rule for a pack's configs is the CLI's `source-resolution`",
+    find: findMissingSourceConditions,
+    rule: "The repo's own configs declare the @abuddy/source condition when they compile or bundle code importing @abuddy/ears, @abuddy/sdk or @abuddy/ui, so they read TypeScript source instead of a stale dist; a pack's configs declare none, because a pack resolves the published dist",
+  },
+] as const satisfies readonly ImportRule[];
+
+/** The id of a rule, derived from the list so nothing keys a table by a name no rule has */
+export type ImportRuleId = (typeof RULE_LIST)[number]['id'];
+
+/**
+ * Every rule's id, keeping its literal type: what a table that covers the rules is keyed by.
+ *
+ * Separate from `CHECKS` because the two are read for different things. A tuple of literal types is what makes the
+ * ids derivable, and it is also a union whose members lack the properties they do not declare — so anything that
+ * asks a rule whether it has an `overPaths` or a `packRule` reads `CHECKS`, which is the same list widened, and
+ * anything keyed by id reads this.
+ */
+export const CHECK_IDS: readonly ImportRuleId[] = RULE_LIST.map((rule) => rule.id);
+
+/** Every rule, as the runner and the sweeps read them */
+export const CHECKS: readonly ImportRule[] = RULE_LIST;
 
 // Run as a script, also through a symlinked path (tests import findJsSpecifiers)
 if (process.argv[1] && import.meta.filename === fs.realpathSync(process.argv[1])) {
-  for (const [find, rule] of CHECKS) {
-    const problems = find();
-    if (problems.length > 0) {
-      console.error(`${rule}:\n  ${problems.join('\n  ')}`);
-      process.exit(1);
+  const args = process.argv.slice(2);
+  const only = args.includes('--rule') ? args[args.indexOf('--rule') + 1] : undefined;
+  const paths = args.filter((arg) => !arg.startsWith('--') && arg !== only);
+  const rules = only ? CHECKS.filter((rule) => rule.id === only) : CHECKS;
+
+  if (args.includes('--list')) {
+    // `abuddy validate`, `build` and `test` run the pack rules, so a rule with one is a rule an external pack
+    // is held to. One without is this repo's alone, and the second table says what that costs
+    const heldToo = (rule: ImportRule) => (rule.packRule === undefined ? 'no — see below' : `yes, as \`${rule.packRule}\``);
+    // Widths from the longest entry rather than a literal: the last column runs off the end of the one that
+    // outgrew its guess, and the entry that did it is the one nobody reads twice
+    const packsWidth = Math.max(...CHECKS.map((rule) => heldToo(rule).length)) + 2;
+    console.log('rule'.padEnd(34) + 'paths?'.padEnd(8) + 'a pack too?'.padEnd(packsWidth) + 'what it reports');
+    for (const rule of CHECKS) {
+      console.log(rule.id.padEnd(34) + (rule.overPaths ? 'yes' : 'no').padEnd(8)
+        + heldToo(rule).padEnd(packsWidth) + rule.rule.split(':')[0]);
     }
+    const repoOnly = CHECKS.filter((rule) => rule.repoOnly !== undefined);
+    console.log(`\n${repoOnly.length} of ${CHECKS.length} are this repo's alone. What an external pack does without each:\n`);
+    for (const rule of repoOnly) console.log(`  ${rule.id}\n    ${rule.repoOnly}\n`);
+    process.exit(0);
   }
-  console.log('Import specifiers and pack rules pass');
+  if (only && rules.length === 0) {
+    console.error(`No rule "${only}". --list prints them.`);
+    process.exit(1);
+  }
+
+  // Every rule, not the first that fires: exiting inside the loop is what hid one offence being claimed by two
+  // rules, and in one pass over the tree it saves nothing — the files have been read by then anyway.
+  const failed: { rule: ImportRule; problems: string[] }[] = [];
+  const skipped: string[] = [];
+  for (const rule of rules) {
+    if (paths.length > 0 && !rule.overPaths) {
+      skipped.push(rule.id);
+      continue;
+    }
+    const problems = paths.length > 0 ? rule.overPaths!(paths) : rule.find();
+    if (problems.length > 0) failed.push({ rule, problems });
+  }
+
+  for (const { rule, problems } of failed) console.error(`${rule.rule}:\n  ${problems.join('\n  ')}\n`);
+  if (skipped.length > 0) {
+    console.log(`Skipped ${skipped.length} rule${skipped.length === 1 ? '' : 's'} that read the whole tree, `
+      + `since paths were named: ${skipped.join(', ')}`);
+  }
+  if (failed.length > 0) {
+    console.error(`${failed.length} rule${failed.length === 1 ? '' : 's'} failed.`);
+    process.exit(1);
+  }
+  console.log(paths.length > 0 ? `Import specifiers pass for ${paths.length} path${paths.length === 1 ? '' : 's'}` : 'Import specifiers and pack rules pass');
 }

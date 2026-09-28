@@ -184,7 +184,7 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
 import { Check, ChevronDown, Code, ExternalLink, Plus } from 'lucide-vue-next'
-import { openPlugin } from '@/__generated__/fe'
+import { openPlugin } from '#generated/fe.ts'
 import {
   ComboboxAnchor,
   ComboboxContent,
@@ -201,8 +201,8 @@ import {
 import BaseForm from '@abuddy/ui/components/BaseForm'
 import TipSection from '@abuddy/ui/components/TipSection'
 import SimpleMonacoEditor from '@abuddy/ui/components/SimpleMonacoEditor'
-import type { NodeEntity } from '@/__generated__/types'
-import type { FormResources } from '../form-props'
+import type { NodeEntity } from '#generated/types.ts'
+import type { FormResources } from '../form-props.ts'
 import type { ActionEntity } from '@abuddy/sdk'
 
 const props = defineProps<{

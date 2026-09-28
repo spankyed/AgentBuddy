@@ -237,13 +237,13 @@
 import { usePlugin } from '@abuddy/sdk/fe'
 
 import { ref, computed, watch, nextTick } from 'vue'
-import { openPlugin } from '@/__generated__/fe'
-import type { CodeState } from '@/features/code/fe/state'
-import { usePluginState } from '@/__generated__/fe'
-import { sendToPlugin } from '@/__generated__/events'
+import { openPlugin } from '#generated/fe.ts'
+import type { CodeState } from '#features/code/fe/state.ts'
+import { usePluginState } from '#generated/fe.ts'
+import { sendToPlugin } from '#generated/events.ts'
 import { ExternalLink, Plus, X, Pencil, Trash2, Sparkle, Search, ChevronDown, ChevronRight } from 'lucide-vue-next'
-import CodePanelHeader from '@/features/code/fe/features/CodePanelHeader.vue'
-import EmptyState from '@/features/code/fe/features/EmptyState.vue'
+import CodePanelHeader from '#features/code/fe/features/CodePanelHeader.vue'
+import EmptyState from '#features/code/fe/features/EmptyState.vue'
 import type { PromptEntity } from '@abuddy/sdk'
 import {
   ContextMenuRoot,
@@ -252,11 +252,11 @@ import {
   ContextMenuItem,
   ContextMenuPortal,
 } from 'reka-ui'
-import { MENU_CONTENT_CLASS, MENU_ITEM_CLASS } from '../explorer/constants'
+import { MENU_CONTENT_CLASS, MENU_ITEM_CLASS } from '../explorer/constants.ts'
 import { useInfiniteScroll } from '@abuddy/ui/composables/useInfiniteScroll'
 import Button from '@abuddy/ui/design/button'
 import uFuzzy from '@leeoniya/ufuzzy'
-import { codeChild } from '../children';
+import { codeChild } from '../children.ts';
 
 // Get actors - use main prompts plugin for state, codePrompts for tab management
 const codeActor: CodeState = usePlugin()

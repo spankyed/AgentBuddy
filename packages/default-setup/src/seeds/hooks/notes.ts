@@ -1,8 +1,8 @@
 // How notes are seeded, for any pack that seeds Note rows: through noteCommands, so seeded notes get
 // shortCodes, display order and REFERENCES links like notes created in the app.
 import type { SeedHooks, SeedRecord } from '@abuddy/sdk/seed';
-import { EARS, findWhere, qx } from '@/__generated__/ears';
-import { repository } from '@/__generated__/repository';
+import { EARS, findWhere, qx } from '#generated/ears.ts';
+import { repository } from '#generated/repository.ts';
 
 export interface NoteSeedRecord extends SeedRecord {
   title: string;

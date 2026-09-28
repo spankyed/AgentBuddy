@@ -1,18 +1,18 @@
-import type { BrainSettings } from '@/__generated__/types';
-import { broadcastToPlugin } from '@/__generated__/events';
+import type { BrainSettings } from '#generated/types.ts';
+import { broadcastToPlugin } from '#generated/events.ts';
 import { assign, setup, enqueueActions, raise } from 'xstate';
 import { defineSystem } from '@abuddy/sdk/framework';
 
-import { EARS } from '@/__generated__/ears';
-import type { Contract } from './contract';
-import type { BrainContext, FlowTNodeData } from './types';
-import { repository } from '@/__generated__/repository';
+import { EARS } from '#generated/ears.ts';
+import type { Contract } from './contract.ts';
+import type { BrainContext, FlowTNodeData } from './types.ts';
+import { repository } from '#generated/repository.ts';
 import { createLogger, reportError, setDebugEnabled, isDebugEnabled } from '@abuddy/sdk/logger';
-import { createFlowNodeSystem, getFlowActor, getAllFlowActors, getAllFlowActorIds, clearFlowActorRegistry } from './flow-system';
-import { setBrainPausedState } from './utils/brain-pause';
-import { notify as notifyAdHocListeners, removeAllListeners as removeAllAdHocListeners } from './services/brain';
-import { services } from '@/__generated__/services';
-import { ref } from '@/__generated__/ref';
+import { createFlowNodeSystem, getFlowActor, getAllFlowActors, getAllFlowActorIds, clearFlowActorRegistry } from './flow-system.ts';
+import { setBrainPausedState } from './utils/brain-pause.ts';
+import { notify as notifyAdHocListeners, removeAllListeners as removeAllAdHocListeners } from './services/brain.ts';
+import { services } from '#generated/services.ts';
+import { ref } from '#generated/ref.ts';
 
 
 export const brainSpec = defineSystem<Contract>();

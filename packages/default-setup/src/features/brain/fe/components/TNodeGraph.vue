@@ -88,7 +88,7 @@ import { Controls } from '@vue-flow/controls';
 import type { TrackTree } from '@abuddy/sdk/steps';
 import BaseNode from '@abuddy/ui/components/BaseNode';
 import { Maximize } from 'lucide-vue-next';
-import { useNodeViewport } from '../useNodeViewport';
+import { useNodeViewport } from '../useNodeViewport.ts';
 import { cronToHuman } from '@abuddy/sdk/cron';
 import { stepRegistry } from '@abuddy/sdk/steps';
 

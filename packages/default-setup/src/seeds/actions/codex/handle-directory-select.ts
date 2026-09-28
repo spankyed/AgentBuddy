@@ -1,8 +1,8 @@
 /** CDX: Handle Directory Select — saves chosen directory and retries the blocked chat query. */
 
 import type { ActionMeta } from '@abuddy/sdk/build';
-import type { Services, EntityId } from '@/__generated__/services';
-import { persistCodexState } from './_helpers/thread-context';
+import type { Services, EntityId } from '#generated/services.ts';
+import { persistCodexState } from './_helpers/thread-context.ts';
 
 export const meta: ActionMeta = {
   label: 'CDX: Handle Directory Select',

@@ -1,6 +1,6 @@
 import { app } from 'electron';
 import { join } from 'node:path';
-import { getAppContext } from '../../app-context.js';
+import { getAppContext } from '../../app-context.ts';
 
 /**
  * The folder the API's `_getMediaPath()` (`@abuddy/sdk/utils`) uses: `<data dir>/media` for the packaged app,

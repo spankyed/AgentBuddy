@@ -6,9 +6,9 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { createActor } from 'xstate'
 
 const sendToSystem = vi.hoisted(() => vi.fn())
-vi.mock('@/__generated__/events', () => ({ sendToSystem }))
+vi.mock('#generated/events.ts', () => ({ sendToSystem }))
 
-const { librarySystem } = await import('@/features/library/fe/state')
+const { librarySystem } = await import('#features/library/fe/state.ts')
 
 beforeEach(() => {
   sendToSystem.mockReset()

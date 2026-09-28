@@ -191,12 +191,12 @@ import { usePlugin } from '@abuddy/sdk/fe'
 
 import { computed, ref, watch, onMounted, onUnmounted, nextTick } from 'vue'
 import { useSelector } from '@xstate/vue'
-import type { CodeState } from '@/features/code/fe/state'
+import type { CodeState } from '#features/code/fe/state.ts'
 import { ChevronRight, ChevronsDownUp, Search } from 'lucide-vue-next'
-import CodePanelHeader from '@/features/code/fe/features/CodePanelHeader.vue'
-import NoDirectoryState from '@/features/code/fe/features/NoDirectoryState.vue'
-import EmptyState from '@/features/code/fe/features/EmptyState.vue'
-import { codeChild } from '../children';
+import CodePanelHeader from '#features/code/fe/features/CodePanelHeader.vue'
+import NoDirectoryState from '#features/code/fe/features/NoDirectoryState.vue'
+import EmptyState from '#features/code/fe/features/EmptyState.vue'
+import { codeChild } from '../children.ts';
 
 // Get actors
 const codeActor: CodeState = usePlugin()

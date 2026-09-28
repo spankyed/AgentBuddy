@@ -4,8 +4,8 @@
 
 ```ts
 
-// @public (undocumented)
-export const APP_ENVS: readonly AppEnv[];
+// @public
+export const APP_ENVS: readonly ["production", "beta", "development", "test"];
 
 // @public (undocumented)
 export interface AppContext {
@@ -29,7 +29,7 @@ export interface AppContext {
 export function appDataDirFor(env: AppEnv): string;
 
 // @public (undocumented)
-export type AppEnv = 'production' | 'beta' | 'development' | 'test';
+export type AppEnv = (typeof APP_ENVS)[number];
 
 // @public
 export function getAppVersion(): string;

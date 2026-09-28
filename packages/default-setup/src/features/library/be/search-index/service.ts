@@ -2,14 +2,14 @@ import { FlagEmbedding } from 'fastembed'
 import { Index, MetricKind, ScalarKind } from 'usearch'
 import * as fs from 'fs'
 import * as path from 'path'
-import type { SearchIndexConfig, EmbeddingResult, Occurrence, EmbeddingModel } from './types/search-index'
-import type { ContentSection } from '../types'
-import type { EARS } from '@/__generated__/ears'
-import { getModelConfig, getModelDimensions } from '../../embedding-models'
-import { getFastEmbedModel } from './config/fastembed-mapping'
+import type { SearchIndexConfig, EmbeddingResult, Occurrence, EmbeddingModel } from './types/search-index.ts'
+import type { ContentSection } from '../types.ts'
+import type { EARS } from '#generated/ears.ts'
+import { getModelConfig, getModelDimensions } from '../../embedding-models.ts'
+import { getFastEmbedModel } from './config/fastembed-mapping.ts'
 import { ensureDirectoryExists } from '@abuddy/sdk/utils'
-import { getModelsCachePath, getIndexMetadataPath, getIndexMappingsPath, getIndexPath } from './paths'
-import { services } from '@/__generated__/services'
+import { getModelsCachePath, getIndexMetadataPath, getIndexMappingsPath, getIndexPath } from './paths.ts'
+import { services } from '#generated/services.ts'
 
 // Lazy-loaded embedding models cache
 const embeddingModels = new Map<string, FlagEmbedding | null>()
@@ -374,4 +374,4 @@ export function deleteIndexFiles(indexId: EARS.EntityId): void {
 }
 
 // Export commonly used functions
-export { getModelDimensions as getVectorDimensions } from '../../embedding-models'
+export { getModelDimensions as getVectorDimensions } from '../../embedding-models.ts'

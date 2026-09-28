@@ -34,10 +34,11 @@ function nonCodeExports(name: string): string[] {
 describe.skipIf(!PACKAGES_BUILT)('published package exports', () => {
   it.each(CONSUMER_MATRIX)('all resolve to declarations under TypeScript $tsc, moduleResolution $moduleResolution', ({ tsc, moduleResolution }) => {
     const specifiers = [...codeExports('ears'), ...codeExports('sdk'), ...codeExports('ui')];
-    // Every export is code but these: the manifests, the schema and the SDK's source-only host hooks. A new
-    // export without declarations lands in this list and fails here
+    // Every export is code but these: the manifests and the schema. A new export without declarations lands
+    // in this list and fails here. The SDK's source-only `./runtime/internals` is not among them because the
+    // published manifest has no such entry — `publishedManifest` drops one the source condition was the whole of
     expect(nonCodeExports('ears')).toEqual(['./package.json']);
-    expect(nonCodeExports('sdk')).toEqual(['./package.json', './abuddy.schema.json', './runtime/internals']);
+    expect(nonCodeExports('sdk')).toEqual(['./package.json', './abuddy.schema.json']);
     expect(nonCodeExports('ui')).toEqual(['./package.json']);
     expect(specifiers).toEqual(expect.arrayContaining(['@abuddy/ears', '@abuddy/ears/lmdb', '@abuddy/sdk/repositories', '@abuddy/sdk/events', '@abuddy/sdk/templates', '@abuddy/ui/components/tiptap/TiptapEditor']));
     // Packs send with @abuddy/sdk/events; the host's transport and API client aren't an entry

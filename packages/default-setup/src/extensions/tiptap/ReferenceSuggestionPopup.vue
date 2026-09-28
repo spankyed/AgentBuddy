@@ -56,9 +56,9 @@
 <script setup lang="ts">
 import { ref, computed, watch, onMounted, onBeforeUnmount, nextTick } from 'vue'
 import type { Editor } from '@tiptap/core'
-import { referenceSuggestionPluginKey } from './reference-suggestion-plugin'
-import { useReferenceItems, CATEGORIES, type ReferenceCategory, type ReferenceItem } from './useReferenceItems'
-import { REFERENCE_TYPES } from './reference-config'
+import { referenceSuggestionPluginKey } from './reference-suggestion-plugin.ts'
+import { useReferenceItems, CATEGORIES, type ReferenceCategory, type ReferenceItem } from './useReferenceItems.ts'
+import { REFERENCE_TYPES } from './reference-config.ts'
 
 const props = defineProps<{
   editor: Editor

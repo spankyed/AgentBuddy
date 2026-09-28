@@ -1,1 +1,1 @@
-export { createPackProtocol } from './PackProtocol.js';
+export { createPackProtocol } from './PackProtocol.ts';

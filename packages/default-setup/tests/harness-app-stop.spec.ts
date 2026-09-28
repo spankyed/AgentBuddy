@@ -4,12 +4,12 @@
 import { describe, expect, it, vi } from 'vitest'
 import { importFlows, startApp, type TestApp } from '@abuddy/testing/harness'
 import { testRootEvents } from '@abuddy/sdk/testing'
-import { action, schedule } from '@/__generated__/flow-helpers'
-import { repository } from '@/__generated__/repository'
-import { onShutdown } from '@/features/hooks'
-import { registerSchedule } from '@/features/brain/be/services/scheduler'
-import { listen, notify } from '@/features/brain/be/services/brain'
-import { getAllFlowActorIds } from '@/features/brain/be/flow-system'
+import { action, schedule } from '#generated/flow-helpers.ts'
+import { repository } from '#generated/repository.ts'
+import { onShutdown } from '#features/hooks.ts'
+import { registerSchedule } from '#features/brain/be/services/scheduler.ts'
+import { listen, notify } from '#features/brain/be/services/brain.ts'
+import { getAllFlowActorIds } from '#features/brain/be/flow-system.ts'
 
 const EVERY_SECOND = '* * * * * *'
 const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))

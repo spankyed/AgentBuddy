@@ -1,7 +1,7 @@
-import type { GeneralSettings } from '@/app-settings/types';
+import type { GeneralSettings } from '#app-settings/types.ts';
 import type { ActionMeta } from '@abuddy/sdk/build';
-import type { EntityId, Services } from '@/__generated__/services';
-import { getOnboardingState, persistOnboardingState, flashState } from '../onboarding-helpers';
+import type { EntityId, Services } from '#generated/services.ts';
+import { getOnboardingState, persistOnboardingState, flashState } from '../onboarding-helpers.ts';
 
 export const meta: ActionMeta = {
   label: 'Handle Welcome Step',

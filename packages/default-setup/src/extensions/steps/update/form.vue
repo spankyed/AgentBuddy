@@ -46,11 +46,11 @@
 
 <script setup lang="ts">
 import { computed } from 'vue'
-import type { NodeEntity } from '@/__generated__/types'
+import type { NodeEntity } from '#generated/types.ts'
 import BaseForm from '@abuddy/ui/components/BaseForm'
 import Fields from '../create/fields.vue'
 import EntityTypeInput from '../create/entity-type-input.vue'
-import type { UpdateNode, UpdateOnMissing } from './types'
+import type { UpdateNode, UpdateOnMissing } from './types.ts'
 
 const props = defineProps<{
   node: NodeEntity

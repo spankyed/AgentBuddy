@@ -1,7 +1,7 @@
 import { ChildProcess } from 'child_process';
 import { BrowserWindow, app } from 'electron';
-import { API_EVENTS } from './config.js';
-import { logInfo, logError } from './logger.js';
+import { API_EVENTS } from './config.ts';
+import { logInfo, logError } from './logger.ts';
 
 export interface ProcessHandlers {
   onReady?: (port: number) => void;

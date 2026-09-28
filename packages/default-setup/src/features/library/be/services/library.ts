@@ -1,11 +1,11 @@
 import * as path from 'path'
-import { repository } from '@/__generated__/repository';
-import type { DocumentDTO, CollectionDTO, LibraryItem } from '@/features/library/be/types';
-import { EARS } from '@/__generated__/ears';
+import { repository } from '#generated/repository.ts';
+import type { DocumentDTO, CollectionDTO, LibraryItem } from '#features/library/be/types.ts';
+import { EARS } from '#generated/ears.ts';
 import { getPackCommands } from '@abuddy/sdk/framework';
-import * as symlink from '@/features/library/be/repository/symlink';
-import type { ContentSection, DocumentShortCode } from '@/features/library/be/types';
-import type { CommandItem } from '@/__generated__/types';
+import * as symlink from '#features/library/be/repository/symlink.ts';
+import type { ContentSection, DocumentShortCode } from '#features/library/be/types.ts';
+import type { CommandItem } from '#generated/types.ts';
 
 
 // ---------------------------------------------------------------------------

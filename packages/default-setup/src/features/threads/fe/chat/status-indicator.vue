@@ -34,8 +34,8 @@ import { usePlugin } from '@abuddy/sdk/fe'
 
 import { computed, ref } from 'vue'
 import { useSelector } from '@xstate/vue'
-import { type ThreadsState } from '@/features/threads/fe/state';
-import { useAnchorTracking } from './composables/useAnchorTracking'
+import { type ThreadsState } from '#features/threads/fe/state.ts';
+import { useAnchorTracking } from './composables/useAnchorTracking.ts'
 
 const props = defineProps<{
   anchor?: HTMLElement | null

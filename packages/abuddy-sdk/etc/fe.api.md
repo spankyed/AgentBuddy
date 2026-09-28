@@ -26,8 +26,8 @@ import type { SnapshotFrom } from 'xstate';
 import { VNode } from 'vue';
 import { z } from 'zod';
 
-// @public (undocumented)
-export const ALL_COLORS: TabGroupColor[];
+// @public
+export const ALL_COLORS: readonly ["blue", "orange", "purple", "green", "red", "teal", "yellow", "pink", "gray"];
 
 // @public (undocumented)
 export interface BlockItem {
@@ -577,7 +577,7 @@ export interface TabGroup {
 }
 
 // @public (undocumented)
-export type TabGroupColor = 'blue' | 'purple' | 'pink' | 'red' | 'orange' | 'yellow' | 'green' | 'teal' | 'gray';
+export type TabGroupColor = (typeof ALL_COLORS)[number];
 
 // @public (undocumented)
 export const targetIs: (input: {

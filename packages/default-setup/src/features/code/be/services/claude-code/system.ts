@@ -5,7 +5,7 @@
  * group them under `system` so the facade stays tidy.
  */
 
-import { run, type SubcommandOptions } from './subcommand'
+import { run, type SubcommandOptions } from './subcommand.ts'
 
 /** Return the CLI version string (e.g. `claude 0.9.3 (macos, arm64)`). */
 export async function version(opts?: SubcommandOptions): Promise<string> {

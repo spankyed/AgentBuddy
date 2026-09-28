@@ -1,7 +1,7 @@
 // Builds @abuddy/ui's dist/: tsdown compiles the components and modules to ESM (with the CSS each
-// component imports), and vue-tsc typechecks them and emits per-module declarations. package.json is the
-// published manifest; its exports resolve source under the @abuddy/source condition (the repo's own
-// configs) and dist otherwise.
+// component imports), and vue-tsc typechecks them and emits per-module declarations. package.json is what the
+// published manifest is derived from; its exports resolve source under the @abuddy/source condition (the repo's
+// own configs) and dist otherwise, and `stagePublishTree` writes what npm publishes into publish/.
 //
 //   tsx ../../scripts/build-ui-package.ts .     (from packages/abuddy-ui)
 //
@@ -17,6 +17,7 @@ import { createRequire } from 'node:module';
 import { BareImports, assertExportTargetsBuilt, isDeclaration, rewriteDeclarationExtensions, walk } from './lib/published-imports.ts';
 import { computeExports, findComponentsWithoutEntry, missingEntriesMessage, pkgDir } from '../packages/abuddy-ui/scripts/exports.ts';
 import { runPackageBuild } from '@abuddy/host/build/packages-built';
+import { stagePublishTree } from '@abuddy/host/build/published-manifest';
 
 const outDir = path.join(pkgDir, 'dist');
 const require = createRequire(import.meta.url);
@@ -54,7 +55,10 @@ async function main(): Promise<void> {
   }
   bareImports.assertDeclared(pkg, 'packages/abuddy-ui/package.json');
   assertExportTargetsBuilt(pkgDir, pkg.exports);
-  console.log(`Built ${pkg.name}@${pkg.version} into ${path.relative(process.cwd(), outDir)}`);
+  // What npm publishes: the derived manifest and a copy of what `files` names, checked against itself
+  const treeDir = stagePublishTree(pkgDir, pkg);
+  console.log(`Built ${pkg.name}@${pkg.version} into ${path.relative(process.cwd(), outDir)}`
+    + `, staged for publishing in ${path.relative(process.cwd(), treeDir)}`);
 }
 
 // The build's own success stamp: written only if main() returns, and cleared before it touches dist

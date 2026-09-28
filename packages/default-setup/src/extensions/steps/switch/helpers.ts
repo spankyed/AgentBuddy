@@ -1,5 +1,5 @@
 import type { DSLStepNode } from '@abuddy/sdk/build';
-import type { DSLSwitchCondition } from './types';
+import type { DSLSwitchCondition } from './types.ts';
 
 export function branch(
   conditions: DSLSwitchCondition[],

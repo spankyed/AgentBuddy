@@ -148,7 +148,7 @@
 
 <script setup lang="ts">
 import { computed, ref } from 'vue'
-import type { NoteDTO } from '@/__generated__/types'
+import type { NoteDTO } from '#generated/types.ts'
 import { Copy, Plus, ListChecks, Eye, EyeOff, FilePlus, MoreHorizontal, Trash2 } from 'lucide-vue-next'
 import {
   DropdownMenuRoot,
@@ -159,7 +159,7 @@ import {
 } from 'reka-ui'
 import NoteTreeItem from './NoteTreeItem.vue'
 import ContextMenuPopup from '@abuddy/ui/design/ContextMenuPopup'
-import { useNoteTreeDragDrop } from '../composables/useNoteTreeDragDrop'
+import { useNoteTreeDragDrop } from '../composables/useNoteTreeDragDrop.ts'
 import { useContextMenu, type MenuItem } from '@abuddy/ui/composables/useContextMenu'
 import { useTrackedMenuOpen } from '@abuddy/sdk/fe'
 

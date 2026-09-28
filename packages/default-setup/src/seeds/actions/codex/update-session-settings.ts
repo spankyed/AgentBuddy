@@ -4,8 +4,8 @@
  */
 
 import type { ActionMeta } from '@abuddy/sdk/build';
-import type { Services, EntityId } from '@/__generated__/services';
-import { getCodexState, persistCodexState, updateChatState } from './_helpers/thread-context';
+import type { Services, EntityId } from '#generated/services.ts';
+import { getCodexState, persistCodexState, updateChatState } from './_helpers/thread-context.ts';
 
 export const meta: ActionMeta = {
   label: 'CDX: Update Session Settings',

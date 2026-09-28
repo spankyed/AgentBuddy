@@ -2,10 +2,10 @@
 import { describe, expect, it, vi } from 'vitest';
 import type { FlowDSL } from '@abuddy/sdk/build';
 import { importFlows, mockService, importSeeds, startApp } from '@abuddy/testing/harness';
-import { action, branch, entry, fire, keepAlive, on, schedule, subflow } from '#generated/flow-helpers';
-import { repository } from '#generated/repository';
-import type { Services } from '#generated/services';
-import memoReminderFlow from '../../../src/seeds/flows/memo-reminder-flow';
+import { action, branch, entry, fire, keepAlive, on, schedule, subflow } from '#generated/flow-helpers.ts';
+import { repository } from '#generated/repository.ts';
+import type { Services } from '#generated/services.ts';
+import memoReminderFlow from '../../../src/seeds/flows/memo-reminder-flow.ts';
 
 describe('memo reminder flow', () => {
   it('adds the memo on each scheduled tick and branches on the result', async () => {

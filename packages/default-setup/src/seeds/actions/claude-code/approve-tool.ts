@@ -4,9 +4,9 @@
  */
 
 import type { ActionMeta } from '@abuddy/sdk/build';
-import type { Services, EntityId } from '@/__generated__/services';
-import { persistClaudeState, setRunning, updateClaudeState, updateChatState } from './_helpers/thread-context';
-import { resolvePlanDraft } from './_helpers/plan-artifact';
+import type { Services, EntityId } from '#generated/services.ts';
+import { persistClaudeState, setRunning, updateClaudeState, updateChatState } from './_helpers/thread-context.ts';
+import { resolvePlanDraft } from './_helpers/plan-artifact.ts';
 
 export const meta: ActionMeta = {
   label: 'CC: Approve Tool',

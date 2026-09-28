@@ -1,26 +1,8 @@
 import * as path from 'node:path';
-import { validateName, toLabel, writeIfNotExists, logCreated, parseFlag, hasFlag } from './templates';
+import { validateName, toLabel, writeIfNotExists, logCreated, parseFlag, hasFlag } from './write';
+import { renderTemplate } from '../../templates.ts';
 import { readManifest } from './manifest';
 
-const ACTION_TEMPLATE = (label: string, category: string) => `import type { ActionMeta } from '@abuddy/sdk/build';
-import type { Services, Z } from '#generated/services';
-
-export const meta: ActionMeta = {
-  label: '${label}',
-  description: '',
-  category: '${category}',
-  input: {},
-};
-
-export async function action(
-  params: Record<string, any>,
-  services: Services,
-  z: Z,
-  flowId: string,
-) {
-  // Action implementation
-}
-`;
 
 const HELP = `
 Usage: abuddy add action <name> [options]
@@ -47,7 +29,7 @@ export async function addAction(args: string[], root: string) {
   const filePath = path.join(root, 'src', 'seeds', 'actions', category, `${name}.ts`);
 
   const created: string[] = [];
-  if (writeIfNotExists(filePath, ACTION_TEMPLATE(label, category))) {
+  if (writeIfNotExists(filePath, renderTemplate('pack/src/seeds/actions/action.ts', { LABEL: label, CATEGORY: category }))) {
     created.push(filePath);
   }
 

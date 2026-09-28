@@ -80,9 +80,6 @@ describe('a spec runs in the half its cost puts it in', () => {
  * stop being true.
  */
 const EXPENSIVE_BY_NATURE: Record<string, string> = {
-  // Two TypeScript programs, built through `createModuleExports` and shared by 13 tests. The cost is the
-  // compiler, not the assertions; it would drop if the reader could answer from one program.
-  'abuddy-sdk/tests/build/declared-type-of.spec.ts': 'builds two TypeScript programs to read declared types',
   // 94 tests: 91 call `generatePackFiles` with a different manifest each (~7.2s, different work every time
   // and so not cacheable), and 3 build TypeScript programs (2.5s since they share a compiler host).
   // Measured in goal-one-job-pool.md Phase 5, which also records why the split it proposed was not done.
@@ -90,6 +87,12 @@ const EXPENSIVE_BY_NATURE: Record<string, string> = {
   // Holds the repo's slowest single test at 4.1s. It spawns real processes and waits on real lock
   // timeouts, so its cost is elapsed time rather than work, and no amount of cores shortens it.
   'abuddy-host/tests/database/write-lock.spec.ts': 'waits on real cross-process lock timeouts',
+  // Seven `npm pack --dry-run` spawns at ~0.3s each. Asking npm what it would publish is the subject, not an
+  // implementation detail of the test: the module exists because reading `files` ourselves lost npm's
+  // force-included files. Trimming two of the calls would land it about at the 2.5s edge — a cost that flips half
+  // on a contended measurement, which is what the band exists to avoid. Re-measured on an idle machine and it
+  // came back slightly slower, not faster, so the entry is not an artefact of load.
+  'abuddy-host/tests/build/published-manifest.spec.ts': 'spawns npm pack seven times, which is its subject',
   // Starts and stops real pack backends and then waits to prove a cron schedule does *not* tick into the
   // next test. The wait is the assertion, so shortening it removes what the test checks.
   'default-setup/tests/harness-app-stop.spec.ts': 'waits to prove a stopped schedule does not tick',

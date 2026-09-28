@@ -6,6 +6,7 @@ import { builtinModules } from 'node:module';
 import { build } from 'esbuild';
 import ts from 'typescript';
 import { packageName } from '@abuddy/host/build/specifiers';
+import { SOURCE_CONDITION } from '@abuddy/host/build/source-resolution';
 
 
 /** Package name → files importing it, across a package's shipped modules. */
@@ -76,8 +77,7 @@ export class BareImports {
   }
 }
 
-/** The condition monorepo tooling resolves workspace packages' source through. */
-export const SOURCE_CONDITION = '@abuddy/source';
+
 
 /** Throws when an exports target outside the source condition wasn't built. */
 export function assertExportTargetsBuilt(pkgDir: string, exportsMap: Record<string, unknown>): void {

@@ -1,5 +1,5 @@
 import { escapeHtml } from '@abuddy/sdk/utils/pure';
-import type { LogEntry } from './state';
+import type { LogEntry } from './state.ts';
 
 export interface SearchFilter {
   includes: string[];

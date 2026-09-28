@@ -1,14 +1,14 @@
-import { findWhere, qx } from '@/__generated__/ears';
+import { findWhere, qx } from '#generated/ears.ts';
 import * as fs from 'node:fs'
 import * as path from 'node:path'
-import { repository } from '@/__generated__/repository';
-import { EARS } from '@/__generated__/ears'
+import { repository } from '#generated/repository.ts';
+import { EARS } from '#generated/ears.ts'
 import { hasIdCollision } from '@abuddy/ears';
 
 import { restoreJsonMediaRefs, restoreMarkdownMediaRefs } from '@abuddy/sdk/utils'
 import { toDisplayName } from '@abuddy/sdk/utils'
-import type { ExportedNote } from '@/features/notes/be/export-types';
-import type { NoteEntity } from '@/features/notes/be/types';
+import type { ExportedNote } from '#features/notes/be/export-types.ts';
+import type { NoteEntity } from '#features/notes/be/types.ts';
 import { errorMessage } from '@abuddy/sdk/utils/pure';
 
 interface ImportResult {

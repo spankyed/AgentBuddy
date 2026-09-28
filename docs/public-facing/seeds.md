@@ -46,7 +46,7 @@ Creates `src/seeds/actions/analysis/analyze-text.ts`.
 
 ```typescript
 import type { ActionMeta } from '@abuddy/sdk/build';
-import type { Services, Z } from '#generated/services';
+import type { Services, Z } from '#generated/services.ts';
 
 export const meta: ActionMeta = {
   label: 'Analyze Text',
@@ -265,7 +265,7 @@ Creates `src/seeds/flows/onboarding.ts`.
 
 ```typescript
 import type { FlowDSL } from '@abuddy/sdk/build';
-import { entry, on, keepAlive, action, fire, branch, subflow } from '#generated/flow-helpers';
+import { entry, on, keepAlive, action, fire, branch, subflow } from '#generated/flow-helpers.ts';
 
 export default {
   // Linear: entry -> action -> fire
@@ -607,7 +607,7 @@ Without hooks, the seeder writes rows directly: it matches existing rows on the 
 ```typescript
 // src/seeds/hooks/memos.ts
 import type { SeedHooks, SeedRecord } from '@abuddy/sdk/seed';
-import { repository } from '#generated/repository';
+import { repository } from '#generated/repository.ts';
 
 export const memoSeedHooks: SeedHooks<SeedRecord & { title: string; text: string; pinned?: boolean }> = {
   find: (record) => repository.memoQueries.byTitle(record.title),       // { id, sourceHash } | undefined

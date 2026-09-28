@@ -199,7 +199,7 @@ import { ref, watch } from 'vue'
 import { Upload, Download, FolderOpen, CheckCircle, XCircle } from 'lucide-vue-next'
 import CollapsibleSection from '@abuddy/ui/design/CollapsibleSection'
 import { useSelector } from '@xstate/vue'
-import type { NotesState } from './state'
+import type { NotesState } from './state.ts'
 
 interface NotesSettings {
   tasklistPanelPosition: 'left' | 'right'

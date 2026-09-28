@@ -2,7 +2,7 @@
 // facade, and read back through the SDK's services with default-setup's repository: the pack, the SDK and its
 // dependency's runtime share one engine (SHARED_INSTANCE_PACKAGES).
 import { untypedTx } from '@abuddy/ears';
-import { services } from '#generated/services';
+import { services } from '#generated/services.ts';
 
 export interface MemoNoteDTO {
   id: string;

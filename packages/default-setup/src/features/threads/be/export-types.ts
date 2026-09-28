@@ -1,4 +1,4 @@
-import type { BlockConfig, BlockResponse, MessageReferences, ArtifactType } from './types'
+import type { BlockConfig, BlockResponse, MessageReferences, ArtifactType } from './types.ts'
 
 export interface ExportedMessage {
   text: string

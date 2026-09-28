@@ -3,7 +3,7 @@
 // where no composable can run. That is what this replaces.
 import { describe, expect, it } from 'vitest';
 import { createActor } from 'xstate';
-import browserState from '@/features/browser/fe/state';
+import browserState from '#features/browser/fe/state.ts';
 
 const started = () => {
   const actor = createActor(browserState);

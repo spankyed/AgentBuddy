@@ -4,8 +4,8 @@
 import { describe, expect, it } from 'vitest';
 import { untypedTx, untypedQx } from '@abuddy/ears';
 import type { EARS } from '@abuddy/sdk';
-import { services } from '@/__generated__/services';
-import { ref } from '@/__generated__/ref';
+import { services } from '#generated/services.ts';
+import { ref } from '#generated/ref.ts';
 
 const APP_STATE_ID = 'AppState-app' as EARS.EntityId;
 const appState = () => untypedQx(APP_STATE_ID).pickOne(['hasOnboarded', 'packVersions', 'externalSeedHashes']);

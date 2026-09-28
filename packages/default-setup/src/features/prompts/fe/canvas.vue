@@ -41,7 +41,7 @@ import { usePlugin } from '@abuddy/sdk/fe'
 
 import { computed } from 'vue';
 import { useSelector } from '@xstate/vue';
-import type { PromptsState } from './state';
+import type { PromptsState } from './state.ts';
 import PromptsList from './components/PromptsList.vue';
 import PromptDetail from './components/PromptDetail.vue';
 import type { EARS } from '@abuddy/sdk';

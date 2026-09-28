@@ -7,10 +7,10 @@ import {
 } from '@abuddy/sdk/fe'
 import type {
   NoteDTO,
-} from '@/__generated__/types'
-import type { NotesContext, NotesInboxEvent } from './contract'
-import type { OutgoingNotesEvents } from '@/features/notes/be/types'
-import { sendToSystem } from '@/__generated__/events'
+} from '#generated/types.ts'
+import type { NotesContext, NotesInboxEvent } from './contract.ts'
+import type { OutgoingNotesEvents } from '#features/notes/be/types.ts'
+import { sendToSystem } from '#generated/events.ts'
 import { Trash2 } from 'lucide-vue-next'
 import { contextMenuFn } from '@abuddy/sdk/fe'
 import { createNavHistory, pushNavHistory, goBack, goForward, canGoBack, canGoForward } from '@abuddy/sdk/fe'

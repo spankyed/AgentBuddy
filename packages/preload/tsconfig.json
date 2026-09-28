@@ -4,6 +4,9 @@
     "module": "NodeNext",
     "target": "ESNext",
     "sourceMap": false,
+    // The pack rule that every relative import names the file that is there applies here too, and this is
+    // what lets tsc read a .ts specifier (nothing emits from this config: noEmit is set below)
+    "allowImportingTsExtensions": true,
     "moduleResolution": "NodeNext",
     "skipLibCheck": true,
     "strict": true,

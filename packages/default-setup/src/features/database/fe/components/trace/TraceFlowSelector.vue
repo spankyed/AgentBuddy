@@ -80,7 +80,7 @@
 import { usePlugin } from '@abuddy/sdk/fe'
 
 import { useSelector } from '@xstate/vue'
-import type { DatabaseState } from '../../state'
+import type { DatabaseState } from '../../state.ts'
 import { GitBranch, Loader2, ArrowLeft } from 'lucide-vue-next'
 import type { TNodeEntity } from '@abuddy/sdk/steps'
 

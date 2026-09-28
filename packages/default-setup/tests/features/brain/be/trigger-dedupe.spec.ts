@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { dedupeMatchingTriggerNodes, type FlowTriggerNode } from '@/features/brain/be/trigger-dedupe';
-import { EARS } from '@/__generated__/ears';
+import { dedupeMatchingTriggerNodes, type FlowTriggerNode } from '#features/brain/be/trigger-dedupe.ts';
+import { EARS } from '#generated/ears.ts';
 
 describe('brain trigger dedupe', () => {
   it('skips duplicate compiled trigger tracks with the same trackKey', () => {

@@ -138,6 +138,30 @@ Checks:
 - Manifest structure validation
 - Each `features[]` entry against the pack: its `settings`, `system.entry` and `plugin.entry` files exist, and no two features claim the same `designation`
 - Dependency resolution (a warning when one can't be resolved)
+- **What your pack's code may say** — the same rules `abuddy build` refuses on, reported here without building:
+
+| Rule | What it refuses |
+|---|---|
+| `contract-leaves` | a contract that reaches its own machine (`./state.ts`, `./system.ts`), another feature, or generated code beyond `#generated/types` and `#generated/ears`. Codegen reads a contract as a declared type before it writes anything, so a contract whose read positions resolve through the machine collapses to `any` and the build fails for good — and one that resolves anyway ships the machine's whole declaration in your published facade |
+| `source-resolution` | a `tsconfig.json` or Vitest config of yours that resolves a checkout's `@abuddy` source instead of the published `dist` — esbuild and the pack bundler read `dist` either way, so such a pack typechecks against one thing and ships another |
+| `own-modules` | a specifier that names no file: `#generated/events` or `#generated/events.js` where the file is `events.ts`, and a relative `./x.js` whose source sibling is `./x.ts`. No runtime resolves an extensionless specifier in ESM, and a pack ships one bundle rather than a module per source |
+| `pack-own-aliases` | `@/…`, a TypeScript-only `paths` mapping no runtime reads. Name your own modules with `#` subpath imports from your `package.json` |
+| `internal-package-imports` | an `@abuddy` export named `_x`: it is `@internal`, the app's own, and an app update is free to rename it |
+| `host-imports` | `@abuddy/host`, which is not installed for a pack |
+| `lmdb-imports` | `lmdb` or `@abuddy/ears/lmdb`: your data comes through the engine the app installs |
+| `untyped-sends` | `untypedBroadcastToPlugin`, `untypedSendToSystem`, `registerRepository` — use the typed facades from `#generated/events` |
+| `raw-transport` | `_rootEvents`, `trpc.bus`, `@abuddy/sdk/rpc` |
+| `backend-console` | `console.*` under `features/*/be/`, `migrations/` or `extensions/` — use `createLogger` from `@abuddy/sdk/logger` |
+| `cross-feature-imports` | a module of another feature's `fe/`, and a feature passing its own frontend on (`export … from './fe/state.ts'`). What a feature offers the rest is its plugin's contract, read through `#generated/fe` and `#generated/events` |
+
+The last four have no effect at run time, so a pack may switch them off in **`abuddy.checks.json`** at its root:
+
+```json
+{ "allow": ["backend-console", "untyped-sends"] }
+```
+
+The others report something that breaks — a specifier nothing resolves, an import the bundler refuses, a name
+the next app version may rename — so there is nothing to allow, and naming one in `allow` is an error.
 
 Exits with code 1 on errors.
 

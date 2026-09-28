@@ -1,7 +1,7 @@
 import * as path from 'path'
 import * as chokidar from 'chokidar'
 import * as fs from 'fs/promises'
-import { GitRepository } from './git'
+import { GitRepository } from './git.ts'
 import { createLogger } from '@abuddy/sdk/logger'
 
 const logger = createLogger('git-watcher')

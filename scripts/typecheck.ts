@@ -1,0 +1,100 @@
+#!/usr/bin/env node
+/**
+ * `npm run typecheck`: every cheap static check, run concurrently.
+ *
+ *   npm run typecheck              # all of it
+ *   npm run typecheck -- --lanes 1 # one at a time, for a measurement or a confusing failure
+ *
+ * WHY THIS IS NOT AN `&&` CHAIN ANY MORE
+ *
+ * It was one, and every leg is a single-threaded compiler, so the step used one core for half a minute while
+ * nine sat idle. Measured 2026-09-27 on a 10-core machine: **29.3s one at a time, 10.8s all at once**. Inside
+ * the chain it was worse than either — 63.4s — because the other two lanes saturate the cores it was not using
+ * and starve the one it was.
+ *
+ * That also corrects a claim in `chain.ts`'s header, which argued against lanes on the grounds that "every step
+ * already uses all the cores". The largest tier-1 step did not.
+ *
+ * WHAT THIS OWES THE CHECKS THAT READ IT
+ *
+ * **Each leg's command is spelled out as a command**, not assembled from its name. Two checks read this file's
+ * text rather than running it, both through `reachableText` (`lib/npm-scripts.ts`), which matches
+ * `npm run <name>`: `check:tiers` scans a step for the ways this repo launches the app, and
+ * `chain-inputs.spec.ts` asks whether anything in the chain runs a given `<artifact>:check` — `schema:check`
+ * and `exports:check` are reachable *only* through this file. A name in a template literal would be invisible
+ * to both, and the second would report them as never run.
+ */
+import * as os from 'node:os';
+import { boundedSpawn, budgetFor } from './lib/bounded-spawn.ts';
+import { schedule } from './lib/chain-schedule.ts';
+import { TYPECHECK_LEGS } from './lib/typecheck-legs.ts';
+
+/**
+ * How many legs run at once: half the cores, because the chain runs two other lanes beside this step.
+ *
+ * Measured 2026-09-27 on ten cores, and the exact value is not load-bearing — run alone the step is flat from
+ * four lanes up (12.9s at 3, 11.2s at 4, 10.6s at 6, 11.5s at 8, 11.2s at 16), because one leg, `typecheck:fe`,
+ * is most of the floor. What the bound decides is how much it takes from everything else:
+ *
+ *     inside `chain --all`   typecheck   test:unit:host   chain wall
+ *     every leg at once          20.4s           43.1s       176.7s
+ *     four legs at once          28.6s           37.8s       177.7s
+ *
+ * The chain's wall time does not move — it is core-bound, which is the conclusion `chain.ts`'s header reached
+ * from the other direction — so the bound is chosen on the one thing that does move: taking fewer cores leaves
+ * the steps beside it faster. Half, relative to the machine, so a smaller one is not oversubscribed and a
+ * larger one is not left idle.
+ */
+const laneCount = (): number => {
+  const flag = process.argv.indexOf('--lanes');
+  const half = Math.min(TYPECHECK_LEGS.length, Math.max(2, Math.floor(os.cpus().length / 2)));
+  const value = flag === -1 ? half : Number(process.argv[flag + 1]);
+  if (!Number.isInteger(value) || value < 1) throw new Error(`--lanes takes a positive integer, not ${String(process.argv[flag + 1])}`);
+  return value;
+};
+
+const secs = (ms: number) => `${(ms / 1000).toFixed(1)}s`;
+
+interface Outcome { readonly ms: number; readonly code: number; readonly output: string; readonly timedOut?: true }
+
+const done = new Map<string, Outcome>();
+
+const result = await schedule({
+  steps: TYPECHECK_LEGS,
+  lanes: laneCount(),
+  skip: () => false,
+  async run(leg) {
+    const [command, ...args] = leg.command.split(' ');
+    const outcome = await boundedSpawn(command!, args, budgetFor(leg.seconds));
+    done.set(leg.name, outcome);
+    // One line as it finishes, so a ten-second command is not ten seconds of silence. Completion order, since
+    // that is what progress *is*; the failures below are in declared order, which is what reading wants.
+    process.stdout.write(`  ${outcome.code === 0 ? 'ok  ' : 'FAIL'} ${leg.name.padEnd(18)} ${secs(outcome.ms)}\n`);
+    return outcome.code === 0;
+  },
+});
+
+const failed = TYPECHECK_LEGS.filter((leg) => (done.get(leg.name)?.code ?? 0) !== 0);
+for (const leg of failed) {
+  const outcome = done.get(leg.name)!;
+  process.stderr.write(`\n${'─'.repeat(72)}\n${leg.name}${outcome.timedOut === true
+    ? ` timed out: it exceeded its ${secs(budgetFor(leg.seconds))} budget and its process group was killed. It costs ${leg.seconds}s healthy, so either it is wedged or it has grown and the measurement in scripts/typecheck.ts is stale.`
+    : ` failed (exit ${outcome.code})`}\n${'─'.repeat(72)}\n${outcome.output}\n`);
+}
+
+// A leg that threw is a bug in this runner rather than a failing check, so it is reported separately
+for (const { step, error } of result.threw) {
+  process.stderr.write(`\n${step}: the runner threw — ${error instanceof Error ? error.message : String(error)}\n`);
+}
+
+if (failed.length > 0 || result.threw.length > 0) {
+  const names = failed.map((leg) => leg.name).join(', ');
+  process.stderr.write(`\n❌ ${failed.length} of ${TYPECHECK_LEGS.length} failed: ${names}\n`);
+  process.exitCode = 1;
+} else if (result.skipped.length + result.started.length < TYPECHECK_LEGS.length) {
+  // Dispatch stops after a failure, so this only reads as a scheduler bug
+  process.stderr.write(`\n❌ only ${result.started.length} of ${TYPECHECK_LEGS.length} ran, and none failed\n`);
+  process.exitCode = 1;
+} else {
+  console.log('✅ All type checks passed!');
+}

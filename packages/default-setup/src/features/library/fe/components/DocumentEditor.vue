@@ -98,9 +98,9 @@ import NameSaveHeader from '@abuddy/ui/design/NameSaveHeader'
 import ContentSectionEditor from './content-sections/ContentSectionEditor.vue'
 import TagInput from '@abuddy/ui/design/tag-input'
 import { useSelector } from '@xstate/vue'
-import type { DocumentDTO } from '@/__generated__/types'
-import type { ContentSection } from '@/features/library/be/types'
-import type { LibraryActor } from '../state'
+import type { DocumentDTO } from '#generated/types.ts'
+import type { ContentSection } from '#features/library/be/types.ts'
+import type { LibraryActor } from '../state.ts'
 
 const props = defineProps<{
   selectedCollectionId?: string

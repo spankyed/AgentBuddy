@@ -1,14 +1,14 @@
-import { tx, qx } from '@/__generated__/ears';
-import { EARS } from '@/__generated__/ears';
+import { tx, qx } from '#generated/ears.ts';
+import { EARS } from '#generated/ears.ts';
 import { flowRepository } from '@abuddy/sdk/repositories';
 import type {
   NodeEntity,
   FlowExtendedData,
   NodeCreateInput,
   FlowsConnectedData
-} from '../types';
+} from '../types.ts';
 import { availableModels } from '@abuddy/sdk/models';
-import { repository } from '@/__generated__/repository';
+import { repository } from '#generated/repository.ts';
 import { ROOT_FLOW_ROLE } from '@abuddy/sdk';
 import type { FlowEntity } from '@abuddy/sdk';
 

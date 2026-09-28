@@ -47,8 +47,8 @@ import {
   CheckCircle2, Loader2, AlertTriangle, Ban, XCircle,
   GitBranch, ArrowRight,
 } from 'lucide-vue-next'
-import type { GhPullRequest } from '@/__generated__/types'
-import { isFailing, isPending, PENDING_STATUSES, type StatusCheck } from './merge-checks'
+import type { GhPullRequest } from '#generated/types.ts'
+import { isFailing, isPending, PENDING_STATUSES, type StatusCheck } from './merge-checks.ts'
 
 export type MergeVariant = 'clean' | 'merging' | 'blocked' | 'error' | 'pending'
 

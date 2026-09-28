@@ -1,5 +1,5 @@
 import type { BlockDefinition } from '@abuddy/sdk/blocks';
-import { blocks } from './register';
+import { blocks } from './register.ts';
 
 import PromptBlock from './display/PromptBlock.vue';
 import NoteBlock from './display/NoteBlock.vue';

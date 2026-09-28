@@ -15,7 +15,7 @@
  */
 
 import type { ActionMeta } from '@abuddy/sdk/build';
-import type { Services } from '@/__generated__/services';
+import type { Services } from '#generated/services.ts';
 
 export const meta: ActionMeta = {
   label: 'CC: Reconcile State',

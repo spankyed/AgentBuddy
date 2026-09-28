@@ -2,6 +2,7 @@ import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest';
+import { population } from '@abuddy/host/testing/population';
 import { bundlePackFE } from '../../src/build/fe-bundler';
 import { PACKAGES_BUILT, REPO_ROOT, installPublishedPackages } from '@app/publish-checks';
 
@@ -147,7 +148,7 @@ describe.each(LAYOUTS)('bundlePackFE host binding guard ($name)', (layout) => {
     expect(result.error).toBeUndefined();
     const { sources } = JSON.parse(fs.readFileSync(path.join(packDir, 'dist', 'fe.js.map'), 'utf-8')) as { sources: string[] };
     const uiSources = sources.filter((source) => source.includes('@abuddy/ui/') || source.includes('abuddy-ui/'));
-    expect(uiSources.length).toBeGreaterThan(0);
+    population('@abuddy/ui sources in the pack bundle', uiSources);
     // @abuddy/ui ships compiled components, and a pack reads those whichever way it has the package
     expect(uiSources.filter((source) => /\.vue(\?|$)/.test(source))).toEqual([]);
   });

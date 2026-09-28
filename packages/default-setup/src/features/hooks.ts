@@ -1,7 +1,7 @@
-import { terminalService } from './code/be/services/terminal';
-import { clearAllSchedules } from './brain/be/services/scheduler';
-import { removeAllListeners as removeAllAdHocListeners } from './brain/be/services/brain';
-import { clearFlowActorRegistry } from './brain/be/flow-system';
+import { terminalService } from './code/be/services/terminal.ts';
+import { clearAllSchedules } from './brain/be/services/scheduler.ts';
+import { removeAllListeners as removeAllAdHocListeners } from './brain/be/services/brain.ts';
+import { clearFlowActorRegistry } from './brain/be/flow-system.ts';
 
 export const onInit = () => {};
 

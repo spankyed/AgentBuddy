@@ -1,5 +1,5 @@
 import {BrowserWindow, WebContentsView, session, type Session} from 'electron';
-import type {TabState, TabBounds} from './types.js';
+import type {TabState, TabBounds} from './types.ts';
 
 const BROWSER_PARTITION = 'persist:browser';
 

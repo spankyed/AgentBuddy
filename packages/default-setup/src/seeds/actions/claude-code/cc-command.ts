@@ -7,9 +7,9 @@
  */
 
 import type { ActionMeta } from '@abuddy/sdk/build';
-import type { Services, Z } from '@/__generated__/services';
-import { getClaudeState, persistClaudeState, updateChatState } from './_helpers/thread-context';
-import { DONT_BYPASS } from './_helpers/auto-approve';
+import type { Services, Z } from '#generated/services.ts';
+import { getClaudeState, persistClaudeState, updateChatState } from './_helpers/thread-context.ts';
+import { DONT_BYPASS } from './_helpers/auto-approve.ts';
 
 export const meta: ActionMeta = {
   label: 'CC: Run Command',

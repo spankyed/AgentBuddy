@@ -3,7 +3,7 @@ import { app } from 'electron';
 import * as fs from 'fs';
 import * as path from 'path';
 import { appendCappedLine, LOG_FILE_MAX_BYTES } from '@abuddy/host/logs';
-import { getAppContext } from '../../app-context.js';
+import { getAppContext } from '../../app-context.ts';
 
 // Asking for the context is what decides it, so electron-log is configured from the app's answer rather
 // than reaching for its own: this import is the edge that puts the decision before any log write.

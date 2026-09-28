@@ -1,7 +1,7 @@
-import type { AppModule } from '../../AppModule.js';
-import type { ModuleContext } from '../../ModuleContext.js';
+import type { AppModule } from '../../AppModule.ts';
+import type { ModuleContext } from '../../ModuleContext.ts';
 import { protocol, net } from 'electron';
-import { resolveMediaFilePath } from './paths.js';
+import { resolveMediaFilePath } from './paths.ts';
 import { existsSync } from 'node:fs';
 import { pathToFileURL } from 'node:url';
 

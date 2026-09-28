@@ -2,8 +2,8 @@
 // when the prompt is created, updated or imported
 import { describe, expect, it } from 'vitest'
 import { startApp } from '@abuddy/testing/harness'
-import { repository } from '@/__generated__/repository'
-import type { EARS } from '@/__generated__/ears'
+import { repository } from '#generated/repository.ts'
+import type { EARS } from '#generated/ears.ts'
 
 const schema = { type: 'object', properties: { summary: { type: 'string' } } }
 const byLabel = (label: string) => repository.promptQueries.byLabel(label)

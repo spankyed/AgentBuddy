@@ -102,9 +102,6 @@ const PACKS_AS_A_FIXTURE: Record<string, string> = {
   'packages/abuddy-cli/tests/build/types-bundler-determinism.integration.spec.ts':
     'the types bundler emits the same facade from the workspace and from the packed tarballs — the packed '
     + 'side is one of two inputs to a comparison about the bundler',
-  'packages/abuddy-cli/tests/build/package-freshness.spec.ts':
-    "the stamp rule in @abuddy/host/build/packages-built; it reads PACKED_PACKAGES only to assert BUILD_UNITS "
-    + 'covers everything packed, and never packs anything itself',
 };
 
 describe('a spec about the published packages lives in @app/publish-checks', () => {

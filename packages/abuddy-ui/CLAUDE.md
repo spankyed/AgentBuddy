@@ -34,7 +34,7 @@ There is no barrel: every public module is its own export subpath.
   export * from './button.vue';
   ```
   TypeScript can't resolve an exports target that is a `.vue` file, so the entry is what consumers import. An SFC without an entry is internal (`components/JsonViewerDialog.vue`, the tiptap menus, `bubble-menu/*`); other files in this package import it by relative path.
-- `computeExports()` gives each public module `{ "@abuddy/source": "./src/<m>.ts", "types": "./dist/<m>.d.ts", "default": "./dist/<m>.js" }`. There are no wildcards, and the map is checked into `package.json`. This package is the only one of the three published ones whose map is computed rather than written — `@abuddy/ears` and `@abuddy/sdk` list theirs by hand, where the map *is* the definition of public and cannot fall behind `src/`. Deriving it buys a component being public by default, and costs the two copies being able to disagree, which is what `exports:check` exists for and why no sibling package has one.
+- `computeExports()` gives each public module `{ "@abuddy/source": "./src/<m>.ts", "types": "./dist/<m>.d.ts", "default": "./dist/<m>.js" }`. There are no wildcards, and the map is checked into `package.json`. The published copy keeps only the last two: `stagePublishTree` drops the source branch, since no tarball ships `src/`. This package is the only one of the three published ones whose map is computed rather than written — `@abuddy/ears` and `@abuddy/sdk` list theirs by hand, where the map *is* the definition of public and cannot fall behind `src/`. Deriving it buys a component being public by default, and costs the two copies being able to disagree, which is what `exports:check` exists for and why no sibling package has one.
 
 Workflow after adding, removing or renaming a public module:
 
@@ -69,7 +69,7 @@ The repo's `scripts/build-ui-package.ts` (it lives there, not here, so this pack
 
 `dist/` checks live in `@app/publish-checks`: `published-ui-dist` (no SFC source shipped, no relative CSS `@import` left, shared modules emitted once), `published-exports`, `published-specifiers`. They skip without `dist/` locally and fail when `dist` is older than `src`. This package's own suite holds `exports` (the map) and `import-side-effects` (its source).
 
-`package.json` is the published manifest (`files: ["dist"]`). Monorepo tooling resolves `src/` through the `@abuddy/source` condition (`tsconfig.json` `customConditions`, the renderer's Vite `resolve.conditions`).
+`package.json` is what the published manifest is derived from (`files: ["dist"]`); the build stages the derived one in `publish/`. Monorepo tooling resolves `src/` through the `@abuddy/source` condition (`tsconfig.json` `customConditions`, the renderer's Vite `resolve.conditions`), which only a checkout can satisfy.
 
 ## How packs get it at runtime
 

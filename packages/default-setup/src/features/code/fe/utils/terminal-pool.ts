@@ -4,9 +4,9 @@ import { WebLinksAddon } from '@xterm/addon-web-links'
 import { Unicode11Addon } from '@xterm/addon-unicode11'
 import { ClipboardAddon } from '@xterm/addon-clipboard'
 import { WebglAddon } from '@xterm/addon-webgl'
-import { terminalEventBus } from './terminal-events'
+import { terminalEventBus } from './terminal-events.ts'
 import { openLink } from '@abuddy/sdk/fe'
-import type { TerminalInfo } from '../features/terminal/state'
+import type { TerminalInfo } from '../features/terminal/state.ts'
 import '@xterm/xterm/css/xterm.css'
 
 /**

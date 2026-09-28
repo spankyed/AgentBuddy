@@ -1,6 +1,6 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
-import { BUILD_UNITS, REPO_ROOT } from '@abuddy/host/build/packages-built';
+import { BUILD_UNITS, repoRelative, REPO_ROOT } from '@abuddy/host/build/packages-built';
 import { UNIT_SUITES, type UnitSuite } from './unit-suites.ts';
 import { hasSplit } from './spec-cost.ts';
 import { dependencySource, workspaceDeps } from './workspace-deps.ts';
@@ -46,7 +46,12 @@ export interface ChainStep {
    * the tree, so it belongs with evidence.
    */
   readonly excludes?: readonly string[];
-  /** Needs the package build lock, so it cannot share a lane with another step that takes it */
+  /**
+   * Runs alone: the scheduler starts it only when nothing else is running and holds everything else back
+   * while it does (`chain-schedule.ts`). Two steps need that for two different reasons — `packages:ensure`
+   * takes the package build lock, and `packages:check` reads the trees a build deletes and recreates — so the
+   * field says what the scheduler does rather than naming one step's reason.
+   */
   readonly exclusive?: true;
   /**
    * A step the chain does not cache, with its reason on the step.
@@ -91,6 +96,16 @@ export interface ChainStep {
    * measurement, so re-measure rather than raise it when a step legitimately grows; the chain compares
    * every run against it and prints the value to record when one has drifted past half or double
    * (`driftedSteps`), which is what keeps this table honest without anyone remembering to check.
+   *
+   * For a step that keeps a cache of its own — the two pooled steps, which run only their stale projects —
+   * it is the cost of the *whole* pool, which is what both kill budgets are sized from (`budgetFor` here, and
+   * `test-unit-pool.ts`'s own inner spawn). `driftedSteps` therefore checks such a step only under `--all`,
+   * the one run that does all of its work.
+   *
+   * **It is the cost in the chain at `MEASURED_AT_LANES`, not the cost alone.** Those differ by about two
+   * times for a CPU-bound step — `typecheck` was 29s by itself and 63s in a three-lane run — so the number is
+   * meaningless without the lane count, and saying only "what this costs when it does its work" is how a
+   * two-lane measurement came to sit in a three-lane chain for two days.
    */
   readonly seconds?: number;
 }
@@ -181,7 +196,9 @@ const PACKAGES = fs.readdirSync(path.join(REPO_ROOT, 'packages'), { withFileType
  * every build.
  */
 const WORKSPACE_PARTS = [
-  'src', 'tests', 'scripts', 'etc', 'index.js',
+  // `templates` is the CLI's scaffold: pack code the specifier rules read and the CLI's own suite renders,
+  // so a change to one has to invalidate the steps that read the workspace
+  'src', 'tests', 'scripts', 'etc', 'templates', 'index.js',
   'package.json', 'tsconfig.json', 'tsconfig.package.json',
   'vitest.config.ts', 'vitest.integration.config.ts', 'vite.config.ts', 'vite.config.js',
   'eslint.config.ts', 'postcss.config.cjs', 'tailwind.config.ts', 'tsdown.config.ts', 'env.d.ts',
@@ -196,7 +213,9 @@ const EVERY_WORKSPACE = PACKAGES.flatMap(workspace);
  * rather than copied beside it. A copy of someone else's input list is the thing that goes stale silently:
  * a file added to a build unit would leave this step cached against a key that never saw it.
  */
-const relative = (absolute: string): string => path.relative(REPO_ROOT, absolute);
+// Through `repoRelative`, because these land in `step.outputs` beside hand-written POSIX literals and
+// `writerOf` compares the two
+const relative = repoRelative;
 const PACKAGE_BUILD_INPUTS = [...new Set(Object.values(BUILD_UNITS).flatMap((unit) => unit.inputs.map(relative)))].sort();
 const PACKAGE_BUILD_OUTPUTS = [...new Set(Object.values(BUILD_UNITS).flatMap((unit) => unit.outputs.map(relative)))].sort();
 
@@ -291,8 +310,18 @@ export const SUITE_READS: Record<string, { packages?: true; pack?: true }> = {
  * One step per unit suite, so a one-package change re-runs one suite rather than eight. Measured under the
  * two-lane runner (`scripts/test-unit.ts`), which is what the chain will run them under.
  */
-/** Measured per pool under the chain's own lanes, which is what `seconds` means (`driftedSteps` keeps it honest) */
-export const POOL_SECONDS: Record<'host' | 'pack', number> = { host: 20, pack: 21 };
+/**
+ * Measured per pool with every project stale — `npm run chain --all`, the only run that does the whole
+ * pool's work, and the run `driftedSteps` checks this number on.
+ */
+/**
+ * The two pooled steps' whole-pool cost, in the chain at `MEASURED_AT_LANES`. Re-measured 2026-09-27 under
+ * `--all` with the rest of this table: 20 and 21 were taken before `typecheck` stopped running its legs one at
+ * a time, and a step that asks for half the cores makes everything beside it slower — which is where those
+ * seconds went rather than being new work. It feeds two kill budgets, `budgetFor` here and the pool's own inner
+ * spawn (`test-unit-pool.ts`), so it is the cost of the whole pool and not of a partial run.
+ */
+export const POOL_SECONDS: Record<'host' | 'pack', number> = { host: 42, pack: 30 };
 
 /**
  * What one unit suite's last pass depended on: its own workspace, its dependencies' source, whatever build
@@ -358,6 +387,17 @@ const POOL_STEPS: readonly ChainStep[] = (['host', 'pack'] as const).map((kind) 
   };
 });
 
+/**
+ * The lane count every `seconds` below was measured at.
+ *
+ * A step's cost depends on how many other steps are running beside it, so the table is only true of one
+ * schedule. `seconds: 45` for `typecheck` was measured 2026-09-25 at 07:38 under two lanes; the default became
+ * three at 09:30 the same day, and nothing connected the two — it read 63s for two days and the drift band
+ * happened to absorb it. The chain compares this against its own default and says so when they differ, which
+ * is the connection that was missing rather than a number that was wrong.
+ */
+export const MEASURED_AT_LANES = 3;
+
 export const CHAIN_STEPS: readonly ChainStep[] = [
   // Takes the package build lock, so it cannot share a lane with anything else that builds
   // This step has an inner cache too — `ensurePackagesBuilt()` consults the build stamps — and one input the
@@ -380,13 +420,39 @@ export const CHAIN_STEPS: readonly ChainStep[] = [
     neverCachedBecause: 'what it guarantees is recorded in stamps of its own, which this fingerprint cannot '
       + 'see; its check is ~0.3s warm, so a cache on top only adds a record that can disagree',
     inputs: [...PACKAGE_BUILD_INPUTS, 'scripts/ensure-packages-built.ts'], outputs: PACKAGE_BUILD_OUTPUTS },
+  // publint and attw over the five trees npm publishes. 5.9s measured (publint 2.7s, attw 3.2s), against
+  // which its only live call sites were `.github/workflows/ci.yml`, whose triggers are commented out, and the
+  // publish workflow — so the artifact checks ran at the one moment they cannot be cheap.
+  //
+  // Not the dangling-path check, and the difference matters: publint skips any target behind a custom
+  // condition (`hasCustomCondition`) and attw resolves standard conditions only, which is how 99 published
+  // paths named files no tarball held. `@app/publish-checks`' `published-manifest-paths` is that check.
+  //
+  // It reads the published trees, which `PACKAGE_BUILD_OUTPUTS` covers along with the `dist` they are staged
+  // from — the same constant `packages:ensure` declares as its outputs, so every input here is an ancestor's
+  // output and the gitignored-input accounting holds without a second list to keep.
+  //
+  // `exclusive` because it must not overlap a build. `attw --pack <dir>` packs a tarball *inside* the tree it
+  // is checking, and `stagePublishTree` removes and recreates that tree, so a rebuild landing mid-check leaves
+  // attw opening a tarball that is no longer there — observed once, as
+  // `ENOENT: open 'publish/abuddy-ui-0.1.0.tgz'`, and not reproducible in 20 tries against concurrent packs,
+  // which is the profile of a window rather than a collision. Measured with it in, 2026-09-27 under `--all`:
+  // 5.5s here, 176.7s for the chain, and not on the critical path (`packages:ensure` -> `compile` ->
+  // `build:app` -> `test:packaged-authoring`, 111s), so running it alone costs its own time and no more. The
+  // alternative is packing to a temp directory ourselves and handing attw the tarball, which is the fix if this
+  // step ever needs to share a lane.
+  { name: 'packages:check', tier: 2, needs: ['packages:ensure'], seconds: 6, exclusive: true,
+    inputs: [...ROOT, ...PACKAGE_BUILD_OUTPUTS] },
   // Ahead of build and not redundant with it: build -ws gives no ordering guarantee, since no workspace
   // declares a dependency on @app/default-setup, and the renderer's build reads the pack entry this writes
   { name: 'compile', tier: 2, needs: ['packages:ensure'], seconds: 13, outputs: PACK_OUTPUTS,
     // Its sources and its manifest, not its tests: `abuddy build` never reads those
+    // `facade-report.ts` because this step now runs `facade:check` after the build that produces its subject:
+    // edit how the report is normalised and the check accepts something different, which a cached step would
+    // never re-run. Found by the guard below, one commit after the check moved here
     inputs: [...ROOT, 'packages/default-setup/src', 'packages/default-setup/abuddy.json',
       'packages/default-setup/package.json', 'packages/default-setup/tsconfig.json',
-      'packages/default-setup/dev-build.mjs', ...PACKAGE_BUILD_OUTPUTS] },
+      'packages/default-setup/dev-build.mjs', 'scripts/facade-report.ts', ...PACKAGE_BUILD_OUTPUTS] },
   // The fixture packs depend on default-setup, so they need its snapshot from compile
   //
   // The third place in this chain with a cache inside a cached step, and the one that is benign: `abuddy
@@ -401,7 +467,7 @@ export const CHAIN_STEPS: readonly ChainStep[] = [
   // 38s, not the 20s it takes alone: `seconds` is what a step costs under the chain's own default lanes,
   // because that is what `budgetFor` has to cover. Raising the default from two to three moved this one and
   // nothing else past the drift band, which is `driftedSteps` doing its job.
-  { name: 'test:external-pack:contract', tier: 2, needs: ['compile'], seconds: 38, outputs: FIXTURE_OUTPUTS,
+  { name: 'test:external-pack:contract', tier: 2, needs: ['compile'], seconds: 57, outputs: FIXTURE_OUTPUTS,
     // It declares `tests/fixtures` for the pack sources; the Playwright output under each pack is written
     // by `:app`, changes every run, and is read by nothing
     excludes: FIXTURE_TEST_OUTPUT,
@@ -409,7 +475,7 @@ export const CHAIN_STEPS: readonly ChainStep[] = [
       'tests/scripts/lib', ...PACKAGE_BUILD_OUTPUTS, ...PACK_OUTPUTS] },
   // The widest inputs in the table, and honestly so: it compiles every workspace, the scripts and the
   // tests, and lints them. A change anywhere in the repo's TypeScript is a change to what it checks.
-  { name: 'typecheck', tier: 1, needs: ['compile'], seconds: 45,
+  { name: 'typecheck', tier: 1, needs: ['compile'], seconds: 27,
     // `tests/e2e`, `tests/fixtures` and `tests/scripts`, never `tests` itself: that walk takes in
     // `tests/screenshots`, which the E2E step rewrites on every run, so declaring the parent meant this
     // step could never be cached — measured, 26 screenshot files, and a warm chain paid its 34s every
@@ -429,7 +495,7 @@ export const CHAIN_STEPS: readonly ChainStep[] = [
   // Needs `compile` and not just `packages:ensure`, because `dependency-runtime` builds a pack that depends
   // on default-setup and so reads its `dist`. It used to run after `compile` only because of where it sat
   // in this table, which `orderedSteps` never promised.
-  { name: 'test:integration', tier: 2, needs: ['compile'], seconds: 52,
+  { name: 'test:integration', tier: 2, needs: ['compile'], seconds: 60,
     inputs: [...ROOT, ...INTEGRATION_SUITES.flatMap((suite) => workspace(suite.dir)),
       ...PACKAGE_BUILD_OUTPUTS, ...PACK_OUTPUTS] },
   // `build:app`, not `build`. Root `build` is `-ws`, which includes `@app/default-setup`, whose own build is

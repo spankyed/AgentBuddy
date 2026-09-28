@@ -1,195 +1,39 @@
 import { FEATURE_ID_PATTERN } from '@abuddy/sdk/build';
 import * as fs from 'node:fs';
+import { renderTemplate } from '../../templates.ts';
 import * as path from 'node:path';
 import { regenerateAfterScaffold } from '../generate-entries';
 import { scaffoldUnitTestSetup, type UnitTestSetup } from '../init';
-import { toPascalCase, toCamelCase, toLabel, writeIfNotExists, logCreated, parseFlag, hasFlag } from './templates';
+import { toPascalCase, toCamelCase, toLabel, writeIfNotExists, logCreated, parseFlag, hasFlag } from './write';
 import { readManifest, writeManifest, addFeature as addFeatureToManifest } from './manifest';
 
-const SETTINGS = (id: string) => `export default {
-  visible: true,
-  plugins: {
-    ${id}: {}
-  }
-}
-`;
 
-/** The system's contract: what it receives, what its own children send it, and what it sends its plugin. */
-const BE_CONTRACT = (name: string, pascal: string) => `import type { Incoming${pascal}Events, Outgoing${pascal}Events } from './types';
 
-// This system's contract, which abuddy.json names at features[].system.contract. Codegen reads it as a declared
-// type, without running anything, so it lives here rather than on the spec: a type has no declared-versus-inferred
-// gap, and nothing an annotation can widen away.
-//
-// Add \`internal\` for what this system's own children send it (a \`fromCallback\` child telling its parent). Those
-// reach the machine's event union and nothing a pack depending on yours can see.
-export type Contract = {
-  incoming: Incoming${pascal}Events;
-  outgoing: Outgoing${pascal}Events;
-};
-`;
 
-const SYSTEM = (name: string, camel: string, pascal: string) => `import { setup } from 'xstate';
-import { defineSystem } from '@abuddy/sdk/framework';
-// broadcastToPlugin is typed with the events each of this pack's plugins receives
-import { broadcastToPlugin } from '#generated/events';
-import type { Contract } from './contract';
 
-export const ${camel}Spec = defineSystem<Contract>();
 
-export const ${camel}System = setup({
-  types: ${camel}Spec.types,
-  actions: {
-    sendConnectedData: () => {
-      broadcastToPlugin('${name}', {
-        type: '${name.toUpperCase().replace(/-/g, '_')}_CONNECTED',
-        data: {},
-      });
-    },
-  },
-}).createMachine({
-  id: '${name}',
-  initial: 'idle',
-  states: {
-    idle: {
-      on: {
-        // Every system gets CLIENT_CONNECTED, and answers it with the data its plugin starts from
-        CLIENT_CONNECTED: { actions: 'sendConnectedData' },
-        // A contract's \`incoming\` says what may be sent; the bus routes an event to a system only if its
-        // machine names it, so an event declared and never handled here is dropped
-        REFRESH_${name.toUpperCase().replace(/-/g, '_')}: { actions: 'sendConnectedData' },
-      },
-    },
-  },
-});
 
-// The manifest loads this default export. Nothing to annotate: the events come from the contract above, and the
-// generated pack entry checks that this spec was built from the one abuddy.json names.
-export default { spec: ${camel}Spec, machine: ${camel}System };
-`;
 
-const SYSTEM_SPEC = (name: string) => {
-  const connected = `${name.toUpperCase().replace(/-/g, '_')}_CONNECTED`;
-  return `// The ${name} system under the app's bus, without the app (@abuddy/testing/harness)
-import { describe, expect, it } from 'vitest';
-import { startApp } from '@abuddy/testing/harness';
 
-describe('${name} system', () => {
-  it('sends its connected data when a client connects', async () => {
-    const app = await startApp({ systems: ['${name}'] });
-    await app.connect();
-    expect(await app.nextEmit('${name}', '${connected}')).toMatchObject({ data: {} });
-  });
-});
-`;
-};
 
-const TYPES = (pascal: string, name: string) => `export interface ${pascal}ConnectedData {
-  // Define connected data shape
-}
 
-// What anything outside this system may send it. CLIENT_CONNECTED, PACK_CHANGED and FEATURE_SETTINGS_UPDATED are
-// the app's, which every system receives, so no contract declares them.
-export type Incoming${pascal}Events =
-  | { type: 'REFRESH_${name.toUpperCase().replace(/-/g, '_')}' };
-
-export type Outgoing${pascal}Events =
-  | { type: '${name.toUpperCase().replace(/-/g, '_')}_CONNECTED'; data: Record<string, unknown> };
-`;
-
-const REPOSITORY = (camel: string) => `// EARS reads and writes for this feature. Declared in abuddy.json (features[].repositories) and
-// registered by the generated pack entry; systems and actions use them through
-// \`repository\` from '#generated/repository'. Typed query helpers come from '#generated/ears'.
-export const ${camel}Queries = {};
-
-export const ${camel}Commands = {};
-`;
-
-const PLUGIN = (camel: string, label: string, icon: string) => `import { definePlugin } from '@abuddy/sdk/fe';
-import { ${icon} } from 'lucide-vue-next';
-import state from './state';
-import canvas from './canvas/list.vue';
-
-// What this plugin publishes is its contract, in fe/contract.ts beside it
-
-// Registered at the feature's address by the host, so the module carries no id
-const ${camel}Plugin = definePlugin({
-  label: '${label}',
-  icon: ${icon},
-  state,
-  canvas,
-});
-
-export default ${camel}Plugin;
-`;
-
-const FE_CONTRACT = (pascal: string) => `import type { PluginInbox } from '@abuddy/sdk/fe';
-
-// This plugin's contract: the state it publishes, and what another plugin may send it. A leaf — it imports no
-// machine, no other feature and nothing from #generated/* but \`types\` and \`ears\`, which is what lets codegen read
-// the contract without resolving the machine, whose own imports cycle back through #generated/events.
-// abuddy.json names it at features[].plugin.contract.
-
-export interface ${pascal}Context {
-  ready: boolean;
-}
 
 /**
- * What another feature may send this plugin, by audience: \`pack\` is your own pack's features, \`public\` is what a
- * pack depending on yours may send. Its own feature's system needs no declaration — codegen reads that system's
- * outgoing events. Delete \`inbox\` for a plugin nothing else sends to.
+ * The strings a feature's templates are rendered with, derived once. Five of them wrote
+ * `name.toUpperCase().replace(/-/g, '_')` inline and two called `toPascalCase`/`toCamelCase` inside the literal;
+ * the event names are whole placeholders rather than a stem glued to `REFRESH_`, so a template reads as the code
+ * it emits.
  */
-export type ${pascal}Inbox = { type: 'SOMETHING'; id: string };
-
-export type Contract = {
-  state: ${pascal}Context;
-  inbox: PluginInbox<{ pack: ${pascal}Inbox }>;
-};
-`;
-
-const STATE = (name: string) => `import { setup, type ActorRefFrom } from 'xstate';
-import type { ${toPascalCase(name)}Context, ${toPascalCase(name)}Inbox } from './contract';
-
-// The feature's name, which this pack's code sends to and opens the plugin by (\`openPlugin\` from #generated/fe)
-export const id = '${name}';
-export type ${toPascalCase(name)}State = ActorRefFrom<typeof ${toCamelCase(name)}State>;
-
-const ${toCamelCase(name)}State = setup({
-  types: {
-    context: {} as ${toPascalCase(name)}Context,
-    events: {} as ${toPascalCase(name)}Inbox | { type: string },
-  },
-}).createMachine({
-  id,
-  initial: 'idle',
-  context: { ready: false },
-  states: {
-    idle: {},
-  },
-});
-
-export default ${toCamelCase(name)}State;
-`;
-
-const LIST_VUE = (label: string) => `<script setup lang="ts">
-</script>
-
-<template>
-  <div class="p-4">
-    <h2 class="text-lg font-semibold">${label}</h2>
-  </div>
-</template>
-`;
-
-const SETTINGS_VUE = () => `<script setup lang="ts">
-</script>
-
-<template>
-  <div class="p-4">
-    <p class="text-sm text-neutral-400">No settings yet.</p>
-  </div>
-</template>
-`;
+function featureValues(name: string) {
+  const event = name.toUpperCase().replace(/-/g, '_');
+  return {
+    NAME: name,
+    CAMEL: toCamelCase(name),
+    PASCAL: toPascalCase(name),
+    CONNECTED_EVENT: `${event}_CONNECTED`,
+    REFRESH_EVENT: `REFRESH_${event}`,
+  };
+}
 
 const HELP = `
 Usage: abuddy add feature <name> [options]
@@ -220,23 +64,24 @@ export async function addFeature(args: string[], root: string) {
   const designation = parseFlag(args, '--designation');
   const camel = toCamelCase(name);
   const pascal = toPascalCase(name);
+  const v = featureValues(name);
   const featureDir = path.join(root, 'src', 'features', name);
 
   const created: string[] = [];
   // The system test runs on the harness: a pack scaffolded before it has no tests/setup.ts
   const unitTestSetup = fs.existsSync(path.join(root, 'tests', 'setup.ts')) ? undefined : scaffoldUnitTestSetup(root);
   const files: [string, string][] = [
-    [path.join(featureDir, 'settings.ts'), SETTINGS(name)],
-    [path.join(featureDir, 'be', 'system.ts'), SYSTEM(name, camel, pascal)],
-    [path.join(featureDir, 'be', 'types.ts'), TYPES(pascal, name)],
-    [path.join(featureDir, 'be', 'contract.ts'), BE_CONTRACT(name, pascal)],
-    [path.join(featureDir, 'be', 'repository', 'index.ts'), REPOSITORY(camel)],
-    [path.join(featureDir, 'fe', 'plugin.ts'), PLUGIN(camel, label, icon)],
-    [path.join(featureDir, 'fe', 'contract.ts'), FE_CONTRACT(pascal)],
-    [path.join(featureDir, 'fe', 'state.ts'), STATE(name)],
-    [path.join(featureDir, 'fe', 'canvas', 'list.vue'), LIST_VUE(label)],
-    [path.join(featureDir, 'fe', 'settings.vue'), SETTINGS_VUE()],
-    [path.join(root, 'tests', 'features', name, 'be', 'system.spec.ts'), SYSTEM_SPEC(name)],
+    [path.join(featureDir, 'settings.ts'), renderTemplate('pack/src/features/feature/settings.ts', { ID: name })],
+    [path.join(featureDir, 'be', 'system.ts'), renderTemplate('pack/src/features/feature/be/system.ts', { NAME: v.NAME, CAMEL: v.CAMEL, CONNECTED_EVENT: v.CONNECTED_EVENT, REFRESH_EVENT: v.REFRESH_EVENT })],
+    [path.join(featureDir, 'be', 'types.ts'), renderTemplate('pack/src/features/feature/be/types.ts', { PASCAL: v.PASCAL, CONNECTED_EVENT: v.CONNECTED_EVENT, REFRESH_EVENT: v.REFRESH_EVENT })],
+    [path.join(featureDir, 'be', 'contract.ts'), renderTemplate('pack/src/features/feature/be/contract.ts', { PASCAL: pascal })],
+    [path.join(featureDir, 'be', 'repository', 'index.ts'), renderTemplate('pack/src/features/feature/be/repository/index.ts', { CAMEL: camel })],
+    [path.join(featureDir, 'fe', 'plugin.ts'), renderTemplate('pack/src/features/feature/fe/plugin.ts', { CAMEL: camel, LABEL: label, ICON: icon })],
+    [path.join(featureDir, 'fe', 'contract.ts'), renderTemplate('pack/src/features/feature/fe/contract.ts', { PASCAL: pascal })],
+    [path.join(featureDir, 'fe', 'state.ts'), renderTemplate('pack/src/features/feature/fe/state.ts', { NAME: v.NAME, CAMEL: v.CAMEL, PASCAL: v.PASCAL })],
+    [path.join(featureDir, 'fe', 'canvas', 'list.vue'), renderTemplate('pack/src/features/feature/fe/canvas/list.vue', { LABEL: label })],
+    [path.join(featureDir, 'fe', 'settings.vue'), renderTemplate('pack/src/features/feature/fe/settings.vue')],
+    [path.join(root, 'tests', 'features', name, 'be', 'system.spec.ts'), renderTemplate('pack/tests/features/feature/be/system.spec.ts', { NAME: v.NAME, CONNECTED_EVENT: v.CONNECTED_EVENT })],
   ];
 
   for (const [filePath, content] of files) {
