@@ -7,6 +7,6 @@ export const meta: PromptMeta = {
   inputs: {},
 };
 
-export function template(_params: Record<string, any>) {
+export function template(params: Record<string, any>) {
   return '';
 }
