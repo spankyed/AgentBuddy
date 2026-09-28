@@ -254,6 +254,25 @@ export function inputFiles(target: string, out: string[] = []): string[] {
 /** What stands in for a digest where the file was not there to read — never a hash of nothing */
 export const ABSENT = 'absent';
 
+/** How a fingerprint gets one input's bytes: repo-relative path in, bytes or `null` for a file that is not there */
+export type ReadInput = (file: string) => Buffer | null;
+
+/**
+ * The default: read it now.
+ *
+ * `ENOENT` is `null` — a file that goes between the walk and the read is absent, never empty. **Every other error
+ * propagates**, which is load-bearing rather than incidental: `unitStaleReason` catches it and reports
+ * `its sources could not be read (…)`, so an unreadable tree is a refusal instead of a fresh verdict.
+ */
+const readInput: ReadInput = (file) => {
+  try {
+    return fs.readFileSync(repoFile(file));
+  } catch (err) {
+    if ((err as NodeJS.ErrnoException).code !== 'ENOENT') throw err;
+    return null;
+  }
+};
+
 /**
  * A content fingerprint of `inputs`: every file's repo-relative path and its bytes, sorted.
  *
@@ -285,24 +304,23 @@ export const ABSENT = 'absent';
  * cannot disagree with the verdict, because both come from here. A second walk of its own can disagree, and
  * one did — an mtime walk named a file an E2E test rewrites with identical bytes, and the diagnosis that
  * followed was wrong. The returned hash is unaffected, so a caller wanting only the verdict passes nothing.
+ *
+ * `read` is where the bytes come from, defaulting to reading them now (`readInput`, whose `ENOENT` rule this
+ * loop used to hold inline). Injected rather than cached here, because a cache has a lifetime and this function
+ * has no business owning one: `freshnessSweep` does, for the callers that ask about many units at one moment.
  */
 export function fingerprintInputs(
   inputs: readonly string[],
   normalise?: (contents: Buffer, file: string) => Buffer | string,
   exclude: readonly string[] = [],
   collect?: (file: string, digest: string) => void,
+  read: ReadInput = readInput,
 ): string {
   const hash = createHash('sha256');
   const excluded = exclude.map((target) => path.relative(REPO_ROOT, target));
   const isExcluded = (file: string): boolean => excluded.some((out) => covers(out, file));
   for (const file of [...new Set(inputs.flatMap((target) => inputFiles(target)))].sort().filter((f) => !isExcluded(f))) {
-    // A file that goes between the walk and the read hashes as absent, never as empty
-    let contents: Buffer | null = null;
-    try {
-      contents = fs.readFileSync(repoFile(file));
-    } catch (err) {
-      if ((err as NodeJS.ErrnoException).code !== 'ENOENT') throw err;
-    }
+    const contents = read(file);
     // Without a normaliser the bytes are hashed as read — no copy on the path that runs per command
     const hashed = contents !== null && normalise ? Buffer.from(normalise(contents, file)) : contents;
     hash.update(`${file}\0${hashed === null ? ABSENT : hashed.length}\0`);
@@ -318,7 +336,7 @@ export function fingerprintInputs(
  * unit that gains or loses a watched directory invalidates itself — and only itself. Hashing the input
  * contents alone would read the new set against the old stamp and call it fresh.
  */
-export function fingerprintUnit(unit: BuildUnit, collect?: (file: string, digest: string) => void): string {
+export function fingerprintUnit(unit: BuildUnit, collect?: (file: string, digest: string) => void, read?: ReadInput): string {
   return createHash('sha256')
     .update(declaredPaths(unit).join('\0'))
     .update('\0')
@@ -329,7 +347,7 @@ export function fingerprintUnit(unit: BuildUnit, collect?: (file: string, digest
     // surviving on the builds happening to be deterministic, and the pack build is already known not to be
     // (two lines of `Omit<…>` union ordering). Excluding self-output here means declaring `outputs`
     // honestly is the whole fix, rather than every such step needing its inputs hand-narrowed.
-    .update(fingerprintInputs(unit.inputs, undefined, [...unit.outputs, ...(unit.excludes ?? [])], collect))
+    .update(fingerprintInputs(unit.inputs, undefined, [...unit.outputs, ...(unit.excludes ?? [])], collect, read))
     .digest('hex');
 }
 
@@ -344,9 +362,9 @@ export const declaredPaths = (unit: BuildUnit): string[] =>
   [...unit.inputs, ...unit.outputs, ...(unit.excludes ?? [])].map((target) => path.relative(REPO_ROOT, target)).sort();
 
 /** A unit's fingerprint and the per-file digests it is composed of, from one walk */
-export function fingerprintWithDigests(unit: BuildUnit): { fingerprint: string; files: Record<string, string> } {
+export function fingerprintWithDigests(unit: BuildUnit, read?: ReadInput): { fingerprint: string; files: Record<string, string> } {
   const files: Record<string, string> = {};
-  const fingerprint = fingerprintUnit(unit, (file, digest) => { files[file] = digest; });
+  const fingerprint = fingerprintUnit(unit, (file, digest) => { files[file] = digest; }, read);
   return { fingerprint, files };
 }
 
@@ -369,8 +387,8 @@ export interface InputChanges {
  * bytes it already had appears in none of these, which is the whole point — mtime says it was written and the
  * cache does not care, and reading one as the other is what sent a diagnosis after the wrong file.
  */
-export function changedInputs(unit: BuildUnit, recorded: { files: Record<string, string>; declared: readonly string[] }): InputChanges {
-  const now = fingerprintWithDigests(unit).files;
+export function changedInputs(unit: BuildUnit, recorded: { files: Record<string, string>; declared: readonly string[] }, read?: ReadInput): InputChanges {
+  const now = fingerprintWithDigests(unit, read).files;
   const declared = new Set(recorded.declared);
   const wasDeclared = declaredPaths(unit);
   return {
@@ -412,7 +430,7 @@ export function stampRecord(stamp: string): StampRecord | undefined {
  * throws. The wording is deliberately not about building: the chain's steps go through this too, and most
  * of them are checks that produce nothing (`stampedRun`, `scripts/chain.ts`).
  */
-export function unitStaleReason(unit: BuildUnit, stamp: string): string | null {
+export function unitStaleReason(unit: BuildUnit, stamp: string, read?: ReadInput): string | null {
   const missing = unit.outputs.filter((output) => !fs.existsSync(output)).map((output) => path.relative(REPO_ROOT, output));
   if (missing.length > 0) return `not built (no ${missing.join(', ')})`;
   const record = stampRecord(stamp) ?? {};
@@ -420,10 +438,44 @@ export function unitStaleReason(unit: BuildUnit, stamp: string): string | null {
   // A stamp from another protocol says nothing about this one, so it counts as never built
   if (record.version !== STAMP_VERSION) return `its stamp is from another format (${String(record.version)}, this is ${STAMP_VERSION})`;
   try {
-    return record.fingerprint === fingerprintUnit(unit) ? null : 'its inputs changed since the last successful run';
+    return record.fingerprint === fingerprintUnit(unit, undefined, read) ? null : 'its inputs changed since the last successful run';
   } catch (err) {
     return `its sources could not be read (${(err as Error).message})`;
   }
+}
+
+/**
+ * One reading of the tree, shared by every question asked of this sweep.
+ *
+ * Units overlap heavily — measured on this repo, twelve chain steps declare 18,001 files between them and only
+ * 3,518 distinct ones, so the primitive reads `packages/*` and the shared trees five times over. Asking them
+ * through a sweep reads each file once: 456ms of reading and hashing becomes 153ms, and the fingerprints come out
+ * byte-identical, because what is shared is the I/O and not the derivation.
+ *
+ * **A sweep must not outlive the one question it was made for.** It answers as of its first read of each file, so
+ * a sweep kept across time reports a tree that has moved on. Holding an object is what makes that somebody's
+ * decision rather than a default they inherit.
+ *
+ * **Which is why the chain's dispatch decisions must not use one.** The scheduler asks "is this step stale?" as it
+ * reaches each step, spread across the whole run, and a step reached at t=100s has to see the tree as of then — a
+ * snapshot from t=0 would call a step fresh whose inputs another step had just written, which is the defect
+ * `willNotCache` exists to report. The two places a sweep is right are the ones that ask about every step at one
+ * moment: `--dry`, which runs nothing, and the post-run report, which runs after everything has stopped.
+ */
+export function freshnessSweep(): {
+  staleReason: (unit: BuildUnit, stamp: string) => string | null;
+  changedInputs: (unit: BuildUnit, recorded: { files: Record<string, string>; declared: readonly string[] }) => InputChanges;
+} {
+  const seen = new Map<string, Buffer | null>();
+  const read: ReadInput = (file) => {
+    // `has`, not a truthy check: `null` is an answer — the file was not there when this sweep looked
+    if (!seen.has(file)) seen.set(file, readInput(file));
+    return seen.get(file) ?? null;
+  };
+  return {
+    staleReason: (unit, stamp) => unitStaleReason(unit, stamp, read),
+    changedInputs: (unit, recorded) => changedInputs(unit, recorded, read),
+  };
 }
 
 /** Every workspace of `packages:build` that needs building — empty when all of them are up to date */

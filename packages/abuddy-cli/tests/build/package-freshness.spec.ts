@@ -4,7 +4,7 @@ import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
-import { ABSENT, BUILD_UNITS, buildScriptFor, changedInputs, CHECKOUT_MARKER, covers, declaredPaths, fingerprintInputs, fingerprintUnit, fingerprintWithDigests, inputFiles, NOT_A_BUILD_INPUT, REPO_ROOT, staleMessage, stampRecord, STAMP_VERSION, stampedBuild, stampedRun, stampedRunAll, stampFile, unitStaleReason, withBuildLock, type BuildIntent, type BuildUnit } from '@abuddy/host/build/packages-built';
+import { ABSENT, BUILD_UNITS, buildScriptFor, changedInputs, CHECKOUT_MARKER, covers, declaredPaths, fingerprintInputs, fingerprintUnit, fingerprintWithDigests, freshnessSweep, inputFiles, NOT_A_BUILD_INPUT, REPO_ROOT, staleMessage, stampRecord, STAMP_VERSION, stampedBuild, stampedRun, stampedRunAll, stampFile, unitStaleReason, withBuildLock, type BuildIntent, type BuildUnit } from '@abuddy/host/build/packages-built';
 
 /**
  * The freshness rule behind `npm test -w @abuddy/cli`'s pretest (@abuddy/host/build/packages-built):
@@ -510,6 +510,78 @@ describe('which inputs changed', () => {
     expect(changedInputs(f.unit, recorded).changed).toEqual([]);
     fs.writeFileSync(path.join(f.src, 'a.ts'), 'export const a = 2;\n');
     expect(changedInputs(f.unit, recorded).changed).toEqual([rel(path.join(f.src, 'a.ts'))]);
+  });
+});
+
+/**
+ * Asking about many units at one moment, over one reading of the tree.
+ *
+ * Units overlap: twelve chain steps declare 18,001 files between them and 3,518 distinct ones, so the primitive
+ * reads the shared trees five times over. A sweep reads each once. What it buys is I/O, not a different
+ * derivation — the fingerprints are the same ones — so the first case here is the equivalence everything else
+ * rests on, and the rest are about the lifetime that equivalence depends on.
+ */
+describe('a freshness sweep', () => {
+  it('gives the verdict an unshared check gives, for every unit it is asked about', () => {
+    const [fresh, moved] = [fixture(), fixture()];
+    const stamps = { fresh: stampFor(fresh), moved: stampFor(moved) };
+    fs.writeFileSync(path.join(moved.src, 'a.ts'), 'export const a = 2;\n');
+    const sweep = freshnessSweep();
+    expect(sweep.staleReason(fresh.unit, stamps.fresh)).toBe(unitStaleReason(fresh.unit, stamps.fresh));
+    expect(sweep.staleReason(moved.unit, stamps.moved)).toBe(unitStaleReason(moved.unit, stamps.moved));
+    expect(sweep.staleReason(fresh.unit, stamps.fresh)).toBeNull();
+    expect(sweep.staleReason(moved.unit, stamps.moved)).toMatch(/inputs changed/);
+  });
+
+  /**
+   * Proven without reaching inside it: a file the sweep has already read stays readable to it after the
+   * filesystem stops handing it over. An unshared check reports `could not be read` at that point, which is what
+   * the second half asserts — so this fails the moment the sweep stops sharing.
+   */
+  it('reads each file once, however many units declare it', () => {
+    const f = fixture();
+    const stamp = stampFor(f);
+    const shared = { inputs: f.unit.inputs, outputs: f.unit.outputs };
+    const sweep = freshnessSweep();
+    expect(sweep.staleReason(f.unit, stamp)).toBeNull();
+    fs.chmodSync(path.join(f.src, 'a.ts'), 0o000);
+    try {
+      expect(sweep.staleReason(shared, stamp), 'the second unit read the file again').toBeNull();
+      expect(unitStaleReason(shared, stamp), 'an unshared check should have hit the unreadable file').toMatch(/could not be read/);
+    } finally {
+      fs.chmodSync(path.join(f.src, 'a.ts'), 0o644);
+    }
+  });
+
+  /** Why a sweep must be short-lived, asserted rather than left to its comment */
+  it('does not see a change made after it started, where a later sweep does', () => {
+    const f = fixture();
+    const stamp = stampFor(f);
+    const sweep = freshnessSweep();
+    expect(sweep.staleReason(f.unit, stamp)).toBeNull();
+    fs.writeFileSync(path.join(f.src, 'a.ts'), 'export const a = 2;\n');
+    expect(sweep.staleReason(f.unit, stamp), 'it answered from a tree that has moved on').toBeNull();
+    expect(freshnessSweep().staleReason(f.unit, stamp)).toMatch(/inputs changed/);
+  });
+
+  /** Memoising must never turn an unreadable tree into a fresh one, so the first read still has to fail loudly */
+  it('reports a read that fails for any reason other than absence', () => {
+    const f = fixture();
+    const stamp = stampFor(f);
+    fs.chmodSync(f.src, 0o000);
+    try {
+      expect(freshnessSweep().staleReason(f.unit, stamp)).toMatch(/could not be read/);
+    } finally {
+      fs.chmodSync(f.src, 0o755);
+    }
+  });
+
+  it('finds the same changed inputs as a check that reads for itself', () => {
+    const f = fixture();
+    const recorded = { files: fingerprintWithDigests(f.unit).files, declared: declaredPaths(f.unit) };
+    fs.writeFileSync(path.join(f.src, 'a.ts'), 'export const a = 2;\n');
+    fs.rmSync(path.join(f.src, 'nested', 'b.ts'));
+    expect(freshnessSweep().changedInputs(f.unit, recorded)).toEqual(changedInputs(f.unit, recorded));
   });
 });
 
