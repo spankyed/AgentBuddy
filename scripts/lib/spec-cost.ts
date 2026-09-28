@@ -128,8 +128,34 @@ export function readSpecCost(repoRoot: string, dir: string): SpecCost | undefine
  * half; every other suite has one. A spec's cost is measured under the config that actually runs it, which
  * is why this is read from the package rather than assumed.
  */
+/**
+ * Which config runs each half, as one declaration rather than two lists that can disagree.
+ *
+ * `configsFor` derives its order from this, and naming a spec derives its config from it the other way —
+ * which is what lets `spec-cost:update <path>` run the half that spec lives in instead of the whole suite.
+ */
+export const CONFIG_BY_HALF: Readonly<Record<Half, string>> = {
+  fast: 'vitest.config.ts',
+  integration: 'vitest.integration.config.ts',
+};
+
 export function configsFor(packageDir: string): string[] {
-  return ['vitest.config.ts', 'vitest.integration.config.ts'].filter((file) => fs.existsSync(path.join(packageDir, file)));
+  return Object.values(CONFIG_BY_HALF).filter((file) => fs.existsSync(path.join(packageDir, file)));
+}
+
+/**
+ * The configs that must run to measure these specs: each one's half, and nothing else.
+ *
+ * A spec measured on its own is not comparable to one measured beside its siblings — `chain-inputs` reads
+ * 1688ms in its config and 963ms alone, against a band 1000ms wide — so the unit is the config, never the
+ * file. A half whose config is missing falls back to everything the package has, since the spec still has to
+ * be measured somewhere.
+ */
+export function configsOf(packageDir: string, specs: readonly string[]): string[] {
+  const all = configsFor(packageDir);
+  const wanted = new Set(specs.map((spec) => CONFIG_BY_HALF[halfOfPath(spec)]));
+  const known = all.filter((config) => wanted.has(config));
+  return known.length === wanted.size ? known : all;
 }
 
 /** A package with one config has no second half to move a spec into — Decision 4 makes that a finding */

@@ -445,6 +445,25 @@ npm run schema:check     # Fails if abuddy.schema.json is stale
 npm run seed-parity:check   # Compare seeded rows against tests/seeds/__golden__
 npm run seed-parity:update  # Re-record them; deliberate, see "What to run after a change"
 
+# Recorded spec costs (which half each spec runs in)
+npm run spec-cost:check  # Reads the records, runs nothing. `-- --list` prints what they hold and which
+                         # specs sit between FAST_BELOW_MS and INTEGRATION_ABOVE_MS, where a re-measurement
+                         # could change the answer: 8 of 367 today, so the rest are nowhere near a decision
+npm run spec-cost:update # The least that makes the records current, which is often nothing. A deleted spec
+                         # leaves a row that needs no measurement to drop; a new one needs only the half it
+                         # lives in. It says which case it took. Measured: 0.3s when nothing is wrong,
+                         # against 315s of file-time for the whole thing
+                         #   <spec path>   that spec's half and nothing else — repo-checks is 8.1s of fast
+                         #                 specs behind 34.2s of integration ones, and naming a fast spec
+                         #                 skips the second. It runs the spec's *config*, never the file
+                         #                 alone: `chain-inputs` reads 1688ms beside its siblings and 963ms
+                         #                 on its own, against a band 1000ms wide, so a solo number would
+                         #                 file it in the wrong half
+                         #   --suite <dir> one suite, as before
+                         #   --all         re-measure everything regardless — after a bundler bump
+                         #   --dry         what it would run and write
+                         #   --force       record a run that moved more than CONTENDED_SHARE of a suite
+
 # Lint (root runs every workspace that has one; oxlint, plus eslint in the renderer)
 npm run check:specifiers # Every import rule, over the whole repo (2.7s, one parse per file). Takes paths to
                          # run only the per-file rules over them (0.9s over one feature), and says which
