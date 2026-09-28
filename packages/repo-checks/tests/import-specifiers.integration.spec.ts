@@ -448,44 +448,81 @@ describe('findSharedPackageLists', () => {
  * example left behind by a deleted rule fails too. The per-rule `describe` blocks above cover the nuances:
  * what each rule allows, the line it reports, the forms it reads. This covers one thing, for all of them.
  */
+/**
+ * The tree every pack-code rule's example sits in: a package that is also a pack, which is what
+ * `packages/default-setup` is — so the rules whose population is `packages/*` and the rules whose population is a
+ * pack's halves can be pointed at the same directory.
+ *
+ * One shape, because there used to be two and the difference was invisible. A fixture at `src/pack` has no
+ * `package.json` and no `abuddy.json`, so `own-modules` (which needs the `imports` map) and `contract-leaves`
+ * (which needs the manifest) **cannot fire there at all** — measured. Half the sweep's fixtures were that shape,
+ * so for those rows those two rules' "and no other rule claims it" said nothing: they were not able to claim.
+ *
+ * The base is clean, asserted below, so a sweep attributes nothing to the tree it runs in.
+ */
+const PACK_FIXTURE = 'packages/demo-pack';
+const PACK_SRC = [`${PACK_FIXTURE}/src`];
+const PACK_TESTS = [`${PACK_FIXTURE}/tests`];
+
+function packFixture(files: Record<string, string> = {}): void {
+  writeAt(`${PACK_FIXTURE}/package.json`, JSON.stringify({
+    name: 'demo-pack', type: 'module',
+    imports: { '#generated/*': './src/__generated__/*', '#features/*': './src/features/*' },
+  }));
+  writeAt(`${PACK_FIXTURE}/abuddy.json`, JSON.stringify({
+    id: 'demo-pack', name: 'Demo', version: '1.0.0',
+    features: [{
+      id: 'notes',
+      plugin: { entry: 'src/features/notes/fe/plugin.ts', contract: 'src/features/notes/fe/contract.ts#Contract' },
+      system: { entry: 'src/features/notes/be/system.ts', contract: 'src/features/notes/be/contract.ts#Contract' },
+    }],
+  }));
+  const base: Record<string, string> = {
+    'src/__generated__/events.ts': 'export const sendToSystem = 1;\n',
+    'src/features/notes/fe/plugin.ts': 'export type P = { id: string };\n',
+    'src/features/notes/be/system.ts': 'export const system = 1;\n',
+    'src/features/notes/fe/contract.ts': 'export type Contract = { state: {} };\n',
+    'src/features/notes/be/contract.ts': "export type Contract = { outgoing: { type: 'A' } };\n",
+  };
+  for (const [rel, body] of Object.entries({ ...base, ...files })) writeAt(`${PACK_FIXTURE}/${rel}`, body);
+}
+
 const FIRES: Record<string, () => string[]> = {
   findJsSpecifiers: () => {
     write('f.ts', "import { q } from './query.js';");
     return findJsSpecifiers(['src'], root);
   },
   findRawPackHelpers: () => {
-    write('pack/feature.ts', "import { untypedSendToSystem } from '@abuddy/sdk/events';");
-    return findRawPackHelpers(['src/pack'], root);
+    packFixture({ 'src/f.ts': "import { untypedSendToSystem } from '@abuddy/sdk/events';" });
+    return findRawPackHelpers(PACK_SRC, root);
   },
   findInternalPackageImports: () => {
-    write('pack/feature.ts', "import { _getMediaPath } from '@abuddy/sdk/utils';");
-    return findInternalPackageImports(['src/pack'], root);
+    packFixture({ 'src/f.ts': "import { _getMediaPath } from '@abuddy/sdk/utils';" });
+    return findInternalPackageImports(PACK_SRC, root);
   },
   findRawTransport: () => {
-    write('pack/feature.ts', '_rootEvents.emitOutgoing(event);');
-    return findRawTransport(['src/pack'], root);
+    packFixture({ 'src/f.ts': '_rootEvents.emitOutgoing(event);' });
+    return findRawTransport(PACK_SRC, root);
   },
   findPackBackendConsole: () => {
-    write('pack/features/notes/be/system.ts', "console.log('seeded');");
-    return findPackBackendConsole(['src/pack'], root);
+    packFixture({ 'src/features/notes/be/system.ts': "console.log('seeded');" });
+    return findPackBackendConsole(PACK_SRC, root);
   },
   findHostImports: () => {
-    write('pack/feature.ts', "import { edgeStore } from '@abuddy/host/ears';");
-    return findHostImports(['src/pack'], root);
+    packFixture({ 'src/f.ts': "import { edgeStore } from '@abuddy/host/ears';" });
+    return findHostImports(PACK_SRC, root);
   },
   findPackOwnAliases: () => {
-    writeAt('pack/src/a.ts', "import { x } from '@/features/notes/be/x.ts';");
-    return findPackOwnAliases(['pack/src'], root);
+    packFixture({ 'src/f.ts': "import { x } from '@/features/notes/be/x.ts';" });
+    return findPackOwnAliases(PACK_SRC, root);
   },
   findExtensionlessOwnModules: () => {
-    writeAt('pack/package.json', JSON.stringify({ name: 'p', type: 'module', imports: { '#generated/*': './src/__generated__/*' } }));
-    writeAt('pack/src/__generated__/events.ts', 'export const sendToSystem = 1;');
-    writeAt('pack/src/f.ts', "import { sendToSystem } from '#generated/events';");
-    return findExtensionlessOwnModules(['pack/src'], root);
+    packFixture({ 'src/f.ts': "import { sendToSystem } from '#generated/events';" });
+    return findExtensionlessOwnModules(PACK_SRC, root);
   },
   findAppImportsInPackTests: () => {
-    write('pack-tests/unit/feature.spec.ts', "import { hydrate } from '../../../abuddy-host/src/database/store';");
-    return findAppImportsInPackTests(['src/pack-tests'], root);
+    packFixture({ 'tests/unit/feature.spec.ts': "import { hydrate } from '../../../abuddy-host/src/database/store';" });
+    return findAppImportsInPackTests(PACK_TESTS, root);
   },
   findUpwardImports: () => {
     const layers = LAYERS.map((l) => ({ ...l, dir: `layers/${path.basename(l.dir).replace(/^abuddy-/, '')}` }));
@@ -508,21 +545,16 @@ const FIRES: Record<string, () => string[]> = {
     return findSharedPackageLists(['src/consumer.ts'], root);
   },
   findRepositoryCasts: () => {
-    write('packages/thing/src/a.ts', 'const notes = repository as unknown as Repositories;');
-    return findRepositoryCasts(['src/packages/thing/src'], root);
+    packFixture({ 'src/f.ts': 'const notes = repository as unknown as Repositories;' });
+    return findRepositoryCasts(PACK_SRC, root);
   },
   findCrossFeatureImports: () => {
-    writeAt('pack/src/extensions/viewer.ts', "import List from '../features/notes/fe/canvas/list.vue';");
-    return findCrossFeatureImports(['pack/src'], root);
+    packFixture({ 'src/extensions/viewer.ts': "import List from '../features/notes/fe/canvas/list.vue';" });
+    return findCrossFeatureImports(PACK_SRC, root);
   },
   findContractLeafImports: () => {
-    writeAt('pack/abuddy.json', JSON.stringify({
-      id: 'demo-pack', name: 'Demo', version: '1.0.0',
-      features: [{ id: 'notes', plugin: { entry: 'src/features/notes/fe/plugin.ts', contract: 'src/features/notes/fe/contract.ts#Contract' } }],
-    }));
-    writeAt('pack/src/features/notes/fe/contract.ts', "import type { P } from './plugin';");
-    writeAt('pack/src/features/notes/fe/plugin.ts', 'export type P = { id: string };');
-    return findContractLeafImports(['pack/src'], root);
+    packFixture({ 'src/features/notes/fe/contract.ts': "import type { P } from './plugin';" });
+    return findContractLeafImports(PACK_SRC, root);
   },
   findPackageScriptImports: () => {
     writeAt('packages/thing/package.json', JSON.stringify({ name: '@abuddy/thing' }));
@@ -569,19 +601,6 @@ const sweepers = (half: 'src' | 'tests'): readonly ImportRule[] =>
 const alsoClaiming = (id: string, dirs: readonly string[], half: 'src' | 'tests'): string[] =>
   sweepers(half).filter((rule) => rule.id !== id && rule.overPaths!([...dirs], root).length > 0).map((rule) => rule.id);
 
-/** Where each src-reading rule's own offending example sits, which is the one thing the derivation cannot supply */
-const SRC_FIXTURES: Record<string, string[]> = {
-  findRawPackHelpers: ['src/pack'],
-  findInternalPackageImports: ['src/pack'],
-  findRawTransport: ['src/pack'],
-  findPackBackendConsole: ['src/pack'],
-  findHostImports: ['src/pack'],
-  findPackOwnAliases: ['pack/src'],
-  findExtensionlessOwnModules: ['pack/src'],
-  findCrossFeatureImports: ['pack/src'],
-  findContractLeafImports: ['pack/src'],
-  findRepositoryCasts: ['src/packages/thing/src'],
-};
 
 describe('CHECKS', () => {
   it.each(CHECKS.map((rule) => rule.id))('%s flags an offending example', (name) => {
@@ -604,9 +623,9 @@ describe('CHECKS', () => {
    * at a time, so a rule the CLI owns that is missing here makes that claim wider than the sweep — which is what
    * `cross-feature-imports` and `contract-leaves` did on arriving.
    */
-  it.each(Object.entries(SRC_FIXTURES))('%s claims its own example and no other pack rule does', (id, dirs) => {
+  it.each([...sweepers('src')].map((rule) => rule.id))('%s claims its own example and no other pack rule does', (id) => {
     expect(FIRES[id]!(), `${id} must fire on its own example`).not.toEqual([]);
-    expect(alsoClaiming(id, dirs, 'src'),
+    expect(alsoClaiming(id, PACK_SRC, 'src'),
       `${id}'s offence is also reported by these, so only the first to run is ever read`).toEqual([]);
 
     // And the key the entry declares is the rule that fires. `backed(id, key, find, over)` takes the key twice
@@ -619,7 +638,7 @@ describe('CHECKS', () => {
     // and requiring a key of it failed the moment the derivation brought it in.
     const declared = CHECKS.find((rule) => rule.id === id)?.packRule;
     if (declared === undefined) return;
-    expect(packRule(declared, [...dirs], root),
+    expect(packRule(declared, PACK_SRC, root),
       `${id} declares \`${declared}\`, which finds nothing in a tree written to offend ${id}: the key it names is `
       + 'not the rule it runs, so its findings print under the wrong sentence').not.toEqual([]);
   });
@@ -687,9 +706,23 @@ describe('CHECKS', () => {
     expect(findCrossFeatureImports(['pack/src'], root)).toEqual([offence]);
   });
 
-  /** A rule that reads a pack's src and has no fixture row is a rule the sweep would silently not cover */
+  /**
+   * What makes the sweep above mean anything: the tree it runs in offends nobody, so a claim it reports came from
+   * the case's own offending file. Without this, a base that tripped a rule would look like every other rule
+   * double-claiming every offence.
+   */
+  it('offends no rule before a case adds an offence', () => {
+    packFixture();
+    const claimed = [...sweepers('src')].filter((rule) => rule.overPaths!(PACK_SRC, root).length > 0).map((rule) => rule.id);
+    expect(claimed, 'the shared fixture is not clean, so a sweep attributes its noise to whichever rule it is sweeping').toEqual([]);
+  });
+
+  /** And every rule that reads a pack's src is swept, derived from what each declares rather than listed here */
   it("sweeps every rule that reads a pack's src", () => {
-    expect(Object.keys(SRC_FIXTURES).sort()).toEqual([...sweepers('src')].map((rule) => rule.id).sort());
+    const swept = [...sweepers('src')].map((rule) => rule.id);
+    expect(swept.length, 'no rule declares a population holding a pack\'s src, so the sweep runs over nothing').toBeGreaterThan(5);
+    expect(swept.filter((id) => FIRES[id] === undefined),
+      'a swept rule with no offending example in FIRES cannot be checked for double-claiming').toEqual([]);
   });
 
   /**
@@ -705,10 +738,8 @@ describe('CHECKS', () => {
     ['the app by relative path', "import { hydrate } from '../../../abuddy-host/src/database/store';", 'findAppImportsInPackTests'],
     ['an extensionless own module', "import { sendToSystem } from '#generated/events';", 'findExtensionlessOwnModules'],
   ])("in a pack's tests, %s is claimed by exactly one rule", (_shape, code, owner) => {
-    writeAt('pack/package.json', JSON.stringify({ name: 'p', type: 'module', imports: { '#generated/*': './src/__generated__/*' } }));
-    writeAt('pack/src/__generated__/events.ts', 'export const sendToSystem = 1;');
-    writeAt('pack/tests/unit/feature.spec.ts', code);
-    const claimed = [...sweepers('tests')].filter((rule) => rule.overPaths!(['pack/tests'], root).length > 0).map((rule) => rule.id);
+    packFixture({ 'tests/unit/feature.spec.ts': code });
+    const claimed = [...sweepers('tests')].filter((rule) => rule.overPaths!(PACK_TESTS, root).length > 0).map((rule) => rule.id);
     expect(claimed, 'one offence, one owner — in a pack\'s tests as in its src').toEqual([owner]);
   });
 
