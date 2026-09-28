@@ -96,7 +96,7 @@ type SystemEvent = OutgoingFlowsEvents
   | { type: 'DSL_IMPORTED'; flowIds: string[] }
   | { type: 'DSL_IMPORT_FAILED'; errors: string[] }
   // DSL Export backend responses
-  | { type: 'DSL_EXPORTED'; filePath: string; flowCount: number }
+  | { type: 'DSL_EXPORTED'; filePath: string; flowCount: number; skipped: string[] }
   | { type: 'DSL_EXPORT_FAILED'; errors: string[] }
 
 type UIEvent =
@@ -1070,6 +1070,7 @@ const flowsState = setup({
           errors: [],
           filePath: ev.filePath,
           flowCount: ev.flowCount,
+          skipped: ev.skipped,
         },
       };
     }),
@@ -1082,12 +1083,13 @@ const flowsState = setup({
           errors: ev.errors,
           filePath: '',
           flowCount: 0,
+          skipped: [],
         },
       };
     }),
 
     resetExportStatus: assign({
-      dslExport: { status: 'idle' as const, errors: [], filePath: '', flowCount: 0 },
+      dslExport: { status: 'idle' as const, errors: [], filePath: '', flowCount: 0, skipped: [] as string[] },
     }),
 
     /* ── Context menu dialog bridge actions ───────────────── */
@@ -1130,6 +1132,7 @@ const flowsState = setup({
       errors: [],
       filePath: '',
       flowCount: 0,
+      skipped: [],
     },
     navHistory: createNavHistory<string | null>(null),
   },

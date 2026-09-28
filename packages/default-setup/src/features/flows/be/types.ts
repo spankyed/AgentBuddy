@@ -89,5 +89,5 @@ export type OutgoingFlowsEvents =
   | { type: 'ACTION_DELETED'; actionId: EARS.EntityId }
   | { type: 'DSL_IMPORTED'; flowIds: EARS.EntityId[]; errors?: string[] }
   | { type: 'DSL_IMPORT_FAILED'; errors: string[] }
-  | { type: 'DSL_EXPORTED'; filePath: string; flowCount: number }
+  | { type: 'DSL_EXPORTED'; filePath: string; flowCount: number; skipped: string[] }
   | { type: 'DSL_EXPORT_FAILED'; errors: string[] }

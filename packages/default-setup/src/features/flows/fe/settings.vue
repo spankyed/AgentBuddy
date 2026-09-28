@@ -170,6 +170,9 @@
                 Successfully exported {{ exportedFlowCount }} flow{{ exportedFlowCount !== 1 ? 's' : '' }}
               </h4>
               <p class="text-sm text-neutral-400">{{ exportedFilePath }}</p>
+              <p v-if="skippedFlows.length > 0" class="text-sm text-amber-400 mt-1">
+                Not exported, having no trigger yet: {{ skippedFlows.join(', ') }}
+              </p>
             </div>
           </div>
         </div>
@@ -244,6 +247,8 @@ const exportStatus = useSelector(flowsActor, (state) => state.context.dslExport.
 const exportErrors = useSelector(flowsActor, (state) => state.context.dslExport.errors)
 const exportedFilePath = useSelector(flowsActor, (state) => state.context.dslExport.filePath)
 const exportedFlowCount = useSelector(flowsActor, (state) => state.context.dslExport.flowCount)
+// A flow with no trigger cannot be written as DSL, so it is named here rather than missing from the file
+const skippedFlows = useSelector(flowsActor, (state) => state.context.dslExport.skipped)
 
 const runningRootFlowId = usePluginState('brain', (s) => s.runningRootFlowId)
 

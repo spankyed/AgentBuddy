@@ -9,6 +9,7 @@ import { compileFlowDSL, exportFlowsToDSL } from '@abuddy/sdk/build'
 import { EARS, ROOT_FLOW_ROLE } from '@abuddy/sdk'
 import { untypedQx } from '@abuddy/ears'
 import { importFlows } from '@abuddy/testing/harness'
+import { repository } from '#generated/repository.ts'
 import { startTestRuntime } from '@abuddy/sdk/testing'
 import { action, actionCode, branch, create, entry, fire, keepAlive, kill, llm, on, query, subflow, transform, update } from '#generated/flow-helpers.ts'
 
@@ -82,5 +83,21 @@ describe('a flow exported and imported back', () => {
       'switch.conditions: [{"predicate":{"key":"ok","operator":"equals","value":true},"label":"Kill Flow"},{"label":"keep_alive"}]'
         + ' -> [{"predicate":{"key":"ok","operator":"equals","value":true},"label":"Kill Flow"},{"label":"Keep Alive"}]',
     ])
+  })
+})
+
+describe('a flow the export cannot write', () => {
+  /**
+   * A flow with no trigger has no track to hang its steps from, so there is no DSL for it. It used to be
+   * dropped: a flow built in the editor and not yet triggered was simply missing from the file, with the
+   * count saying nothing about it.
+   */
+  it('is named rather than missing, when it has no trigger to build a track from', () => {
+    repository.flowsCommands.createFlow({ label: 'Not started yet' } as never)
+
+    const { skipped, flowCount } = exportFlowsToDSL(tmp(), { rootFlowRole: ROOT_FLOW_ROLE }, false)
+
+    expect(skipped).toContain('Not started yet')
+    expect(flowCount, 'the skipped flow must not be counted as exported').toBe(0)
   })
 })

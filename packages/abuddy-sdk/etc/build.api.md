@@ -296,6 +296,7 @@ export interface ExportFlowsOptions {
 export function exportFlowsToDSL(outputDir: string, options: ExportFlowsOptions, versioned?: boolean): {
     filePath: string;
     flowCount: number;
+    skipped: string[];
 };
 
 // @public

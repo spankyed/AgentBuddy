@@ -349,7 +349,7 @@ export const flowsSystem = setup({
       logger.info('Exporting flows to DSL', { directory, flowId });
 
       try {
-        const { filePath, flowCount } = exportFlowsToDSL(directory, {
+        const { filePath, flowCount, skipped } = exportFlowsToDSL(directory, {
           rootFlowRole: FLOW_ROLES.ROOT_FLOW,
           flowIds: flowId ? [flowId] : undefined,
         });
@@ -358,6 +358,7 @@ export const flowsSystem = setup({
           type: 'DSL_EXPORTED',
           filePath,
           flowCount,
+          skipped,
         });
 
         logger.info('DSL export complete', { filePath, flowCount });

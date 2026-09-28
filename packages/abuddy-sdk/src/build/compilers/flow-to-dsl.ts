@@ -328,7 +328,7 @@ export function exportFlowsToDSL(
   outputDir: string,
   options: ExportFlowsOptions,
   versioned = true,
-): { filePath: string; flowCount: number } {
+): { filePath: string; flowCount: number; skipped: string[] } {
   const { rootFlowRole, flowIds, engine = installedEngine() } = options;
   const { qx } = engine;
   const steps = stepLookup(options.steps);
@@ -354,11 +354,15 @@ export function exportFlowsToDSL(
   const rootFlowId = qx().withRole(rootFlowRole).first();
 
   const dsl: FlowDSL = {};
+  const skipped: string[] = [];
   let exported = 0;
 
   for (const flow of flows) {
     const { name, tracks } = decompileFlow(engine, steps, flow, actionMap, promptMap, flowMap);
-    if (tracks.length === 0) continue;
+    // A flow with no trigger has no track to hang its steps from, and the DSL has no way to say "a flow that
+    // does nothing yet" — so it cannot be exported. It is named rather than dropped: a flow the user built and
+    // has not triggered yet would otherwise be missing from the file with nothing said.
+    if (tracks.length === 0) { skipped.push(name); continue; }
 
     if (flow.id === rootFlowId) {
       dsl[name] = { root: true, tracks };
@@ -375,5 +379,5 @@ export function exportFlowsToDSL(
   }
   const filePath = writeExportJson(outputDir, 'exported-flows.json', dsl);
 
-  return { filePath, flowCount: exported };
+  return { filePath, flowCount: exported, skipped };
 }

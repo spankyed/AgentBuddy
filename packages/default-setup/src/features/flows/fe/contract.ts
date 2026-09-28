@@ -52,6 +52,8 @@ export interface FlowsContext {
     errors: string[];
     filePath: string;
     flowCount: number;
+    /** Flows that could not be written as DSL, having no trigger to hang their steps from */
+    skipped: string[];
   };
   navHistory: NavHistory<string | null>;
 }
