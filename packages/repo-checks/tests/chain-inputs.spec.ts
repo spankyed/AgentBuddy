@@ -92,8 +92,10 @@ describe('the chain reads every source file', () => {
    * directories, which took in three packaging modules that `typecheck` did not declare — so an unused binding in
    * `build/prod/diagnostics.mjs` failed `lint:check` while the chain planned `typecheck` as cached.
    *
-   * `lint:check` lints in two passes and both are derived here. The root one is `oxlint .` minus `packages/**`
-   * and `docs/**`; the other is the script run in each workspace, from that package's directory — which is why a
+   * `lint:check` lints in two passes and both are derived here. The root one is `oxlint .` minus `docs/**` and
+   * the CLI's scaffold templates (`lint-scope.spec.ts` holds that second exclusion, which nothing else reads —
+   * this case does not, because `typecheck` declares `templates` among its inputs whether it is linted or not);
+   * the other is the script run in each workspace, from that package's directory — which is why a
    * target resolves against a base rather than the repo root. Expanding a script's text is not enough to see the
    * second: the root script's own first clause *is* the fan-out, and `expanded` substitutes each `npm run` once,
    * so the workspace passes stayed invisible and a package-root `.mjs` no step declared went unnoticed until
