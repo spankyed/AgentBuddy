@@ -38,14 +38,20 @@ function readPublishedEntryPoints(packageDir: string): Set<string> {
  * Read once per pack rather than once per file: a pack's every file asks the same question, and a pack of 500
  * files would otherwise parse the same `package.json` 500 times.
  *
- * Keyed by the manifest's modification time as well as its path, so there is no cache to remember to clear: a
- * test tree that rewrites a pack's `exports` under a path it has used before gets the new answer, where a
+ * Keyed by the manifest's modification time and size as well as its path, so there is no cache to remember to
+ * clear: a test tree that rewrites a pack's `exports` under a path it has used before gets the new answer, where a
  * path-keyed cache would hand back the old one and no reset call is easy to notice missing.
+ *
+ * The size is there because the time alone is only as fine as the filesystem: APFS records sub-millisecond
+ * timestamps, but a 1-second granularity is still ordinary (ext4 without nanosecond timestamps, some container
+ * volumes), and there a rewrite inside one tick reads as unchanged — which is the stale read this key exists to
+ * prevent, returning on the one platform nobody checks it on.
  */
 const published = new Map<string, Set<string>>();
 function publishedEntryPoints(packageDir: string): Set<string> {
   const manifest = path.join(packageDir, 'package.json');
-  const stamp = fs.existsSync(manifest) ? `${packageDir}@${fs.statSync(manifest).mtimeMs}` : packageDir;
+  const stat = fs.existsSync(manifest) ? fs.statSync(manifest) : undefined;
+  const stamp = stat ? `${packageDir}@${stat.mtimeMs}+${stat.size}` : packageDir;
   const known = published.get(stamp) ?? readPublishedEntryPoints(packageDir);
   published.set(stamp, known);
   return known;

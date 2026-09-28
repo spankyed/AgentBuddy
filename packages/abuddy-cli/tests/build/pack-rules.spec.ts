@@ -136,6 +136,39 @@ describe('every rule', () => {
   });
 
   /**
+   * The exemption is read once per pack and cached, and the cache has to notice a manifest that changed without the
+   * clock moving. It is keyed on the manifest's size as well as its mtime for exactly this: APFS timestamps are
+   * sub-millisecond, but a 1-second granularity is ordinary elsewhere, and there a rewrite inside one tick reads as
+   * unchanged — so the stale answer would return only on a filesystem nobody runs the suite on.
+   *
+   * `utimesSync` puts the mtime back where it was, which is that filesystem's behaviour on this one.
+   */
+  it('re-reads a pack whose exports changed while its mtime did not', () => {
+    const files = (exported: Record<string, string>) => ({
+      'package.json': JSON.stringify({ name: 'p', type: 'module', exports: exported }),
+      'src/features/notes/fe/state.ts': 'export const notes = 1;\n',
+      'src/extensions/viewer.ts': "import { notes } from '../features/notes/fe/state.ts';\nexport const viewer = notes;\n",
+    });
+    const dir = pack(files({ './viewer': './src/extensions/viewer.ts' }));
+
+    // Both writes are stamped with one timestamp, so `mtimeMs` is identical across them to the digit the cache
+    // reads. Putting a *captured* mtime back does not do it: statSync reports sub-millisecond precision and
+    // utimesSync takes a Date, so the restored value differs and the cache misses for the wrong reason — measured,
+    // the case passed with the size removed from the key.
+    const manifest = path.join(dir, 'package.json');
+    const frozen = new Date('2026-01-01T00:00:00.000Z');
+    fs.utimesSync(manifest, frozen, frozen);
+    // Published from outside every feature, so it is the module that assembles the pack
+    expect(problems(dir, 'cross-feature-imports')).toEqual([]);
+    fs.writeFileSync(manifest, JSON.stringify({ name: 'p', type: 'module', exports: {} }));
+    fs.utimesSync(manifest, frozen, frozen);
+
+    expect(problems(dir, 'cross-feature-imports'),
+      'the manifest publishes nothing now, so viewer.ts has no licence — a cache keyed on mtime alone would still say it does')
+      .toEqual(['src/extensions/viewer.ts:1: ../features/notes/fe/state.ts']);
+  });
+
+  /**
    * A whole-pack rule, so its findings arrive as written with no span and its case needs a manifest: which module
    * is a contract is what `abuddy.json` says, not what a file looks like.
    */
