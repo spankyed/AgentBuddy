@@ -22,6 +22,8 @@ import { UNIT_SUITES, type UnitSuite } from '../../../scripts/lib/unit-suites.ts
 import { reachableText, rootScripts } from '../../../scripts/lib/npm-scripts.ts';
 import { TYPECHECK_LEGS } from '../../../scripts/lib/typecheck-legs.ts';
 import { poolUnitFor } from '../../../scripts/lib/unit-pool.ts';
+import { PACKAGE_DIRS } from '../../../scripts/lib/workspace-deps.ts';
+import { population } from '@abuddy/host/testing/population';
 
 /** Tracked code no chain step reads, and why. An entry that stops applying is reported, not ignored. */
 const NOT_A_CHAIN_INPUT: Record<string, string> = {
@@ -162,16 +164,9 @@ describe('the chain reads every source file', () => {
       return walked;
     };
 
-    const rootManifest = JSON.parse(fs.readFileSync(path.join(REPO_ROOT, 'package.json'), 'utf-8')) as { workspaces?: readonly string[] };
-    const workspaces = (rootManifest.workspaces ?? []).flatMap((glob) => {
-      const dir = /^([\w./-]+)\/\*$/.exec(glob)?.[1];
-      expect(dir, `this only reads a \`dir/*\` workspace glob, and got \`${glob}\``).toBeDefined();
-      return fs
-        .readdirSync(path.join(REPO_ROOT, dir!), { withFileTypes: true })
-        .filter((entry) => entry.isDirectory() && fs.existsSync(path.join(REPO_ROOT, dir!, entry.name, 'package.json')))
-        .map((entry) => `${dir}/${entry.name}`);
-    });
-    expect(workspaces, 'the root `workspaces` field named none, so every workspace pass would be invisible').not.toEqual([]);
+    // The one definition of which workspaces there are, which refuses a glob whose workspaces it could not name
+    const workspaces = PACKAGE_DIRS.map((dir) => `packages/${dir}`);
+    expect(workspaces, 'no workspace was derived, so every workspace pass would be invisible').not.toEqual([]);
     const manifests = new Map(workspaces.map((workspace) => [
       workspace,
       JSON.parse(fs.readFileSync(path.join(REPO_ROOT, workspace, 'package.json'), 'utf-8')) as { name?: string; scripts?: Record<string, string> },
@@ -305,14 +300,11 @@ describe('the chain builds every workspace that has a build', () => {
     const root = JSON.parse(fs.readFileSync(path.join(REPO_ROOT, 'package.json'), 'utf-8')) as { scripts: Record<string, string> };
     const named = new Set([...root.scripts['build:app'].matchAll(/-w (\S+)/g)].map(([, name]) => name));
 
-    const withBuild = fs.readdirSync(path.join(REPO_ROOT, 'packages'), { withFileTypes: true })
-      .filter((entry) => entry.isDirectory())
-      .flatMap((entry) => {
-        const manifest = path.join(REPO_ROOT, 'packages', entry.name, 'package.json');
-        if (!fs.existsSync(manifest)) return [];
-        const pkg = JSON.parse(fs.readFileSync(manifest, 'utf-8')) as { name: string; scripts?: Record<string, string> };
-        return pkg.scripts?.build ? [pkg.name] : [];
-      });
+    const withBuild = PACKAGE_DIRS.flatMap((dir) => {
+      const manifest = path.join(REPO_ROOT, 'packages', dir, 'package.json');
+      const pkg = JSON.parse(fs.readFileSync(manifest, 'utf-8')) as { name: string; scripts?: Record<string, string> };
+      return pkg.scripts?.build ? [pkg.name] : [];
+    });
 
     const unbuilt = withBuild.filter((name) => name !== OWNED_BY_COMPILE && !named.has(name));
     expect(unbuilt, 'add these to build:app, or say which step builds them').toEqual([]);
@@ -681,6 +673,40 @@ describe('a build unit declares the modules its build script imports', () => {
  * `lint:check` fans out with `-ws`, which no `-w <name>` pattern can follow, and an artifact's exception is
  * about the artifact rather than about each workspace the root script delegates to.
  */
+/**
+ * A recorded artifact has both halves.
+ *
+ * The convention is that `<artifact>:check` and `<artifact>:update` carry the same noun, and root CLAUDE.md
+ * gives the reason: "an artifact with only an update is one nothing will notice has gone stale". Until this,
+ * that rule was prose — `sdk-modules:update` had no check for as long as it has existed, and the only thing
+ * standing between it and a silent staleness was a spec in another package that happens to compare the file.
+ *
+ * One direction only. Requiring an `:update` for every `:check` would buy an exceptions list and nothing
+ * else: `lint:check` pairs with `lint:fix` and `packages:check` with `packages:build`, both under the
+ * `<action>:<variant>` shape, and neither records a file that can go stale.
+ */
+describe('a recorded artifact has both halves', () => {
+  const scriptsByManifest = (): { where: string; scripts: Record<string, string> }[] =>
+    [{ where: 'root', file: path.join(REPO_ROOT, 'package.json') },
+      ...PACKAGE_DIRS.map((dir) => ({ where: dir, file: path.join(REPO_ROOT, 'packages', dir, 'package.json') }))]
+      .map(({ where, file }) => ({ where, scripts: (JSON.parse(fs.readFileSync(file, 'utf-8')) as
+        { scripts?: Record<string, string> }).scripts ?? {} }));
+
+  it('gives every `:update` the `:check` that notices it has gone stale', () => {
+    const manifests = population('the manifests to read', scriptsByManifest(), { atLeast: 10 });
+    const updates = manifests.flatMap(({ where, scripts }) => Object.keys(scripts)
+      .filter((name) => name.endsWith(':update'))
+      .map((name) => ({ where, noun: name.slice(0, -':update'.length), scripts })));
+    expect(updates.length, 'no `:update` script was found, so this would pass over nothing').toBeGreaterThan(3);
+    const unchecked = updates
+      .filter(({ noun, scripts }) => scripts[`${noun}:check`] === undefined)
+      .map(({ where, noun }) => `${where}'s ${noun}:update`);
+    expect(unchecked, 'these rewrite a committed file and nothing named for that artifact re-derives it. Add '
+      + 'the `:check` half — it may be a one-line wrapper for a spec that already compares it, as '
+      + 'seed-parity:check is').toEqual([]);
+  });
+});
+
 describe("the chain runs every artifact's check", () => {
   /** A `:check` script the chain does not run, and why. An entry that stops applying is reported. */
   const NOT_RUN_BY_THE_CHAIN: Record<string, string> = {
@@ -690,6 +716,7 @@ describe("the chain runs every artifact's check", () => {
     // a way to ask by hand. Both say so themselves: `spec-cost.ts` records that `scripts/lib/spec-cost.ts`
     // holds what it and `suite-split.spec.ts` share, "so a spec and this command cannot disagree".
     'seed-parity:check': 'a wrapper for `npm test -- tests/seeds`; those specs run in test:unit:pack',
+    'sdk-modules:check': 'a wrapper for `sdk-bridge-drift.spec.ts`, which compares the generated file against a fresh render; it runs in test:unit:host',
     'flow-export:check': 'a wrapper for `npm test -- tests/extensions/steps/export-example.spec.ts`; that spec runs in test:unit:pack, where it compares the flow DSL example rather than recording it',
     'spec-cost:check': 'reads the records and runs nothing; suite-split.spec.ts asserts the same rule from '
       + 'scripts/lib/spec-cost.ts, and it runs in test:unit:host',
@@ -698,7 +725,7 @@ describe("the chain runs every artifact's check", () => {
   /** Every `<artifact>:check` in the repo, as the label of the manifest declaring it and the script's name */
   const checkScripts = (): { where: string; name: string }[] => {
     const manifests = [path.join(REPO_ROOT, 'package.json'),
-      ...fs.readdirSync(path.join(REPO_ROOT, 'packages'))
+      ...PACKAGE_DIRS
         .map((dir) => path.join(REPO_ROOT, 'packages', dir, 'package.json'))
         .filter((file) => fs.existsSync(file))];
     return manifests.flatMap((file) => {

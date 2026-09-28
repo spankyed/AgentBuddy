@@ -5,8 +5,17 @@
  * **Where a population is assembled from a written-down list of contributors, guard each one here rather than
  * the total.** A total cannot see one contributor go missing: `published-declarations` named three packages,
  * summed their declarations and put a floor under the sum, and two of the three could fail to install without
- * moving the total past it — so the check compiled what was left and reported green. A population derived from
- * a walk of the tree does not have this problem, since it cannot name something that is not there.
+ * moving the total past it — so the check compiled what was left and reported green.
+ *
+ * **A walk is not immunity, and this comment used to say it was.** It cannot name something absent, but it
+ * can fail to follow an edge, and then it is a written-down list wearing a walk's clothes. Five instances in
+ * one day, 2026-09-28: a lint derivation that expanded each `npm run` once and so never saw the `-ws` fan-out
+ * (858 files unexamined, green); a tsconfig check that read one config per workspace where three compile
+ * `packages/api`; seven places deriving "the workspaces" by listing `packages/` rather than reading the
+ * `workspaces` field that decides them; a fixture claiming every step and holding eleven of thirteen; and an
+ * audit that grepped `src/` and `docs/` but not `tests/`. None of them was empty, so nothing here would have
+ * fired. The question is not "derived or listed" but **derived from what defines the population, or from
+ * something that agrees with it today** — and the answer is checkable: name the declaration out loud.
  *
  * `atLeast` is for one subject with a known shape, whose collapse would not take it to zero: a fixture manifest
  * declaring one feature names four paths, and three of them would satisfy a bare emptiness test. It is not a

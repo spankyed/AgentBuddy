@@ -18,7 +18,7 @@ import * as path from 'node:path'
 import { afterAll, describe, expect, it } from 'vitest'
 import { exportFlowsToDSL } from '@abuddy/sdk/build'
 import { ROOT_FLOW_ROLE } from '@abuddy/sdk'
-import { importFlows } from '@abuddy/testing/harness'
+import { importFlows, population } from '@abuddy/testing/harness'
 import { startTestRuntime } from '@abuddy/sdk/testing'
 import { steps as registeredSteps } from '#extensions/steps/register.ts'
 import { EVERY_STEP_FLOW } from '../../_support/every-step-flow.ts'
@@ -81,8 +81,8 @@ describe('the flow DSL export example', () => {
     const shown = shownBy(actual as Record<string, unknown>)
     const expectedSteps = registeredSteps.filter((step) => step.kind !== 'trigger').map((step) => step.type).sort()
     const expectedTriggers = registeredSteps.filter((step) => step.kind === 'trigger').map((step) => step.type).sort()
-    expect(expectedSteps.length, 'no step types were derived, so the two comparisons below cover nothing').toBeGreaterThan(5)
-    expect(expectedTriggers.length, 'no triggers were derived, so the comparison below covers nothing').toBeGreaterThan(0)
+    population('the step types to expect', expectedSteps, { atLeast: 5 })
+    population('the triggers to expect', expectedTriggers)
     expect([...shown.steps].sort(), 'the example is meant to show every step this pack registers, and these '
       + 'differ. Add the missing ones to tests/_support/every-step-flow.ts').toEqual(expectedSteps)
     expect([...shown.triggers].sort(), 'the example is meant to show every trigger this pack registers, and '

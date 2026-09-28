@@ -171,9 +171,12 @@ Five rules that pay for themselves:
   that was stale, an extractor that found no paths in the one manifest it was written for, a probe naming a
   file that does not exist. A rule table already has the answer — *"a rule with no firing case is a gate
   nothing has watched fail"* — and an ad-hoc check needs the same thing and rarely has it. Two habits, both
-  cheaper than the review that catches it otherwise. **Derive the subject from the tree and assert it is not
-  empty**: a population that comes from a walk cannot be fictional, and one that comes back empty should fail
-  by name rather than pass every assertion over it. **Where the input is data — a pattern list, a manifest, a
+  cheaper than the review that catches it otherwise. **Derive the subject from the declaration that defines
+  it, and assert it is not empty** — in that order, because the first is the half that keeps failing. A walk
+  of the tree cannot name something fictional, but it can miss an edge, and then it is a hand-written list
+  that looks derived: seven places listed `packages/` where the root `workspaces` field decides what a
+  workspace is, and a lint check expanded each `npm run` once and never saw the `-ws` fan-out. Neither was
+  empty, so an emptiness guard says nothing about either. **Where the input is data — a pattern list, a manifest, a
   rule table — mutate it in the test**: drop the thing under test from a copy, assert the answer flips, and the
   check proves it can fail on every run for microseconds. `repo-checks/tests/packaged-app-files.spec.ts` is the
   worked example; its two mutation cases corrected two wrong beliefs about the patterns they check on the first

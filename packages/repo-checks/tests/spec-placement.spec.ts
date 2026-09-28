@@ -3,6 +3,7 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { REPO_ROOT } from '@abuddy/host/build/packages-built';
+import { PACKAGE_DIRS } from '../../../scripts/lib/workspace-deps.ts';
 
 /**
  * A spec lives with the thing it can break.
@@ -35,10 +36,7 @@ const tracked = (): string[] =>
     .toString().split('\n').filter(Boolean);
 
 const packageDirs = (): string[] =>
-  fs.readdirSync(path.join(REPO_ROOT, 'packages'), { withFileTypes: true })
-    .filter((entry) => entry.isDirectory() && fs.existsSync(path.join(REPO_ROOT, 'packages', entry.name, 'package.json')))
-    .map((entry) => entry.name)
-    .sort();
+  [...PACKAGE_DIRS];
 
 /**
  * A package with source and deliberately no suite, and why. An entry here is a claim that nothing in its

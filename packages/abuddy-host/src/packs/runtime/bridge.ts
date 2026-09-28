@@ -16,12 +16,15 @@ const SDK_BRIDGE: Record<string, unknown> = SHARED_INSTANCE_MODULES;
  * The shared-instance package specifiers bridged to host singletons.
  *
  * Exported for the drift guard in tests/packs/runtime/sdk-bridge-drift.spec.ts. A pack
- * importing a shared-instance subpath that is missing here does NOT fail loudly:
- * the require falls through to real Node resolution, which type-strips the
- * SDK's .ts source and then dies on its extensionless relative imports
- * (ERR_MODULE_NOT_FOUND). loadBuiltInPacks catches that and silently falls
- * back to the prebuilt bundle, so the app still boots with dev hot-reload
- * quietly broken. The guard makes a new SDK export fail a test instead.
+ * importing a shared-instance subpath that is missing here fails loudly, and
+ * says what to do: `withModuleBridge` throws "isn't provided by this
+ * AgentBuddy: rebuild the pack with the current @abuddy/cli" for any specifier
+ * under a bridged package it has no entry for. That was not always so — before
+ * `755385f15` the require fell through to real Node resolution and died on the
+ * SDK's extensionless relative imports, which `loadBuiltInPacks` caught and
+ * answered by falling back to the prebuilt bundle, booting the app with dev
+ * hot-reload quietly broken. The built-in loader still has that fallback for
+ * every other failure, so the throw is what keeps this one visible.
  */
 export function getBridgedSdkSpecifiers(): readonly string[] {
   return Object.keys(SDK_BRIDGE);

@@ -3,6 +3,7 @@ import * as path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { packagesBuiltOrRefuse, REPO_ROOT } from '@abuddy/host/build/packages-built';
 import { population } from '@abuddy/host/testing/population';
+import { PACKAGE_DIRS } from '../../../scripts/lib/workspace-deps.ts';
 import { FileMatcher } from 'app-builder-lib/out/fileMatcher.js';
 import { beforeAll, describe, expect, it } from 'vitest';
 
@@ -82,7 +83,7 @@ function filesUnder(dir: string): string[] {
 
 /** Every `packages/<pkg>/<part>` that exists: the populations below are per-package, and derived */
 const perPackage = (part: string): string[] =>
-  fs.readdirSync(path.join(REPO_ROOT, 'packages')).flatMap((pkg) => filesUnder(path.join('packages', pkg, part)));
+  PACKAGE_DIRS.flatMap((pkg) => filesUnder(path.join('packages', pkg, part)));
 
 const TEMPLATES = 'packages/abuddy-cli/templates';
 const PACKED_TEMPLATES = 'packages/abuddy-cli/dist/package/templates';

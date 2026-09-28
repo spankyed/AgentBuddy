@@ -3,15 +3,16 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { getBridgedSdkSpecifiers } from '../../../src/packs/runtime/bridge.ts';
 import { APP_UNBRIDGED, renderSharedModules } from '../../../src/build/render-sdk-modules.ts';
-import { APP_ONLY_EXPORTS, SHARED_INSTANCE_PACKAGES } from '../../../src/build/shared-deps.ts';
+import { APP_ONLY_EXPORTS, SHARED_INSTANCE_PACKAGES, sharedInstanceExports } from '../../../src/build/shared-deps.ts';
 
 const REPO_ROOT = path.resolve(__dirname, '..', '..', '..', '..', '..');
-/** Packages whose exports the bridge must account for: the shared-instance packages, which pack code requires, and the host, which it never does */
-const PACKAGE_DIRS: Record<string, string> = {
-  '@abuddy/sdk': path.join(REPO_ROOT, 'packages', 'abuddy-sdk'),
-  '@abuddy/ears': path.join(REPO_ROOT, 'packages', 'abuddy-ears'),
-  '@abuddy/host': path.join(REPO_ROOT, 'packages', 'abuddy-host'),
-};
+/**
+ * Packages whose exports the bridge must account for: the shared-instance packages, which pack code requires,
+ * and the host, which it never does. Derived from the list that decides the first group rather than spelled
+ * beside it — a fourth shared package would otherwise be checked by nothing here, in the spec that exists to
+ * notice exactly that kind of gap.
+ */
+const ACCOUNTED_FOR: readonly string[] = [...SHARED_INSTANCE_PACKAGES, '@abuddy/host'];
 const SDK_MODULES_FILE = path.join(REPO_ROOT, 'packages', 'abuddy-host', 'src', 'packs', 'runtime', 'sdk-modules.ts');
 const RUNTIME_ENTRY = path.join(REPO_ROOT, 'packages', 'default-setup', 'dist', 'runtime', 'index.cjs');
 
@@ -103,7 +104,14 @@ function isFeSpecifier(s: string): boolean {
 }
 
 function exportsMap(pkg: string): Record<string, unknown> {
-  return JSON.parse(fs.readFileSync(path.join(PACKAGE_DIRS[pkg], 'package.json'), 'utf8')).exports;
+  // The shared-instance packages resolve their own manifest by specifier, which is how every other consumer
+  // of their exports map reads it. The host is private and exports no `./package.json`, so nothing can
+  // resolve it that way and its manifest is read from the tree — the one package here that differs.
+  if (pkg === '@abuddy/host') {
+    return (JSON.parse(fs.readFileSync(path.join(REPO_ROOT, 'packages', 'abuddy-host', 'package.json'), 'utf8')) as
+      { exports: Record<string, unknown> }).exports;
+  }
+  return sharedInstanceExports(pkg, import.meta.filename);
 }
 
 
@@ -112,7 +120,7 @@ function toSpecifier(pkg: string, key: string): string {
 }
 
 function allExports(): string[] {
-  return Object.keys(PACKAGE_DIRS).flatMap((pkg) => Object.keys(exportsMap(pkg)).map((key) => toSpecifier(pkg, key)));
+  return ACCOUNTED_FOR.flatMap((pkg) => Object.keys(exportsMap(pkg)).map((key) => toSpecifier(pkg, key)));
 }
 
 function concreteExports(): string[] {

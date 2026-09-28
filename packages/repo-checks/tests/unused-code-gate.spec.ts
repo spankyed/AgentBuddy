@@ -3,6 +3,8 @@ import * as path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import ts from 'typescript';
 import { REPO_ROOT } from '@abuddy/host/build/packages-built';
+import { population } from '@abuddy/host/testing/population';
+import { PACKAGE_DIRS } from '../../../scripts/lib/workspace-deps.ts';
 
 /**
  * The compiler reports unused code, in every package, and nothing has to opt in.
@@ -28,10 +30,7 @@ import { REPO_ROOT } from '@abuddy/host/build/packages-built';
  */
 
 const packageDirs = (): string[] =>
-  fs.readdirSync(path.join(REPO_ROOT, 'packages'), { withFileTypes: true })
-    .filter((entry) => entry.isDirectory() && fs.existsSync(path.join(REPO_ROOT, 'packages', entry.name, 'package.json')))
-    .map((entry) => entry.name)
-    .sort();
+  [...PACKAGE_DIRS];
 
 /**
  * A workspace with no tsconfig, and why it needs none. An entry is a claim that nothing here is compiled,
@@ -85,8 +84,7 @@ const hasTypeScript = (workspace: string): boolean => {
 
 describe('every workspace is checked for unused code', () => {
   it('sets noUnusedLocals in every config that compiles source', () => {
-    const configs = compilingConfigs();
-    expect(configs.length, 'no tsconfig was derived, so this would pass over nothing').toBeGreaterThan(15);
+    const configs = population('the tsconfigs that compile source', compilingConfigs(), { atLeast: 15 });
     const missing = configs.filter((config) => !config.gated && !(config.rel in NOT_GATED)).map((config) => config.rel);
     expect(missing, 'add "noUnusedLocals": true to these, or to NOT_GATED with a reason: a config without it '
       + 'is one the compiler stops reporting dead code through, and nothing else reports the kind it finds').toEqual([]);

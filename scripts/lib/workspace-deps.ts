@@ -15,17 +15,35 @@ import * as path from 'node:path';
 import { REPO_ROOT } from '@abuddy/host/build/packages-built';
 
 /**
- * Every `packages/*` holding a package.json, derived so a new one is covered by default.
+ * Every workspace, as a directory name under `packages/`, derived so a new one is covered by default.
  *
  * Exported because a spec that asserts *which* packages reach a pack suite has to enumerate all of them or
  * it proves nothing: the first version of that check listed nine of the twelve by hand, looked exhaustive,
  * and missed `abuddy-host` — which reaches `@app/default-setup` transitively through `@abuddy/testing` and
  * made the count in three doc comments wrong.
+ *
+ * **Read from the `workspaces` field, not from a listing of `packages/`.** Those agree only while the field
+ * is exactly `["packages/*"]`, and seven places in this repo assumed they always would. A walk of a directory
+ * cannot name a workspace that is not in it, so the miss would be silent — which is why a glob this cannot
+ * represent throws here instead. The names are bare rather than repo-relative because every consumer joins
+ * them to `packages/`; the day a workspace lives elsewhere, this refuses rather than dropping it, and that is
+ * the change to make then.
  */
-export const PACKAGE_DIRS = fs.readdirSync(path.join(REPO_ROOT, 'packages'), { withFileTypes: true })
-  .filter((entry) => entry.isDirectory() && fs.existsSync(path.join(REPO_ROOT, 'packages', entry.name, 'package.json')))
-  .map((entry) => entry.name)
-  .sort();
+export const PACKAGE_DIRS = (() => {
+  const { workspaces = [] } = JSON.parse(fs.readFileSync(path.join(REPO_ROOT, 'package.json'), 'utf-8')) as
+    { workspaces?: readonly string[] };
+  const outside = workspaces.filter((glob) => glob !== 'packages/*');
+  if (outside.length > 0) {
+    throw new Error(`workspace-deps only reads the glob \`packages/*\`, and package.json declares `
+      + `${outside.join(', ')}. Every consumer of PACKAGE_DIRS joins a bare name to packages/, so those `
+      + `workspaces would be dropped silently — give it repo-relative paths and migrate the consumers.`);
+  }
+  if (workspaces.length === 0) throw new Error('package.json declares no workspaces, so PACKAGE_DIRS would be empty');
+  return fs.readdirSync(path.join(REPO_ROOT, 'packages'), { withFileTypes: true })
+    .filter((entry) => entry.isDirectory() && fs.existsSync(path.join(REPO_ROOT, 'packages', entry.name, 'package.json')))
+    .map((entry) => entry.name)
+    .sort();
+})();
 
 /** Every workspace package's npm name and where it lives, so a declared dependency can become a path */
 const DIR_BY_PACKAGE = new Map<string, string>(PACKAGE_DIRS.map((dir) => [

@@ -3,7 +3,7 @@ import * as path from 'node:path';
 import { BUILD_UNITS, repoRelative, REPO_ROOT } from '@abuddy/host/build/packages-built';
 import { UNIT_SUITES, type UnitSuite } from './unit-suites.ts';
 import { hasSplit } from './spec-cost.ts';
-import { dependencySource, workspaceDeps } from './workspace-deps.ts';
+import { dependencySource, PACKAGE_DIRS, workspaceDeps } from './workspace-deps.ts';
 
 /**
  * The pre-merge chain's steps and what each is allowed to read. Separate from `scripts/chain.ts` because
@@ -181,11 +181,12 @@ export function orderedSteps(steps: readonly ChainStep[] = CHAIN_STEPS): readonl
  */
 const ROOT = ['package.json', 'package-lock.json', 'vitest.config.ts'];
 
-/** Every `packages/*` holding a package.json, derived rather than listed so a new one is covered by default */
-const PACKAGES = fs.readdirSync(path.join(REPO_ROOT, 'packages'), { withFileTypes: true })
-  .filter((entry) => entry.isDirectory() && fs.existsSync(path.join(REPO_ROOT, 'packages', entry.name, 'package.json')))
-  .map((entry) => entry.name)
-  .sort();
+/**
+ * Every workspace, from the one definition that decides which they are (`workspace-deps.ts`, read from the
+ * root `workspaces` field). This used to walk `packages/` itself and call that "derived" — true of a new
+ * directory, false of a new workspace, and these names feed `EVERY_WORKSPACE` and so every step's inputs.
+ */
+const PACKAGES = PACKAGE_DIRS;
 
 /**
  * A package's own source, its tests, its own tooling, its recorded artifacts, and the files that say how it
