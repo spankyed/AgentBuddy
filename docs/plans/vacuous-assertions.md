@@ -60,9 +60,14 @@ lands in the runner instead. Making the state unreachable is smaller than buildi
 ### 2. One pack fixture
 
 This finding stands on its own evidence and is unchanged from revision 1. `Given a pack that …` is written
-privately in **35 spec files across six packages** — `pack`, `makePack`, `writePack`, `packFixture`,
-`packWithImports`, `packWithDefaults`, `packSource`, `packRepo`. Five of those are where the shape is
-load-bearing, and the weak shape has already cost twice:
+privately across the repo under eight different names — `pack`, `makePack`, `writePack`, `packFixture`,
+`packWithImports`, `packWithDefaults`, `packSource`, `packRepo`.
+
+**Corrected after implementing** (the figure below was 35 spec files across six packages, in revision 2 and in
+commit `38bc4cdec`): that count came from grepping those names, and it swept in things that build no pack — a
+manifest object literal in `manifest-schema.spec.ts`, a compiled-seeds result in `edited-flows.spec.ts`, a temp
+directory holding one `defaults.mjs`. **19 specs actually write a pack directory**, and the five variants
+collapsed here were still the load-bearing ones. The weak shape has already cost twice:
 
 - `abuddy-cli/tests/build/pack-rules.spec.ts` carries three shapes, one an `abuddy.json` written inline because
   neither of the other two could express a contract leaf.
