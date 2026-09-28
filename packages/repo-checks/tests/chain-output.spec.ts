@@ -330,7 +330,7 @@ describe('driftReport', () => {
   ];
 
   it('prints the value to record, when the run is comparable to the table', () => {
-    const report = driftReport(drifted, 3, 3);
+    const report = driftReport(drifted, 3, 3, true);
 
     expect(report).toContain('re-measure, or record');
     expect(report).toContain('seconds: 57 -> 18');
@@ -342,7 +342,7 @@ describe('driftReport', () => {
    * mis-sized bound `seconds`' own doc warns about. The numbers are real; only "record them" was wrong.
    */
   it('names the spread instead, when the run used another lane count', () => {
-    const report = driftReport(drifted, 1, 3);
+    const report = driftReport(drifted, 1, 3, true);
 
     expect(report).not.toContain('record');
     expect(report).toContain('at 1 lane, 2 steps moved against 3-lane numbers');
@@ -350,11 +350,21 @@ describe('driftReport', () => {
   });
 
   it('says slower when more lanes made a step slower, not faster', () => {
-    expect(driftReport([{ name: 'typecheck', declared: 27, measured: 54 }], 6, 3)).toContain('(2.0x slower)');
+    expect(driftReport([{ name: 'typecheck', declared: 27, measured: 54 }], 6, 3, true)).toContain('(2.0x slower)');
+  });
+
+  /**
+   * Measured: a gate run with nine of twelve steps cached reported `typecheck seconds: 27 -> 12`. Three lanes
+   * with almost everything cached is no contention at all, so the step ran at its solo speed and the lane
+   * count — which is what the first version of this gated on — said nothing about it.
+   */
+  it('says nothing about a run that did not do all the work, whatever its lane count', () => {
+    expect(driftReport(drifted, 3, 3, false)).toBe('');
+    expect(driftReport(drifted, 1, 3, false)).toBe('');
   });
 
   it('says nothing when nothing drifted, at either lane count', () => {
-    expect(driftReport([], 3, 3)).toBe('');
-    expect(driftReport([], 1, 3)).toBe('');
+    expect(driftReport([], 3, 3, true)).toBe('');
+    expect(driftReport([], 1, 3, true)).toBe('');
   });
 });

@@ -391,7 +391,7 @@ async function main(): Promise<void> {
     console.log('  Re-measure with `npm run chain -- --all` and set MEASURED_AT_LANES, or the table is about another schedule.');
   }
 
-  const report = driftReport(driftedSteps(steps, measuredMs, all), lanes, MEASURED_AT_LANES);
+  const report = driftReport(driftedSteps(steps, measuredMs), lanes, MEASURED_AT_LANES, all);
   if (report !== '') console.log(report);
 
   console.log(`\n${verdict} in ${secs(Date.now() - started)}${skipped}${lanes > 1 ? ` with ${lanes} lanes` : ''}\n${byTier}${floor}`);

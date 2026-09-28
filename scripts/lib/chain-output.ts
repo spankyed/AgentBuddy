@@ -300,8 +300,14 @@ export function driftReport(
   drifted: readonly { name: string; declared: number; measured: number }[],
   lanes: number,
   measuredAt: number,
+  /** Whether the run did every step's work (`--all`), which is how the table's numbers are taken */
+  forced: boolean,
 ): string {
-  if (drifted.length === 0) return '';
+  // A partly cached run is not a smaller version of a full one: with nine of twelve steps cached there is no
+  // contention, so three lanes behave as one and every step looks fast against a number taken from a busy
+  // chain. Silent rather than noted, because most runs are incremental and a warning on all of them is one
+  // nobody reads — the reason the pooled-step advisory was narrowed before it.
+  if (!forced || drifted.length === 0) return '';
   const count = `${drifted.length} step${drifted.length === 1 ? '' : 's'}`;
   if (lanes === measuredAt) {
     return [

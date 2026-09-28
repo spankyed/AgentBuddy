@@ -54,6 +54,11 @@ export function criticalPath<S extends SchedulableStep>(steps: readonly S[]): { 
  * `seconds: 14 -> 0` — the cached cost, which is the exact confusion this field was corrected for.
  */
 /**
+ * Asked only of a run that did all the work at the measured schedule — `driftReport` in chain-output.ts holds
+ * that gate. A step's time says nothing about the table otherwise: a pooled step may have run two of eleven
+ * projects, and, measured, `typecheck` takes 12s in a chain with nine steps cached against 27s in a full one,
+ * so an incremental run at the default lane count reported it as drifted by more than half.
+ *
  * Where a declared cost has stopped describing the step: past double, or under half.
  *
  * One constant with two readers — `driftedSteps` below, which wants both sides, and `howLong` in
@@ -65,27 +70,14 @@ export const BAND = 2;
 /** Slower than a declared cost still describes */
 export const overBand = (declared: number, measured: number): boolean => measured > declared * BAND;
 
-export function driftedSteps<S extends SchedulableStep & { readonly forceArgs?: readonly string[] }>(
+export function driftedSteps<S extends SchedulableStep>(
   steps: readonly S[],
   measuredMs: ReadonlyMap<string, number>,
-  /**
-   * Whether this run forced every step's own cache (`--all`). Without it, a step that keeps one may have
-   * done a fraction of its work, and its time says nothing about the number in the table.
-   */
-  forced = false,
 ): Array<{ name: string; declared: number; measured: number }> {
   const drifted: Array<{ name: string; declared: number; measured: number }> = [];
   for (const step of steps) {
     const ms = measuredMs.get(step.name);
     if (ms === undefined || step.seconds === undefined) continue;
-    // A step that declares `forceArgs` keeps a cache of its own — that is what the field is for, and
-    // `chain-inputs.spec.ts` holds the correspondence in both directions. Unforced, such a step may have run
-    // two of eleven projects while `seconds` is the cost of eleven, so its time is not evidence about the
-    // table. This advisory fired on nearly every incremental run because of the two pooled steps, and a
-    // warning that is always on is one nobody reads. Under `--all` they do the whole pool's work, which is
-    // the run the number is checked on. Revisit if a step ever declares `forceArgs` for another reason:
-    // the marker then has to become explicit rather than inferred.
-    if (step.forceArgs !== undefined && !forced) continue;
     const measured = Math.round(ms / 1000);
     if (measured < 1) continue;
     if (overBand(step.seconds, measured) || measured < step.seconds / BAND) {

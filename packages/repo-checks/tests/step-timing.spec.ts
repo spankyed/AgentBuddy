@@ -66,24 +66,21 @@ describe('driftedSteps', () => {
   describe('a step that keeps a cache of its own', () => {
     const pooled = [step('test:unit:host', [], { seconds: 20, forceArgs: ['--all'] })];
 
-    it('says nothing on an incremental run, where it may have done a fraction of its work', () => {
-      expect(driftedSteps(pooled, new Map([['test:unit:host', 5_000]]))).toEqual([]);
-    });
-
-    it('is reported when the run forced its work, which is what --all is for', () => {
-      expect(driftedSteps(pooled, new Map([['test:unit:host', 5_000]]), true))
+    /**
+     * The `--all` gate that used to live here moved to `driftReport`, because it was never only about pooled
+     * steps: measured, an incremental run left `typecheck` at 12s against a declared 27s, having run with
+     * nine of twelve steps cached and so no contention. One gate on the run, rather than a flag per step.
+     * `chain-output.spec.ts` holds it now.
+     */
+    it('is reported like any other step, the run being what decides whether to ask', () => {
+      expect(driftedSteps(pooled, new Map([['test:unit:host', 5_000]])))
         .toEqual([{ name: 'test:unit:host', declared: 20, measured: 5 }]);
     });
 
     // The direction the kill budget cares about: at four times the declared cost, budgetFor starts killing
-    it('is reported under --all when it overran, not only when it undershot', () => {
-      expect(driftedSteps(pooled, new Map([['test:unit:host', 50_000]]), true))
+    it('is reported when it overran, not only when it undershot', () => {
+      expect(driftedSteps(pooled, new Map([['test:unit:host', 50_000]])))
         .toEqual([{ name: 'test:unit:host', declared: 20, measured: 50 }]);
-    });
-
-    it('does not make the flag the gate for an ordinary step, which has no cache to force', () => {
-      expect(driftedSteps(steps, new Map([['slow', 21_000]]), false))
-        .toEqual([{ name: 'slow', declared: 10, measured: 21 }]);
     });
   });
 
