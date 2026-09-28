@@ -27,6 +27,16 @@ export const SKIPPED_DIRS = /^(?:node_modules|dist|out|coverage|results|test-res
 
 export const CLI_TEMPLATE_PACK = 'packages/abuddy-cli/templates/pack';
 
+/** A JSON file's contents, named in the error when it doesn't parse (one bad manifest shouldn't sink the run) */
+export function readJsonFile<T>(file: string): T {
+  const text = fs.readFileSync(file, 'utf-8');
+  try {
+    return JSON.parse(text) as T;
+  } catch (error) {
+    throw new Error(`${file}: invalid JSON (${(error as Error).message})`);
+  }
+}
+
 /**
  * Every pack in this checkout: a directory holding `abuddy.json`, which is already how the source-condition
  * rule defines one, plus the scaffold's templates — the pack every pack author starts from, which has no
