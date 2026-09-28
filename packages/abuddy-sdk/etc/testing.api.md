@@ -137,6 +137,21 @@ export interface FeTestRuntimeOptions extends Partial<FeHostRuntime> {
 }
 
 // @public
+export function packFixture(input?: PackFixtureOptions): string;
+
+// @public (undocumented)
+export interface PackFixtureOptions {
+    readonly at?: string;
+    readonly files?: Record<string, string>;
+    readonly manifest?: unknown;
+}
+
+// @public
+export function population<T>(what: string, xs: readonly T[], opts?: {
+    atLeast?: number;
+}): readonly T[];
+
+// @public
 export function registerSeedRuntime(runtime: SeedRuntime): void;
 
 // @public

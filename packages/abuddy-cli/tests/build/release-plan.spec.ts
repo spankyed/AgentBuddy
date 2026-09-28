@@ -17,15 +17,24 @@ afterEach(() => {
 
 async function releasePlan(changeset: string): Promise<Record<string, string>> {
   scratch = fs.mkdtempSync(path.join(os.tmpdir(), 'abuddy-release-plan-'));
-  fs.writeFileSync(path.join(scratch, 'package.json'), JSON.stringify({ name: 'root', private: true, workspaces: ['packages/*'] }));
+  // The scratch repo mirrors this one's `workspaces` rather than restating it: changesets resolves the
+  // workspaces from that field, so a fixture that hardcodes it stops being a fixture of this repo the day
+  // the field moves — and the copy loop below would then be walking a directory the plan never reads.
+  const { workspaces } = JSON.parse(fs.readFileSync(path.join(REPO_ROOT, 'package.json'), 'utf-8')) as
+    { workspaces: string[] };
+  fs.writeFileSync(path.join(scratch, 'package.json'), JSON.stringify({ name: 'root', private: true, workspaces }));
   fs.mkdirSync(path.join(scratch, '.changeset'));
   fs.copyFileSync(path.join(REPO_ROOT, '.changeset', 'config.json'), path.join(scratch, '.changeset', 'config.json'));
   fs.writeFileSync(path.join(scratch, '.changeset', 'change.md'), changeset);
-  // Every workspace manifest: private workspace packages depend on the published ones too
-  for (const dir of fs.readdirSync(path.join(REPO_ROOT, 'packages'))) {
-    if (!fs.existsSync(path.join(REPO_ROOT, 'packages', dir, 'package.json'))) continue;
-    fs.mkdirSync(path.join(scratch, 'packages', dir), { recursive: true });
-    fs.copyFileSync(path.join(REPO_ROOT, 'packages', dir, 'package.json'), path.join(scratch, 'packages', dir, 'package.json'));
+  // Every workspace manifest: private workspace packages depend on the published ones too. Walked from the
+  // globs above, so the fixture holds whatever the field names.
+  for (const glob of workspaces) {
+    const under = glob.replace(/\/\*$/, '');
+    for (const dir of fs.readdirSync(path.join(REPO_ROOT, under))) {
+      if (!fs.existsSync(path.join(REPO_ROOT, under, dir, 'package.json'))) continue;
+      fs.mkdirSync(path.join(scratch, under, dir), { recursive: true });
+      fs.copyFileSync(path.join(REPO_ROOT, under, dir, 'package.json'), path.join(scratch, under, dir, 'package.json'));
+    }
   }
   const plan = await getReleasePlan(scratch);
   return Object.fromEntries(plan.releases.filter((r) => r.name.startsWith('@abuddy/') && r.name !== '@abuddy/host').map((r) => [r.name, r.newVersion]));

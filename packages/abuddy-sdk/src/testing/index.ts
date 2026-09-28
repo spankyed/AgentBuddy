@@ -125,3 +125,8 @@ export function entityIds(): EARS.EntityId[] {
 export function dropAttribute(id: EARS.EntityId, kind: string): void {
   testEngine().admin.dropAttr(id, kind as EARS.AttrKind);
 }
+
+/** The subject a check asserted over, confirmed to be there — see its own doc comment for the rule */
+export { population } from './population.ts';
+/** A complete pack on disk, for specs about the rules that read one */
+export { packFixture, type PackFixtureOptions } from './pack-fixture.ts';

@@ -12,6 +12,8 @@ import { packageName } from '@abuddy/host/build/specifiers';
 import { runPackageBuild } from '@abuddy/host/build/packages-built';
 import { manifestPaths, type Manifest } from '@abuddy/host/build/published-manifest';
 import { SHARED_INSTANCE_PACKAGES } from '@abuddy/host/build/shared-deps';
+import ts from 'typescript';
+import { BareImports } from './lib/published-imports.ts';
 import { build, type BuildOptions, type Plugin } from 'esbuild';
 
 interface BundleConfig {
@@ -148,6 +150,32 @@ const sharedOptions = {
   banner: { js: "import { createRequire as __abuddyCreateRequire } from 'node:module'; const require = __abuddyCreateRequire(import.meta.url);" },
 } satisfies BuildOptions;
 
+/**
+ * The declarations a consumer can reach: every `types` target the exports map names, and every declaration
+ * those import by relative path, transitively. What lies outside is shipped weight rather than published
+ * surface — a different problem from this one, and conflating them makes this check report a file nothing
+ * can import.
+ */
+function reachableDeclarations(outDir: string, manifest: Manifest): string[] {
+  const exports = (manifest.exports ?? {}) as Record<string, { types?: string }>;
+  const queue = Object.values(exports)
+    .map((target) => target?.types)
+    .filter((types): types is string => typeof types === 'string')
+    .map((types) => path.join(outDir, types));
+  const seen = new Set<string>();
+  while (queue.length > 0) {
+    const file = queue.pop()!;
+    if (seen.has(file) || !fs.existsSync(file)) continue;
+    seen.add(file);
+    const info = ts.preProcessFile(fs.readFileSync(file, 'utf-8'), true, true);
+    for (const { fileName } of info.importedFiles) {
+      if (!fileName.startsWith('.')) continue;
+      queue.push(path.resolve(path.dirname(file), fileName.replace(/\.js$/, '.d.ts')));
+    }
+  }
+  return [...seen];
+}
+
 async function main(): Promise<void> {
   fs.rmSync(outDir, { recursive: true, force: true });
 
@@ -239,6 +267,26 @@ async function main(): Promise<void> {
   };
   fs.writeFileSync(path.join(outDir, 'package.json'), JSON.stringify(manifest, null, 2) + '\n');
   assertPublishedPathsExist(config, pkgDir, outDir, pkg.name);
+
+  // The declarations must name only packages a consumer installs. `tsc --emitDeclarationOnly` copies a bare
+  // specifier through untouched where esbuild would have inlined the same import — so a type taken from
+  // `@abuddy/host`, which is inlined and deliberately absent from `dependencies` above, resolves at runtime
+  // and is `any` to anyone type-checking. `build-package.ts` and `build-ui-package.ts` have asserted this
+  // since they were written; this build emitted declarations without it, which is how one reached
+  // @abuddy/testing's harness and was found by reading the built file rather than by any check.
+  if (config.declarations) {
+    // Reachable from the exports map, not every file tsc emitted. `build-package.ts` walks the whole tree
+    // because for @abuddy/ears and /sdk every dist module is an export; a bundled package has three entries
+    // and tsc writes a declaration per module it compiled, so walking everything reports a module a consumer
+    // cannot name — `checkout-freshness.d.ts` takes a host type in an options bag only this package's own
+    // spec passes, and no entry's declaration mentions it.
+    const bareImports = new BareImports(outDir);
+    for (const file of reachableDeclarations(outDir, manifest as Manifest)) {
+      bareImports.fromDeclaration(fs.readFileSync(file, 'utf-8'), file);
+    }
+    bareImports.assertDeclared(manifest as Parameters<BareImports['assertDeclared']>[0],
+      path.join(path.relative(repoRoot, pkgDir), 'package.json'));
+  }
   console.log(`Built ${pkg.name}@${pkg.version} into ${path.relative(process.cwd(), outDir)}`);
 }
 

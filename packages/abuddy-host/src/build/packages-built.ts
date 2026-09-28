@@ -115,7 +115,8 @@ function compiled(pkg: string, ...extraInputs: string[]): BuildUnit {
 /** A package esbuild bundles into `dist/package/`, inlining @abuddy/host from source (scripts/bundle-package.ts) */
 function bundled(pkg: string, ...extraInputs: string[]): BuildUnit {
   return {
-    inputs: [...SHARED_INPUTS, repoFile('scripts', 'bundle-package.ts'), ...extraInputs,
+    inputs: [...SHARED_INPUTS, repoFile('scripts', 'bundle-package.ts'),
+      repoFile('scripts', 'lib', 'published-imports.ts'), ...extraInputs,
       pkgFile(pkg, 'src'), pkgFile(pkg, 'package.json'), pkgFile(pkg, 'tsconfig.json'),
       pkgFile('abuddy-host', 'src'), pkgFile('abuddy-host', 'package.json')],
     outputs: [pkgFile(pkg, 'dist', 'package', 'package.json'), pkgFile(pkg, 'dist', 'package', 'dist')],

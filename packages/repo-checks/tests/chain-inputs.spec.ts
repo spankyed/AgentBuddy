@@ -23,7 +23,7 @@ import { reachableText, rootScripts } from '../../../scripts/lib/npm-scripts.ts'
 import { TYPECHECK_LEGS } from '../../../scripts/lib/typecheck-legs.ts';
 import { poolUnitFor } from '../../../scripts/lib/unit-pool.ts';
 import { PACKAGE_DIRS } from '../../../scripts/lib/workspace-deps.ts';
-import { population } from '@abuddy/host/testing/population';
+import { population } from '@abuddy/sdk/testing';
 
 /** Tracked code no chain step reads, and why. An entry that stops applying is reported, not ignored. */
 const NOT_A_CHAIN_INPUT: Record<string, string> = {

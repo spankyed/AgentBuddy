@@ -2,7 +2,7 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import ts from 'typescript';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { population } from '@abuddy/host/testing/population';
+import { population } from '@abuddy/sdk/testing';
 import { PACKAGES_BUILT, installPublishedPackages } from '../src/published-packages.ts';
 
 /**

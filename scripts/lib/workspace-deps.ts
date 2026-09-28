@@ -28,22 +28,27 @@ import { REPO_ROOT } from '@abuddy/host/build/packages-built';
  * represent throws here instead. The names are bare rather than repo-relative because every consumer joins
  * them to `packages/`; the day a workspace lives elsewhere, this refuses rather than dropping it, and that is
  * the change to make then.
+ *
+ * The refusal is pure and pinned by `workspace-dirs.spec.ts`, which is the only way it gets watched failing:
+ * the throw here runs at module load of something the chain and `npm run spec` both import.
  */
-export const PACKAGE_DIRS = (() => {
-  const { workspaces = [] } = JSON.parse(fs.readFileSync(path.join(REPO_ROOT, 'package.json'), 'utf-8')) as
-    { workspaces?: readonly string[] };
+export function workspaceDirsFrom(workspaces: readonly string[], root = REPO_ROOT): string[] {
+  if (workspaces.length === 0) throw new Error('package.json declares no workspaces, so there is nothing to derive');
   const outside = workspaces.filter((glob) => glob !== 'packages/*');
   if (outside.length > 0) {
     throw new Error(`workspace-deps only reads the glob \`packages/*\`, and package.json declares `
       + `${outside.join(', ')}. Every consumer of PACKAGE_DIRS joins a bare name to packages/, so those `
       + `workspaces would be dropped silently — give it repo-relative paths and migrate the consumers.`);
   }
-  if (workspaces.length === 0) throw new Error('package.json declares no workspaces, so PACKAGE_DIRS would be empty');
-  return fs.readdirSync(path.join(REPO_ROOT, 'packages'), { withFileTypes: true })
-    .filter((entry) => entry.isDirectory() && fs.existsSync(path.join(REPO_ROOT, 'packages', entry.name, 'package.json')))
+  return fs.readdirSync(path.join(root, 'packages'), { withFileTypes: true })
+    .filter((entry) => entry.isDirectory() && fs.existsSync(path.join(root, 'packages', entry.name, 'package.json')))
     .map((entry) => entry.name)
     .sort();
-})();
+}
+
+export const PACKAGE_DIRS = workspaceDirsFrom(
+  (JSON.parse(fs.readFileSync(path.join(REPO_ROOT, 'package.json'), 'utf-8')) as { workspaces?: readonly string[] })
+    .workspaces ?? []);
 
 /** Every workspace package's npm name and where it lives, so a declared dependency can become a path */
 const DIR_BY_PACKAGE = new Map<string, string>(PACKAGE_DIRS.map((dir) => [

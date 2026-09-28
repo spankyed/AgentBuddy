@@ -2,7 +2,7 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { packagesBuiltOrRefuse, REPO_ROOT } from '@abuddy/host/build/packages-built';
-import { population } from '@abuddy/host/testing/population';
+import { population } from '@abuddy/sdk/testing';
 import { PACKAGE_DIRS } from '../../../scripts/lib/workspace-deps.ts';
 import { FileMatcher } from 'app-builder-lib/out/fileMatcher.js';
 import { beforeAll, describe, expect, it } from 'vitest';

@@ -21,7 +21,6 @@ import type { PackRegistryView } from '@abuddy/sdk/runtime';
 import type { FeatureRef } from '@abuddy/sdk/ids';
 import type { PackRegistration } from '@abuddy/sdk/framework';
 import { createPackRegistry, type PackOrigin } from '@abuddy/host/packs';
-import { population as hostPopulation } from '@abuddy/host/testing/population';
 import { createPacksSystem, createSettingsSystem, hostRegistration, packsEvents, settingsEvents } from '@abuddy/host/features';
 import { appState, HOST_ENTITY_TYPES } from '@abuddy/host/app-state';
 import { createSettingsService, createSettingsStore, type SettingsDocument } from '@abuddy/host/settings';
@@ -410,18 +409,3 @@ export function importFlows(dsl: FlowDSL): void {
   flowRepository.importFromDSL(compileFlowDSL(dsl, { actions: byLabel(actionRepository.all()), prompts: byLabel(promptRepository.all()), flows }));
 }
 
-/**
- * The subject a check asserted over, confirmed to be there: returns `xs`, or throws naming `what`.
- *
- * Here because it lives in `@abuddy/host`, which a pack may not depend on — so a pack's specs, this repo's
- * and an author's alike, had no way to say "and there was something to assert over". The host's copy has the
- * rule in full, including why a floor over a total is the shape it cannot save you from.
- *
- * Declared rather than re-exported: `export { population }` emits `import ... from '@abuddy/host/...'` into
- * the published declaration, and the bundler inlines host rather than shipping it, so an external pack would
- * resolve the value and not its type. This is the only `@abuddy/host` name this entry exposes, which is why
- * it is the only one that needed saying.
- */
-export function population<T>(what: string, xs: readonly T[], opts: { atLeast?: number } = {}): readonly T[] {
-  return hostPopulation(what, xs, opts);
-}

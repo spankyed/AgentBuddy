@@ -2,7 +2,7 @@ import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest';
-import { population } from '@abuddy/host/testing/population';
+import { population } from '@abuddy/sdk/testing';
 import { bundlePackFE } from '../../src/build/fe-bundler';
 import { PACKAGES_BUILT, REPO_ROOT, installPublishedPackages } from '@app/publish-checks';
 
