@@ -150,6 +150,14 @@ export function jsSpecifierFixes(dirs: readonly string[] = CHECKED_DIRS, root = 
  * the parent, which is what the specs that pass `['src/pack']` mean by a pack.
  */
 function packRootOf(from: string, root: string): string {
+  // A directory this repo already calls a pack wins over the walk below. The CLI's scaffold is one and has no
+  // manifest to be found by — `abuddy.json` is built in code, from computed keys — so the walk climbed past it
+  // to `packages/abuddy-cli` and handed every rule that package as the pack. Measured: `contract-leaves`,
+  // `cross-feature-imports` and `own-modules` all reported nothing over the scaffold, each for a different
+  // reason and none of them "it is clean".
+  const inside = (pack: string) => from === pack || from.startsWith(pack + path.sep);
+  const known = packDirs(root).map((pack) => path.join(root, pack)).find(inside);
+  if (known !== undefined) return known;
   let dir = fs.statSync(from).isFile() ? path.dirname(from) : from;
   while (dir.startsWith(root) && dir !== root) {
     if (fs.existsSync(path.join(dir, 'abuddy.json')) || fs.existsSync(path.join(dir, 'package.json'))) return dir;

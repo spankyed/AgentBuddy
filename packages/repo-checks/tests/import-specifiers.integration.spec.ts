@@ -1211,6 +1211,57 @@ describe('findPackageScriptImports', () => {
  * The fixture is a pack, `abuddy.json` included: that file is what makes a tree a pack, and a fixture without one
  * isn't testing the thing the rule runs on.
  */
+/**
+ * The CLI's scaffold is a pack with no manifest, and `packDirs()` names it outright because the walk that finds
+ * every other pack cannot see it — `abuddy.json` is built in code, from computed keys (`init.ts`).
+ *
+ * That made it the one pack whose rules ran against the wrong directory: `packRootOf` climbed past it to
+ * `packages/abuddy-cli` and handed that package to every rule, so `contract-leaves` found no features,
+ * `cross-feature-imports` read the wrong package's published entry points, and `own-modules` read an `imports`
+ * map belonging to someone else. All three reported nothing, and none of them because the scaffold was clean.
+ */
+describe("the CLI's scaffold, a pack with no manifest", () => {
+  const TEMPLATE = 'packages/abuddy-cli/templates/pack';
+  const scaffold = (files: Record<string, string>) => {
+    // The CLI's own `package.json`, which is the whole point: without something above the scaffold to find,
+    // the walk runs out of tree and lands on the scaffold by accident, and a fixture built that way passes
+    // whether the fix is there or not — measured, by removing the fix and watching it stay green
+    writeAt('packages/abuddy-cli/package.json', JSON.stringify({ name: '@abuddy/cli' }));
+    for (const [file, content] of Object.entries(files)) writeAt(`${TEMPLATE}/${file}`, content);
+  };
+
+  it('is checked by the rules that need no manifest', () => {
+    scaffold({
+      'src/features/notes/be/contract.ts': "import type { M } from './system.ts';\nexport type Contract = { m: M };\n",
+      'src/features/notes/be/system.ts': 'export type M = 1;\n',
+      'src/features/notes/be/sibling.ts': 'export const y = 1;\n',
+      'src/features/notes/be/relative.ts': "import { y } from './sibling.js';\nexport const z = y;\n",
+    });
+    expect(packRule('contract-leaves', [`${TEMPLATE}/src`], root),
+      'contract-leaves reads the layout where no manifest names the contracts, and the scaffold has none')
+      .not.toEqual([]);
+    expect(packRule('own-modules', [`${TEMPLATE}/src`], root),
+      "own-modules' relative branch needs nothing but the file beside it").not.toEqual([]);
+  });
+
+  /**
+   * The one exclusion, and it is a fact about the scaffold rather than a choice: a `#` specifier is resolved
+   * through the pack's `package.json` `imports`, which `init` writes and the template therefore has none of.
+   * Contrasted against a pack that does carry the map, so this says "the scaffold cannot" rather than "nothing
+   * here fires".
+   */
+  it("is not checked by own-modules' # branch, for want of a package.json to resolve through", () => {
+    const offence = "import { w } from '#generated/events';\nexport const v = w;\n";
+    scaffold({ 'src/features/notes/be/hash.ts': offence });
+    expect(packRule('own-modules', [`${TEMPLATE}/src`], root)).toEqual([]);
+
+    packFixture({ 'src/f.ts': offence });
+    expect(packRule('own-modules', PACK_SRC, root),
+      'the same specifier in a pack that declares an imports map must fire, or this proves nothing')
+      .not.toEqual([]);
+  });
+});
+
 describe('findContractLeafImports', () => {
   const src = 'pack/src';
   /** A pack whose `notes` feature names both contracts, as a real manifest does, with the subpath map a pack has */
