@@ -195,8 +195,8 @@ describe('every rule', () => {
   });
 
   /**
-   * A whole-pack rule, so its findings arrive as written with no span and its case needs a manifest: which module
-   * is a contract is what `abuddy.json` says, not what a file looks like.
+   * A whole-pack rule, so its findings arrive as written with no span. Which module is a contract is what
+   * `abuddy.json` says — and, where a tree has none, what the layout says; the case below is that half.
    */
   it('contract-leaves flags a contract leaf that reaches its own machine', () => {
     const dir = completePack({
@@ -204,6 +204,24 @@ describe('every rule', () => {
       'src/features/notes/fe/state.ts': "import { sendToPlugin } from '#generated/events.ts';\nexport type Ctx = { sent: typeof sendToPlugin };\n",
     });
     expect(problems(dir, 'contract-leaves')).toEqual(['src/features/notes/fe/contract.ts:1: ./state.ts']);
+  });
+
+  /**
+   * And where no manifest names them, `features/<id>/{be,fe}/contract.ts` does.
+   *
+   * Two trees here have no `abuddy.json` and never will: the app is the pack `host`, whose features are real
+   * code, and the CLI's scaffold builds its manifest in code from computed keys. Both sit in this rule's
+   * population on purpose, and while the manifest was the only way in it answered `[]` before reading a byte —
+   * so the host's two contracts had never been checked at all. A manifest still wins where there is one, since
+   * it can name a contract this layout would miss.
+   */
+  it('contract-leaves reads the layout when no manifest names the contracts', () => {
+    const dir = pack({
+      'package.json': JSON.stringify({ name: 'p', type: 'module', imports: { '#generated/*': './src/__generated__/*' } }),
+      'src/features/notes/be/contract.ts': "import type { M } from './system.ts';\nexport type Contract = { m: M };\n",
+      'src/features/notes/be/system.ts': 'export type M = 1;\n',
+    });
+    expect(problems(dir, 'contract-leaves')).toEqual(['src/features/notes/be/contract.ts:1: ./system.ts']);
   });
 
   /**

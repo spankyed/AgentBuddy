@@ -218,25 +218,48 @@ export const GENERATED_BEHIND_A_CONTRACT = ['system-specs', 'events', 'fe', 'pac
  * only the closure's reach to `#generated/events` overlaps that refusal, and only where the collapse lands in one
  * of the four; the rest have no other guard in any tree.
  */
+/**
+ * A pack's contracts where no manifest names them: `features/<id>/{be,fe}/contract.ts`, which is the layout
+ * every pack in this repo is written to.
+ *
+ * Two trees have no `abuddy.json` and never will. The app is the pack `host` and its features are real code;
+ * the CLI's scaffold builds its manifest in code, from an object with computed keys. Both sit in this rule's
+ * population deliberately, and while the manifest was the only way in, the rule answered `[]` before reading
+ * either of them — so the host's two contracts had never been checked at all.
+ *
+ * Only a fallback: a manifest that names contracts is still the authority, because it can name one this
+ * layout would miss.
+ */
+function byLayout(src: string): string[] {
+  const features = path.join(src, 'features');
+  if (!fs.existsSync(features)) return [];
+  return fs.readdirSync(features, { withFileTypes: true })
+    .filter((entry) => entry.isDirectory())
+    .flatMap((entry) => ['be', 'fe'].map((half) => path.join(features, entry.name, half, 'contract.ts')))
+    .filter((file) => fs.existsSync(file));
+}
+
 export function contractLeafFindings(packDir: string): PackWideFinding[] {
   const src = path.join(packDir, 'src');
   const manifestPath = path.join(packDir, 'abuddy.json');
-  if (!fs.existsSync(manifestPath)) return [];
-  const manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf-8')) as {
-    features?: Array<{ plugin?: { contract?: string; entry?: string }; system?: { contract?: string; entry?: string } }>;
-  };
+  const manifest = fs.existsSync(manifestPath)
+    ? JSON.parse(fs.readFileSync(manifestPath, 'utf-8')) as {
+      features?: Array<{ plugin?: { contract?: string; entry?: string }; system?: { contract?: string; entry?: string } }>;
+    }
+    : undefined;
   /** A `"path"` or `"path#Export"` the manifest names, as a file in the pack */
   const named = (target: string | undefined): string | undefined =>
     target ? sourceFile(path.join(packDir, target.split('#')[0]!)) : undefined;
-  const files = (pick: (f: NonNullable<typeof manifest.features>[number]) => Array<string | undefined>) =>
-    (manifest.features ?? []).flatMap((feature) => pick(feature).flatMap((t) => { const f = named(t); return f ? [f] : []; }));
+  type Feature = NonNullable<NonNullable<typeof manifest>['features']>[number];
+  const files = (pick: (f: Feature) => Array<string | undefined>) =>
+    (manifest?.features ?? []).flatMap((feature) => pick(feature).flatMap((t) => { const f = named(t); return f ? [f] : []; }));
 
-  const leaves = files((f) => [f.plugin?.contract, f.system?.contract]);
+  const leaves = manifest ? files((f) => [f.plugin?.contract, f.system?.contract]) : byLayout(src);
   /**
    * The actor modules `abuddy.json` names. Exact, where the machine rule below is a guess at a filename: these
    * are the two paths the manifest states outright, so a leaf reaching one is reported whatever it is called.
    */
-  const actorEntries = new Set(files((f) => [f.plugin?.entry, f.system?.entry]));
+  const actorEntries = new Set(manifest ? files((f) => [f.plugin?.entry, f.system?.entry]) : []);
   // The pack's own `#` subpaths, which is how a pack names its own modules and so how its features reach each
   // other. Two of `default-setup`'s contract closures used to end at one of those imports — including
   // `threads/be/types.ts` reaching `code/`, a cross-feature hop the walk stopped at.
