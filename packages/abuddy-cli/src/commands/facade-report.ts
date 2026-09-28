@@ -9,6 +9,15 @@
 // etc, the same shape as `abuddy validate` and `abuddy build`. As a script it could not share code with the
 // bundler that produces its subject, and the normalisation it needs ended up in a third package to be
 // reachable from both.
+// **One pack uses this today.** `abuddy init` scaffolds no `etc/`, so no external pack has a facade-report
+// workflow at all, and the only caller is default-setup's `facade:check`/`facade:update`. Two consequences
+// worth knowing before touching it. The bundled path is never exercised end to end — `test:packaged-authoring`
+// authors an external pack, and that pack has no report to check — so what is tested here is the command run
+// from source. And the open question is not a missing test: a pack with dependents publishes a facade the same
+// way default-setup does, so either the scaffold or the release preflight should offer this, or the command is
+// default-setup's alone and should say so. Adding coverage for a workflow nobody has would settle it by
+// accident, which is why it has not been added.
+
 import { spawnSync } from 'node:child_process';
 import * as fs from 'node:fs';
 import * as os from 'node:os';

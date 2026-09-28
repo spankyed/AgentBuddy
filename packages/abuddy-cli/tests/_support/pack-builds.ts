@@ -31,6 +31,7 @@ const COMMANDS = {
   'build': async () => (await import('../../src/commands/build')).build,
   'pack': async () => (await import('../../src/commands/pack')).pack,
   'init-tests': async () => (await import('../../src/commands/init-tests')).initTests,
+  'facade-report': async () => (await import('../../src/commands/facade-report')).facadeReport,
 } satisfies Record<string, () => Promise<(args: string[]) => unknown>>;
 
 /**

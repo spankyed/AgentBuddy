@@ -57,9 +57,12 @@ export interface Reached {
    * The repo files this script reaches, repo-relative: what it names and what those name in turn.
    *
    * A step that declares its inputs has to declare these, or an edit to one changes what the step accepts
-   * while its stamp says nothing moved. `compile` reached `scripts/facade-report.ts` through
-   * `npm run facade:check -w @app/default-setup` and declared it nowhere, which is the case that asked for
-   * this field.
+   * while its stamp says nothing moved.
+   *
+   * The shape to watch for is a step that delegates to a workspace script which names a repo file: the step's
+   * own text mentions neither, so nothing connects the file to the step that reads it. That is what asked for
+   * this field — `compile` running a pack's `facade:check`, whose script was a repo script (it is a CLI
+   * command now) that went undeclared for a commit.
    */
   readonly files: ReadonlySet<string>;
   /**
