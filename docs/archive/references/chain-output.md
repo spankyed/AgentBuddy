@@ -1,3 +1,8 @@
+> **Archived** (2026-09-28, same day it was written). It is a dated capture rather than a maintained
+> reference: nothing checks it, and the chain's output moves. For the current form, run the thing —
+> `npm run chain -- --dry` for the plan, and the reproduction steps at the end for the stale report.
+> The wording of two lines in it changed within an hour of the captures being taken.
+
 # What `npm run chain` prints
 
 Every block below is a verbatim capture, piped into this file from real runs on 2026-09-28 at
