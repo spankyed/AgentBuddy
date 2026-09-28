@@ -226,6 +226,15 @@ export const stampFile = (workspace: string): string => path.join(STAMP_DIR, `${
  * `src/build` directory contains the file without equalling it, so the check passed with its intent violated. A
  * broader declaration must never be the thing that silences a "must not read this" rule.
  */
+/**
+ * Whether one declared path covers another: they are equal, or the second lies under the first.
+ *
+ * The rule every question about declared paths asks — is this file excluded, whose output is it, does one step's
+ * input tree contain another's. It was written out at each of those, and the one thing it must not get wrong is
+ * the prefix: `src/buildings` is not under `src/build`, which is why the separator is part of the comparison.
+ */
+export const covers = (outer: string, inner: string): boolean => outer === inner || inner.startsWith(`${outer}/`);
+
 export function inputFiles(target: string, out: string[] = []): string[] {
   let stat: fs.Stats;
   try {
@@ -285,7 +294,7 @@ export function fingerprintInputs(
 ): string {
   const hash = createHash('sha256');
   const excluded = exclude.map((target) => path.relative(REPO_ROOT, target));
-  const isExcluded = (file: string): boolean => excluded.some((out) => file === out || file.startsWith(`${out}/`));
+  const isExcluded = (file: string): boolean => excluded.some((out) => covers(out, file));
   for (const file of [...new Set(inputs.flatMap((target) => inputFiles(target)))].sort().filter((f) => !isExcluded(f))) {
     // A file that goes between the walk and the read hashes as absent, never as empty
     let contents: Buffer | null = null;

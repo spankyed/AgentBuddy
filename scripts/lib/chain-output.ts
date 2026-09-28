@@ -4,6 +4,7 @@
  * Its own module because the chain's own file runs the chain on import: a spec that wants to check the columns
  * cannot load `chain.ts` without starting a six-minute build.
  */
+import { covers } from '@abuddy/host/build/packages-built';
 
 /** Where a run's reason starts: verdict(7) + ` ` + tier(2) + ` ` + name(26) + ` ` + time(6) + two spaces */
 export const REASON_COLUMN = 46;
@@ -103,7 +104,7 @@ export const writerOf = (
   file: string,
   steps: readonly { readonly name: string; readonly outputs?: readonly string[] }[],
 ): string | undefined =>
-  steps.find((step) => (step.outputs ?? []).some((out) => file === out || file.startsWith(`${out}/`)))?.name;
+  steps.find((step) => (step.outputs ?? []).some((out) => covers(out, file)))?.name;
 
 /**
  * Where a change sits relative to the run that stamped the inputs — inside it, or after it finished.

@@ -4,7 +4,7 @@ import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
-import { ABSENT, BUILD_UNITS, buildScriptFor, changedInputs, CHECKOUT_MARKER, declaredPaths, fingerprintInputs, fingerprintUnit, fingerprintWithDigests, inputFiles, NOT_A_BUILD_INPUT, REPO_ROOT, staleMessage, stampRecord, STAMP_VERSION, stampedBuild, stampedRun, stampedRunAll, stampFile, unitStaleReason, withBuildLock, type BuildIntent, type BuildUnit } from '@abuddy/host/build/packages-built';
+import { ABSENT, BUILD_UNITS, buildScriptFor, changedInputs, CHECKOUT_MARKER, covers, declaredPaths, fingerprintInputs, fingerprintUnit, fingerprintWithDigests, inputFiles, NOT_A_BUILD_INPUT, REPO_ROOT, staleMessage, stampRecord, STAMP_VERSION, stampedBuild, stampedRun, stampedRunAll, stampFile, unitStaleReason, withBuildLock, type BuildIntent, type BuildUnit } from '@abuddy/host/build/packages-built';
 
 /**
  * The freshness rule behind `npm test -w @abuddy/cli`'s pretest (@abuddy/host/build/packages-built):
@@ -213,6 +213,21 @@ describe('the stamp protocol', () => {
     for (const workspace of bundles) {
       expect(new Set(BUILD_UNITS[workspace].inputs), workspace).toContain(path.join(REPO_ROOT, 'packages', 'abuddy-host', 'src'));
     }
+  });
+});
+
+describe('covers', () => {
+  /**
+   * The one thing this must not get wrong, and the reason the separator is in the comparison. Three questions
+   * about declared paths used to each write it out — is this file excluded, whose output is it, does one step's
+   * input tree hold another's — and a prefix match without the separator answers all three wrongly for a
+   * sibling whose name starts with the same letters.
+   */
+  it('covers a path under it, and not a sibling whose name merely starts the same', () => {
+    expect(covers('src/build', 'src/build/packages-built.ts')).toBe(true);
+    expect(covers('src/build', 'src/build')).toBe(true);
+    expect(covers('src/build', 'src/buildings/index.ts')).toBe(false);
+    expect(covers('src/build/packages-built.ts', 'src/build')).toBe(false);
   });
 });
 

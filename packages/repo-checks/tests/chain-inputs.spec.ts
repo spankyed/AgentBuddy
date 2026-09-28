@@ -16,7 +16,7 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import ts from 'typescript';
-import { BUILD_UNITS, buildScriptFor, inputFiles, NOT_A_BUILD_INPUT, REPO_ROOT, type BuildUnit } from '@abuddy/host/build/packages-built';
+import { BUILD_UNITS, buildScriptFor, covers, inputFiles, NOT_A_BUILD_INPUT, REPO_ROOT, type BuildUnit } from '@abuddy/host/build/packages-built';
 import { CHAIN_STEPS, INTEGRATION_SUITES, SUITE_READS, suiteInputs, type ChainStep } from '../../../scripts/lib/chain-steps.ts';
 import { UNIT_SUITES, type UnitSuite } from '../../../scripts/lib/unit-suites.ts';
 import { reachableText, rootScripts } from '../../../scripts/lib/npm-scripts.ts';
@@ -335,8 +335,6 @@ describe('a step that reads what another writes depends on it', () => {
     }
     return seen;
   };
-  /** One path covers another when they are equal or the second lies under the first */
-  const covers = (outer: string, inner: string): boolean => outer === inner || inner.startsWith(`${outer}/`);
 
   it('names the dependency, not just the path', () => {
     const missing: string[] = [];
