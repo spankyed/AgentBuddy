@@ -6,23 +6,37 @@
  */
 import { covers } from '@abuddy/host/build/packages-built';
 
-/** How wide a step's name column is, in every row that has one */
-export const STEP_NAME_WIDTH = 26;
+/**
+ * How wide a step's name column is, in every row that has one.
+ *
+ * At least as wide as the longest step name, or `padEnd` does nothing for that one step and every column
+ * measured from here is a character short for its row alone. That is not hypothetical: this was 26 against
+ * `test:external-pack:contract`'s 27, so all three row shapes put their continuation lines one column left of
+ * the reason above them — including the report this number was introduced to line up. A case holds it to the
+ * longest name in the table, because the table is where new step names arrive.
+ */
+export const STEP_NAME_WIDTH = 27;
 
-/** Where a run's reason starts: verdict(7) + ` ` + tier(2) + ` ` + name(26) + ` ` + time(6) + two spaces */
-export const REASON_COLUMN = 46;
+/**
+ * Where each row's reason starts, composed from the one width rather than restated.
+ *
+ * Every one of these used to be a literal with the arithmetic in a comment beside it, which is how three of
+ * them came to disagree with the rows they describe. They are derived now, so widening the name column moves
+ * them together and a doc comment cannot go stale against a number it only describes.
+ */
+export const REASON_COLUMN = STEP_NAME_WIDTH + 20; // verdict(7) ␣ tier(2) ␣ name ␣ time(6) + two spaces
+
+/** The same, for `--dry`, which reports no time — so its reason starts where the time would have */
+export const DRY_REASON_COLUMN = STEP_NAME_WIDTH + 12;
 
 /**
  * Where a reason starts in the end-of-run reports, which indent by two rather than carrying a verdict column.
  *
- * A constant because two things have to agree on it — the step's own row and the lines listing what moved under
- * it — and the first version used a literal in each. They were two apart, so every file the report named sat
- * just left of the reason it explained.
+ * Derived because two things have to agree on it — the step's own row and the lines listing what moved under it
+ * — and the first version used a literal in each. They were two apart, so every file the report named sat just
+ * left of the reason it explained.
  */
-export const REPORT_REASON_COLUMN = 2 + STEP_NAME_WIDTH + 1;
-
-/** The same, for `--dry`, which reports no time */
-export const DRY_REASON_COLUMN = 38;
+export const REPORT_REASON_COLUMN = STEP_NAME_WIDTH + 3;
 
 /** The terminal's width, or a width worth wrapping to when the output is a pipe or a CI log */
 export const terminalWidth = (): number => process.stdout.columns ?? 100;
@@ -93,8 +107,13 @@ export function oneLine(column: number, text: string, width = terminalWidth()): 
   return text.length <= room ? text : `${text.slice(0, room - 1).trimEnd()}…`;
 }
 
-/** Where a step's time ends, so a line beneath it can put a time in the same column */
-export const TIME_COLUMN = 38;
+/**
+ * Where a step's time ends, so a line beneath it can put a time in the same column.
+ *
+ * The same number as `DRY_REASON_COLUMN` and not the same thing: both sit immediately after the name, one
+ * holding a time and one a reason. Derived separately so that stays true if either row changes.
+ */
+export const TIME_COLUMN = STEP_NAME_WIDTH + 12;
 
 /**
  * Secondary text, dimmed on a terminal and left alone anywhere else.

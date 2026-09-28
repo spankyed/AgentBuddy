@@ -262,7 +262,7 @@ async function main(): Promise<void> {
       // would ignore. A plan that does not answer for the flags it was given is worse than no plan.
       const why = staleReason(step, sweep);
       const willRun = all || why !== null;
-      console.log(`${(willRun ? 'run' : 'cached').padStart(7)} t${step.tier} ${step.name.padEnd(26)} ${wrapAt(DRY_REASON_COLUMN, all ? '--all' : (why ?? ''))}`.trimEnd());
+      console.log(`${(willRun ? 'run' : 'cached').padStart(7)} t${step.tier} ${step.name.padEnd(STEP_NAME_WIDTH)} ${wrapAt(DRY_REASON_COLUMN, all ? '--all' : (why ?? ''))}`.trimEnd());
     }
     return;
   }
@@ -291,7 +291,7 @@ async function main(): Promise<void> {
       // TIMEOUT is its own verdict: a step that ran out of budget failed for a different reason than one
       // that returned non-zero, and which it was is the first thing you need to know.
       const verdict = result.code === 0 ? 'ok' : result.timedOut ? 'TIMEOUT' : 'FAIL';
-      console.log(`${verdict.padStart(7)} t${step.tier} ${step.name.padEnd(26)} ${secs(result.ms).padStart(6)}  ${wrapAt(REASON_COLUMN, briefly(reasons.get(step.name) ?? '', declaredIn(step.name)))}`.trimEnd());
+      console.log(`${verdict.padStart(7)} t${step.tier} ${step.name.padEnd(STEP_NAME_WIDTH)} ${secs(result.ms).padStart(6)}  ${wrapAt(REASON_COLUMN, briefly(reasons.get(step.name) ?? '', declaredIn(step.name)))}`.trimEnd());
       // So whoever profiles a suite next has its slow tests without instrumenting it
       // In the step's own time column, so every time on the screen lines up and these read as its contents
       for (const slow of slowestTests(result.output)) {
@@ -303,7 +303,7 @@ async function main(): Promise<void> {
 
   // A step whose runner threw never produced a Result, so it is reported from the throw itself
   for (const { step, error } of outcome.threw) {
-    console.log(`${'ERROR'.padStart(7)} t${steps.find((s) => s.name === step)?.tier ?? '?'} ${step.padEnd(26)} ${' '.repeat(6)}  the chain could not run it`);
+    console.log(`${'ERROR'.padStart(7)} t${steps.find((s) => s.name === step)?.tier ?? '?'} ${step.padEnd(STEP_NAME_WIDTH)} ${' '.repeat(6)}  the chain could not run it`);
     console.log(`\n${'='.repeat(72)}\n${step}: the runner threw, which is a bug in the chain rather than a failing check\n${'='.repeat(72)}\n${error instanceof Error ? (error.stack ?? error.message) : String(error)}`);
   }
 
@@ -367,7 +367,7 @@ async function main(): Promise<void> {
   const drifted = driftedSteps(steps, measuredMs, all);
   if (drifted.length > 0) {
     console.log(`\n${drifted.length} step${drifted.length === 1 ? '' : 's'} cost something other than chain-steps.ts says — re-measure, or record:`);
-    for (const { name, declared, measured } of drifted) console.log(`  ${name.padEnd(26)} seconds: ${declared} -> ${measured}`);
+    for (const { name, declared, measured } of drifted) console.log(`  ${name.padEnd(STEP_NAME_WIDTH)} seconds: ${declared} -> ${measured}`);
   }
 
   console.log(`\n${verdict} in ${secs(Date.now() - started)}${skipped}${lanes > 1 ? ` with ${lanes} lanes` : ''}\n${byTier}${floor}`);

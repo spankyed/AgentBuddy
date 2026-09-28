@@ -5,7 +5,7 @@ import * as path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { REPO_ROOT } from '@abuddy/host/build/packages-built';
 import { CHAIN_STEPS } from '../../../scripts/lib/chain-steps.ts';
-import { briefly, declaredAt, dim, DRY_REASON_COLUMN, identicalRewrites, oneLine, REASON_COLUMN, REPORT_REASON_COLUMN, staleLines, STEP_NAME_WIDTH, wrapAt, whenChanged, writerOf } from '../../../scripts/lib/chain-output.ts';
+import { briefly, declaredAt, dim, DRY_REASON_COLUMN, identicalRewrites, oneLine, REASON_COLUMN, REPORT_REASON_COLUMN, staleLines, STEP_NAME_WIDTH, TIME_COLUMN, wrapAt, whenChanged, writerOf } from '../../../scripts/lib/chain-output.ts';
 
 describe('wrapAt', () => {
   it('leaves a reason that fits on the line it is on', () => {
@@ -236,12 +236,30 @@ it('composes both rows from the declared columns', () => {
 });
 
 /**
- * And the report's own rows agree with the lines under them. They were two apart, because each carried its own
- * literal: every file the report named sat just left of the reason it was explaining.
+ * And every row agrees with the lines under it, for the name that is hardest to fit.
+ *
+ * Asserted with the **longest** declared step name, because the previous version of this case composed the
+ * column from `'x'` — a name shorter than the width, so `padEnd` always applied and the assertion held whatever
+ * the real names were. It passed while all three row shapes were a column out for `test:external-pack:contract`,
+ * which is the one step in the table wider than the column was.
  */
-it('indents what moved to the column the reason above it starts at', () => {
+it('lines every row up with what sits under it, for the widest step name', () => {
   const chain = fs.readFileSync(path.join(REPO_ROOT, 'scripts/chain.ts'), 'utf-8');
-  expect(chain, 'the report row no longer pads by the shared width').toContain('padEnd(STEP_NAME_WIDTH)');
-  expect(chain, 'the lines under it no longer take the shared column').toContain('indent: REPORT_REASON_COLUMN');
-  expect(REPORT_REASON_COLUMN).toBe(`  ${'x'.padEnd(STEP_NAME_WIDTH)} `.length);
+  expect(chain, 'a row pads the name by something other than the shared width').not.toMatch(/padEnd\(\d/);
+  expect(chain, 'the lines under a report row no longer take the shared column').toContain('indent: REPORT_REASON_COLUMN');
+
+  const widest = [...CHAIN_STEPS].sort((a, b) => b.name.length - a.name.length)[0]!.name;
+  const name = widest.padEnd(STEP_NAME_WIDTH);
+  // Built the way chain.ts builds them, so a change to either shape fails here rather than on a terminal
+  expect(`${'ok'.padStart(7)} t1 ${name} ${'26.1s'.padStart(6)}  `.length, "a run row's reason").toBe(REASON_COLUMN);
+  expect(`${'run'.padStart(7)} t1 ${name} `.length, "a --dry row's reason").toBe(DRY_REASON_COLUMN);
+  expect(`${'ok'.padStart(7)} t1 ${name} `.length, "a run row's time").toBe(TIME_COLUMN);
+  expect(`  ${name} `.length, "a report row's reason").toBe(REPORT_REASON_COLUMN);
+});
+
+/** So a step name longer than the column fails by name, rather than knocking every line under it one to the left */
+it('keeps the name column at least as wide as the widest step name', () => {
+  const widest = [...CHAIN_STEPS].sort((a, b) => b.name.length - a.name.length)[0]!.name;
+  expect(STEP_NAME_WIDTH, `${widest} does not fit; widen STEP_NAME_WIDTH to ${widest.length}`)
+    .toBeGreaterThanOrEqual(widest.length);
 });
