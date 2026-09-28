@@ -171,10 +171,11 @@ describe('a run that moved too much was measuring the machine', () => {
     const previous = { measuredAt: '', skipped: [], costs: Object.fromEntries(specs(20, 's').map((spec) => [spec, 100])) };
     const measured = [...specs(20, 's'), ...specs(8, 'new')];
     const settled = { ...previous.costs, ...Object.fromEntries(specs(8, 'new').map((spec) => [spec, 50])) };
-    const { added, remeasured } = changesIn(previous, settled, measured);
+    const { added, moved: movedSpecs, rewritten } = changesIn(previous, settled, measured);
     expect(added, 'the eight new ones').toHaveLength(8);
-    expect(remeasured, 'and nothing that had a value moved').toHaveLength(0);
-    expect(contended(remeasured.length, measured.length - added.length)).toBe(false);
+    expect(movedSpecs, 'and nothing that had a value moved').toHaveLength(0);
+    expect(rewritten, 'nor was any of their rows rewritten').toHaveLength(0);
+    expect(contended(movedSpecs.length, measured.length - added.length)).toBe(false);
   });
 
   it('reads a suite whose recorded specs mostly moved as one', () => {
@@ -385,11 +386,11 @@ describe('what a run does to the record it replaces', () => {
   // and then thrown away by a write that kept the previous record
   it('keeps a record nothing moved byte-identical, including its date', () => {
     const before = previous({ [FAST]: 1_000 });
-    const { record, added, remeasured } = settle({
+    const { record, added, moved: movedSpecs } = settle({
       previous: before, costs: { [FAST]: 1_050 }, skipped: [], measuredFiles: [FAST], all: false, prune: [],
     });
     expect(added).toHaveLength(0);
-    expect(remeasured, 'inside the tolerance, so nothing was recorded').toHaveLength(0);
+    expect(movedSpecs, 'inside the tolerance, so nothing was recorded').toHaveLength(0);
     expect(record).toEqual(before);
   });
 
@@ -402,7 +403,24 @@ describe('what a run does to the record it replaces', () => {
     expect(moved(FAST, 1_000, 1_050), 'a move the tolerance is there to absorb').toBe(false);
     expect(settle({ ...inputs, all: false }).record.costs[FAST]).toBe(1_000);
     expect(settle({ ...inputs, all: true }).record.costs[FAST]).toBe(1_050);
-    expect(settle({ ...inputs, all: true }).remeasured, 'and it says it recorded it').toEqual([FAST]);
+
+    // And it says which of the two it did. One word for both read a run of pure jitter as a suite that had
+    // got slower — `--all` rewrites a row whether or not the tolerance found anything, so the report can
+    // only be honest if the two are counted apart.
+    const written = settle({ ...inputs, all: true });
+    expect(written.rewritten, 'the row was rewritten').toEqual([FAST]);
+    expect(written.moved, 'but nothing moved, and the report must not say it did').toEqual([]);
+  });
+
+  // What the default path lets the report rely on: off `--all` the two are one set, so the line that prints
+  // the difference prints nothing, and the common output is untouched by the distinction
+  it('rewrites a row only for a movement unless --all was given', () => {
+    const SLOW = 'tests/slow.spec.ts';
+    const inputs = { previous: previous({ [FAST]: 1_000, [SLOW]: 1_000 }), skipped: [],
+      measuredFiles: [FAST, SLOW], prune: [], all: false };
+    const { moved: movedSpecs, rewritten } = settle({ ...inputs, costs: { [FAST]: 1_050, [SLOW]: 4_000 } });
+    expect(rewritten, 'the one the tolerance kept').toEqual([SLOW]);
+    expect(movedSpecs, 'and the two sets are the same off --all').toEqual(rewritten);
   });
 
   // The skipped list is content too: a spec can arrive with every test in it skipped, which moves nothing in
@@ -410,7 +428,7 @@ describe('what a run does to the record it replaces', () => {
   // missed this one as well, so the comparison is against the record rather than a list of causes.
   it('dates a run where only the skipped list moved', () => {
     const before = previous({ [FAST]: 100 });
-    const { record, added, remeasured } = settle({
+    const { record, added, moved: movedSpecs } = settle({
       previous: before,
       costs: { [FAST]: 100 },
       skipped: ['tests/needs-a-binary.spec.ts'],
@@ -418,17 +436,18 @@ describe('what a run does to the record it replaces', () => {
       all: false, prune: [],
     });
     expect(added, 'nothing was measured for the first time').toHaveLength(0);
-    expect(remeasured, 'and no cost moved').toHaveLength(0);
+    expect(movedSpecs, 'and no cost moved').toHaveLength(0);
     expect(record.costs, 'so the costs are untouched').toEqual(before.costs);
     expect(record.skipped).toEqual(['tests/needs-a-binary.spec.ts']);
     expect(record.measuredAt, 'but the record changed, so it is dated').not.toBe('then');
   });
 
   it('records a measurement that says something new, and dates it', () => {
-    const { record, remeasured } = settle({
+    const { record, moved: movedSpecs, rewritten } = settle({
       previous: previous({ [FAST]: 1_000 }), costs: { [FAST]: 4_000 }, skipped: [], measuredFiles: [FAST], all: false, prune: [],
     });
-    expect(remeasured).toEqual([FAST]);
+    expect(movedSpecs).toEqual([FAST]);
+    expect(rewritten, 'a movement is a rewrite too').toEqual([FAST]);
     expect(record.costs[FAST]).toBe(4_000);
     expect(record.measuredAt).not.toBe('then');
   });
@@ -450,7 +469,7 @@ describe('what a run does to the record it replaces', () => {
   // pruned — so a spec that stopped running rewrote the file and printed "none moved"; the `N skipped` beside
   // it is the total, identical whether the skip is new or carried, so nothing on the line said otherwise.
   it('names a spec that lost its cost, which is neither a move nor an arrival nor a prune', () => {
-    const { dropped, added, remeasured } = settle({
+    const { dropped, added, rewritten } = settle({
       previous: previous({ [FAST]: 1_200, 'tests/b.spec.ts': 800 }),
       costs: { 'tests/b.spec.ts': 800 },
       skipped: [FAST],
@@ -459,7 +478,7 @@ describe('what a run does to the record it replaces', () => {
       all: false,
     });
     expect(dropped, 'the run has to report this, or it reports nothing at all').toEqual([FAST]);
-    expect([...added, ...remeasured], 'and it is neither of the two that were counted').toEqual([]);
+    expect([...added, ...rewritten], 'and it is neither of the two that were counted').toEqual([]);
   });
 
   // A pruned spec loses its cost too, and the caller already reports those as `N gone`; counting them here
@@ -594,7 +613,7 @@ describe('a named spec that is not there is refused, whatever was asked of it', 
 });
 
 describe('when a run is refused as a measurement of the machine', () => {
-  const loaded = { hasPrevious: true, force: false, all: false, remeasured: 6, comparable: 20 };
+  const loaded = { hasPrevious: true, force: false, all: false, moved: 6, comparable: 20 };
 
   it('refuses a run that moved more of the suite than a measurement should', () => {
     expect(refusesAsContended(loaded)).toBe(true);
@@ -604,7 +623,7 @@ describe('when a run is refused as a measurement of the machine', () => {
     expect(refusesAsContended({ ...loaded, force: true })).toBe(false);
   });
 
-  // `--all` records every measurement by design, so `remeasured` is near-total on every such run: guarding it
+  // `--all` rewrites every row by design, so its `rewritten` is near-total on every such run: guarding it
   // would refuse the one mode that exists to clear a drift the per-spec tolerance cannot
   it('is suppressed by --all, which records what it measured', () => {
     expect(refusesAsContended({ ...loaded, all: true })).toBe(false);
@@ -612,6 +631,6 @@ describe('when a run is refused as a measurement of the machine', () => {
 
   it('never fires for a suite with no record to have moved', () => {
     expect(refusesAsContended({ ...loaded, hasPrevious: false })).toBe(false);
-    expect(refusesAsContended({ hasPrevious: true, force: false, all: false, remeasured: 0, comparable: 0 })).toBe(false);
+    expect(refusesAsContended({ hasPrevious: true, force: false, all: false, moved: 0, comparable: 0 })).toBe(false);
   });
 });

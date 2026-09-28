@@ -139,7 +139,7 @@ function update(plans: readonly SuitePlan[], dry: boolean): void {
     const runs = plan.configs.map((config) => measure(suite, config));
     const costs = Object.assign({}, ...runs.map((run) => run.costs)) as Record<string, number>;
 
-    const { record, added, remeasured, dropped } = settle({
+    const { record, added, moved, rewritten, dropped } = settle({
       previous, costs, skipped: [...new Set(runs.flatMap((run) => run.skipped))], measuredFiles, prune: plan.prune, all,
     });
 
@@ -147,12 +147,12 @@ function update(plans: readonly SuitePlan[], dry: boolean): void {
     // handful; a contended one moves most of what it could move and records the machine instead of the specs.
     // Only specs that had a value to move are evidence of that — a first measurement is not.
     const comparable = Object.keys(costs).length - added.length;
-    // `--all` records every measurement by design, so `remeasured` is then near-total and this would refuse
-    // the one mode that exists to clear a drift. So `--all` on a loaded machine records that machine,
-    // unguarded — the body drift below still prints, which is the evidence, and asking for it is the
-    // deliberate act the guard exists to distinguish from an accident. `refusesAsContended` holds the rest.
-    if (refusesAsContended({ hasPrevious: previous !== undefined, force, all, remeasured: remeasured.length, comparable })) {
-      throw new Error(`${suite.workspace}: ${remeasured.length} of ${comparable} already-recorded specs moved, `
+    // `--all` rewrites every row by design, so this would refuse the one mode that exists to clear a drift:
+    // on a loaded machine it records that machine, unguarded — the body drift below still prints, which is
+    // the evidence, and asking for it is the deliberate act the guard exists to distinguish from an accident.
+    // `refusesAsContended` holds the rest.
+    if (refusesAsContended({ hasPrevious: previous !== undefined, force, all, moved: moved.length, comparable })) {
+      throw new Error(`${suite.workspace}: ${moved.length} of ${comparable} already-recorded specs moved, `
         + `which is more than a measurement should. That is what a loaded machine looks like — run this with `
         + `nothing else running, or pass --force if the suite really did change this much.`);
     }
@@ -178,7 +178,11 @@ function update(plans: readonly SuitePlan[], dry: boolean): void {
       plan.configs.length === 0 ? 'measured nothing'
         : [
           added.length > 0 ? `${added.length} added` : '',
-          remeasured.length > 0 ? `${remeasured.length} moved` : '',
+          moved.length > 0 ? `${moved.length} moved` : '',
+          // Only `--all` can produce these: rows rewritten with a measurement the tolerance would have
+          // discarded. Reported apart from the movements rather than summed with them, because one word for
+          // both made a run of pure jitter read as a suite that got slower.
+          rewritten.length > moved.length ? `${rewritten.length - moved.length} recorded anyway` : '',
           dropped.length > 0 ? `${dropped.length} stopped running` : '',
         ].filter(Boolean).join(', ') || 'none moved',
       plan.prune.length > 0 ? `${plan.prune.length} gone` : '',

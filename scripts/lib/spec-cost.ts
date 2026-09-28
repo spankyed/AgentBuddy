@@ -106,23 +106,34 @@ export const moved = (file: string, recorded: number | undefined, measured: numb
 export const CONTENDED_SHARE = 0.25;
 
 /** What a run changed, told apart: a spec measured for the first time is not evidence about the machine */
-export interface Changes { readonly added: readonly string[]; readonly remeasured: readonly string[] }
+export interface Changes {
+  readonly added: readonly string[];
+  /** Specs whose recorded value this run replaced */
+  readonly rewritten: readonly string[];
+  /** Those of them the tolerance calls a real movement, which is all of them unless `--all` was given */
+  readonly moved: readonly string[];
+}
 
 /**
- * Which of the specs this run measured are new, and which had a recorded value that moved.
+ * What this run did to the specs it measured: which are new, whose row it rewrote, and which of those
+ * rewrites is a real movement rather than jitter.
  *
- * Apart, because the two answer different questions and one call site wanted each. A record must be written
- * for either. Only the second says anything about the conditions the run was taken under — counting the
- * first refused eight new specs in a suite of twenty-eight as "a loaded machine", which is the wrong
- * sentence about the right number.
+ * Apart, because they answer different questions and a call site wanted each. A record is written for any of
+ * them. Only `moved` says anything about the conditions the run was taken under — counting the new ones
+ * refused eight new specs in a suite of twenty-eight as "a loaded machine", which is the wrong sentence about
+ * the right number. And `rewritten` is the same set as `moved` unless `--all` was given, which records what
+ * the tolerance would have discarded: their difference is what that flag cost, and the only place a reader
+ * can see it.
  */
 export function changesIn(
   previous: SpecCost | undefined, settled: Record<string, number>, measured: readonly string[],
 ): Changes {
   const before = (spec: string): number | undefined => previous?.costs[spec];
+  const rewritten = measured.filter((spec) => before(spec) !== undefined && settled[spec] !== before(spec));
   return {
     added: measured.filter((spec) => before(spec) === undefined),
-    remeasured: measured.filter((spec) => before(spec) !== undefined && settled[spec] !== before(spec)),
+    rewritten,
+    moved: rewritten.filter((spec) => moved(spec, before(spec), settled[spec]!)),
   };
 }
 
@@ -132,8 +143,8 @@ export function changesIn(
  * `comparable` is the specs that had a value to move — measured minus added — so a suite recorded for the
  * first time is never refused for having recorded everything.
  */
-export const contended = (remeasured: number, comparable: number): boolean =>
-  comparable > 0 && remeasured > CONTENDED_SHARE * comparable;
+export const contended = (moved: number, comparable: number): boolean =>
+  comparable > 0 && moved > CONTENDED_SHARE * comparable;
 
 /**
  * How far this run's measurements have moved as a body, against what the record holds for the same specs.
@@ -410,15 +421,15 @@ export function refuseAbsent(dir: string, files: readonly string[], named: reado
  * Whether to refuse this run as a measurement of the machine rather than of the specs.
  *
  * Four inputs, which is why it is named rather than spelled out at the call site. `--force` is the user
- * saying the suite really did change this much; `--all` records every measurement by design, so `remeasured`
- * is then near-total and this would refuse the one mode that exists to clear a drift; and a suite with no
- * previous record has nothing to have moved.
+ * saying the suite really did change this much; `--all` rewrites every row by design, so its `rewritten` is
+ * near-total and this would refuse the one mode that exists to clear a drift — it is `moved` that is asked
+ * for here, the movements the tolerance found; and a suite with no previous record has nothing to have moved.
  */
 export const refusesAsContended = (input: {
   readonly hasPrevious: boolean; readonly force: boolean; readonly all: boolean;
-  readonly remeasured: number; readonly comparable: number;
+  readonly moved: number; readonly comparable: number;
 }): boolean => input.hasPrevious && !input.force && !input.all
-  && contended(input.remeasured, input.comparable);
+  && contended(input.moved, input.comparable);
 
 /** What one suite needs doing, worked out from the record before anything runs */
 export interface SpecCostPlan {
