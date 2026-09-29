@@ -1,5 +1,11 @@
 # Seed parity (`tests/seeds/`)
 
+**`npm run spec` knows these specs cover `src/seeds/`.** The edge runs `src` -> `abuddy build` ->
+`dist/*.seed.json` -> the goldens here, which no module graph can see, so it is a declared route
+(`packBuildEdge`, `scripts/lib/spec-plan.ts`): naming a seed source prints what covers it, and
+`npm run spec:full -- <that file>` builds the pack and runs this directory. A seed *helper* that specs
+import directly is still answered by the walk, with these named beside it.
+
 ## What this is
 
 Seeding is the step that writes a pack's shipped content — notes, library documents, 69 actions, 6 prompts, flows —

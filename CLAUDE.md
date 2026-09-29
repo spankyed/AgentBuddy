@@ -75,6 +75,15 @@ can be green under `spec` and red under `chain`: the chain declares that depende
 (`scripts/lib/workspace-deps.ts`) where a module graph cannot see it. The same seam is why a *pack's own*
 source runs that pack's whole suite rather than a root `related` — nothing in the root projects imports it.
 
+**Two more edges run through a build, and they are inside one pack.** A pack's `src/seeds/**` compiles to
+`dist/*.seed.json`, which `tests/seeds/` reads against its goldens; its `abuddy.json` drives codegen into
+`src/__generated__/`, which every spec in the pack imports. Both are `src -> abuddy build -> artifact ->
+spec`, so a *regenerated* tree is covered while editing what generates it reaches nothing. `npm run spec`
+names those specs beside whatever the walk did find, and `npm run spec:full` builds the pack and runs them.
+The routes are derived from the pack's own layout (`scripts/lib/spec-plan.ts`'s `packBuildEdge`), and
+repo-checks' `spec-plan.spec.ts` partitions the packs under `packages/`, so a second pack cannot arrive
+unrouted. Before them a seed source was told *"No spec covers …"*, which its goldens refute.
+
 Three things the chain cannot work out for you, because they rewrite files you commit:
 
 - **a public export of `@abuddy/ears`, `/sdk` or `/ui`** — `npm run api:update`, and commit `etc/`.
@@ -322,6 +331,10 @@ npm run spec -- <target> # You don't say what the target is; it works that out:
                          #   a spec path    -> that spec        a directory -> every spec under it
                          #   part of a name -> every spec whose path contains it — how you run one while
                          #                     working: `npm run spec -- chain-schedule` is 1.7s
+                         #   a pack's src/seeds/** or its abuddy.json -> the walk, plus the specs that read
+                         #                     what building it produces, which no module graph reaches.
+                         #                     Named by default, run by spec:full (a build plus the specs,
+                         #                     16s measured for default-setup's tests/seeds)
                          # A source file is one vitest over every host project, because that is the honest
                          # answer to "what could this break" and the root vitest.config.ts already lists
                          # them. It used to run the file's own package: for a type every pack's data flows

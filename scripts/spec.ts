@@ -27,6 +27,11 @@
 // pretest guard (`packages:ensure`) and each vitest config still apply. A root run has no such hook, so the
 // plan puts `packages:ensure` in front of it.
 //
+// **Two more edges run through a build, inside a pack.** `src/seeds/**` compiles to `dist/*.seed.json`, which
+// `tests/seeds/` reads against its goldens, and `abuddy.json` drives codegen into `src/__generated__/`, which
+// every spec in the pack imports. The walk still runs — a seed helper the specs import directly is answered by
+// it — and carries what it could not see (`Run.beyond`); `npm run spec:full` builds the pack and runs them.
+//
 // What a module graph cannot reach is a **pack suite**: it resolves the published `dist` while the host
 // projects resolve source, so its specs never import `packages/<dep>/src` and no import edge runs from the
 // file you edited to the spec that covers it. `npm run spec` says so when it is true — derived from the
@@ -37,7 +42,8 @@
 //
 //   1  a spec failed — the ordinary one
 //   2  a name was wide enough to be a search, so the paths were listed instead of run
-//   3  the target exists and no spec covers it, so nothing ran and nothing passed
+//   3  nothing ran and nothing passed: no spec covers the target, or the specs that do sit behind a build
+//      this run is not doing (a pack's seed sources, its `abuddy.json`) — `npm run spec:full` answers those
 //
 // 3 is the one worth knowing about. `vitest related` exits 0 when the module graph reaches no spec, so until it
 // existed "nothing covers this" and "everything covering this passed" were the same output and the same code —
@@ -114,7 +120,7 @@ function counted(run: Run, index: number): { args: string[]; env: NodeJS.Process
 }
 
 let failed = 0;
-const uncovered: string[] = [];
+const uncovered: Run[] = [];
 const noCount: string[] = [];
 // Each distinct note once: two source-file targets are two root runs carrying the same sentence about the
 // pack suites, and a limit worth stating is not worth stating twice
@@ -127,9 +133,14 @@ try {
       { cwd: run.cwd, stdio: 'inherit', env: counter?.env });
     const verdict = verdictOf(run, result.status ?? 1, counter?.read());
     if (verdict === 'fail') failed++;
-    if (verdict === 'uncovered') uncovered.push(run.claimsCoverageOf!);
+    if (verdict === 'uncovered') uncovered.push(run);
     if (verdict === 'no count') noCount.push(run.label);
     if (run.note !== undefined && !said.has(run.note)) { console.log(`   ${run.note}`); said.add(run.note); }
+    // Said only when the run answered something: when it did not, the edge is the whole answer and is
+    // reported below instead, where it replaces a sentence that would be false
+    if (run.beyond !== undefined && verdict === 'pass') {
+      console.log(`   not in this answer: ${run.beyond.covers} — ${run.beyond.how}`);
+    }
   }
 } finally {
   fs.rmSync(reports, { recursive: true, force: true });
@@ -137,7 +148,15 @@ try {
 
 // Both are said, even though only one can be the exit code: a hole found beside a failure is information
 // already in hand, and dropping it means finding it on the next run instead
-for (const target of uncovered) console.error(`\nNo spec covers ${target} — nothing ran, so nothing passed.`);
+// Two sentences for one emptiness, because they are opposite facts: a gap in the suite, and specs that
+// exist behind a build this run did not do. Saying the first for the second is what a seed source used to get
+for (const run of uncovered) {
+  const target = run.claimsCoverageOf!;
+  console.error(run.beyond === undefined
+    ? `\nNo spec covers ${target} — nothing ran, so nothing passed.`
+    : `\nNothing ran for ${target}. It is covered by ${run.beyond.covers} — an edge that runs through a `
+      + `build, so no module graph connects the two.\n  ${run.beyond.how}`);
+}
 // Loud rather than assumed, because assuming it ran something is how the check would stop checking
 for (const label of noCount) {
   console.error(`\n${label}: the spec count never arrived, so whether anything ran is unknown.`

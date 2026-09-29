@@ -2,7 +2,10 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { REPO_ROOT } from '@abuddy/host/build/packages-built';
-import { affectedPackSuites, ENSURE_LABEL, exitCodeFor, packageOf, planChanged, planTargets, type Run, splitArgs, verdictOf } from '../../../scripts/lib/spec-plan.ts';
+import {
+  affectedPackSuites, ENSURE_LABEL, exitCodeFor, packBuildEdge, packageOf, planChanged, planTargets, type Run,
+  splitArgs, verdictOf,
+} from '../../../scripts/lib/spec-plan.ts';
 import { PACKAGE_DIRS } from '../../../scripts/lib/workspace-deps.ts';
 import { UNIT_SUITES } from '../../../scripts/lib/unit-suites.ts';
 
@@ -437,5 +440,109 @@ describe("the package's CLAUDE.md names what is here", () => {
       .flatMap(([, cell]) => [...cell.matchAll(/`([\w-]+)`/g)].map(([, name]) => name));
     expect(named.filter((name) => !specs().includes(name)),
       'these specs are gone or renamed; drop them from the table').toEqual([]);
+  });
+});
+
+/**
+ * The two edges no module graph can see, and the packs they are derived for.
+ *
+ * A pack's specs import what `abuddy build` produced, never the source that produced it, so the edge runs
+ * `src` -> build -> artifact -> spec and `related` reports the same emptiness it reports for a file nothing
+ * covers. Those are opposite facts and until these routes existed they got the same sentence: a seed source
+ * was told *"No spec covers …"*, which `tests/seeds/` refutes.
+ */
+describe('a pack file whose specs sit behind a build', () => {
+  const PACK = 'default-setup';
+  const SEED = `packages/${PACK}/src/seeds/actions/claude-code/answer-question.ts`;
+  const MANIFEST = `packages/${PACK}/abuddy.json`;
+
+  /**
+   * Derived from the tree, not named here: every pack under `packages/` is one with a manifest beside its
+   * sources, and each must have a unit suite for its specs to be routed to. A pack arriving without one is
+   * unroutable, which is a thing to fix rather than to discover later from a run that answered nothing.
+   */
+  it('routes every pack under packages/, so a new one cannot arrive unrouted', () => {
+    const packs = fs.readdirSync(path.join(REPO_ROOT, 'packages'), { withFileTypes: true })
+      .filter((e) => e.isDirectory() && fs.existsSync(path.join(REPO_ROOT, 'packages', e.name, 'abuddy.json')))
+      .map((e) => e.name);
+    expect(packs.length, 'no pack was derived from the tree, so the cases below prove nothing').toBeGreaterThan(0);
+
+    const suites = new Set(UNIT_SUITES.filter((s) => s.kind === 'pack').map((s) => s.dir));
+    expect(packs.filter((p) => !suites.has(p)),
+      'these packs have no unit suite, so nothing can be routed to them — declare one in unit-suites.ts').toEqual([]);
+    for (const pack of packs) {
+      expect(packBuildEdge(`packages/${pack}/abuddy.json`, REPO_ROOT), `${pack}'s manifest`).toBeDefined();
+    }
+  });
+
+  it('sends a seed source to the specs that read what building it produces', () => {
+    const edge = packBuildEdge(SEED, REPO_ROOT);
+    expect(edge?.suite.workspace).toBe('@app/default-setup');
+    expect(edge?.specs, 'the seed goldens, not the whole suite').toEqual(['tests/seeds']);
+  });
+
+  // Nothing narrower is honest: codegen rewrites `src/__generated__/`, which every spec in the pack imports
+  it('sends a manifest to the whole suite', () => {
+    expect(packBuildEdge(MANIFEST, REPO_ROOT)?.specs).toEqual([]);
+  });
+
+  it('leaves every other file in the pack alone', () => {
+    expect(packBuildEdge(`packages/${PACK}/src/features/brain/be/system.ts`, REPO_ROOT)).toBeUndefined();
+    expect(packBuildEdge(`packages/${PACK}/tests/seeds/seed-parity.spec.ts`, REPO_ROOT)).toBeUndefined();
+    expect(packBuildEdge('packages/abuddy-sdk/src/index.ts', REPO_ROOT), 'and every file outside a pack').toBeUndefined();
+  });
+
+  // The seed half is offered only where the pack has both halves, so a pack with sources and no goldens is
+  // not routed at a directory that is not there
+  it('offers the seed route only where the specs exist', () => {
+    expect(packBuildEdge(`packages/${PACK}/src/seeds/x.ts`, path.join(REPO_ROOT, 'packages')),
+      'a root where that pack has no tests/seeds').toBeUndefined();
+  });
+
+  /**
+   * Beside the walk, not instead of it. A seed *helper* is imported by specs directly — measured, 3 for
+   * `_helpers/thread-context.ts` — and routing every `src/seeds/**` file at the build would throw that
+   * answer away to recommend a build instead. So the walk is still planned and carries what it cannot see.
+   */
+  it.each([SEED, MANIFEST])('still walks the pack graph for %s, carrying what the walk cannot see', (target) => {
+    const [ensure, walk, ...rest] = planTargets([target], [], REPO_ROOT).runs;
+    expect(ensure!.label).toBe(ENSURE_LABEL);
+    expect(walk!.args, 'the direct importers are still answered').toContain('related');
+    expect(rest, 'and nothing is built without --full').toEqual([]);
+    expect(walk!.beyond?.target).toBe(target);
+    expect(walk!.beyond?.how, 'which names the command that does answer it').toContain('spec:full');
+  });
+
+  // Without this the manifest exits 0 having run nothing: `.json` is not a source extension, so Decision 2's
+  // test withholds the claim — and a build edge is that claim made directly, which is what overrides it
+  it('claims coverage of a manifest, which no extension test would', () => {
+    const walk = planTargets([MANIFEST], [], REPO_ROOT).runs.find((r) => r.args.includes('related'))!;
+    expect(walk.claimsCoverageOf).toBe(MANIFEST);
+  });
+
+  it('builds the pack and runs those specs under --full', () => {
+    const planned = planTargets([SEED], [], REPO_ROOT, { full: true });
+    expect(planned.runs.some((r) => r.args.includes('related')),
+      'the walk is subsumed by the specs being run in full').toBe(false);
+    expect(planned.runs.map((r) => r.args.join(' '))).toEqual([
+      'run packages:ensure',
+      'run build -w @app/default-setup',
+      'test -- tests/seeds',
+    ]);
+  });
+
+  // One build and one run for two seed sources: the edge is the pack's, not the file's
+  it('plans one build however many of a pack\'s files are named', () => {
+    const planned = planTargets([SEED, `packages/${PACK}/src/seeds/prompts/index.ts`], [], REPO_ROOT, { full: true });
+    expect(planned.runs.filter((r) => r.args.includes('build'))).toHaveLength(1);
+    expect(planned.runs.filter((r) => r.args.includes('tests/seeds'))).toHaveLength(1);
+  });
+
+  // The manifest route runs the suite in full, so `covers` must say so or `--full` plans it twice — once here
+  // and once as the pack suite a dependency change reaches
+  it('declares the suite it runs in full, so nothing plans it twice', () => {
+    const planned = planTargets([MANIFEST], [], REPO_ROOT, { full: true });
+    const suiteRun = planned.runs.find((r) => r.cwd.endsWith(`packages/${PACK}`))!;
+    expect(suiteRun.covers).toEqual(['@app/default-setup']);
   });
 });
