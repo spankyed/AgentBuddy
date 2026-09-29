@@ -28,8 +28,8 @@ Finished when:
   mutation-checked.
 - `npm run test:integration` is one vitest run over the projects INTEGRATION_SUITES names, and no
   script names those workspaces as text.
-- The worker cap is either lifted or kept, with the runs that decided it recorded. Keeping it is a
-  valid outcome; keeping it without evidence is not.
+- The worker cap is either lifted after twenty clean runs or kept because one failed, with the count
+  recorded. Keeping it is a valid outcome; keeping it without the count is not.
 - `npm run spec -- <any integration spec>` runs it and exits 0.
 - Checks: npm run typecheck; npm test -w @app/repo-checks; npm run spec-cost:check; npm run chain
   once per phase.
@@ -106,6 +106,13 @@ What does spawn a compiler is three files, and only three:
 bounded is how many test workers exist. The proxy throttles twenty innocent specs to protect against three,
 permanently, on what is usually the chain's binding lane.
 
+**And two of the five spawns need not exist.** `add-extensions`' two `tsc --noEmit` runs are exactly what
+`typecheckPack` does in-process — `ts.createProgram` over the pack's tsconfig with `noEmit` — so the same
+assertion is available without a subprocess. The other three stay: `vue-tsc` needs the Vue language service,
+and `published-exports` runs `CONSUMER_MATRIX` (two TypeScript versions, the workspace's and the 5.7 floor,
+× two module resolutions) where the subprocess *is* the fidelity — it simulates a consumer on that compiler,
+and running the floor in-process would mean two `typescript` instances in one process.
+
 ### 2. The step is three `npm -w` invocations in series
 
 `package.json`'s `test:integration` is `npm run test:integration -w @abuddy/cli -w @app/repo-checks -w
@@ -159,6 +166,10 @@ Recorded so nobody re-chases them. Four of the five were mine, and each looked b
   pack` and a `tar -xzf` per published tree, plus a symlink per `node_modules` entry, called from 8 specs
   across all three suites (`packages/publish-checks/src/published-packages.ts:65`). It packs **three** trees
   (`ears`, `sdk`, `ui`) and takes **1.1s**, twice measured: ~9s of 232.7s. Not worth a shared fixture.
+- **The birpc timeout cannot be raised.** The obvious answer to a 60s RPC window is a longer window.
+  Vitest hardcodes `DEFAULT_TIMEOUT = 6e4` in its birpc chunk and passes no `timeout` at any of its four
+  `createBirpc` call sites, so no vitest config reaches it. Recorded because it is the first thing a reader
+  will suggest, and it would take a patch or an upstream change rather than a setting.
 - **The 34.4s file has no assertion overhead to trim.** `facade-typing.integration.spec.ts` run alone is
   23.1s, of which its eleven visible cases are 5.4s; the rest is `beforeAll` building two real packs and
   typechecking them. Its two `describe`s build independent fixtures (`buildPacks(published)` for `true` and
@@ -201,27 +212,51 @@ Final.
    out of the script today because an npm script is text. With the pool there are no `-w` flags: it asserts
    instead that the root config's project list equals `INTEGRATION_SUITES`. Same claim, neither side restated.
 
-5. **The constraint belongs on compiler spawns, not on test workers.** This is the goal's central correction.
-   Phase 3 tests whether the cap is needed at all now that the CLI and the typechecker run in-process; if it
-   is, what gets bounded is the three spawns, not the twenty other specs. A bounded-concurrency gate is the
-   conventional shape, and `@abuddy/host/exclusive-lock` is the one-token version of it already in the tree.
+5. **The constraint belongs on compiler spawns, not on test workers — and a spawn you can delete beats a
+   spawn you have to bound.** This is the goal's central correction, and its order matters: building a
+   bounded-concurrency gate for a load that halves by deleting two lines is the wrong way round. So Phase 3
+   deletes `add-extensions`' two `tsc --noEmit` spawns in favour of the in-process `typecheckPack` *first*,
+   which takes the concurrent-compiler count from five to three across 23 files, and only then asks whether
+   any cap is needed. A semaphore is the fallback, not the plan; `@abuddy/host/exclusive-lock` is the
+   one-token version of it already in the tree if it comes to that.
 
-6. **Phase 3's evidence bar is asymmetric, and the phase says so.** The birpc failure is a flake: **one red
-   run is decisive and one green run proves nothing.** Lifting the cap needs several clean runs; keeping it
-   needs one failure. Record whichever happened and how many runs it took — "we tried it and it seemed fine"
-   is not a result this repo accepts.
+6. **Twenty clean runs, because five would prove almost nothing.** The birpc failure is a flake, so the
+   evidence is asymmetric: **one red run is decisive at any N, and clean runs only ever bound the rate.**
+   What they bound it to is arithmetic, and it is worth doing before picking a number — with no failures in
+   N runs, the 95% upper bound on the per-run failure rate is:
 
-7. **A new compiler spawn must go through whatever Phase 3 builds.** If Phase 3 adds a gate, it adds the
-   check that finds a spawn bypassing it. A gate three call sites opt into is one the fourth will not, and a
-   rule with no firing case is a gate nothing has watched fail.
+   | clean runs | rate is at most | cost at ~34s |
+   |---|---|---|
+   | 5 | **45%** | 3 min |
+   | 10 | 26% | 6 min |
+   | **20** | **14%** | **11 min** |
+   | 40 | 7% | 23 min |
+
+   Five would let a one-in-three flake through. Twenty is eleven minutes for a permanent 2x on the chain's
+   binding lane. Record the count either way: "we tried it and it seemed fine" is not a result.
+
+7. **The gate is a static rule, not a runtime one.** Because Decision 5 deletes rather than bounds, what
+   has to hold afterwards is a property of the tree: **no integration spec spawns a compiler outside a
+   recorded exception list**, and each entry names a real path, the shape `repro`'s exception list already
+   has here — *"each must still name a path the check looks at, or it is dead text reading as coverage"*. A
+   source-reading spec in `@app/repo-checks`, not a rule in `check:specifiers`, which is about import
+   specifiers. Its firing case is one line: add a spawn and watch it fail. It keeps working whether or not a
+   semaphore is ever built, where a check on a semaphore nobody built would be dead the day it landed.
 
 8. **Nothing is deleted or skipped to make the number smaller.** These specs build real packs with the real
    CLI and typecheck them; the pack layout they cover is the only one a pack author ever has. The cost is
    what they are for.
 
-9. **Success is measured on `npm run chain`'s wall, not the step's.** The step is usually but not always the
-   binding lane, and a step that got faster inside a lane that did not is a number with no user. Quote the
-   chain, and never quote spec file-time as a cost again.
+9. **Success is measured on `npm run chain`'s wall, not the step's — and no artifact records it.** The step
+   is usually but not always the binding lane, and a step that got faster inside a lane that did not is a
+   number with no user. Quote the chain, and never quote spec file-time as a cost again.
+
+   The tempting next move is a recorded chain-wall artifact so "before and after" is a command rather than a
+   stopwatch. **Don't.** That is a *sample*, and the root `CLAUDE.md` now carries what samples cost: 125 of
+   163 `spec-cost.json` entries changed between two idle runs, and it took hysteresis, a band and a
+   contention refusal before it could be trusted. All of that, for a question asked twice a year. The
+   Done-when already requires the chain's wall before and after, and the `/goal` hook checks Finished-when
+   from the transcript — enforced by the mechanism that exists.
 
 ## Phases
 
@@ -256,16 +291,24 @@ The derived-project-list case passes; mutation: dropping a suite from the root c
 
 ### Phase 3 — put the constraint on the right axis
 
-- Lift the root cap to vitest's default and run the pooled suite **at least five times**. Per Decision 6, one
-  failure settles it and five clean runs are the minimum that does not.
-- **If stable:** the cap goes, and the config comment is replaced by what is true now — the CLI and the
-  typechecker run in-process, and three named specs spawn compilers.
-- **If not:** bound the spawns rather than the workers (Decision 5), with the check Decision 7 requires, and
-  lift the cap behind it.
+Three steps, in this order, because each one makes the next cheaper to judge (Decision 5).
 
-**Done when:** the cap is lifted or kept with the run count that decided it, recorded in the phase and in the
-config's comment. Expect ~34s, now bounded by the longest file. Mutation, if a gate was built: a spawn added
-outside it fails the check.
+- **Delete the two deletable spawns.** `add-extensions`' two `tsc --noEmit` runs become `typecheckPack`, the
+  same assertion in-process. Concurrent compilers go from five to three across 23 files before anything is
+  measured.
+- **Then lift the root cap** to vitest's default and run the pooled suite **twenty times** (Decision 6). One
+  failure settles it; twenty clean runs bound the rate at 14%, and five would have bounded it at 45%.
+- **Then the gate** (Decision 7): a `@app/repo-checks` spec holding integration specs to spawning no compiler
+  outside a recorded exception list, each entry naming a real path. It lands whether the cap was lifted or
+  kept — it is what stops the count creeping back to five.
+- If the cap has to stay, bound the three spawns rather than the twenty other specs, and lift it behind that.
+
+**Done when:** the two spawns are gone and `add-extensions` still fails on a type error it used to catch —
+watch it fail, since replacing an assertion's mechanism is exactly where one quietly stops asserting. The cap
+is lifted or kept with its run count recorded in the phase and in the config's comment, whose current text
+("these specs shell out to `tsc` and `abuddy build`") is wrong either way and is replaced by what is true.
+Expect ~34s, now bounded by the longest file. Mutation: a spawn added to an integration spec fails the new
+check, and removing an exception's path from the tree fails it too.
 
 ### Phase 4 — the floor
 
