@@ -132,9 +132,9 @@ try {
   fs.rmSync(reports, { recursive: true, force: true });
 }
 
+// Both are said, even though only one can be the exit code: a hole found beside a failure is information
+// already in hand, and dropping it means finding it on the next run instead
+for (const target of uncovered) console.error(`\nNo spec covers ${target} — nothing ran, so nothing passed.`);
+// A failure is the more urgent answer, and the one an agent should act on first
 if (failed > 0) process.exit(1);
-if (uncovered.length > 0) {
-  for (const target of uncovered) console.error(`\nNo spec covers ${target} — nothing ran, so nothing passed.`);
-  process.exit(3);
-}
-process.exit(0);
+process.exit(uncovered.length > 0 ? 3 : 0);

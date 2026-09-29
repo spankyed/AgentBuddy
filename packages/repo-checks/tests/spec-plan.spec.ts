@@ -357,6 +357,8 @@ describe('which runs claim to have covered something', () => {
     ['a named spec, which is not a coverage question', 'packages/repo-checks/tests/spec-plan.spec.ts'],
     ['a directory of specs', 'packages/repo-checks/tests'],
     ['a vitest config, which plans whole suites', 'packages/repo-checks/vitest.config.ts'],
+    // Ambient, which is the whole point of it: nothing imports a declaration file, so no spec can cover one
+    ['a declaration file, which ends in .ts and is not code', 'packages/default-setup/src/env.d.ts'],
   ])('nothing claims %s', (_what, target) => {
     expect(claims(target).filter((c) => c !== undefined)).toEqual([]);
   });

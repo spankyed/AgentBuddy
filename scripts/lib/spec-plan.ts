@@ -48,7 +48,7 @@ export interface Run {
    * Absent for every run that legitimately executes nothing. A whole-suite run names no file; a `-t` pattern
    * that matches no case is a filter, not a claim, and still executes its files; `test:unit:pack` skips on its
    * own stamp. So the promise belongs to the route rather than to the count, and only the two `related` routes
-   * and `--changed` make it — over a target a spec could cover, which is what `IS_COVERABLE` decides.
+   * and `--changed` make it — over a target a spec could cover, which is what `couldBeCovered` decides.
    */
   readonly claimsCoverageOf?: string;
 }
@@ -59,11 +59,18 @@ const IS_SPEC = /\.(spec|test)\.[cm]?[jt]sx?$/;
  * A file a spec could plausibly cover, which is what makes "no spec covers it" a finding rather than a fact
  * about the file. A `.md`, a `.json` fixture or a shell script reaches no module graph and never will.
  *
+ * A declaration file is the same kind of fact and ends in `.ts`, so it is excluded by name: nothing imports
+ * `env.d.ts` or `electron.d.ts` — they are ambient, which is the whole point of them — and there are five under
+ * each package's own `src`. The repo's two other declaration-file patterns are about *emitted* declarations
+ * rather than this question, so this one is declared here beside its siblings rather than shared with them.
+ *
  * Declared here rather than borrowed from `import-source-conditions.ts`' `CODE_FILE`, which has the same shape
  * today: that one answers what a bundler compiles, and tying spec routing to it would move this rule whenever
  * that one changed for its own reasons.
  */
 const IS_COVERABLE = /\.(?:[cm]?[jt]sx?|vue)$/;
+const IS_DECLARATION = /\.d\.[cm]?ts$/;
+const couldBeCovered = (rel: string): boolean => IS_COVERABLE.test(rel) && !IS_DECLARATION.test(rel);
 
 /** What a claiming run's outcome was, given its exit status and how many spec files it executed */
 export type Verdict = 'pass' | 'fail' | 'uncovered';
@@ -339,7 +346,7 @@ export function planTargets(targets: readonly string[], flags: readonly string[]
       // A target nothing could import — a doc, a fixture, a shell script — takes this route too, and `related`
       // correctly finds nothing for it. What it must not do is say it covered the file: that is the claim, and
       // making it for a `.md` would fail the first entry in the root CLAUDE.md's list of time-wasters
-      const coverable = IS_COVERABLE.test(rel) ? rel : undefined;
+      const coverable = couldBeCovered(rel) ? rel : undefined;
       const own = ownSuiteFor(rel);
       if (own !== undefined) {
         needsEnsure = true;
@@ -395,7 +402,7 @@ export function planChanged(changedPaths: readonly string[], flags: readonly str
   // The claim is over the part of the change set a spec could cover. A doc-only change set has none, and
   // `--changed` finding no spec for it is the right answer rather than a hole — which is also why this takes
   // the paths: a package name cannot say whether what changed inside it was code
-  const coverable = changedPaths.filter((rel) => IS_COVERABLE.test(rel));
+  const coverable = changedPaths.filter(couldBeCovered);
   const runs: Run[] = [
     ensurePackages(root),
     rootRun(root, 'the specs your changes affect', ['--changed', '--run'], flags, packSuiteNote(affected, full),
