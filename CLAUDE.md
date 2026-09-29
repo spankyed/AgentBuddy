@@ -440,9 +440,20 @@ npm run test:unit        # Vitest, as two pools: the host suites as one root run
                          # @abuddy/source condition, and the pack suite on its own resolving the published
                          # dist. Serial, measured — a second lane buys 3% for 87% more work.
                          # The list is scripts/lib/unit-suites.ts, which the chain reads too
-npm run test:integration # The expensive half of every suite that has one (@abuddy/cli, @app/repo-checks).
-                         # Which packages those are is derived from the configs each has; the script's
-                         # -w flags are the half that is checked rather than derived
+npm run test:integration # The expensive half of every suite that has one (@abuddy/cli, @app/repo-checks,
+                         # @app/publish-checks), as **one vitest run** over vitest.integration.config.ts's
+                         # projects. It was three `npm -w` invocations in series — three startups, three
+                         # worker pools, three pretests — for three suites that declare identical
+                         # resolution; measured 2026-09-29 the pool is 48.2s against 71s. Which packages
+                         # those are is derived from the configs each has (INTEGRATION_SUITES); the root
+                         # config's project list is the half that is checked rather than derived, because
+                         # check:specifiers reads these files as text.
+                         # It runs at half the cores, and that is faster than all of them: 48.2s capped
+                         # against 52.4s uncapped, because nine workers each running ts.createProgram and
+                         # an in-process abuddy build put the box at a load of 25-32. The birpc timeout the
+                         # cap was originally written against did not occur in nineteen quiet runs, capped
+                         # or not — it is a contention symptom, and every one this repo has seen came while
+                         # another workload shared the machine
 npm run test:unit:host   # One pool, running only the projects whose own inputs changed (--project per
 npm run test:unit:pack   # stale project, one process). These are the chain's two steps; per-package
                          # staleness lives inside them, so a one-package edit still runs one project.
