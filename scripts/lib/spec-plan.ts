@@ -389,23 +389,36 @@ const CONFIG_READER = 'repo-checks';
 export interface PlanOptions { readonly full?: boolean }
 
 /**
+ * The flags the command consumes rather than passing to vitest, as a leading run of the arguments.
+ *
+ * A list and its type in one declaration, because each one is read in two places — here and the header that
+ * documents it — and a flag in one and not the other is a flag that silently becomes a filename.
+ */
+export const OWN_FLAGS = ['--full', '--no-bail'] as const;
+export type OwnFlag = (typeof OWN_FLAGS)[number];
+
+/**
  * The command's arguments, split.
  *
  * **Targets first, then flags: everything from the first `-` onward is vitest's, verbatim.** Splitting at the
  * first flag rather than filtering by prefix is what makes a flag's *value* its own — `-t "a case"`,
  * `--changed HEAD~1`, `--bail 1` — without this having to know which flags take one.
  *
- * `--full` is the single argument the command consumes, and only in first position. That is what keeps the
- * rule above exact rather than nearly true: filtering `--full` out wherever it appeared would silently eat
- * it as another flag's value, and reading it after a target would make its position meaningful in a way
- * nothing else here is. `npm run spec:full` puts it there, so nobody types it.
+ * `OWN_FLAGS` are the arguments the command consumes, and only as a **leading run**. That is what keeps the
+ * rule above exact rather than nearly true: filtering them out wherever they appeared would silently eat one
+ * that was another flag's value, and reading them after a target would make position meaningful in a way
+ * nothing else here is. `npm run spec:full` puts `--full` there, so nobody types it; `--no-bail` is typed,
+ * and `npm run spec -- --no-bail src/x.ts` is the shape it has to have.
  */
-export function splitArgs(argv: readonly string[]): { full: boolean; targets: string[]; flags: string[] } {
-  const full = argv[0] === '--full';
-  const rest = full ? argv.slice(1) : [...argv];
+export function splitArgs(argv: readonly string[]): { full: boolean; bail: boolean; targets: string[]; flags: string[] } {
+  const own = new Set<string>();
+  let start = 0;
+  while (start < argv.length && (OWN_FLAGS as readonly string[]).includes(argv[start]!)) own.add(argv[start++]!);
+  const rest = argv.slice(start);
   const firstFlag = rest.findIndex((a) => a.startsWith('-'));
   return {
-    full,
+    full: own.has('--full'),
+    bail: !own.has('--no-bail'),
     targets: firstFlag === -1 ? rest : rest.slice(0, firstFlag),
     flags: firstFlag === -1 ? [] : rest.slice(firstFlag),
   };
@@ -515,12 +528,16 @@ const notYetCovered = (affected: readonly string[], runs: readonly Run[]): strin
  */
 export function planChanged(changedPaths: readonly string[], flags: readonly string[], root: string,
   { full = false }: PlanOptions = {}): Planned {
+  // The claim is over the part of the change set a spec could cover. A doc-only change set has none — which
+  // is also why this takes the paths: a package name cannot say whether what changed inside it was code.
+  const coverable = changedPaths.filter(couldBeCovered);
+  // And with none, the answer is known before anything runs. This used to spawn `packages:ensure` and a root
+  // vitest to be told "No test files found" (3.4s measured), and a pack's README planned that pack's whole
+  // suite besides — after a doc edit, which is the first entry in the root CLAUDE.md's list of time-wasters
+  if (coverable.length === 0) return { runs: [], unmatched: [], ambiguous: [] };
+
   const changedPackages = [...new Set(changedPaths.map(packageOf))].filter((pkg) => pkg !== null);
   const affected = affectedPackSuites(changedPackages, root);
-  // The claim is over the part of the change set a spec could cover. A doc-only change set has none, and
-  // `--changed` finding no spec for it is the right answer rather than a hole — which is also why this takes
-  // the paths: a package name cannot say whether what changed inside it was code
-  const coverable = changedPaths.filter(couldBeCovered);
   const runs: Run[] = [
     ensurePackages(root),
     rootRun(root, 'the specs your changes affect', ['--changed', '--run'], flags, packSuiteNote(affected, full),

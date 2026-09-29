@@ -61,7 +61,7 @@ import { ENSURE_LABEL, exitCodeFor, packageOf, planChanged, planTargets, type Ru
 
 const ROOT = path.resolve(import.meta.dirname, '..');
 
-const { full, targets, flags } = splitArgs(process.argv.slice(2));
+const { full, bail, targets, flags } = splitArgs(process.argv.slice(2));
 
 /** What git reports as changed, repo-relative. `planChanged` derives the packages and reads the paths itself */
 function changed(): string[] {
@@ -79,6 +79,12 @@ if (targets.length === 0 && changedPaths.length === 0) {
 const { runs, unmatched, ambiguous } = targets.length > 0
   ? planTargets(targets, flags, ROOT, { full })
   : planChanged(changedPaths, flags, ROOT, { full });
+
+// A change set with nothing a spec could cover: the plan is no runs, and saying so is the whole answer
+if (runs.length === 0 && targets.length === 0) {
+  console.log('Nothing changed that a spec could cover — no spec run.');
+  process.exit(0);
+}
 
 if (unmatched.length > 0) {
   console.error(`No spec or file matches ${unmatched.map((t) => `"${t}"`).join(', ')}`);
@@ -120,6 +126,8 @@ function counted(run: Run, index: number): { args: string[]; env: NodeJS.Process
 }
 
 let failed = 0;
+/** The runs a bail did not reach, named rather than silently skipped */
+let notReached: readonly Run[] = [];
 const uncovered: Run[] = [];
 const noCount: string[] = [];
 // Each distinct note once: two source-file targets are two root runs carrying the same sentence about the
@@ -132,7 +140,12 @@ try {
     const result = spawnSync(run.command, counter?.args ?? [...run.args],
       { cwd: run.cwd, stdio: 'inherit', env: counter?.env });
     const verdict = verdictOf(run, result.status ?? 1, counter?.read());
-    if (verdict === 'fail') failed++;
+    if (verdict === 'fail') {
+      failed++;
+      // The failure is the answer, and every run behind it is a bill for information already in hand: a 1s
+      // tier-1 failure used to pay for the 18s pack suite that followed it
+      if (bail) { notReached = runs.slice(index + 1); break; }
+    }
     if (verdict === 'uncovered') uncovered.push(run);
     if (verdict === 'no count') noCount.push(run.label);
     if (run.note !== undefined && !said.has(run.note)) { console.log(`   ${run.note}`); said.add(run.note); }
@@ -148,6 +161,12 @@ try {
 
 // Both are said, even though only one can be the exit code: a hole found beside a failure is information
 // already in hand, and dropping it means finding it on the next run instead
+if (notReached.length > 0) {
+  console.error(`\nStopped at the first failure, so ${notReached.length} run${notReached.length === 1 ? ' was' : 's were'} not reached:`);
+  for (const run of notReached) console.error(`  ${run.label}`);
+  console.error('  npm run spec -- --no-bail … runs them anyway.');
+}
+
 // Two sentences for one emptiness, because they are opposite facts: a gap in the suite, and specs that
 // exist behind a build this run did not do. Saying the first for the second is what a seed source used to get
 for (const run of uncovered) {

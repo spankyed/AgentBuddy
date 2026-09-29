@@ -4,7 +4,7 @@ import { describe, expect, it } from 'vitest';
 import { REPO_ROOT } from '@abuddy/host/build/packages-built';
 import {
   affectedPackSuites, ENSURE_LABEL, exitCodeFor, packBuildEdge, packageOf, planChanged, planTargets, type Run,
-  splitArgs, verdictOf,
+  OWN_FLAGS, splitArgs, verdictOf,
 } from '../../../scripts/lib/spec-plan.ts';
 import { PACKAGE_DIRS } from '../../../scripts/lib/workspace-deps.ts';
 import { UNIT_SUITES } from '../../../scripts/lib/unit-suites.ts';
@@ -223,10 +223,16 @@ describe('what --full adds', () => {
 
 describe('what the change set plans', () => {
   it('asks every host project once, and the pack suite only when it changed', () => {
-    expect(planChanged([], [], REPO_ROOT).runs.map((r) => r.label))
+    expect(planChanged(changedIn('abuddy-ears'), [], REPO_ROOT).runs.map((r) => r.label))
       .toEqual([ENSURE_LABEL, 'the specs your changes affect']);
     expect(planChanged(changedIn('default-setup'), [], REPO_ROOT).runs.map((r) => r.label))
       .toEqual([ENSURE_LABEL, 'the specs your changes affect', 'packages/default-setup: (changed)']);
+  });
+
+  // The command never asks this — it reports "nothing changed" before planning — and the answer still has to
+  // be the honest one, since a plan is read by more than its one caller
+  it('plans nothing for no change at all', () => {
+    expect(planChanged([], [], REPO_ROOT).runs).toEqual([]);
   });
 
   it('does not ask a host project separately, because the root run already covers it', () => {
@@ -246,18 +252,58 @@ describe('packageOf', () => {
 describe('how the arguments split', () => {
   it('gives vitest everything from the first flag, so a flag keeps its own value', () => {
     expect(splitArgs(['chain-schedule', '-t', 'a case']))
-      .toEqual({ full: false, targets: ['chain-schedule'], flags: ['-t', 'a case'] });
+      .toEqual({ full: false, bail: true, targets: ['chain-schedule'], flags: ['-t', 'a case'] });
     expect(splitArgs(['--changed', 'HEAD~1']))
-      .toEqual({ full: false, targets: [], flags: ['--changed', 'HEAD~1'] });
+      .toEqual({ full: false, bail: true, targets: [], flags: ['--changed', 'HEAD~1'] });
   });
 
-  it('consumes --full in first position, and nowhere else', () => {
+  it('consumes its own flags in first position, and nowhere else', () => {
     expect(splitArgs(['--full', 'packages/abuddy-sdk/src/x.ts']))
-      .toEqual({ full: true, targets: ['packages/abuddy-sdk/src/x.ts'], flags: [] });
+      .toEqual({ full: true, bail: true, targets: ['packages/abuddy-sdk/src/x.ts'], flags: [] });
+    expect(splitArgs(['--no-bail', 'packages/abuddy-sdk/src/x.ts']))
+      .toEqual({ full: false, bail: false, targets: ['packages/abuddy-sdk/src/x.ts'], flags: [] });
     // Not a target's suffix, and not a flag's value: both stay vitest's to accept or reject, because a
     // command that filtered it out wherever it appeared would eat the second one silently
-    expect(splitArgs(['a-spec', '--full'])).toEqual({ full: false, targets: ['a-spec'], flags: ['--full'] });
-    expect(splitArgs(['-t', '--full'])).toEqual({ full: false, targets: [], flags: ['-t', '--full'] });
+    expect(splitArgs(['a-spec', '--full'])).toEqual({ full: false, bail: true, targets: ['a-spec'], flags: ['--full'] });
+    expect(splitArgs(['-t', '--full'])).toEqual({ full: false, bail: true, targets: [], flags: ['-t', '--full'] });
+    expect(splitArgs(['a-spec', '--no-bail']), 'the same rule, and the reason it is one rule')
+      .toEqual({ full: false, bail: true, targets: ['a-spec'], flags: ['--no-bail'] });
+  });
+
+  // A leading *run* rather than one flag, so the two compose in either order without position mattering
+  // between them — `npm run spec:full -- --no-bail x` is the shape that needs it
+  it('takes both, in either order', () => {
+    expect(splitArgs(['--full', '--no-bail', 'x.ts'])).toMatchObject({ full: true, bail: false, targets: ['x.ts'] });
+    expect(splitArgs(['--no-bail', '--full', 'x.ts'])).toMatchObject({ full: true, bail: false, targets: ['x.ts'] });
+  });
+
+  // The list and the parser are one declaration: a flag in OWN_FLAGS that splitArgs did not consume would
+  // reach vitest as a filename, which is the failure this shape exists to make impossible
+  it('consumes every flag it declares as its own', () => {
+    expect(OWN_FLAGS.length, 'no flag was derived, so this proves nothing').toBeGreaterThan(0);
+    for (const flag of OWN_FLAGS) expect(splitArgs([flag, 'x.ts']).flags, flag).toEqual([]);
+  });
+});
+
+/**
+ * A change set with nothing a spec could cover.
+ *
+ * It used to plan `packages:ensure` and a root `--changed` vitest that reported "No test files found" — 3.4s
+ * measured — and a pack's README planned that pack's whole suite besides. Running anything at all after a doc
+ * edit is the first entry in the root CLAUDE.md's list of time-wasters.
+ */
+describe('a change set a spec could not cover', () => {
+  it('plans nothing at all, rather than a run whose answer is known', () => {
+    expect(planChanged(['docs/goals/README.md', 'CLAUDE.md'], [], REPO_ROOT).runs).toEqual([]);
+  });
+
+  it('plans nothing for a doc inside a package either, which used to run that package', () => {
+    expect(planChanged(['packages/default-setup/README.md'], [], REPO_ROOT).runs).toEqual([]);
+  });
+
+  it('still plans everything when one coverable file is among them', () => {
+    const runs = planChanged(['docs/x.md', 'packages/abuddy-sdk/src/x.ts'], [], REPO_ROOT).runs;
+    expect(runs.map((r) => r.label)).toContain('the specs your changes affect');
   });
 });
 
