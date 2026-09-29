@@ -33,22 +33,23 @@ export default defineConfig({
       'packages/publish-checks/vitest.integration.config.ts',
     ],
     /**
-     * Half the cores, because three of these 23 specs spawn a compiler.
+     * Half the cores, because half is **faster** than all of them.
      *
-     * `poolOptions` is process-wide, so this cannot live in the project configs — it is set once here rather
-     * than three times where two of the three copies would do nothing. Two of them carried it before this
-     * file existed.
+     * Measured 2026-09-29 on an idle 10-core machine, this pool, five and nine runs:
      *
-     * The reason is a flake, not a slowdown: a worker per core oversubscribes the box, the main thread can
-     * miss birpc's 60s window to answer a worker's `onTaskUpdate`, and the run fails with
-     * "[vitest-worker]: Timeout calling" though every test passed. That window is not configurable — vitest
-     * hardcodes `DEFAULT_TIMEOUT = 6e4` and passes no timeout at any of its `createBirpc` call sites.
+     *     maxThreads 50%   44.97 48.05 48.22 48.62 49.29   median 48.2s, 5 clean
+     *     no cap           50.80 51.72 51.81 52.30 52.63 52.77 53.43 54.17   median 52.4s, 9 clean
      *
-     * **It is a proxy, and a poor one**: what needs bounding is concurrent compilers, and what is bounded is
-     * test workers, so twenty specs that spawn nothing pay for three that do. `add-extensions`,
-     * `component-contracts` and `published-exports` are the three. Two of their spawns are `tsc --noEmit`,
-     * which `typecheckPack` already does in-process; the plan for removing those and then testing whether
-     * this is needed at all is `docs/goals/goal-integration-pool.md`, Phase 3.
+     * Nine workers each running `ts.createProgram` and an in-process `abuddy build` put the box at a load
+     * of 25-32, and everything gets slower together. A worker count is not free parallelism once the work
+     * is CPU-bound, which every spec here is.
+     *
+     * **The flake is not the reason, though it was.** These configs used to carry this cap against
+     * "[vitest-worker]: Timeout calling", the main thread missing birpc's 60s window — a window vitest
+     * hardcodes, so no config can lengthen it. It did not occur once in those nineteen quiet runs, capped or
+     * not. Every occurrence in this session came while another workload shared the machine, which is what
+     * that failure is: a symptom of contention, not of a worker count. The cap earns its place by being
+     * faster; that it also leaves headroom on a busy machine is a second reason, not the first.
      *
      * A percentage, because vitest reads this as `poolOptions.maxThreads ?? maxWorkers ?? (cpus - 1)`: it
      * replaces the default rather than capping it, so a fixed number raises the worker count on any machine

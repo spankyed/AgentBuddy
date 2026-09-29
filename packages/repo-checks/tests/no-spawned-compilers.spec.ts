@@ -14,10 +14,12 @@ import { specFilesUnder } from '../../../scripts/lib/test-timeouts.ts';
  * lengthen. The cap is a **proxy**: what needs bounding is concurrent compilers and what is bounded is test
  * workers, so every spec pays for the few that spawn.
  *
- * That trade is only defensible while "the few" stays few. Measured 2026-09-29, removing two `tsc --noEmit`
- * spawns from one file took the pooled run from a median of 71s with a failure in five to 46.1s with none —
- * so a spawn added without anyone noticing is a slower, flakier suite and nothing that says why. This is the
- * check that notices.
+ * A spawn is worth about a second: removing two from one file moved the pooled run's median from 49.1s to
+ * 48.2s, measured over five runs each on an idle machine. The reason to hold the line is not that second.
+ * It is that **this suite's failure mode is contention** — the birpc timeout above appeared three times in
+ * this session, every one of them while another workload shared the box, and not once in nineteen quiet
+ * runs. Subprocess compilers are what make a suite sensitive to a machine that is already busy, which a
+ * developer's machine usually is. This is the check that keeps the count from drifting up unnoticed.
  *
  * It reads the **AST**, not the text: a call expression whose callee is a spawning function, whose arguments
  * name a compiler. A grep over these files matches the word `tsc` in prose — the root `CLAUDE.md` keeps the
