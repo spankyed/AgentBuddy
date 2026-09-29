@@ -131,7 +131,13 @@ removes is real chain wall — and Phase 2 must confirm that on the chain's own 
 | today | 5 | three runs in series | **90-105s** |
 | Phase 2, pooled | 5 | throughput, 232.7s / 5 | **~47s** |
 | Phase 3, cap lifted | 9 | the longest file, 34.4s | **~34s** |
-| Phase 4, that file split | 9 | throughput again | **~26-29s** |
+| Phase 4, that file split | 9 | throughput again | **~26.5s** |
+
+Scheduled with LPT over the 23 recorded file times, which is the order vitest's own sequencer uses. **The
+phases have to land in this order**: at 5 workers the run is throughput-bound, so splitting the longest file
+moves the wall by *zero* — it only becomes the bound once the cap lifts. And **one split is the whole
+prize**: splitting the top file is 34.4s -> 26.5s, the top two 26.6s, the top three 26.6s. Below that the
+run is throughput-bound again at 232.7s / 9 = 25.9s, and no further splitting reaches it.
 
 ### Five hypotheses measurement killed
 
@@ -268,6 +274,11 @@ Only meaningful once Phase 3 has moved the bound onto a single file.
 - Split `facade-typing.integration.spec.ts` at its `describe` boundary so its two independent fixtures build
   concurrently in two files rather than in series in one. Its path under `tests/` still has to mirror what it
   covers (`docs/reference/test-inventory.md`).
+- **Split that file and no other.** Vitest parallelizes per file and runs suites within a file in series, so
+  what is being fixed is one file doing two fixtures' work — not a package's tests sharing a file, which they
+  already do not: the CLI's integration half is 15 files. The schedule says the second and third splits are
+  worth 0.0s and 0.0s, so stop after the first, and re-measure rather than continuing on the intuition that
+  smaller files must be faster.
 
 **Done when:** the pooled wall is recorded again and the suite is throughput-bound rather than file-bound, or
 the phase records that splitting did not move it and says by how little. `spec-cost:update` re-records both
