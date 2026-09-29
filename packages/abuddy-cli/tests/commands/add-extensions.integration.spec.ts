@@ -15,6 +15,7 @@ import { addPrompt } from '../../src/commands/add/prompt';
 import { addFlow } from '../../src/commands/add/flow';
 import { generateEntries } from '../../src/commands/generate-entries';
 import { packRuleProblems } from '../../src/build/pack-rules.ts';
+import { typecheckPack } from '../_support/pack-builds.ts';
 
 const REPO_ROOT = path.resolve(__dirname, '..', '..', '..', '..');
 const BIN = path.join(REPO_ROOT, 'node_modules', '.bin');
@@ -91,7 +92,7 @@ describe('abuddy add step', () => {
       "export const nodes: DSLStepNode[] = [myStep('Hello', { description: 'd' }), myOtherStep()];",
       '',
     ].join('\n'));
-    const tsc = run(path.join(BIN, 'tsc'), ['--noEmit']);
+    const tsc = await typecheckPack(pack);
     fs.rmSync(path.join(pack, 'src/flow-helpers-usage.ts'));
     expect(tsc.code, tsc.output).toBe(0);
   });
@@ -213,7 +214,7 @@ describe('abuddy add migration', () => {
 
     await generateEntries([], pack);
     expect(read('src/__generated__/pack-entry.ts')).toMatch(/import \{ migrations \} from '\.\.\/migrations\/index\.ts';[\s\S]*\n {2}migrations,/);
-    const tsc = run(path.join(BIN, 'tsc'), ['--noEmit']);
+    const tsc = await typecheckPack(pack);
     expect(tsc.code, tsc.output).toBe(0);
   });
 
