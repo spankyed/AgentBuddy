@@ -1,5 +1,5 @@
 {
-  "measuredAt": "2026-09-28T20:57:40.462Z",
+  "measuredAt": "2026-09-29T00:26:17.025Z",
   "costs": {
     "tests/api-report-stamp.spec.ts": 66,
     "tests/chain-graph.spec.ts": 9,
@@ -19,6 +19,7 @@
     "tests/repo-check-boundary.spec.ts": 92,
     "tests/repro.spec.ts": 22,
     "tests/slow-tests.spec.ts": 3,
+    "tests/spec-cost-mutations.spec.ts": 573,
     "tests/spec-placement.spec.ts": 336,
     "tests/spec-plan.spec.ts": 291,
     "tests/specifier-fixes.spec.ts": 20,
