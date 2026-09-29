@@ -1,9 +1,9 @@
-import { execFileSync } from 'node:child_process';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { REPO_ROOT } from '@abuddy/host/build/packages-built';
 import { PACKAGE_DIRS } from '../../../scripts/lib/workspace-deps.ts';
+import { trackedFiles } from './_support/tracked.ts';
 
 /**
  * A spec lives with the thing it can break.
@@ -32,8 +32,7 @@ import { PACKAGE_DIRS } from '../../../scripts/lib/workspace-deps.ts';
 const IS_SPEC = /\.(spec|test)\.[cm]?[jt]sx?$/;
 
 const tracked = (): string[] =>
-  execFileSync('git', ['ls-files'], { cwd: REPO_ROOT, maxBuffer: 64 * 1024 * 1024 })
-    .toString().split('\n').filter(Boolean);
+  trackedFiles();
 
 const packageDirs = (): string[] =>
   [...PACKAGE_DIRS];

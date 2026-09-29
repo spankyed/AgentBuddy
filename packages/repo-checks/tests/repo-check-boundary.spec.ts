@@ -1,8 +1,8 @@
-import { execFileSync } from 'node:child_process';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { REPO_ROOT } from '@abuddy/host/build/packages-built';
+import { trackedFiles } from './_support/tracked.ts';
 
 /**
  * What this package is for, as a check rather than as a convention.
@@ -78,8 +78,7 @@ const LAYOUT_CHECKS: Record<string, string> = {
 };
 
 const specs = (): string[] =>
-  execFileSync('git', ['ls-files'], { cwd: REPO_ROOT, maxBuffer: 64 * 1024 * 1024 })
-    .toString().split('\n').filter((file) => file !== '' && IS_SPEC.test(file));
+  trackedFiles().filter((file) => IS_SPEC.test(file));
 
 describe('a spec about the repo\'s tooling lives in @app/repo-checks', () => {
   it('has none anywhere else', () => {

@@ -30,7 +30,8 @@ const FORBIDDEN: Array<{ pattern: RegExp; why: string; allowInTests?: boolean }>
 
 function trackedCodeFiles(): string[] {
   const out = execFileSync('git', ['ls-files', '-co', '--exclude-standard'], { cwd: REPO_ROOT, encoding: 'utf-8' });
-  return out.split('\n').filter(f =>
+  // On disk, not merely in the index: a file deleted and not yet staged is still listed, and reading it throws
+  return out.split('\n').filter((f) => fs.existsSync(path.join(REPO_ROOT, f))).filter(f =>
     /\.(ts|tsx|js|mjs|cjs|vue|sh)$/.test(f) &&
     !f.includes('node_modules/') &&
     !f.includes('/dist/') &&
