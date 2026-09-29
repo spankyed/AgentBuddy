@@ -34,15 +34,40 @@ const SOURCE = path.join(REPO_ROOT, 'scripts', 'lib', 'spec-cost.ts');
 
 const DIRS = UNIT_SUITES.map((suite) => suite.dir);
 
-/** Two adjacent suites the list holds out of alphabetical order, so that sorting is observable at all */
-const OUT_OF_ORDER = ((): string[] => {
-  const at = DIRS.findIndex((dir, index) => index + 1 < DIRS.length && dir > DIRS[index + 1]!);
-  return at === -1 ? [] : [DIRS[at]!, DIRS[at + 1]!];
-})();
+/**
+ * Two suites in the fixture, named so the list order is not alphabetical.
+ *
+ * Which is what makes sorting observable, and why these are invented rather than taken from `UNIT_SUITES`: a
+ * real pair had to be searched for, the first two being in order already, and each call then walked real
+ * package trees twice — 26ms where the fixture measures 0.
+ */
+const UNSORTED = ['zeta', 'alpha'];
 
 const FAST = 'tests/a.spec.ts';
 const before = (costs: Record<string, number>, skipped: string[] = []) =>
   ({ measuredAt: 'then', costs, skipped });
+
+/**
+ * Whether a run that moved no cost still dated the record.
+ *
+ * Projected to two words rather than compared directly: `measuredAt` is a fresh timestamp, so two runs differ
+ * from each other whatever the mutation did, and an entry comparing it raw would pass for every break.
+ */
+const dated = (lib: Lib, input: {
+  readonly previous: ReturnType<typeof before>;
+  readonly skipped: readonly string[];
+  readonly measuredFiles: readonly string[];
+}): string => {
+  const { record } = lib.settle({
+    previous: input.previous,
+    costs: { [FAST]: input.previous.costs[FAST]! },
+    skipped: input.skipped,
+    measuredFiles: input.measuredFiles,
+    prune: [],
+    rewriteAll: false,
+  });
+  return record.measuredAt === input.previous.measuredAt ? 'kept the old date' : 'dated the run';
+};
 
 /** A pack tree whose record disagrees with the specs beside it, which no live suite does */
 interface Tree { readonly root: string }
@@ -63,30 +88,27 @@ interface Mutation {
 const MUTATIONS: readonly Mutation[] = [
   {
     why: 'absentNamed sorts the paths it returns',
-    from: '  }).sort();',
-    to: '  });',
-    call: (lib) => lib.absentNamed(REPO_ROOT, DIRS, OUT_OF_ORDER.map((dir) => `packages/${dir}/tests/nope.spec.ts`)),
+    from: '}).sort();',
+    to: '});',
+    call: (lib, tree) => lib.absentNamed(tree.root, UNSORTED, UNSORTED.map((dir) => `packages/${dir}/tests/nope.spec.ts`)),
   },
   {
     why: 'absentNamed collects from every suite the paths reach into',
-    from: '  return suitesFor(suiteDirs, undefined, named).flatMap((dir) => {',
-    to: '  return suitesFor(suiteDirs, undefined, named).slice(0, 1).flatMap((dir) => {',
-    call: (lib) => lib.absentNamed(REPO_ROOT, DIRS, OUT_OF_ORDER.map((dir) => `packages/${dir}/tests/nope.spec.ts`)),
+    from: 'suitesFor(suiteDirs, undefined, named).flatMap(',
+    to: 'suitesFor(suiteDirs, undefined, named).slice(0, 1).flatMap(',
+    call: (lib, tree) => lib.absentNamed(tree.root, UNSORTED, UNSORTED.map((dir) => `packages/${dir}/tests/nope.spec.ts`)),
   },
   {
     why: 'absentNamed names only the paths that are absent',
-    from: '    return absentIn(files, namedIn(dir, named)).map((file) => `packages/${dir}/${file}`);',
-    to: '    return namedIn(dir, named).map((file) => `packages/${dir}/${file}`);',
-    call: (lib) => {
-      const dir = DIRS[0]!;
-      const here = lib.specFiles(path.join(REPO_ROOT, 'packages', dir))[0]!;
-      return lib.absentNamed(REPO_ROOT, DIRS, [`packages/${dir}/${here}`, `packages/${dir}/tests/nope.spec.ts`]);
-    },
+    from: 'absentIn(files, namedIn(dir, named))',
+    to: 'namedIn(dir, named)',
+    call: (lib, tree) => lib.absentNamed(tree.root, UNSORTED,
+      [`packages/${UNSORTED[0]!}/${FAST}`, `packages/${UNSORTED[0]!}/tests/nope.spec.ts`]),
   },
   {
     why: 'settle reads what this run measured, not what the record already held',
-    from: '  const nowSkipped = input.skipped.filter((file) => costs[file] === undefined);',
-    to: '  const nowSkipped = input.skipped.filter((file) => settled[file] === undefined);',
+    from: 'input.skipped.filter((file) => costs[file] === undefined)',
+    to: 'input.skipped.filter((file) => settled[file] === undefined)',
     call: (lib) => lib.settle({
       previous: before({ [FAST]: 1_200, 'tests/b.spec.ts': 800 }),
       costs: { 'tests/b.spec.ts': 810 },
@@ -97,27 +119,33 @@ const MUTATIONS: readonly Mutation[] = [
     }).record.skipped,
   },
   {
-    why: 'settle dates a run where only the skipped list moved',
-    from: `    && previous.skipped.length === skipped.length
-    && previous.skipped.every((file, index) => skipped[index] === file);`,
-    to: ';',
-    call: (lib) => {
-      const previous = before({ [FAST]: 100 });
-      const { record } = lib.settle({
-        previous,
-        costs: { [FAST]: 100 },
-        skipped: ['tests/needs-a-binary.spec.ts'],
-        measuredFiles: [FAST, 'tests/needs-a-binary.spec.ts'],
-        prune: [],
-        rewriteAll: false,
-      });
-      return record.measuredAt === previous.measuredAt ? 'kept the old date' : 'dated the run';
-    },
+    // With nothing recorded as skipped, the `every` beside this is vacuously true, so the count is the only
+    // clause that can see a skip arrive
+    why: 'settle dates a run where a spec newly stopped running',
+    from: 'previous.skipped.length === skipped.length',
+    to: 'true',
+    call: (lib) => dated(lib, {
+      previous: before({ [FAST]: 100 }),
+      skipped: ['tests/needs-a-binary.spec.ts'],
+      measuredFiles: [FAST, 'tests/needs-a-binary.spec.ts'],
+    }),
+  },
+  {
+    // One skip replacing another: the counts match, so only the contents can tell these records apart. The
+    // outgoing skip has to be in `measuredFiles`, which is what lets `keptSkipped` drop it
+    why: 'settle dates a run where one skip replaced another',
+    from: 'previous.skipped.every((file, index) => skipped[index] === file)',
+    to: 'true',
+    call: (lib) => dated(lib, {
+      previous: before({ [FAST]: 100 }, ['tests/was-skipped.spec.ts']),
+      skipped: ['tests/now-skipped.spec.ts'],
+      measuredFiles: [FAST, 'tests/was-skipped.spec.ts', 'tests/now-skipped.spec.ts'],
+    }),
   },
   {
     why: 'settle names the specs that lost a cost',
-    from: '    dropped: Object.keys(previous?.costs ?? {}).filter((spec) => sorted[spec] === undefined && !prune.includes(spec)),',
-    to: '    dropped: [],',
+    from: 'dropped: Object.keys(previous?.costs ?? {})',
+    to: 'dropped: ([] as string[])',
     call: (lib) => lib.settle({
       previous: before({ [FAST]: 1_200, 'tests/b.spec.ts': 800 }),
       costs: { 'tests/b.spec.ts': 810 },
@@ -129,8 +157,8 @@ const MUTATIONS: readonly Mutation[] = [
   },
   {
     why: 'settle leaves a pruned spec to the caller that pruned it',
-    from: 'sorted[spec] === undefined && !prune.includes(spec)),',
-    to: 'sorted[spec] === undefined),',
+    from: 'sorted[spec] === undefined && !prune.includes(spec)',
+    to: 'sorted[spec] === undefined',
     call: (lib) => lib.settle({
       previous: before({ [FAST]: 100, 'tests/gone.spec.ts': 200 }),
       costs: { [FAST]: 100 },
@@ -142,8 +170,8 @@ const MUTATIONS: readonly Mutation[] = [
   },
   {
     why: 'settle records what --all measured, past the tolerance',
-    from: '    settled[spec] = rewriteAll || moved(spec, before, ms) ? ms : before!;',
-    to: '    settled[spec] = moved(spec, before, ms) ? ms : before!;',
+    from: 'rewriteAll || moved(',
+    to: 'moved(',
     call: (lib) => lib.settle({
       previous: before({ [FAST]: 1_000 }),
       costs: { [FAST]: 1_050 },
@@ -155,32 +183,32 @@ const MUTATIONS: readonly Mutation[] = [
   },
   {
     why: 'parseArgs refuses a flag it does not know',
-    from: '  if (strange.length > 0) {',
-    to: '  if (false) {',
+    from: 'if (strange.length > 0) {',
+    to: 'if (false) {',
     call: (lib) => lib.parseArgs(['--update', '--drry'], DIRS),
   },
   {
     why: 'suitesFor narrows to the suite a named path belongs to',
-    from: '    .filter((dir) => named.length === 0 || named.some((file) => file.startsWith(`packages/${dir}/`)));',
-    to: '    .filter(() => true);',
+    from: 'named.some((file) => file.startsWith(',
+    to: 'false && named.some((file) => file.startsWith(',
     call: (lib) => lib.suitesFor(DIRS, undefined, [`packages/${DIRS[0]!}/tests/a.spec.ts`]),
   },
   {
     why: 'refusesAsContended lets --force through',
-    from: '}): boolean => input.hasPrevious && !input.force && contended(input.moved, input.comparable);',
-    to: '}): boolean => input.hasPrevious && contended(input.moved, input.comparable);',
+    from: '!input.force && contended(',
+    to: 'contended(',
     call: (lib) => lib.refusesAsContended({ hasPrevious: true, force: true, moved: 6, comparable: 20 }),
   },
   {
     why: 'refuseAbsent throws for a spec that is not there',
-    from: '  if (absent.length === 0) return;',
-    to: '  if (true) return;',
+    from: 'if (absent.length === 0) return;',
+    to: 'if (true) return;',
     call: (lib) => lib.refuseAbsent('mini', [FAST], ['tests/nope.spec.ts']),
   },
   {
     why: 'planFor asks for the half an unmeasured spec lives in',
-    from: '  if (needs.length > 0) return { configs: configsOf(packageDir, needs), prune, reason: `${needs.length} unmeasured` };',
-    to: '',
+    from: 'reason: `${needs.length} unmeasured`',
+    to: 'reason: \'current\'',
     call: (lib, tree) => lib.planFor(tree.root, 'mini', [], false),
   },
 ];
@@ -208,6 +236,8 @@ describe('every decision in spec-cost.ts is one its cases can see', () => {
     write('packages/mini/vitest.config.ts', 'export default {};\n');
     write('packages/mini/tests/a.spec.ts', '');
     write('packages/mini/tests/b.spec.ts', '');
+    // Named so that `UNSORTED` is not in alphabetical order, which is what makes the sort observable
+    for (const dir of UNSORTED) write(`packages/${dir}/${FAST}`, '');
     // `a` recorded and `b` not, which is what makes the unmeasured branch reachable. No live suite is in this
     // state — a green tree means every spec is recorded, so the branch a bare update takes needs a tree of its own
     write(real.specCostFile('mini'), `${JSON.stringify({ measuredAt: 'then', costs: { [FAST]: 100 }, skipped: [] }, null, 2)}\n`);
@@ -217,8 +247,8 @@ describe('every decision in spec-cost.ts is one its cases can see', () => {
 
   it('has mutations to run, since an empty table would report nothing', () => {
     expect(MUTATIONS.length).toBeGreaterThan(10);
-    expect(OUT_OF_ORDER, 'no two adjacent suites are out of alphabetical order, so the sort is unobservable')
-      .toHaveLength(2);
+    expect([...UNSORTED].sort(), 'the fixture suites must not be in order, or the sort is unobservable')
+      .not.toEqual(UNSORTED);
   });
 
   // Anchors are text, so a refactor turns an entry into a no-op that still passes. Checked first and named,
