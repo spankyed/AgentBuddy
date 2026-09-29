@@ -41,9 +41,43 @@ export interface Run {
    * 87 specs under both `npm test -w` and `test:unit:pack`.
    */
   readonly covers?: readonly string[];
+  /**
+   * The target this run promises to have covered, when it makes that promise: a route that answers "every
+   * spec that covers X" and then runs none has not passed, it has found a hole.
+   *
+   * Absent for every run that legitimately executes nothing. A whole-suite run names no file; a `-t` pattern
+   * that matches no case is a filter, not a claim, and still executes its files; `test:unit:pack` skips on its
+   * own stamp. So the promise belongs to the route rather than to the count, and only the two `related` routes
+   * and `--changed` make it — over a target a spec could cover, which is what `IS_COVERABLE` decides.
+   */
+  readonly claimsCoverageOf?: string;
 }
 
 const IS_SPEC = /\.(spec|test)\.[cm]?[jt]sx?$/;
+
+/**
+ * A file a spec could plausibly cover, which is what makes "no spec covers it" a finding rather than a fact
+ * about the file. A `.md`, a `.json` fixture or a shell script reaches no module graph and never will.
+ *
+ * Declared here rather than borrowed from `import-source-conditions.ts`' `CODE_FILE`, which has the same shape
+ * today: that one answers what a bundler compiles, and tying spec routing to it would move this rule whenever
+ * that one changed for its own reasons.
+ */
+const IS_COVERABLE = /\.(?:[cm]?[jt]sx?|vue)$/;
+
+/** What a claiming run's outcome was, given its exit status and how many spec files it executed */
+export type Verdict = 'pass' | 'fail' | 'uncovered';
+
+/**
+ * A run's verdict. Pure, and here rather than in `spec.ts`, because this is the half a spec asserts.
+ *
+ * Spec **files**, never tests: a `-t` pattern matching no case runs every file and skips every test, so a
+ * count of tests would report a hole for what is an ordinary filter.
+ */
+export function verdictOf(run: Run, status: number, specFilesRun: number): Verdict {
+  if (status !== 0) return 'fail';
+  return run.claimsCoverageOf !== undefined && specFilesRun === 0 ? 'uncovered' : 'pass';
+}
 const SKIP = new Set(['node_modules', 'dist', '.git', '.temp', 'dist-ssr', 'coverage', '__generated__']);
 
 /**
@@ -166,11 +200,13 @@ const packSuiteRun = (root: string, affected: readonly string[]): Run => ({
 });
 
 /** `related` inside a pack, which is the only place its own graph resolves */
-const packRelatedRun = (root: string, suite: UnitSuite, relToPack: string, flags: readonly string[]): Run => ({
+const packRelatedRun = (root: string, suite: UnitSuite, relToPack: string, flags: readonly string[],
+  claimsCoverageOf?: string): Run => ({
   label: `${suite.workspace}: every spec covering ${relToPack}`,
   cwd: path.join(root, 'packages', suite.dir),
   command: 'npx',
   args: ['vitest', 'related', '--run', relToPack, ...flags],
+  claimsCoverageOf,
 });
 
 /**
@@ -197,12 +233,14 @@ const ensurePackages = (root: string): Run => ({
  * One vitest over every host project: `related --run <file>` after an edit, `--changed --run` for the
  * change set. `args` is everything after `vitest`, in order, so the call site reads as the command does.
  */
-const rootRun = (root: string, label: string, args: readonly string[], flags: readonly string[], note?: string): Run => ({
+const rootRun = (root: string, label: string, args: readonly string[], flags: readonly string[], note?: string,
+  claimsCoverageOf?: string): Run => ({
   label,
   cwd: root,
   command: 'npx',
   args: ['vitest', ...args, ...flags],
   note,
+  claimsCoverageOf,
 });
 
 /** A package's own suite, through its `test` script so its pretest and vitest config still apply */
@@ -298,16 +336,21 @@ export function planTargets(targets: readonly string[], flags: readonly string[]
       if (own !== null && own !== CONFIG_READER) runs.push(packageRun(root, own, [], flags, '(its config changed)'));
       runs.push(packageRun(root, CONFIG_READER, [], flags, 'the checks that read every config'));
     } else if (exists) {
+      // A target nothing could import — a doc, a fixture, a shell script — takes this route too, and `related`
+      // correctly finds nothing for it. What it must not do is say it covered the file: that is the claim, and
+      // making it for a `.md` would fail the first entry in the root CLAUDE.md's list of time-wasters
+      const coverable = IS_COVERABLE.test(rel) ? rel : undefined;
       const own = ownSuiteFor(rel);
       if (own !== undefined) {
         needsEnsure = true;
-        runs.push(packRelatedRun(root, own, path.relative(path.join('packages', own.dir), rel), flags));
+        runs.push(packRelatedRun(root, own, path.relative(path.join('packages', own.dir), rel), flags, coverable));
       } else {
         wantsRoot = true;
         needsEnsure = true;
         sourcePackages.push(packageOf(rel));
-        runs.push(rootRun(root, `every spec covering ${rel}`, ['related', '--run', rel], flags,
-          packSuiteNote(affectedPackSuites([packageOf(rel)], root), full)));
+        runs.push(rootRun(root, coverable === undefined ? `the specs that import ${rel}, if any` : `every spec covering ${rel}`,
+          ['related', '--run', rel], flags,
+          packSuiteNote(affectedPackSuites([packageOf(rel)], root), full), coverable));
       }
     } else {
       const matches = matchByName(arg, root);
@@ -340,13 +383,23 @@ const notYetCovered = (affected: readonly string[], runs: readonly Run[]): strin
  * — including a change under `scripts/`, which reaches `@app/repo-checks` through its specs' imports. The
  * pack suite is asked separately because it is not a root project, and it is asked at all because a change
  * *inside* it is the one thing a root run cannot see.
+ *
+ * Takes the changed paths rather than their packages, and derives the packages here: what the caller has is
+ * `git status`, and deciding is this file's job. It also needs the paths themselves, to say whether anything
+ * that changed was code a spec could cover.
  */
-export function planChanged(changedPackages: readonly string[], flags: readonly string[], root: string,
+export function planChanged(changedPaths: readonly string[], flags: readonly string[], root: string,
   { full = false }: PlanOptions = {}): Planned {
+  const changedPackages = [...new Set(changedPaths.map(packageOf))].filter((pkg) => pkg !== null);
   const affected = affectedPackSuites(changedPackages, root);
+  // The claim is over the part of the change set a spec could cover. A doc-only change set has none, and
+  // `--changed` finding no spec for it is the right answer rather than a hole — which is also why this takes
+  // the paths: a package name cannot say whether what changed inside it was code
+  const coverable = changedPaths.filter((rel) => IS_COVERABLE.test(rel));
   const runs: Run[] = [
     ensurePackages(root),
-    rootRun(root, 'the specs your changes affect', ['--changed', '--run'], flags, packSuiteNote(affected, full)),
+    rootRun(root, 'the specs your changes affect', ['--changed', '--run'], flags, packSuiteNote(affected, full),
+      coverable.length > 0 ? `${coverable.length} changed file${coverable.length === 1 ? '' : 's'} a spec could cover` : undefined),
   ];
   const pack = rootProjects(root);
   for (const pkg of changedPackages) {

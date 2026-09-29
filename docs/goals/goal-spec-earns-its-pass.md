@@ -278,8 +278,12 @@ otherwise go looking:
 
 ### Phase 1 — a zero answer is not a pass
 
-- Add the coverage claim to `Run` in `scripts/lib/spec-plan.ts` (Decision 2), set by `rootRun` for the
-  `related` and `--changed` routes and by `packRelatedRun`, and by nothing else.
+- Add the coverage claim to `Run` in `scripts/lib/spec-plan.ts` **on Decision 2's terms, which are the whole
+  of the correctness here**: the two `related` routes and `--changed`, *and only over a target with a source
+  extension* — the `--changed` route over the coverable subset of the change set, an empty subset carrying no
+  claim. Read the Decision rather than this line: a summary of it that keeps the routes and drops the
+  extension test makes `npm run spec -- docs/goals/README.md` and a doc-only change set fail, which this
+  phase's own Done-when forbids.
 - Add the pure verdict function beside it — given a run and the number of spec files it executed, one of
   `pass`, `fail`, `covered nothing` — so the decision is in the tested half of the split, as the file's
   header requires.
@@ -332,9 +336,10 @@ for the flag's position, beside the `--full` one.
   named, not silently treated as free.
 - Print file-time and the wall shape (Decision 7), and the declared tier of a run that has one (Decision 6).
 
-**Done when:** `npm run spec:dry -- packages/abuddy-sdk/src/types/sdk-entities.ts` prints 104 spec paths and
-their summed cost in under 8s cold, runs no test, and exits 0; the count equals what the ordinary run
-executes. `npm run spec` with no `--dry` performs no collection — asserted by the plan's shape, and the
+**Done when:** `npm run spec:dry -- packages/abuddy-sdk/src/types/sdk-entities.ts` prints that file's spec
+paths and their summed cost in under 8s cold, runs no test, and exits 0, **and the count equals what the
+ordinary run executes** — which is the criterion, rather than a number: it was 104 when this was surveyed and
+108 by 2026-09-28, and every spec added to a covering suite moves it. `npm run spec` with no `--dry` performs no collection — asserted by the plan's shape, and the
 phase records its wall time against the pre-phase number to show it did not move. Mutation: a record with a
 file removed reports one unpriced spec by name rather than a smaller total.
 

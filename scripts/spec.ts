@@ -33,30 +33,46 @@
 // declared dependencies, so editing a package no pack depends on says nothing — and `npm run spec:full`
 // answers it, at the cost of a build (14s when stale) and the pack suite (18s).
 //
+// **Three exit codes, because the three need different next moves and only one is a bug in the code:**
+//
+//   1  a spec failed — the ordinary one
+//   2  a name was wide enough to be a search, so the paths were listed instead of run
+//   3  the target exists and no spec covers it, so nothing ran and nothing passed
+//
+// 3 is the one worth knowing about. `vitest related` exits 0 when the module graph reaches no spec, so until it
+// existed "nothing covers this" and "everything covering this passed" were the same output and the same code —
+// and five of eight sampled entry modules answered zero. A run only earns that judgement if its route promised
+// coverage of a file a spec could cover (`Run.claimsCoverageOf`): a whole-suite run, a `-t` filter that matched
+// no case, and a `.md` target all report zero correctly.
+//
 // `scripts/lib/spec-plan.ts` decides all of that and is asserted by a spec; this file runs what it returns.
 import { spawnSync } from 'node:child_process';
+import * as fs from 'node:fs';
+import * as os from 'node:os';
 import * as path from 'node:path';
-import { ENSURE_LABEL, packageOf, planChanged, planTargets, splitArgs } from './lib/spec-plan.ts';
+import { SPEC_COUNT_FILE } from './lib/spec-count-reporter.ts';
+import { ENSURE_LABEL, packageOf, planChanged, planTargets, type Run, splitArgs, verdictOf } from './lib/spec-plan.ts';
 
 const ROOT = path.resolve(import.meta.dirname, '..');
 
 const { full, targets, flags } = splitArgs(process.argv.slice(2));
 
-/** What git reports as changed, by package; a path in no package is covered by the root run's graph */
-function changed(): { packages: string[]; anything: boolean } {
+/** What git reports as changed, repo-relative. `planChanged` derives the packages and reads the paths itself */
+function changed(): string[] {
   const out = spawnSync('git', ['status', '--porcelain'], { cwd: ROOT, encoding: 'utf-8' }).stdout ?? '';
-  const paths = out.split('\n').filter(Boolean).map((l) => l.slice(3).trim().split(' -> ').pop()!);
-  return { packages: [...new Set(paths.map(packageOf))].filter((p) => p !== null), anything: paths.length > 0 };
+  return out.split('\n').filter(Boolean).map((l) => l.slice(3).trim().split(' -> ').pop()!);
 }
 
-if (targets.length === 0 && !changed().anything) {
+const changedPaths = targets.length > 0 ? [] : changed();
+
+if (targets.length === 0 && changedPaths.length === 0) {
   console.log('Nothing changed, and no spec named — nothing to run.');
   process.exit(0);
 }
 
 const { runs, unmatched, ambiguous } = targets.length > 0
   ? planTargets(targets, flags, ROOT, { full })
-  : planChanged(changed().packages, flags, ROOT, { full });
+  : planChanged(changedPaths, flags, ROOT, { full });
 
 if (unmatched.length > 0) {
   console.error(`No spec or file matches ${unmatched.map((t) => `"${t}"`).join(', ')}`);
@@ -74,14 +90,51 @@ if (ambiguous.length > 0) {
   process.exit(2);
 }
 
+const reports = fs.mkdtempSync(path.join(os.tmpdir(), 'spec-count-'));
+const COUNT_REPORTER = path.join(import.meta.dirname, 'lib', 'spec-count-reporter.ts');
+
+/**
+ * How many spec files a run executed, which its exit status cannot say: `vitest related` exits 0 for a file
+ * nothing covers. `spec-count-reporter.ts` records it and prints nothing; see its header for why vitest's own
+ * `json` reporter is not used.
+ *
+ * `--reporter=default` goes alongside because naming any reporter *replaces* the human output. Skipped when the
+ * caller already chose one, so `--reporter=verbose` does not become three reporters.
+ */
+function counted(run: Run, index: number): { args: string[]; env: NodeJS.ProcessEnv; read: () => number } {
+  const file = path.join(reports, `${index}`);
+  const chose = [...run.args].some((a) => a.startsWith('--reporter'));
+  return {
+    args: [...run.args, ...(chose ? [] : ['--reporter=default']), `--reporter=${COUNT_REPORTER}`],
+    env: { ...process.env, [SPEC_COUNT_FILE]: file },
+    // No file means the run died before finishing, which its non-zero status already reports as a failure
+    read: () => (fs.existsSync(file) ? Number(fs.readFileSync(file, 'utf-8')) : 1),
+  };
+}
+
 let failed = 0;
+const uncovered: string[] = [];
 // Each distinct note once: two source-file targets are two root runs carrying the same sentence about the
 // pack suites, and a limit worth stating is not worth stating twice
 const said = new Set<string>();
-for (const run of runs) {
-  if (run.label !== ENSURE_LABEL) console.log(`\n→ ${run.label}`);
-  const result = spawnSync(run.command, [...run.args], { cwd: run.cwd, stdio: 'inherit' });
-  if ((result.status ?? 1) !== 0) failed++;
-  if (run.note !== undefined && !said.has(run.note)) { console.log(`   ${run.note}`); said.add(run.note); }
+try {
+  for (const [index, run] of runs.entries()) {
+    if (run.label !== ENSURE_LABEL) console.log(`\n→ ${run.label}`);
+    const counter = run.claimsCoverageOf === undefined ? undefined : counted(run, index);
+    const result = spawnSync(run.command, counter?.args ?? [...run.args],
+      { cwd: run.cwd, stdio: 'inherit', env: counter?.env });
+    const verdict = verdictOf(run, result.status ?? 1, counter?.read() ?? 1);
+    if (verdict === 'fail') failed++;
+    if (verdict === 'uncovered') uncovered.push(run.claimsCoverageOf!);
+    if (run.note !== undefined && !said.has(run.note)) { console.log(`   ${run.note}`); said.add(run.note); }
+  }
+} finally {
+  fs.rmSync(reports, { recursive: true, force: true });
 }
-process.exit(failed === 0 ? 0 : 1);
+
+if (failed > 0) process.exit(1);
+if (uncovered.length > 0) {
+  for (const target of uncovered) console.error(`\nNo spec covers ${target} — nothing ran, so nothing passed.`);
+  process.exit(3);
+}
+process.exit(0);

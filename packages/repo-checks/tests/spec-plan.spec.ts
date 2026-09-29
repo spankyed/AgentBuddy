@@ -2,7 +2,7 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { REPO_ROOT } from '@abuddy/host/build/packages-built';
-import { affectedPackSuites, ENSURE_LABEL, packageOf, planChanged, planTargets, splitArgs } from '../../../scripts/lib/spec-plan.ts';
+import { affectedPackSuites, ENSURE_LABEL, packageOf, planChanged, planTargets, type Run, splitArgs, verdictOf } from '../../../scripts/lib/spec-plan.ts';
 import { PACKAGE_DIRS } from '../../../scripts/lib/workspace-deps.ts';
 import { UNIT_SUITES } from '../../../scripts/lib/unit-suites.ts';
 
@@ -30,6 +30,14 @@ function someSourceFile(dir: string): string {
   return '';
 }
 const labels = (target: string) => plan(target).map((run) => run.label);
+
+/**
+ * A change set as `planChanged` takes one: repo-relative paths, which is what `git status --porcelain` gives.
+ *
+ * It takes paths rather than package names because the claim it carries is over the part of the change set a
+ * spec could cover — a package name cannot say whether what changed inside it was code or a README.
+ */
+const changedIn = (...pkgs: string[]): string[] => pkgs.map((pkg) => `packages/${pkg}/src/changed.ts`);
 
 describe('what a target plans', () => {
   it('runs every spec covering a source file, in one root run over all projects', () => {
@@ -145,13 +153,13 @@ describe('what --full adds', () => {
   });
 
   it('is the same plan as without it when the change set touches no pack dependency', () => {
-    const args = [['renderer'], [], REPO_ROOT] as const;
+    const args = [changedIn('renderer'), [], REPO_ROOT] as const;
     expect(planChanged(...args, { full: true }).runs.map((r) => r.label))
       .toEqual(planChanged(...args).runs.map((r) => r.label));
   });
 
   it('does not double-run a pack whose own source changed, which is already its own run', () => {
-    const labels = planChanged(['default-setup'], [], REPO_ROOT, { full: true }).runs.map((r) => r.label);
+    const labels = planChanged(changedIn('default-setup'), [], REPO_ROOT, { full: true }).runs.map((r) => r.label);
     expect(labels.filter((l) => l.includes('default-setup'))).toEqual(['packages/default-setup: (changed)']);
   });
 
@@ -214,12 +222,12 @@ describe('what the change set plans', () => {
   it('asks every host project once, and the pack suite only when it changed', () => {
     expect(planChanged([], [], REPO_ROOT).runs.map((r) => r.label))
       .toEqual([ENSURE_LABEL, 'the specs your changes affect']);
-    expect(planChanged(['default-setup'], [], REPO_ROOT).runs.map((r) => r.label))
+    expect(planChanged(changedIn('default-setup'), [], REPO_ROOT).runs.map((r) => r.label))
       .toEqual([ENSURE_LABEL, 'the specs your changes affect', 'packages/default-setup: (changed)']);
   });
 
   it('does not ask a host project separately, because the root run already covers it', () => {
-    expect(planChanged(['abuddy-sdk'], [], REPO_ROOT).runs.map((r) => r.label))
+    expect(planChanged(changedIn('abuddy-sdk'), [], REPO_ROOT).runs.map((r) => r.label))
       .toEqual([ENSURE_LABEL, 'the specs your changes affect']);
   });
 });
@@ -268,7 +276,7 @@ describe('no plan runs a suite twice', () => {
   it('holds for every package, as a change set and as a target, with and without --full', () => {
     for (const dir of PACKAGE_DIRS) {
       for (const full of [false, true]) {
-        expect(duplicated(planChanged([dir], [], REPO_ROOT, { full }).runs), `${dir} changed, full=${full}`).toEqual([]);
+        expect(duplicated(planChanged(changedIn(dir), [], REPO_ROOT, { full }).runs), `${dir} changed, full=${full}`).toEqual([]);
       }
     }
   });
@@ -277,7 +285,7 @@ describe('no plan runs a suite twice', () => {
     for (const suite of UNIT_SUITES.filter((s) => s.kind === 'pack')) {
       for (const dep of PACKAGE_DIRS.filter((d) => affectedPackSuites([d]).includes(suite.workspace))) {
         for (const full of [false, true]) {
-          expect(duplicated(planChanged([dep, suite.dir], [], REPO_ROOT, { full }).runs),
+          expect(duplicated(planChanged(changedIn(dep, suite.dir), [], REPO_ROOT, { full }).runs),
             `${dep} + ${suite.dir}, full=${full}`).toEqual([]);
         }
       }
@@ -297,12 +305,12 @@ describe('no plan runs a suite twice', () => {
     expect(named.map((r) => r.args)).toEqual([['test', '--', 'tests/registries.spec.ts']]);
     expect(named[0]!.covers, 'it runs two of 87 specs').toBeUndefined();
     // and the same package's whole suite does claim it
-    expect(planChanged(['default-setup'], [], REPO_ROOT).runs.at(-1)!.covers).toEqual(['@app/default-setup']);
+    expect(planChanged(changedIn('default-setup'), [], REPO_ROOT).runs.at(-1)!.covers).toEqual(['@app/default-setup']);
   });
 
   // The union is still complete: deduplicating must not drop the suite, only the second copy of it
   it('still runs the pack suite when a dependency alone changed', () => {
-    const runs = planChanged(['abuddy-sdk'], [], REPO_ROOT, { full: true }).runs;
+    const runs = planChanged(changedIn('abuddy-sdk'), [], REPO_ROOT, { full: true }).runs;
     expect(runs.flatMap((r) => r.covers ?? [])).toContain('@app/default-setup');
   });
 });
@@ -326,6 +334,62 @@ it('has one pack suite, which is what lets the pool stand in for the affected on
  * stale entries (`NO_SUITE`, `LAYOUT_CHECKS`, `PACKS_AS_A_FIXTURE`); a table describing what is here is the
  * same kind of list and gets the same treatment, in both directions.
  */
+/**
+ * Which runs promise to have covered something, and what the promise is worth.
+ *
+ * `vitest related` exits 0 for a file the graph reaches no spec from, so a run's status cannot tell "nothing
+ * covers this" from "everything covering this passed" — five of eight sampled entry modules answered zero and
+ * exited 0. The promise is what makes the difference reportable, and it belongs to the route: a run that
+ * legitimately executes nothing must not carry one.
+ */
+describe('which runs claim to have covered something', () => {
+  const claims = (target: string): (string | undefined)[] => plan(target).map((r) => r.claimsCoverageOf);
+
+  it('a source file is claimed, by the root route and by a pack\'s own', () => {
+    expect(claims('packages/abuddy-sdk/src/fe/settings.ts')).toContain('packages/abuddy-sdk/src/fe/settings.ts');
+    expect(claims('packages/default-setup/src/extensions/steps/fire/runtime.ts'))
+      .toContain('packages/default-setup/src/extensions/steps/fire/runtime.ts');
+  });
+
+  // Each of these executes nothing for a reason of its own, and none of them is a hole
+  it.each([
+    ['a doc, which no module graph reaches', 'docs/goals/README.md'],
+    ['a named spec, which is not a coverage question', 'packages/repo-checks/tests/spec-plan.spec.ts'],
+    ['a directory of specs', 'packages/repo-checks/tests'],
+    ['a vitest config, which plans whole suites', 'packages/repo-checks/vitest.config.ts'],
+  ])('nothing claims %s', (_what, target) => {
+    expect(claims(target).filter((c) => c !== undefined)).toEqual([]);
+  });
+
+  it('withdraws the label too, so a doc target does not read as a coverage answer', () => {
+    expect(plan('docs/goals/README.md').map((r) => r.label).join(' ')).not.toContain('every spec covering');
+  });
+
+  it('claims a change set that holds code, and not one that holds only prose', () => {
+    const claimed = (paths: string[]) => planChanged(paths, [], REPO_ROOT).runs
+      .filter((r) => r.claimsCoverageOf !== undefined).length;
+
+    expect(claimed(['packages/abuddy-sdk/src/fe/settings.ts'])).toBe(1);
+    expect(claimed(['docs/goals/README.md', 'CLAUDE.md', 'packages/abuddy-sdk/README.md'])).toBe(0);
+  });
+});
+
+describe('what a run\'s outcome is worth', () => {
+  const claiming = { label: 'x', cwd: '/', command: 'npx', args: [], claimsCoverageOf: 'src/a.ts' } as Run;
+  const plain = { label: 'x', cwd: '/', command: 'npx', args: [] } as Run;
+
+  it.each([
+    ['a failure is a failure, whatever it ran', claiming, 1, 3, 'fail'],
+    ['a claiming run that executed nothing is a hole', claiming, 0, 0, 'uncovered'],
+    ['a claiming run that executed something passed', claiming, 0, 3, 'pass'],
+    // The case that makes counting files rather than tests load-bearing: a `-t` pattern matching no case runs
+    // every file and skips every test, so a count of tests would report a hole for an ordinary filter
+    ['a run that promised nothing passed, even at zero', plain, 0, 0, 'pass'],
+  ])('%s', (_what, run, status, files, expected) => {
+    expect(verdictOf(run, status, files)).toBe(expected);
+  });
+});
+
 describe("the package's CLAUDE.md names what is here", () => {
   const HERE = path.join(REPO_ROOT, 'packages', 'repo-checks');
   const doc = (): string => fs.readFileSync(path.join(HERE, 'CLAUDE.md'), 'utf-8');

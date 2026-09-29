@@ -300,7 +300,16 @@ npm run typecheck:scripts # scripts/ and tests/
 npm run typecheck:pack   # @app/default-setup only
 npm run exports:check -w @abuddy/ui  # Fails on a stale exports map or a component without an entry
 
-npm run spec             # The specs your uncommitted changes affect, wherever they live
+npm run spec             # The specs your uncommitted changes affect, wherever they live.
+                         # **Three exit codes**, because the three need different next moves and only one is a
+                         # bug in the code: 1 a spec failed; 2 a name was wide enough to be a search, so the
+                         # paths were listed instead of run; 3 the target exists and no spec covers it, so
+                         # nothing ran and nothing passed. 3 is the one worth knowing about — `vitest related`
+                         # exits 0 when the graph reaches no spec, so until it existed a green run and a run
+                         # that did nothing were the same answer, and five of eight sampled entry modules
+                         # answered zero. Only a run whose route promised coverage of a file a spec could cover
+                         # earns that judgement: a whole-suite run, a `-t` filter matching no case and a doc
+                         # target all report zero correctly and still exit 0
 npm run spec:full [...]  # The same, plus the pack suites a rebuilt dist would reach — the answer the module
                          # graph cannot give. Takes every argument spec does. Costs a build when one is stale
                          # (14s) and the pack suite (18s), so a shallow @abuddy/sdk edit goes from ~24s to
