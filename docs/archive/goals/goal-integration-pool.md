@@ -1,6 +1,10 @@
 # Goal: the integration halves run as one pool, at full width
 
-> **Written in session** `acfdcbe9-f87e-4349-a1e3-a03cdf58065c` (Claude Code, 2026-09-29). Resume it with `claude -r acfdcbe9-f87e-4349-a1e3-a03cdf58065c`.
+> **Finished 2026-09-29. Phases 1-3 are implemented and committed; Phase 4 is declined with the measurement
+> that declines it. Read this as history — the Background's numbers were taken before the work and several
+> of the Decisions were corrected by it, which the Outcome records.**
+
+> **Written in session `acfdcbe9-f87e-4349-a1e3-a03cdf58065c` (Claude Code, 2026-09-29). Resume it with `claude -r acfdcbe9-f87e-4349-a1e3-a03cdf58065c`.
 
 ```
 # Goal: the integration halves run as one pool, at full width
@@ -64,8 +68,8 @@ Never:
 
 `@abuddy/cli`'s integration half is 167.9s of recorded spec file-time — 53% of the repo's 315.9s, and the
 largest single number in the records. It was deferred out of
-[`goal-spec-earns-its-pass.md`](../archive/goals/goal-spec-earns-its-pass.md) and
-[`goal-unit-suite-cost.md`](goal-unit-suite-cost.md) as "a separate look, not a blocker".
+[`goal-spec-earns-its-pass.md`](goal-spec-earns-its-pass.md) and
+[`goal-unit-suite-cost.md`](../../goals/goal-unit-suite-cost.md) as "a separate look, not a blocker".
 
 **That number is file-time summed across workers, and nobody waits for it.** Measured:
 
@@ -121,7 +125,7 @@ overlapping. All three configs declare **identical** resolution —
 `['@abuddy/source', ...defaultServerConditions.filter((c) => c !== 'module')]` — so unlike the unit suites,
 where `host` and `pack` cannot share a process because Node conditions are per process (`UnitSuite.kind`),
 these three can. The repo already pooled the unit suites for exactly this reason
-([`goal-one-job-pool.md`](../archive/goals/goal-one-job-pool.md)); the integration halves were left as `-w`
+([`goal-one-job-pool.md`](goal-one-job-pool.md)); the integration halves were left as `-w`
 flags.
 
 ### 3. It is usually the chain's binding lane
@@ -357,3 +361,98 @@ files; never edit the record by hand.
   `scripts/spec-cost.ts`'s `FILE_LINE` already reads.
 - Never quote file-time as wall time. They differ by 3-5x here, and conflating them is why this cost sat
   unexamined for months.
+
+## Outcome
+
+Finished 2026-09-29 on `AS/integration-pool`, seven commits.
+
+| Phase | | Landed as |
+|---|---|---|
+| 1 — the two defects | **done** | `449c8f7ac` |
+| 2 — one pooled run | **done** | `0666bdf7e`, with `85f6912a5` pulled forward |
+| 3 — the constraint on the right axis | **done, cap kept** | `9c1a9ef81`, gate in `e42ed2c14` |
+| 4 — the floor | **declined**, with the number | — |
+
+### What it bought
+
+Measured back-to-back at 90% idle, three runs each — the only conditions in this session worth quoting:
+
+| | runs | median |
+|---|---|---|
+| serial, as the chain ran it | 73s, 76s, 75s | **75s** |
+| pooled | 47s, 47s, 46s | **47s** |
+
+**37% off the step**, and the chain that contained it went from 96.0s — where `test:integration` bound the
+lane at 94.9s against 39.4s and 37.1s on the other two — to 82.3s, with the step at 58.9s under three-lane
+contention. Read the step's number as the rigorous one and the chain's as indicative: which steps were
+cached differs between the two runs, and the goal's own instruction to quote the chain runs into the fact
+that no two chain runs have the same cache state.
+
+The step is no longer the outlier. At 47s standalone it sits beside the other lanes rather than above them,
+which is the honest place to stop: further work here has little leverage left.
+
+### Phase 4, declined
+
+At five workers the pool is **throughput-bound, not file-bound**: 232.7s of file time over five workers
+predicts 46.5s and it measures 47s, against a longest file of 34.4s. Splitting that file moves the wall by
+zero, and it only becomes the bound if the cap lifts — which Phase 3 measured as slower. The schedule
+analysis in the Background predicted exactly this ordering, and it held.
+
+Declined rather than done, with the number, which is what the phase asked for.
+
+### Corrections to the Decisions
+
+Four, and three were mine to make:
+
+1. **Decision 5 was half right, and its half mattered.** "The constraint belongs on compiler spawns, not on
+   test workers" — spawns do matter, but *width* matters more, and the two interact. Pooling at the same
+   width let the three compiler-spawning specs overlap for the first time, which no serial arrangement
+   allowed. Deleting two spawns first is what made the pool deliver, which inverted the plan's phase order.
+2. **Decision 6's twenty-clean-runs bar never applied.** It framed lifting the cap as a stability question.
+   The answer came from throughput instead: full width is *slower* — 52.4s over nine clean runs against
+   48.2s over five — because nine workers each running `ts.createProgram` and an in-process `abuddy build`
+   put the box at a load of 25-32. No stability evidence was needed to decline it.
+3. **The flake was contention, not width.** The cap's original justification was
+   "[vitest-worker]: Timeout calling". It did not occur once in nineteen quiet runs, capped or uncapped.
+   Every occurrence came while the machine was shared — three during a window when another agent's test
+   suite ran, and one under the chain's own three lanes. That last one is the one to keep in mind: the chain
+   contends with itself, and the pool met the flake there once in two runs. The cap earns its place by being
+   faster; the headroom is a second reason, not the first.
+4. **`85f6912a5` overstated its case**, and `9c1a9ef81` corrects it in the three places it had reached.
+   Deleting the two `tsc --noEmit` spawns is worth about a second — 49.1s against 48.2s, five runs each —
+   not the "median 71s with a failure in five, to 46.1s with none" the commit claimed off a baseline
+   measured while the box was shared.
+
+### Conventional choices
+
+- **The config, not a script name.** A named integration spec routes through `npm test -- --config
+  <CONFIG_BY_HALF[half]>`, because each package's `test:integration` *is* that flag and a half-to-script-name
+  table would be a third place for one fact. Going through `npm test` keeps the `pretest` guard.
+- **`HALVES` is the declaration and `Half` is derived from it**, which the repo's rule asks for and which the
+  grouping needed anyway.
+- **`stepForSpec` moved to `scripts/lib/test-timeouts.ts`** so it could have a firing case. Its mutation did
+  not fire where it sat, because `configs()` was already derived and no integration spec has a per-test
+  override — the rule could only ever have been wrong later.
+- **The pool's projects are written as text**, mirroring `vitest.config.ts`, because `check:specifiers` reads
+  these files as text. What derives is the check.
+- **Both root vitest configs joined `ROOT`**, so a step that reads either reads what its pool is made of.
+- **The spawn gate reads the AST**, since this repo's own rule is that grep answers mentions rather than uses
+  — and the gate's own file says `tsc` a dozen times while spawning nothing.
+
+### What this leaves
+
+- **`test:external-pack:contract`** is another 57s of tier-2 pack-building, and whether it duplicates this
+  step's fixtures is unexamined. It is the next question if the chain needs to be materially cheaper.
+- **The chain contends with itself.** The one failure the pool has seen in the chain came from its own three
+  lanes, not from an external workload. If that recurs, the lever is the chain's lane count against this
+  step's worker count — two schedulers with no shared budget, which is the same shape
+  [`goal-one-job-pool.md`](goal-one-job-pool.md) removed one level down.
+
+### A note on method
+
+Five numbers in this goal were wrong when written, and each was caught by re-measuring rather than by
+review: file-time quoted as wall time, a serial baseline taken on a shared box, the spawn deletion's
+"rescue", the prediction that full width would be faster, and a spec cost recorded at a load of 71 and
+reverted. The habit that saved every one of them was cheap — take the measurement again on an idle machine
+before writing it down — and the habit that produced them was reasoning from a model of how parallelism
+ought to behave.
