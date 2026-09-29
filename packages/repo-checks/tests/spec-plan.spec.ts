@@ -8,6 +8,7 @@ import {
 } from '../../../scripts/lib/spec-plan.ts';
 import { PACKAGE_DIRS } from '../../../scripts/lib/workspace-deps.ts';
 import { UNIT_SUITES } from '../../../scripts/lib/unit-suites.ts';
+import { priceSpecs, tierOfRun } from '../../../scripts/lib/spec-dry.ts';
 
 /**
  * What `npm run spec` decides to run, asserted without running any of it.
@@ -252,22 +253,22 @@ describe('packageOf', () => {
 describe('how the arguments split', () => {
   it('gives vitest everything from the first flag, so a flag keeps its own value', () => {
     expect(splitArgs(['chain-schedule', '-t', 'a case']))
-      .toEqual({ full: false, bail: true, targets: ['chain-schedule'], flags: ['-t', 'a case'] });
+      .toEqual({ full: false, bail: true, dry: false, targets: ['chain-schedule'], flags: ['-t', 'a case'] });
     expect(splitArgs(['--changed', 'HEAD~1']))
-      .toEqual({ full: false, bail: true, targets: [], flags: ['--changed', 'HEAD~1'] });
+      .toEqual({ full: false, bail: true, dry: false, targets: [], flags: ['--changed', 'HEAD~1'] });
   });
 
   it('consumes its own flags in first position, and nowhere else', () => {
     expect(splitArgs(['--full', 'packages/abuddy-sdk/src/x.ts']))
-      .toEqual({ full: true, bail: true, targets: ['packages/abuddy-sdk/src/x.ts'], flags: [] });
+      .toEqual({ full: true, bail: true, dry: false, targets: ['packages/abuddy-sdk/src/x.ts'], flags: [] });
     expect(splitArgs(['--no-bail', 'packages/abuddy-sdk/src/x.ts']))
-      .toEqual({ full: false, bail: false, targets: ['packages/abuddy-sdk/src/x.ts'], flags: [] });
+      .toEqual({ full: false, bail: false, dry: false, targets: ['packages/abuddy-sdk/src/x.ts'], flags: [] });
     // Not a target's suffix, and not a flag's value: both stay vitest's to accept or reject, because a
     // command that filtered it out wherever it appeared would eat the second one silently
-    expect(splitArgs(['a-spec', '--full'])).toEqual({ full: false, bail: true, targets: ['a-spec'], flags: ['--full'] });
-    expect(splitArgs(['-t', '--full'])).toEqual({ full: false, bail: true, targets: [], flags: ['-t', '--full'] });
+    expect(splitArgs(['a-spec', '--full'])).toEqual({ full: false, bail: true, dry: false, targets: ['a-spec'], flags: ['--full'] });
+    expect(splitArgs(['-t', '--full'])).toEqual({ full: false, bail: true, dry: false, targets: [], flags: ['-t', '--full'] });
     expect(splitArgs(['a-spec', '--no-bail']), 'the same rule, and the reason it is one rule')
-      .toEqual({ full: false, bail: true, targets: ['a-spec'], flags: ['--no-bail'] });
+      .toEqual({ full: false, bail: true, dry: false, targets: ['a-spec'], flags: ['--no-bail'] });
   });
 
   // A leading *run* rather than one flag, so the two compose in either order without position mattering
@@ -590,5 +591,94 @@ describe('a pack file whose specs sit behind a build', () => {
     const planned = planTargets([MANIFEST], [], REPO_ROOT, { full: true });
     const suiteRun = planned.runs.find((r) => r.cwd.endsWith(`packages/${PACK}`))!;
     expect(suiteRun.covers).toEqual(['@app/default-setup']);
+  });
+});
+
+/**
+ * What `spec:dry` predicts, without collecting anything.
+ *
+ * The pricing is pure so it can be asserted here; the collecting half is in the command, because it loads
+ * vitest's node API and the ordinary run must not pay for that. What the prediction rests on is a *sample* —
+ * `spec-cost.json` is kept with hysteresis, so a row may sit up to `DRIFT_SHARE` from the truth — which is
+ * why it reports the record's own `measuredAt` rather than a confidence computed here.
+ */
+describe('what the plan would cost', () => {
+  const SPEC = 'packages/repo-checks/tests/suite-split.spec.ts';
+
+  it('prices a spec from the record its package keeps', () => {
+    const priced = priceSpecs([SPEC], REPO_ROOT);
+    expect(priced.fileTimeMs, 'the recorded cost, which is not zero').toBeGreaterThan(0);
+    expect(priced.unpriced).toEqual([]);
+    expect(priced.measuredAt, 'and how old the band is').toMatch(/^\d{4}-\d{2}-\d{2}/);
+  });
+
+  // A total that quietly omits what it does not know is a prediction that improves the less it knows
+  it('names a spec the record has never seen rather than counting it free', () => {
+    const priced = priceSpecs([SPEC, 'packages/repo-checks/tests/not-recorded.spec.ts'], REPO_ROOT);
+    expect(priced.unpriced).toEqual(['packages/repo-checks/tests/not-recorded.spec.ts']);
+    expect(priced.fileTimeMs, 'and the total is the part it does know').toBe(priceSpecs([SPEC], REPO_ROOT).fileTimeMs);
+  });
+
+  it('names a spec in no package, which no record could hold', () => {
+    expect(priceSpecs(['tests/e2e/smoke.spec.ts'], REPO_ROOT).unpriced).toEqual(['tests/e2e/smoke.spec.ts']);
+  });
+
+  it('reports the oldest record it drew on, since that is how stale the band is', () => {
+    const many = priceSpecs([SPEC, 'packages/abuddy-ears/tests/no-module-state.spec.ts'], REPO_ROOT);
+    expect(many.measuredAt).toBeDefined();
+    expect(many.measuredAt! <= priceSpecs([SPEC], REPO_ROOT).measuredAt!).toBe(true);
+  });
+
+  /**
+   * The tier is read from `chain-steps.ts`, never inferred, so the label cannot disagree with `check:tiers`.
+   * A package's own `npm test` is not the chain's `test` step, and labelling it tier 3 would say the pack
+   * suite launches the app.
+   */
+  it('labels a run with the tier of the chain step it is, and nothing else', () => {
+    const [ensure, walk] = planTargets(['packages/abuddy-sdk/src/types/sdk-entities.ts'], [], REPO_ROOT).runs;
+    expect(tierOfRun(ensure!, REPO_ROOT), 'packages:ensure').toBe(2);
+    expect(tierOfRun(walk!, REPO_ROOT), 'a root vitest is no chain step').toBeUndefined();
+
+    const packageTest = planTargets([SPEC], [], REPO_ROOT).runs[0]!;
+    expect(packageTest.args[0], 'npm test in a package').toBe('test');
+    expect(tierOfRun(packageTest, REPO_ROOT), 'which is not the chain step named test').toBeUndefined();
+  });
+
+  // Every run a plan can produce is either collected or explained: one that is neither would print an empty
+  // prediction and read as costing nothing
+  it('declares what it would collect for every run that answers a graph', () => {
+    const planned = planTargets(['packages/abuddy-sdk/src/types/sdk-entities.ts'], [], REPO_ROOT, { full: true }).runs;
+    for (const run of planned) {
+      const answersAGraph = run.args.includes('related') || run.args.includes('--changed');
+      expect(run.collects !== undefined, `${run.label}`).toBe(answersAGraph);
+    }
+    expect(planChanged(changedIn('abuddy-sdk'), [], REPO_ROOT).runs.find((r) => r.collects?.changed)).toBeDefined();
+  });
+});
+
+/**
+ * That the ordinary run pays nothing for the prediction.
+ *
+ * Collection is ~1.6s whatever it returns, which is 8% of a root run and most of a one-spec run. The command
+ * keeps it out by loading both the collector and the pricing behind `await import`, so a plain `npm run spec`
+ * never constructs vitest's node API at all — asserted from the source, because a static import is the one
+ * way this regresses and it regresses silently.
+ */
+describe('the ordinary run does not collect', () => {
+  const source = fs.readFileSync(path.join(REPO_ROOT, 'scripts/spec.ts'), 'utf-8');
+  /** Static imports only: `import x from 'y'` at the start of a line, never `await import('y')` */
+  const staticImports = [...source.matchAll(/^import\s[^\n]*?from\s+'([^']+)'/gm)].map(([, spec]) => spec!);
+
+  it('names no collector among its static imports', () => {
+    expect(staticImports.length, 'nothing was parsed, so this proves nothing').toBeGreaterThan(3);
+    expect(staticImports).not.toContain('vitest/node');
+    expect(staticImports, 'the pricing loads chain-steps, which the ordinary run has no use for')
+      .not.toContain('./lib/spec-dry.ts');
+  });
+
+  it('loads both behind an await import, so only --dry pays', () => {
+    for (const module of ['vitest/node', './lib/spec-dry.ts']) {
+      expect(source, module).toContain(`await import('${module}')`);
+    }
   });
 });

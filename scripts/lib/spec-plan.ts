@@ -56,6 +56,21 @@ export interface Run {
    * as `note` is — and *in place of* "no spec covers it" when it found none, which is the case it exists for.
    */
   readonly beyond?: BuildEdge;
+  /**
+   * The vitest options that produce this run's file list without running it, for `spec:dry`.
+   *
+   * Declared rather than parsed back out of `args`, so the prediction asks the same question the run does
+   * and a change to one is a change to both in the same place.
+   */
+  readonly collects?: { readonly related?: readonly string[]; readonly changed?: boolean };
+  /**
+   * The spec files this run executes, repo-relative, where naming the target already said which they are.
+   *
+   * The other half of what `spec:dry` prices, beside `collects` and `covers`: a plan whose runs are none of
+   * the three would predict nothing for them and read as costing nothing, which is the failure an unpriced
+   * spec is named for.
+   */
+  readonly specs?: readonly string[];
 }
 
 /**
@@ -315,6 +330,7 @@ const packRelatedRun = (root: string, suite: UnitSuite, relToPack: string, flags
   args: ['vitest', 'related', '--run', relToPack, ...flags],
   claimsCoverageOf,
   beyond,
+  collects: { related: [relToPack] },
 });
 
 /**
@@ -349,6 +365,7 @@ const rootRun = (root: string, label: string, args: readonly string[], flags: re
   args: ['vitest', ...args, ...flags],
   note,
   claimsCoverageOf,
+  collects: args[0] === 'related' ? { related: [args[2]!] } : { changed: true },
 });
 
 /** A package's own suite, through its `test` script so its pretest and vitest config still apply */
@@ -357,6 +374,7 @@ const packageRun = (root: string, pkg: string, args: readonly string[], flags: r
   cwd: path.join(root, 'packages', pkg),
   command: 'npm',
   args: ['test', '--', ...args, ...flags],
+  specs: args.length === 0 ? undefined : args.map((arg) => path.join('packages', pkg, arg)),
   // Only a run with no spec named executes the suite in full; anything else is a subset
   covers: args.length === 0 ? UNIT_SUITES.filter((suite) => suite.dir === pkg).map((suite) => suite.workspace) : undefined,
 });
@@ -367,6 +385,7 @@ const e2eRun = (root: string, specs: readonly string[], flags: readonly string[]
   cwd: root,
   command: 'npm',
   args: ['run', 'test', '--', ...specs.map((s) => path.relative(root, s)), ...flags],
+  specs: specs.map((spec) => path.relative(root, spec)),
 });
 
 const groupByPackage = (specs: readonly string[], root: string): Map<string | null, string[]> => {
@@ -394,7 +413,7 @@ export interface PlanOptions { readonly full?: boolean }
  * A list and its type in one declaration, because each one is read in two places — here and the header that
  * documents it — and a flag in one and not the other is a flag that silently becomes a filename.
  */
-export const OWN_FLAGS = ['--full', '--no-bail'] as const;
+export const OWN_FLAGS = ['--full', '--no-bail', '--dry'] as const;
 export type OwnFlag = (typeof OWN_FLAGS)[number];
 
 /**
@@ -410,7 +429,9 @@ export type OwnFlag = (typeof OWN_FLAGS)[number];
  * nothing else here is. `npm run spec:full` puts `--full` there, so nobody types it; `--no-bail` is typed,
  * and `npm run spec -- --no-bail src/x.ts` is the shape it has to have.
  */
-export function splitArgs(argv: readonly string[]): { full: boolean; bail: boolean; targets: string[]; flags: string[] } {
+export function splitArgs(argv: readonly string[]): {
+  full: boolean; bail: boolean; dry: boolean; targets: string[]; flags: string[];
+} {
   const own = new Set<string>();
   let start = 0;
   while (start < argv.length && (OWN_FLAGS as readonly string[]).includes(argv[start]!)) own.add(argv[start++]!);
@@ -419,6 +440,7 @@ export function splitArgs(argv: readonly string[]): { full: boolean; bail: boole
   return {
     full: own.has('--full'),
     bail: !own.has('--no-bail'),
+    dry: own.has('--dry'),
     targets: firstFlag === -1 ? rest : rest.slice(0, firstFlag),
     flags: firstFlag === -1 ? [] : rest.slice(firstFlag),
   };

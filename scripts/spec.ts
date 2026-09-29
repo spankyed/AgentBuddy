@@ -42,6 +42,13 @@
 //
 //   1  a spec failed — the ordinary one
 //   2  a name was wide enough to be a search, so the paths were listed instead of run
+// `npm run spec:dry` answers "what would this run, and what does the record say it costs" without running any
+// of it. It collects — ~1.6s whatever comes back — which the ordinary run never does: the collector and the
+// pricing load behind `await import`, and repo-checks asserts that from this file's source.
+//
+// `--no-bail` runs the whole plan after a failure, which is what this did before: a 1s failure used to pay for
+// the pack suite behind it.
+//
 //   3  nothing ran and nothing passed: no spec covers the target, or the specs that do sit behind a build
 //      this run is not doing (a pack's seed sources, its `abuddy.json`) — `npm run spec:full` answers those
 //
@@ -61,7 +68,7 @@ import { ENSURE_LABEL, exitCodeFor, packageOf, planChanged, planTargets, type Ru
 
 const ROOT = path.resolve(import.meta.dirname, '..');
 
-const { full, bail, targets, flags } = splitArgs(process.argv.slice(2));
+const { full, bail, dry, targets, flags } = splitArgs(process.argv.slice(2));
 
 /** What git reports as changed, repo-relative. `planChanged` derives the packages and reads the paths itself */
 function changed(): string[] {
@@ -123,6 +130,62 @@ function counted(run: Run, index: number): { args: string[]; env: NodeJS.Process
     // a reporter that stopped being called is how this whole check would go quiet
     read: () => (fs.existsSync(file) ? Number(fs.readFileSync(file, 'utf-8')) : undefined),
   };
+}
+
+/**
+ * What the plan would run and what the record says it costs, collecting rather than running.
+ *
+ * Collection is flat in the size of the answer — 1.6s for 0 specs and 1.6s for 150, measured, because it is
+ * the eleven project configs being loaded rather than a graph being walked. Worth it against a 20s root run
+ * and not against a 3s one, which is why it is its own command rather than something the ordinary run pays.
+ */
+if (dry) {
+  const { priceSpecs, priceSuites, tierOfRun, asSeconds } = await import('./lib/spec-dry.ts');
+  const { createVitest } = await import('vitest/node');
+  let total = 0;
+  const unpriced: string[] = [];
+  const dates: string[] = [];
+
+  for (const run of runs) {
+    const tier = tierOfRun(run, ROOT);
+    console.log(`\n→ ${run.label}${tier === undefined ? '' : `  [tier ${tier}]`}`);
+    // Three ways a run's file list is known, and a run that is none of them says so: collected from the
+    // graph, named by the target, or a suite's whole record. Without the last two a plan's most expensive
+    // runs — a named spec, `--full`'s pack suite — would contribute nothing and read as free
+    let priced;
+    if (run.collects !== undefined) {
+      const vitest = await createVitest('test', {
+        watch: false, silent: true,
+        ...(run.collects.related === undefined ? {} : { related: [...run.collects.related] }),
+        ...(run.collects.changed === true ? { changed: true } : {}),
+      });
+      priced = priceSpecs([...new Set((await vitest.getRelevantTestSpecifications()).map((spec) => spec.moduleId))]
+        .map((id) => path.relative(ROOT, id)).sort(), ROOT);
+      await vitest.close();
+    } else if (run.specs !== undefined) {
+      priced = priceSpecs([...run.specs].sort(), ROOT);
+    } else if (run.covers !== undefined) {
+      priced = priceSuites(run.covers, ROOT);
+    } else {
+      console.log('   no specs of its own: it builds, or makes the packages current');
+      continue;
+    }
+    const specs = priced.specs;
+    total += priced.fileTimeMs;
+    unpriced.push(...priced.unpriced);
+    if (priced.measuredAt !== undefined) dates.push(priced.measuredAt);
+    for (const spec of specs) console.log(`   ${spec}`);
+    console.log(`   ${specs.length} spec${specs.length === 1 ? '' : 's'}, ${asSeconds(priced.fileTimeMs)} of recorded file-time`);
+  }
+
+  // File-time, and said to be: it is summed across workers, and the ratio to wall was 1.55:1 and 2.18:1 on
+  // one target three days apart, so any wall number derived from it would be wrong by a third within a week
+  console.log(`\n${asSeconds(total)} of recorded file-time, summed across workers — not time to wait.`);
+  // The record is a sample kept with hysteresis, so this is a band and its age is the record's own field
+  if (dates.length > 0) console.log(`Read from records last measured ${dates.sort()[0]!.slice(0, 10)}; a row may sit up to 15% from the truth by design.`);
+  for (const spec of unpriced) console.error(`  no recorded cost: ${spec}`);
+  if (unpriced.length > 0) console.error(`  ${unpriced.length} unpriced, so the total is short — npm run spec-cost:update`);
+  process.exit(0);
 }
 
 let failed = 0;

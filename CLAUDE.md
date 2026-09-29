@@ -319,6 +319,18 @@ npm run spec             # The specs your uncommitted changes affect, wherever t
                          # answered zero. Only a run whose route promised coverage of a file a spec could cover
                          # earns that judgement: a whole-suite run, a `-t` filter matching no case and a doc
                          # target all report zero correctly and still exit 0
+npm run spec:dry [...]   # What the plan would run and what the record says it costs, running nothing. Takes
+                         # every argument spec does. It collects through vitest's node API — ~1.6s whatever
+                         # comes back, since it is the eleven project configs loading rather than a graph
+                         # being walked — so a whole prediction is 4s where the run it predicts is 21s.
+                         # It prints **file-time summed across workers, never a wall estimate**: the ratio
+                         # between the two was 1.55:1 and 2.18:1 on one target three days apart, so a wall
+                         # number would be wrong by a third within a week. And it prints the record's
+                         # `measuredAt`, because spec-cost.json is a sample kept with hysteresis and a row
+                         # may sit up to DRIFT_SHARE from the truth by design — the total is a band. A spec
+                         # the record has never seen is named rather than counted free.
+                         # The ordinary `npm run spec` collects nothing: the collector and the pricing load
+                         # behind `await import`, which repo-checks asserts from the source
 npm run spec:full [...]  # The same, plus the pack suites a rebuilt dist would reach — the answer the module
                          # graph cannot give. Takes every argument spec does. Costs a build when one is stale
                          # (14s) and the pack suite (18s), so a shallow @abuddy/sdk edit goes from ~24s to
