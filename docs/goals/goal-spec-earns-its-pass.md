@@ -2,14 +2,56 @@
 
 > **Written in session** `bc6d43e0-1c60-4cad-8237-15508a9e6649` (Claude Code, 2026-09-28). Resume it with `claude -r bc6d43e0-1c60-4cad-8237-15508a9e6649`.
 
+> **Re-surveyed 2026-09-28 (later the same day) at `af694db4f`. Phase 1 is implemented and its Background is
+> now history; Phases 2-4 are untouched and every reproduction behind them still reproduces. Read this block
+> before the Background: it closes one phase, re-dates every number, and corrects two Decisions.**
+>
+> - **Phase 1 shipped** in `249c0a8e8`, with `46268f236`, `fc96b83bd` and `a4d4abca9` behind it. Every item of
+>   its "Done when" was re-checked and holds. **The base check below asked an implementer to confirm the
+>   defect Phase 1 removed, and would have stopped them** — corrected in place, as
+>   [`goal-unit-suite-cost.md`](goal-unit-suite-cost.md) corrected its own.
+> - **Phase 1 added a fourth verdict the Decision did not name**, and it is the right addition: `no count`,
+>   for a run whose reporter never wrote a file. It exits 3 with the count treated as unknown rather than as
+>   zero, because "the reporter stopped being called" and "nothing ran" are the same silence. Decision 1's
+>   three *codes* are unchanged; the verdicts are four.
+> - **Background §2's symptom changed and did not improve.** A seed source no longer passes quietly — it now
+>   exits 3 saying *"No spec covers packages/default-setup/src/seeds/…"*, which is **false**: `tests/seeds/`
+>   covers it across the build edge. Phase 1 turned a silent hole into a confident wrong answer, which is a
+>   better failure and still a wrong one. Phase 2 is unchanged and is what fixes it.
+> - **`packages/<pack>/abuddy.json` is the opposite case** and neither phase noticed: `.json` is not a source
+>   extension, so it carries no claim, and the target prints *"every spec covering abuddy.json"*, runs nothing
+>   and exits **0**. Decision 2's extension test is right — it is what keeps a doc target honest — so Phase 2
+>   owns this one too, and says so now.
+> - **Decision 6 mislabels a tier, and did so when it was written.** It calls `test:unit:pack` tier 2; it is
+>   `tier: 1` in `chain-steps.ts` today and was at `56ba5bcad`. The Decision's whole argument is that the label
+>   is *read* from that file and so cannot disagree with it, which makes the error the exact one it warns
+>   against. Corrected below.
+> - **Decision 7's ratio moved 40% in three days.** 36.0s of file-time ran in 23.3s of wall at the survey
+>   (1.55:1); the same target now records 41.9s and runs in 20.8s (2.18:1). The Decision's refusal to calibrate
+>   a per-suite ratio is strengthened by that; its example sentence, which prints a wall range derived from one
+>   ratio, is struck below.
+> - **The record it predicts from is now a *sample*.** `spec-cost.json` gained hysteresis, a contention refusal
+>   and a drift-gated `--all` (root `CLAUDE.md`, "There is a third kind"). A recorded cost is deliberately
+>   allowed to sit up to `DRIFT_SHARE` from the truth, so Phase 4's prediction inherits a band rather than a
+>   number. Phase 4 says what to do about it.
+> - **Phase 1 met its "Done when" and left half of Decision 2 unimplemented.** A change set of nothing but a
+>   doc exits 0, as required — but it still spawns `packages:ensure` and a root `--changed` vitest that reports
+>   *"No test files found"*, under the label *"the specs your changes affect"*. Decision 2 asked for the other
+>   half too: that it **say nothing changed that a spec could cover**, rather than pay 3.4s to discover it. The
+>   root `CLAUDE.md`'s first time-waster is *running anything at all after a doc edit*, so this is the rule the
+>   command itself now breaks. Added to Phase 3, whose subject is a run whose answer is already known.
+> - **Every number in Background was re-measured at this commit.** The record is 369 specs and 315.9s where it
+>   was 354 and 246.9s.
+
 ```
 # Goal: npm run spec never reports a pass it did not earn
 
-Implement docs/goals/goal-spec-earns-its-pass.md on master, at or after 56ba5bcad — the base its
-Background was surveyed at.
-Before Phase 1, confirm the base: `npm run spec -- packages/renderer/src/main.ts` prints "No test files
-found, exiting with code 0" and exits 0, and scripts/lib/spec-plan.ts exports matchByName, tooBroad and
-planTargets. If either is already false, stop and say so — the survey was taken somewhere else.
+Implement docs/goals/goal-spec-earns-its-pass.md on the current branch, at or after af694db4f — the base its
+Background was re-surveyed at. Phase 1 is already done; start at Phase 2.
+Before Phase 2, confirm the base, with SEED=packages/default-setup/src/seeds/actions/claude-code/answer-question.ts:
+`npm run spec -- $SEED` exits 3 claiming no spec covers it; `npm run spec -- packages/default-setup/abuddy.json`
+exits 0 having run nothing; scripts/lib/spec-plan.ts exports planTargets, verdictOf and exitCodeFor, and Run
+carries claimsCoverageOf. If any is already false, stop and say so — the survey was taken somewhere else.
 Read Background, Decisions, Phases and Constraints first. Decisions are final: implement them, don't
 reopen them or stop to ask.
 Where a detail isn't specified, pick the conventional option, note it in the final summary, and keep
@@ -17,12 +59,13 @@ going. No backward compatibility in code (root CLAUDE.md, "Backward compatibilit
 not this goal's choice): change signatures, migrate every in-repo caller, test, fixture and doc in the
 same change, and fix forward.
 
-Every number in Background was measured on 2026-09-28 on a 10-core machine with nothing else running.
-Re-measure before you use one to justify a choice: a contended run has produced a 36% error here.
+Every number in Background was measured on 2026-09-28 on a 10-core machine with nothing else running, and
+re-measured the same day at af694db4f. Re-measure before you use one to justify a choice: a contended run
+has produced a 36% error here, and the file-time-to-wall ratio moved 40% in three days.
 
 Finished when:
-- Phases 1-4 are implemented and each meets its "Done when"; every new route, helper and guard is
-  mutation-checked.
+- Phases 2-4 are implemented and each meets its "Done when"; every new route, helper and guard is
+  mutation-checked. Phase 1 is done (`249c0a8e8`) and is not to be re-implemented.
 - No target naming a file that exists can exit 0 having run no spec. A source file nothing covers says
   so, names what would cover it where that is known, and exits non-zero.
 - The two edges no module graph can see — a pack's seed sources to its goldens, and abuddy.json to the
@@ -58,11 +101,9 @@ Never:
 
 ## Background (surveyed 2026-09-28 at `56ba5bcad` on `master`)
 
-> Re-checked at `851cf6860`, later the same day: `scripts/spec.ts`, `scripts/lib/spec-plan.ts` and
-> `repo-checks/tests/spec-plan.spec.ts` are untouched since the survey, and every reproduction below still
-> reproduces. Nothing in this goal has been implemented. What moved in between is the lint gate, which now
-> reads `packages/**` — so new code under `scripts/` has a linter over it that it did not have when this was
-> written.
+> Re-surveyed at `af694db4f`. §1 is **closed** and kept as the case Phase 1 was written from; §2 and §3
+> still hold, with §2's symptom changed and every number re-measured. What moved besides Phase 1 is the lint
+> gate, which now reads `packages/**`, and `spec-cost.json`, which is now maintained as a sample (§3).
 
 [`goal-spec-follows-the-graph.md`](../archive/goals/goal-spec-follows-the-graph.md) made `npm run spec` route a
 source file through the module graph: one root `vitest related` over every host project, so editing
@@ -73,7 +114,9 @@ routing as data and `packages/repo-checks/tests/spec-plan.spec.ts` asserts it in
 
 What is left is the honesty of the answer. Three things, all reproducible at this commit.
 
-### 1. An empty answer is reported as a pass
+### 1. An empty answer is reported as a pass — **closed by Phase 1 (`249c0a8e8`)**
+
+What it was:
 
 ```
 $ npm run spec -- packages/renderer/src/main.ts
@@ -83,6 +126,18 @@ $ echo $?
 0
 ```
 
+What it is, re-run at `af694db4f`:
+
+```
+$ npm run spec -- packages/renderer/src/main.ts
+→ every spec covering packages/renderer/src/main.ts
+No spec covers packages/renderer/src/main.ts — nothing ran, so nothing passed.
+$ echo $?
+3
+```
+
+The rest of this section is the evidence Phase 1 was written from, kept because §2 and §3 still rest on it.
+
 `vitest related` exits 0 when the graph reaches no spec, and `scripts/spec.ts:84` reads a run's status as the
 whole verdict. So "nothing covers this file" and "everything that covers this file passed" are the same
 output and the same exit code — which is the defect the archived goal's own Background called *confidently
@@ -91,35 +146,59 @@ wrong*, in the one shape its fix did not cover.
 It is not one file. Collected through vitest's node API against the root config (counts are the specs
 `related` would run):
 
-| Source file | Specs covering it |
-|---|---|
-| `packages/renderer/src/main.ts` | **0** |
-| `packages/api/src/server.ts` | **0** |
-| `packages/main/src/index.ts` | **0** |
-| `packages/renderer/src/views/settings/plugin.ts` | **0** |
-| `packages/abuddy-ui/src/design/button.ts` | **0** |
-| `packages/main/src/app-context.ts` | 2 |
-| `packages/abuddy-host/src/services/index.ts` | 16 |
-| `packages/abuddy-sdk/src/fe/settings.ts` | 19 |
+| Source file | Specs covering it | re-measured `af694db4f` |
+|---|---|---|
+| `packages/renderer/src/main.ts` | **0** | **0** |
+| `packages/api/src/server.ts` | **0** | **0** |
+| `packages/main/src/index.ts` | **0** | **0** |
+| `packages/renderer/src/views/settings/plugin.ts` | **0** | **0** |
+| `packages/abuddy-ui/src/design/button.ts` | **0** | **0** |
+| `packages/main/src/app-context.ts` | 2 | 2 |
+| `packages/abuddy-host/src/services/index.ts` | 16 | 15 |
+| `packages/abuddy-sdk/src/fe/settings.ts` | 19 | 19 |
 
 Five of eight sampled files — composition roots and entry modules, which is where an uncovered edit is most
-likely and least expected — answer 0 and exit 0.
+likely and least expected — answered 0 and exited 0. **They still answer 0**, which is the point worth
+keeping: Phase 1 did not give them coverage, it stopped them being reported as covered. The same five now
+exit 3.
 
 The router already refuses to pass quietly for a *name* that matches nothing (`unmatched`, exiting 1, and
 `spec-plan.spec.ts`' case *"reports a target that matches nothing instead of passing quietly"*). The same
 claim is not made for a file that exists and nothing covers.
 
-### 2. A seed source claims coverage it then does not run
+### 2. A seed source is told nothing covers it, and something does
+
+Re-run at `af694db4f`, after Phase 1:
 
 ```
 $ npm run spec -- packages/default-setup/src/seeds/actions/claude-code/answer-question.ts
 → @app/default-setup: every spec covering src/seeds/actions/claude-code/answer-question.ts
-No test files found, exiting with code 0
+No spec covers packages/default-setup/src/seeds/actions/claude-code/answer-question.ts — nothing ran, so nothing passed.
+$ echo $?
+3
+```
+
+**That sentence is false.** Phase 1 was right to stop calling this a pass and has now put the router's name
+to a claim about coverage that is wrong, rather than to a silence that was merely unhelpful — the exit code
+is honest about the run and the words are not. It read, before Phase 1:
+
+```
+→ @app/default-setup: every spec covering src/seeds/actions/claude-code/answer-question.ts
+No test files found, exiting with code 0     # $? = 0
+```
+
+Its sibling has the opposite shape and is untouched by Phase 1, because `.json` carries no coverage claim
+(Decision 2, correctly — it is what keeps a doc target honest):
+
+```
+$ npm run spec -- packages/default-setup/abuddy.json
+→ @app/default-setup: every spec covering abuddy.json
 $ echo $?
 0
 ```
 
-The label states the claim and the run refutes it. The specs that do cover that file are
+So one edge asserts something untrue and the other still passes quietly, and Phase 2 is what closes both.
+The specs that do cover the seed file are
 `packages/default-setup/tests/seeds/seed-parity.spec.ts` and `tests/seeds/compiled-bodies.spec.ts`, which read
 `dist/*.seed.json` — so the edge is `src` → `abuddy build` → compiled seed → golden, a build edge of exactly
 the shape the archived goal closed for the `dist` seam, and nothing routes it. That goal recorded it, under
@@ -139,41 +218,59 @@ records a measured millisecond count per spec file, written by `spec-cost:update
 `spec-cost:check`. `scripts/lib/spec-plan.ts` imports neither — `unit-suites.ts` and `workspace-deps.ts` are
 its only inputs, and the word "tier" appears in it twice, both times in prose.
 
-What the record holds today, summed from the twelve per-package files (`measuredAt` between 2026-09-25 and
+What the record holds, re-summed from the twelve per-package files at `af694db4f` (every `measuredAt`
 2026-09-28):
 
 | Suite | Specs | Recorded file-time | of which the integration half |
 |---|---|---|---|
-| `abuddy-cli` | 54 | 144.1s | 132.0s |
-| `publish-checks` | 9 | 28.9s | 27.1s |
-| `abuddy-host` | 81 | 20.1s | — |
-| `repo-checks` | 24 | 19.3s | 14.2s |
-| `default-setup` | 89 | 13.4s | — |
-| `abuddy-sdk` | 56 | 12.8s | — |
-| `api` | 15 | 5.3s | — |
-| `abuddy-ears` | 9 | 2.5s | — |
-| `main`, `renderer`, `abuddy-testing`, `abuddy-ui` | 17 | 0.5s | — |
-| **total** | **354** | **246.9s** | 173.3s |
+| `abuddy-cli` | 56 | 182.9s | 167.9s |
+| `repo-checks` | 30 | 43.1s | 34.2s |
+| `publish-checks` | 9 | 32.6s | 30.6s |
+| `abuddy-host` | 79 | 21.7s | — |
+| `default-setup` | 94 | 13.4s | — |
+| `abuddy-sdk` | 59 | 13.4s | — |
+| `api` | 15 | 5.7s | — |
+| `abuddy-ears` | 9 | 2.6s | — |
+| `main`, `renderer`, `abuddy-ui`, `abuddy-testing` | 17 | 0.5s | — |
+| **total** | **368** | **315.9s** | 232.7s |
 
-The record covers the answers the router gives. For the 104-file root run above, **every one of the 104 files
-had a recorded cost**, summing to 36.0s of file-time; the run's measured wall time was 23.3s (`Duration
-21.82s`, 1024 tests). So a prediction is available and has to be stated as file-time with the ratio said out
-loud — 36.0s of file-time is 23.3s of wall across workers, and reporting the sum as a wall-time promise would
-be wrong by half.
+369 spec files, of which 368 carry a cost and one is recorded as skipped (`default-setup`). The survey three
+days earlier read 354 and 246.9s, so the body of this record grew 28% in three days while the answer it
+supports — which half a spec runs in — did not move.
+
+**And the record is now a *sample*, which Phase 4 has to know.** Since the survey it has gained hysteresis
+(`moved`: a measurement is recorded only when it would place the spec differently or is a large move), a
+contention refusal, and an `--all` that rewrites every row only against a drifted body. The root `CLAUDE.md`
+carries the doctrine under *"There is a third kind, and it is the one that misbehaves: a sample"*. The
+consequence for a prediction is direct: **a recorded cost is deliberately allowed to sit up to `DRIFT_SHARE`
+(15%) from the truth**, and a correlated drift under `SETTLED_FRACTION` (35%) moves no individual row at all.
+A predicted total is therefore a band, not a number, and nothing in the chain re-measures it — only a human
+running `spec-cost:update --all`.
+
+The record covers the answers the router gives. Re-measured at `af694db4f`: the same target collects **108
+files, every one of them priced**, summing to 41.9s of file-time, and the run takes 20.8s of wall (`Duration
+19.17s`, 1133 tests). So a prediction is available and has to be stated as file-time with the ratio said out
+loud.
+
+**The ratio is not a constant, and that is the finding.** It was 36.0s → 23.3s at the survey (1.55:1) and is
+41.9s → 20.8s three days later (2.18:1) — a 40% move, on the same target, from specs being added to covering
+suites and from the record's own hysteresis. Reporting the sum as a wall-time promise would be wrong by half;
+reporting a wall range from a measured ratio would be wrong by a third within a week.
 
 Collecting the answer without running it is cheap, through `createVitest({ related })` and
 `getRelevantTestSpecifications()`:
 
-| Target | Specs | Collection |
-|---|---|---|
-| `abuddy-sdk/src/types/sdk-entities.ts` | 104 | 5.7s cold, 1.7s warm |
-| `abuddy-ears/src/query.ts` | 146 | 4.6s |
-| `main/src/app-context.ts` | 2 | 1.8s |
-| `renderer/src/main.ts` | 0 | 2.6s |
+| Target | Specs | Collection | re-measured `af694db4f` |
+|---|---|---|---|
+| `abuddy-sdk/src/types/sdk-entities.ts` | 104 → **108** | 5.7s cold, 1.7s warm | 2.5s first in the process |
+| `abuddy-ears/src/query.ts` | 146 → **150** | 4.6s | 1.6s |
+| `main/src/app-context.ts` | 2 | 1.8s | 1.6s |
+| `renderer/src/main.ts` | 0 | 2.6s | 1.6s |
 
 **Collection cost is flat in the size of the answer** — it is the eleven project configs being loaded, not the
-graph being walked. Roughly 2s warm whatever comes back, which is 9% of the 23.3s root run and most of a
-one-spec run.
+graph being walked — and the second measurement makes that sharper than the first: **1.6s for 0 specs and 1.6s
+for 150**, with only the first target in a process paying 2.5s. That is 8% of the 20.8s root run and most of a
+one-spec run, which is Decision 5.
 
 ### Already closed, recorded so nobody re-chases it
 
@@ -193,7 +290,10 @@ otherwise go looking:
 
 ## Decisions
 
-1. **A run that executed no spec is not a pass.** `npm run spec` exits non-zero and says which target
+1. **A run that executed no spec is not a pass.** *(Implemented, `249c0a8e8`. The codes are as written; the
+   implementation added a fourth verdict, `no count`, for a run whose reporter never wrote a file — it exits 3
+   with the count unknown rather than assumed zero, since "the reporter stopped being called" is the way this
+   check would go quiet. `exitCodeFor` and `verdictOf` in `spec-plan.ts` are where both live.)* `npm run spec` exits non-zero and says which target
    produced no answer. Three exit codes, documented in `scripts/spec.ts`' header because an agent reads
    them: **1** a spec failed, **2** a name was wide enough to be a search and was listed instead of run
    (already shipped), **3** a target that exists is covered by no spec. Distinct codes, because the three
@@ -205,7 +305,10 @@ otherwise go looking:
    not the choice, because it fails without saying why and collapses into exit 1, and because Phase 4 needs the
    count anyway to check its prediction against what ran.
 
-2. **Emptiness is decided from the run's own report, not by collecting first.** The run already knows what it
+2. **Emptiness is decided from the run's own report, not by collecting first.** *(Implemented, `249c0a8e8`:
+   `Run.claimsCoverageOf`, `scripts/lib/spec-count-reporter.ts`. The extension test holds — a `.md` target
+   exits 0 and the label now reads "the specs that import …, if any". Its cost is that `abuddy.json` carries
+   no claim either, which Background §2 records and Phase 2 owns.)* The run already knows what it
    ran; asking a second process would double the ~2s collection on every source-file target to learn
    something the first process is about to tell us. So the `related` and `--changed` runs write a JSON
    reporter to a temp file beside the human output, and `spec.ts` reads the file count back.
@@ -259,8 +362,10 @@ otherwise go looking:
    to do: a tier is declared (`chain-steps.ts`) and `check:tiers` is what makes it mean anything.
 
    **What a tier is still good for is a label.** `spec:dry` prints the declared tier of the chain step a run
-   corresponds to where one exists — `packages:ensure` and `test:unit:pack` are tier 2, a `tests/e2e` run is
-   the `test` step's tier 3 — and prints nothing where none does, a root `related` run spanning tier 1 and the
+   corresponds to where one exists — `packages:ensure` is tier 2, `test:unit:pack` is **tier 1** (this decision
+   said tier 2, and was wrong when it was written: `POOL_STEPS` in `chain-steps.ts` has given both unit pools
+   `tier: 1` since before the survey — read the file, which is the decision's own instruction), a `tests/e2e`
+   run is the `test` step's tier 3 — and prints nothing where none does, a root `related` run spanning tier 1 and the
    tier-2 specs that read the built packages. Read from `chain-steps.ts`, never computed from what a run looks
    like, so the label cannot disagree with `check:tiers`. Derived, not mapped: a `Run`'s command already *is*
    the npm script whose name the chain step carries (`packages:ensure`, `test:unit:pack`, `test`), so the label
@@ -268,15 +373,25 @@ otherwise go looking:
    type are one declaration*, and this is the same mistake in another shape. That is the half of the original request worth
    keeping: knowing that the next run launches the app is worth a word, and it costs no scheduler.
 
-7. **A predicted cost is stated as file-time, with the wall ratio said out loud.** 36.0s of recorded
-   file-time ran in 23.3s of wall; the sum is what the record holds and the wall is what the user waits.
-   Printing the sum alone would overstate every answer by about half, and calibrating a ratio per suite is a
-   second recorded artifact to keep current. So it prints both the sum and the shape: *"104 specs, 36.0s of
-   recorded file-time — about 20-25s of wall across workers"*.
+7. **A predicted cost is stated as file-time, and the wall is not predicted at all.** 36.0s of recorded
+   file-time ran in 23.3s of wall at the survey; the sum is what the record holds and the wall is what the
+   user waits. Printing the sum alone would overstate every answer by about half, and calibrating a ratio per
+   suite is a second recorded artifact to keep current.
+
+   *(Re-measured: the same target is 41.9s → 20.8s three days later, a ratio of 2.18:1 against 1.55:1. **The
+   example sentence this decision gave — "104 specs, 36.0s of recorded file-time — about 20-25s of wall across
+   workers" — is struck**: a wall range derived from one measured ratio was wrong by a third inside a week, and
+   printing it would make the prediction less true than printing nothing. Print the spec count and the summed
+   file-time, and say that it is file-time summed across workers rather than time to wait. The refusal to
+   calibrate a per-suite ratio stands and is the stronger for the re-measurement.)*
 
 ## Phases
 
-### Phase 1 — a zero answer is not a pass
+### Phase 1 — a zero answer is not a pass — **DONE (`249c0a8e8`, `46268f236`, `fc96b83bd`, `a4d4abca9`)**
+
+> Re-checked at `af694db4f`, every item of the Done-when below: `renderer/src/main.ts` exits 3 with the
+> message; `abuddy-sdk/src/fe/settings.ts` passes at 0; `docs/goals/README.md` exits 0 and no longer claims
+> coverage; a `-t` pattern matching no case exits 0. Kept as written, as the record of what was asked for.
 
 - Add the coverage claim to `Run` in `scripts/lib/spec-plan.ts` **on Decision 2's terms, which are the whole
   of the correctness here**: the two `related` routes and `--changed`, *and only over a target with a source
@@ -310,7 +425,9 @@ the new case fails.
   `CLAUDE.md` where they describe the gap as permanent, and say what the router now does instead.
 
 **Done when:** `npm run spec -- packages/default-setup/src/seeds/actions/claude-code/answer-question.ts`
-names `tests/seeds/` and exits non-zero rather than 0 with nothing run; `npm run spec:full -- <that file>`
+names `tests/seeds/` and exits non-zero — it exits 3 today with a sentence that is false, so the test is the
+message, not the code; `npm run spec -- packages/default-setup/abuddy.json` names that pack's suite instead
+of exiting 0 having run nothing; `npm run spec:full -- <that file>`
 compiles the pack and runs the seed specs, and the golden failure a deliberately edited seed body produces is
 the run's failure. `spec-plan.spec.ts` partitions every pack under `packages/` into routed and unroutable.
 Mutation: removing the seeds route leaves the file answering zero specs, and the partition case fails.
@@ -320,9 +437,17 @@ Mutation: removing the seeds route leaves the file answering zero specs, and the
 - `scripts/spec.ts`: stop at the first failing run, reporting which runs were not reached and why, with
   `--no-bail` for the old behaviour (consumed like `--full`, first position only, so *everything from the
   first `-` is vitest's* stays exact).
+- **And do not start a run whose answer is already known.** A `--changed` plan whose coverable subset is
+  empty — a doc-only change set — currently spawns `packages:ensure` and a root vitest to be told *"No test
+  files found"*, 3.4s measured, under a label claiming to run the specs the changes affect. Decision 2 asked
+  for the sentence and Phase 1 shipped the exit code without it. `planChanged` knows the subset is empty
+  before anything runs, so the plan is no runs and one line: nothing changed that a spec could cover. The
+  same question as the bail above — the run is a bill for an answer already in hand — which is why it is
+  here rather than in a phase of its own.
 
 **Done when:** a plan with a deliberately failed first run exits 1 without running the rest, and names them;
-`--no-bail` runs all of them. Measured and recorded in the phase: what a failed root run used to cost
+`--no-bail` runs all of them; a doc-only change set runs no vitest at all, says nothing changed that a spec
+could cover, and exits 0 in well under the 3.4s it costs today. Measured and recorded in the phase: what a failed root run used to cost
 against what it costs now, on the `--full` plan that carries the pack suite. A case in `spec-plan.spec.ts`
 for the flag's position, beside the `--full` one.
 
@@ -334,19 +459,30 @@ for the flag's position, beside the `--full` one.
 - Read the per-package records through `scripts/lib/spec-cost.ts`, the module the check and the command
   already share, so a third reader cannot disagree with them. A spec with no recorded cost is counted and
   named, not silently treated as free.
-- Print file-time and the wall shape (Decision 7), and the declared tier of a run that has one (Decision 6).
+- Print file-time, said to be file-time summed across workers, and the declared tier of a run that has one
+  (Decision 6 — read the tier from `chain-steps.ts`; `test:unit:pack` is tier 1). **No wall-time estimate**
+  (Decision 7 as re-measured).
+- **Say the prediction is a band, because its input is a sample.** The record is maintained with hysteresis
+  and a drift gate (Background §3), so a row may sit up to `DRIFT_SHARE` from the truth and a correlated
+  drift under `SETTLED_FRACTION` moves no row at all. Print the record's own `measuredAt` — the oldest across
+  the suites the plan touches — beside the total, so a prediction built on a month-old sample says so. Do not
+  invent a second freshness signal: `measuredAt` is the one the record already keeps, and a computed
+  confidence would be a third reader of the same numbers.
+- Nothing here re-measures. `spec:dry` reads the record and runs no spec, so a stale record makes the
+  prediction stale and not wrong — the fix for that is `spec-cost:update --all`, which is a separate,
+  deliberate act.
 
 **Done when:** `npm run spec:dry -- packages/abuddy-sdk/src/types/sdk-entities.ts` prints that file's spec
 paths and their summed cost in under 8s cold, runs no test, and exits 0, **and the count equals what the
-ordinary run executes** — which is the criterion, rather than a number: it was 104 when this was surveyed and
-108 by 2026-09-28, and every spec added to a covering suite moves it. `npm run spec` with no `--dry` performs no collection — asserted by the plan's shape, and the
+ordinary run executes** — which is the criterion, rather than a number: it was 104 at the survey and 108 at
+the re-survey three days later, and every spec added to a covering suite moves it. `npm run spec` with no `--dry` performs no collection — asserted by the plan's shape, and the
 phase records its wall time against the pre-phase number to show it did not move. Mutation: a record with a
 file removed reports one unpriced spec by name rather than a smaller total.
 
 ## Deferred
 
-- **`@abuddy/cli`'s integration half.** 132.0s of its 144.1s, and 53% of the 246.9s the twelve records hold
-  between them — the largest single cost in the repo's specs, and not a routing problem: those specs run real
+- **`@abuddy/cli`'s integration half.** 167.9s of its 182.9s, and 53% of the 315.9s the twelve records hold
+  between them (132.0s of 144.1s, and the same 53%, at the survey) — the largest single cost in the repo's specs, and not a routing problem: those specs run real
   builds, and whether they can share one is the question. It belongs with
   [`goal-unit-suite-cost.md`](goal-unit-suite-cost.md), whose Phases aim at `default-setup` and `@abuddy/sdk`
   (the `test:unit` halves) and say nothing about the integration half. Recorded here so the number is written
