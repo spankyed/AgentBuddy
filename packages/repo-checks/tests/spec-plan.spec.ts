@@ -8,7 +8,7 @@ import {
 } from '../../../scripts/lib/spec-plan.ts';
 import { PACKAGE_DIRS } from '../../../scripts/lib/workspace-deps.ts';
 import { UNIT_SUITES } from '../../../scripts/lib/unit-suites.ts';
-import { collectFor, priceSpecs, priceSuites, tierOfRun } from '../../../scripts/lib/spec-dry.ts';
+import { asDuration, collectFor, priceSpecs, priceSuites, tierOfRun } from '../../../scripts/lib/spec-dry.ts';
 import { CONFIG_BY_HALF, HALVES } from '../../../scripts/lib/spec-cost.ts';
 
 /**
@@ -815,6 +815,23 @@ describe('the ordinary run does not collect', () => {
  *
  * It costs one vitest node API, which is why there is one case and not four.
  */
+/**
+ * How a duration is rendered, which is a correctness question and not a formatting one: a prediction whose
+ * only sub-second rendering is `0.0s` says the same thing about a spec recorded at 3ms and a spec no record
+ * holds, and those are opposite answers.
+ */
+describe('what a predicted cost reads as', () => {
+  it.each([[0, '0ms'], [3, '3ms'], [999, '999ms'], [1000, '1.0s'], [2352, '2.4s'], [41_900, '41.9s']])(
+    'renders %ims as %s', (ms, expected) => {
+      expect(asDuration(ms)).toBe(expected);
+    });
+
+  // The one the rounding hid: two costs a reader has to tell apart, and one string for both
+  it('tells a recorded sub-second cost from nothing recorded at all', () => {
+    expect(asDuration(3)).not.toBe(asDuration(0));
+  });
+});
+
 describe('what the plan would run', () => {
   it('collects a pack file in the pack, which is the only root that resolves it', async () => {
     const target = 'packages/default-setup/src/extensions/steps/create/field-default.ts';

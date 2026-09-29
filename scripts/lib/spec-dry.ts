@@ -110,8 +110,17 @@ export const tierOfRun = (run: Run, root: string): number | undefined =>
     ? CHAIN_STEPS.find((step) => step.name === run.args[1])?.tier
     : undefined;
 
-/** `41.9s`, or `1.2s`; the unit is always seconds, because a plan spanning ms and minutes reads as neither */
-export const asSeconds = (ms: number): string => `${(ms / 1000).toFixed(1)}s`;
+/**
+ * `41.9s`, `1.2s`, or `7ms` below a second.
+ *
+ * Seconds is the unit wherever a plan's runs are worth comparing, which is what keeps one spanning ms and
+ * minutes from reading as neither. The exception is below a second, where one decimal renders every total
+ * as `0.0s` — the same string a run with nothing recorded prints, and the two mean opposite things. A
+ * recorded 3ms and an unrecorded spec were indistinguishable, so the comparison that rounding protects is
+ * the one thing a reader could not do.
+ */
+export const asDuration = (ms: number): string =>
+  ms < 1000 ? `${Math.round(ms)}ms` : `${(ms / 1000).toFixed(1)}s`;
 
 /**
  * The spec files a run would execute, asked of vitest without running them.
