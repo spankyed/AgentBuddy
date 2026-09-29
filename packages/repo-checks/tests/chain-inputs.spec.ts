@@ -395,14 +395,25 @@ describe('a pool step and its projects cache on the same inputs', () => {
 });
 
 // One chain step runs every expensive half, and which packages those are is derived from the configs each
-// one has. The step's inputs follow that derivation; the npm script it runs cannot, being text — so a
-// package that gains an integration config would have its specs hashed into the step's cache key and never
-// run. This is the half that has to be checked rather than derived.
+// one has. The step's inputs follow that derivation; the root config that pools them cannot, being a file
+// `check:specifiers` reads as text — so a package that gains an integration config would have its specs
+// hashed into the step's cache key and never run. This is the half that has to be checked rather than
+// derived, and it moved from the script's `-w` flags to the pool's projects when the three runs became one.
 describe('the integration step runs every suite that has an expensive half', () => {
-  it('names them all in test:integration', () => {
+  it('names them all in the pooled config', () => {
+    const config = fs.readFileSync(path.join(REPO_ROOT, 'vitest.integration.config.ts'), 'utf-8');
+    const named = [...config.matchAll(/'packages\/([\w-]+)\/vitest\.integration\.config\.ts'/g)].map(([, dir]) => dir);
+    expect(named.length, 'no projects were read, so this proves nothing').toBeGreaterThan(0);
+    expect(named.sort()).toEqual(INTEGRATION_SUITES.map((suite) => suite.dir).sort());
+  });
+
+  // The pool is what the root script runs; naming the projects and then running something else would pass
+  // the check above over a file nothing reads
+  it('is what the root script runs', () => {
     const scripts = (JSON.parse(fs.readFileSync(path.join(REPO_ROOT, 'package.json'), 'utf-8')) as { scripts: Record<string, string> }).scripts;
-    const named = [...scripts['test:integration'].matchAll(/-w (\S+)/g)].map(([, name]) => name);
-    expect(named.sort()).toEqual(INTEGRATION_SUITES.map((suite) => suite.workspace).sort());
+    expect(scripts['test:integration']).toContain('--config vitest.integration.config.ts');
+    expect(scripts['test:integration'], 'and the guard each package pretest used to provide')
+      .toContain('packages:ensure');
   });
 });
 

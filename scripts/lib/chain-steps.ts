@@ -179,7 +179,9 @@ export function orderedSteps(steps: readonly ChainStep[] = CHAIN_STEPS): readonl
  * The workspace graph and the toolchain: every step reads them, because a dependency moving changes what
  * any of them do. `fingerprintInputs` walks a directory, so naming one covers the files under it.
  */
-const ROOT = ['package.json', 'package-lock.json', 'vitest.config.ts'];
+// Both root vitest configs: one pools the unit projects, the other the expensive halves, and a step that
+// reads either reads what its pool is made of
+const ROOT = ['package.json', 'package-lock.json', 'vitest.config.ts', 'vitest.integration.config.ts'];
 
 /**
  * Every workspace, from the one definition that decides which they are (`workspace-deps.ts`, read from the
