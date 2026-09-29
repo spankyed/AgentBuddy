@@ -144,6 +144,7 @@ if (dry) {
   const { createVitest } = await import('vitest/node');
   let total = 0;
   const unpriced: string[] = [];
+  const outside: string[] = [];
   const dates: string[] = [];
 
   for (const run of runs) {
@@ -154,8 +155,11 @@ if (dry) {
     // runs — a named spec, `--full`'s pack suite — would contribute nothing and read as free
     let priced;
     if (run.collects !== undefined) {
+      // In the run's own root, which is the pack's directory for a pack walk. Collected from the repo root
+      // instead, a pack-relative `related` path resolves against the wrong tree and against projects that do
+      // not include the pack: `spec:dry` answered 0 specs for a file the run answers with 3
       const vitest = await createVitest('test', {
-        watch: false, silent: true,
+        root: run.cwd, watch: false, silent: true,
         ...(run.collects.related === undefined ? {} : { related: [...run.collects.related] }),
         ...(run.collects.changed === true ? { changed: true } : {}),
       });
@@ -173,6 +177,7 @@ if (dry) {
     const specs = priced.specs;
     total += priced.fileTimeMs;
     unpriced.push(...priced.unpriced);
+    outside.push(...priced.outside);
     if (priced.measuredAt !== undefined) dates.push(priced.measuredAt);
     for (const spec of specs) console.log(`   ${spec}`);
     console.log(`   ${specs.length} spec${specs.length === 1 ? '' : 's'}, ${asSeconds(priced.fileTimeMs)} of recorded file-time`);
@@ -185,6 +190,8 @@ if (dry) {
   if (dates.length > 0) console.log(`Read from records last measured ${dates.sort()[0]!.slice(0, 10)}; a row may sit up to 15% from the truth by design.`);
   for (const spec of unpriced) console.error(`  no recorded cost: ${spec}`);
   if (unpriced.length > 0) console.error(`  ${unpriced.length} unpriced, so the total is short — npm run spec-cost:update`);
+  // Said, and said differently: no record covers these, and no `spec-cost:update` ever will
+  for (const spec of outside) console.log(`  no cost recorded for ${spec} — it is in no unit suite`);
   process.exit(0);
 }
 

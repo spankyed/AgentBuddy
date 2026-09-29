@@ -8,7 +8,7 @@ import {
 } from '../../../scripts/lib/spec-plan.ts';
 import { PACKAGE_DIRS } from '../../../scripts/lib/workspace-deps.ts';
 import { UNIT_SUITES } from '../../../scripts/lib/unit-suites.ts';
-import { priceSpecs, tierOfRun } from '../../../scripts/lib/spec-dry.ts';
+import { priceSpecs, priceSuites, tierOfRun } from '../../../scripts/lib/spec-dry.ts';
 
 /**
  * What `npm run spec` decides to run, asserted without running any of it.
@@ -300,6 +300,26 @@ describe('a change set a spec could not cover', () => {
 
   it('plans nothing for a doc inside a package either, which used to run that package', () => {
     expect(planChanged(['packages/default-setup/README.md'], [], REPO_ROOT).runs).toEqual([]);
+  });
+
+  /**
+   * A pack's build edges are covered without being *coverable*: `abuddy.json` is a `.json` and a seed source
+   * may be a `.md`. Naming one as a target says what covers it, so a change set holding one must not answer
+   * "nothing a spec could cover" — the two routes would contradict each other about the same file.
+   */
+  it.each(['packages/default-setup/abuddy.json', 'packages/default-setup/src/seeds/notes/welcome.md'])(
+    'runs the pack suite for %s, which no extension test would call coverable', (changed) => {
+      expect(planChanged([changed], [], REPO_ROOT).runs.map((r) => r.label))
+        .toEqual([ENSURE_LABEL, 'packages/default-setup: (changed)']);
+    });
+
+  // And no root run for them: they are in no root project's graph, so asking is the empty vitest this route
+  // stopped paying for
+  it('asks the root only for what is in its graph', () => {
+    const labels = planChanged(['packages/default-setup/abuddy.json'], [], REPO_ROOT).runs.map((r) => r.label);
+    expect(labels).not.toContain('the specs your changes affect');
+    expect(planChanged(['packages/default-setup/abuddy.json', 'packages/abuddy-sdk/src/x.ts'], [], REPO_ROOT)
+      .runs.map((r) => r.label), 'and asks it when one of them is').toContain('the specs your changes affect');
   });
 
   it('still plans everything when one coverable file is among them', () => {
@@ -616,11 +636,29 @@ describe('what the plan would cost', () => {
   it('names a spec the record has never seen rather than counting it free', () => {
     const priced = priceSpecs([SPEC, 'packages/repo-checks/tests/not-recorded.spec.ts'], REPO_ROOT);
     expect(priced.unpriced).toEqual(['packages/repo-checks/tests/not-recorded.spec.ts']);
+    expect(priced.outside, 'both are in a unit suite; only the row is missing').toEqual([]);
     expect(priced.fileTimeMs, 'and the total is the part it does know').toBe(priceSpecs([SPEC], REPO_ROOT).fileTimeMs);
   });
 
-  it('names a spec in no package, which no record could hold', () => {
-    expect(priceSpecs(['tests/e2e/smoke.spec.ts'], REPO_ROOT).unpriced).toEqual(['tests/e2e/smoke.spec.ts']);
+  /**
+   * Two ways a spec has no cost, and they take different advice: `spec-cost:update` fixes a missing row and
+   * will never record an E2E spec. Telling a reader to run it for one sends them after a command that cannot
+   * help — the same defect as advising `--all` to someone who had just run it.
+   */
+  it('tells a missing row apart from a spec no record covers', () => {
+    const e2e = priceSpecs(['tests/e2e/smoke.spec.ts'], REPO_ROOT);
+    expect(e2e.outside, 'in no unit suite, so no record could hold it').toEqual(['tests/e2e/smoke.spec.ts']);
+    expect(e2e.unpriced, 'and not something an update would fix').toEqual([]);
+
+    const missing = priceSpecs(['packages/repo-checks/tests/not-recorded.spec.ts'], REPO_ROOT);
+    expect(missing.unpriced).toEqual(['packages/repo-checks/tests/not-recorded.spec.ts']);
+    expect(missing.outside).toEqual([]);
+  });
+
+  // Every `covers` is derived from UNIT_SUITES, so this cannot fire — and a skipped one is a whole suite
+  // dropped from a total in silence, which is what the unpriced list exists to prevent one level up
+  it('refuses a covered workspace that is no unit suite, rather than pricing it at zero', () => {
+    expect(() => priceSuites(['@app/no-such-suite'], REPO_ROOT)).toThrow(/no unit suite/);
   });
 
   it('reports the oldest record it drew on, since that is how stale the band is', () => {
@@ -674,6 +712,16 @@ describe('the ordinary run does not collect', () => {
     expect(staticImports).not.toContain('vitest/node');
     expect(staticImports, 'the pricing loads chain-steps, which the ordinary run has no use for')
       .not.toContain('./lib/spec-dry.ts');
+  });
+
+  /**
+   * The collection has to happen in the run's own root. A pack walk's `related` path is relative to the pack
+   * and the pack is in no root project, so collecting it from the repo root resolves nothing: `spec:dry`
+   * answered 0 specs for a file the run answers with 3. Asserted from the source because the alternative is
+   * standing up vitest's node API twice in a spec to compare two numbers.
+   */
+  it('collects in the root of the run it is predicting', () => {
+    expect(source, 'createVitest is given the run\'s own root').toMatch(/createVitest\('test',\s*\{\s*\n?\s*root: run\.cwd/);
   });
 
   it('loads both behind an await import, so only --dry pays', () => {

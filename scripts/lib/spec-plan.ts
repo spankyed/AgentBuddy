@@ -553,18 +553,27 @@ export function planChanged(changedPaths: readonly string[], flags: readonly str
   // The claim is over the part of the change set a spec could cover. A doc-only change set has none — which
   // is also why this takes the paths: a package name cannot say whether what changed inside it was code.
   const coverable = changedPaths.filter(couldBeCovered);
-  // And with none, the answer is known before anything runs. This used to spawn `packages:ensure` and a root
+  // And a pack's build edges are covered without being coverable: `abuddy.json` is a `.json` and a seed source
+  // may be a `.md`, and both have specs that read what building them produces. Naming one as a *target* says
+  // so, so a change set holding one must not answer "nothing a spec could cover" — the two routes would
+  // contradict each other about the same file, which is how this was found
+  const overEdges = changedPaths.filter((rel) => packBuildEdge(rel, root) !== undefined);
+  // With neither, the answer is known before anything runs. This used to spawn `packages:ensure` and a root
   // vitest to be told "No test files found" (3.4s measured), and a pack's README planned that pack's whole
   // suite besides — after a doc edit, which is the first entry in the root CLAUDE.md's list of time-wasters
-  if (coverable.length === 0) return { runs: [], unmatched: [], ambiguous: [] };
+  if (coverable.length === 0 && overEdges.length === 0) return { runs: [], unmatched: [], ambiguous: [] };
 
   const changedPackages = [...new Set(changedPaths.map(packageOf))].filter((pkg) => pkg !== null);
   const affected = affectedPackSuites(changedPackages, root);
-  const runs: Run[] = [
-    ensurePackages(root),
-    rootRun(root, 'the specs your changes affect', ['--changed', '--run'], flags, packSuiteNote(affected, full),
-      coverable.length > 0 ? `${coverable.length} changed file${coverable.length === 1 ? '' : 's'} a spec could cover` : undefined),
-  ];
+  // No root run when nothing in the change set is in its graph: a pack's manifest and its seed sources are
+  // covered by that pack's own suite below, and asking the root for them is the empty vitest this route
+  // stopped paying for
+  const runs: Run[] = [ensurePackages(root)];
+  if (coverable.length > 0) {
+    runs.push(rootRun(root, 'the specs your changes affect', ['--changed', '--run'], flags,
+      packSuiteNote(affected, full),
+      `${coverable.length} changed file${coverable.length === 1 ? '' : 's'} a spec could cover`));
+  }
   const pack = rootProjects(root);
   for (const pkg of changedPackages) {
     if (!pack.includes(pkg)) runs.push(packageRun(root, pkg, [], flags, '(changed)'));

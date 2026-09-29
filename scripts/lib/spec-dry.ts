@@ -28,8 +28,16 @@ export interface Priced {
   readonly specs: readonly string[];
   /** Summed recorded milliseconds, over the specs that have one */
   readonly fileTimeMs: number;
-  /** Specs the record has never seen, named rather than counted as free */
+  /** Specs a record could hold and does not, which `spec-cost:update` is the fix for */
   readonly unpriced: readonly string[];
+  /**
+   * Specs no record covers because they are in no unit suite — `tests/e2e/`, a package with no suite.
+   *
+   * Apart from `unpriced`, because the two take different advice and only one of them is anyone's to fix:
+   * telling a reader to run `spec-cost:update` for an E2E spec sends them after a command that will never
+   * record it.
+   */
+  readonly outside: readonly string[];
   /** The oldest `measuredAt` among the records this drew on, which is how old the band is */
   readonly measuredAt: string | undefined;
 }
@@ -43,19 +51,21 @@ export interface Priced {
 export function priceSpecs(specs: readonly string[], root: string): Priced {
   let fileTimeMs = 0;
   const unpriced: string[] = [];
+  const outside: string[] = [];
   const dates: string[] = [];
   const records = new Map<string, ReturnType<typeof readSpecCost>>();
+  const recorded = new Set(UNIT_SUITES.map((suite) => suite.dir));
 
   for (const rel of specs) {
     const dir = packageOf(rel);
-    if (dir === null) { unpriced.push(rel); continue; }
+    if (dir === null || !recorded.has(dir)) { outside.push(rel); continue; }
     if (!records.has(dir)) records.set(dir, readSpecCost(root, dir));
     const record = records.get(dir);
     const cost = record?.costs[path.relative(path.join('packages', dir), rel)];
     if (cost === undefined) unpriced.push(rel);
     else { fileTimeMs += cost; if (record !== undefined) dates.push(record.measuredAt); }
   }
-  return { specs, fileTimeMs, unpriced, measuredAt: dates.sort()[0] };
+  return { specs, fileTimeMs, unpriced, outside, measuredAt: dates.sort()[0] };
 }
 
 /**
@@ -69,7 +79,10 @@ export function priceSuites(workspaces: readonly string[], root: string): Priced
   const specs: string[] = [];
   for (const workspace of workspaces) {
     const suite = UNIT_SUITES.find((candidate) => candidate.workspace === workspace);
-    if (suite === undefined) continue;
+    // Named rather than skipped. Every `covers` today is derived from UNIT_SUITES, so this cannot fire — and
+    // a `continue` here is a whole suite dropped from a total in silence, which is the failure the unpriced
+    // list exists to prevent, one level up
+    if (suite === undefined) throw new Error(`${workspace} is covered by a run but is no unit suite, so its cost cannot be read`);
     const record = readSpecCost(root, suite.dir);
     for (const spec of Object.keys(record?.costs ?? {})) specs.push(path.join('packages', suite.dir, spec));
   }
