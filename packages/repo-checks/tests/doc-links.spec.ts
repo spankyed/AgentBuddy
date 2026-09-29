@@ -2,7 +2,7 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { REPO_ROOT } from '@abuddy/host/build/packages-built';
-import { trackedFiles } from './_support/tracked.ts';
+import { repoFiles } from './_support/repo-files.ts';
 
 /**
  * Every relative link between the repo's own documents resolves.
@@ -42,7 +42,7 @@ const isRelative = (target: string): boolean =>
  * checkout's directory layout, so three of them read as dead here and are not.
  */
 const docs = (): string[] =>
-  trackedFiles('*.md')
+  repoFiles('*.md')
     .filter((file) => file.startsWith('docs/') || !file.includes('/') || /(^|\/)(CLAUDE|README)\.md$/.test(file))
     .filter((file) => !file.includes('/fixtures/') && !file.includes('/seeds/'));
 

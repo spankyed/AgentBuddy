@@ -2,7 +2,7 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { REPO_ROOT } from '@abuddy/host/build/packages-built';
-import { trackedFiles } from './_support/tracked.ts';
+import { repoFiles } from './_support/repo-files.ts';
 
 /**
  * What this package is for, as a check rather than as a convention.
@@ -75,10 +75,13 @@ const LAYOUT_CHECKS: Record<string, string> = {
     + 'restating it — a property of the packs in the tree, read from git and the manifests',
   'tests/lint-scope.spec.ts': 'what the root lint command excludes from packages/ — a property of the '
     + 'script at the tree\'s root and the templates it names, with no scripts/ module behind it',
+  'tests/repo-files.spec.ts': 'what "the files this repo has" means for the checks above — the working tree '
+    + 'rather than the index, which is a property of the repo read from git, and the one the six populations '
+    + 'here are built from',
 };
 
 const specs = (): string[] =>
-  trackedFiles().filter((file) => IS_SPEC.test(file));
+  repoFiles().filter((file) => IS_SPEC.test(file));
 
 describe('a spec about the repo\'s tooling lives in @app/repo-checks', () => {
   it('has none anywhere else', () => {

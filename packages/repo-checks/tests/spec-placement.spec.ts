@@ -3,7 +3,7 @@ import * as path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { REPO_ROOT } from '@abuddy/host/build/packages-built';
 import { PACKAGE_DIRS } from '../../../scripts/lib/workspace-deps.ts';
-import { trackedFiles } from './_support/tracked.ts';
+import { repoFiles } from './_support/repo-files.ts';
 
 /**
  * A spec lives with the thing it can break.
@@ -32,7 +32,7 @@ import { trackedFiles } from './_support/tracked.ts';
 const IS_SPEC = /\.(spec|test)\.[cm]?[jt]sx?$/;
 
 const tracked = (): string[] =>
-  trackedFiles();
+  repoFiles();
 
 const packageDirs = (): string[] =>
   [...PACKAGE_DIRS];

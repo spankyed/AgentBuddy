@@ -2,7 +2,7 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { REPO_ROOT } from '@abuddy/host/build/packages-built';
-import { trackedFiles } from './_support/tracked.ts';
+import { repoFiles } from './_support/repo-files.ts';
 
 /**
  * A pack's vitest config is a call to `definePackTestConfig`, not a copy of one.
@@ -29,7 +29,7 @@ const HELPER = 'definePackTestConfig';
 const DECLARES_ITS_OWN_TEST_BLOCK: Record<string, string> = {};
 
 const tracked = (pattern: string): string[] =>
-  trackedFiles(pattern);
+  repoFiles(pattern);
 
 /** Every pack in the repo that has a vitest config: a directory holding both `abuddy.json` and one */
 const packConfigs = (): string[] => tracked('*abuddy.json')

@@ -24,7 +24,7 @@ import { TYPECHECK_LEGS } from '../../../scripts/lib/typecheck-legs.ts';
 import { poolUnitFor } from '../../../scripts/lib/unit-pool.ts';
 import { PACKAGE_DIRS } from '../../../scripts/lib/workspace-deps.ts';
 import { population } from '@abuddy/sdk/testing';
-import { trackedFiles } from './_support/tracked.ts';
+import { repoFiles } from './_support/repo-files.ts';
 
 /** Tracked code no chain step reads, and why. An entry that stops applying is reported, not ignored. */
 const NOT_A_CHAIN_INPUT: Record<string, string> = {
@@ -48,7 +48,7 @@ const NOT_A_CHAIN_INPUT: Record<string, string> = {
 const CODE = /\.(ts|tsx|vue|mts|cts|mjs|cjs|js|sh)$/;
 
 const trackedCode = (): string[] =>
-  trackedFiles().filter((file) => CODE.test(file));
+  repoFiles().filter((file) => CODE.test(file));
 
 /** Every tracked file the steps' inputs reach, resolved the way a fingerprint resolves them */
 const coveredBy = (steps: readonly { inputs: readonly string[] }[]): Set<string> => {

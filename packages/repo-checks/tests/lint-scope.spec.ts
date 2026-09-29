@@ -16,7 +16,7 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { REPO_ROOT } from '@abuddy/host/build/packages-built';
-import { trackedFiles } from './_support/tracked.ts';
+import { repoFiles } from './_support/repo-files.ts';
 
 const TEMPLATES = 'packages/abuddy-cli/templates/';
 
@@ -147,7 +147,7 @@ describe('a lint disable that names a rule nothing enables', () => {
     const alsoEslint = eslintDirs();
     expect(alsoEslint, 'no workspace runs eslint, so the exception below would hide nothing').not.toEqual([]);
 
-    const files = trackedFiles().filter((file) => /\.(ts|tsx|vue|mts|cts|mjs|cjs|js)$/.test(file));
+    const files = repoFiles().filter((file) => /\.(ts|tsx|vue|mts|cts|mjs|cjs|js)$/.test(file));
     const inert: string[] = [];
     let seen = 0;
     for (const file of files) {
