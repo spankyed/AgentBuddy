@@ -2,6 +2,11 @@
 
 > **Written in session** `bc6d43e0-1c60-4cad-8237-15508a9e6649` (Claude Code, 2026-09-28). Resume it with `claude -r bc6d43e0-1c60-4cad-8237-15508a9e6649`.
 
+> **Finished 2026-09-28. Phases 1-4 are implemented and committed; see the Outcome at the end for what each
+> one landed as, what was measured, and the choices made where the plan left a detail open. Read this doc as
+> history — it names the code as it was, and the Background's §1 and §2 describe defects that no longer
+> reproduce.**
+
 > **Re-surveyed 2026-09-28 (later the same day) at `af694db4f`. Phase 1 is implemented and its Background is
 > now history; Phases 2-4 are untouched and every reproduction behind them still reproduces. Read this block
 > before the Background: it closes one phase, re-dates every number, and corrects two Decisions.**
@@ -9,7 +14,7 @@
 > - **Phase 1 shipped** in `249c0a8e8`, with `46268f236`, `fc96b83bd` and `a4d4abca9` behind it. Every item of
 >   its "Done when" was re-checked and holds. **The base check below asked an implementer to confirm the
 >   defect Phase 1 removed, and would have stopped them** — corrected in place, as
->   [`goal-unit-suite-cost.md`](goal-unit-suite-cost.md) corrected its own.
+>   [`goal-unit-suite-cost.md`](../../goals/goal-unit-suite-cost.md) corrected its own.
 > - **Phase 1 added a fourth verdict the Decision did not name**, and it is the right addition: `no count`,
 >   for a run whose reporter never wrote a file. It exits 3 with the count treated as unknown rather than as
 >   zero, because "the reporter stopped being called" and "nothing ran" are the same silence. Decision 1's
@@ -105,10 +110,10 @@ Never:
 > still hold, with §2's symptom changed and every number re-measured. What moved besides Phase 1 is the lint
 > gate, which now reads `packages/**`, and `spec-cost.json`, which is now maintained as a sample (§3).
 
-[`goal-spec-follows-the-graph.md`](../archive/goals/goal-spec-follows-the-graph.md) made `npm run spec` route a
+[`goal-spec-follows-the-graph.md`](goal-spec-follows-the-graph.md) made `npm run spec` route a
 source file through the module graph: one root `vitest related` over every host project, so editing
 `@abuddy/sdk` runs the 104 specs that cover it rather than the one package it lives in.
-[`goal-pack-test-config.md`](../archive/goals/goal-pack-test-config.md) closed the pack side, so a pack's own
+[`goal-pack-test-config.md`](goal-pack-test-config.md) closed the pack side, so a pack's own
 source walks the pack's graph instead of running its whole 89-spec suite. `scripts/lib/spec-plan.ts` is the
 routing as data and `packages/repo-checks/tests/spec-plan.spec.ts` asserts it in 33 cases.
 
@@ -280,7 +285,7 @@ otherwise go looking:
 - **`vitest related` crashing in `@app/default-setup`** (`Failed to parse source for import analysis …
   Install @vitejs/plugin-vue`) is gone: `definePackTestConfig` (`@abuddy/testing/vitest`) stubs a pack's `.vue`
   files, so the walk no longer stops at the first SFC. That was
-  [`goal-pack-test-config.md`](../archive/goals/goal-pack-test-config.md).
+  [`goal-pack-test-config.md`](goal-pack-test-config.md).
 - **Two `spec` runs racing each other's package build** is gone, and this one was verified rather than read:
   with `@abuddy/ears`' stamp cleared, two `npm run packages:ensure` started 0.3s apart both exit 0. The second
   waits on the lock, re-checks once it holds it, and returns without a duplicate build — `BuildIntent`, whose
@@ -484,7 +489,7 @@ file removed reports one unpriced spec by name rather than a smaller total.
 - **`@abuddy/cli`'s integration half.** 167.9s of its 182.9s, and 53% of the 315.9s the twelve records hold
   between them (132.0s of 144.1s, and the same 53%, at the survey) — the largest single cost in the repo's specs, and not a routing problem: those specs run real
   builds, and whether they can share one is the question. It belongs with
-  [`goal-unit-suite-cost.md`](goal-unit-suite-cost.md), whose Phases aim at `default-setup` and `@abuddy/sdk`
+  [`goal-unit-suite-cost.md`](../../goals/goal-unit-suite-cost.md), whose Phases aim at `default-setup` and `@abuddy/sdk`
   (the `test:unit` halves) and say nothing about the integration half. Recorded here so the number is written
   down where it was measured; the agent implementing this goal must not start it.
 - **Tier-aware escalation**, refused with its reasoning in Decision 6 rather than deferred, so it is not
@@ -508,3 +513,71 @@ file removed reports one unpriced spec by name rather than a smaller total.
   `spec-cost:update`, never by hand.
 - Keep the loop fast: the narrow checks during the work (`npm test -w @app/repo-checks -- spec-plan`, the
   package's `tsc --noEmit`), the chain once at the end of a phase.
+
+## Outcome
+
+Finished 2026-09-28 on `AS/spec-earns-pass`, four commits over the re-survey.
+
+| Phase | | Landed as |
+|---|---|---|
+| 1 — a zero answer is not a pass | **done** (before this run) | `249c0a8e8` + `46268f236`, `fc96b83bd`, `a4d4abca9` |
+| 2 — the build edges are routes | **done** | `155d78d7e` |
+| 3 — a failure stops the plan | **done** | `e80049327` |
+| 4 — the plan says what it would cost | **done** | `469fdde3f` |
+
+### What each one is worth, measured
+
+| | before | after |
+|---|---|---|
+| a seed source | exit 3, *"No spec covers …"* — false | exit 3, named: `@app/default-setup tests/seeds` |
+| `packages/default-setup/abuddy.json` | exit 0, nothing run | exit 0, 1 spec run, the suite named beside it |
+| `spec:full -- <seed source>` | no route | build + 18 specs, 16s; a broken seed body fails it |
+| a doc-only change set | 3.4s, `packages:ensure` + an empty vitest | **0s**, "nothing changed that a spec could cover" |
+| a failing `--full` plan | 23s, 2 runs | 22s, 1 run, the other named (the pack pool is 17s forced; it had skipped on its own stamp) |
+| "what would this run?" | run it, 21s | `spec:dry`, **3s**, 108 specs and 41.9s of file-time |
+| the ordinary run's own cost | 20.8s | **21s** — the prediction is opt-in and costs it nothing |
+
+### The collection Phase 4 adds
+
+**Nothing, to the ordinary run.** `vitest/node` and the pricing load behind `await import` inside the `--dry`
+branch, and `spec-plan.spec.ts` asserts that from the source: a static import of either is the one way it
+regresses, and it would regress silently. The run measured 20.8s before the phase and 21s after.
+
+`spec:dry` itself is **3-4s** — about 1.6s per collecting run, flat in the size of the answer, plus process
+start. Re-measured at the re-survey: 1.6s for 0 specs and 1.6s for 150, which is the eleven project configs
+loading rather than a graph being walked.
+
+### Choices made where the plan left a detail open
+
+- **The edge rides on the run, as `Run.beyond`, rather than a list beside the plan.** The first cut made
+  `src/seeds/**` a route *instead of* the pack `related` walk, and measuring killed it: a seed **helper** is
+  imported by specs directly — `_helpers/thread-context.ts` reaches 3 — so replacing the walk threw away a
+  precise answer to recommend a build. The walk still runs and carries what it could not see; what the edge
+  changes is which sentence an *empty* walk gets, and the note a full one prints.
+- **A build edge overrides Decision 2's source-extension test for the coverage claim.** `abuddy.json` is not
+  code, so the extension test withholds the claim and the target exits 0 having run nothing. An edge is that
+  claim made directly and about a named spec directory, so it carries one whatever the extension. The
+  extension test still decides every other target, which is what keeps a doc honest.
+- **`OWN_FLAGS` is a leading *run* of arguments, not first position only.** Two flags had to compose
+  (`spec:full -- --no-bail x`), and a list-plus-parser in one declaration is what stops a declared flag
+  reaching vitest as a filename — there is a case that walks the list.
+- **A non-coverable change set plans zero runs**, rather than a plan carrying a "nothing to do" field. The
+  command says the sentence when the plan is empty and the target list was too.
+- **`spec:dry` prices three kinds of run, not one.** The phase named the collecting routes; a plan also holds
+  named-spec runs (their file list is the target) and whole-suite runs (the suite's record). Without the last
+  two, `--full`'s pack suite — the most expensive run a plan produces — contributed nothing and read as free.
+  A run that is none of the three says so rather than printing an empty prediction.
+- **The seed route runs `tests/seeds/` whole**, 18 specs, not the 6 goldens at its top level: the directory
+  mirrors `src/seeds/`, so the per-action specs under it are covered by the same edge.
+- **One existing case changed rather than being added to.** `planChanged([])` asserted `packages:ensure` plus
+  a root run for an empty change set — a shape the command never asks for, since it reports "nothing changed"
+  before planning. It now asserts no runs, beside a real change set for the property it was testing.
+
+### What this leaves
+
+- **`@abuddy/cli`'s integration half**, 167.9s of the 315.9s the twelve records hold, is still the largest
+  single cost in the repo's specs and is not a routing problem. It belongs with
+  [`goal-unit-suite-cost.md`](../../goals/goal-unit-suite-cost.md), as Deferred said.
+- **Nothing automated runs `spec:dry` or `--all`**, so a correlated drift in the record is still found only by
+  a human. The prediction says how old its numbers are, which is the most a reader can act on without a
+  re-measurement nobody schedules.
