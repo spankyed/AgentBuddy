@@ -605,22 +605,27 @@ describe('a named spec that is not there is refused, whatever was asked of it', 
   // reported the first suite's typo and the second only once that was fixed — and `check` accumulates every
   // other kind of problem across all twelve suites before reporting, so it contradicted itself.
   it('collects the absent paths from every suite they reach into, not the first', () => {
-    const found = absentNamed(REPO_ROOT, UNIT_SUITES.map((suite) => suite.dir), [
-      'packages/repo-checks/tests/nope1.spec.ts',
-      'packages/abuddy-cli/tests/nope2.spec.ts',
-    ]);
+    const dirs = UNIT_SUITES.map((suite) => suite.dir);
+    // Two adjacent suites the unit-suite list holds out of alphabetical order, derived: naming them would
+    // fail this case about a renamed suite rather than about the behaviour, and taking the first two would
+    // make the sort unobservable — those happen to be in order already, so the assertion below held with the
+    // sort removed and watched nothing
+    const at = dirs.findIndex((dir, index) => index + 1 < dirs.length && dir > dirs[index + 1]!);
+    expect(at, 'no two adjacent suites are out of order, so this could not see the sorting').toBeGreaterThan(-1);
+    const named = [dirs[at]!, dirs[at + 1]!].map((dir) => `packages/${dir}/tests/nope.spec.ts`);
+
+    const found = absentNamed(REPO_ROOT, dirs, named);
     expect(found, 'both, so one run names every typo').toHaveLength(2);
-    expect([...found].sort()).toEqual([
-      'packages/abuddy-cli/tests/nope2.spec.ts',
-      'packages/repo-checks/tests/nope1.spec.ts',
-    ]);
+    expect(found, 'sorted for the reader').toEqual([...named].sort());
+    expect(found, 'which is not the order the suites were given in').not.toEqual(named);
   });
 
   it('names only the paths that are absent', () => {
-    const real = `packages/repo-checks/${specFiles(path.join(REPO_ROOT, 'packages', 'repo-checks'))[0]!}`;
     const dirs = UNIT_SUITES.map((suite) => suite.dir);
-    expect(absentNamed(REPO_ROOT, dirs, [real, 'packages/repo-checks/tests/nope.spec.ts']))
-      .toEqual(['packages/repo-checks/tests/nope.spec.ts']);
+    const dir = dirs[0]!;
+    const real = `packages/${dir}/${specFiles(path.join(REPO_ROOT, 'packages', dir))[0]!}`;
+    const nope = `packages/${dir}/tests/nope.spec.ts`;
+    expect(absentNamed(REPO_ROOT, dirs, [real, nope])).toEqual([nope]);
     expect(absentNamed(REPO_ROOT, dirs, [real]), 'a real spec is not a problem').toEqual([]);
   });
 

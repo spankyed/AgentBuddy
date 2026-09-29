@@ -416,10 +416,13 @@ export const absentIn = (files: readonly string[], named: readonly string[]): st
  */
 export function absentNamed(repoRoot: string, suiteDirs: readonly string[], named: readonly string[]): string[] {
   if (named.length === 0) return [];
+  // Sorted, because the order this is read in is the reader's: unsorted it comes back in `suiteDirs` order,
+  // which is the unit-suite list's, and a caller's three typos then print in an order nothing on screen
+  // explains. Everything else here that a person reads is sorted too
   return suitesFor(suiteDirs, undefined, named).flatMap((dir) => {
     const files = specFiles(path.join(repoRoot, 'packages', dir));
     return absentIn(files, namedIn(dir, named)).map((file) => `packages/${dir}/${file}`);
-  });
+  }).sort();
 }
 
 /**
