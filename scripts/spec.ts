@@ -101,19 +101,21 @@ const COUNT_REPORTER = path.join(import.meta.dirname, 'lib', 'spec-count-reporte
  * `--reporter=default` goes alongside because naming any reporter *replaces* the human output. Skipped when the
  * caller already chose one, so `--reporter=verbose` does not become three reporters.
  */
-function counted(run: Run, index: number): { args: string[]; env: NodeJS.ProcessEnv; read: () => number } {
+function counted(run: Run, index: number): { args: string[]; env: NodeJS.ProcessEnv; read: () => number | undefined } {
   const file = path.join(reports, `${index}`);
   const chose = [...run.args].some((a) => a.startsWith('--reporter'));
   return {
     args: [...run.args, ...(chose ? [] : ['--reporter=default']), `--reporter=${COUNT_REPORTER}`],
     env: { ...process.env, [SPEC_COUNT_FILE]: file },
-    // No file means the run died before finishing, which its non-zero status already reports as a failure
-    read: () => (fs.existsSync(file) ? Number(fs.readFileSync(file, 'utf-8')) : 1),
+    // `undefined` for a file that never arrived, which is not the same as zero and must not read as a pass:
+    // a reporter that stopped being called is how this whole check would go quiet
+    read: () => (fs.existsSync(file) ? Number(fs.readFileSync(file, 'utf-8')) : undefined),
   };
 }
 
 let failed = 0;
 const uncovered: string[] = [];
+const noCount: string[] = [];
 // Each distinct note once: two source-file targets are two root runs carrying the same sentence about the
 // pack suites, and a limit worth stating is not worth stating twice
 const said = new Set<string>();
@@ -123,9 +125,10 @@ try {
     const counter = run.claimsCoverageOf === undefined ? undefined : counted(run, index);
     const result = spawnSync(run.command, counter?.args ?? [...run.args],
       { cwd: run.cwd, stdio: 'inherit', env: counter?.env });
-    const verdict = verdictOf(run, result.status ?? 1, counter?.read() ?? 1);
+    const verdict = verdictOf(run, result.status ?? 1, counter?.read());
     if (verdict === 'fail') failed++;
     if (verdict === 'uncovered') uncovered.push(run.claimsCoverageOf!);
+    if (verdict === 'no count') noCount.push(run.label);
     if (run.note !== undefined && !said.has(run.note)) { console.log(`   ${run.note}`); said.add(run.note); }
   }
 } finally {
@@ -135,6 +138,11 @@ try {
 // Both are said, even though only one can be the exit code: a hole found beside a failure is information
 // already in hand, and dropping it means finding it on the next run instead
 for (const target of uncovered) console.error(`\nNo spec covers ${target} — nothing ran, so nothing passed.`);
+// Loud rather than assumed, because assuming it ran something is how the check would stop checking
+for (const label of noCount) {
+  console.error(`\n${label}: the spec count never arrived, so whether anything ran is unknown.`
+    + `\n  ${path.relative(ROOT, COUNT_REPORTER)} did not write it — is it still a reporter vitest calls?`);
+}
 // A failure is the more urgent answer, and the one an agent should act on first
 if (failed > 0) process.exit(1);
-process.exit(uncovered.length > 0 ? 3 : 0);
+process.exit(uncovered.length > 0 || noCount.length > 0 ? 3 : 0);

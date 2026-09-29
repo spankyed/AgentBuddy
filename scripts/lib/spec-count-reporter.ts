@@ -15,13 +15,25 @@
  * vitest's config resolution; `spec.ts` sets it per run.
  */
 import * as fs from 'node:fs';
+import type { Reporter } from 'vitest/reporters';
 
 /** The environment variable `scripts/spec.ts` puts the destination in */
 export const SPEC_COUNT_FILE = 'SPEC_COUNT_FILE';
 
-export default class SpecCountReporter {
-  onFinished(files: readonly unknown[] = []): void {
+/**
+ * The hook, named once and checked against vitest's own interface.
+ *
+ * This is what makes a vitest upgrade a compile error rather than a silent regression: if the hook is renamed or
+ * removed, `typecheck` fails here. Without it, the reporter would simply stop being called — no file written,
+ * `spec.ts` unable to tell a covered run from an empty one, and every claiming run reading as a pass again,
+ * which is the defect exit 3 exists to prevent. Not a hypothetical: `onFinished`, the hook this used first, is
+ * already `@deprecated use onTestRunEnd instead` in vitest 3.2.4.
+ */
+const HOOK = 'onTestRunEnd' satisfies keyof Reporter;
+
+export default class SpecCountReporter implements Reporter {
+  [HOOK](modules: readonly unknown[] = []): void {
     const out = process.env[SPEC_COUNT_FILE];
-    if (out !== undefined) fs.writeFileSync(out, String(files.length), 'utf-8');
+    if (out !== undefined) fs.writeFileSync(out, String(modules.length), 'utf-8');
   }
 }

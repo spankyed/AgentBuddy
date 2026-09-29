@@ -72,8 +72,14 @@ const IS_COVERABLE = /\.(?:[cm]?[jt]sx?|vue)$/;
 const IS_DECLARATION = /\.d\.[cm]?ts$/;
 const couldBeCovered = (rel: string): boolean => IS_COVERABLE.test(rel) && !IS_DECLARATION.test(rel);
 
-/** What a claiming run's outcome was, given its exit status and how many spec files it executed */
-export type Verdict = 'pass' | 'fail' | 'uncovered';
+/**
+ * What a claiming run's outcome was, given its exit status and how many spec files it executed.
+ *
+ * `no count` is the case that keeps the check honest: a claiming run whose count never arrived has not passed,
+ * because the thing that would have told us it ran something is the thing that broke. Reading that as a pass is
+ * how this whole mechanism would go quiet without anything failing.
+ */
+export type Verdict = 'pass' | 'fail' | 'uncovered' | 'no count';
 
 /**
  * A run's verdict. Pure, and here rather than in `spec.ts`, because this is the half a spec asserts.
@@ -81,9 +87,11 @@ export type Verdict = 'pass' | 'fail' | 'uncovered';
  * Spec **files**, never tests: a `-t` pattern matching no case runs every file and skips every test, so a
  * count of tests would report a hole for what is an ordinary filter.
  */
-export function verdictOf(run: Run, status: number, specFilesRun: number): Verdict {
+export function verdictOf(run: Run, status: number, specFilesRun: number | undefined): Verdict {
   if (status !== 0) return 'fail';
-  return run.claimsCoverageOf !== undefined && specFilesRun === 0 ? 'uncovered' : 'pass';
+  if (run.claimsCoverageOf === undefined) return 'pass';
+  if (specFilesRun === undefined) return 'no count';
+  return specFilesRun === 0 ? 'uncovered' : 'pass';
 }
 const SKIP = new Set(['node_modules', 'dist', '.git', '.temp', 'dist-ssr', 'coverage', '__generated__']);
 
