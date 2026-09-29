@@ -96,7 +96,8 @@ export interface BuildEdge {
   readonly how: string;
 }
 
-const IS_SPEC = /\.(spec|test)\.[cm]?[jt]sx?$/;
+/** Exported for `spec-dry.ts`, which refuses anything else in a run's file list */
+export const IS_SPEC = /\.(spec|test)\.[cm]?[jt]sx?$/;
 
 /**
  * A file a spec could plausibly cover, which is what makes "no spec covers it" a finding rather than a fact
@@ -257,7 +258,15 @@ const ownSuiteFor = (rel: string): UnitSuite | undefined => {
 /** A pack's seed sources, and the specs that read what building them produces */
 const SEED_SOURCES = 'src/seeds';
 const SEED_SPECS = 'tests/seeds';
-const MANIFEST = 'abuddy.json';
+
+/**
+ * The files a pack's build reads, each of which every spec in the pack ends up resolving through.
+ *
+ * `abuddy.json` drives codegen into `src/__generated__/`; `package.json` holds the `imports` map those
+ * generated specifiers resolve by — 76 of default-setup's 95 specs go through it — and the `prepare` that
+ * runs the codegen; `tsconfig.json` is what the build compiles with.
+ */
+const BUILD_INPUTS: readonly string[] = ['abuddy.json', 'package.json', 'tsconfig.json'];
 
 /**
  * Which of a pack's files reach their specs only through a build, and what runs them.
@@ -267,8 +276,9 @@ const MANIFEST = 'abuddy.json';
  * editing the source that generates it reaches nothing.
  *
  * - **`src/seeds/**`** compiles to `dist/*.seed.json`, which `tests/seeds/` reads against its goldens.
- * - **`abuddy.json`** drives codegen into `src/__generated__/`, which every spec in the pack imports. So the
- *   whole suite covers it, and nothing narrower is honest.
+ * - **the pack's build inputs** (`BUILD_INPUTS`) configure what the build emits and how the pack's own
+ *   specifiers resolve, which every spec in the pack goes through. So the whole suite covers them, and
+ *   nothing narrower is honest.
  *
  * Derived from the pack's own layout rather than named: the suite comes from `UNIT_SUITES`' pack kind and the
  * seed half is offered only where the pack has both halves on disk. A third pack arriving with seeds is routed
@@ -279,14 +289,14 @@ export function packBuildEdge(rel: string, root: string): { suite: UnitSuite; sp
   const suite = ownSuiteFor(rel);
   if (suite === undefined) return undefined;
   const inPack = path.relative(path.join('packages', suite.dir), rel);
-  if (inPack === MANIFEST) return { suite, specs: [] };
+  if (BUILD_INPUTS.includes(inPack)) return { suite, specs: [] };
   const hasSeedSpecs = fs.existsSync(path.join(root, 'packages', suite.dir, SEED_SPECS));
   return inPack.startsWith(`${SEED_SOURCES}/`) && hasSeedSpecs ? { suite, specs: [SEED_SPECS] } : undefined;
 }
 
 /** What covers a build-edge target, in the words the note and the `--full` label both use */
 const edgeCovers = (suite: UnitSuite, specs: readonly string[]): string =>
-  specs.length === 0 ? `${suite.workspace}'s whole suite, which imports the tree its manifest generates`
+  specs.length === 0 ? `${suite.workspace}'s whole suite, which resolves through what its build inputs configure`
     : `${suite.workspace} ${specs.join(' ')}, which read what building its seeds produces`;
 
 /** The edge as the command reports it, for one target */
@@ -321,10 +331,17 @@ const packSuiteRun = (root: string, affected: readonly string[]): Run => ({
   covers: PACK_SUITES.map((suite) => suite.workspace),
 });
 
-/** `related` inside a pack, which is the only place its own graph resolves */
+/**
+ * `related` inside a pack, which is the only place its own graph resolves.
+ *
+ * The label follows the claim, as `rootRun`'s does: a target a spec cannot cover — a doc, a fixture — gets
+ * *"if any"*, because saying "every spec covering CLAUDE.md" over a run that finds nothing and exits 0 is
+ * the sentence exit 3 exists to stop the command from saying.
+ */
 const packRelatedRun = (root: string, suite: UnitSuite, relToPack: string, flags: readonly string[],
   claimsCoverageOf?: string, beyond?: BuildEdge): Run => ({
-  label: `${suite.workspace}: every spec covering ${relToPack}`,
+  label: `${suite.workspace}: ${claimsCoverageOf === undefined
+    ? `the specs that import ${relToPack}, if any` : `every spec covering ${relToPack}`}`,
   cwd: path.join(root, 'packages', suite.dir),
   command: 'npx',
   args: ['vitest', 'related', '--run', relToPack, ...flags],
@@ -374,7 +391,16 @@ const packageRun = (root: string, pkg: string, args: readonly string[], flags: r
   cwd: path.join(root, 'packages', pkg),
   command: 'npm',
   args: ['test', '--', ...args, ...flags],
-  specs: args.length === 0 ? undefined : args.map((arg) => path.join('packages', pkg, arg)),
+  // Expanded here rather than where it is priced, because the field promises *spec files* and one of its
+  // producers hands it a directory: the seed edge's `tests/seeds`, which vitest resolves as a filter and a
+  // cost record has no row for. Unexpanded it priced that run at one unrecorded spec — zero — which is the
+  // whole of what `--full` adds. `args` is untouched, so the run is the same run
+  specs: args.length === 0 ? undefined : args.flatMap((arg) => {
+    const abs = path.join(root, 'packages', pkg, arg);
+    return fs.existsSync(abs) && fs.statSync(abs).isDirectory()
+      ? specsUnder(abs).map((spec) => path.relative(root, spec))
+      : [path.join('packages', pkg, arg)];
+  }),
   // Only a run with no spec named executes the suite in full; anything else is a subset
   covers: args.length === 0 ? UNIT_SUITES.filter((suite) => suite.dir === pkg).map((suite) => suite.workspace) : undefined,
 });
@@ -432,9 +458,13 @@ export type OwnFlag = (typeof OWN_FLAGS)[number];
 export function splitArgs(argv: readonly string[]): {
   full: boolean; bail: boolean; dry: boolean; targets: string[]; flags: string[];
 } {
-  const own = new Set<string>();
+  // `Set<OwnFlag>`, so each `own.has` below is checked against the list rather than spell-checked: adding a
+  // flag to `OWN_FLAGS` and reading a different spelling here is a compile error, which is what makes the
+  // list and the type one declaration rather than two that happen to agree
+  const own = new Set<OwnFlag>();
+  const isOwn = (arg: string | undefined): arg is OwnFlag => (OWN_FLAGS as readonly string[]).includes(arg!);
   let start = 0;
-  while (start < argv.length && (OWN_FLAGS as readonly string[]).includes(argv[start]!)) own.add(argv[start++]!);
+  for (let arg = argv[start]; isOwn(arg); arg = argv[++start]) own.add(arg);
   const rest = argv.slice(start);
   const firstFlag = rest.findIndex((a) => a.startsWith('-'));
   return {

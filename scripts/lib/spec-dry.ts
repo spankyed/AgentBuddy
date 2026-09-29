@@ -1,9 +1,10 @@
 /**
  * What a plan would cost, read from the records rather than measured.
  *
- * The pure half of `npm run spec:dry`, here so a spec can assert the pricing without collecting anything —
- * the same split as `spec-plan.ts` under `spec.ts`. The collecting half is in the command, because it needs
- * vitest's node API and the ordinary run must not pay to load it.
+ * The half of `npm run spec:dry` that is not the command — the same split as `spec-plan.ts` under `spec.ts`,
+ * so a spec can drive both the pricing and the collection without spawning anything. The whole module loads
+ * behind an `await import` in the command, which is what keeps the ordinary run from paying for vitest's
+ * node API or the chain steps the tier label reads.
  *
  * **What it predicts from is a sample, and it says so.** `spec-cost.json` is maintained with hysteresis: a
  * measurement is recorded only when it would place the spec in the other half or is a large move, so a row
@@ -21,7 +22,7 @@ import * as path from 'node:path';
 import { CHAIN_STEPS } from './chain-steps.ts';
 import { readSpecCost } from './spec-cost.ts';
 import { UNIT_SUITES } from './unit-suites.ts';
-import { packageOf, type Run } from './spec-plan.ts';
+import { IS_SPEC, packageOf, type Run } from './spec-plan.ts';
 
 export interface Priced {
   /** Repo-relative, as given */
@@ -57,6 +58,13 @@ export function priceSpecs(specs: readonly string[], root: string): Priced {
   const recorded = new Set(UNIT_SUITES.map((suite) => suite.dir));
 
   for (const rel of specs) {
+    // A directory here is a producer that did not keep `Run.specs`' promise, and it has a cost record with no
+    // row for it — so it would land in `unpriced` and advise `spec-cost:update`, a command that can never
+    // record one. Refused rather than mis-bucketed, as `priceSuites` refuses an unknown workspace below and
+    // for the same reason: what silence costs here is a whole run priced at zero
+    if (!IS_SPEC.test(rel)) {
+      throw new Error(`${rel} is not a spec file, and Run.specs promises the spec files a run executes`);
+    }
     const dir = packageOf(rel);
     if (dir === null || !recorded.has(dir)) { outside.push(rel); continue; }
     if (!records.has(dir)) records.set(dir, readSpecCost(root, dir));
@@ -104,3 +112,28 @@ export const tierOfRun = (run: Run, root: string): number | undefined =>
 
 /** `41.9s`, or `1.2s`; the unit is always seconds, because a plan spanning ms and minutes reads as neither */
 export const asSeconds = (ms: number): string => `${(ms / 1000).toFixed(1)}s`;
+
+/**
+ * The spec files a run would execute, asked of vitest without running them.
+ *
+ * **In the run's own root**, which is the pack's directory for a pack walk: a pack-relative `related` path
+ * resolved from the repo root reaches the wrong tree and projects that do not include the pack, and
+ * `spec:dry` answered 0 specs for a file the run answers with 3. That was guarded by a regex over the
+ * command's source, which could see the call site and not the answer — this is here so a spec can ask for
+ * the answer instead.
+ */
+export async function collectFor(run: Run, root: string): Promise<string[]> {
+  if (run.collects === undefined) return [];
+  const { createVitest } = await import('vitest/node');
+  const vitest = await createVitest('test', {
+    root: run.cwd, watch: false, silent: true,
+    ...(run.collects.related === undefined ? {} : { related: [...run.collects.related] }),
+    ...(run.collects.changed === true ? { changed: true } : {}),
+  });
+  try {
+    const found = await vitest.getRelevantTestSpecifications();
+    return [...new Set(found.map((spec) => spec.moduleId))].map((id) => path.relative(root, id)).sort();
+  } finally {
+    await vitest.close();
+  }
+}

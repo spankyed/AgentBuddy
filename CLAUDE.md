@@ -76,9 +76,11 @@ can be green under `spec` and red under `chain`: the chain declares that depende
 source runs that pack's whole suite rather than a root `related` — nothing in the root projects imports it.
 
 **Two more edges run through a build, and they are inside one pack.** A pack's `src/seeds/**` compiles to
-`dist/*.seed.json`, which `tests/seeds/` reads against its goldens; its `abuddy.json` drives codegen into
-`src/__generated__/`, which every spec in the pack imports. Both are `src -> abuddy build -> artifact ->
-spec`, so a *regenerated* tree is covered while editing what generates it reaches nothing. `npm run spec`
+`dist/*.seed.json`, which `tests/seeds/` reads against its goldens; its **build inputs** — `abuddy.json`,
+which drives codegen into `src/__generated__/`, `package.json`, whose `imports` map is how those generated
+specifiers resolve and whose `prepare` runs the codegen, and `tsconfig.json`, which the build compiles with —
+are what every spec in the pack goes through. Both are `src -> abuddy build -> artifact -> spec`, so a
+*regenerated* tree is covered while editing what generates it reaches nothing. `npm run spec`
 names those specs beside whatever the walk did find, and `npm run spec:full` builds the pack and runs them.
 The routes are derived from the pack's own layout (`scripts/lib/spec-plan.ts`'s `packBuildEdge`), and
 repo-checks' `spec-plan.spec.ts` partitions the packs under `packages/`, so a second pack cannot arrive
@@ -343,7 +345,8 @@ npm run spec -- <target> # You don't say what the target is; it works that out:
                          #   a spec path    -> that spec        a directory -> every spec under it
                          #   part of a name -> every spec whose path contains it — how you run one while
                          #                     working: `npm run spec -- chain-schedule` is 1.7s
-                         #   a pack's src/seeds/** or its abuddy.json -> the walk, plus the specs that read
+                         #   a pack's src/seeds/** or a build input of its own (abuddy.json, package.json,
+                         #                     tsconfig.json) -> the walk, plus the specs that read
                          #                     what building it produces, which no module graph reaches.
                          #                     Named by default, run by spec:full (a build plus the specs,
                          #                     16s measured for default-setup's tests/seeds)

@@ -42,21 +42,21 @@
 //
 //   1  a spec failed — the ordinary one
 //   2  a name was wide enough to be a search, so the paths were listed instead of run
-// `npm run spec:dry` answers "what would this run, and what does the record say it costs" without running any
-// of it. It collects — ~1.6s whatever comes back — which the ordinary run never does: the collector and the
-// pricing load behind `await import`, and repo-checks asserts that from this file's source.
-//
-// `--no-bail` runs the whole plan after a failure, which is what this did before: a 1s failure used to pay for
-// the pack suite behind it.
-//
 //   3  nothing ran and nothing passed: no spec covers the target, or the specs that do sit behind a build
-//      this run is not doing (a pack's seed sources, its `abuddy.json`) — `npm run spec:full` answers those
+//      this run is not doing (a pack's seed sources, its build inputs) — `npm run spec:full` answers those
 //
 // 3 is the one worth knowing about. `vitest related` exits 0 when the module graph reaches no spec, so until it
 // existed "nothing covers this" and "everything covering this passed" were the same output and the same code —
 // and five of eight sampled entry modules answered zero. A run only earns that judgement if its route promised
 // coverage of a file a spec could cover (`Run.claimsCoverageOf`): a whole-suite run, a `-t` filter that matched
 // no case, and a `.md` target all report zero correctly.
+//
+// **Two flags of its own.** `npm run spec:dry` answers "what would this run, and what does the record say it
+// costs" without running any of it. It collects — ~1.6s whatever comes back — which the ordinary run never
+// does: the collector and the pricing load behind `await import`, and repo-checks asserts that from this
+// file's source. And `--no-bail` reports every failure in the plan rather than stopping at the first, for
+// when you want the whole picture in one run; bailing is the default because a 1s failure otherwise pays for
+// the pack suite behind it.
 //
 // `scripts/lib/spec-plan.ts` decides all of that and is asserted by a spec; this file runs what it returns.
 import { spawnSync } from 'node:child_process';
@@ -140,8 +140,7 @@ function counted(run: Run, index: number): { args: string[]; env: NodeJS.Process
  * and not against a 3s one, which is why it is its own command rather than something the ordinary run pays.
  */
 if (dry) {
-  const { priceSpecs, priceSuites, tierOfRun, asSeconds } = await import('./lib/spec-dry.ts');
-  const { createVitest } = await import('vitest/node');
+  const { collectFor, priceSpecs, priceSuites, tierOfRun, asSeconds } = await import('./lib/spec-dry.ts');
   let total = 0;
   const unpriced: string[] = [];
   const outside: string[] = [];
@@ -155,17 +154,7 @@ if (dry) {
     // runs — a named spec, `--full`'s pack suite — would contribute nothing and read as free
     let priced;
     if (run.collects !== undefined) {
-      // In the run's own root, which is the pack's directory for a pack walk. Collected from the repo root
-      // instead, a pack-relative `related` path resolves against the wrong tree and against projects that do
-      // not include the pack: `spec:dry` answered 0 specs for a file the run answers with 3
-      const vitest = await createVitest('test', {
-        root: run.cwd, watch: false, silent: true,
-        ...(run.collects.related === undefined ? {} : { related: [...run.collects.related] }),
-        ...(run.collects.changed === true ? { changed: true } : {}),
-      });
-      priced = priceSpecs([...new Set((await vitest.getRelevantTestSpecifications()).map((spec) => spec.moduleId))]
-        .map((id) => path.relative(ROOT, id)).sort(), ROOT);
-      await vitest.close();
+      priced = priceSpecs(await collectFor(run, ROOT), ROOT);
     } else if (run.specs !== undefined) {
       priced = priceSpecs([...run.specs].sort(), ROOT);
     } else if (run.covers !== undefined) {
@@ -181,6 +170,11 @@ if (dry) {
     if (priced.measuredAt !== undefined) dates.push(priced.measuredAt);
     for (const spec of specs) console.log(`   ${spec}`);
     console.log(`   ${specs.length} spec${specs.length === 1 ? '' : 's'}, ${asSeconds(priced.fileTimeMs)} of recorded file-time`);
+    // The same sentence the run itself prints, for the same reason: a walk finding nothing over a build edge
+    // is not "nothing covers this", and a prediction that says `0 specs` and stops is the answer being refuted
+    if (run.beyond !== undefined) {
+      console.log(`   not in this answer: ${run.beyond.covers} — ${run.beyond.how}`);
+    }
   }
 
   // File-time, and said to be: it is summed across workers, and the ratio to wall was 1.55:1 and 2.18:1 on
