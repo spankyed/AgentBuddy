@@ -304,6 +304,53 @@ export function findLmdbImports(rules = LMDB_RULES, root = repoRoot): string[] {
   });
 }
 
+/** The one module that asks git what files this repo has; every other caller goes through it */
+const REPO_FILES_READER = 'packages/repo-checks/tests/_support/repo-files.ts';
+
+/**
+ * Callers that run `git ls-files` themselves on purpose, with the reason each does.
+ *
+ * The rule exists because the question has a wrong answer that looks right: `git ls-files` alone reports the
+ * *index*, which holds a file deleted from the worktree and not yet staged and omits one written and not yet
+ * staged. Four checks read what it returned and died with ENOENT on the first; every check missed the second
+ * entirely. `repoFiles()` asks `-co --exclude-standard` and drops what is not on disk.
+ *
+ * An entry that stops applying is reported, so the list cannot outlive its reasons.
+ */
+const ASKS_GIT_DIRECTLY: Record<string, string> = {
+  'packages/repo-checks/tests/chain-inputs.spec.ts':
+    '`--others --ignored --directory` asks which roots are gitignored — a different question, which lists '
+    + 'directories and reads none of them',
+  'packages/abuddy-sdk/tests/env/identity-guard.spec.ts':
+    'the same question, asked again because a spec may not import across packages (`repo-check-boundary`); it '
+    + 'already uses `-co --exclude-standard` and filters to what is on disk',
+};
+
+/**
+ * `file:line: "ls-files"` for each caller that asks git for the repo's files without going through
+ * `repoFiles()`, and each entry in `ASKS_GIT_DIRECTLY` that no longer applies.
+ */
+export function findRawGitListings(dirs: readonly string[] = CHECKED_DIRS, root = repoRoot,
+  excepted = ASKS_GIT_DIRECTLY): string[] {
+  const rule: Rule = (node) => (ts.isStringLiteralLike(node) && node.text === 'ls-files'
+    ? [JSON.stringify(node.text)] : undefined);
+  const applied = new Set<string>();
+  const problems = filesUnder(dirs, root).flatMap((file) => {
+    const relative = repoRelative(root, file);
+    if (relative === REPO_FILES_READER) return [];
+    const found = findInFiles([file], root, rule);
+    if (found.length === 0) return [];
+    if (excepted[relative] !== undefined) { applied.add(relative); return []; }
+    return found;
+  });
+  for (const [relative, reason] of Object.entries(excepted)) {
+    if (!applied.has(relative)) {
+      problems.push(`${relative}: listed in ASKS_GIT_DIRECTLY (${reason}) but it no longer runs git ls-files`);
+    }
+  }
+  return problems.sort();
+}
+
 /** The consumers of SHARED_INSTANCE_PACKAGES (@abuddy/host/build/shared-deps), which must not list the packages themselves */
 export const SHARED_LIST_CONSUMERS = [
   'packages/abuddy-cli/src/build/be-bundler.ts',
@@ -512,6 +559,13 @@ const RULE_LIST = [
     repoOnly: { kind: 'covered', by: 'lmdb-imports', note: "What is left here is the API, the host and the engine's own root" },
     find: findLmdbImports,
     rule: "Only @abuddy/ears/lmdb loads lmdb: the host and the API open the store through it, the engine's root and packs never load it",
+  },
+  {
+    id: 'findRawGitListings',
+    over: CHECKED_DIRS,
+    repoOnly: { kind: 'inapplicable', note: "Its subject is this repo's own checks asking git what files the repo has, a question no pack asks and a command no pack ships" },
+    find: findRawGitListings,
+    rule: "Ask repoFiles() what files this repo has, not git ls-files directly: the index holds a file deleted and not staged, and omits one written and not staged",
   },
   {
     id: 'findSharedPackageLists',

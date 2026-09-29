@@ -289,6 +289,10 @@ export interface TreeReader {
  * `ENOENT` is `null` — a file that goes between the walk and the read is absent, never empty. **Every other error
  * propagates**, which is load-bearing rather than incidental: `unitStaleReason` catches it and reports
  * `its sources could not be read (…)`, so an unreadable tree is a refusal instead of a fresh verdict.
+ *
+ * Tolerating the absent file is why the chain never had the bug its own checks did: `@app/repo-checks` built
+ * their populations from `git ls-files`, which reports a file deleted from the worktree and not yet staged, and
+ * four of them died reading one. They ask `repoFiles()` now. Keep this branch.
  */
 export const readTree: TreeReader = {
   list: (target) => inputFiles(target),

@@ -4,6 +4,12 @@
  * The definition, not the rules — `scripts/check-import-specifiers.ts` is the command over it, the same split
  * as `scripts/spec.ts` over `scripts/lib/spec-plan.ts`. These were four separate regions of that file, far
  * enough apart that `PACK_CODE_DIRS` was declared after seven functions that take it as a default.
+ *
+ * **It walks the filesystem, and cannot ask git.** Every function here takes a `root`, and the rules' own specs
+ * pass one from `mkdtempSync` — a fixture tree that is no git repository, where `git ls-files` answers nothing.
+ * So this is a different answer to "what files are there" from `repoFiles()` in `@app/repo-checks`, on purpose
+ * rather than by accident: that one asks git because its subject is this repo, and this one cannot because its
+ * subject is whatever directory it is handed. `SKIPPED_DIRS` is the price — a hand-kept partial of `.gitignore`.
  */
 import * as fs from 'node:fs';
 import * as path from 'node:path';
