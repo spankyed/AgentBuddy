@@ -2,9 +2,13 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { REPO_ROOT } from '@abuddy/host/build/packages-built';
-import { affectedPackSuites, ENSURE_LABEL, exitCodeFor, packageOf, planChanged, planTargets, type Run, splitArgs, verdictOf } from '../../../scripts/lib/spec-plan.ts';
+import {
+  affectedPackSuites, ENSURE_LABEL, exitCodeFor, packBuildEdge, packageOf, planChanged, planTargets, type Run,
+  OWN_FLAGS, splitArgs, verdictOf,
+} from '../../../scripts/lib/spec-plan.ts';
 import { PACKAGE_DIRS } from '../../../scripts/lib/workspace-deps.ts';
 import { UNIT_SUITES } from '../../../scripts/lib/unit-suites.ts';
+import { collectFor, priceSpecs, priceSuites, tierOfRun } from '../../../scripts/lib/spec-dry.ts';
 
 /**
  * What `npm run spec` decides to run, asserted without running any of it.
@@ -220,10 +224,16 @@ describe('what --full adds', () => {
 
 describe('what the change set plans', () => {
   it('asks every host project once, and the pack suite only when it changed', () => {
-    expect(planChanged([], [], REPO_ROOT).runs.map((r) => r.label))
+    expect(planChanged(changedIn('abuddy-ears'), [], REPO_ROOT).runs.map((r) => r.label))
       .toEqual([ENSURE_LABEL, 'the specs your changes affect']);
     expect(planChanged(changedIn('default-setup'), [], REPO_ROOT).runs.map((r) => r.label))
       .toEqual([ENSURE_LABEL, 'the specs your changes affect', 'packages/default-setup: (changed)']);
+  });
+
+  // The command never asks this — it reports "nothing changed" before planning — and the answer still has to
+  // be the honest one, since a plan is read by more than its one caller
+  it('plans nothing for no change at all', () => {
+    expect(planChanged([], [], REPO_ROOT).runs).toEqual([]);
   });
 
   it('does not ask a host project separately, because the root run already covers it', () => {
@@ -243,18 +253,78 @@ describe('packageOf', () => {
 describe('how the arguments split', () => {
   it('gives vitest everything from the first flag, so a flag keeps its own value', () => {
     expect(splitArgs(['chain-schedule', '-t', 'a case']))
-      .toEqual({ full: false, targets: ['chain-schedule'], flags: ['-t', 'a case'] });
+      .toEqual({ full: false, bail: true, dry: false, targets: ['chain-schedule'], flags: ['-t', 'a case'] });
     expect(splitArgs(['--changed', 'HEAD~1']))
-      .toEqual({ full: false, targets: [], flags: ['--changed', 'HEAD~1'] });
+      .toEqual({ full: false, bail: true, dry: false, targets: [], flags: ['--changed', 'HEAD~1'] });
   });
 
-  it('consumes --full in first position, and nowhere else', () => {
+  it('consumes its own flags in first position, and nowhere else', () => {
     expect(splitArgs(['--full', 'packages/abuddy-sdk/src/x.ts']))
-      .toEqual({ full: true, targets: ['packages/abuddy-sdk/src/x.ts'], flags: [] });
+      .toEqual({ full: true, bail: true, dry: false, targets: ['packages/abuddy-sdk/src/x.ts'], flags: [] });
+    expect(splitArgs(['--no-bail', 'packages/abuddy-sdk/src/x.ts']))
+      .toEqual({ full: false, bail: false, dry: false, targets: ['packages/abuddy-sdk/src/x.ts'], flags: [] });
     // Not a target's suffix, and not a flag's value: both stay vitest's to accept or reject, because a
     // command that filtered it out wherever it appeared would eat the second one silently
-    expect(splitArgs(['a-spec', '--full'])).toEqual({ full: false, targets: ['a-spec'], flags: ['--full'] });
-    expect(splitArgs(['-t', '--full'])).toEqual({ full: false, targets: [], flags: ['-t', '--full'] });
+    expect(splitArgs(['a-spec', '--full'])).toEqual({ full: false, bail: true, dry: false, targets: ['a-spec'], flags: ['--full'] });
+    expect(splitArgs(['-t', '--full'])).toEqual({ full: false, bail: true, dry: false, targets: [], flags: ['-t', '--full'] });
+    expect(splitArgs(['a-spec', '--no-bail']), 'the same rule, and the reason it is one rule')
+      .toEqual({ full: false, bail: true, dry: false, targets: ['a-spec'], flags: ['--no-bail'] });
+  });
+
+  // A leading *run* rather than one flag, so the two compose in either order without position mattering
+  // between them — `npm run spec:full -- --no-bail x` is the shape that needs it
+  it('takes both, in either order', () => {
+    expect(splitArgs(['--full', '--no-bail', 'x.ts'])).toMatchObject({ full: true, bail: false, targets: ['x.ts'] });
+    expect(splitArgs(['--no-bail', '--full', 'x.ts'])).toMatchObject({ full: true, bail: false, targets: ['x.ts'] });
+  });
+
+  // The list and the parser are one declaration: a flag in OWN_FLAGS that splitArgs did not consume would
+  // reach vitest as a filename, which is the failure this shape exists to make impossible
+  it('consumes every flag it declares as its own', () => {
+    expect(OWN_FLAGS.length, 'no flag was derived, so this proves nothing').toBeGreaterThan(0);
+    for (const flag of OWN_FLAGS) expect(splitArgs([flag, 'x.ts']).flags, flag).toEqual([]);
+  });
+});
+
+/**
+ * A change set with nothing a spec could cover.
+ *
+ * It used to plan `packages:ensure` and a root `--changed` vitest that reported "No test files found" — 3.4s
+ * measured — and a pack's README planned that pack's whole suite besides. Running anything at all after a doc
+ * edit is the first entry in the root CLAUDE.md's list of time-wasters.
+ */
+describe('a change set a spec could not cover', () => {
+  it('plans nothing at all, rather than a run whose answer is known', () => {
+    expect(planChanged(['docs/goals/README.md', 'CLAUDE.md'], [], REPO_ROOT).runs).toEqual([]);
+  });
+
+  it('plans nothing for a doc inside a package either, which used to run that package', () => {
+    expect(planChanged(['packages/default-setup/README.md'], [], REPO_ROOT).runs).toEqual([]);
+  });
+
+  /**
+   * A pack's build edges are covered without being *coverable*: `abuddy.json` is a `.json` and a seed source
+   * may be a `.md`. Naming one as a target says what covers it, so a change set holding one must not answer
+   * "nothing a spec could cover" — the two routes would contradict each other about the same file.
+   */
+  it.each(['packages/default-setup/abuddy.json', 'packages/default-setup/src/seeds/notes/welcome.md'])(
+    'runs the pack suite for %s, which no extension test would call coverable', (changed) => {
+      expect(planChanged([changed], [], REPO_ROOT).runs.map((r) => r.label))
+        .toEqual([ENSURE_LABEL, 'packages/default-setup: (changed)']);
+    });
+
+  // And no root run for them: they are in no root project's graph, so asking is the empty vitest this route
+  // stopped paying for
+  it('asks the root only for what is in its graph', () => {
+    const labels = planChanged(['packages/default-setup/abuddy.json'], [], REPO_ROOT).runs.map((r) => r.label);
+    expect(labels).not.toContain('the specs your changes affect');
+    expect(planChanged(['packages/default-setup/abuddy.json', 'packages/abuddy-sdk/src/x.ts'], [], REPO_ROOT)
+      .runs.map((r) => r.label), 'and asks it when one of them is').toContain('the specs your changes affect');
+  });
+
+  it('still plans everything when one coverable file is among them', () => {
+    const runs = planChanged(['docs/x.md', 'packages/abuddy-sdk/src/x.ts'], [], REPO_ROOT).runs;
+    expect(runs.map((r) => r.label)).toContain('the specs your changes affect');
   });
 });
 
@@ -363,8 +433,18 @@ describe('which runs claim to have covered something', () => {
     expect(claims(target).filter((c) => c !== undefined)).toEqual([]);
   });
 
-  it('withdraws the label too, so a doc target does not read as a coverage answer', () => {
-    expect(plan('docs/goals/README.md').map((r) => r.label).join(' ')).not.toContain('every spec covering');
+  /**
+   * Both routes, because the label and the claim are set in different places and only the root one had this.
+   * `spec -- <a pack's CLAUDE.md>` printed *"every spec covering CLAUDE.md"*, ran nothing and exited 3 — the
+   * exit code was right and the sentence above it said the opposite.
+   */
+  it.each([
+    ['the root route', 'docs/goals/README.md'],
+    ['the pack route', 'packages/default-setup/src/env.d.ts'],
+  ])('withdraws the label too on %s, so the run does not read as a coverage answer', (_route, target) => {
+    const labels = plan(target).map((r) => r.label).join(' ');
+    expect(labels, 'a run was planned, or this asserts over nothing').toContain(target.split('/').pop()!);
+    expect(labels).not.toContain('every spec covering');
   });
 
   it('claims a change set that holds code, and not one that holds only prose', () => {
@@ -437,5 +517,313 @@ describe("the package's CLAUDE.md names what is here", () => {
       .flatMap(([, cell]) => [...cell.matchAll(/`([\w-]+)`/g)].map(([, name]) => name));
     expect(named.filter((name) => !specs().includes(name)),
       'these specs are gone or renamed; drop them from the table').toEqual([]);
+  });
+});
+
+/**
+ * The two edges no module graph can see, and the packs they are derived for.
+ *
+ * A pack's specs import what `abuddy build` produced, never the source that produced it, so the edge runs
+ * `src` -> build -> artifact -> spec and `related` reports the same emptiness it reports for a file nothing
+ * covers. Those are opposite facts and until these routes existed they got the same sentence: a seed source
+ * was told *"No spec covers …"*, which `tests/seeds/` refutes.
+ */
+describe('a pack file whose specs sit behind a build', () => {
+  const PACK = 'default-setup';
+  const SEED = `packages/${PACK}/src/seeds/actions/claude-code/answer-question.ts`;
+  const MANIFEST = `packages/${PACK}/abuddy.json`;
+  /**
+   * The pack's build inputs, derived from what `packBuildEdge` routes at the pack's own top level rather
+   * than listed here — a copy of that list would agree with it by being written twice, which is what let
+   * `package.json` and `tsconfig.json` go unrouted while the manifest beside them was cased four ways.
+   */
+  const BUILD_INPUTS = fs.readdirSync(path.join(REPO_ROOT, 'packages', PACK), { withFileTypes: true })
+    .filter((e) => e.isFile() && packBuildEdge(`packages/${PACK}/${e.name}`, REPO_ROOT)?.specs.length === 0)
+    .map((e) => `packages/${PACK}/${e.name}`).sort();
+
+  /**
+   * Derived from the tree, not named here: every pack under `packages/` is one with a manifest beside its
+   * sources, and each must have a unit suite for its specs to be routed to. A pack arriving without one is
+   * unroutable, which is a thing to fix rather than to discover later from a run that answered nothing.
+   */
+  it('routes every pack under packages/, so a new one cannot arrive unrouted', () => {
+    const packs = fs.readdirSync(path.join(REPO_ROOT, 'packages'), { withFileTypes: true })
+      .filter((e) => e.isDirectory() && fs.existsSync(path.join(REPO_ROOT, 'packages', e.name, 'abuddy.json')))
+      .map((e) => e.name);
+    expect(packs.length, 'no pack was derived from the tree, so the cases below prove nothing').toBeGreaterThan(0);
+
+    const suites = new Set(UNIT_SUITES.filter((s) => s.kind === 'pack').map((s) => s.dir));
+    expect(packs.filter((p) => !suites.has(p)),
+      'these packs have no unit suite, so nothing can be routed to them — declare one in unit-suites.ts').toEqual([]);
+    for (const pack of packs) {
+      expect(packBuildEdge(`packages/${pack}/abuddy.json`, REPO_ROOT), `${pack}'s manifest`).toBeDefined();
+    }
+  });
+
+  it('sends a seed source to the specs that read what building it produces', () => {
+    const edge = packBuildEdge(SEED, REPO_ROOT);
+    expect(edge?.suite.workspace).toBe('@app/default-setup');
+    expect(edge?.specs, 'the seed goldens, not the whole suite').toEqual(['tests/seeds']);
+  });
+
+  /**
+   * Nothing narrower is honest: the manifest drives codegen into `src/__generated__/`, `package.json` holds
+   * the `imports` map those specifiers resolve by, and `tsconfig.json` is what the build compiles with — so
+   * every spec in the pack goes through all three.
+   */
+  it('sends each of the pack\'s build inputs to the whole suite', () => {
+    expect(BUILD_INPUTS, 'nothing was derived, so every case over this population proves nothing')
+      .toEqual([MANIFEST, `packages/${PACK}/package.json`, `packages/${PACK}/tsconfig.json`]);
+    for (const input of BUILD_INPUTS) expect(packBuildEdge(input, REPO_ROOT)?.specs, input).toEqual([]);
+  });
+
+  it('leaves every other file in the pack alone', () => {
+    expect(packBuildEdge(`packages/${PACK}/src/features/brain/be/system.ts`, REPO_ROOT)).toBeUndefined();
+    expect(packBuildEdge(`packages/${PACK}/tests/seeds/seed-parity.spec.ts`, REPO_ROOT)).toBeUndefined();
+    expect(packBuildEdge('packages/abuddy-sdk/src/index.ts', REPO_ROOT), 'and every file outside a pack').toBeUndefined();
+  });
+
+  // The seed half is offered only where the pack has both halves, so a pack with sources and no goldens is
+  // not routed at a directory that is not there
+  it('offers the seed route only where the specs exist', () => {
+    expect(packBuildEdge(`packages/${PACK}/src/seeds/x.ts`, path.join(REPO_ROOT, 'packages')),
+      'a root where that pack has no tests/seeds').toBeUndefined();
+  });
+
+  /**
+   * Beside the walk, not instead of it. A seed *helper* is imported by specs directly — measured, 3 for
+   * `_helpers/thread-context.ts` — and routing every `src/seeds/**` file at the build would throw that
+   * answer away to recommend a build instead. So the walk is still planned and carries what it cannot see.
+   */
+  it.each([SEED, ...BUILD_INPUTS])('still walks the pack graph for %s, carrying what the walk cannot see', (target) => {
+    const [ensure, walk, ...rest] = planTargets([target], [], REPO_ROOT).runs;
+    expect(ensure!.label).toBe(ENSURE_LABEL);
+    expect(walk!.args, 'the direct importers are still answered').toContain('related');
+    expect(rest, 'and nothing is built without --full').toEqual([]);
+    expect(walk!.beyond?.target).toBe(target);
+    expect(walk!.beyond?.how, 'which names the command that does answer it').toContain('spec:full');
+  });
+
+  // Without this the manifest exits 0 having run nothing: `.json` is not a source extension, so Decision 2's
+  // test withholds the claim — and a build edge is that claim made directly, which is what overrides it
+  it.each(BUILD_INPUTS)('claims coverage of %s, which no extension test would', (input) => {
+    const walk = planTargets([input], [], REPO_ROOT).runs.find((r) => r.args.includes('related'))!;
+    expect(walk.claimsCoverageOf).toBe(input);
+  });
+
+  /**
+   * **The two routes must not contradict each other about the same file.** They answer different questions —
+   * "what covers this target" and "what do these changes affect" — from one edge, and each reads it
+   * separately, so the edge widening for one and not the other is a silent disagreement rather than a
+   * failure. It has happened twice: `5420ce990` fixed a file the target route covered and the change-set
+   * route called uncoverable, and `package.json` and `tsconfig.json` ran a pack's whole suite as targets
+   * while a change set holding one planned nothing at all.
+   */
+  it.each([SEED, ...BUILD_INPUTS])('answers %s the same way as a target and as a change', (file) => {
+    expect(planTargets([file], [], REPO_ROOT).runs, 'as a target').not.toEqual([]);
+    expect(planChanged([file], [], REPO_ROOT).runs, 'as a change').not.toEqual([]);
+  });
+
+  /**
+   * The control, so the case above is about the edge and not about every path in the pack: a pack doc is over
+   * no edge, and neither route claims to cover it. The two still plan differently, and honestly — naming it
+   * as a target walks the pack graph and reports that nothing covers it (exit 3), where a change set holding
+   * only docs has nothing to report on and plans no run at all.
+   */
+  it('claims no coverage either way for a pack file no edge reaches', () => {
+    const doc = `packages/${PACK}/CLAUDE.md`;
+    expect(fs.existsSync(path.join(REPO_ROOT, doc)), doc).toBe(true);
+    expect(packBuildEdge(doc, REPO_ROOT)).toBeUndefined();
+    expect(planTargets([doc], [], REPO_ROOT).runs.map((r) => r.claimsCoverageOf), 'as a target')
+      .toEqual([undefined, undefined]);
+    expect(planChanged([doc], [], REPO_ROOT).runs, 'as a change').toEqual([]);
+  });
+
+  it('builds the pack and runs those specs under --full', () => {
+    const planned = planTargets([SEED], [], REPO_ROOT, { full: true });
+    expect(planned.runs.some((r) => r.args.includes('related')),
+      'the walk is subsumed by the specs being run in full').toBe(false);
+    expect(planned.runs.map((r) => r.args.join(' '))).toEqual([
+      'run packages:ensure',
+      'run build -w @app/default-setup',
+      'test -- tests/seeds',
+    ]);
+  });
+
+  // One build and one run for two seed sources: the edge is the pack's, not the file's
+  it('plans one build however many of a pack\'s files are named', () => {
+    const planned = planTargets([SEED, `packages/${PACK}/src/seeds/prompts/index.ts`], [], REPO_ROOT, { full: true });
+    expect(planned.runs.filter((r) => r.args.includes('build'))).toHaveLength(1);
+    expect(planned.runs.filter((r) => r.args.includes('tests/seeds'))).toHaveLength(1);
+  });
+
+  // The manifest route runs the suite in full, so `covers` must say so or `--full` plans it twice — once here
+  // and once as the pack suite a dependency change reaches
+  it('declares the suite it runs in full, so nothing plans it twice', () => {
+    const planned = planTargets([MANIFEST], [], REPO_ROOT, { full: true });
+    const suiteRun = planned.runs.find((r) => r.cwd.endsWith(`packages/${PACK}`))!;
+    expect(suiteRun.covers).toEqual(['@app/default-setup']);
+  });
+});
+
+/**
+ * What `spec:dry` predicts, without collecting anything.
+ *
+ * The pricing is pure so it can be asserted here; the collecting half is in the command, because it loads
+ * vitest's node API and the ordinary run must not pay for that. What the prediction rests on is a *sample* —
+ * `spec-cost.json` is kept with hysteresis, so a row may sit up to `DRIFT_SHARE` from the truth — which is
+ * why it reports the record's own `measuredAt` rather than a confidence computed here.
+ */
+describe('what the plan would cost', () => {
+  const SPEC = 'packages/repo-checks/tests/suite-split.spec.ts';
+  const PACK = 'default-setup';
+  const SEED = `packages/${PACK}/src/seeds/actions/claude-code/answer-question.ts`;
+
+  it('prices a spec from the record its package keeps', () => {
+    const priced = priceSpecs([SPEC], REPO_ROOT);
+    expect(priced.fileTimeMs, 'the recorded cost, which is not zero').toBeGreaterThan(0);
+    expect(priced.unpriced).toEqual([]);
+    expect(priced.measuredAt, 'and how old the band is').toMatch(/^\d{4}-\d{2}-\d{2}/);
+  });
+
+  // A total that quietly omits what it does not know is a prediction that improves the less it knows
+  it('names a spec the record has never seen rather than counting it free', () => {
+    const priced = priceSpecs([SPEC, 'packages/repo-checks/tests/not-recorded.spec.ts'], REPO_ROOT);
+    expect(priced.unpriced).toEqual(['packages/repo-checks/tests/not-recorded.spec.ts']);
+    expect(priced.outside, 'both are in a unit suite; only the row is missing').toEqual([]);
+    expect(priced.fileTimeMs, 'and the total is the part it does know').toBe(priceSpecs([SPEC], REPO_ROOT).fileTimeMs);
+  });
+
+  /**
+   * Two ways a spec has no cost, and they take different advice: `spec-cost:update` fixes a missing row and
+   * will never record an E2E spec. Telling a reader to run it for one sends them after a command that cannot
+   * help — the same defect as advising `--all` to someone who had just run it.
+   */
+  it('tells a missing row apart from a spec no record covers', () => {
+    const e2e = priceSpecs(['tests/e2e/smoke.spec.ts'], REPO_ROOT);
+    expect(e2e.outside, 'in no unit suite, so no record could hold it').toEqual(['tests/e2e/smoke.spec.ts']);
+    expect(e2e.unpriced, 'and not something an update would fix').toEqual([]);
+
+    const missing = priceSpecs(['packages/repo-checks/tests/not-recorded.spec.ts'], REPO_ROOT);
+    expect(missing.unpriced).toEqual(['packages/repo-checks/tests/not-recorded.spec.ts']);
+    expect(missing.outside).toEqual([]);
+  });
+
+  // Every `covers` is derived from UNIT_SUITES, so this cannot fire — and a skipped one is a whole suite
+  // dropped from a total in silence, which is what the unpriced list exists to prevent one level up
+  it('refuses a covered workspace that is no unit suite, rather than pricing it at zero', () => {
+    expect(() => priceSuites(['@app/no-such-suite'], REPO_ROOT)).toThrow(/no unit suite/);
+  });
+
+  /**
+   * The two halves composing, which is what neither of them alone could say.
+   *
+   * `packBuildEdge` names the seed goldens as a *directory* and `priceSpecs` reads *files*, and both were
+   * right on their own: the seed run priced at one unrecorded spec — zero — which is the whole of what
+   * `--full` adds for a seed source. Asserted over the plan rather than over `packageRun`, because the
+   * directory is what the edge hands it and the expansion is what has to survive the trip.
+   */
+  it('prices the seed run the edge plans, over files rather than the directory it names', () => {
+    const suiteRun = planTargets([SEED], [], REPO_ROOT, { full: true }).runs
+      .find((run) => run.specs !== undefined)!;
+
+    expect(suiteRun.specs, 'the directory was expanded').not.toContain(`packages/${PACK}/tests/seeds`);
+    expect(suiteRun.specs!.length, 'every golden under it').toBeGreaterThan(10);
+
+    const priced = priceSpecs([...suiteRun.specs!].sort(), REPO_ROOT);
+    expect(priced.unpriced, 'and the record has a row for each').toEqual([]);
+    expect(priced.fileTimeMs, 'so the run `--full` exists for is not priced at zero').toBeGreaterThan(1000);
+  });
+
+  // `Run.specs` promises spec files. A producer that hands it anything else has a cost record with no row
+  // for it, so it would land in `unpriced` and advise a command that can never record one
+  it('refuses a path that is not a spec file, rather than calling it unpriced', () => {
+    expect(() => priceSpecs([`packages/${PACK}/tests/seeds`], REPO_ROOT)).toThrow(/not a spec file/);
+  });
+
+  it('reports the oldest record it drew on, since that is how stale the band is', () => {
+    const many = priceSpecs([SPEC, 'packages/abuddy-ears/tests/no-module-state.spec.ts'], REPO_ROOT);
+    expect(many.measuredAt).toBeDefined();
+    expect(many.measuredAt! <= priceSpecs([SPEC], REPO_ROOT).measuredAt!).toBe(true);
+  });
+
+  /**
+   * The tier is read from `chain-steps.ts`, never inferred, so the label cannot disagree with `check:tiers`.
+   * A package's own `npm test` is not the chain's `test` step, and labelling it tier 3 would say the pack
+   * suite launches the app.
+   */
+  it('labels a run with the tier of the chain step it is, and nothing else', () => {
+    const [ensure, walk] = planTargets(['packages/abuddy-sdk/src/types/sdk-entities.ts'], [], REPO_ROOT).runs;
+    expect(tierOfRun(ensure!, REPO_ROOT), 'packages:ensure').toBe(2);
+    expect(tierOfRun(walk!, REPO_ROOT), 'a root vitest is no chain step').toBeUndefined();
+
+    const packageTest = planTargets([SPEC], [], REPO_ROOT).runs[0]!;
+    expect(packageTest.args[0], 'npm test in a package').toBe('test');
+    expect(tierOfRun(packageTest, REPO_ROOT), 'which is not the chain step named test').toBeUndefined();
+  });
+
+  // Every run a plan can produce is either collected or explained: one that is neither would print an empty
+  // prediction and read as costing nothing
+  it('declares what it would collect for every run that answers a graph', () => {
+    const planned = planTargets(['packages/abuddy-sdk/src/types/sdk-entities.ts'], [], REPO_ROOT, { full: true }).runs;
+    for (const run of planned) {
+      const answersAGraph = run.args.includes('related') || run.args.includes('--changed');
+      expect(run.collects !== undefined, `${run.label}`).toBe(answersAGraph);
+    }
+    expect(planChanged(changedIn('abuddy-sdk'), [], REPO_ROOT).runs.find((r) => r.collects?.changed)).toBeDefined();
+  });
+});
+
+/**
+ * That the ordinary run pays nothing for the prediction.
+ *
+ * Collection is ~1.6s whatever it returns, which is 8% of a root run and most of a one-spec run. The command
+ * keeps it out by loading both the collector and the pricing behind `await import`, so a plain `npm run spec`
+ * never constructs vitest's node API at all — asserted from the source, because a static import is the one
+ * way this regresses and it regresses silently.
+ */
+describe('the ordinary run does not collect', () => {
+  const source = fs.readFileSync(path.join(REPO_ROOT, 'scripts/spec.ts'), 'utf-8');
+  /** Static imports only: `import x from 'y'` at the start of a line, never `await import('y')` */
+  const staticImports = [...source.matchAll(/^import\s[^\n]*?from\s+'([^']+)'/gm)].map(([, spec]) => spec!);
+
+  it('names no collector among its static imports', () => {
+    expect(staticImports.length, 'nothing was parsed, so this proves nothing').toBeGreaterThan(3);
+    expect(staticImports).not.toContain('vitest/node');
+    expect(staticImports, 'the pricing loads chain-steps, which the ordinary run has no use for')
+      .not.toContain('./lib/spec-dry.ts');
+  });
+
+  it('loads the collector behind an await import, so only --dry pays', () => {
+    // One gate covers both: `spec-dry.ts` is what loads `vitest/node`, and the command loads `spec-dry.ts`
+    // only under `--dry`. Asserted from the source because a static import is the one way this regresses,
+    // and it regresses silently
+    expect(source, './lib/spec-dry.ts').toContain("await import('./lib/spec-dry.ts')");
+  });
+});
+
+/**
+ * What the plan would run, asked of vitest rather than of the command's source.
+ *
+ * **The collection has to happen in the run's own root.** A pack walk's `related` path is relative to the
+ * pack, and the pack is in no root project, so collecting from the repo root resolves nothing — `spec:dry`
+ * answered 0 specs for a file the run answers with 3. That was guarded by a regex over `spec.ts`, which could
+ * see the call site and not the answer: it caught one spelling of the regression, failed on a reformat it did
+ * not anticipate, and could not have caught a prediction that was wrong for any other reason. Two of those
+ * shipped.
+ *
+ * It costs one vitest node API, which is why there is one case and not four.
+ */
+describe('what the plan would run', () => {
+  it('collects a pack file in the pack, which is the only root that resolves it', async () => {
+    const target = 'packages/default-setup/src/extensions/steps/create/field-default.ts';
+    const run = planTargets([target], [], REPO_ROOT).runs.find((r) => r.collects !== undefined)!;
+    expect(run.cwd, 'a pack walk runs in the pack').toBe(path.join(REPO_ROOT, 'packages', 'default-setup'));
+
+    const collected = await collectFor(run, REPO_ROOT);
+
+    expect(collected, `nothing collected for ${target}, so the prediction would read as free`).not.toEqual([]);
+    expect(collected.every((spec) => spec.startsWith('packages/default-setup/')),
+      `collected from the wrong root: ${collected.join(', ')}`).toBe(true);
   });
 });

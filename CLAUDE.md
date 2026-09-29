@@ -75,6 +75,17 @@ can be green under `spec` and red under `chain`: the chain declares that depende
 (`scripts/lib/workspace-deps.ts`) where a module graph cannot see it. The same seam is why a *pack's own*
 source runs that pack's whole suite rather than a root `related` — nothing in the root projects imports it.
 
+**Two more edges run through a build, and they are inside one pack.** A pack's `src/seeds/**` compiles to
+`dist/*.seed.json`, which `tests/seeds/` reads against its goldens; its **build inputs** — `abuddy.json`,
+which drives codegen into `src/__generated__/`, `package.json`, whose `imports` map is how those generated
+specifiers resolve and whose `prepare` runs the codegen, and `tsconfig.json`, which the build compiles with —
+are what every spec in the pack goes through. Both are `src -> abuddy build -> artifact -> spec`, so a
+*regenerated* tree is covered while editing what generates it reaches nothing. `npm run spec`
+names those specs beside whatever the walk did find, and `npm run spec:full` builds the pack and runs them.
+The routes are derived from the pack's own layout (`scripts/lib/spec-plan.ts`'s `packBuildEdge`), and
+repo-checks' `spec-plan.spec.ts` partitions the packs under `packages/`, so a second pack cannot arrive
+unrouted. Before them a seed source was told *"No spec covers …"*, which its goldens refute.
+
 Three things the chain cannot work out for you, because they rewrite files you commit:
 
 - **a public export of `@abuddy/ears`, `/sdk` or `/ui`** — `npm run api:update`, and commit `etc/`.
@@ -310,6 +321,18 @@ npm run spec             # The specs your uncommitted changes affect, wherever t
                          # answered zero. Only a run whose route promised coverage of a file a spec could cover
                          # earns that judgement: a whole-suite run, a `-t` filter matching no case and a doc
                          # target all report zero correctly and still exit 0
+npm run spec:dry [...]   # What the plan would run and what the record says it costs, running nothing. Takes
+                         # every argument spec does. It collects through vitest's node API — ~1.6s whatever
+                         # comes back, since it is the eleven project configs loading rather than a graph
+                         # being walked — so a whole prediction is 4s where the run it predicts is 21s.
+                         # It prints **file-time summed across workers, never a wall estimate**: the ratio
+                         # between the two was 1.55:1 and 2.18:1 on one target three days apart, so a wall
+                         # number would be wrong by a third within a week. And it prints the record's
+                         # `measuredAt`, because spec-cost.json is a sample kept with hysteresis and a row
+                         # may sit up to DRIFT_SHARE from the truth by design — the total is a band. A spec
+                         # the record has never seen is named rather than counted free.
+                         # The ordinary `npm run spec` collects nothing: the collector and the pricing load
+                         # behind `await import`, which repo-checks asserts from the source
 npm run spec:full [...]  # The same, plus the pack suites a rebuilt dist would reach — the answer the module
                          # graph cannot give. Takes every argument spec does. Costs a build when one is stale
                          # (14s) and the pack suite (18s), so a shallow @abuddy/sdk edit goes from ~24s to
@@ -322,6 +345,11 @@ npm run spec -- <target> # You don't say what the target is; it works that out:
                          #   a spec path    -> that spec        a directory -> every spec under it
                          #   part of a name -> every spec whose path contains it — how you run one while
                          #                     working: `npm run spec -- chain-schedule` is 1.7s
+                         #   a pack's src/seeds/** or a build input of its own (abuddy.json, package.json,
+                         #                     tsconfig.json) -> the walk, plus the specs that read
+                         #                     what building it produces, which no module graph reaches.
+                         #                     Named by default, run by spec:full (a build plus the specs,
+                         #                     16s measured for default-setup's tests/seeds)
                          # A source file is one vitest over every host project, because that is the honest
                          # answer to "what could this break" and the root vitest.config.ts already lists
                          # them. It used to run the file's own package: for a type every pack's data flows

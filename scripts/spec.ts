@@ -27,6 +27,11 @@
 // pretest guard (`packages:ensure`) and each vitest config still apply. A root run has no such hook, so the
 // plan puts `packages:ensure` in front of it.
 //
+// **Two more edges run through a build, inside a pack.** `src/seeds/**` compiles to `dist/*.seed.json`, which
+// `tests/seeds/` reads against its goldens, and `abuddy.json` drives codegen into `src/__generated__/`, which
+// every spec in the pack imports. The walk still runs — a seed helper the specs import directly is answered by
+// it — and carries what it could not see (`Run.beyond`); `npm run spec:full` builds the pack and runs them.
+//
 // What a module graph cannot reach is a **pack suite**: it resolves the published `dist` while the host
 // projects resolve source, so its specs never import `packages/<dep>/src` and no import edge runs from the
 // file you edited to the spec that covers it. `npm run spec` says so when it is true — derived from the
@@ -37,13 +42,21 @@
 //
 //   1  a spec failed — the ordinary one
 //   2  a name was wide enough to be a search, so the paths were listed instead of run
-//   3  the target exists and no spec covers it, so nothing ran and nothing passed
+//   3  nothing ran and nothing passed: no spec covers the target, or the specs that do sit behind a build
+//      this run is not doing (a pack's seed sources, its build inputs) — `npm run spec:full` answers those
 //
 // 3 is the one worth knowing about. `vitest related` exits 0 when the module graph reaches no spec, so until it
 // existed "nothing covers this" and "everything covering this passed" were the same output and the same code —
 // and five of eight sampled entry modules answered zero. A run only earns that judgement if its route promised
 // coverage of a file a spec could cover (`Run.claimsCoverageOf`): a whole-suite run, a `-t` filter that matched
 // no case, and a `.md` target all report zero correctly.
+//
+// **Two flags of its own.** `npm run spec:dry` answers "what would this run, and what does the record say it
+// costs" without running any of it. It collects — ~1.6s whatever comes back — which the ordinary run never
+// does: the collector and the pricing load behind `await import`, and repo-checks asserts that from this
+// file's source. And `--no-bail` reports every failure in the plan rather than stopping at the first, for
+// when you want the whole picture in one run; bailing is the default because a 1s failure otherwise pays for
+// the pack suite behind it.
 //
 // `scripts/lib/spec-plan.ts` decides all of that and is asserted by a spec; this file runs what it returns.
 import { spawnSync } from 'node:child_process';
@@ -55,7 +68,7 @@ import { ENSURE_LABEL, exitCodeFor, packageOf, planChanged, planTargets, type Ru
 
 const ROOT = path.resolve(import.meta.dirname, '..');
 
-const { full, targets, flags } = splitArgs(process.argv.slice(2));
+const { full, bail, dry, targets, flags } = splitArgs(process.argv.slice(2));
 
 /** What git reports as changed, repo-relative. `planChanged` derives the packages and reads the paths itself */
 function changed(): string[] {
@@ -73,6 +86,12 @@ if (targets.length === 0 && changedPaths.length === 0) {
 const { runs, unmatched, ambiguous } = targets.length > 0
   ? planTargets(targets, flags, ROOT, { full })
   : planChanged(changedPaths, flags, ROOT, { full });
+
+// A change set with nothing a spec could cover: the plan is no runs, and saying so is the whole answer
+if (runs.length === 0 && targets.length === 0) {
+  console.log('Nothing changed that a spec could cover — no spec run.');
+  process.exit(0);
+}
 
 if (unmatched.length > 0) {
   console.error(`No spec or file matches ${unmatched.map((t) => `"${t}"`).join(', ')}`);
@@ -113,8 +132,67 @@ function counted(run: Run, index: number): { args: string[]; env: NodeJS.Process
   };
 }
 
+/**
+ * What the plan would run and what the record says it costs, collecting rather than running.
+ *
+ * Collection is flat in the size of the answer — 1.6s for 0 specs and 1.6s for 150, measured, because it is
+ * the eleven project configs being loaded rather than a graph being walked. Worth it against a 20s root run
+ * and not against a 3s one, which is why it is its own command rather than something the ordinary run pays.
+ */
+if (dry) {
+  const { collectFor, priceSpecs, priceSuites, tierOfRun, asSeconds } = await import('./lib/spec-dry.ts');
+  let total = 0;
+  const unpriced: string[] = [];
+  const outside: string[] = [];
+  const dates: string[] = [];
+
+  for (const run of runs) {
+    const tier = tierOfRun(run, ROOT);
+    console.log(`\n→ ${run.label}${tier === undefined ? '' : `  [tier ${tier}]`}`);
+    // Three ways a run's file list is known, and a run that is none of them says so: collected from the
+    // graph, named by the target, or a suite's whole record. Without the last two a plan's most expensive
+    // runs — a named spec, `--full`'s pack suite — would contribute nothing and read as free
+    let priced;
+    if (run.collects !== undefined) {
+      priced = priceSpecs(await collectFor(run, ROOT), ROOT);
+    } else if (run.specs !== undefined) {
+      priced = priceSpecs([...run.specs].sort(), ROOT);
+    } else if (run.covers !== undefined) {
+      priced = priceSuites(run.covers, ROOT);
+    } else {
+      console.log('   no specs of its own: it builds, or makes the packages current');
+      continue;
+    }
+    const specs = priced.specs;
+    total += priced.fileTimeMs;
+    unpriced.push(...priced.unpriced);
+    outside.push(...priced.outside);
+    if (priced.measuredAt !== undefined) dates.push(priced.measuredAt);
+    for (const spec of specs) console.log(`   ${spec}`);
+    console.log(`   ${specs.length} spec${specs.length === 1 ? '' : 's'}, ${asSeconds(priced.fileTimeMs)} of recorded file-time`);
+    // The same sentence the run itself prints, for the same reason: a walk finding nothing over a build edge
+    // is not "nothing covers this", and a prediction that says `0 specs` and stops is the answer being refuted
+    if (run.beyond !== undefined) {
+      console.log(`   not in this answer: ${run.beyond.covers} — ${run.beyond.how}`);
+    }
+  }
+
+  // File-time, and said to be: it is summed across workers, and the ratio to wall was 1.55:1 and 2.18:1 on
+  // one target three days apart, so any wall number derived from it would be wrong by a third within a week
+  console.log(`\n${asSeconds(total)} of recorded file-time, summed across workers — not time to wait.`);
+  // The record is a sample kept with hysteresis, so this is a band and its age is the record's own field
+  if (dates.length > 0) console.log(`Read from records last measured ${dates.sort()[0]!.slice(0, 10)}; a row may sit up to 15% from the truth by design.`);
+  for (const spec of unpriced) console.error(`  no recorded cost: ${spec}`);
+  if (unpriced.length > 0) console.error(`  ${unpriced.length} unpriced, so the total is short — npm run spec-cost:update`);
+  // Said, and said differently: no record covers these, and no `spec-cost:update` ever will
+  for (const spec of outside) console.log(`  no cost recorded for ${spec} — it is in no unit suite`);
+  process.exit(0);
+}
+
 let failed = 0;
-const uncovered: string[] = [];
+/** The runs a bail did not reach, named rather than silently skipped */
+let notReached: readonly Run[] = [];
+const uncovered: Run[] = [];
 const noCount: string[] = [];
 // Each distinct note once: two source-file targets are two root runs carrying the same sentence about the
 // pack suites, and a limit worth stating is not worth stating twice
@@ -126,10 +204,20 @@ try {
     const result = spawnSync(run.command, counter?.args ?? [...run.args],
       { cwd: run.cwd, stdio: 'inherit', env: counter?.env });
     const verdict = verdictOf(run, result.status ?? 1, counter?.read());
-    if (verdict === 'fail') failed++;
-    if (verdict === 'uncovered') uncovered.push(run.claimsCoverageOf!);
+    if (verdict === 'fail') {
+      failed++;
+      // The failure is the answer, and every run behind it is a bill for information already in hand: a 1s
+      // tier-1 failure used to pay for the 18s pack suite that followed it
+      if (bail) { notReached = runs.slice(index + 1); break; }
+    }
+    if (verdict === 'uncovered') uncovered.push(run);
     if (verdict === 'no count') noCount.push(run.label);
     if (run.note !== undefined && !said.has(run.note)) { console.log(`   ${run.note}`); said.add(run.note); }
+    // Said only when the run answered something: when it did not, the edge is the whole answer and is
+    // reported below instead, where it replaces a sentence that would be false
+    if (run.beyond !== undefined && verdict === 'pass') {
+      console.log(`   not in this answer: ${run.beyond.covers} — ${run.beyond.how}`);
+    }
   }
 } finally {
   fs.rmSync(reports, { recursive: true, force: true });
@@ -137,7 +225,21 @@ try {
 
 // Both are said, even though only one can be the exit code: a hole found beside a failure is information
 // already in hand, and dropping it means finding it on the next run instead
-for (const target of uncovered) console.error(`\nNo spec covers ${target} — nothing ran, so nothing passed.`);
+if (notReached.length > 0) {
+  console.error(`\nStopped at the first failure, so ${notReached.length} run${notReached.length === 1 ? ' was' : 's were'} not reached:`);
+  for (const run of notReached) console.error(`  ${run.label}`);
+  console.error('  npm run spec -- --no-bail … runs them anyway.');
+}
+
+// Two sentences for one emptiness, because they are opposite facts: a gap in the suite, and specs that
+// exist behind a build this run did not do. Saying the first for the second is what a seed source used to get
+for (const run of uncovered) {
+  const target = run.claimsCoverageOf!;
+  console.error(run.beyond === undefined
+    ? `\nNo spec covers ${target} — nothing ran, so nothing passed.`
+    : `\nNothing ran for ${target}. It is covered by ${run.beyond.covers} — an edge that runs through a `
+      + `build, so no module graph connects the two.\n  ${run.beyond.how}`);
+}
 // Loud rather than assumed, because assuming it ran something is how the check would stop checking
 for (const label of noCount) {
   console.error(`\n${label}: the spec count never arrived, so whether anything ran is unknown.`

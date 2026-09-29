@@ -51,9 +51,53 @@ export interface Run {
    * and `--changed` make it — over a target a spec could cover, which is what `couldBeCovered` decides.
    */
   readonly claimsCoverageOf?: string;
+  /**
+   * Specs covering this run's target that the run itself cannot reach. Printed after it when it found some —
+   * as `note` is — and *in place of* "no spec covers it" when it found none, which is the case it exists for.
+   */
+  readonly beyond?: BuildEdge;
+  /**
+   * The vitest options that produce this run's file list without running it, for `spec:dry`.
+   *
+   * Declared rather than parsed back out of `args`, so the prediction asks the same question the run does
+   * and a change to one is a change to both in the same place.
+   */
+  readonly collects?: { readonly related?: readonly string[]; readonly changed?: boolean };
+  /**
+   * The spec files this run executes, repo-relative, where naming the target already said which they are.
+   *
+   * The other half of what `spec:dry` prices, beside `collects` and `covers`: a plan whose runs are none of
+   * the three would predict nothing for them and read as costing nothing, which is the failure an unpriced
+   * spec is named for.
+   */
+  readonly specs?: readonly string[];
 }
 
-const IS_SPEC = /\.(spec|test)\.[cm]?[jt]sx?$/;
+/**
+ * Specs that cover a target and that no walk of the module graph will reach, because a build stands between
+ * them: `src` -> `abuddy build` -> an artifact -> the spec that reads it.
+ *
+ * **Beside a run, never instead of one.** A seed *helper* is imported by specs directly — measured,
+ * `src/seeds/actions/claude-code/_helpers/thread-context.ts` reaches 3 — and routing every `src/seeds/**`
+ * file at the build would throw that answer away to recommend a build. So the walk still runs and this is
+ * what it could not see, which is the shape `packSuiteNote` already has.
+ *
+ * What it changes when the walk finds nothing is the sentence. `related` reports the same emptiness for a
+ * file nothing covers and for one whose specs are behind a build, and those are opposite facts — a gap in
+ * the suite against a gap in the router. Until this existed the seed source got the first for the second:
+ * *"No spec covers …"*, which `tests/seeds/` refutes.
+ */
+export interface BuildEdge {
+  /** Repo-relative, as the user gave it */
+  readonly target: string;
+  /** What covers it and how it is reached, as a sentence fragment */
+  readonly covers: string;
+  /** The command that answers it */
+  readonly how: string;
+}
+
+/** Exported for `spec-dry.ts`, which refuses anything else in a run's file list */
+export const IS_SPEC = /\.(spec|test)\.[cm]?[jt]sx?$/;
 
 /**
  * A file a spec could plausibly cover, which is what makes "no spec covers it" a finding rather than a fact
@@ -211,6 +255,62 @@ const ownSuiteFor = (rel: string): UnitSuite | undefined => {
   return PACK_SUITES.find((suite) => suite.dir === pkg);
 };
 
+/** A pack's seed sources, and the specs that read what building them produces */
+const SEED_SOURCES = 'src/seeds';
+const SEED_SPECS = 'tests/seeds';
+
+/**
+ * The files a pack's build reads, each of which every spec in the pack ends up resolving through.
+ *
+ * `abuddy.json` drives codegen into `src/__generated__/`; `package.json` holds the `imports` map those
+ * generated specifiers resolve by — 76 of default-setup's 95 specs go through it — and the `prepare` that
+ * runs the codegen; `tsconfig.json` is what the build compiles with.
+ */
+const BUILD_INPUTS: readonly string[] = ['abuddy.json', 'package.json', 'tsconfig.json'];
+
+/**
+ * Which of a pack's files reach their specs only through a build, and what runs them.
+ *
+ * Two edges, both of the shape `src` -> `abuddy build` -> an artifact -> a spec that reads it, and neither
+ * visible to any module graph — the spec imports the built output, so a *regenerated* tree is covered while
+ * editing the source that generates it reaches nothing.
+ *
+ * - **`src/seeds/**`** compiles to `dist/*.seed.json`, which `tests/seeds/` reads against its goldens.
+ * - **the pack's build inputs** (`BUILD_INPUTS`) configure what the build emits and how the pack's own
+ *   specifiers resolve, which every spec in the pack goes through. So the whole suite covers them, and
+ *   nothing narrower is honest.
+ *
+ * Derived from the pack's own layout rather than named: the suite comes from `UNIT_SUITES`' pack kind and the
+ * seed half is offered only where the pack has both halves on disk. A third pack arriving with seeds is routed
+ * by existing, and `spec-plan.spec.ts` partitions the packs under `packages/` so one arriving *without* a suite
+ * fails a check instead of being silently unroutable.
+ */
+export function packBuildEdge(rel: string, root: string): { suite: UnitSuite; specs: readonly string[] } | undefined {
+  const suite = ownSuiteFor(rel);
+  if (suite === undefined) return undefined;
+  const inPack = path.relative(path.join('packages', suite.dir), rel);
+  if (BUILD_INPUTS.includes(inPack)) return { suite, specs: [] };
+  const hasSeedSpecs = fs.existsSync(path.join(root, 'packages', suite.dir, SEED_SPECS));
+  return inPack.startsWith(`${SEED_SOURCES}/`) && hasSeedSpecs ? { suite, specs: [SEED_SPECS] } : undefined;
+}
+
+/** What covers a build-edge target, in the words the note and the `--full` label both use */
+const edgeCovers = (suite: UnitSuite, specs: readonly string[]): string =>
+  specs.length === 0 ? `${suite.workspace}'s whole suite, which resolves through what its build inputs configure`
+    : `${suite.workspace} ${specs.join(' ')}, which read what building its seeds produces`;
+
+/** The edge as the command reports it, for one target */
+const beyondOf = (edge: { suite: UnitSuite; specs: readonly string[] }, rel: string): BuildEdge =>
+  ({ target: rel, covers: edgeCovers(edge.suite, edge.specs), how: `npm run spec:full -- ${rel}` });
+
+/** The build that makes the edge traversable: the pack's own, which is what the root `compile` wraps */
+const packBuildRun = (root: string, suite: UnitSuite): Run => ({
+  label: `${suite.workspace}: build, because the edge to its specs runs through one`,
+  cwd: root,
+  command: 'npm',
+  args: ['run', 'build', '-w', suite.workspace],
+});
+
 /**
  * What a root run says about the pack suites it could not reach — nothing when it could reach none, and
  * nothing under `--full`, where the run below is the answer rather than a thing to go and do next.
@@ -231,14 +331,23 @@ const packSuiteRun = (root: string, affected: readonly string[]): Run => ({
   covers: PACK_SUITES.map((suite) => suite.workspace),
 });
 
-/** `related` inside a pack, which is the only place its own graph resolves */
+/**
+ * `related` inside a pack, which is the only place its own graph resolves.
+ *
+ * The label follows the claim, as `rootRun`'s does: a target a spec cannot cover — a doc, a fixture — gets
+ * *"if any"*, because saying "every spec covering CLAUDE.md" over a run that finds nothing and exits 0 is
+ * the sentence exit 3 exists to stop the command from saying.
+ */
 const packRelatedRun = (root: string, suite: UnitSuite, relToPack: string, flags: readonly string[],
-  claimsCoverageOf?: string): Run => ({
-  label: `${suite.workspace}: every spec covering ${relToPack}`,
+  claimsCoverageOf?: string, beyond?: BuildEdge): Run => ({
+  label: `${suite.workspace}: ${claimsCoverageOf === undefined
+    ? `the specs that import ${relToPack}, if any` : `every spec covering ${relToPack}`}`,
   cwd: path.join(root, 'packages', suite.dir),
   command: 'npx',
   args: ['vitest', 'related', '--run', relToPack, ...flags],
   claimsCoverageOf,
+  beyond,
+  collects: { related: [relToPack] },
 });
 
 /**
@@ -273,6 +382,7 @@ const rootRun = (root: string, label: string, args: readonly string[], flags: re
   args: ['vitest', ...args, ...flags],
   note,
   claimsCoverageOf,
+  collects: args[0] === 'related' ? { related: [args[2]!] } : { changed: true },
 });
 
 /** A package's own suite, through its `test` script so its pretest and vitest config still apply */
@@ -281,6 +391,16 @@ const packageRun = (root: string, pkg: string, args: readonly string[], flags: r
   cwd: path.join(root, 'packages', pkg),
   command: 'npm',
   args: ['test', '--', ...args, ...flags],
+  // Expanded here rather than where it is priced, because the field promises *spec files* and one of its
+  // producers hands it a directory: the seed edge's `tests/seeds`, which vitest resolves as a filter and a
+  // cost record has no row for. Unexpanded it priced that run at one unrecorded spec — zero — which is the
+  // whole of what `--full` adds. `args` is untouched, so the run is the same run
+  specs: args.length === 0 ? undefined : args.flatMap((arg) => {
+    const abs = path.join(root, 'packages', pkg, arg);
+    return fs.existsSync(abs) && fs.statSync(abs).isDirectory()
+      ? specsUnder(abs).map((spec) => path.relative(root, spec))
+      : [path.join('packages', pkg, arg)];
+  }),
   // Only a run with no spec named executes the suite in full; anything else is a subset
   covers: args.length === 0 ? UNIT_SUITES.filter((suite) => suite.dir === pkg).map((suite) => suite.workspace) : undefined,
 });
@@ -291,6 +411,7 @@ const e2eRun = (root: string, specs: readonly string[], flags: readonly string[]
   cwd: root,
   command: 'npm',
   args: ['run', 'test', '--', ...specs.map((s) => path.relative(root, s)), ...flags],
+  specs: specs.map((spec) => path.relative(root, spec)),
 });
 
 const groupByPackage = (specs: readonly string[], root: string): Map<string | null, string[]> => {
@@ -313,23 +434,43 @@ const CONFIG_READER = 'repo-checks';
 export interface PlanOptions { readonly full?: boolean }
 
 /**
+ * The flags the command consumes rather than passing to vitest, as a leading run of the arguments.
+ *
+ * A list and its type in one declaration, because each one is read in two places — here and the header that
+ * documents it — and a flag in one and not the other is a flag that silently becomes a filename.
+ */
+export const OWN_FLAGS = ['--full', '--no-bail', '--dry'] as const;
+export type OwnFlag = (typeof OWN_FLAGS)[number];
+
+/**
  * The command's arguments, split.
  *
  * **Targets first, then flags: everything from the first `-` onward is vitest's, verbatim.** Splitting at the
  * first flag rather than filtering by prefix is what makes a flag's *value* its own — `-t "a case"`,
  * `--changed HEAD~1`, `--bail 1` — without this having to know which flags take one.
  *
- * `--full` is the single argument the command consumes, and only in first position. That is what keeps the
- * rule above exact rather than nearly true: filtering `--full` out wherever it appeared would silently eat
- * it as another flag's value, and reading it after a target would make its position meaningful in a way
- * nothing else here is. `npm run spec:full` puts it there, so nobody types it.
+ * `OWN_FLAGS` are the arguments the command consumes, and only as a **leading run**. That is what keeps the
+ * rule above exact rather than nearly true: filtering them out wherever they appeared would silently eat one
+ * that was another flag's value, and reading them after a target would make position meaningful in a way
+ * nothing else here is. `npm run spec:full` puts `--full` there, so nobody types it; `--no-bail` is typed,
+ * and `npm run spec -- --no-bail src/x.ts` is the shape it has to have.
  */
-export function splitArgs(argv: readonly string[]): { full: boolean; targets: string[]; flags: string[] } {
-  const full = argv[0] === '--full';
-  const rest = full ? argv.slice(1) : [...argv];
+export function splitArgs(argv: readonly string[]): {
+  full: boolean; bail: boolean; dry: boolean; targets: string[]; flags: string[];
+} {
+  // `Set<OwnFlag>`, so each `own.has` below is checked against the list rather than spell-checked: adding a
+  // flag to `OWN_FLAGS` and reading a different spelling here is a compile error, which is what makes the
+  // list and the type one declaration rather than two that happen to agree
+  const own = new Set<OwnFlag>();
+  const isOwn = (arg: string | undefined): arg is OwnFlag => (OWN_FLAGS as readonly string[]).includes(arg!);
+  let start = 0;
+  for (let arg = argv[start]; isOwn(arg); arg = argv[++start]) own.add(arg);
+  const rest = argv.slice(start);
   const firstFlag = rest.findIndex((a) => a.startsWith('-'));
   return {
-    full,
+    full: own.has('--full'),
+    bail: !own.has('--no-bail'),
+    dry: own.has('--dry'),
     targets: firstFlag === -1 ? rest : rest.slice(0, firstFlag),
     flags: firstFlag === -1 ? [] : rest.slice(firstFlag),
   };
@@ -348,6 +489,8 @@ export function planTargets(targets: readonly string[], flags: readonly string[]
   const runs: Run[] = [];
   const unmatched: string[] = [];
   const ambiguous: { query: string; specs: string[] }[] = [];
+  // Keyed by what a run would be, so two seed sources plan one build and one spec run rather than two of each
+  const edges = new Map<string, { suite: UnitSuite; specs: readonly string[] }>();
   const named: string[] = [];          // spec files the targets name, grouped at the end
   const sourcePackages: (string | null)[] = [];   // whose pack-suite dependents a rebuild would reach
   let wantsRoot = false;      // a root run was planned, so the pack suites it cannot reach are worth naming
@@ -368,14 +511,21 @@ export function planTargets(targets: readonly string[], flags: readonly string[]
       if (own !== null && own !== CONFIG_READER) runs.push(packageRun(root, own, [], flags, '(its config changed)'));
       runs.push(packageRun(root, CONFIG_READER, [], flags, 'the checks that read every config'));
     } else if (exists) {
+      const edge = packBuildEdge(rel, root);
       // A target nothing could import — a doc, a fixture, a shell script — takes this route too, and `related`
       // correctly finds nothing for it. What it must not do is say it covered the file: that is the claim, and
-      // making it for a `.md` would fail the first entry in the root CLAUDE.md's list of time-wasters
-      const coverable = couldBeCovered(rel) ? rel : undefined;
+      // making it for a `.md` would fail the first entry in the root CLAUDE.md's list of time-wasters.
+      // A build edge *is* that claim, made directly and about a named spec directory, so it carries one
+      // whatever the extension — `abuddy.json` is not code and is covered all the same.
+      const coverable = couldBeCovered(rel) || edge !== undefined ? rel : undefined;
       const own = ownSuiteFor(rel);
-      if (own !== undefined) {
+      if (edge !== undefined && full) {
+        // The build and its specs are the answer, and they subsume any `related` subset of them
+        edges.set(`${edge.suite.dir}:${edge.specs.join(' ')}`, edge);
+      } else if (own !== undefined) {
         needsEnsure = true;
-        runs.push(packRelatedRun(root, own, path.relative(path.join('packages', own.dir), rel), flags, coverable));
+        runs.push(packRelatedRun(root, own, path.relative(path.join('packages', own.dir), rel), flags, coverable,
+          edge === undefined ? undefined : beyondOf(edge, rel)));
       } else {
         wantsRoot = true;
         needsEnsure = true;
@@ -389,6 +539,14 @@ export function planTargets(targets: readonly string[], flags: readonly string[]
       if (matches.length === 0) unmatched.push(arg);
       else if (tooBroad(matches, root)) ambiguous.push({ query: arg, specs: matches });
       else named.push(...matches);
+    }
+  }
+
+  if (full) {
+    for (const { suite, specs } of edges.values()) {
+      needsEnsure = true;
+      runs.push(packBuildRun(root, suite),
+        packageRun(root, suite.dir, specs, flags, edgeCovers(suite, specs)));
     }
   }
 
@@ -422,17 +580,30 @@ const notYetCovered = (affected: readonly string[], runs: readonly Run[]): strin
  */
 export function planChanged(changedPaths: readonly string[], flags: readonly string[], root: string,
   { full = false }: PlanOptions = {}): Planned {
+  // The claim is over the part of the change set a spec could cover. A doc-only change set has none — which
+  // is also why this takes the paths: a package name cannot say whether what changed inside it was code.
+  const coverable = changedPaths.filter(couldBeCovered);
+  // And a pack's build edges are covered without being coverable: `abuddy.json` is a `.json` and a seed source
+  // may be a `.md`, and both have specs that read what building them produces. Naming one as a *target* says
+  // so, so a change set holding one must not answer "nothing a spec could cover" — the two routes would
+  // contradict each other about the same file, which is how this was found
+  const overEdges = changedPaths.filter((rel) => packBuildEdge(rel, root) !== undefined);
+  // With neither, the answer is known before anything runs. This used to spawn `packages:ensure` and a root
+  // vitest to be told "No test files found" (3.4s measured), and a pack's README planned that pack's whole
+  // suite besides — after a doc edit, which is the first entry in the root CLAUDE.md's list of time-wasters
+  if (coverable.length === 0 && overEdges.length === 0) return { runs: [], unmatched: [], ambiguous: [] };
+
   const changedPackages = [...new Set(changedPaths.map(packageOf))].filter((pkg) => pkg !== null);
   const affected = affectedPackSuites(changedPackages, root);
-  // The claim is over the part of the change set a spec could cover. A doc-only change set has none, and
-  // `--changed` finding no spec for it is the right answer rather than a hole — which is also why this takes
-  // the paths: a package name cannot say whether what changed inside it was code
-  const coverable = changedPaths.filter(couldBeCovered);
-  const runs: Run[] = [
-    ensurePackages(root),
-    rootRun(root, 'the specs your changes affect', ['--changed', '--run'], flags, packSuiteNote(affected, full),
-      coverable.length > 0 ? `${coverable.length} changed file${coverable.length === 1 ? '' : 's'} a spec could cover` : undefined),
-  ];
+  // No root run when nothing in the change set is in its graph: a pack's manifest and its seed sources are
+  // covered by that pack's own suite below, and asking the root for them is the empty vitest this route
+  // stopped paying for
+  const runs: Run[] = [ensurePackages(root)];
+  if (coverable.length > 0) {
+    runs.push(rootRun(root, 'the specs your changes affect', ['--changed', '--run'], flags,
+      packSuiteNote(affected, full),
+      `${coverable.length} changed file${coverable.length === 1 ? '' : 's'} a spec could cover`));
+  }
   const pack = rootProjects(root);
   for (const pkg of changedPackages) {
     if (!pack.includes(pkg)) runs.push(packageRun(root, pkg, [], flags, '(changed)'));
