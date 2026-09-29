@@ -17,7 +17,7 @@ import { describe, expect, it } from 'vitest';
 import { REPO_ROOT } from '@abuddy/host/build/packages-built';
 import { CHAIN_STEPS, INTEGRATION_SUITES, TIER_TIMEOUT_MS, type Tier } from '../../../scripts/lib/chain-steps.ts';
 import { UNIT_SUITES, unitStepName } from '../../../scripts/lib/unit-suites.ts';
-import { overrideKey, specFilesUnder, timeoutOverrides, type TimeoutOverride } from '../../../scripts/lib/test-timeouts.ts';
+import { overrideKey, specFilesUnder, stepForSpec, timeoutOverrides, type TimeoutOverride } from '../../../scripts/lib/test-timeouts.ts';
 
 /**
  * Tests allowed to override their tier's budget, and why.
@@ -27,14 +27,6 @@ import { overrideKey, specFilesUnder, timeoutOverrides, type TimeoutOverride } f
  * fails on an entry whose override has gone, so the list shrinks when the reason does.
  */
 const TIMEOUT_EXCEPTIONS: Record<string, string> = {};
-
-/** The chain step that runs a spec, which is what decides its tier */
-function stepForSpec(file: string): string {
-  const dir = file.split('/')[1];
-  if (dir === 'abuddy-cli' && file.endsWith('.integration.spec.ts')) return 'test:integration';
-  const suite = UNIT_SUITES.find((candidate) => candidate.dir === dir);
-  return suite ? unitStepName(suite) : 'test:unit:host';
-}
 
 /** Every override in the repo's spec files, with the tier it has to fit inside */
 function overrides(): (TimeoutOverride & { step: string; budget: number })[] {
@@ -146,5 +138,37 @@ describe('a suite times a test out at its tier budget', () => {
       .filter((key) => declared.get(key) !== budget)
       .map((key) => `${key} is ${declared.has(key) ? `${declared.get(key)!}ms` : 'not declared, so the runner default applies'}`);
     expect(wrong, `${file} runs in ${step} (tier ${tierOf(step)}), so it must declare ${budget}ms`).toEqual([]);
+  });
+});
+
+/**
+ * Which step a spec's budget comes from.
+ *
+ * Derived from `INTEGRATION_SUITES`, not from a named package. Naming one put the 8 integration specs in
+ * `repo-checks` and `publish-checks` under a tier-1 budget while their tier is 2 — and nothing failed,
+ * because neither has a per-test override today and the *configs* were already derived. These cases are the
+ * firing case that absence left it without.
+ */
+describe('a spec takes the budget of the step that runs it', () => {
+  it('sends every integration half to test:integration, whichever package it is in', () => {
+    expect(INTEGRATION_SUITES.length, 'no suites derived, so this proves nothing').toBeGreaterThan(1);
+    for (const suite of INTEGRATION_SUITES) {
+      expect(stepForSpec(`packages/${suite.dir}/tests/x.integration.spec.ts`), suite.dir).toBe('test:integration');
+    }
+  });
+
+  it('leaves the fast half with its pool, which is a different tier', () => {
+    for (const suite of INTEGRATION_SUITES) {
+      expect(stepForSpec(`packages/${suite.dir}/tests/x.spec.ts`), suite.dir).toBe(unitStepName(suite));
+    }
+    const tiers = (step: string) => CHAIN_STEPS.find((s) => s.name === step)!.tier;
+    expect(tiers('test:integration'), 'and the two tiers really do differ, or none of this matters')
+      .not.toBe(tiers(unitStepName(INTEGRATION_SUITES[0]!)));
+  });
+
+  // A package with no second config has no integration half to send anywhere, whatever a file is called
+  it('does not invent an integration step for a package without one', () => {
+    const plain = UNIT_SUITES.find((s) => !INTEGRATION_SUITES.some((i) => i.dir === s.dir))!;
+    expect(stepForSpec(`packages/${plain.dir}/tests/x.integration.spec.ts`)).toBe(unitStepName(plain));
   });
 });

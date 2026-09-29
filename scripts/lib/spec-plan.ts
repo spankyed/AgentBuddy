@@ -19,6 +19,7 @@
  */
 import * as fs from 'node:fs';
 import * as path from 'node:path';
+import { CONFIG_BY_HALF, HALVES, type Half, halfOfPath } from './spec-cost.ts';
 import { UNIT_SUITES, type UnitSuite } from './unit-suites.ts';
 import { workspaceDeps } from './workspace-deps.ts';
 
@@ -386,11 +387,22 @@ const rootRun = (root: string, label: string, args: readonly string[], flags: re
 });
 
 /** A package's own suite, through its `test` script so its pretest and vitest config still apply */
-const packageRun = (root: string, pkg: string, args: readonly string[], flags: readonly string[], label: string): Run => ({
+/**
+ * A package's own suite, through its `test` script so its `pretest` guard and its vitest config still apply.
+ *
+ * **The half decides the config.** A package with a split runs its integration specs from a second config,
+ * and `npm test` alone loads the first — whose `include` excludes `*.integration.spec.ts`, so naming one
+ * matched no file and the run reported "No test files found" and exited 1. 23 of the repo's 369 specs could
+ * not be named. The config comes from `CONFIG_BY_HALF` rather than from a half-to-script-name table, because
+ * each package's `test:integration` script *is* that flag and a second mapping would be a third place for
+ * the same fact to be written.
+ */
+const packageRun = (root: string, pkg: string, args: readonly string[], flags: readonly string[], label: string,
+  half: Half = 'fast'): Run => ({
   label: `packages/${pkg}: ${label}`,
   cwd: path.join(root, 'packages', pkg),
   command: 'npm',
-  args: ['test', '--', ...args, ...flags],
+  args: ['test', '--', ...(half === 'fast' ? [] : ['--config', CONFIG_BY_HALF[half]]), ...args, ...flags],
   // Expanded here rather than where it is priced, because the field promises *spec files* and one of its
   // producers hands it a directory: the seed edge's `tests/seeds`, which vitest resolves as a filter and a
   // cost record has no row for. Unexpanded it priced that run at one unrecorded spec — zero — which is the
@@ -550,9 +562,16 @@ export function planTargets(targets: readonly string[], flags: readonly string[]
     }
   }
 
+  // Grouped by package *and half*: the two halves are two configs, so naming one spec of each in a package
+  // is two runs. One run with both would load a single config and silently drop whichever specs it excludes
   for (const [pkg, specs] of groupByPackage(named, root)) {
-    const label = specs.map((s) => path.relative(pkg === null ? root : path.join(root, 'packages', pkg), s)).join(' ');
-    runs.push(pkg === null ? e2eRun(root, specs, flags) : packageRun(root, pkg, specs.map((s) => path.relative(path.join(root, 'packages', pkg), s)), flags, label));
+    if (pkg === null) { runs.push(e2eRun(root, specs, flags)); continue; }
+    const inPackage = (spec: string) => path.relative(path.join(root, 'packages', pkg), spec);
+    for (const half of HALVES) {
+      const ofHalf = specs.filter((spec) => halfOfPath(spec) === half);
+      if (ofHalf.length === 0) continue;
+      runs.push(packageRun(root, pkg, ofHalf.map(inPackage), flags, ofHalf.map(inPackage).join(' '), half));
+    }
   }
 
   const affected = notYetCovered(wantsRoot ? affectedPackSuites(sourcePackages, root) : [], runs);

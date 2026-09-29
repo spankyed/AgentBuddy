@@ -9,6 +9,7 @@ import {
 import { PACKAGE_DIRS } from '../../../scripts/lib/workspace-deps.ts';
 import { UNIT_SUITES } from '../../../scripts/lib/unit-suites.ts';
 import { collectFor, priceSpecs, priceSuites, tierOfRun } from '../../../scripts/lib/spec-dry.ts';
+import { CONFIG_BY_HALF, HALVES } from '../../../scripts/lib/spec-cost.ts';
 
 /**
  * What `npm run spec` decides to run, asserted without running any of it.
@@ -825,5 +826,51 @@ describe('what the plan would run', () => {
     expect(collected, `nothing collected for ${target}, so the prediction would read as free`).not.toEqual([]);
     expect(collected.every((spec) => spec.startsWith('packages/default-setup/')),
       `collected from the wrong root: ${collected.join(', ')}`).toBe(true);
+  });
+});
+
+/**
+ * Which config a named spec is run from.
+ *
+ * A package with a split has two, and `npm test` loads the one whose `include` excludes
+ * `*.integration.spec.ts`. So naming an integration spec matched no file: "No test files found", exit 1, for
+ * 23 of the repo's 369 specs. It was loud rather than a false pass, which is why nothing caught it — the
+ * command this belongs to spent four phases learning to refuse a quiet zero and could not run these at all.
+ */
+describe('a named spec runs from the config for its half', () => {
+  const FAST = 'packages/repo-checks/tests/suite-split.spec.ts';
+  const INTEGRATION = 'packages/repo-checks/tests/import-specifiers.integration.spec.ts';
+  const argsOf = (target: string) => planTargets([target], [], REPO_ROOT).runs.at(-1)!.args;
+
+  it('leaves the fast half alone, which is every package without a split', () => {
+    expect(argsOf(FAST)).toEqual(['test', '--', 'tests/suite-split.spec.ts']);
+  });
+
+  it('points the integration half at its own config', () => {
+    expect(argsOf(INTEGRATION))
+      .toEqual(['test', '--', '--config', 'vitest.integration.config.ts', 'tests/import-specifiers.integration.spec.ts']);
+  });
+
+  // Through `npm test` with the config rather than the package's `test:integration` script: that script is
+  // exactly this flag, and a half-to-script-name table would be a third place for the same fact
+  it('keeps the pretest guard, which is why it goes through npm test at all', () => {
+    expect(planTargets([INTEGRATION], [], REPO_ROOT).runs.at(-1)!.command).toBe('npm');
+    expect(argsOf(INTEGRATION)[0]).toBe('test');
+  });
+
+  // One run per half, because one run cannot load two configs: whichever it loaded would drop the others
+  // silently, which is the same defect one level along
+  it('splits a package named on both sides into two runs', () => {
+    const runs = planTargets([FAST, INTEGRATION], [], REPO_ROOT).runs;
+    expect(runs).toHaveLength(2);
+    expect(runs.map((r) => r.args.includes('--config'))).toEqual([false, true]);
+    expect(new Set(runs.map((r) => r.cwd)), 'both in the same package').toHaveProperty('size', 1);
+  });
+
+  // The list and the type are one declaration, so a third half cannot be added to one and missed by the
+  // other — and every half it names has a config to run from
+  it('has a config for every half it declares', () => {
+    expect(HALVES.length, 'no halves were derived, so this proves nothing').toBeGreaterThan(1);
+    for (const half of HALVES) expect(CONFIG_BY_HALF[half], half).toMatch(/^vitest\..*config\.ts$/);
   });
 });

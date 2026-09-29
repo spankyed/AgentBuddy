@@ -175,7 +175,16 @@ export const drifted = (move: number | undefined): move is number =>
 
 /** The guard that reads this record. It is the one spec that skips itself while the record is rewritten. */
 export const PLACEMENT_GUARD = 'tests/suite-split.spec.ts';
-export type Half = 'fast' | 'integration';
+/**
+ * The two halves, as one declaration: the list is the definition and the type is derived from it.
+ *
+ * Written twice, a consumer that iterates the halves and a consumer that switches on them disagree the day a
+ * third is added — the failure the root `CLAUDE.md` records for `PackRuleKey`, `APP_ENVS` and `ALL_COLORS`.
+ * `CONFIG_BY_HALF` below is keyed by the type, so a half with no config is a compile error rather than a
+ * lookup that returns undefined.
+ */
+export const HALVES = ['fast', 'integration'] as const;
+export type Half = (typeof HALVES)[number];
 export const halfOfPath = (file: string): Half => (file.endsWith(INTEGRATION_SUFFIX) ? 'integration' : 'fast');
 
 /** Where a spec belongs, given where it is now: it stays put inside the dead band */
