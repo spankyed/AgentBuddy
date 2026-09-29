@@ -1,17 +1,17 @@
-# Goal: the integration halves run as one pool, and pay only for what changed
+# Goal: the integration halves run as one pool, at full width
 
 > **Written in session** `acfdcbe9-f87e-4349-a1e3-a03cdf58065c` (Claude Code, 2026-09-29). Resume it with `claude -r acfdcbe9-f87e-4349-a1e3-a03cdf58065c`.
 
 ```
-# Goal: the integration halves run as one pool, and pay only for what changed
+# Goal: the integration halves run as one pool, at full width
 
 Implement docs/goals/goal-integration-pool.md on master, at or after 8c90bd614 — the base its
 Background was surveyed at.
-Before Phase 1, confirm the base: scripts/lib/chain-steps.ts exports INTEGRATION_SUITES;
-scripts/lib/unit-pool.ts exports poolStampFor, poolUnitFor and whyItRuns; the root
-test:integration script is three `-w` flags; and `npm run spec -- packages/repo-checks/
-tests/import-specifiers.integration.spec.ts` prints "No test files found" and exits 1. If any is
-already false, stop and say so — the plan was surveyed somewhere else.
+Before Phase 1, confirm the base: scripts/lib/chain-steps.ts exports INTEGRATION_SUITES and it
+names three suites; the root test:integration script is three `-w` flags; two of the three
+vitest.integration.config.ts files set maxThreads '50%'; and `npm run spec -- packages/
+repo-checks/tests/import-specifiers.integration.spec.ts` prints "No test files found" and exits 1.
+If any is already false, stop and say so — the plan was surveyed somewhere else.
 Read Background, Decisions, Phases and Constraints first. Decisions are final: implement them,
 don't reopen them or stop to ask.
 Where a detail isn't specified, pick the conventional option, note it in the final summary, and
@@ -28,15 +28,13 @@ Finished when:
   mutation-checked.
 - `npm run test:integration` is one vitest run over the projects INTEGRATION_SUITES names, and no
   script names those workspaces as text.
-- A change inside one integration suite runs that suite's project and says why; the others are
-  reported as cached.
+- The worker cap is either lifted or kept, with the runs that decided it recorded. Keeping it is a
+  valid outcome; keeping it without evidence is not.
 - `npm run spec -- <any integration spec>` runs it and exits 0.
-- Phase 4 records a measurement and the decision it made, including "neither lever is worth it" if
-  that is what it found.
 - Checks: npm run typecheck; npm test -w @app/repo-checks; npm run spec-cost:check; npm run chain
   once per phase.
 - A final summary: phase -> done/deferred, evidence, the conventional choices made, and the
-  measured wall time of the step before and after.
+  measured wall of `npm run chain` before and after — the chain's, not the step's.
 - The doc is in docs/archive/goals/, with its status blockquote and an Outcome section, committed.
 
 Commit as you go:
@@ -58,18 +56,18 @@ Never:
 - add backward-compat shims or loosen a failing assertion instead of investigating.
 - edit a recorded cost by hand: packages/*/etc/spec-cost.json moves only through spec-cost:update.
 - delete or skip an integration spec to make the number smaller. The cost is the point of them.
-- raise maxThreads in Phase 1. It is Phase 4's lever and only with the measurement that earns it.
+- change the pool and the worker cap in one phase. One variable at a time is what makes a birpc
+  flake attributable to the thing that caused it.
 ```
 
 ## Background (2026-09-29, at `8c90bd614` on `master`)
 
-`@abuddy/cli`'s integration half is 167.9s — 53% of the repo's 315.9s of recorded spec file-time, and the
-largest single cost in the repo's specs. It was deferred out of
+`@abuddy/cli`'s integration half is 167.9s of recorded spec file-time — 53% of the repo's 315.9s, and the
+largest single number in the records. It was deferred out of
 [`goal-spec-earns-its-pass.md`](../archive/goals/goal-spec-earns-its-pass.md) and
 [`goal-unit-suite-cost.md`](goal-unit-suite-cost.md) as "a separate look, not a blocker".
 
-**That framing is wrong, and correcting it is most of what this goal is about.** 167.9s is *file-time summed
-across workers*, which is nobody's wait. Measured:
+**That number is file-time summed across workers, and nobody waits for it.** Measured:
 
 | | specs | file-time | **wall** |
 |---|---|---|---|
@@ -78,75 +76,102 @@ across workers*, which is nobody's wait. Measured:
 | `@app/publish-checks` integration | 5 | 30.6s | **8s** |
 | all three, as the chain runs them | 23 | 232.7s | **71s**, and 90-105s as the step measures |
 
-So the question is not why `@abuddy/cli` is slow. It is **why 71s of work takes 90-105s, and why it runs at
-all when one of the three changed.**
+So the question is not why `@abuddy/cli` is slow. It is **why 71s of work takes 90-105s, and why the step
+uses half the machine to do it.**
 
-### 1. The step is three `npm -w` invocations in series
+### 1. Three specs of twenty-three spawn a compiler; all twenty-three pay for it
+
+Two of the three `vitest.integration.config.ts` files set `poolOptions: { threads: { maxThreads: '50%' },
+forks: { maxForks: '50%' } }`, justified as:
+
+> These specs shell out to `tsc` and `abuddy build`, so every worker spawns compilers of its own. With a
+> worker per core the box is oversubscribed and the main thread can miss birpc's 60s window to answer a
+> worker's `onTaskUpdate`, which fails the run with "[vitest-worker]: Timeout calling" though every test
+> passed.
+
+**Half of that is no longer true.** `callCli` runs the CLI **in-process** — it `chdir`s, captures `console`,
+swaps `process.exit` for a throw, and awaits the command
+(`packages/abuddy-cli/tests/_support/pack-builds.ts:65`). `typecheckPack` builds a `ts.createProgram`
+**in-process** (same file, line 103). Neither spawns anything.
+
+What does spawn a compiler is three files, and only three:
+
+| spec | spawns |
+|---|---|
+| `abuddy-cli/tests/commands/add-extensions.integration.spec.ts` | `tsc --noEmit` ×2, `vue-tsc --noEmit` |
+| `repo-checks/tests/component-contracts.integration.spec.ts` | `vue-tsc -p` |
+| `publish-checks/tests/published-exports.integration.spec.ts` | `node <tsc> -p` per consumer, per TypeScript version |
+
+**The constraint is on the wrong axis.** What must be bounded is how many compilers run at once; what is
+bounded is how many test workers exist. The proxy throttles twenty innocent specs to protect against three,
+permanently, on what is usually the chain's binding lane.
+
+### 2. The step is three `npm -w` invocations in series
 
 `package.json`'s `test:integration` is `npm run test:integration -w @abuddy/cli -w @app/repo-checks -w
-@app/publish-checks`. Three vitest startups, three worker pools, none overlapping, plus three `packages:ensure`
-pretests.
-
-Nothing keeps them apart. All three `vitest.integration.config.ts` files declare **identical** resolution —
+@app/publish-checks`: three vitest startups, three worker pools, three `packages:ensure` pretests, none
+overlapping. All three configs declare **identical** resolution —
 `['@abuddy/source', ...defaultServerConditions.filter((c) => c !== 'module')]` — so unlike the unit suites,
 where `host` and `pack` cannot share a process because Node conditions are per process (`UnitSuite.kind`),
-these three can.
+these three can. The repo already pooled the unit suites for exactly this reason
+([`goal-one-job-pool.md`](../archive/goals/goal-one-job-pool.md)); the integration halves were left as `-w`
+flags.
 
-Two of the three set `poolOptions: { threads: { maxThreads: '50%' }, forks: { maxForks: '50%' } }` and carry
-the reason: these specs spawn `tsc` and `abuddy build`, and an oversubscribed box makes the main thread miss
-birpc's 60s window to answer a worker, failing a run in which every test passed. `@app/repo-checks` sets no
-cap.
+### 3. It is usually the chain's binding lane
 
-**The repo has already solved this shape.** `test:unit:host` and `test:unit:pack` are one vitest run per pool
-with per-project stamps — `scripts/lib/unit-pool.ts`, `scripts/test-unit-pool.ts`,
-[`goal-one-job-pool.md`](../archive/goals/goal-one-job-pool.md). The integration halves were left behind as
-`-w` flags.
+Measured across four chain runs: `t2` carried `test:integration` and bound the chain in three of them
+(94.8s chain / 93.6s lane; 109.0s / 98.5s; 91.5s / 90.4s). The fourth was cold and bound by
+`packages:ensure -> compile -> build:app -> test:packaged-authoring` at 116s. So most of what this goal
+removes is real chain wall — and Phase 2 must confirm that on the chain's own number rather than the step's.
 
-### 2. Any package's `dist` re-runs all three
+### What the phases are worth
 
-`chain-steps.ts:522` declares the step's inputs as `[...ROOT, ...INTEGRATION_SUITES.flatMap(workspace),
-...PACKAGE_BUILD_OUTPUTS, ...PACK_OUTPUTS]` — the union across three workspaces plus every published
-package's `dist`. The step *is* cached, and it is invalidated by most changes, because editing any `@abuddy`
-source rewrites a `dist` that `packages:ensure` or `compile` then republishes.
+| | workers | what bounds it | wall |
+|---|---|---|---|
+| today | 5 | three runs in series | **90-105s** |
+| Phase 2, pooled | 5 | throughput, 232.7s / 5 | **~47s** |
+| Phase 3, cap lifted | 9 | the longest file, 34.4s | **~34s** |
+| Phase 4, that file split | 9 | throughput again | **~26-29s** |
 
-The unit pool already separates these two things: the step's inputs are the union, and inside it
-`test-unit-pool.ts` asks `suiteInputs` per project and passes `--project` for only the stale ones. The
-integration step has no inside.
+### Five hypotheses measurement killed
 
-### 3. It is often the chain's binding lane
+Recorded so nobody re-chases them. Four of the five were mine, and each looked better than what survived.
 
-Measured across four chain runs today: `t2` carried `test:integration` and bound the chain in three of them
-(94.8s chain / 93.6s lane; 109.0s / 98.5s; 91.5s / 90.4s). The fourth was a cold run bound by
-`packages:ensure -> compile -> build:app -> test:packaged-authoring` at 116s. So the wall this goal removes
-is mostly real chain wall, not lane slack — but Phase 2's measurement has to confirm that rather than assume
-it.
-
-### Two hypotheses measurement killed
-
-Recorded so nobody re-chases them:
-
-- **`installPublishedPackages` is not the cost.** It looks like the shared expensive primitive: 5 `npm pack`s,
-  a `tar -xzf` each, and a symlink per `node_modules` entry (`packages/publish-checks/src`, line 65), called
-  from 8 specs across all three workspaces. It is **1.1s**, twice measured, so ~9s of 232.7s. Caching it is
-  not worth the shared-fixture complexity.
-- **The 34.4s file is ~85% `beforeAll`.** `tests/build/facade-typing.integration.spec.ts` run alone is 23.1s,
-  of which its eleven visible cases are 5.4s; the rest is two real `abuddy build`s and the tsc runs over
-  them. There is no assertion overhead to trim, and its two `describe`s build independent fixtures
-  (`buildPacks(published)` for `true` and `false`) in series inside one file.
+- **Per-project staleness buys almost nothing.** The obvious second phase — stamp each project and run only
+  the stale ones, as `test-unit-pool.ts` does — founders on shared inputs. All three suites set
+  `packages: true` in `SUITE_READS` and all three declare `abuddy-host`, `abuddy-ears` and `abuddy-sdk` as
+  dependencies, so **any source edit rebuilds a package and makes all three stale**. It separates exactly one
+  case, an edit confined to one workspace's *tests*, worth ~16s there and costing an extension to
+  `suiteInputs` plus an inversion of `unit-pool.ts`'s deliberate by-directory stamp key.
+- **There is no over-declaration in the step's inputs to exploit.** Three attempts: *move the one spec that
+  reads the pack's `dist` elsewhere* — six of the 23 touch `default-setup`, not one; *drop the root
+  `vitest.config.ts`, which the integration run does not load* — `harness-setup` and `dependency-runtime`
+  read it as data; *declare the published trees per suite* — all three genuinely install them. The step
+  re-runs on most changes because it genuinely depends on nearly everything the repo builds, and
+  content-fingerprinting already spares it a rebuild that produces identical bytes.
+- **`installPublishedPackages` is not the cost.** It looks like the shared expensive primitive — an `npm
+  pack` and a `tar -xzf` per published tree, plus a symlink per `node_modules` entry, called from 8 specs
+  across all three suites (`packages/publish-checks/src/published-packages.ts:65`). It packs **three** trees
+  (`ears`, `sdk`, `ui`) and takes **1.1s**, twice measured: ~9s of 232.7s. Not worth a shared fixture.
+- **The 34.4s file has no assertion overhead to trim.** `facade-typing.integration.spec.ts` run alone is
+  23.1s, of which its eleven visible cases are 5.4s; the rest is `beforeAll` building two real packs and
+  typechecking them. Its two `describe`s build independent fixtures (`buildPacks(published)` for `true` and
+  `false`) in series inside one file, which is what Phase 4 acts on — the work is necessary, its
+  *sequencing* is not.
 
 ### Two defects found while surveying
 
-Neither is about speed, and both are in the files this work touches.
+Neither is about speed, and both are in files this work touches.
 
 - **`npm run spec -- <any integration spec>` runs nothing and exits 1.** `packageRun`
-  (`scripts/lib/spec-plan.ts`) delegates to `npm test`, whose config `include` is
-  `tests/**/*.spec.ts` minus `*.integration.spec.ts`, so vitest matches no file. 23 of the repo's 369 specs
-  cannot be named. It exits 1 rather than passing, which is why nothing caught it — and
-  `scripts/lib/spec-cost.ts` already holds the mapping that fixes it (`halfOfPath`, `CONFIG_BY_HALF`).
+  (`scripts/lib/spec-plan.ts`) delegates to `npm test`, whose config `include` excludes
+  `*.integration.spec.ts`, so vitest matches no file. 23 of the repo's 369 specs cannot be named. It exits 1
+  rather than passing, which is why nothing caught it — and `scripts/lib/spec-cost.ts` already holds the
+  mapping that fixes it (`halfOfPath`, `CONFIG_BY_HALF`).
 - **`suite-timeouts.spec.ts:34` hardcodes the suite.** `stepForSpec` reads `dir === 'abuddy-cli' &&
-  file.endsWith('.integration.spec.ts')` while `INTEGRATION_SUITES` derives the same set, so the 8 integration
-  specs in `repo-checks` and `publish-checks` are checked against `test:unit:host`'s tier budget instead of
-  `test:integration`'s. A restated population where a derived one exists.
+  file.endsWith('.integration.spec.ts')` while `INTEGRATION_SUITES` derives the same set, so the 8
+  integration specs in `repo-checks` and `publish-checks` are checked against `test:unit:host`'s tier budget
+  instead of `test:integration`'s. A restated population where a derived one exists.
 
 ## Decisions
 
@@ -157,46 +182,47 @@ Final.
    root `vitest.config.ts` lists the unit projects. `INTEGRATION_SUITES` (`chain-steps.ts:362`) is already
    derived from which packages have that config, so a package gaining one joins the pool by existing.
 
-2. **`maxThreads: '50%'` at the root, and nowhere else.** `poolOptions` are process-wide, so the per-package
-   values stop meaning anything and must move rather than be duplicated. 50% is what two of the three already
-   ask for, and pooling does not raise the load: one pool of five is what three pools of five in series
-   already put on the box. `@app/repo-checks`, uncapped today, drops to five workers over three files, which
-   cannot matter. **Raising it is Phase 4's business, not Phase 2's.**
+2. **Keep the three per-package configs as projects** rather than collapsing them into one root `include`.
+   They carry per-project `testTimeout`, which is honored where `poolOptions` is not and which
+   `suite-timeouts.spec.ts` checks per tier; and `hasSplit` derives `INTEGRATION_SUITES` from their existence.
 
-3. **Per-project `testTimeout` stays in each package's config.** Per-project *test* config is honored where
-   `poolOptions` is not, and `suite-timeouts.spec.ts` already checks those budgets per tier.
+3. **`poolOptions` move to the root unchanged, at 50%, in Phase 2 — and change in Phase 3, alone.** They are
+   process-wide, so the per-package values stop meaning anything and must move rather than be duplicated.
+   Moving them and changing them in one phase makes a birpc flake unattributable to either, and the failure
+   mode is intermittent, which is exactly when one-variable-at-a-time stops being a slogan.
 
-4. **The `-w` check becomes a derived-on-both-sides check.** `chain-inputs.spec.ts:402` parses `-w (\S+)` out
-   of the script today because an npm script is text. With the pool there are no `-w` flags: it asserts
-   instead that the root config's project list equals `INTEGRATION_SUITES`. Same claim, and neither side is
-   restated.
+4. **The `-w` check becomes a derived-on-both-sides check.** `chain-inputs.spec.ts:402` parses `-w (\S+)`
+   out of the script today because an npm script is text. With the pool there are no `-w` flags: it asserts
+   instead that the root config's project list equals `INTEGRATION_SUITES`. Same claim, neither side restated.
 
-5. **Reuse `unit-pool.ts` rather than write a second pool.** `poolStampFor`, `poolUnitFor`, `whyItRuns`,
-   `projectsThatRan` and `projectsThatDidNotRun` are the right shape already, and `INTEGRATION_SUITES` is a
-   filter of `UNIT_SUITES`, so the types fit without widening.
+5. **The constraint belongs on compiler spawns, not on test workers.** This is the goal's central correction.
+   Phase 3 tests whether the cap is needed at all now that the CLI and the typechecker run in-process; if it
+   is, what gets bounded is the three spawns, not the twenty other specs. A bounded-concurrency gate is the
+   conventional shape, and `@abuddy/host/exclusive-lock` is the one-token version of it already in the tree.
 
-6. **A stamp is keyed by suite *and half*.** `unit-pool.ts` keys by directory and says so deliberately —
-   *"what a suite verified does not depend on which pool process ran it"*. That held while `host` and `pack`
-   ran the same spec files under different resolution. A half runs *different files against a different
-   config*, so a suite can be stale for one half and fresh for the other, and one key would report the
-   integration half fresh because its unit half just ran. The key becomes `<dir>.<half>`, and that doc comment
-   is rewritten with this reason — not quietly inverted.
+6. **Phase 3's evidence bar is asymmetric, and the phase says so.** The birpc failure is a flake: **one red
+   run is decisive and one green run proves nothing.** Lifting the cap needs several clean runs; keeping it
+   needs one failure. Record whichever happened and how many runs it took — "we tried it and it seemed fine"
+   is not a result this repo accepts.
 
-7. **Phase 4 decides its own fix from a measurement, and is allowed to decide against both.** After pooling,
-   232.7s over five workers is 46.5s and the longest single file is 34.4s, so the run is *throughput-bound*
-   rather than file-bound — and which of those two it actually is decides which lever applies. Naming the fix
-   now would be guessing.
+7. **A new compiler spawn must go through whatever Phase 3 builds.** If Phase 3 adds a gate, it adds the
+   check that finds a spawn bypassing it. A gate three call sites opt into is one the fourth will not, and a
+   rule with no firing case is a gate nothing has watched fail.
 
 8. **Nothing is deleted or skipped to make the number smaller.** These specs build real packs with the real
-   CLI and typecheck them; the pack layout they cover is the only one a pack author ever has. The cost is what
-   they are for.
+   CLI and typecheck them; the pack layout they cover is the only one a pack author ever has. The cost is
+   what they are for.
+
+9. **Success is measured on `npm run chain`'s wall, not the step's.** The step is usually but not always the
+   binding lane, and a step that got faster inside a lane that did not is a number with no user. Quote the
+   chain, and never quote spec file-time as a cost again.
 
 ## Phases
 
 ### Phase 1 — the two defects, which the derivation needs anyway
 
 Independent of the pooling and landable first; Decision 4 leans on `INTEGRATION_SUITES` being the one
-definition, and one of these is a second definition of it.
+definition, and one of these defects is a second definition of it.
 
 - `scripts/lib/spec-plan.ts`: `packageRun` routes a named spec by its half, through that package's
   `test:integration` script for an integration spec. Reuse `halfOfPath` and `CONFIG_BY_HALF`
@@ -209,52 +235,55 @@ exits 0; a fast spec in the same package is unchanged; cases in `spec-plan.spec.
 Mutation: routing an integration spec to the default config fails the new case, and attributing one to
 `test:unit:host` fails the timeout budget check.
 
-### Phase 2 — one pooled run
+### Phase 2 — one pooled run, same width
 
 - Root `vitest.integration.config.ts` per Decisions 1-3; root `test:integration` runs it; the per-package
-  `poolOptions` move to it.
+  `poolOptions` move to it **unchanged at 50%**.
 - `chain-inputs.spec.ts:402` per Decision 4.
-- Audit the two `process.cwd()` uses in `add-extensions` and `add-feature-validate` integration specs before
-  running anything: a pooled run has one process, and a cwd assumption fails confusingly.
+- Audit the two `process.cwd()` uses in `add-extensions` and `add-feature-validate` before running anything.
+  `callCli` chdirs because the CLI's commands read `process.cwd()`, so cwd is already load-bearing here and
+  a pooled run is where a stray assumption surfaces confusingly.
 
-**Done when:** `npm run test:integration` is one vitest invocation and its wall is recorded against today's
-71s of vitest and the step's 90-105s. `npm run chain` twice, with the chain's own wall recorded — the step is
-usually the binding lane, and the chain's number is the one that matters. The derived-project-list case
-passes, and mutation: dropping a suite from the root config's projects fails it.
+**Done when:** `npm run test:integration` is one vitest invocation; its wall is recorded against 71s of
+vitest and the step's 90-105s, and `npm run chain`'s wall against its own. Expect ~47s, throughput-bound.
+The derived-project-list case passes; mutation: dropping a suite from the root config's projects fails it.
 
-### Phase 3 — per-project staleness
+### Phase 3 — put the constraint on the right axis
 
-- Extend `suiteInputs` so a half's inputs are its own config and spec files, and key the stamp `<dir>.<half>`
-  per Decision 6, rewriting that doc comment with the reason.
-- `scripts/test-unit-pool.ts` (or a sibling that shares `unit-pool.ts` — the conventional choice is whichever
-  keeps one pool *concept*) passes `--project` for the stale halves only.
+- Lift the root cap to vitest's default and run the pooled suite **at least five times**. Per Decision 6, one
+  failure settles it and five clean runs are the minimum that does not.
+- **If stable:** the cap goes, and the config comment is replaced by what is true now — the CLI and the
+  typechecker run in-process, and three named specs spawn compilers.
+- **If not:** bound the spawns rather than the workers (Decision 5), with the check Decision 7 requires, and
+  lift the cap behind it.
 
-**Done when:** touching one file under `packages/abuddy-cli/src` runs that project alone and says why
-(`whyItRuns`); the other two report as cached; the step's wall for that case is recorded against 71-105s.
-Mutation: clearing one project's stamp runs that project alone; a suite stale in its unit half only does not
-drag its integration half in.
+**Done when:** the cap is lifted or kept with the run count that decided it, recorded in the phase and in the
+config's comment. Expect ~34s, now bounded by the longest file. Mutation, if a gate was built: a spawn added
+outside it fails the check.
 
-### Phase 4 — measure, then pick the lever or neither
+### Phase 4 — the floor
 
-The pooled run is either throughput-bound (near 46.5s) or file-bound (near 34.4s), and the measurement says
-which:
+Only meaningful once Phase 3 has moved the bound onto a single file.
 
-- **Throughput-bound** → the lever is worker count. Try `maxThreads: '75%'`, and treat the birpc failure the
-  config's comment describes as what it is: a *flake*, so one green run is not evidence. Several runs, or
-  leave 50% alone.
-- **File-bound** → split `facade-typing.integration.spec.ts` at its `describe` boundary, so its two
-  independent fixtures build concurrently in two files rather than in series in one.
+- Split `facade-typing.integration.spec.ts` at its `describe` boundary so its two independent fixtures build
+  concurrently in two files rather than in series in one. Its path under `tests/` still has to mirror what it
+  covers (`docs/reference/test-inventory.md`).
 
-**Done when:** the measurement is recorded with the number that decided it, and the lever is applied or
-explicitly declined. "Neither is worth it" is a valid outcome and must be written down with its number, not
-left as silence.
+**Done when:** the pooled wall is recorded again and the suite is throughput-bound rather than file-bound, or
+the phase records that splitting did not move it and says by how little. `spec-cost:update` re-records both
+files; never edit the record by hand.
 
 ## Deferred
 
-- **Caching `installPublishedPackages`.** Measured at 1.1s across 8 call sites; see Background. Do not build a
-  shared fixture for it.
-- **The rest of `goal-unit-suite-cost.md`**, which aims at the `test:unit` halves of `default-setup` and
-  `@abuddy/sdk`. This goal touches only the integration halves.
+- **Per-project staleness.** Killed by measurement, see Background. Do not re-propose it without first
+  showing that the three suites can go stale independently.
+- **Narrowing the step's inputs.** Three attempts, all dead, see Background.
+- **Caching `installPublishedPackages`.** 1.1s across 8 call sites.
+- **The overlap with `test:external-pack:contract`.** That step is 57s, also tier 2, and also builds fixture
+  packs with the real CLI; together with this one that is ~150s of tier-2 pack-building per chain. Whether
+  they duplicate work is unexamined and is the next question if the chain needs to be materially cheaper.
+  Out of scope here, and worth its own survey rather than a guess.
+- **The rest of `goal-unit-suite-cost.md`**, which aims at the `test:unit` halves.
 
 ## Constraints
 
@@ -272,5 +301,5 @@ left as silence.
 - Recorded artifacts move only through their `:update` half: `packages/*/etc/spec-cost.json` through
   `spec-cost:update`, never by hand. A pooled run prefixes each file with `|project|`, which
   `scripts/spec-cost.ts`'s `FILE_LINE` already reads.
-- Never quote file-time as wall time. The two differ by 3-5x here, and conflating them is why this cost sat
-  unexamined.
+- Never quote file-time as wall time. They differ by 3-5x here, and conflating them is why this cost sat
+  unexamined for months.
