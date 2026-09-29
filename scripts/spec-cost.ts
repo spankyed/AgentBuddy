@@ -149,9 +149,10 @@ function update(plans: readonly SuitePlan[], dry: boolean): void {
     // the reason the file is stable; all of them settling in the same direction is a uniform slowdown, and
     // the only place it shows is the total. Undefined when nothing measured had a value to move from.
     const body = drift(previous, costs);
+    const rewriteAll = rewritesEveryRow({ all, body });
     const { record, added, moved, rewritten, dropped } = settle({
       previous, costs, skipped: [...new Set(runs.flatMap((run) => run.skipped))], measuredFiles,
-      prune: plan.prune, rewriteAll: rewritesEveryRow({ all, body }),
+      prune: plan.prune, rewriteAll,
     });
 
     // What a sample can check: not equality, which it never has, but reproducibility. An idle run moves a
@@ -192,10 +193,16 @@ function update(plans: readonly SuitePlan[], dry: boolean): void {
     ].filter(Boolean).join(', ');
     console.log(`${suite.workspace.padEnd(20)} ${String(files.length).padStart(3)} specs${record.skipped.length ? `, ${record.skipped.length} skipped` : ''}`
       + `, ${did}${asBody} -> ${specCostFile(suite.dir)}${moves.length ? `  (${moves.length} in the wrong half)` : ''}`);
+    // Two sentences, because the run that reports a drift and the run that clears it are not the same run.
+    // Advising `--all` to someone who just ran it, over a record it has already rewritten, describes a state
+    // that no longer holds — and this is the one place the reader learns which of the two happened.
     if (drifted(body)) {
       console.log(`  the suite moved ${(body * 100).toFixed(0)}% as a body, which is more than idle runs vary. `
-        + 'A drift this size can sit under every per-spec tolerance and leave the record uniformly stale, so '
-        + 'anything reading the total reads a number that is no longer true. `--all` re-measures it.');
+        + 'A drift this size sits under every per-spec tolerance, so no measurement re-records it on its own — '
+        + (rewriteAll
+          ? 'every row this measured has been re-recorded against it.'
+          : 'until one does, anything reading the total reads a number that is no longer true. '
+            + '`npm run spec-cost:update -- --all` re-records it.'));
     }
     for (const { file: spec, ms, belongs } of moves) console.log(`  ${(ms / 1000).toFixed(1)}s  ${spec}  ->  ${belongs}`);
   }

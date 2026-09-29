@@ -484,7 +484,7 @@ npm run spec-cost:update # The least that makes the records current, which is of
                          #                 thing that clears a correlated drift, and the only thing that can:
                          #                 a fifth added to every spec is under every per-spec tolerance. It
                          #                 rewrites every row only when the body moved past DRIFT_SHARE, so a
-                         #                 quiet --all settles them like any other run — it used to rewrite 26
+                         #                 quiet --all settles them like any other run: ungated it rewrote 26
                          #                 of 28 rows at a body of -3%, which is the churn the tolerance is for
                          #   --dry         what it would run and write
                          #   --force       record a run that moved more than CONTENDED_SHARE of a suite
