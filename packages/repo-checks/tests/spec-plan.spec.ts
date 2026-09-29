@@ -2,7 +2,7 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { REPO_ROOT } from '@abuddy/host/build/packages-built';
-import { affectedPackSuites, ENSURE_LABEL, packageOf, planChanged, planTargets, type Run, splitArgs, verdictOf } from '../../../scripts/lib/spec-plan.ts';
+import { affectedPackSuites, ENSURE_LABEL, exitCodeFor, packageOf, planChanged, planTargets, type Run, splitArgs, verdictOf } from '../../../scripts/lib/spec-plan.ts';
 import { PACKAGE_DIRS } from '../../../scripts/lib/workspace-deps.ts';
 import { UNIT_SUITES } from '../../../scripts/lib/unit-suites.ts';
 
@@ -389,6 +389,33 @@ describe('what a run\'s outcome is worth', () => {
     ['a run that promised nothing passed, even at zero', plain, 0, 0, 'pass'],
   ])('%s', (_what, run, status, files, expected) => {
     expect(verdictOf(run, status, files)).toBe(expected);
+  });
+});
+
+/**
+ * What the whole plan exits with.
+ *
+ * The one step behind exit 3 that could fail silently, which is why it is a function with cases rather than two
+ * lines at the bottom of `spec.ts`. Everything else in that chain is either a compile error or loud at runtime:
+ * a reporter that stops being called makes every claiming run exit 3 about the missing count. Dropping
+ * `uncovered` from this decision gives exit 0 for a file nothing covers — the defect exit 3 exists to prevent,
+ * restored with no symptom and nothing failing.
+ */
+describe('what the plan exits with', () => {
+  const counts = (over: Partial<{ failed: number; uncovered: number; noCount: number }>) =>
+    exitCodeFor({ failed: 0, uncovered: 0, noCount: 0, ...over });
+
+  it.each([
+    ['nothing to report', {}, 0],
+    ['a spec failed', { failed: 1 }, 1],
+    ['a file nothing covers', { uncovered: 1 }, 3],
+    ['a count that never arrived', { noCount: 1 }, 3],
+    ['both kinds of unanswered claim', { uncovered: 1, noCount: 1 }, 3],
+    // A failure outranks a hole: both are printed, and 1 is the one to act on first
+    ['a failure beside a hole', { failed: 1, uncovered: 1 }, 1],
+    ['a failure beside a missing count', { failed: 1, noCount: 1 }, 1],
+  ])('%s', (_what, over, expected) => {
+    expect(counts(over)).toBe(expected);
   });
 });
 

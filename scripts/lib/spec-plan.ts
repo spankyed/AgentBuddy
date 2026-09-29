@@ -93,6 +93,23 @@ export function verdictOf(run: Run, status: number, specFilesRun: number | undef
   if (specFilesRun === undefined) return 'no count';
   return specFilesRun === 0 ? 'uncovered' : 'pass';
 }
+
+/**
+ * The code a run of the whole plan exits with: **1** a spec failed, **3** a claim went unanswered, **0** nothing
+ * to report.
+ *
+ * Here rather than inline in `spec.ts` because it is the one step of the chain behind exit 3 that can fail
+ * *silently*. Everything else either compiles or says so at runtime — a reporter that stops being called makes
+ * every claiming run exit 3 complaining about the missing count. Dropping `uncovered` from this decision instead
+ * gives exit 0 for a file nothing covers, which is the defect the code exists to prevent, back with no symptom.
+ * So it is a pure function with cases rather than two lines nothing reads.
+ *
+ * A failure outranks a hole: both are reported, and 1 is the one to act on first.
+ */
+export function exitCodeFor(counts: { failed: number; uncovered: number; noCount: number }): 0 | 1 | 3 {
+  if (counts.failed > 0) return 1;
+  return counts.uncovered > 0 || counts.noCount > 0 ? 3 : 0;
+}
 const SKIP = new Set(['node_modules', 'dist', '.git', '.temp', 'dist-ssr', 'coverage', '__generated__']);
 
 /**

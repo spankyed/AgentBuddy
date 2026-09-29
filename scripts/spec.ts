@@ -51,7 +51,7 @@ import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { SPEC_COUNT_FILE } from './lib/spec-count-reporter.ts';
-import { ENSURE_LABEL, packageOf, planChanged, planTargets, type Run, splitArgs, verdictOf } from './lib/spec-plan.ts';
+import { ENSURE_LABEL, exitCodeFor, packageOf, planChanged, planTargets, type Run, splitArgs, verdictOf } from './lib/spec-plan.ts';
 
 const ROOT = path.resolve(import.meta.dirname, '..');
 
@@ -143,6 +143,4 @@ for (const label of noCount) {
   console.error(`\n${label}: the spec count never arrived, so whether anything ran is unknown.`
     + `\n  ${path.relative(ROOT, COUNT_REPORTER)} did not write it — is it still a reporter vitest calls?`);
 }
-// A failure is the more urgent answer, and the one an agent should act on first
-if (failed > 0) process.exit(1);
-process.exit(uncovered.length > 0 || noCount.length > 0 ? 3 : 0);
+process.exit(exitCodeFor({ failed, uncovered: uncovered.length, noCount: noCount.length }));
