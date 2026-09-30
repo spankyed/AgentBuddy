@@ -40,9 +40,13 @@ export default defineConfig({
      *     maxThreads 50%   44.97 48.05 48.22 48.62 49.29   median 48.2s, 5 clean
      *     no cap           50.80 51.72 51.81 52.30 52.63 52.77 53.43 54.17   median 52.4s, 9 clean
      *
-     * Nine workers each running `ts.createProgram` and an in-process `abuddy build` put the box at a load
-     * of 25-32, and everything gets slower together. A worker count is not free parallelism once the work
-     * is CPU-bound, which every spec here is.
+     * Nine workers each running `ts.createProgram` and `abuddy build` put the box at a load of 25-32, and
+     * everything gets slower together. A worker count is not free parallelism once the work is CPU-bound,
+     * which every spec here is.
+     *
+     * Not all of that work is in-process: twelve of the twenty-four files the pool loads spawn a
+     * subprocess, and two of them launch a whole nested `vitest run`. `integration-subprocesses.spec.ts`
+     * holds that count, with why each one has to be a process.
      *
      * **The flake is not the reason, though it was.** These configs used to carry this cap against
      * "[vitest-worker]: Timeout calling", the main thread missing birpc's 60s window — a window vitest

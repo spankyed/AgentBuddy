@@ -1,5 +1,5 @@
 {
-  "measuredAt": "2026-09-29T22:33:03.598Z",
+  "measuredAt": "2026-09-30T00:02:49.219Z",
   "costs": {
     "tests/api-report-stamp.spec.ts": 66,
     "tests/chain-graph.spec.ts": 9,
@@ -11,8 +11,8 @@
     "tests/generated-behind-contract.spec.ts": 760,
     "tests/import-specifiers-script.integration.spec.ts": 5933,
     "tests/import-specifiers.integration.spec.ts": 26312,
+    "tests/integration-subprocesses.spec.ts": 207,
     "tests/lint-scope.spec.ts": 1859,
-    "tests/no-spawned-compilers.spec.ts": 195,
     "tests/orchestrator-exit.spec.ts": 6,
     "tests/pack-test-config.spec.ts": 110,
     "tests/packaged-app-files.spec.ts": 130,

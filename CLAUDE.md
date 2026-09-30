@@ -450,7 +450,9 @@ npm run test:integration # The expensive half of every suite that has one (@abud
                          # check:specifiers reads these files as text.
                          # It runs at half the cores, and that is faster than all of them: 48.2s capped
                          # against 52.4s uncapped, because nine workers each running ts.createProgram and
-                         # an in-process abuddy build put the box at a load of 25-32. The birpc timeout the
+                         # abuddy build put the box at a load of 25-32 — and twelve of the twenty-four files
+                         # the pool loads spawn a subprocess besides, two of them a nested vitest run, which
+                         # integration-subprocesses.spec.ts counts. The birpc timeout the
                          # cap was originally written against did not occur in nineteen quiet runs, capped
                          # or not — it is a contention symptom, and every one this repo has seen came while
                          # another workload shared the machine
