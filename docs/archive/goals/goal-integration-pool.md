@@ -3,6 +3,10 @@
 > **Finished 2026-09-29. Phases 1-3 are implemented and committed; Phase 4 is declined with the measurement
 > that declines it. Read this as history — the Background's numbers were taken before the work and several
 > of the Decisions were corrected by it, which the Outcome records.**
+>
+> **Amended after a later review of the guards it left behind: Background §1's count of spawning files is
+> wrong by four times, and the gate built on it has been replaced. Correction 5 has both, and the note on
+> method has what the error says about measuring a population rather than a quantity.**
 
 > **Written in session `acfdcbe9-f87e-4349-a1e3-a03cdf58065c` (Claude Code, 2026-09-29). Resume it with `claude -r acfdcbe9-f87e-4349-a1e3-a03cdf58065c`.
 
@@ -98,7 +102,7 @@ swaps `process.exit` for a throw, and awaits the command
 (`packages/abuddy-cli/tests/_support/pack-builds.ts:65`). `typecheckPack` builds a `ts.createProgram`
 **in-process** (same file, line 103). Neither spawns anything.
 
-What does spawn a compiler is three files, and only three:
+What does spawn a compiler is three files, and only three — **wrong, and corrected below**: it is twelve files holding eighteen call sites, and the survey's error is one paragraph above this one:
 
 | spec | spawns |
 |---|---|
@@ -402,7 +406,7 @@ Declined rather than done, with the number, which is what the phase asked for.
 
 ### Corrections to the Decisions
 
-Four, and three were mine to make:
+Five. Four were made during the work; the fifth came from a review of it afterwards:
 
 1. **Decision 5 was half right, and its half mattered.** "The constraint belongs on compiler spawns, not on
    test workers" — spawns do matter, but *width* matters more, and the two interact. Pooling at the same
@@ -422,6 +426,25 @@ Four, and three were mine to make:
    Deleting the two `tsc --noEmit` spawns is worth about a second — 49.1s against 48.2s, five runs each —
    not the "median 71s with a failure in five, to 46.1s with none" the commit claimed off a baseline
    measured while the box was shared.
+
+5. **The survey undercounted the spawns by four times, and the gate inherited it.** Background §1 says
+   three files spawn, and reasons from it that the cap "throttles twenty innocent specs to protect against
+   three". Measured afterwards by binding the spawner names from each file's `child_process` import: **twelve
+   files, eighteen call sites** — roughly half the pool, not a seventh of it. Missed were
+   `types-bundler-determinism` running `abuddy build` as a subprocess twice, `harness-setup` and
+   `dependency-runtime` launching whole nested `vitest run`s, `db`'s five, `release`'s `git`, and
+   `scaffold`'s — six files worth 80s of the suite's 168s, against 5.2s for the one the gate did catch.
+
+   The method is what to take from it. The survey read `callCli` and `typecheckPack` in `pack-builds.ts`,
+   found both in-process, and wrote *"Neither spawns anything"* — of a module whose exported `run` spawns,
+   forty lines above them. Then Decision 7's gate was built to that finding and encoded it: it matched a
+   call's *argument text* against a compiler pattern, so a spawn naming no compiler was invisible by
+   construction, and its one mutation case compared three entries against two and passed with the detector
+   stubbed to return nothing. A gate written from a survey cannot check the survey.
+
+   Replaced by `integration-subprocesses.spec.ts`, which takes the names from the import rather than a list
+   and counts calls rather than reading arguments. The cap's own justification is untouched: it rests on
+   48.2s against 52.4s, measured, and those runs happened whatever the count was.
 
 ### Conventional choices
 
@@ -456,3 +479,14 @@ review: file-time quoted as wall time, a serial baseline taken on a shared box, 
 reverted. The habit that saved every one of them was cheap — take the measurement again on an idle machine
 before writing it down — and the habit that produced them was reasoning from a model of how parallelism
 ought to behave.
+
+**A sixth was wrong and re-measuring would never have caught it**, which is Correction 5 and the limit of
+that habit. The other five were quantities: measure again and the number moves. This one was a
+*population* — "three files spawn" — and a population is not re-measured by running anything, because the
+survey that produced it is what decides who gets counted. Every later measurement here was taken over the
+twenty-three files and not one of them had an opinion about which three spawned; the number survived nine
+clean runs, five more, and a chain, because nothing it passed through was looking at it.
+
+So the habit needs its other half, which the root `CLAUDE.md` already states for checks and this extends to
+surveys: re-measure a quantity, and **derive a population from a declaration that cannot leave a member
+out**. Twelve of twelve come from an import each file makes. Three came from reading some of the files.
