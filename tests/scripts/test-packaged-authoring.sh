@@ -22,7 +22,18 @@ ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
 WORK="$(mktemp -d "${TMPDIR:-/tmp}/abuddy-authoring-XXXXXX")"
 if [ -z "${KEEP_WORK:-}" ]; then trap 'rm -rf "$WORK"' EXIT; else echo "Work dir: $WORK"; fi
 
-step() { printf '\n==> %s\n' "$*"; }
+# Every phase goes through here, so this is the one place that can say where the time went. This script
+# is the tail of the chain's critical path (`packages:ensure -> compile -> build:app -> this`), and it
+# had no timing of its own — the step's total was the only number anyone had.
+step() {
+  _step_report
+  _step_name="$*"; _step_at=$SECONDS
+  printf '\n==> %s\n' "$*"
+}
+_step_report() {
+  [ -n "${_step_name:-}" ] && printf '    [%3ss] %s\n' "$((SECONDS - _step_at))" "$_step_name"
+  return 0
+}
 fail() { echo "FAIL: $*" >&2; exit 1; }
 
 unset ABUDDY_ROOT ABUDDY_APP_EXECUTABLE ABUDDY_CLI PACK_DIR
@@ -56,7 +67,7 @@ TESTING_TGZ="$(ls "$WORK"/abuddy-testing-*.tgz)"
 step "1. Install @abuddy/cli + @abuddy/sdk from the tarballs"
 mkdir "$WORK/tools"
 # The SDK's @abuddy/ears comes from its tarball too
-(cd "$WORK/tools" && npm init -y >/dev/null && npm install --silent "$EARS_TGZ" "$SDK_TGZ" "$CLI_TGZ")
+(cd "$WORK/tools" && npm init -y >/dev/null && npm install --silent --prefer-offline --no-audit --no-fund "$EARS_TGZ" "$SDK_TGZ" "$CLI_TGZ")
 ABUDDY="$WORK/tools/node_modules/.bin/abuddy"
 "$ABUDDY" --version
 
@@ -67,7 +78,7 @@ PACK="$WORK/demo-pack"
 cd "$PACK"
 # The tarballs stand in for the npm registry
 npm pkg set "dependencies.@abuddy/ears=file:$EARS_TGZ" "dependencies.@abuddy/sdk=file:$SDK_TGZ" "devDependencies.@abuddy/cli=file:$CLI_TGZ" "devDependencies.@abuddy/testing=file:$TESTING_TGZ"
-npm install --silent
+npm install --silent --prefer-offline --no-audit --no-fund
 # @abuddy/sdk carries the platform API only; the component library and its editors come with @abuddy/ui
 for lib in @tiptap highlight.js lowlight @guolao/vue-monaco-editor; do
   [ ! -e "node_modules/$lib" ] || fail "a backend-only pack installed $lib"
@@ -77,7 +88,7 @@ ABUDDY="$PACK/node_modules/.bin/abuddy"
 "$ABUDDY" add feature notes --label Notes >/dev/null
 # @abuddy/ui's heavier components must build in a pack, not only in the monorepo
 npm pkg set "dependencies.@abuddy/ui=file:$UI_TGZ"
-npm install --silent
+npm install --silent --prefer-offline --no-audit --no-fund
 cat > src/features/notes/fe/editors.ts <<'TS'
 import TiptapEditor from '@abuddy/ui/components/tiptap/TiptapEditor';
 import SimpleMonacoEditor from '@abuddy/ui/components/SimpleMonacoEditor';
@@ -91,7 +102,7 @@ node -e '
 '
 "$ABUDDY" init-tests
 npm pkg set "devDependencies.@abuddy/testing=file:$TESTING_TGZ"
-npm install --silent
+npm install --silent --prefer-offline --no-audit --no-fund
 
 step "Configure the app the way the first-run prompt saves it (a local checkout)"
 # Written directly, not typed at a prompt. The prompt is covered in @abuddy/cli's suite
@@ -207,7 +218,7 @@ node -e '
   fs.writeFileSync("abuddy.json", JSON.stringify(m, null, 2) + "\n");
 '
 # The digest service imports the AI SDK's pure pieces (Output); mockInference runs the AI SDK in tests
-npm install --silent --save ai@^7.0.100
+npm install --silent --prefer-offline --no-audit --no-fund --save ai@^7.0.100
 
 step "3. abuddy build"
 "$ABUDDY" build | tee "$WORK/build.log"
@@ -404,5 +415,6 @@ if find "$PACK/node_modules" "$WORK/tools/node_modules" -maxdepth 2 -type l -lna
   fail "node_modules links into the monorepo"
 fi
 
+_step_report
 echo
-echo "External pack authoring end state: OK"
+echo "External pack authoring end state: OK (${SECONDS}s)"
