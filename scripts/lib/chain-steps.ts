@@ -571,8 +571,11 @@ export const CHAIN_STEPS: readonly ChainStep[] = [
   { name: 'test:external-pack:app', tier: 3, needs: ['build:app', 'test:external-pack:contract'], seconds: 24,
     // Its own Playwright output, rewritten every run
     excludes: FIXTURE_TEST_OUTPUT,
+    // PACKAGE_BUILD_OUTPUTS because the fixture it drives *is* one: `@abuddy/testing` resolves to its
+    // built bundle, which launches Electron, finds the window and bypasses onboarding. Reached by package
+    // name rather than by path, so nothing that reads a step's text can see the edge
     inputs: [...ROOT, ...BOUNDED_RUNNER, 'tests/fixtures', 'tests/scripts/test-external-pack-app.sh',
-      'tests/scripts/lib', 'playwright.config.ts', ...APP_OUTPUTS] },
+      'tests/scripts/lib', 'playwright.config.ts', ...PACKAGE_BUILD_OUTPUTS, ...APP_OUTPUTS] },
   // Never cached: it drives real Electron with real timing and is the likeliest step to be flaky, and a
   // flaky pass cached green hides an intermittent failure indefinitely. 28s is cheap enough to always pay.
   // It declares what it writes although it is never cached and so never reads a stamp: the guard that a
@@ -598,7 +601,7 @@ export const CHAIN_STEPS: readonly ChainStep[] = [
   { name: 'test:smoke', tier: 3, needs: ['build:app'], seconds: 6,
     outputs: ['tests/results'],
     inputs: [...ROOT, 'tests/e2e/smoke.spec.ts', 'tests/e2e/fixtures', 'playwright.config.ts',
-      'scripts/with-source.mjs', ...APP_ENTRY, ...APP_OUTPUTS] },
+      'scripts/with-source.mjs', ...APP_ENTRY, ...PACKAGE_BUILD_OUTPUTS, ...APP_OUTPUTS] },
   // The rest of the E2E suite. **Opt-in, not a gate** — `npm run chain -- --e2e`.
   //
   // It was built to be driven: to watch the app while writing a feature, and to let an agent see what it

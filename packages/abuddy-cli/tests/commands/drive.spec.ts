@@ -39,4 +39,13 @@ describe('the driving scripts a pack has', () => {
     write('look.ts');
     expect(driveScripts(root)).toEqual(['look.ts']);
   });
+
+  // The config this scaffolds is `testDir: '.'` with `testMatch: '**/*.ts'`, so Playwright collects a
+  // nested script. A shallow read here would refuse to run one it would have found.
+  it('counts one in a subdirectory, as the config that runs them does', () => {
+    write('playwright.config.ts');
+    fs.mkdirSync(path.join(root, 'drive', 'flows'), { recursive: true });
+    fs.writeFileSync(path.join(root, 'drive', 'flows', 'checkout.ts'), '');
+    expect(driveScripts(root)).toEqual([path.join('flows', 'checkout.ts')]);
+  });
 });

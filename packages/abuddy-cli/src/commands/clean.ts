@@ -3,6 +3,7 @@ import * as path from 'node:path';
 import { findPackRoot } from '../utils';
 import { cliDirs } from '../app/app-target';
 import { listInstances, removeInstance } from '../app/instances';
+import { errorMessage } from '@abuddy/sdk/utils/pure';
 
 const CLEAN_DIRS = ['dist', '.abuddy', 'src/__generated__'];
 
@@ -49,8 +50,14 @@ function cleanInstances(all: boolean): void {
         : 'named';
     console.log(`  ${go ? 'removing' : '  keeping'}  ${instance.name.padEnd(24)} ${size(instance.bytes).padStart(6)}  ${note}`);
     if (!go) continue;
-    removeInstance(dirs, instance.dir);
-    removed++;
+    // Per instance, because `listInstances` read the state a moment ago: an app started since makes
+    // `removeInstance` refuse, and one refusal should not stop the rest from being considered
+    try {
+      removeInstance(dirs, instance.dir);
+      removed++;
+    } catch (error) {
+      console.log(`            ${instance.name.padEnd(24)}         ${errorMessage(error)}`);
+    }
   }
 
   console.log(removed === 0

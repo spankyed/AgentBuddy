@@ -24,7 +24,7 @@
  */
 import * as fs from 'node:fs';
 import * as path from 'node:path';
-import { spawn } from 'node:child_process';
+import { spawn, type ChildProcess } from 'node:child_process';
 import { findPackRoot, readManifest } from '../utils';
 import { cliDirs, parseAppFlags, resolveDevelopmentApp } from '../app/app-target';
 import { instanceFor, instanceInUse, parseInstanceFlags, removeInstance, INSTANCE_USAGE } from '../app/instances';
@@ -103,7 +103,10 @@ const GITIGNORE = `*
 /** The driving scripts in a pack, which is what decides whether there is anything to run. */
 export function driveScripts(root: string): string[] {
   try {
-    return fs.readdirSync(path.join(root, DRIVE_DIR))
+    // Recursive, because the config this scaffolds is `testDir: '.'` with `testMatch: '**/*.ts'` — a
+    // shallow read would refuse a pack whose only script sits in a subdirectory, for a file Playwright
+    // would have collected and run
+    return fs.readdirSync(path.join(root, DRIVE_DIR), { recursive: true, encoding: 'utf-8' })
       .filter(name => name.endsWith('.ts') && name !== 'playwright.config.ts');
   } catch {
     return [];
@@ -150,60 +153,84 @@ export async function drive(args: string[]) {
   const app = await resolveDevelopmentApp({ flags, hostVersion: manifest.hostVersion ?? '*' });
   const instance = instanceFor(mode, app.kind, cliDirs());
 
-  // Electron allows one app per data dir, so a second one here would die inside Playwright's 45s window
-  // for a main window and report that it never saw one, which names neither the instance nor the cause
-  if (instance && instanceInUse(instance.dir)) {
-    throw new Error(`An app is already running on instance ${instance.name}. Close it, or drive a different instance.`);
+  /**
+   * Reachable from every way this ends, and set up the moment the instance exists — a signal or a throw
+   * in between used to leak it, and `ensureCheckoutPackages` below is a package rebuild that takes
+   * seconds and throws on failure, so "in between" is where an interrupt actually lands.
+   *
+   * It declines rather than throws when an app still holds the dir: this runs in a `finally`, where a
+   * throw would replace whatever the session was already reporting.
+   */
+  let tornDown = false;
+  function teardown(): void {
+    if (tornDown || !instance?.ephemeral) return;
+    tornDown = true;
+    if (instanceInUse(instance.dir)) {
+      console.warn(`\nLeft the ephemeral instance ${instance.name}: an app is still running on it.`);
+      return;
+    }
+    removeInstance(cliDirs(), instance.dir);
+    console.log(`\nRemoved the ephemeral instance ${instance.name}.`);
   }
 
-  // No build here: the fixture builds the pack itself when PACK_DIR is set, which `fixtureEnv` does
-  // below. `abuddy test` leaves it to the fixture for the same reason
-  ensureCheckoutPackages(root);
-
-  if (instance) {
-    console.log(`Instance ${instance.name}${instance.ephemeral ? ' (removed when this exits)' : ''}`);
-    console.log(`  ${instance.dir}\n`);
-  }
-
-  const env = fixtureEnv(app, root, process.env);
-  // Shown, because the whole point is to watch it. Under Playwright the app hides its windows unless
-  // this says otherwise (the guards in packages/main).
-  env.PLAYWRIGHT_VISIBLE = '1';
-  // The fixture makes a throwaway dir unless it is given one; an instance is the caller's to keep
-  if (instance) env.E2E_DATA_DIR = instance.dir;
-
-  // Spawned rather than spawnSync'd so this process keeps an event loop. With spawnSync a Ctrl-C took
-  // the default action and killed this process where it stood, so the teardown below never ran and an
-  // ephemeral instance was left on disk — measured, not reasoned about.
-  const child = spawn(
-    process.execPath,
-    [resolvePlaywrightCli(root), 'test', '--config', path.join(DRIVE_DIR, 'playwright.config.ts'), ...flags.args],
-    { cwd: root, env, stdio: 'inherit' },
-  );
-  // A terminal sends its signal to the whole group, so the child usually has it already; this also
-  // covers one sent to this process alone, and having a handler at all is what stops the default action
+  let child: ChildProcess | undefined;
   let interrupted = false;
+  // A handler is also what stops the default action killing this process where it stands, which is how
+  // the teardown was skipped before there was one
   for (const signal of ['SIGINT', 'SIGTERM'] as const) {
     process.on(signal, () => {
       interrupted = true;
-      child.kill(signal);
+      if (child) return void child.kill(signal);
+      teardown();
+      process.exit(0);
     });
   }
 
   try {
+    await session();
+  } finally {
+    teardown();
+  }
+
+  async function session(): Promise<void> {
+    // Electron allows one app per data dir, so a second one here would die inside Playwright's 45s window
+    // for a main window and report that it never saw one, which names neither the instance nor the cause
+    if (instance && instanceInUse(instance.dir)) {
+      throw new Error(`An app is already running on instance ${instance.name}. Close it, or drive a different instance.`);
+    }
+
+    // No build here: the fixture builds the pack itself when PACK_DIR is set, which `fixtureEnv` does
+    // below. `abuddy test` leaves it to the fixture for the same reason
+    ensureCheckoutPackages(root);
+
+    if (instance) {
+      console.log(`Instance ${instance.name}${instance.ephemeral ? ' (removed when this exits)' : ''}`);
+      console.log(`  ${instance.dir}\n`);
+    }
+
+    const env = fixtureEnv(app, root, process.env);
+    // Shown, because the whole point is to watch it. Under Playwright the app hides its windows unless
+    // this says otherwise (the guards in packages/main).
+    env.PLAYWRIGHT_VISIBLE = '1';
+    // The fixture makes a throwaway dir unless it is given one; an instance is the caller's to keep
+    if (instance) env.E2E_DATA_DIR = instance.dir;
+
+    // Spawned rather than spawnSync'd so this process keeps an event loop. With spawnSync a Ctrl-C took
+    // the default action and killed this process where it stood, so the teardown below never ran and an
+    // ephemeral instance was left on disk — measured, not reasoned about.
+    child = spawn(
+      process.execPath,
+      [resolvePlaywrightCli(root), 'test', '--config', path.join(DRIVE_DIR, 'playwright.config.ts'), ...flags.args],
+      { cwd: root, env, stdio: 'inherit' },
+    );
     const [code, killedBy] = await new Promise<[number | null, NodeJS.Signals | null]>(resolve => {
-      child.on('exit', (exitCode, signal) => resolve([exitCode, signal]));
+      child!.on('exit', (exitCode, signal) => resolve([exitCode, signal]));
     });
-    // A driving session someone interrupted ended the way they asked, not in failure. Tracked rather
-    // than read off the status, because Playwright turns the signal into an exit code of its own (130)
-    // that is otherwise indistinguishable from a script failing
+    // A driving session someone interrupted ended the way they asked, not in failure. Tracked rather than
+    // read off the status, because Playwright turns the signal into an exit code of its own (130) that is
+    // otherwise indistinguishable from a script failing
     if (!interrupted && killedBy === null && code !== 0) {
       throw new Error(`drive exited ${code ?? 'without a status'}`);
-    }
-  } finally {
-    if (instance?.ephemeral) {
-      removeInstance(cliDirs(), instance.dir);
-      console.log(`\nRemoved the ephemeral instance ${instance.name}.`);
     }
   }
 }
