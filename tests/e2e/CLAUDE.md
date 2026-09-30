@@ -2,6 +2,33 @@
 
 Playwright tests that launch the full Electron app, interact with the XState application state machine, and take screenshots for visual verification.
 
+## When a test belongs here
+
+**This is not a gate.** It is off `npm run chain`; `npm run chain -- --e2e` includes it when you want it,
+and nothing requires it before a merge. It was built to *drive* the app — to look at what you changed, and
+to let an agent see what it built — and it spent a while as a chain step without anyone deciding it should
+be one. Everything below follows from that.
+
+**Two kinds of test live here, and a new one should be clearly one of them.**
+
+- **Something you need to see.** Six of the fourteen files touch the UI, and two of those
+  (`smoke`, `navigation`) take a screenshot. This is the founding purpose.
+- **Something that needs the real process boundary** — a live port, the websocket, the CLI against a real
+  data dir, the packaged pack loader. The other eight files are this: they never assert on the UI at all,
+  and they are here because an in-memory harness has no port to bind.
+
+**If it needs neither, it is a harness test.** `setupPackTests` (`@abuddy/testing`) runs a pack's code in
+memory in milliseconds; an assertion about state or data that never renders and never crosses a process
+boundary pays a full Electron launch for nothing.
+
+**Scratch is the default for driving.** `tests/e2e/scratch.spec.ts` is gitignored — write there while you
+are working, and delete it. It becomes a committed spec only when it asserts something a future change
+could break **and** it needs the real app. Most driving is neither.
+
+**While working, run the affected spec, not the suite** — `npm test -- <spec>`. That was the guidance
+before the chain swallowed it, and it is still right: the suite is 21 tests over 14 files on a single
+worker, and the one you changed is the one that tells you anything.
+
 ## Quick start
 
 ```bash
