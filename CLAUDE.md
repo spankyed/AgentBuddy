@@ -574,12 +574,18 @@ npm run check:repro      # **A diagnostic instrument, not a gate**, and nothing 
 
 ### E2E visual testing
 
-**This is a tool for driving the app, not a regression suite, and it is not in `npm run chain`.** It was
-built to watch the app while writing a feature and to let an agent see what it built; it became a chain
-step, and the reasoning around it drifted into caching policy — a question you only ask of a gate. It has
-not caught a regression. `npm run chain -- --e2e` runs it with the chain when you want it, `npm test` runs
-it alone, and the step stays declared in `chain-steps.ts` so `chain-inputs` still proves `tests/e2e` is
-covered by something.
+**Driving the app now has its own place: `drive/`, run with `npm run drive` (a pack author gets
+`abuddy drive`).** That is where an agent debugs and develops against the app — open what you just built,
+click through it, read the state back, screenshot it. Scripts there import `drive` rather than `test`,
+nothing collects them, and nothing gates on them. `docs/public-facing/cli.md` has the reference.
+
+**What is left here is not a regression suite either, and it is not in `npm run chain`.** It was built to
+watch the app while writing a feature, and it became a chain step while the reasoning around it drifted
+into caching policy — a question you only ask of a gate. It has not caught a regression. What earns a
+place here now is a test that asserts something a future change could break **and** needs the real
+process boundary; everything else is either a harness test or a driving script.
+`npm run chain -- --e2e` runs it with the chain when you want it, `npm test` runs it alone, and the step
+stays declared in `chain-steps.ts` so `chain-inputs` still proves `tests/e2e` is covered by something.
 
 Playwright tests launch the full Electron app and interact via `window.applicationState` (the XState actor). Use to visually verify UI changes.
 

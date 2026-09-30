@@ -21,11 +21,13 @@ be one. Everything below follows from that.
 memory in milliseconds; an assertion about state or data that never renders and never crosses a process
 boundary pays a full Electron launch for nothing.
 
-**Driving does not belong here at all — it belongs in `drive/`.** A driving script asserts nothing and
-nothing gates on it, so `npm run drive` collects it and no test runner does. This used to be
-`tests/e2e/scratch.spec.ts`, gitignored but *inside* `testDir`, so the suite picked it up regardless of
-what it was called. A script graduates into a spec here only when it asserts something a future change
-could break **and** it needs the real app. Most driving is neither.
+**Driving does not belong here at all — it belongs in `drive/`, and it is mainly for you.** Driving is how
+an agent debugs and develops against the app: open what you just built, click through it, read the state
+back, screenshot it, and find out whether the change worked instead of reasoning about it. A driving
+script asserts nothing and nothing gates on it, so `npm run drive` collects it and no test runner does.
+This used to be `tests/e2e/scratch.spec.ts`, gitignored but *inside* `testDir`, so the suite picked it up
+regardless of what it was called. A script graduates into a spec here only when it asserts something a
+future change could break **and** it needs the real app. Most driving is neither.
 
 **While working, run the affected spec, not the suite** — `npm test -- <spec>`. That was the guidance
 before the chain swallowed it, and it is still right: the suite is 21 tests over 14 files on a single

@@ -1,11 +1,17 @@
 /**
  * `abuddy drive` — run the app and poke at it.
  *
- * Driving is looking at what you built: clicking through it, firing an event, taking a screenshot,
- * whether by a person checking their work or an agent checking its own. It used to be done by writing a
- * Playwright spec — in this repo the gitignored `tests/e2e/scratch.spec.ts`, in a pack one more file under
- * `tests/e2e/` — and that is the confusion this command exists to end. A driving script asserts nothing,
- * nothing should gate on it, and a test runner should never collect it.
+ * Driving is looking at what you built: clicking through it, firing an event, taking a screenshot.
+ *
+ * **Mainly this is for an agent.** It is how a coding agent debugs and develops against the app it is
+ * changing — open what it just built, read the state back, screenshot it, and find out whether the change
+ * worked rather than arguing about it. A person can use it the same way, and the windows are shown so
+ * they can watch, but an agent is the one with no other way to see a running app.
+ *
+ * It used to be done by writing a Playwright spec — in this repo the gitignored
+ * `tests/e2e/scratch.spec.ts`, in a pack one more file under `tests/e2e/` — and that is the confusion
+ * this command exists to end. A driving script asserts nothing, nothing should gate on it, and a test
+ * runner should never collect it.
  *
  * **It is not `abuddy test`.** `test` is pinned, ephemeral and assertive on purpose. This is your app,
  * your instance, and state that is still there next session.
@@ -33,6 +39,7 @@ const HELP = `
 Usage: abuddy drive [script] [--app-root <path> | --app beta] [instance]
 
 Launch AgentBuddy and drive it from a script: navigate, send events, read state, screenshot.
+Mainly for an agent debugging or developing against the app; a person can watch, the windows are shown.
 Scripts live in ${DRIVE_DIR}/ and are not tests — no runner collects them, and nothing gates on them.
 
 With no script, every file in ${DRIVE_DIR}/ runs. The app's windows are shown, so you can watch.
@@ -63,6 +70,10 @@ export default defineConfig({
 const README = `# drive/
 
 Scripts that drive the app. **Not tests.** Nothing here is collected by \`abuddy test\` or gates anything.
+
+**Mainly for an agent.** This is how a coding agent debugs and develops against your pack: open what it
+just built, click through it, read the state back, screenshot it, and see whether the change worked. You
+can use it the same way — the app's windows are shown so you can watch.
 
 \`\`\`ts
 // drive/notes.ts

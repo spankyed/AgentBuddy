@@ -146,6 +146,29 @@ An app already running on that data dir is used as it is; otherwise `run` starts
 
 Without an FE entry it rebuilds, reinstalls and reloads on any change instead.
 
+#### `abuddy drive [script] [--app-root <path> | --app beta] [instance flags]`
+
+Launch AgentBuddy and drive it from a script: navigate, send events, read state, take screenshots.
+
+**This is mainly for an agent.** It is how a coding agent debugs and develops against the app it is changing — open the thing it just built, click through it, read the state back, screenshot it, and see for itself whether the change worked. A person can use it the same way, and the app's windows are shown so you can watch, but the reason it exists is that an agent has no other way to look at a running app.
+
+**It is not testing, and nothing treats it as testing.** A driving script asserts nothing, nothing gates on it, and no test runner collects it. Scripts live in `drive/`, which `abuddy drive` creates the first time you run it, and which sits outside every test glob by construction rather than by exclusion. `abuddy test` never sees it.
+
+```ts
+// drive/notes.ts
+import { drive } from '@abuddy/testing';
+
+drive('open notes and look at it', async ({ app, appPage }) => {
+  await app.navigate('notes');
+  await app.screenshot('notes');
+  // appPage is a Playwright Page: click, type, evaluate — whatever you need
+});
+```
+
+The import is `drive`, not `test`: the same runner under a name that says what the file is. With no script argument every file in `drive/` runs; name one to run just it.
+
+It takes the same app and instance flags as `abuddy run`, so `--instance <name>` keeps the app's data between sessions and `--ephemeral` starts clean and leaves nothing behind. It launches its own app rather than joining one `abuddy run` already has, because Electron allows one app per data dir — so if a person wants to watch what a driver is doing, they watch the driver's window rather than starting a second app.
+
 ### Validation
 
 #### `abuddy validate`
@@ -223,9 +246,9 @@ Run the pack's Playwright tests in AgentBuddy. Other arguments go to `playwright
 1. `--app-root <path>`: a local AgentBuddy checkout (installed and built)
 2. `--app beta` or `ABUDDY_APP=beta`: the newest AgentBuddy Beta build satisfying the pack's `hostVersion`, downloaded and cached
 3. `ABUDDY_ROOT`
-4. The choice saved on first run. An interactive terminal asks and saves it; CI (or no TTY) fails instead
+4. The newest AgentBuddy Beta build satisfying the pack's `hostVersion`, as `--app beta` would
 
-The fixture builds the pack with the same CLI and installs it into a fresh data dir for each worker.
+**`abuddy test` never reads the app you saved and never asks**, so a test run means the same thing on a fresh machine as on one you have been developing on. Holding that preference is `abuddy run`'s job. The fixture builds the pack with the same CLI and installs it into a fresh data dir for each worker, so a run leaves nothing behind either.
 
 ### Distribution
 

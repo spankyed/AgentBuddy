@@ -1,7 +1,12 @@
 # drive/
 
-Scripts that drive the app — navigate, send events, read state, screenshot — for looking at what you
-changed, and for letting an agent see what it built.
+Scripts that drive the app — navigate, send events, read state, screenshot.
+
+**This is mainly for an agent.** It is how a coding agent debugs and develops against the app it is
+changing: open what it just built, click through it, read the state back, screenshot it, and see for
+itself whether the change worked. A person can use it the same way, and `npm run drive` shows the app's
+windows so you can watch — but the reason it exists is that an agent has no other way to look at a
+running app.
 
 **These are not tests.** Nothing here is collected by `npm test`, nothing gates on it, and a script that
 asserts nothing is exactly right. This replaces `tests/e2e/scratch.spec.ts`, which was gitignored but sat
