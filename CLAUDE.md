@@ -120,40 +120,29 @@ dangling-published-path check, which publint cannot be — it skips any target b
 is how 99 published paths named files no tarball held. `@app/publish-checks`' `published-manifest-paths` is
 that one.
 
-**Only a recorded proxy can go stale from an input nobody listed**, and this repo has one. Measured 2026-09-27,
-against a proposal to give every `<artifact>:check` a case that makes it fail: `schema:check` regenerates from
-`manifest-schema.ts`, `exports:check` recomputes from `src/`, `facade:check` re-normalises the built bundle and
-`seed-parity:check` re-seeds — each takes its derivation fresh on every run and compares, so a missing input is
-not a thing that can happen to them, and a case perturbing the recorded file would prove that `!==` works. The
-exception is `api:stamp`, which records a *hash of what it believes the inputs are* rather than re-deriving, and
-it is the only one this ever bit; `api-reports.ts` already checks the proxy against itself for exactly that
-reason. So the question to ask of a new recorded artifact is not "does its check fail on a stale recording" but
-"does it re-derive, or record a proxy" — and a proxy needs the self-check, not a firing case.
+**Three kinds of recorded artifact, and the question to ask of a new one is which it is.**
 
-**There is a third kind, and it is the one that misbehaves: a sample.** `spec-cost.json` records a measured
-millisecond per spec, and a measurement cannot re-derive — that is what makes it a sample — so neither an
-equality check nor a self-check is available to it. Treated as a derivation it churned: measured 2026-09-28,
-**125 of 163 entries changed between two runs on an idle machine**, and 40 commits moved ~3 000 lines of it in
-three days while the answer it exists to support — which half a spec runs in — changed **zero** times. Under a
-loaded machine it is worse: one spec read 900ms idle and 4 200ms during a chain run, against a band whose dead
-zone is 1 000ms, and twice in one day that recorded a rename nobody wanted.
+A **derivation** re-takes its answer on every run and compares — `schema:check`, `exports:check`,
+`facade:check`, `seed-parity:check`. A missing input is not a thing that can happen to one, so a case
+perturbing the recorded file would only prove that `!==` works.
 
-A sample needs three things the other two do not. **Hysteresis on the record**, or jitter rewrites it and a
-real movement is one line among a hundred that mean nothing — `moved` in `scripts/lib/spec-cost.ts` records a
-measurement only when it would place the spec differently, or when it is a large move. **A band rather than
-equality** for its check, which `halfFor` already had. And **reproducibility as its guard**: an idle run moves
-a handful of entries, so a run that moves a quarter of a suite was measuring the machine, and
-`spec-cost:update` refuses it rather than recording it.
+A **proxy** records a hash of what it *believes* the inputs are. Only `api:stamp` does, and it is the only
+one this ever bit: a proxy can go stale from an input nobody listed, so it needs a self-check rather than a
+firing case — `api-reports.ts` has one.
 
-**And hysteresis changes what a sum of that record means.** Jitter does not bias a total — the lags fall both
-ways and cancel, which is why a suite's sum moved 0.4-9.9% between idle runs while its members moved 10-18%
-each, and why `suite-split`'s budget over `abuddy-cli`'s fast half is worth asserting at all. Correlated drift
-does bias it: a dependency bump that adds a fifth to every spec sits under every per-spec tolerance, so
-nothing re-records and the total stops being true with every gate green. Where a check needs a total, watch
-the total — `drift` reports the body's movement on every run that measured one, because no individual spec
-ever will, and `spec-cost:update --all` is what re-records the suite against it. Only against it: the same
-flag on a quiet run settles each row as any other run would, since rewriting a row that agrees with the
-record is the churn the tolerance is there to prevent.
+A **sample** records a measurement, which cannot re-derive, so neither check is available to it.
+`spec-cost.json` is the only one. Treated as a derivation it churned: measured 2026-09-28, **125 of 163
+entries changed between two runs on an idle machine** while the answer it supports — which half a spec runs
+in — changed zero times. So it needs hysteresis on the record, a band rather than equality for its check,
+and a refusal to record a run that moved too much to have been measuring the code. All three live in
+`scripts/lib/spec-cost.ts`, which documents them.
+
+**A sum of that record is a separate question.** Jitter cancels, so a suite's total is stable (0.4-9.9%
+between idle runs while its members moved 10-18%). Correlated drift does not: a dependency bump adding a
+fifth to every spec sits under every per-spec tolerance, so nothing re-records and the total quietly stops
+being true. `drift` reports the body's movement on every run, and `spec-cost:update --all` re-records
+against it — only against it, since on a quiet run that flag settles each row like any other run and
+rewriting a row that already agrees is the churn the tolerance exists to prevent.
 
 The chain is the whole gate: **CI does not run, on purpose.** `.github/workflows/ci.yml` has its `push`
 and `pull_request` triggers commented out while this is a single-contributor repo, so `gh run list` is empty
@@ -327,129 +316,73 @@ npm run typecheck:pack   # @app/default-setup only
 npm run exports:check -w @abuddy/ui  # Fails on a stale exports map or a component without an entry
 
 npm run spec             # The specs your uncommitted changes affect, wherever they live.
-                         # **Three exit codes**, because the three need different next moves and only one is a
-                         # bug in the code: 1 a spec failed; 2 a name was wide enough to be a search, so the
-                         # paths were listed instead of run; 3 the target exists and no spec covers it, so
-                         # nothing ran and nothing passed. 3 is the one worth knowing about — `vitest related`
-                         # exits 0 when the graph reaches no spec, so until it existed a green run and a run
-                         # that did nothing were the same answer, and five of eight sampled entry modules
-                         # answered zero. Only a run whose route promised coverage of a file a spec could cover
-                         # earns that judgement: a whole-suite run, a `-t` filter matching no case and a doc
-                         # target all report zero correctly and still exit 0
-npm run spec:dry [...]   # What the plan would run and what the record says it costs, running nothing. Takes
-                         # every argument spec does. It collects through vitest's node API — ~1.6s whatever
-                         # comes back, since it is the eleven project configs loading rather than a graph
-                         # being walked — so a whole prediction is 4s where the run it predicts is 21s.
-                         # It prints **file-time summed across workers, never a wall estimate**: the ratio
-                         # between the two was 1.55:1 and 2.18:1 on one target three days apart, so a wall
-                         # number would be wrong by a third within a week. And it prints the record's
-                         # `measuredAt`, because spec-cost.json is a sample kept with hysteresis and a row
-                         # may sit up to DRIFT_SHARE from the truth by design — the total is a band. A spec
-                         # the record has never seen is named rather than counted free.
-                         # The ordinary `npm run spec` collects nothing: the collector and the pricing load
-                         # behind `await import`, which repo-checks asserts from the source
-npm run spec:full [...]  # The same, plus the pack suites a rebuilt dist would reach — the answer the module
-                         # graph cannot give. Takes every argument spec does. Costs a build when one is stale
-                         # (14s) and the pack suite (18s), so a shallow @abuddy/sdk edit goes from ~24s to
-                         # ~33s measured; it adds nothing when no pack depends on what you changed, and the
-                         # pack pool skips on its own stamp when nothing it reads has moved. `--full` is the
-                         # one argument spec.ts consumes and only in first position, which is what keeps
-                         # "everything from the first - is vitest's" exact rather than nearly true
+                         # **Three exit codes**: 1 a spec failed; 2 the name was wide enough to be a
+                         # search, so the paths were listed rather than run; 3 the target exists and no
+                         # spec covers it, so nothing ran and nothing passed. 3 is the one worth knowing:
+                         # `vitest related` exits 0 when the graph reaches no spec, so a green run and a
+                         # run that did nothing were the same answer until it existed. Only a route that
+                         # promised coverage earns it — a whole-suite run, a `-t` matching no case and a
+                         # doc target all report zero correctly and exit 0
+npm run spec:dry [...]   # What the plan would run and what the record says it costs, running nothing.
+                         # Takes every argument spec does; ~1.6s whatever comes back, since it is the
+                         # project configs loading rather than a graph being walked. It prints **file-time
+                         # summed across workers, never a wall estimate** — the ratio between the two was
+                         # 1.55:1 and 2.18:1 on one target three days apart. It prints the record's
+                         # `measuredAt` too: spec-cost.json is a sample kept with hysteresis, so the total
+                         # is a band, and a spec the record has never seen is named rather than counted
+                         # free. The ordinary `npm run spec` collects nothing
+npm run spec:full [...]  # The same, plus the pack suites a rebuilt dist would reach — the answer the
+                         # module graph cannot give. Costs a build when one is stale (14s) and the pack
+                         # suite (18s), and adds nothing when no pack depends on what you changed.
+                         # `--full` is the one argument spec.ts consumes, and only in first position,
+                         # which is what keeps "everything from the first - is vitest's" exact
 npm run spec -- <target> # You don't say what the target is; it works that out:
                          #   a source file  -> every spec that imports it, transitively, in ANY package
                          #   a spec path    -> that spec        a directory -> every spec under it
                          #   part of a name -> every spec whose path contains it — how you run one while
                          #                     working: `npm run spec -- chain-schedule` is 1.7s
-                         #   a pack's src/seeds/** or a build input of its own (abuddy.json, package.json,
-                         #                     tsconfig.json) -> the walk, plus the specs that read
-                         #                     what building it produces, which no module graph reaches.
-                         #                     Named by default, run by spec:full (a build plus the specs,
-                         #                     16s measured for default-setup's tests/seeds)
-                         # A source file is one vitest over every host project, because that is the honest
-                         # answer to "what could this break" and the root vitest.config.ts already lists
-                         # them. It used to run the file's own package: for a type every pack's data flows
-                         # through that was 24 of the 104 specs covering it, reported green. The cost is the
-                         # blast radius: a renderer module 1 file, the api's runtime 13, abuddy-sdk's entity
-                         # types 104. Wall times of 4.1s, 6.0s and 23.7s were taken 2026-09-26 on a machine
-                         # at load ~10 of 10 cores, so read them as upper bounds; the file counts are what
-                         # the decision rests on and contention does not move those.
-                         # A pack suite is not in that answer, because it resolves the published dist while
-                         # the host projects resolve source, so its specs never import packages/<dep>/src and
-                         # no import edge runs from the file you edited to the spec that covers it. The edge is
-                         # real and runs through a build: src -> tsdown -> dist -> the pack's specs. The
-                         # command says so when it is true, derived from the declared dependencies
-                         # (workspace-deps.ts, the same function the chain keys its cache on) and including
-                         # the transitive ones: @abuddy/host reaches the pack through @abuddy/testing, whose
-                         # bundle inlines it. Which packages those are is not written down here — repo-checks'
-                         # spec-plan.spec.ts partitions every one of them, so a new dependency edge fails a
-                         # check instead of dating a sentence. It used to warn on every root run, a
-                         # @app/renderer edit included, and a warning always on is one nobody reads.
-                         # A pack's own source runs `related` inside that pack, because no root project
-                         # imports a pack's backend, frontend or generated FE entry — measured, so the root
-                         # run this used to plan found nothing and exited 0 for the largest suite. It walks
-                         # the pack's graph because a pack's config stubs its .vue files
-                         # (definePackTestConfig, @abuddy/testing/vitest); without that it stopped at the
-                         # first SFC. 1-3 files in 2-6s against the whole suite's 87 and 18s. It goes
-                         # through npx, since `npm test -- related x` makes vitest read `related` as a
-                         # filename filter, so packages:ensure goes in front of it too
+                         #   a pack's src/seeds/** or one of its build inputs (abuddy.json, package.json,
+                         #                     tsconfig.json) -> the walk, plus the specs that read what
+                         #                     building it produces. Named by default, run by spec:full
+                         # A source file runs one vitest over every host project, because that is the
+                         # honest answer to "what could this break". The cost is the blast radius: a
+                         # renderer module 1 spec, the api's runtime 13, abuddy-sdk's entity types 104.
+                         # **A pack suite is not in that answer.** It resolves the published dist while
+                         # the host projects resolve source, so no import edge runs from your edit to the
+                         # spec that covers it — that edge runs through a build. The command says so when
+                         # it is true, derived from the declared dependencies (workspace-deps.ts) and
+                         # including the transitive ones; repo-checks' spec-plan.spec.ts partitions which
+                         # packages those are, so a new edge fails a check instead of dating a sentence.
+                         # A pack's own source runs `related` inside that pack, since no root project
+                         # imports a pack's backend or frontend: 1-3 files in 2-6s against the whole
+                         # suite's 87 and 18s.
                          # Anything from the first `-` goes to vitest untouched, so `-t "a case"`,
-                         # `--bail 1` and `--changed HEAD~1` work. A named spec runs through its package's
-                         # own `test`, so a pretest guard and its vitest config still apply; a root run has
-                         # no such hook, so packages:ensure goes in front of it. The routing is data
-                         # (scripts/lib/spec-plan.ts) and asserted by repo-checks' spec-plan.spec.ts
+                         # `--bail 1` and `--changed HEAD~1` work. The routing is data
+                         # (scripts/lib/spec-plan.ts), asserted by repo-checks' spec-plan.spec.ts.
                          # Where a spec belongs: its path under tests/ mirrors the source it covers, no
                          # directory names a level or a cost half, and support dirs take a _ prefix
                          # (docs/reference/test-inventory.md; repo-checks' spec-placement.spec.ts)
-npm run chain            # Before a merge: every check in dependency order, cold 190s and warm 27s.
-                         # Reports each step's time and its slowest five tests, buffers its output and
-                         # prints only a failing step's — which is why you never pipe a backgrounded run:
-                         # `| tail` discards the one thing a failure leaves behind, and it does not come
-                         # back on a re-run that passes. A failing step names what it cost against what it
-                         # costs healthy, so a failure under lane contention reads as one.
-                         # It leaves out api:check, which typecheck's
-                         # api:stamp already covers, and includes packages:check, which has no such proxy
-                         # and costs 5.9s. Afterwards it says which steps a run contradicted:
-                         # one that ran past double its declared `seconds`, on any run, since less
-                         # contention cannot make a step slower and that is the direction budgetFor kills
-                         # on — a step under half is reported only by `--all` at MEASURED_AT_LANES, a
-                         # cached or single-lane run making everything look fast — and one that passed
-                         # but is already stale again, which it
-                         # explains by diffing that step's inputs against the per-file digests its own
-                         # stamp recorded: the files that differ, what happened to each, and whether it
-                         # changed while the step ran (an ordering to fix) or since. A file rewritten
-                         # with the bytes it already had is counted in one dimmed line instead, because
-                         # it is not why anything re-ran — reading one as a cause sent a diagnosis after
-                         # the wrong file, which is what the digests are recorded for.
-                         # Each step is cached on the inputs it declares (scripts/lib/chain-steps.ts)
-                         # through the package builds' stamp protocol: an unchanged step reports `cached`
-                         # and does not run, so a doc edit runs nothing and a one-package edit runs that
-                         # package's suite. The E2E suite is never cached, with its reason on the step.
+npm run chain            # Before a merge: every check in dependency order, cold 190s and warm 27s. Each
+                         # step is cached on the inputs it declares (scripts/lib/chain-steps.ts), so a doc
+                         # edit runs nothing and a one-package edit runs that package's suite; the E2E
+                         # suite is never cached, with its reason on the step. It leaves out api:check,
+                         # which typecheck's api:stamp covers, and includes packages:check, which has no
+                         # such proxy.
+                         # **Never pipe a backgrounded run.** It buffers output and prints only a failing
+                         # step's, so `| tail` discards the one thing a failure leaves behind, and that
+                         # does not come back on a re-run that passes.
+                         # Afterwards it names the steps a run contradicted: one past double its declared
+                         # `seconds`, and one that passed and is already stale again — the second with the
+                         # inputs that differ and whether each moved while the step ran (an ordering to
+                         # fix) or since.
                          #   --dry     the plan and why each step is or is not cached, running nothing
-                         #   --all     run every step regardless of its stamp, and force a step that
-                         #             keeps a cache of its own; it is also the run those steps' `seconds`
-                         #             are checked on — it appends that step's `forceArgs`, which
-                         #             is how the two unit pools are made to re-run every project. Without
-                         #             that, overriding the chain's stamps said nothing to the pool's, so
-                         #             --all ran the step and the step skipped 2654 tests and returned green
-                         #   --lanes N how many steps run at once. Three by default, re-measured against
-                         #             the pooled step shape: 1 lane 261s, 2 lanes 208/192s, 3 lanes
-                         #             158/162/156s, 4 lanes 160s, none failing. Three reverses the
-                         #             earlier cap, which was vitest's 5s default failing the third lane
-                         #             rather than the cores; per-tier timeouts removed it. Re-measure
-                         #             when the step shape changes: this is tuned to eleven steps, and the
-                         #             twelfth (packages:check) did not move it: measured 2026-09-27 under
-                         #             --all, 176.7s over 12 steps at 3 lanes, with that step 5.5s and off the
-                         #             critical path (packages:ensure -> compile -> build:app ->
-                         #             test:packaged-authoring, 111s), so running it alone costs its own time
-                         #   --no-classify  when a step fails under more than one lane, the chain re-runs
-                         #             that step by itself. A pass rules the code out — the same command
-                         #             over the same tree — leaving contention or a flake. It never counts
-                         #             either: the retry does not stamp and the
-                         #             chain still exits 1, since a green-on-retry nobody sees is how a
-                         #             flake becomes rot. Skipped for an exclusive step, which already ran
-                         #             alone, and for a timeout, which would spend its budget twice. This
-                         #             turns it off, for when you know what you broke and want the failure
-                         #             back without paying the step's own time again
+                         #   --all     every step regardless of its stamp, forcing those that keep a cache
+                         #             of their own; the run each step's `seconds` is checked on
+                         #   --lanes N how many at once. Three by default — measured at 1/2/3/4 lanes:
+                         #             261s / 200s / 159s / 160s. Re-measure when the step shape changes
+                         #   --no-classify  a step failing under several lanes is re-run alone, to tell the
+                         #             code apart from contention; the retry never stamps and the chain
+                         #             still exits 1. This turns that off
 npm test                 # Playwright E2E tests
 npm run test:unit        # Vitest, as two pools: the host suites as one root run under the
                          # @abuddy/source condition, and the pack suite on its own resolving the published
@@ -457,35 +390,28 @@ npm run test:unit        # Vitest, as two pools: the host suites as one root run
                          # The list is scripts/lib/unit-suites.ts, which the chain reads too
 npm run test:integration # The expensive half of every suite that has one (@abuddy/cli, @app/repo-checks,
                          # @app/publish-checks), as **one vitest run** over vitest.integration.config.ts's
-                         # projects. It was three `npm -w` invocations in series — three startups, three
-                         # worker pools, three pretests — for three suites that declare identical
-                         # resolution; measured 2026-09-29 the pool is 48.2s against 71s. Which packages
-                         # those are is derived from the configs each has (INTEGRATION_SUITES); the root
-                         # config's project list is the half that is checked rather than derived, because
-                         # check:specifiers reads these files as text.
-                         # It runs at half the cores, and that is faster than all of them: 48.2s capped
-                         # against 52.4s uncapped, because nine workers each running ts.createProgram and
-                         # abuddy build put the box at a load of 25-32 — and twelve of the twenty-four files
-                         # the pool loads spawn a subprocess besides, two of them a nested vitest run, which
-                         # subprocess-inventory.spec.ts counts.
-                         # **The birpc timeout the cap was originally written against is a worker blocking
-                         # its own event loop**, not a main thread too busy to answer: measured 2026-09-30,
-                         # the main process sits at 6% event-loop utilisation with a worst block of 74ms,
+                         # projects rather than three `npm -w` invocations in series: measured 2026-09-29,
+                         # 48.2s pooled against 71s. Which packages those are is derived from the configs
+                         # each has (INTEGRATION_SUITES); the root config's project list is checked rather
+                         # than derived, because check:specifiers reads these files as text.
+                         # It runs at half the cores, and that is faster than all of them — 48.2s capped
+                         # against 52.4s uncapped, since nine workers each running ts.createProgram and
+                         # abuddy build put the box at a load of 25-32.
+                         # **The birpc timeout the cap was written against is a worker blocking its own
+                         # event loop**, not a main thread too busy to answer: measured 2026-09-30, the
+                         # main process sits at 6% event-loop utilisation with a worst block of 74ms,
                          # quiet and loaded alike. A worker runs each case synchronously and `await` on a
                          # resolved promise drains microtasks without turning the loop, so a file of
-                         # synchronous cases is **one** block however many `it`s it holds — 42s of tests as
-                         # one 38s block, against birpc's hardcoded 60s window (DEFAULT_TIMEOUT = 6e4, which
-                         # vitest exposes no knob for; vitest-dev/vitest#4497, #6479, #8164). Nothing is
-                         # wrong with the tests: they all pass and the run exits 1.
-                         # The fix is to turn the loop — an `afterEach` yielding a macrotask caps a file at
-                         # its longest case, and a case long enough on its own yields inside its loop
-                         # (import-specifiers.integration.spec.ts does both, 38.0s -> under 8.1s, at no
-                         # measurable cost). The next candidates are single cases, which that hook cannot
-                         # help: types-bundler-determinism 10.4s, harness-setup 8.6s, facade-typing 8.4s.
+                         # synchronous cases is **one** block however many `it`s it holds — against
+                         # birpc's hardcoded 60s window (DEFAULT_TIMEOUT = 6e4, which vitest exposes no
+                         # knob for; vitest-dev/vitest#4497, #6479, #8164). Every test passes and the run
+                         # exits 1.
+                         # The fix is to turn the loop: `afterEach(() => new Promise(r => setImmediate(r)))`
+                         # caps a file at its longest case. Four files needed it; `npm run measure:loop`
+                         # finds the next one. What that hook cannot help is a single long case —
+                         # types-bundler-determinism is one test of ~10s, the closest left.
                          # To reproduce on demand rather than wait for it:
                          #   npm run measure -- --trials 3 --busy 12 "npx vitest run --config vitest.integration.config.ts"
-                         # which went 2 of 2 failing to 0 of 3 across that fix. The cap shortens those
-                         # blocks and so makes it rarer, but it was never the cause
 npm run test:unit:host   # One pool, running only the projects whose own inputs changed (--project per
 npm run test:unit:pack   # stale project, one process). These are the chain's two steps; per-package
                          # staleness lives inside them, so a one-package edit still runs one project.
@@ -510,24 +436,15 @@ npm run api:update       # Dev: regenerate etc/<entry>.api.md (and etc/<entry>.c
                          # and CI check rather than a per-edit one
 npm run api:stamp  # The cheap half, run by npm run typecheck: compares what the reports were
                          # generated from with etc/declarations.sha256 in ~0.6s and says "run npm run
-                         # api:update" when it differs. Two inputs, because a report is a function of
-                         # both. The declarations: dist/**/*.ts (.d.ts and UI's .d.vue.ts) and never the
-                         # compiled .js, which changes when a function body does, each hashed through
-                         # `apiSurfaceOf`, which drops doc prose and keeps TSDoc tags and whether a
-                         # comment is there at all — measured, those are what a report carries, so prose
-                         # is the other thing that cannot make one stale. And the set of published
-                         # entries, because there is one report per entry: adding an export adds a
-                         # report while no declaration moves. Then the producer — the API Extractor
-                         # version and the tsconfig it is pointed at — either of which moves a report
-                         # on its own. And a stamp-format version, so changing what a stamp *means*
-                         # (apiSurfaceOf, the rows) invalidates every one.
-                         # The key is still a list, and a list of someone else's inputs is a guess:
-                         # the entry set was missing until 2026-09-25, when adding `./packs` to a map
-                         # passed this check and the whole chain and was refused by api:check. So
-                         # api:reports now checks the proxy against itself — if a report moves while
-                         # this said it was current, it fails naming both causes, a missing input or a
-                         # hand-edited report. That is what catches the input nobody listed, and it is
-                         # why api:check stays the authority rather than this
+                         # api:update" when it differs. Its key is every input a report is a function of —
+                         # the declarations (`dist/**/*.ts`, never the compiled .js, hashed through
+                         # `apiSurfaceOf`, which drops doc prose), the set of published entries, the
+                         # producer (API Extractor's version and its tsconfig), and a stamp-format version.
+                         # **A key is a list of someone else's inputs, so it is a guess**: the entry set was
+                         # missing until 2026-09-25, when adding `./packs` to a map passed this and the whole
+                         # chain and was refused by api:check. `api-reports.ts` now checks the proxy against
+                         # itself and fails naming both causes — a missing input, or a hand-edited report.
+                         # That is why api:check stays the authority rather than this
 
 # Built-in pack facade types (after `abuddy build`; from packages/default-setup or with -w @app/default-setup)
 npm run facade:check     # CI: fails if dist/types/pack-types.d.ts changed without updating etc/pack-types.api.md
@@ -635,26 +552,19 @@ npm run packages:build   # Build dist/ for @abuddy/ears, @abuddy/sdk and @abuddy
 npm run packages:check   # publint + arethetypeswrong on the five published trees (after packages:build).
                          # A chain step, 5.9s; see "api:check is not a chain step" above for why this one is
 
-npm run check:repro      # **A diagnostic instrument, not a gate**: nothing runs it, and that is the answer
-                         # rather than a gap. Everything it compares is a chain input, so freshnessSweep
-                         # already reports a step that passed and went stale again, naming what moved — every
-                         # run, against this one's never. What this adds is asking per file, in one run:
-                         # the sweep had been firing on PACK_OUTPUTS for days and the diagnosis blamed esbuild
-                         # and one file, while this found three and the cause (tsc's union ordering).
-                         # Builds everything twice from one input and
-                         # compares 1295 built files (54.7s measured 2026-09-28), so an output that moves
-                         # without its input is named rather than silently re-invalidating every step that
-                         # caches on it. Not a chain step — two full builds against a 27s warm chain, the
-                         # trade api:check makes — but unlike api:check it has no cheap proxy in typecheck
-                         # and no publish-path caller, so a green chain says nothing about reproducibility.
-                         # Run it after bumping a bundler (esbuild, vite, tsup, tsx), which is when the
-                         # answer can change, or before cutting a release
-                         # Three outputs are known-irreproducible and reported rather than failed, all of
-                         # them tsc's declaration emit ordering a union's members differently between runs
+npm run check:repro      # **A diagnostic instrument, not a gate**, and nothing runs it on a schedule by
+                         # design: everything it compares is a chain input, so the chain's freshness sweep
+                         # already reports a step that went stale again. What this adds is asking per file
+                         # in one run — the sweep fired on PACK_OUTPUTS for days and the diagnosis blamed
+                         # esbuild and one file, where this found three and the cause (tsc's union
+                         # ordering). Builds everything twice from one input and compares 1295 built files
+                         # (54.7s measured 2026-09-28). Run it after bumping a bundler (esbuild, vite,
+                         # tsup, tsx), which is when the answer can change, or before cutting a release.
+                         # Three outputs are known-irreproducible and reported rather than failed
                          # (KNOWN_IRREPRODUCIBLE, scripts/lib/repro.ts). They are races, so a run where one
                          # agrees is not evidence it is fixed — which is why a stale entry is reported here
                          # and failed everywhere else. docs/archive/goals/goal-reproducible-builds.md has
-                         # the measurements, and what an esbuild bump was measured to buy
+                         # the measurements
 ```
 
 ### E2E visual testing
