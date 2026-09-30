@@ -602,7 +602,7 @@ npm run spec-cost:update # The least that makes the records current, which is of
                          #   --force       record a run that moved more than CONTENDED_SHARE of a suite
 
 # Lint (root runs every workspace that has one; oxlint, plus eslint in the renderer)
-npm run check:specifiers # Every import rule, over the whole repo (2.7s, one parse per file). Takes paths to
+npm run check:specifiers # Every import rule, over the whole repo (2.5s, one parse and one tree walk). Takes paths to
                          # run only the per-file rules over them (0.9s over one feature), and says which
                          # whole-tree rules it skipped; --rule <id> runs one, --list prints them all
 npm run specifiers:fix   # Rewrites the specifiers whose repair the rules compute — an own-module specifier

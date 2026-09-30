@@ -44,6 +44,27 @@ export function readJsonFile<T>(file: string): T {
 }
 
 /**
+ * This checkout's packs, walked once.
+ *
+ * Measured 2026-09-30: a whole-repo `check:specifiers` made **103 286 `readdirSync` calls**, reading single
+ * directories 189 times each — one full walk per `packDirs()` call, and the rules make about 189 of them.
+ * That was 2.06s of the run's 4.6s, and the population walk everyone assumes is the cost is 5ms.
+ *
+ * **Only for this repo's root, which is what makes it need no reset.** A walk cannot be keyed on content
+ * the way `pack-features.ts`'s `publishedEntryPoints` keys on a manifest's mtime and size — a directory's
+ * mtime moves when its own entries do, not when something three levels down changes — so the alternative
+ * was a `resetSourceCache()`-shaped hatch, and that is the thing two specs remembered, the repo's most
+ * expensive spec did not, and which left it quadratic until `7c4b8aacc`.
+ *
+ * Two facts make the condition sound, and `import-populations.spec.ts` holds the first:
+ *
+ * - **No test reaches it.** Every one builds its tree under `fs.mkdtempSync`, so `root` is never this one.
+ * - **Nothing adds a pack to this repo mid-process.** The tools that read it exit; the one that writes
+ *   (`npm run specifiers:fix`) rewrites specifiers inside files it already found.
+ */
+let packsInRepo: string[] | undefined;
+
+/**
  * Every pack in this checkout: a directory holding `abuddy.json`, which is already how the source-condition
  * rule defines one, plus the scaffold's templates — the pack every pack author starts from, which has no
  * manifest because `abuddy.json` is the one thing the scaffold still builds in code.
@@ -53,6 +74,8 @@ export function readJsonFile<T>(file: string): T {
  * itself out (`tests/fixtures/external-pack/.abuddy/bundle/…` is the same pack, built).
  */
 export function packDirs(root = repoRoot): string[] {
+  const memo = root === repoRoot ? packsInRepo : undefined;
+  if (memo?.length !== undefined) return memo;
   const found: string[] = [];
   const walk = (dir: string): void => {
     for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
@@ -64,7 +87,9 @@ export function packDirs(root = repoRoot): string[] {
     }
   };
   walk(root);
-  return [...found, CLI_TEMPLATE_PACK].sort();
+  const packs = [...found, CLI_TEMPLATE_PACK].sort();
+  if (root === repoRoot) packsInRepo = packs;
+  return packs;
 }
 
 const packHalves = (half: 'src' | 'tests', root = repoRoot): string[] =>

@@ -639,6 +639,37 @@ const alsoClaiming = (id: string, dirs: readonly string[], half: 'src' | 'tests'
   sweepers(half).filter((rule) => rule.id !== id && rule.overPaths!([...dirs], root).length > 0).map((rule) => rule.id);
 
 
+/**
+ * The walk behind `packDirs` is memoised, and the memo is keyed on this repo's root and nothing else.
+ *
+ * That condition is the whole of its safety, so it gets the case the cache it replaces never had. A walk
+ * cannot be keyed on content — a directory's mtime moves when its own entries do, not when something three
+ * levels down changes — so the alternative was a reset hatch, and `resetSourceCache()` is the one two specs
+ * remember and the largest spec here did not, which is why it was quadratic until `7c4b8aacc`.
+ */
+describe("this checkout's pack list", () => {
+  it('walks again for a tree that is not this repo, so a pack written after the first call is found', () => {
+    const tree = fs.mkdtempSync(path.join(os.tmpdir(), 'pack-dirs-'));
+    try {
+      for (const name of ['one', 'two']) {
+        fs.mkdirSync(path.join(tree, name), { recursive: true });
+        fs.writeFileSync(path.join(tree, name, 'abuddy.json'), '{}');
+        // Asked after each, so the second answer has a first one to be stale against
+        expect(packDirs(tree), 'a memo ignoring the root would still be answering with the first walk')
+          .toContain(name);
+      }
+    } finally {
+      fs.rmSync(tree, { recursive: true, force: true });
+    }
+  });
+
+  // 103 286 readdirSync calls became 5 366, and `check:specifiers` 4.6s -> 2.5s, because the rules ask
+  // about 189 times and the repo does not grow a pack while they do
+  it('walks this repo once, however often it is asked', () => {
+    expect(packDirs()).toBe(packDirs());
+  });
+});
+
 describe('CHECKS', () => {
   /**
    * That each rule *fires* — the half a type cannot state. `FIRES` is keyed by `ImportRuleId`, derived from
