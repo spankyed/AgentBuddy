@@ -86,7 +86,8 @@ async function main(): Promise<void> {
     console.log(`\n  ${pad('process', 8)} ${pad('what it was running', WIDTH)} ${pad('worst block', 12)} `
       + `${pad('breaches at', 12)} elu`);
     for (const row of ranked(rows).slice(0, 10)) {
-      const factor = factorText(row.blockMs);
+      // The factor is a birpc window, which only a worker has: a compiler blocking for 25s is doing its job
+      const factor = row.role === 'worker' ? factorText(row.blockMs) : '';
       console.log(`  ${pad(row.role, 8)} ${pad(shortPath(row.file ?? row.argv), WIDTH)} `
         + `${pad(seconds(row.blockMs), 12)} ${pad(factor === '' ? '' : `${factor} slower`, 12)} ${row.eluPct}%`);
     }

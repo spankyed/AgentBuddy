@@ -91,7 +91,11 @@ describe('what each process was', () => {
 });
 
 describe('what the run licenses you to say', () => {
-  const at = (pid: number, blockMs: number): Sample => sample({ pid, loopMaxMs: blockMs });
+  // A worker, because only a worker has a birpc window — `verdict` ignores everything else
+  // ppid 999 is outside the sample set, so each row is the topmost holder of its worker id — a row that
+  // is its own parent reads as something a worker spawned, which is what `roleOf` is built to tell apart
+  const at = (pid: number, blockMs: number): Sample =>
+    sample({ pid, ppid: 999, worker: '1', loopMaxMs: blockMs });
   const rows = roleOf([at(1, 38_000), at(2, 9500), at(3, 0)]);
 
   /**
@@ -140,7 +144,11 @@ describe('what the run licenses you to say', () => {
  * table and no judgement — and that is the run somebody quotes as proof that the flake is gone.
  */
 describe('the verdict', () => {
-  const at = (pid: number, blockMs: number): Sample => sample({ pid, loopMaxMs: blockMs });
+  // A worker, because only a worker has a birpc window — `verdict` ignores everything else
+  // ppid 999 is outside the sample set, so each row is the topmost holder of its worker id — a row that
+  // is its own parent reads as something a worker spawned, which is what `roleOf` is built to tell apart
+  const at = (pid: number, blockMs: number): Sample =>
+    sample({ pid, ppid: 999, worker: '1', loopMaxMs: blockMs });
 
   it('names a breach as the failure it causes', () => {
     expect(verdictLine(roleOf([at(1, RPC_WINDOW_MS + 1)]))).toContain('Timeout calling');
@@ -152,15 +160,24 @@ describe('the verdict', () => {
     expect(line, 'the sentence the table cannot say').toContain('not evidence the flake is gone');
   });
 
+  /**
+   * A compiler blocking for 25s is doing its job and cannot fail the way a worker can. Measured under a
+   * full chain, four of the five longest blocks were `vue-tsc` and `vite build`, and the verdict quoted
+   * the worst of them as "a run 2.4x slower breaches" — true of nothing.
+   */
+  it('ignores a process that is not a pool worker, since only a worker has a window', () => {
+    expect(verdictLine(roleOf([sample({ pid: 9, loopMaxMs: 30_000 })]))).toContain('No pool worker');
+  });
+
   it('still says something when nothing blocked at all', () => {
-    expect(verdictLine(roleOf([at(1, 0)]))).toContain('Nothing blocked');
-    expect(verdictLine([]), 'and over no processes at all').toContain('Nothing blocked');
+    expect(verdictLine(roleOf([at(1, 0)]))).toContain('No pool worker');
+    expect(verdictLine([]), 'and over no processes at all').toContain('No pool worker');
   });
 
   // "a run 5454.5x slower breaches" is true, and a report carrying one number like that is read more
   // sceptically for the rest of them
   it('does not quote a factor that is arithmetic rather than a thing that could happen', () => {
-    expect(verdictLine(roleOf([at(1, 11)])), 'an 11ms block is not news').toContain('Nothing blocked');
+    expect(verdictLine(roleOf([at(1, 11)])), 'an 11ms block is not news').toContain('No pool worker');
     expect(verdictLine(roleOf([at(1, RPC_WINDOW_MS / (IMPLAUSIBLE_FACTOR - 1))]))).toContain('slower breaches');
   });
 });

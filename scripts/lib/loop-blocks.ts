@@ -127,7 +127,10 @@ export function verdict(rows: readonly Process[]): {
   readonly worst: Process | undefined;
   readonly breached: Process[];
 } {
-  const order = ranked(rows);
+  // Only pool workers: the window belongs to birpc, which exists between a worker and the process that
+  // spawned it. Measured under a full chain, four of the five longest blocks were `vue-tsc` and
+  // `vite build` doing their job, and the verdict called the worst of them 2.4x from a breach
+  const order = ranked(rows).filter((row) => row.role === 'worker');
   return { worst: order[0], breached: order.filter((row) => row.blockMs >= RPC_WINDOW_MS) };
 }
 
@@ -189,8 +192,8 @@ export function verdictLine(rows: readonly Process[]): string {
   }
   const factor = worst === undefined ? '' : factorText(worst.blockMs);
   if (factor === '') {
-    return 'Nothing blocked its event loop near the window, and no plausible slowdown brings it there.';
+    return 'No pool worker blocked its event loop near the window, and no plausible slowdown brings one there.';
   }
-  return `Worst block ${(worst!.blockMs / 1000).toFixed(1)}s: a run ${factor} slower breaches. `
+  return `Worst worker block ${(worst!.blockMs / 1000).toFixed(1)}s: a run ${factor} slower breaches. `
     + 'A clean run measures the room left; it is not evidence the flake is gone.';
 }
