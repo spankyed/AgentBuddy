@@ -45,7 +45,7 @@ export default defineConfig({
      * which every spec here is.
      *
      * Not all of that work is in-process: twelve of the twenty-four files the pool loads spawn a
-     * subprocess, and two of them launch a whole nested `vitest run`. `integration-subprocesses.spec.ts`
+     * subprocess, and two of them launch a whole nested `vitest run`. `subprocess-inventory.spec.ts`
      * holds that count, with why each one has to be a process.
      *
      * **The flake is not the reason, though it was.** These configs used to carry this cap against

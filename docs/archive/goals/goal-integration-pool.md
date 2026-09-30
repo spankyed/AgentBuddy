@@ -442,7 +442,7 @@ Five. Four were made during the work; the fifth came from a review of it afterwa
    construction, and its one mutation case compared three entries against two and passed with the detector
    stubbed to return nothing. A gate written from a survey cannot check the survey.
 
-   Replaced by `integration-subprocesses.spec.ts`, which takes the names from the import rather than a list
+   Replaced by `subprocess-inventory.spec.ts`, which takes the names from the import rather than a list
    and counts calls rather than reading arguments. The cap's own justification is untouched: it rests on
    48.2s against 52.4s, measured, and those runs happened whatever the count was.
 

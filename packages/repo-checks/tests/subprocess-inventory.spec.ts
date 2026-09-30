@@ -47,7 +47,7 @@ const loadedByThePool = (): string[] => reachableFrom(
  * the cap is about the second: a sixth `spawnSync` in a file already listed here is exactly the creep this
  * exists to catch, and a file-level list would wave it through.
  */
-const ALLOWED: Record<string, { calls: number; why: string }> = {
+const INVENTORY: Record<string, { calls: number; why: string }> = {
   'packages/abuddy-cli/tests/_support/pack-builds.ts': { calls: 1,
     why: 'the shared `run` spawns the repo\'s own bin/abuddy.mjs, for the cases that need argv dispatch and a real process boundary; callCli covers the rest in-process' },
   'packages/abuddy-cli/tests/build/types-bundler-determinism.integration.spec.ts': { calls: 1,
@@ -85,16 +85,16 @@ describe('a subprocess in the integration pool is one that has to be', () => {
 
   it('names every spawn the pool makes, and how many', () => {
     const found = Object.fromEntries(spawnSitesIn(loaded, REPO_ROOT).map((site) => [site.file, site.count]));
-    const recorded = Object.fromEntries(Object.entries(ALLOWED).map(([file, { calls }]) => [file, calls]));
+    const expected = Object.fromEntries(Object.entries(INVENTORY).map(([file, { calls }]) => [file, calls]));
     expect(found, 'a new subprocess makes the pooled run slower and more sensitive to a busy machine, and the '
       + 'worker cap is already paying for the ones there are. Make it in-process (typecheckPack, callCli) or '
-      + 'add it to ALLOWED with the reason it cannot be').toEqual(recorded);
+      + 'record it here with the reason it cannot be').toEqual(expected);
   });
 
   // An exception naming a file that no longer spawns is text that reads as coverage. Both directions, because
   // a stale entry and a missing one fail differently and only one of them is loud
   it('lists no exception that has stopped applying', () => {
-    for (const [file, { why }] of Object.entries(ALLOWED)) {
+    for (const [file, { why }] of Object.entries(INVENTORY)) {
       expect(fs.existsSync(path.join(REPO_ROOT, file)), file).toBe(true);
       expect(spawnCallsIn(path.join(REPO_ROOT, file)).length, `${file} no longer spawns — drop its entry`).toBeGreaterThan(0);
       expect(why.length, `${file} needs a reason, not a name`).toBeGreaterThan(20);
@@ -103,7 +103,7 @@ describe('a subprocess in the integration pool is one that has to be', () => {
 
   /**
    * The mutation, on the **input**. Its predecessor doctored the *expectation* — comparing the real answer
-   * against `Object.keys(ALLOWED).slice(1)`, three entries against two — which is arithmetic that holds
+   * against `Object.keys(INVENTORY).slice(1)`, three entries against two — which is arithmetic that holds
    * whatever the detector does: it passed with the detector stubbed to return nothing.
    */
   it('fails when a file that spawns is dropped from the population', () => {
@@ -115,7 +115,7 @@ describe('a subprocess in the integration pool is one that has to be', () => {
     const short = loaded.filter((file) => path.relative(REPO_ROOT, file) !== dropped);
     expect(short.length, 'nothing was dropped from the population').toBe(loaded.length - 1);
 
-    // Against its own unmutated answer, not against ALLOWED: this case is about the answer following the
+    // Against its own unmutated answer, not against the inventory: this case is about the answer following the
     // population, and comparing it to the recorded list would make it fire whenever that list is wrong
     expect(spawnSitesIn(short, REPO_ROOT).map((site) => site.file))
       .toEqual(whole.filter((file) => file !== dropped));
