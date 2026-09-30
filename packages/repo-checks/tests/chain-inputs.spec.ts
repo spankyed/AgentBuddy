@@ -26,6 +26,25 @@ import { PACKAGE_DIRS } from '../../../scripts/lib/workspace-deps.ts';
 import { population } from '@abuddy/sdk/testing';
 import { repoFiles } from './_support/repo-files.ts';
 
+/**
+ * A vitest config as vitest resolves it, rather than as a regular expression reads it.
+ *
+ * Both of the checks below used to match the file's text. The unit one anchored its pattern to the start of
+ * a line and so happened to skip a commented-out project; the integration one, written from it later, did
+ * not — and commenting a project out dropped five specs from the chain while all 46 cases here passed. A
+ * config is a module that exports an object, so the object is what to ask.
+ */
+const resolvedConfig = async (rel: string): Promise<{ test?: {
+  projects?: string[];
+  poolOptions?: { threads?: { maxThreads?: unknown }; forks?: { maxForks?: unknown } };
+} }> => (await import(path.join(REPO_ROOT, rel))).default;
+
+const projectsOf = async (rel: string): Promise<string[]> => {
+  const projects = (await resolvedConfig(rel)).test?.projects ?? [];
+  expect(projects.length, `${rel} resolved to no projects, so any comparison against it is vacuous`).toBeGreaterThan(0);
+  return projects;
+};
+
 /** Tracked code no chain step reads, and why. An entry that stops applying is reported, not ignored. */
 const NOT_A_CHAIN_INPUT: Record<string, string> = {
   'docs/archive/research/claude_code_headless_ex.ts': 'an archived transcript that happens to end in .ts',
@@ -400,10 +419,9 @@ describe('a pool step and its projects cache on the same inputs', () => {
 // hashed into the step's cache key and never run. This is the half that has to be checked rather than
 // derived, and it moved from the script's `-w` flags to the pool's projects when the three runs became one.
 describe('the integration step runs every suite that has an expensive half', () => {
-  it('names them all in the pooled config', () => {
-    const config = fs.readFileSync(path.join(REPO_ROOT, 'vitest.integration.config.ts'), 'utf-8');
-    const named = [...config.matchAll(/'packages\/([\w-]+)\/vitest\.integration\.config\.ts'/g)].map(([, dir]) => dir);
-    expect(named.length, 'no projects were read, so this proves nothing').toBeGreaterThan(0);
+  it('names them all in the pooled config', async () => {
+    const named = (await projectsOf('vitest.integration.config.ts'))
+      .map((project) => /packages\/([\w-]+)\//.exec(project)?.[1] ?? project);
     expect(named.sort()).toEqual(INTEGRATION_SUITES.map((suite) => suite.dir).sort());
   });
 
@@ -445,11 +463,32 @@ describe('a step that declares forceArgs runs something that reads them', () => 
 // cannot read a computed list. This is the guard that the literal is the host suites and nothing else — a
 // pack project appearing here would resolve workspace source instead of the published dist, silently.
 describe('the root pool lists exactly the host suites', () => {
-  it('matches UNIT_SUITES', () => {
-    const config = fs.readFileSync(path.join(REPO_ROOT, 'vitest.config.ts'), 'utf-8');
-    const listed = [...config.matchAll(/^\s*'(packages\/[\w-]+)',$/gm)].map(([, dir]) => dir);
+  it('matches UNIT_SUITES', async () => {
     const host = UNIT_SUITES.filter((suite) => suite.kind === 'host').map((suite) => `packages/${suite.dir}`);
-    expect(listed).toEqual(host);
+    expect(await projectsOf('vitest.config.ts')).toEqual(host);
+  });
+});
+
+/**
+ * The cap the pooled run's width depends on, which nothing asserted.
+ *
+ * `poolOptions` is process-wide, so it belongs to the root config and a per-project copy is read by nobody
+ * — `unit-suites.ts` records the same thing measured for `poolOptions.execArgv` one pool along. Both halves
+ * matter here: without the root value the pool silently runs at full width, which is 52.4s against 48.2s
+ * measured, and a per-package copy would look like the cap while doing nothing.
+ */
+describe('the integration pool runs at the width it says it does', () => {
+  it('caps the workers in the config that is read for it', async () => {
+    const pool = (await resolvedConfig('vitest.integration.config.ts')).test?.poolOptions;
+    expect(pool?.threads?.maxThreads, 'threads').toBe('50%');
+    expect(pool?.forks?.maxForks, 'forks').toBe('50%');
+  });
+
+  it('carries no per-project copy, which would be read by nobody', async () => {
+    for (const project of await projectsOf('vitest.integration.config.ts')) {
+      expect((await resolvedConfig(project)).test?.poolOptions, `${project} declares poolOptions, which is `
+        + 'process-wide and set at the root: this one is inert and reads as protection').toBeUndefined();
+    }
   });
 });
 
