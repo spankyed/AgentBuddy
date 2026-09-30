@@ -67,13 +67,13 @@ the chain's 27s floor. Use it while you are working, and the chain when you are 
 `scripts/` or to a vitest config counts too: it routes to `@app/repo-checks`, the package holding the
 specs that check the repo's own tooling.
 
-**The one answer `spec` cannot give from the module graph is a pack suite's**, because a pack resolves the
-published `dist` while the host projects resolve source — so its specs never import a dependency's `src`,
-and the edge from your edit to the spec that covers it exists only through a build. `npm run spec` says so
-when it is true; `npm run spec:full` runs it, for a build plus 18s. Which is also why editing `@abuddy/sdk`
-can be green under `spec` and red under `chain`: the chain declares that dependency
-(`scripts/lib/workspace-deps.ts`) where a module graph cannot see it. The same seam is why a *pack's own*
-source runs that pack's whole suite rather than a root `related` — nothing in the root projects imports it.
+**Two answers `spec` cannot get from the module graph**, and it names both rather than passing a run that
+skipped them. A *pack suite* resolves the published `dist` while the host projects resolve source, so the
+edge to its specs runs only through a build — the same reason editing `@abuddy/sdk` can be green under
+`spec` and red under `chain`, which declares that dependency (`scripts/lib/workspace-deps.ts`). An
+*integration half* is a second vitest config whose specs the root projects `exclude`, and nothing has to
+be built to reach it. `npm run spec:full` runs both. The pack seam is also why a pack's own source runs
+that pack's whole suite rather than a root `related` — nothing in the root projects imports it.
 
 **Two more edges run through a build, and they are inside one pack.** A pack's `src/seeds/**` compiles to
 `dist/*.seed.json`, which `tests/seeds/` reads against its goldens; its **build inputs** — `abuddy.json`,
@@ -331,9 +331,10 @@ npm run spec:dry [...]   # What the plan would run and what the record says it c
                          # `measuredAt` too: spec-cost.json is a sample kept with hysteresis, so the total
                          # is a band, and a spec the record has never seen is named rather than counted
                          # free. The ordinary `npm run spec` collects nothing
-npm run spec:full [...]  # The same, plus the pack suites a rebuilt dist would reach — the answer the
-                         # module graph cannot give. Costs a build when one is stale (14s) and the pack
-                         # suite (18s), and adds nothing when no pack depends on what you changed.
+npm run spec:full [...]  # The same, plus the two answers the module graph cannot give: the pack suites a
+                         # rebuilt dist would reach, and the integration halves behind a second config.
+                         # Costs a build when one is stale (14s), the pack suite (18s) and the pooled
+                         # integration run (47s), and adds nothing where neither depends on your change.
                          # `--full` is the one argument spec.ts consumes, and only in first position,
                          # which is what keeps "everything from the first - is vitest's" exact
 npm run spec -- <target> # You don't say what the target is; it works that out:
@@ -356,6 +357,9 @@ npm run spec -- <target> # You don't say what the target is; it works that out:
                          # A pack's own source runs `related` inside that pack, since no root project
                          # imports a pack's backend or frontend: 1-3 files in 2-6s against the whole
                          # suite's 87 and 18s.
+                         # **Nor is an integration half**, for a duller reason: it is a second config and
+                         # the root projects exclude its specs. 22 modules in @abuddy/cli are imported
+                         # directly by one. Named the same way, run by spec:full.
                          # Anything from the first `-` goes to vitest untouched, so `-t "a case"`,
                          # `--bail 1` and `--changed HEAD~1` work. The routing is data
                          # (scripts/lib/spec-plan.ts), asserted by repo-checks' spec-plan.spec.ts.
