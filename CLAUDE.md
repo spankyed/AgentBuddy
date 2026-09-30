@@ -196,7 +196,7 @@ Things that waste the most time, in order:
   `npm run packages:ensure` once first and every later call is a stat and a return, which is what makes
   a parallel chain safe; the 18 calls a serial chain makes are each paying that stat for nothing.
 
-Five rules that pay for themselves:
+Six rules that pay for themselves:
 
 - **Measure before you optimise, and before you accept someone else's measurement.** Two proposals in
   this repo were rejected by one command each, and both had been argued for at length first.
@@ -236,6 +236,21 @@ Five rules that pay for themselves:
   picker never offers. Deriving turns each of those into a compile error at the site that would have broken. The
   cost is that the widened form has to be exported separately when consumers read optional members — which is a
   line, and it is written where it is done.
+
+- **A cache needs a key that cannot go stale, or a scope in which it cannot — and a reset hatch is neither.**
+  Three adjacent modules answer this differently and the reasons are worth knowing.
+  `publishedEntryPoints` (`abuddy-cli/src/build/pack-features.ts`) keys on its manifest's path, mtime **and**
+  size, "so there is no cache to remember to clear" — the size because a filesystem with 1-second granularity
+  reads a rewrite inside one tick as unchanged. `readSource` (`pack-sources.ts`) is keyed by path alone behind
+  a `resetSourceCache()`, and a hatch is a thing to forget: two specs call it, the repo's largest spec did not
+  and worked around the stale reads by building a pack directory per cell, which made that test quadratic in
+  its own data until `7c4b8aacc`. `packDirs` (`scripts/lib/import-populations.ts`) can be keyed neither way —
+  a directory's mtime moves when its own entries do, not when something three levels down changes — so it is
+  memoised **only for this repo's root**, where nothing adds a pack mid-process and no test can reach it,
+  because every test builds under `mkdtemp`. That is a scope standing in for a key, and it took
+  `check:specifiers` from 4.6s to 2.5s and 103 286 `readdirSync` calls to 5 366.
+  So: content-key where the input is a file, scope where it is a tree, and if you reach for a hatch anyway,
+  give it a case that fails when it is forgotten — which is the one thing the hatch here never had.
 
 - **A comment is for whoever opens the file cold, not for whoever reads the diff.** What changed, how many
   copies there used to be, what you measured to decide, why some other value would be worse — that is
