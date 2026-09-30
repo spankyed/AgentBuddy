@@ -36,7 +36,7 @@ _step_report() {
 }
 fail() { echo "FAIL: $*" >&2; exit 1; }
 
-unset ABUDDY_ROOT ABUDDY_APP_EXECUTABLE ABUDDY_CLI PACK_DIR
+unset ABUDDY_ROOT ABUDDY_APP ABUDDY_APP_EXECUTABLE ABUDDY_CLI PACK_DIR
 # The CLI keeps its saved app choice and downloads under the user's home; use a fresh one.
 #
 # THE ONE NON-HERMETIC INPUT. Everything else this script reads is in the checkout or in $WORK: HOME is a
