@@ -5,6 +5,7 @@ import { REPO_ROOT } from '@abuddy/host/build/packages-built';
 import { PACKAGE_DIRS } from '../../../scripts/lib/workspace-deps.ts';
 import { relativeSpecifiers } from '../../../scripts/lib/module-graph.ts';
 import { repoFiles } from './_support/repo-files.ts';
+import { INTEGRATION_SUFFIX, hasSplit } from '../../../scripts/lib/spec-cost.ts';
 
 /**
  * A spec lives with the thing it can break.
@@ -249,5 +250,54 @@ describe('a spec does not reach into another package', () => {
     const stale = Object.keys(SPANS_PACKAGES)
       .filter((spec) => !fs.existsSync(path.join(REPO_ROOT, spec)) || reaches(spec).length === 0);
     expect(stale, 'these are gone or no longer reach another package; drop them from SPANS_PACKAGES').toEqual([]);
+  });
+});
+
+/**
+ * `.integration.spec.ts` is machinery, not description.
+ *
+ * The suffix is what `halfOfPath` reads to decide which half a spec runs in, so it means something only
+ * where there is a second half — a package with both `vitest.config.ts` and `vitest.integration.config.ts`.
+ * Elsewhere it is a name that says nothing, and worse than nothing: measured, a package whose include glob
+ * takes every `.spec.ts` under `tests/` and excludes nothing still collects the renamed file, so the spec
+ * goes on running in the same pool at the same cost while the placement checks fall silent about it. That is the
+ * shape of advice `spec-cost:update` used to give, and it is why this rule exists rather than a comment.
+ *
+ * This lives here rather than in `suite-split.spec.ts` because it reads no cost — its inputs are a filename
+ * and whether a config file exists — and because that file's population is the twelve hand-written
+ * `UNIT_SUITES` entries, where this one walks every workspace.
+ */
+describe('an integration suffix names a half that exists', () => {
+  const packageOf = (file: string): string => file.split('/').slice(0, 2).join('/');
+
+  /** The rule itself, over whatever list it is given, so a case can hand it one that breaks. */
+  const homeless = (files: readonly string[]): string[] =>
+    files.filter((file) => file.endsWith(INTEGRATION_SUFFIX) && !hasSplit(path.join(REPO_ROOT, packageOf(file))));
+
+  const suffixed = (): string[] =>
+    tracked().filter((file) => file.startsWith('packages/') && file.endsWith(INTEGRATION_SUFFIX));
+
+  it('there are some, so this check is not vacuous', () => {
+    expect(suffixed()).not.toEqual([]);
+  });
+
+  it('leaves none in a package with only one half', () => {
+    expect(homeless(suffixed()), 'rename these without the suffix: their package has no integration half, so '
+      + 'the name claims a placement that does not exist and no runner treats them differently').toEqual([]);
+  });
+
+  // The firing case. The tree is green, so the branch that reports is unreachable from it — and a rule whose
+  // reporting branch nothing has watched run is one that can be broken without anything noticing. The package
+  // is derived rather than named, so this cannot outlive the fact it rests on.
+  it('reports one that is in a package with no second half', () => {
+    const single = packageDirs().find((dir) => !hasSplit(path.join(REPO_ROOT, 'packages', dir)));
+    expect(single, 'every package has both halves, so this case has nothing to build on').toBeDefined();
+
+    const both = packageDirs().find((dir) => hasSplit(path.join(REPO_ROOT, 'packages', dir)));
+    expect(both, 'no package has both halves, so the rule would refuse every suffix').toBeDefined();
+
+    expect(homeless([`packages/${single!}/tests/a${INTEGRATION_SUFFIX}`])).toHaveLength(1);
+    expect(homeless([`packages/${both!}/tests/a${INTEGRATION_SUFFIX}`]), 'a real half is left alone').toEqual([]);
+    expect(homeless([`packages/${single!}/tests/a.spec.ts`]), 'an unsuffixed spec is not its business').toEqual([]);
   });
 });

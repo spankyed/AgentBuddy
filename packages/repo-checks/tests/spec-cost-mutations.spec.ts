@@ -211,6 +211,25 @@ const MUTATIONS: readonly Mutation[] = [
     to: 'reason: \'current\'',
     call: (lib, tree) => lib.planFor(tree.root, 'mini', [], false),
   },
+  // The break this table was missing. `misplaced` and `outgrown` answer for two package shapes, and the
+  // precondition choosing between them used to sit at each call site: of four callers, the one that forgot
+  // told a one-half package its specs were "in the wrong half" and named a half that package has not got.
+  // `mini` writes only `vitest.config.ts`, so it is that shape, and forcing the split branch has to change
+  // the kind it comes back with.
+  {
+    why: 'overBudget asks the package whether it has a half to move a spec into',
+    from: '(hasSplit(packageDir) ? misplaced : outgrown)(costs, files)',
+    to: '(misplaced)(costs, files)',
+    call: (lib, tree) => lib.overBudget(path.join(tree.root, 'packages', 'mini'), { [FAST]: 9_999 }, [FAST]),
+  },
+  // The wording is a decision too, and it is the one the defect actually was: a string telling a reader to
+  // rename a file into a half that does not exist.
+  {
+    why: 'describeBudget tells the two kinds apart',
+    from: "over.length > 0 ? 'Make it cheaper, or record it in EXPENSIVE_BY_NATURE with what makes it expensive.' : '',",
+    to: "over.length > 0 ? '' : '',",
+    call: (lib) => lib.describeBudget([{ kind: 'over', file: FAST, ms: 9_999 }]),
+  },
 ];
 
 /** A value or the message it threw, so a break that turns a refusal into a return still compares */
