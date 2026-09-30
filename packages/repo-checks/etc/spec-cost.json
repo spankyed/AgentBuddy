@@ -1,5 +1,5 @@
 {
-  "measuredAt": "2026-09-30T00:02:49.219Z",
+  "measuredAt": "2026-09-30T02:05:44.414Z",
   "costs": {
     "tests/api-report-stamp.spec.ts": 66,
     "tests/chain-graph.spec.ts": 9,
@@ -13,6 +13,7 @@
     "tests/import-specifiers.integration.spec.ts": 26312,
     "tests/integration-subprocesses.spec.ts": 207,
     "tests/lint-scope.spec.ts": 1859,
+    "tests/measure.spec.ts": 6,
     "tests/orchestrator-exit.spec.ts": 6,
     "tests/pack-test-config.spec.ts": 110,
     "tests/packaged-app-files.spec.ts": 130,

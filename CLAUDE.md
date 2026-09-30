@@ -515,11 +515,34 @@ npm run schema:check     # Fails if abuddy.schema.json is stale
 npm run seed-parity:check   # Compare seeded rows against tests/seeds/__golden__
 npm run seed-parity:update  # Re-record them; deliberate, see "What to run after a change"
 
+npm run measure -- "<cmd>"  # Times a command on a quiet machine and prints a number you can quote:
+                         # `48.2s median of 5 (45.0s-49.3s), 92% idle, 2026-09-30`. A number without its
+                         # conditions is an assertion; with them it is a citation, and the difference is
+                         # three commit messages in goal-integration-pool that had to be corrected.
+                         #   --runs N          how many (5)
+                         #   --against "<B>"   an A/B comparison, **interleaved** and reported as the median
+                         #                     of the pairs. Blocked arms let a drifting box into the answer:
+                         #                     measured, that turned 49.1s->48.2s into a reported 71s->46.1s
+                         #   --idle PERCENT    lower the floor deliberately
+                         #   --force           measure anyway; the citation says it was forced
+                         # It refuses below IDLE_FLOOR (70%), sampled from os.cpus() rather than load average
+                         # — measured, loadavg read 3.20 on a box that was 78.7% idle, because it lags by
+                         # design. A sample whose counters did not advance throws rather than reading as 0%:
+                         # the top(1) parse this replaces returned 0% for a line it could not read, so a gate
+                         # waiting for quiet waited for ever and looked like patience.
+                         # Prints, never records. A timings file would be a sample, and spec-cost.json is
+                         # what that costs (see "There is a third kind" above)
+
 # Recorded spec costs (which half each spec runs in)
 npm run spec-cost:check  # Reads the records, runs nothing. `-- --list` prints what they hold and which
                          # specs sit between FAST_BELOW_MS and INTEGRATION_ABOVE_MS, where a re-measurement
                          # could change the answer: 8 of 367 today, so the rest are nowhere near a decision
-npm run spec-cost:update # The least that makes the records current, which is often nothing. A deleted spec
+npm run spec-cost:update # The least that makes the records current, which is often nothing. **It refuses
+                         # to measure below IDLE_FLOOR**, before running anything: what you would record on
+                         # a busy box is the machine. The contention refusal further down is a different
+                         # question — did too much *move*, asked after measuring — and cannot fire for a row
+                         # that is merely new, since an addition has not moved. That is how a cost was once
+                         # recorded at a load of 71 and reverted by hand. `--force` overrides both. A deleted spec
                          # leaves a row that needs no measurement to drop; a new one needs only the half it
                          # lives in. It says which case it took. Measured: 0.3s when nothing is wrong,
                          # against 315s of file-time for the whole thing
