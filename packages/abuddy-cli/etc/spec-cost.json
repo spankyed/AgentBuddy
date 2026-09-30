@@ -1,5 +1,5 @@
 {
-  "measuredAt": "2026-09-30T20:19:42.000Z",
+  "measuredAt": "2026-09-30T21:50:14.314Z",
   "costs": {
     "tests/app/app-target.spec.ts": 48,
     "tests/app/beta-app.spec.ts": 153,
@@ -39,6 +39,7 @@
     "tests/commands/app-launcher.spec.ts": 303,
     "tests/commands/db-output.spec.ts": 6,
     "tests/commands/db.integration.spec.ts": 13508,
+    "tests/commands/drive.spec.ts": 4,
     "tests/commands/facade-report.spec.ts": 226,
     "tests/commands/fetch-deps.spec.ts": 4,
     "tests/commands/handoff.spec.ts": 476,

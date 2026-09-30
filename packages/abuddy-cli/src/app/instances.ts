@@ -94,6 +94,16 @@ export function bindingProblem(dir: string, kind: InstanceKind): string | undefi
     + 'different places, and a dir holding both is one no tool can open. Use a different instance.';
 }
 
+/**
+ * Whether an app has this instance open, from the port file a running API publishes. Three callers ask:
+ * what `clean` may remove, what `removeInstance` refuses, and what `drive` refuses to launch a second app
+ * over. Taking a data dir from a running app does not stop it — it writes the directory back — and
+ * Electron allows one app per data dir, so both refusals are the same question.
+ */
+export function instanceInUse(dir: string): boolean {
+  return readApiEndpoint(path.join(dir, 'api-port')) !== null;
+}
+
 export interface OpenedInstance {
   name: string;
   dir: string;
@@ -144,7 +154,7 @@ export function listInstances(dirs: CliDirs): ListedInstance[] {
   const root = instancesRoot(dirs);
   const read = (dir: string, ephemeral: boolean): ListedInstance => {
     const record = readRecord(dir);
-    const inUse = readApiEndpoint(path.join(dir, 'api-port')) !== null;
+    const inUse = instanceInUse(dir);
     return {
       name: path.basename(dir),
       dir,
@@ -196,7 +206,7 @@ export function removeInstance(dirs: CliDirs, dir: string): void {
   if (resolved !== root && !resolved.startsWith(root + path.sep)) {
     throw new Error(`Refusing to remove ${resolved}: it is not inside ${root}.`);
   }
-  if (readApiEndpoint(path.join(resolved, 'api-port')) !== null) {
+  if (instanceInUse(resolved)) {
     throw new Error(`An app is running on ${resolved}. Close it before removing the instance.`);
   }
   fs.rmSync(resolved, { recursive: true, force: true });

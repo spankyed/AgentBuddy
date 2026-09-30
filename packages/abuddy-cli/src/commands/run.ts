@@ -185,7 +185,25 @@ async function waitForApi(apiPortFile: string, child: ChildProcess, timeoutMs = 
   throw new Error(`The app did not publish ${apiPortFile} within ${timeoutMs / 1000}s`);
 }
 
+/** What a session hands back so `run` can tear it down on the way out of a throw. */
+interface SessionHooks {
+  teardown?: () => Promise<void>;
+}
+
 export async function run(args: string[]) {
+  const hooks: SessionHooks = {};
+  try {
+    await session(args, hooks);
+  } catch (error) {
+    // The signals have their own handlers; this is every other way a session ends, and it is the one
+    // that happens while developing — a pack that fails to build used to exit through the CLI's error
+    // handler and leave an ephemeral instance behind
+    await hooks.teardown?.();
+    throw error;
+  }
+}
+
+async function session(args: string[], hooks: SessionHooks) {
   if (args.includes('--help') || args.includes('-h')) {
     console.log(HELP);
     return;
@@ -216,7 +234,12 @@ export async function run(args: string[]) {
   let server: { close: () => unknown } | undefined;
   let markerFor: string | undefined;
 
+  // One-shot: `teardown` calls this and then exits, which fires the `exit` handler and would otherwise
+  // close the Vite server and remove the marker a second time
+  let cleanedUp = false;
   function cleanup() {
+    if (cleanedUp) return;
+    cleanedUp = true;
     if (markerFor !== undefined) removeDevServerMarker(userDataDir, markerFor);
     server?.close();
     // Only one this command launched: an app that was already up outlives it
@@ -224,25 +247,34 @@ export async function run(args: string[]) {
   }
 
   /**
-   * Removing an ephemeral instance is why this exists rather than doing everything in `exit`, which has
-   * to be synchronous: deleting the dir while the app is still closing pulls LMDB's files and the app's
-   * own log dir out from under it — noisy on macOS, and on Windows an EBUSY that leaves the directory
-   * half removed. So let the app go first. A SIGKILL still leaks one, which is why an ephemeral dir
-   * carries the pid that made it and `abuddy clean --instances` can reclaim it.
+   * Everything the `exit` handler cannot do, because that one has to be synchronous: removing an
+   * ephemeral instance while the app is still closing pulls LMDB's files and the app's own log dir out
+   * from under it — noisy on macOS, and on Windows an EBUSY that leaves the directory half removed. So
+   * let the app go first.
+   *
+   * **Every way this command ends runs it**, which is the part that took two goes to get right. Wiring it
+   * to the signals alone left the case that actually happens while developing — a pack that fails to
+   * build — exiting through the CLI's own error handler and leaking the directory. A SIGKILL still
+   * leaks one, which is why an ephemeral dir carries the pid that made it and
+   * `abuddy clean --instances` can reclaim it.
    */
-  async function shutdown(): Promise<void> {
+  let tornDown = false;
+  async function teardown(): Promise<void> {
+    if (tornDown) return;
+    tornDown = true;
     cleanup();
     if (child) await exited(child, 10_000);
     if (instance?.ephemeral) {
       removeInstance(cliDirs(), instance.dir);
       console.log(`\nRemoved the ephemeral instance ${instance.name}.`);
     }
-    process.exit(0);
   }
 
+  hooks.teardown = teardown;
   process.on('exit', cleanup);
-  process.on('SIGINT', () => void shutdown());
-  process.on('SIGTERM', () => void shutdown());
+  for (const signal of ['SIGINT', 'SIGTERM'] as const) {
+    process.on(signal, () => void teardown().then(() => process.exit(0)));
+  }
 
   if (instance) {
     console.log(`Instance ${instance.name}${instance.ephemeral ? ' (removed on exit)' : ''}`);

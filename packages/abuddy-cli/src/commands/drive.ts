@@ -24,14 +24,13 @@
  */
 import * as fs from 'node:fs';
 import * as path from 'node:path';
-import { spawnSync } from 'node:child_process';
+import { spawn } from 'node:child_process';
 import { findPackRoot, readManifest } from '../utils';
 import { cliDirs, parseAppFlags, resolveDevelopmentApp } from '../app/app-target';
-import { instanceFor, parseInstanceFlags, removeInstance, INSTANCE_USAGE } from '../app/instances';
+import { instanceFor, instanceInUse, parseInstanceFlags, removeInstance, INSTANCE_USAGE } from '../app/instances';
 import { fixtureEnv } from './test';
 import { resolvePlaywrightCli } from '../app/playwright';
 import { ensureCheckoutPackages } from '../build/checkout-packages.ts';
-import { build } from './build';
 
 const DRIVE_DIR = 'drive';
 
@@ -43,6 +42,9 @@ Mainly for an agent debugging or developing against the app; a person can watch,
 Scripts live in ${DRIVE_DIR}/ and are not tests — no runner collects them, and nothing gates on them.
 
 With no script, every file in ${DRIVE_DIR}/ runs. The app's windows are shown, so you can watch.
+
+By default the app gets a fresh data dir that is thrown away afterwards, so each session starts clean.
+Name an instance to keep its state between sessions.
 
 Options:
   --app-root <path>   a local AgentBuddy checkout (installed and built)
@@ -98,6 +100,16 @@ const GITIGNORE = `*
 !playwright.config.ts
 `;
 
+/** The driving scripts in a pack, which is what decides whether there is anything to run. */
+export function driveScripts(root: string): string[] {
+  try {
+    return fs.readdirSync(path.join(root, DRIVE_DIR))
+      .filter(name => name.endsWith('.ts') && name !== 'playwright.config.ts');
+  } catch {
+    return [];
+  }
+}
+
 /** Writes the layer the first time, so driving needs no setup step of its own. */
 function scaffold(root: string): boolean {
   const dir = path.join(root, DRIVE_DIR);
@@ -118,17 +130,35 @@ export async function drive(args: string[]) {
 
   const root = findPackRoot(process.cwd());
   const manifest = readManifest(root);
-
   const { mode, rest } = parseInstanceFlags(args);
   const flags = parseAppFlags(rest);
+
+  // Before the app is resolved, which can prompt and can download a Beta: a first run has nothing to
+  // drive, and used to find that out only after paying for a build and a launch and then failing with
+  // Playwright's "No tests found"
+  if (scaffold(root)) console.log(`Created ${DRIVE_DIR}/ — a README and a config are in there.\n`);
+  if (driveScripts(root).length === 0) {
+    console.log(`No driving scripts yet. Write one in ${DRIVE_DIR}/ and run this again:\n`);
+    console.log(`  // ${DRIVE_DIR}/look.ts`);
+    console.log("  import { drive } from '@abuddy/testing';\n");
+    console.log("  drive('look at it', async ({ app, appPage }) => {");
+    console.log("    await app.screenshot('look');");
+    console.log('  });');
+    return;
+  }
+
   const app = await resolveDevelopmentApp({ flags, hostVersion: manifest.hostVersion ?? '*' });
   const instance = instanceFor(mode, app.kind, cliDirs());
 
-  if (scaffold(root)) console.log(`Created ${DRIVE_DIR}/ — put your driving scripts there.\n`);
+  // Electron allows one app per data dir, so a second one here would die inside Playwright's 45s window
+  // for a main window and report that it never saw one, which names neither the instance nor the cause
+  if (instance && instanceInUse(instance.dir)) {
+    throw new Error(`An app is already running on instance ${instance.name}. Close it, or drive a different instance.`);
+  }
 
+  // No build here: the fixture builds the pack itself when PACK_DIR is set, which `fixtureEnv` does
+  // below. `abuddy test` leaves it to the fixture for the same reason
   ensureCheckoutPackages(root);
-  console.log('Building the pack...\n');
-  await build([]);
 
   if (instance) {
     console.log(`Instance ${instance.name}${instance.ephemeral ? ' (removed when this exits)' : ''}`);
@@ -142,13 +172,34 @@ export async function drive(args: string[]) {
   // The fixture makes a throwaway dir unless it is given one; an instance is the caller's to keep
   if (instance) env.E2E_DATA_DIR = instance.dir;
 
+  // Spawned rather than spawnSync'd so this process keeps an event loop. With spawnSync a Ctrl-C took
+  // the default action and killed this process where it stood, so the teardown below never ran and an
+  // ephemeral instance was left on disk — measured, not reasoned about.
+  const child = spawn(
+    process.execPath,
+    [resolvePlaywrightCli(root), 'test', '--config', path.join(DRIVE_DIR, 'playwright.config.ts'), ...flags.args],
+    { cwd: root, env, stdio: 'inherit' },
+  );
+  // A terminal sends its signal to the whole group, so the child usually has it already; this also
+  // covers one sent to this process alone, and having a handler at all is what stops the default action
+  let interrupted = false;
+  for (const signal of ['SIGINT', 'SIGTERM'] as const) {
+    process.on(signal, () => {
+      interrupted = true;
+      child.kill(signal);
+    });
+  }
+
   try {
-    const result = spawnSync(
-      process.execPath,
-      [resolvePlaywrightCli(root), 'test', '--config', path.join(DRIVE_DIR, 'playwright.config.ts'), ...flags.args],
-      { cwd: root, env, stdio: 'inherit' },
-    );
-    if (result.status !== 0) throw new Error(`drive exited ${result.status ?? 'without a status'}`);
+    const [code, killedBy] = await new Promise<[number | null, NodeJS.Signals | null]>(resolve => {
+      child.on('exit', (exitCode, signal) => resolve([exitCode, signal]));
+    });
+    // A driving session someone interrupted ended the way they asked, not in failure. Tracked rather
+    // than read off the status, because Playwright turns the signal into an exit code of its own (130)
+    // that is otherwise indistinguishable from a script failing
+    if (!interrupted && killedBy === null && code !== 0) {
+      throw new Error(`drive exited ${code ?? 'without a status'}`);
+    }
   } finally {
     if (instance?.ephemeral) {
       removeInstance(cliDirs(), instance.dir);

@@ -140,7 +140,7 @@ npm install
 abuddy test --app beta      # or --app-root ../AgentBuddy for a local checkout
 ```
 
-`abuddy init-tests` adds `playwright.config.ts` and a smoke test in `tests/e2e/`. `abuddy test` builds the pack, installs it into a throwaway data dir and runs the tests in the app: a checkout (`--app-root`, or `ABUDDY_ROOT`), or the newest AgentBuddy Beta satisfying your `hostVersion` (`--app beta`, or `ABUDDY_APP=beta` in CI). Without either, it asks once and saves your choice. See [Testing](testing.md).
+`abuddy init-tests` adds `playwright.config.ts` and a smoke test in `tests/e2e/`. `abuddy test` builds the pack, installs it into a throwaway data dir and runs the tests in the app: a checkout (`--app-root`, or `ABUDDY_ROOT`), or the newest AgentBuddy Beta satisfying your `hostVersion` (`--app beta`, or `ABUDDY_APP=beta` in CI). With neither, it uses that newest Beta: `abuddy test` never reads the app you saved and never asks, so a test run means the same thing on any machine. See [Testing](testing.md).
 
 ## Verify it works
 
