@@ -25,6 +25,7 @@
  * 78.7% idle. It lags by design, and waiting on it is waiting on the wrong thing.
  */
 
+import { spawn, type ChildProcess } from 'node:child_process';
 import * as os from 'node:os';
 
 /** Cumulative CPU time, summed across cores: what two snapshots are diffed to get a utilisation. */
@@ -250,4 +251,29 @@ export function upperBound(failures: number, trials: number): number {
   const centre = (observed + (z * z) / (2 * trials)) / denominator;
   const half = (z * Math.sqrt((observed * (1 - observed)) / trials + (z * z) / (4 * trials * trials))) / denominator;
   return Math.min(1, centre + half);
+}
+
+/**
+ * N processes burning a core each, so contention is *induced* rather than waited for.
+ *
+ * The birpc timeout this was written for had only ever been seen by accident — another agent's suite,
+ * the chain's own lanes — which is why its whole evidence base was one failure in two runs. A condition
+ * you can produce is a condition you can measure, and the first controlled run of it refuted the reading
+ * that had stood for a session.
+ *
+ * Returns the stop, and registers it against the signals as well as `exit`: `process.on('exit')` does
+ * not fire for SIGINT, and a burner that outlives its run is worse than the flake it was studying.
+ */
+export function startBurners(count: number): () => void {
+  const burners: ChildProcess[] = [];
+  const stop = (): void => { for (const child of burners.splice(0)) child.kill('SIGKILL'); };
+  if (count <= 0) return stop;
+  process.on('exit', stop);
+  for (const signal of ['SIGINT', 'SIGTERM', 'SIGHUP'] as const) {
+    process.on(signal, () => { stop(); process.exit(130); });
+  }
+  for (let i = 0; i < count; i += 1) {
+    burners.push(spawn(process.execPath, ['-e', 'for(;;);'], { stdio: 'ignore' }));
+  }
+  return stop;
 }

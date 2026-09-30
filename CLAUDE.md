@@ -559,6 +559,21 @@ npm run measure -- "<cmd>"  # Times a command on a quiet machine and prints a nu
                          # Prints, never records. A timings file would be a sample, and spec-cost.json is
                          # what that costs (see "There is a third kind" above)
 
+npm run measure:loop -- "<cmd>"  # The other half of a flake: not how long a command took, but how long each
+                         # process it started went without turning its event loop, against the 60s window
+                         # birpc gives a call. Per process, worst block first, with the headroom left:
+                         #   worker  abuddy-cli/tests/…/types-bundler-determinism…  10.0s  17%  6.0x slower breaches
+                         # Headroom rather than the block alone, because the block alone reads as fine
+                         # until it is not — 38s against 60s looks comfortable and is one busy afternoon
+                         # from failing, and "1.6x" is the sentence someone can act on. Takes --busy,
+                         # --idle and --force, as measure does.
+                         # It answers the question `[vitest-worker]: Timeout calling` does not: which side
+                         # failed. That error names neither the process that failed to answer nor the one
+                         # that failed to listen, and it was attributed to the wrong side twice here — to
+                         # the worker count, then to contention in general — before one run of this put
+                         # the main process at 6% utilisation with a worst block of 74ms and a worker at
+                         # 38s. See the test:integration entry above for the mechanism and the fix
+
 # Recorded spec costs (which half each spec runs in)
 npm run spec-cost:check  # Reads the records, runs nothing. `-- --list` prints what they hold and which
                          # specs sit between FAST_BELOW_MS and INTEGRATION_ABOVE_MS, where a re-measurement

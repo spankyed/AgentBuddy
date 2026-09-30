@@ -51,6 +51,7 @@
     "spec:full": "tsx scripts/spec.ts --full",
     "spec:dry": "tsx scripts/spec.ts --dry",
     "measure": "tsx scripts/measure.ts",
+    "measure:loop": "tsx scripts/measure-loop.ts",
     "test:all": "npm run test:unit && npm run test",
     "start": "node packages/dev-mode.js",
     "start:gen": "npm run compile && node packages/dev-mode.js",

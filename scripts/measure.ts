@@ -20,10 +20,10 @@
  * It is not a chain step. It is a tool for the moment before you write a number down.
  * `scripts/lib/measure.ts` holds every decision it makes, so a spec can watch those fail.
  */
-import { spawn, spawnSync, type ChildProcess } from 'node:child_process';
+import { spawnSync } from 'node:child_process';
 import {
   citation, driftedDuring, groupBySignature, idleNow, IDLE_FLOOR, pairedDelta, rateOf, refusesAsBusy,
-  runOrder, summarise, upperBound, type Trial,
+  runOrder, startBurners, summarise, upperBound, type Trial,
 } from './lib/measure.ts';
 
 const argv = process.argv.slice(2);
@@ -66,27 +66,7 @@ if (trials !== undefined && against !== undefined) {
   process.exit(2);
 }
 
-/**
- * N processes burning a core each, so contention is *induced* rather than waited for.
- *
- * The birpc timeout this exists to study had only ever been seen by accident — another agent's suite, the
- * chain's own lanes — which is why the evidence for it was one failure in two runs. A condition you can
- * produce is a condition you can measure.
- *
- * Killed in a `finally` and on a signal: a burner that outlives its run is worse than the flake, and
- * `process.on('exit')` alone does not fire for SIGINT.
- */
-const burners: ChildProcess[] = [];
-const stopBurning = (): void => { for (const child of burners.splice(0)) child.kill('SIGKILL'); };
-if (busy > 0) {
-  process.on('exit', stopBurning);
-  for (const signal of ['SIGINT', 'SIGTERM', 'SIGHUP'] as const) {
-    process.on(signal, () => { stopBurning(); process.exit(130); });
-  }
-  for (let i = 0; i < busy; i += 1) {
-    burners.push(spawn(process.execPath, ['-e', 'for(;;);'], { stdio: 'ignore' }));
-  }
-}
+const stopBurning = startBurners(busy);
 
 const started = idleNow();
 if (refusesAsBusy({ idle: started, floor, force })) {
