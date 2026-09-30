@@ -15,10 +15,5 @@ export default defineConfig({
     hookTimeout: 60_000,
     include: ['tests/**/*.integration.spec.ts'],
     exclude: ['**/node_modules/**'],
-    // Every spec here spawns compilers of its own, so a worker per core oversubscribes the box and the main
-    // thread can miss birpc's window to answer a worker — which fails a run whose tests all passed. A
-    // percentage, because vitest reads this as `maxThreads ?? maxWorkers ?? (cpus - 1)`: it replaces the
-    // default rather than capping it, so a fixed number would raise the worker count on a smaller machine.
-    poolOptions: { threads: { maxThreads: '50%' }, forks: { maxForks: '50%' } },
   },
 });

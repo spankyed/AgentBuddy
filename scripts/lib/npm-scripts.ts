@@ -31,7 +31,8 @@ export const rootScripts = (): Record<string, string> =>
 /**
  * A workspace's scripts, by the name its manifest declares.
  *
- * A step that delegates — `npm run test:integration -w @abuddy/cli` — used to be inspected as nothing at all:
+ * A step that delegates — `npm run build -w @app/default-setup`, which `compile` does — is inspected as
+ * nothing at all without this:
  * the name is not a root script, so there was no text to scan and the step passed vacuously. What is followed
  * is the workspace's *scripts*, which are commands, and not its spec files, which are prose: two of this
  * repo's own specs say "the app configured for abuddy test" in a title, and scanning those would report them.

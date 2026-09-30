@@ -3,12 +3,14 @@ import * as path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { REPO_ROOT } from '@abuddy/host/build/packages-built';
 import {
-  affectedPackSuites, ENSURE_LABEL, exitCodeFor, packBuildEdge, packageOf, planChanged, planTargets, type Run,
-  OWN_FLAGS, splitArgs, verdictOf,
+  affectedIntegrationSuites, affectedPackSuites, ENSURE_LABEL, exitCodeFor, packBuildEdge, packageOf, planChanged, planTargets, type Run,
+  OWN_FLAGS, splitArgs, specsUnder, verdictOf,
 } from '../../../scripts/lib/spec-plan.ts';
+import { INTEGRATION_SUITES } from '../../../scripts/lib/chain-steps.ts';
 import { PACKAGE_DIRS } from '../../../scripts/lib/workspace-deps.ts';
 import { UNIT_SUITES } from '../../../scripts/lib/unit-suites.ts';
-import { collectFor, priceSpecs, priceSuites, tierOfRun } from '../../../scripts/lib/spec-dry.ts';
+import { asDuration, collectFor, priceSpecs, priceSuites, tierOfRun } from '../../../scripts/lib/spec-dry.ts';
+import { CONFIG_BY_HALF, HALVES } from '../../../scripts/lib/spec-cost.ts';
 
 /**
  * What `npm run spec` decides to run, asserted without running any of it.
@@ -63,7 +65,7 @@ describe('what a target plans', () => {
 
   it('says what a root run does not cover, rather than leaving it to be discovered', () => {
     const [, related] = plan('packages/abuddy-sdk/src/types/sdk-entities.ts');
-    expect(related!.note, 'a pack suite resolves dist, so no import edge runs from this file to its specs')
+    expect(related!.notes?.join(' '), 'a pack suite resolves dist, so no import edge runs from this file to its specs')
       .toContain('@app/default-setup');
   });
 
@@ -72,7 +74,8 @@ describe('what a target plans', () => {
   it('says nothing about the pack suites when the edited package cannot reach one', () => {
     const [, related] = plan('packages/renderer/src/main.ts');
     expect(affectedPackSuites(['renderer']), '@app/default-setup declares no dependency on the renderer').toEqual([]);
-    expect(related!.note).toBeUndefined();
+    expect(affectedIntegrationSuites(['renderer']), 'and no integration half depends on it either').toEqual([]);
+    expect(related!.notes, 'so the run carries no sentence at all').toEqual([]);
   });
 
   /**
@@ -130,20 +133,23 @@ describe('what --full adds', () => {
 
   it('runs the pack suites a rebuilt dist would reach, after the root run', () => {
     const runs = full('packages/abuddy-sdk/src/types/sdk-entities.ts');
+    // Both seams, because every integration half declares `@abuddy/sdk` too: a rebuilt dist for the pack
+    // suite, a second config for the integration halves, and the root run reaching neither
     expect(runs.map((r) => r.label)).toEqual([
       ENSURE_LABEL,
       'every spec covering packages/abuddy-sdk/src/types/sdk-entities.ts',
       '@app/default-setup, against a rebuilt dist',
+      'the integration halves, as the chain pools them',
     ]);
-    const pack = runs.at(-1)!;
+    const pack = runs.at(-2)!;
     // Through the pool, not vitest directly: the pool re-reads its own stamp, so an unchanged suite skips
     expect(pack.cwd).toBe(REPO_ROOT);
     expect(pack.args).toEqual(['run', 'test:unit:pack']);
   });
 
-  it('drops the note it would otherwise print, the run below being the answer', () => {
+  it('drops the notes it would otherwise print, the runs below being the answer', () => {
     const [, related] = full('packages/abuddy-sdk/src/types/sdk-entities.ts');
-    expect(related!.note, 'telling you to run spec:full while running spec:full').toBeUndefined();
+    expect(related!.notes, 'telling you to run spec:full while running spec:full').toEqual([]);
   });
 
   it('adds nothing when no pack suite depends on what changed', () => {
@@ -674,6 +680,110 @@ describe('a pack file whose specs sit behind a build', () => {
  * `spec-cost.json` is kept with hysteresis, so a row may sit up to `DRIFT_SHARE` from the truth — which is
  * why it reports the record's own `measuredAt` rather than a confidence computed here.
  */
+/**
+ * The other seam a root run cannot reach, and the one nothing said anything about.
+ *
+ * A pack suite is out of reach because it resolves `dist`; an integration half is out of reach because it
+ * is a second vitest config whose specs the root projects `exclude`. The consequence is identical and the
+ * silence was worse: `npm run spec -- packages/abuddy-cli/src/build/pack-rules.ts` printed *"every spec
+ * covering pack-rules.ts"*, ran nine specs and exited 0, with `add-extensions.integration.spec.ts` — which
+ * imports that module directly — among the ones it skipped. 22 modules in `@abuddy/cli` are imported
+ * directly by an integration spec.
+ *
+ * `Half` reached `packageRun` when a named integration spec was fixed, and stopped there. The two routes
+ * that make a *claim* never learned it.
+ */
+describe('a source file whose specs sit behind a second config', () => {
+  const COVERED = 'packages/abuddy-cli/src/build/pack-rules.ts';
+
+  it('partitions every package into those that reach an integration half and those that do not', () => {
+    const reaches = PACKAGE_DIRS.filter((dir) => affectedIntegrationSuites([dir]).length > 0);
+    expect(reaches.length, 'nothing reaches one, so every case here is vacuous').toBeGreaterThan(0);
+    // And the rest genuinely say nothing, rather than being absent from a list
+    for (const dir of PACKAGE_DIRS.filter((d) => !reaches.includes(d))) {
+      expect(affectedIntegrationSuites([dir]), dir).toEqual([]);
+    }
+    // A suite reaches its own half: unlike a pack suite, this is the same package's second config
+    for (const suite of INTEGRATION_SUITES) {
+      expect(affectedIntegrationSuites([suite.dir]), suite.dir).toContain(suite.workspace);
+    }
+  });
+
+  it('says so on a target whose integration half covers it', () => {
+    const [, related] = planTargets([COVERED], [], REPO_ROOT).runs;
+    expect(related!.notes?.join(' '), 'the run claims to cover it and reaches none of those specs')
+      .toContain('@abuddy/cli');
+    // Not "through a build": these specs resolve @abuddy/source like any host project, and spec:full
+    // reaches them without building anything
+    expect(related!.notes?.join(' ')).toContain('second config');
+  });
+
+  it('runs them under --full, through the pool the chain runs', () => {
+    const planned = planTargets([COVERED], [], REPO_ROOT, { full: true }).runs;
+    const pooled = planned.at(-1)!;
+    expect(pooled.args).toEqual(['run', 'test:integration']);
+    expect(planned.flatMap((run) => run.notes ?? []).join(' '),
+      'and stops advising the command it is running').not.toContain('spec:full');
+  });
+
+  /**
+   * What the pool would run, named rather than left to `covers`.
+   *
+   * `covers` is the obvious field and the wrong one: it means a unit suite executed *in full*, and pricing
+   * reads that suite's whole record — but these three workspaces each keep one record holding both halves.
+   * Using it predicted 260.9s for a run of 232.7s and listed fast specs among what the pool would execute.
+   */
+  it('prices as the half it runs, not as the records it draws from', () => {
+    const pooled = planTargets([COVERED], [], REPO_ROOT, { full: true }).runs.at(-1)!;
+    expect(pooled.covers, 'a unit suite run in full is what covers means, and this runs half of three').toBeUndefined();
+
+    const derived = INTEGRATION_SUITES.flatMap((suite) =>
+      specsUnder(path.join(REPO_ROOT, 'packages', suite.dir, 'tests'))
+        .filter((spec) => spec.endsWith('.integration.spec.ts')));
+    expect(derived.length, 'no integration specs were found, so this compares nothing').toBeGreaterThan(0);
+    expect(pooled.specs?.length, 'every integration spec in the pool, and nothing from a fast half').toBe(derived.length);
+    expect(pooled.specs?.every((spec) => spec.endsWith('.integration.spec.ts'))).toBe(true);
+  });
+
+  /**
+   * Why the pack route carries no note, pinned rather than assumed.
+   *
+   * `packRelatedRun` has nowhere to put one, and that is only harmless while no integration half depends on
+   * a pack — which is a fact about the dependency graph and not about the code. The day one does, a pack
+   * source file starts claiming coverage it does not have, exactly as a CLI source file did, and this is
+   * what says so instead of the defect being found again from the other end.
+   */
+  it('has no pack whose integration half would need naming, which is why the pack route says nothing', () => {
+    for (const suite of UNIT_SUITES.filter((s) => s.kind === 'pack')) {
+      expect(affectedIntegrationSuites([suite.dir]), `${suite.workspace} now reaches an integration half: `
+        + 'packRelatedRun has to carry notes before this can be true again').toEqual([]);
+    }
+  });
+
+  /**
+   * The property the whole seam turns on, and the one that was false in both directions: a target route
+   * claiming coverage it did not have, and a change-set route reporting *"No spec covers 1 changed file a
+   * spec could cover"* for an integration spec — which covers itself.
+   */
+  it.each([COVERED, 'packages/abuddy-cli/tests/commands/release.integration.spec.ts'])(
+    'never omits the half in silence for %s, as a target or as a change', (file) => {
+      // Either is honest, and the two routes differ honestly: naming an integration spec runs it through
+      // its own config, where the same file arriving in a change set can only be pointed at. What neither
+      // may do is leave it out and say nothing, which is what both did
+      const answered = (runs: readonly Run[]) => runs.some((run) => run.args.includes('test:integration')
+        || run.args.some((arg) => arg.endsWith('vitest.integration.config.ts')))
+        || runs.flatMap((run) => run.notes ?? []).join(' ').includes('integration half');
+
+      for (const [route, runs] of [
+        ['target', planTargets([file], [], REPO_ROOT).runs],
+        ['change', planChanged([file], [], REPO_ROOT).runs],
+      ] as const) {
+        expect(runs, `${route}: nothing planned`).not.toEqual([]);
+        expect(answered(runs), `${route}: the integration half is neither run nor named`).toBe(true);
+      }
+    });
+});
+
 describe('what the plan would cost', () => {
   const SPEC = 'packages/repo-checks/tests/suite-split.spec.ts';
   const PACK = 'default-setup';
@@ -814,6 +924,23 @@ describe('the ordinary run does not collect', () => {
  *
  * It costs one vitest node API, which is why there is one case and not four.
  */
+/**
+ * How a duration is rendered, which is a correctness question and not a formatting one: a prediction whose
+ * only sub-second rendering is `0.0s` says the same thing about a spec recorded at 3ms and a spec no record
+ * holds, and those are opposite answers.
+ */
+describe('what a predicted cost reads as', () => {
+  it.each([[0, '0ms'], [3, '3ms'], [999, '999ms'], [1000, '1.0s'], [2352, '2.4s'], [41_900, '41.9s']])(
+    'renders %ims as %s', (ms, expected) => {
+      expect(asDuration(ms)).toBe(expected);
+    });
+
+  // The one the rounding hid: two costs a reader has to tell apart, and one string for both
+  it('tells a recorded sub-second cost from nothing recorded at all', () => {
+    expect(asDuration(3)).not.toBe(asDuration(0));
+  });
+});
+
 describe('what the plan would run', () => {
   it('collects a pack file in the pack, which is the only root that resolves it', async () => {
     const target = 'packages/default-setup/src/extensions/steps/create/field-default.ts';
@@ -825,5 +952,51 @@ describe('what the plan would run', () => {
     expect(collected, `nothing collected for ${target}, so the prediction would read as free`).not.toEqual([]);
     expect(collected.every((spec) => spec.startsWith('packages/default-setup/')),
       `collected from the wrong root: ${collected.join(', ')}`).toBe(true);
+  });
+});
+
+/**
+ * Which config a named spec is run from.
+ *
+ * A package with a split has two, and `npm test` loads the one whose `include` excludes
+ * `*.integration.spec.ts`. So naming an integration spec matched no file: "No test files found", exit 1, for
+ * 23 of the repo's 369 specs. It was loud rather than a false pass, which is why nothing caught it — the
+ * command this belongs to spent four phases learning to refuse a quiet zero and could not run these at all.
+ */
+describe('a named spec runs from the config for its half', () => {
+  const FAST = 'packages/repo-checks/tests/suite-split.spec.ts';
+  const INTEGRATION = 'packages/repo-checks/tests/import-specifiers.integration.spec.ts';
+  const argsOf = (target: string) => planTargets([target], [], REPO_ROOT).runs.at(-1)!.args;
+
+  it('leaves the fast half alone, which is every package without a split', () => {
+    expect(argsOf(FAST)).toEqual(['test', '--', 'tests/suite-split.spec.ts']);
+  });
+
+  it('points the integration half at its own config', () => {
+    expect(argsOf(INTEGRATION))
+      .toEqual(['test', '--', '--config', 'vitest.integration.config.ts', 'tests/import-specifiers.integration.spec.ts']);
+  });
+
+  // Through `npm test` with the config rather than the package's `test:integration` script: that script is
+  // exactly this flag, and a half-to-script-name table would be a third place for the same fact
+  it('keeps the pretest guard, which is why it goes through npm test at all', () => {
+    expect(planTargets([INTEGRATION], [], REPO_ROOT).runs.at(-1)!.command).toBe('npm');
+    expect(argsOf(INTEGRATION)[0]).toBe('test');
+  });
+
+  // One run per half, because one run cannot load two configs: whichever it loaded would drop the others
+  // silently, which is the same defect one level along
+  it('splits a package named on both sides into two runs', () => {
+    const runs = planTargets([FAST, INTEGRATION], [], REPO_ROOT).runs;
+    expect(runs).toHaveLength(2);
+    expect(runs.map((r) => r.args.includes('--config'))).toEqual([false, true]);
+    expect(new Set(runs.map((r) => r.cwd)), 'both in the same package').toHaveProperty('size', 1);
+  });
+
+  // The list and the type are one declaration, so a third half cannot be added to one and missed by the
+  // other — and every half it names has a config to run from
+  it('has a config for every half it declares', () => {
+    expect(HALVES.length, 'no halves were derived, so this proves nothing').toBeGreaterThan(1);
+    for (const half of HALVES) expect(CONFIG_BY_HALF[half], half).toMatch(/^vitest\..*config\.ts$/);
   });
 });

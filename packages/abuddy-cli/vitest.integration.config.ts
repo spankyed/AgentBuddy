@@ -15,15 +15,5 @@ export default defineConfig({
     hookTimeout: 60_000,
     include: ['tests/**/*.integration.spec.ts'],
     exclude: ['**/node_modules/**'],
-    // These specs shell out to `tsc` and `abuddy build`, so every worker spawns compilers of its own. With
-    // a worker per core the box is oversubscribed and the main thread can miss birpc's 60s window to answer
-    // a worker's `onTaskUpdate`, which fails the run with "[vitest-worker]: Timeout calling" though every
-    // test passed. It is set here rather than for both suites because spawning is what makes it necessary,
-    // and the fast suite spawns nothing.
-    //
-    // A percentage, because vitest reads this as `poolOptions.maxThreads ?? maxWorkers ?? (cpus - 1)`: it
-    // replaces the default rather than capping it, so a fixed number raises the worker count on any machine
-    // smaller than that number. `50%` is at most `cpus - 1` for cpus >= 2, so it can only lower.
-    poolOptions: { threads: { maxThreads: '50%' }, forks: { maxForks: '50%' } },
   },
 });
