@@ -162,16 +162,13 @@ export function conditions(input: {
   readonly floor: number;
   readonly busy: number;
   readonly forced: boolean;
-  /** Whether the burners hit `BURNER_CEILING_MS` while the series was still running */
-  readonly loadExpired: boolean;
 }): string {
   if (input.idles.length === 0) throw new Error('conditions over no samples describe nothing');
   const low = Math.min(...input.idles);
   const high = Math.max(...input.idles);
   if (input.busy > 0) {
     const range = low === high ? percent(low) : `${percent(low)}-${percent(high)}`;
-    return `under ${input.busy} induced busy cores, ${range} idle`
-      + (input.loadExpired ? ' — the induced load expired before the series ended' : '');
+    return `under ${input.busy} induced busy cores, ${range} idle`;
   }
   const caveats = [
     input.forced ? 'forced' : '',
@@ -188,15 +185,12 @@ export function conditions(input: {
  * `spec-cost.json` is what that costs — hysteresis, a band and a contention refusal before it can be
  * trusted, for a question asked far more often than this one.
  */
-export function citation(input: {
+export function citation(input: Parameters<typeof conditions>[0] & {
   readonly summary: Summary;
   readonly on: string;
-  /** From `conditions` above, so the two modes cannot describe one run differently */
-  readonly conditions: string;
 }): string {
   const range = input.summary.min === input.summary.max ? '' : ` (${seconds(input.summary.min)}-${seconds(input.summary.max)})`;
-  return `${seconds(input.summary.median)} median of ${input.summary.runs}${range}, `
-    + `${input.conditions}, ${input.on}`;
+  return `${seconds(input.summary.median)} median of ${input.summary.runs}${range}, ${conditions(input)}, ${input.on}`;
 }
 
 /**
@@ -288,40 +282,28 @@ export function upperBound(failures: number, trials: number): number {
 }
 
 /**
- * How long a burner may outlive the process that started it.
+ * How long a burner may outlive the process that started it: a safety net for SIGKILL, which nothing in
+ * user space survives. `bounded-spawn`'s reaper covers `exit`, a throw and SIGINT/SIGTERM/SIGHUP.
  *
- * **A safety net, not a lifetime.** `bounded-spawn`'s reaper already kills them on `exit`, on an uncaught
- * throw and on SIGINT/SIGTERM/SIGHUP; this budget is for SIGKILL alone, which nothing in user space
- * survives. That is why it is a fixed number and not one derived from the series: the first version passed
- * *one command's* budget for a whole series and the load quietly stopped partway through, and deriving it
- * the other way is worse — `--trials 40 --timeout 30` would leave twelve cores spinning for twenty hours
- * after a kill. Two hours is longer than any series measured here (the longest real one is about 33
- * minutes) and bounded where it matters.
+ * Fixed rather than derived from the series. The first version passed one *command's* budget for a whole
+ * series, so the load quietly stopped partway through; deriving it the other way would leave twelve cores
+ * spinning for twenty hours after a kill.
  */
 export const BURNER_CEILING_MS = 2 * 60 * 60 * 1000;
 
 /**
- * N processes burning a core each, so contention is *induced* rather than waited for.
+ * N processes burning a core each, so contention is induced rather than waited for — the birpc flake had
+ * only ever been seen by accident, and a condition you can produce is one you can measure.
  *
- * The birpc timeout this was written for had only ever been seen by accident — another agent's suite,
- * the chain's own lanes — which is why its whole evidence base was one failure in two runs. A condition
- * you can produce is a condition you can measure, and the first controlled run of it refuted the reading
- * that had stood for a session.
- *
- * **Through `boundedSpawn`, and stopped by `signal` rather than by handlers of its own.** The first
- * version registered SIGINT/SIGTERM/SIGHUP itself, and it never fired: `spawnSync` held the event loop for
- * the whole command, so no JS callback could run, and a Ctrl-C left the burners spinning until the command
- * finished on its own. Verified after the fact — three of three survived. Registering a second set of
- * handlers beside `bounded-spawn`'s reaper would not fix it either, since that reaper calls
- * `removeAllListeners` before re-raising. One reaper, and the ceiling bounds a burner even where no
- * handler can run at all.
- *
- * It hands back the promises because a series can outlast that ceiling, and a caller that cannot see it
- * happen reports a run as being under load after the load stopped.
+ * Stopped by `signal`, never by handlers of its own. The first version registered SIGINT/SIGTERM/SIGHUP
+ * and they could not run, because `spawnSync` held the event loop: three of three survived an interrupt.
+ * A second set beside `bounded-spawn`'s reaper would not work either, since it calls `removeAllListeners`
+ * before re-raising. One reaper.
  */
-export function startBurners(count: number, signal: AbortSignal): Promise<unknown>[] {
-  return Array.from({ length: count }, () =>
-    boundedSpawn(process.execPath, ['-e', 'for(;;);'], BURNER_CEILING_MS, { signal }));
+export function startBurners(count: number, signal: AbortSignal): void {
+  for (let i = 0; i < count; i += 1) {
+    void boundedSpawn(process.execPath, ['-e', 'for(;;);'], BURNER_CEILING_MS, { signal });
+  }
 }
 
 /**
@@ -392,16 +374,3 @@ export function asNumber(raw: string | undefined, flag: string): number | undefi
   return value;
 }
 
-/**
- * An exit code per category, because one integer meaning three things is a caller that cannot act on it.
- *
- * 1 the run produced no answer — the command failed, or nothing was recorded. 2 the arguments were wrong.
- * 3 the box was too busy to measure on. They were all 2 for a while, so a script that retried on a busy
- * box could not tell that from a typo, and the refusal had been 1 before that. `orchestrator-exit` forbids
- * `process.exit()` in a file that reprints a captured buffer, which is why this is an error and not a call.
- */
-export class ExitWith extends Error {
-  constructor(message: string, readonly code: number) {
-    super(message);
-  }
-}

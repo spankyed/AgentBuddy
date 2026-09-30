@@ -1,8 +1,8 @@
 {
-  "measuredAt": "2026-09-30T14:24:17.747Z",
+  "measuredAt": "2026-09-30T14:43:54.350Z",
   "costs": {
     "tests/api-report-stamp.spec.ts": 66,
-    "tests/bounded-spawn.integration.spec.ts": 6426,
+    "tests/bounded-spawn.integration.spec.ts": 2059,
     "tests/chain-graph.spec.ts": 9,
     "tests/chain-inputs.spec.ts": 1688,
     "tests/chain-output.spec.ts": 12,
@@ -15,7 +15,6 @@
     "tests/integration-subprocesses.spec.ts": 207,
     "tests/lint-scope.spec.ts": 1859,
     "tests/loop-blocks.spec.ts": 4,
-    "tests/measure-cli.integration.spec.ts": 5964,
     "tests/measure.spec.ts": 6,
     "tests/orchestrator-exit.spec.ts": 6,
     "tests/pack-test-config.spec.ts": 110,

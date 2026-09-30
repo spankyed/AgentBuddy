@@ -116,7 +116,7 @@ describe('what a series says', () => {
  * reported without it.
  */
 describe('the conditions a run happened under', () => {
-  const quiet = { idles: [0.92, 0.9], floor: IDLE_FLOOR, busy: 0, forced: false, loadExpired: false };
+  const quiet = { idles: [0.92, 0.9], floor: IDLE_FLOOR, busy: 0, forced: false };
 
   it('is the worst idle of the series', () => {
     expect(conditions(quiet)).toBe('90% idle');
@@ -141,19 +141,16 @@ describe('the conditions a run happened under', () => {
     expect(conditions({ ...quiet, busy: 12, idles: [0.9, 0.01] })).not.toContain('drifted');
   });
 
-  // The ceiling on a burner is a safety net, so a series can outlast it — and a run reported as under
-  // load after the load stopped is the silent kind of wrong number
-  it('says when the induced load ran out before the series did', () => {
-    expect(conditions({ ...quiet, busy: 2, loadExpired: true })).toContain('expired before the series');
-  });
-
   it('refuses to describe conditions it has no samples for', () => {
     expect(() => conditions({ ...quiet, idles: [] })).toThrow(/describe nothing/);
   });
 });
 
 describe('what a number is quoted as', () => {
-  const base = { summary: summarise([45_000, 48_000, 49_000]), on: '2026-09-29', conditions: '92% idle' };
+  const base = {
+    summary: summarise([45_000, 48_000, 49_000]), on: '2026-09-29',
+    idles: [0.92], floor: IDLE_FLOOR, busy: 0, forced: false,
+  };
 
   // A number without its conditions is an assertion; with them it is a citation, and the difference is
   // three of this repo's commit messages
