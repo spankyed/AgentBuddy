@@ -550,7 +550,20 @@ npm run measure -- "<cmd>"  # Times a command on a quiet machine and prints a nu
                          #                     The birpc flake had only ever been seen by accident, and a
                          #                     condition you can produce is one you can measure
                          #   --idle PERCENT    lower the floor deliberately
+                         #   --timeout MINUTES a bound, 30 by default, because a run that can hang cannot
+                         #                     fail. A timed-out trial is a failure with its own signature
                          #   --force           measure anyway; the citation says it was forced
+                         # **A flag with no value is an error**, not a default: `--busy` at the end of the
+                         # line used to read the token after it, find nothing, run with no load at all and
+                         # then print a citation saying the box was 95% idle. Both measure commands had it,
+                         # one being written from the other, and neither had a case over its arguments.
+                         # Both spawn through scripts/lib/bounded-spawn.ts, which is what makes Ctrl-C work:
+                         # spawnSync holds the event loop, so the signal handlers the burners used to carry
+                         # could not run and three of three survived an interrupt. One reaper, and it is
+                         # that module's — a second set of handlers beside it is removed before it runs.
+                         # **Idle is sampled between runs, never during one.** A reading taken while the
+                         # command runs measures the command: a quiet box reads 0% while a test suite uses
+                         # it, which says nothing about whether anything else was competing.
                          # It refuses below IDLE_FLOOR (70%), sampled from os.cpus() rather than load average
                          # — measured, loadavg read 3.20 on a box that was 78.7% idle, because it lags by
                          # design. A sample whose counters did not advance throws rather than reading as 0%:
@@ -565,8 +578,14 @@ npm run measure:loop -- "<cmd>"  # The other half of a flake: not how long a com
                          #   worker  abuddy-cli/tests/…/types-bundler-determinism…  10.0s  17%  6.0x slower breaches
                          # Headroom rather than the block alone, because the block alone reads as fine
                          # until it is not — 38s against 60s looks comfortable and is one busy afternoon
-                         # from failing, and "1.6x" is the sentence someone can act on. Takes --busy,
-                         # --idle and --force, as measure does.
+                         # from failing, and "1.6x" is the sentence someone can act on. The verdict prints
+                         # on every run, including the clean ones — those are the runs quoted as proof.
+                         # The elu column beside it says *why* a process was quiet: a loop at 4% was
+                         # waiting, one at 99% was working, and only the second is a block anyone can
+                         # shorten. Takes --busy, --idle, --timeout and --force as measure does, plus
+                         # --keep for the raw samples, which are removed otherwise and kept anyway when a
+                         # line could not be parsed. One run has no moment between runs, so the idle it
+                         # prints is labelled "before the run" rather than passed off as the run's.
                          # It answers the question `[vitest-worker]: Timeout calling` does not: which side
                          # failed. That error names neither the process that failed to answer nor the one
                          # that failed to listen, and it was attributed to the wrong side twice here — to

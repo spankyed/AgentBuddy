@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
-  citation, cpuTimes, driftedDuring, groupBySignature, idleFrom, IDLE_FLOOR, pairedDelta, rateOf,
-  refusesAsBusy, runOrder, signatureOf, summarise, upperBound,
+  asNumber, citation, cpuTimes, driftedDuring, groupBySignature, idleFrom, IDLE_FLOOR, pairedDelta,
+  parseFlags, rateOf, refusesAsBusy, runOrder, signatureOf, summarise, upperBound,
 } from '../../../scripts/lib/measure.ts';
 
 /**
@@ -199,5 +199,50 @@ describe('counting failures rather than timing successes', () => {
 
   it('refuses a bound over no trials', () => {
     expect(() => upperBound(0, 0)).toThrow(/not a bound/);
+  });
+});
+
+/**
+ * What the commands make of their arguments — the surface that had no case at all, and produced the one
+ * kind of error this whole tool exists to refuse.
+ *
+ * `npm run measure -- "cmd" --busy` read the token after `--busy`, found nothing, and quietly ran with no
+ * load, then printed a citation saying the box was 95% idle. Both commands had it, because one was written
+ * from the other. The rules are `spec-cost`'s `parseArgs`, which is the only parser here that already got
+ * this right.
+ */
+describe('the arguments both measure commands take', () => {
+  const spec = { values: ['runs', 'busy'], booleans: ['force'] } as const;
+
+  it('reads a value flag, a boolean and the command', () => {
+    expect(parseFlags(['--runs', '3', '--force', 'npm test'], spec)).toMatchObject({
+      values: { runs: '3' }, positionals: ['npm test'],
+    });
+    expect(parseFlags(['--force'], spec).flags.has('force')).toBe(true);
+  });
+
+  // The defect, exactly: a trailing flag whose value is the next argument that is not there
+  it('refuses a flag with no value rather than falling back to a default', () => {
+    expect(() => parseFlags(['npm test', '--busy'], spec)).toThrow(/`--busy` needs a value/);
+  });
+
+  // The same mistake one position earlier, where the "value" is the next flag
+  it('refuses a value that is itself a flag', () => {
+    expect(() => parseFlags(['--runs', '--force', 'npm test'], spec)).toThrow(/`--runs` needs a value/);
+  });
+
+  it('refuses a flag it does not know, including the `=` spelling of one it does', () => {
+    expect(() => parseFlags(['--runz', '3'], spec)).toThrow(/No such flag: --runz/);
+    expect(() => parseFlags(['--runs=3'], spec)).toThrow(/No such flag/);
+  });
+
+  it('keeps a flag out of the positionals, so the command is what is left', () => {
+    expect(parseFlags(['--runs', '3', 'a', 'b'], spec).positionals).toEqual(['a', 'b']);
+  });
+
+  it('names the flag when its value is not a number, rather than printing usage at everything', () => {
+    expect(() => asNumber('abc', 'runs')).toThrow(/`--runs` takes a number, not "abc"/);
+    expect(asNumber(undefined, 'runs'), 'absent is not an error; the caller has a default').toBeUndefined();
+    expect(asNumber('0', 'runs'), 'zero is a number, and the range is the caller\'s').toBe(0);
   });
 });

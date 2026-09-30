@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
-  blockFrom, headroom, lastPerPid, parseSamples, ranked, roleOf, RPC_WINDOW_MS, type Sample, TICK_MS,
-  verdict,
+  blockFrom, headroom, IMPLAUSIBLE_FACTOR, lastPerPid, parseSamples, ranked, roleOf, RPC_WINDOW_MS,
+  type Sample, TICK_MS, verdict, verdictLine,
 } from '../../../scripts/lib/loop-blocks.ts';
 import { TICK_MS as SAMPLER_TICK_MS } from '../../../scripts/lib/loop-sample.mjs';
 
@@ -124,13 +124,56 @@ describe('what the run licenses you to say', () => {
   });
 });
 
+/**
+ * Said on every run, including the ones where nothing is wrong.
+ *
+ * The first version printed only when something was already within the factor, so a healthy run printed a
+ * table and no judgement — and that is the run somebody quotes as proof that the flake is gone.
+ */
+describe('the verdict', () => {
+  const at = (pid: number, blockMs: number): Sample => sample({ pid, loopMaxMs: blockMs });
+
+  it('names a breach as the failure it causes', () => {
+    expect(verdictLine(roleOf([at(1, RPC_WINDOW_MS + 1)]))).toContain('Timeout calling');
+  });
+
+  it('says how much room is left on a run where nothing breached', () => {
+    const line = verdictLine(roleOf([at(1, 10_000)]));
+    expect(line).toContain('6.0x slower breaches');
+    expect(line, 'the sentence the table cannot say').toContain('not evidence the flake is gone');
+  });
+
+  it('still says something when nothing blocked at all', () => {
+    expect(verdictLine(roleOf([at(1, 0)]))).toContain('Nothing blocked');
+    expect(verdictLine([]), 'and over no processes at all').toContain('Nothing blocked');
+  });
+
+  // "a run 5454.5x slower breaches" is true, and a report carrying one number like that is read more
+  // sceptically for the rest of them
+  it('does not quote a factor that is arithmetic rather than a thing that could happen', () => {
+    expect(verdictLine(roleOf([at(1, 11)])), 'an 11ms block is not news').toContain('Nothing blocked');
+    expect(verdictLine(roleOf([at(1, RPC_WINDOW_MS / (IMPLAUSIBLE_FACTOR - 1))]))).toContain('slower breaches');
+  });
+});
+
 describe('reading what the sampler wrote', () => {
   it('skips the partial last line an interrupted run leaves', () => {
     const text = `${JSON.stringify(sample({ pid: 1 }))}\n{"pid":2,"ppi`;
-    expect(parseSamples(text).map((row) => row.pid)).toEqual([1]);
+    expect(parseSamples(text).samples.map((row) => row.pid)).toEqual([1]);
+  });
+
+  /**
+   * Counted, not swallowed. ~200 processes append to one file, so a torn line is a process missing from
+   * the answer — measured, 957 lines across three runs were all intact, because a line is about 270 bytes
+   * and an `O_APPEND` write under `PIPE_BUF` is atomic. Which is the point: a value that should never
+   * appear still has to be reportable, or the first run where it does looks clean.
+   */
+  it('counts what it could not read rather than dropping it silently', () => {
+    expect(parseSamples(`{"pid":2,"ppi\n${JSON.stringify(sample({ pid: 1 }))}\nalso not json`))
+      .toMatchObject({ dropped: 2 });
   });
 
   it('is empty for an empty file rather than throwing', () => {
-    expect(parseSamples('\n')).toEqual([]);
+    expect(parseSamples('\n')).toEqual({ samples: [], dropped: 0 });
   });
 });

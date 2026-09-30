@@ -23,6 +23,8 @@ export interface BoundedResult {
   readonly ms: number;
   /** Set when the budget ran out: what it was doing, for a message that names the cause */
   readonly timedOut?: true;
+  /** Set when the caller stopped it. Distinct from a failure, which `code` alone cannot say. */
+  readonly aborted?: true;
 }
 
 /** A budget from what the step costs when healthy. Four times, floored, so normal variance never trips it. */
@@ -67,21 +69,39 @@ export interface BoundedOptions {
   readonly cwd?: string;
   /** Inherit stdio instead of capturing it: what a direct run wants, where output is read as it happens */
   readonly stream?: boolean;
+  /**
+   * The child's environment, where this process's own will not do — a measured command needs a preload
+   * and a destination its parent must not also carry.
+   */
+  readonly env?: NodeJS.ProcessEnv;
+  /**
+   * Stop it before the budget does, down the same group-kill path.
+   *
+   * It exists so that a caller with a process to stop early does not register interrupt handlers of its
+   * own. It cannot: the reaper above calls `removeAllListeners` before re-raising, so of two handlers for
+   * one signal the second never runs — and the one that goes unrun is whichever was registered later,
+   * which is not something a caller can see. One reaper, and everything it must kill goes through here.
+   */
+  readonly signal?: AbortSignal;
 }
 
 export function boundedSpawn(command: string, args: readonly string[], budgetMs: number, options: BoundedOptions = {}): Promise<BoundedResult> {
-  const { cwd = process.cwd(), stream = false } = options;
+  const { cwd = process.cwd(), stream = false, env = process.env, signal } = options;
   const started = Date.now();
   reapOnExit();
+  if (signal?.aborted === true) {
+    return Promise.resolve({ code: 1, output: '', ms: 0, aborted: true });
+  }
   return new Promise((resolve) => {
     // Its own process group, so one kill reaches the whole tree rather than orphaning it
     const child = spawn(command, [...args], {
-      cwd, env: process.env, detached: true,
+      cwd, env, detached: true,
       stdio: stream ? ['ignore', 'inherit', 'inherit'] : ['ignore', 'pipe', 'pipe'],
     });
     if (child.pid !== undefined) liveGroups.add(child.pid);
     let output = '';
     let timedOut: true | undefined;
+    let aborted: true | undefined;
     child.stdout?.on('data', (d: Buffer) => { output += d.toString(); });
     child.stderr?.on('data', (d: Buffer) => { output += d.toString(); });
 
@@ -93,24 +113,36 @@ export function boundedSpawn(command: string, args: readonly string[], budgetMs:
     };
 
     let closed: number | null = null;
-    const done = () => resolve({ code: timedOut ? 124 : closed ?? 1, output, ms: Date.now() - started, ...(timedOut ? { timedOut } : {}) });
+    const done = () => resolve({
+      code: timedOut ? 124 : closed ?? 1,
+      output,
+      ms: Date.now() - started,
+      ...(timedOut ? { timedOut } : {}),
+      ...(aborted ? { aborted } : {}),
+    });
 
-    const budget = setTimeout(() => {
-      timedOut = true;
+    /**
+     * One ending for both ways a run is cut short, because they need the same two kills.
+     *
+     * The escalation is not unref'd, and it is what resolves: an unref'd one never fires, because the
+     * process ends as soon as the child closes. A child that ignores SIGTERM would then have survived the
+     * run that started it, which is the whole failure this exists to prevent.
+     */
+    const terminate = () => {
       killGroup('SIGTERM');
-      // Not unref'd, and this is what resolves on the timeout path: an unref'd escalation never fires,
-      // because the process ends as soon as the child closes. A child that ignores SIGTERM would then
-      // have survived the run that started it, which is the whole failure this exists to prevent.
       setTimeout(() => { killGroup('SIGKILL'); done(); }, GRACE_MS);
-    }, budgetMs);
+    };
+
+    const budget = setTimeout(() => { timedOut = true; terminate(); }, budgetMs);
     budget.unref();
+    signal?.addEventListener('abort', () => { aborted = true; terminate(); }, { once: true });
 
     child.on('close', (code) => {
       clearTimeout(budget);
       if (child.pid !== undefined) liveGroups.delete(child.pid);
       closed = code;
-      // On a timeout the escalation resolves, so the group is hard-killed before this returns
-      if (!timedOut) done();
+      // On a timeout or an abort the escalation resolves, so the group is hard-killed before this returns
+      if (!timedOut && !aborted) done();
     });
   });
 }

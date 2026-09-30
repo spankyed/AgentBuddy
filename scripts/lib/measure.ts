@@ -1,7 +1,8 @@
 /**
  * What a timing run decides: whether the machine is quiet enough to measure on, what a series of samples
- * says, and how a number should be quoted. Pure, apart from `idleNow`, which is here rather than in either
- * command because two of them need it and a second copy would be a second sampling method.
+ * says, how a number should be quoted, and what its arguments mean. Mostly pure; the sampling and the
+ * burners are here rather than in either command because two of them need each, and a second copy of
+ * either is a second answer to one question.
  *
  * The definition, not the command — `scripts/measure.ts` is the command over it, the same split as
  * `scripts/test-unit-pool.ts` over `scripts/lib/unit-pool.ts`. Separate so a spec can assert the arithmetic
@@ -25,8 +26,8 @@
  * 78.7% idle. It lags by design, and waiting on it is waiting on the wrong thing.
  */
 
-import { spawn, type ChildProcess } from 'node:child_process';
 import * as os from 'node:os';
+import { boundedSpawn } from './bounded-spawn.ts';
 
 /** Cumulative CPU time, summed across cores: what two snapshots are diffed to get a utilisation. */
 export interface CpuTimes {
@@ -261,19 +262,84 @@ export function upperBound(failures: number, trials: number): number {
  * you can produce is a condition you can measure, and the first controlled run of it refuted the reading
  * that had stood for a session.
  *
- * Returns the stop, and registers it against the signals as well as `exit`: `process.on('exit')` does
- * not fire for SIGINT, and a burner that outlives its run is worse than the flake it was studying.
+ * **Through `boundedSpawn`, and stopped by `signal` rather than by handlers of its own.** The first
+ * version registered SIGINT/SIGTERM/SIGHUP itself, and it never fired: `spawnSync` held the event loop for
+ * the whole command, so no JS callback could run, and a Ctrl-C left the burners spinning until the command
+ * finished on its own. Verified after the fact — three of three survived. Registering a second set of
+ * handlers beside `bounded-spawn`'s reaper would not fix it either, since that reaper calls
+ * `removeAllListeners` before re-raising. One reaper, and the budget bounds a burner even where no handler
+ * can run at all.
  */
-export function startBurners(count: number): () => void {
-  const burners: ChildProcess[] = [];
-  const stop = (): void => { for (const child of burners.splice(0)) child.kill('SIGKILL'); };
-  if (count <= 0) return stop;
-  process.on('exit', stop);
-  for (const signal of ['SIGINT', 'SIGTERM', 'SIGHUP'] as const) {
-    process.on(signal, () => { stop(); process.exit(130); });
-  }
+export function startBurners(count: number, signal: AbortSignal, budgetMs: number): void {
   for (let i = 0; i < count; i += 1) {
-    burners.push(spawn(process.execPath, ['-e', 'for(;;);'], { stdio: 'ignore' }));
+    void boundedSpawn(process.execPath, ['-e', 'for(;;);'], budgetMs, { signal });
   }
-  return stop;
+}
+
+/**
+ * The arguments both measure commands take, parsed by the rules `spec-cost`'s `parseArgs` already
+ * established: an unknown flag is an error, and so is a flag whose value is missing.
+ *
+ * **Because the hand-rolled version made a wrong answer quietly.** `npm run measure -- "cmd" --busy` read
+ * the token after `--busy`, found nothing, and fell back to *no load at all* — then printed a citation
+ * saying the box was 95% idle, with nothing to say the load it had been asked for never happened. Both
+ * commands had that, because one was written from the other, and neither had a single case over its
+ * arguments. A flag with no value is the shape that produced it, so that is the shape this refuses.
+ *
+ * Values are `string`; range and kind are the caller's, through `asNumber` and its own bounds, so a
+ * message can name what was wrong rather than printing usage at everything.
+ */
+export interface FlagSpec<V extends string, B extends string> {
+  /** Flags that take the next token as their value */
+  readonly values: readonly V[];
+  /** Flags that are present or absent */
+  readonly booleans: readonly B[];
+}
+
+export interface Parsed<V extends string, B extends string> {
+  readonly values: Partial<Record<V, string>>;
+  readonly flags: ReadonlySet<B>;
+  /** Everything that was neither a flag nor a flag's value, in order */
+  readonly positionals: readonly string[];
+}
+
+export function parseFlags<V extends string, B extends string>(
+  argv: readonly string[],
+  spec: FlagSpec<V, B>,
+): Parsed<V, B> {
+  const values: Partial<Record<V, string>> = {};
+  const flags = new Set<B>();
+  const positionals: string[] = [];
+  for (let i = 0; i < argv.length; i += 1) {
+    const token = argv[i]!;
+    if (!token.startsWith('--')) {
+      positionals.push(token);
+      continue;
+    }
+    const name = token.slice(2);
+    if ((spec.booleans as readonly string[]).includes(name)) {
+      flags.add(name as B);
+      continue;
+    }
+    if (!(spec.values as readonly string[]).includes(name)) {
+      // `--runs=5` lands here too, which is deliberate: nothing in this repo takes that form, and
+      // accepting it silently alongside `--runs 5` is a second spelling of one thing
+      throw new Error(`No such flag: ${token}`);
+    }
+    const value = argv[i + 1];
+    if (value === undefined || value.startsWith('--')) {
+      throw new Error(`\`${token}\` needs a value after it`);
+    }
+    values[name as V] = value;
+    i += 1;
+  }
+  return { values, flags, positionals };
+}
+
+/** A flag's value as a number, or undefined when it was not given. Throws naming the flag, never NaN. */
+export function asNumber(raw: string | undefined, flag: string): number | undefined {
+  if (raw === undefined) return undefined;
+  const value = Number(raw);
+  if (!Number.isFinite(value)) throw new Error(`\`--${flag}\` takes a number, not ${JSON.stringify(raw)}`);
+  return value;
 }

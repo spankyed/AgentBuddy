@@ -136,14 +136,56 @@ export function verdict(rows: readonly Process[], atRiskBelow = 3): {
   };
 }
 
-/** Whatever the sampler wrote, minus the partial last line an interrupted run leaves. */
-export function parseSamples(text: string): Sample[] {
-  return text.split('\n').flatMap((line) => {
-    if (line.trim() === '') return [];
+/**
+ * Whatever the sampler wrote, and how much of it could not be read.
+ *
+ * `dropped` is reported rather than swallowed. Around two hundred processes append to one file, and a
+ * line that arrived torn is a process missing from the answer — measured, 957 lines across three runs were
+ * all intact, because a line is about 270 bytes and an `O_APPEND` write below `PIPE_BUF` is atomic, so
+ * this should read zero for ever. Which is the point: a check whose failing value never appears still has
+ * to be able to say so, or the first time it happens the run looks clean.
+ *
+ * The last line of an interrupted run is the ordinary case and counts too; one dropped line at the end is
+ * not the same finding as forty in the middle, and the caller has the run's fate to tell them apart.
+ */
+export function parseSamples(text: string): { readonly samples: Sample[]; readonly dropped: number } {
+  const samples: Sample[] = [];
+  let dropped = 0;
+  for (const line of text.split('\n')) {
+    if (line.trim() === '') continue;
     try {
-      return [JSON.parse(line) as Sample];
+      samples.push(JSON.parse(line) as Sample);
     } catch {
-      return [];
+      dropped += 1;
     }
-  });
+  }
+  return { samples, dropped };
+}
+
+/**
+ * The one sentence the table does not say, printed on every run.
+ *
+ * It used to appear only when something was already within `atRiskBelow` of the window, so a healthy run
+ * printed a table and no judgement at all — and that is the run somebody quotes as proof. A clean
+ * measurement is a measurement of the room left, never evidence that a flake is gone, and the place to say
+ * so is the run where everything looks fine.
+ */
+/** Beyond this the factor stops being a thing that could happen and starts being arithmetic. */
+export const IMPLAUSIBLE_FACTOR = 100;
+
+export function verdictLine(rows: readonly Process[], atRiskBelow = 3): string {
+  const { worst, breached } = verdict(rows, atRiskBelow);
+  if (breached.length > 0) {
+    return `${breached.length} past the ${(RPC_WINDOW_MS / 1000).toFixed(0)}s window — these fail as `
+      + '"[vitest-worker]: Timeout calling", whatever their tests did.';
+  }
+  const factor = worst === undefined ? Infinity : headroom(worst.blockMs);
+  // A 11ms block against a 60s window is "5454.5x slower breaches", which is true and useless, and a
+  // report that prints one silly number is read more sceptically for the rest of them
+  if (worst === undefined || factor > IMPLAUSIBLE_FACTOR) {
+    return 'Nothing blocked its event loop near the window, and no plausible slowdown brings it there.';
+  }
+  return `Worst block ${(worst.blockMs / 1000).toFixed(1)}s, `
+    + `${Math.round((worst.blockMs / RPC_WINDOW_MS) * 100)}% of the window: a run ${factor.toFixed(1)}x slower `
+    + 'breaches. A clean run measures the room left; it is not evidence the flake is gone.';
 }

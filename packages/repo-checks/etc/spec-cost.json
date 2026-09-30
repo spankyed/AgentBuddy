@@ -1,7 +1,8 @@
 {
-  "measuredAt": "2026-09-30T06:54:19.462Z",
+  "measuredAt": "2026-09-30T13:40:05.983Z",
   "costs": {
     "tests/api-report-stamp.spec.ts": 66,
+    "tests/bounded-spawn.integration.spec.ts": 6426,
     "tests/chain-graph.spec.ts": 9,
     "tests/chain-inputs.spec.ts": 1688,
     "tests/chain-output.spec.ts": 12,
