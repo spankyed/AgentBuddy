@@ -142,6 +142,8 @@ function counted(run: Run, index: number): { args: string[]; env: NodeJS.Process
 if (dry) {
   const { collectFor, priceSpecs, priceSuites, tierOfRun, asDuration } = await import('./lib/spec-dry.ts');
   let total = 0;
+  // Each distinct note once, as the run itself says them: two targets in one package carry the same sentence
+  const predicted = new Set<string>();
   const unpriced: string[] = [];
   const outside: string[] = [];
   const dates: string[] = [];
@@ -170,8 +172,10 @@ if (dry) {
     if (priced.measuredAt !== undefined) dates.push(priced.measuredAt);
     for (const spec of specs) console.log(`   ${spec}`);
     console.log(`   ${specs.length} spec${specs.length === 1 ? '' : 's'}, ${asDuration(priced.fileTimeMs)} of recorded file-time`);
-    // The same sentence the run itself prints, for the same reason: a walk finding nothing over a build edge
-    // is not "nothing covers this", and a prediction that says `0 specs` and stops is the answer being refuted
+    // The same sentences the run itself prints, for the same reason: a prediction that stops at what it
+    // collected is the answer being refuted — a walk finding nothing over a build edge is not "nothing
+    // covers this", and a total that omits a seam reads as the whole cost of knowing
+    for (const note of run.notes ?? []) if (!predicted.has(note)) { console.log(`   ${note}`); predicted.add(note); }
     if (run.beyond !== undefined) {
       console.log(`   not in this answer: ${run.beyond.covers} — ${run.beyond.how}`);
     }
@@ -212,7 +216,7 @@ try {
     }
     if (verdict === 'uncovered') uncovered.push(run);
     if (verdict === 'no count') noCount.push(run.label);
-    if (run.note !== undefined && !said.has(run.note)) { console.log(`   ${run.note}`); said.add(run.note); }
+    for (const note of run.notes ?? []) if (!said.has(note)) { console.log(`   ${note}`); said.add(note); }
     // Said only when the run answered something: when it did not, the edge is the whole answer and is
     // reported below instead, where it replaces a sentence that would be false
     if (run.beyond !== undefined && verdict === 'pass') {

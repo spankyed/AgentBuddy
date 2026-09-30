@@ -19,6 +19,7 @@
  */
 import * as fs from 'node:fs';
 import * as path from 'node:path';
+import { INTEGRATION_SUITES } from './chain-steps.ts';
 import { CONFIG_BY_HALF, HALVES, type Half, halfOfPath } from './spec-cost.ts';
 import { UNIT_SUITES, type UnitSuite } from './unit-suites.ts';
 import { workspaceDeps } from './workspace-deps.ts';
@@ -30,8 +31,14 @@ export interface Run {
   readonly cwd: string;
   readonly command: string;
   readonly args: readonly string[];
-  /** Printed after it, for something the mechanism cannot cover */
-  readonly note?: string;
+  /**
+   * Printed after it, for what the mechanism cannot cover.
+   *
+   * A list, because a run can sit behind more than one seam at once. A source file that a pack suite reaches
+   * through `dist` and an integration half reaches through a second config is behind both, and while there
+   * was one seam one slot was enough — the second could only have arrived by displacing the first.
+   */
+  readonly notes?: readonly string[];
   /**
    * The unit suites this run executes **in full**, by workspace name.
    *
@@ -235,6 +242,54 @@ export function affectedPackSuites(editedPackages: readonly (string | null)[], r
 const PACK_SUITES = UNIT_SUITES.filter((suite) => suite.kind === 'pack');
 
 /**
+ * The integration halves a change could reach: the edited package's own, and any whose package depends on it.
+ *
+ * **A second seam, and not the same one.** A pack suite is out of reach because it resolves `dist`, so no
+ * module graph connects an edit to it without a build. An integration half is out of reach for a duller
+ * reason — it is a second vitest config, and the root projects `exclude` its specs — but the consequence is
+ * the same and was worse, because nothing said so: `npm run spec -- <a source file>` printed *"every spec
+ * covering X"* over a run that had skipped every integration spec covering X. Measured, 22 modules in
+ * `@abuddy/cli` alone are imported directly by one.
+ *
+ * Which is also why the sentence must not say "through a build": these specs resolve `@abuddy/source` like
+ * any host project, so `spec:full` reaches them without building anything.
+ */
+export function affectedIntegrationSuites(editedPackages: readonly (string | null)[], root?: string): string[] {
+  const edited = new Set(editedPackages.filter((pkg): pkg is string => pkg !== null));
+  return INTEGRATION_SUITES
+    .filter((suite) => edited.has(suite.dir) || workspaceDeps(suite.dir, root).some((dep) => edited.has(dep)))
+    .map((suite) => suite.workspace);
+}
+
+/** What a run says about the integration halves it did not reach — nothing under `--full`, where they run */
+const integrationNote = (affected: readonly string[], full = false): string | undefined =>
+  affected.length === 0 || full ? undefined
+    : `not in this answer: ${affected.join(', ')}'s integration half also covers this and runs from a second `
+      + 'config, which the root projects exclude — npm run spec:full, or npm run test:integration';
+
+/**
+ * The run that answers it: the pool, which is what the chain runs and what one suite's config cannot be.
+ *
+ * It runs every integration half, not only the affected ones — as `packSuiteRun` does, because one pooled
+ * run is what the step is and splitting it would be slower than running it whole.
+ *
+ * **Its file list is named rather than `covers`**, which would be the obvious thing and is wrong here.
+ * `covers` means a unit suite executed *in full*, and pricing reads that suite's whole record — but these
+ * three workspaces each keep one record holding both halves, and the pool runs one of them. Measured, the
+ * prediction came out at 260.9s for a run of 232.7s and listed fast specs among what it would execute.
+ * `packSuiteRun` can use `covers` honestly because a pack's record is its whole suite.
+ */
+const integrationRun = (root: string): Run => ({
+  label: 'the integration halves, as the chain pools them',
+  cwd: root,
+  command: 'npm',
+  args: ['run', 'test:integration'],
+  specs: INTEGRATION_SUITES.flatMap((suite) => specsUnder(path.join(root, 'packages', suite.dir, 'tests'))
+    .filter((spec) => halfOfPath(spec) === 'integration')
+    .map((spec) => path.relative(root, spec))).sort(),
+});
+
+/**
  * The suite that covers a source file when the root projects cannot — its own package's, for a pack.
  *
  * Measured 2026-09-26: `vitest related` from the root finds nothing for a pack source file, its backend, its
@@ -375,13 +430,13 @@ const ensurePackages = (root: string): Run => ({
  * One vitest over every host project: `related --run <file>` after an edit, `--changed --run` for the
  * change set. `args` is everything after `vitest`, in order, so the call site reads as the command does.
  */
-const rootRun = (root: string, label: string, args: readonly string[], flags: readonly string[], note?: string,
-  claimsCoverageOf?: string): Run => ({
+const rootRun = (root: string, label: string, args: readonly string[], flags: readonly string[],
+  notes: readonly (string | undefined)[] = [], claimsCoverageOf?: string): Run => ({
   label,
   cwd: root,
   command: 'npx',
   args: ['vitest', ...args, ...flags],
-  note,
+  notes: notes.filter((note): note is string => note !== undefined),
   claimsCoverageOf,
   collects: args[0] === 'related' ? { related: [args[2]!] } : { changed: true },
 });
@@ -544,7 +599,8 @@ export function planTargets(targets: readonly string[], flags: readonly string[]
         sourcePackages.push(packageOf(rel));
         runs.push(rootRun(root, coverable === undefined ? `the specs that import ${rel}, if any` : `every spec covering ${rel}`,
           ['related', '--run', rel], flags,
-          packSuiteNote(affectedPackSuites([packageOf(rel)], root), full), coverable));
+          [packSuiteNote(affectedPackSuites([packageOf(rel)], root), full),
+            integrationNote(affectedIntegrationSuites([packageOf(rel)], root), full)], coverable));
       }
     } else {
       const matches = matchByName(arg, root);
@@ -576,6 +632,7 @@ export function planTargets(targets: readonly string[], flags: readonly string[]
 
   const affected = notYetCovered(wantsRoot ? affectedPackSuites(sourcePackages, root) : [], runs);
   if (full && affected.length > 0) runs.push(packSuiteRun(root, affected));
+  if (full && wantsRoot && affectedIntegrationSuites(sourcePackages, root).length > 0) runs.push(integrationRun(root));
   return { runs: needsEnsure ? [ensurePackages(root), ...runs] : runs, unmatched, ambiguous };
 }
 
@@ -614,13 +671,14 @@ export function planChanged(changedPaths: readonly string[], flags: readonly str
 
   const changedPackages = [...new Set(changedPaths.map(packageOf))].filter((pkg) => pkg !== null);
   const affected = affectedPackSuites(changedPackages, root);
+  const affectedIntegration = affectedIntegrationSuites(changedPackages, root);
   // No root run when nothing in the change set is in its graph: a pack's manifest and its seed sources are
   // covered by that pack's own suite below, and asking the root for them is the empty vitest this route
   // stopped paying for
   const runs: Run[] = [ensurePackages(root)];
   if (coverable.length > 0) {
     runs.push(rootRun(root, 'the specs your changes affect', ['--changed', '--run'], flags,
-      packSuiteNote(affected, full),
+      [packSuiteNote(affected, full), integrationNote(affectedIntegration, full)],
       `${coverable.length} changed file${coverable.length === 1 ? '' : 's'} a spec could cover`));
   }
   const pack = rootProjects(root);
@@ -631,5 +689,6 @@ export function planChanged(changedPaths: readonly string[], flags: readonly str
   // edit under this repo's no-backward-compatibility rule, and planned the pack's 87 specs twice
   const toRun = notYetCovered(affected, runs);
   if (full && toRun.length > 0) runs.push(packSuiteRun(root, toRun));
+  if (full && affectedIntegration.length > 0) runs.push(integrationRun(root));
   return { runs, unmatched: [], ambiguous: [] };
 }
