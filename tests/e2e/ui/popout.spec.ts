@@ -1,4 +1,4 @@
-import { test, expect } from './fixtures/app';
+import { test, expect } from '../fixtures/app';
 
 // A plugin popped out into its own window: main accepts the plugin's ref as its id, and the popout renders the
 // plugin's canvas as part of that plugin (usePlugin() in its components)

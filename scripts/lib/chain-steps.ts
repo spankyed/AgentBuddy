@@ -600,7 +600,7 @@ export const CHAIN_STEPS: readonly ChainStep[] = [
   // suite off the gate bought.
   { name: 'test:smoke', tier: 3, needs: ['build:app'], seconds: 6,
     outputs: ['tests/results'],
-    inputs: [...ROOT, 'tests/e2e/smoke.spec.ts', 'tests/e2e/fixtures', 'playwright.config.ts',
+    inputs: [...ROOT, 'tests/e2e/smoke', 'tests/e2e/fixtures', 'playwright.config.ts',
       'scripts/with-source.mjs', ...APP_ENTRY, ...PACKAGE_BUILD_OUTPUTS, ...APP_OUTPUTS] },
   // The rest of the E2E suite. **Opt-in, not a gate** — `npm run chain -- --e2e`.
   //

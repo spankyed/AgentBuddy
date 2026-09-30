@@ -459,7 +459,7 @@ describe('the staleness verdict', () => {
  * Which input moved, for a report that has to name it rather than say a write happened.
  *
  * The shipped version of that report walked mtimes of its own, and the two answers disagreed the first time
- * it mattered: it named a compiled seed that `tests/e2e/dev-reload.spec.ts` rewrites with the bytes it already
+ * it mattered: it named a compiled seed that `tests/e2e/app-integration/dev-reload.spec.ts` rewrites with the bytes it already
  * had, and the diagnosis that followed was about the wrong file. Every case here is the pair of questions those
  * two walks answer differently — `it names nothing when only an mtime moved` is the one that fails on an mtime
  * walk, and is why this exists.

@@ -579,8 +579,8 @@ npm run check:repro      # **A diagnostic instrument, not a gate**, and nothing 
 click through it, read the state back, screenshot it. Scripts there import `drive` rather than `test`,
 nothing collects them, and nothing gates on them. `docs/public-facing/cli.md` has the reference.
 
-**One spec here is a gate: `smoke.spec.ts`**, as its own chain step (`test:smoke`, 6s). Its four cases are
-the ones every other check silently assumes — the app launches without crashing, reaches `connected`, has
+**One directory here is a gate: `tests/e2e/smoke/`**, as its own chain step (`test:smoke`, 6s). Its four
+cases are the ones every other check silently assumes — the app launches without crashing, reaches `connected`, has
 its plugins, and runs in its own data dir. Taking the suite off the chain took that with it, which is the
 one thing worth paying for.
 
@@ -596,7 +596,7 @@ Playwright tests launch the full Electron app and interact via `window.applicati
 
 ```bash
 npm test                              # Run all E2E tests
-npm test -- smoke                    # Run just smoke tests
+npm test -- smoke                    # One directory: smoke, ui or app-integration
 DEBUG_E2E=1 npm test                  # With Electron stdout/stderr logging
 npm run test:headed                   # Show the app's windows, to watch a test drive it. Under Playwright
                                       # they are never shown or focused (PLAYWRIGHT_VISIBLE, the guard in

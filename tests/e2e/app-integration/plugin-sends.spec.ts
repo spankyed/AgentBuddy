@@ -7,7 +7,7 @@ import * as os from 'node:os';
 import * as path from 'node:path';
 import type { Page } from '@playwright/test';
 import { API_TOKEN_HEADER } from '@abuddy/sdk/utils/pure';
-import { test, expect } from './fixtures/app';
+import { test, expect } from '../fixtures/app';
 
 interface Received { plugin: string; type: string; data?: unknown; savedBookmarks?: Array<{ url: string }> }
 

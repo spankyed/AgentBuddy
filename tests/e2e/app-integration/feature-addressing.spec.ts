@@ -2,7 +2,7 @@
 // Each case here is a path where a name had to become an address and, when it didn't, the app went on running
 // with the click or the setting silently lost. Nothing below the running app catches that: these are the tests.
 import type { Page } from '@playwright/test';
-import { test, expect } from './fixtures/app';
+import { test, expect } from '../fixtures/app';
 
 type SettingsUpdate = { entityType: 'plugin'; label: `${string}/${string}`; path: string[]; value: unknown };
 

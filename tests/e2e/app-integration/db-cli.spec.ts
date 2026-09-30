@@ -2,9 +2,9 @@
 // on it, a read works and warns that it may be stale, and a change is refused, so the app stays its only writer
 import { spawnSync } from 'node:child_process';
 import * as path from 'node:path';
-import { test, expect } from './fixtures/app';
+import { test, expect } from '../fixtures/app';
 
-const CLI = path.resolve(import.meta.dirname, '../../packages/abuddy-cli/bin/abuddy.mjs');
+const CLI = path.resolve(import.meta.dirname, '../../../packages/abuddy-cli/bin/abuddy.mjs');
 
 function abuddyDb(args: string[]) {
   const result = spawnSync(process.execPath, [CLI, 'db', ...args], { encoding: 'utf-8', timeout: 60_000 });

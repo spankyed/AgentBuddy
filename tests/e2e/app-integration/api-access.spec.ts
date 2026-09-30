@@ -3,7 +3,7 @@
 // refused. A malformed request doesn't take the API down.
 import * as net from 'node:net';
 import { API_TOKEN_HEADER } from '@abuddy/sdk/utils/pure';
-import { test, expect } from './fixtures/app';
+import { test, expect } from '../fixtures/app';
 
 /** Whether a WebSocket to `url` offering `protocols` opens, and the subprotocol the server chose */
 function connects(url: string, protocols: string[]): Promise<{ open: boolean; protocol?: string }> {

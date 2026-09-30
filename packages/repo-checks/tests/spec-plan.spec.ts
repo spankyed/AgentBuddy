@@ -252,7 +252,7 @@ describe('packageOf', () => {
   it('names the package a repo path is in, and null for one in none', () => {
     expect(packageOf('packages/abuddy-sdk/src/x.ts')).toBe('abuddy-sdk');
     expect(packageOf('scripts/lib/x.ts')).toBeNull();
-    expect(packageOf('tests/e2e/smoke.spec.ts')).toBeNull();
+    expect(packageOf('tests/e2e/smoke/smoke.spec.ts')).toBeNull();
   });
 });
 
@@ -810,8 +810,8 @@ describe('what the plan would cost', () => {
    * help — the same defect as advising `--all` to someone who had just run it.
    */
   it('tells a missing row apart from a spec no record covers', () => {
-    const e2e = priceSpecs(['tests/e2e/smoke.spec.ts'], REPO_ROOT);
-    expect(e2e.outside, 'in no unit suite, so no record could hold it').toEqual(['tests/e2e/smoke.spec.ts']);
+    const e2e = priceSpecs(['tests/e2e/smoke/smoke.spec.ts'], REPO_ROOT);
+    expect(e2e.outside, 'in no unit suite, so no record could hold it').toEqual(['tests/e2e/smoke/smoke.spec.ts']);
     expect(e2e.unpriced, 'and not something an update would fix').toEqual([]);
 
     const missing = priceSpecs(['packages/repo-checks/tests/not-recorded.spec.ts'], REPO_ROOT);

@@ -1,4 +1,4 @@
-import { test, expect } from './fixtures/app';
+import { test, expect } from '../fixtures/app';
 
 test('app launches without crashing', async ({ electronApp, appPage }) => {
   const window = await electronApp.browserWindow(appPage);
