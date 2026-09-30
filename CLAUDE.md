@@ -523,6 +523,17 @@ npm run measure -- "<cmd>"  # Times a command on a quiet machine and prints a nu
                          #   --against "<B>"   an A/B comparison, **interleaved** and reported as the median
                          #                     of the pairs. Blocked arms let a drifting box into the answer:
                          #                     measured, that turned 49.1s->48.2s into a reported 71s->46.1s
+                         #   --trials N        the other question: how often does it *fail*? Tolerates
+                         #                     failure, reports the rate and the 95% upper bound — 0 of 5
+                         #                     bounds it at 45%, 0 of 20 at 14%, which is what a clean run
+                         #                     actually licenses you to say. Failures are grouped by a
+                         #                     normalised signature with one verbatim exemplar each: it
+                         #                     groups, it does not classify, because a list of known
+                         #                     failure shapes is a restated population
+                         #   --busy N          spawn N CPU burners so contention is induced rather than
+                         #                     waited for. Implies --force, reports the idle it achieved.
+                         #                     The birpc flake had only ever been seen by accident, and a
+                         #                     condition you can produce is one you can measure
                          #   --idle PERCENT    lower the floor deliberately
                          #   --force           measure anyway; the citation says it was forced
                          # It refuses below IDLE_FLOOR (70%), sampled from os.cpus() rather than load average

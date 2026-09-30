@@ -175,3 +175,79 @@ export function idleNow(): number {
   Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, SAMPLE_MS);
   return idleFrom(before, cpuTimes(os.cpus()));
 }
+
+/** One run of a command in trials mode: how long, how it exited, and what it said when it failed. */
+export interface Trial {
+  readonly ms: number;
+  /** 0 is a pass. Exact, and part of the signature — a timeout and an assertion are not the same failure. */
+  readonly code: number;
+  readonly stderr: string;
+}
+
+/**
+ * How many trailing stderr lines a signature is built from.
+ *
+ * The tail rather than the head: a runner prints its progress first and its reason last. Three, because one
+ * is often just `exit 1` and ten drags in enough variable text that nothing groups.
+ */
+export const SIGNATURE_LINES = 3;
+
+/**
+ * What makes two failures the same failure, for grouping only.
+ *
+ * **It normalises; it does not classify.** There is no list here of failure shapes we know about — that is a
+ * restated population, and it is what left the spawn gate blind to nine of the twelve files it was about.
+ * What goes in is derived: the exit code, which is exact, and the tail of stderr with the token *shapes*
+ * that vary between runs replaced — absolute paths, numbers, durations. Whether a group is a birpc timeout
+ * or a real assertion is a question for whoever reads the exemplar, and the caller prints one per group so
+ * they can.
+ *
+ * A pass has no signature. Grouping successes would say only that they succeeded.
+ */
+export function signatureOf(trial: Pick<Trial, 'code' | 'stderr'>): string {
+  if (trial.code === 0) return '';
+  const lines = trial.stderr.split('\n').map((line) => line.trim()).filter(Boolean).slice(-SIGNATURE_LINES);
+  const normalised = lines.join(' ⏎ ')
+    // A directory differs per temp dir and per machine; the file it ends in is the most identifying
+    // part of a failure, so the basename stays
+    .replace(/(\/[^\s:)'"]+)+/g, (match) => `<path>/${match.split('/').pop()}`)
+    .replace(/\b\d+(\.\d+)?(ms|s|m)\b/g, '<t>')  // a duration differs every run by definition
+    .replace(/\d+/g, 'N');                      // line numbers, pids, ports, counts
+  return `exit ${trial.code}: ${normalised}`;
+}
+
+/** Failures by signature, each with one verbatim example — the grouping is a convenience, the text is the evidence. */
+export function groupBySignature(trials: readonly Trial[]): { signature: string; count: number; exemplar: string }[] {
+  const groups = new Map<string, { count: number; exemplar: string }>();
+  for (const trial of trials.filter((t) => t.code !== 0)) {
+    const signature = signatureOf(trial);
+    const seen = groups.get(signature);
+    if (seen) seen.count += 1;
+    else groups.set(signature, { count: 1, exemplar: trial.stderr.trim() });
+  }
+  return [...groups].map(([signature, rest]) => ({ signature, ...rest })).sort((a, b) => b.count - a.count);
+}
+
+export const rateOf = (trials: readonly Trial[]): number =>
+  trials.length === 0 ? 0 : trials.filter((t) => t.code !== 0).length / trials.length;
+
+/**
+ * The 95% upper bound on the failure rate — what a run of clean trials actually licenses you to say.
+ *
+ * Five clean runs bound it at 45%, twenty at 14%. That arithmetic decided whether to lift the integration
+ * pool's worker cap, and it was done by hand in a chat message; a tool that leaves the reader to do it will
+ * have readers who don't, and "five clean runs" will get quoted as proof.
+ *
+ * Exact for the no-failure case (`1 - 0.05^(1/n)`), Wilson otherwise. Both closed form; neither needs a
+ * statistics dependency for a number quoted to two significant figures.
+ */
+export function upperBound(failures: number, trials: number): number {
+  if (trials <= 0) throw new Error('an upper bound over no trials is not a bound');
+  if (failures === 0) return 1 - 0.05 ** (1 / trials);
+  const z = 1.96;
+  const observed = failures / trials;
+  const denominator = 1 + (z * z) / trials;
+  const centre = (observed + (z * z) / (2 * trials)) / denominator;
+  const half = (z * Math.sqrt((observed * (1 - observed)) / trials + (z * z) / (4 * trials * trials))) / denominator;
+  return Math.min(1, centre + half);
+}

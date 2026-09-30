@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
-  citation, cpuTimes, driftedDuring, idleFrom, IDLE_FLOOR, pairedDelta, refusesAsBusy, runOrder, summarise,
+  citation, cpuTimes, driftedDuring, groupBySignature, idleFrom, IDLE_FLOOR, pairedDelta, rateOf,
+  refusesAsBusy, runOrder, signatureOf, summarise, upperBound,
 } from '../../../scripts/lib/measure.ts';
 
 /**
@@ -127,5 +128,76 @@ describe('what a number is quoted as', () => {
 
   it('drops the range when every run agreed', () => {
     expect(citation({ ...base, summary: summarise([1000]) })).toBe('1.0s median of 1, 92% idle, 2026-09-29');
+  });
+});
+
+/**
+ * What makes two failures the same failure, and what a run of trials licenses you to say.
+ *
+ * The birpc timeout these exist for had only ever been seen by accident, so its whole evidence base was one
+ * failure in two runs. A rate needs trials; a *useful* rate needs the failures told apart.
+ */
+describe('counting failures rather than timing successes', () => {
+  const birpc = (at: string, line: number) => ({
+    code: 1,
+    stderr: `Error: [vitest-worker]: Timeout calling "onTaskUpdate"\n at Object.onTimeoutError ${at}/rpc.js:${line}:10`,
+  });
+  const assertion = { code: 1, stderr: 'AssertionError: expected 1 to be 2\n at tests/a.spec.ts:12:3' };
+
+  // The same failure on two machines, or two line numbers apart, is one failure
+  it('groups a failure across the tokens that vary between runs', () => {
+    expect(signatureOf(birpc('/Users/a/node_modules/vitest', 53)))
+      .toBe(signatureOf(birpc('/Users/b/other/vitest', 991)));
+  });
+
+  it('keeps distinct failures distinct', () => {
+    expect(signatureOf(birpc('/x', 1))).not.toBe(signatureOf(assertion));
+  });
+
+  /**
+   * The exit code is part of it, and exactly — a command killed by a timeout and one that failed an
+   * assertion can print the same tail, and calling those one failure hides the interesting half.
+   */
+  it('separates two failures that said the same thing and exited differently', () => {
+    expect(signatureOf({ code: 1, stderr: 'boom' })).not.toBe(signatureOf({ code: 137, stderr: 'boom' }));
+  });
+
+  it('gives a pass no signature, because grouping successes says only that they succeeded', () => {
+    expect(signatureOf({ code: 0, stderr: '' })).toBe('');
+  });
+
+  it('counts each group and keeps one example verbatim', () => {
+    const groups = groupBySignature([
+      { ms: 1, ...birpc('/a', 1) }, { ms: 1, ...birpc('/b', 2) }, { ms: 1, ...assertion },
+      { ms: 1, code: 0, stderr: '' },
+    ]);
+    expect(groups.map((g) => g.count), 'commonest first').toEqual([2, 1]);
+    // Normalised for grouping, verbatim for reading: the grouping is a convenience, the text is the evidence
+    expect(groups[0]!.signature).toContain('rpc.js:N:N');
+    expect(groups[0]!.exemplar).toContain('rpc.js:1:10');
+  });
+
+  it('reads a rate over the trials, passes included', () => {
+    expect(rateOf([{ ms: 1, code: 1, stderr: '' }, { ms: 1, code: 0, stderr: '' }])).toBe(0.5);
+  });
+
+  /**
+   * What clean runs actually license. Five bound the rate at 45% and twenty at 14% — arithmetic that
+   * decided whether to lift the integration pool's worker cap, done by hand in a chat message. A tool that
+   * leaves the reader to do it will have readers who quote "five clean runs" as proof.
+   */
+  it('bounds the rate rather than reporting zero for a clean run', () => {
+    expect(upperBound(0, 5)).toBeCloseTo(0.451, 2);
+    expect(upperBound(0, 20)).toBeCloseTo(0.139, 2);
+    expect(upperBound(0, 5), 'never the observed rate, which is what makes it a bound').toBeGreaterThan(0);
+  });
+
+  it('widens with observed failures and never exceeds certainty', () => {
+    expect(upperBound(3, 20)).toBeGreaterThan(3 / 20);
+    expect(upperBound(5, 5)).toBeLessThanOrEqual(1);
+  });
+
+  it('refuses a bound over no trials', () => {
+    expect(() => upperBound(0, 0)).toThrow(/not a bound/);
   });
 });
