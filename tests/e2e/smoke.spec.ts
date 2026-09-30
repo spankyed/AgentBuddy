@@ -25,10 +25,6 @@ test('applicationState is accessible with plugins loaded', async ({ app }) => {
   expect(ctx.pluginIds.length).toBeGreaterThan(0);
 });
 
-test('default view screenshot', async ({ app }) => {
-  await app.screenshot('default-view');
-});
-
 test('runs in an isolated per-worker test data dir', async ({ electronApp, appPage: _ready }) => {
   const { name, userData } = await electronApp.evaluate(({ app }) => ({
     name: app.getName(),

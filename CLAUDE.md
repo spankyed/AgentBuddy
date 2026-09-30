@@ -579,13 +579,18 @@ npm run check:repro      # **A diagnostic instrument, not a gate**, and nothing 
 click through it, read the state back, screenshot it. Scripts there import `drive` rather than `test`,
 nothing collects them, and nothing gates on them. `docs/public-facing/cli.md` has the reference.
 
-**What is left here is not a regression suite either, and it is not in `npm run chain`.** It was built to
-watch the app while writing a feature, and it became a chain step while the reasoning around it drifted
-into caching policy — a question you only ask of a gate. It has not caught a regression. What earns a
-place here now is a test that asserts something a future change could break **and** needs the real
-process boundary; everything else is either a harness test or a driving script.
-`npm run chain -- --e2e` runs it with the chain when you want it, `npm test` runs it alone, and the step
-stays declared in `chain-steps.ts` so `chain-inputs` still proves `tests/e2e` is covered by something.
+**One spec here is a gate: `smoke.spec.ts`**, as its own chain step (`test:smoke`, 6s). Its four cases are
+the ones every other check silently assumes — the app launches without crashing, reaches `connected`, has
+its plugins, and runs in its own data dir. Taking the suite off the chain took that with it, which is the
+one thing worth paying for.
+
+**The rest is not a regression suite, and is not in `npm run chain`.** It was built to watch the app while
+writing a feature, and it became a chain step while the reasoning around it drifted into caching policy —
+a question you only ask of a gate. It has not caught a regression. What earns a place here now is a test
+that asserts something a future change could break **and** needs the real process boundary; everything
+else is either a harness test or a driving script (`drive/`).
+`npm run chain -- --e2e` runs it with the chain when you want it — ordered after `test:smoke`, since both
+drive Playwright at `tests/results` — and `npm test` runs it alone.
 
 Playwright tests launch the full Electron app and interact via `window.applicationState` (the XState actor). Use to visually verify UI changes.
 
