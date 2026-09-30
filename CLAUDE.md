@@ -196,7 +196,7 @@ Things that waste the most time, in order:
   `npm run packages:ensure` once first and every later call is a stat and a return, which is what makes
   a parallel chain safe; the 18 calls a serial chain makes are each paying that stat for nothing.
 
-Five rules that pay for themselves:
+Six rules that pay for themselves:
 
 - **Measure before you optimise, and before you accept someone else's measurement.** Two proposals in
   this repo were rejected by one command each, and both had been argued for at length first.
@@ -236,6 +236,21 @@ Five rules that pay for themselves:
   picker never offers. Deriving turns each of those into a compile error at the site that would have broken. The
   cost is that the widened form has to be exported separately when consumers read optional members — which is a
   line, and it is written where it is done.
+
+- **A cache needs a key that cannot go stale, or a scope in which it cannot — and a reset hatch is neither.**
+  Three adjacent modules answer this differently and the reasons are worth knowing.
+  `publishedEntryPoints` (`abuddy-cli/src/build/pack-features.ts`) keys on its manifest's path, mtime **and**
+  size, "so there is no cache to remember to clear" — the size because a filesystem with 1-second granularity
+  reads a rewrite inside one tick as unchanged. `readSource` (`pack-sources.ts`) is keyed by path alone behind
+  a `resetSourceCache()`, and a hatch is a thing to forget: two specs call it, the repo's largest spec did not
+  and worked around the stale reads by building a pack directory per cell, which made that test quadratic in
+  its own data until `7c4b8aacc`. `packDirs` (`scripts/lib/import-populations.ts`) can be keyed neither way —
+  a directory's mtime moves when its own entries do, not when something three levels down changes — so it is
+  memoised **only for this repo's root**, where nothing adds a pack mid-process and no test can reach it,
+  because every test builds under `mkdtemp`. That is a scope standing in for a key, and it took
+  `check:specifiers` from 4.6s to 2.5s and 103 286 `readdirSync` calls to 5 366.
+  So: content-key where the input is a file, scope where it is a tree, and if you reach for a hatch anyway,
+  give it a case that fails when it is forgotten — which is the one thing the hatch here never had.
 
 - **A comment is for whoever opens the file cold, not for whoever reads the diff.** What changed, how many
   copies there used to be, what you measured to decide, why some other value would be worse — that is
@@ -452,10 +467,25 @@ npm run test:integration # The expensive half of every suite that has one (@abud
                          # against 52.4s uncapped, because nine workers each running ts.createProgram and
                          # abuddy build put the box at a load of 25-32 — and twelve of the twenty-four files
                          # the pool loads spawn a subprocess besides, two of them a nested vitest run, which
-                         # integration-subprocesses.spec.ts counts. The birpc timeout the
-                         # cap was originally written against did not occur in nineteen quiet runs, capped
-                         # or not — it is a contention symptom, and every one this repo has seen came while
-                         # another workload shared the machine
+                         # integration-subprocesses.spec.ts counts.
+                         # **The birpc timeout the cap was originally written against is a worker blocking
+                         # its own event loop**, not a main thread too busy to answer: measured 2026-09-30,
+                         # the main process sits at 6% event-loop utilisation with a worst block of 74ms,
+                         # quiet and loaded alike. A worker runs each case synchronously and `await` on a
+                         # resolved promise drains microtasks without turning the loop, so a file of
+                         # synchronous cases is **one** block however many `it`s it holds — 42s of tests as
+                         # one 38s block, against birpc's hardcoded 60s window (DEFAULT_TIMEOUT = 6e4, which
+                         # vitest exposes no knob for; vitest-dev/vitest#4497, #6479, #8164). Nothing is
+                         # wrong with the tests: they all pass and the run exits 1.
+                         # The fix is to turn the loop — an `afterEach` yielding a macrotask caps a file at
+                         # its longest case, and a case long enough on its own yields inside its loop
+                         # (import-specifiers.integration.spec.ts does both, 38.0s -> under 8.1s, at no
+                         # measurable cost). The next candidates are single cases, which that hook cannot
+                         # help: types-bundler-determinism 10.4s, harness-setup 8.6s, facade-typing 8.4s.
+                         # To reproduce on demand rather than wait for it:
+                         #   npm run measure -- --trials 3 --busy 12 "npx vitest run --config vitest.integration.config.ts"
+                         # which went 2 of 2 failing to 0 of 3 across that fix. The cap shortens those
+                         # blocks and so makes it rarer, but it was never the cause
 npm run test:unit:host   # One pool, running only the projects whose own inputs changed (--project per
 npm run test:unit:pack   # stale project, one process). These are the chain's two steps; per-package
                          # staleness lives inside them, so a one-package edit still runs one project.
@@ -515,11 +545,58 @@ npm run schema:check     # Fails if abuddy.schema.json is stale
 npm run seed-parity:check   # Compare seeded rows against tests/seeds/__golden__
 npm run seed-parity:update  # Re-record them; deliberate, see "What to run after a change"
 
+npm run measure -- "<cmd>"  # Times a command on a quiet machine and prints a number you can quote:
+                         # `48.2s median of 5 (45.0s-49.3s), 92% idle, 2026-09-30`. A number without its
+                         # conditions is an assertion; with them it is a citation, and the difference is
+                         # three commit messages in goal-integration-pool that had to be corrected.
+                         #   --runs N          how many (5)
+                         #   --against "<B>"   an A/B comparison, **interleaved** and reported as the median
+                         #                     of the pairs. Blocked arms let a drifting box into the answer:
+                         #                     measured, that turned 49.1s->48.2s into a reported 71s->46.1s
+                         #   --trials N        the other question: how often does it *fail*? Reports the rate
+                         #                     and the 95% upper bound — 0 of 5 bounds it at 45%, 0 of 20 at
+                         #                     14%, which is what a clean run actually licenses you to say.
+                         #                     Failures are grouped by a normalised signature with one
+                         #                     verbatim exemplar each: it groups, it does not classify
+                         #   --busy N          spawn N CPU burners so contention is induced rather than
+                         #                     waited for. Implies --force, and says so in the conditions.
+                         #                     The birpc flake had only ever been seen by accident
+                         #   --idle PERCENT    lower the floor    --force  measure anyway
+                         # It refuses below IDLE_FLOOR (70%), read from os.cpus() rather than load average —
+                         # measured, loadavg read 3.20 on a box that was 78.7% idle, because it lags by
+                         # design. A sample whose counters did not advance throws rather than reading as 0%:
+                         # the top(1) parse this replaces returned 0% for a line it could not read, so a gate
+                         # waiting for quiet waited for ever and looked like patience.
+                         # **Idle is sampled between runs, never during one** — a reading taken while the
+                         # command runs measures the command, and a quiet box reads 0% while a suite uses it.
+                         # A flag with no value is an error rather than a default, which is what let
+                         # `"cmd" --busy` run with no load and report the box as 95% idle.
+                         # Prints, never records. A timings file would be a sample, and spec-cost.json is
+                         # what that costs (see "There is a third kind" above)
+
+npm run measure:loop -- "<cmd>"  # The other half of a flake: not how long a command took, but how long
+                         # each process it started went without turning its event loop, against the 60s
+                         # window birpc gives a call and vitest hardcodes. Per process, worst block first:
+                         #   worker  abuddy-cli/tests/…/types-bundler-determinism…  10.0s  6.0x slower  100%
+                         # Headroom rather than the block alone, because the block alone reads as fine until
+                         # it is not — 38s against 60s is one busy afternoon from failing. The elu column
+                         # says *why* a process was quiet: a loop at 4% was waiting, one at 99% was working,
+                         # and only the second is a block anyone can shorten. Takes --busy, --idle, --force.
+                         # It answers what `[vitest-worker]: Timeout calling` does not — which side failed.
+                         # That was attributed to the worker count, then to contention, before one run of
+                         # this put the main process at 6% utilisation and a worker at 38s. See the
+                         # test:integration entry above for the mechanism and the fix
+
 # Recorded spec costs (which half each spec runs in)
 npm run spec-cost:check  # Reads the records, runs nothing. `-- --list` prints what they hold and which
                          # specs sit between FAST_BELOW_MS and INTEGRATION_ABOVE_MS, where a re-measurement
                          # could change the answer: 8 of 367 today, so the rest are nowhere near a decision
-npm run spec-cost:update # The least that makes the records current, which is often nothing. A deleted spec
+npm run spec-cost:update # The least that makes the records current, which is often nothing. **It refuses
+                         # to measure below IDLE_FLOOR**, before running anything: what you would record on
+                         # a busy box is the machine. The contention refusal further down is a different
+                         # question — did too much *move*, asked after measuring — and cannot fire for a row
+                         # that is merely new, since an addition has not moved. That is how a cost was once
+                         # recorded at a load of 71 and reverted by hand. `--force` overrides both. A deleted spec
                          # leaves a row that needs no measurement to drop; a new one needs only the half it
                          # lives in. It says which case it took. Measured: 0.3s when nothing is wrong,
                          # against 315s of file-time for the whole thing
@@ -540,7 +617,7 @@ npm run spec-cost:update # The least that makes the records current, which is of
                          #   --force       record a run that moved more than CONTENDED_SHARE of a suite
 
 # Lint (root runs every workspace that has one; oxlint, plus eslint in the renderer)
-npm run check:specifiers # Every import rule, over the whole repo (2.7s, one parse per file). Takes paths to
+npm run check:specifiers # Every import rule, over the whole repo (2.5s, one parse and one tree walk). Takes paths to
                          # run only the per-file rules over them (0.9s over one feature), and says which
                          # whole-tree rules it skipped; --rule <id> runs one, --list prints them all
 npm run specifiers:fix   # Rewrites the specifiers whose repair the rules compute — an own-module specifier

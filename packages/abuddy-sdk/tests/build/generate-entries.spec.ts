@@ -19,6 +19,19 @@ afterEach(() => {
   fs.rmSync(root, { recursive: true, force: true });
 });
 
+/**
+ * Turn the event loop between tests.
+ *
+ * A pool worker runs each case synchronously, and `await` on a resolved promise only drains microtasks, so
+ * 96 cases of a few hundred milliseconds are **one** block rather than 96 — measured, 9.7s alone and 39.5s
+ * under the chain's three lanes, against the 60s window birpc gives a call and vitest hardcodes. A worker
+ * that never turns its loop cannot read the reply to the `onTaskUpdate` it already sent, so the run fails
+ * with `[vitest-worker]: Timeout calling` while every test passes.
+ *
+ * This caps the file at its longest single case, for one macrotask per test.
+ */
+afterEach(() => new Promise<void>((resolve) => { setImmediate(resolve); }));
+
 function write(file: string, content: string): void {
   fs.mkdirSync(path.dirname(path.join(root, file)), { recursive: true });
   fs.writeFileSync(path.join(root, file), content);

@@ -666,6 +666,23 @@ describe('when a run is refused as a measurement of the machine', () => {
     expect(refusesAsContended({ ...loaded, force: true }), 'and --force is still the way past it').toBe(false);
   });
 
+  /**
+   * The gap a second, earlier check exists for.
+   *
+   * This one asks *did too much move*, which it can only ask after measuring — and an addition has not
+   * moved, so a run whose every spec is new is never refused however loaded the machine was. That is
+   * exactly how a cost got recorded at a load of 71 and had to be reverted by hand. `spec-cost.ts` now
+   * refuses on measured idle *before* it runs anything; these are two different questions and both are kept.
+   */
+  it('cannot fire for a run that only added specs, whatever the machine was doing', () => {
+    expect(refusesAsContended({ ...loaded, moved: 0, comparable: 0 }), 'nothing had a value to move from')
+      .toBe(false);
+    const source = fs.readFileSync(path.join(REPO_ROOT, 'scripts/spec-cost.ts'), 'utf-8');
+    expect(source, 'so the command checks the machine before measuring').toContain('refusesAsBusy(');
+    expect(source.indexOf('refusesAsBusy('), 'and does it before, not after')
+      .toBeLessThan(source.indexOf('refusesAsContended('));
+  });
+
   it('never fires for a suite with no record to have moved', () => {
     expect(refusesAsContended({ ...loaded, hasPrevious: false })).toBe(false);
     expect(refusesAsContended({ hasPrevious: true, force: false, moved: 0, comparable: 0 })).toBe(false);

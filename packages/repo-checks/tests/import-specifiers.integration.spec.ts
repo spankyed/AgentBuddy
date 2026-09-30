@@ -7,6 +7,19 @@ import { REPO_ROOT } from '@abuddy/host/build/packages-built';
 import { packFixture as buildPackFixture } from '@abuddy/sdk/testing';
 import { population } from '@abuddy/sdk/testing';
 
+/**
+ * Turn the event loop between tests.
+ *
+ * A pool worker runs each case synchronously and `await`ing a resolved promise only drains microtasks, so a
+ * file of synchronous cases is **one** event-loop block however many `it`s it holds — measured here, 42s of
+ * tests as a single 38s block. Nothing in the file is then able to read the reply to the `onTaskUpdate` it
+ * has already sent, and birpc's 60s window, which no config can widen, expires against a main process that
+ * answered in milliseconds: `[vitest-worker]: Timeout calling "onTaskUpdate"`, with every test passing.
+ *
+ * This caps the block at the longest single case rather than their sum, and costs one macrotask per test.
+ */
+afterEach(() => new Promise<void>((resolve) => { setImmediate(resolve); }));
+
 /** scripts/check-import-specifiers.ts, over a temp tree holding the modules the checks resolve against */
 let root: string;
 beforeEach(() => {
@@ -626,6 +639,37 @@ const alsoClaiming = (id: string, dirs: readonly string[], half: 'src' | 'tests'
   sweepers(half).filter((rule) => rule.id !== id && rule.overPaths!([...dirs], root).length > 0).map((rule) => rule.id);
 
 
+/**
+ * The walk behind `packDirs` is memoised, and the memo is keyed on this repo's root and nothing else.
+ *
+ * That condition is the whole of its safety, so it gets the case the cache it replaces never had. A walk
+ * cannot be keyed on content — a directory's mtime moves when its own entries do, not when something three
+ * levels down changes — so the alternative was a reset hatch, and `resetSourceCache()` is the one two specs
+ * remember and the largest spec here did not, which is why it was quadratic until `7c4b8aacc`.
+ */
+describe("this checkout's pack list", () => {
+  it('walks again for a tree that is not this repo, so a pack written after the first call is found', () => {
+    const tree = fs.mkdtempSync(path.join(os.tmpdir(), 'pack-dirs-'));
+    try {
+      for (const name of ['one', 'two']) {
+        fs.mkdirSync(path.join(tree, name), { recursive: true });
+        fs.writeFileSync(path.join(tree, name, 'abuddy.json'), '{}');
+        // Asked after each, so the second answer has a first one to be stale against
+        expect(packDirs(tree), 'a memo ignoring the root would still be answering with the first walk')
+          .toContain(name);
+      }
+    } finally {
+      fs.rmSync(tree, { recursive: true, force: true });
+    }
+  });
+
+  // 103 286 readdirSync calls became 5 366, and `check:specifiers` 4.6s -> 2.5s, because the rules ask
+  // about 189 times and the repo does not grow a pack while they do
+  it('walks this repo once, however often it is asked', () => {
+    expect(packDirs()).toBe(packDirs());
+  });
+});
+
 describe('CHECKS', () => {
   /**
    * That each rule *fires* — the half a type cannot state. `FIRES` is keyed by `ImportRuleId`, derived from
@@ -982,7 +1026,7 @@ describe('CHECKS', () => {
    * One case over all of them: 88 would be 88 task updates, and the reporter the cost record is measured through
    * times out under that. Collecting also names every overlapping cell at once rather than the first.
    */
-  it('claims each offence under at most one rule, at every place a rule discriminates on', () => {
+  it('claims each offence under at most one rule, at every place a rule discriminates on', async () => {
     // Hoisted: `sweepers` asks `packDirs()`, which walks the repo for manifests. Per rule per cell that was 29s of
     // the 30 this case first took.
     const sweepersFor = { src: [...sweepers('src')], tests: [...sweepers('tests')] };
@@ -991,54 +1035,75 @@ describe('CHECKS', () => {
     const mismatched: string[] = [];
     const accepted = new Set<string>();
 
-    cells.forEach(({ where, file, offence, code }, n) => {
-      // A pack of its own per cell: `readSource` caches by absolute path and never invalidates, and the other
-      // cases here escape that only because `beforeEach` gives each *test* a fresh root. Measured — sharing one
-      // pack, this found none of the four overlaps it finds with a directory each.
+    for (const [n, { where, file, offence, code }] of cells.entries()) {
+      // Per cell, for the reason the hook above gives: this case alone is 22s of synchronous work, and one
+      // block that long is a third of birpc's window before the box has any other load on it
+      await new Promise<void>((resolve) => { setImmediate(resolve); });
+      /**
+       * A pack of its own per cell, under a *name* of its own — and removed once the cell is done.
+       *
+       * The name must be unique: `readSource` caches by absolute path and never invalidates, so reusing one
+       * path serves the previous cell's source, which is the reading that made an earlier attempt at sharing
+       * one pack find none of the four overlaps it finds this way.
+       *
+       * They must also not accumulate. Every rule's `overPaths` calls `packDirs(root)`, which walks the tree
+       * for manifests, so cell *N* was re-walking the N-1 packs before it, twelve times over — measured,
+       * 0.20ms at one pack against 15.65ms at eighty-eight, which is 8.4s of this case and grows with the
+       * square of the cell count. Hoisting `sweepers` removed one of the two walks; this removes the other.
+       */
       const at = `${PACK_FIXTURE}-${n}`;
       buildPackFixture({ at: path.join(root, at), files: { [file]: `${code}\n`, ...SECOND_FEATURE, ...DECOY_FILES } });
-      // Pointed at the file, not the half, so the rules share one parse instead of each walking the pack.
-      // `packRootOf` still finds the pack above it, so the manifest and the imports map are still in reach.
-      const half = file.startsWith('tests/') ? 'tests' : 'src';
-      const claimed = sweepersFor[half]
-        .filter((rule) => rule.overPaths!([`${at}/${file}`], root).length > 0)
-        .map((rule) => rule.packRule ?? rule.id);
-      const key = `${offence} at ${where}`;
-      if (claimed.length > 1) {
-        if (ACCEPTED_OVERLAP[key] === undefined) overlapping.push(`${key}: ${claimed.sort().join(' and ')}`);
-        else accepted.add(key);
-      }
-      if (claimed.length === 0) return;
-      firing.push(key);
+      // What this cell adds, so a cell that found something keeps its tree: the assertions are collected and
+      // made at the end, by which time the directory a reader would want to look at is otherwise gone
+      const found = overlapping.length + mismatched.length;
+      try {
+        // Pointed at the file, not the half, so the rules share one parse instead of each walking the pack.
+        // `packRootOf` still finds the pack above it, so the manifest and the imports map are still in reach.
+        const half = file.startsWith('tests/') ? 'tests' : 'src';
+        const claimed = sweepersFor[half]
+          .filter((rule) => rule.overPaths!([`${at}/${file}`], root).length > 0)
+          .map((rule) => rule.packRule ?? rule.id);
+        const key = `${offence} at ${where}`;
+        if (claimed.length > 1) {
+          if (ACCEPTED_OVERLAP[key] === undefined) overlapping.push(`${key}: ${claimed.sort().join(' and ')}`);
+          else accepted.add(key);
+        }
+        if (claimed.length === 0) continue;
+        firing.push(key);
 
-      // And what a pack author is actually told. `packRuleProblems` runs the rules together and drops a finding
-      // another rule already claimed, which is the half this sweep cannot see: it runs one rule at a time, so a
-      // rule that claims here and is silent there was dropped by the dedupe. Rule keys, not lines — the two
-      // runners spell a path differently on purpose.
-      const told = [...packRuleProblems(path.join(root, at), [half])];
-      const reported = told
-        .filter(([, found]) => found.some((line) => line.startsWith(`${file}:`)))
-        .map(([rule]) => rule as string);
+        // And what a pack author is actually told. `packRuleProblems` runs the rules together and drops a finding
+        // another rule already claimed, which is the half this sweep cannot see: it runs one rule at a time, so a
+        // rule that claims here and is silent there was dropped by the dedupe. Rule keys, not lines — the two
+        // runners spell a path differently on purpose.
+        const told = [...packRuleProblems(path.join(root, at), [half])];
+        const reported = told
+          .filter(([, found]) => found.some((line) => line.startsWith(`${file}:`)))
+          .map(([rule]) => rule as string);
 
-      // The unrelated offence must survive whatever the cell's own does: a drop only happens where two rules
-      // claim one site, and every such cell is accepted below, so without this a dedupe suppressing far too much
-      // would pass. One decoy per half, since a run over `tests` never sees the one in `src`.
-      if (!told.some(([rule, found]) => rule === 'host-imports' && found.some((line) => line.startsWith(`${DECOY[half]}:`)))) {
-        mismatched.push(`${key}: the unrelated offence in ${DECOY[half]} went with it, so the dedupe drops too much`);
+        // The unrelated offence must survive whatever the cell's own does: a drop only happens where two rules
+        // claim one site, and every such cell is accepted below, so without this a dedupe suppressing far too much
+        // would pass. One decoy per half, since a run over `tests` never sees the one in `src`.
+        if (!told.some(([rule, found]) => rule === 'host-imports' && found.some((line) => line.startsWith(`${DECOY[half]}:`)))) {
+          mismatched.push(`${key}: the unrelated offence in ${DECOY[half]} went with it, so the dedupe drops too much`);
+        }
+        const added = reported.filter((rule) => !claimed.includes(rule));
+        const dropped = claimed.filter((rule) => !reported.includes(rule));
+        if (added.length > 0) mismatched.push(`${key}: ${added.join(', ')} told a pack author and claimed by nothing`);
+        const merge = ACCEPTED_OVERLAP[key];
+        if (dropped.length > 0 && merge === undefined) {
+          mismatched.push(`${key}: ${dropped.join(', ')} claims the offence and no pack author hears it`);
+        }
+        // And the winner a recorded merge names is the rule an author actually hears, so the verdict is checked
+        // rather than believed
+        if (merge !== undefined && reported.join() !== merge.winner) {
+          mismatched.push(`${key}: recorded as \`${merge.winner}\` winning, and a pack author hears ${reported.join(', ') || 'nothing'}`);
+        }
+      } finally {
+        if (overlapping.length + mismatched.length === found) {
+          fs.rmSync(path.join(root, at), { recursive: true, force: true });
+        }
       }
-      const added = reported.filter((rule) => !claimed.includes(rule));
-      const dropped = claimed.filter((rule) => !reported.includes(rule));
-      if (added.length > 0) mismatched.push(`${key}: ${added.join(', ')} told a pack author and claimed by nothing`);
-      const merge = ACCEPTED_OVERLAP[key];
-      if (dropped.length > 0 && merge === undefined) {
-        mismatched.push(`${key}: ${dropped.join(', ')} claims the offence and no pack author hears it`);
-      }
-      // And the winner a recorded merge names is the rule an author actually hears, so the verdict is checked
-      // rather than believed
-      if (merge !== undefined && reported.join() !== merge.winner) {
-        mismatched.push(`${key}: recorded as \`${merge.winner}\` winning, and a pack author hears ${reported.join(', ') || 'nothing'}`);
-      }
-    });
+    }
 
     population('cells where some rule claims the offence', firing, { atLeast: 8 });
     expect(overlapping, 'each is one offence two rules claim, so which a reader is told depends on precedence — '

@@ -4,7 +4,7 @@ import { spawnSync } from 'node:child_process';
 import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
-import { afterAll, describe, expect, it } from 'vitest';
+import { afterAll, afterEach, describe, expect, it } from 'vitest';
 import { callCli } from '../_support/pack-builds';
 
 const REPO_ROOT = path.resolve(__dirname, '..', '..', '..', '..');
@@ -15,6 +15,17 @@ const dirs: string[] = [];
 afterAll(() => {
   for (const dir of dirs) fs.rmSync(dir, { recursive: true, force: true });
 });
+
+/**
+ * Turn the event loop between tests.
+ *
+ * Each case here spawns a nested `vitest run` and waits for it, and a pool worker runs them back to back:
+ * `await` on a resolved promise only drains microtasks, so a run of synchronous cases is **one** block
+ * however many `it`s it spans. A worker that never turns its loop cannot read the reply to the
+ * `onTaskUpdate` it already sent, and birpc's 60s window — which vitest hardcodes — expires with every
+ * test passing. Measured here: five cases of 1.5-1.8s as a single 8.6s block.
+ */
+afterEach(() => new Promise<void>((resolve) => { setImmediate(resolve); }));
 
 function tempDir(prefix: string): string {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), prefix));
