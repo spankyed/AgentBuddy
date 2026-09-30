@@ -98,11 +98,55 @@ describe('ephemeral instances', () => {
   });
 });
 
-it('removing refuses anything outside the instances directory', () => {
-  const outside = path.join(tmp, 'not-an-instance');
-  fs.mkdirSync(outside, { recursive: true });
-  expect(() => removeInstance(dirs, outside)).toThrow(/not inside/);
-  expect(fs.existsSync(outside), 'and leaves it alone').toBe(true);
+/**
+ * What may be removed is an instance, and the guard is phrased that way rather than as "inside the
+ * root" — a containment rule admits a container for every level it does not enumerate, and this one
+ * admitted two in turn: the root, which holds every instance, and `.ephemeral`, which holds every
+ * throwaway one. Neither had a caller; each was one future caller away from deleting everything.
+ */
+describe('what removing accepts', () => {
+  it('takes a named instance and an ephemeral one, which is what every caller passes', () => {
+    const named = openInstance(dirs, 'keep-me', 'source');
+    const ephemeral = mintInstance(dirs, 'source', true);
+    removeInstance(dirs, named.dir);
+    removeInstance(dirs, ephemeral.dir);
+    expect(fs.existsSync(named.dir)).toBe(false);
+    expect(fs.existsSync(ephemeral.dir)).toBe(false);
+  });
+
+  it('refuses the instances root, and every instance under it survives', () => {
+    const named = openInstance(dirs, 'keep-me', 'source');
+    expect(() => removeInstance(dirs, root())).toThrow(/the instances directory itself/);
+    expect(fs.existsSync(named.dir)).toBe(true);
+  });
+
+  it('refuses the directory the ephemeral ones live in, and they survive', () => {
+    const one = mintInstance(dirs, 'source', true);
+    const two = mintInstance(dirs, 'source', true);
+    expect(() => removeInstance(dirs, path.dirname(one.dir))).toThrow(/every ephemeral instance lives/);
+    expect(fs.existsSync(one.dir) && fs.existsSync(two.dir)).toBe(true);
+  });
+
+  it('refuses a directory inside an instance, which is data rather than an instance', () => {
+    const named = openInstance(dirs, 'keep-me', 'source');
+    expect(() => removeInstance(dirs, path.join(named.dir, 'packs'))).toThrow(/an instance is a directory/);
+  });
+
+  it('refuses anything outside, and leaves it alone', () => {
+    const outside = path.join(tmp, 'not-an-instance');
+    fs.mkdirSync(outside, { recursive: true });
+    expect(() => removeInstance(dirs, outside)).toThrow(/is not inside/);
+    expect(fs.existsSync(outside)).toBe(true);
+  });
+
+  // `path.relative` renders a sibling of the root as `../<name>`, which splits into two segments and
+  // would pass a check that only counted them
+  it('refuses a sibling of the root whose relative path looks like a nested instance', () => {
+    const sibling = path.join(dirs.data, 'instances-old');
+    fs.mkdirSync(sibling, { recursive: true });
+    expect(() => removeInstance(dirs, sibling)).toThrow(/is not inside/);
+    expect(fs.existsSync(sibling)).toBe(true);
+  });
 });
 
 describe('the flags', () => {

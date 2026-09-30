@@ -200,12 +200,35 @@ function dirBytes(dir: string): number {
  * The second refusal is not politeness: an app whose data dir is removed underneath it keeps running and
  * writes it back, so the directory returns and the removal only corrupted what was in it.
  */
+/**
+ * Why `resolved` is not an instance that may be removed, or nothing.
+ *
+ * It says what an instance **is** — a directory directly in the root, or one under `.ephemeral` — rather
+ * than where it is not, because both holes this guard has had were a containment check that happened to
+ * admit a container. `resolved !== root` exempted the root, which would have removed every instance in
+ * one call; tightening that to a prefix test still admitted `.ephemeral`, which holds every ephemeral
+ * one. Neither had a caller, and each was one future caller away from being real. A rule phrased as
+ * "inside X" has a container for every level it does not enumerate; phrased as "is an instance" it has
+ * none.
+ */
+function notAnInstance(root: string, resolved: string): string | undefined {
+  const rel = path.relative(root, resolved);
+  if (rel === '') return 'that is the instances directory itself, not an instance in it.';
+  if (rel.startsWith('..') || path.isAbsolute(rel)) return `it is not inside ${root}.`;
+  if (rel === EPHEMERAL) return 'that is where every ephemeral instance lives, not one of them.';
+
+  const parts = rel.split(path.sep);
+  const isInstance = parts.length === 1 || (parts.length === 2 && parts[0] === EPHEMERAL);
+  return isInstance
+    ? undefined
+    : `an instance is a directory in ${root}, or one under ${EPHEMERAL}/.`;
+}
+
 export function removeInstance(dirs: CliDirs, dir: string): void {
   const root = instancesRoot(dirs);
   const resolved = path.resolve(dir);
-  if (resolved !== root && !resolved.startsWith(root + path.sep)) {
-    throw new Error(`Refusing to remove ${resolved}: it is not inside ${root}.`);
-  }
+  const problem = notAnInstance(root, resolved);
+  if (problem) throw new Error(`Refusing to remove ${resolved}: ${problem}`);
   if (instanceInUse(resolved)) {
     throw new Error(`An app is running on ${resolved}. Close it before removing the instance.`);
   }
