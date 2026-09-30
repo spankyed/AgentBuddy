@@ -2,7 +2,7 @@ import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import ts from 'typescript';
-import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest';
 import { PACKAGES_BUILT, REPO_ROOT, installPublishedPackages } from '@app/publish-checks';
 import { callCli, packageJson, preparePack, tsconfig, typecheckPack, write } from '../_support/pack-builds';
 
@@ -400,6 +400,18 @@ const LAYOUTS = [
   { name: 'workspace source', published: false },
   ...(PACKAGES_BUILT ? [{ name: 'published package', published: true }] : []),
 ];
+
+/**
+ * Turn the event loop between tests.
+ *
+ * A pool worker runs each case synchronously, and `await` on a resolved promise only drains microtasks, so
+ * a run of them is **one** event-loop block however many `it`s it spans — and a worker that never turns
+ * its loop cannot read the reply to the `onTaskUpdate` it already sent. birpc's window is 60s and vitest
+ * hardcodes it, so the run fails with `[vitest-worker]: Timeout calling` while every test passes.
+ *
+ * This caps the file at its longest single case, for one macrotask per test.
+ */
+afterEach(() => new Promise<void>((resolve) => { setImmediate(resolve); }));
 
 describe.each(LAYOUTS)('generated facades with a dependency ($name)', ({ published }) => {
   let parent: string;
