@@ -452,10 +452,25 @@ npm run test:integration # The expensive half of every suite that has one (@abud
                          # against 52.4s uncapped, because nine workers each running ts.createProgram and
                          # abuddy build put the box at a load of 25-32 — and twelve of the twenty-four files
                          # the pool loads spawn a subprocess besides, two of them a nested vitest run, which
-                         # integration-subprocesses.spec.ts counts. The birpc timeout the
-                         # cap was originally written against did not occur in nineteen quiet runs, capped
-                         # or not — it is a contention symptom, and every one this repo has seen came while
-                         # another workload shared the machine
+                         # integration-subprocesses.spec.ts counts.
+                         # **The birpc timeout the cap was originally written against is a worker blocking
+                         # its own event loop**, not a main thread too busy to answer: measured 2026-09-30,
+                         # the main process sits at 6% event-loop utilisation with a worst block of 74ms,
+                         # quiet and loaded alike. A worker runs each case synchronously and `await` on a
+                         # resolved promise drains microtasks without turning the loop, so a file of
+                         # synchronous cases is **one** block however many `it`s it holds — 42s of tests as
+                         # one 38s block, against birpc's hardcoded 60s window (DEFAULT_TIMEOUT = 6e4, which
+                         # vitest exposes no knob for; vitest-dev/vitest#4497, #6479, #8164). Nothing is
+                         # wrong with the tests: they all pass and the run exits 1.
+                         # The fix is to turn the loop — an `afterEach` yielding a macrotask caps a file at
+                         # its longest case, and a case long enough on its own yields inside its loop
+                         # (import-specifiers.integration.spec.ts does both, 38.0s -> under 8.1s, at no
+                         # measurable cost). The next candidates are single cases, which that hook cannot
+                         # help: types-bundler-determinism 10.4s, harness-setup 8.6s, facade-typing 8.4s.
+                         # To reproduce on demand rather than wait for it:
+                         #   npm run measure -- --trials 3 --busy 12 "npx vitest run --config vitest.integration.config.ts"
+                         # which went 2 of 2 failing to 0 of 3 across that fix. The cap shortens those
+                         # blocks and so makes it rarer, but it was never the cause
 npm run test:unit:host   # One pool, running only the projects whose own inputs changed (--project per
 npm run test:unit:pack   # stale project, one process). These are the chain's two steps; per-package
                          # staleness lives inside them, so a one-package edit still runs one project.

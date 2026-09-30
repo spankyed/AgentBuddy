@@ -7,6 +7,19 @@ import { REPO_ROOT } from '@abuddy/host/build/packages-built';
 import { packFixture as buildPackFixture } from '@abuddy/sdk/testing';
 import { population } from '@abuddy/sdk/testing';
 
+/**
+ * Turn the event loop between tests.
+ *
+ * A pool worker runs each case synchronously and `await`ing a resolved promise only drains microtasks, so a
+ * file of synchronous cases is **one** event-loop block however many `it`s it holds — measured here, 42s of
+ * tests as a single 38s block. Nothing in the file is then able to read the reply to the `onTaskUpdate` it
+ * has already sent, and birpc's 60s window, which no config can widen, expires against a main process that
+ * answered in milliseconds: `[vitest-worker]: Timeout calling "onTaskUpdate"`, with every test passing.
+ *
+ * This caps the block at the longest single case rather than their sum, and costs one macrotask per test.
+ */
+afterEach(() => new Promise<void>((resolve) => { setImmediate(resolve); }));
+
 /** scripts/check-import-specifiers.ts, over a temp tree holding the modules the checks resolve against */
 let root: string;
 beforeEach(() => {
@@ -982,7 +995,7 @@ describe('CHECKS', () => {
    * One case over all of them: 88 would be 88 task updates, and the reporter the cost record is measured through
    * times out under that. Collecting also names every overlapping cell at once rather than the first.
    */
-  it('claims each offence under at most one rule, at every place a rule discriminates on', () => {
+  it('claims each offence under at most one rule, at every place a rule discriminates on', async () => {
     // Hoisted: `sweepers` asks `packDirs()`, which walks the repo for manifests. Per rule per cell that was 29s of
     // the 30 this case first took.
     const sweepersFor = { src: [...sweepers('src')], tests: [...sweepers('tests')] };
@@ -991,7 +1004,10 @@ describe('CHECKS', () => {
     const mismatched: string[] = [];
     const accepted = new Set<string>();
 
-    cells.forEach(({ where, file, offence, code }, n) => {
+    for (const [n, { where, file, offence, code }] of cells.entries()) {
+      // Per cell, for the reason the hook above gives: this case alone is 22s of synchronous work, and one
+      // block that long is a third of birpc's window before the box has any other load on it
+      await new Promise<void>((resolve) => { setImmediate(resolve); });
       // A pack of its own per cell: `readSource` caches by absolute path and never invalidates, and the other
       // cases here escape that only because `beforeEach` gives each *test* a fresh root. Measured — sharing one
       // pack, this found none of the four overlaps it finds with a directory each.
@@ -1008,7 +1024,7 @@ describe('CHECKS', () => {
         if (ACCEPTED_OVERLAP[key] === undefined) overlapping.push(`${key}: ${claimed.sort().join(' and ')}`);
         else accepted.add(key);
       }
-      if (claimed.length === 0) return;
+      if (claimed.length === 0) continue;
       firing.push(key);
 
       // And what a pack author is actually told. `packRuleProblems` runs the rules together and drops a finding
@@ -1038,7 +1054,7 @@ describe('CHECKS', () => {
       if (merge !== undefined && reported.join() !== merge.winner) {
         mismatched.push(`${key}: recorded as \`${merge.winner}\` winning, and a pack author hears ${reported.join(', ') || 'nothing'}`);
       }
-    });
+    }
 
     population('cells where some rule claims the offence', firing, { atLeast: 8 });
     expect(overlapping, 'each is one offence two rules claim, so which a reader is told depends on precedence — '

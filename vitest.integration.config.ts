@@ -49,11 +49,16 @@ export default defineConfig({
      * holds that count, with why each one has to be a process.
      *
      * **The flake is not the reason, though it was.** These configs used to carry this cap against
-     * "[vitest-worker]: Timeout calling", the main thread missing birpc's 60s window — a window vitest
-     * hardcodes, so no config can lengthen it. It did not occur once in those nineteen quiet runs, capped or
-     * not. Every occurrence in this session came while another workload shared the machine, which is what
-     * that failure is: a symptom of contention, not of a worker count. The cap earns its place by being
-     * faster; that it also leaves headroom on a busy machine is a second reason, not the first.
+     * "[vitest-worker]: Timeout calling", birpc's 60s window — which vitest hardcodes, so no config can
+     * lengthen it. The cap never addressed it: measured 2026-09-30, the main process sits at **6% event-loop
+     * utilisation** with a worst block of 74ms, both quiet and under load, so it was never the side that
+     * failed to answer. The window expires in a *worker*, which runs each case synchronously and so turns
+     * its loop only between tests — and `await` on a resolved promise drains microtasks without turning it
+     * at all, making a whole file one block. `import-specifiers.integration.spec.ts` was 38s of one block on
+     * an idle box, 73s beside a second pool, and that is the failure: every test passes and a reply the main
+     * process sent in milliseconds goes unread. The spec yields now, and `--busy 12` under
+     * `npm run measure --trials` goes from 2 of 2 failing to 0 of 3. The cap earns its place by being
+     * faster; that it also shortens those blocks is a second reason, not the first.
      *
      * A percentage, because vitest reads this as `poolOptions.maxThreads ?? maxWorkers ?? (cpus - 1)`: it
      * replaces the default rather than capping it, so a fixed number raises the worker count on any machine
