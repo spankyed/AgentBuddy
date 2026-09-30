@@ -69,6 +69,18 @@ export interface ChainStep {
   /** Why, printed where a cached step's reason would go. Required of every `cache: false` step. */
   readonly neverCachedBecause?: string;
   /**
+   * Run only when asked for, and why — a step the chain knows about but does not gate on.
+   *
+   * A gate earns its place by catching regressions. A step that exists to be *driven* — to watch the app
+   * while writing a feature, or to let an agent see what it built — is a different tool wearing the same
+   * shape, and putting it in the chain taxes every merge for a job it was never doing.
+   *
+   * It stays declared rather than deleted, because its `inputs` are what tell `chain-inputs` that the tree
+   * it reads is covered, and `--<flag>` puts it back. Nothing may `need` one: the default chain would then
+   * be missing a dependency, which `chainSteps` refuses.
+   */
+  readonly optInBecause?: string;
+  /**
    * What to pass the step so it ignores a cache of its own, appended by `chain.ts` under `--all`.
    *
    * **A step that keeps its own cache needs this, or `--all` lies about it.** The chain's `--all` overrides
@@ -135,6 +147,26 @@ const BY_NAME = new Map<string, ChainStep>();
  * The order to run the steps in, derived from `needs`. Throws on an unknown dependency or a cycle, before
  * anything runs: a graph that is wrong should not be discovered halfway through a six-minute chain.
  */
+/**
+ * The steps a run gates on: every step, minus the opt-in ones unless they were asked for.
+ *
+ * Refuses a graph where something needs an opt-in step, since the default run would then be missing a
+ * dependency and the failure would arrive halfway through rather than here.
+ */
+export function chainSteps(include: readonly string[] = []): readonly ChainStep[] {
+  const optIn = new Set(CHAIN_STEPS.filter((s) => s.optInBecause !== undefined).map((s) => s.name));
+  const kept = CHAIN_STEPS.filter((s) => !optIn.has(s.name) || include.includes(s.name));
+  const present = new Set(kept.map((s) => s.name));
+  for (const step of kept) {
+    for (const need of step.needs) {
+      if (!present.has(need)) {
+        throw new Error(`Chain step ${step.name} needs ${need}, which is opt-in — nothing may depend on one`);
+      }
+    }
+  }
+  return kept;
+}
+
 export function orderedSteps(steps: readonly ChainStep[] = CHAIN_STEPS): readonly ChainStep[] {
   BY_NAME.clear();
   for (const step of steps) {
@@ -543,7 +575,14 @@ export const CHAIN_STEPS: readonly ChainStep[] = [
   // It declares what it writes although it is never cached and so never reads a stamp: the guard that a
   // step depending on another's output says so can only see outputs that are declared, and this is the
   // tree that caused the defect — `typecheck` declared `tests`, which contains these, and could never cache.
-  { name: 'test', tier: 3, needs: ['build:app'], cache: false, seconds: 26, // the E2E suite
+  // The E2E suite. **Opt-in, not a gate** — `npm run chain -- --e2e`.
+  //
+  // It was built to be driven: to watch the app while writing a feature, and to let an agent see what it
+  // built. It became a chain step, and then the reasoning about it became about caching a flaky pass —
+  // which is a question you only ask of a regression gate. It has not caught one. Off the chain it costs
+  // nothing and is still there when you want it, which is what it was for.
+  { name: 'test', tier: 3, needs: ['build:app'], cache: false, seconds: 26,
+    optInBecause: 'it is a harness for driving the app, not a regression gate; nothing has needed it to fail',
     neverCachedBecause: 'it drives real Electron, and a flaky pass cached green hides an intermittent failure',
     outputs: ['tests/screenshots', 'tests/results'],
     inputs: [...ROOT, 'tests/e2e', 'playwright.config.ts', 'scripts/with-source.mjs', ...APP_ENTRY, ...APP_OUTPUTS] },

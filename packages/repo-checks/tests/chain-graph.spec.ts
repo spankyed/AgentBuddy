@@ -5,7 +5,7 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { REPO_ROOT } from '@abuddy/host/build/packages-built';
-import { CHAIN_STEPS, orderedSteps, type ChainStep } from '../../../scripts/lib/chain-steps.ts';
+import { CHAIN_STEPS, chainSteps, orderedSteps, type ChainStep } from '../../../scripts/lib/chain-steps.ts';
 
 describe('the chain graph', () => {
   it('orders every step after the steps it needs', () => {
@@ -67,6 +67,34 @@ describe('the chain graph', () => {
       + 'hardcoded sentence about Electron until a second step opted out and it was wrong about that one').toEqual([]);
     expect(CHAIN_STEPS.filter((s) => s.cache !== false && s.neverCachedBecause !== undefined).map((s) => s.name),
       'these give a reason for not being cached and are cached').toEqual([]);
+  });
+
+  /**
+   * An opt-in step is declared but not gated on. The declarations are the reason it stays: `chain-inputs`
+   * reads every step's `inputs` to prove the tracked tree is covered, so deleting the E2E step would leave
+   * `tests/e2e` watched by nothing while looking like a simplification.
+   */
+  describe('a step the chain knows about but does not gate on', () => {
+    it('is left out by default and put back when asked for', () => {
+      const byDefault = chainSteps().map((s) => s.name);
+      expect(byDefault, 'the E2E suite drives the app; it is not a regression gate').not.toContain('test');
+      expect(chainSteps(['test']).map((s) => s.name), '`--e2e` runs it').toContain('test');
+    });
+
+    it('says why, as an uncached step has to', () => {
+      expect(CHAIN_STEPS.filter((s) => s.optInBecause !== undefined && s.optInBecause.length < 20).map((s) => s.name),
+        'an opt-in step needs a reason, not a flag').toEqual([]);
+    });
+
+    /**
+     * The one way this breaks: something needs a step the default run does not include, so the chain is
+     * missing a dependency and finds out halfway through. It fails at the selector instead.
+     */
+    it('refuses a graph where something needs one', () => {
+      const steps = CHAIN_STEPS.map((s) => (s.name === 'build:app' ? { ...s, optInBecause: 'for the case' } : s));
+      expect(() => orderedSteps(steps.filter((s) => s.optInBecause === undefined)))
+        .toThrow(/needs build:app, which is not a step/);
+    });
   });
 
   it('does not cache the step that guarantees the built packages', () => {

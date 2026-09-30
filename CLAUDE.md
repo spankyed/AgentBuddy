@@ -50,8 +50,8 @@ Measured on an idle machine, 2026-09-25, each one a real run rather than a sum o
 
 | What you changed | What the chain runs | Cost |
 |---|---|---|
-| nothing tracked | the E2E suite, which is never cached | **26.8s** |
-| a doc, a comment, a CLAUDE.md | nothing but that — no step declares `docs/` | **26.8s** |
+| nothing tracked | nothing | **0.9s** |
+| a doc, a comment, a CLAUDE.md | nothing but that — no step declares `docs/` | **0.9s** |
 | one package's source (the renderer) | `test:unit:host`, which runs only the renderer's project and `@app/main`'s (it depends on the renderer), `typecheck`, then `build:app` and all of tier 3, because rebuilding the app moves what tier 3 reads | **115.1s** |
 | nothing is cached (a cold tree) | all 12 steps, three at a time (re-measured 2026-09-27, `--all`) | **178.3s** |
 
@@ -375,7 +375,9 @@ npm run spec -- <target> # You don't say what the target is; it works that out:
 npm run chain            # Before a merge: every check in dependency order, cold 190s and warm 27s. Each
                          # step is cached on the inputs it declares (scripts/lib/chain-steps.ts), so a doc
                          # edit runs nothing and a one-package edit runs that package's suite; the E2E
-                         # suite is never cached, with its reason on the step. It leaves out api:check,
+                         # suite is opt-in (`--e2e`) rather than a gate, with its reason on the step: it
+                         # was built to be driven, and taking it off the chain took a doc edit from 26s to
+                         # 0.9s. It leaves out api:check,
                          # which typecheck's api:stamp covers, and includes packages:check, which has no
                          # such proxy.
                          # **Never pipe a backgrounded run.** It buffers output and prints only a failing
@@ -393,7 +395,7 @@ npm run chain            # Before a merge: every check in dependency order, cold
                          #   --no-classify  a step failing under several lanes is re-run alone, to tell the
                          #             code apart from contention; the retry never stamps and the chain
                          #             still exits 1. This turns that off
-npm test                 # Playwright E2E tests
+npm test                 # Playwright E2E tests. **A harness, not a gate** — see below
 npm run test:unit        # Vitest, as two pools: the host suites as one root run under the
                          # @abuddy/source condition, and the pack suite on its own resolving the published
                          # dist. Serial, measured — a second lane buys 3% for 87% more work.
@@ -571,6 +573,13 @@ npm run check:repro      # **A diagnostic instrument, not a gate**, and nothing 
 ```
 
 ### E2E visual testing
+
+**This is a tool for driving the app, not a regression suite, and it is not in `npm run chain`.** It was
+built to watch the app while writing a feature and to let an agent see what it built; it became a chain
+step, and the reasoning around it drifted into caching policy — a question you only ask of a gate. It has
+not caught a regression. `npm run chain -- --e2e` runs it with the chain when you want it, `npm test` runs
+it alone, and the step stays declared in `chain-steps.ts` so `chain-inputs` still proves `tests/e2e` is
+covered by something.
 
 Playwright tests launch the full Electron app and interact via `window.applicationState` (the XState actor). Use to visually verify UI changes.
 

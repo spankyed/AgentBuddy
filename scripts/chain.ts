@@ -44,7 +44,7 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { changedInputs, firstChange, freshnessSweep, INPUTS_CHANGED, REPO_ROOT, stampedRun, stampRecord, unitStaleReason, type BuildUnit } from '@abuddy/host/build/packages-built';
-import { CHAIN_STEPS, MEASURED_AT_LANES, orderedSteps, type ChainStep, type Tier } from './lib/chain-steps.ts';
+import { CHAIN_STEPS, chainSteps, MEASURED_AT_LANES, orderedSteps, type ChainStep, type Tier } from './lib/chain-steps.ts';
 import { schedule } from './lib/chain-schedule.ts';
 import { criticalPath, driftedSteps, willNotCache } from './lib/step-timing.ts';
 import { briefly, classifyLine, declaredAt, dim, DRY_REASON_COLUMN, driftReport, howLong, identicalRewrites, oneLine, REASON_COLUMN, shouldClassify, staleLines, STEP_NAME_WIDTH, TIME_COLUMN, whenChanged, wrapAt, writerOf } from './lib/chain-output.ts';
@@ -234,11 +234,13 @@ async function main(): Promise<void> {
   // The retry costs the failing step's own time before the verdict appears, and most failures are the ordinary
   // kind where the reader already knows what they broke
   const noClassify = process.argv.includes('--no-classify');
+  // The E2E suite is a harness for driving the app rather than a gate, so it runs when asked for
+  const e2e = process.argv.includes('--e2e');
   let cached = 0;
 
   // Derived from each step's `needs`, and validated first: an unknown dependency or a cycle fails here rather
   // than halfway through a six-minute run
-  const steps = orderedSteps();
+  const steps = orderedSteps(chainSteps(e2e ? ['test'] : []));
   const lanes = laneCount();
 
   /** Its verdict, asked at dispatch — see `dispatch` for why that timing is load-bearing */
