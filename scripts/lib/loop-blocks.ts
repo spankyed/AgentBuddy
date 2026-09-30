@@ -117,23 +117,18 @@ export const ranked = (rows: readonly Process[]): Process[] =>
   [...rows].sort((a, b) => b.blockMs - a.blockMs);
 
 /**
- * What the run is worth saying out loud.
+ * What the run is worth saying out loud: the worst block, and whatever has already breached.
  *
- * `breached` is the certainty and `atRisk` the warning, and both are needed: a run where nothing breached
- * says nothing about the next one, which is the mistake this whole line of work started from — nineteen
- * clean runs were read as evidence the flake was gone.
+ * It carried a third answer, `atRisk`, for the rows within some factor of the window. `factorText` below
+ * replaced it — every row now says how much room it has, so a separate list of the close ones was a second
+ * way to ask one question, and the parameter that tuned it survived into `verdictLine` doing nothing at all.
  */
-export function verdict(rows: readonly Process[], atRiskBelow = 3): {
+export function verdict(rows: readonly Process[]): {
   readonly worst: Process | undefined;
   readonly breached: Process[];
-  readonly atRisk: Process[];
 } {
   const order = ranked(rows);
-  return {
-    worst: order[0],
-    breached: order.filter((row) => row.blockMs >= RPC_WINDOW_MS),
-    atRisk: order.filter((row) => row.blockMs < RPC_WINDOW_MS && headroom(row.blockMs) < atRiskBelow),
-  };
+  return { worst: order[0], breached: order.filter((row) => row.blockMs >= RPC_WINDOW_MS) };
 }
 
 /**
@@ -165,7 +160,7 @@ export function parseSamples(text: string): { readonly samples: Sample[]; readon
 /**
  * The one sentence the table does not say, printed on every run.
  *
- * It used to appear only when something was already within `atRiskBelow` of the window, so a healthy run
+ * It used to appear only when something was already close to the window, so a healthy run
  * printed a table and no judgement at all — and that is the run somebody quotes as proof. A clean
  * measurement is a measurement of the room left, never evidence that a flake is gone, and the place to say
  * so is the run where everything looks fine.
@@ -173,19 +168,29 @@ export function parseSamples(text: string): { readonly samples: Sample[]; readon
 /** Beyond this the factor stops being a thing that could happen and starts being arithmetic. */
 export const IMPLAUSIBLE_FACTOR = 100;
 
-export function verdictLine(rows: readonly Process[], atRiskBelow = 3): string {
-  const { worst, breached } = verdict(rows, atRiskBelow);
+/**
+ * How much slower a run would have to be, as a reader should see it — or nothing, where the answer is
+ * arithmetic rather than a thing that could happen.
+ *
+ * One helper because the ceiling has to apply everywhere it is quoted. It did not: the verdict suppressed
+ * an 11ms block's `5454.5x` while the table beside it printed `438.0x` and `952.4x` on their own rows, and
+ * a report carrying one number like that is read more sceptically for the rest of them.
+ */
+export const factorText = (blockMs: number): string => {
+  const factor = headroom(blockMs);
+  return factor > IMPLAUSIBLE_FACTOR ? '' : `${factor.toFixed(1)}x`;
+};
+
+export function verdictLine(rows: readonly Process[]): string {
+  const { worst, breached } = verdict(rows);
   if (breached.length > 0) {
     return `${breached.length} past the ${(RPC_WINDOW_MS / 1000).toFixed(0)}s window — these fail as `
       + '"[vitest-worker]: Timeout calling", whatever their tests did.';
   }
-  const factor = worst === undefined ? Infinity : headroom(worst.blockMs);
-  // A 11ms block against a 60s window is "5454.5x slower breaches", which is true and useless, and a
-  // report that prints one silly number is read more sceptically for the rest of them
-  if (worst === undefined || factor > IMPLAUSIBLE_FACTOR) {
+  const factor = worst === undefined ? '' : factorText(worst.blockMs);
+  if (factor === '') {
     return 'Nothing blocked its event loop near the window, and no plausible slowdown brings it there.';
   }
-  return `Worst block ${(worst.blockMs / 1000).toFixed(1)}s, `
-    + `${Math.round((worst.blockMs / RPC_WINDOW_MS) * 100)}% of the window: a run ${factor.toFixed(1)}x slower `
-    + 'breaches. A clean run measures the room left; it is not evidence the flake is gone.';
+  return `Worst block ${(worst!.blockMs / 1000).toFixed(1)}s: a run ${factor} slower breaches. `
+    + 'A clean run measures the room left; it is not evidence the flake is gone.';
 }

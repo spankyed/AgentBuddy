@@ -22,8 +22,8 @@
  * `scripts/lib/measure.ts` holds every decision it makes, so a spec can watch those fail.
  */
 import {
-  asNumber, citation, driftedDuring, groupBySignature, idleNow, IDLE_FLOOR, pairedDelta, parseFlags,
-  rateOf, refusesAsBusy, runOrder, startBurners, summarise, upperBound, type Trial,
+  asNumber, citation, conditions, ExitWith, groupBySignature, idleNow, IDLE_FLOOR, pairedDelta,
+  parseFlags, rateOf, refusesAsBusy, runOrder, startBurners, summarise, upperBound, type Trial,
 } from './lib/measure.ts';
 import { boundedSpawn } from './lib/bounded-spawn.ts';
 
@@ -58,23 +58,29 @@ async function main(): Promise<void> {
 
   if (parsed.positionals.length !== 1 || runs < 1 || busy < 0 || minutes <= 0
     || (trials !== undefined && trials < 1)) {
-    throw new Error(USAGE);
+    throw new ExitWith(USAGE, 2);
   }
   // Two questions, and an A/B of failure *rates* is a third nobody has asked for yet
   if (trials !== undefined && against !== undefined) {
-    throw new Error('--trials asks how often a command fails and --against compares two durations; pick one.');
+    throw new ExitWith('--trials asks how often a command fails and --against compares two durations; pick one.', 2);
   }
   const command = parsed.positionals[0]!;
   const budgetMs = minutes * 60_000;
 
   const burners = new AbortController();
-  startBurners(busy, burners.signal, budgetMs);
+  // A burner resolving while the series is still going means its ceiling ran out, not that we stopped it —
+  // and a series reported as being under load after the load stopped is the silent kind of wrong number
+  let seriesRunning = true;
+  let loadExpired = false;
+  for (const burner of startBurners(busy, burners.signal)) {
+    void burner.then(() => { if (seriesRunning) loadExpired = true; });
+  }
   try {
     const started = idleNow();
     if (refusesAsBusy({ idle: started, floor, force })) {
-      throw new Error(`The machine is ${Math.round(started * 100)}% idle and this refuses below `
+      throw new ExitWith(`The machine is ${Math.round(started * 100)}% idle and this refuses below `
         + `${Math.round(floor * 100)}%. A number taken now is about the machine, not the command.\n`
-        + '  Wait, or pass --force (the citation will say it was forced), or --idle to lower the floor.');
+        + '  Wait, or pass --force (the citation will say it was forced), or --idle to lower the floor.', 3);
     }
 
     const idles: number[] = [started];
@@ -101,7 +107,7 @@ async function main(): Promise<void> {
     /** Timing mode throws on failure: a failed run has no duration worth reporting. */
     const time = async (target: string): Promise<number> => {
       const { ms, code } = await measure(target);
-      if (code !== 0) throw new Error(`the command failed (exit ${code}): ${target}`);
+      if (code !== 0) throw new ExitWith(`the command failed (exit ${code}): ${target}`, 1);
       return ms;
     };
 
@@ -114,12 +120,12 @@ async function main(): Promise<void> {
         taken.push(await measure(command));
         if (stopOnFailure && taken.at(-1)!.code !== 0) break;
       }
+      seriesRunning = false;
       const failures = taken.filter((trial) => trial.code !== 0).length;
       console.log(`\n  ${command}`);
       console.log(`  ${failures} of ${taken.length} failed (${Math.round(rateOf(taken) * 100)}%, at most `
         + `${Math.round(upperBound(failures, taken.length) * 100)}% at 95% confidence), `
-        + `${Math.round(Math.min(...idles) * 100)}% idle, ${on}`
-        + `${driftedDuring(idles, floor) ? ' — conditions drifted mid-series' : ''}`);
+        + `${conditions({ idles, floor, busy, forced: force, loadExpired })}, ${on}`);
       // One group per distinct failure, with the text verbatim: the grouping is a convenience and the
       // exemplar is the evidence. Whether these are one bug or three is the reader's call, not this tool's
       for (const group of groupBySignature(taken)) {
@@ -134,14 +140,11 @@ async function main(): Promise<void> {
     for (const arm of runOrder(runs, against !== undefined)) {
       samples[arm].push(await time(arm === 'a' ? command : against!));
     }
-
-    const drifted = driftedDuring(idles, floor);
-    const worst = Math.min(...idles);
+    seriesRunning = false;
 
     /** The conditions are the series', not each arm's: both arms ran through the same window */
-    const quote = (series: number[]): string =>
-      `${citation({ summary: summarise(series), idle: worst, on, forced: force, drifted })}`
-      + `${busy > 0 ? ` — under ${busy} induced busy cores` : ''}`;
+    const taken = conditions({ idles, floor, busy, forced: force, loadExpired });
+    const quote = (series: number[]): string => citation({ summary: summarise(series), on, conditions: taken });
 
     console.log('');
     if (against === undefined) {
@@ -157,9 +160,9 @@ async function main(): Promise<void> {
       const sign = delta.ms >= 0 ? '+' : '';
       console.log(`\n  B - A: ${sign}${(delta.ms / 1000).toFixed(1)}s (${sign}${Math.round(delta.fraction * 100)}% of A), paired over ${runs}`);
     }
-    if (drifted) {
-      console.log(`\n  Conditions moved while this ran — idle fell to ${Math.round(worst * 100)}%. Treat the spread, `
-        + 'not the median, as the answer, or re-run when the box is quiet.');
+    if (taken.includes('drifted')) {
+      console.log(`\n  Conditions moved while this ran — idle fell to ${Math.round(Math.min(...idles) * 100)}%. `
+        + 'Treat the spread, not the median, as the answer, or re-run when the box is quiet.');
     }
   } finally {
     // Whatever happened above, including a throw: the burners stop before this returns
@@ -169,5 +172,5 @@ async function main(): Promise<void> {
 
 await main().catch((error: unknown) => {
   console.error(error instanceof Error ? error.message : String(error));
-  process.exitCode = 2;
+  process.exitCode = error instanceof ExitWith ? error.code : 2;
 });

@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
-  asNumber, citation, cpuTimes, driftedDuring, groupBySignature, idleFrom, IDLE_FLOOR, pairedDelta,
-  parseFlags, rateOf, refusesAsBusy, runOrder, signatureOf, summarise, upperBound,
+  asNumber, citation, conditions, cpuTimes, driftedDuring, groupBySignature, idleFrom, IDLE_FLOOR,
+  pairedDelta, parseFlags, rateOf, refusesAsBusy, runOrder, signatureOf, summarise, upperBound,
 } from '../../../scripts/lib/measure.ts';
 
 /**
@@ -108,22 +108,57 @@ describe('what a series says', () => {
   });
 });
 
+/**
+ * What the box was doing, said once for both modes.
+ *
+ * There were two of these. The induced-load marking lived in the timing citation alone, so trials — the
+ * mode `--busy` exists for — never said the load was induced, and the session's own headline result was
+ * reported without it.
+ */
+describe('the conditions a run happened under', () => {
+  const quiet = { idles: [0.92, 0.9], floor: IDLE_FLOOR, busy: 0, forced: false, loadExpired: false };
+
+  it('is the worst idle of the series', () => {
+    expect(conditions(quiet)).toBe('90% idle');
+  });
+
+  it('says when the floor was forced, and when the box moved under it', () => {
+    expect(conditions({ ...quiet, forced: true })).toContain('forced');
+    expect(conditions({ ...quiet, idles: [0.92, 0.2] })).toContain('drifted');
+  });
+
+  it('names induced load, in either mode, because only one of them used to', () => {
+    expect(conditions({ ...quiet, busy: 12, idles: [0.2, 0.05] }))
+      .toBe('under 12 induced busy cores, 5%-20% idle');
+  });
+
+  /**
+   * Drift means the conditions changed *unexpectedly*, and `driftedDuring` cannot tell that from load we
+   * asked for — so every `--busy` run used to end "conditions drifted mid-series". A warning that is
+   * always on is one nobody reads; the idle range says the same thing without crying wolf.
+   */
+  it('does not call induced load a drift', () => {
+    expect(conditions({ ...quiet, busy: 12, idles: [0.9, 0.01] })).not.toContain('drifted');
+  });
+
+  // The ceiling on a burner is a safety net, so a series can outlast it — and a run reported as under
+  // load after the load stopped is the silent kind of wrong number
+  it('says when the induced load ran out before the series did', () => {
+    expect(conditions({ ...quiet, busy: 2, loadExpired: true })).toContain('expired before the series');
+  });
+
+  it('refuses to describe conditions it has no samples for', () => {
+    expect(() => conditions({ ...quiet, idles: [] })).toThrow(/describe nothing/);
+  });
+});
+
 describe('what a number is quoted as', () => {
-  const summary = summarise([45_000, 48_000, 49_000]);
-  const base = { summary, idle: 0.92, on: '2026-09-29', forced: false, drifted: false };
+  const base = { summary: summarise([45_000, 48_000, 49_000]), on: '2026-09-29', conditions: '92% idle' };
 
   // A number without its conditions is an assertion; with them it is a citation, and the difference is
   // three of this repo's commit messages
   it('carries the spread, the conditions and the date', () => {
     expect(citation(base)).toBe('48.0s median of 3 (45.0s-49.0s), 92% idle, 2026-09-29');
-  });
-
-  it('says so when the floor was forced', () => {
-    expect(citation({ ...base, forced: true })).toContain('forced');
-  });
-
-  it('says so when conditions moved', () => {
-    expect(citation({ ...base, drifted: true })).toContain('drifted');
   });
 
   it('drops the range when every run agreed', () => {

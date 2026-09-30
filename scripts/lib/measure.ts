@@ -146,6 +146,41 @@ const seconds = (ms: number): string => `${(ms / 1000).toFixed(1)}s`;
 const percent = (fraction: number): string => `${Math.round(fraction * 100)}%`;
 
 /**
+ * What the box was doing while the run happened — one sentence, and the only place that decides it.
+ *
+ * It exists because there were two. The `— under N induced busy cores` marking lived in the timing
+ * citation alone, so trials, the mode `--busy` was built for, never said the load was induced; the
+ * session's own headline result was reported without it.
+ *
+ * **Under induced load the drift note is replaced rather than printed.** Drift means the conditions
+ * changed *unexpectedly*, and `driftedDuring` cannot tell that from the load we asked for, so every
+ * `--busy` run ended `— conditions drifted mid-series`. A warning that is always on is one nobody reads.
+ * The idle range says the same thing honestly: whether the load held.
+ */
+export function conditions(input: {
+  readonly idles: readonly number[];
+  readonly floor: number;
+  readonly busy: number;
+  readonly forced: boolean;
+  /** Whether the burners hit `BURNER_CEILING_MS` while the series was still running */
+  readonly loadExpired: boolean;
+}): string {
+  if (input.idles.length === 0) throw new Error('conditions over no samples describe nothing');
+  const low = Math.min(...input.idles);
+  const high = Math.max(...input.idles);
+  if (input.busy > 0) {
+    const range = low === high ? percent(low) : `${percent(low)}-${percent(high)}`;
+    return `under ${input.busy} induced busy cores, ${range} idle`
+      + (input.loadExpired ? ' — the induced load expired before the series ended' : '');
+  }
+  const caveats = [
+    input.forced ? 'forced' : '',
+    driftedDuring(input.idles, input.floor) ? 'conditions drifted mid-series' : '',
+  ].filter(Boolean);
+  return `${percent(low)} idle${caveats.length > 0 ? ` — ${caveats.join(', ')}` : ''}`;
+}
+
+/**
  * One line a commit message can quote, carrying the conditions the number was taken under.
  *
  * A number without its conditions is an assertion; with them it is a citation, and the difference is three
@@ -155,15 +190,13 @@ const percent = (fraction: number): string => `${Math.round(fraction * 100)}%`;
  */
 export function citation(input: {
   readonly summary: Summary;
-  readonly idle: number;
   readonly on: string;
-  readonly forced: boolean;
-  readonly drifted: boolean;
+  /** From `conditions` above, so the two modes cannot describe one run differently */
+  readonly conditions: string;
 }): string {
   const range = input.summary.min === input.summary.max ? '' : ` (${seconds(input.summary.min)}-${seconds(input.summary.max)})`;
-  const caveats = [input.forced ? 'forced' : '', input.drifted ? 'conditions drifted mid-series' : ''].filter(Boolean);
   return `${seconds(input.summary.median)} median of ${input.summary.runs}${range}, `
-    + `${percent(input.idle)} idle, ${input.on}${caveats.length > 0 ? ` — ${caveats.join(', ')}` : ''}`;
+    + `${input.conditions}, ${input.on}`;
 }
 
 /**
@@ -255,6 +288,19 @@ export function upperBound(failures: number, trials: number): number {
 }
 
 /**
+ * How long a burner may outlive the process that started it.
+ *
+ * **A safety net, not a lifetime.** `bounded-spawn`'s reaper already kills them on `exit`, on an uncaught
+ * throw and on SIGINT/SIGTERM/SIGHUP; this budget is for SIGKILL alone, which nothing in user space
+ * survives. That is why it is a fixed number and not one derived from the series: the first version passed
+ * *one command's* budget for a whole series and the load quietly stopped partway through, and deriving it
+ * the other way is worse — `--trials 40 --timeout 30` would leave twelve cores spinning for twenty hours
+ * after a kill. Two hours is longer than any series measured here (the longest real one is about 33
+ * minutes) and bounded where it matters.
+ */
+export const BURNER_CEILING_MS = 2 * 60 * 60 * 1000;
+
+/**
  * N processes burning a core each, so contention is *induced* rather than waited for.
  *
  * The birpc timeout this was written for had only ever been seen by accident — another agent's suite,
@@ -267,13 +313,15 @@ export function upperBound(failures: number, trials: number): number {
  * the whole command, so no JS callback could run, and a Ctrl-C left the burners spinning until the command
  * finished on its own. Verified after the fact — three of three survived. Registering a second set of
  * handlers beside `bounded-spawn`'s reaper would not fix it either, since that reaper calls
- * `removeAllListeners` before re-raising. One reaper, and the budget bounds a burner even where no handler
- * can run at all.
+ * `removeAllListeners` before re-raising. One reaper, and the ceiling bounds a burner even where no
+ * handler can run at all.
+ *
+ * It hands back the promises because a series can outlast that ceiling, and a caller that cannot see it
+ * happen reports a run as being under load after the load stopped.
  */
-export function startBurners(count: number, signal: AbortSignal, budgetMs: number): void {
-  for (let i = 0; i < count; i += 1) {
-    void boundedSpawn(process.execPath, ['-e', 'for(;;);'], budgetMs, { signal });
-  }
+export function startBurners(count: number, signal: AbortSignal): Promise<unknown>[] {
+  return Array.from({ length: count }, () =>
+    boundedSpawn(process.execPath, ['-e', 'for(;;);'], BURNER_CEILING_MS, { signal }));
 }
 
 /**
@@ -342,4 +390,18 @@ export function asNumber(raw: string | undefined, flag: string): number | undefi
   const value = Number(raw);
   if (!Number.isFinite(value)) throw new Error(`\`--${flag}\` takes a number, not ${JSON.stringify(raw)}`);
   return value;
+}
+
+/**
+ * An exit code per category, because one integer meaning three things is a caller that cannot act on it.
+ *
+ * 1 the run produced no answer — the command failed, or nothing was recorded. 2 the arguments were wrong.
+ * 3 the box was too busy to measure on. They were all 2 for a while, so a script that retried on a busy
+ * box could not tell that from a typo, and the refusal had been 1 before that. `orchestrator-exit` forbids
+ * `process.exit()` in a file that reprints a captured buffer, which is why this is an error and not a call.
+ */
+export class ExitWith extends Error {
+  constructor(message: string, readonly code: number) {
+    super(message);
+  }
 }

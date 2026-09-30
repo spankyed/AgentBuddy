@@ -553,6 +553,11 @@ npm run measure -- "<cmd>"  # Times a command on a quiet machine and prints a nu
                          #   --timeout MINUTES a bound, 30 by default, because a run that can hang cannot
                          #                     fail. A timed-out trial is a failure with its own signature
                          #   --force           measure anyway; the citation says it was forced
+                         # **One exit code per category**: 0 fine, 1 the command failed or trials found
+                         # failures, 2 the arguments were wrong, 3 the box was too busy and it refused.
+                         # They were all 2 for a commit, so a script that retried on a busy box could not
+                         # tell that from a typo; repo-checks' measure-cli spec runs both commands as
+                         # processes, which is the only place an exit code is real.
                          # **A flag with no value is an error**, not a default: `--busy` at the end of the
                          # line used to read the token after it, find nothing, run with no load at all and
                          # then print a citation saying the box was 95% idle. Both measure commands had it,
@@ -564,6 +569,14 @@ npm run measure -- "<cmd>"  # Times a command on a quiet machine and prints a nu
                          # **Idle is sampled between runs, never during one.** A reading taken while the
                          # command runs measures the command: a quiet box reads 0% while a test suite uses
                          # it, which says nothing about whether anything else was competing.
+                         # Both modes describe those conditions through one `conditions()`: the induced-load
+                         # marking used to live in the timing citation alone, so trials — the mode --busy
+                         # exists for — never said the load was induced. Under --busy the drift note is
+                         # replaced by the idle range rather than printed, since nothing can tell load we
+                         # asked for from conditions changing on their own, and a warning that is always on
+                         # is one nobody reads. The burners' own ceiling is two hours, a safety net for the
+                         # SIGKILL no handler survives rather than a lifetime; a series that outlasts it is
+                         # reported as having done so, never quietly finished without the load.
                          # It refuses below IDLE_FLOOR (70%), sampled from os.cpus() rather than load average
                          # — measured, loadavg read 3.20 on a box that was 78.7% idle, because it lags by
                          # design. A sample whose counters did not advance throws rather than reading as 0%:
@@ -586,6 +599,10 @@ npm run measure:loop -- "<cmd>"  # The other half of a flake: not how long a com
                          # --keep for the raw samples, which are removed otherwise and kept anyway when a
                          # line could not be parsed. One run has no moment between runs, so the idle it
                          # prints is labelled "before the run" rather than passed off as the run's.
+                         # **It exits on its own outcome, never the command's** — 0 it produced a report,
+                         # 1 there was nothing to report on, 2 arguments, 3 refused. It reports on a command
+                         # rather than wrapping one, and the command's ending is already the report's first
+                         # line, so carrying its code as well put two meanings in one integer.
                          # It answers the question `[vitest-worker]: Timeout calling` does not: which side
                          # failed. That error names neither the process that failed to answer nor the one
                          # that failed to listen, and it was attributed to the wrong side twice here — to

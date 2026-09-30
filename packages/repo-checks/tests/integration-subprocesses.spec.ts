@@ -72,6 +72,8 @@ const ALLOWED: Record<string, { calls: number; why: string }> = {
     why: 'vue-tsc again, and it emits declarations for the component reports rather than only checking them' },
   'packages/repo-checks/tests/import-specifiers-script.integration.spec.ts': { calls: 2,
     why: 'check-import-specifiers run through tsx as a process, which is the thing the spec is about' },
+  'packages/repo-checks/tests/measure-cli.integration.spec.ts': { calls: 1,
+    why: 'an exit code only exists at a process boundary, so a mapping asserted in-process would watch nothing — which is how the four codes collapsed into one unnoticed' },
 };
 
 describe('a subprocess in the integration pool is one that has to be', () => {

@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
-  blockFrom, headroom, IMPLAUSIBLE_FACTOR, lastPerPid, parseSamples, ranked, roleOf, RPC_WINDOW_MS,
-  type Sample, TICK_MS, verdict, verdictLine,
+  blockFrom, factorText, headroom, IMPLAUSIBLE_FACTOR, lastPerPid, parseSamples, ranked, roleOf,
+  RPC_WINDOW_MS, type Sample, TICK_MS, verdict, verdictLine,
 } from '../../../scripts/lib/loop-blocks.ts';
 import { TICK_MS as SAMPLER_TICK_MS } from '../../../scripts/lib/loop-sample.mjs';
 
@@ -107,11 +107,20 @@ describe('what the run licenses you to say', () => {
     expect(ranked(rows).map((row) => row.pid)).toEqual([1, 2, 3]);
   });
 
-  it('separates what breached from what is close', () => {
-    const { breached, atRisk, worst } = verdict(rows);
+  it('names the worst and whatever has already breached', () => {
+    const { breached, worst } = verdict(rows);
     expect(breached).toEqual([]);
-    expect(atRisk.map((row) => row.pid), 'only the one inside the factor').toEqual([1]);
     expect(worst!.pid).toBe(1);
+  });
+
+  /**
+   * One helper, because the ceiling has to hold everywhere the factor is quoted. It did not: the verdict
+   * suppressed an 11ms block's `5454.5x` while the table beside it printed `438.0x` on its own rows.
+   */
+  it('quotes a factor only where it is a thing that could happen', () => {
+    expect(factorText(10_000)).toBe('6.0x');
+    expect(factorText(11), 'an 11ms block is arithmetic, not a finding').toBe('');
+    expect(factorText(0), 'and nothing at all still blocked nothing').toBe('');
   });
 
   it('reports a breach as a breach', () => {
