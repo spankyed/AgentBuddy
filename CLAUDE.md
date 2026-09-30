@@ -112,7 +112,8 @@ cannot see is a hand-edited `etc/*.api.md` whose declarations never moved, which
 catches.
 
 **`packages:check` is a chain step, for the opposite reason**: publint and attw over the five published trees
-are 5.9s together, so there is nothing to build a proxy for, and its only other homes were the publish workflow
+cost seconds together (its declared `seconds` is in `chain-steps.ts`, and the chain reports any run that
+contradicts it), so there is nothing to build a proxy for, and its only other homes were the publish workflow
 and a CI file whose triggers are commented out — the artifact checks ran at the one moment they cannot be
 cheap. It runs `exclusive`, alone: `attw --pack <dir>` packs a tarball inside the tree it is checking and
 `stagePublishTree` removes and recreates that tree, so the two must not overlap. It is not the
@@ -276,6 +277,11 @@ cheaper chain measured.
 
 ## Commands
 
+**A figure earns its place by sizing a choice, and one a record owns is named rather than copied.** Two
+different failures: a figure that informs no decision is weight, and a copy of something `chain-steps.ts`
+or `spec-cost:check` already knows drifts with nothing to catch it. "One spec file is 1-3s against the
+chain's 27s floor" earns its place; a count the `--list` flag derives does not.
+
 **Script names say whether they write.** Three shapes, and the second word tells them apart:
 
 - `<artifact>:check` / `<artifact>:update` — something recorded that can go stale, and the two halves
@@ -382,8 +388,8 @@ npm run chain            # Before a merge: every check in dependency order, cold
                          #   --dry     the plan and why each step is or is not cached, running nothing
                          #   --all     every step regardless of its stamp, forcing those that keep a cache
                          #             of their own; the run each step's `seconds` is checked on
-                         #   --lanes N how many at once. Three by default — measured at 1/2/3/4 lanes:
-                         #             261s / 200s / 159s / 160s. Re-measure when the step shape changes
+                         #   --lanes N how many at once. Three by default, chosen by measuring 1 through
+                         #             4; re-measure when the step shape changes
                          #   --no-classify  a step failing under several lanes is re-run alone, to tell the
                          #             code apart from contention; the retry never stamps and the chain
                          #             still exits 1. This turns that off
@@ -498,11 +504,13 @@ npm run measure:loop -- "<cmd>"  # Not how long a command took, but how long eac
                          # failed; see the test:integration entry above for the mechanism and the fix
 
 # Recorded spec costs (which half each spec runs in)
-npm run spec-cost:check  # Reads the records, runs nothing. `-- --list` prints what they hold and which
-                         # specs sit between FAST_BELOW_MS and INTEGRATION_ABOVE_MS, where a re-measurement
-                         # could change the answer: 8 of 367 today, so the rest are nowhere near a decision
+npm run spec-cost:check  # Reads the records, runs nothing. `-- --list` prints what they hold and counts
+                         # the specs sitting between FAST_BELOW_MS and INTEGRATION_ABOVE_MS, where a
+                         # re-measurement could change which half a spec runs in — a handful, so the rest
+                         # are nowhere near a decision. Ask the command rather than this page: it derives
+                         # the count on every run, and a copy here is a number nothing checks
 npm run spec-cost:update # The least that makes the records current, which is often nothing — 0.3s when
-                         # nothing is wrong, against 315s of file-time for the whole thing. It says which
+                         # nothing is wrong, against minutes of file time to re-measure everything. It says which
                          # case it took: a deleted spec needs no measurement to drop, a new one needs only
                          # the half it lives in.
                          # **It refuses to measure below IDLE_FLOOR**, before running anything — what you
@@ -545,7 +553,7 @@ npm run lint:fix         # Rewrites what it can — oxlint has no fixer for no-u
 
 npm run packages:build   # Build dist/ for @abuddy/ears, @abuddy/sdk and @abuddy/ui, bundle @abuddy/cli and @abuddy/testing
 npm run packages:check   # publint + arethetypeswrong on the five published trees (after packages:build).
-                         # A chain step, 5.9s; see "api:check is not a chain step" above for why this one is
+                         # A chain step; see "api:check is not a chain step" above for why this one is
 
 npm run check:repro      # **A diagnostic instrument, not a gate**, and nothing runs it on a schedule by
                          # design: everything it compares is a chain input, so the chain's freshness sweep
