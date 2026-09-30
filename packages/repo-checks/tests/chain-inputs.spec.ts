@@ -278,9 +278,14 @@ describe('the chain reads every source file', () => {
  * changed is not a gate, and `test:smoke` exists to be the one gate on whether the app starts.
  */
 describe('a step that drives the app fixture declares the bundle it drives', () => {
-  // How a script starts the app: Playwright directly, or the CLI's own `test`. The third alternation is
-  // the CLI held in a variable (`"$ABUDDY" test`), which `tests/scripts/test-external-pack-app.sh` uses
-  // and which the first two miss — `check:tiers` looks for the same two shapes and misses it as well
+  // How a script reaches the fixture: Playwright directly, the CLI's own `test`, or the CLI held in a
+  // variable (`"$ABUDDY" test`, which `tests/scripts/test-external-pack-app.sh` uses). The third is not
+  // optional — without it this watched two steps and not the one it was written for.
+  //
+  // The same three shapes `check:tiers` looks for (`APP_MARKERS`), and deliberately **not** the same
+  // rule: that one asks whether a step launches an app, so it exempts `--contract`, which starts none.
+  // This asks whether a step reads the bundle, and `abuddy test --contract` does — the harness it runs
+  // is published from it. Keep the shapes in step; the lookahead is where the two questions differ.
   const DRIVES_THE_APP = /playwright\s+test\b|\babuddy["']?\s+test\b|\$\{?ABUDDY\}?"?\s+test\b/;
   const fixture = BUILD_UNITS['@abuddy/testing'].outputs.map(repoRelative);
   const all = rootScripts();
