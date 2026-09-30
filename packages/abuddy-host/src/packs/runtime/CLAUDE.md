@@ -38,7 +38,7 @@ Hidden `.<id>.installing-*`, `.<id>.previous-*` and `.<id>.publishing-*` dirs ar
 2. Drops what was recorded about packs it no longer finds (`forgetPacksExcept()`), then takes the ones the record doesn't disable (`enabledExternalPacks()`): the directory is the list, and the record only takes packs out of it
 3. Loads each enabled pack with `loadSingleExternalPack()`:
    - `hostVersion` check (`isHostCompatible`), pack layout format check, warning on an SDK major version mismatch
-   - `runtime/index.cjs` through `withHostResolution()`; the registration id must match the manifest. A directory without a `integrity.json` and a `runtime/index.cjs` isn't an installed pack: it's skipped with a warning pointing at `abuddy install` or `abuddy dev`
+   - `runtime/index.cjs` through `withHostResolution()`; the registration id must match the manifest. A directory without a `integrity.json` and a `runtime/index.cjs` isn't an installed pack: it's skipped with a warning pointing at `abuddy install` or `abuddy run`
    - drops early systems, and strips `boot.seedManifest` (external seeds go through `importPackSeeds`) and `ears.partitionPolicy`
    - a pack it can't load comes back as `{ problem }`, which `loadExternalPacks` records in the registry it's given (`recordLoadProblem`), so the Packs view says why the pack isn't running
 
@@ -177,10 +177,10 @@ Update tears down with `replacing`, installs the release the update check found,
 
 ### Reload (`reload.ts`)
 
-`POST /dev/reload { packId, builtIn? }` (from `abuddy dev` and default-setup's `dev-build.mjs`; one reload per pack at a time) calls `reloadBuiltInPack(registry, …)` (requires `dist/runtime/index.cjs`) or `reloadExternalPack(registry, …)` on the app's registry. Both:
+`POST /dev/reload { packId, builtIn? }` (from `abuddy run` and default-setup's `dev-build.mjs`; one reload per pack at a time) calls `reloadBuiltInPack(registry, …)` (requires `dist/runtime/index.cjs`) or `reloadExternalPack(registry, …)` on the app's registry. Both:
 1. clear the pack's require cache and load the fresh runtime (a load failure throws; the running pack is untouched, and a pack that wasn't running has the failure recorded as its load problem)
 2. unregister the running registration and register the fresh one; if that throws, re-register the previous one and rethrow (registering and unregistering drop the cached event validation map and partition policy)
-3. run the old shutdown hooks, register the new `onShutdown`, run `onInit`; external packs run their migrations (`runPackMigrations()`), re-seed and `updateLoadedPack()`. A reload can be the first this app has seen of a pack, since `abuddy dev` installs into a running app — it needs no record entry, because the directory is what makes it installed
+3. run the old shutdown hooks, register the new `onShutdown`, run `onInit`; external packs run their migrations (`runPackMigrations()`), re-seed and `updateLoadedPack()`. A reload can be the first this app has seen of a pack, since `abuddy run` installs into a running app — it needs no record entry, because the directory is what makes it installed
 4. send the bus `RELOAD_PACK` with old and new system ids: it stops each running one, starts those still registered, and sends them `CLIENT_CONNECTED`
 5. send the bus `PACK_CHANGED`
 

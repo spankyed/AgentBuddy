@@ -248,7 +248,7 @@ export function createBusMachine(options: BusOptions) {
     // Listening first: a system sends as it starts (a plugin's report, another system's event), and what it sends
     // before the bus hears the root events is lost
     entry: ['listen', 'spawnActors'],
-    // A pack can be installed, uninstalled or rebuilt before any client connects (`abuddy dev` against a
+    // A pack can be installed, uninstalled or rebuilt before any client connects (`abuddy run` against a
     // running backend, a headless boot), so these apply in both states: handled only once a client connected,
     // the pack's systems would be left as they were with nothing reported. Events for systems don't wait for a
     // client either: systems, steps and schedules send them (`sendToSystem`, `fire`, schedule ticks) from boot.

@@ -19,14 +19,16 @@ Commands:
   install <source> [-d] [-b]  Install a pack (path, URL, GitHub, or registry name)
   uninstall <id> [-d] [-b]   Remove an installed pack
   list [-d] [-b]             Show installed packs
-  dev                   Dev server with HMR (always targets dev environment)
+  run [--app-root <path> | --app beta] [--instance <name> | --fresh | --ephemeral]
+                      Launch the app with this pack, and reload it as you edit
   init-tests            Scaffold Playwright E2E test setup
+  drive [script]        Launch the app and drive it from a script in drive/ (not a test)
   test [args...]        Run E2E tests in AgentBuddy (--app-root <path> | --app beta)
   open [-b]           Open the installed AgentBuddy app
   db <command>        Query, export, import or reset the app's database (AgentBuddy closed)
   info                Show pack summary
   doctor              Run health checks
-  clean               Remove build output
+  clean [--instances] Remove build output, or the instances run created
 
 Options:
   --help, -h          Show this help
@@ -46,8 +48,9 @@ const COMMANDS: Record<string, () => Promise<(args: string[]) => Promise<void>>>
   'install':    async () => (await import('./commands/install')).install,
   'uninstall':  async () => (await import('./commands/uninstall')).uninstall,
   'list':       async () => (await import('./commands/list')).list,
-  'dev':        async () => (await import('./commands/dev')).dev,
+  'run':        async () => (await import('./commands/run')).run,
   'init-tests': async () => (await import('./commands/init-tests')).initTests,
+  'drive':      async () => (await import('./commands/drive')).drive,
   'test':       async () => (await import('./commands/test')).test,
   'open':       async () => (await import('./commands/open')).open,
   'db':         async () => (await import('./commands/db')).db,

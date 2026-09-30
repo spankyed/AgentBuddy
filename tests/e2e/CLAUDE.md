@@ -21,9 +21,13 @@ be one. Everything below follows from that.
 memory in milliseconds; an assertion about state or data that never renders and never crosses a process
 boundary pays a full Electron launch for nothing.
 
-**Scratch is the default for driving.** `tests/e2e/scratch.spec.ts` is gitignored — write there while you
-are working, and delete it. It becomes a committed spec only when it asserts something a future change
-could break **and** it needs the real app. Most driving is neither.
+**Driving does not belong here at all — it belongs in `drive/`, and it is mainly for you.** Driving is how
+an agent debugs and develops against the app: open what you just built, click through it, read the state
+back, screenshot it, and find out whether the change worked instead of reasoning about it. A driving
+script asserts nothing and nothing gates on it, so `npm run drive` collects it and no test runner does.
+This used to be `tests/e2e/scratch.spec.ts`, gitignored but *inside* `testDir`, so the suite picked it up
+regardless of what it was called. A script graduates into a spec here only when it asserts something a
+future change could break **and** it needs the real app. Most driving is neither.
 
 **While working, run the affected spec, not the suite** — `npm test -- <spec>`. That was the guidance
 before the chain swallowed it, and it is still right: the suite is 21 tests over 14 files on a single
@@ -129,23 +133,30 @@ test('verify my change', async ({ app }) => {
 });
 ```
 
-## Ad-hoc testing (scratch file)
+## Driving the app (`drive/`)
 
-For one-off visual verification, use `tests/e2e/scratch.spec.ts` (gitignored — won't be committed):
+For one-off visual verification, write a script in `drive/` — gitignored apart from its README and
+config, and outside every test glob:
 
 ```ts
-import { test, expect } from './fixtures/app';
+// drive/notes.ts
+import { drive } from '@abuddy/testing';
 
-test('check something', async ({ app, appPage }) => {
+drive('check something', async ({ app, appPage }) => {
   await app.navigate('notes');
   await appPage.locator('.note-item').first().click();
-  await app.screenshot('scratch-notes-detail');
+  await app.screenshot('notes-detail');
 });
 ```
 
-Run with: `npm test -- tests/e2e/scratch`
+```bash
+npm run drive                    # everything in drive/, windows shown
+npm run drive -- drive/notes.ts  # one script
+```
 
-Create it fresh each time you need to visually verify something. Delete when done.
+The import is `drive`, not `test`, and that is the point: the same runner under a name that says what the
+file is. A pack author gets the same thing from `abuddy drive`, which scaffolds the directory on first use
+and takes `--instance <name>` to keep the app's data between sessions.
 
 ## Debugging the running app
 
@@ -213,9 +224,9 @@ touched, never the tree.
 ### Driving the app, not just watching it
 
 The fixture is an app driver: `app.navigate(pluginId)`, `app.sendEvent(...)`, `app.getContext()`,
-`app.waitForState(...)`, and `appPage.evaluate()` for anything reachable from the renderer. A scratch
-test (see above) that navigates to the screen, does the thing and waits is usually a faster reproducer
-than the real test you are chasing, and it is gitignored.
+`app.waitForState(...)`, and `appPage.evaluate()` for anything reachable from the renderer. A script in
+`drive/` (see above) that navigates to the screen, does the thing and waits is usually a faster reproducer
+than the real test you are chasing, and nothing collects it.
 
 For backend endpoints the renderer doesn't call, read the port and token from the page and `fetch`
 them from the test — `tests/e2e/plugin-sends.spec.ts` does this for `POST /dev/reload`.
@@ -241,8 +252,8 @@ abuddy test --app beta     # CI: never prompts, use --app beta or --app-root <pa
 Set `PACK_DIR` to test an external pack using the monorepo's test runner. No setup needed in the pack — the fixture handles everything:
 
 ```bash
-# Run against a scratch test
-PACK_DIR=/path/to/my-pack npm test -- tests/e2e/scratch
+# Drive a pack's app instead of testing it
+PACK_DIR=/path/to/my-pack npm run drive
 
 # Run against any test file
 PACK_DIR=/path/to/my-pack npm test -- tests/e2e/smoke
@@ -310,5 +321,4 @@ The renderer exposes on `window`:
 | `api-access.spec.ts` | The API refuses WebSocket connections and `POST /dev/reload` without the run's token (the socket offers it as a subprotocol, not in the URL), takes them with it, and survives a malformed upgrade request |
 | `dev-reload.spec.ts` | `POST /dev/reload` of the built-in pack re-seeds changed seed data and resends startup data |
 | `db-cli.spec.ts` | `abuddy db` on the running app's data dir (`electronApp`'s `userData`): a query reads it with a stale-data warning, `exec` and `reset` are refused |
-| `scratch.spec.ts` | Ad-hoc test file (gitignored — create as needed) |
 | `packages/abuddy-testing/src/index.ts` | The actual fixture source (shared between monorepo and external packs) |

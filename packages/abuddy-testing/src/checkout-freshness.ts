@@ -1,6 +1,6 @@
 // Checker 5 of the package-freshness doors (the doors are listed in packages/abuddy-testing/CLAUDE.md):
 // A pack loads this harness from the @abuddy/testing bundle, and in a checkout that bundle is built on
-// demand: `abuddy test` and `abuddy dev` refresh it first, but `npx vitest` and `npx playwright test` in
+// demand: `abuddy test` and `abuddy run` refresh it first, but `npx vitest` and `npx playwright test` in
 // a pack repo do not. A stale bundle is the dangerous case — it loads and silently tests the previous
 // @abuddy/host, since the bundle inlines it — so the harness says so instead of passing quietly.
 import * as fs from 'node:fs';
@@ -42,6 +42,6 @@ export function assertCheckoutPackagesFresh(
   }
   throw new Error(
     `@abuddy/testing was built before the checkout's current sources, so this run would test the previous ones:\n${staleMessage(stale)}\n`
-    + 'Run: npm run packages:ensure in the checkout (abuddy test and abuddy dev do it for you).',
+    + 'Run: npm run packages:ensure in the checkout (abuddy test and abuddy run do it for you).',
   );
 }

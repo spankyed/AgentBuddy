@@ -265,6 +265,50 @@ describe('the chain reads every source file', () => {
 // the path — so an equality check called it independent, it ran beside `compile` under three lanes, and it
 // failed. `SUITE_READS`' doc comment carries the measurement that is the authority, and the command that
 // reproduces it. What this catches is the cheap half: a spec that starts naming the tree outright.
+/**
+ * A step that drives the Playwright fixture reads `@abuddy/testing`'s built bundle — the code that
+ * launches Electron, finds the main window and bypasses onboarding. It reaches it by *package name*,
+ * never by path, so every other check in this file is blind to the edge: they read a step's text for
+ * paths, and there is no path to read.
+ *
+ * Measured 2026-09-30, before this existed. One change to the fixture's source, one rebuild, three
+ * steps that run it: `test:packaged-authoring`, which declares the bundle, reported
+ * `changed packages/abuddy-testing/dist/package/dist/index.js`; `test:smoke` and
+ * `test:external-pack:app` both reported `cached`. A gate that skips when the thing it drives has
+ * changed is not a gate, and `test:smoke` exists to be the one gate on whether the app starts.
+ */
+describe('a step that drives the app fixture declares the bundle it drives', () => {
+  // How a script reaches the fixture: Playwright directly, the CLI's own `test`, or the CLI held in a
+  // variable (`"$ABUDDY" test`, which `tests/scripts/test-external-pack-app.sh` uses). The third is not
+  // optional — without it this watched two steps and not the one it was written for.
+  //
+  // The same three shapes `check:tiers` looks for (`APP_MARKERS`), and deliberately **not** the same
+  // rule: that one asks whether a step launches an app, so it exempts `--contract`, which starts none.
+  // This asks whether a step reads the bundle, and `abuddy test --contract` does — the harness it runs
+  // is published from it. Keep the shapes in step; the lookahead is where the two questions differ.
+  const DRIVES_THE_APP = /playwright\s+test\b|\babuddy["']?\s+test\b|\$\{?ABUDDY\}?"?\s+test\b/;
+  const fixture = BUILD_UNITS['@abuddy/testing'].outputs.map(repoRelative);
+  const all = rootScripts();
+  // Only the cacheable ones: a step that never caches cannot cache over anything, so the rule has no
+  // subject there. `test` is the one that drives the app and declares no bundle, and is `cache: false`
+  // with its reason on the step
+  const drivers = CHAIN_STEPS
+    .filter((step) => step.cache !== false)
+    .filter((step) => DRIVES_THE_APP.test(reachableText(step.name, all).text));
+
+  it('finds the steps that drive it, so this is not a check over nothing', () => {
+    expect(drivers.map((step) => step.name).sort()).not.toEqual([]);
+  });
+
+  it('leaves none of them caching over it', () => {
+    const undeclared = drivers.flatMap((step) => {
+      const covered = (output: string) => step.inputs.some((input) => output === input || output.startsWith(`${input}/`));
+      return fixture.filter((output) => !covered(output)).map((output) => `${step.name} runs ${output} and does not declare it`);
+    });
+    expect(undeclared).toEqual([]);
+  });
+});
+
 describe('a unit suite whose specs name build output declares it', () => {
   // Every spec in the suite except this one. The patterns below are written out here, so scanning this
   // file finds them and reports whichever suite happens to hold it — which, since the move to

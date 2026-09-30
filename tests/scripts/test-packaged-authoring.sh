@@ -12,7 +12,7 @@
 #   5. @abuddy/testing's published declarations type-check on their own (skipLibCheck off)
 #   6. abuddy release --local --dry-run produces a verified archive
 #   7. install that archive into an isolated test data dir
-#   8. abuddy test passes against the configured app (this checkout, chosen at the first-run prompt)
+#   8. abuddy test passes against the app it is told to use (--app-root; it reads no saved choice)
 #   9. the packed CLI's abuddy db reads and exports the data that app seeded
 # No ABUDDY_ROOT, no symlinks, no PATH edits. Requires a built checkout (npm run build).
 # KEEP_WORK=1 keeps the temp dir, and the app data dir step 8 keeps for step 9.
@@ -36,7 +36,7 @@ _step_report() {
 }
 fail() { echo "FAIL: $*" >&2; exit 1; }
 
-unset ABUDDY_ROOT ABUDDY_APP_EXECUTABLE ABUDDY_CLI PACK_DIR
+unset ABUDDY_ROOT ABUDDY_APP ABUDDY_APP_EXECUTABLE ABUDDY_CLI PACK_DIR
 # The CLI keeps its saved app choice and downloads under the user's home; use a fresh one.
 #
 # THE ONE NON-HERMETIC INPUT. Everything else this script reads is in the checkout or in $WORK: HOME is a
@@ -105,6 +105,11 @@ npm pkg set "devDependencies.@abuddy/testing=file:$TESTING_TGZ"
 npm install --silent --prefer-offline --no-audit --no-fund
 
 step "Configure the app the way the first-run prompt saves it (a local checkout)"
+# This is what `abuddy build` resolves a dependency on a built-in pack through (fetch-deps'
+# configuredAppPackagesDir), which is why it is written before step 2 adds that dependency.
+# `abuddy test` deliberately does not read it — step 8 names its app on the command line with a
+# usable choice sitting right here, which is what makes that step a check of the hermeticity
+# rather than a restatement of it.
 # Written directly, not typed at a prompt. The prompt is covered in @abuddy/cli's suite
 # (tests/app/app-target.spec.ts: it asks, re-asks for an unusable path, saves, and the next run reuses the
 # answer) with an injected prompt and no terminal. Driving it here took `expect`, a real tty and `env -u CI`
@@ -370,13 +375,15 @@ node -e '
 ' "$INSTALLED"
 [ -f "$(dirname "$INSTALLED")/runtime/index.cjs" ] || fail "installed pack has no runtime"
 
-step "8. abuddy test on the packed archive (the saved app)"
+step "8. abuddy test on the packed archive (the app named on the command line)"
+# --app-root, not the saved choice above: `abuddy test` is pinned to what it is given, so that a run
+# means the same thing on a fresh machine as on one someone has developed on
 # PACK_ARCHIVE installs step 6's .tgz as it is, so this runs the artifact a release ships rather than
 # another build of the same source — the one thing the rest of the script cannot check.
 # The app's data dir is kept for step 9: the app seeded the installed demo pack into it
 # `if !` so the pipeline's exit status is this script's to report: under `set -e` a failure would otherwise end it
 # here, with only Playwright's own output to say why
-if ! PACK_ARCHIVE="$ARCHIVE" E2E_KEEP_DATA=1 "$ABUDDY" test 2>&1 | tee "$WORK/e2e.log"; then fail "abuddy test failed"; fi
+if ! PACK_ARCHIVE="$ARCHIVE" E2E_KEEP_DATA=1 "$ABUDDY" test --app-root "$ROOT" 2>&1 | tee "$WORK/e2e.log"; then fail "abuddy test failed"; fi
 APP_DATA="$(sed -n 's/.*\[e2e\] kept test data dir: //p' "$WORK/e2e.log" | head -n 1)"
 [ -d "$APP_DATA" ] || fail "abuddy test didn't report the data dir it kept"
 

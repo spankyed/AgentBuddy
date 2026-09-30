@@ -16,7 +16,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { REPO_ROOT } from '@abuddy/host/build/packages-built';
 import {
   FAST_BELOW_MS, INTEGRATION_ABOVE_MS, SPEC_COST_FLAGS, absentIn, changesIn, contended, drift, drifted,
-  absentNamed, halfOfPath, misplaced, hasSplit, moved, namedIn, outgrown, parseArgs, planFor, readSpecCost,
+  absentNamed, describeBudget, halfOfPath, moved, namedIn, overBudget, parseArgs, planFor, readSpecCost,
   refuseAbsent, refusesAsContended, rewritesEveryRow, settle, specCostFile, specFiles, stale, suitesFor,
   unrecorded,
 } from '../../../scripts/lib/spec-cost.ts';
@@ -25,7 +25,7 @@ import { UNIT_SUITES } from '../../../scripts/lib/unit-suites.ts';
 /** Every suite's record, read once. A suite with no record is a failure below, not an empty pass. */
 const suites = UNIT_SUITES.map((suite) => {
   const dir = path.join(REPO_ROOT, 'packages', suite.dir);
-  return { suite, dir, record: readSpecCost(REPO_ROOT, suite.dir), files: specFiles(dir), split: hasSplit(dir) };
+  return { suite, dir, record: readSpecCost(REPO_ROOT, suite.dir), files: specFiles(dir) };
 });
 
 describe('every suite records what its specs cost', () => {
@@ -48,9 +48,10 @@ describe('every suite records what its specs cost', () => {
 describe('a spec runs in the half its cost puts it in', () => {
   it(`moves a fast spec above ${INTEGRATION_ABOVE_MS}ms, and brings an integration one back below ${FAST_BELOW_MS}ms`, () => {
     const wrong = suites
-      .filter(({ split, record }) => split && record)
-      .flatMap(({ suite, record, files }) => misplaced(record!.costs, files)
-        .map(({ file, ms, belongs }) => `${suite.dir}/${file} costs ${(ms / 1000).toFixed(1)}s, which is ${belongs}, but it is in the ${halfOfPath(file)} half`));
+      .filter(({ record }) => record)
+      .flatMap(({ suite, dir, record, files }) => overBudget(dir, record!.costs, files)
+        .filter((found) => found.kind === 'rename')
+        .map((found) => `${suite.dir}/${found.file} costs ${(found.ms / 1000).toFixed(1)}s, which is ${found.belongs}, but it is in the ${halfOfPath(found.file)} half`));
     expect(wrong, 'rename these, or re-measure if the cost has genuinely changed').toEqual([]);
   });
 
@@ -109,10 +110,46 @@ const EXPENSIVE_BY_NATURE: Record<string, string> = {
   'default-setup/tests/send-to-system-diagnostics.spec.ts': 'builds a TypeScript program over the pack',
 };
 
+/**
+ * What a run says it found. The defect this covers was a string: `spec-cost:update` told a package with one
+ * half that two of its specs were "in the wrong half" and pointed each at `integration`, a half that
+ * package has not got — and following it renames a file that still matches the same include glob, so the
+ * spec keeps running where it was and the warning goes quiet.
+ *
+ * So the strings are the assertion. They are also the only reachable form of this: `--dry` reports no
+ * finding at all, which left the wording exercised only by a measuring run that rewrites the records.
+ */
+describe('what a run says about a spec it cannot place', () => {
+  const OVER = { kind: 'over', file: 'tests/slow.spec.ts', ms: 9_000 } as const;
+  const RENAME = { kind: 'rename', file: 'tests/slow.spec.ts', ms: 9_000, belongs: 'integration' } as const;
+
+  it('never tells a package with one half to move a spec', () => {
+    const said = describeBudget([OVER]);
+    expect(`${said.tail} ${said.lines.join(' ')} ${said.advice}`.toLowerCase()).not.toContain('wrong half');
+    expect(said.advice.toLowerCase()).not.toContain('rename');
+    expect(said.advice, 'the fix there is to record it, which is what EXPENSIVE_BY_NATURE is')
+      .toContain('EXPENSIVE_BY_NATURE');
+  });
+
+  it('tells a package with two halves to rename, and says which', () => {
+    const said = describeBudget([RENAME]);
+    expect(said.tail).toContain('wrong half');
+    expect(said.advice.toLowerCase()).toContain('rename');
+    expect(said.lines.join(' ')).toContain('integration');
+  });
+
+  it('says nothing at all when there is nothing to say', () => {
+    expect(describeBudget([])).toEqual({ tail: '', lines: [], advice: '' });
+  });
+});
+
 describe('a spec that costs more than a fast half allows', () => {
+  // No `!split` filter: `overBudget` returns this kind only for a package that has nowhere to move a spec
+  // to, which is the same question, asked once, in the one place that cannot forget to ask it
   const found = () => suites
-    .filter(({ split, record }) => !split && record)
-    .flatMap(({ suite, record, files }) => outgrown(record!.costs, files)
+    .filter(({ record }) => record)
+    .flatMap(({ suite, dir, record, files }) => overBudget(dir, record!.costs, files)
+      .filter((budget) => budget.kind === 'over')
       .map(({ file, ms }) => ({ key: `${suite.dir}/${file}`, ms })));
 
   it('is recorded, with what makes it expensive', () => {

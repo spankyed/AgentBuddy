@@ -1,8 +1,9 @@
 {
-  "measuredAt": "2026-09-28T20:13:22.424Z",
+  "measuredAt": "2026-09-30T21:50:14.314Z",
   "costs": {
     "tests/app/app-target.spec.ts": 48,
     "tests/app/beta-app.spec.ts": 153,
+    "tests/app/instances.spec.ts": 22,
     "tests/app/playwright.spec.ts": 7,
     "tests/build/build-registry.spec.ts": 687,
     "tests/build/checkout-packages.spec.ts": 12,
@@ -38,7 +39,7 @@
     "tests/commands/app-launcher.spec.ts": 303,
     "tests/commands/db-output.spec.ts": 6,
     "tests/commands/db.integration.spec.ts": 13508,
-    "tests/commands/dev-install.spec.ts": 1429,
+    "tests/commands/drive.spec.ts": 4,
     "tests/commands/facade-report.spec.ts": 226,
     "tests/commands/fetch-deps.spec.ts": 4,
     "tests/commands/handoff.spec.ts": 476,
@@ -48,6 +49,7 @@
     "tests/commands/pack-generate.spec.ts": 60,
     "tests/commands/pack-source.spec.ts": 338,
     "tests/commands/release.integration.spec.ts": 8083,
+    "tests/commands/run-install.spec.ts": 1156,
     "tests/commands/scaffold-templates.spec.ts": 15,
     "tests/commands/scaffold-unit-test-setup.spec.ts": 28,
     "tests/commands/scaffold.integration.spec.ts": 23701,

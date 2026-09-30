@@ -97,6 +97,6 @@
     "tests/typed-query-builder.spec.ts": 7
   },
   "skipped": [
-    "tests/features/code/be/claude-code-permission-flow.integration.spec.ts"
+    "tests/features/code/be/claude-code-permission-flow.spec.ts"
   ]
 }

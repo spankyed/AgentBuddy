@@ -161,7 +161,7 @@ describe('a pack that ships with the app', () => {
 });
 
 // Five of default-setup's systems re-send their data on PACK_CHANGED; the system whose whole job is
-// listing packs did not, so an open Packs view stayed stale after an `abuddy dev` reload — the one way a
+// listing packs did not, so an open Packs view stayed stale after an `abuddy run` reload — the one way a
 // pack changes without this system doing it.
 describe('a pack changing underneath the packs system', () => {
   it('sends the list again', () => {
@@ -176,7 +176,7 @@ describe('a pack changing underneath the packs system', () => {
   });
 });
 
-// The packs directory is what makes a pack installed. `abuddy install` and `abuddy dev` write it and
+// The packs directory is what makes a pack installed. `abuddy install` and `abuddy run` write it and
 // never installed-packs.json, so a pack with no row is the ordinary case, not a broken one.
 describe('a pack with nothing recorded about it', () => {
   it('is listed, enabled', async () => {

@@ -5,7 +5,7 @@
  * (`discovery.ts`) derives it. This file is a side table keyed by pack id, holding only what the
  * directory cannot say: the user's enabled choice, where an install came from, and what the last seed and
  * update check found. A pack with no row is installed all the same, which is what `abuddy install` and
- * `abuddy dev` leave behind — they write the directory and never this file.
+ * `abuddy run` leave behind — they write the directory and never this file.
  *
  * Lives outside LMDB because packs must register before EARS hydration. It is not a registry: a registry
  * is the in-process collection packs register into (`createPackRegistry()`), and this is the record on

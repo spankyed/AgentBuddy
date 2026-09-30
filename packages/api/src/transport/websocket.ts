@@ -33,7 +33,7 @@ export function acceptsConnection(offeredProtocols: string | undefined, token = 
 
 /**
  * Why a pack reload request is refused, or null to take it. Only a development or test app reloads packs, and only
- * for a caller with the API token: `abuddy dev` and the built-in pack's watcher read it from the development app's
+ * for a caller with the API token: `abuddy run` and the built-in pack's watcher read it from the development app's
  * token file, the E2E tests from the app's window. A web page has no way to learn it.
  */
 export function devReloadRefusal(headers: http.IncomingHttpHeaders, env = resolveAppContext().env, token = apiToken()): string | null {
@@ -106,7 +106,7 @@ function writePrivateFile(file: string, content: string): void {
  * Tells local tools where this API is. Every run publishes its port, so a tool finds it and can tell that an app is
  * running on the data dir, whatever the platform (`abuddy db` refuses to change a database an app holds); the port
  * alone opens nothing, since a call needs the token. The token itself goes to a file only where a local tool may use
- * it: a development app (`abuddy dev`, the built-in pack's watcher), and an API started by hand, which made up its
+ * it: a development app (`abuddy run`, the built-in pack's watcher), and an API started by hand, which made up its
  * own. That file is readable only by the user. Both are removed when the process exits.
  */
 export function publishApiFiles(port: number, token: string): void {

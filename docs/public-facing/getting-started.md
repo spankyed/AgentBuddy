@@ -74,10 +74,12 @@ The scaffold has no dependencies, so it builds as generated. To use another pack
 ## The dev loop
 
 ```bash
-abuddy dev
+abuddy run
 ```
 
-Run it alongside the dev app (`npm start` in an AgentBuddy checkout). It builds, installs the pack into the development data dir and starts a Vite dev server: frontend changes hot-reload through Vite HMR, `abuddy.json` changes regenerate `src/__generated__/`, and backend `.ts` changes rebuild, reinstall and reload the pack's backend in the running app.
+This launches AgentBuddy with your pack installed and keeps it in step with your edits: frontend changes hot-reload through Vite HMR, `abuddy.json` changes regenerate `src/__generated__/`, and backend `.ts` changes rebuild, reinstall and reload the pack's backend in the running app.
+
+The first run asks which app to use — a local AgentBuddy checkout, or the newest Beta build — and remembers the answer; `--app-root <path>` and `--app beta` name one outright. If an app is already running on that data dir, `run` uses it rather than starting a second.
 
 The build pipeline (`abuddy build`):
 
@@ -138,7 +140,7 @@ npm install
 abuddy test --app beta      # or --app-root ../AgentBuddy for a local checkout
 ```
 
-`abuddy init-tests` adds `playwright.config.ts` and a smoke test in `tests/e2e/`. `abuddy test` builds the pack, installs it into a throwaway data dir and runs the tests in the app: a checkout (`--app-root`, or `ABUDDY_ROOT`), or the newest AgentBuddy Beta satisfying your `hostVersion` (`--app beta`, or `ABUDDY_APP=beta` in CI). Without either, it asks once and saves your choice. See [Testing](testing.md).
+`abuddy init-tests` adds `playwright.config.ts` and a smoke test in `tests/e2e/`. `abuddy test` builds the pack, installs it into a throwaway data dir and runs the tests in the app: a checkout (`--app-root`, or `ABUDDY_ROOT`), or the newest AgentBuddy Beta satisfying your `hostVersion` (`--app beta`, or `ABUDDY_APP=beta` in CI). With neither, it uses that newest Beta: `abuddy test` never reads the app you saved and never asks, so a test run means the same thing on any machine. See [Testing](testing.md).
 
 ## Verify it works
 

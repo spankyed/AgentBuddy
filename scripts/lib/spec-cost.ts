@@ -268,17 +268,25 @@ export function specFiles(packageDir: string): string[] {
   return walk(packageDir).sort();
 }
 
-export interface Misplaced { readonly file: string; readonly ms: number; readonly belongs: Half }
+/**
+ * A spec whose cost its placement cannot justify. The two kinds take different fixes, which is why they are
+ * one union rather than two lists: a package with both halves can move the spec, and a package with one
+ * cannot, so the second is a thing to record rather than a thing to do.
+ */
+export type Budget =
+  /** Both halves exist and the cost names the other one: renaming the file is the fix */
+  | { readonly kind: 'rename'; readonly file: string; readonly ms: number; readonly belongs: Half }
+  /** One half, so there is nowhere to move it: the fix is an `EXPENSIVE_BY_NATURE` entry */
+  | { readonly kind: 'over'; readonly file: string; readonly ms: number };
 
 /** Specs whose filename puts them in one half while their recorded cost puts them in the other */
-export function misplaced(costs: Record<string, number>, files: readonly string[]): Misplaced[] {
-  return files.flatMap((file) => {
+const misplaced = (costs: Record<string, number>, files: readonly string[]): Budget[] =>
+  files.flatMap((file) => {
     const ms = costs[file];
     if (ms === undefined) return [];
     const belongs = halfFor(file, ms);
-    return belongs === halfOfPath(file) ? [] : [{ file, ms, belongs }];
+    return belongs === halfOfPath(file) ? [] : [{ kind: 'rename' as const, file, ms, belongs }];
   });
-}
 
 /** Specs with no recorded cost and no recorded reason: a new one is unmeasured until `spec-cost:update` runs */
 export const unrecorded = (record: SpecCost, files: readonly string[]): string[] =>
@@ -292,11 +300,56 @@ export const unrecorded = (record: SpecCost, files: readonly string[]): string[]
  * request to split the package: a split buys a different tier, and slowness alone does not need one.
  * `suite-split.spec.ts` carries the criterion and the measurement behind it.
  */
-export const outgrown = (costs: Record<string, number>, files: readonly string[]): Misplaced[] =>
+const outgrown = (costs: Record<string, number>, files: readonly string[]): Budget[] =>
   files.flatMap((file) => {
     const ms = costs[file];
-    return ms !== undefined && ms > INTEGRATION_ABOVE_MS ? [{ file, ms, belongs: 'integration' as Half }] : [];
+    return ms !== undefined && ms > INTEGRATION_ABOVE_MS ? [{ kind: 'over' as const, file, ms }] : [];
   });
+
+/**
+ * Every spec whose cost its placement cannot justify, asked of the **package** rather than of a half.
+ *
+ * The two predicates above answer for two package shapes, and the precondition that chooses between them
+ * used to live at each call site: four callers, two of which remembered it. The one that forgot told a
+ * one-half package that two of its specs were "in the wrong half" and named a half that package does not
+ * have — advice that, followed, renames a file which still matches the same `include` glob, so the spec
+ * keeps running exactly where it was while the warning goes quiet.
+ *
+ * So the question is asked here, once. A caller renders the `kind` it is handed and cannot ask the wrong
+ * one.
+ */
+export const overBudget = (packageDir: string, costs: Record<string, number>, files: readonly string[]): Budget[] =>
+  (hasSplit(packageDir) ? misplaced : outgrown)(costs, files);
+
+/**
+ * How a run says what it found, as a value a spec can read.
+ *
+ * Here rather than inline in the command for the reason `parseArgs`, `planFor` and `settle` are here: the
+ * command runs on import and prints, so a decision written there can only be exercised by running it — and
+ * this one is worse than most, because `--dry` reports no finding at all, so the wording was reachable only
+ * by a measuring run that rewrites the records. The defect this replaces *was* a string.
+ *
+ * `tail` goes on the suite's line; `lines` are the findings under it; `advice` is what to do, and it is
+ * different for each kind, which is the whole value of telling them apart.
+ */
+export function describeBudget(findings: readonly Budget[]): { tail: string; lines: string[]; advice: string } {
+  const renames = findings.filter((found) => found.kind === 'rename');
+  const over = findings.filter((found) => found.kind === 'over');
+  const seconds = (ms: number): string => `${(ms / 1000).toFixed(1)}s`;
+  return {
+    tail: [
+      renames.length > 0 ? `${renames.length} in the wrong half` : '',
+      over.length > 0 ? `${over.length} over the ${INTEGRATION_ABOVE_MS / 1000}s a fast half allows` : '',
+    ].filter(Boolean).join(', '),
+    lines: findings.map((found) => (found.kind === 'rename'
+      ? `  ${seconds(found.ms)}  ${found.file}  ->  ${found.belongs}`
+      : `  ${seconds(found.ms)}  ${found.file}  (no slower half to move it to)`)),
+    advice: [
+      renames.length > 0 ? `Rename ${renames.length === 1 ? 'it' : 'them'} into the half the cost implies; no measurement will move ${renames.length === 1 ? 'it' : 'them'}.` : '',
+      over.length > 0 ? 'Make it cheaper, or record it in EXPENSIVE_BY_NATURE with what makes it expensive.' : '',
+    ].filter(Boolean).join('\n'),
+  };
+}
 
 
 /** Recorded specs that no longer exist */

@@ -1,13 +1,30 @@
 // The user's API keys, host-internal: the host and the API read and write them here. Packs reach only the metadata,
 // through `services.secrets`, and never import this module.
 import * as path from 'node:path';
-import { resolveAppContext } from '@abuddy/sdk/env';
+import { resolveAppContext, type AppEnv } from '@abuddy/sdk/env';
 import { _rootEvents } from '@abuddy/sdk/runtime';
 import { _getSecretsFilePath } from '@abuddy/sdk/utils';
 import type { SecretsSnapshot } from '@abuddy/sdk/services';
 import { createSecretsStore, type SecretsStore } from './store.ts';
 import { fileKeyVault, osKeyVault } from './vault.ts';
 import type { PackRegistry } from '../packs/registry.ts';
+
+/**
+ * Whether the data key goes in a file beside the secrets rather than in the OS credential store.
+ *
+ * Tests never touch the credential store. Beyond that it is the caller's choice, and the choice is what
+ * makes an `abuddy run` instance self-contained: the keychain is keyed by the app name, so every instance
+ * of one channel would otherwise share a service, and clearing one instance's keys could take another's.
+ *
+ * **Gated on the variable, never on the environment alone.** A Beta a user launches normally carries no
+ * environment from a shell, so it keeps reading the keychain its keys are already in — where switching it
+ * on `env` would send every existing Beta user to an empty file vault and read as "the app lost my keys".
+ *
+ * @internal
+ */
+export function _useFileVault(env: AppEnv, requested: string | undefined): boolean {
+  return env === 'test' || (env !== 'production' && requested === 'file');
+}
 
 export { createSecretsStore } from './store.ts';
 export { fileKeyVault, memoryKeyVault, KeyVaultUnavailableError, type KeyVault } from './vault.ts';
@@ -23,8 +40,7 @@ function appStore(): SecretsStore {
     filePath,
     osVault: () => osKeyVault(context.appName),
     fileVault: () => fileKeyVault(path.join(path.dirname(filePath), 'secrets.key')),
-    // Tests never touch the OS credential store; development can opt out of it too
-    useFileVault: context.env === 'test' || (context.env === 'development' && process.env.ABUDDY_SECRETS_VAULT === 'file'),
+    useFileVault: _useFileVault(context.env, process.env.ABUDDY_SECRETS_VAULT),
   });
   return store;
 }

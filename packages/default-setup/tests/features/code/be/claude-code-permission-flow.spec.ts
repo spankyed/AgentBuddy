@@ -19,7 +19,7 @@
  * Skipped otherwise so default `npm test` runs stay fast and offline. Run
  * manually with:
  *
- *   cd packages/api && RUN_INTEGRATION=1 npm test -- claude-code-permission-flow
+ *   RUN_INTEGRATION=1 npm test -w @app/default-setup -- claude-code-permission-flow
  *
  * Assumptions about the host environment when RUN_INTEGRATION=1:
  *   - `claude` on PATH (or CLAUDE_CLI_PATH env override via resolve-cli)

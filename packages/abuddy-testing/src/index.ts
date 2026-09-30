@@ -289,7 +289,12 @@ export function createTest(options: CreateTestOptions = {}) {
       assertCheckoutPackagesFresh();
       // Every worker gets a fresh data dir: no data, installed packs or onboarding state leak
       // between runs or from other packs, and nothing touches the developer's abuddy-test dir
-      const userDataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'abuddy-e2e-'));
+      // E2E_DATA_DIR overrides that with one the caller owns and keeps, which is how `abuddy drive`
+      // runs against an instance whose state survives the session. An environment variable rather than a
+      // `createTest` option because the `test` every spec imports is built at module scope with no
+      // options, so an option could never reach it.
+      const givenDataDir = process.env.E2E_DATA_DIR;
+      const userDataDir = givenDataDir ?? fs.mkdtempSync(path.join(os.tmpdir(), 'abuddy-e2e-'));
       // Removed however the worker ends, including a failed pack build or launch
       try {
         if (process.env.PACK_DIR) {
@@ -356,7 +361,10 @@ export function createTest(options: CreateTestOptions = {}) {
         await use(app);
         await app.close();
       } finally {
-        if (process.env.E2E_KEEP_DATA) {
+        // A dir the caller gave is the caller's to remove; this owns only the one it made
+        if (givenDataDir !== undefined) {
+          console.log(`[e2e] left the data dir it was given: ${userDataDir}`);
+        } else if (process.env.E2E_KEEP_DATA) {
           console.log(`[e2e] kept test data dir: ${userDataDir}`);
         } else {
           fs.rmSync(userDataDir, { recursive: true, force: true });
@@ -575,3 +583,11 @@ export function createTest(options: CreateTestOptions = {}) {
 // Direct exports — the app comes from `abuddy test` (ABUDDY_APP_EXECUTABLE / ABUDDY_ROOT) or the enclosing monorepo
 const _default = createTest();
 export const test = _default.test;
+
+/**
+ * The same runner under a name that says what a driving script is, for `abuddy drive`. A driving script
+ * asserts nothing and nothing gates on it, so calling it `test` was the whole confusion; Playwright
+ * discovers work from the calls made at import rather than from the binding's name, so the alias costs
+ * nothing and reporters and `--grep` still match titles.
+ */
+export const drive = _default.test;

@@ -114,21 +114,60 @@ Steps:
 
 Bundle and gate failures are all reported, and the command exits with code 1. `--release` minifies and drops source maps.
 
-A build resolves the pack's `@abuddy` packages to the `dist` each published package ships — the one layout a pack ever has, whether the packages came from the registry or from a link to an AgentBuddy checkout. There is nothing to configure, and a pack's own configs set no resolution conditions. `abuddy test` and `abuddy dev` resolve the same way, so a pack's tests run against what its build compiled; against a checkout they first bring that `dist` up to date with the checkout's sources.
+A build resolves the pack's `@abuddy` packages to the `dist` each published package ships — the one layout a pack ever has, whether the packages came from the registry or from a link to an AgentBuddy checkout. There is nothing to configure, and a pack's own configs set no resolution conditions. `abuddy test` and `abuddy run` resolve the same way, so a pack's tests run against what its build compiled; against a checkout they first bring that `dist` up to date with the checkout's sources.
 
 #### `abuddy pack [--out <dir>]`
 
 Stage the built `dist/` into a verified pack (`integrity.json` lists a sha256 per file) and write `<id>-<version>.tgz` and `<id>-<version>.tgz.sha256` to `--out` (default: the pack root). Run `abuddy build` first (`--release` for publishable output). Refuses built-in packs and invalid manifests.
 
-#### `abuddy dev`
+#### `abuddy run`
 
-A dev server for the dev app (`npm start` in an AgentBuddy checkout). It builds, installs the pack into the development data dir, then:
+Launch AgentBuddy with your pack installed and keep it in step with your edits.
 
-- serves the FE entry from a Vite dev server (port 5199, or the next free one) with HMR, recording its port in `pack-dev-servers/<id>.json` in the development data dir so the app's `pack://` requests go to it. The marker sits outside the installed pack, which stays exactly the verified files, and is removed when `abuddy dev` exits
+It picks an app the way you tell it to — `--app-root <path>` for a local AgentBuddy checkout, `--app beta` for the newest Beta that satisfies your `hostVersion` — and with neither it uses the app you saved on first run, asking once if there is none. **`run` is the command that owns that choice**; `abuddy test` never reads it, so a test run means the same thing on a fresh machine as on one you have been developing on.
+
+The environment follows the app: a checkout runs as `development`, and a packaged Beta runs as `beta`, because a packaged build stamps its own channel. Neither touches production data.
+
+**Instances.** By default `run` uses the shared development data dir, so every run inherits what the last one left. An instance is a data dir of its own, created on demand:
+
+- `--instance <name>` — that one, created the first time you name it, and kept
+- `--fresh` — a new one, whose name is printed so you can come back to it with `--instance`
+- `--ephemeral` — a new one, removed when `run` exits
+
+An instance is self-contained — its data, packs, logs and API keys are all inside it, and its keys go in a file beside them rather than into the OS keychain, which is shared by every app of one channel. So `rm -rf` is the whole cleanup, and `abuddy clean --instances` does it for you. The path is printed, and `abuddy db --data-dir <path>` reads it.
+
+An instance is bound to the kind of app that created it — a checkout or a packaged build — because the two keep their databases in different places, and a directory holding both is one no tool can open. `run` refuses the mismatch rather than creating it.
+
+An app already running on that data dir is used as it is; otherwise `run` starts one, and closing `run` closes the app it started. It then builds, installs the pack into that app's data dir, and:
+
+- serves the FE entry from a Vite dev server (port 5199, or the next free one) with HMR, recording its port in `pack-dev-servers/<id>.json` in the app's data dir so the app's `pack://` requests go to it. The marker sits outside the installed pack, which stays exactly the verified files, and is removed when `abuddy run` exits
 - on `abuddy.json` changes, regenerates `src/__generated__/`
-- on `.ts` changes under `src/`, rebuilds, reinstalls and asks the running dev app to reload the pack's backend
+- on `.ts` changes under `src/`, rebuilds, reinstalls and asks the running app to reload the pack's backend
 
 Without an FE entry it rebuilds, reinstalls and reloads on any change instead.
+
+#### `abuddy drive [script] [--app-root <path> | --app beta] [instance flags]`
+
+Launch AgentBuddy and drive it from a script: navigate, send events, read state, take screenshots.
+
+**This is mainly for an agent.** It is how a coding agent debugs and develops against the app it is changing — open the thing it just built, click through it, read the state back, screenshot it, and see for itself whether the change worked. A person can use it the same way, and the app's windows are shown so you can watch, but the reason it exists is that an agent has no other way to look at a running app.
+
+**It is not testing, and nothing treats it as testing.** A driving script asserts nothing, nothing gates on it, and no test runner collects it. Scripts live in `drive/`, which `abuddy drive` creates the first time you run it, and which sits outside every test glob by construction rather than by exclusion. `abuddy test` never sees it.
+
+```ts
+// drive/notes.ts
+import { drive } from '@abuddy/testing';
+
+drive('open notes and look at it', async ({ app, appPage }) => {
+  await app.navigate('notes');
+  await app.screenshot('notes');
+  // appPage is a Playwright Page: click, type, evaluate — whatever you need
+});
+```
+
+The import is `drive`, not `test`: the same runner under a name that says what the file is. With no script argument every file in `drive/` runs; name one to run just it.
+
+It takes the same app and instance flags as `abuddy run`, with one difference in the default: where `abuddy run` uses the shared development data dir, `abuddy drive` gives each session a fresh one and throws it away afterwards, so a driving session starts clean and leaves nothing. `--instance <name>` is how a session keeps its state for the next one. It launches its own app rather than joining one `abuddy run` already has, because Electron allows one app per data dir — so if a person wants to watch what a driver is doing, they watch the driver's window rather than starting a second app.
 
 ### Validation
 
@@ -207,9 +246,9 @@ Run the pack's Playwright tests in AgentBuddy. Other arguments go to `playwright
 1. `--app-root <path>`: a local AgentBuddy checkout (installed and built)
 2. `--app beta` or `ABUDDY_APP=beta`: the newest AgentBuddy Beta build satisfying the pack's `hostVersion`, downloaded and cached
 3. `ABUDDY_ROOT`
-4. The choice saved on first run. An interactive terminal asks and saves it; CI (or no TTY) fails instead
+4. The newest AgentBuddy Beta build satisfying the pack's `hostVersion`, as `--app beta` would
 
-The fixture builds the pack with the same CLI and installs it into a fresh data dir for each worker.
+**`abuddy test` never reads the app you saved and never asks**, so a test run means the same thing on a fresh machine as on one you have been developing on. Holding that preference is `abuddy run`'s job. The fixture builds the pack with the same CLI and installs it into a fresh data dir for each worker, so a run leaves nothing behind either.
 
 ### Distribution
 
@@ -283,7 +322,7 @@ While a command changes the database it holds a lock on the data dir (`db-write.
 
 **The run history.** The database has two partitions: the app's data, and the run history (`TNode` rows, what each flow step did). Commands read the data only, as the app does, so a query for `TNode` comes back empty until you pass `--volatile`, which reads both. `reset` deletes both either way; its listing counts the run history only with `--volatile`.
 
-**Seeding.** There is no seed command: AgentBuddy seeds each pack's data when it starts (and `abuddy dev` re-seeds a pack it rebuilds), so start the app rather than seed a data dir by hand.
+**Seeding.** There is no seed command: AgentBuddy seeds each pack's data when it starts (and `abuddy run` re-seeds a pack it rebuilds), so start the app rather than seed a data dir by hand.
 
 **Installed packs.** Entity types, relation kinds and where each type is stored come from the packs installed in the data dir (the built-in packs the app published to `host-packs/`, and the enabled packs in `packs/`); no pack code runs. A data dir the app has never started on has none, and is refused.
 
@@ -364,3 +403,5 @@ In the AgentBuddy repo, `npm run db:query`, `db:exec`, `db:repl`, `db:inspect`, 
 #### `abuddy clean`
 
 Remove build output: `dist/`, `.abuddy/`, `src/__generated__/`.
+
+`--instances` lists the instances `abuddy run` created, with their sizes, and removes the ones a run left behind when it was killed. It works outside a pack, since instances belong to you rather than to any pack. `--all` removes the named ones too. An instance an app is currently running on is never removed, whichever flag you pass: taking a data dir away from a running app does not stop it, it makes it write the directory back.

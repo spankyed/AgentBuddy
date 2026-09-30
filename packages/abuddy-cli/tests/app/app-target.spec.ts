@@ -5,9 +5,10 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   configuredAppPackagesDir,
   packagedAppPackagesDir,
-  parseTestAppFlags,
+  parseAppFlags,
   readAppChoice,
-  resolveTestApp,
+  resolveDevelopmentApp,
+  resolvePinnedApp,
   saveAppChoice,
   type CliDirs,
 } from '../../src/app/app-target';
@@ -37,7 +38,7 @@ const noPrompt = async (): Promise<string> => {
 
 beforeEach(() => {
   tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'abuddy-app-target-'));
-  dirs = { config: path.join(tmp, 'config'), cache: path.join(tmp, 'cache') };
+  dirs = { config: path.join(tmp, 'config'), cache: path.join(tmp, 'cache'), data: path.join(tmp, 'data') };
   beta.mockClear();
   vi.spyOn(console, 'log').mockImplementation(() => {});
 });
@@ -47,9 +48,9 @@ afterEach(() => {
   fs.rmSync(tmp, { recursive: true, force: true });
 });
 
-describe('parseTestAppFlags', () => {
+describe('parseAppFlags', () => {
   it('takes the app flags out of the Playwright args', () => {
-    expect(parseTestAppFlags(['--app-root', '/repo', '-g', 'renders', '--app=beta', 'smoke'])).toEqual({
+    expect(parseAppFlags(['--app-root', '/repo', '-g', 'renders', '--app=beta', 'smoke'])).toEqual({
       appRoot: '/repo',
       app: 'beta',
       args: ['-g', 'renders', 'smoke'],
@@ -57,18 +58,60 @@ describe('parseTestAppFlags', () => {
   });
 
   it('takes --release too, so Playwright never sees it', () => {
-    expect(parseTestAppFlags(['--release', '-g', 'renders'])).toEqual({ release: true, args: ['-g', 'renders'] });
-    expect(parseTestAppFlags(['-g', 'renders'])).toEqual({ args: ['-g', 'renders'] });
+    expect(parseAppFlags(['--release', '-g', 'renders'])).toEqual({ release: true, args: ['-g', 'renders'] });
+    expect(parseAppFlags(['-g', 'renders'])).toEqual({ args: ['-g', 'renders'] });
   });
 
   it('rejects unknown app channels', () => {
-    expect(() => parseTestAppFlags(['--app', 'nightly'])).toThrow(/Unknown --app "nightly"/);
+    expect(() => parseAppFlags(['--app', 'nightly'])).toThrow(/Unknown --app "nightly"/);
   });
 });
 
-describe('resolveTestApp', () => {
-  const resolve = (overrides: Partial<Parameters<typeof resolveTestApp>[0]> = {}) =>
-    resolveTestApp({ flags: { args: [] }, hostVersion: '>=0.3.0', dirs, env: {}, interactive: false, prompt: noPrompt, betaApp: beta, ...overrides });
+/**
+ * The half that may not consult machine state.
+ *
+ * `resolveTestApp` used to fall through to `~/.config/abuddy-cli/config.json` and, in a terminal, to a
+ * question whose answer it persisted — so a pack's test result depended on what someone typed once on
+ * that machine. The data layer was never the problem: the fixture always takes a fresh `mkdtemp` and
+ * forces `env: 'test'`, which is why this hid — the isolation you check for is real, one layer below the
+ * leak. These cases fail the moment the config read comes back.
+ */
+describe('resolvePinnedApp', () => {
+  const pinned = (overrides: Partial<Parameters<typeof resolvePinnedApp>[0]> = {}) =>
+    resolvePinnedApp({ flags: { args: [] }, hostVersion: '>=0.3.0', dirs, env: {}, betaApp: beta, ...overrides });
+
+  it('ignores a saved choice, where the development half would honour it', async () => {
+    saveAppChoice(dirs, { source: makeCheckout('saved') });
+
+    await expect(pinned()).resolves.toMatchObject({ kind: 'packaged', version: '0.4.0-beta.2' });
+    expect(beta, 'it pinned from hostVersion rather than reading config.json').toHaveBeenCalledWith('>=0.3.0', dirs.cache);
+  });
+
+  // There is nothing to ask about: the manifest's hostVersion always yields an answer, which is why
+  // dropping the config read leaves no hole
+  it('needs no prompt and no terminal, so CI and a laptop agree', async () => {
+    await expect(pinned()).resolves.toMatchObject({ kind: 'packaged' });
+  });
+
+  it('still takes an explicitly named app', async () => {
+    const root = makeCheckout('explicit');
+    await expect(pinned({ flags: { appRoot: root, args: [] } })).resolves.toEqual({ kind: 'source', root });
+    await expect(pinned({ env: { ABUDDY_ROOT: root } })).resolves.toEqual({ kind: 'source', root });
+  });
+
+  // No path yields a production-stamped app: the target is a checkout or a Beta build, and that is what
+  // keeps production's data dir and its `abuddy` keychain entry out of reach
+  it('never resolves anything but a checkout or a beta build', async () => {
+    for (const target of [await pinned(), await pinned({ flags: { app: 'beta', args: [] } })]) {
+      expect(['source', 'packaged']).toContain(target.kind);
+      if (target.kind === 'packaged') expect(target.version).toMatch(/beta/);
+    }
+  });
+});
+
+describe('resolveDevelopmentApp', () => {
+  const resolve = (overrides: Partial<Parameters<typeof resolveDevelopmentApp>[0]> = {}) =>
+    resolveDevelopmentApp({ flags: { args: [] }, hostVersion: '>=0.3.0', dirs, env: {}, interactive: false, prompt: noPrompt, betaApp: beta, ...overrides });
 
   it('prefers --app-root over ABUDDY_ROOT and the saved choice', async () => {
     const flagged = makeCheckout('flagged');
@@ -142,7 +185,7 @@ describe('resolveTestApp', () => {
     fs.mkdirSync(dirs.config, { recursive: true });
     fs.writeFileSync(path.join(dirs.config, 'config.json'), JSON.stringify({ app: 'beta' }));
     expect(readAppChoice(dirs)).toBeUndefined();
-    await expect(resolve()).rejects.toThrow(/No AgentBuddy app to test against/);
+    await expect(resolve()).rejects.toThrow(/No AgentBuddy app to develop against/);
 
     const home = os.homedir();
     const checkout = fs.mkdtempSync(path.join(home, '.abuddy-app-target-'));
@@ -205,6 +248,93 @@ describe('configuredAppPackagesDir', () => {
 
   it('resolves nothing without a configured app', async () => {
     await expect(configuredAppPackagesDir(opts({}))).resolves.toBeNull();
+  });
+
+  // An empty ABUDDY_ROOT used to swallow a saved checkout and resolve nothing: the lookup read
+  // `env.ABUDDY_ROOT ?? saved.source`, and '' is not nullish, so it won the `??` and then failed the
+  // `if`. The two resolvers beside it had always treated '' as unset.
+  it('treats an empty ABUDDY_ROOT as unset, as the resolvers do', async () => {
+    const saved = makeCheckout('saved');
+    saveAppChoice(dirs, { source: saved });
+    expect((await configuredAppPackagesDir(opts({ ABUDDY_ROOT: '' })))?.dir).toBe(path.join(saved, 'packages'));
+  });
+
+  /**
+   * The cache is what lets a build resolve built-in dependencies offline — `ensureBetaApp` lists releases
+   * over the network before it will even look at the cache — so the range has to be checked here rather
+   * than by downloading. It never was, and the newest cached build was used whatever the pack asked for.
+   */
+  describe('a saved beta choice, against the range the pack asks for', () => {
+    const cacheBeta = (tag: string, appVersion?: string) => {
+      const executable = packagedExecutable(path.join(dirs.cache, 'apps', 'beta', tag));
+      fs.mkdirSync(path.dirname(executable), { recursive: true });
+      fs.writeFileSync(executable, '');
+      if (appVersion !== undefined) {
+        const appDir = path.join(path.dirname(path.dirname(executable)), 'Resources', 'app');
+        fs.mkdirSync(appDir, { recursive: true });
+        fs.writeFileSync(path.join(appDir, 'package.json'), JSON.stringify({ version: appVersion }));
+      }
+    };
+
+    beforeEach(() => { saveAppChoice(dirs, { beta: true }); });
+
+    it('skips a cached build the range excludes, and downloads nothing to do it', async () => {
+      cacheBeta('0.5.0-beta.0');
+      cacheBeta('0.4.0-beta.10');
+      cacheBeta('0.4.0-beta.9');
+      await expect(configuredAppPackagesDir({ dirs, env: {}, hostVersion: '^0.4.0-0', betaApp: beta }))
+        .resolves.toMatchObject({ label: 'AgentBuddy Beta 0.4.0-beta.10' });
+      expect(beta, 'the cache is the offline path; checking the range must not cost a download')
+        .not.toHaveBeenCalled();
+    });
+
+    it('downloads when no cached build satisfies the range', async () => {
+      cacheBeta('0.5.0-beta.0');
+      await expect(configuredAppPackagesDir({ dirs, env: {}, hostVersion: '^0.4.0-0', betaApp: beta }))
+        .resolves.toMatchObject({ label: 'AgentBuddy Beta 0.4.0-beta.2' });
+      expect(beta).toHaveBeenCalledWith('^0.4.0-0', dirs.cache);
+    });
+
+    // A beta promoted from a released commit is tagged v<version>-beta.0 (build/release/beta-tag.sh)
+    // while the app inside is <version>, and pickBetaRelease matched the range against the app. Matching
+    // the directory name instead would reject this build on every run, for every pack whose floor is a
+    // released version — and offline that is a build that fails rather than one that downloads.
+    it('matches the app its own version, not the tag the cache directory is named after', async () => {
+      cacheBeta('0.4.2-beta.0', '0.4.2');
+      await expect(configuredAppPackagesDir({ dirs, env: {}, hostVersion: '>=0.4.2', betaApp: beta }))
+        .resolves.toMatchObject({ label: 'AgentBuddy Beta 0.4.2-beta.0' });
+      expect(beta).not.toHaveBeenCalled();
+    });
+
+    // hostVersion defaults to '*', and a prerelease satisfies no range without includePrerelease — '*'
+    // included. Dropping that option would empty the cache for every pack that declares no hostVersion.
+    it('still accepts a prerelease when the pack declares no hostVersion', async () => {
+      cacheBeta('0.4.0-beta.10');
+      await expect(configuredAppPackagesDir({ dirs, env: {}, betaApp: beta }))
+        .resolves.toMatchObject({ label: 'AgentBuddy Beta 0.4.0-beta.10' });
+      expect(beta).not.toHaveBeenCalled();
+    });
+  });
+});
+
+// ABUDDY_APP used to be read only where nothing outranked it, so a typo was an error during `build` and
+// silence during `test` and `run` — and the two resolvers disagreed with each other on the same input.
+describe('an unusable ABUDDY_APP', () => {
+  const flags = { args: [] };
+  it('is refused by both resolvers, whatever else names an app', async () => {
+    const root = makeCheckout('env');
+    for (const env of [{ ABUDDY_APP: 'nightly' }, { ABUDDY_APP: 'nightly', ABUDDY_ROOT: root }]) {
+      await expect(resolvePinnedApp({ flags, hostVersion: '*', dirs, env, betaApp: beta }))
+        .rejects.toThrow(/Unknown ABUDDY_APP "nightly"/);
+      await expect(resolveDevelopmentApp({ flags, hostVersion: '*', dirs, env, betaApp: beta, interactive: false }))
+        .rejects.toThrow(/Unknown ABUDDY_APP "nightly"/);
+    }
+  });
+
+  it('is refused even when a flag would have won', async () => {
+    await expect(resolvePinnedApp({
+      flags: { app: 'beta', args: [] }, hostVersion: '*', dirs, env: { ABUDDY_APP: 'nightly' }, betaApp: beta,
+    })).rejects.toThrow(/Unknown ABUDDY_APP "nightly"/);
   });
 });
 

@@ -104,7 +104,7 @@ describe('pack-loader', () => {
       });
       try {
         expect(loadExternalPacks()).toEqual([]);
-        expect(warnings).toEqual([expect.stringMatching(/^Skipping unbundled: .* isn't an installed pack \(no integrity\.json or runtime\/index\.cjs\)\. Install it with abuddy install or abuddy dev$/)]);
+        expect(warnings).toEqual([expect.stringMatching(/^Skipping unbundled: .* isn't an installed pack \(no integrity\.json or runtime\/index\.cjs\)\. Install it with abuddy install or abuddy run$/)]);
       } finally {
         unsubscribe();
       }
@@ -839,7 +839,7 @@ describe('loaded packs: the packs.loaded entries', () => {
     ]);
   });
 
-  // The renderer loads the frontend from URLs carrying it, which the browser caches by: an update or an `abuddy dev`
+  // The renderer loads the frontend from URLs carrying it, which the browser caches by: an update or an `abuddy run`
   // rebuild keeps its version, so the revision follows the files
   it("gives a frontend a revision that changes with its files, and only with them", () => {
     const dir = path.join(tmpDir, 'with-fe');

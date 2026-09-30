@@ -39,7 +39,7 @@ import { REPO_ROOT } from '@abuddy/host/build/packages-built';
 import { idleNow, IDLE_FLOOR, refusesAsBusy } from './lib/measure.ts';
 import { UNIT_SUITES, type UnitSuite } from './lib/unit-suites.ts';
 import {
-  FAST_BELOW_MS, INTEGRATION_ABOVE_MS, PLACEMENT_GUARD, halfOfPath, hasSplit, misplaced,
+  FAST_BELOW_MS, INTEGRATION_ABOVE_MS, PLACEMENT_GUARD, describeBudget, halfOfPath, hasSplit, overBudget,
   CONFIG_BY_HALF, absentNamed, drift, drifted, namedIn, parseArgs, planFor, readSpecCost, refusesAsContended,
   rewritesEveryRow, settle, specCostFile, specFiles, stale, suitesFor, unrecorded, type SpecCostPlan,
 } from './lib/spec-cost.ts';
@@ -187,7 +187,9 @@ function update(plans: readonly SuitePlan[], dry: boolean): void {
     const next = `${JSON.stringify(record, null, 2)}\n`;
     if (!fs.existsSync(file) || fs.readFileSync(file, 'utf-8') !== next) fs.writeFileSync(file, next);
 
-    const moves = misplaced(record.costs, files);
+    // `measuredFiles`, not `files`: over the whole suite this reports on specs the run never measured,
+    // which is the same narrowing every other guard on this path already takes
+    const budget = describeBudget(overBudget(dir, record.costs, measuredFiles));
     const asBody = body === undefined ? '' : `, body ${body >= 0 ? '+' : ''}${(body * 100).toFixed(0)}%`;
     // Every way the record can differ from the one it replaced, for the same reason `settle` compares rather
     // than enumerates: a change nobody listed reads as "none moved" over a rewritten file, and a spec that
@@ -206,7 +208,7 @@ function update(plans: readonly SuitePlan[], dry: boolean): void {
       plan.prune.length > 0 ? `${plan.prune.length} gone` : '',
     ].filter(Boolean).join(', ');
     console.log(`${suite.workspace.padEnd(20)} ${String(files.length).padStart(3)} specs${record.skipped.length ? `, ${record.skipped.length} skipped` : ''}`
-      + `, ${did}${asBody} -> ${specCostFile(suite.dir)}${moves.length ? `  (${moves.length} in the wrong half)` : ''}`);
+      + `, ${did}${asBody} -> ${specCostFile(suite.dir)}${budget.tail ? `  (${budget.tail})` : ''}`);
     // Two sentences, because the run that reports a drift and the run that clears it are not the same run.
     // Advising `--all` to someone who just ran it, over a record it has already rewritten, describes a state
     // that no longer holds — and this is the one place the reader learns which of the two happened.
@@ -218,7 +220,8 @@ function update(plans: readonly SuitePlan[], dry: boolean): void {
           : 'until one does, anything reading the total reads a number that is no longer true. '
             + '`npm run spec-cost:update -- --all` re-records it.'));
     }
-    for (const { file: spec, ms, belongs } of moves) console.log(`  ${(ms / 1000).toFixed(1)}s  ${spec}  ->  ${belongs}`);
+    for (const line of budget.lines) console.log(line);
+    if (budget.advice) console.log(budget.advice.split('\n').map((line) => `  ${line}`).join('\n'));
   }
 }
 
@@ -256,10 +259,12 @@ function check(only: string | undefined, named: readonly string[]): void {
       ...(named.length > 0 ? [] : stale(record, files).map((f) => `  recorded but gone: ${suite.dir}/${f}`)),
     );
     if (problems.length > before) recordable.add(suite.dir);
-    if (hasSplit(dir)) {
-      for (const { file, ms, belongs } of misplaced(record.costs, asked)) {
-        renames.push(`  ${(ms / 1000).toFixed(1)}s is ${belongs}, but this is in the ${halfOfPath(file)} half: ${suite.dir}/${file}`);
-      }
+    // Only `rename` gates. An `over` finding is one a package with a single half cannot act on by moving
+    // anything, and whether it is *allowed* is `EXPENSIVE_BY_NATURE`'s question, which lives in
+    // `suite-split.spec.ts` and not here — failing on it would fail over the entries already recorded there.
+    for (const found of overBudget(dir, record.costs, asked)) {
+      if (found.kind !== 'rename') continue;
+      renames.push(`  ${(found.ms / 1000).toFixed(1)}s is ${found.belongs}, but this is in the ${halfOfPath(found.file)} half: ${suite.dir}/${found.file}`);
     }
   }
   if (problems.length > 0 || renames.length > 0) {
@@ -304,7 +309,10 @@ function list(only: string | undefined, named: readonly string[]): void {
         const cost = ms === undefined
           ? (record?.skipped.includes(file) ? 'skipped' : 'unmeasured')
           : (ms < 1_000 ? `${ms}ms` : `${(ms / 1000).toFixed(1)}s`);
-        const band = ms !== undefined && ms >= FAST_BELOW_MS && ms <= INTEGRATION_ABOVE_MS ? '  (in the band)' : '';
+        // The band is where a re-measurement could change which half a spec runs in, so it says nothing
+        // about a package that has only one — the same question `overBudget` asks of the package
+        const band = hasSplit(packageDir(suite)) && ms !== undefined && ms >= FAST_BELOW_MS && ms <= INTEGRATION_ABOVE_MS
+          ? '  (in the band)' : '';
         console.log(`  ${cost.padStart(10)}  ${halfOfPath(file).padEnd(11)} ${suite.dir}/${file}${band}`);
       }
     }
@@ -317,7 +325,10 @@ function list(only: string | undefined, named: readonly string[]): void {
     const record = readSpecCost(REPO_ROOT, suite.dir);
     if (record === undefined) continue;
     const costs = Object.entries(record.costs);
-    const inBand = costs.filter(([, ms]) => ms >= FAST_BELOW_MS && ms <= INTEGRATION_ABOVE_MS);
+    // Counted only where there is a second half to move into; see the band comment above
+    const inBand = hasSplit(packageDir(suite))
+      ? costs.filter(([, ms]) => ms >= FAST_BELOW_MS && ms <= INTEGRATION_ABOVE_MS)
+      : [];
     rows.push({ suite: suite.dir, specs: costs.length, settled: costs.length - inBand.length, nearBand: inBand.length });
     for (const [file, ms] of inBand) near.push(`  ${(ms / 1000).toFixed(1)}s  ${halfOfPath(file).padEnd(11)} ${suite.dir}/${file}`);
   }

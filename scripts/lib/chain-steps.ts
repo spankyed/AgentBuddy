@@ -537,6 +537,9 @@ export const CHAIN_STEPS: readonly ChainStep[] = [
     // They arrived when the lint stopped ignoring `packages/**`, and the guard below named all six.
     inputs: [...ROOT, ...EVERY_WORKSPACE, 'scripts', 'tests/e2e', 'tests/fixtures', 'tests/scripts',
       'tests/tsconfig.json', 'playwright.config.ts', 'types', 'electron-builder.mjs',
+      // The drive layer's config, and only it: the driving scripts beside it are gitignored and ad-hoc,
+      // so naming the directory would re-run a typecheck every time someone poked at the app
+      'drive/playwright.config.ts',
       'build/prod/diagnostics.mjs', 'build/prod/verify-node-modules.mjs',
       'packages/abuddy-cli/bin/abuddy.mjs', 'packages/abuddy-cli/bin/source-hooks.mjs',
       'packages/abuddy-ears/bench/ears.bench.ts', 'packages/api/tsup.config.ts',
@@ -568,20 +571,44 @@ export const CHAIN_STEPS: readonly ChainStep[] = [
   { name: 'test:external-pack:app', tier: 3, needs: ['build:app', 'test:external-pack:contract'], seconds: 24,
     // Its own Playwright output, rewritten every run
     excludes: FIXTURE_TEST_OUTPUT,
+    // PACKAGE_BUILD_OUTPUTS because the fixture it drives *is* one: `@abuddy/testing` resolves to its
+    // built bundle, which launches Electron, finds the window and bypasses onboarding. Reached by package
+    // name rather than by path, so nothing that reads a step's text can see the edge
     inputs: [...ROOT, ...BOUNDED_RUNNER, 'tests/fixtures', 'tests/scripts/test-external-pack-app.sh',
-      'tests/scripts/lib', 'playwright.config.ts', ...APP_OUTPUTS] },
+      'tests/scripts/lib', 'playwright.config.ts', ...PACKAGE_BUILD_OUTPUTS, ...APP_OUTPUTS] },
   // Never cached: it drives real Electron with real timing and is the likeliest step to be flaky, and a
   // flaky pass cached green hides an intermittent failure indefinitely. 28s is cheap enough to always pay.
   // It declares what it writes although it is never cached and so never reads a stamp: the guard that a
   // step depending on another's output says so can only see outputs that are declared, and this is the
   // tree that caused the defect — `typecheck` declared `tests`, which contains these, and could never cache.
-  // The E2E suite. **Opt-in, not a gate** — `npm run chain -- --e2e`.
+  // The four cases that say the app is an app: it launches without crashing, reaches `connected`, has
+  // its plugins, and runs in its own data dir. **This one is a gate**, where the suite around it is not.
+  //
+  // The distinction is what the suite failed and these pass: a regression gate has to assert something a
+  // change could break, and "the app starts" is the assertion every other check silently assumes. Taking
+  // the whole suite off the chain took that with it, and 3.5s is not a price worth arguing about for the
+  // one check that makes a green run mean anything.
+  //
+  // `test` depends on it so the two never run at once: both drive Playwright at `tests/results`, which it
+  // wipes at the start of a run, and a full suite is also the faster failure for having gone through this.
+  //
+  // **Cached, where the suite is not**, and the difference is the subject rather than the mechanism. The
+  // suite is never cached because it drives real timing across fourteen files and a flaky pass cached
+  // green hides an intermittent failure. These four cases are deterministic, and every input they have is
+  // declared — so an unchanged stamp means the same app, and running it again asks a question already
+  // answered. Uncached it put the warm chain back to 5.6s from 0.9s, which is most of what taking the
+  // suite off the gate bought.
+  { name: 'test:smoke', tier: 3, needs: ['build:app'], seconds: 6,
+    outputs: ['tests/results'],
+    inputs: [...ROOT, 'tests/e2e/smoke.spec.ts', 'tests/e2e/fixtures', 'playwright.config.ts',
+      'scripts/with-source.mjs', ...APP_ENTRY, ...PACKAGE_BUILD_OUTPUTS, ...APP_OUTPUTS] },
+  // The rest of the E2E suite. **Opt-in, not a gate** — `npm run chain -- --e2e`.
   //
   // It was built to be driven: to watch the app while writing a feature, and to let an agent see what it
   // built. It became a chain step, and then the reasoning about it became about caching a flaky pass —
   // which is a question you only ask of a regression gate. It has not caught one. Off the chain it costs
   // nothing and is still there when you want it, which is what it was for.
-  { name: 'test', tier: 3, needs: ['build:app'], cache: false, seconds: 26,
+  { name: 'test', tier: 3, needs: ['build:app', 'test:smoke'], cache: false, seconds: 26,
     optInBecause: 'it is a harness for driving the app, not a regression gate; nothing has needed it to fail',
     neverCachedBecause: 'it drives real Electron, and a flaky pass cached green hides an intermittent failure',
     outputs: ['tests/screenshots', 'tests/results'],
