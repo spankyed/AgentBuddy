@@ -26,7 +26,7 @@ function writeManifest(name: string, manifest: Record<string, unknown>): string 
 describe('enabledExternalPacks', () => {
   const external = (id: string) => writeManifest(id, { id, name: id, version: '1.0.0' });
 
-  // The directory is the list: an `abuddy install` outside the app, or an `abuddy dev` into a running
+  // The directory is the list: an `abuddy install` outside the app, or an `abuddy run` into a running
   // one, leaves a pack the record has never heard of, and it is installed and enabled all the same
   it('takes every pack in the directory, including ones the record has never heard of', () => {
     external('memo-pack');

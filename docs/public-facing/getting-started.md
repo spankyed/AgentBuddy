@@ -74,10 +74,12 @@ The scaffold has no dependencies, so it builds as generated. To use another pack
 ## The dev loop
 
 ```bash
-abuddy dev
+abuddy run
 ```
 
-Run it alongside the dev app (`npm start` in an AgentBuddy checkout). It builds, installs the pack into the development data dir and starts a Vite dev server: frontend changes hot-reload through Vite HMR, `abuddy.json` changes regenerate `src/__generated__/`, and backend `.ts` changes rebuild, reinstall and reload the pack's backend in the running app.
+This launches AgentBuddy with your pack installed and keeps it in step with your edits: frontend changes hot-reload through Vite HMR, `abuddy.json` changes regenerate `src/__generated__/`, and backend `.ts` changes rebuild, reinstall and reload the pack's backend in the running app.
+
+The first run asks which app to use — a local AgentBuddy checkout, or the newest Beta build — and remembers the answer; `--app-root <path>` and `--app beta` name one outright. If an app is already running on that data dir, `run` uses it rather than starting a second.
 
 The build pipeline (`abuddy build`):
 

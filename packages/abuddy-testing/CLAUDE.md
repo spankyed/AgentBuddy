@@ -63,7 +63,7 @@ carries no comments.
 |---|---|---|---|
 | 1 | `npm run packages:ensure &&` in a root script | a repo command: `test`, `test:headed`, `test:explorer`, `test:external-pack`, `typecheck`, `typecheck:pack`, `compile`, `prebuild` | root `package.json` |
 | 2 | that workspace's `pretest` | `npm test -w @abuddy/cli`, `-w @app/default-setup` and `-w @app/repo-checks` run directly, which no root script wraps | each package's `package.json` |
-| 3 | `ensureCheckoutPackages(packRoot)` | `abuddy build`, `abuddy test`, `abuddy dev` — from any directory, for a pack whose packages are a checkout's | `abuddy-cli/src/build/checkout-packages.ts`, called from `commands/{build,test,dev}.ts` |
+| 3 | `ensureCheckoutPackages(packRoot)` | `abuddy build`, `abuddy test`, `abuddy run` — from any directory, for a pack whose packages are a checkout's | `abuddy-cli/src/build/checkout-packages.ts`, called from `commands/{build,test,run}.ts` |
 | 4 | the `Build publishable packages` step | CI, whose typecheck step already built them through `typecheck:pack` | `.github/workflows/ci.yml` |
 
 **Checkers** run inside a process that has already started, where the modules are loaded and rebuilding
@@ -78,7 +78,7 @@ Three things follow.
 
 - **A new entry point needs a fixer in front of it, not another copy of the rule.** Every door above calls
   the same check; what differs is only when it runs and whether it can repair what it finds.
-- **A fixer belongs to the command a user runs, not to a function a watch loop calls.** `abuddy dev`
+- **A fixer belongs to the command a user runs, not to a function a watch loop calls.** `abuddy run`
   rebuilds the pack through `build()` on every file change, and the check reads every source of all five
   packages, so `abuddy build` refreshes in `buildCommand` while `build()` stays clean. Both placements
   are pinned by `abuddy-cli/tests/build/checkout-packages.spec.ts`.
@@ -214,7 +214,7 @@ The fixture launches, in priority order: `createTest({ appExecutable })`, `creat
 
 1. **Pack build/install** (if `PACK_DIR` is set):
    - Parse `abuddy.json` from `PACK_DIR` → extract pack `id` and `pluginIds`
-   - Always rebuild the pack with `abuddy build` (a stale `dist/` would otherwise be tested silently), including while `abuddy dev` runs for that pack: its marker means a dev server is up, not that `dist/` is current (N4 in `docs/archive/issues/postmortem-external-pack-calendar-extraction.md`). `PACK_ARCHIVE` skips the build and installs that packed `.tgz` as it is, so a run can exercise the artifact a release ships (`tests/scripts/test-packaged-authoring.sh` step 8), and is refused when it is older than the pack's `dist/`; everything else still comes from `PACK_DIR`
+   - Always rebuild the pack with `abuddy build` (a stale `dist/` would otherwise be tested silently), including while `abuddy run` runs for that pack: its marker means a dev server is up, not that `dist/` is current (N4 in `docs/archive/issues/postmortem-external-pack-calendar-extraction.md`). `PACK_ARCHIVE` skips the build and installs that packed `.tgz` as it is, so a run can exercise the artifact a release ships (`tests/scripts/test-packaged-authoring.sh` step 8), and is refused when it is older than the pack's `dist/`; everything else still comes from `PACK_DIR`
    - Install it into the worker's data dir with `installPackFromLocal()` — the same stage → verify → place bundle path users get — passing `hostVersion`: the launched app's version (`src/app-version.ts`: the checkout's `package.json`, or the packaged app's `Resources/app/package.json` / `resources/app/package.json`), so a pack whose manifest `hostVersion` excludes it fails to install
    - It passes no `packFormat`. Whether the app can read a pack's build is the app's to decide, and it decides at boot, naming which side is older; the fixture reports that verdict (step 6) instead of forming its own. It has no way to form one: the app's `host.json` is written at its first boot, after this install, the CLI running the fixture needn't be the app's, and inferring the app's format from an artifact it ships (a built-in pack's snapshot) refuses good packs whenever that artifact is the stale one. `packs/runtime/load-messages.spec.ts` pins that a refusal reaches the fixture as a line it matches
    - Build uses `ABUDDY_CLI` (set by `abuddy test`), else the `@abuddy/cli` the pack resolves, else the checkout's; it runs as `node <bin> build`
@@ -325,5 +325,5 @@ PACK_DIR=/path/to/my-pack npm test -- tests/e2e/scratch
 - **Data dir alignment**: The fixture installs into `resolveAppContext({ env: 'test', userDataDir }).packsDir` for the worker's temp dir and passes that dir as `ABUDDY_USER_DATA_DIR`. The Electron app launched with `PLAYWRIGHT_TEST=true` infers the `test` environment in `packages/main/src/app-context.ts`, which sets the app name and `userData` from the same resolver (`@abuddy/sdk/env`) and passes `ABUDDY_ENV` / `ABUDDY_USER_DATA_DIR` to the API process, so both sides always agree.
 - **Pinned viewport**: the fixture sets the main window viewport to 1400×900. The window's default size depends on whether main was built in dev or production mode, so without this, layout and `toHaveScreenshot` baselines differ between `npm start` builds and `npm run build`/CI.
 - **Pack manifest caching**: `getPackManifest()` reads and parses `abuddy.json` once per process, cached at module scope. Plugin IDs are the `features[].id` of features with a `plugin` (the manifest's `plugin` has no `id`).
-- **Dev server marker**: `abuddy dev` writes `{devUserDataDir}/pack-dev-servers/{packId}.json` containing `{ port, pid }` for the dev app's HMR. The E2E fixture ignores it: tests always run a fresh build in an isolated data dir.
+- **Dev server marker**: `abuddy run` writes `{devUserDataDir}/pack-dev-servers/{packId}.json` containing `{ port, pid }` for the dev app's HMR. The E2E fixture ignores it: tests always run a fresh build in an isolated data dir.
 - **`pack://` protocol**: Custom Electron protocol (`packages/main/src/modules/pack-protocol/PackProtocol.ts`) that reads the marker through `devServerUrl` (`@abuddy/host/packs/dev-server`) and proxies to the Vite dev server if present, otherwise serves files from disk.

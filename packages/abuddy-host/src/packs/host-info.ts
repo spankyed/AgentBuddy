@@ -14,7 +14,7 @@ export interface HostInfo {
   packFormat?: number;
 }
 
-/** Records what the AgentBuddy starting with this data dir can load, so `abuddy install` and `abuddy dev` can check a pack against it. */
+/** Records what the AgentBuddy starting with this data dir can load, so `abuddy install` and `abuddy run` can check a pack against it. */
 export function recordHostInfo(userDataDir: string, info: Required<HostInfo>): void {
   const current = readHostInfo(userDataDir);
   if (current.version === info.version && current.packFormat === info.packFormat) return;

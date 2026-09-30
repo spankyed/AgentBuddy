@@ -1,4 +1,4 @@
-// `abuddy dev` state lives in the data dir, outside the installed (verified, replaced-on-install) pack
+// `abuddy run` state lives in the data dir, outside the installed (verified, replaced-on-install) pack
 import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
@@ -65,7 +65,7 @@ describe('dev server marker', () => {
     expect(() => devServerUrl(userDataDir, 'demo-pack', '/runtime/fe.js')).toThrow(/port 70000/);
   });
 
-  it('leaves an installed pack verifiable, and survives the reinstalls abuddy dev runs', async () => {
+  it('leaves an installed pack verifiable, and survives the reinstalls abuddy run runs', async () => {
     const { dir } = await installPackFromLocal(builtPack(), packsDir);
     writeDevServerMarker(userDataDir, 'demo-pack', { port: 5199, pid: process.pid });
 
@@ -77,7 +77,7 @@ describe('dev server marker', () => {
   });
 });
 
-// The marker is removed on the way out, so one still here after `abuddy dev` crashed names a port nothing
+// The marker is removed on the way out, so one still here after `abuddy run` crashed names a port nothing
 // is listening on. Serving the pack's frontend from it fails with a connection error and nothing saying
 // this file is why; falling back to the installed copy at least shows the pack.
 describe('a dev server that is no longer running', () => {

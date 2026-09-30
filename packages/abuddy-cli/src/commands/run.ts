@@ -1,22 +1,53 @@
 import { ensureCheckoutPackages } from '../build/checkout-packages.ts';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
+import { spawn, type ChildProcess } from 'node:child_process';
+import { createRequire } from 'node:module';
 import { build } from './build';
 import { findPackRoot, readManifest } from '../utils';
 import { findFEEntry, packExternalsPlugin } from '../build/fe-bundler';
+import { parseAppFlags, resolveDevelopmentApp, type AppTarget } from '../app/app-target';
 import { resolveAppContext } from '@abuddy/sdk/env';
+import type { AppEnv } from '@abuddy/sdk/env';
 import { readApiEndpoint } from '@abuddy/host/process-liveness';
+import { withoutSourceCondition } from '@abuddy/host/build/source-resolution';
 import { API_HOST, API_TOKEN_HEADER, errorMessage } from '@abuddy/sdk/utils/pure';
 import { installPackFromLocal, readHostInfo } from '@abuddy/host/packs';
 import { removeDevServerMarker, writeDevServerMarker } from '@abuddy/host/packs/dev-server';
 
+const HELP = `
+Usage: abuddy run [--app-root <path> | --app beta]
+
+Launch AgentBuddy with this pack installed, and keep it in step with your edits: FE changes
+hot-reload through Vite, BE changes rebuild, reinstall and reload in place.
+
+An app already running on the same data dir is used as it is; otherwise one is launched, and
+closing this command closes the app it started.
+
+Options:
+  --app-root <path>   a local AgentBuddy checkout (installed and built)
+  --app beta          the newest AgentBuddy Beta build that satisfies the pack's hostVersion
+  --help, -h          Show this help
+
+With neither, the app saved on first run is used, and you are asked once if there is none.
+`.trim();
+
 const reason = (err: unknown) => (errorMessage(err));
 
-/** The running development app's API: its URL and the token it requires, from the files the API writes */
-function findDevApi(): { api: { url: string; token: string } } | { problem: string } {
-  const { apiPortFile, apiTokenFile } = resolveAppContext({ env: 'development' });
+/**
+ * Which environment an app target runs as. A packaged build stamps its own channel at build time
+ * (`_inferElectronAppEnv`), so this reports what the app will decide rather than deciding it: passing
+ * ABUDDY_ENV to a beta binary would change nothing.
+ */
+export function appEnv(app: AppTarget): AppEnv {
+  return app.kind === 'source' ? 'development' : 'beta';
+}
+
+/** The running app's API: its URL and the token it requires, from the files the API writes */
+function findAppApi(env: AppEnv): { api: { url: string; token: string } } | { problem: string } {
+  const { apiPortFile, apiTokenFile } = resolveAppContext({ env });
   const endpoint = readApiEndpoint(apiPortFile);
-  if (!endpoint) return { problem: `no running development app in ${apiPortFile}` };
+  if (!endpoint) return { problem: `no running ${env} app in ${apiPortFile}` };
   let token: string;
   try {
     token = fs.readFileSync(apiTokenFile, 'utf-8').trim();
@@ -40,9 +71,9 @@ export type DevReload =
   /** Nothing answered on the port the app published */
   | { status: 'unreachable'; detail: string };
 
-/** Asks the running development app to reload a pack's runtime, with its API token. */
-export async function reloadDevPack(packId: string): Promise<DevReload> {
-  const found = findDevApi();
+/** Asks the running app to reload a pack's runtime, with its API token. */
+export async function reloadPack(packId: string, env: AppEnv = 'development'): Promise<DevReload> {
+  const found = findAppApi(env);
   if ('problem' in found) return { status: 'not-running', detail: found.problem };
   try {
     const res = await fetch(`${found.api.url}/dev/reload`, {
@@ -61,19 +92,66 @@ export async function reloadDevPack(packId: string): Promise<DevReload> {
 /** Prints what a reload came to; `what` names the changes (`BE changes`, `changes`) */
 function reportReload(result: DevReload, what: string): void {
   if (result.status === 'reloaded') console.log('BE reloaded successfully.\n');
-  else if (result.status === 'not-running') console.warn(`Dev app not running (${result.detail}). Restart to apply ${what}.\n`);
-  else if (result.status === 'failed') console.warn(`The dev app refused the reload (${result.detail}). Restart the app to apply ${what}.\n`);
-  else console.warn(`Could not reach the dev app (${result.detail}). Restart to apply ${what}.\n`);
+  else if (result.status === 'not-running') console.warn(`The app is not running (${result.detail}). Restart to apply ${what}.\n`);
+  else if (result.status === 'failed') console.warn(`The app refused the reload (${result.detail}). Restart the app to apply ${what}.\n`);
+  else console.warn(`Could not reach the app (${result.detail}). Restart to apply ${what}.\n`);
 }
 
-/** Installs into the dev data dir, checking hostVersion and the build format against the dev app that last used it. */
-export function installToDev(root: string) {
-  const { packsDir, userDataDir } = resolveAppContext({ env: 'development' });
+/** Installs into the app's data dir, checking hostVersion and the build format against the app that last used it. */
+export function installToApp(root: string, env: AppEnv = 'development') {
+  const { packsDir, userDataDir } = resolveAppContext({ env });
   const { version: hostVersion, packFormat } = readHostInfo(userDataDir);
   return installPackFromLocal(root, packsDir, { hostVersion, packFormat });
 }
 
-export async function dev(_args: string[]) {
+/**
+ * The app's environment, minus this process's own. Two things have to go: ELECTRON_RUN_AS_NODE, which the
+ * app-bundled `abuddy` sets and which would start Electron as plain Node, and the `@abuddy/source`
+ * condition, since a checkout's app declares its own and a packaged one must not resolve source at all.
+ */
+function appLaunchEnv(env: AppEnv): NodeJS.ProcessEnv {
+  const out: NodeJS.ProcessEnv = {};
+  for (const [key, value] of Object.entries(process.env)) {
+    if (value !== undefined && key !== 'ELECTRON_RUN_AS_NODE') out[key] = value;
+  }
+  const nodeOptions = withoutSourceCondition(out.NODE_OPTIONS);
+  if (nodeOptions) out.NODE_OPTIONS = nodeOptions;
+  else delete out.NODE_OPTIONS;
+  // Only a source run reads this; a packaged build stamps its channel (see `appEnv`)
+  out.ABUDDY_ENV = env;
+  return out;
+}
+
+/** Starts the app. A checkout runs its own sources with its own electron, so a pack needs none installed. */
+function launchApp(app: AppTarget, env: AppEnv): ChildProcess {
+  const options = { env: appLaunchEnv(env), stdio: 'ignore' as const, detached: false };
+  if (app.kind === 'source') {
+    const electron = createRequire(path.join(app.root, 'package.json'))('electron') as string;
+    return spawn(electron, [app.root], { ...options, cwd: app.root });
+  }
+  return spawn(app.executable, [], options);
+}
+
+/**
+ * Waits for the app to publish its port file, which is what says the API is up and so what says the pack
+ * can be installed and reloaded. One waiter, bounded: a crashed launch must report that rather than hang.
+ */
+async function waitForApi(apiPortFile: string, child: ChildProcess, timeoutMs = 60_000): Promise<void> {
+  const deadline = Date.now() + timeoutMs;
+  while (Date.now() < deadline) {
+    if (readApiEndpoint(apiPortFile)) return;
+    if (child.exitCode !== null) throw new Error(`The app exited (${child.exitCode}) before its API came up`);
+    await new Promise(resolve => setTimeout(resolve, 200));
+  }
+  throw new Error(`The app did not publish ${apiPortFile} within ${timeoutMs / 1000}s`);
+}
+
+export async function run(args: string[]) {
+  if (args.includes('--help') || args.includes('-h')) {
+    console.log(HELP);
+    return;
+  }
+
   const root = findPackRoot(process.cwd());
   const srcDir = path.join(root, 'src');
 
@@ -83,7 +161,11 @@ export async function dev(_args: string[]) {
 
   const manifest = readManifest(root);
   const feEntry = findFEEntry(root);
-  const { packsDir, userDataDir } = resolveAppContext({ env: 'development' });
+
+  const flags = parseAppFlags(args);
+  const app = await resolveDevelopmentApp({ flags, hostVersion: manifest.hostVersion ?? '*' });
+  const env = appEnv(app);
+  const { userDataDir, apiPortFile } = resolveAppContext({ env });
 
   // The build and the app both read the @abuddy packages' dist; from a checkout that dist is built on demand
   ensureCheckoutPackages(root);
@@ -91,13 +173,26 @@ export async function dev(_args: string[]) {
   console.log('Running initial build...\n');
   await build([]);
 
-  console.log(`Installing pack to dev environment...`);
-  const result = await installToDev(root);
+  // An app already on this data dir is the one to use: a second Electron over the same LMDB store is not a
+  // choice anyone wants. Only an app this command started is one it may close.
+  let child: ChildProcess | undefined;
+  if (readApiEndpoint(apiPortFile)) {
+    console.log(`Using the ${env} app already running.\n`);
+  } else {
+    console.log(`Starting ${app.kind === 'source' ? app.root : `AgentBuddy Beta ${app.version}`}...`);
+    child = launchApp(app, env);
+    await waitForApi(apiPortFile, child);
+    console.log(`  up on ${env} data in ${userDataDir}\n`);
+  }
+
+  // After the app has started, so `readHostInfo` reads what this app records rather than a previous one's
+  console.log(`Installing pack to the ${env} app...`);
+  const result = await installToApp(root, env);
   console.log(`  ${result.dir}\n`);
 
   if (!feEntry) {
     console.log('No FE entry found. Falling back to watch + rebuild + reload mode.\n');
-    await watchRebuildFallback(root, srcDir, manifest.id, packsDir);
+    await watchRebuildFallback(root, srcDir, manifest.id, env);
     return;
   }
 
@@ -153,6 +248,8 @@ export async function dev(_args: string[]) {
   function cleanup() {
     removeDevServerMarker(userDataDir, manifest.id);
     server.close();
+    // Only one this command launched: an app that was already up outlives it
+    child?.kill();
   }
 
   process.on('exit', cleanup);
@@ -188,10 +285,10 @@ export async function dev(_args: string[]) {
         console.log(`\nBE change detected: ${filename}`);
         console.log('Rebuilding...');
         await build([]);
-        console.log('Installing to dev...');
-        await installToDev(root);
+        console.log('Installing...');
+        await installToApp(root, env);
         console.log('Triggering BE reload...');
-        reportReload(await reloadDevPack(manifest.id), 'BE changes');
+        reportReload(await reloadPack(manifest.id, env), 'BE changes');
       } catch {
         console.warn('Rebuild failed. Fix the error to apply BE changes.\n');
       } finally {
@@ -208,7 +305,7 @@ export async function dev(_args: string[]) {
   await new Promise(() => {});
 }
 
-async function watchRebuildFallback(root: string, srcDir: string, packId: string, _packsDir: string) {
+async function watchRebuildFallback(root: string, srcDir: string, packId: string, env: AppEnv) {
   let debounceTimer: ReturnType<typeof setTimeout> | null = null;
   let reloading = false;
 
@@ -220,8 +317,8 @@ async function watchRebuildFallback(root: string, srcDir: string, packId: string
       try {
         console.log(`\nChange detected: ${label}`);
         await build([]);
-        await installToDev(root);
-        reportReload(await reloadDevPack(packId), 'changes');
+        await installToApp(root, env);
+        reportReload(await reloadPack(packId, env), 'changes');
       } catch {
         console.warn('Rebuild failed. Fix the error to apply changes.\n');
       } finally {

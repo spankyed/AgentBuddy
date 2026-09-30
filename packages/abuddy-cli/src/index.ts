@@ -19,7 +19,7 @@ Commands:
   install <source> [-d] [-b]  Install a pack (path, URL, GitHub, or registry name)
   uninstall <id> [-d] [-b]   Remove an installed pack
   list [-d] [-b]             Show installed packs
-  dev                   Dev server with HMR (always targets dev environment)
+  run [--app-root <path> | --app beta]  Launch the app with this pack, and reload it as you edit
   init-tests            Scaffold Playwright E2E test setup
   test [args...]        Run E2E tests in AgentBuddy (--app-root <path> | --app beta)
   open [-b]           Open the installed AgentBuddy app
@@ -46,7 +46,7 @@ const COMMANDS: Record<string, () => Promise<(args: string[]) => Promise<void>>>
   'install':    async () => (await import('./commands/install')).install,
   'uninstall':  async () => (await import('./commands/uninstall')).uninstall,
   'list':       async () => (await import('./commands/list')).list,
-  'dev':        async () => (await import('./commands/dev')).dev,
+  'run':        async () => (await import('./commands/run')).run,
   'init-tests': async () => (await import('./commands/init-tests')).initTests,
   'test':       async () => (await import('./commands/test')).test,
   'open':       async () => (await import('./commands/open')).open,

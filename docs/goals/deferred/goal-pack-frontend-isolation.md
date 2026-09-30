@@ -120,9 +120,9 @@ So installing an external pack today means trusting it as much as the app itself
 
 - Implement Open decision 4 for tiptap plugins, blocks, artifact viewers, step forms and app extensions.
 - `@abuddy/testing` finds isolated plugins, and `abuddy test` / `abuddy init-tests` scaffolds keep working for pack authors (`packages/abuddy-testing/CLAUDE.md`).
-- `abuddy dev`'s frontend hot reload (the `pack://` dev server proxy) works inside the isolated context.
+- `abuddy run`'s frontend hot reload (the `pack://` dev server proxy) works inside the isolated context.
 
-**Done when:** the fixture packs, the example pack and `test:packaged-authoring` pass; `abuddy dev` reloads an isolated pack's frontend in an E2E spec.
+**Done when:** the fixture packs, the example pack and `test:packaged-authoring` pass; `abuddy run` reloads an isolated pack's frontend in an E2E spec.
 
 ### Phase 4 — proof and docs
 

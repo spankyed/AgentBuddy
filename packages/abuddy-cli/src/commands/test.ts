@@ -3,7 +3,7 @@ import { refusePackRuleViolations } from '../build/pack-rules.ts';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { spawnSync } from 'node:child_process';
-import { parseTestAppFlags, resolveTestApp, type AppTarget } from '../app/app-target';
+import { parseAppFlags, resolvePinnedApp, type AppTarget } from '../app/app-target';
 import { resolvePlaywrightCli } from '../app/playwright';
 import { withoutSourceCondition } from '@abuddy/host/build/source-resolution';
 import { cliBin, readManifest, resolveVitestCli } from '../utils';
@@ -112,9 +112,9 @@ export async function test(args: string[], run?: ContractRunner): Promise<void> 
 
   const manifest = fs.existsSync(path.join(cwd, 'abuddy.json')) ? readManifest(cwd) : undefined;
 
-  const flags = parseTestAppFlags(args);
+  const flags = parseAppFlags(args);
   const playwrightCli = resolvePlaywrightCli(cwd);
-  const app = await resolveTestApp({ flags, hostVersion: manifest?.hostVersion ?? '*' });
+  const app = await resolvePinnedApp({ flags, hostVersion: manifest?.hostVersion ?? '*' });
 
   refusePackRuleViolations(cwd, TEST_DIRS);
   // The harness bundle this run loads is built from the checkout's source, so bring it up to date first

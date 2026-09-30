@@ -20,30 +20,30 @@ vi.mock('@abuddy/sdk/env', async (importOriginal) => ({
 }));
 
 beforeEach(() => {
-  userDataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'dev-install-'));
+  userDataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'run-install-'));
   installPackFromLocal.mockClear();
 });
 afterEach(() => {
   fs.rmSync(userDataDir, { recursive: true, force: true });
 });
 
-describe('abuddy dev', () => {
+describe('abuddy run', () => {
   it("installs with the version and pack format of the dev app that last used the data dir, so both are checked", async () => {
     const { recordHostInfo } = await import('@abuddy/host/packs');
     recordHostInfo(userDataDir, { version: '0.9.1', packFormat: 3 });
-    const { installToDev } = await import('../../src/commands/dev');
+    const { installToApp } = await import('../../src/commands/run');
 
-    await installToDev('/pack');
+    await installToApp('/pack');
 
     expect(installPackFromLocal).toHaveBeenCalledWith('/pack', path.join(userDataDir, 'packs'), { hostVersion: '0.9.1', packFormat: 3 });
   });
 
   it('reads the version at each install, as the dev app may start in between', async () => {
     const { recordHostInfo } = await import('@abuddy/host/packs');
-    const { installToDev } = await import('../../src/commands/dev');
-    await installToDev('/pack');
+    const { installToApp } = await import('../../src/commands/run');
+    await installToApp('/pack');
     recordHostInfo(userDataDir, { version: '1.0.0', packFormat: 1 });
-    await installToDev('/pack');
+    await installToApp('/pack');
 
     expect(installPackFromLocal.mock.calls.map((call) => (call as unknown[])[2])).toEqual([
       { hostVersion: undefined, packFormat: undefined },
@@ -52,7 +52,7 @@ describe('abuddy dev', () => {
   });
 });
 
-describe('abuddy dev reloads', () => {
+describe('abuddy run reloads', () => {
   /** A stand-in for the dev app's API, recording each reload request */
   async function fakeApi(status: number): Promise<{ port: number; requests: Array<{ url?: string; token?: string | string[]; body: string }>; close: () => void }> {
     const requests: Array<{ url?: string; token?: string | string[]; body: string }> = [];
@@ -75,9 +75,9 @@ describe('abuddy dev reloads', () => {
     try {
       fs.writeFileSync(path.join(userDataDir, 'api-port'), JSON.stringify({ port: api.port, pid: process.pid }));
       fs.writeFileSync(path.join(userDataDir, 'api-token'), 'the-dev-token\n');
-      const { reloadDevPack } = await import('../../src/commands/dev');
+      const { reloadPack } = await import('../../src/commands/run');
 
-      expect(await reloadDevPack('my-pack')).toEqual({ status: 'reloaded' });
+      expect(await reloadPack('my-pack')).toEqual({ status: 'reloaded' });
       expect(api.requests).toEqual([{ url: '/dev/reload', token: 'the-dev-token', body: JSON.stringify({ packId: 'my-pack' }) }]);
     } finally {
       api.close();
@@ -87,22 +87,45 @@ describe('abuddy dev reloads', () => {
   // Each of these needs something different of the author — start the app, read its logs, look at what
   // holds the port — so the status alone was not enough to act on
   it('report a refused reload, a missing port or token file, and an app that no longer answers, and say which', async () => {
-    const { reloadDevPack } = await import('../../src/commands/dev');
-    expect(await reloadDevPack('my-pack')).toMatchObject({ status: 'not-running', detail: expect.stringContaining('api-port') });
+    const { reloadPack } = await import('../../src/commands/run');
+    expect(await reloadPack('my-pack')).toMatchObject({ status: 'not-running', detail: expect.stringContaining('api-port') });
 
     const api = await fakeApi(403);
     fs.writeFileSync(path.join(userDataDir, 'api-port'), JSON.stringify({ port: api.port, pid: process.pid }));
-    expect(await reloadDevPack('my-pack'), 'no token file')
+    expect(await reloadPack('my-pack'), 'no token file')
       .toMatchObject({ status: 'not-running', detail: expect.stringContaining('api-token') });
     fs.writeFileSync(path.join(userDataDir, 'api-token'), '\n');
-    expect(await reloadDevPack('my-pack'), 'an empty token file')
+    expect(await reloadPack('my-pack'), 'an empty token file')
       .toMatchObject({ status: 'not-running', detail: expect.stringContaining('is empty') });
     fs.writeFileSync(path.join(userDataDir, 'api-token'), 'the-dev-token');
     try {
-      expect(await reloadDevPack('my-pack')).toMatchObject({ status: 'failed', detail: expect.stringContaining('403') });
+      expect(await reloadPack('my-pack')).toMatchObject({ status: 'failed', detail: expect.stringContaining('403') });
     } finally {
       api.close();
     }
-    expect(await reloadDevPack('my-pack')).toMatchObject({ status: 'unreachable', detail: expect.stringContaining(`127.0.0.1:${api.port}`) });
+    expect(await reloadPack('my-pack')).toMatchObject({ status: 'unreachable', detail: expect.stringContaining(`127.0.0.1:${api.port}`) });
+  });
+});
+
+/**
+ * `run` does not decide the environment, the app does — which is what keeps production out of reach. A
+ * packaged build stamps its own channel at build time, so the only two answers are a checkout's
+ * `development` and a Beta's `beta`, and no flag or variable this command reads adds a third.
+ */
+describe('the environment abuddy run targets', () => {
+  it('follows the app it resolved', async () => {
+    const { appEnv } = await import('../../src/commands/run');
+    expect(appEnv({ kind: 'source', root: '/repo' })).toBe('development');
+    expect(appEnv({ kind: 'packaged', executable: '/Applications/AgentBuddy Beta.app', version: '0.4.0-beta.1' }))
+      .toBe('beta');
+  });
+
+  it('never targets production', async () => {
+    const { appEnv } = await import('../../src/commands/run');
+    const every = [
+      { kind: 'source', root: '/repo' },
+      { kind: 'packaged', executable: '/Applications/AgentBuddy Beta.app', version: '0.4.0-beta.1' },
+    ] as const;
+    expect(every.map(appEnv)).not.toContain('production');
   });
 });
