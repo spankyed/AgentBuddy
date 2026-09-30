@@ -1,5 +1,5 @@
 {
-  "measuredAt": "2026-09-28T20:57:50.332Z",
+  "measuredAt": "2026-09-30T20:19:50.155Z",
   "costs": {
     "tests/boundaries.spec.ts": 42,
     "tests/build/own-module-specifiers.spec.ts": 71,
@@ -78,6 +78,7 @@
     "tests/process-liveness.spec.ts": 127,
     "tests/secrets/private-file.spec.ts": 696,
     "tests/secrets/store.spec.ts": 989,
+    "tests/secrets/use-file-vault.spec.ts": 3,
     "tests/services/host-runtime.spec.ts": 53,
     "tests/services/inference.spec.ts": 1682
   },

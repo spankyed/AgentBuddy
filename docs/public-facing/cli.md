@@ -128,6 +128,16 @@ It picks an app the way you tell it to — `--app-root <path>` for a local Agent
 
 The environment follows the app: a checkout runs as `development`, and a packaged Beta runs as `beta`, because a packaged build stamps its own channel. Neither touches production data.
 
+**Instances.** By default `run` uses the shared development data dir, so every run inherits what the last one left. An instance is a data dir of its own, created on demand:
+
+- `--instance <name>` — that one, created the first time you name it, and kept
+- `--fresh` — a new one, whose name is printed so you can come back to it with `--instance`
+- `--ephemeral` — a new one, removed when `run` exits
+
+An instance is self-contained — its data, packs, logs and API keys are all inside it, and its keys go in a file beside them rather than into the OS keychain, which is shared by every app of one channel. So `rm -rf` is the whole cleanup, and `abuddy clean --instances` does it for you. The path is printed, and `abuddy db --data-dir <path>` reads it.
+
+An instance is bound to the kind of app that created it — a checkout or a packaged build — because the two keep their databases in different places, and a directory holding both is one no tool can open. `run` refuses the mismatch rather than creating it.
+
 An app already running on that data dir is used as it is; otherwise `run` starts one, and closing `run` closes the app it started. It then builds, installs the pack into that app's data dir, and:
 
 - serves the FE entry from a Vite dev server (port 5199, or the next free one) with HMR, recording its port in `pack-dev-servers/<id>.json` in the app's data dir so the app's `pack://` requests go to it. The marker sits outside the installed pack, which stays exactly the verified files, and is removed when `abuddy run` exits
@@ -370,3 +380,5 @@ In the AgentBuddy repo, `npm run db:query`, `db:exec`, `db:repl`, `db:inspect`, 
 #### `abuddy clean`
 
 Remove build output: `dist/`, `.abuddy/`, `src/__generated__/`.
+
+`--instances` lists the instances `abuddy run` created, with their sizes, and removes the ones a run left behind when it was killed. It works outside a pack, since instances belong to you rather than to any pack. `--all` removes the named ones too. An instance an app is currently running on is never removed, whichever flag you pass: taking a data dir away from a running app does not stop it, it makes it write the directory back.

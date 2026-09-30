@@ -537,6 +537,9 @@ export const CHAIN_STEPS: readonly ChainStep[] = [
     // They arrived when the lint stopped ignoring `packages/**`, and the guard below named all six.
     inputs: [...ROOT, ...EVERY_WORKSPACE, 'scripts', 'tests/e2e', 'tests/fixtures', 'tests/scripts',
       'tests/tsconfig.json', 'playwright.config.ts', 'types', 'electron-builder.mjs',
+      // The drive layer's config, and only it: the driving scripts beside it are gitignored and ad-hoc,
+      // so naming the directory would re-run a typecheck every time someone poked at the app
+      'drive/playwright.config.ts',
       'build/prod/diagnostics.mjs', 'build/prod/verify-node-modules.mjs',
       'packages/abuddy-cli/bin/abuddy.mjs', 'packages/abuddy-cli/bin/source-hooks.mjs',
       'packages/abuddy-ears/bench/ears.bench.ts', 'packages/api/tsup.config.ts',

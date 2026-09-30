@@ -586,7 +586,6 @@ Playwright tests launch the full Electron app and interact via `window.applicati
 ```bash
 npm test                              # Run all E2E tests
 npm test -- smoke                    # Run just smoke tests
-npm test -- tests/e2e/scratch        # Run ad-hoc scratch test (gitignored)
 DEBUG_E2E=1 npm test                  # With Electron stdout/stderr logging
 npm run test:headed                   # Show the app's windows, to watch a test drive it. Under Playwright
                                       # they are never shown or focused (PLAYWRIGHT_VISIBLE, the guard in

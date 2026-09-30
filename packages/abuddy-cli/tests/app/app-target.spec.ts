@@ -38,7 +38,7 @@ const noPrompt = async (): Promise<string> => {
 
 beforeEach(() => {
   tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'abuddy-app-target-'));
-  dirs = { config: path.join(tmp, 'config'), cache: path.join(tmp, 'cache') };
+  dirs = { config: path.join(tmp, 'config'), cache: path.join(tmp, 'cache'), data: path.join(tmp, 'data') };
   beta.mockClear();
   vi.spyOn(console, 'log').mockImplementation(() => {});
 });

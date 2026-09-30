@@ -17,11 +17,13 @@ export type AppChoice = { source: string } | { beta: true };
 export interface CliDirs {
   config: string;
   cache: string;
+  /** Machine state the CLI owns and the app does not: today, the instances `abuddy run` creates */
+  data: string;
 }
 
 export function cliDirs(): CliDirs {
   const paths = envPaths('abuddy-cli', { suffix: '' });
-  return { config: paths.config, cache: paths.cache };
+  return { config: paths.config, cache: paths.cache, data: paths.data };
 }
 
 const configFile = (dirs: CliDirs) => path.join(dirs.config, 'config.json');
