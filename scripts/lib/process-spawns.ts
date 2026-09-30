@@ -25,6 +25,7 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import ts from 'typescript';
+import { reachableFrom } from './module-graph.ts';
 
 /** However the module is spelled */
 const CHILD_PROCESS = new Set(['node:child_process', 'child_process']);
@@ -81,46 +82,7 @@ export function tsFilesUnder(dir: string): string[] {
   });
 }
 
-/** The relative import and export specifiers in one file */
-function relativeSpecifiers(source: ts.SourceFile): string[] {
-  const out: string[] = [];
-  source.forEachChild((node) => {
-    const specifier = (ts.isImportDeclaration(node) || ts.isExportDeclaration(node)) ? node.moduleSpecifier : undefined;
-    if (specifier !== undefined && ts.isStringLiteral(specifier) && specifier.text.startsWith('.')) out.push(specifier.text);
-  });
-  return out;
-}
-
-/** Where a relative specifier lands, allowing for the `.ts` this repo writes and the `.js` it does not */
-function resolveRelative(from: string, specifier: string): string | undefined {
-  const base = path.resolve(path.dirname(from), specifier);
-  const candidates = [base, base.replace(/\.js$/, '.ts'), `${base}.ts`, path.join(base, 'index.ts')];
-  return candidates.find((candidate) => fs.existsSync(candidate) && fs.statSync(candidate).isFile());
-}
-
-/**
- * Every file the entries reach through relative imports, the entries included, confined to `within`.
- *
- * What the integration pool actually loads, which is the population a rule about that pool has to be about.
- * Without it the answer includes every fast spec in the same packages — `lint-scope`, `with-source`, a
- * dozen more — which spawn freely and run in another pool where no cap is at stake, and excludes nothing
- * that matters. It is also how `_support/pack-builds.ts` is in and `_support/repo-files.ts` is out, the two
- * sitting one directory apart.
- */
-export function reachableFrom(entries: readonly string[], within: readonly string[]): string[] {
-  const inside = (file: string) => within.some((dir) => file.startsWith(`${dir}${path.sep}`));
-  const seen = new Set(entries);
-  const stack = [...entries];
-  while (stack.length > 0) {
-    const file = stack.pop()!;
-    const source = ts.createSourceFile(file, fs.readFileSync(file, 'utf-8'), ts.ScriptTarget.Latest, true);
-    for (const specifier of relativeSpecifiers(source)) {
-      const next = resolveRelative(file, specifier);
-      if (next !== undefined && inside(next) && !seen.has(next)) { seen.add(next); stack.push(next); }
-    }
-  }
-  return [...seen].sort();
-}
+export { reachableFrom };
 
 /** A file that starts a subprocess, and how */
 export interface SpawnSite {

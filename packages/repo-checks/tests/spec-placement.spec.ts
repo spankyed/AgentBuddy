@@ -3,6 +3,7 @@ import * as path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { REPO_ROOT } from '@abuddy/host/build/packages-built';
 import { PACKAGE_DIRS } from '../../../scripts/lib/workspace-deps.ts';
+import { relativeSpecifiers } from '../../../scripts/lib/module-graph.ts';
 import { repoFiles } from './_support/repo-files.ts';
 
 /**
@@ -207,8 +208,6 @@ describe("a spec's directory names one under src/", () => {
 });
 
 describe('a spec does not reach into another package', () => {
-  const RELATIVE = /(?:from|import\(|require\()\s*['"](\.[^'"]*)['"]/g;
-
   /**
    * Whether a specifier names something on disk, trying the extensions a TypeScript import may leave off.
    *
@@ -227,7 +226,7 @@ describe('a spec does not reach into another package', () => {
     if (own === undefined) return [];
     const dir = path.dirname(spec);
     const out = new Set<string>();
-    for (const [, specifier] of fs.readFileSync(path.join(REPO_ROOT, spec), 'utf-8').matchAll(RELATIVE)) {
+    for (const specifier of relativeSpecifiers(path.join(REPO_ROOT, spec))) {
       const target = path.normalize(path.join(dir, specifier));
       const into = /^packages\/([^/]+)\//.exec(target)?.[1];
       if (into !== undefined && into !== own && resolves(target)) out.add(target);

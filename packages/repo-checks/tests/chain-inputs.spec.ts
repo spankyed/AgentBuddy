@@ -22,6 +22,7 @@ import { UNIT_SUITES, type UnitSuite } from '../../../scripts/lib/unit-suites.ts
 import { reachableText, rootScripts } from '../../../scripts/lib/npm-scripts.ts';
 import { TYPECHECK_LEGS } from '../../../scripts/lib/typecheck-legs.ts';
 import { poolUnitFor } from '../../../scripts/lib/unit-pool.ts';
+import { relativeSpecifiers, resolveRelative } from '../../../scripts/lib/module-graph.ts';
 import { PACKAGE_DIRS } from '../../../scripts/lib/workspace-deps.ts';
 import { population } from '@abuddy/sdk/testing';
 import { repoFiles } from './_support/repo-files.ts';
@@ -564,8 +565,9 @@ describe('a step whose runner reads stamps declares forceArgs', () => {
     for (const file of named) {
       const full = path.join(REPO_ROOT, file);
       if (!fs.existsSync(full)) continue;
-      for (const [, rel] of fs.readFileSync(full, 'utf-8').matchAll(/from '(\.\/[\w./-]+\.ts)'/g)) {
-        seen.add(path.join(path.dirname(file), rel));
+      for (const specifier of relativeSpecifiers(full)) {
+        const target = resolveRelative(full, specifier);
+        if (target !== undefined) seen.add(repoRelative(target));
       }
     }
     return [...seen].filter((file) => fs.existsSync(path.join(REPO_ROOT, file)))

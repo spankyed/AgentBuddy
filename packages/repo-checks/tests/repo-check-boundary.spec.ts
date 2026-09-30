@@ -2,6 +2,7 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { REPO_ROOT } from '@abuddy/host/build/packages-built';
+import { relativeSpecifiers } from '../../../scripts/lib/module-graph.ts';
 import { repoFiles } from './_support/repo-files.ts';
 
 /**
@@ -33,12 +34,10 @@ const REPO_SCRIPTS = path.join(REPO_ROOT, 'scripts') + path.sep;
  * package reaching into `scripts/` at all.
  */
 const importsARepoScript = (file: string): boolean => {
-  const text = fs.readFileSync(path.join(REPO_ROOT, file), 'utf-8');
-  const dir = path.dirname(path.join(REPO_ROOT, file));
-  for (const [, specifier] of text.matchAll(/(?:from|import\()\s*'(\.[^']*)'/g)) {
-    if (path.resolve(dir, specifier).startsWith(REPO_SCRIPTS)) return true;
-  }
-  return false;
+  const abs = path.join(REPO_ROOT, file);
+  // From the tree, not a pattern over the text: a side-effect `import './x'` has no `from` for a regex to
+  // find, and a specifier written inside a fixture string is not an import at all
+  return relativeSpecifiers(abs).some((specifier) => path.resolve(path.dirname(abs), specifier).startsWith(REPO_SCRIPTS));
 };
 
 /**
