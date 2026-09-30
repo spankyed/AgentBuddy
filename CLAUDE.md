@@ -497,30 +497,26 @@ npm run measure:loop -- "<cmd>"  # Not how long a command took, but how long eac
 npm run spec-cost:check  # Reads the records, runs nothing. `-- --list` prints what they hold and which
                          # specs sit between FAST_BELOW_MS and INTEGRATION_ABOVE_MS, where a re-measurement
                          # could change the answer: 8 of 367 today, so the rest are nowhere near a decision
-npm run spec-cost:update # The least that makes the records current, which is often nothing. **It refuses
-                         # to measure below IDLE_FLOOR**, before running anything: what you would record on
-                         # a busy box is the machine. The contention refusal further down is a different
-                         # question — did too much *move*, asked after measuring — and cannot fire for a row
-                         # that is merely new, since an addition has not moved. That is how a cost was once
-                         # recorded at a load of 71 and reverted by hand. `--force` overrides both. A deleted spec
-                         # leaves a row that needs no measurement to drop; a new one needs only the half it
-                         # lives in. It says which case it took. Measured: 0.3s when nothing is wrong,
-                         # against 315s of file-time for the whole thing
-                         #   <spec path>   that spec's half and nothing else — repo-checks is 8.1s of fast
-                         #                 specs behind 34.2s of integration ones, and naming a fast spec
-                         #                 skips the second. It runs the spec's *config*, never the file
-                         #                 alone: `chain-inputs` reads 1688ms beside its siblings and 963ms
-                         #                 on its own, against a band 1000ms wide, so a solo number would
-                         #                 file it in the wrong half
-                         #   --suite <dir> one suite, as before
-                         #   --all         re-measure everything regardless — after a bundler bump. The only
-                         #                 thing that clears a correlated drift, and the only thing that can:
-                         #                 a fifth added to every spec is under every per-spec tolerance. It
-                         #                 rewrites every row only when the body moved past DRIFT_SHARE, so a
-                         #                 quiet --all settles them like any other run: ungated it rewrote 26
-                         #                 of 28 rows at a body of -3%, which is the churn the tolerance is for
+npm run spec-cost:update # The least that makes the records current, which is often nothing — 0.3s when
+                         # nothing is wrong, against 315s of file-time for the whole thing. It says which
+                         # case it took: a deleted spec needs no measurement to drop, a new one needs only
+                         # the half it lives in.
+                         # **It refuses to measure below IDLE_FLOOR**, before running anything — what you
+                         # would record on a busy box is the machine, and a cost was once recorded at a
+                         # load of 71 and reverted by hand. That is a separate gate from the contention
+                         # refusal below, which asks after measuring whether too much *moved*.
+                         #   <spec path>   that spec's half and nothing else. It runs the spec's *config*,
+                         #                 never the file alone: `chain-inputs` reads 1688ms beside its
+                         #                 siblings and 963ms on its own, against a band 1000ms wide, so a
+                         #                 solo number files it in the wrong half
+                         #   --suite <dir> one suite
+                         #   --all         re-measure everything — after a bundler bump. The only thing
+                         #                 that clears a correlated drift, since a fifth added to every
+                         #                 spec sits under every per-spec tolerance. It rewrites rows only
+                         #                 when the body moved past DRIFT_SHARE, so a quiet --all settles
+                         #                 them like any other run
                          #   --dry         what it would run and write
-                         #   --force       record a run that moved more than CONTENDED_SHARE of a suite
+                         #   --force       override both refusals
 
 # Lint (root runs every workspace that has one; oxlint, plus eslint in the renderer)
 npm run check:specifiers # Every import rule, over the whole repo (2.5s, one parse and one tree walk). Takes paths to
@@ -532,19 +528,14 @@ npm run specifiers:fix   # Rewrites the specifiers whose repair the rules comput
                          # a whole file when the disk and the reader disagree
 
 npm run lint:check       # Reports; run by npm run typecheck, so it is in the chain. The whole tree is at
-                         # zero. `packages/**` was ignored here until 2026-09-28, which left 113 findings
-                         # in twelve workspaces no linter read; the whole pass is about a tenth of a
-                         # second, so the gap was an unpaid backlog and never a cost.
+                         # zero and the whole pass is about a tenth of a second.
                          # **Only `correctness` is enabled**, in every invocation — so a rule outside that
                          # category is read nowhere in this repo, and an inline disable naming one
                          # suppresses nothing wherever it sits. `no-console` is the one to know: it is a
                          # `restriction` rule, and `console` in a pack's backend is the `backend-console`
-                         # pack rule's job, not oxlint's. The scaffold's templates are the one exclusion: their
-                         # parameter names are what a pack author reads, so an unused one there is
-                         # documentation rather than a finding. The few justified exceptions are inline
-                         # disables that say why (an OSC parser matches control characters; a triple-slash
-                         # reference keeps an ambient declaration global; a spread copies a collection the
-                         # loop shortens; an empty export keeps a module in the emitted declarations)
+                         # pack rule's job, not oxlint's. The scaffold's templates are the one exclusion,
+                         # since an unused parameter there is documentation for a pack author. The few
+                         # inline disables elsewhere each say why
 npm run lint:fix         # Rewrites what it can — oxlint has no fixer for no-unused-vars, so it will
                          # not clear those for you
 
