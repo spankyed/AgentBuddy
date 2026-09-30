@@ -467,7 +467,7 @@ npm run test:integration # The expensive half of every suite that has one (@abud
                          # against 52.4s uncapped, because nine workers each running ts.createProgram and
                          # abuddy build put the box at a load of 25-32 — and twelve of the twenty-four files
                          # the pool loads spawn a subprocess besides, two of them a nested vitest run, which
-                         # integration-subprocesses.spec.ts counts.
+                         # subprocess-inventory.spec.ts counts.
                          # **The birpc timeout the cap was originally written against is a worker blocking
                          # its own event loop**, not a main thread too busy to answer: measured 2026-09-30,
                          # the main process sits at 6% event-loop utilisation with a worst block of 74ms,
@@ -550,42 +550,31 @@ npm run measure -- "<cmd>"  # Times a command on a quiet machine and prints a nu
                          # conditions is an assertion; with them it is a citation, and the difference is
                          # three commit messages in goal-integration-pool that had to be corrected.
                          #   --runs N          how many (5)
-                         #   --against "<B>"   an A/B comparison, **interleaved** and reported as the median
-                         #                     of the pairs. Blocked arms let a drifting box into the answer:
-                         #                     measured, that turned 49.1s->48.2s into a reported 71s->46.1s
-                         #   --trials N        the other question: how often does it *fail*? Reports the rate
-                         #                     and the 95% upper bound — 0 of 5 bounds it at 45%, 0 of 20 at
-                         #                     14%, which is what a clean run actually licenses you to say.
-                         #                     Failures are grouped by a normalised signature with one
-                         #                     verbatim exemplar each: it groups, it does not classify
-                         #   --busy N          spawn N CPU burners so contention is induced rather than
-                         #                     waited for. Implies --force, and says so in the conditions.
-                         #                     The birpc flake had only ever been seen by accident
+                         #   --against "<B>"   an A/B, **interleaved**, reported as the median of the pairs.
+                         #                     Blocked arms let a drifting box in: measured, that turned
+                         #                     49.1s->48.2s into a reported 71s->46.1s
+                         #   --trials N        how often does it *fail*? The rate and its 95% upper bound —
+                         #                     0 of 5 bounds it at 45%, 0 of 20 at 14%. Failures group by a
+                         #                     normalised signature: it groups, it does not classify
+                         #   --busy N          N CPU burners, so contention is induced rather than waited
+                         #                     for. Implies --force and says so in the conditions
                          #   --idle PERCENT    lower the floor    --force  measure anyway
-                         # It refuses below IDLE_FLOOR (70%), read from os.cpus() rather than load average —
-                         # measured, loadavg read 3.20 on a box that was 78.7% idle, because it lags by
-                         # design. A sample whose counters did not advance throws rather than reading as 0%:
-                         # the top(1) parse this replaces returned 0% for a line it could not read, so a gate
-                         # waiting for quiet waited for ever and looked like patience.
-                         # **Idle is sampled between runs, never during one** — a reading taken while the
-                         # command runs measures the command, and a quiet box reads 0% while a suite uses it.
-                         # A flag with no value is an error rather than a default, which is what let
-                         # `"cmd" --busy` run with no load and report the box as 95% idle.
-                         # Prints, never records. A timings file would be a sample, and spec-cost.json is
+                         # It refuses below IDLE_FLOOR (70%), read from os.cpus() rather than load average,
+                         # which lags — measured, loadavg 3.20 on a box that was 78.7% idle. **Idle is
+                         # sampled between runs, never during one**: a reading taken while the command runs
+                         # measures the command, and a quiet box reads 0% while a suite uses it.
+                         # Prints, never records — a timings file would be a sample, and spec-cost.json is
                          # what that costs (see "There is a third kind" above)
 
-npm run measure:loop -- "<cmd>"  # The other half of a flake: not how long a command took, but how long
-                         # each process it started went without turning its event loop, against the 60s
-                         # window birpc gives a call and vitest hardcodes. Per process, worst block first:
+npm run measure:loop -- "<cmd>"  # Not how long a command took, but how long each process it started went
+                         # without turning its event loop, against the 60s window birpc gives a call and
+                         # vitest hardcodes. Per process, worst block first:
                          #   worker  abuddy-cli/tests/…/types-bundler-determinism…  10.0s  6.0x slower  100%
-                         # Headroom rather than the block alone, because the block alone reads as fine until
-                         # it is not — 38s against 60s is one busy afternoon from failing. The elu column
-                         # says *why* a process was quiet: a loop at 4% was waiting, one at 99% was working,
-                         # and only the second is a block anyone can shorten. Takes --busy, --idle, --force.
-                         # It answers what `[vitest-worker]: Timeout calling` does not — which side failed.
-                         # That was attributed to the worker count, then to contention, before one run of
-                         # this put the main process at 6% utilisation and a worker at 38s. See the
-                         # test:integration entry above for the mechanism and the fix
+                         # Headroom rather than the block alone, which reads as fine until it is not: 38s
+                         # against 60s is one busy afternoon from failing. `elu` says *why* a process was
+                         # quiet — 4% was waiting, 99% was working, and only the second can be shortened.
+                         # It answers what `[vitest-worker]: Timeout calling` does not, which is which side
+                         # failed; see the test:integration entry above for the mechanism and the fix
 
 # Recorded spec costs (which half each spec runs in)
 npm run spec-cost:check  # Reads the records, runs nothing. `-- --list` prints what they hold and which
