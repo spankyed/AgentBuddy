@@ -36,6 +36,7 @@ import { spawnSync } from 'node:child_process';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { REPO_ROOT } from '@abuddy/host/build/packages-built';
+import { idleNow, IDLE_FLOOR, refusesAsBusy } from './lib/measure.ts';
 import { UNIT_SUITES, type UnitSuite } from './lib/unit-suites.ts';
 import {
   FAST_BELOW_MS, INTEGRATION_ABOVE_MS, PLACEMENT_GUARD, halfOfPath, hasSplit, misplaced,
@@ -128,6 +129,19 @@ function update(plans: readonly SuitePlan[], dry: boolean): void {
 
   // What each suite's `pretest` does, because this bypasses it by calling vitest directly. Without it the
   // specs fail on the staleness guard rather than running. Skipped when nothing is being measured.
+  // Before anything is measured, because the record is a *sample* and a sample taken on a busy box is
+  // about the box. `refusesAsContended` below asks the other question — did too much move, once we have the
+  // numbers — and structurally cannot fire for a row that is merely *new*: an addition has not moved. That
+  // is exactly how a cost got recorded at a load of 71 and had to be reverted by hand.
+  if (work.some((plan) => plan.configs.length > 0)) {
+    const idle = idleNow();
+    if (refusesAsBusy({ idle, floor: IDLE_FLOOR, force })) {
+      throw new Error(`The machine is ${Math.round(idle * 100)}% idle and recording refuses below `
+        + `${Math.round(IDLE_FLOOR * 100)}%. What you would record is the machine, not the specs.\n`
+        + '  Wait for it to go quiet, or pass --force if you mean to record this.');
+    }
+  }
+
   if (work.some((plan) => plan.configs.length > 0)) {
     const ensured = spawnSync('npm', ['run', 'packages:ensure'], { cwd: REPO_ROOT, encoding: 'utf8' });
     if (ensured.status !== 0) throw new Error(`packages:ensure failed:\n${ensured.stdout}${ensured.stderr}`);
