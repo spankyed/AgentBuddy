@@ -1,5 +1,8 @@
 # Split the tier
 
+> Executed as Phase 1 of [`docs/goals/goal-one-action-cache.md`](../goals/goal-one-action-cache.md).
+> This doc is the evidence and the design; that one is the runnable plan.
+
 ## The target
 
 `tier` answers two questions with one field. Replace it with:

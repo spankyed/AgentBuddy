@@ -8,6 +8,7 @@
 | decided | all five decisions, all four measurements, both unverified claims — see the last three sections |
 | next, unblocked | the `tier` split (`tier-split.md`); three of its four pieces need nothing from this list |
 | open | nothing to decide; what remains is building items 2-6 of the order below |
+| executed by | [`docs/goals/goal-one-action-cache.md`](../goals/goal-one-action-cache.md) — this doc is the survey and the reasoning, that one is the runnable plan |
 
 ## Problem
 
