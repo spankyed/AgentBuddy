@@ -7,7 +7,9 @@
 // excluded from — the same "recorded fresh having never run" the pool was already fixed for once.
 import { describe, expect, it } from 'vitest';
 import { STAMP_VERSION } from '@abuddy/host/build/packages-built';
-import { projectsThatRan, projectsThatDidNotRun, whyItRuns } from '../../../scripts/lib/unit-pool.ts';
+import { POOLS, livePoolStamps, poolStampFor, projectsThatRan, projectsThatDidNotRun, whyItRuns, type Pool } from '../../../scripts/lib/unit-pool.ts';
+import { POOL_SECONDS } from '../../../scripts/lib/chain-steps.ts';
+import { UNIT_SUITES } from '../../../scripts/lib/unit-suites.ts';
 
 const line = (project: string, file: string) => ` ✓ |${project}| ${file} (3 tests) 12ms`;
 
@@ -94,5 +96,53 @@ describe('whyItRuns', () => {
     expect(whyItRuns(fromAnotherFormat, () => { asked = true; return 'changed packages/x/src/a.ts'; }))
       .toBe('its stamp is from another format');
     expect(asked, 'it diffed digests that this protocol says say nothing about the tree').toBe(false);
+  });
+});
+
+
+// What a pool is, and what two of them may not share.
+//
+// A suite with an expensive half runs twice over one input set, and the two runs are not interchangeable: its
+// fast half can have passed while the integration half never has. So the stamp is keyed by the half as well as
+// the directory, and the invariant that makes the integration pool safe to cache at all is that no two
+// (suite, half) pairs any pool asks for land on one file. One key for both would let the second be skipped on
+// the first's record — the hole that kept the expensive half from being pooled until now.
+//
+// The subject is derived from `POOLS` rather than listed, so a fourth pool is covered on arrival.
+describe('the pools', () => {
+  const names = Object.keys(POOLS) as Pool[];
+  const entries = names.flatMap((name) => POOLS[name].suites().map((suite) => ({ name, suite, half: POOLS[name].half })));
+
+  it('there are some, and none of them is empty', () => {
+    expect(names).not.toEqual([]);
+    for (const name of names) expect(POOLS[name].suites(), `the ${name} pool covers no suite`).not.toEqual([]);
+  });
+
+  it('give no two of their projects the same stamp', () => {
+    const keys = entries.map(({ suite, half }) => poolStampFor(suite, half));
+    const duplicated = keys.filter((key, index) => keys.indexOf(key) !== index);
+    expect(duplicated, 'two pools would write one stamp, so running either would mark the other fresh')
+      .toEqual([]);
+  });
+
+  it('reach every unit suite, each in exactly one of the fast pools', () => {
+    const fast = entries.filter(({ half }) => half === 'fast').map(({ suite }) => suite.dir);
+    expect(fast.sort()).toEqual(UNIT_SUITES.map((suite) => suite.dir).sort());
+  });
+
+  // What prune keeps. The dead file it has to recognise is the shape the key used to have, before the half
+  // joined it — a stamp named for the directory alone, which one pool would read as the other's record.
+  it('count their own stamps live and nothing else', () => {
+    const live = livePoolStamps();
+    expect(live.size).toBe(entries.length);
+    expect([...live].filter((file) => !/\.(fast|integration)\.json$/.test(file)),
+      'a stamp keyed by the directory alone is the pre-half shape, which prune must drop').toEqual([]);
+  });
+
+  // `POOL_SECONDS` cannot be keyed off `Pool`: `unit-pool.ts` imports the steps, so the steps cannot import
+  // the pools back. A check stands in for the derivation, because a pool with no budget gets `budgetFor` of
+  // nothing — a timeout of NaN, which bounds no run at all.
+  it('each have a measured budget', () => {
+    expect(Object.keys(POOL_SECONDS).sort()).toEqual([...names].sort());
   });
 });

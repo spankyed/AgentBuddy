@@ -419,6 +419,13 @@ npm run test:integration # The expensive half of every suite that has one (@abud
                          # 48.2s pooled against 71s. Which packages those are is derived from the configs
                          # each has (INTEGRATION_SUITES); the root config's project list is checked rather
                          # than derived, because check:specifiers reads these files as text.
+                         # **It is the third pool**, not a fourth kind of thing: the same runner as the two
+                         # unit pools (scripts/test-unit-pool.ts, over POOLS in scripts/lib/unit-pool.ts),
+                         # so it runs only the projects whose inputs moved — a repo-checks edit is 6s of its
+                         # 44s. A pool is a resolution and a half; this one shares the host resolution and
+                         # differs in the half, which is why its stamps are keyed (dir, half). One key for
+                         # both would skip the expensive half on the fast half's record, and that hole is
+                         # the reason this half was not pooled until 2026-10-01
                          # It runs at half the cores, and that is faster than all of them — 48.2s capped
                          # against 52.4s uncapped, since nine workers each running ts.createProgram and
                          # abuddy build put the box at a load of 25-32.
@@ -437,10 +444,13 @@ npm run test:integration # The expensive half of every suite that has one (@abud
                          # types-bundler-determinism is one test of ~10s, the closest left.
                          # To reproduce on demand rather than wait for it:
                          #   npm run measure -- --trials 3 --busy 12 "npx vitest run --config vitest.integration.config.ts"
-npm run test:unit:host   # One pool, running only the projects whose own inputs changed (--project per
-npm run test:unit:pack   # stale project, one process). These are the chain's two steps; per-package
+npm run test:unit:host   # Two of the three pools, running only the projects whose own inputs changed
+npm run test:unit:pack   # (--project per stale project, one process). Each is a chain step; per-package
                          # staleness lives inside them, so a one-package edit still runs one project.
-                         # Both run packages:ensure first: npm pretest does not fire under a root run
+                         # They cannot be one pool: Node conditions are per process, and vitest shares its
+                         # worker pool across projects. Each runs packages:ensure first, since npm pretest
+                         # does not fire under a root run, and then prunes the pool stamps no pool would
+                         # write — the key gained its half on 2026-10-01 and left a dead file per suite
 npm run test:all         # test:unit, then the E2E tests
 npm run bench -w @abuddy/ears    # EARS engine benchmark (baseline and tolerance: packages/abuddy-ears/CLAUDE.md)
 npm run test:external-pack       # Both halves of the fixture-pack check, for running it by hand

@@ -518,7 +518,7 @@ export const SUITE_READS: Record<string, { packages?: true; pack?: true; repo?: 
  * seconds went rather than being new work. It feeds two kill budgets, `budgetFor` here and the pool's own inner
  * spawn (`test-unit-pool.ts`), so it is the cost of the whole pool and not of a partial run.
  */
-export const POOL_SECONDS: Record<'host' | 'pack', number> = { host: 42, pack: 30 };
+export const POOL_SECONDS: Record<'host' | 'pack' | 'integration', number> = { host: 42, pack: 30, integration: 60 };
 
 /**
  * What one unit suite's last pass depended on: its own workspace, its dependencies' source, whatever build
@@ -776,6 +776,8 @@ export const CHAIN_STEPS: readonly ChainStep[] = [
   // on default-setup and so reads its `dist`. It used to run after `compile` only because of where it sat
   // in this table, which `orderedSteps` never promised.
   { name: 'test:integration', seconds: 60,
+    // It keeps a cache of its own now, like the two unit pools, so `--all` has to reach inside it
+    forceArgs: ['--all'],
     ...inputsForSuites(INTEGRATION_SUITES) },
   // `build:app`, not `build`. Root `build` is `-ws`, which includes `@app/default-setup`, whose own build is
   // the very command `compile` runs — so a `build` step rebuilt the pack every run, rewriting the `dist`

@@ -9,10 +9,12 @@
  * Both this and the chain's pool step derive from `suiteInputs`, whose doc carries the rule the pair of
  * caches holds to and what happened when it did not.
  */
+import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { REPO_ROOT, undiffableReason, type BuildUnit, type StampRecord } from '@abuddy/host/build/packages-built';
-import { suiteInputs } from './chain-steps.ts';
-import type { UnitSuite } from './unit-suites.ts';
+import { INTEGRATION_SUITES, suiteInputs } from './chain-steps.ts';
+import type { Half } from './spec-cost.ts';
+import { UNIT_SUITES, type UnitSuite } from './unit-suites.ts';
 
 /**
  * Beside the package builds' and the chain's stamps, in the same cache directory and the same format, so
@@ -21,15 +23,79 @@ import type { UnitSuite } from './unit-suites.ts';
 export const POOL_STAMP_DIR = path.join(REPO_ROOT, 'node_modules', '.cache', 'abuddy-unit-pool');
 
 /**
- * Keyed by directory, so a suite has one stamp whichever pool runs it.
+ * Keyed by directory **and half**, because a suite with two halves has two things to remember.
  *
- * That used to be a hole rather than a choice: a suite whose `kind` changed moved pools, the destination
- * step went stale through `unit-suites.ts`, and the suite's stamp — being pool-independent — still read
- * fresh, so it ran in neither. It is safe now because `unit-suites.ts` is one of the runner inputs
- * `suiteInputs` carries, so editing it makes every project stale; keeping the key pool-independent is then
- * the right answer, because what a suite verified does not depend on which pool process ran it.
+ * The directory alone is what a suite verified, and that does not depend on which pool process ran it — a
+ * suite whose `kind` changes moves pools and the answer is the same. But a suite with an integration config
+ * runs twice over one input set, and the two runs are not interchangeable: its fast half can have passed
+ * while its expensive half never has. One key for both would let the second be skipped on the first's
+ * record, which is the hole that kept the integration half from being pooled at all.
  */
-export const poolStampFor = (suite: UnitSuite): string => path.join(POOL_STAMP_DIR, `${suite.dir}.json`);
+export const poolStampFor = (suite: UnitSuite, half: Half): string =>
+  path.join(POOL_STAMP_DIR, `${suite.dir}.${half}.json`);
+
+const projectArgs = (suites: readonly UnitSuite[]): string[] =>
+  suites.flatMap((suite) => ['--project', suite.workspace]);
+
+/**
+ * The three pools: which half each one runs, which suites belong to it, and how it runs them.
+ *
+ * A pool is a resolution and a half, not a kind of test. `host` and `pack` split on resolution — Node
+ * conditions are per process, so those two cannot share one — and `integration` splits on the half, which is
+ * why it needs no third resolution: its suites *are* host suites, and what makes them a pool is that a second
+ * config holds their expensive specs. `INTEGRATION_SUITES` derives that membership from those configs, so a
+ * package that gains one joins this pool without an edit here.
+ *
+ * `run` is where they differ. Projects of one root config go to a single vitest with `--project`; a pack suite
+ * is its own config resolving the published `dist`, so it can share a run with nothing — not even another pack
+ * suite.
+ *
+ * Here rather than in the command, so a spec can ask which suites a pool covers and under which key. The
+ * command runs its `main()` on import, which is the reason this module exists at all.
+ */
+export const POOLS = {
+  host: {
+    half: 'fast' as Half,
+    suites: () => UNIT_SUITES.filter((suite) => suite.kind === 'host'),
+    // with-source supplies the @abuddy/source condition the host suites resolve under
+    run: (stale: readonly UnitSuite[]) => [{ suites: stale, command: 'node', args: ['scripts/with-source.mjs', 'npx', 'vitest', 'run', ...projectArgs(stale)] }],
+  },
+  pack: {
+    half: 'fast' as Half,
+    suites: () => UNIT_SUITES.filter((suite) => suite.kind === 'pack'),
+    run: (stale: readonly UnitSuite[]) => stale.map((suite) => ({ suites: [suite], command: 'npm', args: ['test', '-w', suite.workspace] })),
+  },
+  integration: {
+    half: 'integration' as Half,
+    suites: () => INTEGRATION_SUITES,
+    // The root integration config declares the condition itself, and carries the worker cap that makes this
+    // pool faster at half the cores than at all of them
+    run: (stale: readonly UnitSuite[]) => [{ suites: stale, command: 'npx', args: ['vitest', 'run', '--config', 'vitest.integration.config.ts', ...projectArgs(stale)] }],
+  },
+} as const;
+
+export type Pool = keyof typeof POOLS;
+
+/**
+ * Every stamp any pool would write, which is what makes the rest dead.
+ *
+ * Derived from `POOLS`, so a pool that loses a suite — or a key that changes shape, as it did when the half
+ * joined it — leaves files nothing will ever read again. The chain prunes its own stamp directory for the same
+ * reason (`pruneStamps`, `scripts/chain.ts`): a cache that only ever grows is one where a name collision with
+ * something long gone is a silent pass.
+ */
+export const livePoolStamps = (): Set<string> => new Set(
+  (Object.keys(POOLS) as Pool[]).flatMap((name) => POOLS[name].suites().map((suite) => path.basename(poolStampFor(suite, POOLS[name].half)))),
+);
+
+/** Drops the stamps no pool would write. Every pool knows every pool's keys, so any run may do it. */
+export function prunePoolStamps(): void {
+  if (!fs.existsSync(POOL_STAMP_DIR)) return;
+  const live = livePoolStamps();
+  for (const file of fs.readdirSync(POOL_STAMP_DIR)) {
+    if (file.endsWith('.json') && !live.has(file)) fs.rmSync(path.join(POOL_STAMP_DIR, file));
+  }
+}
 
 /** A project as a build unit, so it goes through the same freshness check as everything else */
 export const poolUnitFor = (suite: UnitSuite): BuildUnit => ({

@@ -48,7 +48,7 @@
     "spec-cost:update": "tsx scripts/spec-cost.ts --update",
     "test:unit:host": "tsx scripts/test-unit-pool.ts host",
     "test:unit:pack": "tsx scripts/test-unit-pool.ts pack",
-    "test:integration": "npm run packages:ensure && vitest run --config vitest.integration.config.ts",
+    "test:integration": "tsx scripts/test-unit-pool.ts integration",
     "spec": "tsx scripts/spec.ts",
     "spec:full": "tsx scripts/spec.ts --full",
     "spec:dry": "tsx scripts/spec.ts --dry",

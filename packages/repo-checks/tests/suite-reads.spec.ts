@@ -29,6 +29,24 @@ import { population } from '@abuddy/sdk/testing';
  * `SUITE_READS.repo` declares and `fingerprint-scope.spec.ts` holds to the specs that do it.
  */
 
+/**
+ * What a declared input holds, read once per path however many questions ask about it.
+ *
+ * Not a convenience: both sides of the second case below expand declared paths, and a chain run has another
+ * lane writing into each fixture pack's `dist` under `tests/packs` while this one runs. Taken as two walks, the suite's side saw three
+ * fixture build outputs the step's side had walked a moment earlier and missed, and the case reported the step
+ * as declaring less than its suite reads — the defect it exists to find, over a difference that was only the
+ * clock. Measured 2026-10-01 in a chain where `test:external-pack:contract` wrote them at the moment this ran.
+ *
+ * One reading, so a verdict and the tree it is about are the same tree.
+ */
+const expanded = new Map<string, string[]>();
+function filesUnder(input: string): string[] {
+  const found = expanded.get(input) ?? inputFiles(path.join(REPO_ROOT, input));
+  expanded.set(input, found);
+  return found;
+}
+
 /** Every spec in a suite, which is where the walk starts. */
 function specsOf(suite: UnitSuite): string[] {
   const root = path.join(REPO_ROOT, 'packages', suite.dir, 'tests');
@@ -56,7 +74,7 @@ const walked = new Map<string, { reached: string[]; declared: Set<string> }>();
 function reads(suite: UnitSuite): { reached: string[]; declared: Set<string> } {
   const found = walked.get(suite.dir) ?? {
     reached: reachableFrom(specsOf(suite), [REPO_ROOT]).map((file) => path.relative(REPO_ROOT, file)),
-    declared: new Set(suiteInputs(suite).flatMap((input) => inputFiles(path.join(REPO_ROOT, input)))),
+    declared: new Set(suiteInputs(suite).flatMap(filesUnder)),
   };
   walked.set(suite.dir, found);
   return found;
@@ -104,7 +122,7 @@ describe('a suite declares what its specs read', () => {
 const stepFiles = new Map<string, Set<string>>();
 function filesOf(step: string): Set<string> {
   const found = stepFiles.get(step)
-    ?? new Set(CHAIN_STEPS.find((s) => s.name === step)!.inputs.flatMap((i) => inputFiles(path.join(REPO_ROOT, i))));
+    ?? new Set(CHAIN_STEPS.find((s) => s.name === step)!.inputs.flatMap(filesUnder));
   stepFiles.set(step, found);
   return found;
 }

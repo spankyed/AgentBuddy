@@ -63,7 +63,7 @@ an unrelated script reports the rest cached.
 false finding and a wrong *key* is silent. So the key must be the union of the command text **and** the
 files that text names, never a parse of what the command means — and the case above is what holds it.
 
-## 2. Two tsconfig lines take the dep-file gate from 15 steps to 17
+## 2. Two tsconfig lines take the dep-file gate from 15 steps to 17 — **done** (`f004ab2cd`)
 
 `typecheck:main` and `typecheck:preload` set no `tsBuildInfoFile`, so they report nothing and their
 declared inputs rest on reasoning. Every other compiler leg writes one into
@@ -74,7 +74,12 @@ under `packages/renderer/node_modules/.tmp` and they record no program at all �
 because a solution-style config records its references and the referenced configs do the compiling. A
 case pins that, so it fails if they ever grow one.
 
-**Done when** `dep-files.integration.spec.ts`'s uncovered list is `['typecheck:fe']` alone.
+**Done when** `dep-files.integration.spec.ts`'s uncovered list is `['typecheck:fe']` alone. It is.
+
+One thing the two lines found that the reasoning had not: `packages/main` and `packages/preload` pin
+typescript to an exact `5.8.3` and carry their own copy, where the root resolves `^5.8.3` to 5.9.3. A build
+info records the compiler that wrote it, so a single expected version would have failed both legs for the
+right reason and the wrong one. `typeScriptFor(depFile)` resolves it per workspace now.
 
 ## 3. The eleven that no tool reports on
 
@@ -107,16 +112,40 @@ serves targets 47. Re-read that decision rather than inheriting it.
 If it moves, it takes `spec-cost.ts`'s band machinery — hysteresis, `DRIFT_SHARE`, the contention refusal
 — and not its storage, which is the same conclusion reached for the same reason the first time.
 
-## 5. Open regression inherited from the goal
+## 5. Open regression inherited from the goal — **closed** (`115582524`), and not where it was looked for
 
-The warm chain is **2.5s against the base's 1.5s**, both at 80% idle on 2026-10-01. The cause is the stamp
-store: 7.8MB across 28 steps, because a stamp records every input file's digest and four repo-scoped legs
-write ~465KB each. The fix separates the stale *verdict*, which needs one hash, from the
-which-file-changed *diagnostic*, which needs the map — a change to the stamp format and `STAMP_VERSION`.
+The warm chain was **2.5s against the base's 1.5s**, and the stamp store was the wrong suspect. Parsing all
+7.8MB of it is **34ms** of that run, measured; a fix aimed there was written and reverted. The cost was a
+*second* reading of the tree: each dispatch decision built its own `freshnessSweep`, 1715ms of walking
+against 189ms shared.
 
-**Check before starting: this may already be done.** Work was in flight on `scripts/chain.ts` and
-`packages-built.ts` on 2026-10-01 sharing one freshness sweep across callers with a `forget` on each
-step's declared writes, which is the same area.
+What made sharing one safe is the goal's own Phase 2. The concern on record was that a step reached at
+t=100s has to see the tree as of then, so a shared sweep would hide a step whose inputs a *previous* step
+had moved. But `dependsOn` is now derived as "B reads what A writes" — so a step that writes another's
+inputs is already ordered before it, and the hazard is zero by construction rather than by vigilance.
+`forget(step.outputs ∪ step.alsoWrites)` after each run covers what a step writes outside its declaration.
+Warm chain **0.9s**, below the 1.5s base. `STAMP_VERSION` never moved.
+
+## 6. The integration half is the third pool — **done** (this branch)
+
+Not an input-observation item; it is the other half of the Background table's second row, which the goal
+measured and did not fix. `test:integration` ran one `vitest` over all three projects whenever any of them
+was stale, so a `repo-checks` edit paid 44s for 6s of work.
+
+It is now the same runner as the two unit pools (`scripts/test-unit-pool.ts` over `POOLS` in
+`scripts/lib/unit-pool.ts`), which is the point: **the integration half being special was itself the
+artifact.** A pool is a resolution and a half — `host` and `pack` split on resolution, because Node
+conditions are per process; `integration` shares the host resolution and splits on the half.
+
+That split is what the pool key was missing. A stamp named for the directory alone cannot hold two halves,
+so the expensive half would have been skipped on the fast half's record — which is why it had no per-suite
+cache at all. `poolStampFor(suite, half)` fixes it, `unit-pool.spec.ts` holds the distinctness (mutation-
+checked by setting the integration pool's half to `fast`: two cases fire), and the runner prunes the stamps
+no pool would write, since the rename left one dead file per suite.
+
+Measured 2026-10-01: a `repo-checks` edit runs 6 files in **5.8s** against all 26 in **43.6s**. The asymmetry
+is why it pays — `abuddy-cli`'s half alone is 227.5s of the 276.7s of file time, so any edit that does not
+touch it skips 82% of the pool's work.
 
 ## Named, and deliberately not proposed
 

@@ -1,8 +1,9 @@
 /**
- * One pool's unit tests, running only the projects whose inputs changed.
+ * One pool's tests, running only the projects whose inputs changed.
  *
- *     tsx scripts/test-unit-pool.ts host   # the root vitest.config.ts projects, under @abuddy/source
- *     tsx scripts/test-unit-pool.ts pack   # each pack suite, resolving the published dist
+ *     tsx scripts/test-unit-pool.ts host         # the root vitest.config.ts projects, under @abuddy/source
+ *     tsx scripts/test-unit-pool.ts pack         # each pack suite, resolving the published dist
+ *     tsx scripts/test-unit-pool.ts integration  # the expensive half of every suite that has one
  *
  * What this decides is which projects are stale, how many vitest runs that takes, and when each is stamped.
  * Three things it does not, and does not restate: why the chain has one step per pool (`POOL_STEPS` in
@@ -14,9 +15,10 @@
  */
 import { execFileSync } from 'node:child_process';
 import { firstChange, freshnessSweep, stampedRunAll, stampRecord } from '@abuddy/host/build/packages-built';
-import { UNIT_SUITES, type UnitSuite } from './lib/unit-suites.ts';
+import type { UnitSuite } from './lib/unit-suites.ts';
 import { POOL_SECONDS } from './lib/chain-steps.ts';
-import { poolStampFor, poolUnitFor, projectsThatDidNotRun, whyItRuns } from './lib/unit-pool.ts';
+import type { Half } from './lib/spec-cost.ts';
+import { POOLS, poolStampFor, poolUnitFor, projectsThatDidNotRun, prunePoolStamps, whyItRuns, type Pool } from './lib/unit-pool.ts';
 import { boundedSpawn, budgetFor } from './lib/bounded-spawn.ts';
 import { exitOnEpipe } from './lib/exit-on-epipe.ts';
 
@@ -36,11 +38,12 @@ exitOnEpipe();
  * verdict and an explanation taken from two readings can describe two different trees, which is the shape the
  * chain's report had removed from it a week ago.
  */
-function decide(suites: readonly UnitSuite[], all: boolean): Array<{ suite: UnitSuite; why: string }> {
+function decide(suites: readonly UnitSuite[], half: Half, all: boolean): Array<{ suite: UnitSuite; why: string }> {
   const sweep = freshnessSweep();
   return suites.flatMap((suite) => {
-    const record = stampRecord(poolStampFor(suite));
-    if (!all && sweep.staleReason(poolUnitFor(suite), poolStampFor(suite)) === null) return [];
+    const stamp = poolStampFor(suite, half);
+    const record = stampRecord(stamp);
+    if (!all && sweep.staleReason(poolUnitFor(suite), stamp) === null) return [];
     // The record is read once and handed to both halves, rather than fetched again inside the diff
     const moved = () => (record?.files === undefined || record.declared === undefined
       ? ''
@@ -50,17 +53,23 @@ function decide(suites: readonly UnitSuite[], all: boolean): Array<{ suite: Unit
 }
 
 async function main(): Promise<void> {
-  const kind = process.argv[2] === 'pack' ? 'pack' : 'host';
+  // Refused rather than defaulted. With two pools a typo ran the host pool, which at least ran something;
+  // with three it would report a pool green having run another one's projects, and the stamps would agree.
+  const asked = process.argv[2] ?? '';
+  if (!(asked in POOLS)) throw new Error(`no pool named '${asked}' — one of ${Object.keys(POOLS).join(', ')}`);
+  const kind = asked as Pool;
   // npm `pretest` hooks do not fire under a root run, so the freshness guard the suites share has nothing
   // to rebuild them. Without this, editing anything a published package is built from — this repo's own
   // package.json included — fails a dozen specs at that guard rather than running them, and the pool
   // quietly collects 162 fewer tests. It is a stat and a return when nothing is stale.
   execFileSync('npm', ['run', 'packages:ensure'], { stdio: 'inherit' });
-  const suites = UNIT_SUITES.filter((suite) => suite.kind === kind);
+  prunePoolStamps();
+  const { half, suites: suitesOf, run } = POOLS[kind];
+  const suites = suitesOf();
   const all = process.argv.includes('--all');
 
   // The sweep lives and dies inside this call, and what comes back is text
-  const running = decide(suites, all);
+  const running = decide(suites, half, all);
   const stale = running.map(({ suite }) => suite);
   if (stale.length === 0) {
     console.log(`${kind} pool: all ${suites.length} project(s) up to date`);
@@ -76,20 +85,15 @@ async function main(): Promise<void> {
     console.log(`  ${suite.workspace.padEnd(width)}  ${why}`);
   }
 
-  // What each run covers. The host suites are projects of one root config, so one vitest run takes them all
-  // with `--project`. A pack suite is its own config resolving the published dist, so it cannot share that
-  // run — or another pack suite's. One run each, and a suite is stamped only by the run that included it.
-  const runs = kind === 'host'
-    // with-source supplies the @abuddy/source condition the host suites resolve under
-    ? [{ suites: stale, command: 'node', args: ['scripts/with-source.mjs', 'npx', 'vitest', 'run', ...stale.flatMap((suite) => ['--project', suite.workspace])] }]
-    : stale.map((suite) => ({ suites: [suite], command: 'npm', args: ['test', '-w', suite.workspace] }));
+  // What each run covers is the pool's to say; a suite is stamped only by the run that included it.
+  const runs = run(stale);
 
   for (const { suites: covered, command, args } of runs) {
     // `stampedRunAll` fingerprints every suite this run covers before it starts and writes each stamp only
     // if it returned, so a failure leaves all of them unstamped and none is measured against a tree the run
     // has already begun touching.
     await stampedRunAll(
-      covered.map((suite) => ({ label: suite.dir, unit: poolUnitFor(suite), stamp: poolStampFor(suite) })),
+      covered.map((suite) => ({ label: suite.dir, unit: poolUnitFor(suite), stamp: poolStampFor(suite, half) })),
       async () => {
         // The budget is what this pool costs healthy, from the same measurement the chain step declares
         const { code, output, timedOut } = await boundedSpawn(command, [...args], budgetFor(POOL_SECONDS[kind]));
