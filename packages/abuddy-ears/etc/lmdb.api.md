@@ -138,13 +138,14 @@ export interface LmdbStore {
 export interface LmdbStoreOptions {
     engine: () => EarsAdmin;
     log?: (message: string) => void;
+    onWriteFailure?: (failure: WriteFailure) => void;
     paths: LmdbPaths;
     policy: PartitionPolicy;
     readOnly?: boolean;
 }
 
 // @public (undocumented)
-export function makeLmdbAdapter(dbs: LmdbDbs): PersistenceSink;
+export function makeLmdbAdapter(dbs: LmdbDbs, onWriteFailure?: (failure: WriteFailure) => void): PersistenceSink;
 
 // @public
 export function openEnvAt(basePath: string, input?: {
@@ -167,5 +168,13 @@ export type RelationRecord = {
     info?: any;
     createdAt: number;
 };
+
+// @public
+export interface WriteFailure {
+    // (undocumented)
+    error: unknown;
+    key: string;
+    op: string;
+}
 
 ```

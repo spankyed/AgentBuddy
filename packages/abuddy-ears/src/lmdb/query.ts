@@ -124,13 +124,22 @@ export class LmdbQuery {
     assertKeySafe(kind, 'kind');
     assertKeySafe(entityId, 'entityId');
     const { prefix, start, end } = attrPrefix(kind, entityId);
-    // One reverse scan to find the last row
-    const it = this.dbs.attrs.getRange({ start, end, reverse: true, limit: 1 }) as Iterable<{ key: string | Buffer }>;
-    const first = it[Symbol.iterator]().next();
-    if (first.done) return 0;
-    const lastKey = String(first.value.key);
-    const idx = toIndex(lastKey, prefix);
-    return idx === null ? 0 : idx + 1;
+    // One reverse scan to find the last row.
+    //
+    // **A reverse range starts at the high bound.** Passing it forward-style (`start: prefix`) walks away
+    // from the data and yields nothing, so this returned 0 for every array it was ever asked about —
+    // measured, not reasoned about. It has no caller in the repo, which is why nothing noticed.
+    //
+    // `for…of` rather than taking the iterator by hand: an lmdb range is a live cursor holding a read
+    // transaction, and the language calls `return()` on the way out, which releases it. Reading the first
+    // entry with `it[Symbol.iterator]().next()` releases nothing, and an environment has 126 reader slots —
+    // measured, the 127th call throws `MDB_READERS_FULL` and every later read and write fails for the life
+    // of the process. Harmless here only while the range stays empty, which is the bug above.
+    for (const { key } of this.dbs.attrs.getRange({ start: end, end: start, reverse: true, limit: 1 }) as Iterable<{ key: string | Buffer }>) {
+      const idx = toIndex(String(key), prefix);
+      return idx === null ? 0 : idx + 1;
+    }
+    return 0;
   }
 
   /** Get the entire attribute array for (kind, entityId) */

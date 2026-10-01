@@ -3,7 +3,7 @@ import { createLogger, reportError } from '@abuddy/sdk/logger';
 import { bindHost } from '@abuddy/sdk/runtime';
 import { _getLmdbPath, _getVolatileLmdbPath } from '@abuddy/sdk/utils';
 import type { EarsEngine } from '@abuddy/ears';
-import type { LmdbStore } from '@abuddy/ears/lmdb';
+import type { LmdbStore, WriteFailure } from '@abuddy/ears/lmdb';
 import { assertNoDatabaseWriter, openDatabaseStore } from '@abuddy/host/database';
 import { createPackRegistry, discoverBuiltInPacks, publishHostPackOutput, pruneHostPackOutputs, prepareHostDataDirs, type PackRegistry } from '@abuddy/host/packs';
 import { resolveAppContext } from '@abuddy/sdk/env';
@@ -50,6 +50,16 @@ export interface AppStore {
 export let appPacks: PackRegistry;
 
 /**
+ * The open store, so shutdown can flush it.
+ *
+ * Nothing closed it until 2026-10-01: shutdown stopped the actor and closed the servers, so the adapter's
+ * final flush never ran in production and whatever sat in its buffers at exit was simply gone — along with
+ * `errorCount`, which `openAppDatabase().close()` has always known how to report and which no running app
+ * ever read.
+ */
+export let appStore: LmdbStore | undefined;
+
+/**
  * Opens the app's data and binds the app: the registered packs (`createPackRegistry()`, empty until the caller
  * registers them), the LMDB store and the app's engine persisting to it (`openDatabaseStore`, `@abuddy/host/database`,
  * which `abuddy db` opens a data dir with too) with their partition policy and entity types, and
@@ -57,16 +67,38 @@ export let appPacks: PackRegistry;
  * registry (the SDK's lookups read it), the engine (packs get its query face, installed by the bind) and the host
  * services over the store and the engine's admin face. The caller hydrates the store once the packs are registered.
  */
+/**
+ * A write that did not reach the database.
+ *
+ * Every one is logged with the row it was for, which is what a diagnosis needs and what the old
+ * `console.error` never carried. The user is told **once** per process: a production app dropped 3,187
+ * writes in one session, and 3,187 toasts would be worse than none — so later drops only move the count,
+ * which the message names so a second look says how bad it got.
+ */
+let droppedWrites = 0;
+function reportDroppedWrite({ op, key, error }: WriteFailure): void {
+  droppedWrites++;
+  logger.error(`A write didn't reach the database (${op} ${key})`, { error, dropped: droppedWrites });
+  if (droppedWrites > 1) return;
+  reportError({
+    error,
+    title: `Some changes aren't reaching the database (${op} ${key}). Recent edits may not have been saved.`,
+    source: 'database',
+  });
+}
+
 export function openAppStore(): AppStore {
   // Installed packs that aren't running keep their settings: the settings take writes for their features too
   const packs = createPackRegistry({ installedPacksDir: () => resolveAppContext().packsDir });
   const { store, engine } = openDatabaseStore({
     paths: { primary: _getLmdbPath(), volatileBackup: _getVolatileLmdbPath() },
     schema: packs,
+    onWriteFailure: reportDroppedWrite,
   });
   bindHost(createHostRuntime({ store, engine, transport: { rootEvents }, appVersion: APP_VERSION, packs }));
   printLogEvents();
   appPacks = packs;
+  appStore = store;
   return { store, engine, packs };
 }
 

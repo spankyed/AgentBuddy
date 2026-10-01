@@ -53,7 +53,16 @@ function* storedKinds(attrs: LmdbDbs['attrs']): Iterable<string> {
   }
 }
 
-export function makeLmdbAdapter(dbs: LmdbDbs): PersistenceSink {
+/** What the app is told when a write is dropped. The engine reports; the app decides what to do about it. */
+export interface WriteFailure {
+  /** `entity` | `entity-remove` | `attrs` | `relation` | `relation-remove` */
+  op: string;
+  /** The row the dropped write was for, which is what a diagnosis needs and the logs never had */
+  key: string;
+  error: unknown;
+}
+
+export function makeLmdbAdapter(dbs: LmdbDbs, onWriteFailure?: (failure: WriteFailure) => void): PersistenceSink {
   const { entities, attrs, relations } = dbs;
 
   // Error tracking
@@ -72,63 +81,87 @@ export function makeLmdbAdapter(dbs: LmdbDbs): PersistenceSink {
   let scheduled = false;
   let closed = false;
 
-  // Extract flush logic to reusable function
-  function flushBody() {
-    // Use single timestamp for consistency
+  /**
+   * The pending writes as independent steps, each naming the row it touches, with the buffers taken so new
+   * writes accumulate behind it.
+   *
+   * It is a list rather than one body because `flushBody` used to run every write in a single
+   * `transactionSync`: one bad `put` aborted the whole transaction, and the buffers were then cleared, so
+   * every *unrelated* write in that microtask was lost with it. That is how a user's note died as collateral
+   * damage for something else's failure. Keeping them separable costs nothing on the happy path — they still
+   * go in one transaction — and on failure it lets each be retried alone.
+   */
+  function takeSteps(): Array<{ op: string; key: string; run: () => void }> {
     const ts = Date.now();
-    
-    // Ensure entities (check doesExist to preserve createdAt)
+    const steps: Array<{ op: string; key: string; run: () => void }> = [];
+
     for (const id of ensureBuf) {
-      if (id && !entities.doesExist(id)) {
-        entities.put(id, { type: entTypeOf(id), createdAt: ts });
-      }
+      if (id) steps.push({ op: 'entity', key: id, run: () => {
+        if (!entities.doesExist(id)) entities.put(id, { type: entTypeOf(id), createdAt: ts });
+      } });
     }
     ensureBuf.clear();
 
-    // Entity updates (preserve existing data)
     for (const [id, patch] of entityUpdates) {
-      const existing = entities.get(id);
-      if (existing) {
-        entities.put(id, { ...existing, ...patch });
-      } else {
-        entities.put(id, { type: patch.type ?? entTypeOf(id), createdAt: ts, ...patch });
-      }
+      steps.push({ op: 'entity', key: id, run: () => {
+        const existing = entities.get(id);
+        entities.put(id, existing ? { ...existing, ...patch } : { type: patch.type ?? entTypeOf(id), createdAt: ts, ...patch });
+      } });
     }
     entityUpdates.clear();
 
-    for (const id of entityRemovals) {
-      entities.remove(id);
-    }
+    for (const id of entityRemovals) steps.push({ op: 'entity-remove', key: id, run: () => { entities.remove(id); } });
     entityRemovals.clear();
 
-    // Array rewrites - atomic replacement of entire arrays
     for (const [key, arr] of arrayRewrites) {
       const [kind, entityId] = key.split(SEP);
-      const { start, end } = prefix(kind, entityId);
-      
-      // Delete all existing keys for this (kind, entityId)
-      for (const { key } of attrs.getRange({ start, end })) {
-        attrs.remove(key);
-      }
-      
-      // Write the new array
-      for (let i = 0; i < arr.length; i++) {
-        attrs.put(attrKey(kind, entityId, i), enc(arr[i]));
-      }
+      steps.push({ op: 'attrs', key, run: () => {
+        removeAttrRange(kind, entityId);
+        for (let i = 0; i < arr.length; i++) attrs.put(attrKey(kind, entityId, i), enc(arr[i]));
+      } });
     }
     arrayRewrites.clear();
 
-    // Relation deletions
-    for (const id of relDeletes) {
-      relations.remove(id);
-    }
+    for (const id of relDeletes) steps.push({ op: 'relation-remove', key: id, run: () => { relations.remove(id); } });
     relDeletes.clear();
 
-    // Relation upserts
-    for (const [id, obj] of relUpserts) {
-      relations.put(id, obj);
-    }
+    for (const [id, obj] of relUpserts) steps.push({ op: 'relation', key: id, run: () => { relations.put(id, obj); } });
     relUpserts.clear();
+
+    return steps;
+  }
+
+  /**
+   * Every attribute row of one `(kind, entityId)`.
+   *
+   * The copy is the point: the body removes exactly the keys this walks, and an lmdb range is a live cursor.
+   * `onDestroyEntity` said so in a comment of its own; saying it twice in one file is how the two drifted.
+   */
+  function removeAttrRange(kind: string, entityId: string): void {
+    // The spread is the whole point, so the lint rule calling it useless is wrong here: an lmdb range is a
+    // live cursor, and the body removes exactly the keys it walks
+    // eslint-disable-next-line no-useless-spread
+    for (const key of [...attrs.getKeys(prefix(kind, entityId))]) attrs.remove(key);
+  }
+
+  /** Runs the steps in one transaction, falling back to one transaction each so a failure is isolated. */
+  function runSteps(steps: Array<{ op: string; key: string; run: () => void }>, op: string): void {
+    if (steps.length === 0) return;
+    try {
+      entities.transactionSync(() => { for (const step of steps) step.run(); });
+      return;
+    } catch {
+      // Fall through: the transaction is rolled back whole, so every step is still unapplied
+    }
+    for (const step of steps) {
+      try {
+        entities.transactionSync(step.run);
+      } catch (error) {
+        errorCount++;
+        lastError = { op, key: step.key, error };
+        onWriteFailure?.({ op: step.op, key: step.key, error });
+      }
+    }
   }
 
   function scheduleFlush() {
@@ -138,26 +171,7 @@ export function makeLmdbAdapter(dbs: LmdbDbs): PersistenceSink {
       if (closed) return;
       scheduled = false;
       
-      try {
-        entities.transactionSync(() => {
-          flushBody();
-        });
-      } catch (error) {
-        errorCount++;
-        lastError = {
-          op: 'flush',
-          error
-        };
-        console.error('[LMDB] Transaction failed:', error);
-        console.error('[LMDB] Error count:', errorCount);
-        // Clear buffers even on error to prevent infinite retries
-        ensureBuf.clear();
-        entityUpdates.clear();
-        entityRemovals.clear();
-        arrayRewrites.clear();
-        relDeletes.clear();
-        relUpserts.clear();
-      }
+      runSteps(takeSteps(), 'flush');
     });
   }
 
@@ -199,24 +213,9 @@ export function makeLmdbAdapter(dbs: LmdbDbs): PersistenceSink {
     // Nothing to write (a read-only environment can't open a write transaction)
     if (!buffered()) return;
 
-    // Flush whatever is in the buffers, regardless of scheduled state
-    try {
-      entities.transactionSync(() => {
-        flushBody();
-      });
-    } catch (error) {
-      errorCount++;
-      lastError = { op: 'final flush', error };
-      console.error('[LMDB] Final flush failed:', error);
-    } finally {
-      // Clear all buffers
-      ensureBuf.clear();
-      entityUpdates.clear();
-      entityRemovals.clear();
-      arrayRewrites.clear();
-      relDeletes.clear();
-      relUpserts.clear();
-    }
+    // Flush whatever is in the buffers, regardless of scheduled state. `takeSteps` empties them, and
+    // `runSteps` isolates a failure to the one row it belongs to, as the scheduled flush does.
+    runSteps(takeSteps(), 'final flush');
   }
 
   /**
@@ -249,14 +248,10 @@ export function makeLmdbAdapter(dbs: LmdbDbs): PersistenceSink {
       try {
         entities.transactionSync(() => {
           entities.remove(entityId);
-          // The copy is the point: `storedKinds` reads the same store this loop removes from, inside one
-          // `transactionSync`, so materialising first keeps the read off a cursor the body invalidates.
+          // `storedKinds` reads the same store this loop removes from, inside one `transactionSync`, so it
+          // is materialised for the same reason `removeAttrRange` materialises: a live cursor the body invalidates
           // eslint-disable-next-line no-useless-spread
-          for (const kind of [...storedKinds(attrs)]) {
-            // Likewise, and more directly: the body removes exactly the keys this iterator is walking.
-            // eslint-disable-next-line no-useless-spread
-            for (const key of [...attrs.getKeys(prefix(kind, entityId))]) attrs.remove(key);
-          }
+          for (const kind of [...storedKinds(attrs)]) removeAttrRange(kind, entityId);
         });
       } catch (error) {
         errorCount++;

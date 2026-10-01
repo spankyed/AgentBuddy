@@ -5,7 +5,7 @@ import type { EarsAdmin } from '../engine.ts';
 import type { Partition, PartitionPolicy } from '../persistence/policy.ts';
 import { makeShardedPersistence, type ShardedPersistence } from '../persistence/sharded-router.ts';
 import { openShardedEnvs, closeShardedEnvs, deleteLmdbDirectories, type LmdbDbs, type LmdbPaths } from './envs.ts';
-import { makeLmdbAdapter } from './adapter.ts';
+import { makeLmdbAdapter, type WriteFailure } from './adapter.ts';
 import { hydrateSharded } from './hydrate.ts';
 import { LmdbQuery } from './query.ts';
 
@@ -69,6 +69,14 @@ export interface LmdbStoreOptions {
   readOnly?: boolean;
   /** Where the store's progress lines go (hydration counts, closing); `console.log` by default */
   log?: (message: string) => void;
+  /**
+   * Told when a write is dropped, with the row it was for.
+   *
+   * A port rather than a log line: `@abuddy/ears` is below `@abuddy/sdk`, so the engine reports the fact and
+   * the app decides what to do with it. Until this existed the only signal was `console.error`, and a
+   * production app wrote 3,187 of them that nobody read.
+   */
+  onWriteFailure?: (failure: WriteFailure) => void;
 }
 
 const NO_ERRORS: PersistenceErrorStats = { errorCount: 0, lastError: null };
@@ -77,7 +85,7 @@ const NO_ERRORS: PersistenceErrorStats = { errorCount: 0, lastError: null };
  * Opens the LMDB environments at `paths` and returns the store. Nothing reaches the engine until the
  * caller creates it with `store.sink` and hydrates.
  */
-export function openLmdbStore({ paths, policy, engine, readOnly = false, log = console.log }: LmdbStoreOptions): LmdbStore {
+export function openLmdbStore({ paths, policy, engine, readOnly = false, log = console.log, onWriteFailure }: LmdbStoreOptions): LmdbStore {
   const relationDetails = (relId: EARS.EntityId) =>
     engine().getAttr(relId, EARS.AttrKind.RelationDetails) as EARS.RelationDetail | null;
   let envs: Record<Partition, LmdbDbs> | null = null;
@@ -96,8 +104,8 @@ export function openLmdbStore({ paths, policy, engine, readOnly = false, log = c
     envs = openShardedEnvs(paths, { readOnly });
     openFailure = null;
     current = makeShardedPersistence(policy, {
-      primary: makeLmdbAdapter(envs.primary),
-      volatileBackup: makeLmdbAdapter(envs.volatileBackup),
+      primary: makeLmdbAdapter(envs.primary, onWriteFailure),
+      volatileBackup: makeLmdbAdapter(envs.volatileBackup, onWriteFailure),
     }, relationDetails);
   }
 

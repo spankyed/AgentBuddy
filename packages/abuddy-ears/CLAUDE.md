@@ -26,6 +26,24 @@ EARS, the entity-attribute-relation graph store behind AgentBuddy's data: the en
 | `entities.ts`, `runtime.ts`, `typed.ts` | The typed contract (change-controlled, see below): the core `EARS` namespace (`Entity = { Relation }`, `RelKind = { Custom }`), `BaseEntity`/`EntityShapes`/`ShapeOf`/`EntityNameArg`; `PersistenceSink`, `noopSink`, `EARSRuntimeDeps`, `QueryBuilder`/`TransactionBuilder`, `isEntityType`; `defineEars` and the `Typed*` facade types |
 | `persistence/policy.ts`, `persistence/sharded-router.ts` | The persistence port: `Partition`, `PartitionPolicy`, `makePolicy`; `makeShardedPersistence`, the sink routing each write to its partition's sink |
 | `lmdb/` | `@abuddy/ears/lmdb`: `store.ts` (`openLmdbStore`), `envs.ts` (environments), `adapter.ts` (`makeLmdbAdapter`, the LMDB sink), `hydrate.ts` (`hydrateSharded`), `query.ts` (`LmdbQuery`, direct reads without hydrating) |
+
+**A range is a live cursor, and an environment has 126 reader slots.** `getRange`/`getKeys` hold a read
+transaction until the iterator is closed, and the language closes it for you — `for…of` (break or return
+included), array destructuring and `.find()` all call `return()`. Taking the iterator by hand
+(`it[Symbol.iterator]().next()`) does not, and each call that finds a row leaks a slot: measured, the 127th
+throws `MDB_READERS_FULL`, after which every read fails with "No transaction to renew" and every write with
+`EINVAL`, for the life of the process. `getAttrLength` did exactly that. Where the body *removes* the keys it
+is walking, materialise first (`[...]`) — `removeAttrRange` is the one copy of that rule.
+
+**A reverse range starts at the high bound.** `{ start: prefix, end: prefix + '\xFF', reverse: true }` walks
+away from the data and yields nothing; `getAttrLength` returned 0 for every array it was ever asked about
+because of it, and had no caller to notice.
+
+**A failed write is dropped, not retried — but only the row that failed.** `makeLmdbAdapter` takes the
+pending writes as separate steps and runs them in one transaction; if that throws it retries them one at a
+time, so a single bad row no longer aborts and discards every unrelated write buffered in the same microtask.
+Each dropped row is reported through `onWriteFailure` (`openLmdbStore`'s port) with the key it was for, and
+`errorCount` counts rows, not batches. The app binds the port; the engine has no opinion about what to do.
 | `utils.ts` | Private helpers (`isPlainObject`, the id suffix) |
 
 ## The engine

@@ -1,7 +1,7 @@
 // Opening an app's database: the one composition of the LMDB store and the engine, which the API's boot and tools
 // (abuddy db) share, so both hydrate a data dir the same way
 import { createEarsEngine, installEngine, type EarsAdmin, type EarsEngine, type EarsQuery } from '@abuddy/ears';
-import { openLmdbStore, type LmdbPaths, type LmdbStore } from '@abuddy/ears/lmdb';
+import { openLmdbStore, type LmdbPaths, type LmdbStore, type WriteFailure } from '@abuddy/ears/lmdb';
 import { resolveAppContext, type AppEnv } from '@abuddy/sdk/env';
 import type { _AppDataPaths } from '@abuddy/sdk/utils';
 import { findAppDataPaths } from './layout.ts';
@@ -9,6 +9,8 @@ import { readInstalledSchema, type DatabaseSchema, type InstalledSchema } from '
 import { errorMessage } from '@abuddy/sdk/utils/pure';
 
 export interface DatabaseStoreOptions {
+  /** Told when a write is dropped, with the row it was for (`openLmdbStore`'s port) */
+  onWriteFailure?: (failure: WriteFailure) => void;
   /** Each partition's database directory */
   paths: LmdbPaths;
   /** The entity types and partition policy: the app's registered packs, or the installed packs' manifests */
@@ -22,8 +24,8 @@ export interface DatabaseStoreOptions {
  * The LMDB store at `paths` and a new engine persisting to it, which checks entity types against `schema`. Nothing is
  * hydrated or installed: the caller hydrates (`store.hydrate()`) once `schema` holds every entity type.
  */
-export function openDatabaseStore({ paths, schema, readOnly, log }: DatabaseStoreOptions): { store: LmdbStore; engine: EarsEngine } {
-  const store = openLmdbStore({ paths, policy: schema.partitionPolicy, engine: () => engine.admin, readOnly, log });
+export function openDatabaseStore({ paths, schema, readOnly, log, onWriteFailure }: DatabaseStoreOptions): { store: LmdbStore; engine: EarsEngine } {
+  const store = openLmdbStore({ paths, policy: schema.partitionPolicy, onWriteFailure, engine: () => engine.admin, readOnly, log });
   const engine = createEarsEngine({ persistence: store.sink, isEntityType: (name) => schema.getRegisteredEntityTypes().has(name) });
   return { store, engine };
 }

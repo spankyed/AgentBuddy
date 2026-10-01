@@ -77,6 +77,31 @@ describe('LMDB Adapter', () => {
     expect(dbs.entities.get('Task-special').type).toBe('Special');
   });
 
+  /**
+   * An lmdb range is a live cursor holding a read transaction, and an environment has 126 reader slots.
+   * `getAttrLength` used to read the first entry with `it[Symbol.iterator]().next()`, which never releases
+   * the cursor, so every call that found a row leaked a slot. The 127th throws `MDB_READERS_FULL`, and from
+   * then on every read fails with "No transaction to renew" and every write with EINVAL — for the life of
+   * the process. A production app discarded 3,187 writes that way and lost the user's notes.
+   *
+   * 200 is deliberately past 126: at 126 this passes whatever the implementation does.
+   */
+  it('does not leak a reader slot per call, however many times it is asked', async () => {
+    const adapter = makeLmdbAdapter(dbs);
+    adapter.onCreateEntity('Doc-readers');
+    adapter.onPutAttrArray('tags', 'Doc-readers', ['a', 'b', 'c']);
+    adapter.close?.();
+
+    const query = new LmdbQuery(dbs);
+    for (let i = 0; i < 200; i++) {
+      expect(query.getAttrLength('tags', 'Doc-readers'), `call ${i}`).toBe(3);
+      // A write transaction between reads, as the app does: it is what makes a leaked slot unrecoverable
+      dbs.entities.transactionSync(() => { dbs.entities.put('Doc-readers-probe', { v: i }); });
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    }
+  });
+
+
   it('rejects forbidden \\x1F separator in keys', () => {
     const adapter = makeLmdbAdapter(dbs);
     expect(() => adapter.onPutAttrArray('bad\x1Fkey', 'Entity-1', ['v']))
@@ -154,11 +179,50 @@ describe('LMDB Adapter error stats', () => {
     expect(adapter.getErrorStats?.()).toMatchObject({ errorCount: 1, lastError: { op: 'destroy', key: 'Document-1' } });
   });
 
-  it('counts a flush it could not write when the sink closes', () => {
+  // The count is of rows that did not reach disk, not of batches that failed: one array write is an entity
+  // row and an attribute row, and a caller that is told "1" when two rows are gone has been misinformed.
+  it('counts every row it could not write when the sink closes, and names the last', () => {
     const adapter = makeLmdbAdapter(failing());
     adapter.onPutAttrArray('title', 'Document-1', ['kept']);
     adapter.close?.();
-    expect(adapter.getErrorStats?.()).toMatchObject({ errorCount: 1, lastError: { op: 'final flush' } });
+    expect(adapter.getErrorStats?.()).toMatchObject({
+      errorCount: 2,
+      lastError: { op: 'final flush', key: `title\x1FDocument-1` },
+    });
+  });
+
+  // The failure this exists to prevent: one bad row used to abort the whole transaction and then clear every
+  // buffer, so unrelated writes in the same microtask were lost with it. That is how a note died as
+  // collateral damage for something else's failure.
+  it('keeps the writes that work when one row cannot be written, and names the one that could not', async () => {
+    const dir = tmpDir('isolation');
+    const live = openEnvAt(dir);
+    const dropped: Array<{ op: string; key: string }> = [];
+    // Only this one row refuses; everything else goes through to the real store
+    const poisoned = 'Document-poison';
+    const guarded = {
+      ...live,
+      entities: Object.assign(Object.create(Object.getPrototypeOf(live.entities)), live.entities, {
+        put: (key: string, value: unknown) => {
+          if (key === poisoned) throw new Error('refused');
+          return (live.entities as any).put(key, value);
+        },
+      }),
+    } as unknown as LmdbDbs;
+
+    const adapter = makeLmdbAdapter(guarded, ({ op, key }) => dropped.push({ op, key }));
+    adapter.onCreateEntity('Document-ok-1');
+    adapter.onCreateEntity(poisoned);
+    adapter.onCreateEntity('Document-ok-2');
+    adapter.close?.();
+
+    expect(dropped, 'only the row that refused').toEqual([{ op: 'entity', key: poisoned }]);
+    expect(live.entities.get('Document-ok-1'), 'written before the bad one').toBeTruthy();
+    expect(live.entities.get('Document-ok-2'), 'written after the bad one').toBeTruthy();
+    expect(adapter.getErrorStats?.().errorCount).toBe(1);
+
+    try { live.entities.close(); live.attrs.close(); live.relations.close(); live.root.close(); } catch {}
+    fs.rmSync(dir, { recursive: true, force: true });
   });
 });
 

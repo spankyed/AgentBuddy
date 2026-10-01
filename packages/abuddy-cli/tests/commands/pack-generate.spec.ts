@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import * as fs from 'fs';
 import * as path from 'path';
 import * as os from 'os';
@@ -176,5 +176,57 @@ describe('abuddy generate-entries', () => {
     const second = readGenerated();
 
     expect(first).toBe(second);
+  });
+});
+
+/**
+ * The stamp records what the last run read *and* what it wrote. Recording only the inputs meant deleting a
+ * generated file left the hash matching, so the command reported "inputs unchanged, skipping" over a tree it
+ * had not made, and the pack stayed unbuildable until someone passed `--force`.
+ */
+describe('the inputs stamp', () => {
+  const generated = (name: string) => path.join(tmpDir, 'src', '__generated__', name);
+
+  it('regenerates a file that was deleted, rather than reporting the tree unchanged', async () => {
+    writeManifest({ id: 'test-pack', name: 'Test Pack', version: '0.1.0', entities: { Widget: 'Widget' }, relKinds: {} });
+    await generateEntries([], tmpDir);
+    expect(fs.existsSync(generated('ears.ts'))).toBe(true);
+
+    fs.rmSync(generated('ears.ts'));
+    const said: string[] = [];
+    const log = vi.spyOn(console, 'log').mockImplementation((m) => { said.push(String(m)); });
+    await generateEntries([], tmpDir);
+    log.mockRestore();
+
+    expect(fs.existsSync(generated('ears.ts')), 'the missing file is back').toBe(true);
+    expect(said.join('\n'), 'and it did not claim the tree was current').not.toMatch(/inputs unchanged/);
+  });
+
+  it('still skips when every recorded file is there', async () => {
+    writeManifest({ id: 'test-pack', name: 'Test Pack', version: '0.1.0', entities: { Widget: 'Widget' }, relKinds: {} });
+    await generateEntries([], tmpDir);
+
+    const said: string[] = [];
+    const log = vi.spyOn(console, 'log').mockImplementation((m) => { said.push(String(m)); });
+    await generateEntries([], tmpDir);
+    log.mockRestore();
+    expect(said.join('\n')).toMatch(/inputs unchanged/);
+  });
+
+  // The case that makes the list recorded rather than fixed: a pack with no plugins never writes `fe.ts`,
+  // and an expectation hard-coded from a fuller pack would call it stale on every run, forever.
+  it('does not treat a file this pack never generates as missing', async () => {
+    writeManifest({ id: 'test-pack', name: 'Test Pack', version: '0.1.0', entities: { Widget: 'Widget' }, relKinds: {} });
+    await generateEntries([], tmpDir);
+    expect(fs.existsSync(generated('fe.ts')), 'no plugins, so no fe.ts').toBe(false);
+
+    const stamp = JSON.parse(fs.readFileSync(generated('.inputs-hash'), 'utf-8')) as { files: string[] };
+    expect(stamp.files, 'and it is not recorded as an output').not.toContain('src/__generated__/fe.ts');
+
+    const said: string[] = [];
+    const log = vi.spyOn(console, 'log').mockImplementation((m) => { said.push(String(m)); });
+    await generateEntries([], tmpDir);
+    log.mockRestore();
+    expect(said.join('\n')).toMatch(/inputs unchanged/);
   });
 });

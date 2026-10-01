@@ -7,7 +7,7 @@ import { appRouter } from '@/transport';
 import { createContext } from '@/transport/context';
 import { createLogger } from '@abuddy/sdk/logger';
 import { SERVER_CONFIG, apiToken, apiTokenIsOwn, isApiToken } from '@/boot/config';
-import { appPacks, backendActor } from '@/runtime';
+import { appPacks, appStore, backendActor } from '@/runtime';
 import { reloadBuiltInPack, reloadExternalPack } from '@abuddy/host/packs/runtime';
 import { resolveAppContext } from '@abuddy/sdk/env';
 import type { ApiEndpoint } from '@abuddy/host/process-liveness';
@@ -155,6 +155,14 @@ export function createWebSocketServer() {
   // Safety net: always kill terminal processes before the API process exits
   process.on('exit', () => {
     appPacks?.runShutdownHooks();
+    // The adapter buffers writes and flushes them from a microtask, so whatever is pending at exit only
+    // reaches disk if something closes the store. Nothing did until 2026-10-01.
+    try {
+      const { errorCount, lastError } = appStore?.close() ?? { errorCount: 0, lastError: null };
+      if (errorCount > 0) console.error(`[backend] ${errorCount} write(s) didn't reach the database`, lastError);
+    } catch (error) {
+      console.error('[backend] Closing the database failed', error);
+    }
     const { apiPortFile, apiTokenFile } = resolveAppContext();
     for (const file of [apiPortFile, apiTokenFile]) {
       try { fs.unlinkSync(file); } catch {}
