@@ -28,8 +28,9 @@ Four symptoms, all the same cause:
   moved into declares no repo-wide tree. The gate written to watch for this was nearly relocated into
   blindness by its own runtime.
 
-And three escape hatches that exist because the model has no way to say what an action produces:
-`neverCachedBecause`, `forceArgs`, `excludes`.
+And four escape hatches that exist because the model has no way to say what an action produces:
+`neverCachedBecause`, `forceArgs`, `excludes`, and `exclusive` — the last of which is a hand-set mutex
+standing in for an output overlap nobody declared.
 
 ### One symptom was fixed ahead of the rest, and what it left behind
 
@@ -69,7 +70,7 @@ nouns would be motion, not progress.
 | `tier` | **tag + dependency constraint** | Nx `tags`/`depConstraints`, Bazel `visibility`, ArchUnit, dependency-cruiser |
 | `inputs` / `outputs` | *already standard* | the shared vocabulary of Bazel, Gradle, Nx and Turborepo |
 | `excludes` | *already standard* | a negative input pattern: Bazel `glob(exclude=)`, Gradle `exclude(…)`, Nx/Turborepo `!` in `inputs` |
-| `exclusive` | *already standard* | Bazel's test tag `exclusive`, same word and same semantics |
+| `exclusive` | *standard name, wrong shape here* | Bazel's test tag `exclusive` — but Bazel derives most conflict safety from its output graph, which is where this one belongs (item 4) |
 | `neverCachedBecause` | *already standard* | Gradle `@DisableCachingByDefault(because = …)`, `@UntrackedTask(because = …)` |
 | `optInBecause` | *better than standard* | Bazel's `manual` tag, which carries no reason; this one requires a sentence and has a case enforcing it |
 | `needs` | **`dependsOn`** | the one CI word in a build-system table — see below |
@@ -101,9 +102,9 @@ condition under which a closed `ActionTag` union becomes worth it.
 `dependsOn` is build-system vocabulary (Gradle, Nx, Turborepo; Bazel spells it `deps`). Every other field
 in the step table is build-system-shaped and this one reads as a pipeline. It is ~21 sites — 9 reads
 (`chain-schedule.ts:72`, `chain-steps.ts:158/174/185`, `step-timing.ts:22`, four in specs), 12
-declarations, and two error strings. **Decision 4 settles it: the rename happens**, because the derived
-field needs the name that says it carries data, and the ordering-only edges that stay declared need a
-different one (`mustRunAfter`).
+declarations, and two error strings. **Decision 4 settles it: the rename happens**, because the field
+stops being hand-written and starts being derived, and `dependsOn` is what the tools that derive it call
+the result.
 
 What the repo has and lacks, against that model:
 
@@ -177,6 +178,18 @@ is `packages:ensure → compile → build:app → test:packaged-authoring`, whic
    ['tests/results']`), so the shape exists; what is missing is a result artifact for the verification
    steps, which is cheap (`--reporter=junit --outputFile`) but is real work.
 
+   **It buys concurrency safety too, which is the half I first missed.** Two actions whose outputs overlap
+   must not run concurrently — one rule, needing no declaration beyond honest `outputs`. In Bazel it is an
+   *error* for two actions to produce the same output, so concurrency safety is a property of the output
+   graph rather than a flag anyone sets; Gradle does the weaker version, detecting overlapping outputs and
+   declining to cache them. Here it dissolves `exclusive` and the `mustRunAfter` that decision 4 nearly
+   gained — see that decision, and item 15.
+
+   **`packages:check` is the worked example of the gap.** It declares zero outputs while `attw --pack`
+   writes a tarball inside the tree it checks and `stagePublishTree` removes and recreates that tree. That
+   undeclared write is why it carries `exclusive` by hand; declare it and the conflict with
+   `packages:ensure`, which writes `packages/*/publish`, derives.
+
 ### B. Where inputs come from
 
 5. **Dep files**, where the tool reports what it read. Both sources already exist here: `.tsbuildinfo`
@@ -215,8 +228,16 @@ is `packages:ensure → compile → build:app → test:packaged-authoring`, whic
 
 14. **Workers.** Group stale actions into as few processes as the tools allow. This is what the pool
     already does well and should keep doing, under the name the rest of the industry uses for it.
-15. **Scheduling policy** — lanes, worker caps, `exclusive` (`packages:check` must run alone because
-    `attw --pack` writes inside the tree it checks). Policy, not identity.
+15. **Scheduling policy** — lanes, worker caps, and ordering preferences such as running `test:smoke`
+    before `test` to fail fast. Policy, not identity.
+
+    **`exclusive` is not in this list, and that is the correction.** It reads as policy and it is a
+    derived fact: `chain-schedule.ts:73` makes it a *global* mutex, so an exclusive step blocks everything
+    rather than what it conflicts with, and neither of its two users states its real conflict —
+    `packages:check` through an undeclared output (item 4), `packages:ensure` as a proxy for "nothing may
+    build packages concurrently", which the derived edges already enforce because seven steps read its
+    outputs. Both become output overlap, checked rather than asserted. What stays policy is the
+    *direction*: a mutex does not care which runs first, and failing fast does.
 16. **A worker reports what it ran**, so only those actions are stamped. The pool already does this and the
     reason is recorded: a `--project` filter matching nothing must not stamp a pass.
 
@@ -224,10 +245,10 @@ is `packages:ensure → compile → build:app → test:packaged-authoring`, whic
 
 17. **Edges derived from artifacts** — an action reading `packages/*/dist` depends on the action writing
     it. `needs` is hand-declared beside `inputs` that already imply it, and `chain-inputs` has yet another
-    case policing their agreement. **Measured: this reproduces 12 of the 13 declared edges exactly**
-    (decision 4). The thirteenth is ordering without data, so the derived field is `dependsOn` and a small
-    declared `mustRunAfter` keeps what no artifact implies — Gradle's split, which exists for exactly this
-    reason wherever tasks share a filesystem instead of a sandbox.
+    case policing their agreement. **Measured: outputs-into-inputs reproduces 12 of the 13 declared edges,
+    and outputs-into-outputs reproduces the thirteenth** — `test` and `test:smoke` both write
+    `tests/results`, which is a mutex rather than a dependency. So the whole table derives from two
+    questions over the same two fields, and nothing hand-declared survives here (decision 4).
 18. **Tier stays declared; the edges it is checked against become derived.** An earlier draft of this
     list had tier *derived* — an action is tier 3 iff it reads app outputs — and that is wrong, because it
     deletes the check. A declared tier is a statement of intent: *this action must not need the app*.
@@ -307,16 +328,25 @@ Bazel's and Buck2's Merkle shape. Then 47 actions cost about what 13 cost. This 
 everywhere, and that describes a cold run rather than a cost. The case needing a guard is the *stale* dep
 file, not the missing one — which is item 9, and this decision is why it is not optional.
 
-**4. Data edges are derived; ordering edges stay declared.** Deriving every edge from artifacts —
-producer's `outputs` landing in a consumer's `inputs`, honouring `excludes`, transitively reduced —
-reproduces **12 of the 13** declared `needs` exactly. The exception is `test`, which declares
-`['build:app', 'test:smoke']` where only `build:app` derives: both steps drive Playwright at
-`tests/results`, so that edge is ordering carrying no data. **That is exactly Gradle's `dependsOn` versus
-`mustRunAfter`**, a distinction Bazel does not need because it sandboxes and Gradle does because its tasks
-share a filesystem — this repo's situation. So `dependsOn` is derived, and one small declared field
-`mustRunAfter` keeps the ordering-only edges, with `exclusive` beside it as the same family rather than a
-special case. This settles the `needs` -> `dependsOn` rename above: it happens, because the derived field
-needs the name that says it is about data.
+**4. Every edge derives. Nothing hand-declared survives here.** Two questions over the same two fields:
+
+- **outputs into inputs** — a consumer reading a producer's output. Honouring `excludes` and transitively
+  reduced, this reproduces **12 of the 13** declared `needs` exactly.
+- **outputs into outputs** — two actions writing the same path, which is a mutex. This reproduces the
+  thirteenth: `test` declares `['build:app', 'test:smoke']` where only `build:app` is a data edge, and
+  `test` and `test:smoke` both declare `tests/results`.
+
+**An earlier version of this decision stopped after the first question** and concluded 12 of 13, keeping a
+declared `mustRunAfter` for the remainder — Gradle's split, which looked like the right borrow. It was the
+wrong answer to an unasked question. Bazel needs no such field because it makes two actions producing one
+output an *error*: conflict safety is a property of the output graph, never a flag. So **`mustRunAfter` is
+not added, and `exclusive` is removed** (item 15), both replaced by output overlap.
+
+A mutex has no direction. Running `test:smoke` before `test` to fail fast is a scheduling preference and
+belongs in policy (item 15), not in the graph.
+
+This settles the `needs` -> `dependsOn` rename above: it happens, because the field stops being
+hand-written.
 
 **A caveat worth more than the result.** Two earlier attempts at that derivation were wrong — one ignored
 `excludes`, one dropped a whole input because a descendant was excluded — and both produced plausible
@@ -335,7 +365,7 @@ Order, by what unblocks what and what pays immediately:
 
 1. Per-file digest memoisation — pays now, no model change
 2. The `tier` split (`tier-split.md`) — independent of all of this
-3. Derived `dependsOn` + declared `mustRunAfter`, with the reproduction check
+3. Derived `dependsOn` and derived mutexes, with the reproduction check; `exclusive` deleted
 4. Dep files from `.tsbuildinfo`, with the proxy self-check
 5. Typecheck as 18 actions under one scheduler
 6. Outputs for verification actions (item 4), then Gradle's rule (item 7)
@@ -376,7 +406,10 @@ Both claims that stood here have been computed.
 - **"~40 actions is the right order of magnitude" — confirmed at 47.** 18 typecheck legs + 12 unit suites +
   3 integration halves + 5 build units + 9 remaining steps. Counted rather than estimated; nothing in this
   list changes.
-- **"Deriving `needs` from artifacts reproduces today's ordering exactly" — false as stated, true once
-  qualified at 12 of 13.** The exception is a real ordering-without-data edge, and finding it produced
-  decision 4's `mustRunAfter`. This was the most valuable item on the list, because checking it changed the
-  design rather than confirming it.
+- **"Deriving `needs` from artifacts reproduces today's ordering exactly" — true, at 13 of 13**, once the
+  derivation asks both questions: outputs into inputs for data edges (12), outputs into outputs for mutual
+  exclusion (the 13th). It took three attempts. The first two were wrong about `excludes` and returned
+  plausible answers; the third was right about data edges and **stopped there**, concluding 12 of 13 and
+  proposing a `mustRunAfter` field for the remainder. Asking the second question removed the field and
+  `exclusive` with it. This was the most valuable item on the list twice over — checking it changed the
+  design, and re-checking it changed the design again.

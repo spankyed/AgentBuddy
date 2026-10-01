@@ -163,9 +163,10 @@ Three of four are available today. That is what makes this a target of its own r
      has the failure that motivated them: one hardcoded sentence about Electron that was wrong about the
      second step to opt out. Splitting markers across two mechanisms by whether they carry a reason is a
      seam that drifts.
-  3. **Two reason-free markers is not a vocabulary.** `exclusive` (2 steps) and `needsApp` (5) against
-     `neverCachedBecause` (2) and `optInBecause` (1). A tag system for two values is the same error as a
-     constraint table with one row.
+  3. **One reason-free marker is not a vocabulary.** `needsApp` (5 steps) against `neverCachedBecause`
+     (2) and `optInBecause` (1). It was two until `one-action-cache.md` decision 4 found that `exclusive`
+     derives from two actions declaring the same output, which is a mutex rather than a flag. A tag system
+     for one value is the same error as a constraint table with one row.
 
   **Revisit when the reason-free markers reach four or five.** At that point a closed union —
   `const ACTION_TAGS = [...] as const; type ActionTag = (typeof ACTION_TAGS)[number]` — is worth its
