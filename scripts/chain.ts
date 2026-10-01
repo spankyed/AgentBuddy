@@ -44,7 +44,7 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { changedInputs, firstChange, freshnessSweep, INPUTS_CHANGED, REPO_ROOT, stampedRun, stampRecord, unitStaleReason, type BuildUnit } from '@abuddy/host/build/packages-built';
-import { type ChainStep, chainSteps, conflictsOf, MEASURED_AT_LANES, orderedSteps } from './lib/chain-steps.ts';
+import { CHAIN_STEPS, type ChainStep, chainSteps, conflictsOf, MEASURED_AT_LANES, orderedSteps } from './lib/chain-steps.ts';
 import { schedule } from './lib/chain-schedule.ts';
 import { criticalPath, driftedSteps, willNotCache } from './lib/step-timing.ts';
 import { briefly, classifyLine, declaredAt, dim, driftReport, DRY_REASON_COLUMN, howLong, identicalRewrites, marker, oneLine, REASON_COLUMN, shouldClassify, staleLines, STEP_NAME_WIDTH, TIME_COLUMN, whenChanged, wrapAt, writerOf } from './lib/chain-output.ts';
@@ -82,6 +82,28 @@ const declaredIn = (name: string): string | undefined => {
 };
 const stepTable = fs.readFileSync(path.join(REPO_ROOT, STEP_TABLE), 'utf-8');
 const stampFor = (step: string): string => path.join(STAMP_DIR, `${step.replace(/[:/]/g, '-')}.json`);
+
+/**
+ * Drop stamps for steps that no longer exist, and for steps that are not cached.
+ *
+ * A stamp is a record *about* a step, so one whose step has gone is a record with no subject — and this
+ * chain found a real one: `typecheck.json` outlived the step by the time it became eighteen. Harmless on
+ * its own, and exactly the shape the rest of this work removes, which is reason enough not to keep it.
+ *
+ * The uncached case is the one that would be a bug rather than litter. A step declaring
+ * `neverCachedBecause` must never be skipped on a stamp, and `runAndStamp` returns before `stampedRun`
+ * for one — so a stamp for such a step means that branch stopped holding. Clearing it here keeps the
+ * store true to the table; `chain-stamps.spec.ts` is what fails if the branch breaks.
+ */
+function pruneStamps(): void {
+  if (!fs.existsSync(STAMP_DIR)) return;
+  const live = new Map(CHAIN_STEPS.map((step) => [path.basename(stampFor(step.name)), step]));
+  for (const file of fs.readdirSync(STAMP_DIR)) {
+    if (!file.endsWith('.json')) continue;
+    const step = live.get(file);
+    if (step === undefined || step.neverCachedBecause !== undefined) fs.rmSync(path.join(STAMP_DIR, file));
+  }
+}
 
 /** A step as a build unit: the same shape, so it goes through the same freshness check */
 const unitFor = (step: ChainStep): BuildUnit => ({
@@ -292,6 +314,7 @@ async function main(): Promise<void> {
 
   /** The reason a step ran, kept for its line and for the failure report */
   const reasons = new Map<string, string>();
+  pruneStamps();
   const outcome = await schedule({
     steps,
     lanes,
