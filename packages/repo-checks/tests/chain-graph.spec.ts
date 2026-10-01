@@ -6,7 +6,7 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { REPO_ROOT } from '@abuddy/host/build/packages-built';
-import { CHAIN_STEPS, chainSteps, dependsOn, orderedSteps, type ChainStep } from '../../../scripts/lib/chain-steps.ts';
+import { CHAIN_STEPS, chainSteps, conflictsOf, dependsOn, orderedSteps, type ChainStep } from '../../../scripts/lib/chain-steps.ts';
 
 describe('the chain graph', () => {
   it('orders every step after the steps it depends on', () => {
@@ -44,6 +44,25 @@ describe('the chain graph', () => {
       { name: 'b', inputs: ['x'], outputs: ['y'] },
     ];
     expect(() => orderedSteps(steps)).toThrow(/cycle/);
+  });
+
+  /**
+   * A mutex has no direction, so this one is a preference — and it was held by nothing but the order the
+   * two happen to sit in the table.
+   *
+   * `test:smoke` and `test` both write `tests/results`, which makes them a derived mutex: the scheduler will
+   * not overlap them, and either order satisfies it. Running the six-second gate before the twenty-six
+   * second harness is what anyone wants, and until this case existed, reordering the table would have
+   * silently swapped them. Named here rather than declared on a step, because a preference between two
+   * steps is not a property of either.
+   */
+  it('runs the smoke gate before the harness they are mutexed by', () => {
+    const order = orderedSteps(chainSteps(['test'])).map((step) => step.name);
+    expect(order, 'the opt-in harness is not in this plan, so there is nothing to order').toContain('test');
+    const smoke = CHAIN_STEPS.find((step) => step.name === 'test:smoke')!;
+    expect(conflictsOf(smoke), 'the two no longer share a path, so this preference has lost its subject')
+      .toContain('test');
+    expect(order.indexOf('test:smoke')).toBeLessThan(order.indexOf('test'));
   });
 
   it('refuses two steps with one name, which would make an edge ambiguous', () => {

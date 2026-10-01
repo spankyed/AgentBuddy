@@ -25,10 +25,9 @@ describe('the compiler says what it read', () => {
   /**
    * Which legs this can speak for, named rather than implied.
    *
-   * The gate below is only as wide as the evidence, and the evidence is uneven: three legs produce no
-   * usable dep file — `typecheck:main` and `typecheck:preload` set no `tsBuildInfoFile`, and
-   * `typecheck:fe` writes one whose `fileNames` is empty, because a solution-style config records its
-   * references and not a program. Asserting the covered count keeps that honest in both directions: a leg
+   * The gate below is only as wide as the evidence, and one leg produces none: `typecheck:fe` writes build
+   * infos that record no program at all, because a solution-style config records its references and the
+   * referenced configs do the compiling. Asserting the list keeps that honest in both directions — a leg
    * quietly losing its dep file shows up here, and so does one gaining it.
    */
   it('says which legs it can speak for, so the gate is not wider than its evidence', () => {
@@ -42,7 +41,7 @@ describe('the compiler says what it read', () => {
       .map((leg) => leg.name)
       .sort();
     expect(uncovered, 'the legs no dep file speaks for — change this list only with the reason why')
-      .toEqual(['typecheck:fe', 'typecheck:main', 'typecheck:preload']);
+      .toEqual(['typecheck:fe']);
   });
 
   it('finds dep files to read, or says plainly that there is no evidence here', () => {
@@ -130,10 +129,20 @@ describe('the compiler says what it read', () => {
  * self-check rather than only a comparison.
  */
 describe('a dep file is checked against itself before it is believed', () => {
-  it('trusts one written by the installed compiler under the options it is asked about', () => {
+  /**
+   * Against the compiler *that workspace* resolves. `packages/main` and `packages/preload` pin typescript
+   * to an exact version and carry their own copy, so a check against the repo's called their dep files
+   * untrustworthy — the check being coarser than its subject rather than a finding about the files.
+   */
+  it('trusts one written by the compiler its own workspace resolves', () => {
     for (const name of depFileNames()) {
-      expect(untrustworthy(name, { version: tsVersion }), name).toBeNull();
+      expect(readsOf(name), `${name} is refused, so something it was written by has moved`).toBeDefined();
     }
+  });
+
+  it('is asked against a version, and says so when that version is not the one', () => {
+    const [name] = depFileNames();
+    expect(untrustworthy(name!, { version: tsVersion })).toBeNull();
   });
 
   /**

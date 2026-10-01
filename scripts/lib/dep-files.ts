@@ -15,6 +15,7 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { REPO_ROOT } from '@abuddy/host/build/packages-built';
+import { PACKAGE_DIRS } from './workspace-deps.ts';
 
 /** Where the legs are configured to write them, which is the one place this looks */
 const CACHE = path.join(REPO_ROOT, 'node_modules', '.cache', 'tsbuildinfo');
@@ -38,19 +39,30 @@ const read = (name: string): BuildInfo | undefined => {
 };
 
 /**
- * The TypeScript a dep file has to have been written by to be worth reading.
+ * The TypeScript a dep file has to have been written by to be worth reading — **the one that workspace
+ * resolves**, not the repo's.
  *
- * Read once from the installed package rather than taken as an argument, so no caller can forget to
- * check: a proxy whose self-check is optional is a proxy nobody checks, which is what `api:stamp` was
- * before its key included the entry set. `readsOf` applies it; `untrustworthy` is the same question
- * asked out loud, for a caller that wants the reason.
+ * `packages/main` and `packages/preload` pin typescript to an exact version and so carry their own copy,
+ * where every other workspace resolves the root's. Comparing every dep file against the root's version
+ * called those two untrustworthy, which was the check being coarser than its subject rather than a finding:
+ * the question is whether the file was written by the compiler that would run *this* leg.
+ *
+ * Read once per workspace. The owner is derived from the dep file's name, which is how TypeScript names one
+ * per tsconfig — `main` is a package, `api-test` is `api`'s second config.
  */
-let installed: string | undefined;
-const installedTypeScript = (): string => {
-  installed ??= (JSON.parse(
-    fs.readFileSync(path.join(REPO_ROOT, 'node_modules', 'typescript', 'package.json'), 'utf-8'),
-  ) as { version: string }).version;
-  return installed;
+const versions = new Map<string, string>();
+const typeScriptFor = (depFile: string): string => {
+  const owner = PACKAGE_DIRS.find((dir) => depFile === dir)
+    ?? PACKAGE_DIRS.filter((dir) => depFile.startsWith(`${dir}-`)).sort((a, b) => b.length - a.length)[0];
+  const key = owner ?? '';
+  const found = versions.get(key);
+  if (found !== undefined) return found;
+  const candidates = owner === undefined ? [] : [path.join(REPO_ROOT, 'packages', owner, 'node_modules', 'typescript', 'package.json')];
+  const manifest = [...candidates, path.join(REPO_ROOT, 'node_modules', 'typescript', 'package.json')]
+    .find((file) => fs.existsSync(file))!;
+  const version = (JSON.parse(fs.readFileSync(manifest, 'utf-8')) as { version: string }).version;
+  versions.set(key, version);
+  return version;
 };
 
 /** Every dep file present, by the name its leg writes under */
@@ -81,7 +93,7 @@ export const depFileNames = (): string[] => (fs.existsSync(CACHE)
 export function readsOf(name: string): readonly string[] | undefined {
   // The self-check runs here, not at the call site. A read set from another compiler describes another
   // program, and a caller comparing against it would be comparing against the wrong thing quietly.
-  if (untrustworthy(name, { version: installedTypeScript() }) !== null) return undefined;
+  if (untrustworthy(name, { version: typeScriptFor(name) }) !== null) return undefined;
   const info = read(name);
   if (info?.fileNames === undefined || info.fileNames.length === 0) return undefined;
   return info.fileNames
