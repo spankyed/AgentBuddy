@@ -373,10 +373,6 @@ export const SUITE_READS: Record<string, { packages?: true; pack?: true; repo?: 
   // Boots the app runtime, which loads the built-in pack: `dist/runtime/index.cjs` and `settings.seed.json`.
   // Named by host code rather than by any spec, which is why it has to be measured rather than scanned.
   api: { pack: true },
-  // `repo` alone: `identity-guard.spec.ts` scans every tracked file for code resolving an environment or a
-  // data dir on its own. It missed one committed to `@abuddy/cli`, which is not a dependency of this
-  // package, so nothing made its project stale and two chain runs passed
-  'abuddy-sdk': { repo: true },
   // `pretest: ensure-packages-built`; `published-sdk-peers` reads the built `dist` and skips without it.
   // `repo`: six of its specs ask git what the repo holds — the chain's input coverage, spec placement,
   // the lint's scope, the import rules — so every one of them is about files this package does not own

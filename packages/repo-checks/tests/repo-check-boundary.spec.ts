@@ -74,6 +74,10 @@ const LAYOUT_CHECKS: Record<string, string> = {
     + 'restating it — a property of the packs in the tree, read from git and the manifests',
   'tests/lint-scope.spec.ts': 'what the root lint command excludes from packages/ — a property of the '
     + 'script at the tree\'s root and the templates it names, with no scripts/ module behind it',
+  'tests/identity-guard.spec.ts': 'that only @abuddy/sdk/env decides the app\'s environment and data '
+    + 'paths — a property of every tracked file, read from git, with no scripts/ module behind it. It is '
+    + 'here because its subject is the repo: a suite whose project does not declare the repo is not re-run '
+    + 'when the thing it checks moves, which is how it missed one for two chain runs',
   'tests/repo-files.spec.ts': 'what "the files this repo has" means for the checks above — the working tree '
     + 'rather than the index, which is a property of the repo read from git, and the one the six populations '
     + 'here are built from',

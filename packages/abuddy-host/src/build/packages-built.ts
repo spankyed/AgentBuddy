@@ -395,6 +395,16 @@ const GUIDE = 'CLAUDE.md';
  */
 export const GUIDES_A_CHECK_READS: ReadonlySet<string> = new Set(['packages/repo-checks/CLAUDE.md']);
 
+/**
+ * Whether a file under a unit's inputs is left out of its fingerprint whatever that unit declares.
+ *
+ * Exported so a check can ask the same question without hashing anything: the gate that holds the rule
+ * above walks the inputs and filters with this, where taking a real fingerprint of all twelve chain steps
+ * to answer it cost 1.5s and pushed its own spec into the other cost half.
+ */
+export const skipsFingerprint = (file: string): boolean =>
+  !GUIDES_A_CHECK_READS.has(file) && (file.endsWith(`/${GUIDE}`) || file === GUIDE);
+
 export function fingerprintInputs(
   inputs: readonly string[],
   normalise?: (contents: Buffer, file: string) => Buffer | string,
@@ -404,9 +414,7 @@ export function fingerprintInputs(
 ): string {
   const hash = createHash('sha256');
   const excluded = exclude.map(repoRelative);
-  const isExcluded = (file: string): boolean =>
-    (!GUIDES_A_CHECK_READS.has(file) && (file.endsWith(`/${GUIDE}`) || file === GUIDE))
-    || excluded.some((out) => covers(out, file));
+  const isExcluded = (file: string): boolean => skipsFingerprint(file) || excluded.some((out) => covers(out, file));
   for (const file of [...new Set(inputs.flatMap((target) => tree.list(target)))].sort().filter((f) => !isExcluded(f))) {
     const contents = tree.read(file);
     // Without a normaliser the bytes are hashed as read — no copy on the path that runs per command

@@ -321,9 +321,6 @@ const ASKS_GIT_DIRECTLY: Record<string, string> = {
   'packages/repo-checks/tests/chain-inputs.spec.ts':
     '`--others --ignored --directory` asks which roots are gitignored — a different question, which lists '
     + 'directories and reads none of them',
-  'packages/abuddy-sdk/tests/env/identity-guard.spec.ts':
-    'the same question, asked again because a spec may not import across packages (`repo-check-boundary`); it '
-    + 'already uses `-co --exclude-standard` and filters to what is on disk',
 };
 
 /**
