@@ -1,9 +1,9 @@
 {
-  "measuredAt": "2026-10-01T06:45:05.704Z",
+  "measuredAt": "2026-10-01T07:02:24.642Z",
   "costs": {
     "tests/app/app-target.spec.ts": 97,
     "tests/app/beta-app.spec.ts": 139,
-    "tests/app/instance-keys.spec.ts": 270,
+    "tests/app/instance-secrets.spec.ts": 275,
     "tests/app/instances.spec.ts": 34,
     "tests/app/playwright.spec.ts": 7,
     "tests/build/build-registry.spec.ts": 588,

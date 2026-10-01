@@ -1,12 +1,11 @@
-// The user's API keys, host-internal: the host and the API read and write them here. Packs reach only the metadata,
+// The user's secrets, host-internal: the host and the API read and write them here. Packs reach only the metadata,
 // through `services.secrets`, and never import this module.
-import * as path from 'node:path';
 import { resolveAppContext, type AppEnv } from '@abuddy/sdk/env';
 import { _rootEvents } from '@abuddy/sdk/runtime';
 import { _getSecretsFilePath } from '@abuddy/sdk/utils';
 import type { SecretsSnapshot } from '@abuddy/sdk/services';
 import { createSecretsStore, type SecretsStore } from './store.ts';
-import { fileKeyVault, osKeyVault } from './vault.ts';
+import { dataKeyFile, fileKeyVault, osKeyVault } from './vault.ts';
 import type { PackRegistry } from '../packs/registry.ts';
 
 /**
@@ -27,7 +26,7 @@ export function _useFileVault(env: AppEnv, requested: string | undefined): boole
 }
 
 export { createSecretsStore } from './store.ts';
-export { fileKeyVault, memoryKeyVault, osKeyVault, KeyVaultUnavailableError, type KeyVault } from './vault.ts';
+export { dataKeyAccount, dataKeyFile, fileKeyVault, memoryKeyVault, osKeyVault, KeyVaultUnavailableError, type KeyVault } from './vault.ts';
 
 let store: SecretsStore | undefined;
 
@@ -39,13 +38,13 @@ function appStore(): SecretsStore {
   store = createSecretsStore({
     filePath,
     osVault: () => osKeyVault(context.appName),
-    fileVault: () => fileKeyVault(path.join(path.dirname(filePath), 'secrets.key')),
+    fileVault: () => fileKeyVault(dataKeyFile(filePath)),
     useFileVault: _useFileVault(context.env, process.env.ABUDDY_SECRETS_VAULT),
   });
   return store;
 }
 
-/** The user's API keys (see `SecretsStore`) */
+/** The user's secrets (see `SecretsStore`) */
 export const secretsStore: SecretsStore = {
   status: () => appStore().status(),
   list: () => appStore().list(),

@@ -8,7 +8,7 @@ import * as fs from 'node:fs';
 import { _secretRules, _secretProviderLabel, _toSecretInfo, type ProviderName, type SecretInfo, type SecretProvider, type SecretsStatus } from '@abuddy/sdk/services';
 import { registerSecretValue } from './redaction.ts';
 import { writePrivateFile } from './private-file.ts';
-import { KeyVaultUnavailableError, type KeyVault } from './vault.ts';
+import { dataKeyAccount, KeyVaultUnavailableError, type KeyVault } from './vault.ts';
 
 const FORMAT = 1;
 const AUTH_TAG_BYTES = 16;
@@ -59,9 +59,8 @@ export interface SecretsStore {
 const rememberForRedaction = (value: string) => { registerSecretValue(value); };
 
 const newKeyId = () => `k_${crypto.randomBytes(12).toString('base64url')}`;
-const account = (keyId: string) => `secrets:${keyId}`;
 /** An account no data key uses (key ids start with `k_`): reading it checks the OS vault without finding an item to prompt for */
-const PROBE_ACCOUNT = account('probe');
+const PROBE_ACCOUNT = dataKeyAccount('probe');
 
 export function createSecretsStore(options: SecretsStoreOptions): SecretsStore {
   const now = options.now ?? Date.now;
@@ -102,7 +101,7 @@ export function createSecretsStore(options: SecretsStoreOptions): SecretsStore {
       for (const { vault, keyId } of created) {
         dataKeys.delete(keyId);
         try {
-          vault.delete(account(keyId));
+          vault.delete(dataKeyAccount(keyId));
         } catch {
           // The vault is unavailable too; nothing more to do
         }
@@ -138,7 +137,7 @@ export function createSecretsStore(options: SecretsStoreOptions): SecretsStore {
   const loadKey = (file: SecretsFile, keyId: string): Buffer | undefined => {
     const cached = dataKeys.get(keyId);
     if (cached) return cached;
-    const stored = withVault(file, (vault) => vault.get(account(keyId)));
+    const stored = withVault(file, (vault) => vault.get(dataKeyAccount(keyId)));
     if (!stored) return undefined;
     const key = Buffer.from(stored, 'base64');
     dataKeys.set(keyId, key);
@@ -153,7 +152,7 @@ export function createSecretsStore(options: SecretsStoreOptions): SecretsStore {
     const key = crypto.randomBytes(32);
     const keyId = file.keyId;
     withVault(file, (vault) => {
-      vault.set(account(keyId), key.toString('base64'));
+      vault.set(dataKeyAccount(keyId), key.toString('base64'));
       pendingKeys.push({ vault, keyId });
     });
     dataKeys.set(keyId, key);
@@ -261,7 +260,7 @@ export function createSecretsStore(options: SecretsStoreOptions): SecretsStore {
       osVaultUnavailable = false;
       for (const keyId of previousKeyIds) {
         try {
-          options.osVault().delete(account(keyId));
+          options.osVault().delete(dataKeyAccount(keyId));
         } catch {
           // Nothing to delete where the OS vault is unavailable
         }

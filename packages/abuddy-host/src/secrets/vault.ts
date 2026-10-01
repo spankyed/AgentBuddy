@@ -1,5 +1,6 @@
-// Where the data key that encrypts stored API keys lives: the OS credential store, or a file the user chose.
+// Where the data key that encrypts the stored secrets lives: the OS credential store, or a file the user chose.
 import * as fs from 'node:fs';
+import * as path from 'node:path';
 import { createRequire } from 'node:module';
 import { writePrivateFile } from './private-file.ts';
 import { errorMessage } from '@abuddy/sdk/utils/pure';
@@ -13,6 +14,19 @@ export interface KeyVault {
   set(account: string, value: string): void;
   delete(account: string): void;
 }
+
+/**
+ * The account a store's data key is under, and the file an unprotected one keeps it in. Both are facts about
+ * a store on disk rather than about either vault, so anything reading a store that this process did not
+ * create — `abuddy run --with-secrets`, copying an environment's secrets into an instance — addresses it
+ * through these rather than spelling the convention again.
+ *
+ * The third such fact is the credential store's service name, which is the app name: a caller for another
+ * environment takes it from `resolveAppContext({ env }).appName`, the same accessor `appStore` reads.
+ */
+export const dataKeyAccount = (keyId: string): string => `secrets:${keyId}`;
+
+export const dataKeyFile = (secretsFile: string): string => path.join(path.dirname(secretsFile), 'secrets.key');
 
 /** The OS credential store can't be used on this system (no Secret Service, a keyring that refuses) */
 export class KeyVaultUnavailableError extends Error {

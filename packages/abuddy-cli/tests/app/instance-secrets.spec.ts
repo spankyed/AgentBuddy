@@ -67,9 +67,10 @@ describe('copying keys into a new instance', () => {
     const keyFile = path.join(path.dirname(copied), 'secrets.key');
     expect(JSON.parse(fs.readFileSync(keyFile, 'utf-8')), 'and so is the data key that decrypts them')
       .toEqual({ 'secrets:k_1': 'the-data-key' });
-    // One reach, to read the source key; the service name is derived from the environment's data dir
-    // rather than a second copy of APP_NAMES, which is what pointing that dir at a temp one shows here
-    expect(osEntries).toEqual([{ service: path.basename(srcDir), account: 'secrets:k_1' }]);
+    // One reach, to read the source key, under the environment's real app name — the service the app's own
+    // store uses. `appDataDirFor` is mocked to a temp dir here, so an assertion that still names
+    // `abuddy-dev` is what shows the service comes from the app name and not from that directory.
+    expect(osEntries).toEqual([{ service: 'abuddy-dev', account: 'secrets:k_1' }]);
   });
 
   // The field the app reads to tell the user which protection is in force. A copy sits in a file, and

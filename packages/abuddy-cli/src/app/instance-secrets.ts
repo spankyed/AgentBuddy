@@ -28,9 +28,9 @@
  */
 import * as fs from 'node:fs';
 import * as path from 'node:path';
-import { appDataDirFor, type AppEnv } from '@abuddy/sdk/env';
+import { appDataDirFor, resolveAppContext, type AppEnv } from '@abuddy/sdk/env';
 import { _appDataPaths } from '@abuddy/sdk/utils';
-import { fileKeyVault, osKeyVault, type KeyVault } from '@abuddy/host/secrets';
+import { dataKeyAccount, dataKeyFile, fileKeyVault, osKeyVault, type KeyVault } from '@abuddy/host/secrets';
 import type { InstanceKind, OpenedInstance } from './instances.ts';
 
 /** What a secrets file records about itself. Only the fields this needs; the store owns the rest. */
@@ -39,9 +39,6 @@ interface SecretsFile {
   keyId?: string;
   secrets?: unknown[];
 }
-
-/** The account a data key is stored under, as `@abuddy/host/secrets` names it. */
-const account = (keyId: string) => `secrets:${keyId}`;
 
 const packagedLayout = (kind: InstanceKind) => kind === 'packaged';
 
@@ -54,25 +51,28 @@ const readFile = (file: string): SecretsFile | undefined => {
 };
 
 /**
- * Where the shared data dir for this environment keeps its keys. `appDataDirFor` is used rather than
- * `resolveAppContext` on purpose: it ignores `ABUDDY_USER_DATA_DIR`, so the source is the environment's own
- * directory and never whatever an enclosing instance pointed this process at.
+ * Where the shared data dir for this environment keeps its secrets. Every *path* here comes from
+ * `appDataDirFor` rather than `resolveAppContext().userDataDir`, because that one follows
+ * `ABUDDY_USER_DATA_DIR`: the source has to be the environment's own directory, never whatever an enclosing
+ * instance pointed this process at.
  */
 export function sourceSecretsFile(env: AppEnv, kind: InstanceKind): string {
   return _appDataPaths(appDataDirFor(env), { packaged: packagedLayout(kind) }).secretsFile;
 }
 
 /**
- * The keychain service an environment's keys are under. `APP_NAMES` is private to `@abuddy/sdk/env`, and the
- * app name is the last segment of its data dir on every platform (`platformDataDir` joins it), so this reads
- * the one public thing that already carries it rather than keeping a second copy of the table.
+ * The vault a secrets file's own `protection` says its data key is in — which is a different question from the
+ * one the app answers when it opens a store: the app chooses a vault for one it may be about to create, from
+ * the environment and the user's choice, while a tool reading a store that already exists must use whichever
+ * one the file records.
+ *
+ * The credential store's service is the app name, read through `resolveAppContext` — the same accessor the
+ * app's own store uses, so the two cannot drift. Only `appName` is taken from that context: its `userDataDir`
+ * would follow `ABUDDY_USER_DATA_DIR`, where every path here comes from `appDataDirFor` instead.
  */
-const keychainService = (env: AppEnv) => path.basename(appDataDirFor(env));
-
-/** The vault a secrets file's own `protection` says its data key is in. */
 function vaultFor(file: SecretsFile, secretsFile: string, env: AppEnv): KeyVault {
-  if (file.protection === 'unprotected') return fileKeyVault(path.join(path.dirname(secretsFile), 'secrets.key'));
-  return osKeyVault(keychainService(env));
+  if (file.protection === 'unprotected') return fileKeyVault(dataKeyFile(secretsFile));
+  return osKeyVault(resolveAppContext({ env }).appName);
 }
 
 export interface SecretCopy {
@@ -98,7 +98,7 @@ export function copySecretsInto(instance: OpenedInstance, kind: InstanceKind, en
   if (count === 0) throw new Error(`--with-secrets found no keys to copy: ${from} holds none.`);
   if (!source.keyId) throw new Error(`--with-secrets can't read ${from}: it records no keyId.`);
 
-  const dataKey = vaultFor(source, from, env).get(account(source.keyId));
+  const dataKey = vaultFor(source, from, env).get(dataKeyAccount(source.keyId));
   if (dataKey === undefined) {
     throw new Error(
       `--with-secrets could not read the data key for ${from}. Its values stay encrypted without it, so there `
@@ -111,7 +111,7 @@ export function copySecretsInto(instance: OpenedInstance, kind: InstanceKind, en
   // `unprotected` because the key now lives beside the file rather than in the credential store, and the
   // app reads this field to tell the user which it is
   fs.writeFileSync(target, JSON.stringify({ ...source, protection: 'unprotected' }, null, 2) + '\n');
-  fileKeyVault(path.join(path.dirname(target), 'secrets.key')).set(account(source.keyId), dataKey);
+  fileKeyVault(dataKeyFile(target)).set(dataKeyAccount(source.keyId), dataKey);
 
   return { count, from };
 }
