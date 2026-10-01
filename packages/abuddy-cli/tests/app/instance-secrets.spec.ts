@@ -1,0 +1,147 @@
+import * as fs from 'node:fs';
+import * as os from 'node:os';
+import * as path from 'node:path';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { _appDataPaths } from '@abuddy/sdk/utils';
+import type { OpenedInstance } from '../../src/app/instances';
+
+/**
+ * `--with-secrets` copies the environment's stored keys into a new instance. The property under test is the
+ * one that made "start with none" the default in the first place: the copy stays **inside** the instance,
+ * so `rm -rf` is still the whole cleanup and the OS keychain gains nothing.
+ */
+let tmp: string;
+let srcDir: string;
+
+// The source is the environment's own data dir, which `appDataDirFor` resolves and which must not follow
+// ABUDDY_USER_DATA_DIR. Pointing it at a temp dir is the only way to test without touching real keys.
+vi.mock('@abuddy/sdk/env', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@abuddy/sdk/env')>()),
+  appDataDirFor: () => srcDir,
+}));
+
+const osEntries: Array<{ service: string; account: string }> = [];
+vi.mock('@abuddy/host/secrets', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@abuddy/host/secrets')>()),
+  // Records every reach for the credential store, so a test can assert it was never written
+  osKeyVault: (service: string) => ({
+    backend: 'fake', protection: 'os-keystore' as const,
+    get: (account: string) => { osEntries.push({ service, account }); return 'the-data-key'; },
+    set: (account: string) => { osEntries.push({ service, account }); },
+    delete: () => {},
+  }),
+}));
+
+const instance = (dir: string): OpenedInstance => ({ name: 'probe', dir, ephemeral: false, created: true });
+const srcSecrets = () => _appDataPaths(srcDir, { packaged: false }).secretsFile;
+
+function writeSource(file: Record<string, unknown>, keyFileEntries?: Record<string, string>) {
+  const target = srcSecrets();
+  fs.mkdirSync(path.dirname(target), { recursive: true });
+  fs.writeFileSync(target, JSON.stringify(file));
+  if (keyFileEntries) fs.writeFileSync(path.join(path.dirname(target), 'secrets.key'), JSON.stringify(keyFileEntries));
+}
+
+beforeEach(() => {
+  tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'instance-secrets-'));
+  srcDir = path.join(tmp, 'shared');
+  osEntries.length = 0;
+});
+afterEach(() => {
+  fs.rmSync(tmp, { recursive: true, force: true });
+  vi.resetModules();
+});
+
+describe('copying keys into a new instance', () => {
+  it('puts the keys and their data key inside the instance, and nothing in the keychain', async () => {
+    const { copySecretsInto } = await import('../../src/app/instance-secrets.ts');
+    writeSource({ format: 1, protection: 'os-keystore', keyId: 'k_1', secrets: [{ provider: 'anthropic' }, { provider: 'openai' }] });
+    const dir = path.join(tmp, 'inst');
+    fs.mkdirSync(dir);
+
+    const result = copySecretsInto(instance(dir), 'source', 'development');
+
+    expect(result.count).toBe(2);
+    const copied = _appDataPaths(dir, { packaged: false }).secretsFile;
+    expect(fs.existsSync(copied), 'the keys are in the instance').toBe(true);
+    const keyFile = path.join(path.dirname(copied), 'secrets.key');
+    expect(JSON.parse(fs.readFileSync(keyFile, 'utf-8')), 'and so is the data key that decrypts them')
+      .toEqual({ 'secrets:k_1': 'the-data-key' });
+    // One reach, to read the source key; the service name is derived from the environment's data dir
+    // rather than a second copy of APP_NAMES, which is what pointing that dir at a temp one shows here
+    expect(osEntries).toEqual([{ service: path.basename(srcDir), account: 'secrets:k_1' }]);
+  });
+
+  // The field the app reads to tell the user which protection is in force. A copy sits in a file, and
+  // Settings says so — claiming os-keystore here would be a lie the UI repeats.
+  it('records the copy as unprotected, because the key now sits beside it', async () => {
+    const { copySecretsInto } = await import('../../src/app/instance-secrets.ts');
+    writeSource({ format: 1, protection: 'os-keystore', keyId: 'k_1', secrets: [{ provider: 'anthropic' }] });
+    const dir = path.join(tmp, 'inst');
+    fs.mkdirSync(dir);
+
+    copySecretsInto(instance(dir), 'source', 'development');
+
+    const copied = JSON.parse(fs.readFileSync(_appDataPaths(dir, { packaged: false }).secretsFile, 'utf-8'));
+    expect(copied.protection).toBe('unprotected');
+    expect(copied.secrets, 'the encrypted values carry over untouched').toHaveLength(1);
+  });
+
+  it('reads a source that already uses a file vault without going near the keychain', async () => {
+    const { copySecretsInto } = await import('../../src/app/instance-secrets.ts');
+    writeSource({ format: 1, protection: 'unprotected', keyId: 'k_2', secrets: [{ provider: 'groq' }] },
+                { 'secrets:k_2': 'file-held-key' });
+    const dir = path.join(tmp, 'inst');
+    fs.mkdirSync(dir);
+
+    copySecretsInto(instance(dir), 'source', 'development');
+
+    expect(osEntries, 'an unprotected source needs no credential store').toEqual([]);
+    const keyFile = path.join(path.dirname(_appDataPaths(dir, { packaged: false }).secretsFile), 'secrets.key');
+    expect(JSON.parse(fs.readFileSync(keyFile, 'utf-8'))).toEqual({ 'secrets:k_2': 'file-held-key' });
+  });
+
+  // A packaged instance stores at the dir's root, a source run under .data/. Copying into the wrong one
+  // leaves the app looking at an empty store while the keys sit beside it.
+  it('writes the layout the app kind will read', async () => {
+    const { copySecretsInto } = await import('../../src/app/instance-secrets.ts');
+    const packagedSource = _appDataPaths(srcDir, { packaged: true }).secretsFile;
+    fs.mkdirSync(path.dirname(packagedSource), { recursive: true });
+    fs.writeFileSync(packagedSource, JSON.stringify({ format: 1, protection: 'os-keystore', keyId: 'k_3', secrets: [{ p: 1 }] }));
+    const dir = path.join(tmp, 'inst');
+    fs.mkdirSync(dir);
+
+    copySecretsInto(instance(dir), 'packaged', 'beta');
+
+    expect(fs.existsSync(_appDataPaths(dir, { packaged: true }).secretsFile)).toBe(true);
+    expect(fs.existsSync(_appDataPaths(dir, { packaged: false }).secretsFile), 'not the source layout').toBe(false);
+  });
+});
+
+describe('when there is nothing useful to copy', () => {
+  // Throwing rather than warning: --with-secrets was asked for, and a run that quietly starts with no keys is
+  // the exact situation this flag exists to avoid.
+  it('refuses when the environment has no secrets file', async () => {
+    const { copySecretsInto } = await import('../../src/app/instance-secrets.ts');
+    const dir = path.join(tmp, 'inst');
+    fs.mkdirSync(dir);
+    expect(() => copySecretsInto(instance(dir), 'source', 'development')).toThrow(/no keys to copy/);
+  });
+
+  it('refuses an empty store rather than reporting a copy of nothing', async () => {
+    const { copySecretsInto } = await import('../../src/app/instance-secrets.ts');
+    writeSource({ format: 1, protection: 'os-keystore', keyId: 'k_1', secrets: [] });
+    const dir = path.join(tmp, 'inst');
+    fs.mkdirSync(dir);
+    expect(() => copySecretsInto(instance(dir), 'source', 'development')).toThrow(/holds none/);
+  });
+
+  it('refuses when the data key cannot be read, since the values stay ciphertext without it', async () => {
+    writeSource({ format: 1, protection: 'unprotected', keyId: 'k_9', secrets: [{ p: 1 }] }, {});
+    const { copySecretsInto } = await import('../../src/app/instance-secrets.ts');
+    const dir = path.join(tmp, 'inst');
+    fs.mkdirSync(dir);
+    expect(() => copySecretsInto(instance(dir), 'source', 'development')).toThrow(/could not read the data key/);
+    expect(fs.existsSync(_appDataPaths(dir, { packaged: false }).secretsFile), 'and writes no half-copy').toBe(false);
+  });
+});

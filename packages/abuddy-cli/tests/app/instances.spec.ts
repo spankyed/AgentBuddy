@@ -152,7 +152,7 @@ describe('what removing accepts', () => {
 describe('the flags', () => {
   it('take the instance ones out and leave the rest for the app parser', () => {
     expect(parseInstanceFlags(['--instance', 'probe', '--app-root', '/repo']))
-      .toEqual({ mode: { kind: 'named', name: 'probe' }, rest: ['--app-root', '/repo'] });
+      .toEqual({ mode: { kind: 'named', name: 'probe' }, withSecrets: false, rest: ['--app-root', '/repo'] });
     expect(parseInstanceFlags(['--instance=probe']).mode).toEqual({ kind: 'named', name: 'probe' });
     expect(parseInstanceFlags(['--fresh']).mode).toEqual({ kind: 'fresh' });
     expect(parseInstanceFlags(['--ephemeral']).mode).toEqual({ kind: 'ephemeral' });
@@ -162,6 +162,19 @@ describe('the flags', () => {
   it('refuse two at once, which would silently pick one', () => {
     expect(() => parseInstanceFlags(['--fresh', '--ephemeral'])).toThrow();
     expect(() => parseInstanceFlags(['--instance', 'a', '--fresh'])).toThrow();
+  });
+
+  // --with-secrets is orthogonal to which instance, so it rides alongside the mode rather than inside it
+  it('carries --with-secrets beside the mode', () => {
+    expect(parseInstanceFlags(['--ephemeral', '--with-secrets']))
+      .toEqual({ mode: { kind: 'ephemeral' }, withSecrets: true, rest: [] });
+    expect(parseInstanceFlags(['--instance', 'probe']).withSecrets).toBe(false);
+  });
+
+  // The shared data dir already holds them, so there is nothing to copy into: a silent no-op here would
+  // read as if it had done something
+  it('refuses --with-secrets with no instance to copy into', () => {
+    expect(() => parseInstanceFlags(['--with-secrets'])).toThrow(/needs an instance/);
   });
 
   it('needs a name for --instance', () => {

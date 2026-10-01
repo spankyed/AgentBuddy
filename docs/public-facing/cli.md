@@ -133,8 +133,9 @@ The environment follows the app: a checkout runs as `development`, and a package
 - `--instance <name>` — that one, created the first time you name it, and kept
 - `--fresh` — a new one, whose name is printed so you can come back to it with `--instance`
 - `--ephemeral` — a new one, removed when `run` exits
+- `--with-secrets` — copy the secrets this environment already holds into the **new** instance, so a throwaway run can use them without you entering anything again. The values are encrypted in the instance's own data dir, and the data key that decrypts them goes in a file beside them rather than the OS credential store, so `rm -rf` removes both; that also means they are protected by file permissions alone, which is the trade every instance makes and which Settings states
 
-An instance is self-contained — its data, packs, logs and API keys are all inside it, and its keys go in a file beside them rather than into the OS keychain, which is shared by every app of one channel. So `rm -rf` is the whole cleanup, and `abuddy clean --instances` does it for you. The path is printed, and `abuddy db --data-dir <path>` reads it.
+An instance is self-contained — its data, packs, logs and secrets are all inside it, and the data key that encrypts its secrets goes in a file beside them rather than into the OS keychain, which is shared by every app of one channel. So `rm -rf` is the whole cleanup, and `abuddy clean --instances` does it for you. The path is printed, and `abuddy db --data-dir <path>` reads it.
 
 An instance is bound to the kind of app that created it — a checkout or a packaged build — because the two keep their databases in different places, and a directory holding both is one no tool can open. `run` refuses the mismatch rather than creating it.
 
@@ -388,9 +389,9 @@ Replace the database, and the media folder when the backup has one, with a backu
 
 #### `abuddy db reset [--force] [--keep-keys]` (names its data dir)
 
-Delete all of the app's data, as Reset Database in the Database settings does: both database partitions (the data and the run history) and the stored API keys. The app creates its default data (settings, seeded flows, the packs' seeds) on its next start and shows onboarding. Without `--force` it lists the entities per type and each stored key it would delete.
+Delete all of the app's data, as Reset Database in the Database settings does: both database partitions (the data and the run history) and the stored secrets. The app creates its default data (settings, seeded flows, the packs' seeds) on its next start and shows onboarding. Without `--force` it lists the entities per type and each stored secret it would delete.
 
-No backup holds the API keys — `export` and the Database settings' backups copy the databases and the media folder, never the keys or the data key that encrypts them — so a deleted key is entered again in Settings → Secrets, from the provider's own account. That's why the listing names each one by provider and label (never its value), and why `--keep-keys` leaves them where they are and deletes only the data.
+No backup holds the secrets — `export` and the Database settings' backups copy the databases and the media folder, never the secrets or the data key that encrypts them — so a deleted secret is entered again in Settings → Secrets. That's why the listing names each one by provider and label (never its value), and why `--keep-keys` leaves them where they are and deletes only the data.
 
 #### `abuddy db clear-settings [--force]` (names its data dir)
 

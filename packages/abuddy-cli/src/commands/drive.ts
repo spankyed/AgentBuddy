@@ -29,6 +29,8 @@ import { findPackRoot, readManifest } from '../utils';
 import { cliDirs, parseAppFlags, resolveDevelopmentApp } from '../app/app-target';
 import { instanceFor, instanceInUse, parseInstanceFlags, removeInstance, INSTANCE_USAGE } from '../app/instances';
 import { fixtureEnv } from './test';
+import { appEnv } from './run';
+import { copySecretsInto } from '../app/instance-secrets.ts';
 import { resolvePlaywrightCli } from '../app/playwright';
 import { ensureCheckoutPackages } from '../build/checkout-packages.ts';
 
@@ -133,7 +135,7 @@ export async function drive(args: string[]) {
 
   const root = findPackRoot(process.cwd());
   const manifest = readManifest(root);
-  const { mode, rest } = parseInstanceFlags(args);
+  const { mode, withSecrets, rest } = parseInstanceFlags(args);
   const flags = parseAppFlags(rest);
 
   // Before the app is resolved, which can prompt and can download a Beta: a first run has nothing to
@@ -152,6 +154,10 @@ export async function drive(args: string[]) {
 
   const app = await resolveDevelopmentApp({ flags, hostVersion: manifest.hostVersion ?? '*' });
   const instance = instanceFor(mode, app.kind, cliDirs());
+  if (instance?.created && withSecrets) {
+    const { count, from } = copySecretsInto(instance, app.kind, appEnv(app));
+    console.log(`Copied ${count} secret${count === 1 ? '' : 's'} from ${from}\n`);
+  }
 
   /**
    * Reachable from every way this ends, and set up the moment the instance exists — a signal or a throw

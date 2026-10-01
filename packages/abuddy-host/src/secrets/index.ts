@@ -27,7 +27,7 @@ export function _useFileVault(env: AppEnv, requested: string | undefined): boole
 }
 
 export { createSecretsStore } from './store.ts';
-export { fileKeyVault, memoryKeyVault, KeyVaultUnavailableError, type KeyVault } from './vault.ts';
+export { fileKeyVault, memoryKeyVault, osKeyVault, KeyVaultUnavailableError, type KeyVault } from './vault.ts';
 
 let store: SecretsStore | undefined;
 

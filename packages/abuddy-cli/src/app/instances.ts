@@ -109,6 +109,8 @@ export interface OpenedInstance {
   dir: string;
   /** Removed when the run ends */
   ephemeral: boolean;
+  /** This call created it. `--with-secrets` acts only on a new one: an existing instance has its own already */
+  created: boolean;
 }
 
 /** An instance by name, created if it isn't there yet. */
@@ -116,9 +118,10 @@ export function openInstance(dirs: CliDirs, name: string, kind: InstanceKind): O
   const dir = instanceDir(dirs, name);
   const problem = bindingProblem(dir, kind);
   if (problem) throw new Error(problem);
+  const existed = fs.existsSync(dir);
   fs.mkdirSync(dir, { recursive: true });
   if (!readRecord(dir)) writeRecord(dir, { kind, created: new Date().toISOString() });
-  return { name, dir, ephemeral: false };
+  return { name, dir, ephemeral: false, created: !existed };
 }
 
 /**
@@ -133,7 +136,7 @@ export function mintInstance(dirs: CliDirs, kind: InstanceKind, ephemeral: boole
   fs.mkdirSync(path.dirname(dir), { recursive: true });
   fs.mkdirSync(dir);
   writeRecord(dir, { kind, created: new Date().toISOString(), ...(ephemeral ? { pid: process.pid } : {}) });
-  return { name: ephemeral ? path.basename(dir) : name, dir, ephemeral };
+  return { name: ephemeral ? path.basename(dir) : name, dir, ephemeral, created: true };
 }
 
 export interface ListedInstance {
@@ -246,6 +249,8 @@ export const INSTANCE_USAGE = [
   '  --instance <name>   a data dir of its own, created the first time you name it',
   '  --fresh             a new instance, whose name is printed so you can come back to it',
   '  --ephemeral         a new instance, removed when this command exits',
+  '  --with-secrets      copy the secrets this environment already holds into the new instance, so a',
+  '                      throwaway run can use them without you entering anything again',
 ].join('\n');
 
 /**
@@ -253,8 +258,9 @@ export const INSTANCE_USAGE = [
  * rather than in `AppFlags` because `abuddy test` shares that parser and must never take them: its data
  * dir is a fresh temp one every run, which is what makes a test mean the same thing on any machine.
  */
-export function parseInstanceFlags(argv: string[]): { mode: InstanceMode; rest: string[] } {
+export function parseInstanceFlags(argv: string[]): { mode: InstanceMode; withSecrets: boolean; rest: string[] } {
   const rest: string[] = [];
+  let withSecrets = false;
   let mode: InstanceMode = { kind: 'shared' };
   const set = (next: InstanceMode, flag: string) => {
     if (mode.kind !== 'shared') throw new Error(`${flag} can't be combined with --${mode.kind === 'named' ? 'instance' : mode.kind}.`);
@@ -271,11 +277,18 @@ export function parseInstanceFlags(argv: string[]): { mode: InstanceMode; rest: 
       set({ kind: 'fresh' }, '--fresh');
     } else if (name === '--ephemeral') {
       set({ kind: 'ephemeral' }, '--ephemeral');
+    } else if (name === '--with-secrets') {
+      withSecrets = true;
     } else {
       rest.push(arg);
     }
   }
-  return { mode, rest };
+  // Nothing to copy into: the shared data dir already has the keys, so this would be a no-op that reads
+  // as if it did something
+  if (withSecrets && mode.kind === 'shared') {
+    throw new Error('--with-secrets needs an instance to copy into: add --instance <name>, --fresh or --ephemeral.');
+  }
+  return { mode, withSecrets, rest };
 }
 
 /** The instance a mode asks for, or nothing for the shared data dir. */

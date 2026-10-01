@@ -8,6 +8,7 @@ import { findPackRoot, readManifest } from '../utils';
 import { findFEEntry, packExternalsPlugin } from '../build/fe-bundler';
 import { cliDirs, parseAppFlags, resolveDevelopmentApp, type AppTarget } from '../app/app-target';
 import { instanceFor, parseInstanceFlags, removeInstance, INSTANCE_USAGE } from '../app/instances';
+import { copySecretsInto } from '../app/instance-secrets.ts';
 import { resolveAppContext } from '@abuddy/sdk/env';
 import type { AppEnv } from '@abuddy/sdk/env';
 import { readApiEndpoint } from '@abuddy/host/process-liveness';
@@ -219,11 +220,22 @@ async function session(args: string[], hooks: SessionHooks) {
   const manifest = readManifest(root);
   const feEntry = findFEEntry(root);
 
-  const { mode, rest } = parseInstanceFlags(args);
+  const { mode, withSecrets, rest } = parseInstanceFlags(args);
   const flags = parseAppFlags(rest);
+  // `run` forwards nothing, so a leftover flag is a typo rather than an argument for something else —
+  // where `drive` hands its own leftovers to Playwright and must not refuse them. Ignoring one silently
+  // is how a removed or misspelled flag reads as having been obeyed.
+  const unknown = flags.args.filter(arg => arg.startsWith('-'));
+  if (unknown.length > 0) {
+    throw new Error(`Unknown option${unknown.length === 1 ? '' : 's'} ${unknown.join(', ')}. See abuddy run --help.`);
+  }
   const app = await resolveDevelopmentApp({ flags, hostVersion: manifest.hostVersion ?? '*' });
   const env = appEnv(app);
   const instance = instanceFor(mode, app.kind, cliDirs());
+  if (instance?.created && withSecrets) {
+    const { count, from } = copySecretsInto(instance, app.kind, env);
+    console.log(`Copied ${count} secret${count === 1 ? '' : 's'} from ${from}`);
+  }
   const place: AppPlace = { env, userDataDir: instance?.dir };
   const { userDataDir, apiPortFile } = resolveAppContext(place);
 
