@@ -1,5 +1,5 @@
 {
-  "measuredAt": "2026-10-01T07:02:24.642Z",
+  "measuredAt": "2026-10-01T08:25:31.278Z",
   "costs": {
     "tests/app/app-target.spec.ts": 97,
     "tests/app/beta-app.spec.ts": 139,
@@ -13,7 +13,7 @@
     "tests/build/dep-types-version.spec.ts": 12,
     "tests/build/dependency-flow-helpers.integration.spec.ts": 4952,
     "tests/build/dependency-graph.integration.spec.ts": 23833,
-    "tests/build/dsl-defs.integration.spec.ts": 2553,
+    "tests/build/dsl-defs.integration.spec.ts": 3635,
     "tests/build/facade-gate-system-contract.integration.spec.ts": 9269,
     "tests/build/facade-gate.integration.spec.ts": 9397,
     "tests/build/facade-typing.integration.spec.ts": 36867,
@@ -23,7 +23,7 @@
     "tests/build/fe-bundler-tailwind.spec.ts": 1211,
     "tests/build/fe-bundler-ui-theme.spec.ts": 25,
     "tests/build/feature-settings.spec.ts": 180,
-    "tests/build/host-import-guard.spec.ts": 940,
+    "tests/build/host-import-guard.spec.ts": 582,
     "tests/build/pack-rules.spec.ts": 351,
     "tests/build/pack-sources.spec.ts": 59,
     "tests/build/package-freshness.spec.ts": 1250,
