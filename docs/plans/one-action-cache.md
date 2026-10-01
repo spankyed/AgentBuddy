@@ -72,6 +72,12 @@ nouns would be motion, not progress.
 | *(absent)* | **dep file** | Buck2 `dep_files`, Ninja `depfile`, `gcc -MD`, Gradle incremental compile |
 | *(absent)* | **hermeticity** | Bazel/Buck2 sandboxing: an undeclared read fails rather than caching wrong |
 | `tier` | **tag + dependency constraint** | Nx `tags`/`depConstraints`, Bazel `visibility`, ArchUnit, dependency-cruiser |
+| `inputs` / `outputs` | *already standard* | the shared vocabulary of Bazel, Gradle, Nx and Turborepo |
+| `excludes` | *already standard* | a negative input pattern: Bazel `glob(exclude=)`, Gradle `exclude(…)`, Nx/Turborepo `!` in `inputs` |
+| `exclusive` | *already standard* | Bazel's test tag `exclusive`, same word and same semantics |
+| `neverCachedBecause` | *already standard* | Gradle `@DisableCachingByDefault(because = …)`, `@UntrackedTask(because = …)` |
+| `optInBecause` | *better than standard* | Bazel's `manual` tag, which carries no reason; this one requires a sentence and has a case enforcing it |
+| `needs` | **`dependsOn`** | the one CI word in a build-system table — see below |
 
 **Tiers are not bespoke, and the repo already implements the standard construct — twice.**
 `findUpwardImports(LAYERS)` (`{ name, dir, allowed, forbidden }`) enforces the package layering over the
@@ -81,6 +87,19 @@ weak — not because tags are the wrong model but because there is no action gra
 has nothing to resolve against. One thing *not* to coalesce toward: the JS test pyramid
 (unit/integration/e2e) is descriptive naming enforced by nothing, where these tiers are an enforced
 dependency constraint. Taking the standard name there would lose the standard mechanism.
+
+**Most of the vocabulary is already right, which is the thing to know before renaming anything.** Six of
+the fields above are the industry terms already, one of them (`optInBecause`) is a strict improvement on
+the standard, and `tier` is the standard construct under a name worth keeping — Bazel's and Nx's `tags`
+are unordered labels with the constraint expressed separately, where a tier is *ordered*, and the rule
+runs on that ordering. "Adopt the standard vocabulary" therefore means one rename, not a sweep.
+
+**The one rename is `needs` → `dependsOn`.** `needs` is CI vocabulary (GitHub Actions, GitLab CI);
+`dependsOn` is build-system vocabulary (Gradle, Nx, Turborepo; Bazel spells it `deps`). Every other field
+in the step table is build-system-shaped and this one reads as a pipeline. It is ~21 sites — 9 reads
+(`chain-schedule.ts:72`, `chain-steps.ts:158/174/185`, `step-timing.ts:22`, four in specs), 12
+declarations, and two error strings. **It hangs on open decision 4, not on the naming argument**, which is
+settled: if hand-declared edges do not survive item 17, this renames a field on its way out.
 
 What the repo has and lacks, against that model:
 
@@ -115,6 +134,12 @@ is `packages:ensure → compile → build:app → test:packaged-authoring`, whic
 
 1. **An action.** One (tool, scope) pair: `tsc -p packages/abuddy-host`, `vitest --project @abuddy/ears`,
    `oxlint .`, `abuddy build @app/default-setup`. Roughly 40 where there are 12 steps.
+
+   **It replaces two types, not one.** `BuildUnit` is `{ inputs, excludes, outputs }` and `ChainStep` is
+   those three plus seven more, with `unitFor(step)` converting one to the other on every call — the
+   fingerprint protocol's shape and the scheduler's shape, kept apart by a function. One concept, so one
+   type, and the conversion goes. That is a merge rather than a rename, which is why it is sequenced
+   behind the action registry rather than available now.
 2. **An action registry derived from the tree**, not listed: one action per tsconfig, per vitest project,
    per build unit. A new package gets its actions by existing, the way `PACKAGE_DIRS` already works from
    the root `workspaces` field.
