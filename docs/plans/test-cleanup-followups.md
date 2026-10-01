@@ -159,7 +159,7 @@ thin across suites rather than in one test.
 ## 4. `check:tiers` cannot follow into a workspace's `package.json` — **done, 2026-09-25**
 
 It follows root `npm run` chains and files under `tests/` and `scripts/`, so for a step that delegates to a
-workspace script — `test:integration` is now one — it inspects nothing and passes vacuously. Tier 2 for that
+workspace script — `test:integration` is now one — it inspects nothing and passes vacuously. No app needed for that
 step was established by reading the specs, not by the guard.
 
 **Done.** It follows `-w <ws>` / `--workspace <ws>` into that workspace's scripts, so a step that delegates
@@ -170,7 +170,7 @@ is inspected instead of passing vacuously. Mutation-checked: an app marker in `@
 not — two specs here say "the app configured for abuddy test" in a title, and scanning them would report
 them. That is the same false-positive class this checker was narrowed to avoid when it was written. So a
 spec that called `_electron.launch` directly would still not be caught; nothing does, and the E2E fixture
-that could lives in `@abuddy/testing`, which only tier-3 steps use.
+that could lives in `@abuddy/testing`, which only steps that need the app use.
 
 ## 5. Correct one row in the goal's *Do not remove* — **done, 2026-09-25**
 

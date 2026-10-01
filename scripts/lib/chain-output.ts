@@ -26,10 +26,19 @@ export const STEP_NAME_WIDTH = 27;
  * them came to disagree with the rows they describe. They are derived now, so widening the name column moves
  * them together and a doc comment cannot go stale against a number it only describes.
  */
-export const REASON_COLUMN = STEP_NAME_WIDTH + 20; // verdict(7) ␣ tier(2) ␣ name ␣ time(6) + two spaces
+export const REASON_COLUMN = STEP_NAME_WIDTH + 21; // verdict(7) ␣ marker(3) ␣ name ␣ time(6) + two spaces
+
+/**
+ * The one thing a row says about a step besides its name and its time: whether it needs the built app.
+ *
+ * Three characters, blank for a step that does not, so the column is a marker rather than a classification
+ * — which is what replaced it. `tier` printed `t1`/`t2`/`t3` here, three values no reader could act on,
+ * where the one that changes how a run behaves is whether the step waits for `build:app`.
+ */
+export const marker = (step: { needsApp?: true } | undefined): string => (step?.needsApp ? 'app' : '   ');
 
 /** The same, for `--dry`, which reports no time — so its reason starts where the time would have */
-export const DRY_REASON_COLUMN = STEP_NAME_WIDTH + 12;
+export const DRY_REASON_COLUMN = STEP_NAME_WIDTH + 13;
 
 /** The terminal's width, or a width worth wrapping to when the output is a pipe or a CI log */
 export const terminalWidth = (): number => process.stdout.columns ?? 100;
@@ -106,7 +115,7 @@ export function oneLine(column: number, text: string, width = terminalWidth()): 
  * The same number as `DRY_REASON_COLUMN` and not the same thing: both sit immediately after the name, one
  * holding a time and one a reason. Derived separately so that stays true if either row changes.
  */
-export const TIME_COLUMN = STEP_NAME_WIDTH + 12;
+export const TIME_COLUMN = STEP_NAME_WIDTH + 13;
 
 /**
  * Secondary text, dimmed on a terminal and left alone anywhere else.

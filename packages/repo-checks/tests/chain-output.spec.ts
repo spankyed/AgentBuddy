@@ -5,7 +5,7 @@ import * as path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { firstChange, REPO_ROOT } from '@abuddy/host/build/packages-built';
 import { CHAIN_STEPS } from '../../../scripts/lib/chain-steps.ts';
-import { briefly, classifyLine, declaredAt, dim, driftReport, DRY_REASON_COLUMN, howLong, shouldClassify, identicalRewrites, oneLine, REASON_COLUMN, staleLines, STEP_NAME_WIDTH, TIME_COLUMN, wrapAt, whenChanged, writerOf } from '../../../scripts/lib/chain-output.ts';
+import { briefly, classifyLine, declaredAt, dim, driftReport, DRY_REASON_COLUMN, howLong, identicalRewrites, marker, oneLine, REASON_COLUMN, shouldClassify, staleLines, STEP_NAME_WIDTH, TIME_COLUMN, whenChanged, wrapAt, writerOf } from '../../../scripts/lib/chain-output.ts';
 
 describe('wrapAt', () => {
   /**
@@ -213,7 +213,7 @@ describe('staleLines', () => {
 
 describe('declaredAt', () => {
   it('finds the line a step is declared on', () => {
-    const table = ["  // why it is never cached", "  { name: 'test', tier: 3, neverCachedBecause: '…',", '  },'].join('\n');
+    const table = ["  // why it is never cached", "  { name: 'test', needsApp: true, neverCachedBecause: '…',", '  },'].join('\n');
     expect(declaredAt(table, 'test')).toBe(2);
   });
 
@@ -285,10 +285,14 @@ it('lines every row up with what sits under it, for the widest step name', () =>
 
   const widest = [...CHAIN_STEPS].sort((a, b) => b.name.length - a.name.length)[0]!.name;
   const name = widest.padEnd(STEP_NAME_WIDTH);
-  // Built the way chain.ts builds them, so a change to either shape fails here rather than on a terminal
-  expect(`${'ok'.padStart(7)} t1 ${name} ${'26.1s'.padStart(6)}  `.length, "a run row's reason").toBe(REASON_COLUMN);
-  expect(`${'run'.padStart(7)} t1 ${name} `.length, "a --dry row's reason").toBe(DRY_REASON_COLUMN);
-  expect(`${'ok'.padStart(7)} t1 ${name} `.length, "a run row's time").toBe(TIME_COLUMN);
+  // Built the way chain.ts builds them, so a change to either shape fails here rather than on a terminal.
+  // `marker` is the width, not a literal: both of its answers must be one width or every row below a
+  // marked step shifts, which is the whole failure these columns exist to prevent.
+  expect(marker({ needsApp: true }).length, 'the marker is not one width').toBe(marker(undefined).length);
+  const mark = marker({ needsApp: true });
+  expect(`${'ok'.padStart(7)} ${mark} ${name} ${'26.1s'.padStart(6)}  `.length, "a run row's reason").toBe(REASON_COLUMN);
+  expect(`${'run'.padStart(7)} ${mark} ${name} `.length, "a --dry row's reason").toBe(DRY_REASON_COLUMN);
+  expect(`${'ok'.padStart(7)} ${mark} ${name} `.length, "a run row's time").toBe(TIME_COLUMN);
 });
 
 /** So a step name longer than the column fails by name, rather than knocking every line under it one to the left */

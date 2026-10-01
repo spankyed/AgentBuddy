@@ -262,7 +262,7 @@ default, in a suite whose tier allows 15s.
 **It was fixed at the tier rather than per test**, which is the opposite of what Decision 5 below asks and
 is the better answer. Five of the thirteen configs declared no timeout at all — `abuddy-ears`,
 `abuddy-host`, `abuddy-sdk`, `main`, `renderer` — so every spec in them ran on vitest's 5s/10s defaults,
-*tighter* than their tier. The budget belongs to the tier (`TIER_TIMEOUT_MS`), not to each test that trips
+*tighter* than their tier. The budget belongs to the size (`SIZE_MS`, `scripts/lib/unit-suites.ts`; a three-valued `tier` when this was written), not to each test that trips
 over a default, so all five now declare it, and `suite-timeouts.spec.ts` gained the half it was missing: it
 checked a ceiling and left silence as an unrecorded third state, which was the state that bit. It now
 requires each config to declare its tier's budget. The next test in line was a 4.1s lock test in

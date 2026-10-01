@@ -11,8 +11,8 @@ export default defineConfig({
   resolve: { conditions },
   ssr: { resolve: { conditions } },
   test: {
-    // Tier 1 (`TIER_TIMEOUT_MS`, scripts/lib/chain-steps.ts), declared rather than left to vitest's 5s
-    // default, which is tighter than the tier allows (`suite-timeouts.spec.ts`).
+    // Small (`SIZE_MS`, scripts/lib/unit-suites.ts), declared rather than left to vitest's 5s
+    // default, which is tighter than the size allows (`suite-timeouts.spec.ts`).
     testTimeout: 15_000,
     hookTimeout: 15_000,
     include: ['tests/**/*.spec.ts'],

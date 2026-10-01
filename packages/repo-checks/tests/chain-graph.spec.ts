@@ -33,17 +33,17 @@ describe('the chain graph', () => {
   });
 
   it('refuses a dependency that is not a step', () => {
-    const steps: ChainStep[] = [{ name: 'a', tier: 1, needs: ['nope'], inputs: [] }];
+    const steps: ChainStep[] = [{ name: 'a', needs: ['nope'], inputs: [] }];
     expect(() => orderedSteps(steps)).toThrow(/needs nope, which is not a step/);
   });
 
   it('refuses a cycle', () => {
-    const steps: ChainStep[] = [{ name: 'a', tier: 1, needs: ['b'], inputs: [] }, { name: 'b', tier: 1, needs: ['a'], inputs: [] }];
+    const steps: ChainStep[] = [{ name: 'a', needs: ['b'], inputs: [] }, { name: 'b', needs: ['a'], inputs: [] }];
     expect(() => orderedSteps(steps)).toThrow(/cycle/);
   });
 
   it('refuses two steps with one name, which would make `needs` ambiguous', () => {
-    const steps: ChainStep[] = [{ name: 'a', tier: 1, needs: [], inputs: [] }, { name: 'a', tier: 1, needs: [], inputs: [] }];
+    const steps: ChainStep[] = [{ name: 'a', needs: [], inputs: [] }, { name: 'a', needs: [], inputs: [] }];
     expect(() => orderedSteps(steps)).toThrow(/Two chain steps named a/);
   });
 

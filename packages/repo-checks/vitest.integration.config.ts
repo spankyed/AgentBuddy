@@ -9,7 +9,7 @@ export default defineConfig({
   resolve: { conditions },
   ssr: { resolve: { conditions } },
   test: {
-    // Tier 2 (`TIER_TIMEOUT_MS`): these specs run `tsc` over fixture trees, which is tens of seconds of
+    // Large (`SIZE_MS`): these specs run `tsc` over fixture trees, which is tens of seconds of
     // work in a handful of tests.
     testTimeout: 60_000,
     hookTimeout: 60_000,

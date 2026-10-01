@@ -1,9 +1,9 @@
 /**
  * The timeout overrides a spec file declares, read from its syntax tree.
  *
- * A tier budget lives in a vitest config; a third argument to `it()` overrides it for one test. A guard that
+ * A size budget lives in a vitest config; a third argument to `it()` overrides it for one test. A guard that
  * reads only configs sees the policy and not the escape, which is how fifteen overrides of 60s to 240s sat
- * in tier-1 suites whose budget is 15s.
+ * in small suites whose budget is 15s.
  *
  * **Read with the compiler, not a regular expression.** Two attempts at matching the source text failed in
  * both directions: `}, 500)` matched `setTimeout(() => {…}, 500)` inside a fixture string and gutted it,
@@ -15,7 +15,7 @@ import * as path from 'node:path';
 import ts from 'typescript';
 import { INTEGRATION_SUITES } from './chain-steps.ts';
 import { halfOfPath } from './spec-cost.ts';
-import { UNIT_SUITES, unitStepName } from './unit-suites.ts';
+import type { Size } from './unit-suites.ts';
 
 /** The vitest callables that take a trailing timeout */
 const RUNNERS = new Set(['it', 'test', 'describe', 'beforeAll', 'beforeEach', 'afterAll', 'afterEach']);
@@ -74,20 +74,21 @@ export function timeoutOverrides(absFile: string, repoRoot: string): TimeoutOver
 
 /** Every `*.spec.ts` under a directory */
 /**
- * The chain step that runs a spec, which is what decides the timeout budget it has to fit inside.
+ * The size of the target a spec runs in, which is what decides the timeout budget it has to fit inside.
  *
- * Here rather than in the spec that reads it, so the decision has a firing case: a package with a second
- * config runs its integration specs under `test:integration`, a tier-2 step, and everything else runs under
- * its pool's tier-1 step. Naming one package instead of deriving the set put the 8 integration specs in
- * `repo-checks` and `publish-checks` under a tier-1 budget — wrong, and invisible, because neither has a
- * per-test override today and the *configs* were already derived. A rule that can only be wrong later is
- * still wrong now.
+ * **The filename is not enough**, which is why this is a function and not a suffix test. A package with a
+ * second config runs its integration specs there and they are `large`; a package *without* one runs
+ * everything in its fast half, so a file named `x.integration.spec.ts` there is `small` whatever it is
+ * called. Deriving from `INTEGRATION_SUITES` rather than naming a package is the part with a firing case:
+ * naming one put the 8 integration specs in `repo-checks` and `publish-checks` under a small budget while
+ * they run large — wrong, and invisible, because neither has a per-test override today and the *configs*
+ * were already derived. A rule that can only be wrong later is still wrong now.
  */
-export function stepForSpec(file: string): string {
+export function sizeOfSpec(file: string): Size {
   const dir = file.split('/')[1];
-  if (halfOfPath(file) === 'integration' && INTEGRATION_SUITES.some((suite) => suite.dir === dir)) return 'test:integration';
-  const suite = UNIT_SUITES.find((candidate) => candidate.dir === dir);
-  return suite ? unitStepName(suite) : 'test:unit:host';
+  return halfOfPath(file) === 'integration' && INTEGRATION_SUITES.some((suite) => suite.dir === dir)
+    ? 'large'
+    : 'small';
 }
 
 export function specFilesUnder(dir: string): string[] {

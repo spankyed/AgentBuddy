@@ -52,10 +52,10 @@ Measured on an idle machine, 2026-09-25, each one a real run rather than a sum o
 |---|---|---|
 | nothing tracked | nothing | **0.9s** |
 | a doc, a comment, a CLAUDE.md | nothing but that — no step declares `docs/`, and a fingerprint skips every `CLAUDE.md` | **0.9s** |
-| one package's source (the renderer) | `test:unit:host`, which runs only the renderer's project and `@app/main`'s (it depends on the renderer), `typecheck`, then `build:app` and all of tier 3, because rebuilding the app moves what tier 3 reads | **115.1s** |
+| one package's source (the renderer) | `test:unit:host`, which runs only the renderer's project and `@app/main`'s (it depends on the renderer), `typecheck`, then `build:app` and every step that needs the app, because rebuilding it moves what they read | **115.1s** |
 | nothing is cached (a cold tree) | all 12 steps, three at a time (re-measured 2026-09-27, `--all`) | **178.3s** |
 
-The one-package row is the one worth reading twice: editing a package that the *app* is built from costs four times editing one it is not, because `build:app` rewrites `packages/*/dist` and every tier-3 step reads it. A change under `@abuddy/ears` or a pack's tests does not pay that.
+The one-package row is the one worth reading twice: editing a package that the *app* is built from costs four times editing one it is not, because `build:app` rewrites `packages/*/dist` and every step that needs the app reads it. A change under `@abuddy/ears` or a pack's tests does not pay that.
 
 `npm run chain --dry` prints that plan without running it, and says why each step is or is not cached —
 which is the way to find out why something you expected to be skipped is not.
@@ -256,27 +256,36 @@ Six rules that pay for themselves:
 
 ### What a test may read
 
-Every check in `npm run chain` declares a tier (`scripts/lib/chain-steps.ts`), which says what it is allowed
-to read. `npm run check:tiers` fails when a tier-1 or tier-2 step can reach the app.
+**A step says whether it needs the built app, and nothing else about what it may read.** `needsApp: true`
+(`scripts/lib/chain-steps.ts`) is the whole declaration; `npm run check:tiers` fails a step that reaches the
+app without it, or declares it without reading one.
 
-| Tier | May read | Examples |
-|---|---|---|
-| **1 pure** | its own package's source, the in-memory runtime, fakes | most of `test:unit`, `typecheck` |
-| **2 contract** | the built `@abuddy` packages, a pack's build output | `packages:ensure`, `compile`, `test:external-pack:contract` |
-| **3 app** | the built app | `build:app`, the E2E suite, `test:external-pack:app`, `test:packaged-authoring` |
+The rule it holds: a step that does not need the app must not reach one, because the moment it does it has
+to run after `build:app`, its real inputs become the whole repo, and it can no longer be cached or
+reordered. Four attempts at a cheaper chain each failed on exactly that, because nothing recorded it. A
+check that genuinely needs the app declares it — that is an answer, not a failure, and the fix is never to
+delete the check.
 
-The rule that matters is that tier 1 and tier 2 do not need the app, because the moment one does it has to
-run after `build:app`, its real inputs become the whole repo, and it can no longer be cached or reordered. Four
-attempts at a cheaper chain each failed on exactly that, because nothing recorded it. A check that genuinely
-needs the app is tier 3 — that is an answer, not a failure, and the fix is never to delete the check.
+**It asks two questions, because neither answers the other.** The inputs question is data: a step declaring
+`APP_OUTPUTS` reads the app whatever its scripts say. The scripts question is text: it follows each step's
+npm script and looks for the ways this repo launches the app. A step can launch the app without declaring
+its outputs as inputs, which only the scan sees; and `APP_ENTRY` (`packages/dev-mode.js`,
+`packages/entry-point.mjs`) is *source* sitting beside the built-app constant, which three app-free steps
+read — so the inputs question alone would be wrong in the other direction. The scan goes when the action
+graph can answer "does this transitively depend on `build:app`" (`docs/plans/one-action-cache.md`, item 17).
+
+**`build:app` does not declare it.** It writes the app rather than reading one, and the declaration is
+about reading. That distinction is why this replaced a three-valued `tier`, which lumped the producer in
+with its consumers: `docs/plans/tier-split.md` has the evidence, and the budget half of `tier` is now
+`SIZE_MS` in `scripts/lib/unit-suites.ts`.
 
 `test:external-pack` is split at that boundary: `:contract` validates, builds and typechecks each fixture
-pack and runs its harness specs with no app, in tier 2 before `build:app`, and `:app` runs its Playwright suite in
-tier 3. Two scripts rather than one with a flag, because `check:tiers` reads a step's scripts as text and a
-branch it never takes still reads as a reach. `test:packaged-authoring` is still tier 3 whole: its nine steps
-build on each other, so it takes a mode rather than a split.
+pack and runs its harness specs with no app, before `build:app`, and `:app` runs its Playwright suite after
+it. Two scripts rather than one with a flag, because the scan reads a step's scripts as text and a branch it
+never takes still reads as a reach. `test:packaged-authoring` needs the app whole: its nine steps build on
+each other, so it takes a mode rather than a split.
 [`goal-test-tiers.md`](docs/archive/goals/goal-test-tiers.md) has the rest, and what each of the four attempts at a
-cheaper chain measured.
+cheaper chain measured — written when the declaration was a tier.
 
 ## Commands
 
@@ -434,8 +443,8 @@ npm run test:unit:pack   # stale project, one process). These are the chain's tw
 npm run test:all         # test:unit, then the E2E tests
 npm run bench -w @abuddy/ears    # EARS engine benchmark (baseline and tolerance: packages/abuddy-ears/CLAUDE.md)
 npm run test:external-pack       # Both halves of the fixture-pack check, for running it by hand
-npm run test:external-pack:contract  # validate, build, typecheck, harness specs — no app needed (tier 2)
-npm run test:external-pack:app   # each pack's Playwright suite against this checkout (tier 3, needs npm run build)
+npm run test:external-pack:contract  # validate, build, typecheck, harness specs — no app needed
+npm run test:external-pack:app   # each pack's Playwright suite against this checkout (needs npm run build)
 npm run test:packaged-authoring  # Author, build, test and install a pack outside the monorepo from the packed @abuddy/* tarballs (needs npm run build)
 npm run compile          # Build packages/default-setup (abuddy build: compiled seeds, snapshot, types; DSL defs; dist/runtime/index.cjs)
 

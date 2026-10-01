@@ -13,17 +13,29 @@ import { dependencySource, PACKAGE_DIRS, workspaceDeps } from './workspace-deps.
  *   2 contract  the built @abuddy packages and a pack's build output. Not the app.
  *   3 app       the built app.
  *
- * A tier-1 or tier-2 step that launches the app is the coupling this taxonomy exists to catch: it welds a
- * fast check to a slow one, and the pair can then be neither cached nor reordered. `check:tiers` fails on
- * one. The reasoning and the measurements are in `docs/goals/goal-test-tiers.md`.
+ * A step that launches the app without saying so is the coupling this exists to catch: it welds a fast
+ * check to a slow one, and the pair can then be neither cached nor reordered. `check:tiers` fails on one.
+ * The reasoning and the measurements are in `docs/archive/goals/goal-test-tiers.md`, which calls the
+ * declaration a tier; it is `needsApp` now, and the three-value version is in `docs/plans/tier-split.md`.
  */
-export type Tier = 1 | 2 | 3;
+
 
 export interface ChainStep {
   /** The npm script, as `npm run <name>` (or `npm test` for the E2E suite) */
   readonly name: string;
-  /** What it may read. `check:tiers` enforces that tier 1 and 2 reach no app. */
-  readonly tier: Tier;
+  /**
+   * This action reads the built app, so it runs after `build:app` and its real inputs are the whole repo.
+   *
+   * **Declared, not derived, and that is the point.** Derive it from "does it read `APP_OUTPUTS`" and an
+   * action that gains an app dependency is silently reclassified instead of refused, which is the drift
+   * four attempts at a cheaper chain each recorded. `check:tiers` checks the declaration against the
+   * inputs and against the step's scripts; a disagreement is the finding.
+   *
+   * `APP_ENTRY` is why the derivation cannot stand alone: `packages/dev-mode.js` and
+   * `packages/entry-point.mjs` are *source* sitting beside the built-app constant, and three steps that
+   * do not need the app declare them.
+   */
+  readonly needsApp?: true;
   /** The steps that must pass first — the edges. The run order is derived from these, not written. */
   readonly needs: readonly string[];
   /**
@@ -122,21 +134,6 @@ export interface ChainStep {
   readonly seconds?: number;
 }
 
-/**
- * What one test may take, by the tier of the step that runs it (Decision 7 of the goal: tier 1 in seconds,
- * tier 2 in tens of seconds, tier 3 up to a minute).
- *
- * The point is the ceiling, not the number. `testTimeout: 120_000` on a unit suite turns a hang into a slow
- * pass — a load-induced stall reached a chain summary as two unexplained errors rather than as a timeout.
- * Measured 2026-09-25, the slowest single test in the two suites that set that value was 2.9s
- * (`@app/default-setup`) and 0.7s (`@app/api`), so tier 1 has five times the headroom it needs.
- *
- * A suite that sets nothing gets vitest's 5s default, which is inside tier 1 already. This is a bound on
- * what a config may declare, checked by `suite-timeouts.spec.ts`, not a value the configs import: a vitest
- * config importing across package layers is the thing that rule exists to prevent.
- */
-export const TIER_TIMEOUT_MS: Record<Tier, number> = { 1: 15_000, 2: 60_000, 3: 60_000 };
-
 /** Every step, by name, for validating `needs` */
 const BY_NAME = new Map<string, ChainStep>();
 
@@ -196,11 +193,11 @@ export function orderedSteps(steps: readonly ChainStep[] = CHAIN_STEPS): readonl
  * ordering guarantee, since no workspace declares a dependency on `@app/default-setup`, and the renderer's
  * build reads the generated pack entry that `compile` writes.
  *
- * `test:external-pack` is split: its contract half runs here in tier 2, before `build`, because validating,
+ * `test:external-pack` is split: its contract half runs here, before `build`, because validating,
  * building and typechecking a pack and running its harness specs needs no app — proved by running it with
- * `packages/renderer/dist` moved aside. Its Playwright half stays tier 3.
+ * `packages/renderer/dist` moved aside. Its Playwright half needs the app.
  *
- * `test:packaged-authoring` is still tier 3 whole. It is a linear scenario rather than two halves: step 8
+ * `test:packaged-authoring` needs the app whole. It is a linear scenario rather than two halves: step 8
  * needs the archive step 6 produced and step 9 reads the data step 8's app seeded, so it takes a mode rather
  * than a split (Phase 2 of the goal).
  */
@@ -288,8 +285,8 @@ const relative = repoRelative;
 const PACKAGE_BUILD_INPUTS = [...new Set(Object.values(BUILD_UNITS).flatMap((unit) => unit.inputs.map(relative)))].sort();
 const PACKAGE_BUILD_OUTPUTS = [...new Set(Object.values(BUILD_UNITS).flatMap((unit) => unit.outputs.map(relative)))].sort();
 
-/** What `build` writes: the app the tier-3 steps read */
-const APP_OUTPUTS = ['packages/renderer/dist', 'packages/api/dist', 'packages/main/dist', 'packages/preload/dist'];
+/** What `build` writes: the app that `needsApp` steps read */
+export const APP_OUTPUTS = ['packages/renderer/dist', 'packages/api/dist', 'packages/main/dist', 'packages/preload/dist'];
 /** The Electron entry and the dev-mode switch: not inside a package, and read by anything that starts the app */
 const APP_ENTRY = ['packages/entry-point.mjs', 'packages/dev-mode.js'];
 /** The wrapper a shell-script step runs through, and the module that bounds it */
@@ -472,7 +469,6 @@ const POOL_STEPS: readonly ChainStep[] = (['host', 'pack'] as const).map((kind) 
   const suites = UNIT_SUITES.filter((suite) => suite.kind === kind);
   return {
     name: `test:unit:${kind}`,
-    tier: 1,
     needs: ['compile'],
     // Measured on the pool, not summed from its suites. Summing gave the host pool 50s for a step that
     // takes 20s, because the suites overlap inside one vitest run — which is the entire point of pooling
@@ -516,7 +512,7 @@ export const CHAIN_STEPS: readonly ChainStep[] = [
   // 14, not the 0.3 its warm check costs: `seconds` is what a step costs when it does its work, and this one's
   // work is the build. The paragraph on that field describes this step getting it wrong — "a timeout message
   // claiming it costs 1s healthy" — and 1 was still here until the overrun report named it, 1s -> 14s.
-  { name: 'packages:ensure', tier: 2, needs: [], seconds: 14, exclusive: true,
+  { name: 'packages:ensure', needs: [], seconds: 14, exclusive: true,
     neverCachedBecause: 'what it guarantees is recorded in stamps of its own, which this fingerprint cannot '
       + 'see; its check is ~0.3s warm, so a cache on top only adds a record that can disagree',
     inputs: [...PACKAGE_BUILD_INPUTS, 'scripts/ensure-packages-built.ts'], outputs: PACKAGE_BUILD_OUTPUTS },
@@ -541,11 +537,11 @@ export const CHAIN_STEPS: readonly ChainStep[] = [
   // `build:app` -> `test:packaged-authoring`, 111s), so running it alone costs its own time and no more. The
   // alternative is packing to a temp directory ourselves and handing attw the tarball, which is the fix if this
   // step ever needs to share a lane.
-  { name: 'packages:check', tier: 2, needs: ['packages:ensure'], seconds: 6, exclusive: true,
+  { name: 'packages:check', needs: ['packages:ensure'], seconds: 6, exclusive: true,
     inputs: [...ROOT, ...PACKAGE_BUILD_OUTPUTS] },
   // Ahead of build and not redundant with it: build -ws gives no ordering guarantee, since no workspace
   // declares a dependency on @app/default-setup, and the renderer's build reads the pack entry this writes
-  { name: 'compile', tier: 2, needs: ['packages:ensure'], seconds: 13, outputs: PACK_OUTPUTS,
+  { name: 'compile', needs: ['packages:ensure'], seconds: 13, outputs: PACK_OUTPUTS,
     // Its sources and its manifest, not its tests: `abuddy build` never reads those
     //
     // This step runs `facade:check` after the build that produces its subject, so how the report is
@@ -570,7 +566,7 @@ export const CHAIN_STEPS: readonly ChainStep[] = [
   // 38s, not the 20s it takes alone: `seconds` is what a step costs under the chain's own default lanes,
   // because that is what `budgetFor` has to cover. Raising the default from two to three moved this one and
   // nothing else past the drift band, which is `driftedSteps` doing its job.
-  { name: 'test:external-pack:contract', tier: 2, needs: ['compile'], seconds: 57, outputs: FIXTURE_OUTPUTS,
+  { name: 'test:external-pack:contract', needs: ['compile'], seconds: 57, outputs: FIXTURE_OUTPUTS,
     // It declares `tests/packs` for the pack sources; the Playwright output under each pack is written
     // by `:app`, changes every run, and is read by nothing
     excludes: FIXTURE_TEST_OUTPUT,
@@ -578,7 +574,7 @@ export const CHAIN_STEPS: readonly ChainStep[] = [
       'tests/scripts/lib', ...PACKAGE_BUILD_OUTPUTS, ...PACK_OUTPUTS] },
   // The widest inputs in the table, and honestly so: it compiles every workspace, the scripts and the
   // tests, and lints them. A change anywhere in the repo's TypeScript is a change to what it checks.
-  { name: 'typecheck', tier: 1, needs: ['compile'], seconds: 27,
+  { name: 'typecheck', needs: ['compile'], seconds: 27,
     // `tests/e2e`, `tests/packs` and `tests/scripts`, never `tests` itself: that walk takes in
     // `tests/results`, which every Playwright run rewrites, so declaring the parent meant this step could
     // never be cached — measured against `tests/screenshots`, which the suite wrote until `91b348069` and
@@ -596,27 +592,27 @@ export const CHAIN_STEPS: readonly ChainStep[] = [
     inputs: [...EVERY_SOURCE, ...PACKAGE_BUILD_OUTPUTS, ...PACK_OUTPUTS],
     // It wants the fixture packs' sources, never their build output: `tsc -p tests` compiles `e2e/**`
     // only, and `check:specifiers` filters `__generated__` out itself — verified by deleting a fixture's
-    // generated directory, which leaves it passing. Hashing that output would tie a tier-1 check's
-    // freshness to a tier-2 build it does not depend on.
+    // generated directory, which leaves it passing. Hashing that output would tie this check's freshness
+    // to a build it does not depend on.
     excludes: [...FIXTURE_OUTPUTS, ...FIXTURE_TEST_OUTPUT] },
   ...POOL_STEPS,
-  // The CLI specs that run a real build, install or child process. Tier 2: they need the built packages,
+  // The CLI specs that run a real build, install or child process. They need the built packages,
   // never the app — which is why they can run before `build` rather than behind it.
   // Needs `compile` and not just `packages:ensure`, because `dependency-runtime` builds a pack that depends
   // on default-setup and so reads its `dist`. It used to run after `compile` only because of where it sat
   // in this table, which `orderedSteps` never promised.
-  { name: 'test:integration', tier: 2, needs: ['compile'], seconds: 60,
+  { name: 'test:integration', needs: ['compile'], seconds: 60,
     ...inputsForSuites(INTEGRATION_SUITES) },
   // `build:app`, not `build`. Root `build` is `-ws`, which includes `@app/default-setup`, whose own build is
   // the very command `compile` runs — so a `build` step rebuilt the pack every run, rewriting the `dist`
   // it declares as an input. It invalidated itself, and the five steps that read that tree, on every run:
   // measured, a warm chain cached 7 of 17 steps instead of 16. `npm run build` still builds everything, for
   // CI and `build/build.sh`; the chain does not need it to, because `compile` is a declared `need`.
-  { name: 'build:app', tier: 3, needs: ['compile'], seconds: 39, outputs: APP_OUTPUTS,
+  { name: 'build:app', needs: ['compile'], seconds: 39, outputs: APP_OUTPUTS,
     inputs: [...ROOT, ...['renderer', 'api', 'main', 'preload'].flatMap(workspace),
       'packages/api/tsup.config.ts', ...APP_ENTRY,
       ...PACKAGE_BUILD_OUTPUTS, ...PACK_OUTPUTS] },
-  { name: 'test:external-pack:app', tier: 3, needs: ['build:app', 'test:external-pack:contract'], seconds: 24,
+  { name: 'test:external-pack:app', needsApp: true, needs: ['build:app', 'test:external-pack:contract'], seconds: 24,
     // Its own Playwright output, rewritten every run
     excludes: FIXTURE_TEST_OUTPUT,
     // PACKAGE_BUILD_OUTPUTS because the fixture it drives *is* one: `@abuddy/testing` resolves to its
@@ -646,7 +642,7 @@ export const CHAIN_STEPS: readonly ChainStep[] = [
   // declared — so an unchanged stamp means the same app, and running it again asks a question already
   // answered. Uncached it put the warm chain back to 5.6s from 0.9s, which is most of what taking the
   // suite off the gate bought.
-  { name: 'test:smoke', tier: 3, needs: ['build:app'], seconds: 6,
+  { name: 'test:smoke', needsApp: true, needs: ['build:app'], seconds: 6,
     outputs: ['tests/results'],
     inputs: [...ROOT, 'tests/e2e/smoke', 'playwright.config.ts',
       'scripts/with-source.mjs', ...APP_ENTRY, ...PACKAGE_BUILD_OUTPUTS, ...APP_OUTPUTS] },
@@ -656,12 +652,12 @@ export const CHAIN_STEPS: readonly ChainStep[] = [
   // built. It became a chain step, and then the reasoning about it became about caching a flaky pass —
   // which is a question you only ask of a regression gate. It has not caught one. Off the chain it costs
   // nothing and is still there when you want it, which is what it was for.
-  { name: 'test', tier: 3, needs: ['build:app', 'test:smoke'], seconds: 26,
+  { name: 'test', needsApp: true, needs: ['build:app', 'test:smoke'], seconds: 26,
     optInBecause: 'it is a harness for driving the app, not a regression gate; nothing has needed it to fail',
     neverCachedBecause: 'it drives real Electron, and a flaky pass cached green hides an intermittent failure',
     outputs: ['tests/results'],
     inputs: [...ROOT, 'tests/e2e', 'playwright.config.ts', 'scripts/with-source.mjs', ...APP_ENTRY, ...APP_OUTPUTS] },
-  { name: 'test:packaged-authoring', tier: 3, needs: ['build:app'], seconds: 59,
+  { name: 'test:packaged-authoring', needsApp: true, needs: ['build:app'], seconds: 59,
     inputs: [...ROOT, ...BOUNDED_RUNNER, 'tests/scripts/test-packaged-authoring.sh', 'tests/scripts/lib',
       ...PACKAGE_BUILD_OUTPUTS, ...APP_OUTPUTS] },
 ];

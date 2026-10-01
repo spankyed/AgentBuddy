@@ -33,7 +33,7 @@
 // ONE PREMISE OF THAT ARGUMENT WAS WRONG (2026-09-27)
 //
 // It read "every step already uses all the cores — vitest runs its files across workers, tsc forks per
-// project". The second half was false, and `typecheck` was the largest tier-1 step: sixteen legs chained with
+// project". The second half was false, and `typecheck` was the largest app-free step: sixteen legs chained with
 // `&&`, each a single-threaded compiler, so it held one core for half a minute while nine sat idle — which is
 // also why it was the step most starved by the lanes put there to use them. Running its legs at once took it
 // from 29.3s to 10.8s alone (`scripts/typecheck.ts`).
@@ -44,10 +44,10 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { changedInputs, firstChange, freshnessSweep, INPUTS_CHANGED, REPO_ROOT, stampedRun, stampRecord, unitStaleReason, type BuildUnit } from '@abuddy/host/build/packages-built';
-import { CHAIN_STEPS, chainSteps, MEASURED_AT_LANES, orderedSteps, type ChainStep, type Tier } from './lib/chain-steps.ts';
+import { chainSteps, MEASURED_AT_LANES, orderedSteps, type ChainStep } from './lib/chain-steps.ts';
 import { schedule } from './lib/chain-schedule.ts';
 import { criticalPath, driftedSteps, willNotCache } from './lib/step-timing.ts';
-import { briefly, classifyLine, declaredAt, dim, DRY_REASON_COLUMN, driftReport, howLong, identicalRewrites, oneLine, REASON_COLUMN, shouldClassify, staleLines, STEP_NAME_WIDTH, TIME_COLUMN, whenChanged, wrapAt, writerOf } from './lib/chain-output.ts';
+import { briefly, classifyLine, declaredAt, dim, driftReport, DRY_REASON_COLUMN, howLong, identicalRewrites, marker, oneLine, REASON_COLUMN, shouldClassify, staleLines, STEP_NAME_WIDTH, TIME_COLUMN, whenChanged, wrapAt, writerOf } from './lib/chain-output.ts';
 import { slowestTests } from './lib/slow-tests.ts';
 import { exitOnEpipe } from './lib/exit-on-epipe.ts';
 
@@ -63,8 +63,8 @@ import { boundedSpawn, budgetFor } from './lib/bounded-spawn.ts';
  *
  * This replaces a whole-tree fingerprint, which skipped the chain only when nothing tracked had changed at
  * all. The argument for that was that every expensive step transitively reads nearly the whole repo, and
- * for the tier-3 steps it is still true: they read the built app, so a change anywhere in it re-runs them.
- * What it missed is that most of the chain is not tier 3. The eight unit suites read their own package and
+ * for the steps that need the app it is still true: they read it, so a change anywhere in it re-runs them.
+ * What it missed is that most of the chain needs no app. The eight unit suites read their own package and
  * its dependencies' source, so a one-package edit re-runs one suite; a doc edit re-runs nothing.
  *
  * There is no cascade rule, and there does not need to be one. A step that produces something declares it
@@ -206,7 +206,7 @@ async function runAndStamp(step: ChainStep, all: boolean): Promise<Result> {
  * measurement had three lanes slower than two *and* failing, and what failed was a test timing out at
  * vitest's 5s default — `findLmdbImports > holds for the repo` at 5220ms, a whole-repo scan that takes ~2s
  * alone. The cap was the timeout, not the cores. `goal-one-job-pool.md` Phase 5 replaced that default with
- * the tier budgets, 15s and 60s, and the third lane became both faster and green.
+ * the size budgets, 15s and 60s, and the third lane became both faster and green.
  *
  * Four is not better than three: the critical path is 106-112s, so three lanes at ~157s is already close to
  * the floor and more lanes have nothing left to overlap. Re-measure this when the step shape changes again
@@ -285,7 +285,7 @@ async function main(): Promise<void> {
       // Naming what moved in place of the sentence, which was the same for every stale step and said less
       const moved = !all && why === INPUTS_CHANGED ? whatChanged(step) : '';
       const reason = all ? '--all' : (moved === '' ? (why ?? '') : moved);
-      console.log(`${(willRun ? 'run' : 'cached').padStart(7)} t${step.tier} ${step.name.padEnd(STEP_NAME_WIDTH)} ${wrapAt(DRY_REASON_COLUMN, reason)}`.trimEnd());
+      console.log(`${(willRun ? 'run' : 'cached').padStart(7)} ${marker(step)} ${step.name.padEnd(STEP_NAME_WIDTH)} ${wrapAt(DRY_REASON_COLUMN, reason)}`.trimEnd());
     }
     return;
   }
@@ -302,7 +302,7 @@ async function main(): Promise<void> {
         // On its own line where it was skipped, and dimmed. The order these arrive in is information — it is
         // when the scheduler reached the step — so they are not collected and printed together at the end;
         // the weight is what separates them from the rows that did work, not the position.
-        console.log(dim(`${'cached'.padStart(7)} t${step.tier} ${step.name}`));
+        console.log(dim(`${'cached'.padStart(7)} ${marker(step)} ${step.name}`));
         return true;
       }
       reasons.set(step.name, all ? '--all' : (why ?? ''));
@@ -314,7 +314,7 @@ async function main(): Promise<void> {
       // TIMEOUT is its own verdict: a step that ran out of budget failed for a different reason than one
       // that returned non-zero, and which it was is the first thing you need to know.
       const verdict = result.code === 0 ? 'ok' : result.timedOut ? 'TIMEOUT' : 'FAIL';
-      console.log(`${verdict.padStart(7)} t${step.tier} ${step.name.padEnd(STEP_NAME_WIDTH)} ${secs(result.ms).padStart(6)}  ${wrapAt(REASON_COLUMN, briefly(reasons.get(step.name) ?? '', declaredIn(step.name)))}`.trimEnd());
+      console.log(`${verdict.padStart(7)} ${marker(step)} ${step.name.padEnd(STEP_NAME_WIDTH)} ${secs(result.ms).padStart(6)}  ${wrapAt(REASON_COLUMN, briefly(reasons.get(step.name) ?? '', declaredIn(step.name)))}`.trimEnd());
       // So whoever profiles a suite next has its slow tests without instrumenting it
       // In the step's own time column, so every time on the screen lines up and these read as its contents
       for (const slow of slowestTests(result.output)) {
@@ -326,7 +326,7 @@ async function main(): Promise<void> {
 
   // A step whose runner threw never produced a Result, so it is reported from the throw itself
   for (const { step, error } of outcome.threw) {
-    console.log(`${'ERROR'.padStart(7)} t${steps.find((s) => s.name === step)?.tier ?? '?'} ${step.padEnd(STEP_NAME_WIDTH)} ${' '.repeat(6)}  the chain could not run it`);
+    console.log(`${'ERROR'.padStart(7)} ${marker(steps.find((s) => s.name === step))} ${step.padEnd(STEP_NAME_WIDTH)} ${' '.repeat(6)}  the chain could not run it`);
     console.log(`\n${'='.repeat(72)}\n${step}: the runner threw, which is a bug in the chain rather than a failing check\n${'='.repeat(72)}\n${error instanceof Error ? (error.stack ?? error.message) : String(error)}`);
   }
 
@@ -364,15 +364,6 @@ async function main(): Promise<void> {
       console.log(classifyLine(retry));
     }
   }
-
-  // Where the time goes by tier, which is the number the goal's phases move. Its own line under the verdict:
-  // it is a breakdown rather than part of the sentence, and in the sentence it competed with the two numbers
-  // a run is read for — what it cost and how much of it was skipped.
-  const byTier = ([1, 2, 3] as Tier[]).map((t) => {
-    const ms = CHAIN_STEPS.filter((s) => s.tier === t)
-      .reduce((sum, s) => sum + (results.find((r) => r.step === s.name)?.ms ?? 0), 0);
-    return `t${t}= ${secs(ms)}`;
-  }).join('  ');
 
   const skipped = cached ? ` (${cached} of ${steps.length} cached)` : '';
   // Measured, not declared. Reporting the floor from `seconds` made it wrong by the amount the table had
@@ -424,7 +415,7 @@ async function main(): Promise<void> {
   const report = driftReport(driftedSteps(steps, measuredMs), lanes, MEASURED_AT_LANES, all);
   if (report !== '') console.log(report);
 
-  console.log(`\n${verdict} in ${secs(Date.now() - started - classifyMs)}${reran}${skipped}${lanes > 1 ? ` with ${lanes} lanes` : ''}\n${byTier}${floor}`);
+  console.log(`\n${verdict} in ${secs(Date.now() - started - classifyMs)}${reran}${skipped}${lanes > 1 ? ` with ${lanes} lanes` : ''}${floor}`);
   // Not process.exit(): it drops whatever stdout has still to flush, and the failing step's captured output
   // printed just above is the one thing here worth reading. Measured: piped, process.exit() delivers 64KB
   // of a 500KB write, and @app/default-setup's suite output alone is 654KB.

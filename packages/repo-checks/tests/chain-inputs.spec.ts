@@ -41,7 +41,7 @@ const NOT_A_CHAIN_INPUT: Record<string, string> = {
 };
 
 // `.sh` included: three of the chain's steps *are* shell scripts, so leaving the extension out meant the
-// coverage claim skipped the files that drive tier 3 entirely.
+// coverage claim skipped the files that drive the app entirely.
 const CODE = /\.(ts|tsx|vue|mts|cts|mjs|cjs|js|sh)$/;
 
 const trackedCode = (): string[] =>

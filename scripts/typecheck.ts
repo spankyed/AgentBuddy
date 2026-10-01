@@ -13,7 +13,7 @@
  * and starve the one it was.
  *
  * That also corrects a claim in `chain.ts`'s header, which argued against lanes on the grounds that "every step
- * already uses all the cores". The largest tier-1 step did not.
+ * already uses all the cores". The largest app-free step did not.
  *
  * WHAT THIS OWES THE CHECKS THAT READ IT
  *
