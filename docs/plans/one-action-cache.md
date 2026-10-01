@@ -288,8 +288,17 @@ below is now answered and recorded as such; the other three are still open.
 - **Per-leg typecheck caching.** For a handful of representative single-package edits, which legs would a
   per-action key mark stale, and what is the wall time of that subset against the current ~11s? Legs run in
   parallel, so the saving is bounded by the critical leg (`typecheck:fe`, 6.2s), not by the 32.6s of CPU.
-- **Per-suite staleness in the integration half.** Does it skip anything in practice, or are its three
-  suites always stale together?
+- **Per-suite staleness in the integration half — the premise changed, and it is now partly answered.**
+  The question was written when `test:integration` declared `workspace(dir)` per suite. Since it declares
+  `suiteInputs` (2026-10-01) it inherits `EVERY_SOURCE` from `repo-checks`, so the *step* is stale on
+  almost any source edit and no longer skips. That makes inner per-suite caching more valuable than when
+  this was written, not less: below the step is the only place left to skip anything.
+
+  Measured over eight representative single-file edits, one per package, asking which suites' `suiteInputs`
+  contain the file: **per-suite staleness would skip 10 of 24 suite-runs**. The distribution is the useful
+  part — `repo-checks` is stale on all eight by construction, since it declares every source tree, while
+  `abuddy-cli` is stale on four and `publish-checks` on two. So the saving is bounded by what those two
+  suites cost, and the sub-question that remains is that cost, not whether skipping happens.
 - **Action-key overhead at 40 actions.** The chain takes 12 fingerprints today. Forty is more stat and hash
   work on every run, including the warm one, where the whole budget is 0.9s.
 - **What item 7 makes uncacheable — answered, 2026-10-01.** Seven of thirteen steps declare no outputs, so
