@@ -1,5 +1,5 @@
 {
-  "measuredAt": "2026-10-01T12:16:12.871Z",
+  "measuredAt": "2026-10-01T12:18:20.948Z",
   "costs": {
     "tests/api-report-stamp.spec.ts": 68,
     "tests/bounded-spawn.integration.spec.ts": 2059,
@@ -9,7 +9,6 @@
     "tests/chain-schedule.spec.ts": 19,
     "tests/chain-table.spec.ts": 498,
     "tests/component-contracts.integration.spec.ts": 2007,
-    "tests/derived-edges.spec.ts": 16,
     "tests/doc-links.spec.ts": 253,
     "tests/fingerprint-scope.spec.ts": 2145,
     "tests/generated-behind-contract.spec.ts": 766,
