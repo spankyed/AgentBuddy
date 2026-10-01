@@ -129,6 +129,28 @@ function concreteExports(): string[] {
 }
 
 describe('SDK bridge drift', () => {
+  /**
+   * Two of the three come from `SHARED_INSTANCE_PACKAGES` and move with it; `@abuddy/host` is written here,
+   * and its manifest is read from the tree by path rather than resolved, because the host is private.
+   *
+   * So a rename or a move does not report a stale entry — it throws inside `exportsMap`, and every case
+   * below dies with a file-not-found rather than naming the package that went missing. Caught here instead,
+   * which is the difference between a diagnosis and a stack trace.
+   */
+  it('accounts for packages whose exports can still be read', () => {
+    expect(ACCOUNTED_FOR.length, 'nothing to account for, so every case below reads an empty set')
+      .toBeGreaterThan(1);
+    const unreadable = ACCOUNTED_FOR.filter((pkg) => {
+      try {
+        return Object.keys(exportsMap(pkg)).length === 0;
+      } catch {
+        return true;
+      }
+    });
+    expect(unreadable, 'these export nothing or their manifest cannot be read, so listing them accounts for '
+      + 'nothing; drop them, or fix the path this reads them from').toEqual([]);
+  });
+
   it('bridges exactly the shared-instance packages', () => {
     const packages = new Set(getBridgedSdkSpecifiers().map((s) => s.split('/').slice(0, 2).join('/')));
     expect([...packages].sort()).toEqual([...SHARED_INSTANCE_PACKAGES].sort());

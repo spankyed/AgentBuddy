@@ -33,17 +33,6 @@ const packageDirs = (): string[] =>
   [...PACKAGE_DIRS];
 
 /**
- * A workspace with no tsconfig, and why it needs none. An entry is a claim that nothing here is compiled,
- * which is a strong claim, so it carries its reason and is reported when it stops applying.
- */
-const NO_TSCONFIG: Record<string, string> = {
-  'electron-versions': 'three files, one of them a plain index.js that queries Electron\'s bundled versions. '
-    + 'No TypeScript, and no scripts block at all',
-  'typescript-floor': 'a package.json and a CLAUDE.md. It exists only to install the oldest TypeScript the '
-    + 'published packages support, so the CLI suite can compile a pack against it',
-};
-
-/**
  * A config that compiles source and is still not gated, and why. API Extractor reads a package's built
  * declarations to produce its report; an unused local in that input is not a finding it should refuse to
  * run over, and `api:update` is not where dead code is meant to surface.
@@ -92,19 +81,18 @@ describe('every workspace is checked for unused code', () => {
 
   // Otherwise the flag above is dodged by having no config at all, which reads the same as passing
   it('leaves no package with TypeScript and no config to compile it', () => {
+    // Asked of the tree rather than read off a list. There was a `NO_TSCONFIG` here naming the two
+    // workspaces that need none, and `hasTypeScript` — thirty lines up, and already run as this case's
+    // second assertion — answers the same question exactly, so the list was a cached copy of its neighbour.
     const unconfigured = packageDirs()
       .filter((workspace) => tsconfigsIn(workspace).length === 0)
-      .filter((workspace) => !(workspace in NO_TSCONFIG));
-    expect(unconfigured, 'give these a tsconfig.json, or add them to NO_TSCONFIG with a reason').toEqual([]);
-    const claimed = Object.keys(NO_TSCONFIG).filter(hasTypeScript);
-    expect(claimed, 'these are listed as having nothing to compile and do have TypeScript in src/').toEqual([]);
+      .filter(hasTypeScript);
+    expect(unconfigured, 'give these a tsconfig.json: a workspace with TypeScript and no config to compile '
+      + 'it is one the unused-code flag above cannot reach').toEqual([]);
   });
 
   // A list of exceptions is only honest while each one is still an exception
   it('lists no exception that has stopped applying', () => {
-    const stale = Object.keys(NO_TSCONFIG)
-      .filter((workspace) => !packageDirs().includes(workspace) || tsconfigsIn(workspace).length > 0);
-    expect(stale, 'these are gone or now have a tsconfig; drop them from NO_TSCONFIG').toEqual([]);
     const compiling = new Set(compilingConfigs().map((config) => config.rel));
     const ungrounded = Object.keys(NOT_GATED).filter((rel) => !compiling.has(rel));
     expect(ungrounded, 'these are gone or no longer compile anything, so nothing exempts them; drop them '
