@@ -83,7 +83,7 @@ Seven kinds are actually distinguishable in the tree. The tier is what a check m
 | **Command / process** | `abuddy-cli/tests/commands/`, `tests/harness/` | 2 | runs real builds, installs and child processes |
 | **Repo tooling** | `@app/repo-checks` | 1–2 | the chain table, the cost records, `scripts/` |
 | **App runtime** | `api/tests/runtime/` | 1 | boots the composed runtime over a temp data dir |
-| **Fixture pack** | `tests/fixtures/*` | 2 and 3 | a pack built and tested as a third party would |
+| **Fixture pack** | `tests/packs/*` | 2 and 3 | a pack built and tested as a third party would |
 | **E2E** | `tests/e2e/` | 3 | the built app, real Electron |
 
 ## Verdict classes

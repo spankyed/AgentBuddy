@@ -363,6 +363,21 @@ describe('fixtureEnv', () => {
     expect(fixtureEnv(app, '/pack', { ABUDDY_PACK_RELEASE: '1' })).not.toHaveProperty('ABUDDY_PACK_RELEASE');
   });
 
+  /**
+   * `abuddy test` is pinned and hermetic: it reads no machine state. These two reach the fixture straight
+   * from the environment, so an exported one sent a test run at a directory the user owns — and the data
+   * dir is kept rather than cleaned up, so the run would also leave its writes there.
+   *
+   * Asserted as the whole environment rather than as two absences, because an absence passes whenever the
+   * key is not there: a typo in `base`, or a rename on the fixture's side that this spec and the `delete`
+   * both missed, and the leak is back with everything green. The name is hand-written in three places.
+   */
+  it('decides where the data and screenshots go, whatever the shell says', () => {
+    const base = { E2E_DATA_DIR: '/Users/me/the-users-own-data-dir', E2E_SCREENSHOT_DIR: '/elsewhere' };
+    expect(fixtureEnv({ kind: 'source', root: '/repo' }, undefined, base))
+      .toEqual({ ABUDDY_ROOT: '/repo', ABUDDY_CLI: cliBin() });
+  });
+
   it('never gives the runner the @abuddy/source condition: a pack resolves the published dist', () => {
     const app = { kind: 'source', root: '/repo' } as const;
     // The caller's own flags survive; the condition does not, however the run was started

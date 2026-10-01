@@ -292,7 +292,7 @@ describe('repoRelative', () => {
 describe('the input fingerprint', () => {
   // A unit's own output is never its own input, however broadly its inputs are declared. Two chain steps
   // declare a whole tree and then write into it — `compile` writes `src/__generated__` under the `src` it
-  // reads, the fixture-pack check writes each pack's `dist` under the `tests/fixtures` it reads — and both
+  // reads, the fixture-pack check writes each pack's `dist` under the `tests/packs` it reads — and both
   // were self-invalidating in waiting: the only thing keeping them cached was those builds happening to be
   // byte-identical, and the pack build already is not (union ordering in its emitted declarations).
   it('ignores a change under the unit\'s own output, and still sees one under its inputs', () => {
@@ -459,7 +459,7 @@ describe('the staleness verdict', () => {
  * Which input moved, for a report that has to name it rather than say a write happened.
  *
  * The shipped version of that report walked mtimes of its own, and the two answers disagreed the first time
- * it mattered: it named a compiled seed that `tests/e2e/dev-reload.spec.ts` rewrites with the bytes it already
+ * it mattered: it named a compiled seed that `tests/e2e/app-integration/dev-reload.spec.ts` rewrites with the bytes it already
  * had, and the diagnosis that followed was about the wrong file. Every case here is the pair of questions those
  * two walks answer differently — `it names nothing when only an mtime moved` is the one that fails on an mtime
  * walk, and is why this exists.

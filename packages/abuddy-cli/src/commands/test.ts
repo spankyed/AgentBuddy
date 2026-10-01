@@ -46,12 +46,22 @@ export function fixtureEnv(
   // on built-in packs reads the app choice, not the launch target. Without it a `--app beta` run
   // resolves against whatever checkout was saved on first run, or finds nothing at all in CI.
   delete env.ABUDDY_APP;
+  // Where the app's data and its screenshots go is this run's to decide, never the shell's. Both are
+  // read straight from the environment by the fixture, because the `test` a spec imports is built at
+  // module scope and no option can reach it — so an exported E2E_DATA_DIR would have a pinned run use a
+  // directory it did not make, and leave it behind. `abuddy drive` sets them after calling this.
+  delete env.E2E_DATA_DIR;
+  delete env.E2E_SCREENSHOT_DIR;
   if (app.kind === 'source') env.ABUDDY_ROOT = app.root;
   else {
     env.ABUDDY_APP_EXECUTABLE = app.executable;
     env.ABUDDY_APP = 'beta';
   }
+  // Cleared when there is none, as ABUDDY_PACK_RELEASE below is: `abuddy test` runs the pack it is in,
+  // so an exported PACK_DIR in a directory that holds no manifest would have it build and install a
+  // pack the caller never named. `tests/scripts/test-packaged-authoring.sh` used to `unset` it by hand
   if (packDir) env.PACK_DIR = packDir;
+  else delete env.PACK_DIR;
   if (options.release) env.ABUDDY_PACK_RELEASE = '1';
   else delete env.ABUDDY_PACK_RELEASE;
   // The fixture builds the pack with this same CLI
@@ -87,6 +97,11 @@ export async function contractTest(cwd: string, args: string[], run: ContractRun
   ensureCheckoutPackages(cwd);
   // A pack resolves the packages' published dist, whoever runs it — the same rule the Playwright half
   // follows, and the reason a checkout's own condition must not reach this run
+  // **This inherits the environment where `fixtureEnv` scrubs it, and that is deliberate.** No app starts
+  // here, so there is no app to pin — and `tests/scripts/test-external-pack-contract.sh` exports
+  // `ABUDDY_ROOT` precisely so the pack's build resolves this checkout. Scrubbing it the way the fixture
+  // path does would break that step. Nothing on this path reads `E2E_DATA_DIR`, `E2E_SCREENSHOT_DIR` or
+  // `PACK_DIR`, which is why the hermeticity those get in `fixtureEnv` is not needed here.
   const env: NodeJS.ProcessEnv = { ...process.env };
   const nodeOptions = withoutSourceCondition(process.env.NODE_OPTIONS);
   if (nodeOptions) env.NODE_OPTIONS = nodeOptions;

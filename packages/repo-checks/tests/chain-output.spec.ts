@@ -54,7 +54,7 @@ describe('writerOf', () => {
 
   /** Nobody's output is the interesting answer: an undeclared write is the one there is something to do about */
   it('answers nothing for a file no step declares', () => {
-    expect(writerOf('tests/fixtures/probe.txt', steps)).toBeUndefined();
+    expect(writerOf('tests/packs/probe.txt', steps)).toBeUndefined();
   });
 });
 
@@ -130,7 +130,7 @@ describe('firstChange', () => {
 
   it('leads with the verb, so a column of these lines reads down', () => {
     expect(firstChange({ ...nothing, changed: ['scripts/chain.ts'] })).toBe('changed scripts/chain.ts');
-    expect(firstChange({ ...nothing, added: ['tests/fixtures/probe.txt'] })).toBe('added tests/fixtures/probe.txt');
+    expect(firstChange({ ...nothing, added: ['tests/packs/probe.txt'] })).toBe('added tests/packs/probe.txt');
     expect(firstChange({ ...nothing, removed: ['src/gone.ts'] })).toBe('removed src/gone.ts');
   });
 
@@ -164,10 +164,10 @@ describe('staleLines', () => {
    */
   it('names each file with what happened to it, when, and whose output it is', () => {
     expect(under({ files: [
-      { file: 'tests/fixtures/probe.txt', how: 'changed', when: 'while it ran' },
+      { file: 'tests/packs/probe.txt', how: 'changed', when: 'while it ran' },
       { file: 'packages/demo-pack/dist/seeds.json', how: 'added', when: 'since it ran', writer: 'compile' },
     ] })).toEqual([
-      '  typecheck  tests/fixtures/probe.txt            changed while it ran',
+        '  typecheck  tests/packs/probe.txt               changed while it ran',
       "             packages/demo-pack/dist/seeds.json  added since it ran, compile's declared output",
     ]);
   });
@@ -185,10 +185,10 @@ describe('staleLines', () => {
    */
   it('names the file whose mtime moved while its bytes did not', () => {
     expect(under({
-      files: [{ file: 'tests/fixtures/probe.txt', how: 'changed', when: 'while it ran' }],
+      files: [{ file: 'tests/packs/probe.txt', how: 'changed', when: 'while it ran' }],
       identical: ['packages/demo-pack/dist/library.seed.json', 'packages/demo-pack/dist/notes.seed.json'],
     })).toEqual([
-      '  typecheck  tests/fixtures/probe.txt  changed while it ran',
+      '  typecheck  tests/packs/probe.txt  changed while it ran',
       '             · packages/demo-pack/dist/library.seed.json and 1 more — touched during the run, not changed',
     ]);
   });

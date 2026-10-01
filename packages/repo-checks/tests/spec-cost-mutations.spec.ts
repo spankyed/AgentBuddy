@@ -222,13 +222,35 @@ const MUTATIONS: readonly Mutation[] = [
     to: '(misplaced)(costs, files)',
     call: (lib, tree) => lib.overBudget(path.join(tree.root, 'packages', 'mini'), { [FAST]: 9_999 }, [FAST]),
   },
+  /**
+   * Not a decision inside a function but a constant, and the one the two edges have to agree on. 1 500 is
+   * what it was until 2026-10-01, when the band turned out to be narrower than the change a move makes to
+   * a reading, and `spec-plan.spec.ts` was told to move in both directions at once.
+   *
+   * The projection is the first cost that loops: the smallest integration reading that comes back to the
+   * fast half and then reads above the upper edge once it is there. At the real value no such cost
+   * exists, so this is `undefined`; at 1 500 it is a number.
+   */
+  {
+    why: 'the band is wider than the change a move makes to a reading',
+    from: 'export const FAST_BELOW_MS = 1_000;',
+    to: 'export const FAST_BELOW_MS = 1_500;',
+    call: (lib) => {
+      for (let ms = 1; ms <= 40_000; ms += 1) {
+        const cameBack = lib.halfFor('tests/x.integration.spec.ts', ms) === 'fast';
+        if (cameBack && lib.halfFor('tests/x.spec.ts', ms * lib.CONTENTION_RATIO_MAX) !== 'fast') return ms;
+      }
+      return undefined;
+    },
+  },
+
   // The wording is a decision too, and it is the one the defect actually was: a string telling a reader to
   // rename a file into a half that does not exist.
   {
     why: 'describeBudget tells the two kinds apart',
     from: "over.length > 0 ? 'Make it cheaper, or record it in EXPENSIVE_BY_NATURE with what makes it expensive.' : '',",
     to: "over.length > 0 ? '' : '',",
-    call: (lib) => lib.describeBudget([{ kind: 'over', file: FAST, ms: 9_999 }]),
+    call: (lib) => lib.describeBudget([{ kind: 'over', file: FAST, ms: 9_999 }], 'a-suite-with-no-entries'),
   },
 ];
 

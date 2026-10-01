@@ -1,5 +1,5 @@
 {
-  "measuredAt": "2026-09-28T20:58:03.833Z",
+  "measuredAt": "2026-10-01T02:39:19.050Z",
   "costs": {
     "tests/build/compile-engine.spec.ts": 14,
     "tests/build/declared-type-of.spec.ts": 453,
@@ -15,7 +15,6 @@
     "tests/build/validate-features.spec.ts": 19,
     "tests/database-console/database-console.spec.ts": 11,
     "tests/env/app-context.spec.ts": 4,
-    "tests/env/identity-guard.spec.ts": 210,
     "tests/events/define-events.spec.ts": 3,
     "tests/events/envelope.spec.ts": 2,
     "tests/events/event-types.spec.ts": 1,

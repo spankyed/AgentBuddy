@@ -1,4 +1,4 @@
-import { test, expect } from './fixtures/app';
+import { test, expect } from '@abuddy/testing';
 
 // Help is a pack contribution: the pack reads its compiled entries, the host collects them and the app's Settings
 // view renders them. Only a running app crosses all three, which is how the view kept reading a context field the

@@ -1,6 +1,6 @@
 # E2E Tests
 
-Playwright tests that launch the full Electron app, interact with the XState application state machine, and take screenshots for visual verification.
+Playwright tests that launch the full Electron app and interact with the XState application state machine. Looking at the app is `drive/`'s job, not this suite's.
 
 ## When a test belongs here
 
@@ -9,13 +9,18 @@ and nothing requires it before a merge. It was built to *drive* the app — to l
 to let an agent see what it built — and it spent a while as a chain step without anyone deciding it should
 be one. Everything below follows from that.
 
-**Two kinds of test live here, and a new one should be clearly one of them.**
+**Three kinds of test live here, and the directory a spec goes in is the question it answers.** A new one
+that fits none of them probably belongs somewhere else.
 
-- **Something you need to see.** Six of the fourteen files touch the UI, and two of those
-  (`smoke`, `navigation`) take a screenshot. This is the founding purpose.
-- **Something that needs the real process boundary** — a live port, the websocket, the CLI against a real
-  data dir, the packaged pack loader. The other eight files are this: they never assert on the UI at all,
-  and they are here because an in-memory harness has no port to bind.
+- **`smoke/` — is it an app at all?** The gate: it launches, connects, has its plugins, and keeps to its
+  own data dir. Its own chain step, and the only part of this suite anything gates on.
+- **`ui/` — something you need to see.** Rendered behaviour, which is the founding purpose of the suite.
+- **`app-integration/` — something that needs the real process boundary.** A live port, the websocket,
+  the CLI against a real data dir, the packaged pack loader. These never assert on the UI at all; they are
+  here because an in-memory harness has no port to bind.
+
+A spec that needs a path in the repo resolves it three levels up now (`../../..`), not two — moving these
+into folders broke three of them at once, and the suite is what said so.
 
 **If it needs neither, it is a harness test.** `setupPackTests` (`@abuddy/testing`) runs a pack's code in
 memory in milliseconds; an assertion about state or data that never renders and never crosses a process
@@ -37,12 +42,12 @@ worker, and the one you changed is the one that tells you anything.
 
 ```bash
 npm test                              # All tests
-npm test -- smoke                    # Single file
-npm test -- -g "screenshot"          # By test name grep
+npm test -- smoke                    # One directory: smoke, ui, app-integration
+npm test -- ui/popout                # One file
+npm test -- -g "renderer error"      # By test name grep
 DEBUG_E2E=1 npm test                  # Electron process output to terminal
 ```
 
-Screenshots saved to `tests/screenshots/{name}.png` (gitignored).
 
 ## Rules for agents
 
@@ -56,7 +61,7 @@ Screenshots saved to `tests/screenshots/{name}.png` (gitignored).
 
 ## How the fixture works
 
-The test infrastructure lives in `@abuddy/testing` (source: `packages/abuddy-testing/src/index.ts`). The local `tests/e2e/fixtures/app.ts` is a thin re-export. Tests import from `./fixtures/app` so the indirection is invisible.
+The test infrastructure lives in `@abuddy/testing` (source: `packages/abuddy-testing/src/index.ts`), and every spec imports it directly — the same line a pack author writes. A local re-export stood in front of it until it was removed: it forwarded three names and added nothing, while putting this suite one indirection away from what `abuddy init-tests` scaffolds.
 
 ### Startup lifecycle
 
@@ -98,7 +103,8 @@ Three fixtures are provided, each at a different scope:
 ### AppHelper methods
 
 ```ts
-app.screenshot(name)             // Save PNG to tests/screenshots/{name}.png
+app.screenshot(name)             // Save a PNG where the caller said: drive/screenshots/ under
+                                 // `drive`, a pack's tests/screenshots/ under `abuddy test`
 app.navigate(pluginId)           // Send SELECT_PLUGIN + wait for activePlugin match + 500ms render delay
 app.getState()                   // Returns snapshot.value (e.g. { running: 'connected' })
 app.getContext()                 // Returns { activePluginId, pluginIds }
@@ -125,11 +131,11 @@ Available for `app.navigate()`: `threads` (default), `code`, `notes`, `browser`,
 Import from the local fixtures, not from `@playwright/test`:
 
 ```ts
-import { test, expect } from './fixtures/app';
+import { test, expect } from '@abuddy/testing';
 
-test('verify my change', async ({ app }) => {
+test('verify my change', async ({ app, appPage }) => {
   await app.navigate('code');
-  await app.screenshot('code-after-change');
+  await expect(appPage.getByTestId('code-canvas')).toBeVisible();
 });
 ```
 
@@ -194,7 +200,7 @@ console.error(`[DROPDBG] t=${Date.now()} plugin=${pluginId} keys=[${[...map.keys
 ```
 
 ```bash
-npm run build:be && DEBUG_E2E=1 npm test -- tests/e2e/plugin-sends.spec.ts --grep "restarted pack" \
+npm run build:be && DEBUG_E2E=1 npm test -- tests/e2e/app-integration/plugin-sends.spec.ts --grep "restarted pack" \
   2>&1 | grep -oE "\[DROPDBG\] t=[0-9]+ .*" | head -20
 ```
 
@@ -229,7 +235,7 @@ The fixture is an app driver: `app.navigate(pluginId)`, `app.sendEvent(...)`, `a
 than the real test you are chasing, and nothing collects it.
 
 For backend endpoints the renderer doesn't call, read the port and token from the page and `fetch`
-them from the test — `tests/e2e/plugin-sends.spec.ts` does this for `POST /dev/reload`.
+them from the test — `tests/e2e/app-integration/plugin-sends.spec.ts` does this for `POST /dev/reload`.
 
 ## Testing external packs
 
@@ -269,7 +275,7 @@ PACK_DIR=/path/to/my-pack npm test -- tests/e2e/smoke
 6. **Check seeding** — fails if the pack's installed-packs entry has a `lastError`
 7. **Wait for plugins** — for each plugin ID from the manifest, waits up to 30s for it to appear in `applicationState.context.plugins`. Fails immediately, with the captured errors, if the pack's FE entry fails to load.
 
-The in-repo fixture pack at `tests/fixtures/external-pack` exercises this whole path from its own directory: `npm run test:external-pack`.
+The in-repo fixture pack at `tests/packs/external-pack` exercises this whole path from its own directory: `npm run test:external-pack`.
 
 ### Finding plugin IDs
 
@@ -312,13 +318,37 @@ The renderer exposes on `window`:
 
 | File | Purpose |
 |------|---------|
-| `fixtures/app.ts` | Thin re-export from `@abuddy/testing` |
-| `smoke.spec.ts` | Basic tests: app launches, reaches connected state, plugins load, default screenshot, per-worker isolated data dir |
-| `navigation.spec.ts` | Navigate between plugins, screenshot each |
-| `secrets.spec.ts` | Settings → Secrets: adds and selects API keys, and checks the key strings reach no log, stored file or renderer state |
-| `import-pack-seeds.spec.ts` | Settings → Import Pack Seeds: compiles default-setup's notes and library entries into a seeds directory, previews it, imports a selection, re-imports in keep-existing mode |
-| `plugin-sends.spec.ts` | Backend sends to plugins through the bus: the code system's file watcher and terminal output, and the browser system's startup data after a pack reload, reach their plugins (recorded with `applicationState.system.inspect`) |
-| `api-access.spec.ts` | The API refuses WebSocket connections and `POST /dev/reload` without the run's token (the socket offers it as a subprotocol, not in the URL), takes them with it, and survives a malformed upgrade request |
-| `dev-reload.spec.ts` | `POST /dev/reload` of the built-in pack re-seeds changed seed data and resends startup data |
-| `db-cli.spec.ts` | `abuddy db` on the running app's data dir (`electronApp`'s `userData`): a query reads it with a stale-data warning, `exec` and `reset` are refused |
+
+**`smoke/` — the gate.** Its own chain step (`test:smoke`); the four cases every other check assumes.
+
+| File | Purpose |
+|------|---------|
+| `smoke/smoke.spec.ts` | The app launches without crashing, reaches `connected`, has its plugins, and runs in its own per-worker data dir |
+
+**`app-integration/` — the real process boundary.** A live port, the websocket, the CLI against a real
+data dir, the pack loader: things no harness test can reach.
+
+| File | Purpose |
+|------|---------|
+| `app-integration/api-access.spec.ts` | The API refuses WebSocket connections and `POST /dev/reload` without the run's token (the socket offers it as a subprotocol, not in the URL), takes them with it, and survives a malformed upgrade request |
+| `app-integration/api-reconnect.spec.ts` | The window keeps working across an API crash: main restarts it and the client re-establishes its bus subscription, on the same port or the one main reports |
+| `app-integration/db-cli.spec.ts` | `abuddy db` on the running app's data dir (`electronApp`'s `userData`): a query reads it with a stale-data warning, `exec` and `reset` are refused |
+| `app-integration/dev-reload.spec.ts` | `POST /dev/reload` of the built-in pack re-seeds changed seed data and resends startup data |
+| `app-integration/feature-addressing.spec.ts` | A name becoming an address: every path where a feature ref had to resolve and, when it didn't, the app ran on with the click or the setting silently lost |
+| `app-integration/import-pack-seeds.spec.ts` | Settings → Import Pack Seeds: compiles default-setup's notes and library entries into a seeds directory, previews it, imports a selection, re-imports in keep-existing mode |
+| `app-integration/plugin-sends.spec.ts` | Backend sends to plugins through the bus: the code system's file watcher and terminal output, and the browser system's startup data after a pack reload, reach their plugins (recorded with `applicationState.system.inspect`) |
+| `app-integration/secrets.spec.ts` | Settings → Secrets: adds and selects API keys, and checks the key strings reach no log, stored file or renderer state |
+
+**`ui/` — rendered behaviour.** What a person would see, and what only a real renderer shows.
+
+| File | Purpose |
+|------|---------|
+| `ui/fallback-panel.spec.ts` | A plugin offering its panel for plugins without one (`fallbackPanel`), and saying itself when it shows: the brain's inspect mode |
+| `ui/navigation.spec.ts` | Opens every plugin and every plugin's settings without a renderer error — a component reaching for a plugin it isn't rendered in fails here |
+| `ui/open-link.spec.ts` | `openLink` hands a link to the plugin playing the browser role, which opens it by its own setting |
+| `ui/popout.spec.ts` | A plugin popped out into its own window: main accepts the plugin's ref as its id and the popout renders its canvas as part of that plugin |
+| `ui/settings-help.spec.ts` | Help as a pack contribution: the pack's compiled entries, collected by the host, rendered by the Settings view |
+
+| Elsewhere | |
+|------|---------|
 | `packages/abuddy-testing/src/index.ts` | The actual fixture source (shared between monorepo and external packs) |

@@ -1,4 +1,4 @@
-import { test, expect } from './fixtures/app';
+import { test, expect } from '@abuddy/testing';
 
 // Every plugin renders as part of itself (usePlugin() in its components), its settings included, which the settings
 // plugin renders for each plugin in turn: a component that reaches for a plugin it isn't rendered in fails here
@@ -13,7 +13,6 @@ test('opens every plugin, and every plugin\'s settings, without a renderer error
   for (const pluginId of pluginIds) {
     await app.navigate(pluginId);
     expect((await app.getContext()).activePluginId).toBe(pluginId);
-    await app.screenshot(`nav-${pluginId.replace('/', '-')}`);
   }
 
   const settings = 'host/settings';

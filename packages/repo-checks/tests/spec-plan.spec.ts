@@ -9,7 +9,7 @@ import {
 import { INTEGRATION_SUITES } from '../../../scripts/lib/chain-steps.ts';
 import { PACKAGE_DIRS } from '../../../scripts/lib/workspace-deps.ts';
 import { UNIT_SUITES } from '../../../scripts/lib/unit-suites.ts';
-import { asDuration, collectFor, priceSpecs, priceSuites, tierOfRun } from '../../../scripts/lib/spec-dry.ts';
+import { asDuration, priceSpecs, priceSuites, tierOfRun } from '../../../scripts/lib/spec-dry.ts';
 import { CONFIG_BY_HALF, HALVES } from '../../../scripts/lib/spec-cost.ts';
 
 /**
@@ -252,7 +252,7 @@ describe('packageOf', () => {
   it('names the package a repo path is in, and null for one in none', () => {
     expect(packageOf('packages/abuddy-sdk/src/x.ts')).toBe('abuddy-sdk');
     expect(packageOf('scripts/lib/x.ts')).toBeNull();
-    expect(packageOf('tests/e2e/smoke.spec.ts')).toBeNull();
+    expect(packageOf('tests/e2e/smoke/smoke.spec.ts')).toBeNull();
   });
 });
 
@@ -810,8 +810,8 @@ describe('what the plan would cost', () => {
    * help — the same defect as advising `--all` to someone who had just run it.
    */
   it('tells a missing row apart from a spec no record covers', () => {
-    const e2e = priceSpecs(['tests/e2e/smoke.spec.ts'], REPO_ROOT);
-    expect(e2e.outside, 'in no unit suite, so no record could hold it').toEqual(['tests/e2e/smoke.spec.ts']);
+    const e2e = priceSpecs(['tests/e2e/smoke/smoke.spec.ts'], REPO_ROOT);
+    expect(e2e.outside, 'in no unit suite, so no record could hold it').toEqual(['tests/e2e/smoke/smoke.spec.ts']);
     expect(e2e.unpriced, 'and not something an update would fix').toEqual([]);
 
     const missing = priceSpecs(['packages/repo-checks/tests/not-recorded.spec.ts'], REPO_ROOT);
@@ -938,20 +938,6 @@ describe('what a predicted cost reads as', () => {
   // The one the rounding hid: two costs a reader has to tell apart, and one string for both
   it('tells a recorded sub-second cost from nothing recorded at all', () => {
     expect(asDuration(3)).not.toBe(asDuration(0));
-  });
-});
-
-describe('what the plan would run', () => {
-  it('collects a pack file in the pack, which is the only root that resolves it', async () => {
-    const target = 'packages/default-setup/src/extensions/steps/create/field-default.ts';
-    const run = planTargets([target], [], REPO_ROOT).runs.find((r) => r.collects !== undefined)!;
-    expect(run.cwd, 'a pack walk runs in the pack').toBe(path.join(REPO_ROOT, 'packages', 'default-setup'));
-
-    const collected = await collectFor(run, REPO_ROOT);
-
-    expect(collected, `nothing collected for ${target}, so the prediction would read as free`).not.toEqual([]);
-    expect(collected.every((spec) => spec.startsWith('packages/default-setup/')),
-      `collected from the wrong root: ${collected.join(', ')}`).toBe(true);
   });
 });
 

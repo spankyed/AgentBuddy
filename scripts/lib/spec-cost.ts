@@ -33,13 +33,119 @@ export const specCostFile = (dir: string): string => path.join('packages', dir, 
  * `INTEGRATION_ABOVE_MS`; an integration spec comes back only when it drops under `FAST_BELOW_MS`. Anything
  * between stays where it is, which is the answer to noise and to the contention difference alike.
  *
- * The numbers: 2.5s is the widest gap in the measured distribution (2118 -> 2930, 812ms, about four times
- * the next best), and 1.5s is below every spec that has been seen to sit in the band from the integration
- * side. What it buys is a fast half of roughly 17s of file time — a couple of seconds of wall across
- * workers, so the per-change loop is still a loop.
+ * **The width is a requirement, not a taste.** A move changes the reading, so the band has to be wider
+ * than that change or the two edges contradict each other: a fast spec above the upper edge is told to
+ * move, reads lower in the other half, and is told to come back. The condition is the one asserted in
+ * `suite-split.spec.ts` — `FAST_BELOW_MS * CONTENTION_RATIO_MAX <= INTEGRATION_ABOVE_MS`. It did not hold
+ * until 2026-10-01: the band was 1.67x against readings that differ by up to 1.99x, and
+ * `spec-plan.spec.ts` was caught in exactly that loop, told to move in both directions at once.
+ *
+ * `INTEGRATION_ABOVE_MS` is the policy half of it — what a fast half may cost. 2.5s is the widest gap in
+ * the measured distribution (2118 -> 2930, 812ms, about four times the next best), and what it buys is a
+ * fast half of roughly 17s of file time, so the per-change loop is still a loop. `FAST_BELOW_MS` is not a
+ * second policy: it exists only to stop the oscillation, and 1 000 is the largest round hundred the
+ * condition above allows. Both edges compare strictly, so sitting exactly on it is safe.
  */
 export const INTEGRATION_ABOVE_MS = 2_500;
-export const FAST_BELOW_MS = 1_500;
+export const FAST_BELOW_MS = 1_000;
+
+/**
+ * An upper bound on how much more a spec reads in the fast half than in the integration half — never a
+ * conversion factor, and never a point estimate. It is what the band has to cover.
+ *
+ * Measured 2026-10-01 on an idle machine (77%), each spec moved alone and both halves run in one session,
+ * over the eight specs then sitting between the edges — the only ones that can reach one:
+ *
+ *     repo-checks     spec-plan-collect          2001 / 1006   1.99
+ *     repo-checks     lint-scope                 1855 / 1193   1.55
+ *     repo-checks     fingerprint-scope          1635 / 1142   1.43
+ *     repo-checks     bounded-spawn              2060 / 2057   1.00
+ *     repo-checks     component-contracts        1690 / 1847   0.91
+ *     abuddy-cli      fe-bundler-shared-ui        902 /  926   0.97
+ *     publish-checks  published-manifest-paths   1446 / 2030   0.71
+ *     abuddy-cli      fe-bundler-proxy-exports   1051 / 1973   0.53
+ *
+ * **There is no uniform direction**, which is the thing to know before re-measuring: half the sample is
+ * below 1. Which way a spec moves depends on which half is heavier in its package — `abuddy-cli`'s
+ * integration half holds the compiler specs behind a 50% worker cap, so a spec moving into it gets more
+ * expensive. A ratio below 1 cannot produce the loop in either direction, so only the maximum constrains
+ * the band.
+ *
+ * 2.5 against a worst observed of 1.99, because the max of eight one-shot samples understates a
+ * population max; because a cost is good to about 20% and a ratio of two inherits that unfavourably; and
+ * because the errors are asymmetric — too low reinstates a loop someone has to diagnose, too high only
+ * keeps a cheapened integration spec where it is, which no budget minds.
+ *
+ * Re-measure when either half's shape changes materially — a worker cap, or a spec large enough to move
+ * what its neighbours see. The floor on widening is the cheapest integration-half spec, 2007ms on that
+ * date: the band may not reach it, or that spec is pulled back and forth instead.
+ */
+export const CONTENTION_RATIO_MAX = 2.5;
+
+/**
+ * What a spec that just changed half says about `CONTENTION_RATIO_MAX`.
+ *
+ * The constant is a sample, and a sample has no derivation to check it against — which is the shape that
+ * produced the defect it exists to prevent, a number nobody re-asks. But a *move* is a measurement of
+ * exactly the thing it bounds, taken for free: the record holds what the spec cost in the half it left,
+ * and this run measured what it costs in the half it arrived in. So every rename that follows this gate's
+ * own advice re-measures the gate's own constant.
+ *
+ * A move shows up as a path appearing whose counterpart disappeared — the same spec, the suffix toggled.
+ * Nothing else pairs that way: an added spec is new and a dropped one is gone.
+ */
+export function ratiosFromMoves(
+  previous: SpecCost | undefined,
+  costs: Record<string, number>,
+  added: readonly string[],
+  onDisk: readonly string[],
+): { spec: string; fast: number; integration: number; ratio: number }[] {
+  const here = new Set(onDisk);
+  const other = (file: string): string => (halfOfPath(file) === 'fast'
+    ? file.replace(/\.spec\.ts$/, INTEGRATION_SUFFIX)
+    : `${file.slice(0, -INTEGRATION_SUFFIX.length)}.spec.ts`);
+  return added.flatMap((spec) => {
+    const was = other(spec);
+    const before = previous?.costs[was];
+    const now = costs[spec];
+    // The counterpart has to be gone from disk, not merely unmeasured: a named run measures one config, so
+    // "no reading for the other half" is true of every spec in the suite and would pair an ordinary new
+    // spec with whatever happens to share its name in the other half
+    if (here.has(was) || before === undefined || now === undefined || now <= 0 || before <= 0) return [];
+    const [fast, integration] = halfOfPath(spec) === 'fast' ? [now, before] : [before, now];
+    // A cheap spec's ratio is noise about the band, and acting on it is worse than ignoring it: a 10ms spec
+    // reading 3ms in the other half is 3.33x, which would advise raising the bound and so *lowering* the
+    // return edge over 7ms of jitter. Only a spec that could reach an edge says anything about where the
+    // edges go, and below the return edge no cost can be asked to move.
+    if (Math.max(fast, integration) < FAST_BELOW_MS) return [];
+    return [{ spec, fast, integration, ratio: fast / integration }];
+  });
+}
+
+/** A move whose ratio the band does not cover: evidence that `CONTENTION_RATIO_MAX` is too low. */
+export const underBound = (
+  found: readonly { ratio: number }[],
+): boolean => found.some(({ ratio }) => ratio > CONTENTION_RATIO_MAX);
+
+/** What a recorded cost is good to (`goal-measured-placement.md`), and so how close to an edge is close. */
+export const COST_ACCURACY = 0.2;
+
+/**
+ * How far a spec is from the edge that could actually move it, as a share of its cost.
+ *
+ * **Which edge depends on the half.** A fast spec only ever leaves above `INTEGRATION_ABOVE_MS`; an
+ * integration spec only comes back below `FAST_BELOW_MS`. Reporting band membership instead treated those
+ * as one question, so a fast spec at 1 673ms was listed as one a re-measurement could move when it would
+ * have had to nearly double. Widening the band made that louder rather than quieter — the membership list
+ * grew by five specs that cannot move at all.
+ */
+export function towardEdge(file: string, ms: number): number {
+  const edge = halfOfPath(file) === 'fast' ? INTEGRATION_ABOVE_MS : FAST_BELOW_MS;
+  return Math.abs(edge - ms) / ms;
+}
+
+/** Whether a re-measurement inside the record's own accuracy could carry this spec over its edge. */
+export const nearEdge = (file: string, ms: number): boolean => towardEdge(file, ms) <= COST_ACCURACY;
 
 export interface SpecCost {
   /** Measured milliseconds, per spec path relative to the package */
@@ -322,6 +428,47 @@ export const overBudget = (packageDir: string, costs: Record<string, number>, fi
   (hasSplit(packageDir) ? misplaced : outgrown)(costs, files);
 
 /**
+ * Specs that cost more than a fast half allows, in a package with one suite. Each entry records what makes
+ * that spec expensive, so the cost is known rather than discovered.
+ *
+ * **This is not a queue of packages to split**, which is what an earlier version of it implied. A split
+ * buys a different *tier* — a different timeout budget and a different worker cap — and that is the
+ * criterion, not slowness. `@abuddy/cli` has two halves because its expensive specs spawn compilers, so
+ * they need a 50% worker cap and tier 2's 60s; the fast half needs neither.
+ *
+ * Measured 2026-09-25, none of the entries below qualifies. They build TypeScript programs in-process or
+ * wait on real timing — no spawn, so no worker cap — and their slowest single tests are around a second
+ * against tier 1's 15s. Splitting their packages would buy a faster whole-suite run, which is not the dev
+ * loop: `npm run spec -- <file>` is file-targeted, and the chain pools projects and runs only the stale
+ * ones. So all three packages stay as they are, on the measurement.
+ *
+ * What the list is for is the other direction. The check fails on a spec that has become expensive and is
+ * not listed, **and** on a listed one that has become cheap, so neither the cost nor the reason can quietly
+ * stop being true.
+ */
+export const EXPENSIVE_BY_NATURE: Record<string, string> = {
+  // 94 tests: 91 call `generatePackFiles` with a different manifest each (~7.2s, different work every time
+  // and so not cacheable), and 3 build TypeScript programs (2.5s since they share a compiler host).
+  // Measured in goal-one-job-pool.md Phase 5, which also records why the split it proposed was not done.
+  'abuddy-sdk/tests/build/generate-entries.spec.ts': 'runs codegen 91 times and the compiler 3 times',
+  // Holds the repo's slowest single test at 4.1s. It spawns real processes and waits on real lock
+  // timeouts, so its cost is elapsed time rather than work, and no amount of cores shortens it.
+  'abuddy-host/tests/database/write-lock.spec.ts': 'waits on real cross-process lock timeouts',
+  // Seven `npm pack --dry-run` spawns at ~0.3s each. Asking npm what it would publish is the subject, not an
+  // implementation detail of the test: the module exists because reading `files` ourselves lost npm's
+  // force-included files. Trimming two of the calls would land it about at the 2.5s edge, where a contended
+  // measurement decides whether it is reported at all — `@abuddy/host` has one half, so there is no band here
+  // and nothing to flip to, only `outgrown`'s single threshold. Re-measured on an idle machine and it came
+  // back slightly slower, not faster, so the entry is not an artefact of load.
+  'abuddy-host/tests/build/published-manifest.spec.ts': 'spawns npm pack seven times, which is its subject',
+  // Starts and stops real pack backends and then waits to prove a cron schedule does *not* tick into the
+  // next test. The wait is the assertion, so shortening it removes what the test checks.
+  'default-setup/tests/harness-app-stop.spec.ts': 'waits to prove a stopped schedule does not tick',
+  // Builds a TypeScript program over the pack to check a diagnostic names the event a send is for.
+  'default-setup/tests/send-to-system-diagnostics.spec.ts': 'builds a TypeScript program over the pack',
+};
+
+/**
  * How a run says what it found, as a value a spec can read.
  *
  * Here rather than inline in the command for the reason `parseArgs`, `planFor` and `settle` are here: the
@@ -332,16 +479,25 @@ export const overBudget = (packageDir: string, costs: Record<string, number>, fi
  * `tail` goes on the suite's line; `lines` are the findings under it; `advice` is what to do, and it is
  * different for each kind, which is the whole value of telling them apart.
  */
-export function describeBudget(findings: readonly Budget[]): { tail: string; lines: string[]; advice: string } {
+export function describeBudget(
+  findings: readonly Budget[],
+  suiteDir: string,
+): { tail: string; lines: string[]; advice: string } {
   const renames = findings.filter((found) => found.kind === 'rename');
-  const over = findings.filter((found) => found.kind === 'over');
+  // An `over` finding whose reason is already recorded is one somebody has looked at, which is the whole
+  // thing this finding is for. Reporting it anyway printed `record it in EXPENSIVE_BY_NATURE` on every run
+  // for all five entries that were already in there — advice nobody can act on, in the one channel that has
+  // to stay worth reading. The list moved here from `suite-split.spec.ts` so that the report and the gate
+  // read the same declaration; the gate still sees every finding, because it asks `overBudget` directly.
+  const over = findings.filter((found) => found.kind === 'over'
+    && !(`${suiteDir}/${found.file}` in EXPENSIVE_BY_NATURE));
   const seconds = (ms: number): string => `${(ms / 1000).toFixed(1)}s`;
   return {
     tail: [
       renames.length > 0 ? `${renames.length} in the wrong half` : '',
       over.length > 0 ? `${over.length} over the ${INTEGRATION_ABOVE_MS / 1000}s a fast half allows` : '',
     ].filter(Boolean).join(', '),
-    lines: findings.map((found) => (found.kind === 'rename'
+    lines: [...renames, ...over].map((found) => (found.kind === 'rename'
       ? `  ${seconds(found.ms)}  ${found.file}  ->  ${found.belongs}`
       : `  ${seconds(found.ms)}  ${found.file}  (no slower half to move it to)`)),
     advice: [

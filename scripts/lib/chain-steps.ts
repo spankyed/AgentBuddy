@@ -244,8 +244,38 @@ const WORKSPACE_PARTS = [
 ];
 const workspace = (pkg: string): string[] => WORKSPACE_PARTS.map((part) => `packages/${pkg}/${part}`);
 
+/**
+ * What a *suite* reads, which is the workspace plus its guide. A fingerprint skips a `CLAUDE.md` (see `GUIDE`
+ * in `packages-built.ts`), so for all but one package this adds a path and no bytes — and that one is
+ * `packages/repo-checks/CLAUDE.md`, whose "What is here" table `spec-plan.spec.ts` asserts. Here and not in
+ * `WORKSPACE_PARTS`, so `typecheck`, which compiles the repo and reads no guide, does not take it on.
+ */
+const suiteWorkspace = (pkg: string): string[] => [...workspace(pkg), `packages/${pkg}/CLAUDE.md`];
+
 /** Every workspace: what `typecheck` reads, since it compiles the repo rather than a package */
 const EVERY_WORKSPACE = PACKAGES.flatMap(workspace);
+
+/**
+ * Every source tree in the repo: what a check reads when its subject is the repo rather than a package.
+ *
+ * `typecheck` is one, since it compiles the whole thing. The others are the repo-wide *guards* — a spec
+ * that asks `git ls-files` what exists and then asserts something about all of it. Those live inside one
+ * package's suite while their subject is everything, and the pool runs a project only when that project's
+ * own inputs moved, so each was blind to the rest of the tree: measured 2026-09-30, `@abuddy/sdk`'s suite
+ * was an input to 241 of 1860 tracked code files and `@app/repo-checks`' to 308. `identity-guard` then
+ * missed a forbidden path committed to `@abuddy/cli` and two full chain runs passed over it.
+ *
+ * Build output is not in here, because a guard's subject is source. `typecheck` adds its own.
+ */
+const EVERY_SOURCE = [...ROOT, ...EVERY_WORKSPACE, 'scripts', 'tests/e2e', 'tests/packs', 'tests/scripts',
+  'tests/tsconfig.json', 'playwright.config.ts', 'types', 'electron-builder.mjs',
+  // The drive layer's config, and only it: the driving scripts beside it are gitignored and ad-hoc,
+  // so naming the directory would re-run a typecheck every time someone poked at the app
+  'drive/playwright.config.ts',
+  'build/prod/diagnostics.mjs', 'build/prod/verify-node-modules.mjs',
+  'packages/abuddy-cli/bin/abuddy.mjs', 'packages/abuddy-cli/bin/source-hooks.mjs',
+  'packages/abuddy-ears/bench/ears.bench.ts', 'packages/api/tsup.config.ts',
+  'packages/dev-mode.js', 'packages/entry-point.mjs'];
 
 /**
  * `packages:ensure` builds the publishable packages, so its inputs are theirs — taken from `BUILD_UNITS`
@@ -290,19 +320,19 @@ export const PACK_OUTPUTS = ['packages/default-setup/dist', 'packages/default-se
 
 /**
  * What building the fixture packs writes, derived from the fixtures themselves. These sit *inside*
- * `tests/fixtures`, which the same step declares as an input, for the same reason as above.
+ * `tests/packs`, which the same step declares as an input, for the same reason as above.
  */
-const FIXTURE_PACKS = fs.readdirSync(path.join(REPO_ROOT, 'tests', 'fixtures'), { withFileTypes: true })
-  .filter((entry) => entry.isDirectory() && fs.existsSync(path.join(REPO_ROOT, 'tests', 'fixtures', entry.name, 'abuddy.json')))
+const FIXTURE_PACKS = fs.readdirSync(path.join(REPO_ROOT, 'tests', 'packs'), { withFileTypes: true })
+  .filter((entry) => entry.isDirectory() && fs.existsSync(path.join(REPO_ROOT, 'tests', 'packs', entry.name, 'abuddy.json')))
   .map((entry) => entry.name)
   .sort();
-const FIXTURE_OUTPUTS = FIXTURE_PACKS.flatMap((name) => [`tests/fixtures/${name}/dist`, `tests/fixtures/${name}/src/__generated__`]);
+const FIXTURE_OUTPUTS = FIXTURE_PACKS.flatMap((name) => [`tests/packs/${name}/dist`, `tests/packs/${name}/src/__generated__`]);
 
 /**
  * What running a fixture pack's own Playwright suite leaves behind. Nothing reads it, and it changes every
- * run, so a step that declares `tests/fixtures` has to say it reads around this or it can never cache.
+ * run, so a step that declares `tests/packs` has to say it reads around this or it can never cache.
  */
-const FIXTURE_TEST_OUTPUT = FIXTURE_PACKS.flatMap((name) => [`tests/fixtures/${name}/tests/results`, `tests/fixtures/${name}/tests/screenshots`]);
+const FIXTURE_TEST_OUTPUT = FIXTURE_PACKS.flatMap((name) => [`tests/packs/${name}/tests/results`, `tests/packs/${name}/tests/screenshots`]);
 
 /**
  * The unit suites that read build output, and which. Every other suite resolves workspace source through
@@ -327,7 +357,11 @@ const FIXTURE_TEST_OUTPUT = FIXTURE_PACKS.flatMap((name) => [`tests/fixtures/${n
  * without the pack and would pass vacuously if it raced `compile`. A check that silently stops checking is
  * worse than one that fails, so its verdict depends on that tree and it declares it.
  */
-export const SUITE_READS: Record<string, { packages?: true; pack?: true }> = {
+/**
+ * `repo` says the suite holds a guard whose subject is the whole tree, so its inputs are the whole tree.
+ * Without it the pool skips the project while the thing it checks moves — see `EVERY_SOURCE`.
+ */
+export const SUITE_READS: Record<string, { packages?: true; pack?: true; repo?: true }> = {
   // `pretest: ensure-packages-built`, `@abuddy/testing`'s bundle, and its own compiled seeds under `dist/`
   'default-setup': { packages: true, pack: true },
   // `pretest: ensure-packages-built`; it packs and installs the published packages, and `dependency-runtime`
@@ -339,8 +373,10 @@ export const SUITE_READS: Record<string, { packages?: true; pack?: true }> = {
   // Boots the app runtime, which loads the built-in pack: `dist/runtime/index.cjs` and `settings.seed.json`.
   // Named by host code rather than by any spec, which is why it has to be measured rather than scanned.
   api: { pack: true },
-  // `pretest: ensure-packages-built`; `published-sdk-peers` reads the built `dist` and skips without it
-  'repo-checks': { packages: true },
+  // `pretest: ensure-packages-built`; `published-sdk-peers` reads the built `dist` and skips without it.
+  // `repo`: six of its specs ask git what the repo holds — the chain's input coverage, spec placement,
+  // the lint's scope, the import rules — so every one of them is about files this package does not own
+  'repo-checks': { packages: true, repo: true },
   // `pretest: ensure-packages-built`; it npm-packs the built packages into a consumer and compiles it
   'publish-checks': { packages: true },
 };
@@ -379,10 +415,11 @@ export function suiteInputs(suite: UnitSuite): string[] {
   return [
     ...ROOT,
     ...SUITE_RUNNER,
-    ...workspace(suite.dir),
+    ...suiteWorkspace(suite.dir),
     ...workspaceDeps(suite.dir).flatMap(dependencySource),
     ...(reads.packages ? PACKAGE_BUILD_OUTPUTS : []),
     ...(reads.pack ? PACK_OUTPUTS : []),
+    ...(reads.repo ? EVERY_SOURCE : []),
   ];
 }
 
@@ -421,6 +458,13 @@ const POOL_STEPS: readonly ChainStep[] = (['host', 'pack'] as const).map((kind) 
     // Nothing but the union, so the step cannot go stale for a reason no project can see. The runner files
     // this used to add by hand are in `suiteInputs` now, where both layers read them.
     inputs: [...new Set(suites.flatMap(suiteInputs))].sort(),
+    // A `repo` suite declares every source tree, `tests/packs` among them, and what it wants there is the
+    // fixture packs' sources: the guards read what a pack author writes, never what building one produces.
+    // Same reason `typecheck` reads around them, and the alternative — depending on the step that writes
+    // them — would put a tier-1 pool behind a tier-2 build it does not need.
+    ...(suites.some((suite) => SUITE_READS[suite.dir]?.repo)
+      ? { excludes: [...FIXTURE_OUTPUTS, ...FIXTURE_TEST_OUTPUT] }
+      : {}),
     // It keeps a cache of its own, so the chain's `--all` has to reach inside it
     forceArgs: ['--all'],
   };
@@ -513,20 +557,20 @@ export const CHAIN_STEPS: readonly ChainStep[] = [
   // because that is what `budgetFor` has to cover. Raising the default from two to three moved this one and
   // nothing else past the drift band, which is `driftedSteps` doing its job.
   { name: 'test:external-pack:contract', tier: 2, needs: ['compile'], seconds: 57, outputs: FIXTURE_OUTPUTS,
-    // It declares `tests/fixtures` for the pack sources; the Playwright output under each pack is written
+    // It declares `tests/packs` for the pack sources; the Playwright output under each pack is written
     // by `:app`, changes every run, and is read by nothing
     excludes: FIXTURE_TEST_OUTPUT,
-    inputs: [...ROOT, ...BOUNDED_RUNNER, 'tests/fixtures', 'tests/scripts/test-external-pack-contract.sh',
+    inputs: [...ROOT, ...BOUNDED_RUNNER, 'tests/packs', 'tests/scripts/test-external-pack-contract.sh',
       'tests/scripts/lib', ...PACKAGE_BUILD_OUTPUTS, ...PACK_OUTPUTS] },
   // The widest inputs in the table, and honestly so: it compiles every workspace, the scripts and the
   // tests, and lints them. A change anywhere in the repo's TypeScript is a change to what it checks.
   { name: 'typecheck', tier: 1, needs: ['compile'], seconds: 27,
-    // `tests/e2e`, `tests/fixtures` and `tests/scripts`, never `tests` itself: that walk takes in
-    // `tests/screenshots`, which the E2E step rewrites on every run, so declaring the parent meant this
-    // step could never be cached — measured, 26 screenshot files, and a warm chain paid its 34s every
-    // time for nothing. Gitignored output that no step reads should be no step's input, and the
-    // input-coverage guard backstops the narrowing: a tracked file under `tests/` that none of these
-    // three covers fails it by name.
+    // `tests/e2e`, `tests/packs` and `tests/scripts`, never `tests` itself: that walk takes in
+    // `tests/results`, which every Playwright run rewrites, so declaring the parent meant this step could
+    // never be cached — measured against `tests/screenshots`, which the suite wrote until `91b348069` and
+    // which cost a warm chain its 34s every time. Gitignored output that no step reads should be no step's
+    // input, and the input-coverage guard backstops the narrowing: a tracked file under `tests/` that
+    // none of these three covers fails it by name.
     // The loose modules below are here because `lint:check` is a leg of this step and reads them: its root pass
     // is `oxlint .` minus `docs/**` and the CLI's scaffold templates, which takes in every tracked JS module
     // outside those two. No step *runs* the packaging ones — they belong to `build-prod` — but a step that reads
@@ -535,16 +579,7 @@ export const CHAIN_STEPS: readonly ChainStep[] = [
     // The `packages/` entries are the files `EVERY_WORKSPACE` cannot reach, since it walks a fixed set of parts
     // and these sit beside them: two bins, a bench, a bundler config and the two loaders at `packages/`'s root.
     // They arrived when the lint stopped ignoring `packages/**`, and the guard below named all six.
-    inputs: [...ROOT, ...EVERY_WORKSPACE, 'scripts', 'tests/e2e', 'tests/fixtures', 'tests/scripts',
-      'tests/tsconfig.json', 'playwright.config.ts', 'types', 'electron-builder.mjs',
-      // The drive layer's config, and only it: the driving scripts beside it are gitignored and ad-hoc,
-      // so naming the directory would re-run a typecheck every time someone poked at the app
-      'drive/playwright.config.ts',
-      'build/prod/diagnostics.mjs', 'build/prod/verify-node-modules.mjs',
-      'packages/abuddy-cli/bin/abuddy.mjs', 'packages/abuddy-cli/bin/source-hooks.mjs',
-      'packages/abuddy-ears/bench/ears.bench.ts', 'packages/api/tsup.config.ts',
-      'packages/dev-mode.js', 'packages/entry-point.mjs',
-      ...PACKAGE_BUILD_OUTPUTS, ...PACK_OUTPUTS],
+    inputs: [...EVERY_SOURCE, ...PACKAGE_BUILD_OUTPUTS, ...PACK_OUTPUTS],
     // It wants the fixture packs' sources, never their build output: `tsc -p tests` compiles `e2e/**`
     // only, and `check:specifiers` filters `__generated__` out itself — verified by deleting a fixture's
     // generated directory, which leaves it passing. Hashing that output would tie a tier-1 check's
@@ -574,7 +609,7 @@ export const CHAIN_STEPS: readonly ChainStep[] = [
     // PACKAGE_BUILD_OUTPUTS because the fixture it drives *is* one: `@abuddy/testing` resolves to its
     // built bundle, which launches Electron, finds the window and bypasses onboarding. Reached by package
     // name rather than by path, so nothing that reads a step's text can see the edge
-    inputs: [...ROOT, ...BOUNDED_RUNNER, 'tests/fixtures', 'tests/scripts/test-external-pack-app.sh',
+    inputs: [...ROOT, ...BOUNDED_RUNNER, 'tests/packs', 'tests/scripts/test-external-pack-app.sh',
       'tests/scripts/lib', 'playwright.config.ts', ...PACKAGE_BUILD_OUTPUTS, ...APP_OUTPUTS] },
   // Never cached: it drives real Electron with real timing and is the likeliest step to be flaky, and a
   // flaky pass cached green hides an intermittent failure indefinitely. 28s is cheap enough to always pay.
@@ -600,7 +635,7 @@ export const CHAIN_STEPS: readonly ChainStep[] = [
   // suite off the gate bought.
   { name: 'test:smoke', tier: 3, needs: ['build:app'], seconds: 6,
     outputs: ['tests/results'],
-    inputs: [...ROOT, 'tests/e2e/smoke.spec.ts', 'tests/e2e/fixtures', 'playwright.config.ts',
+    inputs: [...ROOT, 'tests/e2e/smoke', 'playwright.config.ts',
       'scripts/with-source.mjs', ...APP_ENTRY, ...PACKAGE_BUILD_OUTPUTS, ...APP_OUTPUTS] },
   // The rest of the E2E suite. **Opt-in, not a gate** — `npm run chain -- --e2e`.
   //
@@ -611,7 +646,7 @@ export const CHAIN_STEPS: readonly ChainStep[] = [
   { name: 'test', tier: 3, needs: ['build:app', 'test:smoke'], cache: false, seconds: 26,
     optInBecause: 'it is a harness for driving the app, not a regression gate; nothing has needed it to fail',
     neverCachedBecause: 'it drives real Electron, and a flaky pass cached green hides an intermittent failure',
-    outputs: ['tests/screenshots', 'tests/results'],
+    outputs: ['tests/results'],
     inputs: [...ROOT, 'tests/e2e', 'playwright.config.ts', 'scripts/with-source.mjs', ...APP_ENTRY, ...APP_OUTPUTS] },
   { name: 'test:packaged-authoring', tier: 3, needs: ['build:app'], seconds: 59,
     inputs: [...ROOT, ...BOUNDED_RUNNER, 'tests/scripts/test-packaged-authoring.sh', 'tests/scripts/lib',

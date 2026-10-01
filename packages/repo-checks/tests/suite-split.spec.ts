@@ -16,7 +16,10 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { REPO_ROOT } from '@abuddy/host/build/packages-built';
 import {
   FAST_BELOW_MS, INTEGRATION_ABOVE_MS, SPEC_COST_FLAGS, absentIn, changesIn, contended, drift, drifted,
-  absentNamed, describeBudget, halfOfPath, moved, namedIn, overBudget, parseArgs, planFor, readSpecCost,
+  absentNamed, CONTENTION_RATIO_MAX, COST_ACCURACY, describeBudget, EXPENSIVE_BY_NATURE, halfFor,
+  halfOfPath, hasSplit, moved, nearEdge, ratiosFromMoves, towardEdge, underBound, type SpecCost,
+  namedIn, overBudget, parseArgs,
+  planFor, readSpecCost,
   refuseAbsent, refusesAsContended, rewritesEveryRow, settle, specCostFile, specFiles, stale, suitesFor,
   unrecorded,
 } from '../../../scripts/lib/spec-cost.ts';
@@ -70,45 +73,6 @@ describe('a spec runs in the half its cost puts it in', () => {
   });
 });
 
-/**
- * Specs that cost more than a fast half allows, in a package with one suite. Each entry records what makes
- * that spec expensive, so the cost is known rather than discovered.
- *
- * **This is not a queue of packages to split**, which is what an earlier version of it implied. A split
- * buys a different *tier* — a different timeout budget and a different worker cap — and that is the
- * criterion, not slowness. `@abuddy/cli` has two halves because its expensive specs spawn compilers, so
- * they need a 50% worker cap and tier 2's 60s; the fast half needs neither.
- *
- * Measured 2026-09-25, none of the entries below qualifies. They build TypeScript programs in-process or
- * wait on real timing — no spawn, so no worker cap — and their slowest single tests are around a second
- * against tier 1's 15s. Splitting their packages would buy a faster whole-suite run, which is not the dev
- * loop: `npm run spec -- <file>` is file-targeted, and the chain pools projects and runs only the stale
- * ones. So all three packages stay as they are, on the measurement.
- *
- * What the list is for is the other direction. The check fails on a spec that has become expensive and is
- * not listed, **and** on a listed one that has become cheap, so neither the cost nor the reason can quietly
- * stop being true.
- */
-const EXPENSIVE_BY_NATURE: Record<string, string> = {
-  // 94 tests: 91 call `generatePackFiles` with a different manifest each (~7.2s, different work every time
-  // and so not cacheable), and 3 build TypeScript programs (2.5s since they share a compiler host).
-  // Measured in goal-one-job-pool.md Phase 5, which also records why the split it proposed was not done.
-  'abuddy-sdk/tests/build/generate-entries.spec.ts': 'runs codegen 91 times and the compiler 3 times',
-  // Holds the repo's slowest single test at 4.1s. It spawns real processes and waits on real lock
-  // timeouts, so its cost is elapsed time rather than work, and no amount of cores shortens it.
-  'abuddy-host/tests/database/write-lock.spec.ts': 'waits on real cross-process lock timeouts',
-  // Seven `npm pack --dry-run` spawns at ~0.3s each. Asking npm what it would publish is the subject, not an
-  // implementation detail of the test: the module exists because reading `files` ourselves lost npm's
-  // force-included files. Trimming two of the calls would land it about at the 2.5s edge — a cost that flips half
-  // on a contended measurement, which is what the band exists to avoid. Re-measured on an idle machine and it
-  // came back slightly slower, not faster, so the entry is not an artefact of load.
-  'abuddy-host/tests/build/published-manifest.spec.ts': 'spawns npm pack seven times, which is its subject',
-  // Starts and stops real pack backends and then waits to prove a cron schedule does *not* tick into the
-  // next test. The wait is the assertion, so shortening it removes what the test checks.
-  'default-setup/tests/harness-app-stop.spec.ts': 'waits to prove a stopped schedule does not tick',
-  // Builds a TypeScript program over the pack to check a diagnostic names the event a send is for.
-  'default-setup/tests/send-to-system-diagnostics.spec.ts': 'builds a TypeScript program over the pack',
-};
 
 /**
  * What a run says it found. The defect this covers was a string: `spec-cost:update` told a package with one
@@ -124,7 +88,7 @@ describe('what a run says about a spec it cannot place', () => {
   const RENAME = { kind: 'rename', file: 'tests/slow.spec.ts', ms: 9_000, belongs: 'integration' } as const;
 
   it('never tells a package with one half to move a spec', () => {
-    const said = describeBudget([OVER]);
+    const said = describeBudget([OVER], 'any-suite');
     expect(`${said.tail} ${said.lines.join(' ')} ${said.advice}`.toLowerCase()).not.toContain('wrong half');
     expect(said.advice.toLowerCase()).not.toContain('rename');
     expect(said.advice, 'the fix there is to record it, which is what EXPENSIVE_BY_NATURE is')
@@ -132,16 +96,129 @@ describe('what a run says about a spec it cannot place', () => {
   });
 
   it('tells a package with two halves to rename, and says which', () => {
-    const said = describeBudget([RENAME]);
+    const said = describeBudget([RENAME], 'any-suite');
     expect(said.tail).toContain('wrong half');
     expect(said.advice.toLowerCase()).toContain('rename');
     expect(said.lines.join(' ')).toContain('integration');
   });
 
+  /**
+   * The entries in `EXPENSIVE_BY_NATURE` are costs somebody has already looked at and written a reason for,
+   * which is the whole thing an `over` finding is for. Reporting them anyway printed `record it in
+   * EXPENSIVE_BY_NATURE` on every `--all` run for all five — advice that cannot be followed, in the one
+   * channel that has to stay worth reading.
+   */
+  it('says nothing about a cost already recorded as expensive by nature', () => {
+    const [key] = Object.keys(EXPENSIVE_BY_NATURE);
+    const [suiteDir, ...rest] = key!.split('/');
+    const recorded = { kind: 'over', file: rest.join('/'), ms: 9_000 } as const;
+    expect(describeBudget([recorded], suiteDir!)).toEqual({ tail: '', lines: [], advice: '' });
+    // The same finding under a suite with no entry is still reported, so the filter is why, not the shape
+    expect(describeBudget([recorded], 'a-suite-with-no-entries').advice).toContain('EXPENSIVE_BY_NATURE');
+  });
+
   it('says nothing at all when there is nothing to say', () => {
-    expect(describeBudget([])).toEqual({ tail: '', lines: [], advice: '' });
+    expect(describeBudget([], 'any-suite')).toEqual({ tail: '', lines: [], advice: '' });
   });
 });
+
+/**
+ * Which edge a spec is near, which is the question `--list` renders.
+ *
+ * Band membership used to be the answer, and it conflated two: only the upper edge can move a fast spec
+ * and only the lower one can move an integration spec, so a fast spec at 1 673ms was reported as one a
+ * re-measurement could move when it would have had to nearly double. Lowering the return edge made that
+ * worse rather than better — five more specs became members, none of them able to move.
+ */
+/**
+ * A move re-measures the constant that permitted it.
+ *
+ * `CONTENTION_RATIO_MAX` is a sample: it records a measurement and has nothing to re-derive it from, which
+ * is the shape that produced the defect it exists to prevent. What checks it is the moves it causes — the
+ * record holds what a spec cost in the half it left, an update measures what it costs where it arrived, and
+ * the quotient is the thing the band has to cover. Free, and it arrives exactly when the number matters.
+ */
+describe('what a spec that changed half says about the band', () => {
+  const FAST = 'tests/x.spec.ts';
+  const SLOW = 'tests/x.integration.spec.ts';
+  const record = (costs: Record<string, number>): SpecCost => ({ measuredAt: 'then', costs, skipped: [] });
+
+  it('reads the ratio off a move in either direction', () => {
+    expect(ratiosFromMoves(record({ [FAST]: 2_000 }), { [SLOW]: 1_000 }, [SLOW], [SLOW]))
+      .toEqual([{ spec: SLOW, fast: 2_000, integration: 1_000, ratio: 2 }]);
+    expect(ratiosFromMoves(record({ [SLOW]: 1_000 }), { [FAST]: 2_000 }, [FAST], [FAST])[0])
+      .toMatchObject({ fast: 2_000, integration: 1_000, ratio: 2 });
+  });
+
+  /**
+   * The counterpart must be gone from *disk*, not merely unmeasured. A run that names one spec measures
+   * one config, so "the other half has no reading" is true of every spec in the suite — pairing on that
+   * would read an ordinary new spec as a move the moment something shared its name in the other half.
+   */
+  it('is not a move while both halves of the name are still there', () => {
+    expect(ratiosFromMoves(record({ [FAST]: 2_000 }), { [SLOW]: 1_000 }, [SLOW], [FAST, SLOW])).toEqual([]);
+  });
+
+  /**
+   * A cheap spec's ratio is noise, and acting on it is worse than ignoring it: 10ms reading 3ms in the
+   * other half is 3.33x, which would advise raising the bound and so lowering the return edge over 7ms of
+   * jitter. Only a spec that could reach an edge says anything about where the edges go.
+   */
+  it('ignores a move too cheap to say anything about the band', () => {
+    expect(ratiosFromMoves(record({ [FAST]: 10 }), { [SLOW]: 3 }, [SLOW], [SLOW])).toEqual([]);
+    const real = FAST_BELOW_MS + 1;
+    expect(ratiosFromMoves(record({ [FAST]: real }), { [SLOW]: real / 2 }, [SLOW], [SLOW])).toHaveLength(1);
+  });
+
+  it('says nothing when the spec is new rather than moved', () => {
+    expect(ratiosFromMoves(record({}), { [SLOW]: 1_000 }, [SLOW], [SLOW])).toEqual([]);
+  });
+
+  it('calls out only a ratio the band does not cover', () => {
+    expect(underBound([{ ratio: CONTENTION_RATIO_MAX }]), 'exactly at the bound is covered').toBe(false);
+    expect(underBound([{ ratio: CONTENTION_RATIO_MAX + 0.01 }])).toBe(true);
+    expect(underBound([])).toBe(false);
+  });
+});
+
+
+describe('how close a spec is to changing half', () => {
+  const FAST = 'tests/x.spec.ts';
+  const SLOW = 'tests/x.integration.spec.ts';
+
+  it('measures a fast spec against the upper edge and an integration one against the lower', () => {
+    expect(towardEdge(FAST, INTEGRATION_ABOVE_MS)).toBe(0);
+    expect(towardEdge(SLOW, FAST_BELOW_MS)).toBe(0);
+    // The edge that cannot move it is not the one measured: a fast spec at the lower edge is far away
+    expect(towardEdge(FAST, FAST_BELOW_MS)).toBeGreaterThan(COST_ACCURACY);
+  });
+
+  it('calls a spec near when a re-measurement inside the record\'s own accuracy would carry it over', () => {
+    expect(nearEdge(FAST, Math.round(INTEGRATION_ABOVE_MS / (1 + COST_ACCURACY)) + 1)).toBe(true);
+    expect(nearEdge(FAST, Math.round(INTEGRATION_ABOVE_MS / (1 + COST_ACCURACY)) - 50)).toBe(false);
+  });
+
+  /**
+   * Over the live records, so the report `--list` prints is the one asserted here rather than a second
+   * reading of the same rule. A spec in a one-config package is excluded for the reason `overBudget`
+   * excludes it: there is no half to move into, so no edge applies.
+   */
+  it('finds the specs that really are close, and only in a package with somewhere to go', () => {
+    const close = suites
+      .filter(({ dir }) => hasSplit(dir))
+      .flatMap(({ suite, record }) => Object.entries(record?.costs ?? {})
+        .filter(([file, ms]) => nearEdge(file, ms))
+        .map(([file]) => `${suite.dir}/${file}`));
+    expect(close, 'nothing is near an edge, so this rule is reading an empty population').not.toEqual([]);
+  });
+
+  // `nearEdge` answers for a cost and a half and knows nothing about packages — `--list` and `overBudget`
+  // both apply `hasSplit` themselves, so the question is asked once and the guard sits where it belongs
+  it('asks only about the cost and the half, leaving the package to the caller', () => {
+    expect(nearEdge(FAST, INTEGRATION_ABOVE_MS - 1)).toBe(true);
+  });
+});
+
 
 describe('a spec that costs more than a fast half allows', () => {
   // No `!split` filter: `overBudget` returns this kind only for a package that has nowhere to move a spec
@@ -178,13 +255,58 @@ describe('a measurement replaces the record only when it says something new', ()
   const FAST = 'tests/x.spec.ts';
   const SLOW = 'tests/x.integration.spec.ts';
 
+  /**
+   * The two edges have to agree with each other, and for a year they did not.
+   *
+   * A move changes the reading — that is the whole reason there are two edges rather than one — so a band
+   * narrower than the change makes the pair contradictory: a fast spec above the upper edge is told to
+   * move, reads lower in the other half, and is told to come back. `spec-plan.spec.ts` sat in that loop at
+   * 2.8s fast against 1.4s integration, with a band of 1.67x against readings differing by up to 1.99x.
+   *
+   * Asserted over `halfFor` rather than over the arithmetic, because the arithmetic restates the branches
+   * instead of exercising them: swapping a `>` for a `>=` leaves the inequality true. Both directions,
+   * because each of the two specs that exposed this demonstrated a different one.
+   */
+  describe('the two edges agree about where a spec belongs', () => {
+    it('never sends a spec back the way it came, at any cost', () => {
+      let out = 0;
+      let back = 0;
+      for (let ms = 1; ms <= 40_000; ms += 1) {
+        if (halfFor(FAST, ms) !== 'fast') {
+          out += 1;
+          expect(halfFor(SLOW, ms / CONTENTION_RATIO_MAX), `${ms}ms left the fast half`).toBe('integration');
+        }
+        if (halfFor(SLOW, ms) !== 'integration') {
+          back += 1;
+          expect(halfFor(FAST, ms * CONTENTION_RATIO_MAX), `${ms}ms came back to the fast half`).toBe('fast');
+        }
+      }
+      // Without these the property passes over nothing: a `halfFor` that always returns the half it was
+      // given enters neither branch, which is the shape this repo keeps shipping
+      expect(out, 'no cost in the scan ever left the fast half').toBeGreaterThan(0);
+      expect(back, 'no cost in the scan ever came back to it').toBeGreaterThan(0);
+    });
+  });
+
   it('records a spec it has never seen', () => {
     expect(moved(FAST, undefined, 120)).toBe(true);
   });
 
+  /**
+   * The literal on the upper edge records the measured distribution gap, so it stays a literal.
+   *
+   * The lower one cannot: it used to be `moved(SLOW, 2_600, 1_400)`, and once the return edge dropped to
+   * 1 000 that pair stopped crossing anything — it went on passing through the magnitude clause instead,
+   * green while testing nothing it is named for. Derived from the constant now, and paired against the
+   * half the same numbers cannot leave, so only the crossing clause can produce both answers.
+   */
   it('records a measurement that would place the spec in the other half', () => {
     expect(moved(FAST, 2_400, 2_600), 'a fast spec past the upper edge').toBe(true);
-    expect(moved(SLOW, 2_600, 1_400), 'an integration spec under the lower edge').toBe(true);
+
+    const recorded = FAST_BELOW_MS + 120;
+    const measured = FAST_BELOW_MS - 120;
+    expect(moved(SLOW, recorded, measured), 'an integration spec under the lower edge').toBe(true);
+    expect(moved(FAST, recorded, measured), 'the same pair in a half that edge cannot move').toBe(false);
   });
 
   it('records a large move that crosses nothing, so the number stays roughly true', () => {

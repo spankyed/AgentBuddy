@@ -39,7 +39,9 @@ import { REPO_ROOT } from '@abuddy/host/build/packages-built';
 import { idleNow, IDLE_FLOOR, refusesAsBusy } from './lib/measure.ts';
 import { UNIT_SUITES, type UnitSuite } from './lib/unit-suites.ts';
 import {
-  FAST_BELOW_MS, INTEGRATION_ABOVE_MS, PLACEMENT_GUARD, describeBudget, halfOfPath, hasSplit, overBudget,
+  CONTENTION_RATIO_MAX, COST_ACCURACY, FAST_BELOW_MS, INTEGRATION_ABOVE_MS, PLACEMENT_GUARD, describeBudget,
+  halfOfPath, hasSplit, ratiosFromMoves, underBound,
+  nearEdge, overBudget,
   CONFIG_BY_HALF, absentNamed, drift, drifted, namedIn, parseArgs, planFor, readSpecCost, refusesAsContended,
   rewritesEveryRow, settle, specCostFile, specFiles, stale, suitesFor, unrecorded, type SpecCostPlan,
 } from './lib/spec-cost.ts';
@@ -187,9 +189,25 @@ function update(plans: readonly SuitePlan[], dry: boolean): void {
     const next = `${JSON.stringify(record, null, 2)}\n`;
     if (!fs.existsSync(file) || fs.readFileSync(file, 'utf-8') !== next) fs.writeFileSync(file, next);
 
+    // A spec that just changed half measured `CONTENTION_RATIO_MAX` on the way, for free — the record held
+    // what it cost in the half it left and this run read what it costs now. That constant is a sample with
+    // nothing to re-derive it from, so a move following this gate's own advice is the only evidence that
+    // arrives on its own, and a ratio past the bound means the band is too narrow again.
+    const ratios = ratiosFromMoves(previous, costs, added, files);
+    for (const { spec, fast, integration, ratio } of ratios) {
+      const over = ratio > CONTENTION_RATIO_MAX;
+      console.log(`  ${spec} changed half: ${fast}ms fast against ${integration}ms integration, ${ratio.toFixed(2)}x`
+        + (over ? ` — past CONTENTION_RATIO_MAX (${CONTENTION_RATIO_MAX}x)` : ''));
+    }
+    if (underBound(ratios)) {
+      console.log(`  A move cost more than the band covers, so a spec there can be told to move both ways.`
+        + ` Re-measure and raise CONTENTION_RATIO_MAX in scripts/lib/spec-cost.ts, which lowers FAST_BELOW_MS`
+        + ` with it — the floor is the cheapest integration-half spec.`);
+    }
+
     // `measuredFiles`, not `files`: over the whole suite this reports on specs the run never measured,
     // which is the same narrowing every other guard on this path already takes
-    const budget = describeBudget(overBudget(dir, record.costs, measuredFiles));
+    const budget = describeBudget(overBudget(dir, record.costs, measuredFiles), suite.dir);
     const asBody = body === undefined ? '' : `, body ${body >= 0 ? '+' : ''}${(body * 100).toFixed(0)}%`;
     // Every way the record can differ from the one it replaced, for the same reason `settle` compares rather
     // than enumerates: a change nobody listed reads as "none moved" over a rewritten file, and a spec that
@@ -304,15 +322,15 @@ function list(only: string | undefined, named: readonly string[]): void {
       const asked = namedIn(suite.dir, named);
       for (const file of asked) {
         const ms = record?.costs[file];
-        // Milliseconds below a second, because the aggregate below only ever prints in-band specs and every
-        // one of those is over 1 500ms — naming a cheap spec here would otherwise report it as `0.0s`
+        // Milliseconds below a second: this branch names whatever spec was asked for, including a cheap one,
+        // which `${(ms / 1000).toFixed(1)}s` would report as `0.0s`
         const cost = ms === undefined
           ? (record?.skipped.includes(file) ? 'skipped' : 'unmeasured')
           : (ms < 1_000 ? `${ms}ms` : `${(ms / 1000).toFixed(1)}s`);
-        // The band is where a re-measurement could change which half a spec runs in, so it says nothing
-        // about a package that has only one — the same question `overBudget` asks of the package
-        const band = hasSplit(packageDir(suite)) && ms !== undefined && ms >= FAST_BELOW_MS && ms <= INTEGRATION_ABOVE_MS
-          ? '  (in the band)' : '';
+        // Distance to the edge that could move *this* spec, which depends on its half — and nothing at all
+        // for a package with one half, the same question `overBudget` asks of the package
+        const band = hasSplit(packageDir(suite)) && ms !== undefined && nearEdge(file, ms)
+          ? '  (near its edge)' : '';
         console.log(`  ${cost.padStart(10)}  ${halfOfPath(file).padEnd(11)} ${suite.dir}/${file}${band}`);
       }
     }
@@ -325,24 +343,33 @@ function list(only: string | undefined, named: readonly string[]): void {
     const record = readSpecCost(REPO_ROOT, suite.dir);
     if (record === undefined) continue;
     const costs = Object.entries(record.costs);
-    // Counted only where there is a second half to move into; see the band comment above
-    const inBand = hasSplit(packageDir(suite))
-      ? costs.filter(([, ms]) => ms >= FAST_BELOW_MS && ms <= INTEGRATION_ABOVE_MS)
-      : [];
-    rows.push({ suite: suite.dir, specs: costs.length, settled: costs.length - inBand.length, nearBand: inBand.length });
-    for (const [file, ms] of inBand) near.push(`  ${(ms / 1000).toFixed(1)}s  ${halfOfPath(file).padEnd(11)} ${suite.dir}/${file}`);
+    // Counted only where there is a second half to move into; see the comment above
+    const atRisk = hasSplit(packageDir(suite)) ? costs.filter(([file, ms]) => nearEdge(file, ms)) : [];
+    rows.push({ suite: suite.dir, specs: costs.length, settled: costs.length - atRisk.length, nearBand: atRisk.length });
+    for (const [file, ms] of atRisk) {
+      const edge = halfOfPath(file) === 'fast' ? INTEGRATION_ABOVE_MS : FAST_BELOW_MS;
+      near.push(`  ${(ms / 1000).toFixed(1)}s  ${halfOfPath(file).padEnd(11)} ${suite.dir}/${file}`
+        + `  ${Math.abs(edge - ms)}ms from ${edge}ms`);
+    }
   }
   if (rows.length === 0) throw new Error('No spec-cost record was read, so this would report on nothing.');
 
   const width = (header: string, cell: (row: ListRow) => string): number =>
     Math.max(header.length, ...rows.map((row) => cell(row).length)) + 2;
   const name = width('suite', (row) => row.suite);
-  console.log(`${'suite'.padEnd(name)}${'specs'.padStart(7)}${'clear'.padStart(7)}${'in the band'.padStart(13)}`);
+  console.log(`${'suite'.padEnd(name)}${'specs'.padStart(7)}${'clear'.padStart(7)}${'near an edge'.padStart(14)}`);
   for (const row of rows) {
-    console.log(`${row.suite.padEnd(name)}${String(row.specs).padStart(7)}${String(row.settled).padStart(7)}${String(row.nearBand).padStart(13)}`);
+    console.log(`${row.suite.padEnd(name)}${String(row.specs).padStart(7)}${String(row.settled).padStart(7)}${String(row.nearBand).padStart(14)}`);
   }
-  console.log(`\n${near.length} spec${near.length === 1 ? '' : 's'} between ${FAST_BELOW_MS}ms and ${INTEGRATION_ABOVE_MS}ms, `
-    + 'where a re-measurement could change which half it belongs in:');
+  console.log(`\n${near.length} spec${near.length === 1 ? '' : 's'} within ${COST_ACCURACY * 100}% of the edge that `
+    + 'could move it, which is what a recorded cost is good to — so a re-measurement could carry it over.');
+  // The distance is to the recorded cost, and a record is deliberately sticky: `moved` rewrites a row only
+  // past max(300ms, 35%), so the number below can be that far from what the spec costs today. Measured
+  // 2026-10-01, `lint-scope` was recorded at 2388ms and read 2025-2171ms over three runs — still inside the
+  // window, 366ms from its edge rather than the 112ms the record implies.
+  if (near.length > 0) {
+    console.log('Distances are to the recorded cost, which is held until a reading moves past its tolerance:');
+  }
   for (const line of near.sort()) console.log(line);
 }
 

@@ -115,7 +115,7 @@ jobs:
       - name: Unit tests (renderer)
         run: npm run test:unit --workspace @app/renderer -- --run
 
-  # Builds tests/fixtures/external-pack with the abuddy CLI and runs its Playwright
+  # Builds tests/packs/external-pack with the abuddy CLI and runs its Playwright
   # suite from the pack dir against the built app — the third-party pack path.
   external-pack-e2e:
     runs-on: macos-14
@@ -150,5 +150,5 @@ jobs:
         with:
           name: external-pack-e2e
           path: |
-            tests/fixtures/external-pack/tests/results/
-            tests/fixtures/external-pack/tests/screenshots/
+            tests/packs/external-pack/tests/results/
+            tests/packs/external-pack/tests/screenshots/

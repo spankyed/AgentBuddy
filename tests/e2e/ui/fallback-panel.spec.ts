@@ -1,4 +1,4 @@
-import { test, expect } from './fixtures/app';
+import { test, expect } from '@abuddy/testing';
 
 // A plugin offers its panel for plugins without one (`fallbackPanel`) and says itself when it shows: the brain's
 // inspect mode. The app shell asks only through that, never reading the brain's state.

@@ -66,3 +66,99 @@ describe("a link between the repo's documents resolves", () => {
       + 'any file leaves the links pointing at it behind').toEqual([]);
   });
 });
+
+/**
+ * Every `npm run <script> -w <workspace>` a document tells you to run names a script that workspace has.
+ *
+ * The same failure shape as a dead link, and quieter: `npm run x -w y` **exits 0 and prints nothing** when
+ * `y` has no `x`, so a reader follows the instruction, sees silence, and reads it as a pass. That is how a
+ * lint was "run" against a package that defines none during this file's own review — the root lints the
+ * whole tree with one `oxlint .` and only the renderer has a per-package script, which is intentional and
+ * documented, but the `-w` form for any other package is a no-op wearing a green exit.
+ *
+ * 53 such commands are in the docs and all 53 are valid, so this is a gate over something already true. The
+ * mutation case below is what makes it a gate rather than a decoration.
+ */
+describe('a command a document tells you to run exists', () => {
+  const SCOPED = /npm (?:run )?([a-z][\w:-]*) (?:--|-)w(?:orkspace)?[= ]([@\w/.<>-]+)/g;
+
+  /**
+   * A `-w` argument a document writes as a placeholder rather than a workspace — `-w <pack>`.
+   *
+   * Matched by `SCOPED` on purpose and skipped here, rather than left to fall outside the pattern: a
+   * placeholder that escapes the regex is indistinguishable from one the rule never thought about, and the
+   * first doc to write `-w <workspace>` would be silently unchecked either way. Skipping it is the same
+   * answer, said out loud.
+   */
+  const isPlaceholder = (workspace: string): boolean => workspace.startsWith('<') && workspace.endsWith('>');
+
+  /**
+   * Each workspace's scripts, by every spelling `-w` accepts: the package name and the path to its
+   * directory. npm takes either, so a document writing `-w packages/abuddy-cli` is running something real
+   * and keying on the name alone would have reported it as broken.
+   */
+  const byWorkspace = (): Map<string, Set<string>> => {
+    const found = new Map<string, Set<string>>();
+    for (const dir of fs.readdirSync(path.join(REPO_ROOT, 'packages'))) {
+      const manifest = path.join(REPO_ROOT, 'packages', dir, 'package.json');
+      if (!fs.existsSync(manifest)) continue;
+      const { name, scripts } = JSON.parse(fs.readFileSync(manifest, 'utf-8')) as
+        { name?: string; scripts?: Record<string, string> };
+      const own = new Set(Object.keys(scripts ?? {}));
+      if (name) found.set(name, own);
+      found.set(`packages/${dir}`, own);
+    }
+    return found;
+  };
+
+  /** Every scoped command in the repo's own documents, with where it was written */
+  const commands = (texts: ReadonlyMap<string, string>): { doc: string; script: string; workspace: string }[] =>
+    [...texts].flatMap(([doc, text]) => [...text.matchAll(SCOPED)]
+      .map(([, script, workspace]) => ({ doc, script: script!, workspace: workspace! })));
+
+  const unrunnable = (texts: ReadonlyMap<string, string>): string[] => {
+    const scripts = byWorkspace();
+    return commands(texts)
+      .filter(({ workspace }) => !isPlaceholder(workspace))
+      .filter(({ script, workspace }) => !(scripts.get(workspace) ?? new Set()).has(script))
+      .map(({ doc, script, workspace }) => `${doc}: npm run ${script} -w ${workspace}`);
+  };
+
+  const live = (): Map<string, string> => new Map(repoFiles('*.md')
+    .filter((file) => !file.startsWith('docs/archive/'))
+    .map((file) => [file, fs.readFileSync(path.join(REPO_ROOT, file), 'utf-8')]));
+
+  it('finds some, so this is not looking at nothing', () => {
+    expect(commands(live()).length, 'the docs scope commands to a workspace').toBeGreaterThan(20);
+  });
+
+  it('leaves none that would exit 0 having done nothing', () => {
+    expect([...new Set(unrunnable(live()))], 'npm exits 0 for a script a workspace does not have, so each of '
+      + 'these reads as a pass while doing nothing. Fix the command, or add the script').toEqual([]);
+  });
+
+  /**
+   * The two spellings `-w` accepts, and the one a document means as a blank. Derived from the manifests
+   * rather than written as literals, so neither case dates when a package is renamed.
+   */
+  it('takes the directory form npm accepts, and skips a placeholder', () => {
+    const found = [...byWorkspace()].find(([key]) => key.startsWith('packages/'));
+    expect(found, 'no workspace is keyed by its directory, so the form npm accepts is unchecked').toBeDefined();
+    const [dir, own] = found!;
+    const [script] = [...own];
+    expect(script, 'the workspace picked for this case has no scripts').toBeDefined();
+
+    expect(unrunnable(new Map([['d.md', `run \`npm run ${script} -w ${dir}\``]])),
+      'npm takes a path as well as a name, so this one runs').toEqual([]);
+    expect(unrunnable(new Map([['d.md', `run \`npm run ${script} -w <pack>\``]])),
+      'a placeholder is a blank, not a workspace').toEqual([]);
+    expect(unrunnable(new Map([['d.md', `run \`npm run no-such-script -w ${dir}\``]])),
+      'the directory form is still checked, not merely accepted').toHaveLength(1);
+  });
+
+  // The population is text, so the check is proved on a copy rather than by breaking a doc
+  it('would report one that does not', () => {
+    expect(unrunnable(new Map([['made-up.md', 'run `npm run no-such-script -w @abuddy/sdk` first']])))
+      .toEqual(['made-up.md: npm run no-such-script -w @abuddy/sdk']);
+  });
+});

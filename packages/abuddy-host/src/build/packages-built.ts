@@ -77,7 +77,7 @@ export interface BuildUnit {
   readonly inputs: readonly string[];
   /**
    * Trees inside `inputs` that are not part of the fingerprint, and are not this unit's own output either:
-   * generated files it declares the parent of but never reads. `typecheck` declares `tests/fixtures` for
+   * generated files it declares the parent of but never reads. `typecheck` declares `tests/packs` for
    * the pack sources and does not read the packs' build output — `check:specifiers` filters
    * `__generated__` out itself — so hashing that output would tie this unit's freshness to a build it does
    * not depend on.
@@ -365,6 +365,46 @@ export const readTree: TreeReader = {
  * dissolve the case that proves the digests and the hash agree, since they would no longer be taken together. The
  * 9ms is the cheaper of the two.
  */
+/**
+ * Guidance for whoever opens a directory, and never an input: skipped wherever a unit's inputs are hashed.
+ *
+ * It is the first entry in the root `CLAUDE.md`'s list of time-wasters — a prose edit runs nothing — and that
+ * was a claim about the chain that the chain did not hold. Five of these sit *inside* a declared tree rather
+ * than at a package root (`default-setup/src/seeds`, `abuddy-host/src/migrations` and `src/packs/runtime`,
+ * `default-setup/tests/seeds`, `tests/e2e`), so a sentence of prose re-ran up to four steps, `compile` among
+ * them. Skipped here rather than excluded per step, because the steps that reach them take their inputs from
+ * derived lists where there is no literal array to add an entry to.
+ *
+ * **The condition that would make this wrong** is a check that asserts one of these files' *text*: it would
+ * then be a real input, and skipping it would let that check cache over a doc that had gone stale. One
+ * exists — `spec-plan.spec.ts` holds `packages/repo-checks/CLAUDE.md` to naming every spec in that package —
+ * and it is outside every step's fingerprint already, so this neither creates nor closes that gap. A second
+ * one, inside a fingerprinted tree, is the case to come back here for.
+ */
+const GUIDE = 'CLAUDE.md';
+
+/**
+ * The exception the comment above names, arrived: a guide some check asserts the *text* of, which makes it a
+ * real input. `spec-plan.spec.ts` holds this one to naming every spec in its package, so without it here a
+ * row could be deleted and the check that would have caught it would not run.
+ *
+ * Listed rather than derived, because what a spec reads at a path it builds at runtime cannot be read off
+ * the source. Repo-checks' *"prose costs nothing"* holds both directions: a guide not listed here is in no
+ * step's fingerprint, and a guide listed here is in one — so an entry that stops applying fails rather than
+ * quietly protecting nothing.
+ */
+export const GUIDES_A_CHECK_READS: ReadonlySet<string> = new Set(['packages/repo-checks/CLAUDE.md']);
+
+/**
+ * Whether a file under a unit's inputs is left out of its fingerprint whatever that unit declares.
+ *
+ * Exported so a check can ask the same question without hashing anything: the gate that holds the rule
+ * above walks the inputs and filters with this, where taking a real fingerprint of all twelve chain steps
+ * to answer it cost 1.5s and pushed its own spec into the other cost half.
+ */
+export const skipsFingerprint = (file: string): boolean =>
+  !GUIDES_A_CHECK_READS.has(file) && (file.endsWith(`/${GUIDE}`) || file === GUIDE);
+
 export function fingerprintInputs(
   inputs: readonly string[],
   normalise?: (contents: Buffer, file: string) => Buffer | string,
@@ -374,7 +414,7 @@ export function fingerprintInputs(
 ): string {
   const hash = createHash('sha256');
   const excluded = exclude.map(repoRelative);
-  const isExcluded = (file: string): boolean => excluded.some((out) => covers(out, file));
+  const isExcluded = (file: string): boolean => skipsFingerprint(file) || excluded.some((out) => covers(out, file));
   for (const file of [...new Set(inputs.flatMap((target) => tree.list(target)))].sort().filter((f) => !isExcluded(f))) {
     const contents = tree.read(file);
     // Without a normaliser the bytes are hashed as read — no copy on the path that runs per command
@@ -398,7 +438,7 @@ export function fingerprintUnit(unit: BuildUnit, collect?: (file: string, digest
     .update('\0')
     // A unit's own output is never its own input, however broadly its inputs are declared. Two steps
     // declare a whole tree and then write into it — `compile` writes `src/__generated__` under the `src`
-    // it reads, and the fixture-pack check writes each pack's `dist` under the `tests/fixtures` it reads —
+    // it reads, and the fixture-pack check writes each pack's `dist` under the `tests/packs` it reads —
     // which makes them self-invalidating the moment their build stops being byte-identical. Both were
     // surviving on the builds happening to be deterministic, and the pack build is already known not to be
     // (two lines of `Omit<…>` union ordering). Excluding self-output here means declaring `outputs`

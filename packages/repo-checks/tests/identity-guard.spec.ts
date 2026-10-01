@@ -1,14 +1,20 @@
-import { execFileSync } from 'node:child_process';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { describe, expect, it } from 'vitest';
+import { REPO_ROOT } from '@abuddy/host/build/packages-built';
+import { repoFiles } from './_support/repo-files.ts';
 
 /**
  * Environment identity and data paths are decided only by @abuddy/sdk/env (and the main
  * process bootstrap that feeds it). This guard fails if the old, divergent resolution
  * patterns come back anywhere in the repo's code.
+ *
+ * Here and not in `@abuddy/sdk`, where it lived until 2026-10-01, because its subject is every tracked
+ * file and not that package — it imports nothing from it. A suite's project is re-run when that project's
+ * inputs move, so a guard over the repo has to sit in a suite that declares the repo (`SUITE_READS`'
+ * `repo`), and making `@abuddy/sdk`'s 573 tests repo-wide cost 11.6s on every change to protect this one
+ * 0.4s check. It missed a forbidden path committed to `@abuddy/cli` for exactly that reason.
  */
-const REPO_ROOT = path.resolve(__dirname, '..', '..', '..', '..');
 
 const ALLOWED: Record<string, string> = {
   'packages/abuddy-sdk/src/env/index.ts': 'the resolver itself',
@@ -18,7 +24,7 @@ const ALLOWED: Record<string, string> = {
   'electron-builder.mjs': 'build time: picks the beta appId/productName',
   'build/build.sh': 'build time: exports the release channel',
   'build/prod/clean.sh': 'manual cleanup script that deliberately removes a packaged app\'s data dir',
-  'packages/abuddy-sdk/tests/env/identity-guard.spec.ts': 'this guard',
+  'packages/repo-checks/tests/identity-guard.spec.ts': 'this guard',
   'packages/abuddy-sdk/tests/env/app-context.spec.ts': 'resolver tests',
 };
 
@@ -28,19 +34,12 @@ const FORBIDDEN: Array<{ pattern: RegExp; why: string; allowInTests?: boolean }>
   { pattern: /__ABUDDY_CHANNEL__/, why: 'the channel stamp is consumed only by the main bootstrap' },
 ];
 
-function trackedCodeFiles(): string[] {
-  const out = execFileSync('git', ['ls-files', '-co', '--exclude-standard'], { cwd: REPO_ROOT, encoding: 'utf-8' });
-  // On disk, not merely in the index: a file deleted and not yet staged is still listed, and reading it throws.
-  // Same question as `repoFiles()` in @app/repo-checks, asked again here because a spec may not import
-  // across packages (`repo-check-boundary`), and `-co --exclude-standard` is the half this already had
-  return out.split('\n').filter((f) => fs.existsSync(path.join(REPO_ROOT, f))).filter(f =>
-    /\.(ts|tsx|js|mjs|cjs|vue|sh)$/.test(f) &&
-    !f.includes('node_modules/') &&
-    !f.includes('/dist/') &&
-    !f.includes('__generated__/') &&
-    fs.existsSync(path.join(REPO_ROOT, f)),
-  );
-}
+// `repoFiles` is the shared one now: it asks the same question (tracked plus untracked, minus gitignored,
+// minus what is only in the index) and this file had its own copy only because a spec may not import across
+// packages — which moving it here settles
+const trackedCodeFiles = (): string[] => repoFiles().filter((file) =>
+  /\.(ts|tsx|js|mjs|cjs|vue|sh)$/.test(file)
+  && !file.includes('node_modules/') && !file.includes('/dist/') && !file.includes('__generated__/'));
 
 describe('environment identity guard', () => {
   it('no code outside the env module resolves environment or data dirs on its own', () => {
