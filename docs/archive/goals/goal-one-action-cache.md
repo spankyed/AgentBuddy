@@ -1,3 +1,7 @@
+> **Done** (branch `AS/one-action-cache`, commits `9a82b088`..`ac9c3ab4`). Phases 1-4 landed in full;
+> Phase 5 landed its guard and not its premise, for reasons in the Outcome. The text below is the plan as
+> written.
+
 > **Written in session** `acfdcbe9-f87e-4349-a1e3-a03cdf58065c` (Claude Code, 2026-10-01). Resume it with `claude -r acfdcbe9-f87e-4349-a1e3-a03cdf58065c`.
 
 ```
@@ -185,6 +189,100 @@ worse than at the base (`npm run measure`, which refuses below 70% idle).
 **Done when:** every action declares outputs; the guard exists and is mutation-checked; `npm run
 chain` warm is no slower than at the base — if it is, the phase is not done, because uncaching seven
 steps was the risk this phase exists to avoid.
+
+## Outcome (2026-10-01)
+
+Landed on `AS/one-action-cache` in five commits, one per phase plus the snapshot deletion Phase 2 asks
+for. The chain is 29 steps where it was 13, every edge derives from what a step reads and writes, and no
+step declares an ordering. Phases 1-4 meet their "Done when" as written. **Phase 5 does not, and the half
+it fails is the half that turned out to be wrong rather than unfinished** — see Corrections.
+
+### Per phase
+
+| Phase | Status | Evidence |
+|---|---|---|
+| 1 — split `tier` | done | `tier`, `Tier`, `TIER_TIMEOUT_MS` appear nowhere; `needsApp` on the action, `SIZE_MS` on the suite; `check:tiers` passes with both its questions; mutation-checked both directions |
+| 2 — derive the graph | done | `ChainStep.needs` and `.exclusive` gone; `derived-edges.spec.ts` proved the derivation against the recorded table in `821b5daf0` and was deleted in `d5fe5831d`; mutations fire on an overlapping output and on a removed edge |
+| 3 — dep files | done | `scripts/lib/dep-files.ts` reads all 14 `tsBuildInfoFile` records; `untrustworthy()` is the proxy self-check with both causes named; mutation-checked by injecting an undeclared read |
+| 4 — one scheduler | done | 17 legs are chain steps; `scripts/typecheck.ts` takes every core and the "half the cores" guess is gone; A/B below |
+| 5 — outputs, then Gradle's rule | **guard only** | `chain-stamps.spec.ts` lands and is mutation-checked both ways; "every action declares outputs" and the warm-time criterion are not met |
+
+### Conventional choices
+
+- **`size` is derived, not a field.** Two buckets, `small` and `large`, from which config a file is. A
+  per-suite `size` would have been a constant — every fast half small, every integration half large — and
+  the halves are already cost classes `spec-cost` moves specs between. A *spec's* size still consults
+  `INTEGRATION_SUITES`, because a package with no second config runs everything small whatever a file is
+  named.
+- **`alsoWrites`**, a new field, for a path a step writes that is not a product. `attw --pack` packs a
+  tarball inside the tree it checks and removes it; declaring that as an output would take the tree out of
+  the step's own key, and the tree is what it checks.
+- **A three-character `app` row marker** in place of `t1`/`t2`/`t3`, which moved the three derived column
+  constants by one together.
+- **Root `exports:check` and `schema:check` scripts**, because the chain runs a step as `npm run <name>`
+  and those two existed only as `-w` invocations.
+- **`api:stamp` is scoped `repo`.** It runs a repo script, so it reads one, and `scripts/` is not a
+  package directory.
+- **`fingerprint-scope` and `dep-files` moved to the integration half**, at 2.9s and 5.3s: 29 steps is
+  more walking than 13.
+
+### Corrections to the Decisions
+
+**Decision 5 — "inputs come from the tool, not from a list" — is right for a *check* and wrong for a
+*key*.** A dep file records what was read last time, so it cannot contain a file that did not exist then;
+for `tsc`, a new file matching the include glob changes the result, so a key built on the dep file would
+never invalidate for it. Buck2 accepts that unsoundness because it uses dep files for headers, where an
+unread new file cannot change the answer. So a leg's inputs derive from its declared `scope`, and the dep
+file verifies that scope covers the reads — which is what `dep-files.integration.spec.ts` does, per leg.
+
+**Phase 2's "retire `check-test-tiers.ts`'s text scan in favour of the derived edges" is not possible,
+and the phase was wrong to pair them.** A step that launches the app without declaring app inputs has no
+derived edge either — the graph is built from declarations, so it cannot see an undeclared read. The scan
+catches exactly that case. It goes when something observes reads rather than declaring them, which is
+dep files' job and not the graph's. The scan stayed, and `check:tiers` now asks both questions.
+
+**Phase 5's "every action declares outputs" would create the defect this goal removes.** 23 of the 29
+steps are verification with nothing to emit. Gradle requires the declaration because its cache *restores*
+outputs; this cache only decides whether to run, so a declared output buys exclusion from the step's own
+key and conflict detection, neither of which needs a synthesised result file. Writing one per verification
+action would be a second record of what the stamp already says. The faithful translation — every action
+declares every path it *writes* — is what `alsoWrites` delivered in Phase 2, and the chain's "passed and
+is already stale again" report is the runtime detector for a missed one; the `--all` run reported none.
+Gradle's rule therefore has no subject here, and **item 7 of `docs/plans/one-action-cache.md` should be
+re-read as being about input completeness**, which Phases 3 and 4 built.
+
+**`build:app` does not declare `needsApp`.** `tier: 3` meant "app-related" and lumped the producer in
+with its consumers; `needsApp` means "reads the built app", and `build:app` writes it. The new check found
+this on its first run.
+
+### Open items
+
+- **The warm chain is 1.0s slower, measured.** 2.5s median of 5 against the base's 1.5s, both at 80% idle
+  on 2026-10-01. The cause is the stamp store: 7.8MB across 28 steps, because a stamp records every input
+  file's digest and four repo-scoped legs write ~465KB each. The fix is to separate the stale *verdict*
+  from the which-file-changed *diagnostic* — the verdict needs one hash, and only a report needs the map.
+  That is a change to the stamp format and its `STAMP_VERSION`, which is why it is not in this goal.
+- **`check:tiers` still reads script text**, and a marker inside a string literal reads as an invocation:
+  one rule's `why` text said `abuddy test` in prose and refused the step until the sentence was reworded.
+  Recorded where the scan is.
+- **Item 7 (Gradle's rule) is unadopted**, per the correction above.
+- The per-leg scopes are wider than the dep files show for the legs with no dep file — the lint, the
+  import rules, the API stamp — because nothing reports their reads.
+
+### Final verification
+
+| | |
+|---|---|
+| `npm run chain` | passes, 178.3s cold with 17 of 28 cached |
+| `npm run chain -- --dry`, unchanged tree | 28 of 28 cacheable steps cached; `packages:ensure` runs, uncached by design |
+| `chain --all`, A/B at 84% idle | 171.0s before (169.8-187.8) against **169.8s after (169.6-170.3)** — medians within a second, spread 18s to 0.7s |
+| `npm run chain` warm | 2.5s after against 1.5s at the base, both 80% idle — the regression above |
+| `npm run typecheck` | passes standalone, reporting per leg |
+| `npm run spec` | 2742 passed |
+| `@app/repo-checks` | 664 fast, 303 integration |
+| `check:tiers` | 25 reach no app, 4 declare they need one |
+| `spec-cost:check` | 385 specs, each in the half its cost implies |
+| `check:specifiers`, `lint:check` | pass |
 
 ## Deferred
 
