@@ -3,7 +3,7 @@ import * as path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { inputFiles, REPO_ROOT } from '@abuddy/host/build/packages-built';
 import { CHAIN_STEPS } from '../../../scripts/lib/chain-steps.ts';
-import { TYPECHECK_LEGS } from '../../../scripts/lib/typecheck-legs.ts';
+import { scopeOf, TYPECHECK_LEGS } from '../../../scripts/lib/typecheck-legs.ts';
 import { PACKAGE_DIRS } from '../../../scripts/lib/workspace-deps.ts';
 import { depFileNames, readsOf, untrustworthy } from '../../../scripts/lib/dep-files.ts';
 import { population } from '@abuddy/sdk/testing';
@@ -38,7 +38,7 @@ describe('the compiler says what it read', () => {
       .filter((dir): dir is string => dir !== undefined));
     const legs = TYPECHECK_LEGS.filter((leg) => leg.name !== 'packages:ensure');
     const uncovered = legs
-      .filter((leg) => leg.scope !== 'repo' && !leg.scope.some((dir) => owners.has(dir)))
+      .filter((leg) => { const scope = scopeOf(leg); return scope !== 'repo' && !scope.some((dir) => owners.has(dir)); })
       .map((leg) => leg.name)
       .sort();
     expect(uncovered, 'the legs no dep file speaks for — change this list only with the reason why')
@@ -94,7 +94,7 @@ describe('the compiler says what it read', () => {
 
     const covering = (depFile: string) => {
       const dir = owner(depFile);
-      return TYPECHECK_LEGS.filter((leg) => (dir === undefined ? leg.scope === 'repo' : leg.scope === 'repo' || leg.scope.includes(dir)));
+      return TYPECHECK_LEGS.filter((leg) => { const scope = scopeOf(leg); return dir === undefined ? scope === 'repo' : scope === 'repo' || scope.includes(dir); });
     };
 
     const missing = depFileNames().flatMap((depFile) => {

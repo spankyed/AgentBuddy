@@ -4,7 +4,7 @@ import { BUILD_UNITS, repoRelative, REPO_ROOT } from '@abuddy/host/build/package
 import { UNIT_SUITES, type UnitSuite } from './unit-suites.ts';
 import { hasSplit } from './spec-cost.ts';
 import { dependencySource, PACKAGE_DIRS, workspaceDeps } from './workspace-deps.ts';
-import { TYPECHECK_LEGS, type Leg } from './typecheck-legs.ts';
+import { scopeOf, TYPECHECK_LEGS, type Leg } from './typecheck-legs.ts';
 
 /**
  * The pre-merge chain's steps and what each is allowed to read. Separate from `scripts/chain.ts` because
@@ -613,11 +613,11 @@ function inputsForSuites(suites: readonly UnitSuite[]): Pick<ChainStep, 'inputs'
  * `dep-files.spec.ts` checks each leg's declaration against what the compiler reported reading, which is
  * the half that would catch a scope narrower than the truth.
  */
-const legInputs = (leg: Leg): string[] => [...new Set(leg.scope === 'repo'
+const legInputs = (leg: Leg): string[] => [...new Set(scopeOf(leg) === 'repo'
   ? [...EVERY_SOURCE, ...PACKAGE_BUILD_OUTPUTS]
   : [...ROOT,
-    ...leg.scope.flatMap(suiteWorkspace),
-    ...leg.scope.flatMap((dir) => workspaceDeps(dir)).flatMap(dependencySource),
+    ...(scopeOf(leg) as readonly string[]).flatMap(suiteWorkspace),
+    ...(scopeOf(leg) as readonly string[]).flatMap((dir) => workspaceDeps(dir)).flatMap(dependencySource),
     ...PACKAGE_BUILD_OUTPUTS])].sort();
 
 /**
@@ -652,7 +652,7 @@ const TYPECHECK_STEPS: readonly ChainStep[] = TYPECHECK_LEGS
     // A leg reading every source tree reads around the fixture packs' build output for the same reason
     // the single step did: `tsc -p tests` compiles `e2e/**` only and `check:specifiers` filters
     // `__generated__` itself, so hashing it would tie the leg to a build it does not depend on.
-    ...(leg.scope === 'repo' ? { excludes: [...FIXTURE_OUTPUTS, ...FIXTURE_TEST_OUTPUT] } : {}),
+    ...(scopeOf(leg) === 'repo' ? { excludes: [...FIXTURE_OUTPUTS, ...FIXTURE_TEST_OUTPUT] } : {}),
   }));
 
 const POOL_STEPS: readonly ChainStep[] = (['host', 'pack'] as const).map((kind) => {

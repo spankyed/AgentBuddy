@@ -1,71 +1,68 @@
 import { describe, expect, it } from 'vitest';
-import * as fs from 'node:fs';
-import * as path from 'node:path';
-import { REPO_ROOT } from '@abuddy/host/build/packages-built';
-import { TYPECHECK_LEGS } from '../../../scripts/lib/typecheck-legs.ts';
+import { scopeOf, TYPECHECK_LEGS, type Leg } from '../../../scripts/lib/typecheck-legs.ts';
 import { rootScripts } from '../../../scripts/lib/npm-scripts.ts';
 import { PACKAGE_DIRS } from '../../../scripts/lib/workspace-deps.ts';
 import { population } from '@abuddy/sdk/testing';
 
 /**
- * A leg's declared scope is held to what its script names.
+ * A leg's scope comes from its script, and a declared one has something the script cannot say.
  *
- * The scope could have been parsed out of the script instead of declared — most legs name their workspace
- * with `--workspace`, and two name a directory with `tsc -p`. It is declared because the scope is a *cache
- * key*: a shell-text parse that gets it wrong produces a wrong key, which is silent, where a wrong
- * declaration caught by this case is loud. Same shape as `needsApp` — declared intent, derived check.
+ * This was the other way round until 2026-10: every leg declared a scope and this file held the
+ * declaration to the script. Twelve of the eighteen declarations turned out to be byte-identical to what
+ * the script already named — a second record of one fact, which is what the derived chain graph exists to
+ * remove. So the parse became the source and the declarations went.
  *
- * **The rule is one-directional: a declaration may be wider than the script, never narrower.** Wider costs
- * cache hits and nothing else; narrower is a leg that does not re-run when something it compiles changes.
- * `'repo'` is the widest there is, which is why a leg that walks the tree says so rather than listing.
+ * What is checked now is the shape of the exception rather than the rule: that nothing declares a list the
+ * script would have given anyway, that nothing is left without either, and that a declaration names real
+ * workspaces.
  */
 
-/** The workspace directories a leg's script actually names, read from the script rather than the leg. */
-function namedBy(command: string): string[] {
-  const byWorkspace = [...command.matchAll(/--workspace[= ]([^\s]+)|(?:^|\s)-w[= ]([^\s]+)/g)]
-    .map((hit) => hit[1] ?? hit[2]!)
-    .map((name) => PACKAGE_DIRS.find((dir) => workspaceName(dir) === name))
-    .filter((dir): dir is string => dir !== undefined);
-  const byPath = [...command.matchAll(/(?:tsc -p|cd) (packages\/[^\s/]+)/g)].map((hit) => hit[1]!.replace('packages/', ''));
-  return [...new Set([...byWorkspace, ...byPath])].sort();
-}
+/** Whether the leg's own script names any workspace — the thing `scopeOf` reads when nothing is declared */
+const scriptNames = (leg: Leg): boolean => {
+  const command = rootScripts()[leg.name] ?? '';
+  return /--workspace[= ]|(?:^|\s)-w[= ]|(?:tsc -p|cd) packages\//.test(command);
+};
 
-/** A workspace's npm name, from its own manifest — so this cannot drift from what `-w` takes. */
-function workspaceName(dir: string): string {
-  const manifest = JSON.parse(
-    fs.readFileSync(path.join(REPO_ROOT, 'packages', dir, 'package.json'), 'utf-8'),
-  ) as { name: string };
-  return manifest.name;
-}
-
-describe('a typecheck leg declares what it checks', () => {
-  it('finds legs and scopes, so the rule below is not reading an empty table', () => {
+describe('a typecheck leg takes its scope from its script', () => {
+  it('finds legs, and both kinds, so neither branch below is untested', () => {
     const found = population('typecheck legs', [...TYPECHECK_LEGS], { atLeast: 15 });
-    expect(found.filter((leg) => leg.scope !== 'repo').length, 'every leg says `repo`, so nothing is scoped')
-      .toBeGreaterThan(10);
-    expect(found.filter((leg) => leg.scope === 'repo').length, 'no leg says `repo`, so that branch is untested')
-      .toBeGreaterThan(0);
+    expect(found.filter((leg) => leg.scope === undefined).length, 'no leg derives its scope').toBeGreaterThan(8);
+    expect(found.filter((leg) => leg.scope !== undefined).length, 'no leg declares one').toBeGreaterThan(0);
   });
 
-  it('has a script for every leg, so a renamed one fails here rather than at run time', () => {
-    const all = rootScripts();
-    expect(TYPECHECK_LEGS.filter((leg) => !(leg.name in all)).map((leg) => leg.name)).toEqual([]);
-  });
-
-  it('declares a scope no narrower than its script names', () => {
-    const all = rootScripts();
-    const narrow = TYPECHECK_LEGS.flatMap((leg) => {
-      if (leg.scope === 'repo') return [];
-      const named = namedBy(all[leg.name] ?? leg.command);
-      const missing = named.filter((dir) => !leg.scope.includes(dir));
-      return missing.map((dir) => `${leg.name} compiles ${dir} and does not declare it`);
+  it('resolves a non-empty scope for every leg', () => {
+    const broken = TYPECHECK_LEGS.flatMap((leg) => {
+      try {
+        const scope = scopeOf(leg);
+        return scope === 'repo' || scope.length > 0 ? [] : [`${leg.name} resolves an empty scope`];
+      } catch (err) {
+        return [`${leg.name}: ${(err as Error).message}`];
+      }
     });
-    expect(narrow, 'a leg that does not declare what it compiles will not re-run when that changes')
+    expect(broken, 'a leg with no scope gets empty inputs, so it depends on nothing and never goes stale')
       .toEqual([]);
   });
 
+  /**
+   * The rule that keeps the twelve from coming back. A declared *list* is only warranted where the script
+   * names nothing — otherwise it is the duplicate this change removed, and it can drift from the script
+   * while both look right. `'repo'` is exempt: it is strictly wider than any parse, which is its point.
+   */
+  it('declares a list only where the script names nothing', () => {
+    const redundant = TYPECHECK_LEGS
+      .filter((leg) => leg.scope !== undefined && leg.scope !== 'repo' && scriptNames(leg))
+      .map((leg) => `${leg.name} declares a scope its own script already names — drop it and let scopeOf read it`);
+    expect(redundant).toEqual([]);
+  });
+
+  it('refuses a leg whose script names nothing and which declares nothing', () => {
+    const invented: Leg = { name: 'typecheck:nothing', command: 'npm run typecheck:nothing', seconds: 1 };
+    expect(() => scopeOf(invented)).toThrow(/names no workspace, so declare a scope/);
+  });
+
   it('names only real package directories', () => {
-    const unknown = TYPECHECK_LEGS.flatMap((leg) => (leg.scope === 'repo' ? [] : leg.scope))
+    const unknown = TYPECHECK_LEGS
+      .flatMap((leg) => { const s = scopeOf(leg); return s === 'repo' ? [] : s; })
       .filter((dir) => !PACKAGE_DIRS.includes(dir));
     expect([...new Set(unknown)], 'these are not workspaces under packages/').toEqual([]);
   });

@@ -5,25 +5,30 @@
 // asks one — whether anything in the chain runs `schema:check` and `exports:check`, which are reachable only
 // through here — and importing the runner for that answer cost 11s of collection time before this split.
 
+import * as fs from 'node:fs';
+import * as path from 'node:path';
+import { REPO_ROOT } from '@abuddy/host/build/packages-built';
+import { rootScripts } from './npm-scripts.ts';
+import { PACKAGE_DIRS } from './workspace-deps.ts';
+
 export interface Leg {
   /** What `npm run` calls it, and what a failure is reported as */
   readonly name: string;
   /** Spelled out rather than derived — see the header */
   readonly command: string;
   /**
-   * What this leg checks: the workspace directories it compiles, or `'repo'` where it walks the tree.
+   * What this leg checks, **only where its script cannot say**.
    *
-   * **Declared, with the script as its check.** The scope could be parsed out of `command` — most legs
-   * name their workspace with `--workspace`, and two name a directory with `tsc -p` — but a cache key
-   * built on a shell-text parse fails silently when the parse is wrong, and this repo already keeps one
-   * text scan it wants rid of for that reason. So the scope is a statement of intent and
-   * `typecheck-legs.spec.ts` holds it to what the script names, which is the same shape as `needsApp`:
-   * declared tag, derived check.
+   * Absent is the common case and the right one: twelve of these legs name their workspace in the script
+   * itself (`--workspace`, or `tsc -p packages/x`), so `scopeOf` reads it from there and a declaration
+   * would be a second copy of a fact — which is what this field was until 2026-10, all eighteen of them.
    *
-   * `'repo'` is not a gap in that. A leg that walks the whole tree — the lint, the import rules, the tier
-   * check — has no narrower scope to report, and saying so is the answer rather than the absence of one.
+   * Declare one when the script names nothing usable, and the entry is then a claim with something to say:
+   * `'repo'` for a leg that walks the whole tree, or a list for one whose subject the command line does not
+   * mention. `scopeOf` refuses a leg with neither, because an empty scope means empty inputs, and a step
+   * with empty inputs depends on nothing, sorts first and never goes stale.
    */
-  readonly scope: readonly string[] | 'repo';
+  readonly scope?: readonly string[] | 'repo';
   /**
    * What it costs alone, measured 2026-09-27 on an idle machine. It feeds `budgetFor`, which bounds a leg at
    * four times this and floors at 60s — so the short legs all land on the floor, which is the right bound for
@@ -46,21 +51,71 @@ export const ENSURE = 'packages:ensure';
  */
 export const TYPECHECK_LEGS: readonly Leg[] = [
   { name: ENSURE, command: 'npm run packages:ensure', scope: ['abuddy-ears', 'abuddy-sdk', 'abuddy-ui', 'abuddy-cli', 'abuddy-testing'], seconds: 0.3 },
-  { name: 'typecheck:fe', command: 'npm run typecheck:fe', scope: ['renderer'], seconds: 6.2 },
-  { name: 'typecheck:be', command: 'npm run typecheck:be', scope: ['api'], seconds: 3.4 },
-  { name: 'typecheck:ears', command: 'npm run typecheck:ears', scope: ['abuddy-ears'], seconds: 0.8 },
-  { name: 'typecheck:sdk', command: 'npm run typecheck:sdk', scope: ['abuddy-sdk'], seconds: 1.1 },
-  { name: 'typecheck:host', command: 'npm run typecheck:host', scope: ['abuddy-host'], seconds: 1.3 },
-  { name: 'typecheck:ui', command: 'npm run typecheck:ui', scope: ['abuddy-ui'], seconds: 2.0 },
+  { name: 'typecheck:fe', command: 'npm run typecheck:fe', seconds: 6.2 },
+  { name: 'typecheck:be', command: 'npm run typecheck:be', seconds: 3.4 },
+  { name: 'typecheck:ears', command: 'npm run typecheck:ears', seconds: 0.8 },
+  { name: 'typecheck:sdk', command: 'npm run typecheck:sdk', seconds: 1.1 },
+  { name: 'typecheck:host', command: 'npm run typecheck:host', seconds: 1.3 },
+  { name: 'typecheck:ui', command: 'npm run typecheck:ui', seconds: 2.0 },
   { name: 'check:specifiers', command: 'npm run check:specifiers', scope: 'repo', seconds: 2.7 },
-  { name: 'exports:check', command: 'npm run exports:check', scope: ['abuddy-ui'], seconds: 1 },
-  { name: 'schema:check', command: 'npm run schema:check', scope: ['abuddy-sdk'], seconds: 0.1 },
+  { name: 'exports:check', command: 'npm run exports:check', seconds: 1 },
+  { name: 'schema:check', command: 'npm run schema:check', seconds: 0.1 },
   { name: 'api:stamp', command: 'npm run api:stamp', scope: 'repo', seconds: 0.7 },
   { name: 'typecheck:scripts', command: 'npm run typecheck:scripts', scope: 'repo', seconds: 2.6 },
-  { name: 'typecheck:cli', command: 'npm run typecheck:cli', scope: ['abuddy-cli', 'abuddy-testing'], seconds: 2.7 },
-  { name: 'typecheck:pack', command: 'npm run typecheck:pack', scope: ['default-setup'], seconds: 4.8 },
-  { name: 'typecheck:main', command: 'npm run typecheck:main', scope: ['main'], seconds: 1.0 },
-  { name: 'typecheck:preload', command: 'npm run typecheck:preload', scope: ['preload'], seconds: 0.8 },
+  { name: 'typecheck:cli', command: 'npm run typecheck:cli', seconds: 2.7 },
+  { name: 'typecheck:pack', command: 'npm run typecheck:pack', seconds: 4.8 },
+  { name: 'typecheck:main', command: 'npm run typecheck:main', seconds: 1.0 },
+  { name: 'typecheck:preload', command: 'npm run typecheck:preload', seconds: 0.8 },
   { name: 'check:tiers', command: 'npm run check:tiers', scope: 'repo', seconds: 0.3 },
   { name: 'lint:check', command: 'npm run lint:check', scope: 'repo', seconds: 1.7 },
 ];
+
+/**
+ * The workspace directories a leg's own script names, read from the script rather than from the leg.
+ *
+ * Memoised for this process: the scripts are a file the chain reads once, and a leg's answer cannot change
+ * inside one run. Nothing resets it, because nothing rewrites `package.json` mid-run — and a reset hatch is
+ * a thing to forget (root `CLAUDE.md`, on caches).
+ */
+let scriptScopes: Map<string, readonly string[]> | undefined;
+function namedByScript(leg: string): readonly string[] {
+  if (scriptScopes === undefined) {
+    const all = rootScripts();
+    const nameToDir = new Map(PACKAGE_DIRS.map((dir) => [
+      (JSON.parse(fs.readFileSync(path.join(REPO_ROOT, 'packages', dir, 'package.json'), 'utf-8')) as { name: string }).name,
+      dir,
+    ]));
+    scriptScopes = new Map(Object.entries(all).map(([name, command]) => {
+      const byWorkspace = [...command.matchAll(/--workspace[= ]([^\s]+)|(?:^|\s)-w[= ]([^\s]+)/g)]
+        .map((hit) => nameToDir.get(hit[1] ?? hit[2]!))
+        .filter((dir): dir is string => dir !== undefined);
+      // `tsc -p packages/x` and `cd packages/x` name a directory where no `-w` does
+      const byPath = [...command.matchAll(/(?:tsc -p|cd) packages\/([^\s/]+)/g)].map((hit) => hit[1]!);
+      return [name, [...new Set([...byWorkspace, ...byPath])].sort()] as const;
+    }));
+  }
+  return scriptScopes.get(leg) ?? [];
+}
+
+/**
+ * What a leg checks: what it declares, or what its script names.
+ *
+ * **The parse was already trusted before it was used for this.** `typecheck-legs.spec.ts` ran it to hold
+ * each declared scope to the script, which made twelve of the eighteen declarations a second copy of a fact
+ * the script already carried. A fact with two records is the thing this chain stopped keeping, so the
+ * declaration went and the parse stayed.
+ *
+ * **It refuses rather than defaulting**, which is the whole safety argument. A leg whose script names no
+ * workspace and declares no scope would otherwise get an empty one: empty inputs, so it depends on nothing,
+ * sorts first, and never goes stale again. That is a silently-always-cached step, which is strictly worse
+ * than a loud failure here — and the three legs with no dep file behind them (`typecheck:fe`, `:main`,
+ * `:preload`) are exactly the ones nothing else would catch it for.
+ */
+export function scopeOf(leg: Leg): readonly string[] | 'repo' {
+  if (leg.scope !== undefined) return leg.scope;
+  const named = namedByScript(leg.name);
+  if (named.length === 0) {
+    throw new Error(`${leg.name}: its script names no workspace, so declare a scope on the leg (or 'repo' if it walks the tree)`);
+  }
+  return named;
+}
