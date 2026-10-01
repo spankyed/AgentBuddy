@@ -10,9 +10,15 @@
 /** What the scheduler needs of a step; `ChainStep` satisfies it */
 export interface SchedulableStep {
   readonly name: string;
-  readonly needs: readonly string[];
-  /** Runs alone, holding every lane: it takes a lock the others would then queue behind */
-  readonly exclusive?: true;
+  readonly dependsOn: readonly string[];
+  /**
+   * Steps this one may not run beside, by name — derived from what each writes (`conflictsOf`).
+   *
+   * Named rather than a boolean, which is what replaced it: `exclusive: true` held *every* lane, so a step
+   * conflicting with one other blocked the nine it did not. Where the conflict really is global the set
+   * says so, and the scheduler does the same thing for a reason it can print.
+   */
+  readonly conflicts?: readonly string[];
   readonly seconds?: number;
 }
 
@@ -60,7 +66,6 @@ export async function schedule<S extends SchedulableStep>({ steps, lanes, skip, 
   const running = new Map<string, Promise<string>>();
   const started: string[] = [];
   const skipped: string[] = [];
-  let exclusiveRunning = false;
   let failed: string | undefined;
   const threw: { step: string; error: unknown }[] = [];
 
@@ -69,8 +74,14 @@ export async function schedule<S extends SchedulableStep>({ steps, lanes, skip, 
       for (const step of steps) {
         if (!waiting.has(step.name)) continue;
         if (running.size >= lanes) break;
-        if (!step.needs.every((need) => done.has(need))) continue;
-        if (exclusiveRunning || (step.exclusive && running.size > 0)) break;
+        if (!step.dependsOn.every((need) => done.has(need))) continue;
+        // A mutex is symmetric: this step may not start beside one it conflicts with, and may not start
+        // if a running step names it. Checked both ways rather than trusting the derivation to be
+        // symmetric, since a one-sided conflict would silently let the pair overlap.
+        const clashes = (name: string): boolean =>
+          (step.conflicts ?? []).includes(name)
+          || (steps.find((candidate) => candidate.name === name)?.conflicts ?? []).includes(step.name);
+        if ([...running.keys()].some(clashes)) continue;
 
         waiting.delete(step.name);
         if (skip(step)) {
@@ -79,7 +90,6 @@ export async function schedule<S extends SchedulableStep>({ steps, lanes, skip, 
           continue;
         }
         started.push(step.name);
-        if (step.exclusive) exclusiveRunning = true;
         running.set(step.name, run(step).then(
           (passed) => {
             if (passed) done.add(step.name);
@@ -91,14 +101,7 @@ export async function schedule<S extends SchedulableStep>({ steps, lanes, skip, 
             failed ??= step.name;
             return step.name;
           },
-        ).finally(() => {
-          // In `finally` rather than on the success path, so the lane is released however the step ended.
-          // Not observable today — a throw sets `failed`, and nothing is dispatched after that, so no step
-          // ever waits on this flag again — and deliberately not covered by a test for that reason. It
-          // becomes load-bearing the moment the chain gains a keep-going mode that dispatches past a
-          // failure, which is exactly when a leaked exclusive flag would deadlock the rest.
-          if (step.exclusive) exclusiveRunning = false;
-        }));
+        ));
       }
     }
     // Nothing running and nothing dispatched means the rest depends on a step that failed, or on nothing

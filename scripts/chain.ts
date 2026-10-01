@@ -44,7 +44,7 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { changedInputs, firstChange, freshnessSweep, INPUTS_CHANGED, REPO_ROOT, stampedRun, stampRecord, unitStaleReason, type BuildUnit } from '@abuddy/host/build/packages-built';
-import { chainSteps, MEASURED_AT_LANES, orderedSteps, type ChainStep } from './lib/chain-steps.ts';
+import { type ChainStep, chainSteps, conflictsOf, MEASURED_AT_LANES, orderedSteps } from './lib/chain-steps.ts';
 import { schedule } from './lib/chain-schedule.ts';
 import { criticalPath, driftedSteps, willNotCache } from './lib/step-timing.ts';
 import { briefly, classifyLine, declaredAt, dim, driftReport, DRY_REASON_COLUMN, howLong, identicalRewrites, marker, oneLine, REASON_COLUMN, shouldClassify, staleLines, STEP_NAME_WIDTH, TIME_COLUMN, whenChanged, wrapAt, writerOf } from './lib/chain-output.ts';
@@ -344,7 +344,7 @@ async function main(): Promise<void> {
   if (failed) {
     const step = steps.find((s) => s.name === failed.step)!;
     const classifying = shouldClassify({
-      lanes, exclusive: step.exclusive === true, timedOut: failed.timedOut === true, optedOut: noClassify,
+      lanes, exclusive: conflictsOf(step).length > 0, timedOut: failed.timedOut === true, optedOut: noClassify,
     });
     const why = failed.timedOut
       ? `${step.name} timed out: it exceeded its ${secs(budgetFor(step.seconds ?? 300))} budget and its process group was killed. It costs ${step.seconds ?? '?'}s healthy, so either it is wedged or it has grown and the measurement in chain-steps.ts is stale.`

@@ -7,8 +7,8 @@ import type { SchedulableStep } from '../../../scripts/lib/chain-schedule.ts';
 /** A pooled step, which `driftedSteps` treats like any other — the run decides what may be reported, not the step */
 type TimedStep = SchedulableStep & { readonly forceArgs?: readonly string[] };
 
-const step = (name: string, needs: string[] = [], extra: Partial<TimedStep> = {}): TimedStep =>
-  ({ name, needs, ...extra });
+const step = (name: string, dependsOn: string[] = [], extra: Partial<TimedStep> = {}): TimedStep =>
+  ({ name, dependsOn, ...extra });
 
 describe('criticalPath', () => {
   it('is the longest path by seconds, not the longest by step count', () => {

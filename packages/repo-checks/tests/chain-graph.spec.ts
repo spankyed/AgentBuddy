@@ -1,18 +1,19 @@
-// The pre-merge chain's run order is derived from each step's `needs`, not written down, so what this pins is
-// that the derivation is a topological sort and that a wrong graph fails before any step runs — a six-minute
-// chain should not discover a cycle halfway through. See docs/goals/goal-test-tiers.md.
+// The pre-merge chain's run order is derived from what each step reads and writes — no step declares an
+// edge — so what this pins is that the derivation is a topological sort and that a wrong graph fails before
+// any step runs: a six-minute chain should not discover a cycle halfway through.
+// `derived-edges.spec.ts` is where the derivation is held to the table it replaced.
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { REPO_ROOT } from '@abuddy/host/build/packages-built';
-import { CHAIN_STEPS, chainSteps, orderedSteps, type ChainStep } from '../../../scripts/lib/chain-steps.ts';
+import { CHAIN_STEPS, chainSteps, dependsOn, orderedSteps, type ChainStep } from '../../../scripts/lib/chain-steps.ts';
 
 describe('the chain graph', () => {
-  it('orders every step after the steps it needs', () => {
+  it('orders every step after the steps it depends on', () => {
     const order = orderedSteps().map((s) => s.name);
     expect(order).toHaveLength(CHAIN_STEPS.length);
     for (const step of CHAIN_STEPS) {
-      for (const need of step.needs) {
+      for (const need of dependsOn(step)) {
         expect(order.indexOf(need), `${need} must come before ${step.name}`).toBeLessThan(order.indexOf(step.name));
       }
     }
@@ -25,25 +26,28 @@ describe('the chain graph', () => {
     const order = orderedSteps(reversed).map((s) => s.name);
     expect(order).toHaveLength(CHAIN_STEPS.length);
     for (const step of CHAIN_STEPS) {
-      for (const need of step.needs) {
+      for (const need of dependsOn(step)) {
         expect(order.indexOf(need), `${need} must come before ${step.name}`).toBeLessThan(order.indexOf(step.name));
       }
     }
     expect(order).not.toEqual(reversed.map((s) => s.name));
   });
 
-  it('refuses a dependency that is not a step', () => {
-    const steps: ChainStep[] = [{ name: 'a', needs: ['nope'], inputs: [] }];
-    expect(() => orderedSteps(steps)).toThrow(/needs nope, which is not a step/);
-  });
-
+  /**
+   * Two steps each reading what the other writes. A derived graph can still cycle — the derivation only
+   * refuses to invent an edge, not to find a circular one — and a six-minute chain must not discover it
+   * halfway through.
+   */
   it('refuses a cycle', () => {
-    const steps: ChainStep[] = [{ name: 'a', needs: ['b'], inputs: [] }, { name: 'b', needs: ['a'], inputs: [] }];
+    const steps: ChainStep[] = [
+      { name: 'a', inputs: ['y'], outputs: ['x'] },
+      { name: 'b', inputs: ['x'], outputs: ['y'] },
+    ];
     expect(() => orderedSteps(steps)).toThrow(/cycle/);
   });
 
-  it('refuses two steps with one name, which would make `needs` ambiguous', () => {
-    const steps: ChainStep[] = [{ name: 'a', needs: [], inputs: [] }, { name: 'a', needs: [], inputs: [] }];
+  it('refuses two steps with one name, which would make an edge ambiguous', () => {
+    const steps: ChainStep[] = [{ name: 'a', inputs: [] }, { name: 'a', inputs: [] }];
     expect(() => orderedSteps(steps)).toThrow(/Two chain steps named a/);
   });
 
@@ -86,13 +90,18 @@ describe('the chain graph', () => {
     });
 
     /**
-     * The one way this breaks: something needs a step the default run does not include, so the chain is
-     * missing a dependency and finds out halfway through. It fails at the selector instead.
+     * The one way this breaks: something depends on a step the default run does not include, so the chain
+     * is missing a dependency and finds out halfway through. It fails at the selector instead.
+     *
+     * Asked of `chainSteps` rather than `orderedSteps`, because that is the only place it can be asked
+     * now. Edges derive from the list they are given, so a step filtered out of the list is simply not
+     * depended on by it; the refusal has to derive against the *whole* table, which is what `chainSteps`
+     * does and why it takes one.
      */
-    it('refuses a graph where something needs one', () => {
+    it('refuses a graph where something depends on one', () => {
       const steps = CHAIN_STEPS.map((s) => (s.name === 'build:app' ? { ...s, optInBecause: 'for the case' } : s));
-      expect(() => orderedSteps(steps.filter((s) => s.optInBecause === undefined)))
-        .toThrow(/needs build:app, which is not a step/);
+      expect(() => chainSteps([], steps))
+        .toThrow(/depends on build:app, which is opt-in/);
     });
   });
 

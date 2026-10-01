@@ -36,16 +36,15 @@ export interface ChainStep {
    * do not need the app declare them.
    */
   readonly needsApp?: true;
-  /** The steps that must pass first — the edges. The run order is derived from these, not written. */
-  readonly needs: readonly string[];
   /**
    * What the step reads, repo-relative; a directory is walked. This is its cache key, the same shape
    * `BuildUnit.inputs` has, so one fingerprint protocol covers both. Repo-relative rather than absolute
    * because this table is data that a spec and two scripts import — resolving paths is the consumer's job.
    *
-   * Required, not optional. Phase 3 of the goal added `needs` and `cache` and left this out, and its
-   * "Done when" passed anyway because it asserted the ordering those fields were for. A missing field
-   * should fail to compile rather than pass a check written for something else.
+   * Required, not optional, and now doubly so: the edges are derived from it. A step that declares no
+   * inputs depends on nothing and is ordered first, which is a wrong answer rather than a missing one.
+   * An earlier phase of this table added its ordering fields and left this out, and its "Done when"
+   * passed anyway because it asserted the ordering those fields were for.
    */
   readonly inputs: readonly string[];
   /** What it writes, so a later step's `inputs` can name them instead of guessing at the same paths */
@@ -59,12 +58,19 @@ export interface ChainStep {
    */
   readonly excludes?: readonly string[];
   /**
-   * Runs alone: the scheduler starts it only when nothing else is running and holds everything else back
-   * while it does (`chain-schedule.ts`). Two steps need that for two different reasons — `packages:ensure`
-   * takes the package build lock, and `packages:check` reads the trees a build deletes and recreates — so the
-   * field says what the scheduler does rather than naming one step's reason.
+   * Paths this step writes that are not products: transient, not cached, and not safe to touch beside it.
+   *
+   * `outputs` answers "what did this build", and a tool that writes into the tree it is *reading* answers
+   * neither that nor `excludes`. `attw --pack` is the case: it packs a tarball inside each published tree,
+   * analyses it and removes it, so the path is a real write that no cache should record and no concurrent
+   * step should observe. Declaring it as an output would take the tree out of this step's own key — and
+   * the tree is exactly what the step checks, so it would cache over a stale one.
+   *
+   * The scheduler derives a mutex from it (`conflictsOf`): a transient write conflicts with anyone writing
+   * *or reading* the same path, where two outputs only conflict with each other. That is the difference
+   * between a product, which a reader waits for, and a disturbance, which a reader must not see.
    */
-  readonly exclusive?: true;
+  readonly alsoWrites?: readonly string[];
   /**
    * A step the chain does not cache, and why. Set means uncached; the chain prints this sentence where a
    * cache verdict would go, so it is a reason and not a flag — the one line it replaced was hardcoded about
@@ -134,11 +140,12 @@ export interface ChainStep {
   readonly seconds?: number;
 }
 
-/** Every step, by name, for validating `needs` */
+/** Every step, by name, for validating the derived edges */
 const BY_NAME = new Map<string, ChainStep>();
 
 /**
- * The order to run the steps in, derived from `needs`. Throws on an unknown dependency or a cycle, before
+ * The order to run the steps in, derived from what each step reads and writes. Throws on an unknown
+ * dependency or a cycle, before
  * anything runs: a graph that is wrong should not be discovered halfway through a six-minute chain.
  */
 /**
@@ -147,39 +154,133 @@ const BY_NAME = new Map<string, ChainStep>();
  * Refuses a graph where something needs an opt-in step, since the default run would then be missing a
  * dependency and the failure would arrive halfway through rather than here.
  */
-export function chainSteps(include: readonly string[] = []): readonly ChainStep[] {
-  const optIn = new Set(CHAIN_STEPS.filter((s) => s.optInBecause !== undefined).map((s) => s.name));
-  const kept = CHAIN_STEPS.filter((s) => !optIn.has(s.name) || include.includes(s.name));
+export function chainSteps(include: readonly string[] = [], all: readonly ChainStep[] = CHAIN_STEPS): readonly ChainStep[] {
+  const optIn = new Set(all.filter((s) => s.optInBecause !== undefined).map((s) => s.name));
+  const kept = all.filter((s) => !optIn.has(s.name) || include.includes(s.name));
   const present = new Set(kept.map((s) => s.name));
   for (const step of kept) {
-    for (const need of step.needs) {
+    // Against the whole table, not against what was kept: an edge to an opt-in step is the thing to refuse,
+    // and deriving within `kept` would simply not find it.
+    for (const need of dependsOn(step, all)) {
       if (!present.has(need)) {
-        throw new Error(`Chain step ${step.name} needs ${need}, which is opt-in — nothing may depend on one`);
+        throw new Error(`Chain step ${step.name} depends on ${need}, which is opt-in — nothing may depend on one`);
       }
     }
   }
   return kept;
 }
 
-export function orderedSteps(steps: readonly ChainStep[] = CHAIN_STEPS): readonly ChainStep[] {
+/** `child` is `parent` or sits under it */
+const inside = (child: string, parent: string): boolean => child === parent || child.startsWith(`${parent}/`);
+
+/**
+ * Whether an output lands somewhere a step actually reads — the one predicate both derivations rest on.
+ *
+ * An input and an output overlap if either contains the other: a step declaring `tests/packs` reads what
+ * another writes at `tests/packs/x/dist`, and a step declaring that `dist` reads what another writes at
+ * `tests/packs`. `excludes` is what takes it back: a step that declares a tree and says it reads around a
+ * generated subtree does not depend on whoever writes there.
+ *
+ * Getting this wrong is quiet rather than loud, and it was wrong twice while this was being written — once
+ * by ignoring `excludes` and once by dropping a whole input because a descendant was excluded. Both
+ * produced a plausible edge set. The question is about the *output*, which is why the exclusion test is on
+ * `output` and not on `input`.
+ */
+const consumes = (step: ChainStep, output: string): boolean =>
+  step.inputs.some((input) => inside(output, input) || inside(input, output))
+  && !(step.excludes ?? []).some((excluded) => inside(output, excluded));
+
+/**
+ * What a step must run after, derived from what the others write.
+ *
+ * Two questions over the same two fields, and the second is the one an earlier draft of this missed:
+ *
+ * - **outputs into inputs** is a data edge: this step reads what that one writes, so it runs after it.
+ * - **outputs into outputs** is a *mutex*: two steps writing the same path must not overlap, in either
+ *   order. `conflictsOf` answers that one.
+ *
+ * Both replace fields that used to be written by hand, and the hand-written ones reproduced exactly:
+ * 12 of 13 `needs` from the first question, the thirteenth and both `exclusive` flags from the second.
+ */
+export function dependsOn(step: ChainStep, steps: readonly ChainStep[] = CHAIN_STEPS): readonly string[] {
+  const direct = steps
+    .filter((other) => other.name !== step.name && (other.outputs ?? []).some((output) => consumes(step, output)))
+    .map((other) => other.name);
+  // Transitively reduced, so the graph reads like the table did: `compile` needs `packages:ensure` and
+  // everything after it needs `compile`, rather than every step naming every ancestor.
+  const reachable = (name: string, seen = new Set<string>()): Set<string> => {
+    const other = steps.find((candidate) => candidate.name === name);
+    for (const next of other ? dependsOn(other, steps) : []) {
+      if (!seen.has(next)) { seen.add(next); reachable(next, seen); }
+    }
+    return seen;
+  };
+  return direct.filter((name) => !direct.some((other) => other !== name && reachable(other).has(name))).sort();
+}
+
+/**
+ * The steps this one may not run beside, because they write where it writes.
+ *
+ * This is what `exclusive` stood in for, and it stood in badly: that flag was a *global* mutex, so a step
+ * holding it blocked every other step rather than the ones it conflicts with. Both of its users had a real
+ * conflict neither declared — one through an output it did not list at all, the other as a proxy for
+ * "nothing may build the packages concurrently", which the data edges already enforce.
+ *
+ * A mutex has no direction. Which of two conflicting steps runs first is a scheduling preference, and
+ * lives with the scheduler rather than here.
+ */
+export function conflictsOf(step: ChainStep, steps: readonly ChainStep[] = CHAIN_STEPS): readonly string[] {
+  const overlaps = (a: readonly string[], b: readonly string[]): boolean =>
+    a.some((one) => b.some((two) => inside(one, two) || inside(two, one)));
+  const writes = (candidate: ChainStep): readonly string[] => [...(candidate.outputs ?? []), ...(candidate.alsoWrites ?? [])];
+  const disturbs = (candidate: ChainStep): readonly string[] => candidate.alsoWrites ?? [];
+  return steps
+    .filter((other) => other.name !== step.name && (
+      // Two writers of one path, in either order
+      overlaps(writes(step), writes(other))
+      // Or one of them writes transiently where the other reads, which a reader must not observe
+      || overlaps(disturbs(step), other.inputs)
+      || overlaps(disturbs(other), step.inputs)))
+    .map((other) => other.name)
+    .sort();
+}
+
+/** A step with its edges worked out: what it waits for, and what it may not run beside. */
+export interface PlannedStep extends ChainStep {
+  readonly dependsOn: readonly string[];
+  readonly conflicts: readonly string[];
+}
+
+/**
+ * Every step with its graph attached, which is the only form the scheduler sees.
+ *
+ * The edges are derived here rather than carried on the table, so there is no second record to disagree
+ * with `inputs` and `outputs` — which is what `needs` and `exclusive` were, and what `chain-inputs` had a
+ * case policing.
+ */
+export const planSteps = (steps: readonly ChainStep[] = CHAIN_STEPS): readonly PlannedStep[] =>
+  steps.map((step) => ({ ...step, dependsOn: dependsOn(step, steps), conflicts: conflictsOf(step, steps) }));
+
+export function orderedSteps(given: readonly ChainStep[] = CHAIN_STEPS): readonly PlannedStep[] {
+  const steps = planSteps(given);
   BY_NAME.clear();
   for (const step of steps) {
     if (BY_NAME.has(step.name)) throw new Error(`Two chain steps named ${step.name}`);
     BY_NAME.set(step.name, step);
   }
   for (const step of steps) {
-    for (const need of step.needs) {
-      if (!BY_NAME.has(need)) throw new Error(`Chain step ${step.name} needs ${need}, which is not a step`);
+    for (const need of step.dependsOn) {
+      if (!BY_NAME.has(need)) throw new Error(`Chain step ${step.name} depends on ${need}, which is not a step`);
     }
   }
-  const order: ChainStep[] = [];
+  const order: PlannedStep[] = [];
   const done = new Set<string>();
   const onPath = new Set<string>();
-  const visit = (step: ChainStep): void => {
+  const visit = (step: PlannedStep): void => {
     if (done.has(step.name)) return;
     if (onPath.has(step.name)) throw new Error(`Chain steps form a cycle through ${step.name}`);
     onPath.add(step.name);
-    for (const need of step.needs) visit(BY_NAME.get(need)!);
+    for (const need of step.dependsOn) visit(BY_NAME.get(need) as PlannedStep);
     onPath.delete(step.name);
     done.add(step.name);
     order.push(step);
@@ -469,7 +570,7 @@ const POOL_STEPS: readonly ChainStep[] = (['host', 'pack'] as const).map((kind) 
   const suites = UNIT_SUITES.filter((suite) => suite.kind === kind);
   return {
     name: `test:unit:${kind}`,
-    needs: ['compile'],
+   
     // Measured on the pool, not summed from its suites. Summing gave the host pool 50s for a step that
     // takes 20s, because the suites overlap inside one vitest run — which is the entire point of pooling
     // them. `driftedSteps` reported it on every run.
@@ -512,7 +613,7 @@ export const CHAIN_STEPS: readonly ChainStep[] = [
   // 14, not the 0.3 its warm check costs: `seconds` is what a step costs when it does its work, and this one's
   // work is the build. The paragraph on that field describes this step getting it wrong — "a timeout message
   // claiming it costs 1s healthy" — and 1 was still here until the overrun report named it, 1s -> 14s.
-  { name: 'packages:ensure', needs: [], seconds: 14, exclusive: true,
+  { name: 'packages:ensure', seconds: 14,
     neverCachedBecause: 'what it guarantees is recorded in stamps of its own, which this fingerprint cannot '
       + 'see; its check is ~0.3s warm, so a cache on top only adds a record that can disagree',
     inputs: [...PACKAGE_BUILD_INPUTS, 'scripts/ensure-packages-built.ts'], outputs: PACKAGE_BUILD_OUTPUTS },
@@ -537,11 +638,15 @@ export const CHAIN_STEPS: readonly ChainStep[] = [
   // `build:app` -> `test:packaged-authoring`, 111s), so running it alone costs its own time and no more. The
   // alternative is packing to a temp directory ourselves and handing attw the tarball, which is the fix if this
   // step ever needs to share a lane.
-  { name: 'packages:check', needs: ['packages:ensure'], seconds: 6, exclusive: true,
+  { name: 'packages:check', seconds: 6,
+    // `attw --pack` packs a tarball inside each tree it checks and removes it again. Transient, so not an
+    // output; real, so nothing may read those trees while it runs. This is what `exclusive: true` was.
+    alsoWrites: ['packages/abuddy-ears/publish', 'packages/abuddy-sdk/publish', 'packages/abuddy-ui/publish',
+      'packages/abuddy-testing/dist/package', 'packages/abuddy-cli/dist/package'],
     inputs: [...ROOT, ...PACKAGE_BUILD_OUTPUTS] },
   // Ahead of build and not redundant with it: build -ws gives no ordering guarantee, since no workspace
   // declares a dependency on @app/default-setup, and the renderer's build reads the pack entry this writes
-  { name: 'compile', needs: ['packages:ensure'], seconds: 13, outputs: PACK_OUTPUTS,
+  { name: 'compile', seconds: 13, outputs: PACK_OUTPUTS,
     // Its sources and its manifest, not its tests: `abuddy build` never reads those
     //
     // This step runs `facade:check` after the build that produces its subject, so how the report is
@@ -566,7 +671,7 @@ export const CHAIN_STEPS: readonly ChainStep[] = [
   // 38s, not the 20s it takes alone: `seconds` is what a step costs under the chain's own default lanes,
   // because that is what `budgetFor` has to cover. Raising the default from two to three moved this one and
   // nothing else past the drift band, which is `driftedSteps` doing its job.
-  { name: 'test:external-pack:contract', needs: ['compile'], seconds: 57, outputs: FIXTURE_OUTPUTS,
+  { name: 'test:external-pack:contract', seconds: 57, outputs: FIXTURE_OUTPUTS,
     // It declares `tests/packs` for the pack sources; the Playwright output under each pack is written
     // by `:app`, changes every run, and is read by nothing
     excludes: FIXTURE_TEST_OUTPUT,
@@ -574,7 +679,7 @@ export const CHAIN_STEPS: readonly ChainStep[] = [
       'tests/scripts/lib', ...PACKAGE_BUILD_OUTPUTS, ...PACK_OUTPUTS] },
   // The widest inputs in the table, and honestly so: it compiles every workspace, the scripts and the
   // tests, and lints them. A change anywhere in the repo's TypeScript is a change to what it checks.
-  { name: 'typecheck', needs: ['compile'], seconds: 27,
+  { name: 'typecheck', seconds: 27,
     // `tests/e2e`, `tests/packs` and `tests/scripts`, never `tests` itself: that walk takes in
     // `tests/results`, which every Playwright run rewrites, so declaring the parent meant this step could
     // never be cached — measured against `tests/screenshots`, which the suite wrote until `91b348069` and
@@ -601,18 +706,18 @@ export const CHAIN_STEPS: readonly ChainStep[] = [
   // Needs `compile` and not just `packages:ensure`, because `dependency-runtime` builds a pack that depends
   // on default-setup and so reads its `dist`. It used to run after `compile` only because of where it sat
   // in this table, which `orderedSteps` never promised.
-  { name: 'test:integration', needs: ['compile'], seconds: 60,
+  { name: 'test:integration', seconds: 60,
     ...inputsForSuites(INTEGRATION_SUITES) },
   // `build:app`, not `build`. Root `build` is `-ws`, which includes `@app/default-setup`, whose own build is
   // the very command `compile` runs — so a `build` step rebuilt the pack every run, rewriting the `dist`
   // it declares as an input. It invalidated itself, and the five steps that read that tree, on every run:
   // measured, a warm chain cached 7 of 17 steps instead of 16. `npm run build` still builds everything, for
   // CI and `build/build.sh`; the chain does not need it to, because `compile` is a declared `need`.
-  { name: 'build:app', needs: ['compile'], seconds: 39, outputs: APP_OUTPUTS,
+  { name: 'build:app', seconds: 39, outputs: APP_OUTPUTS,
     inputs: [...ROOT, ...['renderer', 'api', 'main', 'preload'].flatMap(workspace),
       'packages/api/tsup.config.ts', ...APP_ENTRY,
       ...PACKAGE_BUILD_OUTPUTS, ...PACK_OUTPUTS] },
-  { name: 'test:external-pack:app', needsApp: true, needs: ['build:app', 'test:external-pack:contract'], seconds: 24,
+  { name: 'test:external-pack:app', needsApp: true, seconds: 24,
     // Its own Playwright output, rewritten every run
     excludes: FIXTURE_TEST_OUTPUT,
     // PACKAGE_BUILD_OUTPUTS because the fixture it drives *is* one: `@abuddy/testing` resolves to its
@@ -642,7 +747,7 @@ export const CHAIN_STEPS: readonly ChainStep[] = [
   // declared — so an unchanged stamp means the same app, and running it again asks a question already
   // answered. Uncached it put the warm chain back to 5.6s from 0.9s, which is most of what taking the
   // suite off the gate bought.
-  { name: 'test:smoke', needsApp: true, needs: ['build:app'], seconds: 6,
+  { name: 'test:smoke', needsApp: true, seconds: 6,
     outputs: ['tests/results'],
     inputs: [...ROOT, 'tests/e2e/smoke', 'playwright.config.ts',
       'scripts/with-source.mjs', ...APP_ENTRY, ...PACKAGE_BUILD_OUTPUTS, ...APP_OUTPUTS] },
@@ -652,12 +757,12 @@ export const CHAIN_STEPS: readonly ChainStep[] = [
   // built. It became a chain step, and then the reasoning about it became about caching a flaky pass —
   // which is a question you only ask of a regression gate. It has not caught one. Off the chain it costs
   // nothing and is still there when you want it, which is what it was for.
-  { name: 'test', needsApp: true, needs: ['build:app', 'test:smoke'], seconds: 26,
+  { name: 'test', needsApp: true, seconds: 26,
     optInBecause: 'it is a harness for driving the app, not a regression gate; nothing has needed it to fail',
     neverCachedBecause: 'it drives real Electron, and a flaky pass cached green hides an intermittent failure',
     outputs: ['tests/results'],
     inputs: [...ROOT, 'tests/e2e', 'playwright.config.ts', 'scripts/with-source.mjs', ...APP_ENTRY, ...APP_OUTPUTS] },
-  { name: 'test:packaged-authoring', needsApp: true, needs: ['build:app'], seconds: 59,
+  { name: 'test:packaged-authoring', needsApp: true, seconds: 59,
     inputs: [...ROOT, ...BOUNDED_RUNNER, 'tests/scripts/test-packaged-authoring.sh', 'tests/scripts/lib',
       ...PACKAGE_BUILD_OUTPUTS, ...APP_OUTPUTS] },
 ];

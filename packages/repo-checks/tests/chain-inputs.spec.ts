@@ -16,7 +16,7 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { BUILD_UNITS, covers, inputFiles, NOT_A_BUILD_INPUT, repoRelative, REPO_ROOT } from '@abuddy/host/build/packages-built';
-import { CHAIN_STEPS, SUITE_READS } from '../../../scripts/lib/chain-steps.ts';
+import { CHAIN_STEPS, dependsOn, SUITE_READS } from '../../../scripts/lib/chain-steps.ts';
 import { UNIT_SUITES } from '../../../scripts/lib/unit-suites.ts';
 import { reachableText, rootScripts } from '../../../scripts/lib/npm-scripts.ts';
 import { TYPECHECK_LEGS } from '../../../scripts/lib/typecheck-legs.ts';
@@ -364,7 +364,8 @@ describe('a gitignored input belongs to someone', () => {
 
   const byName = new Map(CHAIN_STEPS.map((step) => [step.name, step]));
   const ancestorsOf = (name: string, seen = new Set<string>()): Set<string> => {
-    for (const need of byName.get(name)?.needs ?? []) {
+    const step = byName.get(name);
+    for (const need of step ? dependsOn(step) : []) {
       if (seen.has(need)) continue;
       seen.add(need);
       ancestorsOf(need, seen);
@@ -410,7 +411,8 @@ describe('a gitignored input belongs to someone', () => {
 describe('a step that reads what another writes depends on it', () => {
   const byName = new Map(CHAIN_STEPS.map((step) => [step.name, step]));
   const ancestorsOf = (name: string, seen = new Set<string>()): Set<string> => {
-    for (const need of byName.get(name)?.needs ?? []) {
+    const step = byName.get(name);
+    for (const need of step ? dependsOn(step) : []) {
       if (seen.has(need)) continue;
       seen.add(need);
       ancestorsOf(need, seen);

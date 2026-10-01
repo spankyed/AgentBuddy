@@ -60,7 +60,9 @@ interface Outcome { readonly ms: number; readonly code: number; readonly output:
 const done = new Map<string, Outcome>();
 
 const result = await schedule({
-  steps: TYPECHECK_LEGS,
+  // Legs carry `needs`; the scheduler speaks `dependsOn`. Phase 4 of goal-one-action-cache makes a leg
+  // an action and this adapter goes with it.
+  steps: TYPECHECK_LEGS.map((leg) => ({ ...leg, dependsOn: leg.needs })),
   lanes: laneCount(),
   skip: () => false,
   async run(leg) {

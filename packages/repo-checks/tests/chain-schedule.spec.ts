@@ -1,11 +1,11 @@
 // The chain's scheduler, against a fake runner. A scheduler fails in ways a passing timing run cannot show:
-// it can leak a lane, keep dispatching after a failure, run an exclusive step beside another, or simply
+// it can leak a lane, keep dispatching after a failure, run two conflicting steps at once, or simply
 // never return. Each of those is a case here, and none of them is visible from a green `npm run chain`.
 import { describe, expect, it } from 'vitest';
 import { schedule, type SchedulableStep } from '../../../scripts/lib/chain-schedule.ts';
 
-const step = (name: string, needs: string[] = [], extra: Partial<SchedulableStep> = {}): SchedulableStep =>
-  ({ name, needs, ...extra });
+const step = (name: string, dependsOn: string[] = [], extra: Partial<SchedulableStep> = {}): SchedulableStep =>
+  ({ name, dependsOn, ...extra });
 
 /** A runner that records concurrency and finishes a step when told, so ordering is asserted rather than timed */
 function runner(failing: string[] = []) {
@@ -54,10 +54,10 @@ describe('schedule', () => {
     expect(r.order.sort()).toEqual(['a', 'b', 'c', 'd']);
   });
 
-  it('never runs an exclusive step beside another', async () => {
+  it('never runs a step beside one it conflicts with', async () => {
     const r = runner();
-    // The exclusive step is ready at the same moment as two others
-    const steps = [step('lock', [], { exclusive: true }), step('a'), step('b')];
+    // All three are ready at once, and `lock` names both of the others
+    const steps = [step('lock', [], { conflicts: ['a', 'b'] }), step('a'), step('b')];
     const done = schedule({ steps, lanes: 3, skip: never, run: r.run });
     await r.drain();
     await done;
@@ -65,9 +65,23 @@ describe('schedule', () => {
     expect(r.peak()).toBe(2); // lock alone, then a and b together
   });
 
-  it('holds an exclusive step until the lanes are free', async () => {
+  /**
+   * A mutex is symmetric, and the derivation is not the scheduler's to trust: here only `a` names `lock`,
+   * and the pair must still not overlap. A one-sided conflict that let them run together would be a race
+   * nothing in a timing run would show.
+   */
+  it('keeps a pair apart when only one of them names the other', async () => {
     const r = runner();
-    const steps = [step('a'), step('b'), step('lock', [], { exclusive: true })];
+    const steps = [step('lock'), step('a', [], { conflicts: ['lock'] })];
+    const done = schedule({ steps, lanes: 2, skip: never, run: r.run });
+    await r.drain();
+    await done;
+    expect(r.peak()).toBe(1);
+  });
+
+  it('holds a conflicting step until the lanes are free', async () => {
+    const r = runner();
+    const steps = [step('a'), step('b'), step('lock', [], { conflicts: ['a', 'b'] })];
     const done = schedule({ steps, lanes: 2, skip: never, run: r.run });
     await r.drain();
     await done;
