@@ -17,7 +17,11 @@ Four symptoms, all the same cause:
 - **The integration half has no per-suite cache**, because it is not pooled. Pooling was an *execution*
   decision (process economy, `docs/archive/plans/test-unit-scheduling.md`) and caching came along as a
   passenger. `test:integration` is a raw `vitest run` whose step inputs are `workspace(dir)`, not
-  `suiteInputs(dir)`.
+  `suiteInputs(dir)` — which is an under-declaration rather than a naming detail. Measured 2026-10-01, the
+  files `suiteInputs` reaches that the step does not declare: 386 for `@abuddy/cli`, 1944 for
+  `@app/repo-checks`, 275 for `@app/publish-checks`. The two pool steps *derive* their inputs
+  (`[...new Set(suites.flatMap(suiteInputs))]`); `test:integration` is a literal entry in the step table,
+  which is the whole reason it drifted.
 - **Scheduling changes cache identity.** A spec's measured cost picks its half, the half picks the step,
   and the step carries the inputs — so making a spec slower can change what it watches. This is not
   theoretical: `suite-reads.spec.ts` measured 2.5s against a 2.5s edge, and the half it would have been
@@ -26,6 +30,30 @@ Four symptoms, all the same cause:
 
 And four escape hatches that exist because the model has no way to say what an action produces:
 `cache: false`, `forceArgs`, `neverCachedBecause`, `excludes`.
+
+### One symptom is fixable today, and should not wait for the rest
+
+Symptom 3 is one word at `chain-steps.ts:598` — `workspace` for `suiteInputs` — and then building the
+step the way `POOL_STEPS` is built, so there is no second place to get it wrong. Two things are worth
+knowing before doing it.
+
+**It is not a correctness hole today, by accident.** `repo-checks` declares `{ packages, repo }`, so
+`repo: true` means every source tree in the repo, and its four integration specs are the whole-tree ones
+(`import-specifiers`, `import-specifiers-script`, `component-contracts`, `bounded-spawn`). The step
+declares no `scripts/` entry at all while those specs load eight modules under it. What saves it is that
+`check:specifiers` is also a `typecheck` leg, so the *rules* still fire on every chain run; what goes
+stale is the spec that tests the rules — its population floors, its mutation cases, the script's own
+behaviour.
+
+**`suite-reads.spec.ts` cannot catch it**, which is the part that generalises. It compares each suite's
+specs against `suiteInputs(suite)` — the key the *pool* uses. For the unit half the step's key is derived
+from that same function, so checking one checks both; for the integration half the step's key is written
+separately and nothing compares the two. The check verifies the inner layer while the outer layer is the
+one that is wrong. That is item 24 below, stated as a defect rather than as a design goal.
+
+The cost of fixing it: the step inherits `EVERY_SOURCE` from `repo-checks`, so a 60s step goes from
+rarely-stale to stale on any source edit. That is the honest answer for specs that read every source
+file; the alternative is splitting `repo-checks`' whole-tree specs out, which is a larger change.
 
 ## Prior art, and the names to use
 
@@ -43,7 +71,16 @@ nouns would be motion, not progress.
 | the unit pool | **persistent workers** | Bazel workers, Gradle daemons |
 | *(absent)* | **dep file** | Buck2 `dep_files`, Ninja `depfile`, `gcc -MD`, Gradle incremental compile |
 | *(absent)* | **hermeticity** | Bazel/Buck2 sandboxing: an undeclared read fails rather than caching wrong |
-| `tier` | *(no equivalent)* | genuinely bespoke; see item 17 |
+| `tier` | **tag + dependency constraint** | Nx `tags`/`depConstraints`, Bazel `visibility`, ArchUnit, dependency-cruiser |
+
+**Tiers are not bespoke, and the repo already implements the standard construct — twice.**
+`findUpwardImports(LAYERS)` (`{ name, dir, allowed, forbidden }`) enforces the package layering over the
+real import graph, AST-based. `check-test-tiers.ts` enforces the tier rule over steps by scanning their
+scripts as text, and says so in its own comment. Same construct, two mechanisms, and only the second is
+weak — not because tags are the wrong model but because there is no action graph to query, so the checker
+has nothing to resolve against. One thing *not* to coalesce toward: the JS test pyramid
+(unit/integration/e2e) is descriptive naming enforced by nothing, where these tiers are an enforced
+dependency constraint. Taking the standard name there would lose the standard mechanism.
 
 What the repo has and lacks, against that model:
 
@@ -137,10 +174,14 @@ is `packages:ensure → compile → build:app → test:packaged-authoring`, whic
 17. **Edges derived from artifacts** — an action reading `packages/*/dist` depends on the action writing
     it. `needs` is hand-declared beside `inputs` that already imply it, and `chain-inputs` has yet another
     case policing their agreement.
-18. **Tier derived, not declared.** The one genuinely bespoke concept here, and deriving it is really the
-    standard answer reached from the other side: a tier is a position in the dependency graph. An action is
-    tier 3 iff it reads app outputs. `check:tiers` currently reads a step's scripts as text to catch a
-    tier-1 step reaching the app, which the graph would make unrepresentable.
+18. **Tier stays declared; the edges it is checked against become derived.** An earlier draft of this
+    list had tier *derived* — an action is tier 3 iff it reads app outputs — and that is wrong, because it
+    deletes the check. A declared tier is a statement of intent: *this action must not need the app*.
+    Derive it and a tier-1 action that gains an app dependency is silently reclassified as tier 3 rather
+    than refused, which is exactly the drift the four failed cheap-chain attempts recorded. The shape to
+    copy is `LAYERS`, where the layer is declared and the import graph is derived: keep `tier` on the
+    action, and replace `check-test-tiers.ts`'s text scan with a query over the derived edges from item 17.
+    That keeps the gate and removes the only weak part of it.
 19. **Cycle and ordering validation**, which the graph gets for free and the current table checks by hand.
 
 ### F. Observability
@@ -153,7 +194,10 @@ is `packages:ensure → compile → build:app → test:packaged-authoring`, whic
 
 ### G. Guards the new model needs
 
-24. Every action's declared inputs cover what it reads (generalise `suite-reads`) — item 10.
+24. Every action's declared inputs cover what it reads (generalise `suite-reads`) — item 10. **Including
+    the outer layer**: today `suite-reads` compares a suite's specs against the *pool's* key, so a step
+    whose inputs are written rather than derived from the same function drifts unseen. That is how symptom
+    3 survived the check written to find exactly that defect class.
 25. No two caches over one body of work — assertable once there is one store.
 26. An action's key is independent of its worker. Mutation: run the same action in two batches, keys match.
 27. The dep-file proxy has a self-check (item 9).
@@ -216,8 +260,6 @@ nothing. These come first, and the goal doc should not be written until they are
 - That 40 actions is the right order of magnitude. It is 20 tsconfig invocations + ~14 vitest projects + the
   build and packaging actions, counted by hand.
 - That deriving `needs` from artifacts reproduces today's ordering exactly. Likely, unproven.
-- That deriving `tier` from "reads app outputs" reproduces the current three-way split exactly. The
-  current check reads a step's *scripts as text*, which catches a reach the inputs do not show.
 - That item 7 is affordable here. It is the right rule in Gradle, where most tasks have real outputs; this
   repo is mostly verification, and "a test's result is its output" has to carry more weight than it does
   there.
