@@ -1,5 +1,5 @@
 {
-  "measuredAt": "2026-10-01T13:11:23.116Z",
+  "measuredAt": "2026-10-01T20:17:15.675Z",
   "costs": {
     "tests/api-report-stamp.spec.ts": 68,
     "tests/bounded-spawn.integration.spec.ts": 2059,
@@ -38,6 +38,7 @@
     "tests/suite-reads.spec.ts": 1872,
     "tests/suite-split.spec.ts": 465,
     "tests/suite-timeouts.spec.ts": 1153,
+    "tests/sweep-forget.spec.ts": 15,
     "tests/typecheck-legs.spec.ts": 7,
     "tests/unit-pool.spec.ts": 4,
     "tests/unused-code-gate.spec.ts": 472,

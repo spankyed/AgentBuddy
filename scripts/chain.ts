@@ -106,6 +106,10 @@ function pruneStamps(): void {
 }
 
 /** A step as a build unit: the same shape, so it goes through the same freshness check */
+/** What a finished step may have changed: its products, and the paths it writes without producing one */
+const wrote = (step: ChainStep): string[] =>
+  [...(step.outputs ?? []), ...(step.alsoWrites ?? [])].map((target) => path.join(REPO_ROOT, target));
+
 const unitFor = (step: ChainStep): BuildUnit => ({
   inputs: step.inputs.map((input) => path.join(REPO_ROOT, input)),
   outputs: (step.outputs ?? []).map((output) => path.join(REPO_ROOT, output)),
@@ -270,12 +274,13 @@ async function main(): Promise<void> {
    * Why a step would run. `asking` is how it reads the tree: the default reads per step, and a sweep reads once
    * for all of them.
    *
-   * **Which one is not a performance choice.** A sweep answers as of its first read, so it is right only where
-   * every step is asked about at one moment — `--dry`, which runs nothing, and the report below, which runs after
-   * everything has stopped. The dispatch decisions are asked as the scheduler reaches each step, spread across the
-   * whole run, so they read for themselves: a step reached at t=100s has to see the tree as of then, or a snapshot
-   * from t=0 calls it fresh when another step has just written into its inputs. That is the defect the report
-   * exists to find, and sharing reads there would hide it instead.
+   * **Every caller shares one, and the derived graph is what makes that sound.** A reader of a step's output
+   * is ordered after it by construction, so a sweep — which reads lazily — never holds bytes a later step
+   * overwrites. That property was hand-maintained when `needs` was written beside the inputs implying it;
+   * it is definitional now, which is what retired the per-step reads.
+   *
+   * Measured on an unchanged tree: 28 decisions cost 1715ms read per step and 189ms through one sweep, which
+   * is the whole cost of a run where nothing runs.
    */
   const staleReason = (step: ChainStep, asking = { staleReason: unitStaleReason }): string | null =>
     step.neverCachedBecause !== undefined
@@ -314,12 +319,20 @@ async function main(): Promise<void> {
 
   /** The reason a step ran, kept for its line and for the failure report */
   const reasons = new Map<string, string>();
+  /**
+   * One reading of the tree for every dispatch decision, kept honest by forgetting what each step writes.
+   *
+   * `packages:ensure` is why this cannot simply be a snapshot: it is never cached, so it runs on every
+   * invocation, and when it rebuilds anything its readers must compare against the new bytes rather than the
+   * ones this sweep read before it started.
+   */
+  const dispatchSweep = freshnessSweep();
   pruneStamps();
   const outcome = await schedule({
     steps,
     lanes,
     skip: (step) => {
-      const why = staleReason(step);
+      const why = staleReason(step, dispatchSweep);
       if (!all && step.neverCachedBecause === undefined && why === null) {
         cached++;
         // On its own line where it was skipped, and dimmed. The order these arrive in is information — it is
@@ -333,6 +346,10 @@ async function main(): Promise<void> {
     },
     run: async (step) => {
       const result = await runAndStamp(step, all);
+      // A net rather than the mechanism: the graph already orders every reader of these paths after this
+      // step, so nothing has read them yet. It costs a map scan and it is what a step reading something it
+      // is *not* ordered after would need — see `freshnessSweep`'s note on what it cannot distinguish.
+      dispatchSweep.forget(wrote(step));
       results.push(result);
       // TIMEOUT is its own verdict: a step that ran out of budget failed for a different reason than one
       // that returned non-zero, and which it was is the first thing you need to know.

@@ -640,15 +640,32 @@ export function unitStaleReason(unit: BuildUnit, stamp: string, tree?: TreeReade
  * a sweep kept across time reports a tree that has moved on. Holding an object is what makes that somebody's
  * decision rather than a default they inherit.
  *
- * **Which is why the chain's dispatch decisions must not use one.** The scheduler asks "is this step stale?" as it
- * reaches each step, spread across the whole run, and a step reached at t=100s has to see the tree as of then — a
- * snapshot from t=0 would call a step fresh whose inputs another step had just written, which is the defect
- * `willNotCache` exists to report. The two places a sweep is right are the ones that ask about every step at one
- * moment: `--dry`, which runs nothing, and the post-run report, which runs after everything has stopped.
+ * **The chain's dispatch decisions use one too, and what makes that sound is the graph rather than this
+ * function.** Every reader of a step's output is ordered after that step, because `dependsOn` *is* that
+ * relation — derived from `outputs` landing in `inputs`, not declared beside them. A sweep reads lazily, so
+ * the first read of any path that some step produces happens after that step has finished. There is no
+ * window in which a shared reading holds bytes a later step has overwritten.
+ *
+ * The sentence this replaced predates that: `needs` was hand-written beside inputs that only implied it, so
+ * two records could disagree and reading per step was a net under a property nobody had made structural.
+ * Measured on this repo, per-step reads cost 1715ms against 189ms shared, over 28 steps.
+ *
+ * `forget` is kept as a local net rather than a load-bearing part, and the honest note is that **no
+ * end-to-end case distinguishes having it from not**: editing a package's source so `packages:ensure`
+ * rebuilds makes `packages:check` re-run either way, because it is ordered after the rebuild and reads the
+ * tree for the first time there. What would make this load-bearing is a step reading a path it is not
+ * ordered after — which `sweep-forget.spec.ts` holds to zero for transient writes, the one kind that
+ * creates a mutex instead of an edge.
+ *
+ * What a sweep cannot see either way is a write from outside the chain — an editor saving mid-run. Neither
+ * can per-step reads, for any step already dispatched; and `willNotCache` reads the tree afresh once
+ * everything has stopped and names every step that passed and is already stale again.
  */
 export function freshnessSweep(): {
   staleReason: (unit: BuildUnit, stamp: string) => string | null;
   changedInputs: (unit: BuildUnit, recorded: { files: Record<string, string>; declared: readonly string[] }) => InputChanges;
+  /** Drop what this sweep remembers under these paths, because something has just written there */
+  forget: (paths: readonly string[]) => void;
 } {
   const walked = new Map<string, string[]>();
   const seen = new Map<string, Buffer | null>();
@@ -670,9 +687,33 @@ export function freshnessSweep(): {
       return digests.get(file)!;
     },
   };
+  /**
+   * Everything remembered at or under `target`, by prefix rather than by exact key.
+   *
+   * A caller declares `packages/abuddy-ears/dist`; what is memoised are the files inside it and the listing
+   * of it, so forgetting the one key it was handed would leave every file under it stale in the maps. The
+   * listing goes too — a build that adds or removes a file changes what a walk returns, not only what the
+   * files contain.
+   *
+   * **The three maps are not keyed alike, which is the trap.** `walked` is keyed on the target as the caller
+   * spells it, absolute; `seen` and `digests` are keyed on what `list` returns, which is repo-relative with
+   * forward slashes. Clearing one key space and not the other re-walks the directory and then answers from
+   * the bytes it read before — fresh, over a file that moved. `sweep-forget.spec.ts` caught exactly that.
+   */
+  const under = (map: Map<string, unknown>, target: string, sep: string): string[] =>
+    [...map.keys()].filter((key) => key === target || key.startsWith(`${target}${sep}`));
+
   return {
     staleReason: (unit, stamp) => unitStaleReason(unit, stamp, tree),
     changedInputs: (unit, recorded) => changedInputs(unit, recorded, tree),
+    forget: (paths) => {
+      for (const target of paths) {
+        const relative = repoRelative(target);
+        for (const key of under(walked, target, path.sep)) walked.delete(key);
+        for (const key of under(seen, relative, '/')) seen.delete(key);
+        for (const key of under(digests, relative, '/')) digests.delete(key);
+      }
+    },
   };
 }
 
