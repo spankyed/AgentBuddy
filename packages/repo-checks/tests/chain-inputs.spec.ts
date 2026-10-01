@@ -144,9 +144,16 @@ describe('prose costs nothing', () => {
     expect(guides().length, 'every package has one').toBeGreaterThan(10);
   });
 
-  /** Where a guide is in some step's cache key, which it should be only when a check asserts its text. */
+  /**
+   * Where a guide is in some step's cache key, which it should be only when a check asserts its text.
+   *
+   * Memoised because it hashes every input of all twelve steps, which is 1.4s — and both cases below ask
+   * the same question of the same tree, so taking it twice doubled this file's cost for one answer.
+   */
+  let where: Map<string, string[]> | undefined;
   const costing = (): Map<string, string[]> => {
-    const where = new Map<string, string[]>();
+    if (where) return where;
+    where = new Map<string, string[]>();
     for (const step of CHAIN_STEPS) {
       const inside = fingerprinted(step);
       for (const guide of guides().filter((g) => inside.has(g))) where.set(guide, [...(where.get(guide) ?? []), step.name]);
