@@ -87,6 +87,49 @@ const coveredBy = (steps: readonly { inputs: readonly string[] }[]): Set<string>
  * Checked through `fingerprintWithDigests`, which is the hash a step's cache key is taken over, so this and
  * the cache cannot disagree about what counts as an input.
  */
+/**
+ * A guard whose subject is the repo has to be an input to the repo.
+ *
+ * These live inside one package's suite — `identity-guard` in `@abuddy/sdk`, six here — while what they
+ * assert is every tracked file. The pool runs a project only when that project's own inputs moved, so each
+ * was blind to the rest of the tree: `@abuddy/sdk`'s suite was an input to 241 of 1860 tracked code files.
+ * It missed a forbidden path committed to `@abuddy/cli`, which is not one of its dependencies, and two full
+ * chain runs passed over it. `SUITE_READS`' `repo` flag is the fix; this is what keeps it applied.
+ *
+ * The subject is derived from the specs themselves, through the AST: a spec that calls `repoFiles` or asks
+ * git for `ls-files` is asking what the repo holds, whatever it then does with the answer.
+ */
+describe('a guard over the whole repo', () => {
+  const asksWhatTheRepoHolds = (file: string): boolean => {
+    const source = ts.createSourceFile(file, fs.readFileSync(file, 'utf-8'), ts.ScriptTarget.ESNext, true);
+    let asks = false;
+    const visit = (node: ts.Node): void => {
+      if (ts.isCallExpression(node) && ts.isIdentifier(node.expression) && node.expression.text === 'repoFiles') asks = true;
+      if (ts.isStringLiteral(node) && node.text === 'ls-files') asks = true;
+      ts.forEachChild(node, visit);
+    };
+    visit(source);
+    return asks;
+  };
+
+  /** The suites holding one, by the suite directory `SUITE_READS` is keyed on. */
+  const repoWide = (): string[] => [...new Set(repoFiles('packages')
+    .filter((file) => file.endsWith('.spec.ts') && file.includes('/tests/'))
+    .filter((file) => asksWhatTheRepoHolds(path.join(REPO_ROOT, file)))
+    .map((file) => file.split('/')[1]!))].sort();
+
+  it('found some, so this is not looking at nothing', () => {
+    expect(repoWide()).not.toEqual([]);
+  });
+
+  it('declares every suite that holds one, and no suite that does not', () => {
+    const declared = Object.entries(SUITE_READS).filter(([, reads]) => reads.repo).map(([dir]) => dir).sort();
+    expect(declared, 'a suite holding a repo-wide guard needs `repo: true` in SUITE_READS, or the pool skips '
+      + 'its project while the thing it checks moves; one with none should drop the flag, which is making '
+      + 'every change re-run it for nothing').toEqual(repoWide());
+  });
+});
+
 describe('prose costs nothing', () => {
   const guides = (): string[] => repoFiles().filter((file) => path.basename(file) === 'CLAUDE.md');
 

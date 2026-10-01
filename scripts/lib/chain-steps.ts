@@ -256,6 +256,28 @@ const suiteWorkspace = (pkg: string): string[] => [...workspace(pkg), `packages/
 const EVERY_WORKSPACE = PACKAGES.flatMap(workspace);
 
 /**
+ * Every source tree in the repo: what a check reads when its subject is the repo rather than a package.
+ *
+ * `typecheck` is one, since it compiles the whole thing. The others are the repo-wide *guards* — a spec
+ * that asks `git ls-files` what exists and then asserts something about all of it. Those live inside one
+ * package's suite while their subject is everything, and the pool runs a project only when that project's
+ * own inputs moved, so each was blind to the rest of the tree: measured 2026-09-30, `@abuddy/sdk`'s suite
+ * was an input to 241 of 1860 tracked code files and `@app/repo-checks`' to 308. `identity-guard` then
+ * missed a forbidden path committed to `@abuddy/cli` and two full chain runs passed over it.
+ *
+ * Build output is not in here, because a guard's subject is source. `typecheck` adds its own.
+ */
+const EVERY_SOURCE = [...ROOT, ...EVERY_WORKSPACE, 'scripts', 'tests/e2e', 'tests/packs', 'tests/scripts',
+  'tests/tsconfig.json', 'playwright.config.ts', 'types', 'electron-builder.mjs',
+  // The drive layer's config, and only it: the driving scripts beside it are gitignored and ad-hoc,
+  // so naming the directory would re-run a typecheck every time someone poked at the app
+  'drive/playwright.config.ts',
+  'build/prod/diagnostics.mjs', 'build/prod/verify-node-modules.mjs',
+  'packages/abuddy-cli/bin/abuddy.mjs', 'packages/abuddy-cli/bin/source-hooks.mjs',
+  'packages/abuddy-ears/bench/ears.bench.ts', 'packages/api/tsup.config.ts',
+  'packages/dev-mode.js', 'packages/entry-point.mjs'];
+
+/**
  * `packages:ensure` builds the publishable packages, so its inputs are theirs — taken from `BUILD_UNITS`
  * rather than copied beside it. A copy of someone else's input list is the thing that goes stale silently:
  * a file added to a build unit would leave this step cached against a key that never saw it.
@@ -335,7 +357,11 @@ const FIXTURE_TEST_OUTPUT = FIXTURE_PACKS.flatMap((name) => [`tests/packs/${name
  * without the pack and would pass vacuously if it raced `compile`. A check that silently stops checking is
  * worse than one that fails, so its verdict depends on that tree and it declares it.
  */
-export const SUITE_READS: Record<string, { packages?: true; pack?: true }> = {
+/**
+ * `repo` says the suite holds a guard whose subject is the whole tree, so its inputs are the whole tree.
+ * Without it the pool skips the project while the thing it checks moves — see `EVERY_SOURCE`.
+ */
+export const SUITE_READS: Record<string, { packages?: true; pack?: true; repo?: true }> = {
   // `pretest: ensure-packages-built`, `@abuddy/testing`'s bundle, and its own compiled seeds under `dist/`
   'default-setup': { packages: true, pack: true },
   // `pretest: ensure-packages-built`; it packs and installs the published packages, and `dependency-runtime`
@@ -347,8 +373,14 @@ export const SUITE_READS: Record<string, { packages?: true; pack?: true }> = {
   // Boots the app runtime, which loads the built-in pack: `dist/runtime/index.cjs` and `settings.seed.json`.
   // Named by host code rather than by any spec, which is why it has to be measured rather than scanned.
   api: { pack: true },
-  // `pretest: ensure-packages-built`; `published-sdk-peers` reads the built `dist` and skips without it
-  'repo-checks': { packages: true },
+  // `repo` alone: `identity-guard.spec.ts` scans every tracked file for code resolving an environment or a
+  // data dir on its own. It missed one committed to `@abuddy/cli`, which is not a dependency of this
+  // package, so nothing made its project stale and two chain runs passed
+  'abuddy-sdk': { repo: true },
+  // `pretest: ensure-packages-built`; `published-sdk-peers` reads the built `dist` and skips without it.
+  // `repo`: six of its specs ask git what the repo holds — the chain's input coverage, spec placement,
+  // the lint's scope, the import rules — so every one of them is about files this package does not own
+  'repo-checks': { packages: true, repo: true },
   // `pretest: ensure-packages-built`; it npm-packs the built packages into a consumer and compiles it
   'publish-checks': { packages: true },
 };
@@ -391,6 +423,7 @@ export function suiteInputs(suite: UnitSuite): string[] {
     ...workspaceDeps(suite.dir).flatMap(dependencySource),
     ...(reads.packages ? PACKAGE_BUILD_OUTPUTS : []),
     ...(reads.pack ? PACK_OUTPUTS : []),
+    ...(reads.repo ? EVERY_SOURCE : []),
   ];
 }
 
@@ -429,6 +462,13 @@ const POOL_STEPS: readonly ChainStep[] = (['host', 'pack'] as const).map((kind) 
     // Nothing but the union, so the step cannot go stale for a reason no project can see. The runner files
     // this used to add by hand are in `suiteInputs` now, where both layers read them.
     inputs: [...new Set(suites.flatMap(suiteInputs))].sort(),
+    // A `repo` suite declares every source tree, `tests/packs` among them, and what it wants there is the
+    // fixture packs' sources: the guards read what a pack author writes, never what building one produces.
+    // Same reason `typecheck` reads around them, and the alternative — depending on the step that writes
+    // them — would put a tier-1 pool behind a tier-2 build it does not need.
+    ...(suites.some((suite) => SUITE_READS[suite.dir]?.repo)
+      ? { excludes: [...FIXTURE_OUTPUTS, ...FIXTURE_TEST_OUTPUT] }
+      : {}),
     // It keeps a cache of its own, so the chain's `--all` has to reach inside it
     forceArgs: ['--all'],
   };
@@ -543,16 +583,7 @@ export const CHAIN_STEPS: readonly ChainStep[] = [
     // The `packages/` entries are the files `EVERY_WORKSPACE` cannot reach, since it walks a fixed set of parts
     // and these sit beside them: two bins, a bench, a bundler config and the two loaders at `packages/`'s root.
     // They arrived when the lint stopped ignoring `packages/**`, and the guard below named all six.
-    inputs: [...ROOT, ...EVERY_WORKSPACE, 'scripts', 'tests/e2e', 'tests/packs', 'tests/scripts',
-      'tests/tsconfig.json', 'playwright.config.ts', 'types', 'electron-builder.mjs',
-      // The drive layer's config, and only it: the driving scripts beside it are gitignored and ad-hoc,
-      // so naming the directory would re-run a typecheck every time someone poked at the app
-      'drive/playwright.config.ts',
-      'build/prod/diagnostics.mjs', 'build/prod/verify-node-modules.mjs',
-      'packages/abuddy-cli/bin/abuddy.mjs', 'packages/abuddy-cli/bin/source-hooks.mjs',
-      'packages/abuddy-ears/bench/ears.bench.ts', 'packages/api/tsup.config.ts',
-      'packages/dev-mode.js', 'packages/entry-point.mjs',
-      ...PACKAGE_BUILD_OUTPUTS, ...PACK_OUTPUTS],
+    inputs: [...EVERY_SOURCE, ...PACKAGE_BUILD_OUTPUTS, ...PACK_OUTPUTS],
     // It wants the fixture packs' sources, never their build output: `tsc -p tests` compiles `e2e/**`
     // only, and `check:specifiers` filters `__generated__` out itself — verified by deleting a fixture's
     // generated directory, which leaves it passing. Hashing that output would tie a tier-1 check's
