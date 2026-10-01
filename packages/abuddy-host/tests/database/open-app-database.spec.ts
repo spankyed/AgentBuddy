@@ -51,9 +51,8 @@ describe('readInstalledSchema', () => {
   // row is still reachable by id — what is lost is naming a pack's entity type in a query.
   it('reports, rather than refuses, a data dir the app never published its built-in packs to', () => {
     const dir = tempDir('host-database-');
-    const said: string[] = [];
-    const schema = readInstalledSchema(schemaContext(dir), { onDegraded: (m) => said.push(m) });
-    expect(said.join('\n')).toMatch(/has no built-in pack snapshots .*--schema-from/s);
+    const schema = readInstalledSchema(schemaContext(dir));
+    expect(schema.degraded).toMatch(/has no built-in pack snapshots .*--schema-from/s);
     expect(schema.getRegisteredEntityTypes().has('AppState'), "the app's own types are still known").toBe(true);
     expect(schema.getRegisteredEntityTypes().has('Bookmark'), "a pack's are not").toBe(false);
   });
@@ -64,11 +63,11 @@ describe('readInstalledSchema', () => {
     const dir = dataDirWithPacks();
     expect(() => readInstalledSchema(schemaContext(dir), { schemaFrom: '/nope/x.json' })).toThrow(/No pack snapshot at/);
 
-    const said: string[] = [];
     const snapshot = path.join(dir, 'spare.json');
     fs.writeFileSync(snapshot, JSON.stringify({ manifest: { id: 'spare', entities: {} } }));
-    readInstalledSchema(schemaContext(dir), { schemaFrom: snapshot, onDegraded: (m) => said.push(m) });
-    expect(said.join('\n')).toMatch(/publishes its own built-in pack snapshots, so --schema-from .* was not used/);
+    const { degraded, notes } = readInstalledSchema(schemaContext(dir), { schemaFrom: snapshot });
+    expect(degraded, 'the dir accounted for itself, so nothing is degraded').toBeUndefined();
+    expect(notes.join('\n')).toMatch(/publishes its own built-in pack snapshots, so --schema-from .* was not used/);
   });
 
   // The snapshot a caller names stands in for the ones the data dir never published
@@ -76,9 +75,8 @@ describe('readInstalledSchema', () => {
     const dir = tempDir('host-database-');
     const snapshot = path.join(dir, 'snapshot.json');
     fs.writeFileSync(snapshot, JSON.stringify({ manifest: { id: 'named', entities: { Bookmark: 'Bookmark' } } }));
-    const said: string[] = [];
-    const schema = readInstalledSchema(schemaContext(dir), { schemaFrom: snapshot, onDegraded: (m) => said.push(m) });
-    expect(said, 'nothing is degraded once a snapshot is named').toEqual([]);
+    const schema = readInstalledSchema(schemaContext(dir), { schemaFrom: snapshot });
+    expect(schema.degraded, 'nothing is degraded once a snapshot is named').toBeUndefined();
     expect(schema.getRegisteredEntityTypes().has('Bookmark')).toBe(true);
   });
 });
@@ -120,6 +118,25 @@ describe('findAppDataPaths', () => {
 });
 
 describe('openAppDatabase', () => {
+  /**
+   * The firing case for the refusal, and the reason it exists rather than a warning. With an incomplete schema
+   * the engine does not know `Note` is an entity type, so `tx('Note')` takes the name for an *id* and writes a
+   * row literally called `Note` — measured against a real data dir before this refusal existed. A read of the
+   * same dir is fine and is the whole point of the fallback.
+   */
+  it('refuses a writable open on an incomplete schema, and allows a read', async () => {
+    const dir = dataDirWithPacks();
+    await writeData(dir, () => {});
+    fs.rmSync(path.join(_appDirOf(dir), 'host-packs'), { recursive: true });
+
+    await expect(openAppDatabase({ env: 'test', userDataDir: dir, ...quiet }))
+      .rejects.toThrow(/This command changes the database, and an incomplete schema would write the wrong rows/);
+
+    const db = await openAppDatabase({ env: 'test', userDataDir: dir, readOnly: true, ...quiet });
+    expect(db.schema.degraded, 'the read says so rather than pretending').toBeDefined();
+    db.close();
+  });
+
   it('hydrates the primary partition with the installed types, and installs the engine until close', async () => {
     const dir = dataDirWithPacks();
     await writeData(dir, () => {

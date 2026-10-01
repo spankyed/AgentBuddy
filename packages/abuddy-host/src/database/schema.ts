@@ -26,6 +26,17 @@ export interface InstalledSchema extends DatabaseSchema {
   relKinds: Record<string, string>;
   /** The packs read: the app's built-in packs, then the enabled external ones */
   packs: Array<{ id: string; builtIn: boolean }>;
+  /**
+   * Why this schema is incomplete, or nothing when the data dir accounted for itself.
+   *
+   * It is a field rather than a warning because a *write* against an incomplete schema corrupts: the engine
+   * asks it whether a name is an entity type, and for one it has never heard of `tx('Note')` takes the name
+   * for an id and writes a row literally called `Note` instead of minting one. So `openAppDatabase` refuses
+   * a writable open, and only a read degrades.
+   */
+  degraded?: string;
+  /** Things worth telling the user that are not degradation — a `--schema-from` that turned out unnecessary */
+  notes: string[];
 }
 
 /** The directories and files of a data dir the schema is read from */
@@ -132,28 +143,21 @@ function namedManifest(schemaFrom: string): PackManifest {
  * `qx(undefined)` answers with the whole database. So `onDegraded` is reported rather than logged quietly, and a
  * caller that can refuse to write should.
  */
-export function readInstalledSchema(
-  context: SchemaContext,
-  options: { schemaFrom?: string; onDegraded?: (message: string) => void } = {},
-): InstalledSchema {
+export function readInstalledSchema(context: SchemaContext, options: { schemaFrom?: string } = {}): InstalledSchema {
   const published = builtInManifests(context.hostPacksDir);
   // Resolved whether or not it is needed, so a path that names nothing is an error rather than a flag that
   // quietly did nothing: `--schema-from /typo.json` against a dir with its own snapshots used to answer
   // normally and say not a word.
   const named = options.schemaFrom === undefined ? undefined : namedManifest(options.schemaFrom);
   const builtIn = published.length > 0 ? published : named ? [named] : [];
-  if (named && published.length > 0) {
-    options.onDegraded?.(
-      `${context.userDataDir} publishes its own built-in pack snapshots, so --schema-from ${options.schemaFrom} was not used.`,
-    );
-  }
-  if (builtIn.length === 0) {
-    options.onDegraded?.(
-      `${context.userDataDir} has no built-in pack snapshots in ${context.hostPacksDir}, so only AgentBuddy's own `
-      + 'entity types are known. Rows still load and are reachable by id, but a query that starts from a pack\'s '
-      + 'entity type cannot be written. Name a snapshot with --schema-from to read them.',
-    );
-  }
+  const notes = named && published.length > 0
+    ? [`${context.userDataDir} publishes its own built-in pack snapshots, so --schema-from ${options.schemaFrom} was not used.`]
+    : [];
+  const degraded = builtIn.length === 0
+    ? `${context.userDataDir} has no built-in pack snapshots in ${context.hostPacksDir}, so only AgentBuddy's own `
+      + "entity types are known. Rows still load and are reachable by id, but a query that starts from a pack's "
+      + 'entity type cannot be written. Name a snapshot with --schema-from to read them.'
+    : undefined;
   const external = externalManifests(context);
 
   const entities: Record<string, string> = {
@@ -176,5 +180,7 @@ export function readInstalledSchema(
     packs: [...builtIn.map(({ id }) => ({ id, builtIn: true })), ...external.map(({ id }) => ({ id, builtIn: false }))],
     getRegisteredEntityTypes: () => entityTypes,
     partitionPolicy: appPartitionPolicy(excluded),
+    ...(degraded !== undefined && { degraded }),
+    notes,
   };
 }

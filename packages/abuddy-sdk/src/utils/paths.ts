@@ -1,6 +1,7 @@
 import * as path from 'path'
 import * as fs from 'fs'
 import { _appDirOf, resolveAppContext } from '../env/index.ts'
+import { _pathSegmentProblem } from './path-segment.ts'
 
 /** @internal Host-only: the app's stores in a data dir */
 export interface _AppDataPaths {
@@ -62,9 +63,6 @@ export function _resolvePath(key: keyof typeof DATA_DIRS): string {
   return _appDataPaths(getUserDataPath())[key]
 }
 
-/** A pack's `name` must be one directory, so a pack cannot reach its neighbours or the app's own stores. */
-const PACK_DATA_NAME = /^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$/
-
 /**
  * @internal Host-only: a directory a pack keeps data in, namespaced by the pack that asked
  * (`<appDir>/pack-data/<packId>/<name>`). Packs reach it through `getDataDirPath(name)` from
@@ -75,13 +73,8 @@ const PACK_DATA_NAME = /^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$/
  * to something that was not the pack's.
  */
 export function _packDataDir(packId: string, name: string): string {
-  if (!PACK_DATA_NAME.test(name)) {
-    throw new Error(
-      `"${name}" isn't a usable data directory name: letters, digits, dot, dash and underscore, starting ` +
-      'with a letter or digit, up to 64 characters. It names one directory inside the pack\'s own, so it ' +
-      'cannot contain a path separator.',
-    )
-  }
+  const problem = _pathSegmentProblem(name, 'data directory name')
+  if (problem) throw new Error(`${problem} It names one directory inside the pack's own.`)
   return path.join(_appDirOf(getUserDataPath()), 'pack-data', packId, name)
 }
 

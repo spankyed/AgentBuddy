@@ -59,8 +59,17 @@ describe('_packDataDir', () => {
   // The name arrives from a pack, and before the namespace it was joined straight onto a directory holding
   // Chromium's files and the app's own stores. These are the shapes that used to resolve somewhere else.
   it('refuses a name that is not one directory', () => {
-    for (const name of ['../..', 'a/b', '/etc', '.hidden', '', 'x'.repeat(65)]) {
+    for (const name of ['../..', 'a/b', '/etc', '.hidden', '', 'x'.repeat(65), 'trailing ']) {
       expect(() => _packDataDir('default-setup', name), JSON.stringify(name)).toThrow(/isn't a usable data directory name/);
+    }
+  });
+
+  // Windows' reserved device names and its trailing dot/space rule. Refused on every platform on purpose: a
+  // pack that works on macOS and fails at mkdir on Windows is worse than one that is told so. The instance
+  // name rule already had these; this one did not, which is why both now go through _pathSegmentProblem.
+  it('refuses what the filesystem reserves, on every platform', () => {
+    for (const name of ['con', 'CON', 'aux', 'nul', 'com1', 'lpt9', 'trailing.']) {
+      expect(() => _packDataDir('default-setup', name), JSON.stringify(name)).toThrow(/reserved by the filesystem/);
     }
   });
 

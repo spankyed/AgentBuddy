@@ -215,6 +215,9 @@ export interface MediaRef {
 // @internal
 export function _packDataDir(packId: string, name: string): string;
 
+// @public
+export function _pathSegmentProblem(name: string, subject: string): string | undefined;
+
 // @public (undocumented)
 export function randomId(opt?: RandomIdOptions): string;
 

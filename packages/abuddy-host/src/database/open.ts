@@ -60,11 +60,9 @@ export interface OpenAppDatabaseOptions {
   log?: (message: string) => void;
   /**
    * A pack snapshot to read the schema from when the data dir publishes none of its own (`--schema-from`).
-   * See `readInstalledSchema`: without it such a dir opens knowing only AgentBuddy's own entity types.
+   * See `readInstalledSchema`: without it such a dir opens read-only, knowing only AgentBuddy's own types.
    */
   schemaFrom?: string;
-  /** Told when the schema is incomplete, so a command can say so before it answers from it */
-  onDegradedSchema?: (message: string) => void;
 }
 
 /**
@@ -73,10 +71,16 @@ export interface OpenAppDatabaseOptions {
  * installed, so `@abuddy/ears`'s free functions act on it until `close()`. The volatile partition (the run history)
  * is left out, as in the app, unless `includeVolatile` asks for it.
  */
-export async function openAppDatabase({ env, userDataDir, readOnly = false, includeVolatile = false, log, schemaFrom, onDegradedSchema }: OpenAppDatabaseOptions): Promise<AppDatabase> {
+export async function openAppDatabase({ env, userDataDir, readOnly = false, includeVolatile = false, log, schemaFrom }: OpenAppDatabaseOptions): Promise<AppDatabase> {
   const context = resolveAppContext({ env, userDataDir });
   const paths = findAppDataPaths(userDataDir);
-  const schema = readInstalledSchema(context, { schemaFrom, onDegraded: onDegradedSchema });
+  const schema = readInstalledSchema(context, { schemaFrom });
+  // A write needs the whole schema, not most of it. The engine asks it whether a name is an entity type, and
+  // for one it has never heard of `tx('Note')` takes the name for an id and writes a row called `Note` — a
+  // junk entity in the user's database, permanently. Reading is what an incomplete schema is good for.
+  if (!readOnly && schema.degraded !== undefined) {
+    throw new Error(`${schema.degraded}\n\nThis command changes the database, and an incomplete schema would write the wrong rows.`);
+  }
   const { store, engine } = openDatabaseStore({
     paths: { primary: paths.lmdb, volatileBackup: paths.volatileLmdb },
     schema,

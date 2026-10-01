@@ -143,10 +143,11 @@ export async function openTarget(target: DbTarget, { write, command }: OpenOptio
       includeVolatile: target.volatile,
       log: () => {},
       ...(target.schemaFrom !== undefined && { schemaFrom: target.schemaFrom }),
-      // On stderr with the data dir, not swallowed: a degraded schema answers a query that names an entity
-      // type with the whole database rather than an error, so the one chance to say so is before the answer
-      onDegradedSchema: (message) => io.err(`Warning: ${message}`),
     });
+    // On stderr, before the command answers: a read against an incomplete schema answers a query that names
+    // an entity type with the whole database rather than an error, so this is the one chance to say so
+    if (db.schema.degraded !== undefined) io.err(`Warning: ${db.schema.degraded}`);
+    for (const note of db.schema.notes) io.err(`Note: ${note}`);
     return lock ? { ...db, close: () => { try { db.close(); } finally { lock.release(); } } } : db;
   } catch (error) {
     lock?.release();

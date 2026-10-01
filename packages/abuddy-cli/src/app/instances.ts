@@ -19,7 +19,7 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { resolveAppContext } from '@abuddy/sdk/env';
 import { lockIsHeld, readApiEndpoint } from '@abuddy/host/process-liveness';
-import { randomId } from '@abuddy/sdk/utils/pure';
+import { _pathSegmentProblem, randomId } from '@abuddy/sdk/utils/pure';
 import type { CliDirs } from './app-target';
 
 /** What an instance records about itself, in `.abuddy-instance.json` at its root. */
@@ -37,20 +37,12 @@ const instancesRoot = (dirs: CliDirs) => path.join(dirs.data, 'instances');
 
 /**
  * A name is a single path segment and is checked as one. It reaches `path.join` and, for an ephemeral
- * instance, `fs.rm`, so `../../../abuddy-dev` would resolve to the real development data dir and delete
- * it. The reserved names and the trailing dot/space rule are Windows'; the rest keeps a name to something
- * that survives a case-insensitive filesystem and a shell.
+ * instance, `fs.rm`, so `../../../abuddy-dev` would resolve to the real development data dir and delete it.
+ *
+ * The rule itself is `_pathSegmentProblem`: a pack's data directory name needs the same one, and the copy
+ * that governed it was missing the filesystem's reserved names.
  */
-const NAME = /^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$/;
-const RESERVED = /^(con|prn|aux|nul|com[1-9]|lpt[1-9])$/i;
-
-export function instanceNameProblem(name: string): string | undefined {
-  if (!NAME.test(name)) {
-    return `"${name}" isn't a usable instance name: letters, digits, dot, dash and underscore, starting with a letter or digit, up to 64 characters.`;
-  }
-  if (RESERVED.test(name) || /[. ]$/.test(name)) return `"${name}" is reserved by the filesystem.`;
-  return undefined;
-}
+export const instanceNameProblem = (name: string): string | undefined => _pathSegmentProblem(name, 'instance name');
 
 /**
  * The directory for a name, checked to be inside the instances root. The regex above already refuses a

@@ -102,6 +102,9 @@ export const mapScalar: (val: string | undefined, renames: Map<string, string>, 
 // @public (undocumented)
 export type MaybeArr<T> = T | readonly T[];
 
+// @public
+export function _pathSegmentProblem(name: string, subject: string): string | undefined;
+
 // @public (undocumented)
 export function randomId(opt?: RandomIdOptions): string;
 
