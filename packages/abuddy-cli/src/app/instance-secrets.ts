@@ -54,7 +54,7 @@ const readFile = (file: string): SecretsFile | undefined => {
  * `ABUDDY_USER_DATA_DIR`: the source has to be the environment's own directory, never whatever an enclosing
  * instance pointed this process at.
  */
-export function sourceSecretsFile(env: AppEnv): string {
+function sourceSecretsFile(env: AppEnv): string {
   return _appDataPaths(appDataDirFor(env)).secretsFile;
 }
 
