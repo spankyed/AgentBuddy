@@ -37,6 +37,22 @@ const read = (name: string): BuildInfo | undefined => {
   }
 };
 
+/**
+ * The TypeScript a dep file has to have been written by to be worth reading.
+ *
+ * Read once from the installed package rather than taken as an argument, so no caller can forget to
+ * check: a proxy whose self-check is optional is a proxy nobody checks, which is what `api:stamp` was
+ * before its key included the entry set. `readsOf` applies it; `untrustworthy` is the same question
+ * asked out loud, for a caller that wants the reason.
+ */
+let installed: string | undefined;
+const installedTypeScript = (): string => {
+  installed ??= (JSON.parse(
+    fs.readFileSync(path.join(REPO_ROOT, 'node_modules', 'typescript', 'package.json'), 'utf-8'),
+  ) as { version: string }).version;
+  return installed;
+};
+
 /** Every dep file present, by the name its leg writes under */
 export const depFileNames = (): string[] => (fs.existsSync(CACHE)
   ? fs.readdirSync(CACHE).filter((file) => file.endsWith('.tsbuildinfo')).map((file) => file.replace('.tsbuildinfo', '')).sort()
@@ -45,9 +61,12 @@ export const depFileNames = (): string[] => (fs.existsSync(CACHE)
 /**
  * The repo files a leg read, or `undefined` when there is no evidence.
  *
- * `undefined` and `[]` are different answers and the caller must not conflate them: no dep file means the
- * leg has never run here, which under Gradle's rule makes it uncacheable rather than fresh. An empty array
- * would say "it read nothing", which is the wrong answer in the one case it matters — a cold tree.
+ * **`undefined` means no evidence; it is never `[]`.** A compiler that ran read something, so an empty
+ * `fileNames` is a file that reports nothing rather than a compilation that touched nothing — and this
+ * repo has three of them: the renderer's configs write a build info under `node_modules/.tmp` with an
+ * empty `fileNames`, because a solution-style config records its references and not a program. Returning
+ * `[]` for those would let a coverage check pass over a leg it learned nothing about, which is the exact
+ * shape of "a check that reports nothing may have looked at nothing".
  *
  * Paths in any `node_modules` are dropped, which is the one thing here that is a judgement rather than a
  * reading: they are dependencies, overwhelmingly TypeScript's own `lib.*.d.ts`, and the chain already
@@ -60,8 +79,11 @@ export const depFileNames = (): string[] => (fs.existsSync(CACHE)
  * what `dep-files.spec.ts` does and says.
  */
 export function readsOf(name: string): readonly string[] | undefined {
+  // The self-check runs here, not at the call site. A read set from another compiler describes another
+  // program, and a caller comparing against it would be comparing against the wrong thing quietly.
+  if (untrustworthy(name, { version: installedTypeScript() }) !== null) return undefined;
   const info = read(name);
-  if (info?.fileNames === undefined) return undefined;
+  if (info?.fileNames === undefined || info.fileNames.length === 0) return undefined;
   return info.fileNames
     .map((file) => path.relative(REPO_ROOT, path.resolve(CACHE, file)))
     .filter((file) => !file.startsWith('..') && !/(^|\/)node_modules\//.test(file))

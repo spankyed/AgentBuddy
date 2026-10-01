@@ -203,7 +203,28 @@ const consumes = (step: ChainStep, output: string): boolean =>
  * Both replace fields that used to be written by hand, and the hand-written ones reproduced exactly:
  * 12 of 13 `needs` from the first question, the thirteenth and both `exclusive` flags from the second.
  */
+/**
+ * Memoised per step list, which is a scope rather than a key.
+ *
+ * The reduction below asks `dependsOn` of each ancestor, and without this each of those recomputes the
+ * whole subgraph: measured on a complete DAG, 3ms at 8 steps, 13ms at 10, 110ms at 12, 1111ms at 14 —
+ * ten times worse every two steps. Today's chain is 4ms because almost every edge points at one producer,
+ * so the pairwise filter has nothing to pair; the shape that bites is a step reading several steps'
+ * outputs, which is what adding outputs to more actions produces.
+ *
+ * Keyed on the array object, not its contents, and that is sound only because nothing mutates one: the
+ * table is a `const`, and every caller that passes its own builds a fresh array. A `WeakMap` so a test's
+ * throwaway list is collected with it. Mutating a list in place and asking again would read the old
+ * answer, which is the one way to break this.
+ */
+const derivedEdges = new WeakMap<readonly ChainStep[], Map<string, readonly string[]>>();
+
 export function dependsOn(step: ChainStep, steps: readonly ChainStep[] = CHAIN_STEPS): readonly string[] {
+  const memo = derivedEdges.get(steps) ?? new Map<string, readonly string[]>();
+  derivedEdges.set(steps, memo);
+  const already = memo.get(step.name);
+  if (already !== undefined) return already;
+
   const direct = steps
     .filter((other) => other.name !== step.name && (other.outputs ?? []).some((output) => consumes(step, output)))
     .map((other) => other.name);
@@ -216,7 +237,9 @@ export function dependsOn(step: ChainStep, steps: readonly ChainStep[] = CHAIN_S
     }
     return seen;
   };
-  return direct.filter((name) => !direct.some((other) => other !== name && reachable(other).has(name))).sort();
+  const edges = direct.filter((name) => !direct.some((other) => other !== name && reachable(other).has(name))).sort();
+  memo.set(step.name, edges);
+  return edges;
 }
 
 /**

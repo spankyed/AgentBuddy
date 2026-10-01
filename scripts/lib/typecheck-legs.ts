@@ -10,7 +10,6 @@ export interface Leg {
   readonly name: string;
   /** Spelled out rather than derived — see the header */
   readonly command: string;
-  readonly needs: readonly string[];
   /**
    * What this leg checks: the workspace directories it compiles, or `'repo'` where it walks the tree.
    *
@@ -33,8 +32,8 @@ export interface Leg {
   readonly seconds: number;
 }
 
-/** The one ordering constraint: three legs below read what it builds */
-const ENSURE = 'packages:ensure';
+/** The one ordering constraint: every other leg reads what it builds */
+export const ENSURE = 'packages:ensure';
 
 /**
  * Every leg, in the order a failure is reported in — which is this order and not the order they finish, so a
@@ -46,22 +45,22 @@ const ENSURE = 'packages:ensure';
  * plausible, and `--lanes 1` is how to test it if a leg ever starts behaving differently in company.
  */
 export const TYPECHECK_LEGS: readonly Leg[] = [
-  { name: ENSURE, command: 'npm run packages:ensure', scope: ['abuddy-ears', 'abuddy-sdk', 'abuddy-ui', 'abuddy-cli', 'abuddy-testing'], needs: [], seconds: 0.3 },
-  { name: 'typecheck:fe', command: 'npm run typecheck:fe', scope: ['renderer'], needs: [ENSURE], seconds: 6.2 },
-  { name: 'typecheck:be', command: 'npm run typecheck:be', scope: ['api'], needs: [ENSURE], seconds: 3.4 },
-  { name: 'typecheck:ears', command: 'npm run typecheck:ears', scope: ['abuddy-ears'], needs: [ENSURE], seconds: 0.8 },
-  { name: 'typecheck:sdk', command: 'npm run typecheck:sdk', scope: ['abuddy-sdk'], needs: [ENSURE], seconds: 1.1 },
-  { name: 'typecheck:host', command: 'npm run typecheck:host', scope: ['abuddy-host'], needs: [ENSURE], seconds: 1.3 },
-  { name: 'typecheck:ui', command: 'npm run typecheck:ui', scope: ['abuddy-ui'], needs: [ENSURE], seconds: 2.0 },
-  { name: 'check:specifiers', command: 'npm run check:specifiers', scope: 'repo', needs: [ENSURE], seconds: 2.7 },
-  { name: 'exports:check', command: 'npm run exports:check', scope: ['abuddy-ui'], needs: [ENSURE], seconds: 1 },
-  { name: 'schema:check', command: 'npm run schema:check', scope: ['abuddy-sdk'], needs: [ENSURE], seconds: 0.1 },
-  { name: 'api:stamp', command: 'npm run api:stamp', scope: 'repo', needs: [ENSURE], seconds: 0.7 },
-  { name: 'typecheck:scripts', command: 'npm run typecheck:scripts', scope: 'repo', needs: [ENSURE], seconds: 2.6 },
-  { name: 'typecheck:cli', command: 'npm run typecheck:cli', scope: ['abuddy-cli', 'abuddy-testing'], needs: [ENSURE], seconds: 2.7 },
-  { name: 'typecheck:pack', command: 'npm run typecheck:pack', scope: ['default-setup'], needs: [ENSURE], seconds: 4.8 },
-  { name: 'typecheck:main', command: 'npm run typecheck:main', scope: ['main'], needs: [ENSURE], seconds: 1.0 },
-  { name: 'typecheck:preload', command: 'npm run typecheck:preload', scope: ['preload'], needs: [ENSURE], seconds: 0.8 },
-  { name: 'check:tiers', command: 'npm run check:tiers', scope: 'repo', needs: [ENSURE], seconds: 0.3 },
-  { name: 'lint:check', command: 'npm run lint:check', scope: 'repo', needs: [ENSURE], seconds: 1.7 },
+  { name: ENSURE, command: 'npm run packages:ensure', scope: ['abuddy-ears', 'abuddy-sdk', 'abuddy-ui', 'abuddy-cli', 'abuddy-testing'], seconds: 0.3 },
+  { name: 'typecheck:fe', command: 'npm run typecheck:fe', scope: ['renderer'], seconds: 6.2 },
+  { name: 'typecheck:be', command: 'npm run typecheck:be', scope: ['api'], seconds: 3.4 },
+  { name: 'typecheck:ears', command: 'npm run typecheck:ears', scope: ['abuddy-ears'], seconds: 0.8 },
+  { name: 'typecheck:sdk', command: 'npm run typecheck:sdk', scope: ['abuddy-sdk'], seconds: 1.1 },
+  { name: 'typecheck:host', command: 'npm run typecheck:host', scope: ['abuddy-host'], seconds: 1.3 },
+  { name: 'typecheck:ui', command: 'npm run typecheck:ui', scope: ['abuddy-ui'], seconds: 2.0 },
+  { name: 'check:specifiers', command: 'npm run check:specifiers', scope: 'repo', seconds: 2.7 },
+  { name: 'exports:check', command: 'npm run exports:check', scope: ['abuddy-ui'], seconds: 1 },
+  { name: 'schema:check', command: 'npm run schema:check', scope: ['abuddy-sdk'], seconds: 0.1 },
+  { name: 'api:stamp', command: 'npm run api:stamp', scope: 'repo', seconds: 0.7 },
+  { name: 'typecheck:scripts', command: 'npm run typecheck:scripts', scope: 'repo', seconds: 2.6 },
+  { name: 'typecheck:cli', command: 'npm run typecheck:cli', scope: ['abuddy-cli', 'abuddy-testing'], seconds: 2.7 },
+  { name: 'typecheck:pack', command: 'npm run typecheck:pack', scope: ['default-setup'], seconds: 4.8 },
+  { name: 'typecheck:main', command: 'npm run typecheck:main', scope: ['main'], seconds: 1.0 },
+  { name: 'typecheck:preload', command: 'npm run typecheck:preload', scope: ['preload'], seconds: 0.8 },
+  { name: 'check:tiers', command: 'npm run check:tiers', scope: 'repo', seconds: 0.3 },
+  { name: 'lint:check', command: 'npm run lint:check', scope: 'repo', seconds: 1.7 },
 ];

@@ -22,6 +22,29 @@ import { population } from '@abuddy/sdk/testing';
 const tsVersion = (JSON.parse(fs.readFileSync(path.join(REPO_ROOT, 'node_modules/typescript/package.json'), 'utf-8')) as { version: string }).version;
 
 describe('the compiler says what it read', () => {
+  /**
+   * Which legs this can speak for, named rather than implied.
+   *
+   * The gate below is only as wide as the evidence, and the evidence is uneven: three legs produce no
+   * usable dep file — `typecheck:main` and `typecheck:preload` set no `tsBuildInfoFile`, and
+   * `typecheck:fe` writes one whose `fileNames` is empty, because a solution-style config records its
+   * references and not a program. Asserting the covered count keeps that honest in both directions: a leg
+   * quietly losing its dep file shows up here, and so does one gaining it.
+   */
+  it('says which legs it can speak for, so the gate is not wider than its evidence', () => {
+    const owners = new Set(depFileNames()
+      .map((file) => PACKAGE_DIRS.find((dir) => file === dir)
+        ?? PACKAGE_DIRS.filter((dir) => file.startsWith(`${dir}-`)).sort((a, b) => b.length - a.length)[0])
+      .filter((dir): dir is string => dir !== undefined));
+    const legs = TYPECHECK_LEGS.filter((leg) => leg.name !== 'packages:ensure');
+    const uncovered = legs
+      .filter((leg) => leg.scope !== 'repo' && !leg.scope.some((dir) => owners.has(dir)))
+      .map((leg) => leg.name)
+      .sort();
+    expect(uncovered, 'the legs no dep file speaks for — change this list only with the reason why')
+      .toEqual(['typecheck:fe', 'typecheck:main', 'typecheck:preload']);
+  });
+
   it('finds dep files to read, or says plainly that there is no evidence here', () => {
     const found = depFileNames();
     if (found.length === 0) {
@@ -113,6 +136,30 @@ describe('a dep file is checked against itself before it is believed', () => {
     }
   });
 
+  /**
+   * And the reader applies it, rather than leaving it to whoever remembers.
+   *
+   * This is the half that was missing: `untrustworthy` existed, the gate above called `readsOf`, and
+   * nothing joined them — so a dep file from another compiler would have been compared against in
+   * silence. The check belongs in the reader for the reason `CLAUDE.md` gives about reset hatches: one
+   * that a caller has to invoke is one a caller will forget.
+   */
+  it('reads nothing out of a dep file it would not trust', () => {
+    const [name] = depFileNames();
+    expect(readsOf(name!), 'the fixture is unreadable, so the case below proves nothing').toBeDefined();
+
+    const file = path.join(REPO_ROOT, 'node_modules/.cache/tsbuildinfo', `${name!}.tsbuildinfo`);
+    const original = fs.readFileSync(file, 'utf-8');
+    try {
+      const info = JSON.parse(original) as Record<string, unknown>;
+      fs.writeFileSync(file, JSON.stringify({ ...info, version: '0.0.0-another-compiler' }));
+      expect(readsOf(name!), 'a read set from another compiler describes another program').toBeUndefined();
+    } finally {
+      fs.writeFileSync(file, original);
+    }
+    expect(readsOf(name!), 'the fixture was not restored').toBeDefined();
+  });
+
   it('refuses one written by another compiler, naming the version', () => {
     const [name] = depFileNames();
     expect(untrustworthy(name!, { version: '0.0.0-not-installed' }))
@@ -129,5 +176,25 @@ describe('a dep file is checked against itself before it is believed', () => {
   it('refuses a name it has no file for, rather than reporting an empty read set', () => {
     expect(readsOf('no-such-leg')).toBeUndefined();
     expect(untrustworthy('no-such-leg', { version: tsVersion })).toMatch(/has not run in this checkout/);
+  });
+
+  /**
+   * Why `typecheck:fe` is on the uncovered list, as a fact rather than a claim.
+   *
+   * The renderer *does* write build infos — three, under `packages/renderer/node_modules/.tmp` — and they
+   * record no program at all: no `fileNames` key, because a solution-style config records its references
+   * and the referenced configs do the compiling. So there is nothing to read, and pointing the reader at
+   * that directory would buy a leg's worth of silence rather than a leg's worth of evidence. If these
+   * ever grow a `fileNames`, this case fails and the gate can widen.
+   */
+  it('finds no program recorded in the renderer build infos, which is why its leg is uncovered', () => {
+    const dir = path.join(REPO_ROOT, 'packages/renderer/node_modules/.tmp');
+    const found = fs.existsSync(dir) ? fs.readdirSync(dir).filter((file) => file.endsWith('.tsbuildinfo')) : [];
+    expect(found.length, 'the renderer writes no build info here any more; this case has lost its subject')
+      .toBeGreaterThan(0);
+    for (const file of found) {
+      const info = JSON.parse(fs.readFileSync(path.join(dir, file), 'utf-8')) as { fileNames?: unknown };
+      expect(info.fileNames, `${file} now records a program; the reader could read it`).toBeUndefined();
+    }
   });
 });

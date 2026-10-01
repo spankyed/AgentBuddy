@@ -27,7 +27,7 @@
 import * as os from 'node:os';
 import { boundedSpawn, budgetFor } from './lib/bounded-spawn.ts';
 import { schedule } from './lib/chain-schedule.ts';
-import { TYPECHECK_LEGS } from './lib/typecheck-legs.ts';
+import { ENSURE, TYPECHECK_LEGS } from './lib/typecheck-legs.ts';
 
 /**
  * How many legs run at once: every core, because nothing else is running.
@@ -60,9 +60,11 @@ interface Outcome { readonly ms: number; readonly code: number; readonly output:
 const done = new Map<string, Outcome>();
 
 const result = await schedule({
-  // Legs carry `needs`; the scheduler speaks `dependsOn`. Phase 4 of goal-one-action-cache makes a leg
-  // an action and this adapter goes with it.
-  steps: TYPECHECK_LEGS.map((leg) => ({ ...leg, dependsOn: leg.needs })),
+  // One ordering rule, stated once: everything else reads what `packages:ensure` builds. It used to be a
+  // `needs: [ENSURE]` on all seventeen legs — a hand-written edge beside a fact, which is what the chain
+  // stopped keeping. The chain derives its own from `PACKAGE_BUILD_OUTPUTS`; this runner has one graph
+  // and no inputs to derive from, so it says the rule instead of repeating it.
+  steps: TYPECHECK_LEGS.map((leg) => ({ ...leg, dependsOn: leg.name === ENSURE ? [] : [ENSURE] })),
   lanes: laneCount(),
   skip: () => false,
   async run(leg) {
