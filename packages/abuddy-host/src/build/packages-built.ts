@@ -383,6 +383,18 @@ export const readTree: TreeReader = {
  */
 const GUIDE = 'CLAUDE.md';
 
+/**
+ * The exception the comment above names, arrived: a guide some check asserts the *text* of, which makes it a
+ * real input. `spec-plan.spec.ts` holds this one to naming every spec in its package, so without it here a
+ * row could be deleted and the check that would have caught it would not run.
+ *
+ * Listed rather than derived, because what a spec reads at a path it builds at runtime cannot be read off
+ * the source. Repo-checks' *"prose costs nothing"* holds both directions: a guide not listed here is in no
+ * step's fingerprint, and a guide listed here is in one — so an entry that stops applying fails rather than
+ * quietly protecting nothing.
+ */
+export const GUIDES_A_CHECK_READS: ReadonlySet<string> = new Set(['packages/repo-checks/CLAUDE.md']);
+
 export function fingerprintInputs(
   inputs: readonly string[],
   normalise?: (contents: Buffer, file: string) => Buffer | string,
@@ -393,7 +405,8 @@ export function fingerprintInputs(
   const hash = createHash('sha256');
   const excluded = exclude.map(repoRelative);
   const isExcluded = (file: string): boolean =>
-    file.endsWith(`/${GUIDE}`) || file === GUIDE || excluded.some((out) => covers(out, file));
+    (!GUIDES_A_CHECK_READS.has(file) && (file.endsWith(`/${GUIDE}`) || file === GUIDE))
+    || excluded.some((out) => covers(out, file));
   for (const file of [...new Set(inputs.flatMap((target) => tree.list(target)))].sort().filter((f) => !isExcluded(f))) {
     const contents = tree.read(file);
     // Without a normaliser the bytes are hashed as read — no copy on the path that runs per command

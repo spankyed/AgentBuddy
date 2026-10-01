@@ -373,7 +373,7 @@ describe('fixtureEnv', () => {
    * both missed, and the leak is back with everything green. The name is hand-written in three places.
    */
   it('decides where the data and screenshots go, whatever the shell says', () => {
-    const base = { E2E_DATA_DIR: '/Users/me/Library/Application Support/AgentBuddy', E2E_SCREENSHOT_DIR: '/elsewhere' };
+    const base = { E2E_DATA_DIR: '/Users/me/the-users-own-data-dir', E2E_SCREENSHOT_DIR: '/elsewhere' };
     expect(fixtureEnv({ kind: 'source', root: '/repo' }, undefined, base))
       .toEqual({ ABUDDY_ROOT: '/repo', ABUDDY_CLI: cliBin() });
   });

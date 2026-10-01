@@ -16,7 +16,7 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import ts from 'typescript';
-import { BUILD_UNITS, buildScriptFor, covers, fingerprintWithDigests, inputFiles, NOT_A_BUILD_INPUT, repoRelative, REPO_ROOT, type BuildUnit } from '@abuddy/host/build/packages-built';
+import { BUILD_UNITS, buildScriptFor, covers, fingerprintWithDigests, GUIDES_A_CHECK_READS, inputFiles, NOT_A_BUILD_INPUT, repoRelative, REPO_ROOT, type BuildUnit } from '@abuddy/host/build/packages-built';
 import { CHAIN_STEPS, INTEGRATION_SUITES, SUITE_READS, suiteInputs, type ChainStep } from '../../../scripts/lib/chain-steps.ts';
 import { UNIT_SUITES, type UnitSuite } from '../../../scripts/lib/unit-suites.ts';
 import { reachableText, rootScripts } from '../../../scripts/lib/npm-scripts.ts';
@@ -101,14 +101,35 @@ describe('prose costs nothing', () => {
     expect(guides().length, 'every package has one').toBeGreaterThan(10);
   });
 
-  it('keeps every CLAUDE.md out of every step\'s cache key', () => {
-    const costly = CHAIN_STEPS.flatMap((step) => {
+  /** Where a guide is in some step's cache key, which it should be only when a check asserts its text. */
+  const costing = (): Map<string, string[]> => {
+    const where = new Map<string, string[]>();
+    for (const step of CHAIN_STEPS) {
       const inside = fingerprinted(step);
-      return guides().filter((guide) => inside.has(guide)).map((guide) => `${guide} -> ${step.name}`);
-    });
+      for (const guide of guides().filter((g) => inside.has(g))) where.set(guide, [...(where.get(guide) ?? []), step.name]);
+    }
+    return where;
+  };
+
+  it('keeps every CLAUDE.md out of every step\'s cache key', () => {
+    const costly = [...costing()]
+      .filter(([guide]) => !GUIDES_A_CHECK_READS.has(guide))
+      .map(([guide, steps]) => `${guide} -> ${steps.join(', ')}`);
     expect(costly, 'editing one of these re-runs a step for a sentence of prose. If a check now asserts a '
-      + "guide's text it is a real input and this rule is the thing to revisit — see GUIDE in "
-      + 'packages-built.ts').toEqual([]);
+      + "guide's text it is a real input: add it to GUIDES_A_CHECK_READS in packages-built.ts, and to the "
+      + 'inputs of the step that runs that check').toEqual([]);
+  });
+
+  /**
+   * The other direction, and the one that fails silently: an exemption protects nothing unless the guide is
+   * actually in a step's fingerprint. It was not — `WORKSPACE_PARTS` lists a package's subparts and not its
+   * root, so `packages/repo-checks/CLAUDE.md` sat outside every input while a spec asserted its contents.
+   */
+  it('has each exempted guide in a step, so the exemption protects something', () => {
+    const lapsed = [...GUIDES_A_CHECK_READS].filter((guide) => !(costing().get(guide) ?? []).length);
+    expect(lapsed, 'these are exempted from the skip but in no step, so the check that reads them can run '
+      + 'cached over a stale doc. Add each to the inputs of the step that runs that check, or drop it from '
+      + 'GUIDES_A_CHECK_READS').toEqual([]);
   });
 
   // The subject is a walk, and a walk that reaches nothing reports no offence. The guide this once cost the

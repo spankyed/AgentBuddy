@@ -244,6 +244,14 @@ const WORKSPACE_PARTS = [
 ];
 const workspace = (pkg: string): string[] => WORKSPACE_PARTS.map((part) => `packages/${pkg}/${part}`);
 
+/**
+ * What a *suite* reads, which is the workspace plus its guide. A fingerprint skips a `CLAUDE.md` (see `GUIDE`
+ * in `packages-built.ts`), so for all but one package this adds a path and no bytes — and that one is
+ * `packages/repo-checks/CLAUDE.md`, whose "What is here" table `spec-plan.spec.ts` asserts. Here and not in
+ * `WORKSPACE_PARTS`, so `typecheck`, which compiles the repo and reads no guide, does not take it on.
+ */
+const suiteWorkspace = (pkg: string): string[] => [...workspace(pkg), `packages/${pkg}/CLAUDE.md`];
+
 /** Every workspace: what `typecheck` reads, since it compiles the repo rather than a package */
 const EVERY_WORKSPACE = PACKAGES.flatMap(workspace);
 
@@ -379,7 +387,7 @@ export function suiteInputs(suite: UnitSuite): string[] {
   return [
     ...ROOT,
     ...SUITE_RUNNER,
-    ...workspace(suite.dir),
+    ...suiteWorkspace(suite.dir),
     ...workspaceDeps(suite.dir).flatMap(dependencySource),
     ...(reads.packages ? PACKAGE_BUILD_OUTPUTS : []),
     ...(reads.pack ? PACK_OUTPUTS : []),
