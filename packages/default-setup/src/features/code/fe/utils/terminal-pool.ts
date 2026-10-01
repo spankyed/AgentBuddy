@@ -47,6 +47,12 @@ const THEME = {
 
 export interface PoolEntry {
   terminalId: string
+  /**
+   * The pty this entry's buffer was written by. A restored terminal keeps its id and gets a **new**
+   * process (`restoreAll` in the backend's terminal service spawns one and calls `updatePid`), so the id
+   * cannot say whether what is on screen came from the shell that is answering now. The pid can.
+   */
+  pid: number
   term: Terminal
   fitAddon: FitAddon
   wrapper: HTMLDivElement
@@ -64,6 +70,18 @@ export interface PoolEntry {
   webglAddon: WebglAddon | null
 }
 
+/**
+ * Written into a terminal whose pty was replaced under it.
+ *
+ * A restored terminal is a new shell in the old one's working directory: the process that was running is
+ * gone, and so is everything it had not yet printed. The buffer above the seam survived only because this
+ * pool outlives the backend, which makes the screen read as one continuous session when it is two. Without
+ * this line nothing distinguishes a shell that has been running all along from one that started a second
+ * ago in the same directory.
+ */
+const restartedNotice = (pid: number) =>
+  `\r\n\x1b[90m── new shell (pid ${pid}) — the previous session ended; nothing above is from this one ──\x1b[0m\r\n`
+
 const showLoadingContent = (term: Terminal, info: TerminalInfo) => {
   term.write('\x1b[1;36m🚀 Starting terminal...\x1b[0m\r\n')
   term.write('\x1b[90mConnecting to shell: \x1b[0m' + (info.shell || 'default') + '\r\n')
@@ -77,6 +95,27 @@ class TerminalPool {
     return this.entries.get(terminalId)
   }
 
+  /** Marks the seam when an entry's pty has been replaced, and records the one answering now. */
+  private markRestart(entry: PoolEntry, pid: number): void {
+    if (pid === entry.pid) return
+    entry.pid = pid
+    entry.term.write(restartedNotice(pid))
+  }
+
+  /**
+   * Reconciles the pool against the backend's list of terminals.
+   *
+   * Called wherever that list arrives rather than from `ensure`, which runs on mount: a backend that
+   * restarts while the terminal view is open replaces every pty without unmounting anything, which is
+   * exactly the case where the screen is most misleading and `ensure` is never reached.
+   */
+  syncProcesses(infos: readonly TerminalInfo[]): void {
+    for (const info of infos) {
+      const entry = this.entries.get(info.id)
+      if (entry) this.markRestart(entry, info.pid)
+    }
+  }
+
   /**
    * Returns an existing entry or constructs a new one. Pass `sendInput` as the
    * callback to forward xterm's onData (user input + synthesized responses
@@ -86,7 +125,10 @@ class TerminalPool {
    */
   ensure(info: TerminalInfo, sendInput: (data: string) => void): PoolEntry {
     const existing = this.entries.get(info.id)
-    if (existing) return existing
+    if (existing) {
+      this.markRestart(existing, info.pid)
+      return existing
+    }
 
     const term = new Terminal({
       fontFamily: 'JetBrains Mono, Cascadia Code, Fira Code, Menlo, monospace',
@@ -121,6 +163,8 @@ class TerminalPool {
 
     const entry: PoolEntry = {
       terminalId: info.id,
+      // Recorded, never announced: a buffer with nothing above the seam has no continuity to correct
+      pid: info.pid,
       term,
       fitAddon,
       wrapper,

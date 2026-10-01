@@ -414,7 +414,9 @@ class TerminalService {
         // Set up handlers for this terminal
         setupHandlers(terminalInfo)
         
-        logger.info(`Restored terminal: ${persistedTerminal.title} (${persistedTerminal.id})`)
+        // "Restored" is the record, not the session: a new shell in the old one's cwd. Said plainly here
+        // because the log was read as evidence the terminals had survived a crash, and they had not.
+        logger.info(`Restored terminal ${persistedTerminal.title} (${persistedTerminal.id}) as a new shell (pid ${ptyProcess.pid}); the previous process and its output are gone`)
       } catch (error) {
         logger.error(`Failed to restore terminal ${persistedTerminal.id}`, { error })
         // Mark as closed if restoration fails
