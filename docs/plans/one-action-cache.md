@@ -222,6 +222,12 @@ is `packages:ensure → compile → build:app → test:packaged-authoring`, whic
     copy is `LAYERS`, where the layer is declared and the import graph is derived: keep `tier` on the
     action, and replace `check-test-tiers.ts`'s text scan with a query over the derived edges from item 17.
     That keeps the gate and removes the only weak part of it.
+
+    **The tag itself is the wrong shape, which is a separate target.** `tier` answers two questions —
+    a dependency constraint and a test's timeout budget — and no consumer distinguishes all three of its
+    values. `docs/plans/tier-split.md` has the evidence and the target: `needsApp` on the action, `size` on
+    the test target. Three of its four pieces need nothing from this list; only retiring the text scan
+    waits on item 17.
 19. **Cycle and ordering validation**, which the graph gets for free and the current table checks by hand.
 
 ### F. Observability
