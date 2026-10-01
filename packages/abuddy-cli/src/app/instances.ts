@@ -17,6 +17,7 @@
  */
 import * as fs from 'node:fs';
 import * as path from 'node:path';
+import { resolveAppContext } from '@abuddy/sdk/env';
 import { lockIsHeld, readApiEndpoint } from '@abuddy/host/process-liveness';
 import { randomId } from '@abuddy/sdk/utils/pure';
 import type { CliDirs } from './app-target';
@@ -77,13 +78,21 @@ const writeRecord = (dir: string, record: InstanceRecord): void => {
 };
 
 /**
- * Whether an app has this instance open, from the port file a running API publishes. Three callers ask:
+ * Whether an app has this instance open, from the port file a running API publishes.
+ *
+ * The path comes from `resolveAppContext` rather than a join of its own: it is the API that writes that file,
+ * and a second opinion about where is a refusal that never fires. It read `<dir>/api-port` while the API wrote
+ * `<dir>/abuddy/api-port` for exactly one commit, which made every check below answer "no app" — and the spec
+ * covering it held the same wrong path, so the suite stayed green. The environment is immaterial here: every
+ * path in the returned context is joined onto the data dir it is given.
+ *
+ * Three callers ask:
  * what `clean` may remove, what `removeInstance` refuses, and what `drive` refuses to launch a second app
  * over. Taking a data dir from a running app does not stop it — it writes the directory back — and
  * Electron allows one app per data dir, so both refusals are the same question.
  */
 export function instanceInUse(dir: string): boolean {
-  return readApiEndpoint(path.join(dir, 'api-port')) !== null;
+  return readApiEndpoint(resolveAppContext({ env: 'development', userDataDir: dir }).apiPortFile) !== null;
 }
 
 export interface OpenedInstance {

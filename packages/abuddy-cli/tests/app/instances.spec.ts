@@ -13,6 +13,7 @@ import {
   removeInstance,
 } from '../../src/app/instances';
 import type { CliDirs } from '../../src/app/app-target';
+import { resolveAppContext } from '@abuddy/sdk/env';
 
 let tmp: string;
 let dirs: CliDirs;
@@ -181,8 +182,13 @@ describe('the flags', () => {
  * still going rebuild the directory underneath — the removal had only corrupted what was in it.
  */
 describe('an instance an app still has open', () => {
-  const publishApi = (dir: string, pid: number) =>
-    fs.writeFileSync(path.join(dir, 'api-port'), JSON.stringify({ port: 51234, pid }));
+  // Where the API actually publishes it, asked of the same resolver the app uses — a literal path here is a
+  // second guess, and the one time it disagreed with the app this assertion still passed
+  const publishApi = (dir: string, pid: number) => {
+    const { apiPortFile } = resolveAppContext({ env: 'development', userDataDir: dir });
+    fs.mkdirSync(path.dirname(apiPortFile), { recursive: true });
+    fs.writeFileSync(apiPortFile, JSON.stringify({ port: 51234, pid }));
+  };
 
   it('is in use, and not a leak, even when the run that made it has gone', () => {
     const dead = path.join(root(), '.ephemeral', '999999-gone');

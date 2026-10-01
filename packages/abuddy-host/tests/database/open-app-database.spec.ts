@@ -58,6 +58,19 @@ describe('readInstalledSchema', () => {
     expect(schema.getRegisteredEntityTypes().has('Bookmark'), "a pack's are not").toBe(false);
   });
 
+  // A flag that does nothing and says nothing is worse than one that errors: the path was only resolved when
+  // the dir had no snapshots, so a typo against a healthy dir answered normally
+  it('resolves the named snapshot even when it will not be needed, and says it was not', () => {
+    const dir = dataDirWithPacks();
+    expect(() => readInstalledSchema(schemaContext(dir), { schemaFrom: '/nope/x.json' })).toThrow(/No pack snapshot at/);
+
+    const said: string[] = [];
+    const snapshot = path.join(dir, 'spare.json');
+    fs.writeFileSync(snapshot, JSON.stringify({ manifest: { id: 'spare', entities: {} } }));
+    readInstalledSchema(schemaContext(dir), { schemaFrom: snapshot, onDegraded: (m) => said.push(m) });
+    expect(said.join('\n')).toMatch(/publishes its own built-in pack snapshots, so --schema-from .* was not used/);
+  });
+
   // The snapshot a caller names stands in for the ones the data dir never published
   it('reads the entity types from a snapshot --schema-from names', () => {
     const dir = tempDir('host-database-');

@@ -110,7 +110,9 @@ function namedManifest(schemaFrom: string): PackManifest {
     : [path.join(schemaFrom, PACK_LAYOUT.snapshot), path.join(schemaFrom, 'snapshot.json')];
   const file = candidates.find((candidate) => fs.existsSync(candidate));
   if (!file) {
-    throw new Error(`No pack snapshot at ${schemaFrom}: expected it, ${candidates.join(' or ')}`);
+    throw new Error(candidates.length === 1
+      ? `No pack snapshot at ${schemaFrom}`
+      : `No pack snapshot under ${schemaFrom}: looked for ${candidates.join(' and ')}`);
   }
   return packEARS(readJSON<PackSnapshot>(file, "a pack's snapshot").manifest, file);
 }
@@ -135,9 +137,16 @@ export function readInstalledSchema(
   options: { schemaFrom?: string; onDegraded?: (message: string) => void } = {},
 ): InstalledSchema {
   const published = builtInManifests(context.hostPacksDir);
-  const builtIn = published.length > 0 ? published
-    : options.schemaFrom ? [namedManifest(options.schemaFrom)]
-    : [];
+  // Resolved whether or not it is needed, so a path that names nothing is an error rather than a flag that
+  // quietly did nothing: `--schema-from /typo.json` against a dir with its own snapshots used to answer
+  // normally and say not a word.
+  const named = options.schemaFrom === undefined ? undefined : namedManifest(options.schemaFrom);
+  const builtIn = published.length > 0 ? published : named ? [named] : [];
+  if (named && published.length > 0) {
+    options.onDegraded?.(
+      `${context.userDataDir} publishes its own built-in pack snapshots, so --schema-from ${options.schemaFrom} was not used.`,
+    );
+  }
   if (builtIn.length === 0) {
     options.onDegraded?.(
       `${context.userDataDir} has no built-in pack snapshots in ${context.hostPacksDir}, so only AgentBuddy's own `
