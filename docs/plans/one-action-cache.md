@@ -85,9 +85,17 @@ dependency constraint. Taking the standard name there would lose the standard me
 
 **Most of the vocabulary is already right, which is the thing to know before renaming anything.** Six of
 the fields above are the industry terms already, one of them (`optInBecause`) is a strict improvement on
-the standard, and `tier` is the standard construct under a name worth keeping — Bazel's and Nx's `tags`
-are unordered labels with the constraint expressed separately, where a tier is *ordered*, and the rule
-runs on that ordering. "Adopt the standard vocabulary" therefore means one rename, not a sweep.
+the standard, and `tier` is the standard construct — though under a name and an arity that do not survive
+scrutiny, which `tier-split.md` works out. "Adopt the standard vocabulary" therefore means one rename, not
+a sweep.
+
+**Where the standard is not worth adopting, and why that is not special pleading.** Bazel keeps
+`exclusive`, `manual` and `no-cache` in one `tags` list, which this repo keeps as named fields, two of them
+carrying reasons Bazel's cannot. That looks like declining the standard; it is declining an *encoding*
+whose reason does not apply here — Bazel's rule attributes are closed, so `tags` is its extension point,
+and a TypeScript interface has no such constraint. Same principle as the Turborepo and Nx entry under
+out-of-scope: borrow the model and the names, not the tool. `tier-split.md` has the full argument and the
+condition under which a closed `ActionTag` union becomes worth it.
 
 **The one rename is `needs` → `dependsOn`.** `needs` is CI vocabulary (GitHub Actions, GitLab CI);
 `dependsOn` is build-system vocabulary (Gradle, Nx, Turborepo; Bazel spells it `deps`). Every other field

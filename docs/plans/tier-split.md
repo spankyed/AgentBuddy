@@ -65,8 +65,9 @@ A table of allowances where one row has a consumer is the same error as three ti
 consumers, committed one layer up. So:
 
 - **`SUITE_READS` is left alone.** It answers a different question and it works.
-- The action declares `needsApp?: true`. Not `tags: ['app']` — a string array with one legal value invites
-  unchecked strings and buys nothing.
+- The action declares `needsApp?: true`, a named field rather than an entry in a `tags` list. The reasons
+  are below, under what not to do; "a string array invites unchecked strings" is **not** one of them, since
+  this repo's own rule (a list and its type are one declaration) answers that in a line.
 - Checked two ways: declared iff `APP_OUTPUTS` appears in `inputs` (pure data), **and** the existing
   script-text scan, which stays because it catches a reach the inputs do not show.
 - The scan is retired later, by `one-action-cache.md` item 17's derived edges. Not before.
@@ -147,8 +148,29 @@ Three of four are available today. That is what makes this a target of its own r
 
 ## What not to do
 
-- **`tier` -> `tags`.** Bazel's and Nx's `tags` are unordered labels with the constraint stated separately.
-  A tier is ordered. Taking the standard name drops the thing the check would run on, and gains a word.
+- **Collapse the markers into a Bazel-style `tags` list.** This is the one worth arguing, because Bazel
+  really does put all of these in `tags` — `exclusive`, `manual`, `no-cache`, `requires-network` — and
+  adopting it would look like coalescing. It is the wrong borrow, for three reasons, and *not* for the one
+  an earlier draft of this file gave. That draft said tiers are ordered and tags are not; fact 2 above
+  disproves it, since nothing in the repo uses the ordering. The real reasons:
+
+  1. **Bazel's `tags` exists to work around a constraint TypeScript does not have.** Its rule attributes
+     are closed — you cannot add a field to `cc_test` — so `tags` is the extension point. A named optional
+     field on an interface is checked, discoverable and greppable where a string in a list is none of those.
+     Borrowing the workaround without the constraint is cargo cult.
+  2. **Half the markers carry reasons, which a tags list structurally cannot.** `neverCachedBecause` and
+     `optInBecause` are recorded improvements on Bazel's reason-free `no-cache` and `manual`, and the repo
+     has the failure that motivated them: one hardcoded sentence about Electron that was wrong about the
+     second step to opt out. Splitting markers across two mechanisms by whether they carry a reason is a
+     seam that drifts.
+  3. **Two reason-free markers is not a vocabulary.** `exclusive` (2 steps) and `needsApp` (5) against
+     `neverCachedBecause` (2) and `optInBecause` (1). A tag system for two values is the same error as a
+     constraint table with one row.
+
+  **Revisit when the reason-free markers reach four or five.** At that point a closed union —
+  `const ACTION_TAGS = [...] as const; type ActionTag = (typeof ACTION_TAGS)[number]` — is worth its
+  weight, and it is Bazel's shape with the string problem removed. The principle is the one
+  `one-action-cache.md` already applies to Turborepo and Nx: borrow the model and the names, not the tool.
 - **Derive the tag.** Item 18, plus the `APP_ENTRY` finding above.
 - **Four size buckets.** Two have consumers.
 - **A constraint map mirroring `SUITE_READS`.** `repo` is not a constraint, and one boundary is not a table.
