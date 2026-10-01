@@ -16,7 +16,7 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import ts from 'typescript';
-import { BUILD_UNITS, buildScriptFor, covers, inputFiles, NOT_A_BUILD_INPUT, repoRelative, REPO_ROOT, type BuildUnit } from '@abuddy/host/build/packages-built';
+import { BUILD_UNITS, buildScriptFor, covers, fingerprintWithDigests, inputFiles, NOT_A_BUILD_INPUT, repoRelative, REPO_ROOT, type BuildUnit } from '@abuddy/host/build/packages-built';
 import { CHAIN_STEPS, INTEGRATION_SUITES, SUITE_READS, suiteInputs, type ChainStep } from '../../../scripts/lib/chain-steps.ts';
 import { UNIT_SUITES, type UnitSuite } from '../../../scripts/lib/unit-suites.ts';
 import { reachableText, rootScripts } from '../../../scripts/lib/npm-scripts.ts';
@@ -76,6 +76,51 @@ const coveredBy = (steps: readonly { inputs: readonly string[] }[]): Set<string>
   for (const step of steps) for (const input of step.inputs) for (const file of inputFiles(path.join(REPO_ROOT, input))) covered.add(file);
   return covered;
 };
+
+/**
+ * A CLAUDE.md edit runs nothing. That is the first entry in the root CLAUDE.md's list of time-wasters, and
+ * it is first because it is the one most often ignored — but it was a claim about the chain that the chain
+ * did not hold: five guides sit inside a declared `src/` or `tests/` tree rather than at a package root, so a
+ * sentence of prose re-ran up to four steps, `compile` among them. `fingerprintUnit` skips them now, and this
+ * is the claim itself, asserted rather than believed.
+ *
+ * Checked through `fingerprintWithDigests`, which is the hash a step's cache key is taken over, so this and
+ * the cache cannot disagree about what counts as an input.
+ */
+describe('prose costs nothing', () => {
+  const guides = (): string[] => repoFiles().filter((file) => path.basename(file) === 'CLAUDE.md');
+
+  /** Every file in a step's fingerprint, which is what its cache key is taken over. */
+  const fingerprinted = (step: ChainStep): Set<string> => new Set(Object.keys(fingerprintWithDigests({
+    inputs: step.inputs.map((input) => path.join(REPO_ROOT, input)),
+    outputs: (step.outputs ?? []).map((output) => path.join(REPO_ROOT, output)),
+    excludes: (step.excludes ?? []).map((excluded) => path.join(REPO_ROOT, excluded)),
+  }).files));
+
+  it('found the guides, so this is not looking at nothing', () => {
+    expect(guides().length, 'every package has one').toBeGreaterThan(10);
+  });
+
+  it('keeps every CLAUDE.md out of every step\'s cache key', () => {
+    const costly = CHAIN_STEPS.flatMap((step) => {
+      const inside = fingerprinted(step);
+      return guides().filter((guide) => inside.has(guide)).map((guide) => `${guide} -> ${step.name}`);
+    });
+    expect(costly, 'editing one of these re-runs a step for a sentence of prose. If a check now asserts a '
+      + "guide's text it is a real input and this rule is the thing to revisit — see GUIDE in "
+      + 'packages-built.ts').toEqual([]);
+  });
+
+  // The subject is a walk, and a walk that reaches nothing reports no offence. The guide this once cost the
+  // most for is the case: it is in `compile`'s declared tree, so only the skip keeps it out.
+  it('would see one that was in a step, so the rule above can fail', () => {
+    const seeds = 'packages/default-setup/src/seeds/CLAUDE.md';
+    expect(guides(), seeds).toContain(seeds);
+    const compile = CHAIN_STEPS.find((step) => step.name === 'compile')!;
+    expect([...fingerprinted(compile)].some((file) => file.startsWith('packages/default-setup/src/seeds/')),
+      'compile no longer reads the tree that guide sits in, so this case proves nothing').toBe(true);
+  });
+});
 
 describe('the chain reads every source file', () => {
   it('has no tracked code that no step names', () => {

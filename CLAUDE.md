@@ -51,7 +51,7 @@ Measured on an idle machine, 2026-09-25, each one a real run rather than a sum o
 | What you changed | What the chain runs | Cost |
 |---|---|---|
 | nothing tracked | nothing | **0.9s** |
-| a doc, a comment, a CLAUDE.md | nothing but that — no step declares `docs/` | **0.9s** |
+| a doc, a comment, a CLAUDE.md | nothing but that — no step declares `docs/`, and a fingerprint skips every `CLAUDE.md` | **0.9s** |
 | one package's source (the renderer) | `test:unit:host`, which runs only the renderer's project and `@app/main`'s (it depends on the renderer), `typecheck`, then `build:app` and all of tier 3, because rebuilding the app moves what tier 3 reads | **115.1s** |
 | nothing is cached (a cold tree) | all 12 steps, three at a time (re-measured 2026-09-27, `--all`) | **178.3s** |
 
@@ -155,7 +155,10 @@ Things that waste the most time, in order:
 - **Running anything at all after a comment, a doc or a CLAUDE.md edit.** Nothing means nothing: not
   `typecheck`, not the package's suite, not "just to be safe". Prose cannot break a build, and no step
   declares `docs/` among its inputs, so the chain agrees — `npm run chain --dry` after a doc edit reports
-  every step cached. The two exceptions are a spec that asserts the text and a code fence someone will
+  every step cached. A `CLAUDE.md` is free wherever it sits, which took a change: five of them live inside
+  a declared `src/` or `tests/` tree rather than at a package root, so a sentence of prose used to re-run
+  up to four steps, `compile` among them. `fingerprintUnit` skips them by name now, and repo-checks'
+  *"prose costs nothing"* holds the claim this paragraph makes. The two exceptions are a spec that asserts the text and a code fence someone will
   copy: check that one command. This is first on the list because it is the one most often ignored, and a
   full `typecheck` is 11s against a doc edit's 0s.
 - **Running `npm run build` to test a change no build output depends on.** The renderer and API build

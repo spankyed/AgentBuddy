@@ -365,6 +365,24 @@ export const readTree: TreeReader = {
  * dissolve the case that proves the digests and the hash agree, since they would no longer be taken together. The
  * 9ms is the cheaper of the two.
  */
+/**
+ * Guidance for whoever opens a directory, and never an input: skipped wherever a unit's inputs are hashed.
+ *
+ * It is the first entry in the root `CLAUDE.md`'s list of time-wasters — a prose edit runs nothing — and that
+ * was a claim about the chain that the chain did not hold. Five of these sit *inside* a declared tree rather
+ * than at a package root (`default-setup/src/seeds`, `abuddy-host/src/migrations` and `src/packs/runtime`,
+ * `default-setup/tests/seeds`, `tests/e2e`), so a sentence of prose re-ran up to four steps, `compile` among
+ * them. Skipped here rather than excluded per step, because the steps that reach them take their inputs from
+ * derived lists where there is no literal array to add an entry to.
+ *
+ * **The condition that would make this wrong** is a check that asserts one of these files' *text*: it would
+ * then be a real input, and skipping it would let that check cache over a doc that had gone stale. One
+ * exists — `spec-plan.spec.ts` holds `packages/repo-checks/CLAUDE.md` to naming every spec in that package —
+ * and it is outside every step's fingerprint already, so this neither creates nor closes that gap. A second
+ * one, inside a fingerprinted tree, is the case to come back here for.
+ */
+const GUIDE = 'CLAUDE.md';
+
 export function fingerprintInputs(
   inputs: readonly string[],
   normalise?: (contents: Buffer, file: string) => Buffer | string,
@@ -374,7 +392,8 @@ export function fingerprintInputs(
 ): string {
   const hash = createHash('sha256');
   const excluded = exclude.map(repoRelative);
-  const isExcluded = (file: string): boolean => excluded.some((out) => covers(out, file));
+  const isExcluded = (file: string): boolean =>
+    file.endsWith(`/${GUIDE}`) || file === GUIDE || excluded.some((out) => covers(out, file));
   for (const file of [...new Set(inputs.flatMap((target) => tree.list(target)))].sort().filter((f) => !isExcluded(f))) {
     const contents = tree.read(file);
     // Without a normaliser the bytes are hashed as read — no copy on the path that runs per command
