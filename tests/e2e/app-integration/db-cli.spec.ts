@@ -2,7 +2,7 @@
 // on it, a read works and warns that it may be stale, and a change is refused, so the app stays its only writer
 import { spawnSync } from 'node:child_process';
 import * as path from 'node:path';
-import { test, expect } from '../fixtures/app';
+import { test, expect } from '@abuddy/testing';
 
 const CLI = path.resolve(import.meta.dirname, '../../../packages/abuddy-cli/bin/abuddy.mjs');
 

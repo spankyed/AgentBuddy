@@ -2,7 +2,7 @@
 // secrets procedures, and the key strings end up in no log, stored file or renderer state.
 import * as fs from 'node:fs';
 import * as path from 'node:path';
-import { test, expect } from '../fixtures/app';
+import { test, expect } from '@abuddy/testing';
 
 const RUN = Date.now().toString(36);
 const WORK_KEY = `sk-proj-E2EWORK${RUN}abcdefghijklmnop`;

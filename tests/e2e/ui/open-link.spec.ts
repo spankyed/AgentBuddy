@@ -1,4 +1,4 @@
-import { test, expect } from '../fixtures/app';
+import { test, expect } from '@abuddy/testing';
 
 // `openLink` hands a link to the plugin playing the browser role, which opens it by its own setting: by default, a
 // tab in the app's browser, which it opens to

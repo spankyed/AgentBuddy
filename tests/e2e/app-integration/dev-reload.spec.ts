@@ -5,7 +5,7 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import type { Page } from '@playwright/test';
 import { API_TOKEN_HEADER } from '@abuddy/sdk/utils/pure';
-import { test, expect } from '../fixtures/app';
+import { test, expect } from '@abuddy/testing';
 
 const SEED_FILE = path.resolve(import.meta.dirname, '../../../packages/default-setup/dist/library.seed.json');
 const SEEDED_DOCUMENT = 'Codex commands';

@@ -12,13 +12,12 @@ This module (`packages/abuddy-testing/src/index.ts`) is the single source of tru
 
 ### How the monorepo uses it
 
-`tests/e2e/fixtures/app.ts` is a 2-line file:
+The repo's own E2E imports it the same way a pack does:
 ```ts
-export { test, expect } from '@abuddy/testing';
-export type { AppHelper } from '@abuddy/testing';
+import { test, expect } from '@abuddy/testing';
 ```
 
-Every spec (`tests/e2e/{smoke,app-integration,ui}/*.spec.ts`) imports from `../fixtures/app`. `@abuddy/testing` is the `packages/abuddy-testing` workspace package, and its three entries resolve its built bundle under every condition — so the repo's own E2E runs the same fixture a pack does, and `npm test` runs `packages:ensure` first to build it from the checkout's current sources.
+Every spec (`tests/e2e/{smoke,app-integration,ui}/*.spec.ts`) imports `@abuddy/testing` directly. `@abuddy/testing` is the `packages/abuddy-testing` workspace package, and its three entries resolve its built bundle under every condition — so the repo's own E2E runs the same fixture a pack does, and `npm test` runs `packages:ensure` first to build it from the checkout's current sources.
 
 ### How external packs use it
 

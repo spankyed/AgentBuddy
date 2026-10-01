@@ -61,7 +61,7 @@ DEBUG_E2E=1 npm test                  # Electron process output to terminal
 
 ## How the fixture works
 
-The test infrastructure lives in `@abuddy/testing` (source: `packages/abuddy-testing/src/index.ts`). The local `tests/e2e/fixtures/app.ts` is a thin re-export. Tests import from `./fixtures/app` so the indirection is invisible.
+The test infrastructure lives in `@abuddy/testing` (source: `packages/abuddy-testing/src/index.ts`), and every spec imports it directly — the same line a pack author writes. A local re-export stood in front of it until it was removed: it forwarded three names and added nothing, while putting this suite one indirection away from what `abuddy init-tests` scaffolds.
 
 ### Startup lifecycle
 
@@ -131,7 +131,7 @@ Available for `app.navigate()`: `threads` (default), `code`, `notes`, `browser`,
 Import from the local fixtures, not from `@playwright/test`:
 
 ```ts
-import { test, expect } from '../fixtures/app';
+import { test, expect } from '@abuddy/testing';
 
 test('verify my change', async ({ app, appPage }) => {
   await app.navigate('code');
@@ -318,7 +318,6 @@ The renderer exposes on `window`:
 
 | File | Purpose |
 |------|---------|
-| `fixtures/app.ts` | Thin re-export from `@abuddy/testing` |
 
 **`smoke/` — the gate.** Its own chain step (`test:smoke`); the four cases every other check assumes.
 
