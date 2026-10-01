@@ -13,7 +13,6 @@ test('opens every plugin, and every plugin\'s settings, without a renderer error
   for (const pluginId of pluginIds) {
     await app.navigate(pluginId);
     expect((await app.getContext()).activePluginId).toBe(pluginId);
-    await app.screenshot(`nav-${pluginId.replace('/', '-')}`);
   }
 
   const settings = 'host/settings';

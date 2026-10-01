@@ -214,6 +214,8 @@ export async function drive(args: string[]) {
     env.PLAYWRIGHT_VISIBLE = '1';
     // The fixture makes a throwaway dir unless it is given one; an instance is the caller's to keep
     if (instance) env.E2E_DATA_DIR = instance.dir;
+    // Beside the scripts that take them, not under `tests/` — driving output is not test output
+    env.E2E_SCREENSHOT_DIR = path.join(root, DRIVE_DIR, 'screenshots');
 
     // Spawned rather than spawnSync'd so this process keeps an event loop. With spawnSync a Ctrl-C took
     // the default action and killed this process where it stood, so the teardown below never ran and an

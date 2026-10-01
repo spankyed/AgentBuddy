@@ -18,7 +18,7 @@ export { test, expect } from '@abuddy/testing';
 export type { AppHelper } from '@abuddy/testing';
 ```
 
-All test files (`tests/e2e/*.spec.ts`: `smoke`, `navigation`, `secrets`, `import-pack-seeds`, `dev-reload`, `plugin-sends`) import from `./fixtures/app`. `@abuddy/testing` is the `packages/abuddy-testing` workspace package, and its three entries resolve its built bundle under every condition — so the repo's own E2E runs the same fixture a pack does, and `npm test` runs `packages:ensure` first to build it from the checkout's current sources.
+Every spec (`tests/e2e/{smoke,app-integration,ui}/*.spec.ts`) imports from `../fixtures/app`. `@abuddy/testing` is the `packages/abuddy-testing` workspace package, and its three entries resolve its built bundle under every condition — so the repo's own E2E runs the same fixture a pack does, and `npm test` runs `packages:ensure` first to build it from the checkout's current sources.
 
 ### How external packs use it
 
@@ -283,9 +283,10 @@ Screenshot output location depends on context:
 
 | Context | Screenshot directory |
 |---------|---------------------|
-| `PACK_DIR` is set | `{PACK_DIR}/tests/screenshots/` |
 | `screenshotDir` option passed | The specified directory |
-| Default (monorepo) | `{cwd}/tests/screenshots/` |
+| `E2E_SCREENSHOT_DIR` is set | That directory — how `abuddy drive` keeps its output in `drive/screenshots/` rather than under `tests/`, since the option cannot reach the `test` a script imports |
+| `PACK_DIR` is set | `{PACK_DIR}/tests/screenshots/` |
+| Default | `{cwd}/tests/screenshots/` |
 
 ## Environment variables
 

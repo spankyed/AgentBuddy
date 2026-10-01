@@ -87,6 +87,11 @@ function resolveApp(options: CreateTestOptions): AppLaunch {
 
 function resolveScreenshotDir(override?: string): string {
   if (override) return path.resolve(override);
+  // A caller that is not a test says where its own output goes. The fallbacks below assume the caller is
+  // a suite — written when it always was — so `abuddy drive` landed its screenshots under `tests/`,
+  // which is the one place the command exists to keep driving out of. Same reason `E2E_DATA_DIR` exists:
+  // the `screenshotDir` option cannot reach the `test` every script imports, built here with no options
+  if (process.env.E2E_SCREENSHOT_DIR) return path.resolve(process.env.E2E_SCREENSHOT_DIR);
   if (process.env.PACK_DIR) return path.join(path.resolve(process.env.PACK_DIR), 'tests', 'screenshots');
   return path.join(process.cwd(), 'tests', 'screenshots');
 }
@@ -497,7 +502,6 @@ export function createTest(options: CreateTestOptions = {}) {
     },
 
     app: async ({ appPage: page }, use) => {
-      fs.mkdirSync(screenshotDir, { recursive: true });
 
       const app: AppHelper = {
         sendEvent: async (event) => {
@@ -523,6 +527,9 @@ export function createTest(options: CreateTestOptions = {}) {
         },
 
         screenshot: async (name) => {
+          // Made on first use, not at fixture setup: every run of every spec used to leave an empty
+          // `tests/screenshots/` behind, including suites that screenshot nothing
+          fs.mkdirSync(screenshotDir, { recursive: true });
           const filePath = path.join(screenshotDir, `${name}.png`);
           return page.screenshot({ path: filePath });
         },

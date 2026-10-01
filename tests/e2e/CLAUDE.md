@@ -1,6 +1,6 @@
 # E2E Tests
 
-Playwright tests that launch the full Electron app, interact with the XState application state machine, and take screenshots for visual verification.
+Playwright tests that launch the full Electron app and interact with the XState application state machine. Looking at the app is `drive/`'s job, not this suite's.
 
 ## When a test belongs here
 
@@ -48,7 +48,6 @@ npm test -- -g "renderer error"      # By test name grep
 DEBUG_E2E=1 npm test                  # Electron process output to terminal
 ```
 
-Screenshots saved to `tests/screenshots/{name}.png` (gitignored).
 
 ## Rules for agents
 
@@ -104,7 +103,8 @@ Three fixtures are provided, each at a different scope:
 ### AppHelper methods
 
 ```ts
-app.screenshot(name)             // Save PNG to tests/screenshots/{name}.png
+app.screenshot(name)             // Save a PNG where the caller said: drive/screenshots/ under
+                                 // `drive`, a pack's tests/screenshots/ under `abuddy test`
 app.navigate(pluginId)           // Send SELECT_PLUGIN + wait for activePlugin match + 500ms render delay
 app.getState()                   // Returns snapshot.value (e.g. { running: 'connected' })
 app.getContext()                 // Returns { activePluginId, pluginIds }
@@ -131,11 +131,11 @@ Available for `app.navigate()`: `threads` (default), `code`, `notes`, `browser`,
 Import from the local fixtures, not from `@playwright/test`:
 
 ```ts
-import { test, expect } from './fixtures/app';
+import { test, expect } from '../fixtures/app';
 
-test('verify my change', async ({ app }) => {
+test('verify my change', async ({ app, appPage }) => {
   await app.navigate('code');
-  await app.screenshot('code-after-change');
+  await expect(appPage.getByTestId('code-canvas')).toBeVisible();
 });
 ```
 

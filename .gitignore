@@ -14,7 +14,6 @@ untracked
 packages/preload/src/**/*.js
 
 # Test output
-tests/screenshots/
 tests/results/
 test-results/
 
