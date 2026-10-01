@@ -434,6 +434,29 @@ export function suiteInputs(suite: UnitSuite): string[] {
 export const INTEGRATION_SUITES = UNIT_SUITES.filter((suite) => hasSplit(path.join(REPO_ROOT, 'packages', suite.dir)));
 
 /**
+ * The cache key of a step that runs suites: the union of what each of them reads, and nothing else.
+ *
+ * Every such step goes through here, so the step's key and the per-suite key are the same declaration
+ * (`suiteInputs`) rather than two that have to agree. A step that builds its inputs some other way can
+ * declare less than its suites read and still stamp green, which is a stale pass nothing reports — and
+ * `suite-reads.spec.ts` cannot see it, because that compares each suite against `suiteInputs`, not against
+ * whatever its step declared.
+ *
+ * The exclusion goes with it. A `repo` suite declares every source tree, `tests/packs` among them, and
+ * what it wants there is the fixture packs' sources: the guards read what a pack author writes, never what
+ * building one produces. Same reason `typecheck` reads around them, and the alternative — depending on the
+ * step that writes them — would put a pool behind a build it does not need.
+ */
+function inputsForSuites(suites: readonly UnitSuite[]): Pick<ChainStep, 'inputs' | 'excludes'> {
+  return {
+    inputs: [...new Set(suites.flatMap(suiteInputs))].sort(),
+    ...(suites.some((suite) => SUITE_READS[suite.dir]?.repo)
+      ? { excludes: [...FIXTURE_OUTPUTS, ...FIXTURE_TEST_OUTPUT] }
+      : {}),
+  };
+}
+
+/**
  * One step per pool, not per suite.
  *
  * Eight steps meant eight vitest processes, which is the ceiling `docs/plans/test-unit-scheduling.md`
@@ -455,16 +478,7 @@ const POOL_STEPS: readonly ChainStep[] = (['host', 'pack'] as const).map((kind) 
     // takes 20s, because the suites overlap inside one vitest run — which is the entire point of pooling
     // them. `driftedSteps` reported it on every run.
     seconds: POOL_SECONDS[kind],
-    // Nothing but the union, so the step cannot go stale for a reason no project can see. The runner files
-    // this used to add by hand are in `suiteInputs` now, where both layers read them.
-    inputs: [...new Set(suites.flatMap(suiteInputs))].sort(),
-    // A `repo` suite declares every source tree, `tests/packs` among them, and what it wants there is the
-    // fixture packs' sources: the guards read what a pack author writes, never what building one produces.
-    // Same reason `typecheck` reads around them, and the alternative — depending on the step that writes
-    // them — would put a tier-1 pool behind a tier-2 build it does not need.
-    ...(suites.some((suite) => SUITE_READS[suite.dir]?.repo)
-      ? { excludes: [...FIXTURE_OUTPUTS, ...FIXTURE_TEST_OUTPUT] }
-      : {}),
+    ...inputsForSuites(suites),
     // It keeps a cache of its own, so the chain's `--all` has to reach inside it
     forceArgs: ['--all'],
   };
@@ -592,8 +606,7 @@ export const CHAIN_STEPS: readonly ChainStep[] = [
   // on default-setup and so reads its `dist`. It used to run after `compile` only because of where it sat
   // in this table, which `orderedSteps` never promised.
   { name: 'test:integration', tier: 2, needs: ['compile'], seconds: 60,
-    inputs: [...ROOT, ...INTEGRATION_SUITES.flatMap((suite) => workspace(suite.dir)),
-      ...PACKAGE_BUILD_OUTPUTS, ...PACK_OUTPUTS] },
+    ...inputsForSuites(INTEGRATION_SUITES) },
   // `build:app`, not `build`. Root `build` is `-ws`, which includes `@app/default-setup`, whose own build is
   // the very command `compile` runs — so a `build` step rebuilt the pack every run, rewriting the `dist`
   // it declares as an input. It invalidated itself, and the five steps that read that tree, on every run:
