@@ -1,5 +1,5 @@
 {
-  "measuredAt": "2026-09-30T21:50:14.314Z",
+  "measuredAt": "2026-10-01T01:34:22.136Z",
   "costs": {
     "tests/app/app-target.spec.ts": 48,
     "tests/app/beta-app.spec.ts": 153,
@@ -42,6 +42,7 @@
     "tests/commands/drive.spec.ts": 4,
     "tests/commands/facade-report.spec.ts": 226,
     "tests/commands/fetch-deps.spec.ts": 4,
+    "tests/commands/fixture-env-reach.spec.ts": 181,
     "tests/commands/handoff.spec.ts": 476,
     "tests/commands/init-install-load.spec.ts": 48,
     "tests/commands/install-host-version.spec.ts": 1081,

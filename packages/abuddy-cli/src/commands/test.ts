@@ -57,7 +57,11 @@ export function fixtureEnv(
     env.ABUDDY_APP_EXECUTABLE = app.executable;
     env.ABUDDY_APP = 'beta';
   }
+  // Cleared when there is none, as ABUDDY_PACK_RELEASE below is: `abuddy test` runs the pack it is in,
+  // so an exported PACK_DIR in a directory that holds no manifest would have it build and install a
+  // pack the caller never named. `tests/scripts/test-packaged-authoring.sh` used to `unset` it by hand
   if (packDir) env.PACK_DIR = packDir;
+  else delete env.PACK_DIR;
   if (options.release) env.ABUDDY_PACK_RELEASE = '1';
   else delete env.ABUDDY_PACK_RELEASE;
   // The fixture builds the pack with this same CLI
