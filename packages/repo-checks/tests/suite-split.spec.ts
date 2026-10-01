@@ -16,7 +16,8 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { REPO_ROOT } from '@abuddy/host/build/packages-built';
 import {
   FAST_BELOW_MS, INTEGRATION_ABOVE_MS, SPEC_COST_FLAGS, absentIn, changesIn, contended, drift, drifted,
-  absentNamed, describeBudget, halfOfPath, moved, namedIn, overBudget, parseArgs, planFor, readSpecCost,
+  absentNamed, describeBudget, EXPENSIVE_BY_NATURE, halfOfPath, moved, namedIn, overBudget, parseArgs,
+  planFor, readSpecCost,
   refuseAbsent, refusesAsContended, rewritesEveryRow, settle, specCostFile, specFiles, stale, suitesFor,
   unrecorded,
 } from '../../../scripts/lib/spec-cost.ts';
@@ -70,45 +71,6 @@ describe('a spec runs in the half its cost puts it in', () => {
   });
 });
 
-/**
- * Specs that cost more than a fast half allows, in a package with one suite. Each entry records what makes
- * that spec expensive, so the cost is known rather than discovered.
- *
- * **This is not a queue of packages to split**, which is what an earlier version of it implied. A split
- * buys a different *tier* — a different timeout budget and a different worker cap — and that is the
- * criterion, not slowness. `@abuddy/cli` has two halves because its expensive specs spawn compilers, so
- * they need a 50% worker cap and tier 2's 60s; the fast half needs neither.
- *
- * Measured 2026-09-25, none of the entries below qualifies. They build TypeScript programs in-process or
- * wait on real timing — no spawn, so no worker cap — and their slowest single tests are around a second
- * against tier 1's 15s. Splitting their packages would buy a faster whole-suite run, which is not the dev
- * loop: `npm run spec -- <file>` is file-targeted, and the chain pools projects and runs only the stale
- * ones. So all three packages stay as they are, on the measurement.
- *
- * What the list is for is the other direction. The check fails on a spec that has become expensive and is
- * not listed, **and** on a listed one that has become cheap, so neither the cost nor the reason can quietly
- * stop being true.
- */
-const EXPENSIVE_BY_NATURE: Record<string, string> = {
-  // 94 tests: 91 call `generatePackFiles` with a different manifest each (~7.2s, different work every time
-  // and so not cacheable), and 3 build TypeScript programs (2.5s since they share a compiler host).
-  // Measured in goal-one-job-pool.md Phase 5, which also records why the split it proposed was not done.
-  'abuddy-sdk/tests/build/generate-entries.spec.ts': 'runs codegen 91 times and the compiler 3 times',
-  // Holds the repo's slowest single test at 4.1s. It spawns real processes and waits on real lock
-  // timeouts, so its cost is elapsed time rather than work, and no amount of cores shortens it.
-  'abuddy-host/tests/database/write-lock.spec.ts': 'waits on real cross-process lock timeouts',
-  // Seven `npm pack --dry-run` spawns at ~0.3s each. Asking npm what it would publish is the subject, not an
-  // implementation detail of the test: the module exists because reading `files` ourselves lost npm's
-  // force-included files. Trimming two of the calls would land it about at the 2.5s edge — a cost that flips half
-  // on a contended measurement, which is what the band exists to avoid. Re-measured on an idle machine and it
-  // came back slightly slower, not faster, so the entry is not an artefact of load.
-  'abuddy-host/tests/build/published-manifest.spec.ts': 'spawns npm pack seven times, which is its subject',
-  // Starts and stops real pack backends and then waits to prove a cron schedule does *not* tick into the
-  // next test. The wait is the assertion, so shortening it removes what the test checks.
-  'default-setup/tests/harness-app-stop.spec.ts': 'waits to prove a stopped schedule does not tick',
-  // Builds a TypeScript program over the pack to check a diagnostic names the event a send is for.
-  'default-setup/tests/send-to-system-diagnostics.spec.ts': 'builds a TypeScript program over the pack',
-};
 
 /**
  * What a run says it found. The defect this covers was a string: `spec-cost:update` told a package with one
@@ -124,7 +86,7 @@ describe('what a run says about a spec it cannot place', () => {
   const RENAME = { kind: 'rename', file: 'tests/slow.spec.ts', ms: 9_000, belongs: 'integration' } as const;
 
   it('never tells a package with one half to move a spec', () => {
-    const said = describeBudget([OVER]);
+    const said = describeBudget([OVER], 'any-suite');
     expect(`${said.tail} ${said.lines.join(' ')} ${said.advice}`.toLowerCase()).not.toContain('wrong half');
     expect(said.advice.toLowerCase()).not.toContain('rename');
     expect(said.advice, 'the fix there is to record it, which is what EXPENSIVE_BY_NATURE is')
@@ -132,14 +94,29 @@ describe('what a run says about a spec it cannot place', () => {
   });
 
   it('tells a package with two halves to rename, and says which', () => {
-    const said = describeBudget([RENAME]);
+    const said = describeBudget([RENAME], 'any-suite');
     expect(said.tail).toContain('wrong half');
     expect(said.advice.toLowerCase()).toContain('rename');
     expect(said.lines.join(' ')).toContain('integration');
   });
 
+  /**
+   * The entries in `EXPENSIVE_BY_NATURE` are costs somebody has already looked at and written a reason for,
+   * which is the whole thing an `over` finding is for. Reporting them anyway printed `record it in
+   * EXPENSIVE_BY_NATURE` on every `--all` run for all five — advice that cannot be followed, in the one
+   * channel that has to stay worth reading.
+   */
+  it('says nothing about a cost already recorded as expensive by nature', () => {
+    const [key] = Object.keys(EXPENSIVE_BY_NATURE);
+    const [suiteDir, ...rest] = key!.split('/');
+    const recorded = { kind: 'over', file: rest.join('/'), ms: 9_000 } as const;
+    expect(describeBudget([recorded], suiteDir!)).toEqual({ tail: '', lines: [], advice: '' });
+    // The same finding under a suite with no entry is still reported, so the filter is why, not the shape
+    expect(describeBudget([recorded], 'a-suite-with-no-entries').advice).toContain('EXPENSIVE_BY_NATURE');
+  });
+
   it('says nothing at all when there is nothing to say', () => {
-    expect(describeBudget([])).toEqual({ tail: '', lines: [], advice: '' });
+    expect(describeBudget([], 'any-suite')).toEqual({ tail: '', lines: [], advice: '' });
   });
 });
 

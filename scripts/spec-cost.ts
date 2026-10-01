@@ -189,7 +189,7 @@ function update(plans: readonly SuitePlan[], dry: boolean): void {
 
     // `measuredFiles`, not `files`: over the whole suite this reports on specs the run never measured,
     // which is the same narrowing every other guard on this path already takes
-    const budget = describeBudget(overBudget(dir, record.costs, measuredFiles));
+    const budget = describeBudget(overBudget(dir, record.costs, measuredFiles), suite.dir);
     const asBody = body === undefined ? '' : `, body ${body >= 0 ? '+' : ''}${(body * 100).toFixed(0)}%`;
     // Every way the record can differ from the one it replaced, for the same reason `settle` compares rather
     // than enumerates: a change nobody listed reads as "none moved" over a rewritten file, and a spec that

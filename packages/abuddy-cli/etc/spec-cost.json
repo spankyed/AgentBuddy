@@ -1,5 +1,5 @@
 {
-  "measuredAt": "2026-10-01T03:36:16.816Z",
+  "measuredAt": "2026-10-01T03:53:52.173Z",
   "costs": {
     "tests/app/app-target.spec.ts": 97,
     "tests/app/beta-app.spec.ts": 139,
@@ -17,7 +17,7 @@
     "tests/build/facade-gate.integration.spec.ts": 9397,
     "tests/build/facade-typing.integration.spec.ts": 36867,
     "tests/build/fe-bundler-host-registry.integration.spec.ts": 22893,
-    "tests/build/fe-bundler-proxy-exports.spec.ts": 1274,
+    "tests/build/fe-bundler-proxy-exports.spec.ts": 1813,
     "tests/build/fe-bundler-shared-ui.spec.ts": 1673,
     "tests/build/fe-bundler-tailwind.spec.ts": 1211,
     "tests/build/fe-bundler-ui-theme.spec.ts": 25,
@@ -45,7 +45,7 @@
     "tests/commands/fixture-env-reach.spec.ts": 168,
     "tests/commands/handoff.spec.ts": 463,
     "tests/commands/init-install-load.spec.ts": 52,
-    "tests/commands/install-host-version.spec.ts": 1562,
+    "tests/commands/install-host-version.spec.ts": 1012,
     "tests/commands/pack-cli.spec.ts": 305,
     "tests/commands/pack-generate.spec.ts": 66,
     "tests/commands/pack-source.spec.ts": 322,

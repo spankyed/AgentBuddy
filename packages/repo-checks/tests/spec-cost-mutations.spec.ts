@@ -228,7 +228,7 @@ const MUTATIONS: readonly Mutation[] = [
     why: 'describeBudget tells the two kinds apart',
     from: "over.length > 0 ? 'Make it cheaper, or record it in EXPENSIVE_BY_NATURE with what makes it expensive.' : '',",
     to: "over.length > 0 ? '' : '',",
-    call: (lib) => lib.describeBudget([{ kind: 'over', file: FAST, ms: 9_999 }]),
+    call: (lib) => lib.describeBudget([{ kind: 'over', file: FAST, ms: 9_999 }], 'a-suite-with-no-entries'),
   },
 ];
 

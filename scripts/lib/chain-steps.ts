@@ -566,11 +566,11 @@ export const CHAIN_STEPS: readonly ChainStep[] = [
   // tests, and lints them. A change anywhere in the repo's TypeScript is a change to what it checks.
   { name: 'typecheck', tier: 1, needs: ['compile'], seconds: 27,
     // `tests/e2e`, `tests/packs` and `tests/scripts`, never `tests` itself: that walk takes in
-    // `tests/screenshots`, which the E2E step rewrites on every run, so declaring the parent meant this
-    // step could never be cached — measured, 26 screenshot files, and a warm chain paid its 34s every
-    // time for nothing. Gitignored output that no step reads should be no step's input, and the
-    // input-coverage guard backstops the narrowing: a tracked file under `tests/` that none of these
-    // three covers fails it by name.
+    // `tests/results`, which every Playwright run rewrites, so declaring the parent meant this step could
+    // never be cached — measured against `tests/screenshots`, which the suite wrote until `91b348069` and
+    // which cost a warm chain its 34s every time. Gitignored output that no step reads should be no step's
+    // input, and the input-coverage guard backstops the narrowing: a tracked file under `tests/` that
+    // none of these three covers fails it by name.
     // The loose modules below are here because `lint:check` is a leg of this step and reads them: its root pass
     // is `oxlint .` minus `docs/**` and the CLI's scaffold templates, which takes in every tracked JS module
     // outside those two. No step *runs* the packaging ones — they belong to `build-prod` — but a step that reads
@@ -646,7 +646,7 @@ export const CHAIN_STEPS: readonly ChainStep[] = [
   { name: 'test', tier: 3, needs: ['build:app', 'test:smoke'], cache: false, seconds: 26,
     optInBecause: 'it is a harness for driving the app, not a regression gate; nothing has needed it to fail',
     neverCachedBecause: 'it drives real Electron, and a flaky pass cached green hides an intermittent failure',
-    outputs: ['tests/screenshots', 'tests/results'],
+    outputs: ['tests/results'],
     inputs: [...ROOT, 'tests/e2e', 'playwright.config.ts', 'scripts/with-source.mjs', ...APP_ENTRY, ...APP_OUTPUTS] },
   { name: 'test:packaged-authoring', tier: 3, needs: ['build:app'], seconds: 59,
     inputs: [...ROOT, ...BOUNDED_RUNNER, 'tests/scripts/test-packaged-authoring.sh', 'tests/scripts/lib',

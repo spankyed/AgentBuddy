@@ -322,6 +322,46 @@ export const overBudget = (packageDir: string, costs: Record<string, number>, fi
   (hasSplit(packageDir) ? misplaced : outgrown)(costs, files);
 
 /**
+ * Specs that cost more than a fast half allows, in a package with one suite. Each entry records what makes
+ * that spec expensive, so the cost is known rather than discovered.
+ *
+ * **This is not a queue of packages to split**, which is what an earlier version of it implied. A split
+ * buys a different *tier* — a different timeout budget and a different worker cap — and that is the
+ * criterion, not slowness. `@abuddy/cli` has two halves because its expensive specs spawn compilers, so
+ * they need a 50% worker cap and tier 2's 60s; the fast half needs neither.
+ *
+ * Measured 2026-09-25, none of the entries below qualifies. They build TypeScript programs in-process or
+ * wait on real timing — no spawn, so no worker cap — and their slowest single tests are around a second
+ * against tier 1's 15s. Splitting their packages would buy a faster whole-suite run, which is not the dev
+ * loop: `npm run spec -- <file>` is file-targeted, and the chain pools projects and runs only the stale
+ * ones. So all three packages stay as they are, on the measurement.
+ *
+ * What the list is for is the other direction. The check fails on a spec that has become expensive and is
+ * not listed, **and** on a listed one that has become cheap, so neither the cost nor the reason can quietly
+ * stop being true.
+ */
+export const EXPENSIVE_BY_NATURE: Record<string, string> = {
+  // 94 tests: 91 call `generatePackFiles` with a different manifest each (~7.2s, different work every time
+  // and so not cacheable), and 3 build TypeScript programs (2.5s since they share a compiler host).
+  // Measured in goal-one-job-pool.md Phase 5, which also records why the split it proposed was not done.
+  'abuddy-sdk/tests/build/generate-entries.spec.ts': 'runs codegen 91 times and the compiler 3 times',
+  // Holds the repo's slowest single test at 4.1s. It spawns real processes and waits on real lock
+  // timeouts, so its cost is elapsed time rather than work, and no amount of cores shortens it.
+  'abuddy-host/tests/database/write-lock.spec.ts': 'waits on real cross-process lock timeouts',
+  // Seven `npm pack --dry-run` spawns at ~0.3s each. Asking npm what it would publish is the subject, not an
+  // implementation detail of the test: the module exists because reading `files` ourselves lost npm's
+  // force-included files. Trimming two of the calls would land it about at the 2.5s edge — a cost that flips half
+  // on a contended measurement, which is what the band exists to avoid. Re-measured on an idle machine and it
+  // came back slightly slower, not faster, so the entry is not an artefact of load.
+  'abuddy-host/tests/build/published-manifest.spec.ts': 'spawns npm pack seven times, which is its subject',
+  // Starts and stops real pack backends and then waits to prove a cron schedule does *not* tick into the
+  // next test. The wait is the assertion, so shortening it removes what the test checks.
+  'default-setup/tests/harness-app-stop.spec.ts': 'waits to prove a stopped schedule does not tick',
+  // Builds a TypeScript program over the pack to check a diagnostic names the event a send is for.
+  'default-setup/tests/send-to-system-diagnostics.spec.ts': 'builds a TypeScript program over the pack',
+};
+
+/**
  * How a run says what it found, as a value a spec can read.
  *
  * Here rather than inline in the command for the reason `parseArgs`, `planFor` and `settle` are here: the
@@ -332,16 +372,25 @@ export const overBudget = (packageDir: string, costs: Record<string, number>, fi
  * `tail` goes on the suite's line; `lines` are the findings under it; `advice` is what to do, and it is
  * different for each kind, which is the whole value of telling them apart.
  */
-export function describeBudget(findings: readonly Budget[]): { tail: string; lines: string[]; advice: string } {
+export function describeBudget(
+  findings: readonly Budget[],
+  suiteDir: string,
+): { tail: string; lines: string[]; advice: string } {
   const renames = findings.filter((found) => found.kind === 'rename');
-  const over = findings.filter((found) => found.kind === 'over');
+  // An `over` finding whose reason is already recorded is one somebody has looked at, which is the whole
+  // thing this finding is for. Reporting it anyway printed `record it in EXPENSIVE_BY_NATURE` on every run
+  // for all five entries that were already in there — advice nobody can act on, in the one channel that has
+  // to stay worth reading. The list moved here from `suite-split.spec.ts` so that the report and the gate
+  // read the same declaration; the gate still sees every finding, because it asks `overBudget` directly.
+  const over = findings.filter((found) => found.kind === 'over'
+    && !(`${suiteDir}/${found.file}` in EXPENSIVE_BY_NATURE));
   const seconds = (ms: number): string => `${(ms / 1000).toFixed(1)}s`;
   return {
     tail: [
       renames.length > 0 ? `${renames.length} in the wrong half` : '',
       over.length > 0 ? `${over.length} over the ${INTEGRATION_ABOVE_MS / 1000}s a fast half allows` : '',
     ].filter(Boolean).join(', '),
-    lines: findings.map((found) => (found.kind === 'rename'
+    lines: [...renames, ...over].map((found) => (found.kind === 'rename'
       ? `  ${seconds(found.ms)}  ${found.file}  ->  ${found.belongs}`
       : `  ${seconds(found.ms)}  ${found.file}  (no slower half to move it to)`)),
     advice: [
