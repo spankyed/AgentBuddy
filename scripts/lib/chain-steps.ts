@@ -290,19 +290,19 @@ export const PACK_OUTPUTS = ['packages/default-setup/dist', 'packages/default-se
 
 /**
  * What building the fixture packs writes, derived from the fixtures themselves. These sit *inside*
- * `tests/fixtures`, which the same step declares as an input, for the same reason as above.
+ * `tests/packs`, which the same step declares as an input, for the same reason as above.
  */
-const FIXTURE_PACKS = fs.readdirSync(path.join(REPO_ROOT, 'tests', 'fixtures'), { withFileTypes: true })
-  .filter((entry) => entry.isDirectory() && fs.existsSync(path.join(REPO_ROOT, 'tests', 'fixtures', entry.name, 'abuddy.json')))
+const FIXTURE_PACKS = fs.readdirSync(path.join(REPO_ROOT, 'tests', 'packs'), { withFileTypes: true })
+  .filter((entry) => entry.isDirectory() && fs.existsSync(path.join(REPO_ROOT, 'tests', 'packs', entry.name, 'abuddy.json')))
   .map((entry) => entry.name)
   .sort();
-const FIXTURE_OUTPUTS = FIXTURE_PACKS.flatMap((name) => [`tests/fixtures/${name}/dist`, `tests/fixtures/${name}/src/__generated__`]);
+const FIXTURE_OUTPUTS = FIXTURE_PACKS.flatMap((name) => [`tests/packs/${name}/dist`, `tests/packs/${name}/src/__generated__`]);
 
 /**
  * What running a fixture pack's own Playwright suite leaves behind. Nothing reads it, and it changes every
- * run, so a step that declares `tests/fixtures` has to say it reads around this or it can never cache.
+ * run, so a step that declares `tests/packs` has to say it reads around this or it can never cache.
  */
-const FIXTURE_TEST_OUTPUT = FIXTURE_PACKS.flatMap((name) => [`tests/fixtures/${name}/tests/results`, `tests/fixtures/${name}/tests/screenshots`]);
+const FIXTURE_TEST_OUTPUT = FIXTURE_PACKS.flatMap((name) => [`tests/packs/${name}/tests/results`, `tests/packs/${name}/tests/screenshots`]);
 
 /**
  * The unit suites that read build output, and which. Every other suite resolves workspace source through
@@ -513,15 +513,15 @@ export const CHAIN_STEPS: readonly ChainStep[] = [
   // because that is what `budgetFor` has to cover. Raising the default from two to three moved this one and
   // nothing else past the drift band, which is `driftedSteps` doing its job.
   { name: 'test:external-pack:contract', tier: 2, needs: ['compile'], seconds: 57, outputs: FIXTURE_OUTPUTS,
-    // It declares `tests/fixtures` for the pack sources; the Playwright output under each pack is written
+    // It declares `tests/packs` for the pack sources; the Playwright output under each pack is written
     // by `:app`, changes every run, and is read by nothing
     excludes: FIXTURE_TEST_OUTPUT,
-    inputs: [...ROOT, ...BOUNDED_RUNNER, 'tests/fixtures', 'tests/scripts/test-external-pack-contract.sh',
+    inputs: [...ROOT, ...BOUNDED_RUNNER, 'tests/packs', 'tests/scripts/test-external-pack-contract.sh',
       'tests/scripts/lib', ...PACKAGE_BUILD_OUTPUTS, ...PACK_OUTPUTS] },
   // The widest inputs in the table, and honestly so: it compiles every workspace, the scripts and the
   // tests, and lints them. A change anywhere in the repo's TypeScript is a change to what it checks.
   { name: 'typecheck', tier: 1, needs: ['compile'], seconds: 27,
-    // `tests/e2e`, `tests/fixtures` and `tests/scripts`, never `tests` itself: that walk takes in
+    // `tests/e2e`, `tests/packs` and `tests/scripts`, never `tests` itself: that walk takes in
     // `tests/screenshots`, which the E2E step rewrites on every run, so declaring the parent meant this
     // step could never be cached — measured, 26 screenshot files, and a warm chain paid its 34s every
     // time for nothing. Gitignored output that no step reads should be no step's input, and the
@@ -535,7 +535,7 @@ export const CHAIN_STEPS: readonly ChainStep[] = [
     // The `packages/` entries are the files `EVERY_WORKSPACE` cannot reach, since it walks a fixed set of parts
     // and these sit beside them: two bins, a bench, a bundler config and the two loaders at `packages/`'s root.
     // They arrived when the lint stopped ignoring `packages/**`, and the guard below named all six.
-    inputs: [...ROOT, ...EVERY_WORKSPACE, 'scripts', 'tests/e2e', 'tests/fixtures', 'tests/scripts',
+    inputs: [...ROOT, ...EVERY_WORKSPACE, 'scripts', 'tests/e2e', 'tests/packs', 'tests/scripts',
       'tests/tsconfig.json', 'playwright.config.ts', 'types', 'electron-builder.mjs',
       // The drive layer's config, and only it: the driving scripts beside it are gitignored and ad-hoc,
       // so naming the directory would re-run a typecheck every time someone poked at the app
@@ -574,7 +574,7 @@ export const CHAIN_STEPS: readonly ChainStep[] = [
     // PACKAGE_BUILD_OUTPUTS because the fixture it drives *is* one: `@abuddy/testing` resolves to its
     // built bundle, which launches Electron, finds the window and bypasses onboarding. Reached by package
     // name rather than by path, so nothing that reads a step's text can see the edge
-    inputs: [...ROOT, ...BOUNDED_RUNNER, 'tests/fixtures', 'tests/scripts/test-external-pack-app.sh',
+    inputs: [...ROOT, ...BOUNDED_RUNNER, 'tests/packs', 'tests/scripts/test-external-pack-app.sh',
       'tests/scripts/lib', 'playwright.config.ts', ...PACKAGE_BUILD_OUTPUTS, ...APP_OUTPUTS] },
   // Never cached: it drives real Electron with real timing and is the likeliest step to be flaky, and a
   // flaky pass cached green hides an intermittent failure indefinitely. 28s is cheap enough to always pay.

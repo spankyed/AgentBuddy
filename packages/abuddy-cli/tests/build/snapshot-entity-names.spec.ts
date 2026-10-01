@@ -26,9 +26,9 @@ describe('a built pack\'s snapshot', () => {
     }
   });
 
-  // tests/fixtures/external-pack depends on default-setup, so its snapshot is what a pack depending on
+  // tests/packs/external-pack depends on default-setup, so its snapshot is what a pack depending on
   // *it* would read. Before this, that pack could not name a default-setup entity.
-  const fixture = 'tests/fixtures/external-pack';
+  const fixture = 'tests/packs/external-pack';
   const fixtureBuilt = snapshotFile(fixture) !== undefined;
 
   it.skipIf(!fixtureBuilt || !built)('records its dependencies\' entity names too, so a chain stays one level deep', () => {

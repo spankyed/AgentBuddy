@@ -73,7 +73,7 @@ describe("@abuddy/ui's Tailwind preset", () => {
 });
 
 /** The built fixture: a pack with fe.bundleUi that renders a themed component */
-const FIXTURE_CSS = path.join(REPO_ROOT, 'tests', 'fixtures', 'bundled-ui-pack', 'dist', 'runtime', 'fe.css');
+const FIXTURE_CSS = path.join(REPO_ROOT, 'tests', 'packs', 'bundled-ui-pack', 'dist', 'runtime', 'fe.css');
 
 describe.skipIf(!fs.existsSync(FIXTURE_CSS))('a built fe.bundleUi pack', () => {
   it("ships CSS for @abuddy/ui's themed classes", () => {

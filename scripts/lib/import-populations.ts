@@ -71,7 +71,7 @@ let packsInRepo: string[] | undefined;
  *
  * Derived rather than listed, so a fixture pack added tomorrow is covered by every rule here on the day it
  * lands. `dist`, `node_modules` and dot-directories are skipped, which is what keeps a *built* pack's copy of
- * itself out (`tests/fixtures/external-pack/.abuddy/bundle/…` is the same pack, built).
+ * itself out (`tests/packs/external-pack/.abuddy/bundle/…` is the same pack, built).
  */
 export function packDirs(root = repoRoot): string[] {
   const memo = root === repoRoot ? packsInRepo : undefined;

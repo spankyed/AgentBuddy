@@ -109,12 +109,12 @@ Every other manifest a phase has to change — **four hand-maintained, two gener
 
 | Manifest | Size | Notes |
 |---|---|---|
-| `tests/fixtures/external-pack/abuddy.json` | 89 lines | one feature, `memos` |
-| `tests/fixtures/bundled-ui-pack/abuddy.json` | 24 lines | one feature, `scribbles`, no system |
+| `tests/packs/external-pack/abuddy.json` | 89 lines | one feature, `memos` |
+| `tests/packs/bundled-ui-pack/abuddy.json` | 24 lines | one feature, `scribbles`, no system |
 | `packages/default-setup/tests/_support/fixtures/dependent-pack/abuddy.json` | 22 lines | `features: []`; root keys are `$schema, id, name, version, hostVersion, dependencies, boot` — the `boot` Phase 3 renames |
 | the `abuddy init` scaffold | — | a template literal, `abuddy-cli/src/commands/init.ts:10-43` |
 | the packaged-authoring pack | — | built by `abuddy init` then edited by `tests/scripts/test-packaged-authoring.sh` in three node snippets |
-| `tests/fixtures/external-pack/.abuddy/bundle/e2e-fixture/abuddy.json` | — | a build artifact; regenerated, never edited |
+| `tests/packs/external-pack/.abuddy/bundle/e2e-fixture/abuddy.json` | — | a build artifact; regenerated, never edited |
 
 Fixtures also use `dependencies` and `permissions`, which default-setup does not. A phase that says
 "every manifest" means the first five rows.

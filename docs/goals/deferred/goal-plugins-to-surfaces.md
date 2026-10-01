@@ -123,7 +123,7 @@ compile-time check, and `PACKS_PLUGIN_EVENT_TYPES` to `OutgoingPacksEvents`.
 `pluginIsRunning`, `useUntypedPluginState`, `readUntypedPluginState`, `untypedOpenPlugin`,
 `untypedBroadcastToPlugin`, `_sendToLocalPlugin` — and, not to be touched, `TiptapPlugin` and
 `tiptapPluginRegistry`. `definePlugin` and `usePlugin` are pack-facing, so this breaks every pack's
-frontend code; in the repo that is default-setup, `tests/fixtures/*` and the CLI's `add feature`
+frontend code; in the repo that is default-setup, `tests/packs/*` and the CLI's `add feature`
 scaffold. `abuddy.schema.json` names `plugin` 8 times and is generated from `manifest-schema.ts`. Six
 files under `docs/public-facing/` mention it.
 
@@ -206,7 +206,7 @@ Mutation: renaming `TiptapPlugin` must fail the guard's allowlist assertion, not
 - Renderer: the application actor's surface list, `packPluginIds`, `loadPackFrontend`, the popout query
   (`?popout=plugin&pluginId=` → the surface spelling), `plugin:popout` IPC, `ToolbarPluginContextMenu.vue`
   and the other `views/layout` components.
-- Every in-repo pack: default-setup and `tests/fixtures/*`.
+- Every in-repo pack: default-setup and `tests/packs/*`.
 
 **Done when:** `npm run typecheck`, `npm run api:check`, `npm run schema:check`, `npm run test:unit`,
 `npm run compile` and `npm run test:external-pack` pass. `grep -rIn 'definePlugin\|usePlugin\|features\[\]\.plugin'`

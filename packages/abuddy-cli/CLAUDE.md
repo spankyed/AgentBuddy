@@ -180,7 +180,7 @@ what the audit of 2026-09-26 cost to establish, so it needn't be established aga
   real and failed a build naming a comment, and three module-path forms (`vi.mock`, `require.resolve`,
   `import x = require(…)`) went unread.
 - **The FE bundler reads neither `imports` nor supplies extensions, on purpose**: Vite resolves them
-  natively. The evidence is `tests/fixtures/external-pack`, whose `features/memos/fe/state.ts` value-imports
+  natively. The evidence is `tests/packs/external-pack`, whose `features/memos/fe/state.ts` value-imports
   `#generated/events.ts` and whose FE bundle and Playwright suite pass.
 - **A conditional target keeps the pack's own key order**, taking the first of `node`, `import`, `require`,
   `default` — Node's rule, not an imposed preference. `abuddy init` writes `"type": "module"`, so `import` is
@@ -191,4 +191,4 @@ what the audit of 2026-09-26 cost to establish, so it needn't be established aga
 An unreadable `package.json` is reported rather than passed over in silence, because the failure that
 follows — "can't resolve `#generated/…`" — names neither the file nor the cause.
 
-End-to-end coverage outside this package: `npm run test:external-pack` (`tests/fixtures`) and `npm run test:packaged-authoring` (packed tarballs, outside the monorepo).
+End-to-end coverage outside this package: `npm run test:external-pack` (`tests/packs`) and `npm run test:packaged-authoring` (packed tarballs, outside the monorepo).

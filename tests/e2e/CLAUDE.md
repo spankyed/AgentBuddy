@@ -275,7 +275,7 @@ PACK_DIR=/path/to/my-pack npm test -- tests/e2e/smoke
 6. **Check seeding** — fails if the pack's installed-packs entry has a `lastError`
 7. **Wait for plugins** — for each plugin ID from the manifest, waits up to 30s for it to appear in `applicationState.context.plugins`. Fails immediately, with the captured errors, if the pack's FE entry fails to load.
 
-The in-repo fixture pack at `tests/fixtures/external-pack` exercises this whole path from its own directory: `npm run test:external-pack`.
+The in-repo fixture pack at `tests/packs/external-pack` exercises this whole path from its own directory: `npm run test:external-pack`.
 
 ### Finding plugin IDs
 

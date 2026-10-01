@@ -376,7 +376,7 @@ describe('findLmdbImports', () => {
     ['packages/abuddy-ears/src/persistence/policy.ts', "import type { LmdbDbs } from '../lmdb/envs.ts';"],
     ['packages/abuddy-ears/src/query.ts', "import { open } from 'lmdb';"],
     ['packages/default-setup/src/features/notes/be/system.ts', "import { openLmdbStore } from '@abuddy/ears/lmdb';"],
-    ['tests/fixtures/external-pack/tests/unit/memos.spec.ts', "vi.mock('lmdb');"],
+    ['tests/packs/external-pack/tests/unit/memos.spec.ts', "vi.mock('lmdb');"],
   ])('flags %s', (file, code) => {
     allowed();
     write(file, code);

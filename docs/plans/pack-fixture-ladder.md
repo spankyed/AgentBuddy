@@ -9,7 +9,7 @@ string literal**:
 |---|---|
 | `@abuddy/testing`'s `setupPackTests` | a pack's code running in memory, from a registration object |
 | `abuddy-cli/tests/_support/pack-builds.ts` | files + `node_modules` symlink + `abuddy build`, in a temp dir |
-| `tests/fixtures/*` | checked-in pack directories for `test:external-pack` |
+| `tests/packs/*` | checked-in pack directories for `test:external-pack` |
 | `publish-checks`' `installPublishedPackages` | the packed tarballs installed as a consumer sees them |
 | `abuddy test` | a pack's own suite, in its own repo |
 

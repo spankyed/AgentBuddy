@@ -103,7 +103,7 @@ So installing an external pack today means trusting it as much as the app itself
 - The host side starts, embeds and stops the isolated context with the pack's lifecycle: activate, teardown, reload, and `packClientReady` (`packages/abuddy-host/src/features/packs/fe/frontends.ts`, driven by the app shell in `packages/abuddy-host/src/features/application/fe/`).
 - No `window.electronAPI`, `window.__abuddy` host objects or `window.applicationState` exist in the isolated context.
 
-**Done when:** the `tests/fixtures/external-pack` fixture renders its plugin through the isolated host. A renderer unit spec shows the isolated context has no `electronAPI`. Mutation: loading the pack with `import()` again fails that spec.
+**Done when:** the `tests/packs/external-pack` fixture renders its plugin through the isolated host. A renderer unit spec shows the isolated context has no `electronAPI`. Mutation: loading the pack with `import()` again fails that spec.
 
 ### Phase 2 — the SDK bridge
 

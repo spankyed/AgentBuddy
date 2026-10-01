@@ -218,8 +218,8 @@ describe('dependency resolution from an installed app', () => {
       builtInPack(snapshotOf('4.0.0')),
       path.join(checkout, 'packages', 'base-pack'),
     );
-    // Three levels down, like tests/fixtures/external-pack
-    const fixture = path.join(checkout, 'tests', 'fixtures', 'author-pack');
+    // Three levels down, like tests/packs/external-pack
+    const fixture = path.join(checkout, 'tests', 'packs', 'author-pack');
     fs.mkdirSync(fixture, { recursive: true });
 
     expect((await resolveDepFiles(fixture, 'base-pack', '*'))?.snapshot.manifest.version).toBe('4.0.0');

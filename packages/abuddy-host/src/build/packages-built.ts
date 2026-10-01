@@ -77,7 +77,7 @@ export interface BuildUnit {
   readonly inputs: readonly string[];
   /**
    * Trees inside `inputs` that are not part of the fingerprint, and are not this unit's own output either:
-   * generated files it declares the parent of but never reads. `typecheck` declares `tests/fixtures` for
+   * generated files it declares the parent of but never reads. `typecheck` declares `tests/packs` for
    * the pack sources and does not read the packs' build output — `check:specifiers` filters
    * `__generated__` out itself — so hashing that output would tie this unit's freshness to a build it does
    * not depend on.
@@ -398,7 +398,7 @@ export function fingerprintUnit(unit: BuildUnit, collect?: (file: string, digest
     .update('\0')
     // A unit's own output is never its own input, however broadly its inputs are declared. Two steps
     // declare a whole tree and then write into it — `compile` writes `src/__generated__` under the `src`
-    // it reads, and the fixture-pack check writes each pack's `dist` under the `tests/fixtures` it reads —
+    // it reads, and the fixture-pack check writes each pack's `dist` under the `tests/packs` it reads —
     // which makes them self-invalidating the moment their build stops being byte-identical. Both were
     // surviving on the builds happening to be deterministic, and the pack build is already known not to be
     // (two lines of `Omit<…>` union ordering). Excluding self-output here means declaring `outputs`

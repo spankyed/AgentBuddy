@@ -146,4 +146,4 @@ settled.
 
 The repo's standing ones apply (root `CLAUDE.md`): no backward-compatibility shims outside migrations, published
 packages take `api:update` with `etc/` committed, typed EARS types are change-controlled, mutation-check every new
-guard, and `tests/fixtures/*` is where a cross-pack rule is proved.
+guard, and `tests/packs/*` is where a cross-pack rule is proved.

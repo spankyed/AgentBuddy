@@ -21,8 +21,8 @@ describe('the workspaces are what the root manifest says they are', () => {
   // The refusal these exist for: a glob outside packages/ has workspaces this cannot name, and the failure
   // mode without it is silence — a workspace missing from every consumer, including the chain's cache keys
   it('refuses a glob whose workspaces it could not name, saying what to change', () => {
-    expect(() => workspaceDirsFrom(['packages/*', 'tests/fixtures/*']))
-      .toThrow(/only reads the glob `packages\/\*`.*tests\/fixtures\/\*.*dropped silently/s);
+    expect(() => workspaceDirsFrom(['packages/*', 'tests/packs/*']))
+      .toThrow(/only reads the glob `packages\/\*`.*tests\/packs\/\*.*dropped silently/s);
   });
 
   it('refuses an empty field rather than deriving nothing', () => {
