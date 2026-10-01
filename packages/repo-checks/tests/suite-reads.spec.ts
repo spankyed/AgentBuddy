@@ -2,8 +2,8 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { inputFiles, REPO_ROOT } from '@abuddy/host/build/packages-built';
-import { suiteInputs } from '../../../scripts/lib/chain-steps.ts';
-import { UNIT_SUITES, type UnitSuite } from '../../../scripts/lib/unit-suites.ts';
+import { CHAIN_STEPS, INTEGRATION_SUITES, suiteInputs } from '../../../scripts/lib/chain-steps.ts';
+import { UNIT_SUITES, unitStepName, type UnitSuite } from '../../../scripts/lib/unit-suites.ts';
 import { reachableFrom } from '../../../scripts/lib/module-graph.ts';
 import { population } from '@abuddy/sdk/testing';
 
@@ -84,5 +84,52 @@ describe('a suite declares what its specs read', () => {
     expect(undeclared, 'a spec loads these and nothing re-runs it when they change. Declare them: a file in '
       + "another package means that package belongs in this one's dependencies, and a file beside the "
       + 'package means a missing entry in WORKSPACE_PARTS').toEqual([]);
+  });
+});
+
+/**
+ * And the step that runs a suite declares at least what that suite reads.
+ *
+ * The case above checks the *inner* cache layer — a suite's specs against `suiteInputs`, which is the key
+ * `poolUnitFor` fingerprints per project. That leaves the outer layer unasked, and the two can differ: a
+ * step whose `inputs` are built some other way declares less than its suites read, caches on the smaller
+ * set, and stamps green over work it skipped. `test:integration` did exactly that — built from
+ * `workspace(dir)` where the pool steps were built from `suiteInputs` — and left 386, 1944 and 275 files
+ * undeclared for its three suites while every check in this package passed.
+ *
+ * Both layers now go through `inputsForSuites`, so this holds by construction. It is here because that is a
+ * property of one function, and the next suite-running step is one hand-written `inputs:` away from losing
+ * it again.
+ */
+const stepFiles = new Map<string, Set<string>>();
+function filesOf(step: string): Set<string> {
+  const found = stepFiles.get(step)
+    ?? new Set(CHAIN_STEPS.find((s) => s.name === step)!.inputs.flatMap((i) => inputFiles(path.join(REPO_ROOT, i))));
+  stepFiles.set(step, found);
+  return found;
+}
+
+describe('a step declares what the suites it runs read', () => {
+  /** Derived from the two declarations the steps themselves are built from, so a new suite arrives here. */
+  const pairs = (): { step: string; suite: UnitSuite }[] => [
+    ...UNIT_SUITES.map((suite) => ({ step: unitStepName(suite), suite })),
+    ...INTEGRATION_SUITES.map((suite) => ({ step: 'test:integration', suite })),
+  ];
+
+  it('finds every suite-running step, so the rule below is not checking an empty list', () => {
+    const found = population('suite-running step and suite pairs', pairs(), { atLeast: 12 });
+    expect(new Set(found.map((pair) => pair.step)).size,
+      'every suite resolved to one step, so a whole pool could be missing').toBeGreaterThan(2);
+  });
+
+  it('leaves no suite input outside the step that runs it', () => {
+    const missing = pairs().flatMap(({ step, suite }) => {
+      const declared = filesOf(step);
+      return [...reads(suite).declared].filter((file) => !declared.has(file))
+        .slice(0, 3)
+        .map((file) => `${step} runs ${suite.dir}, which reads ${file}`);
+    });
+    expect(missing, 'the step caches on less than its suites read, so it can stamp green over work it '
+      + 'skipped. Build its inputs with `inputsForSuites`, as the pools do').toEqual([]);
   });
 });
