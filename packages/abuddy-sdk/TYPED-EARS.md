@@ -79,9 +79,9 @@ The engine's types moved to `@abuddy/ears` (`packages/abuddy-ears`); the SDK kee
    - the untyped `qx`/`tx` (`untypedQx`/`untypedTx`)
 2. **Run the type tests** that pin the contract:
    - default-setup: `tests/typed-query-builder.spec.ts`, `branded-entity-id.spec.ts`, `entity-shape-registry.spec.ts`, `sdk-type-safety.spec.ts`, and `npm run typecheck:pack`
-   - `@abuddy/cli`: `tests/build/facade-typing.spec.ts` (a real dependent pack under bundler and node16, against both the workspace source and the packed `@abuddy/ears` and `@abuddy/sdk`) and `tests/build/published-sdk-any.spec.ts`
+   - `@abuddy/cli`: `packages/abuddy-cli/tests/build/facade-typing.integration.spec.ts` (a real dependent pack under bundler and node16, against both the workspace source and the packed `@abuddy/ears` and `@abuddy/sdk`) and `packages/publish-checks/tests/published-sdk-any.integration.spec.ts`
 3. **Mutation-check every rule you touch.** Break it on purpose and confirm a test fails.
-4. **Check editor completions and error messages.** `tests/build/facade-typing.spec.ts` in `@abuddy/cli` checks the positions below with the TypeScript language service, under both module resolutions and against the published package. Extend it when you add a field or name parameter, and still look at anything it doesn't cover.
+4. **Check editor completions and error messages.** `packages/abuddy-cli/tests/build/facade-typing.integration.spec.ts` in `@abuddy/cli` checks the positions below with the TypeScript language service, under both module resolutions and against the published package. Extend it when you add a field or name parameter, and still look at anything it doesn't cover.
    - Field positions should list the entity's fields: `qx(EARS.Entity.X).pick(['|'])`, `.where('|')`, `.orderBy('|')`, `getAttr(id, '|')`, `findWithFields(EARS.Entity.X, ['|'])`.
    - Entity-name positions should list entity names: `qx('|')`, `findAll('|')`, `createEntity('|')`, `.linksTo(kind, '|')`, `.ofType('|')`.
    - A typo (`where('titel')`) should produce an error that lists the valid fields.
@@ -93,7 +93,7 @@ The engine's types moved to `@abuddy/ears` (`packages/abuddy-ears`); the SDK kee
 - **Union field typing (2026-09-14).**
   - What happened: to make brain's trigger queries compile against the new `Node` union, the field parameters were rewritten as conditional and mapped types (`FieldArg`, `FieldsArg`, `PickedOf`). That added runtime field names and union-member fields to every field-keyed API.
   - Why tests missed it: everything compiled and every type test passed. But field completions disappeared from `pick`, `pickOne`, `linksPick`, `getAttr` and `findWithFields`, and typo errors became "not assignable to type 'never'".
-  - Resolution: reverted, and the two queries use the untyped `untypedQx` (`@abuddy/ears`). The completions test in `facade-typing.spec.ts` now guards these positions.
+  - Resolution: reverted, and the two queries use the untyped `untypedQx` (`@abuddy/ears`). The completions test in `facade-typing.integration.spec.ts` now guards these positions.
 - **`qx('user-note')` compiles: the dash heuristic (investigated 2026-09-18, not fixed).**
   - What it is: `EntityId<E>` is `` `${string}-${string}` `` with an *optional* `__entity` brand. `qx` and
     `tx` take a name *or* an id, and the dash is the only thing telling those apart. So a misspelled

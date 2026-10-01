@@ -22,7 +22,7 @@ getDslTypes() → Monaco TypeScript worker        (4) The renderer's registered 
 | 2 | `dist/defs/monaco/*-defs.d.ts` | `abuddy build` | Each entry's types bundled into one declaration file, wrapped as `declare module "@app/defs/<name>"` |
 | 3 | `src/__generated__/dsl-types-fe.ts` | `abuddy generate-entries` | Imports (2) as `?raw` and exports `dslTypes` (one `DslTypeConfig` per DSL), which `pack-entry-fe.ts` puts in the frontend registration; nothing registers on import |
 
-Every pack gets this: `abuddy build` bundles each `abuddy.json` `dsl` entry whose `targets` include `monaco` (`packages/abuddy-cli/src/build/dsl-defs.ts`, covered by `packages/abuddy-cli/tests/build/dsl-defs.spec.ts`).
+Every pack gets this: `abuddy build` bundles each `abuddy.json` `dsl` entry whose `targets` include `monaco` (`packages/abuddy-cli/src/build/dsl-defs.ts`, covered by `packages/abuddy-cli/tests/build/dsl-defs.integration.spec.ts`).
 
 ## What is inlined
 

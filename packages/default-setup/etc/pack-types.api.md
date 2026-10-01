@@ -363,8 +363,7 @@ type BlockMessageOptions = BlockMessageBase & AutoHideOptions;
  *
  * When adding a new block type, extend this union first, then add a
  * matching parser in `_helpers/` and a unit test that pins the new
- * shape (see claude-code-approval-response.spec.ts and
- * onboarding-step-response.spec.ts for the pattern).
+ * shape (see approval-response.spec.ts for the pattern).
  *
  * `blockResponse?: unknown` at the storage boundary is more defensive than
  * assuming the union is exhaustive; the event-level and field-level types use

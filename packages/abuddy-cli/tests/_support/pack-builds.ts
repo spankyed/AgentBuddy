@@ -91,7 +91,7 @@ export async function callCli(dir: string, command: keyof typeof COMMANDS, args:
  * the pack both reduce to this — without paying process start and lib loading each time, and reusing
  * those lib files across calls within a file.
  *
- * `facade-typing.spec.ts` already reads diagnostics this way (`packDeclarationDiagnostics`); this is
+ * `facade-typing.integration.spec.ts` already reads diagnostics this way (`packDeclarationDiagnostics`); this is
  * the same move for the call sites that only wanted a pass or fail.
  */
 export async function typecheckPack(dir: string, tsconfigName = 'tsconfig.json'): Promise<{ code: number; output: string }> {

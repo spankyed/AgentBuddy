@@ -47,7 +47,7 @@ export interface Process extends Sample {
   readonly blockMs: number;
 }
 
-/** Must equal the sampler's `TICK_MS`; `loopBlocks.spec.ts` holds the two together. */
+/** Must equal the sampler's `TICK_MS`; `loop-blocks.spec.ts` holds the two together. */
 export const TICK_MS = 1000;
 
 /**

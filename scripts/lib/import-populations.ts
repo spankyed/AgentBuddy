@@ -56,7 +56,7 @@ export function readJsonFile<T>(file: string): T {
  * was a `resetSourceCache()`-shaped hatch, and that is the thing two specs remembered, the repo's most
  * expensive spec did not, and which left it quadratic until `7c4b8aacc`.
  *
- * Two facts make the condition sound, and `import-populations.spec.ts` holds the first:
+ * Two facts make the condition sound, neither of them guarded — a spec pinning the first is worth writing:
  *
  * - **No test reaches it.** Every one builds its tree under `fs.mkdtempSync`, so `root` is never this one.
  * - **Nothing adds a pack to this repo mid-process.** The tools that read it exit; the one that writes

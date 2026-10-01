@@ -40,7 +40,7 @@ export interface ChainStep {
   readonly outputs?: readonly string[];
   /**
    * Generated trees inside `inputs` that this step declares the parent of and never reads. Every gitignored
-   * input has to be accounted for — `chain-inputs.integration.spec.ts` fails one that is neither a step's
+   * input has to be accounted for — `packages/repo-checks/tests/chain-inputs.spec.ts` fails one that is neither a step's
    * output you depend on nor listed here — because an unaccounted one is either an undeclared dependency
    * (a race) or churn that stops the step ever caching. Each entry is a claim that the step reads around
    * the tree, so it belongs with evidence.

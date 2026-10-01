@@ -53,7 +53,7 @@ const TEST_FILE_OPTIONS = ['include', 'includeSource', 'dir', 'root', 'setupFile
  * there resolves `dist`, the layout every consumer has, so a wrong entry costs a stale build and surfaces
  * as a type error. An exception here resolves this checkout's source, so a wrong entry costs a build
  * nobody outside this checkout can reproduce — and nothing notices, because
- * `types-bundler-determinism.spec.ts` compares a synthetic fixture pack against the published tarballs,
+ * `types-bundler-determinism.integration.spec.ts` compares a synthetic fixture pack against the published tarballs,
  * never the packs in this repository. So a row excepting a pack's *build* owes a test that builds that
  * pack both ways and compares the output; a row for a host config that merely sits in the tree owes
  * nothing, having never been a pack build.

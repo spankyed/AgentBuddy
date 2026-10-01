@@ -65,7 +65,7 @@ user's code and calls it with the read and write helpers. Each helper writes as 
 So code that throws part way leaves everything it wrote before the throw, in memory and on disk. That is
 the documented behaviour today — `docs/public-facing/cli.md` (the `exec` section) describes it, the
 failure message says "The writes it made before failing stand: nothing is rolled back", and
-`packages/abuddy-cli/tests/commands/db.spec.ts` pins it ("keeps what the code wrote before it threw: there is
+`packages/abuddy-cli/tests/commands/db.integration.spec.ts` pins it ("keeps what the code wrote before it threw: there is
 no rollback"). This goal replaces that behaviour with the one the name promises, and those three say the
 opposite afterwards.
 
@@ -100,7 +100,7 @@ than a refused one, because nothing records which statements ran.
    silently: it throws, naming both the original failure and the rollback's, and the app reports it as a
    fatal error rather than carrying on.
 5. **The name stops lying.** After this goal `runTransactionCode`'s failure says the writes were rolled
-   back, `cli.md` says a failure changes nothing, and `db.spec.ts` asserts the database is untouched.
+   back, `cli.md` says a failure changes nothing, and `db.integration.spec.ts` asserts the database is untouched.
 
 ## Open decisions (settle with the user before Phase 1)
 
@@ -161,7 +161,7 @@ memory changes after a failed flush, fails those specs.
   reporting a close failure without hiding what the command hit first.
 - The Database plugin's console and the `query` step's write mode inherit it through the runner.
 
-**Done when:** `packages/abuddy-cli/tests/commands/db.spec.ts` asserts the database is untouched after failing
+**Done when:** `packages/abuddy-cli/tests/commands/db.integration.spec.ts` asserts the database is untouched after failing
 console code (replacing "keeps what the code wrote before it threw"), a default-setup spec covers the
 plugin's console, and `packages/abuddy-sdk/tests/database-console/` covers the runner. Mutation: running
 the code outside the boundary fails all three.
