@@ -3,8 +3,9 @@
 ```
 # Goal: one cache key per action, derived from what the action reads and writes
 
-Implement docs/goals/goal-one-action-cache.md on master, at or after 9912fceea — the base its
-Background was surveyed at.
+Implement docs/goals/goal-one-action-cache.md on AS/one-action-cache, at or after 16c1b02e6 — the
+branch this goal was written on. Its Background was surveyed at 9912fceea, an ancestor; only the three
+doc files between them changed, so the survey holds at the branch point.
 Before Phase 1, confirm the base: `TIER_TIMEOUT_MS`, `inputsForSuites` and `SUITE_READS` in
 scripts/lib/chain-steps.ts, `unitStepName` in scripts/lib/unit-suites.ts, `APP_MARKERS` in
 scripts/check-test-tiers.ts, `exclusiveRunning` in scripts/lib/chain-schedule.ts, `TYPECHECK_LEGS` in
@@ -46,7 +47,7 @@ Never:
 - measure on a loaded machine: `npm run measure` refuses below 70% idle and that refusal stands.
 ```
 
-## Background (2026-10-01, at `9912fceea` on `master`)
+## Background (2026-10-01, at `9912fceea` on `master`; the work branch `AS/one-action-cache` starts at `16c1b02e6`, which adds only this doc and two plan docs)
 
 `docs/plans/one-action-cache.md` is the full survey, with every measurement and the reasoning behind
 each decision. `docs/plans/tier-split.md` is Phase 1's detailed design. This section is the short form.
