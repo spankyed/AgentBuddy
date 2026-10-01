@@ -1,3 +1,10 @@
+> **Done and closed.** Implemented by [`goal-one-action-cache.md`](../goals/goal-one-action-cache.md),
+> whose Outcome records what landed and the three places this plan was wrong: a dep file is sound as a
+> check and not as a key, retiring the text scan cannot be paired with the derived edges, and item 7
+> (Gradle's rule) has no subject in a cache that decides whether to run rather than restoring outputs.
+> The follow-up is [`observed-inputs.md`](../../plans/observed-inputs.md). The text below is the plan as
+> written.
+
 # One action cache
 
 ## Status (2026-10-01)
@@ -8,7 +15,7 @@
 | decided | all five decisions, all four measurements, both unverified claims — see the last three sections |
 | next, unblocked | the `tier` split (`tier-split.md`); three of its four pieces need nothing from this list |
 | open | nothing to decide; what remains is building items 2-6 of the order below |
-| executed by | [`goal-one-action-cache.md`](../archive/goals/goal-one-action-cache.md), now archived — items 0, 17, 18 and the `tier` split landed; its Outcome records what was corrected, including why item 7 has no subject here |
+| executed by | [`goal-one-action-cache.md`](../goals/goal-one-action-cache.md), now archived — items 0, 17, 18 and the `tier` split landed; its Outcome records what was corrected, including why item 7 has no subject here |
 
 ## Problem
 

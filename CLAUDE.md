@@ -272,11 +272,12 @@ npm script and looks for the ways this repo launches the app. A step can launch 
 its outputs as inputs, which only the scan sees; and `APP_ENTRY` (`packages/dev-mode.js`,
 `packages/entry-point.mjs`) is *source* sitting beside the built-app constant, which three app-free steps
 read — so the inputs question alone would be wrong in the other direction. The scan goes when the action
-graph can answer "does this transitively depend on `build:app`" (`docs/plans/one-action-cache.md`, item 17).
+graph can answer "does this transitively depend on `build:app`" (`docs/archive/plans/one-action-cache.md`,
+item 17; the follow-up is `docs/plans/observed-inputs.md`).
 
 **`build:app` does not declare it.** It writes the app rather than reading one, and the declaration is
 about reading. That distinction is why this replaced a three-valued `tier`, which lumped the producer in
-with its consumers: `docs/plans/tier-split.md` has the evidence, and the budget half of `tier` is now
+with its consumers: `docs/archive/plans/tier-split.md` has the evidence, and the budget half of `tier` is now
 `SIZE_MS` in `scripts/lib/unit-suites.ts`.
 
 `test:external-pack` is split at that boundary: `:contract` validates, builds and typechecks each fixture
