@@ -70,7 +70,7 @@ const SHARED_INPUTS = [repoFile('package.json'), repoFile('package-lock.json')];
  * added to this protocol meant nothing to anyone but the machine they were written on. The protocol this
  * describes is one thing, so it starts at one, and `!==` still invalidates whatever those runs left behind.
  */
-export const STAMP_VERSION = 2;
+export const STAMP_VERSION = 1;
 
 export interface BuildUnit {
   /** Files and directories the build reads, absolute; a directory is walked */
