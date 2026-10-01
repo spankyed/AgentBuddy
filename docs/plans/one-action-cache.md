@@ -126,9 +126,20 @@ is `packages:ensure → compile → build:app → test:packaged-authoring`, whic
    an action actually runs is what lets `package.json` come *out* of the inputs.
 4. **Every action declares outputs, verification included.** Bazel caches a test by treating its result as
    an artifact: the action writes a status, and caching the test is caching that output like any other.
-   That removes the need for a "producing vs verifying" distinction — I had proposed one, and the standard
-   model does not need it. It also gives `neverCachedBecause` somewhere to go: an action
-   whose result cannot be represented as an output is simply not cacheable, which is item 7.
+   Gradle is the same and more concrete — its `Test` task is cacheable *because* it declares
+   `binaryResultsDirectory` and its reports as outputs. That removes the need for a "producing vs
+   verifying" distinction — I had proposed one, and the standard model does not need it. It also gives
+   `neverCachedBecause` somewhere to go: an action whose result cannot be represented as an output is
+   simply not cacheable, which is item 7.
+
+   **This is a prerequisite, not a nicety, and the measurement says so.** Counted 2026-10-01: 6 of 13 steps
+   declare any output at all. The seven that declare none are `packages:check`, `typecheck`,
+   `test:unit:host`, `test:unit:pack`, `test:integration`, `test:external-pack:app` and
+   `test:packaged-authoring` — which includes every step this whole programme is about. Nothing in the repo
+   writes a machine-readable result today: no `outputFile` or `reporters` in any vitest or playwright
+   config. The one step that does produce an artifact already declares it (`test`, `outputs:
+   ['tests/results']`), so the shape exists; what is missing is a result artifact for the verification
+   steps, which is cheap (`--reporter=junit --outputFile`) but is real work.
 
 ### B. Where inputs come from
 
@@ -141,7 +152,11 @@ is `packages:ensure → compile → build:app → test:packaged-authoring`, whic
    "safe default" I first proposed: an action that cannot fully declare its inputs and outputs is simply
    not cached. Under-declaration then costs speed, never correctness. **This repo's failure mode — declare
    partially, cache anyway, be silently wrong — is the one Gradle designed out of existence**, and three of
-   this session's defects were exactly it. It is the single most valuable item on this list.
+   this session's defects were exactly it. It is the single most valuable item on this list **and it
+   cannot land before item 4**: applied to the table as it stands, it uncaches seven of thirteen steps,
+   `typecheck`, both pools and `test:integration` among them, and takes the warm chain from 0.9s to running
+   all of them. Sections A and B present these as independent entries and they are one sequenced change —
+   4 then 7, and 7 is worth nothing on its own.
 8. **Declared**, for actions that can meet item 7 but whose reads no tool reports: runtime reads (the
    git-querying guards, `SUITE_READS.repo`), shell steps, `oxlint`, anything spawning a non-node tool.
 9. **A dep file is a proxy, in this repo's own taxonomy** (root `CLAUDE.md`, "Three kinds of recorded
@@ -189,7 +204,12 @@ is `packages:ensure → compile → build:app → test:packaged-authoring`, whic
 20. **Per-action "why did this run"** — the four stamp states `unit-pool.ts` already distinguishes.
 21. **The freshness sweep**, per action rather than per step.
 22. **Cost records per action.** `spec-cost.json` generalises; its hysteresis, drift band and contention
-    refusal are hard-won and must survive (`scripts/lib/spec-cost.ts`).
+    refusal are hard-won and must survive (`scripts/lib/spec-cost.ts`). **It is not the only sample.**
+    `ChainStep.seconds` is the other — a hand-recorded measurement with its own asymmetric band (reported
+    past double on every run, under half only at `--all`), which is hysteresis built a second time. One of
+    the two lives in a JSON file with a `:check`/`:update` pair and the other in the step table with
+    neither, so generalising cost records means covering both or saying why not. CLAUDE.md's "`spec-cost.json`
+    is the only one" is scoped to recorded-artifact *files* and is not wrong, but the parallel is the point.
 23. **Near-edge reporting**, which only stays meaningful once cost stops deciding coverage.
 
 ### G. Guards the new model needs
@@ -231,7 +251,8 @@ is `packages:ensure → compile → build:app → test:packaged-authoring`, whic
 ## Measure before committing to any of it
 
 Three structural changes were pitched in the session that produced this doc and two measured to roughly
-nothing. These come first, and the goal doc should not be written until they are in it.
+nothing. These come first, and the goal doc should not be written until they are in it. One of the four
+below is now answered and recorded as such; the other three are still open.
 
 - **Per-leg typecheck caching.** For a handful of representative single-package edits, which legs would a
   per-action key mark stale, and what is the wall time of that subset against the current ~11s? Legs run in
@@ -240,8 +261,11 @@ nothing. These come first, and the goal doc should not be written until they are
   suites always stale together?
 - **Action-key overhead at 40 actions.** The chain takes 12 fingerprints today. Forty is more stat and hash
   work on every run, including the warm one, where the whole budget is 0.9s.
-- **What item 7 makes uncacheable.** Gradle's rule is the most valuable item and the most likely to cost
-  wall time: every action that cannot declare its outputs stops being cached at all. Count them first.
+- **What item 7 makes uncacheable — answered, 2026-10-01.** Seven of thirteen steps declare no outputs, so
+  the rule as stated uncaches `typecheck`, both pools, `test:integration`, `packages:check`,
+  `test:external-pack:app` and `test:packaged-authoring`. The count is the whole answer for the ordering
+  question (item 4 first); what is still unmeasured is the wall cost of the intermediate state, if item 7
+  is adopted for some actions before every verification step writes a result.
 
 ## Explicitly out of scope
 
@@ -260,6 +284,3 @@ nothing. These come first, and the goal doc should not be written until they are
 - That 40 actions is the right order of magnitude. It is 20 tsconfig invocations + ~14 vitest projects + the
   build and packaging actions, counted by hand.
 - That deriving `needs` from artifacts reproduces today's ordering exactly. Likely, unproven.
-- That item 7 is affordable here. It is the right rule in Gradle, where most tasks have real outputs; this
-  repo is mostly verification, and "a test's result is its output" has to carry more weight than it does
-  there.
