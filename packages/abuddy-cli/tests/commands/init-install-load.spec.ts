@@ -8,6 +8,7 @@ import { installPackFromLocal } from '@abuddy/host/packs';
 import { loadExternalPacks } from '@abuddy/host/packs/runtime';
 import { init } from '../../src/commands/init';
 import { PACK_SNAPSHOT_FORMAT } from '@abuddy/sdk/build';
+import { _appDirOf } from '@abuddy/sdk/env';
 
 // The loader checks each pack's hostVersion against the app version
 startTestRuntime({ appVersion: '1.0.0' });
@@ -59,7 +60,7 @@ describe('pack full lifecycle: init → install → load', () => {
     fs.writeFileSync(path.join(packDir, 'abuddy.json'), JSON.stringify(manifest, null, 2));
     writeBuild(packDir, manifest.id, "{ main: { system: { machine: { id: 'my-test-pack-system' }, receives: ['TEST_EVENT'] }, plugin: { receives: [] } } }");
 
-    const packsDir = path.join(tmpDir, 'packs');
+    const packsDir = path.join(_appDirOf(tmpDir), 'packs');
     await installPackFromLocal(packDir, packsDir);
 
     const installedDir = path.join(packsDir, 'my-test-pack');

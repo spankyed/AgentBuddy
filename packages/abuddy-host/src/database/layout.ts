@@ -1,22 +1,19 @@
-// Where a data dir keeps the app's stores: a packaged app at its root, a source run under .data/ (@abuddy/sdk/utils).
-// A tool opening a data dir finds out which from the files there.
+// Where a data dir keeps the app's stores: inside `appDir`, the one directory the app owns (@abuddy/sdk/env).
+// Until 2026-10-01 there were two layouts — the data dir's root for a packaged app, `.data/` for a source run,
+// chosen by NODE_ENV — and this module's job was to work out which. There is one, so there is nothing to work out.
 import * as fs from 'node:fs';
 import { _appDataPaths, type _AppDataPaths } from '@abuddy/sdk/utils';
 
 /**
- * The stores of the database in `userDataDir`, in the layout it was written in. Throws when the data dir holds no
- * database, one in each layout (which one the app uses depends on how it runs, so a tool won't guess), or only part
- * of one: the app writes both partitions, so a data dir missing one was copied or emptied by hand, and a tool that
- * opened it would read an app's data while writing somewhere the app never looks.
+ * The stores of the database in `userDataDir`. Throws when the data dir holds no database, or only part of one:
+ * the app writes both partitions, so a data dir missing one was copied or emptied by hand, and a tool that opened
+ * it would read an app's data while writing somewhere the app never looks.
  */
 export function findAppDataPaths(userDataDir: string): _AppDataPaths {
-  const layouts = [_appDataPaths(userDataDir, { packaged: true }), _appDataPaths(userDataDir, { packaged: false })]
-    .filter((paths) => fs.existsSync(paths.lmdb) || fs.existsSync(paths.volatileLmdb));
-  if (layouts.length === 0) throw new Error(`No AgentBuddy database in ${userDataDir}`);
-  if (layouts.length > 1) {
-    throw new Error(`${userDataDir} holds two AgentBuddy databases, ${layouts[0].lmdb} and ${layouts[1].lmdb}: move the one the app doesn't use aside`);
+  const paths = _appDataPaths(userDataDir);
+  if (!fs.existsSync(paths.lmdb) && !fs.existsSync(paths.volatileLmdb)) {
+    throw new Error(`No AgentBuddy database in ${userDataDir}`);
   }
-  const [paths] = layouts;
   const missing = ([['the data', paths.lmdb], ['the run history', paths.volatileLmdb]] as const)
     .filter(([, dir]) => !fs.existsSync(dir));
   if (missing.length > 0) {

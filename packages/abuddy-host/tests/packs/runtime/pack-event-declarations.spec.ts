@@ -11,6 +11,7 @@ import { registry } from './test-host.ts';
 import { loadExternalPacks, registerExternalPacks } from '../../../src/packs/runtime/loader.ts';
 import { PLUGIN_EVENT_TYPES } from '@abuddy/sdk/events';
 import { PACK_SNAPSHOT_FORMAT } from '@abuddy/sdk/build';
+import { _appDirOf } from '@abuddy/sdk/env';
 
 /** The events a pack's plugin receives: what its pack declares, and what the app sends every plugin */
 const receives = (...types: string[]) => new Set([...types, ...PLUGIN_EVENT_TYPES]);
@@ -23,7 +24,7 @@ let origEnv: { env?: string; userDataDir?: string };
 
 /** An installed pack with one plugin feature, declaring what that plugin receives — what `abuddy build` emits */
 function installDeclaringPack(received: string[]) {
-  const packDir = path.join(tmpDir, 'packs', PACK_ID);
+  const packDir = path.join(_appDirOf(tmpDir), 'packs', PACK_ID);
   fs.mkdirSync(path.join(packDir, 'runtime'), { recursive: true });
   fs.writeFileSync(path.join(packDir, 'abuddy.json'), JSON.stringify({
     id: PACK_ID, name: 'Declaring Pack', version: '1.0.0',
@@ -65,7 +66,7 @@ describe('where the registry says a pack came from', () => {
 
     const origin = registry.packOrigin(PACK_ID);
     expect(origin).toMatchObject({ id: PACK_ID, name: 'Declaring Pack', version: '1.0.0', builtIn: false });
-    expect(origin?.dir).toBe(path.join(tmpDir, 'packs', PACK_ID));
+    expect(origin?.dir).toBe(path.join(_appDirOf(tmpDir), 'packs', PACK_ID));
     expect(origin?.manifest?.id).toBe(PACK_ID);
     expect(registry.externalPacks().map((o) => o.id)).toContain(PACK_ID);
     expect(registry.builtInPacks().map((o) => o.id)).not.toContain(PACK_ID);

@@ -7,17 +7,18 @@ import { spawnSync } from 'node:child_process';
 import { afterEach, describe, expect, it } from 'vitest';
 import { appLockFile, findRunningApp, publishRunningApp } from '../../src/database/running.ts';
 import { removeTempDirs, tempDir } from './fixtures.ts';
+import { _appDirOf } from '@abuddy/sdk/env';
 
 afterEach(removeTempDirs);
 
 function context() {
   const userDataDir = tempDir('running-app-');
-  return { userDataDir, apiPortFile: path.join(userDataDir, 'api-port') };
+  return { userDataDir, apiPortFile: path.join(_appDirOf(userDataDir), 'api-port') };
 }
 
 /** What a running API publishes: its port and its process */
 function publishApi(dir: string, { port = 3001, pid = process.pid } = {}): void {
-  fs.writeFileSync(path.join(dir, 'api-port'), JSON.stringify({ port, pid }));
+  fs.writeFileSync(path.join(_appDirOf(dir), 'api-port'), JSON.stringify({ port, pid }));
 }
 
 /** A pid no process has any more */

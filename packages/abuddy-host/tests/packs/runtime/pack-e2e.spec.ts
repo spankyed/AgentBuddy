@@ -16,14 +16,16 @@ import { loadExternalPacks } from '../../../src/packs/runtime/loader.ts';
 import { getPacksWithClientLoadedFrontends } from '../../../src/packs/layout.ts';
 import type { LoadedPack } from '../../../src/packs/runtime/loader.ts';
 import { PACK_SNAPSHOT_FORMAT } from '@abuddy/sdk/build';
+import { _appDirOf } from '@abuddy/sdk/env';
 
 /** A loaded pack's system, by feature id */
 const systemOf = (pack: LoadedPack, featureId: string) => pack.registration.features?.[featureId]?.system;
 
 
 const USER_DATA_DIR = fs.mkdtempSync(path.join(os.tmpdir(), 'pack-e2e-'));
+fs.mkdirSync(_appDirOf(USER_DATA_DIR), { recursive: true });
 const TEST_PACK_ID = 'e2e-test-pack';
-const TEST_PACK_DIR = path.join(USER_DATA_DIR, 'packs', TEST_PACK_ID);
+const TEST_PACK_DIR = path.join(_appDirOf(USER_DATA_DIR), 'packs', TEST_PACK_ID);
 
 function installTestPack() {
   fs.mkdirSync(path.join(TEST_PACK_DIR, 'runtime'), { recursive: true });

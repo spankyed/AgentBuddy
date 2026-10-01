@@ -3,7 +3,7 @@
 import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
-import type { AppContext } from '@abuddy/sdk/env';
+import { _appDirOf, type AppContext } from '@abuddy/sdk/env';
 import { lockIsHeld, readApiEndpoint, sameWriter, type WriterRecord } from '../process-liveness.ts';
 
 /** What the app process publishes in the data dir for as long as it runs */
@@ -25,7 +25,7 @@ export interface RunningApp {
 }
 
 /** Where the app publishes that it is using a data dir */
-export const appLockFile = (userDataDir: string): string => path.join(userDataDir, APP_LOCK);
+export const appLockFile = (userDataDir: string): string => path.join(_appDirOf(userDataDir), APP_LOCK);
 
 /**
  * Publishes that this process is using `userDataDir`, and returns the way to take it back.
@@ -42,7 +42,7 @@ export const appLockFile = (userDataDir: string): string => path.join(userDataDi
 export function publishRunningApp(userDataDir: string): () => void {
   const file = appLockFile(userDataDir);
   const mine: AppLock = { pid: process.pid, machine: os.hostname(), since: new Date().toISOString() };
-  fs.mkdirSync(userDataDir, { recursive: true });
+  fs.mkdirSync(path.dirname(file), { recursive: true });
   fs.writeFileSync(file, JSON.stringify(mine));
   return () => {
     // Only this run's: an app that crashed and was restarted has already replaced it, and a pid alone can't

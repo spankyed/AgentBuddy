@@ -25,6 +25,9 @@ export type AppEnv = (typeof APP_ENVS)[number];
 /** Channels a packaged build can be stamped with (build/build.sh → __ABUDDY_CHANNEL__). */
 export type ReleaseChannel = Extract<AppEnv, 'production' | 'beta'>;
 
+/** The app's own directory inside Electron's `userData`. See `AppContext.appDir`. */
+const APP_DIR = 'abuddy';
+
 const APP_NAMES: Record<AppEnv, string> = {
   production: 'abuddy',
   beta: 'abuddy-beta',
@@ -36,7 +39,22 @@ export interface AppContext {
   env: AppEnv;
   /** Electron app name; also the default data dir name. */
   appName: string;
+  /**
+   * Electron's `userData` directory. Chromium owns its root — `Cache/`, `Preferences`, `Partitions/` and a
+   * dozen more names that change with Electron — so nothing of the app's is written directly in it.
+   */
   userDataDir: string;
+  /**
+   * Everything the app owns, inside `userDataDir`. One directory per stack: the database, the run history,
+   * installed packs, their build output, secrets, logs and locks, and each pack's own data under
+   * `pack-data/<packId>/`.
+   *
+   * It exists because the data dir stopped being just a database. Sharing a flat namespace with Chromium
+   * meant a pack asking for `getDataDirPath('Cache')` could shadow Chromium's, and an app that writes
+   * sixteen names into someone else's directory cannot say which files are its own — which is what a
+   * backup, an instance and `abuddy db` all need to know.
+   */
+  appDir: string;
   packsDir: string;
   /** Build-time artifacts (types/, build/) of the app's built-in packs, for pack authors' dependency resolution. */
   hostPacksDir: string;
@@ -78,6 +96,14 @@ export function appDataDirFor(env: AppEnv): string {
   return platformDataDir(APP_NAMES[env]);
 }
 
+/**
+ * The one directory the app owns inside a data dir. Taken as a function as well as an `AppContext` member
+ * because host code is often handed a data dir rather than a context — a lock file, a dev-server marker.
+ *
+ * @internal Host-only: a pack reaches its own directory through `getDataDirPath` (`#generated/paths`).
+ */
+export const _appDirOf = (userDataDir: string): string => path.join(userDataDir, APP_DIR);
+
 export function resolveAppContext(input: { env?: AppEnv; userDataDir?: string } = {}): AppContext {
   const env = input.env ?? parseAppEnv(process.env.ABUDDY_ENV);
   if (!env) {
@@ -88,15 +114,17 @@ export function resolveAppContext(input: { env?: AppEnv; userDataDir?: string } 
   }
   const appName = APP_NAMES[env];
   const userDataDir = input.userDataDir ?? (process.env.ABUDDY_USER_DATA_DIR || platformDataDir(appName));
+  const appDir = _appDirOf(userDataDir);
   return {
     env,
     appName,
     userDataDir,
-    packsDir: path.join(userDataDir, 'packs'),
-    hostPacksDir: path.join(userDataDir, 'host-packs'),
-    installedPacksFile: path.join(userDataDir, 'installed-packs.json'),
-    apiPortFile: path.join(userDataDir, 'api-port'),
-    apiTokenFile: path.join(userDataDir, 'api-token'),
+    appDir,
+    packsDir: path.join(appDir, 'packs'),
+    hostPacksDir: path.join(appDir, 'host-packs'),
+    installedPacksFile: path.join(appDir, 'installed-packs.json'),
+    apiPortFile: path.join(appDir, 'api-port'),
+    apiTokenFile: path.join(appDir, 'api-token'),
     urlScheme: env === 'beta' ? 'abuddy-beta' : 'abuddy',
   };
 }

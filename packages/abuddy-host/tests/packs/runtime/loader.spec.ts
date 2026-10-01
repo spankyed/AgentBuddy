@@ -10,6 +10,7 @@ import { appState } from '../../../src/app-state/index.ts';
 import { getLoadedPackEntries } from '../../../src/packs/layout.ts';
 import { resetTestData, testRootEvents as rootEvents } from '@abuddy/sdk/testing';
 import { PACK_SNAPSHOT_FORMAT, seedFile } from '@abuddy/sdk/build';
+import { _appDirOf } from '@abuddy/sdk/env';
 
 
 /** The features of a loaded pack that have a system */
@@ -63,13 +64,13 @@ describe('pack-loader', () => {
     });
 
     it('returns empty array when packs dir is empty', () => {
-      fs.mkdirSync(path.join(tmpDir, 'packs'), { recursive: true });
+      fs.mkdirSync(path.join(_appDirOf(tmpDir), 'packs'), { recursive: true });
       const result = loadExternalPacks();
       expect(result).toEqual([]);
     });
 
     it('discovers and loads a valid pack, with the system events its manifest adds', () => {
-      const packsDir = path.join(tmpDir, 'packs');
+      const packsDir = path.join(_appDirOf(tmpDir), 'packs');
       makePack(packsDir, 'test-pack', {
         id: 'test-pack',
         name: 'Test Pack',
@@ -89,14 +90,14 @@ describe('pack-loader', () => {
 
     // The schema refuses an early system outside a built-in pack; the loader doesn't start one either way
     it("drops an external pack's early system", () => {
-      makePack(path.join(tmpDir, 'packs'), 'early-pack', { id: 'early-pack', name: 'Early', version: '1.0.0' },
+      makePack(path.join(_appDirOf(tmpDir), 'packs'), 'early-pack', { id: 'early-pack', name: 'Early', version: '1.0.0' },
         "{ logs: { system: { machine: { id: 'logs' }, receives: [], early: true }, plugin: { receives: [] } } }");
       const [pack] = loadExternalPacks();
       expect(pack.registration.features).toEqual({ logs: { plugin: { receives: [] } } });
     });
 
     it("skips a pack directory that isn't an installed pack, naming how to install it", () => {
-      const packDir = makePack(path.join(tmpDir, 'packs'), 'unbundled', { id: 'unbundled', name: 'Unbundled', version: '1.0.0' });
+      const packDir = makePack(path.join(_appDirOf(tmpDir), 'packs'), 'unbundled', { id: 'unbundled', name: 'Unbundled', version: '1.0.0' });
       fs.rmSync(path.join(packDir, 'integrity.json'));
       const warnings: string[] = [];
       const unsubscribe = rootEvents.onLog(event => {
@@ -111,19 +112,19 @@ describe('pack-loader', () => {
     });
 
     it('skips a pack without runtime/index.cjs', () => {
-      const packDir = makePack(path.join(tmpDir, 'packs'), 'no-runtime', { id: 'no-runtime', name: 'No Runtime', version: '1.0.0' });
+      const packDir = makePack(path.join(_appDirOf(tmpDir), 'packs'), 'no-runtime', { id: 'no-runtime', name: 'No Runtime', version: '1.0.0' });
       fs.rmSync(path.join(packDir, 'runtime', 'index.cjs'));
       expect(loadExternalPacks()).toEqual([]);
     });
 
     it('skips packs without abuddy.json', () => {
-      fs.mkdirSync(path.join(tmpDir, 'packs', 'no-manifest'), { recursive: true });
+      fs.mkdirSync(path.join(_appDirOf(tmpDir), 'packs', 'no-manifest'), { recursive: true });
       const result = loadExternalPacks();
       expect(result).toEqual([]);
     });
 
     it('skips packs with invalid manifest (missing id)', () => {
-      makePack(path.join(tmpDir, 'packs'), 'bad-pack', {
+      makePack(path.join(_appDirOf(tmpDir), 'packs'), 'bad-pack', {
         name: 'Bad',
         version: '1.0.0',
       });
@@ -132,7 +133,7 @@ describe('pack-loader', () => {
     });
 
     it('skips packs that require a newer host version', () => {
-      makePack(path.join(tmpDir, 'packs'), 'future-pack', {
+      makePack(path.join(_appDirOf(tmpDir), 'packs'), 'future-pack', {
         id: 'future-pack',
         name: 'Future',
         version: '1.0.0',
@@ -143,7 +144,7 @@ describe('pack-loader', () => {
     });
 
     it('skips packs whose hostVersion range excludes this host, not only >= ranges', () => {
-      makePack(path.join(tmpDir, 'packs'), 'old-range-pack', {
+      makePack(path.join(_appDirOf(tmpDir), 'packs'), 'old-range-pack', {
         id: 'old-range-pack',
         name: 'Old Range',
         version: '1.0.0',
@@ -153,7 +154,7 @@ describe('pack-loader', () => {
     });
 
     it('loads packs whose hostVersion is satisfied', () => {
-      makePack(path.join(tmpDir, 'packs'), 'compat-pack', {
+      makePack(path.join(_appDirOf(tmpDir), 'packs'), 'compat-pack', {
         id: 'compat-pack',
         name: 'Compatible',
         version: '1.0.0',
@@ -164,7 +165,7 @@ describe('pack-loader', () => {
     });
 
     it("loads a runtime requiring subpaths of the packages the host provides (the AI SDK's zod/v4)", () => {
-      const packDir = makePack(path.join(tmpDir, 'packs'), 'zod-pack', { id: 'zod-pack', name: 'Zod', version: '1.0.0' });
+      const packDir = makePack(path.join(_appDirOf(tmpDir), 'packs'), 'zod-pack', { id: 'zod-pack', name: 'Zod', version: '1.0.0' });
       // An installed pack has no node_modules: the host's copy is the only one there is, subpaths included, and
       // no list of them exists — the bridge resolves whatever the pack asks for
       fs.writeFileSync(path.join(packDir, 'runtime', 'index.cjs'), [
@@ -186,7 +187,7 @@ describe('pack-loader', () => {
     });
 
     it('handles packs with no features array', () => {
-      makePack(path.join(tmpDir, 'packs'), 'data-pack', {
+      makePack(path.join(_appDirOf(tmpDir), 'packs'), 'data-pack', {
         id: 'data-pack',
         name: 'Data Only',
         version: '1.0.0',
@@ -249,7 +250,7 @@ describe('loadAppPacks', () => {
     const builtInDir = path.join(tmpDir, 'packages');
     fs.mkdirSync(path.join(builtInDir, 'role-builtin'), { recursive: true });
     fs.writeFileSync(path.join(builtInDir, 'role-builtin', 'abuddy.json'), JSON.stringify({ id: 'role-builtin', name: 'Built-in', version: '1.0.0', builtIn: true }));
-    makePack(path.join(tmpDir, 'packs'), 'role-taker', { id: 'role-taker', name: 'Taker', version: '1.0.0' }, "{ taker: { designation: 'loader-spec-role' } }");
+    makePack(path.join(_appDirOf(tmpDir), 'packs'), 'role-taker', { id: 'role-taker', name: 'Taker', version: '1.0.0' }, "{ taker: { designation: 'loader-spec-role' } }");
 
     const { builtIn, external } = await loadAppPacks(registry, {
       builtInDir,
@@ -268,7 +269,7 @@ describe('loadAppPacks', () => {
 
 describe('pack-loader: bundled runtime (runtime/index.cjs)', () => {
   function makeBundledPack(id: string, registrationSource: string, manifestExtra: Record<string, unknown> = {}) {
-    const packDir = path.join(tmpDir, 'packs', id);
+    const packDir = path.join(_appDirOf(tmpDir), 'packs', id);
     fs.mkdirSync(path.join(packDir, 'runtime', 'seeds'), { recursive: true });
     fs.mkdirSync(path.join(packDir, 'types'), { recursive: true });
     fs.writeFileSync(path.join(packDir, 'abuddy.json'), JSON.stringify({ id, name: id, version: '1.0.0', ...manifestExtra }));
@@ -432,18 +433,18 @@ describe('pack-loader: bundled runtime (runtime/index.cjs)', () => {
 
 describe('importPackSeeds: failures', () => {
   function installedPack(id: string) {
-    const dir = path.join(tmpDir, 'packs', id);
+    const dir = path.join(_appDirOf(tmpDir), 'packs', id);
     fs.mkdirSync(path.join(dir, 'runtime', 'seeds'), { recursive: true });
     fs.writeFileSync(path.join(dir, 'runtime', 'index.cjs'), '');
     fs.writeFileSync(path.join(dir, 'runtime', 'seeds', 'flows.seed.json'), '{}');
     return { manifest: { id }, dir } satisfies PackSeedTarget;
   }
   function registryEntry(id: string) {
-    const registry = JSON.parse(fs.readFileSync(path.join(tmpDir, 'installed-packs.json'), 'utf-8'));
+    const registry = JSON.parse(fs.readFileSync(path.join(_appDirOf(tmpDir), 'installed-packs.json'), 'utf-8'));
     return registry.packs.find((p: any) => p.id === id);
   }
   function writeRegistry(ids: string[]) {
-    fs.writeFileSync(path.join(tmpDir, 'installed-packs.json'), JSON.stringify({
+    fs.writeFileSync(path.join(_appDirOf(tmpDir), 'installed-packs.json'), JSON.stringify({
       packs: ids.map(id => ({ id, name: id, version: '1.0.0', dir: '', enabled: true, installedAt: '' })),
     }));
   }
@@ -558,7 +559,7 @@ describe('importPackSeeds: failures', () => {
   it("clears an earlier version's lastError when the pack no longer has seed data", () => {
     const pack = installedPack('no-more-seeds');
     fs.rmSync(path.join(pack.dir, 'runtime', 'seeds'), { recursive: true });
-    fs.writeFileSync(path.join(tmpDir, 'installed-packs.json'), JSON.stringify({
+    fs.writeFileSync(path.join(_appDirOf(tmpDir), 'installed-packs.json'), JSON.stringify({
       packs: [{ id: 'no-more-seeds', name: 'n', version: '1.0.1', dir: '', enabled: true, installedAt: '', lastError: 'v1.0.0 failure' }],
     }));
 
@@ -600,7 +601,7 @@ describe('importPackSeeds: failures', () => {
 
   it('clears lastError after a successful seed', () => {
     const pack = installedPack('recovered');
-    fs.writeFileSync(path.join(tmpDir, 'installed-packs.json'), JSON.stringify({
+    fs.writeFileSync(path.join(_appDirOf(tmpDir), 'installed-packs.json'), JSON.stringify({
       packs: [{ id: 'recovered', name: 'r', version: '1.0.0', dir: '', enabled: true, installedAt: '', lastError: 'old failure' }],
     }));
     const failures = importPackSeeds([pack], () => ({ flows: { created: 1, updated: 0, skipped: 0 } }));
@@ -634,7 +635,7 @@ describe('importPackSeeds', () => {
   }
 
   it('calls applyFn for packs with compiled seeds in runtime/seeds', () => {
-    const packsDir = path.join(tmpDir, 'packs');
+    const packsDir = path.join(_appDirOf(tmpDir), 'packs');
     const pack = makePackWithSeeds(packsDir, 'data-pack', {
       [seedFile('actions')]: [{ label: 'test-action', actionFn: 'return true' }],
     });
@@ -651,7 +652,7 @@ describe('importPackSeeds', () => {
   });
 
   it('skips packs without runtime/seeds', () => {
-    const packDir = path.join(tmpDir, 'packs', 'no-dist');
+    const packDir = path.join(_appDirOf(tmpDir), 'packs', 'no-dist');
     fs.mkdirSync(packDir, { recursive: true });
     fs.writeFileSync(path.join(packDir, 'abuddy.json'), JSON.stringify({
       id: 'no-dist', name: 'No Dist', version: '1.0.0',
@@ -670,7 +671,7 @@ describe('importPackSeeds', () => {
   });
 
   it('skips packs whose seed hash has not changed', () => {
-    const packsDir = path.join(tmpDir, 'packs');
+    const packsDir = path.join(_appDirOf(tmpDir), 'packs');
     const pack = makePackWithSeeds(packsDir, 'cached-pack', {
       [seedFile('actions')]: [{ label: 'cached' }],
     });
@@ -686,7 +687,7 @@ describe('importPackSeeds', () => {
   });
 
   it('re-seeds when pack content changes', () => {
-    const packsDir = path.join(tmpDir, 'packs');
+    const packsDir = path.join(_appDirOf(tmpDir), 'packs');
     const pack = makePackWithSeeds(packsDir, 'updated-pack', {
       [seedFile('actions')]: [{ label: 'v1' }],
     });
@@ -704,7 +705,7 @@ describe('importPackSeeds', () => {
   });
 
   it('continues seeding other packs when one fails', () => {
-    const packsDir = path.join(tmpDir, 'packs');
+    const packsDir = path.join(_appDirOf(tmpDir), 'packs');
     const pack1 = makePackWithSeeds(packsDir, 'fail-pack', {
       [seedFile('actions')]: [{ label: 'will-fail' }],
     });
@@ -776,7 +777,7 @@ describe('computePackSeedHash', () => {
     fs.writeFileSync(path.join(source, 'dist', 'types', 'snapshot.json'), JSON.stringify({ format: PACK_SNAPSHOT_FORMAT }));
     fs.writeFileSync(path.join(source, 'dist', 'runtime', 'seeds', seedFile('actions')), '[{"label":"same"}]');
 
-    const packsDir = path.join(tmpDir, 'packs');
+    const packsDir = path.join(_appDirOf(tmpDir), 'packs');
     const { dir } = await installPackFromLocal(source, packsDir);
     const seeds = path.join(dir, 'runtime', 'seeds');
     const before = computePackSeedHash(seeds);

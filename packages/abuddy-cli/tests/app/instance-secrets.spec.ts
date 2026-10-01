@@ -33,7 +33,7 @@ vi.mock('@abuddy/host/secrets', async (importOriginal) => ({
 }));
 
 const instance = (dir: string): OpenedInstance => ({ name: 'probe', dir, ephemeral: false, created: true });
-const srcSecrets = () => _appDataPaths(srcDir, { packaged: false }).secretsFile;
+const srcSecrets = () => _appDataPaths(srcDir).secretsFile;
 
 function writeSource(file: Record<string, unknown>, keyFileEntries?: Record<string, string>) {
   const target = srcSecrets();
@@ -59,10 +59,10 @@ describe('copying keys into a new instance', () => {
     const dir = path.join(tmp, 'inst');
     fs.mkdirSync(dir);
 
-    const result = copySecretsInto(instance(dir), 'source', 'development');
+    const result = copySecretsInto(instance(dir), 'development');
 
     expect(result.count).toBe(2);
-    const copied = _appDataPaths(dir, { packaged: false }).secretsFile;
+    const copied = _appDataPaths(dir).secretsFile;
     expect(fs.existsSync(copied), 'the keys are in the instance').toBe(true);
     const keyFile = path.join(path.dirname(copied), 'secrets.key');
     expect(JSON.parse(fs.readFileSync(keyFile, 'utf-8')), 'and so is the data key that decrypts them')
@@ -81,9 +81,9 @@ describe('copying keys into a new instance', () => {
     const dir = path.join(tmp, 'inst');
     fs.mkdirSync(dir);
 
-    copySecretsInto(instance(dir), 'source', 'development');
+    copySecretsInto(instance(dir), 'development');
 
-    const copied = JSON.parse(fs.readFileSync(_appDataPaths(dir, { packaged: false }).secretsFile, 'utf-8'));
+    const copied = JSON.parse(fs.readFileSync(_appDataPaths(dir).secretsFile, 'utf-8'));
     expect(copied.protection).toBe('unprotected');
     expect(copied.secrets, 'the encrypted values carry over untouched').toHaveLength(1);
   });
@@ -95,28 +95,13 @@ describe('copying keys into a new instance', () => {
     const dir = path.join(tmp, 'inst');
     fs.mkdirSync(dir);
 
-    copySecretsInto(instance(dir), 'source', 'development');
+    copySecretsInto(instance(dir), 'development');
 
     expect(osEntries, 'an unprotected source needs no credential store').toEqual([]);
-    const keyFile = path.join(path.dirname(_appDataPaths(dir, { packaged: false }).secretsFile), 'secrets.key');
+    const keyFile = path.join(path.dirname(_appDataPaths(dir).secretsFile), 'secrets.key');
     expect(JSON.parse(fs.readFileSync(keyFile, 'utf-8'))).toEqual({ 'secrets:k_2': 'file-held-key' });
   });
 
-  // A packaged instance stores at the dir's root, a source run under .data/. Copying into the wrong one
-  // leaves the app looking at an empty store while the keys sit beside it.
-  it('writes the layout the app kind will read', async () => {
-    const { copySecretsInto } = await import('../../src/app/instance-secrets.ts');
-    const packagedSource = _appDataPaths(srcDir, { packaged: true }).secretsFile;
-    fs.mkdirSync(path.dirname(packagedSource), { recursive: true });
-    fs.writeFileSync(packagedSource, JSON.stringify({ format: 1, protection: 'os-keystore', keyId: 'k_3', secrets: [{ p: 1 }] }));
-    const dir = path.join(tmp, 'inst');
-    fs.mkdirSync(dir);
-
-    copySecretsInto(instance(dir), 'packaged', 'beta');
-
-    expect(fs.existsSync(_appDataPaths(dir, { packaged: true }).secretsFile)).toBe(true);
-    expect(fs.existsSync(_appDataPaths(dir, { packaged: false }).secretsFile), 'not the source layout').toBe(false);
-  });
 });
 
 describe('when there is nothing useful to copy', () => {
@@ -126,7 +111,7 @@ describe('when there is nothing useful to copy', () => {
     const { copySecretsInto } = await import('../../src/app/instance-secrets.ts');
     const dir = path.join(tmp, 'inst');
     fs.mkdirSync(dir);
-    expect(() => copySecretsInto(instance(dir), 'source', 'development')).toThrow(/no keys to copy/);
+    expect(() => copySecretsInto(instance(dir), 'development')).toThrow(/no keys to copy/);
   });
 
   it('refuses an empty store rather than reporting a copy of nothing', async () => {
@@ -134,7 +119,7 @@ describe('when there is nothing useful to copy', () => {
     writeSource({ format: 1, protection: 'os-keystore', keyId: 'k_1', secrets: [] });
     const dir = path.join(tmp, 'inst');
     fs.mkdirSync(dir);
-    expect(() => copySecretsInto(instance(dir), 'source', 'development')).toThrow(/holds none/);
+    expect(() => copySecretsInto(instance(dir), 'development')).toThrow(/holds none/);
   });
 
   it('refuses when the data key cannot be read, since the values stay ciphertext without it', async () => {
@@ -142,7 +127,7 @@ describe('when there is nothing useful to copy', () => {
     const { copySecretsInto } = await import('../../src/app/instance-secrets.ts');
     const dir = path.join(tmp, 'inst');
     fs.mkdirSync(dir);
-    expect(() => copySecretsInto(instance(dir), 'source', 'development')).toThrow(/could not read the data key/);
-    expect(fs.existsSync(_appDataPaths(dir, { packaged: false }).secretsFile), 'and writes no half-copy').toBe(false);
+    expect(() => copySecretsInto(instance(dir), 'development')).toThrow(/could not read the data key/);
+    expect(fs.existsSync(_appDataPaths(dir).secretsFile), 'and writes no half-copy').toBe(false);
   });
 });

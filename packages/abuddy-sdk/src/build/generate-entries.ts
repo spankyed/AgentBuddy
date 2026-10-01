@@ -844,6 +844,22 @@ export const ref = (name: FeatureName): FeatureRef => resolveName(name, packId);
 `;
   }
 
+  // A pack's own data directory, with its id bound — the same shape as `ref` above and as the sends in
+  // events.ts, so a pack never writes its own id and never reaches another pack's data.
+  function generatePaths(): string {
+    return `${HEADER}
+import { _packDataDir } from '@abuddy/sdk/utils';
+
+/**
+ * A directory this pack keeps data in, under its own namespace (\`pack-data/${manifest.id}/<name>\`).
+ *
+ * \`name\` is one directory: letters, digits, dot, dash and underscore, up to 64 characters. A separator or a
+ * traversal throws, because the name used to be joined straight onto the directory Chromium also writes to.
+ */
+export const getDataDirPath = (name: string): string => _packDataDir('${manifest.id}', name);
+`;
+  }
+
   // Frontend helpers that take the names this pack's code writes: its own plugins by feature id, those its
   // dependencies declare as `<packId>/<featureId>`. Kept apart from events.ts, which backend systems import,
   // because these reach the frontend SDK.
@@ -1604,6 +1620,7 @@ ${entries.join('\n')}
     ['src/__generated__/pack-entry-fe.ts', generateFrontendEntry()],
     ['src/__generated__/ears.ts', generateEars()],
     ['src/__generated__/ref.ts', generateRef()],
+    ['src/__generated__/paths.ts', generatePaths()],
     ['src/__generated__/fe.ts', generateFe()],
     ['src/__generated__/system-specs.ts', generateSystemSpecs()],
     ['src/__generated__/events.ts', generateEvents()],

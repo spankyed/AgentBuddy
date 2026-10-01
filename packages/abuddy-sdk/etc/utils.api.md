@@ -20,9 +20,7 @@ export interface _AppDataPaths {
 }
 
 // @internal
-export function _appDataPaths(userDataDir: string, input: {
-    packaged: boolean;
-}): _AppDataPaths;
+export function _appDataPaths(userDataDir: string): _AppDataPaths;
 
 // @public
 export type ArrayChanges = Record<string, DiffResult<DiffItem>>;
@@ -122,9 +120,6 @@ export function extractValueByPath(source: unknown, path: string): unknown;
 // @public (undocumented)
 export function filterByInclude<T>(items: T[], getKey: (item: T) => string, inc: SeedIncludeSet | undefined): T[];
 
-// @public
-export function getDataDirPath(name: string): string;
-
 // @internal
 export const _getLmdbPath: () => string;
 
@@ -216,6 +211,9 @@ export interface MediaRef {
     // (undocumented)
     originalUrl: string;
 }
+
+// @internal
+export function _packDataDir(packId: string, name: string): string;
 
 // @public (undocumented)
 export function randomId(opt?: RandomIdOptions): string;

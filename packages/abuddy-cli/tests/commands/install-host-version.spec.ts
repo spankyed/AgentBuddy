@@ -6,6 +6,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { recordHostInfo } from '@abuddy/host/packs';
 import { install } from '../../src/commands/install';
 import { PACK_SNAPSHOT_FORMAT } from '@abuddy/sdk/build';
+import { _appDirOf } from '@abuddy/sdk/env';
 
 let tmp: string;
 beforeEach(() => {
@@ -42,7 +43,7 @@ describe('abuddy install', () => {
   it("installs when the data dir's AgentBuddy satisfies it", async () => {
     recordHostInfo(path.join(tmp, 'data'), { version: '0.3.14', packFormat: PACK_SNAPSHOT_FORMAT });
     await install([builtPack('>=0.3.0'), '--dev']);
-    expect(fs.existsSync(path.join(tmp, 'data', 'packs', 'demo-pack', 'abuddy.json'))).toBe(true);
+    expect(fs.existsSync(path.join(_appDirOf(path.join(tmp, 'data')), 'packs', 'demo-pack', 'abuddy.json'))).toBe(true);
   });
 
   // The app records the pack format it reads, which need not be the one this CLI builds
@@ -51,7 +52,7 @@ describe('abuddy install', () => {
     await expect(install([builtPack('>=0.3.0'), '--dev'])).rejects.toThrow(
       `Pack "demo-pack" can't be installed: its snapshot is format ${PACK_SNAPSHOT_FORMAT}, written by an older abuddy CLI; this AgentBuddy reads format ${PACK_SNAPSHOT_FORMAT + 1}`,
     );
-    expect(fs.existsSync(path.join(tmp, 'data', 'packs', 'demo-pack'))).toBe(false);
+    expect(fs.existsSync(path.join(_appDirOf(path.join(tmp, 'data')), 'packs', 'demo-pack'))).toBe(false);
   });
 
   it("notes that hostVersion wasn't checked before the app has used the data dir", async () => {
@@ -72,6 +73,6 @@ describe('the abuddy bin', () => {
     });
     expect(result.status, result.stderr).toBe(0);
     expect(result.stdout).toContain('[pack-installer] Installed "Demo Pack" v1.0.0');
-    expect(fs.existsSync(path.join(tmp, 'data', 'packs', 'demo-pack', 'abuddy.json'))).toBe(true);
+    expect(fs.existsSync(path.join(_appDirOf(path.join(tmp, 'data')), 'packs', 'demo-pack', 'abuddy.json'))).toBe(true);
   });
 });

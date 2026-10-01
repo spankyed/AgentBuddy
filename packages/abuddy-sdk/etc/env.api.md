@@ -11,6 +11,7 @@ export const APP_ENVS: readonly ["production", "beta", "development", "test"];
 export interface AppContext {
     apiPortFile: string;
     apiTokenFile: string;
+    appDir: string;
     appName: string;
     // (undocumented)
     env: AppEnv;
@@ -21,12 +22,14 @@ export interface AppContext {
     packsDir: string;
     // (undocumented)
     urlScheme: string;
-    // (undocumented)
     userDataDir: string;
 }
 
 // @public
 export function appDataDirFor(env: AppEnv): string;
+
+// @internal
+export const _appDirOf: (userDataDir: string) => string;
 
 // @public (undocumented)
 export type AppEnv = (typeof APP_ENVS)[number];

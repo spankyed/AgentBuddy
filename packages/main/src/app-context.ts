@@ -43,7 +43,7 @@ function initialise(): MainAppContext {
   // The platform's own answer for a normal run — on macOS that is ~/Library/Logs/<app>, which is where
   // Console.app looks. A run given its own data dir keeps its logs there instead, so that one Playwright
   // worker's logs are not another's.
-  const logsDir = isolated ? path.join(resolved.userDataDir, 'logs') : app.getPath('logs');
+  const logsDir = isolated ? path.join(resolved.appDir, 'logs') : app.getPath('logs');
   app.setPath('logs', logsDir);
 
   process.env.ABUDDY_ENV = resolved.env;

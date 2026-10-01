@@ -9,6 +9,7 @@ import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { _appDirOf } from '@abuddy/sdk/env';
 
 const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'api-boot-recovery-'));
 process.env.ABUDDY_ENV = 'test';
@@ -20,13 +21,14 @@ function exitedPid(): number {
   return spawnSync(process.execPath, ['-e', '']).pid!;
 }
 
-const packsDir = path.join(dataDir, 'packs');
+const packsDir = path.join(_appDirOf(dataDir), 'packs');
 const stagingDir = `.demo-pack.previous-${exitedPid()}-a1b2c3d4`;
 
 beforeAll(async () => {
   // A lock an `abuddy db` command left behind when it was killed outright — the one way out that releases
   // nothing. Its pid is gone, so nothing is changing the database.
-  fs.writeFileSync(path.join(dataDir, 'db-write.lock'), JSON.stringify({
+  fs.mkdirSync(_appDirOf(dataDir), { recursive: true });
+  fs.writeFileSync(path.join(_appDirOf(dataDir), 'db-write.lock'), JSON.stringify({
     pid: exitedPid(), machine: os.hostname(), what: 'abuddy db import', since: new Date().toISOString(),
   }));
 
@@ -50,7 +52,7 @@ afterAll(() => {
 describe('the API boot, on what a killed process left behind', () => {
   it('starts on a lock whose holder is gone, instead of refusing until someone deletes the file', () => {
     // It got past assertNoDatabaseWriter: the store that gate stands in front of is open
-    expect(fs.existsSync(path.join(dataDir, '.data', 'ears-db'))).toBe(true);
+    expect(fs.existsSync(path.join(_appDirOf(dataDir), 'ears-db'))).toBe(true);
   });
 
   it("restores an interrupted install's only copy, with no record to say the pack is still wanted", () => {

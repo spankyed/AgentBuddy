@@ -1,6 +1,6 @@
 import * as path from 'path'
 import * as fs from 'fs'
-import { resolveAppContext } from '../env/index.ts'
+import { _appDirOf, resolveAppContext } from '../env/index.ts'
 
 /** @internal Host-only: the app's stores in a data dir */
 export interface _AppDataPaths {
@@ -8,7 +8,7 @@ export interface _AppDataPaths {
   lmdb: string
   /** The database's volatile partition (run history) */
   volatileLmdb: string
-  /** The user's API keys */
+  /** The user's secrets (values encrypted; the data key sits beside it) */
   secretsFile: string
   media: string
 }
@@ -21,11 +21,16 @@ const DATA_DIRS: _AppDataPaths = {
 }
 
 /**
- * @internal Host-only: where `userDataDir` keeps the app's stores. A packaged app keeps them at its root, a source
- * run (NODE_ENV=development) under `.data/`.
+ * @internal Host-only: where `userDataDir` keeps the app's stores — inside `appDir`, the one directory the
+ * app owns, whoever is running and however it was built.
+ *
+ * It used to fork on whether NODE_ENV named a production build: a packaged app at the data dir's root, a
+ * source run under `.data/`. That put the choice in a variable the ecosystem uses to mean "optimize this
+ * build", wrote the same rule down in six places, and let one directory end up holding two databases that
+ * no tool could then open. Nothing decides a layout now, so there is nothing to disagree about.
  */
-export function _appDataPaths(userDataDir: string, { packaged }: { packaged: boolean }): _AppDataPaths {
-  const base = packaged ? userDataDir : path.join(userDataDir, '.data')
+export function _appDataPaths(userDataDir: string): _AppDataPaths {
+  const base = _appDirOf(userDataDir)
   const entries = Object.entries(DATA_DIRS).map(([key, name]) => [key, path.join(base, name)])
   return Object.fromEntries(entries) as _AppDataPaths
 }
@@ -37,7 +42,7 @@ export const getUserDataPath = (): string => resolveAppContext().userDataDir
 export const _getLmdbPath = (): string => _resolvePath('lmdb')
 /** @internal Host-only: the app's database location. */
 export const _getVolatileLmdbPath = (): string => _resolvePath('volatileLmdb')
-/** @internal Host-only: the file holding the user's API keys (values encrypted). */
+/** @internal Host-only: the file holding the user's secrets (values encrypted). */
 export const _getSecretsFilePath = (): string => _resolvePath('secretsFile')
 /** @internal Host-only: the app's media location. */
 export const _getMediaPath = (): string => _resolvePath('media')
@@ -50,18 +55,34 @@ export const ensureDirectoryExists = (dirPath: string): void => {
 
 /**
  * @internal Host-only: one of the app's own stores. Every key is the app's — the database, the run
- * history, the user's keys, the media store — so a pack keeps its data under `getDataDirPath`.
+ * history, the user's secrets, the media store — so a pack keeps its data under `getDataDirPath`
+ * (`#generated/paths`), which lands under `pack-data/<packId>/`.
  */
 export function _resolvePath(key: keyof typeof DATA_DIRS): string {
-  return _appDataPaths(getUserDataPath(), { packaged: process.env.NODE_ENV === 'production' })[key]
+  return _appDataPaths(getUserDataPath())[key]
 }
 
-/** A directory the app or a pack keeps data in, under the app's data directory (`name` is its folder) */
-export function getDataDirPath(name: string): string {
-  // Existing on-disk layout: packaged builds store data at the root of the data dir,
-  // source runs (NODE_ENV=development) under .data/
-  const userDataDir = getUserDataPath()
-  return process.env.NODE_ENV === 'production' ? path.join(userDataDir, name) : path.join(userDataDir, '.data', name)
+/** A pack's `name` must be one directory, so a pack cannot reach its neighbours or the app's own stores. */
+const PACK_DATA_NAME = /^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$/
+
+/**
+ * @internal Host-only: a directory a pack keeps data in, namespaced by the pack that asked
+ * (`<appDir>/pack-data/<packId>/<name>`). Packs reach it through `getDataDirPath(name)` from
+ * `#generated/paths`, which binds their own id the way `#generated/events` binds it for sends.
+ *
+ * The namespace is what makes the name safe to take from a pack: before it, `getDataDirPath` joined the
+ * name straight onto a directory shared with Chromium, so `'Cache'`, `'packs'` or `'../..'` all resolved
+ * to something that was not the pack's.
+ */
+export function _packDataDir(packId: string, name: string): string {
+  if (!PACK_DATA_NAME.test(name)) {
+    throw new Error(
+      `"${name}" isn't a usable data directory name: letters, digits, dot, dash and underscore, starting ` +
+      'with a letter or digit, up to 64 characters. It names one directory inside the pack\'s own, so it ' +
+      'cannot contain a path separator.',
+    )
+  }
+  return path.join(_appDirOf(getUserDataPath()), 'pack-data', packId, name)
 }
 
 export function createExportDir(parentDir: string, systemName: string): string {

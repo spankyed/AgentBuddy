@@ -390,7 +390,8 @@ APP_DATA="$(sed -n 's/.*\[e2e\] kept test data dir: //p' "$WORK/e2e.log" | head 
 # What shipped is what ran: the integrity.json inside the archive against the one the app installed. A log
 # line saying it used the archive would only be the fixture agreeing with itself.
 tar -xzOf "$ARCHIVE" demo-pack/integrity.json > "$WORK/archive-integrity.json"
-diff "$WORK/archive-integrity.json" "$APP_DATA/packs/demo-pack/integrity.json" || fail "the pack the app installed is not the one in $ARCHIVE"
+# The app keeps everything it owns under <data dir>/abuddy — see AppContext.appDir
+diff "$WORK/archive-integrity.json" "$APP_DATA/abuddy/packs/demo-pack/integrity.json" || fail "the pack the app installed is not the one in $ARCHIVE"
 if [ -z "${KEEP_WORK:-}" ]; then trap 'rm -rf "$WORK" "$APP_DATA"' EXIT; fi
 
 step "9. abuddy db on the data the app seeded (the packed CLI, offline)"

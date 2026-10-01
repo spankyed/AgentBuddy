@@ -231,9 +231,9 @@ async function session(args: string[], hooks: SessionHooks) {
   }
   const app = await resolveDevelopmentApp({ flags, hostVersion: manifest.hostVersion ?? '*' });
   const env = appEnv(app);
-  const instance = instanceFor(mode, app.kind, cliDirs());
+  const instance = instanceFor(mode, cliDirs());
   if (instance?.created && withSecrets) {
-    const { count, from } = copySecretsInto(instance, app.kind, env);
+    const { count, from } = copySecretsInto(instance, env);
     console.log(`Copied ${count} secret${count === 1 ? '' : 's'} from ${from}`);
   }
   const place: AppPlace = { env, userDataDir: instance?.dir };

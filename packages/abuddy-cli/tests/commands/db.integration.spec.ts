@@ -12,7 +12,7 @@ import { exportDatabase } from '@abuddy/host/backup';
 import { closeEnv, openEnvAt } from '@abuddy/ears/lmdb';
 import { createSecretsStore, memoryKeyVault } from '@abuddy/host/secrets';
 import { _appDataPaths } from '@abuddy/sdk/utils';
-import { appDataDirFor, resolveAppContext } from '@abuddy/sdk/env';
+import { _appDirOf, appDataDirFor, resolveAppContext } from '@abuddy/sdk/env';
 import { db } from '../../src/commands/db';
 import { parseDbArgs } from '../../src/commands/db/target';
 import { dbRepl } from '../../src/commands/db/repl';
@@ -46,15 +46,15 @@ function tempDir(prefix: string): string {
 function schemaContext(userDataDir: string) {
   return {
     userDataDir,
-    packsDir: path.join(userDataDir, 'packs'),
-    hostPacksDir: path.join(userDataDir, 'host-packs'),
-    installedPacksFile: path.join(userDataDir, 'installed-packs.json'),
+    packsDir: path.join(_appDirOf(userDataDir), 'packs'),
+    hostPacksDir: path.join(_appDirOf(userDataDir), 'host-packs'),
+    installedPacksFile: path.join(_appDirOf(userDataDir), 'installed-packs.json'),
   };
 }
 
 /** Writes to the data dir's database as the app does (default-setup published, source layout) */
 async function write(userDataDir: string, change: () => void): Promise<void> {
-  const paths = _appDataPaths(userDataDir, { packaged: false });
+  const paths = _appDataPaths(userDataDir);
   const { store, engine } = openDatabaseStore({
     paths: { primary: paths.lmdb, volatileBackup: paths.volatileLmdb },
     schema: readInstalledSchema(schemaContext(userDataDir)),
@@ -73,7 +73,7 @@ async function write(userDataDir: string, change: () => void): Promise<void> {
 /** A data dir the app ran on: default-setup published, its state, settings, and notes with a relation and a role */
 async function appDataDir(): Promise<string> {
   const dir = tempDir('abuddy-db-');
-  const snapshot = path.join(dir, 'host-packs', 'default-setup', 'types', 'snapshot.json');
+  const snapshot = path.join(_appDirOf(dir), 'host-packs', 'default-setup', 'types', 'snapshot.json');
   fs.mkdirSync(path.dirname(snapshot), { recursive: true });
   fs.copyFileSync(DEFAULT_SETUP_SNAPSHOT, snapshot);
   await write(dir, () => {
@@ -89,7 +89,7 @@ async function appDataDir(): Promise<string> {
 
 /** A backup of a data dir, as the app exports it */
 async function backupOf(userDataDir: string, { withMedia = false, databases }: { withMedia?: boolean; databases?: Array<'lmdb' | 'volatileLmdb'> } = {}): Promise<string> {
-  const paths = _appDataPaths(userDataDir, { packaged: false });
+  const paths = _appDataPaths(userDataDir);
   if (withMedia) {
     fs.mkdirSync(paths.media, { recursive: true });
     fs.writeFileSync(path.join(paths.media, 'image.png'), 'png');
@@ -141,11 +141,11 @@ async function ok(args: string[]) {
 
 /** What a running app publishes in its data dir, which `abuddy db` refuses to write under */
 const holdLock = (dir: string) =>
-  fs.writeFileSync(path.join(dir, 'app.lock'), JSON.stringify({ pid: process.pid, machine: os.hostname(), since: new Date().toISOString() }));
+  fs.writeFileSync(path.join(_appDirOf(dir), 'app.lock'), JSON.stringify({ pid: process.pid, machine: os.hostname(), since: new Date().toISOString() }));
 
 /** What a running API publishes: its port and its process */
 function publishApi(dir: string): void {
-  fs.writeFileSync(path.join(dir, 'api-port'), JSON.stringify({ port: 3001, pid: process.pid }));
+  fs.writeFileSync(path.join(_appDirOf(dir), 'api-port'), JSON.stringify({ port: 3001, pid: process.pid }));
 }
 
 describe('abuddy db query', () => {
@@ -179,7 +179,7 @@ describe('abuddy db query', () => {
 
   it('reads data whose files it may not write', async () => {
     const dir = await appDataDir();
-    const { lmdb, volatileLmdb } = _appDataPaths(dir, { packaged: false });
+    const { lmdb, volatileLmdb } = _appDataPaths(dir);
     const files = [lmdb, volatileLmdb].flatMap((db) => fs.readdirSync(db).map((file) => path.join(db, file)));
     for (const file of files) fs.chmodSync(file, 0o444);
     try {
@@ -270,8 +270,8 @@ describe('naming the data dir', () => {
   // which is what makes an ephemeral one — a level down, under .ephemeral/ — reachable by its printed name.
   it('resolves --instance to that instance\'s data dir, ephemeral ones included', () => {
     cliTree = { config: tempDir('abuddy-db-cfg-'), cache: tempDir('abuddy-db-cache-'), data: tempDir('abuddy-db-data-') };
-    const named = openInstance(cliTree, 'probe', 'source');
-    const ephemeral = mintInstance(cliTree, 'source', true);
+    const named = openInstance(cliTree, 'probe');
+    const ephemeral = mintInstance(cliTree, true);
 
     const targetOf = (args: string[]) => parseDbArgs(args, {}, 'usage').target;
     expect(targetOf(['--instance', 'probe'])).toMatchObject({ userDataDir: named.dir, named: true });
@@ -282,7 +282,7 @@ describe('naming the data dir', () => {
   // report a directory the user never typed
   it('names the instances there are when --instance matches none', () => {
     cliTree = { config: tempDir('abuddy-db-cfg-'), cache: tempDir('abuddy-db-cache-'), data: tempDir('abuddy-db-data-') };
-    openInstance(cliTree, 'probe', 'source');
+    openInstance(cliTree, 'probe');
     expect(() => parseDbArgs(['--instance', 'nope'], {}, 'usage')).toThrow(/No instance named "nope"\. There is: probe\./);
 
     cliTree = { ...cliTree, data: tempDir('abuddy-db-empty-') };
@@ -368,7 +368,7 @@ describe('the lock a change holds', () => {
       const { error } = await run(['reset', '--force', '--data-dir', dir]);
       expect(error?.message).toBe(
         `Another tool is changing the database in ${dir}: abuddy db import (pid ${process.pid}). ` +
-        `If no tool is running, delete ${path.join(dir, 'db-write.lock')} and try again.`,
+        `If no tool is running, delete ${path.join(_appDirOf(dir), 'db-write.lock')} and try again.`,
       );
     } finally {
       held.release();
@@ -421,7 +421,7 @@ describe('abuddy db exec', () => {
     expect(byLock.error?.message).toMatch(/^AgentBuddy is running on [\s\S]*quit it first/);
     // The marker outlives a crash and its pid can be one the OS has since reused, so the refusal has to
     // name the file: without it the data dir is one no tool could ever write to again
-    expect(byLock.error?.message, 'the refusal gave no way out').toContain(`delete ${path.join(locked, 'app.lock')}`);
+    expect(byLock.error?.message, 'the refusal gave no way out').toContain(`delete ${path.join(_appDirOf(locked), 'app.lock')}`);
 
     const served = await appDataDir();
     publishApi(served);
@@ -845,7 +845,7 @@ describe('a dry run of a command that changes data', () => {
     expect((await run(['reset', '--force', '--data-dir', running])).error?.message).toMatch(/quit it first/);
 
     const copy = await appDataDir();
-    const { lmdb, volatileLmdb } = _appDataPaths(copy, { packaged: false });
+    const { lmdb, volatileLmdb } = _appDataPaths(copy);
     const files = [lmdb, volatileLmdb].flatMap((db) => fs.readdirSync(db).map((file) => path.join(db, file)));
     for (const file of files) fs.chmodSync(file, 0o444);
     try {
@@ -870,7 +870,7 @@ describe('a dry run of a command that changes data', () => {
 
 describe('abuddy db reset', () => {
   async function withKey(dir: string): Promise<string> {
-    const file = _appDataPaths(dir, { packaged: false }).secretsFile;
+    const file = _appDataPaths(dir).secretsFile;
     const vault = memoryKeyVault('unprotected');
     createSecretsStore({ filePath: file, osVault: () => vault, fileVault: () => vault, useFileVault: true }).add('anthropic', 'Work', 'sk-ant-api03-test');
     return file;
@@ -936,7 +936,7 @@ describe('abuddy db import', () => {
     await ok(['import', backup, '--force', '--data-dir', dir]);
     expect((await ok(['query', "return [getAttr('Note-a', 'title'), getEntitiesOfType('Note').length]", '--data-dir', dir, '-o', 'json'])).out)
       .toBe(JSON.stringify(['From the backup', 1], null, 2));
-    expect(fs.readFileSync(path.join(_appDataPaths(dir, { packaged: false }).media, 'image.png'), 'utf-8')).toBe('png');
+    expect(fs.readFileSync(path.join(_appDataPaths(dir).media, 'image.png'), 'utf-8')).toBe('png');
   });
 
   it('says what made the backup, and names it when the files are in a format it cannot read', async () => {
@@ -1042,7 +1042,7 @@ describe('abuddy db import', () => {
     const dir = await appDataDir();
     const source = await appDataDir();
     // A pack was installed when the backup was made: its snapshot declares Bookmark, which the target dir's doesn't
-    const snapshot = path.join(source, 'host-packs', 'default-setup', 'types', 'snapshot.json');
+    const snapshot = path.join(_appDirOf(source), 'host-packs', 'default-setup', 'types', 'snapshot.json');
     const manifest = JSON.parse(fs.readFileSync(snapshot, 'utf-8'));
     manifest.entities = { ...manifest.entities, Bookmark: 'Bookmark' };
     fs.writeFileSync(snapshot, JSON.stringify(manifest));

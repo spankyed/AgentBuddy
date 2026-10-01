@@ -21,8 +21,8 @@ import { GENERATED_BEHIND_A_CONTRACT } from '../../../scripts/check-import-speci
  */
 const GENERATED_MODULES = [
   'dsl-types-fe', 'ears', 'events', 'fe', 'flow-helpers', 'pack-entry', 'pack-entry-fe', 'pack-types',
-  'ref', 'references', 'repositories', 'repository', 'seed-runtime', 'seeders', 'services', 'step-types',
-  'system-specs', 'types',
+  'paths', 'ref', 'references', 'repositories', 'repository', 'seed-runtime', 'seeders', 'services',
+  'step-types', 'system-specs', 'types',
 ];
 
 let root: string;

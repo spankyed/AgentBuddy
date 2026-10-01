@@ -17,6 +17,7 @@ import { appMigrations } from '../../src/migrations/app/index.ts';
 import type { InstalledManifests } from '../../src/migrations/app/0.3.15.ts';
 import { hostRegistration } from '../../src/features/registration.ts';
 import { writeInstalledPacks } from '../../src/packs/installed.ts';
+import { _appDirOf } from '@abuddy/sdk/env';
 
 const SETTINGS_ID = 'Settings-app' as EARS.EntityId;
 
@@ -207,7 +208,7 @@ describe('the 0.3.15 app migration, over the packs installed on disk', () => {
   const saved = { env: process.env.ABUDDY_ENV, dir: process.env.ABUDDY_USER_DATA_DIR };
 
   const install = (dirName: string, manifest: string) => {
-    const dir = path.join(userDataDir, 'packs', dirName);
+    const dir = path.join(_appDirOf(userDataDir), 'packs', dirName);
     fs.mkdirSync(dir, { recursive: true });
     fs.writeFileSync(path.join(dir, 'abuddy.json'), manifest);
   };

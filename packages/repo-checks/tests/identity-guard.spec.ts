@@ -49,14 +49,27 @@ const ALLOWED: Record<string, { patterns: readonly PatternId[]; why: string }> =
   'packages/repo-checks/tests/identity-guard.spec.ts': {
     patterns: ['data-dir', 'channel'], why: 'this guard, which has to spell the patterns it looks for',
   },
+  'packages/abuddy-sdk/src/logger/logger.ts': {
+    patterns: ['node-env'], why: 'whether debug logging is on by default — a build-mode question, not an identity one',
+  },
+  'packages/default-setup/src/features/brain/be/system.ts': {
+    patterns: ['node-env'], why: 'whether the flow inspector defaults on — a build-mode question, not an identity one',
+  },
 };
 
-type PatternId = 'data-dir' | 'env-read' | 'channel';
+type PatternId = 'data-dir' | 'env-read' | 'channel' | 'node-env';
 
 const FORBIDDEN: Array<{ id: PatternId; pattern: RegExp; why: string; allowInTests?: boolean }> = [
   { id: 'data-dir', pattern: /Application Support/, why: 'platform data dirs are derived only in @abuddy/sdk/env' },
   { id: 'env-read', pattern: /process\.env\.ABUDDY_ENV\b(?!\s*=)/, why: 'read the environment via resolveAppContext()', allowInTests: true },
   { id: 'channel', pattern: /__ABUDDY_CHANNEL__/, why: 'the channel stamp is consumed only by the main bootstrap' },
+  // Deliberately narrower than every NODE_ENV read: a bundler config asking what mode it builds in is not
+  // this repo's business, and every one of those compares against 'development' or assigns. What this
+  // catches is NODE_ENV standing in for the app's identity — which is what decided where the user's
+  // database lived until 2026-10-01, in a variable the ecosystem uses to mean "optimize this build".
+  // The lookahead `env-read` carries is deliberately absent: `(?!\s*=)` swallows the first `=` of `===`
+  // and would make this match nothing it is for.
+  { id: 'node-env', pattern: /NODE_ENV\s*[!=]==?\s*['"]production['"]/, why: 'ask resolveAppContext() what this app is, not NODE_ENV', allowInTests: true },
 ];
 
 const trackedCodeFiles = (): string[] => repoFiles().filter((file) =>
@@ -71,6 +84,31 @@ function fires(file: string): PatternId[] {
     .filter(({ pattern, allowInTests }) => !(allowInTests && isTest) && lines.some((line) => pattern.test(line)))
     .map(({ id }) => id);
 }
+
+/**
+ * A sample each pattern is meant to catch. A guard whose subject is other people's code can go quiet without
+ * anyone noticing — a lookahead that swallows the `=` it was not written for, a renamed constant — and then it
+ * reports nothing because it matches nothing. These are the firing cases: they fail in microseconds on every
+ * run, and they are what caught `(?!\s*=)` eating the first `=` of `===`.
+ */
+const FIRES_ON: Record<PatternId, string> = {
+  'data-dir': "path.join(home, 'Library', 'Application Support', appName)",
+  'env-read': 'const env = process.env.ABUDDY_ENV;',
+  'channel': 'const channel = __ABUDDY_CHANNEL__;',
+  'node-env': "const packaged = process.env.NODE_ENV === 'production';",
+};
+
+describe('the patterns themselves', () => {
+  it('each still matches what it is for', () => {
+    for (const { id, pattern } of FORBIDDEN) {
+      expect(pattern.test(FIRES_ON[id]), `${id} no longer matches ${FIRES_ON[id]}`).toBe(true);
+    }
+  });
+
+  it('covers every pattern, so a new one cannot arrive without a case', () => {
+    expect(FORBIDDEN.map(({ id }) => id).sort()).toEqual(Object.keys(FIRES_ON).sort());
+  });
+});
 
 describe('environment identity guard', () => {
   it('no code outside the env module resolves environment or data dirs on its own', () => {

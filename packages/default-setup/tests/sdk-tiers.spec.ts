@@ -128,10 +128,17 @@ describe('Tier 5 — Templates and app info', () => {
 
 describe('Tier 6 — Utility delegates', () => {
   it('path utilities are callable', async () => {
-    const { createExportDir, ensureDirectoryExists, getDataDirPath } = await import('@abuddy/sdk/utils');
+    const { createExportDir, ensureDirectoryExists } = await import('@abuddy/sdk/utils');
     expect(typeof createExportDir).toBe('function');
     expect(typeof ensureDirectoryExists).toBe('function');
-    expect(typeof getDataDirPath).toBe('function');
+  });
+
+  // A pack's own data dir is reached through the generated facade, which binds its id — the SDK's
+  // `_packDataDir` takes one and no pack writes its own. The name is checked, so a pack cannot climb out.
+  it('this pack\'s data directory is namespaced to it', async () => {
+    const { getDataDirPath } = await import('#generated/paths.ts');
+    expect(getDataDirPath('models-cache')).toMatch(/pack-data[/\\]default-setup[/\\]models-cache$/);
+    expect(() => getDataDirPath('../..')).toThrow(/isn't a usable data directory name/);
   });
 
   it('media utilities are callable', async () => {

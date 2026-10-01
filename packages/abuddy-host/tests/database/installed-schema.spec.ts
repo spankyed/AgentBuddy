@@ -5,11 +5,12 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { readInstalledSchema } from '../../src/database/schema.ts';
 import { pruneHostPackOutputs } from '../../src/packs/layout.ts';
 import { dataDirWithPacks, removeTempDirs, schemaContext } from './fixtures.ts';
+import { _appDirOf } from '@abuddy/sdk/env';
 
 afterEach(removeTempDirs);
 
-const snapshotFile = (dir: string, id = 'core') => path.join(dir, 'host-packs', id, 'types', 'snapshot.json');
-const manifestFile = (dir: string, id: string) => path.join(dir, 'packs', id, 'abuddy.json');
+const snapshotFile = (dir: string, id = 'core') => path.join(_appDirOf(dir), 'host-packs', id, 'types', 'snapshot.json');
+const manifestFile = (dir: string, id: string) => path.join(_appDirOf(dir), 'packs', id, 'abuddy.json');
 const write = (file: string, content: unknown) =>
   fs.writeFileSync(file, typeof content === 'string' ? content : JSON.stringify(content));
 
@@ -34,7 +35,7 @@ describe('a file readInstalledSchema cannot use', () => {
 
   it("refuses a registry it can't read, rather than taking in packs the app leaves out", () => {
     const dir = dataDirWithPacks({ external: [{ id: 'off', entities: { Hidden: 'Hidden' }, enabled: false }] });
-    const registry = path.join(dir, 'installed-packs.json');
+    const registry = path.join(_appDirOf(dir), 'installed-packs.json');
     expect(readInstalledSchema(schemaContext(dir)).getRegisteredEntityTypes().has('Hidden')).toBe(false);
 
     write(registry, 'not json');
@@ -57,7 +58,7 @@ describe('packs declaring the same name', () => {
 describe('pruneHostPackOutputs', () => {
   it('removes the artifacts of built-in packs the app no longer has, and keeps the rest', () => {
     const dir = dataDirWithPacks();
-    const hostPacks = path.join(dir, 'host-packs');
+    const hostPacks = path.join(_appDirOf(dir), 'host-packs');
     fs.cpSync(path.join(hostPacks, 'core'), path.join(hostPacks, 'dropped'), { recursive: true });
     fs.mkdirSync(path.join(hostPacks, '.core.publishing-123-abc'), { recursive: true });
 

@@ -100,14 +100,50 @@ function addNames(names: Record<string, string>, owners: Map<string, string>, pa
 }
 
 /**
- * The schema of the packs installed in a data dir, as the app registers them: entity types and relation kinds from
- * every loaded pack, the partition policy from the built-in packs only (the app ignores an external pack's). Throws
- * when the data dir has no built-in packs published: the app publishes them when it starts on the data dir.
+ * A snapshot named by `--schema-from`, in any of the three shapes a built pack has on disk: the file itself, a
+ * published pack dir (`<dir>/types/snapshot.json`, what `publishHostPackOutput` writes) or a build output
+ * (`<dir>/snapshot.json`, what `abuddy build` leaves in `dist/`).
  */
-export function readInstalledSchema(context: SchemaContext): InstalledSchema {
-  const builtIn = builtInManifests(context.hostPacksDir);
+function namedManifest(schemaFrom: string): PackManifest {
+  const candidates = schemaFrom.endsWith('.json')
+    ? [schemaFrom]
+    : [path.join(schemaFrom, PACK_LAYOUT.snapshot), path.join(schemaFrom, 'snapshot.json')];
+  const file = candidates.find((candidate) => fs.existsSync(candidate));
+  if (!file) {
+    throw new Error(`No pack snapshot at ${schemaFrom}: expected it, ${candidates.join(' or ')}`);
+  }
+  return packEARS(readJSON<PackSnapshot>(file, "a pack's snapshot").manifest, file);
+}
+
+/**
+ * The schema of the packs installed in a data dir, as the app registers them: entity types and relation kinds from
+ * every loaded pack, the partition policy from the built-in packs only (the app ignores an external pack's).
+ *
+ * **The built-in packs are the data dir's own account of itself, and a data dir need not have one.** The app
+ * publishes their snapshots when it starts, so a dir written by a version that predates that — or one restored from
+ * a backup, or copied without `host-packs/` — has nothing to read. `schemaFrom` is then how a caller supplies it,
+ * and with neither the schema falls back to the names the app itself declares.
+ *
+ * That last step degrades reads rather than failing them: hydration never consults the entity types (it derives
+ * each row's type from its id), so every row still loads and is reachable by id. What breaks is a query that starts
+ * from a *name* — and silently, because `EARS.Entity.Whatever` is `undefined` for a name nobody declared and
+ * `qx(undefined)` answers with the whole database. So `onDegraded` is reported rather than logged quietly, and a
+ * caller that can refuse to write should.
+ */
+export function readInstalledSchema(
+  context: SchemaContext,
+  options: { schemaFrom?: string; onDegraded?: (message: string) => void } = {},
+): InstalledSchema {
+  const published = builtInManifests(context.hostPacksDir);
+  const builtIn = published.length > 0 ? published
+    : options.schemaFrom ? [namedManifest(options.schemaFrom)]
+    : [];
   if (builtIn.length === 0) {
-    throw new Error(`${context.userDataDir} has no built-in packs in ${context.hostPacksDir}: start AgentBuddy on it once`);
+    options.onDegraded?.(
+      `${context.userDataDir} has no built-in pack snapshots in ${context.hostPacksDir}, so only AgentBuddy's own `
+      + 'entity types are known. Rows still load and are reachable by id, but a query that starts from a pack\'s '
+      + 'entity type cannot be written. Name a snapshot with --schema-from to read them.',
+    );
   }
   const external = externalManifests(context);
 

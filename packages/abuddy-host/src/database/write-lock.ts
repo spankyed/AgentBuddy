@@ -5,10 +5,11 @@
 // The mechanism is `../exclusive-lock.ts`, shared with the CLI's code generation. What is this module's own is the
 // policy: where the file lives, what the refusal says, and that the app asserts on it before opening a store.
 import * as path from 'node:path';
+import { _appDirOf } from '@abuddy/sdk/env';
 import { findLockHolder, holdExclusiveLock } from '../exclusive-lock.ts';
 
 
-const lockFile = (userDataDir: string) => path.join(userDataDir, 'db-write.lock');
+const lockFile = (userDataDir: string) => path.join(_appDirOf(userDataDir), 'db-write.lock');
 
 /**
  * What a tool is changing in this data dir's database right now, or `null` when nothing is: a lock whose process has

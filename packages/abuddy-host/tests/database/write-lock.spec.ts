@@ -16,6 +16,7 @@ import { INTERRUPTS } from '../../src/exclusive-lock.ts';
  */
 const DELIVERABLE_INTERRUPTS = INTERRUPTS.filter((signal) => signal in os.constants.signals);
 import { removeTempDirs, tempDir } from './fixtures.ts';
+import { _appDirOf } from '@abuddy/sdk/env';
 
 const locks: Array<{ release(): void }> = [];
 afterEach(() => {
@@ -29,7 +30,7 @@ const hold = (dir: string, what = 'abuddy db reset') => {
   return lock;
 };
 
-const lockFile = (dir: string) => path.join(dir, 'db-write.lock');
+const lockFile = (dir: string) => path.join(_appDirOf(dir), 'db-write.lock');
 
 /** The module under test, loaded by a child process that holds a real lock and waits to be signalled */
 const SRC = path.resolve(import.meta.dirname, '../../src/database/write-lock.ts');

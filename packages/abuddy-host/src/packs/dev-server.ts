@@ -3,7 +3,7 @@
  * frontend requests to. It lives in the data dir beside the packs, never inside an installed pack
  * directory, which holds exactly the verified pack files and is replaced on every install.
  *
- *   <userDataDir>/pack-dev-servers/<packId>.json   { port, pid }
+ *   <userDataDir>/abuddy/pack-dev-servers/<packId>.json   { port, pid }
  *
  * A marker means a dev server is running, never that anything on disk is current, so nothing may read
  * it to skip a build or a sync. `abuddy run` writes only to the development data dir, so a test run
@@ -13,6 +13,7 @@
  */
 import * as fs from 'node:fs';
 import * as path from 'node:path';
+import { _appDirOf } from '@abuddy/sdk/env';
 import { recordIsStale } from '../process-liveness.ts';
 
 export interface DevServerMarker {
@@ -24,7 +25,7 @@ export interface DevServerMarker {
 const DEV_SERVERS_DIR = 'pack-dev-servers';
 
 export function devServerMarkerPath(userDataDir: string, packId: string): string {
-  return path.join(userDataDir, DEV_SERVERS_DIR, `${packId}.json`);
+  return path.join(_appDirOf(userDataDir), DEV_SERVERS_DIR, `${packId}.json`);
 }
 
 /** Records that pack `packId`'s frontend is served on `marker.port`; returns the marker's path. */

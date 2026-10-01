@@ -29,10 +29,10 @@ describe('resolveAppContext', () => {
     expect(ctx.appName).toBe('abuddy-beta');
     expect(path.basename(ctx.userDataDir)).toBe('abuddy-beta');
     expect(ctx.userDataDir.startsWith(os.homedir())).toBe(true);
-    expect(ctx.packsDir).toBe(path.join(ctx.userDataDir, 'packs'));
-    expect(ctx.installedPacksFile).toBe(path.join(ctx.userDataDir, 'installed-packs.json'));
-    expect(ctx.apiPortFile).toBe(path.join(ctx.userDataDir, 'api-port'));
-    expect(ctx.apiTokenFile).toBe(path.join(ctx.userDataDir, 'api-token'));
+    expect(ctx.packsDir).toBe(path.join(ctx.appDir, 'packs'));
+    expect(ctx.installedPacksFile).toBe(path.join(ctx.appDir, 'installed-packs.json'));
+    expect(ctx.apiPortFile).toBe(path.join(ctx.appDir, 'api-port'));
+    expect(ctx.apiTokenFile).toBe(path.join(ctx.appDir, 'api-token'));
     expect(ctx.urlScheme).toBe('abuddy-beta');
   });
 
@@ -51,7 +51,8 @@ describe('resolveAppContext', () => {
     process.env.ABUDDY_USER_DATA_DIR = '/tmp/isolated';
     const ctx = resolveAppContext();
     expect(ctx.appName).toBe('abuddy-test');
-    expect(ctx.packsDir).toBe(path.join('/tmp/isolated', 'packs'));
+    expect(ctx.appDir).toBe(path.join('/tmp/isolated', 'abuddy'));
+    expect(ctx.packsDir).toBe(path.join('/tmp/isolated', 'abuddy', 'packs'));
   });
 
   it('maps each environment to its existing app name', () => {

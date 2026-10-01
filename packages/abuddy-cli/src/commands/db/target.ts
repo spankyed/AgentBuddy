@@ -25,6 +25,7 @@ const TARGET_OPTIONS = {
   production: { type: 'boolean', default: false },
   'data-dir': { type: 'string' },
   instance: { type: 'string' },
+  'schema-from': { type: 'string' },
   volatile: { type: 'boolean', default: false },
 } satisfies ParseArgsConfig['options'];
 
@@ -34,6 +35,7 @@ export const TARGET_USAGE = [
   '  --production           The production app\'s data (what a command that only reads takes by default)',
   '  --data-dir <path>      A data dir, a copy of the user\'s for example',
   '  --instance <name>      An `abuddy run` instance, by the name run and clean print',
+  '  --schema-from <path>   A pack snapshot to read entity types from, for a data dir that publishes none',
   '  --volatile             Read the run history too (TNode rows), which the app keeps in its own partition',
 ].join('\n');
 
@@ -42,6 +44,8 @@ export type DbTarget = Pick<AppContext, 'env' | 'userDataDir' | 'apiPortFile'> &
   named: boolean;
   /** `--volatile`: the run history is read with the rest of the data */
   volatile: boolean;
+  /** `--schema-from`: a pack snapshot to name the entity types a data dir doesn't publish */
+  schemaFrom?: string;
 };
 
 /**
@@ -75,11 +79,12 @@ export function parseDbArgs<O extends NonNullable<ParseArgsConfig['options']>>(a
   } catch (error) {
     throw new Error(`${(error as Error).message}\n\n${usage}`);
   }
-  const { dev, beta, production, 'data-dir': dataDir, instance, volatile } = parsed.values as
-    { dev: boolean; beta: boolean; production: boolean; 'data-dir'?: string; instance?: string; volatile: boolean };
+  const { dev, beta, production, 'data-dir': dataDir, instance, 'schema-from': schemaFrom, volatile } = parsed.values as
+    { dev: boolean; beta: boolean; production: boolean; 'data-dir'?: string; instance?: string; 'schema-from'?: string; volatile: boolean };
   // An empty value would otherwise read as "not given" and target the default data dir
   if (dataDir !== undefined && dataDir.trim() === '') throw new Error(`--data-dir needs a path\n\n${usage}`);
   if (instance !== undefined && instance.trim() === '') throw new Error(`--instance needs a name\n\n${usage}`);
+  if (schemaFrom !== undefined && schemaFrom.trim() === '') throw new Error(`--schema-from needs a path\n\n${usage}`);
   const named = [dev && '-d', beta && '-b', production && '--production', dataDir !== undefined && '--data-dir',
     instance !== undefined && '--instance'].filter(Boolean) as string[];
   if (named.length > 1) throw new Error(`Name one data dir, not ${named.length}: ${named.join(', ')}\n\n${usage}`);
@@ -95,7 +100,10 @@ export function parseDbArgs<O extends NonNullable<ParseArgsConfig['options']>>(a
     : (dev || beta || production) ? appDataDirFor(env)
     : undefined;
   const context = resolveAppContext({ env, ...(userDataDir !== undefined && { userDataDir }) });
-  const target: DbTarget = { env, userDataDir: context.userDataDir, apiPortFile: context.apiPortFile, named: named.length === 1, volatile };
+  const target: DbTarget = {
+    env, userDataDir: context.userDataDir, apiPortFile: context.apiPortFile, named: named.length === 1, volatile,
+    ...(schemaFrom !== undefined && { schemaFrom: path.resolve(schemaFrom) }),
+  };
   return { values: parsed.values as typeof parsed.values & Record<keyof O, unknown>, positionals: parsed.positionals, target };
 }
 
@@ -134,6 +142,10 @@ export async function openTarget(target: DbTarget, { write, command }: OpenOptio
       readOnly: !write,
       includeVolatile: target.volatile,
       log: () => {},
+      ...(target.schemaFrom !== undefined && { schemaFrom: target.schemaFrom }),
+      // On stderr with the data dir, not swallowed: a degraded schema answers a query that names an entity
+      // type with the whole database rather than an error, so the one chance to say so is before the answer
+      onDegradedSchema: (message) => io.err(`Warning: ${message}`),
     });
     return lock ? { ...db, close: () => { try { db.close(); } finally { lock.release(); } } } : db;
   } catch (error) {

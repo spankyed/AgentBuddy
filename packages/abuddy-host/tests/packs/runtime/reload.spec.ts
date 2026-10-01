@@ -7,6 +7,7 @@ import * as os from 'node:os';
 import * as path from 'node:path';
 import { registry } from './test-host.ts';
 import { PACK_SNAPSHOT_FORMAT } from '@abuddy/sdk/build';
+import { _appDirOf } from '@abuddy/sdk/env';
 
 const { publishHostPackOutput } = await import('../../../src/packs/index.ts');
 const { registerPack, unregisterPack, getPackRegistration, registerShutdownHook, removeShutdownHooksForKey } = registry;
@@ -29,7 +30,7 @@ const shutdown = vi.fn();
 
 /** Writes the rebuilt pack: a pack layout whose runtime entry is `runtimeSource` */
 function writeRebuild(runtimeSource: string) {
-  const packDir = path.join(tmpDir, 'packs', PACK_ID);
+  const packDir = path.join(_appDirOf(tmpDir), 'packs', PACK_ID);
   fs.mkdirSync(path.join(packDir, 'runtime', 'seeds'), { recursive: true });
   fs.mkdirSync(path.join(packDir, 'types'), { recursive: true });
   fs.writeFileSync(path.join(packDir, 'abuddy.json'), JSON.stringify({ id: PACK_ID, name: PACK_ID, version: '1.0.1' }));
@@ -300,7 +301,7 @@ describe('reloading a pack', () => {
 
   // Its origin too: without it the registry forgets where the pack came from, and a built-in's next reload can't find it
   it('restores the running registration, and where it came from, when the rebuilt one is refused', async () => {
-    const origin = { id: PACK_ID, name: PACK_ID, version: '1.0.0', dir: path.join(tmpDir, 'packs', PACK_ID), builtIn: false };
+    const origin = { id: PACK_ID, name: PACK_ID, version: '1.0.0', dir: path.join(_appDirOf(tmpDir), 'packs', PACK_ID), builtIn: false };
     unregisterPack(PACK_ID);
     registerPack(running, origin);
     registerPack({ id: 'service-owner', services: { taken: {} } });
@@ -317,7 +318,7 @@ describe('reloading a pack', () => {
     writeRebuild(runtime());
     // Compiled seeds from a pack built by an older CLI: importCompiledSeeds refuses them, which is a failed seed
     fs.writeFileSync(
-      path.join(tmpDir, 'packs', PACK_ID, 'runtime', 'seeds', 'seeds.json'),
+      path.join(_appDirOf(tmpDir), 'packs', PACK_ID, 'runtime', 'seeds', 'seeds.json'),
       JSON.stringify({ version: 1, seeds: [] }),
     );
 

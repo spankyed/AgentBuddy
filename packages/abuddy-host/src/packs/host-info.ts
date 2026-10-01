@@ -1,7 +1,8 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
+import { _appDirOf } from '@abuddy/sdk/env';
 
-const hostInfoFile = (userDataDir: string) => path.join(userDataDir, 'host.json');
+const hostInfoFile = (userDataDir: string) => path.join(_appDirOf(userDataDir), 'host.json');
 
 /** What the AgentBuddy that last started with a data dir can load, for tools that install packs into it without it running */
 export interface HostInfo {
@@ -18,7 +19,7 @@ export interface HostInfo {
 export function recordHostInfo(userDataDir: string, info: Required<HostInfo>): void {
   const current = readHostInfo(userDataDir);
   if (current.version === info.version && current.packFormat === info.packFormat) return;
-  fs.mkdirSync(userDataDir, { recursive: true });
+  fs.mkdirSync(_appDirOf(userDataDir), { recursive: true });
   // Written aside and renamed, so a crash never leaves a truncated host.json
   const file = hostInfoFile(userDataDir);
   const temp = `${file}.${process.pid}.tmp`;

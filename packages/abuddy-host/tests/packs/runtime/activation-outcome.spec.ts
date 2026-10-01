@@ -3,12 +3,14 @@ import * as os from 'node:os';
 import * as path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { activationProblem } from '../../../src/packs/runtime/activation-outcome.ts';
+import { _appDirOf } from '@abuddy/sdk/env';
 
 let tmpDir: string;
 const saved = { env: process.env.ABUDDY_ENV, dir: process.env.ABUDDY_USER_DATA_DIR };
 
 beforeEach(() => {
   tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'activation-outcome-'));
+  fs.mkdirSync(_appDirOf(tmpDir), { recursive: true });
   process.env.ABUDDY_ENV = 'test';
   process.env.ABUDDY_USER_DATA_DIR = tmpDir;
 });
@@ -22,7 +24,7 @@ afterEach(() => {
 });
 
 function writeRegistry(entry: Record<string, unknown>) {
-  fs.writeFileSync(path.join(tmpDir, 'installed-packs.json'), JSON.stringify({
+  fs.writeFileSync(path.join(_appDirOf(tmpDir), 'installed-packs.json'), JSON.stringify({
     packs: [{ name: 'p', version: '1.0.0', dir: '', enabled: true, installedAt: '', ...entry }],
   }));
 }

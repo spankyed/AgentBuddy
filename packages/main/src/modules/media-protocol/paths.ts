@@ -1,14 +1,13 @@
-import { app } from 'electron';
 import { join } from 'node:path';
 import { getAppContext } from '../../app-context.ts';
 
 /**
- * The folder the API's `_getMediaPath()` (`@abuddy/sdk/utils`) uses: `<data dir>/media` for the packaged app,
- * `<data dir>/.data/media` otherwise, the NODE_ENV `api-server/config.ts` gives the API process
+ * The folder the API's `_getMediaPath()` (`@abuddy/sdk/utils`) uses. It used to branch on `app.isPackaged` to
+ * follow the two layouts, which meant main and the API each held the rule and a mismatch served every image
+ * a 404. There is one layout now, so both just join onto the directory the app owns.
  */
 export function getMediaBasePath(): string {
-  const { userDataDir } = getAppContext();
-  return app.isPackaged ? join(userDataDir, 'media') : join(userDataDir, '.data', 'media');
+  return join(getAppContext().appDir, 'media');
 }
 
 export function resolveMediaFilePath(entityId: string, filename: string): string {

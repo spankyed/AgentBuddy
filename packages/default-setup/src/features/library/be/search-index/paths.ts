@@ -1,6 +1,6 @@
 // Where search indices and FastEmbed's model weights live, under the app's data directory
 import * as path from 'path'
-import { getDataDirPath } from '@abuddy/sdk/utils'
+import { getDataDirPath } from '#generated/paths.ts'
 
 export const getModelsCachePath = (): string => getDataDirPath('models-cache')
 export const getSearchIndicesPath = (): string => getDataDirPath('search-indices')

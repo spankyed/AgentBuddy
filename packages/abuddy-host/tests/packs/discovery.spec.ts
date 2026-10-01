@@ -5,6 +5,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { REPO_ROOT } from '../../src/build/packages-built.ts';
 import { discoverBuiltInPacks, discoverPacks, enabledExternalPacks, installedPacks } from '../../src/packs/discovery.ts';
 import { writeInstalledPacks } from '../../src/packs/installed.ts';
+import { _appDirOf } from '@abuddy/sdk/env';
 
 let packagesDir: string;
 
@@ -66,7 +67,7 @@ describe('installedPacks', () => {
   });
 
   function onDisk(id: string, version: string) {
-    const dir = path.join(userDataDir, 'packs', id);
+    const dir = path.join(_appDirOf(userDataDir), 'packs', id);
     fs.mkdirSync(dir, { recursive: true });
     fs.writeFileSync(path.join(dir, 'abuddy.json'), JSON.stringify({ id, name: id, version }));
   }

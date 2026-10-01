@@ -9,6 +9,7 @@ import { openAppDatabase } from '../../src/database/open.ts';
 import { findAppDataPaths } from '../../src/database/layout.ts';
 import { readInstalledSchema } from '../../src/database/schema.ts';
 import { dataDirWithPacks, removeTempDirs, schemaContext, tempDir, untypedTx, writeData } from './fixtures.ts';
+import { _appDirOf } from '@abuddy/sdk/env';
 
 afterEach(removeTempDirs);
 
@@ -45,27 +46,35 @@ describe('readInstalledSchema', () => {
     expect(partitionPolicy.routeEntity('Bookmark-1')).toBe('primary');
   });
 
-  it('refuses a data dir the app never published its built-in packs to', () => {
+  // It used to throw, which is wrong for a tool whose job is looking at a data dir something is already wrong
+  // with. It reports instead, and the caller decides: a dir with no published snapshots still opens and every
+  // row is still reachable by id — what is lost is naming a pack's entity type in a query.
+  it('reports, rather than refuses, a data dir the app never published its built-in packs to', () => {
     const dir = tempDir('host-database-');
-    expect(() => readInstalledSchema(schemaContext(dir))).toThrow(/has no built-in packs .*start AgentBuddy on it once/);
+    const said: string[] = [];
+    const schema = readInstalledSchema(schemaContext(dir), { onDegraded: (m) => said.push(m) });
+    expect(said.join('\n')).toMatch(/has no built-in pack snapshots .*--schema-from/s);
+    expect(schema.getRegisteredEntityTypes().has('AppState'), "the app's own types are still known").toBe(true);
+    expect(schema.getRegisteredEntityTypes().has('Bookmark'), "a pack's are not").toBe(false);
+  });
+
+  // The snapshot a caller names stands in for the ones the data dir never published
+  it('reads the entity types from a snapshot --schema-from names', () => {
+    const dir = tempDir('host-database-');
+    const snapshot = path.join(dir, 'snapshot.json');
+    fs.writeFileSync(snapshot, JSON.stringify({ manifest: { id: 'named', entities: { Bookmark: 'Bookmark' } } }));
+    const said: string[] = [];
+    const schema = readInstalledSchema(schemaContext(dir), { schemaFrom: snapshot, onDegraded: (m) => said.push(m) });
+    expect(said, 'nothing is degraded once a snapshot is named').toEqual([]);
+    expect(schema.getRegisteredEntityTypes().has('Bookmark')).toBe(true);
   });
 });
 
 describe('findAppDataPaths', () => {
-  it('finds the layout the database was written in', async () => {
-    const source = dataDirWithPacks();
-    await writeData(source, () => {});
-    expect(findAppDataPaths(source)).toEqual(_appDataPaths(source, { packaged: false }));
-
-    const packaged = dataDirWithPacks();
-    await writeData(packaged, () => {}, { packaged: true });
-    expect(findAppDataPaths(packaged)).toEqual(_appDataPaths(packaged, { packaged: true }));
-  });
-
   it('refuses a data dir holding only one of the two partitions, whether it reads or writes', async () => {
     const dir = dataDirWithPacks();
     await writeData(dir, () => {});
-    const paths = _appDataPaths(dir, { packaged: false });
+    const paths = _appDataPaths(dir);
     fs.rmSync(paths.volatileLmdb, { recursive: true });
     const missingHistory = new RegExp(`missing the run history \\(${paths.volatileLmdb}\\): copy the whole data dir`);
     expect(() => findAppDataPaths(dir)).toThrow(missingHistory);
@@ -76,16 +85,24 @@ describe('findAppDataPaths', () => {
 
     const onlyHistory = dataDirWithPacks();
     await writeData(onlyHistory, () => {});
-    fs.rmSync(_appDataPaths(onlyHistory, { packaged: false }).lmdb, { recursive: true });
+    fs.rmSync(_appDataPaths(onlyHistory).lmdb, { recursive: true });
     expect(() => findAppDataPaths(onlyHistory)).toThrow(/missing the data \(/);
   });
 
-  it('refuses a data dir with no database, or one in each layout', async () => {
+  it('refuses a data dir with no database', async () => {
     const dir = dataDirWithPacks();
     expect(() => findAppDataPaths(dir)).toThrow(`No AgentBuddy database in ${dir}`);
-    await writeData(dir, () => {});
-    await writeData(dir, () => {}, { packaged: true });
-    expect(() => findAppDataPaths(dir)).toThrow(/holds two AgentBuddy databases/);
+  });
+
+  // The stores live under `appDir`, not beside Chromium's files. A dir holding only the old layout reads as
+  // empty rather than as a database, which is the honest answer: nothing here writes there any more.
+  it('does not read the layout the app wrote before it had a directory of its own', async () => {
+    const dir = dataDirWithPacks();
+    // Deliberately the two places the app wrote before `appDir`, spelled out rather than derived: the point
+    // is that neither is read any more, which a helper that knows the current layout could not express
+    fs.mkdirSync(path.join(dir, 'ears-db'), { recursive: true });
+    fs.mkdirSync(path.join(dir, '.data', 'ears-db'), { recursive: true });
+    expect(() => findAppDataPaths(dir)).toThrow(`No AgentBuddy database in ${dir}`);
   });
 });
 
@@ -100,7 +117,7 @@ describe('openAppDatabase', () => {
 
     const db = await openAppDatabase({ env: 'test', userDataDir: dir, ...quiet });
     expect(installedEngine()).toBe(db.query);
-    expect(db.paths).toEqual(_appDataPaths(dir, { packaged: false }));
+    expect(db.paths).toEqual(_appDataPaths(dir));
     expect(getEntitiesOfType('Note').sort()).toEqual(['Note-1', 'Note-2']);
     expect(untypedQx('Note' as never).ids()).toHaveLength(2);
     expect(db.query.getRoles(id('Note-1'))).toEqual(['pinned']);

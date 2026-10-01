@@ -9,6 +9,7 @@ import { registry } from './test-host.ts';
 import { appState } from '../../../src/app-state/index.ts';
 import { createFePackRegistry } from '../../../src/fe/pack-store.ts';
 import { PACK_SNAPSHOT_FORMAT } from '@abuddy/sdk/build';
+import { _appDirOf } from '@abuddy/sdk/env';
 
 let tmpDir: string;
 let origEnv: { env?: string; userDataDir?: string };
@@ -31,7 +32,7 @@ function restoreEnv(key: string, value: string | undefined) {
   else process.env[key] = value;
 }
 
-const packsDir = () => path.join(tmpDir, 'packs');
+const packsDir = () => path.join(_appDirOf(tmpDir), 'packs');
 
 /** Writes what `abuddy build` leaves in a pack's dist/: a runtime registering `featuresSource`, and a snapshot */
 function writeBuild(packDir: string, id: string, featuresSource = '{}', extraFiles: Record<string, string> = {}) {

@@ -10,6 +10,10 @@
  * its own channel and ignores `ABUDDY_ENV`, where `ABUDDY_USER_DATA_DIR` reaches it. Nothing here is a new
  * concept the app has to learn — an empty directory is already a valid data dir, which is what the E2E
  * fixture has relied on all along.
+ *
+ * An instance used to be bound to the kind of app that created it, because a checkout and a packaged build
+ * kept their stores in different places inside it. One layout later, a dir is a dir: `abuddy run --instance x`
+ * against a checkout and against `--app beta` now mean the same directory, and `bindingProblem` is gone.
  */
 import * as fs from 'node:fs';
 import * as path from 'node:path';
@@ -17,12 +21,8 @@ import { lockIsHeld, readApiEndpoint } from '@abuddy/host/process-liveness';
 import { randomId } from '@abuddy/sdk/utils/pure';
 import type { CliDirs } from './app-target';
 
-/** Which kind of app wrote an instance. See `bindingProblem` for why it is recorded. */
-export type InstanceKind = 'source' | 'packaged';
-
 /** What an instance records about itself, in `.abuddy-instance.json` at its root. */
 interface InstanceRecord {
-  kind: InstanceKind;
   created: string;
   /** The `abuddy run` that owns an ephemeral instance, so a later run can tell a leak from a live one */
   pid?: number;
@@ -77,24 +77,6 @@ const writeRecord = (dir: string, record: InstanceRecord): void => {
 };
 
 /**
- * Why this instance can't be used by this kind of app, or nothing.
- *
- * An instance is bound to the kind that created it, and the reason is not policy: `NODE_ENV` for the API
- * comes from `app.isPackaged` rather than from the environment, so a source run keeps its stores under
- * `<dir>/.data/` and a packaged one under `<dir>/`. Point one instance at both and it holds two databases
- * — each app silently seeing its own empty world, and `findAppDataPaths` refusing the dir outright from
- * then on. Better to refuse the second launch than to hand back a dir no tool can open.
- */
-export function bindingProblem(dir: string, kind: InstanceKind): string | undefined {
-  const record = readRecord(dir);
-  if (!record || record.kind === kind) return undefined;
-  const asked = kind === 'source' ? 'a checkout' : 'a packaged build';
-  const has = record.kind === 'source' ? 'a checkout' : 'a packaged build';
-  return `${dir} was created by ${has} and can't also be used by ${asked}: the two keep their databases in `
-    + 'different places, and a dir holding both is one no tool can open. Use a different instance.';
-}
-
-/**
  * Whether an app has this instance open, from the port file a running API publishes. Three callers ask:
  * what `clean` may remove, what `removeInstance` refuses, and what `drive` refuses to launch a second app
  * over. Taking a data dir from a running app does not stop it — it writes the directory back — and
@@ -114,13 +96,11 @@ export interface OpenedInstance {
 }
 
 /** An instance by name, created if it isn't there yet. */
-export function openInstance(dirs: CliDirs, name: string, kind: InstanceKind): OpenedInstance {
+export function openInstance(dirs: CliDirs, name: string): OpenedInstance {
   const dir = instanceDir(dirs, name);
-  const problem = bindingProblem(dir, kind);
-  if (problem) throw new Error(problem);
   const existed = fs.existsSync(dir);
   fs.mkdirSync(dir, { recursive: true });
-  if (!readRecord(dir)) writeRecord(dir, { kind, created: new Date().toISOString() });
+  if (!readRecord(dir)) writeRecord(dir, { created: new Date().toISOString() });
   return { name, dir, ephemeral: false, created: !existed };
 }
 
@@ -128,21 +108,20 @@ export function openInstance(dirs: CliDirs, name: string, kind: InstanceKind): O
  * A new instance nobody has used. `recursive: false` on purpose: a name collision is an error worth
  * seeing rather than a silent reuse of someone else's data.
  */
-export function mintInstance(dirs: CliDirs, kind: InstanceKind, ephemeral: boolean): OpenedInstance {
+export function mintInstance(dirs: CliDirs, ephemeral: boolean): OpenedInstance {
   const name = randomId({ length: 10 });
   const dir = ephemeral
     ? path.join(instancesRoot(dirs), EPHEMERAL, `${process.pid}-${name}`)
     : instanceDir(dirs, name);
   fs.mkdirSync(path.dirname(dir), { recursive: true });
   fs.mkdirSync(dir);
-  writeRecord(dir, { kind, created: new Date().toISOString(), ...(ephemeral ? { pid: process.pid } : {}) });
+  writeRecord(dir, { created: new Date().toISOString(), ...(ephemeral ? { pid: process.pid } : {}) });
   return { name: ephemeral ? path.basename(dir) : name, dir, ephemeral, created: true };
 }
 
 export interface ListedInstance {
   name: string;
   dir: string;
-  kind?: InstanceKind;
   created?: string;
   ephemeral: boolean;
   /** An app is running on it right now, whoever started it */
@@ -161,7 +140,6 @@ export function listInstances(dirs: CliDirs): ListedInstance[] {
     return {
       name: path.basename(dir),
       dir,
-      kind: record?.kind,
       created: record?.created,
       ephemeral,
       inUse,
@@ -292,8 +270,8 @@ export function parseInstanceFlags(argv: string[]): { mode: InstanceMode; withSe
 }
 
 /** The instance a mode asks for, or nothing for the shared data dir. */
-export function instanceFor(mode: InstanceMode, kind: InstanceKind, dirs: CliDirs): OpenedInstance | undefined {
+export function instanceFor(mode: InstanceMode, dirs: CliDirs): OpenedInstance | undefined {
   if (mode.kind === 'shared') return undefined;
-  if (mode.kind === 'named') return openInstance(dirs, mode.name, kind);
-  return mintInstance(dirs, kind, mode.kind === 'ephemeral');
+  if (mode.kind === 'named') return openInstance(dirs, mode.name);
+  return mintInstance(dirs, mode.kind === 'ephemeral');
 }

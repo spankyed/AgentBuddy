@@ -31,7 +31,7 @@ import * as path from 'node:path';
 import { appDataDirFor, resolveAppContext, type AppEnv } from '@abuddy/sdk/env';
 import { _appDataPaths } from '@abuddy/sdk/utils';
 import { dataKeyAccount, dataKeyFile, fileKeyVault, osKeyVault, type KeyVault } from '@abuddy/host/secrets';
-import type { InstanceKind, OpenedInstance } from './instances.ts';
+import type { OpenedInstance } from './instances.ts';
 
 /** What a secrets file records about itself. Only the fields this needs; the store owns the rest. */
 interface SecretsFile {
@@ -39,8 +39,6 @@ interface SecretsFile {
   keyId?: string;
   secrets?: unknown[];
 }
-
-const packagedLayout = (kind: InstanceKind) => kind === 'packaged';
 
 const readFile = (file: string): SecretsFile | undefined => {
   try {
@@ -56,8 +54,8 @@ const readFile = (file: string): SecretsFile | undefined => {
  * `ABUDDY_USER_DATA_DIR`: the source has to be the environment's own directory, never whatever an enclosing
  * instance pointed this process at.
  */
-export function sourceSecretsFile(env: AppEnv, kind: InstanceKind): string {
-  return _appDataPaths(appDataDirFor(env), { packaged: packagedLayout(kind) }).secretsFile;
+export function sourceSecretsFile(env: AppEnv): string {
+  return _appDataPaths(appDataDirFor(env)).secretsFile;
 }
 
 /**
@@ -89,8 +87,8 @@ export interface SecretCopy {
  * the thing this exists to prevent. Reading the source key may prompt for keychain access, which is the
  * credential store doing its job.
  */
-export function copySecretsInto(instance: OpenedInstance, kind: InstanceKind, env: AppEnv): SecretCopy {
-  const from = sourceSecretsFile(env, kind);
+export function copySecretsInto(instance: OpenedInstance, env: AppEnv): SecretCopy {
+  const from = sourceSecretsFile(env);
   const source = readFile(from);
   if (!source) throw new Error(`--with-secrets found no keys to copy: ${from} doesn't exist or can't be read.`);
 
@@ -106,7 +104,7 @@ export function copySecretsInto(instance: OpenedInstance, kind: InstanceKind, en
     );
   }
 
-  const target = _appDataPaths(instance.dir, { packaged: packagedLayout(kind) }).secretsFile;
+  const target = _appDataPaths(instance.dir).secretsFile;
   fs.mkdirSync(path.dirname(target), { recursive: true });
   // `unprotected` because the key now lives beside the file rather than in the credential store, and the
   // app reads this field to tell the user which it is

@@ -3,7 +3,6 @@ import * as os from 'node:os';
 import * as path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import {
-  bindingProblem,
   instanceDir,
   instanceFor,
   instanceNameProblem,
@@ -54,40 +53,29 @@ describe('an instance name', () => {
 
 describe('opening an instance', () => {
   it('creates it the first time and reuses it after', () => {
-    const first = openInstance(dirs, 'probe', 'source');
+    const first = openInstance(dirs, 'probe');
     fs.writeFileSync(path.join(first.dir, 'marker'), 'x');
-    const again = openInstance(dirs, 'probe', 'source');
+    const again = openInstance(dirs, 'probe');
     expect(again.dir).toBe(first.dir);
     expect(fs.existsSync(path.join(again.dir, 'marker')), 'reopening must not wipe it').toBe(true);
   });
 
-  /**
-   * Not policy: `NODE_ENV` for the API comes from `app.isPackaged`, so a checkout keeps its stores under
-   * `<dir>/.data/` and a packaged build under `<dir>/`. A dir holding both is one `findAppDataPaths`
-   * refuses outright, so the second launch is the last moment this can be caught.
-   */
-  it('refuses an app kind the instance was not created by', () => {
-    openInstance(dirs, 'probe', 'source');
-    expect(() => openInstance(dirs, 'probe', 'packaged')).toThrow(/created by a checkout/);
-    expect(bindingProblem(path.join(root(), 'probe'), 'source')).toBeUndefined();
-  });
-
   it('mints a named instance whose name can be used again', () => {
-    const minted = mintInstance(dirs, 'source', false);
+    const minted = mintInstance(dirs, false);
     expect(instanceNameProblem(minted.name), 'a minted name has to be one --instance accepts').toBeUndefined();
-    expect(openInstance(dirs, minted.name, 'source').dir).toBe(minted.dir);
+    expect(openInstance(dirs, minted.name).dir).toBe(minted.dir);
   });
 });
 
 describe('ephemeral instances', () => {
   it('are kept apart from named ones, so reclaiming by pid cannot eat a name', () => {
-    const ephemeral = mintInstance(dirs, 'source', true);
+    const ephemeral = mintInstance(dirs, true);
     expect(path.dirname(ephemeral.dir)).toBe(path.join(root(), '.ephemeral'));
     expect(listInstances(dirs).filter(i => !i.ephemeral), 'it is not a named instance').toEqual([]);
   });
 
   it('count as leaked only once the run that made them has gone', () => {
-    mintInstance(dirs, 'source', true);
+    mintInstance(dirs, true);
     expect(listInstances(dirs)[0], 'this process is still alive').toMatchObject({ ephemeral: true, leaked: false });
 
     // A dir left by a run that is no longer here, which is what a crash leaves
@@ -106,8 +94,8 @@ describe('ephemeral instances', () => {
  */
 describe('what removing accepts', () => {
   it('takes a named instance and an ephemeral one, which is what every caller passes', () => {
-    const named = openInstance(dirs, 'keep-me', 'source');
-    const ephemeral = mintInstance(dirs, 'source', true);
+    const named = openInstance(dirs, 'keep-me');
+    const ephemeral = mintInstance(dirs, true);
     removeInstance(dirs, named.dir);
     removeInstance(dirs, ephemeral.dir);
     expect(fs.existsSync(named.dir)).toBe(false);
@@ -115,20 +103,20 @@ describe('what removing accepts', () => {
   });
 
   it('refuses the instances root, and every instance under it survives', () => {
-    const named = openInstance(dirs, 'keep-me', 'source');
+    const named = openInstance(dirs, 'keep-me');
     expect(() => removeInstance(dirs, root())).toThrow(/the instances directory itself/);
     expect(fs.existsSync(named.dir)).toBe(true);
   });
 
   it('refuses the directory the ephemeral ones live in, and they survive', () => {
-    const one = mintInstance(dirs, 'source', true);
-    const two = mintInstance(dirs, 'source', true);
+    const one = mintInstance(dirs, true);
+    const two = mintInstance(dirs, true);
     expect(() => removeInstance(dirs, path.dirname(one.dir))).toThrow(/every ephemeral instance lives/);
     expect(fs.existsSync(one.dir) && fs.existsSync(two.dir)).toBe(true);
   });
 
   it('refuses a directory inside an instance, which is data rather than an instance', () => {
-    const named = openInstance(dirs, 'keep-me', 'source');
+    const named = openInstance(dirs, 'keep-me');
     expect(() => removeInstance(dirs, path.join(named.dir, 'packs'))).toThrow(/an instance is a directory/);
   });
 
@@ -183,7 +171,7 @@ describe('the flags', () => {
 
   // The default has to stay the shared dev dir: `run` with no flag must behave exactly as it did
   it('resolve nothing for the shared default', () => {
-    expect(instanceFor({ kind: 'shared' }, 'source', dirs)).toBeUndefined();
+    expect(instanceFor({ kind: 'shared' }, dirs)).toBeUndefined();
   });
 });
 
@@ -206,7 +194,7 @@ describe('an instance an app still has open', () => {
   });
 
   it('refuses to be removed', () => {
-    const live = openInstance(dirs, 'live', 'source');
+    const live = openInstance(dirs, 'live');
     publishApi(live.dir, process.pid);
     expect(() => removeInstance(dirs, live.dir)).toThrow(/An app is running on/);
     expect(fs.existsSync(live.dir)).toBe(true);

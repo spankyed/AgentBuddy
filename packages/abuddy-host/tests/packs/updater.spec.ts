@@ -4,6 +4,7 @@ import * as path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { checkForUpdates, findLatestRelease } from '../../src/packs/updater.ts';
 import { readInstalledPacks, writeInstalledPacks } from '../../src/packs/installed.ts';
+import { _appDirOf } from '@abuddy/sdk/env';
 
 const recordedPacks = () => readInstalledPacks();
 
@@ -143,7 +144,7 @@ describe('checkForUpdates', () => {
 
   /** The pack on disk, which is what makes it installed and where its version comes from */
   function installed(id: string, version: string) {
-    const dir = path.join(userDataDir, 'packs', id);
+    const dir = path.join(_appDirOf(userDataDir), 'packs', id);
     fs.mkdirSync(dir, { recursive: true });
     fs.writeFileSync(path.join(dir, 'abuddy.json'), JSON.stringify({ id, name: id, version }));
   }

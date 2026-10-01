@@ -41,7 +41,7 @@ describe('the app context', () => {
   it('keeps a run given its own data dir in its own log directory', async () => {
     process.env.ABUDDY_USER_DATA_DIR = '/tmp/isolated-run';
 
-    expect((await context()).logsDir).toBe('/tmp/isolated-run/logs');
+    expect((await context()).logsDir).toBe('/tmp/isolated-run/abuddy/logs');
   });
 
   // Electron has to agree, because electron-log and anything else asking it must get the same answer

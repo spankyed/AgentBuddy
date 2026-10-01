@@ -4,7 +4,7 @@ import * as os from 'node:os';
 import * as path from 'node:path';
 import { createActor, setup, type AnyEventObject } from 'xstate';
 import { HOST } from '../../../../src/refs.ts';
-import { resolveAppContext } from '@abuddy/sdk/env';
+import { _appDirOf, resolveAppContext } from '@abuddy/sdk/env';
 import { resetTestData, takeSystemErrors, testRootEvents } from '@abuddy/sdk/testing';
 import { readInstalledPacks } from '../../../../src/packs/installed.ts';
 import { registry } from '../../../packs/runtime/test-host.ts';
@@ -153,7 +153,7 @@ describe('a pack that ships with the app', () => {
       await vi.waitFor(() => expect(emitted(system.sent).map(e => e.type)).toContain('PACK_INSTALL_FAILED'));
       expect(emitted(system.sent).find(e => e.type === 'PACK_INSTALL_FAILED')).toMatchObject({ error: expect.stringContaining(`"${PACK_ID}" is a pack AgentBuddy ships`) });
       expect(registry.packOrigin(PACK_ID)).toEqual(shipped);
-      expect(fs.existsSync(path.join(tmpDir, 'packs', PACK_ID))).toBe(false);
+      expect(fs.existsSync(path.join(_appDirOf(tmpDir), 'packs', PACK_ID))).toBe(false);
     } finally {
       system.stop();
     }
@@ -306,19 +306,19 @@ describe('a pack that is gone', () => {
       await installPackFromLocal(packSource('1.0.0'));
       // A read-only pack directory: the uninstall can't unlink what is inside it, so it throws with the
       // pack still there — which is the case this is about, an uninstall that did not happen
-      fs.chmodSync(path.join(tmpDir, 'packs', PACK_ID), 0o500);
+      fs.chmodSync(path.join(_appDirOf(tmpDir), 'packs', PACK_ID), 0o500);
 
       system.send({ type: 'UNINSTALL_PACK', packId: PACK_ID });
 
       await vi.waitFor(() => {
         expect(emitted(system.sent).map(e => e.type)).toContain('PACK_UNINSTALL_FAILED');
       });
-      fs.chmodSync(path.join(tmpDir, 'packs', PACK_ID), 0o700);
+      fs.chmodSync(path.join(_appDirOf(tmpDir), 'packs', PACK_ID), 0o700);
       system.send({ type: 'GET_INSTALLED_PACKS' });
       const list = emitted(system.sent).filter(e => e.type === 'PACKS_LIST').pop();
       expect(list?.packs).toContainEqual(expect.objectContaining({ id: PACK_ID }));
     } finally {
-      fs.chmodSync(path.join(tmpDir, 'packs', PACK_ID), 0o700);
+      fs.chmodSync(path.join(_appDirOf(tmpDir), 'packs', PACK_ID), 0o700);
       system.stop();
     }
   });
@@ -346,7 +346,7 @@ describe('installing over a pack that is already running', () => {
     const versionsWhenCalled: string[] = [];
     await installPackFromLocal(packSource('2.0.0'), undefined, {
       beforePlace: () => {
-        const installed = path.join(tmpDir, 'packs', PACK_ID, 'abuddy.json');
+        const installed = path.join(_appDirOf(tmpDir), 'packs', PACK_ID, 'abuddy.json');
         versionsWhenCalled.push(JSON.parse(fs.readFileSync(installed, 'utf-8')).version);
       },
     });
@@ -449,7 +449,7 @@ describe('uninstalling by an id that is not an installed pack', () => {
       await vi.waitFor(() => expect(emitted(system.sent).map(e => e.type)).toContain('PACK_UNINSTALL_FAILED'));
       expect(emitted(system.sent).find(e => e.type === 'PACK_UNINSTALL_FAILED')).toMatchObject({ error: `"${packId}" is not an installed pack` });
       expect(emitted(system.sent).map(e => e.type)).not.toContain('PACK_DEACTIVATED');
-      expect(fs.existsSync(path.join(tmpDir, 'packs', PACK_ID, 'abuddy.json'))).toBe(true);
+      expect(fs.existsSync(path.join(_appDirOf(tmpDir), 'packs', PACK_ID, 'abuddy.json'))).toBe(true);
     } finally {
       system.stop();
     }
@@ -480,7 +480,7 @@ describe('updating to a release that holds another pack', () => {
     }
   }
 
-  const installedVersion = () => JSON.parse(fs.readFileSync(path.join(tmpDir, 'packs', PACK_ID, 'abuddy.json'), 'utf-8')).version;
+  const installedVersion = () => JSON.parse(fs.readFileSync(path.join(_appDirOf(tmpDir), 'packs', PACK_ID, 'abuddy.json'), 'utf-8')).version;
 
   it("is refused when that pack is one the app ships, and the installed copy runs again", async () => {
     registry.registerPack({ id: 'shipped-pack' }, { id: 'shipped-pack', name: 'Shipped', version: '1.0.0', dir: 'host-packs/shipped-pack', builtIn: true });
@@ -488,7 +488,7 @@ describe('updating to a release that holds another pack', () => {
     const sent = await updateTo('shipped-pack');
 
     expect(sent.find(e => e.type === 'PACK_UPDATE_FAILED')).toMatchObject({ error: expect.stringContaining('"shipped-pack" is a pack AgentBuddy ships') });
-    expect(fs.existsSync(path.join(tmpDir, 'packs', 'shipped-pack'))).toBe(false);
+    expect(fs.existsSync(path.join(_appDirOf(tmpDir), 'packs', 'shipped-pack'))).toBe(false);
     expect(installedVersion()).toBe('1.0.0');
     expect(sent.map(e => e.type)).toContain('PACK_ACTIVATED');
   });
@@ -497,7 +497,7 @@ describe('updating to a release that holds another pack', () => {
     const sent = await updateTo('other-pack');
 
     expect(sent.find(e => e.type === 'PACK_UPDATE_FAILED')).toMatchObject({ error: expect.stringContaining('holds the pack "other-pack", not "reinstall-pack"') });
-    expect(fs.existsSync(path.join(tmpDir, 'packs', 'other-pack'))).toBe(false);
+    expect(fs.existsSync(path.join(_appDirOf(tmpDir), 'packs', 'other-pack'))).toBe(false);
     expect(installedVersion()).toBe('1.0.0');
     expect(sent.map(e => e.type)).toContain('PACK_ACTIVATED');
   });

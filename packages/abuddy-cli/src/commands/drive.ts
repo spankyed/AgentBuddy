@@ -153,9 +153,9 @@ export async function drive(args: string[]) {
   }
 
   const app = await resolveDevelopmentApp({ flags, hostVersion: manifest.hostVersion ?? '*' });
-  const instance = instanceFor(mode, app.kind, cliDirs());
+  const instance = instanceFor(mode, cliDirs());
   if (instance?.created && withSecrets) {
-    const { count, from } = copySecretsInto(instance, app.kind, appEnv(app));
+    const { count, from } = copySecretsInto(instance, appEnv(app));
     console.log(`Copied ${count} secret${count === 1 ? '' : 's'} from ${from}\n`);
   }
 
