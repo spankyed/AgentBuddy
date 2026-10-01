@@ -159,6 +159,17 @@ describe('what a spec that changed half says about the band', () => {
     expect(ratiosFromMoves(record({ [FAST]: 2_000 }), { [SLOW]: 1_000 }, [SLOW], [FAST, SLOW])).toEqual([]);
   });
 
+  /**
+   * A cheap spec's ratio is noise, and acting on it is worse than ignoring it: 10ms reading 3ms in the
+   * other half is 3.33x, which would advise raising the bound and so lowering the return edge over 7ms of
+   * jitter. Only a spec that could reach an edge says anything about where the edges go.
+   */
+  it('ignores a move too cheap to say anything about the band', () => {
+    expect(ratiosFromMoves(record({ [FAST]: 10 }), { [SLOW]: 3 }, [SLOW], [SLOW])).toEqual([]);
+    const real = FAST_BELOW_MS + 1;
+    expect(ratiosFromMoves(record({ [FAST]: real }), { [SLOW]: real / 2 }, [SLOW], [SLOW])).toHaveLength(1);
+  });
+
   it('says nothing when the spec is new rather than moved', () => {
     expect(ratiosFromMoves(record({}), { [SLOW]: 1_000 }, [SLOW], [SLOW])).toEqual([]);
   });

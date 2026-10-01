@@ -113,6 +113,11 @@ export function ratiosFromMoves(
     // spec with whatever happens to share its name in the other half
     if (here.has(was) || before === undefined || now === undefined || now <= 0 || before <= 0) return [];
     const [fast, integration] = halfOfPath(spec) === 'fast' ? [now, before] : [before, now];
+    // A cheap spec's ratio is noise about the band, and acting on it is worse than ignoring it: a 10ms spec
+    // reading 3ms in the other half is 3.33x, which would advise raising the bound and so *lowering* the
+    // return edge over 7ms of jitter. Only a spec that could reach an edge says anything about where the
+    // edges go, and below the return edge no cost can be asked to move.
+    if (Math.max(fast, integration) < FAST_BELOW_MS) return [];
     return [{ spec, fast, integration, ratio: fast / integration }];
   });
 }
@@ -126,8 +131,7 @@ export const underBound = (
 export const COST_ACCURACY = 0.2;
 
 /**
- * How far a spec is from the edge that could actually move it, as a share of its cost — or `undefined`
- * where no edge applies.
+ * How far a spec is from the edge that could actually move it, as a share of its cost.
  *
  * **Which edge depends on the half.** A fast spec only ever leaves above `INTEGRATION_ABOVE_MS`; an
  * integration spec only comes back below `FAST_BELOW_MS`. Reporting band membership instead treated those
@@ -135,13 +139,13 @@ export const COST_ACCURACY = 0.2;
  * have had to nearly double. Widening the band made that louder rather than quieter — the membership list
  * grew by five specs that cannot move at all.
  */
-export function towardEdge(file: string, ms: number): number | undefined {
+export function towardEdge(file: string, ms: number): number {
   const edge = halfOfPath(file) === 'fast' ? INTEGRATION_ABOVE_MS : FAST_BELOW_MS;
   return Math.abs(edge - ms) / ms;
 }
 
 /** Whether a re-measurement inside the record's own accuracy could carry this spec over its edge. */
-export const nearEdge = (file: string, ms: number): boolean => (towardEdge(file, ms) ?? Infinity) <= COST_ACCURACY;
+export const nearEdge = (file: string, ms: number): boolean => towardEdge(file, ms) <= COST_ACCURACY;
 
 export interface SpecCost {
   /** Measured milliseconds, per spec path relative to the package */

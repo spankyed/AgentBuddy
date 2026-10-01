@@ -97,6 +97,11 @@ export async function contractTest(cwd: string, args: string[], run: ContractRun
   ensureCheckoutPackages(cwd);
   // A pack resolves the packages' published dist, whoever runs it — the same rule the Playwright half
   // follows, and the reason a checkout's own condition must not reach this run
+  // **This inherits the environment where `fixtureEnv` scrubs it, and that is deliberate.** No app starts
+  // here, so there is no app to pin — and `tests/scripts/test-external-pack-contract.sh` exports
+  // `ABUDDY_ROOT` precisely so the pack's build resolves this checkout. Scrubbing it the way the fixture
+  // path does would break that step. Nothing on this path reads `E2E_DATA_DIR`, `E2E_SCREENSHOT_DIR` or
+  // `PACK_DIR`, which is why the hermeticity those get in `fixtureEnv` is not needed here.
   const env: NodeJS.ProcessEnv = { ...process.env };
   const nodeOptions = withoutSourceCondition(process.env.NODE_OPTIONS);
   if (nodeOptions) env.NODE_OPTIONS = nodeOptions;

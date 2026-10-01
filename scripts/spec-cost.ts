@@ -367,7 +367,9 @@ function list(only: string | undefined, named: readonly string[]): void {
   // past max(300ms, 35%), so the number below can be that far from what the spec costs today. Measured
   // 2026-10-01, `lint-scope` was recorded at 2388ms and read 2025-2171ms over three runs — still inside the
   // window, 366ms from its edge rather than the 112ms the record implies.
-  console.log('Distances are to the recorded cost, which is held until a reading moves past its tolerance:');
+  if (near.length > 0) {
+    console.log('Distances are to the recorded cost, which is held until a reading moves past its tolerance:');
+  }
   for (const line of near.sort()) console.log(line);
 }
 
