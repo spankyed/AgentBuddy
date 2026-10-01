@@ -4,6 +4,7 @@ import { BUILD_UNITS, repoRelative, REPO_ROOT } from '@abuddy/host/build/package
 import { UNIT_SUITES, type UnitSuite } from './unit-suites.ts';
 import { hasSplit } from './spec-cost.ts';
 import { dependencySource, PACKAGE_DIRS, workspaceDeps } from './workspace-deps.ts';
+import { TYPECHECK_LEGS, type Leg } from './typecheck-legs.ts';
 
 /**
  * The pre-merge chain's steps and what each is allowed to read. Separate from `scripts/chain.ts` because
@@ -566,6 +567,71 @@ function inputsForSuites(suites: readonly UnitSuite[]): Pick<ChainStep, 'inputs'
  * Two pools rather than one because host suites resolve workspace source and the pack suite must resolve
  * the published `dist`, and Node conditions are per process: see `UnitSuite.kind`.
  */
+/**
+ * What a typecheck leg reads, from the scope it declares.
+ *
+ * Derived rather than listed, so a leg cannot carry an input set that disagrees with what it checks —
+ * `typecheck-legs.spec.ts` holds the scope itself to what the leg's script names, and this turns that one
+ * declaration into the key.
+ *
+ * **Every leg still declares the built `@abuddy` packages**, which is broader than most read and is kept
+ * that way on purpose: the single `typecheck` step this replaces declared them, the edge into
+ * `packages:ensure` derives from them, and the legs with no dep file — the lint, the import rules, the
+ * API stamp — are exactly the ones whose reads nothing reports.
+ *
+ * **It does not declare the pack's `dist`, because no leg reads it.** Checked against the dep files: not
+ * one of the fourteen reads `packages/default-setup/dist`. What `typecheck:pack` really reads is the 19
+ * generated files under `src/__generated__`, which `compile` also writes and which `src` already covers —
+ * so the edge to `compile` survives on the leg that has it, and the other fourteen stop waiting for a
+ * build they never read.
+ *
+ * What the scope narrows is the source: an edit under the renderer no longer invalidates `typecheck:ears`.
+ *
+ * `dep-files.spec.ts` checks each leg's declaration against what the compiler reported reading, which is
+ * the half that would catch a scope narrower than the truth.
+ */
+const legInputs = (leg: Leg): string[] => [...new Set(leg.scope === 'repo'
+  ? [...EVERY_SOURCE, ...PACKAGE_BUILD_OUTPUTS]
+  : [...ROOT,
+    ...leg.scope.flatMap(suiteWorkspace),
+    ...leg.scope.flatMap((dir) => workspaceDeps(dir)).flatMap(dependencySource),
+    ...PACKAGE_BUILD_OUTPUTS])].sort();
+
+/**
+ * One step per typecheck leg, which is what makes the chain's scheduler the only one.
+ *
+ * `npm run typecheck` used to be a single step that ran eighteen legs on lanes of its own, and it had to
+ * guess how many: "half the cores, because the chain runs two other lanes beside this step". That guess
+ * is the two-schedulers problem `test-unit-scheduling.md` removed for the unit suites and left here, and
+ * it cost a measured 63.4s in-chain against 29.3s of work, because the other lanes saturated the cores it
+ * was not using. One scheduler owns every lane now, and `npm run typecheck` remains for a person running
+ * it directly, where there is nothing to contend with.
+ *
+ * `packages:ensure` is a leg *and* a step, and it is declared as a step: the legs that read what it builds
+ * derive an edge to it from `PACKAGE_BUILD_OUTPUTS`, so there is nothing for a second copy to add.
+ *
+ * **What it bought, measured 2026-10-01 at 84% idle, `chain --all`, three runs each:**
+ *
+ *     one step, its own lanes    171.0s median (169.8s-187.8s)
+ *     one step per leg           169.8s median (169.6s-170.3s)
+ *
+ * The medians are within a second, which is the honest headline: this is a scheduling change and the
+ * chain is core-bound either way. The *spread* is the result — 18s against 0.7s. A run that sometimes
+ * cost 188s and sometimes 170s was two schedulers deciding independently how much of the machine to
+ * take, and which one won depended on what else happened to be in flight.
+ */
+const TYPECHECK_STEPS: readonly ChainStep[] = TYPECHECK_LEGS
+  .filter((leg) => leg.name !== 'packages:ensure')
+  .map((leg) => ({
+    name: leg.name,
+    seconds: leg.seconds,
+    inputs: legInputs(leg),
+    // A leg reading every source tree reads around the fixture packs' build output for the same reason
+    // the single step did: `tsc -p tests` compiles `e2e/**` only and `check:specifiers` filters
+    // `__generated__` itself, so hashing it would tie the leg to a build it does not depend on.
+    ...(leg.scope === 'repo' ? { excludes: [...FIXTURE_OUTPUTS, ...FIXTURE_TEST_OUTPUT] } : {}),
+  }));
+
 const POOL_STEPS: readonly ChainStep[] = (['host', 'pack'] as const).map((kind) => {
   const suites = UNIT_SUITES.filter((suite) => suite.kind === kind);
   return {
@@ -679,27 +745,7 @@ export const CHAIN_STEPS: readonly ChainStep[] = [
       'tests/scripts/lib', ...PACKAGE_BUILD_OUTPUTS, ...PACK_OUTPUTS] },
   // The widest inputs in the table, and honestly so: it compiles every workspace, the scripts and the
   // tests, and lints them. A change anywhere in the repo's TypeScript is a change to what it checks.
-  { name: 'typecheck', seconds: 27,
-    // `tests/e2e`, `tests/packs` and `tests/scripts`, never `tests` itself: that walk takes in
-    // `tests/results`, which every Playwright run rewrites, so declaring the parent meant this step could
-    // never be cached — measured against `tests/screenshots`, which the suite wrote until `91b348069` and
-    // which cost a warm chain its 34s every time. Gitignored output that no step reads should be no step's
-    // input, and the input-coverage guard backstops the narrowing: a tracked file under `tests/` that
-    // none of these three covers fails it by name.
-    // The loose modules below are here because `lint:check` is a leg of this step and reads them: its root pass
-    // is `oxlint .` minus `docs/**` and the CLI's scaffold templates, which takes in every tracked JS module
-    // outside those two. No step *runs* the packaging ones — they belong to `build-prod` — but a step that reads
-    // a file declares it, or this one reports `cached` over a lint error in it. Measured: an unused binding in
-    // `build/prod/diagnostics.mjs` failed `lint:check` while `chain --dry` planned this step as cached.
-    // The `packages/` entries are the files `EVERY_WORKSPACE` cannot reach, since it walks a fixed set of parts
-    // and these sit beside them: two bins, a bench, a bundler config and the two loaders at `packages/`'s root.
-    // They arrived when the lint stopped ignoring `packages/**`, and the guard below named all six.
-    inputs: [...EVERY_SOURCE, ...PACKAGE_BUILD_OUTPUTS, ...PACK_OUTPUTS],
-    // It wants the fixture packs' sources, never their build output: `tsc -p tests` compiles `e2e/**`
-    // only, and `check:specifiers` filters `__generated__` out itself — verified by deleting a fixture's
-    // generated directory, which leaves it passing. Hashing that output would tie this check's freshness
-    // to a build it does not depend on.
-    excludes: [...FIXTURE_OUTPUTS, ...FIXTURE_TEST_OUTPUT] },
+  ...TYPECHECK_STEPS,
   ...POOL_STEPS,
   // The CLI specs that run a real build, install or child process. They need the built packages,
   // never the app — which is why they can run before `build` rather than behind it.

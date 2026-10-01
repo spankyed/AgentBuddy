@@ -198,6 +198,7 @@ describe('a step whose runner reads stamps declares forceArgs', () => {
    */
   const KEEPS_ITS_CACHE_UNDER_ALL: Record<string, string> = {
     'packages:ensure': 'forcing it would turn the 18 nested ensurePackagesBuilt() calls a chain makes into 18 builds behind one lock; the packages keep their own content-addressed stamps, which package-freshness.spec.ts covers, and "regardless of its stamp" means the chain\'s stamps',
+    'check:tiers': 'it consults no stamp. It reads the step table, which imports the fingerprint module, and this check reads text — so the freshness names are in its reach without being in its behaviour. The import is for `CHAIN_STEPS` and `APP_OUTPUTS`; if `check-test-tiers.ts` ever calls one of them, this entry is wrong and the case above is right',
   };
 
   const scripts = (JSON.parse(fs.readFileSync(path.join(REPO_ROOT, 'package.json'), 'utf-8')) as { scripts: Record<string, string> }).scripts;

@@ -18,7 +18,10 @@
  * since `packages/dev-mode.js` and `packages/entry-point.mjs` are source that three app-free steps read.
  *
  * The text scan goes when the action graph can answer "does this transitively depend on `build:app`"
- * (`docs/plans/one-action-cache.md`, item 17). Until then it is the half that catches a launch.
+ * (`docs/plans/one-action-cache.md`, item 17). Until then it is the half that catches a launch, and the
+ * cost of it being a scan is that **a marker inside a string literal reads as an invocation**: one rule's
+ * `why` text said `abuddy test` in prose and this refused the step until the sentence was reworded.
+ * Comments are stripped; string literals are not, and telling them apart is the resolver this is not.
  */
 import * as fs from 'node:fs';
 import * as path from 'node:path';

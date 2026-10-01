@@ -85,6 +85,8 @@
     "packages:version": "changeset version && npm install --package-lock-only",
     "api:check": "npm run api:check -w @abuddy/ears -w @abuddy/sdk -w @abuddy/ui",
     "api:update": "npm run api:update -w @abuddy/ears -w @abuddy/sdk -w @abuddy/ui",
+    "exports:check": "npm run exports:check -w @abuddy/ui",
+    "schema:check": "npm run schema:check -w @abuddy/sdk",
     "api:stamp": "tsx scripts/api-report-stamp.ts packages/abuddy-ears && tsx scripts/api-report-stamp.ts packages/abuddy-sdk && tsx scripts/api-report-stamp.ts packages/abuddy-ui",
     "packages:publish": "tsx scripts/publish-packages.ts",
     "db:query": "abuddy db query -d",

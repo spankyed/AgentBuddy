@@ -226,10 +226,12 @@ describe('the chain reads every source file', () => {
     expect(passes.some((pass) => pass.at !== ''), 'no workspace oxlint call was derived — the fan-out stopped being followed').toBe(true);
 
     const linted = new Set(passes.flatMap((pass) => [...pass.files]));
-    const step = CHAIN_STEPS.find((candidate) => candidate.name === 'typecheck')!;
+    // `lint:check` is its own chain step now; it was a leg of `typecheck` when this case was written
+    const step = CHAIN_STEPS.find((candidate) => candidate.name === 'lint:check')!;
+    expect(step, 'no step runs the lint, so this would pass over nothing').toBeDefined();
     const covered = coveredBy([step]);
     const missing = [...linted].filter((file) => !covered.has(file)).sort();
-    expect(missing, 'typecheck runs lint over these and declares none of them, so it caches over their changes').toEqual([]);
+    expect(missing, 'lint:check walks these and declares none of them, so it caches over their changes').toEqual([]);
   });
 
   it('gives every step the files its script reaches', () => {

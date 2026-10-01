@@ -100,7 +100,15 @@ export function reachableText(script: string, all: Record<string, string>, { ski
     seen.add(name);
     invoked.add(name);
     let text = all[name] ?? '';
-    for (const called of text.matchAll(/npm run ([\w:-]+)/g)) text += `\n${walk(called[1]!)}`;
+    // Where a call names a workspace, the script is that workspace's and the root's copy of the name is a
+    // different script — which the loop below expands correctly and this one must therefore not. Matched by
+    // position rather than by a lookahead, because the flag can sit any distance after the name.
+    const scoped = [...text.matchAll(WORKSPACE_CALL)]
+      .map((hit) => [hit.index, hit.index + hit[0].length] as const);
+    for (const called of text.matchAll(/npm run ([\w:-]+)/g)) {
+      if (scoped.some(([from, to]) => called.index >= from && called.index < to)) continue;
+      text += `\n${walk(called[1]!)}`;
+    }
     for (const [, called, workspace] of text.matchAll(WORKSPACE_CALL)) {
       const key = `${workspace}:${called}`;
       if (seen.has(key)) continue;
