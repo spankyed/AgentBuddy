@@ -55,6 +55,30 @@ describe('a typecheck leg takes its scope from its script', () => {
     expect(redundant).toEqual([]);
   });
 
+  /**
+   * The property that makes deriving this no weaker than declaring it.
+   *
+   * A parse that keeps what it understood and drops the rest narrows the scope silently, and a scope short
+   * one workspace is a step that stops re-running when that workspace changes. Nothing is unresolved today,
+   * so this is the case that keeps it that way rather than one that fires — and "it happens to resolve" is
+   * not the same property as "it cannot quietly fail to".
+   */
+  it('resolves every workspace its scripts name, rather than keeping what it understood', () => {
+    const named = TYPECHECK_LEGS.filter((leg) => leg.scope === undefined);
+    expect(named.length, 'no leg derives its scope, so this checks nothing').toBeGreaterThan(8);
+    const broken = named.flatMap((leg) => {
+      try { scopeOf(leg); return []; } catch (err) { return [(err as Error).message]; }
+    });
+    expect(broken, 'a mention it cannot resolve must be refused, not dropped').toEqual([]);
+  });
+
+  it('refuses a leg whose script names a workspace it cannot resolve', () => {
+    const invented: Leg = { name: 'typecheck:bogus', command: 'npm run typecheck --workspace @abuddy/not-a-package', seconds: 1 };
+    // The leg's own `command` is not what is read — the root script of that name is, and there is none here,
+    // so this is the no-mentions refusal. The resolvable-mention rule is the case above, over the real table.
+    expect(() => scopeOf(invented)).toThrow(/names no workspace, so declare a scope/);
+  });
+
   it('refuses a leg whose script names nothing and which declares nothing', () => {
     const invented: Leg = { name: 'typecheck:nothing', command: 'npm run typecheck:nothing', seconds: 1 };
     expect(() => scopeOf(invented)).toThrow(/names no workspace, so declare a scope/);

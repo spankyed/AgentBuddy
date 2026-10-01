@@ -71,14 +71,22 @@ export const TYPECHECK_LEGS: readonly Leg[] = [
 ];
 
 /**
- * The workspace directories a leg's own script names, read from the script rather than from the leg.
+ * What a leg's own script names, and what of it this could not resolve — both, because the second is the
+ * reason the first can be trusted as a cache key.
+ *
+ * **A parse that drops what it does not understand is the failure a declaration was guarding against.**
+ * This read every `--workspace` and kept the ones that mapped to a package directory, which is a silent
+ * narrowing: a scope short one workspace is a step that does not re-run when that workspace changes, and
+ * nothing says so. Unresolved mentions are carried out of here instead, and `scopeOf` refuses rather than
+ * answering with the remainder — the one property that makes deriving this no weaker than declaring it.
  *
  * Memoised for this process: the scripts are a file the chain reads once, and a leg's answer cannot change
  * inside one run. Nothing resets it, because nothing rewrites `package.json` mid-run — and a reset hatch is
  * a thing to forget (root `CLAUDE.md`, on caches).
  */
-let scriptScopes: Map<string, readonly string[]> | undefined;
-function namedByScript(leg: string): readonly string[] {
+interface ScriptScope { readonly dirs: readonly string[]; readonly unresolved: readonly string[] }
+let scriptScopes: Map<string, ScriptScope> | undefined;
+function namedByScript(leg: string): ScriptScope {
   if (scriptScopes === undefined) {
     const all = rootScripts();
     const nameToDir = new Map(PACKAGE_DIRS.map((dir) => [
@@ -86,15 +94,22 @@ function namedByScript(leg: string): readonly string[] {
       dir,
     ]));
     scriptScopes = new Map(Object.entries(all).map(([name, command]) => {
-      const byWorkspace = [...command.matchAll(/--workspace[= ]([^\s]+)|(?:^|\s)-w[= ]([^\s]+)/g)]
-        .map((hit) => nameToDir.get(hit[1] ?? hit[2]!))
-        .filter((dir): dir is string => dir !== undefined);
-      // `tsc -p packages/x` and `cd packages/x` name a directory where no `-w` does
-      const byPath = [...command.matchAll(/(?:tsc -p|cd) packages\/([^\s/]+)/g)].map((hit) => hit[1]!);
-      return [name, [...new Set([...byWorkspace, ...byPath])].sort()] as const;
+      const mentions = [
+        ...[...command.matchAll(/--workspace[= ]([^\s]+)|(?:^|\s)-w[= ]([^\s]+)/g)]
+          .map((hit) => ({ as: 'workspace' as const, named: hit[1] ?? hit[2]! })),
+        // `tsc -p packages/x` and `cd packages/x` name a directory where no `-w` does
+        ...[...command.matchAll(/(?:tsc -p|cd) packages\/([^\s/]+)/g)]
+          .map((hit) => ({ as: 'directory' as const, named: hit[1]! })),
+      ];
+      const resolve = ({ as, named }: { as: 'workspace' | 'directory'; named: string }): string | undefined =>
+        (as === 'workspace' ? nameToDir.get(named) : (PACKAGE_DIRS.includes(named) ? named : undefined));
+      return [name, {
+        dirs: [...new Set(mentions.map(resolve).filter((dir): dir is string => dir !== undefined))].sort(),
+        unresolved: mentions.filter((m) => resolve(m) === undefined).map((m) => m.named).sort(),
+      }] as const;
     }));
   }
-  return scriptScopes.get(leg) ?? [];
+  return scriptScopes.get(leg) ?? { dirs: [], unresolved: [] };
 }
 
 /**
@@ -113,9 +128,14 @@ function namedByScript(leg: string): readonly string[] {
  */
 export function scopeOf(leg: Leg): readonly string[] | 'repo' {
   if (leg.scope !== undefined) return leg.scope;
-  const named = namedByScript(leg.name);
-  if (named.length === 0) {
+  const { dirs, unresolved } = namedByScript(leg.name);
+  // Refused, not answered with what was understood: a scope short one workspace is a step that stops
+  // re-running when that workspace changes, and the narrowing leaves no trace
+  if (unresolved.length > 0) {
+    throw new Error(`${leg.name}: its script names ${unresolved.join(', ')}, which this cannot resolve to a workspace — declare a scope on the leg rather than deriving a shorter one`);
+  }
+  if (dirs.length === 0) {
     throw new Error(`${leg.name}: its script names no workspace, so declare a scope on the leg (or 'repo' if it walks the tree)`);
   }
-  return named;
+  return dirs;
 }
