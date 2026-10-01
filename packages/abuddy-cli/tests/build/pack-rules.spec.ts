@@ -47,7 +47,7 @@ describe('internal-package-imports', () => {
   it('accepts public API, a pack-local underscore and the generated facades', () => {
     const dir = pack({
       'src/system.ts': [
-        "import { importCompiledSeeds, getDataDirPath } from '@abuddy/sdk/utils';",
+        "import { importCompiledSeeds, ensureDirectoryExists } from '@abuddy/sdk/utils';",
         "import { formatProviderError as _formatProviderError } from '@abuddy/sdk/actions';",
         "import { _fmt } from './_helpers/format.ts';",
         '',

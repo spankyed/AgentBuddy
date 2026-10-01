@@ -129,7 +129,7 @@ describe('findInternalPackageImports', () => {
 
   it('allows public names, a public name aliased to an underscore, a pack-local one and other packages', () => {
     write('pack/feature.ts', [
-      "import { importCompiledSeeds, getDataDirPath } from '@abuddy/sdk/utils';",
+      "import { importCompiledSeeds, ensureDirectoryExists } from '@abuddy/sdk/utils';",
       "import { formatProviderError as _formatProviderError } from '@abuddy/sdk/actions';",
       "import { _fmt } from './_helpers/format.ts';",
       "import * as utils from '@abuddy/sdk/utils';",
