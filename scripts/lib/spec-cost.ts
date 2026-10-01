@@ -33,13 +33,75 @@ export const specCostFile = (dir: string): string => path.join('packages', dir, 
  * `INTEGRATION_ABOVE_MS`; an integration spec comes back only when it drops under `FAST_BELOW_MS`. Anything
  * between stays where it is, which is the answer to noise and to the contention difference alike.
  *
- * The numbers: 2.5s is the widest gap in the measured distribution (2118 -> 2930, 812ms, about four times
- * the next best), and 1.5s is below every spec that has been seen to sit in the band from the integration
- * side. What it buys is a fast half of roughly 17s of file time — a couple of seconds of wall across
- * workers, so the per-change loop is still a loop.
+ * **The width is a requirement, not a taste.** A move changes the reading, so the band has to be wider
+ * than that change or the two edges contradict each other: a fast spec above the upper edge is told to
+ * move, reads lower in the other half, and is told to come back. The condition is the one asserted in
+ * `suite-split.spec.ts` — `FAST_BELOW_MS * CONTENTION_RATIO_MAX <= INTEGRATION_ABOVE_MS`. It did not hold
+ * until 2026-10-01: the band was 1.67x against readings that differ by up to 1.99x, and
+ * `spec-plan.spec.ts` was caught in exactly that loop, told to move in both directions at once.
+ *
+ * `INTEGRATION_ABOVE_MS` is the policy half of it — what a fast half may cost. 2.5s is the widest gap in
+ * the measured distribution (2118 -> 2930, 812ms, about four times the next best), and what it buys is a
+ * fast half of roughly 17s of file time, so the per-change loop is still a loop. `FAST_BELOW_MS` is not a
+ * second policy: it exists only to stop the oscillation, and 1 000 is the largest round hundred the
+ * condition above allows. Both edges compare strictly, so sitting exactly on it is safe.
  */
 export const INTEGRATION_ABOVE_MS = 2_500;
-export const FAST_BELOW_MS = 1_500;
+export const FAST_BELOW_MS = 1_000;
+
+/**
+ * An upper bound on how much more a spec reads in the fast half than in the integration half — never a
+ * conversion factor, and never a point estimate. It is what the band has to cover.
+ *
+ * Measured 2026-10-01 on an idle machine (77%), each spec moved alone and both halves run in one session,
+ * over the eight specs then sitting between the edges — the only ones that can reach one:
+ *
+ *     repo-checks     spec-plan-collect          2001 / 1006   1.99
+ *     repo-checks     lint-scope                 1855 / 1193   1.55
+ *     repo-checks     fingerprint-scope          1635 / 1142   1.43
+ *     repo-checks     bounded-spawn              2060 / 2057   1.00
+ *     repo-checks     component-contracts        1690 / 1847   0.91
+ *     abuddy-cli      fe-bundler-shared-ui        902 /  926   0.97
+ *     publish-checks  published-manifest-paths   1446 / 2030   0.71
+ *     abuddy-cli      fe-bundler-proxy-exports   1051 / 1973   0.53
+ *
+ * **There is no uniform direction**, which is the thing to know before re-measuring: half the sample is
+ * below 1. Which way a spec moves depends on which half is heavier in its package — `abuddy-cli`'s
+ * integration half holds the compiler specs behind a 50% worker cap, so a spec moving into it gets more
+ * expensive. A ratio below 1 cannot produce the loop in either direction, so only the maximum constrains
+ * the band.
+ *
+ * 2.5 against a worst observed of 1.99, because the max of eight one-shot samples understates a
+ * population max; because a cost is good to about 20% and a ratio of two inherits that unfavourably; and
+ * because the errors are asymmetric — too low reinstates a loop someone has to diagnose, too high only
+ * keeps a cheapened integration spec where it is, which no budget minds.
+ *
+ * Re-measure when either half's shape changes materially — a worker cap, or a spec large enough to move
+ * what its neighbours see. The floor on widening is the cheapest integration-half spec, 2007ms on that
+ * date: the band may not reach it, or that spec is pulled back and forth instead.
+ */
+export const CONTENTION_RATIO_MAX = 2.5;
+
+/** What a recorded cost is good to (`goal-measured-placement.md`), and so how close to an edge is close. */
+export const COST_ACCURACY = 0.2;
+
+/**
+ * How far a spec is from the edge that could actually move it, as a share of its cost — or `undefined`
+ * where no edge applies.
+ *
+ * **Which edge depends on the half.** A fast spec only ever leaves above `INTEGRATION_ABOVE_MS`; an
+ * integration spec only comes back below `FAST_BELOW_MS`. Reporting band membership instead treated those
+ * as one question, so a fast spec at 1 673ms was listed as one a re-measurement could move when it would
+ * have had to nearly double. Widening the band made that louder rather than quieter — the membership list
+ * grew by five specs that cannot move at all.
+ */
+export function towardEdge(file: string, ms: number): number | undefined {
+  const edge = halfOfPath(file) === 'fast' ? INTEGRATION_ABOVE_MS : FAST_BELOW_MS;
+  return Math.abs(edge - ms) / ms;
+}
+
+/** Whether a re-measurement inside the record's own accuracy could carry this spec over its edge. */
+export const nearEdge = (file: string, ms: number): boolean => (towardEdge(file, ms) ?? Infinity) <= COST_ACCURACY;
 
 export interface SpecCost {
   /** Measured milliseconds, per spec path relative to the package */
@@ -350,9 +412,10 @@ export const EXPENSIVE_BY_NATURE: Record<string, string> = {
   'abuddy-host/tests/database/write-lock.spec.ts': 'waits on real cross-process lock timeouts',
   // Seven `npm pack --dry-run` spawns at ~0.3s each. Asking npm what it would publish is the subject, not an
   // implementation detail of the test: the module exists because reading `files` ourselves lost npm's
-  // force-included files. Trimming two of the calls would land it about at the 2.5s edge — a cost that flips half
-  // on a contended measurement, which is what the band exists to avoid. Re-measured on an idle machine and it
-  // came back slightly slower, not faster, so the entry is not an artefact of load.
+  // force-included files. Trimming two of the calls would land it about at the 2.5s edge, where a contended
+  // measurement decides whether it is reported at all — `@abuddy/host` has one half, so there is no band here
+  // and nothing to flip to, only `outgrown`'s single threshold. Re-measured on an idle machine and it came
+  // back slightly slower, not faster, so the entry is not an artefact of load.
   'abuddy-host/tests/build/published-manifest.spec.ts': 'spawns npm pack seven times, which is its subject',
   // Starts and stops real pack backends and then waits to prove a cron schedule does *not* tick into the
   // next test. The wait is the assertion, so shortening it removes what the test checks.

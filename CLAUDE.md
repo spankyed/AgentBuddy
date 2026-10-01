@@ -510,10 +510,13 @@ npm run measure:loop -- "<cmd>"  # Not how long a command took, but how long eac
 
 # Recorded spec costs (which half each spec runs in)
 npm run spec-cost:check  # Reads the records, runs nothing. `-- --list` prints what they hold and counts
-                         # the specs sitting between FAST_BELOW_MS and INTEGRATION_ABOVE_MS, where a
-                         # re-measurement could change which half a spec runs in — a handful, so the rest
-                         # are nowhere near a decision. Ask the command rather than this page: it derives
-                         # the count on every run, and a copy here is a number nothing checks
+                         # the specs a re-measurement inside the record's own accuracy could carry over
+                         # the edge that would move them — a handful, so the rest are nowhere near a
+                         # decision. Which edge depends on the half: only the upper one moves a fast spec,
+                         # only the lower one brings an integration spec back, and counting band
+                         # membership instead named specs that could not move at all. Ask the command
+                         # rather than this page: it derives the count on every run, and a copy here is a
+                         # number nothing checks
 npm run spec-cost:update # The least that makes the records current, which is often nothing — 0.3s when
                          # nothing is wrong, against minutes of file time to re-measure everything. It says which
                          # case it took: a deleted spec needs no measurement to drop, a new one needs only

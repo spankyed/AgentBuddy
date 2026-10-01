@@ -16,7 +16,9 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { REPO_ROOT } from '@abuddy/host/build/packages-built';
 import {
   FAST_BELOW_MS, INTEGRATION_ABOVE_MS, SPEC_COST_FLAGS, absentIn, changesIn, contended, drift, drifted,
-  absentNamed, describeBudget, EXPENSIVE_BY_NATURE, halfOfPath, moved, namedIn, overBudget, parseArgs,
+  absentNamed, CONTENTION_RATIO_MAX, COST_ACCURACY, describeBudget, EXPENSIVE_BY_NATURE, halfFor,
+  halfOfPath, hasSplit, moved, nearEdge, towardEdge,
+  namedIn, overBudget, parseArgs,
   planFor, readSpecCost,
   refuseAbsent, refusesAsContended, rewritesEveryRow, settle, specCostFile, specFiles, stale, suitesFor,
   unrecorded,
@@ -120,6 +122,52 @@ describe('what a run says about a spec it cannot place', () => {
   });
 });
 
+/**
+ * Which edge a spec is near, which is the question `--list` renders.
+ *
+ * Band membership used to be the answer, and it conflated two: only the upper edge can move a fast spec
+ * and only the lower one can move an integration spec, so a fast spec at 1 673ms was reported as one a
+ * re-measurement could move when it would have had to nearly double. Lowering the return edge made that
+ * worse rather than better — five more specs became members, none of them able to move.
+ */
+describe('how close a spec is to changing half', () => {
+  const FAST = 'tests/x.spec.ts';
+  const SLOW = 'tests/x.integration.spec.ts';
+
+  it('measures a fast spec against the upper edge and an integration one against the lower', () => {
+    expect(towardEdge(FAST, INTEGRATION_ABOVE_MS)).toBe(0);
+    expect(towardEdge(SLOW, FAST_BELOW_MS)).toBe(0);
+    // The edge that cannot move it is not the one measured: a fast spec at the lower edge is far away
+    expect(towardEdge(FAST, FAST_BELOW_MS)).toBeGreaterThan(COST_ACCURACY);
+  });
+
+  it('calls a spec near when a re-measurement inside the record\'s own accuracy would carry it over', () => {
+    expect(nearEdge(FAST, Math.round(INTEGRATION_ABOVE_MS / (1 + COST_ACCURACY)) + 1)).toBe(true);
+    expect(nearEdge(FAST, Math.round(INTEGRATION_ABOVE_MS / (1 + COST_ACCURACY)) - 50)).toBe(false);
+  });
+
+  /**
+   * Over the live records, so the report `--list` prints is the one asserted here rather than a second
+   * reading of the same rule. A spec in a one-config package is excluded for the reason `overBudget`
+   * excludes it: there is no half to move into, so no edge applies.
+   */
+  it('finds the specs that really are close, and only in a package with somewhere to go', () => {
+    const close = suites
+      .filter(({ dir }) => hasSplit(dir))
+      .flatMap(({ suite, record }) => Object.entries(record?.costs ?? {})
+        .filter(([file, ms]) => nearEdge(file, ms))
+        .map(([file]) => `${suite.dir}/${file}`));
+    expect(close, 'nothing is near an edge, so this rule is reading an empty population').not.toEqual([]);
+  });
+
+  // `nearEdge` answers for a cost and a half and knows nothing about packages — `--list` and `overBudget`
+  // both apply `hasSplit` themselves, so the question is asked once and the guard sits where it belongs
+  it('asks only about the cost and the half, leaving the package to the caller', () => {
+    expect(nearEdge(FAST, INTEGRATION_ABOVE_MS - 1)).toBe(true);
+  });
+});
+
+
 describe('a spec that costs more than a fast half allows', () => {
   // No `!split` filter: `overBudget` returns this kind only for a package that has nowhere to move a spec
   // to, which is the same question, asked once, in the one place that cannot forget to ask it
@@ -155,13 +203,58 @@ describe('a measurement replaces the record only when it says something new', ()
   const FAST = 'tests/x.spec.ts';
   const SLOW = 'tests/x.integration.spec.ts';
 
+  /**
+   * The two edges have to agree with each other, and for a year they did not.
+   *
+   * A move changes the reading — that is the whole reason there are two edges rather than one — so a band
+   * narrower than the change makes the pair contradictory: a fast spec above the upper edge is told to
+   * move, reads lower in the other half, and is told to come back. `spec-plan.spec.ts` sat in that loop at
+   * 2.8s fast against 1.4s integration, with a band of 1.67x against readings differing by up to 1.99x.
+   *
+   * Asserted over `halfFor` rather than over the arithmetic, because the arithmetic restates the branches
+   * instead of exercising them: swapping a `>` for a `>=` leaves the inequality true. Both directions,
+   * because each of the two specs that exposed this demonstrated a different one.
+   */
+  describe('the two edges agree about where a spec belongs', () => {
+    it('never sends a spec back the way it came, at any cost', () => {
+      let out = 0;
+      let back = 0;
+      for (let ms = 1; ms <= 40_000; ms += 1) {
+        if (halfFor(FAST, ms) !== 'fast') {
+          out += 1;
+          expect(halfFor(SLOW, ms / CONTENTION_RATIO_MAX), `${ms}ms left the fast half`).toBe('integration');
+        }
+        if (halfFor(SLOW, ms) !== 'integration') {
+          back += 1;
+          expect(halfFor(FAST, ms * CONTENTION_RATIO_MAX), `${ms}ms came back to the fast half`).toBe('fast');
+        }
+      }
+      // Without these the property passes over nothing: a `halfFor` that always returns the half it was
+      // given enters neither branch, which is the shape this repo keeps shipping
+      expect(out, 'no cost in the scan ever left the fast half').toBeGreaterThan(0);
+      expect(back, 'no cost in the scan ever came back to it').toBeGreaterThan(0);
+    });
+  });
+
   it('records a spec it has never seen', () => {
     expect(moved(FAST, undefined, 120)).toBe(true);
   });
 
+  /**
+   * The literal on the upper edge records the measured distribution gap, so it stays a literal.
+   *
+   * The lower one cannot: it used to be `moved(SLOW, 2_600, 1_400)`, and once the return edge dropped to
+   * 1 000 that pair stopped crossing anything — it went on passing through the magnitude clause instead,
+   * green while testing nothing it is named for. Derived from the constant now, and paired against the
+   * half the same numbers cannot leave, so only the crossing clause can produce both answers.
+   */
   it('records a measurement that would place the spec in the other half', () => {
     expect(moved(FAST, 2_400, 2_600), 'a fast spec past the upper edge').toBe(true);
-    expect(moved(SLOW, 2_600, 1_400), 'an integration spec under the lower edge').toBe(true);
+
+    const recorded = FAST_BELOW_MS + 120;
+    const measured = FAST_BELOW_MS - 120;
+    expect(moved(SLOW, recorded, measured), 'an integration spec under the lower edge').toBe(true);
+    expect(moved(FAST, recorded, measured), 'the same pair in a half that edge cannot move').toBe(false);
   });
 
   it('records a large move that crosses nothing, so the number stays roughly true', () => {
