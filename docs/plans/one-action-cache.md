@@ -1,5 +1,14 @@
 # One action cache
 
+## Status (2026-10-01)
+
+| | |
+|---|---|
+| landed | item 0 (`980c6d854`), item 24 (`94b33f22d`), symptom 3 (`c5c724b9b`), the `cache: false` collapse (`4a10594ae`) |
+| decided | all five decisions, all four measurements, both unverified claims — see the last three sections |
+| next, unblocked | the `tier` split (`tier-split.md`); three of its four pieces need nothing from this list |
+| open | nothing to decide; what remains is building items 2-6 of the order below |
+
 ## Problem
 
 One concept — **a chain step** — does three jobs that want different granularities: it is the unit of
@@ -44,8 +53,8 @@ Two things it left that do generalise.
 integration tests — passes. `suite-reads.spec.ts` compares each suite's specs against `suiteInputs`, the
 key the *pool* uses; for the unit half the step's key is derived from that same function so checking one
 checks both, and for the integration half the step's key was written separately with nothing comparing the
-two. The check verified the inner layer while the outer one was wrong. That is item 24, and it is still
-unbuilt.
+two. The check verified the inner layer while the outer one was wrong. That is item 24, built in
+`94b33f22d`: restoring the old shape now fails one case and names the files.
 
 **It was not a correctness hole only by accident.** `check:specifiers` is also a `typecheck` leg, so the
 import rules fired on every chain run while the specs that test those rules sat behind a cached step. A
@@ -67,7 +76,8 @@ nouns would be motion, not progress.
 | the unit pool | **persistent workers** | Bazel workers, Gradle daemons |
 | *(absent)* | **dep file** | Buck2 `dep_files`, Ninja `depfile`, `gcc -MD`, Gradle incremental compile |
 | *(absent)* | **hermeticity** | Bazel/Buck2 sandboxing: an undeclared read fails rather than caching wrong |
-| `tier` | **tag + dependency constraint** | Nx `tags`/`depConstraints`, Bazel `visibility`, ArchUnit, dependency-cruiser |
+| `tier`, the constraint half | **tag + dependency constraint** | Nx `tags`/`depConstraints`, Bazel `visibility`, ArchUnit, dependency-cruiser |
+| `tier`, the timeout half | **test size** | Bazel's test `size`, a bucket whose purpose is a default timeout |
 | `inputs` / `outputs` | *already standard* | the shared vocabulary of Bazel, Gradle, Nx and Turborepo |
 | `excludes` | *already standard* | a negative input pattern: Bazel `glob(exclude=)`, Gradle `exclude(…)`, Nx/Turborepo `!` in `inputs` |
 | `exclusive` | *standard name, wrong shape here* | Bazel's test tag `exclusive` — but Bazel derives most conflict safety from its output graph, which is where this one belongs (item 4) |
@@ -100,11 +110,13 @@ condition under which a closed `ActionTag` union becomes worth it.
 
 **The one rename is `needs` → `dependsOn`.** `needs` is CI vocabulary (GitHub Actions, GitLab CI);
 `dependsOn` is build-system vocabulary (Gradle, Nx, Turborepo; Bazel spells it `deps`). Every other field
-in the step table is build-system-shaped and this one reads as a pipeline. It is ~21 sites — 9 reads
-(`chain-schedule.ts:72`, `chain-steps.ts:158/174/185`, `step-timing.ts:22`, four in specs), 12
-declarations, and two error strings. **Decision 4 settles it: the rename happens**, because the field
-stops being hand-written and starts being derived, and `dependsOn` is what the tools that derive it call
-the result.
+in the step table is build-system-shaped and this one reads as a pipeline.
+
+**But decision 4 makes it less of a rename than it looks.** The field is derived, so its 12 declarations
+are *deleted* rather than renamed; what is renamed is the 9 reads
+(`chain-schedule.ts:72`, `chain-steps.ts:158/174/185`, `step-timing.ts:22`, four in specs) and two error
+strings, which then point at a derived `dependsOn`. The naming argument and the derivation agree on the
+answer and should not be counted twice as work.
 
 What the repo has and lacks, against that model:
 
@@ -116,7 +128,7 @@ What the repo has and lacks, against that model:
 | persistent workers | yes — the pool |
 | per-action output declaration | partial — `outputs` exists, means "exclude from my own key" |
 | dep files | **no** |
-| hermeticity, or any check in its place | **no** — and all three of this session's undeclared-input defects live here |
+| hermeticity, or any check in its place | **no** — and all three undeclared-input defects behind this doc live here |
 | remote cache | no, deliberately |
 
 ## Current state (2026-10-01, at `8431bd850` on `master`)
@@ -129,23 +141,25 @@ What the repo has and lacks, against that model:
 | typecheck legs | `scripts/lib/typecheck-legs.ts` | 18 legs, **no cache**, and its own lane count set against the chain's |
 | integration half | `package.json` | `vitest run --config …`, **no per-suite stamps** — the inputs are `inputsForSuites` now, the inner cache is not |
 | suite inputs | `suiteInputs`, `chain-steps.ts` | ROOT + runner + workspace parts + `workspaceDeps` + 3 flags; every suite-running step's key is the union (`inputsForSuites`) |
-| per-file digests | `freshnessSweep`, `packages-built.ts` | listings and buffers memoised, **digests not** — a 6.64x overlap re-hashed every sweep |
+| per-file digests | `freshnessSweep`, `packages-built.ts` | listings, buffers **and digests** memoised (`980c6d854`) — the 6.64x overlap is read and hashed once |
 
-Measured this session: a cold chain is 195.1s against master's 191.2s; the critical path is 109-119s and
-is `packages:ensure → compile → build:app → test:packaged-authoring`, which no part of this touches.
+The critical path is 109-119s and is `packages:ensure → compile → build:app → test:packaged-authoring`,
+which no part of this list touches — so none of it moves the cold run, and all of it moves the warm one.
 
 ## The parts list
 
 ### A. The action model
 
-0. **One digest per file, memoised across actions.** `freshnessSweep` already shares directory listings and
-   file buffers between units; it re-hashes the bytes. Measured over today's 13 steps: a 6.64x overlap,
-   283.8 MB hashed against 57.3 MB distinct, 680ms against 108ms, inside a 680ms warm sweep. Content-address
-   each file once and an action's key is a hash over a list of file-hashes — Bazel's and Buck2's Merkle
-   shape, and the thing that makes action count stop mattering. **It is numbered zero because it pays
-   before anything else on this list exists**, and because every later item's overhead argument assumes it.
+0. **One digest per file, memoised across actions — landed, `980c6d854`.** `freshnessSweep` shared
+   directory listings and file buffers between units and re-hashed the bytes. Measured over the 13 steps
+   before it: a 6.64x overlap, 283.8 MB hashed against 57.3 MB distinct, 680ms against 108ms, inside a
+   680ms warm sweep. An action's key is now a hash over a list of file-hashes — Bazel's and Buck2's Merkle
+   shape, and the thing that makes action count stop mattering. **It was numbered zero because it paid
+   before anything else on this list existed**, and because every later item's overhead argument assumes
+   it. *Owed: the post-landing warm number, on a quiet box.*
 1. **An action.** One (tool, scope) pair: `tsc -p packages/abuddy-host`, `vitest --project @abuddy/ears`,
-   `oxlint .`, `abuddy build @app/default-setup`. Roughly 40 where there are 12 steps.
+   `oxlint .`, `abuddy build @app/default-setup`. **47 where there are 13 steps**, counted rather than
+   estimated — see the last section.
 
    **It replaces two types, not one.** `BuildUnit` is `{ inputs, excludes, outputs }` and `ChainStep` is
    those three plus seven more, with `unitFor(step)` converting one to the other on every call — the
@@ -157,7 +171,7 @@ is `packages:ensure → compile → build:app → test:packaged-authoring`, whic
    the root `workspaces` field.
 3. **An action key** = hash of (input contents, command line, the environment that affects the result) —
    Bazel's definition, unchanged. Command identity is handled today by the bluntest available means:
-   `ROOT` (`chain-steps.ts:216`) puts `package.json` in *every* step's inputs, so editing any npm script
+   `ROOT` (`chain-steps.ts`) puts `package.json` in *every* step's inputs, so editing any npm script
    invalidates the whole chain, and `typecheck` declares `scripts/`, which is where its legs' flags live.
    Correct, and the reason a one-word change to an unrelated script costs a full run. Hashing the command
    an action actually runs is what lets `package.json` come *out* of the inputs.
@@ -200,8 +214,8 @@ is `packages:ensure → compile → build:app → test:packaged-authoring`, whic
 7. **Undeclared means uncacheable, not wrong.** This is Gradle's rule and it is strictly better than the
    "safe default" I first proposed: an action that cannot fully declare its inputs and outputs is simply
    not cached. Under-declaration then costs speed, never correctness. **This repo's failure mode — declare
-   partially, cache anyway, be silently wrong — is the one Gradle designed out of existence**, and three of
-   this session's defects were exactly it. It is the single most valuable item on this list **and it
+   partially, cache anyway, be silently wrong — is the one Gradle designed out of existence**, and the
+   three undeclared-input defects found while writing this doc were exactly it. It is the single most valuable item on this list **and it
    cannot land before item 4**: applied to the table as it stands, it uncaches seven of thirteen steps,
    `typecheck`, both pools and `test:integration` among them, and takes the warm chain from 0.9s to running
    all of them. Sections A and B present these as independent entries and they are one sequenced change —
@@ -219,8 +233,10 @@ is `packages:ensure → compile → build:app → test:packaged-authoring`, whic
 
 11. **One store, one format, one entry per action.** Today: chain stamps, pool stamps, package-build
     stamps, `.tsbuildinfo`, `.inputs-hash`, `spec-cost.json`.
-12. **The key must not contain the execution plan.** No batch, lane, pool, half or step in it. This single
-    rule dissolves symptoms 3 and 4 above.
+12. **The key must not contain the execution plan.** No batch, lane, pool, half or step in it. Symptom 4
+    is exactly this rule being broken. Symptom 3 was the same shape and has been fixed another way — by
+    one function feeding both layers — which is a repair rather than the rule, and the rule is what stops
+    the next one.
 13. **A key that distinguishes two runs of one scope.** The pool key is the directory, which is correct
     while a suite runs in exactly one pool and wrong the moment it has two halves. Becomes (scope, action).
 
@@ -248,21 +264,25 @@ is `packages:ensure → compile → build:app → test:packaged-authoring`, whic
     case policing their agreement. **Measured: outputs-into-inputs reproduces 12 of the 13 declared edges,
     and outputs-into-outputs reproduces the thirteenth** — `test` and `test:smoke` both write
     `tests/results`, which is a mutex rather than a dependency. So the whole table derives from two
-    questions over the same two fields, and nothing hand-declared survives here (decision 4).
-18. **Tier stays declared; the edges it is checked against become derived.** An earlier draft of this
-    list had tier *derived* — an action is tier 3 iff it reads app outputs — and that is wrong, because it
-    deletes the check. A declared tier is a statement of intent: *this action must not need the app*.
-    Derive it and a tier-1 action that gains an app dependency is silently reclassified as tier 3 rather
-    than refused, which is exactly the drift the four failed cheap-chain attempts recorded. The shape to
-    copy is `LAYERS`, where the layer is declared and the import graph is derived: keep `tier` on the
-    action, and replace `check-test-tiers.ts`'s text scan with a query over the derived edges from item 17.
-    That keeps the gate and removes the only weak part of it.
+    questions over the same two fields, and no hand-declared *edge* survives (decision 4). The constraint
+    in item 18 is a different subject and stays declared.
+18. **The app constraint stays declared; the edges it is checked against become derived.** An earlier
+    draft had it *derived* — an action needs the app iff it reads app outputs — and that is wrong, because
+    it deletes the check. A declared constraint is a statement of intent: *this action must not need the
+    app*. Derive it and an action that gains an app dependency is silently reclassified rather than
+    refused, which is exactly the drift the four failed cheap-chain attempts recorded. `APP_ENTRY` is the
+    second proof: `packages/dev-mode.js` and `packages/entry-point.mjs` are *source* sitting beside the
+    built-app constant, so a derivation reaching for those constants misclassifies three steps.
 
-    **The tag itself is the wrong shape, which is a separate target.** `tier` answers two questions —
-    a dependency constraint and a test's timeout budget — and no consumer distinguishes all three of its
-    values. `docs/plans/tier-split.md` has the evidence and the target: `needsApp` on the action, `size` on
-    the test target. Three of its four pieces need nothing from this list; only retiring the text scan
-    waits on item 17.
+    The shape to copy is `LAYERS`, where the layer is declared and the import graph is derived: keep the
+    constraint on the action, and replace `check-test-tiers.ts`'s text scan with a query over the derived
+    edges from item 17. That keeps the gate and removes the only weak part of it.
+
+    **The field carrying it is the wrong shape, which is a separate target.** `tier` answers two questions
+    — this constraint and a test's timeout budget — and no consumer distinguishes all three of its values.
+    `docs/plans/tier-split.md` has the evidence and the target: `needsApp` on the action, `size` on the
+    test target, and `tier` gone. Three of its four pieces need nothing from this list; only retiring the
+    text scan waits on item 17.
 19. **Cycle and ordering validation**, which the graph gets for free and the current table checks by hand.
 
 ### F. Observability
@@ -288,10 +308,12 @@ is `packages:ensure → compile → build:app → test:packaged-authoring`, whic
 
 ### G. Guards the new model needs
 
-24. Every action's declared inputs cover what it reads (generalise `suite-reads`) — item 10. **Including
-    the outer layer**: today `suite-reads` compares a suite's specs against the *pool's* key, so a step
-    whose inputs are written rather than derived from the same function drifts unseen. That is how symptom
-    3 survived the check written to find exactly that defect class.
+24. Every action's declared inputs cover what it reads (generalise `suite-reads`) — item 10. **The outer
+    layer is done** (`94b33f22d`): `suite-reads` compared a suite's specs against the *pool's* key only, so
+    a step whose inputs were written rather than derived drifted unseen, which is how symptom 3 survived
+    the check written to find that defect class. It now also asserts that the step running a suite declares
+    what that suite reads. What remains of this item is the generalisation to every action, not just the
+    suite-running ones.
 25. No two caches over one body of work — assertable once there is one store.
 26. An action's key is independent of its worker. Mutation: run the same action in two batches, keys match.
 27. The dep-file proxy has a self-check (item 9).
@@ -371,8 +393,8 @@ two**.
 
 Order, by what unblocks what and what pays immediately:
 
-1. Per-file digest memoisation — pays now, no model change
-2. The `tier` split (`tier-split.md`) — independent of all of this
+1. ~~Per-file digest memoisation~~ — **done**, `980c6d854`
+2. The `tier` split (`tier-split.md`) — independent of all of this, and the next thing to build
 3. Derived `dependsOn` and derived mutexes, with the reproduction check; `exclusive` deleted
 4. Dep files from `.tsbuildinfo`, with the proxy self-check
 5. Typecheck as 18 actions under one scheduler
@@ -380,8 +402,8 @@ Order, by what unblocks what and what pays immediately:
 
 ## Measured, 2026-10-01
 
-All four are answered. Three structural changes pitched in the session that produced this doc had measured
-to roughly nothing, which is why these came before the decisions above rather than after.
+All four are answered. Three structural changes proposed while writing this doc had measured to roughly
+nothing, which is why these came before the decisions above rather than after.
 
 - **Per-leg typecheck caching: worth nothing for most edits.** 7 of 11 single-package edits leave
   `typecheck:fe` stale, and it is the 6.2s critical leg. The other four save 6-8s. Decision 1.
