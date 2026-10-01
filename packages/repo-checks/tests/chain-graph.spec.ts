@@ -61,12 +61,11 @@ describe('the chain graph', () => {
    * Written as the rule so a third uncached step has to earn it: anything that writes the package build
    * outputs cannot be cached on its inputs alone, and anything else needs a reason in the list below.
    */
-  it('makes every uncached step say why, which is what the chain prints for it', () => {
-    expect(CHAIN_STEPS.filter((s) => s.cache === false && s.neverCachedBecause === undefined).map((s) => s.name),
-      'give these a neverCachedBecause: the chain prints it where a cache verdict would go, and it was one '
-      + 'hardcoded sentence about Electron until a second step opted out and it was wrong about that one').toEqual([]);
-    expect(CHAIN_STEPS.filter((s) => s.cache !== false && s.neverCachedBecause !== undefined).map((s) => s.name),
-      'these give a reason for not being cached and are cached').toEqual([]);
+  it('makes every uncached step say why in a sentence, which is what the chain prints for it', () => {
+    expect(CHAIN_STEPS.filter((s) => s.neverCachedBecause !== undefined && s.neverCachedBecause.length < 20)
+      .map((s) => s.name), 'an uncached step needs a reason, not a flag: the chain prints this where a cache '
+      + 'verdict would go, and the line it replaced was hardcoded about Electron and wrong about the other '
+      + 'step that opted out').toEqual([]);
   });
 
   /**
@@ -98,11 +97,11 @@ describe('the chain graph', () => {
   });
 
   it('does not cache the step that guarantees the built packages', () => {
-    expect(CHAIN_STEPS.find((s) => s.name === 'packages:ensure')!.cache,
+    expect(CHAIN_STEPS.find((s) => s.name === 'packages:ensure')!.neverCachedBecause,
       'it would cache on its inputs while what it guarantees is recorded in stamps the fingerprint cannot '
       + 'see. Measured: with those stamps cleared and dist still present, the step reported `cached` while '
       + 'packagesBuiltOrRefuse() refused, so every step reading the built packages failed at collection')
-      .toBe(false);
+      .toBeDefined();
   });
 });
 

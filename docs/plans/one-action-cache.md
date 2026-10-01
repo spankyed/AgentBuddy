@@ -28,8 +28,8 @@ Four symptoms, all the same cause:
   moved into declares no repo-wide tree. The gate written to watch for this was nearly relocated into
   blindness by its own runtime.
 
-And four escape hatches that exist because the model has no way to say what an action produces:
-`cache: false`, `forceArgs`, `neverCachedBecause`, `excludes`.
+And three escape hatches that exist because the model has no way to say what an action produces:
+`neverCachedBecause`, `forceArgs`, `excludes`.
 
 ### One symptom is fixable today, and should not wait for the rest
 
@@ -127,7 +127,7 @@ is `packages:ensure → compile → build:app → test:packaged-authoring`, whic
 4. **Every action declares outputs, verification included.** Bazel caches a test by treating its result as
    an artifact: the action writes a status, and caching the test is caching that output like any other.
    That removes the need for a "producing vs verifying" distinction — I had proposed one, and the standard
-   model does not need it. It also gives `cache: false` and `neverCachedBecause` somewhere to go: an action
+   model does not need it. It also gives `neverCachedBecause` somewhere to go: an action
    whose result cannot be represented as an output is simply not cacheable, which is item 7.
 
 ### B. Where inputs come from

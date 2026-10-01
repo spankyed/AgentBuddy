@@ -179,7 +179,7 @@ Things that waste the most time, in order:
   its fingerprint cannot see and `fingerprintUnit` excludes from the content hash by design. Measured
   2026-09-26: with those stamps cleared and `dist` still present, the step reported `cached` while
   `packagesBuiltOrRefuse()` refused, so every step reading the built packages failed at collection (five
-  files, thirty-three tests skipped). It is `cache: false` now — 0.3s warm, against a second record of one
+  files, thirty-three tests skipped). It carries a `neverCachedBecause` now — 0.3s warm, against a second record of one
   fact that can disagree with the first. Two caches over one body of work is the bug, not the cost.
 - **Running suites concurrently *before the packages are built*.** The hazard is the build itself, not
   the suites: `ensurePackagesBuilt()` returns before taking the lock when nothing is stale

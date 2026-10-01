@@ -106,7 +106,7 @@ export function driftedSteps<S extends SchedulableStep>(
  * Reported, not failed: a step that will not cache is slow, not wrong, and a chain that goes red for
  * slowness teaches people to ignore it.
  */
-export function willNotCache<S extends { name: string; cache?: false }>(
+export function willNotCache<S extends { name: string; neverCachedBecause?: string }>(
   steps: readonly S[],
   passed: ReadonlySet<string>,
   stillStale: (step: S) => string | null,
@@ -114,7 +114,7 @@ export function willNotCache<S extends { name: string; cache?: false }>(
   const bad: Array<{ name: string; reason: string }> = [];
   for (const step of steps) {
     // The E2E suite opts out of caching, so its fingerprint moving means nothing
-    if (step.cache === false || !passed.has(step.name)) continue;
+    if (step.neverCachedBecause !== undefined || !passed.has(step.name)) continue;
     const reason = stillStale(step);
     if (reason !== null) bad.push({ name: step.name, reason });
   }

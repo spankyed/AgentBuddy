@@ -213,7 +213,7 @@ describe('staleLines', () => {
 
 describe('declaredAt', () => {
   it('finds the line a step is declared on', () => {
-    const table = ["  // why it is never cached", "  { name: 'test', tier: 3, cache: false,", '  },'].join('\n');
+    const table = ["  // why it is never cached", "  { name: 'test', tier: 3, neverCachedBecause: '…',", '  },'].join('\n');
     expect(declaredAt(table, 'test')).toBe(2);
   });
 
@@ -252,7 +252,7 @@ describe('briefly', () => {
 it('points at the line each never-cached step is declared on', () => {
   const table = fs.readFileSync(path.join(REPO_ROOT, 'scripts/lib/chain-steps.ts'), 'utf-8');
   const lines = table.split('\n');
-  const neverCached = CHAIN_STEPS.filter((step) => step.cache === false);
+  const neverCached = CHAIN_STEPS.filter((step) => step.neverCachedBecause !== undefined);
   expect(neverCached.length, 'no step is never cached, so this would pass over nothing').toBeGreaterThan(0);
   for (const step of neverCached) {
     const at = declaredAt(table, step.name);

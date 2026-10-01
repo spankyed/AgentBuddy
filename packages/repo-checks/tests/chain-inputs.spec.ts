@@ -283,10 +283,10 @@ describe('a step that drives the app fixture declares the bundle it drives', () 
   const fixture = BUILD_UNITS['@abuddy/testing'].outputs.map(repoRelative);
   const all = rootScripts();
   // Only the cacheable ones: a step that never caches cannot cache over anything, so the rule has no
-  // subject there. `test` is the one that drives the app and declares no bundle, and is `cache: false`
-  // with its reason on the step
+  // subject there. `test` is the one that drives the app and declares no bundle, and carries its reason
+  // for never caching instead
   const drivers = CHAIN_STEPS
-    .filter((step) => step.cache !== false)
+    .filter((step) => step.neverCachedBecause === undefined)
     .filter((step) => DRIVES_THE_APP.test(reachableText(step.name, all).text));
 
   it('finds the steps that drive it, so this is not a check over nothing', () => {

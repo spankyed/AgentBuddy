@@ -179,7 +179,7 @@ class StepFailed extends Error {
  */
 async function runAndStamp(step: ChainStep, all: boolean): Promise<Result> {
   const force = all ? step.forceArgs ?? [] : [];
-  if (step.cache === false) return run(step.name, step.seconds, force);
+  if (step.neverCachedBecause !== undefined) return run(step.name, step.seconds, force);
   let result: Result | undefined;
   try {
     await stampedRun(step.name, unitFor(step), stampFor(step.name), async () => {
@@ -256,7 +256,7 @@ async function main(): Promise<void> {
    * exists to find, and sharing reads there would hide it instead.
    */
   const staleReason = (step: ChainStep, asking = { staleReason: unitStaleReason }): string | null =>
-    step.cache === false
+    step.neverCachedBecause !== undefined
       ? `never cached: ${step.neverCachedBecause}`
       : asking.staleReason(unitFor(step), stampFor(step.name));
 
@@ -297,7 +297,7 @@ async function main(): Promise<void> {
     lanes,
     skip: (step) => {
       const why = staleReason(step);
-      if (!all && step.cache !== false && why === null) {
+      if (!all && step.neverCachedBecause === undefined && why === null) {
         cached++;
         // On its own line where it was skipped, and dimmed. The order these arrive in is information — it is
         // when the scheduler reached the step — so they are not collected and printed together at the end;

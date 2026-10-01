@@ -54,19 +54,16 @@ export interface ChainStep {
    */
   readonly exclusive?: true;
   /**
-   * A step the chain does not cache, with its reason on the step.
+   * A step the chain does not cache, and why. Set means uncached; the chain prints this sentence where a
+   * cache verdict would go, so it is a reason and not a flag — the one line it replaced was hardcoded about
+   * Electron and was wrong about the second step to opt out.
    *
    * Two kinds qualify. One is a pass that is not reproducible (the E2E suite). The other is a step whose
    * *effect* is recorded somewhere the chain's fingerprint cannot see: `packages:ensure` guarantees the
    * built packages are current, and whether they are is recorded in `node_modules/.cache/abuddy-packages-build`
    * — not in this step's inputs, and not in its outputs either, which `fingerprintUnit` excludes from the
    * content hash on purpose. Caching such a step is a second record of one fact, and the two can disagree.
-   *
-   * Comes with `neverCachedBecause`, which the chain prints in place of a cache verdict. It was one hardcoded
-   * sentence about Electron until there were two such steps, and then it was wrong about one of them.
    */
-  readonly cache?: false;
-  /** Why, printed where a cached step's reason would go. Required of every `cache: false` step. */
   readonly neverCachedBecause?: string;
   /**
    * Run only when asked for, and why — a step the chain knows about but does not gate on.
@@ -505,7 +502,7 @@ export const CHAIN_STEPS: readonly ChainStep[] = [
   // 14, not the 0.3 its warm check costs: `seconds` is what a step costs when it does its work, and this one's
   // work is the build. The paragraph on that field describes this step getting it wrong — "a timeout message
   // claiming it costs 1s healthy" — and 1 was still here until the overrun report named it, 1s -> 14s.
-  { name: 'packages:ensure', tier: 2, needs: [], seconds: 14, exclusive: true, cache: false,
+  { name: 'packages:ensure', tier: 2, needs: [], seconds: 14, exclusive: true,
     neverCachedBecause: 'what it guarantees is recorded in stamps of its own, which this fingerprint cannot '
       + 'see; its check is ~0.3s warm, so a cache on top only adds a record that can disagree',
     inputs: [...PACKAGE_BUILD_INPUTS, 'scripts/ensure-packages-built.ts'], outputs: PACKAGE_BUILD_OUTPUTS },
@@ -646,7 +643,7 @@ export const CHAIN_STEPS: readonly ChainStep[] = [
   // built. It became a chain step, and then the reasoning about it became about caching a flaky pass —
   // which is a question you only ask of a regression gate. It has not caught one. Off the chain it costs
   // nothing and is still there when you want it, which is what it was for.
-  { name: 'test', tier: 3, needs: ['build:app', 'test:smoke'], cache: false, seconds: 26,
+  { name: 'test', tier: 3, needs: ['build:app', 'test:smoke'], seconds: 26,
     optInBecause: 'it is a harness for driving the app, not a regression gate; nothing has needed it to fail',
     neverCachedBecause: 'it drives real Electron, and a flaky pass cached green hides an intermittent failure',
     outputs: ['tests/results'],

@@ -91,7 +91,7 @@ describe('driftedSteps', () => {
 });
 
 describe('willNotCache', () => {
-  const steps = [{ name: 'a' }, { name: 'b' }, { name: 'e2e', cache: false as const }];
+  const steps = [{ name: 'a' }, { name: 'b' }, { name: 'e2e', neverCachedBecause: 'it drives real Electron' }];
   const passed = new Set(['a', 'b', 'e2e']);
 
   it('names a step that passed and is already stale again', () => {
