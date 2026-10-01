@@ -45,6 +45,16 @@ ordering rather than on an invariant the pool enforces. And the blank *is* reach
 see M3. So F1 is reclassified: **Low as a single-window defect, High as a structural fragility that M3
 converts into a real one.**
 
+**What that unreachability is not: evidence of a design.** Exclusivity here is emergent, not stated. There is
+no comment, contract or spec asserting it anywhere in the feature. `isInTab` is a one-line computed over tab
+paths (`PanelTerminalSection.vue:255-256`) used five times in a template — to grey a row, to append "(in
+tab)" to a tooltip, to no-op a click, and to swap a context-menu item. Those are display concerns, and the
+tooltip says what the helper was written for; the invariant is a side effect. The tell is `fe/state.ts:864`,
+whose `tabbedIds.add(ev.terminalId)` hand-patches exactly the stale-`context` bug that **T1 reports as
+unfixed** in a sibling handler: one site noticed, the other did not. And the enforcement already has a hole —
+**M3 is a path that forgot the rule**, producing the two-hosts-one-node state through a broadcast reply. So
+the behaviour is accretion that happens to compose, and it carries no weight as precedent.
+
 **F14 is sharper than stated.** Shell integration is not merely off by default: there is exactly one line
 ever written for `enableShellIntegration` (`+ enableShellIntegration: false,`), so the subsystem behind it
 — `injectShellIntegration`'s three shell branches, the OSC 7/633/1337 parsing, `updateCwd`, `CWD_CHANGED`
@@ -301,9 +311,9 @@ Recorded so they are not re-investigated.
 - **`maxTerminals` is enforced on create** — the failure is only invisible, which is F9.
 - **Round 1's `dataDisposable`/`exitDisposable` leak, `CLOSED` disposal, and `savedScrollFraction` math** were
   each checked and are correct; the newline-boundary trim is deliberate.
-- **The same terminal in both canvas and panel is not reachable in one window** — see Corrections. This
-  answers round 1's open fork: exclusivity is already the de facto model, and Stage 1 can keep it by
-  construction rather than build a multiplexer.
+- **The same terminal in both canvas and panel is not reachable in one window** — see Corrections. This is a
+  fact about today's behaviour and **not** an answer to round 1's open fork: the guards that produce it are
+  display conditions, not a stated rule, and M3 already defeats them across windows.
 
 ---
 
@@ -349,9 +359,18 @@ optimising *and before accepting someone else's measurement*, including mine.
 ### Stage 1 — one owner per terminal
 
 A `TerminalSession` owning the xterm, the wrapper, the subscriptions and the pty wiring. Views become hosts
-that receive a node and emit intent, and cannot register a handler. Keep the exclusivity the orchestration
-already enforces (see Negative results) rather than building a multiplexer. Fixes F1, F2, F15, T1, T7, and
-makes M2/M3/M4 expressible as "a session belongs to one window".
+that receive a node and emit intent, and cannot register a handler. Fixes F1, F2, F15, T1, T7, and makes
+M2/M3/M4 expressible as "a session belongs to one window".
+
+**Whether a session may have more than one visible host is the open fork, and the argument is about ptys, not
+about the current code.** A pty has exactly one `(cols, rows)` and emits one stateful stream — alt screen,
+cursor, scroll regions all live in it — so two visible hosts at different sizes is not a bug to fix but a
+contradiction, which is what M2 looks like in practice. That argues for one host per session, and it would
+argue for it even if no guard existed today. The cost of choosing it is the use case it refuses: watching one
+terminal in a popout on a second monitor. tmux answers that with per-client sizing or a smallest-common size;
+choosing to support it means a real multiplexer (two xterms over one pty, with replay), which is materially
+more work. Either way the rule belongs in **one owner** rather than in template conditions a new entry point
+can forget — that part is settled by M3 regardless of which way the fork goes.
 
 ### Stage 2 — fix the pipe
 
@@ -412,3 +431,7 @@ path, and **G1** belongs in Stage 2's payload discipline.
    failed attempts, so Stage 1 is not obliged to preserve any of its structure. Whether to rewrite the core
    (~1,340 lines: service 430, system 330, pool 362, bus 218) against the invariants above, or to land the
    stages incrementally, is a scope call.
+4. **One visible host per session, or a real multiplexer** (Stage 1). Still open. Today's exclusivity is
+   emergent from display conditions and is not an argument either way; the argument for one host is that a
+   pty has a single size and a single stateful stream, and the argument against is watching one terminal in a
+   popout on a second monitor.
