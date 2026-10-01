@@ -80,16 +80,13 @@ export const SIZE_MS = { small: 15_000, large: 60_000 } as const;
 export type Size = keyof typeof SIZE_MS;
 
 /**
- * A test *config*'s size, from which config it is.
+ * Which size a given test file runs at is `sizeOf` (`scripts/lib/test-timeouts.ts`), not a field here.
  *
- * Derived rather than declared, because the thing it would declare is already decided elsewhere: a spec
+ * It is derived rather than declared, because what it would declare is already decided elsewhere: a spec
  * lives in the fast half or the integration half, `spec-cost` moves it between them on measured cost, and
  * the halves *are* size classes. A per-suite `size` field would be a constant — every fast half small,
  * every integration half large — and a list whose every entry is the same value is one nobody maintains.
- * The E2E config is the third target and is large for the same reason the integration half is.
  *
- * A *spec*'s size is not this function, because a filename is not enough: see `sizeOfSpec`
- * (`scripts/lib/test-timeouts.ts`), which has to ask whether the package has a second config at all.
+ * It lives there rather than here so this module stays a leaf: answering for a *spec* needs
+ * `INTEGRATION_SUITES`, and importing that would point this file at `chain-steps.ts`, which imports it.
  */
-export const sizeOfTestConfig = (file: string): Size =>
-  file.endsWith('vitest.integration.config.ts') || file.endsWith('playwright.config.ts') ? 'large' : 'small';

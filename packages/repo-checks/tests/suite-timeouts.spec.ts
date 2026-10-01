@@ -16,8 +16,8 @@ import * as path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { REPO_ROOT } from '@abuddy/host/build/packages-built';
 import { INTEGRATION_SUITES } from '../../../scripts/lib/chain-steps.ts';
-import { SIZE_MS, sizeOfTestConfig, UNIT_SUITES, type Size } from '../../../scripts/lib/unit-suites.ts';
-import { overrideKey, sizeOfSpec, specFilesUnder, timeoutOverrides, type TimeoutOverride } from '../../../scripts/lib/test-timeouts.ts';
+import { SIZE_MS, UNIT_SUITES, type Size } from '../../../scripts/lib/unit-suites.ts';
+import { overrideKey, sizeOf, specFilesUnder, timeoutOverrides, type TimeoutOverride } from '../../../scripts/lib/test-timeouts.ts';
 
 /**
  * Tests allowed to override their size's budget, and why.
@@ -33,7 +33,7 @@ function overrides(): (TimeoutOverride & { size: Size; budget: number })[] {
   return UNIT_SUITES.flatMap((suite) => specFilesUnder(path.join(REPO_ROOT, 'packages', suite.dir, 'tests')))
     .flatMap((file) => timeoutOverrides(file, REPO_ROOT))
     .map((override) => {
-      const size = sizeOfSpec(override.file);
+      const size = sizeOf(override.file);
       return { ...override, size, budget: SIZE_MS[size] };
     });
 }
@@ -47,7 +47,7 @@ function configs(): { file: string; size: Size }[] {
   ];
   return found
     .filter((file) => fs.existsSync(path.join(REPO_ROOT, file)))
-    .map((file) => ({ file, size: sizeOfTestConfig(file) }));
+    .map((file) => ({ file, size: sizeOf(file) }));
 }
 
 const TIMEOUT_KEYS = ['testTimeout', 'hookTimeout', 'teardownTimeout', 'timeout'];
@@ -148,17 +148,17 @@ describe('a suite times a test out at its size budget', () => {
  * large — and nothing failed, because neither has a per-test override today and the *configs* were already
  * derived. These cases are the firing case that absence left it without.
  */
-describe('a spec takes the budget of the size it runs at', () => {
+describe('a file takes the budget of the target it runs in', () => {
   it('calls every integration half large, whichever package it is in', () => {
     expect(INTEGRATION_SUITES.length, 'no suites derived, so this proves nothing').toBeGreaterThan(1);
     for (const suite of INTEGRATION_SUITES) {
-      expect(sizeOfSpec(`packages/${suite.dir}/tests/x.integration.spec.ts`), suite.dir).toBe('large');
+      expect(sizeOf(`packages/${suite.dir}/tests/x.integration.spec.ts`), suite.dir).toBe('large');
     }
   });
 
   it('leaves the fast half small, which is a different budget', () => {
     for (const suite of INTEGRATION_SUITES) {
-      expect(sizeOfSpec(`packages/${suite.dir}/tests/x.spec.ts`), suite.dir).toBe('small');
+      expect(sizeOf(`packages/${suite.dir}/tests/x.spec.ts`), suite.dir).toBe('small');
     }
     expect(SIZE_MS.small, 'and the two budgets really do differ, or none of this matters').not.toBe(SIZE_MS.large);
   });
@@ -166,6 +166,28 @@ describe('a spec takes the budget of the size it runs at', () => {
   // A package with no second config runs everything in its fast half, whatever a file is called
   it('does not call a spec large in a package with no integration half', () => {
     const plain = UNIT_SUITES.find((s) => !INTEGRATION_SUITES.some((i) => i.dir === s.dir))!;
-    expect(sizeOfSpec(`packages/${plain.dir}/tests/x.integration.spec.ts`)).toBe('small');
+    expect(sizeOf(`packages/${plain.dir}/tests/x.integration.spec.ts`)).toBe('small');
+  });
+
+  /**
+   * And it answers for a config by the config's own existence, which is the other half of the one
+   * question. These were two functions in two modules until 2026-10: a spec's name is a claim and a
+   * config's name is the fact, and that asymmetry is a reason for two branches rather than two names.
+   */
+  it('reads a config by which config it is', () => {
+    const [withHalf] = INTEGRATION_SUITES;
+    expect(sizeOf(`packages/${withHalf!.dir}/vitest.integration.config.ts`)).toBe('large');
+    expect(sizeOf(`packages/${withHalf!.dir}/vitest.config.ts`)).toBe('small');
+    expect(sizeOf('playwright.config.ts'), 'the E2E suite is its own target').toBe('large');
+  });
+
+  /**
+   * A file that is neither gets no answer. Every unrecognised path would otherwise fall through to
+   * `small`, and since the budget is a ceiling, the confident wrong answer is the permissive one — a
+   * caller would be told 15s for something nothing had reasoned about.
+   */
+  it('refuses a file that belongs to no test target', () => {
+    expect(() => sizeOf('docs/goals/README.md')).toThrow(/neither a test config nor a spec/);
+    expect(() => sizeOf('scripts/lib/unit-suites.ts')).toThrow(/neither a test config nor a spec/);
   });
 });
