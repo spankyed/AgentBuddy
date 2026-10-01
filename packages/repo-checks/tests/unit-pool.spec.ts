@@ -57,7 +57,7 @@ describe('projectsThatDidNotRun', () => {
  * settle it, because it reports on the step, a different unit with a different input set.
  */
 describe('whyItRuns', () => {
-  const stamped = { version: 1, fingerprint: 'abc', declared: ['packages/x/src'], files: { 'packages/x/src/a.ts': 'd' } };
+  const stamped = { version: STAMP_VERSION, fingerprint: 'abc', declared: ['packages/x/src'], files: { 'packages/x/src/a.ts': 'd' } };
 
   it('names what moved, which is the whole of what the line adds', () => {
     expect(whyItRuns(stamped, () => 'changed packages/x/src/a.ts (and 2 more)'))
@@ -69,13 +69,13 @@ describe('whyItRuns', () => {
    * the digests were recorded, and `node_modules/.cache` is never cleared, so it is what a machine has today.
    */
   it('says so when the stamp predates the digests, rather than guessing', () => {
-    expect(whyItRuns({ version: 1, fingerprint: 'abc' }, () => 'changed a.ts'))
+    expect(whyItRuns({ version: STAMP_VERSION, fingerprint: 'abc' }, () => 'changed a.ts'))
       .toBe('its last run recorded no per-file digests');
   });
 
   it('distinguishes a project that has never run from one whose inputs moved', () => {
     expect(whyItRuns(undefined, () => 'changed a.ts')).toBe('has not run yet');
-    expect(whyItRuns({ version: 1 }, () => 'changed a.ts')).toBe('has not run yet');
+    expect(whyItRuns({ version: STAMP_VERSION }, () => 'changed a.ts')).toBe('has not run yet');
   });
 
   /** The diff can come back empty on a walk-time race; the line still has to say something true */
