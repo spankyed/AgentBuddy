@@ -274,8 +274,16 @@ is `packages:ensure → compile → build:app → test:packaged-authoring`, whic
     `ChainStep.seconds` is the other — a hand-recorded measurement with its own asymmetric band (reported
     past double on every run, under half only at `--all`), which is hysteresis built a second time. One of
     the two lives in a JSON file with a `:check`/`:update` pair and the other in the step table with
-    neither, so generalising cost records means covering both or saying why not. CLAUDE.md's "`spec-cost.json`
-    is the only one" is scoped to recorded-artifact *files* and is not wrong, but the parallel is the point.
+    neither. CLAUDE.md's "`spec-cost.json` is the only one" is scoped to recorded-artifact *files* and is
+    not wrong, but the parallel is the point.
+
+    **Settled: share the band logic, not the storage.** `seconds` stays in the step table. It has 13
+    entries read by whoever opens the step they describe, against `spec-cost.json`'s 382 read only by a
+    tool, and its check already runs on every chain run — which is stronger than a `:check` script someone
+    has to invoke, not weaker. What the two should share is the hysteresis, the drift band and the
+    contention refusal, which live in `spec-cost.ts` and are the part that was hard to get right. **Revisit
+    at ~47 actions**: a hand-recorded number per action stops being something a reader scans, and at that
+    point it is a file like the other one.
 23. **Near-edge reporting**, which only stays meaningful once cost stops deciding coverage.
 
 ### G. Guards the new model needs
