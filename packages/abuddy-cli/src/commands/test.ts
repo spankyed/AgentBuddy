@@ -46,6 +46,12 @@ export function fixtureEnv(
   // on built-in packs reads the app choice, not the launch target. Without it a `--app beta` run
   // resolves against whatever checkout was saved on first run, or finds nothing at all in CI.
   delete env.ABUDDY_APP;
+  // Where the app's data and its screenshots go is this run's to decide, never the shell's. Both are
+  // read straight from the environment by the fixture, because the `test` a spec imports is built at
+  // module scope and no option can reach it — so an exported E2E_DATA_DIR would have a pinned run use a
+  // directory it did not make, and leave it behind. `abuddy drive` sets them after calling this.
+  delete env.E2E_DATA_DIR;
+  delete env.E2E_SCREENSHOT_DIR;
   if (app.kind === 'source') env.ABUDDY_ROOT = app.root;
   else {
     env.ABUDDY_APP_EXECUTABLE = app.executable;

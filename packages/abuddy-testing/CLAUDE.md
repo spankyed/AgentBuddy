@@ -298,6 +298,8 @@ Screenshot output location depends on context:
 | `PACK_DIR` | Path to an external pack directory. Triggers build/install and plugin waiting. |
 | `PACK_ARCHIVE` | A packed `<id>-<version>.tgz` to install instead of building `PACK_DIR`, so the run tests what a release ships. Refused when it is older than the pack's `dist/`: skipping the rebuild is for testing the shipped artifact, not for testing a stale one. |
 | `E2E_KEEP_DATA` | Set to `1` to keep each worker's temp data dir for debugging. |
+| `E2E_DATA_DIR` | A data dir the caller owns and keeps, used instead of the per-worker temp one and never cleaned up. Set by `abuddy drive` for an instance. **`abuddy test` strips it** (`fixtureEnv`), so a pinned run cannot be aimed at a directory by the shell it was started from. |
+| `E2E_SCREENSHOT_DIR` | Where `app.screenshot()` writes, ahead of the `PACK_DIR` and cwd fallbacks. Set by `abuddy drive` to `drive/screenshots/`, and stripped by `abuddy test` for the same reason. |
 | `PLAYWRIGHT_TEST` | Set automatically to `'true'` by the fixture. The app resolves the `test` environment (`abuddy-test` name, lock and data dir), crashes on uncaught errors, and runs headless (suppresses window display and splash screen). |
 | `ABUDDY_USER_DATA_DIR` | Optional. Overrides the app's data dir (e.g. an isolated temp dir); read through `@abuddy/sdk/env`. |
 | `DEBUG_E2E` | Set to `1` to pipe Electron stdout/stderr to the test terminal. |
