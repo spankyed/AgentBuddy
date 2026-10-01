@@ -82,6 +82,46 @@ export const FAST_BELOW_MS = 1_000;
  */
 export const CONTENTION_RATIO_MAX = 2.5;
 
+/**
+ * What a spec that just changed half says about `CONTENTION_RATIO_MAX`.
+ *
+ * The constant is a sample, and a sample has no derivation to check it against — which is the shape that
+ * produced the defect it exists to prevent, a number nobody re-asks. But a *move* is a measurement of
+ * exactly the thing it bounds, taken for free: the record holds what the spec cost in the half it left,
+ * and this run measured what it costs in the half it arrived in. So every rename that follows this gate's
+ * own advice re-measures the gate's own constant.
+ *
+ * A move shows up as a path appearing whose counterpart disappeared — the same spec, the suffix toggled.
+ * Nothing else pairs that way: an added spec is new and a dropped one is gone.
+ */
+export function ratiosFromMoves(
+  previous: SpecCost | undefined,
+  costs: Record<string, number>,
+  added: readonly string[],
+  onDisk: readonly string[],
+): { spec: string; fast: number; integration: number; ratio: number }[] {
+  const here = new Set(onDisk);
+  const other = (file: string): string => (halfOfPath(file) === 'fast'
+    ? file.replace(/\.spec\.ts$/, INTEGRATION_SUFFIX)
+    : `${file.slice(0, -INTEGRATION_SUFFIX.length)}.spec.ts`);
+  return added.flatMap((spec) => {
+    const was = other(spec);
+    const before = previous?.costs[was];
+    const now = costs[spec];
+    // The counterpart has to be gone from disk, not merely unmeasured: a named run measures one config, so
+    // "no reading for the other half" is true of every spec in the suite and would pair an ordinary new
+    // spec with whatever happens to share its name in the other half
+    if (here.has(was) || before === undefined || now === undefined || now <= 0 || before <= 0) return [];
+    const [fast, integration] = halfOfPath(spec) === 'fast' ? [now, before] : [before, now];
+    return [{ spec, fast, integration, ratio: fast / integration }];
+  });
+}
+
+/** A move whose ratio the band does not cover: evidence that `CONTENTION_RATIO_MAX` is too low. */
+export const underBound = (
+  found: readonly { ratio: number }[],
+): boolean => found.some(({ ratio }) => ratio > CONTENTION_RATIO_MAX);
+
 /** What a recorded cost is good to (`goal-measured-placement.md`), and so how close to an edge is close. */
 export const COST_ACCURACY = 0.2;
 

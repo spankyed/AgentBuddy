@@ -17,7 +17,7 @@ import { REPO_ROOT } from '@abuddy/host/build/packages-built';
 import {
   FAST_BELOW_MS, INTEGRATION_ABOVE_MS, SPEC_COST_FLAGS, absentIn, changesIn, contended, drift, drifted,
   absentNamed, CONTENTION_RATIO_MAX, COST_ACCURACY, describeBudget, EXPENSIVE_BY_NATURE, halfFor,
-  halfOfPath, hasSplit, moved, nearEdge, towardEdge,
+  halfOfPath, hasSplit, moved, nearEdge, ratiosFromMoves, towardEdge, underBound, type SpecCost,
   namedIn, overBudget, parseArgs,
   planFor, readSpecCost,
   refuseAbsent, refusesAsContended, rewritesEveryRow, settle, specCostFile, specFiles, stale, suitesFor,
@@ -130,6 +130,47 @@ describe('what a run says about a spec it cannot place', () => {
  * re-measurement could move when it would have had to nearly double. Lowering the return edge made that
  * worse rather than better — five more specs became members, none of them able to move.
  */
+/**
+ * A move re-measures the constant that permitted it.
+ *
+ * `CONTENTION_RATIO_MAX` is a sample: it records a measurement and has nothing to re-derive it from, which
+ * is the shape that produced the defect it exists to prevent. What checks it is the moves it causes — the
+ * record holds what a spec cost in the half it left, an update measures what it costs where it arrived, and
+ * the quotient is the thing the band has to cover. Free, and it arrives exactly when the number matters.
+ */
+describe('what a spec that changed half says about the band', () => {
+  const FAST = 'tests/x.spec.ts';
+  const SLOW = 'tests/x.integration.spec.ts';
+  const record = (costs: Record<string, number>): SpecCost => ({ measuredAt: 'then', costs, skipped: [] });
+
+  it('reads the ratio off a move in either direction', () => {
+    expect(ratiosFromMoves(record({ [FAST]: 2_000 }), { [SLOW]: 1_000 }, [SLOW], [SLOW]))
+      .toEqual([{ spec: SLOW, fast: 2_000, integration: 1_000, ratio: 2 }]);
+    expect(ratiosFromMoves(record({ [SLOW]: 1_000 }), { [FAST]: 2_000 }, [FAST], [FAST])[0])
+      .toMatchObject({ fast: 2_000, integration: 1_000, ratio: 2 });
+  });
+
+  /**
+   * The counterpart must be gone from *disk*, not merely unmeasured. A run that names one spec measures
+   * one config, so "the other half has no reading" is true of every spec in the suite — pairing on that
+   * would read an ordinary new spec as a move the moment something shared its name in the other half.
+   */
+  it('is not a move while both halves of the name are still there', () => {
+    expect(ratiosFromMoves(record({ [FAST]: 2_000 }), { [SLOW]: 1_000 }, [SLOW], [FAST, SLOW])).toEqual([]);
+  });
+
+  it('says nothing when the spec is new rather than moved', () => {
+    expect(ratiosFromMoves(record({}), { [SLOW]: 1_000 }, [SLOW], [SLOW])).toEqual([]);
+  });
+
+  it('calls out only a ratio the band does not cover', () => {
+    expect(underBound([{ ratio: CONTENTION_RATIO_MAX }]), 'exactly at the bound is covered').toBe(false);
+    expect(underBound([{ ratio: CONTENTION_RATIO_MAX + 0.01 }])).toBe(true);
+    expect(underBound([])).toBe(false);
+  });
+});
+
+
 describe('how close a spec is to changing half', () => {
   const FAST = 'tests/x.spec.ts';
   const SLOW = 'tests/x.integration.spec.ts';

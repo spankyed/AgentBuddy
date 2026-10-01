@@ -39,7 +39,8 @@ import { REPO_ROOT } from '@abuddy/host/build/packages-built';
 import { idleNow, IDLE_FLOOR, refusesAsBusy } from './lib/measure.ts';
 import { UNIT_SUITES, type UnitSuite } from './lib/unit-suites.ts';
 import {
-  COST_ACCURACY, FAST_BELOW_MS, INTEGRATION_ABOVE_MS, PLACEMENT_GUARD, describeBudget, halfOfPath, hasSplit,
+  CONTENTION_RATIO_MAX, COST_ACCURACY, FAST_BELOW_MS, INTEGRATION_ABOVE_MS, PLACEMENT_GUARD, describeBudget,
+  halfOfPath, hasSplit, ratiosFromMoves, underBound,
   nearEdge, overBudget,
   CONFIG_BY_HALF, absentNamed, drift, drifted, namedIn, parseArgs, planFor, readSpecCost, refusesAsContended,
   rewritesEveryRow, settle, specCostFile, specFiles, stale, suitesFor, unrecorded, type SpecCostPlan,
@@ -187,6 +188,22 @@ function update(plans: readonly SuitePlan[], dry: boolean): void {
     fs.mkdirSync(path.dirname(file), { recursive: true });
     const next = `${JSON.stringify(record, null, 2)}\n`;
     if (!fs.existsSync(file) || fs.readFileSync(file, 'utf-8') !== next) fs.writeFileSync(file, next);
+
+    // A spec that just changed half measured `CONTENTION_RATIO_MAX` on the way, for free — the record held
+    // what it cost in the half it left and this run read what it costs now. That constant is a sample with
+    // nothing to re-derive it from, so a move following this gate's own advice is the only evidence that
+    // arrives on its own, and a ratio past the bound means the band is too narrow again.
+    const ratios = ratiosFromMoves(previous, costs, added, files);
+    for (const { spec, fast, integration, ratio } of ratios) {
+      const over = ratio > CONTENTION_RATIO_MAX;
+      console.log(`  ${spec} changed half: ${fast}ms fast against ${integration}ms integration, ${ratio.toFixed(2)}x`
+        + (over ? ` — past CONTENTION_RATIO_MAX (${CONTENTION_RATIO_MAX}x)` : ''));
+    }
+    if (underBound(ratios)) {
+      console.log(`  A move cost more than the band covers, so a spec there can be told to move both ways.`
+        + ` Re-measure and raise CONTENTION_RATIO_MAX in scripts/lib/spec-cost.ts, which lowers FAST_BELOW_MS`
+        + ` with it — the floor is the cheapest integration-half spec.`);
+    }
 
     // `measuredFiles`, not `files`: over the whole suite this reports on specs the run never measured,
     // which is the same narrowing every other guard on this path already takes
@@ -345,7 +362,12 @@ function list(only: string | undefined, named: readonly string[]): void {
     console.log(`${row.suite.padEnd(name)}${String(row.specs).padStart(7)}${String(row.settled).padStart(7)}${String(row.nearBand).padStart(14)}`);
   }
   console.log(`\n${near.length} spec${near.length === 1 ? '' : 's'} within ${COST_ACCURACY * 100}% of the edge that `
-    + 'could move it, which is what a recorded cost is good to — so a re-measurement could carry it over:');
+    + 'could move it, which is what a recorded cost is good to — so a re-measurement could carry it over.');
+  // The distance is to the recorded cost, and a record is deliberately sticky: `moved` rewrites a row only
+  // past max(300ms, 35%), so the number below can be that far from what the spec costs today. Measured
+  // 2026-10-01, `lint-scope` was recorded at 2388ms and read 2025-2171ms over three runs — still inside the
+  // window, 366ms from its edge rather than the 112ms the record implies.
+  console.log('Distances are to the recorded cost, which is held until a reading moves past its tolerance:');
   for (const line of near.sort()) console.log(line);
 }
 
