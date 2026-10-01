@@ -237,6 +237,9 @@ const WORKSPACE_PARTS = [
   // `templates` is the CLI's scaffold: pack code the specifier rules read and the CLI's own suite renders,
   // so a change to one has to invalidate the steps that read the workspace
   'src', 'tests', 'scripts', 'etc', 'templates', 'index.js',
+  // A pack's manifest, which `default-setup`'s specs import directly. Eleven workspaces have none
+  // and the walk skips what is not there, so for those this adds a path and no bytes
+  'abuddy.json',
   'package.json', 'tsconfig.json', 'tsconfig.package.json',
   'vitest.config.ts', 'vitest.integration.config.ts', 'vite.config.ts', 'vite.config.js',
   'eslint.config.ts', 'postcss.config.cjs', 'tailwind.config.ts', 'tsdown.config.ts', 'env.d.ts',

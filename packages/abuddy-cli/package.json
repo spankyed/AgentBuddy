@@ -43,9 +43,10 @@
     "vue": "^3.5.18"
   },
   "devDependencies": {
-    "yaml": "^2.9.1",
+    "@abuddy/ui": "*",
     "@app/publish-checks": "*",
     "@types/semver": "^7.8.0",
-    "vitest": "^3.2.4"
+    "vitest": "^3.2.4",
+    "yaml": "^2.9.1"
   }
 }
