@@ -61,20 +61,20 @@ const SHARED_INPUTS = [repoFile('package.json'), repoFile('package-lock.json')];
 
 /**
  * The stamp format, shared by everything that records "this ran over exactly these inputs" — the package
- * builds and, through `stampedRun`, the chain's steps. Bump it when a stamp written by an older run would
- * be read wrongly by this one (a different hash, a different set of things hashed), and every unit runs
- * once, which is correct.
+ * builds and, through `stampedRun`, the chain's steps.
  *
- * **2 since a unit's `command` joined the hash**, which is exactly the case above: a stamp from 1 was
- * written over a different set of things, so reading its fingerprint against this one would be comparing
- * two answers to two questions. Every unit runs once and then caches again.
+ * **Leave it at 1, including when what gets hashed changes.** That reads like the one case a version is
+ * for, and it is not one here: stamps live in `node_modules/.cache/` and are never committed, so a version
+ * only means something against stamps a machine already has — and a changed hash already differs from what
+ * those stamps hold, so every unit re-runs once whether this moves or not. All a bump adds is the reason
+ * line a run prints, against a full chain for whoever pulls. It has been bumped and reverted twice, once
+ * for the chain joining this protocol and once for a unit's `command` joining the hash.
  *
- * It was held at 1 through the bumps taken while the chain's steps were being added to this protocol,
- * because stamps live in `node_modules/.cache/` and are never committed — a version only means something
- * against stamps a machine already has, and those bumps meant nothing to anyone but the machine they were
- * written on. This one changes what is hashed for everybody, which is the difference.
+ * The condition that would make it earn its keep is stamps that outlive a checkout — published, shared, or
+ * restored from a remote cache. Until then, changing the format and letting `!==` do the work is the whole
+ * mechanism, and this is a human's call rather than a consequence of some other change.
  */
-export const STAMP_VERSION = 2;
+export const STAMP_VERSION = 1;
 
 export interface BuildUnit {
   /** Files and directories the build reads, absolute; a directory is walked */
