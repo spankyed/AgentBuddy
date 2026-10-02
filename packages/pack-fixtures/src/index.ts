@@ -6,13 +6,18 @@ import * as path from 'node:path';
  * One feature, both halves, each naming an entry and a contract — which is what makes a rule about contracts
  * able to fire. Which module is a contract is what `abuddy.json` says, not what a file looks like, so a fixture
  * without a manifest is one several pack rules cannot speak about at all.
+ *
+ * **The feature id is deliberately not one `@app/default-setup` has.** It was `notes`, which that pack really
+ * ships, so `src/features/notes/` named a fixture's invention and a real feature at once — in a grep, in a
+ * failure message, and in a spec that writes a path meant to read as the real pack's (`findRepositoryCasts`
+ * does, a few hundred lines into `import-specifiers.integration.spec.ts`). Keep it a name no pack takes.
  */
 const DEFAULT_MANIFEST = {
   id: 'demo-pack', name: 'Demo', version: '1.0.0',
   features: [{
-    id: 'notes',
-    plugin: { entry: 'src/features/notes/fe/plugin.ts', contract: 'src/features/notes/fe/contract.ts#Contract' },
-    system: { entry: 'src/features/notes/be/system.ts', contract: 'src/features/notes/be/contract.ts#Contract' },
+    id: 'memos',
+    plugin: { entry: 'src/features/memos/fe/plugin.ts', contract: 'src/features/memos/fe/contract.ts#Contract' },
+    system: { entry: 'src/features/memos/be/system.ts', contract: 'src/features/memos/be/contract.ts#Contract' },
   }],
 };
 
@@ -91,10 +96,10 @@ export function packFixture({ at, files = {}, manifest, rawManifest, nodeModules
     'abuddy.json': JSON.stringify(written),
     'src/__generated__/events.ts': 'export const sendToSystem = 1;\n',
     'src/sibling.ts': 'export const sibling = 1;\n',
-    'src/features/notes/fe/plugin.ts': 'export type P = { id: string };\n',
-    'src/features/notes/be/system.ts': 'export const system = 1;\n',
-    'src/features/notes/fe/contract.ts': 'export type Contract = { state: {} };\n',
-    'src/features/notes/be/contract.ts': "export type Contract = { outgoing: { type: 'A' } };\n",
+    'src/features/memos/fe/plugin.ts': 'export type P = { id: string };\n',
+    'src/features/memos/be/system.ts': 'export const system = 1;\n',
+    'src/features/memos/fe/contract.ts': 'export type Contract = { state: {} };\n',
+    'src/features/memos/be/contract.ts': "export type Contract = { outgoing: { type: 'A' } };\n",
   };
   for (const [rel, body] of Object.entries({ ...base, ...files })) {
     const file = path.join(dir, rel);

@@ -80,7 +80,7 @@ const FIRES: Record<PackRuleKey, { onFile?: [code: string, problem: string][]; e
     ],
   },
   'pack-own-aliases': {
-    onFile: [["import { x } from '@/features/notes/be/x.ts';\n", 'src/f.ts:1: @/features/notes/be/x.ts']],
+    onFile: [["import { x } from '@/features/memos/be/x.ts';\n", 'src/f.ts:1: @/features/memos/be/x.ts']],
   },
   'host-imports': { onFile: [["import { edgeStore } from '@abuddy/host/ears';\n", 'src/f.ts:1: @abuddy/host/ears']] },
   'lmdb-imports': { onFile: [["import { open } from 'lmdb';\n", 'src/f.ts:1: lmdb']] },
@@ -164,10 +164,10 @@ describe('every rule', () => {
 
   it('backend-console fires under a backend path and not under a frontend one', () => {
     const dir = completePack({
-      'src/features/notes/be/system.ts': "console.log('x');\n",
-      'src/features/notes/fe/state.ts': "console.log('x');\n",
+      'src/features/memos/be/system.ts': "console.log('x');\n",
+      'src/features/memos/fe/state.ts': "console.log('x');\n",
     });
-    expect(problems(dir, 'backend-console')).toEqual(['src/features/notes/be/system.ts:1: console.log']);
+    expect(problems(dir, 'backend-console')).toEqual(['src/features/memos/be/system.ts:1: console.log']);
   });
 
   it("cross-feature-imports flags another feature's frontend and allows a feature its own", () => {
@@ -190,8 +190,8 @@ describe('every rule', () => {
   it('re-reads a pack whose exports changed while its mtime did not', () => {
     const files = (exported: Record<string, string>) => ({
       'package.json': JSON.stringify({ name: 'p', type: 'module', exports: exported }),
-      'src/features/notes/fe/state.ts': 'export const notes = 1;\n',
-      'src/extensions/viewer.ts': "import { notes } from '../features/notes/fe/state.ts';\nexport const viewer = notes;\n",
+      'src/features/memos/fe/state.ts': 'export const memos = 1;\n',
+      'src/extensions/viewer.ts': "import { memos } from '../features/memos/fe/state.ts';\nexport const viewer = memos;\n",
     });
     const dir = pack(files({ './viewer': './src/extensions/viewer.ts' }));
 
@@ -209,7 +209,7 @@ describe('every rule', () => {
 
     expect(problems(dir, 'cross-feature-imports'),
       'the manifest publishes nothing now, so viewer.ts has no licence — a cache keyed on mtime alone would still say it does')
-      .toEqual(['src/extensions/viewer.ts:1: ../features/notes/fe/state.ts']);
+      .toEqual(['src/extensions/viewer.ts:1: ../features/memos/fe/state.ts']);
   });
 
   /**
@@ -218,10 +218,10 @@ describe('every rule', () => {
    */
   it('contract-leaves flags a contract leaf that reaches its own machine', () => {
     const dir = completePack({
-      'src/features/notes/fe/contract.ts': "import type { Ctx } from './state.ts';\nexport type Contract = { state: Ctx };\n",
-      'src/features/notes/fe/state.ts': "import { sendToPlugin } from '#generated/events.ts';\nexport type Ctx = { sent: typeof sendToPlugin };\n",
+      'src/features/memos/fe/contract.ts': "import type { Ctx } from './state.ts';\nexport type Contract = { state: Ctx };\n",
+      'src/features/memos/fe/state.ts': "import { sendToPlugin } from '#generated/events.ts';\nexport type Ctx = { sent: typeof sendToPlugin };\n",
     });
-    expect(problems(dir, 'contract-leaves')).toEqual(['src/features/notes/fe/contract.ts:1: ./state.ts']);
+    expect(problems(dir, 'contract-leaves')).toEqual(['src/features/memos/fe/contract.ts:1: ./state.ts']);
   });
 
   /**
@@ -236,10 +236,10 @@ describe('every rule', () => {
   it('contract-leaves reads the layout when no manifest names the contracts', () => {
     const dir = pack({
       'package.json': JSON.stringify({ name: 'p', type: 'module', imports: { '#generated/*': './src/__generated__/*' } }),
-      'src/features/notes/be/contract.ts': "import type { M } from './system.ts';\nexport type Contract = { m: M };\n",
-      'src/features/notes/be/system.ts': 'export type M = 1;\n',
+      'src/features/memos/be/contract.ts': "import type { M } from './system.ts';\nexport type Contract = { m: M };\n",
+      'src/features/memos/be/system.ts': 'export type M = 1;\n',
     });
-    expect(problems(dir, 'contract-leaves')).toEqual(['src/features/notes/be/contract.ts:1: ./system.ts']);
+    expect(problems(dir, 'contract-leaves')).toEqual(['src/features/memos/be/contract.ts:1: ./system.ts']);
   });
 
   /**
@@ -258,7 +258,7 @@ describe('every rule', () => {
    */
   it('reports an offence two rules word differently under one rule, not two', () => {
     const dir = completePack({
-      'src/features/notes/fe/contract.ts': "import { sendToSystem } from '#generated/events';\nexport type Contract = { state: {} };\n",
+      'src/features/memos/fe/contract.ts': "import { sendToSystem } from '#generated/events';\nexport type Contract = { state: {} };\n",
     });
     const reported = [...packRuleProblems(dir)].filter(([, found]) => found.some((line) => line.includes('#generated/events')));
     expect(reported.map(([key]) => key), 'one import, told to a pack author under more than one rule').toEqual(['contract-leaves']);
@@ -266,11 +266,11 @@ describe('every rule', () => {
 
   it('reports a contract leaf reaching another feature under one rule, not two', () => {
     const dir = completePack({
-      'src/features/notes/fe/contract.ts': "import type { T } from '../../threads/fe/state.ts';\nexport type Contract = { state: { t: T } };\n",
-      'src/features/notes/fe/plugin.ts': 'export type P = { id: string };\n',
+      'src/features/memos/fe/contract.ts': "import type { T } from '../../threads/fe/state.ts';\nexport type Contract = { state: { t: T } };\n",
+      'src/features/memos/fe/plugin.ts': 'export type P = { id: string };\n',
       'src/features/threads/fe/state.ts': 'export type T = { id: string };\n',
     });
-    const offence = 'src/features/notes/fe/contract.ts:1: ../../threads/fe/state.ts';
+    const offence = 'src/features/memos/fe/contract.ts:1: ../../threads/fe/state.ts';
     const reported = [...packRuleProblems(dir)].filter(([, found]) => found.includes(offence)).map(([key]) => key);
     expect(reported, 'the same import, word for word, under more than one rule').toEqual(['contract-leaves']);
   });
@@ -282,15 +282,15 @@ describe('every rule', () => {
    */
   it('claims the offence a whole-pack rule named, not the whole line it sat on', () => {
     const dir = completePack({
-      'src/features/notes/fe/contract.ts':
+      'src/features/memos/fe/contract.ts':
         "import type { T } from '../../threads/fe/state.ts'; import { untypedSendToSystem } from '@abuddy/sdk/events';\n"
         + 'export type Contract = { state: { t: T; send: typeof untypedSendToSystem } };\n',
-      'src/features/notes/fe/plugin.ts': 'export type P = { id: string };\n',
+      'src/features/memos/fe/plugin.ts': 'export type P = { id: string };\n',
       'src/features/threads/fe/state.ts': 'export type T = { id: string };\n',
     });
-    expect(problems(dir, 'contract-leaves')).toEqual(['src/features/notes/fe/contract.ts:1: ../../threads/fe/state.ts']);
+    expect(problems(dir, 'contract-leaves')).toEqual(['src/features/memos/fe/contract.ts:1: ../../threads/fe/state.ts']);
     expect(problems(dir, 'untyped-sends'), 'the second offence on that line went with the first')
-      .toEqual(['src/features/notes/fe/contract.ts:1: untypedSendToSystem from @abuddy/sdk/events']);
+      .toEqual(['src/features/memos/fe/contract.ts:1: untypedSendToSystem from @abuddy/sdk/events']);
   });
 
   it('names a case that exists for each rule covered elsewhere', () => {

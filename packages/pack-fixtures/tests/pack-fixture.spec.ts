@@ -32,7 +32,7 @@ describe('packFixture', () => {
     const dir = packFixture({ files: { 'src/f.ts': 'export const offence = 1;\n' } });
 
     expect(fs.readFileSync(path.join(dir, 'src/f.ts'), 'utf-8')).toBe('export const offence = 1;\n');
-    expect(fs.existsSync(path.join(dir, 'src/features/notes/be/contract.ts'))).toBe(true);
+    expect(fs.existsSync(path.join(dir, 'src/features/memos/be/contract.ts'))).toBe(true);
   });
 
   /**
