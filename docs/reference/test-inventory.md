@@ -1,16 +1,24 @@
 # Test inventory
 
-What tests this repo has, where they live, and how to tell where a test *belongs*. Kept current: it
-describes the suite as it is, not a plan.
+What tests this repo has, where they live, and how to tell where a test *belongs*.
 
-> **Surveyed** 2026-09-25, updated through `goal-test-placement.md` Phase 2. Spec-file counts and costs come from each package's
-> `etc/spec-cost.json`, which `npm run spec-cost:check` holds to the tree. Test counts are not recorded
-> here on purpose — they move on every commit, and nothing decides anything from them.
+> **Not kept current — revisit it before you rely on it, and before starting work from it.** It said it was,
+> and the counts below drifted anyway: on 2026-10-02 this page read 369 specs over twelve suites where the
+> record held 389, with four suites out by 4 to 8 each. The rules about *where a spec belongs* are the live
+> half and are what the CLAUDE.md files cite; the figures are a snapshot of 2026-09-25, surveyed through
+> `goal-test-placement.md` Phase 2.
+>
+> **The numbers are owned elsewhere, so ask for them rather than reading them here:**
+> `npm run spec-cost:check -- --list` derives the per-suite spec counts from each package's
+> `etc/spec-cost.json` on every run. A copy on this page is a second record of one fact, which is the thing
+> that rotted. Test counts are absent on purpose — they move on every commit, and nothing decides anything
+> from them.
 
 ## Scale
 
-369 spec files: 339 in twelve package suites, 15 fixture-pack specs, 14 E2E, plus the root's own
-`tests/scripts` shell checks.
+**A snapshot of 2026-09-25, known stale** — `npm run spec-cost:check -- --list` is the live answer. What the
+shape is for: twelve package suites, a handful of fixture-pack specs, the E2E suite, and the root's own
+`tests/scripts` shell checks. As surveyed, 369 spec files, 339 of them in the package suites.
 
 | Suite | Specs | Fast half | Expensive half | Total |
 |---|---|---|---|---|

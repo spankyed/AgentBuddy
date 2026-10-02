@@ -1,4 +1,5 @@
 import * as fs from 'node:fs';
+import * as os from 'node:os';
 import * as path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { inputFiles, REPO_ROOT } from '@abuddy/host/build/packages-built';
@@ -150,22 +151,24 @@ describe('the compiler says what it read', () => {
    * than a declared leg — which is what its message now says.
    */
   it('deletes a dep file no tsconfig declares, and keeps the ones that are owned', () => {
-    const cache = fs.mkdtempSync(path.join(REPO_ROOT, 'node_modules', '.cache', 'prune-case-'));
-    for (const name of ['owned', 'orphan', 'another-orphan']) {
-      fs.writeFileSync(path.join(cache, `${name}.tsbuildinfo`), '{}');
+    const cache = fs.mkdtempSync(path.join(os.tmpdir(), 'prune-case-'));
+    try {
+      for (const name of ['owned', 'orphan', 'another-orphan']) {
+        fs.writeFileSync(path.join(cache, `${name}.tsbuildinfo`), '{}');
+      }
+      fs.writeFileSync(path.join(cache, 'not-a-dep-file.json'), '{}');
+
+      expect(pruneOrphanDepFiles(cache, (name) => name === 'owned')).toEqual(['another-orphan', 'orphan']);
+      expect(fs.readdirSync(cache).sort(), 'it takes the orphans and nothing else')
+        .toEqual(['not-a-dep-file.json', 'owned.tsbuildinfo']);
+    } finally {
+      // In a `finally` because a failing assertion throws, and this file's subject is cache litter
+      fs.rmSync(cache, { recursive: true, force: true });
     }
-    fs.writeFileSync(path.join(cache, 'not-a-dep-file.json'), '{}');
-
-    expect(pruneOrphanDepFiles(cache, (name) => name === 'owned')).toEqual(['another-orphan', 'orphan']);
-    expect(fs.readdirSync(cache).sort(), 'it takes the orphans and nothing else')
-      .toEqual(['not-a-dep-file.json', 'owned.tsbuildinfo']);
-
-    fs.rmSync(cache, { recursive: true, force: true });
   });
 
   it('has nothing to say about a cache directory that is not there', () => {
-    expect(pruneOrphanDepFiles(path.join(REPO_ROOT, 'node_modules', '.cache', 'absent-' + String(Date.now())), () => false))
-      .toEqual([]);
+    expect(pruneOrphanDepFiles(path.join(os.tmpdir(), `absent-${String(Date.now())}`), () => false)).toEqual([]);
   });
 
   /**
