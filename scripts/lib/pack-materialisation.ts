@@ -1,39 +1,46 @@
 /**
- * Where a test writes a pack manifest by hand, read from its syntax tree.
+ * Which tests name a pack manifest, and how often — an inventory, not a verdict.
  *
  * `packFixture` exists so that one place decides what a pack on disk looks like, and a fixture too thin for a
- * rule to fire is a case that passes because it could not fail. That only holds while specs ask for a pack
- * rather than assembling one, so this is the check that they do.
+ * rule to fire is a case that passes because it could not fail. The question this answers is which tests still
+ * build or read one themselves.
  *
- * **The predicate is read, not matched.** The lesson is `process-spawns.ts`', which replaced a check that
- * asked whether a call's *argument text* matched a pattern and reported three spawning files where there are
- * twelve. So the write functions come from each file's own `node:fs` import however it is spelled, and what
- * makes a call a finding is the *shape* of what it writes: `JSON.stringify` of an object literal that
- * declares an `id`. Nothing here is named.
+ * **It is an inventory because a classifier here kept being wrong in the expensive direction.** Three versions
+ * tried to decide which manifest writes were offences: the argument text, then the write functions taken from
+ * each file's own `node:fs` import, then a `JSON.stringify` of an object literal declaring an `id`. The last
+ * reported **zero** offences over a population holding **seven** hand-built manifests, because each goes
+ * through a one-line local wrapper (`write`, `writeAt`) and the two halves then sit in different calls. The
+ * next evasion needs no cunning at all — hoist the literal into a `const` and nothing above can see it.
+ * `subprocess-inventory.spec.ts` records the same lesson from the same repo: its predecessor matched argument
+ * text and a hand list of spawner names, and named three spawning files where there are twelve.
  *
- * **That shape is the line between a fixture and the four things that are not one**, each of which this must
- * leave alone and does, by construction rather than by exemption:
+ * **So nothing here judges, and the detector is the dumbest complete thing**: a string literal naming the
+ * manifest, anywhere in the file, counted. A wrapper, a loop, a variable and a path built at runtime all keep
+ * working, because none of them can avoid writing the name down. A *gate* fails on a hit and so has to be
+ * precise; an inventory fails on a **change** and so wants recall, which is cheap. A spec that merely reads a
+ * manifest earns a row saying so rather than a false positive to suppress.
  *
- * - a `'{}'` **discovery marker**, where a directory holding *any* manifest is the subject — the written
- *   value is a string, not a stringified object;
- * - a **patch** of a pack something else scaffolded — the value is an identifier the file read back, so there
- *   is no object literal to see;
- * - a **manifest that is the subject**, handed to a local `writeManifest(dir, manifest)` — an identifier
- *   again, and the pack tree the command reads is not what the case is about;
- * - the **installed shape** (a manifest beside `integrity.json` and a snapshot), which is `@abuddy/host`'s
- *   artifact and whose layout host owns.
+ * What that buys, beyond not being wrong: the reasons become rows instead of a claim. The classifier said the
+ * shapes it left alone — a `'{}'` discovery marker, a patch of a scaffolded pack, a manifest that *is* the
+ * subject, the installed shape host owns — were excluded "by construction rather than by exemption", and that
+ * was quietly false, since a fifth shape was excluded by accident. A row with a `why` is what those are.
+ * It also catches the creep a verdict cannot: a second hand-written manifest in a file already listed moves
+ * that file's count, where a check reporting only offences waves it through.
  *
- * **Who it polices is the packages whose tests reach for the fixture**, derived by reading their imports,
- * minus the package that publishes it (`FIXTURE_PACKAGE`). A package that adopts it opts into the rule in the
- * same edit, and the rule's subject is what it can actually be: that no package writes a pack tree both ways.
+ * **A spec using the fixture writes no manifest, so it needs no row.** The record is therefore the list of
+ * tests that have not adopted `packFixture`, and it is meant to shrink.
+ *
+ * **Who it covers is the packages whose tests reach for the fixture**, derived by reading their imports, minus
+ * the package that publishes it (`FIXTURE_PACKAGE`). A package that adopts it opts into the rule in the same
+ * edit, and holding the fixture is not adopting it.
  *
  * **It is deliberately not every package that *could* import it.** `packFixture` is a source-only export of
  * `@abuddy/sdk`, so every host-layer package can resolve it, and asking all of them was measured on
- * 2026-10-02: 23 findings, 20 in `@abuddy/host` and 3 in `packages/api`, and **every one of them deserves to
+ * 2026-10-02: 23 files, 20 in `@abuddy/host` and 3 in `packages/api`, and **every one of them deserves to
  * be hand-written**. They write a *data dir's* installed pack (`packs/<id>/abuddy.json`, whose subject is
  * discovery, staging or an update check) or a built built-in (`dist/runtime/index.cjs` and no source at all).
- * A fixture's two-feature source tree is the wrong artifact for all 23, so widening the population buys 23
- * exemptions — and an exemption list is where a gate goes quiet.
+ * A fixture's two-feature source tree is the wrong artifact for all 23, so covering them would buy 23 rows
+ * that say the same thing.
  */
 import * as fs from 'node:fs';
 import * as path from 'node:path';
@@ -63,73 +70,43 @@ export const FIXTURE_PACKAGE = PACK_FIXTURE.split('/').slice(0, 2).join('/');
  */
 const FIXTURE_SPECIFIER = PACK_FIXTURE;
 
-/** However the module is spelled */
-const NODE_FS = new Set(['node:fs', 'fs', 'node:fs/promises', 'fs/promises']);
+/** The manifest's name, which a test cannot avoid writing down somewhere */
+const MANIFEST = 'abuddy.json';
 
-/** What a file bound from `fs`: names callable directly, and namespaces callable through */
-function boundFrom(source: ts.SourceFile): { names: Set<string>; namespaces: Set<string> } {
-  const names = new Set<string>();
-  const namespaces = new Set<string>();
-  source.forEachChild((node) => {
-    if (!ts.isImportDeclaration(node) || !ts.isStringLiteral(node.moduleSpecifier)) return;
-    if (!NODE_FS.has(node.moduleSpecifier.text)) return;
-    const bindings = node.importClause?.namedBindings;
-    if (bindings !== undefined && ts.isNamedImports(bindings)) for (const element of bindings.elements) names.add(element.name.text);
-    if (bindings !== undefined && ts.isNamespaceImport(bindings)) namespaces.add(bindings.name.text);
-    if (node.importClause?.name !== undefined) namespaces.add(node.importClause.name.text);
-  });
-  return { names, namespaces };
-}
-
-/** A call of something this file bound from `fs` — `writeFileSync(…)` or `fs.writeFileSync(…)` alike */
-const isFsCall = (node: ts.CallExpression, bound: { names: Set<string>; namespaces: Set<string> }): boolean =>
-  (ts.isIdentifier(node.expression) && bound.names.has(node.expression.text))
-  || (ts.isPropertyAccessExpression(node.expression) && ts.isIdentifier(node.expression.expression)
-    && bound.namespaces.has(node.expression.expression.text));
-
-/** Every string literal anywhere inside a node: how `path.join(dir, 'abuddy.json')` names its file */
-function literalsIn(node: ts.Node): string[] {
-  const found: string[] = [];
-  const walk = (child: ts.Node): void => {
-    if (ts.isStringLiteral(child)) found.push(child.text);
-    child.forEachChild(walk);
-  };
-  walk(node);
-  return found;
-}
-
-/** `JSON.stringify({ id: … })` — a manifest built here, as against one read back or handed in */
-function writesAManifestLiteral(argument: ts.Node | undefined): boolean {
-  if (argument === undefined || !ts.isCallExpression(argument)) return false;
-  const { expression } = argument;
-  const isStringify = ts.isPropertyAccessExpression(expression) && expression.name.text === 'stringify'
-    && ts.isIdentifier(expression.expression) && expression.expression.text === 'JSON';
-  if (!isStringify) return false;
-  const [value] = argument.arguments;
-  if (value === undefined || !ts.isObjectLiteralExpression(value)) return false;
-  return value.properties.some((property) => property.name !== undefined
-    && ts.isIdentifier(property.name) && property.name.text === 'id');
-}
-
-/** A hand-written pack manifest: `file:line`, repo-relative */
-export interface HandWrittenManifest { readonly file: string; readonly line: number }
-
-/** Every place `source` writes a manifest it built inline */
-export function handWrittenManifests(source: string, file = 'fixture.ts'): HandWrittenManifest[] {
+/**
+ * How many times a file names a pack manifest, from its syntax tree.
+ *
+ * String literals only, so a mention in a comment or in prose is not one, and `'pack/abuddy.json'` counts as
+ * much as `'abuddy.json'` — a path's prefix says where, not whether. Counted rather than located: a line
+ * number churns with every edit above it, and what the record is for is "how many", since a second one in a
+ * file already listed is the creep.
+ */
+export function manifestMentions(source: string, file = 'fixture.ts'): number {
+  if (!source.includes(MANIFEST)) return 0;
   const parsed = ts.createSourceFile(file, source, ts.ScriptTarget.Latest, true);
-  const bound = boundFrom(parsed);
-  if (bound.names.size === 0 && bound.namespaces.size === 0) return [];
-  const found: HandWrittenManifest[] = [];
+  let found = 0;
   const walk = (node: ts.Node): void => {
-    if (ts.isCallExpression(node) && isFsCall(node, bound)
-      && literalsIn(node.arguments[0] ?? node).includes('abuddy.json')
-      && writesAManifestLiteral(node.arguments[1])) {
-      found.push({ file, line: parsed.getLineAndCharacterOfPosition(node.getStart(parsed)).line + 1 });
-    }
+    if ((ts.isStringLiteral(node) || ts.isNoSubstitutionTemplateLiteral(node))
+      && (node.text === MANIFEST || node.text.endsWith(`/${MANIFEST}`))) found += 1;
     node.forEachChild(walk);
   };
   walk(parsed);
   return found;
+}
+
+/**
+ * The inventory over a set of files: each one that names a manifest, with how often.
+ *
+ * Takes the files rather than deriving them, so a caller can run it over a population of its own — which is
+ * how the rule gets a mutation case that changes the *input* instead of the expectation it compares against.
+ */
+export function manifestInventory(files: readonly string[], root: string): Record<string, number> {
+  const rows: Record<string, number> = {};
+  for (const file of files) {
+    const mentions = manifestMentions(fs.readFileSync(path.join(root, file), 'utf-8'), file);
+    if (mentions > 0) rows[file] = mentions;
+  }
+  return rows;
 }
 
 /** Whether a file imports the fixture — read from the tree, after a text filter that only skips work */

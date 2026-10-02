@@ -208,7 +208,9 @@ manifest beside `integrity.json`, a snapshot and `dist/runtime`) is a different 
    grows files can quietly stop a case from firing. `host-import-guard` was checked that way: with its
    offending import removed, two of its five cases fail.
 
-**What not to convert**, from the sites left alone deliberately:
+**What not to convert**, from the sites left alone deliberately — each is a row with its reason in
+`repo-checks`' `pack-materialisation.spec.ts`, which inventories every test that names a manifest rather than
+judging which ones are wrong:
 
 - a `'{}'` **discovery marker** — three in `import-specifiers.integration`, where a directory holding *any*
   `abuddy.json` is the subject and eight files of content would slow the walk it tests for nothing;
