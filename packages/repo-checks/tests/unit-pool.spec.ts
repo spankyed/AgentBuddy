@@ -5,9 +5,14 @@
 // second silently and exits 0. Only a filter matching *nothing at all* is an error. So a suite whose
 // workspace stopped matching its vitest project name would be stamped as having passed a run it was
 // excluded from — the same "recorded fresh having never run" the pool was already fixed for once.
-import { describe, expect, it } from 'vitest';
+import * as fs from 'node:fs';
+import * as os from 'node:os';
+import * as path from 'node:path';
+import ts from 'typescript';
+import { afterEach, describe, expect, it } from 'vitest';
 import { declaredPaths, diffableStamp } from '@abuddy/host/build/packages-built';
-import { POOLS, livePoolStamps, poolStampFor, poolUnitFor, projectsThatRan, projectsThatDidNotRun, whyItRuns, type Pool } from '../../../scripts/lib/unit-pool.ts';
+import { DIAGNOSTIC_RUN_ENV, POOLS, livePoolStamps, poolStampFor, poolUnitFor, projectsThatRan, projectsThatDidNotRun, recordRun, recordsVerdict, whyItRuns, type Pool } from '../../../scripts/lib/unit-pool.ts';
+import { REPO_ROOT } from '@abuddy/host/build/packages-built';
 import { POOL_SECONDS } from '../../../scripts/lib/chain-steps.ts';
 import { UNIT_SUITES } from '../../../scripts/lib/unit-suites.ts';
 
@@ -211,5 +216,119 @@ describe('the pools', () => {
   // nothing — a timeout of NaN, which bounds no run at all.
   it('each have a measured budget', () => {
     expect(Object.keys(POOL_SECONDS).sort()).toEqual([...names].sort());
+  });
+});
+
+/**
+ * What a run is allowed to record, which is the half of the chain's retry policy that was missing.
+ *
+ * The chain refuses to stamp a step it re-ran alone, so the next chain does the step again — stated in
+ * `chain.ts` and in `classifyLine`'s doc, and true only of the chain's own stamp. A pool keeps its own, and on
+ * 2026-10-02 the stamps showed what that costs: a laned failure of `test:unit:host`, a re-run that passed and
+ * wrote all eleven project stamps, and a next chain that ran zero tests and called the step green. These three
+ * cases are what that sequence had nothing holding it.
+ */
+describe('a diagnostic run', () => {
+  const made: string[] = [];
+  afterEach(() => {
+    for (const dir of made.splice(0)) fs.rmSync(dir, { recursive: true, force: true });
+  });
+
+  /** A unit over one real file, since the fingerprint is of bytes on disk */
+  function fixture(): { unit: { inputs: string[]; outputs: never[]; command: string }; stamp: string } {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'abuddy-record-run-'));
+    made.push(dir);
+    const input = path.join(dir, 'input.ts');
+    fs.writeFileSync(input, 'export const x = 1;\n');
+    return { unit: { inputs: [input], outputs: [], command: 'a command' }, stamp: path.join(dir, 'stamp.json') };
+  }
+
+  it('is what the environment says it is, and an ordinary run is the default', () => {
+    expect(recordsVerdict({})).toBe(true);
+    expect(recordsVerdict({ [DIAGNOSTIC_RUN_ENV]: '1' })).toBe(false);
+  });
+
+  it('does the work and records none of it, where an ordinary run records what it covered', async () => {
+    const ordinary = fixture();
+    let ran = 0;
+    await recordRun([{ label: 'ordinary', unit: ordinary.unit, stamp: ordinary.stamp }], () => { ran += 1; }, {});
+    expect(fs.existsSync(ordinary.stamp), 'an ordinary run must still stamp, or nothing is ever cached').toBe(true);
+
+    const diagnostic = fixture();
+    await recordRun([{ label: 'diagnostic', unit: diagnostic.unit, stamp: diagnostic.stamp }],
+      () => { ran += 1; }, { [DIAGNOSTIC_RUN_ENV]: '1' });
+    expect(ran, 'a diagnostic run has to do the work — it is being asked whether the work passes alone').toBe(2);
+    expect(fs.existsSync(diagnostic.stamp),
+      'a diagnostic run recorded a verdict, so the next chain will skip the step that just failed').toBe(false);
+  });
+
+  /**
+   * And it leaves alone what it may not write. `stampedRunAll` clears a stamp before the run, so reaching it at
+   * all would invalidate a record this run is not permitted to replace — a pass it cannot report.
+   */
+  it('neither writes nor clears an existing record', async () => {
+    const { unit, stamp } = fixture();
+    await recordRun([{ label: 'first', unit, stamp }], () => {}, {});
+    const recorded = fs.readFileSync(stamp, 'utf-8');
+
+    await recordRun([{ label: 'second', unit, stamp }], () => {}, { [DIAGNOSTIC_RUN_ENV]: '1' });
+    expect(fs.readFileSync(stamp, 'utf-8')).toBe(recorded);
+  });
+});
+
+/**
+ * The call site that has to ask for it. Suppression inside the pool is no use if the chain's re-run does not
+ * say it is a diagnostic, and that is one argument on one line in another file — exactly the kind of thing a
+ * later edit drops. Read from the syntax tree rather than the text, so reformatting the call is not a failure.
+ *
+ * To watch it fail: delete the `DIAGNOSTIC_RUN_ENV` argument from the retry in `chain.ts`.
+ */
+describe("the chain's classification re-run", () => {
+  it('spawns the step with recording suppressed', () => {
+    const file = path.join(REPO_ROOT, 'scripts', 'chain.ts');
+    const source = ts.createSourceFile(file, fs.readFileSync(file, 'utf-8'), ts.ScriptTarget.Latest, true);
+
+    // What chain.ts binds from the pool module, read from its own import rather than named here: the case is
+    // about the argument being passed, not about what the constant is called.
+    const fromPool = new Set<string>();
+    const branches: ts.IfStatement[] = [];
+    const visit = (node: ts.Node): void => {
+      if (ts.isImportDeclaration(node) && ts.isStringLiteral(node.moduleSpecifier)
+        && node.moduleSpecifier.text.endsWith('unit-pool.ts')) {
+        const bindings = node.importClause?.namedBindings;
+        if (bindings !== undefined && ts.isNamedImports(bindings)) {
+          for (const element of bindings.elements) fromPool.add(element.name.text);
+        }
+      }
+      if (ts.isIfStatement(node) && node.expression.getText() === 'classifying') branches.push(node);
+      ts.forEachChild(node, visit);
+    };
+    visit(source);
+
+    expect(branches.length, 'no `if (classifying)` in chain.ts, so this case is asserting over nothing').toBe(1);
+    expect([...fromPool], 'chain.ts imports nothing from the pool module, so it cannot ask for suppression')
+      .not.toEqual([]);
+
+    // The identifiers the re-run's `run(...)` call is *given*, not the text of the branch: the branch's own
+    // comment names the constant, so a text match passed with the argument deleted — watched, on the first
+    // mutation check this case was put through.
+    const passed = new Set<string>();
+    const readArgs = (node: ts.Node): void => {
+      if (ts.isCallExpression(node) && node.expression.getText() === 'run') {
+        for (const argument of node.arguments) {
+          const names = (child: ts.Node): void => {
+            if (ts.isIdentifier(child)) passed.add(child.text);
+            ts.forEachChild(child, names);
+          };
+          names(argument);
+        }
+      }
+      ts.forEachChild(node, readArgs);
+    };
+    readArgs(branches[0]!);
+
+    expect([...fromPool].some((binding) => passed.has(binding)),
+      'the re-run passes the pool nothing, so a step that caches inside itself records a verdict the chain '
+      + 'refuses to record, and the next chain skips the step that just failed').toBe(true);
   });
 });

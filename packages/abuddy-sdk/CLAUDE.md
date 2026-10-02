@@ -154,6 +154,89 @@ This is the in-memory runtime that `@abuddy/testing/harness` drives (see `packag
 - `startFeTestRuntime(options?)` / `stopFeTestRuntime()` (`fe-runtime.ts`): the frontend host for a test file, the counterpart of `startTestRuntime` for code that reads `boundFeHost()` (a plugin, a tiptap or DSL registry). It binds `bindFeHost` with nothing registered and every member a test doesn't pass standing in as unusable (the shell's stand-in fails naming `startShell` from `@abuddy/testing/harness`, since the real shell is the host's), so an extension that registers itself on import shows up as one this returned; the start call returns the stop function (`const stop = startFeTestRuntime(); afterAll(stop);`). Packs bind and unbind per file, which the renderer never does, so this lifecycle lives here rather than in the host's `unbindFeHost`. `fakeSettings(document?)` (`fake-settings.ts`) is the usable `settings` to pass it: a port over an in-memory document, where a change a component makes is what the next read returns and `updates` records how each was addressed.
 - `resetTestData` (installs a fresh engine, carrying over the registered repositories, so nothing is shared with the test before), `entityIds`, `dropAttribute`, `takeSystemErrors` (the recorded `SYSTEM_ERROR` events), `addTestSecret`, and `fakeInference` (`fake-inference.ts`). `testRootEvents` has no bus actor: a test of `broadcastToPlugin` listens with `onPluginSend`, and `@abuddy/testing`'s `startApp` delivers them.
 
+## A pack on disk (`src/testing/pack-fixture.ts`, `@abuddy/sdk/testing/pack-fixture`)
+
+`packFixture(options?)` writes a complete pack directory and returns its path — for the specs whose subject is
+**pack tooling**: the import rules, the pack rules, the bundlers, the installer. It is a helper: what it saves
+is the preamble eleven specs shared, `mkdtemp` plus a manifest plus a `package.json` plus a symlinked
+`node_modules`, four of them written identically.
+
+**It is a source-only export, and that is why it can live here.** The entry names
+`./src/testing/pack-fixture.ts` under `@abuddy/source` and nothing else, so `publishedManifest` drops it from
+the published manifest (`@abuddy/host/build/published-manifest`), no `etc/*.api.md` reports it so `api:check`
+does not review it, and **nothing outside this repo can resolve it** — a consumer of the tarball has no such
+entry, and a pack's config may not declare that condition, which `check:specifiers` enforces.
+`./runtime/internals` is the same shape and the precedent.
+
+What the shape does *not* do, both checked: the compiled file still **ships** (`files` is `["dist", …]`, and
+`publish/dist/testing/pack-fixture.{js,d.ts}` are staged, as `runtime/internals`' are), and **`api:stamp` still
+hashes it** — its inputs are every `.d.ts` under `dist`, so a doc-comment edit in that file asks for an
+`api:update` that rewrites no report. Dropping an entry hides a file from resolution; it does not keep it out of
+the tarball or out of the stamp. It is deliberately *not*
+in `src/testing/index.ts`: that entry is published, and this is repo-internal test tooling that no pack author
+materialises a pack to use.
+
+**Not a workspace of its own**, which is the obvious-looking move and was tried: a private `@app/pack-fixtures`
+costs seven files and six registration points for one function, and the premise that bought it — that living in
+the SDK means living in the reviewed published surface — is false, because of the paragraph above. A workspace
+per helper is also the precedent that gets you twelve of them. `packages/repo-checks/CLAUDE.md` has the
+guardrail that keeps this the only way to write one.
+
+**The condition that would make it public API** is a published pack-reading API. Every consumer of a pack
+directory is private today — the pack rules and the source parser are `@abuddy/cli`'s, which publishes no
+declarations, and the layout, subpath-imports and own-module-specifier readers are the private `@abuddy/host`'s —
+so a fixture for them has no user outside this repo. A pack author tests their own pack, which is already a
+directory (`PACK_DIR`), or its code through `setupPackTests`, which takes a registration rather than a tree.
+Publish any of that surface and this goes public in the same change; until then, publishing it would fix the
+default manifest's shape, the `manifest`/`rawManifest` split and the stub files as contract, and that default is
+chosen to make *this repo's* pack rules fire.
+
+**What "complete" means, and what it is not for.** It writes both subpath maps, a manifest declaring a
+feature's two halves, and the files those paths name, so a case that adds one offending file gets a tree where
+every rule can speak and need not work out which parts of a pack each rule reads.
+
+**It is not the thing that catches a fixture too thin for a rule to fire.** That is
+`import-specifiers.integration.spec.ts`, which asserts per rule that it found something in a tree written to
+offend it — so a rule that cannot fire fails naming itself, whoever wrote the tree. That assertion predates
+this fixture by five days (`1ee9b5a4c`), and reading the fixture as the protection is how a repo-wide rule
+mandating it came to be built and then deleted (`487a8c115`). If a thin fixture is ever the worry again, the
+answer is an assertion in the spec that would be wrong. Which module is a contract is
+what `abuddy.json` says, not what a file looks like, so a fixture without a manifest is one several pack rules
+cannot speak about at all.
+
+**What it is not.** Not the in-memory harness: `setupPackTests` (`@abuddy/testing/harness`) takes a
+*registration object* and runs a pack's code; this materialises a *directory*. Different axes, and conflating
+them is the mistake [`one-pack-fixture.md`](../../docs/archive/plans/one-pack-fixture.md) was written to avoid.
+Not a build and not an install either — `buildPack(dir)` builds one and the installer places one, both already
+take a directory, so this composes with them rather than growing a `built` option. The *installed* shape (a
+manifest beside `integrity.json`, a snapshot and `dist/runtime`) is a different artifact whose layout
+`@abuddy/host` owns (`PACK_LAYOUT`), and host's tests build it in host.
+
+**Converting a spec that writes its own pack.** Three things come up every time, in this order:
+
+1. **Drop the caller's `mkdirSync(dir, 'src')`.** The fixture owns the tree and `files` creates any depth, so a
+   non-recursive mkdir afterwards throws `EEXIST`. It bit three of the five conversions.
+2. **A spread becomes the merge.** `JSON.stringify({ id, name, version, ...manifest })` is exactly
+   `manifest: { id, name, ...manifest }` — two specs were already doing by hand what the option does.
+3. **Check it still fails.** Break what the spec asserts and watch the converted version fail; a fixture that
+   grows files can quietly stop a case from firing. `host-import-guard` was checked that way: with its
+   offending import removed, two of its five cases fail.
+
+**What not to convert.** The test is whether a spec needs a pack's *source tree* or a built artifact — this
+makes only the first — and these are the shapes that answer "artifact":
+
+- a `'{}'` **discovery marker** — three in `import-specifiers.integration`, where a directory holding *any*
+  `abuddy.json` is the subject and eight files of content would slow the walk it tests for nothing;
+- a **patch** of a pack something else scaffolded (`abuddy init`, then a manifest edited) — a read-modify-write,
+  not a fixture;
+- a **manifest that is the subject** written with no tree around it (`pack-generate`, `pack-cli`'s
+  `writeManifest`), where a pack directory would change what the command under test sees;
+- the **installed or discovered shape** — a data dir's `packs/<id>/abuddy.json`, or a built built-in with a
+  `dist/runtime/index.cjs` and no source. Measured 2026-10-02: 23 such sites, 20 in `@abuddy/host` and 3 in
+  `packages/api`, whose subjects are discovery, staging, an update check or the loader. None wants a source
+  tree, which is why the guardrail's population is the packages that *import* the fixture rather than every
+  package that could.
+
 ## Scripts
 
 Run these from `packages/abuddy-sdk`, or from the repo root with `-w @abuddy/sdk`.

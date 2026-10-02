@@ -5,6 +5,7 @@ import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
+import { packFixture } from '@abuddy/sdk/testing/pack-fixture';
 import { init } from '../../src/commands/init';
 import { addStep } from '../../src/commands/add/step';
 import { addArtifact } from '../../src/commands/add/artifact';
@@ -101,8 +102,8 @@ describe('abuddy add step', () => {
 describe('abuddy add step in a pack without steps', () => {
   it('creates the step list the manifest names, so the pack builds', async () => {
     const bare = path.join(tmp, 'bare-pack');
-    fs.mkdirSync(bare, { recursive: true });
-    fs.writeFileSync(path.join(bare, 'abuddy.json'), JSON.stringify({ id: 'bare-pack', name: 'Bare', version: '1.0.0' }));
+    // A manifest with no features is the subject here, so it is written verbatim rather than varied
+    packFixture({ at: bare, rawManifest: { id: 'bare-pack', name: 'Bare', version: '1.0.0' } });
     fs.writeFileSync(path.join(bare, 'package.json'), JSON.stringify({ name: 'bare-pack', type: 'module' }));
     fs.symlinkSync(path.join(REPO_ROOT, 'node_modules'), path.join(bare, 'node_modules'), 'dir');
 

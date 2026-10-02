@@ -43,7 +43,7 @@
 // assumption, and the cheapest work left in this chain may be another step that is quietly serial.
 import * as fs from 'node:fs';
 import * as path from 'node:path';
-import { changedInputs, diffableStamp, firstChange, freshnessSweep, INPUTS_CHANGED, REPO_ROOT, stampedRun, stampRecord, unitStaleReason, type BuildUnit } from '@abuddy/host/build/packages-built';
+import { changedInputs, diffableStamp, firstChange, freshnessSweep, INPUTS_CHANGED, PACKAGES_PREBUILT_ENV, REPO_ROOT, stampedRun, stampRecord, unitStaleReason, type BuildUnit } from '@abuddy/host/build/packages-built';
 import { CHAIN_STEPS, type ChainStep, chainSteps, MEASURED_AT_LANES, needsApp, orderedSteps, STEP_TABLES } from './lib/chain-steps.ts';
 import { commandText, rootScripts } from './lib/npm-scripts.ts';
 import { IDLE_FLOOR, idleNow, movedBeyondBand, refusesAsBusy } from './lib/measure.ts';
@@ -52,6 +52,7 @@ import { schedule } from './lib/chain-schedule.ts';
 import { criticalPath, driftedSteps, willNotCache } from './lib/step-timing.ts';
 import { briefly, classifyLine, declaredAt, dim, driftReport, DRY_REASON_COLUMN, howLong, identicalRewrites, marker, oneLine, REASON_COLUMN, shouldClassify, staleLines, STEP_NAME_WIDTH, TIME_COLUMN, whenChanged, wrapAt, writerOf } from './lib/chain-output.ts';
 import { slowestTests } from './lib/slow-tests.ts';
+import { DIAGNOSTIC_RUN_ENV } from './lib/unit-pool.ts';
 import { exitOnEpipe } from './lib/exit-on-epipe.ts';
 
 exitOnEpipe();
@@ -194,18 +195,32 @@ function whatMoved(
  * the two unit pools did exactly that. Only steps that declare them get any, because most steps' commands
  * would reject an argument they do not know.
  */
-async function run(step: string, seconds: number | undefined, force: readonly string[] = []): Promise<Result> {
+async function run(step: string, seconds: number | undefined, force: readonly string[] = [], env: NodeJS.ProcessEnv = process.env): Promise<Result> {
   // `npm test` is the E2E suite and takes no `run`
   const args = step === 'test' ? ['test'] : ['run', step];
   // npm forwards what follows `--` to the script's own command, which is how this chain was given `--all`
   const withForce = force.length === 0 ? args : [...args, '--', ...force];
   // A step with no measurement still gets a bound, just a loose one
-  const { code, output, ms, timedOut } = await boundedSpawn('npm', withForce, budgetFor(seconds ?? 300));
+  const { code, output, ms, timedOut } = await boundedSpawn('npm', withForce, budgetFor(seconds ?? 300), { env });
   return { step, ms, code, output, timedOut };
 }
 
 
 const secs = (ms: number) => `${(ms / 1000).toFixed(1)}s`;
+
+
+/**
+ * The environment a step runs in: every step but `packages:ensure` is told the packages are already built.
+ *
+ * It is, and the graph is why — all 27 others are transitively ordered after it, which `chain-graph.spec.ts`
+ * asserts, so none of them can be the process that still has building to do. Under the flag a package found
+ * stale is reported (`PackagesWentStale`, naming what moved and what usually moves it) instead of rebuilt,
+ * because rebuilding it would race whatever is writing it and fail about the race.
+ *
+ * `packages:ensure` is excluded because it is that writer: with the flag it would refuse the one job it has.
+ */
+const envFor = (step: ChainStep): NodeJS.ProcessEnv =>
+  step.name === 'packages:ensure' ? process.env : { ...process.env, [PACKAGES_PREBUILT_ENV]: '1' };
 
 
 /** Thrown to leave `stampedRun` without a stamp: a failed step must read as never run */
@@ -219,11 +234,11 @@ class StepFailed extends Error {
  */
 async function runAndStamp(step: ChainStep, all: boolean): Promise<Result> {
   const force = all ? step.forceArgs ?? [] : [];
-  if (step.neverCachedBecause !== undefined) return run(step.name, step.seconds, force);
+  if (step.neverCachedBecause !== undefined) return run(step.name, step.seconds, force, envFor(step));
   let result: Result | undefined;
   try {
     await stampedRun(step.name, unitFor(step), stampFor(step.name), async () => {
-      result = await run(step.name, step.seconds, force);
+      result = await run(step.name, step.seconds, force, envFor(step));
       if (result.code !== 0) throw new StepFailed(result);
     });
   } catch (err) {
@@ -420,7 +435,14 @@ async function main(): Promise<void> {
       //
       // Demonstrated rather than assumed, with a `compile` that fails then passes: the retry reports passing,
       // and the next chain still says `compile  no stamp — it has not run yet, or the last run failed`.
-      const retry = await run(step.name, step.seconds, all ? step.forceArgs ?? [] : []);
+      //
+      // **Refusing the chain's own stamp is not enough for a step that caches inside itself**, which the three
+      // pool steps do. `DIAGNOSTIC_RUN_ENV` is how the refusal reaches them: measured 2026-10-02, a laned
+      // failure of `test:unit:host` was re-run here, the re-run wrote all eleven project stamps, and the next
+      // chain ran zero tests and called the step green. `recordsVerdict` (`scripts/lib/unit-pool.ts`) carries
+      // the evidence and why a *build* under the same re-run still records.
+      const retry = await run(step.name, step.seconds, all ? step.forceArgs ?? [] : [],
+        { ...envFor(step), [DIAGNOSTIC_RUN_ENV]: '1' });
       // The verdict reports what the chain cost. The retry is a diagnostic after it, so a 60s re-run must not
       // land on the one number a reader compares between runs.
       classifyMs = retry.ms;

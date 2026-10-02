@@ -1,5 +1,5 @@
 {
-  "measuredAt": "2026-10-01T02:39:19.050Z",
+  "measuredAt": "2026-10-02T20:13:33.314Z",
   "costs": {
     "tests/build/compile-engine.spec.ts": 14,
     "tests/build/declared-type-of.spec.ts": 453,
@@ -46,7 +46,7 @@
     "tests/steps/merge.spec.ts": 3,
     "tests/steps/utils.spec.ts": 4,
     "tests/testing/fake-inference.spec.ts": 184,
-    "tests/testing/pack-fixture.spec.ts": 8,
+    "tests/testing/pack-fixture.spec.ts": 17,
     "tests/testing/population.spec.ts": 3,
     "tests/testing/seed-runtime.spec.ts": 414,
     "tests/testing/test-host.spec.ts": 14,

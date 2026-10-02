@@ -64,11 +64,11 @@ async function runValidate(): Promise<{ exitCode: number | undefined; output: st
 describe('abuddy add feature', () => {
   // Pack code names features and the host addresses them, so what the scaffold writes never holds an address
   it('writes a feature whose code names it and never holds its address', async () => {
-    await addFeature(['notes'], pack);
-    const feature = path.join(pack, 'src', 'features', 'notes');
+    await addFeature(['memos'], pack);
+    const feature = path.join(pack, 'src', 'features', 'memos');
     const sources = ['fe/state.ts', 'fe/plugin.ts', 'be/system.ts'].map((file) => fs.readFileSync(path.join(feature, file), 'utf-8')).join('\n');
     expect(sources).not.toMatch(/busId|system-ids|demo-pack\./);
-    expect(fs.readFileSync(path.join(feature, 'fe', 'state.ts'), 'utf-8')).toContain("export const id = 'notes';");
+    expect(fs.readFileSync(path.join(feature, 'fe', 'state.ts'), 'utf-8')).toContain("export const id = 'memos';");
     expect(fs.readFileSync(path.join(feature, 'fe', 'plugin.ts'), 'utf-8')).toMatch(/= definePlugin\(\{\n  label:/);
   });
 
@@ -77,9 +77,9 @@ describe('abuddy add feature', () => {
   // and generate a pack whose plugin silently received none of what it declares. It stops and says so now, and
   // `init` puts `npm install` before `abuddy add feature` for exactly this reason.
   it("keeps the scaffold of a pack whose dependencies aren't installed, and says npm install regenerates", async () => {
-    await addFeature(['notes'], pack);
+    await addFeature(['memos'], pack);
 
-    expect(fs.existsSync(path.join(pack, 'src', 'features', 'notes', 'be', 'system.ts'))).toBe(true);
+    expect(fs.existsSync(path.join(pack, 'src', 'features', 'memos', 'be', 'system.ts'))).toBe(true);
     const output = vi.mocked(console.log).mock.calls.map((args) => args.join(' ')).join('\n');
     expect(output).toMatch(/src\/__generated__\/ not regenerated: .*resolves to `any`.*Run: npm install/);
     expect(output).not.toContain('__generated__/ regenerated');
@@ -87,9 +87,9 @@ describe('abuddy add feature', () => {
 
   it('writes --designation into abuddy.json', async () => {
     installDependencies();
-    await addFeature(['notes', '--designation', 'notes'], pack);
+    await addFeature(['memos', '--designation', 'memos'], pack);
 
-    expect(readManifest().features).toEqual([expect.objectContaining({ id: 'notes', designation: 'notes' })]);
+    expect(readManifest().features).toEqual([expect.objectContaining({ id: 'memos', designation: 'memos' })]);
     expect((await runValidate()).exitCode).toBeUndefined();
   });
 
@@ -97,25 +97,26 @@ describe('abuddy add feature', () => {
   // `validate` has always accepted and the manifest schema has always allowed.
   it('writes a designation that differs from the feature name', async () => {
     installDependencies();
-    await addFeature(['notes', '--designation', 'inbox'], pack);
+    await addFeature(['memos', '--designation', 'inbox'], pack);
 
-    expect(readManifest().features).toEqual([expect.objectContaining({ id: 'notes', designation: 'inbox' })]);
+    expect(readManifest().features).toEqual([expect.objectContaining({ id: 'memos', designation: 'inbox' })]);
     expect((await runValidate()).exitCode).toBeUndefined();
   });
 });
 
 describe('abuddy validate', () => {
   it("reports a feature's missing settings file, and accepts a designation that is not its id", async () => {
-    await addFeature(['notes'], pack);
+    await addFeature(['memos'], pack);
     const manifest = readManifest();
-    manifest.features[0].designation = 'memos';
+    // A role that is not the feature's id, which is the half of this case's title that the fixture has to show
+    manifest.features[0].designation = 'inbox';
     fs.writeFileSync(path.join(pack, 'abuddy.json'), JSON.stringify(manifest, null, 2));
-    fs.rmSync(path.join(pack, 'src', 'features', 'notes', 'settings.ts'));
+    fs.rmSync(path.join(pack, 'src', 'features', 'memos', 'settings.ts'));
 
     const { exitCode, output } = await runValidate();
 
     expect(exitCode).toBe(1);
-    expect(output).toContain('Feature "notes": settings file "src/features/notes/settings.ts" not found');
+    expect(output).toContain('Feature "memos": settings file "src/features/memos/settings.ts" not found');
     expect(output).not.toContain('designation');
   });
 

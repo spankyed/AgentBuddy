@@ -38,8 +38,8 @@ function write(file: string, content: string): void {
   fs.writeFileSync(path.join(root, file), content);
 }
 
-const CONTRACTS = ['src/features/notes/be/contract.ts', 'src/features/notes/fe/contract.ts'];
-const ENTRIES = ['src/features/notes/be/system.ts', 'src/features/notes/fe/plugin.ts'];
+const CONTRACTS = ['src/features/memos/be/contract.ts', 'src/features/memos/fe/contract.ts'];
+const ENTRIES = ['src/features/memos/be/system.ts', 'src/features/memos/fe/plugin.ts'];
 
 /**
  * A pack that makes codegen emit **all** of `GENERATED_MODULES`. A minimal one-feature manifest emits fifteen, and
@@ -55,23 +55,23 @@ function fixture(): PackManifest {
   write(CONTRACTS[1]!, "export type Contract = { state: { ready: boolean }; inbox: { public: { type: 'NOTE.OPEN' } } };\n");
   write(ENTRIES[0]!, 'export default { spec: undefined as never, machine: undefined as never };\n');
   write(ENTRIES[1]!, 'declare const plugin: { label: string };\nexport default plugin;\n');
-  write('src/features/notes/be/repository/index.ts', 'export const noteQueries = { all: () => [] };\n');
+  write('src/features/memos/be/repository/index.ts', 'export const memoQueries = { all: () => [] };\n');
   write('src/extensions/steps/tick/types.ts', "export type TickNode = { every: string };\n");
   return {
     id: 'demo-pack',
     name: 'Demo',
     version: '1.0.0',
     features: [{
-      id: 'notes',
+      id: 'memos',
       system: { entry: ENTRIES[0], contract: `${CONTRACTS[0]}#Contract` },
       plugin: { entry: ENTRIES[1], contract: `${CONTRACTS[1]}#Contract` },
-      repositories: { noteQueries: 'src/features/notes/be/repository/index.ts#noteQueries' },
+      repositories: { memoQueries: 'src/features/memos/be/repository/index.ts#memoQueries' },
     }],
     steps: {
       register: 'src/extensions/steps/register.ts',
       definitions: [{ type: 'tick', path: 'src/extensions/steps/tick', kind: 'trigger' }],
     },
-    dsl: { action: { prefix: '@', targets: ['monaco'], globals: { notes: 'NoteDTO' } } },
+    dsl: { action: { prefix: '@', targets: ['monaco'], globals: { memos: 'NoteDTO' } } },
   } as unknown as PackManifest;
 }
 

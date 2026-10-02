@@ -26,10 +26,10 @@ export interface PluginInboxAudiences {
  * declaring an inbox nobody can reach:
  *
  * ```ts
- * // features/notes/fe/types.ts
+ * // features/memos/fe/types.ts
  * export type Contract = {
- *   state: NotesContext
- *   inbox: PluginInbox<{ public: { type: 'NOTE.OPEN'; noteId: string } }>
+ *   state: MemosContext
+ *   inbox: PluginInbox<{ public: { type: 'MEMO.OPEN'; memoId: string } }>
  * }
  * ```
  *

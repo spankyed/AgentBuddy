@@ -11,7 +11,7 @@
  */
 import * as fs from 'node:fs';
 import * as path from 'node:path';
-import { diffableStamp, REPO_ROOT, type BuildUnit } from '@abuddy/host/build/packages-built';
+import { diffableStamp, REPO_ROOT, stampedRunAll, type BuildUnit, type StampedUnit } from '@abuddy/host/build/packages-built';
 import { INTEGRATION_SUITES, suiteInputs } from './chain-steps.ts';
 import { CONFIG_BY_HALF, type Half } from './spec-cost.ts';
 import { UNIT_SUITES, type UnitSuite } from './unit-suites.ts';
@@ -35,6 +35,52 @@ export const POOL_STAMP_DIR = path.join(REPO_ROOT, 'node_modules', '.cache', 'ab
  */
 export const poolStampFor = (suite: UnitSuite, half: Half): string =>
   path.join(POOL_STAMP_DIR, `${suite.dir}.${half}.json`);
+
+/**
+ * Set on a run whose verdict must not be recorded, and read here because this is where the records are kept.
+ *
+ * The chain's classification re-run is the one that needs it. A step that fails while several lanes are busy is
+ * run again alone, to tell contention from the code, and `chain.ts` deliberately writes no step stamp for that
+ * re-run: *a step that passes alone has not passed the chain*, so the next chain does it again under
+ * concurrency — the only condition that can reproduce the failure.
+ *
+ * **That promise does not survive a step that keeps a cache of its own, and a pool is one.** Read off the
+ * stamps on 2026-10-02: `test:unit:host` failed under three lanes, the re-run passed and wrote all eleven
+ * project stamps at 15:20:10, the chain refused the step stamp as designed, and the next chain's step then ran
+ * **zero tests** in 0.8s and recorded success at 15:20:15. Nothing stale was left for it to run, so the thing
+ * that had failed was never attempted again, and the chain reported green over it. A green-on-retry nobody
+ * sees is what the refusal exists to prevent; one level down, it was being recorded anyway.
+ *
+ * **Builds are deliberately not suppressed.** `ensurePackagesBuilt`'s stamps are read as a *precondition* by
+ * other processes in the same run — `packagesBuiltOrRefuse` at every suite's collection — so a build that
+ * happened and did not record it turns the re-run into a refusal about stale packages, which fails about the
+ * wrong thing. A build records a fact about files, which is true whoever asked for it; this suppresses a
+ * verdict about behaviour, which is the chain's to record and not a diagnostic's.
+ */
+export const DIAGNOSTIC_RUN_ENV = 'ABUDDY_DIAGNOSTIC_RUN';
+
+/** Whether this run may record what it proved */
+export const recordsVerdict = (env: NodeJS.ProcessEnv = process.env): boolean => env[DIAGNOSTIC_RUN_ENV] !== '1';
+
+/**
+ * The run, stamped where its verdict may be recorded and left unrecorded where it may not.
+ *
+ * One function rather than a branch at the call site, so the question is asked in the module that owns the
+ * stamps and a spec can watch both answers without running a suite.
+ */
+export async function recordRun(
+  units: readonly StampedUnit[],
+  run: () => void | Promise<void>,
+  env: NodeJS.ProcessEnv = process.env,
+): Promise<void> {
+  // Existing stamps are left exactly as they are: `stampedRunAll` clears them before the run, and clearing
+  // them here would make a diagnostic invalidate records it is not allowed to write either.
+  if (!recordsVerdict(env)) {
+    await run();
+    return;
+  }
+  await stampedRunAll(units, run);
+}
 
 const projectArgs = (suites: readonly UnitSuite[]): string[] =>
   suites.flatMap((suite) => ['--project', suite.workspace]);

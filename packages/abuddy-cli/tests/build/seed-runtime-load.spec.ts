@@ -1,7 +1,7 @@
 import * as fs from 'node:fs';
-import * as os from 'node:os';
 import * as path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
+import { packFixture } from '@abuddy/sdk/testing/pack-fixture';
 import { bundlePackSeedRuntime } from '../../src/build/be-bundler';
 import { REPO_ROOT } from '@abuddy/host/build/packages-built';
 
@@ -12,11 +12,8 @@ afterEach(() => {
 });
 
 function pack(repository: string): string {
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'abuddy-seed-runtime-load-'));
+  const dir = packFixture({ manifest: { id: 'load-pack', name: 'Load' }, nodeModules: path.join(REPO_ROOT, 'node_modules') });
   tmpDirs.push(dir);
-  fs.writeFileSync(path.join(dir, 'package.json'), JSON.stringify({ name: 'load-pack', type: 'module' }));
-  fs.writeFileSync(path.join(dir, 'abuddy.json'), JSON.stringify({ id: 'load-pack', name: 'Load', version: '1.0.0' }));
-  fs.symlinkSync(path.join(REPO_ROOT, 'node_modules'), path.join(dir, 'node_modules'), 'dir');
   const files: Record<string, string> = {
     'src/repository.ts': repository,
     'src/__generated__/seed-runtime.ts': [

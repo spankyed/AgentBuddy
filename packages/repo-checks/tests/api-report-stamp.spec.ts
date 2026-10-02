@@ -2,7 +2,7 @@ import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
-import { apiSurfaceOf, declarationInputs, declarationPackages, declarationStamp, staleReason, stampFile, stampRows } from '../../../scripts/api-report-stamp.ts';
+import { declarationInputs, declarationPackages, declarationStamp, staleReason, stampFile, stampRows } from '../../../scripts/api-report-stamp.ts';
 
 /**
  * The cheap staleness gate for the committed API reports (scripts/api-report-stamp.ts), which runs in
@@ -87,45 +87,59 @@ describe('the API report staleness gate', () => {
   });
 
   /**
-   * What a report is made of, measured against API Extractor rather than assumed: prose cannot change
-   * one, a release tag can, and so can a comment appearing or going. Hashing prose made every comment
-   * edit in this repo ask for a 46s `api:update` that rewrote nothing but the stamp.
+   * What a report is made of, measured against API Extractor rather than assumed: a release tag can change
+   * one, a comment appearing or going can, and so can prose — which is the case that was wrong here.
+   *
+   * A normaliser once reduced each comment to its tag lines, on a measurement that said prose leaves every
+   * report byte-identical. That holds for a comment *above* an exported declaration, which API Extractor
+   * replaces with its tags, and fails for one *inside* a type literal, which is part of the type's printed
+   * text: `packages/abuddy-sdk/etc/index.api.md` reproduces `SystemEvents`' interior comments word for word
+   * from `src/framework/define-system.ts`. So the stamp hashes declarations verbatim, and the interior shape
+   * is the fixture below — without it the gate is blind to an edit that rewrites a reviewed report, which is
+   * the one direction a proxy must not be wrong in.
    */
   describe('a doc comment', () => {
     // One package, rewritten between readings: a file's path is part of its fingerprint, so two fixtures
     // in two temp directories would differ whatever their contents
-    const fingerprint = (...comments: string[]) => {
+    const fingerprint = (...declarations: string[]) => {
       const dir = pkg(tempDir(), '@abuddy/thing', { 'index.d.ts': '' });
-      return comments.map((comment) => {
-        fs.writeFileSync(path.join(dir, 'dist', 'index.d.ts'), `${comment}\nexport declare function f(): void;\n`);
+      return declarations.map((declaration) => {
+        fs.writeFileSync(path.join(dir, 'dist', 'index.d.ts'), `${declaration}\n`);
         return declarationStamp(dir);
       });
     };
 
-    it('does not move the fingerprint when only its prose changes', () => {
+    it('moves the fingerprint when prose inside a type changes, which a report reproduces', () => {
       const [before, after] = fingerprint(
-        '/**\n * One description.\n * @public\n */',
-        '/**\n * A completely different description, longer than the first.\n * @public\n */',
+        'export type T = {\n    /** One description. */\n    a: 1;\n};',
+        'export type T = {\n    /** A completely different description, longer than the first. */\n    a: 1;\n};',
       );
-      expect(after).toBe(before);
+      expect(after).not.toBe(before);
+    });
+
+    it('moves it when prose above a declaration changes, which is the conservative side', () => {
+      const [before, after] = fingerprint(
+        '/**\n * One description.\n * @public\n */\nexport declare function f(): void;',
+        '/**\n * A different description.\n * @public\n */\nexport declare function f(): void;',
+      );
+      expect(after, 'a leading comment cannot reach a report, and is hashed anyway rather than guessed about')
+        .not.toBe(before);
     });
 
     it('moves it when a release tag changes, which a report carries', () => {
-      const [before, after] = fingerprint('/**\n * Same prose.\n * @public\n */', '/**\n * Same prose.\n * @internal\n */');
+      const [before, after] = fingerprint(
+        '/**\n * Same prose.\n * @public\n */\nexport declare function f(): void;',
+        '/**\n * Same prose.\n * @internal\n */\nexport declare function f(): void;',
+      );
       expect(after).not.toBe(before);
     });
 
     it('moves it when the comment goes, since a report marks an undocumented export', () => {
-      const [before, after] = fingerprint('/**\n * Some prose.\n */', '');
+      const [before, after] = fingerprint(
+        '/**\n * Some prose.\n */\nexport declare function f(): void;',
+        'export declare function f(): void;',
+      );
       expect(after).not.toBe(before);
-    });
-
-    // The normaliser is the one place this gate stops being byte-exact, so what it keeps is spelled out
-    it('keeps its tag lines and its markers, and drops the rest', () => {
-      expect(apiSurfaceOf('/**\n * Prose here.\n * @public\n * @deprecated - use g instead\n */\nexport declare const a: number;'))
-        .toBe('/**@public\n@deprecated - use g instead*/\nexport declare const a: number;');
-      expect(apiSurfaceOf('/** Prose only. */\nexport declare const a: number;')).toBe('/***/\nexport declare const a: number;');
-      expect(apiSurfaceOf('export declare const a: number;')).toBe('export declare const a: number;');
     });
   });
 

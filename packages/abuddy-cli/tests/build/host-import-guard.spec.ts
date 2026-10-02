@@ -1,7 +1,7 @@
 import * as fs from 'node:fs';
-import * as os from 'node:os';
 import * as path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
+import { packFixture } from '@abuddy/sdk/testing/pack-fixture';
 import { bundlePackRuntime, bundlePackSeedCompilers, bundlePackStepBuild } from '../../src/build/be-bundler';
 import { bundlePackFE } from '../../src/build/fe-bundler';
 import { REPO_ROOT } from '@abuddy/host/build/packages-built';
@@ -13,15 +13,8 @@ afterEach(() => {
 });
 
 function pack(files: Record<string, string>): string {
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'abuddy-host-guard-'));
+  const dir = packFixture({ manifest: { id: 'guard-pack', name: 'Guard' }, files, nodeModules: path.join(REPO_ROOT, 'node_modules') });
   tmpDirs.push(dir);
-  fs.writeFileSync(path.join(dir, 'package.json'), JSON.stringify({ name: 'guard-pack', type: 'module' }));
-  fs.writeFileSync(path.join(dir, 'abuddy.json'), JSON.stringify({ id: 'guard-pack', name: 'Guard', version: '1.0.0' }));
-  fs.symlinkSync(path.join(REPO_ROOT, 'node_modules'), path.join(dir, 'node_modules'), 'dir');
-  for (const [file, content] of Object.entries(files)) {
-    fs.mkdirSync(path.dirname(path.join(dir, file)), { recursive: true });
-    fs.writeFileSync(path.join(dir, file), content);
-  }
   return dir;
 }
 

@@ -68,14 +68,14 @@ describe('_mergeProvenance', () => {
       entities: { Note: 'Note' },
       relKinds: { tagged: 'tagged' },
       commands: [{ name: 'note' }],
-      features: [{ id: 'notes', plugin: {} }, { id: 'headless' }],
+      features: [{ id: 'memos', plugin: {} }, { id: 'headless' }],
     };
     const cases: Array<[keyof typeof PROVENANCE_KINDS, Record<string, string>]> = [
       ['entities', { Note: 'base-pack' }],
       ['relKinds', { tagged: 'base-pack' }],
       ['commands', { note: 'base-pack' }],
       // A feature without a plugin owns no plugin id: nothing could be sent there
-      ['plugins', { 'base-pack/notes': 'base-pack' }],
+      ['plugins', { 'base-pack/memos': 'base-pack' }],
     ];
     it.each(cases)('%s', (kind, expected) => {
       expect(_mergeProvenance(kind, [dep('base-pack', { manifest })])).toEqual(expected);

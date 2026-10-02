@@ -1,3 +1,84 @@
+> **Done in three phases, not four** (branch `AS/one-pack-fixture`): `b6e551b5b` the package,
+> `f890484a4` the options, `e48f613b2`/`83f6d498a` the adoption. **Phase 4, the guardrail, was built and then
+> removed**, and **Decision 1 was reversed**. The text after this block is the plan as written, which means its
+> headline number, its home for the fixture and its insistence that Phase 4 was not optional are all wrong.
+>
+> **`packFixture` lives in `@abuddy/sdk` after all, as the source-only export
+> `@abuddy/sdk/testing/pack-fixture`.** Decision 1 weighed four homes and rejected them all, but it never
+> weighed this one, because it treated *"in `@abuddy/sdk`"* as synonymous with *"in the published, reviewed
+> surface"*. In this repo that is false: an export whose only branch is `@abuddy/source` is dropped from the
+> published manifest outright (`publishedManifest`, `@abuddy/host/build/published-manifest`), so nothing outside
+> this repo can resolve the specifier and no `etc/*.api.md` reports it, which is what takes it out of
+> `api:check`'s review. `./runtime/internals` had been that shape for months. A pack cannot resolve it either —
+> a pack's config may not declare that condition, which `check:specifiers` enforces, where the old home rested
+> on packs not declaring an `@app/*` dependency.
+>
+> **Two of the four escapes this block first claimed do not exist, and the reversal does not rest on them.**
+> Measured afterwards: the compiled file *ships* — `files` is `["dist", …]` and `publish/dist/testing/
+> pack-fixture.{js,d.ts}` are in the staged tree, as `runtime/internals`' are, so dropping an entry hides a file
+> from resolution rather than leaving it out of the tarball. And `api:stamp` *does* see it: its inputs are every
+> `.d.ts` under `dist`, this one among 168, so a doc-comment edit in it asks for an `api:update` that rewrites no
+> report — a cost the move was argued to escape and did not. What survives is the reason stated next, which was
+> never one of the four: a workspace per helper, seven files and six registration points for one function.
+>
+> The reach argument for the move is **not** the reason, and was checked before being claimed: it unlocks
+> roughly nothing (see the correction below). The reason is that a workspace per helper is the precedent, and
+> this one was seven files and six registration points for one function.
+>
+> **98 sites write a pack manifest, not 101, across 55 files — and the count was never the work.** Of the 98,
+> **54** are in `@abuddy/cli` and `@app/repo-checks`, and of those only **28** are a manifest
+> written inline for a tree of their own. **11 of them, in 8 files, became `packFixture`;** the rest are four
+> shapes left alone with a reason each, listed in `packages/abuddy-sdk/CLAUDE.md`: a `'{}'` discovery
+> marker, a patch of a pack something else scaffolded, a manifest that *is* the subject with no tree around
+> it, and the installed shape, which is `@abuddy/host`'s artifact. The plan's **Unverified** item — *"that
+> every one of the sites wants the builder"* — resolves to no, and the four shapes are the answer.
+>
+> **The claim that eligibility is a layer question was wrong, and the correction is the finding worth
+> keeping.** This block first said the other 44 sites are hand-written because their packages may not import an
+> `@app/*` package — which is circular, since that followed from the home. Asked properly, with the real
+> detector over every host-layer package: **23 findings, 20 in `@abuddy/host` and 3 in `packages/api`, and every
+> one of them deserves to be hand-written.** They write a *data dir's* installed pack (`packs/<id>/abuddy.json`,
+> whose subject is discovery, staging or an update check) or a built built-in (`dist/runtime/index.cjs` and no
+> source at all). A fixture's two-feature source tree is the wrong artifact for all 23, so the population is
+> narrow because of what those specs are, not because of where the fixture lives — and that is what keeps the
+> guardrail free of an exemption list.
+>
+> The guardrail's population is therefore derived by **reading imports**: the packages whose tests ask for the
+> fixture. That is a predicate rather than a manifest field, so it can be wrong where a field could not — a
+> spelling it fails to recognise drops a package out of the sweep with every case still green — and both
+> spellings that exist carry a case. Watched failing: anchoring the matcher to the package subpath alone makes
+> the SDK's own relative import invisible and silently takes the population from three packages and 172 files to
+> two and 108.
+>
+> **Three of the four Decisions landed; two options were not built, and the reason is composition.** Decision
+> 3's `built`/`modules` and Decision 4's `beforeBuild` are absent: `buildPack(dir)` already takes a directory,
+> so a caller that must mutate a scaffolded tree between writing and building does it between two calls, and a
+> hook to express that would only be the sequence spelled a second way. What shipped instead is what the
+> literals asked for — `manifest` merging over the default, `rawManifest` verbatim (both at once throws, since
+> a merge cannot express an absent key), `at`, `files` and `nodeModules`.
+>
+> **Phase 4 was built four times and then deleted, and that is the part worth reading.** The plan called it
+> *"not optional and not last-if-there-is-time"*, on the reasoning that Phase 3 was mechanical work with no
+> speed payoff and so would be abandoned half-done. The gate was supposed to be the floor under it.
+>
+> It never had anything to stand on. Three versions tried to decide which manifest writes were offences — the
+> argument text, then the write functions taken from each file's own `node:fs` import, then a `JSON.stringify`
+> of an object literal declaring an `id` — and the last reported **zero** over a population holding **seven**
+> hand-built manifests, each going through a one-line local wrapper. A fourth version replaced the verdict with
+> an inventory of every test naming a manifest, which worked, and then said the quiet part: **23 files, 19 of
+> them legitimately hand-written.** 309 lines of check, against 127 for the fixture it guarded, catching
+> nothing.
+>
+> The reason there was nothing to catch is the correction above: the sites Phase 3 left are **built artifacts**
+> — an installed pack, a release's staged tree, a report over a bundle, a harness pack with no `src/` — and
+> `packFixture` makes a source tree. The gate was protecting an adoption that was already as complete as it
+> should get, which is why "it will be abandoned half-done" was a prediction rather than a fact.
+>
+> **The rule this leaves: build the gate last, and only when adoption has left a violation to point at.** A
+> gate justified by what might happen is a prediction; one justified by three sites it catches today is a fact.
+> The inventory is in this branch's history (`b98e48377`) and can come back the day there is something for it
+> to name.
+
 # One way to write a pack fixture
 
 > **Retargeted 2026-10-02 (branch `AS/one-action-cache`), from "a fidelity ladder".** It was compiled

@@ -153,6 +153,38 @@ export function sourceOf(depFile: string): DepFileSource | undefined {
   return declared.get(depFile);
 }
 
+/**
+ * Delete the dep files no tsconfig declares, and hand back what went.
+ *
+ * **Litter, not evidence.** A dep file is written by `tsc` under the name its tsconfig chose, and nothing
+ * removes it when that tsconfig goes — so deleting a workspace or renaming a leg leaves a file whose reads
+ * answer for nobody. `dep-files.integration.spec.ts` refuses one, correctly, and the chain then fails on
+ * litter: removing `@app/pack-fixtures` on 2026-10-02 left `pack-fixtures.tsbuildinfo` behind and the step
+ * stayed red until it was deleted by hand.
+ *
+ * **The writer prunes, which is what the two existing records here do** — `pruneStamps` clears a chain stamp
+ * with no step, and the pool steps clear a pool stamp no pool would write. `npm run typecheck` drives the
+ * compilers that write these, so it calls this before its legs run: before, because a leg mid-write must not
+ * have its file taken, though an orphan is safe by construction since no running leg writes a name no
+ * tsconfig declares.
+ *
+ * Takes the directory and the question instead of reading `CACHE` and `sourceOf`, so it can be run over a
+ * population of its own — which is how it gets a case that watches it fail.
+ */
+export function pruneOrphanDepFiles(cacheDir: string, isDeclared: (depFile: string) => boolean): string[] {
+  if (!fs.existsSync(cacheDir)) return [];
+  const orphans = fs.readdirSync(cacheDir)
+    .filter((file) => file.endsWith('.tsbuildinfo'))
+    .map((file) => file.replace('.tsbuildinfo', ''))
+    .filter((name) => !isDeclared(name))
+    .sort();
+  for (const name of orphans) fs.rmSync(path.join(cacheDir, `${name}.tsbuildinfo`));
+  return orphans;
+}
+
+/** The same over this checkout: the directory the legs write to, and the names their tsconfigs declare */
+export const pruneDepFiles = (): string[] => pruneOrphanDepFiles(CACHE, (name) => sourceOf(name) !== undefined);
+
 /** Every dep file present, by the name its leg writes under */
 export const depFileNames = (): string[] => (fs.existsSync(CACHE)
   ? fs.readdirSync(CACHE).filter((file) => file.endsWith('.tsbuildinfo')).map((file) => file.replace('.tsbuildinfo', '')).sort()

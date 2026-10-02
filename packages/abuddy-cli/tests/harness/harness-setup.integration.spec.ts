@@ -81,10 +81,10 @@ it('seeds nothing', async () => {
 import { expect, it } from 'vitest';
 import { services } from '@abuddy/sdk/services';
 it('sends to its own system and plugin', () => {
-  expect(() => services.emitter.sendToSystem('data-pack/notes', { type: 'GET_NOTES' })).not.toThrow();
-  expect(() => services.emitter.broadcastToPlugin('data-pack/notes', { type: 'NOTES_UPDATED' })).not.toThrow();
-  expect(() => services.emitter.broadcastToPlugin('data-pack/ghost', { type: 'NOTES_UPDATED' })).toThrow('No registered plugin is named "data-pack/ghost"');
-});`, { features: [{ id: 'notes', system: { entry: 'src/features/notes/be/system.ts' }, plugin: { entry: 'src/features/notes/fe/index.ts' } }] });
+  expect(() => services.emitter.sendToSystem('data-pack/memos', { type: 'GET_MEMOS' })).not.toThrow();
+  expect(() => services.emitter.broadcastToPlugin('data-pack/memos', { type: 'MEMOS_UPDATED' })).not.toThrow();
+  expect(() => services.emitter.broadcastToPlugin('data-pack/ghost', { type: 'MEMOS_UPDATED' })).toThrow('No registered plugin is named "data-pack/ghost"');
+});`, { features: [{ id: 'memos', system: { entry: 'src/features/memos/be/system.ts' }, plugin: { entry: 'src/features/memos/fe/index.ts' } }] });
     // inherent: runs a pack's own vitest suite — the nested runner is the thing under test
     const result = run(process.execPath, [VITEST, 'run'], root);
     expect(result.output).toMatch(/Tests\s+1 passed/);
@@ -152,18 +152,18 @@ describe('abuddy add feature in a pack without the unit test setup', () => {
     fs.writeFileSync(pkgPath, JSON.stringify(pkg, null, 2));
 
     // process: the report the command prints, line by line, is the assertion
-    const added = run(process.execPath, [CLI, 'add', 'feature', 'notes'], pack);
+    const added = run(process.execPath, [CLI, 'add', 'feature', 'memos'], pack);
 
     expect(added.code, added.output).toBe(0);
     expect(added.output).toContain('+ tests/setup.ts');
-    expect(added.output).toContain('+ tests/features/notes/be/system.spec.ts');
+    expect(added.output).toContain('+ tests/features/memos/be/system.spec.ts');
     expect(added.output).toContain('vitest.config.ts already exists');
     expect(added.output).toContain('Added @abuddy/testing to devDependencies. Run: npm install');
     expect(JSON.parse(fs.readFileSync(pkgPath, 'utf-8')).devDependencies['@abuddy/testing']).toMatch(/^\^/);
     // The kept config is the scaffold's, which loads tests/setup.ts
     // inherent: runs a pack's own vitest suite — the nested runner is the thing under test
     const unit = run(process.execPath, [VITEST, 'run'], pack);
-    expect(unit.output).toMatch(/tests\/features\/notes\/be\/system\.spec\.ts/);
+    expect(unit.output).toMatch(/tests\/features\/memos\/be\/system\.spec\.ts/);
     expect(unit.output).toMatch(/Tests\s+1 passed/);
   });
 });

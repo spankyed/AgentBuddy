@@ -22,10 +22,8 @@
 // deliberately excluded — it changes when a function body changes, which is exactly the false alarm
 // this is built to avoid. `.map` files are excluded too: they embed absolute paths.
 //
-// The declarations are hashed through `apiSurfaceOf`, which drops doc prose, for the same reason `.js`
-// is excluded: prose reaches a `.d.ts` but cannot reach a report, so hashing it asked for an
-// `api:update` that rewrote nothing. That trade is the one place this is not byte-exact — see the
-// function's own comment for what was measured and what it gives up.
+// The declarations are hashed verbatim. A normaliser that dropped doc prose lived here and was wrong;
+// `declarationFingerprints` records what refuted it.
 //
 // Three measured properties of this repo, without which the gate is worthless:
 //
@@ -109,30 +107,33 @@ function packageName(dir: string): string {
   return (JSON.parse(fs.readFileSync(path.join(dir, 'package.json'), 'utf-8')) as { name: string }).name;
 }
 
-/** A TSDoc block comment, non-greedy so each is matched separately */
-const DOC_COMMENT = /\/\*\*[\s\S]*?\*\//g;
-
 /**
- * A declaration file as its API report sees it: doc comments reduced to their tag lines.
+ * One fingerprint per contributing package, nearest first: `<name> <hash of its own declarations>`.
  *
- * Measured against API Extractor on `@abuddy/sdk` (2026-09-24): editing a doc comment's prose leaves
- * every report byte-identical, while changing a release tag (`@public` → `@internal`) and deleting a
- * comment altogether each change one — a report carries the tags and marks an undocumented export
- * `(undocumented)`. Prose is therefore the one part of a declaration that cannot move a report, and
- * hashing it made every comment edit in this comment-heavy repo demand a 46s `api:update` that rewrote
- * nothing but this stamp.
+ * **Hashed verbatim, doc prose included, because prose reaches a report.** A normaliser here reduced each
+ * comment to its `@`-tag lines, on a measurement that said editing prose leaves every report byte-identical.
+ * That is true of a comment *above* an exported declaration, which API Extractor replaces with its tags — and
+ * false of one *inside* a type literal, which is part of the type's printed text and is reproduced verbatim:
+ * `etc/index.api.md` carries `SystemEvents`' interior comments word for word from
+ * `src/framework/define-system.ts`. So the gate was blind to an edit that rewrites a reviewed report, which is
+ * the one direction a proxy must not be wrong in.
  *
- * So each comment becomes `/**` + its `@`-tag lines + `*\/`: the tags are kept verbatim, and an empty
- * pair of markers still distinguishes a documented export from an undocumented one. Keeping whole tag
- * lines rather than tag names is deliberate — it is the conservative side of a guess about what a
- * report renders, and a false "run api:update" costs a minute where a false "nothing changed" costs a
- * wrong report.
+ * It was also arbitrary rather than merely lax: the normaliser kept any comment line matching `@\w`, to keep
+ * tags, and in a repo whose prose names `@abuddy/*` packages constantly most prose lines matched. Whether a
+ * comment edit moved the stamp depended on whether its sentences happened to mention a package.
  *
- * What this gives up: the gate is no longer byte-exact, so a change hidden inside a `/** … *\/`
- * sequence within a string literal type would not be seen here. `api:check` is still the authority and
- * still runs in the full chain before a merge.
- */
-/**
+ * The cost of hashing verbatim is that any doc-comment edit in these packages asks for an `api:update` (~46s,
+ * `@abuddy/ui` 33s of it) that rewrites no report. That is the side to be wrong on, and the trade this gate
+ * already stated: a false "run api:update" costs a minute, a false "nothing changed" ships a wrong report. A
+ * narrower rule would have to tell an interior comment from a leading one, which is a parse of the `.d.ts`
+ * rather than a regex over it.
+ *
+ * A single combined hash said only "something moved". Since a package's reports are generated from its
+ * dependencies' declarations too, "ui is stale" was most often @abuddy/sdk's declarations moving, and
+ * the message gave the reader no way to tell that from a change to @abuddy/ui itself — the last time it
+ * happened here it was diagnosed by rebuilding UI and diffing, which measures the wrong input set.
+ * Recording each contributor separately costs two lines and lets the message name the one that moved.
+ *
  * Not normalised for union order, which is worth knowing before diagnosing a mystery here.
  *
  * `tsc` prints an inferred union's members in the order it created the member types, and that order changes
@@ -146,26 +147,10 @@ const DOC_COMMENT = /\/\*\*[\s\S]*?\*\//g;
  * this bites. So this is a recorded exposure, not a bug, and the fix if it ever fires is the one the emitter
  * already uses — `sortLiteralUnions` (`@abuddy/cli`'s `build/declaration-text.ts`).
  */
-export function apiSurfaceOf(declarations: string): string {
-  return declarations.replace(DOC_COMMENT, (comment) => {
-    const lines = comment.split('\n').map((line) => line.trim().replace(/^\*+\s?/, '').replace(/\s*\*\/$/, '').trim());
-    return `/**${lines.filter((line) => /@\w/.test(line)).join('\n')}*/`;
-  });
-}
-
-/**
- * One fingerprint per contributing package, nearest first: `<name> <hash of its own declarations>`.
- *
- * A single combined hash said only "something moved". Since a package's reports are generated from its
- * dependencies' declarations too, "ui is stale" was most often @abuddy/sdk's declarations moving, and
- * the message gave the reader no way to tell that from a change to @abuddy/ui itself — the last time it
- * happened here it was diagnosed by rebuilding UI and diffing, which measures the wrong input set.
- * Recording each contributor separately costs two lines and lets the message name the one that moved.
- */
 export function declarationFingerprints(pkgDir: string): Array<{ name: string; hash: string }> {
   return declarationPackages(pkgDir).map((dir) => ({
     name: packageName(dir),
-    hash: fingerprintInputs(declarationFiles(path.join(dir, 'dist')), (contents) => apiSurfaceOf(contents.toString('utf-8'))),
+    hash: fingerprintInputs(declarationFiles(path.join(dir, 'dist'))),
   }));
 }
 

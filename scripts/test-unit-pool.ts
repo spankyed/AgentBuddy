@@ -14,10 +14,10 @@
  * does not know about: the pool steps declare `forceArgs` so the flag arrives.
  */
 import { execFileSync } from 'node:child_process';
-import { diffableStamp, firstChange, freshnessSweep, stampedRunAll, stampRecord } from '@abuddy/host/build/packages-built';
+import { diffableStamp, firstChange, freshnessSweep, stampRecord } from '@abuddy/host/build/packages-built';
 import type { UnitSuite } from './lib/unit-suites.ts';
 import { POOL_SECONDS } from './lib/chain-steps.ts';
-import { POOLS, poolStampFor, poolUnitFor, projectsThatDidNotRun, prunePoolStamps, whyItRuns, type Pool } from './lib/unit-pool.ts';
+import { POOLS, poolStampFor, poolUnitFor, projectsThatDidNotRun, prunePoolStamps, recordRun, recordsVerdict, whyItRuns, type Pool } from './lib/unit-pool.ts';
 import { boundedSpawn, budgetFor } from './lib/bounded-spawn.ts';
 import { exitOnEpipe } from './lib/exit-on-epipe.ts';
 
@@ -85,12 +85,16 @@ async function main(): Promise<void> {
 
   // What each run covers is the pool's to say; a suite is stamped only by the run that included it.
   const runs = run(stale);
+  // Said out loud, because a run that records nothing looks exactly like one that does until the next run
+  // repeats it. `recordsVerdict` has why.
+  if (!recordsVerdict()) console.log(`${kind} pool: recording nothing — this is a diagnostic run`);
 
   for (const { suites: covered, command, args } of runs) {
-    // `stampedRunAll` fingerprints every suite this run covers before it starts and writes each stamp only
-    // if it returned, so a failure leaves all of them unstamped and none is measured against a tree the run
-    // has already begun touching.
-    await stampedRunAll(
+    // `stampedRunAll`, under `recordRun`, fingerprints every suite this run covers before it starts and writes
+    // each stamp only if it returned — so a failure leaves all of them unstamped and none is measured against a
+    // tree the run has already begun touching. `recordRun` is what keeps a diagnostic re-run from writing any of
+    // them: its verdict is not the chain's to keep, and recording it skipped the step on the next chain.
+    await recordRun(
       // The label is what the stamp records as its `workspace`, and it names the half for the same reason the
       // filename does: a person opening the cache directory has to be able to tell two records apart. Nothing
       // reads it — `unitStaleReason` consults the fingerprint and nothing else — so this is a diagnostic, and

@@ -4,6 +4,7 @@
 import { execFileSync } from 'node:child_process';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
+import { packFixture } from '@abuddy/sdk/testing/pack-fixture';
 import { PACK_TSCONFIG } from '../../src/commands/init';
 import { REPO_ROOT } from '@abuddy/host/build/packages-built';
 
@@ -143,10 +144,7 @@ export const tsconfig = JSON.stringify(PACK_TSCONFIG);
 
 /** Writes a pack and links it to the given `node_modules`, so `abuddy build` can run in it */
 export function preparePack(parent: string, name: string, files: Record<string, string>, modules: string): string {
-  const dir = path.join(parent, name);
-  write(dir, files);
-  fs.symlinkSync(modules, path.join(dir, 'node_modules'), 'dir');
-  return dir;
+  return packFixture({ at: path.join(parent, name), files, nodeModules: modules });
 }
 
 /** Builds a prepared pack, throwing with the CLI's output when it fails */
