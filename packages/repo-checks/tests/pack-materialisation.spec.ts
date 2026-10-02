@@ -1,9 +1,11 @@
 import * as fs from 'node:fs';
+import * as os from 'node:os';
 import * as path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { REPO_ROOT } from '@abuddy/host/build/packages-built';
 import { population } from '@abuddy/sdk/testing';
-import { handWrittenManifests, importsFixture, packagesUsingFixtures, PACK_FIXTURE, testFilesPoliced } from '../../../scripts/lib/pack-materialisation.ts';
+import { DIR_BY_PACKAGE } from '../../../scripts/lib/workspace-deps.ts';
+import { FIXTURE_PACKAGE, handWrittenManifests, importsFixture, packagesUsingFixtures, PACK_FIXTURE, testFilesPoliced } from '../../../scripts/lib/pack-materialisation.ts';
 
 /**
  * One place decides what a pack on disk looks like, and this is the check that it stays one.
@@ -32,26 +34,52 @@ describe('a pack on disk is asked for, not assembled', () => {
   });
 
   /**
-   * The population is read from the imports, so it is a predicate and needs a firing case of its own.
-   *
-   * A spelling it fails to recognise drops a whole package out of the sweep while every case here stays green,
-   * which is the expensive direction and the one no assertion downstream can see. Both spellings are covered
-   * because both exist: the subpath, and the relative path the SDK's own spec uses, since a package does not
-   * import itself by name. Watched failing — anchor the matcher to the subpath alone and the population goes
-   * from three packages to two.
+   * The population is read from the imports, so it is a predicate and needs a firing case of its own: a
+   * spelling it fails to recognise drops a whole package out of the sweep while every case here stays green,
+   * which is the direction no assertion downstream can see.
    */
-  it.each([
-    ['the package subpath', `import { packFixture } from '${PACK_FIXTURE}';`],
-    ['a relative path, as the SDK\'s own spec has it', "import { packFixture } from '../../src/testing/pack-fixture.ts';"],
-  ])('sees an import of the fixture as %s', (_how, line) => {
-    expect(importsFixture(line, 'some.spec.ts')).toBe(true);
+  it('sees an import of the fixture by its subpath', () => {
+    expect(importsFixture(`import { packFixture } from '${PACK_FIXTURE}';`, 'some.spec.ts')).toBe(true);
   });
 
   it.each([
     ['a file that imports nothing of the sort', "import { buildPack } from './pack-builds.ts';"],
     ['a mention in a comment rather than an import', '// packFixture writes a pack-fixture tree'],
+    ['the relative path only the defining package can write', "import { packFixture } from '../../src/testing/pack-fixture.ts';"],
   ])('does not take %s for an import', (_what, line) => {
     expect(importsFixture(line, 'some.spec.ts')).toBe(false);
+  });
+
+  /**
+   * And the package that *publishes* the fixture is not policed, which needs saying because it reads as a
+   * gap and is the opposite.
+   *
+   * It was policed for a day. `@abuddy/sdk` holds the fixture, so the spec beside it satisfied "imports the
+   * fixture" trivially, which pulled in that package's other 64 test files and produced one finding that
+   * read as real: two specs writing a manifest through a local `fs` wrapper, which the predicate cannot see
+   * — and which are correctly hand-written anyway, both being a manifest that *is* the subject
+   * (`compilePack` reads `abuddy.json` alone, which is what those cases are about). A package is policed for
+   * adopting the fixture, and holding it is not adopting it.
+   */
+  it('leaves out the package the fixture is published from, even when its tests use the subpath', () => {
+    const owner = DIR_BY_PACKAGE.get(FIXTURE_PACKAGE);
+    expect(owner, `${FIXTURE_PACKAGE} is no workspace, so this case excludes nothing`).toBeDefined();
+
+    // Over a root of its own, with the import spelled the way an outside package spells it. Asking the real
+    // tree cannot tell the exclusion from the specifier rule — the defining package imports its own file
+    // relatively, which `importsFixture` already declines — so that version passed whether or not the
+    // exclusion was there, which is the shape of a case that proves nothing.
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), 'fixture-owner-'));
+    try {
+      const tests = path.join(root, 'packages', owner!, 'tests');
+      fs.mkdirSync(tests, { recursive: true });
+      fs.writeFileSync(path.join(tests, 'uses.spec.ts'), `import { packFixture } from '${PACK_FIXTURE}';\n`);
+
+      expect(packagesUsingFixtures(root), 'the package that holds the fixture is policed for holding it')
+        .not.toContain(owner);
+    } finally {
+      fs.rmSync(root, { recursive: true, force: true });
+    }
   });
 
   /**

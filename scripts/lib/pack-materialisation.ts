@@ -23,9 +23,9 @@
  * - the **installed shape** (a manifest beside `integrity.json` and a snapshot), which is `@abuddy/host`'s
  *   artifact and whose layout host owns.
  *
- * **Who it polices is the packages whose tests reach for the fixture**, derived by reading their imports. A
- * package that adopts it opts into the rule in the same edit, and the rule's subject is what it can actually
- * be: that no package writes a pack tree both ways.
+ * **Who it polices is the packages whose tests reach for the fixture**, derived by reading their imports,
+ * minus the package that publishes it (`FIXTURE_PACKAGE`). A package that adopts it opts into the rule in the
+ * same edit, and the rule's subject is what it can actually be: that no package writes a pack tree both ways.
  *
  * **It is deliberately not every package that *could* import it.** `packFixture` is a source-only export of
  * `@abuddy/sdk`, so every host-layer package can resolve it, and asking all of them was measured on
@@ -39,16 +39,29 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import ts from 'typescript';
 import { REPO_ROOT } from '@abuddy/host/build/packages-built';
-import { PACKAGE_DIRS } from './workspace-deps.ts';
+import { DIR_BY_PACKAGE, PACKAGE_DIRS } from './workspace-deps.ts';
 
-/** The fixture, named once */
+/** The fixture, named once: everything below is derived from this specifier */
 export const PACK_FIXTURE = '@abuddy/sdk/testing/pack-fixture';
 
 /**
- * An import of the fixture, by either spelling: the package subpath, or the relative path the SDK's own spec
- * uses. Matched on the specifier's tail so that neither spelling is named and a move is one edit here.
+ * The package the fixture is published from, which is never policed: it *defines* the fixture, so its own
+ * spec importing it says nothing about adoption.
+ *
+ * It was policed, and the cost was a finding that read as real and was not. `@abuddy/sdk` holds the fixture,
+ * so the spec beside it satisfied "imports the fixture" trivially, which swept the SDK's other 64 test files
+ * and turned up two that write a manifest through a local `fs` wrapper — invisible to the predicate, and
+ * *correctly* hand-written anyway, both being the "manifest is the subject" shape (`compilePack` reads
+ * `abuddy.json` alone, which is what those cases are about). Policing a package on the strength of the
+ * fixture living there measures the wrong thing.
  */
-const FIXTURE_SPECIFIER = /(^|\/)testing\/pack-fixture(\.ts)?$/;
+export const FIXTURE_PACKAGE = PACK_FIXTURE.split('/').slice(0, 2).join('/');
+
+/**
+ * An import of the fixture: the package subpath, which is the only way to reach it from a package that does
+ * not define it — a test may not import another package's tree (`repo-checks`' `spec-placement.spec.ts`).
+ */
+const FIXTURE_SPECIFIER = PACK_FIXTURE;
 
 /** However the module is spelled */
 const NODE_FS = new Set(['node:fs', 'fs', 'node:fs/promises', 'fs/promises']);
@@ -126,7 +139,7 @@ export function importsFixture(source: string, file = 'fixture.ts'): boolean {
   let found = false;
   parsed.forEachChild((node) => {
     if (ts.isImportDeclaration(node) && ts.isStringLiteral(node.moduleSpecifier)
-      && FIXTURE_SPECIFIER.test(node.moduleSpecifier.text)) found = true;
+      && node.moduleSpecifier.text === FIXTURE_SPECIFIER) found = true;
   });
   return found;
 }
@@ -140,9 +153,10 @@ function testFilesOf(root: string, dir: string): string[] {
     .map((entry) => path.relative(root, path.join(entry.parentPath, entry.name)));
 }
 
-/** The packages whose tests this rule reads: the ones that import the fixture */
+/** The packages whose tests this rule reads: the ones that adopted the fixture, which is not the one that has it */
 export function packagesUsingFixtures(root = REPO_ROOT): string[] {
-  return PACKAGE_DIRS.filter((dir) => testFilesOf(root, dir)
+  const owner = DIR_BY_PACKAGE.get(FIXTURE_PACKAGE);
+  return PACKAGE_DIRS.filter((dir) => dir !== owner).filter((dir) => testFilesOf(root, dir)
     .some((file) => importsFixture(fs.readFileSync(path.join(root, file), 'utf-8'), file))).sort();
 }
 
