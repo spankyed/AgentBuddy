@@ -108,20 +108,6 @@ function packageName(dir: string): string {
 }
 
 /**
- * Not normalised for union order, which is worth knowing before diagnosing a mystery here.
- *
- * `tsc` prints an inferred union's members in the order it created the member types, and that order changes
- * between builds — measured 2026-09-28 on the pack's declaration bundles, where one file took five distinct
- * hashes in six builds. This hashes declaration text, so an @abuddy package whose `.d.ts` grew such a union
- * could make `api:stamp` move with no source change, failing `typecheck` with "run npm run api:update" for
- * nothing.
- *
- * It is not happening: `npm run check:repro` compared all five packages' `dist` across two builds and found
- * them identical, because those come from `tsc` directly rather than through the rollup-plugin-dts path where
- * this bites. So this is a recorded exposure, not a bug, and the fix if it ever fires is the one the emitter
- * already uses — `sortLiteralUnions` (`@abuddy/cli`'s `build/declaration-text.ts`).
- */
-/**
  * One fingerprint per contributing package, nearest first: `<name> <hash of its own declarations>`.
  *
  * **Hashed verbatim, doc prose included, because prose reaches a report.** A normaliser here reduced each
@@ -147,6 +133,19 @@ function packageName(dir: string): string {
  * the message gave the reader no way to tell that from a change to @abuddy/ui itself — the last time it
  * happened here it was diagnosed by rebuilding UI and diffing, which measures the wrong input set.
  * Recording each contributor separately costs two lines and lets the message name the one that moved.
+ *
+ * Not normalised for union order, which is worth knowing before diagnosing a mystery here.
+ *
+ * `tsc` prints an inferred union's members in the order it created the member types, and that order changes
+ * between builds — measured 2026-09-28 on the pack's declaration bundles, where one file took five distinct
+ * hashes in six builds. This hashes declaration text, so an @abuddy package whose `.d.ts` grew such a union
+ * could make `api:stamp` move with no source change, failing `typecheck` with "run npm run api:update" for
+ * nothing.
+ *
+ * It is not happening: `npm run check:repro` compared all five packages' `dist` across two builds and found
+ * them identical, because those come from `tsc` directly rather than through the rollup-plugin-dts path where
+ * this bites. So this is a recorded exposure, not a bug, and the fix if it ever fires is the one the emitter
+ * already uses — `sortLiteralUnions` (`@abuddy/cli`'s `build/declaration-text.ts`).
  */
 export function declarationFingerprints(pkgDir: string): Array<{ name: string; hash: string }> {
   return declarationPackages(pkgDir).map((dir) => ({

@@ -108,7 +108,8 @@ describe('abuddy validate', () => {
   it("reports a feature's missing settings file, and accepts a designation that is not its id", async () => {
     await addFeature(['memos'], pack);
     const manifest = readManifest();
-    manifest.features[0].designation = 'memos';
+    // A role that is not the feature's id, which is the half of this case's title that the fixture has to show
+    manifest.features[0].designation = 'inbox';
     fs.writeFileSync(path.join(pack, 'abuddy.json'), JSON.stringify(manifest, null, 2));
     fs.rmSync(path.join(pack, 'src', 'features', 'memos', 'settings.ts'));
 

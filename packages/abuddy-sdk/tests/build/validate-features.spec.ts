@@ -43,18 +43,20 @@ describe('validateFeatures', () => {
     expect(validateFeatures(root, { features: [memos] }).errors).toEqual([`Feature "memos": ${field} file "${missing}" not found`]);
   });
 
+  // `inbox`, not `memos`: a designation equal to the feature's id is what this case is *not* about, and a
+  // rename made it exactly that for a while, leaving the name to claim what the fixture no longer showed
   it('accepts a designation that differs from the feature id: a designation is a role, not a name', () => {
     const root = pack(memosFiles);
-    expect(validateFeatures(root, { features: [{ ...memos, designation: 'memos' }] }).errors).toEqual([]);
+    expect(validateFeatures(root, { features: [{ ...memos, designation: 'inbox' }] }).errors).toEqual([]);
   });
 
   it('reports one role claimed by two features of the same pack', () => {
     const root = pack(memosFiles);
     const other = { ...memos, id: 'scraps' };
     const errors = validateFeatures(root, {
-      features: [{ ...memos, designation: 'memos' }, { ...other, designation: 'memos' }],
+      features: [{ ...memos, designation: 'inbox' }, { ...other, designation: 'inbox' }],
     }).errors;
-    expect(errors).toEqual(['Feature "scraps": designation "memos" is already claimed by feature "memos"']);
+    expect(errors).toEqual(['Feature "scraps": designation "inbox" is already claimed by feature "memos"']);
   });
 
   it('accepts two features with different designations', () => {

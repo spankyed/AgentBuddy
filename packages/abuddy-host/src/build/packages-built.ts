@@ -1121,16 +1121,20 @@ function buildOnePackage(workspace: string): void {
 }
 
 /**
- * The three things `ensurePackagesBuilt` does, each injectable **so that a case can reach the refusal below**.
+ * The four things `ensurePackagesBuilt` does, each injectable **so that a case can reach the refusal below**.
  *
  * Without a seam here the refusal had none: its subject is the repo's own packages, and a spec that makes one
  * of them stale has to delete a real cache stamp — which races every other suite in the checkout, and which
  * this file's own rule forbids ("a spec must never build the repo's packages"). So it sat unexercised from
  * 2026-09-24, next to a flag nothing set, and the pair read as working.
  *
- * `waitForPackageBuild` takes its own options for the same reason and says so.
+ * The wait is one of the four for a reason found in review: a case that injects the other three still took the
+ * repo's real build lock, and would sit behind a concurrent `packages:build` for `LOCK_WAIT_MS` before any
+ * injected answer was consulted — the shared state the seam exists to keep out of a unit test.
  */
 export interface EnsurePackagesOptions {
+  /** How it waits for a build already in flight; a case replaces it rather than taking the repo's lock */
+  readonly wait?: () => void;
   /** How it learns what is stale */
   readonly stale?: () => StaleUnit[];
   /** How it fixes one; a case asserts the refusal called this for nothing, which is the half that matters */
@@ -1141,6 +1145,7 @@ export interface EnsurePackagesOptions {
 
 /** Builds every publishable package when any of them is stale; a no-op when they are all up to date */
 export function ensurePackagesBuilt({
+  wait = () => { waitForPackageBuild(); },
   stale: staleUnits = stalePackageUnits,
   build = buildOnePackage,
   report = (message: string) => { fs.writeSync(2, message); },
@@ -1148,7 +1153,7 @@ export function ensurePackagesBuilt({
   // Another process may be building them right now — two test suites started together each run this as
   // their pretest. Wait for that build rather than reading the stamps it is rewriting and starting a
   // second one, which is a race that fails the reader with "no stamp".
-  waitForPackageBuild();
+  wait();
   const stale = staleUnits();
   if (stale.length === 0) return;
   // A caller that has already built them is asserting nothing will go stale under it, so staleness here

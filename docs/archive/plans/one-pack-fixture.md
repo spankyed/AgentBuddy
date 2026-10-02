@@ -7,11 +7,19 @@
 > `@abuddy/sdk/testing/pack-fixture`.** Decision 1 weighed four homes and rejected them all, but it never
 > weighed this one, because it treated *"in `@abuddy/sdk`"* as synonymous with *"in the published, reviewed
 > surface"*. In this repo that is false: an export whose only branch is `@abuddy/source` is dropped from the
-> published manifest outright (`publishedManifest`, `@abuddy/host/build/published-manifest`), so it ships in no
-> tarball, appears in no `etc/*.api.md`, and is seen by neither `api:check` nor `api:stamp`. `./runtime/internals`
-> had been that shape for months. Every cost the new workspace was built to escape was escapable with one export
-> line, and a pack cannot resolve it either — a pack's config may not declare that condition, which
-> `check:specifiers` enforces, where the old home rested on packs not declaring an `@app/*` dependency.
+> published manifest outright (`publishedManifest`, `@abuddy/host/build/published-manifest`), so nothing outside
+> this repo can resolve the specifier and no `etc/*.api.md` reports it, which is what takes it out of
+> `api:check`'s review. `./runtime/internals` had been that shape for months. A pack cannot resolve it either —
+> a pack's config may not declare that condition, which `check:specifiers` enforces, where the old home rested
+> on packs not declaring an `@app/*` dependency.
+>
+> **Two of the four escapes this block first claimed do not exist, and the reversal does not rest on them.**
+> Measured afterwards: the compiled file *ships* — `files` is `["dist", …]` and `publish/dist/testing/
+> pack-fixture.{js,d.ts}` are in the staged tree, as `runtime/internals`' are, so dropping an entry hides a file
+> from resolution rather than leaving it out of the tarball. And `api:stamp` *does* see it: its inputs are every
+> `.d.ts` under `dist`, this one among 168, so a doc-comment edit in it asks for an `api:update` that rewrites no
+> report — a cost the move was argued to escape and did not. What survives is the reason stated next, which was
+> never one of the four: a workspace per helper, seven files and six registration points for one function.
 >
 > The reach argument for the move is **not** the reason, and was checked before being claimed: it unlocks
 > roughly nothing (see the correction below). The reason is that a workspace per helper is the precedent, and

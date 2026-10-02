@@ -1010,7 +1010,7 @@ describe('ensurePackagesBuilt, where the caller says the packages are already bu
   it('reports what moved and builds nothing', () => {
     const built: string[] = [];
     const reported: string[] = [];
-    const run = () => ensurePackagesBuilt({ stale: () => moved, build: (w) => built.push(w), report: (m) => reported.push(m) });
+    const run = () => ensurePackagesBuilt({ wait: () => {}, stale: () => moved, build: (w) => built.push(w), report: (m) => reported.push(m) });
 
     const refusal = withFlag('1', () => {
       expect(run).toThrow(PackagesWentStale);
@@ -1033,14 +1033,33 @@ describe('ensurePackagesBuilt, where the caller says the packages are already bu
   // The other direction, which is every ordinary caller: the same staleness is work to do, not a refusal
   it('builds the stale workspace when no caller claims to have built it', () => {
     const built: string[] = [];
-    withFlag(undefined, () => ensurePackagesBuilt({ stale: () => moved, build: (w) => built.push(w), report: () => {} }));
+    withFlag(undefined, () => ensurePackagesBuilt({ wait: () => {}, stale: () => moved, build: (w) => built.push(w), report: () => {} }));
     expect(built).toEqual(['@abuddy/sdk']);
+  });
+
+  /**
+   * And the wait comes first, which is the reason it is injectable at all.
+   *
+   * Reading the stamps while another process is rewriting them is the race `waitForPackageBuild` exists to
+   * avoid, so the order is the behaviour, not an implementation detail. It was unreachable from a test until
+   * `wait` joined the options: the three injected answers were consulted only after this had taken the repo's
+   * real lock.
+   */
+  it('waits for a build already in flight before it reads any stamp', () => {
+    const order: string[] = [];
+    ensurePackagesBuilt({
+      wait: () => order.push('wait'),
+      stale: () => { order.push('stale'); return []; },
+      build: () => order.push('build'),
+      report: () => {},
+    });
+    expect(order).toEqual(['wait', 'stale']);
   });
 
   it('is a no-op when nothing is stale, whichever the caller is', () => {
     for (const flag of ['1', undefined]) {
       const built: string[] = [];
-      withFlag(flag, () => ensurePackagesBuilt({ stale: () => [], build: (w) => built.push(w), report: () => {} }));
+      withFlag(flag, () => ensurePackagesBuilt({ wait: () => {}, stale: () => [], build: (w) => built.push(w), report: () => {} }));
       expect(built).toEqual([]);
     }
   });

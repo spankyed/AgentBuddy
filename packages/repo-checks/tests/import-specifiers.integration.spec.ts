@@ -1666,7 +1666,7 @@ describe('findContractLeafImports', () => {
   /**
    * A hop that is itself a `#features/` import, which is what the walk could not follow until `mappedPathFor`
    * resolved the pack's map: two of `default-setup`'s contract closures ended at one, one of them
-   * `calendar/be/types.ts` reaching into `code/`, so nothing past that hop was checked at all.
+   * `threads/be/types.ts` reaching into `code/`, so nothing past that hop was checked at all.
    */
   it('follows a #features/ hop to #generated/events deeper in the closure', () => {
     pack({
@@ -1820,7 +1820,7 @@ describe('findCrossFeatureImports', () => {
    * quote made a commented-out import look real and failed a build naming a comment".
    *
    * Not hypothetical. Three commented-out imports already sit in `default-setup`'s SFCs, in
-   * `features/library/fe/canvas.vue` and `features/calendar/fe/chat/input.vue`; they are quiet only because they
+   * `features/library/fe/canvas.vue` and `features/threads/fe/chat/input.vue`; they are quiet only because they
    * point inside their own feature. One pointing at another feature's `fe/` would have failed the build.
    */
   it('reads code, not comments, templates, template literals or styles', () => {
