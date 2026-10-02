@@ -110,8 +110,11 @@ version, and a version for `apiSurfaceOf` itself.
    moves a report while the stamp said "match", the key is incomplete: fail naming it. Zero marginal cost,
    because the evidence is already in hand. **This is the only layer that catches an input nobody imagined**,
    which is the class that bit us.
-4. **`STAMP_VERSION`** on `api-report-stamp.ts`, which `packages-built.ts` already has, for when
-   `apiSurfaceOf` changes meaning.
+4. **Compare the recorded row *set*, not only the rows this code looks up.** Every check here reads a row by a
+   name the current code computes, so a row the format has dropped is read by nothing and passes. This was a
+   `STAMP_VERSION` row until 2026-10-02 — an integer that only fires while someone remembers to change it —
+   and is now a set comparison, which says which row it was. `packages-built.ts` had the same field and now
+   has none: its verdict is a hash recomputed on every read, so nothing there could go stale unnoticed.
 
 Generalised, and worth writing into `CLAUDE.md`: *a cheap proxy for an expensive check must assert its own
 soundness every time the expensive check runs.*
@@ -120,8 +123,8 @@ soundness every time the expensive check runs.*
 `scripts/lib/api-entries.ts`, which `api-reports.ts` and the stamp now share rather than each having their
 own (they had one and none, which is how they came to disagree). Layer 2: five tests mutate each new input
 and watch the stamp move. Layer 3, the one that matters: `api-reports.ts` compares the proxy against itself
-— a report that moves while the stamp said current fails the run, naming both causes. Layer 4:
-`STAMP_VERSION`.
+— a report that moves while the stamp said current fails the run, naming both causes. Layer 4: the row-set
+comparison in `staleReason`, which replaced the `#version` row it started as.
 
 **Full capture was tried on paper and declined, with reasons**, so it is not re-raised: API Extractor reads
 the report it is comparing against, which makes the key circular; it reads `.temp/api-types`, which is

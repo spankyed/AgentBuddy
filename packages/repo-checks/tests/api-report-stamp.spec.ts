@@ -2,7 +2,7 @@ import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
-import { apiSurfaceOf, declarationInputs, declarationPackages, declarationStamp, staleReason, stampFile } from '../../../scripts/api-report-stamp.ts';
+import { apiSurfaceOf, declarationInputs, declarationPackages, declarationStamp, staleReason, stampFile, stampRows } from '../../../scripts/api-report-stamp.ts';
 
 /**
  * The cheap staleness gate for the committed API reports (scripts/api-report-stamp.ts), which runs in
@@ -260,12 +260,42 @@ describe('the producer is part of what the stamp records', () => {
     expect(staleReason(dir)).toMatch(/API Extractor or its tsconfig changed/);
   });
 
-  // What a stamp *means* can change without any input changing — apiSurfaceOf, or the rows themselves.
-  // A stamp from another format says nothing about the inputs it does not carry.
-  it('treats a stamp from another format as stale rather than reading it', () => {
+  // **The direction every other case here goes the other way.** The checks look each row up by a name the
+  // current code computes, so a row the format has *dropped* is read by nothing: it used to pass, and a
+  // `#version` row was what stood in for noticing — only while someone remembered to change it. This asks the
+  // question from the data instead, and it is the case that fired on the three committed stamps the moment that
+  // row was removed, which is how the hole was shown to be real rather than argued about.
+  it('treats a row it no longer records as stale, naming the row', () => {
     const root = tempDir();
     const dir = pkg(root, '@abuddy/one', { 'index.d.ts': 'export declare const a: number;\n' });
-    stamp(dir, declarationStamp(dir).replace(/#version \d+/, '#version 0'));
-    expect(staleReason(dir)).toMatch(/another stamp format/);
+    stamp(dir, `${declarationStamp(dir)}#version 1\n`);
+    expect(staleReason(dir)).toMatch(/records #version, which this stamp no longer has/);
+  });
+
+  /**
+   * **Which rows are packages is a decision, and this is where it is made.** `staleReason` reports the moved ones
+   * as "<name>'s declarations changed", so a row that is not a package must not reach that list — it did, for one
+   * commit, when the list was the row map filtered on a `#` prefix instead of the package rows themselves.
+   *
+   * Neither implementation can be told from the other on today's data, which is why this asks the *partition*
+   * rather than the outcome: a third row added to `stampRows` fails here until someone says which group it is in.
+   * Mutation-checked by adding a row to that map and watching this fail.
+   */
+  it('partitions its rows into the packages it names and the rows it records about itself', () => {
+    const root = tempDir();
+    const dir = pkg(root, '@abuddy/one', { 'index.d.ts': 'export declare const a: number;\n' });
+    const { rows, packages } = stampRows(dir);
+    expect(packages.length, 'no package rows makes the partition vacuous').toBeGreaterThan(0);
+    const named = [...rows.keys()].filter((row) => !packages.some(({ name }) => name === row));
+    expect(named).toEqual(['#entries', '#producer']);
+  });
+
+  // The other half of the set comparison, which the lookups already covered: a row the record is missing is a
+  // lookup that returns undefined. Kept beside its opposite so the pair reads as one question about the set.
+  it('treats a row it records and the stamp lacks as stale', () => {
+    const root = tempDir();
+    const dir = pkg(root, '@abuddy/one', { 'index.d.ts': 'export declare const a: number;\n' });
+    stamp(dir, declarationStamp(dir).split('\n').filter((row) => !row.startsWith('#producer')).join('\n'));
+    expect(staleReason(dir)).toMatch(/API Extractor or its tsconfig changed/);
   });
 });
