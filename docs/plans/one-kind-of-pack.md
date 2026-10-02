@@ -5,6 +5,15 @@ paths end to end. Every location, count and privilege below was checked against 
 Restructured the same day, after the first version was found to be a proposal wearing a decision's clothes —
 what changed and why is in **How this plan was wrong** at the end.
 
+> **Re-verified 2026-10-02, later the same day, against the rest of that branch.** Every citation still
+> holds — the five test sizes exactly — bar two the branch itself moved and one that was off by a line:
+> `electron-builder.mjs`'s `files` now ends at `:171` with `asar: false` at `:176`, because shipping gained
+> one exclusion (recorded where it matters, below), and `runtimeEntry`'s default is `loader.ts:106`.
+>
+> **The branch also gave item 1 three more things to delete.** `abuddy build` now records what each bundling
+> phase read, and that record is built-in-aware in three places — listed under item 1, each carrying a
+> comment naming this document, so the work is findable from the code and not only from here.
+
 **Three steps are committed; one question is left open on purpose.** The committed steps need no migration
 and no packaging change. The open question is whether default-setup stops living in the app's resources and
 becomes an installed pack like any other — which needs two stored-data migrations, and should be decided
@@ -168,8 +177,12 @@ the committed steps keep the phase, so nothing about ordering changes under them
 
 The entry point, in five steps:
 
-1. **`electron-builder.mjs:119-166`** — `files` takes `packages/**/*`, minus `!packages/*/src/**`, plus
-   `packages/*/dist/**`, with `asar: false` (`:171`). default-setup lands as a real directory at
+1. **`electron-builder.mjs:119-171`** — `files` takes `packages/**/*`, minus `!packages/*/src/**`, plus
+   `packages/*/dist/**`, with `asar: false` (`:176`). Since 2026-10-02 it also drops
+   `!packages/*/.abuddy/**`: a pack's working directory, which that recursive include had been carrying into
+   the installer. Worth knowing here because this plan makes a shipped directory authoritative — it holds the
+   pack, not the build's leftovers, and nothing in the steps below has to arrange that. default-setup lands
+   as a real directory at
    `<resourcesPath>/app/packages/default-setup/`: `abuddy.json` and `dist/` (the seven `*.seed.json`,
    `snapshot.json`, `types/`, `defs/`, `build/`, `runtime/index.cjs`).
 2. **`main/src/modules/api-server/config.ts:103`** — Electron main passes
@@ -182,7 +195,7 @@ The entry point, in five steps:
    to `<userData>/host-packs/<id>` for dependents, and prunes outputs this release no longer ships.
 
 **The backend ships twice.** `runtimeEntry` defaults to `'never'` when `NODE_ENV !== 'development'`
-(`loader.ts:105`), so a packaged app loads the registration from the loader bundled into the api bundle, and
+(`loader.ts:106`), so a packaged app loads the registration from the loader bundled into the api bundle, and
 the `dist/runtime/index.cjs` in resources is shipped and never read. The frontend ships once, inside the
 renderer bundle; `dist/runtime/fe.js` is not built for a built-in pack at all.
 
@@ -207,8 +220,28 @@ before the API boots. Keep a thin `--watch` wrapper that calls `bundlePackRuntim
 bundler, so `npm start` behaves exactly as it does now. Switching the dev loop to `abuddy run`'s watcher is
 the alternative, and it costs the single-command start.
 
+**And it retires three built-in-aware pieces of the build record**, since removing that gate is exactly what
+makes default-setup record the `runtime` and `fe` phases like any other pack. Each site names this document:
+
+- `isBuiltIn`, and one branch of `rebuildCommand`, in `scripts/lib/build-reads.ts` — they exist only to name
+  the command that rebuilds a pack's record, and with one kind of pack the path answers that, as it already
+  does for a fixture pack.
+- the two-kind evidence guard in `repo-checks/tests/dep-files.integration.spec.ts` — the nine bundling phases
+  take a built-in pack *and* an external one to observe between them, precisely because a built-in pack
+  records neither of those two. Afterwards one record carries all nine and the guard collapses into the case
+  above it, which asks only whether a record exists.
+- the first of the two reasons that record is keyed by phase (`abuddy-cli/src/build/build-reads.ts`): that a
+  built-in pack stops before those bundles. The keying stays — `--skip-fe` and `--skip-generate` still skip
+  phases — and only that sentence goes.
+
+**The chain's gate gets stronger by the same move**, which is the part worth knowing before starting:
+`compile` is observed across seven of nine phases today, because `runtime` and `fe` are reachable only
+through the fixture packs, whose step shares no edge with the pool that reads their records. Build
+default-setup like any pack and the step on the chain's critical path is observed across all nine.
+
 **Files:** `abuddy-cli/src/commands/build.ts`, `packages/default-setup/dev-build.mjs`,
-`packages/dev-mode.js`, `packages/default-setup/package.json`.
+`packages/dev-mode.js`, `packages/default-setup/package.json`, `scripts/lib/build-reads.ts`,
+`abuddy-cli/src/build/build-reads.ts`, `repo-checks/tests/dep-files.integration.spec.ts`.
 
 **Why first:** it is what makes a shipped pack a *complete* pack on disk, which every later step assumes, and
 it is the only step that deletes a mechanism no other pack has.
