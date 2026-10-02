@@ -111,6 +111,12 @@ export function readsOf(packDir: string): BuildReads | undefined {
   return read(packDir);
 }
 
+/** Whether a pack is built into the app, which decides which phases its build can record at all */
+export function isBuiltIn(packDir: string): boolean {
+  const manifest = JSON.parse(fs.readFileSync(path.join(REPO_ROOT, packDir, 'abuddy.json'), 'utf-8')) as { builtIn?: boolean };
+  return manifest.builtIn === true;
+}
+
 /** Every file a pack's build read, across its phases, pack-relative and deduplicated */
 export function filesRead(reads: BuildReads): string[] {
   return [...new Set(Object.values(reads.phases).flat())].sort();

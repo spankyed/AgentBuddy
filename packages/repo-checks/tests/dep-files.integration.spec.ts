@@ -331,8 +331,19 @@ describe('abuddy build says what it read', () => {
    * below cannot, because fewer reads is never a finding there.
    */
   it('says which phases it can speak for, so a dropped capture is not a quiet one', () => {
-    const phases = new Set(buildReads.packsWithReads()
-      .flatMap((packDir) => Object.keys(buildReads.readsOf(packDir)?.phases ?? {})));
+    // The nine come from two pack shapes, so the union is evidence only when both have been built: a
+    // built-in pack is compiled into the app and records no runtime or frontend bundle, and only an
+    // external one records those. Neither step that builds them is ordered before this one — the pool
+    // reading these records shares no edge with `test:external-pack:contract` — so a missing record is a
+    // command to run, said as one, rather than a phase that looks as though it went away.
+    const built = buildReads.packsWithReads();
+    for (const [kind, command] of [[true, 'npm run compile'], [false, 'npm run test:external-pack:contract']] as const) {
+      if (!built.some((packDir) => buildReads.isBuiltIn(packDir) === kind)) {
+        expect.fail(`no ${kind ? 'built-in' : 'external'} pack has been built in this checkout: run ${command}. `
+          + 'Without it the phases only that kind of pack records cannot be told from a capture that stopped reporting.');
+      }
+    }
+    const phases = new Set(built.flatMap((packDir) => Object.keys(buildReads.readsOf(packDir)?.phases ?? {})));
     expect([...phases].sort(), 'a phase gone from here is a bundler that stopped reporting; a new one is a '
       + 'bundle that started').toEqual([
       'dslDefs', 'fe', 'flowHelperTypes', 'flowHelpersModule',

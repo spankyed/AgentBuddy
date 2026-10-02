@@ -122,7 +122,13 @@ export function buildReads(packDir: string): BuildReads | undefined {
       };
       const file = path.join(packDir, BUILD_READS_FILE);
       fs.mkdirSync(path.dirname(file), { recursive: true });
-      fs.writeFileSync(file, `${JSON.stringify(record, null, 2)}\n`);
+      // Through a rename, which is atomic within one filesystem. A reader of this file is not ordered
+      // after the build that writes it — in this repo's chain, the step reading the fixture packs' records
+      // and the step rebuilding them share no edge and can overlap — so a plain write leaves a window in
+      // which the file parses as nothing and reads as a record that cannot be believed.
+      const partial = `${file}.${process.pid}.tmp`;
+      fs.writeFileSync(partial, `${JSON.stringify(record, null, 2)}\n`);
+      fs.renameSync(partial, file);
     },
   };
 }
