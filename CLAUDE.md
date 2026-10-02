@@ -472,9 +472,21 @@ npm run api:update       # Dev: regenerate etc/<entry>.api.md (and etc/<entry>.c
 npm run api:stamp  # The cheap half, run by npm run typecheck: compares what the reports were
                          # generated from with etc/declarations.sha256 in ~0.6s and says "run npm run
                          # api:update" when it differs. Its key is every input a report is a function of —
-                         # the declarations (`dist/**/*.ts`, never the compiled .js, hashed through
-                         # `apiSurfaceOf`, which drops doc prose), the set of published entries, the
-                         # producer (API Extractor's version and its tsconfig). There is no format version: a
+                         # the declarations (`dist/**/*.ts`, never the compiled .js, hashed **verbatim**,
+                         # doc prose included), the set of published entries, the producer (API Extractor's
+                         # version and its tsconfig). **So a doc-comment edit in `@abuddy/ears`, `/sdk` or
+                         # `/ui` source fails typecheck until `api:update` runs (~46s), and usually rewrites
+                         # no report.** That is deliberate, and the reason is a refuted measurement: a
+                         # normaliser here dropped each comment to its `@`-tag lines, because prose above an
+                         # exported declaration cannot reach a report — API Extractor replaces it with the
+                         # tags. Prose *inside a type literal* is part of the type's printed text and is
+                         # reproduced word for word, which `etc/index.api.md` does with `SystemEvents`' own
+                         # comments, so the gate was blind to an edit that rewrites a reviewed report. It was
+                         # arbitrary as well as lax: it kept any line matching `@\w`, and prose here names
+                         # `@abuddy/*` packages constantly, so whether a comment edit moved the stamp
+                         # depended on whether its sentences mentioned a package. A false "run api:update"
+                         # costs a minute; a false "nothing changed" ships a wrong report.
+                         # There is no format version: a
                          # stamp records a measurement, so the recorded row *set* is compared both ways instead,
                          # which is what notices a row the key has gained or lost.
                          # **A key is a list of someone else's inputs, so it is a guess**: the entry set was
