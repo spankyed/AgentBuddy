@@ -264,9 +264,6 @@ export const LAYERS: {
   // Both check the repo rather than run in it, and reach the host for the build and freshness primitives
   { name: '@app/repo-checks', dir: 'packages/repo-checks', allowed: ['@abuddy/sdk', '@abuddy/host'] },
   { name: '@app/publish-checks', dir: 'packages/publish-checks', allowed: ['@abuddy/sdk', '@abuddy/host'] },
-  // A pack on disk for the specs whose subject is pack tooling. It writes files and nothing more, so the one
-  // permission is what its own spec reads: `population` from the SDK's testing surface
-  { name: '@app/pack-fixtures', dir: 'packages/pack-fixtures', allowed: ['@abuddy/sdk'] },
 ];
 
 /**

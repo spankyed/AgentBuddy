@@ -3,23 +3,23 @@ import * as path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { REPO_ROOT } from '@abuddy/host/build/packages-built';
 import { population } from '@abuddy/sdk/testing';
-import { handWrittenManifests, packagesUsingFixtures, PACK_FIXTURES, testFilesPoliced } from '../../../scripts/lib/pack-materialisation.ts';
+import { handWrittenManifests, importsFixture, packagesUsingFixtures, PACK_FIXTURE, testFilesPoliced } from '../../../scripts/lib/pack-materialisation.ts';
 
 /**
  * One place decides what a pack on disk looks like, and this is the check that it stays one.
  *
- * `@app/pack-fixtures` exists because a fixture too thin for a rule to fire is a case that passes because it
- * could not fail — measured: half of `import-specifiers.integration`'s sweep once ran on a fixture where two
- * of its rules could not speak. That holds only while specs *ask* for a pack instead of assembling one.
+ * `packFixture` exists because a fixture too thin for a rule to fire is a case that passes because it could
+ * not fail — measured: half of `import-specifiers.integration`'s sweep once ran on a fixture where two of its
+ * rules could not speak. That holds only while specs *ask* for a pack instead of assembling one.
  *
  * **The success case here is `[]`, which cannot tell "nothing offends" from "the detector broke".** So the
  * population is asserted, the predicate is exercised on the code it was written against, and both kinds of
  * thing it must leave alone are asserted too — a rule that passed by flagging everything would fail those.
  */
 describe('a pack on disk is asked for, not assembled', () => {
-  it('reads the packages that declare the fixture, and some do', () => {
-    const packages = population(`packages declaring ${PACK_FIXTURES}`, packagesUsingFixtures());
-    expect(packages, 'no package declares the fixture, so this rule reads nothing').not.toEqual([]);
+  it('reads the packages whose tests import the fixture, and some do', () => {
+    const packages = population(`packages importing ${PACK_FIXTURE}`, packagesUsingFixtures());
+    expect(packages, 'no package imports the fixture, so this rule reads nothing').not.toEqual([]);
     expect(population('test files policed', testFilesPoliced()).length,
       'the policed packages hold no test files, so the sweep below looks at nothing').toBeGreaterThan(20);
   });
@@ -28,7 +28,30 @@ describe('a pack on disk is asked for, not assembled', () => {
     const offences = testFilesPoliced().flatMap((file) =>
       handWrittenManifests(fs.readFileSync(path.join(REPO_ROOT, file), 'utf-8'), file));
     expect(offences.map(({ file, line }) => `${file}:${line}`),
-      `these build a manifest inline; ask ${PACK_FIXTURES} for the pack instead`).toEqual([]);
+      `these build a manifest inline; ask ${PACK_FIXTURE} for the pack instead`).toEqual([]);
+  });
+
+  /**
+   * The population is read from the imports, so it is a predicate and needs a firing case of its own.
+   *
+   * A spelling it fails to recognise drops a whole package out of the sweep while every case here stays green,
+   * which is the expensive direction and the one no assertion downstream can see. Both spellings are covered
+   * because both exist: the subpath, and the relative path the SDK's own spec uses, since a package does not
+   * import itself by name. Watched failing — anchor the matcher to the subpath alone and the population goes
+   * from three packages to two.
+   */
+  it.each([
+    ['the package subpath', `import { packFixture } from '${PACK_FIXTURE}';`],
+    ['a relative path, as the SDK\'s own spec has it', "import { packFixture } from '../../src/testing/pack-fixture.ts';"],
+  ])('sees an import of the fixture as %s', (_how, line) => {
+    expect(importsFixture(line, 'some.spec.ts')).toBe(true);
+  });
+
+  it.each([
+    ['a file that imports nothing of the sort', "import { buildPack } from './pack-builds.ts';"],
+    ['a mention in a comment rather than an import', '// packFixture writes a pack-fixture tree'],
+  ])('does not take %s for an import', (_what, line) => {
+    expect(importsFixture(line, 'some.spec.ts')).toBe(false);
   });
 
   /**
@@ -62,7 +85,7 @@ describe('a pack on disk is asked for, not assembled', () => {
   /**
    * And the four shapes it must leave alone, which are why the rule is not "no test writes `abuddy.json`".
    *
-   * Each is a real site left unconverted on purpose (`packages/pack-fixtures/CLAUDE.md` records them): a
+   * Each is a real site left unconverted on purpose (`packages/abuddy-sdk/CLAUDE.md` records them): a
    * directory holding *any* manifest is sometimes the subject; a pack something else scaffolded is patched
    * rather than built; a manifest handed to a command under test has no tree around it; and the installed
    * shape belongs to `@abuddy/host`. A detector that flagged these would be answered by exemptions, and an

@@ -1,9 +1,9 @@
 /**
  * Where a test writes a pack manifest by hand, read from its syntax tree.
  *
- * `@app/pack-fixtures` exists so that one place decides what a pack on disk looks like, and a fixture too
- * thin for a rule to fire is a case that passes because it could not fail. That only holds while specs ask
- * for a pack rather than assembling one, so this is the check that they do.
+ * `packFixture` exists so that one place decides what a pack on disk looks like, and a fixture too thin for a
+ * rule to fire is a case that passes because it could not fail. That only holds while specs ask for a pack
+ * rather than assembling one, so this is the check that they do.
  *
  * **The predicate is read, not matched.** The lesson is `process-spawns.ts`', which replaced a check that
  * asked whether a call's *argument text* matched a pattern and reported three spawning files where there are
@@ -23,9 +23,17 @@
  * - the **installed shape** (a manifest beside `integrity.json` and a snapshot), which is `@abuddy/host`'s
  *   artifact and whose layout host owns.
  *
- * **Who it polices derives from the manifest**: the packages that declare `@app/pack-fixtures`. A package
- * that reaches for the fixture opts into the rule in the same edit, and a layer or a pack — which may not
- * import an `@app/*` package at all — is never asked to do something it cannot.
+ * **Who it polices is the packages whose tests reach for the fixture**, derived by reading their imports. A
+ * package that adopts it opts into the rule in the same edit, and the rule's subject is what it can actually
+ * be: that no package writes a pack tree both ways.
+ *
+ * **It is deliberately not every package that *could* import it.** `packFixture` is a source-only export of
+ * `@abuddy/sdk`, so every host-layer package can resolve it, and asking all of them was measured on
+ * 2026-10-02: 23 findings, 20 in `@abuddy/host` and 3 in `packages/api`, and **every one of them deserves to
+ * be hand-written**. They write a *data dir's* installed pack (`packs/<id>/abuddy.json`, whose subject is
+ * discovery, staging or an update check) or a built built-in (`dist/runtime/index.cjs` and no source at all).
+ * A fixture's two-feature source tree is the wrong artifact for all 23, so widening the population buys 23
+ * exemptions — and an exemption list is where a gate goes quiet.
  */
 import * as fs from 'node:fs';
 import * as path from 'node:path';
@@ -33,8 +41,14 @@ import ts from 'typescript';
 import { REPO_ROOT } from '@abuddy/host/build/packages-built';
 import { PACKAGE_DIRS } from './workspace-deps.ts';
 
-/** The fixture package, named once: the dependency that opts a package into this rule */
-export const PACK_FIXTURES = '@app/pack-fixtures';
+/** The fixture, named once */
+export const PACK_FIXTURE = '@abuddy/sdk/testing/pack-fixture';
+
+/**
+ * An import of the fixture, by either spelling: the package subpath, or the relative path the SDK's own spec
+ * uses. Matched on the specifier's tail so that neither spelling is named and a move is one edit here.
+ */
+const FIXTURE_SPECIFIER = /(^|\/)testing\/pack-fixture(\.ts)?$/;
 
 /** However the module is spelled */
 const NODE_FS = new Set(['node:fs', 'fs', 'node:fs/promises', 'fs/promises']);
@@ -105,24 +119,34 @@ export function handWrittenManifests(source: string, file = 'fixture.ts'): HandW
   return found;
 }
 
-/** The packages whose tests this rule reads: the ones that declare the fixture */
+/** Whether a file imports the fixture — read from the tree, after a text filter that only skips work */
+export function importsFixture(source: string, file = 'fixture.ts'): boolean {
+  if (!source.includes('pack-fixture')) return false;
+  const parsed = ts.createSourceFile(file, source, ts.ScriptTarget.Latest, true);
+  let found = false;
+  parsed.forEachChild((node) => {
+    if (ts.isImportDeclaration(node) && ts.isStringLiteral(node.moduleSpecifier)
+      && FIXTURE_SPECIFIER.test(node.moduleSpecifier.text)) found = true;
+  });
+  return found;
+}
+
+/** Every `.ts` under a package's `tests/`, repo-relative */
+function testFilesOf(root: string, dir: string): string[] {
+  const tests = path.join(root, 'packages', dir, 'tests');
+  if (!fs.existsSync(tests)) return [];
+  return fs.readdirSync(tests, { recursive: true, withFileTypes: true })
+    .filter((entry) => entry.isFile() && entry.name.endsWith('.ts'))
+    .map((entry) => path.relative(root, path.join(entry.parentPath, entry.name)));
+}
+
+/** The packages whose tests this rule reads: the ones that import the fixture */
 export function packagesUsingFixtures(root = REPO_ROOT): string[] {
-  return PACKAGE_DIRS.filter((dir) => {
-    const manifest = path.join(root, 'packages', dir, 'package.json');
-    if (!fs.existsSync(manifest)) return false;
-    const { dependencies = {}, devDependencies = {} } = JSON.parse(fs.readFileSync(manifest, 'utf-8')) as
-      { dependencies?: Record<string, string>; devDependencies?: Record<string, string> };
-    return PACK_FIXTURES in { ...dependencies, ...devDependencies };
-  }).sort();
+  return PACKAGE_DIRS.filter((dir) => testFilesOf(root, dir)
+    .some((file) => importsFixture(fs.readFileSync(path.join(root, file), 'utf-8'), file))).sort();
 }
 
 /** Every test file this rule reads, repo-relative */
 export function testFilesPoliced(root = REPO_ROOT): string[] {
-  return packagesUsingFixtures(root).flatMap((dir) => {
-    const tests = path.join(root, 'packages', dir, 'tests');
-    if (!fs.existsSync(tests)) return [];
-    return fs.readdirSync(tests, { recursive: true, withFileTypes: true })
-      .filter((entry) => entry.isFile() && entry.name.endsWith('.ts'))
-      .map((entry) => path.relative(root, path.join(entry.parentPath, entry.name)));
-  }).sort();
+  return packagesUsingFixtures(root).flatMap((dir) => testFilesOf(root, dir)).sort();
 }

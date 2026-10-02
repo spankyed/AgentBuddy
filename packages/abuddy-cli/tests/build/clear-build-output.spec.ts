@@ -2,7 +2,7 @@ import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
-import { packFixture } from '@app/pack-fixtures';
+import { packFixture } from '@abuddy/sdk/testing/pack-fixture';
 import { build, clearBuildOutput } from '../../src/commands/build';
 
 /** abuddy build starts from no earlier output of its own, so nothing stale ships or gets published */

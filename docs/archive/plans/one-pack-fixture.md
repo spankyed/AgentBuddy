@@ -1,21 +1,46 @@
-> **Done** (branch `AS/one-pack-fixture`), in the four phases below:
-> `b6e551b5b` the package, `f890484a4` the options, `e48f613b2`/`83f6d498a` the adoption, `fcfbfa835` the
-> guardrail. The text after this block is the plan as written, which means its headline number is wrong; the
-> corrected one is the first thing this records.
+> **Done** (branch `AS/one-pack-fixture`), in the four phases below: `b6e551b5b` the package,
+> `f890484a4` the options, `e48f613b2`/`83f6d498a` the adoption, `fcfbfa835` the guardrail — and then
+> **Decision 1 reversed**, which is the first thing this records. The text after this block is the plan as
+> written, which means both its headline number and its home for the fixture are wrong.
+>
+> **`packFixture` lives in `@abuddy/sdk` after all, as the source-only export
+> `@abuddy/sdk/testing/pack-fixture`.** Decision 1 weighed four homes and rejected them all, but it never
+> weighed this one, because it treated *"in `@abuddy/sdk`"* as synonymous with *"in the published, reviewed
+> surface"*. In this repo that is false: an export whose only branch is `@abuddy/source` is dropped from the
+> published manifest outright (`publishedManifest`, `@abuddy/host/build/published-manifest`), so it ships in no
+> tarball, appears in no `etc/*.api.md`, and is seen by neither `api:check` nor `api:stamp`. `./runtime/internals`
+> had been that shape for months. Every cost the new workspace was built to escape was escapable with one export
+> line, and a pack cannot resolve it either — a pack's config may not declare that condition, which
+> `check:specifiers` enforces, where the old home rested on packs not declaring an `@app/*` dependency.
+>
+> The reach argument for the move is **not** the reason, and was checked before being claimed: it unlocks
+> roughly nothing (see the correction below). The reason is that a workspace per helper is the precedent, and
+> this one was seven files and six registration points for one function.
 >
 > **98 sites write a pack manifest, not 101, across 55 files — and the count was never the work.** Of the 98,
-> **54** are in the two packages that may import an `@app/*` package, and of those only **28** are a manifest
+> **54** are in `@abuddy/cli` and `@app/repo-checks`, and of those only **28** are a manifest
 > written inline for a tree of their own. **11 of them, in 8 files, became `packFixture`;** the rest are four
-> shapes left alone with a reason each, listed in `packages/pack-fixtures/CLAUDE.md`: a `'{}'` discovery
+> shapes left alone with a reason each, listed in `packages/abuddy-sdk/CLAUDE.md`: a `'{}'` discovery
 > marker, a patch of a pack something else scaffolded, a manifest that *is* the subject with no tree around
 > it, and the installed shape, which is `@abuddy/host`'s artifact. The plan's **Unverified** item — *"that
 > every one of the sites wants the builder"* — resolves to no, and the four shapes are the answer.
 >
-> **The finding worth keeping is that eligibility is a layer question.** The other 44 sites are in
-> `@abuddy/host`, `@abuddy/sdk`, `packages/api` and `@app/default-setup`, which may not import an `@app/*`
-> package at all, so a hand-written manifest there is the only option available. The guardrail therefore
-> derives its scope from which packages *declare* `@app/pack-fixtures` rather than claiming the repo — which
-> is also why it needs no exemption list, and has none.
+> **The claim that eligibility is a layer question was wrong, and the correction is the finding worth
+> keeping.** This block first said the other 44 sites are hand-written because their packages may not import an
+> `@app/*` package — which is circular, since that followed from the home. Asked properly, with the real
+> detector over every host-layer package: **23 findings, 20 in `@abuddy/host` and 3 in `packages/api`, and every
+> one of them deserves to be hand-written.** They write a *data dir's* installed pack (`packs/<id>/abuddy.json`,
+> whose subject is discovery, staging or an update check) or a built built-in (`dist/runtime/index.cjs` and no
+> source at all). A fixture's two-feature source tree is the wrong artifact for all 23, so the population is
+> narrow because of what those specs are, not because of where the fixture lives — and that is what keeps the
+> guardrail free of an exemption list.
+>
+> The guardrail's population is therefore derived by **reading imports**: the packages whose tests ask for the
+> fixture. That is a predicate rather than a manifest field, so it can be wrong where a field could not — a
+> spelling it fails to recognise drops a package out of the sweep with every case still green — and both
+> spellings that exist carry a case. Watched failing: anchoring the matcher to the package subpath alone makes
+> the SDK's own relative import invisible and silently takes the population from three packages and 172 files to
+> two and 108.
 >
 > **Three of the four Decisions landed; two options were not built, and the reason is composition.** Decision
 > 3's `built`/`modules` and Decision 4's `beforeBuild` are absent: `buildPack(dir)` already takes a directory,
@@ -26,8 +51,8 @@
 >
 > **Phase 4 took the lesson it was written to take.** The predicate reads the syntax tree: fs bindings come
 > from each file's own `node:fs` import however it is spelled, and a finding requires
-> `JSON.stringify(<object literal with an id>)` reaching a write. Measured on the tree it shipped against:
-> 108 files examined, 0 findings, and four mutations watched — reintroducing one hand-written manifest fires
+> `JSON.stringify(<object literal with an id>)` reaching a write. Measured after the move: 172 files examined
+> across three packages, 0 findings, and five mutations watched — reintroducing one hand-written manifest fires
 > by file and line, dropping the object-literal requirement fails three cases *including two allowed shapes*,
 > hard-coding the fs names fails the never-imported-fs control, and emptying the population fails naming
 > itself rather than passing over nothing.

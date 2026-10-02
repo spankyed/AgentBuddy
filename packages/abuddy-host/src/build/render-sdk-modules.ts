@@ -12,6 +12,9 @@ export const APP_UNBRIDGED: Readonly<Record<string, string>> = {
   '@abuddy/sdk/actions': 'compile-time only, inlined into seed strings',
   // A pack's unit tests (through @abuddy/testing) load it, never a pack's runtime in the app
   '@abuddy/sdk/testing': 'unit-test runtime only',
+  // A pack directory on disk, for the specs whose subject is pack tooling. Source-only: the entry has no
+  // published target and a pack's config may not declare the condition, so no pack can resolve it at all
+  '@abuddy/sdk/testing/pack-fixture': 'repo test tooling, resolvable only under @abuddy/source',
 };
 
 /** The shared-instance specifiers the app bridges, from each package's exports map as `fromFile` resolves it */

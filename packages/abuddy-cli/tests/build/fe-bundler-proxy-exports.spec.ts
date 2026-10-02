@@ -2,7 +2,7 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { init as initLexer, parse } from 'es-module-lexer';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { packFixture } from '@app/pack-fixtures';
+import { packFixture } from '@abuddy/sdk/testing/pack-fixture';
 import { packExternalsPlugin } from '../../src/build/fe-bundler';
 import { packagesBuiltOrRefuse, REPO_ROOT } from '@abuddy/host/build/packages-built';
 

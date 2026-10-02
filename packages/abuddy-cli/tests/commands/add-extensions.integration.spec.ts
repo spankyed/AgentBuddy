@@ -5,7 +5,7 @@ import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
-import { packFixture } from '@app/pack-fixtures';
+import { packFixture } from '@abuddy/sdk/testing/pack-fixture';
 import { init } from '../../src/commands/init';
 import { addStep } from '../../src/commands/add/step';
 import { addArtifact } from '../../src/commands/add/artifact';

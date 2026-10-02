@@ -1,7 +1,7 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
-import { packFixture } from '@app/pack-fixtures';
+import { packFixture } from '@abuddy/sdk/testing/pack-fixture';
 import { bundlePackRuntime, bundlePackSeedCompilers, bundlePackStepBuild } from '../../src/build/be-bundler';
 import { bundlePackFE } from '../../src/build/fe-bundler';
 import { REPO_ROOT } from '@abuddy/host/build/packages-built';

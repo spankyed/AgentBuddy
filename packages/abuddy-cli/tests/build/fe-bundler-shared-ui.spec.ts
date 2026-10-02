@@ -2,7 +2,7 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { packFixture } from '@app/pack-fixtures';
+import { packFixture } from '@abuddy/sdk/testing/pack-fixture';
 import * as hostMonacoConfig from '@abuddy/ui/components/monaco-config';
 import * as hostSdkFe from '@abuddy/sdk/fe';
 import { bundlePackFE } from '../../src/build/fe-bundler';

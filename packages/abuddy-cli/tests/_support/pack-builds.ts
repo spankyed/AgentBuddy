@@ -4,7 +4,7 @@
 import { execFileSync } from 'node:child_process';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
-import { packFixture } from '@app/pack-fixtures';
+import { packFixture } from '@abuddy/sdk/testing/pack-fixture';
 import { PACK_TSCONFIG } from '../../src/commands/init';
 import { REPO_ROOT } from '@abuddy/host/build/packages-built';
 

@@ -173,6 +173,9 @@
     "./abuddy.schema.json": "./abuddy.schema.json",
     "./runtime/internals": {
       "@abuddy/source": "./src/runtime/internals.ts"
+    },
+    "./testing/pack-fixture": {
+      "@abuddy/source": "./src/testing/pack-fixture.ts"
     }
   },
   "peerDependencies": {
