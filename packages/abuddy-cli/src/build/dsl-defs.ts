@@ -3,6 +3,7 @@ import * as path from 'node:path';
 import { builtinModules } from 'node:module';
 import ts from 'typescript';
 import type { PackManifest } from '@abuddy/sdk/build';
+import type { RecordReads } from './build-reads';
 import { bundleDeclarations, isPackageSpecifier } from './types-bundler';
 
 /**
@@ -55,6 +56,7 @@ export function monacoDefsFile(name: string): string {
 export async function bundleDslDefs(
   packDir: string,
   manifest: PackManifest,
+  recordReads?: RecordReads,
 ): Promise<{ success: true; files: string[] } | { success: false; error: string }> {
   const entries = Object.entries(manifest.dsl ?? {}).filter(([, def]) => def.targets.includes('monaco'));
   if (entries.length === 0) return { success: true, files: [] };
@@ -73,6 +75,7 @@ export async function bundleDslDefs(
       outro: '}',
       renderChunk: withoutRenameSuffixes,
       compilerOptions,
+      recordReads,
     });
     if (!result.success) return { success: false, error: `${name}: ${result.error}` };
     files.push(monacoDefsFile(name));

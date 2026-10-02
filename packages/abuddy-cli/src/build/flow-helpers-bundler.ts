@@ -1,6 +1,7 @@
 import * as path from 'node:path';
 import type { PackFlowHelpers } from '@abuddy/sdk/build';
-import { bundlePackFlowHelpersModule, type BundleRuntimeOptions } from './be-bundler';
+import { bundlePackFlowHelpersModule } from './be-bundler';
+import type { RecordReads } from './build-reads';
 import { bundleDeclarations } from './types-bundler';
 import { facadeProblems } from './facade-gate';
 
@@ -13,16 +14,24 @@ const FLOW_HELPERS_TYPES_FILE = 'flow-helpers.d.ts';
  * them, so they get the helpers and option types this pack generated. The declarations must be usable
  * by dependents, as the facade types must.
  */
+export interface BundleFlowHelpersOptions {
+  /** Minify for release bundles, as every pack bundle does */
+  release?: boolean;
+  /** One recorder per bundle, and this runs two: the ES module, and its declarations */
+  recordModuleReads?: RecordReads;
+  recordTypeReads?: RecordReads;
+}
+
 export async function bundlePackFlowHelpers(
   packDir: string,
   typesDir: string,
-  options: BundleRuntimeOptions = {},
+  options: BundleFlowHelpersOptions = {},
 ): Promise<{ success: true; flowHelpers: PackFlowHelpers } | { success: false; error: string }> {
-  const bundled = await bundlePackFlowHelpersModule(packDir, options);
+  const bundled = await bundlePackFlowHelpersModule(packDir, { release: options.release, recordReads: options.recordModuleReads });
   if (!bundled.success) return bundled;
 
   const typesFile = path.join(typesDir, FLOW_HELPERS_TYPES_FILE);
-  const types = await bundleDeclarations(packDir, path.join(packDir, 'src', '__generated__', 'flow-helpers.ts'), typesFile);
+  const types = await bundleDeclarations(packDir, path.join(packDir, 'src', '__generated__', 'flow-helpers.ts'), typesFile, { recordReads: options.recordTypeReads });
   if (!types.success) return types;
   const problems = facadeProblems(packDir, typesFile);
   if (problems.length > 0) {

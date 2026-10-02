@@ -3,11 +3,17 @@ import * as path from 'node:path';
 import { APP_ONLY_EXPORTS, SHARED_DEPS, sharedInstanceExternals } from '@abuddy/host/build/shared-deps';
 import { SEED_COMPILERS_FILE } from '@abuddy/sdk/build';
 import { checkSeedRuntimeLoads } from './seed-runtime-check';
+import type { RecordReads } from './build-reads';
 import { errorMessage } from '@abuddy/sdk/utils/pure';
 
 export interface BundleRuntimeOptions {
   /** Minify for release bundles; dev builds keep readable output with source maps. */
   release?: boolean;
+  /**
+   * Where this bundle reports the files it read, for the build's record of its inputs. Absent when
+   * nothing is recording, which is what keeps `metafile` off in that case.
+   */
+  recordReads?: RecordReads;
 }
 
 /** The host-provided packages every pack bundle leaves external; the host loader resolves its own singletons. */
@@ -40,11 +46,18 @@ async function bundlePackSource<T extends EsbuildOptions>(
     plugins,
     minify: options.release ?? false,
     logLevel: 'silent',
+    // `metafile.inputs` is this bundle's dep file, and the one place the five esbuild bundles share: a
+    // caller asking for the record never has to remember the flag, and one that is not pays nothing
+    ...(options.recordReads && { metafile: true }),
     ...overrides,
   };
+  const result = await esbuild.build(merged);
+  if (options.recordReads && result.metafile) {
+    options.recordReads({ bundler: 'esbuild', version: esbuild.version, files: Object.keys(result.metafile.inputs) });
+  }
   // esbuild keys `outputFiles`/`metafile` off the literal options it was called with; merging hides
   // the caller's `write: false` / `metafile: true` from it, so restate them on the result.
-  return await esbuild.build(merged) as unknown as import('esbuild').BuildResult<T>;
+  return result as unknown as import('esbuild').BuildResult<T>;
 }
 
 function bundleError(err: unknown): { success: false; error: string } {

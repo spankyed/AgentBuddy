@@ -15,6 +15,7 @@ import { findFEEntry, bundlePackFE } from '../build/fe-bundler';
 import { ensureCheckoutPackages } from '../build/checkout-packages.ts';
 import { refusePackRuleViolations } from '../build/pack-rules.ts';
 import { bundlePackRuntime, bundlePackSeedCompilers, bundlePackSeedRuntime, bundlePackStepBuild, SEED_RUNTIME_FILE } from '../build/be-bundler';
+import { buildReads } from '../build/build-reads';
 import { bundleDslDefs, DEFS_DIR } from '../build/dsl-defs';
 import { bundlePackTypes } from '../build/types-bundler';
 import { facadeProblems } from '../build/facade-gate';
@@ -89,6 +90,11 @@ export async function build(args: string[]) {
   const root = findPackRoot(process.cwd());
   // The installer rejects an invalid manifest; don't build (or let CI publish) one
   const manifest = readValidManifest(root);
+
+  // What each bundling phase read, for the chain step that builds this pack to be checked against. The
+  // phases with no bundler to ask — codegen, the seed compilation, feature settings, the pack rules — are
+  // absent from the record rather than guessed at
+  const reads = buildReads(root);
 
   const outputDir = path.join(root, 'dist');
   const external = !manifest.builtIn;
@@ -166,7 +172,7 @@ export async function build(args: string[]) {
   );
   const seedCompilersBundled = Object.keys(seedCompilers).length > 0;
   if (seedCompilersBundled) {
-    const bundled = await bundlePackSeedCompilers(root, outputDir, seedCompilers, { release });
+    const bundled = await bundlePackSeedCompilers(root, outputDir, seedCompilers, { release, recordReads: reads?.forPhase('seedCompilers') });
     if (!bundled.success) throw new Error(`Seed compiler bundle failed: ${bundled.error}`);
   }
 
@@ -191,7 +197,7 @@ export async function build(args: string[]) {
   // Facade types for dependents: they import this pack's entity shapes, events, services and repositories
   const defs: Record<string, string> = {};
   const packTypesFile = path.join(outputDir, PACK_LAYOUT.typesDir, `${PACK_TYPES_DEF}.d.ts`);
-  const packTypes = await bundlePackTypes(root, packTypesFile);
+  const packTypes = await bundlePackTypes(root, packTypesFile, reads?.forPhase('types'));
   const packTypesProblems = packTypes.success ? facadeProblems(root, packTypesFile) : [];
   if (packTypes.success && packTypesProblems.length === 0) {
     defs[PACK_TYPES_DEF] = packTypes.content;
@@ -202,7 +208,11 @@ export async function build(args: string[]) {
     fail(`Pack types bundle failed: ${packTypes.error}`);
   }
   // Flow helpers for dependents: their generated flow helpers re-export this pack's
-  const flowHelpers = await bundlePackFlowHelpers(root, path.join(outputDir, PACK_LAYOUT.typesDir), { release });
+  const flowHelpers = await bundlePackFlowHelpers(root, path.join(outputDir, PACK_LAYOUT.typesDir), {
+    release,
+    recordModuleReads: reads?.forPhase('flowHelpersModule'),
+    recordTypeReads: reads?.forPhase('flowHelperTypes'),
+  });
   if (!flowHelpers.success) fail(`Flow helpers bundle failed: ${flowHelpers.error}`);
   /**
    * What this pack's whole tree declares, and which pack declares each name.
@@ -225,6 +235,10 @@ export async function build(args: string[]) {
     }
     fs.mkdirSync(path.dirname(snapshotPath), { recursive: true });
     fs.writeFileSync(snapshotPath, JSON.stringify(snapshot, null, 2));
+    // With the snapshot rather than per phase: both say what this build produced, and a build that failed
+    // produced neither. A phase's reads are kept in memory until here so a half-finished build leaves the
+    // last complete record in place rather than a partial one
+    reads?.write();
     console.log(`\nOutput: ${path.relative(process.cwd(), outputDir)}/`);
   };
 
@@ -250,7 +264,7 @@ export async function build(args: string[]) {
 
   // ── Step build facets (for dependents' flow validation) ─────────────
   if (manifest.steps?.build) {
-    const stepBuild = await bundlePackStepBuild(root, outputDir, manifest.steps.build, { release });
+    const stepBuild = await bundlePackStepBuild(root, outputDir, manifest.steps.build, { release, recordReads: reads?.forPhase('stepBuild') });
     if (stepBuild.success) {
       console.log(`  step build: dist/${PACK_LAYOUT.stepsBuild}`);
     } else {
@@ -259,7 +273,7 @@ export async function build(args: string[]) {
   }
 
   // ── Seed runtime (for dependents' unit tests) ─────────────────────────
-  const seedRuntime = await bundlePackSeedRuntime(root, outputDir, { release });
+  const seedRuntime = await bundlePackSeedRuntime(root, outputDir, { release, recordReads: reads?.forPhase('seedRuntime') });
   if (seedRuntime.success) {
     console.log(`  seed runtime: dist/${PACK_LAYOUT.buildDir}/${SEED_RUNTIME_FILE}`);
   } else {
@@ -270,7 +284,7 @@ export async function build(args: string[]) {
 
   // ── DSL editor definitions ───────────────────────────────────────────
   if (manifest.dsl) {
-    const defs = await bundleDslDefs(root, manifest);
+    const defs = await bundleDslDefs(root, manifest, reads?.forPhase('dslDefs'));
     if (defs.success) {
       for (const file of defs.files) console.log(`  dsl defs: ${file}`);
     } else {
@@ -286,7 +300,7 @@ export async function build(args: string[]) {
   }
 
   // ── Backend runtime ──────────────────────────────────────────────────
-  const runtimeResult = await bundlePackRuntime(root, outputDir, { release });
+  const runtimeResult = await bundlePackRuntime(root, outputDir, { release, recordReads: reads?.forPhase('runtime') });
   if (runtimeResult.success) {
     console.log(`  runtime: dist/${PACK_LAYOUT.runtimeEntry}`);
   } else {
@@ -297,7 +311,7 @@ export async function build(args: string[]) {
   const feEntry = args.includes('--skip-fe') ? null : findFEEntry(root);
   if (feEntry) {
     const feOutputDir = path.join(outputDir, PACK_LAYOUT.runtimeDir);
-    const feResult = await bundlePackFE({ packDir: root, outputDir: feOutputDir, entryPoint: feEntry, release });
+    const feResult = await bundlePackFE({ packDir: root, outputDir: feOutputDir, entryPoint: feEntry, release, recordReads: reads?.forPhase('fe') });
     if (feResult.success) {
       console.log(`  fe: dist/${PACK_LAYOUT.feEntry}`);
       if (fs.existsSync(path.join(outputDir, PACK_LAYOUT.feStyles))) {

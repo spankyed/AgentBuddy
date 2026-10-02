@@ -7,6 +7,7 @@ import { ENSURE, namedByScript, scopeOf, TYPECHECK_LEGS } from '../../../scripts
 import { PACKAGE_DIRS } from '../../../scripts/lib/workspace-deps.ts';
 import { UNIT_SUITES, unitStepName } from '../../../scripts/lib/unit-suites.ts';
 import { depFileNames, readsOf, sourceOf, untrustworthy } from '../../../scripts/lib/dep-files.ts';
+import * as buildReads from '../../../scripts/lib/build-reads.ts';
 import { population } from '@abuddy/sdk/testing';
 
 /**
@@ -260,6 +261,167 @@ describe('a dep file is checked against itself before it is believed', () => {
 });
 
 /**
+ * And the same question of `abuddy build`, which is the other tool here that can be asked.
+ *
+ * Two chain steps run it — `compile` and `test:external-pack:contract`, 70s between them — and until the
+ * command started recording, their declared inputs were compared against nothing. The bundlers it runs had
+ * the answer all along and threw it away: esbuild's `metafile.inputs`, Rollup's `watchFiles` for the three
+ * declaration bundles, and the frontend bundle's module graph.
+ *
+ * **Evidence-dependent in the same way the dep files are**, and for the same reason it is worth saying so
+ * out loud: a record exists only where the pack has been built in this checkout. A fresh clone has none, and
+ * the first case below fails with the command to run rather than passing over an empty population.
+ *
+ * **It covers the bundling, not the step.** The phases with no bundler to ask are absent from the record,
+ * which is why both steps stay on the list at the end of this file.
+ */
+describe('abuddy build says what it read', () => {
+  /** The step that builds a pack: the one that declares that pack's `dist` among its outputs */
+  const building = (packDir: string) =>
+    CHAIN_STEPS.find((step) => (step.outputs ?? []).includes(`${packDir}/dist`));
+
+  /**
+   * The comparison, as a function of what was read and what is declared, so the case below can hand it a
+   * read nobody declares and watch it report.
+   *
+   * A firing case has to come from this direction. Dropping a *capture* makes the recorded set smaller,
+   * which a reads-are-declared check cannot notice by construction — that failure is caught by the phase
+   * case above it, not here.
+   */
+  const undeclared = (files: readonly string[], step: { inputs: readonly string[]; excludes?: readonly string[] }): string[] => {
+    const declared = new Set(step.inputs
+      .flatMap((input) => inputFiles(path.join(REPO_ROOT, input)))
+      .map((file) => file.toLowerCase()));
+    const skips = (step.excludes ?? []).map((skip) => skip.toLowerCase());
+    return files
+      .map((file) => file.toLowerCase())
+      .filter((file) => fs.existsSync(path.join(REPO_ROOT, file)))
+      .filter((file) => !declared.has(file) && !skips.some((skip) => file === skip || file.startsWith(`${skip}/`)))
+      .sort();
+  };
+
+  /** Every read of every built pack, repo-relative: a pack records its own paths, and `..` leaves the pack */
+  const readsByPack = (): { packDir: string; files: string[] }[] => buildReads.packsWithReads().flatMap((packDir) => {
+    const record = buildReads.readsOf(packDir);
+    return record === undefined ? [] : [{
+      packDir,
+      files: buildReads.filesRead(record).map((file) => path.normalize(path.join(packDir, file))),
+    }];
+  });
+
+  it('finds a build record to read, or says plainly that there is no evidence here', () => {
+    const found = buildReads.packsWithReads();
+    if (found.length === 0) {
+      expect.fail('no pack has a .abuddy/reads.json: run npm run compile once, then this can check what '
+        + 'the build read. An empty run is not a passing one.');
+    }
+    for (const packDir of found) {
+      expect(buildReads.readsOf(packDir), `${buildReads.untrustworthy(packDir)}`).toBeDefined();
+    }
+    expect(readsByPack().flatMap(({ files }) => files).length, 'every record is empty of files')
+      .toBeGreaterThan(100);
+  });
+
+  /**
+   * Which phases this can speak for, named rather than implied — the half that catches a dropped capture.
+   *
+   * The union across the built packs, because no one pack has every phase: a built-in pack stops before the
+   * runtime and frontend bundles, and a pack with no `dsl` or `steps.build` skips those. A capture that
+   * stops reporting takes its phase out of this set, which is the only thing that can see it go; the gate
+   * below cannot, because fewer reads is never a finding there.
+   */
+  it('says which phases it can speak for, so a dropped capture is not a quiet one', () => {
+    const phases = new Set(buildReads.packsWithReads()
+      .flatMap((packDir) => Object.keys(buildReads.readsOf(packDir)?.phases ?? {})));
+    expect([...phases].sort(), 'a phase gone from here is a bundler that stopped reporting; a new one is a '
+      + 'bundle that started').toEqual([
+      'dslDefs', 'fe', 'flowHelperTypes', 'flowHelpersModule',
+      'runtime', 'seedCompilers', 'seedRuntime', 'stepBuild', 'types',
+    ]);
+  });
+
+  /**
+   * The gate. Both steps declare whole trees — `tests/packs` and `PACKAGE_BUILD_OUTPUTS` — and the question
+   * is whether whole trees are *enough*, which only an observation can answer. A build reading a file its
+   * step does not declare is a step reporting `cached` over work that changed.
+   */
+  it('leaves nothing a build read outside what the step building that pack declares', () => {
+    const missing = readsByPack().flatMap(({ packDir, files }) => {
+      const step = building(packDir);
+      if (step === undefined) return [`${packDir} was built and no step declares its dist, so nothing re-runs on what it read`];
+      return undeclared(files, step).slice(0, 5).map((file) => `${step.name} built ${packDir}, which read ${file}, and the step does not declare it`);
+    });
+    expect(missing, 'the build read these and nothing re-runs the step when they change').toEqual([]);
+  });
+
+  /**
+   * And the comparison can report, which is the one thing a passing gate never shows.
+   *
+   * A real file that the step genuinely does not declare, rather than a fabricated path: the gate drops a
+   * read that is not on disk, so a made-up name would be filtered out before the comparison it is meant to
+   * exercise.
+   */
+  it('reports a read the step does not declare', () => {
+    const compile = CHAIN_STEPS.find((step) => step.name === 'compile')!;
+    const elsewhere = 'packages/api/src/server.ts';
+    expect(fs.existsSync(path.join(REPO_ROOT, elsewhere)), 'this case needs a real file to be about').toBe(true);
+    expect(undeclared([elsewhere], compile)).toEqual([elsewhere]);
+    // And the same comparison says nothing about a file the step does declare, so it is not simply failing
+    expect(undeclared(['packages/default-setup/abuddy.json'], compile)).toEqual([]);
+  });
+});
+
+/**
+ * And a build record is a proxy too, so it is checked against itself.
+ *
+ * The same three-cause shape as a dep file's, over what a bundler's record can be wrong about: never built
+ * here, built by bundlers that have since moved, or built with nothing reporting at all. The third has no
+ * counterpart on the TypeScript side, because a compiler that ran read something — where every capture here
+ * is a line that can be deleted.
+ */
+describe('a build record is checked against itself before it is believed', () => {
+  const built = () => buildReads.packsWithReads()[0];
+
+  it('refuses a pack it has no record for, rather than reporting an empty read set', () => {
+    expect(buildReads.readsOf('packages/api')).toBeUndefined();
+    expect(buildReads.untrustworthy('packages/api')).toMatch(/has not been built in this checkout/);
+  });
+
+  it('refuses one written by another bundler, naming which and both versions', () => {
+    const packDir = built();
+    expect(buildReads.readsOf(packDir), 'the fixture is unreadable, so this case proves nothing').toBeDefined();
+    expect(buildReads.untrustworthy(packDir, () => '0.0.0-not-installed'))
+      .toMatch(/bundled by \w+ [\d.]+, and 0\.0\.0-not-installed is installed/);
+  });
+
+  it('refuses one whose bundler is not installed at all', () => {
+    expect(buildReads.untrustworthy(built(), () => undefined)).toMatch(/and nothing is installed/);
+  });
+
+  /**
+   * And the reader applies it, rather than leaving it to whoever remembers — the half that was missing on
+   * the dep-file side until a case went looking for it.
+   */
+  it('reads nothing out of a record it would not trust', () => {
+    const packDir = built();
+    const file = path.join(REPO_ROOT, packDir, '.abuddy', 'reads.json');
+    const original = fs.readFileSync(file, 'utf-8');
+    try {
+      const record = JSON.parse(original) as { bundlers: Record<string, string> };
+      fs.writeFileSync(file, JSON.stringify({ ...record, bundlers: { ...record.bundlers, esbuild: '0.0.0-another-bundler' } }));
+      expect(buildReads.readsOf(packDir), 'a module graph from another bundler describes another build').toBeUndefined();
+
+      fs.writeFileSync(file, JSON.stringify({ bundlers: record.bundlers, phases: {} }));
+      expect(buildReads.readsOf(packDir), 'a record of no phase is a build that reported nothing').toBeUndefined();
+      expect(buildReads.untrustworthy(packDir)).toMatch(/recorded no phase/);
+    } finally {
+      fs.writeFileSync(file, original);
+    }
+    expect(buildReads.readsOf(packDir), 'the fixture was not restored').toBeDefined();
+  });
+});
+
+/**
  * And the same question of the whole chain: which steps has anything looked at.
  *
  * Three answers, and the third is the one worth naming. A **dep file** is the compiler reporting what it
@@ -317,10 +479,17 @@ describe('what has looked at a step at all', () => {
    * hand-listed, which is the only protection available to a step nothing can observe. `test:smoke` and
    * `test` are the same shape: Playwright driving a real Electron process.
    *
-   * *A tool could report and is not asked.* `test:external-pack:contract` is dominated by `abuddy build`,
-   * our own command, whose esbuild call already sets `metafile: true` and reads only
-   * `result.metafile.outputs` — `metafile.inputs` is a bundler's dep file, computed and discarded, and the
-   * FE half's Rollup module graph is the same thing. That is the one entry here with a real route out.
+   * *A tool could report, and two now are asked.* `compile` and `test:external-pack:contract` both run
+   * `abuddy build`, which records what each bundling phase read — the describe above reads it. Measured
+   * 2026-10-02 on its first run: 285 files for `compile`, 131 of them `@abuddy/sdk`'s and `@abuddy/ears`'
+   * published `dist`, which `PACKAGE_BUILD_OUTPUTS` already declared. So it confirmed the declaration
+   * rather than finding a hole, which is what a gate over a correct declaration is supposed to do.
+   *
+   * **Both steps stay on this list, and that is why the distinction is written down rather than inferred
+   * from a column.** What is observed is the bundling. Codegen, the tsx-loaded seed compilation, the
+   * feature settings load and the static pack rules have no bundler to ask, and `compile`'s `facade:check`
+   * leg has none either — so moving either step out of this list would make it read as verified over part
+   * of its work, which is the same judgement the paragraph below makes about the cheap route.
    *
    * **The cheap version of that route is a trap**, which is why it is named rather than left to be found:
    * those fixture packs also run `tsc --noEmit`, so giving *their* tsconfigs a `tsBuildInfoFile` would put
