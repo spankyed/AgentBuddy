@@ -306,6 +306,27 @@ describe('what has looked at a step at all', () => {
       .toBe(CHAIN_STEPS.length);
   });
 
+  /**
+   * **Two kinds of entry sit in this list, and the difference is the whole of what to do about them.**
+   * Measured 2026-10-02, because the distinction keeps being re-derived.
+   *
+   * *No tool can report on it.* `test:packaged-authoring` is five `npm pack`s and two `npm install`s into a
+   * temp tree outside the monorepo — a package manager writes no dep file, and resolving from the published
+   * tarballs is the thing the step exists to prove. There is nothing to build here, and what protects it
+   * instead is that its inputs are **derived** (`PACKAGE_BUILD_OUTPUTS`, `APP_OUTPUTS`) rather than
+   * hand-listed, which is the only protection available to a step nothing can observe. `test:smoke` and
+   * `test` are the same shape: Playwright driving a real Electron process.
+   *
+   * *A tool could report and is not asked.* `test:external-pack:contract` is dominated by `abuddy build`,
+   * our own command, whose esbuild call already sets `metafile: true` and reads only
+   * `result.metafile.outputs` — `metafile.inputs` is a bundler's dep file, computed and discarded, and the
+   * FE half's Rollup module graph is the same thing. That is the one entry here with a real route out.
+   *
+   * **The cheap version of that route is a trap**, which is why it is named rather than left to be found:
+   * those fixture packs also run `tsc --noEmit`, so giving *their* tsconfigs a `tsBuildInfoFile` would put
+   * this step in the observed column while observing 2.5s of its 57s. A step reading as verified over 4% of
+   * its work is worse than one honestly listed here.
+   */
   it('names the steps nothing verifies per-step', () => {
     expect(observation().byNothing,
       'a step here is one whose declared inputs nothing checks against what it touched. Add to this list '
