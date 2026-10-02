@@ -72,10 +72,17 @@ export const DIR_BY_PACKAGE = new Map<string, string>(PACKAGE_DIRS.map((dir) => 
  * Reading them as compile edges cost `typecheck:main` 195 of its 1868 declared files — against 52 that are
  * main's own source — so a CLI or renderer edit re-ran a leg that compiles neither.
  *
- * **Narrowing a cache key is the dangerous direction, and the dep file is what makes it safe.** If anything
- * in `main` ever does import one of these, its `tsbuildinfo` reports the read and
- * `dep-files.integration.spec.ts` fails until the entry goes — which is also what makes an entry here
- * impossible to leave behind once it stops being true.
+ * **Narrowing a cache key is the dangerous direction, and `findUnimportedDependencies` is what makes it
+ * safe** (`scripts/check-import-specifiers.ts`, run by `check:specifiers`). It reads every file in the
+ * package and reports both directions from this one map: an entry whose package something has started
+ * importing, and an entry no manifest declares any more. That reach is the point — it covers the tests and
+ * the root configs, where the alternative does not.
+ *
+ * The dep file is a second witness and a narrower one, which is worth knowing before leaning on it: an
+ * import from `main`'s *source* puts the imported files into `main.tsbuildinfo` and
+ * `dep-files.integration.spec.ts` fails, but `packages/main/tsconfig.json` excludes every spec file, so its
+ * build info speaks for `src` alone and three of these four entries name a package a dep file lists only as
+ * files rather than by name.
  */
 export const RUNTIME_ONLY_DEPS = new Map<string, string>([
   ['packages/main @app/api', 'main spawns it as a child process from a path it builds itself; the declaration '

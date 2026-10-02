@@ -52,7 +52,7 @@ Measured on an idle machine, 2026-09-25, each one a real run rather than a sum o
 |---|---|---|
 | nothing tracked | nothing | **0.9s** |
 | a doc, a comment, a CLAUDE.md | nothing but that — no step declares `docs/`, and a fingerprint skips every `CLAUDE.md` | **0.9s** |
-| one package's source (the renderer) | `test:unit:host`, which runs only the renderer's project and `@app/main`'s (it depends on the renderer), `typecheck`, then `build:app` and every step that needs the app, because rebuilding it moves what they read | **115.1s** |
+| one package's source (the renderer) | `test:unit:host`, which runs only the renderer's project, the typecheck legs whose scope reaches it, then `build:app` and every step that needs the app, because rebuilding it moves what they read | **115.1s** |
 | nothing is cached (a cold tree) | all 12 steps, three at a time (re-measured 2026-09-27, `--all`) | **178.3s** |
 
 The one-package row is the one worth reading twice: editing a package that the *app* is built from costs four times editing one it is not, because `build:app` rewrites `packages/*/dist` and every step that needs the app reads it. A change under `@abuddy/ears` or a pack's tests does not pay that.
