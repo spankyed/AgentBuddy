@@ -474,7 +474,9 @@ npm run api:stamp  # The cheap half, run by npm run typecheck: compares what the
                          # api:update" when it differs. Its key is every input a report is a function of —
                          # the declarations (`dist/**/*.ts`, never the compiled .js, hashed through
                          # `apiSurfaceOf`, which drops doc prose), the set of published entries, the
-                         # producer (API Extractor's version and its tsconfig), and a stamp-format version.
+                         # producer (API Extractor's version and its tsconfig). There is no format version: a
+                         # stamp records a measurement, so the recorded row *set* is compared both ways instead,
+                         # which is what notices a row the key has gained or lost.
                          # **A key is a list of someone else's inputs, so it is a guess**: the entry set was
                          # missing until 2026-09-25, when adding `./packs` to a map passed this and the whole
                          # chain and was refused by api:check. `api-reports.ts` now checks the proxy against

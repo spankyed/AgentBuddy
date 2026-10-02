@@ -1,10 +1,41 @@
+> **Closed 2026-10-02 (branch `AS/one-action-cache`) by the condition Phase 2 wrote for itself** — *"If the
+> isolation is what costs, say so, record the number, and stop"* — though from a direction nobody expected.
+>
+> Measured on `@app/default-setup`'s suite, load average 6.56, 95 spec files, 765 tests:
+>
+> ```
+> Duration 15.73s — setup 100.69s, tests 14.17s, transform 1.84s, collect 1.98s
+> user 98.67s + sys 16.28s = 115s CPU
+> ```
+>
+> Summed setup is **7.1× the tests' own cost**, as every survey said. **But `setupPackTests` is not what costs
+> it.** Timing the call itself across 18 files: **24-56ms**, against ~1.46s of setup per file. Keeping the
+> setup file's imports and skipping only the call: setup **25.49s** against **26.34s** over those 18 files — so
+> the function this phase was written about is **~3%**, and ~97% is the setup file's **module evaluation**,
+> which happens once per file because `isolate: true` gives each file a fresh module graph. That graph is the
+> isolation the phase refused to trade (*"sharing a registry or a database between files is not a trade this
+> goal makes"*), and deferring the imports into the call would move the work rather than remove it: the
+> harness evaluates those modules because the call uses them.
+>
+> So Phase 2 is closed with its measurement rather than its change, and with it the goal: Phase 4 was done in
+> `1b3eb9876`, Phases 1, 3 and 5 collapsed into it on 2026-09-28, and Decisions 2 and 3 were struck with the
+> lane machinery they assumed.
+>
+> **One lever is left unmeasured rather than unpursued**, recorded in
+> [`packages/abuddy-testing/CLAUDE.md`](../../../packages/abuddy-testing/CLAUDE.md) where the harness lives: the
+> harness imports `@abuddy/sdk/build` statically (238ms as a standalone import) for seed compilation most
+> files never do, but reaches it on every setup through two format-check helpers — so the saving depends on a
+> marginal cost inside a worker that was not taken, and is probably well under the standalone number.
+>
+> Read what follows as history: it names code and a scheduler as they were.
+
 > **Re-verified 2026-09-28 (later the same day). The mechanism this goal analyses no longer exists, and the
 > metric it measures in cannot be taken here. Read this block before the Background; it strikes two Decisions
 > and collapses three Phases.**
 >
 > **`ABUDDY_TEST_LANES` appears nowhere in the repo.** `test:unit` runs **two pools, one after the other**,
 > handing vitest every file at once so its own longest-first sequencer packs them
-> ([`goal-one-job-pool.md`](../archive/goals/goal-one-job-pool.md)). The lane machinery this goal is written
+> ([`goal-one-job-pool.md`](goal-one-job-pool.md)). The lane machinery this goal is written
 > against is gone, and the pooling that replaced it already delivered the 43s this goal set as its target.
 >
 > - **The base check below failed, and told an implementer to stop.** It asked them to confirm `test:unit`

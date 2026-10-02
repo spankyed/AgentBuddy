@@ -1,3 +1,16 @@
+> **Done** (branch `AS/one-action-cache`). Every item is closed or has moved: 1, 1b, 4 and 5 on
+> `AS/test-pipeline` as the entries say; **2** here, where the four holes it names in `api:stamp`'s key were
+> closed by the entry set and the producer rows (`a8d5ffd46`), the format version it asked for turned out to
+> be unnecessary — `apiSurfaceOf` is the normaliser *inside* the hash, so a change to it moves every package's
+> row — and the direction that removal left open was closed by comparing the row sets both ways
+> (`741401519`, `0290635cc`); and **3** under its own goal, `docs/archive/goals/goal-unit-suite-cost.md`. Its third
+> class of hand-enumerated key, *"chain steps | inputs per step — not written yet"*, is what this branch was:
+> `docs/archive/plans/one-action-cache.md`. The **Blocked on you** section below is branch state from
+> 2026-09-25 and was answered by the push it asked for. The three **Unverified** items are closed too — the
+> entry-set hole is in the key now, `BUILD_UNITS`' missing input was found and declared, and
+> `suite-split.spec.ts` no longer decides on spawning, so a spec reaching a spawner by package specifier is
+> no longer a thing it could miss. Read it as history: it names code as it was.
+
 # Test cleanup: remaining action items
 
 Compiled 2026-09-25 on `AS/test-pipeline`, from implementing `docs/goals/goal-test-cleanup.md` and a review
@@ -139,7 +152,7 @@ chain steps, which belong with `goal-test-tiers.md` Phase 4 so they share whatev
 steps, belong with `goal-test-tiers.md` Phase 4 — same problem, so they should share whatever shape lands
 here rather than inventing a third.
 
-## 3. Get `test:unit` under 43s — **has its own goal: `docs/goals/goal-unit-suite-cost.md`**
+## 3. Get `test:unit` under 43s — **has its own goal: `docs/archive/goals/goal-unit-suite-cost.md`**
 
 Phase 2's 25s Done-when is unmet and lane count will not close it. Two levers, both real work:
 

@@ -14,7 +14,7 @@
 > - **Phase 1 shipped** in `249c0a8e8`, with `46268f236`, `fc96b83bd` and `a4d4abca9` behind it. Every item of
 >   its "Done when" was re-checked and holds. **The base check below asked an implementer to confirm the
 >   defect Phase 1 removed, and would have stopped them** — corrected in place, as
->   [`goal-unit-suite-cost.md`](../../goals/goal-unit-suite-cost.md) corrected its own.
+>   [`goal-unit-suite-cost.md`](goal-unit-suite-cost.md) corrected its own.
 > - **Phase 1 added a fourth verdict the Decision did not name**, and it is the right addition: `no count`,
 >   for a run whose reporter never wrote a file. It exits 3 with the count treated as unknown rather than as
 >   zero, because "the reporter stopped being called" and "nothing ran" are the same silence. Decision 1's
@@ -489,7 +489,7 @@ file removed reports one unpriced spec by name rather than a smaller total.
 - **`@abuddy/cli`'s integration half.** 167.9s of its 182.9s, and 53% of the 315.9s the twelve records hold
   between them (132.0s of 144.1s, and the same 53%, at the survey) — the largest single cost in the repo's specs, and not a routing problem: those specs run real
   builds, and whether they can share one is the question. It belongs with
-  [`goal-unit-suite-cost.md`](../../goals/goal-unit-suite-cost.md), whose Phases aim at `default-setup` and `@abuddy/sdk`
+  [`goal-unit-suite-cost.md`](goal-unit-suite-cost.md), whose Phases aim at `default-setup` and `@abuddy/sdk`
   (the `test:unit` halves) and say nothing about the integration half. Recorded here so the number is written
   down where it was measured; the agent implementing this goal must not start it.
 - **Tier-aware escalation**, refused with its reasoning in Decision 6 rather than deferred, so it is not
@@ -577,7 +577,7 @@ loading rather than a graph being walked.
 
 - **`@abuddy/cli`'s integration half**, 167.9s of the 315.9s the twelve records hold, is still the largest
   single cost in the repo's specs and is not a routing problem. It belongs with
-  [`goal-unit-suite-cost.md`](../../goals/goal-unit-suite-cost.md), as Deferred said.
+  [`goal-unit-suite-cost.md`](goal-unit-suite-cost.md), as Deferred said.
 - **Nothing automated runs `spec:dry` or `--all`**, so a correlated drift in the record is still found only by
   a human. The prediction says how old its numbers are, which is the most a reader can act on without a
   re-measurement nobody schedules.

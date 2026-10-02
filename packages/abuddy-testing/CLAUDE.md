@@ -169,6 +169,25 @@ A pack's unit tests run its code without the app: seeds, repositories and seed h
   - `test:packaged-authoring` runs a system test, a service test with structured output and an `llm` flow, with `inference` mocked by `mockInference`, all from the packed tarballs.
   - default-setup's own unit suite runs on the harness.
 
+**What a pack's suite pays for the harness, and where that cost is.** Measured 2026-10-02 on
+`@app/default-setup` (95 spec files, 765 tests, load average 6.56): vitest reported `setup 100.69s` against
+`tests 14.17s`, 115s of CPU in all. Of that, `setupPackTests` itself is **24-56ms per file** — timing the
+call, and then keeping the setup file's imports while skipping it (25.49s against 26.34s over 18 files). So
+~97% is the setup file's **module evaluation**, once per file because `isolate: true` gives each file a fresh
+module graph, which is the isolation the harness requires: it keeps one registry, database and set of mocks
+per file and throws if called twice in a process. Deferring the imports into the call moves that work rather
+than removing it, since the call is what uses those modules.
+[`goal-unit-suite-cost.md`](../../docs/archive/goals/goal-unit-suite-cost.md) closed on this measurement; the
+reason to care is `npm run spec` and a warm chain, never a cold one, whose critical path runs elsewhere.
+
+The one thing left to measure, if that loop ever matters more: this file imports `@abuddy/sdk/build`
+statically for seed compilation most spec files never reach (`compilePack`, `resolveSeeds`, `compileFlowDSL`,
+at the seed helpers), but `readDependencies` reaches the same module on *every* setup through
+`_snapshotFormatMismatch` and `_cliFormatMismatchMessage` — two format checks, not compilers. Moving those
+two to a leaf module would let the rest load only where a test compiles seeds. `@abuddy/sdk/build` is 238ms
+as a standalone import in a fresh process; what it costs *marginally* inside a worker that has already loaded
+the SDK was not measured, and is probably well under that. Measure before moving anything.
+
 ## Setup for external packs
 
 ```bash

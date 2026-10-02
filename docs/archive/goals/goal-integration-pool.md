@@ -73,7 +73,7 @@ Never:
 `@abuddy/cli`'s integration half is 167.9s of recorded spec file-time — 53% of the repo's 315.9s, and the
 largest single number in the records. It was deferred out of
 [`goal-spec-earns-its-pass.md`](goal-spec-earns-its-pass.md) and
-[`goal-unit-suite-cost.md`](../../goals/goal-unit-suite-cost.md) as "a separate look, not a blocker".
+[`goal-unit-suite-cost.md`](goal-unit-suite-cost.md) as "a separate look, not a blocker".
 
 **That number is file-time summed across workers, and nobody waits for it.** Measured:
 
