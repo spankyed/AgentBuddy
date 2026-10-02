@@ -4,7 +4,7 @@ import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
-import { ABSENT, ALLOW_UNBUILT, BUILD_UNITS, buildScriptFor, changedInputs, CHECKOUT_MARKER, covers, declaredPaths, diffableStamp, fingerprintInputs, fingerprintUnit, fingerprintWithDigests, freshnessSweep, inputFiles, INPUTS_CHANGED, repoRelative, NOT_A_BUILD_INPUT, REPO_ROOT, staleMessage, stampRecord, stampedBuild, stampedRun, stampedRunAll, stampFile, unbuiltRefusal, unitStaleReason, withBuildLock, type BuildIntent, type BuildUnit } from '@abuddy/host/build/packages-built';
+import { ABSENT, ALLOW_UNBUILT, BUILD_UNITS, buildScriptFor, changedInputs, CHECKOUT_MARKER, covers, declaredPaths, diffableStamp, ensurePackagesBuilt, fingerprintInputs, fingerprintUnit, fingerprintWithDigests, freshnessSweep, inputFiles, INPUTS_CHANGED, PACKAGES_PREBUILT_ENV, PackagesWentStale, repoRelative, NOT_A_BUILD_INPUT, REPO_ROOT, staleMessage, stampRecord, stampedBuild, stampedRun, stampedRunAll, stampFile, unbuiltRefusal, unitStaleReason, withBuildLock, type BuildIntent, type BuildUnit, type StaleUnit } from '@abuddy/host/build/packages-built';
 
 /**
  * The freshness rule behind `npm test -w @abuddy/cli`'s pretest (@abuddy/host/build/packages-built):
@@ -976,5 +976,72 @@ describe('recording that something ran', () => {
       expect(unitStaleReason(a.unit, stamps.a), 'a was untouched by the run').toBeNull();
       expect(unitStaleReason(b.unit, stamps.b), 'b changed during the run and must not read as covered').toMatch(/inputs changed/);
     });
+  });
+});
+
+/**
+ * What a caller that has already built the packages does when one is stale anyway.
+ *
+ * The refusal exists because building here would race whatever is rewriting that dist, and the failure would
+ * then be about the race — `building @abuddy/sdk failed` — rather than about the tree having moved. Both halves
+ * were checked by hand when it was written (2026-09-24) and neither became a case, next to a flag nothing set,
+ * so for eight days the branch could not run at all: the `@abuddy/source` condition, the chain, and every
+ * suite's pretest all went through the other side of it.
+ *
+ * Driven through `EnsurePackagesOptions` rather than by making a real package stale, which would mean deleting
+ * a cache stamp every other suite in the checkout is reading.
+ */
+describe('ensurePackagesBuilt, where the caller says the packages are already built', () => {
+  const moved: StaleUnit[] = [{ workspace: '@abuddy/sdk', reason: INPUTS_CHANGED, moved: 'src/index.ts' }];
+
+  /** Restored rather than stubbed: this process is a test runner, and the flag changes what every later case sees */
+  function withFlag<T>(value: string | undefined, body: () => T): T {
+    const before = process.env[PACKAGES_PREBUILT_ENV];
+    if (value === undefined) delete process.env[PACKAGES_PREBUILT_ENV];
+    else process.env[PACKAGES_PREBUILT_ENV] = value;
+    try {
+      return body();
+    } finally {
+      if (before === undefined) delete process.env[PACKAGES_PREBUILT_ENV];
+      else process.env[PACKAGES_PREBUILT_ENV] = before;
+    }
+  }
+
+  it('reports what moved and builds nothing', () => {
+    const built: string[] = [];
+    const reported: string[] = [];
+    const run = () => ensurePackagesBuilt({ stale: () => moved, build: (w) => built.push(w), report: (m) => reported.push(m) });
+
+    const refusal = withFlag('1', () => {
+      expect(run).toThrow(PackagesWentStale);
+      try {
+        run();
+        return '';
+      } catch (err) {
+        return (err as Error).message;
+      }
+    });
+
+    expect(built, 'it built under the flag, which is the race the refusal exists to avoid').toEqual([]);
+    expect(reported, 'the refusal carries the message; printing one too says it twice').toEqual([]);
+    expect(refusal).toContain('@abuddy/sdk');
+    expect(refusal, 'a reader has to be told which file moved, or the refusal names no suspect')
+      .toContain('src/index.ts');
+    expect(refusal, 'and what usually moves it, since the cause is another process').toMatch(/packages:build/);
+  });
+
+  // The other direction, which is every ordinary caller: the same staleness is work to do, not a refusal
+  it('builds the stale workspace when no caller claims to have built it', () => {
+    const built: string[] = [];
+    withFlag(undefined, () => ensurePackagesBuilt({ stale: () => moved, build: (w) => built.push(w), report: () => {} }));
+    expect(built).toEqual(['@abuddy/sdk']);
+  });
+
+  it('is a no-op when nothing is stale, whichever the caller is', () => {
+    for (const flag of ['1', undefined]) {
+      const built: string[] = [];
+      withFlag(flag, () => ensurePackagesBuilt({ stale: () => [], build: (w) => built.push(w), report: () => {} }));
+      expect(built).toEqual([]);
+    }
   });
 });

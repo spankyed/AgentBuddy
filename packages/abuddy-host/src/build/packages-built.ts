@@ -1098,13 +1098,58 @@ export class PackagesBuildFailed extends Error {
   }
 }
 
+/**
+ * One workspace's build, as a freshness fix.
+ *
+ * One at a time, not `packages:build`, which rebuilds all five whenever one is stale. The units are
+ * independent: every build resolves the other packages under the source condition (their tsconfigs'
+ * `customConditions`, `bundle-package.ts`'s esbuild conditions), so none reads another's dist and no order is
+ * implied. The workspace is named explicitly and the cwd is the repo, so this runs the right script even as a
+ * workspace's own pretest. `freshness` rather than `command`, because another process may be building this
+ * same unit right now and the right answer is to wait for it and then find the work done.
+ */
+function buildOnePackage(workspace: string): void {
+  // npm is a shell script on Windows, which execFile cannot spawn without one
+  const windows = process.platform === 'win32';
+  try {
+    execFileSync(windows ? 'npm.cmd' : 'npm', ['run', 'build:package', '-w', workspace],
+      { cwd: REPO_ROOT, stdio: 'inherit', shell: windows, env: { ...process.env, [BUILD_INTENT_ENV]: 'freshness' } });
+  } catch (err) {
+    const status = (err as { status?: number }).status;
+    throw new PackagesBuildFailed(typeof status === 'number' && status !== 0 ? status : 1, workspace);
+  }
+}
+
+/**
+ * The three things `ensurePackagesBuilt` does, each injectable **so that a case can reach the refusal below**.
+ *
+ * Without a seam here the refusal had none: its subject is the repo's own packages, and a spec that makes one
+ * of them stale has to delete a real cache stamp — which races every other suite in the checkout, and which
+ * this file's own rule forbids ("a spec must never build the repo's packages"). So it sat unexercised from
+ * 2026-09-24, next to a flag nothing set, and the pair read as working.
+ *
+ * `waitForPackageBuild` takes its own options for the same reason and says so.
+ */
+export interface EnsurePackagesOptions {
+  /** How it learns what is stale */
+  readonly stale?: () => StaleUnit[];
+  /** How it fixes one; a case asserts the refusal called this for nothing, which is the half that matters */
+  readonly build?: (workspace: string) => void;
+  /** Where the report goes. Synchronous by default: a message written just before exit must not sit in a pipe */
+  readonly report?: (message: string) => void;
+}
+
 /** Builds every publishable package when any of them is stale; a no-op when they are all up to date */
-export function ensurePackagesBuilt(): void {
+export function ensurePackagesBuilt({
+  stale: staleUnits = stalePackageUnits,
+  build = buildOnePackage,
+  report = (message: string) => { fs.writeSync(2, message); },
+}: EnsurePackagesOptions = {}): void {
   // Another process may be building them right now — two test suites started together each run this as
   // their pretest. Wait for that build rather than reading the stamps it is rewriting and starting a
   // second one, which is a race that fails the reader with "no stamp".
   waitForPackageBuild();
-  const stale = stalePackageUnits();
+  const stale = staleUnits();
   if (stale.length === 0) return;
   // A caller that has already built them is asserting nothing will go stale under it, so staleness here
   // means the tree moved mid-run and whatever this process is about to read is half-written. Building it
@@ -1113,24 +1158,6 @@ export function ensurePackagesBuilt(): void {
   if (process.env[PACKAGES_PREBUILT_ENV] === '1') {
     throw new PackagesWentStale(stale);
   }
-  // Synchronous: a message written just before the process exits must not sit in a pipe's buffer
-  fs.writeSync(2, `Published packages are out of date:\n${staleMessage(stale)}\nRebuilding ${stale.length} of ${Object.keys(BUILD_UNITS).length}\n`);
-  // npm is a shell script on Windows, which execFile cannot spawn without one
-  const windows = process.platform === 'win32';
-  // One workspace at a time, not `packages:build`, which rebuilds all five whenever one is stale. The
-  // units are independent: every build resolves the other packages under the source condition
-  // (their tsconfigs' customConditions, bundle-package.ts's esbuild conditions), so none reads
-  // another's dist and no order is implied. The workspace is named explicitly and the cwd is the repo,
-  // so this runs the right script even as a workspace's own pretest.
-  for (const { workspace } of stale) {
-    try {
-      // These builds are a freshness fix, not a command: another process may be building the same unit
-      // right now, and the right answer is to wait for it and then find the work done.
-      execFileSync(windows ? 'npm.cmd' : 'npm', ['run', 'build:package', '-w', workspace],
-        { cwd: REPO_ROOT, stdio: 'inherit', shell: windows, env: { ...process.env, [BUILD_INTENT_ENV]: 'freshness' } });
-    } catch (err) {
-      const status = (err as { status?: number }).status;
-      throw new PackagesBuildFailed(typeof status === 'number' && status !== 0 ? status : 1, workspace);
-    }
-  }
+  report(`Published packages are out of date:\n${staleMessage(stale)}\nRebuilding ${stale.length} of ${Object.keys(BUILD_UNITS).length}\n`);
+  for (const { workspace } of stale) build(workspace);
 }
