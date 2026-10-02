@@ -51,10 +51,41 @@ export const PACKAGE_DIRS = workspaceDirsFrom(
     .workspaces ?? []);
 
 /** Every workspace package's npm name and where it lives, so a declared dependency can become a path */
-const DIR_BY_PACKAGE = new Map<string, string>(PACKAGE_DIRS.map((dir) => [
+/** Package name → its directory under `packages/`, which is how a specifier is recognised as a workspace */
+export const DIR_BY_PACKAGE = new Map<string, string>(PACKAGE_DIRS.map((dir) => [
   (JSON.parse(fs.readFileSync(path.join(REPO_ROOT, 'packages', dir, 'package.json'), 'utf-8')) as { name: string }).name,
   dir,
 ]));
+
+/**
+ * Workspace dependencies that are **not compile edges**: what a spawned process needs present, not what this
+ * package's code imports. Keyed `<dir> <package>`, because the subject is the pair.
+ *
+ * Electron's main process reaches every other part of the app by literal path —
+ * `path.join(process.resourcesPath, 'app', 'packages', 'api')`, a `{path: string}` handed to `WindowManager`
+ * for the preload bundle and the renderer — and runs the CLI through a launcher that names
+ * `Resources/app/packages/abuddy-cli/dist/package/bin/abuddy.mjs`. There is no `require.resolve` in
+ * `packages/main/src` at all. So these declarations resolve nothing and compile nothing; what they do is put
+ * each spawned process's **own dependency tree** into the packaged app, since electron-builder walks the app
+ * manifest's production closure and the app manifest is the repo root's, which depends on `@app/main`.
+ *
+ * Reading them as compile edges cost `typecheck:main` 195 of its 1868 declared files — against 52 that are
+ * main's own source — so a CLI or renderer edit re-ran a leg that compiles neither.
+ *
+ * **Narrowing a cache key is the dangerous direction, and the dep file is what makes it safe.** If anything
+ * in `main` ever does import one of these, its `tsbuildinfo` reports the read and
+ * `dep-files.integration.spec.ts` fails until the entry goes — which is also what makes an entry here
+ * impossible to leave behind once it stops being true.
+ */
+export const RUNTIME_ONLY_DEPS = new Map<string, string>([
+  ['packages/main @app/api', 'main spawns it as a child process from a path it builds itself; the declaration '
+    + "is what puts the API's own dependencies in the packaged app"],
+  ['packages/main @app/preload', 'main hands the preload bundle to each window as a path; its tsconfig maps '
+    + 'the name for that path and nothing imports it'],
+  ['packages/main @app/renderer', "main loads the renderer's built output by path, or a dev-server URL"],
+  ['packages/main @abuddy/cli', 'the packaged app ships the CLI, and the launcher runs it from '
+    + 'Resources/app/packages rather than from node_modules'],
+]);
 
 /**
  * The workspaces a package imports, transitively, as directory names under `packages/`.
@@ -80,6 +111,8 @@ export function workspaceDeps(dir: string, root = REPO_ROOT, seen = new Set<stri
   const found: string[] = [];
   for (const name of Object.keys({ ...manifest.dependencies, ...manifest.devDependencies, ...manifest.peerDependencies })) {
     const child = DIR_BY_PACKAGE.get(name);
+    // A process dependency is not an input: see `RUNTIME_ONLY_DEPS`
+    if (RUNTIME_ONLY_DEPS.has(`packages/${dir} ${name}`)) continue;
     if (!child || seen.has(child)) continue;
     seen.add(child);
     found.push(child, ...workspaceDeps(child, root, seen));

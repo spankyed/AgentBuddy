@@ -17,6 +17,7 @@ import {
   packRootOf, PACK_SOURCE_DIRS, PACK_SRC_ROOTS, PACK_TEST_DIRS, readJsonFile, repoRelative, repoRoot,
   SOURCE_EXTENSIONS,
 } from './lib/import-populations.ts';
+import { DIR_BY_PACKAGE, RUNTIME_ONLY_DEPS } from './lib/workspace-deps.ts';
 import {
   DECLARES_SOURCE_BY_DESIGN, findMissingSourceConditions, RESOLVES_DIST_BY_DESIGN, sourceConditionPackages,
 } from './lib/import-source-conditions.ts';
@@ -227,21 +228,6 @@ export const LAYERS: {
   dir: string;
   allowed: string[];
   forbidden?: RegExp;
-  /**
-   * Why a permission in `allowed` exists that nothing imports — by package, because the reason is about one
-   * entry rather than the row.
-   *
-   * Every other check here asks whether `allowed` is wide *enough*; this is the one that asks whether it is
-   * too wide, and it is what stops a row drifting permissive an entry at a time. A row at the top of the
-   * graph allows everything, and the difference between earning that and abdicating it is whether each entry
-   * is exercised — which is a thing this can measure and a comment cannot.
-   *
-   * On the row rather than in a fifth module-level exemption map: the subject is a field of the row, where
-   * the siblings (`RESOLVES_DIST_BY_DESIGN`, `UNLAYERED_BY_DESIGN`, `NOT_A_BUILD_INPUT`) key on paths
-   * scattered across the repo, and a map here would need a composite `<dir> <package>` key. The name follows
-   * `ChainStep.neverCachedBecause`.
-   */
-  unusedBecause?: Readonly<Record<string, string>>;
 }[] = [
   { name: '@abuddy/ears', dir: 'packages/abuddy-ears', allowed: [] },
   { name: '@abuddy/sdk', dir: 'packages/abuddy-sdk', allowed: ['@abuddy/ears'] },
@@ -268,10 +254,10 @@ export const LAYERS: {
   // `CHECKOUT_PACKAGES` — and the one real import is a test checking that proxying against the real module.
   { name: '@abuddy/cli', dir: 'packages/abuddy-cli',
     allowed: ['@abuddy/ears', '@abuddy/sdk', '@abuddy/host', '@abuddy/ui', '@abuddy/testing'] },
-  { name: '@app/main', dir: 'packages/main', allowed: ['@abuddy/sdk', '@abuddy/host', '@abuddy/cli'],
-    // The app directory is the repo root, whose manifest depends on `@app/main`, so this row's dependencies
-    // are the packaged app's production closure. Nothing here imports the CLI
-    unusedBecause: { '@abuddy/cli': 'it is what puts the CLI the packaged app ships into its dependency closure' } },
+  // `@abuddy/cli` is allowed because the manifest declares it, and unused because that declaration is a
+  // process dependency — `RUNTIME_ONLY_DEPS` is where it says so, and this row reads that rather than
+  // keeping a second copy of the reason
+  { name: '@app/main', dir: 'packages/main', allowed: ['@abuddy/sdk', '@abuddy/host', '@abuddy/cli'] },
   // The narrowest row, and the one worth having: a sandboxed IPC bridge has no business in the app runtime,
   // so `@abuddy/host` here would be a finding
   { name: '@app/preload', dir: 'packages/preload', allowed: ['@abuddy/sdk'] },
@@ -321,7 +307,7 @@ export const MANIFEST_FIELDS = ['dependencies', 'peerDependencies', 'optionalDep
  * it makes upward, `package.json: <field>: name` for an `@abuddy/*` dependency beyond the allowed
  * ones, and `package.json: undeclared: name` for an allowed one it imports without declaring.
  */
-export function findUpwardImports(layers = LAYERS, root = repoRoot, unlayered = UNLAYERED_BY_DESIGN): string[] {
+export function findUpwardImports(layers = LAYERS, root = repoRoot, unlayered = UNLAYERED_BY_DESIGN, runtimeOnly = RUNTIME_ONLY_DEPS): string[] {
   const problems: string[] = [];
   // **Which packages this rule looks at, asked of the tree rather than of the table.** `LAYERS` is a
   // hand-written list, and it covered five of the twelve workspaces that hold code — nothing said which
@@ -343,7 +329,7 @@ export function findUpwardImports(layers = LAYERS, root = repoRoot, unlayered = 
       problems.push(`${dir}: listed in UNLAYERED_BY_DESIGN (${reason}) but it holds no code, or is gone`);
     }
   }
-  for (const { name, dir, allowed, forbidden, unusedBecause } of layers) {
+  for (const { name, dir, allowed, forbidden } of layers) {
     const permitted = new Set([name, ...allowed]);
     const imported = new Set<string>();
     const files = filesUnder(['src', 'tests', 'scripts'].map((sub) => path.join(dir, sub)), root);
@@ -364,15 +350,64 @@ export function findUpwardImports(layers = LAYERS, root = repoRoot, unlayered = 
       if (permitted.has(pkg) && !declared.has(pkg)) problems.push(`${path.relative(root, manifestFile)}: undeclared: ${pkg}`);
     }
     // The direction that asks whether `allowed` is too wide. `imported` is already built above, so this walks
-    // nothing of its own
+    // nothing of its own — and the reason for a permission nothing uses is the reason its *dependency* is
+    // unused, which `RUNTIME_ONLY_DEPS` holds for `workspaceDeps` as well. One record, read twice
     for (const pkg of allowed) {
-      const because = unusedBecause?.[pkg];
+      const because = runtimeOnly.get(`${dir} ${pkg}`);
       if (!imported.has(pkg)) {
         if (because === undefined) problems.push(`${dir}: allows ${pkg} and imports it nowhere, so the permission grants nothing`);
       } else if (because !== undefined) {
         problems.push(`${dir}: imports ${pkg}, so its unusedBecause ("${because}") no longer applies`);
       }
     }
+  }
+  return problems;
+}
+
+/**
+ * Every workspace dependency a manifest declares is one that package's code imports, or is named in
+ * `RUNTIME_ONLY_DEPS` with what it is for instead.
+ *
+ * **`workspaceDeps` is a proxy, and this is its self-check.** It reads manifests to answer "what does this
+ * package compile", which is a guess about someone else's code, and this repo's rule for a proxy is that it
+ * needs one (root `CLAUDE.md`, on `api:stamp`). The other direction has been checked for a while — an import
+ * with no declaration is `findUpwardImports`' `undeclared:` clause, and it is what caught `@abuddy/ui`'s peer
+ * dependency. This is the direction nothing asked: a declaration no import needs, which silently widens every
+ * cache key derived from it.
+ *
+ * Over the whole package, not just `src`/`tests`/`scripts`: `@app/electron-versions` is imported by
+ * `vite.config.js` at the package root, and a population that stopped at those three directories reported it
+ * as unimported — measured, twice. `publish/` is excluded because it is a staged copy of `src`, where a
+ * second reading of the same import would hide a real finding.
+ */
+export function findUnimportedDependencies(root = repoRoot, runtimeOnly = RUNTIME_ONLY_DEPS): string[] {
+  const problems: string[] = [];
+  const applied = new Set<string>();
+  for (const dir of workspacesWithCode(root)) {
+    const manifest = readJsonFile<Record<string, Record<string, string> | undefined>>(path.join(root, dir, 'package.json'));
+    const declared = MANIFEST_FIELDS.flatMap((field) => Object.keys(manifest[field] ?? {})).filter((name) => DIR_BY_PACKAGE.has(name));
+    if (declared.length === 0) continue;
+    const imported = new Set<string>();
+    const files = filesUnder([dir], root).filter((file) => !file.includes(`${path.sep}publish${path.sep}`));
+    for (const file of files) {
+      for (const { text } of readSource(file).specifiers) {
+        const named = declared.find((name) => text === name || text.startsWith(`${name}/`));
+        if (named !== undefined) imported.add(named);
+      }
+    }
+    for (const name of declared) {
+      const key = `${dir} ${name}`;
+      const reason = runtimeOnly.get(key);
+      if (reason !== undefined) applied.add(key);
+      if (imported.has(name)) {
+        if (reason !== undefined) problems.push(`${dir}: imports ${name}, so its RUNTIME_ONLY_DEPS entry (${reason}) no longer applies`);
+      } else if (reason === undefined) {
+        problems.push(`${dir}/package.json: declares ${name} and imports it nowhere — delete it, or say in RUNTIME_ONLY_DEPS what it is for`);
+      }
+    }
+  }
+  for (const [key, reason] of runtimeOnly) {
+    if (!applied.has(key)) problems.push(`${key}: listed in RUNTIME_ONLY_DEPS (${reason}) but no manifest declares it`);
   }
   return problems;
 }
@@ -651,6 +686,12 @@ const RULE_LIST = [
     repoOnly: { kind: 'inapplicable', note: "The `@abuddy/*` layer rule, which is about this repo's packages and their manifests" },
     find: findUpwardImports,
     rule: "Every workspace holding code has a layer (or is a pack, which the pack rules govern), packages import only downward (@abuddy/ears imports no @abuddy package, @abuddy/sdk only @abuddy/ears, @abuddy/host only those two and never the API, the API and the renderer only the packages below them), each lists every @abuddy package it imports in its package.json, and every package a layer allows is one it imports or says why not",
+  },
+  {
+    id: 'findUnimportedDependencies',
+    repoOnly: { kind: 'inapplicable', note: "About this repo's own manifests against its own imports; a pack declares no workspace" },
+    find: findUnimportedDependencies,
+    rule: 'Every workspace dependency a manifest declares is one that package imports, or is named in RUNTIME_ONLY_DEPS with what it is for instead — because workspaceDeps reads those manifests to build cache keys',
   },
   {
     id: 'findLmdbImports',

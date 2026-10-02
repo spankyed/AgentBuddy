@@ -20,7 +20,6 @@
     "@abuddy/host": "*",
     "@abuddy/sdk": "*",
     "@abuddy/ui": "*",
-    "@app/preload": "*",
     "@guolao/vue-monaco-editor": "^1.5.5",
     "@statelyai/inspect": "^0.4.0",
     "@tiptap/extension-code-block-lowlight": "^3.20.1",
