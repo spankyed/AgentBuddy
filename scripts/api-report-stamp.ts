@@ -242,6 +242,32 @@ function parseStamp(contents: string): Map<string, string> {
   return new Map(entries.filter((parts) => parts.length === 2).map(([name, hash]) => [name, hash]));
 }
 
+/**
+ * A row this stamp now records that the file does not — the half that makes *adding* an input invalidate.
+ *
+ * Every clause in `staleReason` looks a row up by a name this code computes, so a row the format has gained
+ * compares equal to nothing: the record simply has no entry, and `undefined` is only a finding where
+ * something asks for it. The package rows are asked for by name, `#entries` and `#producer` have clauses of
+ * their own, and a *fourth* kind of row would have none — measured 2026-10-02, a row added to `stampRows`
+ * passed all three packages' committed stamps, which is the hole a `#version` row was papering over.
+ *
+ * **Last, so the clauses above keep their own words.** A stamp written before `#producer` existed is better
+ * described as "API Extractor or its tsconfig changed" than by anything general, and a package row that is
+ * missing rather than moved is still that package's declarations. This only speaks for the rows nothing else
+ * does.
+ *
+ * **No input can reach it today**, since today's rows are exactly those three kinds — so what watches it is
+ * the edit that would make it fire: adding a row to `stampRows`, which
+ * `api-report-stamp.spec.ts`'s *"partitions its rows into the packages it names and the rows it records
+ * about itself"* already fails until someone says which group the new row is in. Mutate that map and both
+ * fire together.
+ */
+const unrecordedRow = (pkgDir: string, recorded: Map<string, string>, current: Map<string, string>): string | null => {
+  const unrecorded = [...current.keys()].filter((row) => !recorded.has(row));
+  return unrecorded.length === 0 ? null
+    : `${path.basename(stampFile(pkgDir))} records nothing for ${unrecorded.join(', ')}, which this stamp now has; run npm run api:update`;
+};
+
 /** Why the reports may be out of date, or null. Never throws. */
 export function staleReason(pkgDir: string): string | null {
   const inputs = declarationInputs(pkgDir);
@@ -260,10 +286,12 @@ export function staleReason(pkgDir: string): string | null {
   if (recorded.size === 0) return `${path.basename(stampFile(pkgDir))} predates per-package stamps; run npm run api:update`;
 
   const { rows: current, packages } = stampRows(pkgDir);
-  // **The direction that was missing.** Every check below looks a row up by a name *this* code computes, so a
-  // row the format no longer has is read by nothing and passes — which is the hole a `#version` row was
-  // covering, and only while someone remembered to change it. Comparing the recorded set against the computed
-  // one catches the same thing from the data, and says which row it was.
+  // **Both directions, because a `#version` row covered both.** Every check below looks a row up by a name
+  // *this* code computes, so neither a row the format has dropped nor a row it has gained is read by
+  // anything: the first passes because nothing asks for it, the second because an absent record compares
+  // equal to nothing. Measured 2026-10-02, with only the first direction here: a row added to `stampRows`
+  // passed all three packages' committed stamps — the same hole the version row was papering over, which is
+  // what this file's own history is about. The row set is the data, so comparing it says which row it was.
   const unknown = [...recorded.keys()].filter((row) => !current.has(row));
   if (unknown.length > 0) {
     return `${path.basename(stampFile(pkgDir))} records ${unknown.join(', ')}, which this stamp no longer has; run npm run api:update`;
@@ -279,7 +307,7 @@ export function staleReason(pkgDir: string): string | null {
   // convention: a row added to `stampRows` without a `#` would then be reported as a package whose declarations
   // moved, and the function that knows which rows are packages is right there
   const moved = packages.filter(({ name, hash }) => recorded.get(name) !== hash).map(({ name }) => name);
-  if (moved.length === 0) return null;
+  if (moved.length === 0) return unrecordedRow(pkgDir, recorded, current);
   const own = packageName(path.resolve(pkgDir));
   // Naming the dependency is the whole point: "ui is stale" and "ui is stale because @abuddy/sdk's
   // declarations changed" send the reader to different places

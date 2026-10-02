@@ -61,13 +61,6 @@ function inPoolSeconds(source: string, step: string): { at: number; digits: stri
 }
 
 /**
- * Rewrite each step's declared cost in place, and say what moved.
- *
- * Returns the edits it made. Throws rather than writing a partial file when a span does not hold what it
- * was read to hold, or when a step's declaration cannot be found at all — a step whose cost this cannot
- * locate is one the table would silently stop tracking.
- */
-/**
  * The rewrite, as a pure function of the sources — which is what makes its two refusals testable.
  *
  * Returns the edits and the new text of each file it touched. Throws rather than returning a partial
@@ -106,8 +99,7 @@ export function planSecondsEdits(
   return { edits, sources: next };
 }
 
-/** The tables this writes, which is where a step's cost can be declared */
-/** The same two tables, under the name this module's callers know them by */
+/** The two tables a step's cost can be declared in, under the name this module's callers know them by */
 export const SECONDS_TABLES = STEP_TABLES;
 
 /** `planSecondsEdits` against the real tables, written back only if every splice held */
