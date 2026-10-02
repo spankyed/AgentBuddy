@@ -27,6 +27,7 @@
 import * as os from 'node:os';
 import { boundedSpawn, budgetFor } from './lib/bounded-spawn.ts';
 import { schedule } from './lib/chain-schedule.ts';
+import { pruneDepFiles } from './lib/dep-files.ts';
 import { ENSURE, TYPECHECK_LEGS } from './lib/typecheck-legs.ts';
 
 /**
@@ -58,6 +59,12 @@ const secs = (ms: number) => `${(ms / 1000).toFixed(1)}s`;
 interface Outcome { readonly ms: number; readonly code: number; readonly output: string; readonly timedOut?: true }
 
 const done = new Map<string, Outcome>();
+
+// The compilers below write a dep file each, and nothing removes one when its tsconfig goes. Pruned here
+// rather than anywhere else because this is what drives them, and before the legs run rather than after, so
+// no leg can have a file taken mid-write (`pruneOrphanDepFiles`, scripts/lib/dep-files.ts).
+const pruned = pruneDepFiles();
+if (pruned.length > 0) console.log(`Removed ${pruned.length} dep file(s) no tsconfig declares: ${pruned.join(', ')}`);
 
 const result = await schedule({
   // One ordering rule, stated once: everything else reads what `packages:ensure` builds. It used to be a

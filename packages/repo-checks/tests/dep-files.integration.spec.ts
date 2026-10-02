@@ -6,7 +6,7 @@ import { CHAIN_STEPS } from '../../../scripts/lib/chain-steps.ts';
 import { ENSURE, namedByScript, scopeOf, TYPECHECK_LEGS } from '../../../scripts/lib/typecheck-legs.ts';
 import { PACKAGE_DIRS } from '../../../scripts/lib/workspace-deps.ts';
 import { UNIT_SUITES, unitStepName } from '../../../scripts/lib/unit-suites.ts';
-import { depFileNames, readsOf, sourceOf, untrustworthy } from '../../../scripts/lib/dep-files.ts';
+import { depFileNames, pruneOrphanDepFiles, readsOf, sourceOf, untrustworthy } from '../../../scripts/lib/dep-files.ts';
 import * as buildReads from '../../../scripts/lib/build-reads.ts';
 import { population } from '@abuddy/sdk/testing';
 
@@ -130,10 +130,42 @@ describe('the compiler says what it read', () => {
     const placed = depFileNames().map((depFile) => ({ depFile, source: sourceOf(depFile) }));
     expect(placed.length, 'no dep files, so this would pass over nothing').toBeGreaterThan(10);
     expect(placed.filter(({ source }) => source === undefined).map(({ depFile }) => depFile),
-      'no tsconfig under a workspace or at the repo level declares these names').toEqual([]);
+      'no tsconfig under a workspace or at the repo level declares these names, so their reads answer for '
+      + 'nobody. `npm run typecheck` prunes a dep file whose tsconfig has gone, so one that survives it was '
+      + 'written by something other than a declared leg').toEqual([]);
     // The ones with no workspace are exactly the repo-level configs, which is what licenses the fallback
     expect(placed.filter(({ source }) => source?.workspace === undefined).map(({ source }) => source?.config).sort())
       .toEqual([path.join('scripts', 'tsconfig.json'), path.join('tests', 'tsconfig.json')]);
+  });
+
+  /**
+   * And the prune that keeps the case above about something, run by `npm run typecheck` before its legs.
+   *
+   * Nothing removed a dep file when its tsconfig went, so deleting a workspace left one whose reads answer
+   * for nobody and the step above stayed red on litter until someone deleted a file by hand. It is tested
+   * over a directory of its own rather than the checkout's: this writes, and a case that prunes the real
+   * cache would delete the evidence every other case here reads.
+   *
+   * What that leaves the case above is the cause a prune cannot fix — a dep file written by something other
+   * than a declared leg — which is what its message now says.
+   */
+  it('deletes a dep file no tsconfig declares, and keeps the ones that are owned', () => {
+    const cache = fs.mkdtempSync(path.join(REPO_ROOT, 'node_modules', '.cache', 'prune-case-'));
+    for (const name of ['owned', 'orphan', 'another-orphan']) {
+      fs.writeFileSync(path.join(cache, `${name}.tsbuildinfo`), '{}');
+    }
+    fs.writeFileSync(path.join(cache, 'not-a-dep-file.json'), '{}');
+
+    expect(pruneOrphanDepFiles(cache, (name) => name === 'owned')).toEqual(['another-orphan', 'orphan']);
+    expect(fs.readdirSync(cache).sort(), 'it takes the orphans and nothing else')
+      .toEqual(['not-a-dep-file.json', 'owned.tsbuildinfo']);
+
+    fs.rmSync(cache, { recursive: true, force: true });
+  });
+
+  it('has nothing to say about a cache directory that is not there', () => {
+    expect(pruneOrphanDepFiles(path.join(REPO_ROOT, 'node_modules', '.cache', 'absent-' + String(Date.now())), () => false))
+      .toEqual([]);
   });
 
   /**
