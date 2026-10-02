@@ -25,7 +25,7 @@ They are not unchecked — `chain-inputs` holds every tracked file to being *som
 is a coverage question. It cannot catch a step declaring too little, which is the failure that produces a
 green run over work that changed. So the premise everything derives from is verified for 18 of 29 steps.
 
-## 1. `package.json` is in all 29 steps' inputs, and need not be
+## 1. `package.json` is in all 29 steps' inputs, and need not be — **done** (`ccfb74e7d`)
 
 `ROOT` puts `package.json` and `package-lock.json` into every step, and the root vitest configs with them.
 It is a blunt proxy for *the command this step runs*, written when a step's command had no other
@@ -63,6 +63,19 @@ an unrelated script reports the rest cached.
 false finding and a wrong *key* is silent. So the key must be the union of the command text **and** the
 files that text names, never a parse of what the command means — and the case above is what holds it.
 
+**Measured, and it is the number this item existed for.** A space added to `db:repl`:
+
+    before   0 of 28 cached
+    after   26 of 28 cached
+
+The two that run are `packages:ensure`, which is never cached, and `typecheck:be`, which genuinely reads
+the manifest — **the one thing the plan did not predict**. The dep-file gate reported it the moment the
+manifest left `ROOT`: the api's three programs resolve through the root `package.json`, a real read that
+had been indistinguishable from the accident while every step declared it. One leg declares it now
+through `alsoReads`, which exists for repo-root files no workspace scope can name. `commandText` is built
+on `reachableText`'s `invoked` rather than its `text`, since the text carries the contents of every
+followed file and those are already hashed as declared inputs.
+
 ## 2. Two tsconfig lines take the dep-file gate from 15 steps to 17 — **done** (`f004ab2cd`)
 
 `typecheck:main` and `typecheck:preload` set no `tsBuildInfoFile`, so they report nothing and their
@@ -81,7 +94,7 @@ typescript to an exact `5.8.3` and carry their own copy, where the root resolves
 info records the compiler that wrote it, so a single expected version would have failed both legs for the
 right reason and the wrong one. `typeScriptFor(depFile)` resolves it per workspace now.
 
-## 3. The eleven that no tool reports on
+## 3. The nine that no tool reports on — **closed as a record** (`5ff837083`)
 
 The remaining steps are builds, shell scenarios and Playwright runs. No compiler reports their reads and
 no module graph reaches them, so the only honest options are:
@@ -95,10 +108,16 @@ no module graph reaches them, so the only honest options are:
 - **Accept it, and say so per step.** A step whose inputs nothing can check is a known gap, and naming
   the eleven is better than a count that drifts.
 
-**Settle which before building anything**, and prefer the third for any step where the first two cost more
-than the staleness they would catch.
+**Settled: the third.** `dep-files.integration.spec.ts` now asserts the nine by name, beside the list of
+legs no dep file speaks for, in the same shape and for the same reason — a step gaining observation shows
+up, one losing it shows up, and a new step nothing watches has to be added deliberately. It is a record
+of a known gap, not a gate over it, and that is the honest thing to have: a watcher for a build or a
+shell scenario costs more than the staleness it would catch, and tracing was already out of scope.
 
-## 4. `seconds` is 29 hand-recorded measurements with no update path
+The count is nine rather than eleven, and the arithmetic moved while this was written: `f004ab2cd` gave
+`main` and `preload` dep files, so observation is 17 by dep file, 3 by module graph, 9 by nothing.
+
+## 4. `seconds` is 29 hand-recorded measurements with no update path — **done** (`dfa56d523`)
 
 It breaks the repo's own naming rule — *"an artifact with only an update is one nothing will notice has
 gone stale"* — and it has neither half. The chain already measures every step and reports drift against
@@ -109,8 +128,16 @@ condition of **~47 actions**, on the grounds that 13 entries are read by whoever
 describe. **That condition is half met**: the table went from 13 to 29 in one change, and the plan it
 serves targets 47. Re-read that decision rather than inheriting it.
 
-If it moves, it takes `spec-cost.ts`'s band machinery — hysteresis, `DRIFT_SHARE`, the contention refusal
-— and not its storage, which is the same conclusion reached for the same reason the first time.
+It did not move, and the conclusion held for the third time: `chain --all --record` writes the numbers
+where they are. `driftReport` was always the check and always printed the value; the update is what was
+missing. The hysteresis moved to `measure.ts`, the generic measurement layer, with the floor left to the
+caller because the units differ — milliseconds for a spec, seconds for a step.
+
+Two things it found. The first `--record` wrote `packages:ensure 14s -> 0s`, which is the exact mistake
+that field's own doc records someone making, so sub-second measurements are excluded as `driftedSteps`
+already excluded them. And `scripts/lib/spec-cost.ts` had no local imports — which read as a property of
+the module and was a property of a test: `spec-cost-mutations` copies it to a temp directory, where a
+relative import does not resolve. The spec rewrites them now.
 
 ## 5. Open regression inherited from the goal — **closed** (`115582524`), and not where it was looked for
 
