@@ -1,8 +1,8 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { packFixture } from '../../src/testing/pack-fixture.ts';
-import { population } from '../../src/testing/population.ts';
+import { packFixture } from '../src/index.ts';
+import { population } from '@abuddy/sdk/testing';
 
 const read = (dir: string, file: string) => JSON.parse(fs.readFileSync(path.join(dir, file), 'utf-8'));
 

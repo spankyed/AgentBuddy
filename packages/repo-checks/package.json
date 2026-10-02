@@ -12,6 +12,7 @@
     "test:integration": "vitest run --config vitest.integration.config.ts"
   },
   "devDependencies": {
+    "@app/pack-fixtures": "*",
     "@abuddy/host": "*",
     "@abuddy/sdk": "*",
     "app-builder-lib": "26.15.3",

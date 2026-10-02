@@ -43,6 +43,7 @@
     "vue": "^3.5.18"
   },
   "devDependencies": {
+    "@app/pack-fixtures": "*",
     "@abuddy/ears": "*",
     "@abuddy/testing": "*",
     "@abuddy/ui": "*",

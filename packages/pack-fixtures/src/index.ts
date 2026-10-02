@@ -34,9 +34,14 @@ export interface PackFixtureOptions {
  * fail. `import-specifiers.integration.spec.ts` measured that: half its sweep ran on a fixture where
  * `own-modules` and `contract-leaves` could not speak, so for those rows the sweep asserted nothing.
  *
- * A spec in `@abuddy/sdk`, `/ears`, `/ui` or `default-setup` cannot import this — the layer rule reads their
- * `tests/` too. Nothing there builds a pack today; the first one that does is the signal to move this and
- * `population` to an `@app/*` package, rather than to write a second fixture.
+ * **It lived in `@abuddy/sdk/testing` until 2026-10-02**, where its own comment named the condition for
+ * moving: a second consumer. Two arrived (`@app/repo-checks`, `@abuddy/cli`), and the cost of staying was
+ * concrete — a repo-internal fixture in a published package's *reviewed* surface, carried in
+ * `etc/testing.api.md` and shipped in the tarball for something no pack author materialises a pack to test.
+ *
+ * `population` did not come with it: `@app/default-setup`'s tests use it, and a pack may not import an
+ * `@app/*` package. So a spec in `@abuddy/sdk`, `/ears`, `/ui` or `default-setup` still cannot import this —
+ * the layer rule reads their `tests/` too — and nothing there builds a pack.
  */
 export function packFixture({ at, files = {}, manifest = DEFAULT_MANIFEST }: PackFixtureOptions = {}): string {
   const dir = at ?? fs.mkdtempSync(path.join(os.tmpdir(), 'abuddy-pack-fixture-'));

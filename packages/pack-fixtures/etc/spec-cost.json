@@ -1,0 +1,7 @@
+{
+  "measuredAt": "2026-10-02T10:58:58.531Z",
+  "costs": {
+    "tests/pack-fixture.spec.ts": 8
+  },
+  "skipped": []
+}
