@@ -233,11 +233,11 @@ export function staleLines(found: {
   readonly lost: readonly string[];
   readonly files: readonly ChangedInput[];
   readonly identical: readonly string[];
-  /** Whether the stamp carried a diagnosis at all — one written before it did cannot explain itself */
-  readonly recorded: boolean;
+  /** Why the stamp could not be diffed, where it could not — the reason its reader gave, never a second copy of one */
+  readonly undiffable?: string;
   readonly cap?: number;
 }): string[] {
-  const { name, nameWidth, reason, gained, lost, files, identical, recorded, cap = CHANGED_CAP } = found;
+  const { name, nameWidth, reason, gained, lost, files, identical, undiffable, cap = CHANGED_CAP } = found;
   const head = `  ${name.padEnd(nameWidth)}  `;
   const under = ' '.repeat(head.length);
   const more = (count: number) => (count > cap ? [dim(`and ${count - cap} more`)] : []);
@@ -257,10 +257,14 @@ export function staleLines(found: {
       ];
   // One guard over two states neither of which the chain can produce, kept because the alternative is worse
   // than either: with no rows the step's own name never prints, and it vanishes from a report about it. A
-  // stamp older than the digests cannot explain itself, and a stale verdict from a sweep cannot disagree with
+  // stamp that cannot be diffed cannot explain itself, and a stale verdict from a sweep cannot disagree with
   // the diff taken from that same sweep — so if this ever prints, the caller is not the one it was written for.
+  //
+  // The unreadable half arrives as the message its reader produced rather than being worded again here: the
+  // sentence had three authors, and one of them said "its last run recorded no per-file digests" about a step
+  // that had no last run.
   if (rows.length === 0) {
-    rows.push(dim(recorded ? 'nothing under its inputs differs now' : 'its last run recorded no per-file digests'));
+    rows.push(dim(undiffable ?? 'nothing under its inputs differs now'));
   }
   if (identical.length > 0) {
     // A note, not another row: it is the one line here that is explicitly not a cause, and it read as one.

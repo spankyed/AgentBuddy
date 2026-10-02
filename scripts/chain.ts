@@ -43,7 +43,7 @@
 // assumption, and the cheapest work left in this chain may be another step that is quietly serial.
 import * as fs from 'node:fs';
 import * as path from 'node:path';
-import { changedInputs, firstChange, freshnessSweep, INPUTS_CHANGED, REPO_ROOT, stampedRun, stampRecord, unitStaleReason, type BuildUnit } from '@abuddy/host/build/packages-built';
+import { changedInputs, diffableStamp, firstChange, freshnessSweep, INPUTS_CHANGED, REPO_ROOT, stampedRun, stampRecord, unitStaleReason, type BuildUnit } from '@abuddy/host/build/packages-built';
 import { CHAIN_STEPS, type ChainStep, chainSteps, conflictsOf, MEASURED_AT_LANES, orderedSteps } from './lib/chain-steps.ts';
 import { commandText, rootScripts } from './lib/npm-scripts.ts';
 import { IDLE_FLOOR, idleNow, movedBeyondBand, refusesAsBusy } from './lib/measure.ts';
@@ -61,7 +61,7 @@ import { boundedSpawn, budgetFor } from './lib/bounded-spawn.ts';
 /**
  * Each step is cached on its own declared inputs, through the same protocol the package builds use:
  * `fingerprintUnit` over `ChainStep.inputs`, `unitStaleReason` to decide, `stampedRun` to record. One
- * `STAMP_VERSION`, one fingerprint, one thing to bump — which is why the chain's stamps live beside the
+ * protocol, one fingerprint, one reader — which is why the chain's stamps live beside the
  * builds' rather than inventing a second format.
  *
  * This replaces a whole-tree fingerprint, which skipped the chain only when nothing tracked had changed at
@@ -141,15 +141,15 @@ function whatMoved(
   asking: { changedInputs: typeof changedInputs },
 ): Omit<Parameters<typeof staleLines>[0], 'name' | 'nameWidth' | 'reason'> {
   const nothing = { gained: [], lost: [], files: [], identical: [] };
-  const record = stampRecord(stampFor(step.name));
-  // `recorded: false` is required of the types and unreachable from here, which is worth saying rather than
+  // An undiffable stamp is required of the types and unreachable from here, which is worth saying rather than
   // leaving as a fallback someone trusts: this is asked only of a step that *passed* in this run, and a step
-  // that passed rewrote its own stamp a moment ago with both fields in it. The state it stands for — a stamp
-  // from before they were recorded — is reachable only by whoever asks about a run they did not just watch,
-  // which is `--dry`, the question "why would this run?". That is where naming the files would pay next, and it
-  // would make this branch live.
-  if (record?.files === undefined || record.declared === undefined) return { ...nothing, recorded: false };
-  const changes = asking.changedInputs(unitFor(step), { files: record.files, declared: record.declared });
+  // that passed rewrote its own stamp a moment ago with every field in it. The state it stands for — a stamp
+  // from before the digests were recorded, or one in a shape its reader refuses — is reachable only by whoever
+  // asks about a run they did not just watch, which is `--dry`, the question "why would this run?". That is
+  // where naming the files would pay next, and it would make this branch live.
+  const { stamp: record, undiffable } = diffableStamp(stampRecord(stampFor(step.name)));
+  if (record === undefined) return { ...nothing, undiffable };
+  const changes = asking.changedInputs(unitFor(step), record);
   const at = (file: string) => {
     try {
       return fs.statSync(path.join(REPO_ROOT, file)).mtimeMs;
@@ -157,7 +157,7 @@ function whatMoved(
       return undefined; // gone between the diff and this stat, which the diff already called removed
     }
   };
-  const asOf = (field: unknown) => (typeof field === 'string' ? Date.parse(field) : undefined);
+  const asOf = (field: string | undefined) => (field === undefined ? undefined : Date.parse(field));
   const [from, until] = [asOf(record.takenAt), asOf(record.builtAt)];
   const files = ([
     ...changes.changed.map((file) => ({ file, how: 'changed' as const })),
@@ -174,7 +174,7 @@ function whatMoved(
     from,
     until,
   });
-  return { gained: changes.gained, lost: changes.lost, files, identical, recorded: true };
+  return { gained: changes.gained, lost: changes.lost, files, identical };
 }
 
 /**
@@ -305,9 +305,11 @@ async function main(): Promise<void> {
      * say which input moved.
      */
     const whatChanged = (step: ChainStep): string => {
-      const record = stampRecord(stampFor(step.name));
-      if (record?.files === undefined || record.declared === undefined) return 'its last run recorded no per-file digests';
-      return firstChange(sweep.changedInputs(unitFor(step), { files: record.files, declared: record.declared }));
+      const { stamp: record, undiffable } = diffableStamp(stampRecord(stampFor(step.name)));
+      // Its reader's own sentence, rather than one written again here: this said "its last run recorded no
+      // per-file digests" for every unusable stamp, including one belonging to a step that has never run
+      if (record === undefined) return undiffable;
+      return firstChange(sweep.changedInputs(unitFor(step), record));
     };
     for (const step of steps) {
       // `--all` runs everything, so a dry run given `--all` must say so rather than reporting the cache it

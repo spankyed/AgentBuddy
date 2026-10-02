@@ -14,7 +14,7 @@
  * does not know about: the pool steps declare `forceArgs` so the flag arrives.
  */
 import { execFileSync } from 'node:child_process';
-import { firstChange, freshnessSweep, stampedRunAll, stampRecord } from '@abuddy/host/build/packages-built';
+import { diffableStamp, firstChange, freshnessSweep, stampedRunAll, stampRecord } from '@abuddy/host/build/packages-built';
 import type { UnitSuite } from './lib/unit-suites.ts';
 import { POOL_SECONDS } from './lib/chain-steps.ts';
 import type { Half } from './lib/spec-cost.ts';
@@ -42,13 +42,11 @@ function decide(suites: readonly UnitSuite[], half: Half, all: boolean): Array<{
   const sweep = freshnessSweep();
   return suites.flatMap((suite) => {
     const stamp = poolStampFor(suite, half);
-    const record = stampRecord(stamp);
+    const read = diffableStamp(stampRecord(stamp));
     if (!all && sweep.staleReason(poolUnitFor(suite), stamp) === null) return [];
-    // The record is read once and handed to both halves, rather than fetched again inside the diff
-    const moved = () => (record?.files === undefined || record.declared === undefined
-      ? ''
-      : firstChange(sweep.changedInputs(poolUnitFor(suite), { files: record.files, declared: record.declared })));
-    return [{ suite, why: all ? '--all' : whyItRuns(record, moved) }];
+    // The stamp is read once and handed to both halves, rather than fetched again inside the diff
+    const moved = () => (read.stamp === undefined ? '' : firstChange(sweep.changedInputs(poolUnitFor(suite), read.stamp)));
+    return [{ suite, why: all ? '--all' : whyItRuns(read, moved) }];
   });
 }
 

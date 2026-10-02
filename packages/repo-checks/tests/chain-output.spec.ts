@@ -153,10 +153,21 @@ describe('firstChange', () => {
 
 describe('staleLines', () => {
   const under = (found: Partial<Parameters<typeof staleLines>[0]>) => staleLines({
-    name: 'typecheck', nameWidth: 'typecheck'.length, gained: [], lost: [], files: [], identical: [], recorded: true, ...found,
+    name: 'typecheck', nameWidth: 'typecheck'.length, gained: [], lost: [], files: [], identical: [], ...found,
   // Matching the control character is the job: the chain's own output is coloured, and this reads it plain.
   // eslint-disable-next-line no-control-regex
   }).map((line) => line.replace(/\u001B\[\d+m/g, '').trimEnd());
+
+  // A step with nothing to name still has to print its own name, or it vanishes from a report about it. Which
+  // sentence fills that row is the stamp reader's to say: `diffableStamp` owns the wording, and this used to
+  // hold a second copy of one of its sentences — printed, at one call site, about a step that had never run.
+  it('prints the reason a stamp could not be read, rather than wording one of its own', () => {
+    expect(under({ undiffable: 'has not run yet' })).toEqual(['  typecheck  has not run yet']);
+  });
+
+  it('says the inputs agree when there is nothing to name and the stamp was readable', () => {
+    expect(under({})).toEqual(['  typecheck  nothing under its inputs differs now']);
+  });
 
   /**
    * The first finding shares the step's row, and the rest sit under it — two lines of screen for the usual case

@@ -53,28 +53,12 @@ const pkgFile = (pkg: string, ...parts: string[]): string => repoFile('packages'
 /**
  * Read by every build: the scripts that run it and the toolchain it runs with. This module is not among
  * them — it decides *whether* to build and cannot change what a build emits, so it is the cache's
- * implementation rather than an input. Its two jobs that do affect a verdict are covered without it:
- * `STAMP_VERSION` invalidates every stamp when the protocol changes, and each unit's declared paths are
- * part of its own fingerprint, so editing one unit's input set invalidates that unit alone.
+ * implementation rather than an input. Its two jobs that do affect a verdict are covered without it: the units
+ * whose bundles *emit* this file watch it through `packages/abuddy-host/src`, which they declare because they
+ * inline it, and each unit's declared paths are part of its own fingerprint, so editing one unit's input set
+ * invalidates that unit alone.
  */
 const SHARED_INPUTS = [repoFile('package.json'), repoFile('package-lock.json')];
-
-/**
- * The stamp format, shared by everything that records "this ran over exactly these inputs" — the package
- * builds and, through `stampedRun`, the chain's steps.
- *
- * **Leave it at 1, including when what gets hashed changes.** That reads like the one case a version is
- * for, and it is not one here: stamps live in `node_modules/.cache/` and are never committed, so a version
- * only means something against stamps a machine already has — and a changed hash already differs from what
- * those stamps hold, so every unit re-runs once whether this moves or not. All a bump adds is the reason
- * line a run prints, against a full chain for whoever pulls. It has been bumped and reverted twice, once
- * for the chain joining this protocol and once for a unit's `command` joining the hash.
- *
- * The condition that would make it earn its keep is stamps that outlive a checkout — published, shared, or
- * restored from a remote cache. Until then, changing the format and letting `!==` do the work is the whole
- * mechanism, and this is a human's call rather than a consequence of some other change.
- */
-export const STAMP_VERSION = 1;
 
 export interface BuildUnit {
   /** Files and directories the build reads, absolute; a directory is walked */
@@ -178,9 +162,10 @@ export function buildScriptFor(workspace: string, root = REPO_ROOT): string {
  * Modules a build script imports that are deliberately **not** its inputs, and why.
  *
  * Each decides *whether* to build; none can change what a build emits. Watching one would rebuild every
- * package whenever the freshness rule was edited, for output that would be byte-identical — and the protocol's
- * own way of invalidating stamps is `STAMP_VERSION`, which is deliberate where a content hash would be
- * incidental.
+ * package whenever the freshness rule was edited, for output that would be byte-identical. The exception is a
+ * build that *inlines* this source, which emits it and therefore watches it: the case below asks
+ * `buildScriptFor` which units bundle, exempts those, and then requires each of them to declare
+ * `packages/abuddy-host/src` — so the exemption is not a hole a unit falls through by declaring nothing.
  *
  * One list, two readers, because two would disagree: `package-freshness.spec.ts` asserts no unit names these,
  * and `chain-inputs.spec.ts`' closure guard would otherwise demand them — which it did, on the day it landed.
@@ -189,7 +174,8 @@ export function buildScriptFor(workspace: string, root = REPO_ROOT): string {
 export const NOT_A_BUILD_INPUT: Record<string, string> = {
   'scripts/ensure-packages-built.ts': 'the command over the freshness rule; it cannot change what "built" means',
   'packages/abuddy-host/src/build/packages-built.ts': 'the freshness rule and the stamp protocol itself; '
-    + 'a change to it is announced by STAMP_VERSION, not by a fingerprint',
+    + 'the bundles that inline it watch it as ordinary source, and a build that cannot embed it has no verdict '
+    + 'that depends on it',
 };
 
 /**
@@ -585,17 +571,21 @@ export interface StaleUnit {
 export const INPUTS_CHANGED = 'its inputs changed since the last successful run';
 
 /**
- * What a successful run recorded. `fingerprint` and `version` are the verdict; `declared` and `files` are the
- * diagnosis, and a stamp written before those existed simply has neither.
+ * What a successful run recorded. `fingerprint` is the verdict; the rest is the diagnosis, and a stamp written
+ * before those fields existed simply has none of them.
+ *
+ * **Every field is `unknown`, including the two a diff reads back as data.** This is parsed JSON, and typing
+ * `declared` and `files` as the shapes they ought to be is what let three callers check them for `undefined`
+ * and hand the rest straight to `changedInputs`, which trusts both. `diffableStamp` is the one place they are
+ * narrowed, and these types are what make the compiler say so at every other site.
  */
 export interface StampRecord {
   readonly workspace?: unknown;
-  readonly version?: unknown;
   readonly fingerprint?: unknown;
   readonly takenAt?: unknown;
   readonly builtAt?: unknown;
-  readonly declared?: readonly string[];
-  readonly files?: Record<string, string>;
+  readonly declared?: unknown;
+  readonly files?: unknown;
 }
 
 /** A stamp as it was written, or undefined when there is none to read — the one place this file is parsed */
@@ -607,24 +597,60 @@ export function stampRecord(stamp: string): StampRecord | undefined {
   }
 }
 
+/** A stamp narrowed to what a diff may read: the verdict's own string, the two sets it compares, and the run's brackets */
+export interface DiffableStamp {
+  readonly fingerprint: string;
+  readonly declared: readonly string[];
+  readonly files: Record<string, string>;
+  /** When the run started and finished, where it recorded them — a diagnosis, so absence is not a failure */
+  readonly takenAt?: string;
+  readonly builtAt?: string;
+}
+
+const isDigestMap = (value: unknown): value is Record<string, string> =>
+  typeof value === 'object' && value !== null && !Array.isArray(value)
+  && Object.values(value).every((digest) => typeof digest === 'string');
+
+const isPathList = (value: unknown): value is readonly string[] =>
+  Array.isArray(value) && value.every((entry) => typeof entry === 'string');
+
+const recordedTime = (value: unknown): string | undefined => (typeof value === 'string' ? value : undefined);
+
 /**
- * Why this stamp's digests cannot be diffed against the tree, or null when they can.
+ * A stamp as something a diff may read, or why it is not one — **the one place this format is checked**.
  *
- * The verdict and the explanation have to agree about which stamps are comparable at all, and the version is the
- * clause that is easy to forget: `unitStaleReason` refuses a stamp from another protocol — a different hash, or a
- * different set of things hashed — and an explainer that diffs its digests anyway contradicts the reason printed
- * beside it. It did: `its stamp is from another format (0, this is 1) — changed src/a.ts`, on one line.
+ * **There is no format version, and the one this had could not have earned its keep.** A stamp records a
+ * measurement rather than a decision: it holds a hash, and the other side of the comparison is recomputed here,
+ * by today's code, from today's tree. Every policy that decides anything — `skipsFingerprint`, `declaredPaths`,
+ * a unit's `command`, the digest function — is inside the preimage, so a change to one moves the digest of
+ * exactly the units it affects and a stamp written under the old one comes out *unequal* rather than misread.
+ * Coming out wrongly **equal** would take a collision. An integer beside that could only force re-runs somebody
+ * had decided they wanted, which `npm run chain -- --all` does per run and per machine instead; the field was
+ * bumped and reverted three times before it went, each time for a change the preimage had already covered.
  *
- * So the rule is here rather than at each caller, in `unitStaleReason`'s own order — fingerprint, then version —
- * so the two cannot disagree about precedence. A caller with a line to spend prints the reason; one adding a
- * suffix to a reason that already says this prints nothing. The wording sits after a name — a workspace or a
- * project — which is why none of it starts with a subject.
+ * What does need checking is the half a verdict never touches. `declared` and `files` are read back as **data**
+ * by `changedInputs`: a digest map whose values are not digests makes it report every file as changed, and a
+ * declared set that is not a list makes it throw. Both are properties of the bytes on disk, which this can see
+ * for itself — where a version could only ever say that someone had remembered.
+ *
+ * One message covers both, and names neither: it said *digests* while firing for a bad `declared` set too, which
+ * sends a reader to the field that was fine. They are one thing to a caller — what the run recorded about what
+ * it read — and that is what the words say.
+ *
+ * The three answers are in `unitStaleReason`'s own order, and the first clause is the same predicate it uses,
+ * because the verdict and the explanation disagreeing is a line that has shipped: `its stamp is from another
+ * format (0, this is 1) — changed src/a.ts`. The wording sits after a name — a workspace, a project — which is
+ * why none of it starts with a subject.
  */
-export const undiffableReason = (record: StampRecord | undefined): string | null =>
-  (record?.fingerprint === undefined ? 'has not run yet'
-    : record.version !== STAMP_VERSION ? 'its stamp is from another format'
-      : record.files === undefined || record.declared === undefined ? 'its last run recorded no per-file digests'
-        : null);
+export function diffableStamp(record: StampRecord | undefined):
+  | { readonly stamp: DiffableStamp; readonly undiffable?: undefined }
+  | { readonly stamp?: undefined; readonly undiffable: string } {
+  if (typeof record?.fingerprint !== 'string') return { undiffable: 'has not run yet' };
+  const { declared, files } = record;
+  if (declared === undefined || files === undefined) return { undiffable: 'its last run recorded no per-file digests' };
+  if (!isPathList(declared) || !isDigestMap(files)) return { undiffable: 'its record of what it read is in a shape this cannot read' };
+  return { stamp: { fingerprint: record.fingerprint, declared, files, takenAt: recordedTime(record.takenAt), builtAt: recordedTime(record.builtAt) } };
+}
 
 /**
  * Why `unit` needs to run, or null when its stamp says a run over exactly these inputs succeeded. Never
@@ -635,9 +661,10 @@ export function unitStaleReason(unit: BuildUnit, stamp: string, tree?: TreeReade
   const missing = unit.outputs.filter((output) => !fs.existsSync(output)).map(repoRelative);
   if (missing.length > 0) return `not built (no ${missing.join(', ')})`;
   const record = stampRecord(stamp) ?? {};
+  // The same predicate `diffableStamp` opens with, so a verdict and an explanation never disagree about
+  // whether a stamp has run. Nothing else on the record is consulted: the comparison below recomputes its own
+  // side, which is why no version is read here or written there
   if (typeof record.fingerprint !== 'string') return 'no stamp — it has not run yet, or the last run failed or was interrupted';
-  // A stamp from another protocol says nothing about this one, so it counts as never built
-  if (record.version !== STAMP_VERSION) return `its stamp is from another format (${String(record.version)}, this is ${STAMP_VERSION})`;
   try {
     return record.fingerprint === fingerprintUnit(unit, undefined, tree) ? null : INPUTS_CHANGED;
   } catch (err) {
@@ -758,15 +785,11 @@ export function stalePackageUnits(): StaleUnit[] {
  * today. The message then reads as it always did.
  */
 function whatMovedUnder(unit: BuildUnit, stamp: string, sweep: ReturnType<typeof freshnessSweep>): string | undefined {
-  const record = stampRecord(stamp);
   // Nothing rather than a message: the reason this is a suffix to already says why, and a second sentence
   // repeating it would be the widest part of the line
-  if (undiffableReason(record) !== null) return undefined;
-  // Destructured so the two are narrowed here rather than asserted: `undiffableReason` has established they are
-  // there, and the compiler cannot see through it. The rule that would be costly to repeat is the version's
-  const { files, declared } = record ?? {};
-  if (files === undefined || declared === undefined) return undefined;
-  const moved = firstChange(sweep.changedInputs(unit, { files, declared }));
+  const { stamp: recorded } = diffableStamp(stampRecord(stamp));
+  if (recorded === undefined) return undefined;
+  const moved = firstChange(sweep.changedInputs(unit, recorded));
   return moved === '' ? undefined : moved;
 }
 
@@ -992,7 +1015,7 @@ export async function stampedBuild(
 /**
  * `run` between clearing the stamp and writing a new one, with no lock. The chain's steps stamp through
  * this: they are not package builds and must not queue behind the build lock, but the stamp they write has
- * to be the same protocol — one `STAMP_VERSION`, one `fingerprintUnit`, one thing to bump.
+ * to be the same protocol — one `fingerprintUnit`, one writer, one reader.
  *
  * The fingerprint is taken before `run` touches anything, so a source edited while it runs is recorded as
  * not done. The stamp is written only where `run` returned, so an interrupted step reads as never run.
@@ -1029,7 +1052,7 @@ export async function stampedRunAll(units: readonly StampedUnit[], run: () => vo
     // `takenAt` and `builtAt` bracket the run, which is what places a change inside it or after it. Without the
     // opening bracket a report cannot tell a file rewritten while the run was going from one last touched a
     // month ago, so it would call every untouched input a rewrite.
-    fs.writeFileSync(stamp, `${JSON.stringify({ workspace: label, version: STAMP_VERSION, fingerprint, takenAt, builtAt, declared, files }, null, 2)}\n`);
+    fs.writeFileSync(stamp, `${JSON.stringify({ workspace: label, fingerprint, takenAt, builtAt, declared, files }, null, 2)}\n`);
   }
 }
 

@@ -11,14 +11,14 @@
  */
 import * as fs from 'node:fs';
 import * as path from 'node:path';
-import { REPO_ROOT, undiffableReason, type BuildUnit, type StampRecord } from '@abuddy/host/build/packages-built';
+import { diffableStamp, REPO_ROOT, type BuildUnit } from '@abuddy/host/build/packages-built';
 import { INTEGRATION_SUITES, suiteInputs } from './chain-steps.ts';
 import type { Half } from './spec-cost.ts';
 import { UNIT_SUITES, type UnitSuite } from './unit-suites.ts';
 
 /**
- * Beside the package builds' and the chain's stamps, in the same cache directory and the same format, so
- * one `STAMP_VERSION` covers all three.
+ * Beside the package builds' and the chain's stamps, in the same cache directory and the same format, so one
+ * `fingerprintUnit` and one reader cover all three.
  */
 export const POOL_STAMP_DIR = path.join(REPO_ROOT, 'node_modules', '.cache', 'abuddy-unit-pool');
 
@@ -157,18 +157,18 @@ export function projectsThatDidNotRun(asked: readonly string[], output: string):
 }
 
 /**
- * Why one project is about to run, given what its stamp recorded and what a diff of its inputs would say.
+ * Why one project is about to run, given what its stamp was read as and what a diff of its inputs would say.
  *
  * A pool exists to run a subset, so every non-empty run makes a claim about which projects moved — and
  * `npm run chain -- --dry` cannot settle it, because it reports on the *step*, a different unit with a
  * different input set. It can say what moved under `test:unit:host` while being unable to say which of the
  * eleven projects inside it that was.
  *
- * Pure, over a record and a thunk, so the answers can be checked without a stamp on disk — and `??`
- * short-circuits, so the diff is never computed for a stamp that may not be diffed. Which stamps those are is
- * `undiffableReason`'s to say, not this line's: a version it does not recognise is the clause an explainer is
- * most likely to forget, and forgetting it here printed a file name beside a reason that said the stamp could
- * not be read at all.
+ * Pure, over a read and a thunk, so the answers can be checked without a stamp on disk — and `??`
+ * short-circuits, so the diff is never computed for a stamp that may not be diffed. It takes the *read* rather
+ * than the record because that is what makes the two inseparable: the caller cannot reach the fields a diff
+ * needs without having been told whether they are readable, where it used to ask one function and then narrow
+ * for itself. Forgetting that printed a file name beside a reason that said the stamp could not be read at all.
  */
-export const whyItRuns = (record: StampRecord | undefined, moved: () => string): string =>
-  undiffableReason(record) ?? (moved() || 'its inputs changed');
+export const whyItRuns = (read: ReturnType<typeof diffableStamp>, moved: () => string): string =>
+  read.undiffable ?? (moved() || 'its inputs changed');

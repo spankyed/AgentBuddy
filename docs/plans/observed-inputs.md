@@ -151,7 +151,7 @@ t=100s has to see the tree as of then, so a shared sweep would hide a step whose
 had moved. But `dependsOn` is now derived as "B reads what A writes" — so a step that writes another's
 inputs is already ordered before it, and the hazard is zero by construction rather than by vigilance.
 `forget(step.outputs ∪ step.alsoWrites)` after each run covers what a step writes outside its declaration.
-Warm chain **0.9s**, below the 1.5s base. `STAMP_VERSION` never moved.
+Warm chain **0.9s**, below the 1.5s base, and no stamp was invalidated to get there.
 
 ## 6. The integration half is the third pool — **done** (this branch)
 

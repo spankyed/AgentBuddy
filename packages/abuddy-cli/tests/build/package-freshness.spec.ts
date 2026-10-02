@@ -4,7 +4,7 @@ import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
-import { ABSENT, ALLOW_UNBUILT, BUILD_UNITS, buildScriptFor, changedInputs, CHECKOUT_MARKER, covers, declaredPaths, fingerprintInputs, fingerprintUnit, fingerprintWithDigests, freshnessSweep, inputFiles, INPUTS_CHANGED, repoRelative, NOT_A_BUILD_INPUT, REPO_ROOT, staleMessage, stampRecord, STAMP_VERSION, stampedBuild, stampedRun, stampedRunAll, stampFile, unbuiltRefusal, undiffableReason, unitStaleReason, withBuildLock, type BuildIntent, type BuildUnit } from '@abuddy/host/build/packages-built';
+import { ABSENT, ALLOW_UNBUILT, BUILD_UNITS, buildScriptFor, changedInputs, CHECKOUT_MARKER, covers, declaredPaths, diffableStamp, fingerprintInputs, fingerprintUnit, fingerprintWithDigests, freshnessSweep, inputFiles, INPUTS_CHANGED, repoRelative, NOT_A_BUILD_INPUT, REPO_ROOT, staleMessage, stampRecord, stampedBuild, stampedRun, stampedRunAll, stampFile, unbuiltRefusal, unitStaleReason, withBuildLock, type BuildIntent, type BuildUnit } from '@abuddy/host/build/packages-built';
 
 /**
  * The freshness rule behind `npm test -w @abuddy/cli`'s pretest (@abuddy/host/build/packages-built):
@@ -48,7 +48,7 @@ function fixture(): Fixture {
 /** What a successful build of the fixture writes */
 function stampFor(f: Fixture): string {
   const stamp = path.join(f.root, 'stamp.json');
-  fs.writeFileSync(stamp, JSON.stringify({ version: STAMP_VERSION, fingerprint: fingerprintUnit(f.unit) }));
+  fs.writeFileSync(stamp, JSON.stringify({ fingerprint: fingerprintUnit(f.unit) }));
   return stamp;
 }
 
@@ -170,18 +170,28 @@ describe('refusing an unbuilt tree', () => {
 });
 
 describe('the stamp protocol', () => {
-  it('reads a stamp from another format as never built, so a protocol change rebuilds once', () => {
+  it('reads a stamp whose fingerprint is not a string as never built', () => {
     const f = fixture();
     const stamp = path.join(f.root, 'stamp.json');
-    fs.writeFileSync(stamp, JSON.stringify({ version: STAMP_VERSION - 1, fingerprint: fingerprintUnit(f.unit) }));
-    expect(unitStaleReason(f.unit, stamp)).toMatch(/another format/);
+    fs.writeFileSync(stamp, JSON.stringify({ fingerprint: 42 }));
+    expect(unitStaleReason(f.unit, stamp)).toMatch(/no stamp/);
   });
 
-  it('reads a stamp with no version the same way, since every stamp this build writes has one', () => {
+  /**
+   * **The contract that replaced a format version**, so the deletion is not invisible: a stamp is a measurement
+   * and the other side of the comparison is recomputed here, so what the writer's code looked like is not a
+   * question this asks. A format change moves the preimage and the fingerprint disagrees on its own; what used
+   * to also be refused for carrying the wrong integer is now read for the one thing it holds.
+   *
+   * *"A protocol change rebuilds once"* is still held, by `does not watch the code that decides freshness`
+   * below: the builds that inline this module declare `packages/abuddy-host/src`, so editing it makes exactly
+   * those units stale, derived rather than announced.
+   */
+  it('reads a stamp carrying an unknown field as this protocol\'s own, since the fingerprint is the whole verdict', () => {
     const f = fixture();
     const stamp = path.join(f.root, 'stamp.json');
-    fs.writeFileSync(stamp, JSON.stringify({ fingerprint: fingerprintUnit(f.unit) }));
-    expect(unitStaleReason(f.unit, stamp)).toMatch(/another format/);
+    fs.writeFileSync(stamp, JSON.stringify({ version: 7, format: 'something else', fingerprint: fingerprintUnit(f.unit) }));
+    expect(unitStaleReason(f.unit, stamp)).toBeNull();
   });
 
   // Hashing only the contents would read a widened input set against the old stamp and call it fresh
@@ -559,16 +569,17 @@ describe('which inputs changed', () => {
     expect(ABSENT, 'the word the hash frames a vanished file with, so a digest map agrees with it').toBe('absent');
   });
 
+  // Through the reader rather than by asserting the fields, which is the round trip worth holding: what the
+  // writer records has to be what `diffableStamp` hands over, and nothing between them narrows by hand
   it('records what the next run reads back', async () => {
     const f = fixture();
     const stamp = path.join(f.root, 'stamp.json');
     await stampedRun('fixture', f.unit, stamp, () => {});
-    const record = stampRecord(stamp);
-    expect(record?.files, 'a run recorded no per-file digests, so nothing can explain its staleness').toBeDefined();
-    const recorded = { files: record!.files!, declared: record!.declared! };
-    expect(changedInputs(f.unit, recorded).changed).toEqual([]);
+    const { stamp: recorded, undiffable } = diffableStamp(stampRecord(stamp));
+    expect(undiffable, 'a run wrote a stamp its own reader will not diff').toBeUndefined();
+    expect(changedInputs(f.unit, recorded!).changed).toEqual([]);
     fs.writeFileSync(path.join(f.src, 'a.ts'), 'export const a = 2;\n');
-    expect(changedInputs(f.unit, recorded).changed).toEqual([rel(path.join(f.src, 'a.ts'))]);
+    expect(changedInputs(f.unit, recorded!).changed).toEqual([rel(path.join(f.src, 'a.ts'))]);
   });
 });
 
@@ -661,31 +672,64 @@ describe('a freshness sweep', () => {
 /**
  * Whether a stamp's digests may be diffed at all, which the verdict and the explanation have to agree on.
  *
- * The version clause is the one an explainer forgets: `unitStaleReason` refuses a stamp from another protocol,
- * and an explainer that diffs its digests anyway printed a file name beside a reason saying the stamp could not
- * be compared — on one line, contradicting itself.
+ * The shape of what a run recorded is the clause an explainer forgets: it is read back as data, and one that
+ * diffs a map whose values are not digests reports every file as changed, or throws on a declared set that is
+ * not a list — printing a file name beside a reason saying the stamp could not be compared, on one line,
+ * contradicting itself. Both halves get one message, because to a caller they are one thing.
  */
-describe('undiffableReason', () => {
-  const complete = { version: STAMP_VERSION, fingerprint: 'abc', declared: ['packages/x/src'], files: { 'packages/x/src/a.ts': 'd' } };
+describe('diffableStamp', () => {
+  const why = (record: Parameters<typeof diffableStamp>[0]) => diffableStamp(record).undiffable ?? null;
+  const complete = { fingerprint: 'abc', declared: ['packages/x/src'], files: { 'packages/x/src/a.ts': 'd' } };
 
-  it('lets a complete stamp of this protocol through', () => {
-    expect(undiffableReason(complete)).toBeNull();
+  // It hands back the record, not a verdict about it: the whole point of one reader is that a caller holding
+  // this object has already been told the fields are readable and never narrows for itself
+  it('hands a complete stamp over, with the brackets of the run that wrote it', () => {
+    expect(diffableStamp({ ...complete, takenAt: 'a', builtAt: 'b' })).toEqual({
+      stamp: { ...complete, takenAt: 'a', builtAt: 'b' },
+    });
+    expect(diffableStamp({ ...complete, takenAt: 7 }).stamp?.takenAt, 'a time that is not a string is no time')
+      .toBeUndefined();
   });
 
-  /** The clause that was missing, and the only one here that can give a confidently wrong answer when it is */
-  it('refuses a stamp from another protocol, however complete it looks', () => {
-    expect(undiffableReason({ ...complete, version: STAMP_VERSION - 1 })).toBe('its stamp is from another format');
+  /**
+   * The two shapes that can give a confidently wrong answer, which is what this clause is for: a map of
+   * non-digests makes `changedInputs` report every file as changed, and a declared set that is not a list makes
+   * it throw. Both are visible in the bytes, which is why no version has to be remembered for them.
+   */
+  it('refuses a digest map whose values are not digests', () => {
+    expect(why({ ...complete, files: { 'packages/x/src/a.ts': 7 } }))
+      .toBe('its record of what it read is in a shape this cannot read');
+  });
+
+  it('refuses a declared set that is not a list of paths', () => {
+    expect(why({ ...complete, declared: { 'packages/x/src': true } }))
+      .toBe('its record of what it read is in a shape this cannot read');
   });
 
   it('refuses one with nothing to diff against', () => {
-    expect(undiffableReason(undefined)).toBe('has not run yet');
-    expect(undiffableReason({ version: STAMP_VERSION })).toBe('has not run yet');
-    expect(undiffableReason({ version: STAMP_VERSION, fingerprint: 'abc' })).toBe('its last run recorded no per-file digests');
+    expect(why(undefined)).toBe('has not run yet');
+    expect(why({})).toBe('has not run yet');
+    expect(why({ fingerprint: 'abc' })).toBe('its last run recorded no per-file digests');
   });
 
   /** In `unitStaleReason`'s order, so the two cannot disagree about which complaint comes first */
-  it('reports a missing fingerprint before a version it does not know', () => {
-    expect(undiffableReason({ version: STAMP_VERSION - 1 })).toBe('has not run yet');
+  it('reports a missing fingerprint before a record it cannot read', () => {
+    expect(why({ files: 5 })).toBe('has not run yet');
+  });
+
+  /**
+   * One predicate, asked twice. These two answered differently for a non-string fingerprint — `has not run yet`
+   * from the explainer and `another format` from the verdict — which is the self-contradicting line this whole
+   * block exists to prevent, reachable through a door the version clause was standing beside rather than in.
+   */
+  it('agrees with unitStaleReason about what a fingerprint is', () => {
+    const f = fixture();
+    for (const fingerprint of [null, 42, undefined, {}]) {
+      const stamp = path.join(f.root, 'stamp.json');
+      fs.writeFileSync(stamp, JSON.stringify({ fingerprint, declared: [], files: {} }));
+      expect(why({ fingerprint, declared: [], files: {} }), String(fingerprint)).toBe('has not run yet');
+      expect(unitStaleReason(f.unit, stamp), String(fingerprint)).toMatch(/no stamp/);
+    }
   });
 });
 
@@ -856,7 +900,7 @@ describe('recording that something ran', () => {
   it('leaves the unit fresh, and clears the stamp first so an interrupted run reads as never run', async () => {
     const f = fixture();
     const stamp = path.join(f.root, 'stamp.json');
-    fs.writeFileSync(stamp, JSON.stringify({ version: STAMP_VERSION, fingerprint: 'stale' }));
+    fs.writeFileSync(stamp, JSON.stringify({ fingerprint: 'stale' }));
 
     let stampPresentDuringRun = true;
     await stampedRun('a-unit', f.unit, stamp, () => { stampPresentDuringRun = fs.existsSync(stamp); });

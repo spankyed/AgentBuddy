@@ -6,7 +6,7 @@
 // workspace stopped matching its vitest project name would be stamped as having passed a run it was
 // excluded from — the same "recorded fresh having never run" the pool was already fixed for once.
 import { describe, expect, it } from 'vitest';
-import { STAMP_VERSION } from '@abuddy/host/build/packages-built';
+import { diffableStamp } from '@abuddy/host/build/packages-built';
 import { POOLS, livePoolStamps, poolStampFor, projectsThatRan, projectsThatDidNotRun, whyItRuns, type Pool } from '../../../scripts/lib/unit-pool.ts';
 import { POOL_SECONDS } from '../../../scripts/lib/chain-steps.ts';
 import { UNIT_SUITES } from '../../../scripts/lib/unit-suites.ts';
@@ -77,10 +77,14 @@ describe('projectsThatDidNotRun', () => {
  * settle it, because it reports on the step, a different unit with a different input set.
  */
 describe('whyItRuns', () => {
-  const stamped = { version: STAMP_VERSION, fingerprint: 'abc', declared: ['packages/x/src'], files: { 'packages/x/src/a.ts': 'd' } };
+  // Through the reader the caller uses, so these cases cannot drift from what it accepts: the signature takes a
+  // read rather than a record precisely so a caller cannot reach the digests without having been told they are
+  // readable, and a fixture built by hand would be free of that
+  const read = (record: Parameters<typeof diffableStamp>[0]) => diffableStamp(record);
+  const stamped = { fingerprint: 'abc', declared: ['packages/x/src'], files: { 'packages/x/src/a.ts': 'd' } };
 
   it('names what moved, which is the whole of what the line adds', () => {
-    expect(whyItRuns(stamped, () => 'changed packages/x/src/a.ts (and 2 more)'))
+    expect(whyItRuns(read(stamped), () => 'changed packages/x/src/a.ts (and 2 more)'))
       .toBe('changed packages/x/src/a.ts (and 2 more)');
   });
 
@@ -89,31 +93,35 @@ describe('whyItRuns', () => {
    * the digests were recorded, and `node_modules/.cache` is never cleared, so it is what a machine has today.
    */
   it('says so when the stamp predates the digests, rather than guessing', () => {
-    expect(whyItRuns({ version: STAMP_VERSION, fingerprint: 'abc' }, () => 'changed a.ts'))
+    expect(whyItRuns(read({ fingerprint: 'abc' }), () => 'changed a.ts'))
       .toBe('its last run recorded no per-file digests');
   });
 
   it('distinguishes a project that has never run from one whose inputs moved', () => {
-    expect(whyItRuns(undefined, () => 'changed a.ts')).toBe('has not run yet');
-    expect(whyItRuns({ version: STAMP_VERSION }, () => 'changed a.ts')).toBe('has not run yet');
+    expect(whyItRuns(read(undefined), () => 'changed a.ts')).toBe('has not run yet');
+    expect(whyItRuns(read({}), () => 'changed a.ts')).toBe('has not run yet');
   });
 
   /** The diff can come back empty on a walk-time race; the line still has to say something true */
   it('falls back to the verdict when the diff names nothing', () => {
-    expect(whyItRuns(stamped, () => '')).toBe('its inputs changed');
+    expect(whyItRuns(read(stamped), () => '')).toBe('its inputs changed');
   });
 
   /**
-   * The defect as a property rather than a string: a stamp this protocol will not compare must not be diffed at
-   * all. It was — the digests were read and a file named, beside a reason saying the stamp was from another
-   * format — so the thing to hold is that the diff is never reached, not merely that the words came out right.
+   * The defect as a property rather than a string: a stamp this reader will not hand over must not be diffed at
+   * all. It was — the digests were read and a file named, beside a reason saying the stamp could not be read —
+   * so the thing to hold is that the diff is never reached, not merely that the words came out right.
+   *
+   * The subject used to be a version the reader did not recognise. It is now a digest map holding something
+   * that is not a digest, which is the same state for this line's purpose and one the bytes on disk declare for
+   * themselves rather than one a human had to remember to announce.
    */
   it('never computes the diff for a stamp it may not compare', () => {
     let asked = false;
-    const fromAnotherFormat = { ...stamped, version: STAMP_VERSION - 1 };
-    expect(whyItRuns(fromAnotherFormat, () => { asked = true; return 'changed packages/x/src/a.ts'; }))
-      .toBe('its stamp is from another format');
-    expect(asked, 'it diffed digests that this protocol says say nothing about the tree').toBe(false);
+    const unreadable = read({ ...stamped, files: { 'packages/x/src/a.ts': 7 } });
+    expect(whyItRuns(unreadable, () => { asked = true; return 'changed packages/x/src/a.ts'; }))
+      .toBe('its record of what it read is in a shape this cannot read');
+    expect(asked, 'it diffed digests whose shape says nothing about the tree').toBe(false);
   });
 });
 
