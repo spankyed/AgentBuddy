@@ -1,7 +1,7 @@
-> **Done** (branch `AS/one-pack-fixture`), in the four phases below: `b6e551b5b` the package,
-> `f890484a4` the options, `e48f613b2`/`83f6d498a` the adoption, `fcfbfa835` the guardrail — and then
-> **Decision 1 reversed**, which is the first thing this records. The text after this block is the plan as
-> written, which means both its headline number and its home for the fixture are wrong.
+> **Done in three phases, not four** (branch `AS/one-pack-fixture`): `b6e551b5b` the package,
+> `f890484a4` the options, `e48f613b2`/`83f6d498a` the adoption. **Phase 4, the guardrail, was built and then
+> removed**, and **Decision 1 was reversed**. The text after this block is the plan as written, which means its
+> headline number, its home for the fixture and its insistence that Phase 4 was not optional are all wrong.
 >
 > **`packFixture` lives in `@abuddy/sdk` after all, as the source-only export
 > `@abuddy/sdk/testing/pack-fixture`.** Decision 1 weighed four homes and rejected them all, but it never
@@ -49,13 +49,27 @@
 > literals asked for — `manifest` merging over the default, `rawManifest` verbatim (both at once throws, since
 > a merge cannot express an absent key), `at`, `files` and `nodeModules`.
 >
-> **Phase 4 took the lesson it was written to take.** The predicate reads the syntax tree: fs bindings come
-> from each file's own `node:fs` import however it is spelled, and a finding requires
-> `JSON.stringify(<object literal with an id>)` reaching a write. Measured after the move: 172 files examined
-> across three packages, 0 findings, and five mutations watched — reintroducing one hand-written manifest fires
-> by file and line, dropping the object-literal requirement fails three cases *including two allowed shapes*,
-> hard-coding the fs names fails the never-imported-fs control, and emptying the population fails naming
-> itself rather than passing over nothing.
+> **Phase 4 was built four times and then deleted, and that is the part worth reading.** The plan called it
+> *"not optional and not last-if-there-is-time"*, on the reasoning that Phase 3 was mechanical work with no
+> speed payoff and so would be abandoned half-done. The gate was supposed to be the floor under it.
+>
+> It never had anything to stand on. Three versions tried to decide which manifest writes were offences — the
+> argument text, then the write functions taken from each file's own `node:fs` import, then a `JSON.stringify`
+> of an object literal declaring an `id` — and the last reported **zero** over a population holding **seven**
+> hand-built manifests, each going through a one-line local wrapper. A fourth version replaced the verdict with
+> an inventory of every test naming a manifest, which worked, and then said the quiet part: **23 files, 19 of
+> them legitimately hand-written.** 309 lines of check, against 127 for the fixture it guarded, catching
+> nothing.
+>
+> The reason there was nothing to catch is the correction above: the sites Phase 3 left are **built artifacts**
+> — an installed pack, a release's staged tree, a report over a bundle, a harness pack with no `src/` — and
+> `packFixture` makes a source tree. The gate was protecting an adoption that was already as complete as it
+> should get, which is why "it will be abandoned half-done" was a prediction rather than a fact.
+>
+> **The rule this leaves: build the gate last, and only when adoption has left a violation to point at.** A
+> gate justified by what might happen is a prediction; one justified by three sites it catches today is a fact.
+> The inventory is in this branch's history (`b98e48377`) and can come back the day there is something for it
+> to name.
 
 # One way to write a pack fixture
 
