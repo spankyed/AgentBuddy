@@ -33,7 +33,7 @@ import { beforeAll, describe, expect, it } from 'vitest';
 // Line comments, not a doc block: half the subject matter is glob patterns, and a `*` before a `/` ends one.
 
 /** Skips the two cases that read build output, and refuses rather than reading a stale one */
-const PACKAGES_BUILT = packagesBuiltOrRefuse('npm run packages:build');
+const PACKAGES_BUILT = packagesBuiltOrRefuse('npm run packages:build (or npm test -w @app/repo-checks, which builds them)');
 
 /** The `files` array electron-builder is given, which is also the data the mutation cases edit a copy of */
 let patterns: string[];
