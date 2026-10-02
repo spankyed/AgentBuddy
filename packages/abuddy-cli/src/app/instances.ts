@@ -166,6 +166,10 @@ const entries = (dir: string): string[] => {
   }
 };
 
+/** Bytes as a person reads them. Beside `dirBytes` because two commands format what it returns. */
+export const size = (bytes: number): string =>
+  (bytes >= 1e9 ? `${(bytes / 1e9).toFixed(1)}GB` : bytes >= 1e6 ? `${Math.round(bytes / 1e6)}MB` : `${Math.round(bytes / 1e3)}kB`);
+
 /** What a directory holds, for a command deciding whether reclaiming it is worth it */
 export function dirBytes(dir: string): number {
   let total = 0;
@@ -205,6 +209,32 @@ function notAnInstance(root: string, resolved: string): string | undefined {
   return isInstance
     ? undefined
     : `an instance is a directory in ${root}, or one under ${EPHEMERAL}/.`;
+}
+
+/**
+ * Renames a named instance, refusing what `removeInstance` refuses and two things only a rename can hit.
+ *
+ * The source goes through `notAnInstance`, so neither the root nor `.ephemeral` can be moved; the target
+ * through `instanceDir`, which applies the name rule and the containment check. An existing target is
+ * refused rather than merged into — `fs.renameSync` onto a directory either throws or replaces depending on
+ * the platform and whether it is empty, and neither is an answer to "rename this".
+ *
+ * An app with the instance open is refused for `removeInstance`'s reason, one step worse: a running app
+ * holds paths inside the directory, so moving it leaves the app writing to a path that no longer exists.
+ */
+export function renameInstance(dirs: CliDirs, from: string, to: string): { dir: string } {
+  const root = instancesRoot(dirs);
+  const source = path.resolve(instanceDir(dirs, from));
+  const problem = notAnInstance(root, source);
+  if (problem) throw new Error(`Refusing to rename ${source}: ${problem}`);
+  if (!fs.existsSync(source)) throw new Error(`No instance named "${from}".`);
+  const target = instanceDir(dirs, to);
+  if (fs.existsSync(target)) throw new Error(`An instance named "${to}" already exists (${target}).`);
+  if (instanceInUse(source)) {
+    throw new Error(`An app is running on ${source}. Close it before renaming the instance.`);
+  }
+  fs.renameSync(source, target);
+  return { dir: target };
 }
 
 export function removeInstance(dirs: CliDirs, dir: string): void {
