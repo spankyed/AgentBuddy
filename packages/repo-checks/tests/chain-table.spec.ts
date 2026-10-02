@@ -112,12 +112,12 @@ describe('a pool step and its projects cache on the same inputs', () => {
   it.each(['host', 'pack'] as const)('%s reads everything its projects read', (kind) => {
     const declared = new Set(poolStep(kind).inputs);
     const missing = projects(kind)
-      .flatMap((suite) => suiteInputs(suite).filter((input) => !declared.has(input)).map((input) => `${suite.workspace} reads ${input}`));
+      .flatMap((suite) => suiteInputs(suite, 'fast').filter((input) => !declared.has(input)).map((input) => `${suite.workspace} reads ${input}`));
     expect([...new Set(missing)]).toEqual([]);
   });
 
   it.each(['host', 'pack'] as const)('%s declares nothing its projects cannot see', (kind) => {
-    const fingerprinted = new Set(projects(kind).flatMap((suite) => poolUnitFor(suite).inputs.map(repoRelative)));
+    const fingerprinted = new Set(projects(kind).flatMap((suite) => poolUnitFor(suite, kind).inputs.map(repoRelative)));
     const unseen = poolStep(kind).inputs.filter((input) => !fingerprinted.has(input));
     expect(unseen, 'the step would go stale for these and every project would still read fresh, so it would run '
       + 'and test nothing: put them in suiteInputs, where both cache layers read them').toEqual([]);

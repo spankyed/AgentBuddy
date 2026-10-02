@@ -6,8 +6,8 @@
 // workspace stopped matching its vitest project name would be stamped as having passed a run it was
 // excluded from — the same "recorded fresh having never run" the pool was already fixed for once.
 import { describe, expect, it } from 'vitest';
-import { diffableStamp } from '@abuddy/host/build/packages-built';
-import { POOLS, livePoolStamps, poolStampFor, projectsThatRan, projectsThatDidNotRun, whyItRuns, type Pool } from '../../../scripts/lib/unit-pool.ts';
+import { declaredPaths, diffableStamp } from '@abuddy/host/build/packages-built';
+import { POOLS, livePoolStamps, poolStampFor, poolUnitFor, projectsThatRan, projectsThatDidNotRun, whyItRuns, type Pool } from '../../../scripts/lib/unit-pool.ts';
 import { POOL_SECONDS } from '../../../scripts/lib/chain-steps.ts';
 import { UNIT_SUITES } from '../../../scripts/lib/unit-suites.ts';
 
@@ -149,6 +149,47 @@ describe('the pools', () => {
     const duplicated = keys.filter((key, index) => keys.indexOf(key) !== index);
     expect(duplicated, 'two pools would write one stamp, so running either would mark the other fresh')
       .toEqual([]);
+  });
+
+  /**
+   * And the content twin of that case, which is the one that can give a wrong answer.
+   *
+   * A distinct path is where a record is kept; what says *which* record it is has to be in the preimage,
+   * because `unitStaleReason` recomputes its own side and consults nothing else on the stamp. Until the
+   * command joined `poolUnitFor`, the three two-half suites hashed identical preimages, and a stamp read
+   * under the wrong key would have come out **fresh** — the expensive half skipped on the fast half's
+   * record, which is the hole this pool was fixed for once already.
+   *
+   * On the preimage rather than the digest of it: `fingerprintUnit` would walk every input of fifteen units,
+   * seconds of hashing for a question about identity, and the bytes are the one part that is the same for
+   * both halves by definition. These two are what the hash is a function of beside them.
+   */
+  it('give no two of their projects the same preimage', () => {
+    const identity = entries.map(({ name, suite }) => {
+      const unit = poolUnitFor(suite, name);
+      return JSON.stringify([declaredPaths(unit), unit.command]);
+    });
+    const duplicated = identity.filter((key, index) => identity.indexOf(key) !== index);
+    expect(duplicated, 'two units hash the same preimage, so either one\'s stamp reads as fresh for the other')
+      .toEqual([]);
+  });
+
+  /**
+   * What makes them differ, named — so the case above cannot pass on an accident of the declared set.
+   *
+   * The command is taken from the pool's own `run`, which is why it is specific enough to be worth hashing:
+   * the integration pool names the config it passes, and the host pool the wrapper that supplies the
+   * `@abuddy/source` condition. Two pools running one suite two ways is the whole subject.
+   */
+  it('record what each pool would run, as its command', () => {
+    const [both] = entries.filter(({ suite }) => entries.filter((other) => other.suite.dir === suite.dir).length > 1);
+    expect(both, 'no suite is in two pools, so this case has nothing to be about').toBeDefined();
+    const commands = (Object.keys(POOLS) as Pool[])
+      .filter((name) => POOLS[name].suites().some((suite) => suite.dir === both!.suite.dir))
+      .map((name) => poolUnitFor(both!.suite, name).command ?? '');
+    expect(commands.filter((command) => command.includes('vitest.integration.config.ts')).length,
+      'no command names the config that makes it the expensive half').toBe(1);
+    expect(new Set(commands).size, 'two pools run this suite and their commands do not differ').toBe(commands.length);
   });
 
   it('reach every unit suite, each in exactly one of the fast pools', () => {

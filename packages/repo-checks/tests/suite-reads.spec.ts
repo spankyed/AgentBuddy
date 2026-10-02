@@ -5,6 +5,11 @@ import { inputFiles, REPO_ROOT } from '@abuddy/host/build/packages-built';
 import { CHAIN_STEPS, INTEGRATION_SUITES, suiteInputs } from '../../../scripts/lib/chain-steps.ts';
 import { UNIT_SUITES, unitStepName, type UnitSuite } from '../../../scripts/lib/unit-suites.ts';
 import { reachableFrom } from '../../../scripts/lib/module-graph.ts';
+import type { Half } from '../../../scripts/lib/spec-cost.ts';
+
+/** The halves a suite runs in: every suite has a fast one, and only a suite with a second config has the other */
+const halvesOf = (suite: UnitSuite): Half[] =>
+  (INTEGRATION_SUITES.some((other) => other.dir === suite.dir) ? ['fast', 'integration'] : ['fast']);
 import { population } from '@abuddy/sdk/testing';
 
 /**
@@ -74,7 +79,13 @@ const walked = new Map<string, { reached: string[]; declared: Set<string> }>();
 function reads(suite: UnitSuite): { reached: string[]; declared: Set<string> } {
   const found = walked.get(suite.dir) ?? {
     reached: reachableFrom(specsOf(suite), [REPO_ROOT]).map((file) => path.relative(REPO_ROOT, file)),
-    declared: new Set(suiteInputs(suite).flatMap(filesUnder)),
+    // Every half this suite *has*, because the walk covers every spec in it rather than one half's: the
+    // question is whether anything declares a file the specs load, not which pool run would re-read it.
+    // The halves it has, not both — a suite with no integration config declares no integration half, and
+    // crediting it with one invents an input nothing declares, which the step case below reports as the step
+    // under-declaring. Per-half is the tighter question and needs the specs split first, which `halfOfPath`
+    // can do and this does not.
+    declared: new Set(halvesOf(suite).flatMap((half) => suiteInputs(suite, half)).flatMap(filesUnder)),
   };
   walked.set(suite.dir, found);
   return found;

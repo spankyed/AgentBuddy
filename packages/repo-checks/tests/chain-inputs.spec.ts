@@ -16,8 +16,9 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { BUILD_UNITS, covers, fingerprintUnit, inputFiles, NOT_A_BUILD_INPUT, REPO_ROOT, repoRelative } from '@abuddy/host/build/packages-built';
-import { CHAIN_STEPS, dependsOn, SUITE_READS } from '../../../scripts/lib/chain-steps.ts';
+import { CHAIN_STEPS, dependsOn, suiteInputs, SUITE_READS } from '../../../scripts/lib/chain-steps.ts';
 import { UNIT_SUITES } from '../../../scripts/lib/unit-suites.ts';
+import { reachableFrom } from '../../../scripts/lib/module-graph.ts';
 import { commandText, reachableText, rootScripts } from '../../../scripts/lib/npm-scripts.ts';
 import { TYPECHECK_LEGS } from '../../../scripts/lib/typecheck-legs.ts';
 import { PACKAGE_DIRS } from '../../../scripts/lib/workspace-deps.ts';
@@ -358,6 +359,71 @@ describe('a unit suite whose specs name build output declares it', () => {
 //
 // This is the preventive half. `willNotCache` in the chain's summary is the empirical half, and catches
 // what no declaration can anticipate; this catches what can be known before anything runs.
+/**
+ * The modules that decide **how** a pool runs are inputs to every project in it.
+ *
+ * The same question `BUILD_UNITS` is asked at the bottom of this file — a unit declaring the modules its own
+ * runner imports — and it had the same answer: `scripts/lib/unit-pool.ts` holds `POOLS`, the argv, the stamp
+ * key and the prune rule, and no suite declared it, so any of those could change and invalidate nothing.
+ * `chain-table.spec.ts` records this defect being found by hand once before, for four other runner files:
+ * *"the file deciding what the pool runs was the one file the pool could not notice changing"*. This is the
+ * derivation that stops a third extraction slipping out.
+ *
+ * **The boundary is `chain-steps.ts`, and that is the whole subtlety.** It is in the closure, and declaring it
+ * would be wrong: it *defines* `suiteInputs`, so its effect on a pool's key is the declared set itself, which
+ * the key already covers — where declaring the file would re-run all thirteen suites for an edit to an
+ * unrelated step. So everything reachable only through it is out of the population, with that reason, and what
+ * is left is the pool's own machinery.
+ *
+ * One direction, as `suite-reads` has it: over-declaration is not a finding, because `scripts/bounded.ts` and
+ * `with-source.mjs` are spawned rather than imported and are declared on purpose.
+ */
+describe('a pool declares the modules that run it', () => {
+  const inScripts = [path.join(REPO_ROOT, 'scripts')];
+  const closure = (entry: string): Set<string> =>
+    new Set(reachableFrom([path.join(REPO_ROOT, entry)], inScripts).map((file) => repoRelative(file)));
+
+  it('leaves nothing its runner imports undeclared, bar the step table it reads its inputs from', () => {
+    const table = closure('scripts/lib/chain-steps.ts');
+    const machinery = [...closure('scripts/test-unit-pool.ts')].filter((file) => !table.has(file)).sort();
+    expect(machinery.length, 'the walk found no pool machinery, so this would pass over nothing')
+      .toBeGreaterThan(2);
+    // Every suite declares the same runner set, so one is enough to ask — and `suiteInputs` is where it comes
+    // from, which is what both cache layers read
+    const declared = new Set(suiteInputs(UNIT_SUITES[0]!, 'fast'));
+    expect(machinery.filter((file) => !declared.has(file)),
+      'a pool runs through these and no project of it would notice them changing').toEqual([]);
+  });
+});
+
+/**
+ * And a suite's half declares the root config that half runs under — neither more nor less.
+ *
+ * Both root configs were in every suite's inputs until 2026-10-02, which cost a cache hit in one direction
+ * (an edit to the integration config re-ran all thirteen fast projects) and an identity in the other: the two
+ * halves of one suite hashed the same declared set, leaving the stamp's filename as the only thing that told
+ * them apart. A pack suite's fast half reads neither, because `npm test -w` runs that package's own config.
+ */
+describe("a suite's half declares the config that runs it", () => {
+  const host = UNIT_SUITES.find((suite) => suite.kind === 'host')!;
+  const pack = UNIT_SUITES.find((suite) => suite.kind === 'pack')!;
+  const FAST = 'vitest.config.ts';
+  const INTEGRATION = 'vitest.integration.config.ts';
+
+  it('gives a host suite the root config of the half, and only that one', () => {
+    expect(suiteInputs(host, 'fast')).toContain(FAST);
+    expect(suiteInputs(host, 'fast'), 'the fast half does not run under the integration config').not.toContain(INTEGRATION);
+    expect(suiteInputs(host, 'integration')).toContain(INTEGRATION);
+    expect(suiteInputs(host, 'integration'), 'the expensive half passes --config and reads no other').not.toContain(FAST);
+  });
+
+  it('gives a pack suite neither, its own config being in its workspace', () => {
+    expect(suiteInputs(pack, 'fast').filter((input) => [FAST, INTEGRATION].includes(input))).toEqual([]);
+    expect(suiteInputs(pack, 'fast'), 'its own config is what it runs under, through its workspace')
+      .toContain(path.join('packages', pack.dir, 'vitest.config.ts'));
+  });
+});
+
 describe('a gitignored input belongs to someone', () => {
   const ignoredRoots = execFileSync('git', ['ls-files', '--others', '--ignored', '--exclude-standard', '--directory'],
     { cwd: REPO_ROOT, maxBuffer: 64 * 1024 * 1024 })

@@ -2,7 +2,7 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { BUILD_UNITS, repoRelative, REPO_ROOT } from '@abuddy/host/build/packages-built';
 import { UNIT_SUITES, type UnitSuite } from './unit-suites.ts';
-import { hasSplit } from './spec-cost.ts';
+import { hasSplit, type Half } from './spec-cost.ts';
 import { dependencySource, PACKAGE_DIRS, workspaceDeps } from './workspace-deps.ts';
 import { scopeOf, TYPECHECK_LEGS, type Leg } from './typecheck-legs.ts';
 
@@ -356,14 +356,25 @@ export function orderedSteps(given: readonly ChainStep[] = CHAIN_STEPS): readonl
 const ROOT = ['package-lock.json'];
 
 /**
- * Both root vitest configs: one pools the unit projects, the other the expensive halves, and a step that
- * reads either reads what its pool is made of.
+ * The root vitest config a run of one half uses — which projects it pools is an input to every suite in it.
+ *
+ * Both were declared for every suite until 2026-10-02, which cost two things: an edit to the integration
+ * config re-ran all thirteen fast projects, and the two halves of one suite hashed an identical declared set,
+ * leaving the stamp's filename as the only thing that told them apart.
+ *
+ * A pack suite's fast half reads neither. `npm test -w <workspace>` runs that package's own config, which
+ * `suiteWorkspace` already declares; the integration half reads this one whatever the suite's kind, because
+ * the pool passes `--config` itself.
  *
  * Separate from `ROOT` because only the pools read them. They stay inside `EVERY_SOURCE` as well, since a
  * step that walks the tree — the lint, the import rules — walks these too, and the coverage guard in
  * `chain-inputs.spec.ts` is what would notice if they did not.
  */
-const VITEST_ROOT = ['vitest.config.ts', 'vitest.integration.config.ts'];
+const VITEST_ROOT: Record<Half, string> = { fast: 'vitest.config.ts', integration: 'vitest.integration.config.ts' };
+
+/** The root config that runs this suite's half, where one does */
+const rootConfigFor = (suite: UnitSuite, half: Half): string[] =>
+  (half === 'fast' && suite.kind === 'pack' ? [] : [VITEST_ROOT[half]]);
 
 /**
  * Every workspace, from the one definition that decides which they are (`workspace-deps.ts`, read from the
@@ -423,7 +434,7 @@ const EVERY_WORKSPACE = PACKAGES.flatMap(workspace);
  *
  * Build output is not in here, because a guard's subject is source. `typecheck` adds its own.
  */
-const EVERY_SOURCE = [...ROOT, ...VITEST_ROOT, ...EVERY_WORKSPACE, 'scripts', 'tests/e2e', 'tests/packs', 'tests/scripts',
+const EVERY_SOURCE = [...ROOT, ...Object.values(VITEST_ROOT), ...EVERY_WORKSPACE, 'scripts', 'tests/e2e', 'tests/packs', 'tests/scripts',
   'tests/tsconfig.json', 'playwright.config.ts', 'types', 'electron-builder.mjs',
   // The drive layer's config, and only it: the driving scripts beside it are gitignored and ad-hoc,
   // so naming the directory would re-run a typecheck every time someone poked at the app
@@ -483,7 +494,8 @@ const BOUNDED_RUNNER = ['scripts/bounded.ts', 'scripts/lib/bounded-spawn.ts'];
  * destination pool's step went stale, the suite's stamp was keyed by directory rather than by pool, and it
  * ran in neither.
  */
-const SUITE_RUNNER = ['scripts/test-unit-pool.ts', 'scripts/lib/unit-suites.ts', 'scripts/with-source.mjs', ...BOUNDED_RUNNER];
+const SUITE_RUNNER = ['scripts/test-unit-pool.ts', 'scripts/lib/unit-pool.ts', 'scripts/lib/unit-suites.ts',
+  'scripts/lib/exit-on-epipe.ts', 'scripts/with-source.mjs', ...BOUNDED_RUNNER];
 /**
  * What `compile` writes. `src/__generated__` is under the `src` it also reads, so it has to be declared:
  * `fingerprintUnit` excludes a unit's own output from its own fingerprint, and that is what stops the step
@@ -594,12 +606,12 @@ export const STEP_TABLES = ['scripts/lib/chain-steps.ts', 'scripts/lib/typecheck
  * construction rather than by anyone remembering; `chain-inputs.spec.ts` checks the step against what the
  * pool actually fingerprints, so re-adding a step-only input fails by name.
  */
-export function suiteInputs(suite: UnitSuite): string[] {
+export function suiteInputs(suite: UnitSuite, half: Half): string[] {
   const reads = SUITE_READS[suite.dir] ?? {};
   return [
     ...ROOT,
-    // A suite runs under one of the root configs, so which projects that config pools is an input to it
-    ...VITEST_ROOT,
+    // A suite's half runs under one root config, so which projects that config pools is an input to it
+    ...rootConfigFor(suite, half),
     ...SUITE_RUNNER,
     ...suiteWorkspace(suite.dir),
     ...workspaceDeps(suite.dir).flatMap(dependencySource),
@@ -633,9 +645,9 @@ export const INTEGRATION_SUITES = UNIT_SUITES.filter((suite) => hasSplit(path.jo
  * building one produces. Same reason `typecheck` reads around them, and the alternative — depending on the
  * step that writes them — would put a pool behind a build it does not need.
  */
-function inputsForSuites(suites: readonly UnitSuite[]): Pick<ChainStep, 'inputs' | 'excludes'> {
+function inputsForSuites(suites: readonly UnitSuite[], half: Half): Pick<ChainStep, 'inputs' | 'excludes'> {
   return {
-    inputs: [...new Set(suites.flatMap(suiteInputs))].sort(),
+    inputs: [...new Set(suites.flatMap((suite) => suiteInputs(suite, half)))].sort(),
     ...(suites.some((suite) => SUITE_READS[suite.dir]?.repo)
       ? { excludes: [...FIXTURE_OUTPUTS, ...FIXTURE_TEST_OUTPUT] }
       : {}),
@@ -728,7 +740,7 @@ const POOL_STEPS: readonly ChainStep[] = (['host', 'pack'] as const).map((kind) 
     // takes 20s, because the suites overlap inside one vitest run — which is the entire point of pooling
     // them. `driftedSteps` reported it on every run.
     seconds: POOL_SECONDS[kind],
-    ...inputsForSuites(suites),
+    ...inputsForSuites(suites, 'fast'),
     // It keeps a cache of its own, so the chain's `--all` has to reach inside it
     forceArgs: ['--all'],
   };
@@ -852,7 +864,7 @@ export const CHAIN_STEPS: readonly ChainStep[] = [
   { name: 'test:integration', seconds: POOL_SECONDS.integration,
     // It keeps a cache of its own now, like the two unit pools, so `--all` has to reach inside it
     forceArgs: ['--all'],
-    ...inputsForSuites(INTEGRATION_SUITES) },
+    ...inputsForSuites(INTEGRATION_SUITES, 'integration') },
   // `build:app`, not `build`. Root `build` is `-ws`, which includes `@app/default-setup`, whose own build is
   // the very command `compile` runs — so a `build` step rebuilt the pack every run, rewriting the `dist`
   // it declares as an input. It invalidated itself, and the five steps that read that tree, on every run:

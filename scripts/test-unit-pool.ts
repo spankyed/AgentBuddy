@@ -17,7 +17,6 @@ import { execFileSync } from 'node:child_process';
 import { diffableStamp, firstChange, freshnessSweep, stampedRunAll, stampRecord } from '@abuddy/host/build/packages-built';
 import type { UnitSuite } from './lib/unit-suites.ts';
 import { POOL_SECONDS } from './lib/chain-steps.ts';
-import type { Half } from './lib/spec-cost.ts';
 import { POOLS, poolStampFor, poolUnitFor, projectsThatDidNotRun, prunePoolStamps, whyItRuns, type Pool } from './lib/unit-pool.ts';
 import { boundedSpawn, budgetFor } from './lib/bounded-spawn.ts';
 import { exitOnEpipe } from './lib/exit-on-epipe.ts';
@@ -38,14 +37,15 @@ exitOnEpipe();
  * verdict and an explanation taken from two readings can describe two different trees, which is the shape the
  * chain's report had removed from it a week ago.
  */
-function decide(suites: readonly UnitSuite[], half: Half, all: boolean): Array<{ suite: UnitSuite; why: string }> {
+function decide(suites: readonly UnitSuite[], pool: Pool, all: boolean): Array<{ suite: UnitSuite; why: string }> {
   const sweep = freshnessSweep();
   return suites.flatMap((suite) => {
-    const stamp = poolStampFor(suite, half);
+    const stamp = poolStampFor(suite, POOLS[pool].half);
+    const unit = poolUnitFor(suite, pool);
     const read = diffableStamp(stampRecord(stamp));
-    if (!all && sweep.staleReason(poolUnitFor(suite), stamp) === null) return [];
+    if (!all && sweep.staleReason(unit, stamp) === null) return [];
     // The stamp is read once and handed to both halves, rather than fetched again inside the diff
-    const moved = () => (read.stamp === undefined ? '' : firstChange(sweep.changedInputs(poolUnitFor(suite), read.stamp)));
+    const moved = () => (read.stamp === undefined ? '' : firstChange(sweep.changedInputs(unit, read.stamp)));
     return [{ suite, why: all ? '--all' : whyItRuns(read, moved) }];
   });
 }
@@ -67,7 +67,7 @@ async function main(): Promise<void> {
   const all = process.argv.includes('--all');
 
   // The sweep lives and dies inside this call, and what comes back is text
-  const running = decide(suites, half, all);
+  const running = decide(suites, kind, all);
   const stale = running.map(({ suite }) => suite);
   if (stale.length === 0) {
     console.log(`${kind} pool: all ${suites.length} project(s) up to date`);
@@ -91,7 +91,11 @@ async function main(): Promise<void> {
     // if it returned, so a failure leaves all of them unstamped and none is measured against a tree the run
     // has already begun touching.
     await stampedRunAll(
-      covered.map((suite) => ({ label: suite.dir, unit: poolUnitFor(suite), stamp: poolStampFor(suite, half) })),
+      // The label is what the stamp records as its `workspace`, and it names the half for the same reason the
+      // filename does: a person opening the cache directory has to be able to tell two records apart. Nothing
+      // reads it — `unitStaleReason` consults the fingerprint and nothing else — so this is a diagnostic, and
+      // what keeps the two records *distinct* is the command inside that fingerprint.
+      covered.map((suite) => ({ label: `${suite.dir} (${half})`, unit: poolUnitFor(suite, kind), stamp: poolStampFor(suite, half) })),
       async () => {
         // The budget is what this pool costs healthy, from the same measurement the chain step declares
         const { code, output, timedOut } = await boundedSpawn(command, [...args], budgetFor(POOL_SECONDS[kind]));
