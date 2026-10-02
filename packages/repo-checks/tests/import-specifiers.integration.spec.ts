@@ -2,7 +2,7 @@ import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { CHECKS, findAppImportsInPackTests, findContractLeafImports, findCrossCheckoutResolution, findCrossFeatureImports, findExtensionlessOwnModules, findHostImports, findJsSpecifiers, findMissingSourceConditions, findPackageScriptImports, findPackBackendConsole, findPackOwnAliases, findRawGitListings, findRawPackHelpers, findRawTransport, findInternalPackageImports, findLmdbImports, findRepositoryCasts, findSharedPackageLists, findUpwardImports, jsSpecifierFixes, LAYERS, UNLAYERED_BY_DESIGN, LMDB_RULES, MANIFEST_FIELDS, packOwnModuleFixes, packageSourceDirs, CHECK_IDS, type CoveredRuleId, DECLARES_SOURCE_BY_DESIGN, type ImportRuleId, SHARED_LIST_CONSUMERS, sourceConditionPackages, SOURCE_CONDITION, checkedDirs, type ImportRule, packCodeDirs, packDirs, packRule, packRuleProblems, ruleRows, ruleTable } from '../../../scripts/check-import-specifiers.ts';
+import { CHECKS, findAppImportsInPackTests, findContractLeafImports, findCrossCheckoutResolution, findCrossFeatureImports, findExtensionlessOwnModules, findHostImports, findJsSpecifiers, findMissingSourceConditions, findPackageScriptImports, findPackBackendConsole, findPackOwnAliases, findRawGitListings, findRawPackHelpers, findRawTransport, findInternalPackageImports, findLmdbImports, findRepositoryCasts, findSharedPackageLists, findUpwardImports, jsSpecifierFixes, LAYERS, UNLAYERED_BY_DESIGN, repoRootDir, LMDB_RULES, MANIFEST_FIELDS, packOwnModuleFixes, packageSourceDirs, CHECK_IDS, type CoveredRuleId, DECLARES_SOURCE_BY_DESIGN, type ImportRuleId, SHARED_LIST_CONSUMERS, sourceConditionPackages, SOURCE_CONDITION, checkedDirs, type ImportRule, packCodeDirs, packDirs, packRule, packRuleProblems, ruleRows, ruleTable } from '../../../scripts/check-import-specifiers.ts';
 import { REPO_ROOT } from '@abuddy/host/build/packages-built';
 import { packFixture as buildPackFixture } from '@abuddy/sdk/testing';
 import { population } from '@abuddy/sdk/testing';
@@ -366,6 +366,40 @@ describe('findUpwardImports', () => {
     const also = [...LAYERS, { name: '@app/default-setup', dir: 'packages/default-setup', allowed: [] }];
     expect(findUpwardImports(also).filter((problem) => problem.startsWith('packages/default-setup:')))
       .toEqual([`packages/default-setup: has a layer and is also excused as "${UNLAYERED_BY_DESIGN.get('packages/default-setup')!}" — drop one`]);
+  });
+
+  /**
+   * **The direction that asks whether `allowed` is too wide**, which the three above do not.
+   *
+   * Each of them asks whether a row permits enough; a permission nothing uses is invisible to all three, so a
+   * row drifts permissive an entry at a time and a row allowing everything reads like one that earned it.
+   * That is what made `@abuddy/cli`'s row a grant rather than a decision when it landed.
+   */
+  it('reports a permission a row has and imports nowhere', () => {
+    allowed();
+    const wider = layers.map((l) => (l.name === '@app/api' ? { ...l, allowed: [...l.allowed, '@abuddy/ui'] } : l));
+    expect(findUpwardImports(wider, root))
+      .toEqual(['layers/api: allows @abuddy/ui and imports it nowhere, so the permission grants nothing']);
+  });
+
+  it('reports a reason for a permission that is now used', () => {
+    allowed();
+    const WHY = 'kept for the packaged app rather than for an import';
+    const excused = layers.map((l) => (l.name === '@app/api' ? { ...l, unusedBecause: { '@abuddy/ears': WHY } } : l));
+    expect(findUpwardImports(excused, root))
+      .toEqual([`layers/api: imports @abuddy/ears, so its unusedBecause ("${WHY}") no longer applies`]);
+  });
+
+  // The third clause the sibling exemption lists carry and this one did not until 2026-10-02: an entry whose
+  // workspace is gone, or holds no code, excuses nothing and should say so rather than sit there
+  // Over the real root, because the clause needs a population to check an entry against: under the synthetic
+  // tree there are no workspaces at all, and an entry excusing nothing is indistinguishable from an entry
+  // whose workspace this root has never heard of
+  it('reports an excused workspace that holds no code', () => {
+    const WHY = 'a pack, governed by the pack rules';
+    const unlayered = new Map([...UNLAYERED_BY_DESIGN, ['packages/not-here', WHY]]);
+    expect(findUpwardImports(LAYERS, repoRootDir(), unlayered))
+      .toEqual([`packages/not-here: listed in UNLAYERED_BY_DESIGN (${WHY}) but it holds no code, or is gone`]);
   });
 
   it('holds for the repo', () => {

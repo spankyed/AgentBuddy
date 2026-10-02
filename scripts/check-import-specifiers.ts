@@ -222,7 +222,27 @@ export function findAppImportsInPackTests(dirs: readonly string[] = PACK_TEST_DI
  * The layered packages, lowest first (docs/goals/goal-package-boundaries.md, Decision 1): the `@abuddy/*`
  * packages each may import, and path patterns it must never load.
  */
-export const LAYERS: { name: string; dir: string; allowed: string[]; forbidden?: RegExp }[] = [
+export const LAYERS: {
+  name: string;
+  dir: string;
+  allowed: string[];
+  forbidden?: RegExp;
+  /**
+   * Why a permission in `allowed` exists that nothing imports — by package, because the reason is about one
+   * entry rather than the row.
+   *
+   * Every other check here asks whether `allowed` is wide *enough*; this is the one that asks whether it is
+   * too wide, and it is what stops a row drifting permissive an entry at a time. A row at the top of the
+   * graph allows everything, and the difference between earning that and abdicating it is whether each entry
+   * is exercised — which is a thing this can measure and a comment cannot.
+   *
+   * On the row rather than in a fifth module-level exemption map: the subject is a field of the row, where
+   * the siblings (`RESOLVES_DIST_BY_DESIGN`, `UNLAYERED_BY_DESIGN`, `NOT_A_BUILD_INPUT`) key on paths
+   * scattered across the repo, and a map here would need a composite `<dir> <package>` key. The name follows
+   * `ChainStep.neverCachedBecause`.
+   */
+  unusedBecause?: Readonly<Record<string, string>>;
+}[] = [
   { name: '@abuddy/ears', dir: 'packages/abuddy-ears', allowed: [] },
   { name: '@abuddy/sdk', dir: 'packages/abuddy-sdk', allowed: ['@abuddy/ears'] },
   {
@@ -248,9 +268,10 @@ export const LAYERS: { name: string; dir: string; allowed: string[]; forbidden?:
   // `CHECKOUT_PACKAGES` — and the one real import is a test checking that proxying against the real module.
   { name: '@abuddy/cli', dir: 'packages/abuddy-cli',
     allowed: ['@abuddy/ears', '@abuddy/sdk', '@abuddy/host', '@abuddy/ui', '@abuddy/testing'] },
-  // `@abuddy/cli` is declared and imported nowhere: `electron-builder.mjs` packages its published tree and
-  // the `abuddy` launcher, so the dependency is what puts the files in the app, not an import
-  { name: '@app/main', dir: 'packages/main', allowed: ['@abuddy/sdk', '@abuddy/host', '@abuddy/cli'] },
+  { name: '@app/main', dir: 'packages/main', allowed: ['@abuddy/sdk', '@abuddy/host', '@abuddy/cli'],
+    // The app directory is the repo root, whose manifest depends on `@app/main`, so this row's dependencies
+    // are the packaged app's production closure. Nothing here imports the CLI
+    unusedBecause: { '@abuddy/cli': 'it is what puts the CLI the packaged app ships into its dependency closure' } },
   // The narrowest row, and the one worth having: a sandboxed IPC bridge has no business in the app runtime,
   // so `@abuddy/host` here would be a finding
   { name: '@app/preload', dir: 'packages/preload', allowed: ['@abuddy/sdk'] },
@@ -300,23 +321,29 @@ export const MANIFEST_FIELDS = ['dependencies', 'peerDependencies', 'optionalDep
  * it makes upward, `package.json: <field>: name` for an `@abuddy/*` dependency beyond the allowed
  * ones, and `package.json: undeclared: name` for an allowed one it imports without declaring.
  */
-export function findUpwardImports(layers = LAYERS, root = repoRoot): string[] {
+export function findUpwardImports(layers = LAYERS, root = repoRoot, unlayered = UNLAYERED_BY_DESIGN): string[] {
   const problems: string[] = [];
   // **Which packages this rule looks at, asked of the tree rather than of the table.** `LAYERS` is a
   // hand-written list, and it covered five of the twelve workspaces that hold code — nothing said which
   // seven were missing, so a package arrived unlayered by being forgotten rather than by a decision. The
   // population is the same expression the rule scans with, below, so coverage cannot drift from it.
   const layered = new Set(layers.map((layer) => layer.dir));
-  for (const dir of workspacesWithCode(root)) {
-    const reason = UNLAYERED_BY_DESIGN.get(dir);
-    if (reason === undefined && !layered.has(dir)) {
+  const withCode = new Set(workspacesWithCode(root));
+  for (const dir of withCode) {
+    if (!unlayered.has(dir) && !layered.has(dir)) {
       problems.push(`${dir}: holds code and has no layer, so nothing says which @abuddy packages it may import`);
     }
   }
-  for (const [dir, reason] of UNLAYERED_BY_DESIGN) {
+  for (const [dir, reason] of unlayered) {
     if (layered.has(dir)) problems.push(`${dir}: has a layer and is also excused as "${reason}" — drop one`);
+    // And the clause the sibling lists have and this one did not: an exception outliving its reason. Only
+    // where there is a population to check it against — a root with no workspaces is no evidence that an
+    // entry excuses nothing, and reporting every entry there is the mirror of reporting none
+    else if (withCode.size > 0 && !withCode.has(dir)) {
+      problems.push(`${dir}: listed in UNLAYERED_BY_DESIGN (${reason}) but it holds no code, or is gone`);
+    }
   }
-  for (const { name, dir, allowed, forbidden } of layers) {
+  for (const { name, dir, allowed, forbidden, unusedBecause } of layers) {
     const permitted = new Set([name, ...allowed]);
     const imported = new Set<string>();
     const files = filesUnder(['src', 'tests', 'scripts'].map((sub) => path.join(dir, sub)), root);
@@ -335,6 +362,16 @@ export function findUpwardImports(layers = LAYERS, root = repoRoot): string[] {
     }
     for (const pkg of [...imported].sort()) {
       if (permitted.has(pkg) && !declared.has(pkg)) problems.push(`${path.relative(root, manifestFile)}: undeclared: ${pkg}`);
+    }
+    // The direction that asks whether `allowed` is too wide. `imported` is already built above, so this walks
+    // nothing of its own
+    for (const pkg of allowed) {
+      const because = unusedBecause?.[pkg];
+      if (!imported.has(pkg)) {
+        if (because === undefined) problems.push(`${dir}: allows ${pkg} and imports it nowhere, so the permission grants nothing`);
+      } else if (because !== undefined) {
+        problems.push(`${dir}: imports ${pkg}, so its unusedBecause ("${because}") no longer applies`);
+      }
     }
   }
   return problems;
@@ -613,7 +650,7 @@ const RULE_LIST = [
     id: 'findUpwardImports',
     repoOnly: { kind: 'inapplicable', note: "The `@abuddy/*` layer rule, which is about this repo's packages and their manifests" },
     find: findUpwardImports,
-    rule: "Every workspace holding code has a layer (or is a pack, which the pack rules govern), packages import only downward (@abuddy/ears imports no @abuddy package, @abuddy/sdk only @abuddy/ears, @abuddy/host only those two and never the API, the API and the renderer only the packages below them), and each lists every @abuddy package it imports in its package.json",
+    rule: "Every workspace holding code has a layer (or is a pack, which the pack rules govern), packages import only downward (@abuddy/ears imports no @abuddy package, @abuddy/sdk only @abuddy/ears, @abuddy/host only those two and never the API, the API and the renderer only the packages below them), each lists every @abuddy package it imports in its package.json, and every package a layer allows is one it imports or says why not",
   },
   {
     id: 'findLmdbImports',
