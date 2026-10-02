@@ -706,6 +706,22 @@ describe('diffableStamp', () => {
       .toBe('its record of what it read is in a shape this cannot read');
   });
 
+  /**
+   * **Being a list is not the clause**, and the case above reaches only that half. A list of the wrong thing
+   * is the shape that gets through: `new Set([1, 2])` makes `changedInputs` report every path this unit
+   * declares as gained and every number as lost, which is a confident answer about a tree nothing read.
+   */
+  it('refuses a declared set that is a list of something other than paths', () => {
+    expect(why({ ...complete, declared: [1, 2] }))
+      .toBe('its record of what it read is in a shape this cannot read');
+  });
+
+  /** The mirror, and why a digest map is asked whether it is an array: `Object.values` of one is all strings */
+  it('refuses a digest map that is an array', () => {
+    expect(why({ ...complete, files: ['d', 'e'] }))
+      .toBe('its record of what it read is in a shape this cannot read');
+  });
+
   it('refuses one with nothing to diff against', () => {
     expect(why(undefined)).toBe('has not run yet');
     expect(why({})).toBe('has not run yet');

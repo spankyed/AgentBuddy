@@ -192,7 +192,6 @@ const ENTRIES_ROW = '#entries';
  */
 const PRODUCER_ROW = '#producer';
 
-
 function producerFingerprint(pkgDir: string): string {
   const require = createRequire(import.meta.url);
   const version = (JSON.parse(fs.readFileSync(require.resolve('@microsoft/api-extractor/package.json'), 'utf-8')) as { version: string }).version;

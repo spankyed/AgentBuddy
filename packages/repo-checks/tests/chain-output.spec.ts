@@ -153,7 +153,7 @@ describe('firstChange', () => {
 
 describe('staleLines', () => {
   const under = (found: Partial<Parameters<typeof staleLines>[0]>) => staleLines({
-    name: 'typecheck', nameWidth: 'typecheck'.length, gained: [], lost: [], files: [], identical: [], ...found,
+    name: 'typecheck', nameWidth: 'typecheck'.length, gained: [], lost: [], files: [], identical: [], undiffable: undefined, ...found,
   // Matching the control character is the job: the chain's own output is coloured, and this reads it plain.
   // eslint-disable-next-line no-control-regex
   }).map((line) => line.replace(/\u001B\[\d+m/g, '').trimEnd());

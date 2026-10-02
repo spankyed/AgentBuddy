@@ -233,8 +233,17 @@ export function staleLines(found: {
   readonly lost: readonly string[];
   readonly files: readonly ChangedInput[];
   readonly identical: readonly string[];
-  /** Why the stamp could not be diffed, where it could not — the reason its reader gave, never a second copy of one */
-  readonly undiffable?: string;
+  /**
+   * Why the stamp could not be diffed, where it could not — the reason its reader gave, never a second copy
+   * of one.
+   *
+   * **Required rather than optional, `undefined` and all.** A caller with nothing to put here is one that has
+   * not read the stamp, and the answer this falls back to is "it was readable" — so an omission prints
+   * *nothing under its inputs differs now* over a record nobody could read, which is the wrong half of the
+   * only two states this row exists for. Optional, that is a field a new caller forgets; required, it is a
+   * compile error at the one site that has the answer.
+   */
+  readonly undiffable: string | undefined;
   readonly cap?: number;
 }): string[] {
   const { name, nameWidth, reason, gained, lost, files, identical, undiffable, cap = CHANGED_CAP } = found;
@@ -260,9 +269,9 @@ export function staleLines(found: {
   // stamp that cannot be diffed cannot explain itself, and a stale verdict from a sweep cannot disagree with
   // the diff taken from that same sweep — so if this ever prints, the caller is not the one it was written for.
   //
-  // The unreadable half arrives as the message its reader produced rather than being worded again here: the
-  // sentence had three authors, and one of them said "its last run recorded no per-file digests" about a step
-  // that had no last run.
+  // The unreadable half arrives as the message its reader produced rather than being worded again here: that
+  // sentence was written out in three files, and the two copies outside `diffableStamp` could drift from it
+  // with nothing to notice — this row held one of them.
   if (rows.length === 0) {
     rows.push(dim(undiffable ?? 'nothing under its inputs differs now'));
   }

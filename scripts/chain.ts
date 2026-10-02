@@ -174,7 +174,8 @@ function whatMoved(
     from,
     until,
   });
-  return { gained: changes.gained, lost: changes.lost, files, identical };
+  // `undefined` rather than omitted: the field is required so that a caller which has read the stamp says so
+  return { gained: changes.gained, lost: changes.lost, files, identical, undiffable: undefined };
 }
 
 /**
@@ -306,8 +307,10 @@ async function main(): Promise<void> {
      */
     const whatChanged = (step: ChainStep): string => {
       const { stamp: record, undiffable } = diffableStamp(stampRecord(stampFor(step.name)));
-      // Its reader's own sentence, rather than one written again here: this said "its last run recorded no
-      // per-file digests" for every unusable stamp, including one belonging to a step that has never run
+      // Its reader's own sentence, rather than a second copy of one. The copy that was here could not print
+      // the wrong thing — this is asked only where `why === INPUTS_CHANGED` below, so the fingerprint is a
+      // string and only the two record clauses are reachable — but it was a literal kept in step with
+      // `diffableStamp`'s by nothing, and there were three of them in three files.
       if (record === undefined) return undiffable;
       return firstChange(sweep.changedInputs(unitFor(step), record));
     };
