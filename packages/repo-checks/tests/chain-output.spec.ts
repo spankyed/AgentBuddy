@@ -224,13 +224,30 @@ describe('staleLines', () => {
 
 describe('declaredAt', () => {
   it('finds the line a step is declared on', () => {
-    const table = ["  // why it is never cached", "  { name: 'test', needsApp: true, neverCachedBecause: '…',", '  },'].join('\n');
+    const table = ["  // why it is never cached", "  { name: 'test', neverCachedBecause: '…',", '  },'].join('\n');
     expect(declaredAt(table, 'test')).toBe(2);
   });
 
   /** A rename degrades to no pointer rather than to a wrong one, which is why the caller takes `undefined` */
   it('answers nothing for a name the table does not hold', () => {
     expect(declaredAt("  { name: 'test' },", 'compile')).toBeUndefined();
+  });
+
+  /**
+   * A generated name is matched by prefix, and a prefix match is not a lookup — so these two cases are the
+   * ones that say the answer is the step's own declaration rather than the first line that could pass for it.
+   * Written tables, because the real one holds a single template and so cannot exercise either: the hazard is
+   * a second generator arriving, which is exactly when nobody will be looking here.
+   */
+  it('points at the most specific generator, not the first one that prefixes the name', () => {
+    const table = ['  { name: `test:${kind}`,', '  { name: `test:unit:${kind}`,'].join('\n');
+    expect(declaredAt(table, 'test:unit:host'), 'the wider prefix answered for a name the narrower one generates').toBe(2);
+    expect(declaredAt(table, 'test:smoke'), 'and the wider one still answers for what only it generates').toBe(1);
+  });
+
+  it('answers nothing when two generators are equally specific', () => {
+    const table = ['  { name: `test:${kind}`,', '  { name: `test:${other}`,'].join('\n');
+    expect(declaredAt(table, 'test:unit:host'), 'a pointer at one of two equal candidates is a guess').toBeUndefined();
   });
 });
 
@@ -299,8 +316,8 @@ it('lines every row up with what sits under it, for the widest step name', () =>
   // Built the way chain.ts builds them, so a change to either shape fails here rather than on a terminal.
   // `marker` is the width, not a literal: both of its answers must be one width or every row below a
   // marked step shifts, which is the whole failure these columns exist to prevent.
-  expect(marker({ needsApp: true }).length, 'the marker is not one width').toBe(marker(undefined).length);
-  const mark = marker({ needsApp: true });
+  expect(marker(true).length, 'the marker is not one width').toBe(marker(false).length);
+  const mark = marker(true);
   expect(`${'ok'.padStart(7)} ${mark} ${name} ${'26.1s'.padStart(6)}  `.length, "a run row's reason").toBe(REASON_COLUMN);
   expect(`${'run'.padStart(7)} ${mark} ${name} `.length, "a --dry row's reason").toBe(DRY_REASON_COLUMN);
   expect(`${'ok'.padStart(7)} ${mark} ${name} `.length, "a run row's time").toBe(TIME_COLUMN);

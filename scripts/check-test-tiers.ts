@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * Fails when a step reaches the app without declaring `needsApp`, or declares it without reaching one.
+ * Fails when a step reaches the app without declaring any of its outputs among that step's inputs.
  *
  *   tsx scripts/check-test-tiers.ts        (npm run check:tiers, part of npm run typecheck)
  *
@@ -26,7 +26,7 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { APP_OUTPUTS, CHAIN_STEPS } from './lib/chain-steps.ts';
+import { APP_OUTPUTS, CHAIN_STEPS, needsApp } from './lib/chain-steps.ts';
 import { reachableText, rootScripts } from './lib/npm-scripts.ts';
 
 /**
@@ -51,27 +51,21 @@ const APP_MARKERS = [
 /** This file names the markers it looks for, so scanning it would always match */
 const SELF = path.join('scripts', 'check-test-tiers.ts');
 
-/** The built app among a step's declared inputs, which is the data half of the question */
-const declaresApp = (inputs: readonly string[]): boolean => inputs.some((input) => APP_OUTPUTS.includes(input));
-
 function problems(): string[] {
   const all = rootScripts();
   const found: string[] = [];
-  for (const { name, needsApp, inputs } of CHAIN_STEPS) {
-    // Both directions. An undeclared reach is the hazard; a declaration with nothing behind it is a step
-    // ordered after `build:app` for no reason, which costs the chain its parallelism just as quietly.
-    if (needsApp && !declaresApp(inputs)) {
-      found.push(`${name} declares needsApp and reads none of ${APP_OUTPUTS.join(', ')}. Either declare what it reads, or drop needsApp.`);
-    }
-    if (!needsApp && declaresApp(inputs)) {
-      found.push(`${name} reads the built app in its inputs but does not declare needsApp.`);
-    }
-    if (needsApp) continue;
+  for (const step of CHAIN_STEPS) {
+    const { name } = step;
+    // One question, not two. `needsApp` is the declared inputs read back (`chain-steps.ts`), so the two
+    // clauses that used to compare it against those inputs were comparing a derivation with its own source
+    // and could not fail. What is left is the half no reading of the inputs can answer.
+    if (needsApp(step)) continue;
     const script = name === 'test' ? 'test' : name;
     if (!(script in all)) { found.push(`${name}: no such npm script`); continue; }
     const { text } = reachableText(script, all, { skip: SELF });
     const hit = APP_MARKERS.find((m) => m.test(text));
-    if (hit) found.push(`${name} reaches the app (${String(hit)}) without declaring needsApp. Either it does not need the app, or it does and must say so.`);
+    if (hit) found.push(`${name} reaches the app (${String(hit)}) and declares none of ${APP_OUTPUTS.join(', ')} among its inputs. `
+      + 'Either it does not need the app, or it does and must declare what it reads — which is what orders it after build:app.');
   }
   return found;
 }
@@ -79,7 +73,7 @@ function problems(): string[] {
 if (process.argv[1] && import.meta.url === pathToFileURL(fs.realpathSync(process.argv[1])).href) {
   const found = problems();
   if (found.length === 0) {
-    console.log(`✅ ${CHAIN_STEPS.filter((s) => !s.needsApp).length} chain steps reach no app, ${CHAIN_STEPS.filter((s) => s.needsApp).length} declare they need one`);
+    console.log(`✅ ${CHAIN_STEPS.filter((s) => !needsApp(s)).length} chain steps reach no app, ${CHAIN_STEPS.filter(needsApp).length} read one`);
   } else {
     fs.writeSync(2, `${found.join('\n')}\n`);
     process.exitCode = 1;

@@ -44,7 +44,7 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { changedInputs, diffableStamp, firstChange, freshnessSweep, INPUTS_CHANGED, REPO_ROOT, stampedRun, stampRecord, unitStaleReason, type BuildUnit } from '@abuddy/host/build/packages-built';
-import { CHAIN_STEPS, type ChainStep, chainSteps, MEASURED_AT_LANES, orderedSteps, STEP_TABLES } from './lib/chain-steps.ts';
+import { CHAIN_STEPS, type ChainStep, chainSteps, MEASURED_AT_LANES, needsApp, orderedSteps, STEP_TABLES } from './lib/chain-steps.ts';
 import { commandText, rootScripts } from './lib/npm-scripts.ts';
 import { IDLE_FLOOR, idleNow, movedBeyondBand, refusesAsBusy } from './lib/measure.ts';
 import { recordSeconds } from './lib/record-seconds.ts';
@@ -330,7 +330,7 @@ async function main(): Promise<void> {
       // Naming what moved in place of the sentence, which was the same for every stale step and said less
       const moved = !all && why === INPUTS_CHANGED ? whatChanged(step) : '';
       const reason = all ? '--all' : (moved === '' ? (why ?? '') : moved);
-      console.log(`${(willRun ? 'run' : 'cached').padStart(7)} ${marker(step)} ${step.name.padEnd(STEP_NAME_WIDTH)} ${wrapAt(DRY_REASON_COLUMN, reason)}`.trimEnd());
+      console.log(`${(willRun ? 'run' : 'cached').padStart(7)} ${marker(needsApp(step))} ${step.name.padEnd(STEP_NAME_WIDTH)} ${wrapAt(DRY_REASON_COLUMN, reason)}`.trimEnd());
     }
     return;
   }
@@ -356,7 +356,7 @@ async function main(): Promise<void> {
         // On its own line where it was skipped, and dimmed. The order these arrive in is information — it is
         // when the scheduler reached the step — so they are not collected and printed together at the end;
         // the weight is what separates them from the rows that did work, not the position.
-        console.log(dim(`${'cached'.padStart(7)} ${marker(step)} ${step.name}`));
+        console.log(dim(`${'cached'.padStart(7)} ${marker(needsApp(step))} ${step.name}`));
         return true;
       }
       reasons.set(step.name, all ? '--all' : (why ?? ''));
@@ -372,7 +372,7 @@ async function main(): Promise<void> {
       // TIMEOUT is its own verdict: a step that ran out of budget failed for a different reason than one
       // that returned non-zero, and which it was is the first thing you need to know.
       const verdict = result.code === 0 ? 'ok' : result.timedOut ? 'TIMEOUT' : 'FAIL';
-      console.log(`${verdict.padStart(7)} ${marker(step)} ${step.name.padEnd(STEP_NAME_WIDTH)} ${secs(result.ms).padStart(6)}  ${wrapAt(REASON_COLUMN, briefly(reasons.get(step.name) ?? '', declaredIn(step.name)))}`.trimEnd());
+      console.log(`${verdict.padStart(7)} ${marker(needsApp(step))} ${step.name.padEnd(STEP_NAME_WIDTH)} ${secs(result.ms).padStart(6)}  ${wrapAt(REASON_COLUMN, briefly(reasons.get(step.name) ?? '', declaredIn(step.name)))}`.trimEnd());
       // So whoever profiles a suite next has its slow tests without instrumenting it
       // In the step's own time column, so every time on the screen lines up and these read as its contents
       for (const slow of slowestTests(result.output)) {
@@ -384,7 +384,8 @@ async function main(): Promise<void> {
 
   // A step whose runner threw never produced a Result, so it is reported from the throw itself
   for (const { step, error } of outcome.threw) {
-    console.log(`${'ERROR'.padStart(7)} ${marker(steps.find((s) => s.name === step))} ${step.padEnd(STEP_NAME_WIDTH)} ${' '.repeat(6)}  the chain could not run it`);
+    const threw = steps.find((candidate) => candidate.name === step);
+    console.log(`${'ERROR'.padStart(7)} ${marker(threw !== undefined && needsApp(threw))} ${step.padEnd(STEP_NAME_WIDTH)} ${' '.repeat(6)}  the chain could not run it`);
     console.log(`\n${'='.repeat(72)}\n${step}: the runner threw, which is a bug in the chain rather than a failing check\n${'='.repeat(72)}\n${error instanceof Error ? (error.stack ?? error.message) : String(error)}`);
   }
 

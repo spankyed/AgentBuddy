@@ -35,7 +35,7 @@ export const REASON_COLUMN = STEP_NAME_WIDTH + 21; // verdict(7) ␣ marker(3) �
  * — which is what replaced it. `tier` printed `t1`/`t2`/`t3` here, three values no reader could act on,
  * where the one that changes how a run behaves is whether the step waits for `build:app`.
  */
-export const marker = (step: { needsApp?: true } | undefined): string => (step?.needsApp ? 'app' : '   ');
+export const marker = (needsApp: boolean): string => (needsApp ? 'app' : '   ');
 
 /** The same, for `--dry`, which reports no time — so its reason starts where the time would have */
 export const DRY_REASON_COLUMN = STEP_NAME_WIDTH + 13;
@@ -81,16 +81,31 @@ export function wrapAt(column: number, text: string, width = terminalWidth()): s
  * **Two steps are not written out, they are generated**, with a template-literal name — so a search for the
  * quoted form misses them and the right answer is the generator, which is where their reasoning sits anyway.
  * Hence the second pass: a `name: ` whose backtick-quoted prefix this step's name starts with.
+ *
+ * **That pass takes the longest matching prefix, and refuses a tie.** A prefix match is not a lookup: a second
+ * generator writing `` name: `test:${…}` `` would prefix every `test:*` step, and first-match would then point
+ * `test:unit:host` at it with the same confidence as at its own template. Most specific wins, as Node matches a
+ * subpath pattern; two equally specific candidates are ambiguous and answer nothing, because a caller that
+ * takes `undefined` prints no pointer, which is the better of the two wrong answers. Only one template exists
+ * today, so the case that watches this is a written table in `chain-output.spec.ts` rather than the real one.
  */
 export function declaredAt(source: string, name: string): number | undefined {
   const lines = source.split('\n');
   const written = lines.findIndex((line) => line.includes(`name: '${name}'`));
   if (written !== -1) return written + 1;
-  const generated = lines.findIndex((line) => {
+  let best: { at: number; prefix: string } | undefined;
+  let ambiguous = false;
+  for (const [at, line] of lines.entries()) {
     const prefix = /name: `([^$`]*)/.exec(line)?.[1];
-    return prefix !== undefined && prefix.length > 0 && name.startsWith(prefix);
-  });
-  return generated === -1 ? undefined : generated + 1;
+    if (prefix === undefined || prefix.length === 0 || !name.startsWith(prefix)) continue;
+    if (best === undefined || prefix.length > best.prefix.length) {
+      best = { at, prefix };
+      ambiguous = false;
+    } else if (prefix.length === best.prefix.length) {
+      ambiguous = true;
+    }
+  }
+  return best === undefined || ambiguous ? undefined : best.at + 1;
 }
 
 /**

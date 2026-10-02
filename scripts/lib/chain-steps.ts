@@ -17,26 +17,14 @@ import { scopeOf, TYPECHECK_LEGS, type Leg } from './typecheck-legs.ts';
  * A step that launches the app without saying so is the coupling this exists to catch: it welds a fast
  * check to a slow one, and the pair can then be neither cached nor reordered. `check:tiers` fails on one.
  * The reasoning and the measurements are in `docs/archive/goals/goal-test-tiers.md`, which calls the
- * declaration a tier; it is `needsApp` now, and the three-value version is in `docs/plans/tier-split.md`.
+ * declaration a tier; it is derived from the declared inputs now (`needsApp` below), and the three-value
+ * version is in `docs/plans/tier-split.md`.
  */
 
 
 export interface ChainStep {
   /** The npm script, as `npm run <name>` (or `npm test` for the E2E suite) */
   readonly name: string;
-  /**
-   * This action reads the built app, so it runs after `build:app` and its real inputs are the whole repo.
-   *
-   * **Declared, not derived, and that is the point.** Derive it from "does it read `APP_OUTPUTS`" and an
-   * action that gains an app dependency is silently reclassified instead of refused, which is the drift
-   * four attempts at a cheaper chain each recorded. `check:tiers` checks the declaration against the
-   * inputs and against the step's scripts; a disagreement is the finding.
-   *
-   * `APP_ENTRY` is why the derivation cannot stand alone: `packages/dev-mode.js` and
-   * `packages/entry-point.mjs` are *source* sitting beside the built-app constant, and three steps that
-   * do not need the app declare them.
-   */
-  readonly needsApp?: true;
   /**
    * What the step reads, repo-relative; a directory is walked. This is its cache key, the same shape
    * `BuildUnit.inputs` has, so one fingerprint protocol covers both. Repo-relative rather than absolute
@@ -458,6 +446,23 @@ const PACKAGE_BUILD_OUTPUTS = [...new Set(Object.values(BUILD_UNITS).flatMap((un
 
 /** What `build` writes: the app that `needsApp` steps read */
 export const APP_OUTPUTS = ['packages/renderer/dist', 'packages/api/dist', 'packages/main/dist', 'packages/preload/dist'];
+
+/**
+ * Whether a step reads the built app — derived from what it declares, never written beside it.
+ *
+ * It was a field until 2026-10-02, on the recorded grounds that deriving it would let a step that gains an
+ * app dependency be "silently reclassified instead of refused". That argument does not hold, and the reason
+ * is worth keeping: **the expensive consequence is already derived from the same inputs.** A step declaring
+ * `APP_OUTPUTS` runs after `build:app` because `dependsOn` reads outputs against inputs, whatever any field
+ * says — so the field could not be the thing that made an app dependency deliberate. What it did was carry a
+ * second copy of that fact, which `check:tiers` then spent two of its three clauses keeping equal.
+ *
+ * Undo this and you are back to a record that can disagree with the graph. What it does *not* replace is the
+ * script scan in `check-test-tiers.ts`: a step can launch the app while declaring none of its outputs, which
+ * no reading of the inputs can see, and that is the clause that catches it.
+ */
+export const needsApp = (step: Pick<ChainStep, 'inputs'>): boolean =>
+  step.inputs.some((input) => APP_OUTPUTS.includes(input));
 /** The Electron entry and the dev-mode switch: not inside a package, and read by anything that starts the app */
 const APP_ENTRY = ['packages/entry-point.mjs', 'packages/dev-mode.js'];
 /** The wrapper a shell-script step runs through, and the module that bounds it */
@@ -857,7 +862,7 @@ export const CHAIN_STEPS: readonly ChainStep[] = [
     inputs: [...ROOT, ...['renderer', 'api', 'main', 'preload'].flatMap(workspace),
       'packages/api/tsup.config.ts', ...APP_ENTRY,
       ...PACKAGE_BUILD_OUTPUTS, ...PACK_OUTPUTS] },
-  { name: 'test:external-pack:app', needsApp: true, seconds: 24,
+  { name: 'test:external-pack:app', seconds: 24,
     // Its own Playwright output, rewritten every run
     excludes: FIXTURE_TEST_OUTPUT,
     // PACKAGE_BUILD_OUTPUTS because the fixture it drives *is* one: `@abuddy/testing` resolves to its
@@ -887,7 +892,7 @@ export const CHAIN_STEPS: readonly ChainStep[] = [
   // declared — so an unchanged stamp means the same app, and running it again asks a question already
   // answered. Uncached it put the warm chain back to 5.6s from 0.9s, which is most of what taking the
   // suite off the gate bought.
-  { name: 'test:smoke', needsApp: true, seconds: 6,
+  { name: 'test:smoke', seconds: 6,
     outputs: ['tests/results'],
     inputs: [...ROOT, 'tests/e2e/smoke', 'playwright.config.ts',
       'scripts/with-source.mjs', ...APP_ENTRY, ...PACKAGE_BUILD_OUTPUTS, ...APP_OUTPUTS] },
@@ -897,7 +902,7 @@ export const CHAIN_STEPS: readonly ChainStep[] = [
   // built. It became a chain step, and then the reasoning about it became about caching a flaky pass —
   // which is a question you only ask of a regression gate. It has not caught one. Off the chain it costs
   // nothing and is still there when you want it, which is what it was for.
-  { name: 'test', needsApp: true, seconds: 26,
+  { name: 'test', seconds: 26,
     optInBecause: 'it is a harness for driving the app, not a regression gate; nothing has needed it to fail',
     neverCachedBecause: 'it drives real Electron, and a flaky pass cached green hides an intermittent failure',
     outputs: ['tests/results'],
@@ -907,7 +912,7 @@ export const CHAIN_STEPS: readonly ChainStep[] = [
     // the step is never cached, so it buys the ordering and costs no precision
     inputs: [...ROOT, 'tests/e2e', 'playwright.config.ts', 'scripts/with-source.mjs', ...APP_ENTRY,
       ...PACKAGE_BUILD_OUTPUTS, ...APP_OUTPUTS] },
-  { name: 'test:packaged-authoring', needsApp: true, seconds: 59,
+  { name: 'test:packaged-authoring', seconds: 59,
     inputs: [...ROOT, ...BOUNDED_RUNNER, 'tests/scripts/test-packaged-authoring.sh', 'tests/scripts/lib',
       ...PACKAGE_BUILD_OUTPUTS, ...APP_OUTPUTS] },
 ];

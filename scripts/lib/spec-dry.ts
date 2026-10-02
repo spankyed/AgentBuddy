@@ -19,7 +19,7 @@
  * by a third within a week.
  */
 import * as path from 'node:path';
-import { CHAIN_STEPS } from './chain-steps.ts';
+import { CHAIN_STEPS , needsApp as needsAppStep } from './chain-steps.ts';
 import { readSpecCost } from './spec-cost.ts';
 import { UNIT_SUITES } from './unit-suites.ts';
 import { IS_SPEC, packageOf, type Run } from './spec-plan.ts';
@@ -105,10 +105,11 @@ export function priceSuites(workspaces: readonly string[], root: string): Priced
  * `npm test` is that package's script, not the chain's `test` step, and labelling it as needing the app
  * would say the pack suite launches one.
  */
-export const needsAppForRun = (run: Run, root: string): boolean | undefined =>
-  run.cwd === root && run.command === 'npm' && run.args[0] === 'run'
-    ? CHAIN_STEPS.find((step) => step.name === run.args[1])?.needsApp === true
-    : undefined;
+export const needsAppForRun = (run: Run, root: string): boolean | undefined => {
+  if (!(run.cwd === root && run.command === 'npm' && run.args[0] === 'run')) return undefined;
+  const step = CHAIN_STEPS.find((candidate) => candidate.name === run.args[1]);
+  return step === undefined ? undefined : needsAppStep(step);
+};
 
 /**
  * `41.9s`, `1.2s`, or `7ms` below a second.

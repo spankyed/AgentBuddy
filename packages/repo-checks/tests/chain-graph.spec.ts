@@ -119,6 +119,33 @@ describe('the chain graph', () => {
     expect(lost.map((step) => step.name), 'nothing names these, so a run cannot point at their reasoning').toEqual([]);
   });
 
+  /**
+   * And the line it lands on declares *that* step, which locatable does not say.
+   *
+   * The case above asks only whether an answer came back, and for the two steps whose names are generated an
+   * answer comes from a prefix match — so a line that merely looks like a declaration would satisfy it. The
+   * sibling in `chain-output.spec.ts` covers a never-cached step, which is every step that prints a pointer
+   * today, and every one of those is written out literally; this is the half that holds the generated ones.
+   * What it cannot check is specificity, which has no second generator to be wrong about — a written table
+   * carries that case.
+   */
+  it('lands on a line that declares the step it was asked about', () => {
+    const generated = CHAIN_STEPS.filter((step) => STEP_TABLES.every((file) =>
+      !fs.readFileSync(path.join(REPO_ROOT, file), 'utf-8').includes(`name: '${step.name}'`)));
+    expect(generated.map((step) => step.name), 'no step has a generated name, so this would pass over nothing')
+      .toEqual(['test:unit:host', 'test:unit:pack']);
+    for (const step of generated) {
+      for (const file of STEP_TABLES) {
+        const lines = fs.readFileSync(path.join(REPO_ROOT, file), 'utf-8').split('\n');
+        const at = declaredAt(lines.join('\n'), step.name);
+        if (at === undefined) continue;
+        const prefix = /name: `([^$`]*)/.exec(lines[at - 1]!)?.[1];
+        expect(prefix, `${file}:${at} is where ${step.name} was placed, and it declares no generated name`).toBeDefined();
+        expect(step.name.startsWith(prefix!), `${file}:${at} generates names like ${prefix!}, which ${step.name} is not one of`).toBe(true);
+      }
+    }
+  });
+
   it('refuses two steps with one name, which would make an edge ambiguous', () => {
     const steps: ChainStep[] = [{ name: 'a', inputs: [] }, { name: 'a', inputs: [] }];
     expect(() => orderedSteps(steps)).toThrow(/Two chain steps named a/);
