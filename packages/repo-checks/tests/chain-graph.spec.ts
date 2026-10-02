@@ -1,7 +1,10 @@
 // The pre-merge chain's run order is derived from what each step reads and writes — no step declares an
 // edge — so what this pins is that the derivation is a topological sort and that a wrong graph fails before
 // any step runs: a six-minute chain should not discover a cycle halfway through.
-// `derived-edges.spec.ts` is where the derivation is held to the table it replaced.
+// What it does not pin is the derivation against the `needs` table it replaced: that snapshot existed for
+// the one commit that deleted those fields and went with them, since keeping it would be a second record of
+// the graph, able to disagree with the first. The property is what survives, here and in `chain-schedule`
+// (two conflicting steps never overlap) and `chain-inputs` (the derived ancestors are walked).
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { describe, expect, it } from 'vitest';

@@ -210,7 +210,7 @@ try {
     if (verdict === 'fail') {
       failed++;
       // The failure is the answer, and every run behind it is a bill for information already in hand: a 1s
-      // a fast-half failure used to pay for the 18s pack suite that followed it
+      // failure in a fast half used to pay for the 18s pack suite that followed it
       if (bail) { notReached = runs.slice(index + 1); break; }
     }
     if (verdict === 'uncovered') uncovered.push(run);

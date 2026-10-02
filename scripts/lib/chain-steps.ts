@@ -680,7 +680,6 @@ const POOL_STEPS: readonly ChainStep[] = (['host', 'pack'] as const).map((kind) 
   const suites = UNIT_SUITES.filter((suite) => suite.kind === kind);
   return {
     name: `test:unit:${kind}`,
-   
     // Measured on the pool, not summed from its suites. Summing gave the host pool 50s for a step that
     // takes 20s, because the suites overlap inside one vitest run — which is the entire point of pooling
     // them. `driftedSteps` reported it on every run.
