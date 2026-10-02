@@ -65,13 +65,20 @@ const DIR_BY_PACKAGE = new Map<string, string>(PACKAGE_DIRS.map((dir) => [
  *
  * **devDependencies count.** `@app/default-setup` reaches `@abuddy/testing` that way, and what imports the
  * harness is the pack's own specs, so it is genuinely an input.
+ *
+ * **So do peerDependencies**, for the same reason read the other way round: `@abuddy/ui` declares
+ * `@abuddy/sdk` as a peer, the only workspace package in this repo declared that way, and under the
+ * `@abuddy/source` condition its typecheck compiles that source and `@abuddy/ears`' behind it. A peer is a
+ * statement about who installs the package, not about who compiles it. The dep-file gate is what found
+ * this: it read 24 files of `@abuddy/ears` in `abuddy-ui`'s own build info.
  */
 export function workspaceDeps(dir: string, root = REPO_ROOT, seen = new Set<string>([dir])): string[] {
   const manifest = JSON.parse(fs.readFileSync(path.join(root, 'packages', dir, 'package.json'), 'utf-8')) as {
     dependencies?: Record<string, string>; devDependencies?: Record<string, string>;
+    peerDependencies?: Record<string, string>;
   };
   const found: string[] = [];
-  for (const name of Object.keys({ ...manifest.dependencies, ...manifest.devDependencies })) {
+  for (const name of Object.keys({ ...manifest.dependencies, ...manifest.devDependencies, ...manifest.peerDependencies })) {
     const child = DIR_BY_PACKAGE.get(name);
     if (!child || seen.has(child)) continue;
     seen.add(child);

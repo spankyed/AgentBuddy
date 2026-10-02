@@ -3,10 +3,10 @@ import * as path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { inputFiles, REPO_ROOT } from '@abuddy/host/build/packages-built';
 import { CHAIN_STEPS } from '../../../scripts/lib/chain-steps.ts';
-import { scopeOf, TYPECHECK_LEGS } from '../../../scripts/lib/typecheck-legs.ts';
+import { ENSURE, namedByScript, scopeOf, TYPECHECK_LEGS } from '../../../scripts/lib/typecheck-legs.ts';
 import { PACKAGE_DIRS } from '../../../scripts/lib/workspace-deps.ts';
 import { UNIT_SUITES, unitStepName } from '../../../scripts/lib/unit-suites.ts';
-import { depFileNames, readsOf, untrustworthy } from '../../../scripts/lib/dep-files.ts';
+import { depFileNames, readsOf, sourceOf, untrustworthy } from '../../../scripts/lib/dep-files.ts';
 import { population } from '@abuddy/sdk/testing';
 
 /**
@@ -83,30 +83,68 @@ describe('the compiler says what it read', () => {
    * step does not declare is a step reporting `cached` over work that changed — and because the scopes
    * are narrow, this is the check that makes narrowing them safe.
    *
-   * The leg a dep file belongs to is derived from its name: TypeScript writes one per tsconfig and each
-   * is named for its package, so `abuddy-ears` is the package and `api-test` is `api`'s second config. A
-   * name matching no package is repo-level (`scripts`, `tests`) and is checked against the legs that
-   * declare the whole tree.
+   * Which leg a dep file belongs to is `covering`'s answer, below.
    */
-  it('leaves nothing a leg read outside what that leg declares', () => {
-    const owner = (depFile: string): string | undefined => PACKAGE_DIRS.find((dir) => depFile === dir)
-      ?? PACKAGE_DIRS.filter((dir) => depFile.startsWith(`${dir}-`)).sort((a, b) => b.length - a.length)[0];
+  /**
+   * Every dep file is traced to the config that named it, so none reaches the fallback by accident.
+   *
+   * The fallback — a repo-scoped leg answering for a dep file no workspace owns — is right for `scripts` and
+   * `tests` and wrong for everything else, and it is silent: a dep file this cannot place is checked against
+   * `lint:check`, which declares the tree and so vouches for anything. Without this case, a config that
+   * stopped declaring `tsBuildInfoFile`, or wrote it somewhere new, would quietly loosen the gate above
+   * rather than fail here.
+   */
+  it('traces every dep file to the tsconfig that named it', () => {
+    const placed = depFileNames().map((depFile) => ({ depFile, source: sourceOf(depFile) }));
+    expect(placed.length, 'no dep files, so this would pass over nothing').toBeGreaterThan(10);
+    expect(placed.filter(({ source }) => source === undefined).map(({ depFile }) => depFile),
+      'no tsconfig under a workspace or at the repo level declares these names').toEqual([]);
+    // The ones with no workspace are exactly the repo-level configs, which is what licenses the fallback
+    expect(placed.filter(({ source }) => source?.workspace === undefined).map(({ source }) => source?.config).sort())
+      .toEqual([path.join('scripts', 'tsconfig.json'), path.join('tests', 'tsconfig.json')]);
+  });
 
-    /**
-     * The legs that *own* this dep file, and the repo-wide ones only when none does.
+  /**
+   * The legs that *own* this dep file, and the repo-wide ones only when none does.
      *
      * **A repo-wide leg is not an answer about the leg that compiles the file.** `lint:check` declares the
      * whole tree, so with it in the covering set every read of anything was vouched for by something — which
      * is how `typecheck:main` and `typecheck:preload` came to compile `types/*.d.ts` without declaring them,
      * cached through an edit to a file they were reading, with this check green. The fallback is for a dep
      * file no package owns (`scripts`, `tests`), where a repo-scoped leg genuinely is the compiler.
+     *
+     * **Ownership comes from the script, not from `scopeOf`, and that is the whole point.** A leg's `scope`
+     * is its cache key, which wants to be *wide* — every file it reads — while ownership wants to be
+     * *narrow*: only what it compiles. Reading one field for both meant widening a key made a leg vouch for
+     * reads it never compiles, so the honest declaration could not be made. It cost two answers before it
+     * was split: `packages:ensure` owned six dep files it only builds, and `repo-checks` and
+     * `publish-checks` owned none at all, because the leg that compiles them declares `scope: 'repo'` for
+     * its key and so was not in the owning set — they were being vouched for by `lint:check`, the very
+     * hole this case was tightened to close.
      */
-    const covering = (depFile: string) => {
-      const dir = owner(depFile);
-      const owning = dir === undefined ? [] : TYPECHECK_LEGS.filter((leg) => { const scope = scopeOf(leg); return scope !== 'repo' && scope.includes(dir); });
-      return owning.length > 0 ? owning : TYPECHECK_LEGS.filter((leg) => scopeOf(leg) === 'repo');
-    };
+  const covering = (depFile: string) => {
+    const dir = sourceOf(depFile)?.workspace;
+    const owning = dir === undefined ? [] : TYPECHECK_LEGS.filter((leg) => namedByScript(leg.name).dirs.includes(dir));
+    return owning.length > 0 ? owning : TYPECHECK_LEGS.filter((leg) => scopeOf(leg) === 'repo');
+  };
 
+  /**
+   * The split itself, pinned on the one leg where the two answers differ today.
+   *
+   * `packages:ensure` declares a `scope` naming the five packages it builds — a correct cache key, since it
+   * re-runs when any of them changes — and its script names none of them, because it compiles none of them.
+   * Read ownership off the key and it vouches for five dep files whose reads it never made; read it off the
+   * script and it vouches for nothing. Switch `covering` back to `scopeOf` and this is what says so.
+   */
+  it('asks the script which leg compiles a dep file, not the leg\'s cache key', () => {
+    const ensure = TYPECHECK_LEGS.find((leg) => leg.name === ENSURE)!;
+    expect(scopeOf(ensure), 'its key names the packages it builds, which is what makes this a difference')
+      .toContain('abuddy-sdk');
+    expect(namedByScript(ENSURE).dirs, 'and its script names none of them, because it compiles none').toEqual([]);
+    expect(covering('abuddy-sdk').map((leg) => leg.name)).not.toContain(ENSURE);
+  });
+
+  it('leaves nothing a leg read outside what that leg declares', () => {
     const missing = depFileNames().flatMap((depFile) => {
       const reads = readsOf(depFile) ?? [];
       const legs = covering(depFile);

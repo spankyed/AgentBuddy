@@ -111,9 +111,9 @@ export const TYPECHECK_LEGS: readonly Leg[] = [
  * inside one run. Nothing resets it, because nothing rewrites `package.json` mid-run — and a reset hatch is
  * a thing to forget (root `CLAUDE.md`, on caches).
  */
-interface ScriptScope { readonly dirs: readonly string[]; readonly unresolved: readonly string[] }
+export interface ScriptScope { readonly dirs: readonly string[]; readonly unresolved: readonly string[] }
 let scriptScopes: Map<string, ScriptScope> | undefined;
-function namedByScript(leg: string): ScriptScope {
+export function namedByScript(leg: string): ScriptScope {
   if (scriptScopes === undefined) {
     const all = rootScripts();
     const nameToDir = new Map(PACKAGE_DIRS.map((dir) => [

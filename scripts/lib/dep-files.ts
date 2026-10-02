@@ -52,8 +52,7 @@ const read = (name: string): BuildInfo | undefined => {
  */
 const versions = new Map<string, string>();
 const typeScriptFor = (depFile: string): string => {
-  const owner = PACKAGE_DIRS.find((dir) => depFile === dir)
-    ?? PACKAGE_DIRS.filter((dir) => depFile.startsWith(`${dir}-`)).sort((a, b) => b.length - a.length)[0];
+  const owner = sourceOf(depFile)?.workspace;
   const key = owner ?? '';
   const found = versions.get(key);
   if (found !== undefined) return found;
@@ -64,6 +63,62 @@ const typeScriptFor = (depFile: string): string => {
   versions.set(key, version);
   return version;
 };
+
+/** Which tsconfig declared a dep file's name, and the workspace that config belongs to */
+export interface DepFileSource {
+  /** Repo-relative, so a message can name it */
+  readonly config: string;
+  /** Undefined for a config outside `packages/`, which no workspace owns */
+  readonly workspace?: string;
+}
+
+/** `"tsBuildInfoFile": "…/x.tsbuildinfo"` — the one place a dep file's name is declared */
+const NAMES_A_DEP_FILE = /"tsBuildInfoFile"\s*:\s*"([^"]+)"/;
+
+/**
+ * The two tsconfig homes outside `packages/`. Their dep files belong to no workspace, which is the answer
+ * every caller wants: a leg that walks the whole tree is the only candidate for them. Named rather than
+ * derived because there are two — and `sourceOf` refusing to map a dep file is what would catch a third.
+ */
+const REPO_LEVEL = ['scripts', 'tests'];
+
+let declared: Map<string, DepFileSource> | undefined;
+
+/**
+ * Where a dep file's name comes from, which is the only non-guess answer to "whose reads are these".
+ *
+ * TypeScript writes one dep file per tsconfig and each config declares the name itself, through
+ * `tsBuildInfoFile` — so this is read from a declaration. It used to be inferred from the dep file's name
+ * instead (`api-test` starts with `api-`, so it must be `api`'s), a naming convention that nothing held up
+ * and that two readers depended on: the compiler-version check below, and the gate deciding which leg
+ * answers for a dep file.
+ *
+ * **Enumerated from `PACKAGE_DIRS`, never by searching the tree.** `.claude/worktrees/` holds entire
+ * checkouts, so a filesystem walk for `tsconfig*.json` finds another branch's configs — measured, it does.
+ *
+ * Memoised: the configs are files this process reads once and nothing rewrites mid-run.
+ */
+export function sourceOf(depFile: string): DepFileSource | undefined {
+  if (declared === undefined) {
+    declared = new Map();
+    const homes = [
+      ...PACKAGE_DIRS.map((dir) => ({ at: path.join('packages', dir), workspace: dir as string | undefined })),
+      ...REPO_LEVEL.map((at) => ({ at, workspace: undefined })),
+    ];
+    for (const { at, workspace } of homes) {
+      const dir = path.join(REPO_ROOT, at);
+      if (!fs.existsSync(dir)) continue;
+      for (const file of fs.readdirSync(dir).filter((name) => /^tsconfig[\w.]*\.json$/.test(name))) {
+        const named = NAMES_A_DEP_FILE.exec(fs.readFileSync(path.join(dir, file), 'utf-8'))?.[1];
+        // A config writing anywhere else — the renderer's three go to its own `node_modules/.tmp` — has no
+        // dep file here to speak for
+        if (named === undefined || !named.includes('.cache/tsbuildinfo')) continue;
+        declared.set(path.basename(named).replace('.tsbuildinfo', ''), { config: path.join(at, file), ...(workspace === undefined ? {} : { workspace }) });
+      }
+    }
+  }
+  return declared.get(depFile);
+}
 
 /** Every dep file present, by the name its leg writes under */
 export const depFileNames = (): string[] => (fs.existsSync(CACHE)
