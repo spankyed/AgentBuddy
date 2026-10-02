@@ -2,6 +2,7 @@ import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
+import { packFixture } from '@app/pack-fixtures';
 import { build, clearBuildOutput } from '../../src/commands/build';
 
 /** abuddy build starts from no earlier output of its own, so nothing stale ships or gets published */
@@ -42,12 +43,11 @@ describe('a built-in pack build that fails', () => {
   it("leaves no seeds or defs from the previous build, and keeps the runtime it doesn't build", async () => {
     const dir = previousBuild(['flows.seed.json', 'seeds.json', 'runtime/index.cjs', 'defs/monaco/actions.d.ts']);
     const root = path.dirname(dir);
-    fs.writeFileSync(path.join(root, 'package.json'), JSON.stringify({ name: 'built-in-pack', type: 'module' }));
-    fs.writeFileSync(path.join(root, 'abuddy.json'), JSON.stringify({
-      id: 'built-in-pack', name: 'Built-in', version: '1.0.0', builtIn: true,
+    packFixture({ at: root, manifest: {
+      id: 'built-in-pack', name: 'Built-in', builtIn: true,
       features: [{ id: 'memos', settings: 'src/memos/settings.ts' }],
       boot: { seed: { flows: 'src/seeds/flows' } },
-    }));
+    } });
     const cwd = process.cwd();
     process.chdir(root);
     try {
@@ -64,14 +64,15 @@ describe('a pack whose seed compiler modules fail to bundle', () => {
   it('fails the build before it writes the snapshot', async () => {
     const dir = previousBuild(['snapshot.json']);
     const root = path.dirname(dir);
-    fs.writeFileSync(path.join(root, 'package.json'), JSON.stringify({ name: 'built-in-pack', type: 'module' }));
-    fs.mkdirSync(path.join(root, 'src'), { recursive: true });
-    fs.writeFileSync(path.join(root, 'src', 'tags.ts'), 'export default () => [;\n');
-    fs.writeFileSync(path.join(root, 'abuddy.json'), JSON.stringify({
-      id: 'built-in-pack', name: 'Built-in', version: '1.0.0', builtIn: true,
-      // Not used by an entry here, so only the bundle for dependents compiles it
-      seedFormats: { tags: { compiler: 'src/tags.ts', entity: 'Relation' } },
-    }));
+    packFixture({
+      at: root,
+      files: { 'src/tags.ts': 'export default () => [;\n' },
+      manifest: {
+        id: 'built-in-pack', name: 'Built-in', builtIn: true,
+        // Not used by an entry here, so only the bundle for dependents compiles it
+        seedFormats: { tags: { compiler: 'src/tags.ts', entity: 'Relation' } },
+      },
+    });
     const cwd = process.cwd();
     const exitCode = process.exitCode;
     process.chdir(root);
@@ -89,11 +90,12 @@ describe('a pack whose runtime fails to bundle', () => {
   it('reports it and fails the build without writing the snapshot', async () => {
     dist = path.join(fs.mkdtempSync(path.join(os.tmpdir(), 'abuddy-clear-output-')), 'dist');
     const root = path.dirname(dist);
-    fs.writeFileSync(path.join(root, 'package.json'), JSON.stringify({ name: 'broken-runtime', type: 'module' }));
-    fs.mkdirSync(path.join(root, 'src', '__generated__'), { recursive: true });
-    // The generated backend entry the runtime bundles doesn't parse
-    fs.writeFileSync(path.join(root, 'src', '__generated__', 'pack-entry.ts'), 'export default {;\n');
-    fs.writeFileSync(path.join(root, 'abuddy.json'), JSON.stringify({ id: 'broken-runtime', name: 'Broken', version: '1.0.0' }));
+    packFixture({
+      at: root,
+      // The generated backend entry the runtime bundles doesn't parse
+      files: { 'src/__generated__/pack-entry.ts': 'export default {;\n' },
+      manifest: { id: 'broken-runtime', name: 'Broken' },
+    });
     const cwd = process.cwd();
     process.chdir(root);
     try {

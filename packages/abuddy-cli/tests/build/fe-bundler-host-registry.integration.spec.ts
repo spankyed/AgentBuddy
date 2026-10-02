@@ -1,7 +1,7 @@
 import * as fs from 'node:fs';
-import * as os from 'node:os';
 import * as path from 'node:path';
 import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest';
+import { packFixture } from '@app/pack-fixtures';
 import { population } from '@abuddy/sdk/testing';
 import { bundlePackFE } from '../../src/build/fe-bundler';
 import { PACKAGES_BUILT, REPO_ROOT, installPublishedPackages } from '@app/publish-checks';
@@ -34,15 +34,13 @@ afterAll(() => {
 const tmpDirs: string[] = [];
 
 function makePack(layout: { earsDir: () => string; sdkDir: () => string; uiDir: () => string }, entrySource: string, manifest: Record<string, unknown> = {}): { packDir: string; entry: string } {
-  const packDir = fs.mkdtempSync(path.join(os.tmpdir(), 'abuddy-fe-bundler-'));
+  // Its own `node_modules/@abuddy/*` link tree, so the fixture writes the pack and this links the packages
+  const packDir = packFixture({ manifest: { id: 'fixture-pack', name: 'Fixture', ...manifest } });
   tmpDirs.push(packDir);
-  fs.writeFileSync(path.join(packDir, 'package.json'), JSON.stringify({ name: 'fixture-pack', type: 'module' }));
-  fs.writeFileSync(path.join(packDir, 'abuddy.json'), JSON.stringify({ id: 'fixture-pack', name: 'Fixture', version: '1.0.0', ...manifest }));
   fs.mkdirSync(path.join(packDir, 'node_modules', '@abuddy'), { recursive: true });
   fs.symlinkSync(layout.earsDir(), path.join(packDir, 'node_modules', '@abuddy', 'ears'), 'dir');
   fs.symlinkSync(layout.sdkDir(), path.join(packDir, 'node_modules', '@abuddy', 'sdk'), 'dir');
   fs.symlinkSync(layout.uiDir(), path.join(packDir, 'node_modules', '@abuddy', 'ui'), 'dir');
-  fs.mkdirSync(path.join(packDir, 'src'));
   const entry = path.join(packDir, 'src', 'entry.ts');
   fs.writeFileSync(entry, entrySource);
   return { packDir, entry };

@@ -53,6 +53,28 @@ in `@abuddy/host`, `@abuddy/sdk`, `packages/api` and `@app/default-setup`, which
 manifest there is the only option available, and the guardrail that forbids one derives its scope from `LAYERS`
 rather than claiming the repo.
 
+## Converting a spec that writes its own pack
+
+Three things come up every time, in this order:
+
+1. **Drop the caller's `mkdirSync(dir, 'src')`.** The fixture owns the tree and `files` creates any depth, so
+   a non-recursive mkdir afterwards throws `EEXIST`. It bit three of the five conversions.
+2. **A spread becomes the merge.** `JSON.stringify({ id, name, version, ...manifest })` is exactly
+   `manifest: { id, name, ...manifest }` — two specs were already doing by hand what the option does.
+3. **Check it still fails.** Break what the spec asserts and watch the converted version fail; a fixture that
+   grows files can quietly stop a case from firing. `host-import-guard` was checked that way: with its
+   offending import removed, two of its five cases fail.
+
+**What not to convert**, from the sites left alone deliberately:
+
+- a `'{}'` **discovery marker** — three in `import-specifiers.integration`, where a directory holding *any*
+  `abuddy.json` is the subject and eight files of content would slow the walk it tests for nothing;
+- a **patch** of a pack something else scaffolded (`abuddy init`, then a manifest edited) — the pack exists
+  and the spec is changing it, which is a read-modify-write and not a fixture;
+- a **manifest that is the subject** written with no tree around it (`pack-generate`, `pack-cli`'s
+  `writeManifest`), where a pack directory would change what the command under test sees;
+- the **installed/published shape** (`packs/host-output`), which is `@abuddy/host`'s artifact.
+
 ## Tests
 
 `npm test -w @app/pack-fixtures` — one spec. What it asserts is the thing a fixture library can get wrong:
