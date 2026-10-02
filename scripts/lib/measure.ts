@@ -84,6 +84,22 @@ export const SAMPLE_MS = 250;
  */
 export const IDLE_FLOOR = 0.7;
 
+/**
+ * How far a re-measurement has to move before a record follows it, as a share of what is recorded.
+ *
+ * Hysteresis, and the reason for it is measured: treating a sample as a derivation churned 125 of 163
+ * spec-cost entries between two idle runs while the answer they support changed zero times. A band wide
+ * enough to absorb that leaves a record that moves when the code does and not when the machine does.
+ *
+ * The floor is the caller's, because the unit is: spec costs are milliseconds and chain steps are
+ * seconds, and a floor is what keeps the fraction from chasing noise on a small number.
+ */
+export const SETTLED_FRACTION = 0.35;
+
+/** Whether a measurement has moved past the band around what is recorded. An absent record always has. */
+export const movedBeyondBand = (recorded: number | undefined, measured: number, floor: number): boolean =>
+  recorded === undefined || Math.abs(measured - recorded) > Math.max(floor, SETTLED_FRACTION * recorded);
+
 /** Whether to refuse a measurement outright. `--force` is the deliberate override, and the citation says so. */
 export const refusesAsBusy = (input: { readonly idle: number; readonly floor: number; readonly force: boolean }):
 boolean => !input.force && input.idle < input.floor;

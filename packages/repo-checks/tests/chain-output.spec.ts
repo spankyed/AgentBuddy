@@ -5,7 +5,7 @@ import * as path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { firstChange, REPO_ROOT } from '@abuddy/host/build/packages-built';
 import { CHAIN_STEPS } from '../../../scripts/lib/chain-steps.ts';
-import { briefly, classifyLine, declaredAt, dim, driftReport, DRY_REASON_COLUMN, howLong, shouldClassify, identicalRewrites, oneLine, REASON_COLUMN, staleLines, STEP_NAME_WIDTH, TIME_COLUMN, wrapAt, whenChanged, writerOf } from '../../../scripts/lib/chain-output.ts';
+import { briefly, classifyLine, declaredAt, dim, driftReport, DRY_REASON_COLUMN, howLong, identicalRewrites, marker, oneLine, REASON_COLUMN, shouldClassify, staleLines, STEP_NAME_WIDTH, TIME_COLUMN, whenChanged, wrapAt, writerOf } from '../../../scripts/lib/chain-output.ts';
 
 describe('wrapAt', () => {
   /**
@@ -153,10 +153,21 @@ describe('firstChange', () => {
 
 describe('staleLines', () => {
   const under = (found: Partial<Parameters<typeof staleLines>[0]>) => staleLines({
-    name: 'typecheck', nameWidth: 'typecheck'.length, gained: [], lost: [], files: [], identical: [], recorded: true, ...found,
+    name: 'typecheck', nameWidth: 'typecheck'.length, gained: [], lost: [], files: [], identical: [], undiffable: undefined, ...found,
   // Matching the control character is the job: the chain's own output is coloured, and this reads it plain.
   // eslint-disable-next-line no-control-regex
   }).map((line) => line.replace(/\u001B\[\d+m/g, '').trimEnd());
+
+  // A step with nothing to name still has to print its own name, or it vanishes from a report about it. Which
+  // sentence fills that row is the stamp reader's to say: `diffableStamp` owns the wording, and this used to
+  // hold a second copy of one of its sentences — printed, at one call site, about a step that had never run.
+  it('prints the reason a stamp could not be read, rather than wording one of its own', () => {
+    expect(under({ undiffable: 'has not run yet' })).toEqual(['  typecheck  has not run yet']);
+  });
+
+  it('says the inputs agree when there is nothing to name and the stamp was readable', () => {
+    expect(under({})).toEqual(['  typecheck  nothing under its inputs differs now']);
+  });
 
   /**
    * The first finding shares the step's row, and the rest sit under it — two lines of screen for the usual case
@@ -213,13 +224,30 @@ describe('staleLines', () => {
 
 describe('declaredAt', () => {
   it('finds the line a step is declared on', () => {
-    const table = ["  // why it is never cached", "  { name: 'test', tier: 3, neverCachedBecause: '…',", '  },'].join('\n');
+    const table = ["  // why it is never cached", "  { name: 'test', neverCachedBecause: '…',", '  },'].join('\n');
     expect(declaredAt(table, 'test')).toBe(2);
   });
 
   /** A rename degrades to no pointer rather than to a wrong one, which is why the caller takes `undefined` */
   it('answers nothing for a name the table does not hold', () => {
     expect(declaredAt("  { name: 'test' },", 'compile')).toBeUndefined();
+  });
+
+  /**
+   * A generated name is matched by prefix, and a prefix match is not a lookup — so these two cases are the
+   * ones that say the answer is the step's own declaration rather than the first line that could pass for it.
+   * Written tables, because the real one holds a single template and so cannot exercise either: the hazard is
+   * a second generator arriving, which is exactly when nobody will be looking here.
+   */
+  it('points at the most specific generator, not the first one that prefixes the name', () => {
+    const table = ['  { name: `test:${kind}`,', '  { name: `test:unit:${kind}`,'].join('\n');
+    expect(declaredAt(table, 'test:unit:host'), 'the wider prefix answered for a name the narrower one generates').toBe(2);
+    expect(declaredAt(table, 'test:smoke'), 'and the wider one still answers for what only it generates').toBe(1);
+  });
+
+  it('answers nothing when two generators are equally specific', () => {
+    const table = ['  { name: `test:${kind}`,', '  { name: `test:${other}`,'].join('\n');
+    expect(declaredAt(table, 'test:unit:host'), 'a pointer at one of two equal candidates is a guess').toBeUndefined();
   });
 });
 
@@ -285,10 +313,14 @@ it('lines every row up with what sits under it, for the widest step name', () =>
 
   const widest = [...CHAIN_STEPS].sort((a, b) => b.name.length - a.name.length)[0]!.name;
   const name = widest.padEnd(STEP_NAME_WIDTH);
-  // Built the way chain.ts builds them, so a change to either shape fails here rather than on a terminal
-  expect(`${'ok'.padStart(7)} t1 ${name} ${'26.1s'.padStart(6)}  `.length, "a run row's reason").toBe(REASON_COLUMN);
-  expect(`${'run'.padStart(7)} t1 ${name} `.length, "a --dry row's reason").toBe(DRY_REASON_COLUMN);
-  expect(`${'ok'.padStart(7)} t1 ${name} `.length, "a run row's time").toBe(TIME_COLUMN);
+  // Built the way chain.ts builds them, so a change to either shape fails here rather than on a terminal.
+  // `marker` is the width, not a literal: both of its answers must be one width or every row below a
+  // marked step shifts, which is the whole failure these columns exist to prevent.
+  expect(marker(true).length, 'the marker is not one width').toBe(marker(false).length);
+  const mark = marker(true);
+  expect(`${'ok'.padStart(7)} ${mark} ${name} ${'26.1s'.padStart(6)}  `.length, "a run row's reason").toBe(REASON_COLUMN);
+  expect(`${'run'.padStart(7)} ${mark} ${name} `.length, "a --dry row's reason").toBe(DRY_REASON_COLUMN);
+  expect(`${'ok'.padStart(7)} ${mark} ${name} `.length, "a run row's time").toBe(TIME_COLUMN);
 });
 
 /** So a step name longer than the column fails by name, rather than knocking every line under it one to the left */
@@ -402,17 +434,18 @@ describe('driftReport', () => {
 });
 
 describe('shouldClassify', () => {
-  const under = { lanes: 3, exclusive: false, timedOut: false, optedOut: false };
+  const under = { ranAlone: false, timedOut: false, optedOut: false };
 
   it('re-runs a step that failed while others were running', () => {
     expect(shouldClassify(under)).toBe(true);
   });
 
-  it('does not, when there was nothing to contend with', () => {
-    // One lane: the step already had the machine
-    expect(shouldClassify({ ...under, lanes: 1 })).toBe(false);
-    // packages:ensure and packages:check run with nothing beside them whatever the lane count
-    expect(shouldClassify({ ...under, exclusive: true })).toBe(false);
+  // One question, asked of the schedule rather than of the table. It took `lanes` and an `exclusive` read off
+  // the step's declared mutexes, and those answered it only while a mutex was global: `conflictsOf` is
+  // non-empty for twelve steps that run beside two dozen others, so all twelve skipped the re-run. A
+  // single-lane run needs no clause of its own — it overlaps nothing, which is this one
+  it('does not, when nothing overlapped it', () => {
+    expect(shouldClassify({ ...under, ranAlone: true })).toBe(false);
   });
 
   it('does not re-run a step that was killed, whose budget it would spend again', () => {

@@ -6,6 +6,10 @@
 // `@abuddy/sdk/fe` loses the `window.electronAPI` global, with nothing to say so.
 // eslint-disable-next-line no-useless-empty-export
 export type {} from './electron-api.ts';
+// The event type that global's `speech.onEvent` hands back. Exported by name because two host packages need
+// it too — they reached it through a `types/speech.d.ts` at the repo root until 2026-10-02, which no
+// manifest could describe, so nothing could derive that they compile this file
+export type { SpeechEvent } from './speech-event.ts';
 export type { Plugin, PluginDefinition, PluginInbox, PluginInboxAudiences, PluginStateOf, RouteComponents } from './plugin.ts'
 export { definePlugin } from './plugin.ts'
 export type { PackFEFeature, PackFERegistration } from './pack-fe-registration.ts'

@@ -1,6 +1,12 @@
 {
   "compilerOptions": {
     "noUnusedLocals": true,
+    // Typechecking only, so the .tsbuildinfo is the whole point: a re-run with nothing changed reuses it
+    // instead of reparsing, and `dep-files.integration.spec.ts` reads it to hold this leg's declared scope
+    // to what the compiler reported reading. `incremental` works with `noEmit`; `composite` does not.
+    "incremental": true,
+    "tsBuildInfoFile": "../../node_modules/.cache/tsbuildinfo/preload.tsbuildinfo",
+    "customConditions": ["@abuddy/source"],
     "allowSyntheticDefaultImports": true,
     "module": "NodeNext",
     "target": "ESNext",

@@ -17,6 +17,7 @@
   },
   "devDependencies": {
     "@abuddy/host": "*",
+    "@abuddy/sdk": "*",
     "tsx": "^4.19.4",
     "typescript": "^5.8.3",
     "vite": "^7.0.6",

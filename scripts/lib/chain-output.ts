@@ -26,10 +26,19 @@ export const STEP_NAME_WIDTH = 27;
  * them came to disagree with the rows they describe. They are derived now, so widening the name column moves
  * them together and a doc comment cannot go stale against a number it only describes.
  */
-export const REASON_COLUMN = STEP_NAME_WIDTH + 20; // verdict(7) ␣ tier(2) ␣ name ␣ time(6) + two spaces
+export const REASON_COLUMN = STEP_NAME_WIDTH + 21; // verdict(7) ␣ marker(3) ␣ name ␣ time(6) + two spaces
+
+/**
+ * The one thing a row says about a step besides its name and its time: whether it needs the built app.
+ *
+ * Three characters, blank for a step that does not, so the column is a marker rather than a classification
+ * — which is what replaced it. `tier` printed `t1`/`t2`/`t3` here, three values no reader could act on,
+ * where the one that changes how a run behaves is whether the step waits for `build:app`.
+ */
+export const marker = (needsApp: boolean): string => (needsApp ? 'app' : '   ');
 
 /** The same, for `--dry`, which reports no time — so its reason starts where the time would have */
-export const DRY_REASON_COLUMN = STEP_NAME_WIDTH + 12;
+export const DRY_REASON_COLUMN = STEP_NAME_WIDTH + 13;
 
 /** The terminal's width, or a width worth wrapping to when the output is a pipe or a CI log */
 export const terminalWidth = (): number => process.stdout.columns ?? 100;
@@ -68,10 +77,35 @@ export function wrapAt(column: number, text: string, width = terminalWidth()): s
  * there has the `neverCachedBecause` sentence and, above it, the comment that argues for it, which is where the
  * rationale actually lives. Undefined when the name is not found, so a rename degrades to no pointer rather than
  * to a wrong one.
+ *
+ * **Two steps are not written out, they are generated**, with a template-literal name — so a search for the
+ * quoted form misses them and the right answer is the generator, which is where their reasoning sits anyway.
+ * Hence the second pass: a `name: ` whose backtick-quoted prefix this step's name starts with.
+ *
+ * **That pass takes the longest matching prefix, and refuses a tie.** A prefix match is not a lookup: a second
+ * generator writing `` name: `test:${…}` `` would prefix every `test:*` step, and first-match would then point
+ * `test:unit:host` at it with the same confidence as at its own template. Most specific wins, as Node matches a
+ * subpath pattern; two equally specific candidates are ambiguous and answer nothing, because a caller that
+ * takes `undefined` prints no pointer, which is the better of the two wrong answers. Only one template exists
+ * today, so the case that watches this is a written table in `chain-output.spec.ts` rather than the real one.
  */
 export function declaredAt(source: string, name: string): number | undefined {
-  const index = source.split('\n').findIndex((line) => line.includes(`name: '${name}'`));
-  return index === -1 ? undefined : index + 1;
+  const lines = source.split('\n');
+  const written = lines.findIndex((line) => line.includes(`name: '${name}'`));
+  if (written !== -1) return written + 1;
+  let best: { at: number; prefix: string } | undefined;
+  let ambiguous = false;
+  for (const [at, line] of lines.entries()) {
+    const prefix = /name: `([^$`]*)/.exec(line)?.[1];
+    if (prefix === undefined || prefix.length === 0 || !name.startsWith(prefix)) continue;
+    if (best === undefined || prefix.length > best.prefix.length) {
+      best = { at, prefix };
+      ambiguous = false;
+    } else if (prefix.length === best.prefix.length) {
+      ambiguous = true;
+    }
+  }
+  return best === undefined || ambiguous ? undefined : best.at + 1;
 }
 
 /**
@@ -106,7 +140,7 @@ export function oneLine(column: number, text: string, width = terminalWidth()): 
  * The same number as `DRY_REASON_COLUMN` and not the same thing: both sit immediately after the name, one
  * holding a time and one a reason. Derived separately so that stays true if either row changes.
  */
-export const TIME_COLUMN = STEP_NAME_WIDTH + 12;
+export const TIME_COLUMN = STEP_NAME_WIDTH + 13;
 
 /**
  * Secondary text, dimmed on a terminal and left alone anywhere else.
@@ -224,11 +258,20 @@ export function staleLines(found: {
   readonly lost: readonly string[];
   readonly files: readonly ChangedInput[];
   readonly identical: readonly string[];
-  /** Whether the stamp carried a diagnosis at all — one written before it did cannot explain itself */
-  readonly recorded: boolean;
+  /**
+   * Why the stamp could not be diffed, where it could not — the reason its reader gave, never a second copy
+   * of one.
+   *
+   * **Required rather than optional, `undefined` and all.** A caller with nothing to put here is one that has
+   * not read the stamp, and the answer this falls back to is "it was readable" — so an omission prints
+   * *nothing under its inputs differs now* over a record nobody could read, which is the wrong half of the
+   * only two states this row exists for. Optional, that is a field a new caller forgets; required, it is a
+   * compile error at the one site that has the answer.
+   */
+  readonly undiffable: string | undefined;
   readonly cap?: number;
 }): string[] {
-  const { name, nameWidth, reason, gained, lost, files, identical, recorded, cap = CHANGED_CAP } = found;
+  const { name, nameWidth, reason, gained, lost, files, identical, undiffable, cap = CHANGED_CAP } = found;
   const head = `  ${name.padEnd(nameWidth)}  `;
   const under = ' '.repeat(head.length);
   const more = (count: number) => (count > cap ? [dim(`and ${count - cap} more`)] : []);
@@ -248,10 +291,14 @@ export function staleLines(found: {
       ];
   // One guard over two states neither of which the chain can produce, kept because the alternative is worse
   // than either: with no rows the step's own name never prints, and it vanishes from a report about it. A
-  // stamp older than the digests cannot explain itself, and a stale verdict from a sweep cannot disagree with
+  // stamp that cannot be diffed cannot explain itself, and a stale verdict from a sweep cannot disagree with
   // the diff taken from that same sweep — so if this ever prints, the caller is not the one it was written for.
+  //
+  // The unreadable half arrives as the message its reader produced rather than being worded again here: that
+  // sentence was written out in three files, and the two copies outside `diffableStamp` could drift from it
+  // with nothing to notice — this row held one of them.
   if (rows.length === 0) {
-    rows.push(dim(recorded ? 'nothing under its inputs differs now' : 'its last run recorded no per-file digests'));
+    rows.push(dim(undiffable ?? 'nothing under its inputs differs now'));
   }
   if (identical.length > 0) {
     // A note, not another row: it is the one line here that is explicitly not a cause, and it read as one.
@@ -346,14 +393,21 @@ export function driftReport(
  * the evidence is gone by the next run.
  */
 export function shouldClassify(run: {
-  readonly lanes: number;
-  /** The step runs with nothing beside it already, so running it alone proves nothing */
-  readonly exclusive: boolean;
+  /**
+   * Nothing overlapped this step, so running it alone proves nothing — **observed, not predicted**.
+   *
+   * It was `exclusive`, taken from the step's declared mutexes, which answered a different question the
+   * moment those became derived: `conflictsOf` is non-empty for twelve steps that each run beside two
+   * dozen others, and all twelve skipped this re-run. `schedule` records what actually overlapped
+   * (`ScheduleResult.peers`), and that is the only place the answer exists. `lanes` is gone from the
+   * predicate with it: a single-lane run overlaps nothing, so it is already covered.
+   */
+  readonly ranAlone: boolean;
   /** Its budget is four times its cost; re-running a wedged step spends that again for a message that already interprets itself */
   readonly timedOut: boolean;
   readonly optedOut: boolean;
 }): boolean {
-  return run.lanes > 1 && !run.exclusive && !run.timedOut && !run.optedOut;
+  return !run.ranAlone && !run.timedOut && !run.optedOut;
 }
 
 /**

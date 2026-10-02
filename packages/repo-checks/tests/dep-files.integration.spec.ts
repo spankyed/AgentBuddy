@@ -1,0 +1,579 @@
+import * as fs from 'node:fs';
+import * as path from 'node:path';
+import { describe, expect, it } from 'vitest';
+import { inputFiles, REPO_ROOT } from '@abuddy/host/build/packages-built';
+import { CHAIN_STEPS } from '../../../scripts/lib/chain-steps.ts';
+import { ENSURE, namedByScript, scopeOf, TYPECHECK_LEGS } from '../../../scripts/lib/typecheck-legs.ts';
+import { PACKAGE_DIRS } from '../../../scripts/lib/workspace-deps.ts';
+import { UNIT_SUITES, unitStepName } from '../../../scripts/lib/unit-suites.ts';
+import { depFileNames, readsOf, sourceOf, untrustworthy } from '../../../scripts/lib/dep-files.ts';
+import * as buildReads from '../../../scripts/lib/build-reads.ts';
+import { population } from '@abuddy/sdk/testing';
+
+/**
+ * The compiler reports what it read, and what `typecheck` declares has to cover it.
+ *
+ * This is the affordable stand-in for hermeticity. A sandbox would *fail* an undeclared read; nothing here
+ * can, so the next best thing is to ask the tool afterwards and compare. Every other input check in this
+ * repo compares a declaration against another declaration — the module graph, the manifest — and this one
+ * compares it against an observation, which is the only one of them that can catch a read nobody modelled.
+ *
+ * It is evidence-dependent by nature: a dep file exists only where the leg has run. A fresh clone has
+ * none, and the cases below say so rather than passing over an empty set.
+ */
+const tsVersion = (JSON.parse(fs.readFileSync(path.join(REPO_ROOT, 'node_modules/typescript/package.json'), 'utf-8')) as { version: string }).version;
+
+/**
+ * What one step declares, as a question about a file — and the one place case is folded.
+ *
+ * **Folded on both sides, because TypeScript records a lowercased path on a case-insensitive filesystem**
+ * — `baseform.vue` for `BaseForm.vue`. Comparing as written reported eleven declared files as undeclared.
+ * Folding can only make this more permissive, and `declares no two files that differ only by case` rules out
+ * the one way that could hide something: two tracked files differing only by case.
+ *
+ * **Inside the comparison, never before asking the filesystem.** A caller tests existence on the path as
+ * recorded, so a report names what was read and no lowercased path is ever looked up on disk — which a
+ * case-insensitive filesystem answers anyway and a case-sensitive one does not. Nine of the recorded reads
+ * are mixed-case, so the other order would drop them and a gate would look at less while reporting the same
+ * nothing. `keeps a mixed-case read where the filesystem is case-sensitive` is what watches it.
+ *
+ * Both gates below ask this: a leg against each leg that might own its dep file (`covering`, which answers
+ * *which* legs those are), a build against the one step that builds its pack.
+ */
+/** Whether a recorded read is still on disk, asked of the path as recorded */
+const onDisk = (file: string): boolean => fs.existsSync(path.join(REPO_ROOT, file));
+
+const coverageOf = (step: { inputs: readonly string[]; excludes?: readonly string[] } | undefined) => {
+  const declared = new Set((step?.inputs ?? [])
+    .flatMap((input) => inputFiles(path.join(REPO_ROOT, input)))
+    .map((file) => file.toLowerCase()));
+  const skips = (step?.excludes ?? []).map((skip) => skip.toLowerCase());
+  return (file: string): boolean => {
+    const folded = file.toLowerCase();
+    return declared.has(folded) || skips.some((skip) => folded === skip || folded.startsWith(`${skip}/`));
+  };
+};
+
+describe('the compiler says what it read', () => {
+  /**
+   * Which legs this can speak for, named rather than implied.
+   *
+   * The gate below is only as wide as the evidence, and one leg produces none: `typecheck:fe` writes build
+   * infos that record no program at all, because a solution-style config records its references and the
+   * referenced configs do the compiling. Asserting the list keeps that honest in both directions — a leg
+   * quietly losing its dep file shows up here, and so does one gaining it.
+   */
+  it('says which legs it can speak for, so the gate is not wider than its evidence', () => {
+    const owners = new Set(depFileNames()
+      .map((file) => PACKAGE_DIRS.find((dir) => file === dir)
+        ?? PACKAGE_DIRS.filter((dir) => file.startsWith(`${dir}-`)).sort((a, b) => b.length - a.length)[0])
+      .filter((dir): dir is string => dir !== undefined));
+    const legs = TYPECHECK_LEGS.filter((leg) => leg.name !== 'packages:ensure');
+    const uncovered = legs
+      .filter((leg) => { const scope = scopeOf(leg); return scope !== 'repo' && !scope.some((dir) => owners.has(dir)); })
+      .map((leg) => leg.name)
+      .sort();
+    expect(uncovered, 'the legs no dep file speaks for — change this list only with the reason why')
+      .toEqual(['typecheck:fe']);
+  });
+
+  it('finds dep files to read, or says plainly that there is no evidence here', () => {
+    const found = depFileNames();
+    if (found.length === 0) {
+      expect.fail('no dep file in node_modules/.cache/tsbuildinfo: run npm run typecheck once, '
+        + 'then this can check what the compiler read. An empty run is not a passing one.');
+    }
+    population('dep files', found, { atLeast: 10 });
+    expect(found.flatMap((name) => readsOf(name) ?? []).length, 'every dep file is empty of repo files')
+      .toBeGreaterThan(100);
+  });
+
+  /**
+   * The gate. `typecheck` declares `EVERY_SOURCE` and the build outputs, which is broad on purpose, and
+   * the question is whether broad is *enough* — a file the compiler reads that no input covers is a step
+   * reporting `cached` over work that changed.
+   */
+  /**
+   * Case is folded on both sides, because TypeScript records a lowercased path on a case-insensitive
+   * filesystem — `baseform.vue` for `BaseForm.vue`. Comparing as written reported eleven declared files
+   * as undeclared. Folding can only make this more permissive, so the case below rules out the one way
+   * that could hide something: two tracked files differing only by case.
+   */
+  it('declares no two files that differ only by case, so the fold in coverageOf hides nothing', () => {
+    const declared = CHAIN_STEPS.flatMap((step) => step.inputs).flatMap((input) => inputFiles(path.join(REPO_ROOT, input)));
+    const byFolded = new Map<string, Set<string>>();
+    for (const file of declared) byFolded.set(file.toLowerCase(), (byFolded.get(file.toLowerCase()) ?? new Set()).add(file));
+    expect([...byFolded.values()].filter((group) => group.size > 1).map((group) => [...group]),
+      'these collide when case is folded').toEqual([]);
+  });
+
+  /**
+   * The gate, per leg rather than per chain.
+   *
+   * Each typecheck leg is its own step now, with inputs derived from the scope it declares, and the dep
+   * file is the only thing that can say whether that scope is wide enough. A leg reading a file its own
+   * step does not declare is a step reporting `cached` over work that changed — and because the scopes
+   * are narrow, this is the check that makes narrowing them safe.
+   *
+   * Which leg a dep file belongs to is `covering`'s answer, below.
+   */
+  /**
+   * Every dep file is traced to the config that named it, so none reaches the fallback by accident.
+   *
+   * The fallback — a repo-scoped leg answering for a dep file no workspace owns — is right for `scripts` and
+   * `tests` and wrong for everything else, and it is silent: a dep file this cannot place is checked against
+   * `lint:check`, which declares the tree and so vouches for anything. Without this case, a config that
+   * stopped declaring `tsBuildInfoFile`, or wrote it somewhere new, would quietly loosen the gate above
+   * rather than fail here.
+   */
+  it('traces every dep file to the tsconfig that named it', () => {
+    const placed = depFileNames().map((depFile) => ({ depFile, source: sourceOf(depFile) }));
+    expect(placed.length, 'no dep files, so this would pass over nothing').toBeGreaterThan(10);
+    expect(placed.filter(({ source }) => source === undefined).map(({ depFile }) => depFile),
+      'no tsconfig under a workspace or at the repo level declares these names').toEqual([]);
+    // The ones with no workspace are exactly the repo-level configs, which is what licenses the fallback
+    expect(placed.filter(({ source }) => source?.workspace === undefined).map(({ source }) => source?.config).sort())
+      .toEqual([path.join('scripts', 'tsconfig.json'), path.join('tests', 'tsconfig.json')]);
+  });
+
+  /**
+   * The legs that *own* this dep file, and the repo-wide ones only when none does.
+     *
+     * **A repo-wide leg is not an answer about the leg that compiles the file.** `lint:check` declares the
+     * whole tree, so with it in the covering set every read of anything was vouched for by something — which
+     * is how `typecheck:main` and `typecheck:preload` came to compile `types/*.d.ts` without declaring them,
+     * cached through an edit to a file they were reading, with this check green. The fallback is for a dep
+     * file no package owns (`scripts`, `tests`), where a repo-scoped leg genuinely is the compiler.
+     *
+     * **Ownership comes from the script, not from `scopeOf`, and that is the whole point.** A leg's `scope`
+     * is its cache key, which wants to be *wide* — every file it reads — while ownership wants to be
+     * *narrow*: only what it compiles. Reading one field for both meant widening a key made a leg vouch for
+     * reads it never compiles, so the honest declaration could not be made. It cost two answers before it
+     * was split: `packages:ensure` owned six dep files it only builds, and `repo-checks` and
+     * `publish-checks` owned none at all, because the leg that compiles them declares `scope: 'repo'` for
+     * its key and so was not in the owning set — they were being vouched for by `lint:check`, the very
+     * hole this case was tightened to close.
+     */
+  const covering = (depFile: string) => {
+    const dir = sourceOf(depFile)?.workspace;
+    const owning = dir === undefined ? [] : TYPECHECK_LEGS.filter((leg) => namedByScript(leg.name).dirs.includes(dir));
+    return owning.length > 0 ? owning : TYPECHECK_LEGS.filter((leg) => scopeOf(leg) === 'repo');
+  };
+
+  /**
+   * The split itself, pinned on the one leg where the two answers differ today.
+   *
+   * `packages:ensure` declares a `scope` naming the five packages it builds — a correct cache key, since it
+   * re-runs when any of them changes — and its script names none of them, because it compiles none of them.
+   * Read ownership off the key and it vouches for five dep files whose reads it never made; read it off the
+   * script and it vouches for nothing. Switch `covering` back to `scopeOf` and this is what says so.
+   */
+  it('asks the script which leg compiles a dep file, not the leg\'s cache key', () => {
+    const ensure = TYPECHECK_LEGS.find((leg) => leg.name === ENSURE)!;
+    expect(scopeOf(ensure), 'its key names the packages it builds, which is what makes this a difference')
+      .toContain('abuddy-sdk');
+    expect(namedByScript(ENSURE).dirs, 'and its script names none of them, because it compiles none').toEqual([]);
+    expect(covering('abuddy-sdk').map((leg) => leg.name)).not.toContain(ENSURE);
+  });
+
+  it('leaves nothing a leg read outside what that leg declares', () => {
+    const missing = depFileNames().flatMap((depFile) => {
+      const reads = readsOf(depFile) ?? [];
+      const legs = covering(depFile);
+      if (legs.length === 0) return [`${depFile}: no leg declares it, so nothing re-runs on what it read`];
+      // Any one *owning* leg is enough, and that is the only ambiguity the rule is for: a package can have
+      // several configs — `api`, `api-test`, `api-scripts` — and which leg compiles which is not derivable
+      // from the name. It was never meant to let a leg that merely walks the tree answer for one that compiles
+      const declares = legs.map((leg) => coverageOf(CHAIN_STEPS.find((candidate) => candidate.name === leg.name)));
+      return reads
+        .filter((file) => onDisk(file))
+        .filter((file) => !declares.some((covers) => covers(file)))
+        .slice(0, 5)
+        .map((file) => `${depFile} read ${file}, which no leg covering it declares`);
+    });
+    expect([...new Set(missing)], 'the compiler read these and nothing re-runs the leg when they change')
+      .toEqual([]);
+  });
+});
+
+/**
+ * And the dep file is a proxy, so it is checked against itself.
+ *
+ * A proxy records what it believes its inputs were, which is a guess about someone else's behaviour.
+ * `api:stamp` is the repo's other one and was bitten by exactly that — an input missing from its key let a
+ * change pass the stamp and the whole chain — so the rule it left behind is that a proxy needs a
+ * self-check rather than only a comparison.
+ */
+describe('a dep file is checked against itself before it is believed', () => {
+  /**
+   * Against the compiler *that workspace* resolves. `packages/main` and `packages/preload` pin typescript
+   * to an exact version and carry their own copy, so a check against the repo's called their dep files
+   * untrustworthy — the check being coarser than its subject rather than a finding about the files.
+   */
+  it('trusts one written by the compiler its own workspace resolves', () => {
+    for (const name of depFileNames()) {
+      expect(readsOf(name), `${name} is refused, so something it was written by has moved`).toBeDefined();
+    }
+  });
+
+  it('is asked against a version, and says so when that version is not the one', () => {
+    const [name] = depFileNames();
+    expect(untrustworthy(name!, { version: tsVersion })).toBeNull();
+  });
+
+  /**
+   * And the reader applies it, rather than leaving it to whoever remembers.
+   *
+   * This is the half that was missing: `untrustworthy` existed, the gate above called `readsOf`, and
+   * nothing joined them — so a dep file from another compiler would have been compared against in
+   * silence. The check belongs in the reader for the reason `CLAUDE.md` gives about reset hatches: one
+   * that a caller has to invoke is one a caller will forget.
+   */
+  it('reads nothing out of a dep file it would not trust', () => {
+    const [name] = depFileNames();
+    expect(readsOf(name!), 'the fixture is unreadable, so the case below proves nothing').toBeDefined();
+
+    const file = path.join(REPO_ROOT, 'node_modules/.cache/tsbuildinfo', `${name!}.tsbuildinfo`);
+    const original = fs.readFileSync(file, 'utf-8');
+    try {
+      const info = JSON.parse(original) as Record<string, unknown>;
+      fs.writeFileSync(file, JSON.stringify({ ...info, version: '0.0.0-another-compiler' }));
+      expect(readsOf(name!), 'a read set from another compiler describes another program').toBeUndefined();
+    } finally {
+      fs.writeFileSync(file, original);
+    }
+    expect(readsOf(name!), 'the fixture was not restored').toBeDefined();
+  });
+
+  it('refuses one written by another compiler, naming the version', () => {
+    const [name] = depFileNames();
+    expect(untrustworthy(name!, { version: '0.0.0-not-installed' }))
+      .toMatch(/written by TypeScript .*, and 0\.0\.0-not-installed is installed/);
+  });
+
+  it('refuses one recorded under different options, naming which moved', () => {
+    const [name] = depFileNames();
+    expect(untrustworthy(name!, { version: tsVersion, options: { strict: 'not-what-it-ran-with' } }))
+      .toMatch(/different options \(strict\)/);
+  });
+
+  // The cold-tree case, which is the one that must not read as "it read nothing"
+  it('refuses a name it has no file for, rather than reporting an empty read set', () => {
+    expect(readsOf('no-such-leg')).toBeUndefined();
+    expect(untrustworthy('no-such-leg', { version: tsVersion })).toMatch(/has not run in this checkout/);
+  });
+
+  /**
+   * Why `typecheck:fe` is on the uncovered list, as a fact rather than a claim.
+   *
+   * The renderer *does* write build infos — three, under `packages/renderer/node_modules/.tmp` — and they
+   * record no program at all: no `fileNames` key, because a solution-style config records its references
+   * and the referenced configs do the compiling. So there is nothing to read, and pointing the reader at
+   * that directory would buy a leg's worth of silence rather than a leg's worth of evidence. If these
+   * ever grow a `fileNames`, this case fails and the gate can widen.
+   */
+  it('finds no program recorded in the renderer build infos, which is why its leg is uncovered', () => {
+    const dir = path.join(REPO_ROOT, 'packages/renderer/node_modules/.tmp');
+    const found = fs.existsSync(dir) ? fs.readdirSync(dir).filter((file) => file.endsWith('.tsbuildinfo')) : [];
+    expect(found.length, 'the renderer writes no build info here any more; this case has lost its subject')
+      .toBeGreaterThan(0);
+    for (const file of found) {
+      const info = JSON.parse(fs.readFileSync(path.join(dir, file), 'utf-8')) as { fileNames?: unknown };
+      expect(info.fileNames, `${file} now records a program; the reader could read it`).toBeUndefined();
+    }
+  });
+});
+
+/**
+ * And the same question of `abuddy build`, which is the other tool here that can be asked.
+ *
+ * Two chain steps run it — `compile` and `test:external-pack:contract`, 70s between them — and until the
+ * command started recording, their declared inputs were compared against nothing. The bundlers it runs had
+ * the answer all along and threw it away: esbuild's `metafile.inputs`, Rollup's `watchFiles` for the three
+ * declaration bundles, and the frontend bundle's module graph.
+ *
+ * **Evidence-dependent in the same way the dep files are**, and for the same reason it is worth saying so
+ * out loud: a record exists only where the pack has been built in this checkout. A fresh clone has none, and
+ * the first case below fails with the command to run rather than passing over an empty population.
+ *
+ * **It covers the bundling, not the step.** The phases with no bundler to ask are absent from the record,
+ * which is why both steps stay on the list at the end of this file.
+ */
+describe('abuddy build says what it read', () => {
+  /** The step that builds a pack: the one that declares that pack's `dist` among its outputs */
+  const building = (packDir: string) =>
+    CHAIN_STEPS.find((step) => (step.outputs ?? []).includes(`${packDir}/dist`));
+
+  /**
+   * The comparison, as a function of what was read and what is declared, so the case below can hand it a
+   * read nobody declares and watch it report.
+   *
+   * A firing case has to come from this direction. Dropping a *capture* makes the recorded set smaller,
+   * which a reads-are-declared check cannot notice by construction — that failure is caught by the phase
+   * case above it, not here.
+   */
+  /**
+   * `exists` is injectable because no `existsSync` on this machine can answer as a case-sensitive filesystem
+   * would, and that is the difference the order of these two filters is about (`covering`).
+   */
+  const undeclared = (
+    files: readonly string[],
+    step: { inputs: readonly string[]; excludes?: readonly string[] },
+    exists: (file: string) => boolean = onDisk,
+  ): string[] => {
+    const declares = coverageOf(step);
+    return files.filter((file) => exists(file)).filter((file) => !declares(file)).sort();
+  };
+
+  /** Every read of every built pack, repo-relative: a pack records its own paths, and `..` leaves the pack */
+  const readsByPack = (): { packDir: string; files: string[] }[] => buildReads.packsWithReads().flatMap((packDir) => {
+    const record = buildReads.readsOf(packDir);
+    return record === undefined ? [] : [{
+      packDir,
+      files: buildReads.filesRead(record).map((file) => path.normalize(path.join(packDir, file))),
+    }];
+  });
+
+  it('finds a build record to read, or says plainly that there is no evidence here', () => {
+    const found = buildReads.packsWithReads();
+    if (found.length === 0) {
+      expect.fail('no pack has a .abuddy/reads.json: run npm run compile once, then this can check what '
+        + 'the build read. An empty run is not a passing one.');
+    }
+    for (const packDir of found) {
+      expect(buildReads.readsOf(packDir), `${buildReads.untrustworthy(packDir)}`).toBeDefined();
+    }
+    expect(readsByPack().flatMap(({ files }) => files).length, 'every record is empty of files')
+      .toBeGreaterThan(100);
+  });
+
+  /**
+   * Which phases this can speak for, named rather than implied — the half that catches a dropped capture.
+   *
+   * The union across the built packs, because no one pack has every phase: a built-in pack stops before the
+   * runtime and frontend bundles, and a pack with no `dsl` or `steps.build` skips those. A capture that
+   * stops reporting takes its phase out of this set, which is the only thing that can see it go; the gate
+   * below cannot, because fewer reads is never a finding there.
+   */
+  it('says which phases it can speak for, so a dropped capture is not a quiet one', () => {
+    // The nine come from two pack shapes, so the union is evidence only when both have been built: a
+    // built-in pack is compiled into the app and records no runtime or frontend bundle, and only an
+    // external one records those. Neither step that builds them is ordered before this one — the pool
+    // reading these records shares no edge with `test:external-pack:contract` — so a missing record is a
+    // command to run, said as one, rather than a phase that looks as though it went away.
+    //
+    // This loop is what `docs/plans/one-kind-of-pack.md` takes away: with one kind of pack, `compile`
+    // builds default-setup's runtime and frontend bundles too, so that one record carries all nine and the
+    // evidence question becomes "is there a record at all", which the case above already asks. The gate
+    // gets stronger by the same move — the step on the critical path would then be observed across every
+    // phase rather than seven of them.
+    const built = buildReads.packsWithReads();
+    for (const [kind, command] of [[true, 'npm run compile'], [false, 'npm run test:external-pack:contract']] as const) {
+      if (!built.some((packDir) => buildReads.isBuiltIn(packDir) === kind)) {
+        expect.fail(`no ${kind ? 'built-in' : 'external'} pack has been built in this checkout: run ${command}. `
+          + 'Without it the phases only that kind of pack records cannot be told from a capture that stopped reporting.');
+      }
+    }
+    const phases = new Set(built.flatMap((packDir) => Object.keys(buildReads.readsOf(packDir)?.phases ?? {})));
+    expect([...phases].sort(), 'a phase gone from here is a bundler that stopped reporting; a new one is a '
+      + 'bundle that started').toEqual([
+      'dslDefs', 'fe', 'flowHelperTypes', 'flowHelpersModule',
+      'runtime', 'seedCompilers', 'seedRuntime', 'stepBuild', 'types',
+    ]);
+  });
+
+  /**
+   * The gate. Both steps declare whole trees — `tests/packs` and `PACKAGE_BUILD_OUTPUTS` — and the question
+   * is whether whole trees are *enough*, which only an observation can answer. A build reading a file its
+   * step does not declare is a step reporting `cached` over work that changed.
+   */
+  it('leaves nothing a build read outside what the step building that pack declares', () => {
+    const missing = readsByPack().flatMap(({ packDir, files }) => {
+      const step = building(packDir);
+      if (step === undefined) return [`${packDir} was built and no step declares its dist, so nothing re-runs on what it read`];
+      return undeclared(files, step).slice(0, 5).map((file) => `${step.name} built ${packDir}, which read ${file}, and the step does not declare it`);
+    });
+    expect(missing, 'the build read these and nothing re-runs the step when they change').toEqual([]);
+  });
+
+  /**
+   * And the comparison can report, which is the one thing a passing gate never shows.
+   *
+   * A real file that the step genuinely does not declare, rather than a fabricated path: the gate drops a
+   * read that is not on disk, so a made-up name would be filtered out before the comparison it is meant to
+   * exercise.
+   */
+  /**
+   * And it still reports a mixed-case read where the filesystem is case-sensitive.
+   *
+   * The comparison folds case, because TypeScript records lowercased paths on a case-insensitive filesystem
+   * and the leg gate above shares this helper's shape. Folding *before* asking whether the file exists reads
+   * a lowercased path off disk — which macOS answers anyway, and Linux does not. Measured: nine of the
+   * recorded reads are mixed-case, so that order would drop them and the gate would look at less while
+   * reporting the same nothing. The filesystem is handed in because no real one here can be the one at risk.
+   */
+  it('keeps a mixed-case read where the filesystem is case-sensitive', () => {
+    // From the records rather than written out: a path chosen by hand goes all-lowercase without anyone
+    // noticing, and then the case passes whatever the order is — which is what the first version of it did
+    const mixed = readsByPack().flatMap(({ files }) => files).find((file) => file !== file.toLowerCase());
+    expect(mixed, 'no recorded read has mixed case, so this case has nothing to be about').toBeDefined();
+    // A filesystem that answers for the real case and nothing else, which is every filesystem but this one's
+    const caseSensitive = (file: string) => file === mixed;
+    expect(undeclared([mixed!], { inputs: [] }, caseSensitive), 'a read it cannot find is a read it stops checking')
+      .toEqual([mixed!]);
+    // And the fold is still what the comparison uses, so a step declaring that file covers it whatever its case
+    const contract = CHAIN_STEPS.find((step) => step.name === 'test:external-pack:contract')!;
+    expect(undeclared([mixed!], contract, () => true), 'the comparison stopped folding case').toEqual([]);
+  });
+
+  it('reports a read the step does not declare', () => {
+    const compile = CHAIN_STEPS.find((step) => step.name === 'compile')!;
+    const elsewhere = 'packages/api/src/server.ts';
+    expect(fs.existsSync(path.join(REPO_ROOT, elsewhere)), 'this case needs a real file to be about').toBe(true);
+    expect(undeclared([elsewhere], compile)).toEqual([elsewhere]);
+    // And the same comparison says nothing about a file the step does declare, so it is not simply failing
+    expect(undeclared(['packages/default-setup/abuddy.json'], compile)).toEqual([]);
+  });
+});
+
+/**
+ * And a build record is a proxy too, so it is checked against itself.
+ *
+ * The same three-cause shape as a dep file's, over what a bundler's record can be wrong about: never built
+ * here, built by bundlers that have since moved, or built with nothing reporting at all. The third has no
+ * counterpart on the TypeScript side, because a compiler that ran read something — where every capture here
+ * is a line that can be deleted.
+ */
+describe('a build record is checked against itself before it is believed', () => {
+  const built = () => buildReads.packsWithReads()[0];
+
+  it('refuses a pack it has no record for, rather than reporting an empty read set', () => {
+    expect(buildReads.readsOf('packages/api')).toBeUndefined();
+    expect(buildReads.untrustworthy('packages/api')).toMatch(/has not been built in this checkout/);
+  });
+
+  it('refuses one written by another bundler, naming which and both versions', () => {
+    const packDir = built();
+    expect(buildReads.readsOf(packDir), 'the fixture is unreadable, so this case proves nothing').toBeDefined();
+    expect(buildReads.untrustworthy(packDir, () => '0.0.0-not-installed'))
+      .toMatch(/bundled by \w+ [\d.]+, and 0\.0\.0-not-installed is installed/);
+  });
+
+  it('refuses one whose bundler is not installed at all', () => {
+    expect(buildReads.untrustworthy(built(), () => undefined)).toMatch(/and nothing is installed/);
+  });
+
+  /**
+   * And the reader applies it, rather than leaving it to whoever remembers — the half that was missing on
+   * the dep-file side until a case went looking for it.
+   */
+  it('reads nothing out of a record it would not trust', () => {
+    const packDir = built();
+    const file = path.join(REPO_ROOT, packDir, '.abuddy', 'reads.json');
+    const original = fs.readFileSync(file, 'utf-8');
+    try {
+      const record = JSON.parse(original) as { bundlers: Record<string, string> };
+      fs.writeFileSync(file, JSON.stringify({ ...record, bundlers: { ...record.bundlers, esbuild: '0.0.0-another-bundler' } }));
+      expect(buildReads.readsOf(packDir), 'a module graph from another bundler describes another build').toBeUndefined();
+
+      fs.writeFileSync(file, JSON.stringify({ bundlers: record.bundlers, phases: {} }));
+      expect(buildReads.readsOf(packDir), 'a record of no phase is a build that reported nothing').toBeUndefined();
+      expect(buildReads.untrustworthy(packDir)).toMatch(/recorded no phase/);
+    } finally {
+      fs.writeFileSync(file, original);
+    }
+    expect(buildReads.readsOf(packDir), 'the fixture was not restored').toBeDefined();
+  });
+});
+
+/**
+ * And the same question of the whole chain: which steps has anything looked at.
+ *
+ * Three answers, and the third is the one worth naming. A **dep file** is the compiler reporting what it
+ * read — an observation, the only kind of evidence here that can catch an input nobody modelled. The
+ * **module graph** is `suite-reads` walking a suite's specs, which is a declaration checked against
+ * another declaration. And for the rest there is **nothing per-step**: builds, shell scenarios and
+ * Playwright runs have no tool that reports their reads, and syscall tracing was reasoned out of scope
+ * (`docs/archive/plans/one-action-cache.md`) because it cannot tell a read that matters from a stat
+ * during module resolution.
+ *
+ * Those nine are covered only by `chain-inputs`' coverage question — every tracked file is *some* step's
+ * input — which cannot catch a step declaring too little. That is a real gap and this is a record of it,
+ * not a gate over it: the list is asserted so it cannot drift in prose, so a step gaining observation
+ * shows up, and so a new step that nothing watches has to be added here deliberately.
+ *
+ * `typecheck:fe` is in this list and in the one above for the same reason.
+ */
+describe('what has looked at a step at all', () => {
+  const observation = (): { byDepFile: string[]; byGraph: string[]; byNothing: string[] } => {
+    const owners = new Set(depFileNames()
+      .filter((file) => readsOf(file) !== undefined)
+      .map((file) => PACKAGE_DIRS.find((dir) => file === dir)
+        ?? PACKAGE_DIRS.filter((dir) => file.startsWith(`${dir}-`)).sort((a, b) => b.length - a.length)[0])
+      .filter((dir): dir is string => dir !== undefined));
+    const byDepFile = new Set(TYPECHECK_LEGS
+      .filter((leg) => { const scope = scopeOf(leg); return scope === 'repo' || scope.some((dir) => owners.has(dir)); })
+      .map((leg) => leg.name));
+    // A pool's specs are walked by `suite-reads`, which is the other kind of evidence
+    const byGraph = new Set([...new Set(UNIT_SUITES.map(unitStepName)), 'test:integration']);
+    const named = (take: (name: string) => boolean): string[] =>
+      CHAIN_STEPS.filter((step) => take(step.name)).map((step) => step.name).sort();
+    return {
+      byDepFile: named((name) => byDepFile.has(name)),
+      byGraph: named((name) => byGraph.has(name)),
+      byNothing: named((name) => !byDepFile.has(name) && !byGraph.has(name)),
+    };
+  };
+
+  it('has looked at most of them, so the list below is a remainder and not the whole table', () => {
+    const { byDepFile, byGraph, byNothing } = observation();
+    expect(byDepFile.length, 'no step is covered by a dep file').toBeGreaterThan(10);
+    expect(byGraph.length, 'no step is covered by the module graph').toBeGreaterThan(2);
+    expect(byDepFile.length + byGraph.length + byNothing.length, 'the three answers do not partition the table')
+      .toBe(CHAIN_STEPS.length);
+  });
+
+  /**
+   * **Two kinds of entry sit in this list, and the difference is the whole of what to do about them.**
+   * Measured 2026-10-02, because the distinction keeps being re-derived.
+   *
+   * *No tool can report on it.* `test:packaged-authoring` is five `npm pack`s and two `npm install`s into a
+   * temp tree outside the monorepo — a package manager writes no dep file, and resolving from the published
+   * tarballs is the thing the step exists to prove. There is nothing to build here, and what protects it
+   * instead is that its inputs are **derived** (`PACKAGE_BUILD_OUTPUTS`, `APP_OUTPUTS`) rather than
+   * hand-listed, which is the only protection available to a step nothing can observe. `test:smoke` and
+   * `test` are the same shape: Playwright driving a real Electron process.
+   *
+   * *A tool could report, and two now are asked.* `compile` and `test:external-pack:contract` both run
+   * `abuddy build`, which records what each bundling phase read — the describe above reads it. Measured
+   * 2026-10-02 on its first run: 285 files for `compile`, 131 of them `@abuddy/sdk`'s and `@abuddy/ears`'
+   * published `dist`, which `PACKAGE_BUILD_OUTPUTS` already declared. So it confirmed the declaration
+   * rather than finding a hole, which is what a gate over a correct declaration is supposed to do.
+   *
+   * **Both steps stay on this list, and that is why the distinction is written down rather than inferred
+   * from a column.** What is observed is the bundling. Codegen, the tsx-loaded seed compilation, the
+   * feature settings load and the static pack rules have no bundler to ask, and `compile`'s `facade:check`
+   * leg has none either — so moving either step out of this list would make it read as verified over part
+   * of its work, which is the same judgement the paragraph below makes about the cheap route.
+   *
+   * **The cheap version of that route is a trap**, which is why it is named rather than left to be found:
+   * those fixture packs also run `tsc --noEmit`, so giving *their* tsconfigs a `tsBuildInfoFile` would put
+   * this step in the observed column while observing 2.5s of its 57s. A step reading as verified over 4% of
+   * its work is worse than one honestly listed here.
+   */
+  it('names the steps nothing verifies per-step', () => {
+    expect(observation().byNothing,
+      'a step here is one whose declared inputs nothing checks against what it touched. Add to this list '
+      + 'only a step no tool can report on, and take one out when something can').toEqual([
+      'build:app',
+      'compile',
+      'packages:check',
+      'test',
+      'test:external-pack:app',
+      'test:external-pack:contract',
+      'test:packaged-authoring',
+      'test:smoke',
+      'typecheck:fe',
+    ]);
+  });
+});

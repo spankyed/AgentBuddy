@@ -17,6 +17,7 @@ import {
   packRootOf, PACK_SOURCE_DIRS, PACK_SRC_ROOTS, PACK_TEST_DIRS, readJsonFile, repoRelative, repoRoot,
   SOURCE_EXTENSIONS,
 } from './lib/import-populations.ts';
+import { DIR_BY_PACKAGE, RUNTIME_ONLY_DEPS } from './lib/workspace-deps.ts';
 import {
   DECLARES_SOURCE_BY_DESIGN, findMissingSourceConditions, RESOLVES_DIST_BY_DESIGN, sourceConditionPackages,
 } from './lib/import-source-conditions.ts';
@@ -222,7 +223,12 @@ export function findAppImportsInPackTests(dirs: readonly string[] = PACK_TEST_DI
  * The layered packages, lowest first (docs/goals/goal-package-boundaries.md, Decision 1): the `@abuddy/*`
  * packages each may import, and path patterns it must never load.
  */
-export const LAYERS: { name: string; dir: string; allowed: string[]; forbidden?: RegExp }[] = [
+export const LAYERS: {
+  name: string;
+  dir: string;
+  allowed: string[];
+  forbidden?: RegExp;
+}[] = [
   { name: '@abuddy/ears', dir: 'packages/abuddy-ears', allowed: [] },
   { name: '@abuddy/sdk', dir: 'packages/abuddy-sdk', allowed: ['@abuddy/ears'] },
   {
@@ -234,9 +240,60 @@ export const LAYERS: { name: string; dir: string; allowed: string[]; forbidden?:
   },
   { name: '@app/api', dir: 'packages/api', allowed: ['@abuddy/ears', '@abuddy/sdk', '@abuddy/host'] },
   { name: '@app/renderer', dir: 'packages/renderer', allowed: ['@abuddy/sdk', '@abuddy/host', '@abuddy/ui'] },
+  // Published alongside the SDK rather than above it: a component takes its contracts and host-shared state
+  // from `@abuddy/sdk/fe`, and the other direction is already refused by the SDK's own row
+  { name: '@abuddy/ui', dir: 'packages/abuddy-ui', allowed: ['@abuddy/sdk'] },
+  // The harness binds a test runtime, so it reaches the host; it may not reach the component library or the
+  // CLI, which are above it
+  { name: '@abuddy/testing', dir: 'packages/abuddy-testing', allowed: ['@abuddy/ears', '@abuddy/sdk', '@abuddy/host'] },
+  // Tooling at the top, so `allowed` forbids nothing — what this row is for is the other half, the manifest:
+  // it imported `@abuddy/ears` and `@abuddy/testing` and declared neither until this row existed.
+  //
+  // `@abuddy/ui` is here as the pack FE bundler's *subject* rather than as a dependency of this code: `src`
+  // only ever resolves it by name — the Tailwind content globs, the host-proxy decision (`fe.bundleUi`),
+  // `CHECKOUT_PACKAGES` — and the one real import is a test checking that proxying against the real module.
+  { name: '@abuddy/cli', dir: 'packages/abuddy-cli',
+    allowed: ['@abuddy/ears', '@abuddy/sdk', '@abuddy/host', '@abuddy/ui', '@abuddy/testing'] },
+  // `@abuddy/cli` is allowed because the manifest declares it, and unused because that declaration is a
+  // process dependency — `RUNTIME_ONLY_DEPS` is where it says so, and this row reads that rather than
+  // keeping a second copy of the reason
+  { name: '@app/main', dir: 'packages/main', allowed: ['@abuddy/sdk', '@abuddy/host', '@abuddy/cli'] },
+  // The narrowest row, and the one worth having: a sandboxed IPC bridge has no business in the app runtime,
+  // so `@abuddy/host` here would be a finding
+  { name: '@app/preload', dir: 'packages/preload', allowed: ['@abuddy/sdk'] },
+  // Both check the repo rather than run in it, and reach the host for the build and freshness primitives
+  { name: '@app/repo-checks', dir: 'packages/repo-checks', allowed: ['@abuddy/sdk', '@abuddy/host'] },
+  { name: '@app/publish-checks', dir: 'packages/publish-checks', allowed: ['@abuddy/sdk', '@abuddy/host'] },
 ];
 
+/**
+ * The workspaces this rule does not layer, and why — one entry, derived from the same fact that makes it a
+ * pack.
+ *
+ * A pack's imports are governed by the pack rules instead (`findInternalPackageImports`, `findHostImports`),
+ * which is a stricter answer than a layer row: a pack may reach only the three published packages, and that
+ * `@app/default-setup` imports no `@abuddy/host` is those rules working rather than a coincidence.
+ */
+export const UNLAYERED_BY_DESIGN = new Map<string, string>([
+  ['packages/default-setup', 'a pack: the pack rules govern what it may import, more narrowly than a layer'],
+]);
+
 const abuddyPackage = (specifier: string) => specifier.match(/^@abuddy\/[^/]+/)?.[0];
+
+/**
+ * Every workspace with something for the layer rule to read, by the same three directories it reads.
+ *
+ * Takes `root`, so a fixture tree with no `packages/` answers nothing rather than throwing — which is what
+ * lets this rule's cases keep passing a synthetic layer table.
+ */
+const workspacesWithCode = (root: string): string[] => {
+  const dir = path.join(root, 'packages');
+  if (!fs.existsSync(dir)) return [];
+  return fs.readdirSync(dir, { withFileTypes: true })
+    .filter((entry) => entry.isDirectory() && fs.existsSync(path.join(dir, entry.name, 'package.json')))
+    .map((entry) => `packages/${entry.name}`)
+    .filter((pkg) => filesUnder(['src', 'tests', 'scripts'].map((sub) => path.join(pkg, sub)), root).length > 0);
+};
 
 /**
  * Where a manifest names a dependency. The two rules that ask read this one list: `findPackageScriptImports`
@@ -250,8 +307,28 @@ export const MANIFEST_FIELDS = ['dependencies', 'peerDependencies', 'optionalDep
  * it makes upward, `package.json: <field>: name` for an `@abuddy/*` dependency beyond the allowed
  * ones, and `package.json: undeclared: name` for an allowed one it imports without declaring.
  */
-export function findUpwardImports(layers = LAYERS, root = repoRoot): string[] {
+export function findUpwardImports(layers = LAYERS, root = repoRoot, unlayered = UNLAYERED_BY_DESIGN, runtimeOnly = RUNTIME_ONLY_DEPS): string[] {
   const problems: string[] = [];
+  // **Which packages this rule looks at, asked of the tree rather than of the table.** `LAYERS` is a
+  // hand-written list, and it covered five of the twelve workspaces that hold code — nothing said which
+  // seven were missing, so a package arrived unlayered by being forgotten rather than by a decision. The
+  // population is the same expression the rule scans with, below, so coverage cannot drift from it.
+  const layered = new Set(layers.map((layer) => layer.dir));
+  const withCode = new Set(workspacesWithCode(root));
+  for (const dir of withCode) {
+    if (!unlayered.has(dir) && !layered.has(dir)) {
+      problems.push(`${dir}: holds code and has no layer, so nothing says which @abuddy packages it may import`);
+    }
+  }
+  for (const [dir, reason] of unlayered) {
+    if (layered.has(dir)) problems.push(`${dir}: has a layer and is also excused as "${reason}" — drop one`);
+    // And the clause the sibling lists have and this one did not: an exception outliving its reason. Only
+    // where there is a population to check it against — a root with no workspaces is no evidence that an
+    // entry excuses nothing, and reporting every entry there is the mirror of reporting none
+    else if (withCode.size > 0 && !withCode.has(dir)) {
+      problems.push(`${dir}: listed in UNLAYERED_BY_DESIGN (${reason}) but it holds no code, or is gone`);
+    }
+  }
   for (const { name, dir, allowed, forbidden } of layers) {
     const permitted = new Set([name, ...allowed]);
     const imported = new Set<string>();
@@ -272,6 +349,65 @@ export function findUpwardImports(layers = LAYERS, root = repoRoot): string[] {
     for (const pkg of [...imported].sort()) {
       if (permitted.has(pkg) && !declared.has(pkg)) problems.push(`${path.relative(root, manifestFile)}: undeclared: ${pkg}`);
     }
+    // The direction that asks whether `allowed` is too wide. `imported` is already built above, so this walks
+    // nothing of its own — and the reason for a permission nothing uses is the reason its *dependency* is
+    // unused, which `RUNTIME_ONLY_DEPS` holds for `workspaceDeps` as well. One record, read twice
+    for (const pkg of allowed) {
+      const because = runtimeOnly.get(`${dir} ${pkg}`);
+      if (!imported.has(pkg)) {
+        if (because === undefined) problems.push(`${dir}: allows ${pkg} and imports it nowhere, so the permission grants nothing`);
+      } else if (because !== undefined) {
+        problems.push(`${dir}: imports ${pkg}, so its unusedBecause ("${because}") no longer applies`);
+      }
+    }
+  }
+  return problems;
+}
+
+/**
+ * Every workspace dependency a manifest declares is one that package's code imports, or is named in
+ * `RUNTIME_ONLY_DEPS` with what it is for instead.
+ *
+ * **`workspaceDeps` is a proxy, and this is its self-check.** It reads manifests to answer "what does this
+ * package compile", which is a guess about someone else's code, and this repo's rule for a proxy is that it
+ * needs one (root `CLAUDE.md`, on `api:stamp`). The other direction has been checked for a while — an import
+ * with no declaration is `findUpwardImports`' `undeclared:` clause, and it is what caught `@abuddy/ui`'s peer
+ * dependency. This is the direction nothing asked: a declaration no import needs, which silently widens every
+ * cache key derived from it.
+ *
+ * Over the whole package, not just `src`/`tests`/`scripts`: `@app/electron-versions` is imported by
+ * `vite.config.js` at the package root, and a population that stopped at those three directories reported it
+ * as unimported — measured, twice. `publish/` is excluded because it is a staged copy of `src`, where a
+ * second reading of the same import would hide a real finding.
+ */
+export function findUnimportedDependencies(root = repoRoot, runtimeOnly = RUNTIME_ONLY_DEPS): string[] {
+  const problems: string[] = [];
+  const applied = new Set<string>();
+  for (const dir of workspacesWithCode(root)) {
+    const manifest = readJsonFile<Record<string, Record<string, string> | undefined>>(path.join(root, dir, 'package.json'));
+    const declared = MANIFEST_FIELDS.flatMap((field) => Object.keys(manifest[field] ?? {})).filter((name) => DIR_BY_PACKAGE.has(name));
+    if (declared.length === 0) continue;
+    const imported = new Set<string>();
+    const files = filesUnder([dir], root).filter((file) => !file.includes(`${path.sep}publish${path.sep}`));
+    for (const file of files) {
+      for (const { text } of readSource(file).specifiers) {
+        const named = declared.find((name) => text === name || text.startsWith(`${name}/`));
+        if (named !== undefined) imported.add(named);
+      }
+    }
+    for (const name of declared) {
+      const key = `${dir} ${name}`;
+      const reason = runtimeOnly.get(key);
+      if (reason !== undefined) applied.add(key);
+      if (imported.has(name)) {
+        if (reason !== undefined) problems.push(`${dir}: imports ${name}, so its RUNTIME_ONLY_DEPS entry (${reason}) no longer applies`);
+      } else if (reason === undefined) {
+        problems.push(`${dir}/package.json: declares ${name} and imports it nowhere — delete it, or say in RUNTIME_ONLY_DEPS what it is for`);
+      }
+    }
+  }
+  for (const [key, reason] of runtimeOnly) {
+    if (!applied.has(key)) problems.push(`${key}: listed in RUNTIME_ONLY_DEPS (${reason}) but no manifest declares it`);
   }
   return problems;
 }
@@ -539,7 +675,7 @@ const RULE_LIST = [
   {
     id: 'findAppImportsInPackTests',
     over: PACK_TEST_DIRS,
-    repoOnly: { kind: 'inapplicable', note: "Its subject is a relative import into this repo's api, host or CLI sources, which only a pack inside this monorepo can write; `@abuddy/host` and every `@/` specifier belong to `host-imports` and `pack-own-aliases`, which `abuddy test` runs over a pack's tests" },
+    repoOnly: { kind: 'inapplicable', note: "Its subject is a relative import into this repo's api, host or CLI sources, which only a pack inside this monorepo can write; `@abuddy/host` and every `@/` specifier belong to `host-imports` and `pack-own-aliases`, which the CLI's pack-test command runs over a pack's tests" },
     find: () => findAppImportsInPackTests(PACK_TEST_DIRS),
     // Dirs-shaped, so a per-file run can answer for it too, which is also what lets the sweeps call it
     overPaths: (paths, root = repoRoot) => findAppImportsInPackTests(paths, root),
@@ -549,7 +685,13 @@ const RULE_LIST = [
     id: 'findUpwardImports',
     repoOnly: { kind: 'inapplicable', note: "The `@abuddy/*` layer rule, which is about this repo's packages and their manifests" },
     find: findUpwardImports,
-    rule: "Packages import only downward (@abuddy/ears imports no @abuddy package, @abuddy/sdk only @abuddy/ears, @abuddy/host only those two and never the API, the API and the renderer only the packages below them), and list each @abuddy package they import in their package.json",
+    rule: "Every workspace holding code has a layer (or is a pack, which the pack rules govern), packages import only downward (@abuddy/ears imports no @abuddy package, @abuddy/sdk only @abuddy/ears, @abuddy/host only those two and never the API, the API and the renderer only the packages below them), each lists every @abuddy package it imports in its package.json, and every package a layer allows is one it imports or says why not",
+  },
+  {
+    id: 'findUnimportedDependencies',
+    repoOnly: { kind: 'inapplicable', note: "About this repo's own manifests against its own imports; a pack declares no workspace" },
+    find: findUnimportedDependencies,
+    rule: 'Every workspace dependency a manifest declares is one that package imports, or is named in RUNTIME_ONLY_DEPS with what it is for instead — because workspaceDeps reads those manifests to build cache keys',
   },
   {
     id: 'findLmdbImports',

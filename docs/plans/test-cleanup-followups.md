@@ -110,8 +110,11 @@ version, and a version for `apiSurfaceOf` itself.
    moves a report while the stamp said "match", the key is incomplete: fail naming it. Zero marginal cost,
    because the evidence is already in hand. **This is the only layer that catches an input nobody imagined**,
    which is the class that bit us.
-4. **`STAMP_VERSION`** on `api-report-stamp.ts`, which `packages-built.ts` already has, for when
-   `apiSurfaceOf` changes meaning.
+4. **Compare the recorded row *set*, not only the rows this code looks up.** Every check here reads a row by a
+   name the current code computes, so a row the format has dropped is read by nothing and passes. This was a
+   `STAMP_VERSION` row until 2026-10-02 — an integer that only fires while someone remembers to change it —
+   and is now a set comparison, which says which row it was. `packages-built.ts` had the same field and now
+   has none: its verdict is a hash recomputed on every read, so nothing there could go stale unnoticed.
 
 Generalised, and worth writing into `CLAUDE.md`: *a cheap proxy for an expensive check must assert its own
 soundness every time the expensive check runs.*
@@ -120,8 +123,8 @@ soundness every time the expensive check runs.*
 `scripts/lib/api-entries.ts`, which `api-reports.ts` and the stamp now share rather than each having their
 own (they had one and none, which is how they came to disagree). Layer 2: five tests mutate each new input
 and watch the stamp move. Layer 3, the one that matters: `api-reports.ts` compares the proxy against itself
-— a report that moves while the stamp said current fails the run, naming both causes. Layer 4:
-`STAMP_VERSION`.
+— a report that moves while the stamp said current fails the run, naming both causes. Layer 4: the row-set
+comparison in `staleReason`, which replaced the `#version` row it started as.
 
 **Full capture was tried on paper and declined, with reasons**, so it is not re-raised: API Extractor reads
 the report it is comparing against, which makes the key circular; it reads `.temp/api-types`, which is
@@ -159,7 +162,7 @@ thin across suites rather than in one test.
 ## 4. `check:tiers` cannot follow into a workspace's `package.json` — **done, 2026-09-25**
 
 It follows root `npm run` chains and files under `tests/` and `scripts/`, so for a step that delegates to a
-workspace script — `test:integration` is now one — it inspects nothing and passes vacuously. Tier 2 for that
+workspace script — `test:integration` is now one — it inspects nothing and passes vacuously. No app needed for that
 step was established by reading the specs, not by the guard.
 
 **Done.** It follows `-w <ws>` / `--workspace <ws>` into that workspace's scripts, so a step that delegates
@@ -170,7 +173,7 @@ is inspected instead of passing vacuously. Mutation-checked: an app marker in `@
 not — two specs here say "the app configured for abuddy test" in a title, and scanning them would report
 them. That is the same false-positive class this checker was narrowed to avoid when it was written. So a
 spec that called `_electron.launch` directly would still not be caught; nothing does, and the E2E fixture
-that could lives in `@abuddy/testing`, which only tier-3 steps use.
+that could lives in `@abuddy/testing`, which only steps that need the app use.
 
 ## 5. Correct one row in the goal's *Do not remove* — **done, 2026-09-25**
 

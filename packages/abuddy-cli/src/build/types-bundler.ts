@@ -1,6 +1,7 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { sortLiteralUnions } from './declaration-text';
+import type { RecordReads } from './build-reads';
 import { errorMessage } from '@abuddy/sdk/utils/pure';
 
 /** A package specifier (`vue`, `@abuddy/ears`), not a relative path or a pack's own `#` subpath */
@@ -13,8 +14,8 @@ export function isPackageSpecifier(id: string): boolean {
  * services, repositories) into one declaration file that dependents import. The pack's own
  * modules and its dependencies' facade types are inlined; packages stay imports.
  */
-export async function bundlePackTypes(packDir: string, outFile: string): Promise<{ success: true; content: string } | { success: false; error: string }> {
-  return bundleDeclarations(packDir, path.join(packDir, 'src', '__generated__', 'pack-types.ts'), outFile);
+export async function bundlePackTypes(packDir: string, outFile: string, recordReads?: RecordReads): Promise<{ success: true; content: string } | { success: false; error: string }> {
+  return bundleDeclarations(packDir, path.join(packDir, 'src', '__generated__', 'pack-types.ts'), outFile, { recordReads });
 }
 
 export interface BundleDeclarationsOptions {
@@ -30,6 +31,11 @@ export interface BundleDeclarationsOptions {
    * program's files, so a bundle that needs only the entry's imports passes the options it needs instead.
    */
   compilerOptions?: Record<string, unknown>;
+  /**
+   * Where this bundle reports the files it read, for the build's record of its inputs. Rollup's
+   * `watchFiles` is the declaration program's file list, which is where another package's `.d.ts` is read.
+   */
+  recordReads?: RecordReads;
 }
 
 /**
@@ -42,7 +48,7 @@ export async function bundleDeclarations(
   outFile: string,
   options: BundleDeclarationsOptions = {},
 ): Promise<{ success: true; content: string } | { success: false; error: string }> {
-  const { rollup } = await import('rollup');
+  const { rollup, VERSION } = await import('rollup');
   const { dts } = await import('rollup-plugin-dts');
   const tsconfig = path.join(packDir, 'tsconfig.json');
   try {
@@ -64,6 +70,7 @@ export async function bundleDeclarations(
       },
     });
     const { output } = await bundle.generate({ format: 'es', intro: options.intro, outro: options.outro });
+    options.recordReads?.({ bundler: 'rollup', version: VERSION, files: bundle.watchFiles });
     await bundle.close();
     const rendered = options.renderChunk ? options.renderChunk(output[0].code) : output[0].code;
     // Here rather than in each caller, so every declaration bundle this function writes is reproducible and a

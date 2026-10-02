@@ -100,7 +100,15 @@ export function reachableText(script: string, all: Record<string, string>, { ski
     seen.add(name);
     invoked.add(name);
     let text = all[name] ?? '';
-    for (const called of text.matchAll(/npm run ([\w:-]+)/g)) text += `\n${walk(called[1]!)}`;
+    // Where a call names a workspace, the script is that workspace's and the root's copy of the name is a
+    // different script — which the loop below expands correctly and this one must therefore not. Matched by
+    // position rather than by a lookahead, because the flag can sit any distance after the name.
+    const scoped = [...text.matchAll(WORKSPACE_CALL)]
+      .map((hit) => [hit.index, hit.index + hit[0].length] as const);
+    for (const called of text.matchAll(/npm run ([\w:-]+)/g)) {
+      if (scoped.some(([from, to]) => called.index >= from && called.index < to)) continue;
+      text += `\n${walk(called[1]!)}`;
+    }
     for (const [, called, workspace] of text.matchAll(WORKSPACE_CALL)) {
       const key = `${workspace}:${called}`;
       if (seen.has(key)) continue;
@@ -122,4 +130,39 @@ export function reachableText(script: string, all: Record<string, string>, { ski
   };
 
   return { text: walk(script), files, invoked };
+}
+
+/**
+ * What a step's command *is*, as a string a cache key can hold: every script it invokes, by name and body.
+ *
+ * A step is run as `npm run <name>`, so its command lives in a manifest rather than in a file, and the
+ * chain's fingerprint hashes paths and bytes. Until this existed the only way to put a command in a key
+ * was to hash the whole of `package.json` into every step — which is why editing one script invalidated
+ * all of them.
+ *
+ * **Not `reachableText(...).text`.** That concatenates the contents of every `scripts/**` file a command
+ * names, and those are already declared inputs hashed file by file. Keying on it would hash them twice
+ * and move a step's key when a comment in one of them moved. `invoked` is the set of scripts and nothing
+ * else, which is the part a manifest holds and the file walk does not.
+ *
+ * **The risk this carries.** It makes a cache key depend on a text walk of shell, and the two failure
+ * modes are not alike: a wrong *scan* reports a finding someone reads, a wrong *key* is silent. So what is
+ * hashed is the command text **and**, separately, the files that text names as declared inputs — never a
+ * parse of what the command means. `chain-inputs.spec.ts` holds both halves: that a change to a script's
+ * text moves the step's fingerprint, and that every file a command names is declared.
+ *
+ * The name is included beside the body so a script renamed to one with identical text still moves the key.
+ */
+export function commandText(script: string, all: Record<string, string>): string {
+  const bodyOf = (key: string): string => {
+    // A root script first: its own name may contain the colon that otherwise separates a workspace
+    if (key in all) return all[key];
+    const at = key.indexOf(':');
+    if (at === -1) return '';
+    return workspaceScripts(key.slice(0, at))?.[key.slice(at + 1)] ?? '';
+  };
+  return [...reachableText(script, all).invoked]
+    .sort()
+    .map((key) => `${key}\0${bodyOf(key)}`)
+    .join('\n');
 }

@@ -10,9 +10,15 @@
 /** What the scheduler needs of a step; `ChainStep` satisfies it */
 export interface SchedulableStep {
   readonly name: string;
-  readonly needs: readonly string[];
-  /** Runs alone, holding every lane: it takes a lock the others would then queue behind */
-  readonly exclusive?: true;
+  readonly dependsOn: readonly string[];
+  /**
+   * Steps this one may not run beside, by name — derived from what each writes (`conflictsOf`).
+   *
+   * Named rather than a boolean, which is what replaced it: `exclusive: true` held *every* lane, so a step
+   * conflicting with one other blocked the nine it did not. Where the conflict really is global the set
+   * says so, and the scheduler does the same thing for a reason it can print.
+   */
+  readonly conflicts?: readonly string[];
   readonly seconds?: number;
 }
 
@@ -41,6 +47,20 @@ export interface ScheduleResult {
    * reported separately instead of being folded into `failed` alone.
    */
   readonly threw: ReadonlyArray<{ readonly step: string; readonly error: unknown }>;
+  /**
+   * What overlapped each step that took a lane — recorded, because only this loop knows it.
+   *
+   * It exists for one question: a failed step is re-run alone to tell its code apart from contention, and
+   * that is worth doing only if something *was* running beside it. The chain used to predict the answer
+   * from the step's declared mutexes, which stopped being the same question when `exclusive: true` became a
+   * derived `conflictsOf`: a step with one mutex partner still runs beside two dozen others, and twelve of
+   * them skipped the re-run on that reasoning.
+   *
+   * Both directions are recorded at dispatch, so this is "overlapped at any point" rather than a snapshot
+   * at one instant — a peer that had already finished when the step failed still counts, which is the whole
+   * point of asking.
+   */
+  readonly peers: ReadonlyMap<string, ReadonlySet<string>>;
 }
 
 /**
@@ -60,7 +80,10 @@ export async function schedule<S extends SchedulableStep>({ steps, lanes, skip, 
   const running = new Map<string, Promise<string>>();
   const started: string[] = [];
   const skipped: string[] = [];
-  let exclusiveRunning = false;
+  const peers = new Map<string, Set<string>>();
+  // Not `running`, which holds a step from the moment its promise resolves until the race hands its name
+  // back — a window in which a finished step would be recorded as overlapping the next one dispatched
+  const live = new Set<string>();
   let failed: string | undefined;
   const threw: { step: string; error: unknown }[] = [];
 
@@ -69,8 +92,14 @@ export async function schedule<S extends SchedulableStep>({ steps, lanes, skip, 
       for (const step of steps) {
         if (!waiting.has(step.name)) continue;
         if (running.size >= lanes) break;
-        if (!step.needs.every((need) => done.has(need))) continue;
-        if (exclusiveRunning || (step.exclusive && running.size > 0)) break;
+        if (!step.dependsOn.every((need) => done.has(need))) continue;
+        // A mutex is symmetric: this step may not start beside one it conflicts with, and may not start
+        // if a running step names it. Checked both ways rather than trusting the derivation to be
+        // symmetric, since a one-sided conflict would silently let the pair overlap.
+        const clashes = (name: string): boolean =>
+          (step.conflicts ?? []).includes(name)
+          || (steps.find((candidate) => candidate.name === name)?.conflicts ?? []).includes(step.name);
+        if ([...running.keys()].some(clashes)) continue;
 
         waiting.delete(step.name);
         if (skip(step)) {
@@ -79,26 +108,24 @@ export async function schedule<S extends SchedulableStep>({ steps, lanes, skip, 
           continue;
         }
         started.push(step.name);
-        if (step.exclusive) exclusiveRunning = true;
+        // Both directions, now, while `live` is exactly what this step is about to join
+        peers.set(step.name, new Set(live));
+        for (const name of live) peers.get(name)?.add(step.name);
+        live.add(step.name);
         running.set(step.name, run(step).then(
           (passed) => {
+            live.delete(step.name);
             if (passed) done.add(step.name);
             else failed ??= step.name;
             return step.name;
           },
           (error: unknown) => {
+            live.delete(step.name);
             threw.push({ step: step.name, error });
             failed ??= step.name;
             return step.name;
           },
-        ).finally(() => {
-          // In `finally` rather than on the success path, so the lane is released however the step ended.
-          // Not observable today — a throw sets `failed`, and nothing is dispatched after that, so no step
-          // ever waits on this flag again — and deliberately not covered by a test for that reason. It
-          // becomes load-bearing the moment the chain gains a keep-going mode that dispatches past a
-          // failure, which is exactly when a leaked exclusive flag would deadlock the rest.
-          if (step.exclusive) exclusiveRunning = false;
-        }));
+        ));
       }
     }
     // Nothing running and nothing dispatched means the rest depends on a step that failed, or on nothing
@@ -107,5 +134,5 @@ export async function schedule<S extends SchedulableStep>({ steps, lanes, skip, 
     running.delete(await Promise.race(running.values()));
   }
 
-  return { started, skipped, threw, ...(failed === undefined ? {} : { failed }) };
+  return { started, skipped, threw, peers, ...(failed === undefined ? {} : { failed }) };
 }

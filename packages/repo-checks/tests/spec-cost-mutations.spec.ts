@@ -294,13 +294,21 @@ describe('every decision in spec-cost.ts is one its cases can see', () => {
 
   // Anchors are text, so a refactor turns an entry into a no-op that still passes. Checked first and named,
   // the same way `EXPENSIVE_BY_NATURE` is held to naming something that is still expensive
+  /**
+   * The mutant is written to a temp directory, so a relative import in the source would not resolve from
+   * there. Rewriting them is what lets the module under test have imports at all — it had none, and that
+   * looked like a property of the module when it was a property of this spec.
+   */
+  const absolute = (body: string): string =>
+    body.replace(/from '\.\/([\w.-]+)'/g, (_, file: string) => `from '${pathToFileURL(path.join(REPO_ROOT, 'scripts', 'lib', file)).href}'`);
+
   it.each(MUTATIONS)('finds the line for: $why', ({ from }) => {
     expect(source.split(from).length - 1, `this mutation no longer applies; update its \`from\`:\n${from}`).toBe(1);
   });
 
   it.each(MUTATIONS)('$why', async ({ from, to, call }) => {
     const file = path.join(tree.root, `mutant-${MUTATIONS.findIndex((entry) => entry.from === from)}.ts`);
-    fs.writeFileSync(file, source.replace(from, to));
+    fs.writeFileSync(file, absolute(source.replace(from, to)));
     const mutant = await import(pathToFileURL(file).href) as Lib;
 
     expect(outcome(() => call(mutant, tree)),

@@ -4,4 +4,4 @@ export type SpeechCommand =
   | { command: 'stop' }
 
 // Events sent from native helper to main process via stdout
-export type { SpeechEvent } from '../../../../../types/speech.js';
+export type { SpeechEvent } from '@abuddy/sdk/fe';

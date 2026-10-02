@@ -14,7 +14,7 @@ import { CHAIN_STEPS, INTEGRATION_SUITES, suiteInputs, type ChainStep } from '..
 import { UNIT_SUITES, type UnitSuite } from '../../../scripts/lib/unit-suites.ts';
 import { reachableText, rootScripts } from '../../../scripts/lib/npm-scripts.ts';
 import { TYPECHECK_LEGS } from '../../../scripts/lib/typecheck-legs.ts';
-import { poolUnitFor } from '../../../scripts/lib/unit-pool.ts';
+import { POOLS, poolUnitFor } from '../../../scripts/lib/unit-pool.ts';
 import { relativeSpecifiers, resolveRelative } from '../../../scripts/lib/module-graph.ts';
 import { PACKAGE_DIRS } from '../../../scripts/lib/workspace-deps.ts';
 import { population } from '@abuddy/sdk/testing';
@@ -38,6 +38,30 @@ const projectsOf = async (rel: string): Promise<string[]> => {
   return projects;
 };
 
+const ROOT_SCRIPTS = (JSON.parse(fs.readFileSync(path.join(REPO_ROOT, 'package.json'), 'utf-8')) as { scripts: Record<string, string> }).scripts;
+
+/**
+ * What a step's runner comprises: the `scripts/` files its npm script names, plus any relative module those
+ * import — which is where the behaviour being asked about actually lives.
+ *
+ * One function for both questions below, because both follow the same indirection and a check that stops at
+ * the npm script stops having a subject the moment a runner moves a line into `scripts/lib`.
+ */
+function runnerText(stepName: string): string {
+  const named = [...(ROOT_SCRIPTS[stepName] ?? '').matchAll(/\b(scripts\/[\w./-]+\.(?:ts|mjs))/g)].map(([, file]) => file);
+  const seen = new Set(named);
+  for (const file of named) {
+    const full = path.join(REPO_ROOT, file);
+    if (!fs.existsSync(full)) continue;
+    for (const specifier of relativeSpecifiers(full)) {
+      const target = resolveRelative(full, specifier);
+      if (target !== undefined) seen.add(repoRelative(target));
+    }
+  }
+  return [...seen].filter((file) => fs.existsSync(path.join(REPO_ROOT, file)))
+    .map((file) => fs.readFileSync(path.join(REPO_ROOT, file), 'utf-8')).join('\n');
+}
+
 // `build:app` is an enumeration of workspaces, which is the shape that goes stale silently: a workspace that
 // gains a `build` script simply would not be built by the chain, and nothing would say so. The set is
 // derivable from the manifests, so it is checked rather than trusted. `@app/default-setup` is the one
@@ -47,8 +71,7 @@ describe('the chain builds every workspace that has a build', () => {
   const OWNED_BY_COMPILE = '@app/default-setup';
 
   it('names them all in build:app, or leaves them to compile', () => {
-    const root = JSON.parse(fs.readFileSync(path.join(REPO_ROOT, 'package.json'), 'utf-8')) as { scripts: Record<string, string> };
-    const named = new Set([...root.scripts['build:app'].matchAll(/-w (\S+)/g)].map(([, name]) => name));
+    const named = new Set([...ROOT_SCRIPTS['build:app'].matchAll(/-w (\S+)/g)].map(([, name]) => name));
 
     const withBuild = PACKAGE_DIRS.flatMap((dir) => {
       const manifest = path.join(REPO_ROOT, 'packages', dir, 'package.json');
@@ -89,12 +112,12 @@ describe('a pool step and its projects cache on the same inputs', () => {
   it.each(['host', 'pack'] as const)('%s reads everything its projects read', (kind) => {
     const declared = new Set(poolStep(kind).inputs);
     const missing = projects(kind)
-      .flatMap((suite) => suiteInputs(suite).filter((input) => !declared.has(input)).map((input) => `${suite.workspace} reads ${input}`));
+      .flatMap((suite) => suiteInputs(suite, 'fast').filter((input) => !declared.has(input)).map((input) => `${suite.workspace} reads ${input}`));
     expect([...new Set(missing)]).toEqual([]);
   });
 
   it.each(['host', 'pack'] as const)('%s declares nothing its projects cannot see', (kind) => {
-    const fingerprinted = new Set(projects(kind).flatMap((suite) => poolUnitFor(suite).inputs.map(repoRelative)));
+    const fingerprinted = new Set(projects(kind).flatMap((suite) => poolUnitFor(suite, kind).inputs.map(repoRelative)));
     const unseen = poolStep(kind).inputs.filter((input) => !fingerprinted.has(input));
     expect(unseen, 'the step would go stale for these and every project would still read fresh, so it would run '
       + 'and test nothing: put them in suiteInputs, where both cache layers read them').toEqual([]);
@@ -113,12 +136,26 @@ describe('the integration step runs every suite that has an expensive half', () 
     expect(named.sort()).toEqual(INTEGRATION_SUITES.map((suite) => suite.dir).sort());
   });
 
-  // The pool is what the root script runs; naming the projects and then running something else would pass
-  // the check above over a file nothing reads
-  it('is what the root script runs', () => {
-    const scripts = (JSON.parse(fs.readFileSync(path.join(REPO_ROOT, 'package.json'), 'utf-8')) as { scripts: Record<string, string> }).scripts;
-    expect(scripts['test:integration']).toContain('--config vitest.integration.config.ts');
-    expect(scripts['test:integration'], 'and the guard each package pretest used to provide')
+  // That config is what the step eventually runs; naming the projects and then running something else would
+  // pass the check above over a file nothing reads. The step is a pool now, so the claim has two halves — the
+  // pool builds that command, and the step is that pool.
+  //
+  // Asked of the command `POOLS.integration.run` returns, not of the runner's text. Text was tried and was
+  // vacuous: `chain-steps.ts` names the same config file to *find* the suites that have one, and a runner
+  // concatenated with its imports contains that string whatever the command is. Mutating the command left the
+  // check green, which is the shape the repo's own rule warns about — a check that reports nothing may have
+  // looked at nothing.
+  it('is what the step runs, through its pool', () => {
+    const [run, ...rest] = POOLS.integration.run(INTEGRATION_SUITES);
+    expect(rest, 'the expensive halves are one pooled run, not one per suite').toEqual([]);
+    expect(run?.args ?? [], 'the pooled run must name the config whose projects were just checked')
+      .toEqual(expect.arrayContaining(['--config', 'vitest.integration.config.ts']));
+    expect((run?.args ?? []).filter((arg) => arg === '--project'), 'one --project per stale suite')
+      .toHaveLength(INTEGRATION_SUITES.length);
+
+    expect(ROOT_SCRIPTS['test:integration'], 'and the step has to be that pool rather than its own vitest')
+      .toContain('test-unit-pool.ts integration');
+    expect(runnerText('test:integration'), 'with the guard each package pretest used to provide')
       .toContain('packages:ensure');
   });
 });
@@ -138,8 +175,7 @@ describe('a step that declares forceArgs runs something that reads them', () => 
 
   it.each(declaring.map((step) => step.name))('%s', (name) => {
     const step = CHAIN_STEPS.find((candidate) => candidate.name === name)!;
-    const scripts = (JSON.parse(fs.readFileSync(path.join(REPO_ROOT, 'package.json'), 'utf-8')) as { scripts: Record<string, string> }).scripts;
-    const named = [...(scripts[name] ?? '').matchAll(/\b(scripts\/[\w./-]+\.(?:ts|mjs))/g)].map(([, file]) => file);
+    const named = [...(ROOT_SCRIPTS[name] ?? '').matchAll(/\b(scripts\/[\w./-]+\.(?:ts|mjs))/g)].map(([, file]) => file);
     expect(named, `${name} declares forceArgs and its npm script runs no scripts/ file, so nothing can read them`).not.toEqual([]);
     const text = named.map((file) => fs.readFileSync(path.join(REPO_ROOT, file), 'utf-8')).join('\n');
     const unread = (step.forceArgs ?? []).filter((flag) => !text.includes(`'${flag}'`));
@@ -198,25 +234,8 @@ describe('a step whose runner reads stamps declares forceArgs', () => {
    */
   const KEEPS_ITS_CACHE_UNDER_ALL: Record<string, string> = {
     'packages:ensure': 'forcing it would turn the 18 nested ensurePackagesBuilt() calls a chain makes into 18 builds behind one lock; the packages keep their own content-addressed stamps, which package-freshness.spec.ts covers, and "regardless of its stamp" means the chain\'s stamps',
+    'check:tiers': 'it consults no stamp. It reads the step table, which imports the fingerprint module, and this check reads text — so the freshness names are in its reach without being in its behaviour. The import is for `CHAIN_STEPS` and `APP_OUTPUTS`; if `check-test-tiers.ts` ever calls one of them, this entry is wrong and the case above is right',
   };
-
-  const scripts = (JSON.parse(fs.readFileSync(path.join(REPO_ROOT, 'package.json'), 'utf-8')) as { scripts: Record<string, string> }).scripts;
-
-  /** The runner's own text, plus any `./lib` module it imports — where the freshness calls actually live */
-  function runnerText(stepName: string): string {
-    const named = [...(scripts[stepName] ?? '').matchAll(/\b(scripts\/[\w./-]+\.(?:ts|mjs))/g)].map(([, file]) => file);
-    const seen = new Set(named);
-    for (const file of named) {
-      const full = path.join(REPO_ROOT, file);
-      if (!fs.existsSync(full)) continue;
-      for (const specifier of relativeSpecifiers(full)) {
-        const target = resolveRelative(full, specifier);
-        if (target !== undefined) seen.add(repoRelative(target));
-      }
-    }
-    return [...seen].filter((file) => fs.existsSync(path.join(REPO_ROOT, file)))
-      .map((file) => fs.readFileSync(path.join(REPO_ROOT, file), 'utf-8')).join('\n');
-  }
 
   const readsStamps = CHAIN_STEPS.filter((step) => {
     const text = runnerText(step.name);

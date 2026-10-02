@@ -114,6 +114,8 @@ Steps:
 
 Bundle and gate failures are all reported, and the command exits with code 1. `--release` minifies and drops source maps.
 
+A build also writes `.abuddy/reads.json`: the files each bundling phase read, as esbuild, Rollup and Vite report them, keyed by phase and relative to the pack. It is the build's own record of its inputs — what a build system calls a dep file — for a cache or a CI check that wants to know whether what it declared covers what the build touched; the build never reads it back, and a phase that didn't run is absent rather than empty. `ABUDDY_NO_BUILD_READS=1` turns it off, for a read-only tree.
+
 A build resolves the pack's `@abuddy` packages to the `dist` each published package ships — the one layout a pack ever has, whether the packages came from the registry or from a link to an AgentBuddy checkout. There is nothing to configure, and a pack's own configs set no resolution conditions. `abuddy test` and `abuddy run` resolve the same way, so a pack's tests run against what its build compiled; against a checkout they first bring that `dist` up to date with the checkout's sources.
 
 #### `abuddy pack [--out <dir>]`

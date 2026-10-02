@@ -9,45 +9,147 @@
  * Both this and the chain's pool step derive from `suiteInputs`, whose doc carries the rule the pair of
  * caches holds to and what happened when it did not.
  */
+import * as fs from 'node:fs';
 import * as path from 'node:path';
-import { REPO_ROOT, undiffableReason, type BuildUnit, type StampRecord } from '@abuddy/host/build/packages-built';
-import { suiteInputs } from './chain-steps.ts';
-import type { UnitSuite } from './unit-suites.ts';
+import { diffableStamp, REPO_ROOT, type BuildUnit } from '@abuddy/host/build/packages-built';
+import { INTEGRATION_SUITES, suiteInputs } from './chain-steps.ts';
+import { CONFIG_BY_HALF, type Half } from './spec-cost.ts';
+import { UNIT_SUITES, type UnitSuite } from './unit-suites.ts';
 
 /**
- * Beside the package builds' and the chain's stamps, in the same cache directory and the same format, so
- * one `STAMP_VERSION` covers all three.
+ * Beside the package builds' and the chain's stamps, in the same cache directory and the same format, so one
+ * `fingerprintUnit` and one reader cover all three.
  */
 export const POOL_STAMP_DIR = path.join(REPO_ROOT, 'node_modules', '.cache', 'abuddy-unit-pool');
 
 /**
- * Keyed by directory, so a suite has one stamp whichever pool runs it.
+ * Keyed by directory **and half**, because a suite with two halves has two things to remember.
  *
- * That used to be a hole rather than a choice: a suite whose `kind` changed moved pools, the destination
- * step went stale through `unit-suites.ts`, and the suite's stamp — being pool-independent — still read
- * fresh, so it ran in neither. It is safe now because `unit-suites.ts` is one of the runner inputs
- * `suiteInputs` carries, so editing it makes every project stale; keeping the key pool-independent is then
- * the right answer, because what a suite verified does not depend on which pool process ran it.
+ * A suite with an integration config runs twice over one input set, and the two runs are not interchangeable:
+ * its fast half can have passed while its expensive half never has. One path for both would let the second be
+ * skipped on the first's record, which is the hole that kept the integration half from being pooled at all.
+ *
+ * **The path is where a record is kept, not what says which record it is** — that is the command in
+ * `poolUnitFor`'s fingerprint, below. The half is in the path as well so that a reader of the cache
+ * directory can tell the two files apart.
  */
-export const poolStampFor = (suite: UnitSuite): string => path.join(POOL_STAMP_DIR, `${suite.dir}.json`);
+export const poolStampFor = (suite: UnitSuite, half: Half): string =>
+  path.join(POOL_STAMP_DIR, `${suite.dir}.${half}.json`);
 
-/** A project as a build unit, so it goes through the same freshness check as everything else */
-export const poolUnitFor = (suite: UnitSuite): BuildUnit => ({
-  inputs: suiteInputs(suite).map((input) => path.join(REPO_ROOT, input)),
+const projectArgs = (suites: readonly UnitSuite[]): string[] =>
+  suites.flatMap((suite) => ['--project', suite.workspace]);
+
+/**
+ * The three pools: which half each one runs, which suites belong to it, and how it runs them.
+ *
+ * A pool is a resolution and a half, not a kind of test. `host` and `pack` split on resolution — Node
+ * conditions are per process, so those two cannot share one — and `integration` splits on the half, which is
+ * why it needs no third resolution: its suites *are* host suites, and what makes them a pool is that a second
+ * config holds their expensive specs. `INTEGRATION_SUITES` derives that membership from those configs, so a
+ * package that gains one joins this pool without an edit here.
+ *
+ * `run` is where they differ. Projects of one root config go to a single vitest with `--project`; a pack suite
+ * is its own config resolving the published `dist`, so it can share a run with nothing — not even another pack
+ * suite.
+ *
+ * Here rather than in the command, so a spec can ask which suites a pool covers and under which key. The
+ * command runs its `main()` on import, which is the reason this module exists at all.
+ */
+export const POOLS = {
+  host: {
+    half: 'fast' as Half,
+    suites: () => UNIT_SUITES.filter((suite) => suite.kind === 'host'),
+    // with-source supplies the @abuddy/source condition the host suites resolve under
+    run: (stale: readonly UnitSuite[]) => [{ suites: stale, command: 'node', args: ['scripts/with-source.mjs', 'npx', 'vitest', 'run', ...projectArgs(stale)] }],
+  },
+  pack: {
+    half: 'fast' as Half,
+    suites: () => UNIT_SUITES.filter((suite) => suite.kind === 'pack'),
+    run: (stale: readonly UnitSuite[]) => stale.map((suite) => ({ suites: [suite], command: 'npm', args: ['test', '-w', suite.workspace] })),
+  },
+  integration: {
+    half: 'integration' as Half,
+    suites: () => INTEGRATION_SUITES,
+    // The root integration config declares the condition itself, and carries the worker cap that makes this
+    // pool faster at half the cores than at all of them
+    run: (stale: readonly UnitSuite[]) => [{ suites: stale, command: 'npx', args: ['vitest', 'run', '--config', CONFIG_BY_HALF.integration, ...projectArgs(stale)] }],
+  },
+} as const;
+
+export type Pool = keyof typeof POOLS;
+
+/**
+ * Every stamp any pool would write, which is what makes the rest dead.
+ *
+ * Derived from `POOLS`, so a pool that loses a suite — or a key that changes shape, as it did when the half
+ * joined it — leaves files nothing will ever read again. The chain prunes its own stamp directory for the same
+ * reason (`pruneStamps`, `scripts/chain.ts`): a cache that only ever grows is one where a name collision with
+ * something long gone is a silent pass.
+ */
+export const livePoolStamps = (): Set<string> => new Set(
+  (Object.keys(POOLS) as Pool[]).flatMap((name) => POOLS[name].suites().map((suite) => path.basename(poolStampFor(suite, POOLS[name].half)))),
+);
+
+/** Drops the stamps no pool would write. Every pool knows every pool's keys, so any run may do it. */
+export function prunePoolStamps(): void {
+  if (!fs.existsSync(POOL_STAMP_DIR)) return;
+  const live = livePoolStamps();
+  for (const file of fs.readdirSync(POOL_STAMP_DIR)) {
+    if (file.endsWith('.json') && !live.has(file)) fs.rmSync(path.join(POOL_STAMP_DIR, file));
+  }
+}
+
+/**
+ * A project as a build unit, so it goes through the same freshness check as everything else.
+ *
+ * **Keyed by pool, and the command is why.** A suite with an expensive half is two units over one input set,
+ * and until 2026-10-02 they hashed the same preimage — so a stamp read under the wrong key came out *fresh*,
+ * which is the expensive half skipped on the fast half's record. `unitStaleReason` consults nothing but the
+ * fingerprint, by design, since it recomputes its own side: the only place an identity can live is the
+ * preimage, which is what `BuildUnit.command` is for.
+ *
+ * Pool rather than half, because `host` and `pack` are both the fast half and run differently. The text is what
+ * it would take to run *this* suite alone in this pool, taken from the pool's own `run` so that nothing
+ * restates how a pool runs: it does not vary with which other suites a given run found stale.
+ *
+ * So **a suite that moves pools re-runs**, being run a different way — where the stamp's path, keyed by the
+ * half, would have called that the same record. Undo this and the two halves share one preimage again.
+ */
+export const poolUnitFor = (suite: UnitSuite, pool: Pool): BuildUnit => ({
+  inputs: suiteInputs(suite, POOLS[pool].half).map((input) => path.join(REPO_ROOT, input)),
   outputs: [],
+  command: POOLS[pool].run([suite]).map(({ command, args }) => [command, ...args].join(' ')).join(' && '),
 });
 
 // eslint-disable-next-line no-control-regex -- vitest colours its output and this reads it back
 const ANSI = /\u001B\[[0-9;]*m/g;
 
 /**
+ * **A project label has two forms, and which one you get is not this repo's choice.** vitest's
+ * `formatProjectName` writes `|name|` only when colour is unsupported, and otherwise the name padded with a
+ * space on each side, black on a background colour — so a TTY gets the second, and so does a pipe whose
+ * environment sets `FORCE_COLOR`, which is how an agent's shell runs commands.
+ *
+ * Reading only the piped form is therefore a check that passes when colour is off and fails every
+ * multi-project run when it is on: all eleven host projects reported absent, and the pool refused a run in
+ * which every one of them had just passed. The piped form was the only one ever looked at, because the
+ * fixture it was written against was invented rather than taken from a run.
+ */
+// eslint-disable-next-line no-control-regex -- the colour is what identifies the label, so it is the anchor
+const COLOURED_LABEL = /^(?:\s|\u001B\[[0-9;]*m)*[✓×↓](?:\s|\u001B\[[0-9;]*m)*\u001B\[(?:4[0-7]|10[0-7])m ([^\u001B]+) \u001B\[49m/gm;
+const PIPED_LABEL = /^\s*[✓×↓]\s*\|([^|]+)\|/gm;
+
+/**
  * The projects a vitest run reported, from its own output.
  *
  * vitest labels every file with its project when a run covers more than one — `✓ |@abuddy/ears| tests/x.spec.ts`
- * — which is the only thing that says what a `--project` filter actually selected.
+ * — which is the only thing that says what a `--project` filter actually selected. Both label forms count;
+ * the colours are stripped for the piped one and are the anchor for the other.
  */
 export function projectsThatRan(output: string): Set<string> {
-  return new Set([...output.replace(ANSI, '').matchAll(/^\s*[✓×↓]\s*\|([^|]+)\|/gm)].map(([, name]) => name));
+  const coloured = [...output.matchAll(COLOURED_LABEL)];
+  const piped = [...output.replace(ANSI, '').matchAll(PIPED_LABEL)];
+  return new Set([...coloured, ...piped].map(([, name]) => name));
 }
 
 /**
@@ -73,18 +175,18 @@ export function projectsThatDidNotRun(asked: readonly string[], output: string):
 }
 
 /**
- * Why one project is about to run, given what its stamp recorded and what a diff of its inputs would say.
+ * Why one project is about to run, given what its stamp was read as and what a diff of its inputs would say.
  *
  * A pool exists to run a subset, so every non-empty run makes a claim about which projects moved — and
  * `npm run chain -- --dry` cannot settle it, because it reports on the *step*, a different unit with a
  * different input set. It can say what moved under `test:unit:host` while being unable to say which of the
  * eleven projects inside it that was.
  *
- * Pure, over a record and a thunk, so the answers can be checked without a stamp on disk — and `??`
- * short-circuits, so the diff is never computed for a stamp that may not be diffed. Which stamps those are is
- * `undiffableReason`'s to say, not this line's: a version it does not recognise is the clause an explainer is
- * most likely to forget, and forgetting it here printed a file name beside a reason that said the stamp could
- * not be read at all.
+ * Pure, over a read and a thunk, so the answers can be checked without a stamp on disk — and `??`
+ * short-circuits, so the diff is never computed for a stamp that may not be diffed. It takes the *read* rather
+ * than the record because that is what makes the two inseparable: the caller cannot reach the fields a diff
+ * needs without having been told whether they are readable, where it used to ask one function and then narrow
+ * for itself. Forgetting that printed a file name beside a reason that said the stamp could not be read at all.
  */
-export const whyItRuns = (record: StampRecord | undefined, moved: () => string): string =>
-  undiffableReason(record) ?? (moved() || 'its inputs changed');
+export const whyItRuns = (read: ReturnType<typeof diffableStamp>, moved: () => string): string =>
+  read.undiffable ?? (moved() || 'its inputs changed');

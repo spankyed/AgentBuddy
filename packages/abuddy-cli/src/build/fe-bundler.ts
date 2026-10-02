@@ -5,6 +5,7 @@ import { pathToFileURL } from 'node:url';
 import type { Plugin as VitePlugin, Rollup } from 'vite';
 import { init as initModuleLexer, parse as parseModule } from 'es-module-lexer';
 import { getSharedFeDeps, unresolvedSubpathPackages, getSdkFeModules, getUiFeModules, sharedInstancePackage } from '@abuddy/host/build/shared-deps';
+import type { RecordReads } from './build-reads';
 import { errorMessage } from '@abuddy/sdk/utils/pure';
 
 const EXTERNAL_PREFIX = '\0pack-external:';
@@ -288,6 +289,25 @@ export interface BundleFEOptions {
   entryPoint: string;
   /** Minified, no source maps (release bundles). */
   release?: boolean;
+  /** Where this bundle reports the files it read, for the build's record of its inputs */
+  recordReads?: RecordReads;
+}
+
+/**
+ * Reports the module graph this bundle resolved — Rollup's own answer to what it read, which is the same
+ * thing esbuild's `metafile.inputs` is for the backend bundles.
+ *
+ * Its own plugin rather than a hook on `packExternalsPlugin`, because it shares nothing with that plugin's
+ * subject: what is external here is exactly what is *not* read, and the two would only ever be edited
+ * apart. `buildEnd` is where the graph is complete and nothing has been written yet.
+ */
+function recordReadsPlugin(record: RecordReads, version: string): VitePlugin {
+  return {
+    name: 'record-reads',
+    buildEnd() {
+      record({ bundler: 'vite', version, files: this.getModuleIds() });
+    },
+  };
 }
 
 export function findFEEntry(packDir: string): string | null {
@@ -406,7 +426,7 @@ async function tailwindPostcssPlugins(packDir: string): Promise<any[]> {
 }
 
 export async function bundlePackFE(options: BundleFEOptions): Promise<{ success: boolean; error?: string }> {
-  const { packDir, outputDir, entryPoint, release = false } = options;
+  const { packDir, outputDir, entryPoint, release = false, recordReads } = options;
 
   const vite = await import('vite');
   const vue = (await import('@vitejs/plugin-vue')).default;
@@ -450,6 +470,7 @@ export async function bundlePackFE(options: BundleFEOptions): Promise<{ success:
         },
         tailwindInjectPlugin,
         packExternalsPlugin(packDir),
+        ...(recordReads ? [recordReadsPlugin(recordReads, vite.version)] : []),
         vue(),
       ],
       css: {

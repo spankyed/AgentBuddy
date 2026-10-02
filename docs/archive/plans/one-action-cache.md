@@ -1,3 +1,10 @@
+> **Done and closed.** Implemented by [`goal-one-action-cache.md`](../goals/goal-one-action-cache.md),
+> whose Outcome records what landed and the three places this plan was wrong: a dep file is sound as a
+> check and not as a key, retiring the text scan cannot be paired with the derived edges, and item 7
+> (Gradle's rule) has no subject in a cache that decides whether to run rather than restoring outputs.
+> The follow-up is [`observed-inputs.md`](observed-inputs.md), itself now done. The text below is the plan as
+> written.
+
 # One action cache
 
 ## Status (2026-10-01)
@@ -8,7 +15,7 @@
 | decided | all five decisions, all four measurements, both unverified claims — see the last three sections |
 | next, unblocked | the `tier` split (`tier-split.md`); three of its four pieces need nothing from this list |
 | open | nothing to decide; what remains is building items 2-6 of the order below |
-| executed by | [`docs/goals/goal-one-action-cache.md`](../goals/goal-one-action-cache.md) — this doc is the survey and the reasoning, that one is the runnable plan |
+| executed by | [`goal-one-action-cache.md`](../goals/goal-one-action-cache.md), now archived — items 0, 17, 18 and the `tier` split landed; its Outcome records what was corrected, including why item 7 has no subject here |
 
 ## Problem
 
@@ -142,7 +149,7 @@ What the repo has and lacks, against that model:
 | typecheck legs | `scripts/lib/typecheck-legs.ts` | 18 legs, **no cache**, and its own lane count set against the chain's |
 | integration half | `package.json` | `vitest run --config …`, **no per-suite stamps** — the inputs are `inputsForSuites` now, the inner cache is not |
 | suite inputs | `suiteInputs`, `chain-steps.ts` | ROOT + runner + workspace parts + `workspaceDeps` + 3 flags; every suite-running step's key is the union (`inputsForSuites`) |
-| per-file digests | `freshnessSweep`, `packages-built.ts` | listings, buffers **and digests** memoised (`980c6d854`) — the 6.64x overlap is read and hashed once |
+| per-file digests | `freshnessSweep`, `packages-built.ts` | listings, buffers and digests memoised, and the chain's dispatch decisions share one sweep — the 6.64x overlap is read and hashed once per run rather than once per step |
 
 The critical path is 109-119s and is `packages:ensure → compile → build:app → test:packaged-authoring`,
 which no part of this list touches — so none of it moves the cold run, and all of it moves the warm one.
@@ -155,9 +162,14 @@ which no part of this list touches — so none of it moves the cold run, and all
    directory listings and file buffers between units and re-hashed the bytes. Measured over the 13 steps
    before it: a 6.64x overlap, 283.8 MB hashed against 57.3 MB distinct, 680ms against 108ms, inside a
    680ms warm sweep. An action's key is now a hash over a list of file-hashes — Bazel's and Buck2's Merkle
-   shape, and the thing that makes action count stop mattering. **It was numbered zero because it paid
-   before anything else on this list existed**, and because every later item's overhead argument assumes
-   it. *Owed: the post-landing warm number, on a quiet box.*
+   shape, and the thing that makes action count stop mattering.
+
+   **It paid nothing until the dispatch path shared a sweep**, which is worth knowing before trusting a
+   measurement of a primitive. The memo lives inside `freshnessSweep`, and the chain's dispatch decisions
+   read per step — so `--dry` and the post-run report got the 680ms-to-108ms, and a warm run, which is the
+   number anyone feels, got none of it. Measured 2026-10-01 at 28 steps: 1715ms read per step against 189ms
+   shared, where parsing all 28 stamps is 3ms. Sharing the dispatch reads (`115582524`) is what collected
+   it — a warm chain went 2.5s to **0.9s**, under the 1.5s it cost at 13 steps.
 1. **An action.** One (tool, scope) pair: `tsc -p packages/abuddy-host`, `vitest --project @abuddy/ears`,
    `oxlint .`, `abuddy build @app/default-setup`. **47 where there are 13 steps**, counted rather than
    estimated — see the last section.

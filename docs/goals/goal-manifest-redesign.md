@@ -658,7 +658,7 @@ enforced:
 |---|---|---|---|
 | `PACK_LAYOUT_VERSION = 1` (`pack-layout.ts:24`) | `integrity.json`'s `formatVersion` | an installed pack's files and where they sit | `verifyPack` throws "Update AgentBuddy or rebuild the pack"; `loader.ts:171` skips the pack with a warning |
 | `LMDB_FORMAT_VERSION = 1` (`lmdb/envs.ts:20`) | the database's meta | the storage format | `openEnvAt`, which refuses to open |
-| `STAMP_VERSION = 2` (`build/packages-built.ts:65`) | the build stamp | tooling freshness | the packages-built check |
+| *(none)* — the build stamp (`build/packages-built.ts`) carries **no** version | `node_modules/.cache` | tooling freshness | its fingerprint, recomputed on every read. It had a `STAMP_VERSION` until 2026-10-02; a stamp nothing but this checkout reads needs no format field, because the comparison recomputes its own side |
 
 `$manifestVersion` is not a fourth kind of thing. `abuddy.json` is a file *in* the layout: both stamps
 would be written at build time, read by the same host code at install and load, and mean the same thing

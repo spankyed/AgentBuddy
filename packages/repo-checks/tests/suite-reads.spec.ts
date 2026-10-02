@@ -5,6 +5,11 @@ import { inputFiles, REPO_ROOT } from '@abuddy/host/build/packages-built';
 import { CHAIN_STEPS, INTEGRATION_SUITES, suiteInputs } from '../../../scripts/lib/chain-steps.ts';
 import { UNIT_SUITES, unitStepName, type UnitSuite } from '../../../scripts/lib/unit-suites.ts';
 import { reachableFrom } from '../../../scripts/lib/module-graph.ts';
+import type { Half } from '../../../scripts/lib/spec-cost.ts';
+
+/** The halves a suite runs in: every suite has a fast one, and only a suite with a second config has the other */
+const halvesOf = (suite: UnitSuite): Half[] =>
+  (INTEGRATION_SUITES.some((other) => other.dir === suite.dir) ? ['fast', 'integration'] : ['fast']);
 import { population } from '@abuddy/sdk/testing';
 
 /**
@@ -28,6 +33,24 @@ import { population } from '@abuddy/sdk/testing';
  * it cannot see at all is a path built at runtime: the repo-wide guards ask git what the tree holds, which
  * `SUITE_READS.repo` declares and `fingerprint-scope.spec.ts` holds to the specs that do it.
  */
+
+/**
+ * What a declared input holds, read once per path however many questions ask about it.
+ *
+ * Not a convenience: both sides of the second case below expand declared paths, and a chain run has another
+ * lane writing into each fixture pack's `dist` under `tests/packs` while this one runs. Taken as two walks, the suite's side saw three
+ * fixture build outputs the step's side had walked a moment earlier and missed, and the case reported the step
+ * as declaring less than its suite reads — the defect it exists to find, over a difference that was only the
+ * clock. Measured 2026-10-01 in a chain where `test:external-pack:contract` wrote them at the moment this ran.
+ *
+ * One reading, so a verdict and the tree it is about are the same tree.
+ */
+const expanded = new Map<string, string[]>();
+function filesUnder(input: string): string[] {
+  const found = expanded.get(input) ?? inputFiles(path.join(REPO_ROOT, input));
+  expanded.set(input, found);
+  return found;
+}
 
 /** Every spec in a suite, which is where the walk starts. */
 function specsOf(suite: UnitSuite): string[] {
@@ -56,7 +79,13 @@ const walked = new Map<string, { reached: string[]; declared: Set<string> }>();
 function reads(suite: UnitSuite): { reached: string[]; declared: Set<string> } {
   const found = walked.get(suite.dir) ?? {
     reached: reachableFrom(specsOf(suite), [REPO_ROOT]).map((file) => path.relative(REPO_ROOT, file)),
-    declared: new Set(suiteInputs(suite).flatMap((input) => inputFiles(path.join(REPO_ROOT, input)))),
+    // Every half this suite *has*, because the walk covers every spec in it rather than one half's: the
+    // question is whether anything declares a file the specs load, not which pool run would re-read it.
+    // The halves it has, not both — a suite with no integration config declares no integration half, and
+    // crediting it with one invents an input nothing declares, which the step case below reports as the step
+    // under-declaring. Per-half is the tighter question and needs the specs split first, which `halfOfPath`
+    // can do and this does not.
+    declared: new Set(halvesOf(suite).flatMap((half) => suiteInputs(suite, half)).flatMap(filesUnder)),
   };
   walked.set(suite.dir, found);
   return found;
@@ -104,7 +133,7 @@ describe('a suite declares what its specs read', () => {
 const stepFiles = new Map<string, Set<string>>();
 function filesOf(step: string): Set<string> {
   const found = stepFiles.get(step)
-    ?? new Set(CHAIN_STEPS.find((s) => s.name === step)!.inputs.flatMap((i) => inputFiles(path.join(REPO_ROOT, i))));
+    ?? new Set(CHAIN_STEPS.find((s) => s.name === step)!.inputs.flatMap(filesUnder));
   stepFiles.set(step, found);
   return found;
 }

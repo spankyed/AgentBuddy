@@ -9,7 +9,7 @@ import {
 import { INTEGRATION_SUITES } from '../../../scripts/lib/chain-steps.ts';
 import { PACKAGE_DIRS } from '../../../scripts/lib/workspace-deps.ts';
 import { UNIT_SUITES } from '../../../scripts/lib/unit-suites.ts';
-import { asDuration, priceSpecs, priceSuites, tierOfRun } from '../../../scripts/lib/spec-dry.ts';
+import { asDuration, priceSpecs, priceSuites, needsAppForRun } from '../../../scripts/lib/spec-dry.ts';
 import { CONFIG_BY_HALF, HALVES } from '../../../scripts/lib/spec-cost.ts';
 
 /**
@@ -192,7 +192,7 @@ describe('what --full adds', () => {
   });
 
   // `pack` matched 355 of 368 spec files when the whole repo-relative path was searched, because every path
-  // begins with `packages/`. A plausible search term ran the suite, tier 3 included.
+  // begins with `packages/`. A plausible search term ran the suite, the app E2E included.
   it('reads a name against the file, never the packages/ prefix every path carries', () => {
     const { runs, ambiguous } = planTargets(['pack'], [], REPO_ROOT);
     const matched = ambiguous[0]?.specs ?? runs.flatMap((r) => r.args);
@@ -858,18 +858,18 @@ describe('what the plan would cost', () => {
   });
 
   /**
-   * The tier is read from `chain-steps.ts`, never inferred, so the label cannot disagree with `check:tiers`.
-   * A package's own `npm test` is not the chain's `test` step, and labelling it tier 3 would say the pack
-   * suite launches the app.
+   * Read from `chain-steps.ts`, never inferred, so the label cannot disagree with `check:tiers`. A
+   * package's own `npm test` is not the chain's `test` step, and labelling it as needing the app would say
+   * the pack suite launches one.
    */
-  it('labels a run with the tier of the chain step it is, and nothing else', () => {
+  it('labels a run from the chain step it is, and nothing else', () => {
     const [ensure, walk] = planTargets(['packages/abuddy-sdk/src/types/sdk-entities.ts'], [], REPO_ROOT).runs;
-    expect(tierOfRun(ensure!, REPO_ROOT), 'packages:ensure').toBe(2);
-    expect(tierOfRun(walk!, REPO_ROOT), 'a root vitest is no chain step').toBeUndefined();
+    expect(needsAppForRun(ensure!, REPO_ROOT), 'packages:ensure needs no app').toBe(false);
+    expect(needsAppForRun(walk!, REPO_ROOT), 'a root vitest is no chain step').toBeUndefined();
 
     const packageTest = planTargets([SPEC], [], REPO_ROOT).runs[0]!;
     expect(packageTest.args[0], 'npm test in a package').toBe('test');
-    expect(tierOfRun(packageTest, REPO_ROOT), 'which is not the chain step named test').toBeUndefined();
+    expect(needsAppForRun(packageTest, REPO_ROOT), 'which is not the chain step named test').toBeUndefined();
   });
 
   // Every run a plan can produce is either collected or explained: one that is neither would print an empty

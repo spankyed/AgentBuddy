@@ -19,7 +19,7 @@ export function criticalPath<S extends SchedulableStep>(steps: readonly S[]): { 
     // Undefined rather than a zero, so a need that costs nothing still lands on the path. Seeding this with
     // `{ seconds: 0 }` drops every unmeasured step from the report, since nothing is greater than zero.
     let longest: { names: string[]; seconds: number } | undefined;
-    for (const need of step.needs) {
+    for (const need of step.dependsOn) {
       // A need outside `steps` contributes nothing: this is called with the steps that actually ran, and one
       // that was cached cost no time, so it is on no path worth reporting
       const needed = byName.get(need);

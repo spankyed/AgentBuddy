@@ -1,18 +1,23 @@
-// The pre-merge chain's run order is derived from each step's `needs`, not written down, so what this pins is
-// that the derivation is a topological sort and that a wrong graph fails before any step runs — a six-minute
-// chain should not discover a cycle halfway through. See docs/goals/goal-test-tiers.md.
+// The pre-merge chain's run order is derived from what each step reads and writes — no step declares an
+// edge — so what this pins is that the derivation is a topological sort and that a wrong graph fails before
+// any step runs: a six-minute chain should not discover a cycle halfway through.
+// What it does not pin is the derivation against the `needs` table it replaced: that snapshot existed for
+// the one commit that deleted those fields and went with them, since keeping it would be a second record of
+// the graph, able to disagree with the first. The property is what survives, here and in `chain-schedule`
+// (two conflicting steps never overlap) and `chain-inputs` (the derived ancestors are walked).
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { REPO_ROOT } from '@abuddy/host/build/packages-built';
-import { CHAIN_STEPS, chainSteps, orderedSteps, type ChainStep } from '../../../scripts/lib/chain-steps.ts';
+import { CHAIN_STEPS, chainSteps, conflictsOf, dependsOn, orderedSteps, STEP_TABLES, type ChainStep } from '../../../scripts/lib/chain-steps.ts';
+import { declaredAt } from '../../../scripts/lib/chain-output.ts';
 
 describe('the chain graph', () => {
-  it('orders every step after the steps it needs', () => {
+  it('orders every step after the steps it depends on', () => {
     const order = orderedSteps().map((s) => s.name);
     expect(order).toHaveLength(CHAIN_STEPS.length);
     for (const step of CHAIN_STEPS) {
-      for (const need of step.needs) {
+      for (const need of dependsOn(step)) {
         expect(order.indexOf(need), `${need} must come before ${step.name}`).toBeLessThan(order.indexOf(step.name));
       }
     }
@@ -25,25 +30,124 @@ describe('the chain graph', () => {
     const order = orderedSteps(reversed).map((s) => s.name);
     expect(order).toHaveLength(CHAIN_STEPS.length);
     for (const step of CHAIN_STEPS) {
-      for (const need of step.needs) {
+      for (const need of dependsOn(step)) {
         expect(order.indexOf(need), `${need} must come before ${step.name}`).toBeLessThan(order.indexOf(step.name));
       }
     }
     expect(order).not.toEqual(reversed.map((s) => s.name));
   });
 
-  it('refuses a dependency that is not a step', () => {
-    const steps: ChainStep[] = [{ name: 'a', tier: 1, needs: ['nope'], inputs: [] }];
-    expect(() => orderedSteps(steps)).toThrow(/needs nope, which is not a step/);
-  });
-
+  /**
+   * Two steps each reading what the other writes. A derived graph can still cycle — the derivation only
+   * refuses to invent an edge, not to find a circular one — and a six-minute chain must not discover it
+   * halfway through.
+   */
   it('refuses a cycle', () => {
-    const steps: ChainStep[] = [{ name: 'a', tier: 1, needs: ['b'], inputs: [] }, { name: 'b', tier: 1, needs: ['a'], inputs: [] }];
+    const steps: ChainStep[] = [
+      { name: 'a', inputs: ['y'], outputs: ['x'] },
+      { name: 'b', inputs: ['x'], outputs: ['y'] },
+    ];
     expect(() => orderedSteps(steps)).toThrow(/cycle/);
   });
 
-  it('refuses two steps with one name, which would make `needs` ambiguous', () => {
-    const steps: ChainStep[] = [{ name: 'a', tier: 1, needs: [], inputs: [] }, { name: 'a', tier: 1, needs: [], inputs: [] }];
+  /**
+   * **The same property, through the door the case above does not reach.** A two-step cycle leaves one
+   * element in the reduction's candidate list, so its pairwise filter short-circuits and the transitive walk
+   * is never called: that case exercises the topological sort and not the derivation. Give the cycle a step
+   * with two producers and the walk runs, re-enters an answer still being computed, and the verdict used to
+   * be `RangeError: Maximum call stack size exceeded` — a wrong graph failing, but not *naming itself*,
+   * which is what the header above promises. Both shapes are kept because neither covers the other.
+   */
+  it('refuses a cycle reached through a step with two producers, naming it rather than overflowing', () => {
+    const steps: ChainStep[] = [
+      { name: 'a', inputs: ['x', 'y'], outputs: ['z'] },
+      { name: 'b', inputs: ['z'], outputs: ['x'] },
+      { name: 'c', inputs: [], outputs: ['y'] },
+    ];
+    expect(() => orderedSteps(steps)).toThrow(/cycle through a/);
+  });
+
+  /**
+   * A mutex has no direction, so this one is a preference — and it was held by nothing but the order the
+   * two happen to sit in the table.
+   *
+   * `test:smoke` and `test` both write `tests/results`, which makes them a derived mutex: the scheduler will
+   * not overlap them, and either order satisfies it. Running the six-second gate before the twenty-six
+   * second harness is what anyone wants, and until this case existed, reordering the table would have
+   * silently swapped them. Named here rather than declared on a step, because a preference between two
+   * steps is not a property of either.
+   */
+  it('runs the smoke gate before the harness they are mutexed by', () => {
+    const order = orderedSteps(chainSteps(['test'])).map((step) => step.name);
+    expect(order, 'the opt-in harness is not in this plan, so there is nothing to order').toContain('test');
+    const smoke = CHAIN_STEPS.find((step) => step.name === 'test:smoke')!;
+    expect(conflictsOf(smoke), 'the two no longer share a path, so this preference has lost its subject')
+      .toContain('test');
+    expect(order.indexOf('test:smoke')).toBeLessThan(order.indexOf('test'));
+  });
+
+  /**
+   * The E2E harness reads the published trees, so it may not run beside the step that rewrites them.
+   *
+   * `packages:check` runs `attw --pack`, which packs a tarball *inside* the tree it is checking, and
+   * `stagePublishTree` removes and recreates that tree — while every E2E spec loads its fixture from
+   * `@abuddy/testing`'s built bundle, which lives there. `test:smoke` declared those trees and was therefore
+   * mutexed; `test` declared only the app's four dists, so the pair was kept apart by nothing but the order
+   * the scheduler happened to pick. Asserted on `test` rather than left to the derivation, because what makes
+   * the mutex exist is one declaration that is easy to drop.
+   */
+  it('keeps the harness away from the step that rewrites what it loads', () => {
+    const harness = CHAIN_STEPS.find((step) => step.name === 'test')!;
+    expect(conflictsOf(harness), 'the harness no longer declares the published trees it imports from')
+      .toContain('packages:check');
+  });
+
+  /**
+   * Every step can be pointed at, which is what lets a run print where its reasoning lives instead of
+   * repeating it.
+   *
+   * Derived from `STEP_TABLES` rather than from one file, because that is the mistake this replaces:
+   * `declaredIn` searched `chain-steps.ts` alone and silently found nothing for the seventeen typecheck legs
+   * and the two pool steps, whose names are generated. Nothing noticed, because only a `neverCachedBecause`
+   * step prints the pointer and both of those live in the file it did search — so the first leg to become
+   * never-cached would have lost it. Drop a table from the list and this fails for seventeen steps.
+   */
+  it('declares every step somewhere a run can point at', () => {
+    const sources = STEP_TABLES.map((file) => fs.readFileSync(path.join(REPO_ROOT, file), 'utf-8'));
+    expect(CHAIN_STEPS.length, 'the table emptied, so this would pass over nothing').toBeGreaterThan(25);
+    const lost = CHAIN_STEPS.filter((step) => sources.every((source) => declaredAt(source, step.name) === undefined));
+    expect(lost.map((step) => step.name), 'nothing names these, so a run cannot point at their reasoning').toEqual([]);
+  });
+
+  /**
+   * And the line it lands on declares *that* step, which locatable does not say.
+   *
+   * The case above asks only whether an answer came back, and for the two steps whose names are generated an
+   * answer comes from a prefix match — so a line that merely looks like a declaration would satisfy it. The
+   * sibling in `chain-output.spec.ts` covers a never-cached step, which is every step that prints a pointer
+   * today, and every one of those is written out literally; this is the half that holds the generated ones.
+   * What it cannot check is specificity, which has no second generator to be wrong about — a written table
+   * carries that case.
+   */
+  it('lands on a line that declares the step it was asked about', () => {
+    const generated = CHAIN_STEPS.filter((step) => STEP_TABLES.every((file) =>
+      !fs.readFileSync(path.join(REPO_ROOT, file), 'utf-8').includes(`name: '${step.name}'`)));
+    expect(generated.map((step) => step.name), 'no step has a generated name, so this would pass over nothing')
+      .toEqual(['test:unit:host', 'test:unit:pack']);
+    for (const step of generated) {
+      for (const file of STEP_TABLES) {
+        const lines = fs.readFileSync(path.join(REPO_ROOT, file), 'utf-8').split('\n');
+        const at = declaredAt(lines.join('\n'), step.name);
+        if (at === undefined) continue;
+        const prefix = /name: `([^$`]*)/.exec(lines[at - 1]!)?.[1];
+        expect(prefix, `${file}:${at} is where ${step.name} was placed, and it declares no generated name`).toBeDefined();
+        expect(step.name.startsWith(prefix!), `${file}:${at} generates names like ${prefix!}, which ${step.name} is not one of`).toBe(true);
+      }
+    }
+  });
+
+  it('refuses two steps with one name, which would make an edge ambiguous', () => {
+    const steps: ChainStep[] = [{ name: 'a', inputs: [] }, { name: 'a', inputs: [] }];
     expect(() => orderedSteps(steps)).toThrow(/Two chain steps named a/);
   });
 
@@ -86,13 +190,18 @@ describe('the chain graph', () => {
     });
 
     /**
-     * The one way this breaks: something needs a step the default run does not include, so the chain is
-     * missing a dependency and finds out halfway through. It fails at the selector instead.
+     * The one way this breaks: something depends on a step the default run does not include, so the chain
+     * is missing a dependency and finds out halfway through. It fails at the selector instead.
+     *
+     * Asked of `chainSteps` rather than `orderedSteps`, because that is the only place it can be asked
+     * now. Edges derive from the list they are given, so a step filtered out of the list is simply not
+     * depended on by it; the refusal has to derive against the *whole* table, which is what `chainSteps`
+     * does and why it takes one.
      */
-    it('refuses a graph where something needs one', () => {
+    it('refuses a graph where something depends on one', () => {
       const steps = CHAIN_STEPS.map((s) => (s.name === 'build:app' ? { ...s, optInBecause: 'for the case' } : s));
-      expect(() => orderedSteps(steps.filter((s) => s.optInBecause === undefined)))
-        .toThrow(/needs build:app, which is not a step/);
+      expect(() => chainSteps([], steps))
+        .toThrow(/depends on build:app, which is opt-in/);
     });
   });
 

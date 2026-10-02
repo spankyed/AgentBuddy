@@ -15,10 +15,11 @@ import { execFileSync } from 'node:child_process';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { BUILD_UNITS, covers, inputFiles, NOT_A_BUILD_INPUT, repoRelative, REPO_ROOT } from '@abuddy/host/build/packages-built';
-import { CHAIN_STEPS, SUITE_READS } from '../../../scripts/lib/chain-steps.ts';
+import { BUILD_UNITS, covers, fingerprintUnit, inputFiles, NOT_A_BUILD_INPUT, REPO_ROOT, repoRelative } from '@abuddy/host/build/packages-built';
+import { CHAIN_STEPS, dependsOn, suiteInputs, SUITE_READS } from '../../../scripts/lib/chain-steps.ts';
 import { UNIT_SUITES } from '../../../scripts/lib/unit-suites.ts';
-import { reachableText, rootScripts } from '../../../scripts/lib/npm-scripts.ts';
+import { reachableFrom } from '../../../scripts/lib/module-graph.ts';
+import { commandText, reachableText, rootScripts } from '../../../scripts/lib/npm-scripts.ts';
 import { TYPECHECK_LEGS } from '../../../scripts/lib/typecheck-legs.ts';
 import { PACKAGE_DIRS } from '../../../scripts/lib/workspace-deps.ts';
 import { repoFiles } from './_support/repo-files.ts';
@@ -41,7 +42,7 @@ const NOT_A_CHAIN_INPUT: Record<string, string> = {
 };
 
 // `.sh` included: three of the chain's steps *are* shell scripts, so leaving the extension out meant the
-// coverage claim skipped the files that drive tier 3 entirely.
+// coverage claim skipped the files that drive the app entirely.
 const CODE = /\.(ts|tsx|vue|mts|cts|mjs|cjs|js|sh)$/;
 
 const trackedCode = (): string[] =>
@@ -226,10 +227,12 @@ describe('the chain reads every source file', () => {
     expect(passes.some((pass) => pass.at !== ''), 'no workspace oxlint call was derived — the fan-out stopped being followed').toBe(true);
 
     const linted = new Set(passes.flatMap((pass) => [...pass.files]));
-    const step = CHAIN_STEPS.find((candidate) => candidate.name === 'typecheck')!;
+    // `lint:check` is its own chain step now; it was a leg of `typecheck` when this case was written
+    const step = CHAIN_STEPS.find((candidate) => candidate.name === 'lint:check')!;
+    expect(step, 'no step runs the lint, so this would pass over nothing').toBeDefined();
     const covered = coveredBy([step]);
     const missing = [...linted].filter((file) => !covered.has(file)).sort();
-    expect(missing, 'typecheck runs lint over these and declares none of them, so it caches over their changes').toEqual([]);
+    expect(missing, 'lint:check walks these and declares none of them, so it caches over their changes').toEqual([]);
   });
 
   it('gives every step the files its script reaches', () => {
@@ -356,6 +359,71 @@ describe('a unit suite whose specs name build output declares it', () => {
 //
 // This is the preventive half. `willNotCache` in the chain's summary is the empirical half, and catches
 // what no declaration can anticipate; this catches what can be known before anything runs.
+/**
+ * The modules that decide **how** a pool runs are inputs to every project in it.
+ *
+ * The same question `BUILD_UNITS` is asked at the bottom of this file — a unit declaring the modules its own
+ * runner imports — and it had the same answer: `scripts/lib/unit-pool.ts` holds `POOLS`, the argv, the stamp
+ * key and the prune rule, and no suite declared it, so any of those could change and invalidate nothing.
+ * `chain-table.spec.ts` records this defect being found by hand once before, for four other runner files:
+ * *"the file deciding what the pool runs was the one file the pool could not notice changing"*. This is the
+ * derivation that stops a third extraction slipping out.
+ *
+ * **The boundary is `chain-steps.ts`, and that is the whole subtlety.** It is in the closure, and declaring it
+ * would be wrong: it *defines* `suiteInputs`, so its effect on a pool's key is the declared set itself, which
+ * the key already covers — where declaring the file would re-run all thirteen suites for an edit to an
+ * unrelated step. So everything reachable only through it is out of the population, with that reason, and what
+ * is left is the pool's own machinery.
+ *
+ * One direction, as `suite-reads` has it: over-declaration is not a finding, because `scripts/bounded.ts` and
+ * `with-source.mjs` are spawned rather than imported and are declared on purpose.
+ */
+describe('a pool declares the modules that run it', () => {
+  const inScripts = [path.join(REPO_ROOT, 'scripts')];
+  const closure = (entry: string): Set<string> =>
+    new Set(reachableFrom([path.join(REPO_ROOT, entry)], inScripts).map((file) => repoRelative(file)));
+
+  it('leaves nothing its runner imports undeclared, bar the step table it reads its inputs from', () => {
+    const table = closure('scripts/lib/chain-steps.ts');
+    const machinery = [...closure('scripts/test-unit-pool.ts')].filter((file) => !table.has(file)).sort();
+    expect(machinery.length, 'the walk found no pool machinery, so this would pass over nothing')
+      .toBeGreaterThan(2);
+    // Every suite declares the same runner set, so one is enough to ask — and `suiteInputs` is where it comes
+    // from, which is what both cache layers read
+    const declared = new Set(suiteInputs(UNIT_SUITES[0]!, 'fast'));
+    expect(machinery.filter((file) => !declared.has(file)),
+      'a pool runs through these and no project of it would notice them changing').toEqual([]);
+  });
+});
+
+/**
+ * And a suite's half declares the root config that half runs under — neither more nor less.
+ *
+ * Both root configs were in every suite's inputs until 2026-10-02, which cost a cache hit in one direction
+ * (an edit to the integration config re-ran all thirteen fast projects) and an identity in the other: the two
+ * halves of one suite hashed the same declared set, leaving the stamp's filename as the only thing that told
+ * them apart. A pack suite's fast half reads neither, because `npm test -w` runs that package's own config.
+ */
+describe("a suite's half declares the config that runs it", () => {
+  const host = UNIT_SUITES.find((suite) => suite.kind === 'host')!;
+  const pack = UNIT_SUITES.find((suite) => suite.kind === 'pack')!;
+  const FAST = 'vitest.config.ts';
+  const INTEGRATION = 'vitest.integration.config.ts';
+
+  it('gives a host suite the root config of the half, and only that one', () => {
+    expect(suiteInputs(host, 'fast')).toContain(FAST);
+    expect(suiteInputs(host, 'fast'), 'the fast half does not run under the integration config').not.toContain(INTEGRATION);
+    expect(suiteInputs(host, 'integration')).toContain(INTEGRATION);
+    expect(suiteInputs(host, 'integration'), 'the expensive half passes --config and reads no other').not.toContain(FAST);
+  });
+
+  it('gives a pack suite neither, its own config being in its workspace', () => {
+    expect(suiteInputs(pack, 'fast').filter((input) => [FAST, INTEGRATION].includes(input))).toEqual([]);
+    expect(suiteInputs(pack, 'fast'), 'its own config is what it runs under, through its workspace')
+      .toContain(path.join('packages', pack.dir, 'vitest.config.ts'));
+  });
+});
+
 describe('a gitignored input belongs to someone', () => {
   const ignoredRoots = execFileSync('git', ['ls-files', '--others', '--ignored', '--exclude-standard', '--directory'],
     { cwd: REPO_ROOT, maxBuffer: 64 * 1024 * 1024 })
@@ -364,7 +432,8 @@ describe('a gitignored input belongs to someone', () => {
 
   const byName = new Map(CHAIN_STEPS.map((step) => [step.name, step]));
   const ancestorsOf = (name: string, seen = new Set<string>()): Set<string> => {
-    for (const need of byName.get(name)?.needs ?? []) {
+    const step = byName.get(name);
+    for (const need of step ? dependsOn(step) : []) {
       if (seen.has(need)) continue;
       seen.add(need);
       ancestorsOf(need, seen);
@@ -410,7 +479,8 @@ describe('a gitignored input belongs to someone', () => {
 describe('a step that reads what another writes depends on it', () => {
   const byName = new Map(CHAIN_STEPS.map((step) => [step.name, step]));
   const ancestorsOf = (name: string, seen = new Set<string>()): Set<string> => {
-    for (const need of byName.get(name)?.needs ?? []) {
+    const step = byName.get(name);
+    for (const need of step ? dependsOn(step) : []) {
       if (seen.has(need)) continue;
       seen.add(need);
       ancestorsOf(need, seen);
@@ -437,6 +507,66 @@ describe('a step that reads what another writes depends on it', () => {
   });
 });
 
+/**
+ * A step's command is part of its key, and the only part that is not a file.
+ *
+ * `package.json` used to be in all 29 steps' inputs for one reason: a step is `npm run <name>`, its
+ * command lives in a manifest, and a fingerprint hashes paths and bytes — so the whole manifest was the
+ * only available proxy. Measured over ~587 commits, 37 touched it and all 37 were scripts-only, each one
+ * invalidating every step. `BuildUnit.command` replaced that proxy with the thing itself.
+ *
+ * Which moves the risk rather than removing it: a key that depends on a text walk of shell is wrong
+ * silently, where a scan that depends on one is wrong loudly. These two cases are what stand under it.
+ */
+describe('a step keys on the command it runs', () => {
+  it('gives every step a command, and no two steps the same one', () => {
+    const all = rootScripts();
+    const byText = new Map<string, string[]>();
+    for (const step of CHAIN_STEPS) {
+      const text = commandText(step.name, all);
+      expect(text, `${step.name} resolves to no command, so its key is its inputs alone and a change to `
+        + 'its script would not re-run it').not.toBe('');
+      byText.set(text, [...(byText.get(text) ?? []), step.name]);
+    }
+    const shared = [...byText.values()].filter((names) => names.length > 1);
+    expect(shared, 'these steps have one command between them, so one cannot be invalidated without the other')
+      .toEqual([]);
+  });
 
+  /**
+   * The mutation check for the whole change, and it needs no edit to `package.json`: `commandText` takes
+   * the scripts map as an argument, so a changed script can be handed to it directly.
+   *
+   * Inputs are empty on both units on purpose — it isolates the command's contribution to the hash, so a
+   * pass cannot come from the files moving instead.
+   */
+  it('moves a step fingerprint when the text of its script changes', () => {
+    const all = rootScripts();
+    const [step] = CHAIN_STEPS;
+    const before = commandText(step!.name, all);
+    const after = commandText(step!.name, { ...all, [step!.name]: `${all[step!.name]!} --changed` });
+    expect(after, 'the edited script is not in what this command reaches').not.toBe(before);
 
+    const keyed = (command: string): string => fingerprintUnit({ inputs: [], outputs: [], command });
+    expect(keyed(after), 'the command is not in the fingerprint').not.toBe(keyed(before));
+  });
 
+  /**
+   * And the manifest is gone from the keys, bar one step that genuinely reads it.
+   *
+   * `typecheck:be` is the exception and it is evidenced rather than assumed: its three programs each
+   * resolve through the root `package.json`, which its dep files report, so it declares it through
+   * `alsoReads`. The dep-file gate found this the moment the manifest left `ROOT` — while every step
+   * declared it, a real read and an accident were indistinguishable.
+   *
+   * `packages:ensure` declares it too, through `SHARED_INPUTS` in `BUILD_UNITS`, and is filtered out
+   * rather than listed: it is never cached, so it has no key to invalidate.
+   */
+  it('leaves package.json out of every step the chain caches, bar the one that reads it', () => {
+    const cached = CHAIN_STEPS.filter((step) => step.neverCachedBecause === undefined);
+    expect(cached.length, 'no step is cached, so this passes over nothing').toBeGreaterThan(20);
+    expect(cached.filter((step) => step.inputs.includes('package.json')).map((step) => step.name),
+      'a step keying on the whole manifest re-runs when any unrelated script is edited; add one here only '
+      + 'with the dep-file evidence that it reads the manifest').toEqual(['typecheck:be']);
+  });
+});

@@ -167,7 +167,7 @@ const SKIP = new Set(['node_modules', 'dist', '.git', '.temp', 'dist-ssr', 'cove
 /**
  * The specs a bare name stands for, narrowest reading first: the file's stem, then its name, then the path inside
  * its package. The `packages/<name>/` prefix is never searched, because every path has it — searching the whole
- * repo-relative path made `pack` match 355 of 368 spec files, which ran the suite, tier 3 included, for a plausible
+ * repo-relative path made `pack` match 355 of 368 spec files, which ran the suite, the app E2E included, for a plausible
  * search term.
  */
 export function matchByName(query: string, root: string): string[] {
@@ -411,7 +411,7 @@ const packRelatedRun = (root: string, suite: UnitSuite, relToPack: string, flags
  * literal list, which `chain-inputs.spec.ts` holds equal to `UNIT_SUITES`' host suites.
  */
 export function rootProjects(root: string): string[] {
-  const config = fs.readFileSync(path.join(root, 'vitest.config.ts'), 'utf-8');
+  const config = fs.readFileSync(path.join(root, CONFIG_BY_HALF.fast), 'utf-8');
   return [...config.matchAll(/^\s*'packages\/([\w-]+)',$/gm)].map(([, dir]) => dir);
 }
 

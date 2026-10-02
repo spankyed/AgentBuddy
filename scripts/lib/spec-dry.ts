@@ -4,7 +4,7 @@
  * The half of `npm run spec:dry` that is not the command — the same split as `spec-plan.ts` under `spec.ts`,
  * so a spec can drive both the pricing and the collection without spawning anything. The whole module loads
  * behind an `await import` in the command, which is what keeps the ordinary run from paying for vitest's
- * node API or the chain steps the tier label reads.
+ * node API or the chain steps the app label reads.
  *
  * **What it predicts from is a sample, and it says so.** `spec-cost.json` is maintained with hysteresis: a
  * measurement is recorded only when it would place the spec in the other half or is a large move, so a row
@@ -19,7 +19,7 @@
  * by a third within a week.
  */
 import * as path from 'node:path';
-import { CHAIN_STEPS } from './chain-steps.ts';
+import { CHAIN_STEPS , needsApp as needsAppStep } from './chain-steps.ts';
 import { readSpecCost } from './spec-cost.ts';
 import { UNIT_SUITES } from './unit-suites.ts';
 import { IS_SPEC, packageOf, type Run } from './spec-plan.ts';
@@ -98,17 +98,18 @@ export function priceSuites(workspaces: readonly string[], root: string): Priced
 }
 
 /**
- * The tier of the chain step a run corresponds to, where one does.
+ * Whether the chain step a run corresponds to needs the built app, where it corresponds to one.
  *
- * Read from `chain-steps.ts` and never inferred from what a run looks like, so the label cannot disagree with
- * `check:tiers`. Only a run at the repo root invoking `npm run <script>` is one: a package's `npm test` is
- * that package's script, not the chain's `test` step, and labelling it tier 3 would say the pack suite
- * launches the app.
+ * Read from `chain-steps.ts` and never inferred from what a run looks like, so the label cannot disagree
+ * with `check:tiers`. Only a run at the repo root invoking `npm run <script>` is one: a package's
+ * `npm test` is that package's script, not the chain's `test` step, and labelling it as needing the app
+ * would say the pack suite launches one.
  */
-export const tierOfRun = (run: Run, root: string): number | undefined =>
-  run.cwd === root && run.command === 'npm' && run.args[0] === 'run'
-    ? CHAIN_STEPS.find((step) => step.name === run.args[1])?.tier
-    : undefined;
+export const needsAppForRun = (run: Run, root: string): boolean | undefined => {
+  if (!(run.cwd === root && run.command === 'npm' && run.args[0] === 'run')) return undefined;
+  const step = CHAIN_STEPS.find((candidate) => candidate.name === run.args[1]);
+  return step === undefined ? undefined : needsAppStep(step);
+};
 
 /**
  * `41.9s`, `1.2s`, or `7ms` below a second.

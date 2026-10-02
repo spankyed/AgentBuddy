@@ -33,7 +33,7 @@
 // ONE PREMISE OF THAT ARGUMENT WAS WRONG (2026-09-27)
 //
 // It read "every step already uses all the cores — vitest runs its files across workers, tsc forks per
-// project". The second half was false, and `typecheck` was the largest tier-1 step: sixteen legs chained with
+// project". The second half was false, and `typecheck` was the largest app-free step: sixteen legs chained with
 // `&&`, each a single-threaded compiler, so it held one core for half a minute while nine sat idle — which is
 // also why it was the step most starved by the lanes put there to use them. Running its legs at once took it
 // from 29.3s to 10.8s alone (`scripts/typecheck.ts`).
@@ -43,11 +43,14 @@
 // assumption, and the cheapest work left in this chain may be another step that is quietly serial.
 import * as fs from 'node:fs';
 import * as path from 'node:path';
-import { changedInputs, firstChange, freshnessSweep, INPUTS_CHANGED, REPO_ROOT, stampedRun, stampRecord, unitStaleReason, type BuildUnit } from '@abuddy/host/build/packages-built';
-import { CHAIN_STEPS, chainSteps, MEASURED_AT_LANES, orderedSteps, type ChainStep, type Tier } from './lib/chain-steps.ts';
+import { changedInputs, diffableStamp, firstChange, freshnessSweep, INPUTS_CHANGED, REPO_ROOT, stampedRun, stampRecord, unitStaleReason, type BuildUnit } from '@abuddy/host/build/packages-built';
+import { CHAIN_STEPS, type ChainStep, chainSteps, MEASURED_AT_LANES, needsApp, orderedSteps, STEP_TABLES } from './lib/chain-steps.ts';
+import { commandText, rootScripts } from './lib/npm-scripts.ts';
+import { IDLE_FLOOR, idleNow, movedBeyondBand, refusesAsBusy } from './lib/measure.ts';
+import { recordSeconds } from './lib/record-seconds.ts';
 import { schedule } from './lib/chain-schedule.ts';
 import { criticalPath, driftedSteps, willNotCache } from './lib/step-timing.ts';
-import { briefly, classifyLine, declaredAt, dim, DRY_REASON_COLUMN, driftReport, howLong, identicalRewrites, oneLine, REASON_COLUMN, shouldClassify, staleLines, STEP_NAME_WIDTH, TIME_COLUMN, whenChanged, wrapAt, writerOf } from './lib/chain-output.ts';
+import { briefly, classifyLine, declaredAt, dim, driftReport, DRY_REASON_COLUMN, howLong, identicalRewrites, marker, oneLine, REASON_COLUMN, shouldClassify, staleLines, STEP_NAME_WIDTH, TIME_COLUMN, whenChanged, wrapAt, writerOf } from './lib/chain-output.ts';
 import { slowestTests } from './lib/slow-tests.ts';
 import { exitOnEpipe } from './lib/exit-on-epipe.ts';
 
@@ -58,13 +61,13 @@ import { boundedSpawn, budgetFor } from './lib/bounded-spawn.ts';
 /**
  * Each step is cached on its own declared inputs, through the same protocol the package builds use:
  * `fingerprintUnit` over `ChainStep.inputs`, `unitStaleReason` to decide, `stampedRun` to record. One
- * `STAMP_VERSION`, one fingerprint, one thing to bump — which is why the chain's stamps live beside the
+ * protocol, one fingerprint, one reader — which is why the chain's stamps live beside the
  * builds' rather than inventing a second format.
  *
  * This replaces a whole-tree fingerprint, which skipped the chain only when nothing tracked had changed at
  * all. The argument for that was that every expensive step transitively reads nearly the whole repo, and
- * for the tier-3 steps it is still true: they read the built app, so a change anywhere in it re-runs them.
- * What it missed is that most of the chain is not tier 3. The eight unit suites read their own package and
+ * for the steps that need the app it is still true: they read it, so a change anywhere in it re-runs them.
+ * What it missed is that most of the chain needs no app. The eight unit suites read their own package and
  * its dependencies' source, so a one-package edit re-runs one suite; a doc edit re-runs nothing.
  *
  * There is no cascade rule, and there does not need to be one. A step that produces something declares it
@@ -74,20 +77,56 @@ import { boundedSpawn, budgetFor } from './lib/bounded-spawn.ts';
  */
 const STAMP_DIR = path.join(REPO_ROOT, 'node_modules', '.cache', 'abuddy-chain');
 
-/** The table a run points at when it says a step is never cached: the sentence is there, the argument above it */
-const STEP_TABLE = 'scripts/lib/chain-steps.ts';
+/**
+ * Where a run points when it says a step is never cached: the sentence is there, the argument above it.
+ *
+ * Both tables, because a step is declared in either — this searched only `chain-steps.ts` and so could not
+ * locate the seventeen typecheck legs or the two generated pool steps. Read once, at module load, rather
+ * than per row.
+ */
+const stepTables = STEP_TABLES.map((file) => ({ file, source: fs.readFileSync(path.join(REPO_ROOT, file), 'utf-8') }));
 const declaredIn = (name: string): string | undefined => {
-  const line = declaredAt(stepTable, name);
-  return line === undefined ? undefined : `${STEP_TABLE}:${line}`;
+  for (const { file, source } of stepTables) {
+    const line = declaredAt(source, name);
+    if (line !== undefined) return `${file}:${line}`;
+  }
+  return undefined;
 };
-const stepTable = fs.readFileSync(path.join(REPO_ROOT, STEP_TABLE), 'utf-8');
 const stampFor = (step: string): string => path.join(STAMP_DIR, `${step.replace(/[:/]/g, '-')}.json`);
 
+/**
+ * Drop stamps for steps that no longer exist, and for steps that are not cached.
+ *
+ * A stamp is a record *about* a step, so one whose step has gone is a record with no subject — and this
+ * chain found a real one: `typecheck.json` outlived the step by the time it became eighteen. Harmless on
+ * its own, and exactly the shape the rest of this work removes, which is reason enough not to keep it.
+ *
+ * The uncached case is the one that would be a bug rather than litter. A step declaring
+ * `neverCachedBecause` must never be skipped on a stamp, and `runAndStamp` returns before `stampedRun`
+ * for one — so a stamp for such a step means that branch stopped holding. Clearing it here keeps the
+ * store true to the table; `chain-stamps.spec.ts` is what fails if the branch breaks.
+ */
+function pruneStamps(): void {
+  if (!fs.existsSync(STAMP_DIR)) return;
+  const live = new Map(CHAIN_STEPS.map((step) => [path.basename(stampFor(step.name)), step]));
+  for (const file of fs.readdirSync(STAMP_DIR)) {
+    if (!file.endsWith('.json')) continue;
+    const step = live.get(file);
+    if (step === undefined || step.neverCachedBecause !== undefined) fs.rmSync(path.join(STAMP_DIR, file));
+  }
+}
+
 /** A step as a build unit: the same shape, so it goes through the same freshness check */
+/** What a finished step may have changed: its products, and the paths it writes without producing one */
+const wrote = (step: ChainStep): string[] =>
+  [...(step.outputs ?? []), ...(step.alsoWrites ?? [])].map((target) => path.join(REPO_ROOT, target));
+
 const unitFor = (step: ChainStep): BuildUnit => ({
   inputs: step.inputs.map((input) => path.join(REPO_ROOT, input)),
   outputs: (step.outputs ?? []).map((output) => path.join(REPO_ROOT, output)),
   excludes: (step.excludes ?? []).map((excluded) => path.join(REPO_ROOT, excluded)),
+  // What `npm run <name>` resolves to, which is what `package.json` used to be in every step's inputs for
+  command: commandText(step.name, rootScripts()),
 });
 
 type Result = { step: string; ms: number; code: number; output: string; timedOut?: true };
@@ -110,15 +149,15 @@ function whatMoved(
   asking: { changedInputs: typeof changedInputs },
 ): Omit<Parameters<typeof staleLines>[0], 'name' | 'nameWidth' | 'reason'> {
   const nothing = { gained: [], lost: [], files: [], identical: [] };
-  const record = stampRecord(stampFor(step.name));
-  // `recorded: false` is required of the types and unreachable from here, which is worth saying rather than
+  // An undiffable stamp is required of the types and unreachable from here, which is worth saying rather than
   // leaving as a fallback someone trusts: this is asked only of a step that *passed* in this run, and a step
-  // that passed rewrote its own stamp a moment ago with both fields in it. The state it stands for — a stamp
-  // from before they were recorded — is reachable only by whoever asks about a run they did not just watch,
-  // which is `--dry`, the question "why would this run?". That is where naming the files would pay next, and it
-  // would make this branch live.
-  if (record?.files === undefined || record.declared === undefined) return { ...nothing, recorded: false };
-  const changes = asking.changedInputs(unitFor(step), { files: record.files, declared: record.declared });
+  // that passed rewrote its own stamp a moment ago with every field in it. The state it stands for — a stamp
+  // from before the digests were recorded, or one in a shape its reader refuses — is reachable only by whoever
+  // asks about a run they did not just watch, which is `--dry`, the question "why would this run?". That is
+  // where naming the files would pay next, and it would make this branch live.
+  const { stamp: record, undiffable } = diffableStamp(stampRecord(stampFor(step.name)));
+  if (record === undefined) return { ...nothing, undiffable };
+  const changes = asking.changedInputs(unitFor(step), record);
   const at = (file: string) => {
     try {
       return fs.statSync(path.join(REPO_ROOT, file)).mtimeMs;
@@ -126,7 +165,7 @@ function whatMoved(
       return undefined; // gone between the diff and this stat, which the diff already called removed
     }
   };
-  const asOf = (field: unknown) => (typeof field === 'string' ? Date.parse(field) : undefined);
+  const asOf = (field: string | undefined) => (field === undefined ? undefined : Date.parse(field));
   const [from, until] = [asOf(record.takenAt), asOf(record.builtAt)];
   const files = ([
     ...changes.changed.map((file) => ({ file, how: 'changed' as const })),
@@ -143,7 +182,8 @@ function whatMoved(
     from,
     until,
   });
-  return { gained: changes.gained, lost: changes.lost, files, identical, recorded: true };
+  // `undefined` rather than omitted: the field is required so that a caller which has read the stamp says so
+  return { gained: changes.gained, lost: changes.lost, files, identical, undiffable: undefined };
 }
 
 /**
@@ -206,7 +246,7 @@ async function runAndStamp(step: ChainStep, all: boolean): Promise<Result> {
  * measurement had three lanes slower than two *and* failing, and what failed was a test timing out at
  * vitest's 5s default — `findLmdbImports > holds for the repo` at 5220ms, a whole-repo scan that takes ~2s
  * alone. The cap was the timeout, not the cores. `goal-one-job-pool.md` Phase 5 replaced that default with
- * the tier budgets, 15s and 60s, and the third lane became both faster and green.
+ * the size budgets, 15s and 60s, and the third lane became both faster and green.
  *
  * Four is not better than three: the critical path is 106-112s, so three lanes at ~157s is already close to
  * the floor and more lanes have nothing left to overlap. Re-measure this when the step shape changes again
@@ -248,12 +288,13 @@ async function main(): Promise<void> {
    * Why a step would run. `asking` is how it reads the tree: the default reads per step, and a sweep reads once
    * for all of them.
    *
-   * **Which one is not a performance choice.** A sweep answers as of its first read, so it is right only where
-   * every step is asked about at one moment — `--dry`, which runs nothing, and the report below, which runs after
-   * everything has stopped. The dispatch decisions are asked as the scheduler reaches each step, spread across the
-   * whole run, so they read for themselves: a step reached at t=100s has to see the tree as of then, or a snapshot
-   * from t=0 calls it fresh when another step has just written into its inputs. That is the defect the report
-   * exists to find, and sharing reads there would hide it instead.
+   * **Every caller shares one, and the derived graph is what makes that sound.** A reader of a step's output
+   * is ordered after it by construction, so a sweep — which reads lazily — never holds bytes a later step
+   * overwrites. That property was hand-maintained when `needs` was written beside the inputs implying it;
+   * it is definitional now, which is what retired the per-step reads.
+   *
+   * Measured on an unchanged tree: 28 decisions cost 1715ms read per step and 189ms through one sweep, which
+   * is the whole cost of a run where nothing runs.
    */
   const staleReason = (step: ChainStep, asking = { staleReason: unitStaleReason }): string | null =>
     step.neverCachedBecause !== undefined
@@ -273,9 +314,13 @@ async function main(): Promise<void> {
      * say which input moved.
      */
     const whatChanged = (step: ChainStep): string => {
-      const record = stampRecord(stampFor(step.name));
-      if (record?.files === undefined || record.declared === undefined) return 'its last run recorded no per-file digests';
-      return firstChange(sweep.changedInputs(unitFor(step), { files: record.files, declared: record.declared }));
+      const { stamp: record, undiffable } = diffableStamp(stampRecord(stampFor(step.name)));
+      // Its reader's own sentence, rather than a second copy of one. The copy that was here could not print
+      // the wrong thing — this is asked only where `why === INPUTS_CHANGED` below, so the fingerprint is a
+      // string and only the two record clauses are reachable — but it was a literal kept in step with
+      // `diffableStamp`'s by nothing, and there were three of them in three files.
+      if (record === undefined) return undiffable;
+      return firstChange(sweep.changedInputs(unitFor(step), record));
     };
     for (const step of steps) {
       // `--all` runs everything, so a dry run given `--all` must say so rather than reporting the cache it
@@ -285,24 +330,33 @@ async function main(): Promise<void> {
       // Naming what moved in place of the sentence, which was the same for every stale step and said less
       const moved = !all && why === INPUTS_CHANGED ? whatChanged(step) : '';
       const reason = all ? '--all' : (moved === '' ? (why ?? '') : moved);
-      console.log(`${(willRun ? 'run' : 'cached').padStart(7)} t${step.tier} ${step.name.padEnd(STEP_NAME_WIDTH)} ${wrapAt(DRY_REASON_COLUMN, reason)}`.trimEnd());
+      console.log(`${(willRun ? 'run' : 'cached').padStart(7)} ${marker(needsApp(step))} ${step.name.padEnd(STEP_NAME_WIDTH)} ${wrapAt(DRY_REASON_COLUMN, reason)}`.trimEnd());
     }
     return;
   }
 
   /** The reason a step ran, kept for its line and for the failure report */
   const reasons = new Map<string, string>();
+  /**
+   * One reading of the tree for every dispatch decision, kept honest by forgetting what each step writes.
+   *
+   * `packages:ensure` is why this cannot simply be a snapshot: it is never cached, so it runs on every
+   * invocation, and when it rebuilds anything its readers must compare against the new bytes rather than the
+   * ones this sweep read before it started.
+   */
+  const dispatchSweep = freshnessSweep();
+  pruneStamps();
   const outcome = await schedule({
     steps,
     lanes,
     skip: (step) => {
-      const why = staleReason(step);
+      const why = staleReason(step, dispatchSweep);
       if (!all && step.neverCachedBecause === undefined && why === null) {
         cached++;
         // On its own line where it was skipped, and dimmed. The order these arrive in is information — it is
         // when the scheduler reached the step — so they are not collected and printed together at the end;
         // the weight is what separates them from the rows that did work, not the position.
-        console.log(dim(`${'cached'.padStart(7)} t${step.tier} ${step.name}`));
+        console.log(dim(`${'cached'.padStart(7)} ${marker(needsApp(step))} ${step.name}`));
         return true;
       }
       reasons.set(step.name, all ? '--all' : (why ?? ''));
@@ -310,11 +364,15 @@ async function main(): Promise<void> {
     },
     run: async (step) => {
       const result = await runAndStamp(step, all);
+      // A net rather than the mechanism: the graph already orders every reader of these paths after this
+      // step, so nothing has read them yet. It costs a map scan and it is what a step reading something it
+      // is *not* ordered after would need — see `freshnessSweep`'s note on what it cannot distinguish.
+      dispatchSweep.forget(wrote(step));
       results.push(result);
       // TIMEOUT is its own verdict: a step that ran out of budget failed for a different reason than one
       // that returned non-zero, and which it was is the first thing you need to know.
       const verdict = result.code === 0 ? 'ok' : result.timedOut ? 'TIMEOUT' : 'FAIL';
-      console.log(`${verdict.padStart(7)} t${step.tier} ${step.name.padEnd(STEP_NAME_WIDTH)} ${secs(result.ms).padStart(6)}  ${wrapAt(REASON_COLUMN, briefly(reasons.get(step.name) ?? '', declaredIn(step.name)))}`.trimEnd());
+      console.log(`${verdict.padStart(7)} ${marker(needsApp(step))} ${step.name.padEnd(STEP_NAME_WIDTH)} ${secs(result.ms).padStart(6)}  ${wrapAt(REASON_COLUMN, briefly(reasons.get(step.name) ?? '', declaredIn(step.name)))}`.trimEnd());
       // So whoever profiles a suite next has its slow tests without instrumenting it
       // In the step's own time column, so every time on the screen lines up and these read as its contents
       for (const slow of slowestTests(result.output)) {
@@ -326,7 +384,8 @@ async function main(): Promise<void> {
 
   // A step whose runner threw never produced a Result, so it is reported from the throw itself
   for (const { step, error } of outcome.threw) {
-    console.log(`${'ERROR'.padStart(7)} t${steps.find((s) => s.name === step)?.tier ?? '?'} ${step.padEnd(STEP_NAME_WIDTH)} ${' '.repeat(6)}  the chain could not run it`);
+    const threw = steps.find((candidate) => candidate.name === step);
+    console.log(`${'ERROR'.padStart(7)} ${marker(threw !== undefined && needsApp(threw))} ${step.padEnd(STEP_NAME_WIDTH)} ${' '.repeat(6)}  the chain could not run it`);
     console.log(`\n${'='.repeat(72)}\n${step}: the runner threw, which is a bug in the chain rather than a failing check\n${'='.repeat(72)}\n${error instanceof Error ? (error.stack ?? error.message) : String(error)}`);
   }
 
@@ -344,7 +403,11 @@ async function main(): Promise<void> {
   if (failed) {
     const step = steps.find((s) => s.name === failed.step)!;
     const classifying = shouldClassify({
-      lanes, exclusive: step.exclusive === true, timedOut: failed.timedOut === true, optedOut: noClassify,
+      // What the schedule saw, not what the table predicts: `conflictsOf(step).length > 0` stood here and
+      // meant "has a mutex partner", which twelve steps do while running beside two dozen others
+      ranAlone: (outcome.peers.get(failed.step)?.size ?? 0) === 0,
+      timedOut: failed.timedOut === true,
+      optedOut: noClassify,
     });
     const why = failed.timedOut
       ? `${step.name} timed out: it exceeded its ${secs(budgetFor(step.seconds ?? 300))} budget and its process group was killed. It costs ${step.seconds ?? '?'}s healthy, so either it is wedged or it has grown and the measurement in chain-steps.ts is stale.`
@@ -364,15 +427,6 @@ async function main(): Promise<void> {
       console.log(classifyLine(retry));
     }
   }
-
-  // Where the time goes by tier, which is the number the goal's phases move. Its own line under the verdict:
-  // it is a breakdown rather than part of the sentence, and in the sentence it competed with the two numbers
-  // a run is read for — what it cost and how much of it was skipped.
-  const byTier = ([1, 2, 3] as Tier[]).map((t) => {
-    const ms = CHAIN_STEPS.filter((s) => s.tier === t)
-      .reduce((sum, s) => sum + (results.find((r) => r.step === s.name)?.ms ?? 0), 0);
-    return `t${t}= ${secs(ms)}`;
-  }).join('  ');
 
   const skipped = cached ? ` (${cached} of ${steps.length} cached)` : '';
   // Measured, not declared. Reporting the floor from `seconds` made it wrong by the amount the table had
@@ -424,11 +478,67 @@ async function main(): Promise<void> {
   const report = driftReport(driftedSteps(steps, measuredMs), lanes, MEASURED_AT_LANES, all);
   if (report !== '') console.log(report);
 
-  console.log(`\n${verdict} in ${secs(Date.now() - started - classifyMs)}${reran}${skipped}${lanes > 1 ? ` with ${lanes} lanes` : ''}\n${byTier}${floor}`);
+  if (process.argv.includes('--record')) recordTheCosts(steps, measuredMs, lanes, all);
+
+  console.log(`\n${verdict} in ${secs(Date.now() - started - classifyMs)}${reran}${skipped}${lanes > 1 ? ` with ${lanes} lanes` : ''}${floor}`);
   // Not process.exit(): it drops whatever stdout has still to flush, and the failing step's captured output
   // printed just above is the one thing here worth reading. Measured: piped, process.exit() delivers 64KB
   // of a 500KB write, and @app/default-setup's suite output alone is 654KB.
   process.exitCode = outcome.failed ? 1 : 0;
+}
+
+/**
+ * `--record`: write each step's measured cost back into the table it is declared in.
+ *
+ * The update half of a recorded artifact that had only a check. `driftReport` has always printed the
+ * value to write; this writes it, under the three things a sample needs and a derivation does not.
+ *
+ * **It needs `--all`**, because a cached step is not a measurement — recording its 0s would give a step
+ * that builds a budget sized for a step that does not, which is the mistake `seconds`' own doc describes
+ * someone already making. **It refuses a busy machine**, because what you would record then is the
+ * machine; `--force` is the deliberate override and says so. **And it moves a number only past the band**,
+ * because a sample re-measured on an idle box still wanders, and rewriting a row that already agrees is
+ * the churn the band exists to prevent.
+ *
+ * The band here is tighter than the one the report uses. `driftReport` speaks at twice the declared cost,
+ * chosen so a slow machine does not nag; a record wants to track reality, so it follows `SETTLED_FRACTION`
+ * with a one-second floor. They differ on purpose, which is why this prints everything it wrote.
+ */
+function recordTheCosts(steps: readonly ChainStep[], measuredMs: ReadonlyMap<string, number>,
+  lanes: number, all: boolean): void {
+  if (!all) {
+    console.log('\n--record needs --all: a cached step reports no time, and recording that would size a budget from it.');
+    return;
+  }
+  if (lanes !== MEASURED_AT_LANES) {
+    console.log(`\n--record refused: these costs are the chain's at ${MEASURED_AT_LANES} lanes and this ran at ${lanes}.`);
+    return;
+  }
+  const idle = idleNow();
+  if (refusesAsBusy({ idle, floor: IDLE_FLOOR, force: process.argv.includes('--force') })) {
+    console.log(`\n--record refused: the machine is ${Math.round(idle * 100)}% idle and this needs ${Math.round(IDLE_FLOOR * 100)}%.`);
+    console.log('  What you would record now is the machine. Wait, or pass --force and know the number is forced.');
+    return;
+  }
+  // Under a second is not a measurement of the step's work, and the one it would corrupt is named in
+  // `seconds`' own doc: `packages:ensure` returns in 0.3s with the packages fresh and takes 14s when it
+  // builds, so recording the 0 gives a step that builds a budget sized for a step that does not. The
+  // first run of this did exactly that. `driftedSteps` skips the same measurements for the same reason.
+  const measured = new Map([...measuredMs]
+    .map(([name, ms]) => [name, Math.round(ms / 1000)] as const)
+    .filter(([, seconds]) => seconds >= 1));
+  const declared = new Map(steps.flatMap((step) => (step.seconds === undefined ? [] : [[step.name, step.seconds] as const])));
+  // One second, not `SETTLED_MS`: these are seconds, and the floor is what stops the fraction chasing
+  // noise on a step that costs less than a second to begin with
+  const edits = recordSeconds(measured, declared, (was, now) => movedBeyondBand(was, now, 1));
+  if (edits.length === 0) {
+    console.log('\nevery step cost what the table says, within the band — nothing recorded');
+    return;
+  }
+  console.log(`\nrecorded ${edits.length} step cost${edits.length === 1 ? '' : 's'}:`);
+  for (const { step, from, to, file } of edits) {
+    console.log(`  ${step.padEnd(STEP_NAME_WIDTH)} ${from}s -> ${to}s   ${file}`);
+  }
 }
 
 // A throw here is a bug in the chain, not a failing check, and the two must not look alike

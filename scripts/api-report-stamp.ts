@@ -192,10 +192,6 @@ const ENTRIES_ROW = '#entries';
  */
 const PRODUCER_ROW = '#producer';
 
-/** Invalidates every stamp when what a stamp *means* changes — `apiSurfaceOf`, or the rows themselves */
-const STAMP_VERSION = 1;
-const VERSION_ROW = '#version';
-
 function producerFingerprint(pkgDir: string): string {
   const require = createRequire(import.meta.url);
   const version = (JSON.parse(fs.readFileSync(require.resolve('@microsoft/api-extractor/package.json'), 'utf-8')) as { version: string }).version;
@@ -210,21 +206,67 @@ function entriesFingerprint(pkgDir: string): string {
   return createHash('sha256').update(names.join('\n')).digest('hex');
 }
 
-/** The stamp file's contents: one `<name> <hash>` line per contributing package, plus the entry set */
+/**
+ * Every row a current stamp records: one per contributing package, then the entry set and the producer.
+ *
+ * **One definition, read by both halves**, which is what lets `staleReason` ask whether the recorded rows *are*
+ * these rows rather than only looking up the ones it happens to name. It used to compute the set here and check
+ * it there, so a row the format dropped stayed in every committed stamp, was looked up by nothing, and passed —
+ * and a `#version` row was what stood in for noticing. Rows a reader does not recognise are now its own
+ * evidence, which is the one thing that integer was doing that the hashes were not.
+ *
+ * It hands back the package rows beside the map because the two questions want different things: the set
+ * comparison wants every row, and *which package moved* wants only the ones that are packages. Deriving the
+ * second by filtering the first on a `#` prefix made a naming convention load-bearing, where the function that
+ * produces package hashes already knows the answer.
+ */
+export function stampRows(pkgDir: string): { rows: Map<string, string>; packages: ReadonlyArray<{ name: string; hash: string }> } {
+  const packages = declarationFingerprints(pkgDir);
+  return {
+    packages,
+    rows: new Map([
+      ...packages.map(({ name, hash }) => [name, hash] as const),
+      [ENTRIES_ROW, entriesFingerprint(pkgDir)],
+      [PRODUCER_ROW, producerFingerprint(pkgDir)],
+    ]),
+  };
+}
+
+/** The stamp file's contents: one `<name> <hash>` line per row `stampRows` defines */
 export function declarationStamp(pkgDir: string): string {
-  const rows = declarationFingerprints(pkgDir).map(({ name, hash }) => `${name} ${hash}`);
-  return [
-    ...rows,
-    `${ENTRIES_ROW} ${entriesFingerprint(pkgDir)}`,
-    `${PRODUCER_ROW} ${producerFingerprint(pkgDir)}`,
-    `${VERSION_ROW} ${STAMP_VERSION}`,
-  ].join('\n') + '\n';
+  return [...stampRows(pkgDir).rows].map(([name, hash]) => `${name} ${hash}`).join('\n') + '\n';
 }
 
 function parseStamp(contents: string): Map<string, string> {
   const entries = contents.trim().split('\n').map((line) => line.trim().split(/\s+/));
   return new Map(entries.filter((parts) => parts.length === 2).map(([name, hash]) => [name, hash]));
 }
+
+/**
+ * A row this stamp now records that the file does not — the half that makes *adding* an input invalidate.
+ *
+ * Every clause in `staleReason` looks a row up by a name this code computes, so a row the format has gained
+ * compares equal to nothing: the record simply has no entry, and `undefined` is only a finding where
+ * something asks for it. The package rows are asked for by name, `#entries` and `#producer` have clauses of
+ * their own, and a *fourth* kind of row would have none — measured 2026-10-02, a row added to `stampRows`
+ * passed all three packages' committed stamps, which is the hole a `#version` row was papering over.
+ *
+ * **Last, so the clauses above keep their own words.** A stamp written before `#producer` existed is better
+ * described as "API Extractor or its tsconfig changed" than by anything general, and a package row that is
+ * missing rather than moved is still that package's declarations. This only speaks for the rows nothing else
+ * does.
+ *
+ * **No input can reach it today**, since today's rows are exactly those three kinds — so what watches it is
+ * the edit that would make it fire: adding a row to `stampRows`, which
+ * `api-report-stamp.spec.ts`'s *"partitions its rows into the packages it names and the rows it records
+ * about itself"* already fails until someone says which group the new row is in. Mutate that map and both
+ * fire together.
+ */
+const unrecordedRow = (pkgDir: string, recorded: Map<string, string>, current: Map<string, string>): string | null => {
+  const unrecorded = [...current.keys()].filter((row) => !recorded.has(row));
+  return unrecorded.length === 0 ? null
+    : `${path.basename(stampFile(pkgDir))} records nothing for ${unrecorded.join(', ')}, which this stamp now has; run npm run api:update`;
+};
 
 /** Why the reports may be out of date, or null. Never throws. */
 export function staleReason(pkgDir: string): string | null {
@@ -243,21 +285,29 @@ export function staleReason(pkgDir: string): string | null {
   // so it is treated as no stamp rather than guessed at
   if (recorded.size === 0) return `${path.basename(stampFile(pkgDir))} predates per-package stamps; run npm run api:update`;
 
-  // A stamp from another format says nothing about the inputs it does not carry, so it is stale for that
-  // reason rather than silently passing on them
-  if (recorded.get(VERSION_ROW) !== String(STAMP_VERSION)) {
-    return `${path.basename(stampFile(pkgDir))} is from another stamp format; run npm run api:update`;
+  const { rows: current, packages } = stampRows(pkgDir);
+  // **Both directions, because a `#version` row covered both.** Every check below looks a row up by a name
+  // *this* code computes, so neither a row the format has dropped nor a row it has gained is read by
+  // anything: the first passes because nothing asks for it, the second because an absent record compares
+  // equal to nothing. Measured 2026-10-02, with only the first direction here: a row added to `stampRows`
+  // passed all three packages' committed stamps — the same hole the version row was papering over, which is
+  // what this file's own history is about. The row set is the data, so comparing it says which row it was.
+  const unknown = [...recorded.keys()].filter((row) => !current.has(row));
+  if (unknown.length > 0) {
+    return `${path.basename(stampFile(pkgDir))} records ${unknown.join(', ')}, which this stamp no longer has; run npm run api:update`;
   }
-  if (recorded.get(ENTRIES_ROW) !== entriesFingerprint(pkgDir)) {
+  if (recorded.get(ENTRIES_ROW) !== current.get(ENTRIES_ROW)) {
     return 'its published entries changed, so a report is missing or orphaned; run npm run api:update';
   }
-  if (recorded.get(PRODUCER_ROW) !== producerFingerprint(pkgDir)) {
+  if (recorded.get(PRODUCER_ROW) !== current.get(PRODUCER_ROW)) {
     return 'API Extractor or its tsconfig changed, which can move a report on its own; run npm run api:update';
   }
 
-  const current = declarationFingerprints(pkgDir);
-  const moved = current.filter(({ name, hash }) => recorded.get(name) !== hash).map(({ name }) => name);
-  if (moved.length === 0) return null;
+  // Over the package rows as `declarationFingerprints` produced them, not over the row map filtered by a naming
+  // convention: a row added to `stampRows` without a `#` would then be reported as a package whose declarations
+  // moved, and the function that knows which rows are packages is right there
+  const moved = packages.filter(({ name, hash }) => recorded.get(name) !== hash).map(({ name }) => name);
+  if (moved.length === 0) return unrecordedRow(pkgDir, recorded, current);
   const own = packageName(path.resolve(pkgDir));
   // Naming the dependency is the whole point: "ui is stale" and "ui is stale because @abuddy/sdk's
   // declarations changed" send the reader to different places

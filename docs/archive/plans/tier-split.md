@@ -1,7 +1,13 @@
+> **Done and closed.** Implemented as Phase 1 of
+> [`goal-one-action-cache.md`](../goals/goal-one-action-cache.md): `tier` is gone, `needsApp` is on the
+> action and `SIZE_MS` on the test target, and the per-tier time report is deleted. One correction the
+> work found — `build:app` declares no `needsApp`, because `tier: 3` meant "app-related" and lumped the
+> producer in with its consumers. The text below is the plan as written.
+
 # Split the tier
 
-> Executed as Phase 1 of [`docs/goals/goal-one-action-cache.md`](../goals/goal-one-action-cache.md).
-> This doc is the evidence and the design; that one is the runnable plan.
+> Done, as Phase 1 of [`goal-one-action-cache.md`](../goals/goal-one-action-cache.md).
+> This doc is the evidence and the design; that one records what landed and what was corrected.
 
 ## The target
 

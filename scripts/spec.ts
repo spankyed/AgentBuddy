@@ -140,7 +140,7 @@ function counted(run: Run, index: number): { args: string[]; env: NodeJS.Process
  * and not against a 3s one, which is why it is its own command rather than something the ordinary run pays.
  */
 if (dry) {
-  const { collectFor, priceSpecs, priceSuites, tierOfRun, asDuration } = await import('./lib/spec-dry.ts');
+  const { collectFor, priceSpecs, priceSuites, needsAppForRun, asDuration } = await import('./lib/spec-dry.ts');
   let total = 0;
   // Each distinct note once, as the run itself says them: two targets in one package carry the same sentence
   const predicted = new Set<string>();
@@ -149,8 +149,7 @@ if (dry) {
   const dates: string[] = [];
 
   for (const run of runs) {
-    const tier = tierOfRun(run, ROOT);
-    console.log(`\n→ ${run.label}${tier === undefined ? '' : `  [tier ${tier}]`}`);
+    console.log(`\n→ ${run.label}${needsAppForRun(run, ROOT) === true ? '  [needs the app]' : ''}`);
     // Three ways a run's file list is known, and a run that is none of them says so: collected from the
     // graph, named by the target, or a suite's whole record. Without the last two a plan's most expensive
     // runs — a named spec, `--full`'s pack suite — would contribute nothing and read as free
@@ -211,7 +210,7 @@ try {
     if (verdict === 'fail') {
       failed++;
       // The failure is the answer, and every run behind it is a bill for information already in hand: a 1s
-      // tier-1 failure used to pay for the 18s pack suite that followed it
+      // failure in a fast half used to pay for the 18s pack suite that followed it
       if (bail) { notReached = runs.slice(index + 1); break; }
     }
     if (verdict === 'uncovered') uncovered.push(run);

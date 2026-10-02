@@ -13,6 +13,7 @@
  */
 import * as fs from 'node:fs';
 import * as path from 'node:path';
+import { movedBeyondBand } from './measure.ts';
 
 /**
  * Where a suite's record lives, relative to the repo root. One per package rather than one for the repo:
@@ -184,7 +185,6 @@ export const INTEGRATION_SUFFIX = '.integration.spec.ts';
  * put, so 400 -> 480 -> 576 exceeds it on the third step rather than never.
  */
 export const SETTLED_MS = 300;
-export const SETTLED_FRACTION = 0.35;
 
 /**
  * Whether a fresh measurement says something the record does not already say.
@@ -198,7 +198,7 @@ export const SETTLED_FRACTION = 0.35;
 export const moved = (file: string, recorded: number | undefined, measured: number): boolean => {
   if (recorded === undefined) return true;
   if (halfFor(file, measured) !== halfFor(file, recorded)) return true;
-  return Math.abs(measured - recorded) > Math.max(SETTLED_MS, SETTLED_FRACTION * recorded);
+  return movedBeyondBand(recorded, measured, SETTLED_MS);
 };
 
 /**
@@ -403,7 +403,7 @@ export const unrecorded = (record: SpecCost, files: readonly string[]): string[]
  *
  * Decision 4: a finding, not an exception and not a reason to raise a budget. What the finding is *for* is
  * knowing — a cost nobody has looked at is the failure this whole record exists against. It is not a
- * request to split the package: a split buys a different tier, and slowness alone does not need one.
+ * request to split the package: a split buys a different size, and slowness alone does not need one.
  * `suite-split.spec.ts` carries the criterion and the measurement behind it.
  */
 const outgrown = (costs: Record<string, number>, files: readonly string[]): Budget[] =>
@@ -432,13 +432,13 @@ export const overBudget = (packageDir: string, costs: Record<string, number>, fi
  * that spec expensive, so the cost is known rather than discovered.
  *
  * **This is not a queue of packages to split**, which is what an earlier version of it implied. A split
- * buys a different *tier* — a different timeout budget and a different worker cap — and that is the
+ * buys a different *size* — a different timeout budget and a different worker cap — and that is the
  * criterion, not slowness. `@abuddy/cli` has two halves because its expensive specs spawn compilers, so
- * they need a 50% worker cap and tier 2's 60s; the fast half needs neither.
+ * they need a 50% worker cap and a large target's 60s; the fast half needs neither.
  *
  * Measured 2026-09-25, none of the entries below qualifies. They build TypeScript programs in-process or
  * wait on real timing — no spawn, so no worker cap — and their slowest single tests are around a second
- * against tier 1's 15s. Splitting their packages would buy a faster whole-suite run, which is not the dev
+ * against a small target's 15s. Splitting their packages would buy a faster whole-suite run, which is not the dev
  * loop: `npm run spec -- <file>` is file-targeted, and the chain pools projects and runs only the stale
  * ones. So all three packages stay as they are, on the measurement.
  *

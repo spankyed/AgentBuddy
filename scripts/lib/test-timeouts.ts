@@ -1,9 +1,9 @@
 /**
  * The timeout overrides a spec file declares, read from its syntax tree.
  *
- * A tier budget lives in a vitest config; a third argument to `it()` overrides it for one test. A guard that
+ * A size budget lives in a vitest config; a third argument to `it()` overrides it for one test. A guard that
  * reads only configs sees the policy and not the escape, which is how fifteen overrides of 60s to 240s sat
- * in tier-1 suites whose budget is 15s.
+ * in small suites whose budget is 15s.
  *
  * **Read with the compiler, not a regular expression.** Two attempts at matching the source text failed in
  * both directions: `}, 500)` matched `setTimeout(() => {…}, 500)` inside a fixture string and gutted it,
@@ -14,8 +14,8 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import ts from 'typescript';
 import { INTEGRATION_SUITES } from './chain-steps.ts';
-import { halfOfPath } from './spec-cost.ts';
-import { UNIT_SUITES, unitStepName } from './unit-suites.ts';
+import { CONFIG_BY_HALF, halfOfPath } from './spec-cost.ts';
+import type { Size } from './unit-suites.ts';
 
 /** The vitest callables that take a trailing timeout */
 const RUNNERS = new Set(['it', 'test', 'describe', 'beforeAll', 'beforeEach', 'afterAll', 'afterEach']);
@@ -74,20 +74,43 @@ export function timeoutOverrides(absFile: string, repoRoot: string): TimeoutOver
 
 /** Every `*.spec.ts` under a directory */
 /**
- * The chain step that runs a spec, which is what decides the timeout budget it has to fit inside.
+ * The size of the test target a file belongs to, which is what decides the timeout budget it fits inside.
  *
- * Here rather than in the spec that reads it, so the decision has a firing case: a package with a second
- * config runs its integration specs under `test:integration`, a tier-2 step, and everything else runs under
- * its pool's tier-1 step. Naming one package instead of deriving the set put the 8 integration specs in
- * `repo-checks` and `publish-checks` under a tier-1 budget — wrong, and invisible, because neither has a
- * per-test override today and the *configs* were already derived. A rule that can only be wrong later is
- * still wrong now.
+ * There are three targets and this answers for any file in one: a package's fast half, a package's
+ * integration half, and the E2E suite. It takes configs and specs alike, because "what budget applies
+ * here" is one question and was briefly two functions in two modules deciding it by different means.
+ *
+ * **The two means are the asymmetry, and it is real.** A config's *existence* is the fact — a package has
+ * an integration half exactly when it has an integration config, which is how `INTEGRATION_SUITES` is
+ * derived in the first place. A spec's *name* is only a claim: a package without that config runs
+ * everything in its fast half, so `x.integration.spec.ts` there is `small` whatever it is called.
+ * Checking the claim against `INTEGRATION_SUITES` rather than naming a package is the part with a firing
+ * case — naming one put the 8 integration specs in `repo-checks` and `publish-checks` under a small
+ * budget while they ran large, invisibly, because neither had a per-test override and the *configs* were
+ * already derived.
+ *
+ * **Not `halfOfPath`, which answers a different question.** That one says which half a spec is *in*, by
+ * suffix alone, and `spec-cost` renames files to move them between halves — so the suffix is its subject
+ * rather than a hint. The two disagree on exactly one input: a `.integration.spec.ts` in a package with
+ * no integration config, which `halfOfPath` calls integration and this calls small. No such file exists,
+ * and one would be caught anyway — it would run in neither half, and `spec-cost:check` reports a spec it
+ * never measured.
  */
-export function stepForSpec(file: string): string {
-  const dir = file.split('/')[1];
-  if (halfOfPath(file) === 'integration' && INTEGRATION_SUITES.some((suite) => suite.dir === dir)) return 'test:integration';
-  const suite = UNIT_SUITES.find((candidate) => candidate.dir === dir);
-  return suite ? unitStepName(suite) : 'test:unit:host';
+export function sizeOf(file: string): Size {
+  // The E2E suite is its own target and belongs to no package
+  if (file.endsWith('playwright.config.ts')) return 'large';
+  // Integration first: the two names are read from `CONFIG_BY_HALF`, which is where the convention lives
+  if (file.endsWith(CONFIG_BY_HALF.integration)) return 'large';
+  if (file.endsWith(CONFIG_BY_HALF.fast)) return 'small';
+  if (file.endsWith('.spec.ts')) {
+    const dir = file.split('/')[1];
+    return halfOfPath(file) === 'integration' && INTEGRATION_SUITES.some((suite) => suite.dir === dir)
+      ? 'large'
+      : 'small';
+  }
+  // Refused rather than answered. Every other file would get `small` — a confident wrong answer, and the
+  // budget is a ceiling, so the confident wrong answer is the permissive one.
+  throw new Error(`sizeOf: ${file} is neither a test config nor a spec, so no budget applies to it`);
 }
 
 export function specFilesUnder(dir: string): string[] {

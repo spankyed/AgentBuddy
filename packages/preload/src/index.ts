@@ -1,5 +1,5 @@
 import {ipcRenderer, contextBridge, webFrame, webUtils} from 'electron';
-import type {SpeechEvent} from '../../../types/speech.js';
+import type {SpeechEvent} from '@abuddy/sdk/fe';
 
 // Parse API port from command line arguments
 function getApiPort(): number {

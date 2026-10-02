@@ -2,10 +2,11 @@ import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { CHECKS, findAppImportsInPackTests, findContractLeafImports, findCrossCheckoutResolution, findCrossFeatureImports, findExtensionlessOwnModules, findHostImports, findJsSpecifiers, findMissingSourceConditions, findPackageScriptImports, findPackBackendConsole, findPackOwnAliases, findRawGitListings, findRawPackHelpers, findRawTransport, findInternalPackageImports, findLmdbImports, findRepositoryCasts, findSharedPackageLists, findUpwardImports, jsSpecifierFixes, LAYERS, LMDB_RULES, MANIFEST_FIELDS, packOwnModuleFixes, packageSourceDirs, CHECK_IDS, type CoveredRuleId, DECLARES_SOURCE_BY_DESIGN, type ImportRuleId, SHARED_LIST_CONSUMERS, sourceConditionPackages, SOURCE_CONDITION, checkedDirs, type ImportRule, packCodeDirs, packDirs, packRule, packRuleProblems, ruleRows, ruleTable } from '../../../scripts/check-import-specifiers.ts';
+import { CHECKS, findAppImportsInPackTests, findContractLeafImports, findCrossCheckoutResolution, findCrossFeatureImports, findExtensionlessOwnModules, findHostImports, findJsSpecifiers, findMissingSourceConditions, findPackageScriptImports, findPackBackendConsole, findPackOwnAliases, findRawGitListings, findRawPackHelpers, findRawTransport, findInternalPackageImports, findLmdbImports, findRepositoryCasts, findSharedPackageLists, findUpwardImports, jsSpecifierFixes, LAYERS, UNLAYERED_BY_DESIGN, repoRootDir, findUnimportedDependencies, LMDB_RULES, MANIFEST_FIELDS, packOwnModuleFixes, packageSourceDirs, CHECK_IDS, type CoveredRuleId, DECLARES_SOURCE_BY_DESIGN, type ImportRuleId, SHARED_LIST_CONSUMERS, sourceConditionPackages, SOURCE_CONDITION, checkedDirs, type ImportRule, packCodeDirs, packDirs, packRule, packRuleProblems, ruleRows, ruleTable } from '../../../scripts/check-import-specifiers.ts';
 import { REPO_ROOT } from '@abuddy/host/build/packages-built';
 import { packFixture as buildPackFixture } from '@abuddy/sdk/testing';
 import { population } from '@abuddy/sdk/testing';
+import { RUNTIME_ONLY_DEPS, workspaceDeps } from '../../../scripts/lib/workspace-deps.ts';
 
 /**
  * Turn the event loop between tests.
@@ -281,7 +282,12 @@ function layer(dir: string, manifest: Record<string, unknown>, files: Record<str
 }
 
 describe('findUpwardImports', () => {
-  const layers = LAYERS.map((l) => ({ ...l, dir: `layers/${path.basename(l.dir).replace(/^abuddy-/, '')}` }));
+  // The five rows the fixture below builds a directory for. These cases are about the mechanism, so a row with
+  // no tree behind it would only make the manifest read throw; the real twelve are covered by `holds for the
+  // repo` and the two coverage cases at the end of this block.
+  const modelled = ['abuddy-ears', 'abuddy-sdk', 'abuddy-host', 'api', 'renderer'];
+  const layers = LAYERS.filter((l) => modelled.includes(path.basename(l.dir)))
+    .map((l) => ({ ...l, dir: `layers/${path.basename(l.dir).replace(/^abuddy-/, '')}` }));
   const allowed = () => {
     layer('layers/ears', {}, { 'src/index.ts': "import { x } from './x.ts';\nimport ts from 'typescript';\n" });
     layer('layers/sdk', { dependencies: { '@abuddy/ears': '^0.1.0', yaml: '*' } }, {
@@ -342,8 +348,101 @@ describe('findUpwardImports', () => {
     expect(findUpwardImports(layers, root)).toEqual([problem]);
   });
 
+  /**
+   * The coverage half, over the real tree — because that is the only place the population lives.
+   *
+   * `LAYERS` is hand-written and covered five of the twelve workspaces holding code; the seven it missed
+   * were missing by omission, not by decision, and nothing said so. These two cases are why that cannot
+   * recur: drop a row and the package it layered is reported, excuse one that still has a row and the
+   * contradiction is reported. The fixture cases above are unaffected, because a synthetic root has no
+   * `packages/` for the population to find.
+   */
+  it('reports a workspace that holds code and has no layer', () => {
+    const short = LAYERS.filter((layer) => layer.dir !== 'packages/preload');
+    expect(findUpwardImports(short))
+      .toEqual(['packages/preload: holds code and has no layer, so nothing says which @abuddy packages it may import']);
+  });
+
+  it('reports a workspace that is both layered and excused', () => {
+    const also = [...LAYERS, { name: '@app/default-setup', dir: 'packages/default-setup', allowed: [] }];
+    expect(findUpwardImports(also).filter((problem) => problem.startsWith('packages/default-setup:')))
+      .toEqual([`packages/default-setup: has a layer and is also excused as "${UNLAYERED_BY_DESIGN.get('packages/default-setup')!}" — drop one`]);
+  });
+
+  /**
+   * **The direction that asks whether `allowed` is too wide**, which the three above do not.
+   *
+   * Each of them asks whether a row permits enough; a permission nothing uses is invisible to all three, so a
+   * row drifts permissive an entry at a time and a row allowing everything reads like one that earned it.
+   * That is what made `@abuddy/cli`'s row a grant rather than a decision when it landed.
+   */
+  it('reports a permission a row has and imports nowhere', () => {
+    allowed();
+    const wider = layers.map((l) => (l.name === '@app/api' ? { ...l, allowed: [...l.allowed, '@abuddy/ui'] } : l));
+    expect(findUpwardImports(wider, root))
+      .toEqual(['layers/api: allows @abuddy/ui and imports it nowhere, so the permission grants nothing']);
+  });
+
+  // The reason comes from RUNTIME_ONLY_DEPS, which `workspaceDeps` reads too — a permission is unused because
+  // its dependency is a process dependency, so one record answers both
+  it('reports a reason for a permission that is now used', () => {
+    allowed();
+    const WHY = 'kept for the packaged app rather than for an import';
+    const runtimeOnly = new Map([['layers/api @abuddy/ears', WHY]]);
+    expect(findUpwardImports(layers, root, UNLAYERED_BY_DESIGN, runtimeOnly))
+      .toEqual([`layers/api: imports @abuddy/ears, so its unusedBecause ("${WHY}") no longer applies`]);
+  });
+
+  // The third clause the sibling exemption lists carry and this one did not until 2026-10-02: an entry whose
+  // workspace is gone, or holds no code, excuses nothing and should say so rather than sit there
+  // Over the real root, because the clause needs a population to check an entry against: under the synthetic
+  // tree there are no workspaces at all, and an entry excusing nothing is indistinguishable from an entry
+  // whose workspace this root has never heard of
+  it('reports an excused workspace that holds no code', () => {
+    const WHY = 'a pack, governed by the pack rules';
+    const unlayered = new Map([...UNLAYERED_BY_DESIGN, ['packages/not-here', WHY]]);
+    expect(findUpwardImports(LAYERS, repoRootDir(), unlayered))
+      .toEqual([`packages/not-here: listed in UNLAYERED_BY_DESIGN (${WHY}) but it holds no code, or is gone`]);
+  });
+
   it('holds for the repo', () => {
     expect(findUpwardImports()).toEqual([]);
+  });
+});
+
+/**
+ * `workspaceDeps` reads manifests to answer "what does this package compile", which is a guess about someone
+ * else's code — a proxy, and this repo's rule is that a proxy needs a self-check. This is it, in the direction
+ * nothing asked: a declaration no import needs, which silently widens every cache key derived from it.
+ *
+ * The list is read twice, which is why the last case sits here rather than beside `workspaceDeps`: the same
+ * entry that excuses a declaration is the one that keeps it out of the key.
+ */
+describe('findUnimportedDependencies', () => {
+  const WHY = 'spawned by path, not imported';
+
+  it('reports an entry no manifest declares any more', () => {
+    const stale = new Map([...RUNTIME_ONLY_DEPS, ['packages/main @abuddy/nope', WHY]]);
+    expect(findUnimportedDependencies(repoRootDir(), stale))
+      .toEqual([`packages/main @abuddy/nope: listed in RUNTIME_ONLY_DEPS (${WHY}) but no manifest declares it`]);
+  });
+
+  it('reports an entry whose package imports it after all', () => {
+    const stale = new Map([...RUNTIME_ONLY_DEPS, ['packages/main @abuddy/sdk', WHY]]);
+    expect(findUnimportedDependencies(repoRootDir(), stale))
+      .toEqual([`packages/main: imports @abuddy/sdk, so its RUNTIME_ONLY_DEPS entry (${WHY}) no longer applies`]);
+  });
+
+  // The other reader. Without it `typecheck:main` declared 1868 files, 195 of them from packages main imports
+  // nothing from, against 52 of its own source
+  it('keeps a process dependency out of the cache key', () => {
+    expect(workspaceDeps('main')).not.toContain('abuddy-cli');
+    expect(workspaceDeps('main'), 'the deps main really compiles').toContain('abuddy-host');
+    expect([...RUNTIME_ONLY_DEPS.keys()]).toContain('packages/main @abuddy/cli');
+  });
+
+  it('holds for the repo', () => {
+    expect(findUnimportedDependencies()).toEqual([]);
   });
 });
 
@@ -520,11 +619,21 @@ const FIRES: Record<ImportRuleId, () => string[]> = {
     return findAppImportsInPackTests(PACK_TESTS, root);
   },
   findUpwardImports: () => {
-    const layers = LAYERS.map((l) => ({ ...l, dir: `layers/${path.basename(l.dir).replace(/^abuddy-/, '')}` }));
+    // Only the rows this tree builds a directory for: one with no tree behind it makes the manifest read throw
+    const modelled = ['abuddy-ears', 'abuddy-sdk', 'abuddy-host', 'api', 'renderer'];
+    const layers = LAYERS.filter((l) => modelled.includes(path.basename(l.dir)))
+      .map((l) => ({ ...l, dir: `layers/${path.basename(l.dir).replace(/^abuddy-/, '')}` }));
     // Every layer has to be there, since the rule walks all of them; only the lowest one imports upward
     for (const { dir } of layers) layer(dir, {}, {});
     layer('layers/ears', {}, { 'src/index.ts': "import { services } from '@abuddy/sdk/services';\n" });
     return findUpwardImports(layers, root);
+  },
+  findUnimportedDependencies: () => {
+    // A real workspace name, because that is what makes a specifier a workspace dependency; the source file is
+    // what puts this package in the population at all, and it imports nothing
+    writeAt('packages/demo/package.json', JSON.stringify({ name: '@app/demo', dependencies: { '@abuddy/sdk': '*' } }));
+    writeAt('packages/demo/src/index.ts', 'export const x = 1;\n');
+    return findUnimportedDependencies(root, new Map());
   },
   findLmdbImports: () => {
     const rules = LMDB_RULES.map((rule) => ({

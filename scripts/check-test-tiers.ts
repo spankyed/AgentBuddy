@@ -1,28 +1,37 @@
 #!/usr/bin/env node
 /**
- * Fails when a tier-1 or tier-2 step in the pre-merge chain can reach the app.
+ * Fails when a step reaches the app without declaring any of its outputs among that step's inputs.
  *
  *   tsx scripts/check-test-tiers.ts        (npm run check:tiers, part of npm run typecheck)
  *
- * The tiers say what a check may read (`scripts/lib/chain-steps.ts`). The one that matters is that tier 1
- * and tier 2 do not need the built app: the moment one does, it has to run after `build`, its real inputs
- * become the whole repo, and it can no longer be cached or reordered. Four attempts at a cheaper chain each
- * died on exactly that, because nothing recorded it (`docs/goals/goal-test-tiers.md`).
+ * A step that does not need the built app must not reach one: the moment it does, it has to run after
+ * `build:app`, its real inputs become the whole repo, and it can no longer be cached or reordered. Four
+ * attempts at a cheaper chain each died on exactly that, because nothing recorded it
+ * (`docs/archive/goals/goal-test-tiers.md`, where the declaration was a three-valued `tier`).
  *
- * It reads each step's npm script, follows the scripts and shell files it calls, and looks for the ways this
- * repo launches the app: Playwright, Electron, and `abuddy test`, which is Playwright with a different name.
- * A text scan, not a resolver — it errs towards reporting, and a step that genuinely needs the app is tier 3,
- * which is an answer rather than a failure.
+ * **Two questions, because neither answers the other.** The *inputs* check is data: a step declaring
+ * `APP_OUTPUTS` reads the app whatever its scripts say. The *scripts* check is text: it reads each step's
+ * npm script, follows what it calls, and looks for the ways this repo launches the app — Playwright,
+ * Electron, and `abuddy test`, which is Playwright with a different name. A step can launch the app
+ * without declaring its outputs as inputs, which is the case the text scan exists for and the inputs
+ * check cannot see; and `APP_ENTRY` is why the inputs check alone would be wrong in the other direction,
+ * since `packages/dev-mode.js` and `packages/entry-point.mjs` are source that three app-free steps read.
+ *
+ * The text scan goes when the action graph can answer "does this transitively depend on `build:app`"
+ * (`docs/archive/plans/one-action-cache.md`, item 17). Until then it is the half that catches a launch, and the
+ * cost of it being a scan is that **a marker inside a string literal reads as an invocation**: one rule's
+ * `why` text said `abuddy test` in prose and this refused the step until the sentence was reworded.
+ * Comments are stripped; string literals are not, and telling them apart is the resolver this is not.
  */
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { CHAIN_STEPS } from './lib/chain-steps.ts';
+import { APP_OUTPUTS, CHAIN_STEPS, needsApp } from './lib/chain-steps.ts';
 import { reachableText, rootScripts } from './lib/npm-scripts.ts';
 
 /**
  * How this repo *launches* the app, not how it mentions it. Compiling an E2E spec imports Playwright's types
- * and starts nothing, so `typecheck` names it and is still tier 1; the markers are invocations only.
+ * and starts nothing, so `typecheck` names it and still needs no app; the markers are invocations only.
  * `abuddy test` is one, because that command is Playwright under another name
  * (`abuddy-cli/src/commands/test.ts` requires a `playwright.config.ts`).
  *
@@ -45,13 +54,18 @@ const SELF = path.join('scripts', 'check-test-tiers.ts');
 function problems(): string[] {
   const all = rootScripts();
   const found: string[] = [];
-  for (const { name, tier } of CHAIN_STEPS) {
-    if (tier === 3) continue;
+  for (const step of CHAIN_STEPS) {
+    const { name } = step;
+    // One question, not two. `needsApp` is the declared inputs read back (`chain-steps.ts`), so the two
+    // clauses that used to compare it against those inputs were comparing a derivation with its own source
+    // and could not fail. What is left is the half no reading of the inputs can answer.
+    if (needsApp(step)) continue;
     const script = name === 'test' ? 'test' : name;
     if (!(script in all)) { found.push(`${name}: no such npm script`); continue; }
     const { text } = reachableText(script, all, { skip: SELF });
     const hit = APP_MARKERS.find((m) => m.test(text));
-    if (hit) found.push(`${name} is tier ${tier} but reaches the app (${String(hit)}). Either it does not need the app, or it is tier 3.`);
+    if (hit) found.push(`${name} reaches the app (${String(hit)}) and declares none of ${APP_OUTPUTS.join(', ')} among its inputs. `
+      + 'Either it does not need the app, or it does and must declare what it reads — which is what orders it after build:app.');
   }
   return found;
 }
@@ -59,7 +73,7 @@ function problems(): string[] {
 if (process.argv[1] && import.meta.url === pathToFileURL(fs.realpathSync(process.argv[1])).href) {
   const found = problems();
   if (found.length === 0) {
-    console.log(`✅ ${CHAIN_STEPS.filter((s) => s.tier < 3).length} tier-1 and tier-2 chain steps reach no app`);
+    console.log(`✅ ${CHAIN_STEPS.filter((s) => !needsApp(s)).length} chain steps reach no app, ${CHAIN_STEPS.filter((s) => needsApp(s)).length} read one`);
   } else {
     fs.writeSync(2, `${found.join('\n')}\n`);
     process.exitCode = 1;

@@ -9,9 +9,9 @@ export default defineConfig({
   resolve: { conditions },
   ssr: { resolve: { conditions } },
   test: {
-    // Tier 1 (`TIER_TIMEOUT_MS`, scripts/lib/chain-steps.ts). Both are here because the alternative is what
+    // Small (`SIZE_MS`, scripts/lib/unit-suites.ts). Both are here because the alternative is what
     // was here before: vitest's 5s default, and 27 per-test timeouts of 30s to 120s written to escape it —
-    // in files that run in about a second. A budget belongs to the tier, not to each test that trips over
+    // in files that run in about a second. A budget belongs to the size, not to each test that trips over
     // the default.
     testTimeout: 15_000,
     hookTimeout: 15_000,

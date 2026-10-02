@@ -13,7 +13,7 @@
  * and starve the one it was.
  *
  * That also corrects a claim in `chain.ts`'s header, which argued against lanes on the grounds that "every step
- * already uses all the cores". The largest tier-1 step did not.
+ * already uses all the cores". The largest app-free step did not.
  *
  * WHAT THIS OWES THE CHECKS THAT READ IT
  *
@@ -27,28 +27,28 @@
 import * as os from 'node:os';
 import { boundedSpawn, budgetFor } from './lib/bounded-spawn.ts';
 import { schedule } from './lib/chain-schedule.ts';
-import { TYPECHECK_LEGS } from './lib/typecheck-legs.ts';
+import { ENSURE, TYPECHECK_LEGS } from './lib/typecheck-legs.ts';
 
 /**
- * How many legs run at once: half the cores, because the chain runs two other lanes beside this step.
+ * How many legs run at once: every core, because nothing else is running.
  *
- * Measured 2026-09-27 on ten cores, and the exact value is not load-bearing — run alone the step is flat from
- * four lanes up (12.9s at 3, 11.2s at 4, 10.6s at 6, 11.5s at 8, 11.2s at 16), because one leg, `typecheck:fe`,
- * is most of the floor. What the bound decides is how much it takes from everything else:
+ * **This command is not in the chain any more.** Each leg is its own chain step, so the chain's scheduler
+ * owns every lane and this runs only when a person runs it directly — where there is nothing to share
+ * with. The bound it used to carry was half the cores, "because the chain runs two other lanes beside
+ * this step": a guess about a scheduler it could not observe, and the two-schedulers problem
+ * `docs/archive/plans/test-unit-scheduling.md` removed for the unit suites and left here. It cost a
+ * measured 63.4s in-chain against 29.3s of work, because the other lanes saturated the cores it was not
+ * using and starved the one it was.
  *
- *     inside `chain --all`   typecheck   test:unit:host   chain wall
- *     every leg at once          20.4s           43.1s       176.7s
- *     four legs at once          28.6s           37.8s       177.7s
- *
- * The chain's wall time does not move — it is core-bound, which is the conclusion `chain.ts`'s header reached
- * from the other direction — so the bound is chosen on the one thing that does move: taking fewer cores leaves
- * the steps beside it faster. Half, relative to the machine, so a smaller one is not oversubscribed and a
- * larger one is not left idle.
+ * Measured 2026-09-27 on ten cores, run alone, the step is flat from four lanes up — 12.9s at 3, 11.2s at
+ * 4, 10.6s at 6, 11.5s at 8, 11.2s at 16 — because one leg, `typecheck:fe`, is most of the floor. So the
+ * exact number above four buys nothing, and taking all of them costs nothing now that nothing else wants
+ * any.
  */
 const laneCount = (): number => {
   const flag = process.argv.indexOf('--lanes');
-  const half = Math.min(TYPECHECK_LEGS.length, Math.max(2, Math.floor(os.cpus().length / 2)));
-  const value = flag === -1 ? half : Number(process.argv[flag + 1]);
+  const every = Math.min(TYPECHECK_LEGS.length, Math.max(2, os.cpus().length));
+  const value = flag === -1 ? every : Number(process.argv[flag + 1]);
   if (!Number.isInteger(value) || value < 1) throw new Error(`--lanes takes a positive integer, not ${String(process.argv[flag + 1])}`);
   return value;
 };
@@ -60,7 +60,11 @@ interface Outcome { readonly ms: number; readonly code: number; readonly output:
 const done = new Map<string, Outcome>();
 
 const result = await schedule({
-  steps: TYPECHECK_LEGS,
+  // One ordering rule, stated once: everything else reads what `packages:ensure` builds. It used to be a
+  // `needs: [ENSURE]` on all seventeen legs — a hand-written edge beside a fact, which is what the chain
+  // stopped keeping. The chain derives its own from `PACKAGE_BUILD_OUTPUTS`; this runner has one graph
+  // and no inputs to derive from, so it says the rule instead of repeating it.
+  steps: TYPECHECK_LEGS.map((leg) => ({ ...leg, dependsOn: leg.name === ENSURE ? [] : [ENSURE] })),
   lanes: laneCount(),
   skip: () => false,
   async run(leg) {
