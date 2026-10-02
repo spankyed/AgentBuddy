@@ -167,10 +167,20 @@ the published manifest (`@abuddy/host/build/published-manifest`), no `etc/*.api.
 in `src/testing/index.ts`: that entry is published, and this is repo-internal test tooling that no pack author
 materialises a pack to use.
 
-It was a workspace of its own (`@app/pack-fixtures`) for a day, on the premise that staying in the SDK meant
-staying in the reviewed published surface. That premise was false — a source-only entry is not published — and
-the workspace cost seven files and six registration points for one function. `packages/repo-checks/CLAUDE.md`
-has the guardrail that keeps it the only way.
+**Not a workspace of its own**, which is the obvious-looking move and was tried: a private `@app/pack-fixtures`
+costs seven files and six registration points for one function, and the premise that bought it — that living in
+the SDK means living in the reviewed published surface — is false, because of the paragraph above. A workspace
+per helper is also the precedent that gets you twelve of them. `packages/repo-checks/CLAUDE.md` has the
+guardrail that keeps this the only way to write one.
+
+**The condition that would make it public API** is a published pack-reading API. Every consumer of a pack
+directory is private today — the pack rules and the source parser are `@abuddy/cli`'s, which publishes no
+declarations, and the layout, subpath-imports and own-module-specifier readers are the private `@abuddy/host`'s —
+so a fixture for them has no user outside this repo. A pack author tests their own pack, which is already a
+directory (`PACK_DIR`), or its code through `setupPackTests`, which takes a registration rather than a tree.
+Publish any of that surface and this goes public in the same change; until then, publishing it would fix the
+default manifest's shape, the `manifest`/`rawManifest` split and the stub files as contract, and that default is
+chosen to make *this repo's* pack rules fire.
 
 **What "complete" means, and why it is the point.** It writes both subpath maps, a manifest declaring a
 feature's two halves, and the files those paths name. The shapes it replaced were each missing something, and

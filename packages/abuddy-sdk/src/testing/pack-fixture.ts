@@ -66,14 +66,21 @@ export interface PackFixtureOptions {
  * fail. `import-specifiers.integration.spec.ts` measured that: half its sweep ran on a fixture where
  * `own-modules` and `contract-leaves` could not speak, so for those rows the sweep asserted nothing.
  *
- * **It lived in `@abuddy/sdk/testing` until 2026-10-02**, where its own comment named the condition for
- * moving: a second consumer. Two arrived (`@app/repo-checks`, `@abuddy/cli`), and the cost of staying was
- * concrete — a repo-internal fixture in a published package's *reviewed* surface, carried in
- * `etc/testing.api.md` and shipped in the tarball for something no pack author materialises a pack to test.
+ * **It sits in a published package and is not published**, as `@abuddy/sdk/testing/pack-fixture`: an entry whose
+ * only branch is `@abuddy/source`, which `publishedManifest` drops from the published manifest outright. So it
+ * ships in no tarball, appears in no `etc/*.api.md`, is seen by neither `api:check` nor `api:stamp`, and no pack
+ * can resolve it — a pack's config may not declare that condition (`check:specifiers`). Deliberately not
+ * exported from `testing/index.ts`, which is published. `./runtime/internals` is the same shape.
  *
- * `population` did not come with it: `@app/default-setup`'s tests use it, and a pack may not import an
- * `@app/*` package. So a spec in `@abuddy/sdk`, `/ears`, `/ui` or `default-setup` still cannot import this —
- * the layer rule reads their `tests/` too — and nothing there builds a pack.
+ * **The condition that would make it public API: a published pack-reading API.** Today every consumer of a pack
+ * directory is private — the pack rules and the source parser are `@abuddy/cli`'s, which publishes no
+ * declarations, and the layout, subpath-imports and own-module-specifier readers are the private
+ * `@abuddy/host`'s. A fixture for tooling nobody outside can import has no user outside, and a pack author
+ * tests their own pack, which is already a directory (`PACK_DIR`), or their pack's code through
+ * `setupPackTests`, which takes a registration rather than a tree. Publish any of that pack-reading surface and
+ * this should go public in the same change; until then publishing it would fix the default manifest's shape,
+ * the `manifest`/`rawManifest` split and these stub files as contract — and the default is chosen to make
+ * *this repo's* pack rules fire, which is the wrong promise to make to anyone else.
  *
  * **It makes a pack's *source* tree and stops there.** Building one is `buildPack(dir)` and installing one is
  * the installer's own helper: composition, not options, because both already take a directory. A `built: true`
