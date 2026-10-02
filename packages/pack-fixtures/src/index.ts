@@ -33,6 +33,16 @@ export interface PackFixtureOptions {
    */
   readonly manifest?: Record<string, unknown>;
   /**
+   * Symlinked as the pack's `node_modules`, which is what makes `@abuddy/*` resolve from inside the fixture —
+   * every spec that builds or bundles one needs it.
+   *
+   * Here because it repeated: four specs wrote the same `mkdtemp` + manifest + `symlinkSync(REPO_ROOT/
+   * node_modules)` preamble (`host-import-guard`, `fe-bundler-proxy-exports`, `fe-bundler-shared-ui`,
+   * `seed-runtime-load`), and `preparePack` is that pair with a name. A spec that only reads the tree passes
+   * nothing and gets no symlink.
+   */
+  readonly nodeModules?: string;
+  /**
    * Written verbatim, for a case whose subject *is* the manifest: one the installer must reject, one missing
    * a required key, one that is not an object. Five of the 28 are this.
    *
@@ -67,7 +77,7 @@ export interface PackFixtureOptions {
  * artifact whose layout `@abuddy/host` owns (`PACK_LAYOUT`), and host's own tests build it in host, where the
  * layer rule keeps it.
  */
-export function packFixture({ at, files = {}, manifest, rawManifest }: PackFixtureOptions = {}): string {
+export function packFixture({ at, files = {}, manifest, rawManifest, nodeModules }: PackFixtureOptions = {}): string {
   if (manifest !== undefined && rawManifest !== undefined) {
     throw new Error('packFixture: pass `manifest` to vary the default or `rawManifest` to write one verbatim, not both');
   }
@@ -91,5 +101,6 @@ export function packFixture({ at, files = {}, manifest, rawManifest }: PackFixtu
     fs.mkdirSync(path.dirname(file), { recursive: true });
     fs.writeFileSync(file, body);
   }
+  if (nodeModules !== undefined) fs.symlinkSync(nodeModules, path.join(dir, 'node_modules'), 'dir');
   return dir;
 }

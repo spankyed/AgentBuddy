@@ -1,4 +1,5 @@
 import * as fs from 'node:fs';
+import * as os from 'node:os';
 import * as path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { packFixture } from '../src/index.ts';
@@ -51,6 +52,14 @@ describe('packFixture', () => {
 
   it('writes a manifest verbatim when the manifest is the subject', () => {
     expect(read(packFixture({ rawManifest: { id: 'only-this' } }), 'abuddy.json')).toEqual({ id: 'only-this' });
+  });
+
+  /** What makes `@abuddy/*` resolve from inside the fixture, which every spec that builds one needs */
+  it('links node_modules where it is asked to, and nowhere else', () => {
+    const modules = fs.mkdtempSync(path.join(os.tmpdir(), 'abuddy-fixture-modules-'));
+    expect(fs.realpathSync(path.join(packFixture({ nodeModules: modules }), 'node_modules')))
+      .toBe(fs.realpathSync(modules));
+    expect(fs.existsSync(path.join(packFixture(), 'node_modules'))).toBe(false);
   });
 
   it('refuses both at once rather than picking one', () => {

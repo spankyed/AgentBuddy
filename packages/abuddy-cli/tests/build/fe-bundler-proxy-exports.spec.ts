@@ -1,8 +1,8 @@
 import * as fs from 'node:fs';
-import * as os from 'node:os';
 import * as path from 'node:path';
 import { init as initLexer, parse } from 'es-module-lexer';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { packFixture } from '@app/pack-fixtures';
 import { packExternalsPlugin } from '../../src/build/fe-bundler';
 import { packagesBuiltOrRefuse, REPO_ROOT } from '@abuddy/host/build/packages-built';
 
@@ -39,10 +39,7 @@ const proxies = new Map<string, string[]>();
 beforeAll(async () => {
   if (!PACKAGES_BUILT) return;
   await initLexer;
-  packDir = fs.mkdtempSync(path.join(os.tmpdir(), 'abuddy-proxy-exports-'));
-  fs.writeFileSync(path.join(packDir, 'package.json'), JSON.stringify({ name: 'proxy-pack', type: 'module' }));
-  fs.writeFileSync(path.join(packDir, 'abuddy.json'), JSON.stringify({ id: 'proxy-pack', name: 'Proxy', version: '1.0.0' }));
-  fs.symlinkSync(path.join(REPO_ROOT, 'node_modules'), path.join(packDir, 'node_modules'), 'dir');
+  packDir = packFixture({ manifest: { id: 'proxy-pack', name: 'Proxy' }, nodeModules: path.join(REPO_ROOT, 'node_modules') });
   const entry = path.join(packDir, 'entry.ts');
   fs.writeFileSync(entry, specifiers.map((s, i) => `export * as m${i} from '${s}';`).join('\n'));
 
