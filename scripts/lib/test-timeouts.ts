@@ -14,7 +14,7 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import ts from 'typescript';
 import { INTEGRATION_SUITES } from './chain-steps.ts';
-import { halfOfPath } from './spec-cost.ts';
+import { CONFIG_BY_HALF, halfOfPath } from './spec-cost.ts';
 import type { Size } from './unit-suites.ts';
 
 /** The vitest callables that take a trailing timeout */
@@ -99,8 +99,9 @@ export function timeoutOverrides(absFile: string, repoRoot: string): TimeoutOver
 export function sizeOf(file: string): Size {
   // The E2E suite is its own target and belongs to no package
   if (file.endsWith('playwright.config.ts')) return 'large';
-  if (file.endsWith('vitest.integration.config.ts')) return 'large';
-  if (file.endsWith('vitest.config.ts')) return 'small';
+  // Integration first: the two names are read from `CONFIG_BY_HALF`, which is where the convention lives
+  if (file.endsWith(CONFIG_BY_HALF.integration)) return 'large';
+  if (file.endsWith(CONFIG_BY_HALF.fast)) return 'small';
   if (file.endsWith('.spec.ts')) {
     const dir = file.split('/')[1];
     return halfOfPath(file) === 'integration' && INTEGRATION_SUITES.some((suite) => suite.dir === dir)

@@ -2,7 +2,7 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { BUILD_UNITS, repoRelative, REPO_ROOT } from '@abuddy/host/build/packages-built';
 import { UNIT_SUITES, type UnitSuite } from './unit-suites.ts';
-import { hasSplit, type Half } from './spec-cost.ts';
+import { CONFIG_BY_HALF, hasSplit, type Half } from './spec-cost.ts';
 import { dependencySource, PACKAGE_DIRS, workspaceDeps } from './workspace-deps.ts';
 import { scopeOf, TYPECHECK_LEGS, type Leg } from './typecheck-legs.ts';
 
@@ -358,6 +358,12 @@ const ROOT = ['package-lock.json'];
 /**
  * The root vitest config a run of one half uses — which projects it pools is an input to every suite in it.
  *
+ * `CONFIG_BY_HALF` is the one record of which file runs which half, and it is the one `hasSplit` and so
+ * `INTEGRATION_SUITES` already derive from. The same two names stood here as a `Record<Half, string>` of
+ * their own until 2026-10-02 — a second copy one line from a use of its own derivative. The names are a
+ * convention rather than a computation, and they are the same convention at both levels: the root config
+ * lists the packages' as its projects.
+ *
  * Both were declared for every suite until 2026-10-02, which cost two things: an edit to the integration
  * config re-ran all thirteen fast projects, and the two halves of one suite hashed an identical declared set,
  * leaving the stamp's filename as the only thing that told them apart.
@@ -370,11 +376,8 @@ const ROOT = ['package-lock.json'];
  * step that walks the tree — the lint, the import rules — walks these too, and the coverage guard in
  * `chain-inputs.spec.ts` is what would notice if they did not.
  */
-const VITEST_ROOT: Record<Half, string> = { fast: 'vitest.config.ts', integration: 'vitest.integration.config.ts' };
-
-/** The root config that runs this suite's half, where one does */
 const rootConfigFor = (suite: UnitSuite, half: Half): string[] =>
-  (half === 'fast' && suite.kind === 'pack' ? [] : [VITEST_ROOT[half]]);
+  (half === 'fast' && suite.kind === 'pack' ? [] : [CONFIG_BY_HALF[half]]);
 
 /**
  * Every workspace, from the one definition that decides which they are (`workspace-deps.ts`, read from the
@@ -405,7 +408,8 @@ const WORKSPACE_PARTS = [
   // and the walk skips what is not there, so for those this adds a path and no bytes
   'abuddy.json',
   'package.json', 'tsconfig.json', 'tsconfig.package.json',
-  'vitest.config.ts', 'vitest.integration.config.ts', 'vite.config.ts', 'vite.config.js',
+  // The two vitest configs from `CONFIG_BY_HALF`, which is where that naming is declared
+  ...Object.values(CONFIG_BY_HALF), 'vite.config.ts', 'vite.config.js',
   'eslint.config.ts', 'postcss.config.cjs', 'tailwind.config.ts', 'tsdown.config.ts', 'env.d.ts',
   'dev-build.mjs',
 ];
@@ -434,7 +438,7 @@ const EVERY_WORKSPACE = PACKAGES.flatMap(workspace);
  *
  * Build output is not in here, because a guard's subject is source. `typecheck` adds its own.
  */
-const EVERY_SOURCE = [...ROOT, ...Object.values(VITEST_ROOT), ...EVERY_WORKSPACE, 'scripts', 'tests/e2e', 'tests/packs', 'tests/scripts',
+const EVERY_SOURCE = [...ROOT, ...Object.values(CONFIG_BY_HALF), ...EVERY_WORKSPACE, 'scripts', 'tests/e2e', 'tests/packs', 'tests/scripts',
   'tests/tsconfig.json', 'playwright.config.ts', 'types', 'electron-builder.mjs',
   // The drive layer's config, and only it: the driving scripts beside it are gitignored and ad-hoc,
   // so naming the directory would re-run a typecheck every time someone poked at the app

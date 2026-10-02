@@ -411,7 +411,7 @@ const packRelatedRun = (root: string, suite: UnitSuite, relToPack: string, flags
  * literal list, which `chain-inputs.spec.ts` holds equal to `UNIT_SUITES`' host suites.
  */
 export function rootProjects(root: string): string[] {
-  const config = fs.readFileSync(path.join(root, 'vitest.config.ts'), 'utf-8');
+  const config = fs.readFileSync(path.join(root, CONFIG_BY_HALF.fast), 'utf-8');
   return [...config.matchAll(/^\s*'packages\/([\w-]+)',$/gm)].map(([, dir]) => dir);
 }
 

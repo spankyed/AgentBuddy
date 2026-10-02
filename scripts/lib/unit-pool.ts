@@ -13,7 +13,7 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { diffableStamp, REPO_ROOT, type BuildUnit } from '@abuddy/host/build/packages-built';
 import { INTEGRATION_SUITES, suiteInputs } from './chain-steps.ts';
-import type { Half } from './spec-cost.ts';
+import { CONFIG_BY_HALF, type Half } from './spec-cost.ts';
 import { UNIT_SUITES, type UnitSuite } from './unit-suites.ts';
 
 /**
@@ -73,7 +73,7 @@ export const POOLS = {
     suites: () => INTEGRATION_SUITES,
     // The root integration config declares the condition itself, and carries the worker cap that makes this
     // pool faster at half the cores than at all of them
-    run: (stale: readonly UnitSuite[]) => [{ suites: stale, command: 'npx', args: ['vitest', 'run', '--config', 'vitest.integration.config.ts', ...projectArgs(stale)] }],
+    run: (stale: readonly UnitSuite[]) => [{ suites: stale, command: 'npx', args: ['vitest', 'run', '--config', CONFIG_BY_HALF.integration, ...projectArgs(stale)] }],
   },
 } as const;
 
