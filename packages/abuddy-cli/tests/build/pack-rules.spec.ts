@@ -103,7 +103,7 @@ const FIRES: Record<PackRuleKey, { onFile?: [code: string, problem: string][]; e
   // The pack as a whole: which module is a contract comes from the manifest, so its case needs one
   'contract-leaves': { elsewhere: 'contract-leaves flags a contract leaf that reaches its own machine' },
   'repository-casts': {
-    onFile: [['const notes = repository as unknown as Repositories;\n', 'src/f.ts:1: repository as unknown as Repositories']],
+    onFile: [['const memos = repository as unknown as Repositories;\n', 'src/f.ts:1: repository as unknown as Repositories']],
     elsewhere: 'repository-casts allows the generated facade, which is this cast by design',
   },
 };
@@ -266,11 +266,11 @@ describe('every rule', () => {
 
   it('reports a contract leaf reaching another feature under one rule, not two', () => {
     const dir = completePack({
-      'src/features/memos/fe/contract.ts': "import type { T } from '../../threads/fe/state.ts';\nexport type Contract = { state: { t: T } };\n",
+      'src/features/memos/fe/contract.ts': "import type { T } from '../../calendar/fe/state.ts';\nexport type Contract = { state: { t: T } };\n",
       'src/features/memos/fe/plugin.ts': 'export type P = { id: string };\n',
-      'src/features/threads/fe/state.ts': 'export type T = { id: string };\n',
+      'src/features/calendar/fe/state.ts': 'export type T = { id: string };\n',
     });
-    const offence = 'src/features/memos/fe/contract.ts:1: ../../threads/fe/state.ts';
+    const offence = 'src/features/memos/fe/contract.ts:1: ../../calendar/fe/state.ts';
     const reported = [...packRuleProblems(dir)].filter(([, found]) => found.includes(offence)).map(([key]) => key);
     expect(reported, 'the same import, word for word, under more than one rule').toEqual(['contract-leaves']);
   });
@@ -283,12 +283,12 @@ describe('every rule', () => {
   it('claims the offence a whole-pack rule named, not the whole line it sat on', () => {
     const dir = completePack({
       'src/features/memos/fe/contract.ts':
-        "import type { T } from '../../threads/fe/state.ts'; import { untypedSendToSystem } from '@abuddy/sdk/events';\n"
+        "import type { T } from '../../calendar/fe/state.ts'; import { untypedSendToSystem } from '@abuddy/sdk/events';\n"
         + 'export type Contract = { state: { t: T; send: typeof untypedSendToSystem } };\n',
       'src/features/memos/fe/plugin.ts': 'export type P = { id: string };\n',
-      'src/features/threads/fe/state.ts': 'export type T = { id: string };\n',
+      'src/features/calendar/fe/state.ts': 'export type T = { id: string };\n',
     });
-    expect(problems(dir, 'contract-leaves')).toEqual(['src/features/memos/fe/contract.ts:1: ../../threads/fe/state.ts']);
+    expect(problems(dir, 'contract-leaves')).toEqual(['src/features/memos/fe/contract.ts:1: ../../calendar/fe/state.ts']);
     expect(problems(dir, 'untyped-sends'), 'the second offence on that line went with the first')
       .toEqual(['src/features/memos/fe/contract.ts:1: untypedSendToSystem from @abuddy/sdk/events']);
   });
@@ -457,9 +457,9 @@ describe('when several rules are right about one site', () => {
    * repo's own `check:specifiers` and every fixture pack pass either way, so nothing else would notice a revert.
    */
   it('gives an extensionless cross-feature import to the rule about the crossing, the fix that subsumes the other', () => {
-    expect(offenderIn('src/extensions/viewer.ts', "import { t } from '#features/threads/fe/state';\n",
-      { 'src/features/threads/fe/state.ts': 'export const t = 1;\n' }))
-      .toEqual(['cross-feature-imports: src/extensions/viewer.ts:1: #features/threads/fe/state']);
+    expect(offenderIn('src/extensions/viewer.ts', "import { t } from '#features/calendar/fe/state';\n",
+      { 'src/features/calendar/fe/state.ts': 'export const t = 1;\n' }))
+      .toEqual(['cross-feature-imports: src/extensions/viewer.ts:1: #features/calendar/fe/state']);
   });
 
   /**

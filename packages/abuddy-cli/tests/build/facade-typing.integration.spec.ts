@@ -21,7 +21,7 @@ const BASE_PACK = {
     entities: { Tag: 'Tag', Item: 'Item' },
     entityShapes: { Tag: { source: 'src/types.ts', type: 'TagEntity' }, Item: { source: 'src/types.ts', type: 'ItemEntity' } },
     features: [{
-      id: 'threads',
+      id: 'calendar',
       system: { entry: 'src/system.ts', contract: 'src/system.contract.ts#Contract' },
       plugin: { entry: 'src/plugin.ts', contract: 'src/plugin.types.ts#Contract' },
       services: { search: 'src/search.ts#searchService' },
@@ -44,12 +44,12 @@ const BASE_PACK = {
     "import { defineSystem } from '@abuddy/sdk/framework';",
     "import type { Contract } from './system.contract.ts';",
     'export const threadsSpec = defineSystem<Contract>();',
-    'const entry = { spec: threadsSpec, machine: setup({ types: threadsSpec.types }).createMachine({ id: "threads" }) };',
+    'const entry = { spec: threadsSpec, machine: setup({ types: threadsSpec.types }).createMachine({ id: "calendar" }) };',
     'export default entry;',
   ].join('\n'),
   'src/plugin.ts': [
     "import type { Plugin } from '@abuddy/sdk/fe';",
-    "export default { id: 'threads' } as unknown as Plugin;",
+    "export default { id: 'calendar' } as unknown as Plugin;",
   ].join('\n') + '\n',
   // The plugin's contract: a declared type in a leaf the plugin's own module never imports, which is what the
   // dependent's facade carries as this plugin's published inbox
@@ -134,14 +134,14 @@ export type RepositoryService = Expect<Equal<typeof services.repository, typeof 
 services.nope;
 
 // A plugin of the dependency, and the host's: each takes what its own owner declares it accepts
-broadcastToPlugin('base-pack/threads', { type: 'TAG_ADDED', name: 'x' });
+broadcastToPlugin('base-pack/calendar', { type: 'TAG_ADDED', name: 'x' });
 broadcastToPlugin('memos', { type: 'MEMO_ADDED', text: 'x' });
 broadcastToPlugin('host/application', { type: 'PLUGIN_VISIBILITY_UPDATED', pluginVisibility: { 'demo-pack/memos': false } });
 // A plugin someone else owns keeps the events its owner declares it receives; a pack widens only its own
-// @ts-expect-error the threads plugin doesn't receive this event
-broadcastToPlugin('base-pack/threads', { type: 'MEMO_ADDED', text: 'x' });
+// @ts-expect-error the calendar plugin doesn't receive this event
+broadcastToPlugin('base-pack/calendar', { type: 'MEMO_ADDED', text: 'x' });
 // @ts-expect-error a dependency's plugin is named <dependency>/<feature>
-broadcastToPlugin('threads', { type: 'TAG_ADDED', name: 'x' });
+broadcastToPlugin('calendar', { type: 'TAG_ADDED', name: 'x' });
 // @ts-expect-error the host declares what its application plugin receives
 broadcastToPlugin('host/application', { type: 'MEMO_ADDED', text: 'x' });
 // @ts-expect-error the dependency's inbox plugin declares no inbox, so nothing may be sent to it
@@ -150,7 +150,7 @@ broadcastToPlugin('base-pack/inbox', { type: 'MAIL_ARRIVED', from: 'x' });
 // Systems: this pack's by feature id, the dependency's as <dependency>/<feature>
 sendToSystem('memos', { type: 'ADD_MEMO', text: 'x' });
 sendToSystem('memos', { type: 'UNPIN_MEMO', id: 'm1' });
-sendToSystem('base-pack/threads', { type: 'ADD_TAG', name: 'x' });
+sendToSystem('base-pack/calendar', { type: 'ADD_TAG', name: 'x' });
 // @ts-expect-error the memos system doesn't receive this event
 sendToSystem('memos', { type: 'ADD_TAG', name: 'x' });
 // @ts-expect-error PIN_MEMO needs its id
@@ -158,7 +158,7 @@ sendToSystem('memos', { type: 'PIN_MEMO' });
 declare const memoEventType: 'ADD_MEMO' | 'CLEAR_MEMOS';
 // @ts-expect-error one event type per send
 sendToSystem('memos', { type: memoEventType, text: 'x' });
-declare const systemId: 'memos' | 'base-pack/threads';
+declare const systemId: 'memos' | 'base-pack/calendar';
 // @ts-expect-error one system per send
 sendToSystem(systemId, { type: 'ADD_TAG', name: 'x' });
 
@@ -166,12 +166,12 @@ sendToSystem(systemId, { type: 'ADD_TAG', name: 'x' });
 // Its own pack included is the point: an action is content, not source — a row a user edits, exports and copies
 // into another pack — and a bare name would rebind on that copy instead of staying visibly wrong.
 services.emitter.sendToSystem('app-pack/memos', { type: 'ADD_MEMO', text: 'x' });
-services.emitter.sendToSystem('base-pack/threads', { type: 'ADD_TAG', name: 'x' });
-services.emitter.broadcastToPlugin('base-pack/threads', { type: 'TAG_ADDED', name: 'x' });
+services.emitter.sendToSystem('base-pack/calendar', { type: 'ADD_TAG', name: 'x' });
+services.emitter.broadcastToPlugin('base-pack/calendar', { type: 'TAG_ADDED', name: 'x' });
 // @ts-expect-error a bare name would rebind if this action were copied to another pack
 services.emitter.sendToSystem('memos', { type: 'ADD_MEMO', text: 'x' });
 // @ts-expect-error and its plugins, for the same reason
-services.emitter.broadcastToPlugin('threads', { type: 'TAG_ADDED', name: 'x' });
+services.emitter.broadcastToPlugin('calendar', { type: 'TAG_ADDED', name: 'x' });
 // @ts-expect-error ADD_MEMO needs its text
 services.emitter.sendToSystem('app-pack/memos', { type: 'ADD_MEMO' });
 
@@ -454,7 +454,7 @@ describe.each(LAYOUTS)('generated facades with a dependency ($name)', ({ publish
   it.each(['bundler', 'node16'] as const)('offers system-id and event-type completions for sendToSystem under moduleResolution %s', (moduleResolution) => {
     const app = path.join(parent, 'app-pack');
     const { at } = completionsIn(app, writeTsconfig(app, moduleResolution, published));
-    expect(at.systemId, 'system-id completions').toEqual(expect.arrayContaining(['memos', 'base-pack/threads']));
+    expect(at.systemId, 'system-id completions').toEqual(expect.arrayContaining(['memos', 'base-pack/calendar']));
     expect(at.eventType, 'event-type completions').toEqual(expect.arrayContaining(['ADD_MEMO', 'CLEAR_MEMOS', 'PIN_MEMO', 'UNPIN_MEMO']));
     expect(at.eventType, 'only the chosen system\'s events').not.toContain('ADD_TAG');
   });

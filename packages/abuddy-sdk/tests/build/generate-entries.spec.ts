@@ -189,9 +189,9 @@ describe('generated events', () => {
 
   // The spec is the one place a system's sent events are declared: no second, named union can drift from it
   it("reads the events from the spec, whatever else the entry exports", () => {
-    writeSystemEntry('notes', "{ type: 'NOTE_SAVED' }");
-    fs.appendFileSync(path.join(root, 'src/features/notes/be/system.ts'), "export type OutgoingNotesEvents = { type: 'STALE' };\n");
-    expect(receives(generate({ features: [withPlugin(system('notes'))] }), 'notes')).toEqual(['NOTE_SAVED']);
+    writeSystemEntry('memos', "{ type: 'MEMO_SAVED' }");
+    fs.appendFileSync(path.join(root, 'src/features/memos/be/system.ts'), "export type OutgoingMemosEvents = { type: 'STALE' };\n");
+    expect(receives(generate({ features: [withPlugin(system('memos'))] }), 'memos')).toEqual(['MEMO_SAVED']);
   });
 
   it('records no events for a system whose spec sends none', () => {
@@ -276,7 +276,7 @@ describe('generated events', () => {
 
   it('keys a plugin-only feature by the inbox it declares, with no system of its own', () => {
     const plugin = pluginWithContract('src/features/sidebar/fe/index.ts', "{ type: 'SIDEBAR.TOGGLE' }");
-    const files = generate({ features: [system('notes'), { id: 'sidebar', plugin }] });
+    const files = generate({ features: [system('memos'), { id: 'sidebar', plugin }] });
     expect(files['src/__generated__/events.ts']).toContain("'sidebar': __accepts_sidebar;");
     expect(receives(files, 'sidebar')).toEqual(['SIDEBAR.TOGGLE']);
   });
@@ -286,21 +286,21 @@ describe('generated events', () => {
   it('refuses a contract the module exports only as a value', () => {
     const entry = writePluginEntry('src/features/sidebar/fe/index.ts');
     write('src/features/sidebar/fe/contract.ts', 'export const Contract = { state: {} };\n');
-    expect(() => generate({ features: [system('notes'), { id: 'sidebar', plugin: { entry, contract: 'src/features/sidebar/fe/contract.ts#Contract' } }] }))
+    expect(() => generate({ features: [system('memos'), { id: 'sidebar', plugin: { entry, contract: 'src/features/sidebar/fe/contract.ts#Contract' } }] }))
       .toThrow(/only as a value, not a type/);
   });
 
   it('refuses a contract the module does not declare, naming the type it looked for', () => {
     const entry = writePluginEntry('src/features/sidebar/fe/index.ts');
     write('src/features/sidebar/fe/contract.ts', 'export type Other = { state: {} };\n');
-    expect(() => generate({ features: [system('notes'), { id: 'sidebar', plugin: { entry, contract: 'src/features/sidebar/fe/contract.ts#Contract' } }] }))
+    expect(() => generate({ features: [system('memos'), { id: 'sidebar', plugin: { entry, contract: 'src/features/sidebar/fe/contract.ts#Contract' } }] }))
       .toThrow(/doesn't export "Contract"/);
   });
 
   it('refuses an inbox opened to an audience that does not exist', () => {
     const entry = writePluginEntry('src/features/sidebar/fe/index.ts');
     write('src/features/sidebar/fe/contract.ts', "export type Contract = { state: {}; inbox: { publik: { type: 'X' } } };\n");
-    expect(() => generate({ features: [system('notes'), { id: 'sidebar', plugin: { entry, contract: 'src/features/sidebar/fe/contract.ts#Contract' } }] }))
+    expect(() => generate({ features: [system('memos'), { id: 'sidebar', plugin: { entry, contract: 'src/features/sidebar/fe/contract.ts#Contract' } }] }))
       .toThrow(/is not an audience/);
   });
 
@@ -335,7 +335,7 @@ describe('generated system sends', () => {
 
   it("names the pack's own systems by feature id and its dependencies' as <dependency>/<feature>", () => {
     const files = generate({ features: [system('memos')] }, {
-      'base-pack': dependency({ features: [system('threads')] }, baseTypes),
+      'base-pack': dependency({ features: [system('calendar')] }, baseTypes),
       'default-setup': dependency({ id: 'default-setup', builtIn: true, features: [system('memos')] }),
     });
     const events = files['src/__generated__/events.ts'];
@@ -365,7 +365,7 @@ describe('generated system sends', () => {
   });
 
   it("gives a pack without systems a sendToSystem for its dependencies' systems", () => {
-    const files = generate({ features: [{ id: 'sidebar', plugin: { entry: writePluginEntry('src/features/sidebar/fe/plugin.ts') } }] }, { 'base-pack': dependency({ features: [system('threads')] }, baseTypes) });
+    const files = generate({ features: [{ id: 'sidebar', plugin: { entry: writePluginEntry('src/features/sidebar/fe/plugin.ts') } }] }, { 'base-pack': dependency({ features: [system('calendar')] }, baseTypes) });
     const events = files['src/__generated__/events.ts'];
     expect(events).not.toContain('system-specs');
     expect(events).toContain("defineEvents<SendablePluginEvents, SendableSystemEvents>('demo-pack');");
@@ -477,7 +477,7 @@ describe('generated sends compile', () => {
     for (const id of ids) writeSystemEntry(id, "{ type: 'DONE' }", `{ type: '${id.toUpperCase()}_RUN'; n: number }`);
     const files = generatePackFiles(manifest({ features: ids.map((id) => ({ ...system(id), designation: id === 'foo' ? 'foo' : undefined })) }), {
       packRoot: root,
-      depSnapshots: new Map([['base-pack', typedDependency({ foo: 'BASE_FOO_RUN', threads: 'THREADS_RUN' })]]),
+      depSnapshots: new Map([['base-pack', typedDependency({ foo: 'BASE_FOO_RUN', calendar: 'CALENDAR_RUN' })]]),
     });
     write('src/probe.ts', [
       "import { sendToSystem } from './__generated__/events.ts';",
@@ -492,15 +492,15 @@ describe('generated sends compile', () => {
   it("for a pack without systems, sending to its dependencies'", () => {
     const files = generatePackFiles(manifest({ features: [{ id: 'sidebar', plugin: { entry: writePluginEntry('src/features/sidebar/fe/plugin.ts') } }] }), {
       packRoot: root,
-      depSnapshots: new Map([['base-pack', typedDependency({ threads: 'THREADS_RUN' })]]),
+      depSnapshots: new Map([['base-pack', typedDependency({ calendar: 'CALENDAR_RUN' })]]),
     });
     write('src/probe.ts', [
       "import { sendToSystem } from './__generated__/events.ts';",
-      "sendToSystem('base-pack/threads', { type: 'THREADS_RUN', n: 1 });",
-      '// @ts-expect-error THREADS_RUN needs its n',
-      "sendToSystem('base-pack/threads', { type: 'THREADS_RUN' });",
+      "sendToSystem('base-pack/calendar', { type: 'CALENDAR_RUN', n: 1 });",
+      '// @ts-expect-error CALENDAR_RUN needs its n',
+      "sendToSystem('base-pack/calendar', { type: 'CALENDAR_RUN' });",
       '// @ts-expect-error the pack has no system of its own',
-      "sendToSystem('sidebar', { type: 'THREADS_RUN', n: 1 });",
+      "sendToSystem('sidebar', { type: 'CALENDAR_RUN', n: 1 });",
     ].join('\n'));
     expect(typecheck(files, ['src/probe.ts'])).toEqual([]);
   });
@@ -508,8 +508,8 @@ describe('generated sends compile', () => {
   it("to a dependency's plugins and a host plugin, with the events their owner declares", () => {
     writeSystemEntry('memos', "{ type: 'MEMO_ADDED'; text: string }");
     const base = dependency(
-      { features: [withPlugin(system('threads')), withPlugin(system('code'))] },
-      facade({ PackPluginEvents: "{ 'threads': { type: 'TAG_ADDED'; name: string }; 'code': { type: 'FILE_OPENED'; path: string } }" }),
+      { features: [withPlugin(system('calendar')), withPlugin(system('code'))] },
+      facade({ PackPluginEvents: "{ 'calendar': { type: 'TAG_ADDED'; name: string }; 'code': { type: 'FILE_OPENED'; path: string } }" }),
     );
     const files = generatePackFiles(
       manifest({ features: [withPlugin(system('memos'))] }),
@@ -518,13 +518,13 @@ describe('generated sends compile', () => {
     write('src/probe.ts', [
       "import { sendToPlugin } from './__generated__/events.ts';",
       "sendToPlugin('memos', { type: 'MEMO_ADDED', text: 'x' });",
-      "sendToPlugin('base-pack/threads', { type: 'TAG_ADDED', name: 'x' });",
+      "sendToPlugin('base-pack/calendar', { type: 'TAG_ADDED', name: 'x' });",
       "sendToPlugin('base-pack/code', { type: 'FILE_OPENED', path: 'x' });",
       "sendToPlugin('host/application', { type: 'PLUGIN_VISIBILITY_UPDATED', pluginVisibility: { 'demo-pack/memos': false } });",
       "// @ts-expect-error a dependency's plugin takes only the events its own pack declares for it",
-      "sendToPlugin('base-pack/threads', { type: 'MEMO_ADDED', text: 'x' });",
+      "sendToPlugin('base-pack/calendar', { type: 'MEMO_ADDED', text: 'x' });",
       "// @ts-expect-error a dependency's plugin is named <pack>/<feature>, as the send resolves it",
-      "sendToPlugin('threads', { type: 'TAG_ADDED', name: 'x' });",
+      "sendToPlugin('calendar', { type: 'TAG_ADDED', name: 'x' });",
       '// @ts-expect-error the host declares what its application plugin receives',
       "sendToPlugin('host/application', { type: 'MEMO_ADDED', text: 'x' });",
     ].join('\n'));
@@ -536,11 +536,11 @@ describe('generated ref', () => {
   // A FeatureRef is accepted wherever a send takes one, so the names ref() takes are what keep a misspelling out
   it("takes this pack's features, its dependencies' and the host's, and nothing else", () => {
     const files = generate(
-      { dependencies: { 'base-pack': '1.0.0' }, features: [{ id: 'notes', plugin: { entry: writePluginEntry('src/notes/plugin') } }, system('jobs')] },
-      { 'base-pack': dependency({ features: [{ id: 'threads', plugin: { entry: writePluginEntry('x') } }, { id: 'worker', system: { entry: 'y' } }] }) },
+      { dependencies: { 'base-pack': '1.0.0' }, features: [{ id: 'memos', plugin: { entry: writePluginEntry('src/memos/plugin') } }, system('jobs')] },
+      { 'base-pack': dependency({ features: [{ id: 'calendar', plugin: { entry: writePluginEntry('x') } }, { id: 'worker', system: { entry: 'y' } }] }) },
     );
     expect(files['src/__generated__/ref.ts']).toContain(
-      "export type FeatureName = 'notes' | 'jobs' | 'base-pack/threads' | 'base-pack/worker' | 'host/application' | 'host/settings' | 'host/bus';",
+      "export type FeatureName = 'memos' | 'jobs' | 'base-pack/calendar' | 'base-pack/worker' | 'host/application' | 'host/settings' | 'host/bus';",
     );
     expect(files['src/__generated__/ref.ts']).toContain('export const ref = (name: FeatureName): FeatureRef');
   });
@@ -550,11 +550,11 @@ describe('generated frontend names', () => {
   // A name nothing declares fails to compile: a plugin named by data opens through `openPlugin` instead
   it("lists this pack's plugins by feature id and its dependencies' by ref, with no open-ended member", () => {
     const files = generate(
-      { features: [{ id: 'notes', plugin: { entry: writePluginEntry('src/notes/plugin') } }, system('jobs')] },
-      { 'base-pack': dependency({ features: [{ id: 'threads', plugin: { entry: writePluginEntry('src/threads/plugin') } }, { id: 'worker', system: { entry: 'src/worker/system' } }] }) },
+      { features: [{ id: 'memos', plugin: { entry: writePluginEntry('src/memos/plugin') } }, system('jobs')] },
+      { 'base-pack': dependency({ features: [{ id: 'calendar', plugin: { entry: writePluginEntry('src/calendar/plugin') } }, { id: 'worker', system: { entry: 'src/worker/system' } }] }) },
     );
 
-    expect(files['src/__generated__/fe.ts']).toContain("export type PluginName = 'notes' | 'base-pack/threads';");
+    expect(files['src/__generated__/fe.ts']).toContain("export type PluginName = 'memos' | 'base-pack/calendar';");
   });
 });
 
@@ -563,17 +563,17 @@ describe('generated frontend entry', () => {
   it("keys each plugin by its feature, with the feature's role, passing the plugin module through untouched", () => {
     const files = generate({ features: [
       { id: 'settings', designation: 'settings', plugin: { entry: writePluginEntry('src/settings/plugin') } },
-      { id: 'notes', plugin: { entry: writePluginEntry('src/notes/plugin') } },
+      { id: 'memos', plugin: { entry: writePluginEntry('src/memos/plugin') } },
     ] });
     const fe = files['src/__generated__/pack-entry-fe.ts'];
 
-    expect(fe).toContain("  features: {\n    'settings': { plugin: __plugin_settings, designation: 'settings', default: true },\n    'notes': { plugin: __plugin_notes },\n  },");
+    expect(fe).toContain("  features: {\n    'settings': { plugin: __plugin_settings, designation: 'settings', default: true },\n    'memos': { plugin: __plugin_memos },\n  },");
     expect(fe).toContain("import __plugin_settings from '../settings/plugin.ts';");
     expect(fe).not.toContain('_module');
   });
 
   it('names the pack the frontend registration belongs to', () => {
-    const files = generate({ features: [{ id: 'notes', plugin: { entry: writePluginEntry('src/notes/plugin') } }] });
+    const files = generate({ features: [{ id: 'memos', plugin: { entry: writePluginEntry('src/memos/plugin') } }] });
 
     expect(files['src/__generated__/pack-entry-fe.ts']).toContain("id: 'demo-pack',");
   });
@@ -581,18 +581,18 @@ describe('generated frontend entry', () => {
   it('opens the plugin that claims the default, not the pack\'s first', () => {
     const files = generate({ features: [
       { id: 'settings', plugin: { entry: writePluginEntry('src/settings/plugin') } },
-      { id: 'notes', plugin: { entry: writePluginEntry('src/notes/plugin'), default: true } },
+      { id: 'memos', plugin: { entry: writePluginEntry('src/memos/plugin'), default: true } },
     ] });
 
     const fe = files['src/__generated__/pack-entry-fe.ts'];
-    expect(fe).toContain("'notes': { plugin: __plugin_notes, default: true },");
+    expect(fe).toContain("'memos': { plugin: __plugin_memos, default: true },");
     expect(fe).toContain("'settings': { plugin: __plugin_settings },");
   });
 
   it("falls back to the pack's first plugin when none claims it", () => {
     const files = generate({ features: [
       { id: 'settings', plugin: { entry: writePluginEntry('src/settings/plugin') } },
-      { id: 'notes', plugin: { entry: writePluginEntry('src/notes/plugin') } },
+      { id: 'memos', plugin: { entry: writePluginEntry('src/memos/plugin') } },
     ] });
 
     expect(files['src/__generated__/pack-entry-fe.ts']).toContain("'settings': { plugin: __plugin_settings, default: true },");
@@ -601,7 +601,7 @@ describe('generated frontend entry', () => {
   // So a frontend send to that role resolves, as it does on the backend
   it('lists a designated feature with no plugin for its role, and leaves out an undesignated one', () => {
     const files = generate({ features: [
-      { id: 'notes', plugin: { entry: writePluginEntry('src/notes/plugin') } },
+      { id: 'memos', plugin: { entry: writePluginEntry('src/memos/plugin') } },
       system('scheduler', {}),
       system('worker'),
     ].map((f) => (f.id === 'scheduler' ? { ...f, designation: 'clock' } : f)) });
@@ -609,18 +609,18 @@ describe('generated frontend entry', () => {
     const fe = files['src/__generated__/pack-entry-fe.ts'];
     expect(fe).toContain("'scheduler': { designation: 'clock' },");
     expect(fe).not.toContain("'worker'");
-    expect(fe).toContain("'notes': { plugin: __plugin_notes, default: true },");
+    expect(fe).toContain("'memos': { plugin: __plugin_memos, default: true },");
   });
 });
 
 describe('generated backend entry', () => {
   it('records which features have a plugin, and takes the plugin\'s name and icon from its module', () => {
     const files = generate({ features: [
-      { id: 'notes', plugin: { entry: writePluginEntry('src/notes/plugin') } },
+      { id: 'memos', plugin: { entry: writePluginEntry('src/memos/plugin') } },
       system('brain'),
     ] });
     const entry = files['src/__generated__/pack-entry.ts'];
-    expect(entry).toContain("    'notes': {\n      plugin: { receives: [] },\n      services: [],\n    }");
+    expect(entry).toContain("    'memos': {\n      plugin: { receives: [] },\n      services: [],\n    }");
     expect(entry).toContain("    'brain': {\n      system: packSystem(__system_brain),\n      services: [],\n    }");
   });
 
@@ -777,14 +777,15 @@ describe('generated repositories', () => {
 
   it("fails on a repository name a dependency declares, naming both packs: the app would refuse to register it", () => {
     write('src/features/memos/be/repository.ts', 'export const memoQueries = {};\n');
-    const deps = { 'base-pack': dependency({ features: [{ ...system('notes'), repositories: { memoQueries: 'src/repo.ts#memoQueries' } }] }) };
+    const deps = { 'base-pack': dependency({ features: [{ ...system('memos'), repositories: { memoQueries: 'src/repo.ts#memoQueries' } }] }) };
     expect(() => generate({ features: [{ ...system('memos'), repositories: { memoQueries: 'src/features/memos/be/repository.ts#memoQueries' } }] }, deps))
       .toThrow('Repository "memoQueries" (feature "memos") is declared by "base-pack", which this pack depends on');
   });
 
   it("accepts a repository name no dependency declares", () => {
     write('src/features/memos/be/repository.ts', 'export const memoQueries = {};\n');
-    const deps = { 'base-pack': dependency({ features: [{ ...system('notes'), repositories: { noteQueries: 'src/repo.ts#noteQueries' } }] }) };
+    // A different name to the pack's: equal names are the case above, which throws
+    const deps = { 'base-pack': dependency({ features: [{ ...system('memos'), repositories: { tagQueries: 'src/repo.ts#tagQueries' } }] }) };
     expect(() => generate({ features: [{ ...system('memos'), repositories: { memoQueries: 'src/features/memos/be/repository.ts#memoQueries' } }] }, deps))
       .not.toThrow();
   });
@@ -954,7 +955,7 @@ describe('generated services', () => {
   });
 
   it("types the emitter with the pack's events, naming every system <pack>/<feature>", () => {
-    const files = generate({ features: [system('memos')] }, { 'base-pack': dependency({ features: [system('threads')] }, facade()) });
+    const files = generate({ features: [system('memos')] }, { 'base-pack': dependency({ features: [system('calendar')] }, facade()) });
     expect(files['src/__generated__/events.ts']).toContain("export type QualifiedSystemEvents = Qualified<'demo-pack', PackSystemEvents> & Qualified<'base-pack', __dep_base_pack_PackSystemEvents> & HostSystemEvents;");
     const services = files['src/__generated__/services.ts'];
     expect(services).toContain("import type { QualifiedPluginEvents, QualifiedSystemEvents } from './events.ts';");
@@ -1142,9 +1143,9 @@ describe('generated seeders', () => {
       actions2: { format: 'json', entity: 'Action', identity: ['label'] },
     } }, deps)).not.toThrow();
     // Unused formats are checked too: dependents may use them
-    expect(() => generate({ seedFormats: { memos: { format: 'json', entity: 'Memo' } } }))
-      .toThrow(`Seed format "memos": entity "Memo" isn't declared by this pack, its dependencies or the SDK`);
-    expect(() => generate({ seedFormats: { memos: { format: 'markdown-tree', entity: 'Action', tree: { branchEntity: 'Folder' } } } }))
+    expect(() => generate({ seedFormats: { notes: { format: 'json', entity: 'Memo' } } }))
+      .toThrow(`Seed format "notes": entity "Memo" isn't declared by this pack, its dependencies or the SDK`);
+    expect(() => generate({ seedFormats: { notes: { format: 'markdown-tree', entity: 'Action', tree: { branchEntity: 'Folder' } } } }))
       .toThrow(`entity "Folder" isn't declared`);
   });
 
