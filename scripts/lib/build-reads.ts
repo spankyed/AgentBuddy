@@ -25,13 +25,6 @@ import { createRequire } from 'node:module';
 import { REPO_ROOT } from '@abuddy/host/build/packages-built';
 import { PACK_READS_FILE } from '@abuddy/host/build/pack-workdir';
 
-/**
- * Where `abuddy build` writes it, from the one place that declares it — the writer is `@abuddy/cli` and this
- * is the repo's chain, so neither can import the other and a second literal here would be a rename away from
- * a reader that finds nothing and blames the build for not having run.
- */
-const READS_FILE = PACK_READS_FILE;
-
 /** What a pack's record holds. Paths are relative to the pack directory. */
 export interface BuildReads {
   /** Repo-relative, as it was asked for */
@@ -43,7 +36,7 @@ export interface BuildReads {
 }
 
 const read = (packDir: string): BuildReads | undefined => {
-  const file = path.join(REPO_ROOT, packDir, READS_FILE);
+  const file = path.join(REPO_ROOT, packDir, PACK_READS_FILE);
   if (!fs.existsSync(file)) return undefined;
   try {
     const { bundlers, phases } = JSON.parse(fs.readFileSync(file, 'utf-8')) as Partial<BuildReads>;
@@ -87,8 +80,8 @@ const PACK_HOMES = ['packages', 'tests/packs'];
  * directory arrives covered, and one that has not been built is simply absent, which is the state a fresh
  * clone is in and the state a check has to report rather than pass over.
  */
-export function packsWithReads(homes: readonly string[] = PACK_HOMES): string[] {
-  return homes
+export function packsWithReads(): string[] {
+  return PACK_HOMES
     .flatMap((home) => {
       const dir = path.join(REPO_ROOT, home);
       if (!fs.existsSync(dir)) return [];
@@ -97,7 +90,7 @@ export function packsWithReads(homes: readonly string[] = PACK_HOMES): string[] 
         .map((entry) => path.join(home, entry.name));
     })
     .filter((packDir) => fs.existsSync(path.join(REPO_ROOT, packDir, 'abuddy.json'))
-      && fs.existsSync(path.join(REPO_ROOT, packDir, READS_FILE)))
+      && fs.existsSync(path.join(REPO_ROOT, packDir, PACK_READS_FILE)))
     .sort();
 }
 

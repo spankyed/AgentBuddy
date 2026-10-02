@@ -48,7 +48,7 @@ import { PACK_READS_FILE } from '@abuddy/host/build/pack-workdir';
 const OPT_OUT = 'ABUDDY_NO_BUILD_READS';
 
 /** `=== '1'`, as `ABUDDY_ALLOW_UNBUILT` is read: on truthiness, `ABUDDY_NO_BUILD_READS=0` would turn it off */
-const optedOut = (env: NodeJS.ProcessEnv = process.env): boolean => env[OPT_OUT] === '1';
+const optedOut = (): boolean => process.env[OPT_OUT] === '1';
 
 /**
  * The bundles of `abuddy build`, in the order it runs them — which is also the order the record is written

@@ -29,10 +29,9 @@ export const POOL_STAMP_DIR = path.join(REPO_ROOT, 'node_modules', '.cache', 'ab
  * its fast half can have passed while its expensive half never has. One path for both would let the second be
  * skipped on the first's record, which is the hole that kept the integration half from being pooled at all.
  *
- * **The path is where a record is kept, not what says which record it is.** That is `poolUnitFor`'s command,
- * in the fingerprint — so a stamp read under the wrong key comes out stale rather than fresh, and a suite that
- * moves pools re-runs, because it is now run a different way. The half is in the path as well because a reader
- * of the cache directory has to be able to tell the files apart.
+ * **The path is where a record is kept, not what says which record it is** — that is the command in
+ * `poolUnitFor`'s fingerprint, below. The half is in the path as well so that a reader of the cache
+ * directory can tell the two files apart.
  */
 export const poolStampFor = (suite: UnitSuite, half: Half): string =>
   path.join(POOL_STAMP_DIR, `${suite.dir}.${half}.json`);
@@ -104,14 +103,17 @@ export function prunePoolStamps(): void {
  * A project as a build unit, so it goes through the same freshness check as everything else.
  *
  * **Keyed by pool, and the command is why.** A suite with an expensive half is two units over one input set,
- * and until 2026-10-02 they hashed the same preimage: `poolUnitFor` set no `command`, so the two differed only
- * in the filename their stamp was written under. `unitStaleReason` consults nothing but the fingerprint — by
- * design, since it recomputes its own side — so the only place an identity can live is the preimage, which is
- * what `BuildUnit.command` is for.
+ * and until 2026-10-02 they hashed the same preimage — so a stamp read under the wrong key came out *fresh*,
+ * which is the expensive half skipped on the fast half's record. `unitStaleReason` consults nothing but the
+ * fingerprint, by design, since it recomputes its own side: the only place an identity can live is the
+ * preimage, which is what `BuildUnit.command` is for.
  *
  * Pool rather than half, because `host` and `pack` are both the fast half and run differently. The text is what
  * it would take to run *this* suite alone in this pool, taken from the pool's own `run` so that nothing
  * restates how a pool runs: it does not vary with which other suites a given run found stale.
+ *
+ * So **a suite that moves pools re-runs**, being run a different way — where the stamp's path, keyed by the
+ * half, would have called that the same record. Undo this and the two halves share one preimage again.
  */
 export const poolUnitFor = (suite: UnitSuite, pool: Pool): BuildUnit => ({
   inputs: suiteInputs(suite, POOLS[pool].half).map((input) => path.join(REPO_ROOT, input)),
