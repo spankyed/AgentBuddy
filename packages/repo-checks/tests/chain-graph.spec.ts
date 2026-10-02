@@ -242,4 +242,29 @@ describe('every spawn an orchestrator makes is bounded', () => {
   it('every chain step declares what it costs healthy', () => {
     expect(CHAIN_STEPS.filter((step) => step.seconds === undefined).map((step) => step.name)).toEqual([]);
   });
+
+  /**
+   * What licenses `PACKAGES_PREBUILT_ENV`, which the chain sets on every step but `packages:ensure`.
+   *
+   * Under that flag a package found stale is reported rather than rebuilt, and that is only the right answer
+   * when the step cannot be the one with building left to do — which is a property of this graph, not of the
+   * step table: nothing declares an edge to `packages:ensure`, the edges come from its outputs meeting another
+   * step's inputs, and the ordering is transitive (`test:unit:host` reaches it through `compile`). So a new
+   * step that reads none of the built packages would be unordered against it, run beside it, and refuse on a
+   * package the other step is still building.
+   *
+   * The flag had no writer between 2026-09-24 and 2026-10-02, so `PackagesWentStale` could not be thrown and a
+   * package rewritten under a reader raced a rebuild instead. This is the condition that keeps it honest.
+   */
+  it('orders every other step after packages:ensure, which is what lets the rest assume it ran', () => {
+    const reaches = (name: string, seen = new Set<string>()): boolean =>
+      dependsOn(CHAIN_STEPS.find((step) => step.name === name)!).some((need) =>
+        need === 'packages:ensure' || (!seen.has(need) && (seen.add(need), reaches(need, seen))));
+
+    const others = CHAIN_STEPS.filter((step) => step.name !== 'packages:ensure');
+    expect(others.length, 'no steps besides packages:ensure, so this would pass over nothing').toBeGreaterThan(1);
+    expect(others.filter((step) => !reaches(step.name)).map((step) => step.name),
+      'these steps can run beside packages:ensure, so telling them the packages are already built is a claim '
+      + 'the graph does not support — they would refuse on a package it is still building').toEqual([]);
+  });
 });

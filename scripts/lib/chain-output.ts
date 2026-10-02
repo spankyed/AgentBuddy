@@ -420,9 +420,12 @@ export function shouldClassify(run: {
  * actually happened, and three lanes with nine steps cached is none at all.
  *
  * A pass is also the dangerous output: it is the one a reader can mistake for the chain being fine. It says
- * "fails" in the sentence, the exit code stays 1, and the retry writes no stamp — `run` rather than
- * `runAndStamp` — so the next chain has to do the step again. A green-on-retry nobody sees is how a flake
- * becomes rot, and all three of those are what stop this feature making the repo worse than not having it.
+ * "fails" in the sentence, the exit code stays 1, and the retry records nothing — `run` rather than
+ * `runAndStamp` for the chain's own stamp, and `DIAGNOSTIC_RUN_ENV` for a step that caches inside itself —
+ * so the next chain has to do the step again. The second half was missing until 2026-10-02, and a laned
+ * failure of `test:unit:host` went green on the next chain having run no tests at all. A green-on-retry nobody
+ * sees is how a flake becomes rot, and those are what stop this feature making the repo worse than not having
+ * it.
  */
 export function classifyLine(retry: { readonly code: number; readonly ms: number; readonly timedOut?: true }): string {
   const took = `${(retry.ms / 1000).toFixed(1)}s`;

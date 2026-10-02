@@ -1069,7 +1069,17 @@ export async function runPackageBuild(workspace: string, build: () => void | Pro
 }
 
 /**
- * Thrown where the caller set `ABUDDY_PACKAGES_PREBUILT=1` and a package went stale anyway: something
+ * Set by a caller that has already built the publishable packages, so staleness under it is the tree moving
+ * mid-run rather than work left to do. `npm run chain` sets it on every step but `packages:ensure`, which is
+ * the step that does the building — and what licenses that is a property of the chain's graph: all 27 other
+ * steps are transitively ordered after it (`chain-graph.spec.ts` holds this, and it is what would have to
+ * change first). It had no writer at all from 2026-09-24 until 2026-10-02, so the refusal below could not
+ * happen and a package rewritten under a reader raced a rebuild instead of being reported.
+ */
+export const PACKAGES_PREBUILT_ENV = 'ABUDDY_PACKAGES_PREBUILT';
+
+/**
+ * Thrown where the caller set `PACKAGES_PREBUILT_ENV=1` and a package went stale anyway: something
  * rebuilt or edited it while this run was reading it. `npm run chain` sets it for its parallel steps,
  * because the alternative is two of them rebuilding one `dist` at once.
  */
@@ -1100,7 +1110,7 @@ export function ensurePackagesBuilt(): void {
   // means the tree moved mid-run and whatever this process is about to read is half-written. Building it
   // would race the writer; saying so stops two processes fighting over one dist and reports the real
   // problem instead of the build error it turns into.
-  if (process.env.ABUDDY_PACKAGES_PREBUILT === '1') {
+  if (process.env[PACKAGES_PREBUILT_ENV] === '1') {
     throw new PackagesWentStale(stale);
   }
   // Synchronous: a message written just before the process exits must not sit in a pipe's buffer
