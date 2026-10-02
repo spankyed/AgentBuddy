@@ -73,7 +73,7 @@ export const TYPECHECK_LEGS: readonly Leg[] = [
   { name: 'exports:check', command: 'npm run exports:check', seconds: 1 },
   { name: 'schema:check', command: 'npm run schema:check', seconds: 0.5 },
   { name: 'api:stamp', command: 'npm run api:stamp', scope: 'repo', seconds: 0.7 },
-  { name: 'typecheck:scripts', command: 'npm run typecheck:scripts', scope: 'repo', seconds: 2.6 },
+  { name: 'typecheck:scripts', command: 'npm run typecheck:scripts', scope: 'repo', seconds: 4 },
   { name: 'typecheck:cli', command: 'npm run typecheck:cli', seconds: 2.7 },
   { name: 'typecheck:pack', command: 'npm run typecheck:pack', seconds: 4.8 },
   { name: 'typecheck:main', command: 'npm run typecheck:main', seconds: 1.0 },

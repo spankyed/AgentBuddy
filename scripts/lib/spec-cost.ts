@@ -13,6 +13,7 @@
  */
 import * as fs from 'node:fs';
 import * as path from 'node:path';
+import { movedBeyondBand } from './measure.ts';
 
 /**
  * Where a suite's record lives, relative to the repo root. One per package rather than one for the repo:
@@ -184,7 +185,6 @@ export const INTEGRATION_SUFFIX = '.integration.spec.ts';
  * put, so 400 -> 480 -> 576 exceeds it on the third step rather than never.
  */
 export const SETTLED_MS = 300;
-export const SETTLED_FRACTION = 0.35;
 
 /**
  * Whether a fresh measurement says something the record does not already say.
@@ -198,7 +198,7 @@ export const SETTLED_FRACTION = 0.35;
 export const moved = (file: string, recorded: number | undefined, measured: number): boolean => {
   if (recorded === undefined) return true;
   if (halfFor(file, measured) !== halfFor(file, recorded)) return true;
-  return Math.abs(measured - recorded) > Math.max(SETTLED_MS, SETTLED_FRACTION * recorded);
+  return movedBeyondBand(recorded, measured, SETTLED_MS);
 };
 
 /**

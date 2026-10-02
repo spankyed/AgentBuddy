@@ -1,5 +1,5 @@
 {
-  "measuredAt": "2026-10-01T20:17:15.675Z",
+  "measuredAt": "2026-10-02T00:44:33.843Z",
   "costs": {
     "tests/api-report-stamp.spec.ts": 68,
     "tests/bounded-spawn.integration.spec.ts": 2059,
@@ -24,6 +24,7 @@
     "tests/pack-test-config.spec.ts": 169,
     "tests/packaged-app-files.spec.ts": 177,
     "tests/published-imports.spec.ts": 9,
+    "tests/record-seconds.spec.ts": 14,
     "tests/repo-check-boundary.spec.ts": 1060,
     "tests/repo-files.spec.ts": 213,
     "tests/repro.spec.ts": 24,

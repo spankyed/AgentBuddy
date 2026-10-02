@@ -536,7 +536,7 @@ export const SUITE_READS: Record<string, { packages?: true; pack?: true; repo?: 
  * seconds went rather than being new work. It feeds two kill budgets, `budgetFor` here and the pool's own inner
  * spawn (`test-unit-pool.ts`), so it is the cost of the whole pool and not of a partial run.
  */
-export const POOL_SECONDS: Record<'host' | 'pack' | 'integration', number> = { host: 42, pack: 30, integration: 60 };
+export const POOL_SECONDS: Record<'host' | 'pack' | 'integration', number> = { host: 42, pack: 42, integration: 60 };
 
 /**
  * What one unit suite's last pass depended on: its own workspace, its dependencies' source, whatever build

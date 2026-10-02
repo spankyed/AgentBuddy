@@ -46,6 +46,8 @@ import * as path from 'node:path';
 import { changedInputs, firstChange, freshnessSweep, INPUTS_CHANGED, REPO_ROOT, stampedRun, stampRecord, unitStaleReason, type BuildUnit } from '@abuddy/host/build/packages-built';
 import { CHAIN_STEPS, type ChainStep, chainSteps, conflictsOf, MEASURED_AT_LANES, orderedSteps } from './lib/chain-steps.ts';
 import { commandText, rootScripts } from './lib/npm-scripts.ts';
+import { IDLE_FLOOR, idleNow, movedBeyondBand, refusesAsBusy } from './lib/measure.ts';
+import { recordSeconds } from './lib/record-seconds.ts';
 import { schedule } from './lib/chain-schedule.ts';
 import { criticalPath, driftedSteps, willNotCache } from './lib/step-timing.ts';
 import { briefly, classifyLine, declaredAt, dim, driftReport, DRY_REASON_COLUMN, howLong, identicalRewrites, marker, oneLine, REASON_COLUMN, shouldClassify, staleLines, STEP_NAME_WIDTH, TIME_COLUMN, whenChanged, wrapAt, writerOf } from './lib/chain-output.ts';
@@ -458,11 +460,67 @@ async function main(): Promise<void> {
   const report = driftReport(driftedSteps(steps, measuredMs), lanes, MEASURED_AT_LANES, all);
   if (report !== '') console.log(report);
 
+  if (process.argv.includes('--record')) recordTheCosts(steps, measuredMs, lanes, all);
+
   console.log(`\n${verdict} in ${secs(Date.now() - started - classifyMs)}${reran}${skipped}${lanes > 1 ? ` with ${lanes} lanes` : ''}${floor}`);
   // Not process.exit(): it drops whatever stdout has still to flush, and the failing step's captured output
   // printed just above is the one thing here worth reading. Measured: piped, process.exit() delivers 64KB
   // of a 500KB write, and @app/default-setup's suite output alone is 654KB.
   process.exitCode = outcome.failed ? 1 : 0;
+}
+
+/**
+ * `--record`: write each step's measured cost back into the table it is declared in.
+ *
+ * The update half of a recorded artifact that had only a check. `driftReport` has always printed the
+ * value to write; this writes it, under the three things a sample needs and a derivation does not.
+ *
+ * **It needs `--all`**, because a cached step is not a measurement — recording its 0s would give a step
+ * that builds a budget sized for a step that does not, which is the mistake `seconds`' own doc describes
+ * someone already making. **It refuses a busy machine**, because what you would record then is the
+ * machine; `--force` is the deliberate override and says so. **And it moves a number only past the band**,
+ * because a sample re-measured on an idle box still wanders, and rewriting a row that already agrees is
+ * the churn the band exists to prevent.
+ *
+ * The band here is tighter than the one the report uses. `driftReport` speaks at twice the declared cost,
+ * chosen so a slow machine does not nag; a record wants to track reality, so it follows `SETTLED_FRACTION`
+ * with a one-second floor. They differ on purpose, which is why this prints everything it wrote.
+ */
+function recordTheCosts(steps: readonly ChainStep[], measuredMs: ReadonlyMap<string, number>,
+  lanes: number, all: boolean): void {
+  if (!all) {
+    console.log('\n--record needs --all: a cached step reports no time, and recording that would size a budget from it.');
+    return;
+  }
+  if (lanes !== MEASURED_AT_LANES) {
+    console.log(`\n--record refused: these costs are the chain's at ${MEASURED_AT_LANES} lanes and this ran at ${lanes}.`);
+    return;
+  }
+  const idle = idleNow();
+  if (refusesAsBusy({ idle, floor: IDLE_FLOOR, force: process.argv.includes('--force') })) {
+    console.log(`\n--record refused: the machine is ${Math.round(idle * 100)}% idle and this needs ${Math.round(IDLE_FLOOR * 100)}%.`);
+    console.log('  What you would record now is the machine. Wait, or pass --force and know the number is forced.');
+    return;
+  }
+  // Under a second is not a measurement of the step's work, and the one it would corrupt is named in
+  // `seconds`' own doc: `packages:ensure` returns in 0.3s with the packages fresh and takes 14s when it
+  // builds, so recording the 0 gives a step that builds a budget sized for a step that does not. The
+  // first run of this did exactly that. `driftedSteps` skips the same measurements for the same reason.
+  const measured = new Map([...measuredMs]
+    .map(([name, ms]) => [name, Math.round(ms / 1000)] as const)
+    .filter(([, seconds]) => seconds >= 1));
+  const declared = new Map(steps.flatMap((step) => (step.seconds === undefined ? [] : [[step.name, step.seconds] as const])));
+  // One second, not `SETTLED_MS`: these are seconds, and the floor is what stops the fraction chasing
+  // noise on a step that costs less than a second to begin with
+  const edits = recordSeconds(measured, declared, (was, now) => movedBeyondBand(was, now, 1));
+  if (edits.length === 0) {
+    console.log('\nevery step cost what the table says, within the band — nothing recorded');
+    return;
+  }
+  console.log(`\nrecorded ${edits.length} step cost${edits.length === 1 ? '' : 's'}:`);
+  for (const { step, from, to, file } of edits) {
+    console.log(`  ${step.padEnd(STEP_NAME_WIDTH)} ${from}s -> ${to}s   ${file}`);
+  }
 }
 
 // A throw here is a bug in the chain, not a failing check, and the two must not look alike
