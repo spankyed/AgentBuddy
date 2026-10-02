@@ -47,6 +47,11 @@ external one is the more capable of the two; the built-in one carries `seedPolic
 tsup generating a loaders module and bundling default-setup's backend into the api bundle
 (`api/tsup.config.ts:5,11`); and default-setup's own `abuddy build`.
 
+Of those 46 lines, the alias half has **no remaining user**: nothing in the tree imports
+`@default-setup/…` except the virtual module's own generated import, because packs name their own modules
+with `#` subpath imports now. So the renderer-side mechanism actually in play is ~25 lines, and the part of
+it worth keeping is smaller still — see *Frontend HMR* below.
+
 **Two discovery sources in the schema reader.** `database/schema.ts` reads published built-in snapshots
 from `hostPacksDir` (`:67-72`, `:147`) *and* installed external manifests, with a `degraded` fallback at
 `:156` for when the first is empty — a branch that exists only because a built-in pack's snapshot can be
@@ -84,10 +89,76 @@ condition, so the editor already type-checks it against `dist` — the pack-auth
 that the *renderer's* Vite compiles its frontend from source with the condition, so the editor and the
 running dev app resolve differently. One kind of pack removes that fork.
 
-**The one real loss** is instant frontend HMR with no extra process: today `npm start` alone hot-reloads
-default-setup's frontend from source. Afterwards it needs the pack's dev server running too. That is a
-workflow change rather than a capability loss, and it is the workflow every other pack author has — which
-makes the change dogfooding as well as deletion.
+**Frontend HMR is the one open design question**, and it has its own section below. The short of it: HMR
+today has nothing to do with being built-in — it works because a *static* import puts the pack's modules in
+the renderer's own Vite graph — so the key can change without the concept surviving.
+
+## Frontend HMR: re-key the plugin, do not delete it
+
+### Why the built-in path has HMR
+
+`builtInPacksPlugin` generates a module of **static** imports:
+
+```js
+import _pack0 from '@default-setup/__generated__/pack-entry-fe';
+export default { 'default-setup': () => Promise.resolve({ default: _pack0 }) };
+```
+
+Statically analysable, so Vite compiles the pack's `.vue` and `.ts` into the renderer's module graph and
+HMR is simply the renderer's own. The external path cannot get that, because the loader does
+`import(/* @vite-ignore */ url)` on a `pack://` URL
+(`renderer/src/adapters/pack-frontends.ts:7`) — and `@vite-ignore` is exactly *"Vite, do not own this"*.
+
+**That capability depends on the pack's source being on disk and resolvable, not on the pack being shipped
+with the app.** Those are two different facts that the `builtIn` flag currently conflates.
+
+### What the external path already has
+
+More than expected (`abuddy-cli/src/commands/run.ts:325-360`):
+
+- `@vitejs/plugin-vue` — genuine SFC HMR rather than a reload.
+- `packExternalsPlugin(root)` with `optimizeDeps.exclude: getSharedFeDeps(root)` — Vue, `@abuddy/sdk` and
+  `@abuddy/ui` resolve to the host's copies, so **one Vue instance**.
+- `hmr: { protocol: 'ws', host: 'localhost' }`, `cors: true`.
+- The backend watcher **skips `.vue` and `.css`** (`run.ts:393`), which is the author saying Vite owns them.
+- The proxy is a full mirror, not a whitelist: `devServerUrl` returns `http://localhost:${port}${filePath}`
+  for any path (`dev-server.ts:76`), so `pack://<id>/@vite/client` resolves and Vite's root-relative update
+  imports resolve back through the same origin.
+- **No CSP is set anywhere** in main or the renderer, so the client's `ws://localhost:<port>` socket is not
+  blocked.
+
+So the mechanism is complete on paper. Whether component-level HMR actually lands through it is the
+measurement in *Verification* below, and it is a prerequisite rather than a result.
+
+### The design
+
+**Re-key the plugin from `manifest.builtIn` to "this pack's source is on disk and this is a dev build."**
+
+- `builtInPacksPlugin` becomes a **dev-only** `virtual:dev-pack-frontends`, generated from a list of local
+  pack directories: in this repo the workspace packs that have an FE entry, plus any directory named by
+  `ABUDDY_DEV_PACK_DIRS`, so an external author's checkout qualifies on the same terms.
+- It is **absent from the production config**, so production has exactly one FE load path (`pack://`) and
+  there is no runtime branch to keep honest.
+- The pack frontend loader prefers the dev map when a pack id is in it, else `pack://`. One `if`, in dev.
+- The alias half goes; the virtual module resolves absolute paths, since nothing imports `@<pack-id>/…`.
+
+What this buys over simply using `abuddy run`:
+
+- default-setup keeps instant Vue HMR from `npm start`, with no second process.
+- **External pack authors in a checkout get it too**, which they do not today — so this is a devex
+  improvement rather than a trade.
+- The concept of built-in is still gone: nothing reads `manifest.builtIn`, the privilege is not in the
+  manifest, and it cannot leak into production because the plugin is not there.
+
+Why this is not the built-in path returning in disguise: it is keyed on a dev-time fact about where source
+lives, it is available to every pack on equal terms, and it has no production counterpart. The thing being
+removed is keyed on a manifest flag that also decides loading, seeding, reloading and shipping.
+
+**The hazard to name:** with a dev source import the frontend comes from source while the backend comes
+from the installed copy, so a feature added to `abuddy.json` without a rebuild shows a plugin whose system
+is not registered. That hazard exists today for the same reason (renderer from source, api from
+`dist/runtime/index.cjs`), and `abuddy run`'s `abuddy.json` watcher regenerating entries (`run.ts:377`) is
+the mitigation to keep.
 
 ## "Runs first" is already derived
 
@@ -186,16 +257,18 @@ emitted during pack loading would no longer be captured, which is the thing `ear
 
 ### 3. Ship and install, instead of discover and bundle
 
-- `main/.../config.ts:103` passes `SHIPPED_PACKS_DIR`.
+- `main/src/modules/api-server/config.ts:103` passes `SHIPPED_PACKS_DIR`.
 - `api/src/runtime/index.ts` installs each shipped pack that is absent or out of date, then loads
   everything through the one external path. `publishHostPackOutput`/`pruneHostPackOutputs` and
   `hostPacksDir` go; `database/schema.ts` reads installed packs only, and the `degraded` branch at `:156`
   goes with them.
-- Delete `builtInPackLoadersModule` from `api/tsup.config.ts` and `builtInPacksPlugin` from
-  `renderer/vite.config.ts`. Keep the `@<pack-id>/` alias question in mind: it is how the renderer resolves
-  a built-in pack's `src/`, and nothing needs it once the frontend is loaded over `pack://`.
-- `abuddy build` for default-setup must now produce `dist/runtime/fe.js`. `npm start`'s skip-the-FE-bundle
-  shortcut either goes or becomes "start the pack's dev server instead".
+- Delete `builtInPackLoadersModule` from `api/tsup.config.ts`; the api bundle stops carrying a pack's
+  backend.
+- **Re-key** `builtInPacksPlugin` rather than deleting it, per *Frontend HMR* above: dev-only,
+  `virtual:dev-pack-frontends`, generated from local pack directories, absent from the production config.
+  Its `@<pack-id>/` alias half goes either way, having no remaining user.
+- `abuddy build` for default-setup must now produce `dist/runtime/fe.js`, which is what production loads.
+  `npm start`'s skip-the-FE-bundle shortcut stays honest, because in dev the frontend comes from source.
 
 **The upgrade rule, which is new.** On a version bump the shipped copy is newer than the installed one, so
 boot must compare and re-install. Cheapest honest version: compare the shipped pack's integrity hash
@@ -250,10 +323,18 @@ each deletion says which it was in the commit message.
 installs and seeds; second run installs nothing and seeds nothing. `DEBUG_E2E=1 npm test -- smoke` covers
 the four things every other check assumes, and `tests/e2e/CLAUDE.md` has the instrumentation method.
 
-**Devex, measured rather than asserted:** time `abuddy run` against default-setup for one frontend edit and
-one backend edit, and compare with today's `npm start` loop. If the frontend edit is materially slower than
-today's source HMR, that number decides whether the renderer keeps a dev-only alias for a pack it is
-developing — which would be one kind of pack with a dev convenience, not two kinds.
+**The prerequisite measurement, before any of this is built.** Run `abuddy run` against a fixture pack with
+a Vue component, edit the component, and watch what happens:
+
+| outcome | what it means |
+|---|---|
+| component-level update, state preserved | the `pack://` path is a real fallback, and the dev source import is a convenience |
+| full page reload | usable, but the dev source import earns its place |
+| nothing | the dev source import is **required** — and check the `res.ok` fallback in `PackProtocol.ts` first, which is the likeliest cause |
+
+**Devex, measured rather than asserted:** time one frontend edit and one backend edit through each loop —
+`npm start` with the dev source import, and `abuddy run` — so the plan's claim that the backend loop is
+already equivalent is a number rather than a reading of `reloadBuiltInPack`.
 
 ## Risks
 
@@ -266,6 +347,18 @@ returning in disguise, and should be rejected unless the install proves unreliab
 **The `logs` ref rename touches stored settings.** Item 2's migration is the only way a user's logs
 settings survive. `0.3.15.ts` is the precedent and the test to copy
 (`abuddy-host/tests/migrations/plugin-settings-0.3.15.spec.ts`).
+
+**The `pack://` proxy masks a dev-server miss.** `PackProtocol.ts:60-69` does `if (res.ok)` and otherwise
+falls through to reading the installed pack directory, so a 404 from a running dev server silently serves
+the **stale built** `dist/runtime/fe.js`. That is the worst shape a devex bug can take — you edit, nothing
+changes, and nothing says why. Once a marker says a dev server is running for a pack, a miss belongs as an
+error naming the path. Worth fixing whichever way the HMR question lands, and it is a candidate cause if the
+measurement below finds HMR not working today.
+
+**A pack's `feStyles` arrives as a separate `<link>`** (`packFrontendIO.styles.add`), where in dev Vite
+serves CSS through the JS graph. That link is either absent or stale for a pack being developed. It is
+harmless today because the packs using that path are not the ones with HMR; it stops being harmless the
+moment default-setup loads this way.
 
 **`dist/runtime/fe.js` becomes load-bearing for the app's own frontend.** A pack FE bundle that fails to
 build currently costs an external pack its UI; afterwards it costs the app its UI. `compile` already runs
