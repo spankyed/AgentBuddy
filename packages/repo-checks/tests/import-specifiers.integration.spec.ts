@@ -23,8 +23,10 @@ afterEach(() => new Promise<void>((resolve) => { setImmediate(resolve); }));
 
 /** scripts/check-import-specifiers.ts, over a temp tree holding the modules the checks resolve against */
 let root: string;
+let written: Set<string>;
 beforeEach(() => {
   root = fs.mkdtempSync(path.join(os.tmpdir(), 'abuddy-specifiers-'));
+  written = new Set();
   for (const [file, content] of Object.entries({
     'query.ts': 'export const q = 1;',
     'view.tsx': 'export const v = 1;',
@@ -37,8 +39,28 @@ afterEach(() => {
   fs.rmSync(root, { recursive: true, force: true });
 });
 
-/** A file at `file` under the temp root */
+/**
+ * A file at `file` under the temp root, and **each path once per case**.
+ *
+ * A second write wins in silence, which is how a case that proves something with two files becomes a case with
+ * one. Measured 2026-10-02: renaming the pack fixture's feature folded the per-file-target case below onto a
+ * single path, and the only reason it was not a green run testing half of what it claims is that the case
+ * happens to assert a count first. The same collapse through an object literal is a typecheck error (TS1117)
+ * and a lint error; through two calls here it was nothing at all, in a file that writes some two hundred.
+ *
+ * A case that means to replace a file it already wrote says so with `rewriteAt`.
+ */
 function writeAt(file: string, content: string): void {
+  if (written.has(file)) {
+    throw new Error(`${file} was already written by this case, and a second write would replace it in silence. `
+      + 'Two cases of one path is usually a collapsed fixture; use rewriteAt if replacing it is the point.');
+  }
+  written.add(file);
+  rewriteAt(file, content);
+}
+
+/** The same write, for the one thing writeAt forbids: replacing a file this case already wrote, on purpose */
+function rewriteAt(file: string, content: string): void {
   fs.mkdirSync(path.dirname(path.join(root, file)), { recursive: true });
   fs.writeFileSync(path.join(root, file), content);
 }
@@ -46,6 +68,11 @@ function writeAt(file: string, content: string): void {
 /** A file under the temp root's src/, which the checks below are pointed at */
 function write(file: string, content: string): void {
   writeAt(path.join('src', file), content);
+}
+
+/** The same, replacing what a case's own setup wrote: the perturbation a "flags X" case is made of */
+function rewrite(file: string, content: string): void {
+  rewriteAt(path.join('src', file), content);
 }
 
 /**
@@ -334,7 +361,7 @@ describe('findUpwardImports', () => {
     ['host', { dependencies: { '@abuddy/ears': '*', '@abuddy/sdk': '*' }, devDependencies: { '@abuddy/cli': '*' } }, 'layers/host/package.json: devDependencies: @abuddy/cli'],
   ])("flags an @abuddy package %s's manifest may not declare", (pkg, manifest, problem) => {
     allowed();
-    writeAt(path.join('layers', pkg, 'package.json'), JSON.stringify({ name: 'x', ...manifest }));
+    rewriteAt(path.join('layers', pkg, 'package.json'), JSON.stringify({ name: 'x', ...manifest }));
     expect(findUpwardImports(layers, root)).toEqual([problem]);
   });
 
@@ -344,7 +371,7 @@ describe('findUpwardImports', () => {
     ['host', { dependencies: { '@abuddy/sdk': '*' } }, 'layers/host/package.json: undeclared: @abuddy/ears'],
   ])('flags an @abuddy package %s imports without declaring it', (pkg, manifest, problem) => {
     allowed();
-    writeAt(path.join('layers', pkg, 'package.json'), JSON.stringify({ name: 'x', ...manifest }));
+    rewriteAt(path.join('layers', pkg, 'package.json'), JSON.stringify({ name: 'x', ...manifest }));
     expect(findUpwardImports(layers, root)).toEqual([problem]);
   });
 
@@ -478,7 +505,7 @@ describe('findLmdbImports', () => {
     ['tests/packs/external-pack/tests/unit/memos.spec.ts', "vi.mock('lmdb');"],
   ])('flags %s', (file, code) => {
     allowed();
-    write(file, code);
+    rewrite(file, code);
     expect(findLmdbImports(rules, root)).toEqual([expect.stringMatching(new RegExp(`^src/${file}:1: `))]);
   });
 
@@ -624,8 +651,8 @@ const FIRES: Record<ImportRuleId, () => string[]> = {
     const layers = LAYERS.filter((l) => modelled.includes(path.basename(l.dir)))
       .map((l) => ({ ...l, dir: `layers/${path.basename(l.dir).replace(/^abuddy-/, '')}` }));
     // Every layer has to be there, since the rule walks all of them; only the lowest one imports upward
-    for (const { dir } of layers) layer(dir, {}, {});
-    layer('layers/ears', {}, { 'src/index.ts': "import { services } from '@abuddy/sdk/services';\n" });
+    const upward = { 'src/index.ts': "import { services } from '@abuddy/sdk/services';\n" };
+    for (const { dir } of layers) layer(dir, {}, dir === 'layers/ears' ? upward : {});
     return findUpwardImports(layers, root);
   },
   findUnimportedDependencies: () => {
@@ -911,7 +938,7 @@ describe('CHECKS', () => {
   it('reads the file it was pointed at and not the pack around it', () => {
     packFixture({
       'src/features/memos/be/system.ts': "console.log('one');",
-      'src/features/threads/be/system.ts': "console.log('two');",
+      'src/features/calendar/be/system.ts': "console.log('two');",
     });
     const both = packRule('backend-console', PACK_SRC, root);
     expect(both, 'both offences must be reported over the half, or pointing at one of them proves nothing')
@@ -1029,10 +1056,10 @@ describe('CHECKS', () => {
       id: 'demo-pack', name: 'Demo', version: '1.0.0',
       features: [{ id: 'memos', plugin: { entry: 'src/features/memos/fe/plugin.ts', contract: 'src/features/memos/fe/contract.ts#Contract' } }],
     }));
-    writeAt('pack/src/features/memos/fe/contract.ts', "import type { T } from '../../threads/fe/state.ts';\nexport type Contract = { state: { t: T } };");
+    writeAt('pack/src/features/memos/fe/contract.ts', "import type { T } from '../../calendar/fe/state.ts';\nexport type Contract = { state: { t: T } };");
     writeAt('pack/src/features/memos/fe/plugin.ts', 'export type P = { id: string };');
-    writeAt('pack/src/features/threads/fe/state.ts', 'export type T = { id: string };');
-    const offence = 'pack/src/features/memos/fe/contract.ts:1: ../../threads/fe/state.ts';
+    writeAt('pack/src/features/calendar/fe/state.ts', 'export type T = { id: string };');
+    const offence = 'pack/src/features/memos/fe/contract.ts:1: ../../calendar/fe/state.ts';
     expect(findContractLeafImports(['pack/src'], root)).toEqual([offence]);
     expect(findCrossFeatureImports(['pack/src'], root)).toEqual([offence]);
   });
@@ -1082,12 +1109,12 @@ describe('CHECKS', () => {
     'pack-own-aliases': "import { x } from '@/features/memos/be/x.ts';",
     'own-modules': "import { sendToSystem } from '#generated/events';",
     'repository-casts': 'const notes = repository as unknown as Repositories;',
-    'cross-feature-imports': "import { t } from '#features/threads/fe/state.ts';",
+    'cross-feature-imports': "import { t } from '#features/calendar/fe/state.ts';",
     'contract-leaves': "import type { P } from '#features/memos/fe/plugin.ts';",
   };
 
   /** A second feature for the cross-feature offence to name. Inert, and in every cell so they are all alike. */
-  const SECOND_FEATURE = { 'src/features/threads/fe/state.ts': 'export const t = 1;\n' };
+  const SECOND_FEATURE = { 'src/features/calendar/fe/state.ts': 'export const t = 1;\n' };
 
   /**
    * An unrelated offence elsewhere in every cell's pack, which must survive whatever the cell's own offence does.
@@ -1564,11 +1591,11 @@ describe('findContractLeafImports', () => {
 
   it('flags a leaf that names another feature', () => {
     pack({
-      'features/memos/fe/contract.ts': "import type { T } from '#features/threads/be/types.ts';",
-      'features/threads/be/types.ts': 'export type T = { id: string };',
+      'features/memos/fe/contract.ts': "import type { T } from '#features/calendar/be/types.ts';",
+      'features/calendar/be/types.ts': 'export type T = { id: string };',
       'features/memos/be/contract.ts': 'export type Contract = { outgoing: { type: "A" } };',
     });
-    expect(findContractLeafImports([src], root)).toEqual([`${src}/features/memos/fe/contract.ts:1: #features/threads/be/types.ts`]);
+    expect(findContractLeafImports([src], root)).toEqual([`${src}/features/memos/fe/contract.ts:1: #features/calendar/be/types.ts`]);
   });
 
   it('flags a generated module that is not a leaf itself', () => {
@@ -1639,17 +1666,17 @@ describe('findContractLeafImports', () => {
   /**
    * A hop that is itself a `#features/` import, which is what the walk could not follow until `mappedPathFor`
    * resolved the pack's map: two of `default-setup`'s contract closures ended at one, one of them
-   * `threads/be/types.ts` reaching into `code/`, so nothing past that hop was checked at all.
+   * `calendar/be/types.ts` reaching into `code/`, so nothing past that hop was checked at all.
    */
   it('follows a #features/ hop to #generated/events deeper in the closure', () => {
     pack({
       'features/memos/be/contract.ts': "import type { Ev } from './types.ts';",
-      'features/memos/be/types.ts': "import type { H } from '#features/threads/be/helper.ts';\nexport type Ev = H;",
-      'features/threads/be/helper.ts': "import { untypedBroadcastToPlugin } from '#generated/events.ts';\nexport type H = typeof untypedBroadcastToPlugin;",
+      'features/memos/be/types.ts': "import type { H } from '#features/calendar/be/helper.ts';\nexport type Ev = H;",
+      'features/calendar/be/helper.ts': "import { untypedBroadcastToPlugin } from '#generated/events.ts';\nexport type H = typeof untypedBroadcastToPlugin;",
       'features/memos/fe/contract.ts': 'export type Contract = { state: {} };',
     });
     expect(findContractLeafImports([src], root)).toEqual([
-      `${src}/features/threads/be/helper.ts:1: #generated/events.ts (reached from ${src}/features/memos/be/contract.ts)`,
+      `${src}/features/calendar/be/helper.ts:1: #generated/events.ts (reached from ${src}/features/memos/be/contract.ts)`,
     ]);
   });
 
@@ -1753,12 +1780,13 @@ describe('findCrossFeatureImports', () => {
    */
   it('flags a feature that passes its own frontend on', () => {
     writeAt(`${src}/features/memos/index.ts`, "export { id, memosMachine } from './fe/state';\nexport * from './fe/public';");
-    writeAt(`${src}/features/threads/door.ts`, "import { threadsMachine as machine } from './fe/state';\nimport * as ui from './fe/canvas';\nexport { machine };\nexport default ui;");
+    writeAt(`${src}/features/calendar/door.ts`, "import { threadsMachine as machine } from './fe/state';\nimport * as ui from './fe/canvas';\nexport { machine };\nexport default ui;");
+    // Path order, which is the walk's (`sourceFiles` sorts), with each file's lines ascending inside it
     expect(findCrossFeatureImports([src], root)).toEqual([
+      `${src}/features/calendar/door.ts:1: ./fe/state`,
+      `${src}/features/calendar/door.ts:2: ./fe/canvas`,
       `${src}/features/memos/index.ts:1: ./fe/state`,
       `${src}/features/memos/index.ts:2: ./fe/public`,
-      `${src}/features/threads/door.ts:1: ./fe/state`,
-      `${src}/features/threads/door.ts:2: ./fe/canvas`,
     ]);
   });
   /**
@@ -1792,7 +1820,7 @@ describe('findCrossFeatureImports', () => {
    * quote made a commented-out import look real and failed a build naming a comment".
    *
    * Not hypothetical. Three commented-out imports already sit in `default-setup`'s SFCs, in
-   * `features/library/fe/canvas.vue` and `features/threads/fe/chat/input.vue`; they are quiet only because they
+   * `features/library/fe/canvas.vue` and `features/calendar/fe/chat/input.vue`; they are quiet only because they
    * point inside their own feature. One pointing at another feature's `fe/` would have failed the build.
    */
   it('reads code, not comments, templates, template literals or styles', () => {
