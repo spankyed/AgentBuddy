@@ -241,7 +241,11 @@ export const LAYERS: { name: string; dir: string; allowed: string[]; forbidden?:
   // CLI, which are above it
   { name: '@abuddy/testing', dir: 'packages/abuddy-testing', allowed: ['@abuddy/ears', '@abuddy/sdk', '@abuddy/host'] },
   // Tooling at the top, so `allowed` forbids nothing — what this row is for is the other half, the manifest:
-  // it imported `@abuddy/ears` and `@abuddy/testing` and declared neither until this row existed
+  // it imported `@abuddy/ears` and `@abuddy/testing` and declared neither until this row existed.
+  //
+  // `@abuddy/ui` is here as the pack FE bundler's *subject* rather than as a dependency of this code: `src`
+  // only ever resolves it by name — the Tailwind content globs, the host-proxy decision (`fe.bundleUi`),
+  // `CHECKOUT_PACKAGES` — and the one real import is a test checking that proxying against the real module.
   { name: '@abuddy/cli', dir: 'packages/abuddy-cli',
     allowed: ['@abuddy/ears', '@abuddy/sdk', '@abuddy/host', '@abuddy/ui', '@abuddy/testing'] },
   // `@abuddy/cli` is declared and imported nowhere: `electron-builder.mjs` packages its published tree and
