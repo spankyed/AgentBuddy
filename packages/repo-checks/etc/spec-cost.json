@@ -1,5 +1,5 @@
 {
-  "measuredAt": "2026-10-02T00:44:33.843Z",
+  "measuredAt": "2026-10-02T11:39:14.077Z",
   "costs": {
     "tests/api-report-stamp.spec.ts": 68,
     "tests/bounded-spawn.integration.spec.ts": 2059,
@@ -21,6 +21,7 @@
     "tests/loop-blocks.spec.ts": 6,
     "tests/measure.spec.ts": 10,
     "tests/orchestrator-exit.spec.ts": 7,
+    "tests/pack-materialisation.spec.ts": 170,
     "tests/pack-test-config.spec.ts": 169,
     "tests/packaged-app-files.spec.ts": 177,
     "tests/published-imports.spec.ts": 9,
