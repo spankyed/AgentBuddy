@@ -254,6 +254,16 @@ Six rules that pay for themselves:
   say: why a non-obvious choice was made, what breaks if you undo it, and the condition that would make a
   recorded tradeoff worth revisiting.
 
+- **A comment justifying something by a past failure must name what prevents that failure now.** If it is
+  this code, say how it fails; if it is something else, name the file; if it is nothing, say nothing checks
+  it. `packages-built.ts`'s *"correct by luck rather than by construction"* and `dep-files.integration`'s
+  *"which a reads-are-declared check cannot notice by construction — that failure is caught by the phase
+  set"* are the shape. The failure mode is inheriting the justification from a plan: `packFixture` was
+  documented as what stops a fixture too thin for a rule to fire, which is a real defect that
+  `import-specifiers.integration` had already closed five days earlier by asserting each rule fires. A
+  repo-wide rule mandating the fixture was then built on that premise and deleted (`487a8c115`). "X is the
+  whole point" cannot be checked; "Y fails when Z" can.
+
 ### What a test may read
 
 **A step says whether it needs the built app, and nothing else about what it may read.** `needsApp: true`
