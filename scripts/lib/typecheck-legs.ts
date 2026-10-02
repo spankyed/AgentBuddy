@@ -30,20 +30,17 @@ export interface Leg {
    */
   readonly scope?: readonly string[] | 'repo';
   /**
-   * Files this leg's compiler reads that its `scope` cannot name — repo-root files belonging to no
-   * workspace, and a file in a workspace this leg does not own.
+   * Files this leg's compiler reads that no workspace scope can name, because they belong to no workspace.
    *
-   * Three legs have any. `typecheck:be`'s three programs each resolve through the root `package.json`,
-   * which `scope: ['api']` cannot express. `typecheck:main` and `typecheck:preload` compile `types/`, the
-   * repo-root ambient declarations — and `preload` reaches one file further, because `types/speech.d.ts`
-   * re-exports from `@abuddy/sdk`'s source while `packages/preload/package.json` declares no dependency on
-   * it, so `workspaceDeps` cannot find the edge.
+   * Three legs have any, and only two kinds of file. `typecheck:be`'s three programs each resolve through
+   * the root `package.json`, which `scope: ['api']` cannot express. `typecheck:main` and `typecheck:preload`
+   * compile `types/`, the repo-root ambient declarations their tsconfigs `include`.
    *
-   * **Naming one file rather than its directory is safe here, and only because the gate watches.** If
-   * `speech-event.d.ts` grows an import, the dep file reports the new read and
-   * `dep-files.integration.spec.ts` fails until this says so. Widening `scope` instead would be worse than
-   * imprecise: that spec derives which leg *owns* a dep file from `scope`, so adding `abuddy-sdk` here would
-   * let this leg vouch for reads of the whole SDK that it never compiles.
+   * **A file inside a workspace does not belong here, and the one that did is gone.** `typecheck:preload`
+   * used to name `packages/abuddy-sdk/src/fe/speech-event.d.ts`, because a `types/speech.d.ts` at the repo
+   * root re-exported it and preload's manifest said nothing about the SDK — an edge no declaration
+   * described, so nothing could derive it. The type is published from `@abuddy/sdk/fe` now and preload
+   * declares the dependency, so `workspaceDeps` finds it like any other.
    *
    * Declared rather than derived from the dep file, for the reason a dep file is never a key — it records
    * what was read *last* time, so a leg that starts reading one would not be invalidated by the thing it
@@ -91,8 +88,7 @@ export const TYPECHECK_LEGS: readonly Leg[] = [
   { name: 'typecheck:pack', command: 'npm run typecheck:pack', seconds: 4.8 },
   // Both compile `../../types/**/*.d.ts` through their own tsconfig `include`
   { name: 'typecheck:main', command: 'npm run typecheck:main', alsoReads: ['types'], seconds: 1.0 },
-  { name: 'typecheck:preload', command: 'npm run typecheck:preload',
-    alsoReads: ['types', 'packages/abuddy-sdk/src/fe/speech-event.d.ts'], seconds: 0.8 },
+  { name: 'typecheck:preload', command: 'npm run typecheck:preload', alsoReads: ['types'], seconds: 0.8 },
   { name: 'check:tiers', command: 'npm run check:tiers', scope: 'repo', seconds: 0.3 },
   { name: 'lint:check', command: 'npm run lint:check', scope: 'repo', seconds: 1.7 },
 ];

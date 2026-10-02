@@ -6,6 +6,7 @@
     // to what the compiler reported reading. `incremental` works with `noEmit`; `composite` does not.
     "incremental": true,
     "tsBuildInfoFile": "../../node_modules/.cache/tsbuildinfo/preload.tsbuildinfo",
+    "customConditions": ["@abuddy/source"],
     "allowSyntheticDefaultImports": true,
     "module": "NodeNext",
     "target": "ESNext",
