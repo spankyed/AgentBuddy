@@ -39,7 +39,7 @@ manifest is one several pack rules cannot speak about at all.
 
 Not the in-memory harness. `setupPackTests` (`@abuddy/testing/harness`) takes a *registration object* and runs
 a pack's code; this materialises a *directory*. Different axes, and conflating them is the mistake
-[`docs/plans/one-pack-fixture.md`](../../docs/plans/one-pack-fixture.md) exists to avoid.
+[`docs/archive/plans/one-pack-fixture.md`](../../docs/archive/plans/one-pack-fixture.md) was written to avoid.
 
 **Not a build, and not an install.** `buildPack(dir)` builds one and the installer places one; both already
 take a directory, so this composes with them rather than growing a `built` or `installed` option. The

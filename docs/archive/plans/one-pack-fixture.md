@@ -1,3 +1,37 @@
+> **Done** (branch `AS/one-pack-fixture`), in the four phases below:
+> `b6e551b5b` the package, `f890484a4` the options, `e48f613b2`/`83f6d498a` the adoption, `fcfbfa835` the
+> guardrail. The text after this block is the plan as written, which means its headline number is wrong; the
+> corrected one is the first thing this records.
+>
+> **98 sites write a pack manifest, not 101, across 55 files — and the count was never the work.** Of the 98,
+> **54** are in the two packages that may import an `@app/*` package, and of those only **28** are a manifest
+> written inline for a tree of their own. **11 of them, in 8 files, became `packFixture`;** the rest are four
+> shapes left alone with a reason each, listed in `packages/pack-fixtures/CLAUDE.md`: a `'{}'` discovery
+> marker, a patch of a pack something else scaffolded, a manifest that *is* the subject with no tree around
+> it, and the installed shape, which is `@abuddy/host`'s artifact. The plan's **Unverified** item — *"that
+> every one of the sites wants the builder"* — resolves to no, and the four shapes are the answer.
+>
+> **The finding worth keeping is that eligibility is a layer question.** The other 44 sites are in
+> `@abuddy/host`, `@abuddy/sdk`, `packages/api` and `@app/default-setup`, which may not import an `@app/*`
+> package at all, so a hand-written manifest there is the only option available. The guardrail therefore
+> derives its scope from which packages *declare* `@app/pack-fixtures` rather than claiming the repo — which
+> is also why it needs no exemption list, and has none.
+>
+> **Three of the four Decisions landed; two options were not built, and the reason is composition.** Decision
+> 3's `built`/`modules` and Decision 4's `beforeBuild` are absent: `buildPack(dir)` already takes a directory,
+> so a caller that must mutate a scaffolded tree between writing and building does it between two calls, and a
+> hook to express that would only be the sequence spelled a second way. What shipped instead is what the
+> literals asked for — `manifest` merging over the default, `rawManifest` verbatim (both at once throws, since
+> a merge cannot express an absent key), `at`, `files` and `nodeModules`.
+>
+> **Phase 4 took the lesson it was written to take.** The predicate reads the syntax tree: fs bindings come
+> from each file's own `node:fs` import however it is spelled, and a finding requires
+> `JSON.stringify(<object literal with an id>)` reaching a write. Measured on the tree it shipped against:
+> 108 files examined, 0 findings, and four mutations watched — reintroducing one hand-written manifest fires
+> by file and line, dropping the object-literal requirement fails three cases *including two allowed shapes*,
+> hard-coding the fs names fails the never-imported-fs control, and emptying the population fails naming
+> itself rather than passing over nothing.
+
 # One way to write a pack fixture
 
 > **Retargeted 2026-10-02 (branch `AS/one-action-cache`), from "a fidelity ladder".** It was compiled
