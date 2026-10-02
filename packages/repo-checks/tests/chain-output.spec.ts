@@ -417,17 +417,18 @@ describe('driftReport', () => {
 });
 
 describe('shouldClassify', () => {
-  const under = { lanes: 3, exclusive: false, timedOut: false, optedOut: false };
+  const under = { ranAlone: false, timedOut: false, optedOut: false };
 
   it('re-runs a step that failed while others were running', () => {
     expect(shouldClassify(under)).toBe(true);
   });
 
-  it('does not, when there was nothing to contend with', () => {
-    // One lane: the step already had the machine
-    expect(shouldClassify({ ...under, lanes: 1 })).toBe(false);
-    // packages:ensure and packages:check run with nothing beside them whatever the lane count
-    expect(shouldClassify({ ...under, exclusive: true })).toBe(false);
+  // One question, asked of the schedule rather than of the table. It took `lanes` and an `exclusive` read off
+  // the step's declared mutexes, and those answered it only while a mutex was global: `conflictsOf` is
+  // non-empty for twelve steps that run beside two dozen others, so all twelve skipped the re-run. A
+  // single-lane run needs no clause of its own — it overlaps nothing, which is this one
+  it('does not, when nothing overlapped it', () => {
+    expect(shouldClassify({ ...under, ranAlone: true })).toBe(false);
   });
 
   it('does not re-run a step that was killed, whose budget it would spend again', () => {

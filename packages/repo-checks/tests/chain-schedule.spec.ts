@@ -79,6 +79,28 @@ describe('schedule', () => {
     expect(r.peak()).toBe(1);
   });
 
+  /**
+   * **Who overlapped whom, which only this loop knows.** A failed step is re-run alone to tell its code
+   * apart from contention, and that is worth the time only when something was running beside it. The chain
+   * predicted the answer from the step's declared mutexes until 2026-10-02 — a different question, and one
+   * that silenced the re-run for twelve steps that each run beside two dozen others.
+   *
+   * `b` is the case that matters: by the time it fails, `a` may already have finished, and it still
+   * overlapped. A snapshot taken at the failure would miss that; recording both directions at dispatch does
+   * not.
+   */
+  it('records what overlapped each step, in both directions', async () => {
+    const r = runner();
+    const steps = [step('a'), step('b'), step('after', ['a', 'b'])];
+    const done = schedule({ steps, lanes: 2, skip: never, run: r.run });
+    await r.drain();
+    const outcome = await done;
+    expect([...outcome.peers.get('a') ?? []]).toEqual(['b']);
+    expect([...outcome.peers.get('b') ?? []]).toEqual(['a']);
+    // It waited for both, so by the time it ran the lanes were its own
+    expect([...outcome.peers.get('after') ?? []]).toEqual([]);
+  });
+
   it('holds a conflicting step until the lanes are free', async () => {
     const r = runner();
     const steps = [step('a'), step('b'), step('lock', [], { conflicts: ['a', 'b'] })];

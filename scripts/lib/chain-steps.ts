@@ -219,27 +219,52 @@ const consumes = (step: ChainStep, output: string): boolean =>
  */
 const derivedEdges = new WeakMap<readonly ChainStep[], Map<string, readonly string[]>>();
 
+/**
+ * The steps whose edges are being computed right now, per list — because the memo cannot say.
+ *
+ * `memo.set` happens after the reduction returns, so a step mid-computation has no entry, and the
+ * reduction asks `dependsOn` of its ancestors: through a cycle that re-enters a computation already on
+ * the stack and recurses until the stack ends. `orderedSteps` has the cycle check that should catch it and
+ * never gets the chance, because `planSteps` asks for every step's edges first — so the error for a
+ * circular graph was `RangeError: Maximum call stack size exceeded`, and the one case that covered cycles
+ * never reached this code (a two-step cycle leaves `direct` with one element, and the pairwise filter
+ * short-circuits before `reachable` is called).
+ *
+ * Removed in a `finally` because this map outlives a throw: it is keyed on the list, which is never
+ * cleared, so a name left behind would report a cycle on the next question about the same table.
+ */
+const inProgress = new WeakMap<readonly ChainStep[], Set<string>>();
+
 export function dependsOn(step: ChainStep, steps: readonly ChainStep[] = CHAIN_STEPS): readonly string[] {
   const memo = derivedEdges.get(steps) ?? new Map<string, readonly string[]>();
   derivedEdges.set(steps, memo);
   const already = memo.get(step.name);
   if (already !== undefined) return already;
 
-  const direct = steps
-    .filter((other) => other.name !== step.name && (other.outputs ?? []).some((output) => consumes(step, output)))
-    .map((other) => other.name);
-  // Transitively reduced, so the graph reads like the table did: `compile` needs `packages:ensure` and
-  // everything after it needs `compile`, rather than every step naming every ancestor.
-  const reachable = (name: string, seen = new Set<string>()): Set<string> => {
-    const other = steps.find((candidate) => candidate.name === name);
-    for (const next of other ? dependsOn(other, steps) : []) {
-      if (!seen.has(next)) { seen.add(next); reachable(next, seen); }
-    }
-    return seen;
-  };
-  const edges = direct.filter((name) => !direct.some((other) => other !== name && reachable(other).has(name))).sort();
-  memo.set(step.name, edges);
-  return edges;
+  const open = inProgress.get(steps) ?? new Set<string>();
+  inProgress.set(steps, open);
+  // The same wording `orderedSteps` uses, so a circular graph reads the same whichever door finds it
+  if (open.has(step.name)) throw new Error(`Chain steps form a cycle through ${step.name}`);
+  open.add(step.name);
+  try {
+    const direct = steps
+      .filter((other) => other.name !== step.name && (other.outputs ?? []).some((output) => consumes(step, output)))
+      .map((other) => other.name);
+    // Transitively reduced, so the graph reads like the table did: `compile` needs `packages:ensure` and
+    // everything after it needs `compile`, rather than every step naming every ancestor.
+    const reachable = (name: string, seen = new Set<string>()): Set<string> => {
+      const other = steps.find((candidate) => candidate.name === name);
+      for (const next of other ? dependsOn(other, steps) : []) {
+        if (!seen.has(next)) { seen.add(next); reachable(next, seen); }
+      }
+      return seen;
+    };
+    const edges = direct.filter((name) => !direct.some((other) => other !== name && reachable(other).has(name))).sort();
+    memo.set(step.name, edges);
+    return edges;
+  } finally {
+    open.delete(step.name);
+  }
 }
 
 /**
@@ -374,6 +399,9 @@ const WORKSPACE_PARTS = [
   // `templates` is the CLI's scaffold: pack code the specifier rules read and the CLI's own suite renders,
   // so a change to one has to invalidate the steps that read the workspace
   'src', 'tests', 'scripts', 'etc', 'templates', 'index.js',
+  // `bench` is in `@abuddy/ears`' tsconfig `include`, so its typecheck compiles the benchmark and has to
+  // re-run when it moves. Only that workspace has one; the dep-file gate is what noticed
+  'bench',
   // A pack's manifest, which `default-setup`'s specs import directly. Eleven workspaces have none
   // and the walk skips what is not there, so for those this adds a path and no bytes
   'abuddy.json',
@@ -537,6 +565,17 @@ export const SUITE_READS: Record<string, { packages?: true; pack?: true; repo?: 
  * spawn (`test-unit-pool.ts`), so it is the cost of the whole pool and not of a partial run.
  */
 export const POOL_SECONDS: Record<'host' | 'pack' | 'integration', number> = { host: 42, pack: 42, integration: 60 };
+
+/**
+ * The files a chain step is declared in — the two tables, as one list, repo-relative.
+ *
+ * Two readers need it and had their own copies: `declaredIn` (`scripts/chain.ts`), which points a run at the
+ * reasoning behind a never-cached step, knew only this file and so could not locate the seventeen typecheck
+ * legs or the generated pool steps; `record-seconds.ts` knew both and called them `SECONDS_TABLES`. Same
+ * question, two answers, and the one that was wrong was the one nothing checked —
+ * `chain-graph.spec.ts` holds every step to being locatable through this list.
+ */
+export const STEP_TABLES = ['scripts/lib/chain-steps.ts', 'scripts/lib/typecheck-legs.ts'];
 
 /**
  * What one unit suite's last pass depended on: its own workspace, its dependencies' source, whatever build
@@ -795,7 +834,9 @@ export const CHAIN_STEPS: readonly ChainStep[] = [
   // Needs `compile` and not just `packages:ensure`, because `dependency-runtime` builds a pack that depends
   // on default-setup and so reads its `dist`. It used to run after `compile` only because of where it sat
   // in this table, which `orderedSteps` never promised.
-  { name: 'test:integration', seconds: 60,
+  // `POOL_SECONDS`, not a literal: the pool passes that same key to `budgetFor` as its kill budget, and two
+  // records of one cost drift the moment `--record` rewrites whichever it can find
+  { name: 'test:integration', seconds: POOL_SECONDS.integration,
     // It keeps a cache of its own now, like the two unit pools, so `--all` has to reach inside it
     forceArgs: ['--all'],
     ...inputsForSuites(INTEGRATION_SUITES) },
@@ -852,7 +893,12 @@ export const CHAIN_STEPS: readonly ChainStep[] = [
     optInBecause: 'it is a harness for driving the app, not a regression gate; nothing has needed it to fail',
     neverCachedBecause: 'it drives real Electron, and a flaky pass cached green hides an intermittent failure',
     outputs: ['tests/results'],
-    inputs: [...ROOT, 'tests/e2e', 'playwright.config.ts', 'scripts/with-source.mjs', ...APP_ENTRY, ...APP_OUTPUTS] },
+    // The published trees, because the fixture every spec imports resolves `@abuddy/testing`'s built bundle
+    // from one of them — and `packages:check` packs a tarball inside those trees and recreates them, which a
+    // reader must not observe. Declaring them is what makes that a mutex instead of a scheduling accident;
+    // the step is never cached, so it buys the ordering and costs no precision
+    inputs: [...ROOT, 'tests/e2e', 'playwright.config.ts', 'scripts/with-source.mjs', ...APP_ENTRY,
+      ...PACKAGE_BUILD_OUTPUTS, ...APP_OUTPUTS] },
   { name: 'test:packaged-authoring', needsApp: true, seconds: 59,
     inputs: [...ROOT, ...BOUNDED_RUNNER, 'tests/scripts/test-packaged-authoring.sh', 'tests/scripts/lib',
       ...PACKAGE_BUILD_OUTPUTS, ...APP_OUTPUTS] },

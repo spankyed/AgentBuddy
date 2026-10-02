@@ -77,10 +77,20 @@ export function wrapAt(column: number, text: string, width = terminalWidth()): s
  * there has the `neverCachedBecause` sentence and, above it, the comment that argues for it, which is where the
  * rationale actually lives. Undefined when the name is not found, so a rename degrades to no pointer rather than
  * to a wrong one.
+ *
+ * **Two steps are not written out, they are generated**, with a template-literal name — so a search for the
+ * quoted form misses them and the right answer is the generator, which is where their reasoning sits anyway.
+ * Hence the second pass: a `name: ` whose backtick-quoted prefix this step's name starts with.
  */
 export function declaredAt(source: string, name: string): number | undefined {
-  const index = source.split('\n').findIndex((line) => line.includes(`name: '${name}'`));
-  return index === -1 ? undefined : index + 1;
+  const lines = source.split('\n');
+  const written = lines.findIndex((line) => line.includes(`name: '${name}'`));
+  if (written !== -1) return written + 1;
+  const generated = lines.findIndex((line) => {
+    const prefix = /name: `([^$`]*)/.exec(line)?.[1];
+    return prefix !== undefined && prefix.length > 0 && name.startsWith(prefix);
+  });
+  return generated === -1 ? undefined : generated + 1;
 }
 
 /**
@@ -368,14 +378,21 @@ export function driftReport(
  * the evidence is gone by the next run.
  */
 export function shouldClassify(run: {
-  readonly lanes: number;
-  /** The step runs with nothing beside it already, so running it alone proves nothing */
-  readonly exclusive: boolean;
+  /**
+   * Nothing overlapped this step, so running it alone proves nothing — **observed, not predicted**.
+   *
+   * It was `exclusive`, taken from the step's declared mutexes, which answered a different question the
+   * moment those became derived: `conflictsOf` is non-empty for twelve steps that each run beside two
+   * dozen others, and all twelve skipped this re-run. `schedule` records what actually overlapped
+   * (`ScheduleResult.peers`), and that is the only place the answer exists. `lanes` is gone from the
+   * predicate with it: a single-lane run overlaps nothing, so it is already covered.
+   */
+  readonly ranAlone: boolean;
   /** Its budget is four times its cost; re-running a wedged step spends that again for a message that already interprets itself */
   readonly timedOut: boolean;
   readonly optedOut: boolean;
 }): boolean {
-  return run.lanes > 1 && !run.exclusive && !run.timedOut && !run.optedOut;
+  return !run.ranAlone && !run.timedOut && !run.optedOut;
 }
 
 /**

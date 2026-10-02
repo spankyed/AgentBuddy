@@ -47,6 +47,20 @@ export interface ScheduleResult {
    * reported separately instead of being folded into `failed` alone.
    */
   readonly threw: ReadonlyArray<{ readonly step: string; readonly error: unknown }>;
+  /**
+   * What overlapped each step that took a lane — recorded, because only this loop knows it.
+   *
+   * It exists for one question: a failed step is re-run alone to tell its code apart from contention, and
+   * that is worth doing only if something *was* running beside it. The chain used to predict the answer
+   * from the step's declared mutexes, which stopped being the same question when `exclusive: true` became a
+   * derived `conflictsOf`: a step with one mutex partner still runs beside two dozen others, and twelve of
+   * them skipped the re-run on that reasoning.
+   *
+   * Both directions are recorded at dispatch, so this is "overlapped at any point" rather than a snapshot
+   * at one instant — a peer that had already finished when the step failed still counts, which is the whole
+   * point of asking.
+   */
+  readonly peers: ReadonlyMap<string, ReadonlySet<string>>;
 }
 
 /**
@@ -66,6 +80,10 @@ export async function schedule<S extends SchedulableStep>({ steps, lanes, skip, 
   const running = new Map<string, Promise<string>>();
   const started: string[] = [];
   const skipped: string[] = [];
+  const peers = new Map<string, Set<string>>();
+  // Not `running`, which holds a step from the moment its promise resolves until the race hands its name
+  // back — a window in which a finished step would be recorded as overlapping the next one dispatched
+  const live = new Set<string>();
   let failed: string | undefined;
   const threw: { step: string; error: unknown }[] = [];
 
@@ -90,13 +108,19 @@ export async function schedule<S extends SchedulableStep>({ steps, lanes, skip, 
           continue;
         }
         started.push(step.name);
+        // Both directions, now, while `live` is exactly what this step is about to join
+        peers.set(step.name, new Set(live));
+        for (const name of live) peers.get(name)?.add(step.name);
+        live.add(step.name);
         running.set(step.name, run(step).then(
           (passed) => {
+            live.delete(step.name);
             if (passed) done.add(step.name);
             else failed ??= step.name;
             return step.name;
           },
           (error: unknown) => {
+            live.delete(step.name);
             threw.push({ step: step.name, error });
             failed ??= step.name;
             return step.name;
@@ -110,5 +134,5 @@ export async function schedule<S extends SchedulableStep>({ steps, lanes, skip, 
     running.delete(await Promise.race(running.values()));
   }
 
-  return { started, skipped, threw, ...(failed === undefined ? {} : { failed }) };
+  return { started, skipped, threw, peers, ...(failed === undefined ? {} : { failed }) };
 }

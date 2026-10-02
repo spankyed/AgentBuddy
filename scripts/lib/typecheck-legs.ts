@@ -30,15 +30,28 @@ export interface Leg {
    */
   readonly scope?: readonly string[] | 'repo';
   /**
-   * Repo-root files this leg's compiler reads that belong to no workspace, so a scope cannot name them.
+   * Files this leg's compiler reads that its `scope` cannot name — repo-root files belonging to no
+   * workspace, and a file in a workspace this leg does not own.
    *
-   * One leg has any: `typecheck:be`'s three programs each resolve through the root `package.json`, which
-   * its dep files report and which `scope: ['api']` cannot express. Declared rather than derived from the
-   * dep file, for the reason a dep file is never a key — it records what was read *last* time, so a leg
-   * that starts reading one would not be invalidated by the thing it started reading.
+   * Three legs have any. `typecheck:be`'s three programs each resolve through the root `package.json`,
+   * which `scope: ['api']` cannot express. `typecheck:main` and `typecheck:preload` compile `types/`, the
+   * repo-root ambient declarations — and `preload` reaches one file further, because `types/speech.d.ts`
+   * re-exports from `@abuddy/sdk`'s source while `packages/preload/package.json` declares no dependency on
+   * it, so `workspaceDeps` cannot find the edge.
+   *
+   * **Naming one file rather than its directory is safe here, and only because the gate watches.** If
+   * `speech-event.d.ts` grows an import, the dep file reports the new read and
+   * `dep-files.integration.spec.ts` fails until this says so. Widening `scope` instead would be worse than
+   * imprecise: that spec derives which leg *owns* a dep file from `scope`, so adding `abuddy-sdk` here would
+   * let this leg vouch for reads of the whole SDK that it never compiles.
+   *
+   * Declared rather than derived from the dep file, for the reason a dep file is never a key — it records
+   * what was read *last* time, so a leg that starts reading one would not be invalidated by the thing it
+   * started reading.
    *
    * It exists because the root manifest left `ROOT`: when every step declared it, this was covered by
-   * accident. `dep-files.integration.spec.ts` is what found the gap and what keeps this list honest.
+   * accident. `dep-files.integration.spec.ts` is what found that gap and the `types/` one, and what keeps
+   * this list honest.
    */
   readonly alsoReads?: readonly string[];
   /**
@@ -76,8 +89,10 @@ export const TYPECHECK_LEGS: readonly Leg[] = [
   { name: 'typecheck:scripts', command: 'npm run typecheck:scripts', scope: 'repo', seconds: 4 },
   { name: 'typecheck:cli', command: 'npm run typecheck:cli', seconds: 2.7 },
   { name: 'typecheck:pack', command: 'npm run typecheck:pack', seconds: 4.8 },
-  { name: 'typecheck:main', command: 'npm run typecheck:main', seconds: 1.0 },
-  { name: 'typecheck:preload', command: 'npm run typecheck:preload', seconds: 0.8 },
+  // Both compile `../../types/**/*.d.ts` through their own tsconfig `include`
+  { name: 'typecheck:main', command: 'npm run typecheck:main', alsoReads: ['types'], seconds: 1.0 },
+  { name: 'typecheck:preload', command: 'npm run typecheck:preload',
+    alsoReads: ['types', 'packages/abuddy-sdk/src/fe/speech-event.d.ts'], seconds: 0.8 },
   { name: 'check:tiers', command: 'npm run check:tiers', scope: 'repo', seconds: 0.3 },
   { name: 'lint:check', command: 'npm run lint:check', scope: 'repo', seconds: 1.7 },
 ];

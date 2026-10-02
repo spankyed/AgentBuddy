@@ -21,6 +21,7 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { REPO_ROOT } from '@abuddy/host/build/packages-built';
+import { STEP_TABLES } from './chain-steps.ts';
 
 /** A step cost that moved far enough to record */
 export interface SecondsEdit {
@@ -30,8 +31,6 @@ export interface SecondsEdit {
   readonly file: string;
 }
 
-const STEP_TABLE = 'scripts/lib/chain-steps.ts';
-const LEG_TABLE = 'scripts/lib/typecheck-legs.ts';
 
 /** Where a step's own `seconds` sits: inside the object literal that names it, in one of two tables. */
 function inObjectLiteral(source: string, step: string): { at: number; digits: string } | undefined {
@@ -44,9 +43,15 @@ function inObjectLiteral(source: string, step: string): { at: number; digits: st
   return { at: name + found.index + 'seconds: '.length, digits: found[1]! };
 }
 
-/** And the two pooled steps, whose cost is a key in `POOL_SECONDS` rather than a field on the step */
+/**
+ * And the three pooled steps, whose cost is a key in `POOL_SECONDS` rather than a field on the step.
+ *
+ * `test:integration` is here because it is pooled like the other two — it carried its own `seconds: 60`
+ * beside `POOL_SECONDS.integration` until 2026-10-02, and the pool passes that key to `budgetFor`, so a
+ * rewrite of the literal left the kill budget behind.
+ */
 function inPoolSeconds(source: string, step: string): { at: number; digits: string } | undefined {
-  const kind = /^test:unit:(host|pack)$/.exec(step)?.[1];
+  const kind = /^test:(?:unit:(host|pack)|(integration))$/.exec(step)?.slice(1).find((one) => one !== undefined);
   if (kind === undefined) return undefined;
   const table = source.indexOf('POOL_SECONDS');
   if (table === -1) return undefined;
@@ -102,7 +107,8 @@ export function planSecondsEdits(
 }
 
 /** The tables this writes, which is where a step's cost can be declared */
-export const SECONDS_TABLES = [STEP_TABLE, LEG_TABLE];
+/** The same two tables, under the name this module's callers know them by */
+export const SECONDS_TABLES = STEP_TABLES;
 
 /** `planSecondsEdits` against the real tables, written back only if every splice held */
 export function recordSeconds(measured: ReadonlyMap<string, number>, declared: ReadonlyMap<string, number>,

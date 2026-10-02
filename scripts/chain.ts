@@ -44,7 +44,7 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { changedInputs, diffableStamp, firstChange, freshnessSweep, INPUTS_CHANGED, REPO_ROOT, stampedRun, stampRecord, unitStaleReason, type BuildUnit } from '@abuddy/host/build/packages-built';
-import { CHAIN_STEPS, type ChainStep, chainSteps, conflictsOf, MEASURED_AT_LANES, orderedSteps } from './lib/chain-steps.ts';
+import { CHAIN_STEPS, type ChainStep, chainSteps, MEASURED_AT_LANES, orderedSteps, STEP_TABLES } from './lib/chain-steps.ts';
 import { commandText, rootScripts } from './lib/npm-scripts.ts';
 import { IDLE_FLOOR, idleNow, movedBeyondBand, refusesAsBusy } from './lib/measure.ts';
 import { recordSeconds } from './lib/record-seconds.ts';
@@ -77,13 +77,21 @@ import { boundedSpawn, budgetFor } from './lib/bounded-spawn.ts';
  */
 const STAMP_DIR = path.join(REPO_ROOT, 'node_modules', '.cache', 'abuddy-chain');
 
-/** The table a run points at when it says a step is never cached: the sentence is there, the argument above it */
-const STEP_TABLE = 'scripts/lib/chain-steps.ts';
+/**
+ * Where a run points when it says a step is never cached: the sentence is there, the argument above it.
+ *
+ * Both tables, because a step is declared in either — this searched only `chain-steps.ts` and so could not
+ * locate the seventeen typecheck legs or the two generated pool steps. Read once, at module load, rather
+ * than per row.
+ */
+const stepTables = STEP_TABLES.map((file) => ({ file, source: fs.readFileSync(path.join(REPO_ROOT, file), 'utf-8') }));
 const declaredIn = (name: string): string | undefined => {
-  const line = declaredAt(stepTable, name);
-  return line === undefined ? undefined : `${STEP_TABLE}:${line}`;
+  for (const { file, source } of stepTables) {
+    const line = declaredAt(source, name);
+    if (line !== undefined) return `${file}:${line}`;
+  }
+  return undefined;
 };
-const stepTable = fs.readFileSync(path.join(REPO_ROOT, STEP_TABLE), 'utf-8');
 const stampFor = (step: string): string => path.join(STAMP_DIR, `${step.replace(/[:/]/g, '-')}.json`);
 
 /**
@@ -394,7 +402,11 @@ async function main(): Promise<void> {
   if (failed) {
     const step = steps.find((s) => s.name === failed.step)!;
     const classifying = shouldClassify({
-      lanes, exclusive: conflictsOf(step).length > 0, timedOut: failed.timedOut === true, optedOut: noClassify,
+      // What the schedule saw, not what the table predicts: `conflictsOf(step).length > 0` stood here and
+      // meant "has a mutex partner", which twelve steps do while running beside two dozen others
+      ranAlone: (outcome.peers.get(failed.step)?.size ?? 0) === 0,
+      timedOut: failed.timedOut === true,
+      optedOut: noClassify,
     });
     const why = failed.timedOut
       ? `${step.name} timed out: it exceeded its ${secs(budgetFor(step.seconds ?? 300))} budget and its process group was killed. It costs ${step.seconds ?? '?'}s healthy, so either it is wedged or it has grown and the measurement in chain-steps.ts is stale.`

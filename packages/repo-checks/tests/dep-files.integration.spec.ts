@@ -92,16 +92,28 @@ describe('the compiler says what it read', () => {
     const owner = (depFile: string): string | undefined => PACKAGE_DIRS.find((dir) => depFile === dir)
       ?? PACKAGE_DIRS.filter((dir) => depFile.startsWith(`${dir}-`)).sort((a, b) => b.length - a.length)[0];
 
+    /**
+     * The legs that *own* this dep file, and the repo-wide ones only when none does.
+     *
+     * **A repo-wide leg is not an answer about the leg that compiles the file.** `lint:check` declares the
+     * whole tree, so with it in the covering set every read of anything was vouched for by something — which
+     * is how `typecheck:main` and `typecheck:preload` came to compile `types/*.d.ts` without declaring them,
+     * cached through an edit to a file they were reading, with this check green. The fallback is for a dep
+     * file no package owns (`scripts`, `tests`), where a repo-scoped leg genuinely is the compiler.
+     */
     const covering = (depFile: string) => {
       const dir = owner(depFile);
-      return TYPECHECK_LEGS.filter((leg) => { const scope = scopeOf(leg); return dir === undefined ? scope === 'repo' : scope === 'repo' || scope.includes(dir); });
+      const owning = dir === undefined ? [] : TYPECHECK_LEGS.filter((leg) => { const scope = scopeOf(leg); return scope !== 'repo' && scope.includes(dir); });
+      return owning.length > 0 ? owning : TYPECHECK_LEGS.filter((leg) => scopeOf(leg) === 'repo');
     };
 
     const missing = depFileNames().flatMap((depFile) => {
       const reads = readsOf(depFile) ?? [];
       const legs = covering(depFile);
       if (legs.length === 0) return [`${depFile}: no leg declares it, so nothing re-runs on what it read`];
-      // Any one covering leg is enough: the file is compiled by whichever of them runs it
+      // Any one *owning* leg is enough, and that is the only ambiguity the rule is for: a package can have
+      // several configs — `api`, `api-test`, `api-scripts` — and which leg compiles which is not derivable
+      // from the name. It was never meant to let a leg that merely walks the tree answer for one that compiles
       const declared = legs.map((leg) => {
         const step = CHAIN_STEPS.find((candidate) => candidate.name === leg.name);
         const files = (step?.inputs ?? []).flatMap((input) => inputFiles(path.join(REPO_ROOT, input)));
