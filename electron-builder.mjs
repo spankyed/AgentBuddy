@@ -149,6 +149,11 @@ export default /** @type import('electron-builder').Configuration */
     // dist, which the app never loads — it resolves @abuddy/sdk through node_modules to packages/abuddy-sdk/dist.
     // electron-builder reads no .gitignore, so ignoring it there was not enough: 'packages/**/*' above took it.
     '!packages/*/publish/**',
+    // ...nor a pack's working directory. `abuddy build` keeps its dependency cache, its staging, its release
+    // output and its record of what each bundling phase read in `.abuddy/` (PACK_READS_FILE,
+    // @abuddy/host/build/pack-workdir), none of which the app loads — and `packages/**/*` above took all of
+    // it, dotted directories and all, because electron-builder reads no .gitignore either.
+    '!packages/*/.abuddy/**',
     // The CLI's scaffold templates, which are .ts and .vue files it reads at run time rather than code the
     // app loads — so the exclusions above would strip every one of them and `abuddy init` from the CLI this
     // app installs (bin/app-launcher.sh) would scaffold nothing. Last match wins, so this comes after them.

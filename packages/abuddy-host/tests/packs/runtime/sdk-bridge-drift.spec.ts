@@ -49,6 +49,8 @@ const UNBRIDGED_BY_POLICY = new Map<string, string>([
   ['@abuddy/host/build/own-module-specifiers', "build-time only: the rule that a pack's own-module specifier "
     + 'names the file that is there, applied by check:specifiers here and by abuddy build to every other pack'],
   ['@abuddy/host/build/packages-built', 'checkout build tooling: the freshness rule behind npm run packages:ensure'],
+  ['@abuddy/host/build/pack-workdir', "build-time only: where a build keeps what it does not publish, declared "
+    + 'once because the writer (abuddy build) and the reader (the repo\'s chain checks) cannot import each other'],
   // Test machinery: what a spec asserted over, confirmed to be there. It throws rather than asserting, so it
   // needs no test framework — which is also why it must not reach a pack, whose code has no business
   // refusing on the size of something it read.

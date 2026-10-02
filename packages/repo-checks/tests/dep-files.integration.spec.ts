@@ -160,10 +160,16 @@ describe('the compiler says what it read', () => {
         return { files: new Set(files.map((file) => file.toLowerCase())), skips };
       });
       return reads
-        .map((file) => file.toLowerCase())
+        // Existence is asked of the path as recorded and the fold happens inside the comparison, so a report
+        // names what was read. The other order reads a lowercased path off disk, which a case-insensitive
+        // filesystem answers anyway and a case-sensitive one does not — and the gate would then look at less
+        // while reporting the same nothing. `build says what it read`'s `undeclared` carries the case.
         .filter((file) => fs.existsSync(path.join(REPO_ROOT, file)))
-        .filter((file) => !declared.some(({ files, skips }) =>
-          files.has(file) || skips.some((skip) => file === skip || file.startsWith(`${skip}/`))))
+        .filter((file) => {
+          const folded = file.toLowerCase();
+          return !declared.some(({ files, skips }) =>
+            files.has(folded) || skips.some((skip) => folded === skip || folded.startsWith(`${skip}/`)));
+        })
         .slice(0, 5)
         .map((file) => `${depFile} read ${file}, which no leg covering it declares`);
     });
@@ -288,15 +294,28 @@ describe('abuddy build says what it read', () => {
    * which a reads-are-declared check cannot notice by construction — that failure is caught by the phase
    * case above it, not here.
    */
-  const undeclared = (files: readonly string[], step: { inputs: readonly string[]; excludes?: readonly string[] }): string[] => {
+  const onDisk = (file: string): boolean => fs.existsSync(path.join(REPO_ROOT, file));
+
+  const undeclared = (
+    files: readonly string[],
+    step: { inputs: readonly string[]; excludes?: readonly string[] },
+    exists: (file: string) => boolean = onDisk,
+  ): string[] => {
     const declared = new Set(step.inputs
       .flatMap((input) => inputFiles(path.join(REPO_ROOT, input)))
       .map((file) => file.toLowerCase()));
     const skips = (step.excludes ?? []).map((skip) => skip.toLowerCase());
     return files
-      .map((file) => file.toLowerCase())
-      .filter((file) => fs.existsSync(path.join(REPO_ROOT, file)))
-      .filter((file) => !declared.has(file) && !skips.some((skip) => file === skip || file.startsWith(`${skip}/`)))
+      // Existence is asked of the path as recorded, and the fold happens inside the comparison — so a report
+      // names the file as the build read it, and the lowercased form never reaches disk or the message. The
+      // other order reads a lowercased path off disk, which a case-insensitive filesystem answers anyway and
+      // a case-sensitive one does not. Injectable for exactly that: no `existsSync` here can answer as a
+      // case-sensitive filesystem would, so the case that watches it hands one in.
+      .filter(exists)
+      .filter((file) => {
+        const folded = file.toLowerCase();
+        return !declared.has(folded) && !skips.some((skip) => folded === skip || folded.startsWith(`${skip}/`));
+      })
       .sort();
   };
 
@@ -378,6 +397,29 @@ describe('abuddy build says what it read', () => {
    * read that is not on disk, so a made-up name would be filtered out before the comparison it is meant to
    * exercise.
    */
+  /**
+   * And it still reports a mixed-case read where the filesystem is case-sensitive.
+   *
+   * The comparison folds case, because TypeScript records lowercased paths on a case-insensitive filesystem
+   * and the leg gate above shares this helper's shape. Folding *before* asking whether the file exists reads
+   * a lowercased path off disk — which macOS answers anyway, and Linux does not. Measured: nine of the
+   * recorded reads are mixed-case, so that order would drop them and the gate would look at less while
+   * reporting the same nothing. The filesystem is handed in because no real one here can be the one at risk.
+   */
+  it('keeps a mixed-case read where the filesystem is case-sensitive', () => {
+    // From the records rather than written out: a path chosen by hand goes all-lowercase without anyone
+    // noticing, and then the case passes whatever the order is — which is what the first version of it did
+    const mixed = readsByPack().flatMap(({ files }) => files).find((file) => file !== file.toLowerCase());
+    expect(mixed, 'no recorded read has mixed case, so this case has nothing to be about').toBeDefined();
+    // A filesystem that answers for the real case and nothing else, which is every filesystem but this one's
+    const caseSensitive = (file: string) => file === mixed;
+    expect(undeclared([mixed!], { inputs: [] }, caseSensitive), 'a read it cannot find is a read it stops checking')
+      .toEqual([mixed!]);
+    // And the fold is still what the comparison uses, so a step declaring that file covers it whatever its case
+    const contract = CHAIN_STEPS.find((step) => step.name === 'test:external-pack:contract')!;
+    expect(undeclared([mixed!], contract, () => true), 'the comparison stopped folding case').toEqual([]);
+  });
+
   it('reports a read the step does not declare', () => {
     const compile = CHAIN_STEPS.find((step) => step.name === 'compile')!;
     const elsewhere = 'packages/api/src/server.ts';

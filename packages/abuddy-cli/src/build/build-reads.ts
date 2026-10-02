@@ -32,9 +32,7 @@
  */
 import * as fs from 'node:fs';
 import * as path from 'node:path';
-
-/** Where a build records what it read, pack-relative. Under `.abuddy/`, which `abuddy clean` removes */
-export const BUILD_READS_FILE = path.join('.abuddy', 'reads.json');
+import { PACK_READS_FILE } from '@abuddy/host/build/pack-workdir';
 
 /**
  * The one way to turn the record off, and it is environmental: a read-only filesystem, or a sandbox that
@@ -48,6 +46,9 @@ export const BUILD_READS_FILE = path.join('.abuddy', 'reads.json');
  * end, over a few hundred paths. Revisit if a phase ever reports tens of thousands.
  */
 const OPT_OUT = 'ABUDDY_NO_BUILD_READS';
+
+/** `=== '1'`, as `ABUDDY_ALLOW_UNBUILT` is read: on truthiness, `ABUDDY_NO_BUILD_READS=0` would turn it off */
+const optedOut = (env: NodeJS.ProcessEnv = process.env): boolean => env[OPT_OUT] === '1';
 
 /**
  * The bundles of `abuddy build`, in the order it runs them — which is also the order the record is written
@@ -94,8 +95,6 @@ export interface BuildReads {
    * it never fails the build itself, however it fails.
    */
   write(): void;
-  /** @internal what `write` does, separated so that its failure has one place to be caught */
-  record(): void;
 }
 
 /**
@@ -105,12 +104,44 @@ export interface BuildReads {
  * has no repo root, and the reader resolves against the pack directory it found the file in.
  */
 export function buildReads(packDir: string): BuildReads | undefined {
-  if (process.env[OPT_OUT]) return undefined;
+  if (optedOut()) return undefined;
   // The directory the bundlers resolve their relative paths against, taken once: esbuild's metafile keys
   // are relative to it, and a build does not change directory
   const cwd = process.cwd();
   const phases = new Map<BuildPhase, Set<string>>();
   const bundlers = new Map<string, string>();
+
+  /**
+   * The write itself, as a closure rather than a member: the only caller is `write` below, which exists to
+   * catch what this throws. On the interface it would be an invitation to the failure that wrapping it
+   * removed — a complete build exiting 1 because a diagnostic file could not be written.
+   */
+  const record = (): void => {
+    // The pack's real path, because every recorded path is realpathed too: a pack under a symlinked
+    // directory (macOS's /var, which every temp fixture is under) would otherwise relativise to a
+    // walk back out through /private
+    const root = fs.realpathSync(packDir);
+    const written: BuildReadsRecord = {
+      bundlers: Object.fromEntries([...bundlers].sort(([a], [b]) => a.localeCompare(b))),
+      phases: Object.fromEntries(BUILD_PHASES
+        .filter((phase) => phases.has(phase))
+        .map((phase) => [phase, relativeReads(phases.get(phase)!, cwd, root)])),
+    };
+    const file = path.join(packDir, PACK_READS_FILE);
+    fs.mkdirSync(path.dirname(file), { recursive: true });
+    // Through a rename, which is atomic within one filesystem. A reader of this file is not ordered
+    // after the build that writes it — in this repo's chain, the step reading the fixture packs' records
+    // and the step rebuilding them share no edge and can overlap — so a plain write leaves a window in
+    // which the file parses as nothing and reads as a record that cannot be believed.
+    const partial = `${file}.${process.pid}.tmp`;
+    try {
+      fs.writeFileSync(partial, `${JSON.stringify(written, null, 2)}\n`);
+      fs.renameSync(partial, file);
+    } finally {
+      // A rename leaves nothing behind; a failure before it does, in a directory the next build reads
+      fs.rmSync(partial, { force: true });
+    }
+  };
 
   return {
     forPhase: (phase) => (read) => {
@@ -126,36 +157,10 @@ export function buildReads(packDir: string): BuildReads | undefined {
       // complete build exited 1 on an EACCES naming a temp file. The environmental reasons to be unable to
       // write are exactly the ones the opt-out exists for, so the warning names it.
       try {
-        this.record();
+        record();
       } catch (err) {
         console.warn(`Could not record what this build read (${err instanceof Error ? err.message : String(err)}). `
           + `The build itself is unaffected; set ${OPT_OUT}=1 to skip it.`);
-      }
-    },
-    record() {
-      // The pack's real path, because every recorded path is realpathed too: a pack under a symlinked
-      // directory (macOS's /var, which every temp fixture is under) would otherwise relativise to a
-      // walk back out through /private
-      const root = fs.realpathSync(packDir);
-      const record: BuildReadsRecord = {
-        bundlers: Object.fromEntries([...bundlers].sort(([a], [b]) => a.localeCompare(b))),
-        phases: Object.fromEntries(BUILD_PHASES
-          .filter((phase) => phases.has(phase))
-          .map((phase) => [phase, relativeReads(phases.get(phase)!, cwd, root)])),
-      };
-      const file = path.join(packDir, BUILD_READS_FILE);
-      fs.mkdirSync(path.dirname(file), { recursive: true });
-      // Through a rename, which is atomic within one filesystem. A reader of this file is not ordered
-      // after the build that writes it — in this repo's chain, the step reading the fixture packs' records
-      // and the step rebuilding them share no edge and can overlap — so a plain write leaves a window in
-      // which the file parses as nothing and reads as a record that cannot be believed.
-      const partial = `${file}.${process.pid}.tmp`;
-      try {
-        fs.writeFileSync(partial, `${JSON.stringify(record, null, 2)}\n`);
-        fs.renameSync(partial, file);
-      } finally {
-        // A rename leaves nothing behind; a failure before it does, in a directory the next build reads
-        fs.rmSync(partial, { force: true });
       }
     },
   };

@@ -15,6 +15,7 @@
     "./app-state": "./src/app-state/index.ts",
     "./backup": "./src/backup/index.ts",
     "./build/discover": "./src/build/discover.ts",
+    "./build/pack-workdir": "./src/build/pack-workdir.ts",
     "./build/own-module-specifiers": "./src/build/own-module-specifiers.ts",
     "./build/packages-built": "./src/build/packages-built.ts",
     "./build/published-manifest": "./src/build/published-manifest.ts",

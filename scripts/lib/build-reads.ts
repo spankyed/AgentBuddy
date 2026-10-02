@@ -23,9 +23,14 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { createRequire } from 'node:module';
 import { REPO_ROOT } from '@abuddy/host/build/packages-built';
+import { PACK_READS_FILE } from '@abuddy/host/build/pack-workdir';
 
-/** Where `abuddy build` writes it, pack-relative. Under `.abuddy/`, which no fingerprint walks */
-const READS_FILE = path.join('.abuddy', 'reads.json');
+/**
+ * Where `abuddy build` writes it, from the one place that declares it — the writer is `@abuddy/cli` and this
+ * is the repo's chain, so neither can import the other and a second literal here would be a rename away from
+ * a reader that finds nothing and blames the build for not having run.
+ */
+const READS_FILE = PACK_READS_FILE;
 
 /** What a pack's record holds. Paths are relative to the pack directory. */
 export interface BuildReads {

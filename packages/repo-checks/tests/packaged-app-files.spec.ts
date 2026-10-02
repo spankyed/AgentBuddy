@@ -4,6 +4,7 @@ import { pathToFileURL } from 'node:url';
 import { packagesBuiltOrRefuse, REPO_ROOT } from '@abuddy/host/build/packages-built';
 import { population } from '@abuddy/sdk/testing';
 import { PACKAGE_DIRS } from '../../../scripts/lib/workspace-deps.ts';
+import { PACK_WORK_DIR } from '@abuddy/host/build/pack-workdir';
 import { FileMatcher } from 'app-builder-lib/out/fileMatcher.js';
 import { beforeAll, describe, expect, it } from 'vitest';
 
@@ -115,6 +116,36 @@ describe("the packaged app's file list", () => {
     const stripped = without('packages/*/dist/**', 'packages/abuddy-cli/dist/package/templates/**');
     const typescript = packedTemplates().filter((file) => file.endsWith('.ts'));
     expect(population('the TypeScript templates', typescript).filter((file) => shipsUnder(stripped, file))).toEqual([]);
+  });
+
+  /**
+   * A pack's working directory, which `packages/**` took until 2026-10-02 — dotted directories included,
+   * since electron-builder reads no `.gitignore`. `abuddy build` keeps its dependency cache, its staging and
+   * its record of what each bundling phase read there, and the app loads none of it: measured, the built-in
+   * pack's record alone was 25K of build-internal data in every installer.
+   *
+   * The population is the real directory, so it is whatever a build left there rather than a path named here.
+   */
+  const workDirs = () => PACKAGE_DIRS.flatMap((pkg) => filesUnder(path.join('packages', pkg, PACK_WORK_DIR)));
+
+  it("ships no pack's working directory", () => {
+    const found = workDirs();
+    if (found.length === 0) return; // nothing built here; the mutation case below says when that hides something
+    expect(population('the pack working directories', found).filter(ships)).toEqual([]);
+  });
+
+  /**
+   * The mutation, and what it is about: the recursive include of `packages` is what would carry these, so
+   * dropping the one exclusion has to bring them back. Without this, "none of them ships" passes just as well
+   * on a machine where no pack has been built — which is every fresh clone.
+   */
+  it('would carry them without the one pattern that excludes them', () => {
+    const found = workDirs();
+    expect(found.length, `no pack has a ${PACK_WORK_DIR} directory here, so this case proves nothing: run npm run compile`)
+      .toBeGreaterThan(0);
+    const stripped = without(`!packages/*/${PACK_WORK_DIR}/**`);
+    expect(found.filter((file) => shipsUnder(stripped, file)).length,
+      'nothing came back, so this pattern is not what keeps the working directories out').toBeGreaterThan(0);
   });
 
   it('ships no package source', () => {

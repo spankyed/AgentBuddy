@@ -73,7 +73,7 @@ function problems(): string[] {
 if (process.argv[1] && import.meta.url === pathToFileURL(fs.realpathSync(process.argv[1])).href) {
   const found = problems();
   if (found.length === 0) {
-    console.log(`✅ ${CHAIN_STEPS.filter((s) => !needsApp(s)).length} chain steps reach no app, ${CHAIN_STEPS.filter(needsApp).length} read one`);
+    console.log(`✅ ${CHAIN_STEPS.filter((s) => !needsApp(s)).length} chain steps reach no app, ${CHAIN_STEPS.filter((s) => needsApp(s)).length} read one`);
   } else {
     fs.writeSync(2, `${found.join('\n')}\n`);
     process.exitCode = 1;
