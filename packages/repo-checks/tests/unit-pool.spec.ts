@@ -11,7 +11,13 @@ import { POOLS, livePoolStamps, poolStampFor, projectsThatRan, projectsThatDidNo
 import { POOL_SECONDS } from '../../../scripts/lib/chain-steps.ts';
 import { UNIT_SUITES } from '../../../scripts/lib/unit-suites.ts';
 
+// vitest's `formatProjectName`: `|name|` only when colour is unsupported, otherwise the name padded with a
+// space on each side, black on one of four background colours. Both of these are that function's output, the
+// coloured one copied byte for byte from a real run — which is the thing this file previously guessed at, and
+// the guess is why the pool failed every run with colour on while reporting that no project had run
 const line = (project: string, file: string) => ` ✓ |${project}| ${file} (3 tests) 12ms`;
+const colouredLine = (project: string, file: string) =>
+  ` \u001B[32m✓\u001B[39m \u001B[30m\u001B[46m ${project} \u001B[49m\u001B[39m ${file} \u001B[2m(\u001B[22m\u001B[2m4 tests\u001B[22m\u001B[2m)\u001B[22m\u001B[32m 2\u001B[2mms\u001B[22m\u001B[39m`;
 
 describe('projectsThatRan', () => {
   it('reads the project label vitest puts on every file of a multi-project run', () => {
@@ -19,7 +25,12 @@ describe('projectsThatRan', () => {
     expect([...projectsThatRan(output)].sort()).toEqual(['@abuddy/ears', '@app/main']);
   });
 
-  it('sees through the colours vitest writes', () => {
+  it('reads the coloured label, which is the only one a terminal or a FORCE_COLOR pipe ever prints', () => {
+    const output = [colouredLine('@abuddy/ears', 'tests/a.spec.ts'), colouredLine('@app/main', 'tests/b.spec.ts')].join('\n');
+    expect([...projectsThatRan(output)].sort()).toEqual(['@abuddy/ears', '@app/main']);
+  });
+
+  it('sees through the colours around a piped label, which a partly-coloured run still has', () => {
     expect([...projectsThatRan(' \u001B[32m✓\u001B[39m |@abuddy/sdk| tests/a.spec.ts (1 test) 2ms')]).toEqual(['@abuddy/sdk']);
   });
 
@@ -51,6 +62,13 @@ describe('projectsThatDidNotRun', () => {
 
   it('names them all when the filter matched none of several', () => {
     expect(projectsThatDidNotRun(asked, ' Test Files  0 passed (0)')).toEqual(asked);
+  });
+
+  // The failure this guard had: eleven projects ran, every one of them printed a coloured label, and the pool
+  // refused the run. Colour is the normal case, not the exotic one
+  it('says nothing when every project reported under colour', () => {
+    const output = [colouredLine('@abuddy/ears', 'tests/a.spec.ts'), colouredLine('@app/main', 'tests/b.spec.ts')].join('\n');
+    expect(projectsThatDidNotRun(asked, output)).toEqual([]);
   });
 });
 

@@ -107,13 +107,31 @@ export const poolUnitFor = (suite: UnitSuite): BuildUnit => ({
 const ANSI = /\u001B\[[0-9;]*m/g;
 
 /**
+ * **A project label has two forms, and which one you get is not this repo's choice.** vitest's
+ * `formatProjectName` writes `|name|` only when colour is unsupported, and otherwise the name padded with a
+ * space on each side, black on a background colour — so a TTY gets the second, and so does a pipe whose
+ * environment sets `FORCE_COLOR`, which is how an agent's shell runs commands.
+ *
+ * Reading only the piped form is therefore a check that passes when colour is off and fails every
+ * multi-project run when it is on: all eleven host projects reported absent, and the pool refused a run in
+ * which every one of them had just passed. The piped form was the only one ever looked at, because the
+ * fixture it was written against was invented rather than taken from a run.
+ */
+// eslint-disable-next-line no-control-regex -- the colour is what identifies the label, so it is the anchor
+const COLOURED_LABEL = /^(?:\s|\u001B\[[0-9;]*m)*[✓×↓](?:\s|\u001B\[[0-9;]*m)*\u001B\[(?:4[0-7]|10[0-7])m ([^\u001B]+) \u001B\[49m/gm;
+const PIPED_LABEL = /^\s*[✓×↓]\s*\|([^|]+)\|/gm;
+
+/**
  * The projects a vitest run reported, from its own output.
  *
  * vitest labels every file with its project when a run covers more than one — `✓ |@abuddy/ears| tests/x.spec.ts`
- * — which is the only thing that says what a `--project` filter actually selected.
+ * — which is the only thing that says what a `--project` filter actually selected. Both label forms count;
+ * the colours are stripped for the piped one and are the anchor for the other.
  */
 export function projectsThatRan(output: string): Set<string> {
-  return new Set([...output.replace(ANSI, '').matchAll(/^\s*[✓×↓]\s*\|([^|]+)\|/gm)].map(([, name]) => name));
+  const coloured = [...output.matchAll(COLOURED_LABEL)];
+  const piped = [...output.replace(ANSI, '').matchAll(PIPED_LABEL)];
+  return new Set([...coloured, ...piped].map(([, name]) => name));
 }
 
 /**
