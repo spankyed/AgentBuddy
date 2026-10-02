@@ -4,7 +4,7 @@ import * as path from 'node:path';
 import { createInterface } from 'node:readline';
 import envPaths from 'env-paths';
 import semver from 'semver';
-import { ensureBetaApp, packagedExecutable, type PackagedApp } from './beta-app';
+import { cachedBetaBuilds, ensureBetaApp, type PackagedApp } from './beta-app';
 
 /** An app to launch a pack in: a built monorepo checkout, or a packaged app build. */
 export type AppTarget =
@@ -165,10 +165,8 @@ function namedApp(flags: AppFlags | undefined, env: NodeJS.ProcessEnv, saved?: N
 export async function configuredAppPackagesDir(options: ConfiguredAppOptions = {}): Promise<{ dir: string; label: string } | null> {
   const { dirs = cliDirs(), env = process.env, hostVersion = '*' } = options;
   const betaApp = betaAppFrom(options);
-  const downloaded = async () => {
-    const app = await betaApp(hostVersion, dirs.cache);
-    return { dir: packagedAppPackagesDir(app.executable), label: `AgentBuddy Beta ${app.version}` };
-  };
+  const asPackages = (app: PackagedApp) =>
+    ({ dir: packagedAppPackagesDir(app.executable), label: `AgentBuddy Beta ${app.version}` });
 
   const named = namedApp(undefined, env, savedApp(dirs));
   if (!named) return null;
@@ -181,11 +179,13 @@ export async function configuredAppPackagesDir(options: ConfiguredAppOptions = {
     return { dir: path.join(root, 'packages'), label: `AgentBuddy checkout ${root}` };
   }
 
-  // A beta asked for on this run is fetched; the stored one may be answered from the cache, which is what
-  // lets a build work offline — `ensureBetaApp` lists releases over the network before it looks at the
-  // cache at all, so calling it here would put a round trip in every build.
-  if (!named.stored) return downloaded();
-  return cachedBeta(dirs, hostVersion) ?? await downloaded();
+  // One rule, shared with `packagedTarget`: a downloaded build the range accepts wins, and the network is
+  // for when none does. This split on `named.stored` until 2026-10-02 — a beta asked for on this run was
+  // fetched, a remembered one answered from the cache — on the reading that naming beta means "the newest".
+  // It doesn't: neither `build` nor `test` is an upgrade command, and a cached build that satisfies
+  // `hostVersion` is a correct answer to "run against Beta". What the split cost was a GitHub round trip in
+  // every explicit run, offline included. A newer beta is now an explicit act: remove the cached one.
+  return asPackages(cachedBetaApp(dirs, hostVersion) ?? await betaApp(hostVersion, dirs.cache));
 }
 
 /**
@@ -197,27 +197,18 @@ export async function configuredAppPackagesDir(options: ConfiguredAppOptions = {
  * beta promoted from a production release is tagged `v0.4.2-beta.0` on the released commit
  * (`build/release/beta-tag.sh`) while the app inside is `0.4.2`, and the cache directory is named after
  * the tag where `pickBetaRelease` matched the range against the app. Matching the directory name would
- * reject that build for every pack whose floor is a released version, on every build, and the fallback is
- * not a free round trip — `ensureBetaApp` needs the network before it will look at the cache at all, so
- * offline it turns a build that worked into one that fails.
+ * reject that build for every pack whose floor is a released version, on every build.
+ *
+ * It answers a `PackagedApp`, the same shape `ensureBetaApp` returns and for the same reason — `version` is
+ * the tag the directory carries — so every caller asks one question and maps one answer.
  */
-function cachedBeta(dirs: CliDirs, hostVersion: string): { dir: string; label: string } | null {
-  const betaDir = path.join(dirs.cache, 'apps', 'beta');
-  const tags = (fs.existsSync(betaDir) ? fs.readdirSync(betaDir) : [])
-    // A version appears only once fully extracted: ensureBetaApp renames it into place, and stages under
-    // a dot-prefixed name that fails this
-    .filter(tag => semver.valid(tag))
-    .sort(semver.rcompare);
-
-  for (const tag of tags) {
-    const executable = packagedExecutable(path.join(betaDir, tag));
+function cachedBetaApp(dirs: CliDirs, hostVersion: string): PackagedApp | null {
+  for (const { tag, executable } of cachedBetaBuilds(dirs.cache)) {
     const version = packagedAppVersion(executable) ?? tag;
     // `includePrerelease` as pickBetaRelease passes it, and load-bearing rather than tidy: without it a
     // beta satisfies no range at all, `*` included — which is what a pack declaring no hostVersion gets,
     // so omitting it would empty the cache for most packs
-    if (semver.satisfies(version, hostVersion, { includePrerelease: true })) {
-      return { dir: packagedAppPackagesDir(executable), label: `AgentBuddy Beta ${tag}` };
-    }
+    if (semver.satisfies(version, hostVersion, { includePrerelease: true })) return { version: tag, executable };
   }
   return null;
 }
@@ -262,7 +253,10 @@ export interface ResolveAppOptions extends AppLookupOptions {
 /** The Beta build the pack's `hostVersion` asks for, downloaded if it isn't cached. */
 async function packagedTarget(options: ResolveAppOptions): Promise<AppTarget> {
   const { hostVersion, dirs = cliDirs() } = options;
-  return { kind: 'packaged', ...(await betaAppFrom(options)(hostVersion, dirs.cache)) };
+  // Cached first, which is what the sentence above has always said and what this did not do: it listed
+  // releases every run and skipped only the download. See `configuredAppPackagesDir` for the one rule.
+  const app = cachedBetaApp(dirs, hostVersion) ?? await betaAppFrom(options)(hostVersion, dirs.cache);
+  return { kind: 'packaged', ...app };
 }
 
 /** One readline for the whole conversation: answers typed ahead are buffered, not lost between questions. */

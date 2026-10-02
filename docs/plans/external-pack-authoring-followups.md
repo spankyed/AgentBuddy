@@ -85,9 +85,18 @@ for the spike and the accounting.
 run to verify. Hardening only: it is `workflow_dispatch` only and dry-run by default.
 `publish-packages.yml`
 
-**Beta resolution hits the network before checking the cache.** `beta-app.ts` fetches the release list
-(`:56`) before the `existsSync` cache hit (`:113`): no offline use, and a CI rate-limit risk. No beta build
-with checksums has been published yet, so there is nothing to resolve against.
+~~**Beta resolution hits the network before checking the cache.**~~ **Closed 2026-10-02.** The ordering was
+real and the diagnosis pointed one module too far down: `ensureBetaApp` is the *downloader*, and the
+resolution order is `app-target.ts`'s. `cachedBetaApp` there already answered "the newest downloaded beta
+this range accepts"; `configuredAppPackagesDir` asked it only for a *remembered* beta choice and
+`packagedTarget` never did. Both ask it first now, and the rule no longer depends on how beta was requested —
+neither `build` nor `test` is an upgrade command, so a cached build that satisfies `hostVersion` is a correct
+answer, and a newer beta is an explicit act (delete the cached one).
+
+What that leaves unverifiable is narrower than the item was: a real release cycle still cannot be exercised
+here, so "does a GitHub release resolve" is untested, but the offline and rate-limit halves are now covered
+by `app-target.spec.ts` with no network — *answers from the cache without reaching the network, named or
+not*, and its counterpart, that a cached build the range rejects still falls through.
 
 **`npx`/`npm` fail on Windows without a shell.** `release.ts`. No Windows machine here.
 

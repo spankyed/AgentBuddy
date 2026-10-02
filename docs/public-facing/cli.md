@@ -126,7 +126,7 @@ Stage the built `dist/` into a verified pack (`integrity.json` lists a sha256 pe
 
 Launch AgentBuddy with your pack installed and keep it in step with your edits.
 
-It picks an app the way you tell it to — `--app-root <path>` for a local AgentBuddy checkout, `--app beta` for the newest Beta that satisfies your `hostVersion` — and with neither it uses the app you saved on first run, asking once if there is none. **`run` is the command that owns that choice**; `abuddy test` never reads it, so a test run means the same thing on a fresh machine as on one you have been developing on.
+It picks an app the way you tell it to — `--app-root <path>` for a local AgentBuddy checkout, `--app beta` for a Beta that satisfies your `hostVersion` (a downloaded one if you have it, the newest otherwise) — and with neither it uses the app you saved on first run, asking once if there is none. **`run` is the command that owns that choice**; `abuddy test` never reads it, so a test run means the same thing on a fresh machine as on one you have been developing on.
 
 The environment follows the app: a checkout runs as `development`, and a packaged Beta runs as `beta`, because a packaged build stamps its own channel. Neither touches production data.
 
@@ -247,9 +247,14 @@ Scaffold Playwright E2E tests in the pack root: `playwright.config.ts` (tests in
 Run the pack's Playwright tests in AgentBuddy. Other arguments go to `playwright test`. The app is, in order:
 
 1. `--app-root <path>`: a local AgentBuddy checkout (installed and built)
-2. `--app beta` or `ABUDDY_APP=beta`: the newest AgentBuddy Beta build satisfying the pack's `hostVersion`, downloaded and cached
+2. `--app beta` or `ABUDDY_APP=beta`: an AgentBuddy Beta build satisfying the pack's `hostVersion`
 3. `ABUDDY_ROOT`
-4. The newest AgentBuddy Beta build satisfying the pack's `hostVersion`, as `--app beta` would
+4. A Beta build satisfying the pack's `hostVersion`, as `--app beta` would
+
+A Beta build is **downloaded once and then reused**: whenever one you already have satisfies the pack's
+`hostVersion`, that one runs — so this works offline and asks GitHub nothing. The newest is fetched only when
+none of them fits. `abuddy clean --apps` lists what has been downloaded, with sizes, and removes all but the
+newest; `--all` removes that one too, which is how you move to a newer Beta.
 
 **`abuddy test` never reads the app you saved and never asks**, so a test run means the same thing on a fresh machine as on one you have been developing on. Holding that preference is `abuddy run`'s job. The fixture builds the pack with the same CLI and installs it into a fresh data dir for each worker, so a run leaves nothing behind either.
 
@@ -406,5 +411,10 @@ In the AgentBuddy repo, `npm run db:query`, `db:exec`, `db:repl`, `db:inspect`, 
 #### `abuddy clean`
 
 Remove build output: `dist/`, `.abuddy/`, `src/__generated__/`.
+
+`--instances` lists the data dirs `abuddy run` created and removes the ones a finished run left (`--all`
+takes named ones too). `--apps` lists the AgentBuddy Beta builds `--app beta` downloaded — a few hundred
+megabytes each, one per release tested against — and removes all but the newest, which is the one resolution
+would reuse; `--all` removes every build. Both work outside a pack.
 
 `--instances` lists the instances `abuddy run` created, with their sizes, and removes the ones a run left behind when it was killed. It works outside a pack, since instances belong to you rather than to any pack. `--all` removes the named ones too. An instance an app is currently running on is never removed, whichever flag you pass: taking a data dir away from a running app does not stop it, it makes it write the directory back.

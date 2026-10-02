@@ -166,7 +166,8 @@ const entries = (dir: string): string[] => {
   }
 };
 
-function dirBytes(dir: string): number {
+/** What a directory holds, for a command deciding whether reclaiming it is worth it */
+export function dirBytes(dir: string): number {
   let total = 0;
   for (const entry of fs.readdirSync(dir, { withFileTypes: true, recursive: true })) {
     if (!entry.isFile()) continue;

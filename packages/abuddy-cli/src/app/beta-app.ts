@@ -92,9 +92,50 @@ export function packagedExecutable(appDir: string): string {
   return path.join(appDir, `${PRODUCT_NAME}.app`, 'Contents', 'MacOS', PRODUCT_NAME);
 }
 
+/** Where downloaded builds live, one directory per release tag. The one place this path is spelled. */
+export const betaCacheDir = (cacheDir: string): string => path.join(cacheDir, 'apps', 'beta');
+
+/** A downloaded build: the tag its directory carries, and the app inside it */
+export interface CachedBeta {
+  tag: string;
+  dir: string;
+  executable: string;
+}
+
+/**
+ * Every downloaded build, newest tag first — what resolution chooses from and what `abuddy clean --apps`
+ * reclaims. Enumerating is this module's business because it owns the layout; *which* build a pack's range
+ * accepts is `cachedBetaApp`'s (`app-target.ts`), which reads each app's own version to answer it.
+ *
+ * A version appears here only once fully extracted: `ensureBetaApp` stages under a dot-prefixed name and
+ * renames it into place, and `semver.valid` rejects the staging name. `betaDownloadLeftovers` is the other
+ * half of that — the staging dirs a killed run left, which nothing else would ever look at again.
+ */
+export function cachedBetaBuilds(cacheDir: string): CachedBeta[] {
+  const root = betaCacheDir(cacheDir);
+  if (!fs.existsSync(root)) return [];
+  return fs.readdirSync(root)
+    .filter(tag => semver.valid(tag))
+    .sort(semver.rcompare)
+    .map(tag => ({ tag, dir: path.join(root, tag), executable: packagedExecutable(path.join(root, tag)) }));
+}
+
+/** Staging directories a download that was killed left behind: never read again, so only ever litter */
+export function betaDownloadLeftovers(cacheDir: string): string[] {
+  const root = betaCacheDir(cacheDir);
+  if (!fs.existsSync(root)) return [];
+  return fs.readdirSync(root).filter(name => name.startsWith('.') && name.includes('.download-'))
+    .map(name => path.join(root, name));
+}
+
 /**
  * The newest AgentBuddy Beta build that satisfies the pack's hostVersion, downloaded once per
  * version into the cache and verified against its published sha256.
+ *
+ * **The downloader, not the cache policy.** Resolution asks `cachedBetaApp` (`app-target.ts`) first and
+ * reaches this only when no downloaded build satisfies the range, so listing releases here is the answer to
+ * "which build do I fetch". The `existsSync` below is narrower than it looks: it keeps two runs racing one
+ * version from downloading it twice.
  */
 export async function ensureBetaApp(options: BetaAppOptions): Promise<PackagedApp> {
   const { hostVersion, cacheDir, log = console.log } = options;
@@ -108,7 +149,7 @@ export async function ensureBetaApp(options: BetaAppOptions): Promise<PackagedAp
     throw new Error(`No AgentBuddy Beta release satisfies this pack's hostVersion (${hostVersion}). Use --app-root <path> to test against a local checkout.`);
   }
 
-  const appDir = path.join(cacheDir, 'apps', 'beta', release.version);
+  const appDir = path.join(betaCacheDir(cacheDir), release.version);
   const executable = packagedExecutable(appDir);
   if (fs.existsSync(executable)) return { version: release.version, executable };
 

@@ -1,5 +1,5 @@
 {
-  "measuredAt": "2026-10-01T08:25:31.278Z",
+  "measuredAt": "2026-10-02T10:52:02.295Z",
   "costs": {
     "tests/app/app-target.spec.ts": 97,
     "tests/app/beta-app.spec.ts": 139,
@@ -38,6 +38,7 @@
     "tests/commands/add-extensions.integration.spec.ts": 7422,
     "tests/commands/add-feature-validate.integration.spec.ts": 3296,
     "tests/commands/app-launcher.spec.ts": 286,
+    "tests/commands/clean.spec.ts": 20,
     "tests/commands/db-output.spec.ts": 4,
     "tests/commands/db.integration.spec.ts": 15548,
     "tests/commands/drive.spec.ts": 5,

@@ -32,6 +32,23 @@ function makeCheckout(name: string, { built = true } = {}): string {
 }
 
 const beta = vi.fn(async (_range: string, _cacheDir: string) => ({ version: '0.4.0-beta.2', executable: '/cache/AgentBuddy Beta' }));
+
+/**
+ * A downloaded beta in the cache, as `ensureBetaApp` leaves one: the tag names the directory, and
+ * `appVersion` writes the bundle's own `package.json` — the two differ for a promoted beta, which is what
+ * the range is matched on.
+ */
+function cacheBeta(tag: string, appVersion?: string): string {
+  const executable = packagedExecutable(path.join(dirs.cache, 'apps', 'beta', tag));
+  fs.mkdirSync(path.dirname(executable), { recursive: true });
+  fs.writeFileSync(executable, '');
+  if (appVersion !== undefined) {
+    const appDir = path.join(path.dirname(path.dirname(executable)), 'Resources', 'app');
+    fs.mkdirSync(appDir, { recursive: true });
+    fs.writeFileSync(path.join(appDir, 'package.json'), JSON.stringify({ version: appVersion }));
+  }
+  return executable;
+}
 const noPrompt = async (): Promise<string> => {
   throw new Error('prompted');
 };
@@ -97,6 +114,28 @@ describe('resolvePinnedApp', () => {
     const root = makeCheckout('explicit');
     await expect(pinned({ flags: { appRoot: root, args: [] } })).resolves.toEqual({ kind: 'source', root });
     await expect(pinned({ env: { ABUDDY_ROOT: root } })).resolves.toEqual({ kind: 'source', root });
+  });
+
+  /**
+   * The defect this closes: it listed GitHub's releases on every run and skipped only the *download*, so a
+   * cached build was unusable offline and CI paid an API call per run — while `packagedTarget`'s own doc said
+   * "downloaded if it isn't cached". One rule now, shared with `configuredAppPackagesDir`.
+   */
+  it('answers from the cache without reaching the network, named or not', async () => {
+    const executable = cacheBeta('0.4.0-beta.9');
+
+    await expect(pinned()).resolves.toEqual({ kind: 'packaged', version: '0.4.0-beta.9', executable });
+    await expect(pinned({ flags: { app: 'beta', args: [] } })).resolves.toMatchObject({ version: '0.4.0-beta.9' });
+    expect(beta, 'a downloaded build satisfied the range, so nothing should have been fetched').not.toHaveBeenCalled();
+  });
+
+  // What makes cache-first safe rather than merely cheap: the range is still the question, so a cached build
+  // the pack cannot run is not an answer. `cachedBetaApp` matching on the app's own version is what this asks
+  it('falls through to the network when no cached build satisfies the range', async () => {
+    cacheBeta('0.2.0');
+
+    await expect(pinned()).resolves.toMatchObject({ version: '0.4.0-beta.2' });
+    expect(beta).toHaveBeenCalledWith('>=0.3.0', dirs.cache);
   });
 
   // No path yields a production-stamped app: the target is a checkout or a Beta build, and that is what
@@ -227,16 +266,12 @@ describe('configuredAppPackagesDir', () => {
     await expect(configuredAppPackagesDir(opts({ ABUDDY_APP: 'nightly' }))).rejects.toThrow(/Unknown ABUDDY_APP "nightly"/);
   });
 
-  it('uses the newest downloaded beta for a saved beta choice, and downloads one when none is cached', async () => {
+  it('uses the newest downloaded beta the range accepts, and downloads one when none is cached', async () => {
     saveAppChoice(dirs, { beta: true });
     expect((await configuredAppPackagesDir(opts({})))?.label).toBe('AgentBuddy Beta 0.4.0-beta.2');
     expect(beta).toHaveBeenCalledTimes(1);
 
-    for (const version of ['0.4.0-beta.9', '0.4.0-beta.10', '0.3.9']) {
-      const executable = packagedExecutable(path.join(dirs.cache, 'apps', 'beta', version));
-      fs.mkdirSync(path.dirname(executable), { recursive: true });
-      fs.writeFileSync(executable, '');
-    }
+    for (const version of ['0.4.0-beta.9', '0.4.0-beta.10', '0.3.9']) cacheBeta(version);
     fs.mkdirSync(path.join(dirs.cache, 'apps', 'beta', '.0.5.0-beta.0.download-x'));
 
     await expect(configuredAppPackagesDir(opts({}))).resolves.toEqual({
@@ -260,22 +295,13 @@ describe('configuredAppPackagesDir', () => {
   });
 
   /**
-   * The cache is what lets a build resolve built-in dependencies offline — `ensureBetaApp` lists releases
-   * over the network before it will even look at the cache — so the range has to be checked here rather
-   * than by downloading. It never was, and the newest cached build was used whatever the pack asked for.
+   * The cache is what lets a build resolve built-in dependencies offline, so the range has to be checked
+   * here rather than by downloading. It never was, and the newest cached build was used whatever the pack
+   * asked for. These were a saved choice's cases until 2026-10-02, when the cache stopped depending on how
+   * beta was asked for; the saved choice stays in the `beforeEach` only because a build needs *some* app
+   * named to resolve one at all.
    */
-  describe('a saved beta choice, against the range the pack asks for', () => {
-    const cacheBeta = (tag: string, appVersion?: string) => {
-      const executable = packagedExecutable(path.join(dirs.cache, 'apps', 'beta', tag));
-      fs.mkdirSync(path.dirname(executable), { recursive: true });
-      fs.writeFileSync(executable, '');
-      if (appVersion !== undefined) {
-        const appDir = path.join(path.dirname(path.dirname(executable)), 'Resources', 'app');
-        fs.mkdirSync(appDir, { recursive: true });
-        fs.writeFileSync(path.join(appDir, 'package.json'), JSON.stringify({ version: appVersion }));
-      }
-    };
-
+  describe('a cached beta, against the range the pack asks for', () => {
     beforeEach(() => { saveAppChoice(dirs, { beta: true }); });
 
     it('skips a cached build the range excludes, and downloads nothing to do it', async () => {
