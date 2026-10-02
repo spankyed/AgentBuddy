@@ -2,7 +2,7 @@ import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { CHECKS, findAppImportsInPackTests, findContractLeafImports, findCrossCheckoutResolution, findCrossFeatureImports, findExtensionlessOwnModules, findHostImports, findJsSpecifiers, findMissingSourceConditions, findPackageScriptImports, findPackBackendConsole, findPackOwnAliases, findRawGitListings, findRawPackHelpers, findRawTransport, findInternalPackageImports, findLmdbImports, findRepositoryCasts, findSharedPackageLists, findUpwardImports, jsSpecifierFixes, LAYERS, LMDB_RULES, MANIFEST_FIELDS, packOwnModuleFixes, packageSourceDirs, CHECK_IDS, type CoveredRuleId, DECLARES_SOURCE_BY_DESIGN, type ImportRuleId, SHARED_LIST_CONSUMERS, sourceConditionPackages, SOURCE_CONDITION, checkedDirs, type ImportRule, packCodeDirs, packDirs, packRule, packRuleProblems, ruleRows, ruleTable } from '../../../scripts/check-import-specifiers.ts';
+import { CHECKS, findAppImportsInPackTests, findContractLeafImports, findCrossCheckoutResolution, findCrossFeatureImports, findExtensionlessOwnModules, findHostImports, findJsSpecifiers, findMissingSourceConditions, findPackageScriptImports, findPackBackendConsole, findPackOwnAliases, findRawGitListings, findRawPackHelpers, findRawTransport, findInternalPackageImports, findLmdbImports, findRepositoryCasts, findSharedPackageLists, findUpwardImports, jsSpecifierFixes, LAYERS, UNLAYERED_BY_DESIGN, LMDB_RULES, MANIFEST_FIELDS, packOwnModuleFixes, packageSourceDirs, CHECK_IDS, type CoveredRuleId, DECLARES_SOURCE_BY_DESIGN, type ImportRuleId, SHARED_LIST_CONSUMERS, sourceConditionPackages, SOURCE_CONDITION, checkedDirs, type ImportRule, packCodeDirs, packDirs, packRule, packRuleProblems, ruleRows, ruleTable } from '../../../scripts/check-import-specifiers.ts';
 import { REPO_ROOT } from '@abuddy/host/build/packages-built';
 import { packFixture as buildPackFixture } from '@abuddy/sdk/testing';
 import { population } from '@abuddy/sdk/testing';
@@ -281,7 +281,12 @@ function layer(dir: string, manifest: Record<string, unknown>, files: Record<str
 }
 
 describe('findUpwardImports', () => {
-  const layers = LAYERS.map((l) => ({ ...l, dir: `layers/${path.basename(l.dir).replace(/^abuddy-/, '')}` }));
+  // The five rows the fixture below builds a directory for. These cases are about the mechanism, so a row with
+  // no tree behind it would only make the manifest read throw; the real twelve are covered by `holds for the
+  // repo` and the two coverage cases at the end of this block.
+  const modelled = ['abuddy-ears', 'abuddy-sdk', 'abuddy-host', 'api', 'renderer'];
+  const layers = LAYERS.filter((l) => modelled.includes(path.basename(l.dir)))
+    .map((l) => ({ ...l, dir: `layers/${path.basename(l.dir).replace(/^abuddy-/, '')}` }));
   const allowed = () => {
     layer('layers/ears', {}, { 'src/index.ts': "import { x } from './x.ts';\nimport ts from 'typescript';\n" });
     layer('layers/sdk', { dependencies: { '@abuddy/ears': '^0.1.0', yaml: '*' } }, {
@@ -340,6 +345,27 @@ describe('findUpwardImports', () => {
     allowed();
     writeAt(path.join('layers', pkg, 'package.json'), JSON.stringify({ name: 'x', ...manifest }));
     expect(findUpwardImports(layers, root)).toEqual([problem]);
+  });
+
+  /**
+   * The coverage half, over the real tree — because that is the only place the population lives.
+   *
+   * `LAYERS` is hand-written and covered five of the twelve workspaces holding code; the seven it missed
+   * were missing by omission, not by decision, and nothing said so. These two cases are why that cannot
+   * recur: drop a row and the package it layered is reported, excuse one that still has a row and the
+   * contradiction is reported. The fixture cases above are unaffected, because a synthetic root has no
+   * `packages/` for the population to find.
+   */
+  it('reports a workspace that holds code and has no layer', () => {
+    const short = LAYERS.filter((layer) => layer.dir !== 'packages/preload');
+    expect(findUpwardImports(short))
+      .toEqual(['packages/preload: holds code and has no layer, so nothing says which @abuddy packages it may import']);
+  });
+
+  it('reports a workspace that is both layered and excused', () => {
+    const also = [...LAYERS, { name: '@app/default-setup', dir: 'packages/default-setup', allowed: [] }];
+    expect(findUpwardImports(also).filter((problem) => problem.startsWith('packages/default-setup:')))
+      .toEqual([`packages/default-setup: has a layer and is also excused as "${UNLAYERED_BY_DESIGN.get('packages/default-setup')!}" — drop one`]);
   });
 
   it('holds for the repo', () => {
@@ -520,7 +546,12 @@ const FIRES: Record<ImportRuleId, () => string[]> = {
     return findAppImportsInPackTests(PACK_TESTS, root);
   },
   findUpwardImports: () => {
-    const layers = LAYERS.map((l) => ({ ...l, dir: `layers/${path.basename(l.dir).replace(/^abuddy-/, '')}` }));
+    // The five rows the fixture below builds a directory for. These cases are about the mechanism, so a row with
+  // no tree behind it would only make the manifest read throw; the real twelve are covered by `holds for the
+  // repo` and the two coverage cases at the end of this block.
+  const modelled = ['abuddy-ears', 'abuddy-sdk', 'abuddy-host', 'api', 'renderer'];
+  const layers = LAYERS.filter((l) => modelled.includes(path.basename(l.dir)))
+    .map((l) => ({ ...l, dir: `layers/${path.basename(l.dir).replace(/^abuddy-/, '')}` }));
     // Every layer has to be there, since the rule walks all of them; only the lowest one imports upward
     for (const { dir } of layers) layer(dir, {}, {});
     layer('layers/ears', {}, { 'src/index.ts': "import { services } from '@abuddy/sdk/services';\n" });
