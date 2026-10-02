@@ -5,6 +5,7 @@ import { inputFiles, REPO_ROOT } from '@abuddy/host/build/packages-built';
 import { CHAIN_STEPS } from '../../../scripts/lib/chain-steps.ts';
 import { scopeOf, TYPECHECK_LEGS } from '../../../scripts/lib/typecheck-legs.ts';
 import { PACKAGE_DIRS } from '../../../scripts/lib/workspace-deps.ts';
+import { UNIT_SUITES, unitStepName } from '../../../scripts/lib/unit-suites.ts';
 import { depFileNames, readsOf, untrustworthy } from '../../../scripts/lib/dep-files.ts';
 import { population } from '@abuddy/sdk/testing';
 
@@ -205,5 +206,69 @@ describe('a dep file is checked against itself before it is believed', () => {
       const info = JSON.parse(fs.readFileSync(path.join(dir, file), 'utf-8')) as { fileNames?: unknown };
       expect(info.fileNames, `${file} now records a program; the reader could read it`).toBeUndefined();
     }
+  });
+});
+
+/**
+ * And the same question of the whole chain: which steps has anything looked at.
+ *
+ * Three answers, and the third is the one worth naming. A **dep file** is the compiler reporting what it
+ * read — an observation, the only kind of evidence here that can catch an input nobody modelled. The
+ * **module graph** is `suite-reads` walking a suite's specs, which is a declaration checked against
+ * another declaration. And for the rest there is **nothing per-step**: builds, shell scenarios and
+ * Playwright runs have no tool that reports their reads, and syscall tracing was reasoned out of scope
+ * (`docs/archive/plans/one-action-cache.md`) because it cannot tell a read that matters from a stat
+ * during module resolution.
+ *
+ * Those nine are covered only by `chain-inputs`' coverage question — every tracked file is *some* step's
+ * input — which cannot catch a step declaring too little. That is a real gap and this is a record of it,
+ * not a gate over it: the list is asserted so it cannot drift in prose, so a step gaining observation
+ * shows up, and so a new step that nothing watches has to be added here deliberately.
+ *
+ * `typecheck:fe` is in this list and in the one above for the same reason.
+ */
+describe('what has looked at a step at all', () => {
+  const observation = (): { byDepFile: string[]; byGraph: string[]; byNothing: string[] } => {
+    const owners = new Set(depFileNames()
+      .filter((file) => readsOf(file) !== undefined)
+      .map((file) => PACKAGE_DIRS.find((dir) => file === dir)
+        ?? PACKAGE_DIRS.filter((dir) => file.startsWith(`${dir}-`)).sort((a, b) => b.length - a.length)[0])
+      .filter((dir): dir is string => dir !== undefined));
+    const byDepFile = new Set(TYPECHECK_LEGS
+      .filter((leg) => { const scope = scopeOf(leg); return scope === 'repo' || scope.some((dir) => owners.has(dir)); })
+      .map((leg) => leg.name));
+    // A pool's specs are walked by `suite-reads`, which is the other kind of evidence
+    const byGraph = new Set([...new Set(UNIT_SUITES.map(unitStepName)), 'test:integration']);
+    const named = (take: (name: string) => boolean): string[] =>
+      CHAIN_STEPS.filter((step) => take(step.name)).map((step) => step.name).sort();
+    return {
+      byDepFile: named((name) => byDepFile.has(name)),
+      byGraph: named((name) => byGraph.has(name)),
+      byNothing: named((name) => !byDepFile.has(name) && !byGraph.has(name)),
+    };
+  };
+
+  it('has looked at most of them, so the list below is a remainder and not the whole table', () => {
+    const { byDepFile, byGraph, byNothing } = observation();
+    expect(byDepFile.length, 'no step is covered by a dep file').toBeGreaterThan(10);
+    expect(byGraph.length, 'no step is covered by the module graph').toBeGreaterThan(2);
+    expect(byDepFile.length + byGraph.length + byNothing.length, 'the three answers do not partition the table')
+      .toBe(CHAIN_STEPS.length);
+  });
+
+  it('names the steps nothing verifies per-step', () => {
+    expect(observation().byNothing,
+      'a step here is one whose declared inputs nothing checks against what it touched. Add to this list '
+      + 'only a step no tool can report on, and take one out when something can').toEqual([
+      'build:app',
+      'compile',
+      'packages:check',
+      'test',
+      'test:external-pack:app',
+      'test:external-pack:contract',
+      'test:packaged-authoring',
+      'test:smoke',
+      'typecheck:fe',
+    ]);
   });
 });
