@@ -111,10 +111,40 @@ export function readsOf(packDir: string): BuildReads | undefined {
   return read(packDir);
 }
 
-/** Whether a pack is built into the app, which decides which phases its build can record at all */
-export function isBuiltIn(packDir: string): boolean {
-  const manifest = JSON.parse(fs.readFileSync(path.join(REPO_ROOT, packDir, 'abuddy.json'), 'utf-8')) as { builtIn?: boolean };
-  return manifest.builtIn === true;
+/**
+ * The command that rebuilds a pack's record, so every refusal below can say what to do about it.
+ *
+ * A bundler bump invalidates every record at once, and the message for that used to name the two versions
+ * and stop there — true, diagnostic, and silent about the one action that resolves it.
+ *
+ * `abuddy build` for anything this cannot place, which is the honest answer and the general one: a refusal
+ * is asked about a directory the caller named, which may hold no pack at all — the spec asks about
+ * `packages/api` — so this cannot be the place that requires a manifest to be there.
+ */
+export function rebuildCommand(packDir: string): string {
+  const builtIn = isBuiltIn(packDir);
+  if (builtIn === true) return 'npm run compile';
+  if (builtIn === false && packDir.startsWith('tests/packs/')) return 'npm run test:external-pack:contract';
+  return 'abuddy build';
+}
+
+/**
+ * Whether a pack is built into the app, which decides which phases its build can record at all — a
+ * built-in pack's frontend and backend go into the app's own bundles, so it never runs those two.
+ * `undefined` where there is no manifest to read, which is not a pack rather than a pack of either kind.
+ *
+ * **This is the one thing here whose subject `docs/plans/one-kind-of-pack.md` deletes.** When there is one
+ * kind of pack this function goes, and `rebuildCommand` decides on the path alone, as it already does for a
+ * fixture. Nothing else in this module or in the producer asks what kind a pack is.
+ */
+export function isBuiltIn(packDir: string): boolean | undefined {
+  const manifest = path.join(REPO_ROOT, packDir, 'abuddy.json');
+  if (!fs.existsSync(manifest)) return undefined;
+  try {
+    return (JSON.parse(fs.readFileSync(manifest, 'utf-8')) as { builtIn?: boolean }).builtIn === true;
+  } catch {
+    return undefined;
+  }
 }
 
 /** Every file a pack's build read, across its phases, pack-relative and deduplicated */
@@ -133,16 +163,16 @@ export function filesRead(reads: BuildReads): string[] {
 export function untrustworthy(packDir: string, installed: (bundler: string) => string | undefined = installedVersion): string | null {
   const record = read(packDir);
   if (record === undefined) {
-    return `no record: ${packDir} has not been built in this checkout, so nothing is recorded about what its build reads`;
+    return `no record: ${packDir} has not been built in this checkout, so nothing is recorded about what its build reads — ${rebuildCommand(packDir)}`;
   }
   for (const [bundler, version] of Object.entries(record.bundlers)) {
     const now = installed(bundler);
     if (now !== version) {
-      return `bundled by ${bundler} ${version}, and ${now ?? 'nothing'} is installed: the recorded module graphs are another bundler's`;
+      return `bundled by ${bundler} ${version}, and ${now ?? 'nothing'} is installed: the recorded module graphs are another bundler's — ${rebuildCommand(packDir)}`;
     }
   }
   if (Object.keys(record.phases).length === 0) {
-    return `recorded no phase, so the build reported nothing about what it read`;
+    return `recorded no phase, so the build reported nothing about what it read — ${rebuildCommand(packDir)}`;
   }
   return null;
 }

@@ -24,6 +24,11 @@
  * one that read nothing: a built-in pack stops before the runtime and frontend bundles, and `--skip-fe`
  * and `--skip-generate` skip others. A flat list would answer "nothing was recorded" and "nothing was
  * read" with the same silence, which is the ambiguity `readsOf` was tightened to remove.
+ *
+ * `docs/plans/one-kind-of-pack.md` removes the first of those two reasons: with no built-in packs, every
+ * pack is built the same way and records the runtime and frontend bundles too. The keying stays, on the
+ * second reason alone — the flags still skip phases — and what changes is that one pack's record then
+ * exercises all nine, where today it takes a built-in pack and an external one between them.
  */
 import * as fs from 'node:fs';
 import * as path from 'node:path';
@@ -84,8 +89,13 @@ export interface BuildReadsRecord {
 export interface BuildReads {
   /** The recorder for one phase */
   forPhase(phase: BuildPhase): RecordReads;
-  /** Write the record. Called where the build commits its output, so a failed build records nothing. */
+  /**
+   * Write the record. Called where the build commits its output, so a failed build records nothing — and
+   * it never fails the build itself, however it fails.
+   */
   write(): void;
+  /** @internal what `write` does, separated so that its failure has one place to be caught */
+  record(): void;
 }
 
 /**
@@ -110,6 +120,19 @@ export function buildReads(packDir: string): BuildReads | undefined {
       phases.set(phase, into);
     },
     write() {
+      // **Never fails the build.** The record is diagnostic: a build that produced its dist, its snapshot
+      // and its bundles has succeeded, and a record it could not write says "no evidence", which is a
+      // state every reader already handles. Measured before this was here: with `.abuddy` read-only, a
+      // complete build exited 1 on an EACCES naming a temp file. The environmental reasons to be unable to
+      // write are exactly the ones the opt-out exists for, so the warning names it.
+      try {
+        this.record();
+      } catch (err) {
+        console.warn(`Could not record what this build read (${err instanceof Error ? err.message : String(err)}). `
+          + `The build itself is unaffected; set ${OPT_OUT}=1 to skip it.`);
+      }
+    },
+    record() {
       // The pack's real path, because every recorded path is realpathed too: a pack under a symlinked
       // directory (macOS's /var, which every temp fixture is under) would otherwise relativise to a
       // walk back out through /private
@@ -127,8 +150,13 @@ export function buildReads(packDir: string): BuildReads | undefined {
       // and the step rebuilding them share no edge and can overlap — so a plain write leaves a window in
       // which the file parses as nothing and reads as a record that cannot be believed.
       const partial = `${file}.${process.pid}.tmp`;
-      fs.writeFileSync(partial, `${JSON.stringify(record, null, 2)}\n`);
-      fs.renameSync(partial, file);
+      try {
+        fs.writeFileSync(partial, `${JSON.stringify(record, null, 2)}\n`);
+        fs.renameSync(partial, file);
+      } finally {
+        // A rename leaves nothing behind; a failure before it does, in a directory the next build reads
+        fs.rmSync(partial, { force: true });
+      }
     },
   };
 }
