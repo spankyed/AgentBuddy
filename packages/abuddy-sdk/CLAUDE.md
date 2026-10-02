@@ -157,13 +157,22 @@ This is the in-memory runtime that `@abuddy/testing/harness` drives (see `packag
 ## A pack on disk (`src/testing/pack-fixture.ts`, `@abuddy/sdk/testing/pack-fixture`)
 
 `packFixture(options?)` writes a complete pack directory and returns its path — for the specs whose subject is
-**pack tooling**: the import rules, the pack rules, the bundlers, the installer.
+**pack tooling**: the import rules, the pack rules, the bundlers, the installer. It is a helper: what it saves
+is the preamble eleven specs shared, `mkdtemp` plus a manifest plus a `package.json` plus a symlinked
+`node_modules`, four of them written identically.
 
-**It is a source-only export, and that is the whole of why it can live here.** The entry names
+**It is a source-only export, and that is why it can live here.** The entry names
 `./src/testing/pack-fixture.ts` under `@abuddy/source` and nothing else, so `publishedManifest` drops it from
-the published manifest (`@abuddy/host/build/published-manifest`), no `etc/*.api.md` reports it, `api:check` and
-`api:stamp` never see it, and **no pack can resolve it** — a pack's config may not declare that condition, which
-`check:specifiers` enforces. `./runtime/internals` is the same shape and the precedent. It is deliberately *not*
+the published manifest (`@abuddy/host/build/published-manifest`), no `etc/*.api.md` reports it so `api:check`
+does not review it, and **nothing outside this repo can resolve it** — a consumer of the tarball has no such
+entry, and a pack's config may not declare that condition, which `check:specifiers` enforces.
+`./runtime/internals` is the same shape and the precedent.
+
+What the shape does *not* do, both checked: the compiled file still **ships** (`files` is `["dist", …]`, and
+`publish/dist/testing/pack-fixture.{js,d.ts}` are staged, as `runtime/internals`' are), and **`api:stamp` still
+hashes it** — its inputs are every `.d.ts` under `dist`, so a doc-comment edit in that file asks for an
+`api:update` that rewrites no report. Dropping an entry hides a file from resolution; it does not keep it out of
+the tarball or out of the stamp. It is deliberately *not*
 in `src/testing/index.ts`: that entry is published, and this is repo-internal test tooling that no pack author
 materialises a pack to use.
 
@@ -182,11 +191,16 @@ Publish any of that surface and this goes public in the same change; until then,
 default manifest's shape, the `manifest`/`rawManifest` split and the stub files as contract, and that default is
 chosen to make *this repo's* pack rules fire.
 
-**What "complete" means, and why it is the point.** It writes both subpath maps, a manifest declaring a
-feature's two halves, and the files those paths name. The shapes it replaced were each missing something, and
-**a fixture too thin for a rule to fire is a case that passes because it could not fail**:
-`import-specifiers.integration.spec.ts` measured that — half its sweep ran on a fixture where `own-modules` and
-`contract-leaves` could not speak, so for those rows the sweep asserted nothing. Which module is a contract is
+**What "complete" means, and what it is not for.** It writes both subpath maps, a manifest declaring a
+feature's two halves, and the files those paths name, so a case that adds one offending file gets a tree where
+every rule can speak and need not work out which parts of a pack each rule reads.
+
+**It is not the thing that catches a fixture too thin for a rule to fire.** That is
+`import-specifiers.integration.spec.ts`, which asserts per rule that it found something in a tree written to
+offend it — so a rule that cannot fire fails naming itself, whoever wrote the tree. That assertion predates
+this fixture by five days (`1ee9b5a4c`), and reading the fixture as the protection is how a repo-wide rule
+mandating it came to be built and then deleted (`487a8c115`). If a thin fixture is ever the worry again, the
+answer is an assertion in the spec that would be wrong. Which module is a contract is
 what `abuddy.json` says, not what a file looks like, so a fixture without a manifest is one several pack rules
 cannot speak about at all.
 

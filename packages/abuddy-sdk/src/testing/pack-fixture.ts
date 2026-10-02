@@ -61,16 +61,32 @@ export interface PackFixtureOptions {
  * A pack on disk, complete by default: both subpath maps, a manifest declaring a feature's two halves, and the
  * files those paths name.
  *
- * Complete is the whole point. The shapes this replaces were each missing something — a manifest, a
- * `#features/*` map — and a fixture too thin for a rule to fire is a case that passes because it could not
- * fail. `import-specifiers.integration.spec.ts` measured that: half its sweep ran on a fixture where
- * `own-modules` and `contract-leaves` could not speak, so for those rows the sweep asserted nothing.
+ * **It is a helper, and the preamble is what it saves.** Eleven specs wrote some version of `mkdtemp`, a
+ * manifest, a `package.json` and a symlinked `node_modules` before getting to what they were about, and four
+ * of them wrote that symlink identically. Complete *by default* is a convenience on top: a case that adds one
+ * offending file gets a tree where every rule can speak, so it does not have to think about which parts of a
+ * pack a rule needs.
  *
- * **It sits in a published package and is not published**, as `@abuddy/sdk/testing/pack-fixture`: an entry whose
- * only branch is `@abuddy/source`, which `publishedManifest` drops from the published manifest outright. So it
- * ships in no tarball, appears in no `etc/*.api.md`, is seen by neither `api:check` nor `api:stamp`, and no pack
- * can resolve it — a pack's config may not declare that condition (`check:specifiers`). Deliberately not
- * exported from `testing/index.ts`, which is published. `./runtime/internals` is the same shape.
+ * **It is not what catches a fixture too thin for a rule to fire** — that reading of it is how a mandate gets
+ * built on top, and one was. `import-specifiers.integration.spec.ts` asserts per rule that it *found something
+ * in a tree written to offend it*, so a rule that cannot fire fails loudly, naming itself, whatever wrote the
+ * tree. That assertion landed in `1ee9b5a4c` on 2026-09-27, five days before this fixture existed, and it is
+ * the mechanism. A check sweeping every spec for hand-written manifests was a second record of the same fact
+ * and is deleted (`487a8c115`); if a thin fixture is ever the worry again, the answer is an assertion in the
+ * spec that would be wrong, not a rule about how other specs write files.
+ *
+ * **It sits in a published package and is unreachable from outside it**, as `@abuddy/sdk/testing/pack-fixture`:
+ * an entry whose only branch is `@abuddy/source`, which `publishedManifest` drops from the published manifest
+ * outright. So nothing can resolve the specifier — not a consumer of the tarball, which has no such entry, and
+ * not a pack, whose config may not declare that condition (`check:specifiers`). It appears in no `etc/*.api.md`
+ * either, so `api:check` does not review it. `./runtime/internals` is the same shape.
+ *
+ * **Two things that shape does not buy, measured rather than assumed, because the first draft claimed both.**
+ * The compiled file *ships*: `files` is `["dist", …]`, and `publish/dist/testing/pack-fixture.{js,d.ts}` are in
+ * the staged tree, as `runtime/internals`' are — dropping the entry hides it, it does not leave it out. And
+ * `api:stamp` *does* hash it: the stamp's inputs are every `.d.ts` under `dist`, this one among 168 of them, and
+ * since it began hashing verbatim a doc-comment edit here asks for an `api:update` that rewrites no report.
+ * Deliberately not exported from `testing/index.ts`, which is published.
  *
  * **The condition that would make it public API: a published pack-reading API.** Today every consumer of a pack
  * directory is private — the pack rules and the source parser are `@abuddy/cli`'s, which publishes no
