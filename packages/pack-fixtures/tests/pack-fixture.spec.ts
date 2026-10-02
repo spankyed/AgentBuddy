@@ -34,7 +34,27 @@ describe('packFixture', () => {
     expect(fs.existsSync(path.join(dir, 'src/features/notes/be/contract.ts'))).toBe(true);
   });
 
-  it('replaces the manifest outright for a case about a pack that declares something else', () => {
-    expect(read(packFixture({ manifest: { id: 'other' } }), 'abuddy.json')).toEqual({ id: 'other' });
+  /**
+   * The two manifest options, and the reason they are two.
+   *
+   * 23 of the 28 manifests written inline across the packages that may import this are the minimum plus at
+   * most one key, so varying is the common case and `manifest` merges. The other five are *about* the
+   * manifest — one the installer rejects, one missing a key — and a merge cannot express a key that is
+   * absent, so `rawManifest` writes what it is given. Asking for both is a question with two answers.
+   */
+  it('varies the default manifest, keeping what the case is not about', () => {
+    const written = read(packFixture({ manifest: { id: 'other' } }), 'abuddy.json');
+    expect(written.id).toBe('other');
+    expect(written.features, 'the feature the default declares is what makes a contract rule able to fire')
+      .toHaveLength(1);
+  });
+
+  it('writes a manifest verbatim when the manifest is the subject', () => {
+    expect(read(packFixture({ rawManifest: { id: 'only-this' } }), 'abuddy.json')).toEqual({ id: 'only-this' });
+  });
+
+  it('refuses both at once rather than picking one', () => {
+    expect(() => packFixture({ manifest: { id: 'a' }, rawManifest: { id: 'b' } }))
+      .toThrow(/not both/);
   });
 });

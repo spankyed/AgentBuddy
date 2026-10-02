@@ -39,12 +39,23 @@ manifest is one several pack rules cannot speak about at all.
 
 Not the in-memory harness. `setupPackTests` (`@abuddy/testing/harness`) takes a *registration object* and runs
 a pack's code; this materialises a *directory*. Different axes, and conflating them is the mistake
-[`docs/plans/one-pack-fixture.md`](../../docs/plans/one-pack-fixture.md) exists to avoid — that plan is also
-where the rest of this package's intended shape lives: fidelity (`built`, `modules`) as options on this
-builder, adopted by the 46 files that currently write a pack manifest as a string literal.
+[`docs/plans/one-pack-fixture.md`](../../docs/plans/one-pack-fixture.md) exists to avoid.
+
+**Not a build, and not an install.** `buildPack(dir)` builds one and the installer places one; both already
+take a directory, so this composes with them rather than growing a `built` or `installed` option. The
+*installed* shape — a manifest beside `integrity.json`, a snapshot and `dist/runtime` — is a different artifact
+whose layout `@abuddy/host` owns (`PACK_LAYOUT`), and host's tests build it in host, where the layer rule keeps
+it: a layer may not import test tooling, which is the same reason `population` stayed in the SDK.
+
+**Who can use it is a layer question, measured.** Of the 98 sites that write a pack manifest in a test, 54 are
+in the two packages that may import an `@app/*` package (`@abuddy/cli`, `@app/repo-checks`). The other 44 are
+in `@abuddy/host`, `@abuddy/sdk`, `packages/api` and `@app/default-setup`, which may not — so a hand-written
+manifest there is the only option available, and the guardrail that forbids one derives its scope from `LAYERS`
+rather than claiming the repo.
 
 ## Tests
 
-`npm test -w @app/pack-fixtures` — one spec, asserting the thing a fixture library can get wrong: that every
-path the manifest declares is a file that exists, read from the tree rather than from the literal that wrote
-it. No `pretest`: this package reads no build output.
+`npm test -w @app/pack-fixtures` — one spec. What it asserts is the thing a fixture library can get wrong:
+that every path the manifest declares is a file that exists, read from the tree rather than from the literal
+that wrote it; and that the two manifest options keep their separate meanings, since a merge cannot express a
+key that is absent. No `pretest`: this package reads no build output.
