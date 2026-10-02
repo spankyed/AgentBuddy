@@ -30,6 +30,18 @@ export interface Leg {
    */
   readonly scope?: readonly string[] | 'repo';
   /**
+   * Repo-root files this leg's compiler reads that belong to no workspace, so a scope cannot name them.
+   *
+   * One leg has any: `typecheck:be`'s three programs each resolve through the root `package.json`, which
+   * its dep files report and which `scope: ['api']` cannot express. Declared rather than derived from the
+   * dep file, for the reason a dep file is never a key — it records what was read *last* time, so a leg
+   * that starts reading one would not be invalidated by the thing it started reading.
+   *
+   * It exists because the root manifest left `ROOT`: when every step declared it, this was covered by
+   * accident. `dep-files.integration.spec.ts` is what found the gap and what keeps this list honest.
+   */
+  readonly alsoReads?: readonly string[];
+  /**
    * What it costs alone, measured 2026-09-27 on an idle machine. It feeds `budgetFor`, which bounds a leg at
    * four times this and floors at 60s — so the short legs all land on the floor, which is the right bound for
    * them anyway. Re-measure rather than raise one: a bound nobody will wait for is the same as no bound.
@@ -52,7 +64,7 @@ export const ENSURE = 'packages:ensure';
 export const TYPECHECK_LEGS: readonly Leg[] = [
   { name: ENSURE, command: 'npm run packages:ensure', scope: ['abuddy-ears', 'abuddy-sdk', 'abuddy-ui', 'abuddy-cli', 'abuddy-testing'], seconds: 0.3 },
   { name: 'typecheck:fe', command: 'npm run typecheck:fe', seconds: 6.2 },
-  { name: 'typecheck:be', command: 'npm run typecheck:be', seconds: 3.4 },
+  { name: 'typecheck:be', command: 'npm run typecheck:be', alsoReads: ['package.json'], seconds: 3.4 },
   { name: 'typecheck:ears', command: 'npm run typecheck:ears', seconds: 0.8 },
   { name: 'typecheck:sdk', command: 'npm run typecheck:sdk', seconds: 1.1 },
   { name: 'typecheck:host', command: 'npm run typecheck:host', seconds: 1.3 },

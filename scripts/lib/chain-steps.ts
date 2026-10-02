@@ -327,12 +327,30 @@ export function orderedSteps(given: readonly ChainStep[] = CHAIN_STEPS): readonl
  * than a split (Phase 2 of the goal).
  */
 /**
- * The workspace graph and the toolchain: every step reads them, because a dependency moving changes what
- * any of them do. `fingerprintInputs` walks a directory, so naming one covers the files under it.
+ * The one file every step really does read: the installed toolchain, because a dependency moving changes
+ * what any of them do.
+ *
+ * **`package.json` is not here any more**, and that is the point. It was, because a step's command lives
+ * in it and a fingerprint hashes paths and bytes — so the only way to key on the command was to hash the
+ * whole manifest into all 29 steps. Measured over ~587 commits, 37 touched it and every one of those 37
+ * was scripts-only: 37 full chains for an edit to one script. A unit carries its `command` now
+ * (`commandText`, `scripts/lib/npm-scripts.ts`), so the manifest's other job here is covered precisely.
+ *
+ * Its remaining job needs no declaration at all: `workspaces` decides what a workspace is, so adding one
+ * changes `EVERY_WORKSPACE`, which changes the declared path list, which `fingerprintUnit` hashes. And
+ * each workspace's own manifest is already an input through `WORKSPACE_PARTS`.
  */
-// Both root vitest configs: one pools the unit projects, the other the expensive halves, and a step that
-// reads either reads what its pool is made of
-const ROOT = ['package.json', 'package-lock.json', 'vitest.config.ts', 'vitest.integration.config.ts'];
+const ROOT = ['package-lock.json'];
+
+/**
+ * Both root vitest configs: one pools the unit projects, the other the expensive halves, and a step that
+ * reads either reads what its pool is made of.
+ *
+ * Separate from `ROOT` because only the pools read them. They stay inside `EVERY_SOURCE` as well, since a
+ * step that walks the tree — the lint, the import rules — walks these too, and the coverage guard in
+ * `chain-inputs.spec.ts` is what would notice if they did not.
+ */
+const VITEST_ROOT = ['vitest.config.ts', 'vitest.integration.config.ts'];
 
 /**
  * Every workspace, from the one definition that decides which they are (`workspace-deps.ts`, read from the
@@ -389,7 +407,7 @@ const EVERY_WORKSPACE = PACKAGES.flatMap(workspace);
  *
  * Build output is not in here, because a guard's subject is source. `typecheck` adds its own.
  */
-const EVERY_SOURCE = [...ROOT, ...EVERY_WORKSPACE, 'scripts', 'tests/e2e', 'tests/packs', 'tests/scripts',
+const EVERY_SOURCE = [...ROOT, ...VITEST_ROOT, ...EVERY_WORKSPACE, 'scripts', 'tests/e2e', 'tests/packs', 'tests/scripts',
   'tests/tsconfig.json', 'playwright.config.ts', 'types', 'electron-builder.mjs',
   // The drive layer's config, and only it: the driving scripts beside it are gitignored and ad-hoc,
   // so naming the directory would re-run a typecheck every time someone poked at the app
@@ -536,6 +554,8 @@ export function suiteInputs(suite: UnitSuite): string[] {
   const reads = SUITE_READS[suite.dir] ?? {};
   return [
     ...ROOT,
+    // A suite runs under one of the root configs, so which projects that config pools is an input to it
+    ...VITEST_ROOT,
     ...SUITE_RUNNER,
     ...suiteWorkspace(suite.dir),
     ...workspaceDeps(suite.dir).flatMap(dependencySource),
@@ -616,6 +636,7 @@ function inputsForSuites(suites: readonly UnitSuite[]): Pick<ChainStep, 'inputs'
 const legInputs = (leg: Leg): string[] => [...new Set(scopeOf(leg) === 'repo'
   ? [...EVERY_SOURCE, ...PACKAGE_BUILD_OUTPUTS]
   : [...ROOT,
+    ...(leg.alsoReads ?? []),
     ...(scopeOf(leg) as readonly string[]).flatMap(suiteWorkspace),
     ...(scopeOf(leg) as readonly string[]).flatMap((dir) => workspaceDeps(dir)).flatMap(dependencySource),
     ...PACKAGE_BUILD_OUTPUTS])].sort();

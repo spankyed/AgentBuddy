@@ -15,10 +15,10 @@ import { execFileSync } from 'node:child_process';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { BUILD_UNITS, covers, inputFiles, NOT_A_BUILD_INPUT, repoRelative, REPO_ROOT } from '@abuddy/host/build/packages-built';
+import { BUILD_UNITS, covers, fingerprintUnit, inputFiles, NOT_A_BUILD_INPUT, REPO_ROOT, repoRelative } from '@abuddy/host/build/packages-built';
 import { CHAIN_STEPS, dependsOn, SUITE_READS } from '../../../scripts/lib/chain-steps.ts';
 import { UNIT_SUITES } from '../../../scripts/lib/unit-suites.ts';
-import { reachableText, rootScripts } from '../../../scripts/lib/npm-scripts.ts';
+import { commandText, reachableText, rootScripts } from '../../../scripts/lib/npm-scripts.ts';
 import { TYPECHECK_LEGS } from '../../../scripts/lib/typecheck-legs.ts';
 import { PACKAGE_DIRS } from '../../../scripts/lib/workspace-deps.ts';
 import { repoFiles } from './_support/repo-files.ts';
@@ -441,6 +441,66 @@ describe('a step that reads what another writes depends on it', () => {
   });
 });
 
+/**
+ * A step's command is part of its key, and the only part that is not a file.
+ *
+ * `package.json` used to be in all 29 steps' inputs for one reason: a step is `npm run <name>`, its
+ * command lives in a manifest, and a fingerprint hashes paths and bytes — so the whole manifest was the
+ * only available proxy. Measured over ~587 commits, 37 touched it and all 37 were scripts-only, each one
+ * invalidating every step. `BuildUnit.command` replaced that proxy with the thing itself.
+ *
+ * Which moves the risk rather than removing it: a key that depends on a text walk of shell is wrong
+ * silently, where a scan that depends on one is wrong loudly. These two cases are what stand under it.
+ */
+describe('a step keys on the command it runs', () => {
+  it('gives every step a command, and no two steps the same one', () => {
+    const all = rootScripts();
+    const byText = new Map<string, string[]>();
+    for (const step of CHAIN_STEPS) {
+      const text = commandText(step.name, all);
+      expect(text, `${step.name} resolves to no command, so its key is its inputs alone and a change to `
+        + 'its script would not re-run it').not.toBe('');
+      byText.set(text, [...(byText.get(text) ?? []), step.name]);
+    }
+    const shared = [...byText.values()].filter((names) => names.length > 1);
+    expect(shared, 'these steps have one command between them, so one cannot be invalidated without the other')
+      .toEqual([]);
+  });
 
+  /**
+   * The mutation check for the whole change, and it needs no edit to `package.json`: `commandText` takes
+   * the scripts map as an argument, so a changed script can be handed to it directly.
+   *
+   * Inputs are empty on both units on purpose — it isolates the command's contribution to the hash, so a
+   * pass cannot come from the files moving instead.
+   */
+  it('moves a step fingerprint when the text of its script changes', () => {
+    const all = rootScripts();
+    const [step] = CHAIN_STEPS;
+    const before = commandText(step!.name, all);
+    const after = commandText(step!.name, { ...all, [step!.name]: `${all[step!.name]!} --changed` });
+    expect(after, 'the edited script is not in what this command reaches').not.toBe(before);
 
+    const keyed = (command: string): string => fingerprintUnit({ inputs: [], outputs: [], command });
+    expect(keyed(after), 'the command is not in the fingerprint').not.toBe(keyed(before));
+  });
 
+  /**
+   * And the manifest is gone from the keys, bar one step that genuinely reads it.
+   *
+   * `typecheck:be` is the exception and it is evidenced rather than assumed: its three programs each
+   * resolve through the root `package.json`, which its dep files report, so it declares it through
+   * `alsoReads`. The dep-file gate found this the moment the manifest left `ROOT` — while every step
+   * declared it, a real read and an accident were indistinguishable.
+   *
+   * `packages:ensure` declares it too, through `SHARED_INPUTS` in `BUILD_UNITS`, and is filtered out
+   * rather than listed: it is never cached, so it has no key to invalidate.
+   */
+  it('leaves package.json out of every step the chain caches, bar the one that reads it', () => {
+    const cached = CHAIN_STEPS.filter((step) => step.neverCachedBecause === undefined);
+    expect(cached.length, 'no step is cached, so this passes over nothing').toBeGreaterThan(20);
+    expect(cached.filter((step) => step.inputs.includes('package.json')).map((step) => step.name),
+      'a step keying on the whole manifest re-runs when any unrelated script is edited; add one here only '
+      + 'with the dep-file evidence that it reads the manifest').toEqual(['typecheck:be']);
+  });
+});

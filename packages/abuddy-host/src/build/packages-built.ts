@@ -65,12 +65,16 @@ const SHARED_INPUTS = [repoFile('package.json'), repoFile('package-lock.json')];
  * be read wrongly by this one (a different hash, a different set of things hashed), and every unit runs
  * once, which is correct.
  *
- * Back at 1 deliberately. Stamps live in `node_modules/.cache/` and are never committed, so a version only
- * means something against stamps a machine already has; the bumps taken while the chain's steps were being
- * added to this protocol meant nothing to anyone but the machine they were written on. The protocol this
- * describes is one thing, so it starts at one, and `!==` still invalidates whatever those runs left behind.
+ * **2 since a unit's `command` joined the hash**, which is exactly the case above: a stamp from 1 was
+ * written over a different set of things, so reading its fingerprint against this one would be comparing
+ * two answers to two questions. Every unit runs once and then caches again.
+ *
+ * It was held at 1 through the bumps taken while the chain's steps were being added to this protocol,
+ * because stamps live in `node_modules/.cache/` and are never committed — a version only means something
+ * against stamps a machine already has, and those bumps meant nothing to anyone but the machine they were
+ * written on. This one changes what is hashed for everybody, which is the difference.
  */
-export const STAMP_VERSION = 1;
+export const STAMP_VERSION = 2;
 
 export interface BuildUnit {
   /** Files and directories the build reads, absolute; a directory is walked */
@@ -87,6 +91,16 @@ export interface BuildUnit {
   readonly excludes?: readonly string[];
   /** Paths the build writes; all must exist for the unit to count as built */
   readonly outputs: readonly string[];
+  /**
+   * What this unit *runs*, as text — the third of Bazel's triple, beside the inputs and the environment.
+   *
+   * Optional, and the package builds leave it unset: their command is this module, which cannot change
+   * without the module changing, and a module is already bytes under a declared path. The chain's steps
+   * set it, because a step is `npm run <name>` and its command lives in a manifest rather than in a file.
+   * Without it the only way to key on a command was to hash the whole manifest into every step, which is
+   * what made a one-word edit to one script invalidate all of them.
+   */
+  readonly command?: string;
 }
 
 /** A package compiled to its own `dist/` by `scripts/build-package.ts` (or, for @abuddy/ui, build-ui-package.ts) */
@@ -455,6 +469,10 @@ export function fingerprintInputs(
 export function fingerprintUnit(unit: BuildUnit, collect?: (file: string, digest: string) => void, tree?: TreeReader): string {
   return createHash('sha256')
     .update(declaredPaths(unit).join('\0'))
+    .update('\0')
+    // The command, where the unit has one. Hashed with the paths rather than with the bytes: it is a
+    // property of the unit, not a file under it, and a unit that gains one must invalidate itself.
+    .update(unit.command ?? '')
     .update('\0')
     // A unit's own output is never its own input, however broadly its inputs are declared. Two steps
     // declare a whole tree and then write into it — `compile` writes `src/__generated__` under the `src`

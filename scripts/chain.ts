@@ -45,6 +45,7 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { changedInputs, firstChange, freshnessSweep, INPUTS_CHANGED, REPO_ROOT, stampedRun, stampRecord, unitStaleReason, type BuildUnit } from '@abuddy/host/build/packages-built';
 import { CHAIN_STEPS, type ChainStep, chainSteps, conflictsOf, MEASURED_AT_LANES, orderedSteps } from './lib/chain-steps.ts';
+import { commandText, rootScripts } from './lib/npm-scripts.ts';
 import { schedule } from './lib/chain-schedule.ts';
 import { criticalPath, driftedSteps, willNotCache } from './lib/step-timing.ts';
 import { briefly, classifyLine, declaredAt, dim, driftReport, DRY_REASON_COLUMN, howLong, identicalRewrites, marker, oneLine, REASON_COLUMN, shouldClassify, staleLines, STEP_NAME_WIDTH, TIME_COLUMN, whenChanged, wrapAt, writerOf } from './lib/chain-output.ts';
@@ -114,6 +115,8 @@ const unitFor = (step: ChainStep): BuildUnit => ({
   inputs: step.inputs.map((input) => path.join(REPO_ROOT, input)),
   outputs: (step.outputs ?? []).map((output) => path.join(REPO_ROOT, output)),
   excludes: (step.excludes ?? []).map((excluded) => path.join(REPO_ROOT, excluded)),
+  // What `npm run <name>` resolves to, which is what `package.json` used to be in every step's inputs for
+  command: commandText(step.name, rootScripts()),
 });
 
 type Result = { step: string; ms: number; code: number; output: string; timedOut?: true };
