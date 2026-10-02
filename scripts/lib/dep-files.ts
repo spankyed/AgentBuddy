@@ -11,6 +11,28 @@
  * `api:stamp` can. That is the known unsoundness of dep files generally, and it is why Bazel pairs them
  * with sandboxing and Gradle pairs them with "undeclared means uncacheable". Here it is paired with
  * `trustworthy()` below and with the rule that a missing dep file is not a cacheable state.
+ *
+ * **Buck2 uses `dep_files` to prune rather than to key, and that was measured here and declined.** The
+ * pruning shape is sound where keying is not: leave the declared set as the key, and when it says stale,
+ * skip anyway if every file that *moved* is one this file says was never read — never on an addition or a
+ * removal, which are the cases that change resolution without changing a file anyone read, and which
+ * `changedInputs` already reports apart from modifications. What it would buy, measured 2026-10-02 over
+ * single-file edits: **one or two of the stale typecheck legs per edit**, not fifteen. An edit to
+ * `abuddy-ears/src/edge-store.ts` makes 18 legs stale, and 11 of them genuinely compiled it — everything
+ * resolves that source under the `@abuddy/source` condition — while 6 of the 18 have no dep file to prune
+ * with at all. Against that: 52ms to parse all 16 of these on every chain invocation, a 6% tax on the 0.9s
+ * warm floor, and a new stamp field to tie a dep file to the run that was stamped, since a dep file from a
+ * failed run records a subset and would prune too much.
+ *
+ * **The number that makes it moot is where the time is.** The 18 legs are 49s of the chain's 423s, and the
+ * critical path is 125s through `packages:ensure -> compile -> build:app -> test:packaged-authoring`; none
+ * of the five most expensive steps is a leg. Pruning every leg to zero would leave that path untouched.
+ *
+ * Do not read "the legs declare far more than they read" as slack: they do (0-21% of declared files are
+ * read), but the padding is `dist` trees and configs that rarely change, while the source that does change
+ * is mostly genuinely read. That ratio is a fact about declaration shape, not an opportunity.
+ *
+ * Revisit if a leg lands on the critical path, or if the app-dependent steps stop dominating it.
  */
 import * as fs from 'node:fs';
 import * as path from 'node:path';

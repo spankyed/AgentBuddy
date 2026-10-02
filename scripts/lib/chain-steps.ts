@@ -737,6 +737,14 @@ const POOL_STEPS: readonly ChainStep[] = (['host', 'pack'] as const).map((kind) 
  * three at 09:30 the same day, and nothing connected the two — it read 63s for two days and the drift band
  * happened to absorb it. The chain compares this against its own default and says so when they differ, which
  * is the connection that was missing rather than a number that was wrong.
+ *
+ * **Three is the knee, re-measured 2026-10-02 now that the table is 29 steps rather than 13** — the condition
+ * the original choice named. Interleaved `--all` pairs on a 10-core box: two lanes is +8%, four is -1%, six
+ * is +6%. More lanes buys nothing because the expensive steps are already parallel inside themselves —
+ * `test:integration` caps its workers at half the cores, the unit pools run vitest's, `build:app` runs vite's
+ * — so at three lanes the cores are taken and a fourth finds none free. A cold run is not lane-bound: it
+ * lands at 176-185s against a 141s three-lane floor and a 121s critical path, so the only thing that moves it
+ * is less work, not a different schedule.
  */
 export const MEASURED_AT_LANES = 3;
 
