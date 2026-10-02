@@ -1,3 +1,10 @@
+> **Done** (branch `AS/one-action-cache`). All six items are closed: `package.json` out of every step's
+> inputs (`ccfb74e7d`), dep files for `main` and `preload` (`f004ab2cd`), the nine unobserved steps recorded
+> rather than watched (`5ff837083`), `seconds` gaining its update half (`dfa56d523`), the warm-chain
+> regression closed where it actually was (`115582524`), and the integration half pooled (`3963a37a9`,
+> keyed correctly in `12db65692`). Each entry below carries what it cost and, where there was one, the thing
+> the plan did not predict. Read it as history: it names code as it was.
+
 # Observe the inputs
 
 `goal-one-action-cache.md` derived the chain's *consequences* — ordering, mutexes, classification — from

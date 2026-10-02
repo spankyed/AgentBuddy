@@ -2,7 +2,7 @@
 > whose Outcome records what landed and the three places this plan was wrong: a dep file is sound as a
 > check and not as a key, retiring the text scan cannot be paired with the derived edges, and item 7
 > (Gradle's rule) has no subject in a cache that decides whether to run rather than restoring outputs.
-> The follow-up is [`observed-inputs.md`](../../plans/observed-inputs.md). The text below is the plan as
+> The follow-up is [`observed-inputs.md`](observed-inputs.md), itself now done. The text below is the plan as
 > written.
 
 # One action cache
