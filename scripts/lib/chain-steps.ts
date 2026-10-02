@@ -605,6 +605,23 @@ export const STEP_TABLES = ['scripts/lib/chain-steps.ts', 'scripts/lib/typecheck
  * the step runs, skips everything and stamps green. Deriving both from here is what makes that hold by
  * construction rather than by anyone remembering; `chain-inputs.spec.ts` checks the step against what the
  * pool actually fingerprints, so re-adding a step-only input fails by name.
+ *
+ * **The union is wide, and measured, that costs almost nothing — which is the whole point of the pair.**
+ * Over the 200 commits to 2026-10-02 (by prefix match against each declared path, with the files a
+ * fingerprint skips removed): `test:unit:host` was stale in 154 of them, and when it ran **3.2 of its 11
+ * projects** ran; `test:integration` 154, and 1.7 of 3. So a step declaring 365 paths pays its own startup
+ * and hands the rest to the inner cache. 288 of those 365 were never a reason to run at all — `dist` and
+ * `publish` trees, `bin/`, `env.d.ts`, `eslint.config.ts` — the same breadth the typecheck legs' 0-21% is
+ * mostly made of (`scripts/lib/dep-files.ts`).
+ *
+ * **The one project that never benefits is `repo-checks`**, stale in 154 of 154 — it declares `EVERY_SOURCE`
+ * below, because six of its specs ask git what the repo holds, and that is a rule rather than an oversight
+ * (`fingerprint-scope.spec.ts`: a suite holding a guard over the whole repo declares the whole repo).
+ * Splitting those six out so the other seventeen cache separately was costed and declined: they are specs
+ * about this repo's tooling, so they are stale whenever `scripts/` moves — 97 of the same 200 commits — and
+ * would re-run anyway. Worth revisiting if that suite's cost grows or its repo-wide specs stop dominating
+ * it. The sample is this branch's own work, so `scripts/` and `repo-checks/tests` lead it by construction;
+ * re-take it over a stretch of feature work before reading the per-project ranking as general.
  */
 export function suiteInputs(suite: UnitSuite, half: Half): string[] {
   const reads = SUITE_READS[suite.dir] ?? {};

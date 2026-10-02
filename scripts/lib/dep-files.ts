@@ -32,6 +32,12 @@
  * read), but the padding is `dist` trees and configs that rarely change, while the source that does change
  * is mostly genuinely read. That ratio is a fact about declaration shape, not an opportunity.
  *
+ * **The same question was put to the two expensive pool steps, which have no dep file to ask.** A vitest run
+ * reports no read set, so it was answered from history instead — how often each declaration was a reason to
+ * run — and it came back the same way: the breadth is paid by the step's startup and absorbed by the
+ * per-project cache inside it. The measurement and what it declined to change are recorded on `suiteInputs`
+ * (`chain-steps.ts`), beside the declaration it is about.
+ *
  * Revisit if a leg lands on the critical path, or if the app-dependent steps stop dominating it.
  *
  * `build-reads.ts` is the same kind of evidence for the other tool this repo can ask: `abuddy build`,
