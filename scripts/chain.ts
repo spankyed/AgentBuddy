@@ -35,12 +35,13 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { changedInputs, diffableStamp, firstChange, freshnessSweep, INPUTS_CHANGED, PACKAGES_PREBUILT_ENV, REPO_ROOT, stampedRun, stampRecord, unitStaleReason, type BuildUnit } from '@abuddy/host/build/packages-built';
-import { CHAIN_STEPS, type ChainStep, chainSteps, MEASURED_AT_CORES, needsApp, orderedSteps, STEP_TABLES } from './lib/chain-steps.ts';
+import { CHAIN_STEPS, type ChainStep, chainSteps, MEASURED_ON, needsApp, orderedSteps, STEP_TABLES } from './lib/chain-steps.ts';
 import { CHAIN_FLAGS } from './lib/chain-flags.ts';
-import { box, isMeasuredSchedule } from './lib/core-budget.ts';
+import { TIMEOUT_MS, timeoutText, type TimeoutClass } from './lib/step-timeouts.ts';
+import { box, isMeasuredMachine, isMeasuredSchedule, machineText, thisMachine } from './lib/core-budget.ts';
 import { commandText, rootScripts } from './lib/npm-scripts.ts';
 import { asCount, bodyDrift, drifted, IDLE_FLOOR, idleNow, movedBeyondBand, parseFlags, refusesAsBusy, refusesAsContended } from './lib/measure.ts';
-import { recordSeconds } from './lib/record-seconds.ts';
+import { machineLine, recordMachine, recordSeconds } from './lib/record-seconds.ts';
 import { schedule } from './lib/chain-schedule.ts';
 import { criticalPath, driftedSteps, SECONDS_FLOOR, willNotCache } from './lib/step-timing.ts';
 import { briefly, classifyLine, cores, declaredAt, dim, driftReport, DRY_REASON_COLUMN, howLong, identicalRewrites, marker, oneLine, REASON_COLUMN, shouldClassify, staleLines, STEP_NAME_WIDTH, TIME_COLUMN, whenChanged, wrapAt, writerOf } from './lib/chain-output.ts';
@@ -50,7 +51,7 @@ import { exitOnEpipe } from './lib/exit-on-epipe.ts';
 
 exitOnEpipe();
 
-import { boundedSpawn, budgetFor } from './lib/bounded-spawn.ts';
+import { boundedSpawn } from './lib/bounded-spawn.ts';
 
 /**
  * Each step is cached on its own declared inputs, through the same protocol the package builds use:
@@ -188,13 +189,13 @@ function whatMoved(
  * the two unit pools did exactly that. Only steps that declare them get any, because most steps' commands
  * would reject an argument they do not know.
  */
-async function run(step: string, seconds: number | undefined, force: readonly string[] = [], env: NodeJS.ProcessEnv = process.env): Promise<Result> {
+async function run(step: string, timeout: TimeoutClass, force: readonly string[] = [], env: NodeJS.ProcessEnv = process.env): Promise<Result> {
   // `npm test` is the E2E suite and takes no `run`
   const args = step === 'test' ? ['test'] : ['run', step];
   // npm forwards what follows `--` to the script's own command, which is how this chain was given `--all`
   const withForce = force.length === 0 ? args : [...args, '--', ...force];
-  // A step with no measurement still gets a bound, just a loose one
-  const { code, output, ms, timedOut } = await boundedSpawn('npm', withForce, budgetFor(seconds ?? 300), { env });
+  // The bound is the step's declared class, so it carries no machine — see `step-timeouts.ts`
+  const { code, output, ms, timedOut } = await boundedSpawn('npm', withForce, TIMEOUT_MS[timeout], { env });
   return { step, ms, code, output, timedOut };
 }
 
@@ -227,11 +228,11 @@ class StepFailed extends Error {
  */
 async function runAndStamp(step: ChainStep, all: boolean): Promise<Result> {
   const force = all ? step.forceArgs ?? [] : [];
-  if (step.neverCachedBecause !== undefined) return run(step.name, step.seconds, force, envFor(step));
+  if (step.neverCachedBecause !== undefined) return run(step.name, step.timeout, force, envFor(step));
   let result: Result | undefined;
   try {
     await stampedRun(step.name, unitFor(step), stampFor(step.name), async () => {
-      result = await run(step.name, step.seconds, force, envFor(step));
+      result = await run(step.name, step.timeout, force, envFor(step));
       if (result.code !== 0) throw new StepFailed(result);
     });
   } catch (err) {
@@ -294,6 +295,13 @@ async function main(): Promise<void> {
   if (args.positionals.length > 0) {
     throw new Error(`The chain takes flags only, not ${args.positionals.join(' ')}`
       + ' — npm keeps a flag you did not put after `--`, so write `npm run chain -- --dry`');
+  }
+  // `--adopt` is what `--record` does on another machine, so on its own it is a flag that would be accepted
+  // and then never read — the shape `10e7b9391` removed when `--lanez 3` ran a full chain in silence. Refused
+  // here rather than inside `recordTheCosts`, which is reached after the whole chain has run.
+  if (args.flags.has('adopt') && !args.flags.has('record')) {
+    throw new Error('--adopt only means something with --record: it is how another machine records this table,'
+      + ' and it writes MEASURED_ON with the costs. Write `npm run chain -- --all --record --adopt`.');
   }
   const all = args.flags.has('all');
   // What the chain would do, without doing it. The answer is a pure function of the tree, so it is the way
@@ -447,7 +455,7 @@ async function main(): Promise<void> {
       optedOut: noClassify,
     });
     const why = failed.timedOut
-      ? `${step.name} timed out: it exceeded its ${secs(budgetFor(step.seconds ?? 300))} budget and its process group was killed. It costs ${step.seconds ?? '?'}s healthy, so either it is wedged or it has grown and the measurement in chain-steps.ts is stale.`
+      ? `${step.name} timed out: it exceeded its ${timeoutText(step.timeout)} budget and its process group was killed. It costs ${step.seconds ?? '?'}s healthy here, so it is wedged — a class is chosen for the slowest plausible machine, not from that measurement, so overrunning one is not a stale number.`
       : `${step.name} failed (exit ${failed.code})${howLong(step, failed.ms, budget, classifying)}`;
     console.log(`\n${'='.repeat(72)}\n${why}\n${'='.repeat(72)}\n${failed.output}`);
     if (classifying) {
@@ -463,7 +471,7 @@ async function main(): Promise<void> {
       // failure of `test:unit:host` was re-run here, the re-run wrote all eleven project stamps, and the next
       // chain ran zero tests and called the step green. `recordsVerdict` (`scripts/lib/unit-pool.ts`) carries
       // the evidence and why a *build* under the same re-run still records.
-      const retry = await run(step.name, step.seconds, all ? step.forceArgs ?? [] : [],
+      const retry = await run(step.name, step.timeout, all ? step.forceArgs ?? [] : [],
         { ...envFor(step), [DIAGNOSTIC_RUN_ENV]: '1' });
       // The verdict reports what the chain cost. The retry is a diagnostic after it, so a 60s re-run must not
       // land on the one number a reader compares between runs.
@@ -516,15 +524,21 @@ async function main(): Promise<void> {
   // once — which happened silently the day a third lane landed two hours after a number was taken under two.
   // The policy is now the box, because that is what the default budget is, and that makes a fact explicit
   // that was only ever implicit: these numbers were always measured on one machine and nothing said which.
-  if (box() !== MEASURED_AT_CORES) {
-    console.log(`\nchain-steps.ts' seconds were measured on a ${MEASURED_AT_CORES}-core machine and this one has ${box()}.`);
-    console.log('  The numbers below are about another schedule. Re-measure with `npm run chain -- --all --record`.');
+  if (!isMeasuredSchedule(MEASURED_ON.cores, MEASURED_ON)) {
+    // Context, and no instruction — this message fires *only* off the reference machine, and it used to end
+    // "Re-measure with `npm run chain -- --all --record`", which `isMeasuredSchedule` refuses *only* off the
+    // reference machine. The one line that appears there named the one command that cannot work there.
+    console.log(`\nchain-steps.ts' seconds were measured on ${machineText(MEASURED_ON)}; this is ${machineText(thisMachine())}.`);
+    console.log('  So the report below is context rather than advice: what a step cost here is true, and the');
+    console.log('  table it is compared against describes another machine.');
   }
 
-  const report = driftReport(driftedSteps(steps, measuredMs), budget, MEASURED_AT_CORES, all);
+  const report = driftReport(driftedSteps(steps, measuredMs), budget, MEASURED_ON, all);
   if (report !== '') console.log(report);
 
-  if (args.flags.has('record')) recordTheCosts(steps, measuredMs, budget, all, args.flags.has('force'));
+  if (args.flags.has('record')) {
+    recordTheCosts(steps, measuredMs, budget, all, args.flags.has('force'), args.flags.has('adopt'));
+  }
 
   console.log(`\n${verdict} in ${secs(Date.now() - started - classifyMs)}${reran}${skipped}${` on ${cores(budget)}`}${floor}`);
   // Not process.exit(): it drops whatever stdout has still to flush, and the failing step's captured output
@@ -551,7 +565,7 @@ async function main(): Promise<void> {
  * with a one-second floor. They differ on purpose, which is why this prints everything it wrote.
  */
 function recordTheCosts(steps: readonly ChainStep[], measuredMs: ReadonlyMap<string, number>,
-  budget: number, all: boolean, force: boolean): void {
+  budget: number, all: boolean, force: boolean, adopt: boolean): void {
   if (!all) {
     console.log('\n--record needs --all: a cached step reports no time, and recording that would size a budget from it.');
     return;
@@ -559,10 +573,31 @@ function recordTheCosts(steps: readonly ChainStep[], measuredMs: ReadonlyMap<str
   // The one schedule these numbers are about, which takes the budget **and** the box — `isMeasuredSchedule`
   // has why. Recording any other hands every step a kill deadline sized from a schedule it will not run
   // under, and a gate comparing only the budget passed `--cores 10` on a twenty-core machine.
-  if (!isMeasuredSchedule(budget, MEASURED_AT_CORES)) {
-    console.log(`\n--record refused: these costs are the chain's on ${cores(MEASURED_AT_CORES)} on a `
-      + `${MEASURED_AT_CORES}-core machine; this ran on ${cores(budget)} on ${box()} cores.`);
-    return;
+  if (!isMeasuredSchedule(budget, MEASURED_ON)) {
+    // `--adopt` is how another machine takes the table over, and it writes `MEASURED_ON` in the same
+    // operation. Without it the costs would move and the constant would not, which is the state that makes
+    // every check scoped on it skip the box whose numbers are in the file and run on the box whose are not.
+    if (!adopt) {
+      console.log(`\n--record refused: these costs are the chain's on ${cores(MEASURED_ON.cores)} on `
+        + `${machineText(MEASURED_ON)}; this ran on ${cores(budget)} on ${machineText(thisMachine())}.`);
+      // Only where the *machine* differs. This refusal also fires when the budget alone does, and there
+      // `--adopt` is advice that cannot be taken: it would write the machine the table already names and
+      // then be refused below for the budget. Advice nobody can act on is what this branch set out to stop.
+      if (!isMeasuredMachine(MEASURED_ON)) {
+        console.log(`  Pass --adopt to record this machine's instead, which also writes:\n    ${machineLine(thisMachine())}`);
+      }
+      return;
+    }
+    // **Reachable on the measuring machine, which is worth saying because it looks like it is not.** The
+    // block around it runs only where `isMeasuredSchedule` is false, and that reads as "another box" — but
+    // the budget is one of its three conjuncts, so `--all --record --adopt --cores 9` on the ten-core box
+    // that owns the table lands here. Exercised that way 2026-10-03: it refused and wrote nothing. No case,
+    // because nothing can import `scripts/chain.ts`; a command is how this one is checked.
+    if (budget !== box()) {
+      console.log(`\n--adopt refused: it records what this machine costs, so the budget has to be its cores `
+        + `(${cores(box())}) and this ran on ${cores(budget)}.`);
+      return;
+    }
   }
   const idle = idleNow();
   if (refusesAsBusy({ idle, floor: IDLE_FLOOR, force })) {
@@ -606,6 +641,16 @@ function recordTheCosts(steps: readonly ChainStep[], measuredMs: ReadonlyMap<str
   }
 
   const edits = recordSeconds(measured, declared, moved);
+  // Written after the costs and only with them: the table and the box it was measured on are one fact, and
+  // the failure this closes is them moving apart. A run that adopts and then records nothing still takes the
+  // table over — every row it re-measured agreed, which is a measurement and not an absence of one.
+  // Nothing to adopt where this machine already owns the table — and the write is not free to repeat: it
+  // puts identical bytes back, which moves `chain-steps.ts`' mtime for no change, and the freshness sweep
+  // reports exactly that as a file whose mtime moved while its bytes did not.
+  if (adopt && !isMeasuredMachine(MEASURED_ON)) {
+    recordMachine(thisMachine());
+    console.log(`\nadopted the table: ${machineLine(thisMachine())}`);
+  }
   if (edits.length === 0) {
     console.log('\nevery step cost what the table says, within the band — nothing recorded');
     return;

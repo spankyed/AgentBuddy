@@ -1,11 +1,12 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { BUILD_UNITS, repoRelative, REPO_ROOT } from '@abuddy/host/build/packages-built';
-import { coresFor } from './core-budget.ts';
+import { coresFor, type Machine } from './core-budget.ts';
+import type { TimeoutClass } from './step-timeouts.ts';
 import { UNIT_SUITES, type UnitSuite } from './unit-suites.ts';
 import { CONFIG_BY_HALF, hasSplit, type Half } from './spec-cost.ts';
 import { dependencySource, PACKAGE_DIRS, workspaceDeps } from './workspace-deps.ts';
-import { scopeOf, TYPECHECK_LEGS, type Leg } from './typecheck-legs.ts';
+import { LEG_TIMEOUT, scopeOf, TYPECHECK_LEGS, type Leg } from './typecheck-legs.ts';
 
 /**
  * The pre-merge chain's steps and what each is allowed to read. Separate from `scripts/chain.ts` because
@@ -103,30 +104,47 @@ export interface ChainStep {
    */
   readonly forceArgs?: readonly string[];
   /**
+   * How long it may run before its process group is killed, by the kind of work it is
+   * (`TIMEOUT_MS`, `scripts/lib/step-timeouts.ts`).
+   *
+   * **Declared, and deliberately not derived from `seconds`.** The deadline was `seconds × 4` until
+   * 2026-10-03, which made it a function of one box: a machine with a third of the cores runs the same
+   * deadline over a step three times slower. A class carries no machine. Thresholding `seconds` into a class
+   * would re-couple the two, just coarsely, which is the shortcut `step-timeouts.ts` exists to refuse.
+   *
+   * It is required, as `Leg.seconds` is, because a step with no class has no bound — and an unbounded step
+   * is the hang that `boundedSpawn` was written for.
+   */
+  readonly timeout: TimeoutClass;
+  /**
    * What this step costs **when it does its work**, in seconds, measured under the chain's own default
    * admission. Not what it costs when it is cached: `packages:ensure` returns in 0.3s with nothing
    * stale and takes 14s when it builds, and recording the 0.3 gave a step that builds a budget sized for a
    * step that does not, and a timeout message claiming it "costs 1s healthy".
    *
-   * It feeds two things — `budgetFor` turns it into a kill deadline at four times, and it is the weight on
-   * the critical path — so a stale value both mis-sizes the bound and misreports the floor. It is a
-   * measurement, so re-measure rather than raise it when a step legitimately grows. Every run reports a step
-   * that ran past double this number, which is what keeps the table honest without anyone remembering to
-   * check — and it is the direction that matters, since `budgetFor` starts killing at four times. A step that
-   * came in under half is reported only by `--all` at `MEASURED_AT_CORES`: a run with steps cached, or a
+   * **It bounds nothing.** It did until 2026-10-03, when a kill deadline was `seconds × 4` — and what that
+   * made every deadline in the repo was a function of this one machine. The deadline is a declared class
+   * now (`timeout` above), so what is left here is a *report*: the weight on the critical path, and the
+   * number a run is compared against. A stale value misreports the floor and nothing else, which is the
+   * whole of why this field may stay machine-bound (`docs/archive/plans/costs-across-machines.md`).
+   *
+   * It is a measurement, so re-measure rather than raise it when a step legitimately grows. Every run
+   * reports a step that ran past double this number, which is what keeps the table honest without anyone
+   * remembering to check. A step that
+   * came in under half is reported only by `--all` at `MEASURED_ON`: a run with steps cached, or a
    * smaller budget, has less contention and makes everything look fast, so that direction says nothing about
    * the table. `driftedSteps` finds both; `driftReport` in chain-output.ts decides which the run can answer for.
    *
    * For a step that keeps a cache of its own — the two pooled steps, which run only their stale projects —
-   * it is the cost of the *whole* pool, which is what both kill budgets are sized from (`budgetFor` here, and
-   * `test-unit-pool.ts`'s own inner spawn). Those steps needed no rule of their own once the gate was on the
+   * it is the cost of the *whole* pool, so that the drift report compares like with like. Those steps
+   * needed no rule of their own once the gate was on the
    * run: an incremental pool run lands under half, which is the direction every step is now quiet about.
    *
-   * **It is the cost in the chain at `MEASURED_AT_CORES`, not the cost alone.** Those differ by about two
+   * **It is the cost in the chain at `MEASURED_ON`, not the cost alone.** Those differ by about two
    * times for a CPU-bound step — `typecheck` was 29s by itself and 63s sharing the machine — so the number is
    * meaningless without the schedule, and saying only "what this costs when it does its work" is how a
    * measurement taken under one admission policy came to sit in a chain running another for two days. That
-   * is why `MEASURED_AT_CORES` records the box these were taken on and the chain says so when it differs:
+   * is why `MEASURED_ON` records the box these were taken on and the chain says so when it differs:
    * the schedule was always implicit in the machine, and nothing named it.
    */
   readonly seconds?: number;
@@ -581,15 +599,16 @@ export const SUITE_READS: Record<string, { packages?: true; pack?: true; repo?: 
 };
 
 /**
- * Each pool's whole-pool cost, in the chain at `MEASURED_AT_CORES`, measured with every project stale —
+ * Each pool's whole-pool cost, in the chain at `MEASURED_ON`, measured with every project stale —
  * `npm run chain --all`, the only run that does all of that work and the run `driftedSteps` checks it on.
  *
  * Re-measured 2026-09-27 with the rest of this table: 20 and 21 were taken before `typecheck` stopped
  * running its legs one at a time, and a step that asks for half the cores makes everything beside it
  * slower — which is where those seconds went rather than being new work.
  *
- * It feeds two kill budgets, `budgetFor` here and the pool's own inner spawn (`test-unit-pool.ts`), so it
- * is the cost of the whole pool and never of a partial run.
+ * It bounds nothing — the chain step and the pool's own inner spawn both take the `suite` class now
+ * (`step-timeouts.ts`), so neither deadline is a function of this number. What it still has to be is the
+ * cost of the whole pool and never of a partial run, so that the drift report compares like with like.
  */
 export const POOL_SECONDS: Record<'host' | 'pack' | 'integration', number> = { host: 42, pack: 21, integration: 60 };
 
@@ -751,6 +770,9 @@ const TYPECHECK_STEPS: readonly ChainStep[] = TYPECHECK_LEGS
   .filter((leg) => leg.name !== 'packages:ensure')
   .map((leg) => ({
     name: leg.name,
+    // Declared beside the legs (`LEG_TIMEOUT`), so the runner and this copy of the same steps cannot
+    // disagree about it — they each named the class themselves until 2026-10-03.
+    timeout: LEG_TIMEOUT,
     seconds: leg.seconds,
     inputs: legInputs(leg),
     // A leg reading every source tree reads around the fixture packs' build output for the same reason
@@ -763,6 +785,8 @@ const POOL_STEPS: readonly ChainStep[] = (['host', 'pack'] as const).map((kind) 
   const suites = UNIT_SUITES.filter((suite) => suite.kind === kind);
   return {
     name: `test:unit:${kind}`,
+    // A pool fans out across workers, so it is the rung that stretches most on a smaller box
+    timeout: 'suite' as const,
     // Measured on the pool, not summed from its suites. Summing gave the host pool 50s for a step that
     // takes 20s, because the suites overlap inside one vitest run — which is the entire point of pooling
     // them. `driftedSteps` reported it on every run.
@@ -776,14 +800,20 @@ const POOL_STEPS: readonly ChainStep[] = (['host', 'pack'] as const).map((kind) 
 /**
  * The machine every `seconds` below was measured on, which is also the budget they were measured under.
  *
- * One number for both, because the chain's default budget *is* the box (`budgetFrom`, scripts/chain.ts).
- * A step's cost depends on what runs beside it, so the table is only true of one schedule, and this is
- * what names it: `box() !== MEASURED_AT_CORES` and the run says the numbers are about another machine.
+ * The cores are both facts at once, because the chain's default budget *is* the box (`budgetFrom`,
+ * scripts/chain.ts). A step's cost depends on what runs beside it, so the table is only true of one
+ * schedule, and this is what names it: a run on another machine says the numbers are about another one.
  *
- * **`budgetFor` turns each of these into a kill deadline at four times, and nothing adjusts that for the
- * box**: a smaller machine runs the same deadlines over slower steps, so the four-times margin is all that
- * absorbs the difference and the warning above is the only notice — worth fixing when a step is actually
- * killed on a smaller box rather than before, since that is the first evidence the margin has run out.
+ * **The CPU is here because the core count alone is not an identity.** This was `MEASURED_AT_CORES = 10`
+ * until 2026-10-03, so every 10-core machine read as the one these numbers came from, and a second
+ * developer on a 10-core Mac got `--record` accepted and `spec-cost`'s placement gate enforced against a
+ * table measured on different silicon. `isMeasuredSchedule` has the rest.
+ *
+ * **Nothing here bounds anything, which is the point and was not true a day ago.** Each of these used to
+ * become a kill deadline at four times, so a smaller machine ran this machine's deadlines over slower
+ * steps with the four-times margin as the only slack. Deadlines are declared classes now
+ * (`step-timeouts.ts`), so what a wrong number on another box costs is a misleading report and never a
+ * killed step.
  *
  * **It makes an implicit fact explicit.** These costs were always measured on one box and nothing recorded
  * which. The hazard it was written for is the same either way: `seconds: 45` for `typecheck` was taken
@@ -793,7 +823,7 @@ const POOL_STEPS: readonly ChainStep[] = (['host', 'pack'] as const).map((kind) 
  * Re-measure it with `npm run chain -- --all --record`, which refuses any other budget for this reason,
  * refuses a busy machine, and refuses a run where too much moved to have been measuring the code.
  */
-export const MEASURED_AT_CORES = 10;
+export const MEASURED_ON: Machine = { cpu: 'Apple M1 Pro', cores: 10 };
 
 export const CHAIN_STEPS: readonly ChainStep[] = [
   // Takes the package build lock, so it cannot share a lane with anything else that builds
@@ -816,7 +846,7 @@ export const CHAIN_STEPS: readonly ChainStep[] = [
   // 14, not the 0.3 its warm check costs: `seconds` is what a step costs when it does its work, and this one's
   // work is the build. The paragraph on that field describes this step getting it wrong — "a timeout message
   // claiming it costs 1s healthy" — and 1 was still here until the overrun report named it, 1s -> 14s.
-  { name: 'packages:ensure', seconds: 14,
+  { name: 'packages:ensure', timeout: 'quick', seconds: 14,
     neverCachedBecause: 'what it guarantees is recorded in stamps of its own, which this fingerprint cannot '
       + 'see; its check is ~0.3s warm, so a cache on top only adds a record that can disagree',
     inputs: [...PACKAGE_BUILD_INPUTS, 'scripts/ensure-packages-built.ts'], outputs: PACKAGE_BUILD_OUTPUTS },
@@ -841,7 +871,7 @@ export const CHAIN_STEPS: readonly ChainStep[] = [
   // `build:app` -> `test:packaged-authoring`, 111s), so running it alone costs its own time and no more. The
   // alternative is packing to a temp directory ourselves and handing attw the tarball, which is the fix if this
   // step ever needs to share a lane.
-  { name: 'packages:check', seconds: 6,
+  { name: 'packages:check', timeout: 'quick', seconds: 6,
     // `attw --pack` packs a tarball inside each tree it checks and removes it again. Transient, so not an
     // output; real, so nothing may read those trees while it runs. This is what `exclusive: true` was.
     alsoWrites: ['packages/abuddy-ears/publish', 'packages/abuddy-sdk/publish', 'packages/abuddy-ui/publish',
@@ -849,7 +879,7 @@ export const CHAIN_STEPS: readonly ChainStep[] = [
     inputs: [...ROOT, ...PACKAGE_BUILD_OUTPUTS] },
   // Ahead of build and not redundant with it: build -ws gives no ordering guarantee, since no workspace
   // declares a dependency on @app/default-setup, and the renderer's build reads the pack entry this writes
-  { name: 'compile', seconds: 13, outputs: PACK_OUTPUTS,
+  { name: 'compile', timeout: 'quick', seconds: 13, outputs: PACK_OUTPUTS,
     // Its sources and its manifest, not its tests: `abuddy build` never reads those
     //
     // This step runs `facade:check` after the build that produces its subject, so how the report is
@@ -871,10 +901,10 @@ export const CHAIN_STEPS: readonly ChainStep[] = [
   // grow to cover the typecheck or the specs, it would have the shape the pool steps had — stale for a
   // reason its inner layer cannot see, so it runs, skips everything and stamps green.
   //
-  // 38s, not the 20s it takes alone: `seconds` is what a step costs under the chain's own default lanes,
-  // because that is what `budgetFor` has to cover. Raising the default from two to three moved this one and
-  // nothing else past the drift band, which is `driftedSteps` doing its job.
-  { name: 'test:external-pack:contract', seconds: 36, outputs: FIXTURE_OUTPUTS,
+  // 38s, not the 20s it takes alone: `seconds` is what a step costs under the chain's own default
+  // admission, because that is the schedule the drift report compares against. Raising the lane default from
+  // two to three moved this one and nothing else past the drift band, which is `driftedSteps` doing its job.
+  { name: 'test:external-pack:contract', timeout: 'suite', seconds: 36, outputs: FIXTURE_OUTPUTS,
     // It declares `tests/packs` for the pack sources; the Playwright output under each pack is written
     // by `:app`, changes every run, and is read by nothing
     excludes: FIXTURE_TEST_OUTPUT,
@@ -889,9 +919,9 @@ export const CHAIN_STEPS: readonly ChainStep[] = [
   // Needs `compile` and not just `packages:ensure`, because `dependency-runtime` builds a pack that depends
   // on default-setup and so reads its `dist`. It used to run after `compile` only because of where it sat
   // in this table, which `orderedSteps` never promised.
-  // `POOL_SECONDS`, not a literal: the pool passes that same key to `budgetFor` as its kill budget, and two
-  // records of one cost drift the moment `--record` rewrites whichever it can find
-  { name: 'test:integration', seconds: POOL_SECONDS.integration,
+  // `POOL_SECONDS`, not a literal: `--record` rewrites that key, and two records of one cost drift the
+  // moment it rewrites whichever one it can find
+  { name: 'test:integration', timeout: 'suite', seconds: POOL_SECONDS.integration,
     // It keeps a cache of its own now, like the two unit pools, so `--all` has to reach inside it
     forceArgs: ['--all'],
     ...inputsForSuites(INTEGRATION_SUITES, 'integration') },
@@ -900,11 +930,11 @@ export const CHAIN_STEPS: readonly ChainStep[] = [
   // it declares as an input. It invalidated itself, and the five steps that read that tree, on every run:
   // measured, a warm chain cached 7 of 17 steps instead of 16. `npm run build` still builds everything, for
   // CI and `build/build.sh`; the chain does not need it to, because `compile` is a declared `need`.
-  { name: 'build:app', seconds: 39, outputs: APP_OUTPUTS,
+  { name: 'build:app', timeout: 'suite', seconds: 39, outputs: APP_OUTPUTS,
     inputs: [...ROOT, ...['renderer', 'api', 'main', 'preload'].flatMap(workspace),
       'packages/api/tsup.config.ts', ...APP_ENTRY,
       ...PACKAGE_BUILD_OUTPUTS, ...PACK_OUTPUTS] },
-  { name: 'test:external-pack:app', seconds: 24,
+  { name: 'test:external-pack:app', timeout: 'scenario', seconds: 24,
     // Its own Playwright output, rewritten every run
     excludes: FIXTURE_TEST_OUTPUT,
     // PACKAGE_BUILD_OUTPUTS because the fixture it drives *is* one: `@abuddy/testing` resolves to its
@@ -934,7 +964,7 @@ export const CHAIN_STEPS: readonly ChainStep[] = [
   // declared — so an unchanged stamp means the same app, and running it again asks a question already
   // answered. Uncached it put the warm chain back to 5.6s from 0.9s, which is most of what taking the
   // suite off the gate bought.
-  { name: 'test:smoke', seconds: 18,
+  { name: 'test:smoke', timeout: 'suite', seconds: 18,
     outputs: ['tests/results'],
     inputs: [...ROOT, 'tests/e2e/smoke', 'playwright.config.ts',
       'scripts/with-source.mjs', ...APP_ENTRY, ...PACKAGE_BUILD_OUTPUTS, ...APP_OUTPUTS] },
@@ -944,7 +974,7 @@ export const CHAIN_STEPS: readonly ChainStep[] = [
   // built. It became a chain step, and then the reasoning about it became about caching a flaky pass —
   // which is a question you only ask of a regression gate. It has not caught one. Off the chain it costs
   // nothing and is still there when you want it, which is what it was for.
-  { name: 'test', seconds: 26,
+  { name: 'test', timeout: 'suite', seconds: 26,
     optInBecause: 'it is a harness for driving the app, not a regression gate; nothing has needed it to fail',
     neverCachedBecause: 'it drives real Electron, and a flaky pass cached green hides an intermittent failure',
     outputs: ['tests/results'],
@@ -954,7 +984,7 @@ export const CHAIN_STEPS: readonly ChainStep[] = [
     // the step is never cached, so it buys the ordering and costs no precision
     inputs: [...ROOT, 'tests/e2e', 'playwright.config.ts', 'scripts/with-source.mjs', ...APP_ENTRY,
       ...PACKAGE_BUILD_OUTPUTS, ...APP_OUTPUTS] },
-  { name: 'test:packaged-authoring', seconds: 91,
+  { name: 'test:packaged-authoring', timeout: 'scenario', seconds: 91,
     inputs: [...ROOT, ...BOUNDED_RUNNER, 'tests/scripts/test-packaged-authoring.sh', 'tests/scripts/lib',
       ...PACKAGE_BUILD_OUTPUTS, ...APP_OUTPUTS] },
 ];

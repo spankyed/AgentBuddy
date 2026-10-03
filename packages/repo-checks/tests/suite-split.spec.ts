@@ -20,7 +20,7 @@ import {
   halfOfPath, hasSplit, moved, nearEdge, ratiosFromMoves, towardEdge, underBound, type SpecCost,
   namedIn, overBudget, parseArgs,
   planFor, readSpecCost,
-  refuseAbsent, rewritesEveryRow, settle, specCostFile, specFiles, stale, suitesFor,
+  recordMembership, refuseAbsent, rewritesEveryRow, settle, specCostFile, specFiles, stale, suitesFor,
   unrecorded,
 } from '../../../scripts/lib/spec-cost.ts';
 // The sample-recording primitives, shared with the chain's own cost table since 2026-10-02. The cases below
@@ -28,6 +28,7 @@ import {
 // *this* record uses them — the body-drift case asserts `moved` says nothing about the same numbers, which is
 // the whole point of having both, and that pairing only exists here.
 import { bodyDrift, contended, drifted, refusesAsContended } from '../../../scripts/lib/measure.ts';
+import { isMeasuredMachine, machineText, thisMachine } from '../../../scripts/lib/core-budget.ts';
 import { UNIT_SUITES } from '../../../scripts/lib/unit-suites.ts';
 
 /** Every suite's record, read once. A suite with no record is a failure below, not an empty pass. */
@@ -53,7 +54,111 @@ describe('every suite records what its specs cost', () => {
   });
 });
 
-describe('a spec runs in the half its cost puts it in', () => {
+/**
+ * Whether this is the machine the records were measured on.
+ *
+ * **The half-split is correctly machine-specific, and that is why these cases are scoped rather than made
+ * portable.** A cost in milliseconds says where a spec belongs only against edges chosen for one machine's
+ * speed; on a box three times slower, 32 of the 363 fast-half specs cross the 2 500ms edge and the check
+ * fails for a tree nobody has touched. The machine is `MEASURED_ON` — the CPU as well as the core count,
+ * because a core count alone called every 10-core box the measured one.
+ *
+ * **A ratio does not fix it, measured 2026-10-03.** `repo-checks` is not separable by one: four fast specs
+ * cost more than its three cheapest integration specs, so the halves overlap at 9.4x the median against
+ * 7.3x, and today's record survives because of the dead band rather than because the halves separate. The
+ * nine single-half suites have medians of 6-168ms, so any ratio wide enough for the split suites is a far
+ * lower absolute bar there — today's six `outgrown` findings would become 42. And `outgrown` is not a
+ * placement question at all: it is a ceiling on what a fast half may cost, which is a policy about loop
+ * time. `goal-measured-placement.md` already has the general form — *"a bound is not a fit; deriving one
+ * from the measurement it bounds is how a timeout stops catching anything"* — and a median is a fit.
+ *
+ * So the cases that read the live record skip off this machine, with this as the reason, after
+ * `packagesBuiltOrRefuse()`: evidence that does not apply is skipped rather than passed over. The pure
+ * cases over synthetic costs run everywhere, because they are about the arithmetic and not about a box.
+ */
+/**
+ * Each record names the machine it was measured on, so the question is asked of the records and not of the
+ * chain's `MEASURED_ON` — which describes the box the chain's *seconds* were taken on. Two records, two
+ * machines, and nothing made them the same box; scoping these cases on that constant was scoping on a fact
+ * about something else.
+ */
+const MEASURED_BY = [...new Set(suites.flatMap(({ record }) => (record ? [machineText(record.machine)] : [])))];
+const ON_MEASURED_MACHINE = suites.every(({ record }) => record === undefined || isMeasuredMachine(record.machine));
+/** Appended to a skipped name, so a run on another machine says why rather than quietly reporting fewer cases */
+const OFF_BOX = ON_MEASURED_MACHINE ? ''
+  : ` — skipped: these costs were measured on ${MEASURED_BY.join(', ')} and this is ${machineText(thisMachine())}`;
+
+/**
+ * What a machine that is not the record's may write, which is membership and never a cost.
+ *
+ * A record holds two kinds of thing and they need different permissions: *which specs exist* is a fact about
+ * the repo, and *what one costs* is a fact about a machine. They were one map until 2026-10-03, so adding a
+ * spec meant measuring it — and the three cases above, which fail on any machine and each say *"run
+ * spec-cost:update"*, sent a second developer down the one path that writes their box's milliseconds into a
+ * record measured on someone else's. Nothing in the file said it then held two machines' numbers.
+ *
+ * These run everywhere, because they are about the arithmetic of the two lists and not about a box.
+ */
+describe('a record anyone can add a spec to', () => {
+  const OTHER = { cpu: 'Some Other CPU', cores: 4 };
+  const base = (costs: Record<string, number>, unmeasured: string[] = []): SpecCost =>
+    ({ measuredAt: 'then', costs, skipped: [], unmeasured, machine: OTHER });
+
+  it('lists a spec that has appeared, with no cost claimed for it', () => {
+    const next = recordMembership(base({ 'tests/a.spec.ts': 100 }), ['tests/a.spec.ts', 'tests/b.spec.ts']);
+
+    expect(next.unmeasured).toEqual(['tests/b.spec.ts']);
+    expect(next.costs, 'a cost is a fact about a machine, so another machine may not write one')
+      .toEqual({ 'tests/a.spec.ts': 100 });
+    expect(next.machine, 'nor may it claim the record').toEqual(OTHER);
+  });
+
+  it('drops a spec that has gone, from whichever list held it', () => {
+    const next = recordMembership(base({ 'tests/a.spec.ts': 100 }, ['tests/b.spec.ts']), []);
+
+    expect(next.costs).toEqual({});
+    expect(next.unmeasured).toEqual([]);
+  });
+
+  it('counts an unmeasured spec as recorded, which is what makes the record satisfiable', () => {
+    const record = base({}, ['tests/b.spec.ts']);
+
+    expect(unrecorded(record, ['tests/b.spec.ts']), 'it is listed, so it is not unrecorded').toEqual([]);
+    expect(unrecorded(record, ['tests/c.spec.ts']), 'and one that is listed nowhere still is')
+      .toEqual(['tests/c.spec.ts']);
+  });
+
+  it('retires it once the measuring machine has priced it', () => {
+    const { record } = settle({
+      previous: base({}, ['tests/b.spec.ts']),
+      costs: { 'tests/b.spec.ts': 250 },
+      skipped: [], measuredFiles: ['tests/b.spec.ts'], prune: [], rewriteAll: false,
+    });
+
+    expect(record.unmeasured, 'it has a cost now, so it is not waiting for one').toEqual([]);
+    expect(record.costs).toEqual({ 'tests/b.spec.ts': 250 });
+  });
+
+  /**
+   * The machine is the record's own until a run adopts it, which is `--all --force`.
+   *
+   * Without this the field would be written once and then carried by nobody: `settle` rebuilds the record
+   * from scratch with no spread of `previous`, so a field it does not name is a field the next update drops.
+   */
+  it('keeps the record\'s machine, and takes it only when adopting', () => {
+    const input = {
+      previous: base({ 'tests/a.spec.ts': 100 }),
+      costs: { 'tests/a.spec.ts': 400 },
+      skipped: [], measuredFiles: ['tests/a.spec.ts'], prune: [], rewriteAll: true,
+    };
+
+    expect(settle(input).record.machine).toEqual(OTHER);
+    expect(settle({ ...input, adopt: true }).record.machine, 'adopting is re-measuring and taking it over')
+      .toEqual(thisMachine());
+  });
+});
+
+describe.skipIf(!ON_MEASURED_MACHINE)(`a spec runs in the half its cost puts it in${OFF_BOX}`, () => {
   it(`moves a fast spec above ${INTEGRATION_ABOVE_MS}ms, and brings an integration one back below ${FAST_BELOW_MS}ms`, () => {
     const wrong = suites
       .filter(({ record }) => record)
@@ -146,7 +251,7 @@ describe('what a run says about a spec it cannot place', () => {
 describe('what a spec that changed half says about the band', () => {
   const FAST = 'tests/x.spec.ts';
   const SLOW = 'tests/x.integration.spec.ts';
-  const record = (costs: Record<string, number>): SpecCost => ({ measuredAt: 'then', costs, skipped: [] });
+  const record = (costs: Record<string, number>): SpecCost => ({ measuredAt: 'then', costs, skipped: [], unmeasured: [], machine: thisMachine() });
 
   it('reads the ratio off a move in either direction', () => {
     expect(ratiosFromMoves(record({ [FAST]: 2_000 }), { [SLOW]: 1_000 }, [SLOW], [SLOW]))
@@ -208,7 +313,7 @@ describe('how close a spec is to changing half', () => {
    * reading of the same rule. A spec in a one-config package is excluded for the reason `overBudget`
    * excludes it: there is no half to move into, so no edge applies.
    */
-  it('finds the specs that really are close, and only in a package with somewhere to go', () => {
+  it.skipIf(!ON_MEASURED_MACHINE)(`finds the specs that really are close, and only in a package with somewhere to go${OFF_BOX}`, () => {
     const close = suites
       .filter(({ dir }) => hasSplit(dir))
       .flatMap(({ suite, record }) => Object.entries(record?.costs ?? {})
@@ -225,7 +330,7 @@ describe('how close a spec is to changing half', () => {
 });
 
 
-describe('a spec that costs more than a fast half allows', () => {
+describe.skipIf(!ON_MEASURED_MACHINE)(`a spec that costs more than a fast half allows${OFF_BOX}`, () => {
   // No `!split` filter: `overBudget` returns this kind only for a package that has nowhere to move a spec
   // to, which is the same question, asked once, in the one place that cannot forget to ask it
   const found = () => suites
@@ -333,7 +438,7 @@ describe('a run that moved too much was measuring the machine', () => {
   // The regression: `moved` is true for a spec with no recorded value, so counting additions read eight new
   // specs in a suite of twenty-eight as a contended run and refused it, naming the machine.
   it('does not read specs measured for the first time as a machine under load', () => {
-    const previous = { measuredAt: '', skipped: [], costs: Object.fromEntries(specs(20, 's').map((spec) => [spec, 100])) };
+    const previous = { measuredAt: '', skipped: [], unmeasured: [], machine: thisMachine(), costs: Object.fromEntries(specs(20, 's').map((spec) => [spec, 100])) };
     const measured = [...specs(20, 's'), ...specs(8, 'new')];
     const settled = { ...previous.costs, ...Object.fromEntries(specs(8, 'new').map((spec) => [spec, 50])) };
     const { added, moved: movedSpecs, rewritten } = changesIn(previous, settled, measured);
@@ -493,7 +598,7 @@ describe('a bare update asks for the least the record needs', () => {
     fs.writeFileSync(path.join(root, rel), body);
   };
   const record = (costs: Record<string, number>, skipped: string[] = []): void =>
-    write(specCostFile(DIR), `${JSON.stringify({ measuredAt: 'then', costs, skipped }, null, 2)}\n`);
+    write(specCostFile(DIR), `${JSON.stringify({ measuredAt: 'then', costs, skipped, unmeasured: [], machine: thisMachine() }, null, 2)}\n`);
 
   beforeAll(() => {
     root = fs.mkdtempSync(path.join(os.tmpdir(), 'spec-cost-'));
@@ -502,6 +607,31 @@ describe('a bare update asks for the least the record needs', () => {
     write(`packages/${DIR}/tests/b.spec.ts`, '');
   });
   afterAll(() => fs.rmSync(root, { recursive: true, force: true }));
+
+  /**
+   * A record this cannot read as one is absent, not a record with a hole in it.
+   *
+   * `readSpecCost` is a `JSON.parse` behind a cast, so a file written before a field existed arrived typed as
+   * complete. Dropping `machine` from one of the twelve made this spec file fail at *collection* —
+   * `Cannot read properties of undefined (reading 'cpu')`, and **no tests at all** — which is the worst shape
+   * available, a suite that reports nothing rather than failing about something. Reachable from a branch not
+   * yet rebased, a stash, a revert, or a merge from before the field landed.
+   *
+   * Absent is the right answer rather than a throw: `check` already says *"no <file>; run spec-cost:update"*,
+   * which is what a record that has to be re-taken needs to hear. This repo keeps no backward compatibility,
+   * so requiring that is the policy; saying it out loud is the part that was missing.
+   */
+  it.each(['machine', 'unmeasured', 'skipped', 'costs', 'measuredAt'])('reads a record with no %s as no record', (field) => {
+    const full = { measuredAt: 'then', costs: { 'tests/a.spec.ts': 100 }, skipped: [], unmeasured: [], machine: thisMachine() };
+    write(specCostFile(DIR), `${JSON.stringify(Object.fromEntries(Object.entries(full).filter(([key]) => key !== field)), null, 2)}\n`);
+
+    expect(readSpecCost(root, DIR)).toBeUndefined();
+  });
+
+  it('reads a complete one, so the case above is not passing on the parse', () => {
+    record({ 'tests/a.spec.ts': 100 });
+    expect(readSpecCost(root, DIR)).toMatchObject({ costs: { 'tests/a.spec.ts': 100 }, machine: thisMachine() });
+  });
 
   it('measures only the half a spec with no recorded cost lives in', () => {
     record({ 'tests/a.spec.ts': 100 });
@@ -530,7 +660,7 @@ describe('a bare update asks for the least the record needs', () => {
 describe('what a run does to the record it replaces', () => {
   const FAST = 'tests/a.spec.ts';
   const previous = (costs: Record<string, number>, skipped: string[] = []) =>
-    ({ measuredAt: 'then', costs, skipped });
+    ({ measuredAt: 'then', costs, skipped, unmeasured: [], machine: thisMachine() });
 
   // The defect: the newly-skipped filter read the *settled* costs, which start as everything the record
   // already held — so a spec that had a cost and stopped running was filtered out of `skipped` and kept the
@@ -805,7 +935,7 @@ describe('a named spec that is not there is refused, whatever was asked of it', 
   // longer on disk" from the file list it is given, so over a narrowed list every spec the caller did not
   // name reads as gone. Narrowing the whole loop's file list is the obvious simplification and is wrong.
   it('is why the recorded-but-gone question is only ever asked of a whole suite', () => {
-    const record = { measuredAt: '', skipped: [], costs: { 'tests/a.spec.ts': 1, 'tests/b.spec.ts': 2 } };
+    const record = { measuredAt: '', skipped: [], unmeasured: [], machine: thisMachine(), costs: { 'tests/a.spec.ts': 1, 'tests/b.spec.ts': 2 } };
     expect(stale(record, FILES), 'nothing is gone').toEqual([]);
     expect(stale(record, ['tests/a.spec.ts']), 'but against one named spec, the other reads as gone')
       .toEqual(['tests/b.spec.ts']);

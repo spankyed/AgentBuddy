@@ -6,5 +6,10 @@
     "tests/launch-env.spec.ts": 2,
     "tests/shared-ears.spec.ts": 11
   },
-  "skipped": []
+  "skipped": [],
+  "unmeasured": [],
+  "machine": {
+    "cpu": "Apple M1 Pro",
+    "cores": 10
+  }
 }

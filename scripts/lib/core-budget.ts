@@ -98,17 +98,68 @@ export function coresFor(step: string, cores: number = box()): number {
 }
 
 /**
- * Whether this run is the schedule a recorded cost table describes.
+ * What identifies the machine a measurement was taken on.
  *
- * **Two numbers, because the default makes them look like one.** A run's admission is its budget; the
- * widths it admits on are resolved against the *machine*, because `coresFor` reads `box()` and not the
- * budget — `--cores` is a cap on what to spend of this box, not a pretend box (`budgetFrom`,
- * `scripts/chain.ts`). The flag defaults to `box()`, so the two agree and one scalar records the schedule.
- * Pass it on a box of another size and they diverge: `--cores 10` on a twenty-core machine runs twenty-core
- * widths under a ten-core budget, which a gate comparing only the budget let through.
+ * **The core count alone is not an identity, which is the hole this closed.** A recorded table used to be
+ * keyed by `cores` and nothing else, so every 10-core machine read as the one the numbers came from — an
+ * M4 Pro, a 10-core Xeon, any of them. A second developer on a 10-core Mac, which is the commonest shape
+ * there is, therefore got `--record` accepted, the drift report's instruction printed, and `spec-cost`'s
+ * placement gate enforced, against a table measured on different silicon. That is the exact failure the
+ * machine-portability work was for, surviving for one very common machine.
+ *
+ * The CPU model is the cheapest thing that distinguishes them and it is already to hand. It is not a
+ * perfect identity — two machines can share a model string and differ in thermals or memory — but it
+ * separates the case that actually turns up, and a run can check it.
  */
-export const isMeasuredSchedule = (budget: number, measuredAt: number, cores: number = box()): boolean =>
-  budget === measuredAt && cores === measuredAt;
+export interface Machine {
+  /** `os.cpus()[0].model`, trimmed — "Apple M1 Pro" here */
+  readonly cpu: string;
+  /** What `box()` reports, which is what a budget is spent out of */
+  readonly cores: number;
+}
+
+/** This machine, as a recorded one is written */
+export const thisMachine = (): Machine => ({
+  cpu: (os.cpus()[0]?.model ?? 'unknown').trim(),
+  cores: box(),
+});
+
+/** How a machine reads in a message */
+export const machineText = (machine: Machine): string => `${machine.cpu} with ${machine.cores} cores`;
+
+/**
+ * Whether this is the machine a record was measured on.
+ *
+ * **The CPU as well as the core count**, because the core count alone called every ten-core box the measured
+ * one. It is the question a record of *costs* asks — a millisecond says where a spec belongs only against
+ * edges chosen for one machine's speed — and it carries no budget, because a cost record has none.
+ *
+ * The machine is a parameter with a default so a case can ask about another box from this one, which is the
+ * only way the off-machine paths are testable at all.
+ */
+export const isMeasuredMachine = (measuredOn: Machine, machine: Machine = thisMachine()): boolean =>
+  machine.cores === measuredOn.cores && machine.cpu === measuredOn.cpu;
+
+/**
+ * Whether this run is the schedule a recorded cost table describes: the machine above, **and** the budget.
+ *
+ * **Three facts, because fewer have each let something through.** A run's admission is its budget; the
+ * widths it admits on are resolved against the machine, because `coresFor` reads `box()` and not the budget
+ * — `--cores` is a cap on what to spend of this box, not a pretend box (`budgetFrom`, `scripts/chain.ts`).
+ * So the budget has to match the cores the table was measured at, *and* the machine has to be the one it was
+ * measured on.
+ *
+ * Comparing the budget alone passed `--cores 10` on a twenty-core machine, where every width was
+ * twenty-core sized. Comparing the budget and the core count passed any 10-core machine at all.
+ *
+ * A caller with no schedule in the question wants `isMeasuredMachine`: passing the measured cores *as* the
+ * budget to satisfy a conjunct you do not care about reads as a fact about a budget, and `spec-cost` did it.
+ */
+export const isMeasuredSchedule = (
+  budget: number,
+  measuredOn: Machine,
+  machine: Machine = thisMachine(),
+): boolean => budget === measuredOn.cores && isMeasuredMachine(measuredOn, machine);
 
 /** A share as vitest writes it in `poolOptions`, which is how a config and this table are compared */
 export const asPercent = (share: number): string => `${Math.round(share * 100)}%`;

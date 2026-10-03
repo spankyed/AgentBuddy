@@ -47,5 +47,10 @@
     "tests/with-source.spec.ts": 1165,
     "tests/workspace-dirs.spec.ts": 3
   },
-  "skipped": []
+  "skipped": [],
+  "unmeasured": [],
+  "machine": {
+    "cpu": "Apple M1 Pro",
+    "cores": 10
+  }
 }

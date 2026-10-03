@@ -60,5 +60,10 @@
     "tests/utils/secret-matcher-reach.spec.ts": 4,
     "tests/utils/seed-registry.spec.ts": 9
   },
-  "skipped": []
+  "skipped": [],
+  "unmeasured": [],
+  "machine": {
+    "cpu": "Apple M1 Pro",
+    "cores": 10
+  }
 }

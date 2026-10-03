@@ -20,7 +20,8 @@
  */
 import { execFileSync } from 'node:child_process';
 import * as os from 'node:os';
-import { boundedSpawn, budgetFor } from './lib/bounded-spawn.ts';
+import { boundedSpawn } from './lib/bounded-spawn.ts';
+import { TIMEOUT_MS } from './lib/step-timeouts.ts';
 import { UNIT_SUITES } from './lib/unit-suites.ts';
 import { exitOnEpipe } from './lib/exit-on-epipe.ts';
 
@@ -61,8 +62,9 @@ const cpus = os.availableParallelism?.() ?? os.cpus().length;
 interface Result { pool: string; code: number; ms: number; output: string; timedOut?: true }
 
 async function run(pool: Pool): Promise<Result> {
-  // The slowest pool is ~22s alone, so five minutes means wedged rather than slow
-  const { code, output, ms, timedOut } = await boundedSpawn(pool.command, pool.args, budgetFor(75));
+  // `suite` is five minutes, and the slowest pool is ~22s alone — so this says wedged rather than slow.
+  // It was `budgetFor(75)`, which reached the same number through a measurement nobody took.
+  const { code, output, ms, timedOut } = await boundedSpawn(pool.command, pool.args, TIMEOUT_MS.suite);
   return { pool: pool.label, code, ms, output, ...(timedOut ? { timedOut } : {}) };
 }
 

@@ -82,5 +82,10 @@
     "tests/services/host-runtime.spec.ts": 53,
     "tests/services/inference.spec.ts": 1682
   },
-  "skipped": []
+  "skipped": [],
+  "unmeasured": [],
+  "machine": {
+    "cpu": "Apple M1 Pro",
+    "cores": 10
+  }
 }

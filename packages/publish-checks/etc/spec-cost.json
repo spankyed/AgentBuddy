@@ -11,5 +11,10 @@
     "tests/published-ui-dist.spec.ts": 33,
     "tests/published-ui-types.integration.spec.ts": 5858
   },
-  "skipped": []
+  "skipped": [],
+  "unmeasured": [],
+  "machine": {
+    "cpu": "Apple M1 Pro",
+    "cores": 10
+  }
 }

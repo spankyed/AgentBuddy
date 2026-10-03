@@ -5,5 +5,10 @@
     "tests/pack-protocol.spec.ts": 2,
     "tests/shell-access.spec.ts": 15
   },
-  "skipped": []
+  "skipped": [],
+  "unmeasured": [],
+  "machine": {
+    "cpu": "Apple M1 Pro",
+    "cores": 10
+  }
 }

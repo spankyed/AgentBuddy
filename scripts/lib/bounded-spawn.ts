@@ -9,8 +9,12 @@
  *
  * Two rules this enforces, and both matter:
  *
- * - **A budget is sized from a measurement, not chosen heroically.** A bound longer than anyone will wait is
- *   the same as no bound. Callers pass what the step actually costs; this multiplies it.
+ * - **A budget is a declared class, not a multiple of a measurement.** It was the second until 2026-10-03,
+ *   and what that made it was a function of one developer's machine: `budgetFor(seconds)` multiplied a
+ *   ten-core measurement by four, so a box with a third of the cores ran the same deadline over a step three
+ *   times slower. Callers pass `TIMEOUT_MS[class]` (`scripts/lib/step-timeouts.ts`), which carries no
+ *   machine. A bound longer than anyone will wait is still the same as no bound, which is what keeps the
+ *   ladder to three rungs.
  * - **The process group dies, not just the child.** `npm run x` is a shell that spawns node that spawns
  *   vitest that spawns workers. Killing the child orphans the rest, which is how this repo ended up with a
  *   `generate-entries` at 99% CPU for a day and a half.
@@ -26,9 +30,6 @@ export interface BoundedResult {
   /** Set when the caller stopped it. Distinct from a failure, which `code` alone cannot say. */
   readonly aborted?: true;
 }
-
-/** A budget from what the step costs when healthy. Four times, floored, so normal variance never trips it. */
-export const budgetFor = (measuredSeconds: number): number => Math.max(60_000, Math.round(measuredSeconds * 4) * 1000);
 
 /** How long a killed group gets to exit on SIGTERM before SIGKILL */
 const GRACE_MS = 2_000;

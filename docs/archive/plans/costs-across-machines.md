@@ -1,3 +1,15 @@
+> **Done** (branch `AS/costs-across-machines`). All four phases are closed: deadlines became declared
+> classes (`8ad50cc27`), the drift report stopped printing advice off the measured machine (`69470a693`),
+> `spec-cost`'s placement checks were scoped to it (`9755ee816`), and the CI rule went into the root
+> `CLAUDE.md` (`2b09fd2a5`). A review after the fact found three more and each is fixed: the machine
+> identity was a core count, so every 10-core box read as the measured one (`c427b1c3b`); the
+> `spec-cost:check` *command* was left enforcing where only its spec had been scoped (`551ed825b`); and a
+> step's bound and its script's now coincide, which needed saying rather than changing (`a5119d250`).
+>
+> Three things in the plan were corrected by implementing it — the inner shell bounds it had missed, the
+> critical-path floor it wrongly called machine-bound, and the ratio it proposed for the half edges — and
+> each correction is marked where it applies. Read it as history: it names code as it was.
+
 # Costs across machines: the cost model is single-machine
 
 ## Problem
@@ -10,7 +22,7 @@ the CI runner whose triggers are commented out — meets all of it at once.
 
 | Portable (relative) | Machine-bound (absolute) |
 |---|---|
-| `IDLE_FLOOR` 0.7, `SETTLED_FRACTION` 0.35 | `MEASURED_AT_CORES` 10 |
+| `IDLE_FLOOR` 0.7, `SETTLED_FRACTION` 0.35 | `MEASURED_ON` — the CPU and core count of one box |
 | `DRIFT_SHARE` 0.15, `CONTENDED_SHARE` 0.25 | 29 `seconds` values + `POOL_SECONDS` |
 | `--cores`, defaulting to `box()` | `SIZE_MS` 15s / 60s |
 | `POOL_WIDTH`'s shares (`{ share: 0.5 }`, `UNCAPPED`) | spec half edges 1000 / 2500ms, over 389 recorded specs |
@@ -60,11 +72,11 @@ A pool that drops from nine workers to two is three to four times slower, which 
 130-170s against a 168s deadline. That is the worst failure shape available: intermittent, and it looks
 like the code.
 
-**Nobody else can maintain the table.** `--record` refuses unless `box() === MEASURED_AT_CORES`
+**Nobody else can maintain the table.** `--record` refuses unless this is the machine `MEASURED_ON` names
 (`isMeasuredSchedule`), so a second developer can neither record their own numbers nor fix stale ones. A
 recorded artifact one machine can write is not a shared artifact.
 
-**Permanent noise for everyone else.** `box() !== MEASURED_AT_CORES` prints on every run on any other
+**Permanent noise for everyone else.** A mismatch against `MEASURED_ON` prints on every run on any other
 machine, and the drift report fires on most steps — correctly, and uselessly, since the advice it gives
 cannot be taken there.
 
@@ -97,7 +109,18 @@ by `sizeOf` (`scripts/lib/test-timeouts.ts`) rather than declared. Chain steps a
 not follow: `budgetFor(seconds)` multiplies a measurement by four.
 
 Replace that with a coarse bucket per step, chosen for the slowest plausible machine rather than measured
-on the fastest. Bazel's own ladder is 60 / 300 / 900 / 3600s and is a reasonable starting shape.
+on the fastest. Bazel's own ladder is 60 / 300 / 900 / 3600s and is a reasonable starting shape; what landed
+is three rungs of it — `quick` 60s, `suite` 300s, `scenario` 900s — because three kinds of work are nameable
+here and a fourth would have been a value nothing distinguishes, which is `SIZE_MS`' argument against it.
+
+**Corrected by implementing it: the inner shell bounds were half of this phase and the plan missed them.**
+Four npm scripts bound a shell script through `scripts/bounded.ts <seconds>`, nested *inside* the chain's
+own bound — and two were already the binding constraint, `test:external-pack:contract` at 90s inside against
+144s outside and `test:packaged-authoring` at 240s against 364s. `bounded.ts`' own doc told the reader to
+size them "at about four times what the thing costs healthy", so they were this machine's deadlines by the
+same route. Coarsening only the chain's bound would have left a 90s shell bound killing a slow machine
+exactly as before, and this phase's "done when" would have been false while it read as true. They name a
+class now, so a step and the script it runs agree by construction.
 
 **The bucket is declared by kind, and never derived by thresholding `seconds`.** That is the shortcut this
 phase exists to refuse: a bucket picked by comparing a recorded cost against edges re-couples the killer to
@@ -120,20 +143,25 @@ greppable, so it is what a spec should assert rather than a reviewer remember.
 After (1), `seconds` has only local consumers: the critical-path line and the drift report. So it should
 stop being a fact that one machine maintains and every other machine is warned about on every run.
 
-Two shapes, in increasing order of what they buy:
+**What landed is the advice gated and the numbers kept.** The rows still print off the measured machine,
+because what a step cost is true wherever it ran; the sentence telling a reader to record it does not,
+because `--record` refuses there. The guard is `isMeasuredSchedule`, not a bare core-count comparison —
+the weaker form passes `--cores 10` on a twenty-core box, where the budget matches and every width is
+twenty-core sized.
 
-- **Silence, not warning.** On a machine that is not `MEASURED_AT_CORES`, the drift report and the
-  critical-path floor say nothing rather than reporting a schedule they cannot describe. Smallest change;
-  a second developer gets a quiet chain and no diagnostics.
-- **A local override.** `--record` writes to an untracked per-machine file when the box differs, and the
-  committed table stays the reference. Everyone gets a drift report about their own machine; the committed
-  artifact stays a single reviewable diff. This is the committed-baseline-plus-local-rebaseline pattern
-  `criterion` and `cargo bench` use, and it is what makes the record usable by a team rather than merely
-  quiet. **The place is settled by precedent rather than invention**: the chain's own stamps and every
-  `tsBuildInfoFile` already live under `node_modules/.cache/`, per machine and uncommitted, which is what a
-  per-machine measurement is.
+**Corrected by implementing it: the critical-path floor is not machine-bound and is not silenced.**
+`chain.ts` builds it from *measured* times, not from the table — *"Measured, not declared. Reporting the
+floor from `seconds` made it wrong by the amount the table had drifted"* — so it describes the run that
+just happened and is true on any machine. Only `driftReport`, which compares against the committed table,
+needed gating.
 
-**Done when** a run on a machine that is not `MEASURED_AT_CORES` prints no instruction it cannot follow, and
+**And the local-override option is closed rather than left open.** A per-machine duration is *already*
+persisted: every chain stamp under `node_modules/.cache/abuddy-chain/` carries `takenAt` and `builtAt`, so
+the last successful run of each step on this box is on disk. If an off-reference drift signal is ever
+wanted, it is derivable from that, with no second cost table to keep true — which is the shape to use, and
+the reason not to build one now.
+
+**Done when** a run on a machine `MEASURED_ON` does not name prints no instruction it cannot follow, and
 a spec asserts both halves — the instruction on the reference box, its absence off it. The numbers are not
 the thing to silence; the advice is.
 
@@ -160,19 +188,34 @@ and every `tsBuildInfoFile` already live under `node_modules/.cache/`, per machi
 is exactly what a calibration is. A committed per-machine number is the problem this plan is about, so a
 fix shaped like one would be the same mistake twice.
 
-**Scaling the deadlines by `MEASURED_AT_CORES / box()`.** The obvious shortcut, and wrong in both directions
+**Scaling the deadlines by the measured cores over this machine's.** The obvious shortcut, and wrong in both directions
 at once: the single-threaded `tsc` legs barely scale with cores while the pools scale nearly linearly, so one
 multiplier masks a real hang on a large box and still fires on a small one. Named here because it is what the
 next reader of "the deadlines are ten-core deadlines" will reach for.
 
-## Open question
+## 4. `spec-cost`'s half edges stay absolute, scoped to the machine that measured them
 
-**`spec-cost`'s half edges.** 1000 / 2500ms over 389 specs is the largest remaining absolute, and (1) and
-(2) do not touch it. The portable formulation is a ratio to the suite's own median rather than a fixed
-millisecond edge — a spec that takes four times the median is in the slow half on any machine. Worth
-naming now; it needs its own measurement, because the band has to be wider than the movement a
-re-measurement produces or a spec is told to move in both directions at once, which this record has
-already done once.
+**Decided, not deferred, and the ratio this plan first proposed is refuted.** The half-split is *correctly*
+machine-specific: a cost in milliseconds says where a spec belongs only against edges chosen for one
+machine's speed. So enforcement is scoped to the box the record was taken on and skips elsewhere with a
+named reason — the `packagesBuiltOrRefuse()` shape, which skips on evidence that does not apply rather than
+passing over it. Demonstrated both ways: off the machine those five cases skip, and a record scaled by three
+with the scoping removed fails exactly the placement gate, which is what a second developer used to get.
 
-**Done when** scaling every cost in a fixture record by three changes no spec's half — the property a
-millisecond edge cannot have and a ratio can.
+**What portability cannot do here**, measured 2026-10-03:
+
+- **`repo-checks` is not separable by any ratio.** Four fast specs cost more than its three cheapest
+  integration specs — `lint-scope` 2388, `spec-plan-collect` 2134, `chain-inputs` 2041, `suite-reads` 1872
+  against `fingerprint-scope.integration` 1843, `component-contracts.integration` 2007,
+  `bounded-spawn.integration` 2059. The halves overlap at 9.4x the median against 7.3x, and today's record
+  survives because of the dead band rather than because the halves separate.
+- **The nine single-half suites have medians of 6-168ms**, so any ratio wide enough for the split suites is
+  a far lower absolute bar there: today's six `outgrown` findings would become 42.
+- **`outgrown` is not a placement question at all.** It is a ceiling on what a fast half may cost — a policy
+  about loop time, the same kind of thing as the classes in (1).
+- **And a median is a fit.** `goal-measured-placement.md` already carries the general form: *"a bound is not
+  a fit; deriving one from the measurement it bounds is how a timeout stops catching anything."*
+
+A ratio *would* have satisfied the "done when" this section used to carry — scaling every cost scales the
+median, so every ratio is invariant by construction. That is the trap: the property was satisfiable by a
+formulation that classifies today's record wrongly, so it was the wrong property to end on.

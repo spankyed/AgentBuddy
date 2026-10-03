@@ -9,7 +9,20 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { REPO_ROOT } from '@abuddy/host/build/packages-built';
 import { rootScripts } from './npm-scripts.ts';
+import type { TimeoutClass } from './step-timeouts.ts';
 import { PACKAGE_DIRS } from './workspace-deps.ts';
+
+/**
+ * How long any leg may run before its process group is killed — one compiler or one walk in one process,
+ * which is what `quick` names (`step-timeouts.ts`).
+ *
+ * Declared once here rather than on each `Leg`, where eighteen entries would hold the same value and
+ * `SIZE_MS`' doc has the argument against that. Read by the runner (`scripts/typecheck.ts`) and by the
+ * chain, which runs these same legs as steps (`TYPECHECK_STEPS`, `chain-steps.ts`) — one declaration, so the
+ * two cannot disagree, which they could when each named the class itself. A leg that ever wants longer is
+ * what adds the field.
+ */
+export const LEG_TIMEOUT: TimeoutClass = 'quick';
 
 export interface Leg {
   /** What `npm run` calls it, and what a failure is reported as */
@@ -56,14 +69,14 @@ export interface Leg {
    * which this becomes (`chain-steps.ts` copies it onto the generated step).
    *
    * **It used to say "alone, on an idle machine", and that was two regimes for one field.** `npm run chain
-   * -- --all --record` writes in-chain numbers here, `budgetFor` sizes every leg's kill deadline from it,
-   * and `driftedSteps` compares a chain run against it; only `npm run typecheck`, run by a person directly,
-   * ever sees a leg alone. The figure the old wording described is in that command's own doc, which is
-   * where it informs something.
+   * -- --all --record` writes in-chain numbers here and `driftedSteps` compares a chain run against them;
+   * only `npm run typecheck`, run by a person directly, ever sees a leg alone. The figure the old wording
+   * described is in that command's own doc, which is where it informs something.
    *
-   * It feeds `budgetFor`, which bounds a leg at four times this and floors at 60s — so the short legs all
-   * land on the floor, which is the right bound for them anyway. Re-measure rather than raise one: a bound
-   * nobody will wait for is the same as no bound.
+   * **It bounds nothing.** It sized each leg's kill deadline at four times until 2026-10-03, which made
+   * every leg's deadline a function of this machine; a leg is bounded by the `quick` class now
+   * (`step-timeouts.ts`), as the chain's own copy of it is. What is left here is the number a run is
+   * reported against, so re-measure rather than raise one.
    */
   readonly seconds: number;
 }

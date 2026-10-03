@@ -2,8 +2,8 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { REPO_ROOT } from '@abuddy/host/build/packages-built';
-import { CHAIN_STEPS } from '../../../scripts/lib/chain-steps.ts';
-import { planSecondsEdits, SECONDS_TABLES } from '../../../scripts/lib/record-seconds.ts';
+import { CHAIN_STEPS, MEASURED_ON } from '../../../scripts/lib/chain-steps.ts';
+import { machineLine, planMachineEdit, planSecondsEdits, SECONDS_TABLES } from '../../../scripts/lib/record-seconds.ts';
 import { movedBeyondBand } from '../../../scripts/lib/measure.ts';
 import { population } from '@abuddy/sdk/testing';
 
@@ -38,7 +38,10 @@ describe('recording what a step cost', () => {
   it('writes the measurement into the table that declares it', () => {
     const { edits, sources } = planSecondsEdits(tables(), new Map([['compile', 99]]), declared(), band);
     expect(edits).toEqual([{ step: 'compile', from: declared().get('compile'), to: 99, file: 'scripts/lib/chain-steps.ts' }]);
-    expect(sources.get('scripts/lib/chain-steps.ts')).toContain("{ name: 'compile', seconds: 99,");
+    // The class sits between the name and the cost, and this assertion is why that matters: the rewriter
+    // finds `seconds:` by scanning from `name: '<step>'` to the next `{ name: '`, so a sibling field is safe
+    // and anything named `…seconds…` would not be
+    expect(sources.get('scripts/lib/chain-steps.ts')).toContain("{ name: 'compile', timeout: 'quick', seconds: 99,");
     expect(sources.get('scripts/lib/typecheck-legs.ts'), 'the other table was rewritten too')
       .toBe(tables().get('scripts/lib/typecheck-legs.ts'));
   });
@@ -68,6 +71,35 @@ describe('recording what a step cost', () => {
    * compute every offset up front. Do that and the first splice shifts every later one; the check is
    * what turns that into a refusal rather than a corrupted table.
    */
+  /**
+   * `--adopt`, which is the other half of recording on a machine that is not the table's.
+   *
+   * **Its own locator, not a shape added to the numeric splicer.** Every span that one finds is
+   * `\d+(?:\.\d+)?` and every replacement is `String(now)`; a machine holds a string, so teaching it about
+   * strings would add a shape to the one module that rewrites committed source. What it keeps instead is the
+   * habit: find exactly one declaration, and refuse anything that is not the shape it knows how to replace.
+   *
+   * The defect this closes: nothing wrote `MEASURED_ON`, so `--record --force` on another box moved the costs
+   * and left the constant naming the old machine — and every check scoped on it then skipped the box whose
+   * numbers were in the file and ran on the box whose were not.
+   */
+  it('rewrites the machine the table was measured on, and nothing else in the file', () => {
+    const source = tables().get('scripts/lib/chain-steps.ts')!;
+    const next = planMachineEdit(source, { cpu: 'Some Other CPU', cores: 4 });
+
+    expect(next).toContain("export const MEASURED_ON: Machine = { cpu: 'Some Other CPU', cores: 4 };");
+    expect(next.length - source.length, 'one line replaced, so the rest of the table is untouched')
+      .toBe(machineLine({ cpu: 'Some Other CPU', cores: 4 }).length - machineLine(MEASURED_ON).length);
+  });
+
+  it.each([
+    ['there is no declaration to find', 'export const SOMETHING_ELSE = 1;\n', /No .* declaration/],
+    ['it is declared twice', `${machineLine(MEASURED_ON)}\n${machineLine(MEASURED_ON)}\n`, /declared twice/],
+    ['it is spread over more than its line', 'export const MEASURED_ON: Machine = {\n  cpu: \'x\', cores: 1,\n};\n', /more than its line/],
+  ])('refuses to rewrite when %s', (_what, source, message) => {
+    expect(() => planMachineEdit(source, MEASURED_ON)).toThrow(message);
+  });
+
   it('refuses a step it cannot find in any table', () => {
     const measured = new Map([['no-such-step', 99]]);
     expect(() => planSecondsEdits(tables(), measured, new Map(), band))

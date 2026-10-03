@@ -16,9 +16,9 @@
 import { execFileSync } from 'node:child_process';
 import { diffableStamp, firstChange, freshnessSweep, stampRecord } from '@abuddy/host/build/packages-built';
 import type { UnitSuite } from './lib/unit-suites.ts';
-import { POOL_SECONDS } from './lib/chain-steps.ts';
 import { POOLS, poolStampFor, poolUnitFor, projectsThatDidNotRun, prunePoolStamps, recordRun, recordsVerdict, whyItRuns, type Pool } from './lib/unit-pool.ts';
-import { boundedSpawn, budgetFor } from './lib/bounded-spawn.ts';
+import { boundedSpawn } from './lib/bounded-spawn.ts';
+import { TIMEOUT_MS } from './lib/step-timeouts.ts';
 import { exitOnEpipe } from './lib/exit-on-epipe.ts';
 
 exitOnEpipe();
@@ -101,8 +101,10 @@ async function main(): Promise<void> {
       // what keeps the two records *distinct* is the command inside that fingerprint.
       covered.map((suite) => ({ label: `${suite.dir} (${half})`, unit: poolUnitFor(suite, kind), stamp: poolStampFor(suite, half) })),
       async () => {
-        // The budget is what this pool costs healthy, from the same measurement the chain step declares
-        const { code, output, timedOut } = await boundedSpawn(command, [...args], budgetFor(POOL_SECONDS[kind]));
+        // `suite`, the same class the chain gives this pool as a step — a pool fans out across workers, so
+        // it is the rung that stretches most on a smaller box. Not `POOL_SECONDS`, which is this machine's
+        // measurement and so would be this machine's deadline (`step-timeouts.ts`).
+        const { code, output, timedOut } = await boundedSpawn(command, [...args], TIMEOUT_MS.suite);
         process.stdout.write(output);
         if (code !== 0) throw new Error(`${kind} pool ${timedOut ? 'timed out' : `failed (exit ${code})`}`);
         // Only what the run reported may be stamped: a `--project` filter matching nothing is dropped

@@ -113,7 +113,8 @@ catches.
 
 **`packages:check` is a chain step, for the opposite reason**: publint and attw over the five published trees
 cost seconds together (its declared `seconds` is in `chain-steps.ts`, and the chain reports any run that
-contradicts it), so there is nothing to build a proxy for, and its only other homes were the publish workflow
+contradicts it, on the machine that table was measured on), so there is nothing to build a proxy for, and
+its only other homes were the publish workflow
 and a CI file whose triggers are commented out — the artifact checks ran at the one moment they cannot be
 cheap. It runs `exclusive`, alone: `attw --pack <dir>` packs a tarball inside the tree it is checking and
 `stagePublishTree` removes and recreates that tree, so the two must not overlap. It is not the
@@ -149,6 +150,17 @@ The chain is the whole gate: **CI does not run, on purpose.** `.github/workflows
 and `pull_request` triggers commented out while this is a single-contributor repo, so `gh run list` is empty
 and always will be. That is not a failure to report, and CI is not a check to cite — the local chain is the
 check. The workflow's header says when it goes back on.
+
+**And when it does: CI may fail a check, never a clock.** A runner is smaller and noisier than any
+developer's box, so anything gating on wall-clock there manufactures flakes that read as code failures.
+Three things keep that true and are worth knowing before changing them: every kill deadline is a declared
+class rather than a multiple of a measurement (`scripts/lib/step-timeouts.ts`), `--record` refuses any
+machine but the one the cost table was measured on (`isMeasuredSchedule`), and the drift report prints its
+numbers but no instruction off that machine. CI already does the right thing where it has its own bound —
+`ci.yml`'s `timeout-minutes` is a round number nobody measured — and it is the chain that was the outlier.
+**Do not gate any of this on `process.env.CI`**: a CI-gated refusal in this repo never fires, and the one
+that was cost thirteen spec files a silent green (`@abuddy/host/build/packages-built`, on `ALLOW_UNBUILT`).
+The condition is the machine, which is a fact a run can check.
 
 Things that waste the most time, in order:
 
@@ -407,7 +419,8 @@ npm run chain            # Before a merge: every check in dependency order, cold
                          # **Never pipe a backgrounded run.** It buffers output and prints only a failing
                          # step's, so `| tail` discards the one thing a failure leaves behind, and that
                          # does not come back on a re-run that passes.
-                         # Afterwards it names the steps a run contradicted: one past double its declared
+                         # Afterwards, on the machine its table was measured on, it names the steps a run
+                         # contradicted: one past double its declared
                          # `seconds`, and one that passed and is already stale again — the second with the
                          # inputs that differ and whether each moved while the step ran (an ordering to
                          # fix) or since.
@@ -433,6 +446,12 @@ npm run chain            # Before a merge: every check in dependency order, cold
                          #             refuses a busy machine, and refuses a run where too much moved to
                          #             have been measuring the code. --force overrides the last two
                          #   --force   record anyway, and know the number is forced
+                         #   --adopt   record on another machine, writing `MEASURED_ON` with the costs.
+                         #             The table and the box it was measured on are one fact, so one
+                         #             operation writes both — without this the costs moved and the
+                         #             constant did not, and every check scoped on it then skipped the box
+                         #             whose numbers were in the file. Needs --all and this machine's cores
+                         #             as the budget, since it records what this machine costs
                          #   --no-classify  a step failing while the machine is busy is re-run alone, to
                          #             tell the code apart from contention; the retry never stamps and the
                          #             chain still exits 1. This turns that off
@@ -587,6 +606,19 @@ npm run spec-cost:update # The least that makes the records current, which is of
                          # would record on a busy box is the machine, and a cost was once recorded at a
                          # load of 71 and reverted by hand. That is a separate gate from the contention
                          # refusal below, which asks after measuring whether too much *moved*.
+                         # **Off the record's own machine it writes membership and never a cost.** A record
+                         # holds two kinds of thing: which specs exist, a fact about the repo that anyone
+                         # can see, and what one costs, a fact about a machine. They were one map, so
+                         # adding a spec meant measuring it — and the only way a second developer could
+                         # satisfy the `unmeasured` finding was to write their own box's milliseconds into
+                         # a record measured on someone else's, with nothing in the file saying it then
+                         # held two machines' numbers. A new spec is listed in `unmeasured` instead, which
+                         # satisfies the finding and prices nothing; the measuring machine fills it in on
+                         # its next run. Which machine that is, is in the record (`machine`) rather than
+                         # read from `MEASURED_ON`, which describes the box the *chain's* seconds were
+                         # taken on — two records, two machines, and nothing made them the same box.
+                         # `--all --force` is how another machine takes a record over: every row
+                         # re-measured, past the refusal that exists to stop a partial one.
                          #   <spec path>   that spec's half and nothing else. It runs the spec's *config*,
                          #                 never the file alone: `chain-inputs` reads 1688ms beside its
                          #                 siblings and 963ms on its own, against a band 1000ms wide, so a

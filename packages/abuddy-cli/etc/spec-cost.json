@@ -64,5 +64,10 @@
     "tests/harness/isolated-data-dir.spec.ts": 36,
     "tests/packs/host-output.spec.ts": 511
   },
-  "skipped": []
+  "skipped": [],
+  "unmeasured": [],
+  "machine": {
+    "cpu": "Apple M1 Pro",
+    "cores": 10
+  }
 }

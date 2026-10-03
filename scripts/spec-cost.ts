@@ -37,12 +37,13 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { REPO_ROOT } from '@abuddy/host/build/packages-built';
 import { bodyDrift, drifted, idleNow, IDLE_FLOOR, refusesAsBusy, refusesAsContended } from './lib/measure.ts';
+import { isMeasuredMachine, machineText, thisMachine, type Machine } from './lib/core-budget.ts';
 import { UNIT_SUITES, type UnitSuite } from './lib/unit-suites.ts';
 import {
   CONTENTION_RATIO_MAX, COST_ACCURACY, FAST_BELOW_MS, INTEGRATION_ABOVE_MS, PLACEMENT_GUARD, describeBudget,
   halfOfPath, hasSplit, ratiosFromMoves, underBound,
   nearEdge, overBudget,
-  CONFIG_BY_HALF, absentNamed, namedIn, parseArgs, planFor, readSpecCost,
+  CONFIG_BY_HALF, absentNamed, namedIn, parseArgs, planFor, readSpecCost, recordMembership, type SpecCost,
   rewritesEveryRow, settle, specCostFile, specFiles, stale, suitesFor, unrecorded, type SpecCostPlan,
 } from './lib/spec-cost.ts';
 
@@ -108,6 +109,14 @@ function describe(plan: SuitePlan): string {
   return `${plan.suite.workspace.padEnd(20)} ${doing.padEnd(46)} (${plan.reason})`;
 }
 
+/** Written only when the bytes differ, so an unchanged record leaves no diff */
+function writeRecord(dir: string, record: SpecCost): void {
+  const file = path.join(REPO_ROOT, specCostFile(dir));
+  fs.mkdirSync(path.dirname(file), { recursive: true });
+  const next = `${JSON.stringify(record, null, 2)}\n`;
+  if (!fs.existsSync(file) || fs.readFileSync(file, 'utf-8') !== next) fs.writeFileSync(file, next);
+}
+
 function update(plans: readonly SuitePlan[], dry: boolean): void {
   // "Every record is current" is a claim about the suites this looked at, so it must have looked at one.
   //
@@ -155,6 +164,31 @@ function update(plans: readonly SuitePlan[], dry: boolean): void {
     const files = specFiles(dir);
     const previous = readSpecCost(REPO_ROOT, suite.dir);
 
+    // **A machine that is not the record's writes membership and never a cost.**
+    //
+    // The record holds two kinds of thing, and they need different permissions: *which specs exist* is a
+    // fact about the repo that anyone can see, and *what one costs* is a fact about a machine. They were one
+    // map until 2026-10-03, so adding a spec meant measuring it — and the only way a second developer could
+    // satisfy the `unmeasured` finding was to write their own box's milliseconds into a record measured on
+    // someone else's, mixing two machines in one file with nothing saying so.
+    //
+    // `--all --force` is how a machine takes the record over: re-measure the whole thing and write this
+    // machine as its own. Two flags rather than a third, because that is exactly what adoption is — every
+    // row re-measured (`--all`) past a refusal that exists to stop a partial one (`--force`).
+    const adopt = all && force;
+    if (previous !== undefined && !adopt && !isMeasuredMachine(previous.machine)) {
+      const next = recordMembership(previous, files);
+      const added = next.unmeasured.filter((file) => !previous.unmeasured.includes(file));
+      const gone = stale(previous, files);
+      writeRecord(suite.dir, next);
+      console.log(`${suite.workspace.padEnd(21)} ${
+        added.length === 0 && gone.length === 0
+          ? 'membership is current'
+          : `${added.length} unmeasured, ${gone.length} gone`
+      } — costs are ${machineText(previous.machine)}'s and this is ${machineText(thisMachine())}`);
+      continue;
+    }
+
     // Only the specs the chosen configs actually run. Every guard below is scoped to these: over the whole
     // suite they would each fire on a file this run never claimed to measure.
     const measuredFiles = files.filter((file) => plan.configs.includes(CONFIG_BY_HALF[halfOfPath(file)]));
@@ -168,7 +202,7 @@ function update(plans: readonly SuitePlan[], dry: boolean): void {
     const rewriteAll = rewritesEveryRow({ all, body });
     const { record, added, moved, rewritten, dropped } = settle({
       previous, costs, skipped: [...new Set(runs.flatMap((run) => run.skipped))], measuredFiles,
-      prune: plan.prune, rewriteAll,
+      prune: plan.prune, rewriteAll, adopt,
     });
 
     // What a sample can check: not equality, which it never has, but reproducibility. An idle run moves a
@@ -184,10 +218,7 @@ function update(plans: readonly SuitePlan[], dry: boolean): void {
     const missing = unrecorded(record, measuredFiles);
     if (missing.length > 0) throw new Error(`These ${suite.workspace} specs ran nothing and were not reported as skipped:\n  ${missing.join('\n  ')}`);
 
-    const file = path.join(REPO_ROOT, specCostFile(suite.dir));
-    fs.mkdirSync(path.dirname(file), { recursive: true });
-    const next = `${JSON.stringify(record, null, 2)}\n`;
-    if (!fs.existsSync(file) || fs.readFileSync(file, 'utf-8') !== next) fs.writeFileSync(file, next);
+    writeRecord(suite.dir, record);
 
     // A spec that just changed half measured `CONTENTION_RATIO_MAX` on the way, for free — the record held
     // what it cost in the half it left and this run read what it costs now. That constant is a sample with
@@ -255,7 +286,9 @@ function check(only: string | undefined, named: readonly string[]): void {
   /** What an update can fix: a cost it can measure, or a row it can drop */
   const problems: string[] = [];
   /** What it cannot: a spec whose filename puts it in the other half from its cost */
-  const renames: string[] = [];
+  const renames: { line: string; machine: Machine }[] = [];
+  /** The same findings from a record measured on another machine, which are reported and not enforced */
+  const elsewhere: { line: string; machine: Machine }[] = [];
   const recordable = new Set<string>();
   let total = 0;
   for (const suite of suites) {
@@ -282,8 +315,24 @@ function check(only: string | undefined, named: readonly string[]): void {
     // `suite-split.spec.ts` and not here — failing on it would fail over the entries already recorded there.
     for (const found of overBudget(dir, record.costs, asked)) {
       if (found.kind !== 'rename') continue;
-      renames.push(`  ${(found.ms / 1000).toFixed(1)}s is ${found.belongs}, but this is in the ${halfOfPath(found.file)} half: ${suite.dir}/${found.file}`);
+      const line = `  ${(found.ms / 1000).toFixed(1)}s is ${found.belongs}, but this is in the ${halfOfPath(found.file)} half: ${suite.dir}/${found.file}`;
+      // Scoped per record, because each one names the machine it was measured on and a tree can hold two
+      (isMeasuredMachine(record.machine) ? renames : elsewhere).push({ line, machine: record.machine });
     }
+  }
+  // **Placement is read from a cost, so it gates only on the machine that measured one.** The edges are
+  // milliseconds chosen for one machine's speed: on a box three times slower, 32 of the 363 fast-half specs
+  // cross the upper edge and this would fail for a tree nobody has touched. Reported there rather than
+  // enforced, which is `packagesBuiltOrRefuse`'s shape — evidence that does not apply is named, not acted on.
+  //
+  // `problems` is not scoped with it, and that is the point of splitting them: an unmeasured spec and a
+  // recorded one that has gone are facts about which files exist, true on any machine, and they are the half
+  // a second developer most needs. Skipping the whole command would have taken them with it.
+  if (elsewhere.length > 0) {
+    const measured = [...new Set(elsewhere.map((found) => machineText(found.machine)))].join(', ');
+    console.log(`\nNot checking placement: these costs were measured on ${measured} and this is `
+      + `${machineText(thisMachine())}, where a cost in milliseconds says nothing about which half a spec belongs in.`);
+    for (const { line } of elsewhere) console.log(line);
   }
   if (problems.length > 0 || renames.length > 0) {
     // The two kinds take different fixes, and telling them apart is the whole value of the advice: an
@@ -293,7 +342,7 @@ function check(only: string | undefined, named: readonly string[]): void {
       problems.length > 0 ? `Run: npm run spec-cost:update${recordable.size === 1 ? ` -- --suite ${[...recordable][0]}` : ''}` : '',
       renames.length > 0 ? `Rename ${renames.length === 1 ? 'it' : 'them'} into the half the cost implies; no measurement will move ${renames.length === 1 ? 'it' : 'them'}.` : '',
     ].filter(Boolean).join('\n');
-    const found = [...problems, ...renames].join('\n');
+    const found = [...problems, ...renames.map(({ line }) => line)].join('\n');
     throw new Error(`Spec costs are out of date (a fast spec moves above ${INTEGRATION_ABOVE_MS}ms, an integration one comes back below ${FAST_BELOW_MS}ms):\n${found}\n\n${advice}`);
   }
   console.log(named.length > 0

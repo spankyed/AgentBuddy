@@ -21,6 +21,7 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { REPO_ROOT } from '@abuddy/host/build/packages-built';
+import type { Machine } from './core-budget.ts';
 import { STEP_TABLES } from './chain-steps.ts';
 
 /** A step cost that moved far enough to record */
@@ -47,8 +48,9 @@ function inObjectLiteral(source: string, step: string): { at: number; digits: st
  * And the three pooled steps, whose cost is a key in `POOL_SECONDS` rather than a field on the step.
  *
  * `test:integration` is here because it is pooled like the other two — it carried its own `seconds: 60`
- * beside `POOL_SECONDS.integration` until 2026-10-02, and the pool passes that key to `budgetFor`, so a
- * rewrite of the literal left the kill budget behind.
+ * beside `POOL_SECONDS.integration` until 2026-10-02, and a rewrite of the literal left the other record
+ * behind. Both were read as a kill budget then, which is what made the drift a hazard rather than a
+ * wrong line of output; deadlines are declared classes now, and the duplication is still worth refusing.
  */
 function inPoolSeconds(source: string, step: string): { at: number; digits: string } | undefined {
   const kind = /^test:(?:unit:(host|pack)|(integration))$/.exec(step)?.slice(1).find((one) => one !== undefined);
@@ -101,6 +103,45 @@ export function planSecondsEdits(
 
 /** The two tables a step's cost can be declared in, under the name this module's callers know them by */
 export const SECONDS_TABLES = STEP_TABLES;
+
+/** The declaration `--adopt` rewrites, and the file it is in */
+const MACHINE_ANCHOR = 'export const MEASURED_ON: Machine = ';
+const MACHINE_TABLE = 'scripts/lib/chain-steps.ts';
+
+/** The line as this module writes it, which is also what a refusal prints for a reader to paste */
+export const machineLine = (machine: Machine): string =>
+  `${MACHINE_ANCHOR}{ cpu: '${machine.cpu}', cores: ${machine.cores} };`;
+
+/**
+ * The source with `MEASURED_ON` naming another machine — a cost table and the box it was measured on are one
+ * fact, so one operation writes both.
+ *
+ * **Its own locator rather than a shape added to `planSecondsEdits`.** That one is numeric by construction:
+ * every span it finds is `\d+(?:\.\d+)?` and every replacement is `String(now)`, and its safety is that it
+ * re-reads those digits and refuses when the bytes moved. A machine holds a string, so teaching the generic
+ * splicer about strings would add a shape to the one module that rewrites committed source. This replaces
+ * one known single-line declaration and keeps the same habit: find exactly one, and refuse what does not
+ * look like what was expected rather than splicing into the middle of something else.
+ */
+export function planMachineEdit(source: string, machine: Machine): string {
+  const at = source.indexOf(MACHINE_ANCHOR);
+  if (at === -1) throw new Error(`No \`${MACHINE_ANCHOR.trim()}\` declaration in ${MACHINE_TABLE} to rewrite.`);
+  if (source.indexOf(MACHINE_ANCHOR, at + 1) !== -1) {
+    throw new Error(`\`${MACHINE_ANCHOR.trim()}\` is declared twice in ${MACHINE_TABLE}; refusing to guess which.`);
+  }
+  const end = source.indexOf('\n', at);
+  const line = source.slice(at, end === -1 ? source.length : end);
+  // The same refusal the numeric splicer makes about its digits: what is there is not what this knows how to
+  // replace, so it stops rather than writing a line that parses as something else
+  if (!line.endsWith('};')) throw new Error(`Refusing to rewrite a MEASURED_ON spread over more than its line:\n  ${line}`);
+  return source.slice(0, at) + machineLine(machine) + source.slice(at + line.length);
+}
+
+/** `planMachineEdit` against the real table, written back only if the splice held */
+export function recordMachine(machine: Machine): void {
+  const file = path.join(REPO_ROOT, MACHINE_TABLE);
+  fs.writeFileSync(file, planMachineEdit(fs.readFileSync(file, 'utf-8'), machine));
+}
 
 /** `planSecondsEdits` against the real tables, written back only if every splice held */
 export function recordSeconds(measured: ReadonlyMap<string, number>, declared: ReadonlyMap<string, number>,
