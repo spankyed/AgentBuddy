@@ -590,6 +590,17 @@ function recordTheCosts(steps: readonly ChainStep[], measuredMs: ReadonlyMap<str
     console.log(`  Pass --adopt to record this machine's instead, which also writes:\n    ${machineLine(thisMachine())}`);
     return;
   }
+  // **Reachable on the measuring machine, both ways, which is worth saying because it looks like it is
+  // not.** "Not the measured schedule" reads as "another box", but the budget is the other half of the
+  // question, so the ten-core machine that owns the table lands here whenever `--cores` disagrees with it.
+  // Exercised both ways 2026-10-03, after the predicate took this shape, and neither wrote anything:
+  //
+  //   --all --record --cores 9           these costs are what <box> costs at a 10-core budget, ran on 9
+  //   --all --record --adopt --cores 9   adopting records what <box> costs at a 10-core budget, ran on 9
+  //
+  // No case, because nothing can import `scripts/chain.ts` — a command is how this one is checked, and the
+  // note is the only place a reader can learn it has been. The reason it reaches here is in
+  // `scheduleMismatch`, which is where a case *can* reach the decision.
   if (mismatch === 'budget') {
     console.log(`\n--record refused: ${adopt ? 'adopting records' : 'these costs are'} what `
       + `${machineText(want)} costs at ${cores(want.cores)}, and this ran on ${cores(budget)}.`);
