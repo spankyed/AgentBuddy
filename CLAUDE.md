@@ -266,9 +266,12 @@ Six rules that pay for themselves:
 
 ### What a test may read
 
-**A step says whether it needs the built app, and nothing else about what it may read.** `needsApp: true`
-(`scripts/lib/chain-steps.ts`) is the whole declaration; `npm run check:tiers` fails a step that reaches the
-app without it, or declares it without reading one.
+**A step says what it reads, and whether it needs the built app follows from that.** `needsApp`
+(`scripts/lib/chain-steps.ts`) is derived: a step needs the app when it declares one of `build:app`'s
+outputs among its inputs. So there is no second record to disagree with the graph, and the ordering comes
+from those same two fields whatever anyone writes. It was a declared field until 2026-10-02, and the two
+clauses `check:tiers` spent keeping it equal to the inputs could not fail — which is what redundancy looks
+like rather than what protection looks like.
 
 The rule it holds: a step that does not need the app must not reach one, because the moment it does it has
 to run after `build:app`, its real inputs become the whole repo, and it can no longer be cached or
@@ -276,17 +279,15 @@ reordered. Four attempts at a cheaper chain each failed on exactly that, because
 check that genuinely needs the app declares it — that is an answer, not a failure, and the fix is never to
 delete the check.
 
-**It asks two questions, because neither answers the other.** The inputs question is data: a step declaring
-`APP_OUTPUTS` reads the app whatever its scripts say. The scripts question is text: it follows each step's
-npm script and looks for the ways this repo launches the app. A step can launch the app without declaring
-its outputs as inputs, which only the scan sees; and `APP_ENTRY` (`packages/dev-mode.js`,
-`packages/entry-point.mjs`) is *source* sitting beside the built-app constant, which three app-free steps
-read — so the inputs question alone would be wrong in the other direction. The scan goes when the action
-graph can answer "does this transitively depend on `build:app`" (`docs/archive/plans/one-action-cache.md`,
-item 17; the follow-up is `docs/archive/plans/observed-inputs.md`, now closed).
+**`npm run check:tiers` asks the one question the inputs cannot answer.** It follows each step's npm
+script as text and looks for the ways this repo launches the app, because a step can launch it while
+declaring none of its outputs. Being a scan is the safe direction for that half: a wrong scan reports a
+false finding, where a wrong cache key is silent. It goes when the action graph can answer "does this
+transitively depend on `build:app`" (`docs/archive/plans/one-action-cache.md`, item 18; the follow-up is
+`docs/archive/plans/observed-inputs.md`, now closed).
 
-**`build:app` does not declare it.** It writes the app rather than reading one, and the declaration is
-about reading. That distinction is why this replaced a three-valued `tier`, which lumped the producer in
+**`build:app` does not satisfy it.** It writes the app rather than reading one, and the rule is about
+reading. That distinction is why this replaced a three-valued `tier`, which lumped the producer in
 with its consumers: `docs/archive/plans/tier-split.md` has the evidence, and the budget half of `tier` is now
 `SIZE_MS` in `scripts/lib/unit-suites.ts`.
 
