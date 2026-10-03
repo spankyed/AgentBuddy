@@ -6,7 +6,7 @@ import type { TimeoutClass } from './step-timeouts.ts';
 import { UNIT_SUITES, type UnitSuite } from './unit-suites.ts';
 import { CONFIG_BY_HALF, hasSplit, type Half } from './spec-cost.ts';
 import { dependencySource, PACKAGE_DIRS, workspaceDeps } from './workspace-deps.ts';
-import { scopeOf, TYPECHECK_LEGS, type Leg } from './typecheck-legs.ts';
+import { LEG_TIMEOUT, scopeOf, TYPECHECK_LEGS, type Leg } from './typecheck-legs.ts';
 
 /**
  * The pre-merge chain's steps and what each is allowed to read. Separate from `scripts/chain.ts` because
@@ -770,10 +770,9 @@ const TYPECHECK_STEPS: readonly ChainStep[] = TYPECHECK_LEGS
   .filter((leg) => leg.name !== 'packages:ensure')
   .map((leg) => ({
     name: leg.name,
-    // Every leg is one compiler or one walk in one process, which is what `quick` names — so this is set
-    // here rather than declared eighteen times on `Leg`, where every entry would hold the same value and
-    // `SIZE_MS`' doc has the argument against that. A leg that ever wants longer declares a field then.
-    timeout: 'quick' as const,
+    // Declared beside the legs (`LEG_TIMEOUT`), so the runner and this copy of the same steps cannot
+    // disagree about it — they each named the class themselves until 2026-10-03.
+    timeout: LEG_TIMEOUT,
     seconds: leg.seconds,
     inputs: legInputs(leg),
     // A leg reading every source tree reads around the fixture packs' build output for the same reason

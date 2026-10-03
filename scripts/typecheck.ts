@@ -31,7 +31,7 @@ import { box } from './lib/core-budget.ts';
 import { pruneDepFiles } from './lib/dep-files.ts';
 import { asCount, parseFlags } from './lib/measure.ts';
 import { TIMEOUT_MS, timeoutText } from './lib/step-timeouts.ts';
-import { ENSURE, TYPECHECK_LEGS } from './lib/typecheck-legs.ts';
+import { ENSURE, LEG_TIMEOUT, TYPECHECK_LEGS } from './lib/typecheck-legs.ts';
 
 /**
  * What of the machine the legs may take: all of it, because nothing else is running.
@@ -80,9 +80,9 @@ const result = await schedule({
   skip: () => false,
   async run(leg) {
     const [command, ...args] = leg.command.split(' ');
-    // Every leg is one compiler in one process, which is `quick` — the class the chain gives these same
-    // legs as steps. Not `leg.seconds`: a deadline from a measurement is a deadline from this machine.
-    const outcome = await boundedSpawn(command!, args, TIMEOUT_MS.quick);
+    // Not `leg.seconds`: a deadline from a measurement is a deadline from this machine. The class is
+    // `LEG_TIMEOUT`, declared beside the legs so the chain's copy of these steps reads the same one.
+    const outcome = await boundedSpawn(command!, args, TIMEOUT_MS[LEG_TIMEOUT]);
     done.set(leg.name, outcome);
     // One line as it finishes, so a ten-second command is not ten seconds of silence. Completion order, since
     // that is what progress *is*; the failures below are in declared order, which is what reading wants.
