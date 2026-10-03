@@ -297,9 +297,9 @@ const MUTATIONS: readonly Mutation[] = [
   // the kind it comes back with.
   {
     why: 'overBudget asks the package whether it has a half to move a spec into',
-    from: '(hasSplit(packageDir) ? misplaced : outgrown)(costs, files)',
-    to: '(misplaced)(costs, files)',
-    call: (lib, tree) => lib.overBudget(path.join(tree.root, 'packages', 'mini'), { [FAST]: 9_999 }, [FAST]),
+    from: '(hasSplit(packageDir) ? misplaced : outgrown)(samples, files)',
+    to: '(misplaced)(samples, files)',
+    call: (lib, tree) => lib.overBudget(path.join(tree.root, 'packages', 'mini'), { [FAST]: [9_999] }, [FAST]),
   },
   /**
    * Not a decision inside a function but a constant, and the one the two edges have to agree on. 1 500 is
@@ -525,9 +525,9 @@ const MUTATIONS: readonly Mutation[] = [
   },
   {
     why: 'resetsWindows needs both flags, so --all alone keeps the history that rejects a bad reading',
-    from: 'input.all && input.force',
+    from: 'input.all && input.reseed',
     to: 'input.all',
-    call: (lib) => lib.resetsWindows({ all: true, force: false }),
+    call: (lib) => lib.resetsWindows({ all: true, reseed: false }),
   },
   {
     why: 'a crossing is reported only while the median has not adopted it',

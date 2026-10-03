@@ -170,7 +170,7 @@ describe.skipIf(!ON_MEASURED_MACHINE)(`a spec runs in the half its cost puts it 
   it(`moves a fast spec above ${INTEGRATION_ABOVE_MS}ms, and brings an integration one back below ${FAST_BELOW_MS}ms`, () => {
     const wrong = suites
       .filter(({ record }) => record)
-      .flatMap(({ suite, dir, record, files }) => overBudget(dir, record!.costs, files)
+      .flatMap(({ suite, dir, record, files }) => overBudget(dir, record!.samples, files)
         .filter((found) => found.kind === 'rename')
         .map((found) => `${suite.dir}/${found.file} costs ${(found.ms / 1000).toFixed(1)}s, which is ${found.belongs}, but it is in the ${halfOfPath(found.file)} half`));
     expect(wrong, 'rename these, or re-measure if the cost has genuinely changed').toEqual([]);
@@ -219,7 +219,9 @@ describe.skipIf(!ON_MEASURED_MACHINE)(`a spec runs in the half its cost puts it 
  */
 describe('what a run says about a spec it cannot place', () => {
   const OVER = { kind: 'over', file: 'tests/slow.spec.ts', ms: 9_000 } as const;
-  const RENAME = { kind: 'rename', file: 'tests/slow.spec.ts', ms: 9_000, belongs: 'integration' } as const;
+  const RENAME = {
+    kind: 'rename', file: 'tests/slow.spec.ts', ms: 9_000, belongs: 'integration', readings: 3,
+  } as const;
 
   it('never tells a package with one half to move a spec', () => {
     const said = describeBudget([OVER], 'any-suite');
@@ -249,6 +251,32 @@ describe('what a run says about a spec it cannot place', () => {
     expect(describeBudget([recorded], suiteDir!)).toEqual({ tail: '', lines: [], advice: '' });
     // The same finding under a suite with no entry is still reported, so the filter is why, not the shape
     expect(describeBudget([recorded], 'a-suite-with-no-entries').advice).toContain('EXPENSIVE_BY_NATURE');
+  });
+
+  /**
+   * What the advice promises about re-measuring, which depends on how many readings are behind the cost.
+   *
+   * It said "two readings agree on these costs, so re-measuring will not move them" for one commit, and that
+   * was true of no window in the repo: measured 2026-10-03, 388 of 389 held a single reading and the one
+   * two-reading window is the case where the readings *disagree* — that is why the second was kept, and why
+   * `costOf` answers with the incumbent. So the sentence told a developer to skip a re-measurement in the one
+   * state where it is the thing that would catch a bad reading.
+   */
+  it('tells a one-reading cost to be re-measured before the file moves, and names the command', () => {
+    const said = describeBudget([{ ...RENAME, readings: 1 }], 'any-suite');
+
+    expect(said.advice, 'never a corroboration that is not there').not.toContain('two readings agree');
+    expect(said.advice).toContain('a single reading');
+    expect(said.advice, 're-measure first is advice nobody can take without the path')
+      .toContain('npm run spec-cost:update -- packages/any-suite/tests/slow.spec.ts');
+  });
+
+  it('tells a settled cost that re-measuring will not move it, and says how many readings that is', () => {
+    const said = describeBudget([{ ...RENAME, readings: 3 }], 'any-suite');
+
+    expect(said.advice).toContain('the median of 3 readings');
+    expect(said.advice).toContain('re-measuring will not move it');
+    expect(said.advice, 'and no command, since there is nothing to run').not.toContain('spec-cost:update');
   });
 
   it('says nothing at all when there is nothing to say', () => {
@@ -360,7 +388,7 @@ describe.skipIf(!ON_MEASURED_MACHINE)(`a spec that costs more than a fast half a
   // to, which is the same question, asked once, in the one place that cannot forget to ask it
   const found = () => suites
     .filter(({ record }) => record)
-    .flatMap(({ suite, dir, record, files }) => overBudget(dir, record!.costs, files)
+    .flatMap(({ suite, dir, record, files }) => overBudget(dir, record!.samples, files)
       .filter((budget) => budget.kind === 'over')
       .map(({ file, ms }) => ({ key: `${suite.dir}/${file}`, ms })));
 
@@ -470,12 +498,32 @@ describe('a measurement replaces the record only when it says something new', ()
    * displaced, because `moved` then needed 35% of it to change. Measured 2026-10-03,
    * `generated-behind-contract` was recorded at 1360 from a contended run and read 1125 on a clean one —
    * a gap of 235 against a threshold of 476, so the clean reading was discarded and the wrong value stayed.
+   *
+   * **What closes that case is the band, not the window**, and being exact about it matters because the first
+   * version of these two cases was not. 1360 sits *inside* `disagrees`' band around 1203, so under this rule
+   * the reading never enters the record and there is nothing to displace. The window covers the other
+   * reading — one far enough out to be kept — and there it parks it and the median does not move.
+   *
+   * It does not age out, which is the limit `WINDOW`'s doc records: the clean reading that follows agrees
+   * with the median and is dropped, so the outlier stays in the window. The case this replaces asserted the
+   * opposite by calling `appendSample` directly, reaching a window `settle` cannot build and then claiming
+   * the outlier "leaves entirely".
    */
-  it('lets a contended reading age out instead of having to be beaten by the band', () => {
-    expect(disagrees(1_360, 1_125), 'the clean reading alone cannot displace it').toBe(false);
-    const window = appendSample(appendSample([1_203], 1_360), 1_125);
-    expect(costOf(window), 'but in a window the clean readings outvote it').toBe(1_203);
-    expect(costOf(appendSample(window, 1_125)), 'and it leaves entirely').toBe(1_125);
+  it('never records the contended reading that caused the defect, so nothing has to displace it', () => {
+    // `settle` appends only what `disagrees` with the median, so these are that branch with its own operands
+    expect(disagrees(1_203, 1_360), 'the contended reading is inside the band, so it is dropped').toBe(false);
+    expect(disagrees(1_203, 1_125), 'and so is the clean one, which therefore changes nothing either')
+      .toBe(false);
+  });
+
+  it('parks a reading far enough out to be kept, and cannot let it age out', () => {
+    expect(disagrees(1_203, 2_000), 'outside the band, so this one is kept').toBe(true);
+    const parked = appendSample([1_203], 2_000);
+    expect(costOf(parked), 'and the median stays with the incumbent').toBe(1_203);
+
+    expect(disagrees(costOf(parked), 1_125), 'a clean reading after it agrees, so it is dropped').toBe(false);
+    expect(parked, 'which leaves the outlier where it is — two on one side is what moves a median')
+      .toEqual([1_203, 2_000]);
   });
 
   it('keeps at most WINDOW readings, oldest first out', () => {
@@ -860,7 +908,7 @@ describe('what a run does to the record it replaces', () => {
     const dir = path.join(REPO_ROOT, 'packages', 'repo-checks');
     const inputs = { skipped: [], measuredFiles: [SPEC], prune: [], resetWindows: false };
     const renames = (record: SpecCost): unknown[] =>
-      overBudget(dir, record.costs, [SPEC]).filter((found) => found.kind === 'rename');
+      overBudget(dir, record.samples, [SPEC]).filter((found) => found.kind === 'rename');
 
     const start = previous({ [SPEC]: 2_041 });
     expect(renames(start), 'nothing is wrong to begin with').toEqual([]);
@@ -970,10 +1018,22 @@ describe('an unrecognised flag is refused rather than dropped', () => {
   // Derived from the declaration rather than a second list: a flag the parser handles and this does not know
   // about would be refused by the command that defines it, which is the failure this pair can have
   it('accepts every flag it declares', () => {
+    // Two flags need a companion to be valid at all: `--suite` takes a value, and `--reseed` takes `--all`,
+    // because re-seeding only what one run measured leaves a record of mixed vintages. The case asks whether
+    // a declared flag parses in its valid form, not whether it parses alone
+    const COMPANION: Partial<Record<string, string[]>> = {
+      suite: ['--suite', 'repo-checks'],
+      reseed: ['--reseed', '--all'],
+    };
     for (const flag of SPEC_COST_FLAGS) {
-      const argv = flag === 'suite' ? ['--suite', 'repo-checks'] : [`--${flag}`];
+      const argv = COMPANION[flag] ?? [`--${flag}`];
       expect(() => parseArgs(argv, DIRS), `--${flag} is declared, so it must parse`).not.toThrow();
     }
+  });
+
+  it('refuses --reseed without --all, which would re-seed only what one run measured', () => {
+    expect(() => parseArgs(['--reseed'], DIRS)).toThrow(/--all/);
+    expect(() => parseArgs(['--reseed', '--all'], DIRS)).not.toThrow();
   });
 });
 
@@ -1127,20 +1187,36 @@ describe('when a run is refused as a measurement of the machine', () => {
  * What `--all` buys and what it costs, which are not the same question.
  *
  * Re-measuring everything is always what the flag asks for. *Forgetting* everything is a second thing, and
- * it takes `--force` — the only way to clear a correlated drift, and the only way to lose the history that
- * rejects a noisy reading. It replaced `rewritesEveryRow`, which was `all && drifted(body)`: a drift gate
- * on a write, needed only while the record held one number per spec and rewriting it on a quiet run was
- * churn. A window drops an agreeing reading by itself, so there is nothing left for a threshold to protect.
+ * it takes `--reseed`. It replaced `rewritesEveryRow`, which was `all && drifted(body)`: a drift gate on a
+ * write, needed only while the record held one number per spec and rewriting it on a quiet run was churn. A
+ * window drops an agreeing reading by itself, so there is nothing left for a threshold to protect.
+ *
+ * **It rode on `--force` for one commit, which put the riskiest write behind the flag that silences the
+ * guards.** `--force` overrides `refusesAsBusy` and `refusesAsContended`; re-seeding discards every window
+ * and writes each cost from a single reading, which is the state with no history to outvote a bad one. So the
+ * one operation that most needs a quiet machine was the only one that could not be refused for a loud one.
+ * `adopt` is still `--all --force`, and that is a different question — whose machine the record is, not
+ * whether its readings still describe the code.
  */
 describe('a window is re-seeded only when asked for outright', () => {
-  it('re-seeds on --all --force, which is also what adopts another machine’s record', () => {
-    expect(resetsWindows({ all: true, force: true })).toBe(true);
+  it('re-seeds on --all --reseed', () => {
+    expect(resetsWindows({ all: true, reseed: true })).toBe(true);
   });
 
   it('leaves the history alone for either flag on its own', () => {
-    expect(resetsWindows({ all: true, force: false }), '--all re-measures and appends').toBe(false);
-    expect(resetsWindows({ all: false, force: true }), '--force only overrides a refusal').toBe(false);
-    expect(resetsWindows({ all: false, force: false })).toBe(false);
+    expect(resetsWindows({ all: true, reseed: false }), '--all re-measures and appends').toBe(false);
+    expect(resetsWindows({ all: false, reseed: true }), 'and --reseed needs the whole suite').toBe(false);
+    expect(resetsWindows({ all: false, reseed: false })).toBe(false);
+  });
+
+  /**
+   * And `--force` does not re-seed, which is the finding this closes.
+   *
+   * It overrides the idle and contention refusals, so gating the re-seed on it meant the write that most
+   * needs a quiet machine was the one that could not be refused for a loud one.
+   */
+  it('is not what --force asks for, since that silences the refusals a re-seed most needs', () => {
+    expect(resetsWindows({ all: true, reseed: false, force: true } as never)).toBe(false);
   });
 
   // The coupling that is gone, and the reason it can be: the warning used to advise a flag whose write was
@@ -1152,7 +1228,7 @@ describe('a window is re-seeded only when asked for outright', () => {
       .toEqual([true, true, false, false]);
     // The old flag's answer was `drifted(body)`, so this list used to produce two different answers. One
     // answer for all four is the independence, and it is what makes the drift advice unconditionally true.
-    expect([...new Set(bodies.map(() => resetsWindows({ all: true, force: true })))]).toEqual([true]);
+    expect([...new Set(bodies.map(() => resetsWindows({ all: true, reseed: true })))]).toEqual([true]);
   });
 });
 

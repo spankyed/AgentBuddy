@@ -182,6 +182,18 @@ export const provisional = (
  *
  * Five would reject two readings and be a run slower to believe a real change. Three is where that trade
  * sits while a crossing is rare and a re-measure is cheap.
+ *
+ * **Two limits of a window of any size, worth knowing before trusting one.** A spec's *first* reading is its
+ * cost outright — `settle` has no history to weigh it against — so a contended first measurement can demand a
+ * rename immediately, and `refusesAsContended` excludes an addition from `comparable`, so a run that is mostly
+ * new specs will not be refused for it either. And a window **only ever accumulates readings that disagreed**:
+ * an agreeing one is dropped, so a clean re-measure cannot displace a parked outlier, and the median moves
+ * whenever two outliers land on the same side of the incumbent — which two independently contended runs
+ * satisfy however far apart they are.
+ *
+ * Neither is fixable by a longer window, and `provisional` is what covers them: it reports a crossing the run
+ * *before* the gate acts on it, so the state this leaves is one a reader is told about rather than one they
+ * discover as a failure.
  */
 export const WINDOW = 3;
 
@@ -204,6 +216,11 @@ export const WINDOW = 3;
  * Only a length of two is affected: `WINDOW` is three, so a window is 1, 2 or 3 readings long.
  */
 export function costOf(samples: readonly number[]): number {
+  // An empty window reaches the `!` below and yields `undefined`. No input produces one: `readSpecCost`
+  // refuses a record holding one, `settle` writes `[ms]` for a spec it has not seen, and `appendSample` only
+  // ever adds. The edits that would make it fire are a writer that stores an empty window, or that validation
+  // dropping its `length > 0` — so this is an assertion about the module's own construction rather than a gate
+  // with a case to write.
   if (samples.length === 2) return samples[0]!;
   const sorted = [...samples].sort((a, b) => a - b);
   return sorted[Math.floor(sorted.length / 2)]!;
@@ -361,8 +378,7 @@ export function changesIn(
   const before = (spec: string): readonly number[] | undefined => previous?.samples[spec];
   const kept = measured.filter((spec) => {
     const was = before(spec);
-    return was !== undefined && (settled[spec] ?? []).length + was.length > 0
-      && JSON.stringify(settled[spec] ?? []) !== JSON.stringify(was);
+    return was !== undefined && JSON.stringify(settled[spec] ?? []) !== JSON.stringify(was);
   });
   return {
     added: measured.filter((spec) => before(spec) === undefined),
@@ -497,18 +513,30 @@ export function specFiles(packageDir: string): string[] {
  * cannot, so the second is a thing to record rather than a thing to do.
  */
 export type Budget =
-  /** Both halves exist and the cost names the other one: renaming the file is the fix */
-  | { readonly kind: 'rename'; readonly file: string; readonly ms: number; readonly belongs: Half }
+  /**
+   * Both halves exist and the cost names the other one: renaming the file is the fix.
+   *
+   * `readings` is how many are behind `ms`, and it is here because the advice depends on it: one reading is a
+   * cost a re-measurement can still move, the median of three is not. Saying "two readings agree" without it
+   * was true of no window in the repo — 388 of 389 held a single reading — and it told a developer to skip
+   * the one action that catches a bad one.
+   */
+  | {
+    readonly kind: 'rename'; readonly file: string; readonly ms: number; readonly belongs: Half;
+    readonly readings: number;
+  }
   /** One half, so there is nowhere to move it: the fix is an `EXPENSIVE_BY_NATURE` entry */
   | { readonly kind: 'over'; readonly file: string; readonly ms: number };
 
 /** Specs whose filename puts them in one half while their recorded cost puts them in the other */
-const misplaced = (costs: Record<string, number>, files: readonly string[]): Budget[] =>
+const misplaced = (samples: Record<string, readonly number[]>, files: readonly string[]): Budget[] =>
   files.flatMap((file) => {
-    const ms = costs[file];
-    if (ms === undefined) return [];
+    const window = samples[file];
+    if (window === undefined) return [];
+    const ms = costOf(window);
     const belongs = halfFor(file, ms);
-    return belongs === halfOfPath(file) ? [] : [{ kind: 'rename' as const, file, ms, belongs }];
+    return belongs === halfOfPath(file)
+      ? [] : [{ kind: 'rename' as const, file, ms, belongs, readings: window.length }];
   });
 
 /** Specs with no recorded cost and no recorded reason: a new one is unmeasured until `spec-cost:update` runs */
@@ -524,10 +552,12 @@ export const unrecorded = (record: SpecCost, files: readonly string[]): string[]
  * request to split the package: a split buys a different size, and slowness alone does not need one.
  * `suite-split.spec.ts` carries the criterion and the measurement behind it.
  */
-const outgrown = (costs: Record<string, number>, files: readonly string[]): Budget[] =>
+const outgrown = (samples: Record<string, readonly number[]>, files: readonly string[]): Budget[] =>
   files.flatMap((file) => {
-    const ms = costs[file];
-    return ms !== undefined && ms > INTEGRATION_ABOVE_MS ? [{ kind: 'over' as const, file, ms }] : [];
+    const window = samples[file];
+    if (window === undefined) return [];
+    const ms = costOf(window);
+    return ms > INTEGRATION_ABOVE_MS ? [{ kind: 'over' as const, file, ms }] : [];
   });
 
 /**
@@ -542,8 +572,15 @@ const outgrown = (costs: Record<string, number>, files: readonly string[]): Budg
  * So the question is asked here, once. A caller renders the `kind` it is handed and cannot ask the wrong
  * one.
  */
-export const overBudget = (packageDir: string, costs: Record<string, number>, files: readonly string[]): Budget[] =>
-  (hasSplit(packageDir) ? misplaced : outgrown)(costs, files);
+/**
+ * The windows rather than the derived costs, so that a finding carries how many readings are behind it.
+ *
+ * One map and not two: handed `costs` beside `samples` a caller could pass a cost from one record and a window
+ * from another, and the derivation exists so that cannot happen. `costOf` is taken here instead.
+ */
+export const overBudget = (
+  packageDir: string, samples: Record<string, readonly number[]>, files: readonly string[],
+): Budget[] => (hasSplit(packageDir) ? misplaced : outgrown)(samples, files);
 
 /**
  * Specs that cost more than a fast half allows, in a package with one suite. Each entry records what makes
@@ -597,6 +634,37 @@ export const EXPENSIVE_BY_NATURE: Record<string, string> = {
  * `tail` goes on the suite's line; `lines` are the findings under it; `advice` is what to do, and it is
  * different for each kind, which is the whole value of telling them apart.
  */
+/**
+ * What to tell someone whose spec is in the wrong half, which depends on how settled the cost is.
+ *
+ * **A rename is a file move made on the strength of one number, so the advice says how good that number is.**
+ * One reading can still be a contended run — the defect the window exists for — and a re-measurement is the
+ * cheap way to find out, so it names the command. The median of several has already rejected a disagreeing
+ * reading, so there is nothing to run and saying so stops a pointless measurement.
+ *
+ * It read "two readings agree on these costs" for one commit, which was true of no window in the repo and
+ * recommended skipping the check in exactly the state that needed it.
+ */
+export const renameAdvice = (
+  /** Each rename's repo-relative spec path, so this needs no suite and a caller cannot pass the wrong one */
+  renames: readonly { readonly path: string; readonly readings: number }[],
+): string => {
+  const [one] = renames;
+  const it = renames.length === 1 ? 'it' : 'them';
+  const move = `Rename ${it} into the half the cost implies`;
+  const unsettled = renames.filter((found) => found.readings === 1);
+  if (unsettled.length === 0) {
+    const readings = one !== undefined && renames.length === 1 ? `${one.readings} readings` : 'several readings';
+    return `${move}: the median of ${readings}, so re-measuring will not move ${it}.`;
+  }
+  return `${move}: ${unsettled.length === renames.length
+    ? (renames.length === 1 ? 'this is a single reading' : 'these are single readings')
+    : `${unsettled.length} of ${renames.length} ${unsettled.length === 1 ? 'rests' : 'rest'} on a single reading`}, `
+    + 'which a contended run can produce. '
+    + `Run \`npm run spec-cost:update -- ${unsettled.map((found) => found.path).join(' ')}\` first if you `
+    + `want a second reading behind ${it}.`;
+};
+
 export function describeBudget(
   findings: readonly Budget[],
   suiteDir: string,
@@ -619,7 +687,10 @@ export function describeBudget(
       ? `  ${seconds(found.ms)}  ${found.file}  ->  ${found.belongs}`
       : `  ${seconds(found.ms)}  ${found.file}  (no slower half to move it to)`)),
     advice: [
-      renames.length > 0 ? `Rename ${renames.length === 1 ? 'it' : 'them'} into the half the cost implies: two readings agree on ${renames.length === 1 ? 'this cost' : 'these costs'}, so re-measuring will not move ${renames.length === 1 ? 'it' : 'them'}.` : '',
+      renames.length > 0
+        ? renameAdvice(renames.map((found) =>
+          ({ path: `packages/${suiteDir}/${found.file}`, readings: found.readings })))
+        : '',
       over.length > 0 ? 'Make it cheaper, or record it in EXPENSIVE_BY_NATURE with what makes it expensive.' : '',
     ].filter(Boolean).join('\n'),
   };
@@ -669,7 +740,7 @@ export type SpecCostMode = 'check' | 'list' | 'update';
  * without joining the list. A flag dropped in silence is worst for `--dry`, where it means a measuring run
  * and a rewritten record in place of the error that was asked for.
  */
-export const SPEC_COST_FLAGS = ['all', 'dry', 'force', 'list', 'suite', 'update'] as const;
+export const SPEC_COST_FLAGS = ['all', 'dry', 'force', 'list', 'reseed', 'suite', 'update'] as const;
 export type SpecCostFlag = (typeof SPEC_COST_FLAGS)[number];
 
 export interface SpecCostArgs {
@@ -680,6 +751,8 @@ export interface SpecCostArgs {
   readonly named: readonly string[];
   readonly force: boolean;
   readonly all: boolean;
+  /** Throw away every window and start again from this run. Needs `all`; see `resetsWindows` */
+  readonly reseed: boolean;
   readonly dry: boolean;
 }
 
@@ -729,7 +802,19 @@ export function parseArgs(argv: readonly string[], suiteDirs: readonly string[])
     }
   }
 
-  return { mode: has('list') ? 'list' : has('update') ? 'update' : 'check', only, named, force: has('force'), all, dry: has('dry') };
+  // Re-seeding part of a record leaves it holding two vintages with nothing saying which row is which, so
+  // the flag takes the whole suite or nothing — the same refusal `--all` beside a path gets, for the same
+  // reason: two readings of what the run is for, and honouring either silently misreports the other
+  const reseed = has('reseed');
+  if (reseed && !all) {
+    throw new Error('--reseed throws away every window and starts again from this run, so it needs --all. '
+      + 'Re-seeding only the specs one run measured leaves a record holding two vintages.');
+  }
+
+  return {
+    mode: has('list') ? 'list' : has('update') ? 'update' : 'check',
+    only, named, force: has('force'), all, reseed, dry: has('dry'),
+  };
 }
 
 /**
@@ -807,18 +892,25 @@ export function refuseAbsent(dir: string, files: readonly string[], named: reado
  * while every answer in the file is stale. Re-seeding is how you say "the old readings describe code that
  * is gone".
  *
- * `--all --force`, and the same pair that adopts a record from another machine, which is not a
- * coincidence: taking a record over and declaring its history void are one operation, so they share one
- * condition rather than growing a third flag. `--all` on its own re-measures everything and *appends*,
- * which is the ordinary case and keeps the protection.
+ * **`--all --reseed`, and a flag of its own rather than riding on `--force`.** It was `all && force` for one
+ * commit, on the reasoning that taking a record over and declaring its history void are one operation. They
+ * are not: `adopt` answers *whose machine the record is* and this answers *whether its readings still describe
+ * the code*, and someone on the record's own machine after a bundler bump needs the second with no reason to
+ * touch the first. Worse, `--force` is what overrides `refusesAsBusy` and `refusesAsContended` — so the write
+ * that discards every window and sets each cost from a single reading, the state with no history to outvote a
+ * bad one, was the only one that could not be refused for a loud machine. Both refusals apply under
+ * `--reseed`, which is the point of separating them.
+ *
+ * `--all` on its own re-measures everything and *appends*, which is the ordinary case and keeps the
+ * protection. `parseArgs` refuses `--reseed` without it.
  *
  * It replaced `rewritesEveryRow`, which was `all && drifted(body)` — a drift gate on a write, from when
  * the record held one number per spec and rewriting it on a quiet run was the churn the tolerance existed
  * to prevent. A window has no such problem: an agreeing reading is not kept at all, so there is nothing
  * for a drift threshold to protect and the flag can mean what it says.
  */
-export const resetsWindows = (input: { readonly all: boolean; readonly force: boolean }): boolean =>
-  input.all && input.force;
+export const resetsWindows = (input: { readonly all: boolean; readonly reseed: boolean }): boolean =>
+  input.all && input.reseed;
 
 /** What one suite needs doing, worked out from the record before anything runs */
 export interface SpecCostPlan {
@@ -886,7 +978,7 @@ export function settle(input: {
   /**
    * Throw away every window and start again from what this run measured.
    *
-   * What `resetsWindows` decides, which is `--all --force`. It is how a correlated drift is cleared: the
+   * What `resetsWindows` decides, which is `--all --reseed`. It is how a correlated drift is cleared: the
    * old readings describe code that is gone, so appending to them would make the window argue with itself
    * for a run.
    */

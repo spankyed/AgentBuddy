@@ -11,11 +11,16 @@
  *
  * **A bare update does the least that clears what the check would report**, which is often nothing: a
  * deleted spec leaves a row that needs no measurement to drop, and a new spec needs only the half it lives
- * in. It says which case it took. `--all` is how you ask for the whole thing anyway, after a bundler bump —
- * and it is the only thing that clears a *correlated* drift, since one that adds a fifth to every spec sits
- * under every per-spec tolerance and so re-records nothing. It rewrites every row it measured only when the
- * body has moved further than idle runs vary (`resetsWindows`); on a quiet run it settles them like any
- * other, because rewriting a row that agrees with the record is the churn the tolerance exists to prevent.
+ * in. It says which case it took.
+ *
+ * **Three things the flags do, which took a correction to state.** `--all` re-measures every spec and
+ * *appends* what disagrees, so a quiet run still writes nothing and the history that rejects a noisy reading
+ * is kept. `--reseed` (with `--all`) throws that history away and starts again from this run, which is the
+ * only thing that clears a *correlated* drift — one that adds a fifth to every spec sits under every
+ * per-spec tolerance, so appending to the old readings would have the window argue with itself for a run.
+ * `--force` overrides the two refusals, the idle floor and the contention check, and nothing else. This
+ * paragraph described the first as a drift threshold on a write, which is what `rewritesEveryRow` was before
+ * a window existed; renaming the identifier inside the sentence left the sentence wrong.
  *
  * **Naming a spec selects its config, never the file alone.** A spec measured on its own is not comparable
  * to one measured beside its siblings — `chain-inputs` reads 1688ms in its config and 963ms alone, against a
@@ -44,6 +49,7 @@ import {
   halfOfPath, hasSplit, ratiosFromMoves, underBound,
   nearEdge, overBudget,
   CONFIG_BY_HALF, absentNamed, forStorage, namedIn, parseArgs, planFor, readSpecCost, recordMembership,
+  renameAdvice,
   type SpecCost, type StoredSpecCost,
   provisional, resetsWindows, settle, specCostFile, specFiles, stale, suitesFor, unrecorded, type SpecCostPlan,
 } from './lib/spec-cost.ts';
@@ -214,7 +220,7 @@ function update(plans: readonly SuitePlan[], dry: boolean): void {
     // the reason the file is stable; all of them settling in the same direction is a uniform slowdown, and
     // the only place it shows is the total. Undefined when nothing measured had a value to move from.
     const body = bodyDrift(new Map(Object.entries(previous?.costs ?? {})), new Map(Object.entries(costs)));
-    const resetWindows = resetsWindows({ all, force });
+    const resetWindows = resetsWindows({ all, reseed });
     const { record, added, moved, appended, dropped } = settle({
       previous, costs, skipped: [...new Set(runs.flatMap((run) => run.skipped))], measuredFiles,
       prune: plan.prune, resetWindows, adopt,
@@ -254,7 +260,7 @@ function update(plans: readonly SuitePlan[], dry: boolean): void {
 
     // `measuredFiles`, not `files`: over the whole suite this reports on specs the run never measured,
     // which is the same narrowing every other guard on this path already takes
-    const budget = describeBudget(overBudget(dir, record.costs, measuredFiles), suite.dir);
+    const budget = describeBudget(overBudget(dir, record.samples, measuredFiles), suite.dir);
     const asBody = body === undefined ? '' : `, body ${body >= 0 ? '+' : ''}${(body * 100).toFixed(0)}%`;
     // Every way the record can differ from the one it replaced, for the same reason `settle` compares rather
     // than enumerates: a change nobody listed reads as "none moved" over a rewritten file, and a spec that
@@ -283,7 +289,7 @@ function update(plans: readonly SuitePlan[], dry: boolean): void {
         + (resetWindows
           ? 'every window this measured has been re-seeded from it.'
           : 'until one does, anything reading the total reads a number that is no longer true. '
-            + '`npm run spec-cost:update -- --all --force` re-seeds every window from this run.'));
+            + '`npm run spec-cost:update -- --all --reseed` re-seeds every window from this run.'));
     }
     for (const line of budget.lines) console.log(line);
     if (budget.advice) console.log(budget.advice.split('\n').map((line) => `  ${line}`).join('\n'));
@@ -308,9 +314,9 @@ function check(only: string | undefined, named: readonly string[]): void {
   /** What an update can fix: a cost it can measure, or a row it can drop */
   const problems: string[] = [];
   /** What it cannot: a spec whose filename puts it in the other half from its cost */
-  const renames: { line: string; machine: Machine }[] = [];
+  const renames: { line: string; machine: Machine; path: string; readings: number }[] = [];
   /** The same findings from a record measured on another machine, which are reported and not enforced */
-  const elsewhere: { line: string; machine: Machine }[] = [];
+  const elsewhere: { line: string; machine: Machine; path: string; readings: number }[] = [];
   /**
    * The suites whose placement went unenforced, which is not the same set as `elsewhere`.
    *
@@ -344,11 +350,12 @@ function check(only: string | undefined, named: readonly string[]): void {
     // Only `rename` gates. An `over` finding is one a package with a single half cannot act on by moving
     // anything, and whether it is *allowed* is `EXPENSIVE_BY_NATURE`'s question, which lives in
     // `suite-split.spec.ts` and not here — failing on it would fail over the entries already recorded there.
-    for (const found of overBudget(dir, record.costs, asked)) {
+    for (const found of overBudget(dir, record.samples, asked)) {
       if (found.kind !== 'rename') continue;
       const line = `  ${(found.ms / 1000).toFixed(1)}s is ${found.belongs}, but this is in the ${halfOfPath(found.file)} half: ${suite.dir}/${found.file}`;
       // Scoped per record, because each one names the machine it was measured on and a tree can hold two
-      (isMeasuredMachine(record.machine) ? renames : elsewhere).push({ line, machine: record.machine });
+      (isMeasuredMachine(record.machine) ? renames : elsewhere)
+        .push({ line, machine: record.machine, path: `packages/${suite.dir}/${found.file}`, readings: found.readings });
     }
   }
   // **Placement is read from a cost, so it gates only on the machine that measured one.** The edges are
@@ -372,7 +379,7 @@ function check(only: string | undefined, named: readonly string[]): void {
     // nothing else. Naming one command for both sent people to re-measure a suite that was already right.
     const advice = [
       problems.length > 0 ? `Run: npm run spec-cost:update${recordable.size === 1 ? ` -- --suite ${[...recordable][0]}` : ''}` : '',
-      renames.length > 0 ? `Rename ${renames.length === 1 ? 'it' : 'them'} into the half the cost implies: two readings agree on ${renames.length === 1 ? 'this cost' : 'these costs'}, so re-measuring will not move ${renames.length === 1 ? 'it' : 'them'}.` : '',
+      renames.length > 0 ? renameAdvice(renames) : '',
     ].filter(Boolean).join('\n');
     const found = [...problems, ...renames.map(({ line }) => line)].join('\n');
     throw new Error(`Spec costs are out of date (a fast spec moves above ${INTEGRATION_ABOVE_MS}ms, an integration one comes back below ${FAST_BELOW_MS}ms):\n${found}\n\n${advice}`);
@@ -464,7 +471,7 @@ function list(only: string | undefined, named: readonly string[]): void {
   for (const line of near.sort()) console.log(line);
 }
 
-const { mode, only, named, force, all, dry } = parseArgs(process.argv.slice(2), UNIT_SUITES.map((suite) => suite.dir));
+const { mode, only, named, force, all, reseed, dry } = parseArgs(process.argv.slice(2), UNIT_SUITES.map((suite) => suite.dir));
 
 // Before any mode reads a record, and for all of them: a path that names no spec is the caller's mistake, and
 // every one of them is worth reporting at once rather than one per run
