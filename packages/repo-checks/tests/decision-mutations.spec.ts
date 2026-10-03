@@ -20,9 +20,10 @@
 // It covers the breaks the table lists and no others: it makes today's evidence permanent rather than going
 // looking for tomorrow's.
 //
-// **Four modules, and what qualifies one is reachability rather than subject.** It began as one, grew to two
-// when the sample-recording primitives moved to `measure.ts`, and took `step-timeouts.ts` and
-// `chain-schedule.ts` when the hand-run version of this ritual was retired: copy the file, edit it, run a
+// **Five modules, and what qualifies one is reachability rather than subject.** It began as one, grew to two
+// when the sample-recording primitives moved to `measure.ts`, and took `step-timeouts.ts`,
+// `chain-schedule.ts` and `core-budget.ts` when the hand-run version of this ritual was retired: copy the
+// file, edit it, run a
 // filtered command, read the output, restore. That has three independent ways to lie — a restore that takes
 // the index rather than your work, a run that does not run, and a filter that hides the answer — and two of
 // the three were observed in one session. Here there is nothing to restore, the suite cannot skip it, and a
@@ -38,8 +39,8 @@ import * as realSpecCost from '../../../scripts/lib/spec-cost.ts';
 import * as realMeasure from '../../../scripts/lib/measure.ts';
 import * as realStepTimeouts from '../../../scripts/lib/step-timeouts.ts';
 import * as realChainSchedule from '../../../scripts/lib/chain-schedule.ts';
+import * as realCoreBudget from '../../../scripts/lib/core-budget.ts';
 import { UNIT_SUITES } from '../../../scripts/lib/unit-suites.ts';
-import { thisMachine } from '../../../scripts/lib/core-budget.ts';
 
 /**
  * The modules a mutation may break, by the name an entry gives in `in`.
@@ -57,11 +58,13 @@ const MODULES = {
   measure: { file: 'measure.ts', real: realMeasure as unknown as Lib },
   'step-timeouts': { file: 'step-timeouts.ts', real: realStepTimeouts as unknown as Lib },
   'chain-schedule': { file: 'chain-schedule.ts', real: realChainSchedule as unknown as Lib },
+  'core-budget': { file: 'core-budget.ts', real: realCoreBudget as unknown as Lib },
 } as const;
 type Module = keyof typeof MODULES;
 
 /** The intersection, because an entry calls only its own module's exports and the harness is generic over all */
-type Lib = typeof realSpecCost & typeof realMeasure & typeof realStepTimeouts & typeof realChainSchedule;
+type Lib = typeof realSpecCost & typeof realMeasure & typeof realStepTimeouts & typeof realChainSchedule
+  & typeof realCoreBudget;
 
 const DIRS = UNIT_SUITES.map((suite) => suite.dir);
 
@@ -75,8 +78,8 @@ const DIRS = UNIT_SUITES.map((suite) => suite.dir);
 const UNSORTED = ['zeta', 'alpha'];
 
 const FAST = 'tests/a.spec.ts';
-const before = (costs: Record<string, number>, skipped: string[] = []) =>
-  ({ measuredAt: 'then', costs, skipped, unmeasured: [], machine: thisMachine() });
+const before = (costs: Record<string, number>, skipped: string[] = [], unmeasured: string[] = []) =>
+  ({ measuredAt: 'then', costs, skipped, unmeasured, machine: realCoreBudget.thisMachine() });
 
 /**
  * Whether a run that moved no cost still dated the record.
@@ -426,6 +429,120 @@ const MUTATIONS: readonly Mutation[] = [
     to: "over.length > 0 ? '' : '',",
     call: (lib) => lib.describeBudget([{ kind: 'over', file: FAST, ms: 9_999 }], 'a-suite-with-no-entries'),
   },
+  /**
+   * `core-budget.ts`'s eight. What a step takes of the machine is the chain's admission weight, so a wrong
+   * answer here is an over- or under-admitted chain rather than a failure, which is why none of these has a
+   * case that would notice.
+   *
+   * Every one passes `cores` explicitly. The parameter exists so a case can ask about a ten-core box from
+   * whatever box it runs on, and an entry that let it default would be an entry about this machine.
+   *
+   * **`UNCAPPED` is a `Symbol`, so the mutant module has its own.** Nothing here passes one across the
+   * seam: each entry names a step and lets `POOL_WIDTH` resolve the width inside the module being asked.
+   */
+  {
+    why: 'coresFor weighs a step with no declared width at one core',
+    in: 'core-budget',
+    from: 'if (width === undefined) return 1;',
+    to: 'if (false) return 1;',
+    // `typecheck` declares no width. Without the arm it falls to `'cores' in undefined`, which throws
+    call: (lib) => lib.coresFor('typecheck', 10),
+  },
+  {
+    why: 'an uncapped pool takes one less than the box, which is vitest’s default',
+    in: 'core-budget',
+    from: 'if (width === UNCAPPED) return Math.max(1, cores - 1);',
+    to: 'if (width === UNCAPPED) return Math.max(1, cores);',
+    // 9 against 10. The whole claim the symbol makes is the `- 1`, and nothing else in the repo reads it
+    call: (lib) => lib.coresFor('test:unit:host', 10),
+  },
+  {
+    why: 'a fixed width is clamped to the machine, so it cannot exceed the budget it is spent from',
+    in: 'core-budget',
+    from: 'Math.min(width.cores, cores)',
+    to: 'width.cores',
+    // A one-core box against `compile`'s two: 1 against 2. On any box wider than the width the clamp is
+    // invisible, which is why this asks about the smallest machine rather than a plausible one
+    call: (lib) => lib.coresFor('compile', 1),
+  },
+  {
+    why: 'a share rounds to the nearest core rather than down',
+    in: 'core-budget',
+    from: 'Math.round(width.share * cores)',
+    to: 'Math.floor(width.share * cores)',
+    // An **odd** box, which is what makes the rounding observable at all: half of nine is 5 rounded and 4
+    // floored. Both of `core-budget.spec.ts`'s share cases use even counts, so neither can see this
+    call: (lib) => lib.coresFor('test:integration', 9),
+  },
+  {
+    why: 'a machine with the measured CPU but different cores is not the measured machine',
+    in: 'core-budget',
+    from: 'machine.cores === measuredOn.cores && ',
+    to: '',
+    call: (lib) => lib.isMeasuredMachine({ cpu: 'Apple M1 Pro', cores: 10 }, { cpu: 'Apple M1 Pro', cores: 8 }),
+  },
+  {
+    // The hole the CPU was added to close, and the one that actually turned up: a 10-core Mac is the
+    // commonest shape there is, so before this conjunct every one of them read as the box the costs came
+    // from, and got `--record`, the drift instruction and the placement gate against someone else's silicon
+    why: 'a machine with the measured cores but different silicon is not the measured machine',
+    in: 'core-budget',
+    from: ' && machine.cpu === measuredOn.cpu',
+    to: '',
+    call: (lib) => lib.isMeasuredMachine({ cpu: 'Apple M1 Pro', cores: 10 }, { cpu: 'Intel Xeon W', cores: 10 }),
+  },
+  {
+    why: 'a run spending fewer cores than the table was measured at is not the measured schedule',
+    in: 'core-budget',
+    from: 'budget === measuredOn.cores && ',
+    to: '',
+    // `--cores 4` on the measured machine. The widths are still box-sized, so the costs do not describe it
+    call: (lib) => lib.isMeasuredSchedule(4, { cpu: 'Apple M1 Pro', cores: 10 }, { cpu: 'Apple M1 Pro', cores: 10 }),
+  },
+  {
+    // The entry the predicate's split created. Dropping the delegation leaves a schedule check that asks
+    // only about the budget, which is what comparing the budget alone did before the machine existed --
+    // and the budget matches here, so nothing else in the conjunction can refuse it
+    why: 'the schedule check asks the machine question as well as its own',
+    in: 'core-budget',
+    from: '&& isMeasuredMachine(measuredOn, machine)',
+    to: '',
+    call: (lib) => lib.isMeasuredSchedule(10, { cpu: 'Apple M1 Pro', cores: 10 }, { cpu: 'Intel Xeon W', cores: 10 }),
+  },
+  /**
+   * The three decisions that let a machine which is not the record's still contribute to it. They are what
+   * makes the `unrecorded` finding satisfiable by a second developer, so a break in any of them puts that
+   * person back to writing their own box's milliseconds into someone else's table.
+   */
+  {
+    why: 'recordMembership lists a spec that has appeared, and prices nothing',
+    from: 'const appeared = unrecorded({ ...previous, costs, skipped }, files);',
+    to: 'const appeared: string[] = [];',
+    call: (lib) => lib.recordMembership(before({ [FAST]: 100 }), [FAST, 'tests/new.spec.ts']).unmeasured,
+  },
+  {
+    why: 'readSpecCost treats a record missing a field as absent, not as a record',
+    from: 'return complete ? parsed : undefined;',
+    to: 'return parsed;',
+    // `holed` has no `machine`. Without the gate the caller gets an object whose fields it then reads as
+    // if they were measured, where `undefined` is what routes it to "run spec-cost:update"
+    call: (lib, tree) => lib.readSpecCost(tree.root, 'holed'),
+  },
+  {
+    why: 'settle drops a spec from unmeasured once this run has priced it',
+    from: 'sorted[file] === undefined && ',
+    to: '',
+    // `b` was unmeasured and this run measured it. Without the clause it keeps its place in the list while
+    // holding a cost, so the record says both that it is priced and that it has never been measured here
+    call: (lib) => lib.settle({
+      previous: before({ [FAST]: 100 }, [], ['tests/b.spec.ts']),
+      costs: { [FAST]: 100, 'tests/b.spec.ts': 500 },
+      skipped: [],
+      measuredFiles: [FAST, 'tests/b.spec.ts'],
+      prune: [],
+      rewriteAll: false,
+    }).record.unmeasured,
+  },
 ];
 
 /**
@@ -470,7 +587,10 @@ describe('every decision these modules make is one something can see', () => {
     for (const dir of UNSORTED) write(`packages/${dir}/${FAST}`, '');
     // `a` recorded and `b` not, which is what makes the unmeasured branch reachable. No live suite is in this
     // state — a green tree means every spec is recorded, so the branch a bare update takes needs a tree of its own
-    write(realSpecCost.specCostFile('mini'), `${JSON.stringify({ measuredAt: 'then', costs: { [FAST]: 100 }, skipped: [], unmeasured: [], machine: thisMachine() }, null, 2)}\n`);
+    write(realSpecCost.specCostFile('mini'), `${JSON.stringify({ measuredAt: 'then', costs: { [FAST]: 100 }, skipped: [], unmeasured: [], machine: realCoreBudget.thisMachine() }, null, 2)}\n`);
+    // A record from before `machine` landed, which is what a branch not yet rebased, a stash or a revert
+    // hands `readSpecCost`. No live suite is in this state either, and the gate has no other input.
+    write(realSpecCost.specCostFile('holed'), `${JSON.stringify({ measuredAt: 'then', costs: {}, skipped: [], unmeasured: [] }, null, 2)}\n`);
   });
 
   afterAll(() => fs.rmSync(tree.root, { recursive: true, force: true }));
