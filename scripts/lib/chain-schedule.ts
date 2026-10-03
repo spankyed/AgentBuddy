@@ -19,6 +19,14 @@ export interface SchedulableStep {
    * says so, and the scheduler does the same thing for a reason it can print.
    */
   readonly conflicts?: readonly string[];
+  /**
+   * What of the machine this step takes, when a budget is in play — `coresFor` (`core-budget.ts`) resolves
+   * it from the share that module declares.
+   *
+   * Absent is one core. A resolved number rather than that share, so a case can schedule a graph of
+   * weights with no machine behind it, and so this module goes on knowing nothing about pools.
+   */
+  readonly cores?: number;
   readonly seconds?: number;
 }
 
@@ -26,6 +34,13 @@ export interface ScheduleOptions<S extends SchedulableStep> {
   readonly steps: readonly S[];
   /** How many steps may run at once. One is serial. */
   readonly lanes: number;
+  /**
+   * Cores the steps running together may take, summing their `cores`.
+   *
+   * `Infinity`, the default, is the lane count deciding alone — which is what keeps a run given no budget
+   * dispatching in exactly the order it always did.
+   */
+  readonly budget?: number;
   /**
    * Asked once a step's needs are met and before it takes a lane, so a step that does not run costs no lane
    * time. It counts as passed, and the steps that need it become ready.
@@ -74,7 +89,7 @@ export interface ScheduleResult {
  * unhandled rejection with child processes still alive. A throw is now that step failing, so the same
  * draining path applies to it as to a step that returned false.
  */
-export async function schedule<S extends SchedulableStep>({ steps, lanes, skip, run }: ScheduleOptions<S>): Promise<ScheduleResult> {
+export async function schedule<S extends SchedulableStep>({ steps, lanes, budget = Infinity, skip, run }: ScheduleOptions<S>): Promise<ScheduleResult> {
   const waiting = new Set(steps.map((step) => step.name));
   const done = new Set<string>();
   const running = new Map<string, Promise<string>>();
@@ -84,6 +99,8 @@ export async function schedule<S extends SchedulableStep>({ steps, lanes, skip, 
   // Not `running`, which holds a step from the moment its promise resolves until the race hands its name
   // back — a window in which a finished step would be recorded as overlapping the next one dispatched
   const live = new Set<string>();
+  /** Cores the live steps hold, kept beside `live` so admission is a comparison and not a sum per candidate */
+  let spent = 0;
   let failed: string | undefined;
   const threw: { step: string; error: unknown }[] = [];
 
@@ -100,6 +117,15 @@ export async function schedule<S extends SchedulableStep>({ steps, lanes, skip, 
           (step.conflicts ?? []).includes(name)
           || (steps.find((candidate) => candidate.name === name)?.conflicts ?? []).includes(step.name);
         if ([...running.keys()].some(clashes)) continue;
+        // A budget is `continue` where the lane limit above is `break`: a one-core leg must not wait behind
+        // a nine-core pool that happens to sit earlier in the table. That `break` is also what keeps a run
+        // given no budget dispatching in the order it always has, which thirteen cases here assert.
+        //
+        // **`spent > 0` is what makes the budget soft, and it is not a nicety.** A step wider than the whole
+        // budget fits nowhere, so a hard comparison would hold it forever, and this loop exits when nothing
+        // is running and nothing was dispatched — the step would never run and the chain would report green
+        // over it. One step may always exceed the budget alone; nothing may join it.
+        if (spent > 0 && spent + (step.cores ?? 1) > budget) continue;
 
         waiting.delete(step.name);
         if (skip(step)) {
@@ -112,15 +138,18 @@ export async function schedule<S extends SchedulableStep>({ steps, lanes, skip, 
         peers.set(step.name, new Set(live));
         for (const name of live) peers.get(name)?.add(step.name);
         live.add(step.name);
+        spent += step.cores ?? 1;
         running.set(step.name, run(step).then(
           (passed) => {
             live.delete(step.name);
+            spent -= step.cores ?? 1;
             if (passed) done.add(step.name);
             else failed ??= step.name;
             return step.name;
           },
           (error: unknown) => {
             live.delete(step.name);
+            spent -= step.cores ?? 1;
             threw.push({ step: step.name, error });
             failed ??= step.name;
             return step.name;

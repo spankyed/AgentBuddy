@@ -45,6 +45,7 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { changedInputs, diffableStamp, firstChange, freshnessSweep, INPUTS_CHANGED, PACKAGES_PREBUILT_ENV, REPO_ROOT, stampedRun, stampRecord, unitStaleReason, type BuildUnit } from '@abuddy/host/build/packages-built';
 import { CHAIN_STEPS, type ChainStep, chainSteps, MEASURED_AT_LANES, needsApp, orderedSteps, STEP_TABLES } from './lib/chain-steps.ts';
+import { box } from './lib/core-budget.ts';
 import { commandText, rootScripts } from './lib/npm-scripts.ts';
 import { IDLE_FLOOR, idleNow, movedBeyondBand, refusesAsBusy } from './lib/measure.ts';
 import { recordSeconds } from './lib/record-seconds.ts';
@@ -270,11 +271,51 @@ async function runAndStamp(step: ChainStep, all: boolean): Promise<Result> {
 /** What `--lanes` defaults to, named so the timing table can be checked against it */
 const DEFAULT_LANES = 3;
 
-function laneCount(): number {
-  const flag = process.argv.indexOf('--lanes');
-  const value = flag === -1 ? DEFAULT_LANES : Number(process.argv[flag + 1]);
-  if (!Number.isInteger(value) || value < 1) throw new Error(`--lanes takes a positive integer, not ${String(process.argv[flag + 1])}`);
+function flagValue(flag: string): number | undefined {
+  const at = process.argv.indexOf(flag);
+  if (at === -1) return undefined;
+  const value = Number(process.argv[at + 1]);
+  if (!Number.isInteger(value) || value < 1) throw new Error(`${flag} takes a positive integer, not ${String(process.argv[at + 1])}`);
   return value;
+}
+
+/**
+ * How much of the machine a run may take: a step count, a core budget, or both.
+ *
+ * `--lanes N` alone is the default, and it is the schedule every `seconds` in `chain-steps.ts` was
+ * measured under. `--cores N` admits on what each step takes instead (`core-budget.ts`), which is the
+ * question a lane count cannot ask: nineteen of these steps are one `tsc` and two are a nine-worker
+ * vitest pool, so one number metering both starves the first phase and oversubscribes the second.
+ *
+ * **A budget lifts the lane limit unless `--lanes` is given too**, because leaving it at three would
+ * let the budget admit at most three single-core legs and the flag would measure nothing. The two stay
+ * independent limits, so a run given both is held to the tighter.
+ *
+ * **Measured 2026-10-02, `--all` runs interleaved in pairs on an idle 10-core box, three each:**
+ *
+ *     3 lanes      202.8s  210.7s  176.6s    median 202.8s, spread 34.1s
+ *     --cores 10   169.4s  178.3s  163.0s    median 169.4s, spread 15.3s
+ *
+ * The budget wins every pair, by a median of 32.4s, and halves the spread — which is the half the
+ * typecheck flattening bought as well (18s to 0.7s there, for a median that did not move). The budgeted
+ * run lands 9s off its own measured critical path, so there is little scheduling slack left in it.
+ *
+ * A simulation over the declared `seconds` put the lanes at 201s and the budget at 198s: right about
+ * today and pessimistic about the budget by 29s, because it charges every step the cost it was measured
+ * at under three lanes, which is the contention a budget removes. Worth knowing before trusting the next
+ * such simulation, in either direction.
+ *
+ * **It stays a flag rather than becoming the default because of the table it would invalidate.**
+ * `seconds` is the cost at `MEASURED_AT_LANES` and feeds every step's kill budget through `budgetFor`, so
+ * a new default needs that table re-recorded against something naming the admission policy rather than a
+ * lane count — and `--record` refuses a budgeted run until it has one. The other untested half is a
+ * smaller box: the budget defaults to `box()`, where two 3-core pools on four cores nearly serialise, and
+ * whether that beats today's oversubscription there has not been measured.
+ */
+function admission(stepCount: number): { readonly lanes: number; readonly budget: number } {
+  const budget = flagValue('--cores');
+  const lanes = flagValue('--lanes');
+  return { lanes: lanes ?? (budget === undefined ? DEFAULT_LANES : stepCount), budget: budget ?? Infinity };
 }
 
 async function main(): Promise<void> {
@@ -296,7 +337,7 @@ async function main(): Promise<void> {
   // Derived from each step's `needs`, and validated first: an unknown dependency or a cycle fails here rather
   // than halfway through a six-minute run
   const steps = orderedSteps(chainSteps(e2e ? ['test'] : []));
-  const lanes = laneCount();
+  const { lanes, budget } = admission(steps.length);
 
   /** Its verdict, asked at dispatch — see `dispatch` for why that timing is load-bearing */
   /**
@@ -337,6 +378,15 @@ async function main(): Promise<void> {
       if (record === undefined) return undiffable;
       return firstChange(sweep.changedInputs(unitFor(step), record));
     };
+    // What a budgeted run would admit on, which is the half of the plan the per-step lines cannot carry.
+    // Only the steps above one core are listed: the rest are a count, because nineteen lines reading `1` is
+    // the table `POOL_WIDTH` deliberately does not keep.
+    if (Number.isFinite(budget)) {
+      const wide = steps.filter((step) => step.cores > 1);
+      console.log(`\nadmitting on a ${budget}-core budget, ${box()} cores on this machine:`);
+      for (const step of wide) console.log(`${String(step.cores).padStart(7)} ${step.name}`);
+      console.log(`${'1'.padStart(7)} each of the other ${steps.length - wide.length} steps\n`);
+    }
     for (const step of steps) {
       // `--all` runs everything, so a dry run given `--all` must say so rather than reporting the cache it
       // would ignore. A plan that does not answer for the flags it was given is worse than no plan.
@@ -364,6 +414,7 @@ async function main(): Promise<void> {
   const outcome = await schedule({
     steps,
     lanes,
+    budget,
     skip: (step) => {
       const why = staleReason(step, dispatchSweep);
       if (!all && step.neverCachedBecause === undefined && why === null) {
@@ -497,12 +548,19 @@ async function main(): Promise<void> {
     console.log('  Re-measure with `npm run chain -- --all` and set MEASURED_AT_LANES, or the table is about another schedule.');
   }
 
-  const report = driftReport(driftedSteps(steps, measuredMs), lanes, MEASURED_AT_LANES, all);
-  if (report !== '') console.log(report);
+  // Suppressed rather than printed with the wrong width in it: `driftReport`'s whole argument is that the
+  // numbers are not comparable at another admission policy, and it names the policy by lane count, which a
+  // budgeted run does not have
+  if (Number.isFinite(budget)) {
+    console.log(`\nno drift report: these costs are the chain's at ${MEASURED_AT_LANES} lanes and this ran on a ${budget}-core budget.`);
+  } else {
+    const report = driftReport(driftedSteps(steps, measuredMs), lanes, MEASURED_AT_LANES, all);
+    if (report !== '') console.log(report);
+  }
 
-  if (process.argv.includes('--record')) recordTheCosts(steps, measuredMs, lanes, all);
+  if (process.argv.includes('--record')) recordTheCosts(steps, measuredMs, lanes, budget, all);
 
-  console.log(`\n${verdict} in ${secs(Date.now() - started - classifyMs)}${reran}${skipped}${lanes > 1 ? ` with ${lanes} lanes` : ''}${floor}`);
+  console.log(`\n${verdict} in ${secs(Date.now() - started - classifyMs)}${reran}${skipped}${Number.isFinite(budget) ? ` on a ${budget}-core budget` : (lanes > 1 ? ` with ${lanes} lanes` : '')}${floor}`);
   // Not process.exit(): it drops whatever stdout has still to flush, and the failing step's captured output
   // printed just above is the one thing here worth reading. Measured: piped, process.exit() delivers 64KB
   // of a 500KB write, and @app/default-setup's suite output alone is 654KB.
@@ -527,9 +585,16 @@ async function main(): Promise<void> {
  * with a one-second floor. They differ on purpose, which is why this prints everything it wrote.
  */
 function recordTheCosts(steps: readonly ChainStep[], measuredMs: ReadonlyMap<string, number>,
-  lanes: number, all: boolean): void {
+  lanes: number, budget: number, all: boolean): void {
   if (!all) {
     console.log('\n--record needs --all: a cached step reports no time, and recording that would size a budget from it.');
+    return;
+  }
+  // Before the lane clause, not after it: `--cores N` lifts `lanes` to the step count and so would be
+  // refused by that clause with the wrong number in the message, while `--lanes 3 --cores N` would pass it
+  // outright — the lane limit was the measured one and the admission policy was not
+  if (Number.isFinite(budget)) {
+    console.log(`\n--record refused: these costs are the chain's at ${MEASURED_AT_LANES} lanes and this ran on a ${budget}-core budget.`);
     return;
   }
   if (lanes !== MEASURED_AT_LANES) {

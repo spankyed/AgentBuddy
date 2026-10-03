@@ -14,7 +14,8 @@ import { CHAIN_STEPS, INTEGRATION_SUITES, suiteInputs, type ChainStep } from '..
 import { UNIT_SUITES, type UnitSuite } from '../../../scripts/lib/unit-suites.ts';
 import { reachableText, rootScripts } from '../../../scripts/lib/npm-scripts.ts';
 import { TYPECHECK_LEGS } from '../../../scripts/lib/typecheck-legs.ts';
-import { POOLS, poolUnitFor } from '../../../scripts/lib/unit-pool.ts';
+import { POOLS, poolUnitFor, type Pool } from '../../../scripts/lib/unit-pool.ts';
+import { asPercent, POOL_WIDTH, UNCAPPED } from '../../../scripts/lib/core-budget.ts';
 import { relativeSpecifiers, resolveRelative } from '../../../scripts/lib/module-graph.ts';
 import { PACKAGE_DIRS } from '../../../scripts/lib/workspace-deps.ts';
 import { population } from '@abuddy/sdk/testing';
@@ -29,6 +30,7 @@ import { population } from '@abuddy/sdk/testing';
  */
 const resolvedConfig = async (rel: string): Promise<{ test?: {
   projects?: string[];
+  maxWorkers?: unknown;
   poolOptions?: { threads?: { maxThreads?: unknown }; forks?: { maxForks?: unknown } };
 } }> => (await import(path.join(REPO_ROOT, rel))).default;
 
@@ -194,18 +196,66 @@ describe('the root pool lists exactly the host suites', () => {
 });
 
 /**
- * The cap the pooled run's width depends on, which nothing asserted.
+ * Each pool's width, in the config that sets it and in the table the chain's scheduler admits on.
  *
  * `poolOptions` is process-wide, so it belongs to the root config and a per-project copy is read by nobody
  * — `unit-suites.ts` records the same thing measured for `poolOptions.execArgv` one pool along. Both halves
  * matter here: without the root value the pool silently runs at full width, which is 52.4s against 48.2s
  * measured, and a per-package copy would look like the cap while doing nothing.
+ *
+ * **`POOL_WIDTH` (`core-budget.ts`) is a second record of these same widths, and that is why it is checked
+ * here rather than trusted.** The configs cannot read it — they stay literal because `check:specifiers`
+ * reads them as text — so the table describes them, and a cap that moves has to fail somewhere.
  */
-describe('the integration pool runs at the width it says it does', () => {
+describe('every pool runs at the width core-budget.ts says it does', () => {
+  /**
+   * Each pool's chain step. Declared here rather than exported from `unit-pool.ts`, which `chain-steps.ts`
+   * cannot import — it is imported *by* that module already, and the pool steps are built there. The first
+   * case holds every entry to the real table, so a renamed step fails instead of reading as covered.
+   */
+  const STEP_OF: Record<Pool, string> = {
+    host: 'test:unit:host',
+    pack: 'test:unit:pack',
+    integration: 'test:integration',
+  };
+
+  /** The config a pool's own command loads, so each case asks about the file that pool really reads */
+  const configOf = (pool: Pool): string => {
+    const [first] = POOLS[pool].run(POOLS[pool].suites());
+    const named = first!.args.indexOf('--config');
+    if (named !== -1) return first!.args[named + 1]!;
+    const workspace = first!.args.indexOf('-w');
+    if (workspace === -1) return 'vitest.config.ts';
+    const suite = POOLS[pool].suites().find((candidate) => candidate.workspace === first!.args[workspace + 1]);
+    return path.join('packages', suite!.dir, 'vitest.config.ts');
+  };
+
+  it('gives every pool an entry, so none is admitted on a weight nobody chose', () => {
+    for (const pool of Object.keys(POOLS) as Pool[]) {
+      expect(CHAIN_STEPS.map((step) => step.name), `${pool}'s step name`).toContain(STEP_OF[pool]);
+      expect(POOL_WIDTH[STEP_OF[pool]], `${pool} has no POOL_WIDTH entry, so the chain would weigh it at one core`)
+        .toBeDefined();
+    }
+  });
+
   it('caps the workers in the config that is read for it', async () => {
-    const pool = (await resolvedConfig('vitest.integration.config.ts')).test?.poolOptions;
-    expect(pool?.threads?.maxThreads, 'threads').toBe('50%');
-    expect(pool?.forks?.maxForks, 'forks').toBe('50%');
+    const share = POOL_WIDTH[STEP_OF.integration];
+    expect(typeof share, 'the integration pool is declared as a share, which is what its config sets').toBe('number');
+    const pool = (await resolvedConfig(configOf('integration'))).test?.poolOptions;
+    expect(pool?.threads?.maxThreads, 'threads').toBe(asPercent(share as number));
+    expect(pool?.forks?.maxForks, 'forks').toBe(asPercent(share as number));
+  });
+
+  it('leaves the pools it calls UNCAPPED with no cap in their configs', async () => {
+    const uncapped = (Object.keys(POOLS) as Pool[]).filter((pool) => POOL_WIDTH[STEP_OF[pool]] === UNCAPPED);
+    expect(uncapped.length, 'no pool is declared UNCAPPED, so this case asks nothing').toBeGreaterThan(0);
+    for (const pool of uncapped) {
+      const where = configOf(pool);
+      const test = (await resolvedConfig(where)).test;
+      const why = `${where} caps its workers, so UNCAPPED in POOL_WIDTH is wrong about what ${pool} takes`;
+      expect(test?.poolOptions, why).toBeUndefined();
+      expect(test?.maxWorkers, why).toBeUndefined();
+    }
   });
 
   it('carries no per-project copy, which would be read by nobody', async () => {

@@ -1,6 +1,7 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { BUILD_UNITS, repoRelative, REPO_ROOT } from '@abuddy/host/build/packages-built';
+import { coresFor } from './core-budget.ts';
 import { UNIT_SUITES, type UnitSuite } from './unit-suites.ts';
 import { CONFIG_BY_HALF, hasSplit, type Half } from './spec-cost.ts';
 import { dependencySource, PACKAGE_DIRS, workspaceDeps } from './workspace-deps.ts';
@@ -286,6 +287,13 @@ export function conflictsOf(step: ChainStep, steps: readonly ChainStep[] = CHAIN
 export interface PlannedStep extends ChainStep {
   readonly dependsOn: readonly string[];
   readonly conflicts: readonly string[];
+  /**
+   * What of the machine it takes (`coresFor`, `core-budget.ts`), for a run admitting on cores.
+   *
+   * Attached here with the edges, and for the same reason: it is derived from a declaration elsewhere, so
+   * carrying it on the table would be a second record to disagree with that one.
+   */
+  readonly cores: number;
 }
 
 /**
@@ -296,7 +304,7 @@ export interface PlannedStep extends ChainStep {
  * case policing.
  */
 export const planSteps = (steps: readonly ChainStep[] = CHAIN_STEPS): readonly PlannedStep[] =>
-  steps.map((step) => ({ ...step, dependsOn: dependsOn(step, steps), conflicts: conflictsOf(step, steps) }));
+  steps.map((step) => ({ ...step, dependsOn: dependsOn(step, steps), conflicts: conflictsOf(step, steps), cores: coresFor(step.name) }));
 
 export function orderedSteps(given: readonly ChainStep[] = CHAIN_STEPS): readonly PlannedStep[] {
   const steps = planSteps(given);

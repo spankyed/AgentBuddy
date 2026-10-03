@@ -13,11 +13,21 @@ function runner(failing: string[] = []) {
   const order: string[] = [];
   let live = 0;
   let peak = 0;
+  // Beside `peak`, because a budget is about what the live steps *take* and a count cannot say it: three
+  // one-core steps and one three-core step are the same peak and a different machine
+  let liveCores = 0;
+  let peakCores = 0;
   const run = (s: SchedulableStep): Promise<boolean> => {
     order.push(s.name);
     live += 1;
     peak = Math.max(peak, live);
-    return new Promise<boolean>((resolve) => release.set(s.name, () => { live -= 1; resolve(!failing.includes(s.name)); }));
+    liveCores += s.cores ?? 1;
+    peakCores = Math.max(peakCores, liveCores);
+    return new Promise<boolean>((resolve) => release.set(s.name, () => {
+      live -= 1;
+      liveCores -= s.cores ?? 1;
+      resolve(!failing.includes(s.name));
+    }));
   };
   /** Lets every step that has started and not finished complete, repeatedly, until the run settles */
   const drain = async (): Promise<void> => {
@@ -28,7 +38,7 @@ function runner(failing: string[] = []) {
       await new Promise((r) => setImmediate(r));
     }
   };
-  return { run, drain, order, peak: () => peak, live: () => live };
+  return { run, drain, order, peak: () => peak, peakCores: () => peakCores, live: () => live };
 }
 
 const never = (): boolean => false;
@@ -182,6 +192,62 @@ describe('schedule', () => {
     const done = schedule({ steps: [step('a')], lanes: 1, skip: never, run: r.run });
     await r.drain();
     expect((await done).threw).toEqual([]);
+  });
+
+  it('admits on what the steps take together, not on how many there are', async () => {
+    const r = runner();
+    // Four cores each and ten to spend: two fit, the third does not, and the lane limit is not what says so
+    const steps = [step('a', [], { cores: 4 }), step('b', [], { cores: 4 }), step('c', [], { cores: 4 })];
+    const done = schedule({ steps, lanes: 9, budget: 10, skip: never, run: r.run });
+    await r.drain();
+    await done;
+    expect(r.peakCores()).toBe(8);
+    expect(r.peak()).toBe(2);
+    expect(r.order.sort()).toEqual(['a', 'b', 'c']);
+  });
+
+  it('lets a step past one that does not fit, rather than holding the queue behind it', async () => {
+    const r = runner();
+    // `first` takes a core, which is what puts `wide` over a budget of five — and `wide` sorts ahead of
+    // `small` in the table. Breaking there would dispatch `small` only after `wide` had run on its own,
+    // giving the order `first, wide, small` and never two steps at once.
+    const steps = [step('first'), step('wide', [], { cores: 9 }), step('small')];
+    const done = schedule({ steps, lanes: 9, budget: 5, skip: never, run: r.run });
+    await r.drain();
+    await done;
+    expect(r.order).toEqual(['first', 'small', 'wide']);
+    expect(r.peak()).toBe(2);
+  });
+
+  it('frees what a step held when it finishes, so a budget is not leaked', async () => {
+    const r = runner();
+    const steps = [step('a', [], { cores: 9 }), step('b', [], { cores: 9 })];
+    const done = schedule({ steps, lanes: 9, budget: 10, skip: never, run: r.run });
+    await r.drain();
+    await done;
+    // Both ran, and never together: a leak would show as neither
+    expect(r.order.sort()).toEqual(['a', 'b']);
+    expect(r.peak()).toBe(1);
+  });
+
+  it('runs a step wider than the whole budget rather than never running it', async () => {
+    const r = runner();
+    const steps = [step('huge', [], { cores: 20 }), step('a')];
+    const done = schedule({ steps, lanes: 9, budget: 10, skip: never, run: r.run });
+    await r.drain();
+    await done;
+    // The budget is soft for exactly this: a hard comparison would skip it and the chain would pass over it
+    expect(r.order.sort()).toEqual(['a', 'huge']);
+  });
+
+  it('ignores what the steps take when it is given no budget', async () => {
+    const r = runner();
+    const steps = [step('a', [], { cores: 9 }), step('b', [], { cores: 9 })];
+    const done = schedule({ steps, lanes: 2, skip: never, run: r.run });
+    await r.drain();
+    await done;
+    expect(r.peak()).toBe(2);
+    expect(r.peakCores()).toBe(18);
   });
 
   it('costs a skipped step no lane, and unblocks what needed it', async () => {
