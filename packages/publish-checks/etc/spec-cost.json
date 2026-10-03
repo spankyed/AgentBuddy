@@ -1,15 +1,15 @@
 {
   "measuredAt": "2026-09-28T20:14:34.508Z",
-  "costs": {
-    "tests/published-declarations.integration.spec.ts": 3572,
-    "tests/published-exports.integration.spec.ts": 5445,
-    "tests/published-manifest-paths.spec.ts": 1680,
-    "tests/published-sdk-any.integration.spec.ts": 8156,
-    "tests/published-sdk-peers.spec.ts": 15,
-    "tests/published-sdk-types.integration.spec.ts": 7543,
-    "tests/published-specifiers.spec.ts": 318,
-    "tests/published-ui-dist.spec.ts": 33,
-    "tests/published-ui-types.integration.spec.ts": 5858
+  "samples": {
+    "tests/published-declarations.integration.spec.ts": [3572],
+    "tests/published-exports.integration.spec.ts": [5445],
+    "tests/published-manifest-paths.spec.ts": [1680],
+    "tests/published-sdk-any.integration.spec.ts": [8156],
+    "tests/published-sdk-peers.spec.ts": [15],
+    "tests/published-sdk-types.integration.spec.ts": [7543],
+    "tests/published-specifiers.spec.ts": [318],
+    "tests/published-ui-dist.spec.ts": [33],
+    "tests/published-ui-types.integration.spec.ts": [5858]
   },
   "skipped": [],
   "unmeasured": [],

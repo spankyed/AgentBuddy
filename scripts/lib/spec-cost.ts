@@ -14,7 +14,7 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { thisMachine, type Machine } from './core-budget.ts';
-import { drifted, movedBeyondBand } from './measure.ts';
+import { movedBeyondBand } from './measure.ts';
 
 /**
  * Where a suite's record lives, relative to the repo root. One per package rather than one for the repo:
@@ -149,8 +149,85 @@ export function towardEdge(file: string, ms: number): number {
 /** Whether a re-measurement inside the record's own accuracy could carry this spec over its edge. */
 export const nearEdge = (file: string, ms: number): boolean => towardEdge(file, ms) <= COST_ACCURACY;
 
+/**
+ * A spec whose latest reading crossed an edge while its median has not: one agreeing reading from moving.
+ *
+ * **Reported, never acted on, and that distinction is the whole point of the window.** The old record
+ * adopted a crossing from one reading and a gate then demanded a rename; this says the same thing a run
+ * earlier, as information, and lets the second reading decide. A reader who sees it can re-measure
+ * deliberately instead of discovering it as a failure.
+ *
+ * Only the newest reading is asked about, because the older ones are what the median already reflects.
+ */
+export const provisional = (
+  file: string, samples: readonly number[],
+): { readonly file: string; readonly reading: number; readonly median: number; readonly belongs: Half } | undefined => {
+  const latest = samples.at(-1);
+  if (latest === undefined || samples.length < 2) return undefined;
+  const median = costOf(samples);
+  const belongs = halfFor(file, latest);
+  return belongs !== halfOfPath(file) && halfFor(file, median) === halfOfPath(file)
+    ? { file, reading: latest, median, belongs }
+    : undefined;
+};
+
+/**
+ * How many recent readings a spec keeps.
+ *
+ * Three, which is the fewest that can reject one reading. The decision a cost is *for* has a cliff —
+ * `halfFor` moves a spec across `INTEGRATION_ABOVE_MS` — and a cliff crossed by a single sample is a file
+ * rename demanded on one number. Measured 2026-10-03: a recording taken at 78% idle, above `IDLE_FLOOR`,
+ * read `chain-inputs` at 2791ms where two clean runs read 2041 and 2186, and the gate asked for two specs
+ * nobody had touched to be renamed.
+ *
+ * Five would reject two readings and be a run slower to believe a real change. Three is where that trade
+ * sits while a crossing is rare and a re-measure is cheap.
+ */
+export const WINDOW = 3;
+
+/**
+ * What a window says a spec costs: the median of its readings, and the incumbent on a tie.
+ *
+ * **The median rather than the mean, because the point is to reject a reading and not to average it in.**
+ * One contended reading in three moves a mean by a third of its error and a median not at all. Two
+ * agreeing readings move both, which is the property wanted: a real change is adopted and a noisy one is
+ * not.
+ *
+ * **A window of two answers with its older reading, which is not the textbook median and is the point.**
+ * The ordinary definition averages the two middles, and that was written here first — it lets one extreme
+ * reading carry the answer half of its own distance, which across an edge is the whole defect back again:
+ * `[2041] + 4000` means 3021 and crosses `INTEGRATION_ABOVE_MS` on one reading. The two readings in a
+ * two-window disagree by construction — disagreeing is why the second was kept — so there is no majority
+ * to be had, and a decision with no majority behind it should leave the answer where it was. The third
+ * reading breaks the tie, in whichever direction it agrees with.
+ *
+ * Only a length of two is affected: `WINDOW` is three, so a window is 1, 2 or 3 readings long.
+ */
+export function costOf(samples: readonly number[]): number {
+  if (samples.length === 2) return samples[0]!;
+  const sorted = [...samples].sort((a, b) => a - b);
+  return sorted[Math.floor(sorted.length / 2)]!;
+}
+
+/** A reading added to a window, which keeps the most recent `WINDOW` and drops the oldest */
+export const appendSample = (samples: readonly number[], reading: number): number[] =>
+  [...samples, reading].slice(-WINDOW);
+
 export interface SpecCost {
-  /** Measured milliseconds, per spec path relative to the package */
+  /**
+   * The recent readings behind each spec's cost, oldest first.
+   *
+   * **This is what is stored; `costs` below is derived from it.** Two records of one fact is the failure
+   * root `CLAUDE.md` names, so the median is never written down — it is taken on every read, which makes
+   * the half a *derivation* over a sample rather than a sample consulted directly.
+   */
+  readonly samples: Record<string, readonly number[]>;
+  /**
+   * What each spec costs: `costOf` over its readings. Derived on read, never stored.
+   *
+   * Kept as a field because every consumer wants the one number — the placement rule, `spec:dry`'s sum,
+   * the fast half's budget — and none of them wants to know a window exists.
+   */
   readonly costs: Record<string, number>;
   /**
    * Specs that ran nothing because every test in them was skipped, so they have no cost to record.
@@ -191,6 +268,23 @@ export interface SpecCost {
 export const INTEGRATION_SUFFIX = '.integration.spec.ts';
 
 /**
+ * The record as it is written: the same thing without the derived half.
+ *
+ * A separate type rather than an optional field, so that nothing can write a `costs` map by accident and
+ * have it read back as authoritative. `writeRecord` takes this; `readSpecCost` returns `SpecCost`.
+ */
+export type StoredSpecCost = Omit<SpecCost, 'costs'>;
+
+/** The record as it is stored, with the derived map dropped */
+export const forStorage = ({ costs: _costs, ...stored }: SpecCost): StoredSpecCost => stored;
+
+/** A record with its costs taken from its windows, which is the only place that derivation happens */
+export const withCosts = (stored: StoredSpecCost): SpecCost => ({
+  ...stored,
+  costs: Object.fromEntries(Object.entries(stored.samples).map(([spec, samples]) => [spec, costOf(samples)])),
+});
+
+/**
  * How far a new measurement must move before it replaces the recorded one.
  *
  * A cost is a **sample**, not a derivation: re-running the measurement does not reproduce it. Measured over
@@ -211,50 +305,69 @@ export const INTEGRATION_SUFFIX = '.integration.spec.ts';
 export const SETTLED_MS = 300;
 
 /**
- * Whether a fresh measurement says something the record does not already say.
+ * Whether a fresh reading says something the window does not already say, and so is worth keeping.
  *
- * Two clauses, and the first is why the second can be loose. A cost is only *consulted* to place a spec in a
- * half, so a measurement that would place it differently is always recorded, exactly. Everything else is a
- * number a human reads, and there the record only has to stay roughly true — which is what lets a spec with
- * real variance stop rewriting the file. `generated-behind-contract` runs codegen over a temp pack and swings
- * 714-995ms between idle runs; both are far below the band, and neither says anything the other does not.
+ * **It had a clause for a crossing and that clause was the defect.** It read "a measurement that would
+ * place the spec in a different half is always recorded, exactly", on the reasoning that a cost is only
+ * consulted to place a spec. The premise is right and the conclusion inverts it: the one decision with a
+ * cliff was the one where a single reading was trusted unconditionally, so a contended run moved two specs
+ * across `INTEGRATION_ABOVE_MS` and the gate demanded two renames. A crossing is now adopted when the
+ * *median* crosses, which takes two readings that agree.
+ *
+ * What is left is the band, and it is doing the job it always did: keep the window from growing on jitter.
+ * `generated-behind-contract` runs codegen over a temp pack and swings 714-995ms between idle runs; both
+ * say the same thing, and neither is worth a row in the log.
  */
-export const moved = (file: string, recorded: number | undefined, measured: number): boolean => {
-  if (recorded === undefined) return true;
-  if (halfFor(file, measured) !== halfFor(file, recorded)) return true;
-  return movedBeyondBand(recorded, measured, SETTLED_MS);
-};
+export const disagrees = (recorded: number | undefined, measured: number): boolean =>
+  recorded === undefined || movedBeyondBand(recorded, measured, SETTLED_MS);
 
 
 /** What a run changed, told apart: a spec measured for the first time is not evidence about the machine */
 export interface Changes {
   readonly added: readonly string[];
-  /** Specs whose recorded value this run replaced */
-  readonly rewritten: readonly string[];
-  /** Those of them the tolerance calls a real movement, which is all of them unless `--all` was given */
+  /**
+   * Specs whose window this run grew, because the reading disagreed with the median.
+   *
+   * **This is the set that says what the conditions were**, and it is the one `refusesAsContended` counts.
+   * A loaded machine makes most readings disagree at once, whether or not any median ends up moving — so
+   * asking "how many answers changed" would under-report exactly the run worth refusing. Counting the new
+   * ones instead refused eight new specs in a suite of twenty-eight as "a loaded machine", which is the
+   * wrong sentence about the right number, so `added` stays separate.
+   */
+  readonly appended: readonly string[];
+  /**
+   * Specs whose derived cost actually changed, which is what a reader of the record sees.
+   *
+   * A subset of `appended`, and usually a small one: a first disagreeing reading is kept and changes
+   * nothing, and the median moves on the second that agrees with it. Their difference is the whole value
+   * of the window, and the only place a reader can see it.
+   */
   readonly moved: readonly string[];
 }
 
 /**
- * What this run did to the specs it measured: which are new, whose row it rewrote, and which of those
- * rewrites is a real movement rather than jitter.
+ * What this run did to the specs it measured: which are new, whose window it grew, and whose answer that
+ * actually moved.
  *
- * Apart, because they answer different questions and a call site wanted each. A record is written for any of
- * them. Only `moved` says anything about the conditions the run was taken under — counting the new ones
- * refused eight new specs in a suite of twenty-eight as "a loaded machine", which is the wrong sentence about
- * the right number. And `rewritten` is the same set as `moved` unless `--all` was given, which records what
- * the tolerance would have discarded: their difference is what that flag cost, and the only place a reader
- * can see it.
+ * Apart, because they answer different questions and a call site wanted each. A record is written for any
+ * of them.
  */
 export function changesIn(
-  previous: SpecCost | undefined, settled: Record<string, number>, measured: readonly string[],
+  previous: SpecCost | undefined,
+  settled: Record<string, readonly number[]>,
+  readings: Record<string, number>,
 ): Changes {
-  const before = (spec: string): number | undefined => previous?.costs[spec];
-  const rewritten = measured.filter((spec) => before(spec) !== undefined && settled[spec] !== before(spec));
+  const measured = Object.keys(readings);
+  const before = (spec: string): readonly number[] | undefined => previous?.samples[spec];
+  const kept = measured.filter((spec) => {
+    const was = before(spec);
+    return was !== undefined && (settled[spec] ?? []).length + was.length > 0
+      && JSON.stringify(settled[spec] ?? []) !== JSON.stringify(was);
+  });
   return {
     added: measured.filter((spec) => before(spec) === undefined),
-    rewritten,
-    moved: rewritten.filter((spec) => moved(spec, before(spec), settled[spec]!)),
+    appended: kept,
+    moved: kept.filter((spec) => costOf(settled[spec]!) !== costOf(before(spec)!)),
   };
 }
 
@@ -297,11 +410,17 @@ export function halfFor(file: string, ms: number): Half {
  */
 export function readSpecCost(repoRoot: string, dir: string): SpecCost | undefined {
   try {
-    const parsed = JSON.parse(fs.readFileSync(path.join(repoRoot, specCostFile(dir)), 'utf-8')) as SpecCost;
-    const complete = typeof parsed?.measuredAt === 'string' && typeof parsed.costs === 'object'
+    const parsed = JSON.parse(fs.readFileSync(path.join(repoRoot, specCostFile(dir)), 'utf-8')) as StoredSpecCost;
+    // `samples` rather than `costs`, which is what makes a record from before the window read as absent
+    // rather than as a record holding point estimates — the policy this repo already applies to a missing
+    // field, and the reason there is no version number to compare
+    const windows = typeof parsed?.samples === 'object' && parsed.samples !== null
+      && Object.values(parsed.samples).every((window) => Array.isArray(window) && window.length > 0
+        && window.every((reading) => typeof reading === 'number'));
+    const complete = typeof parsed?.measuredAt === 'string' && windows
       && Array.isArray(parsed.skipped) && Array.isArray(parsed.unmeasured)
       && typeof parsed.machine?.cpu === 'string' && typeof parsed.machine.cores === 'number';
-    return complete ? parsed : undefined;
+    return complete ? withCosts(parsed) : undefined;
   } catch {
     return undefined;
   }
@@ -500,7 +619,7 @@ export function describeBudget(
       ? `  ${seconds(found.ms)}  ${found.file}  ->  ${found.belongs}`
       : `  ${seconds(found.ms)}  ${found.file}  (no slower half to move it to)`)),
     advice: [
-      renames.length > 0 ? `Rename ${renames.length === 1 ? 'it' : 'them'} into the half the cost implies; no measurement will move ${renames.length === 1 ? 'it' : 'them'}.` : '',
+      renames.length > 0 ? `Rename ${renames.length === 1 ? 'it' : 'them'} into the half the cost implies: two readings agree on ${renames.length === 1 ? 'this cost' : 'these costs'}, so re-measuring will not move ${renames.length === 1 ? 'it' : 'them'}.` : '',
       over.length > 0 ? 'Make it cheaper, or record it in EXPENSIVE_BY_NATURE with what makes it expensive.' : '',
     ].filter(Boolean).join('\n'),
   };
@@ -509,7 +628,7 @@ export function describeBudget(
 
 /** Recorded specs that no longer exist */
 export const stale = (record: SpecCost, files: readonly string[]): string[] =>
-  [...Object.keys(record.costs), ...record.skipped, ...record.unmeasured]
+  [...Object.keys(record.samples), ...record.skipped, ...record.unmeasured]
     .filter((file) => !files.includes(file)).sort();
 
 /**
@@ -520,11 +639,13 @@ export const stale = (record: SpecCost, files: readonly string[]): string[] =>
  */
 export function recordMembership(previous: SpecCost, files: readonly string[]): SpecCost {
   const gone = new Set(stale(previous, files));
-  const costs = Object.fromEntries(Object.entries(previous.costs).filter(([file]) => !gone.has(file)));
+  const samples = Object.fromEntries(Object.entries(previous.samples).filter(([file]) => !gone.has(file)));
   const skipped = previous.skipped.filter((file) => !gone.has(file));
   const kept = previous.unmeasured.filter((file) => !gone.has(file));
-  const appeared = unrecorded({ ...previous, costs, skipped }, files);
-  return { ...previous, costs, skipped, unmeasured: [...new Set([...kept, ...appeared])].sort() };
+  const appeared = unrecorded(withCosts({ ...forStorage(previous), samples, skipped }), files);
+  return withCosts({
+    ...forStorage(previous), samples, skipped, unmeasured: [...new Set([...kept, ...appeared])].sort(),
+  });
 }
 
 /**
@@ -678,20 +799,26 @@ export function refuseAbsent(dir: string, files: readonly string[], named: reado
 
 
 /**
- * Whether this run should replace every row it measured, rather than only the movements.
+ * Whether this run should throw away every window and start again from what it just measured.
  *
- * `--all`'s half of the bargain, and its limit. Re-measuring everything is always what the flag asks for;
- * rewriting everything is only ever useful against a drift that moved the body, because that is the one thing
- * the per-spec tolerance cannot record — each delta sits under its own threshold, so nothing re-records and
- * the record stays uniformly stale. Off that case, rewriting is jitter overwriting jitter: measured
- * 2026-09-28, an `--all` run on a current record rewrote 26 of 28 rows at a body of -3%, which is the churn
- * the tolerance exists to prevent.
+ * **The one thing a window cannot do for itself: forget.** A window is deliberately slow to be convinced,
+ * which is right for a noisy reading and wrong for a correlated drift — a bundler bump that adds a fifth to
+ * every spec is real, is uniform, and would otherwise take a second agreeing run per row to be believed
+ * while every answer in the file is stale. Re-seeding is how you say "the old readings describe code that
+ * is gone".
  *
- * The drift is measured against the record rather than the run before, so an episode under the threshold is
- * not forgiven — two of 12% present as one of 25% and are cleared then.
+ * `--all --force`, and the same pair that adopts a record from another machine, which is not a
+ * coincidence: taking a record over and declaring its history void are one operation, so they share one
+ * condition rather than growing a third flag. `--all` on its own re-measures everything and *appends*,
+ * which is the ordinary case and keeps the protection.
+ *
+ * It replaced `rewritesEveryRow`, which was `all && drifted(body)` — a drift gate on a write, from when
+ * the record held one number per spec and rewriting it on a quiet run was the churn the tolerance existed
+ * to prevent. A window has no such problem: an agreeing reading is not kept at all, so there is nothing
+ * for a drift threshold to protect and the flag can mean what it says.
  */
-export const rewritesEveryRow = (input: { readonly all: boolean; readonly body: number | undefined }): boolean =>
-  input.all && drifted(input.body);
+export const resetsWindows = (input: { readonly all: boolean; readonly force: boolean }): boolean =>
+  input.all && input.force;
 
 /** What one suite needs doing, worked out from the record before anything runs */
 export interface SpecCostPlan {
@@ -757,26 +884,27 @@ export function settle(input: {
   readonly measuredFiles: readonly string[];
   readonly prune: readonly string[];
   /**
-   * Replace every row measured, rather than only the ones the tolerance calls a movement.
+   * Throw away every window and start again from what this run measured.
    *
-   * What `rewritesEveryRow` decides, which is `--all` against a drifted body. Before it existed a record set
-   * 20% low stayed 33% adrift after an `--all` run, because each delta sat under its own threshold: the
-   * drift warning's advice to run `--all` could not be taken.
+   * What `resetsWindows` decides, which is `--all --force`. It is how a correlated drift is cleared: the
+   * old readings describe code that is gone, so appending to them would make the window argue with itself
+   * for a run.
    */
-  readonly rewriteAll: boolean;
+  readonly resetWindows: boolean;
   /** Take the record over: write this machine as its own. `--all --force` off the record's machine */
   readonly adopt?: boolean;
 }): Settled {
-  const { previous, costs, measuredFiles, prune, rewriteAll } = input;
-  const kept = Object.entries(previous?.costs ?? {}).filter(([spec]) => !prune.includes(spec));
+  const { previous, costs, measuredFiles, prune, resetWindows } = input;
+  const kept = Object.entries(previous?.samples ?? {}).filter(([spec]) => !prune.includes(spec));
 
-  // A measurement replaces the recorded one only when it says something the record does not already say.
-  // Without this the file is rewritten on every run by jitter alone, and a real movement is one line among
-  // a hundred that mean nothing. `moved` carries the measured reasoning.
-  const settled: Record<string, number> = Object.fromEntries(kept);
+  // A reading joins the window only when it says something the window does not already say. An agreeing
+  // one is dropped, which is what keeps a quiet run free of a diff; a disagreeing one is kept, and the
+  // median moves on the second that agrees with it. `disagrees` carries the measured reasoning.
+  const settled: Record<string, readonly number[]> = Object.fromEntries(kept);
   for (const [spec, ms] of Object.entries(costs)) {
-    const before = previous?.costs[spec];
-    settled[spec] = rewriteAll || moved(spec, before, ms) ? ms : before!;
+    const before = previous?.samples[spec];
+    settled[spec] = resetWindows || before === undefined ? [ms]
+      : disagrees(costOf(before), ms) ? appendSample(before, ms) : before;
   }
 
   // Against `costs`, which is what this run measured — not against the settled values, which still hold
@@ -795,24 +923,25 @@ export function settle(input: {
     && sorted[file] === undefined && !skipped.includes(file));
 
   const same = previous !== undefined
-    && Object.keys(previous.costs).length === Object.keys(sorted).length
-    && Object.entries(sorted).every(([spec, ms]) => previous.costs[spec] === ms)
+    && Object.keys(previous.samples).length === Object.keys(sorted).length
+    && Object.entries(sorted).every(([spec, window]) =>
+      JSON.stringify(previous.samples[spec]) === JSON.stringify(window))
     && previous.skipped.length === skipped.length
     && previous.skipped.every((file, index) => skipped[index] === file)
     && previous.unmeasured.length === unmeasured.length
     && previous.unmeasured.every((file, index) => unmeasured[index] === file);
 
   return {
-    ...changesIn(previous, settled, Object.keys(costs)),
-    dropped: Object.keys(previous?.costs ?? {}).filter((spec) => sorted[spec] === undefined && !prune.includes(spec)),
+    ...changesIn(previous, settled, costs),
+    dropped: Object.keys(previous?.samples ?? {}).filter((spec) => sorted[spec] === undefined && !prune.includes(spec)),
     // The machine is the record's own, and a first record is this one's. Changing it is adopting the record,
     // which `--all --force` is: see `update` in `scripts/spec-cost.ts`.
-    record: {
+    record: withCosts({
       measuredAt: same ? previous.measuredAt : new Date().toISOString(),
-      costs: sorted,
+      samples: sorted,
       skipped,
       unmeasured,
       machine: input.adopt || previous === undefined ? thisMachine() : previous.machine,
-    },
+    }),
   };
 }

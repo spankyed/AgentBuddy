@@ -17,16 +17,19 @@ import { REPO_ROOT } from '@abuddy/host/build/packages-built';
 import {
   FAST_BELOW_MS, INTEGRATION_ABOVE_MS, SPEC_COST_FLAGS, absentIn, changesIn,
   absentNamed, CONTENTION_RATIO_MAX, COST_ACCURACY, describeBudget, EXPENSIVE_BY_NATURE, halfFor,
-  halfOfPath, hasSplit, moved, nearEdge, ratiosFromMoves, towardEdge, underBound, type SpecCost,
+  halfOfPath, hasSplit, disagrees, nearEdge, ratiosFromMoves, towardEdge, underBound, type SpecCost,
   namedIn, overBudget, parseArgs,
   planFor, readSpecCost,
-  recordMembership, refuseAbsent, rewritesEveryRow, settle, specCostFile, specFiles, stale, suitesFor,
-  unrecorded,
+  recordMembership, refuseAbsent, resetsWindows, settle, specCostFile, specFiles, stale, suitesFor,
+  unrecorded, WINDOW, appendSample, costOf, provisional, withCosts,
 } from '../../../scripts/lib/spec-cost.ts';
 // The sample-recording primitives, shared with the chain's own cost table since 2026-10-02. The cases below
 // stay here rather than moving to `measure.spec.ts` with them, because what they check is these functions as
 // *this* record uses them — the body-drift case asserts `moved` says nothing about the same numbers, which is
 // the whole point of having both, and that pairing only exists here.
+//
+// A record is built from `windows` below rather than written as a cost map: a cost is derived from a
+// window now, so a fixture that set one would be setting a field nothing reads.
 import { bodyDrift, contended, drifted, refusesAsContended } from '../../../scripts/lib/measure.ts';
 import { isMeasuredMachine, machineText, thisMachine } from '../../../scripts/lib/core-budget.ts';
 import { priceSpecs } from '../../../scripts/lib/spec-dry.ts';
@@ -100,10 +103,14 @@ const OFF_BOX = ON_MEASURED_MACHINE ? ''
  *
  * These run everywhere, because they are about the arithmetic of the two lists and not about a box.
  */
+/** One reading per spec, which is the shape a record migrated off point estimates has */
+const windows = (costs: Record<string, number>): Record<string, readonly number[]> =>
+  Object.fromEntries(Object.entries(costs).map(([spec, ms]) => [spec, [ms]]));
+
 describe('a record anyone can add a spec to', () => {
   const OTHER = { cpu: 'Some Other CPU', cores: 4 };
   const base = (costs: Record<string, number>, unmeasured: string[] = []): SpecCost =>
-    ({ measuredAt: 'then', costs, skipped: [], unmeasured, machine: OTHER });
+    withCosts({ measuredAt: 'then', samples: windows(costs), skipped: [], unmeasured, machine: OTHER });
 
   it('lists a spec that has appeared, with no cost claimed for it', () => {
     const next = recordMembership(base({ 'tests/a.spec.ts': 100 }), ['tests/a.spec.ts', 'tests/b.spec.ts']);
@@ -133,7 +140,7 @@ describe('a record anyone can add a spec to', () => {
     const { record } = settle({
       previous: base({}, ['tests/b.spec.ts']),
       costs: { 'tests/b.spec.ts': 250 },
-      skipped: [], measuredFiles: ['tests/b.spec.ts'], prune: [], rewriteAll: false,
+      skipped: [], measuredFiles: ['tests/b.spec.ts'], prune: [], resetWindows: false,
     });
 
     expect(record.unmeasured, 'it has a cost now, so it is not waiting for one').toEqual([]);
@@ -150,7 +157,7 @@ describe('a record anyone can add a spec to', () => {
     const input = {
       previous: base({ 'tests/a.spec.ts': 100 }),
       costs: { 'tests/a.spec.ts': 400 },
-      skipped: [], measuredFiles: ['tests/a.spec.ts'], prune: [], rewriteAll: true,
+      skipped: [], measuredFiles: ['tests/a.spec.ts'], prune: [], resetWindows: true,
     };
 
     expect(settle(input).record.machine).toEqual(OTHER);
@@ -268,7 +275,8 @@ describe('what a run says about a spec it cannot place', () => {
 describe('what a spec that changed half says about the band', () => {
   const FAST = 'tests/x.spec.ts';
   const SLOW = 'tests/x.integration.spec.ts';
-  const record = (costs: Record<string, number>): SpecCost => ({ measuredAt: 'then', costs, skipped: [], unmeasured: [], machine: thisMachine() });
+  const record = (costs: Record<string, number>): SpecCost =>
+    withCosts({ measuredAt: 'then', samples: windows(costs), skipped: [], unmeasured: [], machine: thisMachine() });
 
   it('reads the ratio off a move in either direction', () => {
     expect(ratiosFromMoves(record({ [FAST]: 2_000 }), { [SLOW]: 1_000 }, [SLOW], [SLOW]))
@@ -415,37 +423,78 @@ describe('a measurement replaces the record only when it says something new', ()
     });
   });
 
-  it('records a spec it has never seen', () => {
-    expect(moved(FAST, undefined, 120)).toBe(true);
+  it('keeps a reading for a spec it has never seen', () => {
+    expect(disagrees(undefined, 120)).toBe(true);
+  });
+
+  it('keeps a large move, so the number stays roughly true', () => {
+    expect(disagrees(400, 1_200)).toBe(true);
+  });
+
+  // The case the band exists for: `generated-behind-contract` runs codegen over a temp pack and reads
+  // anywhere in this range between idle runs. Both values say the same thing, and keeping each of them
+  // grew a window — and before the window, rewrote the file — on every update.
+  it('drops jitter in a spec that is simply variable, so a quiet run writes nothing', () => {
+    expect(disagrees(995, 714)).toBe(false);
+    expect(disagrees(714, 995)).toBe(false);
   });
 
   /**
-   * The literal on the upper edge records the measured distribution gap, so it stays a literal.
-   *
-   * The lower one cannot: it used to be `moved(SLOW, 2_600, 1_400)`, and once the return edge dropped to
-   * 1 000 that pair stopped crossing anything — it went on passing through the magnitude clause instead,
-   * green while testing nothing it is named for. Derived from the constant now, and paired against the
-   * half the same numbers cannot leave, so only the crossing clause can produce both answers.
+   * **A crossing is not special, and it used to be.** `moved` opened with
+   * `halfFor(measured) !== halfFor(recorded) -> true`, so the one decision with a cliff was the one where
+   * a single reading was adopted outright. These two cases are what that cost, replayed from the readings
+   * that caused it, and they are the reason `disagrees` has no such clause.
    */
-  it('records a measurement that would place the spec in the other half', () => {
-    expect(moved(FAST, 2_400, 2_600), 'a fast spec past the upper edge').toBe(true);
+  it('does not let one reading carry a spec over the edge', () => {
+    expect(halfFor(FAST, 2_791), 'the contended reading, on its own, is integration').toBe('integration');
+    expect(costOf(appendSample([2_041], 2_791)), 'the window keeps the incumbent').toBe(2_041);
+    expect(halfFor(FAST, costOf(appendSample([2_041], 2_791))),
+      'so nothing is told to move on the strength of it').toBe('fast');
 
-    const recorded = FAST_BELOW_MS + 120;
-    const measured = FAST_BELOW_MS - 120;
-    expect(moved(SLOW, recorded, measured), 'an integration spec under the lower edge').toBe(true);
-    expect(moved(FAST, recorded, measured), 'the same pair in a half that edge cannot move').toBe(false);
+    // And not for an extreme one either, which the textbook median does not give you: averaging the two
+    // middles put `[2041] + 4000` at 3021 and over the edge, which is the defect with an extra step
+    expect(costOf(appendSample([2_041], 4_000)), 'however far the one reading is').toBe(2_041);
+    expect(halfFor(FAST, costOf(appendSample([2_041], 4_000)))).toBe('fast');
   });
 
-  it('records a large move that crosses nothing, so the number stays roughly true', () => {
-    expect(moved(FAST, 400, 1_200)).toBe(true);
+  it('adopts a crossing on the second reading that agrees', () => {
+    const once = appendSample([2_041], 4_000);
+    expect(halfFor(FAST, costOf(once)), 'one reading at 4s is not yet believed').toBe('fast');
+    const twice = appendSample(once, 4_000);
+    expect(costOf(twice), 'two agreeing readings are').toBe(4_000);
+    expect(halfFor(FAST, costOf(twice))).toBe('integration');
   });
 
-  // The case the tolerance exists for: `generated-behind-contract` runs codegen over a temp pack and reads
-  // anywhere in this range between idle runs. Both values are far below the band and neither says anything
-  // the other does not, and recording each of them rewrote the file on every update.
-  it('keeps the record for jitter in a spec that is simply variable', () => {
-    expect(moved(FAST, 995, 714)).toBe(false);
-    expect(moved(FAST, 714, 995)).toBe(false);
+  /**
+   * The second defect, and the one the band itself caused: a contended reading that landed could not be
+   * displaced, because `moved` then needed 35% of it to change. Measured 2026-10-03,
+   * `generated-behind-contract` was recorded at 1360 from a contended run and read 1125 on a clean one —
+   * a gap of 235 against a threshold of 476, so the clean reading was discarded and the wrong value stayed.
+   */
+  it('lets a contended reading age out instead of having to be beaten by the band', () => {
+    expect(disagrees(1_360, 1_125), 'the clean reading alone cannot displace it').toBe(false);
+    const window = appendSample(appendSample([1_203], 1_360), 1_125);
+    expect(costOf(window), 'but in a window the clean readings outvote it').toBe(1_203);
+    expect(costOf(appendSample(window, 1_125)), 'and it leaves entirely').toBe(1_125);
+  });
+
+  it('keeps at most WINDOW readings, oldest first out', () => {
+    const full = [1, 2, 3].reduce(appendSample, [] as readonly number[]);
+    expect(full).toHaveLength(WINDOW);
+    expect(appendSample(full, 4), 'the oldest leaves').toEqual([2, 3, 4]);
+  });
+
+  it('takes the median, which is what rejects one reading of three', () => {
+    expect(costOf([100]), 'one reading is itself').toBe(100);
+    expect(costOf([100, 9_999, 110]), 'three reject the outlier outright').toBe(110);
+  });
+
+  // The tie, which is the only place this departs from the textbook median. Two readings that disagree
+  // have no majority between them, and a decision with no majority must not move an answer.
+  it('answers a tied window with the reading that was already believed', () => {
+    expect(costOf([100, 200]), 'the incumbent, not the mean').toBe(100);
+    expect(costOf([200, 100]), 'in either direction').toBe(200);
+    expect(costOf([100, 200, 200]), 'and the third reading breaks it').toBe(200);
   });
 });
 
@@ -455,14 +504,15 @@ describe('a run that moved too much was measuring the machine', () => {
   // The regression: `moved` is true for a spec with no recorded value, so counting additions read eight new
   // specs in a suite of twenty-eight as a contended run and refused it, naming the machine.
   it('does not read specs measured for the first time as a machine under load', () => {
-    const previous = { measuredAt: '', skipped: [], unmeasured: [], machine: thisMachine(), costs: Object.fromEntries(specs(20, 's').map((spec) => [spec, 100])) };
+    const previous = withCosts({ measuredAt: '', skipped: [], unmeasured: [], machine: thisMachine(), samples: windows(Object.fromEntries(specs(20, 's').map((spec) => [spec, 100]))) });
     const measured = [...specs(20, 's'), ...specs(8, 'new')];
-    const settled = { ...previous.costs, ...Object.fromEntries(specs(8, 'new').map((spec) => [spec, 50])) };
-    const { added, moved: movedSpecs, rewritten } = changesIn(previous, settled, measured);
+    const settled = { ...previous.samples, ...Object.fromEntries(specs(8, 'new').map((spec) => [spec, [50]])) };
+    const readings = Object.fromEntries(measured.map((spec) => [spec, previous.costs[spec] ?? 50]));
+    const { added, moved: movedSpecs, appended } = changesIn(previous, settled, readings);
     expect(added, 'the eight new ones').toHaveLength(8);
     expect(movedSpecs, 'and nothing that had a value moved').toHaveLength(0);
-    expect(rewritten, 'nor was any of their rows rewritten').toHaveLength(0);
-    expect(contended(movedSpecs.length, measured.length - added.length)).toBe(false);
+    expect(appended, 'nor did any of their windows grow').toHaveLength(0);
+    expect(contended(appended.length, measured.length - added.length)).toBe(false);
   });
 
   it('reads a suite whose recorded specs mostly moved as one', () => {
@@ -484,7 +534,7 @@ describe('a run that moved as a body has drifted, however little each spec moved
   // threshold, so nothing re-records and the total silently stops being true
   it('sees a uniform slowdown that no single spec would report', () => {
     const measured = Object.fromEntries(Object.entries(twenty).map(([spec, ms]) => [spec, ms * 1.2]));
-    expect(Object.values(measured).every((ms) => !moved('tests/x.spec.ts', 100, ms)),
+    expect(Object.values(measured).every((ms) => !disagrees(100, ms)),
       'and not one of them moved on its own').toBe(true);
     expect(drift(twenty, measured)).toBeCloseTo(0.2, 5);
     expect(drifted(drift(twenty, measured)), 'so the body is what reports it').toBe(true);
@@ -615,7 +665,7 @@ describe('a bare update asks for the least the record needs', () => {
     fs.writeFileSync(path.join(root, rel), body);
   };
   const record = (costs: Record<string, number>, skipped: string[] = []): void =>
-    write(specCostFile(DIR), `${JSON.stringify({ measuredAt: 'then', costs, skipped, unmeasured: [], machine: thisMachine() }, null, 2)}\n`);
+    write(specCostFile(DIR), `${JSON.stringify({ measuredAt: 'then', samples: windows(costs), skipped, unmeasured: [], machine: thisMachine() }, null, 2)}\n`);
 
   beforeAll(() => {
     root = fs.mkdtempSync(path.join(os.tmpdir(), 'spec-cost-'));
@@ -638,8 +688,8 @@ describe('a bare update asks for the least the record needs', () => {
    * which is what a record that has to be re-taken needs to hear. This repo keeps no backward compatibility,
    * so requiring that is the policy; saying it out loud is the part that was missing.
    */
-  it.each(['machine', 'unmeasured', 'skipped', 'costs', 'measuredAt'])('reads a record with no %s as no record', (field) => {
-    const full = { measuredAt: 'then', costs: { 'tests/a.spec.ts': 100 }, skipped: [], unmeasured: [], machine: thisMachine() };
+  it.each(['machine', 'unmeasured', 'skipped', 'samples', 'measuredAt'])('reads a record with no %s as no record', (field) => {
+    const full = { measuredAt: 'then', samples: { 'tests/a.spec.ts': [100] }, skipped: [], unmeasured: [], machine: thisMachine() };
     write(specCostFile(DIR), `${JSON.stringify(Object.fromEntries(Object.entries(full).filter(([key]) => key !== field)), null, 2)}\n`);
 
     expect(readSpecCost(root, DIR)).toBeUndefined();
@@ -648,6 +698,26 @@ describe('a bare update asks for the least the record needs', () => {
   it('reads a complete one, so the case above is not passing on the parse', () => {
     record({ 'tests/a.spec.ts': 100 });
     expect(readSpecCost(root, DIR)).toMatchObject({ costs: { 'tests/a.spec.ts': 100 }, machine: thisMachine() });
+  });
+
+  /**
+   * A record from before the window, which is the shape every one of the twelve had. It carries a `costs`
+   * map and no `samples`, and it has to read as absent rather than as a record of point estimates — there
+   * is no version field, so this is the whole of what tells the two apart, and it is what makes the
+   * migration a thing that cannot be half-done.
+   */
+  it('reads a record of point estimates as no record, since there is nothing to be sure of', () => {
+    write(specCostFile(DIR), `${JSON.stringify({
+      measuredAt: 'then', costs: { 'tests/a.spec.ts': 100 }, skipped: [], unmeasured: [], machine: thisMachine(),
+    }, null, 2)}\n`);
+    expect(readSpecCost(root, DIR)).toBeUndefined();
+  });
+
+  it('reads a window with no readings in it as no record', () => {
+    write(specCostFile(DIR), `${JSON.stringify({
+      measuredAt: 'then', samples: { 'tests/a.spec.ts': [] }, skipped: [], unmeasured: [], machine: thisMachine(),
+    }, null, 2)}\n`);
+    expect(readSpecCost(root, DIR), 'an empty window has no median to take').toBeUndefined();
   });
 
   it('measures only the half a spec with no recorded cost lives in', () => {
@@ -676,8 +746,8 @@ describe('a bare update asks for the least the record needs', () => {
 
 describe('what a run does to the record it replaces', () => {
   const FAST = 'tests/a.spec.ts';
-  const previous = (costs: Record<string, number>, skipped: string[] = []) =>
-    ({ measuredAt: 'then', costs, skipped, unmeasured: [], machine: thisMachine() });
+  const previous = (costs: Record<string, number>, skipped: string[] = []): SpecCost =>
+    withCosts({ measuredAt: 'then', samples: windows(costs), skipped, unmeasured: [], machine: thisMachine() });
 
   // The defect: the newly-skipped filter read the *settled* costs, which start as everything the record
   // already held — so a spec that had a cost and stopped running was filtered out of `skipped` and kept the
@@ -688,7 +758,7 @@ describe('what a run does to the record it replaces', () => {
       costs: { 'tests/b.spec.ts': 810 },
       skipped: [FAST],
       measuredFiles: [FAST, 'tests/b.spec.ts'],
-      rewriteAll: false, prune: [],
+      resetWindows: false, prune: [],
     });
     expect(record.skipped, 'it ran nothing, so it is skipped').toEqual([FAST]);
     expect(record.costs[FAST], 'and it cannot also carry the cost it used to have').toBeUndefined();
@@ -701,39 +771,38 @@ describe('what a run does to the record it replaces', () => {
   it('keeps a record nothing moved byte-identical, including its date', () => {
     const before = previous({ [FAST]: 1_000 });
     const { record, added, moved: movedSpecs } = settle({
-      previous: before, costs: { [FAST]: 1_050 }, skipped: [], measuredFiles: [FAST], rewriteAll: false, prune: [],
+      previous: before, costs: { [FAST]: 1_050 }, skipped: [], measuredFiles: [FAST], resetWindows: false, prune: [],
     });
     expect(added).toHaveLength(0);
     expect(movedSpecs, 'inside the tolerance, so nothing was recorded').toHaveLength(0);
     expect(record).toEqual(before);
   });
 
-  // The reason the drift warning's advice works: the same measurement, two answers. Without it a record that
-  // was uniformly stale stayed uniformly stale however many times you ran `--all`, because every delta sat
-  // under its own threshold and the settling discarded each one
-  it('rewrites a row the tolerance would have kept, and keeps it otherwise', () => {
+  // What re-seeding is for: a window is deliberately slow to be convinced, which is wrong for a drift that
+  // moved everything. `--all --force` says the old readings describe code that is gone.
+  it('re-seeds a window from this run, where it would otherwise drop the reading', () => {
     const inputs = { previous: previous({ [FAST]: 1_000 }), costs: { [FAST]: 1_050 }, skipped: [],
       measuredFiles: [FAST], prune: [] };
-    expect(moved(FAST, 1_000, 1_050), 'a move the tolerance is there to absorb').toBe(false);
-    expect(settle({ ...inputs, rewriteAll: false }).record.costs[FAST]).toBe(1_000);
-    expect(settle({ ...inputs, rewriteAll: true }).record.costs[FAST]).toBe(1_050);
-
-    // And it says which of the two it did. One word for both read a run that rewrote the file as a suite
-    // that had got slower, so the report can only be honest if the two are counted apart.
-    const written = settle({ ...inputs, rewriteAll: true });
-    expect(written.rewritten, 'the row was rewritten').toEqual([FAST]);
-    expect(written.moved, 'but nothing moved, and the report must not say it did').toEqual([]);
+    expect(disagrees(1_000, 1_050), 'a reading the band is there to drop').toBe(false);
+    expect(settle({ ...inputs, resetWindows: false }).record.samples[FAST]).toEqual([1_000]);
+    expect(settle({ ...inputs, resetWindows: true }).record.samples[FAST], 'the history goes').toEqual([1_050]);
   });
 
-  // What the default path lets the report rely on: unless every row is being rewritten the two are one set,
-  // so the line that prints the difference prints nothing and the common output is untouched by it
-  it('rewrites a row only for a movement otherwise', () => {
+  // The two counts the report rests on. A first disagreeing reading is kept and changes no answer, so a run
+  // that merely noticed something must not print as a suite that has got slower.
+  it('counts a window it grew apart from an answer that moved', () => {
     const SLOW = 'tests/slow.spec.ts';
     const inputs = { previous: previous({ [FAST]: 1_000, [SLOW]: 1_000 }), skipped: [],
-      measuredFiles: [FAST, SLOW], prune: [], rewriteAll: false };
-    const { moved: movedSpecs, rewritten } = settle({ ...inputs, costs: { [FAST]: 1_050, [SLOW]: 4_000 } });
-    expect(rewritten, 'the one the tolerance kept').toEqual([SLOW]);
-    expect(movedSpecs, 'and the two sets are one').toEqual(rewritten);
+      measuredFiles: [FAST, SLOW], prune: [], resetWindows: false };
+    const { moved: movedSpecs, appended } = settle({ ...inputs, costs: { [FAST]: 1_050, [SLOW]: 4_000 } });
+    expect(appended, 'only the reading that disagreed was kept').toEqual([SLOW]);
+    expect(movedSpecs, 'and one reading does not move the median').toEqual([]);
+
+    // The second agreeing reading is what moves it, which is the whole bargain
+    const twice = settle({
+      ...inputs, previous: settle({ ...inputs, costs: { [SLOW]: 4_000 } }).record, costs: { [SLOW]: 4_000 },
+    });
+    expect(twice.moved, 'the second agreeing reading moves it').toEqual([SLOW]);
   });
 
   // The skipped list is content too: a spec can arrive with every test in it skipped, which moves nothing in
@@ -746,7 +815,7 @@ describe('what a run does to the record it replaces', () => {
       costs: { [FAST]: 100 },
       skipped: ['tests/needs-a-binary.spec.ts'],
       measuredFiles: [FAST, 'tests/needs-a-binary.spec.ts'],
-      rewriteAll: false, prune: [],
+      resetWindows: false, prune: [],
     });
     expect(added, 'nothing was measured for the first time').toHaveLength(0);
     expect(movedSpecs, 'and no cost moved').toHaveLength(0);
@@ -755,14 +824,66 @@ describe('what a run does to the record it replaces', () => {
     expect(record.measuredAt, 'but the record changed, so it is dated').not.toBe('then');
   });
 
-  it('records a measurement that says something new, and dates it', () => {
-    const { record, moved: movedSpecs, rewritten } = settle({
-      previous: previous({ [FAST]: 1_000 }), costs: { [FAST]: 4_000 }, skipped: [], measuredFiles: [FAST], rewriteAll: false, prune: [],
-    });
-    expect(movedSpecs).toEqual([FAST]);
-    expect(rewritten, 'a movement is a rewrite too').toEqual([FAST]);
-    expect(record.costs[FAST]).toBe(4_000);
-    expect(record.measuredAt).not.toBe('then');
+  /**
+   * **A reading that says something new is kept, and does not become the answer on its own.** This case
+   * asserted the opposite until 2026-10-03 — one 4s reading against a recorded 1s rewrote the row outright
+   * — which is the behaviour a contended run used to exploit. What it checks now is that the run is still
+   * *recorded*: the window grew and the record is dated, so nothing is silently discarded while the answer
+   * waits for its second reading.
+   */
+  it('keeps a measurement that says something new, and dates it, without yet believing it', () => {
+    const inputs = { skipped: [], measuredFiles: [FAST], resetWindows: false, prune: [] };
+    const first = settle({ ...inputs, previous: previous({ [FAST]: 1_000 }), costs: { [FAST]: 4_000 } });
+    expect(first.appended, 'the reading was kept').toEqual([FAST]);
+    expect(first.moved, 'and the answer did not move with it').toEqual([]);
+    expect(first.record.samples[FAST]).toEqual([1_000, 4_000]);
+    expect(first.record.costs[FAST], 'the incumbent still answers').toBe(1_000);
+    expect(first.record.measuredAt, 'but the record changed, so it is dated').not.toBe('then');
+
+    const second = settle({ ...inputs, previous: first.record, costs: { [FAST]: 4_000 } });
+    expect(second.moved, 'the second agreeing reading is what moves it').toEqual([FAST]);
+    expect(second.record.costs[FAST]).toBe(4_000);
+  });
+
+  /**
+   * **The whole path, replayed from the readings that broke it.** The cases above check `costOf` and
+   * `appendSample`; this one runs the sequence through `settle` and asks `overBudget` the question the gate
+   * asks, because that is where the answer actually came from: a contended reading of 2791 against a
+   * recorded 2041 made `suite-split` demand that `chain-inputs` be renamed into the integration half, and
+   * the clean re-measure that followed read 2186 and put it back. Nothing in the suite had got slower.
+   *
+   * The real package dir, because `overBudget` asks `hasSplit` whether there is a half to move into, and
+   * that reads the configs off disk. `repo-checks` has both.
+   */
+  it('never demands a rename for the contended sequence that caused this', () => {
+    const SPEC = 'tests/chain-inputs.spec.ts';
+    const dir = path.join(REPO_ROOT, 'packages', 'repo-checks');
+    const inputs = { skipped: [], measuredFiles: [SPEC], prune: [], resetWindows: false };
+    const renames = (record: SpecCost): unknown[] =>
+      overBudget(dir, record.costs, [SPEC]).filter((found) => found.kind === 'rename');
+
+    const start = previous({ [SPEC]: 2_041 });
+    expect(renames(start), 'nothing is wrong to begin with').toEqual([]);
+
+    // The reading that used to be adopted outright, and the rename it used to produce
+    expect(halfFor(SPEC, 2_791), 'on its own it really is integration').toBe('integration');
+    const contended = settle({ ...inputs, previous: start, costs: { [SPEC]: 2_791 } });
+    expect(contended.record.samples[SPEC], 'it is kept, so nothing is discarded').toEqual([2_041, 2_791]);
+    expect(renames(contended.record), 'but no rename is asked for').toEqual([]);
+
+    // The clean reading that followed. It agrees with the incumbent — 145ms against a band of 714 — so it
+    // is dropped rather than kept, and the answer stays where the two clean readings put it.
+    const clean = settle({ ...inputs, previous: contended.record, costs: { [SPEC]: 2_186 } });
+    expect(clean.appended, 'it says nothing the window does not already say').toEqual([]);
+    expect(clean.record.costs[SPEC], 'so the answer is still the clean one').toBe(2_041);
+    expect(renames(clean.record)).toEqual([]);
+
+    // And the other direction, so this is not passing because nothing can ever move: a second reading up
+    // there is a genuine majority, and then the rename is the right answer and is asked for.
+    const twice = settle({ ...inputs, previous: contended.record, costs: { [SPEC]: 2_791 } });
+    expect(twice.record.samples[SPEC]).toEqual([2_041, 2_791, 2_791]);
+    expect(twice.record.costs[SPEC], 'two agreeing readings are believed').toBe(2_791);
+    expect(renames(twice.record), 'and now it really should move').toHaveLength(1);
   });
 
   it('drops a pruned spec from both halves of the record', () => {
@@ -771,7 +892,7 @@ describe('what a run does to the record it replaces', () => {
       costs: { [FAST]: 100 },
       skipped: [],
       measuredFiles: [FAST],
-      rewriteAll: false, prune: ['tests/gone.spec.ts', 'tests/also-gone.spec.ts'],
+      resetWindows: false, prune: ['tests/gone.spec.ts', 'tests/also-gone.spec.ts'],
     });
     expect(Object.keys(record.costs)).toEqual([FAST]);
     expect(record.skipped).toEqual([]);
@@ -782,16 +903,16 @@ describe('what a run does to the record it replaces', () => {
   // pruned — so a spec that stopped running rewrote the file and printed "none moved"; the `N skipped` beside
   // it is the total, identical whether the skip is new or carried, so nothing on the line said otherwise.
   it('names a spec that lost its cost, which is neither a move nor an arrival nor a prune', () => {
-    const { dropped, added, rewritten } = settle({
+    const { dropped, added, appended } = settle({
       previous: previous({ [FAST]: 1_200, 'tests/b.spec.ts': 800 }),
       costs: { 'tests/b.spec.ts': 800 },
       skipped: [FAST],
       measuredFiles: [FAST, 'tests/b.spec.ts'],
       prune: [],
-      rewriteAll: false,
+      resetWindows: false,
     });
     expect(dropped, 'the run has to report this, or it reports nothing at all').toEqual([FAST]);
-    expect([...added, ...rewritten], 'and it is neither of the two that were counted').toEqual([]);
+    expect([...added, ...appended], 'and it is neither of the two that were counted').toEqual([]);
   });
 
   // A pruned spec loses its cost too, and the caller already reports those as `N gone`; counting them here
@@ -803,7 +924,7 @@ describe('what a run does to the record it replaces', () => {
       skipped: [],
       measuredFiles: [FAST],
       prune: ['tests/gone.spec.ts'],
-      rewriteAll: false,
+      resetWindows: false,
     });
     expect(dropped).toEqual([]);
   });
@@ -814,7 +935,7 @@ describe('what a run does to the record it replaces', () => {
       costs: { [FAST]: 100 },
       skipped: [],
       measuredFiles: [FAST],
-      rewriteAll: false, prune: [],
+      resetWindows: false, prune: [],
     });
     expect(record.skipped, 'the integration config never ran, so its skip stands').toEqual(['tests/other.integration.spec.ts']);
   });
@@ -825,7 +946,7 @@ describe('what a run does to the record it replaces', () => {
       costs: { 'tests/z.spec.ts': 1, 'tests/a.spec.ts': 2 },
       skipped: [],
       measuredFiles: ['tests/a.spec.ts', 'tests/z.spec.ts'],
-      rewriteAll: false, prune: [],
+      resetWindows: false, prune: [],
     });
     expect(Object.keys(record.costs)).toEqual(['tests/a.spec.ts', 'tests/z.spec.ts']);
   });
@@ -952,7 +1073,7 @@ describe('a named spec that is not there is refused, whatever was asked of it', 
   // longer on disk" from the file list it is given, so over a narrowed list every spec the caller did not
   // name reads as gone. Narrowing the whole loop's file list is the obvious simplification and is wrong.
   it('is why the recorded-but-gone question is only ever asked of a whole suite', () => {
-    const record = { measuredAt: '', skipped: [], unmeasured: [], machine: thisMachine(), costs: { 'tests/a.spec.ts': 1, 'tests/b.spec.ts': 2 } };
+    const record = withCosts({ measuredAt: '', skipped: [], unmeasured: [], machine: thisMachine(), samples: { 'tests/a.spec.ts': [1], 'tests/b.spec.ts': [2] } });
     expect(stale(record, FILES), 'nothing is gone').toEqual([]);
     expect(stale(record, ['tests/a.spec.ts']), 'but against one named spec, the other reads as gone')
       .toEqual(['tests/b.spec.ts']);
@@ -1005,31 +1126,60 @@ describe('when a run is refused as a measurement of the machine', () => {
 /**
  * What `--all` buys and what it costs, which are not the same question.
  *
- * Re-measuring everything is always what the flag asks for. Rewriting everything is only worth the churn
- * against a drift the per-spec tolerance cannot record, so the two are decided apart.
+ * Re-measuring everything is always what the flag asks for. *Forgetting* everything is a second thing, and
+ * it takes `--force` — the only way to clear a correlated drift, and the only way to lose the history that
+ * rejects a noisy reading. It replaced `rewritesEveryRow`, which was `all && drifted(body)`: a drift gate
+ * on a write, needed only while the record held one number per spec and rewriting it on a quiet run was
+ * churn. A window drops an agreeing reading by itself, so there is nothing left for a threshold to protect.
  */
-describe('every row is rewritten only against a drift that no single row would report', () => {
-  it('clears a body the tolerance cannot see', () => {
-    expect(rewritesEveryRow({ all: true, body: 0.25 })).toBe(true);
-    expect(rewritesEveryRow({ all: true, body: -0.25 }), 'in either direction').toBe(true);
+describe('a window is re-seeded only when asked for outright', () => {
+  it('re-seeds on --all --force, which is also what adopts another machine’s record', () => {
+    expect(resetsWindows({ all: true, force: true })).toBe(true);
   });
 
-  // The churn this exists to stop: measured 2026-09-28, an `--all` run on a current record rewrote 26 of 28
-  // rows at a body of -3%, which is jitter overwriting jitter and is what the tolerance is for
-  it('leaves a quiet run alone, however it was asked for', () => {
-    expect(rewritesEveryRow({ all: true, body: 0.03 })).toBe(false);
-    expect(rewritesEveryRow({ all: true, body: undefined }), 'and nothing to compare is not a drift').toBe(false);
+  it('leaves the history alone for either flag on its own', () => {
+    expect(resetsWindows({ all: true, force: false }), '--all re-measures and appends').toBe(false);
+    expect(resetsWindows({ all: false, force: true }), '--force only overrides a refusal').toBe(false);
+    expect(resetsWindows({ all: false, force: false })).toBe(false);
   });
 
-  it('never fires without the flag, so a default run still settles every row', () => {
-    expect(rewritesEveryRow({ all: false, body: 0.25 })).toBe(false);
+  // The coupling that is gone, and the reason it can be: the warning used to advise a flag whose write was
+  // gated on the same threshold, so the two had to agree about what a drift was. Now the advice is
+  // unconditional, so a reader who follows it always gets the effect it describes.
+  it('answers the same for every body a run could report, drifted or not', () => {
+    const bodies = [0.25, -0.25, 0.03, undefined];
+    expect(bodies.map(drifted), 'the bodies span both sides of the threshold')
+      .toEqual([true, true, false, false]);
+    // The old flag's answer was `drifted(body)`, so this list used to produce two different answers. One
+    // answer for all four is the independence, and it is what makes the drift advice unconditionally true.
+    expect([...new Set(bodies.map(() => resetsWindows({ all: true, force: true })))]).toEqual([true]);
+  });
+});
+
+/**
+ * A crossing one agreeing reading away, which is the window's other half: the old record discovered these
+ * as a gate failure, and this is the run that says so first.
+ */
+describe('a crossing is reported before it is adopted', () => {
+  const FAST = 'tests/x.spec.ts';
+
+  it('names the reading, the median and where it would go', () => {
+    expect(provisional(FAST, appendSample([2_041], 2_791))).toEqual({
+      file: FAST, reading: 2_791, median: 2_041, belongs: 'integration',
+    });
   });
 
-  // The threshold is one declaration, not two: a drift this reads as worth clearing is exactly one the run
-  // reports, so the warning cannot advise `--all` for a body the flag would then decline to record
-  it('fires on exactly the drifts the run warns about', () => {
-    for (const body of [0.25, -0.25, 0.03, undefined]) {
-      expect(rewritesEveryRow({ all: true, body }), `body ${body}`).toBe(drifted(body));
-    }
+  it('says nothing while the latest reading agrees with where the spec is', () => {
+    expect(provisional(FAST, [2_041, 2_100])).toBeUndefined();
+  });
+
+  // Once the median has crossed it is no longer provisional — it is the gate's business, and saying both
+  // would tell a reader to wait for a confirmation that has already happened
+  it('stops once the median has adopted it', () => {
+    expect(provisional(FAST, [4_000, 4_000])).toBeUndefined();
+  });
+
+  it('says nothing about a window of one, which has nothing to confirm', () => {
+    expect(provisional(FAST, [9_999])).toBeUndefined();
   });
 });

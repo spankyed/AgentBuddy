@@ -1,8 +1,8 @@
 {
   "measuredAt": "2026-10-01T03:54:23.337Z",
-  "costs": {
-    "tests/exports.spec.ts": 7,
-    "tests/import-side-effects.spec.ts": 94
+  "samples": {
+    "tests/exports.spec.ts": [7],
+    "tests/import-side-effects.spec.ts": [94]
   },
   "skipped": [],
   "unmeasured": [],

@@ -139,12 +139,25 @@ in — changed zero times. So it needs hysteresis on the record, a band rather t
 and a refusal to record a run that moved too much to have been measuring the code. All three live in
 `scripts/lib/spec-cost.ts`, which documents them.
 
+**Those three are not enough on their own, and what closed the gap was storing more than one reading.**
+Hysteresis protects the recorded answer from jitter and says nothing about *which* reading became the
+answer — so the first one in wins, and for a crossing it won outright: `moved` opened by recording any
+reading that would place a spec in a different half, exactly, on the reasoning that placement is a cost's
+only consumer. Measured 2026-10-03, a recording taken at 78% idle — above `IDLE_FLOOR` — moved two specs
+across `INTEGRATION_ABOVE_MS` and a gate demanded two renames; two clean runs put both back. The same band
+then stopped the clean readings correcting it, since displacing a recorded value takes 35% of it.
+So `spec-cost.json` holds a **window** of up to `WINDOW` readings per spec and the cost is their median:
+one reading is kept but cannot become the answer, and two that agree can. That makes the half a
+*derivation* over a sample rather than a sample read directly, and it is the shape to copy if a second
+sample is ever added — a band alone leaves whichever reading landed first in charge.
+
 **A sum of that record is a separate question.** Jitter cancels, so a suite's total is stable (0.4-9.9%
 between idle runs while its members moved 10-18%). Correlated drift does not: a dependency bump adding a
 fifth to every spec sits under every per-spec tolerance, so nothing re-records and the total quietly stops
-being true. `drift` reports the body's movement on every run, and `spec-cost:update --all` re-records
-against it — only against it, since on a quiet run that flag settles each row like any other run and
-rewriting a row that already agrees is the churn the tolerance exists to prevent.
+being true. `drift` reports the body's movement on every run, and `spec-cost:update --all --force` clears
+it by re-seeding every window from that run — the one thing a window cannot do for itself, since it is
+built to be slow to forget and a correlated drift is exactly the case where the old readings describe code
+that is gone. `--all` without it re-measures everything and appends, which keeps the protection.
 
 The chain is the whole gate: **CI does not run, on purpose.** `.github/workflows/ci.yml` has its `push`
 and `pull_request` triggers commented out while this is a single-contributor repo, so `gh run list` is empty
@@ -638,11 +651,13 @@ npm run spec-cost:update # The least that makes the records current, which is of
                          #                 siblings and 963ms on its own, against a band 1000ms wide, so a
                          #                 solo number files it in the wrong half
                          #   --suite <dir> one suite
-                         #   --all         re-measure everything — after a bundler bump. The only thing
-                         #                 that clears a correlated drift, since a fifth added to every
-                         #                 spec sits under every per-spec tolerance. It rewrites rows only
-                         #                 when the body moved past DRIFT_SHARE, so a quiet --all settles
-                         #                 them like any other run
+                         #   --all         re-measure every spec. Each reading still has to disagree with
+                         #                 its window's median to be kept, so a quiet --all writes nothing
+                         #   --all --force  and forget what was there: re-seed every window from this run.
+                         #                 The only thing that clears a correlated drift, since a fifth
+                         #                 added to every spec sits under every per-spec tolerance — and
+                         #                 the same pair that adopts a record measured on another machine,
+                         #                 because taking a record over and voiding its history are one act
                          #   --dry         what it would run and write
                          #   --force       override both refusals
 
