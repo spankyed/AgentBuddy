@@ -30,7 +30,8 @@ import { schedule } from './lib/chain-schedule.ts';
 import { box } from './lib/core-budget.ts';
 import { pruneDepFiles } from './lib/dep-files.ts';
 import { asCount, parseFlags } from './lib/measure.ts';
-import { TIMEOUT_MS, timeoutText } from './lib/step-timeouts.ts';
+import { MEASURED_ON } from './lib/chain-steps.ts';
+import { TIMEOUT_MS, timedOutBecause } from './lib/step-timeouts.ts';
 import { ENSURE, LEG_TIMEOUT, TYPECHECK_LEGS } from './lib/typecheck-legs.ts';
 
 /**
@@ -82,7 +83,7 @@ const result = await schedule({
     const [command, ...args] = leg.command.split(' ');
     // Not `leg.seconds`: a deadline from a measurement is a deadline from this machine. The class is
     // `LEG_TIMEOUT`, declared beside the legs so the chain's copy of these steps reads the same one.
-    const outcome = await boundedSpawn(command!, args, TIMEOUT_MS[LEG_TIMEOUT]);
+    const outcome = await boundedSpawn(command!, args, TIMEOUT_MS[LEG_TIMEOUT].ms);
     done.set(leg.name, outcome);
     // One line as it finishes, so a ten-second command is not ten seconds of silence. Completion order, since
     // that is what progress *is*; the failures below are in declared order, which is what reading wants.
@@ -94,9 +95,16 @@ const result = await schedule({
 const failed = TYPECHECK_LEGS.filter((leg) => (done.get(leg.name)?.code ?? 0) !== 0);
 for (const leg of failed) {
   const outcome = done.get(leg.name)!;
-  process.stderr.write(`\n${'─'.repeat(72)}\n${leg.name}${outcome.timedOut === true
-    ? ` timed out: it exceeded its ${timeoutText('quick')} budget and its process group was killed. It costs ${leg.seconds}s healthy here, so it is wedged — the class is chosen for the slowest plausible machine rather than from that number.`
-    : ` failed (exit ${outcome.code})`}\n${'─'.repeat(72)}\n${outcome.output}\n`);
+  // `LEG_TIMEOUT`, never the literal: this named `'quick'` while the kill above read `TIMEOUT_MS[LEG_TIMEOUT]`,
+  // so changing the legs' class would have had the message report a deadline other than the one that fired
+  const why = outcome.timedOut === true
+    ? timedOutBecause({
+      what: leg.name,
+      timeout: LEG_TIMEOUT,
+      healthy: { seconds: leg.seconds, measuredOn: MEASURED_ON },
+    })
+    : `${leg.name} failed (exit ${outcome.code})`;
+  process.stderr.write(`\n${'─'.repeat(72)}\n${why}\n${'─'.repeat(72)}\n${outcome.output}\n`);
 }
 
 // A leg that threw is a bug in this runner rather than a failing check, so it is reported separately

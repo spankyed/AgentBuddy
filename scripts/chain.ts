@@ -37,7 +37,7 @@ import * as path from 'node:path';
 import { changedInputs, diffableStamp, firstChange, freshnessSweep, INPUTS_CHANGED, PACKAGES_PREBUILT_ENV, REPO_ROOT, stampedRun, stampRecord, unitStaleReason, type BuildUnit } from '@abuddy/host/build/packages-built';
 import { CHAIN_STEPS, type ChainStep, chainSteps, MEASURED_ON, needsApp, orderedSteps, STEP_TABLES } from './lib/chain-steps.ts';
 import { CHAIN_FLAGS } from './lib/chain-flags.ts';
-import { TIMEOUT_MS, timeoutText, type TimeoutClass } from './lib/step-timeouts.ts';
+import { TIMEOUT_MS, timedOutBecause, type TimeoutClass } from './lib/step-timeouts.ts';
 import { box, isMeasuredMachine, machineText, scheduleMismatch, thisMachine } from './lib/core-budget.ts';
 import { commandText, rootScripts } from './lib/npm-scripts.ts';
 import { asCount, bodyDrift, drifted, IDLE_FLOOR, idleNow, movedBeyondBand, parseFlags, refusesAsBusy, refusesAsContended } from './lib/measure.ts';
@@ -195,7 +195,7 @@ async function run(step: string, timeout: TimeoutClass, force: readonly string[]
   // npm forwards what follows `--` to the script's own command, which is how this chain was given `--all`
   const withForce = force.length === 0 ? args : [...args, '--', ...force];
   // The bound is the step's declared class, so it carries no machine — see `step-timeouts.ts`
-  const { code, output, ms, timedOut } = await boundedSpawn('npm', withForce, TIMEOUT_MS[timeout], { env });
+  const { code, output, ms, timedOut } = await boundedSpawn('npm', withForce, TIMEOUT_MS[timeout].ms, { env });
   return { step, ms, code, output, timedOut };
 }
 
@@ -455,7 +455,11 @@ async function main(): Promise<void> {
       optedOut: noClassify,
     });
     const why = failed.timedOut
-      ? `${step.name} timed out: it exceeded its ${timeoutText(step.timeout)} budget and its process group was killed. It costs ${step.seconds ?? '?'}s healthy here, so it is wedged — a class is chosen for the slowest plausible machine, not from that measurement, so overrunning one is not a stale number.`
+      ? timedOutBecause({
+        what: step.name,
+        timeout: step.timeout,
+        ...step.seconds === undefined ? {} : { healthy: { seconds: step.seconds, measuredOn: MEASURED_ON } },
+      })
       : `${step.name} failed (exit ${failed.code})${howLong(step, failed.ms, budget, classifying)}`;
     console.log(`\n${'='.repeat(72)}\n${why}\n${'='.repeat(72)}\n${failed.output}`);
     if (classifying) {

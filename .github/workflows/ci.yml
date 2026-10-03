@@ -13,6 +13,13 @@ name: CI
 #
 # Turn it on when the repo has other contributors. Uncomment both triggers; the jobs below are current and
 # ready to run as they are. Until then it can still be run by hand from the Actions tab (workflow_dispatch).
+#
+# **What enabling it does and does not settle about the timeout ladder.** A runner here is the smaller machine
+# `TIMEOUT_MS` (scripts/lib/step-timeouts.ts) is sized for, and each rung declares how much its kind of work
+# stretches on one — two of the three borrowing a figure measured for the third. The jobs below reach only the
+# `quick` rung, through `npm run typecheck`'s eighteen legs; they run `npm test --workspace <each>` directly
+# rather than `npm run chain`, and a `suite` or `scenario` deadline is reached only by the chain. So enabling
+# this exercises one of the two assumed rows and neither of the eleven pool, build and scenario steps.
 
 on:
   workflow_dispatch:

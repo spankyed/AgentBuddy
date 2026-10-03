@@ -29,7 +29,7 @@
  * nobody tunes one of the pair wondering why the other exists.
  */
 import { boundedSpawn } from './lib/bounded-spawn.ts';
-import { TIMEOUT_CLASSES, timeoutMsFor, timeoutText, type TimeoutClass } from './lib/step-timeouts.ts';
+import { TIMEOUT_CLASSES, timedOutBecause, timeoutMsFor, type TimeoutClass } from './lib/step-timeouts.ts';
 
 const [className, command, ...args] = process.argv.slice(2);
 
@@ -40,13 +40,15 @@ if (!command || className === undefined) {
   // Refuses an unknown class rather than defaulting to one: a budget is a ceiling, so a confident wrong
   // answer is the permissive one (`step-timeouts.ts`, after `sizeOf`)
   const budgetMs = timeoutMsFor(className);
-  const { code, ms, timedOut } = await boundedSpawn(command, args, budgetMs, { stream: true });
+  const { code, timedOut } = await boundedSpawn(command, args, budgetMs, { stream: true });
   if (timedOut) {
-    // Its own line on stderr: the command's own output ended mid-sentence, so say why
-    process.stderr.write(`\nTIMEOUT after ${(ms / 1000).toFixed(0)}s: ${command} ${args.join(' ')}\n`
-      + `Its budget is ${timeoutText(className as TimeoutClass)} and its process group was killed. A class is `
-      + `chosen for the slowest plausible machine rather than from a measurement, so overrunning one means `
-      + `wedged rather than slow.\n`);
+    // Its own line on stderr: the command's own output ended mid-sentence, so say why. No `healthy` — this
+    // path has a class and an argv and no step record, so the rope is not a number it can compute, and
+    // `timedOutBecause` says that rather than inventing one
+    process.stderr.write(`\n${timedOutBecause({
+      what: `${command} ${args.join(' ')}`,
+      timeout: className as TimeoutClass,
+    })}\n`);
   }
   // Not process.exit(): it would drop whatever the child's inherited stdio has still to flush
   process.exitCode = code;

@@ -18,7 +18,8 @@ import { diffableStamp, firstChange, freshnessSweep, stampRecord } from '@abuddy
 import type { UnitSuite } from './lib/unit-suites.ts';
 import { POOLS, poolStampFor, poolUnitFor, projectsThatDidNotRun, prunePoolStamps, recordRun, recordsVerdict, whyItRuns, type Pool } from './lib/unit-pool.ts';
 import { boundedSpawn } from './lib/bounded-spawn.ts';
-import { TIMEOUT_MS } from './lib/step-timeouts.ts';
+import { MEASURED_ON, POOL_SECONDS } from './lib/chain-steps.ts';
+import { TIMEOUT_MS, timedOutBecause } from './lib/step-timeouts.ts';
 import { exitOnEpipe } from './lib/exit-on-epipe.ts';
 
 exitOnEpipe();
@@ -102,11 +103,25 @@ async function main(): Promise<void> {
       covered.map((suite) => ({ label: `${suite.dir} (${half})`, unit: poolUnitFor(suite, kind), stamp: poolStampFor(suite, half) })),
       async () => {
         // `suite`, the same class the chain gives this pool as a step — a pool fans out across workers, so
-        // it is the rung that stretches most on a smaller box. Not `POOL_SECONDS`, which is this machine's
-        // measurement and so would be this machine's deadline (`step-timeouts.ts`).
-        const { code, output, timedOut } = await boundedSpawn(command, [...args], TIMEOUT_MS.suite);
+        // it is the rung that stretches most on a smaller box. The *deadline* is never `POOL_SECONDS`, which
+        // is this machine's measurement and so would be this machine's deadline (`step-timeouts.ts`); the
+        // message below reads that cost, which is a different use of it and the one it is for.
+        const { code, output, timedOut } = await boundedSpawn(command, [...args], TIMEOUT_MS.suite.ms);
         process.stdout.write(output);
-        if (code !== 0) throw new Error(`${kind} pool ${timedOut ? 'timed out' : `failed (exit ${code})`}`);
+        if (code !== 0) {
+          // `POOL_SECONDS` only where this run is the whole pool, which is the one thing that cost describes
+          // — a run of two projects out of eleven has no recorded cost, and the message says that rather than
+          // computing a rope from a number about other work
+          throw new Error(timedOut
+            ? timedOutBecause({
+              what: `${kind} pool`,
+              timeout: 'suite',
+              ...covered.length === suites.length
+                ? { healthy: { seconds: POOL_SECONDS[kind], measuredOn: MEASURED_ON } }
+                : {},
+            })
+            : `${kind} pool failed (exit ${code})`);
+        }
         // Only what the run reported may be stamped: a `--project` filter matching nothing is dropped
         // silently while the others run, so exiting 0 is not evidence that every project was covered.
         const absent = projectsThatDidNotRun(covered.map((suite) => suite.workspace), output);
