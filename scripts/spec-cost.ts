@@ -289,6 +289,14 @@ function check(only: string | undefined, named: readonly string[]): void {
   const renames: { line: string; machine: Machine }[] = [];
   /** The same findings from a record measured on another machine, which are reported and not enforced */
   const elsewhere: { line: string; machine: Machine }[] = [];
+  /**
+   * The suites whose placement went unenforced, which is not the same set as `elsewhere`.
+   *
+   * `elsewhere` holds *findings* a foreign record produced; this holds every suite whose record is another
+   * machine's, finding or not. A tick that counted only findings would claim placement was checked for a
+   * foreign record that happened to have nothing wrong with it — which is most of them.
+   */
+  const unenforced = new Map<string, Machine>();
   const recordable = new Set<string>();
   let total = 0;
   for (const suite of suites) {
@@ -299,6 +307,7 @@ function check(only: string | undefined, named: readonly string[]): void {
       recordable.add(suite.dir);
       continue;
     }
+    if (!isMeasuredMachine(record.machine)) unenforced.set(suite.dir, record.machine);
     const files = specFiles(dir);
     const asked = named.length > 0 ? namedIn(suite.dir, named) : files;
     total += asked.length;
@@ -345,9 +354,19 @@ function check(only: string | undefined, named: readonly string[]): void {
     const found = [...problems, ...renames.map(({ line }) => line)].join('\n');
     throw new Error(`Spec costs are out of date (a fast spec moves above ${INTEGRATION_ABOVE_MS}ms, an integration one comes back below ${FAST_BELOW_MS}ms):\n${found}\n\n${advice}`);
   }
+  // **The tick says what was checked, not what the command is for.** Placement is enforced only against a
+  // record this machine measured, so on any other box "in the half its cost implies" is a claim about work
+  // that did not happen — and a green line carrying a false clause is how this repo came to have
+  // `packagesBuiltOrRefuse`: thirteen spec files, nine of them a whole package, reported green having checked
+  // nothing. The shape is the chain's own verdict, which composes an optional `(N of M cached)` clause rather
+  // than printing a different sentence.
+  const measuredBy = [...new Set([...unenforced.values()].map(machineText))].join(', ');
+  const placed = unenforced.size === 0 ? ' and in the half its cost implies'
+    : `; placement unchecked for ${unenforced.size} of ${suites.length} (measured on ${measuredBy}, `
+      + `this is ${machineText(thisMachine())})`;
   console.log(named.length > 0
-    ? `✅ ${total} spec${total === 1 ? '' : 's'}, recorded and in the half its cost implies`
-    : `✅ ${total} specs across ${suites.length} suite${suites.length === 1 ? '' : 's'}, each recorded and in the half its cost implies`);
+    ? `✅ ${total} spec${total === 1 ? '' : 's'}, recorded${placed}`
+    : `✅ ${total} specs across ${suites.length} suite${suites.length === 1 ? '' : 's'}, each recorded${placed}`);
 }
 
 /**

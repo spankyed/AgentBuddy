@@ -29,6 +29,7 @@ import {
 // the whole point of having both, and that pairing only exists here.
 import { bodyDrift, contended, drifted, refusesAsContended } from '../../../scripts/lib/measure.ts';
 import { isMeasuredMachine, machineText, thisMachine } from '../../../scripts/lib/core-budget.ts';
+import { priceSpecs } from '../../../scripts/lib/spec-dry.ts';
 import { UNIT_SUITES } from '../../../scripts/lib/unit-suites.ts';
 
 /** Every suite's record, read once. A suite with no record is a failure below, not an empty pass. */
@@ -178,7 +179,23 @@ describe.skipIf(!ON_MEASURED_MACHINE)(`a spec runs in the half its cost puts it 
   it('leaves the fast half worth running in a loop', () => {
     const cli = suites.find(({ suite }) => suite.dir === 'abuddy-cli')!;
     const fast = cli.files.filter((file) => halfOfPath(file) === 'fast');
-    const total = fast.reduce((sum, file) => sum + (cli.record?.costs[file] ?? 0), 0);
+
+    // **It refuses to vouch over a gap rather than vouching.** A missing cost used to sum as zero, so the
+    // total got smaller as the half got bigger — and the `unmeasured` list a second developer writes into is
+    // exactly a set of specs with no cost. The absent-record case was worse: `record?.costs[...] ?? 0` made
+    // the whole total 0 and this assertion passed over nothing at all. `priceSpecs`' doc has the rule —
+    // *"an unrecorded spec is named, never treated as zero: a total that quietly omits a file is a prediction
+    // that gets better the less it knows"* — and this is the same rule for a budget.
+    //
+    // Safe as a failure because this describe is machine-scoped: off the reference box it does not run, so
+    // the only person it stops is the one who can price them with one command.
+    // Through `priceSpecs` rather than a sum written here, because it already keeps that rule and already
+    // names what it could not price (`spec-dry.ts`). A second total would be a second place to get it wrong.
+    const priced = priceSpecs(fast.map((file) => path.join('packages', cli.suite.dir, file)), REPO_ROOT);
+    expect(priced.unpriced, 'these have no cost, so a total would understate the half it is vouching for. '
+      + `Run: npm run spec-cost:update -- --suite ${cli.suite.dir}`).toEqual([]);
+
+    const total = priced.fileTimeMs;
     expect(total, `the fast half is ${(total / 1000).toFixed(1)}s of file time across ${fast.length} specs`).toBeLessThan(30_000);
   });
 });
