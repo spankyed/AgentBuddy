@@ -588,6 +588,11 @@ function recordTheCosts(steps: readonly ChainStep[], measuredMs: ReadonlyMap<str
       }
       return;
     }
+    // **Reachable on the measuring machine, which is worth saying because it looks like it is not.** The
+    // block around it runs only where `isMeasuredSchedule` is false, and that reads as "another box" — but
+    // the budget is one of its three conjuncts, so `--all --record --adopt --cores 9` on the ten-core box
+    // that owns the table lands here. Exercised that way 2026-10-03: it refused and wrote nothing. No case,
+    // because nothing can import `scripts/chain.ts`; a command is how this one is checked.
     if (budget !== box()) {
       console.log(`\n--adopt refused: it records what this machine costs, so the budget has to be its cores `
         + `(${cores(box())}) and this ran on ${cores(budget)}.`);
@@ -639,7 +644,10 @@ function recordTheCosts(steps: readonly ChainStep[], measuredMs: ReadonlyMap<str
   // Written after the costs and only with them: the table and the box it was measured on are one fact, and
   // the failure this closes is them moving apart. A run that adopts and then records nothing still takes the
   // table over — every row it re-measured agreed, which is a measurement and not an absence of one.
-  if (adopt) {
+  // Nothing to adopt where this machine already owns the table — and the write is not free to repeat: it
+  // puts identical bytes back, which moves `chain-steps.ts`' mtime for no change, and the freshness sweep
+  // reports exactly that as a file whose mtime moved while its bytes did not.
+  if (adopt && !isMeasuredMachine(MEASURED_ON)) {
     recordMachine(thisMachine());
     console.log(`\nadopted the table: ${machineLine(thisMachine())}`);
   }
