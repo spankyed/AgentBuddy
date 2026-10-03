@@ -82,24 +82,24 @@ export const ENSURE = 'packages:ensure';
  */
 export const TYPECHECK_LEGS: readonly Leg[] = [
   { name: ENSURE, command: 'npm run packages:ensure', scope: ['abuddy-ears', 'abuddy-sdk', 'abuddy-ui', 'abuddy-cli', 'abuddy-testing'], seconds: 0.3 },
-  { name: 'typecheck:fe', command: 'npm run typecheck:fe', seconds: 6.2 },
-  { name: 'typecheck:be', command: 'npm run typecheck:be', alsoReads: ['package.json'], seconds: 3.4 },
-  { name: 'typecheck:ears', command: 'npm run typecheck:ears', seconds: 0.8 },
-  { name: 'typecheck:sdk', command: 'npm run typecheck:sdk', seconds: 1.1 },
-  { name: 'typecheck:host', command: 'npm run typecheck:host', seconds: 1.3 },
-  { name: 'typecheck:ui', command: 'npm run typecheck:ui', seconds: 2.0 },
-  { name: 'check:specifiers', command: 'npm run check:specifiers', scope: 'repo', seconds: 2.7 },
+  { name: 'typecheck:fe', command: 'npm run typecheck:fe', seconds: 10 },
+  { name: 'typecheck:be', command: 'npm run typecheck:be', alsoReads: ['package.json'], seconds: 7 },
+  { name: 'typecheck:ears', command: 'npm run typecheck:ears', seconds: 2 },
+  { name: 'typecheck:sdk', command: 'npm run typecheck:sdk', seconds: 4 },
+  { name: 'typecheck:host', command: 'npm run typecheck:host', seconds: 4 },
+  { name: 'typecheck:ui', command: 'npm run typecheck:ui', seconds: 5 },
+  { name: 'check:specifiers', command: 'npm run check:specifiers', scope: 'repo', seconds: 5 },
   { name: 'exports:check', command: 'npm run exports:check', seconds: 1 },
   { name: 'schema:check', command: 'npm run schema:check', seconds: 0.5 },
   { name: 'api:stamp', command: 'npm run api:stamp', scope: 'repo', seconds: 0.7 },
-  { name: 'typecheck:scripts', command: 'npm run typecheck:scripts', scope: 'repo', seconds: 4 },
-  { name: 'typecheck:cli', command: 'npm run typecheck:cli', seconds: 2.7 },
-  { name: 'typecheck:pack', command: 'npm run typecheck:pack', seconds: 4.8 },
+  { name: 'typecheck:scripts', command: 'npm run typecheck:scripts', scope: 'repo', seconds: 6 },
+  { name: 'typecheck:cli', command: 'npm run typecheck:cli', seconds: 5 },
+  { name: 'typecheck:pack', command: 'npm run typecheck:pack', seconds: 8 },
   // Both compile `../../types/**/*.d.ts` through their own tsconfig `include`
-  { name: 'typecheck:main', command: 'npm run typecheck:main', alsoReads: ['types'], seconds: 1.0 },
-  { name: 'typecheck:preload', command: 'npm run typecheck:preload', alsoReads: ['types'], seconds: 0.8 },
+  { name: 'typecheck:main', command: 'npm run typecheck:main', alsoReads: ['types'], seconds: 3 },
+  { name: 'typecheck:preload', command: 'npm run typecheck:preload', alsoReads: ['types'], seconds: 2 },
   { name: 'check:tiers', command: 'npm run check:tiers', scope: 'repo', seconds: 0.3 },
-  { name: 'lint:check', command: 'npm run lint:check', scope: 'repo', seconds: 1.7 },
+  { name: 'lint:check', command: 'npm run lint:check', scope: 'repo', seconds: 3 },
 ];
 
 /**

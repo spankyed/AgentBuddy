@@ -591,7 +591,7 @@ export const SUITE_READS: Record<string, { packages?: true; pack?: true; repo?: 
  * It feeds two kill budgets, `budgetFor` here and the pool's own inner spawn (`test-unit-pool.ts`), so it
  * is the cost of the whole pool and never of a partial run.
  */
-export const POOL_SECONDS: Record<'host' | 'pack' | 'integration', number> = { host: 42, pack: 42, integration: 60 };
+export const POOL_SECONDS: Record<'host' | 'pack' | 'integration', number> = { host: 42, pack: 21, integration: 60 };
 
 /**
  * The files a chain step is declared in — the two tables, as one list, repo-relative.
@@ -869,7 +869,7 @@ export const CHAIN_STEPS: readonly ChainStep[] = [
   // 38s, not the 20s it takes alone: `seconds` is what a step costs under the chain's own default lanes,
   // because that is what `budgetFor` has to cover. Raising the default from two to three moved this one and
   // nothing else past the drift band, which is `driftedSteps` doing its job.
-  { name: 'test:external-pack:contract', seconds: 57, outputs: FIXTURE_OUTPUTS,
+  { name: 'test:external-pack:contract', seconds: 36, outputs: FIXTURE_OUTPUTS,
     // It declares `tests/packs` for the pack sources; the Playwright output under each pack is written
     // by `:app`, changes every run, and is read by nothing
     excludes: FIXTURE_TEST_OUTPUT,
@@ -929,7 +929,7 @@ export const CHAIN_STEPS: readonly ChainStep[] = [
   // declared — so an unchanged stamp means the same app, and running it again asks a question already
   // answered. Uncached it put the warm chain back to 5.6s from 0.9s, which is most of what taking the
   // suite off the gate bought.
-  { name: 'test:smoke', seconds: 6,
+  { name: 'test:smoke', seconds: 18,
     outputs: ['tests/results'],
     inputs: [...ROOT, 'tests/e2e/smoke', 'playwright.config.ts',
       'scripts/with-source.mjs', ...APP_ENTRY, ...PACKAGE_BUILD_OUTPUTS, ...APP_OUTPUTS] },
@@ -949,7 +949,7 @@ export const CHAIN_STEPS: readonly ChainStep[] = [
     // the step is never cached, so it buys the ordering and costs no precision
     inputs: [...ROOT, 'tests/e2e', 'playwright.config.ts', 'scripts/with-source.mjs', ...APP_ENTRY,
       ...PACKAGE_BUILD_OUTPUTS, ...APP_OUTPUTS] },
-  { name: 'test:packaged-authoring', seconds: 59,
+  { name: 'test:packaged-authoring', seconds: 91,
     inputs: [...ROOT, ...BOUNDED_RUNNER, 'tests/scripts/test-packaged-authoring.sh', 'tests/scripts/lib',
       ...PACKAGE_BUILD_OUTPUTS, ...APP_OUTPUTS] },
 ];
