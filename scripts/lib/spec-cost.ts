@@ -280,9 +280,28 @@ export function halfFor(file: string, ms: number): Half {
   return now;
 }
 
+/**
+ * The record, or `undefined` for anything this cannot read as one.
+ *
+ * **A file missing a field is unreadable, not a record with a hole in it.** `JSON.parse` returns whatever is
+ * there and the cast says otherwise, so a record written before a field existed arrived typed as complete and
+ * crashed its first reader: dropping `machine` from one of the twelve made `suite-split.spec.ts` fail at
+ * collection with `Cannot read properties of undefined (reading 'cpu')` and **run no tests at all** — the
+ * worst shape available, since a suite that collapses reports nothing rather than failing about something.
+ * Reachable from a branch not yet rebased, a stash, a revert or a merge from before the field landed.
+ *
+ * `undefined` rather than a throw, because the callers already handle it and handle it well: `check` reports
+ * *"no <file>; run spec-cost:update"*, which is the right advice for a record that has to be re-taken. This
+ * repo keeps no backward compatibility, so requiring that is the policy — saying so is the part that was
+ * missing.
+ */
 export function readSpecCost(repoRoot: string, dir: string): SpecCost | undefined {
   try {
-    return JSON.parse(fs.readFileSync(path.join(repoRoot, specCostFile(dir)), 'utf-8')) as SpecCost;
+    const parsed = JSON.parse(fs.readFileSync(path.join(repoRoot, specCostFile(dir)), 'utf-8')) as SpecCost;
+    const complete = typeof parsed?.measuredAt === 'string' && typeof parsed.costs === 'object'
+      && Array.isArray(parsed.skipped) && Array.isArray(parsed.unmeasured)
+      && typeof parsed.machine?.cpu === 'string' && typeof parsed.machine.cores === 'number';
+    return complete ? parsed : undefined;
   } catch {
     return undefined;
   }

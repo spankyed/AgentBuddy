@@ -296,6 +296,13 @@ async function main(): Promise<void> {
     throw new Error(`The chain takes flags only, not ${args.positionals.join(' ')}`
       + ' — npm keeps a flag you did not put after `--`, so write `npm run chain -- --dry`');
   }
+  // `--adopt` is what `--record` does on another machine, so on its own it is a flag that would be accepted
+  // and then never read — the shape `10e7b9391` removed when `--lanez 3` ran a full chain in silence. Refused
+  // here rather than inside `recordTheCosts`, which is reached after the whole chain has run.
+  if (args.flags.has('adopt') && !args.flags.has('record')) {
+    throw new Error('--adopt only means something with --record: it is how another machine records this table,'
+      + ' and it writes MEASURED_ON with the costs. Write `npm run chain -- --all --record --adopt`.');
+  }
   const all = args.flags.has('all');
   // What the chain would do, without doing it. The answer is a pure function of the tree, so it is the way
   // to check the cache on a machine too loaded to time a run on — and the way to find out why a step you

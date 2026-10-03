@@ -608,6 +608,31 @@ describe('a bare update asks for the least the record needs', () => {
   });
   afterAll(() => fs.rmSync(root, { recursive: true, force: true }));
 
+  /**
+   * A record this cannot read as one is absent, not a record with a hole in it.
+   *
+   * `readSpecCost` is a `JSON.parse` behind a cast, so a file written before a field existed arrived typed as
+   * complete. Dropping `machine` from one of the twelve made this spec file fail at *collection* —
+   * `Cannot read properties of undefined (reading 'cpu')`, and **no tests at all** — which is the worst shape
+   * available, a suite that reports nothing rather than failing about something. Reachable from a branch not
+   * yet rebased, a stash, a revert, or a merge from before the field landed.
+   *
+   * Absent is the right answer rather than a throw: `check` already says *"no <file>; run spec-cost:update"*,
+   * which is what a record that has to be re-taken needs to hear. This repo keeps no backward compatibility,
+   * so requiring that is the policy; saying it out loud is the part that was missing.
+   */
+  it.each(['machine', 'unmeasured', 'skipped', 'costs', 'measuredAt'])('reads a record with no %s as no record', (field) => {
+    const full = { measuredAt: 'then', costs: { 'tests/a.spec.ts': 100 }, skipped: [], unmeasured: [], machine: thisMachine() };
+    write(specCostFile(DIR), `${JSON.stringify(Object.fromEntries(Object.entries(full).filter(([key]) => key !== field)), null, 2)}\n`);
+
+    expect(readSpecCost(root, DIR)).toBeUndefined();
+  });
+
+  it('reads a complete one, so the case above is not passing on the parse', () => {
+    record({ 'tests/a.spec.ts': 100 });
+    expect(readSpecCost(root, DIR)).toMatchObject({ costs: { 'tests/a.spec.ts': 100 }, machine: thisMachine() });
+  });
+
   it('measures only the half a spec with no recorded cost lives in', () => {
     record({ 'tests/a.spec.ts': 100 });
     expect(planFor(root, DIR, [], false))
