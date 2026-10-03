@@ -11,6 +11,9 @@ import { describe, expect, it } from 'vitest';
 import { REPO_ROOT } from '@abuddy/host/build/packages-built';
 import { CHAIN_STEPS, chainSteps, conflictsOf, dependsOn, orderedSteps, STEP_TABLES, type ChainStep } from '../../../scripts/lib/chain-steps.ts';
 import { declaredAt } from '../../../scripts/lib/chain-output.ts';
+import { withoutComments } from '../../../scripts/lib/npm-scripts.ts';
+import { population } from '@abuddy/sdk/testing';
+import { TIMEOUT_CLASSES, TIMEOUT_MS } from '../../../scripts/lib/step-timeouts.ts';
 
 describe('the chain graph', () => {
   it('orders every step after the steps it depends on', () => {
@@ -44,8 +47,8 @@ describe('the chain graph', () => {
    */
   it('refuses a cycle', () => {
     const steps: ChainStep[] = [
-      { name: 'a', inputs: ['y'], outputs: ['x'] },
-      { name: 'b', inputs: ['x'], outputs: ['y'] },
+      { name: 'a', timeout: 'quick', inputs: ['y'], outputs: ['x'] },
+      { name: 'b', timeout: 'quick', inputs: ['x'], outputs: ['y'] },
     ];
     expect(() => orderedSteps(steps)).toThrow(/cycle/);
   });
@@ -60,9 +63,9 @@ describe('the chain graph', () => {
    */
   it('refuses a cycle reached through a step with two producers, naming it rather than overflowing', () => {
     const steps: ChainStep[] = [
-      { name: 'a', inputs: ['x', 'y'], outputs: ['z'] },
-      { name: 'b', inputs: ['z'], outputs: ['x'] },
-      { name: 'c', inputs: [], outputs: ['y'] },
+      { name: 'a', timeout: 'quick', inputs: ['x', 'y'], outputs: ['z'] },
+      { name: 'b', timeout: 'quick', inputs: ['z'], outputs: ['x'] },
+      { name: 'c', timeout: 'quick', inputs: [], outputs: ['y'] },
     ];
     expect(() => orderedSteps(steps)).toThrow(/cycle through a/);
   });
@@ -147,7 +150,7 @@ describe('the chain graph', () => {
   });
 
   it('refuses two steps with one name, which would make an edge ambiguous', () => {
-    const steps: ChainStep[] = [{ name: 'a', inputs: [] }, { name: 'a', inputs: [] }];
+    const steps: ChainStep[] = [{ name: 'a', timeout: 'quick', inputs: [] }, { name: 'a', timeout: 'quick', inputs: [] }];
     expect(() => orderedSteps(steps)).toThrow(/Two chain steps named a/);
   });
 
@@ -221,10 +224,57 @@ describe('every spawn an orchestrator makes is bounded', () => {
   // An unbounded run cannot fail — it waits until a person notices and kills it by pid, which is how this
   // repo collected an orphaned build at 99% CPU for a day. `boundedSpawn` bounds the wall clock and kills
   // the process group rather than the child, so nothing outlives the run that started it.
-  it.each(['scripts/chain.ts', 'scripts/test-unit.ts'])('%s spawns only through boundedSpawn', (file) => {
+  // Four files, not two: `typecheck.ts` and `test-unit-pool.ts` spawn as well, and both were missing from
+  // this list while it read as the repo's answer to "does anything spawn unbounded".
+  it.each(['scripts/chain.ts', 'scripts/test-unit.ts', 'scripts/typecheck.ts', 'scripts/test-unit-pool.ts'])(
+    '%s spawns only through boundedSpawn', (file) => {
     const source = read(file);
     expect(source, `${file} imports spawn directly`).not.toMatch(/import \{[^}]*\bspawn\b[^}]*\} from 'node:child_process'/);
     expect(source).toContain('boundedSpawn');
+  });
+
+  /**
+   * **No deadline anywhere is a function of a recorded measurement.** This is the greppable property
+   * `docs/plans/costs-across-machines.md` asks Phase 1 to end on, and it is greppable on purpose: the rule
+   * is about a shape rather than a value, so a reader can check it and so can this.
+   *
+   * It was `budgetFor(seconds)` — four times a ten-core measurement — which made every kill deadline in the
+   * repo this machine's deadline. A box with a third of the cores ran the same bound over a step three to
+   * four times slower, and `test:unit:host` came out at 130-170s against a 168s deadline: a flake that reads
+   * as a code failure.
+   *
+   * The shell scripts are in the population because they were the half that nearly got missed. Their bounds
+   * are *inner*, nested inside the chain's, and two of the three were already the binding constraint — 90s
+   * inside against 144s outside — so coarsening only the chain's would have changed nothing for them.
+   *
+   * **Two halves, because the negative one alone is weak.** Refusing `budgetFor(` catches the old shape
+   * coming back and nothing else: someone writing `classFor(step.seconds)` passes it. So the positive half
+   * asserts each of these files takes its bound from the ladder. What neither catches is a *new* function
+   * that thresholds a cost into a class inside `step-timeouts.ts` itself — that one is a comment on
+   * `TIMEOUT_MS`, and the edit to watch is the one that gives a step its class by comparing `seconds`.
+   */
+  it('sizes no deadline from a measurement, in any file that spawns or any script that bounds one', () => {
+    const spawners = ['scripts/chain.ts', 'scripts/test-unit.ts', 'scripts/typecheck.ts',
+      'scripts/test-unit-pool.ts', 'scripts/bounded.ts'];
+    for (const file of population('the bounding files', spawners)) {
+      // Comments stripped, because prose about the old rule is not the old rule — `withoutComments`, for the
+      // reason it was written: a script explaining why it does *not* do a thing otherwise reads as doing it.
+      // Three of these files name `budgetFor` in a sentence recording what it was.
+      expect(withoutComments(read(file), false), `${file} derives a deadline from a cost; a class carries no machine`)
+        .not.toMatch(/budgetFor\s*\(/);
+    }
+    // The positive half: the bound comes from the ladder rather than from anywhere else
+    for (const file of spawners) {
+      expect(read(file), `${file} spawns without taking its deadline from step-timeouts.ts`)
+        .toContain('step-timeouts.ts');
+    }
+    // And the shell bounds name a class rather than a number of seconds, which is the same rule one layer out
+    const scripts = (JSON.parse(read('package.json')) as { scripts: Record<string, string> }).scripts;
+    const numeric = Object.entries(scripts)
+      .filter(([, command]) => /scripts\/bounded\.ts\s+\d/.test(command))
+      .map(([name]) => name);
+    expect(numeric, 'these bound a script with a number of seconds, which is a deadline from one machine')
+      .toEqual([]);
   });
 
   // A shell script run through the chain is bounded by the step's budget, but the direct run is the one
@@ -238,9 +288,32 @@ describe('every spawn an orchestrator makes is bounded', () => {
     expect(unbounded, 'these run a shell script with no wall-clock budget').toEqual([]);
   });
 
-  // The budget is sized from the measurement, so a step with none gets only a loose default
+  // Not for the budget any more — that is a declared class — but because the drift report compares a run
+  // against this number, and a step with none is one no run can contradict
   it('every chain step declares what it costs healthy', () => {
     expect(CHAIN_STEPS.filter((step) => step.seconds === undefined).map((step) => step.name)).toEqual([]);
+  });
+
+  /**
+   * Every step declares a timeout class, which is what actually bounds it.
+   *
+   * Required on the type, so this cannot fail by a step omitting one — what it catches is the other way, a
+   * class that is not in the ladder, which `TIMEOUT_MS` would answer `undefined` for and `boundedSpawn`
+   * would take as a deadline of NaN. That is `unit-pool.spec.ts`' hazard moved to its new home.
+   */
+  it('bounds every step with a class the ladder has', () => {
+    const unknown = CHAIN_STEPS.filter((step) => TIMEOUT_MS[step.timeout] === undefined);
+    expect(unknown.map((step) => step.name), 'a class off the ladder is a deadline of NaN').toEqual([]);
+  });
+
+  /**
+   * No rung exists that nothing uses, which is the argument `SIZE_MS` makes against a third bucket — "two
+   * buckets, because two is what has consumers". Three survive it only while three kinds are nameable, and
+   * this is what says they still are.
+   */
+  it('uses every rung of the ladder, so none is a value nothing distinguishes', () => {
+    const used = new Set(CHAIN_STEPS.map((step) => step.timeout));
+    expect([...used].sort(), 'a rung nothing uses is one to delete').toEqual([...TIMEOUT_CLASSES].sort());
   });
 
   /**

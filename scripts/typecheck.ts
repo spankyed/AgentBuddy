@@ -25,11 +25,12 @@
  * and `exports:check` are reachable *only* through this file. A name in a template literal would be invisible
  * to both, and the second would report them as never run.
  */
-import { boundedSpawn, budgetFor } from './lib/bounded-spawn.ts';
+import { boundedSpawn } from './lib/bounded-spawn.ts';
 import { schedule } from './lib/chain-schedule.ts';
 import { box } from './lib/core-budget.ts';
 import { pruneDepFiles } from './lib/dep-files.ts';
 import { asCount, parseFlags } from './lib/measure.ts';
+import { TIMEOUT_MS, timeoutText } from './lib/step-timeouts.ts';
 import { ENSURE, TYPECHECK_LEGS } from './lib/typecheck-legs.ts';
 
 /**
@@ -79,7 +80,9 @@ const result = await schedule({
   skip: () => false,
   async run(leg) {
     const [command, ...args] = leg.command.split(' ');
-    const outcome = await boundedSpawn(command!, args, budgetFor(leg.seconds));
+    // Every leg is one compiler in one process, which is `quick` — the class the chain gives these same
+    // legs as steps. Not `leg.seconds`: a deadline from a measurement is a deadline from this machine.
+    const outcome = await boundedSpawn(command!, args, TIMEOUT_MS.quick);
     done.set(leg.name, outcome);
     // One line as it finishes, so a ten-second command is not ten seconds of silence. Completion order, since
     // that is what progress *is*; the failures below are in declared order, which is what reading wants.
@@ -92,7 +95,7 @@ const failed = TYPECHECK_LEGS.filter((leg) => (done.get(leg.name)?.code ?? 0) !=
 for (const leg of failed) {
   const outcome = done.get(leg.name)!;
   process.stderr.write(`\n${'─'.repeat(72)}\n${leg.name}${outcome.timedOut === true
-    ? ` timed out: it exceeded its ${secs(budgetFor(leg.seconds))} budget and its process group was killed. It costs ${leg.seconds}s healthy, so either it is wedged or it has grown and the measurement in scripts/typecheck.ts is stale.`
+    ? ` timed out: it exceeded its ${timeoutText('quick')} budget and its process group was killed. It costs ${leg.seconds}s healthy here, so it is wedged — the class is chosen for the slowest plausible machine rather than from that number.`
     : ` failed (exit ${outcome.code})`}\n${'─'.repeat(72)}\n${outcome.output}\n`);
 }
 

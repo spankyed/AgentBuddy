@@ -46,7 +46,8 @@ export function criticalPath<S extends SchedulableStep>(steps: readonly S[]): { 
  *
  * The band is wide on purpose. Two lanes, a warm page cache and a loaded laptop move a step's time a long
  * way, and a warning that fires on ordinary variance is one people learn to skip. Half to double is where
- * the number has stopped being useful — at four times, `budgetFor` starts killing healthy steps.
+ * the number has stopped being useful as a report, which since 2026-10-03 is all it is: a deadline is a
+ * declared class and no longer a multiple of this number, so nothing is killed for drifting.
  *
  * A step that finished in under a second is left alone, and that is not a rounding nicety. `seconds` is
  * what a step costs *when it does its work*, and a step can run having nothing to do: `packages:ensure`

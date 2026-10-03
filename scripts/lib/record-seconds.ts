@@ -47,8 +47,9 @@ function inObjectLiteral(source: string, step: string): { at: number; digits: st
  * And the three pooled steps, whose cost is a key in `POOL_SECONDS` rather than a field on the step.
  *
  * `test:integration` is here because it is pooled like the other two — it carried its own `seconds: 60`
- * beside `POOL_SECONDS.integration` until 2026-10-02, and the pool passes that key to `budgetFor`, so a
- * rewrite of the literal left the kill budget behind.
+ * beside `POOL_SECONDS.integration` until 2026-10-02, and a rewrite of the literal left the other record
+ * behind. Both were read as a kill budget then, which is what made the drift a hazard rather than a
+ * wrong line of output; deadlines are declared classes now, and the duplication is still worth refusing.
  */
 function inPoolSeconds(source: string, step: string): { at: number; digits: string } | undefined {
   const kind = /^test:(?:unit:(host|pack)|(integration))$/.exec(step)?.slice(1).find((one) => one !== undefined);

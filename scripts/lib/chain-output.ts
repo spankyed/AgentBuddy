@@ -5,7 +5,6 @@
  * cannot load `chain.ts` without starting a six-minute build.
  */
 import { covers } from '@abuddy/host/build/packages-built';
-import { budgetFor } from './bounded-spawn.ts';
 import { overBand } from './step-timing.ts';
 
 /**
@@ -323,8 +322,8 @@ export const cores = (budget: number): string => (budget === 1 ? '1 core' : `a $
 /**
  * What a failing step cost, against what it costs healthy. The timeout branch below already says this and
  * draws its conclusion; an ordinary failure said only its exit code, which is why one unexplained
- * `test:integration` failure took a reader to `chain-steps.ts` and `budgetFor` by hand to find out it had not
- * been killed — every number needed was already here.
+ * `test:integration` failure took a reader to `chain-steps.ts` and the deadline by hand to find out it had
+ * not been killed — every number needed was already here.
  *
  * Past double the declared cost it names the run that tells the two diagnoses apart, because this repo has
  * measured that they differ: sharing the machine, `@abuddy/cli` "began reporting errors it does not report
@@ -359,7 +358,7 @@ export function howLong(
  * The same numbers are worth printing as what they are. Which steps the schedule's contention moves most is not
  * recorded anywhere else. It takes `--all --cores 1` to see it, not the plain `--cores 1` a failing step
  * suggests — that run answers the narrower question the failure asks, whether the step passes alone.
- */
+ * */
 export function driftReport(
   drifted: readonly { name: string; declared: number; measured: number }[],
   budget: number,
@@ -371,7 +370,8 @@ export function driftReport(
   // Under the band is the run's doing: a smaller budget, or most steps cached, is less contention, and with
   // nine of twelve cached any budget behaves like one. Over it is not — less contention should make a step
   // faster, so an
-  // overrun on a partial run is the step growing, which is the direction `budgetFor` kills on at four times.
+  // overrun on a partial run is the step growing, which is the direction worth hearing about even though
+  // nothing is killed for it any more.
   // Measured over 40 step runs in one day: 6 under the band, 0 over it, so this costs no noise.
   const shown = forced ? drifted : drifted.filter(({ declared, measured }) => overBand(declared, measured));
   if (shown.length === 0) return '';
@@ -380,8 +380,12 @@ export function driftReport(
     shown.map((d) => `  ${d.name.padEnd(STEP_NAME_WIDTH)} ${line(d)}`).join('\n');
 
   if (!forced) {
+    // No `(killed at Ns)` any more, and its absence is the point: a deadline is a declared class now
+    // (`step-timeouts.ts`), so it is not a function of the declared cost and cannot be computed from one.
+    // Naming the class here would mean threading it through a drift row that has no other use for it, to
+    // say a number that is the same for every step in its class and is in the timeout message already.
     return `\n${count} ran past twice the declared cost — the step grew, not the schedule:\n`
-      + `${rows(({ declared, measured }) => `${declared}s -> ${measured}s  (killed at ${budgetFor(declared) / 1000}s)`)}`;
+      + `${rows(({ declared, measured }) => `${declared}s -> ${measured}s`)}`;
   }
   if (budget === measuredAt) {
     return `\n${count} cost something other than chain-steps.ts says — re-measure, or record:\n`

@@ -56,14 +56,14 @@ export interface Leg {
    * which this becomes (`chain-steps.ts` copies it onto the generated step).
    *
    * **It used to say "alone, on an idle machine", and that was two regimes for one field.** `npm run chain
-   * -- --all --record` writes in-chain numbers here, `budgetFor` sizes every leg's kill deadline from it,
-   * and `driftedSteps` compares a chain run against it; only `npm run typecheck`, run by a person directly,
-   * ever sees a leg alone. The figure the old wording described is in that command's own doc, which is
-   * where it informs something.
+   * -- --all --record` writes in-chain numbers here and `driftedSteps` compares a chain run against them;
+   * only `npm run typecheck`, run by a person directly, ever sees a leg alone. The figure the old wording
+   * described is in that command's own doc, which is where it informs something.
    *
-   * It feeds `budgetFor`, which bounds a leg at four times this and floors at 60s — so the short legs all
-   * land on the floor, which is the right bound for them anyway. Re-measure rather than raise one: a bound
-   * nobody will wait for is the same as no bound.
+   * **It bounds nothing.** It sized each leg's kill deadline at four times until 2026-10-03, which made
+   * every leg's deadline a function of this machine; a leg is bounded by the `quick` class now
+   * (`step-timeouts.ts`), as the chain's own copy of it is. What is left here is the number a run is
+   * reported against, so re-measure rather than raise one.
    */
   readonly seconds: number;
 }

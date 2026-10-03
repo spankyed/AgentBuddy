@@ -370,19 +370,6 @@ describe('driftReport', () => {
     expect(report).toContain('seconds: 57 -> 18');
   });
 
-  /**
-   * Measured: a serial run reports exactly these two, and the old report told the reader to record 18 for a
-   * step that costs 57s in the default schedule — which `budgetFor` turns into a 72s kill budget, the
-   * mis-sized bound `seconds`' own doc warns about. The numbers are real; only "record them" was wrong.
-   */
-  it('names the spread instead, when the run used another budget', () => {
-    const report = driftReport(drifted, 1, 10, true);
-
-    expect(report).not.toContain('record');
-    expect(report).toContain('on 1 core, 2 steps moved against 10-core numbers');
-    expect(report).toContain('57s -> 18s  (3.2x faster alone)');
-  });
-
   it('says slower when a bigger budget made a step slower, not faster', () => {
     expect(driftReport([{ name: 'typecheck', declared: 27, measured: 54 }], 16, 10, true)).toContain('(2.0x slower)');
   });
@@ -399,26 +386,24 @@ describe('driftReport', () => {
 
   /**
    * The other direction is not the run's doing: less contention cannot make a step slower, so an overrun on a
-   * partial run is the step growing. It is also the direction that ends in a kill — `budgetFor` is four times
-   * — which is why this one is reported whatever the run did. Measured over 40 step runs in a day: 6 under the
-   * band, 0 over it, so saying it always costs no noise.
+   * partial run is the step growing, which is why this one is reported whatever the run did. Measured over 40
+   * step runs in a day: 6 under the band, 0 over it, so saying it always costs no noise.
+   *
+   * **It named `(killed at 108s)` until 2026-10-03, and a sibling case covered the floor that made a cheap
+   * step's real budget 60s rather than four times its cost.** Both went with `budgetFor`: a deadline is a
+   * declared class now (`step-timeouts.ts`), so it is not a function of the declared cost and this row has
+   * no way to compute one — and nothing to gain by being handed the class, which is the same number for
+   * every step in it and is in the timeout message already. Do not put a predicted deadline back here
+   * without first giving the row something the timeout message does not already say.
    */
-  it('names a step that ran past double, on any run, and what it is heading toward', () => {
+  it('names a step that ran past double, on any run', () => {
     const grew = [{ name: 'typecheck', declared: 27, measured: 61 }];
 
     const report = driftReport(grew, 10, 10, false);
 
     expect(report).toContain('the step grew, not the schedule');
-    expect(report).toContain('27s -> 61s  (killed at 108s)');
-  });
-
-  /**
-   * `budgetFor` floors at 60s, so four times is not the budget for a cheap step. Caught by a real run, where a
-   * declared 5s printed "killed at 20s" — the unit case above uses 27s, where the floor never shows.
-   */
-  it('names the real budget for a cheap step, which the four-times floor makes 60s', () => {
-    expect(driftReport([{ name: 'packages:check', declared: 5, measured: 21 }], 10, 10, false))
-      .toContain('5s -> 21s  (killed at 60s)');
+    expect(report).toContain('27s -> 61s');
+    expect(report, 'a deadline is a class, so this row cannot predict one').not.toContain('killed at');
   });
 
   it('keeps an overrun out of the count when the run could answer for both directions', () => {

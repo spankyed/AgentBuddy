@@ -37,6 +37,7 @@ import * as path from 'node:path';
 import { changedInputs, diffableStamp, firstChange, freshnessSweep, INPUTS_CHANGED, PACKAGES_PREBUILT_ENV, REPO_ROOT, stampedRun, stampRecord, unitStaleReason, type BuildUnit } from '@abuddy/host/build/packages-built';
 import { CHAIN_STEPS, type ChainStep, chainSteps, MEASURED_AT_CORES, needsApp, orderedSteps, STEP_TABLES } from './lib/chain-steps.ts';
 import { CHAIN_FLAGS } from './lib/chain-flags.ts';
+import { TIMEOUT_MS, timeoutText, type TimeoutClass } from './lib/step-timeouts.ts';
 import { box, isMeasuredSchedule } from './lib/core-budget.ts';
 import { commandText, rootScripts } from './lib/npm-scripts.ts';
 import { asCount, bodyDrift, drifted, IDLE_FLOOR, idleNow, movedBeyondBand, parseFlags, refusesAsBusy, refusesAsContended } from './lib/measure.ts';
@@ -50,7 +51,7 @@ import { exitOnEpipe } from './lib/exit-on-epipe.ts';
 
 exitOnEpipe();
 
-import { boundedSpawn, budgetFor } from './lib/bounded-spawn.ts';
+import { boundedSpawn } from './lib/bounded-spawn.ts';
 
 /**
  * Each step is cached on its own declared inputs, through the same protocol the package builds use:
@@ -188,13 +189,13 @@ function whatMoved(
  * the two unit pools did exactly that. Only steps that declare them get any, because most steps' commands
  * would reject an argument they do not know.
  */
-async function run(step: string, seconds: number | undefined, force: readonly string[] = [], env: NodeJS.ProcessEnv = process.env): Promise<Result> {
+async function run(step: string, timeout: TimeoutClass, force: readonly string[] = [], env: NodeJS.ProcessEnv = process.env): Promise<Result> {
   // `npm test` is the E2E suite and takes no `run`
   const args = step === 'test' ? ['test'] : ['run', step];
   // npm forwards what follows `--` to the script's own command, which is how this chain was given `--all`
   const withForce = force.length === 0 ? args : [...args, '--', ...force];
-  // A step with no measurement still gets a bound, just a loose one
-  const { code, output, ms, timedOut } = await boundedSpawn('npm', withForce, budgetFor(seconds ?? 300), { env });
+  // The bound is the step's declared class, so it carries no machine — see `step-timeouts.ts`
+  const { code, output, ms, timedOut } = await boundedSpawn('npm', withForce, TIMEOUT_MS[timeout], { env });
   return { step, ms, code, output, timedOut };
 }
 
@@ -227,11 +228,11 @@ class StepFailed extends Error {
  */
 async function runAndStamp(step: ChainStep, all: boolean): Promise<Result> {
   const force = all ? step.forceArgs ?? [] : [];
-  if (step.neverCachedBecause !== undefined) return run(step.name, step.seconds, force, envFor(step));
+  if (step.neverCachedBecause !== undefined) return run(step.name, step.timeout, force, envFor(step));
   let result: Result | undefined;
   try {
     await stampedRun(step.name, unitFor(step), stampFor(step.name), async () => {
-      result = await run(step.name, step.seconds, force, envFor(step));
+      result = await run(step.name, step.timeout, force, envFor(step));
       if (result.code !== 0) throw new StepFailed(result);
     });
   } catch (err) {
@@ -447,7 +448,7 @@ async function main(): Promise<void> {
       optedOut: noClassify,
     });
     const why = failed.timedOut
-      ? `${step.name} timed out: it exceeded its ${secs(budgetFor(step.seconds ?? 300))} budget and its process group was killed. It costs ${step.seconds ?? '?'}s healthy, so either it is wedged or it has grown and the measurement in chain-steps.ts is stale.`
+      ? `${step.name} timed out: it exceeded its ${timeoutText(step.timeout)} budget and its process group was killed. It costs ${step.seconds ?? '?'}s healthy here, so it is wedged — a class is chosen for the slowest plausible machine, not from that measurement, so overrunning one is not a stale number.`
       : `${step.name} failed (exit ${failed.code})${howLong(step, failed.ms, budget, classifying)}`;
     console.log(`\n${'='.repeat(72)}\n${why}\n${'='.repeat(72)}\n${failed.output}`);
     if (classifying) {
@@ -463,7 +464,7 @@ async function main(): Promise<void> {
       // failure of `test:unit:host` was re-run here, the re-run wrote all eleven project stamps, and the next
       // chain ran zero tests and called the step green. `recordsVerdict` (`scripts/lib/unit-pool.ts`) carries
       // the evidence and why a *build* under the same re-run still records.
-      const retry = await run(step.name, step.seconds, all ? step.forceArgs ?? [] : [],
+      const retry = await run(step.name, step.timeout, all ? step.forceArgs ?? [] : [],
         { ...envFor(step), [DIAGNOSTIC_RUN_ENV]: '1' });
       // The verdict reports what the chain cost. The retry is a diagnostic after it, so a 60s re-run must not
       // land on the one number a reader compares between runs.
