@@ -159,7 +159,32 @@ export const isMeasuredSchedule = (
   budget: number,
   measuredOn: Machine,
   machine: Machine = thisMachine(),
-): boolean => budget === measuredOn.cores && isMeasuredMachine(measuredOn, machine);
+): boolean => scheduleMismatch(budget, measuredOn, machine) === undefined;
+
+/**
+ * *Which* of the two facts above does not hold, for a caller that has to say something different about each.
+ *
+ * **A boolean hid the reason and every caller took the conjunction apart again.** `chain.ts` did exactly
+ * that to decide whether `--adopt` was sensible advice, and got it wrong: the refusal fires for a budget
+ * mismatch too, and there `--adopt` would write the machine the table already names and then be refused for
+ * the budget. Advice nobody can act on is the defect this cost model was being reworked to remove.
+ *
+ * The machine is reported first because it is the one a flag can do something about; a budget mismatch is
+ * the caller's own argument.
+ *
+ * **The second subject is what retires a hand-written variant.** "Can this machine claim the table" is this
+ * same question asked of `thisMachine()` — the machine conjunct is trivially true against itself, leaving
+ * `budget === box()`, which `chain.ts` had spelled out by hand three lines from a comparison against
+ * `measuredOn.cores`. Two budget comparisons against two core counts is the near-duplicate that drifts.
+ */
+export const scheduleMismatch = (
+  budget: number,
+  measuredOn: Machine,
+  machine: Machine = thisMachine(),
+): 'machine' | 'budget' | undefined => {
+  if (!isMeasuredMachine(measuredOn, machine)) return 'machine';
+  return budget === measuredOn.cores ? undefined : 'budget';
+};
 
 /** A share as vitest writes it in `poolOptions`, which is how a config and this table are compared */
 export const asPercent = (share: number): string => `${Math.round(share * 100)}%`;

@@ -9,7 +9,7 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { REPO_ROOT } from '@abuddy/host/build/packages-built';
-import { asPercent, box, coresFor, isMeasuredSchedule, POOL_WIDTH, shareOf, thisMachine } from '../../../scripts/lib/core-budget.ts';
+import { asPercent, box, coresFor, isMeasuredSchedule, POOL_WIDTH, scheduleMismatch, shareOf, thisMachine } from '../../../scripts/lib/core-budget.ts';
 import { PACKAGE_DIRS } from '../../../scripts/lib/workspace-deps.ts';
 import { population } from '@abuddy/sdk/testing';
 
@@ -94,6 +94,49 @@ describe('isMeasuredSchedule', () => {
 
   it('reads this machine when none is given, which is how the chain asks', () => {
     expect(isMeasuredSchedule(box(), thisMachine())).toBe(true);
+  });
+});
+
+/**
+ * And *which* fact does not hold, which the boolean above hides.
+ *
+ * **The bug this exists for was in a caller taking the conjunction apart by hand.** `chain.ts` refused a
+ * record on `!isMeasuredSchedule` and then re-asked about the machine to decide whether to suggest
+ * `--adopt` — so a *budget* mismatch printed an instruction only a *machine* mismatch can act on: adopting
+ * would write the machine the table already names and then be refused for the budget. Advice nobody can act
+ * on is what the portability work was removing, so writing it in was worth a predicate.
+ *
+ * It also retires a hand-written variant. "Can this machine claim the table" is this question asked of
+ * `thisMachine()`, where the machine conjunct is trivially true and only the budget is left — which
+ * `chain.ts` had spelled as `budget !== box()`, three lines from a comparison against `measuredOn.cores`.
+ */
+describe('scheduleMismatch', () => {
+  const MEASURED = { cpu: 'Apple M1 Pro', cores: 10 } as const;
+
+  it('says nothing is wrong where the schedule is the measured one', () => {
+    expect(scheduleMismatch(10, MEASURED, MEASURED)).toBeUndefined();
+  });
+
+  it('names the budget where only the budget differs, so no machine advice is offered', () => {
+    expect(scheduleMismatch(9, MEASURED, MEASURED)).toBe('budget');
+  });
+
+  it.each([
+    ['another CPU at the same core count', { cpu: 'Apple M4 Pro', cores: 10 }],
+    ['another core count', { cpu: 'Apple M1 Pro', cores: 20 }],
+  ])('names the machine for %s, which is the one a flag can act on', (_what, machine) => {
+    expect(scheduleMismatch(10, MEASURED, machine)).toBe('machine');
+  });
+
+  /** The machine first, because a run where both differ is one a flag can still do something about */
+  it('names the machine where both differ', () => {
+    expect(scheduleMismatch(9, MEASURED, { cpu: 'Apple M4 Pro', cores: 8 })).toBe('machine');
+  });
+
+  it('asked of this machine, is a question about the budget alone', () => {
+    expect(scheduleMismatch(box(), thisMachine())).toBeUndefined();
+    expect(scheduleMismatch(box() - 1, thisMachine()), 'which is what `budget !== box()` used to spell')
+      .toBe('budget');
   });
 });
 

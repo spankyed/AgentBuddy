@@ -494,18 +494,22 @@ const MUTATIONS: readonly Mutation[] = [
   {
     why: 'a run spending fewer cores than the table was measured at is not the measured schedule',
     in: 'core-budget',
-    from: 'budget === measuredOn.cores && ',
-    to: '',
+    from: "budget === measuredOn.cores ? undefined : 'budget'",
+    to: 'undefined',
     // `--cores 4` on the measured machine. The widths are still box-sized, so the costs do not describe it
     call: (lib) => lib.isMeasuredSchedule(4, { cpu: 'Apple M1 Pro', cores: 10 }, { cpu: 'Apple M1 Pro', cores: 10 }),
   },
   {
-    // The entry the predicate's split created. Dropping the delegation leaves a schedule check that asks
+    // The entry the predicate's split created. Dropping the machine branch leaves a schedule check that asks
     // only about the budget, which is what comparing the budget alone did before the machine existed --
-    // and the budget matches here, so nothing else in the conjunction can refuse it
+    // and the budget matches here, so nothing else is left to refuse it.
+    //
+    // Both anchors moved when `isMeasuredSchedule` became a delegation to `scheduleMismatch`: the decisions
+    // are in that function now. The harness said so rather than passing over two entries that no longer
+    // matched anything, which is the whole reason it asserts each anchor matches exactly once.
     why: 'the schedule check asks the machine question as well as its own',
     in: 'core-budget',
-    from: '&& isMeasuredMachine(measuredOn, machine)',
+    from: "if (!isMeasuredMachine(measuredOn, machine)) return 'machine';",
     to: '',
     call: (lib) => lib.isMeasuredSchedule(10, { cpu: 'Apple M1 Pro', cores: 10 }, { cpu: 'Intel Xeon W', cores: 10 }),
   },
