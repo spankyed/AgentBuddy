@@ -14,7 +14,7 @@
  * in. It says which case it took. `--all` is how you ask for the whole thing anyway, after a bundler bump —
  * and it is the only thing that clears a *correlated* drift, since one that adds a fifth to every spec sits
  * under every per-spec tolerance and so re-records nothing. It rewrites every row it measured only when the
- * body has moved further than idle runs vary (`rewritesEveryRow`); on a quiet run it settles them like any
+ * body has moved further than idle runs vary (`resetsWindows`); on a quiet run it settles them like any
  * other, because rewriting a row that agrees with the record is the churn the tolerance exists to prevent.
  *
  * **Naming a spec selects its config, never the file alone.** A spec measured on its own is not comparable
@@ -43,8 +43,9 @@ import {
   CONTENTION_RATIO_MAX, COST_ACCURACY, FAST_BELOW_MS, INTEGRATION_ABOVE_MS, PLACEMENT_GUARD, describeBudget,
   halfOfPath, hasSplit, ratiosFromMoves, underBound,
   nearEdge, overBudget,
-  CONFIG_BY_HALF, absentNamed, namedIn, parseArgs, planFor, readSpecCost, recordMembership, type SpecCost,
-  rewritesEveryRow, settle, specCostFile, specFiles, stale, suitesFor, unrecorded, type SpecCostPlan,
+  CONFIG_BY_HALF, absentNamed, forStorage, namedIn, parseArgs, planFor, readSpecCost, recordMembership,
+  type SpecCost, type StoredSpecCost,
+  provisional, resetsWindows, settle, specCostFile, specFiles, stale, suitesFor, unrecorded, type SpecCostPlan,
 } from './lib/spec-cost.ts';
 
 // eslint-disable-next-line no-control-regex -- vitest colours its output and this reads it back
@@ -110,10 +111,24 @@ function describe(plan: SuitePlan): string {
 }
 
 /** Written only when the bytes differ, so an unchanged record leaves no diff */
+/**
+ * The record as it is written, with each window on one line.
+ *
+ * `JSON.stringify(_, null, 2)` puts every reading on its own line, which is four lines per spec for a
+ * window of one and turns a 45-row record into 180 lines. These files are read in diffs — the whole reason
+ * a quiet run writes nothing is that someone reviews the ones that do — so the windows are collapsed back
+ * onto one line each. Numbers only, so nothing here has to think about escaping.
+ */
+const recordJson = (record: StoredSpecCost): string =>
+  JSON.stringify(record, null, 2).replace(/\[\n\s*((?:\d+,\n\s*)*\d+)\n\s*\]/g,
+    (_, readings: string) => `[${readings.split(',').map((reading) => reading.trim()).join(', ')}]`);
+
 function writeRecord(dir: string, record: SpecCost): void {
   const file = path.join(REPO_ROOT, specCostFile(dir));
   fs.mkdirSync(path.dirname(file), { recursive: true });
-  const next = `${JSON.stringify(record, null, 2)}\n`;
+  // `forStorage`, because the costs are derived: writing them would put a second record of one fact in the
+  // file, where the two can disagree and the stale one is the authoritative-looking one
+  const next = `${recordJson(forStorage(record))}\n`;
   if (!fs.existsSync(file) || fs.readFileSync(file, 'utf-8') !== next) fs.writeFileSync(file, next);
 }
 
@@ -199,18 +214,19 @@ function update(plans: readonly SuitePlan[], dry: boolean): void {
     // the reason the file is stable; all of them settling in the same direction is a uniform slowdown, and
     // the only place it shows is the total. Undefined when nothing measured had a value to move from.
     const body = bodyDrift(new Map(Object.entries(previous?.costs ?? {})), new Map(Object.entries(costs)));
-    const rewriteAll = rewritesEveryRow({ all, body });
-    const { record, added, moved, rewritten, dropped } = settle({
+    const resetWindows = resetsWindows({ all, force });
+    const { record, added, moved, appended, dropped } = settle({
       previous, costs, skipped: [...new Set(runs.flatMap((run) => run.skipped))], measuredFiles,
-      prune: plan.prune, rewriteAll, adopt,
+      prune: plan.prune, resetWindows, adopt,
     });
 
     // What a sample can check: not equality, which it never has, but reproducibility. An idle run moves a
     // handful; a contended one moves most of what it could move and records the machine instead of the specs.
     // Only specs that had a value to move are evidence of that — a first measurement is not.
     const comparable = Object.keys(costs).length - added.length;
-    if (refusesAsContended({ hasPrevious: previous !== undefined, force, moved: moved.length, comparable })) {
-      throw new Error(`${suite.workspace}: ${moved.length} of ${comparable} already-recorded specs moved, `
+    if (refusesAsContended({ hasPrevious: previous !== undefined, force, moved: appended.length, comparable })) {
+      throw new Error(`${suite.workspace}: ${appended.length} of ${comparable} already-recorded specs read `
+        + `differently from what is on record, `
         + `which is more than a measurement should. That is what a loaded machine looks like — run this with `
         + `nothing else running, or pass --force if the suite really did change this much.`);
     }
@@ -248,10 +264,10 @@ function update(plans: readonly SuitePlan[], dry: boolean): void {
         : [
           added.length > 0 ? `${added.length} added` : '',
           moved.length > 0 ? `${moved.length} moved` : '',
-          // The drift being cleared: rows carried up or down with the body, which no single one of them
-          // moved enough to ask for. Counted apart from the movements rather than summed with them, because
-          // one word for both read a run that rewrote the file as a suite that had got slower.
-          rewritten.length > moved.length ? `${rewritten.length - moved.length} re-recorded` : '',
+          // A reading kept whose median did not move: the first of the two a change needs. Counted apart
+          // from the movements rather than summed with them, because one word for both reads a run that
+          // merely noticed something as a suite that has got slower.
+          appended.length > moved.length ? `${appended.length - moved.length} noted` : '',
           dropped.length > 0 ? `${dropped.length} stopped running` : '',
         ].filter(Boolean).join(', ') || 'none moved',
       plan.prune.length > 0 ? `${plan.prune.length} gone` : '',
@@ -264,13 +280,19 @@ function update(plans: readonly SuitePlan[], dry: boolean): void {
     if (drifted(body)) {
       console.log(`  the suite moved ${(body * 100).toFixed(0)}% as a body, which is more than idle runs vary. `
         + 'A drift this size sits under every per-spec tolerance, so no measurement re-records it on its own — '
-        + (rewriteAll
-          ? 'every row this measured has been re-recorded against it.'
+        + (resetWindows
+          ? 'every window this measured has been re-seeded from it.'
           : 'until one does, anything reading the total reads a number that is no longer true. '
-            + '`npm run spec-cost:update -- --all` re-records it.'));
+            + '`npm run spec-cost:update -- --all --force` re-seeds every window from this run.'));
     }
     for (const line of budget.lines) console.log(line);
     if (budget.advice) console.log(budget.advice.split('\n').map((line) => `  ${line}`).join('\n'));
+    for (const spec of measuredFiles) {
+      const soon = provisional(spec, record.samples[spec] ?? []);
+      if (soon === undefined) continue;
+      console.log(`  ${soon.file} read ${soon.reading}ms against a median of ${soon.median}ms, which is`
+        + ` ${soon.belongs}. One more reading that agrees moves it; nothing has to be done now.`);
+    }
   }
 }
 
@@ -350,7 +372,7 @@ function check(only: string | undefined, named: readonly string[]): void {
     // nothing else. Naming one command for both sent people to re-measure a suite that was already right.
     const advice = [
       problems.length > 0 ? `Run: npm run spec-cost:update${recordable.size === 1 ? ` -- --suite ${[...recordable][0]}` : ''}` : '',
-      renames.length > 0 ? `Rename ${renames.length === 1 ? 'it' : 'them'} into the half the cost implies; no measurement will move ${renames.length === 1 ? 'it' : 'them'}.` : '',
+      renames.length > 0 ? `Rename ${renames.length === 1 ? 'it' : 'them'} into the half the cost implies: two readings agree on ${renames.length === 1 ? 'this cost' : 'these costs'}, so re-measuring will not move ${renames.length === 1 ? 'it' : 'them'}.` : '',
     ].filter(Boolean).join('\n');
     const found = [...problems, ...renames.map(({ line }) => line)].join('\n');
     throw new Error(`Spec costs are out of date (a fast spec moves above ${INTEGRATION_ABOVE_MS}ms, an integration one comes back below ${FAST_BELOW_MS}ms):\n${found}\n\n${advice}`);
