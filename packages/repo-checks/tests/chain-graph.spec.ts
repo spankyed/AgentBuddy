@@ -222,6 +222,18 @@ describe('every spawn an orchestrator makes is bounded', () => {
   const REPO = REPO_ROOT;
   const read = (rel: string) => fs.readFileSync(path.join(REPO, rel), 'utf-8');
 
+  /**
+   * The classes the repo's npm scripts bound a direct run at, from the manifest's text.
+   *
+   * Text rather than a resolved config, for `capsInText`'s reason (`core-budget.spec.ts`): what is being asked
+   * is what the manifest *says*, and a pure function over it is what lets the scan be mutated rather than
+   * trusted.
+   */
+  type Scripts = { scripts: Record<string, string> };
+  const boundedIn = (scripts: Record<string, string>): { name: string; className: string }[] =>
+    Object.entries(scripts).flatMap(([name, command]) =>
+      [...command.matchAll(/scripts\/bounded\.ts\s+(\S+)/g)].map((hit) => ({ name, className: hit[1]! })));
+
   // An unbounded run cannot fail — it waits until a person notices and kills it by pid, which is how this
   // repo collected an orphaned build at 99% CPU for a day. `boundedSpawn` bounds the wall clock and kills
   // the process group rather than the child, so nothing outlives the run that started it.
@@ -429,7 +441,7 @@ describe('every spawn an orchestrator makes is bounded', () => {
         what: 'test:integration', timeout: 'suite', healthy: { seconds: 60, measuredOn: HERE, machine: SMALLER },
       });
       expect(why).toContain('where its row records');
-      expect(why).toContain('nine workers to about two');
+      expect(why, 'the provenance itself, not a copy of it').toContain(TIMEOUT_MS.suite.measured);
     });
 
     /**
@@ -443,6 +455,45 @@ describe('every spawn an orchestrator makes is bounded', () => {
       expect(why).toContain('Nothing records what it costs healthy');
       expect(why, 'no rope, and no invented operand to compute one from').not.toMatch(/\d+(?:\.\d+)?x/);
     });
+  });
+
+  /**
+   * Which rungs a *direct* run can reach, which is the second path into the ladder and the one a claim about
+   * reachability keeps forgetting.
+   *
+   * `scripts/bounded.ts` takes a class on its command line, and four npm scripts invoke it — so a rung is
+   * reachable without `npm run chain` and without any chain step at all. A rung's `until` said the opposite
+   * about `scenario` ("reached only through `npm run chain`, which CI does not run") while CI's
+   * `external-pack-e2e` job bounds two steps at it through exactly this path.
+   *
+   * **An inventory, not a gate**, in `subprocess-inventory`'s sense: it fails on a *change* rather than on a
+   * hit, because the useful moment is when the set moves and the prose describing it has to be revisited. The
+   * two halves either side of that are ordinary gates — every class named here is on the ladder, which
+   * `timeoutMsFor` otherwise only refuses at runtime, and the set is not empty, since a regex that matched
+   * nothing would pass all three.
+   */
+  it('reaches a rung from a direct npm run too, and the ladder knows every class those name', () => {
+    const bounded = boundedIn((JSON.parse(read('package.json')) as Scripts).scripts);
+
+    expect(population('the scripts that bound a direct run', bounded).length).toBeGreaterThan(0);
+    for (const { name, className } of bounded) {
+      expect(TIMEOUT_CLASSES, `${name} bounds at ${className}, which is no rung on the ladder`)
+        .toContain(className);
+    }
+    expect([...new Set(bounded.map(({ className }) => className))].sort(),
+      'the rungs a direct run reaches have changed — re-read every `until` that describes how a rung is '
+      + 'exercised before updating this').toEqual(['scenario', 'suite']);
+  });
+
+  // The mutation, over data rather than the real manifest: a regex that matched nothing would satisfy every
+  // assertion above, which is what the emptiness guard alone cannot tell you. Both halves that can fail are
+  // exercised here — a class the ladder has not got, and a rung the recorded set does not name
+  it('finds a class a script bounds at, which is what the case above rests on', () => {
+    expect(boundedIn({ 'x': 'npm run packages:ensure && tsx scripts/bounded.ts quick bash tests/scripts/x.sh' }))
+      .toEqual([{ name: 'x', className: 'quick' }]);
+    expect(boundedIn({ 'y': 'tsx scripts/bounded.ts nonsense bash y.sh' })[0]!.className)
+      .not.toBeOneOf([...TIMEOUT_CLASSES]);
+    expect(boundedIn({ 'z': 'npm test' }), 'a script that bounds nothing contributes nothing').toEqual([]);
   });
 
   /**

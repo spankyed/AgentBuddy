@@ -47,9 +47,15 @@ export interface Rung {
   /**
    * What would end the assumption — present only while `measured` is `undefined`.
    *
-   * Per rung rather than in one paragraph, because the answer differs by rung and two of the three have no
-   * answer at all. Saying so is the point: a condition that names no event is a row that stays an assumption,
-   * which is a different thing from a placeholder waiting on something.
+   * Per rung rather than in one paragraph, because the answer differs by rung.
+   *
+   * **It names a run that reaches this rung and never claims nothing else does.** That form is the one thing
+   * here that went wrong: `scenario` said it was "reached only through `npm run chain`, which CI does not run",
+   * which was derived from the chain being the only *step* table and missed the second path in —
+   * `scripts/bounded.ts`, which four npm scripts invoke with a class, two of them in CI's own
+   * `external-pack-e2e` job. So the row recorded as unobservable was the one a scheduled run bounds twice. An
+   * exclusivity claim about reachability cannot be checked from here; which rungs that second path bounds at
+   * can be, and `chain-graph.spec.ts` derives it from `package.json`.
    *
    * **Exactly one of this and `measured` is set**, which `chain-graph.spec.ts` holds: a measured rung with a
    * condition still on it is a stale one, and an assumed rung without one is a guess nobody wrote down the
@@ -95,8 +101,8 @@ export const TIMEOUT_MS = {
     ms: 60_000,
     stretches: SLOWER_MACHINE,
     measured: undefined,
-    until: '`npm run typecheck` on a smaller machine, which CI does — its eighteen legs are all bounded here, '
-      + 'so enabling `.github/workflows/ci.yml`\'s commented-out triggers exercises this row and no other',
+    until: '`npm run typecheck` on a smaller machine: its eighteen legs are all bounded here, and CI runs it, '
+      + 'so enabling `.github/workflows/ci.yml`\'s commented-out triggers measures this row',
   },
   suite: {
     ms: 300_000,
@@ -110,8 +116,9 @@ export const TIMEOUT_MS = {
     ms: 900_000,
     stretches: SLOWER_MACHINE,
     measured: undefined,
-    until: 'nothing — this rung is reached only through `npm run chain`, which CI does not run (it runs '
-      + '`npm test --workspace <each>` directly), so no scheduled run of anything bounds a step here',
+    until: '`npm run test:external-pack` or `npm run test:packaged-authoring` on a smaller machine — each '
+      + 'bounded here through `scripts/bounded.ts`, so a direct run at a terminal reaches this rung, and so '
+      + 'does CI\'s `external-pack-e2e` job, which runs both',
   },
 } as const satisfies Record<string, Rung>;
 

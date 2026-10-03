@@ -5,7 +5,7 @@
  * cannot load `chain.ts` without starting a six-minute build.
  */
 import { covers } from '@abuddy/host/build/packages-built';
-import { isMeasuredSchedule, thisMachine, type Machine } from './core-budget.ts';
+import { isMeasuredMachine, isMeasuredSchedule, machineText, thisMachine, type Machine } from './core-budget.ts';
 import { overBand } from './step-timing.ts';
 
 /**
@@ -435,7 +435,11 @@ export function shouldClassify(run: {
    * the predicate with it: a serial run overlaps nothing, so it is already covered.
    */
   readonly ranAlone: boolean;
-  /** Its budget is four times its cost; re-running a wedged step spends that again for a message that already interprets itself */
+  /**
+   * A wedged step is not re-run: its deadline is a declared class (`step-timeouts.ts`), so the retry spends
+   * that whole class again — five minutes for a `suite` step — to reach a message `classifyLine` can already
+   * write from what the first run proved.
+   */
   readonly timedOut: boolean;
   readonly optedOut: boolean;
 }): boolean {
@@ -459,9 +463,22 @@ export function shouldClassify(run: {
  * sees is how a flake becomes rot, and those are what stop this feature making the repo worse than not having
  * it.
  */
-export function classifyLine(retry: { readonly code: number; readonly ms: number; readonly timedOut?: true }): string {
+export function classifyLine(
+  retry: { readonly code: number; readonly ms: number; readonly timedOut?: true },
+  /** The machine the costs were measured on (`MEASURED_ON`), which is what licenses the word "wedged" */
+  measuredOn: Machine,
+): string {
   const took = `${(retry.ms / 1000).toFixed(1)}s`;
-  if (retry.timedOut) return `\nre-ran it alone: timed out after ${took} — wedged, not crowded.`;
+  // Running alone rules out contention, which is the question this re-run exists to answer — but not slowness.
+  // A deadline is sized for a machine this one may be smaller than, so off that machine "wedged" is the half
+  // the retry cannot establish, and `timedOutBecause` draws the same distinction for the first run's message.
+  if (retry.timedOut) {
+    return isMeasuredMachine(measuredOn)
+      ? `\nre-ran it alone: timed out after ${took} — wedged, not crowded.`
+      : `\nre-ran it alone: timed out after ${took} — not crowded, which is all this says. Deadlines are sized `
+        + `against ${machineText(measuredOn)} and this is ${machineText(thisMachine())}, so wedged and simply `
+        + 'slow are both still open.';
+  }
   return retry.code === 0
     ? `\nre-ran it alone: passed in ${took} — contention or a flake, not the code. The chain still fails.`
     : `\nre-ran it alone: failed again (exit ${retry.code}) in ${took} — the failure is real.`;

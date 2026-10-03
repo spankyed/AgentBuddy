@@ -480,7 +480,7 @@ async function main(): Promise<void> {
       // The verdict reports what the chain cost. The retry is a diagnostic after it, so a 60s re-run must not
       // land on the one number a reader compares between runs.
       classifyMs = retry.ms;
-      console.log(classifyLine(retry));
+      console.log(classifyLine(retry, MEASURED_ON));
     }
   }
 
