@@ -191,8 +191,15 @@ export const provisional = (
  * whenever two outliers land on the same side of the incumbent — which two independently contended runs
  * satisfy however far apart they are.
  *
- * Neither is fixable by a longer window, and `provisional` is what covers them: it reports a crossing the run
- * *before* the gate acts on it, so the state this leaves is one a reader is told about rather than one they
+ * **The two together mean a wrong one-reading cost cannot be re-measured out**, which is the consequence worth
+ * stating because it is the one a reader acts on. Only a reading *outside* the band is kept, and a clean
+ * reading of a spec whose single reading was contended is normally inside it — measured 2026-10-03, the
+ * recorded 2791 against clean runs at 2186 and 2041, both dropped. So neither `spec-cost:update <path>` nor
+ * `--all` can replace it, and `--all --forget` on a quiet machine is the only route: correcting one spec means
+ * dropping the whole suite's history. `describeBudget`'s advice says so where a rename rests on one reading.
+ *
+ * None of this is fixable by a longer window, and `provisional` is what mitigates it: it reports a crossing the
+ * run *before* the gate acts on it, so the state this leaves is one a reader is told about rather than one they
  * discover as a failure.
  */
 export const WINDOW = 3;
@@ -635,34 +642,34 @@ export const EXPENSIVE_BY_NATURE: Record<string, string> = {
  * different for each kind, which is the whole value of telling them apart.
  */
 /**
- * What to tell someone whose spec is in the wrong half, which depends on how settled the cost is.
+ * What to tell someone whose spec is in the wrong half.
  *
- * **A rename is a file move made on the strength of one number, so the advice says how good that number is.**
- * One reading can still be a contended run — the defect the window exists for — and a re-measurement is the
- * cheap way to find out, so it names the command. The median of several has already rejected a disagreeing
- * reading, so there is nothing to run and saying so stops a pointless measurement.
+ * **It says nothing about what a re-measurement would do, which took three tries to get right.** Each
+ * version claimed a guarantee the window does not give: *"no measurement will move it"*, then *"two readings
+ * agree, so re-measuring will not move it"* — true of no window in the repo — then *"the median of N
+ * readings, so re-measuring will not move it"*, which is false at every length. A three-reading median moves
+ * on **one** reading when the eviction takes the oldest from under it (`[1000, 4000, 5000]` + 6000 is 5000),
+ * and a two-reading cost is not a median at all but the incumbent, which one agreeing reading replaces.
  *
- * It read "two readings agree on these costs" for one commit, which was true of no window in the repo and
- * recommended skipping the check in exactly the state that needed it.
+ * So the count goes on each finding's own line, where a per-spec fact belongs, and what is left here is the
+ * one thing that is both true and actionable: an in-band re-measurement of a single-reading cost is
+ * *dropped*, so the command this used to name cannot replace it and `--all --forget` is what can.
+ *
+ * Called with no renames it returns the bare instruction, which no caller does — both guard on `length > 0`.
+ * The edit that would reach it is dropping one of those guards.
  */
-export const renameAdvice = (
-  /** Each rename's repo-relative spec path, so this needs no suite and a caller cannot pass the wrong one */
-  renames: readonly { readonly path: string; readonly readings: number }[],
-): string => {
-  const [one] = renames;
+/** How many readings a cost rests on, as a line naming one spec says it */
+export const readingsText = (readings: number): string =>
+  `${readings} reading${readings === 1 ? '' : 's'}`;
+
+export const renameAdvice = (renames: readonly { readonly readings: number }[]): string => {
   const it = renames.length === 1 ? 'it' : 'them';
-  const move = `Rename ${it} into the half the cost implies`;
-  const unsettled = renames.filter((found) => found.readings === 1);
-  if (unsettled.length === 0) {
-    const readings = one !== undefined && renames.length === 1 ? `${one.readings} readings` : 'several readings';
-    return `${move}: the median of ${readings}, so re-measuring will not move ${it}.`;
-  }
-  return `${move}: ${unsettled.length === renames.length
-    ? (renames.length === 1 ? 'this is a single reading' : 'these are single readings')
-    : `${unsettled.length} of ${renames.length} ${unsettled.length === 1 ? 'rests' : 'rest'} on a single reading`}, `
-    + 'which a contended run can produce. '
-    + `Run \`npm run spec-cost:update -- ${unsettled.map((found) => found.path).join(' ')}\` first if you `
-    + `want a second reading behind ${it}.`;
+  const move = `Rename ${it} into the half the cost implies.`;
+  return renames.some((found) => found.readings === 1)
+    ? `${move} A cost resting on one reading can be a contended run, and a clean re-measurement inside the `
+      + 'band is dropped rather than recorded — so `npm run spec-cost:update -- --all --forget` on a quiet '
+      + 'machine is what replaces one, and re-measuring that spec alone will not.'
+    : move;
 };
 
 export function describeBudget(
@@ -683,14 +690,13 @@ export function describeBudget(
       renames.length > 0 ? `${renames.length} in the wrong half` : '',
       over.length > 0 ? `${over.length} over the ${INTEGRATION_ABOVE_MS / 1000}s a fast half allows` : '',
     ].filter(Boolean).join(', '),
+    // The reading count sits on the rename's own line, because how settled a cost is, is a fact about that
+    // spec rather than about the advice — which is what let the advice stop claiming a guarantee for all of them
     lines: [...renames, ...over].map((found) => (found.kind === 'rename'
-      ? `  ${seconds(found.ms)}  ${found.file}  ->  ${found.belongs}`
+      ? `  ${seconds(found.ms)} (${readingsText(found.readings)})  ${found.file}  ->  ${found.belongs}`
       : `  ${seconds(found.ms)}  ${found.file}  (no slower half to move it to)`)),
     advice: [
-      renames.length > 0
-        ? renameAdvice(renames.map((found) =>
-          ({ path: `packages/${suiteDir}/${found.file}`, readings: found.readings })))
-        : '',
+      renames.length > 0 ? renameAdvice(renames) : '',
       over.length > 0 ? 'Make it cheaper, or record it in EXPENSIVE_BY_NATURE with what makes it expensive.' : '',
     ].filter(Boolean).join('\n'),
   };

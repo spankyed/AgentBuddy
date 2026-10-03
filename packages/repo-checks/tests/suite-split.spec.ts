@@ -254,29 +254,71 @@ describe('what a run says about a spec it cannot place', () => {
   });
 
   /**
-   * What the advice promises about re-measuring, which depends on how many readings are behind the cost.
+   * **The advice promises nothing about what a re-measurement would do, and three versions did.**
    *
-   * It said "two readings agree on these costs, so re-measuring will not move them" for one commit, and that
-   * was true of no window in the repo: measured 2026-10-03, 388 of 389 held a single reading and the one
-   * two-reading window is the case where the readings *disagree* — that is why the second was kept, and why
-   * `costOf` answers with the incumbent. So the sentence told a developer to skip a re-measurement in the one
-   * state where it is the thing that would catch a bad reading.
+   * *"no measurement will move it"*, then *"two readings agree, so re-measuring will not move them"* — true
+   * of no window in the repo, where 388 of 389 held one reading — then *"the median of N readings, so
+   * re-measuring will not move it"*, false at every length. A three-reading median moves on **one** reading
+   * when the eviction takes the oldest from under it, and a two-reading cost is the incumbent rather than a
+   * median, which one agreeing reading replaces. The two cases below the fixtures hold that arithmetic, so
+   * this one can hold the sentence.
+   *
+   * What is left is the one claim that is both true and actionable, and only where it applies: a clean
+   * re-measurement of a one-reading cost is *dropped*, so the command the second version named cannot
+   * replace it.
    */
-  it('tells a one-reading cost to be re-measured before the file moves, and names the command', () => {
-    const said = describeBudget([{ ...RENAME, readings: 1 }], 'any-suite');
-
-    expect(said.advice, 'never a corroboration that is not there').not.toContain('two readings agree');
-    expect(said.advice).toContain('a single reading');
-    expect(said.advice, 're-measure first is advice nobody can take without the path')
-      .toContain('npm run spec-cost:update -- packages/any-suite/tests/slow.spec.ts');
+  it('claims nothing about re-measuring, whatever the cost rests on', () => {
+    for (const readings of [1, 2, 3]) {
+      const said = describeBudget([{ ...RENAME, readings }], 'any-suite');
+      expect(said.advice, `${readings} reading(s): no guarantee the window does not give`)
+        .not.toMatch(/will not move|readings agree/);
+    }
   });
 
-  it('tells a settled cost that re-measuring will not move it, and says how many readings that is', () => {
+  it('names the one command that can replace a cost resting on a single reading', () => {
+    const said = describeBudget([{ ...RENAME, readings: 1 }], 'any-suite');
+
+    expect(said.advice).toContain('npm run spec-cost:update -- --all --forget');
+    expect(said.advice, 'and says why the per-spec command is not the answer')
+      .toContain('re-measuring that spec alone will not');
+  });
+
+  it('says nothing about forgetting where every cost is corroborated', () => {
     const said = describeBudget([{ ...RENAME, readings: 3 }], 'any-suite');
 
-    expect(said.advice).toContain('the median of 3 readings');
-    expect(said.advice).toContain('re-measuring will not move it');
-    expect(said.advice, 'and no command, since there is nothing to run').not.toContain('spec-cost:update');
+    expect(said.advice, 'there is no single reading to replace').not.toContain('--forget');
+    expect(said.advice).toBe('Rename it into the half the cost implies.');
+  });
+
+  /**
+   * And the count is on the finding's own line, which is what let the advice stop speaking for all of them.
+   *
+   * How settled a cost is, is a fact about that spec; the advice is one sentence for the set. Keeping the
+   * count in the advice is what forced it to generalise, and generalising is what made it false.
+   */
+  it('puts how many readings a cost rests on beside the cost', () => {
+    expect(describeBudget([{ ...RENAME, readings: 1 }], 'any-suite').lines.join('')).toContain('(1 reading)');
+    expect(describeBudget([{ ...RENAME, readings: 3 }], 'any-suite').lines.join('')).toContain('(3 readings)');
+  });
+
+  /**
+   * The arithmetic the advice used to contradict, from the real functions rather than from reasoning.
+   *
+   * These are the two cases that make "re-measuring will not move it" false, and they are here so that the
+   * claim cannot come back a fourth time without one of them failing.
+   */
+  it('moves a three-reading median on one reading, because the window drops its oldest', () => {
+    const window = [1_000, 4_000, 5_000];
+    expect(costOf(window)).toBe(4_000);
+    expect(disagrees(costOf(window), 6_000), 'so settle keeps it').toBe(true);
+    expect(appendSample(window, 6_000), 'and the 1000 under the median leaves').toEqual([4_000, 5_000, 6_000]);
+    expect(costOf(appendSample(window, 6_000)), 'which moves the median on a single reading').toBe(5_000);
+  });
+
+  it('moves a two-reading cost on one agreeing reading, since that cost is the incumbent', () => {
+    const window = [2_041, 4_000];
+    expect(costOf(window), 'the older reading, not a median of the two').toBe(2_041);
+    expect(costOf(appendSample(window, 4_000)), 'and one that agrees with the newer takes it').toBe(4_000);
   });
 
   it('says nothing at all when there is nothing to say', () => {

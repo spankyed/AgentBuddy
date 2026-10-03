@@ -49,7 +49,7 @@ import {
   halfOfPath, hasSplit, ratiosFromMoves, underBound,
   nearEdge, overBudget,
   CONFIG_BY_HALF, absentNamed, forStorage, namedIn, parseArgs, planFor, readSpecCost, recordMembership,
-  renameAdvice,
+  readingsText, renameAdvice,
   type SpecCost, type StoredSpecCost,
   provisional, forgetsWindows, settle, specCostFile, specFiles, stale, suitesFor, unrecorded, type SpecCostPlan,
 } from './lib/spec-cost.ts';
@@ -314,9 +314,9 @@ function check(only: string | undefined, named: readonly string[]): void {
   /** What an update can fix: a cost it can measure, or a row it can drop */
   const problems: string[] = [];
   /** What it cannot: a spec whose filename puts it in the other half from its cost */
-  const renames: { line: string; machine: Machine; path: string; readings: number }[] = [];
+  const renames: { line: string; machine: Machine; readings: number }[] = [];
   /** The same findings from a record measured on another machine, which are reported and not enforced */
-  const elsewhere: { line: string; machine: Machine; path: string; readings: number }[] = [];
+  const elsewhere: { line: string; machine: Machine; readings: number }[] = [];
   /**
    * The suites whose placement went unenforced, which is not the same set as `elsewhere`.
    *
@@ -352,10 +352,11 @@ function check(only: string | undefined, named: readonly string[]): void {
     // `suite-split.spec.ts` and not here — failing on it would fail over the entries already recorded there.
     for (const found of overBudget(dir, record.samples, asked)) {
       if (found.kind !== 'rename') continue;
-      const line = `  ${(found.ms / 1000).toFixed(1)}s is ${found.belongs}, but this is in the ${halfOfPath(found.file)} half: ${suite.dir}/${found.file}`;
+      const line = `  ${(found.ms / 1000).toFixed(1)}s (${readingsText(found.readings)}) is ${found.belongs}, `
+        + `but this is in the ${halfOfPath(found.file)} half: ${suite.dir}/${found.file}`;
       // Scoped per record, because each one names the machine it was measured on and a tree can hold two
       (isMeasuredMachine(record.machine) ? renames : elsewhere)
-        .push({ line, machine: record.machine, path: `packages/${suite.dir}/${found.file}`, readings: found.readings });
+        .push({ line, machine: record.machine, readings: found.readings });
     }
   }
   // **Placement is read from a cost, so it gates only on the machine that measured one.** The edges are
