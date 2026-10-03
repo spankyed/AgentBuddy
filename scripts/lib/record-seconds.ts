@@ -106,7 +106,14 @@ export const SECONDS_TABLES = STEP_TABLES;
 
 /** The declaration `--adopt` rewrites, and the file it is in */
 const MACHINE_ANCHOR = 'export const MEASURED_ON: Machine = ';
-const MACHINE_TABLE = 'scripts/lib/chain-steps.ts';
+/**
+ * Exported so a case reads the file this rewrites rather than naming one of its own.
+ *
+ * It is not one of `SECONDS_TABLES`, and a spec that assumed it was is how this came to be exported: the
+ * machine sits beside `Machine` and `isMeasuredMachine` in `core-budget.ts`, so that a leaf with no step
+ * record can ask which box it is on without importing the step table.
+ */
+export const MACHINE_TABLE = 'scripts/lib/core-budget.ts';
 
 /** The line as this module writes it, which is also what a refusal prints for a reader to paste */
 export const machineLine = (machine: Machine): string =>

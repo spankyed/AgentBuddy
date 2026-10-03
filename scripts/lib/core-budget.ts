@@ -206,6 +206,46 @@ export const scheduleMismatch = (
  */
 export const SLOWER_MACHINE = 4;
 
+
+/**
+ * The machine the chain's `seconds` (`chain-steps.ts`) were measured on, and the budget they were
+ * measured under.
+ *
+ * **It lives here rather than beside that table**, which is where it was until a leaf had to ask the
+ * question. `scripts/bounded.ts` is a shell wrapper that kills a command on a class and has no step
+ * record; to say whether an overrun means wedged it needs this box's identity and nothing else about the
+ * chain. Importing the step table for it made three steps fail `chain-table`'s stamp-reader check, which
+ * reads a runner's text — the names were in their reach without being in their behaviour, which is the
+ * reason `check:tiers` is already excepted there, and three more exceptions for one import is the check
+ * telling you the import is wrong. `record-seconds.ts` writes this and the costs in one operation still;
+ * it already addressed them as two locations (`MACHINE_ANCHOR` beside `SECONDS_TABLES`), so that is where
+ * the move is a single line.
+ *
+ * The cores are both facts at once, because the chain's default budget *is* the box (`budgetFrom`,
+ * scripts/chain.ts). A step's cost depends on what runs beside it, so the table is only true of one
+ * schedule, and this is what names it: a run on another machine says the numbers are about another one.
+ *
+ * **The CPU is here because the core count alone is not an identity.** This was `MEASURED_AT_CORES = 10`
+ * until 2026-10-03, so every 10-core machine read as the one these numbers came from, and a second
+ * developer on a 10-core Mac got `--record` accepted and `spec-cost`'s placement gate enforced against a
+ * table measured on different silicon. `isMeasuredSchedule` has the rest.
+ *
+ * **Nothing here bounds anything, which is the point and was not true a day ago.** Each of these used to
+ * become a kill deadline at four times, so a smaller machine ran this machine's deadlines over slower
+ * steps with the four-times margin as the only slack. Deadlines are declared classes now
+ * (`step-timeouts.ts`), so what a wrong number on another box costs is a misleading report and never a
+ * killed step.
+ *
+ * **It makes an implicit fact explicit.** These costs were always measured on one box and nothing recorded
+ * which. The hazard it was written for is the same either way: `seconds: 45` for `typecheck` was taken
+ * 2026-09-25 at 07:38 under one admission policy, the default changed at 09:30 the same day, and nothing
+ * connected the two — it read 63s for two days and the drift band happened to absorb it.
+ *
+ * Re-measure it with `npm run chain -- --all --record`, which refuses any other budget for this reason,
+ * refuses a busy machine, and refuses a run where too much moved to have been measuring the code.
+ */
+export const MEASURED_ON: Machine = { cpu: 'Apple M1 Pro', cores: 10 };
+
 /** A share as vitest writes it in `poolOptions`, which is how a config and this table are compared */
 export const asPercent = (share: number): string => `${Math.round(share * 100)}%`;
 

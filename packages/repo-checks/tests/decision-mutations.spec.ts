@@ -439,6 +439,43 @@ const MUTATIONS: readonly Mutation[] = [
     call: (lib) => lib.declaredShare(60, 'suite'),
   },
   {
+    /**
+     * The gate this change exists to create. The cost and the machine were one optional argument, so the
+     * arm with no cost had no machine and said "usually wedged rather than slow" on any box — the last
+     * ungated verdict, in the arm four of five call sites reach, and in `bounded.ts`, the path most likely
+     * to be running on someone else's machine.
+     */
+    why: 'the no-cost arm asks whether this is the machine the ladder was sized against',
+    in: 'step-timeouts',
+    from: 'return here',
+    to: 'return true',
+    call: (lib) => lib.timedOutBecause({
+      what: 'bash x.sh',
+      timeout: 'scenario',
+      measuredOn: { cpu: 'Measured CPU', cores: 10 },
+      machine: { cpu: 'Some Smaller CPU', cores: 4 },
+    }),
+  },
+  {
+    /**
+     * The discriminator rather than either sentence, because the sentences move and this does not: an
+     * assumed rung asks the reader to record this run, a measured one reports a finding and asks for
+     * nothing. Swapping the test sends an assumed rung down the measured branch, which interpolates an
+     * absent `measured` — so the two answers differ on wording the cases in `chain-graph` pin exactly.
+     */
+    why: 'rungTerms tells an assumed rung from a measured one, so only one of them asks for a recording',
+    in: 'step-timeouts',
+    from: '(rung.measured === undefined',
+    to: '(rung.measured !== undefined',
+    call: (lib) => lib.timedOutBecause({
+      what: 'typecheck:fe',
+      timeout: 'quick',
+      seconds: 10,
+      measuredOn: { cpu: 'Measured CPU', cores: 10 },
+      machine: { cpu: 'Some Smaller CPU', cores: 4 },
+    }),
+  },
+  {
     why: 'timeoutText says a class in seconds, not milliseconds',
     in: 'step-timeouts',
     from: '`${TIMEOUT_MS[className].ms / 1000}s (${className})`',

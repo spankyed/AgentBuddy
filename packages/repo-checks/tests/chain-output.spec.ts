@@ -530,7 +530,8 @@ describe('classifyLine', () => {
    *
    * Running alone rules out contention wherever it runs; "wedged" needs the deadline to be generous here, and
    * a deadline is a class sized for a machine this one may be smaller than. The flat version was the last
-   * ungated timeout verdict in the repo after `timedOutBecause` gated the other two.
+   * ungated timeout verdict in the repo after `timedOutBecause` gated its arms — two of three at first, and
+   * the third once the machine stopped being bundled with a cost that an arm might not have.
    */
   it('claims only "not crowded" on a machine the deadline was not sized for', () => {
     const line = classifyLine({ code: 1, ms: 240_000, timedOut: true }, SMALLER);

@@ -27,10 +27,9 @@
  */
 import { boundedSpawn } from './lib/bounded-spawn.ts';
 import { schedule } from './lib/chain-schedule.ts';
-import { box } from './lib/core-budget.ts';
+import { box, MEASURED_ON } from './lib/core-budget.ts';
 import { pruneDepFiles } from './lib/dep-files.ts';
 import { asCount, parseFlags } from './lib/measure.ts';
-import { MEASURED_ON } from './lib/chain-steps.ts';
 import { TIMEOUT_MS, timedOutBecause } from './lib/step-timeouts.ts';
 import { ENSURE, LEG_TIMEOUT, TYPECHECK_LEGS } from './lib/typecheck-legs.ts';
 
@@ -101,7 +100,8 @@ for (const leg of failed) {
     ? timedOutBecause({
       what: leg.name,
       timeout: LEG_TIMEOUT,
-      healthy: { seconds: leg.seconds, measuredOn: MEASURED_ON },
+      measuredOn: MEASURED_ON,
+      seconds: leg.seconds,
     })
     : `${leg.name} failed (exit ${outcome.code})`;
   process.stderr.write(`\n${'─'.repeat(72)}\n${why}\n${'─'.repeat(72)}\n${outcome.output}\n`);
