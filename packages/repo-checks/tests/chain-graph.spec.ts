@@ -235,7 +235,7 @@ describe('every spawn an orchestrator makes is bounded', () => {
 
   /**
    * **No deadline anywhere is a function of a recorded measurement.** This is the greppable property
-   * `docs/plans/costs-across-machines.md` asks Phase 1 to end on, and it is greppable on purpose: the rule
+   * `docs/archive/plans/costs-across-machines.md` asks Phase 1 to end on, and it is greppable on purpose: the rule
    * is about a shape rather than a value, so a reader can check it and so can this.
    *
    * It was `budgetFor(seconds)` — four times a ten-core measurement — which made every kill deadline in the

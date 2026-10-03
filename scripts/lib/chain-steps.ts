@@ -126,7 +126,7 @@ export interface ChainStep {
    * made every deadline in the repo was a function of this one machine. The deadline is a declared class
    * now (`timeout` above), so what is left here is a *report*: the weight on the critical path, and the
    * number a run is compared against. A stale value misreports the floor and nothing else, which is the
-   * whole of why this field may stay machine-bound (`docs/plans/costs-across-machines.md`).
+   * whole of why this field may stay machine-bound (`docs/archive/plans/costs-across-machines.md`).
    *
    * It is a measurement, so re-measure rather than raise it when a step legitimately grows. Every run
    * reports a step that ran past double this number, which is what keeps the table honest without anyone

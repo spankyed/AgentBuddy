@@ -1,13 +1,16 @@
-# Costs across machines: the cost model is single-machine
+> **Done** (branch `AS/costs-across-machines`). All four phases are closed: deadlines became declared
+> classes (`8ad50cc27`), the drift report stopped printing advice off the measured machine (`69470a693`),
+> `spec-cost`'s placement checks were scoped to it (`9755ee816`), and the CI rule went into the root
+> `CLAUDE.md` (`2b09fd2a5`). A review after the fact found three more and each is fixed: the machine
+> identity was a core count, so every 10-core box read as the measured one (`c427b1c3b`); the
+> `spec-cost:check` *command* was left enforcing where only its spec had been scoped (`551ed825b`); and a
+> step's bound and its script's now coincide, which needed saying rather than changing (`a5119d250`).
+>
+> Three things in the plan were corrected by implementing it — the inner shell bounds it had missed, the
+> critical-path floor it wrongly called machine-bound, and the ratio it proposed for the half edges — and
+> each correction is marked where it applies. Read it as history: it names code as it was.
 
-> **Done** (branch `AS/costs-across-machines`). All four phases are closed: deadlines are declared classes
-> (`scripts/lib/step-timeouts.ts`), the drift report prints numbers but no instruction off the measured
-> machine, `spec-cost`'s placement cases are scoped to it, and the CI rule is in the root `CLAUDE.md`.
-> Read it as the reasoning rather than as work outstanding; three things in it were corrected by doing it,
-> and each correction is marked where it applies. A review after the fact found three more, all fixed: the
-> machine identity was a core count and so called every 10-core box the measured one; the `spec-cost:check`
-> *command* was left enforcing where only its spec had been scoped; and a step's bound and its script's now
-> coincide, which needed saying rather than changing.
+# Costs across machines: the cost model is single-machine
 
 ## Problem
 
