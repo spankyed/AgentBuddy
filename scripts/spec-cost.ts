@@ -37,6 +37,8 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { REPO_ROOT } from '@abuddy/host/build/packages-built';
 import { bodyDrift, drifted, idleNow, IDLE_FLOOR, refusesAsBusy, refusesAsContended } from './lib/measure.ts';
+import { MEASURED_ON } from './lib/chain-steps.ts';
+import { isMeasuredSchedule, machineText, thisMachine } from './lib/core-budget.ts';
 import { UNIT_SUITES, type UnitSuite } from './lib/unit-suites.ts';
 import {
   CONTENTION_RATIO_MAX, COST_ACCURACY, FAST_BELOW_MS, INTEGRATION_ABOVE_MS, PLACEMENT_GUARD, describeBudget,
@@ -284,6 +286,20 @@ function check(only: string | undefined, named: readonly string[]): void {
       if (found.kind !== 'rename') continue;
       renames.push(`  ${(found.ms / 1000).toFixed(1)}s is ${found.belongs}, but this is in the ${halfOfPath(found.file)} half: ${suite.dir}/${found.file}`);
     }
+  }
+  // **Placement is read from a cost, so it gates only on the machine that measured one.** The edges are
+  // milliseconds chosen for one machine's speed: on a box three times slower, 32 of the 363 fast-half specs
+  // cross the upper edge and this would fail for a tree nobody has touched. Reported there rather than
+  // enforced, which is `packagesBuiltOrRefuse`'s shape — evidence that does not apply is named, not acted on.
+  //
+  // `problems` is not scoped with it, and that is the point of splitting them: an unmeasured spec and a
+  // recorded one that has gone are facts about which files exist, true on any machine, and they are the half
+  // a second developer most needs. Skipping the whole command would have taken them with it.
+  if (renames.length > 0 && !isMeasuredSchedule(MEASURED_ON.cores, MEASURED_ON)) {
+    console.log(`\nNot checking placement: these edges were measured on ${machineText(MEASURED_ON)} and this is `
+      + `${machineText(thisMachine())}, where a cost in milliseconds says nothing about which half a spec belongs in.`);
+    for (const line of renames) console.log(line);
+    renames.length = 0;
   }
   if (problems.length > 0 || renames.length > 0) {
     // The two kinds take different fixes, and telling them apart is the whole value of the advice: an
