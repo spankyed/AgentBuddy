@@ -189,11 +189,16 @@ export const scheduleMismatch = (
 /**
  * How much slower a smaller machine is, for anything that has to reason about one.
  *
- * **Measured rather than chosen, and only once.** A vitest pool dropping from nine workers to about two on a
- * hosted runner is three to four times slower (`docs/archive/plans/costs-across-machines.md`), which is the
- * figure the timeout ladder was sized against. Serial work stretches less than that and a single compiler
- * less again, so four is the worst case rather than the typical one — and those two have not been measured,
- * which is why this is one number and not one per kind of work.
+ * **Measured, and about one kind of work.** A vitest pool dropping from nine workers to about two on a hosted
+ * runner is three to four times slower (`docs/archive/plans/costs-across-machines.md`). That is a *pool*
+ * losing workers and nothing else: serial work stretches less and a single compiler less again, neither has
+ * been measured, so four is the worst case rather than the typical one.
+ *
+ * **Which means it describes one rung of the timeout ladder.** `TIMEOUT_MS`' `suite` cites this as its own
+ * factor; the other two borrow it and say so, so that an assumption stays visible as one. Until 2026-10-03
+ * there was no per-rung factor and this one number was answering three questions, with nothing at any call
+ * site saying which it had been measured for — so a figure about pools was bounding eighteen single
+ * compilers while reading as a property of machines.
  *
  * **Here rather than beside the ladder it sizes**, because it is a fact about machines and this module is
  * where those live. Filed under timeouts it was unfindable from the other question that needs it: `spec-cost`

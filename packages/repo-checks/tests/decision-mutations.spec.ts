@@ -391,16 +391,20 @@ const MUTATIONS: readonly Mutation[] = [
     },
   },
   /**
-   * `step-timeouts.ts` has no spec of its own: a repo-wide grep for `timeoutMsFor` or `timeoutText` across
-   * `*.spec.ts` returns nothing, and `chain-graph` checks only that each class is on the ladder and that
-   * each rung is used — so changing `quick` to six seconds leaves every case in the repo green. These three
-   * are the whole of what observes the module.
+   * `step-timeouts.ts` has no spec of its own. `chain-graph` reaches three of its exports directly — the
+   * bound through `declaredShare`, each rung's provenance, and what a kill reports through `timedOutBecause`
+   * — but nothing there pins a rung's *deadline*, so changing `quick` to six seconds still leaves every case
+   * in the repo green. These four are what observes the rest.
    */
   {
-    why: 'timeoutMsFor refuses a class the ladder has not got, rather than returning undefined',
+    // The mutation is the *permissive* answer rather than a crash, because that is the decision: "a budget is
+    // a ceiling, so the confident wrong answer is the permissive one". Dropping the guard would now throw a
+    // TypeError on `rung.ms`, which differs from the named error and so would pass this — while testing that
+    // reading a field of `undefined` fails, not that the function refuses
+    why: 'timeoutMsFor refuses a class the ladder has not got, rather than defaulting to one',
     in: 'step-timeouts',
-    from: 'if (ms === undefined) {',
-    to: 'if (false) {',
+    from: '    throw new Error(`No such timeout class: ${className} — one of ${TIMEOUT_CLASSES.join(\', \')}`);',
+    to: '    return TIMEOUT_MS.quick.ms;',
     call: (lib) => lib.timeoutMsFor('nonsense'),
   },
   {
@@ -409,18 +413,29 @@ const MUTATIONS: readonly Mutation[] = [
     // meaningful thing to give a step. `suite` dropping under `quick` breaks it.
     why: 'the ladder climbs, so a class is slower than the one below it',
     in: 'step-timeouts',
-    from: '  suite: 300_000,',
-    to: '  suite: 30_000,',
+    from: '    ms: 300_000,',
+    to: '    ms: 30_000,',
     call: (lib) => {
-      const ms = lib.TIMEOUT_CLASSES.map((className) => lib.TIMEOUT_MS[className]);
+      const ms = lib.TIMEOUT_CLASSES.map((className) => lib.TIMEOUT_MS[className].ms);
       return ms.every((value, at) => at === 0 || value > ms[at - 1]!) ? 'climbs' : 'does not climb';
     },
   },
   {
+    // The bound's whole subject: a share that forgets to weigh the rung's factor is a bound against *this*
+    // machine, which is the coupling the ladder was built to remove. 60s declared against `suite`'s 300s is
+    // 20% here and 80% four times slower, so dropping the factor takes a passing step from 0.8 to 0.2 — and
+    // every step in the table would pass a bound that had stopped asking the question
+    why: 'declaredShare weighs a cost by its rung\'s stretch factor, not against the deadline alone',
+    in: 'step-timeouts',
+    from: '  (seconds * 1000 * TIMEOUT_MS[className].stretches) / TIMEOUT_MS[className].ms;',
+    to: '  (seconds * 1000) / TIMEOUT_MS[className].ms;',
+    call: (lib) => lib.declaredShare(60, 'suite'),
+  },
+  {
     why: 'timeoutText says a class in seconds, not milliseconds',
     in: 'step-timeouts',
-    from: '`${TIMEOUT_MS[className] / 1000}s (${className})`',
-    to: '`${TIMEOUT_MS[className]}s (${className})`',
+    from: '`${TIMEOUT_MS[className].ms / 1000}s (${className})`',
+    to: '`${TIMEOUT_MS[className].ms}s (${className})`',
     call: (lib) => lib.timeoutText('quick'),
   },
   {

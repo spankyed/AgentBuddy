@@ -5,6 +5,7 @@ import * as path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { firstChange, REPO_ROOT } from '@abuddy/host/build/packages-built';
 import { CHAIN_STEPS } from '../../../scripts/lib/chain-steps.ts';
+import { machineText, thisMachine } from '../../../scripts/lib/core-budget.ts';
 import { briefly, classifyLine, declaredAt, dim, driftReport, DRY_REASON_COLUMN, howLong, identicalRewrites, marker, oneLine, REASON_COLUMN, shouldClassify, staleLines, STEP_NAME_WIDTH, TIME_COLUMN, whenChanged, wrapAt, writerOf } from '../../../scripts/lib/chain-output.ts';
 
 describe('wrapAt', () => {
@@ -501,12 +502,15 @@ describe('shouldClassify', () => {
 });
 
 describe('classifyLine', () => {
+  const HERE = thisMachine();
+  const SMALLER = { cpu: 'Some Smaller CPU', cores: 4 };
+
   /**
    * The dangerous output. A reader skimming a failing run must not take this for the chain being fine, so the
    * sentence says the chain fails; the exit code stays 1, and the retry writes no stamp, in chain.ts.
    */
   it('says the chain still fails when the step passed alone', () => {
-    const line = classifyLine({ code: 0, ms: 47_200 });
+    const line = classifyLine({ code: 0, ms: 47_200 }, HERE);
 
     expect(line).toContain('passed in 47.2s');
     expect(line).toContain('contention or a flake, not the code');
@@ -514,11 +518,27 @@ describe('classifyLine', () => {
   });
 
   it('says the failure is real when it failed alone too', () => {
-    expect(classifyLine({ code: 1, ms: 48_100 })).toContain('failed again (exit 1) in 48.1s — the failure is real.');
+    expect(classifyLine({ code: 1, ms: 48_100 }, HERE)).toContain('failed again (exit 1) in 48.1s — the failure is real.');
   });
 
   it('distinguishes a step that was wedged from one that was crowded', () => {
-    expect(classifyLine({ code: 1, ms: 240_000, timedOut: true })).toContain('wedged, not crowded');
+    expect(classifyLine({ code: 1, ms: 240_000, timedOut: true }, HERE)).toContain('wedged, not crowded');
+  });
+
+  /**
+   * And off that machine it claims only the half the re-run established.
+   *
+   * Running alone rules out contention wherever it runs; "wedged" needs the deadline to be generous here, and
+   * a deadline is a class sized for a machine this one may be smaller than. The flat version was the last
+   * ungated timeout verdict in the repo after `timedOutBecause` gated the other two.
+   */
+  it('claims only "not crowded" on a machine the deadline was not sized for', () => {
+    const line = classifyLine({ code: 1, ms: 240_000, timedOut: true }, SMALLER);
+
+    expect(line, 'the conclusion the retry cannot reach here').not.toContain('wedged, not crowded');
+    expect(line).toContain('not crowded, which is all this says');
+    expect(line, 'both machines, so the reader can see why').toContain(machineText(SMALLER));
+    expect(line).toContain(machineText(HERE));
   });
 });
 

@@ -13,6 +13,15 @@ name: CI
 #
 # Turn it on when the repo has other contributors. Uncomment both triggers; the jobs below are current and
 # ready to run as they are. Until then it can still be run by hand from the Actions tab (workflow_dispatch).
+#
+# **What enabling it settles about the timeout ladder.** A runner here is the smaller machine `TIMEOUT_MS`
+# (scripts/lib/step-timeouts.ts) is sized for, and each rung declares how much its kind of work stretches on
+# one — two of the three borrowing a figure measured for the third. The jobs below reach two of the three
+# rungs, and between them that is both borrowed rows: `quick` through `npm run typecheck`'s eighteen legs, and
+# `scenario` through `external-pack-e2e`'s two steps, which `scripts/bounded.ts` bounds at that class. What
+# they do not reach is `suite` — the pool deadlines come from `npm run chain`, which nothing here runs, and
+# `npm test --workspace <each>` bypasses the pool runner. `suite` is also the one rung whose factor was
+# measured, so nothing is waiting on it.
 
 on:
   workflow_dispatch:

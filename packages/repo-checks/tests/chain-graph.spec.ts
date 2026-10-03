@@ -13,8 +13,8 @@ import { CHAIN_STEPS, chainSteps, conflictsOf, dependsOn, orderedSteps, STEP_TAB
 import { declaredAt } from '../../../scripts/lib/chain-output.ts';
 import { withoutComments } from '../../../scripts/lib/npm-scripts.ts';
 import { population } from '@abuddy/sdk/testing';
-import { SLOWER_MACHINE } from '../../../scripts/lib/core-budget.ts';
-import { MAX_DECLARED_SHARE, TIMEOUT_CLASSES, TIMEOUT_MS } from '../../../scripts/lib/step-timeouts.ts';
+import { machineText, thisMachine } from '../../../scripts/lib/core-budget.ts';
+import { ASSUMED_RUNGS, declaredShare, timedOutBecause, TIMEOUT_CLASSES, TIMEOUT_MS } from '../../../scripts/lib/step-timeouts.ts';
 
 describe('the chain graph', () => {
   it('orders every step after the steps it depends on', () => {
@@ -222,6 +222,18 @@ describe('every spawn an orchestrator makes is bounded', () => {
   const REPO = REPO_ROOT;
   const read = (rel: string) => fs.readFileSync(path.join(REPO, rel), 'utf-8');
 
+  /**
+   * The classes the repo's npm scripts bound a direct run at, from the manifest's text.
+   *
+   * Text rather than a resolved config, for `capsInText`'s reason (`core-budget.spec.ts`): what is being asked
+   * is what the manifest *says*, and a pure function over it is what lets the scan be mutated rather than
+   * trusted.
+   */
+  type Scripts = { scripts: Record<string, string> };
+  const boundedIn = (scripts: Record<string, string>): { name: string; className: string }[] =>
+    Object.entries(scripts).flatMap(([name, command]) =>
+      [...command.matchAll(/scripts\/bounded\.ts\s+(\S+)/g)].map((hit) => ({ name, className: hit[1]! })));
+
   // An unbounded run cannot fail — it waits until a person notices and kills it by pid, which is how this
   // repo collected an orphaned build at 99% CPU for a day. `boundedSpawn` bounds the wall clock and kills
   // the process group rather than the child, so nothing outlives the run that started it.
@@ -299,12 +311,13 @@ describe('every spawn an orchestrator makes is bounded', () => {
    * Every step declares a timeout class, which is what actually bounds it.
    *
    * Required on the type, so this cannot fail by a step omitting one — what it catches is the other way, a
-   * class that is not in the ladder, which `TIMEOUT_MS` would answer `undefined` for and `boundedSpawn`
-   * would take as a deadline of NaN. That is `unit-pool.spec.ts`' hazard moved to its new home.
+   * class that is not in the ladder, which `TIMEOUT_MS` answers `undefined` for. Since a rung became an
+   * object that is a throw at the spawn rather than a deadline of NaN, which is the better failure and still
+   * not one to discover six minutes into a chain. That is `unit-pool.spec.ts`' hazard moved to its new home.
    */
   it('bounds every step with a class the ladder has', () => {
-    const unknown = CHAIN_STEPS.filter((step) => TIMEOUT_MS[step.timeout] === undefined);
-    expect(unknown.map((step) => step.name), 'a class off the ladder is a deadline of NaN').toEqual([]);
+    const unknown = CHAIN_STEPS.filter((step) => TIMEOUT_MS[step.timeout]?.ms === undefined);
+    expect(unknown.map((step) => step.name), 'a class off the ladder has no deadline at all').toEqual([]);
   });
 
   /**
@@ -318,35 +331,169 @@ describe('every spawn an orchestrator makes is bounded', () => {
    * deadline here is still chosen by kind; this only notices when a step's cost has grown until its chosen
    * rung no longer has room, which is a question nothing else in the repo asks.
    *
-   * **The fraction is derived, not picked.** The ladder is sized for a machine about four times slower —
-   * the branch's own figure for a pool dropping from nine workers to two — so a step sitting at a fraction
-   * `f` of its class here sits at `4f` there. `f` at a quarter is what keeps it inside, and anything above
-   * that is a step whose deadline is no longer the generous ceiling the class promised.
+   * **The fraction is derived, not picked, and since 2026-10-03 it is derived per rung.** A rung declares how
+   * much its kind of work stretches on a smaller box, so a step at a fraction `f` of its class here sits at
+   * `f × stretches` there; `declaredShare` is that product and 1 is exactly on the deadline. One global
+   * fraction was answering three questions at once — the 4× is a measurement of a *pool* losing workers,
+   * which describes `suite` and not the single compilers in `quick` — and two of the three rungs now say
+   * outright that they are borrowing it (`ASSUMED_RUNGS`, and the case below).
    *
    * **It is a creep detector and it found nothing the day it was written, which is worth being honest
-   * about.** A quarter permits a step to reach its deadline *exactly* four times slower, so it is the loosest
-   * useful bound rather than a comfortable one. It cannot be tighter, because the 4× is a measurement of a
-   * *pool* losing workers and overstates what a single `tsc` does on a slower core — tightening it to leave a
-   * margin fails six steps, most of them single compilers the figure does not describe. Per-kind factors
-   * would fix that and this repo has measured only the one.
+   * about.** A rung's own factor still permits a step to reach its deadline *exactly* on the machine that
+   * rung is sized for, so this is the loosest useful bound rather than a comfortable one. It cannot be
+   * tightened on the two borrowed rows without first measuring them, and a margin on top of today's figures
+   * fails five steps, most of them single compilers the pool measurement does not describe.
    *
    * So the two steps that were genuinely tight — `packages:ensure` at 93% of its deadline four times slower,
    * `compile` at 87% — were found by reading the table, not by this, and moved because they are *bundles*
    * (`suite` is the rung that says "a test suite or a bundle") rather than the single compilers `quick`
    * describes. What this catches is the next one, as a declared cost grows.
    *
-   * No exception list. At a quarter nothing needs one, and the day something does, the answer is to move the
-   * step or add a rung — not to write down that one step is allowed to be tight.
+   * No exception list. At these factors nothing needs one, and the day something does, the answer is to move
+   * the step or add a rung — not to write down that one step is allowed to be tight.
    */
-  it(`leaves every step room inside the class it declares, on a machine ${SLOWER_MACHINE} times slower`, () => {
+  it('leaves every step room inside the class it declares, on the smaller machine that rung is sized for', () => {
     const tight = CHAIN_STEPS
-      .map((step) => ({ step, share: ((step.seconds ?? 0) * 1000) / TIMEOUT_MS[step.timeout] }))
-      .filter(({ share }) => share > MAX_DECLARED_SHARE)
-      .map(({ step, share }) => `${step.name} declares ${step.seconds}s, which is ${Math.round(share * 100)}%`
-        + ` of ${step.timeout} (${TIMEOUT_MS[step.timeout] / 1000}s) and `
-        + `${Math.round(share * SLOWER_MACHINE * 100)}% of it ${SLOWER_MACHINE} times slower`);
-    expect(tight, `move these to a longer class — a step past ${Math.round(MAX_DECLARED_SHARE * 100)}%`
-      + ' of its rung here is one whose deadline is no longer a ceiling on a smaller box').toEqual([]);
+      .map((step) => ({ step, at: declaredShare(step.seconds ?? 0, step.timeout) }))
+      .filter(({ at }) => at > 1)
+      .map(({ step, at }) => `${step.name} declares ${step.seconds}s, which is `
+        + `${Math.round(at * 100)}% of ${step.timeout} (${TIMEOUT_MS[step.timeout].ms / 1000}s) on a machine `
+        + `${TIMEOUT_MS[step.timeout].stretches} times slower`);
+    expect(tight, 'move these to a longer class — a step past 100% of its rung on the machine that rung is'
+      + ' sized for is one whose deadline is no longer a ceiling there').toEqual([]);
+  });
+
+  /**
+   * Which rungs' factors are measured, and that every one of them says which it is.
+   *
+   * **Exactly one of `measured` and `until`**, because the pair is an either/or written as two fields: a
+   * measured rung still carrying a condition is a stale one, and an assumed rung without a condition is a
+   * guess nobody wrote the terms of. Both were the state of the whole ladder until 2026-10-03, when one
+   * global `SLOWER_MACHINE` stood for three rungs and nothing at any call site said which of the three it had
+   * been measured for.
+   *
+   * It asserts that *some* rung is assumed rather than naming which. Two are today, and the day one is
+   * measured this case should keep passing without an edit — what it is here to catch is a row with neither
+   * answer or both.
+   */
+  it('says of every rung whether its stretch factor was measured, and what would settle it if not', () => {
+    for (const className of population('the ladder', TIMEOUT_CLASSES)) {
+      const { measured, until } = TIMEOUT_MS[className];
+      expect([measured, until].filter((what) => what !== undefined), `${className} must record either what `
+        + 'measured its stretch factor or what would, and never both').toHaveLength(1);
+    }
+    expect(ASSUMED_RUNGS.length, 'a ladder with nothing assumed needs no ASSUMED_RUNGS, and this case and '
+      + "the message's off-machine arm are then both describing a state that cannot happen")
+      .toBeGreaterThan(0);
+  });
+
+  /**
+   * What a step says when its class killed it — the one report in the repo whose subject is a deadline.
+   *
+   * **A kill truncates the measurement**, so the figure with information in it is the *rope*: the deadline
+   * over what the step costs healthy. Elapsed time is the deadline plus the grace period by construction
+   * (`bounded-spawn.ts`) and carries nothing, which is why none of these cases asks for it.
+   *
+   * **And the interpretation is machine-dependent.** "So it is wedged" is true where the costs were measured
+   * and an assertion the program cannot make anywhere else: on a smaller box a step can exceed its deadline
+   * by being slow, and that is exactly the evidence the assumed rungs are waiting for. The message used to
+   * state the conclusion flatly and then add *"overrunning one is not a stale number"* — the sentence that
+   * would stop a reader suspecting the rung's factor, which off the measured machine is the thing to suspect.
+   */
+  describe('what a timed-out step reports', () => {
+    const HERE = thisMachine();
+    const SMALLER = { cpu: 'Some Smaller CPU', cores: 4 };
+
+    it('states the rope it got, which is its deadline over what it costs healthy', () => {
+      // 300s for a 13s step is 23x, and that is the number a kill proves a lower bound on
+      expect(timedOutBecause({ what: 'compile', timeout: 'suite', healthy: { seconds: 13, measuredOn: HERE } }))
+        .toContain('That is 23x the 13s it costs healthy here');
+    });
+
+    it('calls it wedged on the machine the costs were measured on', () => {
+      const why = timedOutBecause({ what: 'compile', timeout: 'suite', healthy: { seconds: 13, measuredOn: HERE } });
+      expect(why).toContain('so it is wedged rather than slow');
+      expect(why, 'the deadline and its class, so a reader need not look the rung up').toContain('300s (suite)');
+    });
+
+    /**
+     * The arm the whole change is for: off the measured machine the rope is evidence about the rung, and the
+     * message has to name the rung's factor rather than draw the conclusion that forecloses it.
+     */
+    it('names the rung and its factor on any other machine, and calls the rope the finding', () => {
+      const assumed = ASSUMED_RUNGS[0]!;
+      const why = timedOutBecause({
+        what: 'typecheck:fe', timeout: assumed, healthy: { seconds: 10, measuredOn: HERE, machine: SMALLER },
+      });
+      expect(why, 'never the flat conclusion, which here is the half of the answer that is not knowable')
+        .not.toContain('so it is wedged rather than slow');
+      expect(why).toContain(`or ${assumed} stretches by more than`);
+      expect(why).toContain(`which its row assumes is ${TIMEOUT_MS[assumed].stretches}x and has never measured`);
+      expect(why, 'both machines, since the reader has to know which is which').toContain(machineText(SMALLER));
+      expect(why).toContain(machineText(HERE));
+    });
+
+    it('says a measured rung was measured, and by what', () => {
+      // `suite` is the one rung with a figure of its own, so off-machine it reports a recorded factor rather
+      // than an assumption — the same arm, a different claim, and getting those two the same way round is the
+      // point of carrying the provenance on the rung
+      const why = timedOutBecause({
+        what: 'test:integration', timeout: 'suite', healthy: { seconds: 60, measuredOn: HERE, machine: SMALLER },
+      });
+      expect(why).toContain('where its row records');
+      expect(why, 'the provenance itself, not a copy of it').toContain(TIMEOUT_MS.suite.measured);
+    });
+
+    /**
+     * And the arm `scripts/bounded.ts` takes, which is the one that matters: that path has a class and an
+     * argv and no step record at all, so a rope is not a number it can compute. It says so rather than
+     * reaching for a `?` or a zero — the same refusal `priceSpecs` makes about an unrecorded spec.
+     */
+    it('computes no rope where nothing records what the thing costs', () => {
+      const why = timedOutBecause({ what: 'bash tests/scripts/x.sh', timeout: 'scenario' });
+      expect(why).toContain('900s (scenario)');
+      expect(why).toContain('Nothing records what it costs healthy');
+      expect(why, 'no rope, and no invented operand to compute one from').not.toMatch(/\d+(?:\.\d+)?x/);
+    });
+  });
+
+  /**
+   * Which rungs a *direct* run can reach, which is the second path into the ladder and the one a claim about
+   * reachability keeps forgetting.
+   *
+   * `scripts/bounded.ts` takes a class on its command line, and four npm scripts invoke it — so a rung is
+   * reachable without `npm run chain` and without any chain step at all. A rung's `until` said the opposite
+   * about `scenario` ("reached only through `npm run chain`, which CI does not run") while CI's
+   * `external-pack-e2e` job bounds two steps at it through exactly this path.
+   *
+   * **An inventory, not a gate**, in `subprocess-inventory`'s sense: it fails on a *change* rather than on a
+   * hit, because the useful moment is when the set moves and the prose describing it has to be revisited. The
+   * two halves either side of that are ordinary gates — every class named here is on the ladder, which
+   * `timeoutMsFor` otherwise only refuses at runtime, and the set is not empty, since a regex that matched
+   * nothing would pass all three.
+   */
+  it('reaches a rung from a direct npm run too, and the ladder knows every class those name', () => {
+    const bounded = boundedIn((JSON.parse(read('package.json')) as Scripts).scripts);
+
+    expect(population('the scripts that bound a direct run', bounded).length).toBeGreaterThan(0);
+    for (const { name, className } of bounded) {
+      expect(TIMEOUT_CLASSES, `${name} bounds at ${className}, which is no rung on the ladder`)
+        .toContain(className);
+    }
+    expect([...new Set(bounded.map(({ className }) => className))].sort(),
+      'the rungs a direct run reaches have changed — re-read every `until` that describes how a rung is '
+      + 'exercised before updating this').toEqual(['scenario', 'suite']);
+  });
+
+  // The mutation, over data rather than the real manifest: a regex that matched nothing would satisfy every
+  // assertion above, which is what the emptiness guard alone cannot tell you. Both halves that can fail are
+  // exercised here — a class the ladder has not got, and a rung the recorded set does not name
+  it('finds a class a script bounds at, which is what the case above rests on', () => {
+    expect(boundedIn({ 'x': 'npm run packages:ensure && tsx scripts/bounded.ts quick bash tests/scripts/x.sh' }))
+      .toEqual([{ name: 'x', className: 'quick' }]);
+    expect(boundedIn({ 'y': 'tsx scripts/bounded.ts nonsense bash y.sh' })[0]!.className)
+      .not.toBeOneOf([...TIMEOUT_CLASSES]);
+    expect(boundedIn({ 'z': 'npm test' }), 'a script that bounds nothing contributes nothing').toEqual([]);
   });
 
   /**

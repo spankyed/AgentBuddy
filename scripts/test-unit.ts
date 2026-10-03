@@ -21,7 +21,8 @@
 import { execFileSync } from 'node:child_process';
 import * as os from 'node:os';
 import { boundedSpawn } from './lib/bounded-spawn.ts';
-import { TIMEOUT_MS } from './lib/step-timeouts.ts';
+import { MEASURED_ON, POOL_SECONDS } from './lib/chain-steps.ts';
+import { TIMEOUT_MS, timedOutBecause } from './lib/step-timeouts.ts';
 import { UNIT_SUITES } from './lib/unit-suites.ts';
 import { exitOnEpipe } from './lib/exit-on-epipe.ts';
 
@@ -30,7 +31,13 @@ exitOnEpipe();
 const hostSuites = UNIT_SUITES.filter((suite) => suite.kind === 'host');
 const packSuites = UNIT_SUITES.filter((suite) => suite.kind === 'pack');
 
-interface Pool { label: string; command: string; args: string[] }
+/**
+ * `seconds` is what the whole pool costs healthy, and only the host pool has one: the pack entries below are
+ * a run per workspace, where `POOL_SECONDS.pack` describes all of them together and so describes none of
+ * them. A run with no recorded cost gets the arm of the timeout message that says so rather than a rope
+ * computed from the wrong number.
+ */
+interface Pool { label: string; command: string; args: string[]; seconds?: number }
 
 /**
  * The host pool is the root `vitest.config.ts`, whose `projects` are these same suites; the pack pool is
@@ -42,6 +49,7 @@ const POOLS: Pool[] = [
     // with-source supplies the @abuddy/source condition the host suites resolve under
     command: 'node',
     args: ['scripts/with-source.mjs', 'npx', 'vitest', 'run'],
+    seconds: POOL_SECONDS.host,
   },
   ...packSuites.map((suite) => ({ label: suite.workspace, command: 'npm', args: ['test', '-w', suite.workspace] })),
 ];
@@ -59,13 +67,22 @@ const cpus = os.availableParallelism?.() ?? os.cpus().length;
  * beside the pack pool, because each already spreads across the cores.
  */
 
-interface Result { pool: string; code: number; ms: number; output: string; timedOut?: true }
+interface Result { pool: string; code: number; ms: number; output: string; why?: string }
 
 async function run(pool: Pool): Promise<Result> {
   // `suite` is five minutes, and the slowest pool is ~22s alone — so this says wedged rather than slow.
   // It was `budgetFor(75)`, which reached the same number through a measurement nobody took.
-  const { code, output, ms, timedOut } = await boundedSpawn(pool.command, pool.args, TIMEOUT_MS.suite);
-  return { pool: pool.label, code, ms, output, ...(timedOut ? { timedOut } : {}) };
+  const { code, output, ms, timedOut } = await boundedSpawn(pool.command, pool.args, TIMEOUT_MS.suite.ms);
+  // A kill used to be the word `TIMEOUT` in the status column and nothing else — no class, no cost, no rope —
+  // on the one rung whose stretch factor is the measured one
+  const why = timedOut
+    ? timedOutBecause({
+      what: pool.label,
+      timeout: 'suite',
+      ...pool.seconds === undefined ? {} : { healthy: { seconds: pool.seconds, measuredOn: MEASURED_ON } },
+    })
+    : undefined;
+  return { pool: pool.label, code, ms, output, ...(why === undefined ? {} : { why }) };
 }
 
 async function main(): Promise<void> {
@@ -77,11 +94,11 @@ async function main(): Promise<void> {
   for (const pool of POOLS) {
     const result = await run(pool);
     results.push(result);
-    console.log(`  ${(result.code === 0 ? 'ok' : result.timedOut ? 'TIMEOUT' : 'FAIL').padEnd(7)} ${result.pool.padEnd(22)} ${(result.ms / 1000).toFixed(1)}s`);
+    console.log(`  ${(result.code === 0 ? 'ok' : result.why ? 'TIMEOUT' : 'FAIL').padEnd(7)} ${result.pool.padEnd(22)} ${(result.ms / 1000).toFixed(1)}s`);
   }
 
   const failed = results.filter((result) => result.code !== 0);
-  for (const result of failed) console.log(`\n${'='.repeat(70)}\n${result.pool}\n${'='.repeat(70)}\n${result.output}`);
+  for (const result of failed) console.log(`\n${'='.repeat(70)}\n${result.why ?? result.pool}\n${'='.repeat(70)}\n${result.output}`);
   const total = ((Date.now() - started) / 1000).toFixed(1);
   console.log(`\n${failed.length ? `${failed.length} pool(s) failed` : 'unit suites passed'} — ${total}s wall`);
   // Not process.exit(): it drops whatever is still in stdout's buffer, and a failing pool's captured output
