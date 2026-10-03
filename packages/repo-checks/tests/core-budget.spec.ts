@@ -9,7 +9,7 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { REPO_ROOT } from '@abuddy/host/build/packages-built';
-import { asPercent, box, coresFor, isMeasuredSchedule, POOL_WIDTH, shareOf } from '../../../scripts/lib/core-budget.ts';
+import { asPercent, box, coresFor, isMeasuredSchedule, POOL_WIDTH, shareOf, thisMachine } from '../../../scripts/lib/core-budget.ts';
 import { PACKAGE_DIRS } from '../../../scripts/lib/workspace-deps.ts';
 import { population } from '@abuddy/sdk/testing';
 
@@ -64,23 +64,36 @@ describe('coresFor', () => {
  * case is the one it let through.
  */
 describe('isMeasuredSchedule', () => {
-  it('holds when the budget and the box are both the measured one', () => {
-    expect(isMeasuredSchedule(10, 10, 10)).toBe(true);
+  const MEASURED = { cpu: 'Apple M1 Pro', cores: 10 } as const;
+
+  it('holds when the budget, the cores and the CPU are all the measured ones', () => {
+    expect(isMeasuredSchedule(10, MEASURED, MEASURED)).toBe(true);
   });
 
   it('refuses another budget', () => {
-    expect(isMeasuredSchedule(12, 10, 10)).toBe(false);
+    expect(isMeasuredSchedule(12, MEASURED, MEASURED)).toBe(false);
   });
 
-  it('refuses another box, even where the budget is the measured one', () => {
-    // The hole: widths are resolved against the machine, so `--cores 10` on a twenty-core box runs
-    // twenty-core widths under a ten-core budget. The costs that come out describe neither schedule, and
-    // `budgetFor` sizes every kill deadline from them
-    expect(isMeasuredSchedule(10, 10, 20)).toBe(false);
+  it('refuses another core count, even where the budget is the measured one', () => {
+    // Widths are resolved against the machine, so `--cores 10` on a twenty-core box runs twenty-core widths
+    // under a ten-core budget. The costs that come out describe neither schedule.
+    expect(isMeasuredSchedule(10, MEASURED, { cpu: 'Apple M1 Pro', cores: 20 })).toBe(false);
   });
 
-  it('reads this machine when no box is given, which is how the chain asks', () => {
-    expect(isMeasuredSchedule(box(), box())).toBe(true);
+  /**
+   * And another CPU at the same core count, which a core count alone cannot see.
+   *
+   * This is the hole: keyed on cores, every 10-core machine read as the measured one, so a second developer
+   * on a 10-core Mac got `--record` accepted and `spec-cost`'s placement gate enforced against a table
+   * measured on different silicon — the exact failure the portability work was for, surviving for the
+   * commonest machine there is.
+   */
+  it('refuses another CPU at the same core count', () => {
+    expect(isMeasuredSchedule(10, MEASURED, { cpu: 'Apple M4 Pro', cores: 10 })).toBe(false);
+  });
+
+  it('reads this machine when none is given, which is how the chain asks', () => {
+    expect(isMeasuredSchedule(box(), thisMachine())).toBe(true);
   });
 });
 

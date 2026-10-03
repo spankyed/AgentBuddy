@@ -28,8 +28,8 @@ import {
 // *this* record uses them — the body-drift case asserts `moved` says nothing about the same numbers, which is
 // the whole point of having both, and that pairing only exists here.
 import { bodyDrift, contended, drifted, refusesAsContended } from '../../../scripts/lib/measure.ts';
-import { MEASURED_AT_CORES } from '../../../scripts/lib/chain-steps.ts';
-import { box } from '../../../scripts/lib/core-budget.ts';
+import { MEASURED_ON } from '../../../scripts/lib/chain-steps.ts';
+import { isMeasuredSchedule, machineText, thisMachine } from '../../../scripts/lib/core-budget.ts';
 import { UNIT_SUITES } from '../../../scripts/lib/unit-suites.ts';
 
 /** Every suite's record, read once. A suite with no record is a failure below, not an empty pass. */
@@ -61,7 +61,8 @@ describe('every suite records what its specs cost', () => {
  * **The half-split is correctly machine-specific, and that is why these cases are scoped rather than made
  * portable.** A cost in milliseconds says where a spec belongs only against edges chosen for one machine's
  * speed; on a box three times slower, 32 of the 363 fast-half specs cross the 2 500ms edge and the check
- * fails for a tree nobody has touched.
+ * fails for a tree nobody has touched. The machine is `MEASURED_ON` — the CPU as well as the core count,
+ * because a core count alone called every 10-core box the measured one.
  *
  * **A ratio does not fix it, measured 2026-10-03.** `repo-checks` is not separable by one: four fast specs
  * cost more than its three cheapest integration specs, so the halves overlap at 9.4x the median against
@@ -76,10 +77,10 @@ describe('every suite records what its specs cost', () => {
  * `packagesBuiltOrRefuse()`: evidence that does not apply is skipped rather than passed over. The pure
  * cases over synthetic costs run everywhere, because they are about the arithmetic and not about a box.
  */
-const ON_MEASURED_MACHINE = box() === MEASURED_AT_CORES;
+const ON_MEASURED_MACHINE = isMeasuredSchedule(MEASURED_ON.cores, MEASURED_ON);
 /** Appended to a skipped name, so a run on another machine says why rather than quietly reporting fewer cases */
 const OFF_BOX = ON_MEASURED_MACHINE ? ''
-  : ` — skipped: these edges are ${MEASURED_AT_CORES}-core edges and this machine has ${box()}`;
+  : ` — skipped: these edges were measured on ${machineText(MEASURED_ON)} and this is ${machineText(thisMachine())}`;
 
 describe.skipIf(!ON_MEASURED_MACHINE)(`a spec runs in the half its cost puts it in${OFF_BOX}`, () => {
   it(`moves a fast spec above ${INTEGRATION_ABOVE_MS}ms, and brings an integration one back below ${FAST_BELOW_MS}ms`, () => {

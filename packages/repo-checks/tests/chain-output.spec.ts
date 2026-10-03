@@ -357,6 +357,12 @@ describe('howLong', () => {
   });
 });
 
+/** The machine the table was measured on, and two live ones: the same box, and another with the same cores */
+const MEASURED = { cpu: 'Apple M1 Pro', cores: 10 } as const;
+const SAME = MEASURED;
+const OTHER_CORES = { cpu: 'Apple M1 Pro', cores: 20 } as const;
+const OTHER_CPU = { cpu: 'Apple M4 Pro', cores: 10 } as const;
+
 describe('driftReport', () => {
   const drifted = [
     { name: 'test:external-pack:contract', declared: 57, measured: 18 },
@@ -364,7 +370,7 @@ describe('driftReport', () => {
   ];
 
   it('prints the value to record, when the run is comparable to the table', () => {
-    const report = driftReport(drifted, 10, 10, true, 10);
+    const report = driftReport(drifted, 10, MEASURED, true, SAME);
 
     expect(report).toContain('re-measure, or record');
     expect(report).toContain('seconds: 57 -> 18');
@@ -383,16 +389,30 @@ describe('driftReport', () => {
    * `isMeasuredSchedule` was written for, and this is the case that holds this caller to it.
    */
   it('prints the numbers but no instruction on a machine the table does not describe', () => {
-    const report = driftReport(drifted, 10, 10, true, 20);
+    const report = driftReport(drifted, 10, MEASURED, true, OTHER_CORES);
 
     expect(report, 'what a step cost is true wherever it ran').toContain('57s -> 18s');
     expect(report, '`--record` refuses there, so the advice cannot be taken').not.toContain('record');
   });
 
-  it('gates on the box as well as the budget, which a budget alone cannot', () => {
+  it('gates on the machine as well as the budget, which a budget alone cannot', () => {
     // Same budget, same measured schedule, different machine — the one combination the weaker guard missed
-    expect(driftReport(drifted, 10, 10, true, 10)).toContain('re-measure, or record');
-    expect(driftReport(drifted, 10, 10, true, 20)).not.toContain('re-measure, or record');
+    expect(driftReport(drifted, 10, MEASURED, true, SAME)).toContain('re-measure, or record');
+    expect(driftReport(drifted, 10, MEASURED, true, OTHER_CORES)).not.toContain('re-measure, or record');
+  });
+
+  /**
+   * And on the CPU as well as the core count, which is the hole a core count alone leaves.
+   *
+   * Keyed on cores only, every 10-core machine read as the one the table was measured on — an M4 Pro, a
+   * 10-core Xeon, any of them. A second developer on a 10-core Mac, the commonest shape there is, got this
+   * instruction on a table measured on different silicon, and `--record` accepted the run.
+   */
+  it('prints no instruction on another machine with the same core count', () => {
+    expect(driftReport(drifted, 10, MEASURED, true, OTHER_CPU), 'same cores, different CPU')
+      .not.toContain('re-measure, or record');
+    expect(driftReport(drifted, 10, MEASURED, true, OTHER_CPU), 'the numbers are still true there')
+      .toContain('57s -> 18s');
   });
 
   /**
@@ -401,7 +421,7 @@ describe('driftReport', () => {
    * mis-sized bound `seconds`' own doc warns about. The numbers are real; only "record them" was wrong.
    */
   it('names the spread instead, when the run used another budget', () => {
-    const report = driftReport(drifted, 1, 10, true, 10);
+    const report = driftReport(drifted, 1, MEASURED, true, SAME);
 
     expect(report).not.toContain('record');
     expect(report).toContain('on 1 core, 2 steps moved against 10-core numbers');
@@ -409,7 +429,7 @@ describe('driftReport', () => {
   });
 
   it('says slower when a bigger budget made a step slower, not faster', () => {
-    expect(driftReport([{ name: 'typecheck', declared: 27, measured: 54 }], 16, 10, true, 10)).toContain('(2.0x slower)');
+    expect(driftReport([{ name: 'typecheck', declared: 27, measured: 54 }], 16, MEASURED, true, SAME)).toContain('(2.0x slower)');
   });
 
   /**
@@ -418,8 +438,8 @@ describe('driftReport', () => {
    * admission policy — which is what the first version of this gated on — said nothing about it.
    */
   it('says nothing about a step that came in under the band, on a run that did less work', () => {
-    expect(driftReport(drifted, 10, 10, false, 10)).toBe('');
-    expect(driftReport(drifted, 1, 10, false, 10)).toBe('');
+    expect(driftReport(drifted, 10, MEASURED, false, SAME)).toBe('');
+    expect(driftReport(drifted, 1, MEASURED, false, SAME)).toBe('');
   });
 
   /**
@@ -437,7 +457,7 @@ describe('driftReport', () => {
   it('names a step that ran past double, on any run', () => {
     const grew = [{ name: 'typecheck', declared: 27, measured: 61 }];
 
-    const report = driftReport(grew, 10, 10, false, 10);
+    const report = driftReport(grew, 10, MEASURED, false, SAME);
 
     expect(report).toContain('the step grew, not the schedule');
     expect(report).toContain('27s -> 61s');
@@ -446,13 +466,13 @@ describe('driftReport', () => {
 
   it('keeps an overrun out of the count when the run could answer for both directions', () => {
     // forced: the run did all the work, so both directions are reportable and the record form is right
-    expect(driftReport([{ name: 'typecheck', declared: 27, measured: 61 }], 10, 10, true, 10))
+    expect(driftReport([{ name: 'typecheck', declared: 27, measured: 61 }], 10, MEASURED, true, SAME))
       .toContain('re-measure, or record');
   });
 
   it('says nothing when nothing drifted, at either budget', () => {
-    expect(driftReport([], 10, 10, true, 10)).toBe('');
-    expect(driftReport([], 1, 10, true, 10)).toBe('');
+    expect(driftReport([], 10, MEASURED, true, SAME)).toBe('');
+    expect(driftReport([], 1, MEASURED, true, SAME)).toBe('');
   });
 });
 

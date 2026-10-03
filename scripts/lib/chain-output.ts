@@ -5,7 +5,7 @@
  * cannot load `chain.ts` without starting a six-minute build.
  */
 import { covers } from '@abuddy/host/build/packages-built';
-import { box, isMeasuredSchedule } from './core-budget.ts';
+import { isMeasuredSchedule, thisMachine, type Machine } from './core-budget.ts';
 import { overBand } from './step-timing.ts';
 
 /**
@@ -368,16 +368,15 @@ export function howLong(
 export function driftReport(
   drifted: readonly { name: string; declared: number; measured: number }[],
   budget: number,
-  measuredAt: number,
+  /** The machine and budget the table was measured on (`MEASURED_ON`), which is what a run is comparable to */
+  measuredOn: Machine,
   /** Whether the run did every step's work (`--all`), which is how the table's numbers are taken */
   forced: boolean,
   /**
-   * This machine's cores, which with `budget` is what says whether the run is the schedule the table
-   * describes — `isMeasuredSchedule` has why it takes two numbers and not one.
-   *
-   * Named for the machine rather than `cores`, which is this module's own formatter one scope out.
+   * This machine, which with `budget` is what says whether the run is the schedule the table describes —
+   * `isMeasuredSchedule` has why it takes three facts and not one.
    */
-  machine: number = box(),
+  machine: Machine = thisMachine(),
 ): string {
   // The two directions are not alike, so a run that cannot answer for one can still answer for the other.
   // Under the band is the run's doing: a smaller budget, or most steps cached, is less contention, and with
@@ -405,11 +404,11 @@ export function driftReport(
   // printing it anywhere else is advice whose one command refuses. Asked of `isMeasuredSchedule` rather than
   // of `budget === measuredAt`, which is the weaker form that let `--cores 10` on a twenty-core box through:
   // the budget matched while every width was twenty-core sized.
-  if (isMeasuredSchedule(budget, measuredAt, machine)) {
+  if (isMeasuredSchedule(budget, measuredOn, machine)) {
     return `\n${count} cost something other than chain-steps.ts says — re-measure, or record:\n`
       + `${rows(({ declared, measured }) => `seconds: ${declared} -> ${measured}`)}`;
   }
-  return `\non ${cores(budget)}, ${count} moved against ${measuredAt}-core numbers`
+  return `\non ${cores(budget)}, ${count} moved against ${measuredOn.cores}-core numbers`
     + ` — the schedule, not a stale table:\n`
     + `${rows(({ declared, measured }) => {
       const factor = (Math.max(declared, measured) / Math.min(declared, measured)).toFixed(1);

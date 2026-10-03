@@ -35,10 +35,10 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { changedInputs, diffableStamp, firstChange, freshnessSweep, INPUTS_CHANGED, PACKAGES_PREBUILT_ENV, REPO_ROOT, stampedRun, stampRecord, unitStaleReason, type BuildUnit } from '@abuddy/host/build/packages-built';
-import { CHAIN_STEPS, type ChainStep, chainSteps, MEASURED_AT_CORES, needsApp, orderedSteps, STEP_TABLES } from './lib/chain-steps.ts';
+import { CHAIN_STEPS, type ChainStep, chainSteps, MEASURED_ON, needsApp, orderedSteps, STEP_TABLES } from './lib/chain-steps.ts';
 import { CHAIN_FLAGS } from './lib/chain-flags.ts';
 import { TIMEOUT_MS, timeoutText, type TimeoutClass } from './lib/step-timeouts.ts';
-import { box, isMeasuredSchedule } from './lib/core-budget.ts';
+import { box, isMeasuredSchedule, machineText, thisMachine } from './lib/core-budget.ts';
 import { commandText, rootScripts } from './lib/npm-scripts.ts';
 import { asCount, bodyDrift, drifted, IDLE_FLOOR, idleNow, movedBeyondBand, parseFlags, refusesAsBusy, refusesAsContended } from './lib/measure.ts';
 import { recordSeconds } from './lib/record-seconds.ts';
@@ -517,16 +517,16 @@ async function main(): Promise<void> {
   // once — which happened silently the day a third lane landed two hours after a number was taken under two.
   // The policy is now the box, because that is what the default budget is, and that makes a fact explicit
   // that was only ever implicit: these numbers were always measured on one machine and nothing said which.
-  if (box() !== MEASURED_AT_CORES) {
+  if (!isMeasuredSchedule(MEASURED_ON.cores, MEASURED_ON)) {
     // Context, and no instruction — this message fires *only* off the reference machine, and it used to end
     // "Re-measure with `npm run chain -- --all --record`", which `isMeasuredSchedule` refuses *only* off the
     // reference machine. The one line that appears there named the one command that cannot work there.
-    console.log(`\nchain-steps.ts' seconds were measured on a ${MEASURED_AT_CORES}-core machine and this one has ${box()}.`);
+    console.log(`\nchain-steps.ts' seconds were measured on ${machineText(MEASURED_ON)}; this is ${machineText(thisMachine())}.`);
     console.log('  So the report below is context rather than advice: what a step cost here is true, and the');
     console.log('  table it is compared against describes another machine.');
   }
 
-  const report = driftReport(driftedSteps(steps, measuredMs), budget, MEASURED_AT_CORES, all);
+  const report = driftReport(driftedSteps(steps, measuredMs), budget, MEASURED_ON, all);
   if (report !== '') console.log(report);
 
   if (args.flags.has('record')) recordTheCosts(steps, measuredMs, budget, all, args.flags.has('force'));
@@ -564,9 +564,9 @@ function recordTheCosts(steps: readonly ChainStep[], measuredMs: ReadonlyMap<str
   // The one schedule these numbers are about, which takes the budget **and** the box — `isMeasuredSchedule`
   // has why. Recording any other hands every step a kill deadline sized from a schedule it will not run
   // under, and a gate comparing only the budget passed `--cores 10` on a twenty-core machine.
-  if (!isMeasuredSchedule(budget, MEASURED_AT_CORES)) {
-    console.log(`\n--record refused: these costs are the chain's on ${cores(MEASURED_AT_CORES)} on a `
-      + `${MEASURED_AT_CORES}-core machine; this ran on ${cores(budget)} on ${box()} cores.`);
+  if (!isMeasuredSchedule(budget, MEASURED_ON)) {
+    console.log(`\n--record refused: these costs are the chain's on ${cores(MEASURED_ON.cores)} on `
+      + `${machineText(MEASURED_ON)}; this ran on ${cores(budget)} on ${machineText(thisMachine())}.`);
     return;
   }
   const idle = idleNow();

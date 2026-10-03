@@ -1,7 +1,7 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { BUILD_UNITS, repoRelative, REPO_ROOT } from '@abuddy/host/build/packages-built';
-import { coresFor } from './core-budget.ts';
+import { coresFor, type Machine } from './core-budget.ts';
 import type { TimeoutClass } from './step-timeouts.ts';
 import { UNIT_SUITES, type UnitSuite } from './unit-suites.ts';
 import { CONFIG_BY_HALF, hasSplit, type Half } from './spec-cost.ts';
@@ -131,7 +131,7 @@ export interface ChainStep {
    * It is a measurement, so re-measure rather than raise it when a step legitimately grows. Every run
    * reports a step that ran past double this number, which is what keeps the table honest without anyone
    * remembering to check. A step that
-   * came in under half is reported only by `--all` at `MEASURED_AT_CORES`: a run with steps cached, or a
+   * came in under half is reported only by `--all` at `MEASURED_ON`: a run with steps cached, or a
    * smaller budget, has less contention and makes everything look fast, so that direction says nothing about
    * the table. `driftedSteps` finds both; `driftReport` in chain-output.ts decides which the run can answer for.
    *
@@ -140,11 +140,11 @@ export interface ChainStep {
    * needed no rule of their own once the gate was on the
    * run: an incremental pool run lands under half, which is the direction every step is now quiet about.
    *
-   * **It is the cost in the chain at `MEASURED_AT_CORES`, not the cost alone.** Those differ by about two
+   * **It is the cost in the chain at `MEASURED_ON`, not the cost alone.** Those differ by about two
    * times for a CPU-bound step — `typecheck` was 29s by itself and 63s sharing the machine — so the number is
    * meaningless without the schedule, and saying only "what this costs when it does its work" is how a
    * measurement taken under one admission policy came to sit in a chain running another for two days. That
-   * is why `MEASURED_AT_CORES` records the box these were taken on and the chain says so when it differs:
+   * is why `MEASURED_ON` records the box these were taken on and the chain says so when it differs:
    * the schedule was always implicit in the machine, and nothing named it.
    */
   readonly seconds?: number;
@@ -599,7 +599,7 @@ export const SUITE_READS: Record<string, { packages?: true; pack?: true; repo?: 
 };
 
 /**
- * Each pool's whole-pool cost, in the chain at `MEASURED_AT_CORES`, measured with every project stale —
+ * Each pool's whole-pool cost, in the chain at `MEASURED_ON`, measured with every project stale —
  * `npm run chain --all`, the only run that does all of that work and the run `driftedSteps` checks it on.
  *
  * Re-measured 2026-09-27 with the rest of this table: 20 and 21 were taken before `typecheck` stopped
@@ -801,9 +801,14 @@ const POOL_STEPS: readonly ChainStep[] = (['host', 'pack'] as const).map((kind) 
 /**
  * The machine every `seconds` below was measured on, which is also the budget they were measured under.
  *
- * One number for both, because the chain's default budget *is* the box (`budgetFrom`, scripts/chain.ts).
- * A step's cost depends on what runs beside it, so the table is only true of one schedule, and this is
- * what names it: `box() !== MEASURED_AT_CORES` and the run says the numbers are about another machine.
+ * The cores are both facts at once, because the chain's default budget *is* the box (`budgetFrom`,
+ * scripts/chain.ts). A step's cost depends on what runs beside it, so the table is only true of one
+ * schedule, and this is what names it: a run on another machine says the numbers are about another one.
+ *
+ * **The CPU is here because the core count alone is not an identity.** This was `MEASURED_AT_CORES = 10`
+ * until 2026-10-03, so every 10-core machine read as the one these numbers came from, and a second
+ * developer on a 10-core Mac got `--record` accepted and `spec-cost`'s placement gate enforced against a
+ * table measured on different silicon. `isMeasuredSchedule` has the rest.
  *
  * **Nothing here bounds anything, which is the point and was not true a day ago.** Each of these used to
  * become a kill deadline at four times, so a smaller machine ran this machine's deadlines over slower
@@ -819,7 +824,7 @@ const POOL_STEPS: readonly ChainStep[] = (['host', 'pack'] as const).map((kind) 
  * Re-measure it with `npm run chain -- --all --record`, which refuses any other budget for this reason,
  * refuses a busy machine, and refuses a run where too much moved to have been measuring the code.
  */
-export const MEASURED_AT_CORES = 10;
+export const MEASURED_ON: Machine = { cpu: 'Apple M1 Pro', cores: 10 };
 
 export const CHAIN_STEPS: readonly ChainStep[] = [
   // Takes the package build lock, so it cannot share a lane with anything else that builds
