@@ -13,7 +13,8 @@ import { CHAIN_STEPS, chainSteps, conflictsOf, dependsOn, orderedSteps, STEP_TAB
 import { declaredAt } from '../../../scripts/lib/chain-output.ts';
 import { withoutComments } from '../../../scripts/lib/npm-scripts.ts';
 import { population } from '@abuddy/sdk/testing';
-import { TIMEOUT_CLASSES, TIMEOUT_MS } from '../../../scripts/lib/step-timeouts.ts';
+import { SLOWER_MACHINE } from '../../../scripts/lib/core-budget.ts';
+import { MAX_DECLARED_SHARE, TIMEOUT_CLASSES, TIMEOUT_MS } from '../../../scripts/lib/step-timeouts.ts';
 
 describe('the chain graph', () => {
   it('orders every step after the steps it depends on', () => {
@@ -304,6 +305,48 @@ describe('every spawn an orchestrator makes is bounded', () => {
   it('bounds every step with a class the ladder has', () => {
     const unknown = CHAIN_STEPS.filter((step) => TIMEOUT_MS[step.timeout] === undefined);
     expect(unknown.map((step) => step.name), 'a class off the ladder is a deadline of NaN').toEqual([]);
+  });
+
+  /**
+   * And no step has outgrown the rung it declares.
+   *
+   * **A bound, not a fit, and the difference is the whole reason this is allowed to exist.** The case above
+   * about `budgetFor(` refuses *deriving* a class from a cost, and its comment names "the edit to watch" as
+   * the one that gives a step its class by comparing `seconds` — that is still refused, and this is not it.
+   * `goal-measured-placement.md` says it from the other side, quoted in `suite-split.spec.ts`: *a bound is
+   * not a fit; deriving one from the measurement it bounds is how a timeout stops catching anything.* A
+   * deadline here is still chosen by kind; this only notices when a step's cost has grown until its chosen
+   * rung no longer has room, which is a question nothing else in the repo asks.
+   *
+   * **The fraction is derived, not picked.** The ladder is sized for a machine about four times slower —
+   * the branch's own figure for a pool dropping from nine workers to two — so a step sitting at a fraction
+   * `f` of its class here sits at `4f` there. `f` at a quarter is what keeps it inside, and anything above
+   * that is a step whose deadline is no longer the generous ceiling the class promised.
+   *
+   * **It is a creep detector and it found nothing the day it was written, which is worth being honest
+   * about.** A quarter permits a step to reach its deadline *exactly* four times slower, so it is the loosest
+   * useful bound rather than a comfortable one. It cannot be tighter, because the 4× is a measurement of a
+   * *pool* losing workers and overstates what a single `tsc` does on a slower core — tightening it to leave a
+   * margin fails six steps, most of them single compilers the figure does not describe. Per-kind factors
+   * would fix that and this repo has measured only the one.
+   *
+   * So the two steps that were genuinely tight — `packages:ensure` at 93% of its deadline four times slower,
+   * `compile` at 87% — were found by reading the table, not by this, and moved because they are *bundles*
+   * (`suite` is the rung that says "a test suite or a bundle") rather than the single compilers `quick`
+   * describes. What this catches is the next one, as a declared cost grows.
+   *
+   * No exception list. At a quarter nothing needs one, and the day something does, the answer is to move the
+   * step or add a rung — not to write down that one step is allowed to be tight.
+   */
+  it(`leaves every step room inside the class it declares, on a machine ${SLOWER_MACHINE} times slower`, () => {
+    const tight = CHAIN_STEPS
+      .map((step) => ({ step, share: ((step.seconds ?? 0) * 1000) / TIMEOUT_MS[step.timeout] }))
+      .filter(({ share }) => share > MAX_DECLARED_SHARE)
+      .map(({ step, share }) => `${step.name} declares ${step.seconds}s, which is ${Math.round(share * 100)}%`
+        + ` of ${step.timeout} (${TIMEOUT_MS[step.timeout] / 1000}s) and `
+        + `${Math.round(share * SLOWER_MACHINE * 100)}% of it ${SLOWER_MACHINE} times slower`);
+    expect(tight, `move these to a longer class — a step past ${Math.round(MAX_DECLARED_SHARE * 100)}%`
+      + ' of its rung here is one whose deadline is no longer a ceiling on a smaller box').toEqual([]);
   });
 
   /**

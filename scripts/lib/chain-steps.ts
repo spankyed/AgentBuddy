@@ -846,7 +846,7 @@ export const CHAIN_STEPS: readonly ChainStep[] = [
   // 14, not the 0.3 its warm check costs: `seconds` is what a step costs when it does its work, and this one's
   // work is the build. The paragraph on that field describes this step getting it wrong — "a timeout message
   // claiming it costs 1s healthy" — and 1 was still here until the overrun report named it, 1s -> 14s.
-  { name: 'packages:ensure', timeout: 'quick', seconds: 14,
+  { name: 'packages:ensure', timeout: 'suite', seconds: 14,
     neverCachedBecause: 'what it guarantees is recorded in stamps of its own, which this fingerprint cannot '
       + 'see; its check is ~0.3s warm, so a cache on top only adds a record that can disagree',
     inputs: [...PACKAGE_BUILD_INPUTS, 'scripts/ensure-packages-built.ts'], outputs: PACKAGE_BUILD_OUTPUTS },
@@ -879,7 +879,7 @@ export const CHAIN_STEPS: readonly ChainStep[] = [
     inputs: [...ROOT, ...PACKAGE_BUILD_OUTPUTS] },
   // Ahead of build and not redundant with it: build -ws gives no ordering guarantee, since no workspace
   // declares a dependency on @app/default-setup, and the renderer's build reads the pack entry this writes
-  { name: 'compile', timeout: 'quick', seconds: 13, outputs: PACK_OUTPUTS,
+  { name: 'compile', timeout: 'suite', seconds: 13, outputs: PACK_OUTPUTS,
     // Its sources and its manifest, not its tests: `abuddy build` never reads those
     //
     // This step runs `facade:check` after the build that produces its subject, so how the report is

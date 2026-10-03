@@ -38,7 +38,7 @@ import { changedInputs, diffableStamp, firstChange, freshnessSweep, INPUTS_CHANG
 import { CHAIN_STEPS, type ChainStep, chainSteps, MEASURED_ON, needsApp, orderedSteps, STEP_TABLES } from './lib/chain-steps.ts';
 import { CHAIN_FLAGS } from './lib/chain-flags.ts';
 import { TIMEOUT_MS, timeoutText, type TimeoutClass } from './lib/step-timeouts.ts';
-import { box, isMeasuredMachine, isMeasuredSchedule, machineText, thisMachine } from './lib/core-budget.ts';
+import { box, isMeasuredMachine, machineText, scheduleMismatch, thisMachine } from './lib/core-budget.ts';
 import { commandText, rootScripts } from './lib/npm-scripts.ts';
 import { asCount, bodyDrift, drifted, IDLE_FLOOR, idleNow, movedBeyondBand, parseFlags, refusesAsBusy, refusesAsContended } from './lib/measure.ts';
 import { machineLine, recordMachine, recordSeconds } from './lib/record-seconds.ts';
@@ -524,10 +524,10 @@ async function main(): Promise<void> {
   // once — which happened silently the day a third lane landed two hours after a number was taken under two.
   // The policy is now the box, because that is what the default budget is, and that makes a fact explicit
   // that was only ever implicit: these numbers were always measured on one machine and nothing said which.
-  if (!isMeasuredSchedule(MEASURED_ON.cores, MEASURED_ON)) {
+  if (!isMeasuredMachine(MEASURED_ON)) {
     // Context, and no instruction — this message fires *only* off the reference machine, and it used to end
-    // "Re-measure with `npm run chain -- --all --record`", which `isMeasuredSchedule` refuses *only* off the
-    // reference machine. The one line that appears there named the one command that cannot work there.
+    // "Re-measure with `npm run chain -- --all --record`", which is refused *only* off the reference
+    // machine. The one line that appears there named the one command that cannot work there.
     console.log(`\nchain-steps.ts' seconds were measured on ${machineText(MEASURED_ON)}; this is ${machineText(thisMachine())}.`);
     console.log('  So the report below is context rather than advice: what a step cost here is true, and the');
     console.log('  table it is compared against describes another machine.');
@@ -570,34 +570,41 @@ function recordTheCosts(steps: readonly ChainStep[], measuredMs: ReadonlyMap<str
     console.log('\n--record needs --all: a cached step reports no time, and recording that would size a budget from it.');
     return;
   }
-  // The one schedule these numbers are about, which takes the budget **and** the box — `isMeasuredSchedule`
+  // The one schedule these numbers are about, which takes the budget **and** the box — `scheduleMismatch`
   // has why. Recording any other hands every step a kill deadline sized from a schedule it will not run
   // under, and a gate comparing only the budget passed `--cores 10` on a twenty-core machine.
-  if (!isMeasuredSchedule(budget, MEASURED_ON)) {
-    // `--adopt` is how another machine takes the table over, and it writes `MEASURED_ON` in the same
-    // operation. Without it the costs would move and the constant would not, which is the state that makes
-    // every check scoped on it skip the box whose numbers are in the file and run on the box whose are not.
-    if (!adopt) {
-      console.log(`\n--record refused: these costs are the chain's on ${cores(MEASURED_ON.cores)} on `
-        + `${machineText(MEASURED_ON)}; this ran on ${cores(budget)} on ${machineText(thisMachine())}.`);
-      // Only where the *machine* differs. This refusal also fires when the budget alone does, and there
-      // `--adopt` is advice that cannot be taken: it would write the machine the table already names and
-      // then be refused below for the budget. Advice nobody can act on is what this branch set out to stop.
-      if (!isMeasuredMachine(MEASURED_ON)) {
-        console.log(`  Pass --adopt to record this machine's instead, which also writes:\n    ${machineLine(thisMachine())}`);
-      }
-      return;
-    }
-    // **Reachable on the measuring machine, which is worth saying because it looks like it is not.** The
-    // block around it runs only where `isMeasuredSchedule` is false, and that reads as "another box" — but
-    // the budget is one of its three conjuncts, so `--all --record --adopt --cores 9` on the ten-core box
-    // that owns the table lands here. Exercised that way 2026-10-03: it refused and wrote nothing. No case,
-    // because nothing can import `scripts/chain.ts`; a command is how this one is checked.
-    if (budget !== box()) {
-      console.log(`\n--adopt refused: it records what this machine costs, so the budget has to be its cores `
-        + `(${cores(box())}) and this ran on ${cores(budget)}.`);
-      return;
-    }
+  //
+  // **One question, two subjects.** `--adopt` is how another machine takes the table over, writing
+  // `MEASURED_ON` in the same operation — without it the costs move and the constant does not, which is the
+  // state that makes every check scoped on it skip the box whose numbers are in the file. So a plain record
+  // asks whether this run is the schedule the *table* describes, and an adopting one asks whether it is a
+  // schedule *this machine* can claim. The second used to be a hand-written `budget !== box()` three lines
+  // from a comparison against `measuredOn.cores`; it is the same predicate with the other subject.
+  const want = adopt ? thisMachine() : MEASURED_ON;
+  // The reason, not a boolean. Taking the conjunction apart at this call site is what put an instruction
+  // under a budget mismatch that only a machine mismatch can act on.
+  const mismatch = scheduleMismatch(budget, want);
+  if (mismatch === 'machine') {
+    console.log(`\n--record refused: these costs are the chain's on ${machineText(MEASURED_ON)}; `
+      + `this is ${machineText(thisMachine())}.`);
+    console.log(`  Pass --adopt to record this machine's instead, which also writes:\n    ${machineLine(thisMachine())}`);
+    return;
+  }
+  // **Reachable on the measuring machine, both ways, which is worth saying because it looks like it is
+  // not.** "Not the measured schedule" reads as "another box", but the budget is the other half of the
+  // question, so the ten-core machine that owns the table lands here whenever `--cores` disagrees with it.
+  // Exercised both ways 2026-10-03, after the predicate took this shape, and neither wrote anything:
+  //
+  //   --all --record --cores 9           these costs are what <box> costs at a 10-core budget, ran on 9
+  //   --all --record --adopt --cores 9   adopting records what <box> costs at a 10-core budget, ran on 9
+  //
+  // No case, because nothing can import `scripts/chain.ts` — a command is how this one is checked, and the
+  // note is the only place a reader can learn it has been. The reason it reaches here is in
+  // `scheduleMismatch`, which is where a case *can* reach the decision.
+  if (mismatch === 'budget') {
+    console.log(`\n--record refused: ${adopt ? 'adopting records' : 'these costs are'} what `
+      + `${machineText(want)} costs at ${cores(want.cores)}, and this ran on ${cores(budget)}.`);
+    return;
   }
   const idle = idleNow();
   if (refusesAsBusy({ idle, floor: IDLE_FLOOR, force })) {

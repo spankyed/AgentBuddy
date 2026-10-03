@@ -92,7 +92,13 @@ export function priceSuites(workspaces: readonly string[], root: string): Priced
     // list exists to prevent, one level up
     if (suite === undefined) throw new Error(`${workspace} is covered by a run but is no unit suite, so its cost cannot be read`);
     const record = readSpecCost(root, suite.dir);
-    for (const spec of Object.keys(record?.costs ?? {})) specs.push(path.join('packages', suite.dir, spec));
+    // `unmeasured` as well as `costs`, because a spec a second developer added is in the suite and in the
+    // record without a price. Reading only `costs` left it out of the population entirely, so it could not
+    // even land in `unpriced` — the whole-suite total quietly omitted it, which is the failure the unpriced
+    // list exists to prevent and the one `priceSpecs`' doc above names.
+    for (const spec of [...Object.keys(record?.costs ?? {}), ...record?.unmeasured ?? []]) {
+      specs.push(path.join('packages', suite.dir, spec));
+    }
   }
   return priceSpecs(specs, root);
 }

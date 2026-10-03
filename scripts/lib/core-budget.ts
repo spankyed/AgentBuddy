@@ -159,7 +159,47 @@ export const isMeasuredSchedule = (
   budget: number,
   measuredOn: Machine,
   machine: Machine = thisMachine(),
-): boolean => budget === measuredOn.cores && isMeasuredMachine(measuredOn, machine);
+): boolean => scheduleMismatch(budget, measuredOn, machine) === undefined;
+
+/**
+ * *Which* of the two facts above does not hold, for a caller that has to say something different about each.
+ *
+ * **A boolean hid the reason and every caller took the conjunction apart again.** `chain.ts` did exactly
+ * that to decide whether `--adopt` was sensible advice, and got it wrong: the refusal fires for a budget
+ * mismatch too, and there `--adopt` would write the machine the table already names and then be refused for
+ * the budget. Advice nobody can act on is the defect this cost model was being reworked to remove.
+ *
+ * The machine is reported first because it is the one a flag can do something about; a budget mismatch is
+ * the caller's own argument.
+ *
+ * **The second subject is what retires a hand-written variant.** "Can this machine claim the table" is this
+ * same question asked of `thisMachine()` — the machine conjunct is trivially true against itself, leaving
+ * `budget === box()`, which `chain.ts` had spelled out by hand three lines from a comparison against
+ * `measuredOn.cores`. Two budget comparisons against two core counts is the near-duplicate that drifts.
+ */
+export const scheduleMismatch = (
+  budget: number,
+  measuredOn: Machine,
+  machine: Machine = thisMachine(),
+): 'machine' | 'budget' | undefined => {
+  if (!isMeasuredMachine(measuredOn, machine)) return 'machine';
+  return budget === measuredOn.cores ? undefined : 'budget';
+};
+
+/**
+ * How much slower a smaller machine is, for anything that has to reason about one.
+ *
+ * **Measured rather than chosen, and only once.** A vitest pool dropping from nine workers to about two on a
+ * hosted runner is three to four times slower (`docs/archive/plans/costs-across-machines.md`), which is the
+ * figure the timeout ladder was sized against. Serial work stretches less than that and a single compiler
+ * less again, so four is the worst case rather than the typical one — and those two have not been measured,
+ * which is why this is one number and not one per kind of work.
+ *
+ * **Here rather than beside the ladder it sizes**, because it is a fact about machines and this module is
+ * where those live. Filed under timeouts it was unfindable from the other question that needs it: `spec-cost`
+ * reasons about a box three times slower in its own prose, and nothing tied the two figures together.
+ */
+export const SLOWER_MACHINE = 4;
 
 /** A share as vitest writes it in `poolOptions`, which is how a config and this table are compared */
 export const asPercent = (share: number): string => `${Math.round(share * 100)}%`;

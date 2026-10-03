@@ -41,7 +41,7 @@ describe('recording what a step cost', () => {
     // The class sits between the name and the cost, and this assertion is why that matters: the rewriter
     // finds `seconds:` by scanning from `name: '<step>'` to the next `{ name: '`, so a sibling field is safe
     // and anything named `…seconds…` would not be
-    expect(sources.get('scripts/lib/chain-steps.ts')).toContain("{ name: 'compile', timeout: 'quick', seconds: 99,");
+    expect(sources.get('scripts/lib/chain-steps.ts')).toContain("{ name: 'compile', timeout: 'suite', seconds: 99,");
     expect(sources.get('scripts/lib/typecheck-legs.ts'), 'the other table was rewritten too')
       .toBe(tables().get('scripts/lib/typecheck-legs.ts'));
   });
