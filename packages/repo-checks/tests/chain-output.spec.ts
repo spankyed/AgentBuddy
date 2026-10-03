@@ -364,14 +364,52 @@ describe('driftReport', () => {
   ];
 
   it('prints the value to record, when the run is comparable to the table', () => {
-    const report = driftReport(drifted, 10, 10, true);
+    const report = driftReport(drifted, 10, 10, true, 10);
 
     expect(report).toContain('re-measure, or record');
     expect(report).toContain('seconds: 57 -> 18');
   });
 
+  /**
+   * **The advice is what the schedule gates; the numbers are not.**
+   *
+   * `re-measure, or record` is followable only where `--record` would accept the run, and it accepts only
+   * the measured schedule. A chain on a second developer's machine printed that instruction on every run
+   * and the command it named refused on every run — and the message that fires *only* off the reference box
+   * used to end by naming it.
+   *
+   * The box is the second number, not a nicety: `budget === measuredAt` alone passes `--cores 10` on a
+   * twenty-core machine, where the budget matches and every width is twenty-core sized. That is the hole
+   * `isMeasuredSchedule` was written for, and this is the case that holds this caller to it.
+   */
+  it('prints the numbers but no instruction on a machine the table does not describe', () => {
+    const report = driftReport(drifted, 10, 10, true, 20);
+
+    expect(report, 'what a step cost is true wherever it ran').toContain('57s -> 18s');
+    expect(report, '`--record` refuses there, so the advice cannot be taken').not.toContain('record');
+  });
+
+  it('gates on the box as well as the budget, which a budget alone cannot', () => {
+    // Same budget, same measured schedule, different machine — the one combination the weaker guard missed
+    expect(driftReport(drifted, 10, 10, true, 10)).toContain('re-measure, or record');
+    expect(driftReport(drifted, 10, 10, true, 20)).not.toContain('re-measure, or record');
+  });
+
+  /**
+   * Measured: a serial run reports exactly these two, and the old report told the reader to record 18 for a
+   * step that costs 57s in the default schedule — which `budgetFor` turns into a 72s kill budget, the
+   * mis-sized bound `seconds`' own doc warns about. The numbers are real; only "record them" was wrong.
+   */
+  it('names the spread instead, when the run used another budget', () => {
+    const report = driftReport(drifted, 1, 10, true, 10);
+
+    expect(report).not.toContain('record');
+    expect(report).toContain('on 1 core, 2 steps moved against 10-core numbers');
+    expect(report).toContain('57s -> 18s  (3.2x faster alone)');
+  });
+
   it('says slower when a bigger budget made a step slower, not faster', () => {
-    expect(driftReport([{ name: 'typecheck', declared: 27, measured: 54 }], 16, 10, true)).toContain('(2.0x slower)');
+    expect(driftReport([{ name: 'typecheck', declared: 27, measured: 54 }], 16, 10, true, 10)).toContain('(2.0x slower)');
   });
 
   /**
@@ -380,8 +418,8 @@ describe('driftReport', () => {
    * admission policy — which is what the first version of this gated on — said nothing about it.
    */
   it('says nothing about a step that came in under the band, on a run that did less work', () => {
-    expect(driftReport(drifted, 10, 10, false)).toBe('');
-    expect(driftReport(drifted, 1, 10, false)).toBe('');
+    expect(driftReport(drifted, 10, 10, false, 10)).toBe('');
+    expect(driftReport(drifted, 1, 10, false, 10)).toBe('');
   });
 
   /**
@@ -399,7 +437,7 @@ describe('driftReport', () => {
   it('names a step that ran past double, on any run', () => {
     const grew = [{ name: 'typecheck', declared: 27, measured: 61 }];
 
-    const report = driftReport(grew, 10, 10, false);
+    const report = driftReport(grew, 10, 10, false, 10);
 
     expect(report).toContain('the step grew, not the schedule');
     expect(report).toContain('27s -> 61s');
@@ -408,13 +446,13 @@ describe('driftReport', () => {
 
   it('keeps an overrun out of the count when the run could answer for both directions', () => {
     // forced: the run did all the work, so both directions are reportable and the record form is right
-    expect(driftReport([{ name: 'typecheck', declared: 27, measured: 61 }], 10, 10, true))
+    expect(driftReport([{ name: 'typecheck', declared: 27, measured: 61 }], 10, 10, true, 10))
       .toContain('re-measure, or record');
   });
 
   it('says nothing when nothing drifted, at either budget', () => {
-    expect(driftReport([], 10, 10, true)).toBe('');
-    expect(driftReport([], 1, 10, true)).toBe('');
+    expect(driftReport([], 10, 10, true, 10)).toBe('');
+    expect(driftReport([], 1, 10, true, 10)).toBe('');
   });
 });
 

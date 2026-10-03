@@ -5,6 +5,7 @@
  * cannot load `chain.ts` without starting a six-minute build.
  */
 import { covers } from '@abuddy/host/build/packages-built';
+import { box, isMeasuredSchedule } from './core-budget.ts';
 import { overBand } from './step-timing.ts';
 
 /**
@@ -358,13 +359,25 @@ export function howLong(
  * The same numbers are worth printing as what they are. Which steps the schedule's contention moves most is not
  * recorded anywhere else. It takes `--all --cores 1` to see it, not the plain `--cores 1` a failing step
  * suggests — that run answers the narrower question the failure asks, whether the step passes alone.
- * */
+ *
+ * **So what the schedule gates is the advice, never the numbers.** Off the measured schedule the rows still
+ * print, because what a step cost is true wherever it ran; the sentence telling a reader to record it does
+ * not, because `--record` refuses there. A chain on a second developer's machine used to print that
+ * instruction on every run and the command it named refused on every run.
+ */
 export function driftReport(
   drifted: readonly { name: string; declared: number; measured: number }[],
   budget: number,
   measuredAt: number,
   /** Whether the run did every step's work (`--all`), which is how the table's numbers are taken */
   forced: boolean,
+  /**
+   * This machine's cores, which with `budget` is what says whether the run is the schedule the table
+   * describes — `isMeasuredSchedule` has why it takes two numbers and not one.
+   *
+   * Named for the machine rather than `cores`, which is this module's own formatter one scope out.
+   */
+  machine: number = box(),
 ): string {
   // The two directions are not alike, so a run that cannot answer for one can still answer for the other.
   // Under the band is the run's doing: a smaller budget, or most steps cached, is less contention, and with
@@ -387,7 +400,12 @@ export function driftReport(
     return `\n${count} ran past twice the declared cost — the step grew, not the schedule:\n`
       + `${rows(({ declared, measured }) => `${declared}s -> ${measured}s`)}`;
   }
-  if (budget === measuredAt) {
+  // **The instruction is what the schedule gates, not the numbers.** `re-measure, or record` is followable
+  // only where `--record` would accept the run, and `--record` accepts it only on the measured schedule — so
+  // printing it anywhere else is advice whose one command refuses. Asked of `isMeasuredSchedule` rather than
+  // of `budget === measuredAt`, which is the weaker form that let `--cores 10` on a twenty-core box through:
+  // the budget matched while every width was twenty-core sized.
+  if (isMeasuredSchedule(budget, measuredAt, machine)) {
     return `\n${count} cost something other than chain-steps.ts says — re-measure, or record:\n`
       + `${rows(({ declared, measured }) => `seconds: ${declared} -> ${measured}`)}`;
   }

@@ -518,8 +518,12 @@ async function main(): Promise<void> {
   // The policy is now the box, because that is what the default budget is, and that makes a fact explicit
   // that was only ever implicit: these numbers were always measured on one machine and nothing said which.
   if (box() !== MEASURED_AT_CORES) {
+    // Context, and no instruction — this message fires *only* off the reference machine, and it used to end
+    // "Re-measure with `npm run chain -- --all --record`", which `isMeasuredSchedule` refuses *only* off the
+    // reference machine. The one line that appears there named the one command that cannot work there.
     console.log(`\nchain-steps.ts' seconds were measured on a ${MEASURED_AT_CORES}-core machine and this one has ${box()}.`);
-    console.log('  The numbers below are about another schedule. Re-measure with `npm run chain -- --all --record`.');
+    console.log('  So the report below is context rather than advice: what a step cost here is true, and the');
+    console.log('  table it is compared against describes another machine.');
   }
 
   const report = driftReport(driftedSteps(steps, measuredMs), budget, MEASURED_AT_CORES, all);
