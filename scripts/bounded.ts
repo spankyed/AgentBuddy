@@ -19,6 +19,14 @@
  * So a step and the script it runs name the same class, and the two bounds agree by construction. The class
  * is still written at the call site, in `package.json`, so it is visible next to what it bounds. A budget
  * nobody would wait for is the same as no budget, which is what keeps the ladder short.
+ *
+ * **One consequence worth knowing: in a chain run this bound never fires.** The chain's own bound on the
+ * same step names the same class and starts first, so it reaches the deadline first and reports the step by
+ * name, which is the better message. What this one is for is the *direct* run — `npm run test:packaged-authoring`
+ * at a terminal, which the chain is not around to bound and which is the run people and agents actually use.
+ * It was deliberately tighter than the chain's before, 90s against 144s, and being tighter is exactly what
+ * made it a second machine's problem; equal is the right answer and this is the note saying so, so that
+ * nobody tunes one of the pair wondering why the other exists.
  */
 import { boundedSpawn } from './lib/bounded-spawn.ts';
 import { TIMEOUT_CLASSES, timeoutMsFor, timeoutText, type TimeoutClass } from './lib/step-timeouts.ts';

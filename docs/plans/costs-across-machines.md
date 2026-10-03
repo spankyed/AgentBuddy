@@ -4,7 +4,10 @@
 > (`scripts/lib/step-timeouts.ts`), the drift report prints numbers but no instruction off the measured
 > machine, `spec-cost`'s placement cases are scoped to it, and the CI rule is in the root `CLAUDE.md`.
 > Read it as the reasoning rather than as work outstanding; three things in it were corrected by doing it,
-> and each correction is marked where it applies.
+> and each correction is marked where it applies. A review after the fact found three more, all fixed: the
+> machine identity was a core count and so called every 10-core box the measured one; the `spec-cost:check`
+> *command* was left enforcing where only its spec had been scoped; and a step's bound and its script's now
+> coincide, which needed saying rather than changing.
 
 ## Problem
 
@@ -16,7 +19,7 @@ the CI runner whose triggers are commented out — meets all of it at once.
 
 | Portable (relative) | Machine-bound (absolute) |
 |---|---|
-| `IDLE_FLOOR` 0.7, `SETTLED_FRACTION` 0.35 | `MEASURED_AT_CORES` 10 |
+| `IDLE_FLOOR` 0.7, `SETTLED_FRACTION` 0.35 | `MEASURED_ON` — the CPU and core count of one box |
 | `DRIFT_SHARE` 0.15, `CONTENDED_SHARE` 0.25 | 29 `seconds` values + `POOL_SECONDS` |
 | `--cores`, defaulting to `box()` | `SIZE_MS` 15s / 60s |
 | `POOL_WIDTH`'s shares (`{ share: 0.5 }`, `UNCAPPED`) | spec half edges 1000 / 2500ms, over 389 recorded specs |
@@ -66,11 +69,11 @@ A pool that drops from nine workers to two is three to four times slower, which 
 130-170s against a 168s deadline. That is the worst failure shape available: intermittent, and it looks
 like the code.
 
-**Nobody else can maintain the table.** `--record` refuses unless `box() === MEASURED_AT_CORES`
+**Nobody else can maintain the table.** `--record` refuses unless this is the machine `MEASURED_ON` names
 (`isMeasuredSchedule`), so a second developer can neither record their own numbers nor fix stale ones. A
 recorded artifact one machine can write is not a shared artifact.
 
-**Permanent noise for everyone else.** `box() !== MEASURED_AT_CORES` prints on every run on any other
+**Permanent noise for everyone else.** A mismatch against `MEASURED_ON` prints on every run on any other
 machine, and the drift report fires on most steps — correctly, and uselessly, since the advice it gives
 cannot be taken there.
 
@@ -139,7 +142,7 @@ stop being a fact that one machine maintains and every other machine is warned a
 
 **What landed is the advice gated and the numbers kept.** The rows still print off the measured machine,
 because what a step cost is true wherever it ran; the sentence telling a reader to record it does not,
-because `--record` refuses there. The guard is `isMeasuredSchedule`, not `box() !== MEASURED_AT_CORES` —
+because `--record` refuses there. The guard is `isMeasuredSchedule`, not a bare core-count comparison —
 the weaker form passes `--cores 10` on a twenty-core box, where the budget matches and every width is
 twenty-core sized.
 
@@ -155,7 +158,7 @@ the last successful run of each step on this box is on disk. If an off-reference
 wanted, it is derivable from that, with no second cost table to keep true — which is the shape to use, and
 the reason not to build one now.
 
-**Done when** a run on a machine that is not `MEASURED_AT_CORES` prints no instruction it cannot follow, and
+**Done when** a run on a machine `MEASURED_ON` does not name prints no instruction it cannot follow, and
 a spec asserts both halves — the instruction on the reference box, its absence off it. The numbers are not
 the thing to silence; the advice is.
 
@@ -182,7 +185,7 @@ and every `tsBuildInfoFile` already live under `node_modules/.cache/`, per machi
 is exactly what a calibration is. A committed per-machine number is the problem this plan is about, so a
 fix shaped like one would be the same mistake twice.
 
-**Scaling the deadlines by `MEASURED_AT_CORES / box()`.** The obvious shortcut, and wrong in both directions
+**Scaling the deadlines by the measured cores over this machine's.** The obvious shortcut, and wrong in both directions
 at once: the single-threaded `tsc` legs barely scale with cores while the pools scale nearly linearly, so one
 multiplier masks a real hang on a large box and still fires on a small one. Named here because it is what the
 next reader of "the deadlines are ten-core deadlines" will reach for.
