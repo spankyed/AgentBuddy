@@ -780,6 +780,11 @@ const POOL_STEPS: readonly ChainStep[] = (['host', 'pack'] as const).map((kind) 
  * A step's cost depends on what runs beside it, so the table is only true of one schedule, and this is
  * what names it: `box() !== MEASURED_AT_CORES` and the run says the numbers are about another machine.
  *
+ * **`budgetFor` turns each of these into a kill deadline at four times, and nothing adjusts that for the
+ * box**: a smaller machine runs the same deadlines over slower steps, so the four-times margin is all that
+ * absorbs the difference and the warning above is the only notice — worth fixing when a step is actually
+ * killed on a smaller box rather than before, since that is the first evidence the margin has run out.
+ *
  * **It makes an implicit fact explicit.** These costs were always measured on one box and nothing recorded
  * which. The hazard it was written for is the same either way: `seconds: 45` for `typecheck` was taken
  * 2026-09-25 at 07:38 under one admission policy, the default changed at 09:30 the same day, and nothing
