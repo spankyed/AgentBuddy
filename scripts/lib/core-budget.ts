@@ -52,11 +52,17 @@ export type PoolWidth = { readonly share: number } | { readonly cores: number } 
  * `node`, and `SIZE_MS`'s precedent (`unit-suites.ts`) is that a list whose every entry is the same value
  * is one nobody maintains. An entry is a claim about a pool, and something has to stand behind it.
  *
- * **`build:app` and `compile` have no entry, so they weigh one core and are understated** — vite and
- * esbuild both fork. They are left out because nothing *declares* their width for an entry to be checked
- * against: it would be a measurement rather than a description, which is a sample, and a sample needs the
- * hysteresis and the busy-machine refusal `spec-cost.json` carries and this table does not. The condition
- * for adding them is the admission policy becoming the default rather than a flag.
+ * **`build:app` and `compile` are the two entries nothing declares**, so they are measured rather than
+ * described, and that distinction is why they were left out until the admission policy became the default
+ * — which was the condition, and it is met. Without them both weighed one core while vite and esbuild
+ * fork, so the chain over-admitted beside the two steps on its critical path.
+ *
+ * What stands behind a measured entry, given this table has neither the hysteresis nor the busy-machine
+ * refusal `spec-cost.json` carries: **an integer core count is its own band.** 1.6 and 2.2 both round to
+ * two, so the jitter that hysteresis exists to absorb cannot move either one, and a scheduling weight
+ * wrong by 0.4 of a core changes an admission only where it sits on the budget's boundary. A third such
+ * entry needs the same argument made for it — the rounding has to do the work, not the measurement — and
+ * `core-budget.spec.ts` can only hold the declared kind to its config, never this kind to anything.
  */
 export const POOL_WIDTH: Readonly<Record<string, PoolWidth>> = {
   'test:unit:host': UNCAPPED,
