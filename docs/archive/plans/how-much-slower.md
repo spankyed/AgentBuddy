@@ -1,7 +1,14 @@
 # How much slower: one number for three questions
 
-**Status: done.** Landed on `AS/how-much-slower`. This records the problem and what was decided, including
-the phase that was planned and deliberately not built.
+> **Done** (branch `AS/how-much-slower`, merged as `c1da467f2`). The text below is the plan as written,
+> including the phase that was planned and deliberately not built. **One claim in it was corrected after it
+> was written and is left standing here as history:** "The condition, per rung" below says `scenario` is
+> reached only through `npm run chain` and so is exercised by nothing, and that enabling CI validates one of
+> the two assumed rows. `5300582c3` found the second path in — `scripts/bounded.ts`, which four npm scripts
+> invoke with a class and two of which CI's `external-pack-e2e` job runs — so the row recorded as
+> unobservable is the one a scheduled run bounds twice, and **both** borrowed rows are reached the day the
+> triggers go back on. For what is true now, read `TIMEOUT_MS`' `until` fields
+> (`scripts/lib/step-timeouts.ts`) and `.github/workflows/ci.yml`'s header.
 
 ## Problem
 
