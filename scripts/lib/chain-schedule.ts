@@ -19,16 +19,33 @@ export interface SchedulableStep {
    * says so, and the scheduler does the same thing for a reason it can print.
    */
   readonly conflicts?: readonly string[];
+  /**
+   * What of the machine this step takes — `coresFor` (`core-budget.ts`) resolves it from the share that
+   * module declares.
+   *
+   * Absent is one core, which is most steps: a `tsc` leg is one process and nineteen of the chain's steps
+   * are one. A resolved number rather than that share, so a case can schedule a graph of weights with no
+   * machine behind it, and so this module goes on knowing nothing about pools.
+   */
+  readonly cores?: number;
   readonly seconds?: number;
 }
 
 export interface ScheduleOptions<S extends SchedulableStep> {
   readonly steps: readonly S[];
-  /** How many steps may run at once. One is serial. */
-  readonly lanes: number;
   /**
-   * Asked once a step's needs are met and before it takes a lane, so a step that does not run costs no lane
-   * time. It counts as passed, and the steps that need it become ready.
+   * Cores the steps running together may take, summing their `cores`. One is serial.
+   *
+   * **The only limit, and it replaced a count of steps.** A count metered a single-threaded `tsc` leg and
+   * a nine-worker vitest pool as one unit each, which is two different machines wearing one number;
+   * measured 2026-10-02, admitting on cores instead took the chain from a median 202.8s to 169.4s and
+   * halved its spread. A budget of one admits the first ready step and nothing beside it, which is what
+   * the old single-lane diagnostic was for.
+   */
+  readonly budget: number;
+  /**
+   * Asked once a step's needs are met and before it is admitted, so a step that does not run costs no
+   * budget. It counts as passed, and the steps that need it become ready.
    */
   readonly skip: (step: S) => boolean;
   /** Runs the step; `false` fails it. A failure stops new dispatches and lets running steps finish. */
@@ -64,17 +81,21 @@ export interface ScheduleResult {
 }
 
 /**
- * Runs the graph. A step starts when every step it needs has passed, a lane is free, and no exclusive step
- * is running. After a failure nothing new is dispatched and whatever is running is awaited, so the run ends
- * with no orphaned work — and steps that needed the failed one never run, which is why this returns rather
- * than throwing: the caller reports, and the caller decides.
+ * Runs the graph. A step starts when every step it needs has passed, the budget has room for what it
+ * takes, and nothing it conflicts with is running. After a failure nothing new is dispatched and whatever
+ * is running is awaited, so the run ends with no orphaned work — and steps that needed the failed one
+ * never run, which is why this returns rather than throwing: the caller reports, and the caller decides.
+ *
+ * The conflict clause used to read "no exclusive step is running", which named a boolean field deleted
+ * when mutexes became derived from what each step writes. A summary describing a flag that is not there
+ * is worse than none, because it reads as the authority.
  *
  * **This never throws, including when `run` does.** A rejected `run` used to escape the loop immediately,
- * which abandoned every other lane: its step kept running, finished unobserved, and the caller died on an
- * unhandled rejection with child processes still alive. A throw is now that step failing, so the same
- * draining path applies to it as to a step that returned false.
+ * which abandoned everything else in flight: its step kept running, finished unobserved, and the caller
+ * died on an unhandled rejection with child processes still alive. A throw is now that step failing, so
+ * the same draining path applies to it as to a step that returned false.
  */
-export async function schedule<S extends SchedulableStep>({ steps, lanes, skip, run }: ScheduleOptions<S>): Promise<ScheduleResult> {
+export async function schedule<S extends SchedulableStep>({ steps, budget, skip, run }: ScheduleOptions<S>): Promise<ScheduleResult> {
   const waiting = new Set(steps.map((step) => step.name));
   const done = new Set<string>();
   const running = new Map<string, Promise<string>>();
@@ -84,6 +105,8 @@ export async function schedule<S extends SchedulableStep>({ steps, lanes, skip, 
   // Not `running`, which holds a step from the moment its promise resolves until the race hands its name
   // back — a window in which a finished step would be recorded as overlapping the next one dispatched
   const live = new Set<string>();
+  /** Cores the live steps hold, kept beside `live` so admission is a comparison and not a sum per candidate */
+  let spent = 0;
   let failed: string | undefined;
   const threw: { step: string; error: unknown }[] = [];
 
@@ -91,7 +114,6 @@ export async function schedule<S extends SchedulableStep>({ steps, lanes, skip, 
     if (failed === undefined) {
       for (const step of steps) {
         if (!waiting.has(step.name)) continue;
-        if (running.size >= lanes) break;
         if (!step.dependsOn.every((need) => done.has(need))) continue;
         // A mutex is symmetric: this step may not start beside one it conflicts with, and may not start
         // if a running step names it. Checked both ways rather than trusting the derivation to be
@@ -100,6 +122,15 @@ export async function schedule<S extends SchedulableStep>({ steps, lanes, skip, 
           (step.conflicts ?? []).includes(name)
           || (steps.find((candidate) => candidate.name === name)?.conflicts ?? []).includes(step.name);
         if ([...running.keys()].some(clashes)) continue;
+        // `continue`, never `break`: a one-core leg must not wait behind a nine-core pool that happens to
+        // sit earlier in the table. A count of steps could `break` safely, because every candidate wanted
+        // the same one slot; a budget cannot, because the next candidate may fit where this one does not.
+        //
+        // **`spent > 0` is what makes the budget soft, and it is not a nicety.** A step wider than the whole
+        // budget fits nowhere, so a hard comparison would hold it forever, and this loop exits when nothing
+        // is running and nothing was dispatched — the step would never run and the chain would report green
+        // over it. One step may always exceed the budget alone; nothing may join it.
+        if (spent > 0 && spent + (step.cores ?? 1) > budget) continue;
 
         waiting.delete(step.name);
         if (skip(step)) {
@@ -112,15 +143,18 @@ export async function schedule<S extends SchedulableStep>({ steps, lanes, skip, 
         peers.set(step.name, new Set(live));
         for (const name of live) peers.get(name)?.add(step.name);
         live.add(step.name);
+        spent += step.cores ?? 1;
         running.set(step.name, run(step).then(
           (passed) => {
             live.delete(step.name);
+            spent -= step.cores ?? 1;
             if (passed) done.add(step.name);
             else failed ??= step.name;
             return step.name;
           },
           (error: unknown) => {
             live.delete(step.name);
+            spent -= step.cores ?? 1;
             threw.push({ step: step.name, error });
             failed ??= step.name;
             return step.name;

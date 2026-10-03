@@ -70,6 +70,19 @@ export const BAND = 2;
 /** Slower than a declared cost still describes */
 export const overBand = (declared: number, measured: number): boolean => measured > declared * BAND;
 
+/**
+ * The smallest movement a recorded cost follows, in seconds.
+ *
+ * `chain --all --record` compares with `movedBeyondBand(declared, measured, SECONDS_FLOOR)`, so a
+ * difference of a second or less never reaches the table whatever the band says. One constant with two
+ * readers, like `BAND` above: the recorder, and `driftedSteps` below, which uses it to stay quiet about a
+ * drift no record can follow.
+ *
+ * A second rather than a fraction because these are seconds, and a fraction of a sub-second number chases
+ * noise — `check:tiers` declares 0.3s.
+ */
+export const SECONDS_FLOOR = 1;
+
 export function driftedSteps<S extends SchedulableStep>(
   steps: readonly S[],
   measuredMs: ReadonlyMap<string, number>,
@@ -80,6 +93,11 @@ export function driftedSteps<S extends SchedulableStep>(
     if (ms === undefined || step.seconds === undefined) continue;
     const measured = Math.round(ms / 1000);
     if (measured < 1) continue;
+    // Nor one the record could not follow. Three steps declare under a second, and for those the band
+    // above is crossed by a 1s measurement while `SECONDS_FLOOR` refuses to write it — so the report named
+    // `check:tiers 0.3 -> 1` on every full run and the only thing it suggested, "re-measure, or record",
+    // could not be done. Advice that cannot be taken teaches a reader to skip the report.
+    if (Math.abs(measured - step.seconds) <= SECONDS_FLOOR) continue;
     if (overBand(step.seconds, measured) || measured < step.seconds / BAND) {
       drifted.push({ name: step.name, declared: step.seconds, measured });
     }

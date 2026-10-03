@@ -14,7 +14,9 @@ import { CHAIN_STEPS, INTEGRATION_SUITES, suiteInputs, type ChainStep } from '..
 import { UNIT_SUITES, type UnitSuite } from '../../../scripts/lib/unit-suites.ts';
 import { reachableText, rootScripts } from '../../../scripts/lib/npm-scripts.ts';
 import { TYPECHECK_LEGS } from '../../../scripts/lib/typecheck-legs.ts';
-import { POOLS, poolUnitFor } from '../../../scripts/lib/unit-pool.ts';
+import { POOLS, poolUnitFor, type Pool } from '../../../scripts/lib/unit-pool.ts';
+import { asPercent, POOL_WIDTH, shareOf, UNCAPPED } from '../../../scripts/lib/core-budget.ts';
+import { chainFlagNames } from '../../../scripts/lib/chain-flags.ts';
 import { relativeSpecifiers, resolveRelative } from '../../../scripts/lib/module-graph.ts';
 import { PACKAGE_DIRS } from '../../../scripts/lib/workspace-deps.ts';
 import { population } from '@abuddy/sdk/testing';
@@ -29,6 +31,7 @@ import { population } from '@abuddy/sdk/testing';
  */
 const resolvedConfig = async (rel: string): Promise<{ test?: {
   projects?: string[];
+  maxWorkers?: unknown;
   poolOptions?: { threads?: { maxThreads?: unknown }; forks?: { maxForks?: unknown } };
 } }> => (await import(path.join(REPO_ROOT, rel))).default;
 
@@ -194,18 +197,66 @@ describe('the root pool lists exactly the host suites', () => {
 });
 
 /**
- * The cap the pooled run's width depends on, which nothing asserted.
+ * Each pool's width, in the config that sets it and in the table the chain's scheduler admits on.
  *
  * `poolOptions` is process-wide, so it belongs to the root config and a per-project copy is read by nobody
  * — `unit-suites.ts` records the same thing measured for `poolOptions.execArgv` one pool along. Both halves
  * matter here: without the root value the pool silently runs at full width, which is 52.4s against 48.2s
  * measured, and a per-package copy would look like the cap while doing nothing.
+ *
+ * **`POOL_WIDTH` (`core-budget.ts`) is a second record of these same widths, and that is why it is checked
+ * here rather than trusted.** The configs cannot read it — they stay literal because `check:specifiers`
+ * reads them as text — so the table describes them, and a cap that moves has to fail somewhere.
  */
-describe('the integration pool runs at the width it says it does', () => {
+describe('every pool runs at the width core-budget.ts says it does', () => {
+  /**
+   * Each pool's chain step. Declared here rather than exported from `unit-pool.ts`, which `chain-steps.ts`
+   * cannot import — it is imported *by* that module already, and the pool steps are built there. The first
+   * case holds every entry to the real table, so a renamed step fails instead of reading as covered.
+   */
+  const STEP_OF: Record<Pool, string> = {
+    host: 'test:unit:host',
+    pack: 'test:unit:pack',
+    integration: 'test:integration',
+  };
+
+  /** The config a pool's own command loads, so each case asks about the file that pool really reads */
+  const configOf = (pool: Pool): string => {
+    const [first] = POOLS[pool].run(POOLS[pool].suites());
+    const named = first!.args.indexOf('--config');
+    if (named !== -1) return first!.args[named + 1]!;
+    const workspace = first!.args.indexOf('-w');
+    if (workspace === -1) return 'vitest.config.ts';
+    const suite = POOLS[pool].suites().find((candidate) => candidate.workspace === first!.args[workspace + 1]);
+    return path.join('packages', suite!.dir, 'vitest.config.ts');
+  };
+
+  it('gives every pool an entry, so none is admitted on a weight nobody chose', () => {
+    for (const pool of Object.keys(POOLS) as Pool[]) {
+      expect(CHAIN_STEPS.map((step) => step.name), `${pool}'s step name`).toContain(STEP_OF[pool]);
+      expect(POOL_WIDTH[STEP_OF[pool]], `${pool} has no POOL_WIDTH entry, so the chain would weigh it at one core`)
+        .toBeDefined();
+    }
+  });
+
   it('caps the workers in the config that is read for it', async () => {
-    const pool = (await resolvedConfig('vitest.integration.config.ts')).test?.poolOptions;
-    expect(pool?.threads?.maxThreads, 'threads').toBe('50%');
-    expect(pool?.forks?.maxForks, 'forks').toBe('50%');
+    const share = shareOf(STEP_OF.integration);
+    expect(share, 'the integration pool is declared as a share, which is what a config can set').toBeDefined();
+    const pool = (await resolvedConfig(configOf('integration'))).test?.poolOptions;
+    expect(pool?.threads?.maxThreads, 'threads').toBe(asPercent(share!));
+    expect(pool?.forks?.maxForks, 'forks').toBe(asPercent(share!));
+  });
+
+  it('leaves the pools it calls UNCAPPED with no cap in their configs', async () => {
+    const uncapped = (Object.keys(POOLS) as Pool[]).filter((pool) => POOL_WIDTH[STEP_OF[pool]] === UNCAPPED);
+    expect(uncapped.length, 'no pool is declared UNCAPPED, so this case asks nothing').toBeGreaterThan(0);
+    for (const pool of uncapped) {
+      const where = configOf(pool);
+      const test = (await resolvedConfig(where)).test;
+      const why = `${where} caps its workers, so UNCAPPED in POOL_WIDTH is wrong about what ${pool} takes`;
+      expect(test?.poolOptions, why).toBeUndefined();
+      expect(test?.maxWorkers, why).toBeUndefined();
+    }
   });
 
   it('carries no per-project copy, which would be read by nobody', async () => {
@@ -495,5 +546,38 @@ describe('a build unit declares the modules its build script imports', () => {
       return closure.length > 1 ? [] : [`${workspace}'s closure is ${closure.length} files`];
     });
     expect(shallow, 'a closure of one file is the entry alone, which means the walk resolved nothing').toEqual([]);
+  });
+});
+
+/**
+ * The chain's flags against the only other place they are written down.
+ *
+ * `--cores` shipped with no mention in the guide, and `--record` and `--force` had none either, because
+ * nothing could ask: the chain read its flags with `process.argv.includes`, so there was no list to
+ * compare. Declaring them (`chain-flags.ts`) makes a typo an error and makes this question askable.
+ *
+ * **One direction only.** Every accepted flag must be documented; a documented flag need not be accepted,
+ * because the guide names `--lanes` deliberately — as the thing `--cores` replaced — and a check that
+ * could not tell that from a stale entry would have to parse prose for intent.
+ *
+ * Free in chain time: `fingerprintUnit` keeps every `CLAUDE.md` out of every step's cache key by name, so
+ * a prose edit still runs nothing.
+ */
+describe("the chain documents the flags it takes", () => {
+  /** Pure, so the case below can mutate the input rather than the guide */
+  const undocumented = (flags: readonly string[], guide: string): string[] =>
+    flags.filter((flag) => !guide.includes(flag));
+
+  const guide = (): string => fs.readFileSync(path.join(REPO_ROOT, 'CLAUDE.md'), 'utf-8');
+
+  it('names every flag it accepts, so a new one cannot ship unmentioned', () => {
+    const flags = population("the chain's flags", chainFlagNames());
+    expect(undocumented(flags, guide()), "add these to the chain's flag list in CLAUDE.md").toEqual([]);
+  });
+
+  it('reports a flag the guide never mentions, which is what the case above rests on', () => {
+    // The mutation, over the input: a scan that found nothing would satisfy the case above whatever the
+    // guide said, which is how three flags came to be undocumented under a check that did not exist
+    expect(undocumented(['--cores', '--invented'], 'takes --cores N, and nothing else')).toEqual(['--invented']);
   });
 });

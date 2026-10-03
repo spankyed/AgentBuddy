@@ -36,13 +36,13 @@ import { spawnSync } from 'node:child_process';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { REPO_ROOT } from '@abuddy/host/build/packages-built';
-import { idleNow, IDLE_FLOOR, refusesAsBusy } from './lib/measure.ts';
+import { bodyDrift, drifted, idleNow, IDLE_FLOOR, refusesAsBusy, refusesAsContended } from './lib/measure.ts';
 import { UNIT_SUITES, type UnitSuite } from './lib/unit-suites.ts';
 import {
   CONTENTION_RATIO_MAX, COST_ACCURACY, FAST_BELOW_MS, INTEGRATION_ABOVE_MS, PLACEMENT_GUARD, describeBudget,
   halfOfPath, hasSplit, ratiosFromMoves, underBound,
   nearEdge, overBudget,
-  CONFIG_BY_HALF, absentNamed, drift, drifted, namedIn, parseArgs, planFor, readSpecCost, refusesAsContended,
+  CONFIG_BY_HALF, absentNamed, namedIn, parseArgs, planFor, readSpecCost,
   rewritesEveryRow, settle, specCostFile, specFiles, stale, suitesFor, unrecorded, type SpecCostPlan,
 } from './lib/spec-cost.ts';
 
@@ -164,7 +164,7 @@ function update(plans: readonly SuitePlan[], dry: boolean): void {
     // What the per-spec tolerance cannot say. Each spec settling inside its threshold is the normal case and
     // the reason the file is stable; all of them settling in the same direction is a uniform slowdown, and
     // the only place it shows is the total. Undefined when nothing measured had a value to move from.
-    const body = drift(previous, costs);
+    const body = bodyDrift(new Map(Object.entries(previous?.costs ?? {})), new Map(Object.entries(costs)));
     const rewriteAll = rewritesEveryRow({ all, body });
     const { record, added, moved, rewritten, dropped } = settle({
       previous, costs, skipped: [...new Set(runs.flatMap((run) => run.skipped))], measuredFiles,

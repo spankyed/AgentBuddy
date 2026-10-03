@@ -26,11 +26,25 @@ import * as path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { REPO_ROOT } from '@abuddy/host/build/packages-built';
-import * as real from '../../../scripts/lib/spec-cost.ts';
+import * as realSpecCost from '../../../scripts/lib/spec-cost.ts';
+import * as realMeasure from '../../../scripts/lib/measure.ts';
 import { UNIT_SUITES } from '../../../scripts/lib/unit-suites.ts';
 
-type Lib = typeof real;
-const SOURCE = path.join(REPO_ROOT, 'scripts', 'lib', 'spec-cost.ts');
+/**
+ * The modules a mutation may break, by the name an entry gives in `in`.
+ *
+ * One module when this was written, and two since the sample-recording primitives moved to `measure.ts` to
+ * be shared with the chain's own cost table. An entry naming no module breaks `spec-cost.ts`, which is what
+ * every entry but one does.
+ */
+const MODULES = {
+  'spec-cost': { file: 'spec-cost.ts', real: realSpecCost as unknown as Lib },
+  measure: { file: 'measure.ts', real: realMeasure as unknown as Lib },
+} as const;
+type Module = keyof typeof MODULES;
+
+/** The intersection, because an entry calls only its own module's exports and the harness is generic over both */
+type Lib = typeof realSpecCost & typeof realMeasure;
 
 const DIRS = UNIT_SUITES.map((suite) => suite.dir);
 
@@ -80,6 +94,8 @@ interface Tree { readonly root: string }
  */
 interface Mutation {
   readonly why: string;
+  /** Which module holds the line, when it is not `spec-cost.ts` */
+  readonly in?: Module;
   readonly from: string;
   readonly to: string;
   readonly call: (lib: Lib, tree: Tree) => unknown;
@@ -195,6 +211,7 @@ const MUTATIONS: readonly Mutation[] = [
   },
   {
     why: 'refusesAsContended lets --force through',
+    in: 'measure',
     from: '!input.force && contended(',
     to: 'contended(',
     call: (lib) => lib.refusesAsContended({ hasPrevious: true, force: true, moved: 6, comparable: 20 }),
@@ -265,10 +282,12 @@ const outcome = (run: () => unknown): unknown => {
 
 describe('every decision in spec-cost.ts is one its cases can see', () => {
   const tree: Tree = { root: '' };
-  let source = '';
+  const sources = new Map<Module, string>();
 
   beforeAll(() => {
-    source = fs.readFileSync(SOURCE, 'utf-8');
+    for (const [name, { file }] of Object.entries(MODULES)) {
+      sources.set(name as Module, fs.readFileSync(path.join(REPO_ROOT, 'scripts', 'lib', file), 'utf-8'));
+    }
     (tree as { root: string }).root = fs.mkdtempSync(path.join(os.tmpdir(), 'spec-cost-mutations-'));
     const write = (rel: string, body: string): void => {
       fs.mkdirSync(path.dirname(path.join(tree.root, rel)), { recursive: true });
@@ -281,7 +300,7 @@ describe('every decision in spec-cost.ts is one its cases can see', () => {
     for (const dir of UNSORTED) write(`packages/${dir}/${FAST}`, '');
     // `a` recorded and `b` not, which is what makes the unmeasured branch reachable. No live suite is in this
     // state — a green tree means every spec is recorded, so the branch a bare update takes needs a tree of its own
-    write(real.specCostFile('mini'), `${JSON.stringify({ measuredAt: 'then', costs: { [FAST]: 100 }, skipped: [] }, null, 2)}\n`);
+    write(realSpecCost.specCostFile('mini'), `${JSON.stringify({ measuredAt: 'then', costs: { [FAST]: 100 }, skipped: [] }, null, 2)}\n`);
   });
 
   afterAll(() => fs.rmSync(tree.root, { recursive: true, force: true }));
@@ -302,17 +321,19 @@ describe('every decision in spec-cost.ts is one its cases can see', () => {
   const absolute = (body: string): string =>
     body.replace(/from '\.\/([\w.-]+)'/g, (_, file: string) => `from '${pathToFileURL(path.join(REPO_ROOT, 'scripts', 'lib', file)).href}'`);
 
-  it.each(MUTATIONS)('finds the line for: $why', ({ from }) => {
-    expect(source.split(from).length - 1, `this mutation no longer applies; update its \`from\`:\n${from}`).toBe(1);
+  it.each(MUTATIONS)('finds the line for: $why', ({ from, in: where = 'spec-cost' }) => {
+    const source = sources.get(where)!;
+    expect(source.split(from).length - 1,
+      `this mutation no longer applies; update its \`from\` (or its \`in\`):\n${from}`).toBe(1);
   });
 
-  it.each(MUTATIONS)('$why', async ({ from, to, call }) => {
+  it.each(MUTATIONS)('$why', async ({ from, to, call, in: where = 'spec-cost' }) => {
     const file = path.join(tree.root, `mutant-${MUTATIONS.findIndex((entry) => entry.from === from)}.ts`);
-    fs.writeFileSync(file, absolute(source.replace(from, to)));
+    fs.writeFileSync(file, absolute(sources.get(where)!.replace(from, to)));
     const mutant = await import(pathToFileURL(file).href) as Lib;
 
     expect(outcome(() => call(mutant, tree)),
       'breaking this changed nothing the case looks at, so the case is watching something else')
-      .not.toEqual(outcome(() => call(real, tree)));
+      .not.toEqual(outcome(() => call(MODULES[where].real, tree)));
   });
 });

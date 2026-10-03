@@ -58,6 +58,24 @@ describe('driftedSteps', () => {
   });
 
   /**
+   * The other end of the same rule, and the one that shipped reporting forever.
+   *
+   * `check:tiers` declares 0.3s. A 1s measurement is past twice that, so the report named it on every full
+   * run — and `SECONDS_FLOOR` refuses to write a movement of a second or less, so "re-measure, or record"
+   * could not be done. Three steps declare under a second, so this was not one step's quirk.
+   */
+  it('says nothing about a drift the record would refuse to write', () => {
+    expect(driftedSteps([step('tiers', [], { seconds: 0.3 })], new Map([['tiers', 1_000]]))).toEqual([]);
+  });
+
+  it('still reports a sub-second declaration that moved further than the floor', () => {
+    // Not over-broad: the guard is about the size of the movement, not about the size of the declaration,
+    // and 0.3 -> 2 is a step that really has grown
+    expect(driftedSteps([step('tiers', [], { seconds: 0.3 })], new Map([['tiers', 2_000]])))
+      .toEqual([{ name: 'tiers', declared: 0.3, measured: 2 }]);
+  });
+
+  /**
    * The two pooled steps run only their stale projects, so an incremental run is normally well under half
    * the declared cost — which is the whole pool's. That fired the advisory on nearly every run, and a warning
    * that is always on is one nobody reads. `forceArgs` is the marker, because it already means the step keeps

@@ -100,6 +100,71 @@ export const SETTLED_FRACTION = 0.35;
 export const movedBeyondBand = (recorded: number | undefined, measured: number, floor: number): boolean =>
   recorded === undefined || Math.abs(measured - recorded) > Math.max(floor, SETTLED_FRACTION * recorded);
 
+/**
+ * How far a run's measurements moved as a body, against what is recorded for the same subjects.
+ *
+ * The one thing a per-entry tolerance cannot show. Random jitter does not bias a sum — the lags fall both
+ * ways and cancel, which is why a spec suite's total moved 0.4%, 6.5% and 9.9% between idle runs while its
+ * members moved 10-18% each. *Correlated* drift does: a bundler bump that adds a fifth to every entry stays
+ * under every individual tolerance, so nothing re-records and anything reading the total is reading numbers
+ * that are uniformly stale. A chain step's costs have the same exposure through `criticalPath`, which sums
+ * them, and changing the chain's admission policy is exactly the shape that moves every one at once.
+ *
+ * Measured against the record rather than the settled values, since settling is where the drift went.
+ * Undefined when nothing measured had a recorded value to move from — not zero, which would read as steady.
+ */
+export function bodyDrift(recorded: ReadonlyMap<string, number>, measured: ReadonlyMap<string, number>): number | undefined {
+  const shared = [...measured.keys()].filter((name) => recorded.get(name) !== undefined);
+  const before = shared.reduce((sum, name) => sum + recorded.get(name)!, 0);
+  // Nothing measured had a value to drift from, which reads as steady if it comes back as zero
+  if (before === 0) return undefined;
+  return shared.reduce((sum, name) => sum + measured.get(name)!, 0) / before - 1;
+}
+
+/** Above the drift a run of unchanged work shows: measured at 0.4%, 6.5% and 9.9% on an idle machine */
+export const DRIFT_SHARE = 0.15;
+
+/** Whether a run's body moved further than idle runs vary, in either direction */
+export const drifted = (move: number | undefined): move is number =>
+  move !== undefined && Math.abs(move) > DRIFT_SHARE;
+
+/**
+ * The share of a record's entries that may move before the run is read as measuring the machine.
+ *
+ * This is the check a sample can have. A derivation's is equality and a proxy's is a self-check against the
+ * real thing; neither is available here, and what is left is reproducibility. With the tolerance above, an
+ * idle run moves 0-3% of a spec suite; a contended one moved 76%. The instruction to "run the update with
+ * nothing else on the machine" was prose until this, and was ignored twice in one day.
+ */
+export const CONTENDED_SHARE = 0.25;
+
+/**
+ * Whether a run moved more of what it could move than a measurement should.
+ *
+ * `comparable` is the entries that had a value to move — measured minus added — so a record written for the
+ * first time is never refused for having recorded everything.
+ */
+export const contended = (moved: number, comparable: number): boolean =>
+  comparable > 0 && moved > CONTENDED_SHARE * comparable;
+
+/**
+ * Whether to refuse this run as a measurement of the machine rather than of the work.
+ *
+ * Three inputs, which is why it is named rather than spelled out at the call site. `--force` is the user
+ * saying it really did change this much, and a record that did not exist has nothing to have moved.
+ *
+ * `--all` is not among them, and the arithmetic is why. A correlated drift of a fraction `f` moves an entry
+ * only where `f * r > max(floor, SETTLED_FRACTION * r)`: above `floor / SETTLED_FRACTION` that needs
+ * `f > SETTLED_FRACTION`, and below it needs `r > floor / f`, which cannot both hold. So the drift `--all`
+ * exists to clear moves nothing but the few entries that cross the band, and this counts `moved` — it cannot
+ * fire on that run. What it still fires on is a quarter of a record each past its own tolerance, which is a
+ * loaded machine or a real regression, and `--force` is the answer to the second whichever flags it carries.
+ */
+export const refusesAsContended = (input: {
+  readonly hasPrevious: boolean; readonly force: boolean;
+  readonly moved: number; readonly comparable: number;
+}): boolean => input.hasPrevious && !input.force && contended(input.moved, input.comparable);
+
 /** Whether to refuse a measurement outright. `--force` is the deliberate override, and the citation says so. */
 export const refusesAsBusy = (input: { readonly idle: number; readonly floor: number; readonly force: boolean }):
 boolean => !input.force && input.idle < input.floor;
@@ -387,6 +452,20 @@ export function asNumber(raw: string | undefined, flag: string): number | undefi
   if (raw === undefined) return undefined;
   const value = Number(raw);
   if (!Number.isFinite(value)) throw new Error(`\`--${flag}\` takes a number, not ${JSON.stringify(raw)}`);
+  return value;
+}
+
+/**
+ * A flag's value as a positive integer, or undefined when it was not given.
+ *
+ * Beside `asNumber` rather than folded into it, because the range belongs to the caller — `--idle` takes a
+ * fraction and `--busy` takes zero. It is a function because two callers want this same bound: the chain's
+ * `--cores` and `npm run typecheck`'s, which each hand-rolled it before.
+ */
+export function asCount(raw: string | undefined, flag: string): number | undefined {
+  const value = asNumber(raw, flag);
+  if (value === undefined) return undefined;
+  if (!Number.isInteger(value) || value < 1) throw new Error(`\`--${flag}\` takes a positive integer, not ${JSON.stringify(raw)}`);
   return value;
 }
 

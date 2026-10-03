@@ -1,5 +1,5 @@
 {
-  "measuredAt": "2026-10-02T22:17:08.550Z",
+  "measuredAt": "2026-10-03T01:04:39.405Z",
   "costs": {
     "tests/api-report-stamp.spec.ts": 68,
     "tests/bounded-spawn.integration.spec.ts": 2059,
@@ -10,6 +10,7 @@
     "tests/chain-stamps.spec.ts": 2,
     "tests/chain-table.spec.ts": 498,
     "tests/component-contracts.integration.spec.ts": 2007,
+    "tests/core-budget.spec.ts": 7,
     "tests/dep-files.integration.spec.ts": 4393,
     "tests/doc-links.spec.ts": 253,
     "tests/fingerprint-scope.integration.spec.ts": 1843,
@@ -38,7 +39,7 @@
     "tests/subprocess-inventory.spec.ts": 369,
     "tests/suite-reads.spec.ts": 1872,
     "tests/suite-split.spec.ts": 465,
-    "tests/suite-timeouts.spec.ts": 1153,
+    "tests/suite-timeouts.spec.ts": 1641,
     "tests/sweep-forget.spec.ts": 15,
     "tests/typecheck-legs.spec.ts": 7,
     "tests/unit-pool.spec.ts": 4,

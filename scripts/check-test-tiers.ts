@@ -9,13 +9,12 @@
  * attempts at a cheaper chain each died on exactly that, because nothing recorded it
  * (`docs/archive/goals/goal-test-tiers.md`, where the declaration was a three-valued `tier`).
  *
- * **Two questions, because neither answers the other.** The *inputs* check is data: a step declaring
- * `APP_OUTPUTS` reads the app whatever its scripts say. The *scripts* check is text: it reads each step's
- * npm script, follows what it calls, and looks for the ways this repo launches the app — Playwright,
- * Electron, and `abuddy test`, which is Playwright with a different name. A step can launch the app
- * without declaring its outputs as inputs, which is the case the text scan exists for and the inputs
- * check cannot see; and `APP_ENTRY` is why the inputs check alone would be wrong in the other direction,
- * since `packages/dev-mode.js` and `packages/entry-point.mjs` are source that three app-free steps read.
+ * **One question, and it is the one no reading of the inputs can answer.** Whether a step *needs* the app
+ * is derived from what it declares (`needsApp`, `chain-steps.ts`), so the two clauses that used to compare
+ * the two were a derivation against its own source and could not fail. What is left is text: it reads each
+ * step's npm script, follows what it calls, and looks for the ways this repo launches the app —
+ * Playwright, Electron, and `abuddy test`, which is Playwright with a different name. A step can launch
+ * the app while declaring none of its outputs, and that is the case nothing else sees.
  *
  * The text scan goes when the action graph can answer "does this transitively depend on `build:app`"
  * (`docs/archive/plans/one-action-cache.md`, item 17). Until then it is the half that catches a launch, and the

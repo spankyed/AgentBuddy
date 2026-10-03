@@ -174,12 +174,12 @@ So a goal doc plans its own checks:
 - **Slow steps run last, and only when their input changed.** The published API reports, the app
   build and the E2E, external-pack and packaged-authoring suites each have a trigger; a phase that
   doesn't touch that input doesn't run them.
-- **`test:unit` runs its suites two at a time, and two is the number.** It shares a checkout, which used
-  to mean two suites racing each other's package build; the readers now wait for an in-flight build and
-  the builders wait for the lock rather than failing on it. More lanes is a measured dead end: three
-  measures 44.4s against two lanes' 43s, because a suite already uses 2.0–3.8 of ten cores, and the extra
-  contention pushes tests sitting near vitest's 5s default over it. Run `packages:ensure` once before any
-  fan-out, so the suites' own pretests find nothing to do.
+- **`test:unit` has no scheduler of its own: the pools run one after another.** It shares a checkout,
+  which used to mean two suites racing each other's package build; the readers now wait for an in-flight
+  build and the builders wait for the lock rather than failing on it. Running the pools concurrently was a
+  measured dead end before that — 44.4s against 43s — and what each pool takes is declared now rather
+  than measured in passing (`POOL_WIDTH`, `scripts/lib/core-budget.ts`), which is what the chain admits
+  on. Run `packages:ensure` once before any fan-out, so the suites' own pretests find nothing to do.
 - **Don't run two suites from two shells to save time.** The locking makes it correct, not fast: the
   cores are already busy, and a contended measurement is worthless — one produced 249s for what is 182.6s
   idle here, a 36% error.
