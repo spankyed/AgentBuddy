@@ -1,4 +1,4 @@
-// Whether the cases covering `scripts/lib/spec-cost.ts` can see the decisions they are about.
+// Whether a decision in `scripts/lib/` can be observed at all — by the cases that cover it, or by anything.
 //
 // Root CLAUDE.md already says a mutation check is worth more than a re-run, and two cases shipped under that
 // rule that could not see what they claimed to cover: one watching `settle`'s `skipped` comparison also moved
@@ -18,7 +18,15 @@
 // fixtures between the two files would close that, and is the next step if this is ever worth extending.
 //
 // It covers the breaks the table lists and no others: it makes today's evidence permanent rather than going
-// looking for tomorrow's. `docs/archive/plans/vacuous-assertions.md` records why a firing case per check is a
+// looking for tomorrow's.
+//
+// **Four modules, and what qualifies one is reachability rather than subject.** It began as one, grew to two
+// when the sample-recording primitives moved to `measure.ts`, and took `step-timeouts.ts` and
+// `chain-schedule.ts` when the hand-run version of this ritual was retired: copy the file, edit it, run a
+// filtered command, read the output, restore. That has three independent ways to lie — a restore that takes
+// the index rather than your work, a run that does not run, and a filter that hides the answer — and two of
+// the three were observed in one session. Here there is nothing to restore, the suite cannot skip it, and a
+// non-discriminating entry *fails*, which the ritual could never do. `docs/archive/plans/vacuous-assertions.md` records why a firing case per check is a
 // larger programme than this.
 import * as fs from 'node:fs';
 import * as os from 'node:os';
@@ -28,24 +36,32 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { REPO_ROOT } from '@abuddy/host/build/packages-built';
 import * as realSpecCost from '../../../scripts/lib/spec-cost.ts';
 import * as realMeasure from '../../../scripts/lib/measure.ts';
+import * as realStepTimeouts from '../../../scripts/lib/step-timeouts.ts';
+import * as realChainSchedule from '../../../scripts/lib/chain-schedule.ts';
 import { UNIT_SUITES } from '../../../scripts/lib/unit-suites.ts';
 import { thisMachine } from '../../../scripts/lib/core-budget.ts';
 
 /**
  * The modules a mutation may break, by the name an entry gives in `in`.
  *
- * One module when this was written, and two since the sample-recording primitives moved to `measure.ts` to
- * be shared with the chain's own cost table. An entry naming no module breaks `spec-cost.ts`, which is what
- * every entry but one does.
+ * **What a module needs to be here is that a mutant of it resolves from a temp directory**, since that is
+ * where `absolute` writes one: no imports, or only node builtins, or only relative specifiers it can
+ * rewrite. `chain-output.ts` is the near miss — a bare `@abuddy/host/build/packages-built` has no
+ * `node_modules` on the walk-up from `os.tmpdir()`, so it stays out until someone has a reason to write
+ * mutants inside the tree.
+ *
+ * An entry naming no module breaks `spec-cost.ts`, which is what most of them do.
  */
 const MODULES = {
   'spec-cost': { file: 'spec-cost.ts', real: realSpecCost as unknown as Lib },
   measure: { file: 'measure.ts', real: realMeasure as unknown as Lib },
+  'step-timeouts': { file: 'step-timeouts.ts', real: realStepTimeouts as unknown as Lib },
+  'chain-schedule': { file: 'chain-schedule.ts', real: realChainSchedule as unknown as Lib },
 } as const;
 type Module = keyof typeof MODULES;
 
-/** The intersection, because an entry calls only its own module's exports and the harness is generic over both */
-type Lib = typeof realSpecCost & typeof realMeasure;
+/** The intersection, because an entry calls only its own module's exports and the harness is generic over all */
+type Lib = typeof realSpecCost & typeof realMeasure & typeof realStepTimeouts & typeof realChainSchedule;
 
 const DIRS = UNIT_SUITES.map((suite) => suite.dir);
 
@@ -86,6 +102,41 @@ const dated = (lib: Lib, input: {
 
 /** A pack tree whose record disagrees with the specs beside it, which no live suite does */
 interface Tree { readonly root: string }
+
+interface Step { readonly name: string; readonly dependsOn: string[]; readonly conflicts?: string[]; readonly cores?: number }
+const sstep = (name: string, dependsOn: string[] = [], extra: Partial<Step> = {}): Step =>
+  ({ name, dependsOn, ...extra });
+
+/**
+ * What a scheduled run did, as strings — the projection the scheduler's entries compare.
+ *
+ * **Never the raw `ScheduleResult`.** `threw[].error` holds `Error` objects, which `toEqual` compares by
+ * message alone, and a `Map` or `Set` compares order-insensitively — both weaken exactly the discrimination
+ * an entry is for. `peers` carries the most: it is written at dispatch, in both directions, so it says what
+ * overlapped what, which is how a budget decision is visible at all.
+ *
+ * `run` resolves immediately and that is sufficient, so the `release`/`drain` machinery in
+ * `chain-schedule.spec.ts` is deliberately not reproduced here: `schedule`'s dispatch pass is synchronous,
+ * so `spent` is already full when the next candidate is judged, while the handlers that release it are
+ * microtasks that cannot run until `await Promise.race`.
+ */
+const scheduled = async (lib: Lib, steps: readonly Step[], budget: number, options: {
+  readonly failing?: readonly string[];
+  readonly skipping?: readonly string[];
+} = {}) => {
+  const result = await lib.schedule({
+    steps,
+    budget,
+    skip: (step) => (options.skipping ?? []).includes(step.name),
+    run: async (step) => !(options.failing ?? []).includes(step.name),
+  });
+  return {
+    started: result.started.join(','),
+    skipped: result.skipped.join(','),
+    failed: result.failed ?? 'none',
+    peers: [...result.peers].map(([name, beside]) => `${name}:${[...beside].sort().join('+')}`).sort().join(' '),
+  };
+};
 
 /**
  * One break, and the call that has to notice it.
@@ -264,6 +315,111 @@ const MUTATIONS: readonly Mutation[] = [
 
   // The wording is a decision too, and it is the one the defect actually was: a string telling a reader to
   // rename a file into a half that does not exist.
+  /**
+   * The scheduler's seven. Every one projects through `scheduled` above, and the inputs are chosen so the
+   * decision is the only thing that moves — which is why each carries the two answers in its comment where
+   * they are not obvious.
+   */
+  {
+    why: 'the budget admits on what the live steps already hold',
+    in: 'chain-schedule',
+    from: 'if (spent > 0 && spent + (step.cores ?? 1) > budget) continue;',
+    to: '',
+    // Three four-core steps and ten to spend: `c` waits, so it overlaps nothing. Without the clause it
+    // joins the other two and `peers` says so.
+    call: (lib) => scheduled(lib, [sstep('a', [], { cores: 4 }), sstep('b', [], { cores: 4 }), sstep('c', [], { cores: 4 })], 10),
+  },
+  {
+    why: 'the budget is soft, so a step wider than all of it still runs',
+    in: 'chain-schedule',
+    from: 'spent > 0 && ',
+    to: '',
+    // A hard comparison holds it for ever: nothing is running, so nothing will ever free the budget it
+    // needs, and the loop exits having started it never. `started` is the whole answer.
+    call: (lib) => scheduled(lib, [sstep('huge', [], { cores: 20 })], 10),
+  },
+  {
+    why: 'a mutex holds in the direction the running step declares it, not only the candidate',
+    in: 'chain-schedule',
+    from: '          || (steps.find((candidate) => candidate.name === name)?.conflicts ?? []).includes(step.name);',
+    to: ';',
+    // `lock` names `b`; `b` names nothing. Only the second clause sees that, so without it the pair overlaps
+    call: (lib) => scheduled(lib, [sstep('lock', [], { conflicts: ['b'] }), sstep('b')], 10),
+  },
+  {
+    why: 'a step waits for what it depends on',
+    in: 'chain-schedule',
+    from: 'if (!step.dependsOn.every((need) => done.has(need))) continue;',
+    to: '',
+    // `b` sits first in the table and needs `a`, so the order is the answer: a,b against b,a
+    call: (lib) => scheduled(lib, [sstep('b', ['a']), sstep('a')], 10),
+  },
+  {
+    why: 'a skipped step counts as passed, so what needed it becomes ready',
+    in: 'chain-schedule',
+    from: `          skipped.push(step.name);
+          done.add(step.name);`,
+    to: '          skipped.push(step.name);',
+    // Without the credit `b` is never ready, nothing is running, and the loop exits with it unstarted
+    call: (lib) => scheduled(lib, [sstep('a'), sstep('b', ['a'])], 10, { skipping: ['a'] }),
+  },
+  {
+    why: 'the first failure is the one reported, not the last',
+    in: 'chain-schedule',
+    from: 'else failed ??= step.name;',
+    to: 'else failed = step.name;',
+    // Two failing steps, both admitted in one pass. No case in `chain-schedule.spec.ts` has two.
+    call: (lib) => scheduled(lib, [sstep('a'), sstep('b')], 10, { failing: ['a', 'b'] }),
+  },
+  {
+    /**
+     * The one entry that cannot simply call and compare: with the exit gone, `Promise.race` over an empty
+     * map never settles, so the mutant hangs rather than answering. It is raced against a timer and
+     * projected to a word. The losing promise is left pending on purpose — there is nothing to cancel, and
+     * the alternative is no entry at all for the branch that stops the loop.
+     */
+    why: 'the loop stops when nothing is running and nothing was dispatched',
+    in: 'chain-schedule',
+    from: 'if (running.size === 0) break;',
+    to: '',
+    call: async (lib) => {
+      const ran = scheduled(lib, [sstep('orphan', ['absent'])], 10).then(() => 'returned');
+      return Promise.race([ran, new Promise((resolve) => setTimeout(() => resolve('hung'), 250))]);
+    },
+  },
+  /**
+   * `step-timeouts.ts` has no spec of its own: a repo-wide grep for `timeoutMsFor` or `timeoutText` across
+   * `*.spec.ts` returns nothing, and `chain-graph` checks only that each class is on the ladder and that
+   * each rung is used — so changing `quick` to six seconds leaves every case in the repo green. These three
+   * are the whole of what observes the module.
+   */
+  {
+    why: 'timeoutMsFor refuses a class the ladder has not got, rather than returning undefined',
+    in: 'step-timeouts',
+    from: 'if (ms === undefined) {',
+    to: 'if (false) {',
+    call: (lib) => lib.timeoutMsFor('nonsense'),
+  },
+  {
+    // Not the values themselves, which an entry cannot assert without restating them: the property the
+    // ladder has to have is that a rung is slower than the one below, which is what makes `quick` a
+    // meaningful thing to give a step. `suite` dropping under `quick` breaks it.
+    why: 'the ladder climbs, so a class is slower than the one below it',
+    in: 'step-timeouts',
+    from: '  suite: 300_000,',
+    to: '  suite: 30_000,',
+    call: (lib) => {
+      const ms = lib.TIMEOUT_CLASSES.map((className) => lib.TIMEOUT_MS[className]);
+      return ms.every((value, at) => at === 0 || value > ms[at - 1]!) ? 'climbs' : 'does not climb';
+    },
+  },
+  {
+    why: 'timeoutText says a class in seconds, not milliseconds',
+    in: 'step-timeouts',
+    from: '`${TIMEOUT_MS[className] / 1000}s (${className})`',
+    to: '`${TIMEOUT_MS[className]}s (${className})`',
+    call: (lib) => lib.timeoutText('quick'),
+  },
   {
     why: 'describeBudget tells the two kinds apart',
     from: "over.length > 0 ? 'Make it cheaper, or record it in EXPENSIVE_BY_NATURE with what makes it expensive.' : '',",
@@ -272,16 +428,29 @@ const MUTATIONS: readonly Mutation[] = [
   },
 ];
 
-/** A value or the message it threw, so a break that turns a refusal into a return still compares */
-const outcome = (run: () => unknown): unknown => {
+/**
+ * A value or the message it threw, so a break that turns a refusal into a return still compares.
+ *
+ * **It awaits, and that is not a convenience.** `Mutation.call` returns `unknown`, so a subject that is
+ * async type-checks and then compares wrongly: vitest's `toEqual` reads two distinct Promises as *equal* —
+ * no own enumerable keys, and its `className` switch has no Promise case — so `.not.toEqual` would fail
+ * every async entry unconditionally, reporting "breaking this changed nothing" about a break that worked.
+ * Two further hazards go with it: a `try/catch` around an un-awaited call cannot catch a rejection, so a
+ * mutation that makes the subject reject becomes an unhandled rejection rather than `{ threw }`; and an
+ * unsettled promise leaves work running past the case.
+ *
+ * Awaiting a non-thenable is identity, so the entries that are synchronous are unaffected — checked by
+ * running all of them before and after, by name, not by the absence of a failure.
+ */
+const outcome = async (run: () => unknown): Promise<unknown> => {
   try {
-    return { ok: run() };
+    return { ok: await run() };
   } catch (error) {
     return { threw: (error as Error).message.slice(0, 120) };
   }
 };
 
-describe('every decision in spec-cost.ts is one its cases can see', () => {
+describe('every decision these modules make is one something can see', () => {
   const tree: Tree = { root: '' };
   const sources = new Map<Module, string>();
 
@@ -289,7 +458,7 @@ describe('every decision in spec-cost.ts is one its cases can see', () => {
     for (const [name, { file }] of Object.entries(MODULES)) {
       sources.set(name as Module, fs.readFileSync(path.join(REPO_ROOT, 'scripts', 'lib', file), 'utf-8'));
     }
-    (tree as { root: string }).root = fs.mkdtempSync(path.join(os.tmpdir(), 'spec-cost-mutations-'));
+    (tree as { root: string }).root = fs.mkdtempSync(path.join(os.tmpdir(), 'decision-mutations-'));
     const write = (rel: string, body: string): void => {
       fs.mkdirSync(path.dirname(path.join(tree.root, rel)), { recursive: true });
       fs.writeFileSync(path.join(tree.root, rel), body);
@@ -333,8 +502,8 @@ describe('every decision in spec-cost.ts is one its cases can see', () => {
     fs.writeFileSync(file, absolute(sources.get(where)!.replace(from, to)));
     const mutant = await import(pathToFileURL(file).href) as Lib;
 
-    expect(outcome(() => call(mutant, tree)),
+    expect(await outcome(() => call(mutant, tree)),
       'breaking this changed nothing the case looks at, so the case is watching something else')
-      .not.toEqual(outcome(() => call(MODULES[where].real, tree)));
+      .not.toEqual(await outcome(() => call(MODULES[where].real, tree)));
   });
 });
