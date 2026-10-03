@@ -154,10 +154,10 @@ sample is ever added — a band alone leaves whichever reading landed first in c
 **A sum of that record is a separate question.** Jitter cancels, so a suite's total is stable (0.4-9.9%
 between idle runs while its members moved 10-18%). Correlated drift does not: a dependency bump adding a
 fifth to every spec sits under every per-spec tolerance, so nothing re-records and the total quietly stops
-being true. `drift` reports the body's movement on every run, and `spec-cost:update --all --reseed` clears
-it by re-seeding every window from that run — the one thing a window cannot do for itself, since it is
-built to be slow to forget and a correlated drift is exactly the case where the old readings describe code
-that is gone. `--all` without it re-measures everything and appends, which keeps the protection.
+being true. `drift` reports the body's movement on every run, and `spec-cost:update --all --forget` clears
+it by dropping every window and starting again from that run — the one thing a window cannot do for itself,
+since it is built to be slow to forget and a correlated drift is exactly the case where the old readings
+describe code that is gone. `--all` without it re-measures everything and appends, which keeps the protection.
 
 The chain is the whole gate: **CI does not run, on purpose.** `.github/workflows/ci.yml` has its `push`
 and `pull_request` triggers commented out while this is a single-contributor repo, so `gh run list` is empty
@@ -653,15 +653,15 @@ npm run spec-cost:update # The least that makes the records current, which is of
                          #   --suite <dir> one suite
                          #   --all         re-measure every spec. Each reading still has to disagree with
                          #                 its window's median to be kept, so a quiet --all writes nothing
-                         #   --all --reseed  and forget what was there: re-seed every window from this
-                         #                 run. The only thing that clears a correlated drift, since a fifth
-                         #                 added to every spec sits under every per-spec tolerance.
+                         #   --all --forget  drop every window and start again from this run. The only
+                         #                 thing that clears a correlated drift, since a fifth added to every
+                         #                 spec sits under every per-spec tolerance.
                          #                 **Its own flag, not `--force`**: that one silences the idle and
-                         #                 contention refusals, and a re-seed writes every cost from a
+                         #                 contention refusals, and forgetting writes every cost from a
                          #                 single reading — the state with no history to outvote a bad one —
                          #                 so it is the write that most needs a quiet machine rather than
                          #                 the one that should be able to skip the check. It needs `--all`,
-                         #                 since re-seeding part of a record leaves it holding two vintages
+                         #                 since forgetting part of a record leaves it holding two vintages
                          #   --dry         what it would run and write
                          #   --force       override both refusals. Adopting a record measured on another
                          #                 machine is still `--all --force`: whose machine it is and whether

@@ -105,7 +105,7 @@ const dated = (lib: Lib, input: {
     skipped: input.skipped,
     measuredFiles: input.measuredFiles,
     prune: [],
-    resetWindows: false,
+    forgetWindows: false,
   });
   return record.measuredAt === input.previous.measuredAt ? 'kept the old date' : 'dated the run';
 };
@@ -193,7 +193,7 @@ const MUTATIONS: readonly Mutation[] = [
       skipped: [FAST],
       measuredFiles: [FAST, 'tests/b.spec.ts'],
       prune: [],
-      resetWindows: false,
+      forgetWindows: false,
     }).record.skipped,
   },
   {
@@ -230,7 +230,7 @@ const MUTATIONS: readonly Mutation[] = [
       skipped: [FAST],
       measuredFiles: [FAST, 'tests/b.spec.ts'],
       prune: [],
-      resetWindows: false,
+      forgetWindows: false,
     }).dropped,
   },
   {
@@ -243,12 +243,12 @@ const MUTATIONS: readonly Mutation[] = [
       skipped: [],
       measuredFiles: [FAST],
       prune: ['tests/gone.spec.ts'],
-      resetWindows: false,
+      forgetWindows: false,
     }).dropped,
   },
   {
-    why: 'settle re-seeds a window on --all --force rather than appending to it',
-    from: 'resetWindows || before === undefined ? [ms]',
+    why: 'settle forgets a window on --all --forget rather than appending to it',
+    from: 'forgetWindows || before === undefined ? [ms]',
     to: 'before === undefined ? [ms]',
     call: (lib) => lib.settle({
       previous: before({ [FAST]: 1_000 }),
@@ -256,7 +256,7 @@ const MUTATIONS: readonly Mutation[] = [
       skipped: [],
       measuredFiles: [FAST],
       prune: [],
-      resetWindows: true,
+      forgetWindows: true,
     }).record.costs[FAST],
   },
   {
@@ -503,7 +503,7 @@ const MUTATIONS: readonly Mutation[] = [
     call: (lib) => lib.costOf([100, 9_999, 110]),
   },
   {
-    why: 'a window keeps WINDOW readings, so it forgets the oldest rather than growing',
+    why: 'a window keeps WINDOW readings, so it drops the oldest rather than growing',
     from: '[...samples, reading].slice(-WINDOW)',
     to: '[...samples, reading]',
     call: (lib) => lib.appendSample([1, 2, 3], 4),
@@ -520,14 +520,14 @@ const MUTATIONS: readonly Mutation[] = [
       skipped: [],
       measuredFiles: [FAST],
       prune: [],
-      resetWindows: false,
+      forgetWindows: false,
     }).record.samples[FAST],
   },
   {
-    why: 'resetsWindows needs both flags, so --all alone keeps the history that rejects a bad reading',
-    from: 'input.all && input.reseed',
+    why: 'forgetsWindows needs both flags, so --all alone keeps the history that rejects a bad reading',
+    from: 'input.all && input.forget',
     to: 'input.all',
-    call: (lib) => lib.resetsWindows({ all: true, reseed: false }),
+    call: (lib) => lib.forgetsWindows({ all: true, forget: false }),
   },
   {
     why: 'a crossing is reported only while the median has not adopted it',
@@ -656,7 +656,7 @@ const MUTATIONS: readonly Mutation[] = [
       skipped: [],
       measuredFiles: [FAST, 'tests/b.spec.ts'],
       prune: [],
-      resetWindows: false,
+      forgetWindows: false,
     }).record.unmeasured,
   },
 ];

@@ -740,7 +740,7 @@ export type SpecCostMode = 'check' | 'list' | 'update';
  * without joining the list. A flag dropped in silence is worst for `--dry`, where it means a measuring run
  * and a rewritten record in place of the error that was asked for.
  */
-export const SPEC_COST_FLAGS = ['all', 'dry', 'force', 'list', 'reseed', 'suite', 'update'] as const;
+export const SPEC_COST_FLAGS = ['all', 'dry', 'force', 'list', 'forget', 'suite', 'update'] as const;
 export type SpecCostFlag = (typeof SPEC_COST_FLAGS)[number];
 
 export interface SpecCostArgs {
@@ -751,8 +751,8 @@ export interface SpecCostArgs {
   readonly named: readonly string[];
   readonly force: boolean;
   readonly all: boolean;
-  /** Throw away every window and start again from this run. Needs `all`; see `resetsWindows` */
-  readonly reseed: boolean;
+  /** Throw away every window and start again from this run. Needs `all`; see `forgetsWindows` */
+  readonly forget: boolean;
   readonly dry: boolean;
 }
 
@@ -802,18 +802,18 @@ export function parseArgs(argv: readonly string[], suiteDirs: readonly string[])
     }
   }
 
-  // Re-seeding part of a record leaves it holding two vintages with nothing saying which row is which, so
+  // Forgetting part of a record leaves it holding two vintages with nothing saying which row is which, so
   // the flag takes the whole suite or nothing — the same refusal `--all` beside a path gets, for the same
   // reason: two readings of what the run is for, and honouring either silently misreports the other
-  const reseed = has('reseed');
-  if (reseed && !all) {
-    throw new Error('--reseed throws away every window and starts again from this run, so it needs --all. '
-      + 'Re-seeding only the specs one run measured leaves a record holding two vintages.');
+  const forget = has('forget');
+  if (forget && !all) {
+    throw new Error('--forget throws away every window and starts again from this run, so it needs --all. '
+      + 'Forgetting only the specs one run measured leaves a record holding two vintages.');
   }
 
   return {
     mode: has('list') ? 'list' : has('update') ? 'update' : 'check',
-    only, named, force: has('force'), all, reseed, dry: has('dry'),
+    only, named, force: has('force'), all, forget, dry: has('dry'),
   };
 }
 
@@ -889,28 +889,28 @@ export function refuseAbsent(dir: string, files: readonly string[], named: reado
  * **The one thing a window cannot do for itself: forget.** A window is deliberately slow to be convinced,
  * which is right for a noisy reading and wrong for a correlated drift — a bundler bump that adds a fifth to
  * every spec is real, is uniform, and would otherwise take a second agreeing run per row to be believed
- * while every answer in the file is stale. Re-seeding is how you say "the old readings describe code that
+ * while every answer in the file is stale. Forgetting is how you say "the old readings describe code that
  * is gone".
  *
- * **`--all --reseed`, and a flag of its own rather than riding on `--force`.** It was `all && force` for one
+ * **`--all --forget`, and a flag of its own rather than riding on `--force`.** It was `all && force` for one
  * commit, on the reasoning that taking a record over and declaring its history void are one operation. They
  * are not: `adopt` answers *whose machine the record is* and this answers *whether its readings still describe
  * the code*, and someone on the record's own machine after a bundler bump needs the second with no reason to
  * touch the first. Worse, `--force` is what overrides `refusesAsBusy` and `refusesAsContended` — so the write
  * that discards every window and sets each cost from a single reading, the state with no history to outvote a
  * bad one, was the only one that could not be refused for a loud machine. Both refusals apply under
- * `--reseed`, which is the point of separating them.
+ * `--forget`, which is the point of separating them.
  *
  * `--all` on its own re-measures everything and *appends*, which is the ordinary case and keeps the
- * protection. `parseArgs` refuses `--reseed` without it.
+ * protection. `parseArgs` refuses `--forget` without it.
  *
  * It replaced `rewritesEveryRow`, which was `all && drifted(body)` — a drift gate on a write, from when
  * the record held one number per spec and rewriting it on a quiet run was the churn the tolerance existed
  * to prevent. A window has no such problem: an agreeing reading is not kept at all, so there is nothing
  * for a drift threshold to protect and the flag can mean what it says.
  */
-export const resetsWindows = (input: { readonly all: boolean; readonly reseed: boolean }): boolean =>
-  input.all && input.reseed;
+export const forgetsWindows = (input: { readonly all: boolean; readonly forget: boolean }): boolean =>
+  input.all && input.forget;
 
 /** What one suite needs doing, worked out from the record before anything runs */
 export interface SpecCostPlan {
@@ -978,15 +978,15 @@ export function settle(input: {
   /**
    * Throw away every window and start again from what this run measured.
    *
-   * What `resetsWindows` decides, which is `--all --reseed`. It is how a correlated drift is cleared: the
+   * What `forgetsWindows` decides, which is `--all --forget`. It is how a correlated drift is cleared: the
    * old readings describe code that is gone, so appending to them would make the window argue with itself
    * for a run.
    */
-  readonly resetWindows: boolean;
+  readonly forgetWindows: boolean;
   /** Take the record over: write this machine as its own. `--all --force` off the record's machine */
   readonly adopt?: boolean;
 }): Settled {
-  const { previous, costs, measuredFiles, prune, resetWindows } = input;
+  const { previous, costs, measuredFiles, prune, forgetWindows } = input;
   const kept = Object.entries(previous?.samples ?? {}).filter(([spec]) => !prune.includes(spec));
 
   // A reading joins the window only when it says something the window does not already say. An agreeing
@@ -995,7 +995,7 @@ export function settle(input: {
   const settled: Record<string, readonly number[]> = Object.fromEntries(kept);
   for (const [spec, ms] of Object.entries(costs)) {
     const before = previous?.samples[spec];
-    settled[spec] = resetWindows || before === undefined ? [ms]
+    settled[spec] = forgetWindows || before === undefined ? [ms]
       : disagrees(costOf(before), ms) ? appendSample(before, ms) : before;
   }
 

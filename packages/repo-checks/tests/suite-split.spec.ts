@@ -20,7 +20,7 @@ import {
   halfOfPath, hasSplit, disagrees, nearEdge, ratiosFromMoves, towardEdge, underBound, type SpecCost,
   namedIn, overBudget, parseArgs,
   planFor, readSpecCost,
-  recordMembership, refuseAbsent, resetsWindows, settle, specCostFile, specFiles, stale, suitesFor,
+  recordMembership, refuseAbsent, forgetsWindows, settle, specCostFile, specFiles, stale, suitesFor,
   unrecorded, WINDOW, appendSample, costOf, provisional, withCosts,
 } from '../../../scripts/lib/spec-cost.ts';
 // The sample-recording primitives, shared with the chain's own cost table since 2026-10-02. The cases below
@@ -140,7 +140,7 @@ describe('a record anyone can add a spec to', () => {
     const { record } = settle({
       previous: base({}, ['tests/b.spec.ts']),
       costs: { 'tests/b.spec.ts': 250 },
-      skipped: [], measuredFiles: ['tests/b.spec.ts'], prune: [], resetWindows: false,
+      skipped: [], measuredFiles: ['tests/b.spec.ts'], prune: [], forgetWindows: false,
     });
 
     expect(record.unmeasured, 'it has a cost now, so it is not waiting for one').toEqual([]);
@@ -157,7 +157,7 @@ describe('a record anyone can add a spec to', () => {
     const input = {
       previous: base({ 'tests/a.spec.ts': 100 }),
       costs: { 'tests/a.spec.ts': 400 },
-      skipped: [], measuredFiles: ['tests/a.spec.ts'], prune: [], resetWindows: true,
+      skipped: [], measuredFiles: ['tests/a.spec.ts'], prune: [], forgetWindows: true,
     };
 
     expect(settle(input).record.machine).toEqual(OTHER);
@@ -806,7 +806,7 @@ describe('what a run does to the record it replaces', () => {
       costs: { 'tests/b.spec.ts': 810 },
       skipped: [FAST],
       measuredFiles: [FAST, 'tests/b.spec.ts'],
-      resetWindows: false, prune: [],
+      forgetWindows: false, prune: [],
     });
     expect(record.skipped, 'it ran nothing, so it is skipped').toEqual([FAST]);
     expect(record.costs[FAST], 'and it cannot also carry the cost it used to have').toBeUndefined();
@@ -819,21 +819,21 @@ describe('what a run does to the record it replaces', () => {
   it('keeps a record nothing moved byte-identical, including its date', () => {
     const before = previous({ [FAST]: 1_000 });
     const { record, added, moved: movedSpecs } = settle({
-      previous: before, costs: { [FAST]: 1_050 }, skipped: [], measuredFiles: [FAST], resetWindows: false, prune: [],
+      previous: before, costs: { [FAST]: 1_050 }, skipped: [], measuredFiles: [FAST], forgetWindows: false, prune: [],
     });
     expect(added).toHaveLength(0);
     expect(movedSpecs, 'inside the tolerance, so nothing was recorded').toHaveLength(0);
     expect(record).toEqual(before);
   });
 
-  // What re-seeding is for: a window is deliberately slow to be convinced, which is wrong for a drift that
+  // What forgetting is for: a window is deliberately slow to be convinced, which is wrong for a drift that
   // moved everything. `--all --force` says the old readings describe code that is gone.
-  it('re-seeds a window from this run, where it would otherwise drop the reading', () => {
+  it('starts a window again from this run, where it would otherwise drop the reading', () => {
     const inputs = { previous: previous({ [FAST]: 1_000 }), costs: { [FAST]: 1_050 }, skipped: [],
       measuredFiles: [FAST], prune: [] };
     expect(disagrees(1_000, 1_050), 'a reading the band is there to drop').toBe(false);
-    expect(settle({ ...inputs, resetWindows: false }).record.samples[FAST]).toEqual([1_000]);
-    expect(settle({ ...inputs, resetWindows: true }).record.samples[FAST], 'the history goes').toEqual([1_050]);
+    expect(settle({ ...inputs, forgetWindows: false }).record.samples[FAST]).toEqual([1_000]);
+    expect(settle({ ...inputs, forgetWindows: true }).record.samples[FAST], 'the history goes').toEqual([1_050]);
   });
 
   // The two counts the report rests on. A first disagreeing reading is kept and changes no answer, so a run
@@ -841,7 +841,7 @@ describe('what a run does to the record it replaces', () => {
   it('counts a window it grew apart from an answer that moved', () => {
     const SLOW = 'tests/slow.spec.ts';
     const inputs = { previous: previous({ [FAST]: 1_000, [SLOW]: 1_000 }), skipped: [],
-      measuredFiles: [FAST, SLOW], prune: [], resetWindows: false };
+      measuredFiles: [FAST, SLOW], prune: [], forgetWindows: false };
     const { moved: movedSpecs, appended } = settle({ ...inputs, costs: { [FAST]: 1_050, [SLOW]: 4_000 } });
     expect(appended, 'only the reading that disagreed was kept').toEqual([SLOW]);
     expect(movedSpecs, 'and one reading does not move the median').toEqual([]);
@@ -863,7 +863,7 @@ describe('what a run does to the record it replaces', () => {
       costs: { [FAST]: 100 },
       skipped: ['tests/needs-a-binary.spec.ts'],
       measuredFiles: [FAST, 'tests/needs-a-binary.spec.ts'],
-      resetWindows: false, prune: [],
+      forgetWindows: false, prune: [],
     });
     expect(added, 'nothing was measured for the first time').toHaveLength(0);
     expect(movedSpecs, 'and no cost moved').toHaveLength(0);
@@ -880,7 +880,7 @@ describe('what a run does to the record it replaces', () => {
    * waits for its second reading.
    */
   it('keeps a measurement that says something new, and dates it, without yet believing it', () => {
-    const inputs = { skipped: [], measuredFiles: [FAST], resetWindows: false, prune: [] };
+    const inputs = { skipped: [], measuredFiles: [FAST], forgetWindows: false, prune: [] };
     const first = settle({ ...inputs, previous: previous({ [FAST]: 1_000 }), costs: { [FAST]: 4_000 } });
     expect(first.appended, 'the reading was kept').toEqual([FAST]);
     expect(first.moved, 'and the answer did not move with it').toEqual([]);
@@ -906,7 +906,7 @@ describe('what a run does to the record it replaces', () => {
   it('never demands a rename for the contended sequence that caused this', () => {
     const SPEC = 'tests/chain-inputs.spec.ts';
     const dir = path.join(REPO_ROOT, 'packages', 'repo-checks');
-    const inputs = { skipped: [], measuredFiles: [SPEC], prune: [], resetWindows: false };
+    const inputs = { skipped: [], measuredFiles: [SPEC], prune: [], forgetWindows: false };
     const renames = (record: SpecCost): unknown[] =>
       overBudget(dir, record.samples, [SPEC]).filter((found) => found.kind === 'rename');
 
@@ -940,7 +940,7 @@ describe('what a run does to the record it replaces', () => {
       costs: { [FAST]: 100 },
       skipped: [],
       measuredFiles: [FAST],
-      resetWindows: false, prune: ['tests/gone.spec.ts', 'tests/also-gone.spec.ts'],
+      forgetWindows: false, prune: ['tests/gone.spec.ts', 'tests/also-gone.spec.ts'],
     });
     expect(Object.keys(record.costs)).toEqual([FAST]);
     expect(record.skipped).toEqual([]);
@@ -957,7 +957,7 @@ describe('what a run does to the record it replaces', () => {
       skipped: [FAST],
       measuredFiles: [FAST, 'tests/b.spec.ts'],
       prune: [],
-      resetWindows: false,
+      forgetWindows: false,
     });
     expect(dropped, 'the run has to report this, or it reports nothing at all').toEqual([FAST]);
     expect([...added, ...appended], 'and it is neither of the two that were counted').toEqual([]);
@@ -972,7 +972,7 @@ describe('what a run does to the record it replaces', () => {
       skipped: [],
       measuredFiles: [FAST],
       prune: ['tests/gone.spec.ts'],
-      resetWindows: false,
+      forgetWindows: false,
     });
     expect(dropped).toEqual([]);
   });
@@ -983,7 +983,7 @@ describe('what a run does to the record it replaces', () => {
       costs: { [FAST]: 100 },
       skipped: [],
       measuredFiles: [FAST],
-      resetWindows: false, prune: [],
+      forgetWindows: false, prune: [],
     });
     expect(record.skipped, 'the integration config never ran, so its skip stands').toEqual(['tests/other.integration.spec.ts']);
   });
@@ -994,7 +994,7 @@ describe('what a run does to the record it replaces', () => {
       costs: { 'tests/z.spec.ts': 1, 'tests/a.spec.ts': 2 },
       skipped: [],
       measuredFiles: ['tests/a.spec.ts', 'tests/z.spec.ts'],
-      resetWindows: false, prune: [],
+      forgetWindows: false, prune: [],
     });
     expect(Object.keys(record.costs)).toEqual(['tests/a.spec.ts', 'tests/z.spec.ts']);
   });
@@ -1018,12 +1018,12 @@ describe('an unrecognised flag is refused rather than dropped', () => {
   // Derived from the declaration rather than a second list: a flag the parser handles and this does not know
   // about would be refused by the command that defines it, which is the failure this pair can have
   it('accepts every flag it declares', () => {
-    // Two flags need a companion to be valid at all: `--suite` takes a value, and `--reseed` takes `--all`,
-    // because re-seeding only what one run measured leaves a record of mixed vintages. The case asks whether
+    // Two flags need a companion to be valid at all: `--suite` takes a value, and `--forget` takes `--all`,
+    // because forgetting only what one run measured leaves a record of mixed vintages. The case asks whether
     // a declared flag parses in its valid form, not whether it parses alone
     const COMPANION: Partial<Record<string, string[]>> = {
       suite: ['--suite', 'repo-checks'],
-      reseed: ['--reseed', '--all'],
+      forget: ['--forget', '--all'],
     };
     for (const flag of SPEC_COST_FLAGS) {
       const argv = COMPANION[flag] ?? [`--${flag}`];
@@ -1031,9 +1031,9 @@ describe('an unrecognised flag is refused rather than dropped', () => {
     }
   });
 
-  it('refuses --reseed without --all, which would re-seed only what one run measured', () => {
-    expect(() => parseArgs(['--reseed'], DIRS)).toThrow(/--all/);
-    expect(() => parseArgs(['--reseed', '--all'], DIRS)).not.toThrow();
+  it('refuses --forget without --all, which would forget only what one run measured', () => {
+    expect(() => parseArgs(['--forget'], DIRS)).toThrow(/--all/);
+    expect(() => parseArgs(['--forget', '--all'], DIRS)).not.toThrow();
   });
 });
 
@@ -1187,36 +1187,36 @@ describe('when a run is refused as a measurement of the machine', () => {
  * What `--all` buys and what it costs, which are not the same question.
  *
  * Re-measuring everything is always what the flag asks for. *Forgetting* everything is a second thing, and
- * it takes `--reseed`. It replaced `rewritesEveryRow`, which was `all && drifted(body)`: a drift gate on a
+ * it takes `--forget`. It replaced `rewritesEveryRow`, which was `all && drifted(body)`: a drift gate on a
  * write, needed only while the record held one number per spec and rewriting it on a quiet run was churn. A
  * window drops an agreeing reading by itself, so there is nothing left for a threshold to protect.
  *
  * **It rode on `--force` for one commit, which put the riskiest write behind the flag that silences the
- * guards.** `--force` overrides `refusesAsBusy` and `refusesAsContended`; re-seeding discards every window
+ * guards.** `--force` overrides `refusesAsBusy` and `refusesAsContended`; forgetting discards every window
  * and writes each cost from a single reading, which is the state with no history to outvote a bad one. So the
  * one operation that most needs a quiet machine was the only one that could not be refused for a loud one.
  * `adopt` is still `--all --force`, and that is a different question — whose machine the record is, not
  * whether its readings still describe the code.
  */
-describe('a window is re-seeded only when asked for outright', () => {
-  it('re-seeds on --all --reseed', () => {
-    expect(resetsWindows({ all: true, reseed: true })).toBe(true);
+describe('a window is forgotten only when asked for outright', () => {
+  it('forgets the history on --all --forget', () => {
+    expect(forgetsWindows({ all: true, forget: true })).toBe(true);
   });
 
   it('leaves the history alone for either flag on its own', () => {
-    expect(resetsWindows({ all: true, reseed: false }), '--all re-measures and appends').toBe(false);
-    expect(resetsWindows({ all: false, reseed: true }), 'and --reseed needs the whole suite').toBe(false);
-    expect(resetsWindows({ all: false, reseed: false })).toBe(false);
+    expect(forgetsWindows({ all: true, forget: false }), '--all re-measures and appends').toBe(false);
+    expect(forgetsWindows({ all: false, forget: true }), 'and --forget needs the whole suite').toBe(false);
+    expect(forgetsWindows({ all: false, forget: false })).toBe(false);
   });
 
   /**
-   * And `--force` does not re-seed, which is the finding this closes.
+   * And `--force` does not forget, which is the finding this closes.
    *
-   * It overrides the idle and contention refusals, so gating the re-seed on it meant the write that most
+   * It overrides the idle and contention refusals, so gating the forget on it meant the write that most
    * needs a quiet machine was the one that could not be refused for a loud one.
    */
-  it('is not what --force asks for, since that silences the refusals a re-seed most needs', () => {
-    expect(resetsWindows({ all: true, reseed: false, force: true } as never)).toBe(false);
+  it('is not what --force asks for, since that silences the refusals forgetting most needs', () => {
+    expect(forgetsWindows({ all: true, forget: false, force: true } as never)).toBe(false);
   });
 
   // The coupling that is gone, and the reason it can be: the warning used to advise a flag whose write was
@@ -1228,7 +1228,7 @@ describe('a window is re-seeded only when asked for outright', () => {
       .toEqual([true, true, false, false]);
     // The old flag's answer was `drifted(body)`, so this list used to produce two different answers. One
     // answer for all four is the independence, and it is what makes the drift advice unconditionally true.
-    expect([...new Set(bodies.map(() => resetsWindows({ all: true, reseed: true })))]).toEqual([true]);
+    expect([...new Set(bodies.map(() => forgetsWindows({ all: true, forget: true })))]).toEqual([true]);
   });
 });
 

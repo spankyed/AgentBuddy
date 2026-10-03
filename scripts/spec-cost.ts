@@ -15,7 +15,7 @@
  *
  * **Three things the flags do, which took a correction to state.** `--all` re-measures every spec and
  * *appends* what disagrees, so a quiet run still writes nothing and the history that rejects a noisy reading
- * is kept. `--reseed` (with `--all`) throws that history away and starts again from this run, which is the
+ * is kept. `--forget` (with `--all`) throws that history away and starts again from this run, which is the
  * only thing that clears a *correlated* drift — one that adds a fifth to every spec sits under every
  * per-spec tolerance, so appending to the old readings would have the window argue with itself for a run.
  * `--force` overrides the two refusals, the idle floor and the contention check, and nothing else. This
@@ -51,7 +51,7 @@ import {
   CONFIG_BY_HALF, absentNamed, forStorage, namedIn, parseArgs, planFor, readSpecCost, recordMembership,
   renameAdvice,
   type SpecCost, type StoredSpecCost,
-  provisional, resetsWindows, settle, specCostFile, specFiles, stale, suitesFor, unrecorded, type SpecCostPlan,
+  provisional, forgetsWindows, settle, specCostFile, specFiles, stale, suitesFor, unrecorded, type SpecCostPlan,
 } from './lib/spec-cost.ts';
 
 // eslint-disable-next-line no-control-regex -- vitest colours its output and this reads it back
@@ -220,10 +220,10 @@ function update(plans: readonly SuitePlan[], dry: boolean): void {
     // the reason the file is stable; all of them settling in the same direction is a uniform slowdown, and
     // the only place it shows is the total. Undefined when nothing measured had a value to move from.
     const body = bodyDrift(new Map(Object.entries(previous?.costs ?? {})), new Map(Object.entries(costs)));
-    const resetWindows = resetsWindows({ all, reseed });
+    const forgetWindows = forgetsWindows({ all, forget });
     const { record, added, moved, appended, dropped } = settle({
       previous, costs, skipped: [...new Set(runs.flatMap((run) => run.skipped))], measuredFiles,
-      prune: plan.prune, resetWindows, adopt,
+      prune: plan.prune, forgetWindows, adopt,
     });
 
     // What a sample can check: not equality, which it never has, but reproducibility. An idle run moves a
@@ -286,10 +286,10 @@ function update(plans: readonly SuitePlan[], dry: boolean): void {
     if (drifted(body)) {
       console.log(`  the suite moved ${(body * 100).toFixed(0)}% as a body, which is more than idle runs vary. `
         + 'A drift this size sits under every per-spec tolerance, so no measurement re-records it on its own — '
-        + (resetWindows
-          ? 'every window this measured has been re-seeded from it.'
+        + (forgetWindows
+          ? 'every window this measured has been dropped and started again from it.'
           : 'until one does, anything reading the total reads a number that is no longer true. '
-            + '`npm run spec-cost:update -- --all --reseed` re-seeds every window from this run.'));
+            + '`npm run spec-cost:update -- --all --forget` forgets every window from this run.'));
     }
     for (const line of budget.lines) console.log(line);
     if (budget.advice) console.log(budget.advice.split('\n').map((line) => `  ${line}`).join('\n'));
@@ -471,7 +471,7 @@ function list(only: string | undefined, named: readonly string[]): void {
   for (const line of near.sort()) console.log(line);
 }
 
-const { mode, only, named, force, all, reseed, dry } = parseArgs(process.argv.slice(2), UNIT_SUITES.map((suite) => suite.dir));
+const { mode, only, named, force, all, forget, dry } = parseArgs(process.argv.slice(2), UNIT_SUITES.map((suite) => suite.dir));
 
 // Before any mode reads a record, and for all of them: a path that names no spec is the caller's mistake, and
 // every one of them is worth reporting at once rather than one per run
