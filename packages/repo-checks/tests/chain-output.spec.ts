@@ -336,24 +336,24 @@ describe('howLong', () => {
    * conclude; an ordinary failure said only its exit code. One unexplained `test:integration` failure then
    * took a reader into `chain-steps.ts` and `budgetFor` by hand to find out it had not been killed.
    */
-  it('says what it cost against what it costs healthy, and at how many lanes', () => {
-    expect(howLong({ seconds: 60 }, 47_000, 3)).toBe(' after 47.0s, against 60s healthy at 3 lanes');
+  it('says what it cost against what it costs healthy, and on what budget', () => {
+    expect(howLong({ seconds: 60 }, 47_000, 10)).toBe(' after 47.0s, against 60s healthy on a 10-core budget');
   });
 
-  it('says lane, not lanes, when there is one', () => {
-    expect(howLong({ seconds: 60 }, 47_000, 1)).toContain('at 1 lane');
-    expect(howLong({ seconds: 60 }, 47_000, 1)).not.toContain('lanes');
+  it('names one core as a core rather than a budget of one', () => {
+    expect(howLong({ seconds: 60 }, 47_000, 1)).toContain('healthy on 1 core');
+    expect(howLong({ seconds: 60 }, 47_000, 1)).not.toContain('budget');
   });
 
-  it('points at a single-lane run only when the step was slow enough for contention to explain it', () => {
+  it('points at a serial run only when the step was slow enough for contention to explain it', () => {
     // Past double the declared cost, which is `driftedSteps`' band rather than a second threshold
-    expect(howLong({ seconds: 60 }, 130_000, 3)).toContain('--lanes 1');
+    expect(howLong({ seconds: 60 }, 130_000, 10)).toContain('--cores 1');
     // A step that failed at its normal speed failed on its merits, and suggesting a re-run would be noise
-    expect(howLong({ seconds: 60 }, 61_000, 3)).not.toContain('--lanes 1');
+    expect(howLong({ seconds: 60 }, 61_000, 10)).not.toContain('--cores 1');
   });
 
   it('says nothing for a step that declares no cost, rather than reporting undefined', () => {
-    expect(howLong({}, 47_000, 3)).toBe('');
+    expect(howLong({}, 47_000, 10)).toBe('');
   });
 });
 
@@ -364,37 +364,37 @@ describe('driftReport', () => {
   ];
 
   it('prints the value to record, when the run is comparable to the table', () => {
-    const report = driftReport(drifted, 3, 3, true);
+    const report = driftReport(drifted, 10, 10, true);
 
     expect(report).toContain('re-measure, or record');
     expect(report).toContain('seconds: 57 -> 18');
   });
 
   /**
-   * Measured: a `--lanes 1` run reports exactly these two, and the old report told the reader to record 18 for
-   * a step that costs 57s in the default schedule — which `budgetFor` turns into a 72s kill budget, the
+   * Measured: a serial run reports exactly these two, and the old report told the reader to record 18 for a
+   * step that costs 57s in the default schedule — which `budgetFor` turns into a 72s kill budget, the
    * mis-sized bound `seconds`' own doc warns about. The numbers are real; only "record them" was wrong.
    */
-  it('names the spread instead, when the run used another lane count', () => {
-    const report = driftReport(drifted, 1, 3, true);
+  it('names the spread instead, when the run used another budget', () => {
+    const report = driftReport(drifted, 1, 10, true);
 
     expect(report).not.toContain('record');
-    expect(report).toContain('at 1 lane, 2 steps moved against 3-lane numbers');
+    expect(report).toContain('on 1 core, 2 steps moved against 10-core numbers');
     expect(report).toContain('57s -> 18s  (3.2x faster alone)');
   });
 
-  it('says slower when more lanes made a step slower, not faster', () => {
-    expect(driftReport([{ name: 'typecheck', declared: 27, measured: 54 }], 6, 3, true)).toContain('(2.0x slower)');
+  it('says slower when a bigger budget made a step slower, not faster', () => {
+    expect(driftReport([{ name: 'typecheck', declared: 27, measured: 54 }], 16, 10, true)).toContain('(2.0x slower)');
   });
 
   /**
-   * Measured: a gate run with nine of twelve steps cached reported `typecheck seconds: 27 -> 12`. Three lanes
-   * with almost everything cached is no contention at all, so the step ran at its solo speed and the lane
-   * count — which is what the first version of this gated on — said nothing about it.
+   * Measured: a gate run with nine of twelve steps cached reported `typecheck seconds: 27 -> 12`. A full
+   * budget with almost everything cached is no contention at all, so the step ran at its solo speed and the
+   * admission policy — which is what the first version of this gated on — said nothing about it.
    */
   it('says nothing about a step that came in under the band, on a run that did less work', () => {
-    expect(driftReport(drifted, 3, 3, false)).toBe('');
-    expect(driftReport(drifted, 1, 3, false)).toBe('');
+    expect(driftReport(drifted, 10, 10, false)).toBe('');
+    expect(driftReport(drifted, 1, 10, false)).toBe('');
   });
 
   /**
@@ -406,7 +406,7 @@ describe('driftReport', () => {
   it('names a step that ran past double, on any run, and what it is heading toward', () => {
     const grew = [{ name: 'typecheck', declared: 27, measured: 61 }];
 
-    const report = driftReport(grew, 3, 3, false);
+    const report = driftReport(grew, 10, 10, false);
 
     expect(report).toContain('the step grew, not the schedule');
     expect(report).toContain('27s -> 61s  (killed at 108s)');
@@ -417,19 +417,19 @@ describe('driftReport', () => {
    * declared 5s printed "killed at 20s" — the unit case above uses 27s, where the floor never shows.
    */
   it('names the real budget for a cheap step, which the four-times floor makes 60s', () => {
-    expect(driftReport([{ name: 'packages:check', declared: 5, measured: 21 }], 3, 3, false))
+    expect(driftReport([{ name: 'packages:check', declared: 5, measured: 21 }], 10, 10, false))
       .toContain('5s -> 21s  (killed at 60s)');
   });
 
   it('keeps an overrun out of the count when the run could answer for both directions', () => {
     // forced: the run did all the work, so both directions are reportable and the record form is right
-    expect(driftReport([{ name: 'typecheck', declared: 27, measured: 61 }], 3, 3, true))
+    expect(driftReport([{ name: 'typecheck', declared: 27, measured: 61 }], 10, 10, true))
       .toContain('re-measure, or record');
   });
 
-  it('says nothing when nothing drifted, at either lane count', () => {
-    expect(driftReport([], 3, 3, true)).toBe('');
-    expect(driftReport([], 1, 3, true)).toBe('');
+  it('says nothing when nothing drifted, at either budget', () => {
+    expect(driftReport([], 10, 10, true)).toBe('');
+    expect(driftReport([], 1, 10, true)).toBe('');
   });
 });
 
@@ -440,10 +440,10 @@ describe('shouldClassify', () => {
     expect(shouldClassify(under)).toBe(true);
   });
 
-  // One question, asked of the schedule rather than of the table. It took `lanes` and an `exclusive` read off
+  // One question, asked of the schedule rather than of the table. It took a lane count and an `exclusive` read off
   // the step's declared mutexes, and those answered it only while a mutex was global: `conflictsOf` is
   // non-empty for twelve steps that run beside two dozen others, so all twelve skipped the re-run. A
-  // single-lane run needs no clause of its own — it overlaps nothing, which is this one
+  // serial run needs no clause of its own — it overlaps nothing, which is this one
   it('does not, when nothing overlapped it', () => {
     expect(shouldClassify({ ...under, ranAlone: true })).toBe(false);
   });
@@ -483,9 +483,9 @@ describe('howLong, once the chain answers the question itself', () => {
   it('stops suggesting the run it is about to make', () => {
     const slow = { seconds: 27 };
 
-    expect(howLong(slow, 61_000, 3, false)).toContain('--lanes 1');
-    expect(howLong(slow, 61_000, 3, true)).not.toContain('--lanes 1');
+    expect(howLong(slow, 61_000, 10, false)).toContain('--cores 1');
+    expect(howLong(slow, 61_000, 10, true)).not.toContain('--cores 1');
     // and still says what it cost, which is the half that does not become redundant
-    expect(howLong(slow, 61_000, 3, true)).toContain('against 27s healthy at 3 lanes');
+    expect(howLong(slow, 61_000, 10, true)).toContain('against 27s healthy on a 10-core budget');
   });
 });

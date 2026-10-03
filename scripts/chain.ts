@@ -6,52 +6,44 @@
 // printed only if it fails, so a failure is not buried under six passing suites, and the summary says
 // where the time went — which otherwise has to be reconstructed from log file mtimes.
 //
-// WHY THE STEPS ARE NOT RUN IN PARALLEL
+// HOW MUCH OF THE MACHINE IT TAKES, AND WHY THAT IS A BUDGET
 //
-// They look parallelisable: after `packages:ensure` and `build`, nothing writes what another step reads,
-// each app launch takes its own port (`getPort` in main's `ApiServer`) and its own data dir (`mkdtemp` in
-// `@abuddy/testing`), and `ensurePackagesBuilt` returns before taking the build lock when nothing is
-// stale. All of that is true. It still does not pay, measured on this machine (2026-09-24, M-series):
-//
-//   serial, 7 steps                             wall 348s   work 348s   passed
-//   3 lanes, test:packaged-authoring in a lane  wall 168s   work 268s   FAILED
-//   3 lanes, test:packaged-authoring alone      wall 258s   work 567s   FAILED
-//
-// The first failure is shared state the step names do not admit to: `test:packaged-authoring` runs
-// `npm run packages:build` as its own first step (`tests/scripts/test-packaged-authoring.sh`), so it
-// deletes and rewrites the `dist/` every other step reads. `ABUDDY_PACKAGES_PREBUILT=1` now reports that
+// The steps are parallelisable and the hard part was never the ordering: after `packages:ensure` and
+// `build`, nothing writes what another step reads, each app launch takes its own port (`getPort` in main's
+// `ApiServer`) and its own data dir (`mkdtemp` in `@abuddy/testing`), and `ensurePackagesBuilt` returns
+// before taking the build lock when nothing is stale. One step did not admit to its shared state —
+// `test:packaged-authoring` runs `npm run packages:build` first (`tests/scripts/test-packaged-authoring.sh`)
+// and so rewrites the `dist/` every other step reads — and `ABUDDY_PACKAGES_PREBUILT=1` reports that now
 // rather than racing it.
 //
-// The second is the machine. Lanes oversubscribe rather than overlap: total work went from 348s to 567s,
-// `@abuddy/cli` went from 56s to 118s, and it began reporting errors it does not report alone. Wall time
-// fell, but only by doing 60% more work, and failing.
+// **The constraint is cores.** Measured 2026-09-24 over seven steps, three at a time cut wall time from
+// 348s to 168s by doing 268s of work, and a variant that took the whole machine for one step did 567s of
+// it: `@abuddy/cli` went from 56s to 118s and began reporting errors it does not report alone. Spending
+// the machine is the whole question, and both runs spent more of it than it had.
 //
-// So the constraint is cores, not ordering, and the way to a shorter chain is a cheaper step, not a
-// rearranged one. Reopen this on a machine with idle cores, and measure rather than trust the arithmetic:
-// max() assumes steps do not slow each other, and here they do.
+// **So the unit is cores, not steps**, which took two corrections to see. The first premise was "every step
+// already uses all the cores"; `typecheck` was sixteen single-threaded compilers chained with `&&`, holding
+// one core for half a minute while nine sat idle, and running its legs at once took it from 29.3s to 10.8s.
+// Each leg is its own step now. The second was that a count of steps could meter them at all: nineteen
+// steps are one `tsc` and two are a nine-worker vitest pool, so one number ran 3 of 10 cores through the
+// typecheck phase and 18 workers on 10 through the test phase. A step declares what it takes
+// (`core-budget.ts`), the scheduler admits on the sum, and that is a measured 169.4s against 202.8s with
+// half the spread — `budgetFrom` below carries the numbers.
 //
-// ONE PREMISE OF THAT ARGUMENT WAS WRONG (2026-09-27)
-//
-// It read "every step already uses all the cores — vitest runs its files across workers, tsc forks per
-// project". The second half was false, and `typecheck` was the largest app-free step: sixteen legs chained with
-// `&&`, each a single-threaded compiler, so it held one core for half a minute while nine sat idle — which is
-// also why it was the step most starved by the lanes put there to use them. Running its legs at once took it
-// from 29.3s to 10.8s alone (`scripts/typecheck.ts`).
-//
-// That does not overturn the measurement above, which stands: three lanes over seven steps still cost 60% more
-// work. It narrows what it means. "The constraint is cores" is right; "every step already uses them" was an
-// assumption, and the cheapest work left in this chain may be another step that is quietly serial.
+// What is left is the floor, and it is not a scheduling problem: the critical path is most of the run, so
+// the way to a shorter chain is a cheaper step.
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { changedInputs, diffableStamp, firstChange, freshnessSweep, INPUTS_CHANGED, PACKAGES_PREBUILT_ENV, REPO_ROOT, stampedRun, stampRecord, unitStaleReason, type BuildUnit } from '@abuddy/host/build/packages-built';
-import { CHAIN_STEPS, type ChainStep, chainSteps, MEASURED_AT_LANES, needsApp, orderedSteps, STEP_TABLES } from './lib/chain-steps.ts';
+import { CHAIN_STEPS, type ChainStep, chainSteps, MEASURED_AT_CORES, needsApp, orderedSteps, STEP_TABLES } from './lib/chain-steps.ts';
+import { CHAIN_FLAGS } from './lib/chain-flags.ts';
 import { box } from './lib/core-budget.ts';
 import { commandText, rootScripts } from './lib/npm-scripts.ts';
-import { IDLE_FLOOR, idleNow, movedBeyondBand, refusesAsBusy } from './lib/measure.ts';
+import { asCount, bodyDrift, drifted, IDLE_FLOOR, idleNow, movedBeyondBand, parseFlags, refusesAsBusy, refusesAsContended } from './lib/measure.ts';
 import { recordSeconds } from './lib/record-seconds.ts';
 import { schedule } from './lib/chain-schedule.ts';
 import { criticalPath, driftedSteps, willNotCache } from './lib/step-timing.ts';
-import { briefly, classifyLine, declaredAt, dim, driftReport, DRY_REASON_COLUMN, howLong, identicalRewrites, marker, oneLine, REASON_COLUMN, shouldClassify, staleLines, STEP_NAME_WIDTH, TIME_COLUMN, whenChanged, wrapAt, writerOf } from './lib/chain-output.ts';
+import { briefly, classifyLine, cores, declaredAt, dim, driftReport, DRY_REASON_COLUMN, howLong, identicalRewrites, marker, oneLine, REASON_COLUMN, shouldClassify, staleLines, STEP_NAME_WIDTH, TIME_COLUMN, whenChanged, wrapAt, writerOf } from './lib/chain-output.ts';
 import { slowestTests } from './lib/slow-tests.ts';
 import { DIAGNOSTIC_RUN_ENV } from './lib/unit-pool.ts';
 import { exitOnEpipe } from './lib/exit-on-epipe.ts';
@@ -251,93 +243,66 @@ async function runAndStamp(step: ChainStep, all: boolean): Promise<Result> {
 
 
 /**
- * How many steps may run at once. **Three, re-measured 2026-09-25 against the pooled step shape:**
- *
- *     lanes 1   261.2s                    0 failures
- *     lanes 2   207.6s, 192.3s            0 failures
- *     lanes 3   157.8s, 161.8s, 156.1s    0 failures
- *     lanes 4   159.6s                    0 failures
- *
- * This reverses what `goal-test-tiers.md` settled, and the cause is known rather than guessed. That
- * measurement had three lanes slower than two *and* failing, and what failed was a test timing out at
- * vitest's 5s default — `findLmdbImports > holds for the repo` at 5220ms, a whole-repo scan that takes ~2s
- * alone. The cap was the timeout, not the cores. `goal-one-job-pool.md` Phase 5 replaced that default with
- * the size budgets, 15s and 60s, and the third lane became both faster and green.
- *
- * Four is not better than three: the critical path is 106-112s, so three lanes at ~157s is already close to
- * the floor and more lanes have nothing left to overlap. Re-measure this when the step shape changes again
- * — it is tuned to eleven steps, two of which are the unit pools, and it was tuned to seventeen before.
- */
-/** What `--lanes` defaults to, named so the timing table can be checked against it */
-const DEFAULT_LANES = 3;
-
-function flagValue(flag: string): number | undefined {
-  const at = process.argv.indexOf(flag);
-  if (at === -1) return undefined;
-  const value = Number(process.argv[at + 1]);
-  if (!Number.isInteger(value) || value < 1) throw new Error(`${flag} takes a positive integer, not ${String(process.argv[at + 1])}`);
-  return value;
-}
-
-/**
- * How much of the machine a run may take: a step count, a core budget, or both.
- *
- * `--lanes N` alone is the default, and it is the schedule every `seconds` in `chain-steps.ts` was
- * measured under. `--cores N` admits on what each step takes instead (`core-budget.ts`), which is the
- * question a lane count cannot ask: nineteen of these steps are one `tsc` and two are a nine-worker
- * vitest pool, so one number metering both starves the first phase and oversubscribes the second.
- *
- * **A budget lifts the lane limit unless `--lanes` is given too**, because leaving it at three would
- * let the budget admit at most three single-core legs and the flag would measure nothing. The two stay
- * independent limits, so a run given both is held to the tighter.
+ * How much of the machine a run may take, in cores. The default is what this machine has.
  *
  * **Measured 2026-10-02, `--all` runs interleaved in pairs on an idle 10-core box, three each:**
  *
- *     3 lanes      202.8s  210.7s  176.6s    median 202.8s, spread 34.1s
- *     --cores 10   169.4s  178.3s  163.0s    median 169.4s, spread 15.3s
+ *     3 lanes     202.8s  210.7s  176.6s    median 202.8s, spread 34.1s
+ *     10 cores    169.4s  178.3s  163.0s    median 169.4s, spread 15.3s
  *
- * The budget wins every pair, by a median of 32.4s, and halves the spread — which is the half the
- * typecheck flattening bought as well (18s to 0.7s there, for a median that did not move). The budgeted
- * run lands 9s off its own measured critical path, so there is little scheduling slack left in it.
+ * The budget won every pair, by a median of 32.4s, and halved the spread — the half the typecheck
+ * flattening bought as well (18s to 0.7s there, for a median that did not move). The budgeted run landed
+ * 9s off its own measured critical path, so little scheduling slack is left in it.
  *
- * A simulation over the declared `seconds` put the lanes at 201s and the budget at 198s: right about
- * today and pessimistic about the budget by 29s, because it charges every step the cost it was measured
- * at under three lanes, which is the contention a budget removes. Worth knowing before trusting the next
- * such simulation, in either direction.
+ * **What a count of steps could not ask.** Nineteen of these steps are one `tsc` and two are a nine-worker
+ * vitest pool, so one number metering both ran 3 of 10 cores through the typecheck phase and 18 workers on
+ * 10 through the test phase. `--lanes` is gone rather than kept beside this: its one remaining job was
+ * `--lanes 1`, and `--cores 1` is already serial, the budget being soft enough to admit the first ready
+ * step and nothing beside it.
  *
- * **It stays a flag rather than becoming the default because of the table it would invalidate.**
- * `seconds` is the cost at `MEASURED_AT_LANES` and feeds every step's kill budget through `budgetFor`, so
- * a new default needs that table re-recorded against something naming the admission policy rather than a
- * lane count — and `--record` refuses a budgeted run until it has one. The other untested half is a
- * smaller box: the budget defaults to `box()`, where two 3-core pools on four cores nearly serialise, and
- * whether that beats today's oversubscription there has not been measured.
+ * A simulation over the declared `seconds` put the lanes at 201s and the budget at 198s — right about the
+ * old default and pessimistic about the new one by 29s, because it charges every step the cost it was
+ * measured at under three lanes, which is the contention a budget removes. Worth knowing before trusting
+ * the next such simulation in either direction.
+ *
+ * Defaulting to this machine's cores means a smaller box gets its own budget rather than this one's, and
+ * that much is untested: on four cores the two unit pools nearly serialise, and whether that beats the
+ * oversubscription a step count produced there has not been measured anywhere.
  */
-function admission(stepCount: number): { readonly lanes: number; readonly budget: number } {
-  const budget = flagValue('--cores');
-  const lanes = flagValue('--lanes');
-  return { lanes: lanes ?? (budget === undefined ? DEFAULT_LANES : stepCount), budget: budget ?? Infinity };
-}
+const budgetFrom = (cores: string | undefined): number => asCount(cores, 'cores') ?? box();
 
 async function main(): Promise<void> {
   const started = Date.now();
   const results: Result[] = [];
-  const all = process.argv.includes('--all');
+  // One parse for every flag, which is what makes a typo an error: `process.argv.includes` accepted
+  // anything and reported nothing, so `--lanez 3` ran a whole chain having ignored what it was told.
+  //
+  // **The chain takes no positionals, and refusing them catches npm's `--`.** `npm run chain --dry` does
+  // not pass `--dry` through — npm keeps it — so that form runs the whole chain, which is what the guide
+  // documented in two places. `npm run chain --dry --cores 10` is worse: npm keeps both flags and hands
+  // this a bare `10`, and before this clause it ran a full chain over a stray argument in silence.
+  const args = parseFlags(process.argv.slice(2), CHAIN_FLAGS);
+  if (args.positionals.length > 0) {
+    throw new Error(`The chain takes flags only, not ${args.positionals.join(' ')}`
+      + ' — npm keeps a flag you did not put after `--`, so write `npm run chain -- --dry`');
+  }
+  const all = args.flags.has('all');
   // What the chain would do, without doing it. The answer is a pure function of the tree, so it is the way
   // to check the cache on a machine too loaded to time a run on — and the way to find out why a step you
   // expected to be cached is not. It reports each step against the tree as it stands, so the verdicts after
   // the first step that would run are what that step would produce nothing for: a plan, not a prediction.
-  const dry = process.argv.includes('--dry');
+  const dry = args.flags.has('dry');
   // The retry costs the failing step's own time before the verdict appears, and most failures are the ordinary
   // kind where the reader already knows what they broke
-  const noClassify = process.argv.includes('--no-classify');
+  const noClassify = args.flags.has('no-classify');
   // The E2E suite is a harness for driving the app rather than a gate, so it runs when asked for
-  const e2e = process.argv.includes('--e2e');
+  const e2e = args.flags.has('e2e');
   let cached = 0;
 
   // Derived from each step's `needs`, and validated first: an unknown dependency or a cycle fails here rather
   // than halfway through a six-minute run
   const steps = orderedSteps(chainSteps(e2e ? ['test'] : []));
-  const { lanes, budget } = admission(steps.length);
+  const budget = budgetFrom(args.values.cores);
 
   /** Its verdict, asked at dispatch — see `dispatch` for why that timing is load-bearing */
   /**
@@ -378,15 +343,13 @@ async function main(): Promise<void> {
       if (record === undefined) return undiffable;
       return firstChange(sweep.changedInputs(unitFor(step), record));
     };
-    // What a budgeted run would admit on, which is the half of the plan the per-step lines cannot carry.
-    // Only the steps above one core are listed: the rest are a count, because nineteen lines reading `1` is
-    // the table `POOL_WIDTH` deliberately does not keep.
-    if (Number.isFinite(budget)) {
-      const wide = steps.filter((step) => step.cores > 1);
-      console.log(`\nadmitting on a ${budget}-core budget, ${box()} cores on this machine:`);
-      for (const step of wide) console.log(`${String(step.cores).padStart(7)} ${step.name}`);
-      console.log(`${'1'.padStart(7)} each of the other ${steps.length - wide.length} steps\n`);
-    }
+    // What the run would admit on, which is the half of the plan the per-step lines cannot carry. Only the
+    // steps above one core are listed: the rest are a count, because nineteen lines reading `1` is the table
+    // `POOL_WIDTH` deliberately does not keep.
+    const wide = steps.filter((step) => step.cores > 1);
+    console.log(`\nadmitting on ${cores(budget)}, ${box()} cores on this machine:`);
+    for (const step of wide) console.log(`${String(step.cores).padStart(7)} ${step.name}`);
+    console.log(`${'1'.padStart(7)} each of the other ${steps.length - wide.length} steps\n`);
     for (const step of steps) {
       // `--all` runs everything, so a dry run given `--all` must say so rather than reporting the cache it
       // would ignore. A plan that does not answer for the flags it was given is worse than no plan.
@@ -413,7 +376,6 @@ async function main(): Promise<void> {
   pruneStamps();
   const outcome = await schedule({
     steps,
-    lanes,
     budget,
     skip: (step) => {
       const why = staleReason(step, dispatchSweep);
@@ -477,7 +439,7 @@ async function main(): Promise<void> {
     });
     const why = failed.timedOut
       ? `${step.name} timed out: it exceeded its ${secs(budgetFor(step.seconds ?? 300))} budget and its process group was killed. It costs ${step.seconds ?? '?'}s healthy, so either it is wedged or it has grown and the measurement in chain-steps.ts is stale.`
-      : `${step.name} failed (exit ${failed.code})${howLong(step, failed.ms, lanes, classifying)}`;
+      : `${step.name} failed (exit ${failed.code})${howLong(step, failed.ms, budget, classifying)}`;
     console.log(`\n${'='.repeat(72)}\n${why}\n${'='.repeat(72)}\n${failed.output}`);
     if (classifying) {
       // `run`, never `runAndStamp`: a step that passes alone has not passed the chain, and stamping it here
@@ -488,7 +450,7 @@ async function main(): Promise<void> {
       // and the next chain still says `compile  no stamp — it has not run yet, or the last run failed`.
       //
       // **Refusing the chain's own stamp is not enough for a step that caches inside itself**, which the three
-      // pool steps do. `DIAGNOSTIC_RUN_ENV` is how the refusal reaches them: measured 2026-10-02, a laned
+      // pool steps do. `DIAGNOSTIC_RUN_ENV` is how the refusal reaches them: measured 2026-10-02, a crowded
       // failure of `test:unit:host` was re-run here, the re-run wrote all eleven project stamps, and the next
       // chain ran zero tests and called the step green. `recordsVerdict` (`scripts/lib/unit-pool.ts`) carries
       // the evidence and why a *build* under the same re-run still records.
@@ -508,7 +470,7 @@ async function main(): Promise<void> {
   const ran = steps.filter((step) => measuredMs.has(step.name))
     .map((step) => ({ ...step, seconds: Math.round((measuredMs.get(step.name) ?? 0) / 1000) }));
   const path = criticalPath(ran);
-  const floor = lanes > 1 && path.names.length > 1 ? `\ncritical path ${path.seconds}s (${path.names.join(' -> ')})` : '';
+  const floor = path.names.length > 1 ? `\ncritical path ${path.seconds}s (${path.names.join(' -> ')})` : '';
   // Named rather than folded in, so the verdict's number stays comparable between runs and the wall time still
   // adds up — a reader who times the command should not find seconds the chain does not account for.
   const reran = classifyMs > 0 ? ` (+${secs(classifyMs)} re-run)` : '';
@@ -541,26 +503,21 @@ async function main(): Promise<void> {
 
   // The table feeds the kill budget and the floor above, so a number a run has contradicted is worth more
   // than a note in a doc nobody re-reads
-  // Every `seconds` is the cost at some lane count, so changing the default invalidates all of them at once —
-  // which is what happened, silently, the day three lanes landed two hours after a number was taken under two
-  if (DEFAULT_LANES !== MEASURED_AT_LANES) {
-    console.log(`\nchain-steps.ts' seconds were measured at ${MEASURED_AT_LANES} lanes and this chain defaults to ${DEFAULT_LANES}.`);
-    console.log('  Re-measure with `npm run chain -- --all` and set MEASURED_AT_LANES, or the table is about another schedule.');
+  // Every `seconds` is the cost under one admission policy, so a different one invalidates all of them at
+  // once — which happened silently the day a third lane landed two hours after a number was taken under two.
+  // The policy is now the box, because that is what the default budget is, and that makes a fact explicit
+  // that was only ever implicit: these numbers were always measured on one machine and nothing said which.
+  if (box() !== MEASURED_AT_CORES) {
+    console.log(`\nchain-steps.ts' seconds were measured on a ${MEASURED_AT_CORES}-core machine and this one has ${box()}.`);
+    console.log('  The numbers below are about another schedule. Re-measure with `npm run chain -- --all --record`.');
   }
 
-  // Suppressed rather than printed with the wrong width in it: `driftReport`'s whole argument is that the
-  // numbers are not comparable at another admission policy, and it names the policy by lane count, which a
-  // budgeted run does not have
-  if (Number.isFinite(budget)) {
-    console.log(`\nno drift report: these costs are the chain's at ${MEASURED_AT_LANES} lanes and this ran on a ${budget}-core budget.`);
-  } else {
-    const report = driftReport(driftedSteps(steps, measuredMs), lanes, MEASURED_AT_LANES, all);
-    if (report !== '') console.log(report);
-  }
+  const report = driftReport(driftedSteps(steps, measuredMs), budget, MEASURED_AT_CORES, all);
+  if (report !== '') console.log(report);
 
-  if (process.argv.includes('--record')) recordTheCosts(steps, measuredMs, lanes, budget, all);
+  if (args.flags.has('record')) recordTheCosts(steps, measuredMs, budget, all, args.flags.has('force'));
 
-  console.log(`\n${verdict} in ${secs(Date.now() - started - classifyMs)}${reran}${skipped}${Number.isFinite(budget) ? ` on a ${budget}-core budget` : (lanes > 1 ? ` with ${lanes} lanes` : '')}${floor}`);
+  console.log(`\n${verdict} in ${secs(Date.now() - started - classifyMs)}${reran}${skipped}${` on ${cores(budget)}`}${floor}`);
   // Not process.exit(): it drops whatever stdout has still to flush, and the failing step's captured output
   // printed just above is the one thing here worth reading. Measured: piped, process.exit() delivers 64KB
   // of a 500KB write, and @app/default-setup's suite output alone is 654KB.
@@ -585,24 +542,19 @@ async function main(): Promise<void> {
  * with a one-second floor. They differ on purpose, which is why this prints everything it wrote.
  */
 function recordTheCosts(steps: readonly ChainStep[], measuredMs: ReadonlyMap<string, number>,
-  lanes: number, budget: number, all: boolean): void {
+  budget: number, all: boolean, force: boolean): void {
   if (!all) {
     console.log('\n--record needs --all: a cached step reports no time, and recording that would size a budget from it.');
     return;
   }
-  // Before the lane clause, not after it: `--cores N` lifts `lanes` to the step count and so would be
-  // refused by that clause with the wrong number in the message, while `--lanes 3 --cores N` would pass it
-  // outright — the lane limit was the measured one and the admission policy was not
-  if (Number.isFinite(budget)) {
-    console.log(`\n--record refused: these costs are the chain's at ${MEASURED_AT_LANES} lanes and this ran on a ${budget}-core budget.`);
-    return;
-  }
-  if (lanes !== MEASURED_AT_LANES) {
-    console.log(`\n--record refused: these costs are the chain's at ${MEASURED_AT_LANES} lanes and this ran at ${lanes}.`);
+  // The one schedule these numbers are about. A run at another budget measured a different chain, and
+  // recording it would hand every step a kill deadline sized from a schedule it will not run under
+  if (budget !== MEASURED_AT_CORES) {
+    console.log(`\n--record refused: these costs are the chain's on a ${MEASURED_AT_CORES}-core budget and this ran on ${budget}.`);
     return;
   }
   const idle = idleNow();
-  if (refusesAsBusy({ idle, floor: IDLE_FLOOR, force: process.argv.includes('--force') })) {
+  if (refusesAsBusy({ idle, floor: IDLE_FLOOR, force })) {
     console.log(`\n--record refused: the machine is ${Math.round(idle * 100)}% idle and this needs ${Math.round(IDLE_FLOOR * 100)}%.`);
     console.log('  What you would record now is the machine. Wait, or pass --force and know the number is forced.');
     return;
@@ -615,9 +567,33 @@ function recordTheCosts(steps: readonly ChainStep[], measuredMs: ReadonlyMap<str
     .map(([name, ms]) => [name, Math.round(ms / 1000)] as const)
     .filter(([, seconds]) => seconds >= 1));
   const declared = new Map(steps.flatMap((step) => (step.seconds === undefined ? [] : [[step.name, step.seconds] as const])));
-  // One second, not `SETTLED_MS`: these are seconds, and the floor is what stops the fraction chasing
-  // noise on a step that costs less than a second to begin with
-  const edits = recordSeconds(measured, declared, (was, now) => movedBeyondBand(was, now, 1));
+  // One second, not a millisecond floor: these are seconds, and the floor is what stops the fraction
+  // chasing noise on a step that costs less than a second to begin with
+  const moved = (was: number | undefined, now: number): boolean => movedBeyondBand(was, now, 1);
+
+  // **The two gates a sample needs beyond its per-row band, which this record did without until 2026-10-02.**
+  // `spec-cost` has had both; the primitives are shared now (`measure.ts`) rather than copied.
+  //
+  // The body gate is the one this very change would have walked into. Per-row hysteresis cannot see a drift
+  // that moves everything at once: a uniform shave sits under `SETTLED_FRACTION` on every row, so a handful
+  // re-record, the run reports success, and the table goes on describing the schedule before it. Changing
+  // the chain's admission policy is exactly that shape, and `criticalPath` sums these numbers, so the error
+  // compounds where it is least visible.
+  const comparable = [...measured.keys()].filter((name) => declared.has(name));
+  const body = bodyDrift(declared, measured);
+  if (refusesAsContended({
+    hasPrevious: comparable.length > 0,
+    force,
+    moved: comparable.filter((name) => moved(declared.get(name), measured.get(name)!)).length,
+    comparable: comparable.length,
+  })) {
+    console.log(`\n--record refused: ${comparable.filter((name) => moved(declared.get(name), measured.get(name)!)).length}`
+      + ` of ${comparable.length} steps moved past their band, which is more than a measurement should.`);
+    console.log('  That is a loaded machine or a real regression. Wait, or pass --force if the chain really changed this much.');
+    return;
+  }
+
+  const edits = recordSeconds(measured, declared, moved);
   if (edits.length === 0) {
     console.log('\nevery step cost what the table says, within the band — nothing recorded');
     return;
@@ -625,6 +601,13 @@ function recordTheCosts(steps: readonly ChainStep[], measuredMs: ReadonlyMap<str
   console.log(`\nrecorded ${edits.length} step cost${edits.length === 1 ? '' : 's'}:`);
   for (const { step, from, to, file } of edits) {
     console.log(`  ${step.padEnd(STEP_NAME_WIDTH)} ${from}s -> ${to}s   ${file}`);
+  }
+  // Reported after the edits rather than refused, because the rows that cross the band are recorded either
+  // way and the body is the thing no row can report. A run that clears a drift is not the run that finds it.
+  if (drifted(body)) {
+    console.log(`\nthe table moved ${(body * 100).toFixed(0)}% as a body, which is more than idle runs vary.`);
+    console.log('  A drift that size sits under every per-step band, so no single measurement re-records it.');
+    console.log('  Re-run `npm run chain -- --all --record` on an idle machine until it settles.');
   }
 }
 

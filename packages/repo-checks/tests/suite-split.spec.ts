@@ -15,14 +15,19 @@ import * as path from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { REPO_ROOT } from '@abuddy/host/build/packages-built';
 import {
-  FAST_BELOW_MS, INTEGRATION_ABOVE_MS, SPEC_COST_FLAGS, absentIn, changesIn, contended, drift, drifted,
+  FAST_BELOW_MS, INTEGRATION_ABOVE_MS, SPEC_COST_FLAGS, absentIn, changesIn,
   absentNamed, CONTENTION_RATIO_MAX, COST_ACCURACY, describeBudget, EXPENSIVE_BY_NATURE, halfFor,
   halfOfPath, hasSplit, moved, nearEdge, ratiosFromMoves, towardEdge, underBound, type SpecCost,
   namedIn, overBudget, parseArgs,
   planFor, readSpecCost,
-  refuseAbsent, refusesAsContended, rewritesEveryRow, settle, specCostFile, specFiles, stale, suitesFor,
+  refuseAbsent, rewritesEveryRow, settle, specCostFile, specFiles, stale, suitesFor,
   unrecorded,
 } from '../../../scripts/lib/spec-cost.ts';
+// The sample-recording primitives, shared with the chain's own cost table since 2026-10-02. The cases below
+// stay here rather than moving to `measure.spec.ts` with them, because what they check is these functions as
+// *this* record uses them — the body-drift case asserts `moved` says nothing about the same numbers, which is
+// the whole point of having both, and that pairing only exists here.
+import { bodyDrift, contended, drifted, refusesAsContended } from '../../../scripts/lib/measure.ts';
 import { UNIT_SUITES } from '../../../scripts/lib/unit-suites.ts';
 
 /** Every suite's record, read once. A suite with no record is a failure below, not an empty pass. */
@@ -348,7 +353,9 @@ describe('a run that moved too much was measuring the machine', () => {
 });
 
 describe('a run that moved as a body has drifted, however little each spec moved', () => {
-  const record = (costs: Record<string, number>) => ({ measuredAt: '', skipped: [], costs });
+  /** `bodyDrift` over the record shape these cases are written in, which is this file's subject */
+  const drift = (recorded: Record<string, number> | undefined, measured: Record<string, number>) =>
+    bodyDrift(new Map(Object.entries(recorded ?? {})), new Map(Object.entries(measured)));
   const twenty = Object.fromEntries(Array.from({ length: 20 }, (_, i) => [`tests/s${i}.spec.ts`, 100]));
 
   // The case the per-spec tolerance cannot see: a fifth added to everything stays under every individual
@@ -357,26 +364,26 @@ describe('a run that moved as a body has drifted, however little each spec moved
     const measured = Object.fromEntries(Object.entries(twenty).map(([spec, ms]) => [spec, ms * 1.2]));
     expect(Object.values(measured).every((ms) => !moved('tests/x.spec.ts', 100, ms)),
       'and not one of them moved on its own').toBe(true);
-    expect(drift(record(twenty), measured)).toBeCloseTo(0.2, 5);
-    expect(drifted(drift(record(twenty), measured)), 'so the body is what reports it').toBe(true);
+    expect(drift(twenty, measured)).toBeCloseTo(0.2, 5);
+    expect(drifted(drift(twenty, measured)), 'so the body is what reports it').toBe(true);
   });
 
   it('cancels jitter that falls both ways', () => {
     const measured = Object.fromEntries(Object.entries(twenty).map(([spec, ms], i) => [spec, i % 2 ? ms * 1.3 : ms * 0.7]));
-    expect(drifted(drift(record(twenty), measured)), 'which is jitter, not a slowdown').toBe(false);
+    expect(drifted(drift(twenty, measured)), 'which is jitter, not a slowdown').toBe(false);
   });
 
   // Undefined and not 0: the caller prints the fragment only when there is one, because `body +0%` reads as
   // "steady" where the answer is "nothing to compare against"
   it('reads nothing from a run that measured nothing, rather than dividing by it', () => {
-    expect(drift(record(twenty), {})).toBeUndefined();
+    expect(drift(twenty, {})).toBeUndefined();
     expect(drift(undefined, twenty)).toBeUndefined();
     expect(drifted(undefined), 'and nothing to compare is not a drift to warn about').toBe(false);
   });
 
   it('ignores specs the record has never seen, which have nothing to have drifted from', () => {
-    expect(drift(record(twenty), { 'tests/new.spec.ts': 9_000 })).toBeUndefined();
-    expect(drift(record(twenty), { ...twenty, 'tests/new.spec.ts': 9_000 }), 'and reads the rest as steady')
+    expect(drift(twenty, { 'tests/new.spec.ts': 9_000 })).toBeUndefined();
+    expect(drift(twenty, { ...twenty, 'tests/new.spec.ts': 9_000 }), 'and reads the rest as steady')
       .toBeCloseTo(0, 5);
   });
 });

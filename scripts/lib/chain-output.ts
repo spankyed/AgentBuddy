@@ -312,54 +312,65 @@ export function staleLines(found: {
 }
 
 /**
+ * A budget as every message here names it.
+ *
+ * One spelling, because the two functions below had two: they named the same unit with opposite plural
+ * idioms for the same branch (`n > 1 ? 's' : ''` against `n === 1 ? '' : 's'`), which is the shape a third
+ * reader copies from whichever they met first.
+ */
+export const cores = (budget: number): string => (budget === 1 ? '1 core' : `a ${budget}-core budget`);
+
+/**
  * What a failing step cost, against what it costs healthy. The timeout branch below already says this and
  * draws its conclusion; an ordinary failure said only its exit code, which is why one unexplained
  * `test:integration` failure took a reader to `chain-steps.ts` and `budgetFor` by hand to find out it had not
  * been killed — every number needed was already here.
  *
  * Past double the declared cost it names the run that tells the two diagnoses apart, because this repo has
- * measured that they differ: under lanes `@abuddy/cli` "began reporting errors it does not report alone"
- * (the note at the top of this file). The band is `overBand` in step-timing.ts, shared with `driftedSteps`
- * rather than restated — it was restated here once, which is two copies of one rule and how they come apart.
+ * measured that they differ: sharing the machine, `@abuddy/cli` "began reporting errors it does not report
+ * alone" (the note at the top of this file). The band is `overBand` in step-timing.ts, shared with
+ * `driftedSteps` rather than restated — it was restated here once, which is two copies of one rule and how
+ * they come apart.
  */
 export function howLong(
   step: { readonly seconds?: number },
   ms: number,
-  lanes: number,
+  budget: number,
   /** Whether the chain is about to re-run the step alone, in which case suggesting it reads as if no answer followed */
   classifying = false,
 ): string {
   if (step.seconds === undefined) return '';
   const measured = Math.round(ms / 1000);
-  const where = ` after ${(ms / 1000).toFixed(1)}s, against ${step.seconds}s healthy at ${lanes} lane${lanes > 1 ? 's' : ''}`;
+  const where = ` after ${(ms / 1000).toFixed(1)}s, against ${step.seconds}s healthy on ${cores(budget)}`;
   return !classifying && overBand(step.seconds, measured)
-    ? `${where}\n  — over twice its measured cost; try \`npm run chain --lanes 1\``
+    ? `${where}\n  — over twice its measured cost; try \`npm run chain -- --cores 1\``
     : where;
 }
 
 /**
- * What a drift report means, which depends on the lane count the run used.
+ * What a drift report means, which depends on the budget the run was given.
  *
- * At `MEASURED_AT_LANES` the numbers are comparable and a drifted step is a stale row, so the value to record
- * is the useful thing to print. At any other lane count they are not comparable at all: measured here,
- * `test:external-pack:contract` costs 57s at three lanes and 18s at one. Printing "record 18" would give a step
- * that takes 57s in the default schedule a 72s kill budget — the mis-sized bound `seconds`' own doc warns
- * about, arrived at by following this tool's advice.
+ * At `MEASURED_AT_CORES` the numbers are comparable and a drifted step is a stale row, so the value to record
+ * is the useful thing to print. At any other budget they are not comparable at all: measured here,
+ * `test:external-pack:contract` costs 57s sharing the machine and 18s with it to itself. Printing "record 18"
+ * would give a step that takes 57s in the default schedule a 72s kill budget — the mis-sized bound `seconds`'
+ * own doc warns about, arrived at by following this tool's advice.
  *
  * The same numbers are worth printing as what they are. Which steps the schedule's contention moves most is not
- * recorded anywhere else. It takes `--all --lanes 1` to see it, not the plain `--lanes 1` a failing step
+ * recorded anywhere else. It takes `--all --cores 1` to see it, not the plain `--cores 1` a failing step
  * suggests — that run answers the narrower question the failure asks, whether the step passes alone.
  */
 export function driftReport(
   drifted: readonly { name: string; declared: number; measured: number }[],
-  lanes: number,
+  budget: number,
   measuredAt: number,
   /** Whether the run did every step's work (`--all`), which is how the table's numbers are taken */
   forced: boolean,
 ): string {
   // The two directions are not alike, so a run that cannot answer for one can still answer for the other.
-  // Under the band is the run's doing: fewer lanes, or most steps cached, is less contention, and with nine of
-  // twelve cached three lanes behave as one. Over it is not — less contention should make a step faster, so an
+  // Under the band is the run's doing: a smaller budget, or most steps cached, is less contention, and with
+  // nine of twelve cached any budget behaves like one. Over it is not — less contention should make a step
+  // faster, so an
   // overrun on a partial run is the step growing, which is the direction `budgetFor` kills on at four times.
   // Measured over 40 step runs in one day: 6 under the band, 0 over it, so this costs no noise.
   const shown = forced ? drifted : drifted.filter(({ declared, measured }) => overBand(declared, measured));
@@ -372,11 +383,11 @@ export function driftReport(
     return `\n${count} ran past twice the declared cost — the step grew, not the schedule:\n`
       + `${rows(({ declared, measured }) => `${declared}s -> ${measured}s  (killed at ${budgetFor(declared) / 1000}s)`)}`;
   }
-  if (lanes === measuredAt) {
+  if (budget === measuredAt) {
     return `\n${count} cost something other than chain-steps.ts says — re-measure, or record:\n`
       + `${rows(({ declared, measured }) => `seconds: ${declared} -> ${measured}`)}`;
   }
-  return `\nat ${lanes} lane${lanes === 1 ? '' : 's'}, ${count} moved against ${measuredAt}-lane numbers`
+  return `\non ${cores(budget)}, ${count} moved against ${measuredAt}-core numbers`
     + ` — the schedule, not a stale table:\n`
     + `${rows(({ declared, measured }) => {
       const factor = (Math.max(declared, measured) / Math.min(declared, measured)).toFixed(1);
@@ -399,8 +410,8 @@ export function shouldClassify(run: {
    * It was `exclusive`, taken from the step's declared mutexes, which answered a different question the
    * moment those became derived: `conflictsOf` is non-empty for twelve steps that each run beside two
    * dozen others, and all twelve skipped this re-run. `schedule` records what actually overlapped
-   * (`ScheduleResult.peers`), and that is the only place the answer exists. `lanes` is gone from the
-   * predicate with it: a single-lane run overlaps nothing, so it is already covered.
+   * (`ScheduleResult.peers`), and that is the only place the answer exists. The admission limit is gone from
+   * the predicate with it: a serial run overlaps nothing, so it is already covered.
    */
   readonly ranAlone: boolean;
   /** Its budget is four times its cost; re-running a wedged step spends that again for a message that already interprets itself */
@@ -416,13 +427,13 @@ export function shouldClassify(run: {
  * A pass here rules the code out, which is the useful half: the retry runs the same command over the same tree,
  * so anything deterministic in it would fail again. What is left is interference from whatever else was running,
  * or the step being nondeterministic on its own — hence "contention or a flake" rather than either alone. It
- * does not say which, and `lanes` would not tell it: that is the declared count, not the concurrency that
- * actually happened, and three lanes with nine steps cached is none at all.
+ * does not say which, and the admission limit would not tell it: that is what was permitted, not the
+ * concurrency that actually happened, and a full budget with nine steps cached is none at all.
  *
  * A pass is also the dangerous output: it is the one a reader can mistake for the chain being fine. It says
  * "fails" in the sentence, the exit code stays 1, and the retry records nothing — `run` rather than
  * `runAndStamp` for the chain's own stamp, and `DIAGNOSTIC_RUN_ENV` for a step that caches inside itself —
- * so the next chain has to do the step again. The second half was missing until 2026-10-02, and a laned
+ * so the next chain has to do the step again. The second half was missing until 2026-10-02, and a crowded
  * failure of `test:unit:host` went green on the next chain having run no tests at all. A green-on-retry nobody
  * sees is how a flake becomes rot, and those are what stop this feature making the repo worse than not having
  * it.

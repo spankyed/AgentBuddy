@@ -15,7 +15,8 @@ import { UNIT_SUITES, type UnitSuite } from '../../../scripts/lib/unit-suites.ts
 import { reachableText, rootScripts } from '../../../scripts/lib/npm-scripts.ts';
 import { TYPECHECK_LEGS } from '../../../scripts/lib/typecheck-legs.ts';
 import { POOLS, poolUnitFor, type Pool } from '../../../scripts/lib/unit-pool.ts';
-import { asPercent, POOL_WIDTH, UNCAPPED } from '../../../scripts/lib/core-budget.ts';
+import { asPercent, POOL_WIDTH, shareOf, UNCAPPED } from '../../../scripts/lib/core-budget.ts';
+import { chainFlagNames } from '../../../scripts/lib/chain-flags.ts';
 import { relativeSpecifiers, resolveRelative } from '../../../scripts/lib/module-graph.ts';
 import { PACKAGE_DIRS } from '../../../scripts/lib/workspace-deps.ts';
 import { population } from '@abuddy/sdk/testing';
@@ -239,11 +240,11 @@ describe('every pool runs at the width core-budget.ts says it does', () => {
   });
 
   it('caps the workers in the config that is read for it', async () => {
-    const share = POOL_WIDTH[STEP_OF.integration];
-    expect(typeof share, 'the integration pool is declared as a share, which is what its config sets').toBe('number');
+    const share = shareOf(STEP_OF.integration);
+    expect(share, 'the integration pool is declared as a share, which is what a config can set').toBeDefined();
     const pool = (await resolvedConfig(configOf('integration'))).test?.poolOptions;
-    expect(pool?.threads?.maxThreads, 'threads').toBe(asPercent(share as number));
-    expect(pool?.forks?.maxForks, 'forks').toBe(asPercent(share as number));
+    expect(pool?.threads?.maxThreads, 'threads').toBe(asPercent(share!));
+    expect(pool?.forks?.maxForks, 'forks').toBe(asPercent(share!));
   });
 
   it('leaves the pools it calls UNCAPPED with no cap in their configs', async () => {
@@ -545,5 +546,38 @@ describe('a build unit declares the modules its build script imports', () => {
       return closure.length > 1 ? [] : [`${workspace}'s closure is ${closure.length} files`];
     });
     expect(shallow, 'a closure of one file is the entry alone, which means the walk resolved nothing').toEqual([]);
+  });
+});
+
+/**
+ * The chain's flags against the only other place they are written down.
+ *
+ * `--cores` shipped with no mention in the guide, and `--record` and `--force` had none either, because
+ * nothing could ask: the chain read its flags with `process.argv.includes`, so there was no list to
+ * compare. Declaring them (`chain-flags.ts`) makes a typo an error and makes this question askable.
+ *
+ * **One direction only.** Every accepted flag must be documented; a documented flag need not be accepted,
+ * because the guide names `--lanes` deliberately — as the thing `--cores` replaced — and a check that
+ * could not tell that from a stale entry would have to parse prose for intent.
+ *
+ * Free in chain time: `fingerprintUnit` keeps every `CLAUDE.md` out of every step's cache key by name, so
+ * a prose edit still runs nothing.
+ */
+describe("the chain documents the flags it takes", () => {
+  /** Pure, so the case below can mutate the input rather than the guide */
+  const undocumented = (flags: readonly string[], guide: string): string[] =>
+    flags.filter((flag) => !guide.includes(flag));
+
+  const guide = (): string => fs.readFileSync(path.join(REPO_ROOT, 'CLAUDE.md'), 'utf-8');
+
+  it('names every flag it accepts, so a new one cannot ship unmentioned', () => {
+    const flags = population("the chain's flags", chainFlagNames());
+    expect(undocumented(flags, guide()), "add these to the chain's flag list in CLAUDE.md").toEqual([]);
+  });
+
+  it('reports a flag the guide never mentions, which is what the case above rests on', () => {
+    // The mutation, over the input: a scan that found nothing would satisfy the case above whatever the
+    // guide said, which is how three flags came to be undocumented under a check that did not exist
+    expect(undocumented(['--cores', '--invented'], 'takes --cores N, and nothing else')).toEqual(['--invented']);
   });
 });

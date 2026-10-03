@@ -34,7 +34,16 @@ export const box = (): number => os.availableParallelism?.() ?? os.cpus().length
  */
 export const UNCAPPED = Symbol('vitest default: one less than the box');
 
-export type PoolWidth = number | typeof UNCAPPED;
+/**
+ * What a step takes: a share of the box, a fixed number of cores, or vitest's uncapped default.
+ *
+ * **The distinction is load-bearing, not cosmetic.** A worker pool told to take half the cores takes half
+ * of whatever box it finds, so its entry is a `share`. A bundler given a fixed amount of work uses about
+ * the same number of cores wherever it runs — `build:app` is a measured 2.2 on ten — so a `share` would
+ * have the chain believe it takes 4.4 on twenty and over-budget everything beside it. Writing both as a
+ * bare number was the first version of this table, and it was wrong in that direction.
+ */
+export type PoolWidth = { readonly share: number } | { readonly cores: number } | typeof UNCAPPED;
 
 /**
  * What each step's inner pool takes. A step with no entry takes one core.
@@ -52,7 +61,18 @@ export type PoolWidth = number | typeof UNCAPPED;
 export const POOL_WIDTH: Readonly<Record<string, PoolWidth>> = {
   'test:unit:host': UNCAPPED,
   'test:unit:pack': UNCAPPED,
-  'test:integration': 0.5,
+  'test:integration': { share: 0.5 },
+  // **Measured as CPU time over wall time, 2026-10-02, two runs each**: `compile` 21.5s of CPU in 13.6s
+  // and 21.2s in 13.1s, so 1.6 cores; `build:app` 62.9s in 29.0s and 61.2s in 27.6s, so 2.2. Both round
+  // to two.
+  //
+  // That instrument rather than sampling the machine, and the reason is worth keeping: idle sampling could
+  // not separate the step from a box that would not go below 2.4 cores busy, and subtracting the baseline
+  // gave `compile` 1.8 cores on one run and 2.7 on the next. A process's own CPU time does not care what
+  // else is running. It does assume the work is awaited — a step that detaches a child would read low,
+  // and neither of these does.
+  compile: { cores: 2 },
+  'build:app': { cores: 2 },
 };
 
 /**
@@ -65,8 +85,17 @@ export function coresFor(step: string, cores: number = box()): number {
   const width = POOL_WIDTH[step];
   if (width === undefined) return 1;
   if (width === UNCAPPED) return Math.max(1, cores - 1);
-  return Math.max(1, Math.round(width * cores));
+  // Clamped, because a weight larger than the machine would make the budget soft for that step alone and
+  // admit it beside anything — the one thing a declared width is there to prevent
+  if ('cores' in width) return Math.max(1, Math.min(width.cores, cores));
+  return Math.max(1, Math.round(width.share * cores));
 }
 
 /** A share as vitest writes it in `poolOptions`, which is how a config and this table are compared */
 export const asPercent = (share: number): string => `${Math.round(share * 100)}%`;
+
+/** The share a step declares, or undefined where its width is not one — which is what a config can hold */
+export const shareOf = (step: string): number | undefined => {
+  const width = POOL_WIDTH[step];
+  return width !== undefined && width !== UNCAPPED && 'share' in width ? width.share : undefined;
+};

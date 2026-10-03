@@ -9,7 +9,7 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { REPO_ROOT } from '@abuddy/host/build/packages-built';
-import { asPercent, box, coresFor, POOL_WIDTH, UNCAPPED } from '../../../scripts/lib/core-budget.ts';
+import { asPercent, box, coresFor, POOL_WIDTH, shareOf } from '../../../scripts/lib/core-budget.ts';
 import { PACKAGE_DIRS } from '../../../scripts/lib/workspace-deps.ts';
 import { population } from '@abuddy/sdk/testing';
 
@@ -29,6 +29,18 @@ describe('coresFor', () => {
   it('weighs a share of the box', () => {
     expect(coresFor('test:integration', TEN)).toBe(5);
     expect(coresFor('test:integration', 8)).toBe(4);
+  });
+
+  it('weighs a fixed width the same on any box, which is what a bundler takes', () => {
+    // The distinction a bare number could not make: `build:app` uses about 2.2 cores for this much work
+    // wherever it runs, so a share would have it take twice as much of a box twice the size
+    expect(coresFor('build:app', TEN)).toBe(2);
+    expect(coresFor('build:app', 20)).toBe(2);
+  });
+
+  it('never weighs a fixed width above the box it is running on', () => {
+    // Otherwise the budget goes soft for that step alone and admits it beside anything
+    expect(coresFor('build:app', 1)).toBe(1);
   });
 
   it('never weighs a step at less than one core, however small the box', () => {
@@ -64,9 +76,16 @@ const capsInText = (text: string): string[] => [...text.matchAll(CAP)].map((hit)
 const capsIn = (rel: string): string[] => capsInText(fs.readFileSync(path.join(REPO_ROOT, rel), 'utf-8'));
 
 describe('a config that caps its workers has told the budget', () => {
-  /** Every share `POOL_WIDTH` declares, as a config would write it */
-  const declared = (): string[] => Object.values(POOL_WIDTH)
-    .filter((width): width is number => width !== UNCAPPED)
+  /**
+   * Every share `POOL_WIDTH` declares, as a config would write it.
+   *
+   * Shares only, which is the whole population a config can state: a `cores` entry is a measurement of a
+   * bundler and no config sets it, and `UNCAPPED` claims its config sets nothing — `chain-table` holds
+   * that half.
+   */
+  const declared = (): string[] => Object.keys(POOL_WIDTH)
+    .map((step) => shareOf(step))
+    .filter((share): share is number => share !== undefined)
     .map(asPercent);
 
   it('finds the caps, so the cases below are not asking about an empty set', () => {

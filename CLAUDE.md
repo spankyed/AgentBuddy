@@ -57,7 +57,7 @@ Measured on an idle machine, 2026-09-25, each one a real run rather than a sum o
 
 The one-package row is the one worth reading twice: editing a package that the *app* is built from costs four times editing one it is not, because `build:app` rewrites `packages/*/dist` and every step that needs the app reads it. A change under `@abuddy/ears` or a pack's tests does not pay that.
 
-`npm run chain --dry` prints that plan without running it, and says why each step is or is not cached —
+`npm run chain -- --dry` prints that plan without running it, and says why each step is or is not cached —
 which is the way to find out why something you expected to be skipped is not.
 
 **The inner loop is still `npm run spec`**, and it is still much cheaper than a chain run: with no
@@ -154,7 +154,7 @@ Things that waste the most time, in order:
 
 - **Running anything at all after a comment, a doc or a CLAUDE.md edit.** Nothing means nothing: not
   `typecheck`, not the package's suite, not "just to be safe". Prose cannot break a build, and no step
-  declares `docs/` among its inputs, so the chain agrees — `npm run chain --dry` after a doc edit reports
+  declares `docs/` among its inputs, so the chain agrees — `npm run chain -- --dry` after a doc edit reports
   every step cached. A `CLAUDE.md` is free wherever it sits, which took a change: five of them live inside
   a declared `src/` or `tests/` tree rather than at a package root, so a sentence of prose used to re-run
   up to four steps, `compile` among them. `fingerprintUnit` skips them by name now, and repo-checks'
@@ -330,7 +330,7 @@ npm run build-prod       # Full production build (build/build.sh)
 npm run typecheck        # Every check below, plus check:specifiers — its eighteen legs run at once
                          # (scripts/typecheck.ts, legs in scripts/lib/typecheck-legs.ts), which is 29.3s of
                          # single-threaded compilers in 11s. Only `packages:ensure` is ordered; the rest are
-                         # independent, and `-- --lanes 1` runs them one at a time to test that claim or to
+                         # independent, and `-- --cores 1` runs them one at a time to test that claim or to
                          # read a confusing failure. A failure prints that leg's output alone, and several
                          # legs can fail in one run where the old `&&` chain stopped at the first
 npm run typecheck:fe     # Frontend only (vue-tsc)
@@ -395,7 +395,7 @@ npm run spec -- <target> # You don't say what the target is; it works that out:
                          # Where a spec belongs: its path under tests/ mirrors the source it covers, no
                          # directory names a level or a cost half, and support dirs take a _ prefix
                          # (docs/reference/test-inventory.md; repo-checks' spec-placement.spec.ts)
-npm run chain            # Before a merge: every check in dependency order, cold 190s and warm 27s. Each
+npm run chain            # Before a merge: every check in dependency order, cold 169s and warm 27s. Each
                          # step is cached on the inputs it declares (scripts/lib/chain-steps.ts), so a doc
                          # edit runs nothing and a one-package edit runs that package's suite; the E2E
                          # suite is opt-in (`--e2e`) rather than a gate, with its reason on the step: it
@@ -413,11 +413,24 @@ npm run chain            # Before a merge: every check in dependency order, cold
                          #   --dry     the plan and why each step is or is not cached, running nothing
                          #   --all     every step regardless of its stamp, forcing those that keep a cache
                          #             of their own; the run each step's `seconds` is checked on
-                         #   --lanes N how many at once. Three by default, chosen by measuring 1 through
-                         #             4; re-measure when the step shape changes
-                         #   --no-classify  a step failing under several lanes is re-run alone, to tell the
-                         #             code apart from contention; the retry never stamps and the chain
-                         #             still exits 1. This turns that off
+                         #   --cores N how much of the machine to spend. **This machine's cores by default**,
+                         #             and the only limit there is: a step declares what it takes
+                         #             (`POOL_WIDTH`, scripts/lib/core-budget.ts) and admission is the sum,
+                         #             so the eighteen single-threaded `tsc` legs run wide while the two
+                         #             nine-worker vitest pools do not pile on each other. It replaced
+                         #             `--lanes N`, which metered both as one unit each: measured
+                         #             2026-10-02, interleaved `--all` pairs on ten cores, three lanes is a
+                         #             median 202.8s and a ten-core budget 169.4s with half the spread.
+                         #             `--cores 1` is serial, which is what `--lanes 1` was for
+                         #   --e2e     run the E2E suite with the chain, ordered after test:smoke
+                         #   --record  write each step's measured cost back into its table. Needs --all,
+                         #             refuses a budget other than the one the table was measured at,
+                         #             refuses a busy machine, and refuses a run where too much moved to
+                         #             have been measuring the code. --force overrides the last two
+                         #   --force   record anyway, and know the number is forced
+                         #   --no-classify  a step failing while the machine is busy is re-run alone, to
+                         #             tell the code apart from contention; the retry never stamps and the
+                         #             chain still exits 1. This turns that off
 npm test                 # Playwright E2E tests. **A harness, not a gate** — see below
 npm run test:unit        # Vitest, as two pools: the host suites as one root run under the
                          # @abuddy/source condition, and the pack suite on its own resolving the published

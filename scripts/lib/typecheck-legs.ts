@@ -52,9 +52,18 @@ export interface Leg {
    */
   readonly alsoReads?: readonly string[];
   /**
-   * What it costs alone, measured 2026-09-27 on an idle machine. It feeds `budgetFor`, which bounds a leg at
-   * four times this and floors at 60s — so the short legs all land on the floor, which is the right bound for
-   * them anyway. Re-measure rather than raise one: a bound nobody will wait for is the same as no bound.
+   * What it costs **in the chain**, where each leg is its own step — the same regime as `ChainStep.seconds`,
+   * which this becomes (`chain-steps.ts` copies it onto the generated step).
+   *
+   * **It used to say "alone, on an idle machine", and that was two regimes for one field.** `npm run chain
+   * -- --all --record` writes in-chain numbers here, `budgetFor` sizes every leg's kill deadline from it,
+   * and `driftedSteps` compares a chain run against it; only `npm run typecheck`, run by a person directly,
+   * ever sees a leg alone. The figure the old wording described is in that command's own doc, which is
+   * where it informs something.
+   *
+   * It feeds `budgetFor`, which bounds a leg at four times this and floors at 60s — so the short legs all
+   * land on the floor, which is the right bound for them anyway. Re-measure rather than raise one: a bound
+   * nobody will wait for is the same as no bound.
    */
   readonly seconds: number;
 }

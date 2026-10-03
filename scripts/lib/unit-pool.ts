@@ -39,13 +39,13 @@ export const poolStampFor = (suite: UnitSuite, half: Half): string =>
 /**
  * Set on a run whose verdict must not be recorded, and read here because this is where the records are kept.
  *
- * The chain's classification re-run is the one that needs it. A step that fails while several lanes are busy is
+ * The chain's classification re-run is the one that needs it. A step that fails while the machine is busy is
  * run again alone, to tell contention from the code, and `chain.ts` deliberately writes no step stamp for that
  * re-run: *a step that passes alone has not passed the chain*, so the next chain does it again under
  * concurrency — the only condition that can reproduce the failure.
  *
  * **That promise does not survive a step that keeps a cache of its own, and a pool is one.** Read off the
- * stamps on 2026-10-02: `test:unit:host` failed under three lanes, the re-run passed and wrote all eleven
+ * stamps on 2026-10-02: `test:unit:host` failed sharing the machine, the re-run passed and wrote all eleven
  * project stamps at 15:20:10, the chain refused the step stamp as designed, and the next chain's step then ran
  * **zero tests** in 0.8s and recorded success at 15:20:15. Nothing stale was left for it to run, so the thing
  * that had failed was never attempted again, and the chain reported green over it. A green-on-retry nobody

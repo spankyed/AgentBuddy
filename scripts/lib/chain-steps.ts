@@ -19,7 +19,7 @@ import { scopeOf, TYPECHECK_LEGS, type Leg } from './typecheck-legs.ts';
  * check to a slow one, and the pair can then be neither cached nor reordered. `check:tiers` fails on one.
  * The reasoning and the measurements are in `docs/archive/goals/goal-test-tiers.md`, which calls the
  * declaration a tier; it is derived from the declared inputs now (`needsApp` below), and the three-value
- * version is in `docs/plans/tier-split.md`.
+ * version is in `docs/archive/plans/tier-split.md`.
  */
 
 
@@ -103,8 +103,8 @@ export interface ChainStep {
    */
   readonly forceArgs?: readonly string[];
   /**
-   * What this step costs **when it does its work**, in seconds, measured on this machine under the chain's
-   * default two lanes. Not what it costs when it is cached: `packages:ensure` returns in 0.3s with nothing
+   * What this step costs **when it does its work**, in seconds, measured under the chain's own default
+   * admission. Not what it costs when it is cached: `packages:ensure` returns in 0.3s with nothing
    * stale and takes 14s when it builds, and recording the 0.3 gave a step that builds a budget sized for a
    * step that does not, and a timeout message claiming it "costs 1s healthy".
    *
@@ -113,19 +113,21 @@ export interface ChainStep {
    * measurement, so re-measure rather than raise it when a step legitimately grows. Every run reports a step
    * that ran past double this number, which is what keeps the table honest without anyone remembering to
    * check — and it is the direction that matters, since `budgetFor` starts killing at four times. A step that
-   * came in under half is reported only by `--all` at `MEASURED_AT_LANES`: a run with steps cached, or fewer
-   * lanes, has less contention and makes everything look fast, so that direction says nothing about the
-   * table. `driftedSteps` finds both; `driftReport` in chain-output.ts decides which the run can answer for.
+   * came in under half is reported only by `--all` at `MEASURED_AT_CORES`: a run with steps cached, or a
+   * smaller budget, has less contention and makes everything look fast, so that direction says nothing about
+   * the table. `driftedSteps` finds both; `driftReport` in chain-output.ts decides which the run can answer for.
    *
    * For a step that keeps a cache of its own — the two pooled steps, which run only their stale projects —
    * it is the cost of the *whole* pool, which is what both kill budgets are sized from (`budgetFor` here, and
    * `test-unit-pool.ts`'s own inner spawn). Those steps needed no rule of their own once the gate was on the
    * run: an incremental pool run lands under half, which is the direction every step is now quiet about.
    *
-   * **It is the cost in the chain at `MEASURED_AT_LANES`, not the cost alone.** Those differ by about two
-   * times for a CPU-bound step — `typecheck` was 29s by itself and 63s in a three-lane run — so the number is
-   * meaningless without the lane count, and saying only "what this costs when it does its work" is how a
-   * two-lane measurement came to sit in a three-lane chain for two days.
+   * **It is the cost in the chain at `MEASURED_AT_CORES`, not the cost alone.** Those differ by about two
+   * times for a CPU-bound step — `typecheck` was 29s by itself and 63s sharing the machine — so the number is
+   * meaningless without the schedule, and saying only "what this costs when it does its work" is how a
+   * measurement taken under one admission policy came to sit in a chain running another for two days. That
+   * is why `MEASURED_AT_CORES` records the box these were taken on and the chain says so when it differs:
+   * the schedule was always implicit in the machine, and nothing named it.
    */
   readonly seconds?: number;
 }
@@ -579,19 +581,15 @@ export const SUITE_READS: Record<string, { packages?: true; pack?: true; repo?: 
 };
 
 /**
- * One step per unit suite, so a one-package change re-runs one suite rather than eight. Measured under the
- * two-lane runner (`scripts/test-unit.ts`), which is what the chain will run them under.
- */
-/**
- * Measured per pool with every project stale — `npm run chain --all`, the only run that does the whole
- * pool's work, and the run `driftedSteps` checks this number on.
- */
-/**
- * The two pooled steps' whole-pool cost, in the chain at `MEASURED_AT_LANES`. Re-measured 2026-09-27 under
- * `--all` with the rest of this table: 20 and 21 were taken before `typecheck` stopped running its legs one at
- * a time, and a step that asks for half the cores makes everything beside it slower — which is where those
- * seconds went rather than being new work. It feeds two kill budgets, `budgetFor` here and the pool's own inner
- * spawn (`test-unit-pool.ts`), so it is the cost of the whole pool and not of a partial run.
+ * Each pool's whole-pool cost, in the chain at `MEASURED_AT_CORES`, measured with every project stale —
+ * `npm run chain --all`, the only run that does all of that work and the run `driftedSteps` checks it on.
+ *
+ * Re-measured 2026-09-27 with the rest of this table: 20 and 21 were taken before `typecheck` stopped
+ * running its legs one at a time, and a step that asks for half the cores makes everything beside it
+ * slower — which is where those seconds went rather than being new work.
+ *
+ * It feeds two kill budgets, `budgetFor` here and the pool's own inner spawn (`test-unit-pool.ts`), so it
+ * is the cost of the whole pool and never of a partial run.
  */
 export const POOL_SECONDS: Record<'host' | 'pack' | 'integration', number> = { host: 42, pack: 42, integration: 60 };
 
@@ -776,23 +774,21 @@ const POOL_STEPS: readonly ChainStep[] = (['host', 'pack'] as const).map((kind) 
 });
 
 /**
- * The lane count every `seconds` below was measured at.
+ * The machine every `seconds` below was measured on, which is also the budget they were measured under.
  *
- * A step's cost depends on how many other steps are running beside it, so the table is only true of one
- * schedule. `seconds: 45` for `typecheck` was measured 2026-09-25 at 07:38 under two lanes; the default became
- * three at 09:30 the same day, and nothing connected the two — it read 63s for two days and the drift band
- * happened to absorb it. The chain compares this against its own default and says so when they differ, which
- * is the connection that was missing rather than a number that was wrong.
+ * One number for both, because the chain's default budget *is* the box (`budgetFrom`, scripts/chain.ts).
+ * A step's cost depends on what runs beside it, so the table is only true of one schedule, and this is
+ * what names it: `box() !== MEASURED_AT_CORES` and the run says the numbers are about another machine.
  *
- * **Three is the knee, re-measured 2026-10-02 now that the table is 29 steps rather than 13** — the condition
- * the original choice named. Interleaved `--all` pairs on a 10-core box: two lanes is +8%, four is -1%, six
- * is +6%. More lanes buys nothing because the expensive steps are already parallel inside themselves —
- * `test:integration` caps its workers at half the cores, the unit pools run vitest's, `build:app` runs vite's
- * — so at three lanes the cores are taken and a fourth finds none free. A cold run is not lane-bound: it
- * lands at 176-185s against a 141s three-lane floor and a 121s critical path, so the only thing that moves it
- * is less work, not a different schedule.
+ * **It makes an implicit fact explicit.** These costs were always measured on one box and nothing recorded
+ * which. The hazard it was written for is the same either way: `seconds: 45` for `typecheck` was taken
+ * 2026-09-25 at 07:38 under one admission policy, the default changed at 09:30 the same day, and nothing
+ * connected the two — it read 63s for two days and the drift band happened to absorb it.
+ *
+ * Re-measure it with `npm run chain -- --all --record`, which refuses any other budget for this reason,
+ * refuses a busy machine, and refuses a run where too much moved to have been measuring the code.
  */
-export const MEASURED_AT_LANES = 3;
+export const MEASURED_AT_CORES = 10;
 
 export const CHAIN_STEPS: readonly ChainStep[] = [
   // Takes the package build lock, so it cannot share a lane with anything else that builds

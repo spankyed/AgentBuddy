@@ -13,7 +13,7 @@
  */
 import * as fs from 'node:fs';
 import * as path from 'node:path';
-import { movedBeyondBand } from './measure.ts';
+import { drifted, movedBeyondBand } from './measure.ts';
 
 /**
  * Where a suite's record lives, relative to the repo root. One per package rather than one for the repo:
@@ -201,15 +201,6 @@ export const moved = (file: string, recorded: number | undefined, measured: numb
   return movedBeyondBand(recorded, measured, SETTLED_MS);
 };
 
-/**
- * The share of a suite's entries that may move before the run is read as measuring the machine.
- *
- * This is the check a sample can have. A derivation's is equality and a proxy's is a self-check against the
- * real thing; neither is available here, and what is left is reproducibility. With the tolerance above, an
- * idle run moves 0-3% of a suite; a contended one moved 76%. The file's own instruction to "run the update
- * with nothing else on the machine" was prose until this, and was ignored twice in one day.
- */
-export const CONTENDED_SHARE = 0.25;
 
 /** What a run changed, told apart: a spec measured for the first time is not evidence about the machine */
 export interface Changes {
@@ -242,42 +233,6 @@ export function changesIn(
     moved: rewritten.filter((spec) => moved(spec, before(spec), settled[spec]!)),
   };
 }
-
-/**
- * Whether a run moved more of what it could move than a measurement should.
- *
- * `comparable` is the specs that had a value to move — measured minus added — so a suite recorded for the
- * first time is never refused for having recorded everything.
- */
-export const contended = (moved: number, comparable: number): boolean =>
-  comparable > 0 && moved > CONTENDED_SHARE * comparable;
-
-/**
- * How far this run's measurements have moved as a body, against what the record holds for the same specs.
- *
- * The one thing the per-spec tolerance cannot show. Random jitter does not bias a sum — the lags fall both
- * ways and cancel, which is why a suite's total moved 0.4%, 6.5% and 9.9% between idle runs while its members
- * moved 10-18% each. *Correlated* drift does: a vitest or bundler bump that adds a fifth to every spec stays
- * under every individual tolerance, so nothing re-records and anything reading the total is reading numbers
- * that are uniformly stale.
- *
- * Measured against the record rather than the settled values, since settling is where the drift went.
- * Undefined when nothing measured had a recorded value to move from — not zero, which would read as steady.
- */
-export function drift(previous: SpecCost | undefined, measured: Record<string, number>): number | undefined {
-  const shared = Object.keys(measured).filter((spec) => previous?.costs[spec] !== undefined);
-  const before = shared.reduce((sum, spec) => sum + previous!.costs[spec]!, 0);
-  // Nothing measured had a value to drift from, which reads as steady if it comes back as zero
-  if (before === 0) return undefined;
-  return shared.reduce((sum, spec) => sum + measured[spec]!, 0) / before - 1;
-}
-
-/** Above the drift a run of unchanged specs shows: measured at 0.4%, 6.5% and 9.9% on an idle machine */
-export const DRIFT_SHARE = 0.15;
-
-/** Whether a run's body moved further than idle runs vary, in either direction */
-export const drifted = (move: number | undefined): move is number =>
-  move !== undefined && Math.abs(move) > DRIFT_SHARE;
 
 /** The guard that reads this record. It is the one spec that skips itself while the record is rewritten. */
 export const PLACEMENT_GUARD = 'tests/suite-split.spec.ts';
@@ -661,23 +616,6 @@ export function refuseAbsent(dir: string, files: readonly string[], named: reado
     + 'Nothing would measure them, so this would run a config and record nothing.');
 }
 
-/**
- * Whether to refuse this run as a measurement of the machine rather than of the specs.
- *
- * Three inputs, which is why it is named rather than spelled out at the call site. `--force` is the user
- * saying the suite really did change this much, and a suite with no previous record has nothing to have moved.
- *
- * `--all` is not among them, and the arithmetic is why. A correlated drift of a fraction `f` moves a spec
- * only where `f * r > max(SETTLED_MS, SETTLED_FRACTION * r)`: above 857ms that needs `f > SETTLED_FRACTION`,
- * and below it needs `r > SETTLED_MS / f`, which cannot both hold. So the drift `--all` exists to clear moves
- * nothing but the few specs that cross the band, and this counts `moved` — it cannot fire on that run. What
- * it still fires on is a quarter of a suite each past its own tolerance, which is a loaded machine or a real
- * regression, and `--force` is the answer to the second whichever flags the run carries.
- */
-export const refusesAsContended = (input: {
-  readonly hasPrevious: boolean; readonly force: boolean;
-  readonly moved: number; readonly comparable: number;
-}): boolean => input.hasPrevious && !input.force && contended(input.moved, input.comparable);
 
 /**
  * Whether this run should replace every row it measured, rather than only the movements.

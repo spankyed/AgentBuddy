@@ -20,11 +20,12 @@ export interface SchedulableStep {
    */
   readonly conflicts?: readonly string[];
   /**
-   * What of the machine this step takes, when a budget is in play — `coresFor` (`core-budget.ts`) resolves
-   * it from the share that module declares.
+   * What of the machine this step takes — `coresFor` (`core-budget.ts`) resolves it from the share that
+   * module declares.
    *
-   * Absent is one core. A resolved number rather than that share, so a case can schedule a graph of
-   * weights with no machine behind it, and so this module goes on knowing nothing about pools.
+   * Absent is one core, which is most steps: a `tsc` leg is one process and nineteen of the chain's steps
+   * are one. A resolved number rather than that share, so a case can schedule a graph of weights with no
+   * machine behind it, and so this module goes on knowing nothing about pools.
    */
   readonly cores?: number;
   readonly seconds?: number;
@@ -32,18 +33,19 @@ export interface SchedulableStep {
 
 export interface ScheduleOptions<S extends SchedulableStep> {
   readonly steps: readonly S[];
-  /** How many steps may run at once. One is serial. */
-  readonly lanes: number;
   /**
-   * Cores the steps running together may take, summing their `cores`.
+   * Cores the steps running together may take, summing their `cores`. One is serial.
    *
-   * `Infinity`, the default, is the lane count deciding alone — which is what keeps a run given no budget
-   * dispatching in exactly the order it always did.
+   * **The only limit, and it replaced a count of steps.** A count metered a single-threaded `tsc` leg and
+   * a nine-worker vitest pool as one unit each, which is two different machines wearing one number;
+   * measured 2026-10-02, admitting on cores instead took the chain from a median 202.8s to 169.4s and
+   * halved its spread. A budget of one admits the first ready step and nothing beside it, which is what
+   * the old single-lane diagnostic was for.
    */
-  readonly budget?: number;
+  readonly budget: number;
   /**
-   * Asked once a step's needs are met and before it takes a lane, so a step that does not run costs no lane
-   * time. It counts as passed, and the steps that need it become ready.
+   * Asked once a step's needs are met and before it is admitted, so a step that does not run costs no
+   * budget. It counts as passed, and the steps that need it become ready.
    */
   readonly skip: (step: S) => boolean;
   /** Runs the step; `false` fails it. A failure stops new dispatches and lets running steps finish. */
@@ -79,17 +81,21 @@ export interface ScheduleResult {
 }
 
 /**
- * Runs the graph. A step starts when every step it needs has passed, a lane is free, and no exclusive step
- * is running. After a failure nothing new is dispatched and whatever is running is awaited, so the run ends
- * with no orphaned work — and steps that needed the failed one never run, which is why this returns rather
- * than throwing: the caller reports, and the caller decides.
+ * Runs the graph. A step starts when every step it needs has passed, the budget has room for what it
+ * takes, and nothing it conflicts with is running. After a failure nothing new is dispatched and whatever
+ * is running is awaited, so the run ends with no orphaned work — and steps that needed the failed one
+ * never run, which is why this returns rather than throwing: the caller reports, and the caller decides.
+ *
+ * The conflict clause used to read "no exclusive step is running", which named a boolean field deleted
+ * when mutexes became derived from what each step writes. A summary describing a flag that is not there
+ * is worse than none, because it reads as the authority.
  *
  * **This never throws, including when `run` does.** A rejected `run` used to escape the loop immediately,
- * which abandoned every other lane: its step kept running, finished unobserved, and the caller died on an
- * unhandled rejection with child processes still alive. A throw is now that step failing, so the same
- * draining path applies to it as to a step that returned false.
+ * which abandoned everything else in flight: its step kept running, finished unobserved, and the caller
+ * died on an unhandled rejection with child processes still alive. A throw is now that step failing, so
+ * the same draining path applies to it as to a step that returned false.
  */
-export async function schedule<S extends SchedulableStep>({ steps, lanes, budget = Infinity, skip, run }: ScheduleOptions<S>): Promise<ScheduleResult> {
+export async function schedule<S extends SchedulableStep>({ steps, budget, skip, run }: ScheduleOptions<S>): Promise<ScheduleResult> {
   const waiting = new Set(steps.map((step) => step.name));
   const done = new Set<string>();
   const running = new Map<string, Promise<string>>();
@@ -108,7 +114,6 @@ export async function schedule<S extends SchedulableStep>({ steps, lanes, budget
     if (failed === undefined) {
       for (const step of steps) {
         if (!waiting.has(step.name)) continue;
-        if (running.size >= lanes) break;
         if (!step.dependsOn.every((need) => done.has(need))) continue;
         // A mutex is symmetric: this step may not start beside one it conflicts with, and may not start
         // if a running step names it. Checked both ways rather than trusting the derivation to be
@@ -117,9 +122,9 @@ export async function schedule<S extends SchedulableStep>({ steps, lanes, budget
           (step.conflicts ?? []).includes(name)
           || (steps.find((candidate) => candidate.name === name)?.conflicts ?? []).includes(step.name);
         if ([...running.keys()].some(clashes)) continue;
-        // A budget is `continue` where the lane limit above is `break`: a one-core leg must not wait behind
-        // a nine-core pool that happens to sit earlier in the table. That `break` is also what keeps a run
-        // given no budget dispatching in the order it always has, which thirteen cases here assert.
+        // `continue`, never `break`: a one-core leg must not wait behind a nine-core pool that happens to
+        // sit earlier in the table. A count of steps could `break` safely, because every candidate wanted
+        // the same one slot; a budget cannot, because the next candidate may fit where this one does not.
         //
         // **`spent > 0` is what makes the budget soft, and it is not a nicety.** A step wider than the whole
         // budget fits nowhere, so a hard comparison would hold it forever, and this loop exits when nothing
