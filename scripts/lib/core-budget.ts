@@ -128,7 +128,20 @@ export const thisMachine = (): Machine => ({
 export const machineText = (machine: Machine): string => `${machine.cpu} with ${machine.cores} cores`;
 
 /**
- * Whether this run is the schedule a recorded cost table describes.
+ * Whether this is the machine a record was measured on.
+ *
+ * **The CPU as well as the core count**, because the core count alone called every ten-core box the measured
+ * one. It is the question a record of *costs* asks — a millisecond says where a spec belongs only against
+ * edges chosen for one machine's speed — and it carries no budget, because a cost record has none.
+ *
+ * The machine is a parameter with a default so a case can ask about another box from this one, which is the
+ * only way the off-machine paths are testable at all.
+ */
+export const isMeasuredMachine = (measuredOn: Machine, machine: Machine = thisMachine()): boolean =>
+  machine.cores === measuredOn.cores && machine.cpu === measuredOn.cpu;
+
+/**
+ * Whether this run is the schedule a recorded cost table describes: the machine above, **and** the budget.
  *
  * **Three facts, because fewer have each let something through.** A run's admission is its budget; the
  * widths it admits on are resolved against the machine, because `coresFor` reads `box()` and not the budget
@@ -138,12 +151,15 @@ export const machineText = (machine: Machine): string => `${machine.cpu} with ${
  *
  * Comparing the budget alone passed `--cores 10` on a twenty-core machine, where every width was
  * twenty-core sized. Comparing the budget and the core count passed any 10-core machine at all.
+ *
+ * A caller with no schedule in the question wants `isMeasuredMachine`: passing the measured cores *as* the
+ * budget to satisfy a conjunct you do not care about reads as a fact about a budget, and `spec-cost` did it.
  */
 export const isMeasuredSchedule = (
   budget: number,
   measuredOn: Machine,
   machine: Machine = thisMachine(),
-): boolean => budget === measuredOn.cores && machine.cores === measuredOn.cores && machine.cpu === measuredOn.cpu;
+): boolean => budget === measuredOn.cores && isMeasuredMachine(measuredOn, machine);
 
 /** A share as vitest writes it in `poolOptions`, which is how a config and this table are compared */
 export const asPercent = (share: number): string => `${Math.round(share * 100)}%`;

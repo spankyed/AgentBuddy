@@ -29,6 +29,7 @@ import { REPO_ROOT } from '@abuddy/host/build/packages-built';
 import * as realSpecCost from '../../../scripts/lib/spec-cost.ts';
 import * as realMeasure from '../../../scripts/lib/measure.ts';
 import { UNIT_SUITES } from '../../../scripts/lib/unit-suites.ts';
+import { thisMachine } from '../../../scripts/lib/core-budget.ts';
 
 /**
  * The modules a mutation may break, by the name an entry gives in `in`.
@@ -59,7 +60,7 @@ const UNSORTED = ['zeta', 'alpha'];
 
 const FAST = 'tests/a.spec.ts';
 const before = (costs: Record<string, number>, skipped: string[] = []) =>
-  ({ measuredAt: 'then', costs, skipped });
+  ({ measuredAt: 'then', costs, skipped, unmeasured: [], machine: thisMachine() });
 
 /**
  * Whether a run that moved no cost still dated the record.
@@ -300,7 +301,7 @@ describe('every decision in spec-cost.ts is one its cases can see', () => {
     for (const dir of UNSORTED) write(`packages/${dir}/${FAST}`, '');
     // `a` recorded and `b` not, which is what makes the unmeasured branch reachable. No live suite is in this
     // state — a green tree means every spec is recorded, so the branch a bare update takes needs a tree of its own
-    write(realSpecCost.specCostFile('mini'), `${JSON.stringify({ measuredAt: 'then', costs: { [FAST]: 100 }, skipped: [] }, null, 2)}\n`);
+    write(realSpecCost.specCostFile('mini'), `${JSON.stringify({ measuredAt: 'then', costs: { [FAST]: 100 }, skipped: [], unmeasured: [], machine: thisMachine() }, null, 2)}\n`);
   });
 
   afterAll(() => fs.rmSync(tree.root, { recursive: true, force: true }));

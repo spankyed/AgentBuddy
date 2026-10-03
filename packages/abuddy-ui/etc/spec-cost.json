@@ -4,5 +4,10 @@
     "tests/exports.spec.ts": 7,
     "tests/import-side-effects.spec.ts": 94
   },
-  "skipped": []
+  "skipped": [],
+  "unmeasured": [],
+  "machine": {
+    "cpu": "Apple M1 Pro",
+    "cores": 10
+  }
 }

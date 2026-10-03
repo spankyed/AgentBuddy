@@ -446,6 +446,12 @@ npm run chain            # Before a merge: every check in dependency order, cold
                          #             refuses a busy machine, and refuses a run where too much moved to
                          #             have been measuring the code. --force overrides the last two
                          #   --force   record anyway, and know the number is forced
+                         #   --adopt   record on another machine, writing `MEASURED_ON` with the costs.
+                         #             The table and the box it was measured on are one fact, so one
+                         #             operation writes both — without this the costs moved and the
+                         #             constant did not, and every check scoped on it then skipped the box
+                         #             whose numbers were in the file. Needs --all and this machine's cores
+                         #             as the budget, since it records what this machine costs
                          #   --no-classify  a step failing while the machine is busy is re-run alone, to
                          #             tell the code apart from contention; the retry never stamps and the
                          #             chain still exits 1. This turns that off
@@ -600,6 +606,19 @@ npm run spec-cost:update # The least that makes the records current, which is of
                          # would record on a busy box is the machine, and a cost was once recorded at a
                          # load of 71 and reverted by hand. That is a separate gate from the contention
                          # refusal below, which asks after measuring whether too much *moved*.
+                         # **Off the record's own machine it writes membership and never a cost.** A record
+                         # holds two kinds of thing: which specs exist, a fact about the repo that anyone
+                         # can see, and what one costs, a fact about a machine. They were one map, so
+                         # adding a spec meant measuring it — and the only way a second developer could
+                         # satisfy the `unmeasured` finding was to write their own box's milliseconds into
+                         # a record measured on someone else's, with nothing in the file saying it then
+                         # held two machines' numbers. A new spec is listed in `unmeasured` instead, which
+                         # satisfies the finding and prices nothing; the measuring machine fills it in on
+                         # its next run. Which machine that is, is in the record (`machine`) rather than
+                         # read from `MEASURED_ON`, which describes the box the *chain's* seconds were
+                         # taken on — two records, two machines, and nothing made them the same box.
+                         # `--all --force` is how another machine takes a record over: every row
+                         # re-measured, past the refusal that exists to stop a partial one.
                          #   <spec path>   that spec's half and nothing else. It runs the spec's *config*,
                          #                 never the file alone: `chain-inputs` reads 1688ms beside its
                          #                 siblings and 963ms on its own, against a band 1000ms wide, so a

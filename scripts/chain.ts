@@ -38,10 +38,10 @@ import { changedInputs, diffableStamp, firstChange, freshnessSweep, INPUTS_CHANG
 import { CHAIN_STEPS, type ChainStep, chainSteps, MEASURED_ON, needsApp, orderedSteps, STEP_TABLES } from './lib/chain-steps.ts';
 import { CHAIN_FLAGS } from './lib/chain-flags.ts';
 import { TIMEOUT_MS, timeoutText, type TimeoutClass } from './lib/step-timeouts.ts';
-import { box, isMeasuredSchedule, machineText, thisMachine } from './lib/core-budget.ts';
+import { box, isMeasuredMachine, isMeasuredSchedule, machineText, thisMachine } from './lib/core-budget.ts';
 import { commandText, rootScripts } from './lib/npm-scripts.ts';
 import { asCount, bodyDrift, drifted, IDLE_FLOOR, idleNow, movedBeyondBand, parseFlags, refusesAsBusy, refusesAsContended } from './lib/measure.ts';
-import { recordSeconds } from './lib/record-seconds.ts';
+import { machineLine, recordMachine, recordSeconds } from './lib/record-seconds.ts';
 import { schedule } from './lib/chain-schedule.ts';
 import { criticalPath, driftedSteps, SECONDS_FLOOR, willNotCache } from './lib/step-timing.ts';
 import { briefly, classifyLine, cores, declaredAt, dim, driftReport, DRY_REASON_COLUMN, howLong, identicalRewrites, marker, oneLine, REASON_COLUMN, shouldClassify, staleLines, STEP_NAME_WIDTH, TIME_COLUMN, whenChanged, wrapAt, writerOf } from './lib/chain-output.ts';
@@ -529,7 +529,9 @@ async function main(): Promise<void> {
   const report = driftReport(driftedSteps(steps, measuredMs), budget, MEASURED_ON, all);
   if (report !== '') console.log(report);
 
-  if (args.flags.has('record')) recordTheCosts(steps, measuredMs, budget, all, args.flags.has('force'));
+  if (args.flags.has('record')) {
+    recordTheCosts(steps, measuredMs, budget, all, args.flags.has('force'), args.flags.has('adopt'));
+  }
 
   console.log(`\n${verdict} in ${secs(Date.now() - started - classifyMs)}${reran}${skipped}${` on ${cores(budget)}`}${floor}`);
   // Not process.exit(): it drops whatever stdout has still to flush, and the failing step's captured output
@@ -556,7 +558,7 @@ async function main(): Promise<void> {
  * with a one-second floor. They differ on purpose, which is why this prints everything it wrote.
  */
 function recordTheCosts(steps: readonly ChainStep[], measuredMs: ReadonlyMap<string, number>,
-  budget: number, all: boolean, force: boolean): void {
+  budget: number, all: boolean, force: boolean, adopt: boolean): void {
   if (!all) {
     console.log('\n--record needs --all: a cached step reports no time, and recording that would size a budget from it.');
     return;
@@ -565,9 +567,25 @@ function recordTheCosts(steps: readonly ChainStep[], measuredMs: ReadonlyMap<str
   // has why. Recording any other hands every step a kill deadline sized from a schedule it will not run
   // under, and a gate comparing only the budget passed `--cores 10` on a twenty-core machine.
   if (!isMeasuredSchedule(budget, MEASURED_ON)) {
-    console.log(`\n--record refused: these costs are the chain's on ${cores(MEASURED_ON.cores)} on `
-      + `${machineText(MEASURED_ON)}; this ran on ${cores(budget)} on ${machineText(thisMachine())}.`);
-    return;
+    // `--adopt` is how another machine takes the table over, and it writes `MEASURED_ON` in the same
+    // operation. Without it the costs would move and the constant would not, which is the state that makes
+    // every check scoped on it skip the box whose numbers are in the file and run on the box whose are not.
+    if (!adopt) {
+      console.log(`\n--record refused: these costs are the chain's on ${cores(MEASURED_ON.cores)} on `
+        + `${machineText(MEASURED_ON)}; this ran on ${cores(budget)} on ${machineText(thisMachine())}.`);
+      // Only where the *machine* differs. This refusal also fires when the budget alone does, and there
+      // `--adopt` is advice that cannot be taken: it would write the machine the table already names and
+      // then be refused below for the budget. Advice nobody can act on is what this branch set out to stop.
+      if (!isMeasuredMachine(MEASURED_ON)) {
+        console.log(`  Pass --adopt to record this machine's instead, which also writes:\n    ${machineLine(thisMachine())}`);
+      }
+      return;
+    }
+    if (budget !== box()) {
+      console.log(`\n--adopt refused: it records what this machine costs, so the budget has to be its cores `
+        + `(${cores(box())}) and this ran on ${cores(budget)}.`);
+      return;
+    }
   }
   const idle = idleNow();
   if (refusesAsBusy({ idle, floor: IDLE_FLOOR, force })) {
@@ -611,6 +629,13 @@ function recordTheCosts(steps: readonly ChainStep[], measuredMs: ReadonlyMap<str
   }
 
   const edits = recordSeconds(measured, declared, moved);
+  // Written after the costs and only with them: the table and the box it was measured on are one fact, and
+  // the failure this closes is them moving apart. A run that adopts and then records nothing still takes the
+  // table over — every row it re-measured agreed, which is a measurement and not an absence of one.
+  if (adopt) {
+    recordMachine(thisMachine());
+    console.log(`\nadopted the table: ${machineLine(thisMachine())}`);
+  }
   if (edits.length === 0) {
     console.log('\nevery step cost what the table says, within the band — nothing recorded');
     return;

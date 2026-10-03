@@ -10,5 +10,10 @@
     "tests/transport/client.spec.ts": 54,
     "tests/views/packs/pack-detail.spec.ts": 20
   },
-  "skipped": []
+  "skipped": [],
+  "unmeasured": [],
+  "machine": {
+    "cpu": "Apple M1 Pro",
+    "cores": 10
+  }
 }

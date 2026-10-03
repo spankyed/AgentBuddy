@@ -17,5 +17,10 @@
     "tests/transport/bus-send-sender.spec.ts": 3,
     "tests/transport/dev-reload-access.spec.ts": 168
   },
-  "skipped": []
+  "skipped": [],
+  "unmeasured": [],
+  "machine": {
+    "cpu": "Apple M1 Pro",
+    "cores": 10
+  }
 }

@@ -98,5 +98,10 @@
   },
   "skipped": [
     "tests/features/code/be/claude-code-permission-flow.spec.ts"
-  ]
+  ],
+  "unmeasured": [],
+  "machine": {
+    "cpu": "Apple M1 Pro",
+    "cores": 10
+  }
 }

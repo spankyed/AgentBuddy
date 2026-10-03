@@ -11,5 +11,10 @@
     "tests/lmdb/store.spec.ts": 2006,
     "tests/no-module-state.spec.ts": 63
   },
-  "skipped": []
+  "skipped": [],
+  "unmeasured": [],
+  "machine": {
+    "cpu": "Apple M1 Pro",
+    "cores": 10
+  }
 }

@@ -13,6 +13,7 @@
  */
 import * as fs from 'node:fs';
 import * as path from 'node:path';
+import { thisMachine, type Machine } from './core-budget.ts';
 import { drifted, movedBeyondBand } from './measure.ts';
 
 /**
@@ -161,6 +162,29 @@ export interface SpecCost {
    * Recorded here it is neither, and `spec-cost:check` notices when one starts reporting a duration.
    */
   readonly skipped: string[];
+  /**
+   * Specs present in the suite with no cost yet, because the machine that added them is not this record's.
+   *
+   * **A fourth state, and the one that lets anyone but the measuring machine contribute.** A record holds two
+   * kinds of thing: *membership* — which specs exist, which is a fact about the repo — and *cost*, which is a
+   * fact about a machine. They were one map, so adding a spec meant measuring it, and the only way a second
+   * developer could satisfy `unrecorded` was to write their own box's milliseconds into a record measured on
+   * someone else's. Listed here a spec is recorded without being priced: `unrecorded` is satisfied, the
+   * placement cases have no cost to place it on and skip it, and the measuring machine fills it in on its
+   * next run.
+   *
+   * Distinct from `skipped` for the reason that doc gives about collapsing states: a skipped spec ran and
+   * reported nothing, which is permanent and correct; an unmeasured one has never run here.
+   */
+  readonly unmeasured: string[];
+  /**
+   * The machine these costs were measured on, which is what says whether they apply to the reader.
+   *
+   * Recorded here rather than read from `MEASURED_ON` (`chain-steps.ts`), which describes the box the
+   * *chain's* seconds were taken on. Two records, two machines, and nothing made them the same box — so
+   * scoping this record's checks on that constant was scoping on a fact about something else.
+   */
+  readonly machine: Machine;
   readonly measuredAt: string;
 }
 
@@ -351,7 +375,8 @@ const misplaced = (costs: Record<string, number>, files: readonly string[]): Bud
 
 /** Specs with no recorded cost and no recorded reason: a new one is unmeasured until `spec-cost:update` runs */
 export const unrecorded = (record: SpecCost, files: readonly string[]): string[] =>
-  files.filter((file) => record.costs[file] === undefined && !record.skipped.includes(file));
+  files.filter((file) => record.costs[file] === undefined
+    && !record.skipped.includes(file) && !record.unmeasured.includes(file));
 
 /**
  * Specs costing more than a fast half allows, in a package that has no slower half.
@@ -465,7 +490,23 @@ export function describeBudget(
 
 /** Recorded specs that no longer exist */
 export const stale = (record: SpecCost, files: readonly string[]): string[] =>
-  [...Object.keys(record.costs), ...record.skipped].filter((file) => !files.includes(file)).sort();
+  [...Object.keys(record.costs), ...record.skipped, ...record.unmeasured]
+    .filter((file) => !files.includes(file)).sort();
+
+/**
+ * The record with its membership brought up to date and not one cost touched.
+ *
+ * What a machine that is not the record's may write: a spec that has appeared is listed as `unmeasured`, a
+ * spec that has gone leaves whichever list held it. Nothing is measured, so nothing claims to have been.
+ */
+export function recordMembership(previous: SpecCost, files: readonly string[]): SpecCost {
+  const gone = new Set(stale(previous, files));
+  const costs = Object.fromEntries(Object.entries(previous.costs).filter(([file]) => !gone.has(file)));
+  const skipped = previous.skipped.filter((file) => !gone.has(file));
+  const kept = previous.unmeasured.filter((file) => !gone.has(file));
+  const appeared = unrecorded({ ...previous, costs, skipped }, files);
+  return { ...previous, costs, skipped, unmeasured: [...new Set([...kept, ...appeared])].sort() };
+}
 
 /**
  * The command's arguments, checked against the suites that exist.
@@ -704,6 +745,8 @@ export function settle(input: {
    * drift warning's advice to run `--all` could not be taken.
    */
   readonly rewriteAll: boolean;
+  /** Take the record over: write this machine as its own. `--all --force` off the record's machine */
+  readonly adopt?: boolean;
 }): Settled {
   const { previous, costs, measuredFiles, prune, rewriteAll } = input;
   const kept = Object.entries(previous?.costs ?? {}).filter(([spec]) => !prune.includes(spec));
@@ -727,15 +770,30 @@ export function settle(input: {
   const skipped = [...new Set([...keptSkipped, ...nowSkipped])].sort();
   const sorted = Object.fromEntries(Object.entries(settled).sort(([a], [b]) => a.localeCompare(b)));
 
+  // A spec this run priced or found wholly skipped is no longer unmeasured, whichever list it moved into.
+  // Pruned ones leave as they do everywhere else.
+  const unmeasured = (previous?.unmeasured ?? []).filter((file) => !prune.includes(file)
+    && sorted[file] === undefined && !skipped.includes(file));
+
   const same = previous !== undefined
     && Object.keys(previous.costs).length === Object.keys(sorted).length
     && Object.entries(sorted).every(([spec, ms]) => previous.costs[spec] === ms)
     && previous.skipped.length === skipped.length
-    && previous.skipped.every((file, index) => skipped[index] === file);
+    && previous.skipped.every((file, index) => skipped[index] === file)
+    && previous.unmeasured.length === unmeasured.length
+    && previous.unmeasured.every((file, index) => unmeasured[index] === file);
 
   return {
     ...changesIn(previous, settled, Object.keys(costs)),
     dropped: Object.keys(previous?.costs ?? {}).filter((spec) => sorted[spec] === undefined && !prune.includes(spec)),
-    record: { measuredAt: same ? previous.measuredAt : new Date().toISOString(), costs: sorted, skipped },
+    // The machine is the record's own, and a first record is this one's. Changing it is adopting the record,
+    // which `--all --force` is: see `update` in `scripts/spec-cost.ts`.
+    record: {
+      measuredAt: same ? previous.measuredAt : new Date().toISOString(),
+      costs: sorted,
+      skipped,
+      unmeasured,
+      machine: input.adopt || previous === undefined ? thisMachine() : previous.machine,
+    },
   };
 }
