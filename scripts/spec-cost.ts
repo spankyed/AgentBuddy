@@ -330,7 +330,8 @@ function check(only: string | undefined, named: readonly string[]): void {
     }
   }
   // **Placement is read from a cost, so it gates only on the machine that measured one.** The edges are
-  // milliseconds chosen for one machine's speed: on a box three times slower, 32 of the 363 fast-half specs
+  // milliseconds chosen for one machine's speed: on a box three times slower — inside `SLOWER_MACHINE`,
+  // which is the one place this repo says how much slower a smaller machine is — 32 of the 363 fast-half specs
   // cross the upper edge and this would fail for a tree nobody has touched. Reported there rather than
   // enforced, which is `packagesBuiltOrRefuse`'s shape — evidence that does not apply is named, not acted on.
   //

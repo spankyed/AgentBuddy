@@ -186,6 +186,21 @@ export const scheduleMismatch = (
   return budget === measuredOn.cores ? undefined : 'budget';
 };
 
+/**
+ * How much slower a smaller machine is, for anything that has to reason about one.
+ *
+ * **Measured rather than chosen, and only once.** A vitest pool dropping from nine workers to about two on a
+ * hosted runner is three to four times slower (`docs/archive/plans/costs-across-machines.md`), which is the
+ * figure the timeout ladder was sized against. Serial work stretches less than that and a single compiler
+ * less again, so four is the worst case rather than the typical one — and those two have not been measured,
+ * which is why this is one number and not one per kind of work.
+ *
+ * **Here rather than beside the ladder it sizes**, because it is a fact about machines and this module is
+ * where those live. Filed under timeouts it was unfindable from the other question that needs it: `spec-cost`
+ * reasons about a box three times slower in its own prose, and nothing tied the two figures together.
+ */
+export const SLOWER_MACHINE = 4;
+
 /** A share as vitest writes it in `poolOptions`, which is how a config and this table are compared */
 export const asPercent = (share: number): string => `${Math.round(share * 100)}%`;
 

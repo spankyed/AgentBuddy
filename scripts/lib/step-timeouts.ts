@@ -17,6 +17,8 @@
 // and suite membership — never a duration — and *refuses* a file it cannot classify rather than defaulting,
 // "because the budget is a ceiling, so the confident wrong answer is the permissive one".
 
+import { SLOWER_MACHINE } from './core-budget.ts';
+
 /**
  * The ladder. Three rungs, and each names a kind of work rather than a span of measurements.
  *
@@ -63,17 +65,7 @@ export const TIMEOUT_MS = {
 } as const;
 
 /**
- * How much slower the ladder assumes a smaller machine is.
- *
- * Measured rather than chosen: a vitest pool dropping from nine workers to about two on a hosted runner is
- * three to four times slower, which is the figure every rung above was sized against
- * (`docs/archive/plans/costs-across-machines.md`). The serial steps stretch less than that and the single
- * compilers less again, so four is the worst case and not the typical one.
- */
-export const SLOWER_MACHINE = 4;
-
-/**
- * The largest share of its class a step may declare here, which is the reciprocal of the above and not a
+ * The largest share of its class a step may declare here, which is the reciprocal of `SLOWER_MACHINE` and not a
  * separate judgement: a step at this share lands exactly on its deadline four times slower, so anything past
  * it has a deadline that has stopped being a ceiling.
  *

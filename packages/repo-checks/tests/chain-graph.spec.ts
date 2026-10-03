@@ -13,7 +13,8 @@ import { CHAIN_STEPS, chainSteps, conflictsOf, dependsOn, orderedSteps, STEP_TAB
 import { declaredAt } from '../../../scripts/lib/chain-output.ts';
 import { withoutComments } from '../../../scripts/lib/npm-scripts.ts';
 import { population } from '@abuddy/sdk/testing';
-import { MAX_DECLARED_SHARE, SLOWER_MACHINE, TIMEOUT_CLASSES, TIMEOUT_MS } from '../../../scripts/lib/step-timeouts.ts';
+import { SLOWER_MACHINE } from '../../../scripts/lib/core-budget.ts';
+import { MAX_DECLARED_SHARE, TIMEOUT_CLASSES, TIMEOUT_MS } from '../../../scripts/lib/step-timeouts.ts';
 
 describe('the chain graph', () => {
   it('orders every step after the steps it depends on', () => {

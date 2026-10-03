@@ -222,6 +222,20 @@ Six rules that pay for themselves:
   check proves it can fail on every run for microseconds. `repo-checks/tests/packaged-app-files.spec.ts` is the
   worked example; its two mutation cases corrected two wrong beliefs about the patterns they check on the first
   run, before the commit.
+- **A result that is partial says so, and there are four shapes for that — copy one rather than invent a
+  fifth.** The rule above is about a check that looked at nothing; this is about one that looked at *some* of
+  it and has to report the gap. Picking the right shape is picking what the caller can do about it:
+  **refuse**, where the evidence is missing and running on anyway is worthless (`packagesBuiltOrRefuse`,
+  `@abuddy/host/build/packages-built`, with an `ABUDDY_ALLOW_UNBUILT` hatch — it exists because thirteen spec
+  files, nine of them a whole package, reported green having checked nothing); **a distinct exit code**, where
+  "nothing covered this" and "everything covering it passed" are different answers a script has to tell apart
+  (`npm run spec`'s 3); **a named bucket beside the total**, where some of the input was unpriceable and only
+  part of it is anyone's to fix (`priceSpecs`' `unpriced` and `outside`, `scripts/lib/spec-dry.ts`); and **a
+  clause on the success line**, where the work happened but one claim in the sentence did not hold
+  (`spec-cost:check`'s *"placement unchecked for 1 of 12"*, in the shape of the chain's own
+  `(N of M cached)`). A skipped test takes its reason in the name instead, which `suite-split`'s `OFF_BOX`
+  does, so a run on another machine says why rather than quietly reporting fewer cases. What none of them is:
+  silent.
 - **A check that cannot fail today is a gate or an assertion, and they want opposite things.** A gate's
   subject is input, which can be wrong, so it needs a firing case — the rule above. An assertion's subject is
   the program's own construction, and being unreachable is the point: no input reaches it, so no case can, and
