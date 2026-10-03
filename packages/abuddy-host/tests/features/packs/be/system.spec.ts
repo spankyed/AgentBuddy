@@ -16,6 +16,7 @@ import { loadAppPacks } from '../../../../src/packs/runtime/loader.ts';
 import { reloadExternalPack } from '../../../../src/packs/runtime/reload.ts';
 import { PACK_SNAPSHOT_FORMAT } from '@abuddy/sdk/build';
 import { createPackArchive, stagePack } from '../../../../src/packs/layout.ts';
+import { PACK_LAYOUT } from '../../../../src/packs/layout.ts';
 
 const PACK_ID = 'reinstall-pack';
 
@@ -47,7 +48,7 @@ function packSource(version: string, { failsImport = false, id = PACK_ID } = {})
   fs.mkdirSync(path.join(dir, 'dist', 'types'), { recursive: true });
   fs.writeFileSync(path.join(dir, 'abuddy.json'), JSON.stringify({ id, name: 'Reinstall Pack', version }));
   fs.writeFileSync(path.join(dir, 'dist', 'runtime', 'index.cjs'), `module.exports = { registration: { id: ${JSON.stringify(id)} } };`);
-  fs.writeFileSync(path.join(dir, 'dist', 'types', 'snapshot.json'), JSON.stringify({ format: PACK_SNAPSHOT_FORMAT }));
+  fs.writeFileSync(path.join(dir, 'dist', PACK_LAYOUT.snapshot), JSON.stringify({ format: PACK_SNAPSHOT_FORMAT }));
   if (failsImport) {
     // Compiled data with no seeds.json: the seeder can't tell whose records these are, so seeding fails
     fs.mkdirSync(path.join(dir, 'dist', 'runtime', 'seeds'), { recursive: true });
@@ -210,7 +211,7 @@ describe('an installed pack the app could not load', () => {
     expect(list, 'the system emitted no PACKS_LIST').toBeDefined();
     return (list!.packs as PackInfo[]).find(p => p.id === PACK_ID);
   };
-  const snapshotFile = () => path.join(resolveAppContext().packsDir, PACK_ID, 'types', 'snapshot.json');
+  const snapshotFile = () => path.join(resolveAppContext().packsDir, PACK_ID, PACK_LAYOUT.snapshot);
 
   it('is listed with why, until a load of it succeeds', async () => {
     await installPackFromLocal(packSource('1.0.0'));

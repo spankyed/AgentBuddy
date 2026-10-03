@@ -9,6 +9,7 @@ import * as os from 'node:os';
 import * as path from 'node:path';
 import { afterAll, beforeEach, expect, it } from 'vitest';
 import { PACK_SNAPSHOT_FORMAT } from '@abuddy/sdk/build';
+import { PACK_LAYOUT } from '@abuddy/host/packs';
 
 const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'api-packaged-boot-'));
 process.env.ABUDDY_ENV = 'test';
@@ -46,7 +47,7 @@ async function installPackPlaying(id: string, role: string): Promise<void> {
   fs.writeFileSync(path.join(source, 'abuddy.json'), JSON.stringify({ id, name: id, version: '1.0.0' }));
   fs.mkdirSync(path.join(source, 'dist', 'runtime'), { recursive: true });
   fs.mkdirSync(path.join(source, 'dist', 'types'), { recursive: true });
-  fs.writeFileSync(path.join(source, 'dist', 'types', 'snapshot.json'), JSON.stringify({ format: PACK_SNAPSHOT_FORMAT }));
+  fs.writeFileSync(path.join(source, 'dist', PACK_LAYOUT.snapshot), JSON.stringify({ format: PACK_SNAPSHOT_FORMAT }));
   fs.writeFileSync(
     path.join(source, 'dist', 'runtime', 'index.cjs'),
     `module.exports = { registration: { id: ${JSON.stringify(id)}, features: { taker: { designation: ${JSON.stringify(role)} } } } };`,

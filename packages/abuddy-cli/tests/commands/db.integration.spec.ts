@@ -18,6 +18,7 @@ import { parseDbArgs } from '../../src/commands/db/target';
 import { dbRepl } from '../../src/commands/db/repl';
 import { mintInstance, openInstance } from '../../src/app/instances';
 import type { CliDirs } from '../../src/app/app-target';
+import { PACK_LAYOUT } from '@abuddy/host/packs';
 
 // `--instance` resolves a name through the CLI's own data dir, which is the real one on this machine.
 // Pointing it at a temp tree is the only way to test the lookup without reading whatever instances the
@@ -73,7 +74,7 @@ async function write(userDataDir: string, change: () => void): Promise<void> {
 /** A data dir the app ran on: default-setup published, its state, settings, and notes with a relation and a role */
 async function appDataDir(): Promise<string> {
   const dir = tempDir('abuddy-db-');
-  const snapshot = path.join(_appDirOf(dir), 'host-packs', 'default-setup', 'types', 'snapshot.json');
+  const snapshot = path.join(_appDirOf(dir), 'host-packs', 'default-setup', PACK_LAYOUT.snapshot);
   fs.mkdirSync(path.dirname(snapshot), { recursive: true });
   fs.copyFileSync(DEFAULT_SETUP_SNAPSHOT, snapshot);
   await write(dir, () => {
@@ -1042,7 +1043,7 @@ describe('abuddy db import', () => {
     const dir = await appDataDir();
     const source = await appDataDir();
     // A pack was installed when the backup was made: its snapshot declares Bookmark, which the target dir's doesn't
-    const snapshot = path.join(_appDirOf(source), 'host-packs', 'default-setup', 'types', 'snapshot.json');
+    const snapshot = path.join(_appDirOf(source), 'host-packs', 'default-setup', PACK_LAYOUT.snapshot);
     const manifest = JSON.parse(fs.readFileSync(snapshot, 'utf-8'));
     manifest.entities = { ...manifest.entities, Bookmark: 'Bookmark' };
     fs.writeFileSync(snapshot, JSON.stringify(manifest));

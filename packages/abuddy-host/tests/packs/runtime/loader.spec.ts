@@ -11,6 +11,7 @@ import { getLoadedPackEntries } from '../../../src/packs/layout.ts';
 import { resetTestData, testRootEvents as rootEvents } from '@abuddy/sdk/testing';
 import { PACK_SNAPSHOT_FORMAT, seedFile } from '@abuddy/sdk/build';
 import { _appDirOf } from '@abuddy/sdk/env';
+import { PACK_LAYOUT } from '../../../src/packs/layout.ts';
 
 
 /** The features of a loaded pack that have a system */
@@ -31,9 +32,9 @@ function makePack(
   const packDir = path.join(packsDir, id);
   fs.mkdirSync(path.join(packDir, 'runtime'), { recursive: true });
   fs.writeFileSync(path.join(packDir, 'abuddy.json'), JSON.stringify(manifest));
-  fs.writeFileSync(path.join(packDir, 'integrity.json'), JSON.stringify({ formatVersion: 1, id, version: '1.0.0', files: {} }));
+  fs.writeFileSync(path.join(packDir, PACK_LAYOUT.integrity), JSON.stringify({ formatVersion: 1, id, version: '1.0.0', files: {} }));
   fs.mkdirSync(path.join(packDir, 'types'), { recursive: true });
-  fs.writeFileSync(path.join(packDir, 'types', 'snapshot.json'), JSON.stringify({ format: PACK_SNAPSHOT_FORMAT }));
+  fs.writeFileSync(path.join(packDir, PACK_LAYOUT.snapshot), JSON.stringify({ format: PACK_SNAPSHOT_FORMAT }));
   fs.writeFileSync(path.join(packDir, 'runtime', 'index.cjs'), `module.exports = { registration: { id: ${JSON.stringify(manifest.id)}, features: ${featuresSource} } };`);
   return packDir;
 }
@@ -98,7 +99,7 @@ describe('pack-loader', () => {
 
     it("skips a pack directory that isn't an installed pack, naming how to install it", () => {
       const packDir = makePack(path.join(_appDirOf(tmpDir), 'packs'), 'unbundled', { id: 'unbundled', name: 'Unbundled', version: '1.0.0' });
-      fs.rmSync(path.join(packDir, 'integrity.json'));
+      fs.rmSync(path.join(packDir, PACK_LAYOUT.integrity));
       const warnings: string[] = [];
       const unsubscribe = rootEvents.onLog(event => {
         if (event.level === 'warn' && event.source === 'pack-loader') warnings.push(event.message);
@@ -273,8 +274,8 @@ describe('pack-loader: bundled runtime (runtime/index.cjs)', () => {
     fs.mkdirSync(path.join(packDir, 'runtime', 'seeds'), { recursive: true });
     fs.mkdirSync(path.join(packDir, 'types'), { recursive: true });
     fs.writeFileSync(path.join(packDir, 'abuddy.json'), JSON.stringify({ id, name: id, version: '1.0.0', ...manifestExtra }));
-    fs.writeFileSync(path.join(packDir, 'integrity.json'), JSON.stringify({ formatVersion: 1, id, version: '1.0.0', files: {} }));
-    fs.writeFileSync(path.join(packDir, 'types', 'snapshot.json'), JSON.stringify({ format: PACK_SNAPSHOT_FORMAT }));
+    fs.writeFileSync(path.join(packDir, PACK_LAYOUT.integrity), JSON.stringify({ formatVersion: 1, id, version: '1.0.0', files: {} }));
+    fs.writeFileSync(path.join(packDir, PACK_LAYOUT.snapshot), JSON.stringify({ format: PACK_SNAPSHOT_FORMAT }));
     fs.writeFileSync(path.join(packDir, 'runtime', 'index.cjs'), registrationSource);
     return packDir;
   }
@@ -407,7 +408,7 @@ describe('pack-loader: bundled runtime (runtime/index.cjs)', () => {
 
   it('refuses a layout version this host does not support', () => {
     const dir = makeBundledPack('future-format', registration('future-format'));
-    fs.writeFileSync(path.join(dir, 'integrity.json'), JSON.stringify({ formatVersion: 2, id: 'future-format', version: '1.0.0', files: {} }));
+    fs.writeFileSync(path.join(dir, PACK_LAYOUT.integrity), JSON.stringify({ formatVersion: 2, id: 'future-format', version: '1.0.0', files: {} }));
     expect(loadExternalPacks()).toEqual([]);
   });
 
@@ -418,7 +419,7 @@ describe('pack-loader: bundled runtime (runtime/index.cjs)', () => {
     ['a newer', PACK_SNAPSHOT_FORMAT + 1, `its snapshot is format ${PACK_SNAPSHOT_FORMAT + 1}, written by a newer abuddy CLI (SDK 0.1.0); this AgentBuddy reads format ${PACK_SNAPSHOT_FORMAT}. Update AgentBuddy to use it`],
   ])('skips a pack %s abuddy CLI built, before loading its runtime, saying which side to move', (_side, format, reason) => {
     const dir = makeBundledPack('other-build', 'throw new Error("its runtime was loaded")');
-    fs.writeFileSync(path.join(dir, 'types', 'snapshot.json'), JSON.stringify({ format, sdkVersion: '0.1.0' }));
+    fs.writeFileSync(path.join(dir, PACK_LAYOUT.snapshot), JSON.stringify({ format, sdkVersion: '0.1.0' }));
     const warnings: string[] = [];
     const unsubscribe = rootEvents.onLog((event) => { if (event.level === 'warn') warnings.push(event.message); });
     try {
@@ -774,7 +775,7 @@ describe('computePackSeedHash', () => {
     fs.writeFileSync(path.join(source, 'abuddy.json'), JSON.stringify({ id: 'reinstalled', name: 'R', version: '1.0.0' }));
     fs.writeFileSync(path.join(source, 'dist', 'runtime', 'index.cjs'), 'module.exports = {};');
     fs.mkdirSync(path.join(source, 'dist', 'types'), { recursive: true });
-    fs.writeFileSync(path.join(source, 'dist', 'types', 'snapshot.json'), JSON.stringify({ format: PACK_SNAPSHOT_FORMAT }));
+    fs.writeFileSync(path.join(source, 'dist', PACK_LAYOUT.snapshot), JSON.stringify({ format: PACK_SNAPSHOT_FORMAT }));
     fs.writeFileSync(path.join(source, 'dist', 'runtime', 'seeds', seedFile('actions')), '[{"label":"same"}]');
 
     const packsDir = path.join(_appDirOf(tmpDir), 'packs');

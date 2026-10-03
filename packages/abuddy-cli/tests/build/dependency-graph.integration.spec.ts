@@ -13,6 +13,7 @@ import * as path from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { packagesBuiltOrRefuse, REPO_ROOT } from '@abuddy/host/build/packages-built';
 import { CLI, buildPack, callCli, packageJson, preparePack, run, tsconfig } from '../_support/pack-builds';
+import { PACK_LAYOUT } from '@abuddy/host/packs';
 
 /** Skips without built packages, and refuses rather than reading a stale `dist` */
 const PACKAGES_BUILT = packagesBuiltOrRefuse('npm run packages:build (or npm test -w @abuddy/cli, which builds them)');
@@ -76,7 +77,7 @@ afterAll(() => {
 
 /** A built-in pack writes dist/snapshot.json; an external one writes it into the pack's types dir */
 const snapshotOf = (id: string) => {
-  const file = [path.join(parent, id, 'dist', 'snapshot.json'), path.join(parent, id, 'dist', 'types', 'snapshot.json')]
+  const file = [path.join(parent, id, 'dist', 'snapshot.json'), path.join(parent, id, 'dist', PACK_LAYOUT.snapshot)]
     .find((candidate) => fs.existsSync(candidate));
   if (!file) throw new Error(`no snapshot written for ${id}`);
   return JSON.parse(fs.readFileSync(file, 'utf-8'));
