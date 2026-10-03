@@ -454,19 +454,22 @@ describe('every spawn an orchestrator makes is bounded', () => {
      * rather than slow" on any box — the one unconditional verdict left, in the arm four of the five call
      * sites can reach, and in the path most likely to be running on someone else's machine.
      */
-    it('computes no rope where nothing records what the thing costs', () => {
+    it('computes no rope where this run carries no recorded cost', () => {
       const why = timedOutBecause({ what: 'bash tests/scripts/x.sh', timeout: 'scenario', measuredOn: HERE });
       expect(why).toContain('900s (scenario)');
-      expect(why).toContain('Nothing records what it costs healthy');
+      expect(why).toContain('This run carries no recorded cost');
       expect(why, 'no rope, and no invented operand to compute one from')
         .not.toMatch(/That is \d+(?:\.\d+)?x/);
     });
 
     it('still calls an overrun wedged with no cost, on the machine the ladder is sized against', () => {
       const why = timedOutBecause({ what: 'bash tests/scripts/x.sh', timeout: 'scenario', measuredOn: HERE });
-      // Supportable without a cost: the class is sized for a box `stretches` times slower, so overrunning
-      // it here means more than that whole budget and there is nothing else left to read it as
       expect(why).toContain('wedged rather than slow');
+      // **And it names what that rests on**, which is `declaredShare` holding every *declared* cost inside
+      // its rung. Without the premise the sentence denied a cost in one clause and reasoned from one in the
+      // next; with it, a reader whose run has no declared cost anywhere can see they are outside the
+      // guarantee rather than having to derive which callers it covers
+      expect(why, 'the premise, not the bare verdict').toContain('every step the chain declares');
     });
 
     it('draws no conclusion with no cost on any other machine, where being slow is the other answer', () => {
@@ -480,24 +483,33 @@ describe('every spawn an orchestrator makes is bounded', () => {
     });
 
     /**
-     * `until` reaching a terminal, which is the asymmetry this closes: `measured` was printed and its
-     * sibling was not, so an assumed rung told the reader the factor "has never measured. That number is
-     * the finding" and stopped short of which run would supply it — to the one reader who is on a machine
-     * that could.
+     * What an assumed rung tells the reader to do, which is to record the run rather than to make it.
+     *
+     * **This quoted `until` for one commit and that was circular by construction**, which is the property
+     * the second assertion pins. `until` names a run that reaches the rung; this arm prints only off the
+     * measured machine, so its reader is always on a box that can supply the evidence, and the message
+     * exists because a run just reached that rung. It therefore always named the run the reader had just
+     * made. The edit named instead is the one the provenance case polices as exactly one of `measured` and
+     * `until`, so the two cases cannot drift apart about what settling a rung means.
      */
-    it('names what would settle an assumed rung, to the reader who could settle it', () => {
+    it('tells an assumed rung\'s reader to record this run, and names the edit that does', () => {
       const assumed = ASSUMED_RUNGS[0]!;
       const why = timedOutBecause({
         what: 'typecheck:fe', timeout: assumed, seconds: 10, measuredOn: HERE, machine: SMALLER,
       });
-      expect(why, 'the row\'s own terms, not a paraphrase').toContain(TIMEOUT_MS[assumed].until);
+      expect(why).toContain('so this run is the evidence it waits for');
+      expect(why, 'the edit, so the terms and the invariant say the same thing')
+        .toContain(`put the number on ${assumed}'s \`stretches\` and move its \`until\` to \`measured\``);
+      expect(why, '`until` names the run this reader has just made, so quoting it says "do what you just did"')
+        .not.toContain(TIMEOUT_MS[assumed].until);
     });
 
-    it('offers no such terms for a measured rung, which has nothing outstanding', () => {
+    it('asks a measured rung\'s reader to record nothing, having nothing outstanding', () => {
       const why = timedOutBecause({
         what: 'test:integration', timeout: 'suite', seconds: 60, measuredOn: HERE, machine: SMALLER,
       });
-      expect(why).not.toContain('what would settle it is');
+      expect(why).not.toContain('this run is the evidence');
+      expect(why, 'the finding, and no edit to make').toContain('That number is the finding.');
     });
   });
 

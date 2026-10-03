@@ -567,6 +567,14 @@ describe('a build unit declares the modules its build script imports', () => {
  * One direction, as the flags check below takes: every assumed rung must be named. The header may also name
  * a measured one — it does, to say `suite` is the row nothing waits on — and a check that could not tell
  * that from a stale entry would have to read prose for intent.
+ *
+ * **So it catches omission and not denial, which is worth knowing before trusting it.** A substring match
+ * sees that a rung is mentioned, never what is claimed about it: it would have caught the header that named
+ * `quick` alone, and it would pass "enabling this settles `quick` and not `scenario`", which names both and
+ * is as wrong. Telling those apart means reading the sentence for intent, which is the line this does not
+ * cross — the header is prose for a person and a check that parsed it would be a second author. What stands
+ * behind the gap is review, and the derivation itself: `ASSUMED_RUNGS` cannot be wrong about the population,
+ * so a denial here is a reader's error about a list that is right rather than a stale list.
  */
 describe('CI\'s header names the rungs enabling it would settle', () => {
   /** Pure, so the case below can mutate the input rather than the workflow */

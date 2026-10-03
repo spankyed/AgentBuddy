@@ -450,12 +450,16 @@ const MUTATIONS: readonly Mutation[] = [
     }),
   },
   {
-    // `until` reached no reader at all before this: `measured` was printed and its sibling was verified by a
-    // spec and surfaced nowhere, so an assumed rung said the number was the finding and not what would settle it
-    why: 'an assumed rung names what would settle it, and a measured one does not',
+    /**
+     * The discriminator rather than either sentence, because the sentences move and this does not: an
+     * assumed rung asks the reader to record this run, a measured one reports a finding and asks for
+     * nothing. Swapping the test sends an assumed rung down the measured branch, which interpolates an
+     * absent `measured` — so the two answers differ on wording the cases in `chain-graph` pin exactly.
+     */
+    why: 'rungTerms tells an assumed rung from a measured one, so only one of them asks for a recording',
     in: 'step-timeouts',
-    from: '+ `finding, and what would settle it is ${rung.until}.`',
-    to: "+ 'finding.'",
+    from: '(rung.measured === undefined',
+    to: '(rung.measured !== undefined',
     call: (lib) => lib.timedOutBecause({
       what: 'typecheck:fe',
       timeout: 'quick',

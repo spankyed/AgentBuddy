@@ -49,6 +49,16 @@ if (!command || className === undefined) {
     // path has a class and an argv and no step record, so the rope is not a number it can compute, and
     // `timedOutBecause` says that rather than inventing one.
     //
+    // **The cost exists; this path may not reach it.** Most of the scripts bounded here are chain steps,
+    // and every chain step declares a cost, so the rope is knowable in principle — the deadline over that
+    // cost, which is the figure a kill otherwise leaves a reader without. Importing `chain-steps.ts` for it
+    // makes those steps fail `chain-table`'s stamp-reader check, which reads a runner's text and follows it
+    // into the fingerprint module — and a fourth exception there was refused in `904fcd0a3` as the check
+    // saying the import is wrong. Passing the cost as an argument is worse: a second record of that table's
+    // `seconds`, which `chain-graph.spec.ts` already refuses in the numeric form. What would change the
+    // answer is `seconds` living below the fingerprint module, which is a split of `chain-steps.ts` and out
+    // of proportion to a message.
+    //
     // `MEASURED_ON` is passed all the same, and it is the whole reason that argument is separate from the
     // cost: without it this path could not be told apart from a smaller machine, and it reported "wedged
     // rather than slow" on every box. This is the one caller most likely to be running on someone else's.

@@ -60,6 +60,20 @@ export interface Rung {
    * **Exactly one of this and `measured` is set**, which `chain-graph.spec.ts` holds: a measured rung with a
    * condition still on it is a stale one, and an assumed rung without one is a guess nobody wrote down the
    * terms of. Both are declared rather than optional, so neither is a key a caller cannot read.
+   *
+   * **Read by no code, and it must stay that way: never put this in a kill message.** It was printed there
+   * for one commit, to close a review finding that this field reached no reader while `measured` did. The
+   * finding was wrong in kind. This names a run that reaches the rung, and the arm that would print it runs
+   * only off the measured machine — so its reader is always on a box that can supply the evidence, and the
+   * message exists because a run just reached that rung. It therefore always names the run the reader has
+   * just made, whatever the wording, and `rungTerms` says "this run is the evidence" instead.
+   *
+   * **No *runtime* path reads it**, which is the rule above; one spec does, in two places.
+   * `chain-graph.spec.ts` destructures it for the exactly-one-of invariant — this field's verifier, and the
+   * check `rungTerms` sends a reader to when it says to move `until` to `measured` — and the same file
+   * asserts that the message does *not* quote it, which is what keeps the rule above from being undone
+   * quietly. Beside it, `chain-table.spec.ts` holds `ci.yml`'s header to `ASSUMED_RUNGS`: the field's
+   * *subject* rather than its text, and the check that catches the staleness this kind of prose is prone to.
    */
   readonly until: string | undefined;
 }
@@ -185,17 +199,23 @@ const factorText = (factor: number): string =>
   factor >= 10 || Number.isInteger(factor) ? `${Math.round(factor)}x` : `${factor.toFixed(1)}x`;
 
 /**
- * What a rung's stretch factor rests on, and — where it rests on a borrow — what would settle it.
+ * What a rung's stretch factor rests on, and — where it rests on a borrow — what to do with this run.
  *
- * **This is the only thing that reads `until`.** The field was verified by `chain-graph.spec.ts` and
- * surfaced nowhere, while its sibling `measured` was printed: so an off-machine kill told the reader the
- * factor "has never measured. That number is the finding" and stopped one field short of saying which run
- * would supply it — to the one reader who is on a machine that could. A rung states the terms of its own
- * assumption; this is where they reach a terminal.
+ * **It quoted `until` for one commit, and that was circular by construction.** The field names a run that
+ * reaches the rung; the arm that printed it runs only off the measured machine, so its reader is always on a
+ * box that can supply the evidence, and the message exists *because* a run just reached that rung. The rung
+ * being reported is always the rung whose bound just fired, so `until` always named the run the reader had
+ * just made — "to find out, do what you just did". No argument to `timedOutBecause` makes it otherwise, which
+ * is why the fix is not a rewording: see `until`'s own doc for the rule that keeps it out of here.
+ *
+ * So what an assumed rung says instead is the one thing that *is* true at a kill: this run is the evidence,
+ * and here is the edit that records it — the same edit `chain-graph.spec.ts` polices as exactly one of
+ * `measured` and `until`.
  */
-const rungTerms = (rung: Rung): string => (rung.measured === undefined
-  ? `which its row assumes is ${factorText(rung.stretches)} and has never measured. That number is the `
-    + `finding, and what would settle it is ${rung.until}.`
+const rungTerms = (rung: Rung, className: TimeoutClass): string => (rung.measured === undefined
+  ? `which its row assumes is ${factorText(rung.stretches)} and has never measured, so this run is the `
+    + `evidence it waits for: put the number on ${className}'s \`stretches\` and move its \`until\` to `
+    + '`measured`.'
   : `where its row records ${factorText(rung.stretches)}, measured on ${rung.measured}. That number is the `
     + 'finding.');
 
@@ -250,17 +270,29 @@ export function timedOutBecause({ what, timeout, measuredOn, machine, seconds }:
   const rung = TIMEOUT_MS[timeout];
   const here = isMeasuredMachine(measuredOn, machine);
   if (seconds === undefined || seconds <= 0) {
-    const unknown = `${killed} Nothing records what it costs healthy, so how much rope that was is unknown`;
-    // The same split as the two arms below, for the same reason: the class is sized for a box `stretches`
-    // times slower, so overrunning it *here* means more than that whole budget and wedged is the only
-    // reading left. Off this machine the step may simply be slow, and on an assumed rung how slow is the
-    // open question — so there is nothing to conclude and the rung's own terms are what to report.
+    // "This run" and not "nothing": the scripts `scripts/bounded.ts` bounds are mostly chain steps, and
+    // every chain step declares a cost (`chain-graph.spec.ts`), so what a direct run of one lacks is a step
+    // record rather than a measurement. Claiming a global absence sent a reader looking for a number that is
+    // in `chain-steps.ts`. No figures here: they are that table's, which `--record` rewrites.
+    const unknown = `${killed} This run carries no recorded cost, so how much rope that was is unknown`;
+    // The same split as the two arms below, for the same reason: a class is sized so that a declared cost
+    // fits inside it on a box `stretches` times slower, so overrunning it *here* means more than that whole
+    // budget and wedged is the only reading left. Off this machine the step may simply be slow, and on an
+    // assumed rung how slow is the open question — so there is nothing to conclude and the rung's own terms
+    // are what to report.
+    //
+    // **The verdict names its premise rather than asserting itself**, because the premise is what scopes it:
+    // `declaredShare` holds every *declared* cost under its rung, which covers the chain steps reaching here
+    // through `scripts/bounded.ts` and not a run with no declared cost anywhere — `test:external-pack`, which
+    // is no chain step, or one pack workspace of a pool, which `POOL_SECONDS` describes only in total. Stated
+    // bare, the sentence denied a cost in one clause and reasoned from one in the next.
     return here
-      ? `${unknown} — but a class is sized for a machine ${factorText(rung.stretches)} slower than this one, `
-        + 'so overrunning it here is wedged rather than slow.'
+      ? `${unknown} — but a class is sized so that every step the chain declares fits inside it on a machine `
+        + `${factorText(rung.stretches)} slower than this one, so overrunning it here is wedged rather than `
+        + 'slow.'
       : `${unknown}, and this is ${machineText(machine ?? thisMachine())} rather than `
         + `${machineText(measuredOn)}. So it is wedged, or ${timeout} stretches by more than `
-        + `${factorText(rung.stretches)} here — ${rungTerms(rung)}`;
+        + `${factorText(rung.stretches)} here — ${rungTerms(rung, timeout)}`;
   }
   const rope = factorText(rung.ms / (seconds * 1000));
   if (here) {
@@ -270,5 +302,5 @@ export function timedOutBecause({ what, timeout, measuredOn, machine, seconds }:
   }
   return `${killed} That is ${rope} the ${seconds}s it costs healthy on ${machineText(measuredOn)}, and this `
     + `is ${machineText(machine ?? thisMachine())}. So either it is wedged, or ${timeout} stretches by more `
-    + `than ${rope} here — ${rungTerms(rung)}`;
+    + `than ${rope} here — ${rungTerms(rung, timeout)}`;
 }
