@@ -137,9 +137,9 @@ The environment follows the app: a checkout runs as `development`, and a package
 - `--ephemeral` — a new one, removed when `run` exits
 - `--with-secrets` — copy the secrets this environment already holds into the **new** instance, so a throwaway run can use them without you entering anything again. The values are encrypted in the instance's own data dir, and the data key that decrypts them goes in a file beside them rather than the OS credential store, so `rm -rf` removes both; that also means they are protected by file permissions alone, which is the trade every instance makes and which Settings states
 
-An instance is self-contained — its data, packs, logs and secrets are all inside it, and the data key that encrypts its secrets goes in a file beside them rather than into the OS keychain, which is shared by every app of one channel. So `rm -rf` is the whole cleanup, and `abuddy clean --instances` does it for you. The path is printed, and `abuddy db --instance <name>` opens its database — by the same name `run` and `clean` show, ephemeral instances included.
+An instance is self-contained — its data, packs, logs and secrets are all inside it, and the data key that encrypts its secrets goes in a file beside them rather than into the OS keychain, which is shared by every app of one channel. So `rm -rf` is the whole cleanup, and `abuddy instances rm <name>` does it for you. The path is printed, and `abuddy db --instance <name>` opens its database — by the same name `run` and `instances` show, ephemeral instances included.
 
-An instance is bound to the kind of app that created it — a checkout or a packaged build — because the two keep their databases in different places, and a directory holding both is one no tool can open. `run` refuses the mismatch rather than creating it.
+An instance is a data dir and nothing else: the environment, the app's identity and the URL scheme are untouched, so `--app beta` and a local checkout can both run the same instance.
 
 An app already running on that data dir is used as it is; otherwise `run` starts one, and closing `run` closes the app it started. It then builds, installs the pack into that app's data dir, and:
 
@@ -408,13 +408,38 @@ In the AgentBuddy repo, `npm run db:query`, `db:exec`, `db:repl`, `db:inspect`, 
 
 ### Cleanup
 
+#### `abuddy instances`
+
+Every AgentBuddy data dir on this machine, and the verbs for the ones you made. Works outside a pack — a
+data dir belongs to you rather than to any pack.
+
+```
+abuddy instances                  what exists
+abuddy instances --sizes          with a size column
+abuddy instances --ephemeral      include the throwaway dirs `run --ephemeral` makes
+abuddy instances new [name]       create one; a name is minted if you don't give one
+abuddy instances rename <a> <b>   rename one
+abuddy instances rm <name>...     remove the ones you name
+abuddy instances rm --leaked      remove the ones a killed run left behind
+```
+
+Two kinds of directory, listed apart. An **environment** is where an app of that channel keeps its data —
+production, beta, development, test — and nothing here removes one; a row says whether an app has it open,
+what version last wrote to it, and `(no app data)` when the directory holds only a browser profile. An
+**instance** is a data dir you can throw away.
+
+Sizes are behind a flag because taking them means walking every directory: measured, 674ms for a 1.4GB
+production dir and 1255ms for a 1.5GB development one. Names and paths come back immediately.
+
+An instance an app is currently running on is never renamed or removed: taking a data dir away from a
+running app does not stop it, it makes the app write the directory back.
+
 #### `abuddy clean`
 
 Remove build output: `dist/`, `.abuddy/`, `src/__generated__/`.
 
-`--instances` lists the data dirs `abuddy run` created and removes the ones a finished run left (`--all`
-takes named ones too). `--apps` lists the AgentBuddy Beta builds `--app beta` downloaded — a few hundred
-megabytes each, one per release tested against — and removes all but the newest, which is the one resolution
-would reuse; `--all` removes every build. Both work outside a pack.
+`--apps` lists the AgentBuddy Beta builds `--app beta` downloaded — a few hundred megabytes each, one per
+release tested against — and removes all but the newest, which is the one a later run would reuse; `--all`
+removes every build. It works outside a pack.
 
-`--instances` lists the instances `abuddy run` created, with their sizes, and removes the ones a run left behind when it was killed. It works outside a pack, since instances belong to you rather than to any pack. `--all` removes the named ones too. An instance an app is currently running on is never removed, whichever flag you pass: taking a data dir away from a running app does not stop it, it makes it write the directory back.
+Data dirs are `abuddy instances`, below: what exists, and removing the ones you own.

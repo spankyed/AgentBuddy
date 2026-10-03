@@ -11,6 +11,7 @@ import {
   openInstance,
   parseInstanceFlags,
   removeInstance,
+  renameInstance,
 } from '../../src/app/instances';
 import type { CliDirs } from '../../src/app/app-target';
 import { resolveAppContext } from '@abuddy/sdk/env';
@@ -135,6 +136,53 @@ describe('what removing accepts', () => {
     fs.mkdirSync(sibling, { recursive: true });
     expect(() => removeInstance(dirs, sibling)).toThrow(/is not inside/);
     expect(fs.existsSync(sibling)).toBe(true);
+  });
+});
+
+describe('renaming an instance', () => {
+  it('moves the directory and leaves the name free', () => {
+    const made = openInstance(dirs, 'memo-work');
+    fs.writeFileSync(path.join(made.dir, 'proof'), 'x');
+
+    const { dir } = renameInstance(dirs, 'memo-work', 'memos');
+
+    expect(dir).toBe(path.join(root(), 'memos'));
+    expect(fs.readFileSync(path.join(dir, 'proof'), 'utf-8')).toBe('x');
+    expect(fs.existsSync(made.dir)).toBe(false);
+  });
+
+  /**
+   * Refused rather than merged into: `fs.renameSync` onto a directory throws or replaces depending on the
+   * platform and whether the target is empty, and neither is an answer to "rename this".
+   */
+  it('refuses a target that already exists, and moves nothing', () => {
+    openInstance(dirs, 'one');
+    openInstance(dirs, 'two');
+
+    expect(() => renameInstance(dirs, 'one', 'two')).toThrow(/already exists/);
+    expect(fs.existsSync(path.join(root(), 'one'))).toBe(true);
+  });
+
+  it('refuses a target name a filesystem would mangle', () => {
+    openInstance(dirs, 'one');
+    expect(() => renameInstance(dirs, 'one', '../escape')).toThrow(/instance name/);
+    expect(fs.existsSync(path.join(root(), 'one'))).toBe(true);
+  });
+
+  it('says so when there is nothing by that name', () => {
+    expect(() => renameInstance(dirs, 'absent', 'present')).toThrow(/No instance named "absent"/);
+  });
+
+  // The same refusal `removeInstance` carries, one step worse: a running app holds paths inside the
+  // directory, so moving it leaves the app writing somewhere that no longer exists
+  it('refuses while an app has it open', () => {
+    const live = openInstance(dirs, 'live');
+    const { apiPortFile } = resolveAppContext({ env: 'development', userDataDir: live.dir });
+    fs.mkdirSync(path.dirname(apiPortFile), { recursive: true });
+    fs.writeFileSync(apiPortFile, JSON.stringify({ port: 51234, pid: process.pid }));
+
+    expect(() => renameInstance(dirs, 'live', 'moved')).toThrow(/An app is running on/);
+    expect(fs.existsSync(live.dir)).toBe(true);
   });
 });
 

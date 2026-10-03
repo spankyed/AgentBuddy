@@ -9,6 +9,7 @@ import { loadExternalPacks } from '@abuddy/host/packs/runtime';
 import { init } from '../../src/commands/init';
 import { PACK_SNAPSHOT_FORMAT } from '@abuddy/sdk/build';
 import { _appDirOf } from '@abuddy/sdk/env';
+import { PACK_LAYOUT } from '@abuddy/host/packs';
 
 // The loader checks each pack's hostVersion against the app version
 startTestRuntime({ appVersion: '1.0.0' });
@@ -38,7 +39,7 @@ function writeBuild(packDir: string, id: string, featuresSource: string) {
     fs.writeFileSync(path.join(packDir, 'dist', rel), content);
   };
   write('runtime/index.cjs', `module.exports = { registration: { id: ${JSON.stringify(id)}, features: ${featuresSource} } };`);
-  write('types/snapshot.json', JSON.stringify({ format: PACK_SNAPSHOT_FORMAT }));
+  write(PACK_LAYOUT.snapshot, JSON.stringify({ format: PACK_SNAPSHOT_FORMAT }));
 }
 
 describe('pack full lifecycle: init → install → load', () => {
@@ -65,7 +66,7 @@ describe('pack full lifecycle: init → install → load', () => {
 
     const installedDir = path.join(packsDir, 'my-test-pack');
     expect(fs.existsSync(path.join(installedDir, 'abuddy.json'))).toBe(true);
-    expect(fs.existsSync(path.join(installedDir, 'integrity.json'))).toBe(true);
+    expect(fs.existsSync(path.join(installedDir, PACK_LAYOUT.integrity))).toBe(true);
     expect(fs.existsSync(path.join(installedDir, 'runtime', 'index.cjs'))).toBe(true);
 
     // The loader finds it under ABUDDY_USER_DATA_DIR

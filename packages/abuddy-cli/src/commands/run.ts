@@ -268,7 +268,7 @@ async function session(args: string[], hooks: SessionHooks) {
    * to the signals alone left the case that actually happens while developing — a pack that fails to
    * build — exiting through the CLI's own error handler and leaking the directory. A SIGKILL still
    * leaks one, which is why an ephemeral dir carries the pid that made it and
-   * `abuddy clean --instances` can reclaim it.
+   * `abuddy instances rm --leaked` can reclaim it.
    */
   let tornDown = false;
   async function teardown(): Promise<void> {

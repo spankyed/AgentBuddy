@@ -12,6 +12,7 @@ import { loadExternalPacks, registerExternalPacks } from '../../../src/packs/run
 import { PLUGIN_EVENT_TYPES } from '@abuddy/sdk/events';
 import { PACK_SNAPSHOT_FORMAT } from '@abuddy/sdk/build';
 import { _appDirOf } from '@abuddy/sdk/env';
+import { PACK_LAYOUT } from '../../../src/packs/layout.ts';
 
 /** The events a pack's plugin receives: what its pack declares, and what the app sends every plugin */
 const receives = (...types: string[]) => new Set([...types, ...PLUGIN_EVENT_TYPES]);
@@ -30,9 +31,9 @@ function installDeclaringPack(received: string[]) {
     id: PACK_ID, name: 'Declaring Pack', version: '1.0.0',
     features: [{ id: 'memos', plugin: { entry: 'fe/plugin.ts' } }],
   }));
-  fs.writeFileSync(path.join(packDir, 'integrity.json'), JSON.stringify({ formatVersion: 1, id: PACK_ID, version: '1.0.0', files: {} }));
+  fs.writeFileSync(path.join(packDir, PACK_LAYOUT.integrity), JSON.stringify({ formatVersion: 1, id: PACK_ID, version: '1.0.0', files: {} }));
   fs.mkdirSync(path.join(packDir, 'types'), { recursive: true });
-  fs.writeFileSync(path.join(packDir, 'types', 'snapshot.json'), JSON.stringify({ format: PACK_SNAPSHOT_FORMAT }));
+  fs.writeFileSync(path.join(packDir, PACK_LAYOUT.snapshot), JSON.stringify({ format: PACK_SNAPSHOT_FORMAT }));
   fs.writeFileSync(path.join(packDir, 'runtime', 'index.cjs'), `module.exports = { registration: ${JSON.stringify({
     id: PACK_ID,
     features: { memos: { plugin: { receives: received } } },

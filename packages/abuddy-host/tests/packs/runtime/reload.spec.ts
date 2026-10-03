@@ -8,6 +8,7 @@ import * as path from 'node:path';
 import { registry } from './test-host.ts';
 import { PACK_SNAPSHOT_FORMAT } from '@abuddy/sdk/build';
 import { _appDirOf } from '@abuddy/sdk/env';
+import { PACK_LAYOUT } from '../../../src/packs/layout.ts';
 
 const { publishHostPackOutput } = await import('../../../src/packs/index.ts');
 const { registerPack, unregisterPack, getPackRegistration, registerShutdownHook, removeShutdownHooksForKey } = registry;
@@ -34,8 +35,8 @@ function writeRebuild(runtimeSource: string) {
   fs.mkdirSync(path.join(packDir, 'runtime', 'seeds'), { recursive: true });
   fs.mkdirSync(path.join(packDir, 'types'), { recursive: true });
   fs.writeFileSync(path.join(packDir, 'abuddy.json'), JSON.stringify({ id: PACK_ID, name: PACK_ID, version: '1.0.1' }));
-  fs.writeFileSync(path.join(packDir, 'integrity.json'), JSON.stringify({ formatVersion: 1, id: PACK_ID, version: '1.0.1', files: {} }));
-  fs.writeFileSync(path.join(packDir, 'types', 'snapshot.json'), JSON.stringify({ format: PACK_SNAPSHOT_FORMAT }));
+  fs.writeFileSync(path.join(packDir, PACK_LAYOUT.integrity), JSON.stringify({ formatVersion: 1, id: PACK_ID, version: '1.0.1', files: {} }));
+  fs.writeFileSync(path.join(packDir, PACK_LAYOUT.snapshot), JSON.stringify({ format: PACK_SNAPSHOT_FORMAT }));
   fs.writeFileSync(path.join(packDir, 'runtime', 'index.cjs'), runtimeSource);
 }
 
@@ -260,7 +261,7 @@ describe('reloading a built-in pack', () => {
     expect(loggedErrors.join('\n')).toContain('ENOENT');
     // ...and the artifacts are still published, which the seed used to skip on its way out
     const { hostPacksDir } = resolveAppContext();
-    expect(fs.existsSync(path.join(hostPacksDir, BUILT_IN_ID, 'types', 'snapshot.json'))).toBe(true);
+    expect(fs.existsSync(path.join(hostPacksDir, BUILT_IN_ID, PACK_LAYOUT.snapshot))).toBe(true);
   });
 
   it("republishes the pack's build output and re-reads its manifest", async () => {
@@ -275,7 +276,7 @@ describe('reloading a built-in pack', () => {
 
     await reloadBuiltInPack(registry, BUILT_IN_ID, bus as never);
 
-    expect(fs.readFileSync(path.join(hostPacksDir, BUILT_IN_ID, 'types', 'snapshot.json'), 'utf-8')).toContain('Widget');
+    expect(fs.readFileSync(path.join(hostPacksDir, BUILT_IN_ID, PACK_LAYOUT.snapshot), 'utf-8')).toContain('Widget');
     expect(registry.packOrigin(BUILT_IN_ID)?.version).toBe('2.0.0');
   });
 

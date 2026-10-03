@@ -4,6 +4,7 @@ import * as path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import { packFixture } from '@abuddy/sdk/testing/pack-fixture';
 import { build, clearBuildOutput } from '../../src/commands/build';
+import { PACK_LAYOUT } from '@abuddy/host/packs';
 
 /** abuddy build starts from no earlier output of its own, so nothing stale ships or gets published */
 let dist: string;
@@ -33,7 +34,7 @@ describe('clearBuildOutput', () => {
   });
 
   it("clears an external pack's whole dist/", () => {
-    previousBuild(['runtime/index.cjs', 'build/steps.build.mjs', 'types/snapshot.json']);
+    previousBuild(['runtime/index.cjs', 'build/steps.build.mjs', PACK_LAYOUT.snapshot]);
     clearBuildOutput(dist, { builtIn: false });
     expect(fs.existsSync(dist)).toBe(false);
   });
@@ -103,6 +104,6 @@ describe('a pack whose runtime fails to bundle', () => {
     } finally {
       process.chdir(cwd);
     }
-    expect(list(dist)).not.toContain('types/snapshot.json');
+    expect(list(dist)).not.toContain(PACK_LAYOUT.snapshot);
   });
 });

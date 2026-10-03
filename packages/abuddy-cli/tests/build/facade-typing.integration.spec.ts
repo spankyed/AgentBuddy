@@ -5,6 +5,7 @@ import ts from 'typescript';
 import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest';
 import { PACKAGES_BUILT, REPO_ROOT, installPublishedPackages } from '@app/publish-checks';
 import { callCli, packageJson, preparePack, tsconfig, typecheckPack, write } from '../_support/pack-builds';
+import { PACK_LAYOUT } from '@abuddy/host/packs';
 
 /**
  * A pack's typed facades (#generated/ears, events, services, repository) cover its own
@@ -419,12 +420,12 @@ describe.each(LAYOUTS)('generated facades with a dependency ($name)', ({ publish
   afterAll(() => fs.rmSync(parent, { recursive: true, force: true }));
 
   it("writes the dependency's facade types into its snapshot", () => {
-    const snapshot = JSON.parse(fs.readFileSync(path.join(parent, 'base-pack', 'dist', 'types', 'snapshot.json'), 'utf-8'));
+    const snapshot = JSON.parse(fs.readFileSync(path.join(parent, 'base-pack', 'dist', PACK_LAYOUT.snapshot), 'utf-8'));
     expect(snapshot.defs['pack-types']).toMatch(/export type \{[^}]*PackEntityShapes[^}]*\}/);
   });
 
   it("gives dependents the dependency's system events without its machines", () => {
-    const snapshot = JSON.parse(fs.readFileSync(path.join(parent, 'base-pack', 'dist', 'types', 'snapshot.json'), 'utf-8'));
+    const snapshot = JSON.parse(fs.readFileSync(path.join(parent, 'base-pack', 'dist', PACK_LAYOUT.snapshot), 'utf-8'));
     expect(snapshot.defs['pack-types']).toMatch(/export type \{[^}]*PackSystemEvents[^}]*\}/);
     expect(snapshot.defs['pack-types']).toMatch(/type: ["']ADD_TAG["']/);
     expect(snapshot.defs['pack-types']).not.toContain('StateMachine');

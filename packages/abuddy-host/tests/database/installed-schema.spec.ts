@@ -6,10 +6,11 @@ import { readInstalledSchema } from '../../src/database/schema.ts';
 import { pruneHostPackOutputs } from '../../src/packs/layout.ts';
 import { dataDirWithPacks, removeTempDirs, schemaContext } from './fixtures.ts';
 import { _appDirOf } from '@abuddy/sdk/env';
+import { PACK_LAYOUT } from '../../src/packs/layout.ts';
 
 afterEach(removeTempDirs);
 
-const snapshotFile = (dir: string, id = 'core') => path.join(_appDirOf(dir), 'host-packs', id, 'types', 'snapshot.json');
+const snapshotFile = (dir: string, id = 'core') => path.join(_appDirOf(dir), 'host-packs', id, PACK_LAYOUT.snapshot);
 const manifestFile = (dir: string, id: string) => path.join(_appDirOf(dir), 'packs', id, 'abuddy.json');
 const write = (file: string, content: unknown) =>
   fs.writeFileSync(file, typeof content === 'string' ? content : JSON.stringify(content));

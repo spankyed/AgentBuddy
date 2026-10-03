@@ -7,6 +7,7 @@ import { createPackArchive, publishHostPackOutput, stagePack } from '@abuddy/hos
 import { resolveDepFiles } from '../../src/commands/fetch-deps';
 import { PACK_SNAPSHOT_FORMAT } from '@abuddy/sdk/build';
 import { _appDirOf } from '@abuddy/sdk/env';
+import { PACK_LAYOUT } from '@abuddy/host/packs';
 
 let tmp: string;
 const saved = { env: process.env.ABUDDY_ENV, dir: process.env.ABUDDY_USER_DATA_DIR, root: process.env.ABUDDY_ROOT };
@@ -56,7 +57,7 @@ describe('publishHostPackOutput', () => {
     const dest = path.join(_appDirOf(tmp), 'host-packs', 'base-pack');
 
     expect(publishHostPackOutput(src, dest)).toBe(true);
-    expect(fs.readFileSync(path.join(dest, 'types', 'snapshot.json'), 'utf-8')).toContain('base-pack');
+    expect(fs.readFileSync(path.join(dest, PACK_LAYOUT.snapshot), 'utf-8')).toContain('base-pack');
     expect(fs.existsSync(path.join(dest, 'build', 'steps.build.mjs'))).toBe(true);
     expect(fs.readFileSync(path.join(dest, 'runtime', 'index.cjs'), 'utf-8')).toContain('registration');
     // The compiled seeds its runtime reads (settings defaults), and nothing else from dist
@@ -272,7 +273,7 @@ describe('dependency resolution from an installed app', () => {
     const manifest = { id: 'dep-pack', name: 'Dep', version };
     fs.writeFileSync(path.join(src, 'abuddy.json'), JSON.stringify(manifest));
     fs.writeFileSync(path.join(src, 'dist', 'runtime', 'index.cjs'), 'exports.registration = { id: "dep-pack" };');
-    fs.writeFileSync(path.join(src, 'dist', 'types', 'snapshot.json'), JSON.stringify({ types: { entities: {}, relKinds: {} }, defs: {}, manifest, format }));
+    fs.writeFileSync(path.join(src, 'dist', PACK_LAYOUT.snapshot), JSON.stringify({ types: { entities: {}, relKinds: {} }, defs: {}, manifest, format }));
     const stage = path.join(tmp, `stage-${version}`);
     stagePack(src, stage);
     const archive = await createPackArchive(stage, path.join(tmp, 'releases'));
