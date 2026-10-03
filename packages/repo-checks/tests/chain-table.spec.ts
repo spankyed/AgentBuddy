@@ -17,6 +17,7 @@ import { TYPECHECK_LEGS } from '../../../scripts/lib/typecheck-legs.ts';
 import { POOLS, poolUnitFor, type Pool } from '../../../scripts/lib/unit-pool.ts';
 import { asPercent, POOL_WIDTH, shareOf, UNCAPPED } from '../../../scripts/lib/core-budget.ts';
 import { chainFlagNames } from '../../../scripts/lib/chain-flags.ts';
+import { ASSUMED_RUNGS } from '../../../scripts/lib/step-timeouts.ts';
 import { relativeSpecifiers, resolveRelative } from '../../../scripts/lib/module-graph.ts';
 import { PACKAGE_DIRS } from '../../../scripts/lib/workspace-deps.ts';
 import { population } from '@abuddy/sdk/testing';
@@ -546,6 +547,66 @@ describe('a build unit declares the modules its build script imports', () => {
       return closure.length > 1 ? [] : [`${workspace}'s closure is ${closure.length} files`];
     });
     expect(shallow, 'a closure of one file is the entry alone, which means the walk resolved nothing').toEqual([]);
+  });
+});
+
+/**
+ * The rungs whose stretch factor is a borrow, against the prose that tells a person which they are.
+ *
+ * `ASSUMED_RUNGS` (`step-timeouts.ts`) is derived from the table and is therefore always right. Nothing
+ * held the prose to it, and the prose went stale inside a day: `ci.yml`'s header said enabling CI would
+ * validate *one* of the two borrowed rows, when `scripts/bounded.ts` is a second path into the ladder and
+ * CI's `external-pack-e2e` job bounds at `scenario` through it — so **both** are reached. `5300582c3`
+ * corrected that in eight paths and missed a ninth.
+ *
+ * **This header and not the other five restatements.** It is the only one outside source, so no reader of
+ * the code passes it on the way, and it is what a person reads when deciding whether to switch the triggers
+ * on — the moment the claim is acted on rather than skimmed. The five in source sit beside the derivation
+ * and move with it under review.
+ *
+ * One direction, as the flags check below takes: every assumed rung must be named. The header may also name
+ * a measured one — it does, to say `suite` is the row nothing waits on — and a check that could not tell
+ * that from a stale entry would have to read prose for intent.
+ */
+describe('CI\'s header names the rungs enabling it would settle', () => {
+  /** Pure, so the case below can mutate the input rather than the workflow */
+  const unnamed = (rungs: readonly string[], header: string): string[] =>
+    rungs.filter((rung) => !header.includes(rung));
+
+  /**
+   * The prose above `jobs:`, which is the part addressed to a person rather than to Actions.
+   *
+   * Every top-level comment before the first job, rather than "the lines before the first key" — the file
+   * opens with `name: CI`, so that reading returned an empty string and the case passed over nothing. It
+   * stops at `jobs:` so a rung named in a `run:` step does not satisfy this: those are commands, and a
+   * command naming `scenario` says nothing about which rows enabling the workflow would settle.
+   */
+  const CI_YML = () => fs.readFileSync(path.join(REPO_ROOT, '.github', 'workflows', 'ci.yml'), 'utf-8');
+  const header = (): string => CI_YML().split('\n')
+    .slice(0, CI_YML().split('\n').findIndex((line) => line.startsWith('jobs:')))
+    .filter((line) => line.startsWith('#')).join('\n');
+
+  it('names every rung whose factor is still a borrow', () => {
+    const rungs = population('the assumed rungs', ASSUMED_RUNGS);
+    expect(unnamed(rungs, header()),
+      "name these in .github/workflows/ci.yml's header, or stop claiming the derivation keeps it honest")
+      .toEqual([]);
+  });
+
+  it('reports a rung the header never mentions, which is what the case above rests on', () => {
+    // The mutation, over the input: a header that happened to contain every word would satisfy the case
+    // above whatever it claimed, which is the state it was in when it named the wrong count
+    expect(unnamed(['quick', 'scenario'], '# quick, through typecheck. suite is measured.'))
+      .toEqual(['scenario']);
+  });
+
+  it('reads the prose and not the jobs, so a run: step naming a rung does not count', () => {
+    // Both halves matter: it must find something (the empty-string reading passed every assertion over it)
+    // and it must not be the whole file (every rung appears in some `run:` line)
+    expect(header(), 'the prose above jobs:').not.toBe('');
+    expect(header().length).toBeLessThan(CI_YML().length);
+    expect(header().split('\n').every((line) => line.startsWith('#')),
+      'comment lines only, so nothing a job says can satisfy the case above').toBe(true);
   });
 });
 

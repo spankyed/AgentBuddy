@@ -2,8 +2,9 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { REPO_ROOT } from '@abuddy/host/build/packages-built';
-import { CHAIN_STEPS, MEASURED_ON } from '../../../scripts/lib/chain-steps.ts';
-import { machineLine, planMachineEdit, planSecondsEdits, SECONDS_TABLES } from '../../../scripts/lib/record-seconds.ts';
+import { CHAIN_STEPS } from '../../../scripts/lib/chain-steps.ts';
+import { MEASURED_ON } from '../../../scripts/lib/core-budget.ts';
+import { MACHINE_TABLE, machineLine, planMachineEdit, planSecondsEdits, SECONDS_TABLES } from '../../../scripts/lib/record-seconds.ts';
 import { movedBeyondBand } from '../../../scripts/lib/measure.ts';
 import { population } from '@abuddy/sdk/testing';
 
@@ -84,7 +85,9 @@ describe('recording what a step cost', () => {
    * numbers were in the file and ran on the box whose were not.
    */
   it('rewrites the machine the table was measured on, and nothing else in the file', () => {
-    const source = tables().get('scripts/lib/chain-steps.ts')!;
+    // `MACHINE_TABLE`, not one of `SECONDS_TABLES`: the machine moved beside `Machine` in `core-budget.ts`
+    // so a leaf could ask which box it is on without the step table, and this read named the old file
+    const source = fs.readFileSync(path.join(REPO_ROOT, MACHINE_TABLE), 'utf-8');
     const next = planMachineEdit(source, { cpu: 'Some Other CPU', cores: 4 });
 
     expect(next).toContain("export const MEASURED_ON: Machine = { cpu: 'Some Other CPU', cores: 4 };");

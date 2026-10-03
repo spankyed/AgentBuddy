@@ -406,12 +406,12 @@ describe('every spawn an orchestrator makes is bounded', () => {
 
     it('states the rope it got, which is its deadline over what it costs healthy', () => {
       // 300s for a 13s step is 23x, and that is the number a kill proves a lower bound on
-      expect(timedOutBecause({ what: 'compile', timeout: 'suite', healthy: { seconds: 13, measuredOn: HERE } }))
+      expect(timedOutBecause({ what: 'compile', timeout: 'suite', seconds: 13, measuredOn: HERE }))
         .toContain('That is 23x the 13s it costs healthy here');
     });
 
     it('calls it wedged on the machine the costs were measured on', () => {
-      const why = timedOutBecause({ what: 'compile', timeout: 'suite', healthy: { seconds: 13, measuredOn: HERE } });
+      const why = timedOutBecause({ what: 'compile', timeout: 'suite', seconds: 13, measuredOn: HERE });
       expect(why).toContain('so it is wedged rather than slow');
       expect(why, 'the deadline and its class, so a reader need not look the rung up').toContain('300s (suite)');
     });
@@ -423,7 +423,7 @@ describe('every spawn an orchestrator makes is bounded', () => {
     it('names the rung and its factor on any other machine, and calls the rope the finding', () => {
       const assumed = ASSUMED_RUNGS[0]!;
       const why = timedOutBecause({
-        what: 'typecheck:fe', timeout: assumed, healthy: { seconds: 10, measuredOn: HERE, machine: SMALLER },
+        what: 'typecheck:fe', timeout: assumed, seconds: 10, measuredOn: HERE, machine: SMALLER,
       });
       expect(why, 'never the flat conclusion, which here is the half of the answer that is not knowable')
         .not.toContain('so it is wedged rather than slow');
@@ -438,7 +438,7 @@ describe('every spawn an orchestrator makes is bounded', () => {
       // than an assumption — the same arm, a different claim, and getting those two the same way round is the
       // point of carrying the provenance on the rung
       const why = timedOutBecause({
-        what: 'test:integration', timeout: 'suite', healthy: { seconds: 60, measuredOn: HERE, machine: SMALLER },
+        what: 'test:integration', timeout: 'suite', seconds: 60, measuredOn: HERE, machine: SMALLER,
       });
       expect(why).toContain('where its row records');
       expect(why, 'the provenance itself, not a copy of it').toContain(TIMEOUT_MS.suite.measured);
@@ -448,12 +448,56 @@ describe('every spawn an orchestrator makes is bounded', () => {
      * And the arm `scripts/bounded.ts` takes, which is the one that matters: that path has a class and an
      * argv and no step record at all, so a rope is not a number it can compute. It says so rather than
      * reaching for a `?` or a zero — the same refusal `priceSpecs` makes about an unrecorded spec.
+     *
+     * **It is gated on the machine like the other two, which took a correction.** The cost and the machine
+     * were one optional argument, so the arm with no cost had no machine either and said "usually wedged
+     * rather than slow" on any box — the one unconditional verdict left, in the arm four of the five call
+     * sites can reach, and in the path most likely to be running on someone else's machine.
      */
     it('computes no rope where nothing records what the thing costs', () => {
-      const why = timedOutBecause({ what: 'bash tests/scripts/x.sh', timeout: 'scenario' });
+      const why = timedOutBecause({ what: 'bash tests/scripts/x.sh', timeout: 'scenario', measuredOn: HERE });
       expect(why).toContain('900s (scenario)');
       expect(why).toContain('Nothing records what it costs healthy');
-      expect(why, 'no rope, and no invented operand to compute one from').not.toMatch(/\d+(?:\.\d+)?x/);
+      expect(why, 'no rope, and no invented operand to compute one from')
+        .not.toMatch(/That is \d+(?:\.\d+)?x/);
+    });
+
+    it('still calls an overrun wedged with no cost, on the machine the ladder is sized against', () => {
+      const why = timedOutBecause({ what: 'bash tests/scripts/x.sh', timeout: 'scenario', measuredOn: HERE });
+      // Supportable without a cost: the class is sized for a box `stretches` times slower, so overrunning
+      // it here means more than that whole budget and there is nothing else left to read it as
+      expect(why).toContain('wedged rather than slow');
+    });
+
+    it('draws no conclusion with no cost on any other machine, where being slow is the other answer', () => {
+      const why = timedOutBecause({
+        what: 'bash tests/scripts/x.sh', timeout: 'scenario', measuredOn: HERE, machine: SMALLER,
+      });
+      expect(why, 'the verdict this change exists to stop it making').not.toContain('wedged rather than slow');
+      expect(why).toContain('So it is wedged, or scenario stretches by more than');
+      expect(why, 'both machines, so the reader knows which is which').toContain(machineText(SMALLER));
+      expect(why).toContain(machineText(HERE));
+    });
+
+    /**
+     * `until` reaching a terminal, which is the asymmetry this closes: `measured` was printed and its
+     * sibling was not, so an assumed rung told the reader the factor "has never measured. That number is
+     * the finding" and stopped short of which run would supply it — to the one reader who is on a machine
+     * that could.
+     */
+    it('names what would settle an assumed rung, to the reader who could settle it', () => {
+      const assumed = ASSUMED_RUNGS[0]!;
+      const why = timedOutBecause({
+        what: 'typecheck:fe', timeout: assumed, seconds: 10, measuredOn: HERE, machine: SMALLER,
+      });
+      expect(why, 'the row\'s own terms, not a paraphrase').toContain(TIMEOUT_MS[assumed].until);
+    });
+
+    it('offers no such terms for a measured rung, which has nothing outstanding', () => {
+      const why = timedOutBecause({
+        what: 'test:integration', timeout: 'suite', seconds: 60, measuredOn: HERE, machine: SMALLER,
+      });
+      expect(why).not.toContain('what would settle it is');
     });
   });
 

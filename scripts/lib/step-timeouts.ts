@@ -128,10 +128,18 @@ export type TimeoutClass = keyof typeof TIMEOUT_MS;
 export const TIMEOUT_CLASSES = Object.keys(TIMEOUT_MS) as readonly TimeoutClass[];
 
 /**
- * The rungs whose `stretches` nobody has measured — derived, so prose cannot name the wrong ones.
+ * The rungs whose `stretches` nobody has measured — derived, and what the prose about them is held to.
  *
- * Two of three, and the honest resting state for both rather than a promise something will fix them: see
- * each one's `until`.
+ * **"Derived, so prose cannot name the wrong ones" was half the job and it read as the whole of it.** The
+ * derivation makes this list right; nothing made the prose match it, and six places restate which rungs are
+ * assumed. One of them went stale within a day — `ci.yml`'s header named the wrong count of what enabling
+ * CI would settle, which `5300582c3` had to correct in eight paths and missed in a seventh. So
+ * `chain-table.spec.ts` now holds that header to this list, which is the one restatement outside source and
+ * the one a person reads before switching CI on.
+ *
+ * No count here, deliberately: a hand-written "two of three" directly above a derivation meant to replace
+ * hand-written counts was the same defect in miniature. The honest resting state for each is its own
+ * `until`.
  */
 export const ASSUMED_RUNGS: readonly TimeoutClass[] =
   TIMEOUT_CLASSES.filter((className) => TIMEOUT_MS[className].measured === undefined);
@@ -177,6 +185,21 @@ const factorText = (factor: number): string =>
   factor >= 10 || Number.isInteger(factor) ? `${Math.round(factor)}x` : `${factor.toFixed(1)}x`;
 
 /**
+ * What a rung's stretch factor rests on, and — where it rests on a borrow — what would settle it.
+ *
+ * **This is the only thing that reads `until`.** The field was verified by `chain-graph.spec.ts` and
+ * surfaced nowhere, while its sibling `measured` was printed: so an off-machine kill told the reader the
+ * factor "has never measured. That number is the finding" and stopped one field short of saying which run
+ * would supply it — to the one reader who is on a machine that could. A rung states the terms of its own
+ * assumption; this is where they reach a terminal.
+ */
+const rungTerms = (rung: Rung): string => (rung.measured === undefined
+  ? `which its row assumes is ${factorText(rung.stretches)} and has never measured. That number is the `
+    + `finding, and what would settle it is ${rung.until}.`
+  : `where its row records ${factorText(rung.stretches)}, measured on ${rung.measured}. That number is the `
+    + 'finding.');
+
+/**
  * What a step says when its class killed it, and what that kill actually proves.
  *
  * **A kill truncates the measurement, so the only honest figure is a lower bound.** The step did not finish,
@@ -186,48 +209,66 @@ const factorText = (factor: number): string =>
  * (`chain-output.ts`) both put a declared cost beside a measured one, and both are on the ordinary-failure
  * path.
  *
- * **The interpretation is machine-dependent, and stating it unconditionally was wrong.** On the machine the
- * costs were measured on, rope this large means wedged. Anywhere else a step can exceed its deadline by being
- * slow, and *that is the evidence the two assumed rungs are waiting for* — so the message names the rung's
- * factor and says the number is the finding, rather than pre-empting it with "not a stale number".
+ * **The interpretation is machine-dependent, and every arm of it is gated.** On the machine the costs were
+ * measured on, rope this large means wedged. Anywhere else a step can exceed its deadline by being slow, and
+ * *that is the evidence the assumed rungs are waiting for* — so the message names the rung's factor and says
+ * the number is the finding, rather than pre-empting it with "not a stale number".
+ *
+ * **The machine is a separate argument from the cost, which took a correction.** They were one optional
+ * bundle, `{ seconds, measuredOn }`, on the reasoning that neither means anything without the other. That is
+ * true of the *rope* and false of the *verdict*: a cost is a property of the step and can legitimately be
+ * absent, where the machine is a property of the process and never is. Bundling them meant the one arm with
+ * no cost had no machine either, so it could not be gated and said "usually wedged rather than slow" on any
+ * box — the thing the paragraph above says was wrong, surviving in the arm that four of the five call sites
+ * can reach. Machine always, cost optional, and all three arms gate.
  *
  * The rope and `stretches` are the same arithmetic from opposite ends: `declaredShare` keeps every step's
  * rope above its rung's factor, so a step that outran its rope has broken that bound in production.
  */
-export function timedOutBecause({ what, timeout, healthy }: {
+export function timedOutBecause({ what, timeout, measuredOn, machine, seconds }: {
   /** The step, leg or command line that was killed */
   what: string;
   timeout: TimeoutClass;
   /**
-   * What it costs healthy, and the machine that cost was taken on — one argument, because neither means
-   * anything without the other. Absent where nothing records a cost: `scripts/bounded.ts` has a class and an
-   * argv and no step record, so the rope is not a number it can compute.
+   * The machine the ladder's costs were taken on, which is what decides whether a verdict is available.
    *
-   * `measuredOn` is passed rather than imported (`MEASURED_ON`, `chain-steps.ts`), which is what keeps this
-   * module under the ladder and testable about a machine it is not running on — the same reason
-   * `driftReport` takes one.
+   * Passed rather than imported (`MEASURED_ON`, `chain-steps.ts`), which is what keeps this module under the
+   * ladder and testable about a machine it is not running on — the same reason `driftReport` takes one.
    */
-  healthy?: { seconds: number; measuredOn: Machine; machine?: Machine };
+  measuredOn: Machine;
+  /** The box this is running on; `thisMachine()` where a caller has no reason to say */
+  machine?: Machine;
+  /**
+   * What the thing costs healthy, where anything records it. Absent for `scripts/bounded.ts`, which has a
+   * class and an argv and no step record, and for a step or pool whose row carries no `seconds` — so the
+   * rope is not a number those paths can compute, and the message says so instead of inventing one.
+   */
+  seconds?: number;
 }): string {
   const killed = `${what} timed out: it exceeded its ${timeoutText(timeout)} budget and its process group `
     + 'was killed.';
-  if (healthy === undefined || healthy.seconds <= 0) {
-    return `${killed} Nothing records what it costs healthy, so how much rope that was is unknown — a class `
-      + 'is chosen for the slowest plausible machine rather than from a measurement, so a step that overruns '
-      + 'one is usually wedged rather than slow.';
-  }
-  const { seconds, measuredOn, machine } = healthy;
   const rung = TIMEOUT_MS[timeout];
+  const here = isMeasuredMachine(measuredOn, machine);
+  if (seconds === undefined || seconds <= 0) {
+    const unknown = `${killed} Nothing records what it costs healthy, so how much rope that was is unknown`;
+    // The same split as the two arms below, for the same reason: the class is sized for a box `stretches`
+    // times slower, so overrunning it *here* means more than that whole budget and wedged is the only
+    // reading left. Off this machine the step may simply be slow, and on an assumed rung how slow is the
+    // open question — so there is nothing to conclude and the rung's own terms are what to report.
+    return here
+      ? `${unknown} — but a class is sized for a machine ${factorText(rung.stretches)} slower than this one, `
+        + 'so overrunning it here is wedged rather than slow.'
+      : `${unknown}, and this is ${machineText(machine ?? thisMachine())} rather than `
+        + `${machineText(measuredOn)}. So it is wedged, or ${timeout} stretches by more than `
+        + `${factorText(rung.stretches)} here — ${rungTerms(rung)}`;
+  }
   const rope = factorText(rung.ms / (seconds * 1000));
-  if (isMeasuredMachine(measuredOn, machine)) {
+  if (here) {
     return `${killed} That is ${rope} the ${seconds}s it costs healthy here, so it is wedged rather than `
       + 'slow — a class is chosen for the slowest plausible machine rather than from that cost, so '
       + 'overrunning one is not a stale number.';
   }
-  const assumption = rung.measured === undefined
-    ? `which its row assumes is ${factorText(rung.stretches)} and has never measured`
-    : `where its row records ${factorText(rung.stretches)}, measured on ${rung.measured}`;
   return `${killed} That is ${rope} the ${seconds}s it costs healthy on ${machineText(measuredOn)}, and this `
     + `is ${machineText(machine ?? thisMachine())}. So either it is wedged, or ${timeout} stretches by more `
-    + `than ${rope} here — ${assumption}. That number is the finding.`;
+    + `than ${rope} here — ${rungTerms(rung)}`;
 }

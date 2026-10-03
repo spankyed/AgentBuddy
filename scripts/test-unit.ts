@@ -21,7 +21,8 @@
 import { execFileSync } from 'node:child_process';
 import * as os from 'node:os';
 import { boundedSpawn } from './lib/bounded-spawn.ts';
-import { MEASURED_ON, POOL_SECONDS } from './lib/chain-steps.ts';
+import { POOL_SECONDS } from './lib/chain-steps.ts';
+import { MEASURED_ON } from './lib/core-budget.ts';
 import { TIMEOUT_MS, timedOutBecause } from './lib/step-timeouts.ts';
 import { UNIT_SUITES } from './lib/unit-suites.ts';
 import { exitOnEpipe } from './lib/exit-on-epipe.ts';
@@ -79,7 +80,8 @@ async function run(pool: Pool): Promise<Result> {
     ? timedOutBecause({
       what: pool.label,
       timeout: 'suite',
-      ...pool.seconds === undefined ? {} : { healthy: { seconds: pool.seconds, measuredOn: MEASURED_ON } },
+      measuredOn: MEASURED_ON,
+      ...pool.seconds === undefined ? {} : { seconds: pool.seconds },
     })
     : undefined;
   return { pool: pool.label, code, ms, output, ...(why === undefined ? {} : { why }) };

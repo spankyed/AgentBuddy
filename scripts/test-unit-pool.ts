@@ -18,7 +18,8 @@ import { diffableStamp, firstChange, freshnessSweep, stampRecord } from '@abuddy
 import type { UnitSuite } from './lib/unit-suites.ts';
 import { POOLS, poolStampFor, poolUnitFor, projectsThatDidNotRun, prunePoolStamps, recordRun, recordsVerdict, whyItRuns, type Pool } from './lib/unit-pool.ts';
 import { boundedSpawn } from './lib/bounded-spawn.ts';
-import { MEASURED_ON, POOL_SECONDS } from './lib/chain-steps.ts';
+import { POOL_SECONDS } from './lib/chain-steps.ts';
+import { MEASURED_ON } from './lib/core-budget.ts';
 import { TIMEOUT_MS, timedOutBecause } from './lib/step-timeouts.ts';
 import { exitOnEpipe } from './lib/exit-on-epipe.ts';
 
@@ -116,9 +117,8 @@ async function main(): Promise<void> {
             ? timedOutBecause({
               what: `${kind} pool`,
               timeout: 'suite',
-              ...covered.length === suites.length
-                ? { healthy: { seconds: POOL_SECONDS[kind], measuredOn: MEASURED_ON } }
-                : {},
+              measuredOn: MEASURED_ON,
+              ...covered.length === suites.length ? { seconds: POOL_SECONDS[kind] } : {},
             })
             : `${kind} pool failed (exit ${code})`);
         }

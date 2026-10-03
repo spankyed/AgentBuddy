@@ -29,6 +29,9 @@
  * nobody tunes one of the pair wondering why the other exists.
  */
 import { boundedSpawn } from './lib/bounded-spawn.ts';
+// The ladder's own machine, for the kill message: without it this path cannot tell this box from a slower
+// one, which is the whole reason the machine is a separate argument from the cost
+import { MEASURED_ON } from './lib/core-budget.ts';
 import { TIMEOUT_CLASSES, timedOutBecause, timeoutMsFor, type TimeoutClass } from './lib/step-timeouts.ts';
 
 const [className, command, ...args] = process.argv.slice(2);
@@ -42,12 +45,17 @@ if (!command || className === undefined) {
   const budgetMs = timeoutMsFor(className);
   const { code, timedOut } = await boundedSpawn(command, args, budgetMs, { stream: true });
   if (timedOut) {
-    // Its own line on stderr: the command's own output ended mid-sentence, so say why. No `healthy` — this
+    // Its own line on stderr: the command's own output ended mid-sentence, so say why. No `seconds` — this
     // path has a class and an argv and no step record, so the rope is not a number it can compute, and
-    // `timedOutBecause` says that rather than inventing one
+    // `timedOutBecause` says that rather than inventing one.
+    //
+    // `MEASURED_ON` is passed all the same, and it is the whole reason that argument is separate from the
+    // cost: without it this path could not be told apart from a smaller machine, and it reported "wedged
+    // rather than slow" on every box. This is the one caller most likely to be running on someone else's.
     process.stderr.write(`\n${timedOutBecause({
       what: `${command} ${args.join(' ')}`,
       timeout: className as TimeoutClass,
+      measuredOn: MEASURED_ON,
     })}\n`);
   }
   // Not process.exit(): it would drop whatever the child's inherited stdio has still to flush

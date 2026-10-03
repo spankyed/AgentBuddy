@@ -432,6 +432,39 @@ const MUTATIONS: readonly Mutation[] = [
     call: (lib) => lib.declaredShare(60, 'suite'),
   },
   {
+    /**
+     * The gate this change exists to create. The cost and the machine were one optional argument, so the
+     * arm with no cost had no machine and said "usually wedged rather than slow" on any box — the last
+     * ungated verdict, in the arm four of five call sites reach, and in `bounded.ts`, the path most likely
+     * to be running on someone else's machine.
+     */
+    why: 'the no-cost arm asks whether this is the machine the ladder was sized against',
+    in: 'step-timeouts',
+    from: 'return here',
+    to: 'return true',
+    call: (lib) => lib.timedOutBecause({
+      what: 'bash x.sh',
+      timeout: 'scenario',
+      measuredOn: { cpu: 'Measured CPU', cores: 10 },
+      machine: { cpu: 'Some Smaller CPU', cores: 4 },
+    }),
+  },
+  {
+    // `until` reached no reader at all before this: `measured` was printed and its sibling was verified by a
+    // spec and surfaced nowhere, so an assumed rung said the number was the finding and not what would settle it
+    why: 'an assumed rung names what would settle it, and a measured one does not',
+    in: 'step-timeouts',
+    from: '+ `finding, and what would settle it is ${rung.until}.`',
+    to: "+ 'finding.'",
+    call: (lib) => lib.timedOutBecause({
+      what: 'typecheck:fe',
+      timeout: 'quick',
+      seconds: 10,
+      measuredOn: { cpu: 'Measured CPU', cores: 10 },
+      machine: { cpu: 'Some Smaller CPU', cores: 4 },
+    }),
+  },
+  {
     why: 'timeoutText says a class in seconds, not milliseconds',
     in: 'step-timeouts',
     from: '`${TIMEOUT_MS[className].ms / 1000}s (${className})`',
