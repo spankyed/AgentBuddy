@@ -37,7 +37,7 @@ import * as path from 'node:path';
 import { changedInputs, diffableStamp, firstChange, freshnessSweep, INPUTS_CHANGED, PACKAGES_PREBUILT_ENV, REPO_ROOT, stampedRun, stampRecord, unitStaleReason, type BuildUnit } from '@abuddy/host/build/packages-built';
 import { CHAIN_STEPS, type ChainStep, chainSteps, MEASURED_AT_CORES, needsApp, orderedSteps, STEP_TABLES } from './lib/chain-steps.ts';
 import { CHAIN_FLAGS } from './lib/chain-flags.ts';
-import { box } from './lib/core-budget.ts';
+import { box, isMeasuredSchedule } from './lib/core-budget.ts';
 import { commandText, rootScripts } from './lib/npm-scripts.ts';
 import { asCount, bodyDrift, drifted, IDLE_FLOOR, idleNow, movedBeyondBand, parseFlags, refusesAsBusy, refusesAsContended } from './lib/measure.ts';
 import { recordSeconds } from './lib/record-seconds.ts';
@@ -268,6 +268,15 @@ async function runAndStamp(step: ChainStep, all: boolean): Promise<Result> {
  * Defaulting to this machine's cores means a smaller box gets its own budget rather than this one's, and
  * that much is untested: on four cores the two unit pools nearly serialise, and whether that beats the
  * oversubscription a step count produced there has not been measured anywhere.
+ *
+ * **`--cores N` is a cap on what to spend of *this* box, not a pretend box of N.** Each step's width is
+ * resolved against the machine (`coresFor` reads `box()`), so the flag moves the budget and leaves the
+ * widths alone. That is what makes `--cores 12` on ten cores a deliberate-oversubscription measurement
+ * rather than a simulation of twelve, and `--cores 4` a cap a nine-core pool cannot fit inside, so it runs
+ * alone. Resolving the widths against the flag instead was proposed and declined: it would turn the flag
+ * into a simulation nothing can validate on the box it runs on, and the oversubscription it permits is
+ * already what the soft budget allows a single step. What the divergence does cost is the schedule's
+ * identity, which is why `isMeasuredSchedule` asks about both numbers.
  */
 const budgetFrom = (cores: string | undefined): number => asCount(cores, 'cores') ?? box();
 
@@ -547,10 +556,12 @@ function recordTheCosts(steps: readonly ChainStep[], measuredMs: ReadonlyMap<str
     console.log('\n--record needs --all: a cached step reports no time, and recording that would size a budget from it.');
     return;
   }
-  // The one schedule these numbers are about. A run at another budget measured a different chain, and
-  // recording it would hand every step a kill deadline sized from a schedule it will not run under
-  if (budget !== MEASURED_AT_CORES) {
-    console.log(`\n--record refused: these costs are the chain's on a ${MEASURED_AT_CORES}-core budget and this ran on ${budget}.`);
+  // The one schedule these numbers are about, which takes the budget **and** the box — `isMeasuredSchedule`
+  // has why. Recording any other hands every step a kill deadline sized from a schedule it will not run
+  // under, and a gate comparing only the budget passed `--cores 10` on a twenty-core machine.
+  if (!isMeasuredSchedule(budget, MEASURED_AT_CORES)) {
+    console.log(`\n--record refused: these costs are the chain's on ${cores(MEASURED_AT_CORES)} on a `
+      + `${MEASURED_AT_CORES}-core machine; this ran on ${cores(budget)} on ${box()} cores.`);
     return;
   }
   const idle = idleNow();

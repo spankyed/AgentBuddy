@@ -2,13 +2,13 @@
 //
 // Its own module for the reason `chain-steps.ts` and `chain-schedule.ts` are: `scripts/chain.ts` runs the
 // chain when imported, so nothing may import it to ask a question — and the question here is one nothing
-// could ask before. `--cores` shipped undocumented, and `--record` and `--force` still are; the chain read
-// its flags with `process.argv.includes`, which accepts anything and reports nothing, so
+// could ask before. `--cores`, `--record` and `--force` had all shipped undocumented; the chain read its
+// flags with `process.argv.includes`, which accepts anything and reports nothing, so
 // `npm run chain -- --lanez 3` ran a full chain while silently ignoring what it was told.
 //
-// `chain-flags.spec.ts` holds this list to the root `CLAUDE.md`, which is the only other place the flags
-// are written down. That check is free in chain time: `fingerprintUnit` keeps every `CLAUDE.md` out of
-// every step's cache key by name.
+// `chain-table.spec.ts` holds this list to the root `CLAUDE.md`, which is the only other place the flags
+// are written down — in the describe named for documenting the flags it takes. That check is free in chain
+// time: `fingerprintUnit` keeps every `CLAUDE.md` out of every step's cache key by name.
 
 /**
  * The flags, in the shape `parseFlags` takes them — without their leading `--`.

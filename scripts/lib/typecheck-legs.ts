@@ -78,7 +78,7 @@ export const ENSURE = 'packages:ensure';
  * `packages:ensure` first because `check:specifiers`, `api:stamp` and `typecheck:pack` read the built packages.
  * Everything else is independent, and that is the claim this file makes by running them at once: nothing here
  * writes what another leg reads. The checks are all `--check`/`--noEmit` halves, which is what makes that
- * plausible, and `--lanes 1` is how to test it if a leg ever starts behaving differently in company.
+ * plausible, and `--cores 1` is how to test it if a leg ever starts behaving differently in company.
  */
 export const TYPECHECK_LEGS: readonly Leg[] = [
   { name: ENSURE, command: 'npm run packages:ensure', scope: ['abuddy-ears', 'abuddy-sdk', 'abuddy-ui', 'abuddy-cli', 'abuddy-testing'], seconds: 0.3 },

@@ -9,7 +9,7 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { REPO_ROOT } from '@abuddy/host/build/packages-built';
-import { asPercent, box, coresFor, POOL_WIDTH, shareOf } from '../../../scripts/lib/core-budget.ts';
+import { asPercent, box, coresFor, isMeasuredSchedule, POOL_WIDTH, shareOf } from '../../../scripts/lib/core-budget.ts';
 import { PACKAGE_DIRS } from '../../../scripts/lib/workspace-deps.ts';
 import { population } from '@abuddy/sdk/testing';
 
@@ -49,8 +49,38 @@ describe('coresFor', () => {
     for (const step of Object.keys(POOL_WIDTH)) expect(coresFor(step, 1), step).toBeGreaterThanOrEqual(1);
   });
 
-  it('reads this machine by default, so the chain needs no box passed to it', () => {
+  it('reads this machine by default, which is what the chain asks of it', () => {
+    // And deliberately not the budget: `--cores N` caps what to spend of this box rather than describing
+    // a box of N, so a width is about the machine. `isMeasuredSchedule` below is what that costs
     expect(coresFor('test:integration')).toBe(Math.max(1, Math.round(0.5 * box())));
+  });
+});
+
+/**
+ * The schedule a recorded cost table describes, which takes two numbers rather than one.
+ *
+ * `--cores` defaults to `box()`, so a run's budget and the box its widths were resolved against normally
+ * agree — and a gate that compared only the budget read as sufficient for exactly that reason. The third
+ * case is the one it let through.
+ */
+describe('isMeasuredSchedule', () => {
+  it('holds when the budget and the box are both the measured one', () => {
+    expect(isMeasuredSchedule(10, 10, 10)).toBe(true);
+  });
+
+  it('refuses another budget', () => {
+    expect(isMeasuredSchedule(12, 10, 10)).toBe(false);
+  });
+
+  it('refuses another box, even where the budget is the measured one', () => {
+    // The hole: widths are resolved against the machine, so `--cores 10` on a twenty-core box runs
+    // twenty-core widths under a ten-core budget. The costs that come out describe neither schedule, and
+    // `budgetFor` sizes every kill deadline from them
+    expect(isMeasuredSchedule(10, 10, 20)).toBe(false);
+  });
+
+  it('reads this machine when no box is given, which is how the chain asks', () => {
+    expect(isMeasuredSchedule(box(), box())).toBe(true);
   });
 });
 

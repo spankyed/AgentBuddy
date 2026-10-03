@@ -422,7 +422,11 @@ npm run chain            # Before a merge: every check in dependency order, cold
                          #             `--lanes N`, which metered both as one unit each: measured
                          #             2026-10-02, interleaved `--all` pairs on ten cores, three lanes is a
                          #             median 202.8s and a ten-core budget 169.4s with half the spread.
-                         #             `--cores 1` is serial, which is what `--lanes 1` was for
+                         #             `--cores 1` is serial, which is what `--lanes 1` was for. It caps
+                         #             what to spend of *this* box rather than describing a box of N: the
+                         #             widths stay machine-sized, so a value above the box is deliberate
+                         #             oversubscription and one below it is a cap a wide step cannot fit
+                         #             inside, where it runs alone
                          #   --e2e     run the E2E suite with the chain, ordered after test:smoke
                          #   --record  write each step's measured cost back into its table. Needs --all,
                          #             refuses a budget other than the one the table was measured at,

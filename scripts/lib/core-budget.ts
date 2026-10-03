@@ -91,6 +91,19 @@ export function coresFor(step: string, cores: number = box()): number {
   return Math.max(1, Math.round(width.share * cores));
 }
 
+/**
+ * Whether this run is the schedule a recorded cost table describes.
+ *
+ * **Two numbers, because the default makes them look like one.** A run's admission is its budget; the
+ * widths it admits on are resolved against the *machine*, because `coresFor` reads `box()` and not the
+ * budget — `--cores` is a cap on what to spend of this box, not a pretend box (`budgetFrom`,
+ * `scripts/chain.ts`). The flag defaults to `box()`, so the two agree and one scalar records the schedule.
+ * Pass it on a box of another size and they diverge: `--cores 10` on a twenty-core machine runs twenty-core
+ * widths under a ten-core budget, which a gate comparing only the budget let through.
+ */
+export const isMeasuredSchedule = (budget: number, measuredAt: number, cores: number = box()): boolean =>
+  budget === measuredAt && cores === measuredAt;
+
 /** A share as vitest writes it in `poolOptions`, which is how a config and this table are compared */
 export const asPercent = (share: number): string => `${Math.round(share * 100)}%`;
 
