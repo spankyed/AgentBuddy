@@ -1,4 +1,4 @@
-# Many machines: the cost model is single-machine
+# Costs across machines: the cost model is single-machine
 
 ## Problem
 
@@ -99,6 +99,13 @@ not follow: `budgetFor(seconds)` multiplies a measurement by four.
 Replace that with a coarse bucket per step, chosen for the slowest plausible machine rather than measured
 on the fastest. Bazel's own ladder is 60 / 300 / 900 / 3600s and is a reasonable starting shape.
 
+**The bucket is declared by kind, and never derived by thresholding `seconds`.** That is the shortcut this
+phase exists to refuse: a bucket picked by comparing a recorded cost against edges re-couples the killer to
+the record, just coarsely, and the first slow machine is back where it started. `sizeOf`
+(`scripts/lib/test-timeouts.ts:99`) is the precedent in both halves — it reads the config filename, the
+half and suite membership, never a duration, and *refuses* a file it cannot classify rather than defaulting,
+"because the budget is a ceiling, so the confident wrong answer is the permissive one".
+
 It is cheap, and the reason is measured: **20 of the 29 steps already sit on `budgetFor`'s 60s floor**, so
 the table's precision is doing nothing for two thirds of them. Only the nine above need a bucket.
 
@@ -147,6 +154,11 @@ measurable and far more portable than wall-clock.
 Declined because the decisions these numbers inform — which bucket, which half — are coarse enough that
 (1) and (2) close them, and a calibration factor is a second thing to keep true. **Revisit if a consumer
 appears that needs a portable number rather than a portable decision.**
+
+If it is ever wanted, **it is a cache and not a commit**, and the precedent is in-tree: the chain's stamps
+and every `tsBuildInfoFile` already live under `node_modules/.cache/`, per machine and uncommitted, which
+is exactly what a calibration is. A committed per-machine number is the problem this plan is about, so a
+fix shaped like one would be the same mistake twice.
 
 **Scaling the deadlines by `MEASURED_AT_CORES / box()`.** The obvious shortcut, and wrong in both directions
 at once: the single-threaded `tsc` legs barely scale with cores while the pools scale nearly linearly, so one
