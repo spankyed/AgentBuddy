@@ -42,7 +42,7 @@ import { commandText, rootScripts } from './lib/npm-scripts.ts';
 import { asCount, bodyDrift, drifted, IDLE_FLOOR, idleNow, movedBeyondBand, parseFlags, refusesAsBusy, refusesAsContended } from './lib/measure.ts';
 import { recordSeconds } from './lib/record-seconds.ts';
 import { schedule } from './lib/chain-schedule.ts';
-import { criticalPath, driftedSteps, willNotCache } from './lib/step-timing.ts';
+import { criticalPath, driftedSteps, SECONDS_FLOOR, willNotCache } from './lib/step-timing.ts';
 import { briefly, classifyLine, cores, declaredAt, dim, driftReport, DRY_REASON_COLUMN, howLong, identicalRewrites, marker, oneLine, REASON_COLUMN, shouldClassify, staleLines, STEP_NAME_WIDTH, TIME_COLUMN, whenChanged, wrapAt, writerOf } from './lib/chain-output.ts';
 import { slowestTests } from './lib/slow-tests.ts';
 import { DIAGNOSTIC_RUN_ENV } from './lib/unit-pool.ts';
@@ -578,9 +578,10 @@ function recordTheCosts(steps: readonly ChainStep[], measuredMs: ReadonlyMap<str
     .map(([name, ms]) => [name, Math.round(ms / 1000)] as const)
     .filter(([, seconds]) => seconds >= 1));
   const declared = new Map(steps.flatMap((step) => (step.seconds === undefined ? [] : [[step.name, step.seconds] as const])));
-  // One second, not a millisecond floor: these are seconds, and the floor is what stops the fraction
-  // chasing noise on a step that costs less than a second to begin with
-  const moved = (was: number | undefined, now: number): boolean => movedBeyondBand(was, now, 1);
+  // `SECONDS_FLOOR`, not a millisecond one: these are seconds, and the floor is what stops the fraction
+  // chasing noise on a step that costs less than a second to begin with. Shared with `driftedSteps`, which
+  // stays quiet about a drift this would refuse to write
+  const moved = (was: number | undefined, now: number): boolean => movedBeyondBand(was, now, SECONDS_FLOOR);
 
   // **The two gates a sample needs beyond its per-row band, which this record did without until 2026-10-02.**
   // `spec-cost` has had both; the primitives are shared now (`measure.ts`) rather than copied.
