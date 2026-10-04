@@ -207,6 +207,15 @@ export const provisional = (
  * None of this is fixable by a longer window, and `provisional` is what mitigates it: it reports a crossing the
  * run *before* the gate acts on it, so the state this leaves is one a reader is told about rather than one they
  * discover as a failure.
+ *
+ * **More than one reading is the half of a split, and nothing upstream covers the other side of it.**
+ * `RECORD_IDLE_FLOOR` (`measure.ts`) keeps a recording's *body* honest and is set from measured drift; it is
+ * not sized to stop a single contended reading placing a spec in the wrong half, and the episode that
+ * prompted both happened at 78% idle, above the floor of the day and below the one that replaced it. So a
+ * crossing is absorbed here or nowhere. **Set this to 1 and the floor becomes load-bearing for something it
+ * was never measured against** — which `suite-split.spec.ts`'s replay case catches, reading 2791 where it
+ * expects 2041: the contended reading becoming the answer, which is the defect rather than a claim about a
+ * constant. The number itself is the outlier-rejection argument above.
  */
 export const WINDOW = 3;
 

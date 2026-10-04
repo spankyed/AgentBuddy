@@ -140,9 +140,14 @@ export const IDLE_FLOOR = 0.7;
  * thing to have — one quiet run moves a single spec 74% against another, which is why the record keeps a
  * window and the report watches the body.
  *
- * What a *half* costs is a tail rather than a threshold: no run above 36% idle moved a spec across an edge
- * in that sweep, and the one that prompted this work did it at 78%. That is the window's problem now
- * (`spec-cost.ts`'s `WINDOW`), and this floor is what keeps the body honest.
+ * **This floor guards the body, and nothing else asks it to guard a half.** A reading that would place a
+ * spec in the other half cannot become the answer on its own — `spec-cost.ts`'s `WINDOW` keeps more than
+ * one and takes the median, so one reading is kept and outvoted. That is a property of the mechanism and
+ * needs no sample, which is the reason it is stated this way: the first version of this paragraph said "no
+ * run above 36% idle moved a spec across an edge in that sweep", which was one run per load level and so
+ * bounds the crossing rate at 95% (`upperBound`). It read as the reason while the median was the reason,
+ * and it sized no choice — the floor is set by the drift above, which would be 85% whatever the crossing
+ * rate turned out to be. Deleted rather than re-measured for that second reason.
  *
  * **The relationship to `DRIFT_SHARE` is empirical and no case asserts it**, which is deliberate: the two
  * are different quantities. `1 - 0.85` happens to equal `DRIFT_SHARE` exactly, and an assertion was written

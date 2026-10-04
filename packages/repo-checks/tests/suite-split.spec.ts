@@ -539,6 +539,13 @@ describe('a measurement replaces the record only when it says something new', ()
   });
 
   /**
+   * **This is also what holds `WINDOW` above 1**, which is the one property upstream stopped covering:
+   * `RECORD_IDLE_FLOOR` (`measure.ts`) guards a recording's *body* and was never sized against a single
+   * contended reading placing a spec in the wrong half. Checked on a mutant rather than assumed — at
+   * `WINDOW = 1` the first assertion below reads 2791 instead of 2041, the contended reading becoming the
+   * answer, which is the defect itself rather than an inequality about a constant. A separate
+   * `WINDOW > 1` case was written and dropped for that reason: it fires later and says less.
+   *
    * **A crossing is not special, and it used to be.** `moved` opened with
    * `halfFor(measured) !== halfFor(recorded) -> true`, so the one decision with a cliff was the one where
    * a single reading was adopted outright. These two cases are what that cost, replayed from the readings
@@ -637,6 +644,7 @@ describe('a measurement replaces the record only when it says something new', ()
     expect(costOf([100]), 'one reading is itself').toBe(100);
     expect(costOf([100, 9_999, 110]), 'three reject the outlier outright').toBe(110);
   });
+
 
   // The tie, which is the only place this departs from the textbook median. Two readings that disagree
   // have no majority between them, and a decision with no majority must not move an answer.
