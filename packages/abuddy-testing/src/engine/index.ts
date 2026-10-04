@@ -43,11 +43,8 @@ export interface DriveEngineOptions {
 }
 
 /**
- * Adapts a Playwright page to the four methods the session needs.
- *
- * The two evaluation forms stay separate here as they are in the port: Playwright reads a string as an
- * expression and a function as something to serialise, and a string with an argument silently drops the
- * argument. Keeping them apart is what stops that being available at every call site.
+ * Adapts a Playwright page to `SessionPage`. The two evaluation forms stay separate here because they are
+ * separate in the port, for the reason `session.ts` gives there.
  */
 export const asSessionPage = (page: Page, app: EngineAppHelper): SessionPage => ({
   evaluateExpression: (source) => page.evaluate(source),
@@ -131,17 +128,10 @@ export async function runDriveEngine(options: DriveEngineOptions): Promise<void>
   log(engineRecipe(file, marker, ENGINE_TOKEN_HEADER));
 
   /**
-   * A signal also ends the session — but it is **not** what makes Ctrl-C safe, and the comment here
-   * used to claim it was.
-   *
-   * Measured 2026-10-04: `SIGINT` to `abuddy drive --serve` left no orphan — the app's API process was
-   * gone, the fixture's data-dir policy had run and the ephemeral instance was removed — and Playwright
-   * reported the session **interrupted** rather than passed. That verdict is the evidence: a body these
-   * handlers had resolved would have completed. So Playwright's own interrupt handling is what tears a
-   * session down, and it already runs fixture teardown.
-   *
-   * They stay because resolving the body first costs four lines and ends the run as a pass rather than
-   * an interruption where they win the race; nothing depends on their winning it.
+   * A signal also ends the session, though it is **not** what makes Ctrl-C safe: Playwright's own interrupt
+   * handling tears a session down and already runs fixture teardown, so nothing is orphaned without these.
+   * They stay because resolving the body first costs four lines and ends the run as a pass rather than an
+   * interruption when they win the race; nothing depends on their winning it.
    */
   const onSignal = (): void => end();
   process.once('SIGINT', onSignal);

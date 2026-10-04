@@ -83,12 +83,12 @@ const refusal = (what: string, frame: Frame): Error =>
   new Error(`${what}: ${frame.error?.message ?? 'the API refused it'}${frame.error?.data?.code ? ` (${frame.error.data.code})` : ''}`);
 
 /**
- * Opens the connection and its subscription, and resolves once both are live.
+ * Opens the connection and sends its subscribe frame, resolving once the socket is open and that frame is away
+ * — not once the subscription is live, which has no single answer. A refusal arrives later, through `failure`.
  *
- * It subscribes before it returns so that nothing claims a name on a connection that is not yet listening — a
- * reply arriving in that gap would have nowhere to go. (The claim's *lifetime* no longer depends on the
- * subscription: it is released when the connection ends, which is the only event that means the claimer is
- * gone.)
+ * Subscribing before returning is what orders it ahead of the claim: a reply addressed to a name on a
+ * connection that is not yet listening would be delivered and dropped. The claim's lifetime needs no such
+ * care, being released when the connection ends.
  */
 export async function connectApiClient({ port, token, host = '127.0.0.1' }: ApiAddress): Promise<ApiClient> {
   const url = `ws://${host}:${port}`;

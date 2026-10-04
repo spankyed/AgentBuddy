@@ -33,16 +33,14 @@ const wrappers = new WeakMap<AnyActorRef, AnyActorRef>()
  * The actor, with a send that says which plugin made it.
  *
  * A component sending to its own plugin is the one path that reaches a machine's actions from outside a
- * delivery: the bus names the message it routes to a system, and the shell names the one it hands a plugin, but
- * a click goes straight to the actor. So an action that then sent to a system stamped no `Message.sender`, and
- * the system answering it with `reply` had no address and threw — for the commonest kind of request in the app.
+ * delivery — the bus names the message it routes to a system and the shell names the one it hands a plugin, but
+ * a click goes straight to the actor. Running the send in a delivery means the action's own `sendToSystem`
+ * stamps this plugin's ref, so a system can answer *this* plugin in the window it was asked from. `actor.id` is
+ * that ref because the shell spawns a plugin with its ref as both `id` and `systemId`.
  *
- * Running the send inside a delivery closes that: the action's own `sendToSystem` reads the scope and stamps
- * this plugin's ref, so the system answers *this* plugin in the window it was asked from. `actor.id` is that
- * ref because the shell spawns a plugin with its ref as both `id` and `systemId`.
- *
- * Only `send` is wrapped, and everything else is passed through bound to the actor — checked rather than
- * assumed: `useSelector` stays reactive through it, and `subscribe` and `getSnapshot` behave as before.
+ * Only `send` is wrapped; everything else passes through bound to the actor. `subscribe` and `getSnapshot` are
+ * what a selector is built on, so `plugin-send-scope.spec.ts` pins both reaching the real actor through the
+ * wrapper; the `bind` is what keeps a detached `const { send } = actor` working.
  */
 function sendsAsItself(actor: AnyActorRef): AnyActorRef {
   const existing = wrappers.get(actor)

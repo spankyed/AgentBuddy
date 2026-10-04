@@ -9,11 +9,10 @@
 // Installing the reader is a process-wide, one-way step, as binding the host is. Nothing uninstalls it: a process
 // that has a bus has it for the process's life, and a test that wants no scope simply does not deliver inside one.
 //
-// **It happens on the first delivery rather than on import**, which is not fussiness. `bus/index.ts` re-exports
-// `machine.ts`, which imports this, so installing at module scope made merely importing `@abuddy/host/bus`
-// reconfigure the SDK for the whole process — in the CLI, in the pack test harness, in the Playwright runner,
-// none of which asked for it. Doing it here keeps the import inert and still cannot be forgotten, since nothing
-// reaches a delivery except through this function.
+// **It happens on the first delivery rather than on import.** `bus/index.ts` re-exports `machine.ts`, which
+// imports this, so installing at module scope would make merely importing `@abuddy/host/bus` reconfigure the SDK
+// for the whole process — in the CLI, in the pack test harness, in the Playwright runner. Installing here keeps
+// the import inert and cannot be forgotten, since nothing reaches a delivery except through this function.
 import { AsyncLocalStorage } from 'node:async_hooks';
 import { _installAsyncDeliveryReader, _runDelivery, type _Delivery } from '@abuddy/sdk/events';
 
@@ -25,8 +24,10 @@ let installed = false;
  * Runs `body` as the handling of `delivery`: a send made inside it carries the handler's ref as `Message.sender`,
  * and `reply` answers the message's own sender on its own connection.
  *
- * Both holders are set, not one: the async store is what survives an `await`, and the SDK's synchronous variable
- * is what a reader sees if this module was never loaded — so the two never disagree about one delivery.
+ * The async store is the mechanism — it is what survives an `await`. `_runDelivery` sets the SDK's synchronous
+ * holder as well, which `_currentDelivery` falls back to when no async store is in scope; that is reachable
+ * only by a reader in a process that never installed this one, so it costs a call and closes a gap nothing
+ * currently opens.
  */
 export function deliverAs<T>(delivery: _Delivery, body: () => T): T {
   if (!installed) {

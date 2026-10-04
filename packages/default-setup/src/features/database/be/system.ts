@@ -50,8 +50,6 @@ async function transactionAnswer(code: string, requestId: string) {
   }
 }
 
-export interface DatabaseContext { }
-
 export const databaseSpec = defineSystem<Contract>();
 
 export const databaseSystem = setup({
@@ -293,7 +291,7 @@ export const databaseSystem = setup({
         EXECUTE_TRANSACTION: {
           actions: 'executeTransaction',
         },
-GENERATE_AI_QUERY: {
+        GENERATE_AI_QUERY: {
           actions: 'handleAiQuery',
         },
         REFRESH_SCHEMA: {
