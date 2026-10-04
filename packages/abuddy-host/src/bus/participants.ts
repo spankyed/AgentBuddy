@@ -12,10 +12,16 @@
 //
 // **Nothing claims anything yet, and that is a gap rather than dead code.** The driver was to be the first
 // caller and is not: `/qx` runs through the renderer's send (`page.evaluateWith`), so the drive engine has no
-// connection of its own to claim on, and `bus.claim` is tRPC over the WebSocket. Giving it one means a ws client
-// in `@abuddy/testing`, a package every pack's tests load — which is the decision to make before this is used,
-// not a detail of it. `participants.spec.ts` covers the mechanism, including that an unclaimed name is still
-// dropped; what it cannot cover is a caller. Don't delete this as unreachable without reading
+// connection of its own to claim on.
+//
+// That costs no dependency, which is worth stating because the opposite was written here first and was wrong.
+// `bus.claim` is tRPC over a WebSocket, and Node has had a global `WebSocket` since 22 — this repo requires 23.
+// `tests/e2e/app-integration/api-access.spec.ts` already opens an authenticated socket with
+// `new WebSocket(url, ['abuddy', 'abuddy-token.<token>'])` and no import at all, so what a caller needs is
+// tRPC's JSON-RPC frames over a socket this repo already knows how to open, not a client library.
+//
+// `participants.spec.ts` covers the mechanism, including that an unclaimed name is still dropped; what it cannot
+// cover is a caller. Don't delete this as unreachable without reading
 // `docs/archive/goals/goal-addressable-participants.md`'s open items, which say what it is waiting for.
 //
 // **A claim lives exactly as long as its connection.** That is what makes it safe without a disconnect signal:

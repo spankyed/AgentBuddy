@@ -333,8 +333,16 @@ also invalidates Phase 5's own criteria.
    page. So Phase 5 needs either a ws client in `@abuddy/testing` (a new dependency in a package every pack's tests
    load) or the claim made from the page, which needs the window's client reachable there and today it is not.
 
-   Two things follow for whoever picks this up: the stamping half is free, and the decision to make first is where
-   the driver's connection comes from — not how a reply is addressed, which is done.
+   **And the connection costs no dependency**, which was asserted the other way here first and then measured.
+   Node has had a global `WebSocket` since 22 and this repo requires 23;
+   `tests/e2e/app-integration/api-access.spec.ts:11` already opens an authenticated socket with
+   `new WebSocket(url, ['abuddy', 'abuddy-token.<token>'])` and imports nothing. So a driver needs tRPC's
+   JSON-RPC frames over a socket the repo already opens — roughly a hundred lines — rather than `@trpc/client`
+   (1.0M, 146 files, and a `@trpc/server` peer) or `ws` (192K, redundant on Node 23).
+
+   What is left for whoever picks this up is therefore smaller than it looked: the stamping half is free, the
+   connection is free, and the one thing addressing still cannot do is tell two concurrent requests apart — so a
+   request id stays.
 2. ~~**Stamp a plugin's own sends**~~ — **done**, after this Outcome was first written. `usePlugin` hands back the
    actor with its `send` run inside a delivery naming that plugin (`abuddy-sdk/src/fe/plugin-send-scope.spec.ts`),
    so a component's send stamps `Message.sender` and `reply` answers it. The risk recorded against this — that a
