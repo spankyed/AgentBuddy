@@ -10,7 +10,7 @@
 // `createContext` as an abort signal (it aborts from `client.once('close')`, verified in
 // `node_modules/@trpc/server/dist/ws-*.mjs`). These cases pin that, because the failure is invisible: a leaked
 // claim looks like nothing at all until the session after next.
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { createParticipantClaims } from '@abuddy/host/bus';
 
 const claims = createParticipantClaims();
@@ -23,15 +23,21 @@ vi.mock('@/transport/emitter', () => ({ rootEvents: { onOutgoing: () => () => {}
 
 const { systemBusRouter } = await import('@/transport/bus');
 
+/** Every connection a case opened, so each case cleans up only what it made */
+const opened: string[] = [];
+
 /** A connection, with the end of it in the caller's hands */
 function connection(client: string) {
+  opened.push(client);
   const ending = new AbortController();
   return { caller: systemBusRouter.createCaller({ client, closed: ending.signal } as never), end: () => ending.abort() };
 }
 
-beforeEach(() => {
-  // Copied before releasing, since releasing mutates what `held()` returns
-  for (const client of Array.from(claims.held().values())) claims.release(client);
+// The registry is shared across cases because the mock is hoisted, so a case that claimed and never ended its
+// connection would leak the name into the next one. Releasing by what this file opened keeps that local, and
+// needs nothing from the registry that production does not already use.
+afterEach(() => {
+  for (const client of opened.splice(0, opened.length)) claims.release(client);
 });
 
 describe('a claimed name', () => {

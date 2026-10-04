@@ -48,8 +48,6 @@ export interface ParticipantClaims {
   release(client: string): void;
   /** The connection that claimed `ref`, if one holds it. What the bus addresses an outgoing message to. */
   clientFor(ref: string): string | undefined;
-  /** Every claim, for a diagnostic that wants to say what was addressable at the time */
-  held(): ReadonlyMap<string, string>;
 }
 
 /** A process's claims. An instance, like the pack registry: two of them share nothing. */
@@ -68,9 +66,6 @@ export function createParticipantClaims(): ParticipantClaims {
     },
     clientFor(ref) {
       return byRef.get(ref);
-    },
-    held() {
-      return byRef;
     },
   };
 }
