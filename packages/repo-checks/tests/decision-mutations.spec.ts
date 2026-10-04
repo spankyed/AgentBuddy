@@ -546,6 +546,21 @@ const MUTATIONS: readonly Mutation[] = [
      * *declaration* is already over, which is `chain-graph.spec.ts`' failure and not this report's — so the
      * run would say the same thing twice, in the weaker place, and a reader would not know which to act on.
      */
+    /**
+     * Dropping the filter hands every reader a killed step's deadline as its cost — `--record` writes it into
+     * source, and `declaredShare` makes a wedged `suite` step four times its rung. The number is right and it
+     * is not a measurement.
+     */
+    why: 'measurementsFrom leaves out a step whose time is the deadline it was killed at',
+    in: 'step-timing',
+    from: 'results.filter((result) => result.timedOut !== true)',
+    to: 'results',
+    call: (lib) => [...lib.measurementsFrom([
+      { step: 'compile', ms: 13_000 },
+      { step: 'test:integration', ms: 300_400, timedOut: true },
+    ])],
+  },
+  {
     why: 'outgrownRungs leaves a declaration that is already over to the spec that gates on it',
     in: 'step-timing',
     from: '    if (declaredShare(step.seconds, step.timeout) > 1) continue;',

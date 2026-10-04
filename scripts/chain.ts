@@ -43,7 +43,7 @@ import { commandText, rootScripts } from './lib/npm-scripts.ts';
 import { asCount, bodyDrift, drifted, IDLE_FLOOR, idleNow, movedBeyondBand, parseFlags, refusesAsBusy, refusesAsContended } from './lib/measure.ts';
 import { machineLine, recordMachine, recordSeconds } from './lib/record-seconds.ts';
 import { schedule } from './lib/chain-schedule.ts';
-import { criticalPath, driftedSteps, outgrownRungs, SECONDS_FLOOR, willNotCache } from './lib/step-timing.ts';
+import { criticalPath, driftedSteps, measurementsFrom, outgrownRungs, SECONDS_FLOOR, willNotCache } from './lib/step-timing.ts';
 import { briefly, classifyLine, cores, declaredAt, dim, driftReport, outgrownReport, DRY_REASON_COLUMN, howLong, identicalRewrites, marker, oneLine, REASON_COLUMN, shouldClassify, staleLines, STEP_NAME_WIDTH, TIME_COLUMN, whenChanged, wrapAt, writerOf } from './lib/chain-output.ts';
 import { slowestTests } from './lib/slow-tests.ts';
 import { DIAGNOSTIC_RUN_ENV } from './lib/unit-pool.ts';
@@ -508,7 +508,9 @@ async function main(): Promise<void> {
   const skipped = cached ? ` (${cached} of ${steps.length} cached)` : '';
   // Measured, not declared. Reporting the floor from `seconds` made it wrong by the amount the table had
   // drifted — 109s against the 125.8s those same four steps actually took in that run.
-  const measuredMs = new Map(results.map((r) => [r.step, r.ms]));
+  // `measurementsFrom`, not the results: a killed step's elapsed time is its deadline, and every reader below
+  // — the floor, the drift report, the rung report, `--record` — would take that for a cost
+  const measuredMs = measurementsFrom(results);
   const ran = steps.filter((step) => measuredMs.has(step.name))
     .map((step) => ({ ...step, seconds: Math.round((measuredMs.get(step.name) ?? 0) / 1000) }));
   const path = criticalPath(ran);

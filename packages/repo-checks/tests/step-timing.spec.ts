@@ -1,7 +1,7 @@
 // The two pure readings of a run's timings: the floor lanes could reach, and whether the table still tells
 // the truth about what a step costs.
 import { describe, expect, it } from 'vitest';
-import { criticalPath, driftedSteps, outgrownRungs, willNotCache } from '../../../scripts/lib/step-timing.ts';
+import { criticalPath, driftedSteps, measurementsFrom, outgrownRungs, willNotCache } from '../../../scripts/lib/step-timing.ts';
 import { declaredShare, type TimeoutClass } from '../../../scripts/lib/step-timeouts.ts';
 import type { Machine } from '../../../scripts/lib/core-budget.ts';
 import type { SchedulableStep } from '../../../scripts/lib/chain-schedule.ts';
@@ -124,6 +124,45 @@ describe('driftedSteps', () => {
  * the same reason: its floor was reported from `seconds` and was wrong by the table's drift, 109s against the
  * 125.8s those steps actually took.
  */
+/**
+ * What a run measured, which is not the same as what each of its steps took.
+ *
+ * **A killed step's elapsed time is its deadline, not its cost.** `boundedSpawn` returns when the budget runs
+ * out, so a wedged `test:integration` reports ~300s — and every reader of that map takes it for a measurement:
+ * `--record` would write 300s into the table, `declaredShare` makes that 4.0 of its rung, `outgrownRungs` names
+ * it as outgrown by construction, and `criticalPath` puts the deadline on the floor. None of them is wrong
+ * about the number; the number is not a measurement.
+ *
+ * `recordTheCosts` already draws this line at the other end, and its reasoning is the same: *"Under a second is
+ * not a measurement of the step's work… `packages:ensure` returns in 0.3s with the packages fresh and takes 14s
+ * when it builds."* A deadline is the same category and the more dangerous one, being large rather than small.
+ *
+ * A step that failed *without* being killed is kept: it ran and stopped early, so its time is real and under,
+ * which `driftedSteps`' lower band is already there for.
+ */
+describe('measurementsFrom', () => {
+  it('leaves out a step whose time is the deadline it was killed at', () => {
+    const measured = measurementsFrom([
+      { step: 'compile', ms: 13_000 },
+      { step: 'test:integration', ms: 300_400, timedOut: true },
+    ]);
+
+    expect([...measured.keys()], 'a killed step measured nothing').toEqual(['compile']);
+  });
+
+  it('keeps a step that failed early, whose time is real', () => {
+    // A failure carries no `timedOut` — only a kill does, which is why the exit code is not a parameter here
+    const measured = measurementsFrom([{ step: 'typecheck:fe', ms: 4_000 }]);
+
+    expect(measured.get('typecheck:fe'), 'it ran and stopped; the time is under, not invented').toBe(4_000);
+  });
+
+  it('keeps every step of a clean run', () => {
+    const results = [{ step: 'a', ms: 1_000 }, { step: 'b', ms: 2_000 }];
+    expect([...measurementsFrom(results)]).toEqual([['a', 1_000], ['b', 2_000]]);
+  });
+});
+
 describe('outgrownRungs', () => {
   const ran = (name: string, timeout: TimeoutClass, declared: number): TimedStep =>
     step(name, [], { seconds: declared, timeout });
