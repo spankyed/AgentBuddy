@@ -17,6 +17,7 @@ import { announcePackClientReady, PACK_FRONTEND_LOADER_ID, packFrontendLoader } 
 import { historyAfter, neighbourOf, spawnPluginActor, withHostLast } from './plugins.ts';
 import { computeCrumbs, pluginTrailer } from './trail.ts';
 import type { PluginRequest, ShellContext, ShellEvent, ShellOptions, ShellParams } from './types.ts';
+import { _runDelivery } from '@abuddy/sdk/events';
 
 const typeOf = safeEvents<ShellEvent>();
 
@@ -321,7 +322,13 @@ export function createShellMachine({ packs, client, packFrontends, storage, noti
         const { plugin, events } = typeOf('DELIVER_PLUGIN_EVENTS', event);
         // A registered plugin's actor is running: the shell spawns it in the same step that registers the plugin
         const actor = system.get(plugin);
-        for (const e of events) actor?.send(e);
+        // Named while its events are handled, so a `sendToSystem` the plugin makes carries the plugin's own ref
+        // and the system it asks can answer this plugin in the window it asked from. `_runDelivery` rather than the host's
+        // `deliverAs`: this runs in a browser, which has no AsyncLocalStorage, and a plugin machine's handlers
+        // send synchronously — nothing here uses `fromPromise`.
+        _runDelivery({ receiver: plugin }, () => {
+          for (const e of events) actor?.send(e);
+        });
       },
 
       processGlobalHotkey: ({ self, context, event }) => {

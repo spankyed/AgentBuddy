@@ -13,7 +13,7 @@ import { loadAppPacks, startPacks } from '@abuddy/host/packs/runtime';
 import {
   APPLICATION_SYSTEM_EVENTS, createApplicationSystem, createPacksSystem, createSettingsSystem, hostRegistration, packsEvents, settingsEvents,
 } from '@abuddy/host/features';
-import { createAppBus, HOST, startEarlySystems } from '@abuddy/host/bus';
+import { createAppBus, createParticipantClaims, HOST, startEarlySystems } from '@abuddy/host/bus';
 import { createHostRuntime } from '@abuddy/host/services';
 import { forwardSecretsChanges } from '@abuddy/host/secrets';
 import { assertSourceResolution } from '@abuddy/host/build/source-resolution';
@@ -102,6 +102,13 @@ export function openAppStore(): AppStore {
   return { store, engine, packs };
 }
 
+/**
+ * Names claimed by a connection rather than registered by a pack: `host/drive`, which an agent driving the app
+ * takes so a system can be told to answer *it*. An instance, created here with the rest of this process's
+ * resources, written by `bus.claim` and read by the bus when it addresses an outgoing message.
+ */
+export const appClaims = createParticipantClaims();
+
 // Exported for graceful shutdown (SIGTERM handler stops the actor system)
 export let backendActor: ReturnType<typeof createActor<ReturnType<typeof createAppBus>>>;
 
@@ -189,7 +196,7 @@ export async function setupBackend(): Promise<void> {
   startPacks(packs);
 
   // ── Start backend actor ──────────────────────────────────────────────
-  backendActor = createActor(createAppBus(packs, early), {
+  backendActor = createActor(createAppBus(packs, early, appClaims), {
     systemId: HOST.bus,
   }).start();
 

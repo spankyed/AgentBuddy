@@ -2,10 +2,14 @@
 // told about, and the outer object is not passthrough, so a field the schema omits arrives as `undefined` and the
 // diagnostics written to name it can't. That is the whole path this covers — the schema, not the envelope.
 //
-// **The envelope has two kinds of field, and the schema is where they differ.** `to`, `event`, `from` and `via`
-// come from the sender, so the schema names them. `client` is a return address that routes, so it is stamped
-// from the connection instead, and the schema leaves it out. The stamped cases are in their own describe below;
-// what each of them can and cannot catch is on the case, because the two halves of that defence overlap.
+// **The envelope has two kinds of field, and the schema is where they differ.** `to`, `event`, `from`, `via` and
+// `sender` come from the sender, so the schema names them. `client` alone is stamped from the connection, and the
+// schema leaves it out. The stamped cases are in their own describe below; what each of them can and cannot catch
+// is on the case, because the two halves of that defence overlap.
+//
+// `sender` sits on the named side although it routes, which looks like the exception to the rule and is not: the
+// client is the only one who knows which of its plugins asked, and every caller already holds the API token, so
+// a forged `sender` is a bug and not an escalation. `client` is withheld because the server knows it anyway.
 //
 // Note that the last case, dropping a field nothing declares, passes just as happily while the dropped field is
 // one the envelope *does* declare. It is not the guard for this; the `Required<…>` case is.
@@ -38,7 +42,7 @@ describe('bus.send carries the sender across the boundary', () => {
    */
   it('carries every field a sender may set, whatever the envelope grows', async () => {
     received.length = 0;
-    const whole: Required<Omit<Message, 'client'>> = { to: 'memo-pack/memos', event: { type: 'ADD_MEMO' }, from: 'default-setup', via: 'action:Summarise' };
+    const whole: Required<Omit<Message, 'client'>> = { to: 'memo-pack/memos', event: { type: 'ADD_MEMO' }, from: 'default-setup', via: 'action:Summarise', sender: 'memo-pack/memos' };
     await caller.send(whole);
     expect(received).toEqual([{ ...whole, client: 'c-one' }]);
   });

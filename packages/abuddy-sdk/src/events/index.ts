@@ -6,9 +6,11 @@ import { getDesignated } from '../designations/index.ts';
 import { resolveName, splitRef, type FeatureRef } from '../ids/refs.ts';
 import type { ApplicationHotkeys } from '../types/index.ts';
 import { eventTypes } from './event-types.ts';
+import { _currentDelivery } from './delivery.ts';
 import type { ContractIncoming, ContractOutgoing, SystemEvents } from '../framework/define-system.ts';
 
 export { eventTypes, type TypeOfEvent } from './event-types.ts';
+export { _currentDelivery, _installAsyncDeliveryReader, _runDelivery, type _Delivery } from './delivery.ts';
 
 /**
  * A message on the bus: the ref of the system or plugin it goes to, and the event exactly as the sender wrote it.
@@ -52,6 +54,24 @@ export interface Message {
    * it dropped at the boundary, like any other field the input schema does not name.
    */
   client?: string;
+  /**
+   * The ref of the participant that sent it: a feature's system or plugin, or a participant that claimed a name
+   * (`host/drive`). What `reply` answers, so a handler never has to be told who asked.
+   *
+   * Stamped where a send is *made*, which is during the handling of another message — `createSends` reads it from
+   * the delivery in scope (`_currentDelivery`). It cannot be stamped from the sender's own identity, because a
+   * pack's generated sends know their pack and not which of its features called them.
+   *
+   * Distinct from `from`, which names the pack: two features of one pack are one `from` and two `sender`s. Note
+   * that `MessageSender` is `Pick<Message, 'from' | 'via'>` and so does **not** include this — it is the type of
+   * the sender *labels*, which say who to blame in a diagnostic, where this says where to send an answer.
+   *
+   * A client may set it, unlike `client`. That is deliberate and costs nothing: every caller already holds the
+   * API token, which lets it send anything to anything, so a forged `sender` is a bug rather than an escalation.
+   * `client` is stamped instead because the server knows it for free, and taking it from the wire would be
+   * strictly worse for no gain.
+   */
+  sender?: string;
 }
 
 /**
@@ -225,7 +245,15 @@ export interface SendBinding {
 export function createSends({ resolve = (name: string) => name, from, via }: SendBinding = {}) {
   // Only the fields this binding has. An envelope carrying `from: undefined` reads as a sender that was there and
   // got lost, and adds a key to every log line and every message that crosses the wire.
-  const sender = { ...(from ? { from } : {}), ...(via ? { via } : {}) };
+  const labels = { ...(from ? { from } : {}), ...(via ? { via } : {}) };
+  // Where an answer to this send would go. A send is almost always made while handling another message, and the
+  // handler's own ref is the address — read from the delivery rather than from the binding, which knows the pack
+  // and not which feature called it. Absent outside a delivery (host plumbing, a timer), and `reply` says so
+  // rather than guessing.
+  const answerAddress = () => {
+    const receiver = _currentDelivery()?.receiver;
+    return receiver ? { sender: receiver } : {};
+  };
   return {
     broadcastToPlugin(name: string, event: { type: string; [key: string]: unknown }): void {
       // The two sends share a signature, so the compiler can't tell a caller it picked the wrong one: say which it
@@ -233,7 +261,7 @@ export function createSends({ resolve = (name: string) => name, from, via }: Sen
       if (!_isHostBound() && _isFeHostBound()) {
         throw new Error(`broadcastToPlugin("${name}") is the backend's, over the bus to every window. In the renderer, send to this window's plugin with sendToPlugin from #generated/events`);
       }
-      boundHost().transport.rootEvents.emitPluginSend({ to: resolve(name), event, ...sender });
+      boundHost().transport.rootEvents.emitPluginSend({ to: resolve(name), event, ...labels, ...answerAddress() });
     },
 
     sendToPlugin(name: string, event: { type: string; [key: string]: unknown }): void {
@@ -243,11 +271,11 @@ export function createSends({ resolve = (name: string) => name, from, via }: Sen
       }
       const ref = resolve(name);
       if (!splitRef(ref)) throw new Error(`"${ref}" doesn't name a plugin: a plugin is named "<packId>/<featureId>"`);
-      boundFeHost().application.send({ type: 'SEND_TO_PLUGIN', plugin: ref, events: [event], ...sender });
+      boundFeHost().application.send({ type: 'SEND_TO_PLUGIN', plugin: ref, events: [event], ...labels });
     },
 
     sendToSystem(to: SystemTarget, event: { type: string; [key: string]: unknown }): void {
-      sendIncoming({ to: typeof to === 'string' ? resolve(to) : getDesignated(to.role), event, ...sender });
+      sendIncoming({ to: typeof to === 'string' ? resolve(to) : getDesignated(to.role), event, ...labels, ...answerAddress() });
     },
   };
 }
@@ -293,6 +321,41 @@ export type SystemTarget = string | { role: string };
  */
 export function untypedSendToSystem(to: SystemTarget, event: { type: string; [key: string]: unknown }): void {
   unboundSends.sendToSystem(to, event);
+}
+
+/**
+ * Answers whoever sent the message being handled, on the connection they sent it from. Backend only.
+ *
+ * This is the whole of a reply: no address is named, because the handler's own message already carries one. A
+ * plugin that asked gets the answer in the window it asked from and in no other; a participant that claimed a
+ * name (`host/drive`) gets it as itself. The same handler therefore answers a plugin and a driver identically,
+ * which is the point — the alternative is every pair inventing a correlation id and a guard to match it.
+ *
+ * Call it from the handler that was given the message, or from work that handler awaited. It reads the message
+ * in scope rather than one it was passed, so a callback stored during one delivery and invoked from another
+ * would answer *that* delivery's sender; keep a reply inside the handler that owns it.
+ *
+ * Throws rather than broadcasting when there is nothing to answer — a private answer delivered to every window
+ * is worse than a failure, and silent.
+ */
+export function reply(event: { type: string; [key: string]: unknown }): void {
+  const delivery = _currentDelivery();
+  if (!delivery) {
+    throw new Error(
+      'reply() was called with no message being handled. It answers the sender of the message a handler was given, so it belongs inside that handler (or in work the handler awaited) — not at module scope, and not in a callback something else invokes later.',
+    );
+  }
+  if (!delivery.replyTo) {
+    throw new Error(
+      `reply() cannot answer the message that reached "${delivery.receiver}", which named no sender. Pack code's sends carry one; sends made outside a delivery (host plumbing, a timer, a subscription) do not. Name the target with broadcastToPlugin instead.`,
+    );
+  }
+  boundHost().transport.rootEvents.emitPluginSend({
+    to: delivery.replyTo,
+    event,
+    sender: delivery.receiver,
+    ...(delivery.client ? { client: delivery.client } : {}),
+  });
 }
 
 /** Calls `callback` each time a client connects; returns the unsubscribe (backend only) */
