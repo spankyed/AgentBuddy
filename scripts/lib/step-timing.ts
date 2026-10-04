@@ -4,6 +4,7 @@
  * and separate from `scripts/chain.ts` because that module runs the chain when imported.
  */
 import type { SchedulableStep } from './chain-schedule.ts';
+import { isMeasuredSchedule, type Machine, thisMachine } from './core-budget.ts';
 import { declaredShare, type TimeoutClass } from './step-timeouts.ts';
 
 /**
@@ -109,11 +110,36 @@ export const SECONDS_FLOOR = 1;
  *
  * A step already over on its *declaration* is left out: that is `chain-graph`'s to fail, and a run reaching
  * this report has a table that passed it.
+ *
+ * **It answers nothing off the schedule the table was measured on, which is not a politeness.**
+ * `declaredShare` projects a cost onto a machine `stretches` times slower, so its input has to be a cost from
+ * the machine the rungs were sized against. Hand it a reading from a slower box and the slowdown is counted
+ * twice: measured 2026-10-04, a green run on the 4x-slower runner `suite`'s `stretches` cites puts **17 of 29
+ * steps** past their rung, and at 2x it is 5 of 29 — every one of them a step whose declared cost is inside
+ * its rung with room to spare. The percentage would be its share of a machine 16x the reference, which no
+ * rung is sized for and nothing measured.
+ *
+ * So the predicate is `isMeasuredSchedule`, the same one `--record` refuses on, and that is what keeps this
+ * report's advice followable: it says to re-measure and record, and it only speaks where recording is
+ * accepted. `driftReport` splits the two — its rows are true wherever they ran, so it prints them anywhere
+ * and gates only the sentence. Nothing here survives that split, because the number itself is the
+ * projection.
  */
 export function outgrownRungs<S extends SchedulableStep & { readonly timeout?: TimeoutClass }>(
   steps: readonly S[],
   measuredMs: ReadonlyMap<string, number>,
+  /** The run's core budget, which with the two machines is what says this is the schedule the table describes */
+  budget: number,
+  /**
+   * The machine the table's costs were taken on (`MEASURED_ON`). Passed rather than imported, as
+   * `driftReport` takes it and for the same reason: it keeps this module testable about a machine it is not
+   * running on.
+   */
+  measuredOn: Machine,
+  /** The box this is running on; `thisMachine()` where a caller has no reason to say */
+  machine: Machine = thisMachine(),
 ): Array<{ name: string; declared: number; measured: number; at: number }> {
+  if (!isMeasuredSchedule(budget, measuredOn, machine)) return [];
   const found: Array<{ name: string; declared: number; measured: number; at: number }> = [];
   for (const step of steps) {
     const ms = measuredMs.get(step.name);

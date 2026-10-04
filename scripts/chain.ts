@@ -544,9 +544,14 @@ async function main(): Promise<void> {
   // **The bound asked of the measurement.** `declaredShare` gates on what a step declares, and the band above
   // watches declarations at half-to-double — looser than the bound's own margin for four steps, so a step can
   // outgrow its rung and pass. A run is the one place both numbers exist, which is `criticalPath`'s reason for
-  // reading measured seconds too. Not gated on the schedule: a measurement here is this machine's, and whether
-  // it fits this machine's rung is a question about this machine, where `driftReport`'s advice is about a table.
-  const outgrown = outgrownReport(outgrownRungs(steps, measuredMs));
+  // reading measured seconds too.
+  //
+  // The schedule goes in because the answer depends on it, not to decide what to print: `declaredShare`
+  // projects onto a machine `stretches` times slower, so a reading from a slower box counts the slowdown
+  // twice and every number it produces is about a machine nothing sized a rung for. `outgrownRungs` has the
+  // measurement. That is the difference from `driftReport` above, which prints its rows anywhere because a
+  // cost is true wherever it was taken, and gates only the sentence telling a reader to record it.
+  const outgrown = outgrownReport(outgrownRungs(steps, measuredMs, budget, MEASURED_ON));
   if (outgrown !== '') console.log(outgrown);
 
   if (args.flags.has('record')) {

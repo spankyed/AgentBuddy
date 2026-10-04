@@ -508,8 +508,9 @@ describe('shouldClassify', () => {
  * a step can pass the bound while its real cost has outgrown it. `outgrownRungs` finds those; this words them.
  *
  * **It is a report, so what it must not do is read like a failure**, and what it must do is name the one thing
- * that would make it a false alarm: a crowded run inflates a measurement, and `--cores 1` is the check. That
- * is `howLong`'s idiom above rather than a second way of saying it.
+ * that would make it a false alarm: a crowded run inflates a measurement, and a serial re-run is the check.
+ * `--all --cores 1`, not `howLong`'s plain `--cores 1` — that one is on the failure path, where the step is
+ * unstamped. Here the step passed and is stamped, so a re-run without `--all` finds it cached.
  */
 describe('outgrownReport', () => {
   const found = [{ name: 'test:integration', declared: 60, measured: 80, at: 80 * 4 / 300 }];
@@ -528,7 +529,14 @@ describe('outgrownReport', () => {
 
   it('names the run that tells a crowded measurement from a real one', () => {
     expect(outgrownReport(found), 'the one thing that would make this a false alarm')
-      .toContain('--cores 1');
+      .toContain('--all --cores 1');
+  });
+
+  it('asks for --all with it, since a step it reported has passed and is stamped', () => {
+    // A plain `--cores 1` re-run finds the step cached and measures nothing, which is advice that cannot be
+    // taken — `driftReport`'s doc draws the same distinction from the other side. Asserted as the bad
+    // spelling rather than as "no bare --cores", which the good spelling contains
+    expect(outgrownReport(found)).not.toContain('chain -- --cores 1');
   });
 
   it('asks for the record rather than the rung, since the declaration moves first', () => {

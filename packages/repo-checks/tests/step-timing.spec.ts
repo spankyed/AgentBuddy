@@ -3,6 +3,7 @@
 import { describe, expect, it } from 'vitest';
 import { criticalPath, driftedSteps, outgrownRungs, willNotCache } from '../../../scripts/lib/step-timing.ts';
 import { declaredShare, type TimeoutClass } from '../../../scripts/lib/step-timeouts.ts';
+import type { Machine } from '../../../scripts/lib/core-budget.ts';
 import type { SchedulableStep } from '../../../scripts/lib/chain-schedule.ts';
 
 /** A pooled step, which `driftedSteps` treats like any other — the run decides what may be reported, not the step */
@@ -127,11 +128,16 @@ describe('outgrownRungs', () => {
   const ran = (name: string, timeout: TimeoutClass, declared: number): TimedStep =>
     step(name, [], { seconds: declared, timeout });
 
+  // The schedule the table describes: this machine *is* the measured one, spending all of it
+  const TABLE: Machine = { cpu: 'Apple M1 Pro', cores: 10 };
+  const asked = (steps: readonly TimedStep[], measured: ReadonlyMap<string, number>,
+    machine: Machine = TABLE, budget = TABLE.cores) => outgrownRungs(steps, measured, budget, TABLE, machine);
+
   /** The case this exists for: the declaration passes the bound and the measurement does not */
   it('reports a step whose measured cost passes the rung its declared cost fits in', () => {
     // test:integration's own numbers: 60s declared is 0.80 of `suite`; 80s measured is 1.07
     const steps = [ran('test:integration', 'suite', 60)];
-    const found = outgrownRungs(steps, new Map([['test:integration', 80_000]]));
+    const found = asked(steps, new Map([['test:integration', 80_000]]));
 
     expect(found.map((row) => row.name)).toEqual(['test:integration']);
     expect(found[0], 'both numbers, since the gap is the finding').toMatchObject({
@@ -142,13 +148,13 @@ describe('outgrownRungs', () => {
 
   it('says nothing about a step whose measured cost still fits', () => {
     // 67.3s is the real reading that prompted this, and it is inside the rung — 0.90, uncomfortable, not over
-    expect(outgrownRungs([ran('test:integration', 'suite', 60)], new Map([['test:integration', 67_300]])))
+    expect(asked([ran('test:integration', 'suite', 60)], new Map([['test:integration', 67_300]])))
       .toEqual([]);
   });
 
   it('says nothing about a step the run did not measure', () => {
     // A cached step cost no time, so it is evidence of nothing — the same reason `criticalPath` skips it
-    expect(outgrownRungs([ran('compile', 'suite', 13)], new Map())).toEqual([]);
+    expect(asked([ran('compile', 'suite', 13)], new Map())).toEqual([]);
   });
 
   /**
@@ -160,17 +166,53 @@ describe('outgrownRungs', () => {
   it('leaves a declaration that is already over to the spec that gates on it', () => {
     const over = [ran('greedy', 'quick', 20)];
     expect(declaredShare(20, 'quick'), 'declared is already past the bound').toBeGreaterThan(1);
-    expect(outgrownRungs(over, new Map([['greedy', 20_000]])), 'so this is not the thing to report it')
-      .toEqual([]);
+    expect(asked(over, new Map([['greedy', 20_000]])), 'so this is not the thing to report it').toEqual([]);
   });
 
   it('weighs each step against its own rung', () => {
     // 40s is over `quick` (2.67) and well inside `suite` (0.53) — the rung is the unit, not the number
-    const found = outgrownRungs(
+    const found = asked(
       [ran('leg', 'quick', 10), ran('pool', 'suite', 40)],
       new Map([['leg', 40_000], ['pool', 40_000]]),
     );
     expect(found.map((row) => row.name)).toEqual(['leg']);
+  });
+
+  /**
+   * Off the measured schedule it answers nothing, and the two cases below are the ones that make that a
+   * defect rather than a scruple.
+   *
+   * `declaredShare` projects a cost onto a machine `stretches` times slower, so a reading from a slower box
+   * is projected onto a machine slower again — the slowdown counted twice. These use the *declared* costs as
+   * the measurement, scaled: every step is comfortably inside its rung by declaration, so anything reported
+   * is the double count and nothing else.
+   */
+  describe('off the schedule the table was measured on', () => {
+    const SMALLER: Machine = { cpu: 'Some Smaller CPU', cores: 4 };
+    // Inside `suite` by declaration (0.80), and four times that is not
+    const steps = [ran('test:integration', 'suite', 60), ran('typecheck:fe', 'quick', 10)];
+    const fourTimesSlower = new Map([['test:integration', 240_000], ['typecheck:fe', 40_000]]);
+
+    it('says nothing on another machine, where the number would count the slowdown twice', () => {
+      expect(asked(steps, fourTimesSlower, SMALLER, SMALLER.cores), 'both are over on the arithmetic')
+        .toEqual([]);
+      // The arithmetic it refused to do, so the case fails if the gate is what goes rather than the maths
+      expect(declaredShare(240, 'suite')).toBeGreaterThan(1);
+      expect(declaredShare(40, 'quick')).toBeGreaterThan(1);
+    });
+
+    it('says nothing at another budget on the measured machine either', () => {
+      // `--cores 4` on the reference box. The costs are the schedule's, and this is not that schedule —
+      // which is the half a machine comparison alone misses, and the half `--record` also refuses on
+      expect(asked(steps, fourTimesSlower, TABLE, 4)).toEqual([]);
+    });
+
+    it('still answers on the schedule the costs were taken on', () => {
+      // The same readings, same table, nothing but the schedule changed — so the two cases above are the
+      // gate talking and not an input that could never have been reported
+      expect(asked(steps, fourTimesSlower).map((row) => row.name))
+        .toEqual(['test:integration', 'typecheck:fe']);
+    });
   });
 });
 

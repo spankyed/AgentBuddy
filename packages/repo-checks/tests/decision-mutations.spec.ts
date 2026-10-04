@@ -553,6 +553,30 @@ const MUTATIONS: readonly Mutation[] = [
     call: (lib) => lib.outgrownRungs(
       [{ name: 'greedy', dependsOn: [], seconds: 20, timeout: 'quick' }],
       new Map([['greedy', 20_000]]),
+      10,
+      { cpu: 'Apple M1 Pro', cores: 10 },
+      { cpu: 'Apple M1 Pro', cores: 10 },
+    ),
+  },
+  {
+    /**
+     * The gate that makes the number mean anything. `declaredShare` projects onto a machine `stretches`
+     * times slower, so a reading from a slower box counts the slowdown twice — measured, a green run on the
+     * 4x-slower runner puts 17 of 29 steps past rungs their declarations sit well inside. Without this the
+     * report fires hardest on the machines where `--record`, its own advice, refuses.
+     */
+    why: 'outgrownRungs answers only on the schedule the table was measured on',
+    in: 'step-timing',
+    from: '  if (!isMeasuredSchedule(budget, measuredOn, machine)) return [];',
+    to: '',
+    // 60s declared is 0.80 of `suite`; the reading is that same cost on a box four times slower, so the only
+    // thing that could report it is the double count
+    call: (lib) => lib.outgrownRungs(
+      [{ name: 'test:integration', dependsOn: [], seconds: 60, timeout: 'suite' }],
+      new Map([['test:integration', 240_000]]),
+      4,
+      { cpu: 'Apple M1 Pro', cores: 10 },
+      { cpu: 'Some Smaller CPU', cores: 4 },
     ),
   },
   {
