@@ -417,9 +417,10 @@ npm run spec:dry [...]   # What the plan would run and what the record says it c
                          # project configs loading rather than a graph being walked. It prints **file-time
                          # summed across workers, never a wall estimate** — the ratio between the two was
                          # 1.55:1 and 2.18:1 on one target three days apart. It prints the record's
-                         # `measuredAt` too: spec-cost.json is a sample kept with hysteresis, so the total
-                         # is a band, and a spec the record has never seen is named rather than counted
-                         # free. The ordinary `npm run spec` collects nothing
+                         # `measuredAt` too: a cost is the median of a window of readings rather than the
+                         # last one taken, so the total is a band and not a figure, and a spec the record has
+                         # never seen is named rather than counted free. The ordinary `npm run spec` collects
+                         # nothing
 npm run spec:full [...]  # The same, plus the two answers the module graph cannot give: the pack suites a
                          # rebuilt dist would reach, and the integration halves behind a second config.
                          # Costs a build when one is stale (14s), the pack suite (18s) and the pooled
