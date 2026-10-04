@@ -142,6 +142,22 @@ export const measurementsFrom = (
  * accepted. `driftReport` splits the two — its rows are true wherever they ran, so it prints them anywhere
  * and gates only the sentence. Nothing here survives that split, because the number itself is the
  * projection.
+ *
+ * **How to watch it fire, since no case can reach the composition.** Put a sleep in the npm script of a
+ * step that declares a fraction of a second, long enough to pass its rung's `ms / stretches` — that keeps the
+ * declared share far inside the bound while the measurement lands outside it, which is the one shape this
+ * reports. Run the chain plainly, then lengthen the sleep so the step goes stale again and run it at a
+ * `--cores` the table was not measured at. The first prints a row here beside `driftReport`'s; the second
+ * prints `driftReport`'s alone.
+ *
+ * That second run is the gate, and it is what stops being true if the `isMeasuredSchedule` line goes: the
+ * same measurement that printed nothing starts naming a step, and no case below can say so. Restore the
+ * script afterwards and check `git status` rather than remembering — and rebuild the published packages,
+ * which a run stamps against whatever `package.json` held at the time.
+ *
+ * The recipe is here for `measurementsFrom`'s reason: `scripts/chain.ts` cannot be imported, so the cases
+ * below and the `decision-mutations` entry cover this function, while only a command covers the line that
+ * hands it a budget and a machine.
  */
 export function outgrownRungs<S extends SchedulableStep & { readonly timeout?: TimeoutClass }>(
   steps: readonly S[],
