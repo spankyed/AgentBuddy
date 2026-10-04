@@ -412,6 +412,39 @@ describe('a bus round-trip', () => {
   });
 });
 
+describe('what /events says about an inbound message', () => {
+  /**
+   * The one case the page bridge cannot see at all.
+   *
+   * A message addressed to `host/drive` carries a `client`, so the subscription delivers it to this connection
+   * and nowhere else — the renderer never sees it, so the in-page inspector cannot report it. `/events` is
+   * therefore the only way an agent notices one, and without the sender it learns that something arrived for it
+   * but not who asked: enough to notice a question, not enough to answer it.
+   */
+  it('keeps the sender of a message addressed to the session', async () => {
+    const { session, answer } = sessionWith();
+    await session.ready();
+
+    answer({ type: 'DRIVER_QUESTION', question: 'which file?' });
+    await settle();
+
+    const [seen] = drained(session.drainEvents()).events;
+    expect(seen.to).toBe(DRIVE_REF);
+    expect(seen.sender, 'so an agent can answer whoever asked').toBe(DATABASE_SYSTEM);
+  });
+
+  // A bridged event is an event rather than an envelope, so it has no sender to keep and must not invent one
+  it('leaves it absent for an event seen only in the page', async () => {
+    const { session, emit } = sessionWith();
+    await session.ready();
+
+    emit({ type: 'TRAIL_UPDATE', event: {} });
+    await settle();
+
+    expect(drained(session.drainEvents()).events[0].sender).toBeUndefined();
+  });
+});
+
 describe('the drains', () => {
   it('hands over the renderer errors and clears them', () => {
     const { session } = sessionWith();

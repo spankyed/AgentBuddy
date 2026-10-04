@@ -257,6 +257,11 @@ Things worth knowing before changing it:
   the agent had already read.
 - **`/events` is capped** (`MAX_SEEN_EVENTS`) and reports what it dropped. The in-page inspector sees all
   of the app's traffic, not just replies, so a buffer nobody drains grows for as long as the session is up.
+- **An event that came in on the connection carries its `sender`; one seen only in the page does not.** The
+  inspector reads an event rather than an envelope, so there is no sender to keep. It matters for the one
+  case the page cannot see at all: a message addressed to `host/drive` is delivered to this connection and
+  nowhere else, so `/events` is the only way an agent notices one — and without the sender it learns that
+  something arrived for it but not who asked, which is enough to notice a question and not to answer it.
 - Renderer errors are collected by the engine's own listeners rather than drained from the fixture's
   array, so `describeFailure` keeps quoting everything it would have.
 

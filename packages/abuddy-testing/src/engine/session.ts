@@ -78,11 +78,21 @@ export interface SessionDeps {
   readonly takeErrors: () => readonly string[];
 }
 
-/** A message the app emitted, as the in-page bridge reports it */
+/** A message the app emitted, as the in-page bridge or the session's own connection reports it */
 export interface SeenEvent {
   readonly to?: string;
   readonly type: string;
   readonly event: Record<string, unknown>;
+  /**
+   * Who sent it, where the sender said — a feature's ref, or a participant's claimed name.
+   *
+   * Only the connection supplies this: the in-page bridge reads the renderer's xstate inspector, which sees an
+   * event rather than an envelope, so a bridged event has none. It matters for the one case the bridge cannot
+   * see at all — a message addressed to `host/drive`, which never reaches the renderer. Without it `/events`
+   * tells an agent that something arrived for it and not who asked, which is enough to notice a question and
+   * not enough to answer one.
+   */
+  readonly sender?: string;
 }
 
 /**
@@ -300,7 +310,12 @@ export function createSession({ page, api, takeErrors }: SessionDeps): EngineSes
        * be counted twice.
        */
       stopApi = api.onMessage((message) => {
-        const event: SeenEvent = { to: message.to, type: message.event.type, event: message.event };
+        const event: SeenEvent = {
+          to: message.to,
+          type: message.event.type,
+          event: message.event,
+          ...(message.sender === undefined ? {} : { sender: message.sender }),
+        };
         wake(event);
         if (message.to === DRIVE_REF) record(event);
       });
