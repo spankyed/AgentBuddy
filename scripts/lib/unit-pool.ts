@@ -37,6 +37,14 @@ export const poolStampFor = (suite: UnitSuite, half: Half): string =>
   path.join(POOL_STAMP_DIR, `${suite.dir}.${half}.json`);
 
 /**
+ * This module's export that names a stamp, beside `packages-built.ts`'s three.
+ *
+ * Two declarations rather than one shared list, because each belongs beside the functions it names: a
+ * stamp reader added here is in view of whoever adds it, which a central list two files away is not.
+ */
+export const STAMP_READERS = { poolStampFor } as const;
+
+/**
  * Set on a run whose verdict must not be recorded, and read here because this is where the records are kept.
  *
  * The chain's classification re-run is the one that needs it. A step that fails while the machine is busy is

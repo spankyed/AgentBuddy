@@ -6,19 +6,22 @@
 // `chain-inputs.spec.ts` is the other half of the split: whether a step's declared inputs cover the files
 // that step actually reads, which is answered by walking the tree and is where the cost lives.
 import * as fs from 'node:fs';
+import * as os from 'node:os';
 import * as path from 'node:path';
-import { describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import ts from 'typescript';
-import { BUILD_UNITS, buildScriptFor, inputFiles, NOT_A_BUILD_INPUT, repoRelative, REPO_ROOT, type BuildUnit } from '@abuddy/host/build/packages-built';
+import { BUILD_UNITS, buildScriptFor, inputFiles, NOT_A_BUILD_INPUT, repoRelative, REPO_ROOT,
+  STAMP_READERS as HOST_STAMP_READERS, type BuildUnit } from '@abuddy/host/build/packages-built';
 import { CHAIN_STEPS, INTEGRATION_SUITES, suiteInputs, type ChainStep } from '../../../scripts/lib/chain-steps.ts';
 import { UNIT_SUITES, type UnitSuite } from '../../../scripts/lib/unit-suites.ts';
 import { reachableText, rootScripts } from '../../../scripts/lib/npm-scripts.ts';
 import { TYPECHECK_LEGS } from '../../../scripts/lib/typecheck-legs.ts';
-import { POOLS, poolUnitFor, type Pool } from '../../../scripts/lib/unit-pool.ts';
+import { POOLS, poolUnitFor, STAMP_READERS as POOL_STAMP_READERS, type Pool } from '../../../scripts/lib/unit-pool.ts';
 import { asPercent, POOL_WIDTH, shareOf, UNCAPPED } from '../../../scripts/lib/core-budget.ts';
 import { chainFlagNames } from '../../../scripts/lib/chain-flags.ts';
 import { ASSUMED_RUNGS } from '../../../scripts/lib/step-timeouts.ts';
-import { relativeSpecifiers, resolveRelative } from '../../../scripts/lib/module-graph.ts';
+import { reachableFrom } from '../../../scripts/lib/module-graph.ts';
+import { importedCallsIn } from '../../../scripts/lib/imported-calls.ts';
 import { PACKAGE_DIRS } from '../../../scripts/lib/workspace-deps.ts';
 import { population } from '@abuddy/sdk/testing';
 
@@ -45,26 +48,27 @@ const projectsOf = async (rel: string): Promise<string[]> => {
 const ROOT_SCRIPTS = (JSON.parse(fs.readFileSync(path.join(REPO_ROOT, 'package.json'), 'utf-8')) as { scripts: Record<string, string> }).scripts;
 
 /**
- * What a step's runner comprises: the `scripts/` files its npm script names, plus any relative module those
- * import — which is where the behaviour being asked about actually lives.
+ * What a step's runner comprises: the `scripts/` files its npm script names, and everything those reach
+ * through relative imports — which is where the behaviour being asked about actually lives.
  *
  * One function for both questions below, because both follow the same indirection and a check that stops at
  * the npm script stops having a subject the moment a runner moves a line into `scripts/lib`.
+ *
+ * **Transitive, which it was not.** It took the named scripts plus their *direct* imports and stopped, so a
+ * runner that moved the line one module further was already out of reach — the exact failure the
+ * indirection exists to prevent, one level along. `reachableFrom` is that walk, confined to `scripts/`: the
+ * question is what a runner loads, and following it into `packages/` would answer about the product.
  */
-function runnerText(stepName: string): string {
-  const named = [...(ROOT_SCRIPTS[stepName] ?? '').matchAll(/\b(scripts\/[\w./-]+\.(?:ts|mjs))/g)].map(([, file]) => file);
-  const seen = new Set(named);
-  for (const file of named) {
-    const full = path.join(REPO_ROOT, file);
-    if (!fs.existsSync(full)) continue;
-    for (const specifier of relativeSpecifiers(full)) {
-      const target = resolveRelative(full, specifier);
-      if (target !== undefined) seen.add(repoRelative(target));
-    }
-  }
-  return [...seen].filter((file) => fs.existsSync(path.join(REPO_ROOT, file)))
-    .map((file) => fs.readFileSync(path.join(REPO_ROOT, file), 'utf-8')).join('\n');
+function runnerFiles(stepName: string): string[] {
+  const named = [...(ROOT_SCRIPTS[stepName] ?? '').matchAll(/\b(scripts\/[\w./-]+\.(?:ts|mjs))/g)]
+    .map(([, file]) => path.join(REPO_ROOT, file))
+    .filter((full) => fs.existsSync(full));
+  return reachableFrom(named, [path.join(REPO_ROOT, 'scripts')]);
 }
+
+/** The same files as one string, for a question about what a runner *says* rather than what it calls */
+const runnerText = (stepName: string): string =>
+  runnerFiles(stepName).map((file) => fs.readFileSync(file, 'utf-8')).join('\n');
 
 // `build:app` is an enumeration of workspaces, which is the shape that goes stale silently: a workspace that
 // gains a `build` script simply would not be built by the chain, and nothing would say so. The set is
@@ -278,21 +282,28 @@ describe('every pool runs at the width core-budget.ts says it does', () => {
 // A step's runner reads stamps if it, or a `scripts/lib` module it imports, names one of the freshness
 // functions. That is derivable, so it is derived rather than listed.
 describe('a step whose runner reads stamps declares forceArgs', () => {
-  /** Naming any of these means the runner consults a stamp store, so the chain's --all has to reach it */
-  const STAMP_READERS = ['unitStaleReason', 'stalePackageUnits', 'ensurePackagesBuilt', 'poolStampFor'];
+  /**
+   * Calling one of these means the runner consults a stamp store, so the chain's `--all` has to reach it.
+   *
+   * **A call, not a mention, and the population comes from the modules that define them.** This was four
+   * string literals here and a `text.includes` over the runner's source, which is wrong in both
+   * directions: `scripts/bounded.ts` importing the step table for one constant put three steps in this
+   * answer, each needing an exception recording that the name was "in its reach without being in its
+   * behaviour", and a stamp reader nobody added to the four was invisible. `STAMP_READERS` is declared
+   * beside the functions in each module and holds the functions themselves, so a rename is a compile
+   * error; `importedCallsIn` asks the syntax tree whether a bound name is called.
+   */
+  const STAMP_READERS = new Set([...Object.keys(HOST_STAMP_READERS), ...Object.keys(POOL_STAMP_READERS)]);
 
   /**
    * Steps that read stamps and take no `forceArgs` on purpose. An entry that stops applying is reported.
    */
   const KEEPS_ITS_CACHE_UNDER_ALL: Record<string, string> = {
     'packages:ensure': 'forcing it would turn the 18 nested ensurePackagesBuilt() calls a chain makes into 18 builds behind one lock; the packages keep their own content-addressed stamps, which package-freshness.spec.ts covers, and "regardless of its stamp" means the chain\'s stamps',
-    'check:tiers': 'it consults no stamp. It reads the step table, which imports the fingerprint module, and this check reads text — so the freshness names are in its reach without being in its behaviour. The import is for `CHAIN_STEPS` and `APP_OUTPUTS`; if `check-test-tiers.ts` ever calls one of them, this entry is wrong and the case above is right',
   };
 
-  const readsStamps = CHAIN_STEPS.filter((step) => {
-    const text = runnerText(step.name);
-    return STAMP_READERS.some((fn) => text.includes(fn));
-  });
+  const readsStamps = CHAIN_STEPS.filter((step) => runnerFiles(step.name)
+    .some((file) => importedCallsIn(file, { names: STAMP_READERS }).length > 0));
 
   it('there are some, so this check is not vacuous', () => {
     expect(readsStamps.map((step) => step.name)).not.toEqual([]);
@@ -310,6 +321,58 @@ describe('a step whose runner reads stamps declares forceArgs', () => {
   it('lists no exception that has stopped reading stamps', () => {
     const stale = Object.keys(KEEPS_ITS_CACHE_UNDER_ALL).filter((name) => !readsStamps.some((step) => step.name === name));
     expect(stale, 'these no longer consult a stamp store; drop them').toEqual([]);
+  });
+
+  /**
+   * The distinction the whole check rests on, over files written for it.
+   *
+   * Without these the derivation above could silently stop matching anything and every case over it would
+   * still pass — and the text version it replaces failed in both directions at once, so neither answer can
+   * be taken on trust. The third case is the regression that prompted the change: `scripts/bounded.ts`
+   * imported the step table for one constant, which put three steps in the answer and wanted three
+   * exceptions recording that a name was in their reach without being in their behaviour.
+   */
+  describe('what counts as reading a stamp', () => {
+    const reader = [...STAMP_READERS][0]!;
+    let dir = '';
+    beforeAll(() => { dir = fs.mkdtempSync(path.join(os.tmpdir(), 'stamp-readers-')); });
+    afterAll(() => fs.rmSync(dir, { recursive: true, force: true }));
+    const wrote = (name: string, body: string): string => {
+      const file = path.join(dir, name);
+      fs.writeFileSync(file, body);
+      return file;
+    };
+
+    it('counts a call of an imported reader', () => {
+      const file = wrote('calls.ts', `import { ${reader} } from './x.ts';\n${reader}();\n`);
+      expect(importedCallsIn(file, { names: STAMP_READERS })).toEqual([reader]);
+    });
+
+    it('counts a call through a namespace, however it is spelled', () => {
+      const file = wrote('ns.ts', `import * as anything from './x.ts';\nanything.${reader}();\n`);
+      expect(importedCallsIn(file, { names: STAMP_READERS })).toEqual([`anything.${reader}`]);
+    });
+
+    it('does not count an import that never calls it, which is what an exception used to record', () => {
+      const file = wrote('imports.ts', `import { ${reader} } from './x.ts';\nexport const held = ${reader};\n`);
+      expect(importedCallsIn(file, { names: STAMP_READERS }),
+        'an import is not a use, and three steps needed exceptions saying so').toEqual([]);
+    });
+
+    it('does not count a bare mention, which is all the text check ever saw', () => {
+      const file = wrote('mentions.ts', `export const prose = 'see ${reader} for why';\n`);
+      expect(importedCallsIn(file, { names: STAMP_READERS })).toEqual([]);
+    });
+
+    it('does not count a same-named local, since the name has to be bound by an import', () => {
+      const file = wrote('local.ts', `function ${reader}(): void {}\n${reader}();\n`);
+      expect(importedCallsIn(file, { names: STAMP_READERS })).toEqual([]);
+    });
+
+    it('ignores a call that is not one of the readers', () => {
+      const file = wrote('other.ts', "import { somethingElse } from './x.ts';\nsomethingElse();\n");
+      expect(importedCallsIn(file, { names: STAMP_READERS })).toEqual([]);
+    });
   });
 });
 

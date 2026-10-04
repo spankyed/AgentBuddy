@@ -1166,3 +1166,18 @@ export function ensurePackagesBuilt({
   report(`Published packages are out of date:\n${staleMessage(stale)}\nRebuilding ${stale.length} of ${Object.keys(BUILD_UNITS).length}\n`);
   for (const { workspace } of stale) build(workspace);
 }
+
+/**
+ * This module's exports that consult a stamp store, named so a check can ask whether a runner calls one.
+ *
+ * **Declared here rather than in the check, and as the functions rather than their names.** Only three of
+ * this module's exports read a stamp, so the population cannot come from the specifier the way
+ * `child_process`'s spawners can — something has to say which. Saying it here puts it in front of whoever
+ * adds the fourth, where a list in `chain-table.spec.ts` was a hand-written population two files away that
+ * nothing would notice had gone short. Holding the functions and not string literals is what makes a rename
+ * a compile error instead of a check that quietly stops matching.
+ *
+ * What reads it: `chain-table.spec.ts` asks whether a chain step's runner *calls* one of these, because a
+ * step whose runner consults its own stamps needs `forceArgs` or the chain's `--all` would skip its work.
+ */
+export const STAMP_READERS = { ensurePackagesBuilt, stalePackageUnits, unitStaleReason } as const;

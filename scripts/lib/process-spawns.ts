@@ -24,28 +24,12 @@
  */
 import * as fs from 'node:fs';
 import * as path from 'node:path';
-import ts from 'typescript';
+import { importedCallsIn } from './imported-calls.ts';
 import { reachableFrom } from './module-graph.ts';
 
 /** However the module is spelled */
 const CHILD_PROCESS = new Set(['node:child_process', 'child_process']);
 
-/** What a file bound from `child_process`: names callable directly, and namespaces callable through */
-function boundFrom(source: ts.SourceFile): { names: Set<string>; namespaces: Set<string> } {
-  const names = new Set<string>();
-  const namespaces = new Set<string>();
-  source.forEachChild((node) => {
-    if (!ts.isImportDeclaration(node) || !ts.isStringLiteral(node.moduleSpecifier)) return;
-    if (!CHILD_PROCESS.has(node.moduleSpecifier.text)) return;
-    const bindings = node.importClause?.namedBindings;
-    // `import { execFileSync }` and `import { execFileSync as run }` alike: the local name is what is called
-    if (bindings !== undefined && ts.isNamedImports(bindings)) for (const element of bindings.elements) names.add(element.name.text);
-    if (bindings !== undefined && ts.isNamespaceImport(bindings)) namespaces.add(bindings.name.text);
-    // A default import of a CJS module is the namespace under another name
-    if (node.importClause?.name !== undefined) namespaces.add(node.importClause.name.text);
-  });
-  return { names, namespaces };
-}
 
 /**
  * The spawn calls in one file, each as the name it was called through (`execFileSync`, `cp.spawn`).
@@ -53,25 +37,8 @@ function boundFrom(source: ts.SourceFile): { names: Set<string>; namespaces: Set
  * Empty for a file that imports `child_process` and never calls it, which is the honest answer: an import
  * is not a subprocess, and a file that only re-exports a type from it is not a spawner.
  */
-export function spawnCallsIn(absFile: string): string[] {
-  const source = ts.createSourceFile(absFile, fs.readFileSync(absFile, 'utf-8'), ts.ScriptTarget.Latest, true);
-  const { names, namespaces } = boundFrom(source);
-  if (names.size === 0 && namespaces.size === 0) return [];
-
-  const calls: string[] = [];
-  const visit = (node: ts.Node): void => {
-    if (ts.isCallExpression(node)) {
-      const callee = node.expression;
-      if (ts.isIdentifier(callee) && names.has(callee.text)) calls.push(callee.text);
-      else if (ts.isPropertyAccessExpression(callee) && ts.isIdentifier(callee.expression) && namespaces.has(callee.expression.text)) {
-        calls.push(`${callee.expression.text}.${callee.name.text}`);
-      }
-    }
-    ts.forEachChild(node, visit);
-  };
-  visit(source);
-  return calls;
-}
+export const spawnCallsIn = (absFile: string): string[] =>
+  importedCallsIn(absFile, { fromModules: CHILD_PROCESS });
 
 /** Every `.ts` under a directory — the whole tree, not only its specs: a support module is where a spawn hides */
 export function tsFilesUnder(dir: string): string[] {
