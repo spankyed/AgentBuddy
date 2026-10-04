@@ -1,4 +1,6 @@
 import { randomId } from '@abuddy/sdk/utils/pure';
+import { HOST } from '@abuddy/host/bus';
+import type { BusMessage } from './api-client.ts';
 
 /**
  * The verbs a live drive session answers, over one already-open page.
@@ -56,9 +58,22 @@ export interface SessionPage {
   waitForPlugin: (pluginId: string, timeoutMs?: number) => Promise<unknown>;
 }
 
-/** What the session needs besides the page: the fixture's own diagnostics, and the way to end itself */
+/**
+ * What a verb needs from the app's API, kept as narrow as `SessionPage` so every verb stays testable in process
+ * against a fake. `api-client.ts` is the real one.
+ */
+export interface SessionApi {
+  send: (message: { to: string; event: Record<string, unknown>; sender?: string }) => Promise<void>;
+  onMessage: (listener: (message: BusMessage) => void) => () => void;
+  /** Why the channel is finished, or null while it works. Quoted by a round-trip that times out. */
+  readonly failure: string | null;
+}
+
+/** What the session needs besides the page: its own connection, the fixture's diagnostics, and how to end */
 export interface SessionDeps {
   readonly page: SessionPage;
+  /** The drive session's own connection to the app's API, which is how the bus verbs travel */
+  readonly api: SessionApi;
   /** Renderer errors the fixture collected, read and cleared — see `drainErrors` */
   readonly takeErrors: () => readonly string[];
 }
@@ -94,6 +109,15 @@ export const REPLY_TIMEOUT_MS = 15_000;
 
 /** The system that runs query and transaction code against the live engine, and the events it answers with */
 export const DATABASE_SYSTEM = 'default-setup/database';
+
+/**
+ * The name the session claims, so a system can answer *it* rather than broadcasting to every window.
+ *
+ * Taken from `HOST` rather than written out here: `@abuddy/host/bus` is already in this package's graph
+ * (`src/app.ts` imports `createBusMachine` from it) and importing it is inert, so a second copy of the string
+ * would be a thing to keep in step for no gain.
+ */
+export const DRIVE_REF = HOST.drive;
 
 const REPLIES = {
   qx: { send: 'EXECUTE_QUERY', ok: 'QUERY_RESULT', bad: 'QUERY_ERROR' },
@@ -156,14 +180,18 @@ export interface EngineSession {
   drainEvents: () => EngineResult;
   drainDrops: () => Promise<EngineResult>;
   drainErrors: () => EngineResult;
-  /** Installs the in-page bridge; `server.ts` awaits it before it starts listening */
+  /** Installs the in-page bridge and listens on the connection; `server.ts` awaits it before it listens */
   ready: () => Promise<void>;
+  /** Drops what `ready` installed. The client itself belongs to whoever opened it. */
+  stop: () => void;
 }
 
-export function createSession({ page, takeErrors }: SessionDeps): EngineSession {
+export function createSession({ page, api, takeErrors }: SessionDeps): EngineSession {
   const seen: SeenEvent[] = [];
   let dropped = 0;
   const waiting = new Set<(event: SeenEvent) => void>();
+  /** Set by `ready`; dropped by `stop`, so a session leaves no listener on a client it does not own */
+  let stopApi: (() => void) | undefined;
 
   /**
    * Waits for the reply to *this* request.
@@ -198,23 +226,33 @@ export function createSession({ page, takeErrors }: SessionDeps): EngineSession 
          * and make this look like a database problem. A message that names one cause sends a reader to
          * the wrong place; these two verbs tell the three apart in one call each.
          */
+        // The channel knows when it is the channel, so say that outright instead of listing possibilities
+        if (api.failure !== null) {
+          reject(new Error(`no answer for ${requestId}: ${api.failure}. The drive session's connection to the app is finished, so restart the session.`));
+          return;
+        }
         reject(new Error(`no ${ok} or ${bad} for ${requestId} within ${REPLY_TIMEOUT_MS}ms. `
-          + 'Check GET /state for an "error" root state and GET /errors for a serialisation failure in '
-          + 'the subscription — a value the app cannot send (a BigInt, a class instance) breaks the '
-          + 'event stream for the rest of the session. Otherwise the query is still running, or no pack '
-          + `provides ${DATABASE_SYSTEM}.`));
+          + `Either the query is still running, or no pack provides ${DATABASE_SYSTEM}, or its `
+          + `system answered with a broadcast rather than a reply — which an app built before ${DRIVE_REF} `
+          + 'existed does, and GET /events would then show the answer arriving unaddressed.'));
       }, REPLY_TIMEOUT_MS);
       waiting.add(receive);
     });
 
-  /** A send to a system, through the app's own client — the one channel every verb here uses */
+  /**
+   * A send to a system, over the session's own connection.
+   *
+   * `sender` is the load-bearing field: the bus turns it into the delivery's `replyTo`, which is the only thing
+   * that lets the system's `reply` come back here instead of to every window.
+   *
+   * It used to go through the page — `evaluateWith` into the renderer's `untypedSendToSystem` — which made the
+   * renderer a participant in a database query and meant a window that could not serialise one event took every
+   * later round-trip with it. Two consequences of moving it, both improvements: a send to an unknown system now
+   * comes back as a refusal rather than being dropped silently in the renderer, and `/qx` works while the
+   * window's own subscription is broken.
+   */
   const sendToSystem = (to: string, event: Record<string, unknown>): Promise<unknown> =>
-    page.evaluateWith(([target, message]: [string, Record<string, unknown>]) => {
-      (window as unknown as {
-        __abuddy: { sdkEvents: { untypedSendToSystem: (to: string, event: unknown) => void } };
-      }).__abuddy.sdkEvents.untypedSendToSystem(target, message);
-      return null;
-    }, [to, event] as [string, Record<string, unknown>]);
+    api.send({ to, event, sender: DRIVE_REF }).then(() => null);
 
   const roundTrip = async (kind: keyof typeof REPLIES, code: string): Promise<unknown> => {
     const { send, ok, bad } = REPLIES[kind];
@@ -228,18 +266,50 @@ export function createSession({ page, takeErrors }: SessionDeps): EngineSession 
 
   return {
     ready: async () => {
-      await page.exposeFunction(BRIDGE_FUNCTION, (payload) => {
-        const event = payload as SeenEvent;
+      /**
+       * Answers a waiting round-trip, from either channel.
+       *
+       * Iterated directly: a receiver that matches removes *itself*, and a `Set` iterator handles an entry
+       * deleted at or before the cursor. Nothing adds a waiter here — a resolved round-trip arms its next one
+       * in a later microtask — so there is no entry this loop could visit too early.
+       */
+      const wake = (event: SeenEvent): void => {
+        for (const receive of waiting) receive(event);
+      };
+
+      /** Puts an event in the buffer `/events` drains, oldest dropped past the cap */
+      const record = (event: SeenEvent): void => {
         seen.push(event);
-        // A waiter is woken either way: a reply must not be lost because the buffer was full
         if (seen.length > MAX_SEEN_EVENTS) {
           seen.shift();
           dropped += 1;
         }
-        // Iterated directly: a receiver that matches removes *itself*, and a `Set` iterator handles an
-        // entry deleted at or before the cursor. Nothing adds a waiter here — a resolved round-trip
-        // arms its next one in a later microtask — so there is no entry this loop could visit too early
-        for (const receive of waiting) receive(event);
+      };
+
+      /**
+       * The session's own connection, which is where an answer arrives now.
+       *
+       * **Waiters hear both channels, and that is not redundancy.** A reply reaches `DRIVE_REF` only from an app
+       * whose database system answers with `reply`; against an older packaged build that still broadcasts, the
+       * bridge is the only path. Feeding both means a round-trip works across that skew, and the `requestId`
+       * check makes the double delivery harmless — the first match removes the receiver and the second matches
+       * nobody.
+       *
+       * **`/events` keeps its meaning**, so only what the in-page inspector cannot see is added to it: a message
+       * addressed to `DRIVE_REF` never reaches the renderer, while a broadcast reaches both and would otherwise
+       * be counted twice.
+       */
+      stopApi = api.onMessage((message) => {
+        const event: SeenEvent = { to: message.to, type: message.event.type, event: message.event };
+        wake(event);
+        if (message.to === DRIVE_REF) record(event);
+      });
+
+      await page.exposeFunction(BRIDGE_FUNCTION, (payload) => {
+        const event = payload as SeenEvent;
+        record(event);
+        // A waiter is woken either way: a reply must not be lost because the buffer was full
+        wake(event);
       });
       /**
        * The bridge is a callback into this process, not a buffer the engine reads back.
@@ -344,5 +414,10 @@ export function createSession({ page, takeErrors }: SessionDeps): EngineSession 
 
     /** The same bargain as `drainDrops`, for the renderer errors the fixture accumulates without bound */
     drainErrors: () => ({ ok: true, value: takeErrors() }),
+
+    stop: () => {
+      stopApi?.();
+      stopApi = undefined;
+    },
   };
 }
