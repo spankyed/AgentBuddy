@@ -1,13 +1,13 @@
 // A fast staleness gate for the committed API reports (etc/*.api.md, etc/*.component.md).
 //
-// `api:check` is the authority, but it runs API Extractor over every entry: 46s for the three
-// packages, 33s of it @abuddy/ui. That is too slow to sit in `npm run typecheck`, so before this
-// existed the reports were guarded only by CI — and a public export could change without its report
-// and nothing said so until CI ran.
+// `api:check` is the authority, but it runs API Extractor over every entry: 12s for the three
+// packages, most of it the three TypeScript compiles that emit the declarations. That is still too
+// slow to sit in `npm run typecheck`, so before this existed the reports were guarded only by CI —
+// and a public export could change without its report and nothing said so until CI ran.
 //
 // This is the cheap half. The reports are a pure function of the declarations API Extractor reads,
 // so if those declarations have not changed, neither have the reports. Comparing them is a hash of
-// ~230 files: milliseconds, against 46 seconds.
+// ~230 files: milliseconds, against 12 seconds.
 //
 // WHAT IS HASHED, AND WHY IT IS `dist` AND NOT THE SOURCE
 //
@@ -122,11 +122,14 @@ function packageName(dir: string): string {
  * tags, and in a repo whose prose names `@abuddy/*` packages constantly most prose lines matched. Whether a
  * comment edit moved the stamp depended on whether its sentences happened to mention a package.
  *
- * The cost of hashing verbatim is that any doc-comment edit in these packages asks for an `api:update` (~46s,
- * `@abuddy/ui` 33s of it) that rewrites no report. That is the side to be wrong on, and the trade this gate
- * already stated: a false "run api:update" costs a minute, a false "nothing changed" ships a wrong report. A
- * narrower rule would have to tell an interior comment from a leading one, which is a parse of the `.d.ts`
- * rather than a regex over it.
+ * The cost of hashing verbatim is that any doc-comment edit in these packages asks for an `api:update` (~12s)
+ * that rewrites no report. That is the side to be wrong on, and the trade this gate already stated: a false
+ * "run api:update" costs seconds, a false "nothing changed" ships a wrong report. A narrower rule would have
+ * to tell an interior comment from a leading one, which is a parse of the `.d.ts` rather than a regex over it.
+ *
+ * The cost this weighs fell four-fold on 2026-10-04, when `api-reports.ts` started sharing one compiler state
+ * across a package's entries (48s to 12s for the three). So the trade is further onto the side it was already
+ * on, and the narrower rule is worth less than when it was first declined.
  *
  * A single combined hash said only "something moved". Since a package's reports are generated from its
  * dependencies' declarations too, "ui is stale" was most often @abuddy/sdk's declarations moving, and

@@ -596,15 +596,17 @@ npm run api:check        # CI: fails if a public entry's API changed without upd
 npm run api:update       # Dev: regenerate etc/<entry>.api.md (and etc/<entry>.component.md for UI components),
                          # and record what they were generated from in etc/declarations.sha256
                          # Both read an @abuddy dependency's built declarations: npm run packages:build first
-                         # All three take ~46s (ui is 33s of it), which is why api:check is a before-merge
-                         # and CI check rather than a per-edit one
+                         # All three take ~12s (measured 2026-10-04; 48s before one API Extractor compiler
+                         # state was shared across a package's entries instead of one being built per entry).
+                         # Still a before-merge and CI check rather than a per-edit one, but on the margin
+                         # against api:stamp's 0.6s rather than on being slow in absolute terms
 npm run api:stamp  # The cheap half, run by npm run typecheck: compares what the reports were
                          # generated from with etc/declarations.sha256 in ~0.6s and says "run npm run
                          # api:update" when it differs. Its key is every input a report is a function of —
                          # the declarations (`dist/**/*.ts`, never the compiled .js, hashed **verbatim**,
                          # doc prose included), the set of published entries, the producer (API Extractor's
                          # version and its tsconfig). **So a doc-comment edit in `@abuddy/ears`, `/sdk` or
-                         # `/ui` source fails typecheck until `api:update` runs (~46s), and usually rewrites
+                         # `/ui` source fails typecheck until `api:update` runs (~12s), and usually rewrites
                          # no report.** That is deliberate, and the reason is a refuted measurement: a
                          # normaliser here dropped each comment to its `@`-tag lines, because prose above an
                          # exported declaration cannot reach a report — API Extractor replaces it with the

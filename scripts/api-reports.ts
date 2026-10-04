@@ -7,7 +7,8 @@
 //   tsx scripts/api-reports.ts packages/abuddy-sdk [--local]
 import * as fs from 'node:fs';
 import * as path from 'node:path';
-import { Extractor, ExtractorConfig, ExtractorLogLevel } from '@microsoft/api-extractor';
+import { CompilerState, Extractor, ExtractorConfig, ExtractorLogLevel } from '@microsoft/api-extractor';
+import { ensurePackagesBuilt } from '@abuddy/host/build/packages-built';
 import { componentContracts, type ComponentEntry } from './component-contracts.ts';
 import { reportEntries, reportName } from './lib/api-entries.ts';
 import { staleReason } from './api-report-stamp.ts';
@@ -17,6 +18,24 @@ const local = process.argv.includes('--local');
 const pkg = JSON.parse(fs.readFileSync(path.join(pkgDir, 'package.json'), 'utf-8'));
 const typesDir = path.join(pkgDir, '.temp', 'api-types');
 const reportFolder = path.join(pkgDir, 'etc');
+
+/**
+ * Before anything reads `dist`, which `staleReason` below does.
+ *
+ * A package's stamp fingerprints its *dependencies'* built declarations as well as its own, so this script run
+ * against a stale `dist` compares reports generated from fresh sources against a stamp taken from old ones:
+ * `stampWasClean` is then an answer about the wrong tree, and the self-check at the end of this file either
+ * fires over nothing or misses a real finding. The symptom is `api:stamp` reporting "declarations changed"
+ * after an `api:update` that changed nothing. 0.3s when nothing is stale: a stat and a return.
+ *
+ * **This is the only call, and `api-report-stamp.ts` deliberately has none**, though it is the script that
+ * writes the stamp. `api:update` runs this one first, so by the time the writer reads `dist` it is current;
+ * `api:check` is this script; and the bare `api:stamp` leg runs under `npm run typecheck`, which orders
+ * `packages:ensure` ahead of it for exactly this reason (`typecheck-legs.ts`). A second call bought nothing
+ * and cost an exception — the chain holds a step whose runner consults a stamp store to declaring
+ * `forceArgs`, and `api:stamp` keeps no cache of its own to force.
+ */
+ensurePackagesBuilt();
 
 /** Exports with declarations: [subpath, declaration file in .temp/api-types] */
 function entries(): [string, string][] {
@@ -44,10 +63,10 @@ let failed = 0;
 /** Reports this run changed: written in --local, or found stale otherwise */
 let changed = 0;
 const expected = new Set<string>();
-for (const [key, declaration] of entries()) {
+/** One entry's extractor configuration. Built for every entry up front, so one compiler state can serve them all. */
+function configFor(key: string, declaration: string): ExtractorConfig {
   const reportFileName = reportName(key);
-  expected.add(reportFileName);
-  const config = ExtractorConfig.prepare({
+  return ExtractorConfig.prepare({
     configObject: {
       projectFolder: pkgDir,
       mainEntryPointFilePath: declaration,
@@ -86,7 +105,33 @@ for (const [key, declaration] of entries()) {
     configObjectFullPath: undefined,
     packageJsonFullPath: path.join(pkgDir, 'package.json'),
   });
-  const result = Extractor.invoke(config, { localBuild: local, showVerboseMessages: false });
+}
+
+const all = entries();
+const prepared = all.map(([key, declaration]) => {
+  expected.add(reportName(key));
+  return { key, config: configFor(key, declaration) };
+});
+
+/**
+ * One TypeScript program for all of a package's entries, rather than one per entry.
+ *
+ * `Extractor.invoke` builds its own program when it is given no state, and a package's entries are
+ * compiled against the same declarations — so the work was being repeated once per entry: 28 programs for
+ * `@abuddy/sdk`, 68 for `@abuddy/ui`. `additionalEntryPoints` is what makes one program cover them all, and
+ * sharing it is the documented purpose of `IExtractorInvokeOptions.compilerState`.
+ *
+ * Measured 2026-10-04: `@abuddy/sdk`'s 28 entries 12.3s -> 1.1s, `@abuddy/ui`'s 68 30s -> 0.9s, with every
+ * report reproduced byte for byte. The reports are what prove it stays true — a divergence moves one, and
+ * `api:check` fails on a moved report while `api:stamp`'s `#producer` row covers the case this most depends
+ * on, an API Extractor upgrade changing what shared state means.
+ */
+const compilerState = prepared.length === 0 ? undefined : CompilerState.create(prepared[0].config, {
+  additionalEntryPoints: all.slice(1).map(([, declaration]) => declaration),
+});
+
+for (const { key, config } of prepared) {
+  const result = Extractor.invoke(config, { localBuild: local, showVerboseMessages: false, compilerState });
   if (result.apiReportChanged) changed++;
   if (!result.succeeded) {
     failed++;
