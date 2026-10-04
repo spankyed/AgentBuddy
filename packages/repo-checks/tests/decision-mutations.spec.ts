@@ -512,7 +512,7 @@ const MUTATIONS: readonly Mutation[] = [
     // Without this a quiet run appends a reading that says nothing, which is the churn the band exists to
     // prevent — and three agreeing readings then push the one real reading out of the window
     why: 'settle drops a reading that agrees with the median instead of keeping it',
-    from: ': disagrees(costOf(before), ms) ? appendSample(before, ms) : before;',
+    from: ': worthKeeping(spec, costOf(before), ms) ? appendSample(before, ms) : before;',
     to: ': appendSample(before, ms);',
     call: (lib) => lib.settle({
       previous: before({ [FAST]: 1_000 }),
@@ -522,6 +522,19 @@ const MUTATIONS: readonly Mutation[] = [
       prune: [],
       forgetWindows: false,
     }).record.samples[FAST],
+  },
+  {
+    /**
+     * The clause that makes the window reach the specs placement is about. The band is 35% of the cost and the
+     * edge is fixed, so for a cost near the edge the band is wider than the distance to it — 7 of 363 fast
+     * specs could not keep a crossing at all. Dropping the edge half leaves `disagrees` alone, which drops
+     * 2600 against a recorded 2186.
+     */
+    why: 'worthKeeping keeps a reading that crosses the edge, not only one outside the band',
+    in: 'spec-cost',
+    from: '  || (recorded !== undefined && halfFor(file, recorded) !== halfFor(file, measured));',
+    to: '  || false;',
+    call: (lib) => lib.worthKeeping('tests/x.spec.ts', 2_186, 2_600),
   },
   {
     why: 'forgetsWindows needs both flags, so --all alone keeps the history that rejects a bad reading',

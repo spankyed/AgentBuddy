@@ -155,7 +155,8 @@ sample is ever added — a band alone leaves whichever reading landed first in c
 between idle runs while its members moved 10-18%). Correlated drift does not: a dependency bump adding a
 fifth to every spec sits under every per-spec tolerance, so nothing re-records and the total quietly stops
 being true. `drift` reports the body's movement on every run, and `spec-cost:update --all --forget` clears
-it by dropping every window and starting again from that run — the one thing a window cannot do for itself,
+it by dropping every window and starting again from that run (`--forget` takes any scope that measures, so one
+spec is `--forget <path>`) — the one thing a window cannot do for itself,
 since it is built to be slow to forget and a correlated drift is exactly the case where the old readings
 describe code that is gone. `--all` without it re-measures everything and appends, which keeps the protection.
 
@@ -653,15 +654,16 @@ npm run spec-cost:update # The least that makes the records current, which is of
                          #   --suite <dir> one suite
                          #   --all         re-measure every spec. Each reading still has to disagree with
                          #                 its window's median to be kept, so a quiet --all writes nothing
-                         #   --all --forget  drop every window and start again from this run. The only
-                         #                 thing that clears a correlated drift, since a fifth added to every
-                         #                 spec sits under every per-spec tolerance.
+                         #   --forget      drop the recorded readings and start again from this run, for
+                         #                 whatever the run measures: `--all` (narrow it with `--suite`), or a
+                         #                 spec path. The only thing that clears a correlated drift, since a
+                         #                 fifth added to every spec sits under every per-spec tolerance.
                          #                 **Its own flag, not `--force`**: that one silences the idle and
-                         #                 contention refusals, and forgetting writes every cost from a
-                         #                 single reading — the state with no history to outvote a bad one —
-                         #                 so it is the write that most needs a quiet machine rather than
-                         #                 the one that should be able to skip the check. It needs `--all`,
-                         #                 since forgetting part of a record leaves it holding two vintages
+                         #                 contention refusals, and forgetting writes a cost from a single
+                         #                 reading — the state with no history to outvote a bad one — so it is
+                         #                 the write that most needs a quiet machine rather than the one that
+                         #                 should be able to skip the check. It refuses a scope that would
+                         #                 measure nothing, since forgetting needs a reading to replace with
                          #   --dry         what it would run and write
                          #   --force       override both refusals. Adopting a record measured on another
                          #                 machine is still `--all --force`: whose machine it is and whether

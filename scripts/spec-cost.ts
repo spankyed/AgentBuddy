@@ -315,6 +315,7 @@ function check(only: string | undefined, named: readonly string[]): void {
   const problems: string[] = [];
   /** What it cannot: a spec whose filename puts it in the other half from its cost */
   const renames: { line: string; machine: Machine; readings: number }[] = [];
+  const soon: string[] = [];
   /** The same findings from a record measured on another machine, which are reported and not enforced */
   const elsewhere: { line: string; machine: Machine; readings: number }[] = [];
   /**
@@ -350,6 +351,17 @@ function check(only: string | undefined, named: readonly string[]): void {
     // Only `rename` gates. An `over` finding is one a package with a single half cannot act on by moving
     // anything, and whether it is *allowed* is `EXPENSIVE_BY_NATURE`'s question, which lives in
     // `suite-split.spec.ts` and not here — failing on it would fail over the entries already recorded there.
+    // Only where the record's own machine is this one, for the same reason placement is: a reading that would
+    // cross an edge here says nothing about a cost measured elsewhere
+    if (isMeasuredMachine(record.machine)) {
+      for (const file of asked) {
+        const found = provisional(file, record.samples[file] ?? []);
+        if (found !== undefined) {
+          soon.push(`  ${found.reading}ms against a median of ${found.median}ms, which is ${found.belongs}: `
+            + `${suite.dir}/${file}`);
+        }
+      }
+    }
     for (const found of overBudget(dir, record.samples, asked)) {
       if (found.kind !== 'rename') continue;
       const line = `  ${(found.ms / 1000).toFixed(1)}s (${readingsText(found.readings)}) is ${found.belongs}, `
@@ -373,6 +385,14 @@ function check(only: string | undefined, named: readonly string[]): void {
     console.log(`\nNot checking placement: these costs were measured on ${measured} and this is `
       + `${machineText(thisMachine())}, where a cost in milliseconds says nothing about which half a spec belongs in.`);
     for (const { line } of elsewhere) console.log(line);
+  }
+  // **The near-crossing report belongs here and not only in `update`.** It was printed by the measuring run
+  // alone, which tells the one person who already knows and never the one whose chain fails three weeks later.
+  // Reported rather than gated, which is `elsewhere`'s shape above: a crossing one reading away is not yet a
+  // finding, and the point is that it stops being a surprise.
+  if (soon.length > 0) {
+    console.log(`\nOne agreeing reading from changing half, which is worth knowing before it does:`);
+    for (const line of soon) console.log(line);
   }
   if (problems.length > 0 || renames.length > 0) {
     // The two kinds take different fixes, and telling them apart is the whole value of the advice: an
@@ -407,7 +427,11 @@ function check(only: string | undefined, named: readonly string[]): void {
  * sit inside the band are the only ones whose placement a re-measurement could move. Rows before printing,
  * so a spec can assert over them without reading stdout.
  */
-interface ListRow { readonly suite: string; readonly specs: number; readonly settled: number; readonly nearBand: number }
+interface ListRow {
+  readonly suite: string; readonly specs: number; readonly settled: number; readonly nearBand: number;
+  /** Costs resting on more than one reading, which is how much the window has actually engaged */
+  readonly corroborated: number;
+}
 
 function list(only: string | undefined, named: readonly string[]): void {
   const dirs = suitesFor(UNIT_SUITES.map((suite) => suite.dir), only, named);
@@ -444,7 +468,13 @@ function list(only: string | undefined, named: readonly string[]): void {
     const costs = Object.entries(record.costs);
     // Counted only where there is a second half to move into; see the comment above
     const atRisk = hasSplit(packageDir(suite)) ? costs.filter(([file, ms]) => nearEdge(file, ms)) : [];
-    rows.push({ suite: suite.dir, specs: costs.length, settled: costs.length - atRisk.length, nearBand: atRisk.length });
+    rows.push({
+      suite: suite.dir, specs: costs.length, settled: costs.length - atRisk.length, nearBand: atRisk.length,
+      // How many readings each cost rests on, which is what says whether the window is doing anything. It is
+      // derived here rather than written in `WINDOW`'s doc, where a count would drift — and the answer has been
+      // sobering: 388 of 389 held one reading the day the window landed
+      corroborated: Object.values(record.samples).filter((window) => window.length > 1).length,
+    });
     for (const [file, ms] of atRisk) {
       const edge = halfOfPath(file) === 'fast' ? INTEGRATION_ABOVE_MS : FAST_BELOW_MS;
       near.push(`  ${(ms / 1000).toFixed(1)}s  ${halfOfPath(file).padEnd(11)} ${suite.dir}/${file}`
@@ -456,10 +486,19 @@ function list(only: string | undefined, named: readonly string[]): void {
   const width = (header: string, cell: (row: ListRow) => string): number =>
     Math.max(header.length, ...rows.map((row) => cell(row).length)) + 2;
   const name = width('suite', (row) => row.suite);
-  console.log(`${'suite'.padEnd(name)}${'specs'.padStart(7)}${'clear'.padStart(7)}${'near an edge'.padStart(14)}`);
+  console.log(`${'suite'.padEnd(name)}${'specs'.padStart(7)}${'clear'.padStart(7)}${'near an edge'.padStart(14)}`
+    + `${'corroborated'.padStart(14)}`);
   for (const row of rows) {
-    console.log(`${row.suite.padEnd(name)}${String(row.specs).padStart(7)}${String(row.settled).padStart(7)}${String(row.nearBand).padStart(14)}`);
+    console.log(`${row.suite.padEnd(name)}${String(row.specs).padStart(7)}${String(row.settled).padStart(7)}`
+      + `${String(row.nearBand).padStart(14)}${String(row.corroborated).padStart(14)}`);
   }
+  // **What the window is actually doing, which no prose should claim.** A cost resting on one reading is one
+  // the median cannot protect: `settle` has nothing to weigh the next reading against. `WINDOW`'s doc argues
+  // three-against-five, and this is the line that says how often three is reached.
+  const corroborated = rows.reduce((sum, row) => sum + row.corroborated, 0);
+  const specs = rows.reduce((sum, row) => sum + row.specs, 0);
+  console.log(`\n${corroborated} of ${specs} costs rest on more than one reading. The rest are a single `
+    + 'reading, which the median cannot outvote — see `WINDOW` in scripts/lib/spec-cost.ts.');
   console.log(`\n${near.length} spec${near.length === 1 ? '' : 's'} within ${COST_ACCURACY * 100}% of the edge that `
     + 'could move it, which is what a recorded cost is good to — so a re-measurement could carry it over.');
   // The distance is to the recorded cost, and a record is deliberately sticky: `moved` rewrites a row only

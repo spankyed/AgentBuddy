@@ -17,7 +17,7 @@ import { REPO_ROOT } from '@abuddy/host/build/packages-built';
 import {
   FAST_BELOW_MS, INTEGRATION_ABOVE_MS, SPEC_COST_FLAGS, absentIn, changesIn,
   absentNamed, CONTENTION_RATIO_MAX, COST_ACCURACY, describeBudget, EXPENSIVE_BY_NATURE, halfFor,
-  halfOfPath, hasSplit, disagrees, nearEdge, ratiosFromMoves, towardEdge, underBound, type SpecCost,
+  halfOfPath, hasSplit, disagrees, nearEdge, worthKeeping, ratiosFromMoves, towardEdge, underBound, type SpecCost,
   namedIn, overBudget, parseArgs,
   planFor, readSpecCost,
   recordMembership, refuseAbsent, forgetsWindows, settle, specCostFile, specFiles, stale, suitesFor,
@@ -176,6 +176,29 @@ describe.skipIf(!ON_MEASURED_MACHINE)(`a spec runs in the half its cost puts it 
     expect(wrong, 'rename these, or re-measure if the cost has genuinely changed').toEqual([]);
   });
 
+  /**
+   * And every fast spec can *notice* a crossing, which is the half of this the band used to swallow.
+   *
+   * Over the real records rather than a fixture, because the defect was a property of the recorded values: the
+   * band is 35% of the cost and the edge is fixed, so the specs nearest the edge were the ones whose band
+   * reached past it. Measured 2026-10-03, before `worthKeeping` composed the edge in: 7 of 363 would have
+   * dropped a reading one millisecond past the edge, `spec-plan-collect` at 2421 being blind up to 3268. A
+   * dropped reading is a median that never moves, so the case above could not fire however slow the spec got.
+   *
+   * It asks the cheapest possible crossing — one millisecond over — because that is the reading the band is
+   * widest against, and a check that passed only for an extreme one would leave the hole where it was.
+   */
+  it('keeps a reading one millisecond past the edge, for every fast spec on record', () => {
+    const blind = suites
+      .filter(({ record }) => record)
+      .flatMap(({ suite, dir, record, files }) => files
+        .filter((file) => halfOfPath(file) === 'fast' && hasSplit(path.join('packages', dir))
+          && record!.samples[file] !== undefined)
+        .filter((file) => !worthKeeping(file, record!.costs[file]!, INTEGRATION_ABOVE_MS + 1))
+        .map((file) => `${suite.dir}/${file} costs ${record!.costs[file]}ms, whose band reaches past the edge`));
+    expect(blind, 'these could not notice a crossing, so their half could never be questioned').toEqual([]);
+  });
+
   // The number the threshold is for, and it is a proxy — say so rather than let the next reader take it for
   // elapsed time. It is summed *file* time across parallel workers, so 30s of it is roughly 13s of waiting;
   // and it excludes collection, which the same run reports as 22.3s against 16.9s of tests, so the larger
@@ -296,9 +319,15 @@ describe('what a run says about a spec it cannot place', () => {
    * How settled a cost is, is a fact about that spec; the advice is one sentence for the set. Keeping the
    * count in the advice is what forced it to generalise, and generalising is what made it false.
    */
-  it('puts how many readings a cost rests on beside the cost', () => {
-    expect(describeBudget([{ ...RENAME, readings: 1 }], 'any-suite').lines.join('')).toContain('(1 reading)');
-    expect(describeBudget([{ ...RENAME, readings: 3 }], 'any-suite').lines.join('')).toContain('(3 readings)');
+  it('puts what a cost rests on beside the cost, and says what is standing at two', () => {
+    const line = (readings: number) => describeBudget([{ ...RENAME, readings }], 'any-suite').lines.join('');
+
+    expect(line(1)).toContain('(1 reading)');
+    expect(line(3)).toContain('(median of 3)');
+    // The one that matters: a two-reading cost is the *older* of two that disagree, so a count would read as
+    // corroboration where the number is the least settled of the three states
+    expect(line(2), 'never a bare count, which reads as support').not.toContain('2 readings');
+    expect(line(2)).toContain('(2 disagreeing, older standing)');
   });
 
   /**
@@ -556,6 +585,36 @@ describe('a measurement replaces the record only when it says something new', ()
     expect(disagrees(1_203, 1_360), 'the contended reading is inside the band, so it is dropped').toBe(false);
     expect(disagrees(1_203, 1_125), 'and so is the clean one, which therefore changes nothing either')
       .toBe(false);
+  });
+
+  /**
+   * **A reading that crosses the placement edge is kept, however far inside the band it sits.**
+   *
+   * The band scales with the recorded value and the edge does not, so for the specs nearest the edge the band
+   * swallows it: measured 2026-10-03 against the real records, 7 of 363 fast specs had an agree-band reaching
+   * past `INTEGRATION_ABOVE_MS` — `spec-plan-collect` at 2421 was invisible up to 3268. For those, a genuine
+   * move into the integration half could never be *kept*, so the median never moved and `priceSpecs` went on
+   * summing a stale number into the fast half's budget. The window was most inert for exactly the specs
+   * placement is about.
+   *
+   * **`moved` had this clause and #219 deleted it as the cause of the defect.** It was right about what to
+   * notice and wrong about what to do: it *adopted* a crossing from one reading. On the keep side it is what
+   * the window was built to make safe — the two cases above this one are the adoption path, and they are
+   * unchanged.
+   */
+  it('keeps a reading that crosses the edge, even where the band would have dropped it', () => {
+    // `chain-inputs`' own numbers: recorded 2186, band 765, edge 2500 — so 2600 is a crossing inside the band
+    expect(disagrees(2_186, 2_600), 'the band alone drops it').toBe(false);
+    expect(worthKeeping(FAST, 2_186, 2_600), 'the edge is what keeps it').toBe(true);
+
+    expect(costOf(appendSample([2_186], 2_600)), 'kept, and still not adopted').toBe(2_186);
+    expect(halfFor(FAST, costOf(appendSample([2_186], 2_600))), 'so nothing is told to move yet').toBe('fast');
+  });
+
+  it('keeps nothing extra where both readings sit in the same half', () => {
+    // The clause is the edge and not the band widened: two fast readings inside the band are still dropped
+    expect(worthKeeping(FAST, 1_000, 1_050), 'a reading the band is there to drop').toBe(false);
+    expect(worthKeeping(FAST, 2_186, 2_400), 'and one that moves without crossing').toBe(false);
   });
 
   it('parks a reading far enough out to be kept, and cannot let it age out', () => {
@@ -1073,9 +1132,27 @@ describe('an unrecognised flag is refused rather than dropped', () => {
     }
   });
 
-  it('refuses --forget without --all, which would forget only what one run measured', () => {
-    expect(() => parseArgs(['--forget'], DIRS)).toThrow(/--all/);
-    expect(() => parseArgs(['--forget', '--all'], DIRS)).not.toThrow();
+  /**
+   * `--forget` takes a scope that *measures*, which is narrower than the flag it rode on and wider than the
+   * `--all` it then required.
+   *
+   * Requiring `--all` made correcting one spec mean discarding every window in the repo — the reason to reach
+   * for the widest flag when the narrow thing was wanted. The recorded objection, that a partial forget leaves
+   * two vintages, does not hold: a record already holds them, since `--all` appends only where a reading
+   * disagrees and a bare update measures only what the check reports.
+   *
+   * What it does refuse is a forget that would reach nothing. Forgetting needs a reading to replace the window
+   * with, and `--suite` alone drives no measurement on a current record — so it would report success having
+   * forgotten nothing, which is the shape this repo refuses everywhere else.
+   */
+  it('takes any scope that measures, and refuses one that would forget nothing', () => {
+    expect(() => parseArgs(['--forget', '--all'], DIRS), 'the whole repo').not.toThrow();
+    expect(() => parseArgs(['--forget', '--all', '--suite', 'repo-checks'], DIRS), 'one suite').not.toThrow();
+    expect(() => parseArgs(['--forget', 'packages/repo-checks/tests/a.spec.ts'], DIRS), 'one spec').not.toThrow();
+
+    expect(() => parseArgs(['--forget'], DIRS), 'no scope at all').toThrow(/scope that measures/);
+    expect(() => parseArgs(['--forget', '--suite', 'repo-checks'], DIRS),
+      '--suite alone measures only what is stale, so it would forget nothing').toThrow(/forget nothing/);
   });
 });
 
@@ -1280,6 +1357,25 @@ describe('a window is forgotten only when asked for outright', () => {
  */
 describe('a crossing is reported before it is adopted', () => {
   const FAST = 'tests/x.spec.ts';
+
+  /**
+   * And both commands report it, which took a correction: it was printed by `update` alone.
+   *
+   * That told the one person who had just measured — and already knew — while saying nothing to the one whose
+   * chain fails three weeks later, who is the reader a warning a run early is *for*. Asserted over the
+   * command's text, which is how this file already checks that `refusesAsBusy` runs before the measurement:
+   * `check` and `update` are commands rather than functions, so their wiring is not reachable any other way.
+   */
+  it('is reported by check and not only by the run that measured it', () => {
+    const source = fs.readFileSync(path.join(REPO_ROOT, 'scripts/spec-cost.ts'), 'utf-8');
+    const check = source.indexOf('function check(');
+    expect(check, 'the command this is about').toBeGreaterThan(-1);
+
+    const calls = [...source.matchAll(/provisional\(/g)].map((hit) => hit.index!);
+    expect(calls.length, 'one in update, one in check').toBeGreaterThanOrEqual(2);
+    expect(calls.some((at) => at > check), 'check reports a crossing that is one reading away').toBe(true);
+    expect(calls.some((at) => at < check), 'and so does the run that would cause it').toBe(true);
+  });
 
   it('names the reading, the median and where it would go', () => {
     expect(provisional(FAST, appendSample([2_041], 2_791))).toEqual({

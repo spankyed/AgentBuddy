@@ -183,6 +183,12 @@ export const provisional = (
  * Five would reject two readings and be a run slower to believe a real change. Three is where that trade
  * sits while a crossing is rare and a re-measure is cheap.
  *
+ * **How often three is reached is a question for the command, not this paragraph.**
+ * `npm run spec-cost:check -- --list` reports how many costs rest on more than one reading, per suite and in
+ * total, so the argument above can be weighed against what the records actually hold rather than against a
+ * figure written here that would drift. The day the window landed the answer was 1 of 389, which is worth
+ * knowing before reading any of this as a mechanism in steady use.
+ *
  * **Two limits of a window of any size, worth knowing before trusting one.** A spec's *first* reading is its
  * cost outright — `settle` has no history to weigh it against — so a contended first measurement can demand a
  * rename immediately, and `refusesAsContended` excludes an addition from `comparable`, so a run that is mostly
@@ -211,6 +217,13 @@ export const WINDOW = 3;
  * One contended reading in three moves a mean by a third of its error and a median not at all. Two
  * agreeing readings move both, which is the property wanted: a real change is adopted and a noisy one is
  * not.
+ *
+ * **One kept reading can move a three-window's median, and it cannot move the spec's half.** The eviction
+ * takes the oldest, so a new reading above the median replaces one below it and the middle shifts. That changes
+ * the number a reader sees and never the placement, which is the only thing the record is consulted for: a
+ * median of three exceeds an edge only when two of the three do. Verified exhaustively 2026-10-03 over every
+ * window and reading on a 100ms grid — 630 270 kept readings, no crossing with fewer than two readings past the
+ * edge. An eviction policy that knew about edges would be machinery for a number nobody reads directly.
  *
  * **A window of two answers with its older reading, which is not the textbook median and is the point.**
  * The ordinary definition averages the two middles, and that was written here first — it lets one extreme
@@ -344,6 +357,30 @@ export const SETTLED_MS = 300;
  */
 export const disagrees = (recorded: number | undefined, measured: number): boolean =>
   recorded === undefined || movedBeyondBand(recorded, measured, SETTLED_MS);
+
+/**
+ * Whether a reading is worth keeping: it disagrees with the median, **or** it lands in the other half.
+ *
+ * **The band scales with the value and the edge does not, so for the specs nearest the edge the band swallowed
+ * it.** `disagrees` drops a reading inside `max(300ms, 35%)`, and 35% of a cost near `INTEGRATION_ABOVE_MS` is
+ * wider than the distance to it: measured 2026-10-03 against the real records, 7 of 363 fast specs had an
+ * agree-band reaching past the edge — `spec-plan-collect` at 2421 was invisible up to 3268. A genuine move
+ * into the integration half could not even be *kept* for those, so the median never moved, the gate never
+ * fired, and `priceSpecs` went on summing a number that was no longer true. The window was most inert for
+ * exactly the specs placement is about.
+ *
+ * **`moved` had this clause and it was deleted as the cause of the original defect.** It was right about what
+ * to *notice* and wrong about what to *do*: it recorded the crossing outright, so one contended reading moved
+ * a spec's half. Here it decides only whether the reading is *kept*, which is what the window was built to
+ * make safe — a crossing joins the window, the median stays with the incumbent, `provisional` reports it, and
+ * two agreeing readings adopt it.
+ *
+ * Composed rather than folded into `disagrees`, so the band keeps one meaning and this stays a decision of its
+ * own with its own name — and so `disagrees`' own cases go on asking only about the band.
+ */
+export const worthKeeping = (file: string, recorded: number | undefined, measured: number): boolean =>
+  disagrees(recorded, measured)
+  || (recorded !== undefined && halfFor(file, recorded) !== halfFor(file, measured));
 
 
 /** What a run changed, told apart: a spec measured for the first time is not evidence about the machine */
@@ -658,9 +695,18 @@ export const EXPENSIVE_BY_NATURE: Record<string, string> = {
  * Called with no renames it returns the bare instruction, which no caller does — both guard on `length > 0`.
  * The edit that would reach it is dropping one of those guards.
  */
-/** How many readings a cost rests on, as a line naming one spec says it */
-export const readingsText = (readings: number): string =>
-  `${readings} reading${readings === 1 ? '' : 's'}`;
+/**
+ * What a cost rests on, as a line naming one spec says it.
+ *
+ * **It says what is standing rather than how many were taken**, because at two those are different things.
+ * A two-reading window's cost is `costOf`'s incumbent — the *older* of two readings that disagree — so
+ * `2 readings` read as better-supported than a fresh single reading while being a possibly stale number with a
+ * contradicting one beside it. The phrasing is the fix; the branch in `costOf` is right.
+ */
+export const readingsText = (readings: number): string => {
+  if (readings === 1) return '1 reading';
+  return readings === 2 ? '2 disagreeing, older standing' : `median of ${readings}`;
+};
 
 export const renameAdvice = (renames: readonly { readonly readings: number }[]): string => {
   const it = renames.length === 1 ? 'it' : 'them';
@@ -808,13 +854,22 @@ export function parseArgs(argv: readonly string[], suiteDirs: readonly string[])
     }
   }
 
-  // Forgetting part of a record leaves it holding two vintages with nothing saying which row is which, so
-  // the flag takes the whole suite or nothing — the same refusal `--all` beside a path gets, for the same
-  // reason: two readings of what the run is for, and honouring either silently misreports the other
+  // **It takes a scope rather than the widest one, which took a correction.** It required `--all`, on the
+  // reasoning that forgetting part of a record leaves it holding two vintages. That objection does not hold: a
+  // record already does, by design — `--all` appends only where a reading disagrees, and a bare update measures
+  // only what the check would report, so one `measuredAt` was never a claim that every window was taken
+  // together. What the rule cost was proportionality: correcting one spec meant discarding every window in the
+  // repo, which is the reason to reach for the widest flag when the narrow thing was wanted.
+  //
+  // So it refuses a forget that would reach nothing. The scopes that *measure* are `--all` — narrowed by
+  // `--suite` if given — and a named path; a bare update measures only what the check would report, so
+  // `--forget --suite x` on a current record silently forgets nothing, and a spec it does measure is new and
+  // written fresh whether or not this was asked for. Forgetting needs a reading to replace the window with.
   const forget = has('forget');
-  if (forget && !all) {
-    throw new Error('--forget throws away every window and starts again from this run, so it needs --all. '
-      + 'Forgetting only the specs one run measured leaves a record holding two vintages.');
+  if (forget && !all && named.length === 0) {
+    throw new Error('--forget replaces recorded readings with this run\'s, so it needs a scope that measures: '
+      + '--all (with --suite to narrow it), or a spec path. On its own, or with --suite alone, it would '
+      + 'measure nothing and so forget nothing.');
   }
 
   return {
@@ -995,14 +1050,15 @@ export function settle(input: {
   const { previous, costs, measuredFiles, prune, forgetWindows } = input;
   const kept = Object.entries(previous?.samples ?? {}).filter(([spec]) => !prune.includes(spec));
 
-  // A reading joins the window only when it says something the window does not already say. An agreeing
-  // one is dropped, which is what keeps a quiet run free of a diff; a disagreeing one is kept, and the
-  // median moves on the second that agrees with it. `disagrees` carries the measured reasoning.
+  // A reading joins the window only when it says something the window does not already say: it disagrees with
+  // the median, or it lands in the other half. An agreeing one is dropped, which is what keeps a quiet run
+  // free of a diff; a kept one does not move the median by itself, and the second that agrees with it does.
+  // `worthKeeping` carries the measured reasoning for both halves of that.
   const settled: Record<string, readonly number[]> = Object.fromEntries(kept);
   for (const [spec, ms] of Object.entries(costs)) {
     const before = previous?.samples[spec];
     settled[spec] = forgetWindows || before === undefined ? [ms]
-      : disagrees(costOf(before), ms) ? appendSample(before, ms) : before;
+      : worthKeeping(spec, costOf(before), ms) ? appendSample(before, ms) : before;
   }
 
   // Against `costs`, which is what this run measured — not against the settled values, which still hold
