@@ -9,6 +9,23 @@
 // nothing has to observe a disconnect to retire it.
 import { randomId } from '@abuddy/sdk/utils/pure';
 
-export const createContext = () => ({ client: randomId({ prefix: 'c-' }) });
+/**
+ * What the WebSocket adapter hands this, narrowed to the one member used. The adapter aborts this signal from
+ * `client.once('close')`, so it is the connection ending rather than any one call being cancelled.
+ */
+type ConnectionArgs = { info?: { signal?: AbortSignal } };
+
+export const createContext = ({ info }: ConnectionArgs = {}) => ({
+  client: randomId({ prefix: 'c-' }),
+  /**
+   * Fires when this connection ends, whatever ended it. Anything holding per-connection state releases it here.
+   *
+   * It matters that this is the *connection* and not a subscription: a claimed name was released from
+   * `bus.sub`'s teardown at first, which is both too eager and too narrow — a client that stopped subscribing
+   * but kept its socket lost its name, and one that claimed without ever subscribing kept it until the API
+   * process exited, so the next session was refused with nothing left to close.
+   */
+  closed: info?.signal,
+});
 
 export type Context = ReturnType<typeof createContext>;
