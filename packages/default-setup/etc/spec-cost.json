@@ -79,7 +79,6 @@
     "tests/sdk-type-safety.spec.ts": [12],
     "tests/seeds/_compilers/faqs.spec.ts": [35],
     "tests/seeds/_compilers/settings.spec.ts": [72],
-    "tests/seeds/actions/claude-code/_helpers/approval-response.spec.ts": [5],
     "tests/seeds/actions/claude-code/_helpers/ask-user-question.spec.ts": [9],
     "tests/seeds/actions/claude-code/_helpers/auto-approve.spec.ts": [5],
     "tests/seeds/actions/claude-code/_helpers/plan-approval.spec.ts": [6],
