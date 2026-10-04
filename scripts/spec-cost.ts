@@ -47,6 +47,7 @@ import {
   halfOfPath, hasSplit, ratiosFromMoves, underBound,
   nearEdge, overBudget,
   CONFIG_BY_HALF, absentNamed, forStorage, namedIn, parseArgs, planFor, readSpecCost, recordMembership,
+  writesMembershipOnly,
   readingsText, renameAdvice,
   type SpecCost, type StoredSpecCost,
   provisional, forgetsWindows, settle, specCostFile, specFiles, stale, suitesFor, unrecorded, type SpecCostPlan,
@@ -157,13 +158,27 @@ function update(plans: readonly SuitePlan[], dry: boolean): void {
     process.exit(1);
   }
 
-  // What each suite's `pretest` does, because this bypasses it by calling vitest directly. Without it the
-  // specs fail on the staleness guard rather than running. Skipped when nothing is being measured.
+  const adopt = all && force;
+  /**
+   * The suites that will actually take a reading, which is **not** every suite with work to do.
+   *
+   * A suite whose record belongs to another machine writes membership and measures nothing (the branch in
+   * the loop below), so the two gates under this have no subject for it: there is no sample to be spoiled
+   * by a busy box, and nothing to build for. Asked of `plan.configs` alone, the refusal fired first and
+   * unconditionally — a second developer adding a spec on a working machine was refused for a write that
+   * takes no measurement, which is a refusal with nothing to refuse.
+   */
+  const measuring = work.filter((plan) => {
+    if (plan.configs.length === 0) return false;
+    const previous = readSpecCost(REPO_ROOT, plan.suite.dir);
+    return previous === undefined || !writesMembershipOnly(previous, adopt);
+  });
+
   // Before anything is measured, because the record is a *sample* and a sample taken on a busy box is
   // about the box. `refusesAsContended` below asks the other question — did too much move, once we have the
   // numbers — and structurally cannot fire for a row that is merely *new*: an addition has not moved. That
   // is exactly how a cost got recorded at a load of 71 and had to be reverted by hand.
-  if (work.some((plan) => plan.configs.length > 0)) {
+  if (measuring.length > 0) {
     const idle = idleNow();
     if (refusesAsBusy({ idle, floor: RECORD_IDLE_FLOOR, force })) {
       throw new Error(`The machine is ${Math.round(idle * 100)}% idle and recording refuses below `
@@ -172,7 +187,9 @@ function update(plans: readonly SuitePlan[], dry: boolean): void {
     }
   }
 
-  if (work.some((plan) => plan.configs.length > 0)) {
+  // What each suite's `pretest` does, because this bypasses it by calling vitest directly. Without it the
+  // specs fail on the staleness guard rather than running. Skipped when nothing is being measured.
+  if (measuring.length > 0) {
     const ensured = spawnSync('npm', ['run', 'packages:ensure'], { cwd: REPO_ROOT, encoding: 'utf8' });
     if (ensured.status !== 0) throw new Error(`packages:ensure failed:\n${ensured.stdout}${ensured.stderr}`);
   }
@@ -194,8 +211,7 @@ function update(plans: readonly SuitePlan[], dry: boolean): void {
     // `--all --force` is how a machine takes the record over: re-measure the whole thing and write this
     // machine as its own. Two flags rather than a third, because that is exactly what adoption is — every
     // row re-measured (`--all`) past a refusal that exists to stop a partial one (`--force`).
-    const adopt = all && force;
-    if (previous !== undefined && !adopt && !isMeasuredMachine(previous.machine)) {
+    if (previous !== undefined && writesMembershipOnly(previous, adopt)) {
       const next = recordMembership(previous, files);
       const added = next.unmeasured.filter((file) => !previous.unmeasured.includes(file));
       const gone = stale(previous, files);

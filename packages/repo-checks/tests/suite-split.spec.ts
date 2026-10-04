@@ -21,6 +21,7 @@ import {
   namedIn, overBudget, parseArgs,
   planFor, readSpecCost,
   recordMembership, refuseAbsent, forgetsWindows, settle, specCostFile, specFiles, stale, suitesFor,
+  writesMembershipOnly,
   unrecorded, WINDOW, appendSample, costOf, provisional, withCosts,
 } from '../../../scripts/lib/spec-cost.ts';
 // The sample-recording primitives, shared with the chain's own cost table since 2026-10-02. The cases below
@@ -119,6 +120,32 @@ describe('a record anyone can add a spec to', () => {
     expect(next.costs, 'a cost is a fact about a machine, so another machine may not write one')
       .toEqual({ 'tests/a.spec.ts': 100 });
     expect(next.machine, 'nor may it claim the record').toEqual(OTHER);
+  });
+
+  /**
+   * The same question the command asks *before* deciding whether the machine has to be quiet.
+   *
+   * It asked only whether there was work to do, so the busy-machine refusal ran first and
+   * unconditionally — and a suite on this branch takes no reading at all, so that refused a second
+   * developer's spec addition over a sample that was never going to be taken. One rule, two readers: the
+   * idle gate and the branch below.
+   */
+  describe('whether a suite measures at all', () => {
+    const HERE = thisMachine();
+
+    it('writes membership only when the record is another machine, so nothing is measured', () => {
+      expect(writesMembershipOnly(base({}), false)).toBe(true);
+    });
+
+    it('measures when the record is this machine', () => {
+      const mine = withCosts({ measuredAt: 'then', samples: {}, skipped: [], unmeasured: [], machine: HERE });
+      expect(writesMembershipOnly(mine, false), 'its costs are this box\'s to write').toBe(false);
+    });
+
+    /** `--all --force`: the one case where another machine's record still means taking readings */
+    it('measures when this run is adopting the record', () => {
+      expect(writesMembershipOnly(base({}), true)).toBe(false);
+    });
   });
 
   it('drops a spec that has gone, from whichever list held it', () => {

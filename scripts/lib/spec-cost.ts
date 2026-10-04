@@ -13,7 +13,7 @@
  */
 import * as fs from 'node:fs';
 import * as path from 'node:path';
-import { thisMachine, type Machine } from './core-budget.ts';
+import { isMeasuredMachine, thisMachine, type Machine } from './core-budget.ts';
 import { movedBeyondBand } from './measure.ts';
 
 /**
@@ -762,6 +762,26 @@ export function describeBudget(
 export const stale = (record: SpecCost, files: readonly string[]): string[] =>
   [...Object.keys(record.samples), ...record.skipped, ...record.unmeasured]
     .filter((file) => !files.includes(file)).sort();
+
+/**
+ * Whether this suite will write membership and measure nothing — which decides, among other things,
+ * whether the machine has to be quiet.
+ *
+ * One rule with two readers: the command's idle gate asks it before deciding to refuse a busy box, and
+ * the loop asks it again to take the membership branch. Written twice they come apart, and the way they
+ * came apart is the reason this exists: the refusal ran first and unconditionally, so a second developer
+ * adding a spec on a busy machine was refused for a write that takes no reading at all.
+ *
+ * `adopt` is `--all --force`, which is how a machine takes a record over — it re-measures every row, so
+ * it is the one case where another machine's record still means measuring.
+ *
+ * It takes a record rather than `SpecCost | undefined`: whether one *exists* is a different question from
+ * whose machine it is, and each caller already has the answer in hand. A type predicate was tried instead
+ * and is wrong — `false` here does not mean the record is absent, so narrowing on it made the measuring
+ * path's `previous` read as `never`.
+ */
+export const writesMembershipOnly = (previous: SpecCost, adopt: boolean): boolean =>
+  !adopt && !isMeasuredMachine(previous.machine);
 
 /**
  * The record with its membership brought up to date and not one cost touched.
