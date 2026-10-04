@@ -55,8 +55,16 @@ export interface FlowRun {
 export interface TestApp {
   /** Sends CLIENT_CONNECTED, as a client connecting does; systems send their startup data */
   connect(): Promise<void>;
-  /** Sends a system an event, as a client's `sendToSystem` does (the pack's own by feature id, a dependency's as `<packId>/<featureId>`); the bus routes it whether or not a client connected */
-  send(systemId: string, event: { type: string; [key: string]: unknown }): Promise<void>;
+  /**
+   * Sends a system an event, as a client's `sendToSystem` does (the pack's own by feature id, a dependency's as
+   * `<packId>/<featureId>`); the bus routes it whether or not a client connected.
+   *
+   * `sender` is who the system should answer, and a handler that calls `reply` needs it: a real send carries one
+   * because it is made while handling something else (`createSends` reads the delivery in scope), and a send
+   * made from here carries nothing unless it is given. Without it `reply` throws "named no sender", so a pack
+   * test could not drive such a handler at all.
+   */
+  send(systemId: string, event: { type: string; [key: string]: unknown }, options?: { sender?: string }): Promise<void>;
   /**
    * The events delivered to one frontend plugin (by `broadcastToPlugin`, once connected), in order, exactly as
    * sent; the plugin named as the pack names it (its own by feature id, any other as `<packId>/<featureId>`).
@@ -355,8 +363,9 @@ export async function startApp(options: StartAppOptions): Promise<TestApp> {
       testRootEvents.emitConnected();
       await settle();
     }),
-    send: (systemId, event) => call(async () => {
-      testRootEvents.emitIncoming({ to: resolveSystemId(systemId, systems), event });
+    send: (systemId, event, options) => call(async () => {
+      const sender = options?.sender === undefined ? {} : { sender: resolveSystemId(options.sender, systems) };
+      testRootEvents.emitIncoming({ to: resolveSystemId(systemId, systems), event, ...sender });
       await settle();
     }),
     emitted(plugin) {

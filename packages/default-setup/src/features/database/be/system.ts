@@ -1,5 +1,8 @@
 import type { ThreadsSettings } from '#generated/types.ts';
 import { sendToSystem, broadcastToPlugin } from '#generated/events.ts';
+// Untyped for now: a typed `reply` needs an `answers` field on the contract and a codegen reader, which
+// stays deferred. `onConnected`/`onIncoming` come from here for the same reason.
+import { reply } from '@abuddy/sdk/events';
 import { setup } from 'xstate';
 import { performance } from 'node:perf_hooks';
 import { defineSystem } from '@abuddy/sdk/framework';
@@ -16,6 +19,36 @@ import { ref } from '#generated/ref.ts';
 import { errorMessage } from '@abuddy/sdk/utils/pure';
 
 const logger = createLogger('database');
+
+/**
+ * What a query answers with, success or failure, as one value.
+ *
+ * Separating the outcome from the sending is what lets a handler reply exactly once. With the send inside the
+ * `try`, a `reply` that threw — which it does when the message named no sender — would land in the `catch`,
+ * which would reply again and throw out of an async action as an unhandled rejection.
+ */
+async function queryAnswer(code: string, requestId: string) {
+  try {
+    const startTime = performance.now();
+    const result = await executeQuery(code);
+    return { type: 'QUERY_RESULT' as const, result, executionTime: performance.now() - startTime, requestId };
+  } catch (error: unknown) {
+    logger.error('Query execution failed:', { error: errorMessage(error) });
+    return { type: 'QUERY_ERROR' as const, error: errorMessage(error), requestId };
+  }
+}
+
+/** The same for a transaction; its caller broadcasts the schema change separately on success */
+async function transactionAnswer(code: string, requestId: string) {
+  try {
+    const startTime = performance.now();
+    const result = await executeTransaction(code);
+    return { type: 'TRANSACTION_RESULT' as const, result, executionTime: performance.now() - startTime, requestId };
+  } catch (error: unknown) {
+    logger.error('Transaction execution failed:', { error: errorMessage(error) });
+    return { type: 'TRANSACTION_ERROR' as const, error: errorMessage(error), requestId };
+  }
+}
 
 export interface DatabaseContext { }
 
@@ -41,57 +74,19 @@ export const databaseSystem = setup({
      */
     executeQuery: async ({ event }) => {
       const { code, requestId } = databaseSpec.typeOf('EXECUTE_QUERY', event);
-      
-      try {
-        const startTime = performance.now();
-        const result = await executeQuery(code);
-        const executionTime = performance.now() - startTime;
-        
-        broadcastToPlugin('database', { 
-          type: 'QUERY_RESULT',
-          result,
-          executionTime,
-          requestId
-        });
-      } catch (error: unknown) {
-        logger.error('Query execution failed:', { error: errorMessage(error) });
-        broadcastToPlugin('database', { 
-          type: 'QUERY_ERROR',
-          error: errorMessage(error),
-          requestId
-        });
-      }
+      reply(await queryAnswer(code, requestId));
     },
     /** The id is closed over, for `executeQuery`'s reason above */
     executeTransaction: async ({ event }) => {
       const { code, requestId } = databaseSpec.typeOf('EXECUTE_TRANSACTION', event);
-      
-      try {
-        const startTime = performance.now();
-        const result = await executeTransaction(code);
-        const executionTime = performance.now() - startTime;
-        
-        broadcastToPlugin('database', { 
-          type: 'TRANSACTION_RESULT',
-          result,
-          executionTime,
-          requestId
-        });
-        
-        // Send refresh event with updated schema
+      const answer = await transactionAnswer(code, requestId);
+      reply(answer);
+
+      // Still a broadcast, and deliberately: a changed schema is news for every window's schema view, not an
+      // answer to the window that ran the transaction. Converting this one would narrow it to the asker.
+      if (answer.type === 'TRANSACTION_RESULT') {
         logger.info('Transaction completed successfully, sending database refresh');
-        const schema = generateSchemaInfo();
-        broadcastToPlugin('database', { 
-          type: 'DATABASE_REFRESH',
-          data: { schema }
-        });
-      } catch (error: unknown) {
-        logger.error('Transaction execution failed:', { error: errorMessage(error) });
-        broadcastToPlugin('database', { 
-          type: 'TRANSACTION_ERROR',
-          error: errorMessage(error),
-          requestId
-        });
+        broadcastToPlugin('database', { type: 'DATABASE_REFRESH', data: { schema: generateSchemaInfo() } });
       }
     },
     handleAiQuery: ({ event }) => {
