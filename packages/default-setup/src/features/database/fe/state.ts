@@ -89,6 +89,17 @@ const databaseState = setup({
       (event as { requestId?: string }).requestId === context.pendingQueryId,
     answersPendingTransaction: ({ context, event }) =>
       (event as { requestId?: string }).requestId === context.pendingTransactionId,
+    /**
+     * Whether these events belong to the flow the viewer is on.
+     *
+     * `currentFlowId` is assigned before every `GET_FLOW_EVENTS` — by the explicit selection and by the
+     * auto-select on the flow list — so the reply's `flowId` is enough to tell it from an answer for a
+     * flow since left. It does **not** settle two pages of the same flow: the reply echoes no `offset`,
+     * and `setFlowEvents` decides append-or-replace from the context's. That needs the backend to echo
+     * it, so it is out of this guard's reach rather than covered by it.
+     */
+    answersCurrentFlow: ({ context, event }) =>
+      (event as { flowId?: string }).flowId === context.currentFlowId,
   },
   actions: {
     /* ── bootstrap ─────────────────────────────────────── */
@@ -538,7 +549,7 @@ AI_QUERY_LOADING: { actions: 'setAiQueryLoading' },
     FEATURE_SETTINGS_UPDATED: { actions: 'setDatabaseSettings' },
     // Trace viewer events
     TRACE_FLOWS_RESULT: { actions: 'setTraceFlows' },
-    FLOW_EVENTS_RESULT: { actions: 'setFlowEvents' },
+    FLOW_EVENTS_RESULT: { guard: 'answersCurrentFlow', actions: 'setFlowEvents' },
     NODE_DETAILS_RESULT: { actions: 'setNodeDetails' },
     // Backup events
     BACKUP_INFO_RESULT: { actions: 'setBackupInfo' },

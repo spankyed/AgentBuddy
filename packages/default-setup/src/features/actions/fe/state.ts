@@ -74,17 +74,19 @@ const actionsState = setup({
     }),
 
     /* ── action interactions ────────────────────────────── */
-    selectAction: ({ event, context }) => {
+    selectAction: assign(({ event, context }) => {
       const ev = typeOf('ACTION.SELECT', event);
       if (context.selectedActionId === ev.actionId) {
-        return
+        return {}
       }
       // Send event to backend to get action data
       sendToSystem(id, {
         type: 'ACTION_SELECT',
         actionId: ev.actionId,
       });
-    },
+      // Recorded here so the reply can be told from one for a selection since replaced
+      return { pendingActionId: ev.actionId };
+    }),
 
     loadActionData: assign(({ event }) => {
       const ev = typeOf('ACTION_SELECTED', event);
@@ -436,7 +438,20 @@ const actionsState = setup({
       actionsExport: { status: 'idle' as const, errors: [], filePath: '', actionCount: 0 },
     }),
   },
-  guards: { targetIs },
+  guards: {
+    targetIs,
+    /** Whether this reply describes the action still being waited on */
+    answersPendingAction: ({ context, event }) =>
+      (event as { actionId?: string }).actionId === context.pendingActionId,
+    /**
+     * Whether this page is the one just asked for.
+     *
+     * `requestNextPage` sends `context.page + 1` and `page` only moves when a reply lands, so two
+     * clicks both ask for the same page — and appending whatever arrives appended it twice.
+     */
+    isNextPage: ({ context, event }) =>
+      (event as { data?: { page?: number } }).data?.page === context.page + 1,
+  },
 }).createMachine({
   id,
   initial: 'list',
@@ -472,7 +487,7 @@ const actionsState = setup({
   },
   on: {
     ACTIONS_LISTED: { actions: 'setPluginData' },
-    ACTION_SELECTED: { actions: 'loadActionData' },
+    ACTION_SELECTED: { guard: 'answersPendingAction', actions: 'loadActionData' },
     FEATURE_SETTINGS_UPDATED: { actions: 'handleSettingsUpdate' },
     ACTION_CREATED: {
       actions: 'addCreatedAction'
@@ -492,7 +507,7 @@ const actionsState = setup({
     TOGGLE_METADATA_SECTION: { actions: 'toggleMetadataSection' },
     'ACTIONS.LOAD_MORE': { actions: 'requestNextPage' },
     'ACTIONS.LOAD_ALL': { actions: 'requestAllItems' },
-    ACTIONS_PAGE_LOADED: { actions: 'appendPageData' },
+    ACTIONS_PAGE_LOADED: { guard: 'isNextPage', actions: 'appendPageData' },
     ACTIONS_ALL_LOADED: { actions: 'setAllItems' },
     'FILTER.TOGGLE_CATEGORY': { actions: 'toggleCategoryFilter' },
     'FILTER.CLEAR': { actions: 'clearCategoryFilters' },

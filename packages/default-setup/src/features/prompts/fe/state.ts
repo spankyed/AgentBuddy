@@ -75,17 +75,19 @@ const promptsState = setup({
     }),
 
     /* ── prompt interactions ────────────────────────────── */
-    selectPrompt: ({ event, context }) => {
+    selectPrompt: assign(({ event, context }) => {
       const ev = typeOf('PROMPT.SELECT', event);
       if (context.selectedPromptId === ev.promptId) {
-        return
+        return {}
       }
       // Send event to backend to get prompt data
       sendToSystem(id, {
         type: 'PROMPT_SELECT',
         promptId: ev.promptId,
       });
-    },
+      // Recorded here so the reply can be told from one for a selection since replaced
+      return { pendingPromptId: ev.promptId };
+    }),
 
     loadPromptData: assign(({ event }) => {
       const ev = typeOf('PROMPT_SELECTED', event);
@@ -437,7 +439,15 @@ const promptsState = setup({
       selectedCategories: []
     }),
   },
-  guards: { targetIs },
+  guards: {
+    targetIs,
+    /** Whether this reply describes the prompt still being waited on */
+    answersPendingPrompt: ({ context, event }) =>
+      (event as { promptId?: string }).promptId === context.pendingPromptId,
+    /** Whether this page is the one just asked for — two clicks ask for the same one */
+    isNextPage: ({ context, event }) =>
+      (event as { data?: { page?: number } }).data?.page === context.page + 1,
+  },
 }).createMachine({
   id,
   initial: 'list',
@@ -476,7 +486,7 @@ const promptsState = setup({
       target: '.list',
     },
     PROMPTS_CONNECTED: { actions: 'setPluginData' },
-    PROMPT_SELECTED: { actions: 'loadPromptData' },
+    PROMPT_SELECTED: { guard: 'answersPendingPrompt', actions: 'loadPromptData' },
     FEATURE_SETTINGS_UPDATED: { actions: 'handleSettingsUpdate' },
     PROMPT_CREATED: {
       actions: 'addCreatedPrompt'
@@ -493,7 +503,7 @@ const promptsState = setup({
     TOGGLE_METADATA_SECTION: { actions: 'toggleMetadataSection' },
     'PROMPTS.LOAD_MORE': { actions: 'requestNextPage' },
     'PROMPTS.LOAD_ALL': { actions: 'requestAllItems' },
-    PROMPTS_PAGE_LOADED: { actions: 'appendPageData' },
+    PROMPTS_PAGE_LOADED: { guard: 'isNextPage', actions: 'appendPageData' },
     PROMPTS_ALL_LOADED: { actions: 'setAllItems' },
     'FILTER.TOGGLE_CATEGORY': { actions: 'toggleCategoryFilter' },
     'FILTER.CLEAR': { actions: 'clearCategoryFilters' },

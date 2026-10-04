@@ -340,6 +340,15 @@ const brainState = setup({
       return true;
     },
     targetIs,
+    /**
+     * Whether these details describe the node still being waited on.
+     *
+     * `selectedStepNode.id` is that node at every request site: a click assigns it before the send,
+     * and the refresh path only asks about the node already selected. So the reply's own `tNodeId` is
+     * enough to tell it from an answer for a node the view has since moved off.
+     */
+    answersSelectedNode: ({ context, event }) =>
+      (event as { tNodeId?: string }).tNodeId === context.selectedStepNode?.id,
   },
 }).createMachine({
   id,
@@ -432,6 +441,7 @@ const brainState = setup({
           actions: 'closeDetails'
         },
         TNODE_DETAILS: {
+          guard: 'answersSelectedNode',
           actions: 'setStepNodeDetails'
         },
         PLUGIN_ACTIVATED: {

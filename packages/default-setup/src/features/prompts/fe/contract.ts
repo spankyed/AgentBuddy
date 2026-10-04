@@ -10,6 +10,13 @@ import type { Category } from '#generated/types.ts'
 
 export interface PromptsContext {
   selectedPromptId?: EARS.EntityId;
+  /**
+   * The prompt a selection is waiting on, which is what makes `PROMPT_SELECTED` identifiable.
+   *
+   * `selectedPromptId` cannot do it: that is written *from* the reply, so two quick selections are
+   * otherwise decided by whichever answer arrives last.
+   */
+  pendingPromptId?: EARS.EntityId;
   prompts: PromptEntity[];
   selectedPrompt?: PromptEntity;
   totalCount: number;
