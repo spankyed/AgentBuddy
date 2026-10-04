@@ -391,6 +391,26 @@ async function main(): Promise<void> {
    */
   const dispatchSweep = freshnessSweep();
   pruneStamps();
+
+  // **Refused before the run, not after it.** `recordTheCosts` asks this at the end, which is where the answer
+  // arrives too late: twice on 2026-10-04 a `--all --record` spent 200 seconds and was then told the machine
+  // was 69% idle. `spec-cost:update` has always asked first — "it refuses to measure below IDLE_FLOOR, before
+  // running anything" — and this is the same gate in the same order.
+  //
+  // The late one stays, and both are needed: a box quiet now can be loaded by the end, and the chain is its own
+  // load. This one saves the run when the answer is already no; that one catches a run disturbed while it ran.
+  // `npm run check:idle` is the same reading as a command, for asking without starting anything.
+  if (args.flags.has('record')) {
+    const before = idleNow();
+    if (refusesAsBusy({ idle: before, floor: IDLE_FLOOR, force: args.flags.has('force') })) {
+      console.log(`\n--record refused before running: the machine is ${Math.round(before * 100)}% idle and this `
+        + `needs ${Math.round(IDLE_FLOOR * 100)}%.`);
+      console.log('  Refused now rather than after the run, which is where the same check used to sit. Wait, or'
+        + ' pass --force and know the number is forced.');
+      return;
+    }
+  }
+
   const outcome = await schedule({
     steps,
     budget,

@@ -720,6 +720,17 @@ npm run spec-cost:update # The least that makes the records current, which is of
                          #                 its readings still describe the code are separate questions
 
 # Lint (root runs every workspace that has one; oxlint, plus eslint in the renderer)
+npm run check:idle       # Is this machine quiet enough to measure on — `76% idle, floor 70%`, exit 1 below it.
+                         # Three commands refuse below `IDLE_FLOOR` and none could be asked in advance:
+                         # `spec-cost:update` and `measure` refuse before they run anything, and
+                         # `chain --record` refused *after* the run, which is where the answer arrives too
+                         # late — twice on 2026-10-04 that spent 200s to be told the box was 69% idle. The
+                         # chain asks first now as well, and this is the same reading as a command, so it
+                         # composes: `npm run check:idle && npm run chain -- --all --record`.
+                         # **It answers "is it worth starting", not "will this be clean"**: a reading is of
+                         # this instant, and a long command is its own load — the chain reads 83% before a
+                         # run that ends under the floor. Not a chain step, and must not become one
+
 npm run check:specifiers # Every import rule, over the whole repo (2.5s, one parse and one tree walk). Takes paths to
                          # run only the per-file rules over them (0.9s over one feature), and says which
                          # whole-tree rules it skipped; --rule <id> runs one, --list prints them all

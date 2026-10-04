@@ -101,6 +101,7 @@
     "db:reset": "abuddy db reset -d",
     "db:clear-settings": "abuddy db clear-settings -d",
     "chain": "tsx scripts/chain.ts",
+    "check:idle": "tsx scripts/check-idle.ts",
     "check:repro": "tsx scripts/repro.ts",
     "check:tiers": "tsx scripts/check-test-tiers.ts"
   },
