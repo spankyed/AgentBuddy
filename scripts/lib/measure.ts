@@ -243,53 +243,6 @@ export const refusesAsContended = (input: {
 export const refusesAsBusy = (input: { readonly idle: number; readonly floor: number; readonly force: boolean }):
 boolean => !input.force && input.idle < input.floor;
 
-/** How long a recording waits for a quiet machine before it gives up, and how often it looks while waiting. */
-export const QUIET_WAIT_MS = 10 * 60_000;
-export const QUIET_POLL_MS = 5_000;
-
-/**
- * Waits for the machine to go quiet enough to record on, and reports what it settled at.
- *
- * **The wait exists because the load is usually the caller's own.** A developer reaches for
- * `spec-cost:update` having just finished the work that added the spec, so the box is busy *with the chain
- * run that proved the work* — and the only remedy the refusal could offer was "wait, then run it again".
- * Doing the waiting here removes a round trip and changes no invariant: the reading that gets recorded is
- * still one taken above the floor.
- *
- * It is not a way to measure a loaded machine. A box held under the floor by something long-lived — a dev
- * app, another suite — waits and is then refused exactly as before, which is the honest answer.
- *
- * Clock and reader are injected so a case can drive it without real load; the defaults are this machine.
- */
-export function waitForQuiet(input: {
-  readonly floor: number;
-  readonly force: boolean;
-  readonly timeoutMs: number;
-  readonly readIdle?: () => number;
-  readonly sleep?: (ms: number) => void;
-  readonly now?: () => number;
-  /** Called once, with the first reading, only when the wait actually begins */
-  readonly onWaiting?: (idle: number) => void;
-}): { readonly idle: number; readonly waitedMs: number } {
-  const readIdle = input.readIdle ?? idleNow;
-  const sleep = input.sleep ?? ((ms: number) => { Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, ms); });
-  const now = input.now ?? Date.now;
-  const busy = (idle: number): boolean => refusesAsBusy({ idle, floor: input.floor, force: input.force });
-
-  const started = now();
-  let idle = readIdle();
-  // `force` makes `busy` false on the first reading, so it skips the wait rather than needing a case of its own
-  if (!busy(idle)) return { idle, waitedMs: 0 };
-
-  input.onWaiting?.(idle);
-  while (now() - started < input.timeoutMs) {
-    sleep(QUIET_POLL_MS);
-    idle = readIdle();
-    if (!busy(idle)) break;
-  }
-  return { idle, waitedMs: now() - started };
-}
-
 /**
  * Whether conditions moved under a series that was allowed to start.
  *

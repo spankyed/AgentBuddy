@@ -719,19 +719,21 @@ npm run spec-cost:update # The least that makes the records current, which is of
                          # would flag is not a floor. The table is on the constant. That is a separate gate
                          # from the contention refusal below, which asks after measuring whether too much
                          # *moved*.
-                         # **It waits for a quiet box, and then records membership rather than refusing.** It
-                         # used to throw, and the throw blocked a landing: `suite-split` fails on a spec the
-                         # record has never seen, so a box that stayed busy left the gate red with the only
-                         # advice being to wait. That refuses the wrong half. *Which specs exist* is a fact
-                         # about the repo and *what one costs* is a fact about a machine, so a busy box takes
-                         # the same path another machine does — the spec is listed `unmeasured`, which
-                         # `unrecorded` accepts, and a later quiet run prices it. Nothing is lost: the
-                         # refusal existed to keep a busy box's numbers out of the record, and writing no
-                         # cost does that better than writing none *and* failing. Placement is unaffected
-                         # either way, since a spec runs in the half its filename says (`halfOfPath`) and the
-                         # cost only audits that. `--force` measures anyway; `--no-wait` skips the wait and
-                         # records membership now. One predicate answers it (`writesMembershipOnly`), so a
-                         # busy box and a foreign record cannot drift apart.
+                         # **On a busy box it records membership and no cost — it neither waits nor
+                         # refuses.** Two earlier versions were worse in opposite directions. It threw, and
+                         # the throw blocked a landing: `suite-split` fails on a spec the record has never
+                         # seen, so a box that stayed busy left the gate red with the only advice being to
+                         # wait. Then it waited up to ten minutes and threw anyway, which removed a round
+                         # trip and left the block. Degrading makes both unnecessary, and leaves a wait
+                         # nothing to buy: the cost it would eventually take is the cost the next quiet run
+                         # takes. *Which specs exist* is a fact about the repo and *what one costs* is a fact
+                         # about a machine, so a busy box takes the path another machine does — the spec is
+                         # listed `unmeasured`, which `unrecorded` accepts. Nothing is lost: the refusal
+                         # existed to keep a busy box's numbers out of the record, and writing no cost does
+                         # that better than writing none *and* failing. Placement is unaffected either way,
+                         # since a spec runs in the half its filename says (`halfOfPath`) and the cost only
+                         # audits that. `--force` measures anyway. One predicate answers it
+                         # (`writesMembershipOnly`), so a busy box and a foreign record cannot drift apart.
                          # **Off the record's own machine it writes membership and never a cost.** A record
                          # holds two kinds of thing: which specs exist, a fact about the repo that anyone
                          # can see, and what one costs, a fact about a machine. They were one map, so

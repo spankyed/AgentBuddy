@@ -39,7 +39,7 @@ import { spawnSync } from 'node:child_process';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { REPO_ROOT } from '@abuddy/host/build/packages-built';
-import { bodyDrift, drifted, QUIET_WAIT_MS, RECORD_IDLE_FLOOR, refusesAsBusy, refusesAsContended, waitForQuiet } from './lib/measure.ts';
+import { bodyDrift, drifted, idleNow, RECORD_IDLE_FLOOR, refusesAsBusy, refusesAsContended } from './lib/measure.ts';
 import { isMeasuredMachine, machineText, thisMachine, type Machine } from './lib/core-budget.ts';
 import { UNIT_SUITES, type UnitSuite } from './lib/unit-suites.ts';
 import {
@@ -168,54 +168,36 @@ function update(plans: readonly SuitePlan[], dry: boolean): void {
    * unconditionally — a second developer adding a spec on a working machine was refused for a write that
    * takes no measurement, which is a refusal with nothing to refuse.
    */
-  /** Set when the box is under the recording floor: every plan then writes membership and no cost */
-  let busy: string | undefined;
-
   const measuring = work.filter((plan) => {
     if (plan.configs.length === 0) return false;
     const previous = readSpecCost(REPO_ROOT, plan.suite.dir);
     return previous === undefined || !writesMembershipOnly(previous, { adopt });
   });
 
-  // Before anything is measured, because the record is a *sample* and a sample taken on a busy box is
-  // about the box. `refusesAsContended` below asks the other question — did too much move, once we have the
-  // numbers — and structurally cannot fire for a row that is merely *new*: an addition has not moved. That
-  // is exactly how a cost got recorded at a load of 71 and had to be reverted by hand.
-  //
-  // It waits for that box rather than refusing it, because the load is almost always the caller's own: this
-  // is reached having just finished the work that added the spec, so the chain run that proved the work is
-  // what is holding the machine down. The refusal's only advice was "wait, then run it again", and doing the
-  // waiting here removes the round trip without changing what gets recorded — still a reading above the
-  // floor. A box held under it by something long-lived is refused exactly as before.
+  /**
+   * **A busy box records membership and no cost. It does not wait, and it does not refuse.**
+   *
+   * Two earlier versions of this were worse in opposite directions. It threw, which blocked a landing:
+   * `suite-split` fails on a spec the record has never seen, so a box that stayed under the floor left the
+   * gate red with the only advice being to wait. Then it waited up to ten minutes before throwing, which
+   * removed a round trip and left the block in place for anyone whose machine stayed busy.
+   *
+   * Degrading makes both unnecessary. The record holds two kinds of thing with different permissions —
+   * *which specs exist* is a fact about the repo, *what one costs* is a fact about a machine — and a busy
+   * machine can still see the first. So it takes the path another machine takes: the spec is listed
+   * `unmeasured`, which `unrecorded` accepts, and the next quiet run prices it. There is nothing left for a
+   * wait to buy: the cost it would eventually take is the cost that run takes anyway.
+   *
+   * Nothing is lost. The refusal existed to keep a busy box's numbers out of the record, and writing no cost
+   * does that better than writing none *and* failing. Placement is unaffected either way, since a spec runs
+   * in the half its filename says (`halfOfPath`) and the cost only audits that. `--force` measures anyway.
+   */
+  let busy: string | undefined;
   if (measuring.length > 0) {
-    const percent = (share: number): string => `${Math.round(share * 100)}%`;
-    const { idle, waitedMs } = waitForQuiet({
-      floor: RECORD_IDLE_FLOOR,
-      force,
-      timeoutMs: wait ? QUIET_WAIT_MS : 0,
-      onWaiting: (first) => {
-        console.log(`${percent(first)} idle, and recording needs ${percent(RECORD_IDLE_FLOOR)} — waiting up to `
-          + `${Math.round(QUIET_WAIT_MS / 60_000)}m. --no-wait records membership now instead, --force measures anyway.`);
-      },
-    });
-    const waited = waitedMs > 0 ? `, after waiting ${Math.round(waitedMs / 1000)}s` : '';
+    const idle = idleNow();
     if (refusesAsBusy({ idle, floor: RECORD_IDLE_FLOOR, force })) {
-      /**
-       * **A busy box writes membership and no cost, rather than refusing the run.**
-       *
-       * It used to throw here, and the throw blocked a landing: `suite-split` fails on a spec the record has
-       * never seen, so a box that stayed under the floor left the gate red with the only advice being to wait.
-       * That is the wrong half to refuse. The record already holds two kinds of thing with different
-       * permissions — *which specs exist* is a fact about the repo, *what one costs* is a fact about a machine —
-       * and a busy machine has not stopped being able to see the first. So the same path another machine takes
-       * is taken here: the spec is listed `unmeasured`, which `unrecorded` accepts, and a quiet run prices it.
-       *
-       * Nothing is lost by it. The refusal existed to stop a cost measured on a busy box reaching the record,
-       * and recording no cost serves that better than recording none *and* failing. Placement is unaffected
-       * either way: a spec runs in the half its filename says (`halfOfPath`), and the cost only audits that.
-       */
-      busy = `${percent(idle)} idle${waited}, below the ${percent(RECORD_IDLE_FLOOR)} a cost needs`;
-    } else if (waitedMs > 0) console.log(`${percent(idle)} idle${waited} — measuring`);
+      busy = `${Math.round(idle * 100)}% idle, below the ${Math.round(RECORD_IDLE_FLOOR * 100)}% a cost needs`;
+    }
   }
 
   // What each suite's `pretest` does, because this bypasses it by calling vitest directly. Without it the
@@ -569,7 +551,7 @@ function list(only: string | undefined, named: readonly string[]): void {
   for (const line of near.sort()) console.log(line);
 }
 
-const { mode, only, named, force, all, forget, dry, wait } = parseArgs(process.argv.slice(2), UNIT_SUITES.map((suite) => suite.dir));
+const { mode, only, named, force, all, forget, dry } = parseArgs(process.argv.slice(2), UNIT_SUITES.map((suite) => suite.dir));
 
 // Before any mode reads a record, and for all of them: a path that names no spec is the caller's mistake, and
 // every one of them is worth reporting at once rather than one per run
