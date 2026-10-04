@@ -46,16 +46,28 @@ so out loud so the claim can be checked.
 moved — so the table that used to live here, asking you to work out which suite covers your edit, is now the
 graph's job. Run the chain and it runs the subset; it does not need you to have guessed right.
 
-Measured on an idle machine, 2026-09-25, each one a real run rather than a sum of the parts:
+Measured with `npm run measure`, 2026-10-04, each a median of three real runs rather than a sum of the
+parts — so each figure carries its conditions and the table can be re-derived rather than trusted:
 
 | What you changed | What the chain runs | Cost |
 |---|---|---|
 | nothing tracked | nothing | **0.9s** |
 | a doc, a comment, a CLAUDE.md | nothing but that — no step declares `docs/`, and a fingerprint skips every `CLAUDE.md` | **0.9s** |
-| one package's source (the renderer) | `test:unit:host`, which runs only the renderer's project, the typecheck legs whose scope reaches it, then `build:app` and every step that needs the app, because rebuilding it moves what they read | **115.1s** |
-| nothing is cached (a cold tree) | all 12 steps, three at a time (re-measured 2026-09-27, `--all`) | **178.3s** |
+| one package's source (the renderer) | ten of twenty-nine steps: `test:unit:host` (only the renderer's project), `test:integration`, the typecheck legs whose scope reaches it, `lint:check`, `check:specifiers`, `check:tiers`, `api:stamp` and `build:app` | **38.6s** |
+| nothing is cached (a cold tree) | all 29 steps, on a ten-core budget (re-measured 2026-10-04, `--all`) | **158.3s** |
 
-The one-package row is the one worth reading twice: editing a package that the *app* is built from costs four times editing one it is not, because `build:app` rewrites `packages/*/dist` and every step that needs the app reads it. A change under `@abuddy/ears` or a pack's tests does not pay that.
+**The one-package row is the one worth reading twice, and what it says changed.** It used to be 115.1s, on the
+reasoning that `build:app` rewrites `packages/*/dist` and so moves what every app-dependent step reads —
+so editing a package the app is built from cost four times editing one it is not. That is no longer true.
+`build:app` still runs, and `test:smoke`, `test:packaged-authoring` and `test:external-pack:app` stay
+**cached** through it: their keys are over the built app's *content*, and a rebuild from unchanged input
+produces the same bytes, so nothing they read has moved. The reproducible-build work is what collapsed this
+row, which is worth knowing because it is the largest single saving in the table and nothing recorded it —
+`npm run check:repro` is the instrument that keeps it true.
+
+So the shape to carry is that an edit costs the steps whose *inputs* moved, and a step that only consumes a
+deterministic build is not one of them. Re-derive it with `npm run chain -- --dry`, which names the ten and
+the reason beside each.
 
 `npm run chain -- --dry` prints that plan without running it, and says why each step is or is not cached —
 which is the way to find out why something you expected to be skipped is not.
@@ -63,7 +75,9 @@ which is the way to find out why something you expected to be skipped is not.
 **The inner loop is still `npm run spec`**, and it is still much cheaper than a chain run: with no
 arguments it runs the specs your uncommitted changes affect, in every package they touch; with a source
 file it runs the specs that import it. One spec file is 1-3s and a package's `tsc --noEmit` is 3s, against
-the chain's 27s floor. Use it while you are working, and the chain when you are done. A change to
+the 38.6s a chain run costs after a one-package edit — **not** against the chain's floor, which is 0.9s and so
+cheaper than either. What `spec` saves is not the cost of starting the chain but the cost of what your change
+made stale. Use it while you are working, and the chain when you are done. A change to
 `scripts/` or to a vitest config counts too: it routes to `@app/repo-checks`, the package holding the
 specs that check the repo's own tooling.
 
@@ -343,8 +357,12 @@ cheaper chain measured — written when the declaration was a tier.
 
 **A figure earns its place by sizing a choice, and one a record owns is named rather than copied.** Two
 different failures: a figure that informs no decision is weight, and a copy of something `chain-steps.ts`
-or `spec-cost:check` already knows drifts with nothing to catch it. "One spec file is 1-3s against the
-chain's 27s floor" earns its place; a count the `--list` flag derives does not.
+or `spec-cost:check` already knows drifts with nothing to catch it. "One spec file is 1-3s against the 38.6s a
+one-package edit costs the chain" earns its place; a count the `--list` flag derives does not.
+**That example used to read "against the chain's 27s floor", and it is here as the warning as well as the
+rule**: the floor became 0.9s when the per-step caching landed, the sentence was copied to two other places,
+and all three went on arguing from a number thirty times too large — in the paragraph about copied figures
+drifting.
 
 **Script names say whether they write.** Three shapes, and the second word tells them apart:
 
@@ -436,7 +454,7 @@ npm run spec -- <target> # You don't say what the target is; it works that out:
                          # Where a spec belongs: its path under tests/ mirrors the source it covers, no
                          # directory names a level or a cost half, and support dirs take a _ prefix
                          # (docs/reference/test-inventory.md; repo-checks' spec-placement.spec.ts)
-npm run chain            # Before a merge: every check in dependency order, cold 169s and warm 27s. Each
+npm run chain            # Before a merge: every check in dependency order, cold 158s and warm 0.9s. Each
                          # step is cached on the inputs it declares (scripts/lib/chain-steps.ts), so a doc
                          # edit runs nothing and a one-package edit runs that package's suite; the E2E
                          # suite is opt-in (`--e2e`) rather than a gate, with its reason on the step: it
