@@ -149,7 +149,7 @@ An app already running on that data dir is used as it is; otherwise `run` starts
 
 Without an FE entry it rebuilds, reinstalls and reloads on any change instead.
 
-#### `abuddy drive [script] [--app-root <path> | --app beta] [instance flags]`
+#### `abuddy drive [script | --serve] [--app-root <path> | --app beta] [instance flags]`
 
 Launch AgentBuddy and drive it from a script: navigate, send events, read state, take screenshots.
 
@@ -169,6 +169,63 @@ drive('open notes and look at it', async ({ app, appPage }) => {
 ```
 
 The import is `drive`, not `test`: the same runner under a name that says what the file is. With no script argument every file in `drive/` runs; name one to run just it.
+
+##### `--serve`: one session, many questions
+
+A driving script is a closed program. It runs, it ends, and the next question costs another edit and
+another app launch. `--serve` holds the app open and answers HTTP requests instead, so an agent asks one
+thing at a time against a session that is already warm.
+
+```bash
+abuddy drive --serve --instance probe
+```
+
+It prints the address and a `curl` line, and writes `drive/results/engine.json` with the address and a
+token. Loopback only, and the token is required on every request.
+
+```bash
+E=$(node -p "const m=require('./drive/results/engine.json');m.host+':'+m.port")
+H="x-abuddy-drive-token: $(node -p "require('./drive/results/engine.json').token")"
+
+curl -s http://$E/state -H "$H"
+curl -s http://$E/eval -H "$H" -d '{"body":"return window.appVersion"}'
+curl -s http://$E/qx   -H "$H" -d '{"code":"return qx(EARS.Entity.Note).count()"}'
+curl -s -X POST http://$E/close -H "$H"
+```
+
+| verb | method | body | does |
+|---|---|---|---|
+| `/eval` | POST | `{ body }` | runs the body in the window and returns what it returns |
+| `/send` | POST | `{ event }` | sends an event to the app's root actor |
+| `/system` | POST | `{ to, event }` | sends an event to a system, by ref |
+| `/qx` | POST | `{ code }` | runs query code against the live database |
+| `/tx` | POST | `{ code }` | runs transaction code against the live database |
+| `/state` | GET | — | the state value, the active plugin and the plugin list |
+| `/wait` | POST | `{ state }` or `{ plugin }`, `{ timeoutMs }` | waits for a dotted state path, or for a plugin to arrive |
+| `/navigate` | POST | `{ plugin }` | opens a plugin |
+| `/screenshot` | POST | `{ name }` | writes `drive/screenshots/<name>.png` |
+| `/events` | GET | — | the app's events since you last asked, and how many were dropped |
+| `/drops` | GET | — | sends the bus dropped, and clears them |
+| `/errors` | GET | — | renderer errors, and clears them |
+| `/close` | POST | — | ends the session and shuts the app down |
+
+**`/wait` rather than re-asking `/state`.** `{"state":"running.connected"}` returns when the app gets
+there; `{"plugin":"default-setup/notes"}` returns when that plugin registers. One of the two, never both.
+
+**One `/qx` or `/tx` at a time.** `QUERY_RESULT` carries no request id, so the engine runs them in order
+and matches each reply to the request in flight. The gap that leaves: a query that *times out* and then
+finishes anyway has its reply arrive with no one waiting for it, and the next request takes it. If that
+matters, raise `timeoutMs` rather than overlapping requests.
+
+**`/qx` and `/tx` reach the live database**, not the files on disk — they go to the running app, so a
+write is visible to the next read in the same session. `abuddy db exec` cannot do that: it refuses while
+the app holds the write lock. One at a time, since the reply carries no request id.
+
+**A failed verb answers `200` with `{ "ok": false, "error": ... }`** — the request was fine and the
+operation was not, which is the common case while driving. A malformed request, a missing token or an
+unknown verb answers `4xx`, because nothing ran.
+
+The app's own output is in `drive/results/app-0.log` for the whole session, so there is nothing to stream.
 
 It takes the same app and instance flags as `abuddy run`, with one difference in the default: where `abuddy run` uses the shared development data dir, `abuddy drive` gives each session a fresh one and throws it away afterwards, so a driving session starts clean and leaves nothing. `--instance <name>` is how a session keeps its state for the next one. It launches its own app rather than joining one `abuddy run` already has, because Electron allows one app per data dir — so if a person wants to watch what a driver is doing, they watch the driver's window rather than starting a second app.
 

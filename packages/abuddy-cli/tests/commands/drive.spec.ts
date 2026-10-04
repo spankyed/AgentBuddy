@@ -2,7 +2,7 @@ import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { driveScripts } from '../../src/commands/drive';
+import { driveScripts, DRIVE_USAGE, takeServeFlag } from '../../src/commands/drive';
 
 let root: string;
 
@@ -47,5 +47,55 @@ describe('the driving scripts a pack has', () => {
     fs.mkdirSync(path.join(root, 'drive', 'flows'), { recursive: true });
     fs.writeFileSync(path.join(root, 'drive', 'flows', 'checkout.ts'), '');
     expect(driveScripts(root)).toEqual([path.join('flows', 'checkout.ts')]);
+  });
+});
+
+/**
+ * `--serve` is this command's own, so it has to be taken out of the arguments.
+ *
+ * Everything left over is forwarded to the Playwright CLI verbatim (`flags.args`), which would be asked
+ * about a flag it has never heard of — and Playwright's answer to that is to fail the run.
+ */
+describe('the serve flag', () => {
+  it('is off by default, and takes nothing with it', () => {
+    expect(takeServeFlag(['look.ts', '--instance', 'x'])).toEqual({
+      serve: false, rest: ['look.ts', '--instance', 'x'],
+    });
+  });
+
+  it('is taken out of the arguments when present', () => {
+    expect(takeServeFlag(['--serve', '--instance', 'x'])).toEqual({ serve: true, rest: ['--instance', 'x'] });
+  });
+
+  it('leaves every other argument in place and in order', () => {
+    const { rest } = takeServeFlag(['--app-root', '/a', '--serve', '--instance', 'probe', '-g', 'x']);
+    expect(rest).toEqual(['--app-root', '/a', '--instance', 'probe', '-g', 'x']);
+  });
+
+  it('does not match a flag that merely starts the same way', () => {
+    // `--serve-forever` is not this flag, and silently eating it would send the caller looking at
+    // Playwright for the reason their argument vanished
+    expect(takeServeFlag(['--serve-forever'])).toEqual({ serve: false, rest: ['--serve-forever'] });
+  });
+});
+
+/**
+ * The help text and the behaviour, held together.
+ *
+ * `USAGE` in `src/index.ts`, this constant, the CLI's `CLAUDE.md` table and `docs/public-facing/cli.md`
+ * are four hand-kept copies, and nothing checks any of them. These are the claims a reader acts on
+ * directly — the flag, where the address is, and how to end a session — so they are the ones pinned.
+ */
+describe('the help text', () => {
+  it('names the flag it documents', () => {
+    expect(DRIVE_USAGE).toContain('--serve');
+  });
+
+  it('says where the address and the token are, since nothing else tells the caller', () => {
+    expect(DRIVE_USAGE).toContain('drive/results/engine.json');
+  });
+
+  it('says how a session ends, which is the one thing a caller cannot guess', () => {
+    expect(DRIVE_USAGE).toContain('/close');
   });
 });

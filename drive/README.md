@@ -28,5 +28,25 @@ npm run drive                    # every script here, windows shown
 npm run drive -- drive/notes.ts  # just one
 ```
 
+## One session, many questions
+
+A script here runs and ends. To ask many things of one warm app instead, serve it:
+
+```bash
+abuddy drive --serve --instance probe     # from inside a pack
+```
+
+It prints the address and a `curl` line and writes `results/engine.json` with the address and a token.
+`POST /close` ends the session and shuts the app down. `docs/public-facing/cli.md` has the verbs; the
+short version is `/eval` `/send` `/system` `/qx` `/tx` `/wait` `/navigate` `/screenshot` `/close` and
+`/state` `/events` `/drops` `/errors`.
+
+`/qx` and `/tx` reach the **live** database, so a write shows up in the next read of the same session —
+`abuddy db exec` cannot, because it refuses while the app holds the write lock.
+
+The repo's own `npm run drive` has no `--serve`: it runs Playwright directly against this directory
+rather than through the CLI, and the CLI wants a pack. Serve from `packages/default-setup` or a fixture
+pack under `tests/packs/`.
+
 A pack author gets the same thing from `abuddy drive`, which also takes `--instance <name>` to keep the
 app's data between sessions. Everything here but this file and `playwright.config.ts` is gitignored.

@@ -36,8 +36,15 @@ import { ensureCheckoutPackages } from '../build/checkout-packages.ts';
 
 const DRIVE_DIR = 'drive';
 
-const HELP = `
-Usage: abuddy drive [script] [--app-root <path> | --app beta] [instance]
+/**
+ * Exported so a spec can hold this text to what the command does.
+ *
+ * `USAGE` in `src/index.ts`, this, the CLI's `CLAUDE.md` table and `docs/public-facing/cli.md` are four
+ * hand-kept copies of the same facts, and nothing held any of them together. `TEST_USAGE` is the
+ * precedent: exported for exactly this, and asserted in `tests/commands/test-contract.spec.ts`.
+ */
+export const DRIVE_USAGE = `
+Usage: abuddy drive [script | --serve] [--app-root <path> | --app beta] [instance]
 
 Launch AgentBuddy and drive it from a script: navigate, send events, read state, screenshot.
 Mainly for an agent debugging or developing against the app; a person can watch, the windows are shown.
@@ -45,15 +52,22 @@ Scripts live in ${DRIVE_DIR}/ and are not tests — no runner collects them, and
 
 With no script, every file in ${DRIVE_DIR}/ runs. The app's windows are shown, so you can watch.
 
+--serve holds the app open and answers requests instead of running a script, so an agent can drive one
+session many times rather than editing and re-launching for each question. It prints the address and a
+curl line; ${DRIVE_DIR}/results/engine.json has the address and the token, and POST /close ends it.
+
 By default the app gets a fresh data dir that is thrown away afterwards, so each session starts clean.
 Name an instance to keep its state between sessions.
 
 Options:
+  --serve             hold the app open and answer HTTP requests (see above)
   --app-root <path>   a local AgentBuddy checkout (installed and built)
   --app beta          the newest AgentBuddy Beta build that satisfies the pack's hostVersion
 ${INSTANCE_USAGE}
   --help, -h          Show this help
 `.trim();
+
+const HELP = DRIVE_USAGE;
 
 const CONFIG = `import { defineConfig } from '@playwright/test';
 
@@ -105,6 +119,65 @@ const GITIGNORE = `*
 !playwright.config.ts
 `;
 
+/**
+ * The engine's config and session, written on `--serve`.
+ *
+ * **`.mts`, and that extension is the mechanism.** The config this command scaffolds collects
+ * `**\/*.ts`, which — measured — picks up a dot-directory but not a `.mts` file. So the engine's
+ * session is invisible to a plain `abuddy drive` while its own config names it exactly, and no pack
+ * scaffolded before this existed needs migrating: `scaffold` only writes files that are absent, so a
+ * `testIgnore` added to the template would have reached new packs and left every existing one
+ * collecting the engine and hanging on it.
+ *
+ * Both are gitignored by the `*` the layer already carries, so they are not tracked, not a chain input
+ * and not linted — which is right for generated files, and the reason the engine's own code lives in
+ * `@abuddy/testing` where all three apply.
+ */
+const ENGINE_SESSION_FILE = 'engine-session.mts';
+const ENGINE_CONFIG_FILE = 'engine.config.mts';
+
+const ENGINE_CONFIG = `import { defineConfig } from '@playwright/test';
+
+// Written by \`abuddy drive --serve\`. Only the engine's session, named exactly rather than by a glob,
+// so a pack's own .mts driving script is not dragged into a serving run.
+export default defineConfig({
+  testDir: '.',
+  testMatch: '${ENGINE_SESSION_FILE}',
+  workers: 1,
+  // A session ends when something asks it to, not when a clock says so
+  timeout: 0,
+  reporter: 'list',
+  outputDir: 'results',
+});
+`;
+
+const ENGINE_SESSION = `import { drive, driveEngineBody } from '@abuddy/testing';
+
+// Written by \`abuddy drive --serve\`. Nothing typechecks this file, so it passes no options: the wiring
+// is \`driveEngineBody\` in @abuddy/testing, where the compiler sees it. The \`drive\` call stays here so
+// Playwright reports the session at this file rather than inside that bundle.
+drive('drive engine', driveEngineBody);
+`;
+
+/**
+ * Takes `--serve` out of the arguments before anything else sees them.
+ *
+ * Every unconsumed flag ends up in `flags.args`, which is forwarded to the Playwright CLI verbatim — so
+ * a flag this command means for itself has to be removed here or Playwright is asked about it.
+ */
+export function takeServeFlag(args: string[]): { serve: boolean; rest: string[] } {
+  const rest = args.filter(arg => arg !== '--serve');
+  return { serve: rest.length !== args.length, rest };
+}
+
+/** Writes the engine's pair, overwriting: they are generated, and a stale one is a confusing session */
+function writeEngineFiles(root: string): void {
+  const dir = path.join(root, DRIVE_DIR);
+  fs.mkdirSync(dir, { recursive: true });
+  fs.writeFileSync(path.join(dir, ENGINE_CONFIG_FILE), ENGINE_CONFIG);
+  fs.writeFileSync(path.join(dir, ENGINE_SESSION_FILE), ENGINE_SESSION);
+}
+
 /** The driving scripts in a pack, which is what decides whether there is anything to run. */
 export function driveScripts(root: string): string[] {
   try {
@@ -138,14 +211,17 @@ export async function drive(args: string[]) {
 
   const root = findPackRoot(process.cwd());
   const manifest = readManifest(root);
-  const { mode, withSecrets, rest } = parseInstanceFlags(args);
+  const { serve, rest: unserved } = takeServeFlag(args);
+  const { mode, withSecrets, rest } = parseInstanceFlags(unserved);
   const flags = parseAppFlags(rest);
 
   // Before the app is resolved, which can prompt and can download a Beta: a first run has nothing to
   // drive, and used to find that out only after paying for a build and a launch and then failing with
   // Playwright's "No tests found"
   if (scaffold(root)) console.log(`Created ${DRIVE_DIR}/ — a README and a config are in there.\n`);
-  if (driveScripts(root).length === 0) {
+  if (serve) writeEngineFiles(root);
+  // A serving session is the thing being run, so a pack with no scripts of its own is not empty-handed
+  if (!serve && driveScripts(root).length === 0) {
     console.log(`No driving scripts yet. Write one in ${DRIVE_DIR}/ and run this again:\n`);
     console.log(`  // ${DRIVE_DIR}/look.ts`);
     console.log("  import { drive } from '@abuddy/testing';\n");
@@ -231,7 +307,11 @@ export async function drive(args: string[]) {
     // ephemeral instance was left on disk — measured, not reasoned about.
     child = spawn(
       process.execPath,
-      [resolvePlaywrightCli(root), 'test', '--config', path.join(DRIVE_DIR, 'playwright.config.ts'), ...flags.args],
+      [
+        resolvePlaywrightCli(root), 'test',
+        '--config', path.join(DRIVE_DIR, serve ? ENGINE_CONFIG_FILE : 'playwright.config.ts'),
+        ...flags.args,
+      ],
       { cwd: root, env, stdio: 'inherit' },
     );
     const [code, killedBy] = await new Promise<[number | null, NodeJS.Signals | null]>(resolve => {

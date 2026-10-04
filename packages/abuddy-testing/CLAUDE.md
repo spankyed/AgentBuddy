@@ -188,6 +188,61 @@ two to a leaf module would let the rest load only where a test compiles seeds. `
 as a standalone import in a fresh process; what it costs *marginally* inside a worker that has already loaded
 the SDK was not measured, and is probably well under that. Measure before moving anything.
 
+## A session something can talk to (`src/engine/`)
+
+`abuddy drive --serve` runs `runDriveEngine`, which holds the page the fixture opened and answers loopback
+HTTP until something asks it to stop. It is for an agent: a driving script is a closed program, so every
+question costs an edit, a process start and an app launch, where a session answers many.
+
+Three modules, and the split is what each one is allowed to know:
+
+- **`session.ts`** — the verbs, over a `SessionPage` four methods wide. It never touches Playwright's
+  types, so every verb is exercised in process against a fake rather than by launching Electron. The two
+  evaluation forms are separate methods on purpose: Playwright reads a string as an expression and a
+  function as something to serialise, and a string *with* an argument silently drops the argument.
+- **`server.ts`** — the channel. A verb that fails answers `200` with `ok: false`, because the request was
+  fine and the operation was not; a bad token, an unknown path or a malformed body answers `4xx`, because
+  nothing ran. `/close` answers and the **caller** ends the session once that reply has been written —
+  ending it inside the verb closed the socket first and the agent saw a reset for a request that worked.
+- **`marker.ts`** — `drive/results/engine.json`, the address and the token. It needs no staleness check:
+  Playwright wipes `outputDir` at the start of every run, so a marker from a dead session cannot be found.
+
+Things worth knowing before changing it:
+
+- **`/qx` and `/tx` go over the bus**, to default-setup's `EXECUTE_QUERY`/`EXECUTE_TRANSACTION`, which
+  already run against the live engine with every installed pack's entity types. So a write is visible to
+  the next read in the same session — which `abuddy db exec` cannot do, since it refuses while the app
+  holds the write lock. They are **serialised**, because `QUERY_RESULT` carries no request id and two in
+  flight could not be told apart.
+- **Serialising covers requests in flight and not one that was abandoned.** A `/qx` that hits
+  `REPLY_TIMEOUT_MS` and then completes anyway has its reply arrive with nothing waiting for it, and the
+  next request is what takes it. Only a request id on default-setup's contract closes that, which is the
+  smaller change if concurrency is ever wanted — the engine cannot tell a late reply from a fresh one.
+- **`/wait` is the fixture's own wait**, so a state is awaited rather than re-requested. Without it the
+  only way to wait is to ask `/state` repeatedly, which is the polling this repo avoids where something
+  event-driven exists.
+- **`/screenshot` refuses a name that is not a name.** It is the one verb whose input becomes a path, and
+  `app.screenshot` joins it onto the screenshots directory, so `../../escaped` wrote outside it.
+- **The body cap answers rather than hanging up.** It used to `destroy()` the request, which took the
+  socket down before the `400` could be written and left the caller with `fetch failed`.
+- **`/eval` is total.** `page.evaluate` returns only structured-cloneable values, so the clone is
+  attempted in the page and a result that cannot survive it — a state machine, say — comes back described,
+  with its keys and the instruction to return `JSON.stringify(...)` instead.
+- **The body returns when the session ends**, and it has to. The fixture's teardown is the code after
+  `await use(...)`, so a body that never returns skips `app.close()`, the listener removal and the
+  data-dir policy. `/close` resolves it.
+- **Ctrl-C is safe, and not because of the engine's signal handlers.** Measured 2026-10-04: `SIGINT` to
+  `abuddy drive --serve` left the app's API process gone, the data-dir policy run and the ephemeral
+  instance removed — with Playwright reporting the session *interrupted*, which is the evidence that
+  Playwright's own interrupt handling did the teardown rather than a body the handlers had resolved.
+- **`/drops` and `/errors` read *and clear*.** The fixture throws on any dropped send left after the body,
+  which suits a test; a session running for an hour would collect every drop and fail at the end over ones
+  the agent had already read.
+- **`/events` is capped** (`MAX_SEEN_EVENTS`) and reports what it dropped. The in-page inspector sees all
+  of the app's traffic, not just replies, so a buffer nobody drains grows for as long as the session is up.
+- Renderer errors are collected by the engine's own listeners rather than drained from the fixture's
+  array, so `describeFailure` keeps quoting everything it would have.
+
 ## Setup for external packs
 
 ```bash

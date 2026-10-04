@@ -626,3 +626,31 @@ export const test = _default.test;
  * nothing and reporters and `--grep` still match titles.
  */
 export const drive = _default.test;
+
+/**
+ * A driving session something outside the process can talk to, for `abuddy drive --serve`.
+ *
+ * Re-exported here rather than from an entry of its own: a driving script already imports `drive` from
+ * this module, and the engine is the same job done interactively, so a second entry would be a second
+ * name for one thing. `src/engine/` has what it does and why.
+ */
+import { runDriveEngine } from './engine/index.ts';
+
+export { ENGINE_TOKEN_HEADER, MARKER_FILE, runDriveEngine, type DriveEngineOptions, type EngineMarker } from './engine/index.ts';
+
+/**
+ * The body of a serving session: everything `abuddy drive --serve`'s generated script does.
+ *
+ * **The body rather than the registration, so two things hold at once.** The wiring is typechecked here
+ * — the generated script is a string, so an option it had to pass was a chance to drift, and did, once:
+ * adding `/wait` added two options the template did not pass, which showed up as
+ * `page.waitForState is not a function` against a running app rather than as a compile error. And
+ * `drive(...)` is still called from the script, so Playwright reports the session at the caller's file
+ * instead of at a line inside this bundle, which is what a reader needs when a run is interrupted.
+ */
+export const driveEngineBody = async (
+  { app, appPage }: { app: AppHelper; appPage: Page },
+  testInfo: { project: { outputDir: string } },
+): Promise<void> => {
+  await runDriveEngine({ page: appPage, app, outputDir: testInfo.project.outputDir });
+};
