@@ -283,6 +283,17 @@ const MUTATIONS: readonly Mutation[] = [
     call: (lib) => lib.refusesAsContended({ hasPrevious: true, force: true, moved: 6, comparable: 20 }),
   },
   {
+    // The flip is the whole decision: dropping it reports the idle share of the box as the busy one, which on
+    // the reading this exists for turns a pool still running at 6.6 cores into one apparently at 3.4 — the
+    // exact misreading it was added to prevent. The asymmetric input matters, since a half-idle box reads the
+    // same either way
+    why: 'coresBusy reports the busy share of the box rather than the idle one',
+    in: 'measure',
+    from: '(1 - idleFrom(before, after)) * cores',
+    to: 'idleFrom(before, after) * cores',
+    call: (lib) => lib.coresBusy({ idle: 0, total: 0 }, { idle: 340, total: 1000 }, 10),
+  },
+  {
     why: 'refuseAbsent throws for a spec that is not there',
     from: 'if (absent.length === 0) return;',
     to: 'if (true) return;',
