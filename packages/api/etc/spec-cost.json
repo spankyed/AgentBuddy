@@ -1,5 +1,5 @@
 {
-  "measuredAt": "2026-09-28T20:13:36.675Z",
+  "measuredAt": "2026-10-04T09:25:52.148Z",
   "samples": {
     "tests/adapters/log-capture.spec.ts": [16],
     "tests/runtime/app-database-parity.spec.ts": [933],
@@ -15,7 +15,9 @@
     "tests/runtime/upgrade-from-0.3.14.spec.ts": [160],
     "tests/source-layout.spec.ts": [8],
     "tests/transport/bus-send-sender.spec.ts": [3],
-    "tests/transport/dev-reload-access.spec.ts": [168]
+    "tests/transport/context.spec.ts": [2],
+    "tests/transport/dev-reload-access.spec.ts": [168],
+    "tests/transport/sub-scope.spec.ts": [3]
   },
   "skipped": [],
   "unmeasured": [],
