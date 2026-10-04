@@ -121,6 +121,15 @@ export const TIMEOUT_MS = {
   suite: {
     ms: 300_000,
     stretches: SLOWER_MACHINE,
+    // **One member measured, every member charged.** The figure is end-to-end on `test:unit:host`, whose
+    // pool takes the whole box. A member that caps its own width loses fewer workers and so stretches less:
+    // worker loss on this box alone puts `test:integration` at 1.94x going five workers to two (42.5s ->
+    // 82.5s, median of 3, 2026-10-04), against the 4 the rung charges it. That is the coarseness a declared
+    // class is for, and it runs in the safe direction — a ceiling set too high costs only a wedge found
+    // later, which the file header weighs, where one set too low kills a step that was passing. So a capped
+    // member's `declaredShare` is pessimistic rather than a fact about that member, and the number that
+    // would settle one that fails the bound is that member on a hosted runner, not a second factor here.
+    //
     // The subject only. The figure is `stretches` beside it and the citation is in this table's doc, so a
     // message that quotes this does not say the number twice and does not carry a doc path to a terminal
     measured: 'a vitest pool dropping from nine workers to about two on a hosted runner',
