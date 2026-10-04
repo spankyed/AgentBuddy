@@ -8,8 +8,10 @@
 // What this file cannot check is the *delivery narrowing*: the harness has one client, so `emitted` sees
 // whatever the bus put out whether or not it was addressed. The addressing itself is covered where it lives
 // (`@abuddy/host`'s `tests/bus/reply.spec.ts` and `@app/api`'s `tests/transport/sub-scope.spec.ts`). What is
-// covered here is the pack's half: that the handler answers its sender at all, which it could not before
-// `app.send` carried one.
+// covered here is the pack's half: that the handler answers its sender at all.
+//
+// Every case connects first: the bus holds sends to plugins until a client does, so an answer would otherwise
+// have nowhere to go. The one case that deliberately does not is the last.
 import { describe, expect, it } from 'vitest'
 import { startApp } from '@abuddy/testing/harness'
 
@@ -18,7 +20,6 @@ const DATABASE = 'default-setup/database'
 describe('a query run by a plugin', () => {
   it('is answered to the asker, carrying the id it asked with', async () => {
     const app = await startApp({ systems: ['database'] })
-    // The bus drops sends to plugins until a client connects, so an answer has nowhere to go without this
     await app.connect()
 
     await app.send('database', { type: 'EXECUTE_QUERY', code: 'return 1 + 1', requestId: 'q-1' }, { sender: DATABASE })
@@ -30,7 +31,6 @@ describe('a query run by a plugin', () => {
   // The failing path answers too, and answers once: the reply sits outside the try so a throw cannot send twice
   it('answers a failing query with the error and the same id', async () => {
     const app = await startApp({ systems: ['database'] })
-    // The bus drops sends to plugins until a client connects, so an answer has nowhere to go without this
     await app.connect()
 
     await app.send('database', { type: 'EXECUTE_QUERY', code: 'return nope', requestId: 'q-2' }, { sender: DATABASE })
@@ -43,10 +43,8 @@ describe('a query run by a plugin', () => {
   /**
    * Why nothing arrived, when the reason is that nobody was listening.
    *
-   * This is the failure that cost an afternoon while writing the cases above: the handler ran, answered
-   * correctly, and the answer was discarded because the bus holds sends to plugins until a client connects — so
-   * the test failed with an empty `Sent:` list and no way to tell that from a handler that never ran. Nothing
-   * logged it; the answer was only in `@abuddy/host/CLAUDE.md`.
+   * A handler that ran and answered correctly still fails with an empty `Sent:` list if no client connected,
+   * and nothing distinguishes that from a handler that never ran — so the wait's own message has to say it.
    *
    * Deliberately no `app.connect()`. A short timeout because the point is the message, not the wait.
    */
@@ -68,7 +66,6 @@ describe('a query run by a plugin', () => {
    */
   it('answers a transaction and still tells every window the schema changed', async () => {
     const app = await startApp({ systems: ['database'] })
-    // The bus drops sends to plugins until a client connects, so an answer has nowhere to go without this
     await app.connect()
 
     await app.send(
