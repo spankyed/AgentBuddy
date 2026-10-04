@@ -279,27 +279,69 @@ describe.skipIf(!ON_MEASURED_MACHINE)(`a spec runs in the half its cost puts it 
   // into `beforeAll` for exactly that reason). It is kept because it is the stable statistic available:
   // a sum moves 0.4-9.9% between idle runs where its members move 10-18% each, and a wall-clock sample of
   // the same unchanged suite read 6.5, 10.3, 8.1 and 7.0s. `drift` is what watches the part this cannot.
-  it('leaves the fast half worth running in a loop', () => {
+  const LOOP_BUDGET_MS = 30_000;
+
+  /**
+   * The budget asked of the worst case a gap could hold, rather than of the specs that happen to be priced.
+   *
+   * A parked spec counts as the most a fast spec may cost. It is a function so a case can hand it numbers
+   * the live record does not have — the rule itself, over whatever it is given.
+   */
+  const atWorst = (fileTimeMs: number, unpriced: number): number => fileTimeMs + unpriced * INTEGRATION_ABOVE_MS;
+
+  /** What the fast half of @abuddy/cli costs, and what it could cost if every parked spec were at its cap */
+  const cliFastHalf = () => {
     const cli = suites.find(({ suite }) => suite.dir === 'abuddy-cli')!;
     const fast = cli.files.filter((file) => halfOfPath(file) === 'fast');
+    return { cli, fast, priced: priceSpecs(fast.map((file) => path.join('packages', cli.suite.dir, file)), REPO_ROOT) };
+  };
 
-    // **It refuses to vouch over a gap rather than vouching.** A missing cost used to sum as zero, so the
-    // total got smaller as the half got bigger — and the `unmeasured` list a second developer writes into is
-    // exactly a set of specs with no cost. The absent-record case was worse: `record?.costs[...] ?? 0` made
-    // the whole total 0 and this assertion passed over nothing at all. `priceSpecs`' doc has the rule —
-    // *"an unrecorded spec is named, never treated as zero: a total that quietly omits a file is a prediction
-    // that gets better the less it knows"* — and this is the same rule for a budget.
+  it('leaves the fast half worth running in a loop', () => {
+    const { cli, fast, priced } = cliFastHalf();
+
+    // **It bounds the gap rather than vouching over it.** A missing cost used to sum as zero, so the total
+    // got smaller as the half got bigger — and the `unmeasured` list a busy run writes into is exactly a set
+    // of specs with no cost. The absent-record case was worse: `record?.costs[...] ?? 0` made the whole total
+    // 0 and this assertion passed over nothing at all. `priceSpecs`' doc has the rule — *"an unrecorded spec
+    // is named, never treated as zero: a total that quietly omits a file is a prediction that gets better the
+    // less it knows"* — and this is the same rule for a budget.
     //
-    // Safe as a failure because this describe is machine-scoped: off the reference box it does not run, so
-    // the only person it stops is the one who can price them with one command.
+    // It used to refuse outright, and that stopped being right when a busy box began *parking* a spec rather
+    // than refusing to record it: parking is legitimate and short-lived, and failing here re-blocked the
+    // landing parking exists to let through. So the budget is asked of the worst case instead. With nothing
+    // parked this is exactly the assertion it replaces; the bound loosens only by what is genuinely unknown.
+    //
+    // **What makes it sound, and the one thing it assumes.** A fast spec costs at most
+    // `INTEGRATION_ABOVE_MS` — above that the rename case above fires and it moves halves — so a parked spec
+    // cannot be worth more than that once priced. Until then this takes it for the fast spec its filename
+    // declares, which the next quiet bare update checks by pricing it (`pendingHere`, `lib/spec-cost.ts`).
+    // Measured 2026-10-04: 14.7s priced against a 30s budget, so six parked specs fit and a seventh does not.
+    //
     // Through `priceSpecs` rather than a sum written here, because it already keeps that rule and already
     // names what it could not price (`spec-dry.ts`). A second total would be a second place to get it wrong.
-    const priced = priceSpecs(fast.map((file) => path.join('packages', cli.suite.dir, file)), REPO_ROOT);
-    expect(priced.unpriced, 'these have no cost, so a total would understate the half it is vouching for. '
-      + `Run: npm run spec-cost:update -- --suite ${cli.suite.dir}`).toEqual([]);
+    const parked = priced.unpriced.length > 0
+      ? `, plus ${priced.unpriced.length} not yet priced, counted at ${INTEGRATION_ABOVE_MS}ms each. `
+        + `Price them: npm run spec-cost:update -- --suite ${cli.suite.dir}`
+      : '';
+    expect(atWorst(priced.fileTimeMs, priced.unpriced.length),
+      `the fast half is ${(priced.fileTimeMs / 1000).toFixed(1)}s of file time across ${fast.length} specs${parked}`)
+      .toBeLessThan(LOOP_BUDGET_MS);
+  });
 
-    const total = priced.fileTimeMs;
-    expect(total, `the fast half is ${(total / 1000).toFixed(1)}s of file time across ${fast.length} specs`).toBeLessThan(30_000);
+  /**
+   * The firing case for the bound, derived from the live total so it cannot outlive the fact it rests on.
+   *
+   * Without it the clause above is an assertion nothing has watched fail: every live record has an empty
+   * `unmeasured`, so the gap it exists to bound is always zero and the arithmetic never runs over anything.
+   */
+  it('stops vouching once the gap alone could blow the budget', () => {
+    const { priced } = cliFastHalf();
+    const fits = Math.floor((LOOP_BUDGET_MS - priced.fileTimeMs) / INTEGRATION_ABOVE_MS);
+
+    expect(fits, 'no room for a parked spec at all would make the bound unreachable').toBeGreaterThan(0);
+    expect(atWorst(priced.fileTimeMs, fits), `${fits} parked specs still fit`).toBeLessThan(LOOP_BUDGET_MS);
+    expect(atWorst(priced.fileTimeMs, fits + 1), 'and one more does not, so this can fail')
+      .toBeGreaterThanOrEqual(LOOP_BUDGET_MS);
   });
 });
 
