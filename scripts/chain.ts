@@ -678,6 +678,21 @@ function recordTheCosts(steps: readonly ChainStep[], measuredMs: ReadonlyMap<str
   // `was !== now` rather than always: `planSecondsEdits` has no no-op filter, so writing unconditionally would
   // splice identical bytes for every unchanged row, report `60s -> 60s` as an edit, and move this file's mtime
   // for nothing — which the freshness sweep reports, on a file five steps read.
+  //
+  // **Use it when you know what changed, not to chase a drift you do not.** It replaces the whole table from
+  // one run, so a run that measured the machine rather than the code writes the machine into every row.
+  // Watched 2026-10-04: a `--all --record --forget` on a box 83% idle at the start put `build:app` at 78s
+  // against the ~39s six other runs agreed on, `test:integration` at 96s against 60s, and `declaredShare`
+  // then failed for two steps. The drift report said so in the same output — "the table moved 24% as a body
+  // … re-run on an idle machine until it settles" — and the right response is that advice, a second reading,
+  // not this flag again.
+  //
+  // **Three cheaper guards were tried against those logs and none separates the two cases.** Refusing on a
+  // drifted body refuses the one thing the flag is for. Refusing on a wide spread of per-step ratios drowns
+  // in steps that barely ran — `packages:ensure` reports 0.3s against a declared 14s on every run. Refusing
+  // on any step past `overBand` fires on every run too, quiet ones included, because `check:tiers` declares
+  // 0.3s and takes 2-3s. What tells a contended run from a real drift is more than one reading, which is the
+  // window `spec-cost.json` has and this table does not.
   const edits = recordSeconds(measured, declared, forget ? (was, now) => was !== now : moved);
   // Written after the costs and only with them: the table and the box it was measured on are one fact, and
   // the failure this closes is them moving apart. A run that adopts and then records nothing still takes the

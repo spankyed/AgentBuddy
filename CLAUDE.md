@@ -508,7 +508,15 @@ npm run chain            # Before a merge: every check in dependency order, cold
                          #             It writes only rows whose value actually differs, so a run that agrees
                          #             with the table leaves no edit and moves no mtime. The same word
                          #             `spec-cost:update` takes, for the same operation: ignore what is
-                         #             recorded, keep what this run measured
+                         #             recorded, keep what this run measured.
+                         #             **For a change you know about — a bundler bump, a policy change — and
+                         #             not to chase a drift you do not.** It replaces the whole table from one
+                         #             run, so a run that measured the machine writes the machine into every
+                         #             row: watched 2026-10-04 putting `build:app` at 78s against the ~39s six
+                         #             other runs agreed on, which then failed `declaredShare`. When the drift
+                         #             report says the body moved, its own advice is the answer — re-run on an
+                         #             idle machine until it settles. `scripts/chain.ts` records the three
+                         #             cheaper guards that were tried and do not separate the two cases
                          #   --adopt   record on another machine, writing `MEASURED_ON` with the costs.
                          #             The table and the box it was measured on are one fact, so one
                          #             operation writes both — without this the costs moved and the
