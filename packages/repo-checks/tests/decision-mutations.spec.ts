@@ -79,7 +79,14 @@ const UNSORTED = ['zeta', 'alpha'];
 
 const FAST = 'tests/a.spec.ts';
 const before = (costs: Record<string, number>, skipped: string[] = [], unmeasured: string[] = []) =>
-  ({ measuredAt: 'then', costs, skipped, unmeasured, machine: realCoreBudget.thisMachine() });
+  realSpecCost.withCosts({
+    measuredAt: 'then',
+    // One reading per spec, which is the shape a record migrated off point estimates has
+    samples: Object.fromEntries(Object.entries(costs).map(([spec, ms]) => [spec, [ms]])),
+    skipped,
+    unmeasured,
+    machine: realCoreBudget.thisMachine(),
+  });
 
 /**
  * Whether a run that moved no cost still dated the record.
@@ -98,7 +105,7 @@ const dated = (lib: Lib, input: {
     skipped: input.skipped,
     measuredFiles: input.measuredFiles,
     prune: [],
-    rewriteAll: false,
+    forgetWindows: false,
   });
   return record.measuredAt === input.previous.measuredAt ? 'kept the old date' : 'dated the run';
 };
@@ -186,7 +193,7 @@ const MUTATIONS: readonly Mutation[] = [
       skipped: [FAST],
       measuredFiles: [FAST, 'tests/b.spec.ts'],
       prune: [],
-      rewriteAll: false,
+      forgetWindows: false,
     }).record.skipped,
   },
   {
@@ -215,7 +222,7 @@ const MUTATIONS: readonly Mutation[] = [
   },
   {
     why: 'settle names the specs that lost a cost',
-    from: 'dropped: Object.keys(previous?.costs ?? {})',
+    from: 'dropped: Object.keys(previous?.samples ?? {})',
     to: 'dropped: ([] as string[])',
     call: (lib) => lib.settle({
       previous: before({ [FAST]: 1_200, 'tests/b.spec.ts': 800 }),
@@ -223,7 +230,7 @@ const MUTATIONS: readonly Mutation[] = [
       skipped: [FAST],
       measuredFiles: [FAST, 'tests/b.spec.ts'],
       prune: [],
-      rewriteAll: false,
+      forgetWindows: false,
     }).dropped,
   },
   {
@@ -236,20 +243,20 @@ const MUTATIONS: readonly Mutation[] = [
       skipped: [],
       measuredFiles: [FAST],
       prune: ['tests/gone.spec.ts'],
-      rewriteAll: false,
+      forgetWindows: false,
     }).dropped,
   },
   {
-    why: 'settle records what --all measured, past the tolerance',
-    from: 'rewriteAll || moved(',
-    to: 'moved(',
+    why: 'settle forgets a window on --all --forget rather than appending to it',
+    from: 'forgetWindows || before === undefined ? [ms]',
+    to: 'before === undefined ? [ms]',
     call: (lib) => lib.settle({
       previous: before({ [FAST]: 1_000 }),
       costs: { [FAST]: 1_050 },
       skipped: [],
       measuredFiles: [FAST],
       prune: [],
-      rewriteAll: true,
+      forgetWindows: true,
     }).record.costs[FAST],
   },
   {
@@ -290,9 +297,9 @@ const MUTATIONS: readonly Mutation[] = [
   // the kind it comes back with.
   {
     why: 'overBudget asks the package whether it has a half to move a spec into',
-    from: '(hasSplit(packageDir) ? misplaced : outgrown)(costs, files)',
-    to: '(misplaced)(costs, files)',
-    call: (lib, tree) => lib.overBudget(path.join(tree.root, 'packages', 'mini'), { [FAST]: 9_999 }, [FAST]),
+    from: '(hasSplit(packageDir) ? misplaced : outgrown)(samples, files)',
+    to: '(misplaced)(samples, files)',
+    call: (lib, tree) => lib.overBudget(path.join(tree.root, 'packages', 'mini'), { [FAST]: [9_999] }, [FAST]),
   },
   /**
    * Not a decision inside a function but a constant, and the one the two edges have to agree on. 1 500 is
@@ -475,6 +482,72 @@ const MUTATIONS: readonly Mutation[] = [
     to: '`${TIMEOUT_MS[className].ms}s (${className})`',
     call: (lib) => lib.timeoutText('quick'),
   },
+  /**
+   * The window's four decisions. Each one is the difference between a contended reading being rejected and
+   * being adopted, and before 2026-10-03 none of them existed — a cost was one number and the newest
+   * reading replaced it.
+   */
+  {
+    // The tie rule, which is where this departs from the textbook median on purpose: averaging the two
+    // middles lets one extreme reading carry the answer half its own distance, which across an edge is the
+    // defect the window is for. Caught by a replay case in `suite-split` on the first run.
+    why: 'costOf answers a tied window with the incumbent, not the mean of the two',
+    from: 'if (samples.length === 2) return samples[0]!;',
+    to: '',
+    call: (lib) => lib.costOf([2_041, 4_000]),
+  },
+  {
+    why: 'costOf takes the middle reading, so one of three cannot move it',
+    from: 'return sorted[Math.floor(sorted.length / 2)]!;',
+    to: 'return sorted[sorted.length - 1]!;',
+    call: (lib) => lib.costOf([100, 9_999, 110]),
+  },
+  {
+    why: 'a window keeps WINDOW readings, so it drops the oldest rather than growing',
+    from: '[...samples, reading].slice(-WINDOW)',
+    to: '[...samples, reading]',
+    call: (lib) => lib.appendSample([1, 2, 3], 4),
+  },
+  {
+    // Without this a quiet run appends a reading that says nothing, which is the churn the band exists to
+    // prevent — and three agreeing readings then push the one real reading out of the window
+    why: 'settle drops a reading that agrees with the median instead of keeping it',
+    from: ': worthKeeping(spec, costOf(before), ms) ? appendSample(before, ms) : before;',
+    to: ': appendSample(before, ms);',
+    call: (lib) => lib.settle({
+      previous: before({ [FAST]: 1_000 }),
+      costs: { [FAST]: 1_050 },
+      skipped: [],
+      measuredFiles: [FAST],
+      prune: [],
+      forgetWindows: false,
+    }).record.samples[FAST],
+  },
+  {
+    /**
+     * The clause that makes the window reach the specs placement is about. The band is 35% of the cost and the
+     * edge is fixed, so for a cost near the edge the band is wider than the distance to it — 7 of 363 fast
+     * specs could not keep a crossing at all. Dropping the edge half leaves `disagrees` alone, which drops
+     * 2600 against a recorded 2186.
+     */
+    why: 'worthKeeping keeps a reading that crosses the edge, not only one outside the band',
+    in: 'spec-cost',
+    from: '  || (recorded !== undefined && halfFor(file, recorded) !== halfFor(file, measured));',
+    to: '  || false;',
+    call: (lib) => lib.worthKeeping('tests/x.spec.ts', 2_186, 2_600),
+  },
+  {
+    why: 'forgetsWindows needs both flags, so --all alone keeps the history that rejects a bad reading',
+    from: 'input.all && input.forget',
+    to: 'input.all',
+    call: (lib) => lib.forgetsWindows({ all: true, forget: false }),
+  },
+  {
+    why: 'a crossing is reported only while the median has not adopted it',
+    from: "return belongs !== halfOfPath(file) && halfFor(file, median) === halfOfPath(file)",
+    to: "return belongs !== halfOfPath(file)",
+    call: (lib) => lib.provisional('tests/x.spec.ts', [4_000, 4_000]),
+  },
   {
     why: 'describeBudget tells the two kinds apart',
     from: "over.length > 0 ? 'Make it cheaper, or record it in EXPENSIVE_BY_NATURE with what makes it expensive.' : '',",
@@ -572,14 +645,14 @@ const MUTATIONS: readonly Mutation[] = [
    */
   {
     why: 'recordMembership lists a spec that has appeared, and prices nothing',
-    from: 'const appeared = unrecorded({ ...previous, costs, skipped }, files);',
+    from: 'const appeared = unrecorded(withCosts({ ...forStorage(previous), samples, skipped }), files);',
     to: 'const appeared: string[] = [];',
     call: (lib) => lib.recordMembership(before({ [FAST]: 100 }), [FAST, 'tests/new.spec.ts']).unmeasured,
   },
   {
     why: 'readSpecCost treats a record missing a field as absent, not as a record',
-    from: 'return complete ? parsed : undefined;',
-    to: 'return parsed;',
+    from: 'return complete ? withCosts(parsed) : undefined;',
+    to: 'return withCosts(parsed);',
     // `holed` has no `machine`. Without the gate the caller gets an object whose fields it then reads as
     // if they were measured, where `undefined` is what routes it to "run spec-cost:update"
     call: (lib, tree) => lib.readSpecCost(tree.root, 'holed'),
@@ -596,7 +669,7 @@ const MUTATIONS: readonly Mutation[] = [
       skipped: [],
       measuredFiles: [FAST, 'tests/b.spec.ts'],
       prune: [],
-      rewriteAll: false,
+      forgetWindows: false,
     }).record.unmeasured,
   },
 ];
@@ -646,7 +719,14 @@ describe('every decision these modules make is one something can see', () => {
     write(realSpecCost.specCostFile('mini'), `${JSON.stringify({ measuredAt: 'then', costs: { [FAST]: 100 }, skipped: [], unmeasured: [], machine: realCoreBudget.thisMachine() }, null, 2)}\n`);
     // A record from before `machine` landed, which is what a branch not yet rebased, a stash or a revert
     // hands `readSpecCost`. No live suite is in this state either, and the gate has no other input.
-    write(realSpecCost.specCostFile('holed'), `${JSON.stringify({ measuredAt: 'then', costs: {}, skipped: [], unmeasured: [] }, null, 2)}\n`);
+    //
+    // **Its windows are well-formed and only `machine` is absent**, which is what makes the gate the thing
+    // under test: a record whose `samples` are missing throws inside `withCosts` instead, and
+    // `readSpecCost`'s own `catch` turns that back into the same `undefined` the gate returns — so a
+    // fixture broken that way cannot tell the two apart. It was, and the harness said so.
+    write(realSpecCost.specCostFile('holed'), `${JSON.stringify({
+      measuredAt: 'then', samples: { 'tests/a.spec.ts': [100] }, skipped: [], unmeasured: [],
+    }, null, 2)}\n`);
   });
 
   afterAll(() => fs.rmSync(tree.root, { recursive: true, force: true }));

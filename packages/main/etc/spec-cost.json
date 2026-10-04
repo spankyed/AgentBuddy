@@ -1,9 +1,9 @@
 {
   "measuredAt": "2026-10-01T03:17:33.295Z",
-  "costs": {
-    "tests/app-context.spec.ts": 142,
-    "tests/pack-protocol.spec.ts": 2,
-    "tests/shell-access.spec.ts": 15
+  "samples": {
+    "tests/app-context.spec.ts": [142],
+    "tests/pack-protocol.spec.ts": [2],
+    "tests/shell-access.spec.ts": [15]
   },
   "skipped": [],
   "unmeasured": [],
