@@ -8,12 +8,18 @@
 //
 // Installing the reader is a process-wide, one-way step, as binding the host is. Nothing uninstalls it: a process
 // that has a bus has it for the process's life, and a test that wants no scope simply does not deliver inside one.
+//
+// **It happens on the first delivery rather than on import**, which is not fussiness. `bus/index.ts` re-exports
+// `machine.ts`, which imports this, so installing at module scope made merely importing `@abuddy/host/bus`
+// reconfigure the SDK for the whole process — in the CLI, in the pack test harness, in the Playwright runner,
+// none of which asked for it. Doing it here keeps the import inert and still cannot be forgotten, since nothing
+// reaches a delivery except through this function.
 import { AsyncLocalStorage } from 'node:async_hooks';
 import { _installAsyncDeliveryReader, _runDelivery, type _Delivery } from '@abuddy/sdk/events';
 
 const storage = new AsyncLocalStorage<_Delivery>();
 
-_installAsyncDeliveryReader(() => storage.getStore());
+let installed = false;
 
 /**
  * Runs `body` as the handling of `delivery`: a send made inside it carries the handler's ref as `Message.sender`,
@@ -23,5 +29,9 @@ _installAsyncDeliveryReader(() => storage.getStore());
  * is what a reader sees if this module was never loaded — so the two never disagree about one delivery.
  */
 export function deliverAs<T>(delivery: _Delivery, body: () => T): T {
+  if (!installed) {
+    _installAsyncDeliveryReader(() => storage.getStore());
+    installed = true;
+  }
   return storage.run(delivery, () => _runDelivery(delivery, body));
 }
