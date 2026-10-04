@@ -711,14 +711,27 @@ npm run spec-cost:update # The least that makes the records current, which is of
                          # nothing is wrong, against minutes of file time to re-measure everything. It says which
                          # case it took: a deleted spec needs no measurement to drop, a new one needs only
                          # the half it lives in.
-                         # **It refuses to measure below RECORD_IDLE_FLOOR (85%)**, before running anything
-                         # — what you would record on a busy box is the machine, and a cost was once
-                         # recorded at a load of 71 and reverted by hand. 85 rather than the 70 a printed
-                         # timing needs, because measured 2026-10-04 a run admitted at 70% drifts the body
-                         # about as far as DRIFT_SHARE, the threshold the drift report exists to raise — a
-                         # floor that admits runs its own gate would flag is not a floor. The table is on
-                         # the constant. That is a separate gate from the contention refusal below, which
-                         # asks after measuring whether too much *moved*.
+                         # **It will not measure below RECORD_IDLE_FLOOR (85%)** — what you would record on
+                         # a busy box is the machine, and a cost was once recorded at a load of 71 and
+                         # reverted by hand. 85 rather than the 70 a printed timing needs, because measured
+                         # 2026-10-04 a run admitted at 70% drifts the body about as far as DRIFT_SHARE, the
+                         # threshold the drift report exists to raise — a floor that admits runs its own gate
+                         # would flag is not a floor. The table is on the constant. That is a separate gate
+                         # from the contention refusal below, which asks after measuring whether too much
+                         # *moved*.
+                         # **It waits for a quiet box, and then records membership rather than refusing.** It
+                         # used to throw, and the throw blocked a landing: `suite-split` fails on a spec the
+                         # record has never seen, so a box that stayed busy left the gate red with the only
+                         # advice being to wait. That refuses the wrong half. *Which specs exist* is a fact
+                         # about the repo and *what one costs* is a fact about a machine, so a busy box takes
+                         # the same path another machine does — the spec is listed `unmeasured`, which
+                         # `unrecorded` accepts, and a later quiet run prices it. Nothing is lost: the
+                         # refusal existed to keep a busy box's numbers out of the record, and writing no
+                         # cost does that better than writing none *and* failing. Placement is unaffected
+                         # either way, since a spec runs in the half its filename says (`halfOfPath`) and the
+                         # cost only audits that. `--force` measures anyway; `--no-wait` skips the wait and
+                         # records membership now. One predicate answers it (`writesMembershipOnly`), so a
+                         # busy box and a foreign record cannot drift apart.
                          # **Off the record's own machine it writes membership and never a cost.** A record
                          # holds two kinds of thing: which specs exist, a fact about the repo that anyone
                          # can see, and what one costs, a fact about a machine. They were one map, so

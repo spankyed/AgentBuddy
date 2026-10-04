@@ -133,18 +133,36 @@ describe('a record anyone can add a spec to', () => {
   describe('whether a suite measures at all', () => {
     const HERE = thisMachine();
 
+    const mine = () => withCosts({ measuredAt: 'then', samples: {}, skipped: [], unmeasured: [], machine: HERE });
+
     it('writes membership only when the record is another machine, so nothing is measured', () => {
-      expect(writesMembershipOnly(base({}), false)).toBe(true);
+      expect(writesMembershipOnly(base({}), { adopt: false })).toBe(true);
     });
 
     it('measures when the record is this machine', () => {
-      const mine = withCosts({ measuredAt: 'then', samples: {}, skipped: [], unmeasured: [], machine: HERE });
-      expect(writesMembershipOnly(mine, false), 'its costs are this box\'s to write').toBe(false);
+      expect(writesMembershipOnly(mine(), { adopt: false }), 'its costs are this box\'s to write').toBe(false);
     });
 
     /** `--all --force`: the one case where another machine's record still means taking readings */
     it('measures when this run is adopting the record', () => {
-      expect(writesMembershipOnly(base({}), true)).toBe(false);
+      expect(writesMembershipOnly(base({}), { adopt: true })).toBe(false);
+    });
+
+    /**
+     * The headache this closes: a new spec used to block a landing.
+     *
+     * `suite-split` fails on a spec the record has never seen, and a box under the recording floor used to
+     * refuse — so the gate stayed red with the only advice being to wait. A busy machine has not stopped being
+     * able to see *which specs exist*, only what one costs, so it takes the same path a foreign machine does.
+     */
+    it('writes membership only when this box is too busy to price anything', () => {
+      expect(writesMembershipOnly(mine(), { adopt: false, busy: '75% idle' }), 'its own record, but not now')
+        .toBe(true);
+    });
+
+    // Adoption re-measures every row by definition, so it outranks a busy box as it outranks a foreign record
+    it('still measures a busy box when the run is adopting', () => {
+      expect(writesMembershipOnly(base({}), { adopt: true, busy: '75% idle' })).toBe(false);
     });
   });
 

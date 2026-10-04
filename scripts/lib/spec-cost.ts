@@ -772,16 +772,26 @@ export const stale = (record: SpecCost, files: readonly string[]): string[] =>
  * came apart is the reason this exists: the refusal ran first and unconditionally, so a second developer
  * adding a spec on a busy machine was refused for a write that takes no reading at all.
  *
+ * Two reasons, one answer. **Whose machine the costs are** is the first: another machine may add to the
+ * membership and may not price anything. **Whether this box is quiet enough** is the second, and it arrives as
+ * `busy` — a reason string when the machine is under the recording floor. The outcome is the same because the
+ * question is the same, "may this run write a cost?", and a busy box may not for the same reason a foreign one
+ * may not: what it would write is about the machine rather than the specs.
+ *
+ * Folding the second in here rather than `||`-ing it at the call site is what keeps that one question in one
+ * place — and it is why the busy path needs no case of its own: every case about this function covers it.
+ *
  * `adopt` is `--all --force`, which is how a machine takes a record over — it re-measures every row, so
- * it is the one case where another machine's record still means measuring.
+ * it is the one case where another machine's record still means measuring. `--force` alone never reaches here
+ * as `busy`, since forcing is what stops the floor being consulted at all.
  *
  * It takes a record rather than `SpecCost | undefined`: whether one *exists* is a different question from
  * whose machine it is, and each caller already has the answer in hand. A type predicate was tried instead
  * and is wrong — `false` here does not mean the record is absent, so narrowing on it made the measuring
  * path's `previous` read as `never`.
  */
-export const writesMembershipOnly = (previous: SpecCost, adopt: boolean): boolean =>
-  !adopt && !isMeasuredMachine(previous.machine);
+export const writesMembershipOnly = (previous: SpecCost, { adopt, busy }: { adopt: boolean; busy?: string }): boolean =>
+  !adopt && (busy !== undefined || !isMeasuredMachine(previous.machine));
 
 /**
  * The record with its membership brought up to date and not one cost touched.

@@ -168,10 +168,13 @@ function update(plans: readonly SuitePlan[], dry: boolean): void {
    * unconditionally — a second developer adding a spec on a working machine was refused for a write that
    * takes no measurement, which is a refusal with nothing to refuse.
    */
+  /** Set when the box is under the recording floor: every plan then writes membership and no cost */
+  let busy: string | undefined;
+
   const measuring = work.filter((plan) => {
     if (plan.configs.length === 0) return false;
     const previous = readSpecCost(REPO_ROOT, plan.suite.dir);
-    return previous === undefined || !writesMembershipOnly(previous, adopt);
+    return previous === undefined || !writesMembershipOnly(previous, { adopt });
   });
 
   // Before anything is measured, because the record is a *sample* and a sample taken on a busy box is
@@ -192,21 +195,32 @@ function update(plans: readonly SuitePlan[], dry: boolean): void {
       timeoutMs: wait ? QUIET_WAIT_MS : 0,
       onWaiting: (first) => {
         console.log(`${percent(first)} idle, and recording needs ${percent(RECORD_IDLE_FLOOR)} — waiting up to `
-          + `${Math.round(QUIET_WAIT_MS / 60_000)}m. --no-wait refuses instead, --force records anyway.`);
+          + `${Math.round(QUIET_WAIT_MS / 60_000)}m. --no-wait records membership now instead, --force measures anyway.`);
       },
     });
     const waited = waitedMs > 0 ? `, after waiting ${Math.round(waitedMs / 1000)}s` : '';
     if (refusesAsBusy({ idle, floor: RECORD_IDLE_FLOOR, force })) {
-      throw new Error(`The machine is ${percent(idle)} idle and recording refuses below `
-        + `${percent(RECORD_IDLE_FLOOR)}${waited}. What you would record is the machine, not the specs.\n`
-        + '  Wait for it to go quiet, or pass --force if you mean to record this.');
-    }
-    if (waitedMs > 0) console.log(`${percent(idle)} idle${waited} — measuring`);
+      /**
+       * **A busy box writes membership and no cost, rather than refusing the run.**
+       *
+       * It used to throw here, and the throw blocked a landing: `suite-split` fails on a spec the record has
+       * never seen, so a box that stayed under the floor left the gate red with the only advice being to wait.
+       * That is the wrong half to refuse. The record already holds two kinds of thing with different
+       * permissions — *which specs exist* is a fact about the repo, *what one costs* is a fact about a machine —
+       * and a busy machine has not stopped being able to see the first. So the same path another machine takes
+       * is taken here: the spec is listed `unmeasured`, which `unrecorded` accepts, and a quiet run prices it.
+       *
+       * Nothing is lost by it. The refusal existed to stop a cost measured on a busy box reaching the record,
+       * and recording no cost serves that better than recording none *and* failing. Placement is unaffected
+       * either way: a spec runs in the half its filename says (`halfOfPath`), and the cost only audits that.
+       */
+      busy = `${percent(idle)} idle${waited}, below the ${percent(RECORD_IDLE_FLOOR)} a cost needs`;
+    } else if (waitedMs > 0) console.log(`${percent(idle)} idle${waited} — measuring`);
   }
 
   // What each suite's `pretest` does, because this bypasses it by calling vitest directly. Without it the
   // specs fail on the staleness guard rather than running. Skipped when nothing is being measured.
-  if (measuring.length > 0) {
+  if (measuring.length > 0 && busy === undefined) {
     const ensured = spawnSync('npm', ['run', 'packages:ensure'], { cwd: REPO_ROOT, encoding: 'utf8' });
     if (ensured.status !== 0) throw new Error(`packages:ensure failed:\n${ensured.stdout}${ensured.stderr}`);
   }
@@ -228,17 +242,30 @@ function update(plans: readonly SuitePlan[], dry: boolean): void {
     // `--all --force` is how a machine takes the record over: re-measure the whole thing and write this
     // machine as its own. Two flags rather than a third, because that is exactly what adoption is — every
     // row re-measured (`--all`) past a refusal that exists to stop a partial one (`--force`).
-    if (previous !== undefined && writesMembershipOnly(previous, adopt)) {
+    if (previous !== undefined && writesMembershipOnly(previous, { adopt, busy })) {
       const next = recordMembership(previous, files);
       const added = next.unmeasured.filter((file) => !previous.unmeasured.includes(file));
       const gone = stale(previous, files);
       writeRecord(suite.dir, next);
+      // Two reasons reach here and they are not the same fact: whose machine the costs are, and whether this
+      // one is quiet enough to add to them. Saying which it was is the difference between "ask the other
+      // developer" and "run it again later".
+      const why = busy !== undefined
+        ? `${busy} — a quiet run prices them, or --force measures anyway`
+        : `costs are ${machineText(previous.machine)}'s and this is ${machineText(thisMachine())}`;
       console.log(`${suite.workspace.padEnd(21)} ${
         added.length === 0 && gone.length === 0
           ? 'membership is current'
           : `${added.length} unmeasured, ${gone.length} gone`
-      } — costs are ${machineText(previous.machine)}'s and this is ${machineText(thisMachine())}`);
+      } — ${why}`);
       continue;
+    }
+
+    // A suite with no record at all cannot have membership added to it, so a busy box has nothing to fall
+    // back to and the refusal stands. Only a new suite reaches this.
+    if (previous === undefined && busy !== undefined) {
+      throw new Error(`${suite.workspace} has no record yet, and this machine is ${busy}. A first record is all `
+        + 'cost, so there is no membership to write without measuring: run it on a quiet machine, or --force.');
     }
 
     // Only the specs the chosen configs actually run. Every guard below is scoped to these: over the whole
