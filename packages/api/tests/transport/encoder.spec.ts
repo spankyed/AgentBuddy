@@ -117,6 +117,48 @@ describe('an outgoing value JSON refuses', () => {
     expect(sawMarker(frames), 'and the stream outlived it').toBe(true);
   });
 
+  /**
+   * The second pass has to describe a value the way `JSON.stringify` does, or the two paths disagree.
+   *
+   * `JSON.stringify` asks for `toJSON` first; a walk of own enumerable properties finds none on a Date and
+   * yields `{}`. So a message carrying a cycle *and* a Date used to send the ISO string on the fast path and an
+   * empty object on the fallback — the same value serialised two ways depending on what else was in the frame.
+   */
+  it('describes a Date the same way on the fallback path as on the fast one', async () => {
+    const when = new Date('2026-01-02T03:04:05.000Z');
+
+    payloads = [{ when }];
+    const direct = await collect(subscribe, sawMarker);
+    expect(delivered(direct)[0], 'the fast path, for comparison').toEqual({ when: '2026-01-02T03:04:05.000Z' });
+
+    const looped: Record<string, unknown> = { when };
+    looped.self = looped;
+    payloads = [{ looped }];
+    const viaFallback = await collect(subscribe, sawMarker);
+
+    expect(delivered(viaFallback)[0], 'and the fallback, which has to agree')
+      .toEqual({ looped: { when: '2026-01-02T03:04:05.000Z', self: '[circular]' } });
+  });
+
+  /**
+   * The promise the module makes is that it never throws, and the fallback used to be the hole in it.
+   *
+   * `withoutCycles` reads properties, so a throwing getter — or a throwing `toJSON`, or a structure deeper than
+   * the stack — threw from inside the `catch`, with nothing around it. That throw lands in the loop draining the
+   * subscription, which is the exact failure the encoder exists to prevent: the fallback killed the stream it
+   * was written to save. A placeholder frame keeps the channel alive and the id ties it to the request.
+   */
+  it('sends a placeholder rather than throwing when even the second pass fails', async () => {
+    const hostile: Record<string, unknown> = {};
+    Object.defineProperty(hostile, 'boom', { enumerable: true, get() { throw new Error('getter exploded'); } });
+    payloads = [{ hostile }];
+
+    const frames = await collect(subscribe, sawMarker);
+
+    expect(delivered(frames)[0], 'described rather than sent, since it cannot be sent').toBe('[unserialisable]');
+    expect(sawMarker(frames), 'and the stream outlived it, which is the whole point').toBe(true);
+  });
+
   // The same value twice side by side is not a cycle, and must not be cut as one
   it('keeps a value that merely appears twice', async () => {
     const shared = { id: 'n1' };

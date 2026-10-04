@@ -7,7 +7,7 @@
 // one bad value ends that window's entire event stream, and every later request times out while `/eval` and
 // `/state` keep answering, so it reads as a database fault rather than a serialisation one.
 //
-// **What actually throws**, measured rather than assumed, because the list is shorter than it looks:
+// What `JSON.stringify` does with the awkward cases:
 //
 // | value | `JSON.stringify` |
 // |---|---|
@@ -16,19 +16,19 @@
 // | a function, a symbol, `undefined` | silently omitted |
 // | a `Map`, a `Set`, a class instance with no BigInt | `{}`, or its own enumerable fields |
 //
-// So only two cases need handling, and they want different answers. A BigInt has an obvious one — its decimal
-// string — and a replacer reaches every one of them, however deep. A cycle has none: `JSON.stringify` throws on
-// one whatever the replacer says, so it needs a second pass that cuts the loop.
+// A BigInt has an obvious answer, its decimal string, and a replacer reaches every one however deep. A cycle
+// has none — `JSON.stringify` throws on one whatever the replacer says — so it takes a second pass that cuts
+// the loop. And since that pass reads properties itself, it can fail too, which is why there is a third tier:
+// **this function must never throw**, because a throw from it reaches that drain loop.
 //
-// **Fast path first, because this runs on every outgoing message.** A chat streaming tokens goes through here
-// per token, so the ordinary case must cost one `JSON.stringify` and nothing else. The replacer is free — it is
-// the same single pass — and the cycle walk happens only after a throw.
+// **Fast path first, because this runs per streamed token**: the ordinary case costs one `JSON.stringify`, the
+// replacer being the same single pass, and the walk happens only after a throw.
 //
-// **So the replacer is an optimisation, not the mechanism**, which is worth saying because it looks like the
-// mechanism. `withoutCycles` stringifies BigInts too, so deleting the replacer leaves every output byte
-// identical and merely routes every BigInt message through a throw and a full walk. The case that notices is
-// the one asserting a BigInt is sent *without* the fallback's warning; nothing else can tell the two apart.
+// The replacer is therefore an optimisation rather than the mechanism: `withoutCycles` stringifies BigInts too,
+// so deleting it changes no output byte and merely routes every BigInt message through a throw and a full walk.
+// The only case that can tell the two apart is the one asserting a BigInt is sent *without* a warning.
 import { createLogger } from '@abuddy/sdk/logger';
+import { errorMessage } from '@abuddy/sdk/utils/pure';
 
 const logger = createLogger('app-events');
 
@@ -37,6 +37,9 @@ const bigintsAsStrings = (_key: string, value: unknown): unknown => (typeof valu
 
 /** What replaces the second and later sighting of the same object, so a cycle terminates */
 const CIRCULAR = '[circular]';
+
+/** What a frame carries when even the second pass could not describe the value */
+const UNSERIALISABLE = '[unserialisable]';
 
 /**
  * A copy with cycles cut and BigInts stringified, for the case the fast path threw.
@@ -50,6 +53,11 @@ function withoutCycles(value: unknown, path: WeakSet<object>): unknown {
   if (path.has(value)) return CIRCULAR;
   path.add(value);
   try {
+    // `JSON.stringify` asks a value to describe itself before reading its fields, so this has to as well.
+    // Walking a Date's own enumerable properties finds none and yields `{}`, where the fast path sends an ISO
+    // string — the two paths have to agree. A `toJSON` returning the value itself terminates on the path check.
+    const described = value as { toJSON?: (key?: string) => unknown };
+    if (typeof described.toJSON === 'function') return withoutCycles(described.toJSON(''), path);
     if (Array.isArray(value)) return value.map((entry) => withoutCycles(entry, path));
     const copy: Record<string, unknown> = {};
     for (const [key, entry] of Object.entries(value)) copy[key] = withoutCycles(entry, path);
@@ -70,15 +78,23 @@ export const jsonSafeEncoder = {
   encode: (data: unknown): string => {
     try {
       return JSON.stringify(data, bigintsAsStrings);
-    } catch (error) {
-      // A cycle, or something else JSON refuses even with BigInts handled. Report it once, with the message id so
-      // a reader can tie it to the request, and send the approximate copy rather than killing the connection.
+    } catch (refused) {
+      // Nothing is allocated above this line: the fast path runs per streamed token.
       const id = (data as { id?: unknown })?.id;
-      logger.warn('An outgoing message needed cycles cut to be sent', {
-        ...(id === undefined ? {} : { id }),
-        reason: error instanceof Error ? error.message : String(error),
-      });
-      return JSON.stringify(withoutCycles(data, new WeakSet()), bigintsAsStrings);
+      const which = id === undefined ? {} : { id };
+      try {
+        // No replacer: `withoutCycles` has already stringified every BigInt, so passing one changes no byte.
+        // Reported only once this succeeded, so the message describes what was sent rather than what was tried.
+        const cut = JSON.stringify(withoutCycles(data, new WeakSet()));
+        logger.warn('An outgoing message needed cycles cut to be sent', { ...which, reason: errorMessage(refused) });
+        return cut;
+      } catch (fatal) {
+        // The second pass reads properties too, so a throwing getter, a throwing `toJSON` or a structure deeper
+        // than the stack arrives here. It must still return a frame: a throw from this function reaches the loop
+        // draining the subscription, which is the one failure the module exists to prevent.
+        logger.error('An outgoing message could not be serialised; sent a placeholder so the stream survives', { ...which, reason: errorMessage(fatal) });
+        return JSON.stringify({ ...which, jsonrpc: '2.0', result: { type: 'data', data: UNSERIALISABLE } });
+      }
     }
   },
   decode: (data: unknown): unknown => {
