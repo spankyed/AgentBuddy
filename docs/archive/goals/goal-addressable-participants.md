@@ -1,3 +1,7 @@
+> **Done through Phase 4** (master, `1bdd6c52f`..`4124945ae`). Phases 1-4 landed and are mutation-checked; Phase 5
+> is deferred because its two "Done when" clauses turned out to be mutually exclusive — see the Outcome. The text
+> below is the plan as written.
+
 > **Written in session** `f122fdc5-84c9-467f-9c61-66330eab32d0` (Claude Code, 2026-10-04). Resume it with `claude -r f122fdc5-84c9-467f-9c61-66330eab32d0`.
 
 ```
@@ -234,6 +238,113 @@ rather than silently taking it over.
 **Done when:** `abuddy drive --serve` with three concurrent `/qx` calls returns three correct answers;
 `engine/session.ts` contains no id matching; the engine's own specs
 (`packages/abuddy-testing/tests/engine/`) pass.
+
+## Outcome (2026-10-04)
+
+Phases 1-4 landed on master as four commits plus two recorded-artifact commits, with `npm run chain` green at
+102.5s (12 of 28 cached). Phase 5 was not attempted: implementing it as specified would have required shipping
+something whose own acceptance criteria contradict each other, which the first subsection below sets out.
+
+The mechanism the goal was about — a named thing with an inbox that can be sent to and can answer whoever asked —
+is built and guarded. What is missing is its first consumer.
+
+### Per phase
+
+| Phase | Status | Evidence |
+|---|---|---|
+| 1 — a connection has a name | done | `createContext` mints per connection; `bus.send` stamps from context. `tests/transport/context.spec.ts`, `bus-send-sender.spec.ts`. Mutations: a constant minter fails the two-connections case; accepting `client` in the schema *and* reversing the stamp's spread fails the forgery case (either alone does not — see below) |
+| 2 — an envelope may name one connection | done | `Message.client`, subscription filters server-side. `packages/api/tests/transport/sub-scope.spec.ts`. Mutations: removing the filter fails the 3 addressed cases and no broadcast case; dropping the absent-means-all guard fails the 2 broadcast cases and no addressed case |
+| 3 — `reply()` | done | Ambient delivery scope; `Message.sender` stamped at delivery. `packages/abuddy-host/tests/bus/reply.spec.ts` (8 cases). Mutations: not installing the async reader fails all 3 reply cases and none of the 3 refusal cases; removing `createSends`' stamp fails exactly 1 |
+| 4 — `host/drive` is a participant | done | `HOST.drive`, `createParticipantClaims`, the bus's claimed-participant branch. `packages/abuddy-host/tests/bus/participants.spec.ts` (8 cases). Mutation: removing the branch fails the 3 routing cases and neither the drop case nor the 4 registry cases |
+| 5 — the drive engine stops reconstructing | **deferred** | Not attempted; its criteria cannot both hold |
+
+### Corrections to the Decisions
+
+**Decision 4 is superseded, and the result is simpler.** It scoped `_origin` stamping to inbound-to-systems so
+that `outgoing-events.spec.ts`'s "exactly as sent" invariant survived. The chosen mechanism makes the question
+moot: the origin lives in an ambient delivery scope and **nothing is stamped onto any event**, so no reserved key
+exists, no event can carry a forged one, and that spec is untouched by construction rather than by scoping. There
+is no `_origin`.
+
+**Decision 5's `replyTo(event)(…)` became an argument-free `reply(…)`**, and the reply's target comes from
+`Message.sender` rather than from the handler naming a plugin. Both were settled with the user mid-implementation
+after the original shape was found to need something the envelope does not carry. The mechanism is
+`AsyncLocalStorage` on the backend and a synchronous holder in the renderer, behind one SDK interface
+(`events/delivery.ts`), because `@abuddy/sdk/events` is bundled into pack frontends and a browser has no
+equivalent.
+
+**`sender` is accepted from the wire; `client` is not.** This looks like an inconsistency and is not. Every caller
+already holds the API token, which lets it send anything to anything, so a forged `sender` is a bug rather than an
+escalation — and the client is the only party that knows which of its plugins asked. `client` is withheld because
+the server knows it for free, so taking it from the wire would be strictly worse for nothing.
+
+**`Message.sender` is not `MessageSender`.** `MessageSender = Pick<Message, 'from' | 'via'>` predates this and
+means "who to name in a diagnostic". The new field means "where to send an answer". The collision was noticed and
+left alone: the user chose the field name, and renaming the older type was out of scope.
+
+**Claims are keyed by `string`, not `FeatureRef`.** `FeatureRef` is branded and "made only by `resolveName`", so
+narrowing a client-supplied string into one would defeat the brand at the exact boundary it exists to guard. The
+ref grammar is checked in `bus.claim`; the registry stores a string.
+
+### Why Phase 5 cannot be built as written
+
+Its "Done when" asks for both *"three concurrent `/qx` calls returning three correct answers"* and *"`session.ts`
+contains no request-id matching"*. Those exclude each other.
+
+**Addressing answers which connection, not which request.** Three concurrent queries from one driver produce three
+replies with identical envelopes — `{ to: 'host/drive', client: <the driver> }` — distinguishable only by payload.
+Per-request correlation cannot be derived from a per-connection address. The alternatives are a distinct claimed
+name per in-flight request (refs are `host/<featureId>`, so that means inventing `host/driveA`) or serialising the
+calls, which is the queue `26445e468` replaced.
+
+This is the same distinction the Deferred section already drew between the terminal issue's `M3` and `T4`. It was
+written there about one feature's keyed slot and applies to the engine identically; the plan did not notice that it
+also invalidates Phase 5's own criteria.
+
+**Two further obstacles, found by reading the engine rather than by reasoning about it:**
+
+- **The driver is not a bus client.** `/qx` runs `page.evaluateWith` → the *renderer's* `untypedSendToSystem`, so
+  the send comes from the window. Making the driver a participant in its own right means giving `@abuddy/testing`
+  a tRPC/ws client — new dependency surface in a package every pack's tests load.
+- **A plugin's own sends are not stamped.** `deliverPluginEvents` wraps only what the *shell* routes. A UI-triggered
+  send (`usePlugin().send(…)` → an action → `sendToSystem`) runs outside any delivery, so it carries no `sender`
+  and `reply()` would throw for it. Closing that means wrapping what `usePlugin` returns, which is pack-facing API
+  used in every component — a scope expansion this goal did not authorise.
+
+### Open items
+
+1. **Phase 5, re-specified.** The honest version keeps a request id for concurrency and takes the real win:
+   replies arrive *addressed*, so a person using the Database plugin no longer collides with a driving session and
+   the engine stops reading a firehose of unrelated events. Worth doing; needs the criterion rewritten first.
+2. **Stamp a plugin's own sends**, by wrapping the actor `usePlugin` hands back. Until then `reply()` works for a
+   handler reached through the shell or the bus and throws for one reached from a component. That asymmetry is the
+   pit-of-failure risk in what landed, and it is the first thing to fix.
+3. **A reply to a *system*.** `reply` sends outbound (to a plugin or participant). No existing pair needs
+   system-to-system, so it throws rather than guessing.
+4. **Typed replies.** Still deferred, as the plan said: an `answers` contract field, a codegen reader and a rebuild
+   of every pack.
+
+### Final verification
+
+| Check | Result |
+|---|---|
+| `npm run chain` | passed, 102.5s, 12 of 28 cached |
+| `npm run typecheck` | 18 of 18 legs |
+| `npm run spec -- bus`, `-- transport` | passed |
+| `npm run compile` | passed (`facade:check` included) |
+| `npm run packages:build` + `packages:check` | passed |
+| `npm run api:update` (`@abuddy/sdk`, `@abuddy/ui`) | `etc/` committed; the published surface gained `reply`, `Message.sender`, `Message.client` and four `@internal` `_`-prefixed delivery members, and nothing else |
+| `send-scope.spec.ts`, `outgoing-events.spec.ts` | pass **unmodified** — neither was loosened, and `outgoing-events` needed no new case |
+| `npm run spec-cost:update` | 11 specs recorded, 4 of them this goal's |
+
+One check in Phase 1's plan was wrong and is worth recording: *"add `client` to the zod input and send a forged
+one"* does **not** fail the forgery case on its own, because the stamp is applied as `{ ...input, client:
+ctx.client }` and overwrites whatever survived. Nor does reversing the spread on its own. The case fires only when
+both are undone, so it guards the property rather than either mechanism, and the spec says so where a reader will
+find it.
+
+A second: Phase 2's planned mutation *"drop the `client` field from the zod schema"* does not apply at all — the
+outgoing path has no schema, the subscription emits the object directly.
 
 ## Deferred
 

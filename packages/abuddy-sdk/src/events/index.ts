@@ -347,7 +347,7 @@ export function reply(event: { type: string; [key: string]: unknown }): void {
   }
   if (!delivery.replyTo) {
     throw new Error(
-      `reply() cannot answer the message that reached "${delivery.receiver}", which named no sender. Pack code's sends carry one; sends made outside a delivery (host plumbing, a timer, a subscription) do not. Name the target with broadcastToPlugin instead.`,
+      `reply() cannot answer the message that reached "${delivery.receiver}", which named no sender, so there is no address to answer at. A send carries one when it is made while handling another message — which is every send from a system, and a plugin's sends for events the shell routed it. It does **not** cover a plugin's own UI-triggered send: a component calling send() on its plugin runs the action outside any delivery, so nothing stamps it. Until that is closed, reach the target by name with broadcastToPlugin.`,
     );
   }
   boundHost().transport.rootEvents.emitPluginSend({
