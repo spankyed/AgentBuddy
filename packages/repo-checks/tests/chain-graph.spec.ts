@@ -517,9 +517,30 @@ describe('every spawn an orchestrator makes is bounded', () => {
         what: 'bash tests/scripts/x.sh', timeout: 'scenario', measuredOn: HERE, machine: SMALLER,
       });
       expect(why, 'the verdict this change exists to stop it making').not.toContain('wedged rather than slow');
-      expect(why).toContain('So it is wedged, or scenario stretches by more than');
+      expect(why).toContain('So it is wedged, or scenario work stretches more here than its row assumes');
       expect(why, 'both machines, so the reader knows which is which').toContain(machineText(SMALLER));
       expect(why).toContain(machineText(HERE));
+    });
+
+    /**
+     * The two things this arm must not do — and the case above was worded to permit both until 2026-10-04,
+     * while being named for the opposite.
+     *
+     * With no cost there is no rope, so the only figure available to quote is the rung's own `stretches`.
+     * That made "stretches by more than 4x" circular — it exceeded 4x, where 4x is what the row declares —
+     * and it gave `rungTerms`' edit a referent that was the assumption itself, so the message read as an
+     * instruction to record 4 as *measured* and flip `until` on the strength of a run that computed
+     * nothing. The provenance case accepts that edit, being well formed, so what it would delete is the
+     * only marker saying the factor is a guess.
+     */
+    it('quotes no stretch factor and asks for no edit where nothing records a cost', () => {
+      const why = timedOutBecause({
+        what: 'bash tests/scripts/x.sh', timeout: ASSUMED_RUNGS[0]!, measuredOn: HERE, machine: SMALLER,
+      });
+      expect(why, 'no figure at all, since the only one available is the assumption being asked about')
+        .not.toMatch(/\d+(?:\.\d+)?x/);
+      expect(why, 'and no instruction to record it as measured').not.toContain('put the number on');
+      expect(why).not.toContain('this run is the evidence it waits for');
     });
 
     /**

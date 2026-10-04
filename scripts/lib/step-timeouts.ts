@@ -115,7 +115,7 @@ export const TIMEOUT_MS = {
     ms: 60_000,
     stretches: SLOWER_MACHINE,
     measured: undefined,
-    until: '`npm run typecheck` on a smaller machine: its eighteen legs are all bounded here, and CI runs it, '
+    until: '`npm run typecheck` on a smaller machine: every one of its legs is bounded here, and CI runs it, '
       + 'so enabling `.github/workflows/ci.yml`\'s commented-out triggers measures this row',
   },
   suite: {
@@ -293,13 +293,24 @@ export function timedOutBecause({ what, timeout, measuredOn, machine, seconds }:
     // through `scripts/bounded.ts` and not a run with no declared cost anywhere — `test:external-pack`, which
     // is no chain step, or one pack workspace of a pool, which `POOL_SECONDS` describes only in total. Stated
     // bare, the sentence denied a cost in one clause and reasoned from one in the next.
+    //
+    // **Off this machine it quotes no factor and asks for no edit**, which took a correction. It said
+    // "stretches by more than ${stretches}x — so this run is the evidence it waits for: put the number on
+    // this rung's `stretches`", and the only number in that sentence was the rung's own assumption. The
+    // other arms get that figure from the rope; with no cost there is no rope, so substituting `stretches`
+    // made the claim circular — it exceeded 4x, where 4x is what it declares — and the instruction then
+    // invited a reader to record 4 as *measured* and flip `until`, on a run that computed nothing.
+    // `chain-graph`'s exactly-one-of invariant accepts that edit, so what it would delete is the only
+    // marker saying the factor is a guess. The edit belongs in `rungTerms`, which keeps its one caller
+    // below, where a rope exists to be the number.
     return here
       ? `${unknown} — but a class is sized so that every step the chain declares fits inside it on a machine `
         + `${factorText(rung.stretches)} slower than this one, so overrunning it here is wedged rather than `
         + 'slow.'
       : `${unknown}, and this is ${machineText(machine ?? thisMachine())} rather than `
-        + `${machineText(measuredOn)}. So it is wedged, or ${timeout} stretches by more than `
-        + `${factorText(rung.stretches)} here — ${rungTerms(rung, timeout)}`;
+        + `${machineText(measuredOn)}. So it is wedged, or ${timeout} work stretches more here than its row `
+        + 'assumes — and with nothing recording what this run costs, neither this message nor the run says '
+        + 'which.';
   }
   const rope = factorText(rung.ms / (seconds * 1000));
   if (here) {
