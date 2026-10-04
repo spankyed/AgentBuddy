@@ -87,6 +87,43 @@ export const overBand = (declared: number, measured: number): boolean => measure
 export const SECONDS_FLOOR = 1;
 
 /**
+ * What a run measured, which is not every step's elapsed time.
+ *
+ * **A killed step's time is its deadline, not its cost.** `boundedSpawn` returns when the budget runs out, so a
+ * wedged `test:integration` reports ~300s — and every reader of this map takes what it holds for a measurement:
+ * `--record` writes it into the table, `declaredShare` makes 300s four times its `suite` rung, `outgrownRungs`
+ * then names it as outgrown by construction, and `criticalPath` puts the deadline on the floor. Not one of them
+ * is wrong about the number. The number is not a measurement.
+ *
+ * `recordTheCosts` already draws this line at the other end, for the same reason: "Under a second is not a
+ * measurement of the step's work" — `packages:ensure` returns in 0.3s fresh and takes 14s when it builds. A
+ * deadline is the same category and the worse one, being large rather than small, so it survives that filter
+ * and lands in the table looking like a cost.
+ *
+ * **A step that failed without being killed is kept.** It ran and stopped early, so its time is real and under,
+ * which `driftedSteps`' lower band exists for — and a failure's own output is what a reader goes to anyway.
+ *
+ * One function rather than a filter at each reader: the four of them share this map, and the one that forgot
+ * would be the one writing a deadline into source.
+ *
+ * **Exercised against a real kill 2026-10-04, because no case can reach the composition.** `check:tiers` was
+ * pointed at a hang and the chain run with `--all --record`: it was killed at 62.0s against its 60s `quick`
+ * deadline, and `--record` — reached, not refused — reported *"every step cost what the table says, within the
+ * band — nothing recorded"*. That sentence is only possible with the step excluded: against a declared 0.3s,
+ * 62s is 61.7s outside a 1s band, so it would have been written as the cost. `outgrownRungs` said nothing
+ * either, where 62s is 4.13 of that rung. One run, both readers.
+ *
+ * The note is here because `scripts/chain.ts` cannot be imported, which is `recordTheCosts`' reason for
+ * carrying the same kind of record: a command is how that composition is checked, and a dated note is the only
+ * place a reader learns it has been. The unit cases below and the `decision-mutations` entry cover this
+ * function; what the run covered is the line in `chain.ts` that hands `timedOut` to it.
+ */
+export const measurementsFrom = (
+  results: readonly { readonly step: string; readonly ms: number; readonly timedOut?: true }[],
+): Map<string, number> =>
+  new Map(results.filter((result) => result.timedOut !== true).map((result) => [result.step, result.ms]));
+
+/**
  * Steps whose **measured** cost puts them past the rung they declare.
  *
  * **`declaredShare` is a bound on a declared number, and the band watching that number is looser than the
@@ -125,43 +162,6 @@ export const SECONDS_FLOOR = 1;
  * and gates only the sentence. Nothing here survives that split, because the number itself is the
  * projection.
  */
-/**
- * What a run measured, which is not every step's elapsed time.
- *
- * **A killed step's time is its deadline, not its cost.** `boundedSpawn` returns when the budget runs out, so a
- * wedged `test:integration` reports ~300s — and every reader of this map takes what it holds for a measurement:
- * `--record` writes it into the table, `declaredShare` makes 300s four times its `suite` rung, `outgrownRungs`
- * then names it as outgrown by construction, and `criticalPath` puts the deadline on the floor. Not one of them
- * is wrong about the number. The number is not a measurement.
- *
- * `recordTheCosts` already draws this line at the other end, for the same reason: "Under a second is not a
- * measurement of the step's work" — `packages:ensure` returns in 0.3s fresh and takes 14s when it builds. A
- * deadline is the same category and the worse one, being large rather than small, so it survives that filter
- * and lands in the table looking like a cost.
- *
- * **A step that failed without being killed is kept.** It ran and stopped early, so its time is real and under,
- * which `driftedSteps`' lower band exists for — and a failure's own output is what a reader goes to anyway.
- *
- * One function rather than a filter at each reader: the four of them share this map, and the one that forgot
- * would be the one writing a deadline into source.
- *
- * **Exercised against a real kill 2026-10-04, because no case can reach the composition.** `check:tiers` was
- * pointed at a hang and the chain run with `--all --record`: it was killed at 62.0s against its 60s `quick`
- * deadline, and `--record` — reached, not refused — reported *"every step cost what the table says, within the
- * band — nothing recorded"*. That sentence is only possible with the step excluded: against a declared 0.3s,
- * 62s is 61.7s outside a 1s band, so it would have been written as the cost. `outgrownRungs` said nothing
- * either, where 62s is 4.13 of that rung. One run, both readers.
- *
- * The note is here because `scripts/chain.ts` cannot be imported, which is `recordTheCosts`' reason for
- * carrying the same kind of record: a command is how that composition is checked, and a dated note is the only
- * place a reader learns it has been. The unit cases below and the `decision-mutations` entry cover this
- * function; what the run covered is the line in `chain.ts` that hands `timedOut` to it.
- */
-export const measurementsFrom = (
-  results: readonly { readonly step: string; readonly ms: number; readonly timedOut?: true }[],
-): Map<string, number> =>
-  new Map(results.filter((result) => result.timedOut !== true).map((result) => [result.step, result.ms]));
-
 export function outgrownRungs<S extends SchedulableStep & { readonly timeout?: TimeoutClass }>(
   steps: readonly S[],
   measuredMs: ReadonlyMap<string, number>,
