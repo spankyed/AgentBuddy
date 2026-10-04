@@ -616,7 +616,7 @@ export const SUITE_READS: Record<string, { packages?: true; pack?: true; repo?: 
  * machine into all of them. `--step <step>` writes the row named and no other — the scope a correction wants,
  * and the reason a stale row here never needs editing by hand.
  */
-export const POOL_SECONDS: Record<'host' | 'pack' | 'integration', number> = { host: 34, pack: 21, integration: 60 };
+export const POOL_SECONDS: Record<'host' | 'pack' | 'integration', number> = { host: 34, pack: 19, integration: 60 };
 
 /**
  * The files a chain step is declared in — the two tables, as one list, repo-relative.
@@ -943,7 +943,7 @@ export const CHAIN_STEPS: readonly ChainStep[] = [
   // declared — so an unchanged stamp means the same app, and running it again asks a question already
   // answered. Uncached it put the warm chain back to 5.6s from 0.9s, which is most of what taking the
   // suite off the gate bought.
-  { name: 'test:smoke', timeout: 'suite', seconds: 18,
+  { name: 'test:smoke', timeout: 'suite', seconds: 9,
     outputs: ['tests/results'],
     inputs: [...ROOT, 'tests/e2e/smoke', 'playwright.config.ts',
       'scripts/with-source.mjs', ...APP_ENTRY, ...PACKAGE_BUILD_OUTPUTS, ...APP_OUTPUTS] },

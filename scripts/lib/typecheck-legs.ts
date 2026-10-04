@@ -95,7 +95,7 @@ export const ENSURE = 'packages:ensure';
  */
 export const TYPECHECK_LEGS: readonly Leg[] = [
   { name: ENSURE, command: 'npm run packages:ensure', scope: ['abuddy-ears', 'abuddy-sdk', 'abuddy-ui', 'abuddy-cli', 'abuddy-testing'], seconds: 0.3 },
-  { name: 'typecheck:fe', command: 'npm run typecheck:fe', seconds: 10 },
+  { name: 'typecheck:fe', command: 'npm run typecheck:fe', seconds: 9 },
   { name: 'typecheck:be', command: 'npm run typecheck:be', alsoReads: ['package.json'], seconds: 7 },
   { name: 'typecheck:ears', command: 'npm run typecheck:ears', seconds: 2 },
   { name: 'typecheck:sdk', command: 'npm run typecheck:sdk', seconds: 4 },
@@ -105,9 +105,9 @@ export const TYPECHECK_LEGS: readonly Leg[] = [
   { name: 'exports:check', command: 'npm run exports:check', seconds: 1 },
   { name: 'schema:check', command: 'npm run schema:check', seconds: 0.5 },
   { name: 'api:stamp', command: 'npm run api:stamp', scope: 'repo', seconds: 0.7 },
-  { name: 'typecheck:scripts', command: 'npm run typecheck:scripts', scope: 'repo', seconds: 6 },
+  { name: 'typecheck:scripts', command: 'npm run typecheck:scripts', scope: 'repo', seconds: 5 },
   { name: 'typecheck:cli', command: 'npm run typecheck:cli', seconds: 5 },
-  { name: 'typecheck:pack', command: 'npm run typecheck:pack', seconds: 8 },
+  { name: 'typecheck:pack', command: 'npm run typecheck:pack', seconds: 7 },
   // Both compile `../../types/**/*.d.ts` through their own tsconfig `include`
   { name: 'typecheck:main', command: 'npm run typecheck:main', alsoReads: ['types'], seconds: 3 },
   { name: 'typecheck:preload', command: 'npm run typecheck:preload', alsoReads: ['types'], seconds: 2 },
