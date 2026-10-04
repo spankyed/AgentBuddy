@@ -14,11 +14,11 @@
  * that, so `@abuddy/host/bus` installs an `AsyncLocalStorage` reader over the same interface. This module stays
  * free of `node:` imports because `@abuddy/sdk/events` is bundled into pack frontends.
  *
- * **Where it is not set, which matters as much as where it is.** Three places run a delivery: the bus routing a
- * message to a system, its early systems, and the renderer shell handing a plugin events it routed. A plugin's
- * *own* sends are not covered — a component calling `send()` on its plugin runs that action outside any delivery,
- * so nothing stamps it and `reply` throws for the handler it reaches. Closing that means wrapping the actor
- * `usePlugin` returns; until then the asymmetry is the thing to know about this module.
+ * **Four places run a delivery**, and together they cover every send pack code makes: the bus routing a message
+ * to a system, its early systems, the renderer shell handing a plugin events it routed, and `usePlugin`, which
+ * runs a component's send in one so a click reaching a machine's action is named like anything else. That last
+ * one is easy to leave out and was: without it a component's send stamped nothing, so the commonest request in
+ * the app — a view asking its own system for data — was the one case `reply` could not answer.
  *
  * **The one shape that does not work**, measured rather than assumed: store a function during one delivery and
  * let somebody else call it later. An `await` is fine, and so is a timer the handler itself schedules — both

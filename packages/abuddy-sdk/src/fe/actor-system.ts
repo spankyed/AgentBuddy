@@ -1,6 +1,7 @@
 import { computed, defineComponent, inject, provide, type ComputedRef, type InjectionKey } from 'vue'
 import type { AnyActorRef } from 'xstate'
 import { splitRef } from '../ids/refs.ts'
+import { _runDelivery } from '../events/delivery.ts'
 import { boundFeHost } from '../runtime/fe-host.ts'
 
 const PLUGIN: InjectionKey<ComputedRef<AnyActorRef>> = Symbol('plugin')
@@ -19,7 +20,44 @@ const PLUGIN: InjectionKey<ComputedRef<AnyActorRef>> = Symbol('plugin')
 export function usePlugin<T>(): T {
   const plugin = inject(PLUGIN, undefined)
   if (!plugin) throw new Error('usePlugin() runs in a component a plugin renders: its canvas, panel or chat, or one inside a <PluginScope>')
-  return plugin.value as T
+  return sendsAsItself(plugin.value) as T
+}
+
+/**
+ * One wrapper per actor, so two `usePlugin()` calls in one component hand back the same object. Keyed on the
+ * actor, so it goes when the actor does.
+ */
+const wrappers = new WeakMap<AnyActorRef, AnyActorRef>()
+
+/**
+ * The actor, with a send that says which plugin made it.
+ *
+ * A component sending to its own plugin is the one path that reaches a machine's actions from outside a
+ * delivery: the bus names the message it routes to a system, and the shell names the one it hands a plugin, but
+ * a click goes straight to the actor. So an action that then sent to a system stamped no `Message.sender`, and
+ * the system answering it with `reply` had no address and threw — for the commonest kind of request in the app.
+ *
+ * Running the send inside a delivery closes that: the action's own `sendToSystem` reads the scope and stamps
+ * this plugin's ref, so the system answers *this* plugin in the window it was asked from. `actor.id` is that
+ * ref because the shell spawns a plugin with its ref as both `id` and `systemId`.
+ *
+ * Only `send` is wrapped, and everything else is passed through bound to the actor — checked rather than
+ * assumed: `useSelector` stays reactive through it, and `subscribe` and `getSnapshot` behave as before.
+ */
+function sendsAsItself(actor: AnyActorRef): AnyActorRef {
+  const existing = wrappers.get(actor)
+  if (existing) return existing
+  const wrapper = new Proxy(actor, {
+    get(target, prop, receiver) {
+      if (prop === 'send') {
+        return (event: unknown) => _runDelivery({ receiver: target.id }, () => target.send(event as never))
+      }
+      const value = Reflect.get(target, prop, receiver)
+      return typeof value === 'function' ? (value as (...args: unknown[]) => unknown).bind(target) : value
+    },
+  })
+  wrappers.set(actor, wrapper)
+  return wrapper
 }
 
 /**
