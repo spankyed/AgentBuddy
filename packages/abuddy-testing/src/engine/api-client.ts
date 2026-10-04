@@ -110,8 +110,21 @@ export async function connectApiClient({ port, token, host = '127.0.0.1' }: ApiA
 
   socket.addEventListener('message', (message: MessageEvent) => {
     const text = String(message.data);
-    // The adapter's keep-alive words travel as bare text, not JSON
-    if (text === 'PING' || text === 'PONG') return;
+    // The adapter's keep-alive words travel as bare text, not JSON.
+    //
+    // **Answering is the part that matters; skipping is tidiness.** `handleKeepAlive` schedules
+    // `client.terminate()` once it has pinged and clears it on *any* message from us, so a session that only
+    // listened would be dropped after `pongWaitMs`. Measured: removing the skip and removing the reply fail the
+    // same case for the same reason — the `JSON.parse` below is already in a `try` that returns, so an unskipped
+    // `PING` is swallowed rather than thrown, and either way no `PONG` goes back and the socket dies. The skip
+    // only saves a pointless throw per tick and says what these two words are.
+    //
+    // The app sets no `keepAlive` today, which makes this latent — and silent if that ever changes.
+    if (text === 'PING') {
+      socket.send('PONG');
+      return;
+    }
+    if (text === 'PONG') return;
 
     let frame: Frame;
     try {
