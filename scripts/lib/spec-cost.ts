@@ -794,6 +794,21 @@ export const writesMembershipOnly = (previous: SpecCost, { adopt, busy }: { adop
   !adopt && (busy !== undefined || !isMeasuredMachine(previous.machine));
 
 /**
+ * Specs parked as `unmeasured` that this machine is the one to price.
+ *
+ * `unrecorded` counts a parked spec as *recorded*, and for a foreign machine that is right: it has said the
+ * one thing it can — that the spec exists — and the measuring box fills the cost in. On the measuring box
+ * there is nobody else, so the same answer leaves the record owing a cost nothing will ever plan. A bare
+ * `spec-cost:update` would report "every record is current" over it, for good.
+ *
+ * So a busy run parks and the next quiet run prices, which is the half that makes degrading to membership a
+ * deferral rather than a loss. Filtered against the files on disk, so a parked spec that was then deleted is
+ * pruned rather than planned.
+ */
+export const pendingHere = (record: SpecCost, files: readonly string[]): string[] =>
+  isMeasuredMachine(record.machine) ? record.unmeasured.filter((file) => files.includes(file)) : [];
+
+/**
  * The record with its membership brought up to date and not one cost touched.
  *
  * What a machine that is not the record's may write: a spec that has appeared is listed as `unmeasured`, a
@@ -1039,7 +1054,7 @@ export function planFor(repoRoot: string, dir: string, named: readonly string[],
   if (all) return { configs: configsFor(packageDir), prune, reason: 'every spec, asked for' };
   if (named.length > 0) return { configs: configsOf(packageDir, named), prune, reason: `${named.length} named` };
 
-  const needs = previous === undefined ? files : unrecorded(previous, files);
+  const needs = previous === undefined ? files : [...unrecorded(previous, files), ...pendingHere(previous, files)];
   if (needs.length > 0) return { configs: configsOf(packageDir, needs), prune, reason: `${needs.length} unmeasured` };
   return { configs: [], prune, reason: prune.length > 0 ? `${prune.length} gone` : 'current' };
 }

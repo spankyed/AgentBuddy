@@ -20,7 +20,7 @@ import {
   halfOfPath, hasSplit, disagrees, nearEdge, worthKeeping, ratiosFromMoves, towardEdge, underBound, type SpecCost,
   namedIn, overBudget, parseArgs,
   planFor, readSpecCost,
-  recordMembership, refuseAbsent, forgetsWindows, settle, specCostFile, specFiles, stale, suitesFor,
+  pendingHere, recordMembership, refuseAbsent, forgetsWindows, settle, specCostFile, specFiles, stale, suitesFor,
   writesMembershipOnly,
   unrecorded, WINDOW, appendSample, costOf, provisional, withCosts,
 } from '../../../scripts/lib/spec-cost.ts';
@@ -163,6 +163,34 @@ describe('a record anyone can add a spec to', () => {
     // Adoption re-measures every row by definition, so it outranks a busy box as it outranks a foreign record
     it('still measures a busy box when the run is adopting', () => {
       expect(writesMembershipOnly(base({}), { adopt: true, busy: '75% idle' })).toBe(false);
+    });
+  });
+
+  /**
+   * The other half of parking, and the one that makes it a deferral rather than a loss.
+   *
+   * `unrecorded` counts a parked spec as recorded — right for a foreign machine, which has said the only
+   * thing it can — so without `pendingHere` the measuring box plans nothing for a spec it parked and
+   * `spec-cost:update` reports "every record is current" over a cost it still owes, permanently.
+   */
+  describe('a cost this box parked is still owed', () => {
+    const parked = (machine: ReturnType<typeof thisMachine>) => withCosts({
+      measuredAt: 'then', samples: {}, skipped: [], unmeasured: ['tests/parked.spec.ts'], machine,
+    });
+    const files = ['tests/parked.spec.ts'];
+
+    it('is planned again by the machine that owes it', () => {
+      expect(pendingHere(parked(thisMachine()), files)).toEqual(['tests/parked.spec.ts']);
+    });
+
+    // A foreign box cannot price it, so parking is where it stops: planning it would measure the wrong machine
+    it('is left alone by a machine that cannot price it', () => {
+      expect(pendingHere(parked(OTHER), files)).toEqual([]);
+    });
+
+    // Deleted since it was parked: `stale` prunes it, and planning it would measure a file that is gone
+    it('is dropped rather than planned once the spec has gone', () => {
+      expect(pendingHere(parked(thisMachine()), [])).toEqual([]);
     });
   });
 
