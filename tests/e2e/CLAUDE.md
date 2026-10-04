@@ -294,6 +294,7 @@ The renderer exposes on `window`:
 |----------|-------------|
 | `PLAYWRIGHT_TEST=true` | Set automatically by the fixture; crashes on uncaught errors and runs headless (no window display) |
 | `DEBUG_E2E=1` | Pipes Electron stdout/stderr to the test terminal |
+| *(always)* | The same output is written to `tests/results/app-<workerIndex>.log`, wiped each run. `DEBUG_E2E=1` is for watching it live; the file is for reading it afterwards |
 | `PACK_DIR=/path/to/pack` | Builds the pack, installs it into the worker's isolated data dir, waits for plugins before tests run |
 | `E2E_KEEP_DATA=1` | Keep each worker's temp data dir (path is logged) |
 | `ABUDDY_ROOT=/path/to/AgentBuddy` | A built AgentBuddy checkout to launch (auto-detected inside the monorepo) |

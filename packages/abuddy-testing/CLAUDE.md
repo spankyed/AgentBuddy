@@ -241,6 +241,11 @@ The fixture launches, in priority order: `createTest({ appExecutable })`, `creat
 2. **Launch Electron** — for a checkout, resolves `electron` from the checkout's `node_modules` and calls `_electron.launch({ executablePath, args: [appRoot], cwd: appRoot })`; for a packaged app, launches its executable with no args. Packs never need `electron` installed. The env (`src/launch-env.ts`) is the runner's without `ELECTRON_RUN_AS_NODE` (set when the app-bundled `abuddy` runs on the app's runtime; inherited, it would start Electron as plain Node) and without the `@abuddy/source` condition in `NODE_OPTIONS`, plus `PLAYWRIGHT_TEST=true`, which makes the app use the `test` environment (a packaged beta included), and `ABUDDY_USER_DATA_DIR`.
 
 3. **Debug logging** (if `DEBUG_E2E=1`): pipes Electron's stdout/stderr to the test terminal with `[electron]` prefix
+4. **A log file, always**: the same output goes to `app-<workerIndex>.log` in Playwright's `outputDir` —
+   `tests/results/` under `abuddy test`, `drive/results/` under `abuddy drive`. Playwright wipes that
+   directory at the start of every run, so it is always the last run and never an archive. It is what a
+   fixture failure now names, in place of asking for a re-run under `DEBUG_E2E`; the app's own
+   electron-log files live in the data dir, which an ephemeral drive session deletes on the way out.
 
 ### Test setup (`appPage` fixture, per test)
 

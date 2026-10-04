@@ -173,12 +173,32 @@ const OUTPUT_TAIL_LINES = 200;
 const launchStartedAt = new WeakMap<ElectronApplication, number>();
 const userDataDirs = new WeakMap<ElectronApplication, string>();
 const outputTails = new WeakMap<ElectronApplication, string[]>();
+/** Where this app's output is being written, so a failure can name it instead of asking for a re-run */
+const appLogs = new WeakMap<ElectronApplication, string>();
 
 /** What the pack loader said about the pack under test, kept whole while the tail scrolls past it. */
 type PackLoad = { registered?: true; failure?: string };
 const packLoads = new WeakMap<ElectronApplication, PackLoad>();
 
-function captureOutput(app: ElectronApplication): void {
+/**
+ * The app's own output, where whoever ran the suite can read it after the fact.
+ *
+ * The tail below is a ring buffer the fixture reports on its own failures, and `DEBUG_E2E=1` prints
+ * everything to the terminal — neither is reachable once a run is over, which is what made
+ * "re-run under DEBUG_E2E" the standard next step. Electron's own logs are no better: a run given its own
+ * data dir keeps them there (`packages/main/src/app-context.ts`), and an ephemeral drive session deletes
+ * that dir on the way out, taking them with it.
+ *
+ * Playwright's `outputDir` is the one place that outlives the app and not the run: it is wiped at the start
+ * of every run, so this is always exactly the last run and never an archive nobody prunes. Named per worker
+ * because the app is worker-scoped — two workers' output in one file interleaves into neither's.
+ */
+function appLogPath(info: { project: { outputDir: string }; workerIndex: number }): string {
+  return path.join(info.project.outputDir, `app-${info.workerIndex}.log`);
+}
+
+function captureOutput(app: ElectronApplication, logFile?: string): void {
+  if (logFile) appLogs.set(app, logFile);
   const tail: string[] = [];
   outputTails.set(app, tail);
   const packLoad: PackLoad = {};
@@ -191,7 +211,12 @@ function captureOutput(app: ElectronApplication): void {
   const escaped = packId?.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
   const registered = escaped && new RegExp(`${PACK_LOAD_MESSAGES.registered} ${escaped}\\b`);
   const failed = escaped && new RegExp(`(${PACK_LOAD_MESSAGES.notLoaded.join('|')}) ${escaped}\\b`);
+  // Appended, not buffered to the end: a crash or a hang is exactly when this is wanted, and either one
+  // means no later flush arrives. `mkdirSync` because Playwright creates `outputDir` lazily, so the first
+  // chunk can beat it.
+  if (logFile) fs.mkdirSync(path.dirname(logFile), { recursive: true });
   const onData = (data: Buffer) => {
+    if (logFile) { try { fs.appendFileSync(logFile, data); } catch { /* a log is never worth failing a run */ } }
     for (const line of data.toString().split('\n')) {
       if (!line.trim()) continue;
       tail.push(line);
@@ -244,7 +269,10 @@ function describeFailure(message: string, app: ElectronApplication, rendererErro
   if (errorLines.length > 0) {
     sections.push('Electron/API output (error lines):\n' + errorLines.map(l => `  ${l}`).join('\n'));
   }
-  sections.push('Re-run with DEBUG_E2E=1 for full Electron output.');
+  const logFile = appLogs.get(app);
+  sections.push(logFile
+    ? `Full Electron and API output: ${logFile}`
+    : 'Re-run with DEBUG_E2E=1 for full Electron output.');
   return new Error(sections.join('\n\n'));
 }
 
@@ -289,7 +317,7 @@ export function createTest(options: CreateTestOptions = {}) {
     // Playwright's signature for a fixture that depends on no other fixture. It always passes an object, and
     // dropping the parameter would change the fixture's arity.
     // eslint-disable-next-line no-empty-pattern
-    electronApp: [async ({}, use) => {
+    electronApp: [async ({}, use, workerInfo) => {
       // From a checkout this fixture is built on demand, and a stale build tests the previous app
       assertCheckoutPackagesFresh();
       // Every worker gets a fresh data dir: no data, installed packs or onboarding state leak
@@ -353,7 +381,7 @@ export function createTest(options: CreateTestOptions = {}) {
 
         launchStartedAt.set(app, launchStart);
         userDataDirs.set(app, userDataDir);
-        captureOutput(app);
+        captureOutput(app, appLogPath(workerInfo));
         if (process.env.DEBUG_E2E) {
           app.process().stdout?.on('data', (data: Buffer) => {
             process.stdout.write(`[electron] ${data}`);

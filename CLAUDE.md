@@ -210,7 +210,8 @@ Things that waste the most time, in order:
   caught it, the CLI suite proves the fix.
 - **Reading the source twice to explain a bug the running app would show you.** A hang or a dropped
   event in the real app is worth one instrumented E2E run — a `console.error` in the failing path,
-  `npm run build:be`, `DEBUG_E2E=1 npm test -- <spec> --grep "<title>"`. Two carefully argued
+  `npm run build:be`, `DEBUG_E2E=1 npm test -- <spec> --grep "<title>"` — and the run you already did wrote
+  the app's whole output to `tests/results/app-<workerIndex>.log`, so read that before re-running. Two carefully argued
   explanations have been wrong where one such run was decisive. `tests/e2e/CLAUDE.md` has the method,
   including what to rebuild first and how to put the instrumentation back.
 - **Reading a chain step's `cached` as "the thing it guarantees is true".** It means only that the step's
