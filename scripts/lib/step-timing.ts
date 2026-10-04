@@ -144,6 +144,18 @@ export const SECONDS_FLOOR = 1;
  *
  * One function rather than a filter at each reader: the four of them share this map, and the one that forgot
  * would be the one writing a deadline into source.
+ *
+ * **Exercised against a real kill 2026-10-04, because no case can reach the composition.** `check:tiers` was
+ * pointed at a hang and the chain run with `--all --record`: it was killed at 62.0s against its 60s `quick`
+ * deadline, and `--record` — reached, not refused — reported *"every step cost what the table says, within the
+ * band — nothing recorded"*. That sentence is only possible with the step excluded: against a declared 0.3s,
+ * 62s is 61.7s outside a 1s band, so it would have been written as the cost. `outgrownRungs` said nothing
+ * either, where 62s is 4.13 of that rung. One run, both readers.
+ *
+ * The note is here because `scripts/chain.ts` cannot be imported, which is `recordTheCosts`' reason for
+ * carrying the same kind of record: a command is how that composition is checked, and a dated note is the only
+ * place a reader learns it has been. The unit cases below and the `decision-mutations` entry cover this
+ * function; what the run covered is the line in `chain.ts` that hands `timedOut` to it.
  */
 export const measurementsFrom = (
   results: readonly { readonly step: string; readonly ms: number; readonly timedOut?: true }[],
