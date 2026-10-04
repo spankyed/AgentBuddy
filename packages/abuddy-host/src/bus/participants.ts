@@ -10,21 +10,9 @@
 // …)` resolves the way the rest do. What differs is only where the answer comes from: the registry for a pack's
 // features, this for a claimed name.
 //
-// **The caller is the drive engine** (`abuddy-testing/src/engine/index.ts`, which claims `host/drive` once its
-// own socket is open). Exercised rather than assumed: a live session answered three concurrent `/qx` calls, each
-// routed back here by a system's `reply`, plus a BigInt and a circular payload that both arrived with the
-// connection intact.
-//
-// Two earlier versions of this paragraph were wrong, in opposite directions, and both are worth remembering
-// because each looked settled. The first said giving the engine a connection would cost a dependency; Node has
-// had a global `WebSocket` since 22, this repo requires 23, and
-// `tests/e2e/app-integration/api-access.spec.ts` already opens an authenticated socket with no import at all.
-// The second said the engine therefore had no connection of its own to claim on — true when it was written,
-// false within the hour, and the kind of claim a comment should not make about code that is still moving.
-//
-// `participants.spec.ts` covers the mechanism, including that an unclaimed name is still dropped. What it cannot
-// cover is the caller, which is a Playwright session in another package — so the live run above is the only
-// evidence that end works, and this is where it is recorded.
+// The caller is the drive engine (`abuddy-testing/src/engine/index.ts`), which claims `host/drive` once its own
+// socket is open. `participants.spec.ts` covers the mechanism, including that an unclaimed name is still
+// dropped; what it cannot reach is that caller, being a Playwright session in another package.
 //
 // **A claim lives exactly as long as its connection.** That is what makes it safe without a disconnect signal:
 // the id it is keyed by is minted per WebSocket connection and dies with the socket, so a driver that goes away

@@ -3,21 +3,16 @@ import { HOST } from '@abuddy/host/bus';
 import type { BusMessage } from './api-client.ts';
 
 /**
- * The verbs a live drive session answers, over one already-open page.
+ * The verbs a live drive session answers, over one already-open page. `server.ts` is the channel; this is
+ * what the channel calls, and `packages/abuddy-testing/CLAUDE.md` says why the engine exists at all.
  *
- * A driving script is a closed program: it runs and it ends, so every question an agent has costs an
- * edit, a process start and an app launch. These are the same capabilities the `AppHelper` already has,
- * shaped so something outside the process can ask for them one at a time against a session that stays
- * open. `server.ts` is the channel; this is what the channel calls.
- *
- * **Nothing here touches Playwright's types.** The page arrives as `SessionPage`, six methods wide, so
- * every verb is exercised in process against a fake — a session spec that had to launch Electron would
- * be an E2E test, and what is being checked is the protocol rather than the app.
+ * **Nothing here touches Playwright's or tRPC's types.** The page arrives as `SessionPage` and the bus as
+ * `SessionApi`, so every verb is exercised in process against a fake — a session spec that had to launch
+ * Electron would be an E2E test, where the subject here is the protocol rather than the app.
  *
  * **Ending the session is not here.** `/close` has to answer before anything tears down, and only the
- * channel knows when its reply has been written — measured: ending it from the verb closed the socket
- * first and the caller saw a reset for a request that had worked. So `server.ts` owns that, and a
- * session knows only how to do things to an app.
+ * channel knows when its reply has been written, so `server.ts` owns that. A session knows only how to do
+ * things to an app.
  */
 
 /**
@@ -106,11 +101,9 @@ export const BRIDGE_FLAG = '__driveEngineBridge';
 /**
  * How many captured events the session holds before it starts dropping the oldest.
  *
- * The inspector sees every event in the app, not only replies — measured on an idle session, the app
- * emits `TRAIL_UPDATE`, `CLEAR_PULSE` and plugin traffic continuously — so a buffer nobody drains is a
- * leak that grows for as long as the session is open. Dropping the oldest keeps the recent ones, which
- * are the ones an agent asking "what just happened" wants, and `dropped` says how many it missed rather
- * than letting the gap pass silently.
+ * The inspector sees every event in the app, not only replies, and an idle session still emits a steady
+ * stream — so a buffer nobody drains grows for as long as the session is open. Dropping the oldest keeps the
+ * ones an agent asking "what just happened" wants, and `dropped` says how many it missed.
  */
 export const MAX_SEEN_EVENTS = 1_000;
 
@@ -120,13 +113,7 @@ export const REPLY_TIMEOUT_MS = 15_000;
 /** The system that runs query and transaction code against the live engine, and the events it answers with */
 export const DATABASE_SYSTEM = 'default-setup/database';
 
-/**
- * The name the session claims, so a system can answer *it* rather than broadcasting to every window.
- *
- * Taken from `HOST` rather than written out here: `@abuddy/host/bus` is already in this package's graph
- * (`src/app.ts` imports `createBusMachine` from it) and importing it is inert, so a second copy of the string
- * would be a thing to keep in step for no gain.
- */
+/** The name the session claims, so a system can answer *it* rather than broadcasting to every window */
 export const DRIVE_REF = HOST.drive;
 
 const REPLIES = {
@@ -192,7 +179,11 @@ export interface EngineSession {
   drainErrors: () => EngineResult;
   /** Installs the in-page bridge and listens on the connection; `server.ts` awaits it before it listens */
   ready: () => Promise<void>;
-  /** Drops what `ready` installed. The client itself belongs to whoever opened it. */
+  /**
+   * Drops the connection listener `ready` added. The page's exposed function and its flag survive, nothing
+   * undoing an `exposeFunction` — the flag is what stops a second install. The client belongs to whoever
+   * opened it.
+   */
   stop: () => void;
 }
 
@@ -204,14 +195,44 @@ export function createSession({ page, api, takeErrors }: SessionDeps): EngineSes
   let stopApi: (() => void) | undefined;
 
   /**
-   * Waits for the reply to *this* request.
+   * Answers a waiting round-trip, from either channel.
    *
-   * The id is what makes that possible, and it replaced a queue. The engine used to run one round-trip
-   * at a time because `QUERY_RESULT` named no request, so the next reply of the right type had to be
-   * this one's — which held only while nothing was abandoned. A request that timed out and then
-   * finished still had a reply in the post, and the next caller took it. Matching the id ends that: an
-   * orphan matches nobody, and a reply caused by someone else's query — a person using the Database
-   * plugin while a session drives — is no longer mistaken for the engine's.
+   * Iterated directly: a receiver that matches removes *itself*, and a `Set` iterator handles an entry
+   * deleted at or before the cursor. Nothing adds a waiter here — a resolved round-trip arms its next one in a
+   * later microtask — so there is no entry this loop could visit too early.
+   */
+  const wake = (event: SeenEvent): void => {
+    for (const receive of waiting) receive(event);
+  };
+
+  /** Puts an event in the buffer `/events` drains, oldest dropped past the cap */
+  const record = (event: SeenEvent): void => {
+    seen.push(event);
+    if (seen.length > MAX_SEEN_EVENTS) {
+      seen.shift();
+      dropped += 1;
+    }
+  };
+
+  /**
+   * Sends to the window's root actor, which is all `/send` and `/navigate` each do.
+   *
+   * `/navigate` does not then wait for the plugin to arrive, unlike `AppHelper.navigate`: a session has `/wait`
+   * for that, and pairing them here would make the cheap verb pay for the slow one.
+   */
+  const sendToApp = (message: Record<string, unknown>): Promise<unknown> =>
+    page.evaluateWith((event: Record<string, unknown>) => {
+      (window as unknown as { applicationState: { send: (event: unknown) => void } })
+        .applicationState.send(event);
+      return null;
+    }, message);
+
+  /**
+   * Waits for the reply to *this* request, matched by the id the request minted.
+   *
+   * Addressing says which connection an answer came to; only the id says which request it answers, so three
+   * concurrent `/qx` calls can be told apart. An orphan matches nobody — a request that timed out and then
+   * finished, or a reply to someone querying in the Database plugin while a session drives.
    */
   const nextReply = (requestId: string, ok: string, bad: string): Promise<unknown> =>
     new Promise((resolve, reject) => {
@@ -225,18 +246,8 @@ export function createSession({ page, api, takeErrors }: SessionDeps): EngineSes
       };
       const timer = setTimeout(() => {
         waiting.delete(receive);
-        /**
-         * Three causes, named rather than guessed at.
-         *
-         * It read "is default-setup loaded?" and that is the rarest of them. The one that actually
-         * happens is the second: a value the app cannot put on the wire — a BigInt, measured — throws
-         * inside the renderer's tRPC subscription, which kills the subscription and leaves the root
-         * machine in `error`, so no backend event reaches the page again and *every* later round-trip
-         * times out here. The page itself still answers, which is why `/eval` and `/state` keep working
-         * and make this look like a database problem. A message that names one cause sends a reader to
-         * the wrong place; these two verbs tell the three apart in one call each.
-         */
-        // The channel knows when it is the channel, so say that outright instead of listing possibilities
+        // A finished channel is the one cause the session can be certain of, so it is reported as a fact.
+        // Everything else is a guess between three, and the message below says which three.
         if (api.failure !== null) {
           reject(new Error(`no answer for ${requestId}: ${api.failure}. The drive session's connection to the app is finished, so restart the session.`));
           return;
@@ -250,16 +261,12 @@ export function createSession({ page, api, takeErrors }: SessionDeps): EngineSes
     });
 
   /**
-   * A send to a system, over the session's own connection.
+   * A send to a system, over the session's own connection rather than through the page.
    *
    * `sender` is the load-bearing field: the bus turns it into the delivery's `replyTo`, which is the only thing
-   * that lets the system's `reply` come back here instead of to every window.
-   *
-   * It used to go through the page — `evaluateWith` into the renderer's `untypedSendToSystem` — which made the
-   * renderer a participant in a database query and meant a window that could not serialise one event took every
-   * later round-trip with it. Two consequences of moving it, both improvements: a send to an unknown system now
-   * comes back as a refusal rather than being dropped silently in the renderer, and `/qx` works while the
-   * window's own subscription is broken.
+   * that lets the system's `reply` come back here instead of to every window. Going direct is also why a send
+   * to an unknown system comes back as a refusal rather than being dropped silently in the renderer, and why
+   * `/qx` works while the window's own subscription is broken.
    */
   const sendToSystem = (to: string, event: Record<string, unknown>): Promise<unknown> =>
     api.send({ to, event, sender: DRIVE_REF }).then(() => null);
@@ -277,37 +284,15 @@ export function createSession({ page, api, takeErrors }: SessionDeps): EngineSes
   return {
     ready: async () => {
       /**
-       * Answers a waiting round-trip, from either channel.
+       * The session's own connection, where an addressed answer arrives.
        *
-       * Iterated directly: a receiver that matches removes *itself*, and a `Set` iterator handles an entry
-       * deleted at or before the cursor. Nothing adds a waiter here — a resolved round-trip arms its next one
-       * in a later microtask — so there is no entry this loop could visit too early.
-       */
-      const wake = (event: SeenEvent): void => {
-        for (const receive of waiting) receive(event);
-      };
-
-      /** Puts an event in the buffer `/events` drains, oldest dropped past the cap */
-      const record = (event: SeenEvent): void => {
-        seen.push(event);
-        if (seen.length > MAX_SEEN_EVENTS) {
-          seen.shift();
-          dropped += 1;
-        }
-      };
-
-      /**
-       * The session's own connection, which is where an answer arrives now.
+       * **Waiters hear both channels on purpose.** A reply reaches `DRIVE_REF` only from an app whose database
+       * system answers with `reply`, and an older packaged build still broadcasts — the page bridge is the only
+       * path to that one. The `requestId` check makes the double delivery harmless: the first match removes the
+       * receiver and the second matches nobody.
        *
-       * **Waiters hear both channels, and that is not redundancy.** A reply reaches `DRIVE_REF` only from an app
-       * whose database system answers with `reply`; against an older packaged build that still broadcasts, the
-       * bridge is the only path. Feeding both means a round-trip works across that skew, and the `requestId`
-       * check makes the double delivery harmless — the first match removes the receiver and the second matches
-       * nobody.
-       *
-       * **`/events` keeps its meaning**, so only what the in-page inspector cannot see is added to it: a message
-       * addressed to `DRIVE_REF` never reaches the renderer, while a broadcast reaches both and would otherwise
-       * be counted twice.
+       * Only what the inspector cannot see is recorded, so `/events` keeps its meaning — a message addressed to
+       * `DRIVE_REF` never reaches the renderer, while a broadcast reaches both and would be counted twice.
        */
       stopApi = api.onMessage((message) => {
         const event: SeenEvent = {
@@ -362,11 +347,7 @@ export function createSession({ page, api, takeErrors }: SessionDeps): EngineSes
         + ' — return JSON.stringify(...) or a projection of it instead');
     }),
 
-    send: (event) => attempt('send', () => page.evaluateWith((message: Record<string, unknown>) => {
-      (window as unknown as { applicationState: { send: (event: unknown) => void } })
-        .applicationState.send(message);
-      return null;
-    }, event)),
+    send: (event) => attempt('send', () => sendToApp(event)),
 
     system: (to, event) => attempt('system', () => sendToSystem(to, event)),
 
@@ -389,11 +370,7 @@ export function createSession({ page, api, takeErrors }: SessionDeps): EngineSes
       return target;
     }),
 
-    navigate: (pluginId) => attempt('navigate', () => page.evaluateWith((id: string) => {
-      (window as unknown as { applicationState: { send: (event: unknown) => void } })
-        .applicationState.send({ type: 'SELECT_PLUGIN', plugin: id });
-      return null;
-    }, pluginId)),
+    navigate: (pluginId) => attempt('navigate', () => sendToApp({ type: 'SELECT_PLUGIN', plugin: pluginId })),
 
     screenshot: (name) => attempt('screenshot', async () => {
       await page.screenshot(name);

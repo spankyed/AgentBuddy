@@ -20,10 +20,9 @@ export const createContext = ({ info }: ConnectionArgs = {}) => ({
   /**
    * Fires when this connection ends, whatever ended it. Anything holding per-connection state releases it here.
    *
-   * It matters that this is the *connection* and not a subscription: a claimed name was released from
-   * `bus.sub`'s teardown at first, which is both too eager and too narrow — a client that stopped subscribing
-   * but kept its socket lost its name, and one that claimed without ever subscribing kept it until the API
-   * process exited, so the next session was refused with nothing left to close.
+   * It matters that this is the *connection* and not a subscription. Releasing from a subscription's teardown is
+   * both too eager — a client that stops subscribing while keeping its socket would lose its name — and too
+   * narrow, since one that claims without ever subscribing would hold the name until the process exited.
    */
   closed: info?.signal,
 });

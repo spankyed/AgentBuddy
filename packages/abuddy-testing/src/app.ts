@@ -359,23 +359,16 @@ export async function startApp(options: StartAppOptions): Promise<TestApp> {
   };
 
   /**
-   * The one cause of "Sent: nothing" that the sentence above cannot show, appended when it is the cause.
+   * The one cause of "Sent: nothing" the failure message cannot otherwise show, appended when it applies.
    *
-   * The bus handles `OUTGOING` only in `clientSeen`; in `awaitingClient` the event has no transition at all, so
-   * XState discards it and nothing is logged, reported or recorded. A test whose system answered correctly then
-   * fails with an empty `Sent:` list and no way to tell "my handler never ran" from "my handler ran and nobody
-   * was listening" — which cost an afternoon, and the answer was only ever in `@abuddy/host/CLAUDE.md`.
+   * The bus handles `OUTGOING` only in `clientSeen`; in `awaitingClient` the event has no transition, so XState
+   * discards it and nothing is logged, reported or recorded. Without this, a test whose system answered
+   * correctly fails with an empty `Sent:` list and no way to tell "my handler never ran" from "my handler ran
+   * and nobody was listening".
    *
-   * Asked of the bus rather than tracked as a flag, because a flag would be wrong: `CLIENT_CONNECTED` reaches
-   * every running bus, so another app's `connect()` in the same test connects this one too. The actor's own
-   * state is the answer, and it is read when the wait fails rather than when it started.
-   *
-   * It is appended to a message that has already failed, never reported as a drop. Reporting in the bus was the
-   * other option and is worse three ways: the dedupe key (`reportedDrops`) carries no notion of *why*, so a
-   * "no client" report would suppress a later differently-caused drop of the same plugin and type, which
-   * `machine.ts`'s own comment forbids; `reportError` emits a `SYSTEM_ERROR` that `takeSystemErrors` turns into
-   * a failure, breaking three green specs and any pack test whose systems send before connecting; and the volume
-   * is unbounded, since every pre-connect log line is one dropped `LOG_ADDED`.
+   * Asked of the bus rather than tracked as a flag, because `CLIENT_CONNECTED` reaches every running bus — so
+   * another app's `connect()` in the same test would set a flag on this one. The actor's own state is the
+   * answer, read when the wait fails rather than when it started.
    */
   const heldForAClient = (): string => (bus.getSnapshot().value === 'awaitingClient'
     ? ' No client has connected, and the bus holds sends to plugins until one does, so a reply had nowhere to go:'

@@ -1,18 +1,9 @@
-// The drive session's own connection to the running app's API.
+// The drive session's own connection to the running app's API, so a bus verb reaches the API directly instead
+// of through the window. A broken window is then just a broken window: `/qx` keeps working while the
+// renderer's own subscription is dead.
 //
-// **Why the engine has one.** Its bus verbs used to travel through the page — `page.evaluateWith` into the
-// renderer, the renderer's client to the API — and the answer came back the same way plus the in-page xstate
-// inspector. Six process-boundary crossings for a database query, and the renderer a participant in a
-// transaction it has nothing to do with: one value the window could not serialise killed its subscription and
-// then every `/qx` timed out while `/eval` and `/state` kept answering, which read as a database fault. With
-// its own socket the engine asks the API directly and is answered directly, and a broken window is just a
-// broken window.
-//
-// **Zero dependencies, because none is needed.** Node has had a global `WebSocket` since 22 and this repo
-// requires 23; `tests/e2e/app-integration/api-access.spec.ts` already opens an authenticated socket with
-// `new WebSocket(url, ['abuddy', 'abuddy-token.<token>'])` and imports nothing. `@trpc/client` would cost 1.0M,
-// 146 files and a `@trpc/server` peer in a package every pack's tests load; `ws` would be 192K of redundancy.
-// What is left is tRPC's frames, which are below.
+// No dependencies, Node having had a global `WebSocket` since 22 and this repo requiring 23 — what is left to
+// write is tRPC's frames, which are below.
 //
 // **The frames, read out of `@trpc/server@11.16.0`'s installed adapter** (`dist/ws-*.mjs`, and
 // `parseTRPCMessage`), not from memory — a hand-written protocol is the thing most likely to break on a bump, so
@@ -40,6 +31,8 @@
 // every system in the app. So the channel records why it is finished and every later verb fails saying so,
 // which an agent can act on — rather than reconnecting into a session whose claim somebody else now holds.
 
+import { API_HOST } from '@abuddy/sdk/utils/pure';
+
 /** A message on the app's bus, as `bus.sub` delivers it */
 export interface BusMessage {
   readonly to: string;
@@ -49,6 +42,9 @@ export interface BusMessage {
   readonly sender?: string;
   readonly client?: string;
 }
+
+/* `from`, `via` and `client` are read by nothing here; they are declared because this interface is the wire
+ * shape, and a reader comparing it against `Message` should find the same fields. */
 
 /** Where the API is and what it accepts. Resolved by the caller, so this module owns no app lifecycle. */
 export interface ApiAddress {
@@ -90,7 +86,7 @@ const refusal = (what: string, frame: Frame): Error =>
  * connection that is not yet listening would be delivered and dropped. The claim's lifetime needs no such
  * care, being released when the connection ends.
  */
-export async function connectApiClient({ port, token, host = '127.0.0.1' }: ApiAddress): Promise<ApiClient> {
+export async function connectApiClient({ port, token, host = API_HOST }: ApiAddress): Promise<ApiClient> {
   const url = `ws://${host}:${port}`;
   // Both subprotocols: the server answers `abuddy` only when it is offered, and refuses without the token one
   const socket = new WebSocket(url, ['abuddy', `abuddy-token.${token}`]);
@@ -108,23 +104,42 @@ export async function connectApiClient({ port, token, host = '127.0.0.1' }: ApiA
     pending.clear();
   };
 
-  socket.addEventListener('message', (message: MessageEvent) => {
-    const text = String(message.data);
-    // The adapter's keep-alive words travel as bare text, not JSON.
-    //
-    // **Answering is the part that matters; skipping is tidiness.** `handleKeepAlive` schedules
-    // `client.terminate()` once it has pinged and clears it on *any* message from us, so a session that only
-    // listened would be dropped after `pongWaitMs`. Measured: removing the skip and removing the reply fail the
-    // same case for the same reason — the `JSON.parse` below is already in a `try` that returns, so an unskipped
-    // `PING` is swallowed rather than thrown, and either way no `PONG` goes back and the socket dies. The skip
-    // only saves a pointless throw per tick and says what these two words are.
-    //
-    // The app sets no `keepAlive` today, which makes this latent — and silent if that ever changes.
+  /**
+   * The keep-alive words, which travel as bare text rather than JSON. Answering is what matters:
+   * `handleKeepAlive` schedules `client.terminate()` once it has pinged and clears it on *any* message from us,
+   * so a session that only listened would be dropped after `pongWaitMs`. The app sets no `keepAlive` today,
+   * which makes this latent — and silent if that ever changes.
+   */
+  const answeredKeepAlive = (text: string): boolean => {
     if (text === 'PING') {
       socket.send('PONG');
-      return;
+      return true;
     }
-    if (text === 'PONG') return;
+    return text === 'PONG';
+  };
+
+  /** A frame on the subscription's id: a message for the listeners, or the end of the channel */
+  const takeSubscriptionFrame = (frame: Frame): void => {
+    if (frame.error) finish(`the app refused the event subscription: ${frame.error.message ?? 'no reason given'}`);
+    // An error is followed by `stopped`, so this must not overwrite the reason the error gave
+    else if (frame.result?.type === 'stopped') finish('the app ended the event subscription');
+    else if (frame.result?.type === 'data') for (const listener of listeners) listener(frame.result.data as BusMessage);
+  };
+
+  /** A frame answering one call */
+  const takeCallFrame = (id: number, frame: Frame): void => {
+    const waiting = pending.get(id);
+    if (!waiting) return;
+    pending.delete(id);
+    // Success is the presence of `result`, never of `result.data`: a procedure returning nothing sends
+    // `{ result: { type: 'data' } }` with no data, and reading `data` would wait for ever
+    if (frame.error) waiting.reject(refusal(waiting.what, frame));
+    else waiting.resolve(frame.result?.data);
+  };
+
+  socket.addEventListener('message', (message: MessageEvent) => {
+    const text = String(message.data);
+    if (answeredKeepAlive(text)) return;
 
     let frame: Frame;
     try {
@@ -133,34 +148,31 @@ export async function connectApiClient({ port, token, host = '127.0.0.1' }: ApiA
       return;
     }
 
-    if (frame.id === SUBSCRIPTION_ID) {
-      if (frame.error) finish(`the app refused the event subscription: ${frame.error.message ?? 'no reason given'}`);
-      // An error is followed by `stopped`, so this must not overwrite the reason the error gave
-      else if (frame.result?.type === 'stopped') finish('the app ended the event subscription');
-      else if (frame.result?.type === 'data') for (const listener of listeners) listener(frame.result.data as BusMessage);
-      return;
-    }
-
-    const waiting = typeof frame.id === 'number' ? pending.get(frame.id) : undefined;
-    if (!waiting) return;
-    pending.delete(frame.id as number);
-    // Success is the presence of `result`, never of `result.data`: a procedure returning nothing sends
-    // `{ result: { type: 'data' } }` with no data, and reading `data` would wait forever
-    if (frame.error) waiting.reject(refusal(waiting.what, frame));
-    else waiting.resolve(frame.result?.data);
+    // A frame whose id is neither the subscription's nor a number belongs to no caller: `id: null` is how the
+    // API announces a reconnect, and matching neither branch is what keeps it out of the pending-call path.
+    if (frame.id === SUBSCRIPTION_ID) takeSubscriptionFrame(frame);
+    else if (typeof frame.id === 'number') takeCallFrame(frame.id, frame);
   });
 
-  const call = (method: 'mutation' | 'subscription', path: string, what: string, input?: unknown): Promise<unknown> => {
+  /** Sends a frame that will be answered, and resolves when its answer arrives */
+  const callMutation = (path: string, what: string, input: unknown): Promise<unknown> => {
     if (failure !== null) return Promise.reject(new Error(`${what}: ${failure}`));
-    const id = method === 'subscription' ? SUBSCRIPTION_ID : nextId++;
-    const frame = { id, jsonrpc: '2.0', method, params: input === undefined ? { path } : { path, input } };
+    const id = nextId++;
     return new Promise((resolve, reject) => {
-      if (method !== 'subscription') pending.set(id, { resolve, reject, what });
-      socket.send(JSON.stringify(frame));
-      // A subscription has no single answer; `started` is advisory and may arrive after the first data frame,
-      // so this resolves on the send and the channel reports a refusal through `failure` instead
-      if (method === 'subscription') resolve(undefined);
+      pending.set(id, { resolve, reject, what });
+      socket.send(JSON.stringify({ id, jsonrpc: '2.0', method: 'mutation', params: { path, input } }));
     });
+  };
+
+  /**
+   * Sends the subscribe frame and resolves on the send rather than on an answer: `started` is advisory and may
+   * arrive after the first data frame, so there is no single answer to wait for. A refusal arrives through
+   * `failure`.
+   */
+  const openSubscription = (): Promise<void> => {
+    if (failure !== null) return Promise.reject(new Error(`subscribe: ${failure}`));
+    socket.send(JSON.stringify({ id: SUBSCRIPTION_ID, jsonrpc: '2.0', method: 'subscription', params: { path: 'bus.sub' } }));
+    return Promise.resolve();
   };
 
   await new Promise<void>((resolve, reject) => {
@@ -177,11 +189,11 @@ export async function connectApiClient({ port, token, host = '127.0.0.1' }: ApiA
 
   socket.addEventListener('close', () => finish('the connection to the app closed'), { once: true });
 
-  await call('subscription', 'bus.sub', 'subscribe');
+  await openSubscription();
 
   return {
-    claim: (ref) => call('mutation', 'bus.claim', `claiming ${ref}`, { as: ref }).then(() => undefined),
-    send: (message) => call('mutation', 'bus.send', `sending ${message.event.type} to ${message.to}`, message).then(() => undefined),
+    claim: (ref) => callMutation('bus.claim', `claiming ${ref}`, { as: ref }).then(() => undefined),
+    send: (message) => callMutation('bus.send', `sending ${message.event.type} to ${message.to}`, message).then(() => undefined),
     onMessage: (listener) => {
       listeners.add(listener);
       return () => listeners.delete(listener);
