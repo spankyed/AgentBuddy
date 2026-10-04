@@ -556,10 +556,17 @@ async function main(): Promise<void> {
 
   if (args.flags.has('record')) {
     recordTheCosts(steps, measuredMs, budget, all, args.flags.has('force'), args.flags.has('adopt'),
-      args.flags.has('forget'));
-  } else if (args.flags.has('forget')) {
-    console.log('\n--forget is what --record writes with, so it needs --record: on its own there is nothing '
-      + 'for it to change.');
+      args.flags.has('forget'), args.values.step);
+  } else if (args.flags.has('forget') || args.values.step !== undefined) {
+    // Both are modifiers on the write, so without `--record` there is no write to modify. Said rather than
+    // ignored: `--step` alone passed silently until 2026-10-04, which is a flag accepted and not used — the
+    // failure `CHAIN_FLAGS` exists to prevent, reappearing one level in from the parser.
+    const named = [args.flags.has('forget') ? '--forget' : '', args.values.step !== undefined ? '--step' : '']
+      .filter(Boolean);
+    const both = named.length > 1;
+    console.log(`\n${named.join(' and ')} ${both ? 'change' : 'changes'} what --record writes, so `
+      + `${both ? 'they need' : 'it needs'} --record: on ${both ? 'their' : 'its'} own there is nothing for `
+      + `${both ? 'them' : 'it'} to change.`);
   }
 
   console.log(`\n${verdict} in ${secs(Date.now() - started - classifyMs)}${reran}${skipped}${` on ${cores(budget)}`}${floor}`);
@@ -587,7 +594,25 @@ async function main(): Promise<void> {
  * with a one-second floor. They differ on purpose, which is why this prints everything it wrote.
  */
 function recordTheCosts(steps: readonly ChainStep[], measuredMs: ReadonlyMap<string, number>,
-  budget: number, all: boolean, force: boolean, adopt: boolean, forget: boolean): void {
+  budget: number, all: boolean, force: boolean, adopt: boolean, forget: boolean, step?: string): void {
+  // **`--step` is what bounds a mistake, and it is the guard three detectors could not give.** `--forget`
+  // writes every row from one run, so a run that measured the machine writes the machine everywhere — watched
+  // below. None of the cheap ways to *detect* such a run works, so the answer is reach: a wrong number
+  // confined to the row you named cannot touch the other twenty-eight, and `declaredShare` catches that one.
+  //
+  // Refused rather than ignored where it names nothing, because narrowing to an empty set would report
+  // "nothing recorded" and read as a quiet table — the silent no-op this repo refuses everywhere.
+  if (step !== undefined) {
+    if (!forget) {
+      console.log('\n--step narrows what --forget writes, so it needs --forget: --record on its own already '
+        + 'writes only the rows past their band.');
+      return;
+    }
+    if (!steps.some((candidate) => candidate.name === step)) {
+      console.log(`\n--step ${step} is no step in this run, so it would record nothing.`);
+      return;
+    }
+  }
   if (!all) {
     console.log('\n--record needs --all: a cached step reports no time, and recording that would size a budget from it.');
     return;
@@ -693,7 +718,10 @@ function recordTheCosts(steps: readonly ChainStep[], measuredMs: ReadonlyMap<str
   // on any step past `overBand` fires on every run too, quiet ones included, because `check:tiers` declares
   // 0.3s and takes 2-3s. What tells a contended run from a real drift is more than one reading, which is the
   // window `spec-cost.json` has and this table does not.
-  const edits = recordSeconds(measured, declared, forget ? (was, now) => was !== now : moved);
+  // Narrowed here rather than in the writer, which needs no notion of a scope: what it is handed is what it
+  // considers, so one filter is the whole of it
+  const writing = step === undefined ? measured : new Map([...measured].filter(([name]) => name === step));
+  const edits = recordSeconds(writing, declared, forget ? (was, now) => was !== now : moved);
   // Written after the costs and only with them: the table and the box it was measured on are one fact, and
   // the failure this closes is them moving apart. A run that adopts and then records nothing still takes the
   // table over — every row it re-measured agreed, which is a measurement and not an absence of one.

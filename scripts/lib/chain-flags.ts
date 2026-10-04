@@ -18,7 +18,7 @@
  * `measure.ts`, written after the same bug printed a citation claiming a load that never happened.
  */
 export const CHAIN_FLAGS = {
-  values: ['cores'],
+  values: ['cores', 'step'],
   booleans: ['all', 'dry', 'e2e', 'no-classify', 'record', 'force', 'forget', 'adopt'],
 } as const;
 

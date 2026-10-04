@@ -69,6 +69,28 @@ describe('recording what a step cost', () => {
         .toEqual([]);
     });
 
+    /**
+     * **`--step` bounds what a bad run can damage, which is the guard three detectors could not give.**
+     *
+     * The danger in `--forget` is its reach: it writes every row from one run, so a run that measured the
+     * machine writes the machine everywhere. Watched 2026-10-04, that put `build:app` at 78s against the ~39s
+     * six other runs agreed on. Three cheaper guards were tried against those logs and none tells a contended
+     * run from a real drift — `scripts/chain.ts` records all three. So the answer is not detection: a mistake
+     * confined to the row you named cannot reach the other twenty-eight, and `declaredShare` catches that one.
+     *
+     * Scoping is done by narrowing what is handed to `planSecondsEdits`, so the writer needs no notion of it.
+     */
+    it('writes only the step asked for, so a bad run cannot reach the rest of the table', () => {
+      const wanted = 'test:unit:host';
+      const every = new Map([...declared()].map(([name, was]) => [name, was + 3]));
+      const scoped = new Map([...every].filter(([name]) => name === wanted));
+
+      expect(planSecondsEdits(tables(), every, declared(), forget).edits.length,
+        'unscoped, every row that differs is written').toBeGreaterThan(5);
+      expect(planSecondsEdits(tables(), scoped, declared(), forget).edits.map((edit) => edit.step),
+        'and scoped, exactly one is').toEqual([wanted]);
+    });
+
     it('leaves the band in charge when it is not asked for', () => {
       const was = declared().get('test:integration')!;
       expect(planSecondsEdits(tables(), new Map([['test:integration', was + 3]]), declared(), band).edits,

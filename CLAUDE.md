@@ -517,6 +517,13 @@ npm run chain            # Before a merge: every check in dependency order, cold
                          #             report says the body moved, its own advice is the answer — re-run on an
                          #             idle machine until it settles. `scripts/chain.ts` records the three
                          #             cheaper guards that were tried and do not separate the two cases
+                         #   --step <name>  with --forget: write that one step and no other. **The usual
+                         #             form**, because none of those three guards works and this is what is
+                         #             left — a wrong number confined to the row you named cannot reach the
+                         #             other twenty-eight, and `declaredShare` catches the one. Bare --forget
+                         #             stays for a correlated drift, which is all-rows by nature. Refused
+                         #             where it names no step in the run, which would record nothing and
+                         #             report a quiet table
                          #   --adopt   record on another machine, writing `MEASURED_ON` with the costs.
                          #             The table and the box it was measured on are one fact, so one
                          #             operation writes both — without this the costs moved and the
