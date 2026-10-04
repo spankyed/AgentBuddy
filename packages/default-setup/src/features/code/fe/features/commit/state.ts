@@ -27,7 +27,6 @@ export interface Context {
   gitError: string | null
   isGitLoading: boolean
   selectedGitFile: GitStatusFile | null
-  gitDiff: GitDiff | null
   commitMessage: string
   revertDialogFile: GitStatusFile | null
   availableBranches: string[]
@@ -189,7 +188,6 @@ export const commitState = setup({
     handleCommitSuccess: assign({
       commitMessage: '',
       selectedGitFile: null,
-      gitDiff: null
     }),
 
     toggleRevertDialog: assign({
@@ -233,7 +231,6 @@ export const commitState = setup({
 
     clearGitDiff: assign({
       selectedGitFile: null,
-      gitDiff: null
     }),
 
     openFile: ({ event, self }) => {
@@ -328,26 +325,31 @@ export const commitState = setup({
     }),
 
 
-    handleDiffReceived: enqueueActions(({ enqueue, self, context, event }) => {
+    /**
+     * The diff names its own file, so the tab it opens is that file's.
+     *
+     * It used to read `context.selectedGitFile` — the file selected *now* — so clicking another file
+     * while a diff was in flight opened the first file's content in a tab labelled the second, and a
+     * diff arriving with nothing selected was dropped. `GitDiff` carries `path` and `staged`
+     * (`code/be/types.ts`), which is the tab's key, so no pending field is needed: the answer says
+     * where it goes.
+     */
+    handleDiffReceived: enqueueActions(({ enqueue, self, event }) => {
       const ev = event as { type: 'commit.DIFF_RECEIVED'; data: GitDiff }
-      enqueue.assign({
-        gitDiff: ev.data
-      })
       enqueue(() => {
-        if (context.selectedGitFile) {
-          const diffTabId = `diff:${context.selectedGitFile.path}:${context.selectedGitFile.staged ? 'staged' : 'unstaged'}`;
-          const isUnstagedDiff = !context.selectedGitFile.staged
-          const diffTab = {
-            path: diffTabId,
-            content: isUnstagedDiff ? ev.data.modifiedContent : '',
-            originalContent: isUnstagedDiff ? ev.data.modifiedContent : undefined,
-            modified: false,
-            isDiff: true,
-            gitDiff: ev.data,
-            gitFile: context.selectedGitFile
-          }
-          addTabToParent(self, diffTab)
+        const { path, staged } = ev.data
+        const diffTabId = `diff:${path}:${staged ? 'staged' : 'unstaged'}`
+        const isUnstagedDiff = !staged
+        const diffTab = {
+          path: diffTabId,
+          content: isUnstagedDiff ? ev.data.modifiedContent : '',
+          originalContent: isUnstagedDiff ? ev.data.modifiedContent : undefined,
+          modified: false,
+          isDiff: true,
+          gitDiff: ev.data,
+          gitFile: { path, staged }
         }
+        addTabToParent(self, diffTab)
       })
     }),
 
@@ -519,7 +521,6 @@ export const commitState = setup({
     gitError: null,
     isGitLoading: false,
     selectedGitFile: null,
-    gitDiff: null,
     commitMessage: '',
     revertDialogFile: null,
     availableBranches: [],

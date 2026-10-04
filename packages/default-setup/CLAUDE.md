@@ -76,6 +76,60 @@ Backend systems wired via `__generated__/pack-entry.ts`, each feature's with `pa
 
 Code names a system by feature id, and reaches another system with the typed `sendToSystem(name, event)` from `__generated__/events`, never its actor. Each system file defines its events with `defineSystem()`; its identity is its feature's, from `abuddy.json`. A feature's designation comes only from `abuddy.json` `features[].designation`. It is a role, not a name: it need not equal the feature id, and every one default-setup declares happens to.
 
+## What a system sends a plugin, and the three jobs one verb does
+
+`broadcastToPlugin` is fire-and-forget to **every window**. There is no reply channel and no
+"send to whoever asked", so everything a system tells a plugin arrives the same way — and three
+different jobs are done through that one verb. Which job an event is doing decides its shape, and
+getting that wrong is where a class of bug comes from.
+
+**A notification has no requester, so it is never correlated.** `NOTE_UPDATED`, `THREAD_UPDATED`,
+`commit.FILES_STAGED`, `ITEM_RENAMED` — a mutation happened and every view that cares folds it into its
+store. A handler that tries to decide whether such an event is "mine" is making a category error: nobody
+asked for it, so there is no request it could fail to match. These are already correct and must not be
+guarded, and they are the commonest of the three.
+
+**A view fetching data wants the answer to land in a slot keyed by what it asked for.** Then correlation
+is structural rather than checked: a late or another window's reply writes its own slot, the view reads
+the slot it is showing, and there is no guard anyone can forget — often it is a free cache fill instead.
+The worked examples here:
+
+| pair | the slot |
+|---|---|
+| `GET_NODE_DETAILS` → `NODE_DETAILS_RESULT` | `Map<nodeId, TNodeEntity>` (`features/database/fe/state.ts`), and `expandNode` checks `nodeDetails.has(id)` before asking, so the slot doubles as a cache |
+| `explorer.LIST_FILES` → `explorer.FILES_LISTED` | `dirContents[ev.data.path]` (`features/code/fe/features/explorer/state.ts:259`) |
+| `CREATE_NODE{tempId}` → `NODE_CREATED{tempId}` | the temp node it replaces, via `reconcileNodeId` (`features/flows/fe/state.ts`) |
+
+**Two limits, worth knowing before reaching for a key.** Where the slot is also the view's *membership
+list* — a list of open tabs, say — a write **creates** the row, so a reply for something the user has
+closed can bring it back; a key decides which row, not whether there should be one. And where the reply
+drives navigation, a key fixes which data lands but not that the user is moved: `DOCUMENT_LOADED` carries
+`target: '.edit'` (`features/library/fe/state.ts`). Both want an in-flight check as well as a key.
+
+**Where the answer is "everything", there is no key — publish instead of replying.** A whole-list replace
+is correct as written, and the better move is to delete the request: let the plugin that owns the list hold
+it and have other views select it. `features/browser` has **no request/reply pairs at all**: one emit,
+`BROWSER_CONNECTED` on connect, and its `SYNC_TABS`/`SYNC_BOOKMARKS` handlers write and return nothing.
+The code panel reads the prompts plugin's list with `usePluginState` and sends no fetch of its own
+(`features/code/fe/features/prompts/PromptsPanel.vue:266`). The host does the same with
+`FEATURE_SETTINGS_UPDATED`: all eleven feature contracts carry a `settings` field and `GET_SETTINGS`
+appears nowhere under `features/`.
+
+**A command with a result is the only job that genuinely needs a request id**, because the answer is not
+app state and no natural key identifies it. `EXECUTE_QUERY` → `QUERY_RESULT` is the worked example: the
+requester mints the id (`randomId`, not a counter stamped when the reply is built, or an abandoned
+request's late answer carries the newest id and wins) and every reply echoes it. `terminal.CREATE_TERMINAL`
+is the other shape of this — its id is minted *by the reply*, so nothing the requester knows can identify
+it.
+
+**The rule this leaves:** before adding a guard to a reply handler, decide which of the three the event is.
+A notification needs nothing, a fetch wants a keyed slot, and only a command wants an id. A guard is what
+you write when the shape is wrong, and six of them in this pack are exactly that: the two page guards in
+`features/{actions,prompts}` are a page number used as a key and are this idea in miniature, while
+`pendingActionId`, `pendingPromptId`, `answersSelectedNode` and `answersCurrentFlow` are hand-written
+correlation standing in for a slot. `answersCurrentFlow` stays whatever happens — `FLOW_EVENTS_RESULT`
+echoes no `offset`, so its paging needs the backend to say which page it answered.
+
 ## Services
 
 Service aggregation generated in `__generated__/services.ts`. Feature services are declared in `abuddy.json` `features[].services` and live in `src/features/<name>/be/services/`; the pack declares no top-level `packServices`. Systems and actions call them through `services.<key>`, next to the host's (`logger`, `emitter`, `repository`, `appData`, `traceStore`, `inference`, `secrets`, `filesystem`):
