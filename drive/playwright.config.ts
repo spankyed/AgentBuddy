@@ -15,4 +15,8 @@ export default defineConfig({
   // No timeout: you are looking at it
   timeout: 0,
   reporter: 'list',
+  // Beside the scripts, for the reason `91b348069` moved the screenshots here: driving output is not test
+  // output. Without it Playwright writes `test-results/` at the repo root, which `drive/.gitignore` cannot
+  // reach and two chain steps declare as their own
+  outputDir: 'results',
 });

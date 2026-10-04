@@ -68,6 +68,9 @@ export default defineConfig({
   workers: 1,
   timeout: 0,
   reporter: 'list',
+  // Beside the scripts rather than Playwright's default \`test-results/\` at the pack root: driving output
+  // is not test output, which is why the screenshots are here too
+  outputDir: 'results',
 });
 `;
 
