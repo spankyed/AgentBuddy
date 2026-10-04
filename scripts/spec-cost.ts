@@ -39,7 +39,7 @@ import { spawnSync } from 'node:child_process';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { REPO_ROOT } from '@abuddy/host/build/packages-built';
-import { bodyDrift, drifted, idleNow, RECORD_IDLE_FLOOR, refusesAsBusy, refusesAsContended } from './lib/measure.ts';
+import { bodyDrift, drifted, QUIET_WAIT_MS, RECORD_IDLE_FLOOR, refusesAsBusy, refusesAsContended, waitForQuiet } from './lib/measure.ts';
 import { isMeasuredMachine, machineText, thisMachine, type Machine } from './lib/core-budget.ts';
 import { UNIT_SUITES, type UnitSuite } from './lib/unit-suites.ts';
 import {
@@ -178,13 +178,30 @@ function update(plans: readonly SuitePlan[], dry: boolean): void {
   // about the box. `refusesAsContended` below asks the other question — did too much move, once we have the
   // numbers — and structurally cannot fire for a row that is merely *new*: an addition has not moved. That
   // is exactly how a cost got recorded at a load of 71 and had to be reverted by hand.
+  //
+  // It waits for that box rather than refusing it, because the load is almost always the caller's own: this
+  // is reached having just finished the work that added the spec, so the chain run that proved the work is
+  // what is holding the machine down. The refusal's only advice was "wait, then run it again", and doing the
+  // waiting here removes the round trip without changing what gets recorded — still a reading above the
+  // floor. A box held under it by something long-lived is refused exactly as before.
   if (measuring.length > 0) {
-    const idle = idleNow();
+    const percent = (share: number): string => `${Math.round(share * 100)}%`;
+    const { idle, waitedMs } = waitForQuiet({
+      floor: RECORD_IDLE_FLOOR,
+      force,
+      timeoutMs: wait ? QUIET_WAIT_MS : 0,
+      onWaiting: (first) => {
+        console.log(`${percent(first)} idle, and recording needs ${percent(RECORD_IDLE_FLOOR)} — waiting up to `
+          + `${Math.round(QUIET_WAIT_MS / 60_000)}m. --no-wait refuses instead, --force records anyway.`);
+      },
+    });
+    const waited = waitedMs > 0 ? `, after waiting ${Math.round(waitedMs / 1000)}s` : '';
     if (refusesAsBusy({ idle, floor: RECORD_IDLE_FLOOR, force })) {
-      throw new Error(`The machine is ${Math.round(idle * 100)}% idle and recording refuses below `
-        + `${Math.round(RECORD_IDLE_FLOOR * 100)}%. What you would record is the machine, not the specs.\n`
+      throw new Error(`The machine is ${percent(idle)} idle and recording refuses below `
+        + `${percent(RECORD_IDLE_FLOOR)}${waited}. What you would record is the machine, not the specs.\n`
         + '  Wait for it to go quiet, or pass --force if you mean to record this.');
     }
+    if (waitedMs > 0) console.log(`${percent(idle)} idle${waited} — measuring`);
   }
 
   // What each suite's `pretest` does, because this bypasses it by calling vitest directly. Without it the
@@ -525,7 +542,7 @@ function list(only: string | undefined, named: readonly string[]): void {
   for (const line of near.sort()) console.log(line);
 }
 
-const { mode, only, named, force, all, forget, dry } = parseArgs(process.argv.slice(2), UNIT_SUITES.map((suite) => suite.dir));
+const { mode, only, named, force, all, forget, dry, wait } = parseArgs(process.argv.slice(2), UNIT_SUITES.map((suite) => suite.dir));
 
 // Before any mode reads a record, and for all of them: a path that names no spec is the caller's mistake, and
 // every one of them is worth reporting at once rather than one per run

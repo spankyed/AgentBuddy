@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   asNumber, citation, conditions, coresBusy, cpuTimes, driftedDuring, groupBySignature, idleFrom, IDLE_FLOOR,
   pairedDelta, parseFlags, rateOf, RECORD_IDLE_FLOOR, refusesAsBusy, runOrder, signatureOf, summarise,
-  upperBound,
+  upperBound, QUIET_WAIT_MS, waitForQuiet,
 } from '../../../scripts/lib/measure.ts';
 
 /**
@@ -133,6 +133,92 @@ describe('when a measurement is refused', () => {
   it('reports drift separately from refusing to start', () => {
     expect(driftedDuring([0.9, 0.9, 0.3], IDLE_FLOOR)).toBe(true);
     expect(driftedDuring([0.9, 0.85], IDLE_FLOOR)).toBe(false);
+  });
+});
+
+/**
+ * Waiting for the box instead of refusing it, which is what `spec-cost:update` does now.
+ *
+ * The load a recording hits is nearly always the caller's own — they reach for it having just run the chain
+ * that proved the work. So the refusal's advice ("wait, then run it again") was the one thing the command
+ * could do itself. What must not change is *which* reading gets recorded: still one above the floor, never
+ * a reading taken while the box was busy.
+ *
+ * The clock and the reader are injected, so these drive it with no real load and no real time.
+ */
+describe('waiting for a quiet machine', () => {
+  /** A reader that hands back each reading in turn, then repeats the last one for ever */
+  const readings = (...values: number[]) => {
+    let at = -1;
+    return () => values[(at = Math.min(at + 1, values.length - 1))];
+  };
+  /** A clock the sleeps drive, so a timeout is reached without any time passing */
+  const clock = () => {
+    let ms = 0;
+    return { now: () => ms, sleep: (by: number) => { ms += by; } };
+  };
+  const floor = RECORD_IDLE_FLOOR;
+  const quiet = floor + 0.05;
+  const busy = floor - 0.2;
+
+  it('does not wait when the box is already quiet', () => {
+    const { now, sleep } = clock();
+    let announced = false;
+    const result = waitForQuiet({ floor, force: false, timeoutMs: QUIET_WAIT_MS, now, sleep,
+      readIdle: readings(quiet), onWaiting: () => { announced = true; } });
+
+    expect(result.waitedMs, 'nothing to wait for').toBe(0);
+    expect(announced, 'and nothing to announce').toBe(false);
+  });
+
+  /** The case the change exists for, and the one a "read once" implementation fails */
+  it('polls until the box goes quiet, and returns the quiet reading', () => {
+    const { now, sleep } = clock();
+    const result = waitForQuiet({ floor, force: false, timeoutMs: QUIET_WAIT_MS, now, sleep,
+      readIdle: readings(busy, busy, busy, quiet) });
+
+    expect(result.idle, 'the reading it settled at is above the floor').toBe(quiet);
+    expect(refusesAsBusy({ idle: result.idle, floor, force: false }), 'so the caller records it').toBe(false);
+    expect(result.waitedMs, 'and it says how long that took').toBeGreaterThan(0);
+  });
+
+  it('announces the wait once, with the reading that caused it', () => {
+    const { now, sleep } = clock();
+    const announced: number[] = [];
+    waitForQuiet({ floor, force: false, timeoutMs: QUIET_WAIT_MS, now, sleep,
+      readIdle: readings(busy, quiet), onWaiting: (first) => announced.push(first) });
+
+    expect(announced, 'once, not once per poll').toEqual([busy]);
+  });
+
+  /**
+   * A box held down by something long-lived is still refused. The wait removes a round trip; it does not
+   * make a loaded machine measurable, and the caller checks the returned reading rather than trusting it.
+   */
+  it('gives up at the timeout and hands back a reading still below the floor', () => {
+    const { now, sleep } = clock();
+    const result = waitForQuiet({ floor, force: false, timeoutMs: 30_000, now, sleep, readIdle: readings(busy) });
+
+    expect(refusesAsBusy({ idle: result.idle, floor, force: false }), 'so the caller refuses').toBe(true);
+    expect(result.waitedMs, 'having waited the timeout out').toBeGreaterThanOrEqual(30_000);
+  });
+
+  // `--force` means "record this anyway", so there is nothing to wait for
+  it('does not wait under --force', () => {
+    const { now, sleep } = clock();
+    const result = waitForQuiet({ floor, force: true, timeoutMs: QUIET_WAIT_MS, now, sleep, readIdle: readings(busy) });
+
+    expect(result.waitedMs).toBe(0);
+    expect(result.idle, 'and the busy reading is what the caller is given').toBe(busy);
+  });
+
+  // `--no-wait` is passed through as a zero timeout, which must refuse rather than poll once
+  it('refuses at once when the timeout is zero', () => {
+    const { now, sleep } = clock();
+    const result = waitForQuiet({ floor, force: false, timeoutMs: 0, now, sleep, readIdle: readings(busy, quiet) });
+
+    expect(result.idle, 'the second reading is never taken').toBe(busy);
+    expect(result.waitedMs).toBe(0);
   });
 });
 

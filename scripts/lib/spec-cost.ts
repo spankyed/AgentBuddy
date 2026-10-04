@@ -821,7 +821,7 @@ export type SpecCostMode = 'check' | 'list' | 'update';
  * without joining the list. A flag dropped in silence is worst for `--dry`, where it means a measuring run
  * and a rewritten record in place of the error that was asked for.
  */
-export const SPEC_COST_FLAGS = ['all', 'dry', 'force', 'list', 'forget', 'suite', 'update'] as const;
+export const SPEC_COST_FLAGS = ['all', 'dry', 'force', 'list', 'forget', 'no-wait', 'suite', 'update'] as const;
 export type SpecCostFlag = (typeof SPEC_COST_FLAGS)[number];
 
 export interface SpecCostArgs {
@@ -835,6 +835,13 @@ export interface SpecCostArgs {
   /** Throw away every window and start again from this run. Needs `all`; see `forgetsWindows` */
   readonly forget: boolean;
   readonly dry: boolean;
+  /**
+   * Whether to wait for a quiet machine rather than refusing at once (`--no-wait` turns it off).
+   *
+   * A flag and not a `process.env.CI` sniff: a CI-gated branch in this repo never fires, and the one that
+   * was cost thirteen spec files a silent green. A caller that must not block says so.
+   */
+  readonly wait: boolean;
 }
 
 export function parseArgs(argv: readonly string[], suiteDirs: readonly string[]): SpecCostArgs {
@@ -903,7 +910,7 @@ export function parseArgs(argv: readonly string[], suiteDirs: readonly string[])
 
   return {
     mode: has('list') ? 'list' : has('update') ? 'update' : 'check',
-    only, named, force: has('force'), all, forget, dry: has('dry'),
+    only, named, force: has('force'), all, forget, dry: has('dry'), wait: !has('no-wait'),
   };
 }
 
