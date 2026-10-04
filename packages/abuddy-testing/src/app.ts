@@ -358,6 +358,30 @@ export async function startApp(options: StartAppOptions): Promise<TestApp> {
     throw new Error(`The app didn't settle after ${SETTLE_LIMIT} event loop turns: a system keeps sending events`);
   };
 
+  /**
+   * The one cause of "Sent: nothing" that the sentence above cannot show, appended when it is the cause.
+   *
+   * The bus handles `OUTGOING` only in `clientSeen`; in `awaitingClient` the event has no transition at all, so
+   * XState discards it and nothing is logged, reported or recorded. A test whose system answered correctly then
+   * fails with an empty `Sent:` list and no way to tell "my handler never ran" from "my handler ran and nobody
+   * was listening" — which cost an afternoon, and the answer was only ever in `@abuddy/host/CLAUDE.md`.
+   *
+   * Asked of the bus rather than tracked as a flag, because a flag would be wrong: `CLIENT_CONNECTED` reaches
+   * every running bus, so another app's `connect()` in the same test connects this one too. The actor's own
+   * state is the answer, and it is read when the wait fails rather than when it started.
+   *
+   * It is appended to a message that has already failed, never reported as a drop. Reporting in the bus was the
+   * other option and is worse three ways: the dedupe key (`reportedDrops`) carries no notion of *why*, so a
+   * "no client" report would suppress a later differently-caused drop of the same plugin and type, which
+   * `machine.ts`'s own comment forbids; `reportError` emits a `SYSTEM_ERROR` that `takeSystemErrors` turns into
+   * a failure, breaking three green specs and any pack test whose systems send before connecting; and the volume
+   * is unbounded, since every pre-connect log line is one dropped `LOG_ADDED`.
+   */
+  const heldForAClient = (): string => (bus.getSnapshot().value === 'awaitingClient'
+    ? ' No client has connected, and the bus holds sends to plugins until one does, so a reply had nowhere to go:'
+      + ' `await app.connect()` before the send.'
+    : '');
+
   const app: TestApp = {
     connect: () => call(async () => {
       testRootEvents.emitConnected();
@@ -379,7 +403,7 @@ export async function startApp(options: StartAppOptions): Promise<TestApp> {
         if (index === -1) return undefined;
         taken.add(index);
         return emitted[index].event;
-      }, timeoutMs, () => `No ${type} sent to ${id} within ${timeoutMs}ms. Sent: ${emitted.map((m) => `${m.to}:${m.event.type}`).join(', ') || 'nothing'}.`);
+      }, timeoutMs, () => `No ${type} sent to ${id} within ${timeoutMs}ms. Sent: ${emitted.map((m) => `${m.to}:${m.event.type}`).join(', ') || 'nothing'}.${heldForAClient()}`);
     }),
     settle: () => call(() => settle()),
     runFlow: (label, { event, data, timeoutMs = 10_000 } = {}) => call(async () => {

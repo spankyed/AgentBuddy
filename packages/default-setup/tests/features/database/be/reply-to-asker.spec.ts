@@ -41,6 +41,25 @@ describe('a query run by a plugin', () => {
   })
 
   /**
+   * Why nothing arrived, when the reason is that nobody was listening.
+   *
+   * This is the failure that cost an afternoon while writing the cases above: the handler ran, answered
+   * correctly, and the answer was discarded because the bus holds sends to plugins until a client connects — so
+   * the test failed with an empty `Sent:` list and no way to tell that from a handler that never ran. Nothing
+   * logged it; the answer was only in `@abuddy/host/CLAUDE.md`.
+   *
+   * Deliberately no `app.connect()`. A short timeout because the point is the message, not the wait.
+   */
+  it('says why nothing arrived when no client has connected', async () => {
+    const app = await startApp({ systems: ['database'] })
+
+    await app.send('database', { type: 'EXECUTE_QUERY', code: 'return 1', requestId: 'q-3' }, { sender: DATABASE })
+
+    await expect(app.nextEmit('database', 'QUERY_RESULT', { timeoutMs: 200 }))
+      .rejects.toThrow(/No client has connected/)
+  })
+
+  /**
    * The schema change stays a broadcast, and that is the point of the case.
    *
    * A transaction produces two things: an answer for whoever ran it, and news every window's schema view wants.
