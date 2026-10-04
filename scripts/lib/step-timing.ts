@@ -38,31 +38,17 @@ export function criticalPath<S extends SchedulableStep>(steps: readonly S[]): { 
 }
 
 /**
- * Declared `seconds` that a run has contradicted.
- *
- * The field feeds two things — the kill budget (four times it) and the critical path — and nothing kept it
- * honest, so it drifted both ways: `packages:ensure` said 1s for a step that takes 14s when it actually
- * builds, and `test:unit:abuddy-sdk` said 25s for one measured at 14s. A number nobody re-measures is a
- * number that quietly stops meaning anything, so the chain says when its own table has gone stale, and
- * prints the value to record. Reported rather than enforced: a slow machine should not fail a run.
- *
- * The band is wide on purpose. Two lanes, a warm page cache and a loaded laptop move a step's time a long
- * way, and a warning that fires on ordinary variance is one people learn to skip. Half to double is where
- * the number has stopped being useful as a report, which since 2026-10-03 is all it is: a deadline is a
- * declared class and no longer a multiple of this number, so nothing is killed for drifting.
- *
- * A step that finished in under a second is left alone, and that is not a rounding nicety. `seconds` is
- * what a step costs *when it does its work*, and a step can run having nothing to do: `packages:ensure`
- * with the packages fresh returns in 0.4s. Reporting that as drift told the first run of this to record
- * `seconds: 14 -> 0` — the cached cost, which is the exact confusion this field was corrected for.
- */
-/**
  * Asked only of a run that did all the work at the measured schedule — `driftReport` in chain-output.ts holds
  * that gate. A step's time says nothing about the table otherwise: a pooled step may have run two of eleven
  * projects, and, measured, `typecheck` takes 12s in a chain with nine steps cached against 27s in a full one,
  * so an incremental run at the default lane count reported it as drifted by more than half.
  *
  * Where a declared cost has stopped describing the step: past double, or under half.
+ *
+ * The band is wide on purpose. Two lanes, a warm page cache and a loaded laptop move a step's time a long
+ * way, and a warning that fires on ordinary variance is one people learn to skip. Half to double is where
+ * the number has stopped being useful as a report, which since 2026-10-03 is all it is: a deadline is a
+ * declared class and no longer a multiple of this number, so nothing is killed for drifting.
  *
  * One constant with two readers — `driftedSteps` below, which wants both sides, and `howLong` in
  * chain-output.ts, which wants only the slow one to decide whether a failure is worth blaming on contention.
@@ -190,6 +176,20 @@ export function outgrownRungs<S extends SchedulableStep & { readonly timeout?: T
   return found;
 }
 
+/**
+ * Declared `seconds` that a run has contradicted.
+ *
+ * The field feeds two things — the kill budget (four times it) and the critical path — and nothing kept it
+ * honest, so it drifted both ways: `packages:ensure` said 1s for a step that takes 14s when it actually
+ * builds, and `test:unit:abuddy-sdk` said 25s for one measured at 14s. A number nobody re-measures is a
+ * number that quietly stops meaning anything, so the chain says when its own table has gone stale, and
+ * prints the value to record. Reported rather than enforced: a slow machine should not fail a run.
+ *
+ * A step that finished in under a second is left alone, and that is not a rounding nicety. `seconds` is
+ * what a step costs *when it does its work*, and a step can run having nothing to do: `packages:ensure`
+ * with the packages fresh returns in 0.4s. Reporting that as drift told the first run of this to record
+ * `seconds: 14 -> 0` — the cached cost, which is the exact confusion this field was corrected for.
+ */
 export function driftedSteps<S extends SchedulableStep>(
   steps: readonly S[],
   measuredMs: ReadonlyMap<string, number>,
