@@ -19,7 +19,7 @@
  */
 export const CHAIN_FLAGS = {
   values: ['cores'],
-  booleans: ['all', 'dry', 'e2e', 'no-classify', 'record', 'force', 'adopt'],
+  booleans: ['all', 'dry', 'e2e', 'no-classify', 'record', 'force', 'forget', 'adopt'],
 } as const;
 
 /** Each flag as it is written on a command line and in the docs */

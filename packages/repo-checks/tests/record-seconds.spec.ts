@@ -36,6 +36,46 @@ describe('recording what a step cost', () => {
       .toEqual([...steps].sort());
   });
 
+  /**
+   * What `--forget` writes that the band holds back, which is the whole reason it exists.
+   *
+   * The band is `max(1s, 35%)` and a staleness of 10-20% sits inside it, so a row that drifted that far could
+   * not be corrected by any means: `--force` overrides the two refusals, not this. Measured 2026-10-04 over six
+   * `--all` runs, `test:integration` declared 60s and read 61.2-70.6s, and `test:unit:host` declared 42s and
+   * read 33.5-36.1s — both inside their bands, in both directions, and neither writable.
+   *
+   * The predicate is `was !== now` and not "always", because `planSecondsEdits` has no no-op filter: an
+   * unconditional write would splice identical bytes for every unchanged row, call it an edit, and move the
+   * mtime of a file five chain steps read.
+   */
+  describe('--forget, which writes a row the band holds', () => {
+    const forget = (was: number | undefined, now: number): boolean => was !== now;
+
+    it('writes a measurement the band calls settled', () => {
+      const was = declared().get('test:integration')!;
+      const inside = was + 3;
+      expect(band(was, inside), 'the band keeps this row, which is why it could not be corrected').toBe(false);
+
+      const { edits } = planSecondsEdits(tables(), new Map([['test:integration', inside]]), declared(), forget);
+      expect(edits).toEqual([
+        { step: 'test:integration', from: was, to: inside, file: 'scripts/lib/chain-steps.ts' },
+      ]);
+    });
+
+    it('writes nothing for a row that measured what the table says', () => {
+      const same = new Map([['compile', declared().get('compile')!]]);
+      expect(planSecondsEdits(tables(), same, declared(), forget).edits,
+        'an unchanged row would be identical bytes, and the freshness sweep reports an mtime that moved for none')
+        .toEqual([]);
+    });
+
+    it('leaves the band in charge when it is not asked for', () => {
+      const was = declared().get('test:integration')!;
+      expect(planSecondsEdits(tables(), new Map([['test:integration', was + 3]]), declared(), band).edits,
+        'so a quiet run still writes nothing without the flag').toEqual([]);
+    });
+  });
+
   it('writes the measurement into the table that declares it', () => {
     const { edits, sources } = planSecondsEdits(tables(), new Map([['compile', 99]]), declared(), band);
     expect(edits).toEqual([{ step: 'compile', from: declared().get('compile'), to: 99, file: 'scripts/lib/chain-steps.ts' }]);

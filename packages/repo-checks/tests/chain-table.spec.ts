@@ -700,16 +700,58 @@ describe("the chain documents the flags it takes", () => {
   const undocumented = (flags: readonly string[], guide: string): string[] =>
     flags.filter((flag) => !guide.includes(flag));
 
+  /**
+   * The guide's entry for `npm run chain`, not the whole guide — which took a correction.
+   *
+   * Searching the file let **another command's** flag satisfy this check. `spec-cost:update` also takes
+   * `--forget`, deliberately: the word means the same thing for both records, which is the repo's naming rule.
+   * So when the chain gained its own `--forget`, the substring was already in `CLAUDE.md` and this passed over
+   * an undocumented flag — the failure it exists to prevent, caused by a name the two commands share on
+   * purpose. The same shape as `ci.yml`'s header check, which reads the comment block above `jobs:` rather
+   * than the file, because every rung appears in some `run:` line.
+   *
+   * The entry runs from the `npm run chain` line to the next command at column 0, which is how that block is
+   * written: one `npm run <x>` per entry with its flags indented under it.
+   */
+  const chainEntry = (guide: string): string => {
+    const lines = guide.split('\n');
+    const from = lines.findIndex((line) => line.startsWith('npm run chain '));
+    const rest = lines.slice(from + 1);
+    const to = rest.findIndex((line) => /^npm (run )?[\w:-]+ /.test(line));
+    return [lines[from] ?? '', ...(to === -1 ? rest : rest.slice(0, to))].join('\n');
+  };
+
   const guide = (): string => fs.readFileSync(path.join(REPO_ROOT, 'CLAUDE.md'), 'utf-8');
 
   it('names every flag it accepts, so a new one cannot ship unmentioned', () => {
     const flags = population("the chain's flags", chainFlagNames());
-    expect(undocumented(flags, guide()), "add these to the chain's flag list in CLAUDE.md").toEqual([]);
+    expect(undocumented(flags, chainEntry(guide())), "add these to the chain's flag list in CLAUDE.md")
+      .toEqual([]);
   });
 
   it('reports a flag the guide never mentions, which is what the case above rests on', () => {
     // The mutation, over the input: a scan that found nothing would satisfy the case above whatever the
     // guide said, which is how three flags came to be undocumented under a check that did not exist
     expect(undocumented(['--cores', '--invented'], 'takes --cores N, and nothing else')).toEqual(['--invented']);
+  });
+
+  /**
+   * And the entry it reads is the chain's and not the file, which is what makes the case above able to fail.
+   *
+   * Both halves matter, as they do for `ci.yml`'s header: it must find something, and it must not be
+   * everything. A reading that returned the whole guide would be satisfied by any command's flags.
+   */
+  it('reads the chain entry rather than the guide, so another command cannot vouch for a flag', () => {
+    const entry = chainEntry(guide());
+
+    expect(entry, 'the entry it is about').toContain('npm run chain ');
+    expect(entry.length, 'and not the whole file').toBeLessThan(guide().length / 4);
+
+    // The collision itself, with a real example rather than a banned word: `--suite` is `spec-cost:update`'s
+    // and the chain has no such flag, so the guide holds it and this entry must not. Naming the other command
+    // in prose is fine and this used to forbid it, which tested the wrong thing
+    expect(guide(), "another command's flag, in the file").toContain('--suite <dir>');
+    expect(entry, 'and outside the chain\'s entry, so it could never vouch for a chain flag')
+      .not.toContain('--suite');
   });
 });

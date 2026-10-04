@@ -501,6 +501,14 @@ npm run chain            # Before a merge: every check in dependency order, cold
                          #             refuses a busy machine, and refuses a run where too much moved to
                          #             have been measuring the code. --force overrides the last two
                          #   --force   record anyway, and know the number is forced
+                         #   --forget  with --all --record: write what this run measured for every step,
+                         #             not only the rows past their band. The band is max(1s, 35%), which is
+                         #             wider than a 10-20% staleness, so a row inside it cannot be corrected
+                         #             by any other means — `--force` overrides the refusals, not the band.
+                         #             It writes only rows whose value actually differs, so a run that agrees
+                         #             with the table leaves no edit and moves no mtime. The same word
+                         #             `spec-cost:update` takes, for the same operation: ignore what is
+                         #             recorded, keep what this run measured
                          #   --adopt   record on another machine, writing `MEASURED_ON` with the costs.
                          #             The table and the box it was measured on are one fact, so one
                          #             operation writes both — without this the costs moved and the

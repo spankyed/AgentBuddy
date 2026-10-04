@@ -555,7 +555,11 @@ async function main(): Promise<void> {
   if (outgrown !== '') console.log(outgrown);
 
   if (args.flags.has('record')) {
-    recordTheCosts(steps, measuredMs, budget, all, args.flags.has('force'), args.flags.has('adopt'));
+    recordTheCosts(steps, measuredMs, budget, all, args.flags.has('force'), args.flags.has('adopt'),
+      args.flags.has('forget'));
+  } else if (args.flags.has('forget')) {
+    console.log('\n--forget is what --record writes with, so it needs --record: on its own there is nothing '
+      + 'for it to change.');
   }
 
   console.log(`\n${verdict} in ${secs(Date.now() - started - classifyMs)}${reran}${skipped}${` on ${cores(budget)}`}${floor}`);
@@ -583,7 +587,7 @@ async function main(): Promise<void> {
  * with a one-second floor. They differ on purpose, which is why this prints everything it wrote.
  */
 function recordTheCosts(steps: readonly ChainStep[], measuredMs: ReadonlyMap<string, number>,
-  budget: number, all: boolean, force: boolean, adopt: boolean): void {
+  budget: number, all: boolean, force: boolean, adopt: boolean, forget: boolean): void {
   if (!all) {
     console.log('\n--record needs --all: a cached step reports no time, and recording that would size a budget from it.');
     return;
@@ -665,7 +669,16 @@ function recordTheCosts(steps: readonly ChainStep[], measuredMs: ReadonlyMap<str
     return;
   }
 
-  const edits = recordSeconds(measured, declared, moved);
+  // **`--forget` changes what is written, never what is refused.** The band keeps a quiet run from rewriting
+  // the file on jitter, and it is also why a row 10-20% stale cannot be corrected at all: `max(1s, 35%)` is
+  // wider than that, and `--force` overrides the two refusals above rather than this. So the flag drops the
+  // band from the *write* while the refusals go on counting rows that crossed it — contention is still
+  // contention, which is the separation `spec-cost` drew between its own `--forget` and `--force`.
+  //
+  // `was !== now` rather than always: `planSecondsEdits` has no no-op filter, so writing unconditionally would
+  // splice identical bytes for every unchanged row, report `60s -> 60s` as an edit, and move this file's mtime
+  // for nothing — which the freshness sweep reports, on a file five steps read.
+  const edits = recordSeconds(measured, declared, forget ? (was, now) => was !== now : moved);
   // Written after the costs and only with them: the table and the box it was measured on are one fact, and
   // the failure this closes is them moving apart. A run that adopts and then records nothing still takes the
   // table over — every row it re-measured agreed, which is a measurement and not an absence of one.
