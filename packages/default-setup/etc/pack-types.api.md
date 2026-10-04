@@ -1187,6 +1187,14 @@ interface DatabaseContext {
     isLoading: boolean;
     error: string | null;
     executionTime: number | null;
+    /**
+     * The request each reply has to name to be accepted, or `null` when nothing is outstanding.
+     *
+     * Two fields rather than one: the verbs are independent, and deleting a row chains a transaction into
+     * a follow-up query, so a single slot would have the query overwrite the transaction it came from.
+     */
+    pendingQueryId: string | null;
+    pendingTransactionId: string | null;
     selectedSchemaItem: {
         type: 'attribute' | 'entity' | 'relation';
         value: string;
@@ -2064,9 +2072,11 @@ type IncomingCommitEvents = {
 type IncomingDatabaseEvents = {
     type: 'EXECUTE_QUERY';
     code: string;
+    requestId: string;
 } | {
     type: 'EXECUTE_TRANSACTION';
     code: string;
+    requestId: string;
 } | {
     type: 'GENERATE_AI_QUERY';
     prompt: string;
@@ -3369,25 +3379,53 @@ type OutgoingCommitEvents = {
 type OutgoingDatabaseEvents = {
     type: 'DATABASE_REFRESH';
     data: DatabaseStartupData;
-} | {
+}
+/**
+ * The four replies to `EXECUTE_QUERY`/`EXECUTE_TRANSACTION`, each naming the request it answers.
+ *
+ * **The id is the requester's, not a sequence number.** Whoever sends the request mints it, so a reply
+ * identifies *that* request rather than saying which emit was most recent — the difference matters for
+ * the case this exists for: a requester that gave up waiting and asked again. A counter stamped at emit
+ * time gives the abandoned request's late reply the highest id, so it wins.
+ *
+ * It also has to be unique across windows, because `broadcastToPlugin` reaches every one of them, so a
+ * per-window counter would collide. `randomId` (`@abuddy/sdk/utils/pure`) is what the senders use.
+ */
+ | {
     type: 'QUERY_RESULT';
     result: any;
     executionTime: number;
+    requestId: string;
 } | {
     type: 'QUERY_ERROR';
     error: string;
+    requestId: string;
 } | {
     type: 'TRANSACTION_RESULT';
     result: any;
     executionTime: number;
+    requestId: string;
 } | {
     type: 'TRANSACTION_ERROR';
     error: string;
+    requestId: string;
 } | {
     type: 'AI_QUERY_LOADING';
 } | {
     type: 'AI_QUERY_GENERATED';
     query: string;
+}
+/**
+ * Generating a query from a prompt failed, which is not a query failing.
+ *
+ * Its own event because it answers no `EXECUTE_QUERY` and so can carry no `requestId`. It used to be a
+ * `QUERY_ERROR`, which made that event mean two things — and once a consumer ignores a `QUERY_ERROR`
+ * whose id is not the one it is waiting for, an AI failure sent as one is silently swallowed and the
+ * plugin's loading flag never clears.
+ */
+ | {
+    type: 'AI_QUERY_ERROR';
+    error: string;
 } | {
     type: 'TRACE_FLOWS_RESULT';
     flows: TNodeEntity[];

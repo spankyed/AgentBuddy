@@ -31,8 +31,16 @@ export const databaseSystem = setup({
         data: { schema }
       });
     },
+    /**
+     * The id is read once, here, and closed over.
+     *
+     * Not stashed in context: this action is `async` on a state with no guard against re-entry, so a
+     * second `EXECUTE_QUERY` is accepted while this one is awaiting, and a single context field would be
+     * the newer request's by the time this reply is built. The closure is what makes each reply name its
+     * own request even when two are in flight.
+     */
     executeQuery: async ({ event }) => {
-      const { code } = databaseSpec.typeOf('EXECUTE_QUERY', event);
+      const { code, requestId } = databaseSpec.typeOf('EXECUTE_QUERY', event);
       
       try {
         const startTime = performance.now();
@@ -42,18 +50,21 @@ export const databaseSystem = setup({
         broadcastToPlugin('database', { 
           type: 'QUERY_RESULT',
           result,
-          executionTime
+          executionTime,
+          requestId
         });
       } catch (error: unknown) {
         logger.error('Query execution failed:', { error: errorMessage(error) });
         broadcastToPlugin('database', { 
           type: 'QUERY_ERROR',
-          error: errorMessage(error)
+          error: errorMessage(error),
+          requestId
         });
       }
     },
+    /** The id is closed over, for `executeQuery`'s reason above */
     executeTransaction: async ({ event }) => {
-      const { code } = databaseSpec.typeOf('EXECUTE_TRANSACTION', event);
+      const { code, requestId } = databaseSpec.typeOf('EXECUTE_TRANSACTION', event);
       
       try {
         const startTime = performance.now();
@@ -63,7 +74,8 @@ export const databaseSystem = setup({
         broadcastToPlugin('database', { 
           type: 'TRANSACTION_RESULT',
           result,
-          executionTime
+          executionTime,
+          requestId
         });
         
         // Send refresh event with updated schema
@@ -77,7 +89,8 @@ export const databaseSystem = setup({
         logger.error('Transaction execution failed:', { error: errorMessage(error) });
         broadcastToPlugin('database', { 
           type: 'TRANSACTION_ERROR',
-          error: errorMessage(error)
+          error: errorMessage(error),
+          requestId
         });
       }
     },
@@ -87,7 +100,7 @@ export const databaseSystem = setup({
       if (!prompt?.trim()) {
         logger.error('Invalid prompt provided for AI query generation');
         broadcastToPlugin('database', {
-          type: 'QUERY_ERROR',
+          type: 'AI_QUERY_ERROR',
           error: 'Please provide a valid prompt'
         });
         return;

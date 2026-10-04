@@ -28,7 +28,7 @@ export async function action(
 
   if (!userPrompt?.trim()) {
     services.emitter.broadcastToPlugin('default-setup/database', {
-      type: 'QUERY_ERROR',
+      type: 'AI_QUERY_ERROR',
       error: 'Please provide a valid prompt',
     });
     return { success: false, error: 'Empty prompt' };
@@ -43,7 +43,7 @@ export async function action(
 
     if (!systemPrompt) {
       services.emitter.broadcastToPlugin('default-setup/database', {
-        type: 'QUERY_ERROR',
+        type: 'AI_QUERY_ERROR',
         error: 'DB Transaction prompt template not found. Run seed import.',
       });
       return { success: false, error: 'Prompt not found' };
@@ -61,7 +61,7 @@ export async function action(
 
     if (!query) {
       services.emitter.broadcastToPlugin('default-setup/database', {
-        type: 'QUERY_ERROR',
+        type: 'AI_QUERY_ERROR',
         error: 'Codex returned an empty response.',
       });
       return { success: false, error: 'Empty response' };
@@ -76,7 +76,7 @@ export async function action(
   } catch (error: any) {
     const errorMessage = formatProviderError(error, 'Codex');
     services.emitter.broadcastToPlugin('default-setup/database', {
-      type: 'QUERY_ERROR',
+      type: 'AI_QUERY_ERROR',
       error: errorMessage,
     });
     return { success: false, error: errorMessage };

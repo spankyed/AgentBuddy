@@ -15,6 +15,14 @@ export interface DatabaseContext {
   isLoading: boolean;
   error: string | null;
   executionTime: number | null;
+  /**
+   * The request each reply has to name to be accepted, or `null` when nothing is outstanding.
+   *
+   * Two fields rather than one: the verbs are independent, and deleting a row chains a transaction into
+   * a follow-up query, so a single slot would have the query overwrite the transaction it came from.
+   */
+  pendingQueryId: string | null;
+  pendingTransactionId: string | null;
   selectedSchemaItem: {
     type: 'entity' | 'attribute' | 'relation';
     value: string;

@@ -212,14 +212,14 @@ curl -s -X POST http://$E/close -H "$H"
 **`/wait` rather than re-asking `/state`.** `{"state":"running.connected"}` returns when the app gets
 there; `{"plugin":"default-setup/notes"}` returns when that plugin registers. One of the two, never both.
 
-**One `/qx` or `/tx` at a time.** `QUERY_RESULT` carries no request id, so the engine runs them in order
-and matches each reply to the request in flight. The gap that leaves: a query that *times out* and then
-finishes anyway has its reply arrive with no one waiting for it, and the next request takes it. If that
-matters, raise `timeoutMs` rather than overlapping requests.
+**Each reply names the request it answers**, so `/qx` and `/tx` may run concurrently and a reply that
+belongs to something else is ignored — a query you stopped waiting for, or one a person ran in the
+Database plugin while the session was driving. The engine used to run one at a time instead, because the
+reply named nothing and the next one of the right type therefore had to be yours.
 
 **`/qx` and `/tx` reach the live database**, not the files on disk — they go to the running app, so a
 write is visible to the next read in the same session. `abuddy db exec` cannot do that: it refuses while
-the app holds the write lock. One at a time, since the reply carries no request id.
+the app holds the write lock.
 
 **A failed verb answers `200` with `{ "ok": false, "error": ... }`** — the request was fine and the
 operation was not, which is the common case while driving. A malformed request, a missing token or an

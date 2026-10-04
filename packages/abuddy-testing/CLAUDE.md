@@ -212,12 +212,14 @@ Things worth knowing before changing it:
 - **`/qx` and `/tx` go over the bus**, to default-setup's `EXECUTE_QUERY`/`EXECUTE_TRANSACTION`, which
   already run against the live engine with every installed pack's entity types. So a write is visible to
   the next read in the same session — which `abuddy db exec` cannot do, since it refuses while the app
-  holds the write lock. They are **serialised**, because `QUERY_RESULT` carries no request id and two in
-  flight could not be told apart.
-- **Serialising covers requests in flight and not one that was abandoned.** A `/qx` that hits
-  `REPLY_TIMEOUT_MS` and then completes anyway has its reply arrive with nothing waiting for it, and the
-  next request is what takes it. Only a request id on default-setup's contract closes that, which is the
-  smaller change if concurrency is ever wanted — the engine cannot tell a late reply from a fresh one.
+  holds the write lock.
+- **A reply is matched by the `requestId` the request minted**, so they run concurrently and an answer
+  that belongs to something else is ignored. The engine ran one at a time until 2026-10-04, because the
+  reply named no request and the next one of the right type therefore had to be this one's — which held
+  only while nothing was abandoned. A `/qx` that timed out and then completed had its reply arrive with
+  nothing waiting for it, and the next request took it. Two cases cover the pair now: a reply for a
+  request the engine did not make, and an abandoned request's late answer; removing the id check fails
+  both and nothing else.
 - **`/wait` is the fixture's own wait**, so a state is awaited rather than re-requested. Without it the
   only way to wait is to ask `/state` repeatedly, which is the polling this repo avoids where something
   event-driven exists.

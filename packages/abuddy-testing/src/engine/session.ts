@@ -1,3 +1,5 @@
+import { randomId } from '@abuddy/sdk/utils/pure';
+
 /**
  * The verbs a live drive session answers, over one already-open page.
  *
@@ -164,25 +166,20 @@ export function createSession({ page, takeErrors }: SessionDeps): EngineSession 
   const waiting = new Set<(event: SeenEvent) => void>();
 
   /**
-   * One bus round-trip at a time, and the contract is the reason rather than caution.
+   * Waits for the reply to *this* request.
    *
-   * `QUERY_RESULT` carries no request id (default-setup's `features/database/be/types.ts`), so two
-   * overlapping queries cannot be told apart by their replies. Serialising makes the next reply
-   * unambiguously this request's. Adding a request id to that contract would remove the need, and is
-   * the smaller change if an agent ever wants concurrency.
+   * The id is what makes that possible, and it replaced a queue. The engine used to run one round-trip
+   * at a time because `QUERY_RESULT` named no request, so the next reply of the right type had to be
+   * this one's — which held only while nothing was abandoned. A request that timed out and then
+   * finished still had a reply in the post, and the next caller took it. Matching the id ends that: an
+   * orphan matches nobody, and a reply caused by someone else's query — a person using the Database
+   * plugin while a session drives — is no longer mistaken for the engine's.
    */
-  let queue: Promise<unknown> = Promise.resolve();
-  const serialised = <R>(run: () => Promise<R>): Promise<R> => {
-    const next = queue.then(run, run);
-    // The chain must not inherit this call's rejection, or one failed query poisons every later one
-    queue = next.then(() => undefined, () => undefined);
-    return next;
-  };
-
-  const nextReply = (ok: string, bad: string): Promise<unknown> =>
+  const nextReply = (requestId: string, ok: string, bad: string): Promise<unknown> =>
     new Promise((resolve, reject) => {
       const receive = (event: SeenEvent): void => {
         if (event.type !== ok && event.type !== bad) return;
+        if (event.event.requestId !== requestId) return;
         clearTimeout(timer);
         waiting.delete(receive);
         if (event.type === bad) reject(new Error(String(event.event.error ?? 'the system reported an error')));
@@ -201,11 +198,11 @@ export function createSession({ page, takeErrors }: SessionDeps): EngineSession 
          * and make this look like a database problem. A message that names one cause sends a reader to
          * the wrong place; these two verbs tell the three apart in one call each.
          */
-        reject(new Error(`no ${ok} or ${bad} within ${REPLY_TIMEOUT_MS}ms. Check GET /state for an `
-          + '`error` root state and GET /errors for a serialisation failure in the subscription — a '
-          + 'value the app cannot send (a BigInt, a class instance) breaks the event stream for the '
-          + 'rest of the session. Otherwise the query is still running, or no pack provides '
-          + `${DATABASE_SYSTEM}.`));
+        reject(new Error(`no ${ok} or ${bad} for ${requestId} within ${REPLY_TIMEOUT_MS}ms. `
+          + 'Check GET /state for an "error" root state and GET /errors for a serialisation failure in '
+          + 'the subscription — a value the app cannot send (a BigInt, a class instance) breaks the '
+          + 'event stream for the rest of the session. Otherwise the query is still running, or no pack '
+          + `provides ${DATABASE_SYSTEM}.`));
       }, REPLY_TIMEOUT_MS);
       waiting.add(receive);
     });
@@ -219,14 +216,15 @@ export function createSession({ page, takeErrors }: SessionDeps): EngineSession 
       return null;
     }, [to, event] as [string, Record<string, unknown>]);
 
-  const roundTrip = (kind: keyof typeof REPLIES, code: string): Promise<unknown> =>
-    serialised(async () => {
-      const { send, ok, bad } = REPLIES[kind];
-      // Armed before the send, so a reply that arrives immediately is not missed
-      const reply = nextReply(ok, bad);
-      await sendToSystem(DATABASE_SYSTEM, { type: send, code });
-      return reply;
-    });
+  const roundTrip = async (kind: keyof typeof REPLIES, code: string): Promise<unknown> => {
+    const { send, ok, bad } = REPLIES[kind];
+    // Minted here, by the requester: a reply can only name a request if the request named itself first
+    const requestId = randomId({ prefix: `${kind}-` });
+    // Armed before the send, so a reply that arrives immediately is not missed
+    const reply = nextReply(requestId, ok, bad);
+    await sendToSystem(DATABASE_SYSTEM, { type: send, code, requestId });
+    return reply;
+  };
 
   return {
     ready: async () => {

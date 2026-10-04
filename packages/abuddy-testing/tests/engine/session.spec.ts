@@ -50,6 +50,18 @@ const sessionWith = (overrides: Partial<SessionPage> = {}) => {
   return { ...fake, session };
 };
 
+/**
+ * The `[to, event]` tuple the page was last asked to send, or a failure that says nothing was sent.
+ *
+ * Destructuring straight off `calls.at(-1)?.[1]` throws an opaque `TypeError` when no send happened,
+ * which is the likeliest thing to go wrong in a test about sends.
+ */
+const lastSend = (calls: { mock: { calls: unknown[][] } }): [string, Record<string, unknown>] => {
+  const call = calls.mock.calls.at(-1);
+  if (call === undefined) throw new Error('nothing was sent to the page');
+  return call[1] as [string, Record<string, unknown>];
+};
+
 /** Lets the microtasks a verb queues run, without waiting on any real timer */
 const settle = () => new Promise((resolve) => setImmediate(resolve));
 
@@ -167,44 +179,58 @@ describe('the in-page bridge', () => {
   });
 
   it('still wakes a waiter when the buffer is full', async () => {
-    const { session, emit } = sessionWith();
+    const { session, emit, evaluateWith } = sessionWith();
     await session.ready();
 
     for (let n = 0; n < MAX_SEEN_EVENTS; n += 1) emit({ type: `E${n}`, event: {} });
     const pending = session.qx('return 1');
     await settle();
+    const requestId = String(lastSend(evaluateWith)[1].requestId);
     // A reply arriving into a full buffer must still resolve the request waiting for it
-    emit({ type: 'QUERY_RESULT', event: { result: 'through a full buffer' } });
+    emit({ type: 'QUERY_RESULT', event: { result: 'through a full buffer', requestId } });
 
     await expect(pending).resolves.toEqual({ ok: true, value: 'through a full buffer' });
   });
 });
 
 /**
- * `/qx` and `/tx` go to the system that already runs code against the live engine, and the reply carries
- * no request id — so the serialisation below is the contract's constraint showing up in the protocol.
+ * `/qx` and `/tx` go to the system that already runs code against the live engine, and each reply names
+ * the request it answers — so the engine takes its own and leaves everything else alone.
+ *
+ * It used to run one round-trip at a time instead, because the reply named nothing and the next one of
+ * the right type therefore had to be this request's. That held only while nothing was abandoned, which
+ * is the case the last two tests here are about.
  */
 describe('a bus round-trip', () => {
-  it('sends to the database system and resolves on its reply', async () => {
+  /** The id the engine minted, read back off the send so a test can answer as the app would */
+  const sentId = (calls: { mock: { calls: unknown[][] } }): string =>
+    String(lastSend(calls)[1].requestId);
+
+  it('sends to the database system with an id, and resolves on the reply that carries it', async () => {
     const { session, emit, evaluateWith } = sessionWith();
     await session.ready();
 
     const pending = session.qx('return 42');
     await settle();
-    expect(evaluateWith.mock.calls.at(-1)?.[1], 'the send names the system and the event')
-      .toEqual([DATABASE_SYSTEM, { type: 'EXECUTE_QUERY', code: 'return 42' }]);
+    const [to, event] = lastSend(evaluateWith);
+    expect(to).toBe(DATABASE_SYSTEM);
+    expect(event).toMatchObject({ type: 'EXECUTE_QUERY', code: 'return 42' });
+    expect(event.requestId, 'minted by the requester, not the replier').toEqual(expect.any(String));
 
-    emit({ type: 'QUERY_RESULT', event: { result: 42, executionTime: 1 } });
+    emit({ type: 'QUERY_RESULT', event: { result: 42, requestId: sentId(evaluateWith) } });
     await expect(pending).resolves.toEqual({ ok: true, value: 42 });
   });
 
   it('turns the error reply into ok false, carrying the system message', async () => {
-    const { session, emit } = sessionWith();
+    const { session, emit, evaluateWith } = sessionWith();
     await session.ready();
 
     const pending = session.qx('return boom');
     await settle();
-    emit({ type: 'QUERY_ERROR', event: { error: 'boom is not defined' } });
+    emit({
+      type: 'QUERY_ERROR',
+      event: { error: 'boom is not defined', requestId: sentId(evaluateWith) },
+    });
 
     await expect(pending).resolves.toEqual({ ok: false, error: 'qx: boom is not defined' });
   });
@@ -215,41 +241,64 @@ describe('a bus round-trip', () => {
 
     const pending = session.tx('return tx(...)');
     await settle();
-    expect(evaluateWith.mock.calls.at(-1)?.[1]).toEqual([
-      DATABASE_SYSTEM, { type: 'EXECUTE_TRANSACTION', code: 'return tx(...)' },
-    ]);
+    const [, event] = lastSend(evaluateWith);
+    expect(event).toMatchObject({ type: 'EXECUTE_TRANSACTION', code: 'return tx(...)' });
 
-    // A QUERY_RESULT must not satisfy a transaction, or the two verbs would steal each other's replies
-    emit({ type: 'QUERY_RESULT', event: { result: 'wrong' } });
-    emit({ type: 'TRANSACTION_RESULT', event: { result: 'right' } });
+    const requestId = sentId(evaluateWith);
+    // A QUERY_RESULT carrying the same id must not satisfy a transaction either: the type and the id
+    // are both part of the answer, and only one of them is enough to be wrong
+    emit({ type: 'QUERY_RESULT', event: { result: 'wrong', requestId } });
+    emit({ type: 'TRANSACTION_RESULT', event: { result: 'right', requestId } });
     await expect(pending).resolves.toEqual({ ok: true, value: 'right' });
   });
 
-  /** The case the missing request id makes possible: two in flight, and only order to tell them apart */
-  it('serialises, so the second request cannot take the first reply', async () => {
-    const { session, emit } = sessionWith();
+  /** Someone else's query — a person in the Database plugin while a session drives */
+  it('ignores a reply for a request it did not make', async () => {
+    const { session, emit, evaluateWith } = sessionWith();
     await session.ready();
 
-    const first = session.qx('return 1');
-    const second = session.qx('return 2');
+    const pending = session.qx('return mine');
+    await settle();
+    emit({ type: 'QUERY_RESULT', event: { result: 'someone else', requestId: 'q-elsewhere' } });
     await settle();
 
-    emit({ type: 'QUERY_RESULT', event: { result: 'first' } });
-    await expect(first).resolves.toEqual({ ok: true, value: 'first' });
-
-    await settle();
-    emit({ type: 'QUERY_RESULT', event: { result: 'second' } });
-    await expect(second).resolves.toEqual({ ok: true, value: 'second' });
+    emit({ type: 'QUERY_RESULT', event: { result: 'mine', requestId: sentId(evaluateWith) } });
+    await expect(pending).resolves.toEqual({ ok: true, value: 'mine' });
   });
 
   /**
-   * The timeout names what to look at, because the cause it used to guess was the rarest one.
+   * The defect this whole change exists for, and it could not be written before.
    *
-   * Driving a real session: a query returning a BigInt threw in the renderer's tRPC subscription, killed
-   * it, and left every later round-trip timing out — while `/eval` and `/state` kept working, so the
-   * message's "is default-setup loaded?" pointed at the one thing that was fine.
+   * A request is abandoned at the timeout; its answer arrives afterwards, when the next request is the
+   * one waiting. With no id in the reply the next request took it and reported it as its own. Now the
+   * orphan matches nobody.
    */
-  it('names the diagnostics when no reply comes, rather than guessing a cause', async () => {
+  it('does not give an abandoned request\'s late reply to the next one', async () => {
+    vi.useFakeTimers();
+    try {
+      const { session, emit, evaluateWith } = sessionWith();
+      await session.ready();
+
+      const abandoned = session.qx('return slow');
+      await vi.advanceTimersByTimeAsync(0);
+      const orphanId = sentId(evaluateWith);
+      await vi.advanceTimersByTimeAsync(REPLY_TIMEOUT_MS + 10);
+      await expect(abandoned).resolves.toMatchObject({ ok: false });
+
+      const next = session.qx('return quick');
+      await vi.advanceTimersByTimeAsync(0);
+      // The slow query finishes at last, with nobody waiting for it
+      emit({ type: 'QUERY_RESULT', event: { result: 'the abandoned one', requestId: orphanId } });
+      await vi.advanceTimersByTimeAsync(0);
+
+      emit({ type: 'QUERY_RESULT', event: { result: 'its own', requestId: sentId(evaluateWith) } });
+      await expect(next).resolves.toEqual({ ok: true, value: 'its own' });
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('names the request and the diagnostics when no reply comes', async () => {
     vi.useFakeTimers();
     try {
       const { session } = sessionWith();
@@ -272,19 +321,18 @@ describe('a bus round-trip', () => {
     }
   });
 
-  /** A rejection must not travel down the queue, or one bad query ends every later one */
   it('keeps serving after a request fails', async () => {
-    const { session, emit } = sessionWith();
+    const { session, emit, evaluateWith } = sessionWith();
     await session.ready();
 
     const bad = session.qx('return boom');
     await settle();
-    emit({ type: 'QUERY_ERROR', event: { error: 'nope' } });
+    emit({ type: 'QUERY_ERROR', event: { error: 'nope', requestId: sentId(evaluateWith) } });
     await expect(bad).resolves.toMatchObject({ ok: false });
 
     const good = session.qx('return 1');
     await settle();
-    emit({ type: 'QUERY_RESULT', event: { result: 'still here' } });
+    emit({ type: 'QUERY_RESULT', event: { result: 'still here', requestId: sentId(evaluateWith) } });
     await expect(good).resolves.toEqual({ ok: true, value: 'still here' });
   });
 });
