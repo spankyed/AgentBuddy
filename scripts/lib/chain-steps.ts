@@ -609,8 +609,15 @@ export const SUITE_READS: Record<string, { packages?: true; pack?: true; repo?: 
  * It bounds nothing — the chain step and the pool's own inner spawn both take the `suite` class now
  * (`step-timeouts.ts`), so neither deadline is a function of this number. What it still has to be is the
  * cost of the whole pool and never of a partial run, so that the drift report compares like with like.
+ *
+ * `host` corrected by hand 2026-10-04, 42 -> 36, on five readings: 33.5, 35.8, 36.1, 36.1 and 36.1, the last
+ * of them from a visibly contended run — contention inflates, so a low reading there is the stronger evidence.
+ * **By hand because no command can write it.** The move is 14% and `recordSeconds`' band is `max(1s, 35%)`,
+ * so `--record` holds it; `--forget` drops that band but writes every row from one run, which is how a
+ * contended run put `build:app` at 78s and failed `declaredShare` on two steps the same day. One row is what
+ * wanted changing, and the writer has no way to say so — the chain takes no positionals.
  */
-export const POOL_SECONDS: Record<'host' | 'pack' | 'integration', number> = { host: 42, pack: 21, integration: 60 };
+export const POOL_SECONDS: Record<'host' | 'pack' | 'integration', number> = { host: 36, pack: 21, integration: 60 };
 
 /**
  * The files a chain step is declared in — the two tables, as one list, repo-relative.

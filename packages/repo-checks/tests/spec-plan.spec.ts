@@ -9,6 +9,7 @@ import {
 import { INTEGRATION_SUITES } from '../../../scripts/lib/chain-steps.ts';
 import { PACKAGE_DIRS } from '../../../scripts/lib/workspace-deps.ts';
 import { UNIT_SUITES } from '../../../scripts/lib/unit-suites.ts';
+import { population } from '@abuddy/sdk/testing';
 import { asDuration, priceSpecs, priceSuites, needsAppForRun } from '../../../scripts/lib/spec-dry.ts';
 import { CONFIG_BY_HALF, HALVES } from '../../../scripts/lib/spec-cost.ts';
 
@@ -512,17 +513,45 @@ describe("the package's CLAUDE.md names what is here", () => {
     .filter((f) => f.endsWith('.spec.ts'))
     .map((f) => f.replace(/\.(integration\.)?spec\.ts$/, ''));
 
+  /**
+   * The specs the table's rows name — the **rows**, not the file.
+   *
+   * One parse for both directions, which is the fix for two things at once. Searching the whole file let this
+   * file's own *prose* vouch for a spec: it cites specs by name constantly, so a spec mentioned in a paragraph
+   * counted as documented without ever getting a row. Latent rather than live — all 45 are in rows today — but
+   * it is the same hole that let `spec-cost:update`'s `--forget` satisfy the chain's flag check, where the two
+   * commands share a word on purpose.
+   *
+   * And the two directions now cannot disagree about what "named" means, which they could while one read rows
+   * and the other read the file.
+   */
+  const namedInTable = (guide: string): string[] =>
+    [...guide.matchAll(/^\| ((?:`[\w-]+`(?:, )?)+) \|/gm)]
+      .flatMap(([, cell]) => [...cell.matchAll(/`([\w-]+)`/g)].map(([, name]) => name));
+
   it('leaves none of them out', () => {
-    const missing = specs().filter((name) => !doc().includes(`\`${name}\``));
+    const missing = specs().filter((name) => !namedInTable(doc()).includes(name));
     expect(missing, 'add these to the "What is here" table in packages/repo-checks/CLAUDE.md, with what each '
       + 'one\'s subject is').toEqual([]);
   });
 
   it('names none that has gone', () => {
-    const named = [...doc().matchAll(/^\| ((?:`[\w-]+`(?:, )?)+) \|/gm)]
-      .flatMap(([, cell]) => [...cell.matchAll(/`([\w-]+)`/g)].map(([, name]) => name));
-    expect(named.filter((name) => !specs().includes(name)),
+    expect(namedInTable(doc()).filter((name) => !specs().includes(name)),
       'these specs are gone or renamed; drop them from the table').toEqual([]);
+  });
+
+  /**
+   * And the parse finds rows, which nothing proved while each direction had its own.
+   *
+   * Both cases above compare against it, so a format change that matched nothing would leave them comparing
+   * two empty sets and passing over the whole table. The mutation is over the input, which is what lets this
+   * ask whether the regex can fail rather than whether it did.
+   */
+  it('finds the table rows, so the two cases above are not comparing empty sets', () => {
+    expect(population('the table rows', namedInTable(doc())).length).toBe(specs().length);
+
+    expect(namedInTable('| `one`, `two` | what they cover |'), 'several in one row').toEqual(['one', 'two']);
+    expect(namedInTable('prose naming `one` outside any row'), 'and prose is not a row').toEqual([]);
   });
 });
 
