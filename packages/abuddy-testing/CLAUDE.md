@@ -194,12 +194,22 @@ the SDK was not measured, and is probably well under that. Measure before moving
 HTTP until something asks it to stop. It is for an agent: a driving script is a closed program, so every
 question costs an edit, a process start and an app launch, where a session answers many.
 
-Three modules, and the split is what each one is allowed to know:
+Four modules, and the split is what each one is allowed to know:
 
-- **`session.ts`** — the verbs, over a `SessionPage` four methods wide. It never touches Playwright's
+- **`session.ts`** — the verbs, over two narrow ports: a `SessionPage` six methods wide for what needs the
+  window, and a `SessionApi` three wide for what goes over the bus. Neither touches Playwright's or tRPC's
   types, so every verb is exercised in process against a fake rather than by launching Electron. The two
   evaluation forms are separate methods on purpose: Playwright reads a string as an expression and a
   function as something to serialise, and a string *with* an argument silently drops the argument.
+- **`api-client.ts`** — the session's own connection to the app's API, and the reason the bus verbs no
+  longer travel through the page. Zero dependencies: Node has had a global `WebSocket` since 22, and
+  `tests/e2e/app-integration/api-access.spec.ts` already proves this handshake. tRPC's frames are written
+  by hand, so the version they were read at is recorded in the header and
+  `tests/engine/api-client.spec.ts` pins each shape against a real `applyWSSHandler` — the three that are
+  one mistake from a hang rather than an error each have a case: success is the presence of `result` and
+  never of `result.data`, `PING`/`PONG` are bare text and not JSON, and an error is *followed* by
+  `stopped`. No reconnection, deliberately: a session's socket lives as long as the session, and a claim
+  dies with it, so a silent reconnect would quietly lose the name.
 - **`server.ts`** — the channel. A verb that fails answers `200` with `ok: false`, because the request was
   fine and the operation was not; a bad token, an unknown path or a malformed body answers `4xx`, because
   nothing ran. `/close` answers and the **caller** ends the session once that reply has been written —
@@ -213,13 +223,18 @@ Things worth knowing before changing it:
   already run against the live engine with every installed pack's entity types. So a write is visible to
   the next read in the same session — which `abuddy db exec` cannot do, since it refuses while the app
   holds the write lock.
-- **A reply is matched by the `requestId` the request minted**, so they run concurrently and an answer
-  that belongs to something else is ignored. The engine ran one at a time until 2026-10-04, because the
-  reply named no request and the next one of the right type therefore had to be this one's — which held
-  only while nothing was abandoned. A `/qx` that timed out and then completed had its reply arrive with
-  nothing waiting for it, and the next request took it. Two cases cover the pair now: a reply for a
-  request the engine did not make, and an abandoned request's late answer; removing the id check fails
-  both and nothing else.
+- **A reply arrives addressed, and is still matched by the `requestId` the request minted.** Those are two
+  different jobs and both are needed. The session claims `host/drive` and stamps `sender` on every bus
+  send, so a system's `reply` comes back on this connection rather than to every window — which is what
+  stops a person querying in the Database plugin from being mistaken for the session. But addressing
+  answers *which connection*, never *which request*: three concurrent `/qx` calls produce three replies
+  with identical envelopes, so the id is what tells them apart. Two cases cover the pair: a reply for a
+  request the engine did not make, and an abandoned request's late answer.
+- **Waiters hear both the connection and the page bridge, and that is not redundancy.** An app built
+  before `host/drive` existed answers with a broadcast that never reaches this connection, and
+  `abuddy drive --app beta` can be that app — so the bridge stays a reply path and the `requestId` makes
+  the double delivery harmless. Measured: cutting the connection's wake fails the six round-trip cases
+  and leaves the bridge case passing, which is what says the fallback is real rather than dead weight.
 - **`/wait` is the fixture's own wait**, so a state is awaited rather than re-requested. Without it the
   only way to wait is to ask `/state` repeatedly, which is the polling this repo avoids where something
   event-driven exists.

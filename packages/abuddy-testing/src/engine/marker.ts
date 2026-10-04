@@ -63,6 +63,6 @@ export const engineRecipe = (file: string, marker: EngineMarker, tokenHeader: st
     `drive engine listening on http://${marker.host}:${marker.port} — ${where}`,
     `  curl -s http://${marker.host}:${marker.port}/state ${auth}`,
     `  curl -s http://${marker.host}:${marker.port}/qx ${auth} -d '{"code":"return qx(EARS.Entity.Note).count()"}'`,
-    '  POST /eval /send /system /qx /tx /navigate /screenshot /close   GET /state /events /drops /errors',
+    '  POST /eval /send /system /qx /tx /wait /navigate /screenshot /close   GET /state /events /drops /errors',
   ].join('\n');
 };

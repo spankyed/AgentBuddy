@@ -212,10 +212,11 @@ curl -s -X POST http://$E/close -H "$H"
 **`/wait` rather than re-asking `/state`.** `{"state":"running.connected"}` returns when the app gets
 there; `{"plugin":"default-setup/notes"}` returns when that plugin registers. One of the two, never both.
 
-**Each reply names the request it answers**, so `/qx` and `/tx` may run concurrently and a reply that
-belongs to something else is ignored — a query you stopped waiting for, or one a person ran in the
-Database plugin while the session was driving. The engine used to run one at a time instead, because the
-reply named nothing and the next one of the right type therefore had to be yours.
+**Replies come to the session, and each names the request it answers.** Both matter. The session has its
+own connection to the app and a name on it, so an answer is addressed here rather than to every window —
+a person querying in the Database plugin while you drive is no longer mistaken for you. And because three
+concurrent `/qx` calls would otherwise be indistinguishable, each reply still names its request, so they
+may run together and one you stopped waiting for is ignored.
 
 **`/qx` and `/tx` reach the live database**, not the files on disk — they go to the running app, so a
 write is visible to the next read in the same session. `abuddy db exec` cannot do that: it refuses while
