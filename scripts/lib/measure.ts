@@ -28,6 +28,7 @@
 
 import * as os from 'node:os';
 import { boundedSpawn } from './bounded-spawn.ts';
+import { box } from './core-budget.ts';
 
 /** Cumulative CPU time, summed across cores: what two snapshots are diffed to get a utilisation. */
 export interface CpuTimes {
@@ -68,6 +69,30 @@ export function idleFrom(before: CpuTimes, after: CpuTimes): number {
 
 /** How long to sample for. Long enough to be stable, short enough that a gate loop is responsive. */
 export const SAMPLE_MS = 250;
+
+/**
+ * Average cores busy across a window — the box's, not one process's.
+ *
+ * **It exists so that an A/B's arms can be shown to differ in something other than wall time.** A null
+ * result is ambiguous between "the change did nothing" and "the change never reached what you changed", and
+ * wall time alone cannot separate them: measured 2026-10-04, `--maxWorkers 2` moved `test:integration` by
+ * -1% because `poolOptions.maxThreads` takes precedence over it, and the arm that looked like a flat pool
+ * was a pool still running at 6.6 cores. Capping the pool for real took 42.5s to 82.5s at a third of that.
+ *
+ * **Reported on `--against` and nowhere else.** On a lone measurement it sizes no choice, which is the bar a
+ * figure has to clear here; between two arms it is the difference that says the treatment landed. Scope it
+ * wider and every quoted citation in the repo gains a number its reader cannot act on.
+ *
+ * **The box, which is why `--busy` dominates it and a comparison survives that.** Burners and anything else
+ * running are in the total, so the absolute value is not the command's CPU — but both arms carry the same
+ * baseline, so the *difference* between them still answers the question this is here for.
+ *
+ * Not a verdict: nothing compares the two arms' values and warns. Most null results are real, so a gate
+ * firing whenever both arms agree would be wrong more often than right and would train its reader to skip
+ * it. The number is printed; reading it is the method's job (`npm run measure`'s entry in CLAUDE.md).
+ */
+export const coresBusy = (before: CpuTimes, after: CpuTimes, cores: number): number =>
+  (1 - idleFrom(before, after)) * cores;
 
 /**
  * How idle the machine must be before a timing is worth taking.
@@ -285,6 +310,18 @@ export function idleNow(): number {
   Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, SAMPLE_MS);
   return idleFrom(before, cpuTimes(os.cpus()));
 }
+
+/** This instant's cumulative CPU counters — the open bracket of a `coresBusySince` window. */
+export const cpuNow = (): CpuTimes => cpuTimes(os.cpus());
+
+/**
+ * `coresBusy` against this instant, over this box.
+ *
+ * Here rather than at the call site so the command reads no counters and knows no core count of its own —
+ * the same reason `idleNow` lives here. The arithmetic stays in `coresBusy`, which a spec can hand two
+ * snapshots.
+ */
+export const coresBusySince = (before: CpuTimes): number => coresBusy(before, cpuNow(), box());
 
 /** One run of a command in trials mode: how long, how it exited, and what it said when it failed. */
 export interface Trial {

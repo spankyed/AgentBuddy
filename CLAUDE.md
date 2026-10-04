@@ -644,7 +644,12 @@ npm run measure -- "<cmd>"  # Times a command on a quiet machine and prints a nu
                          #   --runs N          how many (5)
                          #   --against "<B>"   an A/B, **interleaved**, reported as the median of the pairs.
                          #                     Blocked arms let a drifting box in: measured, that turned
-                         #                     49.1s->48.2s into a reported 71s->46.1s
+                         #                     49.1s->48.2s into a reported 71s->46.1s.
+                         #                     Prints **cores busy per arm**, which a lone measurement does
+                         #                     not get: between two arms it is what says the treatment landed
+                         #                     (`coresBusy` has the case). Nothing warns when the two agree —
+                         #                     most null results are real, so a gate on that would be wrong
+                         #                     more often than right. Reading it is the method's, below
                          #   --trials N        how often does it *fail*? The rate and its 95% upper bound —
                          #                     0 of 5 bounds it at 45%, 0 of 20 at 14%. Failures group by a
                          #                     normalised signature: it groups, it does not classify
@@ -657,6 +662,24 @@ npm run measure -- "<cmd>"  # Times a command on a quiet machine and prints a nu
                          # measures the command, and a quiet box reads 0% while a suite uses it.
                          # Prints, never records — a timings file would be a sample, and spec-cost.json is
                          # what that costs (see "There is a third kind" above)
+                         #
+                         # **A null A/B is unfalsifiable until the independent variable is shown to have
+                         # moved**, and the instrument cannot do that half for you: `measure` takes the
+                         # command as an opaque string, so it never knows what configuration you meant to
+                         # change. Three habits, in the order they pay:
+                         #   - **Read the config before guessing at the knob.** The first failed attempt at
+                         #     capping `test:integration`'s pool passed `--maxWorkers`, which
+                         #     `vitest.integration.config.ts`'s own comment says `poolOptions.maxThreads`
+                         #     overrides. The answer was on screen and the run was wasted anyway; no readout
+                         #     prevents that one
+                         #   - **Run the positive control first.** Set the knob to the value that *must*
+                         #     change the answer and confirm it does, before trusting any null. Measured
+                         #     2026-10-04, that run — the pool genuinely capped, 42.5s to 82.5s — arrived
+                         #     third, after two nulls that had been read as "the pool does not scale"
+                         #   - **Prefer the direct signal to the proxy.** Cores busy is the fallback that
+                         #     covers most cases; where the thing under test reports its own state (vitest
+                         #     names its worker count, a cache its hits), read that instead. A -1% delta
+                         #     should read as "the knob did nothing", and only a second signal says which
 
 npm run measure:loop -- "<cmd>"  # Not how long a command took, but how long each process it started went
                          # without turning its event loop, against the 60s window birpc gives a call and

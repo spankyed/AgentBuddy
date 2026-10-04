@@ -19,8 +19,8 @@
  * the answer. `scripts/lib/measure.ts` holds every decision it makes, so a spec can watch those fail.
  */
 import {
-  asNumber, citation, conditions, groupBySignature, idleNow, IDLE_FLOOR, pairedDelta, parseFlags,
-  rateOf, refusesAsBusy, runOrder, startBurners, summarise, upperBound, type Trial,
+  asNumber, citation, conditions, coresBusySince, cpuNow, groupBySignature, idleNow, IDLE_FLOOR,
+  pairedDelta, parseFlags, rateOf, refusesAsBusy, runOrder, startBurners, summarise, upperBound, type Trial,
 } from './lib/measure.ts';
 import { boundedSpawn } from './lib/bounded-spawn.ts';
 
@@ -74,17 +74,21 @@ async function main(): Promise<void> {
      * for anything worth timing is the whole box — a quiet machine reads 0% idle and says nothing about
      * whether anything *else* was competing.
      */
-    const measure = async (target: string): Promise<Trial> => {
+    const measure = async (target: string): Promise<Trial & { readonly cores: number }> => {
+      // The window is the spawn alone: `idleNow` below blocks for SAMPLE_MS of near-idle, and including it
+      // would dilute the reading by that much of every run
+      const before = cpuNow();
       const { code, output, ms, timedOut } = await boundedSpawn('sh', ['-c', target], BUDGET_MS);
+      const cores = coresBusySince(before);
       idles.push(idleNow());
-      return { ms, code, stderr: timedOut === true ? `${output}\ntimed out` : output };
+      return { ms, code, stderr: timedOut === true ? `${output}\ntimed out` : output, cores };
     };
 
     /** Timing mode throws on failure: a failed run has no duration worth reporting. */
-    const time = async (target: string): Promise<number> => {
-      const { ms, code } = await measure(target);
+    const time = async (target: string): Promise<{ readonly ms: number; readonly cores: number }> => {
+      const { ms, code, cores } = await measure(target);
       if (code !== 0) throw new Error(`the command failed (exit ${code}): ${target}`);
-      return ms;
+      return { ms, cores };
     };
 
     if (trials !== undefined) {
@@ -107,8 +111,11 @@ async function main(): Promise<void> {
     }
 
     const samples: Record<'a' | 'b', number[]> = { a: [], b: [] };
+    const cores: Record<'a' | 'b', number[]> = { a: [], b: [] };
     for (const arm of runOrder(runs, against !== undefined)) {
-      samples[arm].push(await time(arm === 'a' ? command : against!));
+      const run = await time(arm === 'a' ? command : against!);
+      samples[arm].push(run.ms);
+      cores[arm].push(run.cores);
     }
 
     /** The conditions are the series', not each arm's: both arms ran through the same window */
@@ -119,8 +126,11 @@ async function main(): Promise<void> {
       console.log(`  ${command}\n  ${quote(samples.a)}`);
     } else {
       const delta = pairedDelta(samples.a, samples.b);
-      console.log(`  A  ${command}\n     ${quote(samples.a)}`);
-      console.log(`  B  ${against}\n     ${quote(samples.b)}`);
+      // Cores busy per arm, on `--against` only: it is the signal that says the treatment reached the thing
+      // being changed, and a null wall-clock delta cannot be read without it. `coresBusy` has the case
+      const busyText = (series: number[]): string => `${summarise(series).median.toFixed(1)} cores busy`;
+      console.log(`  A  ${command}\n     ${quote(samples.a)}\n     ${busyText(cores.a)}`);
+      console.log(`  B  ${against}\n     ${quote(samples.b)}\n     ${busyText(cores.b)}`);
       // The paired difference, not the difference of the medians: pairing is why the arms interleave
       const sign = delta.ms >= 0 ? '+' : '';
       console.log(`\n  B - A: ${sign}${(delta.ms / 1000).toFixed(1)}s (${sign}${Math.round(delta.fraction * 100)}% of A), paired over ${runs}`);

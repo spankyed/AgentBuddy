@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
-  asNumber, citation, conditions, cpuTimes, driftedDuring, groupBySignature, idleFrom, IDLE_FLOOR,
+  asNumber, citation, conditions, coresBusy, cpuTimes, driftedDuring, groupBySignature, idleFrom, IDLE_FLOOR,
   pairedDelta, parseFlags, rateOf, refusesAsBusy, runOrder, signatureOf, summarise, upperBound,
 } from '../../../scripts/lib/measure.ts';
 
@@ -47,6 +47,39 @@ describe('how idle the machine is', () => {
 
   it('throws on counters that went backwards, which is the same kind of nonsense', () => {
     expect(() => idleFrom(cpuTimes(times(900, 100)), cpuTimes(times(100, 900)))).toThrow(/did not advance/);
+  });
+});
+
+/**
+ * The signal that separates "the change did nothing" from "the change never reached what you changed".
+ *
+ * Both of the measurements that made this necessary are here as cases, because a figure for a reader to
+ * glance at is worth nothing if it cannot tell those two apart: the arm that looked flat was a pool still
+ * running at most of the box, and the arm that worked ran at a fraction of it.
+ */
+describe('how much of the box a run used', () => {
+  it('reads cores busy from two snapshots', () => {
+    expect(coresBusy(cpuTimes(times(0, 0)), cpuTimes(times(340, 660)), 10)).toBeCloseTo(6.6, 5);
+  });
+
+  it('separates a knob that missed from one that landed', () => {
+    const missed = coresBusy(cpuTimes(times(0, 0)), cpuTimes(times(340, 660)), 10);
+    const landed = coresBusy(cpuTimes(times(0, 0)), cpuTimes(times(790, 210)), 10);
+    expect(missed, 'a pool still at 6.6 cores is one the cap never reached').toBeGreaterThan(5);
+    expect(landed, 'two workers of ten is what a real cap looks like').toBeLessThan(3);
+  });
+
+  it('is a fraction of the box, so the core count scales it', () => {
+    const half = cpuTimes(times(500, 500));
+    expect(coresBusy(cpuTimes(times(0, 0)), half, 10)).toBeCloseTo(5, 5);
+    expect(coresBusy(cpuTimes(times(0, 0)), half, 2), 'the same utilisation on a smaller box is fewer cores')
+      .toBeCloseTo(1, 5);
+  });
+
+  /** It is `idleFrom` underneath, so an unreadable window is loud here too rather than reported as idle */
+  it('throws on a window whose counters did not advance', () => {
+    const same = cpuTimes(times(500, 500));
+    expect(() => coresBusy(same, same, 10)).toThrow(/did not advance/);
   });
 });
 
