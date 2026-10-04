@@ -17,10 +17,14 @@ export const systemBusRouter = router({
     // Every field of `Message` beside `event` is named here rather than the object being made passthrough: zod
     // strips what it isn't told about, so a field this line omits arrives as `undefined`, while everything a
     // client invents still goes no further than here.
+    //
+    // `client` is omitted on purpose, and is the one field that must stay omitted. It is a return address that
+    // routes, so it is stamped from the connection below rather than accepted from the sender; naming it here
+    // would let a client claim to be another one.
     .input(z.object({ to: z.string().min(1), from: z.string().min(1).optional(), via: z.string().min(1).optional(), event: z.object({ type: z.string().min(1) }).passthrough() }))
-    .mutation(({ input }) => {
+    .mutation(({ input, ctx }) => {
       try {
-        receiveClientEvent(appPacks, input);
+        receiveClientEvent(appPacks, { ...input, client: ctx.client });
       } catch (error) {
         if (error instanceof UnknownClientEventError) throw new TRPCError({ code: 'BAD_REQUEST', message: error.message });
         throw error;
@@ -29,8 +33,10 @@ export const systemBusRouter = router({
   /**
    * The client finished loading a pack's frontend (at boot, on activation), whatever it added, or its
    * subscription reconnected: the pack's systems get CLIENT_CONNECTED, which the connection's broadcast and
-   * the activation skip for external packs with frontend code. Their replies reach every client, not only
-   * this one: outgoing events carry no client address.
+   * the activation skip for external packs with frontend code. Their replies still reach every client rather
+   * than this one — not because an outgoing message cannot name a connection, which it can, but because a
+   * system answering CLIENT_CONNECTED sends its startup data with `broadcastToPlugin`, which names none. That
+   * is the right reach for it: the data is for every window showing the plugin, not for whoever connected.
    */
   packClientReady: procedure
     .input(z.object({ packId: z.string().min(1) }))
@@ -39,9 +45,13 @@ export const systemBusRouter = router({
       rootEvents.emitPackClientConnected(input.packId);
     }),
   sub: procedure
-    .subscription(() =>
+    .subscription(({ ctx }) =>
       observable<Message>((emit) => {
         const unsubscribe = rootEvents.onOutgoing((message) => {
+          // Absent `client` means every connection, which is what a notification is: a mutation broadcast is
+          // aimed at every view, and a plugin runs once per window. A message that names a connection is an
+          // answer to something that connection asked, and goes only there.
+          if (message.client !== undefined && message.client !== ctx.client) return;
           emit.next(message);
         });
 

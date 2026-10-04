@@ -47,7 +47,7 @@ const { _getSecretsFilePath } = await import('@abuddy/sdk/utils');
 const { setup } = await import('xstate');
 
 const KEY = 'sk-proj-SPECKEY1234567890abcdefghij';
-const caller = secretsRouter.createCaller({});
+const caller = secretsRouter.createCaller({ client: 'c-test' });
 // What the API's boot registers; the settings system is registered in the first test, once it checks changes made before
 forwardSecretsChanges(packs);
 // A pack with a settings feature, whose system isn't running yet: a system is sent the event because it declares

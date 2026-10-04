@@ -92,6 +92,7 @@ export type IncomingEventsOf<C> = ContractIncoming<C>;
 
 // @public
 export interface Message {
+    client?: string;
     // (undocumented)
     event: {
         type: string;

@@ -34,13 +34,18 @@ transport, boot or composition belongs in `@abuddy/host`, which the same guard i
 
 ## tRPC and the root event emitter (`src/transport/`)
 
-- `trpc.ts` — `router` and `procedure` from `initTRPC`; `context.ts` — `createContext()` returns an empty context.
+- `trpc.ts` — `router` and `procedure` from `initTRPC`; `context.ts` — `createContext()` returns `{ client }`, an id
+  minted per WebSocket connection. The adapter calls it once per socket, so it identifies the connection rather than
+  the call, and it is never read from the wire — which is what makes it a return address a sender cannot forge.
 - `index.ts` — `appRouter = router({ bus, packs, secrets })`; `AppRouter` is its type.
 - `packs.ts` (`packs.*`) — `registry` (query): `LoadedPackEntry[]` (typed from `@abuddy/host/packs`, so `AppRouter`'s declarations don't pull the pack runtime into the renderer's typecheck) from `getLoadedPackEntries()` (`@abuddy/host/packs/runtime`), the packs the renderer loads frontends from.
 - `bus.ts` (`bus.*`):
-  - `send` (mutation) — `receiveClientEvent(appPacks, event)` (`@abuddy/host/bus`), which checks `systemId` and `type` against the app's registered systems (a `*` entry accepts any type), logs the event through the `app-events` logger (arrays over 5 items summarized) and emits it on the bound root event bus. Its `UnknownClientEventError` becomes `BAD_REQUEST`.
+  - `send` (mutation) — `receiveClientEvent(appPacks, { ...input, client: ctx.client })` (`@abuddy/host/bus`), which checks `systemId` and `type` against the app's registered systems (a `*` entry accepts any type), logs the event through the `app-events` logger (arrays over 5 items summarized) and emits it on the bound root event bus. Its `UnknownClientEventError` becomes `BAD_REQUEST`.
   - `packClientReady({ packId })` — logs it and calls `rootEvents.emitPackClientConnected`, which the bus turns into `PACK_CLIENT_CONNECTED`.
-  - `sub` (subscription) — streams `rootEvents.onOutgoing` and calls `emitConnected()` for each new subscription (the bus's `CLIENT_CONNECTED`).
+  - `sub` (subscription) — streams `rootEvents.onOutgoing` and calls `emitConnected()` for each new subscription
+    (the bus's `CLIENT_CONNECTED`). It filters on the connection: a message whose `client` is absent goes to every
+    subscription, and one that names a connection goes only to that one. The filter is here rather than in the
+    renderer, so a window never receives a message that was not for it (`tests/transport/sub-scope.spec.ts`).
 - `secrets.ts` (`secrets.*`) — `list` (query), `add`, `replaceValue`, `select`, `rename`, `delete`, `allowUnprotected`. Each calls `secretsStore` (`@abuddy/host/secrets`) directly, never the bus, and returns `secretsSnapshot()` (metadata and status, no values). `provider` is validated against `providerLabels` plus `custom`. The boot calls host's `forwardSecretsChanges()`, which sends the `settings` designation `SECRETS_CHANGED` on every store change, once that system is registered.
 - `emitter.ts` — `rootEvents`, the single `RootEventEmitter` (it implements the SDK's `RootEvents`, and is the `transport` the app binds): `emitLog`/`onLog`, `emitConnected`/`onConnected`, `emitPackClientConnected`/`onPackClientConnected`, `emitIncoming`/`onIncoming`, `emitPluginSend`/`onPluginSend` (sends to plugins from outside a system, which `createAppBus()` routes through the bus actor), `emitOutgoing`/`onOutgoing` (what the clients receive). `emitLog` also appends the event to `$AGENTBUDDY_LOG_DIR/app-events.log` (skipped when unset; write errors are swallowed).
 
@@ -101,7 +106,7 @@ Loggers and error reports are SDK code (`@abuddy/sdk/logger`): a bound `createLo
   `startPacks` with an argument it dropped long ago, three collected `Message`s into `Record<string, unknown>`
   arrays, two cast through types that no longer overlap — none of which a run could catch, since extra arguments
   and structural mismatches are invisible at runtime. A compile-time assertion about this package's own boundary
-  can therefore live with it: the `Required<Message>` sample in `tests/transport/bus-send-sender.spec.ts` stops
+  can therefore live with it: the `Required<Omit<Message, 'client'>>` sample in `tests/transport/bus-send-sender.spec.ts` stops
   compiling when the message envelope grows a field.
 
 ## Scripts (`package.json`)
