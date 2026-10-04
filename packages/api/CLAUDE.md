@@ -42,6 +42,10 @@ transport, boot or composition belongs in `@abuddy/host`, which the same guard i
 - `bus.ts` (`bus.*`):
   - `send` (mutation) — `receiveClientEvent(appPacks, { ...input, client: ctx.client })` (`@abuddy/host/bus`), which checks `systemId` and `type` against the app's registered systems (a `*` entry accepts any type), logs the event through the `app-events` logger (arrays over 5 items summarized) and emits it on the bound root event bus. Its `UnknownClientEventError` becomes `BAD_REQUEST`.
   - `packClientReady({ packId })` — logs it and calls `rootEvents.emitPackClientConnected`, which the bus turns into `PACK_CLIENT_CONNECTED`.
+  - `claim({ as })` — takes a name on this connection for something no pack registered, so a system can be told to
+    answer *it*: an agent driving the app claims `host/drive`. The name is checked against the ref grammar, a name
+    another live connection holds is refused with `CONFLICT` rather than taken over, and the claim is released when
+    the subscription tears down — so it lives exactly as long as its socket and a reconnect always finds it free.
   - `sub` (subscription) — streams `rootEvents.onOutgoing` and calls `emitConnected()` for each new subscription
     (the bus's `CLIENT_CONNECTED`). It filters on the connection: a message whose `client` is absent goes to every
     subscription, and one that names a connection goes only to that one. The filter is here rather than in the
