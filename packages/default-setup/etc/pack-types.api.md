@@ -55,6 +55,14 @@ interface ActionTab {
 
 interface ActionsContext {
     selectedActionId?: EARS.EntityId;
+    /**
+     * The action a selection is waiting on, which is what makes `ACTION_SELECTED` identifiable.
+     *
+     * `selectedActionId` cannot do it: that is written *from* the reply, so until one lands there is
+     * nothing to compare an arriving one against — and two quick selections are then decided by which
+     * answer happens to arrive last.
+     */
+    pendingActionId?: EARS.EntityId;
     actions: ActionEntity[];
     selectedAction?: ActionEntity;
     totalCount: number;
@@ -4422,6 +4430,13 @@ interface PromptsConnectedData {
 
 interface PromptsContext {
     selectedPromptId?: EARS.EntityId;
+    /**
+     * The prompt a selection is waiting on, which is what makes `PROMPT_SELECTED` identifiable.
+     *
+     * `selectedPromptId` cannot do it: that is written *from* the reply, so two quick selections are
+     * otherwise decided by whichever answer arrives last.
+     */
+    pendingPromptId?: EARS.EntityId;
     prompts: PromptEntity[];
     selectedPrompt?: PromptEntity;
     totalCount: number;
