@@ -316,6 +316,25 @@ also invalidates Phase 5's own criteria.
 1. **Phase 5, re-specified.** The honest version keeps a request id for concurrency and takes the real win:
    replies arrive *addressed*, so a person using the Database plugin no longer collides with a driving session and
    the engine stops reading a firehose of unrelated events. Worth doing; needs the criterion rewritten first.
+
+   **The blocker is one thing, and it is smaller than it looks.** Checked rather than assumed: `@abuddy/sdk/events`
+   is shared to the page wholesale (`SDK_FE_MODULES`, `globalKey: 'sdkEvents'`), so `reply`, `_runDelivery` and
+   `_currentDelivery` are all reachable at `window.__abuddy.sdkEvents`. A driving script can therefore stamp a
+   sender today, with no new dependency, by wrapping its send:
+
+   ```js
+   window.__abuddy.sdkEvents._runDelivery({ receiver: 'host/drive' }, () =>
+     window.__abuddy.sdkEvents.untypedSendToSystem('default-setup/database', { type: 'EXECUTE_QUERY', code }))
+   ```
+
+   That message carries `sender: 'host/drive'`, so the system's `reply` addresses its answer there. What is still
+   missing is the **claim**: with nothing holding `host/drive`, `notify` drops the answer, because no pack declares
+   it as a plugin. `bus.claim` is a tRPC procedure over the WebSocket, and the driver has no client — it drives the
+   page. So Phase 5 needs either a ws client in `@abuddy/testing` (a new dependency in a package every pack's tests
+   load) or the claim made from the page, which needs the window's client reachable there and today it is not.
+
+   Two things follow for whoever picks this up: the stamping half is free, and the decision to make first is where
+   the driver's connection comes from — not how a reply is addressed, which is done.
 2. **Stamp a plugin's own sends**, by wrapping the actor `usePlugin` hands back. Until then `reply()` works for a
    handler reached through the shell or the bus and throws for one reached from a component. That asymmetry is the
    pit-of-failure risk in what landed, and it is the first thing to fix.
