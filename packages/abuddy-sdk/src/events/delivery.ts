@@ -1,31 +1,27 @@
 /**
  * Which message is being handled right now, so a handler can answer its sender without being told who that is.
  *
- * **Why this exists rather than a field on the event.** An XState action is handed `{ context, event, self,
- * system }` and nothing else: `context` is per-actor, `self` and `system` are fixed, so `event` is the only
- * per-message thing in scope. Putting a return address inside the event is therefore the only alternative, and
- * the envelope's central rule forbids it — `event` arrives exactly as the sender wrote it, which
- * `outgoing-events.spec.ts` pins with a deliberate `pluginId` collision. So the address is kept *beside* the
- * handler instead, and this is where.
+ * **Why this is not a field on the event.** An XState action is handed `{ context, event, self, system }`:
+ * `context` is per-actor and `self` and `system` are fixed, so `event` is the only per-message thing in scope.
+ * Putting a return address inside it is the only alternative, and the envelope's central rule forbids it —
+ * `event` arrives exactly as the sender wrote it, which `outgoing-events.spec.ts` pins with a deliberate
+ * `pluginId` collision. So the address is kept *beside* the handler instead, and this is where.
  *
  * **Two readers, because one module serves two runtimes.** The default is a plain variable set and restored
- * around the delivery, which is exact for a handler that sends synchronously — every plugin machine in this repo
- * does, none uses `fromPromise`. A backend handler may `await` before it answers, and a variable cannot survive
- * that, so `@abuddy/host/bus` installs an `AsyncLocalStorage` reader over the same interface. This module stays
- * free of `node:` imports because `@abuddy/sdk/events` is bundled into pack frontends.
+ * around the delivery, exact for a handler that sends synchronously, as every plugin machine in this repo does.
+ * A backend handler may `await` before it answers, which a variable cannot survive, so `@abuddy/host/bus`
+ * installs an `AsyncLocalStorage` reader over the same interface. This module stays free of `node:` imports
+ * because `@abuddy/sdk/events` is bundled into pack frontends.
  *
  * **Four places run a delivery**, and together they cover every send pack code makes: the bus routing a message
- * to a system, its early systems, the renderer shell handing a plugin events it routed, and `usePlugin`, which
- * runs a component's send in one so a click reaching a machine's action is named like anything else. That last
- * one is easy to leave out and was: without it a component's send stamped nothing, so the commonest request in
- * the app — a view asking its own system for data — was the one case `reply` could not answer.
+ * to a system, its early systems, the renderer shell handing a plugin events it routed, and `usePlugin`, so that
+ * a component's own send — a click reaching a machine's action — is named like anything else.
  *
- * **The one shape that does not work**, measured rather than assumed: store a function during one delivery and
- * let somebody else call it later. An `await` is fine, and so is a timer the handler itself schedules — both
- * create their async resource inside the scope and inherit it. But a bare callback creates nothing, so it runs
- * in whatever scope is current when it is called: from another delivery it reads *that* sender, and from no
- * delivery it reads nothing. `reply` throws on the second rather than broadcasting, since a private answer sent
- * to every window is worse than an error.
+ * **What does not work** is storing a function during one delivery for somebody else to call later. An `await`
+ * is fine, and so is a timer the handler itself schedules: both create their async resource inside the scope and
+ * inherit it. A bare callback creates nothing, so it runs in whatever scope is current when it is called — from
+ * another delivery it reads *that* sender, and from none it reads nothing. `reply` throws on the second rather
+ * than broadcasting, a private answer sent to every window being worse than an error.
  */
 
 /**

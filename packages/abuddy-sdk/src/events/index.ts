@@ -66,10 +66,8 @@ export interface Message {
    * that `MessageSender` is `Pick<Message, 'from' | 'via'>` and so does **not** include this — it is the type of
    * the sender *labels*, which say who to blame in a diagnostic, where this says where to send an answer.
    *
-   * A client may set it, unlike `client`. That is deliberate and costs nothing: every caller already holds the
-   * API token, which lets it send anything to anything, so a forged `sender` is a bug rather than an escalation.
-   * `client` is stamped instead because the server knows it for free, and taking it from the wire would be
-   * strictly worse for no gain.
+   * A client may set it, unlike `client` — the API's `bus.send` names it in its input schema, and says there why
+   * trusting it costs nothing.
    */
   sender?: string;
 }
@@ -335,20 +333,19 @@ export function untypedSendToSystem(to: SystemTarget, event: { type: string; [ke
  * in scope rather than one it was passed, so a callback stored during one delivery and invoked from another
  * would answer *that* delivery's sender; keep a reply inside the handler that owns it.
  *
- * Throws rather than broadcasting when there is nothing to answer — a private answer delivered to every window
- * is worse than a failure, and silent.
+ * It throws rather than broadcasting when there is nothing to answer, a private answer delivered to every
+ * window being worse than a failure. Two cases reach that: no message in scope at all — module scope, a timer,
+ * a callback something else invoked — or a message that named no sender, which is what a send made from nothing
+ * carries. Every send from a system or a plugin carries one, a component's included, since `usePlugin` runs it
+ * in a delivery.
  */
 export function reply(event: { type: string; [key: string]: unknown }): void {
   const delivery = _currentDelivery();
   if (!delivery) {
-    throw new Error(
-      'reply() was called with no message being handled. It answers the sender of the message a handler was given, so it belongs inside that handler (or in work the handler awaited) — not at module scope, and not in a callback something else invokes later.',
-    );
+    throw new Error('reply() was called with no message being handled: it belongs inside the handler that was given one, or in work that handler awaited.');
   }
   if (!delivery.replyTo) {
-    throw new Error(
-      `reply() cannot answer the message that reached "${delivery.receiver}", which named no sender, so there is no address to answer at. A send carries one when it is made while handling another message, which covers every send from a system or a plugin — a component's send included, since usePlugin runs it in a delivery. What does not carry one is a send made from nothing: host plumbing, a timer, a subscription callback, or a callback stored during one delivery and called outside any. Reach the target by name with broadcastToPlugin instead.`,
-    );
+    throw new Error(`reply() cannot answer the message that reached "${delivery.receiver}", which named no sender, so there is no address to answer at. Reach the target by name with broadcastToPlugin instead.`);
   }
   boundHost().transport.rootEvents.emitPluginSend({
     to: delivery.replyTo,
