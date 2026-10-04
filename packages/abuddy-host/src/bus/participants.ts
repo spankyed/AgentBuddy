@@ -10,6 +10,14 @@
 // …)` resolves the way the rest do. What differs is only where the answer comes from: the registry for a pack's
 // features, this for a claimed name.
 //
+// **Nothing claims anything yet, and that is a gap rather than dead code.** The driver was to be the first
+// caller and is not: `/qx` runs through the renderer's send (`page.evaluateWith`), so the drive engine has no
+// connection of its own to claim on, and `bus.claim` is tRPC over the WebSocket. Giving it one means a ws client
+// in `@abuddy/testing`, a package every pack's tests load — which is the decision to make before this is used,
+// not a detail of it. `participants.spec.ts` covers the mechanism, including that an unclaimed name is still
+// dropped; what it cannot cover is a caller. Don't delete this as unreachable without reading
+// `docs/archive/goals/goal-addressable-participants.md`'s open items, which say what it is waiting for.
+//
 // **A claim lives exactly as long as its connection.** That is what makes it safe without a disconnect signal:
 // the id it is keyed by is minted per WebSocket connection and dies with the socket, so a driver that goes away
 // cannot keep a name, and one that reconnects claims again. `release` exists for the socket's own teardown, not
