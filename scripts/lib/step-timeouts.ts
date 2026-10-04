@@ -61,12 +61,12 @@ export interface Rung {
    * condition still on it is a stale one, and an assumed rung without one is a guess nobody wrote down the
    * terms of. Both are declared rather than optional, so neither is a key a caller cannot read.
    *
-   * **Read by no code, and it must stay that way: never put this in a kill message.** It was printed there
-   * for one commit, to close a review finding that this field reached no reader while `measured` did. The
-   * finding was wrong in kind. This names a run that reaches the rung, and the arm that would print it runs
-   * only off the measured machine — so its reader is always on a box that can supply the evidence, and the
-   * message exists because a run just reached that rung. It therefore always names the run the reader has
-   * just made, whatever the wording, and `rungTerms` says "this run is the evidence" instead.
+   * **Read by no code, and it must stay that way: never put this in a kill message.** This names a run that
+   * reaches the rung, and the arm that would print it runs only off the measured machine — so its reader is
+   * always on a box that can supply the evidence, and the message exists because a run just reached that rung.
+   * It therefore always names the run the reader has just made, whatever the wording, and `rungTerms` says
+   * "this run is the evidence" instead. No wording escapes that, so the rule is the field's absence rather than
+   * its phrasing.
    *
    * **No *runtime* path reads it**, which is the rule above; one spec does, in two places.
    * `chain-graph.spec.ts` destructures it for the exactly-one-of invariant — this field's verifier, and the
@@ -201,12 +201,11 @@ const factorText = (factor: number): string =>
 /**
  * What a rung's stretch factor rests on, and — where it rests on a borrow — what to do with this run.
  *
- * **It quoted `until` for one commit, and that was circular by construction.** The field names a run that
- * reaches the rung; the arm that printed it runs only off the measured machine, so its reader is always on a
- * box that can supply the evidence, and the message exists *because* a run just reached that rung. The rung
- * being reported is always the rung whose bound just fired, so `until` always named the run the reader had
- * just made — "to find out, do what you just did". No argument to `timedOutBecause` makes it otherwise, which
- * is why the fix is not a rewording: see `until`'s own doc for the rule that keeps it out of here.
+ * **It must not quote `until`, which would be circular by construction.** The field names a run that reaches
+ * the rung; this arm prints only off the measured machine, so its reader is always on a box that can supply the
+ * evidence, and the message exists *because* a run just reached that rung. The rung being reported is always
+ * the rung whose bound just fired, so quoting `until` says "to find out, do what you just did". No argument to
+ * `timedOutBecause` makes it otherwise — see that field's own doc.
  *
  * So what an assumed rung says instead is the one thing that *is* true at a kill: this run is the evidence,
  * and here is the edit that records it — the same edit `chain-graph.spec.ts` polices as exactly one of
@@ -234,13 +233,12 @@ const rungTerms = (rung: Rung, className: TimeoutClass): string => (rung.measure
  * *that is the evidence the assumed rungs are waiting for* — so the message names the rung's factor and says
  * the number is the finding, rather than pre-empting it with "not a stale number".
  *
- * **The machine is a separate argument from the cost, which took a correction.** They were one optional
- * bundle, `{ seconds, measuredOn }`, on the reasoning that neither means anything without the other. That is
- * true of the *rope* and false of the *verdict*: a cost is a property of the step and can legitimately be
- * absent, where the machine is a property of the process and never is. Bundling them meant the one arm with
- * no cost had no machine either, so it could not be gated and said "usually wedged rather than slow" on any
- * box — the thing the paragraph above says was wrong, surviving in the arm that four of the five call sites
- * can reach. Machine always, cost optional, and all three arms gate.
+ * **The machine is a separate argument from the cost, and bundling them breaks the arm that needs it most.**
+ * "Neither means anything without the other" is true of the *rope* and false of the *verdict*: a cost is a
+ * property of the step and can legitimately be absent, where the machine is a property of the process and never
+ * is. In one optional bundle the arm with no cost has no machine either, so it cannot be gated and hands down a
+ * verdict on any box — in the arm four of the five call sites can reach. Machine always, cost optional, and all
+ * three arms gate.
  *
  * The rope and `stretches` are the same arithmetic from opposite ends: `declaredShare` keeps every step's
  * rope above its rung's factor, so a step that outran its rope has broken that bound in production.

@@ -489,10 +489,10 @@ describe('every spawn an orchestrator makes is bounded', () => {
      * argv and no step record at all, so a rope is not a number it can compute. It says so rather than
      * reaching for a `?` or a zero — the same refusal `priceSpecs` makes about an unrecorded spec.
      *
-     * **It is gated on the machine like the other two, which took a correction.** The cost and the machine
-     * were one optional argument, so the arm with no cost had no machine either and said "usually wedged
-     * rather than slow" on any box — the one unconditional verdict left, in the arm four of the five call
-     * sites can reach, and in the path most likely to be running on someone else's machine.
+     * **It is gated on the machine like the other two, which the argument shape has to allow.** With the cost
+     * and the machine in one optional bundle, the arm with no cost has no machine either, so it cannot be gated
+     * and hands down a verdict on any box — in the arm four of the five call sites reach, and in the path most
+     * likely to be running on someone else's machine.
      */
     it('computes no rope where this run carries no recorded cost', () => {
       const why = timedOutBecause({ what: 'bash tests/scripts/x.sh', timeout: 'scenario', measuredOn: HERE });
@@ -525,12 +525,12 @@ describe('every spawn an orchestrator makes is bounded', () => {
     /**
      * What an assumed rung tells the reader to do, which is to record the run rather than to make it.
      *
-     * **This quoted `until` for one commit and that was circular by construction**, which is the property
-     * the second assertion pins. `until` names a run that reaches the rung; this arm prints only off the
-     * measured machine, so its reader is always on a box that can supply the evidence, and the message
-     * exists because a run just reached that rung. It therefore always named the run the reader had just
-     * made. The edit named instead is the one the provenance case polices as exactly one of `measured` and
-     * `until`, so the two cases cannot drift apart about what settling a rung means.
+     * **It must not quote `until`, which the second assertion pins.** `until` names a run that reaches the
+     * rung; this arm prints only off the measured machine, so its reader is always on a box that can supply the
+     * evidence, and the message exists because a run just reached that rung — so quoting it would always name
+     * the run the reader had just made. The edit named instead is the one the provenance case polices as
+     * exactly one of `measured` and `until`, so the two cases cannot drift apart about what settling a rung
+     * means.
      */
     it('tells an assumed rung\'s reader to record this run, and names the edit that does', () => {
       const assumed = ASSUMED_RUNGS[0]!;

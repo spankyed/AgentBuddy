@@ -185,9 +185,9 @@ export const provisional = (
  *
  * **How often three is reached is a question for the command, not this paragraph.**
  * `npm run spec-cost:check -- --list` reports how many costs rest on more than one reading, per suite and in
- * total, so the argument above can be weighed against what the records actually hold rather than against a
- * figure written here that would drift. The day the window landed the answer was 1 of 389, which is worth
- * knowing before reading any of this as a mechanism in steady use.
+ * total, so the argument above is weighed against what the records hold rather than against a figure written
+ * here that would drift. Ask it before reading any of this as a mechanism in steady use — it has answered as
+ * low as 1 of 389.
  *
  * **Two limits of a window of any size, worth knowing before trusting one.** A spec's *first* reading is its
  * cost outright — `settle` has no history to weigh it against — so a contended first measurement can demand a
@@ -854,12 +854,12 @@ export function parseArgs(argv: readonly string[], suiteDirs: readonly string[])
     }
   }
 
-  // **It takes a scope rather than the widest one, which took a correction.** It required `--all`, on the
-  // reasoning that forgetting part of a record leaves it holding two vintages. That objection does not hold: a
-  // record already does, by design — `--all` appends only where a reading disagrees, and a bare update measures
-  // only what the check would report, so one `measuredAt` was never a claim that every window was taken
-  // together. What the rule cost was proportionality: correcting one spec meant discarding every window in the
-  // repo, which is the reason to reach for the widest flag when the narrow thing was wanted.
+  // **It takes a scope rather than demanding the widest one.** Requiring `--all` would make correcting one
+  // spec mean discarding every window in the repo, which is the reason someone reaches for the widest flag when
+  // the narrow thing was wanted. The objection it would rest on — that a partial forget leaves the record
+  // holding two vintages — does not hold: a record already does, by design, since `--all` appends only where a
+  // reading disagrees and a bare update measures only what the check would report. One `measuredAt` was never a
+  // claim that every window was taken together.
   //
   // So it refuses a forget that would reach nothing. The scopes that *measure* are `--all` — narrowed by
   // `--suite` if given — and a named path; a bare update measures only what the check would report, so

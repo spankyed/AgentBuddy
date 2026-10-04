@@ -13,14 +13,12 @@
  * deleted spec leaves a row that needs no measurement to drop, and a new spec needs only the half it lives
  * in. It says which case it took.
  *
- * **Three things the flags do, which took a correction to state.** `--all` re-measures every spec and
- * *appends* what disagrees, so a quiet run still writes nothing and the history that rejects a noisy reading
- * is kept. `--forget` (with `--all`) throws that history away and starts again from this run, which is the
- * only thing that clears a *correlated* drift — one that adds a fifth to every spec sits under every
- * per-spec tolerance, so appending to the old readings would have the window argue with itself for a run.
- * `--force` overrides the two refusals, the idle floor and the contention check, and nothing else. This
- * paragraph described the first as a drift threshold on a write, which is what `rewritesEveryRow` was before
- * a window existed; renaming the identifier inside the sentence left the sentence wrong.
+ * **Three flags, three different things, and none of them is a threshold on the write.** `--all` re-measures
+ * every spec and *appends* what disagrees, so a quiet run still writes nothing and the history that rejects a
+ * noisy reading is kept. `--forget` (with `--all`) throws that history away and starts again from this run,
+ * which is the only thing that clears a *correlated* drift — one that adds a fifth to every spec sits under
+ * every per-spec tolerance, so appending to the old readings would have the window argue with itself for a run.
+ * `--force` overrides the two refusals, the idle floor and the contention check, and nothing else.
  *
  * **Naming a spec selects its config, never the file alone.** A spec measured on its own is not comparable
  * to one measured beside its siblings — `chain-inputs` reads 1688ms in its config and 963ms alone, against a

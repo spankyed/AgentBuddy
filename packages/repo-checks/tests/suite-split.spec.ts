@@ -1310,12 +1310,12 @@ describe('when a run is refused as a measurement of the machine', () => {
  * write, needed only while the record held one number per spec and rewriting it on a quiet run was churn. A
  * window drops an agreeing reading by itself, so there is nothing left for a threshold to protect.
  *
- * **It rode on `--force` for one commit, which put the riskiest write behind the flag that silences the
- * guards.** `--force` overrides `refusesAsBusy` and `refusesAsContended`; forgetting discards every window
- * and writes each cost from a single reading, which is the state with no history to outvote a bad one. So the
- * one operation that most needs a quiet machine was the only one that could not be refused for a loud one.
- * `adopt` is still `--all --force`, and that is a different question — whose machine the record is, not
- * whether its readings still describe the code.
+ * **It must not ride on `--force`, which would put the riskiest write behind the flag that silences the
+ * guards.** `--force` overrides `refusesAsBusy` and `refusesAsContended`; forgetting discards every window and
+ * writes each cost from a single reading, which is the state with no history to outvote a bad one. Gated there,
+ * the one operation that most needs a quiet machine is the only one that cannot be refused for a loud one.
+ * `adopt` is `--all --force`, and that is a different question — whose machine the record is, not whether its
+ * readings still describe the code.
  */
 describe('a window is forgotten only when asked for outright', () => {
   it('forgets the history on --all --forget', () => {
@@ -1359,12 +1359,13 @@ describe('a crossing is reported before it is adopted', () => {
   const FAST = 'tests/x.spec.ts';
 
   /**
-   * And both commands report it, which took a correction: it was printed by `update` alone.
+   * Both commands report it, and `check` is the one that matters.
    *
-   * That told the one person who had just measured — and already knew — while saying nothing to the one whose
-   * chain fails three weeks later, who is the reader a warning a run early is *for*. Asserted over the
-   * command's text, which is how this file already checks that `refusesAsBusy` runs before the measurement:
-   * `check` and `update` are commands rather than functions, so their wiring is not reachable any other way.
+   * Printed by `update` alone it tells the person who has just measured — and already knows — while saying
+   * nothing to the one whose chain fails three weeks later, who is the reader a warning a run early is *for*.
+   * Asserted over the command's text, which is how this file already checks that `refusesAsBusy` runs before
+   * the measurement: `check` and `update` are commands rather than functions, so their wiring is not reachable
+   * any other way.
    */
   it('is reported by check and not only by the run that measured it', () => {
     const source = fs.readFileSync(path.join(REPO_ROOT, 'scripts/spec-cost.ts'), 'utf-8');

@@ -701,14 +701,14 @@ describe("the chain documents the flags it takes", () => {
     flags.filter((flag) => !guide.includes(flag));
 
   /**
-   * The guide's entry for `npm run chain`, not the whole guide — which took a correction.
+   * The guide's entry for `npm run chain`, not the whole guide.
    *
-   * Searching the file let **another command's** flag satisfy this check. `spec-cost:update` also takes
-   * `--forget`, deliberately: the word means the same thing for both records, which is the repo's naming rule.
-   * So when the chain gained its own `--forget`, the substring was already in `CLAUDE.md` and this passed over
-   * an undocumented flag — the failure it exists to prevent, caused by a name the two commands share on
-   * purpose. The same shape as `ci.yml`'s header check, which reads the comment block above `jobs:` rather
-   * than the file, because every rung appears in some `run:` line.
+   * Searching the file lets **another command's** flag satisfy this check, and two of them share a name on
+   * purpose: `spec-cost:update` takes `--forget` too, because the word means the same thing for both records.
+   * So a chain flag can be undocumented while its spelling sits in `CLAUDE.md` under another command — the
+   * failure this check exists to prevent, admitted by the naming rule the repo wants. The same shape as
+   * `ci.yml`'s header check, which reads the comment block above `jobs:` rather than the file, because every
+   * rung appears in some `run:` line.
    *
    * The entry runs from the `npm run chain` line to the next command at column 0, which is how that block is
    * written: one `npm run <x>` per entry with its flags indented under it.
