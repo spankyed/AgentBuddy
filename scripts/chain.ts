@@ -40,7 +40,7 @@ import { CHAIN_FLAGS } from './lib/chain-flags.ts';
 import { TIMEOUT_MS, timedOutBecause, type TimeoutClass } from './lib/step-timeouts.ts';
 import { box, isMeasuredMachine, machineText, MEASURED_ON, scheduleMismatch, thisMachine } from './lib/core-budget.ts';
 import { commandText, rootScripts } from './lib/npm-scripts.ts';
-import { asCount, bodyDrift, drifted, IDLE_FLOOR, idleNow, movedBeyondBand, parseFlags, refusesAsBusy, refusesAsContended } from './lib/measure.ts';
+import { asCount, bodyDrift, drifted, idleNow, movedBeyondBand, parseFlags, RECORD_IDLE_FLOOR, refusesAsBusy, refusesAsContended } from './lib/measure.ts';
 import { machineLine, recordMachine, recordSeconds } from './lib/record-seconds.ts';
 import { schedule } from './lib/chain-schedule.ts';
 import { criticalPath, driftedSteps, measurementsFrom, outgrownRungs, SECONDS_FLOOR, willNotCache } from './lib/step-timing.ts';
@@ -402,9 +402,9 @@ async function main(): Promise<void> {
   // `npm run check:idle` is the same reading as a command, for asking without starting anything.
   if (args.flags.has('record')) {
     const before = idleNow();
-    if (refusesAsBusy({ idle: before, floor: IDLE_FLOOR, force: args.flags.has('force') })) {
+    if (refusesAsBusy({ idle: before, floor: RECORD_IDLE_FLOOR, force: args.flags.has('force') })) {
       console.log(`\n--record refused before running: the machine is ${Math.round(before * 100)}% idle and this `
-        + `needs ${Math.round(IDLE_FLOOR * 100)}%.`);
+        + `needs ${Math.round(RECORD_IDLE_FLOOR * 100)}%.`);
       console.log('  Refused now rather than after the run, which is where the same check used to sit. Wait, or'
         + ' pass --force and know the number is forced.');
       return;
@@ -676,8 +676,8 @@ function recordTheCosts(steps: readonly ChainStep[], measuredMs: ReadonlyMap<str
     return;
   }
   const idle = idleNow();
-  if (refusesAsBusy({ idle, floor: IDLE_FLOOR, force })) {
-    console.log(`\n--record refused: the machine is ${Math.round(idle * 100)}% idle and this needs ${Math.round(IDLE_FLOOR * 100)}%.`);
+  if (refusesAsBusy({ idle, floor: RECORD_IDLE_FLOOR, force })) {
+    console.log(`\n--record refused: the machine is ${Math.round(idle * 100)}% idle and this needs ${Math.round(RECORD_IDLE_FLOOR * 100)}%.`);
     console.log('  What you would record now is the machine. Wait, or pass --force and know the number is forced.');
     return;
   }

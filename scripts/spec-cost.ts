@@ -39,7 +39,7 @@ import { spawnSync } from 'node:child_process';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { REPO_ROOT } from '@abuddy/host/build/packages-built';
-import { bodyDrift, drifted, idleNow, IDLE_FLOOR, refusesAsBusy, refusesAsContended } from './lib/measure.ts';
+import { bodyDrift, drifted, idleNow, RECORD_IDLE_FLOOR, refusesAsBusy, refusesAsContended } from './lib/measure.ts';
 import { isMeasuredMachine, machineText, thisMachine, type Machine } from './lib/core-budget.ts';
 import { UNIT_SUITES, type UnitSuite } from './lib/unit-suites.ts';
 import {
@@ -165,9 +165,9 @@ function update(plans: readonly SuitePlan[], dry: boolean): void {
   // is exactly how a cost got recorded at a load of 71 and had to be reverted by hand.
   if (work.some((plan) => plan.configs.length > 0)) {
     const idle = idleNow();
-    if (refusesAsBusy({ idle, floor: IDLE_FLOOR, force })) {
+    if (refusesAsBusy({ idle, floor: RECORD_IDLE_FLOOR, force })) {
       throw new Error(`The machine is ${Math.round(idle * 100)}% idle and recording refuses below `
-        + `${Math.round(IDLE_FLOOR * 100)}%. What you would record is the machine, not the specs.\n`
+        + `${Math.round(RECORD_IDLE_FLOOR * 100)}%. What you would record is the machine, not the specs.\n`
         + '  Wait for it to go quiet, or pass --force if you mean to record this.');
     }
   }

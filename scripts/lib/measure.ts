@@ -95,19 +95,63 @@ export const coresBusy = (before: CpuTimes, after: CpuTimes, cores: number): num
   (1 - idleFrom(before, after)) * cores;
 
 /**
- * How idle the machine must be before a timing is worth taking.
+ * How idle the machine must be before a timing is worth **printing**.
  *
  * Chosen from what actually went wrong rather than from a round number. The measurement that had to be
  * reverted was taken at roughly 0% idle, with another agent's full test suite on the box. The ones worth
  * quoting were taken at 90%. In between, 78.7% idle on this 10-core machine was about two cores of ordinary
  * desktop noise — editor, indexer — which did not visibly move a back-to-back comparison.
  *
- * So the floor is set to refuse "another suite is running" without refusing "an editor is open". A stricter
- * floor would be more correct per-measurement and would be routed around with `--force`, which is worse
- * than a floor that holds: the point is that the number in a commit message was taken on a quiet box, and a
- * gate nobody respects does not deliver that.
+ * So this floor refuses "another suite is running" without refusing "an editor is open". A stricter one
+ * would be more correct per-measurement and would be routed around with `--force`, which is worse than a
+ * floor that holds: the point is that the number in a commit message was taken on a quiet box, and a gate
+ * nobody respects does not deliver that.
+ *
+ * **It is the floor for a command that prints and records nothing** — `npm run measure` and
+ * `npm run measure:loop`, both of which also take `--idle` to move it per run, and whose output carries its
+ * own conditions (`citation`). A command that writes a measurement into a committed artifact asks
+ * `RECORD_IDLE_FLOOR` instead, because what it leaves behind outlives the reading.
  */
 export const IDLE_FLOOR = 0.7;
+
+/**
+ * How idle the machine must be before a timing is worth **recording**.
+ *
+ * **Measured, which the printing floor above never was.** Induced load on this 10-core box, each row a run
+ * of `@app/repo-checks`' fast half against a quiet reference, 2026-10-04:
+ *
+ * | load | idle | cores busy | body drift vs quiet | worst single spec |
+ * |---|---|---|---|---|
+ * | none | 93% | 0.7 | reference | — |
+ * | none | 94% | 0.6 | -7% | 74% |
+ * | 1 burner | 81% | 1.9 | +4% | 86% |
+ * | 2 burners | 76% | 2.4 | **+15%** | 150% |
+ * | 3 burners | 67% | 3.3 | +16% | 250% |
+ * | 5 burners | 36% | 6.4 | +43% | 250% |
+ *
+ * The line that sets it: **at `IDLE_FLOOR` a permitted run drifts the body about as far as `DRIFT_SHARE`,
+ * the threshold the drift report exists to raise.** A floor that admits runs its own drift gate would flag
+ * is not a floor. The crossover is near 77%; at 81% the drift is +4%, inside the -7% that two quiet runs
+ * differ by on their own. So this is the lowest round figure whose expected drift sits inside quiet-run
+ * variance, with margin for a box noisier than the one measured.
+ *
+ * **Not 90%**, for `IDLE_FLOOR`'s reason: readings of 86-95% came easily on that box and 78% came up
+ * repeatedly, so 90% is the value that gets `--force`d. And not a per-spec bound, because there is no such
+ * thing to have — one quiet run moves a single spec 74% against another, which is why the record keeps a
+ * window and the report watches the body.
+ *
+ * What a *half* costs is a tail rather than a threshold: no run above 36% idle moved a spec across an edge
+ * in that sweep, and the one that prompted this work did it at 78%. That is the window's problem now
+ * (`spec-cost.ts`'s `WINDOW`), and this floor is what keeps the body honest.
+ *
+ * **The relationship to `DRIFT_SHARE` is empirical and no case asserts it**, which is deliberate: the two
+ * are different quantities. `1 - 0.85` happens to equal `DRIFT_SHARE` exactly, and an assertion was written
+ * on that before it was checked — but the busy share of a box is not body drift, and the measured ratio
+ * between them is about 0.6 to 1 (24% busy gave +15%). A spec cannot re-take the measurement, so what
+ * `measure.spec.ts` holds is the ordering: a recording floor stricter than the printing one. Re-measure the
+ * box and both numbers may move; that ordering may not.
+ */
+export const RECORD_IDLE_FLOOR = 0.85;
 
 /**
  * How far a re-measurement has to move before a record follows it, as a share of what is recorded.

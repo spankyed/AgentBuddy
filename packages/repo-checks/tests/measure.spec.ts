@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import {
   asNumber, citation, conditions, coresBusy, cpuTimes, driftedDuring, groupBySignature, idleFrom, IDLE_FLOOR,
-  pairedDelta, parseFlags, rateOf, refusesAsBusy, runOrder, signatureOf, summarise, upperBound,
+  pairedDelta, parseFlags, rateOf, RECORD_IDLE_FLOOR, refusesAsBusy, runOrder, signatureOf, summarise,
+  upperBound,
 } from '../../../scripts/lib/measure.ts';
 
 /**
@@ -98,6 +99,30 @@ describe('when a measurement is refused', () => {
   it('is suppressed by --force', () => {
     expect(refusesAsBusy({ ...busy, force: true })).toBe(false);
   });
+
+  /**
+   * The two floors, and the property that sets the stricter one.
+   *
+   * A printed timing carries its own conditions and is gone; a recorded one outlives the reading. Measured
+   * 2026-10-04 (the table on `RECORD_IDLE_FLOOR`), a run admitted at the printing floor drifts the body
+   * about as far as `DRIFT_SHARE` — so a recording floor at that value would admit exactly the runs its own
+   * drift report exists to raise. That is the relationship asserted here, rather than either number:
+   * re-measure the box and both may move, but a recording floor loose enough to trip the drift gate is
+   * always wrong.
+   */
+  it('asks more of a run it will record than of one it will print', () => {
+    expect(RECORD_IDLE_FLOOR, 'a recording floor no stricter than the printing one buys nothing')
+      .toBeGreaterThan(IDLE_FLOOR);
+  });
+
+  it('admits a box between the two floors for printing and refuses it for recording', () => {
+    const between = (IDLE_FLOOR + RECORD_IDLE_FLOOR) / 2;
+    expect(refusesAsBusy({ idle: between, floor: IDLE_FLOOR, force: false }),
+      'quiet enough to print a timing whose conditions are quoted beside it').toBe(false);
+    expect(refusesAsBusy({ idle: between, floor: RECORD_IDLE_FLOOR, force: false }),
+      'and not quiet enough to leave a number behind').toBe(true);
+  });
+
 
   it('takes the floor it is given, so a deliberate lower bar is possible', () => {
     expect(refusesAsBusy({ ...busy, floor: 0.1 })).toBe(false);
