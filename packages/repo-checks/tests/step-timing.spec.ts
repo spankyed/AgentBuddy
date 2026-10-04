@@ -1,11 +1,12 @@
 // The two pure readings of a run's timings: the floor lanes could reach, and whether the table still tells
 // the truth about what a step costs.
 import { describe, expect, it } from 'vitest';
-import { criticalPath, driftedSteps, willNotCache } from '../../../scripts/lib/step-timing.ts';
+import { criticalPath, driftedSteps, outgrownRungs, willNotCache } from '../../../scripts/lib/step-timing.ts';
+import { declaredShare, type TimeoutClass } from '../../../scripts/lib/step-timeouts.ts';
 import type { SchedulableStep } from '../../../scripts/lib/chain-schedule.ts';
 
 /** A pooled step, which `driftedSteps` treats like any other — the run decides what may be reported, not the step */
-type TimedStep = SchedulableStep & { readonly forceArgs?: readonly string[] };
+type TimedStep = SchedulableStep & { readonly forceArgs?: readonly string[]; readonly timeout?: TimeoutClass };
 
 const step = (name: string, dependsOn: string[] = [], extra: Partial<TimedStep> = {}): TimedStep =>
   ({ name, dependsOn, ...extra });
@@ -105,6 +106,71 @@ describe('driftedSteps', () => {
   it('says nothing about a step that did not run, or one that declares no measurement', () => {
     expect(driftedSteps(steps, new Map())).toEqual([]);
     expect(driftedSteps([step('undeclared')], new Map([['undeclared', 999_000]]))).toEqual([]);
+  });
+});
+
+/**
+ * Whether a step has outgrown its rung according to what it *cost*, rather than what it declares.
+ *
+ * **`declaredShare` is a bound on a declared number, and the only thing watching that number is a
+ * half-to-double band — so the watcher is looser than the thing it protects.** Measured 2026-10-04:
+ * `test:integration` declares 60s and sits at 0.80 of its `suite` rung, and could reach 120s before
+ * `driftedSteps` says a word, which is 1.60 of the rung. Four steps can break the bound in silence. It is not
+ * hypothetical either — that step measured 67.3s in a chain run the same day, 0.90 of its rung, while the
+ * table reported 0.80.
+ *
+ * So the question is asked of the measurement, which is the move `criticalPath` already made in this file for
+ * the same reason: its floor was reported from `seconds` and was wrong by the table's drift, 109s against the
+ * 125.8s those steps actually took.
+ */
+describe('outgrownRungs', () => {
+  const ran = (name: string, timeout: TimeoutClass, declared: number): TimedStep =>
+    step(name, [], { seconds: declared, timeout });
+
+  /** The case this exists for: the declaration passes the bound and the measurement does not */
+  it('reports a step whose measured cost passes the rung its declared cost fits in', () => {
+    // test:integration's own numbers: 60s declared is 0.80 of `suite`; 80s measured is 1.07
+    const steps = [ran('test:integration', 'suite', 60)];
+    const found = outgrownRungs(steps, new Map([['test:integration', 80_000]]));
+
+    expect(found.map((row) => row.name)).toEqual(['test:integration']);
+    expect(found[0], 'both numbers, since the gap is the finding').toMatchObject({
+      declared: 60, measured: 80,
+    });
+    expect(found[0]!.at, 'and where the measurement lands on the rung').toBeCloseTo(1.07, 2);
+  });
+
+  it('says nothing about a step whose measured cost still fits', () => {
+    // 67.3s is the real reading that prompted this, and it is inside the rung — 0.90, uncomfortable, not over
+    expect(outgrownRungs([ran('test:integration', 'suite', 60)], new Map([['test:integration', 67_300]])))
+      .toEqual([]);
+  });
+
+  it('says nothing about a step the run did not measure', () => {
+    // A cached step cost no time, so it is evidence of nothing — the same reason `criticalPath` skips it
+    expect(outgrownRungs([ran('compile', 'suite', 13)], new Map())).toEqual([]);
+  });
+
+  /**
+   * A step already over on its *declaration* is `chain-graph.spec.ts`' business, not this report's.
+   *
+   * That spec fails the chain at `test:unit:host`, so a run reaching this report has a table that passes the
+   * bound. Reporting it here too would say the same thing twice and in the weaker place.
+   */
+  it('leaves a declaration that is already over to the spec that gates on it', () => {
+    const over = [ran('greedy', 'quick', 20)];
+    expect(declaredShare(20, 'quick'), 'declared is already past the bound').toBeGreaterThan(1);
+    expect(outgrownRungs(over, new Map([['greedy', 20_000]])), 'so this is not the thing to report it')
+      .toEqual([]);
+  });
+
+  it('weighs each step against its own rung', () => {
+    // 40s is over `quick` (2.67) and well inside `suite` (0.53) — the rung is the unit, not the number
+    const found = outgrownRungs(
+      [ran('leg', 'quick', 10), ran('pool', 'suite', 40)],
+      new Map([['leg', 40_000], ['pool', 40_000]]),
+    );
+    expect(found.map((row) => row.name)).toEqual(['leg']);
   });
 });
 

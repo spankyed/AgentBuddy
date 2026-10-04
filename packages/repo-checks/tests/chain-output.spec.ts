@@ -6,7 +6,7 @@ import { describe, expect, it } from 'vitest';
 import { firstChange, REPO_ROOT } from '@abuddy/host/build/packages-built';
 import { CHAIN_STEPS } from '../../../scripts/lib/chain-steps.ts';
 import { machineText, thisMachine } from '../../../scripts/lib/core-budget.ts';
-import { briefly, classifyLine, declaredAt, dim, driftReport, DRY_REASON_COLUMN, howLong, identicalRewrites, marker, oneLine, REASON_COLUMN, shouldClassify, staleLines, STEP_NAME_WIDTH, TIME_COLUMN, whenChanged, wrapAt, writerOf } from '../../../scripts/lib/chain-output.ts';
+import { briefly, classifyLine, outgrownReport, declaredAt, dim, driftReport, DRY_REASON_COLUMN, howLong, identicalRewrites, marker, oneLine, REASON_COLUMN, shouldClassify, staleLines, STEP_NAME_WIDTH, TIME_COLUMN, whenChanged, wrapAt, writerOf } from '../../../scripts/lib/chain-output.ts';
 
 describe('wrapAt', () => {
   /**
@@ -498,6 +498,43 @@ describe('shouldClassify', () => {
 
   it('does not when asked not to', () => {
     expect(shouldClassify({ ...under, optedOut: true })).toBe(false);
+  });
+});
+
+/**
+ * What a run says when a step's *measured* cost has outgrown the rung it declares.
+ *
+ * The bound (`declaredShare`) reads the declaration, and the band watching declarations is half-to-double — so
+ * a step can pass the bound while its real cost has outgrown it. `outgrownRungs` finds those; this words them.
+ *
+ * **It is a report, so what it must not do is read like a failure**, and what it must do is name the one thing
+ * that would make it a false alarm: a crowded run inflates a measurement, and `--cores 1` is the check. That
+ * is `howLong`'s idiom above rather than a second way of saying it.
+ */
+describe('outgrownReport', () => {
+  const found = [{ name: 'test:integration', declared: 60, measured: 80, at: 80 * 4 / 300 }];
+
+  it('says nothing when no step outgrew its rung', () => {
+    expect(outgrownReport([])).toBe('');
+  });
+
+  it('names both numbers, the share and the rung it is a share of', () => {
+    const said = outgrownReport(found);
+
+    expect(said, 'what it cost').toContain('80s');
+    expect(said, 'against what it declares').toContain('60s');
+    expect(said, 'and where that lands').toContain('107%');
+  });
+
+  it('names the run that tells a crowded measurement from a real one', () => {
+    expect(outgrownReport(found), 'the one thing that would make this a false alarm')
+      .toContain('--cores 1');
+  });
+
+  it('asks for the record rather than the rung, since the declaration moves first', () => {
+    // The pipeline: report, then `--all --record`, then `chain-graph` fails on the new declaration, then the
+    // step moves. Telling a reader to move the rung first skips the step that proves it needs moving
+    expect(outgrownReport(found)).toContain('--record');
   });
 });
 

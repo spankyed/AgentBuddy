@@ -470,7 +470,10 @@ npm run chain            # Before a merge: every check in dependency order, cold
                          # contradicted: one past double its declared
                          # `seconds`, and one that passed and is already stale again — the second with the
                          # inputs that differ and whether each moved while the step ran (an ordering to
-                         # fix) or since.
+                         # fix) or since. And, on any machine, a step whose *measured* cost outgrew the
+                         # timeout rung it declares: `declaredShare` gates on the declaration and the band
+                         # above watches declarations at half-to-double, which is looser than the bound's own
+                         # margin, so a run is the one place both numbers exist (`outgrownRungs`).
                          #   --dry     the plan and why each step is or is not cached, running nothing
                          #   --all     every step regardless of its stamp, forcing those that keep a cache
                          #             of their own; the run each step's `seconds` is checked on

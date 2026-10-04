@@ -447,6 +447,37 @@ export function shouldClassify(run: {
 }
 
 /**
+ * What a run says when a step's measured cost has outgrown the rung it declares.
+ *
+ * `outgrownRungs` (`step-timing.ts`) has why this exists: the bound reads the declaration, and the band
+ * watching declarations is looser than the bound, so a step can pass `declaredShare` while its real cost does
+ * not. This is the one place a run can say so, because it is the one place both numbers exist.
+ *
+ * **It names what would make it a false alarm**, which a report has to do or it gets ignored: a crowded run
+ * inflates a measurement, and `--cores 1` is how to tell. That is `howLong`'s suggestion above rather than a
+ * second way of saying the same thing.
+ *
+ * **And it asks for the record, not the rung.** Moving a step to a longer class is the fix, but the
+ * declaration moves first: `--all --record` writes what the step costs, `chain-graph.spec.ts` then fails the
+ * bound on the new number, and *that* is what says the rung has to change. Advising the rung here would skip
+ * the step that proves it.
+ */
+export const outgrownReport = (
+  found: readonly { name: string; declared: number; measured: number; at: number }[],
+): string => {
+  if (found.length === 0) return '';
+  const count = `${found.length} step${found.length === 1 ? '' : 's'}`;
+  const rows = found.map(({ name, declared, measured, at }) =>
+    `  ${name.padEnd(STEP_NAME_WIDTH)} ${declared}s declared, ${measured}s here — ${Math.round(at * 100)}% of `
+    + 'its rung on the smaller machine that rung is sized for').join('\n');
+  return `\n${count} cost more than the rung ${found.length === 1 ? 'it declares' : 'they declare'} leaves `
+    + `room for:\n${rows}\n`
+    + '  A crowded run inflates this — `npm run chain -- --cores 1` tells that from a step that has grown.\n'
+    + '  If it has, `npm run chain -- --all --record` writes the new cost and chain-graph.spec.ts fails the\n'
+    + '  bound on it, which is what says the rung has to change.';
+};
+
+/**
  * What the re-run proved.
  *
  * A pass here rules the code out, which is the useful half: the retry runs the same command over the same tree,

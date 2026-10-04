@@ -40,6 +40,7 @@ import * as realMeasure from '../../../scripts/lib/measure.ts';
 import * as realStepTimeouts from '../../../scripts/lib/step-timeouts.ts';
 import * as realChainSchedule from '../../../scripts/lib/chain-schedule.ts';
 import * as realCoreBudget from '../../../scripts/lib/core-budget.ts';
+import * as realStepTiming from '../../../scripts/lib/step-timing.ts';
 import { UNIT_SUITES } from '../../../scripts/lib/unit-suites.ts';
 
 /**
@@ -59,12 +60,15 @@ const MODULES = {
   'step-timeouts': { file: 'step-timeouts.ts', real: realStepTimeouts as unknown as Lib },
   'chain-schedule': { file: 'chain-schedule.ts', real: realChainSchedule as unknown as Lib },
   'core-budget': { file: 'core-budget.ts', real: realCoreBudget as unknown as Lib },
+  // Reachable for the same reason the others are: its only imports are siblings in `scripts/lib`, which
+  // `absolute()` below rewrites, and a type from `chain-schedule.ts`, which erases
+  'step-timing': { file: 'step-timing.ts', real: realStepTiming as unknown as Lib },
 } as const;
 type Module = keyof typeof MODULES;
 
 /** The intersection, because an entry calls only its own module's exports and the harness is generic over all */
 type Lib = typeof realSpecCost & typeof realMeasure & typeof realStepTimeouts & typeof realChainSchedule
-  & typeof realCoreBudget;
+  & typeof realCoreBudget & typeof realStepTiming;
 
 const DIRS = UNIT_SUITES.map((suite) => suite.dir);
 
@@ -535,6 +539,21 @@ const MUTATIONS: readonly Mutation[] = [
     from: '  || (recorded !== undefined && halfFor(file, recorded) !== halfFor(file, measured));',
     to: '  || false;',
     call: (lib) => lib.worthKeeping('tests/x.spec.ts', 2_186, 2_600),
+  },
+  {
+    /**
+     * The half of the bound that reads the measurement. Dropping the guard makes it report a step whose
+     * *declaration* is already over, which is `chain-graph.spec.ts`' failure and not this report's — so the
+     * run would say the same thing twice, in the weaker place, and a reader would not know which to act on.
+     */
+    why: 'outgrownRungs leaves a declaration that is already over to the spec that gates on it',
+    in: 'step-timing',
+    from: '    if (declaredShare(step.seconds, step.timeout) > 1) continue;',
+    to: '',
+    call: (lib) => lib.outgrownRungs(
+      [{ name: 'greedy', dependsOn: [], seconds: 20, timeout: 'quick' }],
+      new Map([['greedy', 20_000]]),
+    ),
   },
   {
     why: 'forgetsWindows needs both flags, so --all alone keeps the history that rejects a bad reading',

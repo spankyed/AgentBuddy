@@ -4,6 +4,7 @@
  * and separate from `scripts/chain.ts` because that module runs the chain when imported.
  */
 import type { SchedulableStep } from './chain-schedule.ts';
+import { declaredShare, type TimeoutClass } from './step-timeouts.ts';
 
 /**
  * The longest chain of steps by `seconds`: the floor on wall time however many lanes there are. Reported so
@@ -83,6 +84,48 @@ export const overBand = (declared: number, measured: number): boolean => measure
  * noise — `check:tiers` declares 0.3s.
  */
 export const SECONDS_FLOOR = 1;
+
+/**
+ * Steps whose **measured** cost puts them past the rung they declare.
+ *
+ * **`declaredShare` is a bound on a declared number, and the band watching that number is looser than the
+ * bound itself.** `driftedSteps` below speaks at twice the declared cost; the bound's own margin is smaller
+ * than that for four steps, so a step can outgrow its rung in silence. Measured 2026-10-04:
+ * `test:integration` declares 60s, which is 0.80 of its `suite` rung, and could reach 120s — 1.60 of the
+ * rung — without a word. It read 67.3s in a chain run the same day while the table reported 0.80.
+ *
+ * The cause was two changes on one day: the band was loosened on the grounds that a deadline is a declared
+ * class and `seconds` is "only a report", and `MAX_DECLARED_SHARE` made `seconds` a gate input. Both shipped.
+ *
+ * **Asked of the measurement, which is what `criticalPath` above already does and for the same reason** — its
+ * floor was reported from `seconds` and was wrong by the table's drift. A run is the one place both numbers
+ * exist: `chain-graph.spec.ts` can only ever see the declaration.
+ *
+ * **A report and not a gate.** A measurement at this threshold is noisy upward in a way the 2x band is not —
+ * `driftReport` records 0 over-band events in 40 step runs, which says nothing about a 25% overrun — and
+ * failing a run for it would manufacture the flake the ladder exists to prevent. What it feeds is the chain's
+ * own pipeline: the report, then `--all --record`, then `chain-graph` failing on the new declaration, then the
+ * step moving rung. Only the first was missing.
+ *
+ * A step already over on its *declaration* is left out: that is `chain-graph`'s to fail, and a run reaching
+ * this report has a table that passed it.
+ */
+export function outgrownRungs<S extends SchedulableStep & { readonly timeout?: TimeoutClass }>(
+  steps: readonly S[],
+  measuredMs: ReadonlyMap<string, number>,
+): Array<{ name: string; declared: number; measured: number; at: number }> {
+  const found: Array<{ name: string; declared: number; measured: number; at: number }> = [];
+  for (const step of steps) {
+    const ms = measuredMs.get(step.name);
+    // A cached step cost no time, so it is evidence of nothing — `criticalPath` skips it for the same reason
+    if (ms === undefined || step.timeout === undefined || step.seconds === undefined) continue;
+    if (declaredShare(step.seconds, step.timeout) > 1) continue;
+    const measured = Math.round(ms / 1000);
+    const at = declaredShare(measured, step.timeout);
+    if (at > 1) found.push({ name: step.name, declared: step.seconds, measured, at });
+  }
+  return found;
+}
 
 export function driftedSteps<S extends SchedulableStep>(
   steps: readonly S[],

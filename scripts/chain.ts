@@ -43,8 +43,8 @@ import { commandText, rootScripts } from './lib/npm-scripts.ts';
 import { asCount, bodyDrift, drifted, IDLE_FLOOR, idleNow, movedBeyondBand, parseFlags, refusesAsBusy, refusesAsContended } from './lib/measure.ts';
 import { machineLine, recordMachine, recordSeconds } from './lib/record-seconds.ts';
 import { schedule } from './lib/chain-schedule.ts';
-import { criticalPath, driftedSteps, SECONDS_FLOOR, willNotCache } from './lib/step-timing.ts';
-import { briefly, classifyLine, cores, declaredAt, dim, driftReport, DRY_REASON_COLUMN, howLong, identicalRewrites, marker, oneLine, REASON_COLUMN, shouldClassify, staleLines, STEP_NAME_WIDTH, TIME_COLUMN, whenChanged, wrapAt, writerOf } from './lib/chain-output.ts';
+import { criticalPath, driftedSteps, outgrownRungs, SECONDS_FLOOR, willNotCache } from './lib/step-timing.ts';
+import { briefly, classifyLine, cores, declaredAt, dim, driftReport, outgrownReport, DRY_REASON_COLUMN, howLong, identicalRewrites, marker, oneLine, REASON_COLUMN, shouldClassify, staleLines, STEP_NAME_WIDTH, TIME_COLUMN, whenChanged, wrapAt, writerOf } from './lib/chain-output.ts';
 import { slowestTests } from './lib/slow-tests.ts';
 import { DIAGNOSTIC_RUN_ENV } from './lib/unit-pool.ts';
 import { exitOnEpipe } from './lib/exit-on-epipe.ts';
@@ -540,6 +540,14 @@ async function main(): Promise<void> {
 
   const report = driftReport(driftedSteps(steps, measuredMs), budget, MEASURED_ON, all);
   if (report !== '') console.log(report);
+
+  // **The bound asked of the measurement.** `declaredShare` gates on what a step declares, and the band above
+  // watches declarations at half-to-double — looser than the bound's own margin for four steps, so a step can
+  // outgrow its rung and pass. A run is the one place both numbers exist, which is `criticalPath`'s reason for
+  // reading measured seconds too. Not gated on the schedule: a measurement here is this machine's, and whether
+  // it fits this machine's rung is a question about this machine, where `driftReport`'s advice is about a table.
+  const outgrown = outgrownReport(outgrownRungs(steps, measuredMs));
+  if (outgrown !== '') console.log(outgrown);
 
   if (args.flags.has('record')) {
     recordTheCosts(steps, measuredMs, budget, all, args.flags.has('force'), args.flags.has('adopt'));

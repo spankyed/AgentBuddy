@@ -364,6 +364,27 @@ describe('every spawn an orchestrator makes is bounded', () => {
   });
 
   /**
+   * And the same bound asked of a measurement lives in the chain, not here.
+   *
+   * This case can only ever see the declaration — a spec has no run to read. So a step whose *recorded* cost
+   * has gone stale passes here while its real cost has outgrown the rung, and the band watching that record
+   * (`driftedSteps`) is looser than this bound's own margin: `test:integration` could reach twice its declared
+   * 60s, which is 1.60 of its rung, before anything said a word. `outgrownRungs` is the other half, asked of
+   * what a run measured, and it is a report rather than a gate because a crowded measurement is noisy where a
+   * declaration is not.
+   *
+   * Cross-referenced rather than duplicated: a reader who finds one needs to know the other exists, and the
+   * two cannot be one check because neither has the other's input.
+   */
+  it('names the measured counterpart of this bound, which only a run can ask', () => {
+    const timing = read('scripts/lib/step-timing.ts');
+    expect(timing, 'the measured half of the bound').toContain('export function outgrownRungs');
+    expect(timing, 'weighed by the same rule, so the two cannot disagree about what "over" means')
+      .toContain('declaredShare(');
+    expect(read('scripts/chain.ts'), 'and a run reports it').toContain('outgrownRungs(');
+  });
+
+  /**
    * Which rungs' factors are measured, and that every one of them says which it is.
    *
    * **Exactly one of `measured` and `until`**, because the pair is an either/or written as two fields: a
