@@ -62,7 +62,9 @@
     "tests/utils/seed-registry.spec.ts": [9]
   },
   "skipped": [],
-  "unmeasured": [],
+  "unmeasured": [
+    "tests/steps/result-truncator.spec.ts"
+  ],
   "machine": {
     "cpu": "Apple M1 Pro",
     "cores": 10

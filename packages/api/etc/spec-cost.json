@@ -22,7 +22,9 @@
     "tests/transport/sub-scope.spec.ts": [3]
   },
   "skipped": [],
-  "unmeasured": [],
+  "unmeasured": [
+    "tests/transport/emitter.spec.ts"
+  ],
   "machine": {
     "cpu": "Apple M1 Pro",
     "cores": 10
