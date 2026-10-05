@@ -272,7 +272,6 @@ describe('covers', () => {
  * because here `path.sep` is already `/`; what they hold is the thing that makes the other platform correct.
  */
 describe('repoRelative', () => {
-  /** So landing this changed no fingerprint here, which is what `api:stamp`'s committed hashes also prove */
   it('is what path.relative already gives on a platform whose separator is a slash', () => {
     const f = fixture();
     expect(path.sep, 'this platform separates with something else, so the case below means more than it says').toBe('/');
@@ -545,25 +544,18 @@ describe('which inputs changed', () => {
   it('collects a digest per file that the hash taken beside it agrees with', () => {
     const f = fixture();
     const files: Record<string, string> = {};
-    const collected = fingerprintInputs(f.unit.inputs, undefined, [], (file, digest) => { files[file] = digest; });
+    const collected = fingerprintInputs(f.unit.inputs, [], (file, digest) => { files[file] = digest; });
     expect(collected, 'collecting moved the verdict').toBe(fingerprintInputs(f.unit.inputs));
     expect(Object.keys(files).map((file) => path.basename(file)).sort()).toEqual(['a.ts', 'b.ts', 'package.json']);
     const a = rel(path.join(f.src, 'a.ts'));
     expect(files[a]).toBe(createHash('sha256').update(fs.readFileSync(path.join(f.src, 'a.ts'))).digest('hex'));
-
-    // A normaliser narrows what "changed" means, and a digest has to be narrowed the same way or a report
-    // names a file whose prose moved while the hash it explains says nothing did
-    const shouted: Record<string, string> = {};
-    fingerprintInputs(f.unit.inputs, (contents) => contents.toString('utf-8').toUpperCase(), [], (file, digest) => { shouted[file] = digest; });
-    expect(shouted[a]).toBe(createHash('sha256').update(fs.readFileSync(path.join(f.src, 'a.ts'), 'utf-8').toUpperCase()).digest('hex'));
-    expect(shouted[a]).not.toBe(files[a]);
 
     // The map's keys are the files the hash walked and no others, so a diff over it cannot name a file the
     // verdict never read. A declared input that is not there is not walked at all — `ABSENT` is for the
     // narrower case of a file that goes between the walk and the read, which the hash counts and so must this
     const absent = path.join(f.root, 'tsdown.config.ts');
     const missing: Record<string, string> = {};
-    fingerprintInputs([...f.unit.inputs, absent], undefined, [], (file, digest) => { missing[file] = digest; });
+    fingerprintInputs([...f.unit.inputs, absent], [], (file, digest) => { missing[file] = digest; });
     expect(missing[rel(absent)]).toBeUndefined();
     expect(Object.keys(missing).sort()).toEqual(Object.keys(files).sort());
     expect(ABSENT, 'the word the hash frames a vanished file with, so a digest map agrees with it').toBe('absent');

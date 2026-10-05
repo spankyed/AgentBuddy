@@ -8,10 +8,9 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { CompilerState, Extractor, ExtractorConfig, ExtractorLogLevel } from '@microsoft/api-extractor';
-import { ensurePackagesBuilt } from '@abuddy/host/build/packages-built';
+import { packagesBuiltOrRefuse } from '@abuddy/host/build/packages-built';
 import { componentContracts, type ComponentEntry } from './component-contracts.ts';
 import { reportEntries, reportName } from './lib/api-entries.ts';
-import { staleReason } from './api-report-stamp.ts';
 
 const pkgDir = path.resolve(process.argv[2] ?? '');
 const local = process.argv.includes('--local');
@@ -20,22 +19,21 @@ const typesDir = path.join(pkgDir, '.temp', 'api-types');
 const reportFolder = path.join(pkgDir, 'etc');
 
 /**
- * Before anything reads `dist`, which `staleReason` below does.
+ * Refuses rather than rebuilds, which is the difference between a checker and a fixer.
  *
- * A package's stamp fingerprints its *dependencies'* built declarations as well as its own, so this script run
- * against a stale `dist` compares reports generated from fresh sources against a stamp taken from old ones:
- * `stampWasClean` is then an answer about the wrong tree, and the self-check at the end of this file either
- * fires over nothing or misses a real finding. The symptom is `api:stamp` reporting "declarations changed"
- * after an `api:update` that changed nothing. 0.3s when nothing is stale: a stat and a return.
+ * A report generated against a stale `dist` is a report about the wrong tree, so the freshness has to be
+ * established — but **establishing it by building makes this a step that writes what it declares as its
+ * inputs.** Measured 2026-10-05, when it did: `api:check` rebuilt `@abuddy/testing` mid-chain and the
+ * freshness sweep then named twenty steps that had passed and would not be cached, with
+ * `packages:ensure`'s own output as the file that moved under them.
  *
- * **This is the only call, and `api-report-stamp.ts` deliberately has none**, though it is the script that
- * writes the stamp. `api:update` runs this one first, so by the time the writer reads `dist` it is current;
- * `api:check` is this script; and the bare `api:stamp` leg runs under `npm run typecheck`, which orders
- * `packages:ensure` ahead of it for exactly this reason (`typecheck-legs.ts`). A second call bought nothing
- * and cost an exception — the chain holds a step whose runner consults a stamp store to declaring
- * `forceArgs`, and `api:stamp` keeps no cache of its own to force.
+ * **This module is both halves, so the fixer sits in front of the command rather than here.** That is the
+ * rule `@abuddy/testing`'s guide states for the same pair: a fixer belongs to the command a user runs, and a
+ * checker must not try to repair. So the root `api:update` carries `packages:ensure &&` (door 1 there) and
+ * the root `api:check` does not — the chain step runs that script, and a rebuild inside it is the failure
+ * above.
  */
-ensurePackagesBuilt();
+packagesBuiltOrRefuse('npm run packages:build');
 
 /** Exports with declarations: [subpath, declaration file in .temp/api-types] */
 function entries(): [string, string][] {
@@ -46,17 +44,6 @@ function entries(): [string, string][] {
     return [key, path.join(typesDir, declaration)];
   });
 }
-
-/**
- * What the cheap check thought before this ran. `api:stamp` is a proxy for this script, and a proxy is
- * only worth having if it cannot quietly disagree — so the moment to catch a disagreement is here, where
- * both facts are in hand: what the stamp said, and whether a report actually moved.
- *
- * Its key is a list, and a list of someone else's inputs is a guess. This is what catches the guess being
- * wrong, including for an input nobody has thought of — which is how the entry set went unnoticed until a
- * widened exports map passed the whole chain.
- */
-const stampWasClean = staleReason(pkgDir) === null;
 
 fs.mkdirSync(reportFolder, { recursive: true });
 let failed = 0;
@@ -123,8 +110,9 @@ const prepared = all.map(([key, declaration]) => {
  *
  * Measured 2026-10-04: `@abuddy/sdk`'s 28 entries 12.3s -> 1.1s, `@abuddy/ui`'s 68 30s -> 0.9s, with every
  * report reproduced byte for byte. The reports are what prove it stays true — a divergence moves one, and
- * `api:check` fails on a moved report while `api:stamp`'s `#producer` row covers the case this most depends
- * on, an API Extractor upgrade changing what shared state means.
+ * `api:check` fails on a moved report. What covers the case this most depends on — an API Extractor upgrade
+ * changing what sharing a compiler state means — is that the step declares `package-lock.json`, so a bumped
+ * `@microsoft/api-extractor` invalidates it and every report is taken again and compared.
  */
 const compilerState = prepared.length === 0 ? undefined : CompilerState.create(prepared[0].config, {
   additionalEntryPoints: all.slice(1).map(([, declaration]) => declaration),
@@ -176,16 +164,6 @@ for (const file of fs.readdirSync(reportFolder).filter((f) => /\.(api|component)
   changed++;
   if (local) fs.rmSync(path.join(reportFolder, file));
   else { failed++; console.error(`etc/${file} has no matching export; run with --local to remove it`); }
-}
-
-// The proxy said these were current and they were not: its key is missing an input, or a report was edited
-// by hand. Loud, because every other symptom of this is silence — a report that drifts until something else
-// happens to regenerate it. `stampRows` (scripts/api-report-stamp.ts) carries what the key covers and why.
-if (changed > 0 && stampWasClean) {
-  console.error(`${pkg.name}: ${changed} report(s) moved while etc/declarations.sha256 said they were current.`);
-  console.error('  Read the diff: a report that differs from what the declarations produce was edited by hand,');
-  console.error('  and anything else means api:stamp is keyed on too little (stampRows in scripts/api-report-stamp.ts).');
-  failed++;
 }
 
 if (failed > 0) process.exit(1);

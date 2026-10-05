@@ -7,8 +7,10 @@
  * which is why it survives a `dist` clean and is absent on a fresh clone).
  *
  * **It is a proxy, in this repo's taxonomy** (root `CLAUDE.md`, "Three kinds of recorded artifact"): it
- * records what was read *last* time, so it can go stale from an input nobody listed, exactly as
- * `api:stamp` can. That is the known unsoundness of dep files generally, and it is why Bazel pairs them
+ * records what was read *last* time, so it can go stale from an input nobody listed. That was what bit the
+ * API report stamp, the repo's other proxy until it was deleted for the derivation it stood in for — which
+ * leaves this and `build-reads.ts` as the two that remain. It is the known unsoundness of dep files
+ * generally, and it is why Bazel pairs them
  * with sandboxing and Gradle pairs them with "undeclared means uncacheable". Here it is paired with
  * `trustworthy()` below and with the rule that a missing dep file is not a cacheable state.
  *
@@ -225,10 +227,10 @@ export function readsOf(name: string): readonly string[] | undefined {
 /**
  * Why a dep file cannot be believed, or `null` when it can — the proxy's self-check.
  *
- * A proxy records a hash of what it *believes* its inputs are, so it goes stale from one nobody listed.
- * `api:stamp` is the repo's other one and it was bitten exactly that way: the set of published entries was
- * missing from its key, so adding one passed the stamp and the whole chain. The lesson recorded there is
- * that a proxy needs a check against *itself*, not only a comparison, and this is that check.
+ * A proxy records a hash of what it *believes* its inputs are, so it goes stale from one nobody listed. The
+ * API report stamp was bitten exactly that way before it was deleted: the set of published entries was
+ * missing from its key, so adding one passed the stamp and the whole chain. The lesson it left is that a
+ * proxy needs a check against *itself*, not only a comparison, and this is that check.
  *
  * Two causes, named separately because they call for different fixes. A compiler upgrade invalidates every
  * recorded read set, and the file says which version wrote it. A changed `tsconfig` changes what the

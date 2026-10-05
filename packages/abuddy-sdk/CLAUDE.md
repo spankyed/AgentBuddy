@@ -169,11 +169,11 @@ does not review it, and **nothing outside this repo can resolve it** — a consu
 entry, and a pack's config may not declare that condition, which `check:specifiers` enforces.
 `./runtime/internals` is the same shape and the precedent.
 
-What the shape does *not* do, both checked: the compiled file still **ships** (`files` is `["dist", …]`, and
-`publish/dist/testing/pack-fixture.{js,d.ts}` are staged, as `runtime/internals`' are), and **`api:stamp` still
-hashes it** — its inputs are every `.d.ts` under `dist`, so a doc-comment edit in that file asks for an
-`api:update` that rewrites no report. Dropping an entry hides a file from resolution; it does not keep it out of
-the tarball or out of the stamp. It is deliberately *not*
+What the shape does *not* do, checked: the compiled file still **ships** (`files` is `["dist", …]`, and
+`publish/dist/testing/pack-fixture.{js,d.ts}` are staged, as `runtime/internals`' are). Dropping an entry hides
+a file from resolution; it does not keep it out of the tarball. A doc-comment edit here costs nothing, because
+`api:check` takes every report again and compares — there is no hash of the declarations to go stale, which is
+what used to ask for an `api:update` that then rewrote no report. It is deliberately *not*
 in `src/testing/index.ts`: that entry is published, and this is repo-internal test tooling that no pack author
 materialises a pack to use.
 

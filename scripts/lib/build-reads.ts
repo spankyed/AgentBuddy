@@ -154,7 +154,8 @@ export function filesRead(reads: BuildReads): string[] {
  * Why a pack's record cannot be believed, or `null` when it can — the proxy's self-check.
  *
  * A record of what was read *last* time can be stale about a read nobody has made yet, which is the known
- * unsoundness of dep files and the reason `api:stamp` needed a check against itself. Three causes, named
+ * unsoundness of dep files and the reason the API report stamp needed a check against itself before it was
+ * deleted. Three causes, named
  * apart because they call for different fixes: never built here, built by bundlers that have since moved,
  * or built with nothing reporting.
  */

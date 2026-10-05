@@ -81,11 +81,9 @@ export interface PackFixtureOptions {
  * not a pack, whose config may not declare that condition (`check:specifiers`). It appears in no `etc/*.api.md`
  * either, so `api:check` does not review it. `./runtime/internals` is the same shape.
  *
- * **Two things that shape does not buy, measured rather than assumed, because the first draft claimed both.**
+ * **What that shape does not buy, measured rather than assumed, because the first draft claimed otherwise.**
  * The compiled file *ships*: `files` is `["dist", …]`, and `publish/dist/testing/pack-fixture.{js,d.ts}` are in
- * the staged tree, as `runtime/internals`' are — dropping the entry hides it, it does not leave it out. And
- * `api:stamp` *does* hash it: the stamp's inputs are every `.d.ts` under `dist`, this one among 168 of them, and
- * since it began hashing verbatim a doc-comment edit here asks for an `api:update` that rewrites no report.
+ * the staged tree, as `runtime/internals`' are — dropping the entry hides it, it does not leave it out.
  * Deliberately not exported from `testing/index.ts`, which is published.
  *
  * **The condition that would make it public API: a published pack-reading API.** Today every consumer of a pack

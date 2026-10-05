@@ -425,7 +425,12 @@ const PACKAGES = PACKAGE_DIRS;
  * Not the package directory itself, which would pull `dist` into the fingerprint and miss the cache on
  * every build.
  */
-const WORKSPACE_PARTS = [
+/**
+ * Exported so a check can tell a path that is *offered* to every workspace from one someone wrote out by
+ * hand: for these, absent is the ordinary case and the walk skips it, where a hand-written input that names
+ * nothing is a step keyed on a file that does not exist (`chain-inputs.spec.ts`).
+ */
+export const WORKSPACE_PARTS = [
   // `templates` is the CLI's scaffold: pack code the specifier rules read and the CLI's own suite renders,
   // so a change to one has to invalidate the steps that read the workspace
   'src', 'tests', 'scripts', 'etc', 'templates', 'index.js',
@@ -850,6 +855,37 @@ export const CHAIN_STEPS: readonly ChainStep[] = [
   // `build:app` -> `test:packaged-authoring`, 111s), so running it alone costs its own time and no more. The
   // alternative is packing to a temp directory ourselves and handing attw the tarball, which is the fix if this
   // step ever needs to share a lane.
+  /**
+   * The reviewed reports of the published API, regenerated and compared.
+   *
+   * **A derivation, where this was a proxy and a derivation.** `api:stamp` hashed the declarations a report is
+   * a function of and ran as a typecheck leg, because this cost 55s and that cost 0.6s. It costs 13.1s now
+   * (measured 2026-10-05; one compiler state per package rather than one per entry, `31473b49d`), which is
+   * less than `typecheck:pack`, so the proxy's whole justification went with the speedup and the stamp is
+   * gone. What the stamp cost while it lived: a doc-comment edit reddened it though no report could move, a
+   * package's stamp fingerprinted its dependencies' declarations so fixing one left the next red, every fix
+   * wrote a committed file, and it raced a rebuild in flight — observed failing under `npm run typecheck`
+   * with all three packages' declarations rewritten inside that run's window, then passing twice after with
+   * nothing rebuilt. Whose build it was is not established (a second agent was in the tree), and the point
+   * does not need it: the remedy a proxy names is a *write*, so `api:update` in that window records a hash
+   * of a half-written tree and looks like it worked.
+   *
+   * Its inputs are the declarations it reads and the reports it compares against, so a hand-edited `etc/`
+   * invalidates it — the one case the stamp could not see, since its key was the declarations alone.
+   */
+  // `suite` rather than `quick`: it is three TypeScript compiles and three extractions, which is the
+  // fan-out that rung names, and 20s on `quick` is 133% of it four times slower — `declaredShare` refuses it
+  { name: 'api:check', timeout: 'suite', seconds: 20,
+    // The extractor and its config decide what a report says, so they belong in the key beside the two trees
+    //
+    // `component-contracts.ts` writes every `.component.md` and `api-entries.ts` decides which entries get a
+    // report at all, so each is a module whose edit moves a report while the script that imports it does not.
+    // The closure check in `chain-inputs.spec.ts` is what found them and what keeps the next one from hiding
+    inputs: [...ROOT, ...PACKAGE_BUILD_OUTPUTS, 'scripts/api-reports.ts',
+      'scripts/component-contracts.ts', 'scripts/lib/api-entries.ts',
+      'packages/abuddy-ears/etc', 'packages/abuddy-sdk/etc', 'packages/abuddy-ui/etc',
+      'packages/abuddy-ears/tsconfig.api-extractor.json', 'packages/abuddy-sdk/tsconfig.api-extractor.json',
+      'packages/abuddy-ui/tsconfig.package.json'] },
   { name: 'packages:check', timeout: 'quick', seconds: 6,
     // `attw --pack` packs a tarball inside each tree it checks and removes it again. Transient, so not an
     // output; real, so nothing may read those trees while it runs. This is what `exclusive: true` was.

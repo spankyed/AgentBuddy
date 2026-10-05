@@ -347,7 +347,8 @@ const digestOf = (contents: Buffer | null): string =>
  * had a file newer than their stamp — a run of the chain is a run you made because something changed, so the
  * regression is the ordinary case and the saving is the rare one. And a per-file version, hashing only the
  * files whose stats moved, needs the fingerprint composed from per-file digests rather than a byte stream,
- * which moves every recorded fingerprint including the three committed `etc/declarations.sha256`.
+ * which moves every recorded fingerprint. That used to include three committed files, until the proxy that
+ * read them was deleted for the derivation it stood in for; the cost now falls on chain stamps alone.
  *
  * What did pay, for the same 5.1x overlap, was reading each distinct file once per sweep: see `freshnessSweep`.
  *
@@ -356,12 +357,8 @@ const digestOf = (contents: Buffer | null): string =>
  * as fresh forever. Here they would be a cache key over *inputs*, which is sound in principle — the
  * reason not to is the arithmetic above, not the same objection.
  *
- * `normalise` hashes each file through a transform instead of as it is read, for a caller asking a
- * narrower question than "did these bytes change" — the API report stamp asks "could these declarations
- * have changed a report", and a doc comment's prose cannot.
- *
- * `collect` receives each file's own digest as this walk hashes it: the same files, in the same order, after
- * the same `normalise`, in one pass. It is how a caller that has to say *which* file moved gets an answer that
+ * `collect` receives each file's own digest as this walk hashes it: the same files, in the same order, in one
+ * pass. It is how a caller that has to say *which* file moved gets an answer that
  * cannot disagree with the verdict, because both come from here. A second walk of its own can disagree, and
  * one did — an mtime walk named a file an E2E test rewrites with identical bytes, and the diagnosis that
  * followed was wrong. The returned hash is unaffected, so a caller wanting only the verdict passes nothing.
@@ -418,7 +415,6 @@ export const skipsFingerprint = (file: string): boolean =>
 
 export function fingerprintInputs(
   inputs: readonly string[],
-  normalise?: (contents: Buffer, file: string) => Buffer | string,
   exclude: readonly string[] = [],
   collect?: (file: string, digest: string) => void,
   tree: TreeReader = readTree,
@@ -432,17 +428,9 @@ export function fingerprintInputs(
     // once per unit. Measured 2026-10-01 over the 13 chain steps: 24 618 file-slots over 3 706 distinct
     // files, 283.8 MB against 57.3 MB, 680ms against 108ms. Only the memo makes that saving real, so the
     // digest comes from `tree` (see `freshnessSweep`) and never from a local hash of the bytes.
-    //
-    // A normaliser is the exception and keeps hashing bytes: its output is a function of the normaliser as
-    // well as the file, so one digest per path would be wrong the moment two callers normalise differently.
-    // `api-report-stamp.ts` is the only one, it asks about a single unit, and it has no overlap to save.
-    const digest = normalise === undefined ? tree.digest(file) : null;
-    if (digest !== null) { hash.update(`${file}\0${digest}\0`); if (collect) collect(file, digest); continue; }
-    const contents = tree.read(file);
-    const hashed = contents !== null ? Buffer.from(normalise!(contents, file)) : null;
-    hash.update(`${file}\0${hashed === null ? ABSENT : hashed.length}\0`);
-    if (hashed !== null) hash.update(hashed);
-    if (collect) collect(file, digestOf(hashed));
+    const digest = tree.digest(file);
+    hash.update(`${file}\0${digest}\0`);
+    if (collect) collect(file, digest);
   }
   return hash.digest('hex');
 }
@@ -467,7 +455,7 @@ export function fingerprintUnit(unit: BuildUnit, collect?: (file: string, digest
     // surviving on the builds happening to be deterministic, and the pack build is already known not to be
     // (two lines of `Omit<…>` union ordering). Excluding self-output here means declaring `outputs`
     // honestly is the whole fix, rather than every such step needing its inputs hand-narrowed.
-    .update(fingerprintInputs(unit.inputs, undefined, [...unit.outputs, ...(unit.excludes ?? [])], collect, tree))
+    .update(fingerprintInputs(unit.inputs, [...unit.outputs, ...(unit.excludes ?? [])], collect, tree))
     .digest('hex');
 }
 

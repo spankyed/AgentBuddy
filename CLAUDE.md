@@ -53,8 +53,8 @@ parts — so each figure carries its conditions and the table can be re-derived 
 |---|---|---|
 | nothing tracked | nothing | **0.9s** |
 | a doc, a comment, a CLAUDE.md | nothing but that — no step declares `docs/`, and a fingerprint skips every `CLAUDE.md` | **0.9s** |
-| one package's source (the renderer) | ten of twenty-nine steps: `test:unit:host` (only the renderer's project), `test:integration`, the typecheck legs whose scope reaches it, `lint:check`, `check:specifiers`, `check:tiers`, `api:stamp` and `build:app` | **38.6s** |
-| nothing is cached (a cold tree) | all 29 steps, on a ten-core budget (re-measured 2026-10-04, `--all`) | **158.3s** |
+| one package's source (the renderer) | nine of twenty-eight steps: `test:unit:host` (only the renderer's project), `test:integration`, the typecheck legs whose scope reaches it, `lint:check`, `check:specifiers`, `check:tiers` and `build:app` | **38.6s** |
+| nothing is cached (a cold tree) | all 28 steps, on a ten-core budget (re-measured 2026-10-04, `--all`) | **158.3s** |
 
 **The one-package row is the one worth reading twice, and what it says changed.** It used to be 115.1s, on the
 reasoning that `build:app` rewrites `packages/*/dist` and so moves what every app-dependent step reads —
@@ -107,8 +107,8 @@ Three things the chain cannot work out for you, because they rewrite files you c
 - **default-setup's facade** — the types a dependent pack compiles against, bundled by `abuddy build` into
   `dist/types/pack-types.d.ts` and recorded in `etc/pack-types.api.md`. Run
   `npm run facade:update -w @app/default-setup` and commit the report. **`typecheck` does not notice this
-  one; `npm run compile` does**, which is the difference worth knowing: `api:stamp`, `exports:check` and
-  `schema:check` are all typecheck legs, so it is easy to finish a typecheck and believe every recorded
+  one; `npm run compile` does**, which is the difference worth knowing: `exports:check` and
+  `schema:check` are typecheck legs and `api:check` is a chain step, so it is easy to finish a typecheck and believe every recorded
   artifact is current. The check cannot move to typecheck, because its subject is what the build produced —
   run it anywhere but after that build and it compares the committed report against a stale bundle, which
   passes over the wrong thing.
@@ -117,13 +117,26 @@ Three things the chain cannot work out for you, because they rewrite files you c
   Re-recording rewrites a test expectation, not user data; what reaches users is the new `sourceHash`.
   `packages/default-setup/tests/seeds/CLAUDE.md` has the rule for what a golden records.
 
-**`api:check` is not a chain step, on purpose.** `typecheck` runs `api:stamp`, which hashes the same
-declarations the reports are generated from, in 0.6s against `api:check`'s 55. A report is a pure
-function of those declarations, so a matching stamp means `api:check` cannot fail, and a moved
-declaration fails `typecheck` until `api:update` runs. Run `api:check` before publishing, where it is
-the authority; running it per merge re-proves the stamp and costs a minute. The one thing the stamp
-cannot see is a hand-edited `etc/*.api.md` whose declarations never moved, which the publish path
-catches.
+**`api:check` is a chain step, and it used to have a proxy.** It regenerates the reviewed reports and
+compares, so it is a derivation and needs no staleness record of its own. `api:stamp` was that record —
+a hash of the declarations a report is a function of, run as a typecheck leg because this cost 55s and
+that cost 0.6s. It costs **13.1s** now, measured 2026-10-05, after one compiler state per package
+replaced one per entry (`31473b49d`: sdk's 28 entries 12.3s -> 1.1s, ui's 68 30s -> 0.9s). That is less
+than `typecheck:pack`, so the proxy's whole justification went with the speedup.
+
+**What the proxy cost while it lived is the argument against reaching for one again.** A doc-comment
+edit reddened it though no report could move. A package's stamp fingerprinted its *dependencies'*
+declarations, so clearing sdk's left ui's red — two round trips for one comment. Every fix wrote a
+committed file, including runs that changed no report. It could not see a hand-edited `etc/*.api.md`
+whose declarations never moved, which is now simply an input. And it raced a rebuild in flight:
+observed failing under `npm run typecheck` with all three packages' declarations rewritten inside that
+run's window, then passing twice straight after with nothing rebuilt. Which process was writing is not
+established — a second agent was working in the tree, so it was that build or this run's own
+`packages:ensure` — and it does not matter, because **the remedy a proxy names is a write.** `api:update`
+run in that window would have recorded a hash of a half-written tree into a committed file, and looked
+like it worked. A derivation cannot: it compares and writes nothing, so a racing read fails and the next
+run passes. More than one process touching this tree is the ordinary case now, which is the reason to
+state this rather than file it as a flake.
 
 **`packages:check` is a chain step, for the opposite reason**: publint and attw over the five published trees
 cost seconds together (its declared `seconds` is in `chain-steps.ts`, and the chain reports any run that
@@ -142,9 +155,11 @@ A **derivation** re-takes its answer on every run and compares — `schema:check
 `facade:check`, `seed-parity:check`. A missing input is not a thing that can happen to one, so a case
 perturbing the recorded file would only prove that `!==` works.
 
-A **proxy** records a hash of what it *believes* the inputs are. Only `api:stamp` does, and it is the only
-one this ever bit: a proxy can go stale from an input nobody listed, so it needs a self-check rather than a
-firing case — `api-reports.ts` has one.
+A **proxy** records a hash of what it *believes* the inputs are. **Nothing here is one any more**, and the
+one that was is why: a proxy's key is a list of someone else's inputs, so it can go stale from an input
+nobody listed, and its remedy *writes*. `api:stamp` was a proxy for `api:check` purely because that cost
+55s; at 13.1s the derivation is the cheaper thing to keep. Before reaching for one, price the derivation
+again — the paragraph above has what this one cost.
 
 A **sample** records a measurement, which cannot re-derive, so neither check is available to it.
 `spec-cost.json` is the only one. Treated as a derivation it churned: measured 2026-09-28, **125 of 163
@@ -390,9 +405,13 @@ npm run build            # Build all workspaces. The chain runs build:app instea
                          # built-in pack to compile — building it twice rewrote the dist five steps read
 npm run build-prod       # Full production build (build/build.sh)
 
-npm run typecheck        # Every check below, plus check:specifiers — its eighteen legs run at once
-                         # (scripts/typecheck.ts, legs in scripts/lib/typecheck-legs.ts), which is 29.3s of
-                         # single-threaded compilers in 11s. Only `packages:ensure` is ordered; the rest are
+npm run typecheck        # Every check below, plus check:specifiers — its 17 legs run at once
+                         # (scripts/typecheck.ts, legs in scripts/lib/typecheck-legs.ts), which is 63.1s of
+                         # single-threaded compilers in 18.0s (measured 2026-10-05). The first two figures are
+                         # the table's own — the leg count and the sum of what they declare — and
+                         # typecheck-legs.spec.ts holds this line to them, so a leg added or re-costed fails
+                         # here rather than leaving the sentence to drift. The wall time is a measurement and
+                         # can only be re-measured. Only `packages:ensure` is ordered; the rest are
                          # independent, and `-- --cores 1` runs them one at a time to test that claim or to
                          # read a confusing failure. A failure prints that leg's output alone, and several
                          # legs can fail in one run where the old `&&` chain stopped at the first
@@ -464,9 +483,9 @@ npm run chain            # Before a merge: every check in dependency order, cold
                          # edit runs nothing and a one-package edit runs that package's suite; the E2E
                          # suite is opt-in (`--e2e`) rather than a gate, with its reason on the step: it
                          # was built to be driven, and taking it off the chain took a doc edit from 26s to
-                         # 0.9s. It leaves out api:check,
-                         # which typecheck's api:stamp covers, and includes packages:check, which has no
-                         # such proxy.
+                         # 0.9s. It runs api:check and packages:check, both of which regenerate what they
+                         # compare: neither has a cheaper proxy, and api:check's stopped being cheaper than
+                         # the thing it stood for.
                          # **Never pipe a backgrounded run.** It buffers output and prints only a failing
                          # step's, so `| tail` discards the one thing a failure leaves behind, and that
                          # does not come back on a re-run that passes.
@@ -594,37 +613,10 @@ npm run db:query -- "<code>"   # abuddy db query on the dev app's data (also db:
 # Published API surface (from the root for all three, or inside one of the packages for just it)
 npm run api:check        # CI: fails if a public entry's API changed without updating reports
 npm run api:update       # Dev: regenerate etc/<entry>.api.md (and etc/<entry>.component.md for UI components),
-                         # and record what they were generated from in etc/declarations.sha256
                          # Both read an @abuddy dependency's built declarations: npm run packages:build first
                          # All three take ~12s (measured 2026-10-04; 48s before one API Extractor compiler
                          # state was shared across a package's entries instead of one being built per entry).
-                         # Still a before-merge and CI check rather than a per-edit one, but on the margin
-                         # against api:stamp's 0.6s rather than on being slow in absolute terms
-npm run api:stamp  # The cheap half, run by npm run typecheck: compares what the reports were
-                         # generated from with etc/declarations.sha256 in ~0.6s and says "run npm run
-                         # api:update" when it differs. Its key is every input a report is a function of —
-                         # the declarations (`dist/**/*.ts`, never the compiled .js, hashed **verbatim**,
-                         # doc prose included), the set of published entries, the producer (API Extractor's
-                         # version and its tsconfig). **So a doc-comment edit in `@abuddy/ears`, `/sdk` or
-                         # `/ui` source fails typecheck until `api:update` runs (~12s), and usually rewrites
-                         # no report.** That is deliberate, and the reason is a refuted measurement: a
-                         # normaliser here dropped each comment to its `@`-tag lines, because prose above an
-                         # exported declaration cannot reach a report — API Extractor replaces it with the
-                         # tags. Prose *inside a type literal* is part of the type's printed text and is
-                         # reproduced word for word, which `etc/index.api.md` does with `SystemEvents`' own
-                         # comments, so the gate was blind to an edit that rewrites a reviewed report. It was
-                         # arbitrary as well as lax: it kept any line matching `@\w`, and prose here names
-                         # `@abuddy/*` packages constantly, so whether a comment edit moved the stamp
-                         # depended on whether its sentences mentioned a package. A false "run api:update"
-                         # costs a minute; a false "nothing changed" ships a wrong report.
-                         # There is no format version: a
-                         # stamp records a measurement, so the recorded row *set* is compared both ways instead,
-                         # which is what notices a row the key has gained or lost.
-                         # **A key is a list of someone else's inputs, so it is a guess**: the entry set was
-                         # missing until 2026-09-25, when adding `./packs` to a map passed this and the whole
-                         # chain and was refused by api:check. `api-reports.ts` now checks the proxy against
-                         # itself and fails naming both causes — a missing input, or a hand-edited report.
-                         # That is why api:check stays the authority rather than this
+                         # A chain step, so a merge runs it and an unchanged tree pays nothing for it
 
 # Built-in pack facade types (after `abuddy build`; from packages/default-setup or with -w @app/default-setup)
 npm run facade:check     # CI: fails if dist/types/pack-types.d.ts changed without updating etc/pack-types.api.md
@@ -877,7 +869,7 @@ Every backend **system** and frontend **plugin** is an XState state machine. The
 - **Child actors are private**: a feature spawns its children with an `id` and no `systemId`, and reaches them through its own snapshot's `children`; another feature sends the feature an event, which it routes to the child (the code plugin routes `<child>.*` events by prefix)
 - **Frontend**: a component reaches its own plugin with `usePlugin()` (`@abuddy/sdk/fe`); the host renders each plugin's canvas, panel and chat in a `PluginScope` for it, and the app's Settings view renders each plugin's settings form in one. No pack code looks up another plugin's actor, and no feature imports another's frontend at all (the `cross-feature-imports` pack rule, run by `abuddy validate` for every pack and by `check:specifiers` for this repo's): what a feature offers the rest is its plugin's `Contract` — the state it publishes, read with the `usePluginState`/`readPluginState` its `#generated/fe` generates, and the inbox others may send, which types the sends. `openPlugin` (`#generated/fe`) takes only the names the pack can write (`PluginName`: its own features, its dependencies' `<pack>/<feature>`), so a misspelled target doesn't compile; a target that arrives as data (a link block's) opens through `untypedOpenPlugin(ref, event?)` (`@abuddy/sdk/fe`), which refuses a string that isn't a ref and asks the shell to open the rest: the shell waits for a plugin whose pack's frontend is still loading, and tells the user about a ref no pack provides once loading has settled
 - Pack code takes `broadcastToPlugin`/`sendToPlugin`/`sendToSystem` from `#generated/events`; `onConnected`/`onIncoming` come from `@abuddy/sdk/events`. `check:specifiers` rejects the host's raw event paths (its root event bus and API client) and the untyped sends in pack sources
-- **Addressing is an envelope**: a send is a message, `{ to, event, from?, via?, client?, sender? }`, and `event` arrives exactly as the sender wrote it, so an event may carry any field, `pluginId` or `systemId` included. `from` is the id of the pack that sent it, stamped by the sends `#generated/events` builds; `via` is what within that pack made the send when the pack alone doesn't say — `action:<label>` for an action, stamped by the emitter `createActionEmitter` builds per run, the same string that names the action's logger. `from` keeps one meaning, the pack, so nothing parsing it as a `<packId>/<featureId>` ref gets a wrong answer; `via` names a source, of which an action is one — `reportError`'s sends carry the source they were given and no `from`, having no pack to name. Between them every send carries a pack, a source, or both, except `services.emitter` reached outside an action, where neither is in scope. Nothing routes or refuses on either: every diagnostic that reports an undeliverable message names them — the bus's drops, `receiveClientEvent`'s errors, the shell's toast for an in-window send that reaches no plugin (however long it waited for its pack), and the shell's warning for a backend send that does. All of them go through one `senderSuffix` (`@abuddy/sdk/events`), so they word it the same. `client` is the one field that routes, and so the one a sender never sets: it names the connection to deliver to, absent meaning every connection, and the API mints it per WebSocket connection and stamps it on the way in (`createContext`, `packages/api/src/transport/context.ts`) — which is what makes it a return address nobody can forge. `sender` is the other half of a return address: the ref of the participant that sent it, which is what an answer is addressed to. It is stamped where a send is *made* — during the handling of another message, from the delivery in scope — because a pack's generated sends know their pack and not which of its features called them, and it is accepted from the wire where `client` is not, since the client is the only party that knows which of its plugins asked and every caller already holds the API token anyway. A system answers with `reply(event)` from `@abuddy/sdk/events`, which names no address at all: it reads the message being handled and sends to its `sender` on its `client`. Nothing is stamped onto the event, so a return address is never a field of the event — the invariant `outgoing-events.spec.ts` pins. Four places set the scope — the bus, its early systems, the shell handing a plugin routed events, and `usePlugin`, so a component's own send is named too — which between them cover every send pack code makes; `reply` throws rather than broadcasting for a send made from nothing (a timer, a subscription, host plumbing). The API's `bus.send` schema names `from` and `via` so a client's send keeps them, and omits `client` on purpose; every other field a client invents is still dropped there, so a field added to the envelope and not to that schema arrives as `undefined`. The bus, the API's `bus.send` and its subscription, and the renderer route on `to`; messages sent in go to systems, messages sent out to plugins. The subscription routes on `client` too, which is why a window never sees a message that was not for it.
+- **Addressing is an envelope**: a send is a message, `{ to, event, from?, via?, client?, sender? }`, and `event` arrives exactly as the sender wrote it, so an event may carry any field, `pluginId` or `systemId` included. `from` is the id of the pack that sent it, stamped by the sends `#generated/events` builds; `via` is what within that pack made the send when the pack alone doesn't say — `action:<label>` for an action, stamped by the emitter `createActionEmitter` builds per run, the same string that names the action's logger. `from` keeps one meaning, the pack, so nothing parsing it as a `<packId>/<featureId>` ref gets a wrong answer; `via` names a source, of which an action is one — `reportError`'s sends carry the source they were given and no `from`, having no pack to name. Between them every send carries a pack, a source, or both, except `services.emitter` reached outside an action, where neither is in scope. Nothing routes or refuses on either: every diagnostic that reports an undeliverable message names them — the bus's drops, `receiveClientEvent`'s errors, the shell's toast for an in-window send that reaches no plugin (however long it waited for its pack), and the shell's warning for a backend send that does. All of them go through one `senderSuffix` (`@abuddy/sdk/events`), so they word it the same. `client` is the one field that routes, and so the one a sender never sets: it names the connection to deliver to, absent meaning every connection, and the API mints it per WebSocket connection and stamps it on the way in (`createContext`, `packages/api/src/transport/context.ts`) — which is what makes it a return address nobody can forge. `sender` is the other half of a return address: the ref of the participant that sent it, which is what an answer is addressed to. It is stamped where a send is *made* — during the handling of another message, from the delivery in scope — because a pack's generated sends know their pack and not which of its features called them, and it is accepted from the wire where `client` is not, since the client is the only party that knows which of its plugins asked and every caller already holds the API token anyway. A system answers with `reply(event)` from `@abuddy/sdk/events`, which names no address at all: it reads the message being handled and sends to its `sender` on its `client`. Nothing is stamped onto the event, so a return address is never a field of the event — the invariant `outgoing-events.spec.ts` pins. Four doors set the scope — the bus routing to a system, the host handing one to an early system, `sendToPluginActor` (the one function every send to a plugin's actor goes through) and `usePlugin`, so a component's own send is named too — which between them cover every send pack code makes; `reply` throws rather than broadcasting for a send made from nothing (a timer, a subscription, host plumbing). The API's `bus.send` schema names `from` and `via` so a client's send keeps them, and omits `client` on purpose; every other field a client invents is still dropped there, so a field added to the envelope and not to that schema arrives as `undefined`. The bus, the API's `bus.send` and its subscription, and the renderer route on `to`; messages sent in go to systems, messages sent out to plugins. The subscription routes on `client` too, which is why a window never sees a message that was not for it.
 
 A system's contract declares its `context` and its `incoming`, `internal` and `outgoing` event unions as one type, which `defineSystem<Contract>()` takes and `abuddy.json` names. System code lives in `packages/default-setup/src/features/<name>/be/system.ts`, its contract in `be/contract.ts` beside it; its identity is its feature's, from `abuddy.json`, which codegen passes to `packSystem`; a feature's designation comes only from `abuddy.json` `features[].designation`, and is a role rather than a name: it need not equal the feature id. The bus machine is `createBusMachine` in `packages/abuddy-host/src/bus`; `createAppBus(registry)` there composes it with the app's root event bus (the api's tRPC event sources), and `packages/api/src/runtime/index.ts` starts it. Systems register through the app's registry (`createPackRegistry()` in `packages/abuddy-host/src/packs/registry.ts`, its `registerPack()`). Every pack's systems and plugins run under `<packId>/<featureId>`, built-in packs included — the app itself is the pack `host` (`host/bus`, `host/application`, `host/packs`, `host/settings`), so there is no namespace of bare ids and a pack can't take the id `host`. Pack code names features — its own by id, every other (the host's too) as `<packId>/<featureId>`; the ref it runs under is spelled the same, so a bare name is only short for the pack's own: the sends (`broadcastToPlugin`/`sendToPlugin`/`sendToSystem`) and `openPlugin`, generated in `#generated/events` and `#generated/fe`, resolve the name (`resolveName`, `@abuddy/sdk/ids`, is the one rule; `splitRef` takes a ref apart). The registries resolve what registrations name: a pack registers its `features` keyed by feature id on both sides (`PackRegistration.features`: each one's system, plugin, role, services and settings; `PackFERegistration.plugins`), each registry runs every feature at its ref, and both refuse a key that isn't a feature id (`FEATURE_ID_PATTERN`, `@abuddy/sdk/ids`).
 

@@ -235,7 +235,7 @@ describe('the compiler says what it read', () => {
  * And the dep file is a proxy, so it is checked against itself.
  *
  * A proxy records what it believes its inputs were, which is a guess about someone else's behaviour.
- * `api:stamp` is the repo's other one and was bitten by exactly that — an input missing from its key let a
+ * The API report stamp, deleted since, was bitten by exactly that — an input missing from its key let a
  * change pass the stamp and the whole chain — so the rule it left behind is that a proxy needs a
  * self-check rather than only a comparison.
  */
@@ -600,6 +600,11 @@ describe('what has looked at a step at all', () => {
     expect(observation().byNothing,
       'a step here is one whose declared inputs nothing checks against what it touched. Add to this list '
       + 'only a step no tool can report on, and take one out when something can').toEqual([
+      // API Extractor reads a package's declarations through its own compiler and emits no manifest of what
+      // it touched, so there is nothing to ask. What stands in its place is that its inputs are derived
+      // (`PACKAGE_BUILD_OUTPUTS`) rather than hand-listed, plus the two trees it compares being declared
+      // outright — which is the protection `test:packaged-authoring` relies on for the same reason.
+      'api:check',
       'build:app',
       'compile',
       'packages:check',
