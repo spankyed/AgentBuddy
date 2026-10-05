@@ -3,8 +3,8 @@
 ```
 # Goal: the spec-placement audit stops storing milliseconds
 
-Implement docs/goals/goal-spec-placement-without-milliseconds.md on AS/drive-vocabulary, at or after
-e111c0ba4 — the base its Background was surveyed at.
+Implement docs/goals/goal-spec-placement-without-milliseconds.md on master, at or after a531211b0 —
+the base its Background holds at. Nothing here depends on the branch it was typed on.
 Before Phase 1, confirm the base: scripts/lib/spec-cost.ts exports WINDOW, costOf, disagrees and
 worthKeeping; scripts/lib/measure.ts exports bodyDrift, drifted and DRIFT_SHARE; and both
 scripts/chain.ts and scripts/spec-cost.ts call drifted(). If they don't, stop and say so — the plan
@@ -57,7 +57,9 @@ Never:
   cause.
 ```
 
-## Background (2026-10-05, at `e111c0ba4` on `AS/drive-vocabulary`)
+## Background (2026-10-05, at `a531211b0` on `master`)
+
+Surveyed at `e111c0ba4` on `AS/drive-vocabulary`, and the base is `master` because every file cited below is byte-identical at `a531211b0`: `scripts/lib/{spec-cost,measure,spec-dry,unit-pool,chain-steps}.ts`, `scripts/{spec-cost,chain,test-unit-pool}.ts` and `packages/repo-checks/tests/suite-split.spec.ts`. That branch's commits touched the Playwright configs and the drive engine, none of which this goal reads — so the survey is true at master's tip and the line numbers below are the same there. Checked with `git diff master..HEAD -- <each path>`.
 
 `packages/*/etc/spec-cost.json` records what every spec file costs in milliseconds. `scripts/lib/spec-cost.ts` is 1,233 lines and `scripts/spec-cost.ts` 584, and between them they hold a window of up to three readings per spec (`WINDOW`, `spec-cost.ts:220`), a median with a deliberate length-two rule (`costOf`, `:247`), an agree-band (`disagrees`, `:367`; `worthKeeping`, `:390`), two idle floors, a contention refusal, a `machine` field, a path for a record measured on another box, and a body-drift report.
 
