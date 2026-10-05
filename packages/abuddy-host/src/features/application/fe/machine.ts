@@ -254,7 +254,9 @@ export function createShellMachine({ packs, client, packFrontends, storage, noti
 
         if (needsNavigate) {
           enqueue(({ system }) => {
-            sendToPluginActor(system.get(activePlugin.id), activePlugin.id, { type: 'PLUGIN_ACTIVATED' });
+            // Tolerated: this runs as a pack's plugins arrive, where the actor may not be spawned yet
+            const active = system.get(activePlugin.id);
+            if (active) sendToPluginActor(active, activePlugin.id, { type: 'PLUGIN_ACTIVATED' });
           });
         }
       }),
@@ -321,7 +323,7 @@ export function createShellMachine({ packs, client, packFrontends, storage, noti
         const { plugin, events } = typeOf('DELIVER_PLUGIN_EVENTS', event);
         // A registered plugin's actor is running: the shell spawns it in the same step that registers the plugin
         const actor = system.get(plugin);
-        for (const e of events) sendToPluginActor(actor, plugin, e);
+        if (actor) for (const e of events) sendToPluginActor(actor, plugin, e);
       },
 
       processGlobalHotkey: ({ self, context, event }) => {
@@ -343,7 +345,9 @@ export function createShellMachine({ packs, client, packFrontends, storage, noti
       setHotkeysDisabled: assign({ hotkeysDisabled: (_, value: boolean) => value }),
 
       forwardNavToPlugin: ({ context, system, event }) => {
-        sendToPluginActor(system.get(context.activePlugin.id), context.activePlugin.id, { type: event.type as 'NAVIGATE_BACK' | 'NAVIGATE_FORWARD' });
+        // Tolerated: a mouse button can arrive while the open plugin's pack is unloading
+        const navigating = system.get(context.activePlugin.id);
+        if (navigating) sendToPluginActor(navigating, context.activePlugin.id, { type: event.type as 'NAVIGATE_BACK' | 'NAVIGATE_FORWARD' });
       },
 
       switchPluginByDirection: ({ context, event, self }) => {

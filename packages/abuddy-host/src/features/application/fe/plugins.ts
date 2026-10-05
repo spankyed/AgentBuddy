@@ -62,8 +62,12 @@ export function historyAfter(
  * documented as four places and was nine, and the eight that reach a plugin from the shell are not something a
  * reader can enumerate. `usePlugin` is the one other scope-setter in a window, and it wraps the actor it hands
  * out rather than a send it makes.
+ *
+ * **It takes an actor, not a lookup that may miss.** Whether a missing plugin is a bug or an ordinary race
+ * differs by call site — the shell's own lifecycle sends address a plugin it just spawned, where absence is an
+ * invariant broken and worth a crash, while a send arriving for a plugin whose pack has unloaded is neither. A
+ * `?.` here would have levelled those two to the quieter one, which it briefly did.
  */
-export function sendToPluginActor(actor: AnyActorRef | undefined, ref: string, event: AnyEventObject): void {
-  if (!actor) return;
+export function sendToPluginActor(actor: AnyActorRef, ref: string, event: AnyEventObject): void {
   _runDelivery({ receiver: ref }, () => actor.send(event));
 }
