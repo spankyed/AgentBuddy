@@ -12,6 +12,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { createActor, fromPromise, setup, type AnyActorRef } from 'xstate';
 import { startTestRuntime, takeSystemErrors, testRootEvents } from '@abuddy/sdk/testing';
 import { _runDelivery, reply, untypedBroadcastToPlugin, untypedSendToSystem, type Message } from '@abuddy/sdk/events';
+import { _whenSatisfied } from '@abuddy/sdk/testing/waiting';
 import { createAppBus } from '../../src/bus/index.ts';
 import { HOST_ENTITY_TYPES } from '../../src/app-state/index.ts';
 import { createPackRegistry } from '../../src/packs/registry.ts';
@@ -20,6 +21,11 @@ import { hostRegistration } from '../../src/features/registration.ts';
 const registry = createPackRegistry();
 startTestRuntime({ entityTypes: HOST_ENTITY_TYPES, packs: registry });
 
+/**
+ * A delay inside a *handler*, which is the shape under test rather than a test waiting for anything: a backend
+ * system's work is I/O, so it awaits before it answers, and that is what makes the delivery scope load-bearing.
+ * The cases themselves await the answer (`untilBus`); see `@abuddy/sdk/testing/waiting` for why.
+ */
 const after = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
 /**
@@ -102,6 +108,22 @@ const flush = () => new Promise((resolve) => setTimeout(resolve, 0));
 /** What a client's send looks like once the API has stamped the connection it arrived on */
 const ask = (message: Message) => { bus.send({ type: 'INCOMING', message }); };
 
+/**
+ * Re-reads `satisfied` whenever anything crosses the bus, so a case awaits its answer rather than a delay.
+ *
+ * Both directions, because an answer goes out to a connection or in to a system depending on who asked, and a
+ * case should not have to know which to subscribe to. A negative assertion beside it — "and no window saw it" —
+ * is safe once the positive one has arrived: `reply` makes one send, so when it has happened the other has not.
+ */
+const untilBus = (satisfied: () => boolean, describe: string) => _whenSatisfied(
+  (notify) => {
+    const stops = [testRootEvents.onOutgoing(notify), testRootEvents.onIncoming(notify)];
+    return () => { for (const stop of stops) stop(); };
+  },
+  () => satisfied() || undefined,
+  describe,
+);
+
 beforeEach(async () => {
   outgoing.length = 0;
   answered.length = 0;
@@ -124,7 +146,7 @@ afterEach(() => {
 describe('reply', () => {
   it('answers the ref that asked, on the connection it asked from', async () => {
     ask({ to: 'memo-pack/memos', event: { type: 'PING' }, sender: 'memo-pack/memos', client: 'c-main' });
-    await after(20);
+    await untilBus(() => answers().length === 1, 'the answer to the ask');
 
     expect(answers()).toEqual([
       { to: 'memo-pack/memos', event: { type: 'MEMO_ADDED', tag: undefined }, sender: 'memo-pack/memos', client: 'c-main' },
@@ -140,7 +162,7 @@ describe('reply', () => {
   it('answers each of two overlapping asks on its own connection', async () => {
     ask({ to: 'memo-pack/memos', event: { type: 'PING', wait: 40, tag: 'slow' }, sender: 'memo-pack/memos', client: 'c-main' });
     ask({ to: 'memo-pack/memos', event: { type: 'PING', wait: 5, tag: 'fast' }, sender: 'memo-pack/memos', client: 'c-popout' });
-    await after(80);
+    await untilBus(() => answers().length === 2, 'both answers');
 
     const byTag = new Map(answers().map((message) => [message.event.tag as string, message.client]));
     expect(byTag.get('fast'), 'the second ask is answered on the second connection').toBe('c-popout');
@@ -155,7 +177,7 @@ describe('reply', () => {
    */
   it('answers from inside an invoked actor', async () => {
     ask({ to: 'memo-pack/invoker', event: { type: 'PING', tag: 'invoked' }, sender: 'memo-pack/memos', client: 'c-main' });
-    await after(40);
+    await untilBus(() => answers().length === 1, 'the answer from the invoked actor');
 
     expect(answers()).toEqual([
       { to: 'memo-pack/memos', event: { type: 'MEMO_ADDED', tag: 'invoked' }, sender: 'memo-pack/invoker', client: 'c-main' },
@@ -172,7 +194,7 @@ describe('reply', () => {
    */
   it('answers the asking system when the ask came from no connection', async () => {
     bus.send({ type: 'INCOMING', message: { to: 'memo-pack/asker', event: { type: 'GO' } } });
-    await after(20);
+    await untilBus(() => answered.length === 1, 'the asking system to be answered');
 
     expect(answered, 'the system that asked has its answer').toEqual(['from-a-system']);
     expect(answers(), 'and no window was sent it').toEqual([]);
@@ -180,7 +202,7 @@ describe('reply', () => {
 
   it('still answers outward when the ask came from a connection', async () => {
     ask({ to: 'memo-pack/memos', event: { type: 'PING', tag: 'from-a-window' }, sender: 'memo-pack/memos', client: 'c-main' });
-    await after(20);
+    await untilBus(() => answers().length === 1, 'the answer to go out to the connection');
 
     expect(answers().map(({ client }) => client), 'one connection, not a broadcast').toEqual(['c-main']);
     expect(answered, 'and no system was sent it').toEqual([]);
@@ -196,7 +218,7 @@ describe('a send made while handling says where an answer would go', () => {
    */
   it('stamps the handling feature, not the pack', async () => {
     ask({ to: 'memo-pack/memos', event: { type: 'ANNOUNCE' }, sender: 'memo-pack/memos', client: 'c-main' });
-    await after(20);
+    await untilBus(() => outgoing.some(({ event }) => event.type === 'MEMOS_CONNECTED'), 'the announcement');
 
     const announced = outgoing.filter(({ event }) => event.type === 'MEMOS_CONNECTED');
     expect(announced).toHaveLength(1);
@@ -206,7 +228,7 @@ describe('a send made while handling says where an answer would go', () => {
   // Outside a delivery there is nobody to answer, so the field is absent rather than guessed at
   it('stamps nothing on a send made outside any delivery', async () => {
     untypedBroadcastToPlugin('memo-pack/memos', { type: 'MEMOS_CONNECTED' });
-    await after(20);
+    await untilBus(() => outgoing.some(({ event }) => event.type === 'MEMOS_CONNECTED'), 'the announcement');
 
     const announced = outgoing.filter(({ event }) => event.type === 'MEMOS_CONNECTED');
     expect(announced).toHaveLength(1);

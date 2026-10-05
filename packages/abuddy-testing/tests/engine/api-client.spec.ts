@@ -15,6 +15,7 @@ import { WebSocketServer } from 'ws';
 import { initTRPC, TRPCError } from '@trpc/server';
 import { applyWSSHandler } from '@trpc/server/adapters/ws';
 import { observable } from '@trpc/server/observable';
+import { _whenSatisfied } from '@abuddy/sdk/testing/waiting';
 import { connectApiClient, type ApiClient, type BusMessage } from '../../src/engine/api-client.ts';
 
 const TOKEN = 'a-test-token';
@@ -70,6 +71,13 @@ async function serve(keepAlive?: { enabled: true; pingMs: number; pongWaitMs: nu
 }
 
 const connect = () => connectApiClient({ port, token: TOKEN });
+
+/**
+ * A fixed delay, kept for the one case whose subject *is* elapsed time.
+ *
+ * Everything else here awaits the event it is about: a sleep puts a guess about duration on the success path,
+ * and a short guess fails identically to the bug it was meant to catch. See `@abuddy/sdk/testing/waiting`.
+ */
 const after = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
 beforeEach(() => {
@@ -160,9 +168,15 @@ describe('the subscription', () => {
     await serve();
 
     const seen: BusMessage[] = [];
-    client = await connect();
-    client.onMessage((message) => { seen.push(message); });
-    await after(50);
+    const live = await connect();
+    client = live;
+    live.onMessage((message) => { seen.push(message); });
+
+    await _whenSatisfied(
+      (notify) => live.onMessage(notify),
+      () => (seen.length > 0 ? seen : undefined),
+      'the subscription to deliver a message',
+    );
 
     expect(seen).toEqual([sent]);
   });
@@ -176,11 +190,18 @@ describe('the subscription', () => {
   it('finishes the channel when the server stops it, and reports it once', async () => {
     behaviour.completeSubscription = true;
     await serve();
-    client = await connect();
-    await after(50);
+    const live = await connect();
+    client = live;
 
-    expect(client.failure, 'the reason a later verb will quote').toMatch(/ended the event subscription/);
-    await expect(client.send({ to: 'x/y', event: { type: 'PING' } })).rejects.toThrow(/ended the event subscription/);
+    // `onFinished` is why this is awaitable at all: `failure` alone is a state with no event
+    const reason = await _whenSatisfied(
+      (notify) => live.onFinished(() => notify()),
+      () => live.failure ?? undefined,
+      'the channel to report that it finished',
+    );
+
+    expect(reason, 'the reason a later verb will quote').toMatch(/ended the event subscription/);
+    await expect(live.send({ to: 'x/y', event: { type: 'PING' } })).rejects.toThrow(/ended the event subscription/);
   });
 });
 
@@ -196,7 +217,9 @@ describe('keep-alive', () => {
     await serve({ enabled: true, pingMs: 15, pongWaitMs: 60 });
     client = await connect();
 
-    // Long enough for several ping/terminate windows to come and go while the client sits idle
+    // Long enough for several ping/terminate windows to come and go while the client sits idle. The one wait
+    // here that is not converted to an awaited event, because the elapsed time *is* the assertion: what is
+    // being checked is that nothing happened for a while
     await after(200);
 
     expect(client.failure, 'the socket was not terminated under us').toBeNull();
