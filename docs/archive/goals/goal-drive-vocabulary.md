@@ -1,5 +1,10 @@
 # Goal: a drive session an agent can extend, in words it can guess
 
+> **Done** (branch `AS/drive-vocabulary`, `665135993`..`382daac38`). Phases 1-3 landed whole; Phase 4
+> landed `/settings` and deferred `/secrets` and `/inference` — see Outcome. The text below is the plan as
+> written: it names `select` as a field and `/system` as a verb, and neither exists. For the verbs as they
+> are, see [`docs/public-facing/cli.md`](../../public-facing/cli.md).
+
 > **Written in session** `acfdcbe9-f87e-4349-a1e3-a03cdf58065c` (Claude Code, 2026-10-05). Resume it with
 > `claude -r acfdcbe9-f87e-4349-a1e3-a03cdf58065c`.
 
@@ -222,3 +227,59 @@ threads or the library is not here, and Phase 1 is where it goes.
   is a verb in the wrong layer.
 - **No bare sleeps in a new spec.** `spec-waits.spec.ts` gates this; a wait is driven by the thing it waits
   for, and a deadline belongs on the failure path.
+
+
+## Outcome
+
+**Phases 1-3 done as planned. Phase 4 done in part.** Six commits on `AS/drive-vocabulary`.
+
+| phase | | evidence |
+|---|---|---|
+| 1 — scaffold generated once, takes verbs | done | `writeEngineFiles` joins `scaffold()`'s write-if-absent loop; `driveEngineBody({ verbs })` returns the body. Three cases in `abuddy-cli/tests/commands/drive.spec.ts`, two in `server.spec.ts`. |
+| 2 — the vocabulary | done | `vocabulary.spec.ts` derives the population from `engineVerbs` and the field names from each verb's own protocol error. |
+| 3 — the missing verbs | done | `/plugin`, `/click`, `/fill`, `/press`, `/snapshot`, `/logs`, each with a case against the fake page and each exercised live. |
+| 4 — domain verbs | part | `/settings` and `/set-setting` landed. `/secrets` and `/inference` deferred, below. |
+
+### What the invariants are, and what holds them
+
+- **One field name per concept, and a GET never changes anything** — held by
+  `packages/abuddy-testing/tests/engine/vocabulary.spec.ts`. The population is `engineVerbs`' own keys and
+  the field names come from asking each verb with an empty body, so neither half is a list that can go
+  stale. It fired twice during the work it was written for: once when six verbs arrived unclassified, once
+  when `/settings` wanted a second name (`path`) for what `/plugin` called `select`. They are both `path`.
+- **The scaffold survives a second `--serve`** — held by `drive.spec.ts`'s "keeps a session file that has
+  been extended".
+- **A verb is testable in process** — held by nothing automatic. Every verb added here has a case against
+  the fake page because the ports made it cheap, but a verb reaching Playwright directly would pass review
+  unnoticed. Worth a guard if a second one slips through.
+
+### Why `/secrets` and `/inference` are deferred
+
+Not time. `mockInference` replaces `services.inference` through `mockService` inside the harness's
+in-memory runtime; a real app's API process binds the real one in `createHostRuntime` at boot, and a search
+for an override (`ABUDDY_*INFERENCE`, `mockService` under `packages/api` or `packages/abuddy-host`) finds
+none. So a mock cannot reach a running app without an app-side hook — a product decision outside this goal,
+and arguably one a shipped app should not carry. `/secrets` went with it: adding a real key while no mock
+exists would mean a drive session making real model calls, which is worse than not having the verb.
+
+### Conventional choices made where the plan did not say
+
+- **`/events`, `/drops` and `/errors` are POSTs named for nouns**, which contradicts the plan's "no POST
+  path is a noun". The two decisions D4 and D5 could not both hold: a drain changes what it returns. The
+  rule kept is the defensible half — *a GET never changes anything* — with `drain` as a named exception of
+  exactly three, and the spec classifies each path so a fourth is a decision rather than a default.
+- **`/snapshot` takes no selector.** A GET carrying a body to narrow itself is awkward for every client, so
+  it answers with the whole tree and a subtree stays `/eval`'s job.
+- **`AppHelper.getContext()` keeps `activePluginId`/`pluginIds`.** The rename is the HTTP surface; that is a
+  typed TypeScript API whose consumers are E2E specs, where the explicit name reads fine.
+- **The thirteen session methods were not renamed.** `session.qx` stays `qx` behind `/query`: those are the
+  names of the code a caller writes, and the coupling being removed was at the wire.
+
+### Live verification
+
+One `npm run drive:serve` session, every verb once. `/state` answered with `plugin` and `plugins`;
+`/plugin` read the notes plugin's state in one call; `/snapshot` answered with an ARIA tree;
+`/fill` typed into the note title and `/eval` read it back; `/set-setting` wrote
+`plugins['default-setup/code'].baseDirectory` and `/settings` read it back; `/events`, `/drops` and
+`/errors` refused GET with "wants POST"; and `/note` — this repo's own scaffold verb — created a note,
+which is Phase 1's extension point working against a running app rather than against a fake.
