@@ -207,13 +207,15 @@ operation failed — a `4xx` means nothing ran at all.
 | `/state` | GET | — | the state value, the active `plugin` and the `plugins` list |
 | `/wait` | POST | `{ state }` or `{ plugin }`, `{ timeoutMs }` | waits for a dotted state path, or for a plugin to arrive |
 | `/navigate` | POST | `{ plugin }` | opens a plugin |
-| `/plugin` | POST | `{ plugin, select? }` | what that plugin published, or one dotted path into it |
+| `/plugin` | POST | `{ plugin, path? }` | what that plugin published, or one dotted path into it |
 | `/click` | POST | `{ selector }` | clicks what it matches |
 | `/fill` | POST | `{ selector, text }` | types into it |
 | `/press` | POST | `{ key, selector? }` | a key, to an element or to the page |
 | `/snapshot` | GET | — | the page as an accessibility tree |
 | `/logs` | POST | `{ since?, source? }` | the app's own log, after a line you saw and from one source |
 | `/settings` | GET | — | the settings as stored: what the user changed from the defaults |
+| `/viewport` | GET | — | the size the app is rendering into |
+| `/set-viewport` | POST | `{ width, height }` | changes it |
 | `/set-setting` | POST | `{ plugin, path, value }` | writes one of a feature's settings |
 | `/screenshot` | POST | `{ name }` | writes `drive/screenshots/<name>.png` |
 | `/reload` | POST | — | reloads the window and returns once it is connected again |
@@ -228,6 +230,12 @@ looking at the result afterwards.
 
 **`/settings` answers with the *stored* document**, not the effective one: it is what a write lands in, so
 it is what says whether your write landed. The defaults it is merged over are the registry's.
+
+**`/set-viewport` resizes whichever thing the run actually has.** A session whose window is shown — a
+person watching `npm run drive` — has its *window* resized, because a viewport Playwright sets is an
+emulation inside the window: the app would draw into one corner and leave the desktop showing through the
+rest. A session nobody is watching gets that emulation, which is what makes a suite's layout the same
+everywhere. Either way `/viewport` answers with what the layout has, read from the window.
 
 **`/plugin` over `/eval`.** A plugin's state is what its view is showing, so reading it is the commonest
 question there is; doing it through `/eval` means writing the same expression, with the same ref and the

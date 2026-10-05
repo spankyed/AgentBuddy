@@ -117,6 +117,21 @@ const optionalMs = (body: Record<string, unknown>, field: string): number | unde
   return value;
 };
 
+/**
+ * A length in pixels: a whole number above zero.
+ *
+ * Its own helper rather than `optionalMs`'s shape with the optionality removed, because what is being
+ * refused is different — a viewport of `0`, of `-1` or of `"1400"` is a caller who meant a size, and a
+ * window told to be nought pixels wide answers nothing afterwards.
+ */
+const pixels = (body: Record<string, unknown>, field: string): number => {
+  const value = body[field];
+  if (typeof value !== 'number' || !Number.isInteger(value) || value <= 0) {
+    throw new BadRequest(`"${field}" must be a whole number of pixels above zero`);
+  }
+  return value;
+};
+
 const object = (body: Record<string, unknown>, field: string): Record<string, unknown> => {
   const value = body[field];
   if (value === null || typeof value !== 'object' || Array.isArray(value)) {
@@ -153,6 +168,12 @@ export function engineVerbs(session: EngineSession): Record<string, Verb> {
     '/press': { method: 'POST', run: (body) => session.press(required(body, 'key'), optionalText(body, 'selector')) },
     '/snapshot': { method: 'GET', run: () => session.snapshot() },
     '/settings': { method: 'GET', run: () => session.settings() },
+    // What the app is rendering into, which is what decides whether a layout is the one a user would see
+    '/viewport': { method: 'GET', run: () => session.viewport() },
+    '/set-viewport': {
+      method: 'POST',
+      run: (body) => session.setViewport(pixels(body, 'width'), pixels(body, 'height')),
+    },
     // A write, so it is a verb of its own rather than a POST to the noun above
     '/set-setting': {
       method: 'POST',

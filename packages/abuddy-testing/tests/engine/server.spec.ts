@@ -22,6 +22,7 @@ function fakeSession(overrides: Partial<EngineSession> = {}) {
     qx: verb('qx'), tx: verb('tx'), state: verb('state'), wait: verb('wait'), navigate: verb('navigate'),
     screenshot: verb('screenshot'), drainEvents: verb('events'), drainDrops: verb('drops'),
     drainErrors: verb('errors'), close: verb('close'),
+    viewport: verb('viewport'), setViewport: verb('setViewport'),
     ...overrides,
   } as unknown as EngineSession;
   return { session, called };
@@ -273,6 +274,30 @@ describe('wait', () => {
     await ask(session, '/wait', { body: '{"state":"running.connected","timeoutMs":2000}' });
 
     expect(called).toEqual([['wait', [{ state: 'running.connected' }, 2000]]]);
+  });
+});
+
+describe('a viewport', () => {
+  it('refuses a size that is not one, rather than passing it to the window', async () => {
+    const { session, called } = fakeSession();
+
+    // A fractional or zero size is a caller who meant something else, and a string is a caller who sent
+    // the shape `/wait`'s `timeoutMs` already refuses
+    for (const size of [{ width: '1400', height: 900 }, { width: 0, height: 900 }, { width: 1400 },
+      { width: 1400.5, height: 900 }, { width: 1400, height: null }]) {
+      const body = JSON.stringify(size);
+      expect((await ask(session, '/set-viewport', { body })).status, body).toBe(400);
+    }
+    expect(called, 'nothing reached the window').toEqual([]);
+  });
+
+  it('passes a size through, and answers the read with a GET', async () => {
+    const { session, called } = fakeSession();
+
+    await ask(session, '/set-viewport', { body: '{"width":1200,"height":800}' });
+    expect(called).toEqual([['setViewport', [1200, 800]]]);
+
+    expect((await ask(session, '/viewport', { method: 'GET' })).status).toBe(200);
   });
 });
 

@@ -25,6 +25,19 @@ export type EngineAppHelper = {
   readonly waitForPlugin: (pluginId: string, timeoutMs?: number) => Promise<unknown>;
 };
 
+/**
+ * The real window, for a session someone is looking at.
+ *
+ * One method, because one act needs it: a viewport Playwright sets is emulated *inside* the window, so in
+ * a shown run it letterboxes the app against the desktop. Given this port, `/set-viewport` moves the
+ * window itself and what the agent sees is what a user would; given none, it sets the emulated viewport,
+ * which is what keeps a suite's layout deterministic. `src/launch-env.ts`'s `pinsViewport` is the one
+ * decision of which run is which, and `driveEngineBody` is where it is read.
+ */
+export type EngineWindow = {
+  readonly setContentSize: (width: number, height: number) => Promise<void>;
+};
+
 export interface DriveEngineOptions {
   /** The page the fixture opened */
   readonly page: Page;
@@ -51,6 +64,8 @@ export interface DriveEngineOptions {
    * keeps, where this package's is not.
    */
   readonly verbs?: ExtraVerbs;
+  /** The real window, where one is shown; absent for a run nobody is watching — see `EngineWindow` */
+  readonly window?: EngineWindow;
 }
 
 /**
@@ -89,7 +104,7 @@ async function reloadWindow(page: Page): Promise<void> {
  * Adapts a Playwright page to `SessionPage`. The two evaluation forms stay separate here because they are
  * separate in the port, for the reason `session.ts` gives there.
  */
-export const asSessionPage = (page: Page, app: EngineAppHelper): SessionPage => ({
+export const asSessionPage = (page: Page, app: EngineAppHelper, window?: EngineWindow): SessionPage => ({
   evaluateExpression: (source) => page.evaluate(source),
   // Playwright's argument type is `Unboxed<A>`, which unwraps a `JSHandle` into what it points at. The
   // engine never passes one — every argument here is a plain JSON value from a request body — so the two
@@ -102,6 +117,9 @@ export const asSessionPage = (page: Page, app: EngineAppHelper): SessionPage => 
   fill: (selector, text) => page.fill(selector, text),
   press: (key, selector) => (selector === undefined ? page.keyboard.press(key) : page.press(selector, key)),
   ariaSnapshot: () => page.locator('body').ariaSnapshot(),
+  setViewport: (width, height) => (window === undefined
+    ? page.setViewportSize({ width, height })
+    : window.setContentSize(width, height)),
   screenshot: (name) => app.screenshot(name),
   waitForState: (check, timeoutMs) => app.waitForState(check, timeoutMs),
   waitForPlugin: (pluginId, timeoutMs) => app.waitForPlugin(pluginId, timeoutMs),
@@ -151,7 +169,7 @@ export async function runDriveEngine(options: DriveEngineOptions): Promise<void>
   let end = (): void => {};
   const ended = new Promise<void>((resolve) => { end = resolve; });
 
-  const sessionPage = asSessionPage(page, app);
+  const sessionPage = asSessionPage(page, app, options.window);
 
   /**
    * The session's own connection, opened before the server listens so a verb can never arrive without one.

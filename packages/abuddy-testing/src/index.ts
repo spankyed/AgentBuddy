@@ -633,9 +633,27 @@ export const drive = _default.test;
  * this module, and the engine is the same job done interactively, so a second entry would be a second
  * name for one thing. `src/engine/` has what it does and why.
  */
-import { runDriveEngine, type ExtraVerbs } from './engine/index.ts';
+import { runDriveEngine, type EngineWindow, type ExtraVerbs } from './engine/index.ts';
 
-export { ENGINE_TOKEN_HEADER, MARKER_FILE, runDriveEngine, type DriveEngineOptions, type EngineMarker, type ExtraVerbs, type Verb } from './engine/index.ts';
+export { ENGINE_TOKEN_HEADER, MARKER_FILE, runDriveEngine, type DriveEngineOptions, type EngineMarker, type EngineWindow, type ExtraVerbs, type Verb } from './engine/index.ts';
+
+/**
+ * The app's own window, so `/set-viewport` resizes it rather than drawing into a corner of it.
+ *
+ * `browserWindow(page)` hands back a handle to the `BrowserWindow` in the main process, and `evaluate` runs
+ * there — which is the only way to reach it: the renderer cannot resize itself, and the app blocks the
+ * navigation that would be the other way to try.
+ */
+const electronWindow = (electronApp: ElectronApplication, page: Page): EngineWindow => ({
+  setContentSize: async (width, height) => {
+    const browserWindow = await electronApp.browserWindow(page);
+    await browserWindow.evaluate(
+      (window: { setContentSize: (width: number, height: number) => void }, size: { width: number; height: number }) =>
+        window.setContentSize(size.width, size.height),
+      { width, height },
+    );
+  },
+});
 
 /**
  * The body of a serving session: everything `abuddy drive --serve`'s generated script does.
@@ -653,7 +671,7 @@ export { ENGINE_TOKEN_HEADER, MARKER_FILE, runDriveEngine, type DriveEngineOptio
  */
 export const driveEngineBody = (options: { verbs?: ExtraVerbs } = {}) =>
   async (
-    { app, appPage }: { app: AppHelper; appPage: Page },
+    { app, appPage, electronApp }: { app: AppHelper; appPage: Page; electronApp: ElectronApplication },
     testInfo: { project: { outputDir: string }; workerIndex: number },
   ): Promise<void> => {
     await runDriveEngine({
@@ -663,5 +681,8 @@ export const driveEngineBody = (options: { verbs?: ExtraVerbs } = {}) =>
       // The same file the fixture writes the app's output to, so `/logs` answers from the run's own log
       logPath: appLogPath(testInfo),
       verbs: options.verbs,
+      // The same question the fixture asked when it decided whether to pin: a window someone can see is
+      // resized for real, and one nobody can gets the emulated viewport a suite needs
+      window: pinsViewport(process.env) ? undefined : electronWindow(electronApp, appPage),
     });
   };

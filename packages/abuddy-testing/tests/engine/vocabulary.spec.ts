@@ -35,9 +35,11 @@ const SHAPES: Record<string, 'reads' | 'verb' | 'drain'> = {
   '/screenshot': 'verb',
   '/reload': 'verb',
   '/close': 'verb',
+  '/set-viewport': 'verb',
   '/state': 'reads',
   '/snapshot': 'reads',
   '/settings': 'reads',
+  '/viewport': 'reads',
   '/events': 'drain',
   '/drops': 'drain',
   '/errors': 'drain',
@@ -64,6 +66,8 @@ const VOCABULARY = [
   'name',      // a file name
   'timeoutMs',
   'value',     // what to write
+  'width',     // a size in pixels, in requests and in responses alike
+  'height',
 ] as const;
 
 /** A session whose every verb answers, so what the assertions see is the table rather than the app */
@@ -74,6 +78,7 @@ function fakeSession() {
     evaluate: ok, send: ok, system: ok, qx: ok, tx: ok, state: ok, wait: ok, navigate: ok,
     screenshot: ok, reload: ok, drainEvents: ok, drainDrops: ok, drainErrors: ok, close: ok,
     plugin: ok, click: ok, fill: ok, press: ok, snapshot: ok, logs: ok, settings: ok, setSetting: ok,
+    viewport: ok, setViewport: ok,
     stop: vi.fn(),
   } as unknown as EngineSession;
 }
@@ -86,9 +91,14 @@ const verbs = () => engineVerbs(fakeSession());
  * Two halves because there are two ways to read one: through a named helper, where the field is a string
  * literal, and as a plain property. The first is the robust half — the literals survive any transform —
  * and the second is why the case above asserts a count rather than trusting the scan.
+ *
+ * The helper half matches *any* name called with `(body, '<field>')` rather than a list of the helpers
+ * there happen to be, because a list is a thing to forget: adding `pixels` for `/set-viewport` would have
+ * left `width` and `height` unread while every case still passed. Over-matching costs a name that has to
+ * be in the vocabulary, which fails out loud; under-matching is silent.
  */
 const fieldsRead = (source: string): string[] => {
-  const viaHelper = [...source.matchAll(/\b(?:required|present|optionalText|optionalMs|object)\s*\(\s*\w+\s*,\s*['"]([^'"]+)['"]/g)];
+  const viaHelper = [...source.matchAll(/\b\w+\s*\(\s*body\s*,\s*['"]([^'"]+)['"]/g)];
   const viaProperty = [...source.matchAll(/\bbody\.(\w+)/g)];
   return [...new Set([...viaHelper, ...viaProperty].map((match) => match[1]))];
 };

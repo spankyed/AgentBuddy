@@ -238,6 +238,15 @@ Things worth knowing before changing it:
 - **`/wait` is the fixture's own wait**, so a state is awaited rather than re-requested. Without it the
   only way to wait is to ask `/state` repeatedly, which is the polling this repo avoids where something
   event-driven exists.
+- **`/set-viewport` resizes the window where one is shown and the emulated viewport where none is**, and
+  that split is the whole reason `SessionPage` has a method for it rather than the adapter calling
+  `page.setViewportSize`. Playwright's viewport is an emulation *inside* the real window, so in a visible
+  run it draws the app into the top-left and leaves the desktop showing through the rest — the defect
+  `pinsViewport` (`src/launch-env.ts`) was written for. `driveEngineBody` reads that same predicate to
+  decide which port the session gets; the real window arrives as `EngineWindow`, one method wide, so
+  `engine/` never sees Electron's types. `/viewport` needs no port at all: `window.innerWidth` is true
+  whichever of the two happened, where `page.viewportSize()` reports the emulation and never moves when
+  the window does.
 - **`/screenshot` refuses a name that is not a name.** It is the one verb whose input becomes a path, and
   `app.screenshot` joins it onto the screenshots directory, so `../../escaped` wrote outside it.
 - **The body cap answers rather than hanging up.** It used to `destroy()` the request, which took the

@@ -55,6 +55,19 @@ export interface SessionPage {
    */
   ariaSnapshot: () => Promise<string>;
   /**
+   * Resizes what the app renders into.
+   *
+   * **A port method rather than `page.setViewportSize` at the call site**, because the right act depends on
+   * whether anyone is looking at the window. Playwright's viewport is an emulation *inside* the real
+   * window, so in a visible run it draws the app into a corner and leaves the desktop showing through the
+   * rest — which is the defect `pinsViewport` (`src/launch-env.ts`) was written for, and which asking for a
+   * viewport would otherwise reintroduce by hand. So a shown window is resized for real and a hidden one
+   * gets the emulation, and the session says what it wants rather than how.
+   *
+   * Reading the size needs no method of its own: `window.innerWidth` is true whichever of the two happened.
+   */
+  setViewport: (width: number, height: number) => Promise<unknown>;
+  /**
    * Reloads the window and returns when it is usable again, onboarding included.
    *
    * It is the only thing that makes every plugin re-read its data: a plugin's state is what its system sent
@@ -223,6 +236,10 @@ export interface EngineSession {
   fill: (selector: string, text: string) => Promise<EngineResult>;
   press: (key: string, selector?: string) => Promise<EngineResult>;
   snapshot: () => Promise<EngineResult>;
+  /** What the app is rendering into, in CSS pixels */
+  viewport: () => Promise<EngineResult>;
+  /** Resizes it — the real window where one is shown, the emulated viewport where none is */
+  setViewport: (width: number, height: number) => Promise<EngineResult>;
   /** The settings as stored */
   settings: () => Promise<EngineResult>;
   /** Writes one of a feature's settings, by the ref its settings are keyed under */
@@ -500,6 +517,24 @@ export function createSession({ page, api, takeErrors, readLog }: SessionDeps): 
     fill: (selector, text) => attempt('fill', async () => { await page.fill(selector, text); return selector; }),
     press: (key, selector) => attempt('press', async () => { await page.press(key, selector); return key; }),
     snapshot: () => attempt('snapshot', () => page.ariaSnapshot()),
+
+    /**
+     * What the app is rendering into, asked of the window rather than of Playwright.
+     *
+     * `page.viewportSize()` answers `null` until something has set one, and a resized *window* never moves
+     * it at all — so it reports the emulation and not the app. `window.innerWidth` is the size the layout
+     * actually has, which is the question.
+     */
+    viewport: () => attempt('viewport', () => page.evaluateExpression(
+      '({ width: window.innerWidth, height: window.innerHeight })',
+    )),
+
+    // Answers with what it was asked for, as `/click` answers with its selector: `/viewport` is the read,
+    // and a measurement taken a frame after a real window moved would sometimes be the size before it
+    setViewport: (width, height) => attempt('setViewport', async () => {
+      await page.setViewport(width, height);
+      return { width, height };
+    }),
 
     /**
      * The app's own log, which until now was a file an agent was told to go and open.

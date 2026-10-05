@@ -8,6 +8,8 @@ import {
   REPLY_TIMEOUT_MS, type EngineResult, type SeenEvent, type SessionApi, type SessionPage,
 } from '../../src/engine/session.ts';
 import type { BusMessage } from '../../src/engine/api-client.ts';
+import { asSessionPage } from '../../src/engine/index.ts';
+import type { Page } from '@playwright/test';
 
 /** A page that records what it was asked and lets a test answer for it, plus the bridge's own callback */
 function fakePage() {
@@ -37,6 +39,7 @@ function fakePage() {
     fill: vi.fn(async (selector: string, text: string) => { acted.push(`fill ${selector}=${text}`); }),
     press: vi.fn(async (key: string, selector?: string) => { acted.push(`press ${key}${selector ? ` @${selector}` : ''}`); }),
     ariaSnapshot: vi.fn(async () => '- button "Send"'),
+    setViewport: vi.fn(async (width: number, height: number) => { acted.push(`viewport ${width}x${height}`); }),
     // A real reload drops the page's globals; the flag the bridge guards itself with goes with them
     reload: vi.fn(async () => { reloaded = true; return undefined; }),
     waitForState: vi.fn(async () => undefined),
@@ -358,6 +361,52 @@ describe('settings', () => {
       to: 'host/settings',
       event: { type: 'UPDATE_SETTINGS', entityType: 'plugin', label: 'default-setup/code', path: ['baseDirectory'], value: '/tmp/x' },
     });
+  });
+});
+
+describe('the viewport', () => {
+  it('answers with what the app is rendering into, read from the window', async () => {
+    const { session, evaluateExpression } = sessionWith();
+    evaluateExpression.mockResolvedValueOnce({ width: 1400, height: 900 });
+
+    expect(await session.viewport()).toEqual({ ok: true, value: { width: 1400, height: 900 } });
+    // `innerWidth` rather than Playwright's `viewportSize()`, which answers null until something sets one
+    // and never moves when the window itself is resized
+    expect(String(evaluateExpression.mock.calls.at(-1)?.[0])).toContain('window.innerWidth');
+  });
+
+  it('resizes through the port, so a shown window is moved rather than drawn into', async () => {
+    const { session, acted } = sessionWith();
+
+    expect(await session.setViewport(1200, 800)).toEqual({ ok: true, value: { width: 1200, height: 800 } });
+    expect(acted).toEqual(['viewport 1200x800']);
+  });
+
+  /**
+   * The decision the port exists for, asserted at the adapter: a run whose window someone can see resizes
+   * the window, and a run nobody is watching sets the emulated viewport.
+   *
+   * Both directions, because each is wrong in the other's run. Emulating inside a shown window draws the
+   * app into its top-left corner and leaves the desktop showing through the rest — what `npm run drive`
+   * looked like before `pinsViewport` — and moving a hidden window buys nothing while making a suite's
+   * layout depend on whatever size the window happened to open at.
+   */
+  it('sets the emulated viewport for a window nobody is watching, and moves one someone is', async () => {
+    const acted: string[] = [];
+    const page = {
+      setViewportSize: async ({ width, height }: { width: number; height: number }) => {
+        acted.push(`emulated ${width}x${height}`);
+      },
+      locator: () => ({ ariaSnapshot: async () => '' }),
+    } as unknown as Page;
+    const app = { screenshot: async () => null, waitForState: async () => null, waitForPlugin: async () => null };
+
+    await asSessionPage(page, app).setViewport(1000, 700);
+    await asSessionPage(page, app, {
+      setContentSize: async (width, height) => { acted.push(`window ${width}x${height}`); },
+    }).setViewport(1000, 700);
+
+    expect(acted).toEqual(['emulated 1000x700', 'window 1000x700']);
   });
 });
 

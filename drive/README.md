@@ -40,11 +40,15 @@ abuddy drive --serve --instance probe     # from inside a pack
 It prints the address and a `curl` line and writes `results/engine.json` with the address and a token.
 `POST /close` ends the session and shuts the app down. `docs/public-facing/cli.md` has the verbs; the
 short version is `/eval` `/send` `/query` `/transact` `/wait` `/navigate` `/plugin` `/click` `/fill`
-`/press` `/logs` `/set-setting` `/screenshot` `/reload` `/events` `/drops` `/errors` `/close`, and
-`GET /state`, `GET /snapshot` and `GET /settings`.
+`/press` `/logs` `/set-setting` `/set-viewport` `/screenshot` `/reload` `/events` `/drops` `/errors`
+`/close`, and `GET /state`, `GET /snapshot`, `GET /settings` and `GET /viewport`.
 
 `/query` and `/transact` reach the **live** database, so a write shows up in the next read of the same session —
 `abuddy db exec` cannot, because it refuses while the app holds the write lock.
+
+`npm run drive` shows the window, so `/set-viewport` resizes the window itself; a session nobody is
+watching gets Playwright's emulated viewport instead, which is what keeps a suite's layout deterministic.
+Asking for a viewport in a shown window the other way would letterbox the app against the desktop.
 
 A write does **not** show up in the UI. A plugin holds what its system sent it, and a console write goes
 round every system, so nothing tells the view. `/reload` is what makes every plugin ask again; navigating
