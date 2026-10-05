@@ -1,3 +1,8 @@
+> **Superseded in part** by its own Phase 1 spike (branch `AS/spec-placement-without-milliseconds`): the
+> spike refuted Decision 1's premise, so Decisions 1-3 were not implemented and Phases 2-3 were replaced
+> by the alternative the goal had skipped. Decisions 4-8 landed as written. The text below is the plan as
+> written; the Outcome records what was built instead and why.
+>
 > **Written in session** `f122fdc5-84c9-467f-9c61-66330eab32d0` (Claude Code, 2026-10-05). Resume it with `claude -r f122fdc5-84c9-467f-9c61-66330eab32d0`.
 
 ```
@@ -233,6 +238,68 @@ Deliberately last: the point is to re-derive the threshold for its actual sole c
 - Decision 5: the top-mover exclusion and the three-branch remedy in `scripts/chain.ts`'s drift report.
 
 **Done when:** `bodyDrift` has one caller; `npm run spec -- measure` and `npm run spec -- chain` pass; `npm run chain` is green. Mutation: feed the report a map where one step carries the whole movement and assert it names that step rather than the body, and a map where every step moved alike and assert it names the body — both as pure-function cases over two maps, which is the data-input shape root `CLAUDE.md` prescribes.
+
+## Outcome (2026-10-05)
+
+Landed on `AS/spec-placement-without-milliseconds`, cut from `master` at `bab40b892`. **The spike in Phase 1 refuted the premise behind Decisions 1-3 before any code moved, so the goal's central change was not built.** What landed instead is the alternative this goal had explicitly skipped — removing the spec-cost body-drift report — plus Decisions 4-8 as written. The spike cost about an hour of machine time and saved a redesign of ~1,800 lines that would have been strictly worse than what is there.
+
+### Per phase
+
+| Phase | Status | Evidence |
+|---|---|---|
+| 1 — Spike | **done** | `4c0001457`. Four answers in Spike results above, with commands and machine |
+| 2 — The record holds a streak | **not done, refuted** | Q3: three specs' verdicts flipped in both loaded runs, so no consecutive-count N works |
+| 3 — The suite run is the measurement | **not done, falls with it** | Measuring on every run, loaded or not, is worse than measuring deliberately on a quiet box — see Corrections |
+| 2' — No body-drift report for spec costs | **done** (replaces 2) | `2510f5400`. `drifted()` has one caller; `spec-cost:check` ✅ 415 specs; repo-checks 948/948 |
+| 5 — The chain's drift report | **done** | `d1ecc6eef`. `driftVerdict` + 6 cases, both named mutations fire only on their cases |
+| 4 — Docs | **done** | `d15f0c898`. Three passages in root `CLAUDE.md`; `doc-links` 6/6 |
+
+### Corrections to the Decisions
+
+**Decision 1 is wrong, and the spike's Q3 is the evidence.** The premise was that a boolean verdict is machine-independent "because the question is *did it exceed 2,500 ms*, not *by how much*". It is not: the edge is an absolute wall-clock threshold, and under sustained load three specs' verdicts flipped in **both** loaded runs. A streak counts consecutive runs and load persists for hours, so N=2 files three wrong renames and N=3 is no better. Both obvious repairs are ruled out by the same data — a margin against the edge needs 3.3x and so only catches egregious cases, and a per-run scale correction fails because load is not a uniform multiplier (after dividing by the median 1.18x, 20 of 83 specs are still off by more than 1.5x, and larger specs are *less* affected than smaller).
+
+**Decisions 2 and 3 fall with it.** Both existed to make the record machine-independent. Once the verdict is known to be machine-dependent, measuring during every real run — including loaded ones — is *worse* than measuring deliberately on a quiet box, and `RECORD_IDLE_FLOOR` is correct rather than incidental. The deeper conclusion is that the millisecond, the window, the band and the idle floor are the shape of the problem: auditing a wall-clock budget is machine-dependent, and no unit change makes it otherwise.
+
+**What replaced them is the option this goal skipped.** The session that wrote this doc considered deleting the spec-cost body-drift report ("B") and rejected it as something the redesign would subsume. The redesign is gone and the deletion is the whole remaining fix. It was already in this goal's own "Finished when" — *"`bodyDrift`/`drifted`/`DRIFT_SHARE` have exactly one caller, `scripts/chain.ts`"* — so Decision 4 had required it all along.
+
+**Decision 4 took its second option.** `DRIFT_SHARE` is recorded as inherited rather than re-measured, with the reason on the constant: the figures behind it are a spec suite's, that suite stopped consuming it, and the concentration the chain does have is answered by Decision 5's second reading rather than by the threshold's size. An attempt to re-measure produced two repeatable runs (151.7s, 151.2s) on a box reading 58-66% idle against a floor of 85%, so they say the chain is repeatable and nothing about drift. Recorded as an attempt rather than a measurement.
+
+**Decision 6 held, in the direction that mattered.** The lessons were not carried into a new module, because there is no new module — the window, band and median stay where they are. What the commit does record, where the report used to be, is why there is no report and what a replacement would have to do first.
+
+### Conventional choices
+
+- `bodyDrift` and `drifted` are now called only from `driftVerdict` inside `measure.ts`, and `driftVerdict` has the chain as its one caller. That is tighter than the "exactly one caller, `scripts/chain.ts`" the Finished-when asked for, and satisfies its intent.
+- The largest mover is picked by absolute seconds rather than by its own share, so a tiny step that doubled is not named over the one that moved the sum. A case covers it.
+- `--forget` was kept on `spec-cost:update` (Decision 3 would have deleted it). With the report gone it is for a change you already know about, which the flag's doc now says.
+
+### Open items
+
+- **Three spike findings worth their own work**, none of them blocking: the parse should move to vitest's JSON reporter (Q2 — absolute paths, no ANSI, no `|project|` prefix handling, verified working alongside the human reporter); the recorded costs are measured by one vitest **per package** while specs run pooled across eleven projects, an 11,308 ms vs 17,745 ms gap on `generate-entries.spec.ts`; and `overBudget` has two kinds (`misplaced` for the three split packages, `outgrown` for the other nine) that no plan here modelled.
+- `CONTENTION_RATIO_MAX` is named as if it were a load factor but is measured as a fast-vs-integration placement ratio on an idle box. The name invites exactly the conflation this spike nearly made.
+- The three specs added by the preceding branch carry membership without a cost on some runs; the machine sat at 80-88% against the 85% recording floor for most of this session.
+
+### Final verification
+
+| Check | Result |
+|---|---|
+| `npm run typecheck` | ✅ all legs |
+| `npm test -w @app/repo-checks` | 948/948 |
+| `npm run spec -- measure.spec.ts` | 49/49, both mutations fire only on their cases |
+| `npm run spec-cost:check` | ✅ 415 specs across 12 suites |
+| `npm run spec-cost:update -- --dry` | every record current |
+| `npm run lint:check` | 0 warnings, 0 errors |
+| `npm run chain` | ✅ 24.1s (21 of 28 cached), then ✅ **162.1s with `--all`** on a 90%-idle box |
+
+Two notes from those chain runs, neither of them this goal's:
+
+- The 24.1s run reported three steps past twice their declared cost (`check:specifiers` 5s->11s,
+  `typecheck:scripts` 5s->12s, `lint:check` 3s->7s). None reappeared in the `--all` run on an idle box, so
+  that was contention — the machine sat at 58-88% for much of this session with another process in the tree.
+  A 150-line change cannot double a repo-wide scan.
+- The `--all` run reported `test:smoke  seconds: 9 -> 20`. It appears only under full-chain concurrency —
+  the same suite read 10.6s in an ordinary run — and nothing in this goal touches the app, the renderer or
+  the E2E fixture. Left unrecorded on purpose: one reading, not this branch's, and recording a step cost is
+  a deliberate act (`chain -- --all --record`) rather than something to fold into an unrelated change.
 
 ## Deferred
 
