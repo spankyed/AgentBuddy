@@ -227,8 +227,8 @@ export interface EngineSession {
   settings: () => Promise<EngineResult>;
   /** Writes one of a feature's settings, by the ref its settings are keyed under */
   setSetting: (ref: string, path: string, value: unknown) => Promise<EngineResult>;
-  /** The app's own log lines, newest last */
-  logs: (options: { since?: string; source?: string }) => EngineResult;
+  /** The app's own log lines, newest last; fails when `since` names a line the log does not hold */
+  logs: (options: { since?: string; source?: string }) => Promise<EngineResult>;
   /** Reloads the window and returns once it is connected again, with the in-page bridge back */
   reload: () => Promise<EngineResult>;
   drainEvents: () => EngineResult;
@@ -526,12 +526,17 @@ export function createSession({ page, api, takeErrors, readLog }: SessionDeps): 
       value,
     })),
 
-    logs: ({ since, source }) => {
+    logs: ({ since, source }) => attempt('logs', async () => {
       const lines = readLog().split('\n').filter(Boolean);
-      const from = since === undefined ? 0 : lines.findIndex((line) => line.includes(since)) + 1;
-      const after = lines.slice(from > 0 ? from : 0);
-      return { ok: true, value: source === undefined ? after : after.filter((line) => line.includes(source)) };
-    },
+      const at = since === undefined ? -1 : lines.findIndex((line) => line.includes(since));
+      // A marker nobody can find is a failure, not an empty filter: answering with the whole log would be
+      // read as "everything here is new", which is the same bytes as a right answer and a wrong meaning
+      if (since !== undefined && at === -1) {
+        throw new Error(`no line contains ${JSON.stringify(since)}, so there is nothing to answer "since"`);
+      }
+      const after = lines.slice(at + 1);
+      return source === undefined ? after : after.filter((line) => line.includes(source));
+    }),
 
     screenshot: (name) => attempt('screenshot', async () => {
       await page.screenshot(name);

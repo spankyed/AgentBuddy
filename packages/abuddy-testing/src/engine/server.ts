@@ -89,6 +89,18 @@ const safeName = (body: Record<string, unknown>, field: string): string => {
   return value;
 };
 
+/**
+ * A field that has to be *there*, whatever it holds.
+ *
+ * `required` is the wrong check for a value being written: `false`, `0` and `null` are all things a caller
+ * may legitimately store, so the question is presence. Without this a caller who forgot `value` wrote
+ * `undefined` into the settings and was told it worked.
+ */
+const present = (body: Record<string, unknown>, field: string): unknown => {
+  if (!(field in body)) throw new BadRequest(`"${field}" is required`);
+  return body[field];
+};
+
 /** An optional string, refused when present and empty: a caller who sent one meant to narrow something */
 const optionalText = (body: Record<string, unknown>, field: string): string | undefined => {
   if (body[field] === undefined) return undefined;
@@ -144,7 +156,7 @@ export function engineVerbs(session: EngineSession): Record<string, Verb> {
     // A write, so it is a verb of its own rather than a POST to the noun above
     '/set-setting': {
       method: 'POST',
-      run: (body) => session.setSetting(required(body, 'plugin'), required(body, 'path'), body.value),
+      run: (body) => session.setSetting(required(body, 'plugin'), required(body, 'path'), present(body, 'value')),
     },
     '/logs': {
       method: 'POST',

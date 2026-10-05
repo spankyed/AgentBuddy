@@ -362,25 +362,38 @@ describe('settings', () => {
 });
 
 describe('the app log', () => {
-  const lines = (result: EngineResult) => (result as { value: string[] }).value;
+  const lines = async (result: Promise<EngineResult>) => ((await result) as { value: string[] }).value;
 
-  it('answers with every line', () => {
+  it('answers with every line', async () => {
     const { session } = sessionWith();
 
-    expect(lines(session.logs({})).length).toBe(3);
+    expect((await lines(session.logs({}))).length).toBe(3);
   });
 
-  it('answers with what followed a line the caller already saw', () => {
+  it('answers with what followed a line the caller already saw', async () => {
     const { session } = sessionWith();
 
     // `since` names a line rather than a time: what a reader wants is "after the thing I just did"
-    expect(lines(session.logs({ since: 'boot' }))).toEqual(['[brain] started a flow', '[api] a thing happened']);
+    expect(await lines(session.logs({ since: 'boot' }))).toEqual(['[brain] started a flow', '[api] a thing happened']);
   });
 
-  it('narrows to one source', () => {
+  it('narrows to one source', async () => {
     const { session } = sessionWith();
 
-    expect(lines(session.logs({ source: '[brain]' }))).toEqual(['[brain] started a flow']);
+    expect(await lines(session.logs({ source: '[brain]' }))).toEqual(['[brain] started a flow']);
+  });
+
+  /**
+   * Answering with the whole log would be the same bytes as a right answer and a different meaning: a
+   * reader asking "what happened since X" would take every line before X as new.
+   */
+  it('fails when `since` names a line the log does not hold, rather than answering with all of it', async () => {
+    const { session } = sessionWith();
+
+    expect(await session.logs({ since: 'a line nobody wrote' })).toEqual({
+      ok: false,
+      error: 'logs: no line contains "a line nobody wrote", so there is nothing to answer "since"',
+    });
   });
 });
 
