@@ -1,6 +1,6 @@
 import { EventEmitter } from 'events';
 import { appendCappedLine } from '@abuddy/host/logs';
-import { jsonSafeEncoder } from '@/transport/encoder';
+import { encodeJsonSafely } from '@/transport/encoder';
 import type { Message } from '@abuddy/sdk/events';
 import type { LogEvent } from '@abuddy/sdk/logger';
 import type { RootEvents } from '@abuddy/sdk/runtime';
@@ -13,20 +13,24 @@ import type { RootEvents } from '@abuddy/sdk/runtime';
  * the throw. A BigInt was enough to do it, `reportError`'s step path handing this `redactSecrets` output, which
  * passes one through untouched, and a bare `JSON.stringify` refusing it.
  *
- * Neither half needs a guard here, and a third one would only imply these two do not work: serialising is the
- * socket's own encoder, which never throws, and writing is `appendCappedLine`, which swallows every write error
- * on the same reasoning. Encoding through `jsonSafeEncoder` also means a log line describes a BigInt or a loop
- * the way the wire does. It reports a cut through this same logger, which is one level of reentrancy and
- * terminates: that report's meta is an id and a reason, which its fast path takes.
+ * Neither half needs a guard here, and a third one would only imply these two do not work: serialising is
+ * `encodeJsonSafely`, which never throws, and writing is `appendCappedLine`, which swallows every write error on
+ * the same reasoning. Sharing the socket's encoder means a log line describes a BigInt or a loop the way the
+ * wire does — but **not** its last resort, which is a JSON-RPC frame and would be nonsense in a file something
+ * else parses. So the placeholder here is still a log line, keeping what is known to be plain text and naming
+ * what went wrong. It reports a cut through this same logger, which is one level of reentrancy and terminates:
+ * that report's meta is an id and a reason, which the fast path takes.
  */
 function appendAppEventLog(event: LogEvent) {
   const logDir = process.env.AGENTBUDDY_LOG_DIR;
   if (!logDir) return;
-  appendCappedLine(logDir, 'app-events.log', jsonSafeEncoder.encode({
-    timestamp: new Date().toISOString(),
-    startupId: process.env.AGENTBUDDY_STARTUP_ID,
-    ...event,
-  }) + '\n');
+  const timestamp = new Date().toISOString();
+  const startupId = process.env.AGENTBUDDY_STARTUP_ID;
+  const line = encodeJsonSafely(
+    { timestamp, startupId, ...event },
+    (reason) => ({ timestamp, startupId, level: event.level, source: event.source, message: event.message, unserialisable: reason }),
+  );
+  appendCappedLine(logDir, 'app-events.log', `${line}\n`);
 }
 
 /** The app's event bus: what the SDK binds as HostRuntime.transport, and the tRPC routers serve */

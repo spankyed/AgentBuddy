@@ -70,6 +70,29 @@ describe('a log event holding a value JSON has no form for', () => {
   });
 });
 
+describe('a log event that cannot be serialised at all', () => {
+  /**
+   * The placeholder has to still be a log line.
+   *
+   * The socket's last resort is a JSON-RPC frame, which is right for a client waiting on a call and nonsense in
+   * a file something else parses — it replaced the timestamp, the level and the message with
+   * `{"jsonrpc":"2.0",…}`. The shape belongs to the caller for that reason.
+   */
+  it('keeps what is plain text and names what went wrong', () => {
+    const meta: Record<string, unknown> = {};
+    Object.defineProperty(meta, 'boom', { enumerable: true, get() { throw new Error('bang'); } });
+
+    const heard = emitted({ level: 'error', message: 'a hostile field', source: 'memos', meta } as LogEvent);
+
+    expect(heard, 'the listeners still hear it').toHaveLength(1);
+    const line = JSON.parse(written()[0]);
+    expect(line, 'and the line is a log line').toMatchObject({ level: 'error', source: 'memos', message: 'a hostile field' });
+    expect(typeof line.timestamp).toBe('string');
+    expect(line.unserialisable, 'saying why the meta is missing').toContain('bang');
+    expect(line, 'and carries no frame').not.toHaveProperty('jsonrpc');
+  });
+});
+
 describe('an ordinary log event', () => {
   it('is written as one JSON line carrying when and which run', () => {
     emitted({ level: 'info', message: 'plain', source: 'memos' } as LogEvent);
