@@ -20,7 +20,8 @@ import {
   halfOfPath, hasSplit, disagrees, nearEdge, worthKeeping, ratiosFromMoves, towardEdge, underBound, type SpecCost,
   namedIn, overBudget, parseArgs,
   planFor, readSpecCost,
-  pendingHere, recordMembership, refuseAbsent, forgetsWindows, settle, specCostFile, specFiles, stale, suitesFor,
+  pendingHere, recordedVerdict, recordMembership, refuseAbsent, forgetsWindows, settle, specCostFile, specFiles,
+  stale, suiteCounts, suitesFor,
   writesMembershipOnly,
   unrecorded, WINDOW, appendSample, costOf, provisional, withCosts,
 } from '../../../scripts/lib/spec-cost.ts';
@@ -191,6 +192,84 @@ describe('a record anyone can add a spec to', () => {
     // Deleted since it was parked: `stale` prunes it, and planning it would measure a file that is gone
     it('is dropped rather than planned once the spec has gone', () => {
       expect(pendingHere(parked(thisMachine()), [])).toEqual([]);
+    });
+  });
+
+  /**
+   * And a parked cost is *reported*, which is the half that was missing until 2026-10-05.
+   *
+   * `pendingHere` had always been right and only one caller used it — the update plan — so the check printed
+   * `✅ 409 specs across 12 suites, each recorded and in the half its cost implies` while five specs carried
+   * membership with no cost at all. True of membership, and silent about what it did not have. A
+   * hand-written action list caught one of the five.
+   *
+   * The sentence is asserted here rather than in the command because a command's output was asserted
+   * nowhere, which is exactly how the reporting half went missing while the predicate stayed correct.
+   */
+  describe('the verdict says what it did not check', () => {
+    const clean = { total: 409, suites: 12, named: false, unenforced: 0, measuredBy: '', here: 'Apple M1 Pro (10 cores)', parked: 0 };
+
+    it('claims the halves when every cost is this machine\'s and none is parked', () => {
+      expect(recordedVerdict(clean))
+        .toBe('✅ 409 specs across 12 suites, each recorded and in the half its cost implies');
+    });
+
+    it('names the parked costs rather than claiming them', () => {
+      expect(recordedVerdict({ ...clean, parked: 5 }))
+        .toBe('✅ 409 specs across 12 suites, each recorded and in the half its cost implies'
+          + '; 5 carry membership without a cost');
+    });
+
+    /** One is the case a plural would read wrong on, and it is the ordinary count for a freshly added spec */
+    it('says it of a single parked cost too', () => {
+      expect(recordedVerdict({ ...clean, parked: 1 })).toContain('; 1 carries membership without a cost');
+    });
+
+    /**
+     * Both clauses, which is not hypothetical: each is asked per suite across twelve, so a tree holding one
+     * foreign record and one parked cost elsewhere narrows the sentence twice.
+     */
+    it('carries both clauses rather than letting one displace the other', () => {
+      const line = recordedVerdict({ ...clean, unenforced: 2, measuredBy: 'Apple M2 (8 cores)', parked: 3 });
+      expect(line).toContain('placement unchecked for 2 of 12');
+      expect(line).toContain('3 carry membership without a cost');
+      expect(line).not.toContain('in the half its cost implies');
+    });
+  });
+
+  /**
+   * `--list`'s table and the check's total are one answer, and they were two.
+   *
+   * The rows were built from `record.costs` alone, so neither a parked nor a skipped spec was in any column:
+   * measured 2026-10-05, `--list` totalled 404 where the check said 409. Both now come from `suiteCounts`,
+   * and this is the arithmetic that says so.
+   */
+  describe('suiteCounts accounts for every spec in the suite', () => {
+    const record = withCosts({
+      measuredAt: 'then',
+      samples: { 'tests/a.spec.ts': [100, 110], 'tests/b.spec.ts': [2400] },
+      skipped: ['tests/skipped.spec.ts'],
+      unmeasured: ['tests/parked.spec.ts'],
+      machine: thisMachine(),
+    });
+    const files = ['tests/a.spec.ts', 'tests/b.spec.ts', 'tests/skipped.spec.ts', 'tests/parked.spec.ts'];
+
+    it('adds up to the specs on disk, across all four states', () => {
+      const counts = suiteCounts(record, files, true);
+      expect(counts.specs, 'the total the check reports for this suite').toBe(files.length);
+      expect(counts.clear + counts.nearBand + counts.skipped + counts.parked).toBe(counts.specs);
+    });
+
+    it('counts a cost resting on more than one reading, and only those', () => {
+      expect(suiteCounts(record, files, true).corroborated).toBe(1);
+    });
+
+    // A recorded state for a spec that has gone is `stale`'s finding; counting it here would put the row
+    // above the specs the suite has
+    it('leaves out a parked or skipped spec that is no longer on disk', () => {
+      const counts = suiteCounts(record, ['tests/a.spec.ts', 'tests/b.spec.ts'], true);
+      expect([counts.skipped, counts.parked]).toEqual([0, 0]);
+      expect(counts.specs).toBe(2);
     });
   });
 

@@ -809,6 +809,84 @@ export const pendingHere = (record: SpecCost, files: readonly string[]): string[
   isMeasuredMachine(record.machine) ? record.unmeasured.filter((file) => files.includes(file)) : [];
 
 /**
+ * One suite's row for `--list`, with every count taken from the same record in one pass.
+ *
+ * **`specs` is every spec the suite has, not every spec it has priced**, and that is the change. The rows
+ * were built from `Object.entries(record.costs)` alone, so neither a parked nor a skipped spec appeared in
+ * any of them — on 2026-10-05, with five parked across four packages, `--list` totalled 404 where
+ * `spec-cost:check` said 409. Two outputs of one command disagreeing about how many specs exist is the kind
+ * of thing nobody reconciles by eye, so `specs === clear + nearBand + skipped + parked` holds here and
+ * `suite-split.spec.ts` asserts it.
+ *
+ * **All three cost-less states are counted and none is folded into another**, which `skipped`'s own doc
+ * asks for: a skipped spec ran and reported nothing, permanently and correctly, where a parked one has
+ * never run here. Adding them to one column would reconcile the total and lose the distinction the record
+ * keeps them apart for.
+ *
+ * `nearBand` is counted only where a suite has a second half to move into, which is `nearEdge`'s own
+ * condition: a package with one half has no edge to cross.
+ */
+export const suiteCounts = (
+  record: SpecCost,
+  files: readonly string[],
+  split: boolean,
+): { specs: number; clear: number; nearBand: number; corroborated: number; skipped: number; parked: number } => {
+  const costs = Object.entries(record.costs);
+  const atRisk = split ? costs.filter(([file, ms]) => nearEdge(file, ms)) : [];
+  const parked = pendingHere(record, files).length;
+  // Against the files on disk, as `pendingHere` is: a recorded state for a spec that has gone is `stale`'s
+  // finding, and counting it here would put a row above the specs the suite actually has
+  const skipped = record.skipped.filter((file) => files.includes(file)).length;
+  return {
+    specs: costs.length + skipped + parked,
+    clear: costs.length - atRisk.length,
+    nearBand: atRisk.length,
+    corroborated: Object.values(record.samples).filter((window) => window.length > 1).length,
+    skipped,
+    parked,
+  };
+};
+
+/**
+ * The tick, and every clause that narrows what it claims.
+ *
+ * **A green line carrying a claim wider than the work is the failure this exists to prevent**, which is how
+ * the repo came to have `packagesBuiltOrRefuse` — thirteen spec files reporting green having checked
+ * nothing. Two clauses narrow it, and both can appear, since each is asked per suite across twelve of them:
+ *
+ * - `placement unchecked` — a record measured elsewhere, where milliseconds say nothing about which half a
+ *   spec belongs in. Enforcement is scoped to the measuring machine, so saying nothing here would leave the
+ *   sentence claiming a check that did not run.
+ * - `carry membership without a cost` — parked specs this machine is the one to price (`pendingHere`). It
+ *   was missing until 2026-10-05, and five had accumulated while the line read "each recorded": true of
+ *   membership, and silent about the costs it did not have. Only ever a clause, never a failure — a parked
+ *   spec is the correct state on a second developer's box, and gating it is the defect this repo already
+ *   has on record for `spec-cost:update`, which threw and left a busy box with "wait" as the only advice.
+ *
+ * Facts in and a string out, with no machine read inside, which is what makes the sentence assertable —
+ * `outgrownReport` and `driftReport` have the same shape for the same reason.
+ */
+export const recordedVerdict = (facts: {
+  total: number;
+  suites: number;
+  named: boolean;
+  unenforced: number;
+  measuredBy: string;
+  here: string;
+  parked: number;
+}): string => {
+  const placed = facts.unenforced === 0 ? ' and in the half its cost implies'
+    : `; placement unchecked for ${facts.unenforced} of ${facts.suites} (measured on ${facts.measuredBy}, `
+      + `this is ${facts.here})`;
+  const parked = facts.parked === 0 ? ''
+    : `; ${facts.parked} carr${facts.parked === 1 ? 'ies' : 'y'} membership without a cost`;
+  const subject = facts.named
+    ? `${facts.total} spec${facts.total === 1 ? '' : 's'}, recorded`
+    : `${facts.total} specs across ${facts.suites} suite${facts.suites === 1 ? '' : 's'}, each recorded`;
+  return `✅ ${subject}${placed}${parked}`;
+};
+
+/**
  * The record with its membership brought up to date and not one cost touched.
  *
  * What a machine that is not the record's may write: a spec that has appeared is listed as `unmeasured`, a

@@ -50,7 +50,8 @@ import {
   writesMembershipOnly,
   readingsText, renameAdvice,
   type SpecCost, type StoredSpecCost,
-  provisional, forgetsWindows, settle, specCostFile, specFiles, stale, suitesFor, unrecorded, type SpecCostPlan,
+  pendingHere, provisional, forgetsWindows, recordedVerdict, settle, specCostFile, specFiles, stale, suiteCounts,
+  suitesFor, unrecorded, type SpecCostPlan,
 } from './lib/spec-cost.ts';
 
 // eslint-disable-next-line no-control-regex -- vitest colours its output and this reads it back
@@ -368,6 +369,7 @@ function check(only: string | undefined, named: readonly string[]): void {
   const unenforced = new Map<string, Machine>();
   const recordable = new Set<string>();
   let total = 0;
+  const parked: string[] = [];
   for (const suite of suites) {
     const dir = packageDir(suite);
     const record = readSpecCost(REPO_ROOT, suite.dir);
@@ -380,6 +382,9 @@ function check(only: string | undefined, named: readonly string[]): void {
     const files = specFiles(dir);
     const asked = named.length > 0 ? namedIn(suite.dir, named) : files;
     total += asked.length;
+    // Parked specs this box is the one to price. Beside `unrecorded` and deliberately not inside it: a
+    // parked spec is *recorded*, so it is a clause on the verdict rather than a problem that throws
+    for (const file of pendingHere(record, asked)) parked.push(`  ${suite.dir}/${file}`);
     const before = problems.length;
     problems.push(
       ...unrecorded(record, asked).map((f) => `  unmeasured: ${suite.dir}/${f}`),
@@ -451,13 +456,20 @@ function check(only: string | undefined, named: readonly string[]): void {
   // `packagesBuiltOrRefuse`: thirteen spec files, nine of them a whole package, reported green having checked
   // nothing. The shape is the chain's own verdict, which composes an optional `(N of M cached)` clause rather
   // than printing a different sentence.
-  const measuredBy = [...new Set([...unenforced.values()].map(machineText))].join(', ');
-  const placed = unenforced.size === 0 ? ' and in the half its cost implies'
-    : `; placement unchecked for ${unenforced.size} of ${suites.length} (measured on ${measuredBy}, `
-      + `this is ${machineText(thisMachine())})`;
-  console.log(named.length > 0
-    ? `✅ ${total} spec${total === 1 ? '' : 's'}, recorded${placed}`
-    : `✅ ${total} specs across ${suites.length} suite${suites.length === 1 ? '' : 's'}, each recorded${placed}`);
+  if (parked.length > 0) {
+    console.log(`\nMembership without a cost, and this is the machine that prices them:`);
+    for (const line of parked) console.log(line);
+    console.log('Run: npm run spec-cost:update');
+  }
+  console.log(recordedVerdict({
+    total,
+    suites: suites.length,
+    named: named.length > 0,
+    unenforced: unenforced.size,
+    measuredBy: [...new Set([...unenforced.values()].map(machineText))].join(', '),
+    here: machineText(thisMachine()),
+    parked: parked.length,
+  }));
 }
 
 /**
@@ -467,10 +479,9 @@ function check(only: string | undefined, named: readonly string[]): void {
  * sit inside the band are the only ones whose placement a re-measurement could move. Rows before printing,
  * so a spec can assert over them without reading stdout.
  */
-interface ListRow {
-  readonly suite: string; readonly specs: number; readonly settled: number; readonly nearBand: number;
-  /** Costs resting on more than one reading, which is how much the window has actually engaged */
-  readonly corroborated: number;
+/** `suite` plus `suiteCounts`' five numbers, so the row and the counts cannot drift apart */
+interface ListRow extends ReturnType<typeof suiteCounts> {
+  readonly suite: string;
 }
 
 function list(only: string | undefined, named: readonly string[]): void {
@@ -505,16 +516,15 @@ function list(only: string | undefined, named: readonly string[]): void {
   for (const suite of selected) {
     const record = readSpecCost(REPO_ROOT, suite.dir);
     if (record === undefined) continue;
-    const costs = Object.entries(record.costs);
-    // Counted only where there is a second half to move into; see the comment above
-    const atRisk = hasSplit(packageDir(suite)) ? costs.filter(([file, ms]) => nearEdge(file, ms)) : [];
-    rows.push({
-      suite: suite.dir, specs: costs.length, settled: costs.length - atRisk.length, nearBand: atRisk.length,
-      // How many readings each cost rests on, which is what says whether the window is doing anything. It is
-      // derived here rather than written in `WINDOW`'s doc, where a count would drift — and the answer has been
-      // sobering: 388 of 389 held one reading the day the window landed
-      corroborated: Object.values(record.samples).filter((window) => window.length > 1).length,
-    });
+    const split = hasSplit(packageDir(suite));
+    // One pass over the record for all five numbers, so this table and the check's total cannot disagree
+    // about how many specs a suite has. `corroborated` is how many costs rest on more than one reading,
+    // which is what says whether the window has engaged — derived here rather than written in `WINDOW`'s
+    // doc, where a count would drift, and the answer has been sobering: 388 of 389 held one reading the day
+    // the window landed
+    const counts = suiteCounts(record, specFiles(packageDir(suite)), split);
+    rows.push({ suite: suite.dir, ...counts });
+    const atRisk = split ? Object.entries(record.costs).filter(([file, ms]) => nearEdge(file, ms)) : [];
     for (const [file, ms] of atRisk) {
       const edge = halfOfPath(file) === 'fast' ? INTEGRATION_ABOVE_MS : FAST_BELOW_MS;
       near.push(`  ${(ms / 1000).toFixed(1)}s  ${halfOfPath(file).padEnd(11)} ${suite.dir}/${file}`
@@ -527,17 +537,20 @@ function list(only: string | undefined, named: readonly string[]): void {
     Math.max(header.length, ...rows.map((row) => cell(row).length)) + 2;
   const name = width('suite', (row) => row.suite);
   console.log(`${'suite'.padEnd(name)}${'specs'.padStart(7)}${'clear'.padStart(7)}${'near an edge'.padStart(14)}`
-    + `${'corroborated'.padStart(14)}`);
+    + `${'corroborated'.padStart(14)}${'skipped'.padStart(9)}${'parked'.padStart(8)}`);
   for (const row of rows) {
-    console.log(`${row.suite.padEnd(name)}${String(row.specs).padStart(7)}${String(row.settled).padStart(7)}`
-      + `${String(row.nearBand).padStart(14)}${String(row.corroborated).padStart(14)}`);
+    console.log(`${row.suite.padEnd(name)}${String(row.specs).padStart(7)}${String(row.clear).padStart(7)}`
+      + `${String(row.nearBand).padStart(14)}${String(row.corroborated).padStart(14)}`
+      + `${String(row.skipped).padStart(9)}${String(row.parked).padStart(8)}`);
   }
   // **What the window is actually doing, which no prose should claim.** A cost resting on one reading is one
   // the median cannot protect: `settle` has nothing to weigh the next reading against. `WINDOW`'s doc argues
   // three-against-five, and this is the line that says how often three is reached.
   const corroborated = rows.reduce((sum, row) => sum + row.corroborated, 0);
-  const specs = rows.reduce((sum, row) => sum + row.specs, 0);
-  console.log(`\n${corroborated} of ${specs} costs rest on more than one reading. The rest are a single `
+  // Priced specs, not `specs`: that counts the parked ones too, and a parked spec has no cost to rest on
+  // anything. Saying "of 409 costs" where 404 exist would be a false clause on a line about the window
+  const priced = rows.reduce((sum, row) => sum + row.clear + row.nearBand, 0);
+  console.log(`\n${corroborated} of ${priced} costs rest on more than one reading. The rest are a single `
     + 'reading, which the median cannot outvote — see `WINDOW` in scripts/lib/spec-cost.ts.');
   console.log(`\n${near.length} spec${near.length === 1 ? '' : 's'} within ${COST_ACCURACY * 100}% of the edge that `
     + 'could move it, which is what a recorded cost is good to — so a re-measurement could carry it over.');
