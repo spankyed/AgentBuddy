@@ -9,6 +9,10 @@
       "types": "./dist/package/dist/index.d.ts",
       "default": "./dist/package/dist/index.js"
     },
+    "./playwright": {
+      "types": "./dist/package/dist/playwright.d.ts",
+      "default": "./dist/package/dist/playwright.js"
+    },
     "./vitest": {
       "types": "./dist/package/dist/vitest.d.ts",
       "default": "./dist/package/dist/vitest.js"

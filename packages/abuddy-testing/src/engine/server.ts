@@ -41,6 +41,15 @@ export interface EngineAddress {
 export interface RunningEngine {
   readonly address: EngineAddress;
   readonly close: () => Promise<void>;
+  /**
+   * The table this engine answers from, core verbs and the caller's own merged together.
+   *
+   * Returned so that what is *printed* for the agent is derived from what is *answered* rather than
+   * restated beside it. The printed recipe had drifted four ways — it named `/qx` and `/system`, both
+   * gone, and listed the three drains as GET after they became POST — so the first line an agent copied
+   * was a 404.
+   */
+  readonly verbs: Record<string, Verb>;
 }
 
 /** A verb, and whether it reads a JSON body */
@@ -360,6 +369,7 @@ export async function startEngineServer(
 
   return {
     address: { port: bound.port, token },
+    verbs,
     close: () => new Promise<void>((resolve) => {
       // Open sockets would hold the process past the drive body returning, so the session would hang at
       // the one moment it is trying to end

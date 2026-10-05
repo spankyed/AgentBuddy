@@ -17,7 +17,7 @@ The repo's own E2E imports it the same way a pack does:
 import { test, expect } from '@abuddy/testing';
 ```
 
-Every spec (`tests/e2e/{smoke,app-integration,ui}/*.spec.ts`) imports `@abuddy/testing` directly. `@abuddy/testing` is the `packages/abuddy-testing` workspace package, and its three entries resolve its built bundle under every condition — so the repo's own E2E runs the same fixture a pack does, and `npm test` runs `packages:ensure` first to build it from the checkout's current sources.
+Every spec (`tests/e2e/{smoke,app-integration,ui}/*.spec.ts`) imports `@abuddy/testing` directly. `@abuddy/testing` is the `packages/abuddy-testing` workspace package, and its four entries resolve its built bundle under every condition — so the repo's own E2E runs the same fixture a pack does, and `npm test` runs `packages:ensure` first to build it from the checkout's current sources.
 
 ### How external packs use it
 
@@ -25,6 +25,39 @@ External packs add `@abuddy/testing` and `@playwright/test` as devDependencies (
 ```ts
 import { test, expect } from '@abuddy/testing';
 ```
+
+## Playwright configs (`@abuddy/testing/playwright`)
+
+A pack's Playwright configs are calls to a helper, not copies of one — the same answer `definePackTestConfig`
+gives for vitest, for the same reason. There were six copies (the repo's own E2E config, the one
+`abuddy init-tests` scaffolds, both fixture packs', and the drive layer's pair), and the repo's own had
+already drifted to a `use` block giving it screenshots and traces the three packs' lacked. Nobody decided
+that; it is what six copies do. `@app/repo-checks`' `playwright-config.spec.ts` is the gate.
+
+One helper per kind of run, because a setting means something different to each:
+
+| Helper | For | Overrides |
+|---|---|---|
+| `definePackE2EConfig` | a pack's suite, run by `abuddy test` | anything Playwright takes; the pack's word is last |
+| `defineDriveConfig` | driving scripts, run by `abuddy drive` | the same, **except** that the engine's session is always ignored |
+| `defineEngineConfig` | the serving session, `abuddy drive --serve` | everything but the four its handshake depends on |
+
+- **`timeout` in `definePackE2EConfig` has to stay a literal.** `suite-timeouts.spec.ts` reads a config's
+  timeouts as text rather than importing one (importing creates a temp data dir), follows the delegation to
+  this module and holds the value to the large size budget. It reads **one helper's body**, not the file:
+  two of the three declare `timeout: 0`, and reading the file whole reported the root suite's budget as 0ms.
+- **`defineDriveConfig` ignores the session whatever `testMatch` says**, and that is the one thing a pack
+  cannot undo. A driving run that collected the engine would start it and hang on a request nobody watching
+  has reason to send. Before this helper the only guard was the session's `.mts` extension falling outside
+  the `**/*.ts` glob — an accident of two defaults that a pack widening its own `testMatch` would have
+  undone silently, and unfixable while a `testIgnore` could reach only newly scaffolded packs.
+- **`EngineConfigOptions` omits `testDir`, `testMatch`, `workers`, `timeout` and `outputDir`**, so setting
+  one is a compile error rather than a value quietly discarded; the handshake is also spread last, so a cast
+  cannot break a session either. What each one breaks is on the type. The rule for which settings are
+  locked: **the ones the tool or its own docs read back.**
+- **The session's filename is declared twice**, here for `testMatch` and in `@abuddy/cli`'s `drive.ts` for
+  the file that command writes. Making it one declaration would mean the CLI importing this package at
+  runtime — a dependency on the published CLI for one string — so the gate compares the two instead.
 
 ## Vitest: isolated data dirs (`@abuddy/testing/vitest`)
 

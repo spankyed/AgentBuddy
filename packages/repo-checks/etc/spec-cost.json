@@ -48,7 +48,9 @@
     "tests/workspace-dirs.spec.ts": [3]
   },
   "skipped": [],
-  "unmeasured": [],
+  "unmeasured": [
+    "tests/playwright-config.spec.ts"
+  ],
   "machine": {
     "cpu": "Apple M1 Pro",
     "cores": 10

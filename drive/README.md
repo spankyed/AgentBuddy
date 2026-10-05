@@ -62,4 +62,10 @@ CLI's `--serve` wants a pack directory and this repo is not one. The session fil
 `npm run drive`, which collects `**/*.ts`, never picks it up and hangs on it.
 
 A pack author gets the same thing from `abuddy drive`, which also takes `--instance <name>` to keep the
-app's data between sessions. Everything here but this file and `playwright.config.ts` is gitignored.
+app's data between sessions. In a pack everything here but this file and `playwright.config.ts` is
+gitignored; this directory also tracks the serving pair, which `drive/.gitignore` negates, so the
+repo's own copies are typechecked and are chain inputs.
+
+Both configs are calls to `@abuddy/testing/playwright` — `defineDriveConfig` and `defineEngineConfig` —
+so a setting lives in the package rather than going stale in a copy here. The engine's four handshake
+settings cannot be overridden at all; the rest take an argument.

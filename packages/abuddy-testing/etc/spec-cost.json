@@ -11,7 +11,10 @@
     "tests/shared-ears.spec.ts": [11]
   },
   "skipped": [],
-  "unmeasured": [],
+  "unmeasured": [
+    "tests/engine/marker.spec.ts",
+    "tests/playwright.spec.ts"
+  ],
   "machine": {
     "cpu": "Apple M1 Pro",
     "cores": 10

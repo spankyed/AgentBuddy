@@ -41,11 +41,12 @@ const CONFIGS: Record<string, BundleConfig> = {
   },
   '@abuddy/testing': {
     // vitest-worker and vitest-teardown are loaded by path from dist/vitest.js's isolatedDataDir()
-    entries: { index: 'src/index.ts', vitest: 'src/vitest.ts', 'vitest-worker': 'src/vitest-worker.ts', 'vitest-teardown': 'src/vitest-teardown.ts' },
+    entries: { index: 'src/index.ts', playwright: 'src/playwright.ts', vitest: 'src/vitest.ts', 'vitest-worker': 'src/vitest-worker.ts', 'vitest-teardown': 'src/vitest-teardown.ts' },
     sharedExternalEntries: { harness: 'src/harness.ts' },
     declarations: true,
     manifest: { exports: {
       '.': { types: './dist/index.d.ts', default: './dist/index.js' },
+      './playwright': { types: './dist/playwright.d.ts', default: './dist/playwright.js' },
       './vitest': { types: './dist/vitest.d.ts', default: './dist/vitest.js' },
       './harness': { types: './dist/harness.d.ts', default: './dist/harness.js' },
     } },

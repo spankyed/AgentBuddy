@@ -221,7 +221,7 @@ export async function runDriveEngine(options: DriveEngineOptions): Promise<void>
   const engine = await startEngineServer(session, () => end(), options.verbs);
   const marker = { ...engine.address, pid: process.pid, host: '127.0.0.1' };
   const file = publishEngineMarker(outputDir, marker);
-  log(engineRecipe(file, marker, ENGINE_TOKEN_HEADER));
+  log(engineRecipe(file, marker, ENGINE_TOKEN_HEADER, engine.verbs));
 
   /**
    * A signal also ends the session, though it is **not** what makes Ctrl-C safe: Playwright's own interrupt

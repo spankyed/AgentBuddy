@@ -1,13 +1,6 @@
-import { defineConfig } from '@playwright/test';
+import { defineEngineConfig } from '@abuddy/testing/playwright';
 
-// The repo's own serving config, the same shape `abuddy drive --serve` writes into a pack: only the
-// engine's session, named exactly, so no .ts driving script is dragged into a serving run.
-export default defineConfig({
-  testDir: '.',
-  testMatch: 'engine-session.mts',
-  workers: 1,
-  // A session ends when something asks it to, not when a clock says so
-  timeout: 0,
-  reporter: 'list',
-  outputDir: 'results',
-});
+// The repo's own serving config, the same call `abuddy drive --serve` writes into a pack: only the engine's
+// session, named exactly, so no driving script is dragged into a serving run. The settings the session's
+// HTTP handshake depends on are the helper's and cannot be overridden here — see `EngineConfigOptions`.
+export default defineEngineConfig();

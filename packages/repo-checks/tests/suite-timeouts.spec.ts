@@ -55,18 +55,44 @@ const TIMEOUT_KEYS = ['testTimeout', 'hookTimeout', 'teardownTimeout', 'timeout'
 /**
  * Where a config's timeouts are declared: its own text, and the helper it delegates to.
  *
- * A pack's config is a call to `definePackTestConfig` (`@abuddy/testing/vitest`), which holds the budget so
- * that every pack's suite runs with the same one — the whole point of collapsing three copies into it. This
- * check reads a config as *text* rather than importing it (importing one creates a temp data dir), so the
- * delegation has to be followed here or the property it checks reads as absent the moment a pack stops
- * restating it. The helper's source comes first, so a pack that overrides a key still wins.
+ * A pack's config is a call to one of these helpers, which holds the budget so that every pack's suite runs
+ * with the same one — the whole point of collapsing the copies into it. This check reads a config as *text*
+ * rather than importing it (importing one creates a temp data dir), so the delegation has to be followed
+ * here or the property it checks reads as absent the moment a pack stops restating it. The helper's source
+ * comes first, so a pack that overrides a key still wins.
+ *
+ * One entry per runner, because a timeout means something different to each: `definePackTestConfig` holds
+ * `testTimeout`/`hookTimeout` for vitest, `definePackE2EConfig` holds Playwright's `timeout`. A helper
+ * missing from here reads as a config that declares nothing — which is a passing `declares nothing above
+ * its budget` and a failing `declares its budget`, so it fails loudly rather than quietly.
  */
-const PACK_TEST_CONFIG = path.join('packages', 'abuddy-testing', 'src', 'vitest.ts');
+const DELEGATES: Record<string, string> = {
+  definePackTestConfig: path.join('packages', 'abuddy-testing', 'src', 'vitest.ts'),
+  definePackE2EConfig: path.join('packages', 'abuddy-testing', 'src', 'playwright.ts'),
+};
+
+/**
+ * The helper's own body, not the whole file it lives in.
+ *
+ * One module can hold several helpers with different answers: `src/playwright.ts` has three, and two of
+ * them declare `timeout: 0` because a driving run and a serving session have no deadline at all. Reading
+ * the file whole found those zeros for a config that delegates to the E2E helper and reported the root
+ * suite's budget as 0ms. So the delegation is to a declaration, and this is where it ends.
+ */
+function helperBody(source: string, helper: string): string {
+  const from = source.indexOf(`export function ${helper}`);
+  if (from === -1) return source;
+  const rest = source.slice(from);
+  const next = rest.indexOf('\nexport ', 1);
+  return next === -1 ? rest : rest.slice(0, next);
+}
 
 function timeoutSources(file: string): string[] {
   const own = fs.readFileSync(path.join(REPO_ROOT, file), 'utf-8');
-  if (!own.includes('definePackTestConfig')) return [own];
-  return [fs.readFileSync(path.join(REPO_ROOT, PACK_TEST_CONFIG), 'utf-8'), own];
+  const delegate = Object.entries(DELEGATES).find(([helper]) => own.includes(helper));
+  if (delegate === undefined) return [own];
+  const [helper, source] = delegate;
+  return [helperBody(fs.readFileSync(path.join(REPO_ROOT, source), 'utf-8'), helper), own];
 }
 
 /** The timeout values a config declares, ignoring commented-out lines */

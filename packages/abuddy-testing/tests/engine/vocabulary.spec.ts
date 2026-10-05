@@ -6,6 +6,7 @@
 // verb consuming a plugin rejected that name, and `/send` and `/system` were two verbs for one act.
 import { describe, expect, it, vi } from 'vitest';
 import { answer, engineVerbs, ENGINE_TOKEN_HEADER } from '../../src/engine/server.ts';
+import { engineRecipe, RECIPE_READ_PATH, RECIPE_WRITE_PATH } from '../../src/engine/marker.ts';
 import type { EngineResult, EngineSession } from '../../src/engine/session.ts';
 
 const TOKEN = 'a-token';
@@ -171,5 +172,40 @@ describe('the drive wire', () => {
 
     expect(named.length, 'no verb required anything, so this checked nothing').toBeGreaterThan(4);
     expect(VOCABULARY).toEqual(expect.arrayContaining(named));
+  });
+});
+
+/**
+ * And what the session *prints* about itself, which is the only description of the wire most agents read.
+ *
+ * `marker.spec.ts` covers the derivation; this covers the half that needs the real table: that the two
+ * paths the recipe shows a curl for are verbs that exist. Both were wrong at once before the recipe was
+ * derived — it offered `/qx`, which had become `/query`, so the first line an agent copied answered 404.
+ */
+describe('the printed recipe', () => {
+  const printed = () => engineRecipe('drive/results/engine.json', { port: 1, token: 't', pid: 2, host: '127.0.0.1' }, ENGINE_TOKEN_HEADER, verbs());
+
+  it('shows a curl only for verbs that exist', () => {
+    const table = verbs();
+
+    for (const shown of [RECIPE_READ_PATH, RECIPE_WRITE_PATH]) {
+      expect(Object.keys(table), `the recipe curls ${shown}, which is not a verb`).toContain(shown);
+    }
+  });
+
+  it('shows each of those two under the method the table gives it', () => {
+    const table = verbs();
+
+    expect(table[RECIPE_READ_PATH]!.method, 'the read example is curled without a body').toBe('GET');
+    expect(table[RECIPE_WRITE_PATH]!.method, 'the write example is curled with -d').toBe('POST');
+  });
+
+  it('lists every verb the table answers, and nothing it does not', () => {
+    const listed = printed()
+      .split('\n')
+      .filter((line) => /^\s+(POST|GET)\s/.test(line))
+      .flatMap((line) => line.trim().split(/\s+/).slice(1));
+
+    expect(listed.sort()).toEqual(Object.keys(verbs()).sort());
   });
 });

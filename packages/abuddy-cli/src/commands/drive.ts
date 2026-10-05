@@ -32,6 +32,8 @@ import { fixtureEnv } from './test';
 import { appEnv } from './run';
 import { copySecretsInto } from '../app/instance-secrets.ts';
 import { resolvePlaywrightCli } from '../app/playwright';
+import { renderTemplate } from '../templates.ts';
+import { configCallsHelper } from '../build/config-text.ts';
 import { ensureCheckoutPackages } from '../build/checkout-packages.ts';
 
 const DRIVE_DIR = 'drive';
@@ -69,24 +71,7 @@ ${INSTANCE_USAGE}
 
 const HELP = DRIVE_USAGE;
 
-const CONFIG = `import { defineConfig } from '@playwright/test';
-
-// Driving, not testing. Playwright is only the thing that can hold a page open and talk to Electron;
-// nothing here asserts, and \`abuddy test\` never sees this directory.
-export default defineConfig({
-  testDir: '.',
-  // Any .ts file, because a driving script is not named like a spec and should not have to be
-  testMatch: '**/*.ts',
-  testIgnore: 'playwright.config.ts',
-  // One app, one script at a time: they would otherwise fight over the same instance
-  workers: 1,
-  timeout: 0,
-  reporter: 'list',
-  // Beside the scripts rather than Playwright's default \`test-results/\` at the pack root: driving output
-  // is not test output, which is why the screenshots are here too
-  outputDir: 'results',
-});
-`;
+const CONFIG = (): string => renderTemplate('drive/playwright.config.ts');
 
 const README = `# drive/
 
@@ -122,34 +107,24 @@ const GITIGNORE = `*
 /**
  * The engine's config and session, written on `--serve`.
  *
- * **`.mts`, and that extension is the mechanism.** The config this command scaffolds collects
- * `**\/*.ts`, which — measured — picks up a dot-directory but not a `.mts` file. So the engine's
- * session is invisible to a plain `abuddy drive` while its own config names it exactly, and no pack
- * scaffolded before this existed needs migrating: `scaffold` only writes files that are absent, so a
- * `testIgnore` added to the template would have reached new packs and left every existing one
- * collecting the engine and hanging on it.
+ * **`.mts` is a second line of defence, no longer the only one.** A driving run must not collect the
+ * session — it would start the engine and hang, waiting for a request nobody has a reason to send — and
+ * until `defineDriveConfig` existed the only thing preventing it was that the scaffolded config collects
+ * `**\/*.ts`, which — measured — picks up a dot-directory but not a `.mts` file. That was an accident of
+ * two defaults, and a pack widening its own `testMatch` would have undone it silently. The helper now
+ * ignores the session whatever `testMatch` says, which is the fix the extension was standing in for: a
+ * `testIgnore` could not be added to the template before, because `scaffold` only writes absent files, so
+ * it would have reached new packs and left every existing one collecting the engine.
  *
- * Both are gitignored by the `*` the layer already carries, so they are not tracked, not a chain input
- * and not linted — which is right for generated files, and the reason the engine's own code lives in
- * `@abuddy/testing` where all three apply.
+ * In a pack both files are gitignored by the `*` the scaffolded layer carries, so they are neither tracked
+ * nor linted there — which is right for generated files, and the reason the engine's own code lives in
+ * `@abuddy/testing`. **This repo's own copies are the exception**: `drive/.gitignore` negates both, so here
+ * they are tracked, typechecked and chain inputs (`EVERY_SOURCE`, `scripts/lib/chain-steps.ts`).
  */
 const ENGINE_SESSION_FILE = 'engine-session.mts';
 const ENGINE_CONFIG_FILE = 'engine.config.mts';
 
-const ENGINE_CONFIG = `import { defineConfig } from '@playwright/test';
-
-// Written by \`abuddy drive --serve\`. Only the engine's session, named exactly rather than by a glob,
-// so a pack's own .mts driving script is not dragged into a serving run.
-export default defineConfig({
-  testDir: '.',
-  testMatch: '${ENGINE_SESSION_FILE}',
-  workers: 1,
-  // A session ends when something asks it to, not when a clock says so
-  timeout: 0,
-  reporter: 'list',
-  outputDir: 'results',
-});
-`;
+const ENGINE_CONFIG = (): string => renderTemplate('drive/engine.config.mts');
 
 const ENGINE_SESSION = `import { drive, driveEngineBody } from '@abuddy/testing';
 
@@ -183,19 +158,56 @@ export function takeServeFlag(args: string[]): { serve: boolean; rest: string[] 
 }
 
 /**
+ * What a scaffolder left alone, so the caller can say so.
+ *
+ * Write-if-absent is right for both of these files — one holds a pack's own verbs, the other is a call to
+ * a helper that owns every setting — but it means a file written before the helper existed is never
+ * updated and nothing notices. Reporting is the half that makes the delegation reachable: a config still
+ * assembling its own settings is named once, with the two lines that replace it.
+ */
+export interface DriveScaffold {
+  /** Files written, as paths relative to the pack */
+  created: string[];
+  /** Configs kept that do not call their helper, so their settings no longer follow @abuddy/testing */
+  keptStale: string[];
+}
+
+/** The helpers a scaffolded drive config may delegate to — one per kind of run */
+const CONFIG_HELPERS: Record<string, readonly string[]> = {
+  'playwright.config.ts': ['defineDriveConfig'],
+  [ENGINE_CONFIG_FILE]: ['defineEngineConfig'],
+};
+
+/** Whether a config that is already there still delegates, which is what decides if it has gone stale */
+function keptStale(dir: string, name: string): boolean {
+  const helpers = CONFIG_HELPERS[name];
+  if (helpers === undefined) return false;
+  const file = path.join(dir, name);
+  if (!fs.existsSync(file)) return false;
+  return !configCallsHelper(fs.readFileSync(file, 'utf-8'), helpers);
+}
+
+/**
  * Writes the engine's pair the first time, and never again.
  *
  * The session file is where a verb of this app's own goes (`driveEngineBody({ verbs })`), so it is a file
  * its owner keeps rather than output this command owns. It used to be rewritten on every `--serve`, which
  * meant the one file worth extending was the one that could not be.
  */
-export function writeEngineFiles(root: string): void {
+export function writeEngineFiles(root: string): DriveScaffold {
   const dir = path.join(root, DRIVE_DIR);
   fs.mkdirSync(dir, { recursive: true });
-  for (const [name, body] of [[ENGINE_CONFIG_FILE, ENGINE_CONFIG], [ENGINE_SESSION_FILE, ENGINE_SESSION]] as const) {
+  const scaffold: DriveScaffold = { created: [], keptStale: [] };
+  for (const [name, body] of [[ENGINE_CONFIG_FILE, ENGINE_CONFIG()], [ENGINE_SESSION_FILE, ENGINE_SESSION]] as const) {
     const file = path.join(dir, name);
-    if (!fs.existsSync(file)) fs.writeFileSync(file, body);
+    if (fs.existsSync(file)) {
+      if (keptStale(dir, name)) scaffold.keptStale.push(path.join(DRIVE_DIR, name));
+      continue;
+    }
+    fs.writeFileSync(file, body);
+    scaffold.created.push(path.join(DRIVE_DIR, name));
   }
+  return scaffold;
 }
 
 /** The driving scripts in a pack, which is what decides whether there is anything to run. */
@@ -211,16 +223,38 @@ export function driveScripts(root: string): string[] {
   }
 }
 
-/** Writes the layer the first time, so driving needs no setup step of its own. */
-function scaffold(root: string): boolean {
+/**
+ * Writes the layer the first time, so driving needs no setup step of its own.
+ *
+ * It keeps a config that is already there, which is why it reports one that has stopped delegating: a pack
+ * scaffolded before `defineDriveConfig` existed would otherwise never hear that its settings had stopped
+ * following the package.
+ */
+export function scaffold(root: string): DriveScaffold {
   const dir = path.join(root, DRIVE_DIR);
-  if (fs.existsSync(path.join(dir, 'playwright.config.ts'))) return false;
-  fs.mkdirSync(dir, { recursive: true });
-  for (const [name, body] of [['playwright.config.ts', CONFIG], ['README.md', README], ['.gitignore', GITIGNORE]] as const) {
-    const file = path.join(dir, name);
-    if (!fs.existsSync(file)) fs.writeFileSync(file, body);
+  const report: DriveScaffold = { created: [], keptStale: [] };
+  if (fs.existsSync(path.join(dir, 'playwright.config.ts'))) {
+    if (keptStale(dir, 'playwright.config.ts')) report.keptStale.push(path.join(DRIVE_DIR, 'playwright.config.ts'));
+    return report;
   }
-  return true;
+  fs.mkdirSync(dir, { recursive: true });
+  for (const [name, body] of [['playwright.config.ts', CONFIG()], ['README.md', README], ['.gitignore', GITIGNORE]] as const) {
+    const file = path.join(dir, name);
+    if (fs.existsSync(file)) continue;
+    fs.writeFileSync(file, body);
+    report.created.push(path.join(DRIVE_DIR, name));
+  }
+  return report;
+}
+
+/** One line per config that has stopped delegating, naming the two lines that put it back */
+function reportStaleConfigs(stale: string[]): void {
+  for (const file of stale) {
+    const helper = CONFIG_HELPERS[path.basename(file)]![0]!;
+    console.log(`${file} does not call ${helper}(), so its settings no longer follow @abuddy/testing. Replace its body with:`);
+    console.log(`  import { ${helper} } from '@abuddy/testing/playwright';`);
+    console.log(`  export default ${helper}();\n`);
+  }
 }
 
 export async function drive(args: string[]) {
@@ -238,8 +272,10 @@ export async function drive(args: string[]) {
   // Before the app is resolved, which can prompt and can download a Beta: a first run has nothing to
   // drive, and used to find that out only after paying for a build and a launch and then failing with
   // Playwright's "No tests found"
-  if (scaffold(root)) console.log(`Created ${DRIVE_DIR}/ — a README and a config are in there.\n`);
-  if (serve) writeEngineFiles(root);
+  const layer = scaffold(root);
+  if (layer.created.length > 0) console.log(`Created ${DRIVE_DIR}/ — a README and a config are in there.\n`);
+  const engine = serve ? writeEngineFiles(root) : { created: [], keptStale: [] };
+  reportStaleConfigs([...layer.keptStale, ...engine.keptStale]);
   // A serving session is the thing being run, so a pack with no scripts of its own is not empty-handed
   if (!serve && driveScripts(root).length === 0) {
     console.log(`No driving scripts yet. Write one in ${DRIVE_DIR}/ and run this again:\n`);
