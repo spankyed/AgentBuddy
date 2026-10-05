@@ -63,7 +63,8 @@
   },
   "skipped": [],
   "unmeasured": [
-    "tests/steps/result-truncator.spec.ts"
+    "tests/steps/result-truncator.spec.ts",
+    "tests/testing/serialisation-matrix.spec.ts"
   ],
   "machine": {
     "cpu": "Apple M1 Pro",
