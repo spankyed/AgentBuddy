@@ -62,19 +62,16 @@ type AppWindow = {
 };
 
 async function reloadWindow(page: Page): Promise<void> {
-  // `onboardingCounts` is passed as the argument, not closed over: the predicate is serialised and run in
-  // the page, where nothing from this scope exists
-  const settled = (onboardingCounts: boolean, timeout: number) => page.waitForFunction((counts) => {
-    const value = (window as unknown as AppWindow).applicationState?.getSnapshot().value;
-    if (typeof value !== 'object' || value === null) return false;
-    if ('running' in value) return value.running === 'connected';
-    return counts && 'onboarding' in value;
-  }, onboardingCounts, { timeout });
-
   await page.reload();
-  await settled(true, 60_000);
-  await page.evaluate(() => (window as unknown as AppWindow).__disableOnboardingUI?.());
-  await settled(false, 30_000);
+  await page.waitForFunction(() => {
+    const app = window as unknown as AppWindow;
+    const value = app.applicationState?.getSnapshot().value;
+    if (typeof value !== 'object' || value === null) return false;
+    // The fixture dismisses onboarding once, as the app launches, so a reloaded window comes back sitting
+    // in it. Dismissed from inside the poll because it can arrive at any point during the boot
+    if ('onboarding' in value) app.__disableOnboardingUI?.();
+    return value.running === 'connected';
+  }, null, { timeout: 60_000 });
 }
 
 /**

@@ -6,6 +6,7 @@ import type { EarsEngine } from '@abuddy/ears';
 import type { LmdbStore } from '@abuddy/ears/lmdb';
 import type { PackRegistry } from '../packs/registry.ts';
 import { createAppData } from './app-data.ts';
+import { HOST } from '../refs.ts';
 import { filesystem } from './filesystem.ts';
 import { createSettingsService } from './settings.ts';
 import { createSettingsStore, type SettingsDocument } from '../features/settings/be/store.ts';
@@ -36,7 +37,9 @@ export function createHostRuntime({ transport, appVersion, store, engine, packs 
     appVersion,
     redaction: secretRedaction,
     services: {
-      appData: createAppData(store, engine.admin, packs, transport.rootEvents),
+      // The service replaces the data; naming what the app is told about it belongs here, with the wiring
+      appData: createAppData(store, engine.admin, packs, () =>
+        transport.rootEvents.emitIncoming({ to: HOST.bus, event: { type: 'DATA_REPLACED' } })),
       traceStore: createTraceStore(store),
       inference,
       secrets,
