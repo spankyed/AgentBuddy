@@ -1,5 +1,5 @@
 {
-  "measuredAt": "2026-09-28T20:14:16.035Z",
+  "measuredAt": "2026-10-05T19:48:48.096Z",
   "samples": {
     "tests/engine/persistence.spec.ts": [19],
     "tests/engine/queries.spec.ts": [19],
@@ -7,8 +7,8 @@
     "tests/engine/transactions.spec.ts": [16],
     "tests/installed-engine.spec.ts": [7],
     "tests/is-entity-type.spec.ts": [3],
-    "tests/lmdb/persistence.spec.ts": [403],
-    "tests/lmdb/store.spec.ts": [2006],
+    "tests/lmdb/persistence.spec.ts": [403, 2001],
+    "tests/lmdb/store.spec.ts": [2006, 2737],
     "tests/no-module-state.spec.ts": [63]
   },
   "skipped": [],
