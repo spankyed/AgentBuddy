@@ -79,6 +79,10 @@ export const POOL_WIDTH: Readonly<Record<string, PoolWidth>> = {
   // and neither of these does.
   compile: { cores: 2 },
   'build:app': { cores: 2 },
+  // Three independent extractions at once (`scripts/api-check.ts`), measured the same way: 25.6s of CPU in
+  // 7.1s, so 3.6 cores. It ran serially and counted as one until 2026-10-05, which is a step using a third
+  // of this box while the budget admitted it as a single core
+  'api:check': { cores: 4 },
 };
 
 /**

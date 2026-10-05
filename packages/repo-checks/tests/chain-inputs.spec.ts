@@ -15,7 +15,8 @@ import { execFileSync } from 'node:child_process';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { BUILD_UNITS, covers, fingerprintUnit, inputFiles, NOT_A_BUILD_INPUT, REPO_ROOT, repoRelative } from '@abuddy/host/build/packages-built';
+import { BUILD_UNITS, covers, excludedBySuffix, fingerprintUnit, inputFiles, NOT_A_BUILD_INPUT, REPO_ROOT, repoRelative } from '@abuddy/host/build/packages-built';
+import { PUBLISH_TREE } from '@abuddy/host/build/published-manifest';
 import { CHAIN_STEPS, dependsOn, suiteInputs, SUITE_READS, WORKSPACE_PARTS, type ChainStep } from '../../../scripts/lib/chain-steps.ts';
 import { UNIT_SUITES } from '../../../scripts/lib/unit-suites.ts';
 import { reachableFrom } from '../../../scripts/lib/module-graph.ts';
@@ -63,10 +64,22 @@ const filesUnder = (input: string): readonly string[] => {
   return found;
 };
 
-/** Every tracked file the steps' inputs reach, resolved the way a fingerprint resolves them */
-const coveredBy = (steps: readonly { inputs: readonly string[] }[]): Set<string> => {
+/**
+ * Every tracked file the steps' inputs reach, resolved the way a fingerprint resolves them.
+ *
+ * `excludeSuffixes` included, through the predicate the key itself uses: a step that declares a tree and
+ * says it reads one kind of file out of it does not cover the rest, and a guard that thought otherwise would
+ * report a module as declared while the step cached straight past it.
+ */
+const coveredBy = (steps: readonly Pick<ChainStep, 'inputs' | 'excludeSuffixes'>[]): Set<string> => {
   const covered = new Set<string>();
-  for (const step of steps) for (const input of step.inputs) for (const file of filesUnder(input)) covered.add(file);
+  for (const step of steps) {
+    for (const input of step.inputs) {
+      for (const file of filesUnder(input)) {
+        if (!excludedBySuffix(step.excludeSuffixes, file)) covered.add(file);
+      }
+    }
+  }
   return covered;
 };
 
@@ -297,6 +310,70 @@ describe('the chain reads every source file', () => {
  * someone else's inputs is a guess, and the fix is to derive the list and require the hand-written one to
  * cover it. A subset check, so over-declaring stays the harmless direction.
  */
+/**
+ * A step keys on a staged publish tree only if it reads one.
+ *
+ * `publish/` is a copy of what a package's `files` names plus a derived manifest (`stagePublishTree`), and
+ * nothing resolves *through* it — a published source branch is a resolution failure rather than a fallback,
+ * which is the whole reason the tree is staged. So for every step but one it is 610 files that cannot change
+ * the answer, and `PACKAGE_BUILD_OUTPUTS` put them in all of them: measured 2026-10-05, 16470 declared
+ * file-slots of the chain's 59073, in 26 keys that never opened them. `PACKAGE_BUILD_READS` is what consumers
+ * spread now, and this is what notices the next step spreading the other one.
+ *
+ * **The cost it removed is not only the walk.** An edit to a package's `files` or `exports` map rewrites the
+ * derived `publish/package.json`, so the shape of a tarball invalidated 26 steps — including steps that
+ * declare nothing else of that workspace and could not care.
+ */
+describe('a step keys on a staged publish tree only if it reads one', () => {
+  /** A step that reads a staged tree, and what reads it. An entry that stops applying is reported. */
+  const READS_A_PUBLISHED_TREE: Record<string, string> = {
+    'packages:check': 'publint --strict and attw run over the staged trees by name, not over the dist they '
+      + 'are staged from — which is the point of it, since a tarball is what npm ships',
+  };
+
+  /** Derived from the files an input covers, so a step naming one file inside a tree is caught like a step naming the tree */
+  const declaresAStagedTree = (step: Pick<ChainStep, 'inputs'>): boolean =>
+    step.inputs.some((input) => filesUnder(input).some((file) => file.split('/').includes(PUBLISH_TREE)));
+
+  /** One path for the real case and the mutation, so the mutation exercises the rule rather than a copy of it */
+  const unexplained = (steps: readonly ChainStep[]): string[] => steps
+    .filter((step) => declaresAStagedTree(step))
+    .filter((step) => READS_A_PUBLISHED_TREE[step.name] === undefined)
+    .map((step) => `${step.name} keys on a staged publish tree and does not read one — spread PACKAGE_BUILD_READS`);
+
+  it('leaves none of them keying on one it never opens', () => {
+    expect(unexplained(CHAIN_STEPS)).toEqual([]);
+  });
+
+  it('finds the step that does read one, so this is not a check over nothing', () => {
+    const found = CHAIN_STEPS.filter((step) => declaresAStagedTree(step)).map((step) => step.name);
+    expect(found, 'no step declares a staged tree, so the rule above passes over an empty list')
+      .toEqual(Object.keys(READS_A_PUBLISHED_TREE));
+  });
+
+  /** The data is a list, so the case mutates it rather than trusting that it could fail */
+  it('names a step that starts keying on one', () => {
+    const compile = CHAIN_STEPS.find((step) => step.name === 'compile')!;
+    const widened = { ...compile, inputs: [...compile.inputs, `packages/abuddy-ears/${PUBLISH_TREE}`] };
+    expect(unexplained([widened]), 'a step given a staged tree was not reported').toEqual([
+      'compile keys on a staged publish tree and does not read one — spread PACKAGE_BUILD_READS',
+    ]);
+  });
+
+  /**
+   * The rule is about `inputs` and deliberately not about every declaration. `packages:ensure` *writes* the
+   * staged trees and names them as `outputs`, which is what makes every other step's edge to it derivable —
+   * so widening this check to all declarations would re-flag the one step whose declaration is the reason
+   * the rest can be narrowed.
+   */
+  it('says nothing about the step that writes them', () => {
+    const ensure = CHAIN_STEPS.find((step) => step.name === 'packages:ensure')!;
+    expect(ensure.outputs?.some((out) => out.endsWith(`/${PUBLISH_TREE}`)),
+      'packages:ensure stopped declaring the staged trees it writes, which is what this rule rests on').toBe(true);
+    expect(unexplained([ensure]), 'it was reported for writing what it declares as an output').toEqual([]);
+  });
+});
+
 describe('a step declares the modules its script imports', () => {
   /**
    * The two boundaries, both derived, both the same ones the pool case below already argues for.

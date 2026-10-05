@@ -34,6 +34,20 @@
  * read), but the padding is `dist` trees and configs that rarely change, while the source that does change
  * is mostly genuinely read. That ratio is a fact about declaration shape, not an opportunity.
  *
+ * **Asked again at a second granularity, and the answer held with one exception worth knowing.** Per file it
+ * is 29085 unread of 32876 declared (88%, measured 2026-10-05); per *whole declared path* — nothing under it
+ * read at all — it is 690 paths. Neither is a finding, and there is a structural reason beyond the one above:
+ * `inputs` does double duty, because `dependsOn` is derived as "B reads what A writes", so a step declares
+ * another's output to be *ordered* after it whether or not it opens one. Every ordering declaration reads as
+ * surplus, which is why a general report over this data would be noise rather than a check. That closes the
+ * door `observed-inputs.md` left open — using a trace to check a declaration rather than to key on one.
+ *
+ * The exception was the one kind of padding that was not a tree that rarely changes: the staged `publish/`
+ * trees, a *copy* of the `dist` beside them, which 26 steps keyed on and only `packages:check` opens. 16470
+ * declared file-slots of 59073, removed in `PACKAGE_BUILD_READS` (`chain-steps.ts`) and held there by
+ * `chain-inputs.spec.ts`. So the rule to carry is narrower than "padding is fine": padding that *duplicates*
+ * another declaration is worth removing, and padding that is simply broad is not.
+ *
  * **The same question was put to the two expensive pool steps, which have no dep file to ask.** A vitest run
  * reports no read set, so it was answered from history instead — how often each declaration was a reason to
  * run — and it came back the same way: the breadth is paid by the step's startup and absorbed by the
