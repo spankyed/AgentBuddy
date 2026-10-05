@@ -1,0 +1,88 @@
+// Asking a system to publish what it holds — the one thing every cause on this bus comes down to.
+//
+// A client connecting, a pack changing and the data being replaced are three facts with one consequence:
+// every system says what it holds now. That consequence has a name of its own (`SEND_STATE`), so a system
+// wires it once instead of once per cause, and a fact is left for what publishing cannot fix.
+import { afterEach, beforeEach, expect, it } from 'vitest';
+import { createActor, setup, type AnyActorRef } from 'xstate';
+import { untypedSendToSystem } from '@abuddy/sdk/events';
+import { startTestRuntime, testRootEvents } from '@abuddy/sdk/testing';
+import { createAppBus } from '../../src/bus/index.ts';
+import { HOST } from '../../src/refs.ts';
+import { HOST_ENTITY_TYPES } from '../../src/app-state/index.ts';
+import { createPackRegistry } from '../../src/packs/registry.ts';
+
+const registry = createPackRegistry();
+startTestRuntime({ entityTypes: HOST_ENTITY_TYPES, packs: registry });
+
+const seen: Record<string, string[]> = {};
+
+/** A system whose whole behaviour is recording the events it declares, in the order they arrive */
+const records = (feature: string, ...types: string[]) => setup({}).createMachine({
+  on: Object.fromEntries(types.map((type) => [type, { actions: () => seen[feature].push(type) }])),
+});
+
+const settle = () => new Promise((resolve) => setTimeout(resolve, 0));
+
+let bus: AnyActorRef | undefined;
+
+beforeEach(async () => {
+  seen.watcher = [];
+  seen.quiet = [];
+  registry.registerPack({
+    id: 'data-pack',
+    features: {
+      // One system with something to tear down, and one with nothing. The second is the case that matters:
+      // it is every system that never thought about any of this, and it must stay correct anyway
+      watcher: { system: { machine: records('watcher', 'SEND_STATE', 'DATA_REPLACED', 'CLIENT_CONNECTED'), receives: [] } },
+      quiet: { system: { machine: records('quiet', 'SEND_STATE'), receives: [] } },
+    },
+  });
+  bus = createActor(createAppBus(registry), { systemId: HOST.bus }).start();
+  await settle();
+});
+
+afterEach(() => {
+  bus?.stop();
+  registry.unregisterPack('data-pack');
+});
+
+/** A client connecting, which is what makes the bus start asking systems to publish */
+const connect = async () => {
+  testRootEvents.emitConnected();
+  await settle();
+};
+
+it('asks every system to publish when a client connects, and tells them one did', async () => {
+  await connect();
+
+  expect(seen.watcher).toEqual(['CLIENT_CONNECTED', 'SEND_STATE']);
+  expect(seen.quiet, 'a system that only publishes needs no fact at all').toEqual(['SEND_STATE']);
+});
+
+it('tells every system the data was replaced, then asks each to publish', async () => {
+  await connect();
+  seen.watcher = [];
+  seen.quiet = [];
+
+  untypedSendToSystem(HOST.bus, { type: 'DATA_REPLACED' });
+  await settle();
+
+  // Told before being asked, so work held over rows that are gone is dropped before the system describes itself
+  expect(seen.watcher).toEqual(['DATA_REPLACED', 'SEND_STATE']);
+  expect(seen.quiet, 'and a system that declares no fact is refreshed anyway').toEqual(['SEND_STATE']);
+});
+
+it('asks nobody to publish before a client has connected, and catches them up when one does', async () => {
+  untypedSendToSystem(HOST.bus, { type: 'DATA_REPLACED' });
+  await settle();
+
+  // The fact still lands — a system holding work over rows that are gone must drop it whether or not anyone
+  // is watching — but publishing to nobody is work with no audience
+  expect(seen.watcher).toEqual(['DATA_REPLACED']);
+  expect(seen.quiet, 'nothing to publish to').toEqual([]);
+
+  await connect();
+
+  expect(seen.quiet, 'the first connection asks everyone, so nothing is missed').toEqual(['SEND_STATE']);
+});

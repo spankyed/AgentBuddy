@@ -190,7 +190,7 @@ export function packSystem(entry: SystemEntry, options?: {
 }): PackFeatureSystem;
 
 // @public
-export const SYSTEM_EVENT_TYPES: readonly ["CLIENT_CONNECTED", "PACK_CHANGED", "FEATURE_SETTINGS_UPDATED", "DATA_REPLACED"];
+export const SYSTEM_EVENT_TYPES: readonly ["SEND_STATE", "CLIENT_CONNECTED", "PACK_CHANGED", "FEATURE_SETTINGS_UPDATED", "DATA_REPLACED"];
 
 // @public
 export interface SystemContract {
@@ -221,7 +221,19 @@ export interface SystemEntry {
 }
 
 // @public
-export type SystemEvents = {
+export type SystemEvents =
+/**
+* Publish what you hold now — the one event that asks for data, and the only one most systems handle.
+*
+* It follows every fact below, so a system does not wire "send my startup data" once per cause and a new
+* cause costs it nothing. Handle a fact as well only for what publishing cannot fix: work held over rows
+* that are gone, state that tracks whether a client is attached.
+*/
+    {
+    type: 'SEND_STATE';
+}
+/** A client connected. Most systems need only the `SEND_STATE` that follows it */
+| {
     type: 'CLIENT_CONNECTED';
 }
 /**

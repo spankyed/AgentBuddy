@@ -79,14 +79,30 @@ function sendToRunning(system: ActorSystemLike, systemIds: Iterable<string>, eve
   for (const id of systemIds) system.get(id)?.send(event);
 }
 
-/** Sends CLIENT_CONNECTED to each system, so it sends its startup data */
-function sendClientConnected(system: ActorSystemLike, systemIds: Iterable<string>): void {
+/**
+ * Asks each system to publish its state.
+ *
+ * Every cause ends here — a client connected, a pack changed, the data was replaced, systems were spawned —
+ * because all a system has to do about any of them is say what it holds now. It is asked *after* the fact
+ * that caused it, so a system can drop work held over rows that are gone before it describes itself.
+ */
+function askToPublish(system: ActorSystemLike, systemIds: Iterable<string>): void {
   for (const id of systemIds) {
     const actor = system.get(id);
-    if (actor) actor.send({ type: 'CLIENT_CONNECTED' });
-    else console.warn(`[bus] CLIENT_CONNECTED: system "${id}" isn't running`);
+    if (actor) actor.send({ type: 'SEND_STATE' });
+    else console.warn(`[bus] SEND_STATE: system "${id}" isn't running`);
   }
 }
+
+/**
+ * Whether a client has ever connected.
+ *
+ * Nothing is asked to publish before one has: a publish is real work (the settings fan out to every feature,
+ * the code system wakes four children) and the bus drops outgoing sends until then anyway. Nothing is missed,
+ * because entering `clientSeen` asks every system.
+ */
+const listening = (bus: { getSnapshot(): { matches(state: string): boolean } }): boolean =>
+  bus.getSnapshot().matches('clientSeen');
 
 /**
  * Spawns each of `systemIds` the bus runs; returns those it spawned. Each is spawned under its own id as
@@ -216,30 +232,35 @@ export function createBusMachine(options: BusOptions) {
         for (const packId of clientLoadedPacks()) {
           for (const id of registry.getRegisteredPackSystemIds(packId)) clientLoaded.add(id);
         }
-        sendClientConnected(system, [...systems().keys()].filter((id) => !clientLoaded.has(id)));
+        const targets = [...systems().keys()].filter((id) => !clientLoaded.has(id));
+        sendToRunning(system, targets, { type: 'CLIENT_CONNECTED' });
+        askToPublish(system, targets);
         for (const message of options.connectedEvents?.() ?? []) system.get(HOST.bus).send({ type: 'OUTGOING', message });
       },
-      sendPackConnected: ({ event, system }) => {
+      sendPackConnected: ({ event, system, self }) => {
         if (event.type !== 'PACK_CLIENT_CONNECTED') return;
         const running = systems();
-        sendClientConnected(system, registry.getRegisteredPackSystemIds(event.packId).filter((id) => running.has(id)));
+        const targets = registry.getRegisteredPackSystemIds(event.packId).filter((id) => running.has(id));
+        sendToRunning(system, targets, { type: 'CLIENT_CONNECTED' });
+        if (listening(self)) askToPublish(system, targets);
       },
       // Every system, not just the changed pack's: what a pack registers and seeds is read by others
       // (its slash commands by the chat, say)
-      sendPackChanged: ({ event, system }) => {
+      sendPackChanged: ({ event, system, self }) => {
         if (event.type !== 'PACK_CHANGED') return;
-        sendToRunning(system, systems().keys(), { type: 'PACK_CHANGED', packId: event.packId });
+        const running = [...systems().keys()];
+        sendToRunning(system, running, { type: 'PACK_CHANGED', packId: event.packId });
+        if (listening(self)) askToPublish(system, running);
       },
-      // Told first, so a system can drop work held over rows that are gone before it is asked to describe
-      // itself; asked second, which is how a system publishes its startup data — and is why one that declares
-      // no handler is refreshed anyway
-      sendDataReplaced: ({ system }) => {
+      sendDataReplaced: ({ system, self }) => {
         const running = [...systems().keys()];
         sendToRunning(system, running, { type: 'DATA_REPLACED' });
-        sendClientConnected(system, running);
+        if (listening(self)) askToPublish(system, running);
       },
       sendSpawnedConnected: ({ event, system }) => {
-        if (event.type === 'SYSTEMS_SPAWNED') sendClientConnected(system, event.systemIds);
+        if (event.type !== 'SYSTEMS_SPAWNED') return;
+        sendToRunning(system, event.systemIds, { type: 'CLIENT_CONNECTED' });
+        askToPublish(system, event.systemIds);
       },
       spawnActors: enqueueActions(({ enqueue }) => {
         const machines = systems();

@@ -10,7 +10,6 @@
     "tests/build/subpath-imports.spec.ts": [6],
     "tests/bus/app-bus.spec.ts": [34],
     "tests/bus/client-events.spec.ts": [16],
-    "tests/bus/data-replaced.spec.ts": [9],
     "tests/bus/early-systems.spec.ts": [44],
     "tests/bus/outgoing-events.spec.ts": [197],
     "tests/bus/participants.spec.ts": [28],
@@ -86,7 +85,9 @@
     "tests/services/inference.spec.ts": [1682]
   },
   "skipped": [],
-  "unmeasured": [],
+  "unmeasured": [
+    "tests/bus/send-state.spec.ts"
+  ],
   "machine": {
     "cpu": "Apple M1 Pro",
     "cores": 10

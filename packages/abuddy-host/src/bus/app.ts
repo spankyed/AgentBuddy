@@ -87,7 +87,11 @@ export function startEarlySystems(registry: Pick<PackRegistry, 'getEarlySystems'
   return {
     actors,
     refs: new Set(actors.map(({ id }) => id)),
-    connected: () => actors.forEach(({ actor }) => actor.send({ type: 'CLIENT_CONNECTED' })),
+    // The fact, then the ask, as the bus does for every cause — these actors never reach the bus machine
+    connected: () => actors.forEach(({ actor }) => {
+      actor.send({ type: 'CLIENT_CONNECTED' });
+      actor.send({ type: 'SEND_STATE' });
+    }),
     stop: () => {
       unsubscribes.forEach((unsubscribe) => unsubscribe());
       actors.forEach(({ actor }) => actor.stop());

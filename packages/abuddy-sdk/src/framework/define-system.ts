@@ -4,6 +4,15 @@ import { eventTypes } from '../events/event-types.ts';
 
 /** The events every system accepts: the app sends them, so no system declares them */
 export type SystemEvents =
+  /**
+   * Publish what you hold now — the one event that asks for data, and the only one most systems handle.
+   *
+   * It follows every fact below, so a system does not wire "send my startup data" once per cause and a new
+   * cause costs it nothing. Handle a fact as well only for what publishing cannot fix: work held over rows
+   * that are gone, state that tracks whether a client is attached.
+   */
+  | { type: 'SEND_STATE' }
+  /** A client connected. Most systems need only the `SEND_STATE` that follows it */
   | { type: 'CLIENT_CONNECTED' }
   /**
    * A pack was activated, reloaded or torn down while the app runs, or its seeds were imported: what it
@@ -28,7 +37,7 @@ export type SystemEvents =
  * The event types every system accepts, as a value: a send of one to a feature that runs no system is nobody's, and
  * dropped without a warning.
  */
-export const SYSTEM_EVENT_TYPES = eventTypes<SystemEvents>()('CLIENT_CONNECTED', 'PACK_CHANGED', 'FEATURE_SETTINGS_UPDATED', 'DATA_REPLACED');
+export const SYSTEM_EVENT_TYPES = eventTypes<SystemEvents>()('SEND_STATE', 'CLIENT_CONNECTED', 'PACK_CHANGED', 'FEATURE_SETTINGS_UPDATED', 'DATA_REPLACED');
 
 /**
  * What a system's contract declares. A feature exports one as `Contract` from its `be/contract.ts`, and `abuddy.json`
