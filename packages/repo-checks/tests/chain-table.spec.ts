@@ -9,12 +9,12 @@ import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import ts from 'typescript';
 import { BUILD_UNITS, buildScriptFor, inputFiles, NOT_A_BUILD_INPUT, repoRelative, REPO_ROOT,
   STAMP_READERS as HOST_STAMP_READERS, type BuildUnit } from '@abuddy/host/build/packages-built';
 import { CHAIN_STEPS, INTEGRATION_SUITES, suiteInputs, type ChainStep } from '../../../scripts/lib/chain-steps.ts';
 import { UNIT_SUITES, type UnitSuite } from '../../../scripts/lib/unit-suites.ts';
 import { reachableText, rootScripts } from '../../../scripts/lib/npm-scripts.ts';
+import { closureOf } from './_support/module-closure.ts';
 import { TYPECHECK_LEGS } from '../../../scripts/lib/typecheck-legs.ts';
 import { POOLS, poolUnitFor, STAMP_READERS as POOL_STAMP_READERS, type Pool } from '../../../scripts/lib/unit-pool.ts';
 import { asPercent, POOL_WIDTH, shareOf, UNCAPPED } from '../../../scripts/lib/core-budget.ts';
@@ -517,40 +517,6 @@ describe("the chain runs every artifact's check", () => {
  * harmless direction.
  */
 describe('a build unit declares the modules its build script imports', () => {
-  /** The options `scripts/tsconfig.json` compiles these scripts with, so the walk resolves as they do */
-  const RESOLUTION: ts.CompilerOptions = {
-    module: ts.ModuleKind.NodeNext,
-    moduleResolution: ts.ModuleResolutionKind.NodeNext,
-    // How a repo script reaches `@abuddy/host/build/…` at all: the condition names each package's source
-    customConditions: ['@abuddy/source'],
-    allowImportingTsExtensions: true,
-  };
-
-  /** A module of this repo, as against a dependency or a built copy of one */
-  const firstParty = (file: string): boolean =>
-    file.startsWith(REPO_ROOT + path.sep) && !file.split(path.sep).includes('node_modules');
-
-  /**
-   * Every first-party module these entries import, transitively, repo-relative.
-   *
-   * `ts.preProcessFile` rather than a parse: it is TypeScript's own scanner for exactly this question, and it
-   * reads `import`, `export … from`, `import()` and `require()` without building a program.
-   */
-  const closureOf = (entries: readonly string[]): string[] => {
-    const seen = new Set<string>();
-    const queue = [...entries];
-    while (queue.length > 0) {
-      const file = queue.pop()!;
-      if (seen.has(file) || !fs.existsSync(file)) continue;
-      seen.add(file);
-      for (const { fileName } of ts.preProcessFile(fs.readFileSync(file, 'utf-8'), true, true).importedFiles) {
-        const resolved = ts.resolveModuleName(fileName, file, RESOLUTION, ts.sys).resolvedModule?.resolvedFileName;
-        if (resolved !== undefined && firstParty(resolved)) queue.push(resolved);
-      }
-    }
-    return [...seen].map(repoRelative);
-  };
-
   /**
    * The script to walk from, `buildScriptFor` (`@abuddy/host/build/packages-built`) — a workspace's own
    * `build:package`, and deliberately **not** the unit's declared inputs, which are the thing under test.

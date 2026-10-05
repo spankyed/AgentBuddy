@@ -425,7 +425,12 @@ const PACKAGES = PACKAGE_DIRS;
  * Not the package directory itself, which would pull `dist` into the fingerprint and miss the cache on
  * every build.
  */
-const WORKSPACE_PARTS = [
+/**
+ * Exported so a check can tell a path that is *offered* to every workspace from one someone wrote out by
+ * hand: for these, absent is the ordinary case and the walk skips it, where a hand-written input that names
+ * nothing is a step keyed on a file that does not exist (`chain-inputs.spec.ts`).
+ */
+export const WORKSPACE_PARTS = [
   // `templates` is the CLI's scaffold: pack code the specifier rules read and the CLI's own suite renders,
   // so a change to one has to invalidate the steps that read the workspace
   'src', 'tests', 'scripts', 'etc', 'templates', 'index.js',
@@ -872,7 +877,12 @@ export const CHAIN_STEPS: readonly ChainStep[] = [
   // fan-out that rung names, and 20s on `quick` is 133% of it four times slower — `declaredShare` refuses it
   { name: 'api:check', timeout: 'suite', seconds: 20,
     // The extractor and its config decide what a report says, so they belong in the key beside the two trees
+    //
+    // `component-contracts.ts` writes every `.component.md` and `api-entries.ts` decides which entries get a
+    // report at all, so each is a module whose edit moves a report while the script that imports it does not.
+    // The closure check in `chain-inputs.spec.ts` is what found them and what keeps the next one from hiding
     inputs: [...ROOT, ...PACKAGE_BUILD_OUTPUTS, 'scripts/api-reports.ts',
+      'scripts/component-contracts.ts', 'scripts/lib/api-entries.ts',
       'packages/abuddy-ears/etc', 'packages/abuddy-sdk/etc', 'packages/abuddy-ui/etc',
       'packages/abuddy-ears/tsconfig.api-extractor.json', 'packages/abuddy-sdk/tsconfig.api-extractor.json',
       'packages/abuddy-ui/tsconfig.package.json'] },

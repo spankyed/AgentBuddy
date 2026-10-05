@@ -27,9 +27,11 @@ const reportFolder = path.join(pkgDir, 'etc');
  * freshness sweep then named twenty steps that had passed and would not be cached, with
  * `packages:ensure`'s own output as the file that moved under them.
  *
- * So the chain's `packages:ensure` is what makes this fresh, and a run from a terminal is told to. That is
- * the rule `@abuddy/testing`'s guide states for the same pair: a fixer belongs to the command a user runs,
- * and a checker must not try to repair.
+ * **This module is both halves, so the fixer sits in front of the command rather than here.** That is the
+ * rule `@abuddy/testing`'s guide states for the same pair: a fixer belongs to the command a user runs, and a
+ * checker must not try to repair. So the root `api:update` carries `packages:ensure &&` (door 1 there) and
+ * the root `api:check` does not — the chain step runs that script, and a rebuild inside it is the failure
+ * above.
  */
 packagesBuiltOrRefuse('npm run packages:build');
 
@@ -108,8 +110,9 @@ const prepared = all.map(([key, declaration]) => {
  *
  * Measured 2026-10-04: `@abuddy/sdk`'s 28 entries 12.3s -> 1.1s, `@abuddy/ui`'s 68 30s -> 0.9s, with every
  * report reproduced byte for byte. The reports are what prove it stays true — a divergence moves one, and
- * `api:check` fails on a moved report while `api:stamp`'s `#producer` row covers the case this most depends
- * on, an API Extractor upgrade changing what shared state means.
+ * `api:check` fails on a moved report. What covers the case this most depends on — an API Extractor upgrade
+ * changing what sharing a compiler state means — is that the step declares `package-lock.json`, so a bumped
+ * `@microsoft/api-extractor` invalidates it and every report is taken again and compared.
  */
 const compilerState = prepared.length === 0 ? undefined : CompilerState.create(prepared[0].config, {
   additionalEntryPoints: all.slice(1).map(([, declaration]) => declaration),

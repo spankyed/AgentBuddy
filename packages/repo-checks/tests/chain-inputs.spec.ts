@@ -16,12 +16,13 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { BUILD_UNITS, covers, fingerprintUnit, inputFiles, NOT_A_BUILD_INPUT, REPO_ROOT, repoRelative } from '@abuddy/host/build/packages-built';
-import { CHAIN_STEPS, dependsOn, suiteInputs, SUITE_READS } from '../../../scripts/lib/chain-steps.ts';
+import { CHAIN_STEPS, dependsOn, suiteInputs, SUITE_READS, WORKSPACE_PARTS, type ChainStep } from '../../../scripts/lib/chain-steps.ts';
 import { UNIT_SUITES } from '../../../scripts/lib/unit-suites.ts';
 import { reachableFrom } from '../../../scripts/lib/module-graph.ts';
 import { commandText, reachableText, rootScripts } from '../../../scripts/lib/npm-scripts.ts';
 import { TYPECHECK_LEGS } from '../../../scripts/lib/typecheck-legs.ts';
 import { PACKAGE_DIRS } from '../../../scripts/lib/workspace-deps.ts';
+import { closureOf } from './_support/module-closure.ts';
 import { repoFiles } from './_support/repo-files.ts';
 
 /** Tracked code no chain step reads, and why. An entry that stops applying is reported, not ignored. */
@@ -249,9 +250,106 @@ describe('the chain reads every source file', () => {
     expect(missing).toEqual([]);
   });
 
+  /**
+   * Every input exists, bar the two kinds for which absent is the ordinary state.
+   *
+   * `WORKSPACE_PARTS` is offered to every package and its own comment says eleven of them have none, so a
+   * per-input check over the raw list reports 1539 paths. A step's declared `outputs` are absent on a fresh
+   * clone until the step that writes them runs. **What is left is a path someone wrote out by hand**, and
+   * there the existence question is the whole point: it names no file, so it contributes nothing to the
+   * fingerprint and the step caches over a gap.
+   *
+   * It used to ask whether *every* input was missing, which is a different and much weaker claim — a step
+   * with five real inputs and one typo passed. Measured on the day this landed: adding
+   * `packages/abuddy-sdk/tsconfig.NOPE.json` to `api:check` passed 89 cases in this file.
+   *
+   * The exemption comes from `WORKSPACE_PARTS` itself and never from the *shape* `packages/<pkg>/<part>`,
+   * which the bogus path above also has — a shape test exempts exactly what this is for.
+   */
   it('gives every step inputs that exist', () => {
-    const empty = CHAIN_STEPS.filter((step) => step.inputs.every((input) => !fs.existsSync(path.join(REPO_ROOT, input))));
-    expect(empty.map((step) => step.name), 'a step whose every input is missing is cached on nothing').toEqual([]);
+    const parts = new Set<string>(WORKSPACE_PARTS);
+    const offered = (input: string): boolean => {
+      const [, , ...rest] = input.split('/');
+      return input.startsWith('packages/') && parts.has(rest.join('/'));
+    };
+    const written = CHAIN_STEPS.flatMap((step) => [...(step.outputs ?? []), ...(step.alsoWrites ?? [])]);
+    const produced = (input: string): boolean => written.some((out) => covers(out, input) || covers(input, out));
+
+    const absent = CHAIN_STEPS.flatMap((step) => step.inputs
+      .filter((input) => !fs.existsSync(path.join(REPO_ROOT, input)))
+      .filter((input) => !offered(input) && !produced(input))
+      .map((input) => `${step.name} declares ${input}, which names nothing`));
+    expect(absent, 'a hand-written input that names no file is a step caching over a gap').toEqual([]);
+  });
+});
+
+/**
+ * A step declares the modules its script imports, not only the ones its script names.
+ *
+ * `gives every step the files its script reaches` above reads a step's npm script as *text*, so it finds
+ * every path spelled out in a command and nothing a module reaches from there. That is where `api:check`
+ * went wrong on the day this landed: it declared `scripts/api-reports.ts`, which imports
+ * `scripts/component-contracts.ts` — the module that writes every `.component.md` — and
+ * `scripts/lib/api-entries.ts`, which decides which entries get a report at all. Editing either moved what
+ * the step would write while the step reported cached.
+ *
+ * The same defect, in the same shape, as `chain-table.spec.ts`'s build-unit case: a hand-written list of
+ * someone else's inputs is a guess, and the fix is to derive the list and require the hand-written one to
+ * cover it. A subset check, so over-declaring stays the harmless direction.
+ */
+describe('a step declares the modules its script imports', () => {
+  /**
+   * The two boundaries, both derived, both the same ones the pool case below already argues for.
+   *
+   * **The step table.** `scripts/lib/chain-steps.ts` is in nearly every step's closure and declaring it would
+   * be wrong — it *defines* the declared sets, so its effect on a key is already the key, where declaring the
+   * file re-runs every step for an edit to an unrelated one. So its whole closure is out of the population,
+   * which is where `step-timeouts`, `core-budget`, `spec-cost` and `measure` go.
+   *
+   * **A module that decides whether to do the work**, which is `NOT_A_BUILD_INPUT` read by reference rather
+   * than copied. The walk *prunes* there rather than filtering afterwards, so `packages-built.ts` excuses the
+   * two modules it imports for the same reason it is excused itself — the difference between three rows and
+   * thirty.
+   */
+  const inScripts = [path.join(REPO_ROOT, 'scripts')];
+  const table = new Set(reachableFrom([path.join(REPO_ROOT, 'scripts/lib/chain-steps.ts')], inScripts)
+    .map((file) => repoRelative(file)));
+  const decidesWhether = (file: string): boolean => NOT_A_BUILD_INPUT[file] !== undefined;
+  const excused = (file: string): boolean => table.has(file) || decidesWhether(file);
+
+  /** The `.ts` entries a step's script names, which is where the text-level case above already ends */
+  const entriesOf = (step: ChainStep, all: ReturnType<typeof rootScripts>): string[] =>
+    [...reachableText(step.name, all).files]
+      .filter((file) => /\.m?ts$/.test(file))
+      .map((file) => path.join(REPO_ROOT, file));
+
+  const walked = (step: ChainStep, all: ReturnType<typeof rootScripts>): string[] =>
+    closureOf(entriesOf(step, all), decidesWhether);
+
+  it('leaves nothing its script imports undeclared', () => {
+    const all = rootScripts();
+    const missing = CHAIN_STEPS.flatMap((step) => {
+      if (entriesOf(step, all).length === 0) return [];
+      const covered = coveredBy([step]);
+      return walked(step, all)
+        .filter((file) => !excused(file) && !covered.has(file))
+        .map((file) => `${step.name} imports ${file} and does not declare it`);
+    });
+    expect(missing,
+      'editing one of these moves what the step produces while its fingerprint reads fresh')
+      .toEqual([]);
+  });
+
+  /** What stops the case above passing by walking nothing */
+  it('follows a step script past itself', () => {
+    const all = rootScripts();
+    const sizes = CHAIN_STEPS.filter((step) => entriesOf(step, all).length > 0)
+      .map((step) => ({ name: step.name, size: walked(step, all).length }));
+    expect(sizes.length, 'no step names a .ts entry, so this case reads nothing').toBeGreaterThan(5);
+    // A step whose only entry is pruned walks to that entry alone, which is the prune working rather than the
+    // walk failing — so the claim is that some step resolves past its entry, not that every one does
+    expect(sizes.some(({ size }) => size > 1),
+      'every closure is its entry alone, which means the walk resolved nothing').toBe(true);
   });
 });
 
