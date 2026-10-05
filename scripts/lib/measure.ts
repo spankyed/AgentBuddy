@@ -195,12 +195,75 @@ export function bodyDrift(recorded: ReadonlyMap<string, number>, measured: Reado
   return shared.reduce((sum, name) => sum + measured.get(name)!, 0) / before - 1;
 }
 
-/** Above the drift a run of unchanged work shows: measured at 0.4%, 6.5% and 9.9% on an idle machine */
+/**
+ * Above the drift a run of unchanged work shows: measured at 0.4%, 6.5% and 9.9% on an idle machine.
+ *
+ * **Inherited, and the subject it was measured on is no longer a consumer.** Those three figures are
+ * `@app/repo-checks`' fast half — 46 specs, the largest 12% of the body — and the spec-cost records stopped
+ * asking this question on 2026-10-05, because for most of them the premise behind it is false: five of the
+ * twelve had one spec at 64% or more of their body, so there was nothing for that file's jitter to cancel
+ * against. `scripts/spec-cost.ts` records that removal where the report used to be.
+ *
+ * What is left is the chain's table, which is less concentrated and not immune: ten steps declare a cost,
+ * the largest is 34% of the total and the top three are 62%. That is why this is tolerable rather than
+ * re-measured — `driftVerdict` asks the question twice, so the concentration the chain *does* have is
+ * answered by dropping the largest mover rather than by the size of this number. What the threshold still
+ * decides is when a **correlated** movement is reported, and a correlated movement is by construction not
+ * one member's, which is the case these three figures do describe.
+ *
+ * Re-measure it against the chain if `driftVerdict`'s second reading is ever removed, or if the table gains
+ * a step past about half the body, since the discrimination thins as one member approaches the whole.
+ * Attempted 2026-10-05: two `npm run chain -- --all` runs came in at 151.7s and 151.2s, but the box read
+ * 58-66% idle against `RECORD_IDLE_FLOOR`'s 85%, so they say the run is repeatable and nothing about drift.
+ */
 export const DRIFT_SHARE = 0.15;
 
 /** Whether a run's body moved further than idle runs vary, in either direction */
 export const drifted = (move: number | undefined): move is number =>
   move !== undefined && Math.abs(move) > DRIFT_SHARE;
+
+/**
+ * Which of two things a body movement is, because they want opposite remedies.
+ *
+ * `bodyDrift`'s premise is that jitter cancels in a sum, which holds while no member dominates. Where one
+ * does, the sum is that member's reading and the report fires on its noise — measured 2026-10-05, five of
+ * the twelve spec-cost records had a single spec at 64% or more of their body, which is why the spec half
+ * of that report is gone. The chain's own table is less concentrated and not immune: ten steps declare a
+ * cost, the largest (`test:packaged-authoring`) is 34% of the total and the top three are 62%.
+ *
+ * So the question is asked twice. A movement that survives leaving out the single largest mover is the
+ * body's; one that does not is that member's, and naming it is both the finding and the remedy — a record
+ * keyed by member can re-record one row without touching the rest.
+ *
+ * No new threshold: the second reading is `DRIFT_SHARE` applied to the same data `bodyDrift` already holds.
+ */
+export type DriftVerdict =
+  /** Inside the band as a body — nothing to report */
+  | { readonly kind: 'steady'; readonly share: number | undefined }
+  /** The movement survives dropping the largest mover, so it is the body that moved */
+  | { readonly kind: 'body'; readonly share: number }
+  /** One member carries it: without that member the body is inside the band */
+  | { readonly kind: 'member'; readonly share: number; readonly name: string; readonly without: number | undefined };
+
+export function driftVerdict(
+  recorded: ReadonlyMap<string, number>, measured: ReadonlyMap<string, number>,
+): DriftVerdict {
+  const share = bodyDrift(recorded, measured);
+  if (!drifted(share)) return { kind: 'steady', share };
+
+  const shared = [...measured.keys()].filter((name) => recorded.get(name) !== undefined);
+  // The largest mover by absolute seconds, which is what moves a sum — not by its own share, which would
+  // pick a tiny step that doubled over the one that actually carried the total
+  const name = shared.reduce((worst, next) =>
+    Math.abs(measured.get(next)! - recorded.get(next)!) > Math.abs(measured.get(worst)! - recorded.get(worst)!)
+      ? next : worst);
+  const without = bodyDrift(
+    new Map([...recorded].filter(([key]) => key !== name)),
+    new Map([...measured].filter(([key]) => key !== name)),
+  );
+  // `undefined` means that member was the only thing with a value to move from, so it is the whole movement
+  return drifted(without) ? { kind: 'body', share } : { kind: 'member', share, name, without };
+}
 
 /**
  * The share of a record's entries that may move before the run is read as measuring the machine.

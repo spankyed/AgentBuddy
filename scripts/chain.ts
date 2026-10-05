@@ -40,7 +40,7 @@ import { CHAIN_FLAGS } from './lib/chain-flags.ts';
 import { TIMEOUT_MS, timedOutBecause, type TimeoutClass } from './lib/step-timeouts.ts';
 import { box, isMeasuredMachine, machineText, MEASURED_ON, scheduleMismatch, thisMachine } from './lib/core-budget.ts';
 import { commandText, rootScripts } from './lib/npm-scripts.ts';
-import { asCount, bodyDrift, drifted, idleNow, movedBeyondBand, parseFlags, RECORD_IDLE_FLOOR, refusesAsBusy, refusesAsContended } from './lib/measure.ts';
+import { asCount, driftVerdict, idleNow, movedBeyondBand, parseFlags, RECORD_IDLE_FLOOR, refusesAsBusy, refusesAsContended } from './lib/measure.ts';
 import { machineLine, recordMachine, recordSeconds } from './lib/record-seconds.ts';
 import { schedule } from './lib/chain-schedule.ts';
 import { criticalPath, driftedSteps, measurementsFrom, outgrownRungs, SECONDS_FLOOR, willNotCache } from './lib/step-timing.ts';
@@ -703,8 +703,9 @@ function recordTheCosts(steps: readonly ChainStep[], measuredMs: ReadonlyMap<str
   // re-record, the run reports success, and the table goes on describing the schedule before it. Changing
   // the chain's admission policy is exactly that shape, and `criticalPath` sums these numbers, so the error
   // compounds where it is least visible.
+  // The body itself is read where it is reported, below, so that the verdict and its remedy are decided in
+  // one place rather than a number travelling the length of the function to be interpreted at the end.
   const comparable = [...measured.keys()].filter((name) => declared.has(name));
-  const body = bodyDrift(declared, measured);
   if (refusesAsContended({
     hasPrevious: comparable.length > 0,
     force,
@@ -765,10 +766,23 @@ function recordTheCosts(steps: readonly ChainStep[], measuredMs: ReadonlyMap<str
   }
   // Reported after the edits rather than refused, because the rows that cross the band are recorded either
   // way and the body is the thing no row can report. A run that clears a drift is not the run that finds it.
-  if (drifted(body)) {
-    console.log(`\nthe table moved ${(body * 100).toFixed(0)}% as a body, which is more than idle runs vary.`);
+  //
+  // Two findings and not one: a movement one step carries is that step's, and `--forget` over the whole
+  // table would write this run's machine into twenty-nine rows to fix one. `driftVerdict` asks the question
+  // twice; each branch names the operation that fits its answer.
+  const verdict = driftVerdict(declared, measured);
+  if (verdict.kind === 'body') {
+    console.log(`\nthe table moved ${(verdict.share * 100).toFixed(0)}% as a body, which is more than idle runs vary.`);
+    console.log('  It survives leaving out the largest mover, so this is the table and not one step.');
     console.log('  A drift that size sits under every per-step band, so no single measurement re-records it.');
     console.log('  Re-run `npm run chain -- --all --record` on an idle machine until it settles.');
+  } else if (verdict.kind === 'member') {
+    const rest = verdict.without === undefined
+      ? 'no other step has a cost to move from'
+      : `the rest moved ${(verdict.without * 100).toFixed(0)}%`;
+    console.log(`\nthe table moved ${(verdict.share * 100).toFixed(0)}% as a body, and ${verdict.name} is why: without it ${rest}.`);
+    console.log(`  So this is one step's cost, not the table's. Record that row alone:`);
+    console.log(`    npm run chain -- --all --record --forget --step ${verdict.name}`);
   }
 }
 
