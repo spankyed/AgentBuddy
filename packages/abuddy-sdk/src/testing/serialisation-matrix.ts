@@ -26,6 +26,9 @@ export const _THROWS = '<throws>';
  * `JSON.stringify` alone would report a Date and an ISO string identically, and `redactSecrets` keeping a Date
  * where the others produce a string is exactly the kind of difference this matrix exists to hold. BigInt is
  * tagged for the same reason, and because `JSON.stringify` refuses one outright.
+ *
+ * Keys are sorted, so a cell says what a pass produced and not the order the input happened to define things
+ * in. Without that, reordering a field of an input silently rewrites a cell while no behaviour has changed.
  */
 export function _describe(value: unknown, seen: WeakSet<object> = new WeakSet()): string {
   if (typeof value === 'bigint') return `<bigint ${value}>`;
@@ -38,20 +41,29 @@ export function _describe(value: unknown, seen: WeakSet<object> = new WeakSet())
   seen.add(value);
   try {
     if (Array.isArray(value)) return `[${value.map((entry) => _describe(entry, seen)).join(',')}]`;
-    const fields = Object.entries(value).map(([key, field]) => `${JSON.stringify(key)}:${_describe(field, seen)}`);
+    const fields = Object.entries(value)
+      .sort(([left], [right]) => (left < right ? -1 : left > right ? 1 : 0))
+      .map(([key, field]) => `${JSON.stringify(key)}:${_describe(field, seen)}`);
     return `{${fields.join(',')}}`;
   } finally {
     seen.delete(value);
   }
 }
 
-/** What a pass answered for one input: the description of what it produced, or `_THROWS` */
+/**
+ * What a pass answered for one input: the description of what it produced, or `_THROWS` when the pass threw.
+ *
+ * Only the pass's call is caught. Describing its result is this module's own work, so a bug there must fail the
+ * run rather than quietly fill every cell with `_THROWS` and read as five passes that all throw.
+ */
 export function _answer(run: () => unknown): string {
+  let produced: { value: unknown };
   try {
-    return _describe(run());
+    produced = { value: run() };
   } catch {
     return _THROWS;
   }
+  return _describe(produced.value);
 }
 
 /**
@@ -98,7 +110,7 @@ export const _SERIALISATION_MATRIX = {
     date: '{"at":"2026-01-02T03:04:05.000Z"}',
     // The placeholder frame keeps the message's `id` so a reader can tie it to the request, and the input's own
     // `id` is read as one — which is what this cell shows rather than a collision to design away
-    unreadable: '{"id":"x","jsonrpc":"2.0","result":{"type":"data","data":"[unserialisable]"}}',
+    unreadable: '{"id":"x","jsonrpc":"2.0","result":{"data":"[unserialisable]","type":"data"}}',
     fn: '{}',
     absent: '{}',
   },
@@ -134,7 +146,7 @@ export const _SERIALISATION_MATRIX = {
     loop: '{"id":"x","self":"[Circular]"}',
     repeated: '{"left":{"id":"s"},"right":{"id":"s"}}',
     date: '{"at":"2026-01-02T03:04:05.000Z"}',
-    unreadable: '{"id":"x","boom":"[Unreadable]"}',
+    unreadable: '{"boom":"[Unreadable]","id":"x"}',
     fn: '{"f":<function>}',
     absent: '{"u":<undefined>}',
   },
