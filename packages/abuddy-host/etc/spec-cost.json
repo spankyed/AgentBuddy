@@ -1,5 +1,5 @@
 {
-  "measuredAt": "2026-10-04T09:25:48.978Z",
+  "measuredAt": "2026-10-05T08:01:44.737Z",
   "samples": {
     "tests/boundaries.spec.ts": [42],
     "tests/build/own-module-specifiers.spec.ts": [71],
@@ -10,6 +10,7 @@
     "tests/build/subpath-imports.spec.ts": [6],
     "tests/bus/app-bus.spec.ts": [34],
     "tests/bus/client-events.spec.ts": [16],
+    "tests/bus/data-replaced.spec.ts": [9],
     "tests/bus/early-systems.spec.ts": [44],
     "tests/bus/outgoing-events.spec.ts": [197],
     "tests/bus/participants.spec.ts": [28],
@@ -85,9 +86,7 @@
     "tests/services/inference.spec.ts": [1682]
   },
   "skipped": [],
-  "unmeasured": [
-    "tests/bus/data-replaced.spec.ts"
-  ],
+  "unmeasured": [],
   "machine": {
     "cpu": "Apple M1 Pro",
     "cores": 10
