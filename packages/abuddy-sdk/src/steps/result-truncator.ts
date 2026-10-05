@@ -80,6 +80,11 @@ function walk(result: unknown, depth: number, path: WeakSet<object>): unknown {
   if (typeof result === 'object') {
     const record = result as Record<string, unknown>;
     if (path.has(record)) return CIRCULAR;
+    // A value that describes itself is asked, as `JSON.stringify` asks: walking a Date's own enumerable
+    // properties finds none, so it persisted as `{}` and a step's timestamps were lost. The other four passes
+    // all keep one, three of them by going through `JSON.stringify`.
+    const described = record as { toJSON?: (key?: string) => unknown };
+    if (typeof described.toJSON === 'function') return walk(described.toJSON(''), depth, path);
     const size = serialisedSize(record);
     const keys = Object.keys(record);
     const kept = size <= MAX_OBJECT_SIZE ? keys : keys.slice(0, MAX_OBJECT_KEYS);

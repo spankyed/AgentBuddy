@@ -21,6 +21,16 @@ describe('a value JSON has no form for', () => {
   it('writes a BigInt at the top level too', () => {
     expect(truncateResult(42n)).toBe('42');
   });
+
+  /**
+   * A Date has no own enumerable properties, so walking one yields `{}` — and a step's timestamps persisted as
+   * empty objects. `JSON.stringify` asks a value to describe itself before reading its fields, which is how the
+   * other four passes all keep a Date, so this asks too.
+   */
+  it('keeps a Date as the string it describes itself as', () => {
+    expect(truncateResult({ at: new Date('2026-01-02T03:04:05Z') }))
+      .toEqual({ at: '2026-01-02T03:04:05.000Z' });
+  });
 });
 
 describe('a value that reaches itself', () => {
