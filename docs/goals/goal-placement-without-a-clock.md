@@ -87,6 +87,37 @@ Two reference sets, each fixed by name from the quiet run and re-measured in eve
 
 **Verdict: viable but not worth building.** It is a real improvement to a quantity nothing acts on — the transient flip was already absorbed by the window — and it does not move the number that matters. What would change this: a reference whose own load response tracks the judged spec's closely enough to collapse the "in both" count, which would need the reference chosen per spec rather than per run. Not measured; a bigger design than the one this goal was asked about.
 
+### Phase 2 — Stop storing anything: **dead as a gate, and it found the real defect**
+
+Flag a spec that blew its budget *in that run*; no record, no window, no machine field, no idle floor. Flags per run, split by whether the package has a second half to move a spec into (`hasSplit`):
+
+| run | flags | in split packages (a rename is available) | in single-config packages (nowhere to move) | false vs the record |
+|---|---|---|---|---|
+| quiet | 6 | 2 | 4 | 2 |
+| busy 1 | 10 | 6 | 4 | 6 |
+| busy 2 | 10 | 7 | 3 | 7 |
+
+The record reports **zero** misplacements — `spec-cost:check` passes — so every split-package flag is false against it. That is 20-70% of the flags in a run, and **2 even on a quiet box**. As a gate this is unusable: it would demand renames on most runs and a different set each time.
+
+**What the three-run intersection found is the valuable part.** Four specs are flagged in *all three* runs:
+
+| spec | quiet | busy 1 | busy 2 | record says | kind |
+|---|---|---|---|---|---|
+| `abuddy-cli/tests/commands/run-install.spec.ts` | 3163 | 3106 | 3297 | **1317** | split — a rename is available |
+| `abuddy-host/tests/build/published-manifest.spec.ts` | 2838 | 3600 | 3202 | 3652 | single-config, `outgrown` |
+| `abuddy-host/tests/database/write-lock.spec.ts` | 4890 | 4812 | 4769 | 4695 | single-config, `outgrown` |
+| `abuddy-sdk/tests/build/generate-entries.spec.ts` | 17745 | 31448 | 31067 | 11308 | single-config, `outgrown` |
+
+Three are `outgrown` — a single-config package has nowhere to move a spec, so the entry records what makes it expensive and no rename is implied. The fourth is a finding.
+
+**`run-install.spec.ts` is recorded at 1317 ms and reads 3106-3297 ms in every run, quiet and loaded alike.** It is in the fast half of a package that *has* an integration half, so a rename is available, and the audit passes anyway — because the record's 1317 ms was measured by `measure()` running one vitest **per package**, while the spec actually runs pooled across eleven projects. The audit is passing on a number from an environment the spec does not run in. That is the pooled-versus-per-package gap the prior goal listed as an open item, with a named victim and a 2.4x discrepancy.
+
+**Verdict: dead.** Not because the signal is absent — the three-run intersection is almost all real — but because a run-local flag with a 20-70% false rate cannot gate anything, and acting on agreement across runs is the streak that the prior goal already disproved under sustained load.
+
+## Recommendation
+
+**Build neither, and fix the measurement context instead.** Both options were asked whether the audit can stop depending on a clock, and the answer is no: calibration improves only the transient flips that the window already absorbs and leaves the sustained-load failure at exactly 3 of 23, while a run-local flag is 20-70% false and cannot gate. The millisecond, the window, the band and the idle floor remain correct for a question that is irreducibly about wall-clock time. What these two spikes did find is a defect neither option would have fixed: the record measures each spec in a per-package vitest while specs run pooled, so `run-install.spec.ts` is recorded at 1317 ms against a pooled 3106-3297 ms and is arguably misfiled in the only environment that matters. Fixing that means measuring in the pool, which the prior spike already established is cheap — vitest's JSON reporter carries per-file durations on a pooled multi-project run and sits alongside the human reporter unchanged. That is a contained change to where `measure()` gets its numbers, it keeps every protection the current design has, and it is the one thing here with a named victim rather than a hypothetical one.
+
 
 ## Phases
 
