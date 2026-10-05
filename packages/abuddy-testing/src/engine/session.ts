@@ -218,11 +218,15 @@ export interface EngineSession {
   navigate: (pluginId: string) => Promise<EngineResult>;
   screenshot: (name: string) => Promise<EngineResult>;
   /** A plugin's published state, or one dotted path into it */
-  plugin: (ref: string, select?: string) => Promise<EngineResult>;
+  plugin: (ref: string, path?: string) => Promise<EngineResult>;
   click: (selector: string) => Promise<EngineResult>;
   fill: (selector: string, text: string) => Promise<EngineResult>;
   press: (key: string, selector?: string) => Promise<EngineResult>;
   snapshot: () => Promise<EngineResult>;
+  /** The settings as stored */
+  settings: () => Promise<EngineResult>;
+  /** Writes one of a feature's settings, by the ref its settings are keyed under */
+  setSetting: (ref: string, path: string, value: unknown) => Promise<EngineResult>;
   /** The app's own log lines, newest last */
   logs: (options: { since?: string; source?: string }) => EngineResult;
   /** Reloads the window and returns once it is connected again, with the in-page bridge back */
@@ -481,11 +485,11 @@ export function createSession({ page, api, takeErrors, readLog }: SessionDeps): 
      * the same expression was written out by hand at every call site, which is four chances to get the
      * ref or the optional chain wrong.
      */
-    plugin: (ref, select) => attempt('plugin', () => page.evaluateExpression(`(() => {
+    plugin: (ref, at) => attempt('plugin', () => page.evaluateExpression(`(() => {
       const plugin = window.applicationState?.getSnapshot().children?.[${JSON.stringify(ref)}];
       if (!plugin) return { running: false };
       const context = plugin.getSnapshot().context ?? {};
-      const at = ${JSON.stringify(select ?? '')};
+      const at = ${JSON.stringify(at ?? '')};
       // No path asked for: the whole context, which is what a plugin publishes
       if (!at) return { running: true, state: context };
       const value = at.split('.').reduce((held, key) => (held == null ? held : held[key]), context);
@@ -504,6 +508,24 @@ export function createSession({ page, api, takeErrors, readLog }: SessionDeps): 
      * is almost always "what happened after the thing I just did", which `since` answers by naming a line
      * they already saw.
      */
+    /**
+     * The settings as stored — what the user changed from the defaults, which is what a write lands in.
+     *
+     * Read through the database rather than the settings system: the row is an entity, so this is the
+     * query path that already works, where `GET_SETTINGS` answers by broadcasting to a *plugin* and would
+     * need a second kind of waiter to catch.
+     */
+    settings: () => attempt('settings', () => roundTrip('qx', `return qx('Settings-app').pickOne(['data'])?.data ?? {}`)),
+
+    /** A feature's setting, by its ref — the key its settings are stored under */
+    setSetting: (ref, at, value) => attempt('setSetting', () => sendToSystem('host/settings', {
+      type: 'UPDATE_SETTINGS',
+      entityType: 'plugin',
+      label: ref,
+      path: at.split('.'),
+      value,
+    })),
+
     logs: ({ since, source }) => {
       const lines = readLog().split('\n').filter(Boolean);
       const from = since === undefined ? 0 : lines.findIndex((line) => line.includes(since)) + 1;

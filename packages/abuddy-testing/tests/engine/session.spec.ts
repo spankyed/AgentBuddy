@@ -335,6 +335,32 @@ describe('reading and using the page', () => {
   });
 });
 
+describe('settings', () => {
+  it('reads the stored document through the database, since the row is an entity', async () => {
+    const { session, send, answer } = sessionWith();
+    await session.ready();
+
+    const reading = session.settings();
+    await settle();
+    expect(lastSend(send).event).toMatchObject({ type: 'EXECUTE_QUERY' });
+    answer({ type: 'QUERY_RESULT', result: { general: { personal: { name: 'Ada' } } }, requestId: String(lastSend(send).event.requestId) });
+
+    await expect(reading).resolves.toEqual({ ok: true, value: { general: { personal: { name: 'Ada' } } } });
+  });
+
+  it("writes one of a feature's settings, by the ref they are keyed under", async () => {
+    const { session, send } = sessionWith();
+    await session.ready();
+
+    await session.setSetting('default-setup/code', 'baseDirectory', '/tmp/x');
+
+    expect(lastSend(send)).toMatchObject({
+      to: 'host/settings',
+      event: { type: 'UPDATE_SETTINGS', entityType: 'plugin', label: 'default-setup/code', path: ['baseDirectory'], value: '/tmp/x' },
+    });
+  });
+});
+
 describe('the app log', () => {
   const lines = (result: EngineResult) => (result as { value: string[] }).value;
 

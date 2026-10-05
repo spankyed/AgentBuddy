@@ -134,12 +134,18 @@ export function engineVerbs(session: EngineSession): Record<string, Verb> {
     // What a view is actually showing, which was a hand-written `/eval` expression at every call site
     '/plugin': {
       method: 'POST',
-      run: (body) => session.plugin(required(body, 'plugin'), optionalText(body, 'select')),
+      run: (body) => session.plugin(required(body, 'plugin'), optionalText(body, 'path')),
     },
     '/click': { method: 'POST', run: (body) => session.click(required(body, 'selector')) },
     '/fill': { method: 'POST', run: (body) => session.fill(required(body, 'selector'), required(body, 'text')) },
     '/press': { method: 'POST', run: (body) => session.press(required(body, 'key'), optionalText(body, 'selector')) },
     '/snapshot': { method: 'GET', run: () => session.snapshot() },
+    '/settings': { method: 'GET', run: () => session.settings() },
+    // A write, so it is a verb of its own rather than a POST to the noun above
+    '/set-setting': {
+      method: 'POST',
+      run: (body) => session.setSetting(required(body, 'plugin'), required(body, 'path'), body.value),
+    },
     '/logs': {
       method: 'POST',
       run: (body) => session.logs({ since: optionalText(body, 'since'), source: optionalText(body, 'source') }),

@@ -31,11 +31,13 @@ const SHAPES: Record<string, 'reads' | 'verb' | 'drain'> = {
   '/fill': 'verb',
   '/press': 'verb',
   '/logs': 'verb',
+  '/set-setting': 'verb',
   '/screenshot': 'verb',
   '/reload': 'verb',
   '/close': 'verb',
   '/state': 'reads',
   '/snapshot': 'reads',
+  '/settings': 'reads',
   '/events': 'drain',
   '/drops': 'drain',
   '/errors': 'drain',
@@ -52,7 +54,7 @@ const VOCABULARY = [
   'event',     // a bus event
   'to',        // a system's ref
   'plugin',    // a plugin's ref, in requests and in responses alike
-  'select',    // a dotted path into a result, where the whole of it is more than the caller wanted
+  'path',      // a dotted path into a structure, to read one part of it or to write one
   'state',     // a dotted path through a machine's state
   'selector',  // a CSS selector into the page
   'text',      // what to type
@@ -61,6 +63,7 @@ const VOCABULARY = [
   'source',    // which part of the app a log line came from
   'name',      // a file name
   'timeoutMs',
+  'value',     // what to write
 ] as const;
 
 /** A session whose every verb answers, so what the assertions see is the table rather than the app */
@@ -70,7 +73,7 @@ function fakeSession() {
     ready: vi.fn(async () => undefined),
     evaluate: ok, send: ok, system: ok, qx: ok, tx: ok, state: ok, wait: ok, navigate: ok,
     screenshot: ok, reload: ok, drainEvents: ok, drainDrops: ok, drainErrors: ok, close: ok,
-    plugin: ok, click: ok, fill: ok, press: ok, snapshot: ok, logs: ok,
+    plugin: ok, click: ok, fill: ok, press: ok, snapshot: ok, logs: ok, settings: ok, setSetting: ok,
     stop: vi.fn(),
   } as unknown as EngineSession;
 }

@@ -213,6 +213,8 @@ operation failed — a `4xx` means nothing ran at all.
 | `/press` | POST | `{ key, selector? }` | a key, to an element or to the page |
 | `/snapshot` | GET | — | the page as an accessibility tree |
 | `/logs` | POST | `{ since?, source? }` | the app's own log, after a line you saw and from one source |
+| `/settings` | GET | — | the settings as stored: what the user changed from the defaults |
+| `/set-setting` | POST | `{ plugin, path, value }` | writes one of a feature's settings |
 | `/screenshot` | POST | `{ name }` | writes `drive/screenshots/<name>.png` |
 | `/reload` | POST | — | reloads the window and returns once it is connected again |
 | `/events` | POST | — | the app's events since you last asked, and how many were dropped |
@@ -223,6 +225,9 @@ operation failed — a `4xx` means nothing ran at all.
 **`/snapshot` is usually what you want over `/screenshot`.** It answers with the page as text: readable,
 diffable, cheap, and it says what a thing *is* rather than where it is. `/screenshot` is for a person
 looking at the result afterwards.
+
+**`/settings` answers with the *stored* document**, not the effective one: it is what a write lands in, so
+it is what says whether your write landed. The defaults it is merged over are the registry's.
 
 **`/plugin` over `/eval`.** A plugin's state is what its view is showing, so reading it is the commonest
 question there is; doing it through `/eval` means writing the same expression, with the same ref and the
