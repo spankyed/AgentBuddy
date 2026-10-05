@@ -1,3 +1,7 @@
+> **Done** (branch `AS/spec-placement-without-milliseconds`). Both spikes concluded and the
+> recommendation is to build neither option. The text below is the plan as written; the Outcome
+> records the answers and the defect the spikes found instead.
+>
 > **Written in session** `f122fdc5-84c9-467f-9c61-66330eab32d0` (Claude Code, 2026-10-05). Resume it with `claude -r f122fdc5-84c9-467f-9c61-66330eab32d0`.
 
 ```
@@ -45,7 +49,7 @@ Never:
 
 `packages/*/etc/spec-cost.json` records what each spec costs so that `suite-split.spec.ts` can ask whether a spec sits in the half its filename declares. The edges are absolute: `INTEGRATION_ABOVE_MS` 2500, `FAST_BELOW_MS` 1000 (`scripts/lib/spec-cost.ts`).
 
-[`goal-spec-placement-without-milliseconds.md`](../archive/goals/goal-spec-placement-without-milliseconds.md) tried to replace the stored millisecond with a machine-independent verdict and failed. Its Spike results hold the measurements; the short version is that the verdict is as machine-dependent as the millisecond, because the edge is wall-clock. Under load at 20% idle, three specs crossed an edge in **both** of two runs, so no consecutive-count threshold helps. Two repairs were ruled out there too: a margin wide enough to cover load (3.3x) is blind to the 31 of 415 specs that sit within one swing of an edge, and per-run normalisation fails because load is not a uniform multiplier — after dividing by the median 1.18x, 20 of 83 specs were still more than 1.5x out, with larger specs less affected (1.10x) than smaller (1.23x).
+[`goal-spec-placement-without-milliseconds.md`](goal-spec-placement-without-milliseconds.md) tried to replace the stored millisecond with a machine-independent verdict and failed. Its Spike results hold the measurements; the short version is that the verdict is as machine-dependent as the millisecond, because the edge is wall-clock. Under load at 20% idle, three specs crossed an edge in **both** of two runs, so no consecutive-count threshold helps. Two repairs were ruled out there too: a margin wide enough to cover load (3.3x) is blind to the 31 of 415 specs that sit within one swing of an edge, and per-run normalisation fails because load is not a uniform multiplier — after dividing by the median 1.18x, 20 of 83 specs were still more than 1.5x out, with larger specs less affected (1.10x) than smaller (1.23x).
 
 Two options were named there and neither was measured. This goal measures them.
 
@@ -63,7 +67,7 @@ Final.
 
 ## Spike results (2026-10-05)
 
-Machine: Apple M1 Pro, 10 cores. No fresh runs were needed: this reuses the three runs the prior goal captured — one quiet at 88-94% idle and two at 20% idle, induced with eight `node` CPU burners started and stopped by captured PID. Their commands are in [that doc's Spike results](../archive/goals/goal-spec-placement-without-milliseconds.md). 288 specs are measured in all three; the pack pool was not re-run under load, so `@app/default-setup`'s specs are outside this analysis.
+Machine: Apple M1 Pro, 10 cores. No fresh runs were needed: this reuses the three runs the prior goal captured — one quiet at 88-94% idle and two at 20% idle, induced with eight `node` CPU burners started and stopped by captured PID. Their commands are in [that doc's Spike results](goal-spec-placement-without-milliseconds.md). 288 specs are measured in all three; the pack pool was not re-run under load, so `@app/default-setup`'s specs are outside this analysis.
 
 Probe: a throwaway Python script over the captured JSON, deleted. Every number below is from three runs, never one.
 
@@ -140,6 +144,29 @@ Have the pool report a spec that blew its budget *in that run*, with no record, 
 - Say what is lost: the gate, and whatever `spec:dry` reads today.
 
 **Done when:** the doc states the flag count and false-flag rate for a quiet and a loaded run, and what a reader would do with the output. Whether losing the gate is acceptable is named as a question for the user, not decided here.
+
+## Outcome (2026-10-05)
+
+Both phases answered from the three runs the prior goal captured, so no fresh measurement was needed and nothing under `scripts/` or `packages/` changed. **The answer to the goal's question is no**, which Decision 3 named as a success: calibrating within the run improves only the flips the window already absorbs and leaves the sustained-load failure at 3 of 23, and a run-local flag is 20-70% false against the record and cannot gate. The clock is not removable, because the budget it audits is wall-clock. What the spikes did turn up is a defect neither option addressed: the record measures each spec in a per-package vitest while specs run pooled, and `abuddy-cli/tests/commands/run-install.spec.ts` is recorded at 1317 ms against a pooled 3106-3297 ms in all three runs — in a split package, so a rename is available, with the audit passing regardless.
+
+### Per phase
+
+| Phase | Status | Evidence |
+|---|---|---|
+| 1 — Calibrate within the run | **done — viable, not worth building** | `4a5cc84f0`. Band reference halves transient flips (9 of 23 -> 5) and leaves "in both runs" at 3 |
+| 2 — Stop storing anything | **done — dead** | `63948e48d`. 6/10/10 flags per run, 2/6/7 false against a record reporting zero |
+
+### Conventional choices
+
+- Reference sets for Phase 1 were fixed **by name** from the quiet run and re-measured in each run, so a choice is a rule rather than a post-hoc lookup. Picking the most stable reference after the fact would have been overfitting to three runs.
+- The at-risk population is 23 here against the prior goal's 31, because `@app/default-setup`'s specs are in the pack pool, which was never re-run under load. Said rather than silently narrowed.
+- Both phases' numbers come from one probe over one dataset, but they are committed separately because they answer separate questions.
+
+### Open items
+
+- **The recommendation**: move `measure()`'s numbers to the pooled run via vitest's JSON reporter. The prior spike established the mechanism works (absolute paths, alongside the human reporter, verified on a multi-project run); this one supplies the reason, with a named victim.
+- `run-install.spec.ts` may genuinely belong in `@abuddy/cli`'s integration half. Worth confirming once the measurement context is fixed, since that is what would decide it.
+- A per-spec reference, rather than a per-run one, is the only version of Phase 1 that could collapse the "in both runs" count. Unmeasured, and a larger design than this goal asked about.
 
 ## Constraints
 
