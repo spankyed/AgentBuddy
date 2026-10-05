@@ -223,6 +223,14 @@ type Evaluated = { cloneable: true; value: unknown }
 /** What `/wait` waits for: a dotted state path, or a plugin arriving. Exactly one, which `server.ts` checks */
 export type WaitTarget = { readonly state: string } | { readonly plugin: string };
 
+/**
+ * Where a setting lives: in a feature's slice, by its ref, or in a section a pack registered.
+ *
+ * The settings document has both and `/settings` reads all of it, so a write that could only reach features
+ * left `general` and `assistant` readable and unwritable. Exactly one, as `WaitTarget` is.
+ */
+export type SettingsTarget = { readonly plugin: string } | { readonly section: string };
+
 export interface EngineSession {
   evaluate: (body: string) => Promise<EngineResult>;
   send: (event: Record<string, unknown>) => Promise<EngineResult>;
@@ -245,8 +253,8 @@ export interface EngineSession {
   setViewport: (width: number, height: number) => Promise<EngineResult>;
   /** The settings as stored */
   settings: () => Promise<EngineResult>;
-  /** Writes one of a feature's settings, by the ref its settings are keyed under */
-  setSetting: (ref: string, path: string, value: unknown) => Promise<EngineResult>;
+  /** Writes one setting, in a feature's slice or in a registered section */
+  setSetting: (target: SettingsTarget, path: string, value: unknown) => Promise<EngineResult>;
   /** The app's own log lines, newest last; fails when `since` names a line the log does not hold */
   logs: (options: { since?: string; source?: string }) => Promise<EngineResult>;
   /** Reloads the window and returns once it is connected again, with the in-page bridge back */
@@ -559,11 +567,16 @@ export function createSession({ page, api, takeErrors, readLog }: SessionDeps): 
      */
     settings: () => attempt('settings', () => roundTrip('qx', `return qx('Settings-app').pickOne(['data'])?.data ?? {}`)),
 
-    /** A feature's setting, by its ref — the key its settings are stored under */
-    setSetting: (ref, at, value) => attempt('setSetting', () => sendToSystem('host/settings', {
+    /**
+     * One setting, in a feature's slice or in a registered section.
+     *
+     * `entityType` is which arm of the target it is — the settings system branches on it between
+     * `setForFeature` and `setInSection`, and hardcoding `'plugin'` was what made a section unwritable.
+     */
+    setSetting: (target, at, value) => attempt('setSetting', () => sendToSystem('host/settings', {
       type: 'UPDATE_SETTINGS',
-      entityType: 'plugin',
-      label: ref,
+      entityType: 'plugin' in target ? 'plugin' : 'section',
+      label: 'plugin' in target ? target.plugin : target.section,
       path: at.split('.'),
       value,
     })),

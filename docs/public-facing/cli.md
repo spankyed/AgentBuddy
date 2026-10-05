@@ -216,7 +216,7 @@ operation failed — a `4xx` means nothing ran at all.
 | `/settings` | GET | — | the settings as stored: what the user changed from the defaults |
 | `/viewport` | GET | — | the size the app is rendering into |
 | `/set-viewport` | POST | `{ width, height }` | changes it |
-| `/set-setting` | POST | `{ plugin, path, value }` | writes one of a feature's settings |
+| `/set-setting` | POST | `{ plugin } or { section }`, `{ path, value }` | writes one setting |
 | `/screenshot` | POST | `{ name }` | writes `drive/screenshots/<name>.png` |
 | `/reload` | POST | — | reloads the window and returns once it is connected again |
 | `/events` | POST | — | the app's events since you last asked, and how many were dropped |
@@ -230,6 +230,11 @@ looking at the result afterwards.
 
 **`/settings` answers with the *stored* document**, not the effective one: it is what a write lands in, so
 it is what says whether your write landed. The defaults it is merged over are the registry's.
+
+**`/set-setting` writes either half of that document.** A feature's settings live under its ref
+(`{"plugin":"default-setup/code"}`) and a pack's section lives at the top of it
+(`{"section":"general"}`) — one of the two, never both, as `/wait` takes one of its two. Writing only
+features left `general` and `assistant` readable and unwritable.
 
 **`/set-viewport` resizes whichever thing the run actually has.** A session whose window is shown — a
 person watching `npm run drive` — has its *window* resized, because a viewport Playwright sets is an

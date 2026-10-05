@@ -13,17 +13,17 @@ const TOKEN = 'a-token';
 /** A session that records what it was asked and answers ok, so routing is what the assertions see */
 function fakeSession(overrides: Partial<EngineSession> = {}) {
   const called: Array<[string, unknown[]]> = [];
-  const verb = (name: string) => (...args: unknown[]): EngineResult => {
+  const makes = (name: string) => (...args: unknown[]): EngineResult => {
     called.push([name, args]);
     return { ok: true, value: name };
   };
   const session = {
     ready: vi.fn(async () => undefined),
-    evaluate: verb('evaluate'), send: verb('send'), system: verb('system'),
-    qx: verb('qx'), tx: verb('tx'), state: verb('state'), wait: verb('wait'), navigate: verb('navigate'),
-    screenshot: verb('screenshot'), drainEvents: verb('events'), drainDrops: verb('drops'),
-    drainErrors: verb('errors'), close: verb('close'),
-    viewport: verb('viewport'), setViewport: verb('setViewport'),
+    evaluate: makes('evaluate'), send: makes('send'), system: makes('system'),
+    qx: makes('qx'), tx: makes('tx'), state: makes('state'), wait: makes('wait'), navigate: makes('navigate'),
+    screenshot: makes('screenshot'), drainEvents: makes('events'), drainDrops: makes('drops'),
+    drainErrors: makes('errors'), close: makes('close'),
+    viewport: makes('viewport'), setViewport: makes('setViewport'), setSetting: makes('setSetting'),
     ...overrides,
   } as unknown as EngineSession;
   return { session, called };
@@ -322,6 +322,31 @@ describe('wait', () => {
     await ask(session, '/wait', { body: '{"state":"running.connected","timeoutMs":2000}' });
 
     expect(called).toEqual([['wait', [{ state: 'running.connected' }, 2000]]]);
+  });
+});
+
+describe('a setting', () => {
+  it('needs exactly one target, since a feature and a section are different places', async () => {
+    const { session, called } = fakeSession();
+
+    for (const body of ['{"path":"x","value":1}', '{"plugin":"p/f","section":"general","path":"x","value":1}']) {
+      const { status, payload } = await ask(session, '/set-setting', { body });
+      expect(status, body).toBe(400);
+      expect((payload as { error: string }).error).toBe('send exactly one of "plugin" or "section"');
+    }
+    expect(called, 'nothing reached the app').toEqual([]);
+  });
+
+  it('passes whichever one it was given', async () => {
+    const { session, called } = fakeSession();
+
+    await ask(session, '/set-setting', { body: '{"plugin":"default-setup/code","path":"a","value":1}' });
+    await ask(session, '/set-setting', { body: '{"section":"general","path":"b","value":2}' });
+
+    expect(called).toEqual([
+      ['setSetting', [{ plugin: 'default-setup/code' }, 'a', 1]],
+      ['setSetting', [{ section: 'general' }, 'b', 2]],
+    ]);
   });
 });
 

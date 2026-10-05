@@ -251,11 +251,22 @@ export function engineVerbs(session: EngineSession): Record<string, Verb> {
       fields: { width: pixels, height: pixels },
       run: ({ width, height }) => session.setViewport(width, height),
     }),
-    // A write, so it is a verb of its own rather than a POST to the noun above
+    /**
+     * A write, so it is a verb of its own rather than a POST to the noun above.
+     *
+     * One of `plugin` or `section`, never both, as `/wait` takes one of its two: a feature's settings live
+     * under its ref and a pack's section lives at the top of the document, and `/settings` reads both.
+     */
     '/set-setting': verb({
       method: 'POST',
-      fields: { plugin: required, path: required, value: present },
-      run: ({ plugin, path, value }) => session.setSetting(plugin, path, value),
+      fields: { plugin: optionalText, section: optionalText, path: required, value: present },
+      run: ({ plugin, section, path, value }) => {
+        if ((plugin === undefined) === (section === undefined)) {
+          throw new BadRequest('send exactly one of "plugin" or "section"');
+        }
+        const target = plugin === undefined ? { section: section! } : { plugin };
+        return session.setSetting(target, path, value);
+      },
     }),
     '/logs': verb({
       method: 'POST',

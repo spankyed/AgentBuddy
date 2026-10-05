@@ -359,11 +359,28 @@ describe('settings', () => {
     const { session, send } = sessionWith();
     await session.ready();
 
-    await session.setSetting('default-setup/code', 'baseDirectory', '/tmp/x');
+    await session.setSetting({ plugin: 'default-setup/code' }, 'baseDirectory', '/tmp/x');
 
     expect(lastSend(send)).toMatchObject({
       to: 'host/settings',
       event: { type: 'UPDATE_SETTINGS', entityType: 'plugin', label: 'default-setup/code', path: ['baseDirectory'], value: '/tmp/x' },
+    });
+  });
+
+  /**
+   * The other half of the document. `/settings` reads the whole of it, sections included, so a write that
+   * could only reach features left `general` and `assistant` readable and unwritable — and `entityType` is
+   * the one field the settings system branches on to tell them apart.
+   */
+  it('writes a section the same way, which is what makes the document writable where it is readable', async () => {
+    const { session, send } = sessionWith();
+    await session.ready();
+
+    await session.setSetting({ section: 'general' }, 'personal.name', 'Ada');
+
+    expect(lastSend(send)).toMatchObject({
+      to: 'host/settings',
+      event: { type: 'UPDATE_SETTINGS', entityType: 'section', label: 'general', path: ['personal', 'name'], value: 'Ada' },
     });
   });
 });

@@ -57,6 +57,7 @@ const VOCABULARY = [
   'event',     // a bus event
   'to',        // a system's ref
   'plugin',    // a plugin's ref, in requests and in responses alike
+  'section',   // a settings section a pack registered, which is the other place a setting lives
   'path',      // a dotted path into a structure, to read one part of it or to write one
   'state',     // a dotted path through a machine's state
   'selector',  // a CSS selector into the page
