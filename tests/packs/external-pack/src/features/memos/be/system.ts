@@ -42,7 +42,7 @@ export const memosSystem = setup({
   states: {
     idle: {
       on: {
-        CLIENT_CONNECTED: { actions: 'sendConnectedData' },
+        SEND_STATE: { actions: 'sendConnectedData' },
       },
     },
   },

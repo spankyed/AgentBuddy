@@ -22,8 +22,10 @@ export const __CAMEL__System = setup({
   states: {
     idle: {
       on: {
-        // Every system gets CLIENT_CONNECTED, and answers it with the data its plugin starts from
-        CLIENT_CONNECTED: { actions: 'sendConnectedData' },
+        // The app asks every system for its state whenever anything could have changed it — a client
+        // connected, a pack changed, the data was replaced. Answer with what your plugin starts from, and
+        // you are correct for every one of those without handling any of them
+        SEND_STATE: { actions: 'sendConnectedData' },
         // A contract's `incoming` says what may be sent; the bus routes an event to a system only if its
         // machine names it, so an event declared and never handled here is dropped
         __REFRESH_EVENT__: { actions: 'sendConnectedData' },
