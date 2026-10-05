@@ -23,6 +23,18 @@ describe('with-source', () => {
   it('leaves it off for a run that declared it resolves the published packages', () => {
   });
 
+  /**
+   * The usage line in that script is `node scripts/with-source.mjs playwright test …`, which is also how
+   * every drive and test script in `package.json` reads. Copied out of one and into a terminal it died with
+   * `spawn playwright ENOENT`, because npm is what puts `node_modules/.bin` on PATH and nothing else did.
+   */
+  it("resolves a locally installed command, with the PATH a terminal has rather than npm's", () => {
+    // Node's own directory and nothing else: no `node_modules/.bin`, as a shell outside npm has
+    const bare = path.dirname(process.execPath);
+
+    expect(run(['tsx', '--version'], undefined, { PATH: bare }).stdout).toMatch(/tsx/);
+  });
+
   it('adds the condition once when nested', () => {
     expect(run(['node', WITH_SOURCE, ...PRINT_NODE_OPTIONS]).stdout.trim()).toBe('--conditions=@abuddy/source');
   });

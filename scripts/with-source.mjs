@@ -6,9 +6,24 @@
 //   node scripts/with-source.mjs playwright test smoke
 import { spawn } from 'node:child_process';
 import { realpathSync } from 'node:fs';
-import { pathToFileURL } from 'node:url';
+import * as path from 'node:path';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 
 export const SOURCE_CONDITION = '--conditions=@abuddy/source';
+
+/**
+ * `PATH` with this repo's `node_modules/.bin` in front, which is the one thing npm supplies and a bare
+ * `node scripts/with-source.mjs …` does not.
+ *
+ * Without it the usage line above is a lie: the same command works through `npm run` and dies with
+ * `spawn playwright ENOENT` when it is copied into a terminal, which is where it is read from. Prepended
+ * rather than appended, as npm does, so a locally installed tool wins over a global one of another version.
+ */
+export function withLocalBin(currentPath = '', root = path.dirname(fileURLToPath(import.meta.url))) {
+  const bin = path.join(path.dirname(root), 'node_modules', '.bin');
+  const entries = currentPath.split(path.delimiter).filter(Boolean);
+  return entries[0] === bin ? currentPath : [bin, ...entries].join(path.delimiter);
+}
 
 /** NODE_OPTIONS with the source condition appended once */
 export function withSourceCondition(nodeOptions = '') {
@@ -25,7 +40,11 @@ if (process.argv[1] && import.meta.url === pathToFileURL(realpathSync(process.ar
   }
   const child = spawn(command, args, {
     stdio: 'inherit',
-    env: { ...process.env, NODE_OPTIONS: withSourceCondition(process.env.NODE_OPTIONS) },
+    env: {
+      ...process.env,
+      NODE_OPTIONS: withSourceCondition(process.env.NODE_OPTIONS),
+      PATH: withLocalBin(process.env.PATH),
+    },
     // npm's .bin shims are .cmd files on Windows
     shell: process.platform === 'win32',
   });
