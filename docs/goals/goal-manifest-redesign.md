@@ -1021,7 +1021,7 @@ does writing the fourteen keys in a different order.
   `etc/*.api.md` with the rest of the phase.** `PackManifest` is `z.infer<typeof ManifestSchema>`, a
   published export of `@abuddy/sdk/build`, so the report inlines the whole manifest type —
   `packages/abuddy-sdk/etc/build.api.md` names the keys this goal retires 35 times. `npm run typecheck`
-  runs `api:stamp` and fails on a stale report, so a phase that skips this cannot meet its own
+  runs `api:check` and fails on a stale report, so a phase that skips this cannot meet its own
   "Done when". Budget ~46s for the three reports.
 - Generated output is the proof for Phases 1–4: compare `src/__generated__/` and `dist/` before and
   after, and treat any diff as a regression unless the phase says otherwise.

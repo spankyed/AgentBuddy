@@ -88,7 +88,7 @@ export const ENSURE = 'packages:ensure';
  * Every leg, in the order a failure is reported in — which is this order and not the order they finish, so a
  * run reads the same way twice.
  *
- * `packages:ensure` first because `check:specifiers`, `api:stamp` and `typecheck:pack` read the built packages.
+ * `packages:ensure` first because `check:specifiers` and `typecheck:pack` read the built packages.
  * Everything else is independent, and that is the claim this file makes by running them at once: nothing here
  * writes what another leg reads. The checks are all `--check`/`--noEmit` halves, which is what makes that
  * plausible, and `--cores 1` is how to test it if a leg ever starts behaving differently in company.
@@ -104,7 +104,6 @@ export const TYPECHECK_LEGS: readonly Leg[] = [
   { name: 'check:specifiers', command: 'npm run check:specifiers', scope: 'repo', seconds: 5 },
   { name: 'exports:check', command: 'npm run exports:check', seconds: 1 },
   { name: 'schema:check', command: 'npm run schema:check', seconds: 0.5 },
-  { name: 'api:stamp', command: 'npm run api:stamp', scope: 'repo', seconds: 0.7 },
   { name: 'typecheck:scripts', command: 'npm run typecheck:scripts', scope: 'repo', seconds: 5 },
   { name: 'typecheck:cli', command: 'npm run typecheck:cli', seconds: 5 },
   { name: 'typecheck:pack', command: 'npm run typecheck:pack', seconds: 7 },

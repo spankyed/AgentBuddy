@@ -161,7 +161,7 @@ changed, `packages:ensure` when nothing is stale — while the full chain costs 
 (285.6s measured 2026-09-25), most of it in `test:packaged-authoring` (60s), `test:unit` and
 `test:integration` (43s each), `build` (37s) and `typecheck` (30s). Running the chain after every edit
 is the single easiest way to make a goal take days, and it finds nothing the narrow check wouldn't.
-`api:check` is deliberately not in the chain — `typecheck` runs `api:stamp` in 0.6s instead — so a phase
+`api:check` is a chain step (it was not, while `api:stamp` stood in for it at 0.6s), so a phase
 that changes a published export runs it itself.
 
 So a goal doc plans its own checks:

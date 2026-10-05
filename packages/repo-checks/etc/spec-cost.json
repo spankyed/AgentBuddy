@@ -1,7 +1,6 @@
 {
   "measuredAt": "2026-10-03T09:32:41.275Z",
   "samples": {
-    "tests/api-report-stamp.spec.ts": [68],
     "tests/bounded-spawn.integration.spec.ts": [2059],
     "tests/chain-graph.spec.ts": [6],
     "tests/chain-inputs.spec.ts": [2186],

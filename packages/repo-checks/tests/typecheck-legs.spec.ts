@@ -1,4 +1,7 @@
+import * as fs from 'node:fs';
+import * as path from 'node:path';
 import { describe, expect, it } from 'vitest';
+import { REPO_ROOT } from '@abuddy/host/build/packages-built';
 import { scopeOf, TYPECHECK_LEGS, type Leg } from '../../../scripts/lib/typecheck-legs.ts';
 import { rootScripts } from '../../../scripts/lib/npm-scripts.ts';
 import { PACKAGE_DIRS } from '../../../scripts/lib/workspace-deps.ts';
@@ -89,5 +92,43 @@ describe('a typecheck leg takes its scope from its script', () => {
       .flatMap((leg) => { const s = scopeOf(leg); return s === 'repo' ? [] : s; })
       .filter((dir) => !PACKAGE_DIRS.includes(dir));
     expect([...new Set(unknown)], 'these are not workspaces under packages/').toEqual([]);
+  });
+});
+
+/**
+ * The two figures in `CLAUDE.md`'s `typecheck` entry that this table decides.
+ *
+ * **Written for a failure this repo keeps having**: a figure that sizes a design outlives its truth, because
+ * prose is the only artifact nothing re-derives. Two were found stale in one session — `api:check`'s "55s"
+ * four months after it became 13.1s, and this line's "29.3s in 11s" against a measured 63.1s in 18.0s — and
+ * each was load-bearing, the first being the whole argument for a proxy that has since been deleted.
+ *
+ * So the derivable half is derived. The leg count and the sum of the legs' declared `seconds` are this
+ * table's, and a leg added, removed or re-costed fails here. The wall time is not checkable — it is a
+ * measurement of a machine — and stays a citation with its date, which is the honest treatment for the half
+ * that cannot be computed.
+ *
+ * `chain-table.spec.ts` holds `ci.yml`'s header to `ASSUMED_RUNGS` the same way and for the same reason.
+ */
+describe("CLAUDE.md's figures for this table", () => {
+  /** The `npm run typecheck` entry of the command block, up to the next command — where both figures sit */
+  const entry = (() => {
+    const lines = fs.readFileSync(path.join(REPO_ROOT, 'CLAUDE.md'), 'utf-8').split('\n');
+    const start = lines.findIndex((line) => line.startsWith('npm run typecheck '));
+    const after = lines.findIndex((line, at) => at > start && line.startsWith('npm run '));
+    return start === -1 ? '' : lines.slice(start, after === -1 ? undefined : after).join(' ');
+  })();
+
+  it('is there to read, so the two cases below are not passing over nothing', () => {
+    expect(entry, 'the typecheck entry names its legs').toMatch(/legs run at once/);
+  });
+
+  it('names the number of legs the table holds', () => {
+    expect(entry).toContain(`${TYPECHECK_LEGS.length} legs`);
+  });
+
+  it('names the sum of what they declare', () => {
+    const declared = TYPECHECK_LEGS.reduce((total, leg) => total + (leg.seconds ?? 0), 0);
+    expect(entry).toContain(`${declared.toFixed(1)}s of`);
   });
 });

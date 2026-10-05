@@ -600,6 +600,11 @@ describe('what has looked at a step at all', () => {
     expect(observation().byNothing,
       'a step here is one whose declared inputs nothing checks against what it touched. Add to this list '
       + 'only a step no tool can report on, and take one out when something can').toEqual([
+      // API Extractor reads a package's declarations through its own compiler and emits no manifest of what
+      // it touched, so there is nothing to ask. What stands in its place is that its inputs are derived
+      // (`PACKAGE_BUILD_OUTPUTS`) rather than hand-listed, plus the two trees it compares being declared
+      // outright — which is the protection `test:packaged-authoring` relies on for the same reason.
+      'api:check',
       'build:app',
       'compile',
       'packages:check',

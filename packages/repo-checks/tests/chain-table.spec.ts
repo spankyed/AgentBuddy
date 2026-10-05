@@ -431,8 +431,6 @@ describe('a recorded artifact has both halves', () => {
 describe("the chain runs every artifact's check", () => {
   /** A `:check` script the chain does not run, and why. An entry that stops applying is reported. */
   const NOT_RUN_BY_THE_CHAIN: Record<string, string> = {
-    'api:check': 'API Extractor over three packages, 55s; `api:stamp` is its 0.6s proxy inside typecheck, and '
-      + 'api-reports.ts checks that proxy against itself, which is what catches an input nobody listed',
     // These two are commands over a rule a spec already asserts, so the artifact is checked and the script is
     // a way to ask by hand. Both say so themselves: `spec-cost.ts` records that `scripts/lib/spec-cost.ts`
     // holds what it and `suite-split.spec.ts` share, "so a spec and this command cannot disagree".
