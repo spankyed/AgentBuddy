@@ -153,10 +153,20 @@ export default defineConfig({
 
 const ENGINE_SESSION = `import { drive, driveEngineBody } from '@abuddy/testing';
 
-// Written by \`abuddy drive --serve\`. Nothing typechecks this file, so it passes no options: the wiring
-// is \`driveEngineBody\` in @abuddy/testing, where the compiler sees it. The \`drive\` call stays here so
-// Playwright reports the session at this file rather than inside that bundle.
-drive('drive engine', driveEngineBody);
+// Scaffolded once by \`abuddy drive --serve\`, then yours: this file is never rewritten.
+//
+// The core verbs are @abuddy/testing's and are true of any AgentBuddy app. Add your own below, in your
+// pack's own nouns — they are merged over the core table, so you can replace one too. A verb here saves
+// an agent spelling out the same several calls every time it wants one thing.
+drive('drive engine', driveEngineBody({
+  verbs: (session) => ({
+    // 'POST /note': one call instead of a \`/tx\` whose code you have to get right each time
+    // '/note': {
+    //   method: 'POST',
+    //   run: ({ title }) => session.tx(\`return createEntityWithDefaults(EARS.Entity.Note, { title: \${JSON.stringify(title)} }).id\`),
+    // },
+  }),
+}));
 `;
 
 /**
@@ -170,12 +180,20 @@ export function takeServeFlag(args: string[]): { serve: boolean; rest: string[] 
   return { serve: rest.length !== args.length, rest };
 }
 
-/** Writes the engine's pair, overwriting: they are generated, and a stale one is a confusing session */
-function writeEngineFiles(root: string): void {
+/**
+ * Writes the engine's pair the first time, and never again.
+ *
+ * The session file is where a verb of this app's own goes (`driveEngineBody({ verbs })`), so it is a file
+ * its owner keeps rather than output this command owns. It used to be rewritten on every `--serve`, which
+ * meant the one file worth extending was the one that could not be.
+ */
+export function writeEngineFiles(root: string): void {
   const dir = path.join(root, DRIVE_DIR);
   fs.mkdirSync(dir, { recursive: true });
-  fs.writeFileSync(path.join(dir, ENGINE_CONFIG_FILE), ENGINE_CONFIG);
-  fs.writeFileSync(path.join(dir, ENGINE_SESSION_FILE), ENGINE_SESSION);
+  for (const [name, body] of [[ENGINE_CONFIG_FILE, ENGINE_CONFIG], [ENGINE_SESSION_FILE, ENGINE_SESSION]] as const) {
+    const file = path.join(dir, name);
+    if (!fs.existsSync(file)) fs.writeFileSync(file, body);
+  }
 }
 
 /** The driving scripts in a pack, which is what decides whether there is anything to run. */

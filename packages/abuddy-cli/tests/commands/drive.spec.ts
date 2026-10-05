@@ -2,7 +2,7 @@ import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { driveScripts, DRIVE_USAGE, takeServeFlag } from '../../src/commands/drive';
+import { driveScripts, DRIVE_USAGE, takeServeFlag, writeEngineFiles } from '../../src/commands/drive';
 
 let root: string;
 
@@ -56,6 +56,43 @@ describe('the driving scripts a pack has', () => {
  * Everything left over is forwarded to the Playwright CLI verbatim (`flags.args`), which would be asked
  * about a flag it has never heard of — and Playwright's answer to that is to fail the run.
  */
+/**
+ * The session file is where a verb of the pack's own goes, so it is a file its owner keeps.
+ *
+ * It was rewritten on every `--serve`, which made the one file worth extending the one that could not be:
+ * an agent added a verb, ran the session again, and the verb was gone with no diagnostic. The rule used
+ * for every other scaffolded file — write when absent — is what it needed.
+ */
+describe('the engine files the serve flag scaffolds', () => {
+  const session = () => path.join(root, 'drive', 'engine-session.mts');
+
+  it('writes the pair the first time', () => {
+    writeEngineFiles(root);
+
+    expect(fs.readFileSync(session(), 'utf-8')).toContain('driveEngineBody');
+    expect(fs.existsSync(path.join(root, 'drive', 'engine.config.mts'))).toBe(true);
+  });
+
+  it('keeps a session file that has been extended, rather than writing over it', () => {
+    writeEngineFiles(root);
+    const extended = `${fs.readFileSync(session(), 'utf-8')}\n// a verb of my own\n`;
+    fs.writeFileSync(session(), extended);
+
+    writeEngineFiles(root);
+
+    expect(fs.readFileSync(session(), 'utf-8')).toBe(extended);
+  });
+
+  it('writes one that was deleted, so a pack is never left without it', () => {
+    writeEngineFiles(root);
+    fs.rmSync(session());
+
+    writeEngineFiles(root);
+
+    expect(fs.readFileSync(session(), 'utf-8')).toContain('driveEngineBody');
+  });
+});
+
 describe('the serve flag', () => {
   it('is off by default, and takes nothing with it', () => {
     expect(takeServeFlag(['look.ts', '--instance', 'x'])).toEqual({

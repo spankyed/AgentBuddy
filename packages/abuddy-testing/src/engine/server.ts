@@ -44,10 +44,20 @@ export interface RunningEngine {
 }
 
 /** A verb, and whether it reads a JSON body */
-type Verb = {
+/**
+ * One entry in the table a session answers from.
+ *
+ * Exported because the table is extensible: a verb built out of one app's nouns — "create a thread",
+ * "approve the pending call" — belongs to whoever is driving, not to this package, and is added through
+ * `runDriveEngine`'s `verbs`.
+ */
+export type Verb = {
   readonly method: 'GET' | 'POST';
   readonly run: (body: Record<string, unknown>) => EngineResult | Promise<EngineResult>;
 };
+
+/** Verbs of a caller's own, over the session they drive. Merged over the core table, so one may be replaced */
+export type ExtraVerbs = (session: EngineSession) => Record<string, Verb>;
 
 /** Raised where the caller got the protocol wrong, so the answer is 4xx and no verb ran */
 class BadRequest extends Error {}
@@ -245,9 +255,11 @@ export async function startEngineServer(
   session: EngineSession,
   /** Called once `/close` has been answered, so the drive body returns and the fixture tears down */
   onClose: () => void,
+  /** A caller's own verbs, merged over the core table */
+  extra?: ExtraVerbs,
 ): Promise<RunningEngine> {
   const token = randomBytes(24).toString('hex');
-  const verbs = engineVerbs(session);
+  const verbs = { ...engineVerbs(session), ...extra?.(session) };
   await session.ready();
 
   const server: Server = createServer((request, response) => {

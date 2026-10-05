@@ -13,7 +13,7 @@
  */
 import type { Page } from '@playwright/test';
 import { DRIVE_REF, createSession, type SessionPage } from './session.ts';
-import { ENGINE_TOKEN_HEADER, startEngineServer } from './server.ts';
+import { ENGINE_TOKEN_HEADER, startEngineServer, type ExtraVerbs } from './server.ts';
 import { engineRecipe, publishEngineMarker, removeEngineMarker } from './marker.ts';
 import { connectApiClient } from './api-client.ts';
 
@@ -40,6 +40,14 @@ export interface DriveEngineOptions {
   readonly outputDir: string;
   /** Where the recipe is printed; the runner's stdout by default */
   readonly log?: (line: string) => void;
+  /**
+   * Verbs of this app's own, merged over the core table.
+   *
+   * The core table is what is true of any AgentBuddy app. A verb built out of one app's nouns is the
+   * caller's, which is why the scaffolded session file is the place to write one — it is a file its owner
+   * keeps, where this package's is not.
+   */
+  readonly verbs?: ExtraVerbs;
 }
 
 /**
@@ -155,7 +163,7 @@ export async function runDriveEngine(options: DriveEngineOptions): Promise<void>
   });
 
   // The server ends the session, after `/close` has been answered — see its `CLOSE_PATH`
-  const engine = await startEngineServer(session, () => end());
+  const engine = await startEngineServer(session, () => end(), options.verbs);
   const marker = { ...engine.address, pid: process.pid, host: '127.0.0.1' };
   const file = publishEngineMarker(outputDir, marker);
   log(engineRecipe(file, marker, ENGINE_TOKEN_HEADER));
@@ -185,6 +193,7 @@ export async function runDriveEngine(options: DriveEngineOptions): Promise<void>
 }
 
 export { ENGINE_TOKEN_HEADER } from './server.ts';
+export type { ExtraVerbs, Verb } from './server.ts';
 export { connectApiClient, type ApiAddress, type ApiClient, type BusMessage } from './api-client.ts';
 export { MARKER_FILE, type EngineMarker } from './marker.ts';
 export type { EngineResult, EngineSession, SessionApi, SessionPage } from './session.ts';

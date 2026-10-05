@@ -3,7 +3,7 @@
 // request was fine, the operation was not — against a protocol error answering 4xx, where no verb ran.
 import { describe, expect, it, vi } from 'vitest';
 import {
-  answer, engineVerbs, ENGINE_TOKEN_HEADER, MAX_BODY_BYTES, startEngineServer, tokenMatches,
+  answer, engineVerbs, ENGINE_TOKEN_HEADER, MAX_BODY_BYTES, startEngineServer, tokenMatches, type Verb,
 } from '../../src/engine/server.ts';
 import type { EngineResult, EngineSession } from '../../src/engine/session.ts';
 
@@ -115,6 +115,34 @@ describe('routing', () => {
     expect(result.status).toBe(400);
     expect(result.payload).toMatchObject({ error: expect.stringContaining('JSON body') });
     expect(called).toEqual([]);
+  });
+});
+
+/**
+ * The core table is what is true of any AgentBuddy app. A verb built out of one app's nouns belongs to
+ * whoever is driving — which is why they arrive as a function over the session, and why they are merged
+ * *over* the core table rather than under it: a caller who wants a different `/screenshot` is not wrong.
+ */
+describe("verbs of the caller's own", () => {
+  const table = (session: EngineSession, extra: Record<string, Verb>) => ({ ...engineVerbs(session), ...extra });
+
+  const askTable = (verbs: Record<string, Verb>, url: string, method = 'POST') =>
+    answer(verbs, TOKEN, { method, url, headers: { [ENGINE_TOKEN_HEADER]: TOKEN } }, async () => '{}');
+
+  it('answers at its own path, beside the core table', async () => {
+    const { session } = fakeSession();
+    const verbs = table(session, { '/note': { method: 'POST', run: () => ({ ok: true, value: 'a note' }) } });
+
+    expect(await askTable(verbs, '/note')).toMatchObject({ status: 200, payload: { ok: true, value: 'a note' } });
+    expect(await askTable(verbs, '/state', 'GET')).toMatchObject({ status: 200 });
+  });
+
+  it('replaces a core verb when it takes its path', async () => {
+    const { session, called } = fakeSession();
+    const verbs = table(session, { '/screenshot': { method: 'POST', run: () => ({ ok: true, value: 'mine' }) } });
+
+    expect(await askTable(verbs, '/screenshot')).toMatchObject({ payload: { value: 'mine' } });
+    expect(called.map(([name]) => name), 'the core one never ran').toEqual([]);
   });
 });
 
@@ -278,6 +306,26 @@ describe('the bound server', () => {
 
       const refused = await fetch(`http://127.0.0.1:${engine.address.port}/state`);
       expect(refused.status, 'a request with no token').toBe(401);
+    } finally {
+      await engine.close();
+    }
+  });
+
+  // Through the server rather than a table built here: the merge is `startEngineServer`'s, and a case that
+  // composes the table itself passes whether or not the server does it
+  it("serves a caller's own verb", async () => {
+    const { session } = fakeSession();
+    const engine = await startEngineServer(session, () => undefined, () => ({
+      '/note': { method: 'POST', run: () => ({ ok: true, value: 'a note' }) },
+    }));
+
+    try {
+      const response = await fetch(`http://127.0.0.1:${engine.address.port}/note`, {
+        method: 'POST',
+        headers: { [ENGINE_TOKEN_HEADER]: engine.address.token },
+        body: '{}',
+      });
+      expect(await response.json()).toEqual({ ok: true, value: 'a note' });
     } finally {
       await engine.close();
     }

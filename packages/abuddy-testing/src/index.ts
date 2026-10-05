@@ -634,9 +634,9 @@ export const drive = _default.test;
  * this module, and the engine is the same job done interactively, so a second entry would be a second
  * name for one thing. `src/engine/` has what it does and why.
  */
-import { runDriveEngine } from './engine/index.ts';
+import { runDriveEngine, type ExtraVerbs } from './engine/index.ts';
 
-export { ENGINE_TOKEN_HEADER, MARKER_FILE, runDriveEngine, type DriveEngineOptions, type EngineMarker } from './engine/index.ts';
+export { ENGINE_TOKEN_HEADER, MARKER_FILE, runDriveEngine, type DriveEngineOptions, type EngineMarker, type ExtraVerbs, type Verb } from './engine/index.ts';
 
 /**
  * The body of a serving session: everything `abuddy drive --serve`'s generated script does.
@@ -647,10 +647,15 @@ export { ENGINE_TOKEN_HEADER, MARKER_FILE, runDriveEngine, type DriveEngineOptio
  * `page.waitForState is not a function` against a running app rather than as a compile error. And
  * `drive(...)` is still called from the script, so Playwright reports the session at the caller's file
  * instead of at a line inside this bundle, which is what a reader needs when a run is interrupted.
+ *
+ * **It takes options and returns the body**, rather than being the body, so the one thing a session file
+ * is for — adding verbs of its own — is a typechecked argument at that file. A new option is then a
+ * compile error there instead of the failure above.
  */
-export const driveEngineBody = async (
-  { app, appPage }: { app: AppHelper; appPage: Page },
-  testInfo: { project: { outputDir: string } },
-): Promise<void> => {
-  await runDriveEngine({ page: appPage, app, outputDir: testInfo.project.outputDir });
-};
+export const driveEngineBody = (options: { verbs?: ExtraVerbs } = {}) =>
+  async (
+    { app, appPage }: { app: AppHelper; appPage: Page },
+    testInfo: { project: { outputDir: string } },
+  ): Promise<void> => {
+    await runDriveEngine({ page: appPage, app, outputDir: testInfo.project.outputDir, verbs: options.verbs });
+  };
