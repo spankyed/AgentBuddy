@@ -6093,8 +6093,6 @@ declare const libraryCommands: {
     readonly renameItem: (id: EARS.EntityId, name: string, type: "document" | "folder") => LibraryItem;
     readonly deleteItems: (ids: EARS.EntityId[]) => void;
     readonly moveItems: (ids: EARS.EntityId[], targetFolderId: EARS.EntityId | null) => void;
-    readonly migrateDocumentShortCodes: () => void;
-    readonly migrateDisplayOrders: () => void;
     readonly createSymlinkCollection: (name: string, symlinkPath: string, parentId?: EARS.EntityId, id?: string) => CollectionDTO;
     readonly updateSymlinkPath: (collectionId: EARS.EntityId, newPath: string) => CollectionDTO;
     readonly updateDocumentTags: (documentId: EARS.EntityId, tags: string[]) => void;
